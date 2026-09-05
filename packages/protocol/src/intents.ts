@@ -1,0 +1,46 @@
+import { z } from 'zod'
+import { ComponentId, FaceId, GameVersionId, SeatId, ZoneId } from './ids.js'
+
+// A closed vocabulary of what a hand can do to a physical object.
+// No game semantics live here. The set is finite because physics is finite;
+// adding a verb is a protocol migration and must be treated as one.
+export const PhysicalIntent = z.discriminatedUnion('v', [
+  z.object({
+    v: z.literal('move'),
+    component: ComponentId,
+    to: ZoneId,
+    index: z.number().int().nonnegative().optional(),
+    x: z.number().optional(),
+    y: z.number().optional(),
+    rot: z.number().optional(),
+  }),
+  z.object({ v: z.literal('rotate'), component: ComponentId, rot: z.number() }),
+  z.object({ v: z.literal('flip'), component: ComponentId, face: FaceId }),
+  z.object({ v: z.literal('stack'), component: ComponentId, onto: ComponentId }),
+  z.object({ v: z.literal('split'), pile: ZoneId, at: z.number().int().positive(), to: ZoneId }),
+  z.object({ v: z.literal('shuffle'), pile: ZoneId }),
+  z.object({ v: z.literal('draw'), from: ZoneId, to: ZoneId, count: z.number().int().positive() }),
+  z.object({ v: z.literal('deal'), from: ZoneId, to: z.array(ZoneId).min(1), each: z.number().int().positive() }),
+  z.object({ v: z.literal('roll'), component: ComponentId }),
+  z.object({ v: z.literal('setCounter'), component: ComponentId, value: z.number().int() }),
+  z.object({ v: z.literal('peek'), components: z.array(ComponentId).min(1) }),
+  z.object({ v: z.literal('showTo'), components: z.array(ComponentId).min(1), seats: z.array(SeatId).min(1) }),
+  z.object({ v: z.literal('reveal'), components: z.array(ComponentId).min(1) }),
+])
+export type PhysicalIntent = z.infer<typeof PhysicalIntent>
+
+// Session verbs are not physical and are kept apart so the physical set stays honest.
+export const SessionIntent = z.discriminatedUnion('v', [
+  z.object({ v: z.literal('seat.claim'), seat: SeatId, name: z.string().min(1).max(64) }),
+  z.object({ v: z.literal('seat.release'), seat: SeatId }),
+  z.object({ v: z.literal('setup.reset') }),
+  z.object({ v: z.literal('undo.self') }),
+  z.object({ v: z.literal('rewind.propose'), toSeq: z.number().int().nonnegative() }),
+  z.object({ v: z.literal('rewind.confirm'), proposal: z.string().min(1) }),
+  z.object({ v: z.literal('version.change'), to: GameVersionId }),
+  z.object({ v: z.literal('session.end') }),
+])
+export type SessionIntent = z.infer<typeof SessionIntent>
+
+export const Intent = z.union([PhysicalIntent, SessionIntent])
+export type Intent = z.infer<typeof Intent>
