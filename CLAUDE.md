@@ -20,6 +20,7 @@ Läs dessa innan du ändrar något som de täcker; de är sanningen, inte koden.
 - [DESIGN-BESLUT.md](DESIGN-BESLUT.md) — produkt- och arkitekturbeslut med motivering och följdkrav.
 - [TUNN-SKIVA.md](TUNN-SKIVA.md) — första vertikala skivan och de tre kontraktsytorna.
 - [DRIFT.md](DRIFT.md) — hur tjänsten driftas: en hemmaserver bakom Cloudflare.
+- [ROADMAP.md](ROADMAP.md) — besluten ordnade i faser fram till release, med status; uppdateras när en punkt blir klar.
 
 Ett beslut ändras genom att uppdatera dokumentet, inte genom att koden tyst avviker.
 

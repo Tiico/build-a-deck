@@ -1,7 +1,7 @@
 # build-your-deck
 
 Skapa ditt eget kortspel, speltesta det digitalt utan regelmotor, och beställ hem det fysiskt.
-Besluten bakom allt finns i [DESIGN-BESLUT.md](DESIGN-BESLUT.md), driften i [DRIFT.md](DRIFT.md), första skivan i [TUNN-SKIVA.md](TUNN-SKIVA.md).
+Besluten bakom allt finns i [DESIGN-BESLUT.md](DESIGN-BESLUT.md), driften i [DRIFT.md](DRIFT.md), första skivan i [TUNN-SKIVA.md](TUNN-SKIVA.md), och vägen till release i [ROADMAP.md](ROADMAP.md).
 Arbetssättet för agenter står i [CLAUDE.md](CLAUDE.md).
 
 ## Paket
