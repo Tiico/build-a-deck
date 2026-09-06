@@ -15,4 +15,18 @@ describe('PlaySheet (C4 zone shortcuts)', () => {
     fireEvent.click(screen.getByRole('button', { name: /Kasthög/ }))
     expect(onPlay).toHaveBeenCalledWith('discard')
   })
+
+  it('is announced as a modal and Escape closes it without playing a card', () => {
+    const { view } = buildScene()
+    const onPlay = vi.fn()
+    const onClose = vi.fn()
+    render(<PlaySheet view={view('A')} count={1} label="dragon" onPlay={onPlay} onClose={onClose} />)
+
+    const dialog = screen.getByRole('dialog', { name: 'Spela till' })
+    expect(dialog.getAttribute('aria-modal')).toBe('true')
+    fireEvent.keyDown(dialog, { key: 'Escape' })
+
+    expect(onClose).toHaveBeenCalledOnce()
+    expect(onPlay).not.toHaveBeenCalled()
+  })
 })

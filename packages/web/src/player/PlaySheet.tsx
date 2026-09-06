@@ -14,7 +14,16 @@ export function targetsOf(view: Snapshot) {
 export function PlaySheet({ view, count, label, onPlay, onClose }: PlaySheetProps) {
   return (
     <div className="byd-sheet-backdrop" onClick={onClose}>
-      <div className="byd-sheet" role="dialog" aria-label="Spela till" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="byd-sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Spela till"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') onClose()
+        }}
+      >
         <p>
           Spela <strong>{count > 1 ? `${count} kort` : label}</strong> till
         </p>
