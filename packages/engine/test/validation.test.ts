@@ -48,12 +48,6 @@ describe('structural validation (never rules)', () => {
     expect(rejected(h.try(null, { v: 'shuffle', pile: 'draw' }))).toMatch(/ended/)
   })
 
-  it('names the verbs the thin slice does not implement', () => {
-    const h = new Harness()
-    expect(rejected(h.try('A', { v: 'undo.self' }))).toMatch(/not implemented/)
-    expect(rejected(h.try('A', { v: 'rewind.propose', toSeq: 0 }))).toMatch(/not implemented/)
-  })
-
   it('does not enforce game rules: a seat may draw into another seat\'s hand', () => {
     const h = new Harness()
     expect(h.try('A', { v: 'draw', from: 'draw', to: 'hand:B', count: 1 }).ok).toBe(true)

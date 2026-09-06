@@ -26,7 +26,7 @@ export function twoSeatSetup(): SetupDef {
   }
 }
 
-export type Running = { server: Server; base: string; http: string; store: MemoryLogStore; renders: MemoryRenderStore; host: TableHost; renderAll(): Promise<void>; stop(): Promise<void> }
+export type Running = { server: Server; base: string; http: string; store: MemoryLogStore; renders: MemoryRenderStore; host: TableHost; renderAll(): Promise<void>; restart(): Promise<void>; stop(): Promise<void> }
 
 export async function start(): Promise<Running> {
   const store = new MemoryLogStore()
@@ -50,6 +50,8 @@ export async function start(): Promise<Running> {
         await renderer.close()
       }
     },
+    // Forgets every loaded actor, as a process restart would; the next connection reloads from the log.
+    restart: () => host.drain('restart'),
     base: `ws://127.0.0.1:${port}`,
     http: `http://127.0.0.1:${port}`,
     stop: () =>

@@ -26,6 +26,9 @@ export const Outcome = z.discriminatedUnion('kind', [
     order: z.array(ComponentId),
   }),
   z.object({ kind: z.literal('roll'), value: z.number().int() }),
+  // A rewind (B): the table as it was, with hidden piles that lost cards since then reshuffled.
+  // The engine owns the shape of `table`; the log stores it verbatim and no client ever sees it.
+  z.object({ kind: z.literal('restore'), toSeq: z.number().int().nonnegative(), table: z.record(z.string(), z.unknown()) }),
 ])
 export type Outcome = z.infer<typeof Outcome>
 

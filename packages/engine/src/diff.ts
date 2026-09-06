@@ -30,6 +30,7 @@ export function diff(prev: Snapshot, next: Snapshot): Patch {
     const p = seatsBefore.get(s.id)
     if (!p || !deepEqual(p, s)) ops.push({ op: 'seat', seat: s })
   }
+  if (!deepEqual(prev.rewind, next.rewind)) ops.push({ op: 'rewind', proposal: next.rewind })
   return { seq: next.seq, ops }
 }
 
@@ -38,6 +39,7 @@ export function applyPatch(prev: Snapshot, patch: Patch): Snapshot {
   const zones = new Map<string, ZoneView>(prev.zones.map((z) => [z.id, z]))
   // Seats keep the setup's order; a patch only ever changes who sits there.
   const seats = prev.seats.map((s) => ({ ...s }))
+  let rewind = prev.rewind
   for (const op of patch.ops) {
     switch (op.op) {
       case 'upsert':
@@ -58,6 +60,9 @@ export function applyPatch(prev: Snapshot, patch: Patch): Snapshot {
         else seats.push(op.seat)
         break
       }
+      case 'rewind':
+        rewind = op.proposal
+        break
     }
   }
   const sortedZones = [...zones.values()].sort((a, b) => a.id.localeCompare(b.id))
@@ -68,6 +73,7 @@ export function applyPatch(prev: Snapshot, patch: Patch): Snapshot {
     seats,
     zones: sortedZones,
     components: orderComponents([...components.values()], sortedZones),
+    rewind,
   }
 }
 

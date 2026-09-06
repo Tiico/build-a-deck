@@ -7,8 +7,11 @@ import {
   decide,
   initialState,
   project,
+  replay,
   seededRng,
   type DecideDeps,
+  type History,
+  type Sources,
   type Decision,
   type SetupDef,
   type TableState,
@@ -37,7 +40,7 @@ export function twoSeatSetup(): SetupDef {
   }
 }
 
-export function deps(seed = 1): DecideDeps {
+export function sources(seed = 1): Sources {
   return { rng: seededRng(seed), ids: counterIds('r'), now: () => '2026-09-05T00:00:00.000Z' }
 }
 
@@ -52,7 +55,11 @@ export class Harness {
   constructor(seed = 1, setup: SetupDef = twoSeatSetup()) {
     this.initial = initialState('v1', setup, registry)
     this.state = this.initial
-    this.deps = deps(seed)
+    const history: History = {
+      stateAt: (seq) => replay(this.initial, registry, this.log.filter((l) => l.seq <= seq)),
+      lines: () => this.log,
+    }
+    this.deps = { ...sources(seed), history }
   }
 
   try(seat: SeatId | null, ...intents: Intent[]): Decision {

@@ -1,5 +1,6 @@
 import type {
   ComponentId,
+  RewindProposal,
   ComponentSpec,
   FaceId,
   GameVersionId,
@@ -74,7 +75,13 @@ export type TableState = {
   // Opaque sequential ids for setup. They leak only what an unshuffled physical deck leaks.
   nextId: number
   ended: boolean
+  // A rewind proposed and not yet confirmed (B).
+  rewind: RewindProposal | null
 }
+
+// The part of a state a rewind restores: the table itself. Seats, version and setup are the
+// session's, not the game's, and stay as they are.
+export type Table = Pick<TableState, 'zones' | 'components'>
 
 export function must<T>(value: T | undefined | null, message: string): T {
   if (value === undefined || value === null) throw new Error(message)

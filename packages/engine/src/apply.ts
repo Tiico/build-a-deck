@@ -1,4 +1,5 @@
 import type { Applied, ComponentId, ComponentSpec, Outcome, SeatId, ZoneId } from '@byd/protocol'
+import { restoredTable } from './restore.js'
 import { handsReturnedBy } from './hands.js'
 import { materialise } from './setup.js'
 import {
@@ -141,10 +142,19 @@ export function apply(prev: TableState, _registry: TypeRegistry, applied: Applie
     case 'version.change':
       changeVersion(state, it.to, it.components)
       break
-    case 'undo.self':
     case 'rewind.propose':
-    case 'rewind.confirm':
-      throw new Error(`${it.v} is not implemented in the thin slice`)
+      state.rewind = { id: applied.batch, toSeq: it.toSeq, by: applied.by }
+      break
+    case 'undo.self':
+    case 'rewind.confirm': {
+      // The outcome already holds the table as restored and reshuffled (decide did that);
+      // seats, version and setup are the session's and stay.
+      const table = restoredTable(must(applied.outcome, `${it.v} requires a restore outcome`))
+      state.zones = table.zones
+      state.components = table.components
+      state.rewind = null
+      break
+    }
   }
   settle(state)
   return state

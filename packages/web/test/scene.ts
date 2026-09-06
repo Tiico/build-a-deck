@@ -1,4 +1,4 @@
-import { CARD_STANDARD_63x88, TypeRegistry, apply, counterIds, decide, initialState, project, seededRng } from '@byd/engine'
+import { CARD_STANDARD_63x88, TypeRegistry, apply, counterIds, decide, initialState, project, replay, seededRng, type DecideDeps } from '@byd/engine'
 import type { Applied, Intent, Snapshot } from '@byd/protocol'
 import { twoSeatSetup } from './fixture.js'
 
@@ -7,9 +7,15 @@ import { twoSeatSetup } from './fixture.js'
 export const registry = new TypeRegistry([CARD_STANDARD_63x88])
 
 export function buildScene() {
-  let state = initialState('v1', twoSeatSetup(), registry)
-  const deps = { rng: seededRng(1), ids: counterIds('r'), now: () => '2026-09-06T00:00:00.000Z' }
+  const initial = initialState('v1', twoSeatSetup(), registry)
+  let state = initial
   const log: Applied[] = []
+  const deps: DecideDeps = {
+    rng: seededRng(1),
+    ids: counterIds('r'),
+    now: () => '2026-09-06T00:00:00.000Z',
+    history: { stateAt: (seq) => replay(initial, registry, log.filter((l) => l.seq <= seq)), lines: () => log },
+  }
   let n = 0
   const run = (seat: string | null, ...intents: Intent[]) => {
     const d = decide(state, registry, { id: `e${n++}`, seat, intents }, deps)

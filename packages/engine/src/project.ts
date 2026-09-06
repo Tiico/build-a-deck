@@ -38,7 +38,7 @@ export function project(state: TableState, registry: TypeRegistry, seat: SeatId 
     }
   }
   const seats = state.setup.seats.map((id) => ({ id, name: state.seats[id]?.name ?? null }))
-  return { seq: state.seq, seat, floor: state.setup.floor, seats, zones, components }
+  return { seq: state.seq, seat, floor: state.setup.floor, seats, zones, components, rewind: state.rewind }
 }
 
 function zoneBase(z: Zone) {

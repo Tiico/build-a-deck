@@ -3,7 +3,7 @@ import { apply } from './apply.js'
 import { handsReturnedBy } from './hands.js'
 import type { IdSource, Rng } from './rng.js'
 import { permutation } from './rng.js'
-import { componentOf, must, zoneOf, type TableState } from './state.js'
+import { componentOf, must, zoneOf, type Table, type TableState } from './state.js'
 import type { TypeRegistry } from './typedef.js'
 
 // `decide` is the only place randomness enters. It validates an envelope against the
@@ -14,7 +14,15 @@ import type { TypeRegistry } from './typedef.js'
 // already has the previous intents of the same envelope applied; the first failure
 // rejects the whole envelope and nothing is returned.
 
-export type DecideDeps = { rng: Rng; ids: IdSource; now(): string }
+// What decide draws on besides the state: randomness, ids, the clock, and the log so far.
+export type Sources = { rng: Rng; ids: IdSource; now(): string }
+export type History = {
+  // The state right after line `seq` was applied; 0 is the initial state.
+  stateAt(seq: number): TableState
+  // Every committed line, in order.
+  lines(): readonly Applied[]
+}
+export type DecideDeps = Sources & { history: History }
 export type Decision = { ok: true; applied: Applied[] } | { ok: false; reason: string }
 
 export function decide(state: TableState, registry: TypeRegistry, env: Envelope, deps: DecideDeps): Decision {
@@ -24,10 +32,10 @@ export function decide(state: TableState, registry: TypeRegistry, env: Envelope,
   const lines: Applied[] = []
   let working = state
   for (const [i, intent] of env.intents.entries()) {
-    const problem = validate(working, registry, env.seat, intent)
+    const problem = validate(working, registry, env.seat, intent) ?? validateRewind(state, env, intent, deps.history)
     if (problem) return { ok: false, reason: env.intents.length > 1 ? `intent ${i}: ${problem}` : problem }
     const applied: Applied = { seq: working.seq + 1, batch: env.id, at: deps.now(), by: env.seat, intent }
-    const outcome = decideOutcome(working, registry, intent, deps)
+    const outcome = decideOutcome(working, registry, intent, deps, env)
     if (outcome) applied.outcome = outcome
     lines.push(applied)
     working = apply(working, registry, applied)
@@ -147,12 +155,70 @@ function validate(state: TableState, registry: TypeRegistry, seat: string | null
     case 'undo.self':
     case 'rewind.propose':
     case 'rewind.confirm':
-      return `${it.v} is not implemented in the thin slice`
+      // Checked against the log, not the working state: see validateRewind.
+      return null
   }
 }
 
-function decideOutcome(state: TableState, registry: TypeRegistry, it: Intent, deps: DecideDeps): Outcome | undefined {
+// Rewinds (B) are about the log, so they cannot share an envelope with anything else, and
+// they are validated against the committed state rather than a working one.
+function validateRewind(state: TableState, env: Envelope, it: Intent, history: History): string | null {
+  if (it.v !== 'undo.self' && it.v !== 'rewind.propose' && it.v !== 'rewind.confirm') return null
+  if (env.intents.length > 1) return `${it.v} must be the only intent in its envelope`
   switch (it.v) {
+    case 'undo.self': {
+      const target = undoTarget(history.lines(), env.seat)
+      if (target === null) return 'nothing to undo'
+      if (target === 'contested') return 'someone else has acted since: propose a rewind instead'
+      return null
+    }
+    case 'rewind.propose':
+      return it.toSeq < state.seq ? null : `cannot rewind to ${it.toSeq}: the table is at ${state.seq}`
+    case 'rewind.confirm': {
+      if (!state.rewind || state.rewind.id !== it.proposal) return `no open rewind proposal ${it.proposal}`
+      if (state.rewind.by === env.seat) return 'a rewind must be confirmed by someone else at the table'
+      return null
+    }
+  }
+}
+
+// The lines still in effect: a restore takes everything after its target out of the story.
+export function effectiveLines(log: readonly Applied[]): Applied[] {
+  const out: Applied[] = []
+  let cutoff = Infinity
+  for (const line of log.toReversed()) {
+    if (line.seq > cutoff) continue
+    const o = line.outcome
+    if (o?.kind === 'restore') {
+      cutoff = o.toSeq
+      continue
+    }
+    out.unshift(line)
+  }
+  return out
+}
+
+// Where undo.self would take the table: before the seat's last batch still in effect — unless
+// another seat has acted since, which makes it a matter for a rewind proposal.
+export function undoTarget(log: readonly Applied[], seat: string | null): number | 'contested' | null {
+  const lines = effectiveLines(log)
+  const last = lines.findLast((l) => l.by === seat)
+  if (!last) return null
+  const batch = lines.filter((l) => l.batch === last.batch)
+  const first = must(batch[0], 'a batch has a first line')
+  if (lines.some((l) => l.seq > last.seq && l.by !== seat)) return 'contested'
+  return first.seq - 1
+}
+
+function decideOutcome(state: TableState, registry: TypeRegistry, it: Intent, deps: DecideDeps, env: Envelope): Outcome | undefined {
+  switch (it.v) {
+    case 'undo.self': {
+      const target = undoTarget(deps.history.lines(), env.seat)
+      if (typeof target !== 'number') throw new Error('validated undo.self but no target')
+      return restoreOutcome(state, registry, target, deps)
+    }
+    case 'rewind.confirm':
+      return restoreOutcome(state, registry, must(state.rewind, 'validated rewind.confirm without a proposal').toSeq, deps)
     case 'shuffle':
       return shuffleOutcome(zoneOf(state, it.pile).order, deps)
     case 'roll': {
@@ -168,6 +234,28 @@ function decideOutcome(state: TableState, registry: TypeRegistry, it: Intent, de
     default:
       return undefined
   }
+}
+
+// The table as it was after `toSeq`, with every hidden pile that has lost a card since then
+// shuffled: a card that left a face-down pile was seen, and putting it back on top in a known
+// place would be knowledge no physical rewind grants.
+function restoreOutcome(current: TableState, registry: TypeRegistry, toSeq: number, deps: DecideDeps): Outcome {
+  const then = deps.history.stateAt(toSeq)
+  const table: Table = { zones: then.zones, components: then.components }
+  for (const pile of Object.values(then.zones)) {
+    if (pile.kind !== 'pile' || pile.visibility !== 'none' || pile.order.length === 0) continue
+    const now = new Set(current.zones[pile.id]?.order ?? [])
+    if (pile.order.every((id) => now.has(id))) continue
+    const outcome = shuffleOutcome(pile.order, deps)
+    const shuffled = apply(
+      { ...then, zones: table.zones, components: table.components, seq: then.seq },
+      registry,
+      { seq: then.seq + 1, batch: 'restore', at: '', by: null, intent: { v: 'shuffle', pile: pile.id }, outcome },
+    )
+    table.zones = shuffled.zones
+    table.components = shuffled.components
+  }
+  return { kind: 'restore', toSeq, table }
 }
 
 function shuffleOutcome(ids: readonly ComponentId[], deps: DecideDeps): Outcome {

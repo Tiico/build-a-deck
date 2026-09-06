@@ -56,6 +56,11 @@ export type ZoneView = z.infer<typeof ZoneView>
 export const SeatView = z.object({ id: SeatId, name: z.string().nullable() })
 export type SeatView = z.infer<typeof SeatView>
 
+// A rewind waiting for someone else at the table to confirm it (B). `id` is the batch of the
+// proposing envelope; `by` is the proposer; `toSeq` is the line the table would return to.
+export const RewindProposal = z.object({ id: z.string().min(1), toSeq: z.number().int().nonnegative(), by: SeatId.nullable() })
+export type RewindProposal = z.infer<typeof RewindProposal>
+
 export const Snapshot = z.object({
   seq: z.number().int().nonnegative(),
   seat: SeatId.nullable(),
@@ -64,6 +69,7 @@ export const Snapshot = z.object({
   seats: z.array(SeatView),
   zones: z.array(ZoneView),
   components: z.array(VisibleComponentState),
+  rewind: RewindProposal.nullable(),
 })
 export type Snapshot = z.infer<typeof Snapshot>
 
@@ -73,6 +79,7 @@ export const Op = z.discriminatedUnion('op', [
   z.object({ op: z.literal('zone'), view: ZoneView }),
   z.object({ op: z.literal('zoneRemove'), zone: ZoneId }),
   z.object({ op: z.literal('seat'), seat: SeatView }),
+  z.object({ op: z.literal('rewind'), proposal: RewindProposal.nullable() }),
 ])
 export type Op = z.infer<typeof Op>
 

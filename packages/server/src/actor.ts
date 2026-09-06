@@ -1,4 +1,4 @@
-import type { Envelope, SeatId, ServerMessage, Snapshot } from '@byd/protocol'
+import type { Applied, Envelope, SeatId, ServerMessage, Snapshot } from '@byd/protocol'
 import {
   apply,
   cryptoRng,
@@ -11,6 +11,7 @@ import {
   uuidIds,
   type DecideDeps,
   type Decision,
+  type Sources,
   type FaceHashes,
   type SetupDef,
   type TableState,
@@ -33,22 +34,36 @@ export class TableActor {
   private readonly subscribers = new Map<Subscriber, Snapshot>()
   private lastActivity = Date.now()
 
+  private readonly deps: DecideDeps
+
   private constructor(
     readonly id: string,
+    private readonly initial: TableState,
     private state: TableState,
+    // The committed log, kept so a rewind (B) can look back without a round trip to the store.
+    private readonly log: Applied[],
     private readonly registry: TypeRegistry,
     private readonly store: LogStore,
-    private readonly deps: DecideDeps,
+    sources: Sources,
     // Texture hashes per card and face; undefined for a session without a deck.
     private faces: FaceHashes | undefined,
     private readonly renders: RenderStore | undefined,
-  ) {}
+  ) {
+    this.deps = {
+      ...sources,
+      history: {
+        stateAt: (seq) => replay(this.initial, this.registry, this.log.filter((l) => l.seq <= seq)),
+        lines: () => this.log,
+      },
+    }
+  }
 
-  static async load(id: string, registry: TypeRegistry, store: LogStore, deps?: DecideDeps, renders?: RenderStore): Promise<TableActor | null> {
+  static async load(id: string, registry: TypeRegistry, store: LogStore, sources?: Sources, renders?: RenderStore): Promise<TableActor | null> {
     const record = await store.loadSession(id)
     if (!record) return null
     const initial = initialState(record.version, record.setup, registry)
-    const state = replay(initial, registry, await store.read(id))
+    const log = await store.read(id)
+    const state = replay(initial, registry, log)
     let faces: FaceHashes | undefined
     if (record.deck) {
       // Enqueue is idempotent by hash, so loading a table twice costs nothing the second time.
@@ -56,7 +71,7 @@ export class TableActor {
       faces = compiled.faces
       if (renders) for (const job of compiled.jobs) await renders.enqueue(job)
     }
-    return new TableActor(id, state, registry, store, deps ?? defaultDeps(), faces, renders)
+    return new TableActor(id, initial, state, log, registry, store, sources ?? defaultSources(), faces, renders)
   }
 
   // A newer deck (C7): recompute texture hashes and queue what is not rendered yet. Views
@@ -110,7 +125,10 @@ export class TableActor {
     if (!decision.ok) return decision
 
     await this.store.append(this.id, decision.applied)
-    for (const line of decision.applied) this.state = apply(this.state, this.registry, line)
+    for (const line of decision.applied) {
+      this.state = apply(this.state, this.registry, line)
+      this.log.push(line)
+    }
 
     const activity = decision.applied.map(projectActivity)
     for (const [sub, previous] of this.subscribers) {
@@ -124,7 +142,7 @@ export class TableActor {
   }
 }
 
-export function defaultDeps(): DecideDeps {
+export function defaultSources(): Sources {
   return { rng: cryptoRng(), ids: uuidIds(), now: () => new Date().toISOString() }
 }
 
@@ -137,14 +155,14 @@ export class TableHost {
   constructor(
     private readonly registry: TypeRegistry,
     private readonly store: LogStore,
-    private readonly makeDeps: () => DecideDeps = defaultDeps,
+    private readonly makeSources: () => Sources = defaultSources,
     private readonly renders?: RenderStore,
   ) {}
 
   get(id: string): Promise<TableActor | null> {
     let pending = this.actors.get(id)
     if (!pending) {
-      pending = TableActor.load(id, this.registry, this.store, this.makeDeps(), this.renders).then((actor) => {
+      pending = TableActor.load(id, this.registry, this.store, this.makeSources(), this.renders).then((actor) => {
         if (!actor) this.actors.delete(id)
         return actor
       })

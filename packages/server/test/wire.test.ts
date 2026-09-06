@@ -207,3 +207,48 @@ describe('textures (TUNN-SKIVA §5)', () => {
     expect(new Uint8Array(await png.arrayBuffer()).subarray(1, 4)).toEqual(new Uint8Array([0x50, 0x4e, 0x47]))
   }, 60_000)
 })
+
+describe('rewind on the wire (B)', () => {
+  it('undo.self puts a drawn card back; the restored pile carries fresh ids so nobody can track it', async () => {
+    const id = await createSession(run.http)
+    const a = await connect(id, 'A')
+    const table = await connect(id, null)
+    await a.send('A', { v: 'shuffle', pile: 'draw' })
+    const drawn = await a.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    expect(drawn.t).toBe('ack')
+    const seen = (await a.synced(2)).components.find((c) => c.zone === 'hand:A')!
+    expect(seen.cardRef).not.toBeNull()
+
+    const undo = await a.send('A', { v: 'undo.self' })
+    expect(undo.t).toBe('ack')
+    const after = await table.synced(3)
+    expect(after.zones.find((z) => z.id === 'hand:A')).toMatchObject({ count: 0 })
+    expect(after.zones.find((z) => z.id === 'draw')).toMatchObject({ count: 10 })
+    // The card's old id is gone from every view, and the outcome never crossed the wire.
+    expect((await a.synced(3)).components.some((c) => c.id === seen.id)).toBe(false)
+    expect(table.frames.some((f) => f.includes('"restore"') || f.includes('"table":'))).toBe(false)
+  })
+
+  it('a proposal shows on every view until the other seat confirms, and the actor survives a reload', async () => {
+    const id = await createSession(run.http)
+    const a = await connect(id, 'A')
+    const b = await connect(id, 'B')
+    const table = await connect(id, null)
+    await a.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    await b.send('B', { v: 'draw', from: 'draw', to: 'hand:B', count: 1 })
+    expect((await a.send('A', { v: 'undo.self' })).t).toBe('reject')
+
+    await a.send('A', { v: 'rewind.propose', toSeq: 0 })
+    expect((await table.synced(3)).rewind).toMatchObject({ toSeq: 0, by: 'A' })
+    const proposal = (await b.synced(3)).rewind!
+    expect((await b.send('B', { v: 'rewind.confirm', proposal: proposal.id })).t).toBe('ack')
+    const restored = await table.synced(4)
+    expect(restored.rewind).toBeNull()
+    expect(restored.zones.find((z) => z.id === 'draw')).toMatchObject({ count: 10 })
+
+    // A freshly loaded actor sees the same table.
+    await run.restart()
+    const again = await connect(id, null)
+    expect(again.view).toEqual(restored)
+  })
+})
