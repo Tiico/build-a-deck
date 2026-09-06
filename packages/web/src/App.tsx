@@ -1,15 +1,15 @@
 import { TablePage } from './table/TablePage.js'
-import { PlayerPrototype } from './prototype/player/index.js'
+import { PlayerPage } from './player/PlayerPage.js'
 
 // Routing is a path check for now; a router arrives with the first real page.
 export function App() {
   if (location.pathname === '/table') return <TablePage />
-  if (location.pathname.startsWith('/prototype/player')) return <PlayerPrototype />
+  if (location.pathname === '/play') return <PlayerPage />
   return (
     <main style={{ padding: 32 }}>
       <h1>build-your-deck</h1>
       <p>
-        Inget här än. Bordsvyn: <code>/table?session=…&amp;mode=table|tv&amp;code=…</code>
+        Inget här än. Bordsvyn: <code>/table?session=…&amp;mode=table|tv&amp;code=…</code> · Telefonen: <code>/play?session=…&amp;seat=…&amp;name=…</code>
       </p>
     </main>
   )

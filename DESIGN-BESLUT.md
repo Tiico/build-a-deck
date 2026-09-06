@@ -579,6 +579,16 @@ Följdkrav som prototypen avslöjade och som nu är införda:
 Snapshot bär platserna med namn och golvzonen.
 Servern skickar varje committad rad som redigerad aktivitet, utan utfall.
 
+### K10. Telefonvyns utseende: remsan (prototypat 2026-09-06)
+
+Tre prototyper: remsan, ett kort i taget i fullskärm, och minibord med brickor plus handen i rutnät.
+Valet blev remsan, som K4 beslutat: stora kort i horisontell remsa nederst där tummen är; tryck inspekterar i fullstorlek; dra upp öppnar ett ark med zongenvägarna ur setup (C4), golvet sist som "Bordet"; håll väljer flera, och flera valda spelas som ett atomiskt kuvert (K3).
+Mitten är den kollapsade bordsöversikten — zoner med antal och senaste-flödet — som C4:s "fäll ut bordet" i minsta format.
+
+Följdkrav:
+Zonernas namn är genvägarnas etiketter; ett spel med zoner som heter "Zon 3" får obegripliga knappar (B5).
+Platsen claimas med namnet ur länken vid första anslutning om den är ledig; annars visas den som sitter där.
+
 ---
 
 ## L. Editorn (grillad 2026-09-06)

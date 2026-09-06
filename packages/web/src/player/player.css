@@ -1,0 +1,47 @@
+/* Player view — the strip from the chosen prototype. */
+
+.byd-player {
+  height: 100vh; display: grid; grid-template-rows: 52px 1fr auto auto;
+  background: #14161c; color: #eee; font-family: system-ui, sans-serif;
+}
+.byd-player > header {
+  display: flex; align-items: baseline; gap: 10px; padding: 0 16px;
+  border-bottom: 1px solid #262a35; font-size: 13px; color: #9aa3b8;
+}
+.byd-player > header strong { color: #fff; font-size: 15px; }
+
+.byd-summary { padding: 14px 18px; overflow: auto; font-size: 13px; color: #9aa3b8; }
+.byd-summary-zones { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
+.byd-summary-zones > div { background: #1b1e27; border-radius: 10px; padding: 10px; min-height: 48px; display: grid; align-content: start; gap: 2px; }
+.byd-summary-zones strong { color: #fff; }
+.byd-summary h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; margin: 0 0 6px; font-weight: 600; }
+.byd-summary ol { list-style: none; margin: 0; padding: 0; }
+.byd-summary li { padding: 5px 0; border-bottom: 1px solid #1f2330; }
+
+.byd-strip { display: flex; gap: 14px; overflow-x: auto; padding: 10px 24px; scroll-snap-type: x mandatory; }
+.byd-strip-card {
+  flex: 0 0 62vw; aspect-ratio: 63 / 88; scroll-snap-align: center;
+  border-radius: 14px; padding: 16px; box-sizing: border-box;
+  background: hsl(var(--hue, 0) 40% 86%); color: #1c1c1c;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); touch-action: pan-x; user-select: none;
+}
+.byd-strip-card[data-selected='true'] { outline: 4px solid #7dd3a0; }
+.byd-strip-card strong { font-size: 20px; font-weight: 800; }
+.byd-hint { text-align: center; font-size: 12px; color: #5b6478; margin: 6px 0 20px; }
+
+.byd-sheet-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); display: grid; align-content: end; z-index: 20; }
+.byd-sheet { background: #1b1e27; border-radius: 20px 20px 0 0; padding: 18px 18px 30px; }
+.byd-sheet p { font-size: 13px; color: #9aa3b8; margin: 0 0 12px; }
+.byd-sheet p strong { color: #fff; }
+.byd-sheet-targets { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.byd-sheet-targets button {
+  padding: 16px 14px; border-radius: 12px; border: 1px solid #2c3242; background: #242938; color: #fff;
+  font-size: 16px; font-weight: 600; text-align: left; display: grid; gap: 2px;
+}
+.byd-sheet-targets small { font-size: 12px; color: #9aa3b8; font-weight: 400; }
+
+.byd-player .byd-inspect { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, 0.7); z-index: 10; }
+.byd-player .byd-inspect > div {
+  width: 86vw; aspect-ratio: 63 / 88; border-radius: 18px; padding: 22px; box-sizing: border-box;
+  background: hsl(var(--hue, 0) 40% 86%); color: #1c1c1c; font-size: 28px; font-weight: 800;
+}
