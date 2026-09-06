@@ -1,9 +1,9 @@
-import type { Applied, ComponentId, Envelope, Intent, Outcome, UndoMeaning, ZoneId } from '@byd/protocol'
+import type { Applied, ComponentId, ComponentRef, Envelope, Intent, Outcome, UndoMeaning, ZoneId } from '@byd/protocol'
 import { apply } from './apply.js'
 import { handsReturnedBy } from './hands.js'
 import type { IdSource, Rng } from './rng.js'
 import { permutation } from './rng.js'
-import { componentOf, must, zoneOf, type Table, type TableState } from './state.js'
+import { componentOf, must, resolveRef, zoneOf, type Table, type TableState } from './state.js'
 import type { TypeRegistry } from './typedef.js'
 
 // `decide` is the only place randomness enters. It validates an envelope against the
@@ -50,6 +50,14 @@ function validate(state: TableState, registry: TypeRegistry, seat: string | null
   const zone = (id: ZoneId) => (state.zones[id] ? null : `unknown zone ${id}`)
   const all = (checks: (string | null)[]) => checks.find((c) => c !== null) ?? null
   const def = (id: ComponentId) => registry.get(componentOf(state, id).type)
+  // A pile named as a source (K15) must exist, be a pile, and have a top to give.
+  const ref = (r: ComponentRef): string | null => {
+    if (typeof r === 'string') return comp(r)
+    const z = zone(r.top)
+    if (z) return z
+    if (zoneOf(state, r.top).kind !== 'pile') return `zone ${r.top} is not a pile`
+    return zoneOf(state, r.top).order.length > 0 ? null : `pile ${r.top} is empty`
+  }
 
   switch (it.v) {
     case 'move':
@@ -57,18 +65,19 @@ function validate(state: TableState, registry: TypeRegistry, seat: string | null
     case 'rotate':
       return comp(it.component)
     case 'flip': {
-      const c = comp(it.component)
+      const c = ref(it.component)
       if (c) return c
-      const d = def(it.component)
+      const d = def(resolveRef(state, it.component))
       if (!d.behaviours.flippable) return `${d.id} cannot be flipped`
       if (!d.faces.includes(it.face)) return `${d.id} has no face ${it.face}`
       return null
     }
     case 'stack': {
-      const c = all([comp(it.component), comp(it.onto)])
+      const c = all([ref(it.component), comp(it.onto)])
       if (c) return c
-      if (it.component === it.onto) return 'cannot stack a component onto itself'
-      if (!def(it.component).behaviours.stackable) return `${def(it.component).id} cannot be stacked`
+      const id = resolveRef(state, it.component)
+      if (id === it.onto) return 'cannot stack a component onto itself'
+      if (!def(id).behaviours.stackable) return `${def(id).id} cannot be stacked`
       if (!def(it.onto).behaviours.stackable) return `${def(it.onto).id} cannot be stacked on`
       return null
     }

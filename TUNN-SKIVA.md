@@ -47,8 +47,8 @@ Mängden är ändlig eftersom fysiken är ändlig, och det är hela poängen —
 type PhysicalIntent =
   | { v: 'move';       component: ComponentId; to: ZoneId; index?: number; x?: number; y?: number; rot?: number }
   | { v: 'rotate';     component: ComponentId; rot: number }
-  | { v: 'flip';       component: ComponentId; face: FaceId }
-  | { v: 'stack';      component: ComponentId; onto: ComponentId }
+  | { v: 'flip';       component: ComponentRef; face: FaceId }
+  | { v: 'stack';      component: ComponentRef; onto: ComponentId }
   | { v: 'split';      pile: ZoneId; at: number; to: ZoneId }
   | { v: 'shuffle';    pile: ZoneId }
   | { v: 'draw';       from: ZoneId; to: ZoneId; count: number }
@@ -60,6 +60,9 @@ type PhysicalIntent =
   | { v: 'reveal';     components: ComponentId[] }
   | { v: 'movePile';   pile: ZoneId; to: ZoneId; x?: number; y?: number; rot?: number }
 ```
+
+`ComponentRef` är `ComponentId | { top: ZoneId }` (K15): översta kortet i en hög, adresserat utan id eftersom en dold hög inte ger något.
+Motorn löser upp toppen när raden appliceras, så loggen spelas upp identiskt.
 
 `movePile` tillkom med K1: att plocka upp en hel hög är en fysisk handling.
 `stack` på ett löst kort i en area skapar en ny pile-zon på platsen, med areans synlighet; en hög med ett kort kvar löses upp.

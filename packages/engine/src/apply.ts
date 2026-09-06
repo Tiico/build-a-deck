@@ -6,6 +6,7 @@ import {
   cloneState,
   componentOf,
   must,
+  resolveRef,
   withoutKey,
   zoneOf,
   type ComponentInstance,
@@ -38,9 +39,10 @@ export function apply(prev: TableState, _registry: TypeRegistry, applied: Applie
       componentOf(state, it.component).rot = it.rot
       break
     case 'flip':
-      componentOf(state, it.component).face = it.face
+      componentOf(state, resolveRef(state, it.component)).face = it.face
       break
     case 'stack': {
+      const component = resolveRef(state, it.component)
       const onto = componentOf(state, it.onto)
       const target = zoneOf(state, onto.zone)
       if (target.kind === 'area') {
@@ -49,12 +51,12 @@ export function apply(prev: TableState, _registry: TypeRegistry, applied: Applie
         const pile = createPile(state, `z${applied.seq}`, target, { x: target.geometry.x + onto.x, y: target.geometry.y + onto.y, rot: onto.rot })
         detach(state, onto.id)
         attach(state, onto.id, pile.id, 0)
-        detach(state, it.component)
-        attach(state, it.component, pile.id, 0)
+        detach(state, component)
+        attach(state, component, pile.id, 0)
       } else {
-        detach(state, it.component)
+        detach(state, component)
         const idx = zoneOf(state, onto.zone).order.indexOf(onto.id)
-        attach(state, it.component, onto.zone, idx)
+        attach(state, component, onto.zone, idx)
       }
       break
     }

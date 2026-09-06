@@ -41,5 +41,10 @@ export function buildScene() {
     run(null, { v: 'stack', component: faceDown, onto: faceUp })
     return project(state, registry, null)
   }
-  return { state, log, view, viewAfterStack, faceUp, faceDown }
+  // The same table after the top of the hidden draw pile is turned face-up (K15).
+  const flipDrawTop = (): Snapshot => {
+    run(null, { v: 'flip', component: { top: 'draw' }, face: 'front' })
+    return project(state, registry, null)
+  }
+  return { state, log, view, viewAfterStack, flipDrawTop, faceUp, faceDown }
 }

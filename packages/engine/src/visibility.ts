@@ -28,6 +28,7 @@ export function canSeeFace(
   if (observer) return true
   if (component.publicOverride) return true
   if (seat !== null && (component.shownTo.includes(seat) || component.peekedBy.includes(seat))) return true
+  if (faceUpOnTop(state, registry, component)) return true
   const zone = zoneOf(state, component.zone)
   switch (zone.visibility) {
     case 'none':
@@ -39,6 +40,15 @@ export function canSeeFace(
       return def.faces.length === 1 || component.face === def.contentFace
     }
   }
+}
+
+// The card lying face-up on top of a pile is seen by everyone at the table, whatever the pile's
+// visibility (K15): that is what a face-down deck with its top card turned over shows. Covered
+// or turned back down, it is hidden again.
+export function faceUpOnTop(state: TableState, registry: TypeRegistry, component: ComponentInstance): boolean {
+  const zone = zoneOf(state, component.zone)
+  if (zone.kind !== 'pile' || zone.order[0] !== component.id) return false
+  return component.face === registry.get(component.type).contentFace
 }
 
 // Overrides are knowledge granted in a place; they do not travel with the component.

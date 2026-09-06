@@ -1,5 +1,6 @@
 import type {
   ComponentId,
+  ComponentRef,
   RewindProposal,
   ComponentSpec,
   FaceId,
@@ -94,6 +95,12 @@ export function zoneOf(state: TableState, id: ZoneId): Zone {
 
 export function componentOf(state: TableState, id: ComponentId): ComponentInstance {
   return must(state.components[id], `unknown component ${id}`)
+}
+
+// The component a verb names: an id, or the top of a pile (K15) resolved against this state.
+export function resolveRef(state: TableState, ref: ComponentRef): ComponentId {
+  if (typeof ref === 'string') return ref
+  return must(zoneOf(state, ref.top).order[0], `pile ${ref.top} is empty`)
 }
 
 // Shallow-clones the mutable containers so `apply` can mutate the copy and stay pure.

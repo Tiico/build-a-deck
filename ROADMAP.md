@@ -82,7 +82,7 @@ Drift:
 Målet är att en grupp kan spela vilket kortspel som helst utan att sakna något fysiken tillåter.
 
 - ⬜ Kamera: bordet ramar in aktivt innehåll automatiskt, tillfällig zoom med återgång (C5). Visuellt: prototyp först.
-- ⬜ Verb med hög som källa, så att översta kortet i en dold hög kan staplas på ett löst kort och vändas (K14 följdkrav). Ett nytt verb är en dokumenterad protokollmigrering.
+- ✅ Högens topp som adress i `stack` och `flip`, så att översta kortet i en dold hög kan staplas på ett löst kort och vändas; ett uppvänt kort överst i en hög ses av alla (K15).
 - ⬜ Räknare och privata zoner på telefonen utöver handen (C4).
 - ⬜ Aktivitetshistorik i snapshoten, så att en skärm som ansluter mitt i ett spel ser vad som hänt (I, teknik).
 - ⬜ Hur en hög i en area visas med blandad orientering, och om zonrektanglar får överlappa (I, spelupplevelse).

@@ -1,0 +1,1079 @@
+{
+  "name": "scripted-pile-top",
+  "recordedAt": "2026-09-06T21:03:28.802Z",
+  "version": "v1",
+  "setup": {
+    "seats": [
+      "A",
+      "B"
+    ],
+    "floor": "table",
+    "zones": [
+      {
+        "id": "draw",
+        "kind": "pile",
+        "name": "Draghög",
+        "visibility": "none",
+        "geometry": {
+          "x": -200,
+          "y": 0,
+          "w": 0,
+          "h": 0,
+          "rot": 0
+        }
+      },
+      {
+        "id": "discard",
+        "kind": "pile",
+        "name": "Kasthög",
+        "visibility": "all",
+        "geometry": {
+          "x": 200,
+          "y": 0,
+          "w": 0,
+          "h": 0,
+          "rot": 0
+        }
+      },
+      {
+        "id": "table",
+        "kind": "area",
+        "name": "Spelyta",
+        "visibility": "all",
+        "geometry": {
+          "x": -500,
+          "y": -300,
+          "w": 1000,
+          "h": 600,
+          "rot": 0
+        }
+      },
+      {
+        "id": "hand:A",
+        "kind": "hand",
+        "name": "Hand",
+        "visibility": "owner",
+        "owner": "A",
+        "returnTo": "draw",
+        "geometry": {
+          "x": -300,
+          "y": 320,
+          "w": 600,
+          "h": 100,
+          "rot": 0
+        }
+      },
+      {
+        "id": "hand:B",
+        "kind": "hand",
+        "name": "Hand",
+        "visibility": "owner",
+        "owner": "B",
+        "returnTo": "draw",
+        "geometry": {
+          "x": -300,
+          "y": -420,
+          "w": 600,
+          "h": 100,
+          "rot": 0
+        }
+      }
+    ],
+    "components": [
+      {
+        "type": {
+          "id": "card.standard.63x88",
+          "version": 1
+        },
+        "cardRef": "dragon",
+        "zone": "draw",
+        "face": "back"
+      },
+      {
+        "type": {
+          "id": "card.standard.63x88",
+          "version": 1
+        },
+        "cardRef": "knight",
+        "zone": "draw",
+        "face": "back"
+      },
+      {
+        "type": {
+          "id": "card.standard.63x88",
+          "version": 1
+        },
+        "cardRef": "wizard",
+        "zone": "draw",
+        "face": "back"
+      },
+      {
+        "type": {
+          "id": "card.standard.63x88",
+          "version": 1
+        },
+        "cardRef": "rogue",
+        "zone": "draw",
+        "face": "back"
+      },
+      {
+        "type": {
+          "id": "card.standard.63x88",
+          "version": 1
+        },
+        "cardRef": "priest",
+        "zone": "draw",
+        "face": "back"
+      },
+      {
+        "type": {
+          "id": "card.standard.63x88",
+          "version": 1
+        },
+        "cardRef": "archer",
+        "zone": "draw",
+        "face": "back"
+      },
+      {
+        "type": {
+          "id": "card.standard.63x88",
+          "version": 1
+        },
+        "cardRef": "golem",
+        "zone": "draw",
+        "face": "back"
+      },
+      {
+        "type": {
+          "id": "card.standard.63x88",
+          "version": 1
+        },
+        "cardRef": "witch",
+        "zone": "draw",
+        "face": "back"
+      },
+      {
+        "type": {
+          "id": "card.standard.63x88",
+          "version": 1
+        },
+        "cardRef": "bard",
+        "zone": "draw",
+        "face": "back"
+      },
+      {
+        "type": {
+          "id": "card.standard.63x88",
+          "version": 1
+        },
+        "cardRef": "ogre",
+        "zone": "draw",
+        "face": "back"
+      }
+    ]
+  },
+  "log": [
+    {
+      "seq": 1,
+      "batch": "e0",
+      "at": "2026-09-05T00:00:00.000Z",
+      "by": null,
+      "intent": {
+        "v": "seat.claim",
+        "seat": "A",
+        "name": "Spelare 1"
+      }
+    },
+    {
+      "seq": 2,
+      "batch": "e1",
+      "at": "2026-09-05T00:00:00.000Z",
+      "by": null,
+      "intent": {
+        "v": "shuffle",
+        "pile": "draw"
+      },
+      "outcome": {
+        "kind": "shuffle",
+        "rekey": [
+          [
+            "c0",
+            "r0"
+          ],
+          [
+            "c1",
+            "r1"
+          ],
+          [
+            "c2",
+            "r2"
+          ],
+          [
+            "c3",
+            "r3"
+          ],
+          [
+            "c4",
+            "r4"
+          ],
+          [
+            "c5",
+            "r5"
+          ],
+          [
+            "c6",
+            "r6"
+          ],
+          [
+            "c7",
+            "r7"
+          ],
+          [
+            "c8",
+            "r8"
+          ],
+          [
+            "c9",
+            "r9"
+          ]
+        ],
+        "order": [
+          "r3",
+          "r6",
+          "r1",
+          "r0",
+          "r2",
+          "r9",
+          "r7",
+          "r8",
+          "r4",
+          "r5"
+        ]
+      }
+    },
+    {
+      "seq": 3,
+      "batch": "e2",
+      "at": "2026-09-05T00:00:00.000Z",
+      "by": null,
+      "intent": {
+        "v": "flip",
+        "component": {
+          "top": "draw"
+        },
+        "face": "front"
+      }
+    },
+    {
+      "seq": 4,
+      "batch": "e3",
+      "at": "2026-09-05T00:00:00.000Z",
+      "by": "A",
+      "intent": {
+        "v": "draw",
+        "from": "draw",
+        "to": "hand:A",
+        "count": 1
+      }
+    },
+    {
+      "seq": 5,
+      "batch": "e4",
+      "at": "2026-09-05T00:00:00.000Z",
+      "by": null,
+      "intent": {
+        "v": "draw",
+        "from": "draw",
+        "to": "table",
+        "count": 1
+      }
+    },
+    {
+      "seq": 6,
+      "batch": "e5",
+      "at": "2026-09-05T00:00:00.000Z",
+      "by": null,
+      "intent": {
+        "v": "stack",
+        "component": {
+          "top": "draw"
+        },
+        "onto": "r6"
+      }
+    },
+    {
+      "seq": 7,
+      "batch": "e6",
+      "at": "2026-09-05T00:00:00.000Z",
+      "by": null,
+      "intent": {
+        "v": "flip",
+        "component": {
+          "top": "z6"
+        },
+        "face": "front"
+      }
+    },
+    {
+      "seq": 8,
+      "batch": "e7",
+      "at": "2026-09-05T00:00:00.000Z",
+      "by": null,
+      "intent": {
+        "v": "flip",
+        "component": {
+          "top": "draw"
+        },
+        "face": "front"
+      }
+    }
+  ],
+  "expected": {
+    "A": {
+      "seq": 8,
+      "seat": "A",
+      "floor": "table",
+      "seats": [
+        {
+          "id": "A",
+          "name": "Spelare 1"
+        },
+        {
+          "id": "B",
+          "name": null
+        }
+      ],
+      "zones": [
+        {
+          "mode": "order",
+          "id": "discard",
+          "kind": "pile",
+          "name": "Kasthög",
+          "geometry": {
+            "x": 200,
+            "y": 0,
+            "w": 0,
+            "h": 0,
+            "rot": 0
+          },
+          "dynamic": false,
+          "order": []
+        },
+        {
+          "mode": "count",
+          "id": "draw",
+          "kind": "pile",
+          "name": "Draghög",
+          "geometry": {
+            "x": -200,
+            "y": 0,
+            "w": 0,
+            "h": 0,
+            "rot": 0
+          },
+          "dynamic": false,
+          "count": 7,
+          "top": "r0"
+        },
+        {
+          "mode": "order",
+          "id": "hand:A",
+          "kind": "hand",
+          "name": "Hand",
+          "geometry": {
+            "x": -300,
+            "y": 320,
+            "w": 600,
+            "h": 100,
+            "rot": 0
+          },
+          "dynamic": false,
+          "owner": "A",
+          "order": [
+            "r3"
+          ]
+        },
+        {
+          "mode": "count",
+          "id": "hand:B",
+          "kind": "hand",
+          "name": "Hand",
+          "geometry": {
+            "x": -300,
+            "y": -420,
+            "w": 600,
+            "h": 100,
+            "rot": 0
+          },
+          "dynamic": false,
+          "owner": "B",
+          "count": 0
+        },
+        {
+          "mode": "order",
+          "id": "table",
+          "kind": "area",
+          "name": "Spelyta",
+          "geometry": {
+            "x": -500,
+            "y": -300,
+            "w": 1000,
+            "h": 600,
+            "rot": 0
+          },
+          "dynamic": false,
+          "order": []
+        },
+        {
+          "mode": "order",
+          "id": "z6",
+          "kind": "pile",
+          "name": "Spelyta",
+          "geometry": {
+            "x": -500,
+            "y": -300,
+            "w": 0,
+            "h": 0,
+            "rot": 0
+          },
+          "dynamic": true,
+          "order": [
+            "r1",
+            "r6"
+          ]
+        }
+      ],
+      "components": [
+        {
+          "id": "r0",
+          "type": {
+            "id": "card.standard.63x88",
+            "version": 1
+          },
+          "zone": "draw",
+          "face": "front",
+          "x": 0,
+          "y": 0,
+          "rot": 0,
+          "cardRef": "dragon"
+        },
+        {
+          "id": "r3",
+          "type": {
+            "id": "card.standard.63x88",
+            "version": 1
+          },
+          "zone": "hand:A",
+          "face": "front",
+          "x": 0,
+          "y": 0,
+          "rot": 0,
+          "cardRef": "rogue"
+        },
+        {
+          "id": "r1",
+          "type": {
+            "id": "card.standard.63x88",
+            "version": 1
+          },
+          "zone": "z6",
+          "face": "front",
+          "x": 0,
+          "y": 0,
+          "rot": 0,
+          "cardRef": "knight"
+        },
+        {
+          "id": "r6",
+          "type": {
+            "id": "card.standard.63x88",
+            "version": 1
+          },
+          "zone": "z6",
+          "face": "back",
+          "x": 0,
+          "y": 0,
+          "rot": 0,
+          "cardRef": null
+        }
+      ],
+      "rewind": null,
+      "undo": {
+        "toSeq": 3,
+        "contested": true
+      },
+      "ended": false
+    },
+    "B": {
+      "seq": 8,
+      "seat": "B",
+      "floor": "table",
+      "seats": [
+        {
+          "id": "A",
+          "name": "Spelare 1"
+        },
+        {
+          "id": "B",
+          "name": null
+        }
+      ],
+      "zones": [
+        {
+          "mode": "order",
+          "id": "discard",
+          "kind": "pile",
+          "name": "Kasthög",
+          "geometry": {
+            "x": 200,
+            "y": 0,
+            "w": 0,
+            "h": 0,
+            "rot": 0
+          },
+          "dynamic": false,
+          "order": []
+        },
+        {
+          "mode": "count",
+          "id": "draw",
+          "kind": "pile",
+          "name": "Draghög",
+          "geometry": {
+            "x": -200,
+            "y": 0,
+            "w": 0,
+            "h": 0,
+            "rot": 0
+          },
+          "dynamic": false,
+          "count": 7,
+          "top": "r0"
+        },
+        {
+          "mode": "count",
+          "id": "hand:A",
+          "kind": "hand",
+          "name": "Hand",
+          "geometry": {
+            "x": -300,
+            "y": 320,
+            "w": 600,
+            "h": 100,
+            "rot": 0
+          },
+          "dynamic": false,
+          "owner": "A",
+          "count": 1
+        },
+        {
+          "mode": "order",
+          "id": "hand:B",
+          "kind": "hand",
+          "name": "Hand",
+          "geometry": {
+            "x": -300,
+            "y": -420,
+            "w": 600,
+            "h": 100,
+            "rot": 0
+          },
+          "dynamic": false,
+          "owner": "B",
+          "order": []
+        },
+        {
+          "mode": "order",
+          "id": "table",
+          "kind": "area",
+          "name": "Spelyta",
+          "geometry": {
+            "x": -500,
+            "y": -300,
+            "w": 1000,
+            "h": 600,
+            "rot": 0
+          },
+          "dynamic": false,
+          "order": []
+        },
+        {
+          "mode": "order",
+          "id": "z6",
+          "kind": "pile",
+          "name": "Spelyta",
+          "geometry": {
+            "x": -500,
+            "y": -300,
+            "w": 0,
+            "h": 0,
+            "rot": 0
+          },
+          "dynamic": true,
+          "order": [
+            "r1",
+            "r6"
+          ]
+        }
+      ],
+      "components": [
+        {
+          "id": "r0",
+          "type": {
+            "id": "card.standard.63x88",
+            "version": 1
+          },
+          "zone": "draw",
+          "face": "front",
+          "x": 0,
+          "y": 0,
+          "rot": 0,
+          "cardRef": "dragon"
+        },
+        {
+          "id": "r1",
+          "type": {
+            "id": "card.standard.63x88",
+            "version": 1
+          },
+          "zone": "z6",
+          "face": "front",
+          "x": 0,
+          "y": 0,
+          "rot": 0,
+          "cardRef": "knight"
+        },
+        {
+          "id": "r6",
+          "type": {
+            "id": "card.standard.63x88",
+            "version": 1
+          },
+          "zone": "z6",
+          "face": "back",
+          "x": 0,
+          "y": 0,
+          "rot": 0,
+          "cardRef": null
+        }
+      ],
+      "rewind": null,
+      "undo": null,
+      "ended": false
+    },
+    "table": {
+      "seq": 8,
+      "seat": null,
+      "floor": "table",
+      "seats": [
+        {
+          "id": "A",
+          "name": "Spelare 1"
+        },
+        {
+          "id": "B",
+          "name": null
+        }
+      ],
+      "zones": [
+        {
+          "mode": "order",
+          "id": "discard",
+          "kind": "pile",
+          "name": "Kasthög",
+          "geometry": {
+            "x": 200,
+            "y": 0,
+            "w": 0,
+            "h": 0,
+            "rot": 0
+          },
+          "dynamic": false,
+          "order": []
+        },
+        {
+          "mode": "count",
+          "id": "draw",
+          "kind": "pile",
+          "name": "Draghög",
+          "geometry": {
+            "x": -200,
+            "y": 0,
+            "w": 0,
+            "h": 0,
+            "rot": 0
+          },
+          "dynamic": false,
+          "count": 7,
+          "top": "r0"
+        },
+        {
+          "mode": "count",
+          "id": "hand:A",
+          "kind": "hand",
+          "name": "Hand",
+          "geometry": {
+            "x": -300,
+            "y": 320,
+            "w": 600,
+            "h": 100,
+            "rot": 0
+          },
+          "dynamic": false,
+          "owner": "A",
+          "count": 1
+        },
+        {
+          "mode": "count",
+          "id": "hand:B",
+          "kind": "hand",
+          "name": "Hand",
+          "geometry": {
+            "x": -300,
+            "y": -420,
+            "w": 600,
+            "h": 100,
+            "rot": 0
+          },
+          "dynamic": false,
+          "owner": "B",
+          "count": 0
+        },
+        {
+          "mode": "order",
+          "id": "table",
+          "kind": "area",
+          "name": "Spelyta",
+          "geometry": {
+            "x": -500,
+            "y": -300,
+            "w": 1000,
+            "h": 600,
+            "rot": 0
+          },
+          "dynamic": false,
+          "order": []
+        },
+        {
+          "mode": "order",
+          "id": "z6",
+          "kind": "pile",
+          "name": "Spelyta",
+          "geometry": {
+            "x": -500,
+            "y": -300,
+            "w": 0,
+            "h": 0,
+            "rot": 0
+          },
+          "dynamic": true,
+          "order": [
+            "r1",
+            "r6"
+          ]
+        }
+      ],
+      "components": [
+        {
+          "id": "r0",
+          "type": {
+            "id": "card.standard.63x88",
+            "version": 1
+          },
+          "zone": "draw",
+          "face": "front",
+          "x": 0,
+          "y": 0,
+          "rot": 0,
+          "cardRef": "dragon"
+        },
+        {
+          "id": "r1",
+          "type": {
+            "id": "card.standard.63x88",
+            "version": 1
+          },
+          "zone": "z6",
+          "face": "front",
+          "x": 0,
+          "y": 0,
+          "rot": 0,
+          "cardRef": "knight"
+        },
+        {
+          "id": "r6",
+          "type": {
+            "id": "card.standard.63x88",
+            "version": 1
+          },
+          "zone": "z6",
+          "face": "back",
+          "x": 0,
+          "y": 0,
+          "rot": 0,
+          "cardRef": null
+        }
+      ],
+      "rewind": null,
+      "undo": null,
+      "ended": false
+    },
+    "observer": {
+      "seq": 8,
+      "seat": null,
+      "floor": "table",
+      "seats": [
+        {
+          "id": "A",
+          "name": "Spelare 1"
+        },
+        {
+          "id": "B",
+          "name": null
+        }
+      ],
+      "zones": [
+        {
+          "mode": "order",
+          "id": "discard",
+          "kind": "pile",
+          "name": "Kasthög",
+          "geometry": {
+            "x": 200,
+            "y": 0,
+            "w": 0,
+            "h": 0,
+            "rot": 0
+          },
+          "dynamic": false,
+          "order": []
+        },
+        {
+          "mode": "order",
+          "id": "draw",
+          "kind": "pile",
+          "name": "Draghög",
+          "geometry": {
+            "x": -200,
+            "y": 0,
+            "w": 0,
+            "h": 0,
+            "rot": 0
+          },
+          "dynamic": false,
+          "order": [
+            "r0",
+            "r2",
+            "r9",
+            "r7",
+            "r8",
+            "r4",
+            "r5"
+          ]
+        },
+        {
+          "mode": "order",
+          "id": "hand:A",
+          "kind": "hand",
+          "name": "Hand",
+          "geometry": {
+            "x": -300,
+            "y": 320,
+            "w": 600,
+            "h": 100,
+            "rot": 0
+          },
+          "dynamic": false,
+          "owner": "A",
+          "order": [
+            "r3"
+          ]
+        },
+        {
+          "mode": "order",
+          "id": "hand:B",
+          "kind": "hand",
+          "name": "Hand",
+          "geometry": {
+            "x": -300,
+            "y": -420,
+            "w": 600,
+            "h": 100,
+            "rot": 0
+          },
+          "dynamic": false,
+          "owner": "B",
+          "order": []
+        },
+        {
+          "mode": "order",
+          "id": "table",
+          "kind": "area",
+          "name": "Spelyta",
+          "geometry": {
+            "x": -500,
+            "y": -300,
+            "w": 1000,
+            "h": 600,
+            "rot": 0
+          },
+          "dynamic": false,
+          "order": []
+        },
+        {
+          "mode": "order",
+          "id": "z6",
+          "kind": "pile",
+          "name": "Spelyta",
+          "geometry": {
+            "x": -500,
+            "y": -300,
+            "w": 0,
+            "h": 0,
+            "rot": 0
+          },
+          "dynamic": true,
+          "order": [
+            "r1",
+            "r6"
+          ]
+        }
+      ],
+      "components": [
+        {
+          "id": "r0",
+          "type": {
+            "id": "card.standard.63x88",
+            "version": 1
+          },
+          "zone": "draw",
+          "face": "front",
+          "x": 0,
+          "y": 0,
+          "rot": 0,
+          "cardRef": "dragon"
+        },
+        {
+          "id": "r2",
+          "type": {
+            "id": "card.standard.63x88",
+            "version": 1
+          },
+          "zone": "draw",
+          "face": "back",
+          "x": 0,
+          "y": 0,
+          "rot": 0,
+          "cardRef": "wizard"
+        },
+        {
+          "id": "r9",
+          "type": {
+            "id": "card.standard.63x88",
+            "version": 1
+          },
+          "zone": "draw",
+          "face": "back",
+          "x": 0,
+          "y": 0,
+          "rot": 0,
+          "cardRef": "ogre"
+        },
+        {
+          "id": "r7",
+          "type": {
+            "id": "card.standard.63x88",
+            "version": 1
+          },
+          "zone": "draw",
+          "face": "back",
+          "x": 0,
+          "y": 0,
+          "rot": 0,
+          "cardRef": "witch"
+        },
+        {
+          "id": "r8",
+          "type": {
+            "id": "card.standard.63x88",
+            "version": 1
+          },
+          "zone": "draw",
+          "face": "back",
+          "x": 0,
+          "y": 0,
+          "rot": 0,
+          "cardRef": "bard"
+        },
+        {
+          "id": "r4",
+          "type": {
+            "id": "card.standard.63x88",
+            "version": 1
+          },
+          "zone": "draw",
+          "face": "back",
+          "x": 0,
+          "y": 0,
+          "rot": 0,
+          "cardRef": "priest"
+        },
+        {
+          "id": "r5",
+          "type": {
+            "id": "card.standard.63x88",
+            "version": 1
+          },
+          "zone": "draw",
+          "face": "back",
+          "x": 0,
+          "y": 0,
+          "rot": 0,
+          "cardRef": "archer"
+        },
+        {
+          "id": "r3",
+          "type": {
+            "id": "card.standard.63x88",
+            "version": 1
+          },
+          "zone": "hand:A",
+          "face": "front",
+          "x": 0,
+          "y": 0,
+          "rot": 0,
+          "cardRef": "rogue"
+        },
+        {
+          "id": "r1",
+          "type": {
+            "id": "card.standard.63x88",
+            "version": 1
+          },
+          "zone": "z6",
+          "face": "front",
+          "x": 0,
+          "y": 0,
+          "rot": 0,
+          "cardRef": "knight"
+        },
+        {
+          "id": "r6",
+          "type": {
+            "id": "card.standard.63x88",
+            "version": 1
+          },
+          "zone": "z6",
+          "face": "back",
+          "x": 0,
+          "y": 0,
+          "rot": 0,
+          "cardRef": "golem"
+        }
+      ],
+      "rewind": null,
+      "undo": null,
+      "ended": false
+    }
+  }
+}

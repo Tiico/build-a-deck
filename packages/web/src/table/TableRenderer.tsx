@@ -206,7 +206,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const moving = new Set(drag?.started ? drag.ids : [])
   const liftedPile = drag?.started && drag.target.kind !== 'card' ? drag.target.pile : null
   const liftedKind = drag?.started && drag.target.kind !== 'card' ? drag.target.kind : null
-  const topOf = (z: ZoneView, skip = 0) => (z.mode === 'order' ? byId.get(z.order[skip] ?? '') : undefined)
+  const topOf = (z: ZoneView, skip = 0) => byId.get(topIdOf(z, skip) ?? '')
 
   return (
     <div className="byd-table-frame" data-mode={mode} data-playable={onAct ? 'true' : undefined} ref={frame} style={measured ? undefined : { visibility: 'hidden' }}>
@@ -347,13 +347,16 @@ function ringItems(view: Snapshot, target: DragTarget, act: (intents: Intent[]) 
   const z = view.zones.find((x) => x.id === target.pile)
   if (!z) return [close]
   const count = z.mode === 'count' ? z.count : z.order.length
-  const top = z.mode === 'order' ? view.components.find((c) => c.id === z.order[0]) : undefined
+  const top = view.components.find((c) => c.id === topIdOf(z))
   const beside = { x: z.geometry.x + CARD_MM.w + 12, y: z.geometry.y }
+  // The top is flipped by naming the pile (K15): a hidden pile gives no id, and an unseen top
+  // is by definition not face-up.
+  const flipTop = (): Intent[] => [{ v: 'flip', component: { top: z.id }, face: top?.face === 'front' ? 'back' : 'front' }]
   return [
     { label: 'Blanda', run: count > 1 ? () => act([{ v: 'shuffle', pile: z.id }]) : null },
     { label: 'Dra 1', run: count > 0 ? () => act([{ v: 'split', pile: z.id, at: 1, ...beside }]) : null },
     { label: 'Dela på hälften', run: count > 1 ? () => act([{ v: 'split', pile: z.id, at: Math.ceil(count / 2), ...beside }]) : null },
-    top ? { label: 'Vänd översta', run: () => act([{ v: 'flip', component: top.id, face: top.face === 'front' ? 'back' : 'front' }]) } : { label: 'Vänd översta', run: null },
+    { label: 'Vänd översta', run: count > 0 ? () => act(flipTop()) : null },
     look(top),
     close,
   ]
@@ -400,7 +403,15 @@ function Ghost({ card, faces, left, top, px }: { card: VisibleComponentState | u
   )
 }
 
-// A pile is a point; the stack is centred on it. A hidden pile has a count and nothing else.
+// The id of the card `skip` below the top of a pile, as far as this view knows: every card of a
+// public pile, only a face-up top of a hidden one (K15).
+function topIdOf(z: ZoneView, skip = 0): string | undefined {
+  if (z.mode === 'order') return z.order[skip]
+  return skip === 0 ? z.top : undefined
+}
+
+// A pile is a point; the stack is centred on it. A hidden pile has a count and nothing else,
+// unless its top lies face-up.
 function Pile({ zone, count, topCard, faces, left, top, px, lifted, topHandlers, labelHandlers }: { zone: ZoneView; count: number; topCard: VisibleComponentState | undefined; faces: string | undefined; left: number; top: number; px: (mm: number) => number; lifted: boolean; topHandlers?: Handlers | undefined; labelHandlers?: Handlers | undefined }) {
   const src = topCard ? textureUrl(faces, topCard) : undefined
   const layers = Math.min(Math.max(count, 0), 12)

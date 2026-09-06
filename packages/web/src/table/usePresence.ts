@@ -32,7 +32,8 @@ export function useRecent(activity: readonly Activity[]): Recent[] {
     const moved = fresh.flatMap((l): Recent[] => {
       const it = l.intent
       const component = it.v === 'move' || it.v === 'rotate' || it.v === 'flip' || it.v === 'stack' ? it.component : null
-      return component ? [{ component, seat: l.by, at: now }] : []
+      // A pile named as the source (K15) points at no card this view can highlight.
+      return typeof component === 'string' ? [{ component, seat: l.by, at: now }] : []
     })
     if (moved.length === 0) return
     setRecent((r) => [...r.filter((x) => now - x.at < RECENT_MS), ...moved])

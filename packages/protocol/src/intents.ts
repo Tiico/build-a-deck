@@ -15,11 +15,21 @@ export const ComponentSpec = z.object({
 })
 export type ComponentSpec = z.infer<typeof ComponentSpec>
 
+// The top of a pile, named without its id (K15). A hidden pile never tells a view which card
+// lies on top, so a verb that acts on it names the pile instead; the engine resolves the top
+// when the line is applied, which replays identically. Only `stack` and `flip` take it.
+export const PileTop = z.object({ top: ZoneId })
+export type PileTop = z.infer<typeof PileTop>
+export const ComponentRef = z.union([ComponentId, PileTop])
+export type ComponentRef = z.infer<typeof ComponentRef>
+
 // A closed vocabulary of what a hand can do to a physical object.
 // No game semantics live here. The set is finite because physics is finite;
 // adding a verb is a protocol migration and must be treated as one.
 //
 // `movePile` was added deliberately (K1): picking up a whole pile is one physical act.
+// `stack` and `flip` accept the top of a pile as their component (K15): the same act, addressed
+// without an id, because a face-down pile grants none.
 export const PhysicalIntent = z.discriminatedUnion('v', [
   z.object({
     v: z.literal('move'),
@@ -31,10 +41,10 @@ export const PhysicalIntent = z.discriminatedUnion('v', [
     rot: z.number().optional(),
   }),
   z.object({ v: z.literal('rotate'), component: ComponentId, rot: z.number() }),
-  z.object({ v: z.literal('flip'), component: ComponentId, face: FaceId }),
+  z.object({ v: z.literal('flip'), component: ComponentRef, face: FaceId }),
   // Onto a card lying loose in an area: the two form a new pile there (K1).
   // Onto a card in a pile or hand: joins that zone directly above it.
-  z.object({ v: z.literal('stack'), component: ComponentId, onto: ComponentId }),
+  z.object({ v: z.literal('stack'), component: ComponentRef, onto: ComponentId }),
   // Without `to`, the top `at` components become a new pile at (x, y) in the source pile's area.
   // Without `to`, the top `at` components become a new pile at (x, y) in table coordinates,
   // like movePile and zone geometry; a component's own x/y are relative to its zone.

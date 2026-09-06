@@ -42,6 +42,32 @@ describe('piles', () => {
   })
 })
 
+describe('the top of a hidden pile (K15)', () => {
+  it('a hidden pile whose top lies face-up shows that card by name; the ring flips the top by naming the pile', () => {
+    vi.useFakeTimers()
+    const { view, flipDrawTop } = buildScene()
+    const onAct = vi.fn()
+    const { rerender } = render(<TableRenderer view={view(null)} mode="tv" scale={1} onAct={onAct} />)
+    const top = document.querySelector('[data-zone="draw"] .byd-pile-top')!
+    expect(top.getAttribute('data-face')).toBe('back')
+    fireEvent.pointerDown(top, client(-200, 0))
+    act(() => vi.advanceTimersByTime(400))
+    fireEvent.pointerUp(screen.getByRole('button', { name: 'Vänd översta' }), client(-200, -60))
+    expect(onAct).toHaveBeenLastCalledWith([{ v: 'flip', component: { top: 'draw' }, face: 'front' }])
+
+    const flipped = flipDrawTop()
+    rerender(<TableRenderer view={flipped} mode="tv" scale={1} onAct={onAct} />)
+    const shown = document.querySelector('[data-zone="draw"] .byd-pile-top')!
+    expect(shown.getAttribute('data-face')).toBe('front')
+    expect(shown.textContent).toBe('witch')
+    fireEvent.pointerDown(shown, client(-200, 0))
+    act(() => vi.advanceTimersByTime(400))
+    fireEvent.pointerUp(screen.getByRole('button', { name: 'Vänd översta' }), client(-200, -60))
+    expect(onAct).toHaveBeenLastCalledWith([{ v: 'flip', component: { top: 'draw' }, face: 'back' }])
+    vi.useRealTimers()
+  })
+})
+
 describe('hands', () => {
   it('shows each hand as a count with the seat name, oriented toward its edge in table mode', () => {
     const { view } = buildScene()

@@ -701,9 +701,28 @@ En verktygsrad förutsätter en markering, som på ett delat bord är någons oc
 
 Följdkrav:
 Bordsläget lutar bordet (`rotateX` under perspektiv), så pekaren projiceras exakt tillbaka på bordsplanet; matten ligger i `geometry.ts` med test.
-Att dra översta kortet ur en dold hög och släppa det på ett löst kort kan inte staplas: tråden ger inget id. Kortet landar där det släpps. Ett `stack` med hög som källa vore rätt tillägg om det behövs.
-Att vända översta kortet i en dold hög går inte heller utan id; samma tillägg löser det.
+Att dra översta kortet ur en dold hög och släppa det på ett löst kort, och att vända översta kortet i en dold hög, gick först inte: tråden ger inget id. Löst i K15 genom att högen adresseras i stället för kortet.
 Under ett tillbakaspolningsförslag (K13) är bordet inte spelbart.
+
+### K15. Högens topp som adress: `stack` och `flip` tar `{ top: hög }` (2026-09-06)
+
+`component` i `stack` och `flip` är antingen ett komponent-id eller `{ top: ZoneId }`: översta kortet i den högen, upplöst av motorn när raden appliceras.
+Det stänger K14:s två luckor utan nytt verb: att stapla en dold högs topp på ett löst kort och att vända den.
+Bordet använder alltid högformen när källan är en hög, även för publika högar.
+
+Ett uppvänt kort överst i en hög ses av alla, oavsett högens synlighet.
+Zonvyn i count-läge namnger då toppen i `top`, och kortet finns i `components` som vanligt.
+Täcks det av ett nedvänt kort eller vänds ner försvinner det igen; dras det in i en hand följer ingen kunskap med (B6).
+
+Motivering:
+Samma fysiska handling ska inte bli två verb för att adressen skiljer sig; vokabuläret räknar handlingar, inte sätt att peka.
+En dold hög ska fortsätta vara en räkning och inget annat på tråden — id:n för dolda kort får aldrig lämna servern, så adressen måste vara högen.
+Att toppen syns när den ligger uppvänd är vad en fysisk lek visar: utan den regeln vore vändningen meningslös.
+
+Följdkrav:
+Gamla loggrader parsar oförändrade; korpusen har en skriptad session med högformen.
+Synlighetsoraklet i motorns test känner den fjärde rätten: uppvänd överst i en hög.
+`peek`, `reveal` och `rotate` tar fortfarande bara id; att ge dem högformen är ett nytt beslut om det behövs.
 
 ---
 

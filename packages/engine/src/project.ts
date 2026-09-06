@@ -3,7 +3,7 @@ import type { Activity, Applied, RewindProposal, SeatId, Snapshot, TablePreview,
 import { undoTarget, type History } from './decide.js'
 import { componentOf, type ComponentInstance, type TableState, type Zone } from './state.js'
 import type { TypeRegistry } from './typedef.js'
-import { canSeeFace, canSeeZoneOrder } from './visibility.js'
+import { canSeeFace, canSeeZoneOrder, faceUpOnTop } from './visibility.js'
 
 // A log line as every view may see it. The outcome never leaves the server: a shuffle's
 // re-keying says exactly where each card went, which no one at a physical table knows.
@@ -44,12 +44,15 @@ function projectTable(state: TableState, registry: TypeRegistry, seat: SeatId | 
       zones.push({ mode: 'order', ...zoneBase(z), order: [...z.order] })
       for (const id of z.order) components.push(view(state, registry, componentOf(state, id), seat, faces, observer))
     } else {
-      zones.push({ mode: 'count', ...zoneBase(z), count: z.order.length })
-      // A component the seat was explicitly granted knowledge of still appears,
-      // even though its position inside the zone does not.
+      const top = z.order[0] === undefined ? undefined : componentOf(state, z.order[0])
+      const shownTop = top !== undefined && faceUpOnTop(state, registry, top)
+      zones.push({ mode: 'count', ...zoneBase(z), count: z.order.length, ...(shownTop ? { top: top.id } : {}) })
+      // A component the seat was explicitly granted knowledge of still appears, even though its
+      // position inside the zone does not; so does the face-up top of a pile (K15), whose position
+      // the zone view names.
       for (const id of z.order) {
         const c = componentOf(state, id)
-        if (grantedTo(c, seat)) components.push(view(state, registry, c, seat, faces, observer))
+        if (grantedTo(c, seat) || (shownTop && c === top)) components.push(view(state, registry, c, seat, faces, observer))
       }
     }
   }

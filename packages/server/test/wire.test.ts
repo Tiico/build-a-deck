@@ -74,6 +74,32 @@ describe('hidden information on the wire', () => {
     expect(b.view!.components.find((c) => c.id === card)).toMatchObject({ cardRef: 'dragon' })
   })
 
+  it('the top of the draw pile turned face-up is read by everyone, and vanishes from the wire once drawn into a hand (K15)', async () => {
+    const id = await createSession(run.http)
+    const a = await connect(id, 'A')
+    const b = await connect(id, 'B')
+    const table = await connect(id, null)
+
+    await a.send('A', { v: 'flip', component: { top: 'draw' }, face: 'front' })
+    for (const c of [a, b, table]) {
+      await c.synced(1)
+      const draw = c.view!.zones.find((z) => z.id === 'draw')!
+      expect(draw).toMatchObject({ mode: 'count', count: 10, top: expect.any(String) })
+      expect(c.view!.components.filter((x) => x.zone === 'draw')).toEqual([expect.objectContaining({ cardRef: 'dragon', face: 'front' })])
+    }
+
+    const before = b.frames.length
+    await a.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    await b.synced(2)
+    await table.synced(2)
+    expect(b.view!.zones.find((z) => z.id === 'draw')).not.toHaveProperty('top')
+    expect(b.view!.components).toHaveLength(0)
+    expect(b.frames.slice(before).join('\n')).not.toMatch(/dragon/)
+    expect(table.view!.components).toHaveLength(0)
+    await a.synced(2)
+    expect(a.view!.components.filter((c) => c.zone === 'hand:A').map((c) => c.cardRef)).toEqual(['dragon'])
+  })
+
   it('a shuffle sends B only a count, and the old ids never reappear', async () => {
     const id = await createSession(run.http)
     const a = await connect(id, 'A')

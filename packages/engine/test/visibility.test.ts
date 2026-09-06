@@ -107,6 +107,10 @@ describe('hidden information', () => {
       () => h.do(null, { v: 'move', component: h.top('table'), to: 'discard' }),
       () => h.do('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 2 }),
       () => h.do(null, { v: 'shuffle', pile: 'draw' }),
+      () => h.do(null, { v: 'flip', component: { top: 'draw' }, face: 'front' }),
+      () => h.do('B', { v: 'draw', from: 'draw', to: 'hand:B', count: 1 }),
+      () => h.do(null, { v: 'flip', component: { top: 'draw' }, face: 'front' }),
+      () => h.do(null, { v: 'stack', component: { top: 'draw' }, onto: h.top('discard') }),
     ]
     for (const step of checks) {
       step()
@@ -117,7 +121,8 @@ describe('hidden information', () => {
 
 // An oracle written independently of `canSeeFace`: a seat may know a cardRef only if
 // (a) the card is face-up in a zone everyone can see, (b) the seat owns the zone,
-// or (c) the seat was explicitly granted it (shown, peeked, or revealed to all).
+// (c) the seat was explicitly granted it (shown, peeked, or revealed to all),
+// or (d) the card lies face-up on top of a pile (K15).
 function assertNoLeak(state: TableState, view: Snapshot, seat: string | null): void {
   for (const c of view.components) {
     if (c.cardRef === null) continue
@@ -127,7 +132,8 @@ function assertNoLeak(state: TableState, view: Snapshot, seat: string | null): v
     const owner = zone.visibility === 'owner' && zone.owner === seat
     const granted =
       inst.publicOverride || (seat !== null && (inst.shownTo.includes(seat) || inst.peekedBy.includes(seat)))
-    expect(faceUpPublic || owner || granted, `seat ${seat} sees ${c.cardRef} (${c.id}) in ${zone.id}`).toBe(true)
+    const faceUpOnTop = zone.kind === 'pile' && zone.order[0] === inst.id && inst.face === 'front'
+    expect(faceUpPublic || owner || granted || faceUpOnTop, `seat ${seat} sees ${c.cardRef} (${c.id}) in ${zone.id}`).toBe(true)
   }
   for (const z of view.zones) {
     const zone = state.zones[z.id]!

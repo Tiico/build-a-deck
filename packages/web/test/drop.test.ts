@@ -36,19 +36,16 @@ describe('what a drop means (K1, K2)', () => {
     ])
   })
 
-  it('the top of a public pile onto a loose card is drawn then stacked; from a hidden pile the card lands beside it', () => {
+  it('the top of a pile onto a loose card stacks it, naming the pile rather than a card: a hidden pile has no id to give (K15)', () => {
     const { view, faceUp } = buildScene()
     const v = view(null)
-    const discard = v.zones.find((z) => z.id === 'discard')!
-    const top = discard.mode === 'order' ? discard.order[0] : ''
     const onto = abs(v, faceUp)
     const at = { x: onto.x + 20, y: onto.y + 20 }
     expect(dropIntents(v, { target: { kind: 'pileTop', pile: 'discard' }, ids: [], grab: { x: 200, y: 0 }, at, origin: {} })).toEqual([
-      { v: 'draw', from: 'discard', to: 'table', count: 1 },
-      { v: 'stack', component: top, onto: faceUp },
+      { v: 'stack', component: { top: 'discard' }, onto: faceUp },
     ])
     expect(dropIntents(v, { target: { kind: 'pileTop', pile: 'draw' }, ids: [], grab: { x: -200, y: 0 }, at, origin: {} })).toEqual([
-      { v: 'split', pile: 'draw', at: 1, x: at.x, y: at.y },
+      { v: 'stack', component: { top: 'draw' }, onto: faceUp },
     ])
   })
 

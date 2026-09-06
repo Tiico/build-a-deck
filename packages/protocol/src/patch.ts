@@ -45,10 +45,12 @@ const zoneBase = {
   dynamic: z.boolean(),
 }
 
-// A zone whose order the seat may not see is reported as a count only.
+// A zone whose order the seat may not see is reported as a count only — except that the card
+// lying face-up on top of a pile is seen by everyone at the table (K15), so a hidden pile also
+// names its `top` when the top is face-up. That component is then in `components` as usual.
 export const ZoneView = z.discriminatedUnion('mode', [
   z.object({ mode: z.literal('order'), ...zoneBase, order: z.array(ComponentId) }),
-  z.object({ mode: z.literal('count'), ...zoneBase, count: z.number().int().nonnegative() }),
+  z.object({ mode: z.literal('count'), ...zoneBase, count: z.number().int().nonnegative(), top: ComponentId.optional() }),
 ])
 export type ZoneView = z.infer<typeof ZoneView>
 

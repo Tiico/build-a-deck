@@ -53,9 +53,24 @@ function versionChange(): Harness {
   return h
 }
 
+// The top of a pile as a source (K15): turned face-up for everyone, stacked without an id.
+function pileTop(): Harness {
+  const h = new Harness(11)
+  h.do(null, { v: 'seat.claim', seat: 'A', name: 'Ada' })
+  h.do(null, { v: 'shuffle', pile: 'draw' })
+  h.do(null, { v: 'flip', component: { top: 'draw' }, face: 'front' })
+  h.do('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+  h.do(null, { v: 'draw', from: 'draw', to: 'table', count: 1 })
+  h.do(null, { v: 'stack', component: { top: 'draw' }, onto: h.top('table') })
+  h.do(null, { v: 'flip', component: { top: first(h.piles()) }, face: 'front' })
+  h.do(null, { v: 'flip', component: { top: 'draw' }, face: 'front' })
+  return h
+}
+
 for (const [name, h] of [
   ['scripted-full-round', full()],
   ['scripted-version-change', versionChange()],
+  ['scripted-pile-top', pileTop()],
 ] as const) {
   const file = write(record(name, 'v1', h.initial.setup, h.log, registry), dir)
   console.log(JSON.stringify({ msg: 'seeded', file, lines: h.log.length, viewers: SEATS.length + 1 }))

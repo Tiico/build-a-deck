@@ -38,10 +38,8 @@ export function dropIntents(view: Snapshot, d: Drag): Intent[] {
     if (!pile) return []
     const hit = hitAt(view, d.at, new Set(), pile.id)
     if (hit?.kind === 'pile') return [{ v: 'split', pile: pile.id, at: 1, to: hit.id }]
-    // Onto a loose card: only a public pile says which card is on top. From a hidden pile there
-    // is no id to stack, so the card lands where it was dropped.
-    const topId = pile.mode === 'order' ? pile.order[0] : undefined
-    if (hit?.kind === 'card' && topId) return [{ v: 'draw', from: pile.id, to: hit.zone, count: 1 }, { v: 'stack', component: topId, onto: hit.id }]
+    // Onto a loose card: the pile is named as the source (K15), since a hidden pile gives no id.
+    if (hit?.kind === 'card') return [{ v: 'stack', component: { top: pile.id }, onto: hit.id }]
     const dest = zones.get(zoneAt(view.zones, view.floor, d.at.x, d.at.y).zone)
     if (dest?.kind === 'hand') return [{ v: 'split', pile: pile.id, at: 1, to: dest.id }]
     return [{ v: 'split', pile: pile.id, at: 1, x: d.at.x, y: d.at.y }]
