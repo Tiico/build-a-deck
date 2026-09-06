@@ -6,6 +6,8 @@ export type ConnectOptions = {
   url: string
   sessionId: string
   seat: SeatId | null
+  // Watch as a named observer (C8): seatless, sees everything, may only flag.
+  observer?: string
   // First reconnect delay; doubles per attempt up to ten times this.
   reconnectDelayMs?: number
 }
@@ -41,6 +43,8 @@ export class TableClient {
   status: ClientStatus = 'connecting'
   // The most recent committed lines, redacted by the server; oldest first, bounded.
   activity: Activity[] = []
+  // Who is watching (C8), as the server last told us.
+  observers: { id: string; name: string }[] = []
   private ws: WebSocketLike
   private readonly readyPromise: Promise<void>
   private resolveReady!: () => void
@@ -134,8 +138,13 @@ export class TableClient {
   }
 
   private open(): WebSocketLike {
-    const { url, sessionId, seat } = this.opts
-    const ws = makeSocket(`${url}/sessions/${encodeURIComponent(sessionId)}${seat === null ? '' : `?seat=${encodeURIComponent(seat)}`}`)
+    const { url, sessionId, seat, observer } = this.opts
+    const q = new URLSearchParams()
+    if (observer !== undefined) {
+      q.set('role', 'observer')
+      q.set('name', observer)
+    } else if (seat !== null) q.set('seat', seat)
+    const ws = makeSocket(`${url}/sessions/${encodeURIComponent(sessionId)}${q.size > 0 ? `?${q.toString()}` : ''}`)
     ws.addEventListener('message', (ev) => this.receive(ServerMessage.parse(JSON.parse(String(ev.data)))))
     ws.addEventListener('close', () => this.dropped(ws))
     ws.addEventListener('error', () => undefined) // `close` follows; nothing to do here
@@ -190,6 +199,10 @@ export class TableClient {
         break
       case 'presence':
         for (const l of this.presenceListeners) l(msg.from, msg.presence)
+        break
+      case 'roster':
+        this.observers = msg.observers
+        this.notify()
         break
     }
   }

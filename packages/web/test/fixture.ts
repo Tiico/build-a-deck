@@ -1,7 +1,7 @@
 import type { AddressInfo } from 'node:net'
 import type { Server } from 'node:http'
 import { CARD_STANDARD_63x88, TypeRegistry, type SetupDef } from '@byd/engine'
-import { TableHost, createServer, MemoryLogStore, MemoryProjectStore } from '@byd/server'
+import { TableHost, createServer, MemoryLogStore, MemoryProjectStore, MemorySurveyStore } from '@byd/server'
 import { MemoryRenderStore } from '@byd/render/queue'
 
 // A real server in-process. Client tests talk to it over a real socket — no mocks.
@@ -32,7 +32,8 @@ export async function startServer(): Promise<Running> {
   const store = new MemoryLogStore()
   const projects = new MemoryProjectStore()
   const renders = new MemoryRenderStore()
-  const make = () => createServer({ host: new TableHost(registry, store, undefined, renders), store, registry, renders, projects })
+  const surveys = new MemorySurveyStore()
+  const make = () => createServer({ host: new TableHost(registry, store, undefined, renders), store, registry, renders, projects, surveys })
   let server: Server = make()
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
   const { port } = server.address() as AddressInfo

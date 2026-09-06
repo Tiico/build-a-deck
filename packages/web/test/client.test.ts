@@ -132,3 +132,27 @@ async function waitUntil(pred: () => boolean, timeoutMs = 2000): Promise<void> {
     await new Promise((r) => setTimeout(r, 10))
   }
 }
+
+describe('the observer (C8) and the roster', () => {
+  it('connects as a named observer who sees every hand, and every client learns who is watching', async () => {
+    const id = await createSession(run.store)
+    const a = TableClient.connect({ url: run.url, sessionId: id, seat: 'A' })
+    await a.ready()
+    await a.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
+    const table = TableClient.connect({ url: run.url, sessionId: id, seat: null })
+    await table.ready()
+    expect(table.observers).toEqual([])
+
+    const eva = TableClient.connect({ url: run.url, sessionId: id, seat: null, observer: 'Eva' })
+    await eva.ready()
+    expect(eva.view!.components.filter((c) => c.zone === 'hand:A').map((c) => c.cardRef)).toEqual([expect.any(String), expect.any(String)])
+    await waitUntil(() => table.observers.length === 1)
+    expect(table.observers).toEqual([{ id: expect.any(String), name: 'Eva' }])
+    expect((await eva.send({ v: 'flag', note: 'hm' })).ok).toBe(true)
+    expect((await run.store.read(id)).at(-1)?.intent).toEqual({ v: 'flag', note: 'hm', observer: 'Eva' })
+    eva.close()
+    await waitUntil(() => table.observers.length === 0)
+    a.close()
+    table.close()
+  })
+})

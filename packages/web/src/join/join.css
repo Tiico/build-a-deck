@@ -25,3 +25,6 @@
 .byd-join input { padding: 16px; border-radius: 12px; border: 1px solid #2c3242; background: #1b1e27; color: #fff; font-size: 18px; }
 .byd-join form button { padding: 18px; border-radius: 12px; border: 0; background: #7dd3a0; color: #0d0f14; font-size: 18px; font-weight: 800; }
 .byd-join form button:disabled { background: #242938; color: #5b6478; }
+
+.byd-join-observe { background: transparent; border: 1px solid #2c3242; color: #9aa3b8; font-size: 13px; }
+.byd-join-observe:disabled { opacity: 0.35; }

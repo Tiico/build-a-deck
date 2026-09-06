@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { project } from '../src/index.js'
+import { applyPatch, diff, project } from '../src/index.js'
 import { Harness, inZone, registry, zoneView } from './fixture.js'
 
 describe('the observer (C8) sees everything', () => {
@@ -32,5 +32,18 @@ describe('flagging a moment (G3)', () => {
     h.do('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
     h.do('B', { v: 'flag', note: 'hm' })
     expect(h.view('A').undo).toEqual({ toSeq: 3, contested: false })
+  })
+})
+
+describe('an ended session (C9) is visible in every view', () => {
+  it('the snapshot says ended, and a patch carries the change', () => {
+    const h = new Harness()
+    expect(h.view(null).ended).toBe(false)
+    const before = h.view('A')
+    h.do(null, { v: 'session.end' })
+    expect(h.view(null).ended).toBe(true)
+    const patch = diff(before, h.view('A'))
+    expect(patch.ops).toContainEqual({ op: 'ended', ended: true })
+    expect(applyPatch(before, patch)).toEqual(h.view('A'))
   })
 })

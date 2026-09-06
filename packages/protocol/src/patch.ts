@@ -86,6 +86,8 @@ export const Snapshot = z.object({
   components: z.array(VisibleComponentState),
   rewind: RewindProposal.nullable(),
   undo: UndoMeaning,
+  // The log is locked (C9): nothing more happens at this table.
+  ended: z.boolean(),
 })
 export type Snapshot = z.infer<typeof Snapshot>
 
@@ -97,6 +99,7 @@ export const Op = z.discriminatedUnion('op', [
   z.object({ op: z.literal('seat'), seat: SeatView }),
   z.object({ op: z.literal('rewind'), proposal: RewindProposal.nullable() }),
   z.object({ op: z.literal('undo'), undo: UndoMeaning }),
+  z.object({ op: z.literal('ended'), ended: z.boolean() }),
 ])
 export type Op = z.infer<typeof Op>
 

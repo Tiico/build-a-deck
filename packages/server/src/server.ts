@@ -215,7 +215,20 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     json(res, 201, { id, version: `rev-${rec.rev}` })
     return true
   }
-  // The survey after a session (G3): one structured answer per participant, once the log is
+  // A session as a record (C9): which version runs, whether the log is locked.
+  const sessionOne = /^\/sessions\/([^/]+)$/.exec(url.pathname)
+  if (sessionOne && req.method === 'GET') {
+    const sessionId = decodeURIComponent(sessionOne[1] ?? '')
+    const actor = await opts.host.get(sessionId)
+    const session = await opts.store.loadSession(sessionId)
+    if (!actor || !session) {
+      json(res, 404, { error: 'unknown session' })
+      return true
+    }
+    json(res, 200, { id: sessionId, version: actor.version, ended: actor.ended, ...(session.project ? { project: session.project } : {}) })
+    return true
+  }
+    // The survey after a session (G3): one structured answer per participant, once the log is
   // locked, tied to the version it ended on.
   const survey = /^\/sessions\/([^/]+)\/survey$/.exec(url.pathname)
   if (survey && req.method === 'POST' && opts.surveys) {

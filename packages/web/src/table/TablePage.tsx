@@ -15,7 +15,16 @@ export function TablePage() {
   const mode: TableMode = params.get('mode') === 'tv' ? 'tv' : 'table'
   const roomCode = params.get('code') ?? sessionId ?? ''
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
-  const { client, view, status, activity } = useTableClient(sessionId ? { url, sessionId, seat: null } : null)
+  const { client, view, status, activity, observers } = useTableClient(sessionId ? { url, sessionId, seat: null } : null)
+  // The end of a session (C9): which version the log is locked on, from the session record.
+  const [version, setVersion] = useState<string | null>(null)
+  useEffect(() => {
+    if (!sessionId || !view?.ended || version) return
+    void fetch(`${url.replace(/^ws/, 'http')}/sessions/${encodeURIComponent(sessionId)}`)
+      .then((r) => (r.ok ? (r.json() as Promise<{ version: string }>) : Promise.reject(new Error(String(r.status)))))
+      .then((s) => setVersion(s.version))
+      .catch(() => setVersion('?'))
+  }, [sessionId, view?.ended, version, url])
 
   // Presence (K6): the others' cursors and carried cards, pruned as they go idle; and which
   // cards just moved, stamped when their lines arrive so no clocks have to agree.
@@ -69,12 +78,31 @@ export function TablePage() {
       view={previewOf(view)}
       mode={mode}
       faces={url.replace(/^ws/, 'http')}
-      onAct={proposal ? undefined : onAct}
+      onAct={proposal || view.ended ? undefined : onAct}
       peers={Object.values(presence.peers)}
       pulses={presence.pulses}
       recent={recent}
       onPresence={client ? (p) => client.sendPresence(p) : undefined}
     />
+  )
+  const ended = view.ended && (
+    <div className="byd-ended" data-ended>
+      <div>
+        <h1>Sessionen är avslutad</h1>
+        <p>Loggen är låst på {version ?? '…'}. Enkäten finns på telefonerna.</p>
+        <div className="byd-ended-summary">
+          <span>
+            <b>{view.seq}</b> rader
+          </span>
+          <span>
+            <b>{activity.filter((l) => l.intent.v === 'flag').length}</b> flaggade ögonblick
+          </span>
+          <span>
+            <b>{view.seats.filter((s) => s.name !== null).length}</b> spelare
+          </span>
+        </div>
+      </div>
+    </div>
   )
   const table = proposal?.preview ? (
     <div className="byd-rewind-preview" data-rewind-preview={proposal.id}>
@@ -91,12 +119,13 @@ export function TablePage() {
   return (
     <div data-page="table" data-status={status} className="byd-fit">
       {mode === 'tv' ? (
-        <TvChrome view={previewOf(view)} activity={activity} roomCode={roomCode} joinUrl={joinUrl}>
+        <TvChrome view={previewOf(view)} activity={activity} roomCode={roomCode} joinUrl={joinUrl} observers={observers}>
           {table}
         </TvChrome>
       ) : (
         table
       )}
+      {ended}
     </div>
   )
 }

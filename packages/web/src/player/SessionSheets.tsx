@@ -1,0 +1,43 @@
+import { useState } from 'react'
+
+// Flagging a moment (G3, prototype A): a sheet with an optional note. Sends at once.
+export function FlagSheet({ onFlag, onClose }: { onFlag(note: string | undefined): void; onClose(): void }) {
+  const [note, setNote] = useState('')
+  return (
+    <div className="byd-sheet-backdrop" onClick={onClose}>
+      <div className="byd-sheet byd-session-sheet" onClick={(e) => e.stopPropagation()}>
+        <p className="byd-sheet-title">Flagga det här ögonblicket</p>
+        <p>Tidsstämplas mot loggen. En kommentar är frivillig.</p>
+        <textarea placeholder="Vad hände? (frivilligt)" value={note} onChange={(e) => setNote(e.target.value)} maxLength={280} autoFocus />
+        <div className="byd-sheet-actions">
+          <button type="button" data-kind="flag" onClick={() => onFlag(note.trim() || undefined)}>
+            Flagga
+          </button>
+          <button type="button" data-kind="quiet" onClick={onClose}>
+            Avbryt
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Ending the session (C9): says what it means, then does it for everyone.
+export function EndSheet({ version, onEnd, onClose }: { version: string; onEnd(): void; onClose(): void }) {
+  return (
+    <div className="byd-sheet-backdrop" onClick={onClose}>
+      <div className="byd-sheet byd-session-sheet" onClick={(e) => e.stopPropagation()}>
+        <p className="byd-sheet-title">Avsluta sessionen?</p>
+        <p>Loggen låses på {version}, bordet kan inte spelas vidare, och alla får enkäten på sin telefon. Att bara lägga ifrån sig telefonen avslutar inget: bordet väntar.</p>
+        <div className="byd-sheet-actions">
+          <button type="button" data-kind="no" onClick={onEnd}>
+            Avsluta för alla
+          </button>
+          <button type="button" data-kind="quiet" onClick={onClose}>
+            Inte än
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}

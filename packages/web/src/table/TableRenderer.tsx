@@ -237,7 +237,17 @@ export function TableRenderer({ view, mode, scale: fixedScale, faces, onAct, pee
             )
           })}
           {hands.map((z) => (
-            <Hand key={z.id} zone={z} name={seatName(z.owner)} color={seatColor(seatIndex(z.owner))} rot={mode === 'table' ? edgeRotation(z, floor) : 0} left={left(z.geometry.x + z.geometry.w / 2)} top={top(z.geometry.y + z.geometry.h / 2)} />
+            <Hand
+              key={z.id}
+              zone={z}
+              name={seatName(z.owner)}
+              color={seatColor(seatIndex(z.owner))}
+              rot={mode === 'table' ? edgeRotation(z, floor) : 0}
+              left={left(z.geometry.x + z.geometry.w / 2)}
+              top={top(z.geometry.y + z.geometry.h / 2)}
+              cards={z.mode === 'order' ? z.order.flatMap((id) => byId.get(id) ?? []) : undefined}
+              faces={faces}
+            />
           ))}
           {loose.map((c) => {
             const a = absoluteOf(view, c)
@@ -419,16 +429,28 @@ function edgeRotation(hand: ZoneView, floor: ZoneView): number {
   return dy > 0 ? 0 : 180
 }
 
-// Other seats' hands are a fan of backs and a count; the owner reads theirs on the phone.
-function Hand({ zone, name, color, rot, left, top }: { zone: ZoneView; name: string; color: string; rot: number; left: number; top: number }) {
+// Other seats' hands are a fan of backs and a count; the owner reads theirs on the phone. A hand
+// whose order this view may see (the observer, C8) fans the cards themselves.
+function Hand({ zone, name, color, rot, left, top, cards, faces }: { zone: ZoneView; name: string; color: string; rot: number; left: number; top: number; cards?: VisibleComponentState[] | undefined; faces?: string | undefined }) {
   const count = zone.mode === 'count' ? zone.count : zone.order.length
   const fan = Math.min(count, FAN_MAX)
   return (
     <div className="byd-hand" data-zone={zone.id} data-count={count} data-rot={rot} style={{ left, top, transform: `rotate(${rot}deg)`, ['--seat' as string]: color }}>
       <div className="byd-hand-fan">
-        {Array.from({ length: fan }, (_, i) => (
-          <i key={i} className="byd-back" style={{ transform: `rotate(${(i - (fan - 1) / 2) * 9}deg)` }} />
-        ))}
+        {cards
+          ? cards.slice(0, FAN_MAX).map((c, i) => (
+              <i
+                key={c.id}
+                className="byd-hand-card"
+                data-component={c.id}
+                data-face={c.cardRef === null ? 'back' : 'front'}
+                style={{ transform: `translateX(${(i - (Math.min(cards.length, FAN_MAX) - 1) / 2) * 26}px) rotate(${(i - (Math.min(cards.length, FAN_MAX) - 1) / 2) * 7}deg)`, ...(c.cardRef === null ? {} : { ['--hue' as string]: hue(c.cardRef) }) }}
+              >
+                {textureUrl(faces, c) && <Texture src={textureUrl(faces, c) ?? ''} />}
+                <span>{c.cardRef ?? ''}</span>
+              </i>
+            ))
+          : Array.from({ length: fan }, (_, i) => <i key={i} className="byd-back" style={{ transform: `rotate(${(i - (fan - 1) / 2) * 9}deg)` }} />)}
       </div>
       <div className="byd-hand-name">
         <span>{name}</span>

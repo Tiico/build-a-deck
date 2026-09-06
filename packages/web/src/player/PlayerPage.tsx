@@ -7,6 +7,9 @@ import { HandStrip } from './HandStrip.js'
 import { PlaySheet } from './PlaySheet.js'
 import { TableSummary } from './TableSummary.js'
 import { whoDecides } from '../table/rewind.js'
+import { FlagSheet, EndSheet } from './SessionSheets.js'
+import { Survey } from './Survey.js'
+import { submitSurvey } from './surveyApi.js'
 import './player.css'
 
 // /play?session=…&seat=A&name=Ada&server=ws://…
@@ -23,6 +26,23 @@ export function PlayerPage() {
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
   const [inspect, setInspect] = useState<VisibleComponentState | null>(null)
   const [lifted, setLifted] = useState<VisibleComponentState | null>(null)
+  // Flagging and ending (G3, C9, prototype A): sheets from the header; a toast confirms a flag.
+  const [sheet, setSheet] = useState<'flag' | 'end' | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+  const [version, setVersion] = useState<string | null>(null)
+  useEffect(() => {
+    if (!toast) return
+    const timer = setTimeout(() => setToast(null), 2000)
+    return () => clearTimeout(timer)
+  }, [toast])
+  // The version the session ended on, read from the session record; needed by the survey.
+  useEffect(() => {
+    if (!sessionId || !view?.ended || version) return
+    void fetch(`${faces}/sessions/${encodeURIComponent(sessionId)}`)
+      .then((r) => (r.ok ? (r.json() as Promise<{ version: string }>) : Promise.reject(new Error(String(r.status)))))
+      .then((s) => setVersion(s.version))
+      .catch(() => setVersion('?'))
+  }, [sessionId, view?.ended, version, faces])
 
   // Sit down on first contact: claim the seat with the name from the link, if it is still free.
   const seatFree = view?.seats.find((s) => s.id === seat)?.name === null
@@ -72,8 +92,14 @@ export function PlayerPage() {
       <header>
         <strong>{me?.name ?? seat}</strong>
         <span>{hand.length} kort</span>
-        <button className="byd-undo" disabled={!view.undo || !!proposal} onClick={tapUndo}>
+        <button className="byd-undo" disabled={!view.undo || !!proposal || view.ended} onClick={tapUndo}>
           ↶ Ångra
+        </button>
+        <button className="byd-flag" disabled={view.ended} onClick={() => setSheet('flag')}>
+          ⚑ Flagga
+        </button>
+        <button className="byd-end" disabled={view.ended} onClick={() => setSheet('end')}>
+          Avsluta
         </button>
       </header>
       <TableSummary view={view} activity={activity} />
@@ -91,6 +117,30 @@ export function PlayerPage() {
       )}
       {lifted && (
         <PlaySheet view={view} count={toPlay.length} label={lifted.cardRef ?? ''} onPlay={play} onClose={() => setLifted(null)} />
+      )}
+      {toast && <div className="byd-toast">{toast}</div>}
+      {sheet === 'flag' && (
+        <FlagSheet
+          onFlag={(note) => {
+            void client.send({ v: 'flag', ...(note ? { note } : {}) })
+            setSheet(null)
+            setToast('Ögonblicket är flaggat')
+          }}
+          onClose={() => setSheet(null)}
+        />
+      )}
+      {sheet === 'end' && (
+        <EndSheet
+          version={version ?? 'den här versionen'}
+          onEnd={() => {
+            void client.send({ v: 'session.end' })
+            setSheet(null)
+          }}
+          onClose={() => setSheet(null)}
+        />
+      )}
+      {view.ended && (
+        <Survey who={me?.name ?? seat} version={version ?? '…'} onSubmit={(answers) => submitSurvey(faces, sessionId, { who: me?.name ?? seat, seat, answers })} />
       )}
       {proposal && proposal.by === seat && (
         <div className="byd-rewind-mine" data-rewind-mine>

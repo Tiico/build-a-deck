@@ -31,7 +31,7 @@ export function project(state: TableState, registry: TypeRegistry, seat: SeatId 
     rewind = { ...rewind, preview }
   }
   const undo = seat !== null && history ? undoTarget(history.lines(), seat) : null
-  return { seq: state.seq, seat, floor: state.setup.floor, seats, zones, components, rewind, undo }
+  return { seq: state.seq, seat, floor: state.setup.floor, seats, zones, components, rewind, undo, ended: state.ended }
 }
 
 function projectTable(state: TableState, registry: TypeRegistry, seat: SeatId | null, faces?: FaceHashes, observer = false): TablePreview {

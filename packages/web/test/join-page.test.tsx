@@ -65,3 +65,16 @@ describe('sitting down', () => {
     table.close()
   })
 })
+
+describe('watching instead of playing (C8)', () => {
+  it('offers to observe with a name, which leads to the observer view', async () => {
+    const id = await createSession(run.store)
+    const seen: string[] = []
+    history.replaceState(null, '', `/join?session=${id}&server=${encodeURIComponent(run.url)}`)
+    render(<JoinPage onSit={(url) => seen.push(url)} />)
+    await screen.findByRole('button', { name: /Sätt dig/ })
+    fireEvent.change(screen.getByLabelText('Ditt namn'), { target: { value: 'Eva' } })
+    fireEvent.click(screen.getByRole('button', { name: /Bara titta/ }))
+    expect(seen[0]).toMatch(new RegExp(`^/observe\\?session=${id}&name=Eva`))
+  })
+})

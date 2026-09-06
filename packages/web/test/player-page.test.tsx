@@ -190,3 +190,43 @@ describe('undo and rewind on the phone (B, C)', () => {
     bo.close()
   })
 })
+
+describe('flagging a moment (G3)', () => {
+  it('a tap on Flagga, an optional note, and the moment is in the log', async () => {
+    const id = await createSession(run.store)
+    await open(id, 'A', 'Ada')
+    fireEvent.click(screen.getByRole('button', { name: /Flagga/ }))
+    fireEvent.change(screen.getByPlaceholderText(/Vad hände/), { target: { value: 'Draken känns för stark här' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Flagga' }))
+    expect(await screen.findByText(/Ögonblicket är flaggat/)).toBeTruthy()
+    await waitFor(async () => expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'flag', note: 'Draken känns för stark här' } }))
+    expect(screen.queryByPlaceholderText(/Vad hände/)).toBeNull()
+  })
+})
+
+describe('ending the session and the survey after it (C9, G3)', () => {
+  it('Avsluta asks first, then locks the log; the survey takes one question at a time and lands on the server, tied to the version', async () => {
+    const id = await createSession(run.store)
+    await open(id, 'A', 'Ada')
+    fireEvent.click(screen.getByRole('button', { name: /Avsluta/ }))
+    expect(screen.getByText(/Avsluta sessionen\?/)).toBeTruthy()
+    expect((await run.store.read(id)).some((l) => l.intent.v === 'session.end')).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: /Avsluta för alla/ }))
+    expect(await screen.findByText(/Sessionen är slut/)).toBeTruthy()
+    expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'session.end' } })
+
+    const next = () => fireEvent.click(screen.getByRole('button', { name: 'Nästa' }))
+    expect((screen.getByRole('button', { name: 'Nästa' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: '4' }))
+    next()
+    fireEvent.click(screen.getByRole('button', { name: '3' }))
+    next()
+    fireEvent.click(screen.getByRole('button', { name: '2' }))
+    next()
+    fireEvent.change(screen.getByPlaceholderText(/En mening räcker/), { target: { value: 'Draken är för stark' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Skicka' }))
+    expect(await screen.findByText(/Tack, Ada/)).toBeTruthy()
+    const listed = (await (await fetch(`${run.http}/sessions/${id}/surveys`)).json()) as unknown[]
+    expect(listed).toEqual([expect.objectContaining({ who: 'Ada', seat: 'A', version: 'v1', answers: { fun: 4, clarity: 3, balance: 2, change: 'Draken är för stark' } })])
+  })
+})

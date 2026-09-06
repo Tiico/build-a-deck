@@ -135,3 +135,24 @@ describe('presence on the table screen (K6)', () => {
     ada.close()
   })
 })
+
+describe('the end of a session on the table (C9)', () => {
+  it('says the session is over, on which version, with a summary, and points to the phones', async () => {
+    const id = await createSession(run.store)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    render(<TablePage />)
+    await screen.findByText(/Draghög/)
+    const ada = TableClient.connect({ url: run.url, sessionId: id, seat: 'A' })
+    await ada.ready()
+    await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    await ada.send({ v: 'flag', note: 'hm' })
+    await ada.send({ v: 'session.end' })
+    const over = await screen.findByText(/Sessionen är avslutad/)
+    const overlay = over.closest('[data-ended]')!
+    await waitFor(() => expect(overlay.textContent).toMatch(/v1/))
+    expect(overlay.textContent).toMatch(/1 flaggade ögonblick/)
+    expect(overlay.textContent).toMatch(/1 spelare/)
+    expect(overlay.textContent).toMatch(/telefonerna/)
+    ada.close()
+  })
+})

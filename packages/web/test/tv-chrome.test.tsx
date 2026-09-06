@@ -44,3 +44,15 @@ describe('QR to join', () => {
     expect(screen.getByText('example.test/join?session=s1')).toBeTruthy()
   })
 })
+
+describe('the observer is never invisible (C8)', () => {
+  it('shows who is watching, and that they see everything', () => {
+    const { view, log } = buildScene()
+    render(
+      <TvChrome view={view(null)} activity={log.map(projectActivity)} roomCode="KX7P" observers={[{ id: 'o1', name: 'Eva' }]}>
+        <div />
+      </TvChrome>,
+    )
+    expect(screen.getByText(/Eva/).closest('[data-observers]')!.textContent).toMatch(/ser allt/)
+  })
+})

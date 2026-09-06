@@ -226,6 +226,13 @@ Följdkrav:
 Observatörens flaggor bör märkas som hennes, eftersom de väger annorlunda än en testares.
 Observatörseffekten är verklig och gör datan något mindre naturlig.
 
+Byggt 2026-09-06:
+En anslutning med `?role=observer&name=` projiceras med full insyn och får bara skicka `flag`; servern stämplar flaggan med namnet, en spelare kan inte låtsas vara observatör.
+Aktören skickar en `roster` till alla vid varje förändring, så bordsskärmen visar "Eva tittar på · ser allt" i docken.
+Observatörens egen vy (`/observe`) är TV-vyn med allas händer utfläktade, en banderoll om vad hon är, och en enda knapp: Flagga.
+Anslutningssidan erbjuder "Bara titta" bredvid "Sätt dig".
+Vem som helst med rumskoden kan observera; det är G1:s öppna fråga om missbruk.
+
 ### C9. Livscykel: persistenta bord med uttrycklig avslutning (fråga 25)
 
 Tillståndet överlever att alla kopplar ner, så gruppen kan återuppta med samma ställning och samma platser.
@@ -236,6 +243,12 @@ Följdkrav:
 Tappad anslutning håller platsen.
 En spelare som lämnar för gott lämnar en tom plats med dolda kort i sig — att frigöra platsen blandar tillbaka korten i rätt hög, konsistent med C6.
 Övergivna bord måste städas automatiskt.
+
+Byggt 2026-09-06 (prototypat, variant "knappar i huvudet"):
+"Avsluta" i telefonens huvud öppnar ett ark som säger vad som händer och avslutar för alla (`session.end`); snapshoten bär `ended`.
+Bordsskärmen visar "Sessionen är avslutad", versionen loggen låstes på, en summering och att enkäten finns på telefonerna; bordet kan inte spelas.
+Servern avslutar bord som ingen rört på ett dygn (`IDLE_END_MS`), som bordet, en gång i timmen.
+`GET /sessions/:id` säger version och om sessionen avslutats.
 
 ---
 
@@ -458,6 +471,12 @@ Det som gör ont i ett playtest är enskilda ögonblick, och de glöms inom minu
 
 Följdkrav:
 Flaggan är gratis att bygga, eftersom den bara är ännu en intent i loggen.
+
+Byggt 2026-09-06 (prototypat, variant "knappar i huvudet · enkät steg för steg"):
+"Flagga" i telefonens huvud öppnar ett ark med frivillig kommentar och skickar `flag` med `note`; flaggan syns i aktivitetsflödet som "Ada flaggade: …" och är varken drag eller ångringsbar.
+Efter avslut visar telefonen enkäten en fråga i taget: kul, tydlighet, balans (1–5) och "Vad skulle du ändra?", och skickar till `POST /sessions/:id/survey`, som bara tar emot när loggen är låst och knyter svaret till versionen.
+Observatören svarar också, märkt `observer: true`.
+Enkäter lagras bredvid loggen (tabellen `surveys`), aldrig i den.
 
 ### G4. Fysiska playtests mäts inte (fråga 38)
 
