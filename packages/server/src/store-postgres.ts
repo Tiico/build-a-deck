@@ -4,7 +4,40 @@ import postgres from 'postgres'
 import { Applied } from '@byd/protocol'
 import type { SetupDef } from '@byd/engine'
 import { SeqConflictError, type Deck, type LogStore, type SessionRecord } from './store.js'
-import type { ProjectDoc, ProjectRecord, ProjectStore } from './projects.js'
+import type { ProjectDoc, ProjectRecord, ProjectStore, ProjectSummary } from './projects.js'
+import type { Account, AuthStore } from './auth.js'
+
+export class PostgresAuthStore implements AuthStore {
+  constructor(private readonly sql: postgres.Sql) {}
+  async issueToken(tokenHash: string, email: string, expiresAt: string): Promise<void> {
+    await this.sql`insert into login_tokens (token_hash, email, expires_at) values (${tokenHash}, ${email}, ${expiresAt})`
+  }
+  async redeemToken(tokenHash: string, now: string): Promise<string | null> {
+    const rows = await this.sql<{ email: string }[]>`
+      update login_tokens set used_at = ${now} where token_hash = ${tokenHash} and used_at is null and expires_at > ${now} returning email
+    `
+    return rows[0]?.email ?? null
+  }
+  async ensureAccount(email: string): Promise<Account> {
+    const rows = await this.sql<{ id: string }[]>`
+      insert into accounts (email) values (${email}) on conflict (email) do update set email = excluded.email returning id
+    `
+    return { id: String(rows[0]?.id), email }
+  }
+  async createSession(sessionHash: string, accountId: string, expiresAt: string): Promise<void> {
+    await this.sql`insert into auth_sessions (session_hash, account_id, expires_at) values (${sessionHash}, ${accountId}, ${expiresAt})`
+  }
+  async sessionAccount(sessionHash: string, now: string): Promise<Account | null> {
+    const rows = await this.sql<{ id: string; email: string }[]>`
+      select a.id, a.email from auth_sessions s join accounts a on a.id = s.account_id where s.session_hash = ${sessionHash} and s.expires_at > ${now}
+    `
+    const row = rows[0]
+    return row ? { id: String(row.id), email: row.email } : null
+  }
+  async deleteSession(sessionHash: string): Promise<void> {
+    await this.sql`delete from auth_sessions where session_hash = ${sessionHash}`
+  }
+}
 import type { SurveyRecord, SurveyStore } from './surveys.js'
 
 export class PostgresSurveyStore implements SurveyStore {
@@ -39,6 +72,10 @@ export class PostgresLogStore implements LogStore {
 
   surveys(): PostgresSurveyStore {
     return new PostgresSurveyStore(this.sql)
+  }
+
+  auth(): PostgresAuthStore {
+    return new PostgresAuthStore(this.sql)
   }
 
   // Idempotent schema for the slice. DRIFT §7 moves this into a migration step before start.
@@ -125,14 +162,19 @@ export class PostgresLogStore implements LogStore {
 export class PostgresProjectStore implements ProjectStore {
   constructor(private readonly sql: postgres.Sql) {}
 
-  async create(id: string, doc: ProjectDoc): Promise<ProjectRecord> {
-    await this.sql`insert into projects (id, rev, doc) values (${id}, 1, ${this.sql.json(doc as never)})`
-    return { ...doc, id, rev: 1 }
+  async create(id: string, doc: ProjectDoc, owner?: string): Promise<ProjectRecord> {
+    await this.sql`insert into projects (id, rev, doc, owner) values (${id}, 1, ${this.sql.json(doc as never)}, ${owner ?? null})`
+    return { ...doc, id, rev: 1, ...(owner !== undefined ? { owner } : {}) }
   }
 
   async load(id: string): Promise<ProjectRecord | null> {
-    const [row] = await this.sql<{ rev: number; doc: ProjectDoc }[]>`select rev, doc from projects where id = ${id}`
-    return row ? { ...row.doc, id, rev: row.rev } : null
+    const [row] = await this.sql<{ rev: number; doc: ProjectDoc; owner: string | null }[]>`select rev, doc, owner from projects where id = ${id}`
+    return row ? { ...row.doc, id, rev: row.rev, ...(row.owner ? { owner: row.owner } : {}) } : null
+  }
+
+  async list(owner: string): Promise<ProjectSummary[]> {
+    const rows = await this.sql<{ id: string; rev: number; name: string }[]>`select id, rev, doc->>'name' as name from projects where owner = ${owner} order by updated_at desc`
+    return rows.map((r) => ({ id: r.id, name: r.name, rev: r.rev }))
   }
 
   async replace(id: string, expectedRev: number, doc: ProjectDoc): Promise<ProjectRecord | 'conflict' | 'missing'> {

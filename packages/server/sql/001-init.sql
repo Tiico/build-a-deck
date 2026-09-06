@@ -42,3 +42,24 @@ create table if not exists surveys (
   observer    boolean not null default false,
   answers     jsonb not null
 );
+
+-- Accounts for creators (G1, DRIFT §11): magic links and session cookies, no passwords.
+create table if not exists accounts (
+  id          bigserial primary key,
+  email       text not null unique,
+  created_at  timestamptz not null default now()
+);
+create table if not exists login_tokens (
+  token_hash  text primary key,
+  email       text not null,
+  expires_at  timestamptz not null,
+  used_at     timestamptz
+);
+create table if not exists auth_sessions (
+  session_hash text primary key,
+  account_id   bigint not null references accounts(id) on delete cascade,
+  expires_at   timestamptz not null
+);
+-- The account a project belongs to; null for projects from before accounts.
+alter table projects add column if not exists owner text;
+create index if not exists projects_owner on projects (owner);

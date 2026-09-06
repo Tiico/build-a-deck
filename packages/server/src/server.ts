@@ -11,13 +11,29 @@ import { Template } from '@byd/template'
 import type { RenderStore } from '@byd/render/queue'
 import type { Subscriber, TableHost } from './actor.js'
 import type { Deck, LogStore } from './store.js'
-import { ProjectDoc, deckFromProject, setupFromProject, type ProjectStore } from './projects.js'
+import { ProjectDoc, deckFromProject, setupFromProject, type ProjectRecord, type ProjectStore } from './projects.js'
 import { SurveyAnswer, type SurveyStore } from './surveys.js'
+import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountOf, hash, loginMail, safeNext, token, type Account, type AuthStore, type Mailer } from './auth.js'
 import { facesOf } from './faces.js'
 import { TEXTURE_DPI } from './actor.js'
 
 // `staticDir`: the built web app, served from the same origin as the API (README, DRIFT §1).
-export type ServerOptions = { host: TableHost; store: LogStore; registry: TypeRegistry; renders?: RenderStore; projects?: ProjectStore; surveys?: SurveyStore; staticDir?: string }
+// `auth` and `mailer` turn on accounts (G1): projects then belong to whoever made them.
+// `publicOrigin` is what login links point at; without it the request's origin is used.
+export type ServerOptions = {
+  host: TableHost
+  store: LogStore
+  registry: TypeRegistry
+  renders?: RenderStore
+  projects?: ProjectStore
+  surveys?: SurveyStore
+  staticDir?: string
+  auth?: AuthStore
+  mailer?: Mailer
+  publicOrigin?: string
+  // One per server: how many login links an address may get per hour.
+  limiter?: LoginLimiter
+}
 
 const DeckBody = z.object({
   template: Template,
@@ -34,7 +50,8 @@ const CreateSession = z.object({
 
 // HTTP for the few things that are not a table (health, creating a session), and one
 // WebSocket per connection at `/sessions/:id?seat=A` — omit `seat` for a table view.
-export function createServer(opts: ServerOptions): Server {
+export function createServer(given: ServerOptions): Server {
+  const opts: ServerOptions = { ...given, limiter: given.limiter ?? new LoginLimiter() }
   const http = createHttpServer((req, res) => void route(opts, req, res))
   const wss = new WebSocketServer({ noServer: true })
 
@@ -64,20 +81,30 @@ export function createServer(opts: ServerOptions): Server {
   return http
 }
 
-// The API is capability-based (room codes, face hashes) and carries no cookies, so any origin
-// may read it; in development the editor is served from another port than the server.
-const CORS = {
+// Play is capability-based (room codes, face hashes); the creator's account rides in a cookie.
+// In development the editor is served from another port than the server, so the origin is
+// echoed and credentials allowed; in production everything is one origin.
+const CORS: Record<string, string> = {
   'access-control-allow-origin': '*',
   'access-control-allow-methods': 'GET, POST, PUT, OPTIONS',
   'access-control-allow-headers': 'content-type',
   'access-control-max-age': '86400',
 }
-
 async function route(opts: ServerOptions, req: IncomingMessage, res: ServerResponse): Promise<void> {
   const url = new URL(req.url ?? '/', 'http://localhost')
+  const origin = req.headers.origin
+  if (origin) {
+    CORS['access-control-allow-origin'] = origin
+    CORS['access-control-allow-credentials'] = 'true'
+    CORS['vary'] = 'origin'
+  }
   if (req.method === 'OPTIONS') {
     res.writeHead(204, CORS)
     res.end()
+    return
+  }
+  if (opts.auth && url.pathname.startsWith('/auth/')) {
+    await routeAuth(opts, opts.auth, req, res, url)
     return
   }
   try {
@@ -231,22 +258,50 @@ async function attach(opts: ServerOptions, ws: WebSocket, sessionId: string, sea
 // Projects (L4, L5): a revisioned document, and "start a table" which expands the rows into a
 // session with its deck so textures start rendering at once.
 async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: IncomingMessage, res: ServerResponse, url: URL): Promise<boolean> {
+  // Who is asking (G1): with accounts on, creating needs one, and an owned project answers only
+  // its owner. A project without an owner is from before accounts and stays open.
+  const account = opts.auth ? await accountOf(opts.auth, req) : null
+  const owned = async (id: string): Promise<{ rec: ProjectRecord } | { status: number; error: string }> => {
+    const rec = await projects.load(id)
+    if (!rec) return { status: 404, error: 'unknown project' }
+    if (rec.owner === undefined) return { rec }
+    if (!account) return { status: 401, error: 'log in first' }
+    if (rec.owner !== account.id) return { status: 403, error: 'not your project' }
+    return { rec }
+  }
+  if (req.method === 'GET' && url.pathname === '/projects') {
+    if (!account) {
+      json(res, 401, { error: 'log in first' })
+      return true
+    }
+    json(res, 200, await projects.list(account.id))
+    return true
+  }
   if (req.method === 'POST' && url.pathname === '/projects') {
+    if (opts.auth && !account) {
+      json(res, 401, { error: 'log in first' })
+      return true
+    }
     const body = z.object({ id: z.string().min(1).optional() }).and(ProjectDoc).parse(JSON.parse(await readBody(req)))
     const { id: wanted, ...doc } = body
     validateSetup(setupFromProject(doc), opts.registry)
-    const rec = await projects.create(wanted ?? randomUUID(), doc)
+    const rec = await projects.create(wanted ?? randomUUID(), doc, account?.id)
     json(res, 201, { id: rec.id, rev: rec.rev })
     return true
   }
   const one = /^\/projects\/([^/]+)$/.exec(url.pathname)
   if (one && req.method === 'GET') {
-    const rec = await projects.load(decodeURIComponent(one[1] ?? ''))
-    if (!rec) json(res, 404, { error: 'unknown project' })
-    else json(res, 200, rec)
+    const got = await owned(decodeURIComponent(one[1] ?? ''))
+    if ('rec' in got) json(res, 200, got.rec)
+    else json(res, got.status, { error: got.error })
     return true
   }
   if (one && req.method === 'PUT') {
+    const gate = await owned(decodeURIComponent(one[1] ?? ''))
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
     const body = z.object({ rev: z.number().int() }).and(ProjectDoc).parse(JSON.parse(await readBody(req)))
     const { rev, ...doc } = body
     validateSetup(setupFromProject(doc), opts.registry)
@@ -258,11 +313,12 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
   }
   const start = /^\/projects\/([^/]+)\/sessions$/.exec(url.pathname)
   if (start && req.method === 'POST') {
-    const rec = await projects.load(decodeURIComponent(start[1] ?? ''))
-    if (!rec) {
-      json(res, 404, { error: 'unknown project' })
+    const gate = await owned(decodeURIComponent(start[1] ?? ''))
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
       return true
     }
+    const rec = gate.rec
     const id = randomUUID()
     await opts.store.createSession({ id, version: `rev-${rec.rev}`, setup: setupFromProject(rec), deck: deckFromProject(rec), project: rec.id })
     await opts.host.get(id)
@@ -388,6 +444,54 @@ async function progress(opts: ServerOptions, hashes: readonly string[]): Promise
     else if (status?.state === 'failed') failed.push(hash)
   }
   return { total: hashes.length, done, failed }
+}
+
+// Magic links (G1, DRIFT §11). POST /auth/login mails a link and always answers 200 — never a
+// word about whether the address is known. GET /auth/verify redeems it once, sets the session
+// cookie and sends the browser on. GET /auth/me says who you are; POST /auth/logout forgets.
+async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMessage, res: ServerResponse, url: URL): Promise<void> {
+  const now = () => new Date()
+  if (req.method === 'POST' && url.pathname === '/auth/login') {
+    const parsed = LoginBody.safeParse(JSON.parse(await readBody(req)))
+    if (!parsed.success) return json(res, 400, { error: 'that is not an address' })
+    const email = parsed.data.email.trim().toLowerCase()
+    if (opts.limiter && !opts.limiter.allow(email, Date.now())) return json(res, 429, { error: 'too many links; try again later' })
+    const t = token()
+    await auth.issueToken(hash(t), email, new Date(Date.now() + TOKEN_TTL_MS).toISOString())
+    const base = opts.publicOrigin ?? req.headers.origin ?? `http://${req.headers.host ?? 'localhost'}`
+    const link = `${base}/auth/verify?token=${t}&next=${encodeURIComponent(safeNext(parsed.data.next))}`
+    await opts.mailer?.send(loginMail(email, link))
+    return json(res, 200, { ok: true })
+  }
+  if (req.method === 'GET' && url.pathname === '/auth/verify') {
+    const t = url.searchParams.get('token') ?? ''
+    const email = t ? await auth.redeemToken(hash(t), now().toISOString()) : null
+    if (!email) return json(res, 400, { error: 'the link is spent or too old; ask for a new one' })
+    const account: Account = await auth.ensureAccount(email)
+    const sid = token()
+    const expires = new Date(Date.now() + SESSION_TTL_MS)
+    await auth.createSession(hash(sid), account.id, expires.toISOString())
+    const secure = (opts.publicOrigin ?? '').startsWith('https://') ? '; Secure' : ''
+    res.writeHead(302, {
+      ...CORS,
+      'set-cookie': `${COOKIE}=${sid}; Path=/; HttpOnly; SameSite=Lax; Expires=${expires.toUTCString()}${secure}`,
+      location: safeNext(url.searchParams.get('next') ?? undefined),
+    })
+    res.end()
+    return
+  }
+  if (req.method === 'GET' && url.pathname === '/auth/me') {
+    const account = await accountOf(auth, req)
+    return account ? json(res, 200, { email: account.email }) : json(res, 401, { error: 'not logged in' })
+  }
+  if (req.method === 'POST' && url.pathname === '/auth/logout') {
+    const sid = req.headers.cookie?.match(new RegExp(`${COOKIE}=([^;]+)`))?.[1]
+    if (sid) await auth.deleteSession(hash(sid))
+    res.writeHead(200, { ...CORS, 'content-type': 'application/json', 'set-cookie': `${COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0` })
+    res.end(JSON.stringify({ ok: true }))
+    return
+  }
+  json(res, 404, { error: 'not found' })
 }
 
 function json(res: ServerResponse, status: number, body: unknown): void {

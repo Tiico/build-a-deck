@@ -37,11 +37,14 @@ export const ProjectDoc = z.object({
   setup: ProjectSetup,
 })
 export type ProjectDoc = z.infer<typeof ProjectDoc>
-export type ProjectRecord = ProjectDoc & { id: string; rev: number }
+// `owner` is the account that made it (G1); a project from before accounts has none and stays open.
+export type ProjectRecord = ProjectDoc & { id: string; rev: number; owner?: string }
+export type ProjectSummary = { id: string; name: string; rev: number }
 
 export type ProjectStore = {
-  create(id: string, doc: ProjectDoc): Promise<ProjectRecord>
+  create(id: string, doc: ProjectDoc, owner?: string): Promise<ProjectRecord>
   load(id: string): Promise<ProjectRecord | null>
+  list(owner: string): Promise<ProjectSummary[]>
   // Replaces the document if `expectedRev` is current; 'conflict' otherwise (optimistic concurrency).
   replace(id: string, expectedRev: number, doc: ProjectDoc): Promise<ProjectRecord | 'conflict' | 'missing'>
 }
@@ -49,9 +52,9 @@ export type ProjectStore = {
 export class MemoryProjectStore implements ProjectStore {
   private readonly docs = new Map<string, ProjectRecord>()
 
-  async create(id: string, doc: ProjectDoc): Promise<ProjectRecord> {
+  async create(id: string, doc: ProjectDoc, owner?: string): Promise<ProjectRecord> {
     if (this.docs.has(id)) throw new Error(`project ${id} already exists`)
-    const rec = { ...structuredClone(doc), id, rev: 1 }
+    const rec: ProjectRecord = { ...structuredClone(doc), id, rev: 1, ...(owner !== undefined ? { owner } : {}) }
     this.docs.set(id, rec)
     return structuredClone(rec)
   }
@@ -61,11 +64,15 @@ export class MemoryProjectStore implements ProjectStore {
     return rec ? structuredClone(rec) : null
   }
 
+  async list(owner: string): Promise<ProjectSummary[]> {
+    return [...this.docs.values()].filter((r) => r.owner === owner).map((r) => ({ id: r.id, name: r.name, rev: r.rev }))
+  }
+
   async replace(id: string, expectedRev: number, doc: ProjectDoc): Promise<ProjectRecord | 'conflict' | 'missing'> {
     const rec = this.docs.get(id)
     if (!rec) return 'missing'
     if (rec.rev !== expectedRev) return 'conflict'
-    const next = { ...structuredClone(doc), id, rev: rec.rev + 1 }
+    const next: ProjectRecord = { ...structuredClone(doc), id, rev: rec.rev + 1, ...(rec.owner !== undefined ? { owner: rec.owner } : {}) }
     this.docs.set(id, next)
     return structuredClone(next)
   }

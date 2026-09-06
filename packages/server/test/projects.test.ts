@@ -11,8 +11,16 @@ afterEach(async () => {
   await run.stop()
 })
 
+// Projects belong to accounts (G1): every test here works as one logged-in creator.
+let cookie = ''
+beforeEach(async () => {
+  await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
+  const link = /\/auth\/verify\?token=\S+/.exec(run.mail.sent.at(-1)?.text ?? '')?.[0] ?? ''
+  const res = await fetch(`${run.http}${link}`, { redirect: 'manual' })
+  cookie = (res.headers.get('set-cookie') ?? '').split(';')[0] ?? ''
+})
 const json = (method: string, path: string, body?: unknown) =>
-  fetch(`${run.http}${path}`, { method, headers: { 'content-type': 'application/json' }, body: body === undefined ? null : JSON.stringify(body) })
+  fetch(`${run.http}${path}`, { method, headers: { 'content-type': 'application/json', cookie }, body: body === undefined ? null : JSON.stringify(body) })
 
 function project() {
   const { zones, seats, floor } = twoSeatSetup()
@@ -75,14 +83,15 @@ describe('projects (L4, L5)', () => {
 })
 
 describe('cross-origin (the editor is served from another origin in development)', () => {
-  it('answers preflights and marks JSON responses as readable from any origin', async () => {
+  it('answers preflights, echoes the origin so the cookie may ride along, and stays open without one', async () => {
     const preflight = await fetch(`${run.http}/projects/x`, { method: 'OPTIONS', headers: { origin: 'http://localhost:5173', 'access-control-request-method': 'PUT' } })
     expect(preflight.status).toBe(204)
-    expect(preflight.headers.get('access-control-allow-origin')).toBe('*')
+    expect(preflight.headers.get('access-control-allow-origin')).toBe('http://localhost:5173')
+    expect(preflight.headers.get('access-control-allow-credentials')).toBe('true')
     expect(preflight.headers.get('access-control-allow-methods')).toMatch(/PUT/)
     expect(preflight.headers.get('access-control-allow-headers')).toMatch(/content-type/i)
-    const res = await json('GET', '/health')
-    expect(res.headers.get('access-control-allow-origin')).toBe('*')
+    const res = await fetch(`${run.http}/health`, { headers: { origin: 'http://localhost:5173' } })
+    expect(res.headers.get('access-control-allow-origin')).toBe('http://localhost:5173')
   })
 })
 
@@ -153,7 +162,7 @@ describe('a version change is atomic for the players (L5)', () => {
     await table.synced(2)
     const before = table.view!.components[0]!.faces!['front']
 
-    const rec = (await (await fetch(`${run.http}/projects/${id}`)).json()) as { rev: number; rows: { id: string; fields: Record<string, unknown> }[] }
+    const rec = (await (await json('GET', `/projects/${id}`)).json()) as { rev: number; rows: { id: string; fields: Record<string, unknown> }[] }
     const rows = rec.rows.map((r) => (r.id === 'dragon' ? { ...r, fields: { ...r.fields, title: 'Drakhona' } } : r))
     expect((await json('PUT', `/projects/${id}`, { ...project(), rows, rev: rec.rev })).status).toBe(200)
 
