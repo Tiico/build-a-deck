@@ -67,6 +67,18 @@ importers:
         specifier: ^4.20.0
         version: 4.23.13
 
+  packages/template:
+    dependencies:
+      '@byd/engine':
+        specifier: workspace:*
+        version: link:../engine
+      '@byd/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+      zod:
+        specifier: ^4.0.0
+        version: 4.5.4
+
   packages/web:
     dependencies:
       '@byd/engine':
