@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { Intent, VisibleComponentState } from '@byd/protocol'
 import { useTableClient } from '../table/useTableClient.js'
 import { hue } from '../table/hue.js'
+import { Texture, textureUrl } from '../table/Texture.js'
 import { HandStrip } from './HandStrip.js'
 import { PlaySheet } from './PlaySheet.js'
 import { TableSummary } from './TableSummary.js'
@@ -17,6 +18,7 @@ export function PlayerPage() {
   const name = params.get('name')
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
   const { client, view, status, activity } = useTableClient(sessionId && seat ? { url, sessionId, seat } : null)
+  const faces = url.replace(/^ws/, 'http')
 
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
   const [inspect, setInspect] = useState<VisibleComponentState | null>(null)
@@ -75,14 +77,15 @@ export function PlayerPage() {
         </button>
       </header>
       <TableSummary view={view} activity={activity} />
-      <HandStrip view={view} selected={selected} onTap={setInspect} onHold={toggle} onLift={setLifted} />
+      <HandStrip view={view} selected={selected} faces={faces} onTap={setInspect} onHold={toggle} onLift={setLifted} />
       <p className="byd-hint">
         {selected.size > 0 ? `${selected.size} valda · dra upp för att spela` : 'tryck = titta · dra upp = spela · håll = välj flera'}
       </p>
       {inspect && (
         <div className="byd-inspect" onClick={() => setInspect(null)}>
           <div data-inspect={inspect.id} data-face="front" style={{ ['--hue' as string]: hue(inspect.cardRef ?? '') }}>
-            {inspect.cardRef}
+            {textureUrl(faces, inspect) && <Texture src={textureUrl(faces, inspect) ?? ''} />}
+            <span>{inspect.cardRef}</span>
           </div>
         </div>
       )}

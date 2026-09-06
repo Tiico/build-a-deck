@@ -4,6 +4,7 @@ import type { Element, FaceTemplate } from '@byd/template'
 export type ProjectListener = (client: ProjectClient) => void
 export type SaveResult = { ok: true; rev: number } | { ok: false; reason: 'conflict' | 'missing' | string }
 export type Cell = string | number | boolean | null
+export type Textures = { total: number; done: number; failed: string[] }
 
 // The project as the editor holds it: the document, its revision, local edits, and saving with
 // optimistic concurrency (a stale save is a conflict to resolve, never a silent overwrite).
@@ -96,6 +97,25 @@ export class ProjectClient {
     const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/refresh`, { method: 'POST' })
     if (!res.ok) throw new Error(`could not refresh the table: ${res.status}`)
     return (await res.json()) as { version: string; seqs: number[] }
+  }
+
+  // Queues the textures of the saved project for a running table without switching it (L5),
+  // and says how far they have come. Idempotent: call it until done equals total.
+  async prepareTable(sessionId: string): Promise<Textures> {
+    if (this.dirty) {
+      const saved = await this.save()
+      if (!saved.ok) throw new Error(`could not save before preparing the table: ${saved.reason}`)
+    }
+    const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/prepare`, { method: 'POST' })
+    if (!res.ok) throw new Error(`could not prepare the table: ${res.status}`)
+    return (await res.json()) as Textures
+  }
+
+  // How far a table's textures have come (L5).
+  async textures(sessionId: string): Promise<Textures> {
+    const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/textures`)
+    if (!res.ok) throw new Error(`could not read texture status: ${res.status}`)
+    return (await res.json()) as Textures
   }
 
   private commit(doc: ProjectDoc): void {

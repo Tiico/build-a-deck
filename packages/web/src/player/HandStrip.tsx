@@ -1,6 +1,7 @@
 import { useRef } from 'react'
 import type { Snapshot, VisibleComponentState } from '@byd/protocol'
 import { hue } from '../table/hue.js'
+import { Texture, textureUrl } from '../table/Texture.js'
 import { HOLD_MS, begin, end, move, timeout, type Tracking } from './gesture.js'
 
 export type HandStripProps = {
@@ -9,11 +10,13 @@ export type HandStripProps = {
   onTap(card: VisibleComponentState): void
   onHold(card: VisibleComponentState): void
   onLift(card: VisibleComponentState): void
+  // The HTTP origin that serves /faces/:hash; without it cards show their names on colour.
+  faces?: string | undefined
 }
 
 // The seat's own hand as a horizontal strip of big, readable cards (K4).
 // The projection already guarantees that only this seat's hand is here to show.
-export function HandStrip({ view, selected, onTap, onHold, onLift }: HandStripProps) {
+export function HandStrip({ view, selected, onTap, onHold, onLift, faces }: HandStripProps) {
   const hand = view.components.filter((c) => c.zone === `hand:${view.seat}`)
   const tracking = useRef<{ card: VisibleComponentState; t: Tracking; timer: ReturnType<typeof setTimeout> } | null>(null)
 
@@ -58,6 +61,7 @@ export function HandStrip({ view, selected, onTap, onHold, onLift }: HandStripPr
           onPointerUp={up}
           onPointerCancel={up}
         >
+          {textureUrl(faces, c) && <Texture src={textureUrl(faces, c) ?? ''} />}
           <strong>{c.cardRef}</strong>
         </div>
       ))}

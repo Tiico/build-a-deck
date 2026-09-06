@@ -43,3 +43,19 @@ describe('gestures (K4)', () => {
     vi.useRealTimers()
   })
 })
+
+describe('textures in the hand (TUNN-SKIVA §5)', () => {
+  it('shows the front image of a card whose hash is known, by name otherwise', () => {
+    const { view } = buildScene()
+    const snapshot = view('A')
+    const hand = snapshot.components.filter((c) => c.zone === 'hand:A')
+    const first = hand[0]!
+    const second = hand[1]!
+    const withFaces = { ...snapshot, components: snapshot.components.map((c) => (c.id === first.id ? { ...c, faces: { front: 'a'.repeat(64), back: 'b'.repeat(64) } } : c)) }
+    render(<HandStrip view={withFaces} selected={new Set()} faces="http://faces.test" onTap={() => undefined} onHold={() => undefined} onLift={() => undefined} />)
+    const img = document.querySelector(`[data-hand-card="${first.id}"] img`) as HTMLImageElement
+    expect(img.src).toBe(`http://faces.test/faces/${'a'.repeat(64)}`)
+    expect(document.querySelector(`[data-hand-card="${second.id}"] img`)).toBeNull()
+    expect(document.querySelector(`[data-hand-card="${second.id}"]`)!.textContent).toContain('knight')
+  })
+})

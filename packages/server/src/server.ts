@@ -9,6 +9,8 @@ import type { RenderStore } from '@byd/render/queue'
 import type { TableHost } from './actor.js'
 import type { Deck, LogStore } from './store.js'
 import { ProjectDoc, deckFromProject, setupFromProject, type ProjectStore } from './projects.js'
+import { facesOf } from './faces.js'
+import { TEXTURE_DPI } from './actor.js'
 
 export type ServerOptions = { host: TableHost; store: LogStore; registry: TypeRegistry; renders?: RenderStore; projects?: ProjectStore }
 
@@ -193,6 +195,34 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     json(res, 201, { id, version: `rev-${rec.rev}` })
     return true
   }
+  // How far the textures of a table have come (L5): the editor shows a table only once its
+  // cards can be seen.
+  const textures = /^\/sessions\/([^/]+)\/textures$/.exec(url.pathname)
+  if (textures && req.method === 'GET') {
+    const actor = await opts.host.get(decodeURIComponent(textures[1] ?? ''))
+    if (!actor) {
+      json(res, 404, { error: 'unknown session' })
+      return true
+    }
+    json(res, 200, await progress(opts, actor.textureHashes()))
+    return true
+  }
+  // Before "Uppdatera bordet" (L5): queue the textures of the project's current rev without
+  // touching the table, and say how far they have come. The editor refreshes once all are done,
+  // so the switch is atomic for the players.
+  const prepare = /^\/sessions\/([^/]+)\/prepare$/.exec(url.pathname)
+  if (prepare && req.method === 'POST') {
+    const session = await opts.store.loadSession(decodeURIComponent(prepare[1] ?? ''))
+    const rec = session?.project ? await projects.load(session.project) : null
+    if (!session || !rec) {
+      json(res, 404, { error: session ? 'unknown project' : 'unknown session' })
+      return true
+    }
+    const compiled = facesOf(deckFromProject(rec), setupFromProject(rec), opts.registry, TEXTURE_DPI, Date.now())
+    if (opts.renders) for (const job of compiled.jobs) await opts.renders.enqueue(job)
+    json(res, 200, await progress(opts, compiled.jobs.map((j) => j.hash)))
+    return true
+  }
   // "Uppdatera bordet" on a running table (C7, L5): the project's current rev becomes a
   // version.change line, and the actor gets the new textures.
   const refresh = /^\/sessions\/([^/]+)\/refresh$/.exec(url.pathname)
@@ -222,6 +252,17 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     return true
   }
   return false
+}
+
+async function progress(opts: ServerOptions, hashes: readonly string[]): Promise<{ total: number; done: number; failed: string[] }> {
+  let done = 0
+  const failed: string[] = []
+  for (const hash of hashes) {
+    const status = opts.renders ? await opts.renders.status(hash) : null
+    if (status?.state === 'done') done++
+    else if (status?.state === 'failed') failed.push(hash)
+  }
+  return { total: hashes.length, done, failed }
 }
 
 function json(res: ServerResponse, status: number, body: unknown): void {

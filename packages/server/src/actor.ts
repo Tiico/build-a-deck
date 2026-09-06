@@ -86,6 +86,13 @@ export class TableActor {
     return this.state.seq
   }
 
+  // Every distinct texture this table needs (L5): the editor waits for them before opening it.
+  textureHashes(): string[] {
+    const all = new Set<string>()
+    for (const perFace of Object.values(this.faces ?? {})) for (const hash of Object.values(perFace)) all.add(hash)
+    return [...all]
+  }
+
   get idleMs(): number {
     return this.subscribers.size > 0 ? 0 : Date.now() - this.lastActivity
   }

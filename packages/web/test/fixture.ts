@@ -26,7 +26,7 @@ export function twoSeatSetup(): SetupDef {
   }
 }
 
-export type Running = { url: string; http: string; store: MemoryLogStore; projects: MemoryProjectStore; stop(): Promise<void>; restart(): Promise<void> }
+export type Running = { url: string; http: string; store: MemoryLogStore; projects: MemoryProjectStore; stop(): Promise<void>; restart(): Promise<void>; completeRenders(): Promise<number> }
 
 export async function startServer(): Promise<Running> {
   const store = new MemoryLogStore()
@@ -47,6 +47,17 @@ export async function startServer(): Promise<Running> {
     store,
     projects,
     stop,
+    // Marks every queued texture as rendered, with a stand-in for the PNG: what the render
+    // container would do, without Chromium.
+    completeRenders: async () => {
+      let n = 0
+      for (;;) {
+        const job = await renders.claim(Date.now())
+        if (!job) return n
+        await renders.complete(job.hash, new Uint8Array([137, 80, 78, 71]))
+        n++
+      }
+    },
     // Same port, same store: what a deploy on the box looks like from the client's side.
     restart: async () => {
       await stop()

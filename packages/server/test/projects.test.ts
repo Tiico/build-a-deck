@@ -128,3 +128,47 @@ describe('refreshing a running table from its project (C7, L5)', () => {
     expect((await json('POST', '/sessions/nope/refresh', {})).status).toBe(404)
   })
 })
+
+describe('texture readiness (L5)', () => {
+  it('reports how many of a table\'s textures are rendered, so the editor can wait before opening it', async () => {
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
+    const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
+    const before = await (await fetch(`${run.http}/sessions/${sessionId}/textures`)).json()
+    // Three cards, two faces each: the back is one shared texture, the fronts are three.
+    expect(before).toEqual({ total: 4, done: 0, failed: [] })
+    await run.renderAll()
+    const after = await (await fetch(`${run.http}/sessions/${sessionId}/textures`)).json()
+    expect(after).toEqual({ total: 4, done: 4, failed: [] })
+    expect((await fetch(`${run.http}/sessions/nope/textures`)).status).toBe(404)
+  }, 60_000)
+})
+
+describe('a version change is atomic for the players (L5)', () => {
+  it('prepare queues the next rev\'s textures without touching the table; refresh after that swaps everything at once', async () => {
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
+    const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
+    await run.renderAll()
+    const table = await WireClient.connect(run.base, sessionId, null)
+    await table.send(null, { v: 'draw', from: 'draw', to: 'table', count: 1 }, { v: 'flip', component: 'c0', face: 'front' })
+    await table.synced(2)
+    const before = table.view!.components[0]!.faces!['front']
+
+    const rec = (await (await fetch(`${run.http}/projects/${id}`)).json()) as { rev: number; rows: { id: string; fields: Record<string, unknown> }[] }
+    const rows = rec.rows.map((r) => (r.id === 'dragon' ? { ...r, fields: { ...r.fields, title: 'Drakhona' } } : r))
+    expect((await json('PUT', `/projects/${id}`, { ...project(), rows, rev: rec.rev })).status).toBe(200)
+
+    const prepared = (await (await json('POST', `/sessions/${sessionId}/prepare`, {})).json()) as { total: number; done: number; failed: string[] }
+    // One new front (the dragon's); the other three textures are already rendered.
+    expect(prepared).toEqual({ total: 4, done: 3, failed: [] })
+    expect(table.view!.components[0]!.faces!['front']).toBe(before)
+    expect(table.view!.seq).toBe(2)
+
+    await run.renderAll()
+    expect(await (await json('POST', `/sessions/${sessionId}/prepare`, {})).json()).toEqual({ total: 4, done: 4, failed: [] })
+    expect((await json('POST', `/sessions/${sessionId}/refresh`, {})).status).toBe(200)
+    await table.synced(3)
+    expect(table.view!.components[0]!.faces!['front']).not.toBe(before)
+    expect((await fetch(`${run.http}/faces/${table.view!.components[0]!.faces!['front']}`)).status).toBe(200)
+    await table.close()
+  }, 90_000)
+})

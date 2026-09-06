@@ -721,8 +721,10 @@ Följdkrav:
 
 ### L5. Editor till bord: uttrycklig knapp, förrenderade texturer
 
-Editorn visar vilka bord som kör en äldre version och en knapp som skickar `version.change`.
-Knappen är inaktiv tills texturerna för den nya versionen är renderade, så bytet är atomiskt för spelarna.
+Editorn har en knapp, "Uppdatera bordet", som startar ett bord från projektet eller skickar `version.change` till det bord den startat.
+Bytet är atomiskt för spelarna: knappen köar först den nya revisionens texturer (`POST /sessions/:id/prepare`), visar "renderar kort n/m", och skickar bytet först när alla är renderade (byggt 2026-09-06).
+Ett nystartat bord får sin länk först när dess texturer är klara (`GET /sessions/:id/textures`).
+Telefonens hand och inspektion visar samma texturer som bordet; saknas en texturs hash visas namnet på färg.
 Bordet visar att en nyare version finns.
 
 Motivering:

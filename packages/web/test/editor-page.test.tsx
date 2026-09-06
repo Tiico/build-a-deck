@@ -46,6 +46,8 @@ describe('EditorPage', () => {
     fireEvent.click(screen.getByRole('tab', { name: /kortvägg/i }))
     expect(await screen.findByText('Drakhona')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: /uppdatera bordet/i }))
+    await screen.findByText(/renderar kort/i)
+    await run.completeRenders()
     const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
     expect(link.href).toMatch(/\/table\?session=[0-9a-f-]{36}&mode=tv/)
     expect((await run.store.loadSession(new URL(link.href).searchParams.get('session')!))?.version).toBe('rev-2')
@@ -59,6 +61,8 @@ describe('the table follows the editor (C7, L5)', () => {
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('button', { name: /uppdatera bordet/i }))
+    await screen.findByText(/renderar kort/i)
+    await run.completeRenders()
     const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
     const sessionId = new URL(link.href).searchParams.get('session')!
 
@@ -71,7 +75,46 @@ describe('the table follows the editor (C7, L5)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /nytt bord/i }))
     await screen.findByText(/nytt bord startat/i)
-    const second = (screen.getByRole('link', { name: /öppna bordet/i }) as HTMLAnchorElement).href
+    const second = ((await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement).href
     expect(new URL(second).searchParams.get('session')).not.toBe(sessionId)
   }, 20_000)
+})
+
+describe('a table opens only once its cards can be seen (L5)', () => {
+  it('shows how the rendering comes along and withholds the link until every texture is done', async () => {
+    await run.projects.create('p1', projectDoc())
+    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('button', { name: /uppdatera bordet/i }))
+    expect(await screen.findByText(/renderar kort 0\/4/i)).toBeTruthy()
+    expect(screen.queryByRole('link', { name: /öppna bordet/i })).toBeNull()
+    expect(await run.completeRenders()).toBe(4)
+    expect(await screen.findByRole('link', { name: /öppna bordet/i })).toBeTruthy()
+    expect(screen.queryByText(/renderar kort/i)).toBeNull()
+  })
+})
+
+describe('"Uppdatera bordet" switches the table only when the new cards can be seen (L5)', () => {
+  it('renders first, then sends the version change; the table never sees a card without its texture', async () => {
+    await run.projects.create('p1', projectDoc())
+    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('button', { name: /uppdatera bordet/i }))
+    await screen.findByText(/renderar kort/i)
+    await run.completeRenders()
+    const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
+    const sessionId = new URL(link.href).searchParams.get('session')!
+
+    fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
+    fireEvent.change(screen.getByLabelText('dragon title'), { target: { value: 'Drakhona' } })
+    fireEvent.click(screen.getByRole('button', { name: /uppdatera bordet/i }))
+    expect(await screen.findByText(/renderar kort 3\/4/i)).toBeTruthy()
+    expect((await run.store.read(sessionId)).map((l) => l.intent.v)).toEqual([])
+    expect(await run.completeRenders()).toBe(1)
+    await screen.findByText(/bordet uppdaterat på rev-2/i)
+    expect((await run.store.read(sessionId)).map((l) => l.intent.v)).toEqual(['version.change'])
+    expect(screen.getByRole('link', { name: /öppna bordet/i })).toBeTruthy()
+  })
 })
