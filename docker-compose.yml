@@ -1,0 +1,34 @@
+# The stack from DRIFT.md, as far as it exists. Memory limits are the design constraint on 8 GB.
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: byd
+      POSTGRES_USER: byd
+      POSTGRES_PASSWORD: byd
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U byd -d byd"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    mem_limit: 1500m
+    restart: unless-stopped
+
+  app:
+    build: .
+    environment:
+      DATABASE_URL: postgres://byd:byd@postgres:5432/byd
+      PORT: "8080"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    stop_grace_period: 20s
+    mem_limit: 1g
+    restart: unless-stopped
+
+volumes:
+  pgdata:

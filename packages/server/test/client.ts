@@ -1,0 +1,82 @@
+import { ServerMessage, type Envelope, type Intent, type Snapshot } from '@byd/protocol'
+import { applyPatch } from '@byd/engine'
+
+// A test client that keeps every raw frame it received. The visibility assertions
+// are made on those frames — on what actually crossed the wire, not on a view.
+export class WireClient {
+  readonly frames: string[] = []
+  readonly messages: ServerMessage[] = []
+  view: Snapshot | null = null
+  private readonly ws: WebSocket
+  private waiters: { pred: (m: ServerMessage) => boolean; resolve: (m: ServerMessage) => void }[] = []
+  private envelopes = 0
+
+  private constructor(url: string) {
+    this.ws = new WebSocket(url)
+    this.ws.addEventListener('message', (ev) => {
+      const raw = typeof ev.data === 'string' ? ev.data : String(ev.data)
+      this.frames.push(raw)
+      const msg = ServerMessage.parse(JSON.parse(raw))
+      this.messages.push(msg)
+      if (msg.t === 'snapshot') this.view = msg.snapshot
+      if (msg.t === 'patch' && this.view) this.view = applyPatch(this.view, msg.patch)
+      this.waiters = this.waiters.filter((w) => {
+        if (!w.pred(msg)) return true
+        w.resolve(msg)
+        return false
+      })
+    })
+  }
+
+  static async connect(base: string, sessionId: string, seat: string | null): Promise<WireClient> {
+    const url = `${base}/sessions/${sessionId}${seat === null ? '' : `?seat=${seat}`}`
+    const c = new WireClient(url)
+    await new Promise<void>((resolve, reject) => {
+      c.ws.addEventListener('open', () => resolve(), { once: true })
+      c.ws.addEventListener('error', () => reject(new Error('ws error')), { once: true })
+    })
+    await c.waitFor((m) => m.t === 'snapshot' || m.t === 'error')
+    return c
+  }
+
+  waitFor(pred: (m: ServerMessage) => boolean, timeoutMs = 2000): Promise<ServerMessage> {
+    const hit = this.messages.find(pred)
+    if (hit) return Promise.resolve(hit)
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('timed out waiting for message')), timeoutMs)
+      this.waiters.push({
+        pred,
+        resolve: (m) => {
+          clearTimeout(timer)
+          resolve(m)
+        },
+      })
+    })
+  }
+
+  sendRaw(text: string): void {
+    this.ws.send(text)
+  }
+
+  // Sends one envelope and resolves with its ack or reject.
+  async send(seat: string | null, ...intents: Intent[]): Promise<ServerMessage> {
+    const env: Envelope = { id: `${seat ?? 'table'}-${this.envelopes++}`, seat, intents }
+    this.ws.send(JSON.stringify({ t: 'envelope', envelope: env }))
+    return this.waitFor((m) => (m.t === 'ack' || m.t === 'reject' || m.t === 'error') && m.id === env.id)
+  }
+
+  // Waits until the view has reached at least `seq`.
+  async synced(seq: number): Promise<Snapshot> {
+    if (this.view && this.view.seq >= seq) return this.view
+    await this.waitFor((m) => (m.t === 'patch' && m.patch.seq >= seq) || (m.t === 'snapshot' && m.snapshot.seq >= seq))
+    return this.view!
+  }
+
+  close(): Promise<void> {
+    if (this.ws.readyState === WebSocket.CLOSED) return Promise.resolve()
+    return new Promise((resolve) => {
+      this.ws.addEventListener('close', () => resolve(), { once: true })
+      if (this.ws.readyState !== WebSocket.CLOSING) this.ws.close()
+    })
+  }
+}
