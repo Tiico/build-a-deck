@@ -1,7 +1,7 @@
 import type { AddressInfo } from 'node:net'
 import type { Server } from 'node:http'
 import { CARD_STANDARD_63x88, TypeRegistry, type SetupDef } from '@byd/engine'
-import { TableHost, createServer, MemoryLogStore, MemoryProjectStore } from '../src/index.js'
+import { TableHost, createServer, MemoryLogStore, MemoryProjectStore, MemorySurveyStore } from '../src/index.js'
 import { MemoryRenderStore, Renderer, runWorker } from '@byd/render'
 
 export const registry = new TypeRegistry([CARD_STANDARD_63x88])
@@ -33,7 +33,7 @@ export async function start(): Promise<Running> {
   const renders = new MemoryRenderStore()
   const projects = new MemoryProjectStore()
   const host = new TableHost(registry, store, undefined, renders)
-  const server = createServer({ host, store, registry, renders, projects })
+  const server = createServer({ host, store, registry, renders, projects, surveys: new MemorySurveyStore() })
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
   const { port } = server.address() as AddressInfo
   return {

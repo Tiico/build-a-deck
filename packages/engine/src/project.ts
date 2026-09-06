@@ -21,34 +21,35 @@ export type FaceHashes = Record<string, Record<string, string>>
 
 // With a `history` the view also learns what undo means for its seat, and — while a rewind is
 // proposed — how the table looked at the target, projected for this same view (B, C).
-export function project(state: TableState, registry: TypeRegistry, seat: SeatId | null, faces?: FaceHashes, history?: History): Snapshot {
-  const { zones, components } = projectTable(state, registry, seat, faces)
+// `observer` (C8) sees every hand and every hidden pile; the view is still seatless.
+export function project(state: TableState, registry: TypeRegistry, seat: SeatId | null, faces?: FaceHashes, history?: History, observer = false): Snapshot {
+  const { zones, components } = projectTable(state, registry, seat, faces, observer)
   const seats = state.setup.seats.map((id) => ({ id, name: state.seats[id]?.name ?? null }))
   let rewind: RewindProposal | null = state.rewind
   if (rewind && history) {
-    const preview: TablePreview = projectTable(history.stateAt(rewind.toSeq), registry, seat, faces)
+    const preview: TablePreview = projectTable(history.stateAt(rewind.toSeq), registry, seat, faces, observer)
     rewind = { ...rewind, preview }
   }
   const undo = seat !== null && history ? undoTarget(history.lines(), seat) : null
   return { seq: state.seq, seat, floor: state.setup.floor, seats, zones, components, rewind, undo }
 }
 
-function projectTable(state: TableState, registry: TypeRegistry, seat: SeatId | null, faces?: FaceHashes): TablePreview {
+function projectTable(state: TableState, registry: TypeRegistry, seat: SeatId | null, faces?: FaceHashes, observer = false): TablePreview {
   const zones: ZoneView[] = []
   const components: VisibleComponentState[] = []
 
   const sortedZones = Object.values(state.zones).sort((a, b) => a.id.localeCompare(b.id))
   for (const z of sortedZones) {
-    if (canSeeZoneOrder(z, seat)) {
+    if (canSeeZoneOrder(z, seat, observer)) {
       zones.push({ mode: 'order', ...zoneBase(z), order: [...z.order] })
-      for (const id of z.order) components.push(view(state, registry, componentOf(state, id), seat, faces))
+      for (const id of z.order) components.push(view(state, registry, componentOf(state, id), seat, faces, observer))
     } else {
       zones.push({ mode: 'count', ...zoneBase(z), count: z.order.length })
       // A component the seat was explicitly granted knowledge of still appears,
       // even though its position inside the zone does not.
       for (const id of z.order) {
         const c = componentOf(state, id)
-        if (grantedTo(c, seat)) components.push(view(state, registry, c, seat, faces))
+        if (grantedTo(c, seat)) components.push(view(state, registry, c, seat, faces, observer))
       }
     }
   }
@@ -71,8 +72,8 @@ function grantedTo(c: ComponentInstance, seat: SeatId | null): boolean {
   return seat !== null && (c.shownTo.includes(seat) || c.peekedBy.includes(seat))
 }
 
-function view(state: TableState, registry: TypeRegistry, c: ComponentInstance, seat: SeatId | null, faces?: FaceHashes): VisibleComponentState {
-  const visible = canSeeFace(state, registry, c, seat)
+function view(state: TableState, registry: TypeRegistry, c: ComponentInstance, seat: SeatId | null, faces?: FaceHashes, observer = false): VisibleComponentState {
+  const visible = canSeeFace(state, registry, c, seat, observer)
   const v: VisibleComponentState = {
     id: c.id,
     type: c.type,

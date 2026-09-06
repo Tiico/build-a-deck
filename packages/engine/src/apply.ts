@@ -140,6 +140,9 @@ export function apply(prev: TableState, _registry: TypeRegistry, applied: Applie
     case 'session.end':
       state.ended = true
       break
+    case 'flag':
+      // A flagged moment (G3) is a mark in the log; the table is untouched.
+      break
     case 'version.change':
       changeVersion(state, it.to, it.components)
       break

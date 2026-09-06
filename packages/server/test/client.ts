@@ -28,8 +28,14 @@ export class WireClient {
     })
   }
 
-  static async connect(base: string, sessionId: string, seat: string | null): Promise<WireClient> {
-    const url = `${base}/sessions/${sessionId}${seat === null ? '' : `?seat=${seat}`}`
+  static async connect(base: string, sessionId: string, seat: string | null, as?: { role: 'observer'; name: string }): Promise<WireClient> {
+    const q = new URLSearchParams()
+    if (seat !== null) q.set('seat', seat)
+    if (as) {
+      q.set('role', as.role)
+      q.set('name', as.name)
+    }
+    const url = `${base}/sessions/${sessionId}${q.size > 0 ? `?${q.toString()}` : ''}`
     const c = new WireClient(url)
     await new Promise<void>((resolve, reject) => {
       c.ws.addEventListener('open', () => resolve(), { once: true })

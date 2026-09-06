@@ -5,6 +5,25 @@ import { Applied } from '@byd/protocol'
 import type { SetupDef } from '@byd/engine'
 import { SeqConflictError, type Deck, type LogStore, type SessionRecord } from './store.js'
 import type { ProjectDoc, ProjectRecord, ProjectStore } from './projects.js'
+import type { SurveyRecord, SurveyStore } from './surveys.js'
+
+export class PostgresSurveyStore implements SurveyStore {
+  constructor(private readonly sql: postgres.Sql) {}
+
+  async add(r: SurveyRecord): Promise<void> {
+    await this.sql`
+      insert into surveys (session_id, version, at, who, seat, observer, answers)
+      values (${r.sessionId}, ${r.version}, ${r.at}, ${r.who}, ${r.seat}, ${r.observer ?? false}, ${this.sql.json(r.answers as never)})
+    `
+  }
+
+  async list(sessionId: string): Promise<SurveyRecord[]> {
+    const rows = await this.sql<{ session_id: string; version: string; at: Date; who: string; seat: string | null; observer: boolean; answers: SurveyRecord['answers'] }[]>`
+      select session_id, version, at, who, seat, observer, answers from surveys where session_id = ${sessionId} order by at
+    `
+    return rows.map((r) => ({ sessionId: r.session_id, version: r.version, at: r.at.toISOString(), who: r.who, seat: r.seat, observer: r.observer, answers: r.answers }))
+  }
+}
 
 export class PostgresLogStore implements LogStore {
   constructor(private readonly sql: postgres.Sql) {}
@@ -13,9 +32,13 @@ export class PostgresLogStore implements LogStore {
     return new PostgresLogStore(postgres(url, { max: 5, onnotice: () => undefined }))
   }
 
-  // Projects share the connection and the schema.
+  // Projects and surveys share the connection and the schema.
   projects(): PostgresProjectStore {
     return new PostgresProjectStore(this.sql)
+  }
+
+  surveys(): PostgresSurveyStore {
+    return new PostgresSurveyStore(this.sql)
   }
 
   // Idempotent schema for the slice. DRIFT §7 moves this into a migration step before start.
@@ -67,6 +90,16 @@ export class PostgresLogStore implements LogStore {
         `
       }
     })
+  }
+
+  async staleSessions(olderThan: Date): Promise<string[]> {
+    const rows = await this.sql<{ id: string }[]>`
+      select s.id from sessions s
+      left join lateral (select at, intent from events e where e.session_id = s.id order by seq desc limit 1) last on true
+      where coalesce(last.at, s.created_at) < ${olderThan}
+        and coalesce(last.intent->>'v', '') <> 'session.end'
+    `
+    return rows.map((r) => r.id)
   }
 
   async read(sessionId: string): Promise<Applied[]> {

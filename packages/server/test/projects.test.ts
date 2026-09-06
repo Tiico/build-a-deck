@@ -172,3 +172,20 @@ describe('a version change is atomic for the players (L5)', () => {
     await table.close()
   }, 90_000)
 })
+
+describe('the survey after a session (G3)', () => {
+  it('accepts one structured answer per participant once the session has ended, tied to its version, and lists them', async () => {
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
+    const { id: sessionId, version } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; version: string }
+    const answer = { who: 'Ada', seat: 'A', answers: { fun: 4, clarity: 3, balance: 2, change: 'Draken är för stark' } }
+    expect((await json('POST', `/sessions/${sessionId}/survey`, answer)).status).toBe(409)
+
+    const table = await WireClient.connect(run.base, sessionId, null)
+    await table.send(null, { v: 'session.end' })
+    await table.close()
+    expect((await json('POST', `/sessions/${sessionId}/survey`, answer)).status).toBe(201)
+    expect((await json('POST', `/sessions/${sessionId}/survey`, { ...answer, answers: { fun: 9 } })).status).toBe(400)
+    const listed = (await (await fetch(`${run.http}/sessions/${sessionId}/surveys`)).json()) as unknown[]
+    expect(listed).toEqual([expect.objectContaining({ ...answer, version })])
+  })
+})

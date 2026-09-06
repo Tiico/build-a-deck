@@ -6,13 +6,14 @@ import { ClientMessage, type ServerMessage } from '@byd/protocol'
 import { validateSetup, type SetupDef, type TypeRegistry } from '@byd/engine'
 import { Template } from '@byd/template'
 import type { RenderStore } from '@byd/render/queue'
-import type { TableHost } from './actor.js'
+import type { Subscriber, TableHost } from './actor.js'
 import type { Deck, LogStore } from './store.js'
 import { ProjectDoc, deckFromProject, setupFromProject, type ProjectStore } from './projects.js'
+import { SurveyAnswer, type SurveyStore } from './surveys.js'
 import { facesOf } from './faces.js'
 import { TEXTURE_DPI } from './actor.js'
 
-export type ServerOptions = { host: TableHost; store: LogStore; registry: TypeRegistry; renders?: RenderStore; projects?: ProjectStore }
+export type ServerOptions = { host: TableHost; store: LogStore; registry: TypeRegistry; renders?: RenderStore; projects?: ProjectStore; surveys?: SurveyStore }
 
 const DeckBody = z.object({
   template: Template,
@@ -42,7 +43,9 @@ export function createServer(opts: ServerOptions): Server {
     }
     const sessionId = decodeURIComponent(match[1] ?? '')
     const seat = url.searchParams.get('seat')
-    wss.handleUpgrade(req, socket, head, (ws) => void attach(opts, ws, sessionId, seat))
+    // An observer (C8) is seatless and named; the name is what everyone else sees.
+    const observer = url.searchParams.get('role') === 'observer' ? (url.searchParams.get('name') ?? 'observatör').slice(0, 64) || 'observatör' : undefined
+    wss.handleUpgrade(req, socket, head, (ws) => void attach(opts, ws, sessionId, observer === undefined ? seat : null, observer))
   })
 
   // `close` waits for every connection to end, and WebSockets never end on their own:
@@ -113,7 +116,7 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
   }
 }
 
-async function attach(opts: ServerOptions, ws: WebSocket, sessionId: string, seat: string | null): Promise<void> {
+async function attach(opts: ServerOptions, ws: WebSocket, sessionId: string, seat: string | null, observer?: string): Promise<void> {
   const send = (message: ServerMessage) => {
     if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(message))
   }
@@ -123,7 +126,7 @@ async function attach(opts: ServerOptions, ws: WebSocket, sessionId: string, sea
     ws.close(4004, 'unknown session')
     return
   }
-  const sub = { seat, id: randomUUID(), send }
+  const sub: Subscriber = { seat, id: randomUUID(), send, ...(observer !== undefined ? { observer } : {}) }
   actor.subscribe(sub)
   ws.on('close', () => actor.unsubscribe(sub))
 
@@ -145,7 +148,20 @@ async function attach(opts: ServerOptions, ws: WebSocket, sessionId: string, sea
         send({ t: 'reject', id: msg.envelope.id, reason: 'envelope seat does not match connection seat' })
         return
       }
-      void actor.submit(msg.envelope).then(
+      // An observer may only flag (C8), and a flag says who flagged it: only the server stamps that.
+      if (observer !== undefined && msg.envelope.intents.some((it) => it.v !== 'flag')) {
+        send({ t: 'reject', id: msg.envelope.id, reason: 'an observer can only flag' })
+        return
+      }
+      const envelope = {
+        ...msg.envelope,
+        intents: msg.envelope.intents.map((it) => {
+          if (it.v !== 'flag') return it
+          const flag = { v: 'flag' as const, ...(it.note !== undefined ? { note: it.note } : {}) }
+          return observer !== undefined ? { ...flag, observer } : flag
+        }),
+      }
+      void actor.submit(envelope).then(
         (decision) => {
           if (decision.ok) send({ t: 'ack', id: msg.envelope.id, seqs: decision.applied.map((l) => l.seq) })
           else send({ t: 'reject', id: msg.envelope.id, reason: decision.reason })
@@ -197,6 +213,31 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     await opts.store.createSession({ id, version: `rev-${rec.rev}`, setup: setupFromProject(rec), deck: deckFromProject(rec), project: rec.id })
     await opts.host.get(id)
     json(res, 201, { id, version: `rev-${rec.rev}` })
+    return true
+  }
+  // The survey after a session (G3): one structured answer per participant, once the log is
+  // locked, tied to the version it ended on.
+  const survey = /^\/sessions\/([^/]+)\/survey$/.exec(url.pathname)
+  if (survey && req.method === 'POST' && opts.surveys) {
+    const sessionId = decodeURIComponent(survey[1] ?? '')
+    const actor = await opts.host.get(sessionId)
+    const session = await opts.store.loadSession(sessionId)
+    if (!actor || !session) {
+      json(res, 404, { error: 'unknown session' })
+      return true
+    }
+    if (!actor.ended) {
+      json(res, 409, { error: 'the session has not ended' })
+      return true
+    }
+    const answer = SurveyAnswer.parse(JSON.parse(await readBody(req)))
+    await opts.surveys.add({ sessionId, version: actor.version, at: new Date().toISOString(), ...answer })
+    json(res, 201, { ok: true })
+    return true
+  }
+  const surveys = /^\/sessions\/([^/]+)\/surveys$/.exec(url.pathname)
+  if (surveys && req.method === 'GET' && opts.surveys) {
+    json(res, 200, await opts.surveys.list(decodeURIComponent(surveys[1] ?? '')))
     return true
   }
   // How far the textures of a table have come (L5): the editor shows a table only once its

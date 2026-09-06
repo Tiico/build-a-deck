@@ -42,5 +42,8 @@ export const ServerMessage = z.discriminatedUnion('t', [
   // The server is going away; reconnect after a moment.
   z.object({ t: z.literal('bye'), reason: z.string() }),
   z.object({ t: z.literal('presence'), from: PresenceFrom, presence: Presence }),
+  // Who is watching (C8): sent to everyone on connect and whenever it changes. Observers are
+  // never invisible.
+  z.object({ t: z.literal('roster'), observers: z.array(z.object({ id: z.string().min(1), name: z.string().min(1) })) }),
 ])
 export type ServerMessage = z.infer<typeof ServerMessage>

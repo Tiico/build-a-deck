@@ -53,5 +53,9 @@ export function describeActivity(line: Activity, view: Snapshot): string {
       return `${who} godkände tillbakaspolningen`
     case 'rewind.reject':
       return `${who} avvisade tillbakaspolningen`
+    case 'flag': {
+      const flagger = it.observer ? `${it.observer} (observatör)` : who
+      return it.note ? `${flagger} flaggade: ${it.note}` : `${flagger} flaggade ögonblicket`
+    }
   }
 }

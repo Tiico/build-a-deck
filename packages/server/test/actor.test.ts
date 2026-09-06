@@ -99,5 +99,30 @@ function bind(store: MemoryLogStore): LogStore {
     loadSession: (id) => store.loadSession(id),
     append: (id, lines) => store.append(id, lines),
     read: (id) => store.read(id),
+    staleSessions: (d) => store.staleSessions(d),
   }
 }
+
+describe('abandoned tables (C9)', () => {
+  it('the store names sessions with no line for a while that have not ended; the host ends them for the group', async () => {
+    const store = new MemoryLogStore()
+    const t0 = Date.parse('2026-09-06T10:00:00.000Z')
+    await store.createSession({ id: 'old', version: 'v1', setup: twoSeatSetup() })
+    await store.createSession({ id: 'fresh', version: 'v1', setup: twoSeatSetup() })
+    await store.createSession({ id: 'done', version: 'v1', setup: twoSeatSetup() })
+    const at = (ms: number) => new Date(t0 + ms).toISOString()
+    await store.append('old', [{ seq: 1, batch: 'b1', at: at(0), by: null, intent: { v: 'setup.reset' } }])
+    await store.append('fresh', [{ seq: 1, batch: 'b2', at: at(3 * 3600_000), by: null, intent: { v: 'setup.reset' } }])
+    await store.append('done', [{ seq: 1, batch: 'b3', at: at(0), by: null, intent: { v: 'session.end' } }])
+
+    const stale = await store.staleSessions(new Date(t0 + 2 * 3600_000))
+    expect(stale.sort()).toEqual(['old'])
+
+    const host = new TableHost(registry, store, deps)
+    const ended = await host.endStale(new Date(t0 + 2 * 3600_000))
+    expect(ended).toEqual(['old'])
+    const log = await store.read('old')
+    expect(log.at(-1)).toMatchObject({ by: null, intent: { v: 'session.end' } })
+    expect(await store.staleSessions(new Date(t0 + 2 * 3600_000))).toEqual([])
+  })
+})

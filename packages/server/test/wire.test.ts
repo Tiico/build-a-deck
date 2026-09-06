@@ -285,3 +285,36 @@ describe('presence (K6): an ephemeral channel beside the log', () => {
     expect(await run.store.read(id)).toEqual([])
   })
 })
+
+describe('the observer (C8): sees everything, is seen by everyone, touches nothing', () => {
+  it('a connection with role=observer gets every hand and hidden pile; the roster tells the table who watches', async () => {
+    const id = await createSession(run.http)
+    const a = await connect(id, 'A')
+    const table = await connect(id, null)
+    await a.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
+
+    const eva = await WireClient.connect(run.base, id, null, { role: 'observer', name: 'Eva' })
+    clients.push(eva)
+    const hand = eva.view!.components.filter((c) => c.zone === 'hand:A')
+    expect(hand.map((c) => c.cardRef)).toEqual([expect.any(String), expect.any(String)])
+    expect(eva.view!.zones.find((z) => z.id === 'draw')).toMatchObject({ mode: 'order' })
+    const roster = await table.waitFor((m) => m.t === 'roster' && m.observers.length > 0)
+    expect(roster).toMatchObject({ t: 'roster', observers: [{ name: 'Eva' }] })
+    // A latecomer learns of her too.
+    const b = await connect(id, 'B')
+    expect((await b.waitFor((m) => m.t === 'roster'))).toMatchObject({ observers: [{ name: 'Eva' }] })
+
+    // She may flag, stamped with her name, and nothing else.
+    const flagged = await eva.send(null, { v: 'flag', note: 'Ada tvekade länge' })
+    expect(flagged.t).toBe('ack')
+    const log = await run.store.read(id)
+    expect(log.at(-1)).toMatchObject({ by: null, intent: { v: 'flag', note: 'Ada tvekade länge', observer: 'Eva' } })
+    expect((await eva.send(null, { v: 'draw', from: 'draw', to: 'table', count: 1 })).t).toBe('reject')
+    // A player cannot pose as an observer on a flag.
+    await a.send('A', { v: 'flag', observer: 'Eva' })
+    expect((await run.store.read(id)).at(-1)?.intent).toEqual({ v: 'flag' })
+
+    await eva.close()
+    expect(await table.waitFor((m) => m.t === 'roster' && m.observers.length === 0)).toBeTruthy()
+  })
+})

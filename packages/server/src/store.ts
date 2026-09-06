@@ -17,6 +17,9 @@ export type LogStore = {
   loadSession(id: string): Promise<SessionRecord | null>
   append(sessionId: string, lines: readonly Applied[]): Promise<void>
   read(sessionId: string): Promise<Applied[]>
+  // Sessions whose latest line (or creation, if none) is older than `olderThan` and that have
+  // not ended: what the timeout in C9 ends for a group that forgot.
+  staleSessions(olderThan: Date): Promise<string[]>
 }
 
 export class SeqConflictError extends Error {
@@ -30,11 +33,13 @@ export class SeqConflictError extends Error {
 export class MemoryLogStore implements LogStore {
   private readonly sessions = new Map<string, SessionRecord>()
   private readonly logs = new Map<string, Applied[]>()
+  private readonly createdAt = new Map<string, number>()
 
   async createSession(record: SessionRecord): Promise<void> {
     if (this.sessions.has(record.id)) throw new Error(`session ${record.id} already exists`)
     this.sessions.set(record.id, structuredClone(record))
     this.logs.set(record.id, [])
+    this.createdAt.set(record.id, Date.now())
   }
 
   async loadSession(id: string): Promise<SessionRecord | null> {
@@ -59,5 +64,16 @@ export class MemoryLogStore implements LogStore {
     const log = this.logs.get(sessionId)
     if (!log) throw new Error(`unknown session ${sessionId}`)
     return structuredClone(log)
+  }
+
+  async staleSessions(olderThan: Date): Promise<string[]> {
+    const out: string[] = []
+    for (const [id, log] of this.logs) {
+      const last = log.at(-1)
+      if (last?.intent.v === 'session.end') continue
+      const latest = last ? Date.parse(last.at) : (this.createdAt.get(id) ?? 0)
+      if (latest < olderThan.getTime()) out.push(id)
+    }
+    return out
   }
 }

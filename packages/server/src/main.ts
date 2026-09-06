@@ -3,6 +3,7 @@ import { TableHost } from './actor.js'
 import { createServer } from './server.js'
 import { MemoryLogStore, type LogStore } from './store.js'
 import { MemoryProjectStore, type ProjectStore } from './projects.js'
+import { MemorySurveyStore, type SurveyStore } from './surveys.js'
 import { PostgresLogStore } from './store-postgres.js'
 import { MemoryRenderStore, PostgresRenderStore, type RenderStore } from '@byd/render/queue'
 
@@ -10,16 +11,19 @@ import { MemoryRenderStore, PostgresRenderStore, type RenderStore } from '@byd/r
 //   DATABASE_URL   — Postgres; without it the log lives in memory and dies with the process.
 //   PORT           — default 8080
 //   IDLE_EVICT_MS  — unload tables with no connections for this long; default 30 min
+//   IDLE_END_MS    — end tables nobody has touched for this long (C9); default 24 h
 
 const port = Number(process.env['PORT'] ?? 8080)
 const idleEvictMs = Number(process.env['IDLE_EVICT_MS'] ?? 30 * 60 * 1000)
 const databaseUrl = process.env['DATABASE_URL']
+const idleEndMs = Number(process.env['IDLE_END_MS'] ?? 24 * 3600 * 1000)
 
 const registry = new TypeRegistry([CARD_STANDARD_63x88])
 
 let store: LogStore
 let renders: RenderStore
 let projects: ProjectStore
+let surveys: SurveyStore
 let closeStore: () => Promise<void> = async () => undefined
 if (databaseUrl) {
   const pg = PostgresLogStore.connect(databaseUrl)
@@ -30,6 +34,7 @@ if (databaseUrl) {
   store = pg
   renders = rq
   projects = pg.projects()
+  surveys = pg.surveys()
   closeStore = async () => {
     await pg.close()
     await rq.close()
@@ -39,11 +44,12 @@ if (databaseUrl) {
   store = new MemoryLogStore()
   renders = new MemoryRenderStore()
   projects = new MemoryProjectStore()
+  surveys = new MemorySurveyStore()
   console.log(JSON.stringify({ msg: 'store', kind: 'memory', warning: 'log is not durable; textures render nowhere' }))
 }
 
 const host = new TableHost(registry, store, undefined, renders)
-const server = createServer({ host, store, registry, renders, projects })
+const server = createServer({ host, store, registry, renders, projects, surveys })
 server.listen(port, () => console.log(JSON.stringify({ msg: 'listening', port })))
 
 const evictor = setInterval(() => {
@@ -51,6 +57,12 @@ const evictor = setInterval(() => {
     if (ids.length > 0) console.log(JSON.stringify({ msg: 'evicted', tables: ids }))
   })
 }, 60_000)
+// The timeout in C9: a table nobody has touched for a day ends for the group that forgot it.
+const sweeper = setInterval(() => {
+  void host.endStale(new Date(Date.now() - idleEndMs)).then((ids) => {
+    if (ids.length > 0) console.log(JSON.stringify({ msg: 'ended-stale', tables: ids }))
+  })
+}, 3600_000)
 
 // Drain (DRIFT §3): stop accepting, let in-flight envelopes commit, tell clients to
 // reconnect, then exit. The pull-based deploy on the box relies on this being quick.
@@ -60,6 +72,7 @@ async function drain(signal: string): Promise<void> {
   draining = true
   console.log(JSON.stringify({ msg: 'draining', signal }))
   clearInterval(evictor)
+  clearInterval(sweeper)
   await host.drain('server restarting')
   server.close()
   await closeStore()

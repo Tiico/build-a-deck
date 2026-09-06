@@ -146,6 +146,8 @@ function validate(state: TableState, registry: TypeRegistry, seat: string | null
     case 'setup.reset':
     case 'session.end':
       return null
+    case 'flag':
+      return it.note !== undefined && it.note.length > 280 ? 'a flag note is at most 280 characters' : null
     case 'version.change': {
       for (const spec of it.components) {
         if (!state.zones[spec.zone]) return `unknown zone ${spec.zone}`
@@ -189,7 +191,7 @@ function validateRewind(state: TableState, env: Envelope, it: Intent, history: H
 
 // The lines still in effect on the table: a restore takes everything after its target out of
 // the story, and neither talking about a rewind nor sitting down or leaving is play.
-const NOT_PLAY = new Set(['rewind.propose', 'rewind.reject', 'seat.claim', 'seat.release'])
+const NOT_PLAY = new Set(['rewind.propose', 'rewind.reject', 'seat.claim', 'seat.release', 'flag'])
 export function effectiveLines(log: readonly Applied[]): Applied[] {
   const out: Applied[] = []
   let cutoff = Infinity

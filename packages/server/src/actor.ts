@@ -27,7 +27,8 @@ export const TEXTURE_DPI = 150
 // decide → append (commit) → apply → broadcast makes the log the truth (DRIFT §3).
 // Nothing in memory is authoritative: an actor is rebuilt from its log on load.
 
-export type Subscriber = { seat: SeatId | null; id: string; send(message: ServerMessage): void }
+// `observer` (C8) names a watcher: seatless, sees everything, may only flag.
+export type Subscriber = { seat: SeatId | null; id: string; observer?: string; send(message: ServerMessage): void }
 
 export class TableActor {
   private queue: Promise<unknown> = Promise.resolve()
@@ -93,20 +94,40 @@ export class TableActor {
     return [...all]
   }
 
+  get ended(): boolean {
+    return this.state.ended
+  }
+
+  get version(): string {
+    return this.state.version
+  }
+
   get idleMs(): number {
     return this.subscribers.size > 0 ? 0 : Date.now() - this.lastActivity
   }
 
   subscribe(sub: Subscriber): void {
-    const snapshot = project(this.state, this.registry, sub.seat, this.faces, this.deps.history)
+    const snapshot = project(this.state, this.registry, sub.seat, this.faces, this.deps.history, sub.observer !== undefined)
     this.subscribers.set(sub, snapshot)
     sub.send({ t: 'snapshot', snapshot })
+    if (sub.observer !== undefined) this.broadcastRoster()
+    else sub.send({ t: 'roster', observers: this.observers() })
     this.lastActivity = Date.now()
+  }
+
+  private observers(): { id: string; name: string }[] {
+    return [...this.subscribers.keys()].flatMap((s) => (s.observer !== undefined ? [{ id: s.id, name: s.observer }] : []))
+  }
+
+  private broadcastRoster(): void {
+    const observers = this.observers()
+    for (const sub of this.subscribers.keys()) sub.send({ t: 'roster', observers })
   }
 
   unsubscribe(sub: Subscriber): void {
     if (!this.subscribers.has(sub)) return
     this.subscribers.delete(sub)
+    if (sub.observer !== undefined) this.broadcastRoster()
     // No cursor or carried card outlives its connection.
     this.relay(sub, { kind: 'drop' })
     this.relay(sub, { kind: 'away' })
@@ -150,7 +171,7 @@ export class TableActor {
 
     const activity = decision.applied.map(projectActivity)
     for (const [sub, previous] of this.subscribers) {
-      const next = project(this.state, this.registry, sub.seat, this.faces, this.deps.history)
+      const next = project(this.state, this.registry, sub.seat, this.faces, this.deps.history, sub.observer !== undefined)
       const patch = diff(previous, next)
       this.subscribers.set(sub, next)
       if (patch.ops.length > 0 || patch.seq !== previous.seq) sub.send({ t: 'patch', patch })
@@ -205,6 +226,18 @@ export class TableHost {
   async loaded(): Promise<TableActor[]> {
     const all = await Promise.all(this.actors.values())
     return all.filter((a): a is TableActor => a !== null)
+  }
+
+  // The timeout in C9: ends every table nobody has touched since `olderThan`, as the table.
+  async endStale(olderThan: Date): Promise<string[]> {
+    const ended: string[] = []
+    for (const id of await this.store.staleSessions(olderThan)) {
+      const actor = await this.get(id)
+      if (!actor) continue
+      const d = await actor.submit({ id: `end-${id}-${Date.now()}`, seat: null, intents: [{ v: 'session.end' }] })
+      if (d.ok) ended.push(id)
+    }
+    return ended
   }
 
   async drain(reason: string): Promise<void> {

@@ -3,9 +3,11 @@ import type { ComponentInstance, TableState, Zone } from './state.js'
 import type { TypeRegistry } from './typedef.js'
 import { zoneOf } from './state.js'
 
-// A `table` connection has seat === null and sees only what is public.
+// A `table` connection has seat === null and sees only what is public. An observer (C8) sees
+// everything, and everyone at the table knows she is there.
 
-export function canSeeZoneOrder(zone: Zone, seat: SeatId | null): boolean {
+export function canSeeZoneOrder(zone: Zone, seat: SeatId | null, observer = false): boolean {
+  if (observer) return true
   switch (zone.visibility) {
     case 'all':
       return true
@@ -21,7 +23,9 @@ export function canSeeFace(
   registry: TypeRegistry,
   component: ComponentInstance,
   seat: SeatId | null,
+  observer = false,
 ): boolean {
+  if (observer) return true
   if (component.publicOverride) return true
   if (seat !== null && (component.shownTo.includes(seat) || component.peekedBy.includes(seat))) return true
   const zone = zoneOf(state, component.zone)

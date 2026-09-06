@@ -30,3 +30,15 @@ create table if not exists projects (
   doc         jsonb not null,
   updated_at  timestamptz not null default now()
 );
+
+-- The survey after a session (G3): beside the log, tied to the version the session ended on.
+create table if not exists surveys (
+  id          bigserial primary key,
+  session_id  text not null references sessions(id) on delete cascade,
+  version     text not null,
+  at          timestamptz not null,
+  who         text not null,
+  seat        text,
+  observer    boolean not null default false,
+  answers     jsonb not null
+);
