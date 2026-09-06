@@ -1,0 +1,140 @@
+/* Table renderer — the felt table from prototype B, and its flat TV counterpart. */
+
+.byd-fit { width: 100vw; height: 100vh; overflow: hidden; }
+.byd-fit [data-tv] { height: 100vh; min-height: 0; }
+.byd-fit [data-tv] > main { min-height: 0; overflow: hidden; }
+
+.byd-table-frame { display: grid; place-items: center; width: 100%; height: 100%; }
+.byd-table-frame[data-mode='table'] {
+  height: 100%;
+  background: radial-gradient(ellipse at center, #2b2420 0%, #17120f 100%);
+  perspective: 1600px;
+  perspective-origin: 50% 30%;
+}
+.byd-table-frame[data-mode='table'] .byd-table-wood {
+  padding: 30px;
+  border-radius: 28px;
+  background: linear-gradient(135deg, #5a3b22, #3a2414);
+  box-shadow: 0 40px 80px rgba(0, 0, 0, 0.6), inset 0 2px 0 rgba(255, 255, 255, 0.08);
+  transform: rotateX(24deg);
+  transform-style: preserve-3d;
+}
+.byd-table-frame[data-mode='tv'] .byd-table-wood { padding: 0; }
+
+[data-table] {
+  border-radius: 16px;
+  background: radial-gradient(ellipse at 50% 40%, #2e6b46, #1f4a30 70%, #173a26);
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.45);
+  color: #1c1c1c;
+  font: 600 11px/1.2 system-ui, sans-serif;
+  user-select: none;
+}
+.byd-table-frame[data-mode='tv'] [data-table] {
+  background: #151924;
+  border: 1px solid #262b3a;
+  box-shadow: none;
+}
+
+/* Zones that are areas other than the floor get an outline and a label. */
+.byd-zone {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+}
+.byd-zone > span {
+  position: absolute; left: 8px; top: 4px;
+  font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: rgba(255, 255, 255, 0.4);
+}
+
+/* Cards: a coloured face or a striped back. */
+.byd-card {
+  box-sizing: border-box;
+  padding: 7px;
+  border-radius: 6px;
+  cursor: grab;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  background: hsl(var(--hue, 0) 40% 86%);
+}
+.byd-card[data-face='back'], .byd-back {
+  border: 2px solid #1f2b4a;
+  background: repeating-linear-gradient(45deg, #3a4d7a, #3a4d7a 4px, #2f4068 4px, #2f4068 8px);
+}
+
+/* Piles: a stack with thickness, a count, a label. */
+.byd-pile { box-sizing: border-box; }
+.byd-pile .byd-pile-top {
+  position: absolute; inset: 0;
+  border-radius: 6px; padding: 7px; box-sizing: border-box;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  background: hsl(var(--hue, 0) 40% 86%);
+}
+.byd-pile .byd-pile-top[data-face='back'] {
+  border: 2px solid #1f2b4a;
+  background: repeating-linear-gradient(45deg, #3a4d7a, #3a4d7a 4px, #2f4068 4px, #2f4068 8px);
+}
+.byd-pile[data-count='0'] .byd-pile-top { background: transparent; border: 2px dashed rgba(255, 255, 255, 0.25); }
+.byd-pile-count {
+  position: absolute; left: 50%; bottom: -22px; transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.55); color: #f3e9d6;
+  border-radius: 999px; padding: 2px 8px; font-size: 12px; white-space: nowrap;
+}
+
+/* Hands: a fan of backs and a name pill, oriented toward the seat's edge. */
+.byd-hand { position: absolute; width: 0; height: 0; }
+.byd-hand-fan { position: absolute; left: 0; top: 0; }
+.byd-hand-fan > i {
+  position: absolute; left: -27px; top: -25px; width: 54px; height: 75px;
+  border-radius: 6px; transform-origin: 50% 140%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+.byd-hand-name {
+  position: absolute; left: 50%; top: 50px; transform: translateX(-50%);
+  padding: 3px 10px; border-radius: 999px; background: var(--seat, #666); color: #fff;
+  font-size: 12px; font-weight: 700; letter-spacing: 1px; white-space: nowrap;
+}
+.byd-hand-name b { margin-left: 6px; opacity: 0.85; font-weight: 600; }
+
+/* Hold to inspect: private, large, flat. */
+.byd-inspect {
+  position: fixed; inset: 0; display: grid; place-items: center;
+  background: rgba(0, 0, 0, 0.35); z-index: 10;
+}
+.byd-inspect > div {
+  width: 252px; height: 352px; border-radius: 14px; padding: 18px; box-sizing: border-box;
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
+  font-size: 24px; font-weight: 700;
+  background: hsl(var(--hue, 0) 40% 86%);
+}
+.byd-inspect > div[data-face='back'] { background: #33405a; color: #ddd; text-align: center; }
+
+/* TV chrome — prototype C. */
+[data-tv] {
+  min-height: 100vh; background: #0d0f14; color: #e8eaf0; font-size: 16px;
+  display: grid; grid-template-columns: 1fr 340px; grid-template-rows: 64px 1fr 150px;
+}
+[data-tv] > header {
+  grid-column: 1 / 3; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 28px; border-bottom: 1px solid #232733;
+}
+[data-tv] > header > span { color: #7d8597; }
+[data-tv] > header > strong {
+  font-family: ui-monospace, monospace; font-size: 26px; letter-spacing: 6px;
+  background: #1a1e29; padding: 4px 14px; border-radius: 8px;
+}
+[data-tv] > main { display: grid; place-items: center; padding: 16px; }
+[data-tv] > aside { border-left: 1px solid #232733; padding: 20px; overflow: auto; }
+[data-tv] h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; margin: 0 0 10px; }
+[data-tv] ol { list-style: none; margin: 0; padding: 0; }
+[data-tv] ol li { padding: 6px 0; border-bottom: 1px solid #1a1e29; font-size: 14px; }
+[data-tv] > footer {
+  grid-column: 1 / 3; padding: 14px 28px; border-top: 1px solid #232733;
+}
+[data-tv] > footer h2 { display: none; }
+[data-tv] > footer ul { list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; gap: 14px; }
+[data-tv] > footer li {
+  background: #151924; border-radius: 14px; padding: 14px 18px;
+  border-left: 6px solid var(--seat, #7d8597); font-size: 20px; font-weight: 700;
+}
+[data-tv] > footer li span + span { display: block; color: #9aa3b8; font-size: 14px; font-weight: 400; }

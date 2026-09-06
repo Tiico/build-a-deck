@@ -569,6 +569,16 @@ Tryck-och-håll på ett kort visar det i full upplösning ovanpå bordet, bara f
 Ett dolt kort förstoras som baksida — samma ansiktsanrop som texturen, ingen ny synlighetsregel.
 Förstoringen är privat; "titta på det här" är peka-gesten i K6.
 
+### K9. Bordsvyns utseende: filtbord som renderare, sändningslayout som TV-omgivning (prototypat 2026-09-06)
+
+Tre prototyper byggdes och jämfördes: planritning, filtbord med perspektiv, och en mörk sändningslayout.
+Valet blev filtbordet som enda bordsrenderare — filt, perspektiv, högar med tjocklek, handfläktar med antal, orientering per kant — och sändningslayoutens omgivning i TV-läge: header med rumskod och QR, dock med platspaneler, aktivitetsflöde.
+Planritningen kan bli ett felsökningsläge senare.
+
+Följdkrav som prototypen avslöjade och som nu är införda:
+Snapshot bär platserna med namn och golvzonen.
+Servern skickar varje committad rad som redigerad aktivitet, utan utfall.
+
 ---
 
 ## L. Editorn (grillad 2026-09-06)
@@ -667,6 +677,7 @@ GDPR för gästdeltagare, särskilt enkätsvar och flaggor från personer utan k
 Fontlicensiering, som krockar med kravet i B3 att behålla fontfiler permanent.
 
 Teknik:
+Aktivitetsflödet är tomt vid anslutning — historik följer inte med snapshot, så en TV som ansluter mitt i ett spel ser inget av det som hänt. Nyligen aktivitet bör ingå i snapshot.
 Migreringsstrategi för händelseschemat — riktning beslutad i DRIFT.md avsnitt 7 (`schemaVersion` på varje rad, upcasters vid inläsning), detaljer kvar.
 Behörighetsroller i detalj: ägare, medredigerare, testledare, observatör.
 Hantering av missbruk av öppna rumskoder.

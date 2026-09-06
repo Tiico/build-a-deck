@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { Activity, Snapshot } from '@byd/protocol'
 import { describeActivity } from './describe.js'
+import { seatColor } from './seatColor.js'
 
 export type TvChromeProps = { view: Snapshot; activity: readonly Activity[]; roomCode: string; children: ReactNode }
 
@@ -31,8 +32,8 @@ export function TvChrome({ view, activity, roomCode, children }: TvChromeProps) 
       <footer>
         <h2 id="tv-seats">Platser</h2>
         <ul aria-labelledby="tv-seats">
-          {view.seats.map((s) => (
-            <li key={s.id}>
+          {view.seats.map((s, i) => (
+            <li key={s.id} style={{ ['--seat' as string]: seatColor(i) }}>
               <span>{s.name ?? s.id}</span> <span>{handCount(s.id)} kort</span>
             </li>
           ))}
