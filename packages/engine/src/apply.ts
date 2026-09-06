@@ -1,4 +1,4 @@
-import type { Applied, ComponentId, Outcome, SeatId, ZoneId } from '@byd/protocol'
+import type { Applied, ComponentId, ComponentSpec, Outcome, SeatId, ZoneId } from '@byd/protocol'
 import { handsReturnedBy } from './hands.js'
 import { materialise } from './setup.js'
 import {
@@ -138,10 +138,12 @@ export function apply(prev: TableState, _registry: TypeRegistry, applied: Applie
     case 'session.end':
       state.ended = true
       break
+    case 'version.change':
+      changeVersion(state, it.to, it.components)
+      break
     case 'undo.self':
     case 'rewind.propose':
     case 'rewind.confirm':
-    case 'version.change':
       throw new Error(`${it.v} is not implemented in the thin slice`)
   }
   settle(state)
@@ -216,6 +218,54 @@ function createPile(state: TableState, id: ZoneId, parent: Zone, at: { x: number
   if (parent.owner !== undefined) pile.owner = parent.owner
   state.zones[id] = pile
   return pile
+}
+
+// The deck follows the project (C7): per cardRef, missing copies are added face down at the
+// bottom of the zone the spec names, surplus copies are removed — from that zone first, then
+// from wherever they lie — and everything else stays exactly where it is.
+function changeVersion(state: TableState, to: string, components: readonly ComponentSpec[]): void {
+  const wanted = new Map<string, ComponentSpec[]>()
+  for (const spec of components) wanted.set(spec.cardRef, [...(wanted.get(spec.cardRef) ?? []), spec])
+  const have = new Map<string, ComponentInstance[]>()
+  for (const c of Object.values(state.components)) have.set(c.cardRef, [...(have.get(c.cardRef) ?? []), c])
+
+  for (const [cardRef, instances] of have) {
+    const specs = wanted.get(cardRef) ?? []
+    const surplus = instances.length - specs.length
+    if (surplus <= 0) continue
+    const home = specs[0]?.zone
+    const ordered = [...instances.filter((c) => c.zone === home), ...instances.filter((c) => c.zone !== home)]
+    for (const c of ordered.slice(0, surplus)) {
+      detach(state, c.id)
+      state.components = withoutKey(state.components, c.id)
+    }
+  }
+  for (const [cardRef, specs] of wanted) {
+    const missing = specs.length - (have.get(cardRef)?.length ?? 0)
+    for (let i = 0; i < missing; i++) {
+      const spec = specs[i] ?? specs[0]
+      if (!spec) continue
+      const id = `c${state.nextId++}`
+      const inst: ComponentInstance = {
+        id,
+        type: spec.type,
+        cardRef,
+        zone: spec.zone,
+        face: spec.face,
+        x: spec.x ?? 0,
+        y: spec.y ?? 0,
+        rot: spec.rot ?? 0,
+        shownTo: [],
+        peekedBy: [],
+        publicOverride: false,
+      }
+      if (spec.counter !== undefined) inst.counter = spec.counter
+      state.components[id] = inst
+      zoneOf(state, spec.zone).order.push(id)
+    }
+  }
+  state.version = to
+  state.setup = { ...state.setup, components: [...components] }
 }
 
 // A dynamic pile with one component left is no pile: the card returns to the parent area

@@ -136,10 +136,17 @@ function validate(state: TableState, registry: TypeRegistry, seat: string | null
     case 'setup.reset':
     case 'session.end':
       return null
+    case 'version.change': {
+      for (const spec of it.components) {
+        if (!state.zones[spec.zone]) return `unknown zone ${spec.zone}`
+        if (!registry.has(spec.type)) return `unknown component type ${spec.type.id}@${spec.type.version}`
+        if (!registry.get(spec.type).faces.includes(spec.face)) return `${spec.type.id} has no face ${spec.face}`
+      }
+      return null
+    }
     case 'undo.self':
     case 'rewind.propose':
     case 'rewind.confirm':
-    case 'version.change':
       return `${it.v} is not implemented in the thin slice`
   }
 }

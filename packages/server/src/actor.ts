@@ -12,11 +12,12 @@ import {
   type DecideDeps,
   type Decision,
   type FaceHashes,
+  type SetupDef,
   type TableState,
   type TypeRegistry,
 } from '@byd/engine'
 import type { RenderStore } from '@byd/render/queue'
-import { facesOf } from './faces.js'
+import { facesOf, type Deck } from './faces.js'
 import type { LogStore } from './store.js'
 
 export const TEXTURE_DPI = 150
@@ -39,7 +40,8 @@ export class TableActor {
     private readonly store: LogStore,
     private readonly deps: DecideDeps,
     // Texture hashes per card and face; undefined for a session without a deck.
-    private readonly faces: FaceHashes | undefined,
+    private faces: FaceHashes | undefined,
+    private readonly renders: RenderStore | undefined,
   ) {}
 
   static async load(id: string, registry: TypeRegistry, store: LogStore, deps?: DecideDeps, renders?: RenderStore): Promise<TableActor | null> {
@@ -54,7 +56,15 @@ export class TableActor {
       faces = compiled.faces
       if (renders) for (const job of compiled.jobs) await renders.enqueue(job)
     }
-    return new TableActor(id, state, registry, store, deps ?? defaultDeps(), faces)
+    return new TableActor(id, state, registry, store, deps ?? defaultDeps(), faces, renders)
+  }
+
+  // A newer deck (C7): recompute texture hashes and queue what is not rendered yet. Views
+  // pick the new hashes up with the next projection.
+  async refreshDeck(deck: Deck, setup: SetupDef): Promise<void> {
+    const compiled = facesOf(deck, setup, this.registry, TEXTURE_DPI, Date.now())
+    this.faces = compiled.faces
+    if (this.renders) for (const job of compiled.jobs) await this.renders.enqueue(job)
   }
 
   get seq(): number {

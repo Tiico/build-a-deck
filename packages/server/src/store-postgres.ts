@@ -30,18 +30,18 @@ export class PostgresLogStore implements LogStore {
 
   async createSession(record: SessionRecord): Promise<void> {
     await this.sql`
-      insert into sessions (id, version, setup, deck)
-      values (${record.id}, ${record.version}, ${this.sql.json(record.setup as never)}, ${record.deck ? this.sql.json(record.deck as never) : null})
+      insert into sessions (id, version, setup, deck, project)
+      values (${record.id}, ${record.version}, ${this.sql.json(record.setup as never)}, ${record.deck ? this.sql.json(record.deck as never) : null}, ${record.project ?? null})
     `
   }
 
   async loadSession(id: string): Promise<SessionRecord | null> {
-    const rows = await this.sql<{ id: string; version: string; setup: SetupDef; deck: Deck | null }[]>`
-      select id, version, setup, deck from sessions where id = ${id}
+    const rows = await this.sql<{ id: string; version: string; setup: SetupDef; deck: Deck | null; project: string | null }[]>`
+      select id, version, setup, deck, project from sessions where id = ${id}
     `
     const row = rows[0]
     if (!row) return null
-    return { id: row.id, version: row.version, setup: row.setup, ...(row.deck ? { deck: row.deck } : {}) }
+    return { id: row.id, version: row.version, setup: row.setup, ...(row.deck ? { deck: row.deck } : {}), ...(row.project ? { project: row.project } : {}) }
   }
 
   async append(sessionId: string, lines: readonly Applied[]): Promise<void> {

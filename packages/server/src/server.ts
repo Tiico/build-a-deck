@@ -188,9 +188,37 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       return true
     }
     const id = randomUUID()
-    await opts.store.createSession({ id, version: `rev-${rec.rev}`, setup: setupFromProject(rec), deck: deckFromProject(rec) })
+    await opts.store.createSession({ id, version: `rev-${rec.rev}`, setup: setupFromProject(rec), deck: deckFromProject(rec), project: rec.id })
     await opts.host.get(id)
     json(res, 201, { id, version: `rev-${rec.rev}` })
+    return true
+  }
+  // "Uppdatera bordet" on a running table (C7, L5): the project's current rev becomes a
+  // version.change line, and the actor gets the new textures.
+  const refresh = /^\/sessions\/([^/]+)\/refresh$/.exec(url.pathname)
+  if (refresh && req.method === 'POST') {
+    const sessionId = decodeURIComponent(refresh[1] ?? '')
+    const session = await opts.store.loadSession(sessionId)
+    if (!session) {
+      json(res, 404, { error: 'unknown session' })
+      return true
+    }
+    if (!session.project) {
+      json(res, 409, { error: 'session was not started from a project' })
+      return true
+    }
+    const rec = await projects.load(session.project)
+    const actor = rec ? await opts.host.get(sessionId) : null
+    if (!rec || !actor) {
+      json(res, 404, { error: 'unknown project' })
+      return true
+    }
+    const setup = setupFromProject(rec)
+    await actor.refreshDeck(deckFromProject(rec), setup)
+    const version = `rev-${rec.rev}`
+    const decision = await actor.submit({ id: randomUUID(), seat: null, intents: [{ v: 'version.change', to: version, components: setup.components }] })
+    if (!decision.ok) json(res, 409, { error: decision.reason })
+    else json(res, 200, { version, seqs: decision.applied.map((l) => l.seq) })
     return true
   }
   return false

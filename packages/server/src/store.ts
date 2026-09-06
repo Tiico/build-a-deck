@@ -9,7 +9,8 @@ export type { Deck }
 // that guard is what makes "commit before apply" a guarantee rather than a habit.
 
 // `deck` is what the table's textures are compiled from; a session without one plays with blank cards.
-export type SessionRecord = { id: string; version: GameVersionId; setup: SetupDef; deck?: Deck }
+// `project` is the project a table was started from, so it can be refreshed to a newer rev (C7).
+export type SessionRecord = { id: string; version: GameVersionId; setup: SetupDef; deck?: Deck; project?: string }
 
 export type LogStore = {
   createSession(record: SessionRecord): Promise<void>

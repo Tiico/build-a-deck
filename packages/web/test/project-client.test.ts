@@ -46,3 +46,17 @@ describe('ProjectClient', () => {
     expect((await run.store.loadSession(session.id))?.setup.components).toHaveLength(4)
   })
 })
+
+describe('refreshing a running table (C7, L5)', () => {
+  it('saves unsaved edits, then pushes the current rev to the table as version.change', async () => {
+    const created = await run.projects.create('p1', projectDoc())
+    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    const session = await client.startTable()
+    client.setCell('dragon', 'antal', 5)
+    const result = await client.refreshTable(session.id)
+    expect(result).toEqual({ version: 'rev-2', seqs: [1] })
+    expect(client.dirty).toBe(false)
+    const log = await run.store.read(session.id)
+    expect(log.map((l) => l.intent.v)).toEqual(['version.change'])
+  })
+})

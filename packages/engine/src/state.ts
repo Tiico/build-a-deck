@@ -1,5 +1,6 @@
 import type {
   ComponentId,
+  ComponentSpec,
   FaceId,
   GameVersionId,
   Geometry,
@@ -52,16 +53,7 @@ export type ComponentInstance = {
 
 export type Seat = { id: SeatId; name: string | null }
 
-export type ComponentSpec = {
-  type: TypeRef
-  cardRef: string
-  zone: ZoneId
-  face: FaceId
-  x?: number
-  y?: number
-  rot?: number
-  counter?: number
-}
+export type { ComponentSpec } from '@byd/protocol'
 
 export type SetupDef = {
   zones: ZoneDef[]

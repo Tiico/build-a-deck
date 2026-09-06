@@ -51,3 +51,27 @@ describe('EditorPage', () => {
     expect((await run.store.loadSession(new URL(link.href).searchParams.get('session')!))?.version).toBe('rev-2')
   }, 20_000)
 })
+
+describe('the table follows the editor (C7, L5)', () => {
+  it('after a table is started, "Uppdatera bordet" refreshes it instead of starting another; "Nytt bord" starts one', async () => {
+    await run.projects.create('p1', projectDoc())
+    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('button', { name: /uppdatera bordet/i }))
+    const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
+    const sessionId = new URL(link.href).searchParams.get('session')!
+
+    fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
+    fireEvent.change(screen.getByLabelText('dragon antal'), { target: { value: '4' } })
+    fireEvent.click(screen.getByRole('button', { name: /uppdatera bordet/i }))
+    await screen.findByText(/rev-2/)
+    expect((await run.store.read(sessionId)).map((l) => l.intent.v)).toEqual(['version.change'])
+    expect(screen.getAllByRole('link', { name: /öppna bordet/i })).toHaveLength(1)
+
+    fireEvent.click(screen.getByRole('button', { name: /nytt bord/i }))
+    await screen.findByText(/nytt bord startat/i)
+    const second = (screen.getByRole('link', { name: /öppna bordet/i }) as HTMLAnchorElement).href
+    expect(new URL(second).searchParams.get('session')).not.toBe(sessionId)
+  }, 20_000)
+})

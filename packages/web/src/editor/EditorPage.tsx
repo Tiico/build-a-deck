@@ -21,7 +21,7 @@ export function EditorPage() {
   const [element, setElement] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
-  const [table, setTable] = useState<{ id: string; version: string } | null>(null)
+  const [table, setTable] = useState<{ id: string; version: string; kind: 'new' | 'refreshed' } | null>(null)
 
   if (!projectId) return <p>Inget projekt angivet.</p>
   if (error) return <p role="alert">{error}</p>
@@ -37,7 +37,18 @@ export function EditorPage() {
   const startTable = async () => {
     try {
       const started = await client.startTable()
-      setTable(started)
+      setTable({ ...started, kind: 'new' })
+      setNotice(null)
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : String(err))
+    }
+  }
+  // Once a table exists, the primary button pushes the current rev to it (C7, L5).
+  const updateTable = async () => {
+    if (!table) return startTable()
+    try {
+      const { version } = await client.refreshTable(table.id)
+      setTable({ ...table, version, kind: 'refreshed' })
       setNotice(null)
     } catch (err) {
       setNotice(err instanceof Error ? err.message : String(err))
@@ -73,13 +84,18 @@ export function EditorPage() {
         <button type="button" onClick={() => void save()} disabled={!client.dirty || saving}>
           {saving ? 'Sparar…' : 'Spara'}
         </button>
-        <button type="button" className="byd-editor-primary" onClick={() => void startTable()}>
+        {table && (
+          <button type="button" onClick={() => void startTable()}>
+            Nytt bord
+          </button>
+        )}
+        <button type="button" className="byd-editor-primary" onClick={() => void updateTable()}>
           Uppdatera bordet
         </button>
       </header>
       {table && (
         <div className="byd-editor-table-link" role="status">
-          Bord startat på {table.version} — <a href={tableUrl(table.id)} target="_blank" rel="noreferrer">öppna bordet</a>
+          {table.kind === 'new' ? 'Nytt bord startat' : 'Bordet uppdaterat'} på {table.version} — <a href={tableUrl(table.id)} target="_blank" rel="noreferrer">öppna bordet</a>
         </div>
       )}
       <main>

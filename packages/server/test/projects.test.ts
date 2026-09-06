@@ -85,3 +85,46 @@ describe('cross-origin (the editor is served from another origin in development)
     expect(res.headers.get('access-control-allow-origin')).toBe('*')
   })
 })
+
+describe('refreshing a running table from its project (C7, L5)', () => {
+  it('applies the project\'s current rev as version.change: new copies in the deck, textures queued, cards on the table untouched', async () => {
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
+    const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
+    const table = await WireClient.connect(run.base, sessionId, null)
+    await table.send(null, { v: 'draw', from: 'draw', to: 'table', count: 1 })
+    await table.synced(1)
+    const onTable = table.view!.components[0]!.id
+
+    // The designer adds a card and a copy, then pushes to the table.
+    const next = project()
+    next.rows.push({ id: 'phoenix', fields: { title: 'Fenix', antal: 1 } })
+    next.rows[1] = { id: 'knight', fields: { title: 'Riddare', antal: 2 } }
+    expect((await json('PUT', `/projects/${id}`, { ...next, rev: 1 })).status).toBe(200)
+    const refreshed = await json('POST', `/sessions/${sessionId}/refresh`, {})
+    expect(refreshed.status).toBe(200)
+    expect(await refreshed.json()).toEqual({ version: 'rev-2', seqs: [2] })
+
+    await table.synced(2)
+    expect(table.view!.zones.find((z) => z.id === 'draw')).toMatchObject({ mode: 'count', count: 6 })
+    expect(table.view!.components.find((c) => c.id === onTable)).toMatchObject({ zone: 'table' })
+    const activity = table.messages.find((m) => m.t === 'activity' && m.lines.some((l) => l.intent.v === 'version.change'))
+    expect(activity).toBeDefined()
+
+    // The new card has a texture queued under its own hash.
+    await table.send(null, { v: 'draw', from: 'draw', to: 'table', count: 6 })
+    await table.synced(3)
+    const phoenix = table.view!.components.find((c) => c.zone === 'table' && c.faces?.['back'] && c !== undefined)
+    expect(phoenix).toBeDefined()
+    const hashes = new Set(table.view!.components.flatMap((c) => Object.values(c.faces ?? {})))
+    let queued = 0
+    for (const h of hashes) if ((await run.renders.status(h))?.state === 'queued') queued++
+    expect(queued).toBeGreaterThan(0)
+    await table.close()
+  })
+
+  it('refuses to refresh a session that was not started from a project', async () => {
+    await run.store.createSession({ id: 'loose', version: 'v1', setup: twoSeatSetup() })
+    expect((await json('POST', '/sessions/loose/refresh', {})).status).toBe(409)
+    expect((await json('POST', '/sessions/nope/refresh', {})).status).toBe(404)
+  })
+})

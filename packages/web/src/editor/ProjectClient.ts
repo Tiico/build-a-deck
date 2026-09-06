@@ -86,6 +86,18 @@ export class ProjectClient {
     return (await res.json()) as { id: string; version: string }
   }
 
+  // "Uppdatera bordet" on a running table (C7, L5): unsaved edits are saved first, then the
+  // table takes the current rev as a version change without stopping the game.
+  async refreshTable(sessionId: string): Promise<{ version: string; seqs: number[] }> {
+    if (this.dirty) {
+      const saved = await this.save()
+      if (!saved.ok) throw new Error(`could not save before refreshing the table: ${saved.reason}`)
+    }
+    const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/refresh`, { method: 'POST' })
+    if (!res.ok) throw new Error(`could not refresh the table: ${res.status}`)
+    return (await res.json()) as { version: string; seqs: number[] }
+  }
+
   private commit(doc: ProjectDoc): void {
     this.doc = doc
     this.dirty = true

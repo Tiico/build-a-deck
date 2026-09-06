@@ -1,5 +1,19 @@
 import { z } from 'zod'
-import { ComponentId, FaceId, GameVersionId, SeatId, ZoneId } from './ids.js'
+import { ComponentId, FaceId, GameVersionId, SeatId, TypeRef, ZoneId } from './ids.js'
+
+// A component as a setup lists it. `version.change` carries the whole new list so that the
+// line replays without the project it came from (C7).
+export const ComponentSpec = z.object({
+  type: TypeRef,
+  cardRef: z.string().min(1),
+  zone: ZoneId,
+  face: FaceId,
+  x: z.number().optional(),
+  y: z.number().optional(),
+  rot: z.number().optional(),
+  counter: z.number().int().optional(),
+})
+export type ComponentSpec = z.infer<typeof ComponentSpec>
 
 // A closed vocabulary of what a hand can do to a physical object.
 // No game semantics live here. The set is finite because physics is finite;
@@ -57,7 +71,7 @@ export const SessionIntent = z.discriminatedUnion('v', [
   z.object({ v: z.literal('undo.self') }),
   z.object({ v: z.literal('rewind.propose'), toSeq: z.number().int().nonnegative() }),
   z.object({ v: z.literal('rewind.confirm'), proposal: z.string().min(1) }),
-  z.object({ v: z.literal('version.change'), to: GameVersionId }),
+  z.object({ v: z.literal('version.change'), to: GameVersionId, components: z.array(ComponentSpec) }),
   z.object({ v: z.literal('session.end') }),
 ])
 export type SessionIntent = z.infer<typeof SessionIntent>
