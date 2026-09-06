@@ -224,10 +224,11 @@ Skillnaden ligger i sessionskontexten, inte i assetet.
 
 ```
 Project
+  ├── IconSet                (namn → asset, L2)
   └── GameVersion            (oföränderlig, B4; pinnar ComponentTypeDef-versioner, B3)
-        ├── ComponentSet     (korttabellens rader)
-        ├── Template         (HTML/CSS, E2)
-        └── Setup            (zoner, startuppställning, B5)
+        ├── ComponentSet     (korttabellens rader; systemkolumn `antal`, L4)
+        ├── Template         (elementträd per sida, bas + varianter, L1/L3/L7; kompileras till HTML/CSS, E2)
+        └── Setup            (zoner med geometri, floor, startuppställning, B5/K2)
 
 Session                      (låst till en GameVersion, C7 kan byta)
   ├── Seat[]                 (äger hand och privata zoner, C3)

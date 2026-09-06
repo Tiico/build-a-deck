@@ -571,6 +571,93 @@ Förstoringen är privat; "titta på det här" är peka-gesten i K6.
 
 ---
 
+## L. Editorn (grillad 2026-09-06)
+
+E1, E2 och E3 gav principerna; det här är hur de blir konkreta.
+
+### L1. Mallen är en begränsad elementmodell som kompileras till HTML/CSS
+
+Mallen är ett träd av typade element: textruta, bildyta, ikonrad, form, grupp, villkor.
+Varje element har position, storlek och stil ur en fast palett av egenskaper.
+Kompilatorn producerar HTML/CSS för DOM, textur och tryck — samma väg, enligt E2.
+Ingen rå-CSS-lucka.
+
+Motivering:
+Fysisk validering måste veta vad som är text, textanpassning måste veta vilka rutor som får krympa, och wizarden måste kunna generera en mall.
+Inget av det går mot fri HTML.
+
+Följdkrav:
+Allt en designer vill göra måste finnas som element eller egenskap — en önskelista som förvaltas för evigt.
+Mallen är data som versioneras, diffas och migreras.
+
+### L2. Inline-syntax i korttext: fyra konstruktioner
+
+`**fet**`, `*kursiv*`, `{ikon}`, blankrad för stycke.
+Ingen HTML, inga länkar, inga rubriker.
+`{namn}` slås upp i projektets ikonuppsättning, som fylls från CC0-biblioteket eller egna uppladdningar.
+Okänt ikonnamn renderas som synlig varning, aldrig som tomhet.
+
+Följdkrav:
+Parsern är liten och kan aldrig producera farlig HTML.
+Valideringen ser text och ikoner som separata saker.
+Tabeller och färgad text i en cell finns inte — det löses med mallens element.
+
+### L3. Varianter valda av en kolumn plus villkorade element, inga fria undantag
+
+Mallen har en bas och namngivna varianter som ärver och skriver över element.
+En kolumn väljer variant per rad.
+Varje element kan vara villkorat på att ett fält är ifyllt eller har ett visst värde.
+Ett kort kan aldrig avvika utanför sin variant.
+
+Motivering:
+Fria undantag per kort är där mall-och-data-modellen brukar dö: när 30 av 200 kort avviker finns ingen mall längre.
+Promokortet blir en variant med ett kort i, vilket är ärligt.
+
+### L4. Datatabellen: kolumntyper från registryt, systemkolumn `antal`
+
+Kolumntyper följer typregistryts `editorSchema`: text, tal, bild, boolean.
+En bildcell är en referens till en innehållsadresserad asset; vid import löses URL eller filnamn upp mot uppladdade filer.
+Varje rad har en systemkolumn `antal` med standard 1.
+Setup skapar så många instanser med samma `cardRef`; tryckmanifestet summerar.
+
+Följdkrav:
+`cardRef` är en rad, inte ett fysiskt kort.
+"Vilket av de tre" finns bara som instans-id i loggen.
+
+### L5. Editor till bord: uttrycklig knapp, förrenderade texturer
+
+Editorn visar vilka bord som kör en äldre version och en knapp som skickar `version.change`.
+Knappen är inaktiv tills texturerna för den nya versionen är renderade, så bytet är atomiskt för spelarna.
+Bordet visar att en nyare version finns.
+
+Motivering:
+Varje tangenttryck som versionsbyte skulle fragmentera loggen och få kort att flimra.
+Loggen ska få ett segment per medvetet beslut.
+
+### L6. Wizardens steg: namn, spelare, fält, ram, data, spela
+
+Spelets namn.
+Antal spelare, vilket ger platser och händer.
+Vilka fält korten har, med förslag som titel, kostnad, text, bild.
+Kortram ur ett galleri, som binder fälten automatiskt.
+Data: klistra in CSV, importera fil, eller fem tomma rader.
+Direkt till ett bord med standardzoner.
+
+Motivering:
+Fält före ram gör att ramen kan bindas utan manuell mappning; data sist landar i en färdig struktur.
+
+Villkoren från E3 gäller: wizarden skapar samma domänobjekt som editorn, och importen är ett steg i den.
+
+### L7. Baksidan är en egen mall per sida
+
+Typregistryts `faces` ger en mall per sida.
+Baksidan är en vanlig elementmall, oftast med en bild och utan bindningar, men kan ha bindningar och väljas per variant.
+
+Följdkrav:
+En baksida med bindningar ger unik textur per kort även bak och fördubblar renderjobben — editorn varnar när det sker.
+
+---
+
 ## I. Öppna frågor
 
 Ekonomi och juridik:
