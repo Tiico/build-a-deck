@@ -5,9 +5,11 @@ import { EditorPage } from './editor/EditorPage.js'
 import { ObserverPage } from './observer/ObserverPage.js'
 import { OnlinePage } from './online/OnlinePage.js'
 import { NewProjectPage } from './wizard/NewProjectPage.js'
+import { AccountPrototype } from './prototype/account/index.js'
 
 // Routing is a path check for now; a router arrives with the first real page.
 export function App() {
+  if (location.pathname.startsWith('/prototype/account')) return <AccountPrototype />
   if (location.pathname === '/table') return <TablePage />
   if (location.pathname === '/play') return <PlayerPage />
   if (location.pathname === '/join') return <JoinPage />
