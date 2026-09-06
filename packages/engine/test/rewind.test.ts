@@ -118,3 +118,31 @@ describe('rewind.propose / rewind.confirm: going back is a joint decision', () =
     expect(JSON.parse(JSON.stringify(h.log))).toEqual(h.log)
   })
 })
+
+describe('rewind.reject: a proposal can be turned down or withdrawn', () => {
+  it('clears the proposal for everyone, whether the other seat, the table or the proposer says no', () => {
+    const h = new Harness()
+    h.do('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    const p = h.do('A', { v: 'rewind.propose', toSeq: 0 })
+    h.do('B', { v: 'rewind.reject', proposal: p.batch })
+    expect(h.view(null).rewind).toBeNull()
+    expect(h.zone('hand:A')).toHaveLength(1)
+    expect(h.try('B', { v: 'rewind.confirm', proposal: p.batch }).ok).toBe(false)
+
+    const p2 = h.do('A', { v: 'rewind.propose', toSeq: 0 })
+    expect(h.try('A', { v: 'rewind.reject', proposal: 'stale' }).ok).toBe(false)
+    h.do('A', { v: 'rewind.reject', proposal: p2.batch })
+    expect(h.state.rewind).toBeNull()
+  })
+})
+
+describe('talking about a rewind is not playing', () => {
+  it('a proposal or a rejection does not contest anyone\'s undo, and is not among the lines a rewind takes back', () => {
+    const h = new Harness()
+    h.do('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    const p = h.do('B', { v: 'rewind.propose', toSeq: 0 })
+    h.do('A', { v: 'rewind.reject', proposal: p.batch })
+    h.do('A', { v: 'undo.self' })
+    expect(h.zone('hand:A')).toHaveLength(0)
+  })
+})

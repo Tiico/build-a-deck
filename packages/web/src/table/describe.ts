@@ -46,8 +46,12 @@ export function describeActivity(line: Activity, view: Snapshot): string {
     case 'version.change':
       return `Spelet uppdaterades till ${it.to}`
     case 'undo.self':
+      return `${who} ångrade sitt senaste drag`
     case 'rewind.propose':
+      return `${who} föreslog att spola tillbaka`
     case 'rewind.confirm':
-      return `${who}: ${it.v}`
+      return `${who} godkände tillbakaspolningen`
+    case 'rewind.reject':
+      return `${who} avvisade tillbakaspolningen`
   }
 }

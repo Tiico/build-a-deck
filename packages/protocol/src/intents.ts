@@ -71,6 +71,7 @@ export const SessionIntent = z.discriminatedUnion('v', [
   z.object({ v: z.literal('undo.self') }),
   z.object({ v: z.literal('rewind.propose'), toSeq: z.number().int().nonnegative() }),
   z.object({ v: z.literal('rewind.confirm'), proposal: z.string().min(1) }),
+  z.object({ v: z.literal('rewind.reject'), proposal: z.string().min(1) }),
   z.object({ v: z.literal('version.change'), to: GameVersionId, components: z.array(ComponentSpec) }),
   z.object({ v: z.literal('session.end') }),
 ])

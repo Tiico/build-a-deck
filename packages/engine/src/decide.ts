@@ -155,6 +155,7 @@ function validate(state: TableState, registry: TypeRegistry, seat: string | null
     case 'undo.self':
     case 'rewind.propose':
     case 'rewind.confirm':
+    case 'rewind.reject':
       // Checked against the log, not the working state: see validateRewind.
       return null
   }
@@ -163,7 +164,7 @@ function validate(state: TableState, registry: TypeRegistry, seat: string | null
 // Rewinds (B) are about the log, so they cannot share an envelope with anything else, and
 // they are validated against the committed state rather than a working one.
 function validateRewind(state: TableState, env: Envelope, it: Intent, history: History): string | null {
-  if (it.v !== 'undo.self' && it.v !== 'rewind.propose' && it.v !== 'rewind.confirm') return null
+  if (it.v !== 'undo.self' && it.v !== 'rewind.propose' && it.v !== 'rewind.confirm' && it.v !== 'rewind.reject') return null
   if (env.intents.length > 1) return `${it.v} must be the only intent in its envelope`
   switch (it.v) {
     case 'undo.self': {
@@ -179,10 +180,13 @@ function validateRewind(state: TableState, env: Envelope, it: Intent, history: H
       if (state.rewind.by === env.seat) return 'a rewind must be confirmed by someone else at the table'
       return null
     }
+    case 'rewind.reject':
+      return state.rewind && state.rewind.id === it.proposal ? null : `no open rewind proposal ${it.proposal}`
   }
 }
 
-// The lines still in effect: a restore takes everything after its target out of the story.
+// The lines still in effect on the table: a restore takes everything after its target out of
+// the story, and talking about a rewind (proposing, rejecting) never was part of it.
 export function effectiveLines(log: readonly Applied[]): Applied[] {
   const out: Applied[] = []
   let cutoff = Infinity
@@ -193,6 +197,7 @@ export function effectiveLines(log: readonly Applied[]): Applied[] {
       cutoff = o.toSeq
       continue
     }
+    if (line.intent.v === 'rewind.propose' || line.intent.v === 'rewind.reject') continue
     out.unshift(line)
   }
   return out

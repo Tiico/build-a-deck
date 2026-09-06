@@ -145,6 +145,9 @@ export function apply(prev: TableState, _registry: TypeRegistry, applied: Applie
     case 'rewind.propose':
       state.rewind = { id: applied.batch, toSeq: it.toSeq, by: applied.by }
       break
+    case 'rewind.reject':
+      state.rewind = null
+      break
     case 'undo.self':
     case 'rewind.confirm': {
       // The outcome already holds the table as restored and reshuffled (decide did that);
