@@ -167,3 +167,27 @@ describe('fit attributes for the DOM (E6, one algorithm everywhere)', () => {
     expect(s.html).toMatch(/<div data-element="body" data-fit="shrink" data-size-pt="9" data-min-pt="8">/)
   })
 })
+
+describe('scope (many cards on one page)', () => {
+  it('prefixes every selector with the scope so two cards with different fitted sizes do not collide', () => {
+    const out = compile({ type: CARD_STANDARD_63x88, face, row: { title: 'x', body: '' }, icons, scope: '#c7' })
+    expect(out.css).toContain('#c7 [data-card]{')
+    expect(out.css).toContain('#c7 [data-element="title"]{')
+    expect(out.css).toContain('#c7 [data-element]{position:absolute')
+    expect(out.css).toContain('#c7 .byd-icon{')
+    expect(out.css).not.toMatch(/(^|\n)\[data-/)
+    expect(out.html).toContain('<div data-card')
+  })
+})
+
+describe('pips (L2 addendum)', () => {
+  it('renders a bare number in braces as a pip, not as a missing icon, unless the icon set has that name', () => {
+    const out = compile({ type: CARD_STANDARD_63x88, face, row: { title: 'x', body: 'Betala {2} och {eld}' }, icons: { eld: icons.eld } })
+    expect(out.html).toContain('<span class="byd-pip">2</span>')
+    expect(out.warnings).toEqual([])
+    expect(out.css).toContain('.byd-pip{')
+    const named = compile({ type: CARD_STANDARD_63x88, face, row: { title: 'x', body: '{2}' }, icons: { ...icons, '2': 'data:two' } })
+    expect(named.html).toContain('<img class="byd-icon" src="data:two" alt="2">')
+    expect(named.html).not.toContain('byd-pip')
+  })
+})

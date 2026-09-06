@@ -637,6 +637,7 @@ Mallen är data som versioneras, diffas och migreras.
 Ingen HTML, inga länkar, inga rubriker.
 `{namn}` slås upp i projektets ikonuppsättning, som fylls från CC0-biblioteket eller egna uppladdningar.
 Okänt ikonnamn renderas som synlig varning, aldrig som tomhet.
+Ett rent tal i klamrar, `{2}`, renderas som en pip — talet i en cirkel i textens färg — utan varning; finns en ikon med det namnet i uppsättningen vinner ikonen (tillägg 2026-09-06).
 
 Följdkrav:
 Parsern är liten och kan aldrig producera farlig HTML.

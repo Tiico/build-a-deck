@@ -15,6 +15,8 @@ export type CompileInput = {
   bleed?: boolean
   // Text measurement (E6). Defaults to a glyph-width estimate; inject Chromium to measure for real.
   measure?: Measure
+  // A selector prefix for every rule, so many cards (each fitted differently) can share a page.
+  scope?: string
 }
 
 // Compiles one face of one card to HTML and CSS. The same output feeds the editor preview,
@@ -22,7 +24,8 @@ export type CompileInput = {
 export function compile(input: CompileInput): Compiled {
   const warnings: Warning[] = []
   const html: string[] = []
-  const css: string[] = []
+  const rules: string[] = []
+  const css = { push: (rule: string) => rules.push(input.scope ? `${input.scope} ${rule}` : rule) }
   const { physical } = input.type
   const bleed = input.bleed ? input.type.print.bleedMm : 0
 
@@ -31,13 +34,16 @@ export function compile(input: CompileInput): Compiled {
   css.push(`[data-element] p{margin:0;}[data-element] p+p{margin-top:0.5em;}`)
   css.push(`.byd-icon{height:1em;width:auto;vertical-align:-0.15em;}`)
   css.push(`.byd-icon-missing{color:#c00;background:#fee;font-weight:700;}`)
+  css.push(`.byd-pip{display:inline-block;min-width:1.15em;height:1.15em;line-height:1.15em;border-radius:50%;text-align:center;font-weight:700;font-size:0.85em;border:0.12em solid currentColor;vertical-align:-0.15em;padding:0 0.1em;box-sizing:border-box;}`)
 
   for (const el of elementsFor(input.face, input.row, warnings)) render(el, bleed, bleed, input, html, css, warnings)
 
-  return { html: `<div data-card data-bleed="${bleed}">${html.join('')}</div>`, css: css.join('\n'), warnings }
+  return { html: `<div data-card data-bleed="${bleed}">${html.join('')}</div>`, css: rules.join('\n'), warnings }
 }
 
-function render(el: Element, dx: number, dy: number, input: CompileInput, html: string[], css: string[], warnings: Warning[]): void {
+type Css = { push(rule: string): void }
+
+function render(el: Element, dx: number, dy: number, input: CompileInput, html: string[], css: Css, warnings: Warning[]): void {
   switch (el.kind) {
     case 'text': {
       const value = resolve(el.bind, input.row)
@@ -147,6 +153,8 @@ function renderNode(n: InlineNode, element: string, icons: Record<string, string
       return `<em>${n.children.map((c) => renderNode(c, element, icons, warnings)).join('')}</em>`
     case 'icon': {
       const src = icons[n.name]
+      // A bare number is a pip (L2 addendum) unless the icon set names it.
+      if (src === undefined && /^\d+$/.test(n.name)) return `<span class="byd-pip">${escape(n.name)}</span>`
       if (src === undefined) {
         warnings.push({ element, code: 'unknown-icon', detail: n.name })
         return `<span class="byd-icon-missing">{${escape(n.name)}}</span>`
