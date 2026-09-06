@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import type { Intent } from '@byd/protocol'
 import './table.css'
 import { TableRenderer, type TableMode } from './TableRenderer.js'
 import { TvChrome } from './TvChrome.js'
@@ -13,7 +14,7 @@ export function TablePage() {
   const mode: TableMode = params.get('mode') === 'tv' ? 'tv' : 'table'
   const roomCode = params.get('code') ?? sessionId ?? ''
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
-  const { view, status, activity } = useTableClient(sessionId ? { url, sessionId, seat: null } : null)
+  const { client, view, status, activity } = useTableClient(sessionId ? { url, sessionId, seat: null } : null)
 
   const joinUrl = useMemo(() => {
     if (!sessionId) return undefined
@@ -29,7 +30,9 @@ export function TablePage() {
   // A proposed rewind (C): the screen shows the table as it was at the target and who is waited
   // on. It has no buttons — the phones decide.
   const proposal = view.rewind
-  const rendered = <TableRenderer view={previewOf(view)} mode={mode} faces={url.replace(/^ws/, 'http')} />
+  // The table screen plays as the table itself (seat null): whoever stands at it acts for the group.
+  const onAct = client ? (intents: Intent[]) => void client.send(...intents) : undefined
+  const rendered = <TableRenderer view={previewOf(view)} mode={mode} faces={url.replace(/^ws/, 'http')} onAct={proposal ? undefined : onAct} />
   const table = proposal?.preview ? (
     <div className="byd-rewind-preview" data-rewind-preview={proposal.id}>
       {rendered}

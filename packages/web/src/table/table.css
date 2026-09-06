@@ -166,3 +166,26 @@
   background: rgba(23, 26, 35, 0.94); border: 1px solid #3b4358;
 }
 .byd-rewind-label > span:first-child { color: #ffd98a; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; }
+
+/* Direct manipulation (K1, K2, C): the frame is the anchor for pointer geometry. */
+.byd-table-frame { position: relative; }
+.byd-table-frame[data-playable] .byd-card, .byd-table-frame[data-playable] .byd-pile-top { touch-action: none; cursor: grab; }
+.byd-table-frame[data-playable] .byd-pile-count[data-handle] { cursor: grab; touch-action: none; padding: 3px 10px; border: 1px solid rgba(255, 255, 255, 0.3); }
+.byd-card[data-dragging], .byd-pile[data-dragging] { z-index: 60; }
+.byd-card[data-dragging] { box-shadow: 0 18px 30px rgba(0, 0, 0, 0.6); scale: 1.06; cursor: grabbing; }
+.byd-pile[data-count='0'] .byd-pile-top { cursor: default; }
+
+/* The ring of verbs (C). */
+.byd-radial-backdrop { position: fixed; inset: 0; z-index: 40; }
+.byd-radial { position: fixed; width: 0; height: 0; }
+.byd-radial::before { content: ''; position: absolute; left: -46px; top: -46px; width: 92px; height: 92px; border-radius: 50%; background: rgba(23, 26, 35, 0.55); border: 1px solid rgba(255, 255, 255, 0.15); }
+.byd-radial button {
+  position: absolute; transform: translate(-50%, -50%); width: 66px; height: 66px; border-radius: 50%; border: 1px solid #3b4358;
+  background: #171a23; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+  display: grid; place-items: center; line-height: 1.1; text-align: center; touch-action: none;
+}
+.byd-radial button:hover { background: #7dd3a0; color: #0b2a18; }
+.byd-radial button:disabled { opacity: 0.35; cursor: default; }
+.byd-radial button[data-kind='no'] { background: #2a1d20; color: #ff9a9a; }
+.byd-inspect img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; position: absolute; inset: 0; }
+.byd-inspect > div { position: relative; overflow: hidden; }

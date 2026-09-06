@@ -638,6 +638,30 @@ Kuvert-id blir loggens batch och måste vara unikt per session, inte per anslutn
 Aktören håller sin logg i minnet för att kunna se bakåt.
 Utan andra sittande kan ett kontesterat förslag bara dras tillbaka; bordsskärmen får aldrig bekräfta.
 
+### K14. Bordet spelas direkt: dra, släpp, håll för en ring med verb (prototypat 2026-09-06)
+
+K1 och K2 gav reglerna; det här är hur handen gör dem.
+Lösa kort, översta kortet i en hög och hela högen (i etiketten) dras med pekare eller finger.
+Släpp på ett löst kort staplar, på en hög lägger överst, i en zonrektangel flyttar dit, annars fri placering på golvet.
+Översta kortet ur en hög går samma väg som en `split`; en hel hög som `movePile`.
+Bordsskärmen agerar som bordet (plats null): den som står vid den handlar för gruppen.
+
+Det en dragning inte kan säga nås genom att hålla på kort eller hög: en ring med verb öppnas runt fingret, man glider till ett och släpper.
+Kort: Vänd, Vrid, Titta, Avslöja.
+Hög: Blanda, Dra 1, Dela på hälften, Vänd översta, Titta.
+K8:s håll-för-att-titta är "Titta" i ringen.
+Ingen markering finns på bordet; flerval hör till telefonen (K4).
+
+Motivering:
+Samma gester fungerar med finger på en TV-platta och mus på distans, kräver inget tillstånd och lämnar bordet rent.
+En verktygsrad förutsätter en markering, som på ett delat bord är någons och ingens.
+
+Följdkrav:
+Bordsläget lutar bordet (`rotateX` under perspektiv), så pekaren projiceras exakt tillbaka på bordsplanet; matten ligger i `geometry.ts` med test.
+Att dra översta kortet ur en dold hög och släppa det på ett löst kort kan inte staplas: tråden ger inget id. Kortet landar där det släpps. Ett `stack` med hög som källa vore rätt tillägg om det behövs.
+Att vända översta kortet i en dold hög går inte heller utan id; samma tillägg löser det.
+Under ett tillbakaspolningsförslag (K13) är bordet inte spelbart.
+
 ---
 
 ## L. Editorn (grillad 2026-09-06)

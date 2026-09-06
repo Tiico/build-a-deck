@@ -76,22 +76,121 @@ describe('dynamic piles', () => {
   })
 })
 
-describe('inspection (K8)', () => {
-  it('holding a card shows it enlarged until released; a hidden card enlarges as a back', () => {
+// In tv mode at scale 1 with jsdom's zero-sized boxes, client pixels are table millimetres
+// offset by the floor's origin (-500, -300): a card at absolute (-400, -250) sits at client (100, 50).
+const client = (mmX: number, mmY: number) => ({ clientX: mmX + 500, clientY: mmY + 300, pointerId: 1, isPrimary: true, button: 0 })
+
+describe('direct manipulation (K1, K2, C)', () => {
+  it('dragging a loose card onto another sends a stack; dropping it on the floor sends a move', () => {
     const { view, faceUp, faceDown } = buildScene()
-    render(<TableRenderer view={view(null)} mode="table" />)
+    const onAct = vi.fn()
+    render(<TableRenderer view={view(null)} mode="tv" scale={1} onAct={onAct} />)
+    const card = document.querySelector(`[data-component="${faceUp}"]`)!
+    fireEvent.pointerDown(card, client(-390, -240))
+    fireEvent.pointerMove(card, client(-190, -90))
+    fireEvent.pointerUp(card, client(-190, -90))
+    expect(onAct).toHaveBeenLastCalledWith([{ v: 'stack', component: faceUp, onto: faceDown }])
+
+    fireEvent.pointerDown(card, client(-390, -240))
+    fireEvent.pointerMove(card, client(-340, -140))
+    fireEvent.pointerUp(card, client(-340, -140))
+    expect(onAct).toHaveBeenLastCalledWith([{ v: 'move', component: faceUp, to: 'table', x: 150, y: 150 }])
+  })
+
+  it('a card follows the pointer while it is dragged, lifted above the rest', () => {
+    const { view, faceUp } = buildScene()
+    render(<TableRenderer view={view(null)} mode="tv" scale={1} onAct={() => undefined} />)
+    const card = document.querySelector(`[data-component="${faceUp}"]`) as HTMLElement
+    fireEvent.pointerDown(card, client(-390, -240))
+    fireEvent.pointerMove(card, client(-290, -140))
+    expect(card.style.left).toBe('200px')
+    expect(card.style.top).toBe('150px')
+    expect(card.getAttribute('data-dragging')).toBe('true')
+  })
+
+  it('a hold opens a ring of verbs around the finger; releasing on one sends it', () => {
+    vi.useFakeTimers()
+    const { view, faceUp } = buildScene()
+    const onAct = vi.fn()
+    render(<TableRenderer view={view(null)} mode="tv" scale={1} onAct={onAct} />)
+    const card = document.querySelector(`[data-component="${faceUp}"]`)!
+    fireEvent.pointerDown(card, client(-390, -240))
+    expect(document.querySelector('[data-radial]')).toBeNull()
+    act(() => vi.advanceTimersByTime(400))
+    const ring = document.querySelector('[data-radial]')!
+    expect(ring.getAttribute('data-radial')).toBe(faceUp)
+    fireEvent.pointerUp(screen.getByRole('button', { name: 'Vänd' }), client(-390, -300))
+    expect(onAct).toHaveBeenLastCalledWith([{ v: 'flip', component: faceUp, face: 'back' }])
+    expect(document.querySelector('[data-radial]')).toBeNull()
+    vi.useRealTimers()
+  })
+
+  it('a hold on a pile offers shuffle and split; the pile label drags the whole pile', () => {
+    vi.useFakeTimers()
+    const { view } = buildScene()
+    const onAct = vi.fn()
+    render(<TableRenderer view={view(null)} mode="tv" scale={1} onAct={onAct} />)
+    const top = document.querySelector('[data-zone="discard"] .byd-pile-top')!
+    fireEvent.pointerDown(top, client(200, 0))
+    act(() => vi.advanceTimersByTime(400))
+    fireEvent.pointerUp(screen.getByRole('button', { name: 'Blanda' }), client(200, -60))
+    expect(onAct).toHaveBeenLastCalledWith([{ v: 'shuffle', pile: 'discard' }])
+    vi.useRealTimers()
+
+    const label = document.querySelector('[data-zone="discard"] .byd-pile-count')!
+    fireEvent.pointerDown(label, client(200, 50))
+    fireEvent.pointerMove(label, client(300, 150))
+    fireEvent.pointerUp(label, client(300, 150))
+    expect(onAct).toHaveBeenLastCalledWith([{ v: 'movePile', pile: 'discard', to: 'table', x: 300, y: 100 }])
+  })
+
+  it('dragging the top card off a pile drops it where it is released', () => {
+    const { view } = buildScene()
+    const onAct = vi.fn()
+    render(<TableRenderer view={view(null)} mode="tv" scale={1} onAct={onAct} />)
+    const top = document.querySelector('[data-zone="draw"] .byd-pile-top')!
+    fireEvent.pointerDown(top, client(-200, 0))
+    fireEvent.pointerMove(top, client(-100, 100))
+    fireEvent.pointerUp(top, client(-100, 100))
+    expect(onAct).toHaveBeenLastCalledWith([{ v: 'split', pile: 'draw', at: 1, x: -100, y: 100 }])
+  })
+
+  it('without onAct the table only shows: nothing moves and no ring opens', () => {
+    vi.useFakeTimers()
+    const { view, faceUp } = buildScene()
+    render(<TableRenderer view={view(null)} mode="tv" scale={1} />)
+    const card = document.querySelector(`[data-component="${faceUp}"]`) as HTMLElement
+    fireEvent.pointerDown(card, client(-390, -240))
+    act(() => vi.advanceTimersByTime(400))
+    expect(document.querySelector('[data-radial]')).toBeNull()
+    fireEvent.pointerMove(card, client(-290, -140))
+    expect(card.getAttribute('data-dragging')).toBeNull()
+    vi.useRealTimers()
+  })
+})
+
+describe('inspection (K8)', () => {
+  it('"Titta" in the ring shows the card enlarged until tapped away; a hidden card enlarges as a back', () => {
+    vi.useFakeTimers()
+    const { view, faceUp, faceDown } = buildScene()
+    render(<TableRenderer view={view(null)} mode="tv" scale={1} onAct={() => undefined} />)
     expect(document.querySelector('[data-inspect]')).toBeNull()
 
-    fireEvent.mouseDown(document.querySelector(`[data-component="${faceUp}"]`)!)
+    fireEvent.pointerDown(document.querySelector(`[data-component="${faceUp}"]`)!, client(-390, -240))
+    act(() => vi.advanceTimersByTime(400))
+    fireEvent.pointerUp(screen.getByRole('button', { name: 'Titta' }), client(-390, -300))
     const inspect = document.querySelector('[data-inspect]')!
     expect(inspect.getAttribute('data-inspect')).toBe(faceUp)
     expect(inspect.textContent).toContain('wizard')
-    fireEvent.mouseUp(document)
+    fireEvent.click(inspect.parentElement!)
     expect(document.querySelector('[data-inspect]')).toBeNull()
 
-    fireEvent.mouseDown(document.querySelector(`[data-component="${faceDown}"]`)!)
+    fireEvent.pointerDown(document.querySelector(`[data-component="${faceDown}"]`)!, client(-190, -90))
+    act(() => vi.advanceTimersByTime(400))
+    fireEvent.pointerUp(screen.getByRole('button', { name: 'Titta' }), client(-190, -150))
     expect(document.querySelector('[data-inspect]')!.getAttribute('data-face')).toBe('back')
     expect(document.querySelector('[data-inspect]')!.textContent).not.toMatch(/rogue/)
+    vi.useRealTimers()
   })
 })
 
