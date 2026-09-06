@@ -73,3 +73,15 @@ describe('projects (L4, L5)', () => {
     expect(session?.version).toMatch(/^rev-1$/)
   })
 })
+
+describe('cross-origin (the editor is served from another origin in development)', () => {
+  it('answers preflights and marks JSON responses as readable from any origin', async () => {
+    const preflight = await fetch(`${run.http}/projects/x`, { method: 'OPTIONS', headers: { origin: 'http://localhost:5173', 'access-control-request-method': 'PUT' } })
+    expect(preflight.status).toBe(204)
+    expect(preflight.headers.get('access-control-allow-origin')).toBe('*')
+    expect(preflight.headers.get('access-control-allow-methods')).toMatch(/PUT/)
+    expect(preflight.headers.get('access-control-allow-headers')).toMatch(/content-type/i)
+    const res = await json('GET', '/health')
+    expect(res.headers.get('access-control-allow-origin')).toBe('*')
+  })
+})

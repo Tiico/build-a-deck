@@ -55,8 +55,22 @@ export function createServer(opts: ServerOptions): Server {
   return http
 }
 
+// The API is capability-based (room codes, face hashes) and carries no cookies, so any origin
+// may read it; in development the editor is served from another port than the server.
+const CORS = {
+  'access-control-allow-origin': '*',
+  'access-control-allow-methods': 'GET, POST, PUT, OPTIONS',
+  'access-control-allow-headers': 'content-type',
+  'access-control-max-age': '86400',
+}
+
 async function route(opts: ServerOptions, req: IncomingMessage, res: ServerResponse): Promise<void> {
   const url = new URL(req.url ?? '/', 'http://localhost')
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, CORS)
+    res.end()
+    return
+  }
   try {
     if (req.method === 'GET' && url.pathname === '/health') {
       const loaded = await opts.host.loaded()
@@ -82,7 +96,7 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       const hash = face[1] ?? ''
       const bytes = await opts.renders.output(hash)
       if (bytes) {
-        res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=31536000, immutable' })
+        res.writeHead(200, { ...CORS, 'content-type': 'image/png', 'cache-control': 'public, max-age=31536000, immutable' })
         res.end(Buffer.from(bytes))
         return
       }
@@ -183,7 +197,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
 }
 
 function json(res: ServerResponse, status: number, body: unknown): void {
-  res.writeHead(status, { 'content-type': 'application/json' })
+  res.writeHead(status, { ...CORS, 'content-type': 'application/json' })
   res.end(JSON.stringify(body))
 }
 
