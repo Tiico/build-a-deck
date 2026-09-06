@@ -38,3 +38,22 @@ Ett beslut ändras genom att uppdatera dokumentet, inte genom att koden tyst avv
 - `packages/protocol` — zod-scheman; enda källan till både typer och validering.
 - `packages/engine` — ren, deterministisk motor utan I/O.
 - `packages/server` — aktör per bord, loggwriter, WebSockets.
+
+## Agent skills
+
+### Issue tracker
+
+Issues och PRD:er finns i GitHub Issues för `Tiico/build-a-deck`. Se
+[`docs/agents/issue-tracker.md`](docs/agents/issue-tracker.md).
+
+### Triageetiketter
+
+Använd de kanoniska etiketterna `needs-triage`, `needs-info`, `ready-for-agent`,
+`ready-for-human` och `wontfix`. Se
+[`docs/agents/triage-labels.md`](docs/agents/triage-labels.md).
+
+### Domändokument
+
+Repot använder ett gemensamt produktkontextspår. Se
+[`docs/agents/domain.md`](docs/agents/domain.md) för vilka beslutskällor som ska
+läsas före planering, triage och implementation.
