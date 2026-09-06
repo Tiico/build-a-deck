@@ -115,6 +115,9 @@ importers:
       '@byd/protocol':
         specifier: workspace:*
         version: link:../protocol
+      '@byd/template':
+        specifier: workspace:*
+        version: link:../template
       qrcode:
         specifier: ^1.5.4
         version: 1.5.4

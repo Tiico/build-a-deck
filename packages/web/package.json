@@ -14,7 +14,8 @@
     "@byd/protocol": "workspace:*",
     "qrcode": "^1.5.4",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "@byd/template": "workspace:*"
   },
   "devDependencies": {
     "@byd/server": "workspace:*",
