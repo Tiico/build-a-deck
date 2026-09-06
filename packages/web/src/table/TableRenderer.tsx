@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
 import { hue } from './hue.js'
 import { seatColor } from './seatColor.js'
+import { fitScale } from './fit.js'
 
 export type TableMode = 'table' | 'tv'
+// Without an explicit `scale`, the renderer fits the table to its own frame.
 export type TableRendererProps = { view: Snapshot; mode: TableMode; scale?: number }
 
 // Card size in table millimetres. The type registry knows the real size; until the
@@ -11,9 +13,22 @@ export type TableRendererProps = { view: Snapshot; mode: TableMode; scale?: numb
 const CARD_MM = { w: 63, h: 88 }
 const FAN_MAX = 12
 
-export function TableRenderer({ view, mode, scale = 1 }: TableRendererProps) {
+export function TableRenderer({ view, mode, scale: fixedScale }: TableRendererProps) {
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
+  const frame = useRef<HTMLDivElement | null>(null)
+  const [fitted, setFitted] = useState(1)
+  const margin = mode === 'table' ? 80 : 44
+  useEffect(() => {
+    const el = frame.current
+    if (fixedScale !== undefined || !el || typeof ResizeObserver === 'undefined') return
+    const update = () => setFitted(fitScale({ w: floor.geometry.w, h: floor.geometry.h }, { w: el.clientWidth, h: el.clientHeight }, margin))
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [fixedScale, floor.geometry.w, floor.geometry.h, margin])
+  const scale = fixedScale ?? fitted
   // Hold to inspect (K8): private to whoever holds, released on mouse-up anywhere.
   const [held, setHeld] = useState<VisibleComponentState | null>(null)
   useEffect(() => {
@@ -37,7 +52,7 @@ export function TableRenderer({ view, mode, scale = 1 }: TableRendererProps) {
   const loose = view.components.filter((c) => zoneById.get(c.zone)?.kind === 'area')
 
   return (
-    <div className="byd-table-frame" data-mode={mode}>
+    <div className="byd-table-frame" data-mode={mode} ref={frame}>
       <div className="byd-table-wood">
         <div data-table style={{ position: 'relative', width: px(floor.geometry.w), height: px(floor.geometry.h) }}>
           {areas.map((z) => (
