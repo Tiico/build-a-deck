@@ -154,7 +154,10 @@ Stacken finns som `docker-compose.yml` med `postgres`, `app`, `render`, samt `cl
 Minnestak per container och loggrotation enligt §1 och §8.
 `app` serverar den byggda webben från samma origin (`STATIC_DIR`), och `/health` svarar 503 om Postgres inte svarar (§2).
 Appen kör `tsx` mot källorna, som workern; arbetsytans paket exporterar TypeScript och en separat dist-kodväg vore en andra sanning.
-Deploy är pull-baserad (§7) men bygger på lådan: `ops/deploy.sh` via en systemd-timer hämtar `origin/main`, bygger, kör `compose up` och väntar på `/health`. GHCR och CI-grinden med replay-korpus återstår.
+Deploy är pull-baserad (§7): `ops/deploy.sh` via en systemd-timer hämtar `origin/main`, drar CI:s bilder från GHCR för det SHA:t (eller bygger på lådan utan registry), kör `compose up` och väntar på `/health`.
+CI (`.github/workflows/ci.yml`) kör lint, typecheck och alla tester mot Postgres och Chromium, med replay-korpusen i `corpus/` som grind, och bygger bilderna till GHCR på `main`.
+Korpusen anonymiserar namn, kommentarer och observatörer men behåller kortens id:n; `GET /sessions/:id/export` och `pnpm --filter @byd/engine corpus` lägger till riktiga loggar.
+Händelseschemats `schemaVersion` och upcasters (§7) återstår; tills vidare är grinden att varje rad i korpusen parsas av dagens schema.
 Backup (§5) är i första steget en nattlig `pg_dump` till R2 med 30 dagars kvarhållning och `ops/restore-test.sh` som återställningsprov; WAL-arkivering återstår.
 Assets i R2 (§4) återstår: texturerna serveras ännu från Postgres genom `app`.
 Administration över Tailscale (§10) är lådans sak; Postgres lyssnar bara på 127.0.0.1.

@@ -202,3 +202,19 @@ describe('a session record (C9)', () => {
     expect((await fetch(`${run.http}/sessions/nope`)).status).toBe(404)
   })
 })
+
+describe('exporting a session for the replay corpus (DRIFT §7)', () => {
+  it('GET /sessions/:id/export hands over version, setup and the whole log, outcomes included, never the deck', async () => {
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
+    const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
+    const table = await WireClient.connect(run.base, sessionId, null)
+    await table.send(null, { v: 'shuffle', pile: 'draw' })
+    await table.close()
+    const exported = (await (await fetch(`${run.http}/sessions/${sessionId}/export`)).json()) as { version: string; setup: unknown; log: { outcome?: unknown }[]; deck?: unknown }
+    expect(exported.version).toBe('rev-1')
+    expect(exported.log).toHaveLength(1)
+    expect(exported.log[0]?.outcome).toMatchObject({ kind: 'shuffle' })
+    expect(exported.deck).toBeUndefined()
+    expect((await fetch(`${run.http}/sessions/nope/export`)).status).toBe(404)
+  })
+})

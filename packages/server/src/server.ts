@@ -269,7 +269,20 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     json(res, 201, { id, version: `rev-${rec.rev}` })
     return true
   }
-  // A session as a record (C9): which version runs, whether the log is locked.
+  // The whole log for the replay corpus (DRIFT §7): version, setup and every line with its
+  // outcome. Never the deck: textures are not the point, and the corpus is anonymised after.
+  const exportOne = /^\/sessions\/([^/]+)\/export$/.exec(url.pathname)
+  if (exportOne && req.method === 'GET') {
+    const sessionId = decodeURIComponent(exportOne[1] ?? '')
+    const session = await opts.store.loadSession(sessionId)
+    if (!session) {
+      json(res, 404, { error: 'unknown session' })
+      return true
+    }
+    json(res, 200, { id: sessionId, version: session.version, setup: session.setup, log: await opts.store.read(sessionId) })
+    return true
+  }
+    // A session as a record (C9): which version runs, whether the log is locked.
   const sessionOne = /^\/sessions\/([^/]+)$/.exec(url.pathname)
   if (sessionOne && req.method === 'GET') {
     const sessionId = decodeURIComponent(sessionOne[1] ?? '')

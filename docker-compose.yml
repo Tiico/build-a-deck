@@ -30,7 +30,8 @@ services:
 
   app:
     build: .
-    image: byd-app:${BYD_TAG:-latest}
+    # With BYD_REGISTRY set (ghcr.io/owner/repo), deploy.sh pulls CI's image for the SHA instead.
+    image: ${BYD_APP_IMAGE:-byd-app:${BYD_TAG:-latest}}
     environment:
       DATABASE_URL: postgres://byd:${POSTGRES_PASSWORD:-byd}@postgres:5432/byd
       PORT: "8080"
@@ -51,7 +52,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.render
-    image: byd-render:${BYD_TAG:-latest}
+    image: ${BYD_RENDER_IMAGE:-byd-render:${BYD_TAG:-latest}}
     environment:
       DATABASE_URL: postgres://byd:${POSTGRES_PASSWORD:-byd}@postgres:5432/byd
     depends_on:

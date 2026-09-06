@@ -16,9 +16,25 @@ export BYD_TAG="$(git rev-parse --short HEAD)"
 profiles=""
 [ -n "${CLOUDFLARE_TUNNEL_TOKEN:-}" ] && profiles="$profiles --profile tunnel"
 [ -n "${R2_ACCESS_KEY_ID:-}" ] && profiles="$profiles --profile backup"
-# Build first so the switch is short; the app drains on SIGTERM (DRIFT §3) and the schema
-# migrates on start, so the order is: build, then up.
-docker compose $profiles build --quiet
+# With a registry, CI built the images for this SHA (DRIFT §7): pull them, or wait for the next
+# tick if CI is not done. Without one, build on the box. Either way the app drains on SIGTERM
+# (§3) and migrates its schema on start, so the order is: have the image, then up.
+if [ -n "${BYD_REGISTRY:-}" ]; then
+  sha="$(git rev-parse HEAD)"
+  export BYD_APP_IMAGE="${BYD_REGISTRY}/app:${sha}"
+  export BYD_RENDER_IMAGE="${BYD_REGISTRY}/render:${sha}"
+  if [ -n "${GHCR_TOKEN:-}" ]; then
+    echo "$GHCR_TOKEN" | docker login ghcr.io -u "${GHCR_USER:-token}" --password-stdin > /dev/null
+  fi
+  if ! docker manifest inspect "$BYD_APP_IMAGE" > /dev/null 2>&1 || ! docker manifest inspect "$BYD_RENDER_IMAGE" > /dev/null 2>&1; then
+    echo "{\"msg\":\"images-not-ready\",\"sha\":\"$sha\"}"
+    git reset --hard --quiet "$local_sha"
+    exit 0
+  fi
+  docker compose $profiles pull --quiet app render
+else
+  docker compose $profiles build --quiet
+fi
 docker compose $profiles up -d --remove-orphans
 docker image prune -f --filter "until=168h" > /dev/null
 for i in $(seq 1 30); do

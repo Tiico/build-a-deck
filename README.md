@@ -90,6 +90,19 @@ Appen dränerar på SIGTERM och migrerar schemat vid start, så bytet är kort.
 Tunnelns publika värdnamn pekas på `http://app:8080` i Cloudflares panel.
 `ops/restore-test.sh` hämtar senaste dumpen från R2 till en tillfällig Postgres och räknar sessioner och rader: en backup som aldrig lästs tillbaka är en förhoppning.
 
+## CI och replay-korpusen
+
+[.github/workflows/ci.yml](.github/workflows/ci.yml) kör lint, typecheck och alla tester mot en riktig Postgres och en riktig Chromium på varje push, och på `main` bygger den `app`- och `render`-bilderna till GHCR taggade med git-SHA:t.
+Grinden är replay-korpusen i [corpus/](corpus/): anonymiserade loggar som måste spela upp identiskt och projiceras identiskt för varje vy.
+Korpusen är seedad med skriptade sessioner; riktiga loggar läggs till från en körande server:
+
+```bash
+pnpm --filter @byd/engine corpus <namn> http://localhost:8080/sessions/<id>/export
+```
+
+Namn, kommentarer och observatörer anonymiseras; själva spelet och kortens id:n behålls (DRIFT:s öppna fråga).
+Med `BYD_REGISTRY=ghcr.io/<ägare>/<repo>` i lådans `.env` drar `ops/deploy.sh` CI:s bilder för det SHA `origin/main` står på i stället för att bygga, och väntar till nästa tick om CI inte är klar.
+
 ## Tester
 
 Varje paket testar mot riktiga saker: motorn med deterministisk återspelning, servern med råa WebSocket-frames, webben mot en server i samma process, renderaren mot en riktig Chromium.
