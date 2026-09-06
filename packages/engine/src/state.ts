@@ -1,4 +1,13 @@
-import type { ComponentId, FaceId, GameVersionId, SeatId, TypeRef, ZoneId, ZoneKind } from '@byd/protocol'
+import type {
+  ComponentId,
+  FaceId,
+  GameVersionId,
+  Geometry,
+  SeatId,
+  TypeRef,
+  ZoneId,
+  ZoneKind,
+} from '@byd/protocol'
 
 // Who may see the faces of components in this zone by default (B6).
 // Per-component overrides (shownTo, peekedBy, publicOverride) widen this and are
@@ -10,13 +19,19 @@ export type ZoneDef = {
   kind: ZoneKind
   name: string
   visibility: ZoneVisibility
+  geometry: Geometry
   owner?: SeatId
   // Hand zones: where the hand is shuffled back into when the seat is released (C9).
   returnTo?: ZoneId
 }
 
 // `order[0]` is the top of a pile, the leftmost card of a hand, the topmost object of an area.
-export type Zone = ZoneDef & { order: ComponentId[] }
+export type Zone = ZoneDef & {
+  order: ComponentId[]
+  // Created by stacking during play (K1). Dissolves into `parent` when one component remains.
+  dynamic: boolean
+  parent?: ZoneId
+}
 
 export type ComponentInstance = {
   id: ComponentId
@@ -51,6 +66,8 @@ export type ComponentSpec = {
 export type SetupDef = {
   zones: ZoneDef[]
   seats: SeatId[]
+  // The background area. Dynamic piles that have no other parent dissolve into it.
+  floor: ZoneId
   // Listed order within a zone is the initial order in that zone.
   components: ComponentSpec[]
 }
@@ -91,4 +108,10 @@ export function cloneState(state: TableState): TableState {
   const seats: Record<SeatId, Seat> = {}
   for (const [id, s] of Object.entries(state.seats)) seats[id] = { ...s }
   return { ...state, zones, components, seats }
+}
+
+export function withoutKey<T>(record: Record<string, T>, key: string): Record<string, T> {
+  const next: Record<string, T> = {}
+  for (const [k, v] of Object.entries(record)) if (k !== key) next[k] = v
+  return next
 }

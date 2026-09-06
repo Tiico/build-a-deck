@@ -1,31 +1,41 @@
 import type { Applied, ComponentId, Envelope, Intent, Outcome, ZoneId } from '@byd/protocol'
+import { apply } from './apply.js'
+import { handsReturnedBy } from './hands.js'
 import type { IdSource, Rng } from './rng.js'
 import { permutation } from './rng.js'
-import { componentOf, must, zoneOf, type TableState, type Zone } from './state.js'
+import { componentOf, must, zoneOf, type TableState } from './state.js'
 import type { TypeRegistry } from './typedef.js'
 
 // `decide` is the only place randomness enters. It validates an envelope against the
-// current state and produces an `Applied` line whose outcome fully determines `apply`.
+// current state and produces the `Applied` lines whose outcomes fully determine `apply`.
 // Validation is structural (does the thing exist, is there enough of it) — never rules.
+//
+// An envelope is atomic (K3). Each intent is validated against a working state that
+// already has the previous intents of the same envelope applied; the first failure
+// rejects the whole envelope and nothing is returned.
 
 export type DecideDeps = { rng: Rng; ids: IdSource; now(): string }
-export type Decision = { ok: true; applied: Applied } | { ok: false; reason: string }
+export type Decision = { ok: true; applied: Applied[] } | { ok: false; reason: string }
 
 export function decide(state: TableState, registry: TypeRegistry, env: Envelope, deps: DecideDeps): Decision {
   if (state.ended) return { ok: false, reason: 'session has ended' }
   if (env.seat !== null && !state.seats[env.seat]) return { ok: false, reason: `unknown seat ${env.seat}` }
 
-  const problem = validate(state, registry, env)
-  if (problem) return { ok: false, reason: problem }
-
-  const applied: Applied = { seq: state.seq + 1, at: deps.now(), by: env.seat, intent: env.intent }
-  const outcome = decideOutcome(state, registry, env.intent, deps)
-  if (outcome) applied.outcome = outcome
-  return { ok: true, applied }
+  const lines: Applied[] = []
+  let working = state
+  for (const [i, intent] of env.intents.entries()) {
+    const problem = validate(working, registry, env.seat, intent)
+    if (problem) return { ok: false, reason: env.intents.length > 1 ? `intent ${i}: ${problem}` : problem }
+    const applied: Applied = { seq: working.seq + 1, batch: env.id, at: deps.now(), by: env.seat, intent }
+    const outcome = decideOutcome(working, registry, intent, deps)
+    if (outcome) applied.outcome = outcome
+    lines.push(applied)
+    working = apply(working, registry, applied)
+  }
+  return { ok: true, applied: lines }
 }
 
-function validate(state: TableState, registry: TypeRegistry, env: Envelope): string | null {
-  const it = env.intent
+function validate(state: TableState, registry: TypeRegistry, seat: string | null, it: Intent): string | null {
   const comp = (id: ComponentId) => (state.components[id] ? null : `unknown component ${id}`)
   const zone = (id: ZoneId) => (state.zones[id] ? null : `unknown zone ${id}`)
   const all = (checks: (string | null)[]) => checks.find((c) => c !== null) ?? null
@@ -49,12 +59,20 @@ function validate(state: TableState, registry: TypeRegistry, env: Envelope): str
       if (c) return c
       if (it.component === it.onto) return 'cannot stack a component onto itself'
       if (!def(it.component).behaviours.stackable) return `${def(it.component).id} cannot be stacked`
+      if (!def(it.onto).behaviours.stackable) return `${def(it.onto).id} cannot be stacked on`
       return null
     }
     case 'split': {
-      const z = all([zone(it.pile), zone(it.to)])
+      const z = zone(it.pile)
       if (z) return z
-      if (it.pile === it.to) return 'cannot split a pile onto itself'
+      if (zoneOf(state, it.pile).kind !== 'pile') return `zone ${it.pile} is not a pile`
+      if (it.to !== undefined) {
+        const t = zone(it.to)
+        if (t) return t
+        if (it.pile === it.to) return 'cannot split a pile onto itself'
+      } else if (it.x === undefined || it.y === undefined) {
+        return 'split without a target needs x and y for the new pile'
+      }
       if (it.at > zoneOf(state, it.pile).order.length) return `pile ${it.pile} has fewer than ${it.at} components`
       return null
     }
@@ -90,12 +108,19 @@ function validate(state: TableState, registry: TypeRegistry, env: Envelope): str
       return def(it.component).behaviours.counter ? null : `${def(it.component).id} has no counter`
     }
     case 'peek':
-      if (env.seat === null) return 'a table connection cannot peek: there is no one to grant knowledge to'
+      if (seat === null) return 'a table connection cannot peek: there is no one to grant knowledge to'
       return all(it.components.map(comp))
     case 'showTo':
       return all([...it.components.map(comp), ...it.seats.map((s) => (state.seats[s] ? null : `unknown seat ${s}`))])
     case 'reveal':
       return all(it.components.map(comp))
+    case 'movePile': {
+      const z = all([zone(it.pile), zone(it.to)])
+      if (z) return z
+      if (zoneOf(state, it.pile).kind !== 'pile') return `zone ${it.pile} is not a pile`
+      if (zoneOf(state, it.to).kind !== 'area') return `zone ${it.to} is not an area`
+      return null
+    }
     case 'seat.claim': {
       const s = state.seats[it.seat]
       if (!s) return `unknown seat ${it.seat}`
@@ -105,7 +130,7 @@ function validate(state: TableState, registry: TypeRegistry, env: Envelope): str
       const s = state.seats[it.seat]
       if (!s) return `unknown seat ${it.seat}`
       if (s.name === null) return `seat ${it.seat} is not claimed`
-      if (env.seat !== null && env.seat !== it.seat) return 'only the seat itself or the table may release a seat'
+      if (seat !== null && seat !== it.seat) return 'only the seat itself or the table may release a seat'
       return null
     }
     case 'setup.reset':
@@ -136,22 +161,6 @@ function decideOutcome(state: TableState, registry: TypeRegistry, it: Intent, de
     default:
       return undefined
   }
-}
-
-// The hands a released seat gives back, and the pile they return to. Null when there is nothing to shuffle.
-export function handsReturnedBy(
-  state: TableState,
-  seat: string,
-): { pile: Zone; hands: Zone[]; handComponents: ComponentId[] } | null {
-  const hands = Object.values(state.zones).filter((z) => z.kind === 'hand' && z.owner === seat)
-  const first = hands[0]
-  if (!first?.returnTo) return null
-  const pile = state.zones[first.returnTo]
-  if (!pile) return null
-  const handComponents = hands.flatMap((h) => h.order)
-  // An empty hand returns nothing, and must not shuffle the pile as a side effect.
-  if (handComponents.length === 0) return null
-  return { pile, hands, handComponents }
 }
 
 function shuffleOutcome(ids: readonly ComponentId[], deps: DecideDeps): Outcome {

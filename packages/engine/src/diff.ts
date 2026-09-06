@@ -17,9 +17,13 @@ export function diff(prev: Snapshot, next: Snapshot): Patch {
     if (!after.has(id)) ops.push({ op: 'remove', component: id })
   }
   const zonesBefore = new Map(prev.zones.map((z) => [z.id, z]))
+  const zonesAfter = new Set(next.zones.map((z) => z.id))
   for (const z of next.zones) {
     const p = zonesBefore.get(z.id)
     if (!p || !deepEqual(p, z)) ops.push({ op: 'zone', view: z })
+  }
+  for (const id of zonesBefore.keys()) {
+    if (!zonesAfter.has(id)) ops.push({ op: 'zoneRemove', zone: id })
   }
   return { seq: next.seq, ops }
 }
@@ -38,37 +42,39 @@ export function applyPatch(prev: Snapshot, patch: Patch): Snapshot {
       case 'zone':
         zones.set(op.view.id, op.view)
         break
+      case 'zoneRemove':
+        zones.delete(op.zone)
+        break
     }
   }
+  const sortedZones = [...zones.values()].sort((a, b) => a.id.localeCompare(b.id))
   return {
     seq: patch.seq,
     seat: prev.seat,
-    zones: [...zones.values()].sort((a, b) => a.id.localeCompare(b.id)),
-    components: orderComponents([...components.values()], [...zones.values()]),
+    zones: sortedZones,
+    components: orderComponents([...components.values()], sortedZones),
   }
 }
 
 // Snapshots list components zone by zone in zone order; a patched snapshot must match that.
-function orderComponents(components: VisibleComponentState[], zones: ZoneView[]): VisibleComponentState[] {
-  const rank = new Map<string, number>()
-  const sortedZones = [...zones].sort((a, b) => a.id.localeCompare(b.id))
-  let n = 0
+function orderComponents(components: VisibleComponentState[], sortedZones: ZoneView[]): VisibleComponentState[] {
+  const placed = new Set<string>()
   const byId = new Map(components.map((c) => [c.id, c]))
   const out: VisibleComponentState[] = []
   for (const z of sortedZones) {
     if (z.mode === 'order') {
       for (const id of z.order) {
         const c = byId.get(id)
-        if (c) {
+        if (c && !placed.has(id)) {
           out.push(c)
-          rank.set(id, n++)
+          placed.add(id)
         }
       }
     } else {
       for (const c of components) {
-        if (c.zone === z.id && !rank.has(c.id)) {
+        if (c.zone === z.id && !placed.has(c.id)) {
           out.push(c)
-          rank.set(c.id, n++)
+          placed.add(c.id)
         }
       }
     }

@@ -12,7 +12,10 @@ describe('per-seat patches', () => {
       () => h.do('A', { v: 'move', component: h.top('hand:A'), to: 'table', x: 1 }),
       () => h.do('A', { v: 'flip', component: h.top('table'), face: 'front' }),
       () => h.do('B', { v: 'showTo', components: [h.top('hand:B')], seats: ['A'] }),
-      () => h.do(null, { v: 'move', component: h.top('table'), to: 'discard' }),
+      () => h.do('B', { v: 'move', component: h.top('hand:B'), to: 'table', x: 50 }),
+      () => h.do(null, { v: 'stack', component: h.zone('table')[0]!, onto: h.zone('table')[1]! }),
+      () => h.do(null, { v: 'movePile', pile: h.piles()[0]!, to: 'table', x: 9, y: 9 }),
+      () => h.do(null, { v: 'draw', from: h.piles()[0]!, to: 'discard', count: 1 }),
       () => h.do('B', { v: 'move', component: h.top('hand:B'), to: 'draw' }),
       () => h.do(null, { v: 'shuffle', pile: 'draw' }),
       () => h.do(null, { v: 'setup.reset' }),
@@ -29,7 +32,7 @@ describe('per-seat patches', () => {
     }
   })
 
-  it('a patch to B after A draws carries no component from A\'s hand', () => {
+  it("a patch to B after A draws carries no component from A's hand", () => {
     const h = new Harness()
     const before = h.view('B')
     h.do('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 3 })
@@ -42,6 +45,18 @@ describe('per-seat patches', () => {
         { op: 'zone', view: expect.objectContaining({ id: 'hand:A', mode: 'count', count: 3 }) },
       ]),
     )
+  })
+
+  it('a dissolving pile produces a zoneRemove op', () => {
+    const h = new Harness()
+    h.do(null, { v: 'draw', from: 'draw', to: 'table', count: 2 })
+    const [a, b] = h.zone('table') as [string, string]
+    h.do(null, { v: 'stack', component: a, onto: b })
+    const [pile] = h.piles()
+    const before = h.view(null)
+    h.do(null, { v: 'move', component: a, to: 'discard' })
+    const patch = diff(before, h.view(null))
+    expect(patch.ops).toEqual(expect.arrayContaining([{ op: 'zoneRemove', zone: pile }]))
   })
 
   it('refuses to diff snapshots for different seats', () => {

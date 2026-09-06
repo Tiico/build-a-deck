@@ -498,6 +498,79 @@ Beslutet att inte väga utvecklingskostnad tungt är uttalat och gäller genomg�
 
 ---
 
+## K. Spelupplevelsen (grillad 2026-09-06)
+
+Verben var låsta; det här är känslan, och tre av besluten slår tillbaka på protokollet.
+
+### K1. Ad hoc-högar är dynamiska zoner
+
+`stack` på ett löst kort i en area skapar en ny pile-zon på platsen med areans synlighet, och flyttar in båda korten.
+En hög med ett kort kvar löses upp tillbaka till arean.
+Högen kan blandas, dras ur, delas och flyttas som en enhet.
+
+Följdkrav på protokollet:
+Zoner kan tillkomma och försvinna i patchar.
+Pile-zoner har en position.
+Ett verb för att flytta en hel hög som enhet — ett medvetet tillägg till det slutna vokabuläret, eftersom "plocka upp högen" är en fysisk handling.
+
+### K2. Fri placering, zoner som rektanglar med släpp-in
+
+Setup ger varje zon en rektangel, eller en punkt för högar, i bordskoordinater.
+Släpp inom rektangeln är `move` till zonen med relativ position; släpp utanför är fri placering i bakgrundsarean.
+Ingen grid, inga slots.
+
+Följdkrav:
+Zonrektanglarna är direkt återanvändbara som spelplansunderlag vid tryck.
+En `slots`-zonkind kan läggas till additivt när ett riktigt spel kräver det.
+
+### K3. Flera kort på en gång: atomisk batch i kuvertet
+
+`Envelope` bär `intents: Intent[]`.
+Servern validerar alla först mot ett temporärt tillstånd, applicerar sedan alla med löpande seq och en gemensam batch-id, eller inget.
+`undo.self` och tillbakaspolning behandlar en batch som en enhet.
+
+Motivering:
+Inget nytt verb; "en handling" får en definition i loggen som analysen kan lita på.
+
+Följdkrav:
+Motorn behöver tvåfasig validering, vilket tillbakaspolning också kommer att behöva.
+Batchar med flera slumputfall bestämmer utfallen i ordning.
+
+### K4. Handen på telefonen: horisontell remsa
+
+Korten i en scrollbar remsa i nästan full bredd.
+Tryck öppnar kortet i full upplösning.
+Dra uppåt lyfter kortet till ett ark med zongenvägarna från C4.
+Långtryck startar flerval; dra i sidled inom remsan sorterar om handen.
+Översikten är samma remsa nedzoomad.
+
+### K5. Inga objekt utanför spelets setup
+
+Ingen inbyggd låda med generiska tärningar, kuber eller lappar.
+Behöver gruppen en markör mitt i ett test lägger designern till den via versionsbyte enligt C7 — vilket är precis den insikten loggen bör fånga.
+
+### K6. Närvaro: markörer, peka-gest, tillskrivna rörelser
+
+Varje anslutnings markör syns på `table`-vyn i platsens färg med namn, och tonar bort vid stillhet.
+Långtryck skickar en kort peka-puls som alla ser.
+Ett kort som flyttas bär kort platsens färg.
+Allt går i en separat efemär kanal och hamnar aldrig i loggen.
+
+### K7. Inget ljud
+
+Inga ljud, ingen haptik, inga notiser.
+
+Konsekvens att vara medveten om:
+På distans är ljudet den enda signalen att något hände utanför blickfånget; utan det bär markörerna i K6 hela den bördan.
+
+### K8. Inspektion: håll för att förstora
+
+Tryck-och-håll på ett kort visar det i full upplösning ovanpå bordet, bara för den som håller.
+Ett dolt kort förstoras som baksida — samma ansiktsanrop som texturen, ingen ny synlighetsregel.
+Förstoringen är privat; "titta på det här" är peka-gesten i K6.
+
+---
+
 ## I. Öppna frågor
 
 Ekonomi och juridik:
@@ -512,10 +585,9 @@ Behörighetsroller i detalj: ägare, medredigerare, testledare, observatör.
 Hantering av missbruk av öppna rumskoder.
 Tillgänglighet i verktyget självt, till skillnad från i de spel som skapas i det.
 
-Spelupplevelse, ännu bara skisserad:
-Interaktionsmönster för staplar och högar.
-Dra och släpp över enheter.
-Räknare, tärningar, ljud och notiser.
+Spelupplevelse, kvar efter avsnitt K:
+Hur en hög i en area visas med blandad orientering av kort.
+Om zonrektanglar ska kunna överlappa, och vad ett släpp i överlappet betyder.
 
 ---
 

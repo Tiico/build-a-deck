@@ -25,6 +25,9 @@ export function validateSetup(setup: SetupDef, registry: TypeRegistry): void {
     if (prior && prior !== z.returnTo) throw new Error(`seat ${z.owner} has hands returning to both ${prior} and ${z.returnTo}`)
     returnBySeat.set(z.owner, z.returnTo)
   }
+  const floor = setup.zones.find((z) => z.id === setup.floor)
+  if (!floor) throw new Error(`floor ${setup.floor} is not a zone`)
+  if (floor.kind !== 'area') throw new Error(`floor ${setup.floor} must be an area`)
   if (new Set(setup.seats).size !== setup.seats.length) throw new Error('duplicate seat ids')
   for (const c of setup.components) {
     if (!zoneIds.has(c.zone)) throw new Error(`component ${c.cardRef} placed in unknown zone ${c.zone}`)
@@ -39,7 +42,7 @@ export function materialise(
   startId: number,
 ): { zones: Record<string, Zone>; components: Record<string, ComponentInstance>; nextId: number } {
   const zones: Record<string, Zone> = {}
-  for (const z of setup.zones) zones[z.id] = { ...z, order: [] }
+  for (const z of setup.zones) zones[z.id] = { ...z, order: [], dynamic: false }
   const components: Record<string, ComponentInstance> = {}
   let n = startId
   for (const spec of setup.components) {

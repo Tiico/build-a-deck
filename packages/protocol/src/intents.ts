@@ -4,6 +4,8 @@ import { ComponentId, FaceId, GameVersionId, SeatId, ZoneId } from './ids.js'
 // A closed vocabulary of what a hand can do to a physical object.
 // No game semantics live here. The set is finite because physics is finite;
 // adding a verb is a protocol migration and must be treated as one.
+//
+// `movePile` was added deliberately (K1): picking up a whole pile is one physical act.
 export const PhysicalIntent = z.discriminatedUnion('v', [
   z.object({
     v: z.literal('move'),
@@ -16,8 +18,18 @@ export const PhysicalIntent = z.discriminatedUnion('v', [
   }),
   z.object({ v: z.literal('rotate'), component: ComponentId, rot: z.number() }),
   z.object({ v: z.literal('flip'), component: ComponentId, face: FaceId }),
+  // Onto a card lying loose in an area: the two form a new pile there (K1).
+  // Onto a card in a pile or hand: joins that zone directly above it.
   z.object({ v: z.literal('stack'), component: ComponentId, onto: ComponentId }),
-  z.object({ v: z.literal('split'), pile: ZoneId, at: z.number().int().positive(), to: ZoneId }),
+  // Without `to`, the top `at` components become a new pile at (x, y) in the source pile's area.
+  z.object({
+    v: z.literal('split'),
+    pile: ZoneId,
+    at: z.number().int().positive(),
+    to: ZoneId.optional(),
+    x: z.number().optional(),
+    y: z.number().optional(),
+  }),
   z.object({ v: z.literal('shuffle'), pile: ZoneId }),
   z.object({ v: z.literal('draw'), from: ZoneId, to: ZoneId, count: z.number().int().positive() }),
   z.object({ v: z.literal('deal'), from: ZoneId, to: z.array(ZoneId).min(1), each: z.number().int().positive() }),
@@ -26,6 +38,14 @@ export const PhysicalIntent = z.discriminatedUnion('v', [
   z.object({ v: z.literal('peek'), components: z.array(ComponentId).min(1) }),
   z.object({ v: z.literal('showTo'), components: z.array(ComponentId).min(1), seats: z.array(SeatId).min(1) }),
   z.object({ v: z.literal('reveal'), components: z.array(ComponentId).min(1) }),
+  z.object({
+    v: z.literal('movePile'),
+    pile: ZoneId,
+    to: ZoneId,
+    x: z.number(),
+    y: z.number(),
+    rot: z.number().optional(),
+  }),
 ])
 export type PhysicalIntent = z.infer<typeof PhysicalIntent>
 

@@ -21,24 +21,31 @@ export type VisibleComponentState = z.infer<typeof VisibleComponentState>
 export const ZoneKind = z.enum(['pile', 'area', 'hand'])
 export type ZoneKind = z.infer<typeof ZoneKind>
 
+// Where a zone sits on the table, in table millimetres (K2). Piles have a point
+// and zero extent; areas and hands have a rectangle a drop can land in.
+export const Geometry = z.object({
+  x: z.number(),
+  y: z.number(),
+  w: z.number().nonnegative(),
+  h: z.number().nonnegative(),
+  rot: z.number(),
+})
+export type Geometry = z.infer<typeof Geometry>
+
+const zoneBase = {
+  id: ZoneId,
+  kind: ZoneKind,
+  name: z.string(),
+  owner: SeatId.optional(),
+  geometry: Geometry,
+  // Created during play by stacking (K1); dissolves when one component remains.
+  dynamic: z.boolean(),
+}
+
 // A zone whose order the seat may not see is reported as a count only.
 export const ZoneView = z.discriminatedUnion('mode', [
-  z.object({
-    mode: z.literal('order'),
-    id: ZoneId,
-    kind: ZoneKind,
-    name: z.string(),
-    owner: SeatId.optional(),
-    order: z.array(ComponentId),
-  }),
-  z.object({
-    mode: z.literal('count'),
-    id: ZoneId,
-    kind: ZoneKind,
-    name: z.string(),
-    owner: SeatId.optional(),
-    count: z.number().int().nonnegative(),
-  }),
+  z.object({ mode: z.literal('order'), ...zoneBase, order: z.array(ComponentId) }),
+  z.object({ mode: z.literal('count'), ...zoneBase, count: z.number().int().nonnegative() }),
 ])
 export type ZoneView = z.infer<typeof ZoneView>
 
@@ -54,6 +61,7 @@ export const Op = z.discriminatedUnion('op', [
   z.object({ op: z.literal('upsert'), state: VisibleComponentState }),
   z.object({ op: z.literal('remove'), component: ComponentId }),
   z.object({ op: z.literal('zone'), view: ZoneView }),
+  z.object({ op: z.literal('zoneRemove'), zone: ZoneId }),
 ])
 export type Op = z.infer<typeof Op>
 

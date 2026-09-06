@@ -1,12 +1,22 @@
 import type { Applied, ComponentId, Outcome, SeatId, ZoneId } from '@byd/protocol'
+import { handsReturnedBy } from './hands.js'
 import { materialise } from './setup.js'
-import { cloneState, componentOf, must, zoneOf, type ComponentInstance, type TableState } from './state.js'
+import {
+  cloneState,
+  componentOf,
+  must,
+  withoutKey,
+  zoneOf,
+  type ComponentInstance,
+  type TableState,
+  type Zone,
+} from './state.js'
 import type { TypeRegistry } from './typedef.js'
 import { clearOverrides } from './visibility.js'
-import { handsReturnedBy } from './decide.js'
 
 // `apply` is pure and total over valid logs: given the same state and the same `Applied`,
 // it yields the same state. All randomness has already been fixed in `applied.outcome`.
+// Dynamic pile ids derive from `seq`, so they need no outcome to replay.
 
 export function apply(prev: TableState, _registry: TypeRegistry, applied: Applied): TableState {
   if (applied.seq !== prev.seq + 1) throw new Error(`seq gap: expected ${prev.seq + 1}, got ${applied.seq}`)
@@ -31,14 +41,36 @@ export function apply(prev: TableState, _registry: TypeRegistry, applied: Applie
       break
     case 'stack': {
       const onto = componentOf(state, it.onto)
-      detach(state, it.component)
-      const idx = zoneOf(state, onto.zone).order.indexOf(onto.id)
-      attach(state, it.component, onto.zone, idx)
+      const target = zoneOf(state, onto.zone)
+      if (target.kind === 'area') {
+        // Two loose cards become a pile where the lower one lies (K1).
+        const pile = createPile(state, `z${applied.seq}`, target, { x: onto.x, y: onto.y, rot: onto.rot })
+        detach(state, onto.id)
+        attach(state, onto.id, pile.id, 0)
+        detach(state, it.component)
+        attach(state, it.component, pile.id, 0)
+      } else {
+        detach(state, it.component)
+        const idx = zoneOf(state, onto.zone).order.indexOf(onto.id)
+        attach(state, it.component, onto.zone, idx)
+      }
       break
     }
-    case 'split':
-      takeTop(state, it.pile, it.to, it.at)
+    case 'split': {
+      if (it.to !== undefined) {
+        takeTop(state, it.pile, it.to, it.at)
+      } else {
+        const source = zoneOf(state, it.pile)
+        const parent = zoneOf(state, source.parent ?? state.setup.floor)
+        const pile = createPile(state, `z${applied.seq}`, parent, {
+          x: must(it.x, 'split needs x'),
+          y: must(it.y, 'split needs y'),
+          rot: source.geometry.rot,
+        })
+        takeTop(state, it.pile, pile.id, it.at)
+      }
       break
+    }
     case 'shuffle':
       applyShuffle(state, it.pile, must(applied.outcome, 'shuffle requires an outcome'))
       break
@@ -73,6 +105,12 @@ export function apply(prev: TableState, _registry: TypeRegistry, applied: Applie
     case 'reveal':
       for (const id of it.components) componentOf(state, id).publicOverride = true
       break
+    case 'movePile': {
+      const pile = zoneOf(state, it.pile)
+      pile.geometry = { ...pile.geometry, x: it.x, y: it.y, rot: it.rot ?? pile.geometry.rot }
+      pile.parent = it.to
+      break
+    }
     case 'seat.claim':
       must(state.seats[it.seat], `unknown seat ${it.seat}`).name = it.name
       break
@@ -106,6 +144,7 @@ export function apply(prev: TableState, _registry: TypeRegistry, applied: Applie
     case 'version.change':
       throw new Error(`${it.v} is not implemented in the thin slice`)
   }
+  settle(state)
   return state
 }
 
@@ -122,13 +161,13 @@ function detach(state: TableState, id: ComponentId): void {
 
 // Inserting into a zone other than the one the component came from clears its overrides:
 // knowledge granted in a place does not travel with the component (B6).
-function attach(state: TableState, id: ComponentId, zoneId: ZoneId, index: number): void {
+function attach(state: TableState, id: ComponentId, zoneId: ZoneId, index: number, keepOverrides = false): void {
   const c = componentOf(state, id)
   const to = zoneOf(state, zoneId)
   const idx = Math.max(0, Math.min(index, to.order.length))
   to.order.splice(idx, 0, id)
   if (c.zone !== zoneId) {
-    clearOverrides(c)
+    if (!keepOverrides) clearOverrides(c)
     if (to.kind !== 'area') {
       c.x = 0
       c.y = 0
@@ -158,6 +197,43 @@ function takeTop(state: TableState, from: ZoneId, to: ZoneId, count: number): vo
   for (const id of taken.toReversed()) {
     detach(state, id)
     attach(state, id, to, 0)
+  }
+}
+
+// A dynamic pile inherits the visibility of the area it is created in (K1).
+function createPile(state: TableState, id: ZoneId, parent: Zone, at: { x: number; y: number; rot: number }): Zone {
+  if (state.zones[id]) throw new Error(`zone ${id} already exists`)
+  const pile: Zone = {
+    id,
+    kind: 'pile',
+    name: parent.name,
+    visibility: parent.visibility,
+    geometry: { x: at.x, y: at.y, w: 0, h: 0, rot: at.rot },
+    order: [],
+    dynamic: true,
+    parent: parent.id,
+  }
+  if (parent.owner !== undefined) pile.owner = parent.owner
+  state.zones[id] = pile
+  return pile
+}
+
+// A dynamic pile with one component left is no pile: the card returns to the parent area
+// where the pile stood, keeping whatever knowledge was granted about it — it never moved.
+function settle(state: TableState): void {
+  for (const zone of Object.values(state.zones)) {
+    if (!zone.dynamic || zone.order.length > 1) continue
+    const parentId = zone.parent ?? state.setup.floor
+    const last = zone.order[0]
+    if (last !== undefined) {
+      detach(state, last)
+      attach(state, last, parentId, 0, true)
+      const c = componentOf(state, last)
+      c.x = zone.geometry.x
+      c.y = zone.geometry.y
+      c.rot = zone.geometry.rot
+    }
+    state.zones = withoutKey(state.zones, zone.id)
   }
 }
 

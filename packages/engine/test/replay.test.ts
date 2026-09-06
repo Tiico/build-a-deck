@@ -16,8 +16,13 @@ function playScript(h: Harness): Snapshot[][] {
     () => h.do('A', { v: 'flip', component: h.top('table'), face: 'front' }),
     () => h.do('B', { v: 'peek', components: [h.top('hand:B')] }),
     () => h.do('B', { v: 'showTo', components: [h.top('hand:B')], seats: ['A'] }),
+    () => h.do('B', { v: 'move', component: h.top('hand:B'), to: 'table', x: -100, y: 0 }),
+    () => h.do(null, { v: 'stack', component: h.zone('table')[0]!, onto: h.zone('table')[1]! }),
+    () => h.do(null, { v: 'movePile', pile: h.piles()[0]!, to: 'table', x: 0, y: 200 }),
+    () => h.batch('A', { v: 'draw', from: h.piles()[0]!, to: 'hand:A', count: 1 }, { v: 'draw', from: 'draw', to: 'hand:A', count: 1 }),
     () => h.do('B', { v: 'draw', from: 'draw', to: 'hand:B', count: 1 }),
-    () => h.do(null, { v: 'split', pile: 'draw', at: 2, to: 'discard' }),
+    () => h.do(null, { v: 'split', pile: 'draw', at: 1, x: -50, y: -50 }),
+    () => h.do(null, { v: 'split', pile: 'draw', at: 1, to: 'discard' }),
     () => h.do('A', { v: 'stack', component: h.top('hand:A'), onto: h.top('discard') }),
     () => h.do('A', { v: 'seat.release', seat: 'A' }),
     () => h.do(null, { v: 'setup.reset' }),
@@ -39,15 +44,18 @@ describe('deterministic replay', () => {
     expect(replayed).toEqual(h.state)
   })
 
-  it('reproduces every seat\'s view at every step', () => {
+  it("reproduces every seat's view at every step", () => {
     const h = new Harness(42)
     const live = playScript(h)
 
     let state = h.initial
     const replayedViews: Snapshot[][] = [SEATS.map((s) => project(state, registry, s))]
+    // Live views were taken per envelope; replay per line, keeping only the view after each envelope's last line.
+    const lastSeqOfBatch = new Map<string, number>()
+    for (const line of h.log) lastSeqOfBatch.set(line.batch, line.seq)
     for (const line of h.log) {
       state = apply(state, registry, line)
-      replayedViews.push(SEATS.map((s) => project(state, registry, s)))
+      if (lastSeqOfBatch.get(line.batch) === line.seq) replayedViews.push(SEATS.map((s) => project(state, registry, s)))
     }
     expect(replayedViews).toEqual(live)
   })

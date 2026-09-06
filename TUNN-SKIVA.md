@@ -30,6 +30,8 @@ Ingår som skelett men inte som funktion:
 Synlighetsmodellen enligt B6, eftersom den inte går att lägga till i efterhand utan att skriva om synken.
 Oföränderlig historik enligt B4, av samma skäl.
 Åtkomstkontrollerade ansikten enligt avsnitt 5 nedan.
+Dynamiska zoner och atomiska batchar enligt K1 och K3, eftersom båda ändrar protokollets form.
+Zonrektanglar i setup-definitionen enligt K2, eftersom `move` annars saknar ett mål att snappa till.
 
 ---
 
@@ -56,7 +58,12 @@ type PhysicalIntent =
   | { v: 'peek';       components: ComponentId[] }
   | { v: 'showTo';     components: ComponentId[]; seats: SeatId[] }
   | { v: 'reveal';     components: ComponentId[] }
+  | { v: 'movePile';   pile: ZoneId; to: ZoneId; x?: number; y?: number; rot?: number }
 ```
+
+`movePile` tillkom med K1: att plocka upp en hel hög är en fysisk handling.
+`stack` på ett löst kort i en area skapar en ny pile-zon på platsen, med areans synlighet; en hög med ett kort kvar löses upp.
+Zoner är därmed tillstånd som kan tillkomma och försvinna, och pile-zoner har en position.
 
 `deal` är medvetet ett eget verb och inte socker för `shuffle` följt av `draw` gånger n.
 Skälet är analys: en utdelning är en händelse designern tänker i, och att rekonstruera den ur tolv separata drag är förlustbringande.
@@ -84,16 +91,21 @@ type SessionIntent =
 ### 2.3 Kuvert och svar
 
 ```ts
-type Envelope = { id: string; seat: SeatId | null; intent: PhysicalIntent | SessionIntent }
+type Envelope = { id: string; seat: SeatId | null; intents: (PhysicalIntent | SessionIntent)[] }
 
 type Applied = {
   seq: number            // monotont per session, definierar loggens ordning
+  batch: string          // kuvertets id; alla rader ur samma kuvert delar det
   at: string             // servertid
   by: SeatId | null
-  intent: Envelope['intent']
+  intent: Envelope['intents'][number]
   outcome?: Outcome      // slumpresultat, se nedan
 }
 ```
+
+Ett kuvert bär en eller flera intents och är atomiskt (K3).
+Servern validerar alla mot ett temporärt tillstånd innan någon appliceras; sedan appliceras alla med löpande seq, eller inget.
+`undo.self` och tillbakaspolning behandlar en batch som en enhet.
 
 All slump avgörs på servern och lagras som **resultat**, aldrig som frö.
 `shuffle` ger en permutation, `roll` ger ett värde.
@@ -106,10 +118,14 @@ Varje plats får sin egen ström, filtrerad mot synlighetsmängden i B6.
 ```ts
 type Patch = { seq: number; ops: Op[] }
 type Op =
-  | { op: 'upsert'; component: ComponentId; state: VisibleComponentState }
-  | { op: 'remove'; component: ComponentId }
-  | { op: 'zone';   zone: ZoneId; order: ComponentId[] }
+  | { op: 'upsert';     component: ComponentId; state: VisibleComponentState }
+  | { op: 'remove';     component: ComponentId }
+  | { op: 'zone';       view: ZoneView }
+  | { op: 'zoneRemove'; zone: ZoneId }
 ```
+
+`zoneRemove` tillkom med K1, eftersom ad hoc-högar är zoner som försvinner.
+Närvaro (markörer, peka-gest, K6) går i en separat efemär kanal och finns inte i patchar eller logg.
 
 `VisibleComponentState` innehåller aldrig identitet för en komponent platsen inte får se.
 Ett dolt kort är ett ogenomskinligt handtag med position, rotation och typ — inget mer.

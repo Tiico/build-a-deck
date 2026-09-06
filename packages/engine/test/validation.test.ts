@@ -69,7 +69,15 @@ describe('setup validation', () => {
 
   it('requires all hands of one seat to return to the same pile', () => {
     const s = twoSeatSetup()
-    s.zones.push({ id: 'hand2:A', kind: 'hand', name: 'Hand 2', visibility: 'owner', owner: 'A', returnTo: 'discard' })
+    s.zones.push({
+      id: 'hand2:A',
+      kind: 'hand',
+      name: 'Hand 2',
+      visibility: 'owner',
+      owner: 'A',
+      returnTo: 'discard',
+      geometry: { x: 0, y: 0, w: 100, h: 100, rot: 0 },
+    })
     expect(() => initialState('v1', s, registry)).toThrow(/returning to both/)
   })
 

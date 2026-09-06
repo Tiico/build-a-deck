@@ -1,5 +1,5 @@
 import type { SeatId, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
-import { componentOf, type ComponentInstance, type TableState } from './state.js'
+import { componentOf, type ComponentInstance, type TableState, type Zone } from './state.js'
 import type { TypeRegistry } from './typedef.js'
 import { canSeeFace, canSeeZoneOrder } from './visibility.js'
 
@@ -12,12 +12,11 @@ export function project(state: TableState, registry: TypeRegistry, seat: SeatId 
 
   const sortedZones = Object.values(state.zones).sort((a, b) => a.id.localeCompare(b.id))
   for (const z of sortedZones) {
-    const base = { id: z.id, kind: z.kind, name: z.name, ...(z.owner !== undefined ? { owner: z.owner } : {}) }
     if (canSeeZoneOrder(z, seat)) {
-      zones.push({ mode: 'order', ...base, order: [...z.order] })
+      zones.push({ mode: 'order', ...zoneBase(z), order: [...z.order] })
       for (const id of z.order) components.push(view(state, registry, componentOf(state, id), seat))
     } else {
-      zones.push({ mode: 'count', ...base, count: z.order.length })
+      zones.push({ mode: 'count', ...zoneBase(z), count: z.order.length })
       // A component the seat was explicitly granted knowledge of still appears,
       // even though its position inside the zone does not.
       for (const id of z.order) {
@@ -27,6 +26,17 @@ export function project(state: TableState, registry: TypeRegistry, seat: SeatId 
     }
   }
   return { seq: state.seq, seat, zones, components }
+}
+
+function zoneBase(z: Zone) {
+  return {
+    id: z.id,
+    kind: z.kind,
+    name: z.name,
+    geometry: { ...z.geometry },
+    dynamic: z.dynamic,
+    ...(z.owner !== undefined ? { owner: z.owner } : {}),
+  }
 }
 
 function grantedTo(c: ComponentInstance, seat: SeatId | null): boolean {
