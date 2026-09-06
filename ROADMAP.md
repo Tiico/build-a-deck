@@ -65,7 +65,7 @@ Editorn:
 - ✅ Elementmodell kompilerad till HTML/CSS, inline-syntax, varianter, datatabell med `antal`, baksida som egen mall (E1, E2, L1–L4, L7).
 - ✅ Textanpassning ned till minimigräns, mätt i DOM (E6).
 - ✅ Kortväggen som hem, duken för mallen, tabellen som flik (L8).
-- ✅ Wizarden på en sida med ett levande kort (E3, L6).
+- ✅ Wizarden på en sida med levande ramkort och frivillig stor preview för flera kort (E3, L6).
 - ✅ Editor till bord med förrenderade texturer; bytet är atomiskt för spelarna (L5).
 - ✅ "Mina spel" och inloggningskortet (G1).
 

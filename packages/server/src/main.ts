@@ -18,6 +18,7 @@ import { MemoryRenderStore, PostgresRenderStore, type RenderStore } from '@byd/r
 //   WEB_ORIGIN     — where the browser lands after a login link; only in development, where the
 //                    web app is served from another port than the API
 //   RESEND_API_KEY, MAIL_FROM — mail through Resend (DRIFT §12); without a key links go to the log
+//   AUTH_BYPASS    — `true` logs in immediately after POST /auth/login; local/test use only
 
 const port = Number(process.env['PORT'] ?? 8080)
 const idleEvictMs = Number(process.env['IDLE_EVICT_MS'] ?? 30 * 60 * 1000)
@@ -61,9 +62,10 @@ const host = new TableHost(registry, store, undefined, renders)
 const staticDir = process.env['STATIC_DIR']
 const publicOrigin = process.env['PUBLIC_ORIGIN']
 const appOrigin = process.env['WEB_ORIGIN']
+const authBypass = process.env['AUTH_BYPASS'] === 'true'
 const resendKey = process.env['RESEND_API_KEY']
 const mailer: Mailer = resendKey ? new ResendMailer(resendKey, process.env['MAIL_FROM'] ?? 'build-your-deck <login@example.com>') : new ConsoleMailer()
-const server = createServer({ host, store, registry, renders, projects, surveys, auth, mailer, ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}) })
+const server = createServer({ host, store, registry, renders, projects, surveys, auth, mailer, authBypass, ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}) })
 server.listen(port, () => console.log(JSON.stringify({ msg: 'listening', port })))
 
 const evictor = setInterval(() => {

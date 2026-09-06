@@ -34,6 +34,9 @@ export type ServerOptions = {
   // Where the browser lands after the link (the web app); defaults to a path on this origin. In
   // development the web app is served from another port than the API.
   appOrigin?: string
+  // Explicit local/test escape hatch: create the session on POST /auth/login instead of mailing.
+  // Never infer this from missing mail configuration; production must opt in deliberately.
+  authBypass?: boolean
   // One per server: how many login links an address may get per hour.
   limiter?: LoginLimiter
 }
@@ -459,6 +462,15 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
     if (!parsed.success) return json(res, 400, { error: 'that is not an address' })
     const email = parsed.data.email.trim().toLowerCase()
     if (opts.limiter && !opts.limiter.allow(email, Date.now())) return json(res, 429, { error: 'too many links; try again later' })
+    if (opts.authBypass) {
+      res.writeHead(200, {
+        ...CORS,
+        'content-type': 'application/json',
+        'set-cookie': await createLoginSession(opts, auth, email),
+      })
+      res.end(JSON.stringify({ ok: true, loggedIn: true }))
+      return
+    }
     const t = token()
     await auth.issueToken(hash(t), email, new Date(Date.now() + TOKEN_TTL_MS).toISOString())
     // The link must come back to this API, where the cookie lives: never the page's origin.
@@ -471,14 +483,9 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
     const t = url.searchParams.get('token') ?? ''
     const email = t ? await auth.redeemToken(hash(t), now().toISOString()) : null
     if (!email) return json(res, 400, { error: 'the link is spent or too old; ask for a new one' })
-    const account: Account = await auth.ensureAccount(email)
-    const sid = token()
-    const expires = new Date(Date.now() + SESSION_TTL_MS)
-    await auth.createSession(hash(sid), account.id, expires.toISOString())
-    const secure = (opts.publicOrigin ?? '').startsWith('https://') ? '; Secure' : ''
     res.writeHead(302, {
       ...CORS,
-      'set-cookie': `${COOKIE}=${sid}; Path=/; HttpOnly; SameSite=Lax; Expires=${expires.toUTCString()}${secure}`,
+      'set-cookie': await createLoginSession(opts, auth, email),
       location: `${opts.appOrigin ?? ''}${safeNext(url.searchParams.get('next') ?? undefined)}`,
     })
     res.end()
@@ -496,6 +503,15 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
     return
   }
   json(res, 404, { error: 'not found' })
+}
+
+async function createLoginSession(opts: ServerOptions, auth: AuthStore, email: string): Promise<string> {
+  const account: Account = await auth.ensureAccount(email)
+  const sid = token()
+  const expires = new Date(Date.now() + SESSION_TTL_MS)
+  await auth.createSession(hash(sid), account.id, expires.toISOString())
+  const secure = (opts.publicOrigin ?? '').startsWith('https://') ? '; Secure' : ''
+  return `${COOKIE}=${sid}; Path=/; HttpOnly; SameSite=Lax; Expires=${expires.toUTCString()}${secure}`
 }
 
 function json(res: ServerResponse, status: number, body: unknown): void {

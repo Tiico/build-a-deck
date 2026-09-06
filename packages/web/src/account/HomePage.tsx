@@ -32,7 +32,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   if (email === null) {
     return (
       <div className="byd-account" data-page="home">
-        <LoginCard http={http} next={location.pathname + location.search} />
+        <LoginCard http={http} next={location.pathname + location.search} onNavigate={onNavigate} />
       </div>
     )
   }

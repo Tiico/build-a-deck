@@ -10,12 +10,13 @@ export class Unauthorized extends Error {
 
 export const withCredentials = (init: RequestInit = {}): RequestInit => ({ ...init, credentials: 'include' })
 
-export async function requestLink(http: string, email: string, next: string): Promise<'sent' | 'too-many' | 'invalid'> {
+export async function requestLink(http: string, email: string, next: string): Promise<'sent' | 'logged-in' | 'too-many' | 'invalid'> {
   const res = await fetch(`${http}/auth/login`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, next }) }))
   if (res.status === 429) return 'too-many'
   if (res.status === 400) return 'invalid'
   if (!res.ok) throw new Error(`could not ask for a link: ${res.status}`)
-  return 'sent'
+  const body = (await res.json()) as { loggedIn?: boolean }
+  return body.loggedIn ? 'logged-in' : 'sent'
 }
 
 export async function whoAmI(http: string): Promise<string | null> {

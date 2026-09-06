@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { CardPreview } from '../editor/CardPreview.js'
 import { loginUrl, withCredentials } from '../account/api.js'
 import { parseCsv } from './csv.js'
@@ -14,6 +14,49 @@ Riddare,3,Sköld 1. Kostar 1 mindre om du kontrollerar ett **Torn**.
 Trollkarl,2,När du spelar Trollkarl: dra ett kort.
 Tjuv,1,Ta ett slumpmässigt kort från en motståndares hand.`
 const SAMPLE_ROW = { title: 'Drake', cost: '5', body: 'Flygande. När Drake anfaller: gör 2 skada på alla motståndare.' }
+const EMPTY_STATE: WizardState = { name: '', players: 2, fields: DEFAULT_FIELDS, frame: 'classic', rows: [] }
+const PENDING_KEY = 'byd.pending-wizard'
+type PendingAction = 'editor' | 'table'
+type PendingWizard = { state: WizardState; csv: string; action: PendingAction; server: string | null }
+
+function pendingWizard(server: string | null): PendingWizard | null {
+  try {
+    const raw = sessionStorage.getItem(PENDING_KEY)
+    if (!raw) return null
+    const value = JSON.parse(raw) as Partial<PendingWizard>
+    const state = value.state
+    if (
+      value.server !== server ||
+      (value.action !== 'editor' && value.action !== 'table') ||
+      !state ||
+      typeof state.name !== 'string' ||
+      typeof state.players !== 'number' ||
+      typeof state.frame !== 'string' ||
+      !Array.isArray(state.fields) ||
+      !Array.isArray(state.rows) ||
+      typeof value.csv !== 'string'
+    ) return null
+    return value as PendingWizard
+  } catch {
+    return null
+  }
+}
+
+function rememberWizard(pending: PendingWizard): void {
+  try {
+    sessionStorage.setItem(PENDING_KEY, JSON.stringify(pending))
+  } catch {
+    // Login still works if storage is unavailable; only automatic resume is lost.
+  }
+}
+
+function forgetWizard(): void {
+  try {
+    sessionStorage.removeItem(PENDING_KEY)
+  } catch {
+    // Nothing else depends on cleanup succeeding.
+  }
+}
 
 // /new?server=http://…  — the wizard (L6), one page with a live card (prototype answer B).
 // It produces exactly the document the editor edits, then hands off to the editor or a table.
@@ -21,10 +64,13 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const server = params.get('server')
   const http = server ?? location.origin
-  const [s, setS] = useState<WizardState>({ name: '', players: 2, fields: DEFAULT_FIELDS, frame: 'classic', rows: [] })
-  const [csv, setCsv] = useState('')
+  const pending = useMemo(() => pendingWizard(server), [server])
+  const [s, setS] = useState<WizardState>(pending?.state ?? EMPTY_STATE)
+  const [csv, setCsv] = useState(pending?.csv ?? '')
+  const [showLargePreview, setShowLargePreview] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const resumed = useRef(false)
   const frame = FRAMES.find((f) => f.id === s.frame) ?? DEFAULT_FRAME
   const ready = s.name.trim().length > 0 && s.rows.length > 0 && s.fields.length > 0
   const front = useMemo(() => frame.front(s.fields), [frame, s.fields])
@@ -34,20 +80,22 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     if (server) q.set('server', server)
     return q.toString()
   }
-  const create = async () => {
+  const create = async (action: PendingAction) => {
     const res = await fetch(`${http}/projects`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(buildProject(s)) }))
     if (res.status === 401) {
       // Not logged in (G1): to the login card and back to the wizard after.
+      rememberWizard({ state: s, csv, action, server })
       onNavigate(loginUrl(location.pathname + location.search, server))
       throw new Error('logga in först')
     }
     if (!res.ok) throw new Error(`kunde inte skapa projektet: ${res.status}`)
+    forgetWizard()
     return ((await res.json()) as { id: string }).id
   }
   const toEditor = async () => {
     setBusy('editor')
     try {
-      const id = await create()
+      const id = await create('editor')
       onNavigate(`/editor?${suffix(new URLSearchParams({ project: id }))}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
@@ -57,7 +105,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   const toTable = async () => {
     setBusy('table')
     try {
-      const id = await create()
+      const id = await create('table')
       const res = await fetch(`${http}/projects/${encodeURIComponent(id)}/sessions`, withCredentials({ method: 'POST' }))
       if (!res.ok) throw new Error(`kunde inte starta bordet: ${res.status}`)
       const { id: session } = (await res.json()) as { id: string }
@@ -69,10 +117,16 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       setBusy(null)
     }
   }
+  useEffect(() => {
+    if (!pending || resumed.current) return
+    resumed.current = true
+    if (pending.action === 'table') void toTable()
+    else void toEditor()
+  }, [])
   const setFields = (fields: Field[]) => setS({ ...s, fields })
 
   return (
-    <div className="byd-wizard" data-page="new">
+    <div className={`byd-wizard${showLargePreview ? ' byd-wizard-preview-open' : ''}`} data-page="new">
       <main>
         <h1>Nytt spel</h1>
         <section>
@@ -135,6 +189,9 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
             }}>Använd exemplet</button>
             <button type="button" onClick={() => setS({ ...s, rows: Array.from({ length: 5 }, (_, i) => ({ title: `Kort ${i + 1}`, cost: '1', body: '' })) })}>5 tomma rader</button>
             <span>{s.rows.length} kort</span>
+            <button type="button" className="byd-wizard-preview-toggle" aria-expanded={showLargePreview} onClick={() => setShowLargePreview(!showLargePreview)}>
+              {showLargePreview ? 'Dölj stor preview' : 'Visa stor preview'}
+            </button>
           </div>
         </section>
         <section className="byd-wizard-actions">
@@ -147,19 +204,21 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
           {error && <span role="alert">{error}</span>}
         </section>
       </main>
-      <aside>
-        <div className="byd-wizard-caption">{s.name || 'Ditt spel'} · {s.rows.length} kort · {s.players} spelare</div>
-        <div className="byd-wizard-live">
-          <CardPreview id="live" face={front} row={first} icons={{}} scale={2} />
-        </div>
-        {s.rows.length > 1 && (
-          <div className="byd-wizard-thumbs">
-            {s.rows.slice(1, 9).map((r, i) => (
-              <CardPreview key={i} id={`thumb-${i}`} face={front} row={r} icons={{}} scale={0.35} />
-            ))}
+      {showLargePreview && (
+        <aside>
+          <div className="byd-wizard-caption">{s.name || 'Ditt spel'} · {s.rows.length} kort · {s.players} spelare</div>
+          <div className="byd-wizard-live">
+            <CardPreview id="live" face={front} row={first} icons={{}} />
           </div>
-        )}
-      </aside>
+          {s.rows.length > 1 && (
+            <div className="byd-wizard-thumbs">
+              {s.rows.slice(1, 9).map((r, i) => (
+                <CardPreview key={i} id={`thumb-${i}`} face={front} row={r} icons={{}} scale={0.35} />
+              ))}
+            </div>
+          )}
+        </aside>
+      )}
     </div>
   )
 }

@@ -29,7 +29,7 @@ export function twoSeatSetup(): SetupDef {
 export type Running = { url: string; http: string; store: MemoryLogStore; projects: MemoryProjectStore; mail: MemoryMailer; stop(): Promise<void>; restart(): Promise<void>; completeRenders(): Promise<number> }
 
 // With `auth`, accounts are on (G1): projects need a login and belong to whoever made them.
-export async function startServer(opts: { auth?: boolean } = {}): Promise<Running> {
+export async function startServer(opts: { auth?: boolean; authBypass?: boolean } = {}): Promise<Running> {
   const store = new MemoryLogStore()
   const projects = new MemoryProjectStore()
   const renders = new MemoryRenderStore()
@@ -37,7 +37,7 @@ export async function startServer(opts: { auth?: boolean } = {}): Promise<Runnin
   const mail = new MemoryMailer()
   const auth = opts.auth ? new MemoryAuthStore() : undefined
   let http = ''
-  const make = () => createServer({ host: new TableHost(registry, store, undefined, renders), store, registry, renders, projects, surveys, ...(auth ? { auth, mailer: mail, publicOrigin: http } : {}) })
+  const make = () => createServer({ host: new TableHost(registry, store, undefined, renders), store, registry, renders, projects, surveys, ...(auth ? { auth, mailer: mail, publicOrigin: http, authBypass: opts.authBypass } : {}) })
   let server: Server = make()
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
   const { port } = server.address() as AddressInfo

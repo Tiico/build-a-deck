@@ -37,6 +37,20 @@ function project() {
 }
 
 describe('logging in with a magic link', () => {
+  it('logs in immediately without mailing when the explicit test bypass is enabled', async () => {
+    await run.stop()
+    run = await start({ authBypass: true })
+
+    const res = await post('/auth/login', { email: 'ada@example.com', next: '/new' })
+
+    expect(res.status).toBe(200)
+    expect(await res.json()).toEqual({ ok: true, loggedIn: true })
+    const cookie = res.headers.get('set-cookie') ?? ''
+    expect(cookie).toMatch(/byd_session=[^;]+; .*HttpOnly/)
+    expect(await (await get('/auth/me', cookie)).json()).toEqual({ email: 'ada@example.com' })
+    expect(run.mail.sent).toHaveLength(0)
+  })
+
   it('mails a link, which sets a session cookie once; /auth/me then knows who you are, and logout forgets', async () => {
     const cookie = await login('ada@example.com')
     expect(await (await get('/auth/me', cookie)).json()).toEqual({ email: 'ada@example.com' })

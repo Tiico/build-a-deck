@@ -18,9 +18,20 @@ function open(onNavigate: (url: string) => void) {
 }
 
 describe('NewProjectPage (L6, prototype B)', () => {
+  it('keeps the large preview optional for people building many cards in the wizard', () => {
+    open(() => undefined)
+
+    expect(document.querySelector('.byd-wizard > aside')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Visa stor preview' }))
+    expect(document.querySelector('.byd-wizard > aside')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Dölj stor preview' }))
+    expect(document.querySelector('.byd-wizard > aside')).toBeNull()
+  })
+
   it('builds a project from the form with a live card, and hands off to the editor', async () => {
     const gone: string[] = []
     open((url) => gone.push(url))
+    fireEvent.click(screen.getByRole('button', { name: 'Visa stor preview' }))
     const live = () => within(document.querySelector('.byd-wizard-live') as HTMLElement)
     expect(live().getByText('Drake')).toBeTruthy() // the sample row on the live card
 

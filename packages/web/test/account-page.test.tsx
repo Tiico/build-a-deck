@@ -25,6 +25,27 @@ async function followMailedLink(): Promise<void> {
 }
 
 describe('HomePage and the login card', () => {
+  it('continues directly as the logged-in user when the server enables the test bypass', async () => {
+    await run.stop()
+    run = await startServer({ auth: true, authBypass: true })
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    const gone: string[] = []
+    render(<HomePage onNavigate={(u) => gone.push(u)} />)
+
+    const email = await screen.findByLabelText('E-post')
+    fireEvent.change(email, { target: { value: 'ada@example.com' } })
+    fireEvent.click(screen.getByRole('button', { name: /Skicka inloggningslänk/ }))
+
+    await waitFor(() => expect(gone.at(-1)).toBe(location.pathname + location.search))
+    expect(screen.queryByText(/Kolla mejlen/)).toBeNull()
+    expect(run.mail.sent).toHaveLength(0)
+
+    cleanup()
+    render(<HomePage onNavigate={(u) => gone.push(u)} />)
+    expect(await screen.findByText('Mina spel')).toBeTruthy()
+    expect(screen.getByText('ada@example.com', { exact: false })).toBeTruthy()
+  })
+
   it('asks for an address, says to check the mail, and after the link shows the account\'s games', async () => {
     history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
     const gone: string[] = []
@@ -55,6 +76,37 @@ describe('HomePage and the login card', () => {
 })
 
 describe('pages that need an account send you to log in and back', () => {
+  it('resumes the filled wizard after first login and opens the editor without making the game again', async () => {
+    await run.stop()
+    run = await startServer({ auth: true, authBypass: true })
+    sessionStorage.clear()
+    history.replaceState(null, '', `/new?server=${encodeURIComponent(run.http)}`)
+    const gone: string[] = []
+    render(<NewProjectPage onNavigate={(u) => gone.push(u)} />)
+    fireEvent.change(screen.getByLabelText('Namn'), { target: { value: 'Första försöket' } })
+    fireEvent.click(screen.getByRole('button', { name: /använd exemplet/i }))
+    fireEvent.click(screen.getByRole('button', { name: /till editorn/i }))
+    await waitFor(() => expect(gone.at(-1)).toMatch(/^\/login\?next=%2Fnew/))
+
+    const login = new URL(gone.at(-1)!, 'http://web.local')
+    const next = login.searchParams.get('next')!
+    const loggedIn = await fetch(`${run.http}/auth/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'ada@example.com', next }),
+    })
+    expect(await loggedIn.json()).toEqual({ ok: true, loggedIn: true })
+
+    cleanup()
+    gone.length = 0
+    history.replaceState(null, '', next)
+    render(<NewProjectPage onNavigate={(u) => gone.push(u)} />)
+
+    await waitFor(() => expect(gone.at(-1)).toMatch(/^\/editor\?/))
+    const projectId = new URL(gone.at(-1)!, 'http://web.local').searchParams.get('project')!
+    expect((await run.projects.load(projectId))?.name).toBe('Första försöket')
+  })
+
   it('the wizard, when creating, and the editor, when opening an owned project', async () => {
     history.replaceState(null, '', `/new?server=${encodeURIComponent(run.http)}`)
     const gone: string[] = []

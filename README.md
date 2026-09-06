@@ -35,6 +35,8 @@ pnpm dev:web      # http://localhost:5173
 ```
 
 Skapa ett spel på http://localhost:5173/new?server=http%3A%2F%2Flocalhost%3A8080 och tryck "Öppna bordet".
+Sätt `AUTH_BYPASS=true` på servern vid manuell testning för att logga in direkt efter att
+e-postadressen skickats, utan att följa den magiska länken. Flaggan ska aldrig sättas i produktion.
 
 ### Med Postgres och texturer
 

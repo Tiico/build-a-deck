@@ -3,14 +3,19 @@ import { requestLink } from './api.js'
 
 // Logging in (G1, prototype A): one field, one button, one sentence about guests. Never a
 // password, never a word about whether the address is known.
-export function LoginCard({ http, next }: { http: string; next: string }) {
+export function LoginCard({ http, next, onNavigate = (url) => location.assign(url) }: { http: string; next: string; onNavigate?(url: string): void }) {
   const [email, setEmail] = useState('')
   const [state, setState] = useState<'open' | 'busy' | 'sent' | 'too-many' | 'invalid' | 'failed'>('open')
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setState('busy')
     try {
-      setState(await requestLink(http, email.trim(), next))
+      const result = await requestLink(http, email.trim(), next)
+      if (result === 'logged-in') {
+        onNavigate(next)
+        return
+      }
+      setState(result)
     } catch {
       setState('failed')
     }
