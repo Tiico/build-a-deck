@@ -14,6 +14,23 @@ export type Listener = (view: Snapshot | null, status: ClientStatus) => void
 
 const ACTIVITY_LIMIT = 200
 
+// The subset of the WebSocket API the client relies on, so another implementation
+// (the `ws` package under jsdom, a native module elsewhere) can be injected.
+export type WebSocketLike = {
+  readonly readyState: number
+  readonly OPEN: number
+  send(data: string): void
+  close(): void
+  addEventListener(type: 'open' | 'message' | 'close' | 'error', listener: (ev: { data?: unknown }) => void): void
+}
+export type WebSocketCtor = new (url: string) => WebSocketLike
+
+let implementation: WebSocketCtor | null = null
+export function useWebSocketImplementation(ctor: WebSocketCtor | null): void {
+  implementation = ctor
+}
+const makeSocket = (url: string): WebSocketLike => new (implementation ?? (globalThis.WebSocket as unknown as WebSocketCtor))(url)
+
 // The whole wire protocol behind a small surface: a view that follows the table,
 // a status, and `send`. Framework-free so that views stay thin.
 export class TableClient {
@@ -21,7 +38,7 @@ export class TableClient {
   status: ClientStatus = 'connecting'
   // The most recent committed lines, redacted by the server; oldest first, bounded.
   activity: Activity[] = []
-  private ws: WebSocket
+  private ws: WebSocketLike
   private readonly readyPromise: Promise<void>
   private resolveReady!: () => void
   private readonly pending = new Map<string, (result: SendResult) => void>()
@@ -54,7 +71,7 @@ export class TableClient {
   send(...intents: Intent[]): Promise<SendResult> {
     const envelope: Envelope = { id: `${this.opts.seat ?? 'table'}-${this.envelopes++}`, seat: this.opts.seat, intents }
     return new Promise((resolve) => {
-      if (this.ws.readyState !== WebSocket.OPEN) {
+      if (this.ws.readyState !== this.ws.OPEN) {
         resolve({ ok: false, reason: 'not connected' })
         return
       }
@@ -75,9 +92,9 @@ export class TableClient {
     this.ws.close()
   }
 
-  private open(): WebSocket {
+  private open(): WebSocketLike {
     const { url, sessionId, seat } = this.opts
-    const ws = new WebSocket(`${url}/sessions/${encodeURIComponent(sessionId)}${seat === null ? '' : `?seat=${encodeURIComponent(seat)}`}`)
+    const ws = makeSocket(`${url}/sessions/${encodeURIComponent(sessionId)}${seat === null ? '' : `?seat=${encodeURIComponent(seat)}`}`)
     ws.addEventListener('message', (ev) => this.receive(ServerMessage.parse(JSON.parse(String(ev.data)))))
     ws.addEventListener('close', () => this.dropped(ws))
     ws.addEventListener('error', () => undefined) // `close` follows; nothing to do here
@@ -86,7 +103,7 @@ export class TableClient {
 
   // The connection went away without us asking. Whatever was in flight is unknown to us:
   // the view after resync is the truth, so pending envelopes are told so and let go.
-  private dropped(ws: WebSocket): void {
+  private dropped(ws: WebSocketLike): void {
     if (ws !== this.ws || this.status === 'closed') return
     for (const resolve of this.pending.values()) resolve({ ok: false, reason: 'connection lost' })
     this.pending.clear()

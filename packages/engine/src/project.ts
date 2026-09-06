@@ -1,14 +1,15 @@
 import type { Activity, Applied, SeatId, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
 
+import { componentOf, type ComponentInstance, type TableState, type Zone } from './state.js'
+import type { TypeRegistry } from './typedef.js'
+import { canSeeFace, canSeeZoneOrder } from './visibility.js'
+
 // A log line as every view may see it. The outcome never leaves the server: a shuffle's
 // re-keying says exactly where each card went, which no one at a physical table knows.
 export function projectActivity(line: Applied): Activity {
   const { seq, batch, at, by, intent } = line
   return { seq, batch, at, by, intent }
 }
-import { componentOf, type ComponentInstance, type TableState, type Zone } from './state.js'
-import type { TypeRegistry } from './typedef.js'
-import { canSeeFace, canSeeZoneOrder } from './visibility.js'
 
 // Projects the authoritative state into what one seat is allowed to know.
 // This is the only path from state to wire. Nothing else may serialise components.
@@ -33,7 +34,7 @@ export function project(state: TableState, registry: TypeRegistry, seat: SeatId 
     }
   }
   const seats = state.setup.seats.map((id) => ({ id, name: state.seats[id]?.name ?? null }))
-  return { seq: state.seq, seat, seats, zones, components }
+  return { seq: state.seq, seat, floor: state.setup.floor, seats, zones, components }
 }
 
 function zoneBase(z: Zone) {

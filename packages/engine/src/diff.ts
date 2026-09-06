@@ -64,6 +64,7 @@ export function applyPatch(prev: Snapshot, patch: Patch): Snapshot {
   return {
     seq: patch.seq,
     seat: prev.seat,
+    floor: prev.floor,
     seats,
     zones: sortedZones,
     components: orderComponents([...components.values()], sortedZones),

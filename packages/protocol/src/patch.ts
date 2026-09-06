@@ -56,6 +56,8 @@ export type SeatView = z.infer<typeof SeatView>
 export const Snapshot = z.object({
   seq: z.number().int().nonnegative(),
   seat: SeatId.nullable(),
+  // The background area (K1/K2): what a drop outside every zone lands in, and the table bounds.
+  floor: ZoneId,
   seats: z.array(SeatView),
   zones: z.array(ZoneView),
   components: z.array(VisibleComponentState),
