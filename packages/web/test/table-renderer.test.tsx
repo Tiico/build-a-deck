@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { TableRenderer } from '../src/table/TableRenderer.js'
 import { buildScene } from './scene.js'
 
@@ -112,5 +112,28 @@ describe('textures (TUNN-SKIVA §5)', () => {
     expect(down.src).toBe(`http://faces.test/faces/${'b'.repeat(64)}`)
     const plain = document.querySelector('[data-zone="discard"] img')
     expect(plain).toBeNull()
+  })
+})
+
+describe('textures that are not ready yet', () => {
+  it('retries an image that failed to load, with a cache-busting query, a bounded number of times', () => {
+    vi.useFakeTimers()
+    const { view, faceUp } = buildScene()
+    const snapshot = view(null)
+    const withFaces = { ...snapshot, components: snapshot.components.map((c) => (c.id === faceUp ? { ...c, faces: { front: 'a'.repeat(64) } } : c)) }
+    render(<TableRenderer view={withFaces} mode="table" faces="http://faces.test" />)
+    const img = () => document.querySelector(`[data-component="${faceUp}"] img`) as HTMLImageElement
+    const base = `http://faces.test/faces/${'a'.repeat(64)}`
+    expect(img().src).toBe(base)
+
+    fireEvent.error(img())
+    expect(img().src).toBe(base)
+    act(() => vi.advanceTimersByTime(1500))
+    expect(img().src).toBe(`${base}?retry=1`)
+
+    fireEvent.error(img())
+    act(() => vi.advanceTimersByTime(3000))
+    expect(img().src).toBe(`${base}?retry=2`)
+    vi.useRealTimers()
   })
 })

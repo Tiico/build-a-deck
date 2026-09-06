@@ -110,6 +110,27 @@ export function TableRenderer({ view, mode, scale: fixedScale, faces }: TableRen
   )
 }
 
+// A texture that may not exist yet: the server answers 202 while the render job is queued, the
+// browser reports that as an error, and this tries again with growing pauses, a bounded number
+// of times. The query only busts the cache; the hash is the identity.
+const RETRY_MS = 1500
+const RETRY_MAX = 8
+function Texture({ src }: { src: string }) {
+  const [attempt, setAttempt] = useState(0)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => {
+    if (timer.current) clearTimeout(timer.current)
+  }, [])
+  const onError = () => {
+    if (attempt >= RETRY_MAX || timer.current) return
+    timer.current = setTimeout(() => {
+      timer.current = null
+      setAttempt((a) => a + 1)
+    }, RETRY_MS * (attempt + 1))
+  }
+  return <img src={attempt === 0 ? src : `${src}?retry=${attempt}`} alt="" draggable={false} onError={onError} />
+}
+
 // The texture to show: the front when its hash is known (the seat may see it), else the back.
 function textureUrl(faces: string | undefined, c: VisibleComponentState): string | undefined {
   if (!faces || !c.faces) return undefined
@@ -149,7 +170,7 @@ function Card({
         ...(c.cardRef === null ? {} : { ['--hue' as string]: hue(c.cardRef) }),
       }}
     >
-      {src && <img src={src} alt="" draggable={false} />}
+      {src && <Texture src={src} />}
       <span>{c.cardRef ?? ''}</span>
     </div>
   )
@@ -199,7 +220,7 @@ function Pile({
           ...(topCard?.cardRef ? { ['--hue' as string]: hue(topCard.cardRef) } : {}),
         }}
       >
-        {src && <img src={src} alt="" draggable={false} />}
+        {src && <Texture src={src} />}
         <span>{topCard?.cardRef ?? ''}</span>
       </div>
       <span className="byd-pile-count">
