@@ -54,7 +54,11 @@ describe('PlayerPage', () => {
     const discard = table.view?.zones.find((z) => z.id === 'discard')
     expect(discard).toMatchObject({ mode: 'order', order: [expect.any(String)] })
     const log = await run.store.read(id)
-    expect(log.at(-1)).toMatchObject({ by: 'A', intent: { v: 'move', to: 'discard' } })
+    expect(log.slice(-2).map((l) => l.intent)).toEqual([
+      expect.objectContaining({ v: 'move', to: 'discard' }),
+      expect.objectContaining({ v: 'flip', face: 'front' }),
+    ])
+    expect(log.at(-1)?.by).toBe('A')
     table.close()
   })
 
@@ -83,9 +87,42 @@ describe('PlayerPage', () => {
 
     await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1))
     const log = await run.store.read(id)
-    const last = log.slice(-2)
-    expect(last.map((l) => l.intent.v)).toEqual(['move', 'move'])
+    const last = log.slice(-4)
+    expect(last.map((l) => l.intent.v)).toEqual(['move', 'flip', 'move', 'flip'])
     expect(new Set(last.map((l) => l.batch)).size).toBe(1)
+    table.close()
+  })
+})
+
+describe('playing turns the card face-up (K11)', () => {
+  it('flips when the target is public and leaves it face-down for a hidden pile, in one envelope', async () => {
+    const id = await createSession(run.store)
+    const table = TableClient.connect({ url: run.url, sessionId: id, seat: null })
+    await table.ready()
+    await open(id, 'A', 'Ada')
+    await table.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
+    await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(2))
+
+    const lift = (el: Element) => {
+      fireEvent.pointerDown(el, { clientX: 100, clientY: 500 })
+      fireEvent.pointerMove(el, { clientX: 100, clientY: 430 })
+      fireEvent.pointerUp(el, { clientX: 100, clientY: 430 })
+    }
+    lift(document.querySelector('[data-hand-card]')!)
+    fireEvent.click(await screen.findByRole('button', { name: /Kasthög/ }))
+    await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1))
+    let log = await run.store.read(id)
+    let last = log.slice(-2)
+    expect(last.map((l) => l.intent.v)).toEqual(['move', 'flip'])
+    expect(last[1]?.intent).toMatchObject({ v: 'flip', face: 'front' })
+    expect(new Set(last.map((l) => l.batch)).size).toBe(1)
+
+    lift(document.querySelector('[data-hand-card]')!)
+    fireEvent.click(await screen.findByRole('button', { name: /Draghög/ }))
+    await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(0))
+    log = await run.store.read(id)
+    last = log.slice(-2)
+    expect(last.map((l) => l.intent.v)).toEqual(['flip', 'move'])
     table.close()
   })
 })

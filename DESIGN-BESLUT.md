@@ -589,6 +589,14 @@ Följdkrav:
 Zonernas namn är genvägarnas etiketter; ett spel med zoner som heter "Zon 3" får obegripliga knappar (B5).
 Platsen claimas med namnet ur länken vid första anslutning om den är ledig; annars visas den som sitter där.
 
+### K11. Att spela ett kort vänder det upp om målet är publikt (2026-09-06)
+
+Zongenvägen skickar `move` och `flip` till framsidan som ett kuvert när målzonen är publik, och enbart `move` när målet är en dold hög.
+Det är vad handen gör fysiskt, och det är en affordance, inte en regel — kortet kan vändas tillbaka.
+
+Följdkrav:
+Spel med "spela nedvänt" som mekanik behöver ett andra val i arket.
+
 ---
 
 ## L. Editorn (grillad 2026-09-06)

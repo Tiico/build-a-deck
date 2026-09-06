@@ -34,8 +34,14 @@ export function PlayerPage() {
   const hand = view.components.filter((c) => c.zone === `hand:${seat}`)
   const toPlay = lifted ? (selected.has(lifted.id) ? hand.filter((c) => selected.has(c.id)) : [lifted]) : []
 
+  // Playing to a public zone turns the card face-up, as a hand would (K11); a hidden pile keeps it down.
   const play = (zone: string) => {
-    const intents: Intent[] = toPlay.map((c) => ({ v: 'move', component: c.id, to: zone }))
+    const isPublic = view.zones.find((z) => z.id === zone)?.mode === 'order'
+    const intents: Intent[] = toPlay.flatMap((c): Intent[] =>
+      isPublic
+        ? [{ v: 'move', component: c.id, to: zone }, { v: 'flip', component: c.id, face: 'front' }]
+        : [{ v: 'move', component: c.id, to: zone }],
+    )
     void client.send(...intents)
     setLifted(null)
     setSelected(new Set())
