@@ -87,3 +87,51 @@ describe('playing on the table (K1, K2, C)', () => {
     other.close()
   })
 })
+
+describe('presence on the table screen (K6)', () => {
+  it('shows where the others are and what they carry, forgets them when they leave, and sends its own pointer', async () => {
+    const id = await createSession(run.store)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    render(<TablePage />)
+    await screen.findByText(/Draghög/)
+    const ada = TableClient.connect({ url: run.url, sessionId: id, seat: 'A' })
+    await ada.ready()
+    await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'table', count: 1 })
+    const cardId = ada.view!.components[0]!.id
+
+    ada.sendPresence({ kind: 'cursor', x: 0, y: 0 })
+    const cursor = await waitFor(() => {
+      const el = document.querySelector('[data-cursor]')
+      if (!el) throw new Error('no cursor yet')
+      return el
+    })
+    expect(cursor.textContent).toContain('Ada')
+    ada.sendPresence({ kind: 'drag', component: cardId, x: 100, y: 100 })
+    await waitFor(() => expect(document.querySelector(`[data-ghost-of][data-component="${cardId}"]`)).toBeTruthy())
+    expect(document.querySelector(`[data-component="${cardId}"][data-carried]`)).toBeTruthy()
+
+    // What this screen does with its pointer reaches Ada.
+    const seen: string[] = []
+    ada.onPresence((_from, p) => seen.push(p.kind))
+    fireEvent.pointerMove(document.querySelector('[data-table]')!, { clientX: 300, clientY: 200 })
+    await waitFor(() => expect(seen).toContain('cursor'))
+
+    ada.close()
+    await waitFor(() => expect(document.querySelector('[data-cursor]')).toBeNull())
+    expect(document.querySelector('[data-ghost-of]')).toBeNull()
+  })
+
+  it('a card that just moved carries the colour of the seat that moved it, for a moment', async () => {
+    const id = await createSession(run.store)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    render(<TablePage />)
+    await screen.findByText(/Draghög/)
+    const ada = TableClient.connect({ url: run.url, sessionId: id, seat: 'A' })
+    await ada.ready()
+    await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'table', count: 1 })
+    const cardId = ada.view!.components[0]!.id
+    await ada.send({ v: 'move', component: cardId, to: 'table', x: 50, y: 50 })
+    await waitFor(() => expect(document.querySelector(`[data-component="${cardId}"]`)!.getAttribute('data-by')).toBe('A'))
+    ada.close()
+  })
+})

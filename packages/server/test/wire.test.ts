@@ -257,3 +257,31 @@ describe('rewind on the wire (B)', () => {
     expect(again.view).toEqual(restored)
   })
 })
+
+describe('presence (K6): an ephemeral channel beside the log', () => {
+  it('relays what a connection says to every other connection at the table, never to itself, never into the log', async () => {
+    const id = await createSession(run.http)
+    const a = await connect(id, 'A')
+    const b = await connect(id, 'B')
+    const table = await connect(id, null)
+    a.sendRaw(JSON.stringify({ t: 'presence', presence: { kind: 'cursor', x: 10, y: -20 } }))
+    const seen = await b.waitFor((m) => m.t === 'presence')
+    expect(seen).toMatchObject({ t: 'presence', from: { seat: 'A' }, presence: { kind: 'cursor', x: 10, y: -20 } })
+    expect((await table.waitFor((m) => m.t === 'presence')).t).toBe('presence')
+    expect(a.messages.some((m) => m.t === 'presence')).toBe(false)
+    expect(await run.store.read(id)).toEqual([])
+
+    // Two screens at the table are two senders, told apart by connection.
+    const table2 = await connect(id, null)
+    table2.sendRaw(JSON.stringify({ t: 'presence', presence: { kind: 'point', x: 0, y: 0 } }))
+    const fromTable = await b.waitFor((m) => m.t === 'presence' && m.presence.kind === 'point')
+    expect(fromTable.t === 'presence' && fromTable.from.seat).toBeNull()
+    expect(fromTable.t === 'presence' && fromTable.from.id).not.toBe(seen.t === 'presence' ? seen.from.id : '')
+
+    // Leaving sends the others an `away`, so no cursor lingers.
+    await a.close()
+    const away = await b.waitFor((m) => m.t === 'presence' && m.presence.kind === 'away')
+    expect(away).toMatchObject({ from: { seat: 'A' } })
+    expect(await run.store.read(id)).toEqual([])
+  })
+})

@@ -123,7 +123,7 @@ async function attach(opts: ServerOptions, ws: WebSocket, sessionId: string, sea
     ws.close(4004, 'unknown session')
     return
   }
-  const sub = { seat, send }
+  const sub = { seat, id: randomUUID(), send }
   actor.subscribe(sub)
   ws.on('close', () => actor.unsubscribe(sub))
 
@@ -136,6 +136,10 @@ async function attach(opts: ServerOptions, ws: WebSocket, sessionId: string, sea
         if (typeof env?.id === 'string') id = env.id
       }
       const msg = ClientMessage.parse(raw)
+      if (msg.t === 'presence') {
+        actor.relay(sub, msg.presence)
+        return
+      }
       // The connection's seat is authoritative; a client cannot speak for another seat.
       if (msg.envelope.seat !== seat) {
         send({ t: 'reject', id: msg.envelope.id, reason: 'envelope seat does not match connection seat' })

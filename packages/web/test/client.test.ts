@@ -99,3 +99,36 @@ describe('activity', () => {
     expect(seen).toContain(2)
   })
 })
+
+describe('presence (K6)', () => {
+  it('reaches the others at the table and never the log; cursor updates are throttled, the last one always arrives', async () => {
+    const id = await createSession(run.store)
+    const a = TableClient.connect({ url: run.url, sessionId: id, seat: 'A' })
+    const b = TableClient.connect({ url: run.url, sessionId: id, seat: 'B' })
+    await Promise.all([a.ready(), b.ready()])
+    const seen: { from: { seat: string | null }; presence: { kind: string; x?: number } }[] = []
+    b.onPresence((from, presence) => seen.push({ from, presence }))
+
+    a.sendPresence({ kind: 'point', x: 1, y: 2 })
+    await waitUntil(() => seen.length === 1)
+    expect(seen[0]).toMatchObject({ from: { seat: 'A' }, presence: { kind: 'point', x: 1 } })
+
+    for (let i = 0; i < 20; i++) a.sendPresence({ kind: 'cursor', x: i, y: 0 })
+    await new Promise((r) => setTimeout(r, 150))
+    const cursors = seen.filter((s) => s.presence.kind === 'cursor')
+    expect(cursors.length).toBeGreaterThanOrEqual(1)
+    expect(cursors.length).toBeLessThanOrEqual(3)
+    expect(cursors.at(-1)?.presence.x).toBe(19)
+    expect(await run.store.read(id)).toEqual([])
+    a.close()
+    b.close()
+  })
+})
+
+async function waitUntil(pred: () => boolean, timeoutMs = 2000): Promise<void> {
+  const start = Date.now()
+  while (!pred()) {
+    if (Date.now() - start > timeoutMs) throw new Error('timed out')
+    await new Promise((r) => setTimeout(r, 10))
+  }
+}

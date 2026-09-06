@@ -561,6 +561,13 @@ Långtryck skickar en kort peka-puls som alla ser.
 Ett kort som flyttas bär kort platsens färg.
 Allt går i en separat efemär kanal och hamnar aldrig i loggen.
 
+Prototypat och byggt 2026-09-06, variant "mjuka markörer + speglade dragningar":
+Markörerna är prickar med namn, inte pilar, och en anslutnings pågående dragning speglas live på de andras bord — kortet lyfts, följer handen och bär namnbricka tills det släpps och loggen säger var det landade.
+Kanalen är ett `presence`-meddelande på samma WebSocket (`cursor`, `away`, `drag`, `drop`, `point`) som aktören vidarebefordrar till övriga anslutningar; avsändaren är anslutningens plats (null för en bordsskärm) och ett anslutnings-id.
+Markörrörelser stryps till ~20 per sekund i klienten; en bruten anslutning ger de andra `drop` och `away`.
+Tillskrivningen behöver ingen kanal: aktivitetsraden bär `by`, så bordet låter kortet glöda i platsens färg när raden kommer.
+Överlägget ligger inne i bordsplanet, så det följer perspektivet i bordsläget.
+
 ### K7. Inget ljud
 
 Inga ljud, ingen haptik, inga notiser.

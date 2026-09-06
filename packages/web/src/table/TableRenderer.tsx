@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from 'react'
 import { Texture, textureUrl } from './Texture.js'
-import type { Intent, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
+import type { Intent, Presence, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
+import type { Peer, Pulse, Recent } from './presence.js'
 import { hue } from './hue.js'
 import { seatColor } from './seatColor.js'
 import { fitScale } from './fit.js'
@@ -13,33 +14,53 @@ export type TableMode = 'table' | 'tv'
 // `faces` is the HTTP origin that serves /faces/:hash; without it cards are plain colours.
 // With `onAct` the table can be played on (K1, K2, C): drag cards, the top of a pile, or a whole
 // pile by its label; hold for a ring of verbs. Without it the table only shows.
-export type TableRendererProps = { view: Snapshot; mode: TableMode; scale?: number; faces?: string | undefined; onAct?: ((intents: Intent[]) => void) | undefined }
+// Presence (K6): `peers` are the others' cursors and carried cards, `pulses` where someone points,
+// `recent` which cards just moved and by whom; `onPresence` reports this screen's own.
+export type TableRendererProps = {
+  view: Snapshot
+  mode: TableMode
+  scale?: number
+  faces?: string | undefined
+  onAct?: ((intents: Intent[]) => void) | undefined
+  peers?: readonly Peer[] | undefined
+  pulses?: readonly Pulse[] | undefined
+  recent?: readonly Recent[] | undefined
+  onPresence?: ((p: Presence) => void) | undefined
+}
 
 const FAN_MAX = 12
 const HOLD_MS = 350
+const POINT_MS = 450
 const DRAG_MM = 4
+const TABLE_GREY = '#8a93a8'
 
 type Live = Drag & { started: boolean }
 type Ring = { target: DragTarget; x: number; y: number }
 
-export function TableRenderer({ view, mode, scale: fixedScale, faces, onAct }: TableRendererProps) {
+export function TableRenderer({ view, mode, scale: fixedScale, faces, onAct, peers = [], pulses = [], recent = [], onPresence }: TableRendererProps) {
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
   const frame = useRef<HTMLDivElement | null>(null)
   const wood = useRef<HTMLDivElement | null>(null)
   const table = useRef<HTMLDivElement | null>(null)
-  const [fitted, setFitted] = useState(1)
+  // Nothing is painted until the frame has been measured: a first paint at 1:1 would flash.
+  const [fitted, setFitted] = useState<number | null>(null)
   const margin = mode === 'table' ? 80 : 44
   useEffect(() => {
     const el = frame.current
-    if (fixedScale !== undefined || !el || typeof ResizeObserver === 'undefined') return
+    if (fixedScale !== undefined || !el) return
+    if (typeof ResizeObserver === 'undefined') {
+      setFitted(1)
+      return
+    }
     const update = () => setFitted(fitScale({ w: floor.geometry.w, h: floor.geometry.h }, { w: el.clientWidth, h: el.clientHeight }, margin))
     update()
     const ro = new ResizeObserver(update)
     ro.observe(el)
     return () => ro.disconnect()
   }, [fixedScale, floor.geometry.w, floor.geometry.h, margin])
-  const scale = fixedScale ?? fitted
+  const scale = fixedScale ?? fitted ?? 1
+  const measured = fixedScale !== undefined || fitted !== null
 
   // Inspection (K8): "Titta" in the ring, private to this screen, until tapped away.
   const [held, setHeld] = useState<VisibleComponentState | null>(null)
@@ -61,6 +82,9 @@ export function TableRenderer({ view, mode, scale: fixedScale, faces, onAct }: T
   const top = (mmY: number) => px(mmY - floor.geometry.y)
   const seatIndex = (id: string | undefined) => Math.max(0, view.seats.findIndex((s) => s.id === id))
   const seatName = (id: string | undefined) => view.seats.find((s) => s.id === id)?.name ?? id ?? ''
+  const colourOf = (seat: string | null) => (seat === null ? TABLE_GREY : seatColor(seatIndex(seat)))
+  const carried = new Map(peers.filter((p) => p.drag).map((p) => [p.drag?.component ?? '', p]))
+  const movedBy = new Map(recent.map((r) => [r.component, r.seat]))
 
   // Pointer → table millimetres, fixed when a drag begins (the layout does not change under it).
   const mapper = (): ((cx: number, cy: number) => Point) | null => {
@@ -117,17 +141,52 @@ export function TableRenderer({ view, mode, scale: fixedScale, faces, onAct }: T
     const next = { ...d, at, started }
     live.current = next
     setDrag(next)
+    if (started && d.target.kind === 'card' && onPresence) {
+      const o = d.origin[d.target.id] ?? d.grab
+      onPresence({ kind: 'drag', component: d.target.id, x: o.x + at.x - d.grab.x, y: o.y + at.y - d.grab.y })
+    }
   }
   const up = () => {
     const d = live.current
     clearHold()
     live.current = null
     setDrag(null)
+    if (d?.started && d.target.kind === 'card') onPresence?.({ kind: 'drop' })
     if (!d || !d.started || !onAct) return
     const intents = dropIntents(view, d)
     if (intents.length > 0) onAct(intents)
   }
   const handlers = (target: DragTarget) => ({ onPointerDown: (e: RPointerEvent) => down(e, target), onPointerMove: move, onPointerUp: up, onPointerCancel: up })
+
+  // The felt itself: where this pointer is, and a hold that points (K6).
+  const pointTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const clearPoint = () => {
+    if (pointTimer.current) clearTimeout(pointTimer.current)
+    pointTimer.current = null
+  }
+  useEffect(() => clearPoint, [])
+  const feltMove = (e: RPointerEvent) => {
+    if (live.current) return
+    clearPoint()
+    const map = mapper()
+    if (!map || !onPresence) return
+    onPresence({ kind: 'cursor', ...map(e.clientX, e.clientY) })
+  }
+  const feltDown = (e: RPointerEvent) => {
+    if (e.target !== e.currentTarget && !(e.target as HTMLElement).classList.contains('byd-zone')) return
+    const map = mapper()
+    if (!map || !onPresence) return
+    const at = map(e.clientX, e.clientY)
+    clearPoint()
+    pointTimer.current = setTimeout(() => {
+      pointTimer.current = null
+      onPresence({ kind: 'point', ...at })
+    }, POINT_MS)
+  }
+  const feltLeave = () => {
+    clearPoint()
+    onPresence?.({ kind: 'away' })
+  }
 
   const areas = view.zones.filter((z) => z.kind === 'area' && z.id !== floor.id)
   const piles = view.zones.filter((z) => z.kind === 'pile')
@@ -141,9 +200,17 @@ export function TableRenderer({ view, mode, scale: fixedScale, faces, onAct }: T
   const topOf = (z: ZoneView, skip = 0) => (z.mode === 'order' ? byId.get(z.order[skip] ?? '') : undefined)
 
   return (
-    <div className="byd-table-frame" data-mode={mode} data-playable={onAct ? 'true' : undefined} ref={frame}>
+    <div className="byd-table-frame" data-mode={mode} data-playable={onAct ? 'true' : undefined} ref={frame} style={measured ? undefined : { visibility: 'hidden' }}>
       <div className="byd-table-wood" ref={wood}>
-        <div data-table ref={table} style={{ position: 'relative', width: px(floor.geometry.w), height: px(floor.geometry.h) }}>
+        <div
+          data-table
+          ref={table}
+          style={{ position: 'relative', width: px(floor.geometry.w), height: px(floor.geometry.h) }}
+          onPointerMove={feltMove}
+          onPointerDown={feltDown}
+          onPointerUp={clearPoint}
+          onPointerLeave={feltLeave}
+        >
           {areas.map((z) => (
             <div key={z.id} className="byd-zone" data-area={z.id} style={{ left: left(z.geometry.x), top: top(z.geometry.y), width: px(z.geometry.w), height: px(z.geometry.h) }}>
               <span>{z.name}</span>
@@ -183,11 +250,46 @@ export function TableRenderer({ view, mode, scale: fixedScale, faces, onAct }: T
                 top={top(a.y + (m ? dy : 0))}
                 px={px}
                 dragging={m}
+                carried={carried.has(c.id)}
+                by={movedBy.has(c.id) ? { seat: movedBy.get(c.id) ?? null, colour: colourOf(movedBy.get(c.id) ?? null) } : undefined}
                 src={textureUrl(faces, c)}
                 handlers={onAct ? handlers({ kind: 'card', id: c.id }) : undefined}
               />
             )
           })}
+          {peers.map((p) => {
+            if (!p.drag) return null
+            const c = byId.get(p.drag.component)
+            return (
+              <div
+                key={`ghost-${p.id}`}
+                className="byd-card byd-peer-ghost"
+                data-ghost-of={p.id}
+                data-component={p.drag.component}
+                data-face={c?.cardRef ? 'front' : 'back'}
+                style={{ position: 'absolute', left: left(p.drag.x), top: top(p.drag.y), width: px(CARD_MM.w), height: px(CARD_MM.h), transform: `rotate(${c?.rot ?? 0}deg)`, ['--peer' as string]: colourOf(p.seat), ...(c?.cardRef ? { ['--hue' as string]: hue(c.cardRef) } : {}) }}
+              >
+                {c && textureUrl(faces, c) && <Texture src={textureUrl(faces, c) ?? ''} />}
+                <span>{c?.cardRef ?? ''}</span>
+                <b className="byd-peer-tag">{p.name}</b>
+              </div>
+            )
+          })}
+          {peers.map((p) =>
+            p.cursor ? (
+              <div key={`cursor-${p.id}`} className="byd-peer-cursor" data-cursor={p.id} style={{ left: left(p.cursor.x), top: top(p.cursor.y), ['--peer' as string]: colourOf(p.seat) }}>
+                <span>{p.name}</span>
+              </div>
+            ) : null,
+          )}
+          {pulses.map((p) => (
+            <div key={`pulse-${p.id}-${p.at}`} className="byd-peer-pulse" data-pulse={p.id} style={{ left: left(p.x), top: top(p.y), ['--peer' as string]: colourOf(p.seat) }}>
+              <i />
+              <i />
+              <i />
+              <span>{p.name}</span>
+            </div>
+          ))}
           {drag?.started && drag.target.kind === 'pileTop' && (
             <Ghost card={topOf(zoneById.get(drag.target.pile) ?? floor)} faces={faces} left={left(drag.at.x) - px(CARD_MM.w / 2)} top={top(drag.at.y) - px(CARD_MM.h / 2)} px={px} />
           )}
@@ -239,7 +341,7 @@ function ringItems(view: Snapshot, target: DragTarget, act: (intents: Intent[]) 
 
 type Handlers = { onPointerDown(e: RPointerEvent): void; onPointerMove(e: RPointerEvent): void; onPointerUp(e: RPointerEvent): void; onPointerCancel(e: RPointerEvent): void }
 
-function Card({ c, left, top, px, dragging, src, handlers }: { c: VisibleComponentState; left: number; top: number; px: (mm: number) => number; dragging: boolean; src?: string | undefined; handlers?: Handlers | undefined }) {
+function Card({ c, left, top, px, dragging, carried, by, src, handlers }: { c: VisibleComponentState; left: number; top: number; px: (mm: number) => number; dragging: boolean; carried?: boolean; by?: { seat: string | null; colour: string } | undefined; src?: string | undefined; handlers?: Handlers | undefined }) {
   const face = c.cardRef === null ? 'back' : 'front'
   return (
     <div
@@ -247,6 +349,8 @@ function Card({ c, left, top, px, dragging, src, handlers }: { c: VisibleCompone
       data-component={c.id}
       data-face={face}
       data-dragging={dragging ? 'true' : undefined}
+      data-carried={carried ? 'true' : undefined}
+      data-by={by ? by.seat ?? 'table' : undefined}
       {...handlers}
       style={{
         position: 'absolute',
@@ -256,6 +360,7 @@ function Card({ c, left, top, px, dragging, src, handlers }: { c: VisibleCompone
         height: px(CARD_MM.h),
         transform: `rotate(${c.rot}deg)`,
         ...(c.cardRef === null ? {} : { ['--hue' as string]: hue(c.cardRef) }),
+        ...(by ? { ['--peer' as string]: by.colour } : {}),
       }}
     >
       {src && <Texture src={src} />}

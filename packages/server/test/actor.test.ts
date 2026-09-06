@@ -36,7 +36,7 @@ describe('TableActor', () => {
     }
     const { actor } = await actorWith(failing)
     const messages: ServerMessage[] = []
-    actor.subscribe({ seat: null, send: (m) => messages.push(m) })
+    actor.subscribe({ seat: null, id: 't', send: (m) => messages.push(m) })
 
     await expect(
       actor.submit({ id: 'e', seat: null, intents: [{ v: 'draw', from: 'draw', to: 'table', count: 1 }] }),
@@ -66,7 +66,7 @@ describe('TableActor', () => {
     for (const seat of ['A', 'B', null] as const) {
       const list: ServerMessage[] = []
       seen.set(seat, list)
-      actor.subscribe({ seat, send: (m) => list.push(m) })
+      actor.subscribe({ seat, id: `s-${seat ?? "t"}`, send: (m) => list.push(m) })
     }
     await actor.submit({ id: 'e', seat: 'A', intents: [{ v: 'draw', from: 'draw', to: 'hand:A', count: 2 }] })
     const upserts = (seat: string | null) =>

@@ -1,4 +1,4 @@
-import { ServerMessage, type Activity, type Envelope, type Intent, type SeatId, type Snapshot } from '@byd/protocol'
+import { ServerMessage, type Activity, type Envelope, type Intent, type Presence, type PresenceFrom, type SeatId, type Snapshot } from '@byd/protocol'
 import { applyPatch } from '@byd/engine'
 
 export type ClientStatus = 'connecting' | 'open' | 'reconnecting' | 'closed'
@@ -11,8 +11,11 @@ export type ConnectOptions = {
 }
 export type SendResult = { ok: true; seqs: number[] } | { ok: false; reason: string }
 export type Listener = (view: Snapshot | null, status: ClientStatus) => void
+export type PresenceListener = (from: PresenceFrom, presence: Presence) => void
 
 const ACTIVITY_LIMIT = 200
+// Cursor updates are coalesced (K6): at most one in flight per this many ms, the latest wins.
+const CURSOR_MS = 50
 
 // The subset of the WebSocket API the client relies on, so another implementation
 // (the `ws` package under jsdom, a native module elsewhere) can be injected.
@@ -44,6 +47,9 @@ export class TableClient {
   private readonly pending = new Map<string, (result: SendResult) => void>()
   private readonly seqWaiters: { seq: number; resolve: () => void }[] = []
   private readonly listeners = new Set<Listener>()
+  private readonly presenceListeners = new Set<PresenceListener>()
+  private cursorTimer: ReturnType<typeof setTimeout> | null = null
+  private pendingCursor: Presence | null = null
   private envelopes = 0
   private readonly nonce = Math.random().toString(36).slice(2, 10)
   private attempts = 0
@@ -82,6 +88,38 @@ export class TableClient {
     })
   }
 
+  // Presence (K6): fire and forget, beside the log. Cursor moves are throttled; anything
+  // else goes at once (a point, a drag, a drop, going away).
+  sendPresence(p: Presence): void {
+    if (p.kind !== 'cursor') {
+      this.flushCursor()
+      this.raw({ t: 'presence', presence: p })
+      return
+    }
+    this.pendingCursor = p
+    if (this.cursorTimer) return
+    this.flushCursor()
+    this.cursorTimer = setTimeout(() => {
+      this.cursorTimer = null
+      this.flushCursor()
+    }, CURSOR_MS)
+  }
+
+  onPresence(listener: PresenceListener): () => void {
+    this.presenceListeners.add(listener)
+    return () => this.presenceListeners.delete(listener)
+  }
+
+  private flushCursor(): void {
+    const p = this.pendingCursor
+    this.pendingCursor = null
+    if (p) this.raw({ t: 'presence', presence: p })
+  }
+
+  private raw(message: { t: 'presence'; presence: Presence }): void {
+    if (this.ws.readyState === this.ws.OPEN) this.ws.send(JSON.stringify(message))
+  }
+
   // Resolves once the view has reached at least `seq`.
   synced(seq: number): Promise<void> {
     if (this.view && this.view.seq >= seq) return Promise.resolve()
@@ -91,6 +129,7 @@ export class TableClient {
   close(): void {
     this.setStatus('closed')
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
+    if (this.cursorTimer) clearTimeout(this.cursorTimer)
     this.ws.close()
   }
 
@@ -148,6 +187,9 @@ export class TableClient {
         break
       case 'bye':
         // The server will close; `dropped` handles the rest.
+        break
+      case 'presence':
+        for (const l of this.presenceListeners) l(msg.from, msg.presence)
         break
     }
   }

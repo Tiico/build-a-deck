@@ -236,3 +236,62 @@ describe('textures that are not ready yet', () => {
     vi.useRealTimers()
   })
 })
+
+describe('presence (K6): the others on the table', () => {
+  const peers = [
+    { id: 'p1', seat: 'B', name: 'Bo', cursor: { x: -400, y: -250 }, drag: null },
+    { id: 'p2', seat: null, name: 'bordet', cursor: null, drag: { component: 'cX', x: -200, y: -100 } },
+  ]
+  it('draws a dot with the name in the seat colour for each cursor, and a lifted ghost where someone carries a card', () => {
+    const { view, faceDown } = buildScene()
+    const withDrag = peers.map((p) => (p.drag ? { ...p, drag: { ...p.drag, component: faceDown } } : p))
+    render(<TableRenderer view={view(null)} mode="tv" scale={1} peers={withDrag} />)
+    const dot = document.querySelector('[data-cursor="p1"]') as HTMLElement
+    expect(dot.textContent).toContain('Bo')
+    expect(dot.style.left).toBe('100px')
+    expect(dot.style.top).toBe('50px')
+    const ghost = document.querySelector('[data-ghost-of="p2"]') as HTMLElement
+    expect(ghost.getAttribute('data-component')).toBe(faceDown)
+    expect(ghost.style.left).toBe('300px')
+    expect(ghost.textContent).toContain('bordet')
+    // The carried card is drawn where the other's hand is, not where the log has it.
+    expect((document.querySelector(`[data-component="${faceDown}"]:not([data-ghost-of])`) as HTMLElement).getAttribute('data-carried')).toBe('true')
+  })
+
+  it('shows a pointing pulse where someone points, with their name', () => {
+    const { view } = buildScene()
+    render(<TableRenderer view={view(null)} mode="tv" scale={1} pulses={[{ id: 'p1', seat: 'B', name: 'Bo', x: 0, y: 0, at: Date.now() }]} />)
+    const pulse = document.querySelector('[data-pulse]') as HTMLElement
+    expect(pulse.textContent).toContain('Bo')
+    expect(pulse.style.left).toBe('500px')
+    expect(pulse.style.top).toBe('300px')
+  })
+
+  it('reports its own pointer, a carried card, a drop, and a point on the felt', () => {
+    vi.useFakeTimers()
+    const { view, faceUp } = buildScene()
+    const onPresence = vi.fn()
+    render(<TableRenderer view={view(null)} mode="tv" scale={1} onAct={() => undefined} onPresence={onPresence} />)
+    const table = document.querySelector('[data-table]')!
+    fireEvent.pointerMove(table, client(0, 0))
+    expect(onPresence).toHaveBeenLastCalledWith({ kind: 'cursor', x: 0, y: 0 })
+    const card = document.querySelector(`[data-component="${faceUp}"]`)!
+    fireEvent.pointerDown(card, client(-390, -240))
+    fireEvent.pointerMove(card, client(-290, -140))
+    expect(onPresence).toHaveBeenLastCalledWith({ kind: 'drag', component: faceUp, x: -300, y: -150 })
+    fireEvent.pointerUp(card, client(-290, -140))
+    expect(onPresence).toHaveBeenLastCalledWith({ kind: 'drop' })
+    fireEvent.pointerDown(table, client(0, 100))
+    act(() => vi.advanceTimersByTime(500))
+    expect(onPresence).toHaveBeenLastCalledWith({ kind: 'point', x: 0, y: 100 })
+    fireEvent.pointerLeave(table)
+    expect(onPresence).toHaveBeenLastCalledWith({ kind: 'away' })
+    vi.useRealTimers()
+  })
+
+  it('a card that just moved carries the colour of who moved it', () => {
+    const { view, faceUp } = buildScene()
+    render(<TableRenderer view={view(null)} mode="tv" scale={1} recent={[{ component: faceUp, seat: 'A', at: Date.now() }]} />)
+    expect(document.querySelector(`[data-component="${faceUp}"]`)!.getAttribute('data-by')).toBe('A')
+  })
+})

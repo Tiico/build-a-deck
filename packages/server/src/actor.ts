@@ -1,4 +1,4 @@
-import type { Applied, Envelope, SeatId, ServerMessage, Snapshot } from '@byd/protocol'
+import type { Applied, Envelope, Presence, SeatId, ServerMessage, Snapshot } from '@byd/protocol'
 import {
   apply,
   cryptoRng,
@@ -27,7 +27,7 @@ export const TEXTURE_DPI = 150
 // decide → append (commit) → apply → broadcast makes the log the truth (DRIFT §3).
 // Nothing in memory is authoritative: an actor is rebuilt from its log on load.
 
-export type Subscriber = { seat: SeatId | null; send(message: ServerMessage): void }
+export type Subscriber = { seat: SeatId | null; id: string; send(message: ServerMessage): void }
 
 export class TableActor {
   private queue: Promise<unknown> = Promise.resolve()
@@ -105,8 +105,19 @@ export class TableActor {
   }
 
   unsubscribe(sub: Subscriber): void {
+    if (!this.subscribers.has(sub)) return
     this.subscribers.delete(sub)
+    // No cursor or carried card outlives its connection.
+    this.relay(sub, { kind: 'drop' })
+    this.relay(sub, { kind: 'away' })
     this.lastActivity = Date.now()
+  }
+
+  // Presence (K6): straight to every other connection, never through decide or the log.
+  relay(from: Subscriber, presence: Presence): void {
+    for (const sub of this.subscribers.keys()) {
+      if (sub !== from) sub.send({ t: 'presence', from: { seat: from.seat, id: from.id }, presence })
+    }
   }
 
   submit(env: Envelope): Promise<Decision> {
