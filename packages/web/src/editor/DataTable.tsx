@@ -16,8 +16,8 @@ export type DataTableProps = {
 export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow }: DataTableProps) {
   const fields = fieldsOf(doc)
   const nextRef = () => {
-    let n = Object.keys(doc.rows).length + 1
-    while (doc.rows[`kort-${n}`]) n++
+    let n = doc.rows.length + 1
+    while (doc.rows.some((r) => r.id === `kort-${n}`)) n++
     return `kort-${n}`
   }
   return (
@@ -33,7 +33,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
           </tr>
         </thead>
         <tbody>
-          {Object.entries(doc.rows).map(([cardRef, row]) => (
+          {doc.rows.map(({ id: cardRef, fields: row }) => (
             <tr key={cardRef} data-card-ref={cardRef} aria-selected={selectedRow === cardRef ? 'true' : 'false'} onClick={() => onSelectRow(cardRef)}>
               <td className="byd-data-id">{cardRef}</td>
               {fields.map((f) => (

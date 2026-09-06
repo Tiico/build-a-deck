@@ -18,7 +18,7 @@ export type TemplateCanvasProps = {
 export function TemplateCanvas({ doc, face, row, selectedElement, onSelectElement, onPatch }: TemplateCanvasProps) {
   const faceTemplate = doc.template.faces[face]
   if (!faceTemplate) return <p>Mallen saknar sidan {face}.</p>
-  const rowData = (row && doc.rows[row]) || Object.values(doc.rows)[0] || {}
+  const rowData = doc.rows.find((r) => r.id === row)?.fields ?? doc.rows[0]?.fields ?? {}
   const el = faceTemplate.base.find((e) => e.id === selectedElement)
   const fields = fieldsOf(doc)
 

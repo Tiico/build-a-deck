@@ -3,7 +3,7 @@ import { parseInline, type InlineNode } from './inline.js'
 import { detectScript, estimateHeight, fitText, type Measure } from './fit.js'
 import type { Condition, Element, FaceTemplate, Row, Template } from './model.js'
 
-export type Warning = { element: string; code: 'unknown-icon' | 'unknown-variant' | 'text-too-small' | 'text-overflow' | 'unknown-field'; detail: string }
+export type Warning = { element: string; code: 'unknown-icon' | 'text-too-small' | 'text-overflow' | 'unknown-field'; detail: string }
 export type Compiled = { html: string; css: string; warnings: Warning[] }
 export type CompileInput = {
   type: ComponentTypeDef
@@ -36,7 +36,7 @@ export function compile(input: CompileInput): Compiled {
   css.push(`.byd-icon-missing{color:#c00;background:#fee;font-weight:700;}`)
   css.push(`.byd-pip{display:inline-block;min-width:1.15em;height:1.15em;line-height:1.15em;border-radius:50%;text-align:center;font-weight:700;font-size:0.85em;border:0.12em solid currentColor;vertical-align:-0.15em;padding:0 0.1em;box-sizing:border-box;}`)
 
-  for (const el of elementsFor(input.face, input.row, warnings)) render(el, bleed, bleed, input, html, css, warnings)
+  for (const el of elementsFor(input.face, input.row)) render(el, bleed, bleed, input, html, css, warnings)
 
   return { html: `<div data-card data-bleed="${bleed}">${html.join('')}</div>`, css: rules.join('\n'), warnings }
 }
@@ -114,15 +114,13 @@ function holds(when: Condition, row: Row): boolean {
 }
 
 // The variant a row asks for (L3): base elements, with the variant's overrides replacing
-// elements of the same id in place and its removals taken out. An unknown name is a warning.
-export function elementsFor(face: FaceTemplate, row: Row, warnings: Warning[]): Element[] {
+// elements of the same id in place and its removals taken out. A value with no variant of
+// that name is the base look — most cards are base, and a warning on each would be noise.
+export function elementsFor(face: FaceTemplate, row: Row): Element[] {
   const name = face.variantBy ? row[face.variantBy] : undefined
   if (name === undefined || name === null || name === '') return face.base
   const variant = face.variants[String(name)]
-  if (!variant) {
-    warnings.push({ element: '', code: 'unknown-variant', detail: String(name) })
-    return face.base
-  }
+  if (!variant) return face.base
   const overrides = new Map((variant.override ?? []).map((e) => [e.id, e]))
   const removed = new Set(variant.remove ?? [])
   const merged = face.base.filter((e) => !removed.has(e.id)).map((e) => overrides.get(e.id) ?? e)

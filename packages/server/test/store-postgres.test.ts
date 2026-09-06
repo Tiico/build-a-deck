@@ -48,13 +48,32 @@ describe.skipIf(!url)('PostgresProjectStore', () => {
     const projects = store.projects()
     const id = `p-${Date.now()}`
     const { zones, seats, floor } = twoSeatSetup()
-    const doc = { name: 'Test', template, rows: { a: { title: 'A' } }, icons: {}, setup: { zones, seats, floor, deckZone: 'draw' } }
+    const doc = { name: 'Test', template, rows: [{ id: 'a', fields: { title: 'A' } }], icons: {}, setup: { zones, seats, floor, deckZone: 'draw' } }
     expect((await projects.create(id, doc)).rev).toBe(1)
     expect((await projects.load(id))?.name).toBe('Test')
     expect(await projects.replace(id, 5, doc)).toBe('conflict')
     const next = await projects.replace(id, 1, { ...doc, name: 'Test 2' })
     expect(next).toMatchObject({ rev: 2, name: 'Test 2' })
     expect(await projects.replace('nope', 1, doc)).toBe('missing')
+    await store.close()
+  })
+})
+
+describe.skipIf(!url)('project row order survives storage', () => {
+  it('keeps the rows in the order they were written, including numeric-looking ids', async () => {
+    const store = PostgresLogStore.connect(url!)
+    await store.migrate()
+    const projects = store.projects()
+    const id = `order-${Date.now()}`
+    const { zones, seats, floor } = twoSeatSetup()
+    const rows = [
+      { id: 'zeta', fields: { title: 'Z' } },
+      { id: '10', fields: { title: 'Ten' } },
+      { id: 'alpha', fields: { title: 'A' } },
+      { id: '2', fields: { title: 'Two' } },
+    ]
+    await projects.create(id, { name: 'Order', template, rows, icons: {}, setup: { zones, seats, floor, deckZone: 'draw' } })
+    expect((await projects.load(id))?.rows.map((r) => r.id)).toEqual(['zeta', '10', 'alpha', '2'])
     await store.close()
   })
 })

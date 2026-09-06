@@ -19,12 +19,17 @@ export type CardPreviewProps = {
 export function CardPreview({ face, row, icons, id, scale = 1, selectedElement, onSelectElement, onWarnings }: CardPreviewProps) {
   const out = useMemo(() => compile({ type: CARD_STANDARD_63x88, face, row, icons, scope: `#${id}` }), [face, row, icons, id])
   const ref = useRef<HTMLDivElement | null>(null)
+  // The DOM measures for real; the compiler's text warnings are an estimate for headless use.
+  // What the editor reports is what the browser saw: overflow after fitting, plus the
+  // compiler's non-text warnings (icons and the like).
   useLayoutEffect(() => {
-    if (ref.current) fitInDocument(ref.current)
-  }, [out.html, out.css])
-  useLayoutEffect(() => {
-    onWarnings?.(out.warnings)
-  }, [out.warnings, onWarnings])
+    if (!ref.current) return
+    const report = fitInDocument(ref.current)
+    const fromDom: Warning[] = report
+      .filter((r) => r.overflow)
+      .map((r) => ({ element: r.element, code: 'text-too-small', detail: `texten ryms inte ens vid ${r.sizePt}pt` }))
+    onWarnings?.([...out.warnings.filter((w) => w.code !== 'text-too-small' && w.code !== 'text-overflow'), ...fromDom])
+  }, [out.html, out.css, out.warnings, onWarnings])
   const highlight = selectedElement ? `#${id} [data-element="${selectedElement}"]{outline:0.6mm solid #3c8ce7;outline-offset:0.3mm}` : ''
   return (
     <div id={id} className="byd-preview" style={{ zoom: scale }}>

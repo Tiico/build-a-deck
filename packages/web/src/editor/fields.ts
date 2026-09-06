@@ -26,6 +26,6 @@ export function fieldsOf(doc: ProjectDoc): string[] {
     walk(face.base)
     for (const v of Object.values(face.variants)) walk(v.override ?? [])
   }
-  for (const row of Object.values(doc.rows)) for (const k of Object.keys(row)) add(k)
+  for (const row of doc.rows) for (const k of Object.keys(row.fields)) add(k)
   return [...out.filter((f) => f !== 'antal'), 'antal']
 }

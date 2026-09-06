@@ -22,11 +22,11 @@ export function projectDoc(): ProjectDoc {
   return {
     name: 'Skogens herrar',
     template,
-    rows: {
-      dragon: { title: 'Drake', body: 'Flygande.', antal: 2 },
-      knight: { title: 'Riddare', body: 'Sköld 1.', antal: 1 },
-      wizard: { title: 'Trollkarl', body: 'Dra ett kort.', antal: 1 },
-    },
+    rows: [
+      { id: 'dragon', fields: { title: 'Drake', body: 'Flygande.', antal: 2 } },
+      { id: 'knight', fields: { title: 'Riddare', body: 'Sköld 1.', antal: 1 } },
+      { id: 'wizard', fields: { title: 'Trollkarl', body: 'Dra ett kort.', antal: 1 } },
+    ],
     icons: {},
     setup: { zones, seats, floor, deckZone: 'draw' },
   }

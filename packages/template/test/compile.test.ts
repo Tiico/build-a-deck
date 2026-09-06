@@ -60,11 +60,11 @@ describe('variants (L3)', () => {
     expect(spell.warnings).toEqual([])
   })
 
-  it('a variant name the template does not define is a warning, and the base renders', () => {
+  it('a value with no variant of that name is the base look, without a warning', () => {
     const withVariants: FaceTemplate = { base: [text('title', 'title', 5, 14)], variantBy: 'typ', variants: {} }
     const out = compile({ type: CARD_STANDARD_63x88, face: withVariants, row: { typ: 'land', title: 'Skog' }, icons })
     expect(out.html).toContain('Skog')
-    expect(out.warnings).toEqual([{ element: '', code: 'unknown-variant', detail: 'land' }])
+    expect(out.warnings).toEqual([])
   })
 })
 

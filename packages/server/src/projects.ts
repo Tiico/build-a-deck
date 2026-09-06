@@ -25,10 +25,14 @@ export const ProjectSetup = z.object({
   deckZone: z.string().min(1),
 })
 const Cell = z.union([z.string(), z.number(), z.boolean(), z.null()])
+// Rows are an ordered list: their order is the deck's order until the first shuffle, and the
+// table's order in the editor. An object would lose it in storage and for numeric-looking ids.
+export const ProjectRow = z.object({ id: z.string().min(1), fields: z.record(z.string(), Cell) })
+export type ProjectRow = z.infer<typeof ProjectRow>
 export const ProjectDoc = z.object({
   name: z.string().min(1),
   template: Template,
-  rows: z.record(z.string().min(1), z.record(z.string(), Cell)),
+  rows: z.array(ProjectRow),
   icons: z.record(z.string(), z.string()),
   setup: ProjectSetup,
 })
@@ -72,8 +76,8 @@ export class MemoryProjectStore implements ProjectStore {
 export function setupFromProject(doc: ProjectDoc): SetupDef {
   const type = { id: CARD_STANDARD_63x88.id, version: CARD_STANDARD_63x88.version }
   const components: SetupDef['components'] = []
-  for (const [cardRef, row] of Object.entries(doc.rows)) {
-    const copies = Math.max(0, Math.floor(Number(row['antal'] ?? 1)) || 0)
+  for (const { id: cardRef, fields } of doc.rows) {
+    const copies = Math.max(0, Math.floor(Number(fields['antal'] ?? 1)) || 0)
     for (let i = 0; i < copies; i++) components.push({ type, cardRef, zone: doc.setup.deckZone, face: 'back' })
   }
   // Optional keys that are present but undefined are dropped: the engine's types are exact.
@@ -91,6 +95,6 @@ export function setupFromProject(doc: ProjectDoc): SetupDef {
 
 export function deckFromProject(doc: ProjectDoc): Deck {
   const rows: Record<string, Row> = {}
-  for (const [cardRef, row] of Object.entries(doc.rows)) rows[cardRef] = row
+  for (const { id, fields } of doc.rows) rows[id] = fields
   return { template: doc.template, rows, icons: doc.icons }
 }

@@ -22,7 +22,7 @@ describe('ProjectClient', () => {
     client.setCell('dragon', 'title', 'Drakhona')
     client.patchElement('front', 'title', { font: { family: 'sans-serif', sizePt: 16, weight: 700 } })
     expect(client.dirty).toBe(true)
-    expect(client.doc.rows['dragon']?.['title']).toBe('Drakhona')
+    expect(client.doc.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drakhona')
 
     expect(await client.save()).toEqual({ ok: true, rev: 2 })
     expect(client.dirty).toBe(false)

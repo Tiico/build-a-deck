@@ -23,7 +23,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   if (!faceTemplate) return <p>Mallen saknar sidan {face}.</p>
   return (
     <div className="byd-wall" role="list">
-      {Object.entries(doc.rows).map(([cardRef, row]) => {
+      {doc.rows.map(({ id: cardRef, fields: row }) => {
         const copies = Number(row['antal'] ?? 1)
         const count = warnings[cardRef] ?? 0
         return (

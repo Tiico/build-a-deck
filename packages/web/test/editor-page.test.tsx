@@ -39,7 +39,7 @@ describe('EditorPage', () => {
     expect((screen.getByRole('button', { name: /spara/i }) as HTMLButtonElement).disabled).toBe(true)
     const stored = await run.projects.load('p1')
     expect(stored?.rev).toBe(2)
-    expect(stored?.rows['dragon']?.['title']).toBe('Drakhona')
+    expect(stored?.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drakhona')
     expect(stored?.template.faces['front']?.base.find((e) => e.id === 'title')).toMatchObject({ font: { sizePt: 18 } })
 
     // Back on the wall, the deck shows the edit; starting a table yields a link.

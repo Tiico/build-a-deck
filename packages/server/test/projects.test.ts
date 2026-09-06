@@ -19,11 +19,11 @@ function project() {
   return {
     name: 'Skogens herrar',
     template,
-    rows: {
-      dragon: { title: 'Drake', antal: 3 },
-      knight: { title: 'Riddare', antal: 1 },
-      wizard: { title: 'Trollkarl' },
-    },
+    rows: [
+      { id: 'dragon', fields: { title: 'Drake', antal: 3 } },
+      { id: 'knight', fields: { title: 'Riddare', antal: 1 } },
+      { id: 'wizard', fields: { title: 'Trollkarl' } },
+    ],
     icons: {},
     setup: { zones, seats, floor, deckZone: 'draw' },
   }
@@ -38,9 +38,9 @@ describe('projects (L4, L5)', () => {
 
     const read = await json('GET', `/projects/${id}`)
     expect(read.status).toBe(200)
-    const doc = (await read.json()) as { name: string; rev: number; rows: Record<string, unknown> }
+    const doc = (await read.json()) as { name: string; rev: number; rows: { id: string }[] }
     expect(doc.name).toBe('Skogens herrar')
-    expect(Object.keys(doc.rows)).toEqual(['dragon', 'knight', 'wizard'])
+    expect(doc.rows.map((r) => r.id)).toEqual(['dragon', 'knight', 'wizard'])
 
     const replaced = await json('PUT', `/projects/${id}`, { ...project(), name: 'Skogens herrar v2', rev: 1 })
     expect(replaced.status).toBe(200)

@@ -7,7 +7,7 @@ import { projectDoc } from './project-doc.js'
 describe('DeckWall (C as the home view)', () => {
   it('renders every row as a compiled card with its copies and warnings, and reports clicks on cards and elements', () => {
     const doc = projectDoc()
-    doc.rows['wizard'] = { ...doc.rows['wizard'], body: 'Har {magi}.' }
+    doc.rows[2]!.fields['body'] = 'Har {magi}.'
     const onSelectRow = vi.fn()
     const onSelectElement = vi.fn()
     render(<DeckWall doc={doc} face="front" selectedRow="knight" onSelectRow={onSelectRow} onSelectElement={onSelectElement} />)

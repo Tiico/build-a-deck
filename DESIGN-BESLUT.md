@@ -650,6 +650,7 @@ Mallen har en bas och namngivna varianter som ärver och skriver över element.
 En kolumn väljer variant per rad.
 Varje element kan vara villkorat på att ett fält är ifyllt eller har ett visst värde.
 Ett kort kan aldrig avvika utanför sin variant.
+Ett kolumnvärde utan variant av det namnet ger basutseendet utan varning — de flesta kort är bas (tillägg 2026-09-06).
 
 Motivering:
 Fria undantag per kort är där mall-och-data-modellen brukar dö: när 30 av 200 kort avviker finns ingen mall längre.

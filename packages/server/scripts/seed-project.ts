@@ -31,7 +31,7 @@ const doc = {
       back: { base: [{ kind: 'shape', id: 'bg', x: 0, y: 0, w: 63, h: 88, shape: 'rect', fill: '#2f4068' }, { kind: 'shape', id: 'inner', x: 4, y: 4, w: 55, h: 80, shape: 'rect', fill: '#3a4d7a', stroke: '#1f2b4a', strokeMm: 0.8, radiusMm: 3 }], variants: {} },
     },
   },
-  rows: Object.fromEntries(NAMES.map((n, i) => [n.toLowerCase(), { title: n, typ: TYPES[i % 4], cost: 1 + (i % 5), body: BODIES[i % 4], antal: 1 + (i % 3) }])),
+  rows: NAMES.map((n, i) => ({ id: n.toLowerCase(), fields: { title: n, typ: TYPES[i % 4], cost: 1 + (i % 5), body: BODIES[i % 4], antal: 1 + (i % 3) } })),
   icons: { eld: svg('#d9542b'), skog: svg('#3a8a3a') },
   setup: {
     seats: ['N', 'E', 'S', 'W'],

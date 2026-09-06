@@ -33,18 +33,18 @@ export class ProjectClient {
   }
 
   setCell(cardRef: string, field: string, value: Cell): void {
-    const row = this.doc.rows[cardRef] ?? {}
-    this.commit({ ...this.doc, rows: { ...this.doc.rows, [cardRef]: { ...row, [field]: value } } })
+    if (!this.doc.rows.some((r) => r.id === cardRef)) throw new Error(`no row ${cardRef}`)
+    this.commit({ ...this.doc, rows: this.doc.rows.map((r) => (r.id === cardRef ? { ...r, fields: { ...r.fields, [field]: value } } : r)) })
   }
 
-  addRow(cardRef: string, row: Record<string, Cell> = {}): void {
-    if (this.doc.rows[cardRef]) throw new Error(`row ${cardRef} already exists`)
-    this.commit({ ...this.doc, rows: { ...this.doc.rows, [cardRef]: row } })
+  // Appends a row: new cards go to the end of the deck.
+  addRow(cardRef: string, fields: Record<string, Cell> = {}): void {
+    if (this.doc.rows.some((r) => r.id === cardRef)) throw new Error(`row ${cardRef} already exists`)
+    this.commit({ ...this.doc, rows: [...this.doc.rows, { id: cardRef, fields }] })
   }
 
   removeRow(cardRef: string): void {
-    const rows = Object.fromEntries(Object.entries(this.doc.rows).filter(([k]) => k !== cardRef))
-    this.commit({ ...this.doc, rows })
+    this.commit({ ...this.doc, rows: this.doc.rows.filter((r) => r.id !== cardRef) })
   }
 
   // Replaces fields of one element in one face's base by id (L1); the variants are untouched.
