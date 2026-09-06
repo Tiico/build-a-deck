@@ -496,6 +496,11 @@ Varje söm i arkitekturen — typregistry, mall, bord, synk, tryck — tvingas f
 
 Beslutet att inte väga utvecklingskostnad tungt är uttalat och gäller genomgående.
 
+### H3. Allt digitalt före tryck (2026-09-06)
+
+Pelare ett och två — skapa och speltesta — byggs färdiga innan pelare tre påbörjas.
+Renderaren ger redan tryckfärdig PDF med utfall; `PrintProvider`-adaptern och partnervalet (F2) väntar tills det digitala är komplett.
+
 ---
 
 ## K. Spelupplevelsen (grillad 2026-09-06)
