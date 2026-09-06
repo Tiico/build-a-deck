@@ -30,5 +30,18 @@ services:
     mem_limit: 1g
     restart: unless-stopped
 
+  render:
+    build:
+      context: .
+      dockerfile: Dockerfile.render
+    environment:
+      DATABASE_URL: postgres://byd:byd@postgres:5432/byd
+    depends_on:
+      postgres:
+        condition: service_healthy
+    stop_grace_period: 30s
+    mem_limit: 2g
+    restart: unless-stopped
+
 volumes:
   pgdata:

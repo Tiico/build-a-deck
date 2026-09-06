@@ -1,4 +1,4 @@
-import { chromium, type Browser, type BrowserContext } from 'playwright'
+import { chromium, type Browser, type BrowserContext, type Page } from 'playwright'
 import { fitInDocument, type FitReport } from '@byd/template'
 import type { CompiledLike } from './hash.js'
 
@@ -48,7 +48,7 @@ export class Renderer {
       await page.setContent(hostDocument(compiled, zoom), { waitUntil: 'load' })
       await page.evaluate(() => document.fonts.ready)
       await page.evaluate(fitInDocument, await page.evaluateHandle(() => document))
-      const box = await page.locator('[data-card]').boundingBox()
+      const box = await cardBox(page)
       if (!box) throw new Error('compiled output has no [data-card]')
       const clip = { x: Math.round(box.x), y: Math.round(box.y), width: Math.round(box.width), height: Math.round(box.height) }
       return await page.screenshot({ type: 'png', clip, animations: 'disabled', caret: 'hide' })
@@ -56,6 +56,17 @@ export class Renderer {
       await context.close()
     }
   }
+}
+
+// The card's box in CSS pixels, without waiting: a compiled output that has no card is an
+// error to report now, not something to wait thirty seconds for.
+async function cardBox(page: Page): Promise<{ x: number; y: number; width: number; height: number } | null> {
+  return page.evaluate(() => {
+    const el = globalThis.document.querySelector('[data-card]')
+    if (!el) return null
+    const r = el.getBoundingClientRect()
+    return { x: r.x, y: r.y, width: r.width, height: r.height }
+  })
 }
 
 // A PDF page exactly the card's size, vector text and all; the bleed is part of the compiled
@@ -67,7 +78,7 @@ export async function renderPdfWith(browser: Browser, compiled: CompiledLike): P
     await page.setContent(hostDocument(compiled), { waitUntil: 'load' })
     await page.evaluate(() => document.fonts.ready)
     await page.evaluate(fitInDocument, await page.evaluateHandle(() => document))
-    const box = await page.locator('[data-card]').boundingBox()
+    const box = await cardBox(page)
     if (!box) throw new Error('compiled output has no [data-card]')
     const mm = (px: number) => (px / CSS_DPI) * 25.4
     // The page size goes through @page, which Chromium honours exactly; the pdf() size options round.

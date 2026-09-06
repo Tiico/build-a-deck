@@ -1,0 +1,16 @@
+# The render worker: Playwright's Chromium image plus our code. Memory-capped in compose.
+FROM mcr.microsoft.com/playwright:v1.55.0-noble AS base
+RUN corepack enable
+WORKDIR /app
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json ./
+COPY packages/protocol/package.json packages/protocol/
+COPY packages/engine/package.json packages/engine/
+COPY packages/template/package.json packages/template/
+COPY packages/render/package.json packages/render/
+RUN pnpm install --frozen-lockfile --filter @byd/render...
+COPY packages/protocol packages/protocol
+COPY packages/engine packages/engine
+COPY packages/template packages/template
+COPY packages/render packages/render
+USER pwuser
+CMD ["pnpm", "--filter", "@byd/render", "worker"]
