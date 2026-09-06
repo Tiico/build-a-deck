@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { WireClient } from './client.js'
-import { createSession, start, type Running } from './fixture.js'
+import { createSession, start, twoSeatSetup, type Running } from './fixture.js'
+import { deck } from './deck.js'
 
 let run: Running
 let clients: WireClient[] = []
@@ -173,4 +174,36 @@ describe('activity on the wire', () => {
     expect(b.frames.join('\n')).not.toContain('rekey')
     expect(b.frames.join('\n')).not.toContain('outcome')
   })
+})
+
+describe('textures (TUNN-SKIVA §5)', () => {
+  it('serves a face only through its hash, which only a seat that may see the face ever receives', async () => {
+    const res = await fetch(`${run.http}/sessions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: 'tex', version: 'v1', setup: twoSeatSetup(), deck }),
+    })
+    expect(res.status).toBe(201)
+    const a = await connect('tex', 'A')
+    const b = await connect('tex', 'B')
+    await a.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    await a.synced(1)
+    await b.synced(1)
+
+    const card = a.view!.components.find((c) => c.zone === 'hand:A')!
+    expect(card.faces?.['front']).toMatch(/^[0-9a-f]{64}$/)
+    expect(card.faces?.['back']).toMatch(/^[0-9a-f]{64}$/)
+    const front = card.faces!['front']!
+    expect(b.frames.join('\n')).not.toContain(front)
+
+    // Queued but not yet rendered: come back later.
+    expect((await fetch(`${run.http}/faces/${front}`)).status).toBe(202)
+    expect((await fetch(`${run.http}/faces/${'0'.repeat(64)}`)).status).toBe(404)
+
+    await run.renderAll()
+    const png = await fetch(`${run.http}/faces/${front}`)
+    expect(png.status).toBe(200)
+    expect(png.headers.get('content-type')).toBe('image/png')
+    expect(new Uint8Array(await png.arrayBuffer()).subarray(1, 4)).toEqual(new Uint8Array([0x50, 0x4e, 0x47]))
+  }, 60_000)
 })

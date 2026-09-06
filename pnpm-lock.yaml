@@ -72,6 +72,12 @@ importers:
       '@byd/protocol':
         specifier: workspace:*
         version: link:../protocol
+      '@byd/render':
+        specifier: workspace:*
+        version: link:../render
+      '@byd/template':
+        specifier: workspace:*
+        version: link:../template
       postgres:
         specifier: ^3.4.5
         version: 3.4.9

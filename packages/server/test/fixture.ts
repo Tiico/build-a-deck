@@ -2,6 +2,7 @@ import type { AddressInfo } from 'node:net'
 import type { Server } from 'node:http'
 import { CARD_STANDARD_63x88, TypeRegistry, type SetupDef } from '@byd/engine'
 import { TableHost, createServer, MemoryLogStore } from '../src/index.js'
+import { MemoryRenderStore, Renderer, runWorker } from '@byd/render'
 
 export const registry = new TypeRegistry([CARD_STANDARD_63x88])
 export const CARD = { id: CARD_STANDARD_63x88.id, version: 1 }
@@ -25,18 +26,29 @@ export function twoSeatSetup(): SetupDef {
   }
 }
 
-export type Running = { server: Server; base: string; http: string; store: MemoryLogStore; host: TableHost; stop(): Promise<void> }
+export type Running = { server: Server; base: string; http: string; store: MemoryLogStore; renders: MemoryRenderStore; host: TableHost; renderAll(): Promise<void>; stop(): Promise<void> }
 
 export async function start(): Promise<Running> {
   const store = new MemoryLogStore()
-  const host = new TableHost(registry, store)
-  const server = createServer({ host, store, registry })
+  const renders = new MemoryRenderStore()
+  const host = new TableHost(registry, store, undefined, renders)
+  const server = createServer({ host, store, registry, renders })
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
   const { port } = server.address() as AddressInfo
   return {
     server,
     store,
+    renders,
     host,
+    // Runs a real Chromium over the queue, as the render container would.
+    renderAll: async () => {
+      const renderer = await Renderer.launch()
+      try {
+        await runWorker({ store: renders, renderer, until: 'empty' })
+      } finally {
+        await renderer.close()
+      }
+    },
     base: `ws://127.0.0.1:${port}`,
     http: `http://127.0.0.1:${port}`,
     stop: () =>

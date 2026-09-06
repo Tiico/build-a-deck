@@ -94,3 +94,23 @@ describe('inspection (K8)', () => {
     expect(document.querySelector('[data-inspect]')!.textContent).not.toMatch(/rogue/)
   })
 })
+
+describe('textures (TUNN-SKIVA §5)', () => {
+  it('shows the face image when its hash is known, the back image when only that is, and a plain back otherwise', () => {
+    const { view, faceUp, faceDown } = buildScene()
+    const snapshot = view(null)
+    const withFaces = {
+      ...snapshot,
+      components: snapshot.components.map((c) =>
+        c.id === faceUp ? { ...c, faces: { front: 'a'.repeat(64), back: 'b'.repeat(64) } } : c.id === faceDown ? { ...c, faces: { back: 'b'.repeat(64) } } : c,
+      ),
+    }
+    render(<TableRenderer view={withFaces} mode="table" faces="http://faces.test" />)
+    const up = document.querySelector(`[data-component="${faceUp}"] img`) as HTMLImageElement
+    expect(up.src).toBe(`http://faces.test/faces/${'a'.repeat(64)}`)
+    const down = document.querySelector(`[data-component="${faceDown}"] img`) as HTMLImageElement
+    expect(down.src).toBe(`http://faces.test/faces/${'b'.repeat(64)}`)
+    const plain = document.querySelector('[data-zone="discard"] img')
+    expect(plain).toBeNull()
+  })
+})

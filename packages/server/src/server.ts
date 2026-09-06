@@ -4,15 +4,24 @@ import { WebSocketServer, type WebSocket } from 'ws'
 import { z } from 'zod'
 import { ClientMessage, type ServerMessage } from '@byd/protocol'
 import { validateSetup, type SetupDef, type TypeRegistry } from '@byd/engine'
+import { Template } from '@byd/template'
+import type { RenderStore } from '@byd/render/queue'
 import type { TableHost } from './actor.js'
-import type { LogStore } from './store.js'
+import type { Deck, LogStore } from './store.js'
 
-export type ServerOptions = { host: TableHost; store: LogStore; registry: TypeRegistry }
+export type ServerOptions = { host: TableHost; store: LogStore; registry: TypeRegistry; renders?: RenderStore }
+
+const DeckBody = z.object({
+  template: Template,
+  rows: z.record(z.string(), z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))),
+  icons: z.record(z.string(), z.string()),
+})
 
 const CreateSession = z.object({
   id: z.string().min(1).optional(),
   version: z.string().min(1),
   setup: z.custom<SetupDef>((v) => typeof v === 'object' && v !== null),
+  deck: DeckBody.optional(),
 })
 
 // HTTP for the few things that are not a table (health, creating a session), and one
@@ -56,8 +65,26 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       const body = CreateSession.parse(JSON.parse(await readBody(req)))
       validateSetup(body.setup, opts.registry)
       const id = body.id ?? randomUUID()
-      await opts.store.createSession({ id, version: body.version, setup: body.setup })
+      const deck: Deck | undefined = body.deck
+      await opts.store.createSession({ id, version: body.version, setup: body.setup, ...(deck ? { deck } : {}) })
+      // Textures start rendering now rather than when the first screen connects.
+      if (deck) await opts.host.get(id)
       return json(res, 201, { id })
+    }
+    const face = /^\/faces\/([0-9a-f]{64})$/.exec(url.pathname)
+    if (req.method === 'GET' && face && opts.renders) {
+      // The hash is the capability: only a seat that may see a face was ever told its hash.
+      const hash = face[1] ?? ''
+      const bytes = await opts.renders.output(hash)
+      if (bytes) {
+        res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=31536000, immutable' })
+        res.end(Buffer.from(bytes))
+        return
+      }
+      const status = await opts.renders.status(hash)
+      if (status && (status.state === 'queued' || status.state === 'running')) return json(res, 202, { state: status.state })
+      if (status?.state === 'failed') return json(res, 500, { error: status.error ?? 'render failed' })
+      return json(res, 404, { error: 'unknown face' })
     }
     json(res, 404, { error: 'not found' })
   } catch (err) {

@@ -16,7 +16,9 @@
     "@byd/protocol": "workspace:*",
     "postgres": "^3.4.5",
     "ws": "^8.18.0",
-    "zod": "^4.0.0"
+    "zod": "^4.0.0",
+    "@byd/template": "workspace:*",
+    "@byd/render": "workspace:*"
   },
   "devDependencies": {
     "@types/ws": "^8.18.0",

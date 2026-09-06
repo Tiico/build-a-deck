@@ -1,11 +1,15 @@
 import type { Applied, GameVersionId } from '@byd/protocol'
 import type { SetupDef } from '@byd/engine'
+import type { Deck } from './faces.js'
+
+export type { Deck }
 
 // Persistence of the one thing that matters: the log.
 // `append` must be atomic per call and must refuse a gap or overlap in seq —
 // that guard is what makes "commit before apply" a guarantee rather than a habit.
 
-export type SessionRecord = { id: string; version: GameVersionId; setup: SetupDef }
+// `deck` is what the table's textures are compiled from; a session without one plays with blank cards.
+export type SessionRecord = { id: string; version: GameVersionId; setup: SetupDef; deck?: Deck }
 
 export type LogStore = {
   createSession(record: SessionRecord): Promise<void>

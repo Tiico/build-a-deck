@@ -15,6 +15,9 @@ export const VisibleComponentState = z.object({
   rot: z.number(),
   counter: z.number().int().optional(),
   cardRef: z.string().nullable(),
+  // Texture hashes the seat may fetch from /faces/:hash: the back for any visible component,
+  // the front only when the face itself is visible. The hash is the capability.
+  faces: z.record(FaceId, z.string()).optional(),
 })
 export type VisibleComponentState = z.infer<typeof VisibleComponentState>
 

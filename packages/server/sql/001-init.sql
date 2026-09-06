@@ -17,3 +17,6 @@ create table if not exists events (
   outcome     jsonb,
   primary key (session_id, seq)
 );
+
+-- The deck the textures are compiled from (TUNN-SKIVA §5); null for sessions without one.
+alter table sessions add column if not exists deck jsonb;

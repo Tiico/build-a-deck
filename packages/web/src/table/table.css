@@ -142,3 +142,9 @@
   border-left: 6px solid var(--seat, #7d8597); font-size: 20px; font-weight: 700;
 }
 [data-tv] > footer li span + span { display: block; color: #9aa3b8; font-size: 14px; font-weight: 400; }
+
+/* Textures: the image fills the card; the name stays underneath for cards without one. */
+.byd-card { position: relative; overflow: hidden; }
+.byd-card > img, .byd-pile-top > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.byd-card > img + span, .byd-pile-top > img + span { visibility: hidden; }
+.byd-pile-top { overflow: hidden; }

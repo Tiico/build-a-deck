@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url'
 import postgres from 'postgres'
 import { Applied } from '@byd/protocol'
 import type { SetupDef } from '@byd/engine'
-import { SeqConflictError, type LogStore, type SessionRecord } from './store.js'
+import { SeqConflictError, type Deck, type LogStore, type SessionRecord } from './store.js'
 
 export class PostgresLogStore implements LogStore {
   constructor(private readonly sql: postgres.Sql) {}
@@ -24,17 +24,18 @@ export class PostgresLogStore implements LogStore {
 
   async createSession(record: SessionRecord): Promise<void> {
     await this.sql`
-      insert into sessions (id, version, setup)
-      values (${record.id}, ${record.version}, ${this.sql.json(record.setup as never)})
+      insert into sessions (id, version, setup, deck)
+      values (${record.id}, ${record.version}, ${this.sql.json(record.setup as never)}, ${record.deck ? this.sql.json(record.deck as never) : null})
     `
   }
 
   async loadSession(id: string): Promise<SessionRecord | null> {
-    const rows = await this.sql<{ id: string; version: string; setup: SetupDef }[]>`
-      select id, version, setup from sessions where id = ${id}
+    const rows = await this.sql<{ id: string; version: string; setup: SetupDef; deck: Deck | null }[]>`
+      select id, version, setup, deck from sessions where id = ${id}
     `
     const row = rows[0]
-    return row ? { id: row.id, version: row.version, setup: row.setup } : null
+    if (!row) return null
+    return { id: row.id, version: row.version, setup: row.setup, ...(row.deck ? { deck: row.deck } : {}) }
   }
 
   async append(sessionId: string, lines: readonly Applied[]): Promise<void> {

@@ -25,7 +25,7 @@ export function TablePage() {
   if (!sessionId) return <p>Ingen session angiven.</p>
   if (!view) return <p data-status={status}>{status === 'connecting' ? 'Ansluter…' : status}</p>
 
-  const table = <TableRenderer view={view} mode={mode} />
+  const table = <TableRenderer view={view} mode={mode} faces={url.replace(/^ws/, 'http')} />
   return (
     <div data-page="table" data-status={status} className="byd-fit">
       {mode === 'tv' ? (

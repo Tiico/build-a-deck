@@ -6,14 +6,15 @@ import { fitScale } from './fit.js'
 
 export type TableMode = 'table' | 'tv'
 // Without an explicit `scale`, the renderer fits the table to its own frame.
-export type TableRendererProps = { view: Snapshot; mode: TableMode; scale?: number }
+// `faces` is the HTTP origin that serves /faces/:hash; without it cards are plain colours.
+export type TableRendererProps = { view: Snapshot; mode: TableMode; scale?: number; faces?: string | undefined }
 
 // Card size in table millimetres. The type registry knows the real size; until the
 // renderer reads it from there, the standard card is the only type that exists.
 const CARD_MM = { w: 63, h: 88 }
 const FAN_MAX = 12
 
-export function TableRenderer({ view, mode, scale: fixedScale }: TableRendererProps) {
+export function TableRenderer({ view, mode, scale: fixedScale, faces }: TableRendererProps) {
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
   const frame = useRef<HTMLDivElement | null>(null)
@@ -70,6 +71,7 @@ export function TableRenderer({ view, mode, scale: fixedScale }: TableRendererPr
               key={z.id}
               zone={z}
               topCard={z.mode === 'order' ? byId.get(z.order[0] ?? '') : undefined}
+              faces={faces}
               left={left(z, 0)}
               top={top(z, 0)}
               px={px}
@@ -89,7 +91,7 @@ export function TableRenderer({ view, mode, scale: fixedScale }: TableRendererPr
           {loose.map((c) => {
             const zone = zoneById.get(c.zone)
             if (!zone) return null
-            return <Card key={c.id} c={c} left={left(zone, c.x)} top={top(zone, c.y)} px={px} onHold={setHeld} />
+            return <Card key={c.id} c={c} left={left(zone, c.x)} top={top(zone, c.y)} px={px} onHold={setHeld} src={textureUrl(faces, c)} />
           })}
         </div>
       </div>
@@ -108,18 +110,27 @@ export function TableRenderer({ view, mode, scale: fixedScale }: TableRendererPr
   )
 }
 
+// The texture to show: the front when its hash is known (the seat may see it), else the back.
+function textureUrl(faces: string | undefined, c: VisibleComponentState): string | undefined {
+  if (!faces || !c.faces) return undefined
+  const hash = c.cardRef !== null ? c.faces['front'] : c.faces['back']
+  return hash ? `${faces}/faces/${hash}` : undefined
+}
+
 function Card({
   c,
   left,
   top,
   px,
   onHold,
+  src,
 }: {
   c: VisibleComponentState
   left: number
   top: number
   px: (mm: number) => number
   onHold(c: VisibleComponentState): void
+  src?: string | undefined
 }) {
   const face = c.cardRef === null ? 'back' : 'front'
   return (
@@ -138,7 +149,8 @@ function Card({
         ...(c.cardRef === null ? {} : { ['--hue' as string]: hue(c.cardRef) }),
       }}
     >
-      {c.cardRef ?? ''}
+      {src && <img src={src} alt="" draggable={false} />}
+      <span>{c.cardRef ?? ''}</span>
     </div>
   )
 }
@@ -147,16 +159,19 @@ function Card({
 function Pile({
   zone,
   topCard,
+  faces,
   left,
   top,
   px,
 }: {
   zone: ZoneView
   topCard: VisibleComponentState | undefined
+  faces: string | undefined
   left: number
   top: number
   px: (mm: number) => number
 }) {
+  const src = topCard ? textureUrl(faces, topCard) : undefined
   const count = zone.mode === 'count' ? zone.count : zone.order.length
   const layers = Math.min(count, 12)
   const thickness = Array.from({ length: layers }, (_, i) => `0 ${-i * 1.2}px 0 #1f2b4a`).join(', ')
@@ -184,6 +199,7 @@ function Pile({
           ...(topCard?.cardRef ? { ['--hue' as string]: hue(topCard.cardRef) } : {}),
         }}
       >
+        {src && <img src={src} alt="" draggable={false} />}
         <span>{topCard?.cardRef ?? ''}</span>
       </div>
       <span className="byd-pile-count">

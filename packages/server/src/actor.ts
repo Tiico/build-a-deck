@@ -11,10 +11,15 @@ import {
   uuidIds,
   type DecideDeps,
   type Decision,
+  type FaceHashes,
   type TableState,
   type TypeRegistry,
 } from '@byd/engine'
+import type { RenderStore } from '@byd/render/queue'
+import { facesOf } from './faces.js'
 import type { LogStore } from './store.js'
+
+export const TEXTURE_DPI = 150
 
 // One actor owns one table. A serial queue makes concurrency impossible; the order
 // decide → append (commit) → apply → broadcast makes the log the truth (DRIFT §3).
@@ -33,14 +38,23 @@ export class TableActor {
     private readonly registry: TypeRegistry,
     private readonly store: LogStore,
     private readonly deps: DecideDeps,
+    // Texture hashes per card and face; undefined for a session without a deck.
+    private readonly faces: FaceHashes | undefined,
   ) {}
 
-  static async load(id: string, registry: TypeRegistry, store: LogStore, deps?: DecideDeps): Promise<TableActor | null> {
+  static async load(id: string, registry: TypeRegistry, store: LogStore, deps?: DecideDeps, renders?: RenderStore): Promise<TableActor | null> {
     const record = await store.loadSession(id)
     if (!record) return null
     const initial = initialState(record.version, record.setup, registry)
     const state = replay(initial, registry, await store.read(id))
-    return new TableActor(id, state, registry, store, deps ?? defaultDeps())
+    let faces: FaceHashes | undefined
+    if (record.deck) {
+      // Enqueue is idempotent by hash, so loading a table twice costs nothing the second time.
+      const compiled = facesOf(record.deck, record.setup, registry, TEXTURE_DPI, Date.now())
+      faces = compiled.faces
+      if (renders) for (const job of compiled.jobs) await renders.enqueue(job)
+    }
+    return new TableActor(id, state, registry, store, deps ?? defaultDeps(), faces)
   }
 
   get seq(): number {
@@ -52,7 +66,7 @@ export class TableActor {
   }
 
   subscribe(sub: Subscriber): void {
-    const snapshot = project(this.state, this.registry, sub.seat)
+    const snapshot = project(this.state, this.registry, sub.seat, this.faces)
     this.subscribers.set(sub, snapshot)
     sub.send({ t: 'snapshot', snapshot })
     this.lastActivity = Date.now()
@@ -90,7 +104,7 @@ export class TableActor {
 
     const activity = decision.applied.map(projectActivity)
     for (const [sub, previous] of this.subscribers) {
-      const next = project(this.state, this.registry, sub.seat)
+      const next = project(this.state, this.registry, sub.seat, this.faces)
       const patch = diff(previous, next)
       this.subscribers.set(sub, next)
       if (patch.ops.length > 0 || patch.seq !== previous.seq) sub.send({ t: 'patch', patch })
@@ -114,12 +128,13 @@ export class TableHost {
     private readonly registry: TypeRegistry,
     private readonly store: LogStore,
     private readonly makeDeps: () => DecideDeps = defaultDeps,
+    private readonly renders?: RenderStore,
   ) {}
 
   get(id: string): Promise<TableActor | null> {
     let pending = this.actors.get(id)
     if (!pending) {
-      pending = TableActor.load(id, this.registry, this.store, this.makeDeps()).then((actor) => {
+      pending = TableActor.load(id, this.registry, this.store, this.makeDeps(), this.renders).then((actor) => {
         if (!actor) this.actors.delete(id)
         return actor
       })

@@ -3,6 +3,7 @@ import { TableHost } from './actor.js'
 import { createServer } from './server.js'
 import { MemoryLogStore, type LogStore } from './store.js'
 import { PostgresLogStore } from './store-postgres.js'
+import { MemoryRenderStore, PostgresRenderStore, type RenderStore } from '@byd/render/queue'
 
 // Entry point for the container. Configuration is environment only.
 //   DATABASE_URL   — Postgres; without it the log lives in memory and dies with the process.
@@ -16,20 +17,29 @@ const databaseUrl = process.env['DATABASE_URL']
 const registry = new TypeRegistry([CARD_STANDARD_63x88])
 
 let store: LogStore
+let renders: RenderStore
 let closeStore: () => Promise<void> = async () => undefined
 if (databaseUrl) {
   const pg = PostgresLogStore.connect(databaseUrl)
   await pg.migrate()
+  // The render queue lives in the same database; the render container drains it (DRIFT §6).
+  const rq = PostgresRenderStore.connect(databaseUrl)
+  await rq.migrate()
   store = pg
-  closeStore = () => pg.close()
+  renders = rq
+  closeStore = async () => {
+    await pg.close()
+    await rq.close()
+  }
   console.log(JSON.stringify({ msg: 'store', kind: 'postgres' }))
 } else {
   store = new MemoryLogStore()
-  console.log(JSON.stringify({ msg: 'store', kind: 'memory', warning: 'log is not durable' }))
+  renders = new MemoryRenderStore()
+  console.log(JSON.stringify({ msg: 'store', kind: 'memory', warning: 'log is not durable; textures render nowhere' }))
 }
 
-const host = new TableHost(registry, store)
-const server = createServer({ host, store, registry })
+const host = new TableHost(registry, store, undefined, renders)
+const server = createServer({ host, store, registry, renders })
 server.listen(port, () => console.log(JSON.stringify({ msg: 'listening', port })))
 
 const evictor = setInterval(() => {
