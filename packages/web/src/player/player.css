@@ -45,3 +45,25 @@
   width: 86vw; aspect-ratio: 63 / 88; border-radius: 18px; padding: 22px; box-sizing: border-box;
   background: hsl(var(--hue, 0) 40% 86%); color: #1c1c1c; font-size: 28px; font-weight: 800;
 }
+
+/* Undo and rewind (B, C). */
+.byd-player > header .byd-undo {
+  margin-left: auto; padding: 7px 12px; border: 0; border-radius: 12px;
+  background: #242938; color: #fff; font-size: 13px; font-weight: 700;
+}
+.byd-player > header .byd-undo:disabled { opacity: 0.35; }
+.byd-rewind-mine {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  display: grid; gap: 10px; padding: 14px 18px 22px; font-size: 14px;
+  background: #2a2417; color: #ffd98a;
+}
+.byd-rewind-mine button { padding: 12px 18px; border-radius: 12px; border: 1px solid #2c3242; background: transparent; color: #9aa3b8; font-size: 15px; font-weight: 700; }
+.byd-rewind-ask {
+  position: fixed; inset: 0; z-index: 30; display: grid; align-content: center; gap: 18px;
+  padding: 28px; text-align: center; background: #14161c; color: #eee;
+}
+.byd-rewind-ask h1 { margin: 0; font-size: 26px; }
+.byd-rewind-ask p { margin: 0; color: #9aa3b8; font-size: 15px; }
+.byd-rewind-ask button { padding: 18px; border: 0; border-radius: 12px; font-size: 18px; font-weight: 700; }
+.byd-rewind-ask button[data-kind='ok'] { background: #7dd3a0; color: #0b2a18; }
+.byd-rewind-ask button[data-kind='no'] { background: #3a2a2d; color: #ff9a9a; }

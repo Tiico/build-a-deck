@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { replay } from '../src/index.js'
-import { Harness, registry } from './fixture.js'
+import { decide, replay } from '../src/index.js'
+import { Harness, inZone, registry, zoneView } from './fixture.js'
 
 describe('undo.self (B): a seat takes back its own last act', () => {
   it('restores the table to before the last batch, as a new log line that replays', () => {
@@ -82,8 +82,8 @@ describe('rewind.propose / rewind.confirm: going back is a joint decision', () =
     const at1 = h.view(null)
     h.do('B', { v: 'draw', from: 'draw', to: 'hand:B', count: 1 })
     const proposal = h.do('A', { v: 'rewind.propose', toSeq: 1 })
-    expect(h.view('B').rewind).toEqual({ id: proposal.batch, toSeq: 1, by: 'A' })
-    expect(h.view(null).rewind).toEqual({ id: proposal.batch, toSeq: 1, by: 'A' })
+    expect(h.view('B').rewind).toMatchObject({ id: proposal.batch, toSeq: 1, by: 'A' })
+    expect(h.view(null).rewind).toMatchObject({ id: proposal.batch, toSeq: 1, by: 'A' })
 
     const line = h.do('B', { v: 'rewind.confirm', proposal: proposal.batch })
     expect(line.outcome?.kind).toBe('restore')
@@ -144,5 +144,54 @@ describe('talking about a rewind is not playing', () => {
     h.do('A', { v: 'rewind.reject', proposal: p.batch })
     h.do('A', { v: 'undo.self' })
     expect(h.zone('hand:A')).toHaveLength(0)
+  })
+})
+
+describe('what a view learns (C): undo per seat, and the table as it was behind a proposal', () => {
+  it('tells a seat what undo means right now, and never the table', () => {
+    const h = new Harness()
+    expect(h.view('A').undo).toBeNull()
+    h.do('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    expect(h.view('A').undo).toEqual({ toSeq: 0, contested: false })
+    h.do('B', { v: 'draw', from: 'draw', to: 'hand:B', count: 1 })
+    expect(h.view('A').undo).toEqual({ toSeq: 0, contested: true })
+    expect(h.view('B').undo).toEqual({ toSeq: 1, contested: false })
+    expect(h.view(null).undo).toBeNull()
+  })
+
+  it('shows every view the table at the proposal\'s target, projected for that view', () => {
+    const h = new Harness()
+    h.do('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    h.do(null, { v: 'draw', from: 'draw', to: 'discard', count: 1 })
+    h.do('B', { v: 'draw', from: 'draw', to: 'hand:B', count: 1 })
+    h.do('A', { v: 'rewind.propose', toSeq: 1 })
+    const preview = h.view(null).rewind?.preview
+    expect(zoneView({ ...h.view(null), ...preview! }, 'draw')).toMatchObject({ count: 9 })
+    expect(zoneView({ ...h.view(null), ...preview! }, 'discard')).toMatchObject({ order: [] })
+    expect(zoneView({ ...h.view(null), ...preview! }, 'hand:A')).toMatchObject({ count: 1 })
+    // A saw their own hand then, B did not.
+    expect(inZone({ ...h.view('A'), ...h.view('A').rewind!.preview! }, 'hand:A')[0]?.cardRef).toBe('dragon')
+    expect(inZone({ ...h.view('B'), ...h.view('B').rewind!.preview! }, 'hand:A')).toHaveLength(0)
+    // Nothing of the preview reaches the wire once the proposal is gone.
+    h.do('B', { v: 'rewind.reject', proposal: h.view('B').rewind!.id })
+    expect(h.view(null).rewind).toBeNull()
+  })
+})
+
+describe('what counts as play', () => {
+  it('sitting down or leaving is not a move: it neither is undone nor contests anyone', () => {
+    const h = new Harness()
+    h.do(null, { v: 'seat.claim', seat: 'A', name: 'Ada' })
+    expect(h.view('A').undo).toBeNull()
+    h.do('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    h.do('B', { v: 'seat.claim', seat: 'B', name: 'Bo' })
+    expect(h.view('A').undo).toEqual({ toSeq: 1, contested: false })
+  })
+
+  it('refuses an envelope whose id is already a batch in the log, so batches stay whole', () => {
+    const h = new Harness()
+    const [line] = h.batch('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    const d = decide(h.state, registry, { id: line!.batch, seat: 'A', intents: [{ v: 'draw', from: 'draw', to: 'hand:A', count: 1 }] }, h.deps)
+    expect(d).toMatchObject({ ok: false, reason: expect.stringMatching(/envelope id/) })
   })
 })

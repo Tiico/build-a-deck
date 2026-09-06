@@ -615,6 +615,29 @@ På distans betyder den inget, så förvalet gör det till en gest.
 Följdkrav:
 Snapshot saknar spelets namn; lobbyn visar rumskoden i stället. Spelets namn hör hemma i snapshot.
 
+### K13. Ångra och tillbakaspolning: förhandsvisning på bordet, beslut på telefonerna (prototypat 2026-09-06)
+
+C6 gav principen; det här är hur den blir konkret.
+En tillbakaspolning är en ny loggrad vars resultat bär det återställda bordet, så loggen förblir append-only och återspelbar.
+Dolda högar som tappat kort sedan målet blandas om med nya id:n; publika högar behåller sin ordning.
+Platser, version och setup är sessionens och rörs inte av en tillbakaspolning.
+
+Telefonens "Ångra" är ett tryck.
+Är ingen annan inblandad tar det tillbaka platsens senaste batch (`undo.self`).
+Har någon annan spelat sedan dess skickas i stället ett förslag till samma punkt (`rewind.propose`).
+Servern talar om vad ångra betyder just nu per plats i snapshoten (`undo: { toSeq, contested } | null`), så klienten räknar inget ur loggen.
+
+Under ett förslag visar bordsskärmen hur bordet såg ut vid målet, projicerat per vy, med ram och etikett om vem som väntas på.
+Skärmen har inga knappar: en TV har ingen fjärr, och flödet blir detsamma på distans.
+Övriga telefoner får en helskärmsfråga med Godkänn/Neka; förslagsställaren kan dra tillbaka.
+Att sitta ner, lämna, föreslå eller avvisa är inte drag: de ångras inte och kontesterar ingen.
+
+Följdkrav:
+Ett nytt sessionsverb, `rewind.reject`, för att avvisa eller dra tillbaka ett förslag.
+Kuvert-id blir loggens batch och måste vara unikt per session, inte per anslutning; motorn avvisar ett återanvänt id.
+Aktören håller sin logg i minnet för att kunna se bakåt.
+Utan andra sittande kan ett kontesterat förslag bara dras tillbaka; bordsskärmen får aldrig bekräfta.
+
 ---
 
 ## L. Editorn (grillad 2026-09-06)

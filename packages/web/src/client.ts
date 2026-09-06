@@ -45,6 +45,7 @@ export class TableClient {
   private readonly seqWaiters: { seq: number; resolve: () => void }[] = []
   private readonly listeners = new Set<Listener>()
   private envelopes = 0
+  private readonly nonce = Math.random().toString(36).slice(2, 10)
   private attempts = 0
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -69,7 +70,8 @@ export class TableClient {
 
   // Sends one atomic envelope (K3). Resolves when the server has committed or refused it.
   send(...intents: Intent[]): Promise<SendResult> {
-    const envelope: Envelope = { id: `${this.opts.seat ?? 'table'}-${this.envelopes++}`, seat: this.opts.seat, intents }
+    // Ids must be unique per session, not per connection: the id becomes the log's batch.
+    const envelope: Envelope = { id: `${this.opts.seat ?? 'table'}-${this.nonce}-${this.envelopes++}`, seat: this.opts.seat, intents }
     return new Promise((resolve) => {
       if (this.ws.readyState !== this.ws.OPEN) {
         resolve({ ok: false, reason: 'not connected' })

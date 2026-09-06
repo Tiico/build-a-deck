@@ -3,6 +3,7 @@ import './table.css'
 import { TableRenderer, type TableMode } from './TableRenderer.js'
 import { TvChrome } from './TvChrome.js'
 import { useTableClient } from './useTableClient.js'
+import { previewOf, whereTo, whoDecides } from './rewind.js'
 
 // /table?session=…&mode=table|tv&code=…&server=ws://…
 // The `table` role: no seat, sees only what is public. `server` defaults to this origin.
@@ -25,11 +26,26 @@ export function TablePage() {
   if (!sessionId) return <p>Ingen session angiven.</p>
   if (!view) return <p data-status={status}>{status === 'connecting' ? 'Ansluter…' : status}</p>
 
-  const table = <TableRenderer view={view} mode={mode} faces={url.replace(/^ws/, 'http')} />
+  // A proposed rewind (C): the screen shows the table as it was at the target and who is waited
+  // on. It has no buttons — the phones decide.
+  const proposal = view.rewind
+  const rendered = <TableRenderer view={previewOf(view)} mode={mode} faces={url.replace(/^ws/, 'http')} />
+  const table = proposal?.preview ? (
+    <div className="byd-rewind-preview" data-rewind-preview={proposal.id}>
+      {rendered}
+      <div className="byd-rewind-label">
+        <span>Förslag</span>
+        <span>så här såg bordet ut {whereTo(view, proposal, activity)}</span>
+        <span>· väntar på {whoDecides(view, proposal)}</span>
+      </div>
+    </div>
+  ) : (
+    rendered
+  )
   return (
     <div data-page="table" data-status={status} className="byd-fit">
       {mode === 'tv' ? (
-        <TvChrome view={view} activity={activity} roomCode={roomCode} joinUrl={joinUrl}>
+        <TvChrome view={previewOf(view)} activity={activity} roomCode={roomCode} joinUrl={joinUrl}>
           {table}
         </TvChrome>
       ) : (

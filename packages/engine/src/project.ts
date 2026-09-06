@@ -1,5 +1,6 @@
-import type { Activity, Applied, SeatId, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
+import type { Activity, Applied, RewindProposal, SeatId, Snapshot, TablePreview, VisibleComponentState, ZoneView } from '@byd/protocol'
 
+import { undoTarget, type History } from './decide.js'
 import { componentOf, type ComponentInstance, type TableState, type Zone } from './state.js'
 import type { TypeRegistry } from './typedef.js'
 import { canSeeFace, canSeeZoneOrder } from './visibility.js'
@@ -18,7 +19,21 @@ export function projectActivity(line: Applied): Activity {
 // without textures projects without faces.
 export type FaceHashes = Record<string, Record<string, string>>
 
-export function project(state: TableState, registry: TypeRegistry, seat: SeatId | null, faces?: FaceHashes): Snapshot {
+// With a `history` the view also learns what undo means for its seat, and — while a rewind is
+// proposed — how the table looked at the target, projected for this same view (B, C).
+export function project(state: TableState, registry: TypeRegistry, seat: SeatId | null, faces?: FaceHashes, history?: History): Snapshot {
+  const { zones, components } = projectTable(state, registry, seat, faces)
+  const seats = state.setup.seats.map((id) => ({ id, name: state.seats[id]?.name ?? null }))
+  let rewind: RewindProposal | null = state.rewind
+  if (rewind && history) {
+    const preview: TablePreview = projectTable(history.stateAt(rewind.toSeq), registry, seat, faces)
+    rewind = { ...rewind, preview }
+  }
+  const undo = seat !== null && history ? undoTarget(history.lines(), seat) : null
+  return { seq: state.seq, seat, floor: state.setup.floor, seats, zones, components, rewind, undo }
+}
+
+function projectTable(state: TableState, registry: TypeRegistry, seat: SeatId | null, faces?: FaceHashes): TablePreview {
   const zones: ZoneView[] = []
   const components: VisibleComponentState[] = []
 
@@ -37,8 +52,7 @@ export function project(state: TableState, registry: TypeRegistry, seat: SeatId 
       }
     }
   }
-  const seats = state.setup.seats.map((id) => ({ id, name: state.seats[id]?.name ?? null }))
-  return { seq: state.seq, seat, floor: state.setup.floor, seats, zones, components, rewind: state.rewind }
+  return { zones, components }
 }
 
 function zoneBase(z: Zone) {

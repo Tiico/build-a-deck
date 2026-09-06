@@ -1,4 +1,4 @@
-import type { Applied, ComponentId, Envelope, Intent, Outcome, ZoneId } from '@byd/protocol'
+import type { Applied, ComponentId, Envelope, Intent, Outcome, UndoMeaning, ZoneId } from '@byd/protocol'
 import { apply } from './apply.js'
 import { handsReturnedBy } from './hands.js'
 import type { IdSource, Rng } from './rng.js'
@@ -28,6 +28,8 @@ export type Decision = { ok: true; applied: Applied[] } | { ok: false; reason: s
 export function decide(state: TableState, registry: TypeRegistry, env: Envelope, deps: DecideDeps): Decision {
   if (state.ended) return { ok: false, reason: 'session has ended' }
   if (env.seat !== null && !state.seats[env.seat]) return { ok: false, reason: `unknown seat ${env.seat}` }
+  // The envelope id becomes the batch: two envelopes sharing one would merge in the log.
+  if (deps.history.lines().some((l) => l.batch === env.id)) return { ok: false, reason: `envelope id ${env.id} was already used` }
 
   const lines: Applied[] = []
   let working = state
@@ -170,7 +172,7 @@ function validateRewind(state: TableState, env: Envelope, it: Intent, history: H
     case 'undo.self': {
       const target = undoTarget(history.lines(), env.seat)
       if (target === null) return 'nothing to undo'
-      if (target === 'contested') return 'someone else has acted since: propose a rewind instead'
+      if (target.contested) return 'someone else has acted since: propose a rewind instead'
       return null
     }
     case 'rewind.propose':
@@ -186,7 +188,8 @@ function validateRewind(state: TableState, env: Envelope, it: Intent, history: H
 }
 
 // The lines still in effect on the table: a restore takes everything after its target out of
-// the story, and talking about a rewind (proposing, rejecting) never was part of it.
+// the story, and neither talking about a rewind nor sitting down or leaving is play.
+const NOT_PLAY = new Set(['rewind.propose', 'rewind.reject', 'seat.claim', 'seat.release'])
 export function effectiveLines(log: readonly Applied[]): Applied[] {
   const out: Applied[] = []
   let cutoff = Infinity
@@ -197,30 +200,29 @@ export function effectiveLines(log: readonly Applied[]): Applied[] {
       cutoff = o.toSeq
       continue
     }
-    if (line.intent.v === 'rewind.propose' || line.intent.v === 'rewind.reject') continue
+    if (NOT_PLAY.has(line.intent.v)) continue
     out.unshift(line)
   }
   return out
 }
 
-// Where undo.self would take the table: before the seat's last batch still in effect — unless
-// another seat has acted since, which makes it a matter for a rewind proposal.
-export function undoTarget(log: readonly Applied[], seat: string | null): number | 'contested' | null {
+// Where undo.self would take the table: before the seat's last batch still in effect — and
+// whether someone else has acted since, which makes it a matter for a rewind proposal.
+export function undoTarget(log: readonly Applied[], seat: string | null): UndoMeaning {
   const lines = effectiveLines(log)
   const last = lines.findLast((l) => l.by === seat)
   if (!last) return null
   const batch = lines.filter((l) => l.batch === last.batch)
   const first = must(batch[0], 'a batch has a first line')
-  if (lines.some((l) => l.seq > last.seq && l.by !== seat)) return 'contested'
-  return first.seq - 1
+  return { toSeq: first.seq - 1, contested: lines.some((l) => l.seq > last.seq && l.by !== seat) }
 }
 
 function decideOutcome(state: TableState, registry: TypeRegistry, it: Intent, deps: DecideDeps, env: Envelope): Outcome | undefined {
   switch (it.v) {
     case 'undo.self': {
       const target = undoTarget(deps.history.lines(), env.seat)
-      if (typeof target !== 'number') throw new Error('validated undo.self but no target')
-      return restoreOutcome(state, registry, target, deps)
+      if (!target || target.contested) throw new Error('validated undo.self but no target')
+      return restoreOutcome(state, registry, target.toSeq, deps)
     }
     case 'rewind.confirm':
       return restoreOutcome(state, registry, must(state.rewind, 'validated rewind.confirm without a proposal').toSeq, deps)

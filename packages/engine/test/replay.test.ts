@@ -49,13 +49,18 @@ describe('deterministic replay', () => {
     const live = playScript(h)
 
     let state = h.initial
-    const replayedViews: Snapshot[][] = [SEATS.map((s) => project(state, registry, s))]
+    // A view also says what undo means, which needs the log so far: the same log, replayed.
+    const historyUpTo = (seq: number) => ({
+      stateAt: (at: number) => replay(h.initial, registry, h.log.filter((l) => l.seq <= at)),
+      lines: () => h.log.filter((l) => l.seq <= seq),
+    })
+    const replayedViews: Snapshot[][] = [SEATS.map((s) => project(state, registry, s, undefined, historyUpTo(0)))]
     // Live views were taken per envelope; replay per line, keeping only the view after each envelope's last line.
     const lastSeqOfBatch = new Map<string, number>()
     for (const line of h.log) lastSeqOfBatch.set(line.batch, line.seq)
     for (const line of h.log) {
       state = apply(state, registry, line)
-      if (lastSeqOfBatch.get(line.batch) === line.seq) replayedViews.push(SEATS.map((s) => project(state, registry, s)))
+      if (lastSeqOfBatch.get(line.batch) === line.seq) replayedViews.push(SEATS.map((s) => project(state, registry, s, undefined, historyUpTo(line.seq))))
     }
     expect(replayedViews).toEqual(live)
   })

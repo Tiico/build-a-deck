@@ -238,8 +238,13 @@ describe('rewind on the wire (B)', () => {
     await b.send('B', { v: 'draw', from: 'draw', to: 'hand:B', count: 1 })
     expect((await a.send('A', { v: 'undo.self' })).t).toBe('reject')
 
+    expect((await a.synced(2)).undo).toEqual({ toSeq: 0, contested: true })
     await a.send('A', { v: 'rewind.propose', toSeq: 0 })
     expect((await table.synced(3)).rewind).toMatchObject({ toSeq: 0, by: 'A' })
+    // The preview is projected per view: the table sees ten backs in the draw pile and no hands.
+    const preview = (await table.synced(3)).rewind!.preview!
+    expect(preview.zones.find((z) => z.id === 'draw')).toMatchObject({ count: 10 })
+    expect(preview.components.every((c) => c.cardRef === null)).toBe(true)
     const proposal = (await b.synced(3)).rewind!
     expect((await b.send('B', { v: 'rewind.confirm', proposal: proposal.id })).t).toBe('ack')
     const restored = await table.synced(4)

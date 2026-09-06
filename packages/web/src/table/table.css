@@ -148,3 +148,21 @@
 .byd-card > img, .byd-pile-top > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
 .byd-card > img + span, .byd-pile-top > img + span { visibility: hidden; }
 .byd-pile-top { overflow: hidden; }
+
+/* A proposed rewind (C): the table as it was, framed and labelled; nothing to press. */
+.byd-fit [data-tv] > main > .byd-rewind-preview { width: 100%; height: 100%; }
+.byd-rewind-preview { position: relative; width: 100%; height: 100%; }
+.byd-rewind-preview > .byd-table-frame { width: 100%; height: 100%; }
+.byd-rewind-preview::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 4;
+  box-shadow: inset 0 0 0 10px #ffd98a; animation: byd-rewind-pulse 1.6s ease-in-out infinite;
+}
+@keyframes byd-rewind-pulse { 50% { box-shadow: inset 0 0 0 4px #ffd98a; } }
+.byd-rewind-label {
+  position: absolute; left: 50%; top: 28px; transform: translateX(-50%); z-index: 5;
+  display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: center; justify-content: center;
+  max-width: calc(100% - 48px); box-sizing: border-box; text-align: center;
+  padding: 14px 32px; border-radius: 28px; font-size: clamp(15px, 1.6vw, 24px); color: #eee;
+  background: rgba(23, 26, 35, 0.94); border: 1px solid #3b4358;
+}
+.byd-rewind-label > span:first-child { color: #ffd98a; font-size: 13px; letter-spacing: 2px; text-transform: uppercase; }

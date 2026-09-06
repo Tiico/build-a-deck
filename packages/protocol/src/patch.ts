@@ -58,8 +58,23 @@ export type SeatView = z.infer<typeof SeatView>
 
 // A rewind waiting for someone else at the table to confirm it (B). `id` is the batch of the
 // proposing envelope; `by` is the proposer; `toSeq` is the line the table would return to.
-export const RewindProposal = z.object({ id: z.string().min(1), toSeq: z.number().int().nonnegative(), by: SeatId.nullable() })
+// `preview` is the table as it was at `toSeq`, projected for this very view (B, C): what the
+// view could see then, and nothing it could not.
+export const TablePreview = z.object({ zones: z.array(ZoneView), components: z.array(VisibleComponentState) })
+export type TablePreview = z.infer<typeof TablePreview>
+export const RewindProposal = z.object({
+  id: z.string().min(1),
+  toSeq: z.number().int().nonnegative(),
+  by: SeatId.nullable(),
+  preview: TablePreview.optional(),
+})
 export type RewindProposal = z.infer<typeof RewindProposal>
+
+// What undo.self would do for this seat right now: the seq it would return to, and whether
+// someone else has acted since (then a rewind proposal to that seq is the way). Null when
+// there is nothing to undo, and always for the table.
+export const UndoMeaning = z.object({ toSeq: z.number().int().nonnegative(), contested: z.boolean() }).nullable()
+export type UndoMeaning = z.infer<typeof UndoMeaning>
 
 export const Snapshot = z.object({
   seq: z.number().int().nonnegative(),
@@ -70,6 +85,7 @@ export const Snapshot = z.object({
   zones: z.array(ZoneView),
   components: z.array(VisibleComponentState),
   rewind: RewindProposal.nullable(),
+  undo: UndoMeaning,
 })
 export type Snapshot = z.infer<typeof Snapshot>
 
@@ -80,6 +96,7 @@ export const Op = z.discriminatedUnion('op', [
   z.object({ op: z.literal('zoneRemove'), zone: ZoneId }),
   z.object({ op: z.literal('seat'), seat: SeatView }),
   z.object({ op: z.literal('rewind'), proposal: RewindProposal.nullable() }),
+  z.object({ op: z.literal('undo'), undo: UndoMeaning }),
 ])
 export type Op = z.infer<typeof Op>
 

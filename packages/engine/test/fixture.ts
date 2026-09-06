@@ -85,7 +85,7 @@ export class Harness {
   }
 
   view(seat: SeatId | null): Snapshot {
-    return project(this.state, registry, seat)
+    return project(this.state, registry, seat, undefined, this.deps.history)
   }
 
   zone(id: string): string[] {

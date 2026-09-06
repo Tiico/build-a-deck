@@ -91,7 +91,7 @@ export class TableActor {
   }
 
   subscribe(sub: Subscriber): void {
-    const snapshot = project(this.state, this.registry, sub.seat, this.faces)
+    const snapshot = project(this.state, this.registry, sub.seat, this.faces, this.deps.history)
     this.subscribers.set(sub, snapshot)
     sub.send({ t: 'snapshot', snapshot })
     this.lastActivity = Date.now()
@@ -132,7 +132,7 @@ export class TableActor {
 
     const activity = decision.applied.map(projectActivity)
     for (const [sub, previous] of this.subscribers) {
-      const next = project(this.state, this.registry, sub.seat, this.faces)
+      const next = project(this.state, this.registry, sub.seat, this.faces, this.deps.history)
       const patch = diff(previous, next)
       this.subscribers.set(sub, next)
       if (patch.ops.length > 0 || patch.seq !== previous.seq) sub.send({ t: 'patch', patch })

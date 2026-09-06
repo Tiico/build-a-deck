@@ -5,6 +5,7 @@ import { hue } from '../table/hue.js'
 import { HandStrip } from './HandStrip.js'
 import { PlaySheet } from './PlaySheet.js'
 import { TableSummary } from './TableSummary.js'
+import { whoDecides } from '../table/rewind.js'
 import './player.css'
 
 // /play?session=…&seat=A&name=Ada&server=ws://…
@@ -46,6 +47,16 @@ export function PlayerPage() {
     setLifted(null)
     setSelected(new Set())
   }
+  // Undo (B, C): one tap. Uncontested, it takes back this seat's last act; once someone else
+  // has acted it proposes a rewind to the same point, which the others settle on their phones.
+  const proposal = view.rewind
+  const tapUndo = () => {
+    if (!view.undo) return
+    void client.send(view.undo.contested ? { v: 'rewind.propose', toSeq: view.undo.toSeq } : { v: 'undo.self' })
+  }
+  const settle = (v: 'rewind.confirm' | 'rewind.reject') => {
+    if (proposal) void client.send({ v, proposal: proposal.id })
+  }
   const toggle = (card: VisibleComponentState) =>
     setSelected((s) => {
       const next = new Set(s)
@@ -59,6 +70,9 @@ export function PlayerPage() {
       <header>
         <strong>{me?.name ?? seat}</strong>
         <span>{hand.length} kort</span>
+        <button className="byd-undo" disabled={!view.undo || !!proposal} onClick={tapUndo}>
+          ↶ Ångra
+        </button>
       </header>
       <TableSummary view={view} activity={activity} />
       <HandStrip view={view} selected={selected} onTap={setInspect} onHold={toggle} onLift={setLifted} />
@@ -74,6 +88,24 @@ export function PlayerPage() {
       )}
       {lifted && (
         <PlaySheet view={view} count={toPlay.length} label={lifted.cardRef ?? ''} onPlay={play} onClose={() => setLifted(null)} />
+      )}
+      {proposal && proposal.by === seat && (
+        <div className="byd-rewind-mine" data-rewind-mine>
+          <span>Du föreslår att spola tillbaka. Bordet visar hur det såg ut; {whoDecides(view, proposal)} avgör.</span>
+          <button onClick={() => settle('rewind.reject')}>Dra tillbaka förslaget</button>
+        </div>
+      )}
+      {proposal && proposal.by !== seat && (
+        <div className="byd-rewind-ask" data-rewind-ask>
+          <h1>{view.seats.find((s) => s.id === proposal.by)?.name ?? 'Bordet'} vill spola tillbaka</h1>
+          <p>Bordet visar hur det såg ut. Draghögen blandas om.</p>
+          <button data-kind="ok" onClick={() => settle('rewind.confirm')}>
+            Godkänn
+          </button>
+          <button data-kind="no" onClick={() => settle('rewind.reject')}>
+            Neka
+          </button>
+        </div>
       )}
     </div>
   )

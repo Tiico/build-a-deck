@@ -126,3 +126,67 @@ describe('playing turns the card face-up (K11)', () => {
     table.close()
   })
 })
+
+describe('undo and rewind on the phone (B, C)', () => {
+  it('one tap undoes the seat\'s own last act while it is uncontested', async () => {
+    const id = await createSession(run.store)
+    await open(id, 'A', 'Ada')
+    const undo = () => screen.getByRole('button', { name: /Ångra/ }) as HTMLButtonElement
+    expect(undo().disabled).toBe(true)
+
+    const me = TableClient.connect({ url: run.url, sessionId: id, seat: 'A' })
+    await me.ready()
+    await me.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
+    await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(2))
+    await waitFor(() => expect(undo().disabled).toBe(false))
+
+    fireEvent.click(undo())
+    await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(0))
+    const log = await run.store.read(id)
+    expect(log.at(-1)).toMatchObject({ by: 'A', intent: { v: 'undo.self' }, outcome: { kind: 'restore' } })
+    me.close()
+  })
+
+  it('once someone else has acted, the same tap proposes a rewind, and the proposer can withdraw it', async () => {
+    const id = await createSession(run.store)
+    await open(id, 'A', 'Ada')
+    const me = TableClient.connect({ url: run.url, sessionId: id, seat: 'A' })
+    const other = TableClient.connect({ url: run.url, sessionId: id, seat: 'B' })
+    await Promise.all([me.ready(), other.ready()])
+    await me.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    await other.send({ v: 'seat.claim', seat: 'B', name: 'Bo' }, { v: 'draw', from: 'draw', to: 'hand:B', count: 1 })
+    await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1))
+
+    fireEvent.click(await screen.findByRole('button', { name: /Ångra/ }))
+    expect(await screen.findByText(/Du föreslår att spola tillbaka/)).toBeTruthy()
+    expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'rewind.propose', toSeq: 1 } })
+    expect((screen.getByRole('button', { name: /Ångra/ }) as HTMLButtonElement).disabled).toBe(true)
+
+    fireEvent.click(screen.getByRole('button', { name: /Dra tillbaka/ }))
+    await waitFor(() => expect(screen.queryByText(/Du föreslår/)).toBeNull())
+    expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'rewind.reject' } })
+    me.close()
+    other.close()
+  })
+
+  it('the other phone is asked and can approve, which restores the table', async () => {
+    const id = await createSession(run.store)
+    await open(id, 'B', 'Bo')
+    const ada = TableClient.connect({ url: run.url, sessionId: id, seat: 'A' })
+    await ada.ready()
+    await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    const bo = TableClient.connect({ url: run.url, sessionId: id, seat: 'B' })
+    await bo.ready()
+    await bo.send({ v: 'draw', from: 'draw', to: 'hand:B', count: 1 })
+    await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1))
+    await ada.send({ v: 'rewind.propose', toSeq: 2 })
+
+    expect(await screen.findByText('Ada vill spola tillbaka')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Godkänn' }))
+    await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(0))
+    await waitFor(() => expect(screen.queryByText('Ada vill spola tillbaka')).toBeNull())
+    expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'B', intent: { v: 'rewind.confirm' }, outcome: { kind: 'restore' } })
+    ada.close()
+    bo.close()
+  })
+})

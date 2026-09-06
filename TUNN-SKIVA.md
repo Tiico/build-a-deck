@@ -84,6 +84,7 @@ type SessionIntent =
   | { v: 'undo.self' }                         // C6
   | { v: 'rewind.propose'; toSeq: number }
   | { v: 'rewind.confirm'; proposal: string }
+  | { v: 'rewind.reject';  proposal: string }  // K13
   | { v: 'version.change'; to: GameVersionId }  // C7
   | { v: 'session.end' }
 ```
