@@ -1,8 +1,10 @@
 import { TablePage } from './table/TablePage.js'
+import { PlayerPrototype } from './prototype/player/index.js'
 
 // Routing is a path check for now; a router arrives with the first real page.
 export function App() {
   if (location.pathname === '/table') return <TablePage />
+  if (location.pathname.startsWith('/prototype/player')) return <PlayerPrototype />
   return (
     <main style={{ padding: 32 }}>
       <h1>build-your-deck</h1>
