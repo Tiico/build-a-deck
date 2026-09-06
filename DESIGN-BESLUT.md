@@ -251,23 +251,28 @@ Följdkrav:
 Latens döljs med optimistisk lokal rendering.
 Playtest-analys och tillbakaspolning följer gratis ur arkitekturen.
 
-### D2. Stack: TypeScript rakt igenom, aktör per bord på Durable Objects (fråga 16)
+### D2. Stack: TypeScript rakt igenom, aktör per bord i en egen Node-process (fråga 16, reviderad 2026-09-06)
 
 React med React-Three-Fiber som klient.
-Ett Cloudflare Durable Object per bord som enkeltrådad ägare av tillståndet, med WebSocket-hibernation vid pauser.
-Postgres för domändata och händelselogg.
-R2 eller S3 för innehållsadresserade assets.
-Separat containerworker för Chromium.
+En Node-process på en självhostad server håller alla aktiva bord och projekt som in-memory-aktörer med en seriell kö per aktör.
+Postgres på samma maskin för domändata, händelselogg och jobbkö.
+Cloudflare R2 för innehållsadresserade assets.
+Chromium som separat container på samma maskin.
 Stripe för betalning.
+
+Ursprungligt beslut var Cloudflare Durable Objects.
+Det reviderades när driften grillades: en befintlig hemmaserver ska bära så mycket som möjligt för att hålla nere kostnaden.
+Det som gjorde egenbyggd aktör dyr — placering och överlämning mellan instanser — försvinner på en enda maskin.
+Driften i sin helhet finns i [DRIFT.md](DRIFT.md).
 
 Följdkrav:
 Delade typer för hela intent-protokollet mellan klient och server.
-Två driftmiljöer: Cloudflare för kärnan, containrar för renderfarmen.
-Beroende till Cloudflare för aktörsmodellen.
+Aktörsvärden är ett gränssnitt; motorn känner aldrig processen, så Durable Objects kan bytas in senare utan att motorn märker det.
+Ordningen `decide` → commit i Postgres → `apply` → patchar är oförhandlingsbar.
 
 ### D3. Samredigering på samma aktörsmönster (fråga 21)
 
-Ett Durable Object per projekt, precis som per bord.
+En aktör per projekt, precis som per bord, i samma process.
 Intents är sätt cell, flytta mallelement, ersätt asset.
 Roller: ägare, medredigerare, testledare, betraktare.
 
@@ -502,7 +507,7 @@ GDPR för gästdeltagare, särskilt enkätsvar och flaggor från personer utan k
 Fontlicensiering, som krockar med kravet i B3 att behålla fontfiler permanent.
 
 Teknik:
-Migreringsstrategi för händelseschemat.
+Migreringsstrategi för händelseschemat — riktning beslutad i DRIFT.md avsnitt 7 (`schemaVersion` på varje rad, upcasters vid inläsning), detaljer kvar.
 Behörighetsroller i detalj: ägare, medredigerare, testledare, observatör.
 Hantering av missbruk av öppna rumskoder.
 Tillgänglighet i verktyget självt, till skillnad från i de spel som skapas i det.
