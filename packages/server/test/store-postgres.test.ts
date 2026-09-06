@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { PostgresLogStore, SeqConflictError } from '../src/index.js'
+import { template } from './deck.js'
 import { twoSeatSetup } from './fixture.js'
 import type { Applied } from '@byd/protocol'
 
@@ -37,5 +38,23 @@ describe.skipIf(!url)('PostgresLogStore', () => {
     await expect(store.append(id, [line(4)])).rejects.toBeInstanceOf(SeqConflictError)
     await expect(store.append(id, [line(2)])).rejects.toBeInstanceOf(SeqConflictError)
     expect((await store.read(id)).map((l) => l.seq)).toEqual([1, 2])
+  })
+})
+
+describe.skipIf(!url)('PostgresProjectStore', () => {
+  it('creates, loads, replaces with optimistic concurrency', async () => {
+    const store = PostgresLogStore.connect(url!)
+    await store.migrate()
+    const projects = store.projects()
+    const id = `p-${Date.now()}`
+    const { zones, seats, floor } = twoSeatSetup()
+    const doc = { name: 'Test', template, rows: { a: { title: 'A' } }, icons: {}, setup: { zones, seats, floor, deckZone: 'draw' } }
+    expect((await projects.create(id, doc)).rev).toBe(1)
+    expect((await projects.load(id))?.name).toBe('Test')
+    expect(await projects.replace(id, 5, doc)).toBe('conflict')
+    const next = await projects.replace(id, 1, { ...doc, name: 'Test 2' })
+    expect(next).toMatchObject({ rev: 2, name: 'Test 2' })
+    expect(await projects.replace('nope', 1, doc)).toBe('missing')
+    await store.close()
   })
 })

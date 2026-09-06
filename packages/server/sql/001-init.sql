@@ -20,3 +20,11 @@ create table if not exists events (
 
 -- The deck the textures are compiled from (TUNN-SKIVA §5); null for sessions without one.
 alter table sessions add column if not exists deck jsonb;
+
+-- Projects (L4): a revisioned document until the project actor with its log exists (D3).
+create table if not exists projects (
+  id          text primary key,
+  rev         integer not null,
+  doc         jsonb not null,
+  updated_at  timestamptz not null default now()
+);

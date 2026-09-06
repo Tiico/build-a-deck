@@ -4,12 +4,18 @@ import postgres from 'postgres'
 import { Applied } from '@byd/protocol'
 import type { SetupDef } from '@byd/engine'
 import { SeqConflictError, type Deck, type LogStore, type SessionRecord } from './store.js'
+import type { ProjectDoc, ProjectRecord, ProjectStore } from './projects.js'
 
 export class PostgresLogStore implements LogStore {
   constructor(private readonly sql: postgres.Sql) {}
 
   static connect(url: string): PostgresLogStore {
     return new PostgresLogStore(postgres(url, { max: 5, onnotice: () => undefined }))
+  }
+
+  // Projects share the connection and the schema.
+  projects(): PostgresProjectStore {
+    return new PostgresProjectStore(this.sql)
   }
 
   // Idempotent schema for the slice. DRIFT §7 moves this into a migration step before start.
@@ -80,5 +86,30 @@ export class PostgresLogStore implements LogStore {
         ...(r.outcome === null ? {} : { outcome: r.outcome }),
       }),
     )
+  }
+}
+
+export class PostgresProjectStore implements ProjectStore {
+  constructor(private readonly sql: postgres.Sql) {}
+
+  async create(id: string, doc: ProjectDoc): Promise<ProjectRecord> {
+    await this.sql`insert into projects (id, rev, doc) values (${id}, 1, ${this.sql.json(doc as never)})`
+    return { ...doc, id, rev: 1 }
+  }
+
+  async load(id: string): Promise<ProjectRecord | null> {
+    const [row] = await this.sql<{ rev: number; doc: ProjectDoc }[]>`select rev, doc from projects where id = ${id}`
+    return row ? { ...row.doc, id, rev: row.rev } : null
+  }
+
+  async replace(id: string, expectedRev: number, doc: ProjectDoc): Promise<ProjectRecord | 'conflict' | 'missing'> {
+    return this.sql.begin(async (tx) => {
+      const [row] = await tx<{ rev: number }[]>`select rev from projects where id = ${id} for update`
+      if (!row) return 'missing'
+      if (row.rev !== expectedRev) return 'conflict'
+      const rev = row.rev + 1
+      await tx`update projects set rev = ${rev}, doc = ${tx.json(doc as never)}, updated_at = now() where id = ${id}`
+      return { ...doc, id, rev }
+    })
   }
 }

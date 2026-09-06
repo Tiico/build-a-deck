@@ -8,8 +8,9 @@ import { Template } from '@byd/template'
 import type { RenderStore } from '@byd/render/queue'
 import type { TableHost } from './actor.js'
 import type { Deck, LogStore } from './store.js'
+import { ProjectDoc, deckFromProject, setupFromProject, type ProjectStore } from './projects.js'
 
-export type ServerOptions = { host: TableHost; store: LogStore; registry: TypeRegistry; renders?: RenderStore }
+export type ServerOptions = { host: TableHost; store: LogStore; registry: TypeRegistry; renders?: RenderStore; projects?: ProjectStore }
 
 const DeckBody = z.object({
   template: Template,
@@ -71,6 +72,10 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       if (deck) await opts.host.get(id)
       return json(res, 201, { id })
     }
+    if (opts.projects) {
+      const handled = await routeProjects(opts, opts.projects, req, res, url)
+      if (handled) return
+    }
     const face = /^\/faces\/([0-9a-f]{64})$/.exec(url.pathname)
     if (req.method === 'GET' && face && opts.renders) {
       // The hash is the capability: only a seat that may see a face was ever told its hash.
@@ -131,6 +136,50 @@ async function attach(opts: ServerOptions, ws: WebSocket, sessionId: string, sea
       send({ t: 'error', id, message: err instanceof Error ? err.message : String(err) })
     }
   })
+}
+
+// Projects (L4, L5): a revisioned document, and "start a table" which expands the rows into a
+// session with its deck so textures start rendering at once.
+async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: IncomingMessage, res: ServerResponse, url: URL): Promise<boolean> {
+  if (req.method === 'POST' && url.pathname === '/projects') {
+    const body = z.object({ id: z.string().min(1).optional() }).and(ProjectDoc).parse(JSON.parse(await readBody(req)))
+    const { id: wanted, ...doc } = body
+    validateSetup(setupFromProject(doc), opts.registry)
+    const rec = await projects.create(wanted ?? randomUUID(), doc)
+    json(res, 201, { id: rec.id, rev: rec.rev })
+    return true
+  }
+  const one = /^\/projects\/([^/]+)$/.exec(url.pathname)
+  if (one && req.method === 'GET') {
+    const rec = await projects.load(decodeURIComponent(one[1] ?? ''))
+    if (!rec) json(res, 404, { error: 'unknown project' })
+    else json(res, 200, rec)
+    return true
+  }
+  if (one && req.method === 'PUT') {
+    const body = z.object({ rev: z.number().int() }).and(ProjectDoc).parse(JSON.parse(await readBody(req)))
+    const { rev, ...doc } = body
+    validateSetup(setupFromProject(doc), opts.registry)
+    const result = await projects.replace(decodeURIComponent(one[1] ?? ''), rev, doc)
+    if (result === 'missing') json(res, 404, { error: 'unknown project' })
+    else if (result === 'conflict') json(res, 409, { error: 'project changed since rev ' + rev })
+    else json(res, 200, { id: result.id, rev: result.rev })
+    return true
+  }
+  const start = /^\/projects\/([^/]+)\/sessions$/.exec(url.pathname)
+  if (start && req.method === 'POST') {
+    const rec = await projects.load(decodeURIComponent(start[1] ?? ''))
+    if (!rec) {
+      json(res, 404, { error: 'unknown project' })
+      return true
+    }
+    const id = randomUUID()
+    await opts.store.createSession({ id, version: `rev-${rec.rev}`, setup: setupFromProject(rec), deck: deckFromProject(rec) })
+    await opts.host.get(id)
+    json(res, 201, { id, version: `rev-${rec.rev}` })
+    return true
+  }
+  return false
 }
 
 function json(res: ServerResponse, status: number, body: unknown): void {

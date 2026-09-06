@@ -2,6 +2,7 @@ import { CARD_STANDARD_63x88, TypeRegistry } from '@byd/engine'
 import { TableHost } from './actor.js'
 import { createServer } from './server.js'
 import { MemoryLogStore, type LogStore } from './store.js'
+import { MemoryProjectStore, type ProjectStore } from './projects.js'
 import { PostgresLogStore } from './store-postgres.js'
 import { MemoryRenderStore, PostgresRenderStore, type RenderStore } from '@byd/render/queue'
 
@@ -18,6 +19,7 @@ const registry = new TypeRegistry([CARD_STANDARD_63x88])
 
 let store: LogStore
 let renders: RenderStore
+let projects: ProjectStore
 let closeStore: () => Promise<void> = async () => undefined
 if (databaseUrl) {
   const pg = PostgresLogStore.connect(databaseUrl)
@@ -27,6 +29,7 @@ if (databaseUrl) {
   await rq.migrate()
   store = pg
   renders = rq
+  projects = pg.projects()
   closeStore = async () => {
     await pg.close()
     await rq.close()
@@ -35,11 +38,12 @@ if (databaseUrl) {
 } else {
   store = new MemoryLogStore()
   renders = new MemoryRenderStore()
+  projects = new MemoryProjectStore()
   console.log(JSON.stringify({ msg: 'store', kind: 'memory', warning: 'log is not durable; textures render nowhere' }))
 }
 
 const host = new TableHost(registry, store, undefined, renders)
-const server = createServer({ host, store, registry, renders })
+const server = createServer({ host, store, registry, renders, projects })
 server.listen(port, () => console.log(JSON.stringify({ msg: 'listening', port })))
 
 const evictor = setInterval(() => {
