@@ -7,6 +7,7 @@
     "test": "pnpm -r --workspace-concurrency=1 test",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
+    "proto": "pnpm --filter @byd/web dev --open /prototype/drag?variant=A",
     "dev:web": "pnpm --filter @byd/web dev",
     "dev:server": "pnpm --filter @byd/server dev",
     "dev:render": "pnpm --filter @byd/render worker"

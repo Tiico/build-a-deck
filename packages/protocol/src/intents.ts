@@ -36,6 +36,8 @@ export const PhysicalIntent = z.discriminatedUnion('v', [
   // Onto a card in a pile or hand: joins that zone directly above it.
   z.object({ v: z.literal('stack'), component: ComponentId, onto: ComponentId }),
   // Without `to`, the top `at` components become a new pile at (x, y) in the source pile's area.
+  // Without `to`, the top `at` components become a new pile at (x, y) in table coordinates,
+  // like movePile and zone geometry; a component's own x/y are relative to its zone.
   z.object({
     v: z.literal('split'),
     pile: ZoneId,

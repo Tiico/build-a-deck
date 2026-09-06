@@ -25,7 +25,8 @@ describe('ad hoc piles (K1)', () => {
       dynamic: true,
       parent: 'table',
       visibility: 'all',
-      geometry: { x: 100, y: 50, rot: 15 },
+      // Table coordinates: the floor starts at (-500, -300), the lower card lay at (100, 50) in it.
+      geometry: { x: -400, y: -250, rot: 15 },
     })
   })
 
@@ -132,5 +133,30 @@ describe('ad hoc piles (K1)', () => {
     expect(bad2).toMatchObject({ ok: false, reason: /not an area/ })
     const bad3 = h.try(null, { v: 'split', pile: 'draw', at: 2 })
     expect(bad3).toMatchObject({ ok: false, reason: /needs x and y/ })
+  })
+})
+
+describe('dynamic piles lie in table coordinates (K1, K2)', () => {
+  it('a pile created by stacking stands where the lower card lay, and the last card returns there', () => {
+    const h = new Harness()
+    h.do(null, { v: 'draw', from: 'draw', to: 'table', count: 2 })
+    const [a, b] = h.zone('table') as [string, string]
+    // The floor spans (-500,-300)…(500,300); a card at relative (100, 50) lies at (-400, -250).
+    h.do(null, { v: 'move', component: b, to: 'table', x: 100, y: 50 })
+    h.do(null, { v: 'stack', component: a, onto: b })
+    const [pile] = h.piles() as [string]
+    expect(h.state.zones[pile]!.geometry).toMatchObject({ x: -400, y: -250 })
+    h.do(null, { v: 'draw', from: pile, to: 'discard', count: 1 })
+    expect(h.state.components[b]).toMatchObject({ zone: 'table', x: 100, y: 50 })
+  })
+
+  it('split without a target places the new pile at table coordinates, like movePile', () => {
+    const h = new Harness()
+    h.do(null, { v: 'split', pile: 'draw', at: 2, x: 120, y: -80 })
+    const [pile] = h.piles() as [string]
+    expect(h.state.zones[pile]!.geometry).toMatchObject({ x: 120, y: -80 })
+    h.do(null, { v: 'draw', from: pile, to: 'discard', count: 1 })
+    const last = Object.values(h.state.components).find((c) => c.zone === 'table')!
+    expect(last).toMatchObject({ x: 620, y: 220 })
   })
 })

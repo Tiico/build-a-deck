@@ -44,8 +44,9 @@ export function apply(prev: TableState, _registry: TypeRegistry, applied: Applie
       const onto = componentOf(state, it.onto)
       const target = zoneOf(state, onto.zone)
       if (target.kind === 'area') {
-        // Two loose cards become a pile where the lower one lies (K1).
-        const pile = createPile(state, `z${applied.seq}`, target, { x: onto.x, y: onto.y, rot: onto.rot })
+        // Two loose cards become a pile where the lower one lies (K1). Zone geometry is in table
+        // coordinates; a component's x/y are relative to its zone.
+        const pile = createPile(state, `z${applied.seq}`, target, { x: target.geometry.x + onto.x, y: target.geometry.y + onto.y, rot: onto.rot })
         detach(state, onto.id)
         attach(state, onto.id, pile.id, 0)
         detach(state, it.component)
@@ -292,8 +293,9 @@ function settle(state: TableState): void {
       detach(state, last)
       attach(state, last, parentId, 0, true)
       const c = componentOf(state, last)
-      c.x = zone.geometry.x
-      c.y = zone.geometry.y
+      const parent = zoneOf(state, parentId)
+      c.x = zone.geometry.x - parent.geometry.x
+      c.y = zone.geometry.y - parent.geometry.y
       c.rot = zone.geometry.rot
     }
     state.zones = withoutKey(state.zones, zone.id)
