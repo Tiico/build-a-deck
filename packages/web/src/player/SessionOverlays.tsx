@@ -53,7 +53,7 @@ export function SessionOverlays({ client, view, seat, name, http, sessionId, she
   }
   return (
     <>
-      {toast && <div className="byd-toast">{toast}</div>}
+      {toast && <div className="byd-toast" role="status">{toast}</div>}
       {sheet === 'flag' && (
         <FlagSheet
           onFlag={(note) => {
