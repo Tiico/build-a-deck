@@ -33,12 +33,15 @@ export function createServer(opts: ServerOptions): Server {
     wss.handleUpgrade(req, socket, head, (ws) => void attach(opts, ws, sessionId, seat))
   })
 
-  // Upgraded sockets are detached from the HTTP server; closing it must close them too,
-  // or a drain would wait forever for connections that never end on their own.
-  http.on('close', () => {
+  // `close` waits for every connection to end, and WebSockets never end on their own:
+  // terminate them as part of closing, or a drain waits forever. Say goodbye first
+  // (TableHost.drain) if clients should learn why.
+  const close = http.close.bind(http)
+  http.close = (callback?: (err?: Error) => void) => {
     for (const client of wss.clients) client.terminate()
     wss.close()
-  })
+    return close(callback)
+  }
   return http
 }
 

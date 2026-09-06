@@ -46,8 +46,8 @@ async function drain(signal: string): Promise<void> {
   draining = true
   console.log(JSON.stringify({ msg: 'draining', signal }))
   clearInterval(evictor)
-  server.close()
   await host.drain('server restarting')
+  server.close()
   await closeStore()
   console.log(JSON.stringify({ msg: 'drained' }))
   process.exit(0)

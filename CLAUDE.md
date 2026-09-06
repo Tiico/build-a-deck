@@ -8,6 +8,11 @@ Det gäller ny funktionalitet, buggfixar och refaktoreringar — inga undantag f
 
 Innan något anses klart: `pnpm typecheck`, `pnpm test` och `pnpm lint` ska vara gröna.
 
+Allt visuellt — vyer, layouter, interaktionsmönster, bordets och telefonens utseende — prototypas först med `/prototype`-skillen.
+Presentera prototyperna och få dem godkända innan den riktiga implementationen påbörjas.
+Det gäller varje ny visuell yta och varje väsentlig omformning av en befintlig.
+Ramverksfri logik (klienter, motorer, kompilatorer) behöver ingen prototyp.
+
 ## Var besluten finns
 
 Läs dessa innan du ändrar något som de täcker; de är sanningen, inte koden.
