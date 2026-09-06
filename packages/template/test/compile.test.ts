@@ -157,3 +157,13 @@ describe('text fitting (E6)', () => {
     expect(out.warnings).toEqual([])
   })
 })
+
+describe('fit attributes for the DOM (E6, one algorithm everywhere)', () => {
+  it('stamps each text element with its fit mode, starting size and script minimum so the page can refit with real metrics', () => {
+    const out = compile({ type: CARD_STANDARD_63x88, face, row: { title: 'Drake', body: 'kort' }, icons })
+    expect(out.html).toMatch(/<div data-element="title" data-fit="fixed" data-size-pt="14" data-min-pt="6">/)
+    const shrink: FaceTemplate = { base: [{ ...text('body', 'body', 30, 9), fit: 'shrink' }], variants: {} }
+    const s = compile({ type: CARD_STANDARD_63x88, face: shrink, row: { body: '漢字' }, icons })
+    expect(s.html).toMatch(/<div data-element="body" data-fit="shrink" data-size-pt="9" data-min-pt="8">/)
+  })
+})

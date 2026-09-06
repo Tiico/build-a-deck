@@ -27,7 +27,8 @@ export function compile(input: CompileInput): Compiled {
   const bleed = input.bleed ? input.type.print.bleedMm : 0
 
   css.push(`[data-card]{position:relative;width:${physical.widthMm + 2 * bleed}mm;height:${physical.heightMm + 2 * bleed}mm;overflow:hidden;}`)
-  css.push(`[data-element]{position:absolute;box-sizing:border-box;margin:0;}`)
+  css.push(`[data-element]{position:absolute;box-sizing:border-box;margin:0;overflow:hidden;}`)
+  css.push(`[data-element] p{margin:0;}[data-element] p+p{margin-top:0.5em;}`)
   css.push(`.byd-icon{height:1em;width:auto;vertical-align:-0.15em;}`)
   css.push(`.byd-icon-missing{color:#c00;background:#fee;font-weight:700;}`)
 
@@ -58,7 +59,10 @@ function render(el: Element, dx: number, dy: number, input: CompileInput, html: 
         `[data-element="${attr(el.id)}"]{left:${el.x + dx}mm;top:${el.y + dy}mm;width:${el.w}mm;height:${el.h}mm;font-size:${fit.sizePt}pt;` +
           `font-family:${f.family};font-weight:${f.weight ?? 400};text-align:${f.align ?? 'left'};line-height:${f.lineHeight ?? 1.25};color:${el.color};}`,
       )
-      html.push(`<div data-element="${attr(el.id)}">${renderParagraphs(value, el.id, input.icons, warnings)}</div>`)
+      html.push(
+        `<div data-element="${attr(el.id)}" data-fit="${el.fit ?? 'shrink'}" data-size-pt="${f.sizePt}" data-min-pt="${minPt}">` +
+          `${renderParagraphs(value, el.id, input.icons, warnings)}</div>`,
+      )
       break
     }
     case 'image': {
