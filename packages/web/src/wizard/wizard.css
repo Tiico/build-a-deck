@@ -1,0 +1,32 @@
+/* New project — one page, a live card on the right. */
+.byd-wizard { min-height: 100vh; display: grid; grid-template-columns: 1fr 420px; background: #f6f5f1; color: #1c1c1c; font: 14px system-ui, sans-serif; }
+.byd-wizard > main { padding: 40px 48px; display: grid; gap: 28px; align-content: start; max-width: 760px; }
+.byd-wizard h1 { margin: 0; font-size: 28px; font-weight: 800; }
+.byd-wizard h2 { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; margin: 0 0 8px; }
+.byd-wizard h2 span { width: 22px; height: 22px; border-radius: 999px; background: #1c1c1c; color: #fff; display: grid; place-items: center; font-size: 12px; }
+.byd-wizard section > p { color: #666; margin: 6px 0 0; }
+.byd-wizard input, .byd-wizard select, .byd-wizard textarea { padding: 10px 12px; border-radius: 8px; border: 1px solid #ccc; background: #fff; font-size: 15px; width: 100%; box-sizing: border-box; font-family: inherit; }
+.byd-wizard textarea { font-family: ui-monospace, monospace; font-size: 13px; }
+.byd-mono { font-family: ui-monospace, monospace !important; }
+.byd-wizard-players { display: flex; gap: 8px; }
+.byd-wizard-players button { width: 44px; height: 44px; border-radius: 10px; border: 1px solid #ccc; background: #fff; font-weight: 700; cursor: pointer; }
+.byd-wizard-players button[aria-pressed='true'] { border: 3px solid #3c8ce7; }
+.byd-wizard-fields { display: grid; gap: 8px; }
+.byd-wizard-fields > div { display: grid; grid-template-columns: 1fr 1fr 110px 36px; gap: 8px; }
+.byd-wizard-fields button, .byd-wizard-fields-actions button, .byd-wizard-data-actions button { padding: 8px 10px; border-radius: 8px; border: 1px solid #ccc; background: #fff; cursor: pointer; font-size: 14px; }
+.byd-wizard-fields-actions, .byd-wizard-data-actions { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+.byd-wizard-data-actions span { color: #666; }
+.byd-wizard-frames { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.byd-wizard-frames button { text-align: left; padding: 12px; border-radius: 12px; border: 1px solid #ddd; background: #fff; cursor: pointer; display: grid; gap: 4px; justify-items: center; }
+.byd-wizard-frames button[aria-pressed='true'] { border: 3px solid #3c8ce7; }
+.byd-wizard-frames strong { justify-self: start; margin-top: 6px; }
+.byd-wizard-frames small { justify-self: start; color: #666; }
+.byd-wizard-actions { display: flex; gap: 10px; align-items: center; }
+.byd-wizard-actions button { border: 1px solid #ccc; border-radius: 10px; padding: 12px 20px; font-size: 16px; font-weight: 700; cursor: pointer; background: #fff; color: #1c1c1c; }
+.byd-wizard-actions .byd-wizard-primary { background: #1c1c1c; color: #fff; border-color: #1c1c1c; }
+.byd-wizard-actions button:disabled { opacity: 0.4; cursor: default; }
+.byd-wizard-actions [role='alert'] { color: #b7791f; }
+.byd-wizard > aside { background: #e9e7e0; border-left: 1px solid #ddd; padding: 32px; display: grid; align-content: start; gap: 16px; position: sticky; top: 0; height: 100vh; box-sizing: border-box; }
+.byd-wizard-caption { font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; color: #666; }
+.byd-wizard-live { display: grid; place-items: center; padding: 12px; }
+.byd-wizard-thumbs { display: flex; gap: 6px; flex-wrap: wrap; }

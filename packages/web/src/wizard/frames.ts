@@ -1,26 +1,30 @@
-// PROTOTYPE — throwaway. Frames for the gallery step, and the state a wizard builds up.
-import type { FaceTemplate, Row } from '@byd/template'
+import type { FaceTemplate } from '@byd/template'
 
+// The frame gallery (L6): a few looks that bind whatever fields the game has. Elements for
+// fields the game lacks are left out, so a game without cost has no cost circle.
 export type Field = { key: string; label: string; kind: 'text' | 'number' | 'image' }
-export const DEFAULT_FIELDS: Field[] = [
-  { key: 'title', label: 'Titel', kind: 'text' },
-  { key: 'cost', label: 'Kostnad', kind: 'number' },
-  { key: 'body', label: 'Text', kind: 'text' },
-]
-
-export type Frame = { id: string; name: string; blurb: string; face(fields: Field[]): FaceTemplate }
+export type Frame = { id: string; name: string; blurb: string; front(fields: Field[]): FaceTemplate; back: FaceTemplate }
 
 const has = (fields: Field[], key: string) => fields.some((f) => f.key === key)
+const plainBack = (fill: string, inner?: string): FaceTemplate => ({
+  base: [
+    { kind: 'shape', id: 'bg', x: 0, y: 0, w: 63, h: 88, shape: 'rect', fill },
+    ...(inner ? [{ kind: 'shape' as const, id: 'inner', x: 4, y: 4, w: 55, h: 80, shape: 'rect' as const, fill: inner, radiusMm: 3 }] : []),
+  ],
+  variants: {},
+})
 
-export const FRAMES: Frame[] = [
-  {
+const classic: Frame = {
     id: 'classic',
     name: 'Klassisk',
     blurb: 'Konstyta upptill, titel och text under, kostnad i hörnet.',
-    face: (fields) => ({
+    back: plainBack('#2f4068', '#3a4d7a'),
+    front: (fields) => ({
       base: [
         { kind: 'shape', id: 'frame', x: 1, y: 1, w: 61, h: 86, shape: 'rect', fill: '#f4ead8', stroke: '#3a2a1a', strokeMm: 0.6, radiusMm: 3 },
-        { kind: 'shape', id: 'art', x: 4, y: 4, w: 55, h: 36, shape: 'rect', fill: '#c9b8a0', radiusMm: 2 },
+        ...(has(fields, 'art')
+          ? [{ kind: 'image' as const, id: 'art', x: 4, y: 4, w: 55, h: 36, bind: { field: 'art' }, fit: 'cover' as const }]
+          : [{ kind: 'shape' as const, id: 'art', x: 4, y: 4, w: 55, h: 36, shape: 'rect' as const, fill: '#c9b8a0', radiusMm: 2 }]),
         { kind: 'text', id: 'title', x: 5, y: 42, w: 53, h: 9, bind: { field: 'title' }, font: { family: 'Georgia, serif', sizePt: 13, weight: 800 }, color: '#1c1c1c' },
         ...(has(fields, 'body') ? [{ kind: 'text' as const, id: 'body', x: 5, y: 53, w: 53, h: 30, bind: { field: 'body' }, font: { family: 'system-ui', sizePt: 8.5 }, color: '#333' }] : []),
         ...(has(fields, 'cost')
@@ -32,12 +36,17 @@ export const FRAMES: Frame[] = [
       ],
       variants: {},
     }),
-  },
+}
+
+export const DEFAULT_FRAME = classic
+export const FRAMES: Frame[] = [
+  classic,
   {
     id: 'minimal',
     name: 'Minimal',
     blurb: 'Bara text på vit botten. Snabbast att läsa vid bordet.',
-    face: (fields) => ({
+    back: plainBack('#111111'),
+    front: (fields) => ({
       base: [
         { kind: 'shape', id: 'frame', x: 1, y: 1, w: 61, h: 86, shape: 'rect', fill: '#ffffff', stroke: '#111', strokeMm: 0.4, radiusMm: 2 },
         { kind: 'text', id: 'title', x: 5, y: 6, w: 44, h: 10, bind: { field: 'title' }, font: { family: 'system-ui', sizePt: 15, weight: 800 }, color: '#111' },
@@ -51,11 +60,14 @@ export const FRAMES: Frame[] = [
   {
     id: 'dark',
     name: 'Mörk',
-    blurb: 'Mörk ram, ljus text, konstyta som fyller hela kortet.',
-    face: (fields) => ({
+    blurb: 'Mörk ram, ljus text, konstyta som fyller halva kortet.',
+    back: plainBack('#0f1115', '#1b1d23'),
+    front: (fields) => ({
       base: [
         { kind: 'shape', id: 'frame', x: 0, y: 0, w: 63, h: 88, shape: 'rect', fill: '#1b1d23' },
-        { kind: 'shape', id: 'art', x: 3, y: 3, w: 57, h: 48, shape: 'rect', fill: '#3a4d7a', radiusMm: 2 },
+        ...(has(fields, 'art')
+          ? [{ kind: 'image' as const, id: 'art', x: 3, y: 3, w: 57, h: 48, bind: { field: 'art' }, fit: 'cover' as const }]
+          : [{ kind: 'shape' as const, id: 'art', x: 3, y: 3, w: 57, h: 48, shape: 'rect' as const, fill: '#3a4d7a', radiusMm: 2 }]),
         { kind: 'shape', id: 'plate', x: 3, y: 53, w: 57, h: 32, shape: 'rect', fill: '#2a2d36', radiusMm: 2 },
         { kind: 'text', id: 'title', x: 5, y: 55, w: 53, h: 8, bind: { field: 'title' }, font: { family: 'system-ui', sizePt: 12, weight: 800 }, color: '#fff' },
         ...(has(fields, 'body') ? [{ kind: 'text' as const, id: 'body', x: 5, y: 64, w: 53, h: 20, bind: { field: 'body' }, font: { family: 'system-ui', sizePt: 8 }, color: '#cfd3dc' }] : []),
@@ -66,26 +78,8 @@ export const FRAMES: Frame[] = [
   },
 ]
 
-export const SAMPLE_CSV = `title,cost,body
-Drake,5,Flygande. När Drake anfaller: gör 2 skada på alla motståndare.
-Riddare,3,Sköld 1. Kostar 1 mindre om du kontrollerar ett **Torn**.
-Trollkarl,2,När du spelar Trollkarl: dra ett kort.
-Tjuv,1,Ta ett slumpmässigt kort från en motståndares hand.`
-
-// Comma or tab separated, first line is the header. Prototype-grade.
-export function parseCsv(text: string): { headers: string[]; rows: Row[] } {
-  const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0)
-  if (lines.length === 0) return { headers: [], rows: [] }
-  const sep = lines[0]!.includes('\t') ? '\t' : ','
-  const headers = lines[0]!.split(sep).map((h) => h.trim())
-  const rows = lines.slice(1).map((l) => {
-    const cells = l.split(sep)
-    const row: Row = {}
-    headers.forEach((h, i) => (row[h] = cells[i]?.trim() ?? ''))
-    return row
-  })
-  return { headers, rows }
-}
-
-export type WizardState = { name: string; players: number; fields: Field[]; frame: string; rows: Row[] }
-export const initial = (): WizardState => ({ name: '', players: 2, fields: DEFAULT_FIELDS, frame: 'classic', rows: [] })
+export const DEFAULT_FIELDS: Field[] = [
+  { key: 'title', label: 'Titel', kind: 'text' },
+  { key: 'cost', label: 'Kostnad', kind: 'number' },
+  { key: 'body', label: 'Text', kind: 'text' },
+]

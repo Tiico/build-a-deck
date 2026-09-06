@@ -691,6 +691,10 @@ Fält före ram gör att ramen kan bindas utan manuell mappning; data sist landa
 
 Villkoren från E3 gäller: wizarden skapar samma domänobjekt som editorn, och importen är ett steg i den.
 
+Utseende (prototypat 2026-09-06): allt på en sida med ett levande kort till höger som växer fram medan man fyller i — fält blir rutor, ram blir utseende, rad blir kort.
+Tre ramar i galleriet binder fälten automatiskt och utelämnar rutor för fält spelet saknar.
+Slutar med "Öppna bordet" och "Till editorn".
+
 ### L7. Baksidan är en egen mall per sida
 
 Typregistryts `faces` ger en mall per sida.
