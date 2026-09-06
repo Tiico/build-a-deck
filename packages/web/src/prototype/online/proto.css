@@ -1,0 +1,43 @@
+/* PROTOTYPE — one window, both roles: the table and my hand (C2). */
+.po-stage { height: 100vh; display: grid; grid-template-rows: auto 1fr; background: #0b0d12; color: #ddd; font-family: system-ui, sans-serif; }
+.po-state { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; padding: 8px 16px; font: 12px ui-monospace, monospace; color: #7d8597; border-bottom: 1px solid #1a1e29; }
+.po-state b { color: #fff; font-weight: 600; }
+.po-state button { background: #242938; color: #fff; border: 0; border-radius: 999px; padding: 3px 10px; font-size: 11px; cursor: pointer; }
+.po-main { position: relative; min-height: 0; }
+.po-hint { position: absolute; left: 50%; top: 10px; transform: translateX(-50%); z-index: 8; font-size: 12px; color: #7d8597; background: rgba(0,0,0,.5); padding: 6px 12px; border-radius: 14px; max-width: 90%; text-align: center; pointer-events: none; }
+
+/* a card that can be dragged out of the hand */
+.po-card { position: relative; border-radius: 10px; background: hsl(var(--hue, 0) 40% 86%); color: #1c1c1c; font: 700 14px system-ui; padding: 10px; box-sizing: border-box; box-shadow: 0 6px 16px rgba(0,0,0,.5); cursor: grab; touch-action: none; user-select: none; }
+.po-card[data-lifted='true'] { opacity: .3; }
+.po-ghost { position: fixed; z-index: 100; pointer-events: none; border-radius: 10px; background: hsl(var(--hue, 0) 40% 86%); color: #1c1c1c; font: 700 14px system-ui; padding: 10px; box-sizing: border-box; box-shadow: 0 24px 40px rgba(0,0,0,.6); transform: translate(-50%, -50%) scale(1.06); }
+
+/* A — the phone's strip docked under the table */
+.po-a { display: grid; grid-template-rows: 1fr auto; height: 100%; }
+.po-a > .byd-table-frame { min-height: 0; }
+.po-a-strip { display: flex; gap: 12px; padding: 12px 20px 16px; overflow-x: auto; background: #14161c; border-top: 1px solid #262a35; align-items: flex-end; }
+.po-a-strip .po-card { flex: 0 0 120px; aspect-ratio: 63 / 88; }
+.po-a-strip .po-tools { margin-left: auto; display: grid; gap: 6px; align-self: center; }
+.po-a-strip .po-tools button { padding: 8px 12px; border: 0; border-radius: 10px; background: #242938; color: #fff; font-size: 13px; font-weight: 700; white-space: nowrap; }
+
+/* B — the fan on the felt, table mode */
+.po-b { position: relative; height: 100%; }
+.po-b > .byd-table-frame { height: 100%; }
+.po-b-fan { position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%); display: flex; z-index: 9; }
+.po-b-fan .po-card { width: 110px; aspect-ratio: 63 / 88; margin: 0 -22px; transform-origin: 50% 130%; transition: transform .15s; }
+.po-b-fan .po-card:hover { transform: translateY(-28px) rotate(0deg) !important; z-index: 2; }
+.po-b-tools { position: absolute; right: 16px; bottom: 16px; z-index: 9; display: flex; gap: 6px; }
+.po-b-tools button { padding: 8px 12px; border: 0; border-radius: 10px; background: rgba(36,41,56,.9); color: #fff; font-size: 13px; font-weight: 700; }
+.po-b-me { position: absolute; left: 16px; bottom: 16px; z-index: 9; padding: 6px 12px; border-radius: 999px; background: var(--seat); color: #fff; font-size: 13px; font-weight: 700; }
+
+/* C — side panel */
+.po-c { display: grid; grid-template-columns: 1fr 280px; height: 100%; }
+.po-c > .byd-table-frame { min-width: 0; }
+.po-c-side { display: grid; grid-template-rows: auto 1fr auto; background: #14161c; border-left: 1px solid #262a35; min-height: 0; }
+.po-c-side > header { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid #262a35; font-size: 13px; color: #9aa3b8; }
+.po-c-side > header strong { color: #fff; font-size: 15px; }
+.po-c-hand { overflow: auto; padding: 12px 14px; display: grid; gap: 10px; align-content: start; }
+.po-c-hand .po-card { width: 100%; aspect-ratio: 63 / 40; display: grid; align-content: end; }
+.po-c-side > footer { padding: 10px 14px; border-top: 1px solid #262a35; display: grid; gap: 6px; }
+.po-c-side > footer button { padding: 10px 12px; border: 0; border-radius: 10px; background: #242938; color: #fff; font-size: 13px; font-weight: 700; text-align: left; }
+.po-c-feed { padding: 0 14px 10px; font-size: 12px; color: #7d8597; }
+.po-c-feed li { padding: 4px 0; border-bottom: 1px solid #1f2330; list-style: none; }
