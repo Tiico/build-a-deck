@@ -1,0 +1,27 @@
+/* Fully online (C2, prototype B): the felt with my hand fanned at my edge. */
+.byd-online { position: relative; background: #17120f; }
+.byd-online > .byd-table-frame { height: 100%; }
+.byd-online-me { position: fixed; left: 16px; bottom: 16px; z-index: 12; display: flex; align-items: baseline; gap: 10px; padding: 8px 14px; border-radius: 999px; background: rgba(20, 22, 28, 0.9); color: #9aa3b8; font-size: 13px; border-left: 4px solid var(--seat); }
+.byd-online-me strong { color: #fff; font-size: 15px; }
+.byd-online-me em { font-style: normal; color: #ffd98a; }
+.byd-online-tools { position: fixed; right: 16px; bottom: 16px; z-index: 12; display: flex; gap: 6px; }
+.byd-online-tools button { padding: 8px 12px; border: 0; border-radius: 10px; background: rgba(36, 41, 56, 0.92); color: #fff; font-size: 13px; font-weight: 700; }
+.byd-online-tools .byd-end { background: rgba(58, 42, 45, 0.92); color: #ff9a9a; }
+.byd-online-tools button:disabled { opacity: 0.35; }
+
+.byd-fan { position: fixed; left: 50%; bottom: 6px; transform: translateX(-50%); display: flex; z-index: 11; }
+.byd-fan-card {
+  position: relative; width: 112px; aspect-ratio: 63 / 88; margin: 0 -22px; border-radius: 10px; padding: 10px; box-sizing: border-box; overflow: hidden;
+  background: hsl(var(--hue, 0) 40% 86%); color: #1c1c1c; font: 700 14px system-ui, sans-serif;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5); cursor: grab; touch-action: none; user-select: none;
+  transform-origin: 50% 130%; transform: rotate(var(--fan)) translateY(var(--dip)); transition: transform 0.15s;
+}
+.byd-fan-card:hover { transform: translateY(-28px) rotate(0deg); z-index: 2; }
+.byd-fan-card[data-lifted] { opacity: 0.3; }
+.byd-fan-card img, .byd-fan-ghost img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.byd-fan-card img + span, .byd-fan-ghost img + span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.byd-fan-ghost {
+  position: fixed; z-index: 100; pointer-events: none; width: 112px; aspect-ratio: 63 / 88; border-radius: 10px; padding: 10px; box-sizing: border-box; overflow: hidden;
+  background: hsl(var(--hue, 0) 40% 86%); color: #1c1c1c; font: 700 14px system-ui, sans-serif; box-shadow: 0 24px 40px rgba(0, 0, 0, 0.6);
+  transform: translate(-50%, -50%) scale(1.06);
+}

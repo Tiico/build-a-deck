@@ -1,15 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { Intent, VisibleComponentState } from '@byd/protocol'
+import type { VisibleComponentState } from '@byd/protocol'
 import { useTableClient } from '../table/useTableClient.js'
 import { hue } from '../table/hue.js'
 import { Texture, textureUrl } from '../table/Texture.js'
 import { HandStrip } from './HandStrip.js'
 import { PlaySheet } from './PlaySheet.js'
 import { TableSummary } from './TableSummary.js'
-import { whoDecides } from '../table/rewind.js'
-import { FlagSheet, EndSheet } from './SessionSheets.js'
-import { Survey } from './Survey.js'
-import { submitSurvey } from './surveyApi.js'
+import { SessionButtons, SessionOverlays, useSessionVersion, useToast } from './SessionOverlays.js'
+import { playIntents } from './play.js'
 import './player.css'
 
 // /play?session=…&seat=A&name=Ada&server=ws://…
@@ -26,23 +24,9 @@ export function PlayerPage() {
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
   const [inspect, setInspect] = useState<VisibleComponentState | null>(null)
   const [lifted, setLifted] = useState<VisibleComponentState | null>(null)
-  // Flagging and ending (G3, C9, prototype A): sheets from the header; a toast confirms a flag.
   const [sheet, setSheet] = useState<'flag' | 'end' | null>(null)
-  const [toast, setToast] = useState<string | null>(null)
-  const [version, setVersion] = useState<string | null>(null)
-  useEffect(() => {
-    if (!toast) return
-    const timer = setTimeout(() => setToast(null), 2000)
-    return () => clearTimeout(timer)
-  }, [toast])
-  // The version the session ended on, read from the session record; needed by the survey.
-  useEffect(() => {
-    if (!sessionId || !view?.ended || version) return
-    void fetch(`${faces}/sessions/${encodeURIComponent(sessionId)}`)
-      .then((r) => (r.ok ? (r.json() as Promise<{ version: string }>) : Promise.reject(new Error(String(r.status)))))
-      .then((s) => setVersion(s.version))
-      .catch(() => setVersion('?'))
-  }, [sessionId, view?.ended, version, faces])
+  const [toast, setToast] = useToast()
+  const version = useSessionVersion(faces, sessionId, view?.ended === true)
 
   // Sit down on first contact: claim the seat with the name from the link, if it is still free.
   const seatFree = view?.seats.find((s) => s.id === seat)?.name === null
@@ -57,27 +41,10 @@ export function PlayerPage() {
   const hand = view.components.filter((c) => c.zone === `hand:${seat}`)
   const toPlay = lifted ? (selected.has(lifted.id) ? hand.filter((c) => selected.has(c.id)) : [lifted]) : []
 
-  // Playing to a public zone turns the card face-up, as a hand would (K11); a hidden pile keeps it down.
   const play = (zone: string) => {
-    const isPublic = view.zones.find((z) => z.id === zone)?.mode === 'order'
-    const intents: Intent[] = toPlay.flatMap((c): Intent[] =>
-      isPublic
-        ? [{ v: 'move', component: c.id, to: zone }, { v: 'flip', component: c.id, face: 'front' }]
-        : [{ v: 'move', component: c.id, to: zone }],
-    )
-    void client.send(...intents)
+    void client.send(...playIntents(view, toPlay, zone))
     setLifted(null)
     setSelected(new Set())
-  }
-  // Undo (B, C): one tap. Uncontested, it takes back this seat's last act; once someone else
-  // has acted it proposes a rewind to the same point, which the others settle on their phones.
-  const proposal = view.rewind
-  const tapUndo = () => {
-    if (!view.undo) return
-    void client.send(view.undo.contested ? { v: 'rewind.propose', toSeq: view.undo.toSeq } : { v: 'undo.self' })
-  }
-  const settle = (v: 'rewind.confirm' | 'rewind.reject') => {
-    if (proposal) void client.send({ v, proposal: proposal.id })
   }
   const toggle = (card: VisibleComponentState) =>
     setSelected((s) => {
@@ -92,15 +59,7 @@ export function PlayerPage() {
       <header>
         <strong>{me?.name ?? seat}</strong>
         <span>{hand.length} kort</span>
-        <button className="byd-undo" disabled={!view.undo || !!proposal || view.ended} onClick={tapUndo}>
-          ↶ Ångra
-        </button>
-        <button className="byd-flag" disabled={view.ended} onClick={() => setSheet('flag')}>
-          ⚑ Flagga
-        </button>
-        <button className="byd-end" disabled={view.ended} onClick={() => setSheet('end')}>
-          Avsluta
-        </button>
+        <SessionButtons client={client} view={view} onSheet={setSheet} />
       </header>
       <TableSummary view={view} activity={activity} />
       <HandStrip view={view} selected={selected} faces={faces} onTap={setInspect} onHold={toggle} onLift={setLifted} />
@@ -118,48 +77,7 @@ export function PlayerPage() {
       {lifted && (
         <PlaySheet view={view} count={toPlay.length} label={lifted.cardRef ?? ''} onPlay={play} onClose={() => setLifted(null)} />
       )}
-      {toast && <div className="byd-toast">{toast}</div>}
-      {sheet === 'flag' && (
-        <FlagSheet
-          onFlag={(note) => {
-            void client.send({ v: 'flag', ...(note ? { note } : {}) })
-            setSheet(null)
-            setToast('Ögonblicket är flaggat')
-          }}
-          onClose={() => setSheet(null)}
-        />
-      )}
-      {sheet === 'end' && (
-        <EndSheet
-          version={version ?? 'den här versionen'}
-          onEnd={() => {
-            void client.send({ v: 'session.end' })
-            setSheet(null)
-          }}
-          onClose={() => setSheet(null)}
-        />
-      )}
-      {view.ended && (
-        <Survey who={me?.name ?? seat} version={version ?? '…'} onSubmit={(answers) => submitSurvey(faces, sessionId, { who: me?.name ?? seat, seat, answers })} />
-      )}
-      {proposal && proposal.by === seat && (
-        <div className="byd-rewind-mine" data-rewind-mine>
-          <span>Du föreslår att spola tillbaka. Bordet visar hur det såg ut; {whoDecides(view, proposal)} avgör.</span>
-          <button onClick={() => settle('rewind.reject')}>Dra tillbaka förslaget</button>
-        </div>
-      )}
-      {proposal && proposal.by !== seat && (
-        <div className="byd-rewind-ask" data-rewind-ask>
-          <h1>{view.seats.find((s) => s.id === proposal.by)?.name ?? 'Bordet'} vill spola tillbaka</h1>
-          <p>Bordet visar hur det såg ut. Draghögen blandas om.</p>
-          <button data-kind="ok" onClick={() => settle('rewind.confirm')}>
-            Godkänn
-          </button>
-          <button data-kind="no" onClick={() => settle('rewind.reject')}>
-            Neka
-          </button>
-        </div>
-      )}
+      <SessionOverlays client={client} view={view} seat={seat} name={me?.name ?? seat} http={faces} sessionId={sessionId} sheet={sheet} onSheet={setSheet} toast={toast} onToast={setToast} version={version} />
     </div>
   )
 }

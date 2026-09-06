@@ -163,6 +163,12 @@ Följdkrav:
 Hybridspel — några på plats, någon på distans — fungerar utan specialkod.
 Lobbyn måste hålla isär vem du är och vilken skärm du är.
 
+Byggt 2026-09-06 (prototypat, variant "handen utfläktad på filten"):
+`/online?session=…&seat=…&name=…` är båda rollerna i ett fönster: en anslutning med plats, bordet i bordsläge vridet så platsens kant är nederst (C5), spelbart som bordsskärmen, och den egna handen som en solfjäder vid kanten — håll över för att läsa, dra rakt upp på bordet så landar kortet där det släpps, uppvänt om zonen är publik (K11).
+Den egna handen visas som baksidor och antal på filten som för alla andra; fläkten är en komponent runt renderaren.
+Telefonens kontroller (ångra, flagga, avsluta), tillbakaspolning och enkät delas med telefonen genom samma komponenter.
+Anslutningssidan erbjuder "Spela på den här skärmen" bredvid "Sätt dig"; med en telefon i handen och en TV i rummet väljer man det förra bara på distans.
+
 ### C3. Identitetens tre begrepp (fråga 12)
 
 Användare äger spel och lägger beställningar.
@@ -187,6 +193,10 @@ Vem som helst kan tillfälligt zooma, men vyn återgår av sig själv.
 
 Följdkrav:
 Läget hör hemma i lobbyn, inte i användarinställningar, eftersom det varierar per tillfälle.
+
+Byggt 2026-09-06:
+Renderaren kan vridas i kvartsvarv (`rotate`), pekaren projiceras tillbaka genom vridningen, och etiketter (högnamn, platsnamn, zonnamn, markörnamn) vrids tillbaka så de förblir läsbara medan korten följer bordet som vid ett riktigt bord.
+Distansvyn använder det för att lägga den egna platsen nederst. Kamera och tillfällig zoom återstår.
 
 ### C6. Ångra: personlig ångra plus gruppens tillbakaspolning (fråga 18)
 

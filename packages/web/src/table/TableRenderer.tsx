@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type PointerEvent as RPointerEvent } from 'react'
 import { Texture, textureUrl } from './Texture.js'
 import type { Intent, Presence, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
 import type { Peer, Pulse, Recent } from './presence.js'
 import { hue } from './hue.js'
 import { seatColor } from './seatColor.js'
 import { fitScale } from './fit.js'
-import { flatToTable, tiltedToTable, type Point } from './geometry.js'
+import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
 import { CARD_MM, absoluteOf, dropIntents, type Drag, type DragTarget } from './drop.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
 
@@ -16,10 +16,14 @@ export type TableMode = 'table' | 'tv'
 // pile by its label; hold for a ring of verbs. Without it the table only shows.
 // Presence (K6): `peers` are the others' cursors and carried cards, `pulses` where someone points,
 // `recent` which cards just moved and by whom; `onPresence` reports this screen's own.
+// `rotate` turns the table so a seat's edge is at the bottom (C5). The ref answers where a client
+// point is on the table, for things dragged in from outside (a hand beside the table).
+export type TableHandle = { toTable(clientX: number, clientY: number): Point | null }
 export type TableRendererProps = {
   view: Snapshot
   mode: TableMode
   scale?: number
+  rotate?: Rotation | undefined
   faces?: string | undefined
   onAct?: ((intents: Intent[]) => void) | undefined
   peers?: readonly Peer[] | undefined
@@ -37,7 +41,7 @@ const TABLE_GREY = '#8a93a8'
 type Live = Drag & { started: boolean }
 type Ring = { target: DragTarget; x: number; y: number }
 
-export function TableRenderer({ view, mode, scale: fixedScale, faces, onAct, peers = [], pulses = [], recent = [], onPresence }: TableRendererProps) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], onPresence }, ref) {
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
   const frame = useRef<HTMLDivElement | null>(null)
@@ -92,14 +96,19 @@ export function TableRenderer({ view, mode, scale: fixedScale, faces, onAct, pee
     const w = wood.current
     const t = table.current
     if (!f || !w || !t) return null
-    if (mode === 'tv') return flatToTable(t.getBoundingClientRect(), scale, floor.geometry)
+    const turned = (p: Point) => unrotate(p, floor.geometry, rotate)
+    if (mode === 'tv') {
+      const flat = flatToTable(t.getBoundingClientRect(), scale, floor.geometry)
+      return (cx, cy) => turned(flat(cx, cy))
+    }
     const fr = f.getBoundingClientRect()
     const layout = { frame: { w: fr.width, h: fr.height }, wood: { left: w.offsetLeft, top: w.offsetTop, w: w.offsetWidth, h: w.offsetHeight } }
     return (cx, cy) => {
       const u = tiltedToTable(layout, cx - fr.left, cy - fr.top)
-      return { x: (u.x + w.offsetWidth / 2 - t.offsetLeft) / scale + floor.geometry.x, y: (u.y + w.offsetHeight / 2 - t.offsetTop) / scale + floor.geometry.y }
+      return turned({ x: (u.x + w.offsetWidth / 2 - t.offsetLeft) / scale + floor.geometry.x, y: (u.y + w.offsetHeight / 2 - t.offsetTop) / scale + floor.geometry.y })
     }
   }
+  useImperativeHandle(ref, () => ({ toTable: (cx, cy) => mapper()?.(cx, cy) ?? null }))
 
   const down = (e: RPointerEvent, target: DragTarget) => {
     if (!onAct) return
@@ -204,8 +213,9 @@ export function TableRenderer({ view, mode, scale: fixedScale, faces, onAct, pee
       <div className="byd-table-wood" ref={wood}>
         <div
           data-table
+          data-rotate={rotate}
           ref={table}
-          style={{ position: 'relative', width: px(floor.geometry.w), height: px(floor.geometry.h) }}
+          style={{ position: 'relative', width: px(floor.geometry.w), height: px(floor.geometry.h), transform: rotate ? `rotate(${rotate}deg)` : undefined, ['--unrotate' as string]: `${-rotate}deg` }}
           onPointerMove={feltMove}
           onPointerDown={feltDown}
           onPointerUp={clearPoint}
@@ -316,7 +326,7 @@ export function TableRenderer({ view, mode, scale: fixedScale, faces, onAct, pee
       )}
     </div>
   )
-}
+})
 
 // The verbs a drag cannot say (C): for a card, for a pile.
 function ringItems(view: Snapshot, target: DragTarget, act: (intents: Intent[]) => void, inspect: (c: VisibleComponentState) => void): RadialItem[] {
@@ -435,7 +445,7 @@ function Hand({ zone, name, color, rot, left, top, cards, faces }: { zone: ZoneV
   const count = zone.mode === 'count' ? zone.count : zone.order.length
   const fan = Math.min(count, FAN_MAX)
   return (
-    <div className="byd-hand" data-zone={zone.id} data-count={count} data-rot={rot} style={{ left, top, transform: `rotate(${rot}deg)`, ['--seat' as string]: color }}>
+    <div className="byd-hand" data-zone={zone.id} data-count={count} data-rot={rot} style={{ left, top, transform: `rotate(${rot}deg)`, ['--seat' as string]: color, ['--hand-unrot' as string]: `${-rot}deg` }}>
       <div className="byd-hand-fan">
         {cards
           ? cards.slice(0, FAN_MAX).map((c, i) => (

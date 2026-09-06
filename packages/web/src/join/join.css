@@ -28,3 +28,5 @@
 
 .byd-join-observe { background: transparent; border: 1px solid #2c3242; color: #9aa3b8; font-size: 13px; }
 .byd-join-observe:disabled { opacity: 0.35; }
+.byd-join-online { background: #242938 !important; color: #fff !important; font-size: 14px !important; }
+.byd-join-online:disabled { opacity: 0.35; }

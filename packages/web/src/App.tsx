@@ -3,16 +3,16 @@ import { PlayerPage } from './player/PlayerPage.js'
 import { JoinPage } from './join/JoinPage.js'
 import { EditorPage } from './editor/EditorPage.js'
 import { ObserverPage } from './observer/ObserverPage.js'
-import { OnlinePrototype } from './prototype/online/index.js'
+import { OnlinePage } from './online/OnlinePage.js'
 import { NewProjectPage } from './wizard/NewProjectPage.js'
 
 // Routing is a path check for now; a router arrives with the first real page.
 export function App() {
-  if (location.pathname.startsWith('/prototype/online')) return <OnlinePrototype />
   if (location.pathname === '/table') return <TablePage />
   if (location.pathname === '/play') return <PlayerPage />
   if (location.pathname === '/join') return <JoinPage />
   if (location.pathname === '/observe') return <ObserverPage />
+  if (location.pathname === '/online') return <OnlinePage />
   if (location.pathname === '/editor') return <EditorPage />
   if (location.pathname === '/new') return <NewProjectPage />
   return (

@@ -227,3 +227,8 @@
 .byd-hand-fan > i.byd-hand-card[data-face='back'] { border: 2px solid #1f2b4a; background: repeating-linear-gradient(45deg, #3a4d7a, #3a4d7a 4px, #2f4068 4px, #2f4068 8px); }
 .byd-hand-fan > i.byd-hand-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .byd-hand-fan > i.byd-hand-card span { position: relative; }
+
+/* On a turned table (C5) the cards turn with it, but labels are interface and stay readable. */
+[data-table] .byd-pile-count, [data-table] .byd-zone > span, [data-table] .byd-peer-cursor span, [data-table] .byd-peer-tag, [data-table] .byd-peer-pulse span { rotate: var(--unrotate, 0deg); }
+/* A hand's name pill also undoes the hand's own edge orientation. */
+[data-table] .byd-hand-name { rotate: calc(var(--unrotate, 0deg) + var(--hand-unrot, 0deg)); }

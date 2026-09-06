@@ -46,3 +46,23 @@ function anchors(layout: TiltLayout) {
     poy: layout.frame.h * ORIGIN_Y,
   }
 }
+
+// The table turned so a seat's edge is at the bottom (C5): a point on the rotated plane, back
+// into table coordinates, turning about the floor's centre.
+export type Rotation = 0 | 90 | 180 | 270
+export function unrotate(p: Point, floor: { x: number; y: number; w: number; h: number }, rotate: Rotation): Point {
+  if (rotate === 0) return p
+  const cx = floor.x + floor.w / 2
+  const cy = floor.y + floor.h / 2
+  const dx = p.x - cx
+  const dy = p.y - cy
+  // Quarter turns only, so the arithmetic stays exact.
+  switch (rotate) {
+    case 90:
+      return { x: cx + dy, y: cy - dx }
+    case 180:
+      return { x: cx - dx, y: cy - dy }
+    case 270:
+      return { x: cx - dy, y: cy + dx }
+  }
+}

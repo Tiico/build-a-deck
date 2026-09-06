@@ -78,3 +78,16 @@ describe('watching instead of playing (C8)', () => {
     expect(seen[0]).toMatch(new RegExp(`^/observe\\?session=${id}&name=Eva`))
   })
 })
+
+describe('playing from this screen (C2)', () => {
+  it('offers to play with the table on this screen, which leads to the online view for the chosen seat', async () => {
+    const id = await createSession(run.store)
+    const seen: string[] = []
+    history.replaceState(null, '', `/join?session=${id}&server=${encodeURIComponent(run.url)}`)
+    render(<JoinPage onSit={(url) => seen.push(url)} />)
+    await screen.findByRole('button', { name: /Sätt dig/ })
+    fireEvent.change(screen.getByLabelText('Ditt namn'), { target: { value: 'Ada' } })
+    fireEvent.click(screen.getByRole('button', { name: /Spela på den här skärmen/ }))
+    expect(seen[0]).toMatch(new RegExp(`^/online\\?session=${id}&seat=A&name=Ada`))
+  })
+})

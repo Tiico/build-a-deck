@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import { TableRenderer } from '../src/table/TableRenderer.js'
+import { createRef } from 'react'
+import { TableRenderer, type TableHandle } from '../src/table/TableRenderer.js'
 import { buildScene } from './scene.js'
 
 describe('TableRenderer', () => {
@@ -293,5 +294,29 @@ describe('presence (K6): the others on the table', () => {
     const { view, faceUp } = buildScene()
     render(<TableRenderer view={view(null)} mode="tv" scale={1} recent={[{ component: faceUp, seat: 'A', at: Date.now() }]} />)
     expect(document.querySelector(`[data-component="${faceUp}"]`)!.getAttribute('data-by')).toBe('A')
+  })
+})
+
+describe('a rotated table (C5): my seat at the bottom', () => {
+  it('rotates the table plane and maps pointers back, so a drag moves the card the way the finger went', () => {
+    const { view, faceUp } = buildScene()
+    const onAct = vi.fn()
+    render(<TableRenderer view={view(null)} mode="tv" scale={1} rotate={180} onAct={onAct} />)
+    expect(document.querySelector('[data-table]')!.getAttribute('data-rotate')).toBe('180')
+    const card = document.querySelector(`[data-component="${faceUp}"]`)!
+    // Screen (500,300) is the table's centre; moving the finger up-left on a table turned
+    // around moves the card down-right in table coordinates.
+    fireEvent.pointerDown(card, { clientX: 500, clientY: 300, pointerId: 1, isPrimary: true, button: 0 })
+    fireEvent.pointerMove(card, { clientX: 450, clientY: 250, pointerId: 1 })
+    fireEvent.pointerUp(card, { clientX: 450, clientY: 250, pointerId: 1 })
+    expect(onAct).toHaveBeenLastCalledWith([{ v: 'move', component: faceUp, to: 'table', x: 150, y: 100 }])
+  })
+
+  it('answers where a client point is on the table, for things dragged in from outside', () => {
+    const { view } = buildScene()
+    const ref = createRef<TableHandle>()
+    render(<TableRenderer ref={ref} view={view(null)} mode="tv" scale={1} rotate={180} />)
+    expect(ref.current?.toTable(500, 300)).toEqual({ x: 0, y: 0 })
+    expect(ref.current?.toTable(600, 400)).toEqual({ x: -100, y: -100 })
   })
 })

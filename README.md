@@ -67,6 +67,8 @@ Telefonen ansluter via QR-koden i TV-läget, eller direkt: `/join?session=…`.
 | `/table?session=…&mode=table\|tv` | storskärmen — bordsläge eller TV-läge med rumskod och QR |
 | `/join?session=…` | platsväljaren telefonen landar i |
 | `/play?session=…&seat=…&name=…` | telefonens hand |
+| `/online?session=…&seat=…&name=…` | distansläget: bordet vridet till din kant och din hand som en solfjäder, i ett fönster |
+| `/observe?session=…&name=…` | observatören: ser allt, alla ser henne, kan bara flagga |
 
 I utveckling pekar `server=` på API:et (http för editor och wizard, ws för bord och telefon); i produktion är allt samma origin.
 

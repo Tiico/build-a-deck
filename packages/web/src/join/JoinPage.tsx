@@ -32,6 +32,13 @@ export function JoinPage({ onSit = (url) => location.assign(url) }: JoinPageProp
     if (server) next.set('server', server)
     onSit(`/play?${next.toString()}`)
   }
+  // Playing with the table on this screen (C2): the online view for the chosen seat.
+  const online = () => {
+    if (!chosen || !name.trim()) return
+    const next = new URLSearchParams({ session: sessionId, seat: chosen, name: name.trim() })
+    if (server) next.set('server', server)
+    onSit(`/online?${next.toString()}`)
+  }
   // Watching instead (C8): seatless, sees everything, announced to everyone.
   const observe = () => {
     if (!name.trim()) return
@@ -76,6 +83,9 @@ export function JoinPage({ onSit = (url) => location.assign(url) }: JoinPageProp
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ditt namn" aria-label="Ditt namn" autoComplete="nickname" />
         <button type="submit" disabled={!chosen || !name.trim()}>
           Sätt dig
+        </button>
+        <button type="button" className="byd-join-online" disabled={!chosen || !name.trim()} onClick={online}>
+          Spela på den här skärmen (bordet och handen här)
         </button>
         <button type="button" className="byd-join-observe" disabled={!name.trim()} onClick={observe}>
           Bara titta (ser allt, alla ser dig)
