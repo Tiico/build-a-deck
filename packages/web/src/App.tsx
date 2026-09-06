@@ -7,9 +7,19 @@ import { OnlinePage } from './online/OnlinePage.js'
 import { NewProjectPage } from './wizard/NewProjectPage.js'
 import { HomePage } from './account/HomePage.js'
 import { LoginPage } from './account/LoginPage.js'
+import { TablePrototype } from './prototype/table-ref/index.js'
+import { TableEditorPrototype } from './prototype/datatable/index.js'
+import { CanvasPrototype } from './prototype/canvas/index.js'
+import { EditorNavPrototype } from './prototype/editor-nav/index.js'
+import { GroupsPrototype } from './prototype/groups/index.js'
 
 // Routing is a path check for now; a router arrives with the first real page.
 export function App() {
+  if (location.pathname.startsWith('/prototype/table-ref')) return <TablePrototype />
+  if (location.pathname.startsWith('/prototype/datatable')) return <TableEditorPrototype />
+  if (location.pathname.startsWith('/prototype/canvas')) return <CanvasPrototype />
+  if (location.pathname.startsWith('/prototype/editor-nav')) return <EditorNavPrototype />
+  if (location.pathname.startsWith('/prototype/groups')) return <GroupsPrototype />
   if (location.pathname === '/table') return <TablePage />
   if (location.pathname === '/play') return <PlayerPage />
   if (location.pathname === '/join') return <JoinPage />

@@ -1,0 +1,32 @@
+/* PROTOTYPE — groups ruling both faces. */
+.pg-muted { color: #9aa3b8; font-size: 12px; line-height: 1.5; margin: 6px 0; }
+.pg-pair { display: inline-flex; gap: 6px; align-items: flex-start; }
+.pg-a { display: grid; grid-template-columns: 240px 1fr 260px; gap: 14px; padding: 14px; min-height: 0; overflow: auto; }
+.pg-side { background: #1b1e27; border-radius: 12px; padding: 12px; align-self: start; }
+.pg-side h2 { margin: 6px 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #7d8597; }
+.pg-side select { width: 100%; padding: 6px; border-radius: 6px; border: 1px solid #3a4050; background: #14161c; color: #fff; }
+.pg-layers { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.pg-layers li { padding: 6px 8px; border-radius: 6px; font-size: 12px; color: #ccc; display: flex; gap: 6px; align-items: baseline; }
+.pg-layers li[data-overridden='true'] { background: #242938; color: #fff; }
+.pg-layers em { font-style: normal; font-size: 11px; margin-left: auto; }
+.pg-canvas { display: grid; grid-template-rows: auto 1fr; gap: 10px; }
+.pg-tabs { display: flex; gap: 6px; align-items: center; }
+.pg-tabs button { padding: 7px 12px; border-radius: 8px; border: 1px solid #3a4050; background: transparent; color: #bbb; font-size: 13px; font-weight: 600; cursor: pointer; }
+.pg-tabs button[aria-selected='true'] { background: var(--c, #7dd3a0); color: #0b0d12; border-color: var(--c, #7dd3a0); }
+.pg-stage-card { display: grid; place-items: center; align-content: start; gap: 8px; background: #14161c; border-radius: 12px; padding: 20px; }
+.pg-thumbs { display: grid; gap: 8px; }
+.pg-b { padding: 20px; overflow: auto; }
+.pg-rules { max-width: 980px; display: grid; gap: 14px; }
+.pg-rules h1 { margin: 0; font-size: 22px; }
+.pg-rule { display: grid; grid-template-columns: 1fr auto; gap: 8px 16px; padding: 14px; border-radius: 12px; background: #1b1e27; border-left: 4px solid var(--c); }
+.pg-rule-head { display: flex; gap: 10px; align-items: center; grid-column: 1 / -1; }
+.pg-rule-head code { background: #14161c; padding: 3px 8px; border-radius: 6px; color: var(--c); }
+.pg-rule-head button { padding: 6px 10px; border: 0; border-radius: 8px; background: #242938; color: #fff; font-size: 12px; font-weight: 600; }
+.pg-rule ul { margin: 0; padding-left: 18px; color: #bbb; font-size: 13px; line-height: 1.7; }
+.pg-rule .pg-pair { grid-column: 2; grid-row: 2; }
+.pg-new { padding: 12px; border-radius: 12px; border: 1px dashed #3a4050; background: transparent; color: #9aa3b8; text-align: left; display: flex; gap: 8px; align-items: center; }
+.pg-new select, .pg-new input { padding: 4px 6px; border-radius: 6px; border: 1px solid #3a4050; background: #14161c; color: #fff; }
+.pg-c { padding: 14px; overflow: auto; }
+.pg-c select { padding: 4px 6px; border-radius: 6px; border: 1px solid #3a4050; background: #14161c; color: #fff; }
+.pg-c-defaults { display: flex; gap: 14px; align-items: center; margin-top: 14px; padding: 12px; background: #1b1e27; border-radius: 12px; flex-wrap: wrap; }
+.pg-c-defaults button { padding: 6px 10px; border: 0; border-radius: 8px; background: #242938; color: #fff; font-size: 12px; }

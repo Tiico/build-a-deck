@@ -10,7 +10,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "worker": "tsx src/main.ts"
+    "worker": "tsx src/main.ts",
+    "shot": "tsx scripts/shot.ts"
   },
   "dependencies": {
     "@byd/engine": "workspace:*",
