@@ -6,6 +6,16 @@ import type { CompiledLike } from './hash.js'
 // CSS millimetres are 96 dpi to Chromium; the device scale factor takes them to the DPI asked for.
 const CSS_DPI = 96
 
+// `fitInDocument` is carried into the page as source text. Transpilers such as esbuild (under
+// tsx) wrap inner functions in a `__name(fn, "name")` helper the page does not have, and
+// Playwright evaluates in its own world where a page global would not help — so the source is
+// evaluated inside a scope that defines the helper as the identity. Works whoever transpiled it.
+const FIT_IN_PAGE = `(() => { const __name = (fn) => fn; return (${fitInDocument.toString()})(document) })()`
+
+async function fitPage(page: Page): Promise<FitReport[]> {
+  return (await page.evaluate(FIT_IN_PAGE)) as FitReport[]
+}
+
 export type PngOptions = { dpi: number }
 
 export class Renderer {
@@ -31,7 +41,7 @@ export class Renderer {
       const page = await context.newPage()
       await page.setContent(hostDocument(compiled), { waitUntil: 'load' })
       await page.evaluate(() => document.fonts.ready)
-      return await page.evaluate(fitInDocument, await page.evaluateHandle(() => document))
+      return await fitPage(page)
     } finally {
       await context.close()
     }
@@ -47,7 +57,7 @@ export class Renderer {
       const page = await context.newPage()
       await page.setContent(hostDocument(compiled, zoom), { waitUntil: 'load' })
       await page.evaluate(() => document.fonts.ready)
-      await page.evaluate(fitInDocument, await page.evaluateHandle(() => document))
+      await fitPage(page)
       const box = await cardBox(page)
       if (!box) throw new Error('compiled output has no [data-card]')
       const clip = { x: Math.round(box.x), y: Math.round(box.y), width: Math.round(box.width), height: Math.round(box.height) }
@@ -77,7 +87,7 @@ export async function renderPdfWith(browser: Browser, compiled: CompiledLike): P
     const page = await context.newPage()
     await page.setContent(hostDocument(compiled), { waitUntil: 'load' })
     await page.evaluate(() => document.fonts.ready)
-    await page.evaluate(fitInDocument, await page.evaluateHandle(() => document))
+    await fitPage(page)
     const box = await cardBox(page)
     if (!box) throw new Error('compiled output has no [data-card]')
     const mm = (px: number) => (px / CSS_DPI) * 25.4

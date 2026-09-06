@@ -26,7 +26,34 @@ const setup = {
   components: NAMES.map((cardRef) => ({ type: CARD, cardRef, zone: 'draw', face: 'back' })),
 }
 
-const res = await fetch(`${base}/sessions`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, version: 'v0.7', setup }) })
+// A deck so the table gets textures: one frame, a title and a line of body text per card.
+const template = {
+  faces: {
+    front: {
+      base: [
+        { kind: 'shape', id: 'frame', x: 1, y: 1, w: 61, h: 86, shape: 'rect', fill: '#f4ead8', stroke: '#3a2a1a', strokeMm: 0.6, radiusMm: 3 },
+        { kind: 'shape', id: 'art', x: 4, y: 4, w: 55, h: 36, shape: 'rect', fill: '#c9b8a0', radiusMm: 2 },
+        { kind: 'text', id: 'title', x: 5, y: 42, w: 53, h: 9, bind: { field: 'title' }, font: { family: 'sans-serif', sizePt: 13, weight: 800 }, color: '#1c1c1c' },
+        { kind: 'text', id: 'body', x: 5, y: 52, w: 53, h: 30, bind: { field: 'body' }, font: { family: 'sans-serif', sizePt: 8.5 }, color: '#333' },
+        { kind: 'shape', id: 'costbg', x: 49, y: 4.5, w: 9, h: 9, shape: 'circle', fill: '#8b2e2e' },
+        { kind: 'text', id: 'cost', x: 48, y: 5.5, w: 11, h: 8, bind: { field: 'cost' }, font: { family: 'sans-serif', sizePt: 14, weight: 800, align: 'center' }, color: '#fff', fit: 'fixed' },
+      ],
+      variants: {},
+    },
+    back: {
+      base: [
+        { kind: 'shape', id: 'bg', x: 0, y: 0, w: 63, h: 88, shape: 'rect', fill: '#2f4068' },
+        { kind: 'shape', id: 'inner', x: 4, y: 4, w: 55, h: 80, shape: 'rect', fill: '#3a4d7a', stroke: '#1f2b4a', strokeMm: 0.8, radiusMm: 3 },
+      ],
+      variants: {},
+    },
+  },
+}
+const bodies = ['När detta kort spelas: dra ett kort.', 'Sköld 1. Kostar 1 mindre om du kontrollerar ett Torn.', 'Gör 2 skada på valfri varelse.', 'Hela 3 liv.']
+const rows = Object.fromEntries(NAMES.map((n, i) => [n, { title: n, body: bodies[i % bodies.length], cost: String(1 + (i % 5)) }]))
+const deck = { template, rows, icons: {} }
+
+const res = await fetch(`${base}/sessions`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, version: 'v0.7', setup, deck }) })
 if (res.status !== 201) {
   console.error('create failed', res.status, await res.text())
   process.exit(1)
