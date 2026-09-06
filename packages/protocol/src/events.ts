@@ -40,3 +40,8 @@ export const Applied = z.object({
   outcome: Outcome.optional(),
 })
 export type Applied = z.infer<typeof Applied>
+
+// What every view may know about a log line: the same line without its outcome.
+// A shuffle's outcome carries the re-keying, which says exactly where each card went.
+export const Activity = Applied.omit({ outcome: true })
+export type Activity = z.infer<typeof Activity>

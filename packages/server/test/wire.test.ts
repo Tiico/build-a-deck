@@ -84,10 +84,12 @@ describe('hidden information on the wire', () => {
     await a.send(null, { v: 'shuffle', pile: 'draw' }).catch(() => undefined)
     // The table connection shuffles, since A's connection can only speak as A.
     const table = await connect(id, null)
+    const beforeShuffle = b.frames.length
     await table.send(null, { v: 'shuffle', pile: 'draw' })
     await b.synced(3)
     expect(b.view!.zones.find((z) => z.id === 'draw')).toMatchObject({ mode: 'count', count: 10 })
-    expect(b.frames.slice(1).join('\n')).not.toContain(known)
+    // Seeing the card go onto the pile is fine (B could watch that); after the shuffle its id is gone.
+    expect(b.frames.slice(beforeShuffle).join('\n')).not.toContain(known)
   })
 })
 
@@ -154,5 +156,21 @@ describe('connections', () => {
     await connect(id, null)
     const res = await fetch(`${run.http}/health`)
     expect(await res.json()).toEqual({ ok: true, tables: 1 })
+  })
+})
+
+describe('activity on the wire', () => {
+  it('tells every view what happened, without the outcome that would reveal a shuffle', async () => {
+    const id = await createSession(run.http)
+    const table = await connect(id, null)
+    const b = await connect(id, 'B')
+    await table.send(null, { v: 'seat.claim', seat: 'A', name: 'Ada' })
+    await table.send(null, { v: 'shuffle', pile: 'draw' })
+
+    const activity = await b.waitFor((m) => m.t === 'activity' && m.lines.some((l) => l.intent.v === 'shuffle'))
+    if (activity.t !== 'activity') throw new Error('unreachable')
+    expect(activity.lines.map((l) => [l.seq, l.by, l.intent.v])).toEqual([[2, null, 'shuffle']])
+    expect(b.frames.join('\n')).not.toContain('rekey')
+    expect(b.frames.join('\n')).not.toContain('outcome')
   })
 })

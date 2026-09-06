@@ -77,3 +77,25 @@ describe('reconnection', () => {
     expect(statuses.at(-1)).toBe('open')
   })
 })
+
+describe('activity', () => {
+  it('keeps the recent redacted log lines and notifies subscribers when they arrive', async () => {
+    const id = await createSession(run.store)
+    const table = await connect(id, null)
+    const b = await connect(id, 'B')
+    const seen: number[] = []
+    b.subscribe(() => seen.push(b.activity.length))
+
+    await table.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
+    await table.send({ v: 'shuffle', pile: 'draw' })
+    await b.synced(2)
+    await new Promise((r) => setTimeout(r, 20))
+
+    expect(b.activity.map((l) => [l.seq, l.by, l.intent.v])).toEqual([
+      [1, null, 'seat.claim'],
+      [2, null, 'shuffle'],
+    ])
+    expect(b.activity.every((l) => !('outcome' in l))).toBe(true)
+    expect(seen).toContain(2)
+  })
+})

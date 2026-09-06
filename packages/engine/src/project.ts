@@ -1,4 +1,11 @@
-import type { SeatId, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
+import type { Activity, Applied, SeatId, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
+
+// A log line as every view may see it. The outcome never leaves the server: a shuffle's
+// re-keying says exactly where each card went, which no one at a physical table knows.
+export function projectActivity(line: Applied): Activity {
+  const { seq, batch, at, by, intent } = line
+  return { seq, batch, at, by, intent }
+}
 import { componentOf, type ComponentInstance, type TableState, type Zone } from './state.js'
 import type { TypeRegistry } from './typedef.js'
 import { canSeeFace, canSeeZoneOrder } from './visibility.js'
@@ -25,7 +32,8 @@ export function project(state: TableState, registry: TypeRegistry, seat: SeatId 
       }
     }
   }
-  return { seq: state.seq, seat, zones, components }
+  const seats = state.setup.seats.map((id) => ({ id, name: state.seats[id]?.name ?? null }))
+  return { seq: state.seq, seat, seats, zones, components }
 }
 
 function zoneBase(z: Zone) {

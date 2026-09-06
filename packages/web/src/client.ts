@@ -1,4 +1,4 @@
-import { ServerMessage, type Envelope, type Intent, type SeatId, type Snapshot } from '@byd/protocol'
+import { ServerMessage, type Activity, type Envelope, type Intent, type SeatId, type Snapshot } from '@byd/protocol'
 import { applyPatch } from '@byd/engine'
 
 export type ClientStatus = 'connecting' | 'open' | 'reconnecting' | 'closed'
@@ -12,11 +12,15 @@ export type ConnectOptions = {
 export type SendResult = { ok: true; seqs: number[] } | { ok: false; reason: string }
 export type Listener = (view: Snapshot | null, status: ClientStatus) => void
 
+const ACTIVITY_LIMIT = 200
+
 // The whole wire protocol behind a small surface: a view that follows the table,
 // a status, and `send`. Framework-free so that views stay thin.
 export class TableClient {
   view: Snapshot | null = null
   status: ClientStatus = 'connecting'
+  // The most recent committed lines, redacted by the server; oldest first, bounded.
+  activity: Activity[] = []
   private ws: WebSocket
   private readonly readyPromise: Promise<void>
   private resolveReady!: () => void
@@ -108,6 +112,10 @@ export class TableClient {
       case 'patch':
         if (this.view) this.view = applyPatch(this.view, msg.patch)
         this.settleSeqWaiters()
+        this.notify()
+        break
+      case 'activity':
+        this.activity = [...this.activity, ...msg.lines].slice(-ACTIVITY_LIMIT)
         this.notify()
         break
       case 'ack':

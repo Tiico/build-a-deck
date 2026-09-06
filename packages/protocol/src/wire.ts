@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { Envelope } from './events.js'
+import { Activity, Envelope } from './events.js'
 import { Patch, Snapshot } from './patch.js'
 
 // The WebSocket wire format. One connection = one role at one seat (or the table).
@@ -11,6 +11,8 @@ export const ServerMessage = z.discriminatedUnion('t', [
   // Sent on connect and reconnect: the full projection for this seat.
   z.object({ t: z.literal('snapshot'), snapshot: Snapshot }),
   z.object({ t: z.literal('patch'), patch: Patch }),
+  // The committed lines behind the preceding patch, redacted for every view alike.
+  z.object({ t: z.literal('activity'), lines: z.array(Activity) }),
   // The envelope was committed; these are the seq numbers it produced.
   z.object({ t: z.literal('ack'), id: z.string(), seqs: z.array(z.number().int()) }),
   z.object({ t: z.literal('reject'), id: z.string(), reason: z.string() }),

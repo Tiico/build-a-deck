@@ -6,6 +6,7 @@ import {
   diff,
   initialState,
   project,
+  projectActivity,
   replay,
   uuidIds,
   type DecideDeps,
@@ -87,11 +88,13 @@ export class TableActor {
     await this.store.append(this.id, decision.applied)
     for (const line of decision.applied) this.state = apply(this.state, this.registry, line)
 
+    const activity = decision.applied.map(projectActivity)
     for (const [sub, previous] of this.subscribers) {
       const next = project(this.state, this.registry, sub.seat)
       const patch = diff(previous, next)
       this.subscribers.set(sub, next)
       if (patch.ops.length > 0 || patch.seq !== previous.seq) sub.send({ t: 'patch', patch })
+      sub.send({ t: 'activity', lines: activity })
     }
     return decision
   }

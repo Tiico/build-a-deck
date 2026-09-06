@@ -49,9 +49,14 @@ export const ZoneView = z.discriminatedUnion('mode', [
 ])
 export type ZoneView = z.infer<typeof ZoneView>
 
+// A seat as every view sees it: who sits there, or null while it is free.
+export const SeatView = z.object({ id: SeatId, name: z.string().nullable() })
+export type SeatView = z.infer<typeof SeatView>
+
 export const Snapshot = z.object({
   seq: z.number().int().nonnegative(),
   seat: SeatId.nullable(),
+  seats: z.array(SeatView),
   zones: z.array(ZoneView),
   components: z.array(VisibleComponentState),
 })
@@ -62,6 +67,7 @@ export const Op = z.discriminatedUnion('op', [
   z.object({ op: z.literal('remove'), component: ComponentId }),
   z.object({ op: z.literal('zone'), view: ZoneView }),
   z.object({ op: z.literal('zoneRemove'), zone: ZoneId }),
+  z.object({ op: z.literal('seat'), seat: SeatView }),
 ])
 export type Op = z.infer<typeof Op>
 
