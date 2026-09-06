@@ -1,16 +1,19 @@
-# The render worker: Playwright's Chromium image plus our code. Memory-capped in compose.
-FROM mcr.microsoft.com/playwright:v1.55.0-noble AS base
-RUN corepack enable
+# The render worker: Playwright's Chromium image plus our code. Memory-capped in compose (DRIFT §6).
+FROM mcr.microsoft.com/playwright:v1.63.0-noble
+# Node 26 images ship without corepack; pin the workspace's pnpm explicitly.
+RUN npm install -g pnpm@11.24.0
 WORKDIR /app
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json tsconfig.base.json ./
 COPY packages/protocol/package.json packages/protocol/
 COPY packages/engine/package.json packages/engine/
 COPY packages/template/package.json packages/template/
 COPY packages/render/package.json packages/render/
+COPY packages/server/package.json packages/server/
+COPY packages/web/package.json packages/web/
 RUN pnpm install --frozen-lockfile --filter @byd/render...
 COPY packages/protocol packages/protocol
 COPY packages/engine packages/engine
 COPY packages/template packages/template
 COPY packages/render packages/render
 USER pwuser
-CMD ["pnpm", "--filter", "@byd/render", "worker"]
+CMD ["node", "packages/render/node_modules/tsx/dist/cli.mjs", "packages/render/src/main.ts"]

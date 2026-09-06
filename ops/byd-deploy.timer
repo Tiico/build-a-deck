@@ -1,0 +1,10 @@
+[Unit]
+Description=Poll origin/main and deploy build-your-deck
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+Unit=byd-deploy.service
+
+[Install]
+WantedBy=timers.target

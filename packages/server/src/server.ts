@@ -1,5 +1,8 @@
 import { createServer as createHttpServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import { randomUUID } from 'node:crypto'
+import { createReadStream } from 'node:fs'
+import { stat } from 'node:fs/promises'
+import { extname, join, normalize, resolve, sep } from 'node:path'
 import { WebSocketServer, type WebSocket } from 'ws'
 import { z } from 'zod'
 import { ClientMessage, type ServerMessage } from '@byd/protocol'
@@ -13,7 +16,8 @@ import { SurveyAnswer, type SurveyStore } from './surveys.js'
 import { facesOf } from './faces.js'
 import { TEXTURE_DPI } from './actor.js'
 
-export type ServerOptions = { host: TableHost; store: LogStore; registry: TypeRegistry; renders?: RenderStore; projects?: ProjectStore; surveys?: SurveyStore }
+// `staticDir`: the built web app, served from the same origin as the API (README, DRIFT §1).
+export type ServerOptions = { host: TableHost; store: LogStore; registry: TypeRegistry; renders?: RenderStore; projects?: ProjectStore; surveys?: SurveyStore; staticDir?: string }
 
 const DeckBody = z.object({
   template: Template,
@@ -78,8 +82,14 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
   }
   try {
     if (req.method === 'GET' && url.pathname === '/health') {
+      // Health means the store answers (DRIFT §2), not just that the process is up.
       const loaded = await opts.host.loaded()
-      return json(res, 200, { ok: true, tables: loaded.length })
+      try {
+        await opts.store.staleSessions(new Date(0))
+      } catch (err) {
+        return json(res, 503, { ok: false, tables: loaded.length, store: err instanceof Error ? err.message : String(err) })
+      }
+      return json(res, 200, { ok: true, tables: loaded.length, store: 'ok' })
     }
     if (req.method === 'POST' && url.pathname === '/sessions') {
       const body = CreateSession.parse(JSON.parse(await readBody(req)))
@@ -110,9 +120,53 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       if (status?.state === 'failed') return json(res, 500, { error: status.error ?? 'render failed' })
       return json(res, 404, { error: 'unknown face' })
     }
+    if (opts.staticDir && (req.method === 'GET' || req.method === 'HEAD')) {
+      if (await serveStatic(opts.staticDir, url.pathname, res)) return
+    }
     json(res, 404, { error: 'not found' })
   } catch (err) {
     json(res, 400, { error: err instanceof Error ? err.message : String(err) })
+  }
+}
+
+const MIME: Record<string, string> = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json',
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.ico': 'image/x-icon',
+  '.woff2': 'font/woff2',
+  '.txt': 'text/plain; charset=utf-8',
+}
+
+// The built web app: hashed assets forever, everything else briefly, and the app's own routes
+// (/table, /play, …) fall back to index.html so the client can pick the page. Never a byte
+// outside the directory.
+const API_PREFIXES = ['/sessions', '/projects', '/faces', '/health']
+async function serveStatic(dir: string, pathname: string, res: ServerResponse): Promise<boolean> {
+  // The API never falls back to the app, whatever is or is not mounted.
+  if (API_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))) return false
+  const root = resolve(dir)
+  const wanted = resolve(root, '.' + normalize(decodeURIComponent(pathname)))
+  if (wanted !== root && !wanted.startsWith(root + sep)) return false
+  const candidate = await fileAt(wanted)
+  const file = candidate ?? (extname(wanted) === '' ? await fileAt(join(root, 'index.html')) : null)
+  if (!file) return false
+  const type = MIME[extname(file).toLowerCase()] ?? 'application/octet-stream'
+  const hashed = file.includes(`${sep}assets${sep}`)
+  res.writeHead(200, { ...CORS, 'content-type': type, 'cache-control': hashed ? 'public, max-age=31536000, immutable' : 'no-cache' })
+  await new Promise<void>((resolve, reject) => createReadStream(file).on('error', reject).on('end', () => resolve()).pipe(res))
+  return true
+}
+
+async function fileAt(path: string): Promise<string | null> {
+  try {
+    const s = await stat(path)
+    return s.isFile() ? path : null
+  } catch {
+    return null
   }
 }
 

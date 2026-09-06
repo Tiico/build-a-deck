@@ -1,0 +1,10 @@
+[Unit]
+Description=build-your-deck pull-based deploy (DRIFT §7)
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/build-your-deck
+EnvironmentFile=/opt/build-your-deck/.env
+ExecStart=/opt/build-your-deck/ops/deploy.sh

@@ -12,6 +12,7 @@ import { MemoryRenderStore, PostgresRenderStore, type RenderStore } from '@byd/r
 //   PORT           — default 8080
 //   IDLE_EVICT_MS  — unload tables with no connections for this long; default 30 min
 //   IDLE_END_MS    — end tables nobody has touched for this long (C9); default 24 h
+//   STATIC_DIR     — the built web app to serve from this origin; unset in development
 
 const port = Number(process.env['PORT'] ?? 8080)
 const idleEvictMs = Number(process.env['IDLE_EVICT_MS'] ?? 30 * 60 * 1000)
@@ -49,7 +50,8 @@ if (databaseUrl) {
 }
 
 const host = new TableHost(registry, store, undefined, renders)
-const server = createServer({ host, store, registry, renders, projects, surveys })
+const staticDir = process.env['STATIC_DIR']
+const server = createServer({ host, store, registry, renders, projects, surveys, ...(staticDir ? { staticDir } : {}) })
 server.listen(port, () => console.log(JSON.stringify({ msg: 'listening', port })))
 
 const evictor = setInterval(() => {

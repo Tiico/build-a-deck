@@ -1,13 +1,24 @@
-# The stack from DRIFT.md, as far as it exists. Memory limits are the design constraint on 8 GB.
+# The stack from DRIFT.md. One command starts everything; memory limits are the design
+# constraint on 8 GB; nothing but the tunnel faces the street. Copy .env.example to .env.
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      max-size: "20m"
+      max-file: "5"
+
 services:
   postgres:
     image: postgres:17-alpine
     environment:
       POSTGRES_DB: byd
       POSTGRES_USER: byd
-      POSTGRES_PASSWORD: byd
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-byd}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    # Reachable from the box only (admin over Tailscale + SSH, DRIFT §10), never from the street.
+    ports:
+      - "127.0.0.1:5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U byd -d byd"]
       interval: 5s
@@ -15,33 +26,80 @@ services:
       retries: 10
     mem_limit: 1500m
     restart: unless-stopped
+    <<: *logging
 
   app:
     build: .
+    image: byd-app:${BYD_TAG:-latest}
     environment:
-      DATABASE_URL: postgres://byd:byd@postgres:5432/byd
+      DATABASE_URL: postgres://byd:${POSTGRES_PASSWORD:-byd}@postgres:5432/byd
       PORT: "8080"
+      IDLE_EVICT_MS: ${IDLE_EVICT_MS:-1800000}
+      IDLE_END_MS: ${IDLE_END_MS:-86400000}
+    # The tunnel reaches the app on the compose network; this host port is for the box itself.
     ports:
-      - "8080:8080"
+      - "127.0.0.1:8080:8080"
     depends_on:
       postgres:
         condition: service_healthy
     stop_grace_period: 20s
     mem_limit: 1g
     restart: unless-stopped
+    <<: *logging
 
   render:
     build:
       context: .
       dockerfile: Dockerfile.render
+    image: byd-render:${BYD_TAG:-latest}
     environment:
-      DATABASE_URL: postgres://byd:byd@postgres:5432/byd
+      DATABASE_URL: postgres://byd:${POSTGRES_PASSWORD:-byd}@postgres:5432/byd
     depends_on:
       postgres:
         condition: service_healthy
     stop_grace_period: 30s
     mem_limit: 2g
+    shm_size: 512m
     restart: unless-stopped
+    <<: *logging
+
+  # Cloudflare Tunnel (DRIFT §2): no open ports at home. Needs CLOUDFLARE_TUNNEL_TOKEN; the
+  # tunnel's public hostname routes to http://app:8080 in the Cloudflare dashboard.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    depends_on:
+      - app
+    profiles: ["tunnel"]
+    mem_limit: 128m
+    restart: unless-stopped
+    <<: *logging
+
+  # Backup (DRIFT §5, first step): a nightly pg_dump to R2 through rclone, kept 30 days.
+  # WAL archiving with a restore rehearsal is the next step; ops/restore-test.sh rehearses this one.
+  backup:
+    build:
+      context: ops
+      dockerfile: Dockerfile.backup
+    environment:
+      PGHOST: postgres
+      PGUSER: byd
+      PGPASSWORD: ${POSTGRES_PASSWORD:-byd}
+      PGDATABASE: byd
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+      R2_BUCKET: ${R2_BACKUP_BUCKET:-byd-backup}
+      BACKUP_HOUR: ${BACKUP_HOUR:-03}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["backup"]
+    mem_limit: 256m
+    restart: unless-stopped
+    <<: *logging
 
 volumes:
   pgdata:

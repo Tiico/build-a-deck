@@ -156,7 +156,7 @@ describe('connections', () => {
     const id = await createSession(run.http)
     await connect(id, null)
     const res = await fetch(`${run.http}/health`)
-    expect(await res.json()).toEqual({ ok: true, tables: 1 })
+    expect(await res.json()).toEqual({ ok: true, tables: 1, store: 'ok' })
   })
 })
 

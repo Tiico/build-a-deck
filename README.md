@@ -46,7 +46,7 @@ pnpm dev:render                    # Chromium-workern tömmer kön
 pnpm dev:web
 ```
 
-Eller hela stacken som containrar: `docker compose up --build`.
+Eller hela stacken som containrar: `docker compose up --build`, som serverar webben och API:et från http://localhost:8080 (samma origin, inga `server=`-parametrar).
 
 ### Demodata
 
@@ -69,6 +69,26 @@ Telefonen ansluter via QR-koden i TV-läget, eller direkt: `/join?session=…`.
 | `/play?session=…&seat=…&name=…` | telefonens hand |
 
 I utveckling pekar `server=` på API:et (http för editor och wizard, ws för bord och telefon); i produktion är allt samma origin.
+
+## Drift på lådan
+
+Stacken i [docker-compose.yml](docker-compose.yml) är den från [DRIFT.md](DRIFT.md): `postgres`, `app` (aktörer, WebSockets, API och den byggda webben från samma origin), `render` (Chromium-worker) och, med profiler, `cloudflared` (tunnel) och `backup` (nattlig `pg_dump` till R2).
+Inga portar mot gatan: `app` och `postgres` lyssnar bara på lådans 127.0.0.1, tunneln når `app` på compose-nätet.
+
+Första gången på en Ubuntu-låda med Docker:
+
+```bash
+sudo git clone <repo> /opt/build-your-deck && cd /opt/build-your-deck
+cp .env.example .env && $EDITOR .env          # lösenord, tunnel-token, R2
+sudo cp ops/byd-deploy.service ops/byd-deploy.timer /etc/systemd/system/
+sudo systemctl enable --now byd-deploy.timer  # pollar origin/main var femte minut
+ops/deploy.sh --force                          # första bygget och starten
+```
+
+Deployen är pull-baserad (DRIFT §7): `ops/deploy.sh` hämtar `origin/main`, bygger bilderna på lådan, kör `compose up` och väntar på `/health`, som också kontrollerar att Postgres svarar.
+Appen dränerar på SIGTERM och migrerar schemat vid start, så bytet är kort.
+Tunnelns publika värdnamn pekas på `http://app:8080` i Cloudflares panel.
+`ops/restore-test.sh` hämtar senaste dumpen från R2 till en tillfällig Postgres och räknar sessioner och rader: en backup som aldrig lästs tillbaka är en förhoppning.
 
 ## Tester
 
