@@ -9,7 +9,8 @@
     "dev": "tsx watch src/main.ts",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "seed:project": "tsx scripts/seed-project.ts"
   },
   "dependencies": {
     "@byd/engine": "workspace:*",
