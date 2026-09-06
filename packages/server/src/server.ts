@@ -31,6 +31,9 @@ export type ServerOptions = {
   auth?: AuthStore
   mailer?: Mailer
   publicOrigin?: string
+  // Where the browser lands after the link (the web app); defaults to a path on this origin. In
+  // development the web app is served from another port than the API.
+  appOrigin?: string
   // One per server: how many login links an address may get per hour.
   limiter?: LoginLimiter
 }
@@ -458,7 +461,8 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
     if (opts.limiter && !opts.limiter.allow(email, Date.now())) return json(res, 429, { error: 'too many links; try again later' })
     const t = token()
     await auth.issueToken(hash(t), email, new Date(Date.now() + TOKEN_TTL_MS).toISOString())
-    const base = opts.publicOrigin ?? req.headers.origin ?? `http://${req.headers.host ?? 'localhost'}`
+    // The link must come back to this API, where the cookie lives: never the page's origin.
+    const base = opts.publicOrigin ?? `http://${req.headers.host ?? 'localhost'}`
     const link = `${base}/auth/verify?token=${t}&next=${encodeURIComponent(safeNext(parsed.data.next))}`
     await opts.mailer?.send(loginMail(email, link))
     return json(res, 200, { ok: true })
@@ -475,7 +479,7 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
     res.writeHead(302, {
       ...CORS,
       'set-cookie': `${COOKIE}=${sid}; Path=/; HttpOnly; SameSite=Lax; Expires=${expires.toUTCString()}${secure}`,
-      location: safeNext(url.searchParams.get('next') ?? undefined),
+      location: `${opts.appOrigin ?? ''}${safeNext(url.searchParams.get('next') ?? undefined)}`,
     })
     res.end()
     return

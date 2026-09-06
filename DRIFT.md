@@ -125,6 +125,12 @@ Följdkrav:
 E-postleverantören blir kritisk för inloggning.
 Passkey-återställning är UX som måste designas.
 
+Byggt 2026-09-06: eget, litet — inga beroenden.
+Tokens och sessions-id:n är slumpade och lagras hashade (`login_tokens`, `auth_sessions`, `accounts`); fem länkar i timmen per adress innanför Cloudflares gräns (§9).
+Mejl går genom Resend (`RESEND_API_KEY`, `MAIL_FROM`); utan nyckel hamnar länken i loggen, vilket är utvecklingsläget.
+`PUBLIC_ORIGIN` styr vart länkarna pekar och om kakan får `Secure`.
+Passkeys och OAuth återstår.
+
 ## 12. Vad som inte bor på lådan
 
 Betalning: Stripe.

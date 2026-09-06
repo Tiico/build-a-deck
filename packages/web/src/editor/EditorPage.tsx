@@ -4,6 +4,7 @@ import { TemplateCanvas } from './TemplateCanvas.js'
 import { DataTable } from './DataTable.js'
 import { useProjectClient } from './useProjectClient.js'
 import type { Textures } from './ProjectClient.js'
+import { loginUrl } from '../account/api.js'
 import './editor.css'
 
 type Mode = 'wall' | 'template' | 'table'
@@ -11,7 +12,9 @@ type Mode = 'wall' | 'template' | 'table'
 // /editor?project=…&server=http://…
 // The editor (L, prototype answer): the deck wall as home, the template canvas for the template,
 // the table as a tab. One project, one preview path, and "Uppdatera bordet" starts a table.
-export function EditorPage() {
+export type EditorPageProps = { onNavigate?(url: string): void }
+
+export function EditorPage({ onNavigate = (url) => location.assign(url) }: EditorPageProps = {}) {
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const projectId = params.get('project')
   const http = params.get('server') ?? location.origin
@@ -51,6 +54,11 @@ export function EditorPage() {
   }, [client, table?.id, table?.version])
 
   if (!projectId) return <p>Inget projekt angivet.</p>
+  if (error === 'not logged in') {
+    // Not logged in (G1): to the login card and back here after.
+    onNavigate(loginUrl(location.pathname + location.search, params.get('server')))
+    return <p>Loggar in…</p>
+  }
   if (error) return <p role="alert">{error}</p>
   if (!client) return <p>Laddar projektet…</p>
   const doc = client.doc

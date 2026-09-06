@@ -28,13 +28,13 @@ export function twoSeatSetup(): SetupDef {
 
 export type Running = { server: Server; base: string; http: string; store: MemoryLogStore; renders: MemoryRenderStore; host: TableHost; projects: MemoryProjectStore; mail: MemoryMailer; renderAll(): Promise<void>; restart(): Promise<void>; stop(): Promise<void> }
 
-export async function start(): Promise<Running> {
+export async function start(opts: { appOrigin?: string } = {}): Promise<Running> {
   const store = new MemoryLogStore()
   const renders = new MemoryRenderStore()
   const projects = new MemoryProjectStore()
   const host = new TableHost(registry, store, undefined, renders)
   const mail = new MemoryMailer()
-  const server = createServer({ host, store, registry, renders, projects, surveys: new MemorySurveyStore(), auth: new MemoryAuthStore(), mailer: mail, publicOrigin: 'http://test.local' })
+  const server = createServer({ host, store, registry, renders, projects, surveys: new MemorySurveyStore(), auth: new MemoryAuthStore(), mailer: mail, publicOrigin: 'http://test.local', ...(opts.appOrigin ? { appOrigin: opts.appOrigin } : {}) })
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
   const { port } = server.address() as AddressInfo
   return {

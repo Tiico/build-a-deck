@@ -463,6 +463,13 @@ QR-knappen i `table`-vyn är produktens viktigaste knapp.
 Feedback från gäster är svagt attribuerad.
 Missbruk av öppna rumskoder måste hanteras — fortfarande öppen fråga.
 
+Byggt 2026-09-06 (prototypat, variant "kort i mitten"):
+Skaparen loggar in med en magisk länk (DRIFT §11): `POST /auth/login` mejlar en engångslänk som gäller i 15 minuter och svarar alltid 200, `GET /auth/verify` löser in den, skapar kontot första gången och sätter en HttpOnly-kaka i 30 dagar.
+Projekt som skapas med konto tillhör kontot: bara ägaren läser, skriver, listar och startar bord; projekt från före konton förblir öppna.
+Startsidan `/` är inloggningskortet tills länken följts, sedan "Mina spel" som ett rutnät av spelkort med "Nytt spel"; editorn och wizarden skickar vidare till `/login?next=` vid 401.
+Gäster loggar aldrig in: bord, telefon, distansvy och observatör nås med rumskod; inloggningskortet säger det.
+Att claima en gästsession till ett konto, passkeys och OAuth återstår.
+
 ### G2. Kommunikation: ingen inbyggd röst (fråga 19)
 
 Användarna kör Discord eller motsvarande vid sidan om.

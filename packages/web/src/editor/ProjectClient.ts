@@ -1,5 +1,6 @@
 import type { ProjectDoc } from '@byd/server'
 import type { Element, FaceTemplate } from '@byd/template'
+import { Unauthorized, withCredentials } from '../account/api.js'
 
 export type ProjectListener = (client: ProjectClient) => void
 export type SaveResult = { ok: true; rev: number } | { ok: false; reason: 'conflict' | 'missing' | string }
@@ -20,7 +21,9 @@ export class ProjectClient {
   ) {}
 
   static async open(opts: { http: string; id: string }): Promise<ProjectClient> {
-    const res = await fetch(`${opts.http}/projects/${encodeURIComponent(opts.id)}`)
+    const res = await fetch(`${opts.http}/projects/${encodeURIComponent(opts.id)}`, withCredentials())
+    if (res.status === 401) throw new Unauthorized()
+    if (res.status === 403) throw new Error('det här spelet tillhör någon annan')
     if (res.status === 404) throw new Error(`unknown project ${opts.id}`)
     if (!res.ok) throw new Error(`could not load project: ${res.status}`)
     const rec = (await res.json()) as ProjectDoc & { id: string; rev: number }
@@ -61,11 +64,11 @@ export class ProjectClient {
   }
 
   async save(): Promise<SaveResult> {
-    const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}`, {
+    const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}`, withCredentials({
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ ...this.doc, rev: this.rev }),
-    })
+    }))
     if (res.status === 409) return { ok: false, reason: 'conflict' }
     if (res.status === 404) return { ok: false, reason: 'missing' }
     if (!res.ok) return { ok: false, reason: `save failed: ${res.status}` }
@@ -82,7 +85,7 @@ export class ProjectClient {
       const saved = await this.save()
       if (!saved.ok) throw new Error(`could not save before starting a table: ${saved.reason}`)
     }
-    const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}/sessions`, { method: 'POST' })
+    const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}/sessions`, withCredentials({ method: 'POST' }))
     if (!res.ok) throw new Error(`could not start a table: ${res.status}`)
     return (await res.json()) as { id: string; version: string }
   }
@@ -94,7 +97,7 @@ export class ProjectClient {
       const saved = await this.save()
       if (!saved.ok) throw new Error(`could not save before refreshing the table: ${saved.reason}`)
     }
-    const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/refresh`, { method: 'POST' })
+    const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/refresh`, withCredentials({ method: 'POST' }))
     if (!res.ok) throw new Error(`could not refresh the table: ${res.status}`)
     return (await res.json()) as { version: string; seqs: number[] }
   }
@@ -106,14 +109,14 @@ export class ProjectClient {
       const saved = await this.save()
       if (!saved.ok) throw new Error(`could not save before preparing the table: ${saved.reason}`)
     }
-    const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/prepare`, { method: 'POST' })
+    const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/prepare`, withCredentials({ method: 'POST' }))
     if (!res.ok) throw new Error(`could not prepare the table: ${res.status}`)
     return (await res.json()) as Textures
   }
 
   // How far a table's textures have come (L5).
   async textures(sessionId: string): Promise<Textures> {
-    const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/textures`)
+    const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/textures`, withCredentials())
     if (!res.ok) throw new Error(`could not read texture status: ${res.status}`)
     return (await res.json()) as Textures
   }

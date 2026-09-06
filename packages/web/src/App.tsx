@@ -5,11 +5,11 @@ import { EditorPage } from './editor/EditorPage.js'
 import { ObserverPage } from './observer/ObserverPage.js'
 import { OnlinePage } from './online/OnlinePage.js'
 import { NewProjectPage } from './wizard/NewProjectPage.js'
-import { AccountPrototype } from './prototype/account/index.js'
+import { HomePage } from './account/HomePage.js'
+import { LoginPage } from './account/LoginPage.js'
 
 // Routing is a path check for now; a router arrives with the first real page.
 export function App() {
-  if (location.pathname.startsWith('/prototype/account')) return <AccountPrototype />
   if (location.pathname === '/table') return <TablePage />
   if (location.pathname === '/play') return <PlayerPage />
   if (location.pathname === '/join') return <JoinPage />
@@ -17,12 +17,6 @@ export function App() {
   if (location.pathname === '/online') return <OnlinePage />
   if (location.pathname === '/editor') return <EditorPage />
   if (location.pathname === '/new') return <NewProjectPage />
-  return (
-    <main style={{ padding: 32 }}>
-      <h1>build-your-deck</h1>
-      <p>
-        <a href="/new">Nytt spel</a> · Bordsvyn: <code>/table?session=…&amp;mode=table|tv&amp;code=…</code> · Anslut: <code>/join?session=…</code> · Editor: <code>/editor?project=…</code>
-      </p>
-    </main>
-  )
+  if (location.pathname === '/login') return <LoginPage />
+  return <HomePage />
 }

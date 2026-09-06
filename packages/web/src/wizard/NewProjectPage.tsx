@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { CardPreview } from '../editor/CardPreview.js'
+import { loginUrl, withCredentials } from '../account/api.js'
 import { parseCsv } from './csv.js'
 import { buildProject, type WizardState } from './build.js'
 import { DEFAULT_FIELDS, DEFAULT_FRAME, FRAMES, type Field } from './frames.js'
@@ -34,7 +35,12 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     return q.toString()
   }
   const create = async () => {
-    const res = await fetch(`${http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(buildProject(s)) })
+    const res = await fetch(`${http}/projects`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(buildProject(s)) }))
+    if (res.status === 401) {
+      // Not logged in (G1): to the login card and back to the wizard after.
+      onNavigate(loginUrl(location.pathname + location.search, server))
+      throw new Error('logga in först')
+    }
     if (!res.ok) throw new Error(`kunde inte skapa projektet: ${res.status}`)
     return ((await res.json()) as { id: string }).id
   }
@@ -52,7 +58,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     setBusy('table')
     try {
       const id = await create()
-      const res = await fetch(`${http}/projects/${encodeURIComponent(id)}/sessions`, { method: 'POST' })
+      const res = await fetch(`${http}/projects/${encodeURIComponent(id)}/sessions`, withCredentials({ method: 'POST' }))
       if (!res.ok) throw new Error(`kunde inte starta bordet: ${res.status}`)
       const { id: session } = (await res.json()) as { id: string }
       const q = new URLSearchParams({ session, mode: 'tv' })

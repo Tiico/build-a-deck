@@ -1,7 +1,7 @@
 import type { AddressInfo } from 'node:net'
 import type { Server } from 'node:http'
 import { CARD_STANDARD_63x88, TypeRegistry, type SetupDef } from '@byd/engine'
-import { TableHost, createServer, MemoryLogStore, MemoryProjectStore, MemorySurveyStore } from '@byd/server'
+import { TableHost, createServer, MemoryLogStore, MemoryProjectStore, MemorySurveyStore, MemoryAuthStore, MemoryMailer } from '@byd/server'
 import { MemoryRenderStore } from '@byd/render/queue'
 
 // A real server in-process. Client tests talk to it over a real socket — no mocks.
@@ -26,17 +26,22 @@ export function twoSeatSetup(): SetupDef {
   }
 }
 
-export type Running = { url: string; http: string; store: MemoryLogStore; projects: MemoryProjectStore; stop(): Promise<void>; restart(): Promise<void>; completeRenders(): Promise<number> }
+export type Running = { url: string; http: string; store: MemoryLogStore; projects: MemoryProjectStore; mail: MemoryMailer; stop(): Promise<void>; restart(): Promise<void>; completeRenders(): Promise<number> }
 
-export async function startServer(): Promise<Running> {
+// With `auth`, accounts are on (G1): projects need a login and belong to whoever made them.
+export async function startServer(opts: { auth?: boolean } = {}): Promise<Running> {
   const store = new MemoryLogStore()
   const projects = new MemoryProjectStore()
   const renders = new MemoryRenderStore()
   const surveys = new MemorySurveyStore()
-  const make = () => createServer({ host: new TableHost(registry, store, undefined, renders), store, registry, renders, projects, surveys })
+  const mail = new MemoryMailer()
+  const auth = opts.auth ? new MemoryAuthStore() : undefined
+  let http = ''
+  const make = () => createServer({ host: new TableHost(registry, store, undefined, renders), store, registry, renders, projects, surveys, ...(auth ? { auth, mailer: mail, publicOrigin: http } : {}) })
   let server: Server = make()
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
   const { port } = server.address() as AddressInfo
+  http = `http://127.0.0.1:${port}`
   const stop = () =>
     new Promise<void>((resolve) => {
       server.closeAllConnections()
@@ -47,6 +52,7 @@ export async function startServer(): Promise<Running> {
     http: `http://127.0.0.1:${port}`,
     store,
     projects,
+    mail,
     stop,
     // Marks every queued texture as rendered, with a stand-in for the PNG: what the render
     // container would do, without Chromium.

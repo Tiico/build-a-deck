@@ -49,6 +49,16 @@ describe('logging in with a magic link', () => {
     expect((await get('/auth/me', cookie)).status).toBe(401)
   })
 
+  it('lands the browser on the web app after the link when that is another origin (development)', async () => {
+    await run.stop()
+    run = await start({ appOrigin: 'http://localhost:5173' })
+    await post('/auth/login', { email: 'ada@example.com', next: '/new' })
+    const link = /\/auth\/verify\?token=\S+/.exec(run.mail.sent.at(-1)?.text ?? '')?.[0] ?? ''
+    const res = await get(link)
+    expect(res.status).toBe(302)
+    expect(res.headers.get('location')).toBe('http://localhost:5173/new')
+  })
+
   it('never says whether an address exists, and does not mail the same address more than five times an hour', async () => {
     for (let i = 0; i < 5; i++) expect((await post('/auth/login', { email: 'bo@example.com' })).status).toBe(200)
     expect((await post('/auth/login', { email: 'bo@example.com' })).status).toBe(429)
