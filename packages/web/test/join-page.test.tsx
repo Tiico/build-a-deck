@@ -1,0 +1,67 @@
+// @vitest-environment jsdom
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { TableClient } from '../src/client.js'
+import { JoinPage } from '../src/join/JoinPage.js'
+import { createSession, startServer, type Running } from './fixture.js'
+
+let run: Running
+beforeEach(async () => {
+  run = await startServer()
+})
+afterEach(async () => {
+  await run.stop()
+})
+
+async function open(sessionId: string) {
+  history.replaceState(null, '', `/join?session=${sessionId}&server=${encodeURIComponent(run.url)}`)
+  render(<JoinPage />)
+  await screen.findByRole('button', { name: /Sätt dig/ })
+}
+
+describe('JoinPage', () => {
+  it('shows every seat live with who sits there, and preselects the next free one', async () => {
+    const id = await createSession(run.store)
+    const table = TableClient.connect({ url: run.url, sessionId: id, seat: null })
+    await table.ready()
+    await table.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
+    await open(id)
+
+    const a = document.querySelector('[data-seat="A"]')!
+    const b = document.querySelector('[data-seat="B"]')!
+    expect(a.textContent).toContain('Ada')
+    expect(a.getAttribute('aria-disabled')).toBe('true')
+    expect(b.getAttribute('aria-pressed')).toBe('true')
+
+    // Someone else sits down while we look: the picker follows.
+    const other = TableClient.connect({ url: run.url, sessionId: id, seat: 'B' })
+    await other.ready()
+    await other.send({ v: 'seat.claim', seat: 'B', name: 'Bo' })
+    await waitFor(() => expect(document.querySelector('[data-seat="B"]')!.textContent).toContain('Bo'))
+    expect(document.querySelector('[aria-pressed="true"]')).toBeNull()
+    table.close()
+    other.close()
+  })
+})
+
+describe('sitting down', () => {
+  it('navigates to /play with the chosen seat, the name and the server; a taken seat cannot be picked', async () => {
+    const id = await createSession(run.store)
+    const table = TableClient.connect({ url: run.url, sessionId: id, seat: null })
+    await table.ready()
+    await table.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
+    history.replaceState(null, '', `/join?session=${id}&server=${encodeURIComponent(run.url)}`)
+    const gone: string[] = []
+    render(<JoinPage onSit={(url) => gone.push(url)} />)
+    await screen.findByRole('button', { name: /Sätt dig/ })
+
+    fireEvent.click(document.querySelector('[data-seat="A"]')!)
+    expect(document.querySelector('[data-seat="B"]')!.getAttribute('aria-pressed')).toBe('true')
+
+    expect((screen.getByRole('button', { name: /Sätt dig/ }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText('Ditt namn'), { target: { value: ' Bo ' } })
+    fireEvent.click(screen.getByRole('button', { name: /Sätt dig/ }))
+    expect(gone).toEqual([`/play?session=${id}&seat=B&name=Bo&server=${encodeURIComponent(run.url)}`])
+    table.close()
+  })
+})

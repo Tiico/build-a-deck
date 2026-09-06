@@ -1,0 +1,27 @@
+/* Join — the table as a seat picker. */
+.byd-join {
+  min-height: 100vh; box-sizing: border-box; padding: 40px 20px 28px;
+  background: #14161c; color: #eee; font-family: system-ui, sans-serif;
+  display: grid; grid-template-rows: auto 1fr auto; gap: 20px;
+}
+.byd-join > header { display: grid; gap: 4px; font-size: 13px; color: #9aa3b8; }
+.byd-join > header strong { font-size: 22px; color: #fff; }
+.byd-join-table {
+  position: relative; place-self: center; width: 220px; height: 150px; border-radius: 16px;
+  background: radial-gradient(ellipse at 50% 40%, #2e6b46, #1f4a30 70%, #173a26);
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.45), 0 0 0 10px #4a2f1c;
+}
+.byd-join-table button {
+  position: absolute; padding: 8px 14px; min-width: 60px; border-radius: 999px; white-space: nowrap;
+  border: 3px solid transparent; background: var(--seat); color: #fff; font-weight: 700; font-size: 13px;
+}
+.byd-join-table button[aria-disabled='true'] { background: #2a2e3a; color: #9aa3b8; }
+.byd-join-table button[aria-pressed='true'] { border-color: #fff; }
+.byd-join-table button[data-edge='N'] { top: -26px; left: 50%; transform: translateX(-50%); }
+.byd-join-table button[data-edge='S'] { bottom: -26px; left: 50%; transform: translateX(-50%); }
+.byd-join-table button[data-edge='E'] { right: -30px; top: 50%; transform: translateY(-50%); }
+.byd-join-table button[data-edge='W'] { left: -30px; top: 50%; transform: translateY(-50%); }
+.byd-join form { display: grid; gap: 10px; }
+.byd-join input { padding: 16px; border-radius: 12px; border: 1px solid #2c3242; background: #1b1e27; color: #fff; font-size: 18px; }
+.byd-join form button { padding: 18px; border-radius: 12px; border: 0; background: #7dd3a0; color: #0d0f14; font-size: 18px; font-weight: 800; }
+.byd-join form button:disabled { background: #242938; color: #5b6478; }

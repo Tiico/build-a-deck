@@ -30,3 +30,17 @@ describe('TvChrome (C as the TV surroundings)', () => {
     expect(lines).toContainEqual(expect.stringMatching(/Bordet vände ett kort/))
   })
 })
+
+describe('QR to join', () => {
+  it('renders a QR image for the join URL, labelled with the URL so a reader can type it', async () => {
+    const { view, log } = buildScene()
+    render(
+      <TvChrome view={view(null)} activity={log.map(projectActivity)} roomCode="KX7P" joinUrl="http://example.test/join?session=s1">
+        <div />
+      </TvChrome>,
+    )
+    const img = (await screen.findByRole('img', { name: /example\.test\/join/ })) as HTMLImageElement
+    expect(img.src.startsWith('data:image/')).toBe(true)
+    expect(screen.getByText('example.test/join?session=s1')).toBeTruthy()
+  })
+})

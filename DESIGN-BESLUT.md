@@ -597,6 +597,19 @@ Det är vad handen gör fysiskt, och det är en affordance, inte en regel — ko
 Följdkrav:
 Spel med "spela nedvänt" som mekanik behöver ett andra val i arket.
 
+### K12. Anslutningsflödet: bordet som platsväljare med nästa lediga förvald (prototypat 2026-09-06)
+
+QR-koden i TV-läget pekar på `/join?session=…`.
+Telefonen ser platserna live — upptagna med namn, lediga tryckbara — runt ett litet bord vars kanter följer setupens handzoner, med nästa lediga plats förvald.
+Namn plus "Sätt dig" leder till `/play`, som claimar platsen.
+
+Motivering:
+I bordsläge betyder platsen något — den avgör vilken kant handen orienteras mot — så valet ska vara rumsligt.
+På distans betyder den inget, så förvalet gör det till en gest.
+
+Följdkrav:
+Snapshot saknar spelets namn; lobbyn visar rumskoden i stället. Spelets namn hör hemma i snapshot.
+
 ---
 
 ## L. Editorn (grillad 2026-09-06)

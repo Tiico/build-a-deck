@@ -2,12 +2,13 @@ import type { ReactNode } from 'react'
 import type { Activity, Snapshot } from '@byd/protocol'
 import { describeActivity } from './describe.js'
 import { seatColor } from './seatColor.js'
+import { QrCode } from './QrCode.js'
 
-export type TvChromeProps = { view: Snapshot; activity: readonly Activity[]; roomCode: string; children: ReactNode }
+export type TvChromeProps = { view: Snapshot; activity: readonly Activity[]; roomCode: string; joinUrl?: string | undefined; children: ReactNode }
 
 // TV mode (C5, prototype C): the table in the middle, a header with the room code to join by,
 // a dock with every seat, and what just happened in words — all legible from across a room.
-export function TvChrome({ view, activity, roomCode, children }: TvChromeProps) {
+export function TvChrome({ view, activity, roomCode, joinUrl, children }: TvChromeProps) {
   const handCount = (seat: string) => {
     const hand = view.zones.find((z) => z.kind === 'hand' && z.owner === seat)
     if (!hand) return 0
@@ -18,7 +19,11 @@ export function TvChrome({ view, activity, roomCode, children }: TvChromeProps) 
     <div data-tv>
       <header>
         <span>anslut med telefon</span>
-        <strong>{roomCode}</strong>
+        <div className="byd-tv-join">
+          {joinUrl && <small>{joinUrl.replace(/^https?:\/\//, '')}</small>}
+          <strong>{roomCode}</strong>
+          {joinUrl && <QrCode text={joinUrl} size={52} />}
+        </div>
       </header>
       <main>{children}</main>
       <aside>

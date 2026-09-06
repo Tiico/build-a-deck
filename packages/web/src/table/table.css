@@ -120,7 +120,10 @@
   padding: 0 28px; border-bottom: 1px solid #232733;
 }
 [data-tv] > header > span { color: #7d8597; }
-[data-tv] > header > strong {
+[data-tv] .byd-tv-join { display: flex; align-items: center; gap: 16px; }
+[data-tv] .byd-tv-join small { color: #7d8597; font-size: 13px; }
+[data-tv] .byd-qr { border-radius: 6px; background: #fff; }
+[data-tv] > header strong {
   font-family: ui-monospace, monospace; font-size: 26px; letter-spacing: 6px;
   background: #1a1e29; padding: 4px 14px; border-radius: 8px;
 }
