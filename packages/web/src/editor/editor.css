@@ -1,0 +1,50 @@
+/* Editor — the wall as home, the canvas for the template, the table as a tab. */
+.byd-editor { height: 100vh; display: grid; grid-template-rows: 48px auto 1fr; background: #23262e; color: #ddd; font: 13px system-ui, sans-serif; }
+.byd-editor > header { display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #2f333d; }
+.byd-editor > header strong { color: #fff; font-size: 15px; }
+.byd-editor-rev { color: #7d8597; }
+.byd-editor nav { display: flex; background: #1b1d23; border-radius: 8px; padding: 3px; margin-left: 12px; }
+.byd-editor nav button { border: 0; border-radius: 6px; padding: 6px 14px; background: transparent; color: #9aa3b8; font-weight: 600; cursor: pointer; }
+.byd-editor nav button[aria-selected='true'] { background: #2f3a55; color: #fff; }
+.byd-editor-spacer { flex: 1; }
+.byd-editor-notice { color: #f0b64a; }
+.byd-editor > header > button { border: 1px solid #2f333d; border-radius: 8px; padding: 8px 14px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
+.byd-editor > header > button:disabled { color: #5b6478; cursor: default; }
+.byd-editor > header > .byd-editor-primary { background: #3c8ce7; border-color: #3c8ce7; }
+.byd-editor-table-link { padding: 8px 16px; background: #1f2a1f; color: #7dd3a0; border-bottom: 1px solid #2f333d; }
+.byd-editor-table-link a { color: #fff; }
+.byd-editor > main { min-height: 0; overflow: auto; }
+
+/* Wall */
+.byd-wall { padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; align-content: start; }
+.byd-wall-card { position: relative; border-radius: 8px; cursor: pointer; }
+.byd-wall-card[aria-selected='true'] { outline: 3px solid #3c8ce7; outline-offset: 3px; }
+.byd-wall-copies, .byd-wall-warnings { position: absolute; border-radius: 999px; font-size: 11px; font-weight: 700; padding: 1px 6px; }
+.byd-wall-copies { bottom: -6px; right: -6px; background: #1b1d23; color: #fff; border: 1px solid #444; }
+.byd-wall-warnings { top: -6px; right: -6px; background: #f0b64a; color: #1c1c1c; }
+.byd-preview { line-height: 1; }
+
+/* Canvas */
+.byd-canvas { height: 100%; display: grid; grid-template-columns: 220px 1fr 280px; }
+.byd-canvas h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #7d8597; margin: 0 0 8px; }
+.byd-canvas-layers { border-right: 1px solid #2f333d; padding: 12px; overflow: auto; }
+.byd-canvas-layers ul { list-style: none; margin: 0; padding: 0; }
+.byd-canvas-layers li { padding: 6px 8px; border-radius: 6px; cursor: pointer; display: flex; gap: 8px; }
+.byd-canvas-layers li[aria-selected='true'] { background: #2f3a55; }
+.byd-layer-kind { color: #7d8597; width: 44px; }
+.byd-canvas-stage { display: grid; place-items: center; overflow: auto; background: repeating-conic-gradient(#20232b 0 25%, #1b1d23 0 50%) 0 0 / 24px 24px; }
+.byd-canvas-props { border-left: 1px solid #2f333d; padding: 12px; overflow: auto; }
+.byd-props { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.byd-props label { display: grid; gap: 3px; font-size: 11px; color: #9aa3b8; }
+.byd-props input, .byd-props select { background: #0f1115; border: 1px solid #2a2d36; color: #fff; border-radius: 6px; padding: 6px 8px; font-size: 13px; width: 100%; box-sizing: border-box; }
+
+/* Table */
+.byd-table-wrap { padding: 16px; }
+.byd-data { border-collapse: collapse; width: 100%; background: #1b1d23; }
+.byd-data th { text-align: left; padding: 8px 10px; color: #7d8597; font-weight: 600; border-bottom: 1px solid #2f333d; position: sticky; top: 0; background: #1b1d23; }
+.byd-data td { padding: 0; border-bottom: 1px solid #20232b; }
+.byd-data tr[aria-selected='true'] { background: #2f3a55; }
+.byd-data-id { padding: 7px 10px !important; color: #7d8597; font-family: ui-monospace, monospace; font-size: 12px; }
+.byd-data input { background: transparent; border: 0; color: #ddd; padding: 7px 10px; width: 100%; box-sizing: border-box; font-size: 12px; }
+.byd-data button { background: transparent; border: 0; color: #7d8597; cursor: pointer; padding: 6px 10px; }
+.byd-data-add { margin-top: 10px; border: 1px dashed #2f333d; background: transparent; color: #9aa3b8; border-radius: 8px; padding: 8px 14px; cursor: pointer; }

@@ -1,7 +1,8 @@
 import type { AddressInfo } from 'node:net'
 import type { Server } from 'node:http'
 import { CARD_STANDARD_63x88, TypeRegistry, type SetupDef } from '@byd/engine'
-import { TableHost, createServer, MemoryLogStore } from '@byd/server'
+import { TableHost, createServer, MemoryLogStore, MemoryProjectStore } from '@byd/server'
+import { MemoryRenderStore } from '@byd/render/queue'
 
 // A real server in-process. Client tests talk to it over a real socket — no mocks.
 export const registry = new TypeRegistry([CARD_STANDARD_63x88])
@@ -25,12 +26,14 @@ export function twoSeatSetup(): SetupDef {
   }
 }
 
-export type Running = { url: string; store: MemoryLogStore; stop(): Promise<void>; restart(): Promise<void> }
+export type Running = { url: string; http: string; store: MemoryLogStore; projects: MemoryProjectStore; stop(): Promise<void>; restart(): Promise<void> }
 
 export async function startServer(): Promise<Running> {
   const store = new MemoryLogStore()
-  const host = new TableHost(registry, store)
-  let server: Server = createServer({ host, store, registry })
+  const projects = new MemoryProjectStore()
+  const renders = new MemoryRenderStore()
+  const make = () => createServer({ host: new TableHost(registry, store, undefined, renders), store, registry, renders, projects })
+  let server: Server = make()
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
   const { port } = server.address() as AddressInfo
   const stop = () =>
@@ -40,12 +43,14 @@ export async function startServer(): Promise<Running> {
     })
   return {
     url: `ws://127.0.0.1:${port}`,
+    http: `http://127.0.0.1:${port}`,
     store,
+    projects,
     stop,
     // Same port, same store: what a deploy on the box looks like from the client's side.
     restart: async () => {
       await stop()
-      server = createServer({ host: new TableHost(registry, store), store, registry })
+      server = make()
       await new Promise<void>((resolve) => server.listen(port, '127.0.0.1', resolve))
     },
   }

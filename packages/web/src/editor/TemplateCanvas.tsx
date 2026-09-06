@@ -1,0 +1,115 @@
+import type { Element, ProjectDoc } from './types.js'
+import { CardPreview } from './CardPreview.js'
+import { fieldsOf } from './fields.js'
+
+export type TemplateCanvasProps = {
+  doc: ProjectDoc
+  face: string
+  // The row the preview shows.
+  row: string | null
+  selectedElement: string | null
+  onSelectElement(id: string | null): void
+  onPatch(id: string, patch: Partial<Element>): void
+}
+
+// Template mode (A): layers on the left, the card large in the middle with the selected element
+// outlined, and its properties on the right. Every change goes through `onPatch` and lands on
+// every card of the deck — there are no per-card exceptions (L3).
+export function TemplateCanvas({ doc, face, row, selectedElement, onSelectElement, onPatch }: TemplateCanvasProps) {
+  const faceTemplate = doc.template.faces[face]
+  if (!faceTemplate) return <p>Mallen saknar sidan {face}.</p>
+  const rowData = (row && doc.rows[row]) || Object.values(doc.rows)[0] || {}
+  const el = faceTemplate.base.find((e) => e.id === selectedElement)
+  const fields = fieldsOf(doc)
+
+  return (
+    <div className="byd-canvas">
+      <aside className="byd-canvas-layers">
+        <h2 id="layers-heading">Lager</h2>
+        <ul role="list" aria-labelledby="layers-heading">
+          {[...faceTemplate.base].reverse().map((e) => (
+            <li
+              key={e.id}
+              role="listitem"
+              data-layer={e.id}
+              aria-selected={e.id === selectedElement ? 'true' : 'false'}
+              onClick={() => onSelectElement(e.id)}
+            >
+              <span className="byd-layer-kind">{e.kind}</span> <span>{e.id}</span>
+            </li>
+          ))}
+        </ul>
+      </aside>
+      <main className="byd-canvas-stage" onClick={() => onSelectElement(null)}>
+        <CardPreview id="canvas" face={faceTemplate} row={rowData} icons={doc.icons} scale={2.6} selectedElement={selectedElement} onSelectElement={onSelectElement} />
+      </main>
+      <aside className="byd-canvas-props">
+        <h2>{el ? `Egenskaper · ${el.id}` : 'Egenskaper'}</h2>
+        {el && <Properties el={el} fields={fields} onPatch={(patch) => onPatch(el.id, patch)} />}
+      </aside>
+    </div>
+  )
+}
+
+function Properties({ el, fields, onPatch }: { el: Element; fields: string[]; onPatch(patch: Partial<Element>): void }) {
+  const num = (label: string, key: 'x' | 'y' | 'w' | 'h') =>
+    key in el ? (
+      <label>
+        {label}
+        <input type="number" step={0.5} value={(el as Record<string, unknown>)[key] as number} onChange={(e) => onPatch({ [key]: Number(e.target.value) } as Partial<Element>)} />
+      </label>
+    ) : null
+  return (
+    <div className="byd-props">
+      {num('X (mm)', 'x')}
+      {num('Y (mm)', 'y')}
+      {num('Bredd (mm)', 'w')}
+      {num('Höjd (mm)', 'h')}
+      {el.kind === 'text' && (
+        <>
+          <label>
+            Fält
+            <select value={'field' in el.bind ? el.bind.field : ''} onChange={(e) => onPatch({ bind: { field: e.target.value } })}>
+              {fields.map((f) => (
+                <option key={f} value={f}>
+                  {f}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Storlek (pt)
+            <input type="number" step={0.5} value={el.font.sizePt} onChange={(e) => onPatch({ font: { ...el.font, sizePt: Number(e.target.value) } })} />
+          </label>
+          <label>
+            Vikt
+            <select value={el.font.weight ?? 400} onChange={(e) => onPatch({ font: { ...el.font, weight: Number(e.target.value) as 400 | 600 | 700 | 800 } })}>
+              {[400, 600, 700, 800].map((w) => (
+                <option key={w} value={w}>
+                  {w}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Färg
+            <input type="color" value={el.color} onChange={(e) => onPatch({ color: e.target.value })} />
+          </label>
+          <label>
+            Anpassning
+            <select value={el.fit ?? 'shrink'} onChange={(e) => onPatch({ fit: e.target.value as 'shrink' | 'fixed' })}>
+              <option value="shrink">krymp till gräns</option>
+              <option value="fixed">fast storlek</option>
+            </select>
+          </label>
+        </>
+      )}
+      {el.kind === 'shape' && (
+        <label>
+          Fyllning
+          <input type="color" value={el.fill ?? '#000000'} onChange={(e) => onPatch({ fill: e.target.value })} />
+        </label>
+      )}
+    </div>
+  )
+}

@@ -698,6 +698,17 @@ Baksidan är en vanlig elementmall, oftast med en bild och utan bindningar, men 
 Följdkrav:
 En baksida med bindningar ger unik textur per kort även bak och fördubblar renderjobben — editorn varnar när det sker.
 
+### L8. Editorns utseende: kortväggen som hem, duken för mallen, tabellen som flik (prototypat 2026-09-06)
+
+Tre prototyper: trepanel, kalkylbladet först, och kortväggen.
+Valet blev kortväggen som startvy — hela leken renderad, antal och varningar per kort — med den stora duken (lager, valbara element, egenskaper) för mallarbete och tabellen som flik för massredigering.
+Förhandsvisningen går genom `compile` och `fitInDocument` i DOM: samma kod som renderaren, så editorn visar vad trycket blir (E2).
+
+Följdkrav som prototypen avslöjade och som nu är införda:
+Kompilatorn har ett `scope`-alternativ så att många kort kan dela sida.
+Ett rent tal i klamrar är en pip (L2).
+Projekt är revisionerade dokument på servern med optimistisk samtidighet tills projektaktören (D3) finns; "uppdatera bordet" startar ett bord ur projektet (L5).
+
 ---
 
 ## I. Öppna frågor
