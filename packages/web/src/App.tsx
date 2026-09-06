@@ -3,9 +3,11 @@ import { PlayerPage } from './player/PlayerPage.js'
 import { JoinPage } from './join/JoinPage.js'
 import { EditorPage } from './editor/EditorPage.js'
 import { NewProjectPage } from './wizard/NewProjectPage.js'
+import { SessionPrototype } from './prototype/session/index.js'
 
 // Routing is a path check for now; a router arrives with the first real page.
 export function App() {
+  if (location.pathname.startsWith('/prototype/session')) return <SessionPrototype />
   if (location.pathname === '/table') return <TablePage />
   if (location.pathname === '/play') return <PlayerPage />
   if (location.pathname === '/join') return <JoinPage />
