@@ -13,8 +13,10 @@ const css = readFileSync(new URL('../src/editor/editor.css', import.meta.url), '
 const SHELL = `
 <div class="byd-editor" data-page="editor">
   <header>
+    <a class="byd-editor-home" href="#" data-stop="the way out of the editor">Mina spel</a>
     <strong>Skogens herrar</strong>
     <span class="byd-editor-rev">rev 12</span>
+    <span class="byd-editor-saved" data-unsaved="true">Osparade ändringar</span>
     <nav role="tablist" aria-label="Editorlägen">
       <button role="tab" aria-selected="true" data-stop="the open tab">Kortvägg</button>
       <button role="tab" aria-selected="false" tabindex="-1">Mall</button>
@@ -28,6 +30,12 @@ const SHELL = `
       <button class="byd-editor-primary byd-editor-caret" aria-expanded="false" data-stop="the table shortcut">▾</button>
     </span>
   </header>
+  <div class="byd-editor-leave" role="alertdialog">
+    <p>Osparade ändringar i Skogens herrar. Vad vill du göra innan du lämnar editorn?</p>
+    <button data-kind="keep" data-stop="saving on the way out">Spara och lämna</button>
+    <button data-kind="danger" data-stop="leaving the work behind">Lämna utan att spara</button>
+    <button data-stop="the way back into the editor">Avbryt</button>
+  </div>
   <main>
     <div role="tabpanel" tabindex="0" data-stop="the wall panel">
       <div class="byd-wall"><div class="byd-wall-card" aria-selected="true"></div></div>
@@ -69,6 +77,11 @@ const SHELL = `
           <button data-stop="the bulk duplicate">Duplicera 2 kort</button>
           <button data-kind="danger" data-stop="the bulk delete">Ta bort 2 kort</button>
           <button data-kind="quiet" data-stop="the unmark">Avmarkera alla</button>
+        </div>
+        <div class="byd-data-bulk" role="alertdialog">
+          <p>Ta bort kortet drake ur leken?</p>
+          <button data-kind="danger" data-stop="the yes to removing a card">Ja, ta bort</button>
+          <button data-stop="the way out of removing a card">Avbryt</button>
         </div>
         <table class="byd-data">
           <thead><tr><th class="byd-data-check"><input type="checkbox" data-stop="the header checkbox" /></th></tr></thead>
@@ -156,11 +169,15 @@ describe('the editor under a keyboard', () => {
   it('draws a visible focus ring on every stop in every mode', async () => {
     const stops = await tabThrough()
     expect(stops.map((s) => s.what)).toEqual([
+      'the way out of the editor',
       'the open tab',
       'Spara',
       'Nytt bord',
       'Uppdatera bordet',
       'the table shortcut',
+      'saving on the way out',
+      'leaving the work behind',
+      'the way back into the editor',
       'the wall panel',
       'the template panel',
       'a tool',
@@ -180,6 +197,8 @@ describe('the editor under a keyboard', () => {
       'the bulk duplicate',
       'the bulk delete',
       'the unmark',
+      'the yes to removing a card',
+      'the way out of removing a card',
       'the header checkbox',
       "a row's checkbox",
       'a cell',

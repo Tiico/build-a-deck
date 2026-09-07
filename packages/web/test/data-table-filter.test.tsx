@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { useState } from 'react'
 import { render, screen, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
@@ -326,5 +326,24 @@ describe('DataTable for a deck with no cards yet (#16)', () => {
     expect(shownIds()).toEqual([])
     expect(screen.queryByText('Inga kort matchar filtret.')).toBeNull()
     expect(screen.getByText('0 av 0 kort')).toBeDefined()
+  })
+})
+
+// A question about a card the filter has taken off the screen is not a question any more (#8),
+// exactly as a question about cards that are no longer marked is not one (#17).
+describe('DataTable row delete under a filter (#8 on #16)', () => {
+  it('takes back the question when the card it is about leaves the screen', async () => {
+    const user = userEvent.setup()
+    const onRemoveRow = vi.fn()
+    renderTable(bigDoc(), { onRemoveRow })
+
+    const grop = document.querySelector('[data-card-ref="grop"]') as HTMLElement
+    await user.click(within(grop).getByRole('button', { name: 'ta bort grop' }))
+    expect(screen.getByRole('alertdialog', { name: 'Ta bort kortet grop' })).toBeDefined()
+
+    await user.click(screen.getByRole('button', { name: 'varelse' }))
+
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(onRemoveRow).not.toHaveBeenCalled()
   })
 })

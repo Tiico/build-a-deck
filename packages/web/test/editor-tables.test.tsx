@@ -163,10 +163,11 @@ describe('ending a table from the editor (#19, C9)', () => {
     const ask = within(row).getByRole('button', { name: `Avsluta bordet ${name}` })
 
     // The question takes the focus, says which table it is about, and Escape leaves the table
-    // alone and puts the focus back where it was asked.
+    // alone and puts the focus back where it was asked. It opens on the answer that loses
+    // nothing: ending a table cannot be undone, so it is never what a stray Enter does.
     await user.click(ask)
     const question = within(row).getByRole('alertdialog', { name: `Avsluta bordet ${name}` })
-    expect(document.activeElement).toBe(within(question).getByRole('button', { name: 'Ja, avsluta' }))
+    expect(document.activeElement).toBe(within(question).getByRole('button', { name: 'Avbryt' }))
     await user.keyboard('{Escape}')
     expect(within(row).queryByRole('alertdialog')).toBeNull()
     expect(document.activeElement).toBe(ask)

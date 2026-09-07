@@ -4,6 +4,7 @@ import { TableRenderer } from '../table/TableRenderer.js'
 import { useTableClient } from '../table/useTableClient.js'
 import { joinUrl, observeUrl, onlineUrl, tableModeUrl, tableName, tvUrl } from './tableLinks.js'
 import type { ProjectClient, TableSummary } from './ProjectClient.js'
+import { Question } from './Question.js'
 
 // The Bord tab (#19): every table this game has, and the ways into it. A table is a session
 // started from the project (C9: it survives everyone disconnecting), so the list is the server's
@@ -191,8 +192,10 @@ function TableRow({ table, server, rev }: { table: TableSummary; server: string 
           </div>
         )}
         {asking && (
-          <EndQuestion
-            table={name}
+          <Question
+            className="byd-tables-question"
+            label={`Avsluta bordet ${name}`}
+            confirm="Ja, avsluta"
             onConfirm={() => {
               // The same connection the row is already listening on, as the table itself: this is
               // the path every other end goes through (C9), not a second one.
@@ -204,38 +207,12 @@ function TableRow({ table, server, rev }: { table: TableSummary; server: string 
               setAsking(false)
               setRefocus(true)
             }}
-          />
+          >
+            Avsluta bordet {name}? Loggen låses, spelet kan inte fortsätta, och enkäten går ut till telefonerna.
+          </Question>
         )}
       </div>
     </li>
-  )
-}
-
-// The question a table's ending asks first (C9), in the pattern the table's bulk delete set: it
-// takes the focus so it is answered where it is read, answers Escape, and names the table in
-// both its own name and its sentence — "Avsluta bordet" alone is the same words for every row.
-function EndQuestion({ table, onConfirm, onCancel }: { table: string; onConfirm(): void; onCancel(): void }) {
-  return (
-    <div
-      className="byd-tables-question"
-      role="alertdialog"
-      aria-label={`Avsluta bordet ${table}`}
-      onKeyDown={(event) => {
-        if (event.key !== 'Escape') return
-        // The question is what Escape is about while it stands; whatever opened around it keeps
-        // standing.
-        event.stopPropagation()
-        onCancel()
-      }}
-    >
-      <p>Avsluta bordet {table}? Loggen låses, spelet kan inte fortsätta, och enkäten går ut till telefonerna.</p>
-      <button type="button" data-kind="danger" autoFocus onClick={onConfirm}>
-        Ja, avsluta
-      </button>
-      <button type="button" onClick={onCancel}>
-        Avbryt
-      </button>
-    </div>
   )
 }
 

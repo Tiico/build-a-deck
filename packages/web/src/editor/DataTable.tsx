@@ -7,6 +7,7 @@ import { keepOrder, nextSort, sortRows, type SortState } from './sorting.js'
 import { countLabel, discreteColumns, filterRows, isFiltering, noFilter, toggleValue, type FilterState } from './filtering.js'
 import { duplicateRows, keepRows, markRows, noSelection, removeRows, selectionLabel, setColumn, toggleRow, type Selection } from './selection.js'
 import { groupColumn, groupOfRow, ruleLabel } from './groups.js'
+import { Question } from './Question.js'
 
 export type DataTableProps = {
   doc: ProjectDoc
@@ -30,18 +31,25 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
   // Deleting cards is the one action that cannot be looked at afterwards, so it is asked about
   // first — and the question says how many cards it is about.
   const [confirming, setConfirming] = useState(false)
+  // The card a single row's × is asking about (#8). The little button at the end of a row used to
+  // take a card out of the deck on the way past it; it asks the same question the action row
+  // asks, and names the card, because one card is not "1 kort" to the person who drew it.
+  const [removing, setRemoving] = useState<string | null>(null)
   // A question that takes the focus has to give it back: to the button that asked it, or — when
   // the cards it was about are gone with it — to the header's own checkbox above the rows.
-  const [refocus, setRefocus] = useState<'remove' | 'all' | null>(null)
+  const [refocus, setRefocus] = useState<'remove' | 'all' | { cardRef: string } | null>(null)
   // What the action row writes: a column of the table and the value to give it. An empty value
   // is not a change worth pressing by mistake, so the button waits for one.
   const [bulkField, setBulkField] = useState<string | null>(null)
   const [bulkValue, setBulkValue] = useState('')
   const removeRef = useRef<HTMLButtonElement>(null)
   const allRef = useRef<HTMLInputElement>(null)
+  // The × of every row on screen, so the question a row asks can hand the focus back to it.
+  const rowRemoveRefs = useRef(new Map<string, HTMLButtonElement>())
   useEffect(() => {
     if (!refocus) return
-    ;(refocus === 'remove' ? removeRef.current : allRef.current)?.focus()
+    if (typeof refocus === 'object') rowRemoveRefs.current.get(refocus.cardRef)?.focus()
+    else (refocus === 'remove' ? removeRef.current : allRef.current)?.focus()
     setRefocus(null)
   }, [refocus])
   // The card created by "Nytt kort" while a filter is on, kept on screen until the filter moves.
@@ -70,10 +78,15 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
   // one is made.
   const field = bulkField ?? fields[0] ?? 'antal'
   // A question about cards that are no longer marked is not a question any more: unmarking them,
-  // or filtering them away, takes it back.
+  // or filtering them away, takes it back. The same holds for the question one row asks (#8): a
+  // filter that takes the card off the screen takes its question with it.
   useEffect(() => {
     if (chosen.length === 0) setConfirming(false)
   }, [chosen.length])
+  const onScreen = removing !== null && shown.some((r) => r.id === removing)
+  useEffect(() => {
+    if (!onScreen) setRemoving(null)
+  }, [onScreen])
   // Every way of changing the filter goes through here, so the pinned card is released exactly
   // when the designer asks a new question of the deck.
   const changeFilter = (next: FilterState) => {
@@ -159,8 +172,10 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
       <p className="byd-data-sort" role="status">{sortLabel(sort)}</p>
       {chosen.length > 0 &&
         (confirming ? (
-          <RemoveQuestion
-            count={chosen.length}
+          <Question
+            className="byd-data-bulk"
+            label={removeLabel(chosen.length)}
+            confirm="Ja, ta bort"
             onConfirm={() => {
               onReplaceRows(removeRows(doc.rows, chosenIds))
               setSelected(noSelection)
@@ -171,7 +186,9 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
               setConfirming(false)
               setRefocus('remove')
             }}
-          />
+          >
+            {removeLabel(chosen.length)} ur leken?
+          </Question>
         ) : (
           <div className="byd-data-bulk" role="toolbar" aria-label="Markerade kort">
             <label>
@@ -212,6 +229,24 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
             </button>
           </div>
         ))}
+      {removing !== null && (
+        <Question
+          className="byd-data-bulk"
+          label={cardLabel(removing)}
+          confirm="Ja, ta bort"
+          onConfirm={() => {
+            onRemoveRow(removing)
+            setRemoving(null)
+            setRefocus('all')
+          }}
+          onCancel={() => {
+            setRemoving(null)
+            setRefocus({ cardRef: removing })
+          }}
+        >
+          {cardLabel(removing)} ur leken?
+        </Question>
+      )}
       <table className="byd-data">
         <thead>
           <tr>
@@ -266,7 +301,20 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
               ))}
               {grouping && <GroupCell doc={doc} column={grouping} cardRef={cardRef} row={row} />}
               <td>
-                <button type="button" onClick={() => onRemoveRow(cardRef)} aria-label={`ta bort ${cardRef}`}>
+                <button
+                  type="button"
+                  ref={(el) => {
+                    if (el) rowRemoveRefs.current.set(cardRef, el)
+                    else rowRemoveRefs.current.delete(cardRef)
+                  }}
+                  onClick={(event) => {
+                    // Asking about a card is not looking at it: the click stops here, so the
+                    // canvas keeps showing whatever card was being worked on.
+                    event.stopPropagation()
+                    setRemoving(cardRef)
+                  }}
+                  aria-label={`ta bort ${cardRef}`}
+                >
                   ×
                 </button>
               </td>
@@ -311,34 +359,16 @@ function SortableHeader({ field, sort, onSort }: { field: string; sort: SortStat
   )
 }
 
-// The question a delete asks first (#17). It takes the focus so it is answered where it is read,
-// gives it back on Escape, and says how many cards it is about in both its name and its sentence
-// — a designer must never have to count the ticks to know what "Ja" means.
-function RemoveQuestion({ count, onConfirm, onCancel }: { count: number; onConfirm(): void; onCancel(): void }) {
-  return (
-    <div
-      className="byd-data-bulk"
-      role="alertdialog"
-      aria-label={removeLabel(count)}
-      onKeyDown={(event) => {
-        if (event.key === 'Escape') onCancel()
-      }}
-    >
-      <p>{removeLabel(count)} ur leken?</p>
-      <button type="button" data-kind="danger" autoFocus onClick={onConfirm}>
-        Ja, ta bort
-      </button>
-      <button type="button" onClick={onCancel}>
-        Avbryt
-      </button>
-    </div>
-  )
-}
-
 // What a delete is about, in cards. The same words name the button and the question it opens, so
 // pressing one and reading the other is the same sentence twice.
 function removeLabel(count: number): string {
   return `Ta bort ${count} kort`
+}
+
+// What a single row's × is about, in the words a designer knows her cards by (#8): the card
+// itself, not a count of one.
+function cardLabel(cardRef: string): string {
+  return `Ta bort kortet ${cardRef}`
 }
 
 function sortLabel(sort: SortState | null): string {

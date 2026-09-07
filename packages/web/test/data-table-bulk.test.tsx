@@ -185,8 +185,9 @@ describe('DataTable bulk delete from the keyboard (#17)', () => {
     expect(document.activeElement).toBe(remove)
 
     await user.keyboard('{Enter}')
-    // The question takes the focus with it: it is answered where it is read.
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Ja, ta bort' }))
+    // The question takes the focus with it: it is answered where it is read. It lands on the
+    // answer that loses nothing, so the Enter that opened it cannot also empty the deck.
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Avbryt' }))
 
     await user.keyboard('{Escape}')
     expect(onRows).not.toHaveBeenCalled()
@@ -194,11 +195,33 @@ describe('DataTable bulk delete from the keyboard (#17)', () => {
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Ta bort 1 kort' }))
 
     await user.keyboard('{Enter}')
+    // Taking the cards out is a step the hand takes on purpose: away from the safe answer, onto
+    // the red one that says what it does, and only then Enter.
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Avbryt' }))
+    await user.tab({ shift: true })
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Ja, ta bort' }))
     await user.keyboard('{Enter}')
     expect(onRows).toHaveBeenCalledTimes(1)
     expect(shownIds()).toEqual(['drake', 'alv', 'nat', 'troll', 'stock', 'orm', 'grav'])
     // Nothing under the cursor was taken away: the focus lands on the header's own checkbox.
     expect(document.activeElement).toBe(screen.getByLabelText('Markera alla synliga'))
+  })
+
+  it('keeps the cards when the question is answered without being read (#8)', async () => {
+    const user = userEvent.setup()
+    const onRows = vi.fn()
+    render(<BulkTable start={bigDoc()} onRows={onRows} />)
+    await user.click(box('markera grop'))
+
+    await user.click(screen.getByRole('button', { name: 'Ta bort 1 kort' }))
+    // The reflex that answers a question on the way past — Enter on whatever holds the focus —
+    // must cost nothing.
+    await user.keyboard('{Enter}')
+
+    expect(onRows).not.toHaveBeenCalled()
+    expect(shownIds()).toHaveLength(8)
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Ta bort 1 kort' }))
   })
 })
 

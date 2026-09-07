@@ -1,5 +1,20 @@
 /* Editor — the wall as home, the canvas for the template, the table as a tab. */
-.byd-editor { height: 100vh; display: grid; grid-template-rows: 48px auto 1fr; background: #23262e; color: #ddd; font: 13px system-ui, sans-serif; }
+.byd-editor {
+  /* The chrome the editor's own words are read on: the header, and the strips under it. */
+  --byd-editor-chrome-bg: #23262e;
+  --byd-editor-home-ink: #c3cbdd;
+  --byd-editor-saved-ink: #9aa3b8;
+  --byd-editor-unsaved-ink: #f0b64a;
+  height: 100vh;
+  display: grid;
+  /* Header, the question asked on the way out (#8), the running table's row (L5), the open mode.
+     Both middle rows are empty most of the time and take no height then; when both are there
+     they stack, because either one alone must never push the other off the screen. */
+  grid-template-rows: 48px auto auto 1fr;
+  background: var(--byd-editor-chrome-bg);
+  color: #ddd;
+  font: 13px system-ui, sans-serif;
+}
 .byd-editor > header { display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #2f333d; }
 /* The header is one 48 px row and it holds a lot: the game's name, four tabs, and the buttons
    that reach the table (#19). Nothing in it may wrap onto a second line — the row would not grow,
@@ -8,6 +23,13 @@
 .byd-editor > header strong { color: #fff; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 3ch; }
 .byd-editor > header button { white-space: nowrap; }
 .byd-editor-rev { color: #7d8597; white-space: nowrap; }
+/* The way out of the editor, first in the header because that is where a way back belongs. */
+.byd-editor-home { color: var(--byd-editor-home-ink); white-space: nowrap; text-decoration: none; font-weight: 600; }
+.byd-editor-home:hover { text-decoration: underline; }
+/* Whether the work is safe (#8): grey while it is on the server, amber the moment it is not —
+   the same amber the editor says everything it wants looked at in. */
+.byd-editor-saved { color: var(--byd-editor-saved-ink); white-space: nowrap; }
+.byd-editor-saved[data-unsaved='true'] { color: var(--byd-editor-unsaved-ink); font-weight: 700; }
 .byd-editor [role='tablist'] { display: flex; background: #1b1d23; border-radius: 8px; padding: 3px; margin-left: 12px; }
 .byd-editor [role='tab'] { border: 0; border-radius: 6px; padding: 6px 14px; background: transparent; color: #9aa3b8; font-weight: 600; cursor: pointer; }
 .byd-editor [role='tab'][aria-selected='true'] { background: #2f3a55; color: #fff; }
@@ -17,6 +39,9 @@
 .byd-editor > header > button:disabled { color: #5b6478; cursor: default; }
 .byd-editor > header > .byd-editor-primary { background: #3c8ce7; border-color: #3c8ce7; }
 .byd-editor-table-link {
+  /* Third row, whether or not the question above it is standing: neither strip may push the
+     other off the screen, and neither may take the mode's row. */
+  grid-row: 3;
   --byd-editor-table-bg: #1f2a1f;
   /* A card that could not be rendered wears the same colours here as it does on the table
      (texture.css), so one fact has one look wherever it is met. */
@@ -45,9 +70,45 @@
   font-weight: 700;
   cursor: pointer;
 }
-/* The middle row belongs to the table link, which is only there once a table is running; the
-   open mode always takes the last row, so the canvas reaches the bottom of the window either way. */
-.byd-editor > main { grid-row: 3; min-height: 0; overflow: auto; }
+/* The middle rows belong to the question on the way out and to the table link, and both are
+   usually absent; the open mode always takes the last row, so the canvas reaches the bottom of
+   the window however many of them are there. */
+.byd-editor > main { grid-row: 4; min-height: 0; overflow: auto; }
+/* The question asked before the editor is left with unsaved work (#8), in the same shape as the
+   other questions the editor asks first: one strip, across the way out, with the answer that
+   loses nothing under the focus. Amber, because it is about unsaved work and not about a
+   deletion; the one answer that does throw work away is the red one. */
+.byd-editor-leave {
+  grid-row: 2;
+  --byd-editor-leave-bg: #3b3222;
+  --byd-editor-leave-ink: #ffeccc;
+  --byd-editor-leave-save-bg: #1f5fa8;
+  --byd-editor-leave-save-ink: #ffffff;
+  --byd-editor-leave-danger-bg: #7a3243;
+  --byd-editor-leave-danger-ink: #ffe4ea;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 16px;
+  background: var(--byd-editor-leave-bg);
+  color: var(--byd-editor-leave-ink);
+  border-bottom: 1px solid #2f333d;
+}
+.byd-editor-leave p { margin: 0; font-weight: 700; }
+.byd-editor-leave button {
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 1px solid #6b5c3c;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--byd-editor-leave-ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.byd-editor-leave button[data-kind='keep'] { background: var(--byd-editor-leave-save-bg); border-color: var(--byd-editor-leave-save-bg); color: var(--byd-editor-leave-save-ink); }
+.byd-editor-leave button[data-kind='danger'] { background: var(--byd-editor-leave-danger-bg); border-color: var(--byd-editor-leave-danger-bg); color: var(--byd-editor-leave-danger-ink); }
 .byd-editor > main > [role='tabpanel'] { height: 100%; min-height: 0; }
 /* A keyboard has to be able to see where it is, in every mode: one ring for every stop in the
    editor, light enough to carry 3:1 against each of the surfaces it lands on. */

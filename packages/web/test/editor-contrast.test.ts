@@ -97,3 +97,18 @@ describe('the palette the Bord tab is drawn in', () => {
     expect(contrastRatio(token(ink), token(on))).toBeGreaterThanOrEqual(4.5)
   })
 })
+
+// Whether the work is saved, and the question asked before the editor is left with work that is
+// not (#8). Both are read in a hurry, on the way out of the room, so they carry the same bar.
+describe('the palette unsaved work is drawn in', () => {
+  it.each([
+    { what: 'the word for work that is saved', ink: '--byd-editor-saved-ink', on: '--byd-editor-chrome-bg' },
+    { what: 'the word for work that is not saved', ink: '--byd-editor-unsaved-ink', on: '--byd-editor-chrome-bg' },
+    { what: 'the way back to the games', ink: '--byd-editor-home-ink', on: '--byd-editor-chrome-bg' },
+    { what: 'the question asked before leaving', ink: '--byd-editor-leave-ink', on: '--byd-editor-leave-bg' },
+    { what: 'saving on the way out', ink: '--byd-editor-leave-save-ink', on: '--byd-editor-leave-save-bg' },
+    { what: 'leaving the work behind', ink: '--byd-editor-leave-danger-ink', on: '--byd-editor-leave-danger-bg' },
+  ])('gives $what AA contrast', ({ ink, on }) => {
+    expect(contrastRatio(token(ink), token(on))).toBeGreaterThanOrEqual(4.5)
+  })
+})

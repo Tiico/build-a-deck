@@ -218,6 +218,9 @@ describe('the editor by keyboard alone (UX-04)', () => {
     }
     expect(screen.getByRole('tabpanel', { name: 'Kortvägg' })).toBeTruthy()
 
+    // "Mina spel" is the header's first stop (#8) — a way back belongs before what it leads away
+    // from — and the tablist is the next.
+    await user.tab()
     await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Kortvägg' }))
     await user.keyboard('{ArrowRight}{Enter}')
@@ -241,6 +244,7 @@ describe('the layers of the template by keyboard (UX-04)', () => {
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
 
+    await user.tab()
     await user.tab()
     await user.keyboard('{ArrowRight}{Enter}')
     const layers = within(screen.getByRole('listbox', { name: /lager/i })).getAllByRole('option')

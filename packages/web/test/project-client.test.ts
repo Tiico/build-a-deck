@@ -198,3 +198,32 @@ describe('grouping cards and letting the group rule a face (#13)', () => {
     expect(stored?.template.faces['front']?.variants['fälla']?.override).toMatchObject([{ id: 'title', color: '#e74c3c' }])
   })
 })
+
+// "Unsaved" has to mean the document differs from the one the server holds, not that something
+// was typed (#8): a guard that fires over a deck nobody changed is worse than no guard at all.
+describe('what counts as unsaved (#8)', () => {
+  it('stays saved when an edit writes the value that was already there, and goes back to saved when an edit is taken back by hand', async () => {
+    const created = await run.projects.create('p1', projectDoc())
+    const client = await ProjectClient.open({ http: run.http, id: created.id })
+
+    client.setCell('dragon', 'title', 'Drake')
+    expect(client.dirty).toBe(false)
+
+    client.setCell('dragon', 'title', 'Drakhona')
+    expect(client.dirty).toBe(true)
+
+    client.setCell('dragon', 'title', 'Drake')
+    expect(client.dirty).toBe(false)
+  })
+
+  it('says nothing changed when a template edit lands on the values the element already had', async () => {
+    const created = await run.projects.create('p1', projectDoc())
+    const client = await ProjectClient.open({ http: run.http, id: created.id })
+
+    client.patchElement('front', 'title', { x: 5, y: 5 })
+    expect(client.dirty).toBe(false)
+
+    client.patchElement('front', 'title', { x: 6 })
+    expect(client.dirty).toBe(true)
+  })
+})

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { userEvent } from '@testing-library/user-event'
 import { DataTable } from '../src/editor/DataTable.js'
 import { projectDoc } from './project-doc.js'
 
@@ -30,7 +31,9 @@ describe('DataTable (B as a tab)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /nytt kort/i }))
     expect(onAddRow).toHaveBeenCalledWith(expect.stringMatching(/^kort-\d+$/))
+    // The × asks first (#8); the card leaves the deck when the question is answered yes.
     fireEvent.click(within(rows[2]!).getByRole('button', { name: /ta bort/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ja, ta bort' }))
     expect(onRemoveRow).toHaveBeenCalledWith('wizard')
   })
 
@@ -48,5 +51,56 @@ describe('DataTable (B as a tab)', () => {
     await waitFor(() => expect(onReplaceRows).toHaveBeenCalledWith([
       { id: 'drake', fields: { title: 'Drake', body: 'Flygande', antal: 2 } },
     ]))
+  })
+})
+
+// The × at the end of a row is the smallest button in the editor and used to take a card out of
+// the deck on the way past it (#8). It asks first now, in the same strip a bulk delete asks in,
+// and the question names the card so "Ja" is never a guess.
+describe('DataTable row delete (#8)', () => {
+  const renderTable = (onRemoveRow: () => void) =>
+    render(
+      <DataTable
+        doc={projectDoc()}
+        selectedRow={null}
+        onSelectRow={() => undefined}
+        onCell={() => undefined}
+        onAddRow={() => undefined}
+        onRemoveRow={onRemoveRow}
+        onReplaceRows={() => undefined}
+      />,
+    )
+  const rowRemove = (cardRef: string) => within(document.querySelector(`[data-card-ref="${cardRef}"]`) as HTMLElement).getByRole('button', { name: /ta bort/i })
+
+  it('asks about the card by name instead of taking it out at once', async () => {
+    const user = userEvent.setup()
+    const onRemoveRow = vi.fn()
+    renderTable(onRemoveRow)
+
+    await user.click(rowRemove('wizard'))
+
+    expect(onRemoveRow).not.toHaveBeenCalled()
+    expect(screen.getByRole('alertdialog', { name: 'Ta bort kortet wizard' })).toBeDefined()
+    // The question opens on the answer that loses nothing: a stray Enter keeps the card.
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Avbryt' }))
+
+    await user.click(screen.getByRole('button', { name: 'Ja, ta bort' }))
+
+    expect(onRemoveRow).toHaveBeenCalledWith('wizard')
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+  })
+
+  it('keeps the card and gives the focus back to the × that asked when the answer is no', async () => {
+    const user = userEvent.setup()
+    const onRemoveRow = vi.fn()
+    renderTable(onRemoveRow)
+
+    await user.click(rowRemove('knight'))
+    await user.keyboard('{Escape}')
+
+    expect(onRemoveRow).not.toHaveBeenCalled()
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(document.activeElement).toBe(rowRemove('knight'))
+    expect(document.querySelectorAll('[data-card-ref]')).toHaveLength(3)
   })
 })

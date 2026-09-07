@@ -141,6 +141,7 @@ describe('DataTable sorting (a view, #15)', () => {
     fireEvent.change(within(first).getByLabelText('knight kostnad'), { target: { value: '5' } })
     expect(onCell).toHaveBeenCalledWith('knight', 'kostnad', '5')
     fireEvent.click(within(first).getByRole('button', { name: /ta bort/i }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ja, ta bort' }))
     expect(onRemoveRow).toHaveBeenCalledWith('knight')
 
     expect(doc.rows.map((row) => row.id)).toEqual(['dragon', 'knight', 'wizard'])

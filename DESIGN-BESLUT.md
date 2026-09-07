@@ -922,6 +922,32 @@ Kompilatorn har ett `scope`-alternativ så att många kort kan dela sida.
 Ett rent tal i klamrar är en pip (L2).
 Projekt är revisionerade dokument på servern med optimistisk samtidighet tills projektaktören (D3) finns; "uppdatera bordet" startar ett bord ur projektet (L5).
 
+### L9. Osparat arbete: skillnaden mot servern, en fråga på vägen ut, bekräftelse före en radering
+
+"Osparat" betyder att projektets dokument skiljer sig från det servern håller, inte att något har skrivits i editorn.
+En ändring som skriver värdet som redan stod där, och en ändring som tas tillbaka för hand, lämnar leken sparad.
+
+Skyddet gäller bara verkligt osparat arbete och finns på tre vägar.
+`beforeunload` är registrerad exakt medan dokumentet skiljer sig, så en flik som stängs eller laddas om över en orörd lek stängs utan ett ord.
+"Mina spel" i huvudet går direkt när ingenting ändrats och frågar annars, med "Spara och lämna", "Lämna utan att spara" och "Avbryt".
+Ett sparande som krockar med någon annan lämnar inte editorn: konflikten sägs som `alert` och arbetet står kvar där det är.
+Sparat eller osparat står i huvudet som ord och som färg, i en `role="status"`, så att bytet både syns och sägs.
+
+Radering av ett kort från radens × frågar först, med samma ord och i samma remsa som åtgärdsradens massborttagning, och namnger kortet i stället för att räkna det.
+Editorn har ingen ångra-stack; bekräftelsen är därför skyddet, och en ångra-historik över projektet är ett eget beslut.
+
+Varje fråga editorn ställer före något som inte kan tittas på efteråt är en och samma komponent, `Question` (#17, #19, #8): en remsa där handlingen begärdes, som tar fokus, svarar på Escape och lämnar tillbaka fokus, och som aldrig fångar tangentbordet.
+Frågan öppnar alltid på ett svar som inte förlorar något: "Spara och lämna" när det finns ett sådant, annars "Avbryt".
+Fokus ligger aldrig på svaret som inte kan ångras, så den reflex som besvarar en fråga på vägen förbi — Enter på det som råkar hålla fokus — behåller arbetet i stället för att kasta det.
+Svaret som inte kan ångras står kvar där det stod, i rött och med ord som säger vad det gör ("Ja, ta bort", "Ja, avsluta"): ett tabbsteg bort, inte ett steg längre in i frågan.
+`Question` räknar själv ut vilket av sina svar som är det säkra; ett anropsställe talar om vad varje svar kostar, aldrig vilket av dem som ska ha fokus.
+
+Motivering:
+En varning som kommer när ingenting har ändrats lär designern att avfärda varningar, och skyddar då ingenting alls.
+Dirty som en jämförelse mot servern i stället för ett minne av tangenttryck är det enda som gör den skillnaden möjlig att lita på.
+
+Byggt 2026-09-07 (ingen ny prototyp: mönstret för frågan är det som redan är byggt och godkänt i #17 och #19).
+
 ---
 
 ## I. Öppna frågor

@@ -15,13 +15,27 @@ export type TableSummary = { id: string; version: string; ended: boolean; lastAt
 // Framework-free so views stay thin; every edit notifies subscribers.
 export class ProjectClient {
   private listeners = new Set<ProjectListener>()
+  // The document as the server holds it, in a form two documents can be compared in. "Unsaved"
+  // is the difference between that and `doc`, never a memory of something having been typed
+  // (#8): an edit that writes the value already there changes nothing, and taking an edit back
+  // by hand is the deck saved again.
+  private saved: string
+  // The last document that was measured, and what it measured as. A document is replaced whole on
+  // every edit, so the reference is enough to know the answer still holds.
+  private measured: { doc: ProjectDoc; stamp: string } | null = null
   private constructor(
     private readonly http: string,
     readonly id: string,
     public doc: ProjectDoc,
     public rev: number,
-    public dirty = false,
-  ) {}
+  ) {
+    this.saved = stamp(doc)
+  }
+
+  get dirty(): boolean {
+    if (this.measured?.doc !== this.doc) this.measured = { doc: this.doc, stamp: stamp(this.doc) }
+    return this.measured.stamp !== this.saved
+  }
 
   static async open(opts: { http: string; id: string }): Promise<ProjectClient> {
     const res = await fetch(`${opts.http}/projects/${encodeURIComponent(opts.id)}`, withCredentials())
@@ -166,7 +180,7 @@ export class ProjectClient {
     if (!res.ok) return { ok: false, reason: `save failed: ${res.status}` }
     const { rev } = (await res.json()) as { rev: number }
     this.rev = rev
-    this.dirty = false
+    this.saved = stamp(this.doc)
     this.notify()
     return { ok: true, rev }
   }
@@ -226,7 +240,6 @@ export class ProjectClient {
 
   private commit(doc: ProjectDoc): void {
     this.doc = doc
-    this.dirty = true
     this.notify()
   }
 
@@ -238,4 +251,15 @@ export class ProjectClient {
 // One element in, one out, by id: an override list is a set keyed by id, not an order.
 function replaceById(list: Element[], element: Element): Element[] {
   return list.some((e) => e.id === element.id) ? list.map((e) => (e.id === element.id ? element : e)) : [...list, element]
+}
+
+// A document as one comparable string: object keys in a fixed order, so two documents built by
+// different routes to the same content are the same string. Undefined is left out, as it is in
+// the JSON that reaches the server.
+function stamp(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null'
+  if (Array.isArray(value)) return `[${value.map(stamp).join(',')}]`
+  const entries = Object.entries(value as Record<string, unknown>).filter(([, v]) => v !== undefined)
+  entries.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+  return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${stamp(v)}`).join(',')}}`
 }
