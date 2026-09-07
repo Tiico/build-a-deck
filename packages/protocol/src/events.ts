@@ -32,9 +32,16 @@ export const Outcome = z.discriminatedUnion('kind', [
 ])
 export type Outcome = z.infer<typeof Outcome>
 
+// The event schema is never migrated on disk (DRIFT §7): a line carries the version it was
+// written under, and the engine lifts older lines when it reads them. Lines from before
+// versioning have no field and count as version 0. Bump this with every change to what a line
+// may contain, and add the matching upcaster in the engine.
+export const SCHEMA_VERSION = 1
+
 // A single line in the event log. `seq` is monotonic per session and defines order.
 // All lines from one envelope share its id as `batch`; undo and rewind treat them as a unit.
 export const Applied = z.object({
+  schemaVersion: z.number().int().nonnegative(),
   seq: z.number().int().nonnegative(),
   batch: z.string().min(1),
   at: z.string(),

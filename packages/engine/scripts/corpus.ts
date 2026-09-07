@@ -16,7 +16,8 @@ export type CorpusEntry = {
   recordedAt: string
   version: string
   setup: SetupDef
-  log: Applied[]
+  // As recorded: lines keep the schema version they were written under, or none (version 0).
+  log: unknown[]
   // Final projections keyed by viewer: a seat id, 'table', or 'observer'.
   expected: Record<string, Snapshot>
 }

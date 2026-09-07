@@ -26,12 +26,23 @@ export class PostgresRenderStore implements RenderStore {
     private readonly objects?: ObjectStore,
   ) {}
 
-  static connect(url: string, objects?: ObjectStore): PostgresRenderStore {
-    return new PostgresRenderStore(postgres(url, { max: 3, onnotice: () => undefined }), objects)
+  // `schema` puts the tables in a schema of their own — a test run's, so it never shares a
+  // queue with a stack running against the same database.
+  static connect(url: string, objects?: ObjectStore, options: { schema?: string } = {}): PostgresRenderStore {
+    const store = new PostgresRenderStore(postgres(url, { max: 3, onnotice: () => undefined, ...(options.schema ? { connection: { search_path: options.schema } } : {}) }), objects)
+    store.schema = options.schema
+    return store
   }
+  private schema: string | undefined
 
   async migrate(): Promise<void> {
+    if (this.schema) await this.sql.unsafe(`create schema if not exists "${this.schema.replace(/"/g, '')}"`)
     await this.sql.unsafe(await readFile(fileURLToPath(new URL('../sql/001-render.sql', import.meta.url)), 'utf8'))
+  }
+
+  // Drops a schema made for a test run.
+  async dropSchema(): Promise<void> {
+    if (this.schema) await this.sql.unsafe(`drop schema if exists "${this.schema.replace(/"/g, '')}" cascade`)
   }
 
   async close(): Promise<void> {

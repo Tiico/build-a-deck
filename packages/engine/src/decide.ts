@@ -1,4 +1,4 @@
-import type { Applied, ComponentId, ComponentRef, Envelope, Intent, Outcome, UndoMeaning, ZoneId } from '@byd/protocol'
+import { SCHEMA_VERSION, type Applied, type ComponentId, type ComponentRef, type Envelope, type Intent, type Outcome, type UndoMeaning, type ZoneId } from '@byd/protocol'
 import { apply } from './apply.js'
 import { handsReturnedBy } from './hands.js'
 import type { IdSource, Rng } from './rng.js'
@@ -36,7 +36,7 @@ export function decide(state: TableState, registry: TypeRegistry, env: Envelope,
   for (const [i, intent] of env.intents.entries()) {
     const problem = validate(working, registry, env.seat, intent) ?? validateRewind(state, env, intent, deps.history)
     if (problem) return { ok: false, reason: env.intents.length > 1 ? `intent ${i}: ${problem}` : problem }
-    const applied: Applied = { seq: working.seq + 1, batch: env.id, at: deps.now(), by: env.seat, intent }
+    const applied: Applied = { schemaVersion: SCHEMA_VERSION, seq: working.seq + 1, batch: env.id, at: deps.now(), by: env.seat, intent }
     const outcome = decideOutcome(working, registry, intent, deps, env)
     if (outcome) applied.outcome = outcome
     lines.push(applied)
@@ -268,7 +268,7 @@ function restoreOutcome(current: TableState, registry: TypeRegistry, toSeq: numb
     const shuffled = apply(
       { ...then, zones: table.zones, components: table.components, seq: then.seq },
       registry,
-      { seq: then.seq + 1, batch: 'restore', at: '', by: null, intent: { v: 'shuffle', pile: pile.id }, outcome },
+      { schemaVersion: SCHEMA_VERSION, seq: then.seq + 1, batch: 'restore', at: '', by: null, intent: { v: 'shuffle', pile: pile.id }, outcome },
     )
     table.zones = shuffled.zones
     table.components = shuffled.components

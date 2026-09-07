@@ -326,7 +326,7 @@ Svåra buggar är samtidighet och synlighet, inte utseende, och de reproduceras 
 
 Följdkrav:
 Händelseschemat är ett kontrakt som måste versioneras och migreras vid varje ändring.
-Migreringsstrategin är fortfarande en öppen fråga.
+Migreringsstrategin är beslutad i DRIFT §7 och byggd 2026-09-07: version per rad, upcasters vid inläsning.
 
 ---
 
@@ -882,7 +882,6 @@ Fontlicensiering, som krockar med kravet i B3 att behålla fontfiler permanent.
 
 Teknik:
 Aktivitetsflödet vid anslutning: löst 2026-09-07, snapshoten bär de senaste femtio raderna, se K9.
-Migreringsstrategi för händelseschemat — riktning beslutad i DRIFT.md avsnitt 7 (`schemaVersion` på varje rad, upcasters vid inläsning), detaljer kvar.
 Behörighetsroller i detalj: ägare, medredigerare, testledare, observatör.
 Tillgänglighet i verktyget självt, till skillnad från i de spel som skapas i det.
 
