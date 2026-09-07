@@ -8,7 +8,6 @@ import { NewProjectPage } from './wizard/NewProjectPage.js'
 import { HomePage } from './account/HomePage.js'
 import { LoginPage } from './account/LoginPage.js'
 import { TablePrototype } from './prototype/table-ref/index.js'
-import { TableEditorPrototype } from './prototype/datatable/index.js'
 import { CanvasPrototype } from './prototype/canvas/index.js'
 import { EditorNavPrototype } from './prototype/editor-nav/index.js'
 import { GroupsPrototype } from './prototype/groups/index.js'
@@ -23,7 +22,6 @@ export function App() {
 // only place that is mounted exactly once whichever route is showing.
 function route() {
   if (location.pathname.startsWith('/prototype/table-ref')) return <TablePrototype />
-  if (location.pathname.startsWith('/prototype/datatable')) return <TableEditorPrototype />
   if (location.pathname.startsWith('/prototype/canvas')) return <CanvasPrototype />
   if (location.pathname.startsWith('/prototype/editor-nav')) return <EditorNavPrototype />
   if (location.pathname.startsWith('/prototype/groups')) return <GroupsPrototype />

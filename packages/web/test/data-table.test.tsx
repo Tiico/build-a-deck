@@ -10,12 +10,13 @@ describe('DataTable (B as a tab)', () => {
     const onCell = vi.fn()
     const onAddRow = vi.fn()
     const onRemoveRow = vi.fn()
-    const onImportRows = vi.fn()
-    render(<DataTable doc={doc} selectedRow="knight" onSelectRow={() => undefined} onCell={onCell} onAddRow={onAddRow} onRemoveRow={onRemoveRow} onImportRows={onImportRows} />)
+    const onReplaceRows = vi.fn()
+    render(<DataTable doc={doc} selectedRow="knight" onSelectRow={() => undefined} onCell={onCell} onAddRow={onAddRow} onRemoveRow={onRemoveRow} onReplaceRows={onReplaceRows} />)
 
     // Every column header is a sort control (#15): its name is the column, the arrow is the state.
+    // The first and last columns carry no name: the selection's checkbox (#17) and the row's ×.
     const headers = screen.getAllByRole('columnheader').map((h) => h.textContent!.replace(/\s*[↕↑↓]$/, ''))
-    expect(headers).toEqual(['id', 'title', 'body', 'antal', ''])
+    expect(headers).toEqual(['', 'id', 'title', 'body', 'antal', ''])
     const rows = screen.getAllByRole('row').slice(1)
     expect(rows.map((r) => r.getAttribute('data-card-ref'))).toEqual(['dragon', 'knight', 'wizard'])
     expect(rows[1]!.getAttribute('aria-selected')).toBe('true')
@@ -35,8 +36,8 @@ describe('DataTable (B as a tab)', () => {
 
   it('exports the current table and imports a selected CSV file', async () => {
     const doc = projectDoc()
-    const onImportRows = vi.fn()
-    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onImportRows={onImportRows} />)
+    const onReplaceRows = vi.fn()
+    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={onReplaceRows} />)
 
     const download = screen.getByRole('link', { name: 'Exportera CSV' }) as HTMLAnchorElement
     expect(download.download).toBe('skogens-herrar-kort.csv')
@@ -44,7 +45,7 @@ describe('DataTable (B as a tab)', () => {
 
     const file = new File(['id,title,body,antal\ndrake,Drake,Flygande,2'], 'kort.csv', { type: 'text/csv' })
     fireEvent.change(screen.getByLabelText('Importera CSV'), { target: { files: [file] } })
-    await waitFor(() => expect(onImportRows).toHaveBeenCalledWith([
+    await waitFor(() => expect(onReplaceRows).toHaveBeenCalledWith([
       { id: 'drake', fields: { title: 'Drake', body: 'Flygande', antal: 2 } },
     ]))
   })

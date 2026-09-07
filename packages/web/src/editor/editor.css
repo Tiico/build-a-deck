@@ -95,6 +95,9 @@
   --byd-editor-count-ink: #c3cbdd;
   --byd-editor-chip-on-bg: #7dd3a0;
   --byd-editor-chip-on-ink: #0b2a18;
+  --byd-editor-marked-bg: #253044;
+  --byd-editor-marked-ink: #c3cbdd;
+  --byd-editor-marked-edge: #3c8ce7;
 }
 .byd-data-filter { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
 .byd-data-search {
@@ -135,3 +138,63 @@
 .byd-data input { background: transparent; border: 0; color: #ddd; padding: 7px 10px; width: 100%; box-sizing: border-box; font-size: 12px; }
 .byd-data button { background: transparent; border: 0; color: #7d8597; cursor: pointer; padding: 6px 10px; }
 .byd-data-add { margin-top: 10px; border: 1px dashed #2f333d; background: transparent; color: #9aa3b8; border-radius: 8px; padding: 8px 14px; cursor: pointer; }
+/* The action row (#17, prototype A): it is not there at all until a card is marked, and then it
+   stands between the filter and the rows — right where the eye goes after ticking a box. The
+   delete is the only destructive button in the editor and is the only one drawn in red; the
+   question it asks first takes the whole row, so nothing can be pressed by mistake behind it. */
+.byd-data-bulk {
+  --byd-editor-bulk-bg: #1f2937;
+  --byd-editor-bulk-ink: #e6ecfa;
+  --byd-editor-bulk-quiet: #a9b3c9;
+  --byd-editor-bulk-danger-bg: #7a3243;
+  --byd-editor-bulk-danger-ink: #ffe4ea;
+  --byd-editor-bulk-ask-bg: #3d2632;
+  --byd-editor-bulk-ask-ink: #ffe4ea;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  border: 1px solid #3b414e;
+  border-radius: 8px;
+  background: var(--byd-editor-bulk-bg);
+  color: var(--byd-editor-bulk-ink);
+}
+.byd-data-bulk[role='alertdialog'] { background: var(--byd-editor-bulk-ask-bg); color: var(--byd-editor-bulk-ask-ink); border-color: var(--byd-editor-bulk-danger-bg); }
+.byd-data-bulk p { margin: 0; font-weight: 700; }
+.byd-data-bulk label { display: flex; align-items: center; gap: 6px; color: var(--byd-editor-bulk-quiet); }
+.byd-data-bulk select, .byd-data-bulk input {
+  padding: 6px 9px;
+  border: 1px solid #3b414e;
+  border-radius: 8px;
+  background: var(--byd-editor-filter-bg);
+  color: var(--byd-editor-filter-ink);
+  font: inherit;
+}
+.byd-data-bulk button {
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 1px solid #3b414e;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--byd-editor-bulk-ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.byd-data-bulk button:disabled { color: var(--byd-editor-bulk-quiet); cursor: default; }
+.byd-data-bulk button[data-kind='danger'] { background: var(--byd-editor-bulk-danger-bg); border-color: var(--byd-editor-bulk-danger-bg); color: var(--byd-editor-bulk-danger-ink); }
+.byd-data-bulk button[data-kind='quiet'] { border-color: transparent; color: var(--byd-editor-bulk-quiet); font-weight: 400; }
+/* The checkbox column (#17): wide enough for a real hit target, and the tick is the same blue as
+   the focus ring, so "marked" and "here" read as the same family. */
+.byd-data-check { width: 34px; text-align: center; padding: 0 4px !important; }
+.byd-data-check input { width: 16px; height: 16px; padding: 0; accent-color: #3c8ce7; cursor: pointer; }
+.byd-data-chosen { color: var(--byd-editor-count-ink); font-weight: 700; }
+/* A marked row is read from across the table, not from its checkbox: the tick is the control,
+   the tint and the edge are the answer to "did I get the right four cards". Being marked and
+   being the card on the preview are two different things, so the row being looked at keeps its
+   own blue and only takes the edge — the two cues differ in kind, not only in shade. */
+.byd-data tr[aria-selected='false']:has(.byd-data-check input:checked) { background: var(--byd-editor-marked-bg); }
+.byd-data tr:has(.byd-data-check input:checked) .byd-data-check { box-shadow: inset 3px 0 0 var(--byd-editor-marked-edge); }
+.byd-data tr:has(.byd-data-check input:checked) .byd-data-id { color: var(--byd-editor-marked-ink); }

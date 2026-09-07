@@ -74,6 +74,34 @@ describe('EditorPage', () => {
       { id: 'phoenix', fields: { title: 'Fenix', body: 'Återföds', antal: 3 } },
     ])
   })
+
+  it('makes a bulk change on the table one unsaved change to the project, saved like any other (#17)', async () => {
+    const user = userEvent.setup()
+    await run.projects.create('p1', projectDoc())
+    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
+
+    await user.click(screen.getByLabelText('Markera alla synliga'))
+    await user.selectOptions(screen.getByLabelText('Kolumn'), 'antal')
+    await user.type(screen.getByLabelText('Värde'), '4')
+    await user.click(screen.getByRole('button', { name: 'Sätt antal på 3 kort' }))
+
+    await user.click(screen.getByRole('button', { name: 'Avmarkera alla' }))
+    await user.click(screen.getByLabelText('markera wizard'))
+    await user.click(screen.getByRole('button', { name: 'Ta bort 1 kort' }))
+    await user.click(screen.getByRole('button', { name: 'Ja, ta bort' }))
+
+    const save = screen.getByRole('button', { name: /spara/i }) as HTMLButtonElement
+    expect(save.disabled).toBe(false)
+    fireEvent.click(save)
+    await screen.findByText('rev 2')
+    expect((await run.projects.load('p1'))?.rows).toEqual([
+      { id: 'dragon', fields: { title: 'Drake', body: 'Flygande.', antal: 4 } },
+      { id: 'knight', fields: { title: 'Riddare', body: 'Sköld 1.', antal: 4 } },
+    ])
+  })
 })
 
 describe('the table follows the editor (C7, L5)', () => {

@@ -138,7 +138,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
         onCell={(cardRef, field, value) => client.setCell(cardRef, field, value)}
         onAddRow={(cardRef) => client.addRow(cardRef, { title: '', antal: 1 })}
         onRemoveRow={(cardRef) => client.removeRow(cardRef)}
-        onImportRows={(rows) => client.replaceRows(rows)}
+        onReplaceRows={(rows) => client.replaceRows(rows)}
       />
     ),
   }

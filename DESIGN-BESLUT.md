@@ -792,6 +792,13 @@ Följdkrav:
 `cardRef` är en rad, inte ett fysiskt kort.
 "Vilket av de tre" finns bara som instans-id i loggen.
 
+Byggt 2026-09-07 (prototypat i tre varianter, godkänd variant A — kalkylarket):
+Rubrikerna sorterar (#15), ett sökfält över alla fält plus chips för lekens egen kategorikolumn filtrerar (#16), och kryssrutor per rad och i rubriken markerar för en åtgärdsrad som visas först när något är markerat (#17).
+Sortering, filter och markering är vyer av projektet: de rör aldrig `doc.rows`.
+Markeringen mäts mot skärmen — "markera alla synliga" betyder de rader filtret släpper fram, och ett kort som filtret tar bort släpps ur markeringen och kommer inte tillbaka när frågan tas tillbaka, så en borttagning aldrig kan träffa ett kort ingen har sett.
+Åtgärderna (ta bort med bekräftelse som säger antalet, duplicera, sätt en kolumn, ändra antal) går som en enda ny radlista genom `replaceRows`, alltså en ändring i historiken som sparas och ångras som varje annan.
+Prototypen `packages/web/src/prototype/datatable` togs bort när den hade svarat.
+
 ### L5. Editor till bord: uttrycklig knapp, förrenderade texturer
 
 Editorn har en knapp, "Uppdatera bordet", som startar ett bord från projektet eller skickar `version.change` till det bord den startat.

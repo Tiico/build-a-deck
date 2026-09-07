@@ -30,7 +30,7 @@ function renderTable(doc: ProjectDoc, handlers: Partial<{ onCell: DataTableProps
       onCell={handlers.onCell ?? noop}
       onAddRow={noop}
       onRemoveRow={handlers.onRemoveRow ?? noop}
-      onImportRows={noop}
+      onReplaceRows={noop}
     />,
   )
 }
@@ -49,7 +49,7 @@ function EditedTable({ start }: { start: ProjectDoc }) {
       }
       onAddRow={noop}
       onRemoveRow={noop}
-      onImportRows={noop}
+      onReplaceRows={noop}
     />
   )
 }
@@ -176,6 +176,9 @@ describe('DataTable sorting from the keyboard (#15)', () => {
     expect(document.activeElement).toBe(screen.getByRole('link', { name: 'Exportera CSV' }))
     await user.tab()
     expect(document.activeElement).toBe(screen.getByLabelText('Sök i alla fält'))
+    // The header's own checkbox (#17) sits in the first column, before the columns that sort.
+    await user.tab()
+    expect(document.activeElement).toBe(screen.getByLabelText('Markera alla synliga'))
 
     const buttons = headerButtons()
     expect(buttons.map((button) => button.textContent?.trim().split(' ')[0])).toEqual(['id', 'title', 'body', 'kostnad', 'antal'])

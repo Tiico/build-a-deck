@@ -40,3 +40,18 @@ describe('the palette the table filter is drawn in', () => {
     expect(contrastRatio(token(ink), token(on))).toBeGreaterThanOrEqual(4.5)
   })
 })
+
+// The action row over the table (#17) shows up the moment a card is marked and carries the only
+// destructive button in the editor. It is read in a hurry, so it is held to the same bar.
+describe('the palette the table action row is drawn in', () => {
+  it.each([
+    { what: 'what an action does', ink: '--byd-editor-bulk-ink', on: '--byd-editor-bulk-bg' },
+    { what: 'the way back out of a marking', ink: '--byd-editor-bulk-quiet', on: '--byd-editor-bulk-bg' },
+    { what: 'the delete button', ink: '--byd-editor-bulk-danger-ink', on: '--byd-editor-bulk-danger-bg' },
+    { what: 'the question a delete asks first', ink: '--byd-editor-bulk-ask-ink', on: '--byd-editor-bulk-ask-bg' },
+    { what: 'the value to be written', ink: '--byd-editor-filter-ink', on: '--byd-editor-filter-bg' },
+    { what: 'the id of a marked card', ink: '--byd-editor-marked-ink', on: '--byd-editor-marked-bg' },
+  ])('gives $what AA contrast', ({ ink, on }) => {
+    expect(contrastRatio(token(ink), token(on))).toBeGreaterThanOrEqual(4.5)
+  })
+})

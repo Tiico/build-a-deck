@@ -33,7 +33,7 @@ function renderTable(doc: ProjectDoc, handlers: Partial<DataTableProps> = {}) {
       onCell={noop}
       onAddRow={noop}
       onRemoveRow={noop}
-      onImportRows={noop}
+      onReplaceRows={noop}
       {...handlers}
     />,
   )
@@ -138,7 +138,7 @@ function EditedTable({ start }: { start: ProjectDoc }) {
       }
       onAddRow={noop}
       onRemoveRow={noop}
-      onImportRows={noop}
+      onReplaceRows={noop}
     />
   )
 }
@@ -155,7 +155,7 @@ function AddableTable({ start }: { start: ProjectDoc }) {
       onCell={noop}
       onAddRow={(cardRef) => setDoc((d) => ({ ...d, rows: [...d.rows, { id: cardRef, fields: { title: '', antal: 1 } }] }))}
       onRemoveRow={noop}
-      onImportRows={noop}
+      onReplaceRows={noop}
     />
   )
 }
@@ -241,6 +241,8 @@ describe('DataTable filtering from the keyboard (#16)', () => {
       await user.tab()
       expect(document.activeElement).toBe(screen.getByRole('button', { name }))
     }
+    await user.tab()
+    expect(document.activeElement).toBe(screen.getByLabelText('Markera alla synliga'))
     await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('button', { name: /^id/ }))
   })

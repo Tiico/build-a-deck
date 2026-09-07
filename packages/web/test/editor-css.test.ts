@@ -50,7 +50,18 @@ const SHELL = `
           <p class="byd-data-count">1 av 3 kort</p>
           <button class="byd-data-clear" data-stop="the clear-filter button">Rensa filter</button>
         </div>
-        <table class="byd-data"><tbody><tr aria-selected="true"><td><input data-stop="a cell" /></td><td><button data-stop="a row's delete">Ta bort</button></td></tr></tbody></table>
+        <div class="byd-data-bulk" role="toolbar">
+          <label>Sätt<select data-stop="the bulk column"><option>typ</option></select></label>
+          <input data-stop="the bulk value" />
+          <button data-stop="the bulk set">Sätt typ på 2 kort</button>
+          <button data-stop="the bulk duplicate">Duplicera 2 kort</button>
+          <button data-kind="danger" data-stop="the bulk delete">Ta bort 2 kort</button>
+          <button data-kind="quiet" data-stop="the unmark">Avmarkera alla</button>
+        </div>
+        <table class="byd-data">
+          <thead><tr><th class="byd-data-check"><input type="checkbox" data-stop="the header checkbox" /></th></tr></thead>
+          <tbody><tr aria-selected="true"><td class="byd-data-check"><input type="checkbox" data-stop="a row's checkbox" /></td><td><input data-stop="a cell" /></td><td><button data-stop="a row's delete">Ta bort</button></td></tr></tbody>
+        </table>
         <button class="byd-data-add" data-stop="the add-row button">Lägg till kort</button>
       </div>
     </div>
@@ -119,12 +130,51 @@ describe('the editor under a keyboard', () => {
       'the search field',
       'a type chip',
       'the clear-filter button',
+      'the bulk column',
+      'the bulk value',
+      'the bulk set',
+      'the bulk duplicate',
+      'the bulk delete',
+      'the unmark',
+      'the header checkbox',
+      "a row's checkbox",
       'a cell',
       "a row's delete",
       'the add-row button',
     ])
     const dim = stops.filter((s) => s.style === 'none' || !(s.width >= 2) || contrastRatio(s.color, s.on) < 3)
     expect(dim.map((s) => s.what)).toEqual([])
+  }, 60_000)
+})
+
+// A marked row (#17) has to be visible as marked from across the table, not only by the tick in
+// its first cell: the eye checks "did I get the right four cards" on the rows, not the boxes.
+const MARKED = `
+<div class="byd-editor" data-page="editor" data-mode="table">
+  <main><div role="tabpanel"><div class="byd-table-wrap">
+    <table class="byd-data"><tbody>
+      <tr id="plain" aria-selected="false"><td class="byd-data-check"><input type="checkbox" /></td><td class="byd-data-id">drake</td></tr>
+      <tr id="marked" aria-selected="false"><td class="byd-data-check"><input type="checkbox" checked /></td><td class="byd-data-id">grop</td></tr>
+      <tr id="looked-at" aria-selected="true"><td class="byd-data-check"><input type="checkbox" checked /></td><td class="byd-data-id">alv</td></tr>
+    </tbody></table>
+  </div></div></main>
+</div>`
+
+describe('the table under a selection', () => {
+  it('draws a marked row differently from one that is not', async () => {
+    const page = await browser.newPage()
+    try {
+      await page.setContent(`<!doctype html><html><head><style>body{margin:0}${css}</style></head><body>${MARKED}</body></html>`, { waitUntil: 'load' })
+      const [plain, marked, lookedAt] = await page.evaluate(() =>
+        ['#plain', '#marked', '#looked-at'].map((sel) => getComputedStyle(document.querySelector(sel)!).backgroundColor),
+      )
+      expect(marked).not.toBe(plain)
+      // The card on the preview keeps its own colour whether it is marked or not.
+      expect(lookedAt).not.toBe(marked)
+      expect(lookedAt).not.toBe(plain)
+    } finally {
+      await page.close()
+    }
   }, 60_000)
 })
 

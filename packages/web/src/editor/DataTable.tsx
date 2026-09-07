@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ProjectDoc, ProjectRow } from './types.js'
 import { fieldsOf } from './fields.js'
 import type { Cell } from './ProjectClient.js'
 import { exportCardsCsv, importCardsCsv } from './csv.js'
 import { keepOrder, nextSort, sortRows, type SortState } from './sorting.js'
 import { countLabel, discreteColumns, filterRows, isFiltering, noFilter, toggleValue, type FilterState } from './filtering.js'
+import { duplicateRows, keepRows, markRows, noSelection, removeRows, selectionLabel, setColumn, toggleRow, type Selection } from './selection.js'
 
 export type DataTableProps = {
   doc: ProjectDoc
@@ -13,15 +14,35 @@ export type DataTableProps = {
   onCell(cardRef: string, field: string, value: Cell): void
   onAddRow(cardRef: string): void
   onRemoveRow(cardRef: string): void
-  onImportRows(rows: ProjectRow[]): void
+  // The whole list of rows at once: a CSV import, and every change the selection makes (#17).
+  // One call is one change to the project, so a bulk edit is saved and undone as one.
+  onReplaceRows(rows: ProjectRow[]): void
 }
 
 // The table (B as a tab): one row per card, the template's fields as columns, `antal` last (L4).
 // This is where the designer already lives; a change here reaches every copy of the card.
-export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onImportRows }: DataTableProps) {
+export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows }: DataTableProps) {
   const [importError, setImportError] = useState<string | null>(null)
   const [sort, setSort] = useState<SortState | null>(null)
   const [filter, setFilter] = useState<FilterState>(noFilter)
+  const [selected, setSelected] = useState<Selection>(noSelection)
+  // Deleting cards is the one action that cannot be looked at afterwards, so it is asked about
+  // first — and the question says how many cards it is about.
+  const [confirming, setConfirming] = useState(false)
+  // A question that takes the focus has to give it back: to the button that asked it, or — when
+  // the cards it was about are gone with it — to the header's own checkbox above the rows.
+  const [refocus, setRefocus] = useState<'remove' | 'all' | null>(null)
+  // What the action row writes: a column of the table and the value to give it. An empty value
+  // is not a change worth pressing by mistake, so the button waits for one.
+  const [bulkField, setBulkField] = useState<string | null>(null)
+  const [bulkValue, setBulkValue] = useState('')
+  const removeRef = useRef<HTMLButtonElement>(null)
+  const allRef = useRef<HTMLInputElement>(null)
+  useEffect(() => {
+    if (!refocus) return
+    ;(refocus === 'remove' ? removeRef.current : allRef.current)?.focus()
+    setRefocus(null)
+  }, [refocus])
   // The card created by "Nytt kort" while a filter is on, kept on screen until the filter moves.
   const [pinned, setPinned] = useState<string | null>(null)
   // The order held while a cell is being edited, as the ids that were on screen when it was entered.
@@ -37,11 +58,26 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
   const shown = held
     ? keepOrder(doc.rows.filter((row) => held.includes(row.id)), held)
     : filterRows(sortRows(doc.rows, sort), columns, filter, pinned)
+  // What an action is about is never more than what is on screen: a checkbox is a fact about a
+  // row the designer can see, so the selection is read through `shown` (#17 on #16).
+  const chosen = shown.filter((row) => selected.has(row.id))
+  const chosenIds: Selection = new Set(chosen.map((row) => row.id))
+  // The column the action row writes: the designer's choice, or the table's first column until
+  // one is made.
+  const field = bulkField ?? fields[0] ?? 'antal'
+  // A question about cards that are no longer marked is not a question any more: unmarking them,
+  // or filtering them away, takes it back.
+  useEffect(() => {
+    if (chosen.length === 0) setConfirming(false)
+  }, [chosen.length])
   // Every way of changing the filter goes through here, so the pinned card is released exactly
   // when the designer asks a new question of the deck.
   const changeFilter = (next: FilterState) => {
     setFilter(next)
     setPinned(null)
+    // The selection is measured against the screen (#17): what the new question takes away is let
+    // go of, and stays let go of when the question is taken back.
+    setSelected(keepRows(selected, filterRows(doc.rows, columns, next).map((row) => row.id)))
   }
   const nextRef = () => {
     let n = doc.rows.length + 1
@@ -53,7 +89,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
     const reader = new FileReader()
     reader.onload = () => {
       try {
-        onImportRows(importCardsCsv(String(reader.result ?? '')))
+        onReplaceRows(importCardsCsv(String(reader.result ?? '')))
         setImportError(null)
       } catch (err) {
         setImportError(err instanceof Error ? err.message : String(err))
@@ -97,6 +133,12 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
         ))}
         <p className="byd-data-count" aria-live="polite">
           <span>{countLabel(shown.length, doc.rows.length)}</span>
+          {chosen.length > 0 && (
+            <>
+              <span aria-hidden="true"> · </span>
+              <span className="byd-data-chosen">{selectionLabel(chosen.length)}</span>
+            </>
+          )}
           {pinned !== null && (
             <>
               <span aria-hidden="true"> · </span>
@@ -111,9 +153,77 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
         )}
       </div>
       <p className="byd-data-sort" role="status">{sortLabel(sort)}</p>
+      {chosen.length > 0 &&
+        (confirming ? (
+          <RemoveQuestion
+            count={chosen.length}
+            onConfirm={() => {
+              onReplaceRows(removeRows(doc.rows, chosenIds))
+              setSelected(noSelection)
+              setConfirming(false)
+              setRefocus('all')
+            }}
+            onCancel={() => {
+              setConfirming(false)
+              setRefocus('remove')
+            }}
+          />
+        ) : (
+          <div className="byd-data-bulk" role="toolbar" aria-label="Markerade kort">
+            <label>
+              Sätt
+              <select aria-label="Kolumn" value={field} onChange={(event) => setBulkField(event.target.value)}>
+                {fields.map((f) => (
+                  <option key={f} value={f}>
+                    {f}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <input
+              type={field === 'antal' ? 'number' : 'text'}
+              min={field === 'antal' ? 0 : undefined}
+              aria-label="Värde"
+              value={bulkValue}
+              onChange={(event) => setBulkValue(event.target.value)}
+            />
+            <button
+              type="button"
+              disabled={bulkValue === ''}
+              onClick={() => {
+                onReplaceRows(setColumn(doc.rows, chosenIds, field, field === 'antal' ? Number(bulkValue) : bulkValue))
+                setBulkValue('')
+              }}
+            >
+              Sätt {field} på {chosen.length} kort
+            </button>
+            <button type="button" onClick={() => onReplaceRows(duplicateRows(doc.rows, chosenIds))}>
+              Duplicera {chosen.length} kort
+            </button>
+            <button type="button" data-kind="danger" ref={removeRef} onClick={() => setConfirming(true)}>
+              {removeLabel(chosen.length)}
+            </button>
+            <button type="button" data-kind="quiet" onClick={() => setSelected(noSelection)}>
+              Avmarkera alla
+            </button>
+          </div>
+        ))}
       <table className="byd-data">
         <thead>
           <tr>
+            <th className="byd-data-check">
+              <input
+                type="checkbox"
+                aria-label="Markera alla synliga"
+                checked={chosen.length > 0 && chosen.length === shown.length}
+                ref={(el) => {
+                  allRef.current = el
+                  // Some of the rows on screen, but not all: the header says so as a third state.
+                  if (el) el.indeterminate = chosen.length > 0 && chosen.length < shown.length
+                }}
+                onChange={(event) => setSelected(markRows(selected, shown.map((row) => row.id), event.target.checked))}
+              />
+            </th>
             <SortableHeader field="id" sort={sort} onSort={setSort} />
             {fields.map((f) => (
               <SortableHeader key={f} field={f} sort={sort} onSort={setSort} />
@@ -124,6 +234,17 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
         <tbody>
           {shown.map(({ id: cardRef, fields: row }) => (
             <tr key={cardRef} data-card-ref={cardRef} aria-selected={selectedRow === cardRef ? 'true' : 'false'} onClick={() => onSelectRow(cardRef)}>
+              {/* Two different meanings of "selected" meet in a row: the tick says the next bulk
+                  change is about this card, the row itself says the card is the one being looked
+                  at. A click on the checkbox is only ever the first of them. */}
+              <td className="byd-data-check" onClick={(event) => event.stopPropagation()}>
+                <input
+                  type="checkbox"
+                  checked={selected.has(cardRef)}
+                  onChange={() => setSelected(toggleRow(selected, cardRef))}
+                  aria-label={`markera ${cardRef}`}
+                />
+              </td>
               <td className="byd-data-id">{cardRef}</td>
               {fields.map((f) => (
                 <td key={f}>
@@ -171,6 +292,36 @@ function SortableHeader({ field, sort, onSort }: { field: string; sort: SortStat
       </button>
     </th>
   )
+}
+
+// The question a delete asks first (#17). It takes the focus so it is answered where it is read,
+// gives it back on Escape, and says how many cards it is about in both its name and its sentence
+// — a designer must never have to count the ticks to know what "Ja" means.
+function RemoveQuestion({ count, onConfirm, onCancel }: { count: number; onConfirm(): void; onCancel(): void }) {
+  return (
+    <div
+      className="byd-data-bulk"
+      role="alertdialog"
+      aria-label={removeLabel(count)}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') onCancel()
+      }}
+    >
+      <p>{removeLabel(count)} ur leken?</p>
+      <button type="button" data-kind="danger" autoFocus onClick={onConfirm}>
+        Ja, ta bort
+      </button>
+      <button type="button" onClick={onCancel}>
+        Avbryt
+      </button>
+    </div>
+  )
+}
+
+// What a delete is about, in cards. The same words name the button and the question it opens, so
+// pressing one and reading the other is the same sentence twice.
+function removeLabel(count: number): string {
+  return `Ta bort ${count} kort`
 }
 
 function sortLabel(sort: SortState | null): string {
