@@ -33,15 +33,16 @@ if [ -n "${BYD_REGISTRY:-}" ]; then
   registry="$(echo "$BYD_REGISTRY" | tr '[:upper:]' '[:lower:]')"
   export BYD_APP_IMAGE="${registry}/app:${sha}"
   export BYD_RENDER_IMAGE="${registry}/render:${sha}"
+  export BYD_POSTGRES_IMAGE="${registry}/postgres:${sha}"
   if [ -n "${GHCR_TOKEN:-}" ]; then
     echo "$GHCR_TOKEN" | docker login ghcr.io -u "${GHCR_USER:-token}" --password-stdin > /dev/null
   fi
-  if ! docker manifest inspect "$BYD_APP_IMAGE" > /dev/null 2>&1 || ! docker manifest inspect "$BYD_RENDER_IMAGE" > /dev/null 2>&1; then
+  if ! docker manifest inspect "$BYD_APP_IMAGE" > /dev/null 2>&1 || ! docker manifest inspect "$BYD_RENDER_IMAGE" > /dev/null 2>&1 || ! docker manifest inspect "$BYD_POSTGRES_IMAGE" > /dev/null 2>&1; then
     echo "{\"msg\":\"images-not-ready\",\"sha\":\"$sha\"}"
     git reset --hard --quiet "$local_sha"
     exit 0
   fi
-  docker compose $profiles pull --quiet app render
+  docker compose $profiles pull --quiet app render postgres
 else
   docker compose $profiles build --quiet
 fi

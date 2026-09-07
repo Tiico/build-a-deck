@@ -1,6 +1,0 @@
-# Nightly pg_dump to R2 (DRIFT §5, first step). Small, boring, replaceable by WAL archiving.
-FROM postgres:17-alpine
-RUN apk add --no-cache rclone
-COPY backup.sh /usr/local/bin/backup.sh
-RUN chmod +x /usr/local/bin/backup.sh
-CMD ["/usr/local/bin/backup.sh", "loop"]

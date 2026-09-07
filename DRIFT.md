@@ -77,6 +77,13 @@ Motivering:
 Förlustfönstret måste vara nära noll så fort någon har betalat.
 En backup som aldrig lästs tillbaka är en förhoppning.
 
+Byggt 2026-09-07: WAL-G.
+Postgres-bilden (`ops/Dockerfile.postgres`) är fortfarande Alpine — lådans data initierades på musl, och ett libc-byte skulle ändra kollationerna under indexen — med `gcompat` för WAL-G:s binär, låst till version och checksumma.
+`archive_command` skickar varje färdigt WAL-segment till R2 inom en minut (`archive_timeout=60`); utan R2-nycklar släpps segmentet och loggen säger det en gång, så att Postgres aldrig samlar WAL i väntan på en bucket som inte finns.
+`backup`-containern är samma bild över datavolymen: en basbackup per natt, de senaste `BACKUP_KEEP` behålls med sitt WAL.
+`ops/restore-test.sh` hämtar senaste basbackupen och allt WAL efter den till en tom katalog i backup-bilden, startar Postgres där, räknar, och spelar upp den senaste sessionens logg genom motorn i app-bilden.
+Bytet av Postgres-bild startar om databasen en gång vid deployen; volymen är densamma.
+
 ## 6. Renderfarm: Postgres-kö, en worker, cache per innehållshash
 
 Jobbtabell i Postgres med `SELECT … FOR UPDATE SKIP LOCKED`.
@@ -174,7 +181,7 @@ CI (`.github/workflows/ci.yml`) kör lint, typecheck och alla tester mot Postgre
 Trunken har ingen CI framför sig; `.githooks/pre-push` kör samma grindar lokalt innan något når `main`.
 Korpusen anonymiserar namn, kommentarer och observatörer men behåller kortens id:n; `GET /sessions/:id/export` och `pnpm --filter @byd/engine corpus` lägger till riktiga loggar.
 Händelseschemats `schemaVersion` och upcasters (§7) återstår; tills vidare är grinden att varje rad i korpusen parsas av dagens schema.
-Backup (§5) är i första steget en nattlig `pg_dump` till R2 med 30 dagars kvarhållning och `ops/restore-test.sh` som återställningsprov; WAL-arkivering återstår.
+Backup (§5) byggd 2026-09-07 med WAL-G, se §5; den nattliga `pg_dump`-dumpen är ersatt.
 Assets i R2 (§4) byggt 2026-09-07, se §4.
 Administration över Tailscale (§10) är lådans sak; Postgres lyssnar bara på 127.0.0.1.
 
