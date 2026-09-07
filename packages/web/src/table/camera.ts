@@ -49,16 +49,27 @@ export const pad = (r: Rect, mm: number): Rect => ({ x: r.x - mm, y: r.y - mm, w
 export const centre = (r: Rect): Point => ({ x: r.x + r.w / 2, y: r.y + r.h / 2 })
 export const same = (a: Rect | null, b: Rect | null): boolean => a === b || (!!a && !!b && a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h)
 
-// The whole floor, at the viewport's aspect, centred on it.
+// A rectangle grown to the viewport's aspect about its own centre: the whole floor, or the floor
+// together with whatever lies beyond its rim.
 export function fitFloor(floor: Rect, vp: Size): Rect {
   return withAspect(floor, vp)
 }
 
+// How far the camera may reach: the table, and anything in play that lies beyond its rim — where
+// a split beside a pile at the edge leaves a card (K1, K15). While everything is on the felt this
+// is the floor and nothing more (#20). Pass what is in play, unpadded: the padding is room to
+// breathe, and cropping it at the table's edge is what keeps the camera off the void.
+export function reachOf(floor: Rect, content: Rect | null): Rect {
+  return content ? (union([floor, content]) ?? floor) : floor
+}
+
 // `target` grown to the viewport's aspect about its centre, never narrower than `minW` (so the
-// camera never comes absurdly close), never wider than the floor fits, and kept inside the
-// floor as fitted, so the camera never shows the void beyond the table.
-export function frameRect(target: Rect, vp: Size, floor: Rect, minW: number): Rect {
-  const whole = fitFloor(floor, vp)
+// camera never comes absurdly close), never wider than `reach` fits, and kept inside `reach` as
+// fitted, so the camera never shows the void beyond what there is to see.
+// A `reach` that contains the target yields a frame that contains it too: what the camera is
+// pointed at is never cut in half by the frame's edge. `reachOf` is how callers get one.
+export function frameRect(target: Rect, vp: Size, reach: Rect, minW: number): Rect {
+  const whole = fitFloor(reach, vp)
   let r = withAspect(target, vp)
   if (r.w < minW) r = withAspect({ x: centre(r).x - minW / 2, y: centre(r).y, w: minW, h: 0 }, vp)
   if (r.w >= whole.w) return whole
@@ -67,11 +78,12 @@ export function frameRect(target: Rect, vp: Size, floor: Rect, minW: number): Re
   return { x, y, w: r.w, h: r.h }
 }
 
-// The camera `factor` times as wide, centred on a point: a pinch, a scroll, a double tap.
-export function zoomAround(cam: Rect, p: Point, factor: number, vp: Size, floor: Rect, minW: number): Rect {
+// The camera `factor` times as wide, centred on a point: a pinch, a scroll, a double tap. Zooming
+// out stops at `reach` — a zoom is a view, not content, so it never widens what the camera may see.
+export function zoomAround(cam: Rect, p: Point, factor: number, vp: Size, reach: Rect, minW: number): Rect {
   const w = cam.w * factor
   const h = (w * vp.h) / vp.w
-  return frameRect({ x: p.x - w / 2, y: p.y - h / 2, w, h }, vp, floor, minW)
+  return frameRect({ x: p.x - w / 2, y: p.y - h / 2, w, h }, vp, reach, minW)
 }
 
 // How the table is laid out under a camera: the scale, and where the floor's corner goes.

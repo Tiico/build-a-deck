@@ -378,7 +378,10 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, 404, { error: 'unknown session' })
       return true
     }
-    json(res, 200, { id: sessionId, version: actor.version, ended: actor.ended, ...(session.project ? { project: session.project } : {}) })
+    // The game's name comes from the project the table was started from (L5): a screen shows it
+    // as its title, and there is no second place a name could live.
+    const named = session.project ? await projects.load(session.project) : null
+    json(res, 200, { id: sessionId, version: actor.version, ended: actor.ended, ...(session.project ? { project: session.project } : {}), ...(named ? { name: named.name } : {}) })
     return true
   }
     // The survey after a session (G3): one structured answer per participant, once the log is

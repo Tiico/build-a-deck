@@ -22,6 +22,9 @@ import { facesOf, type Deck } from './faces.js'
 import type { LogStore } from './store.js'
 
 export const TEXTURE_DPI = 150
+// How much of the log a joining connection is handed, so a screen that comes in mid-game can
+// say what has happened (#20). Enough to fill a feed, not the whole session.
+const HISTORY_LINES = 50
 
 // One actor owns one table. A serial queue makes concurrency impossible; the order
 // decide → append (commit) → apply → broadcast makes the log the truth (DRIFT §3).
@@ -110,6 +113,9 @@ export class TableActor {
     const snapshot = project(this.state, this.registry, sub.seat, this.faces, this.deps.history, sub.observer !== undefined)
     this.subscribers.set(sub, snapshot)
     sub.send({ t: 'snapshot', snapshot })
+    // After the table, what led to it: the same redaction every view gets while playing.
+    const history = this.log.slice(-HISTORY_LINES).map(projectActivity)
+    if (history.length > 0) sub.send({ t: 'activity', lines: history })
     if (sub.observer !== undefined) this.broadcastRoster()
     else sub.send({ t: 'roster', observers: this.observers() })
     this.lastActivity = Date.now()

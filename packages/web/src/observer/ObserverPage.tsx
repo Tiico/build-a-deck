@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { VisibleComponentState } from '@byd/protocol'
 import '../table/table.css'
 import '../player/player.css'
 import { TableRenderer } from '../table/TableRenderer.js'
@@ -19,6 +20,7 @@ export function ObserverPage() {
   const http = url.replace(/^ws/, 'http')
   const { client, view, status, activity, observers } = useTableClient(sessionId ? { url, sessionId, seat: null, observer: name } : null)
   const [sheet, setSheet] = useState(false)
+  const [inspecting, setInspecting] = useState<VisibleComponentState | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const [version, setVersion] = useState<string | null>(null)
   useEffect(() => {
@@ -39,8 +41,8 @@ export function ObserverPage() {
 
   return (
     <div data-page="observe" data-status={status} className="byd-fit">
-      <TvChrome view={view} activity={activity} roomCode={sessionId} observers={observers}>
-        <TableRenderer view={view} mode="tv" faces={http} />
+      <TvChrome view={view} activity={activity} inspecting={inspecting} faces={http} observers={observers}>
+        <TableRenderer view={view} mode="tv" faces={http} onInspect={setInspecting} />
       </TvChrome>
       <div className="byd-observer-banner">
         <span>Du är observatör: du ser allas händer och alla högar. Alla vet att du är här.</span>

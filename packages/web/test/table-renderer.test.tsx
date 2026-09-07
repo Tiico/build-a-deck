@@ -115,19 +115,18 @@ describe('the camera (C5)', () => {
 })
 
 describe('hands', () => {
-  it('shows each hand as a count with the seat name, oriented toward its edge in table mode', () => {
+  it('shows each hand as a count, oriented toward its edge in table mode', () => {
     const { view } = buildScene()
     const { unmount } = render(<TableRenderer view={view(null)} mode="table" />)
     const a = document.querySelector('[data-zone="hand:A"]')!
     expect(a.getAttribute('data-count')).toBe('2')
-    expect(a.textContent).toContain('Ada')
+    expect(a.textContent).toBe('2')
     expect(a.textContent).not.toMatch(/dragon|knight/)
     // hand:A sits below the table centre, hand:B above: they face opposite ways
     expect(a.getAttribute('data-rot')).toBe('0')
     const b = document.querySelector('[data-zone="hand:B"]')!
     expect(b.getAttribute('data-count')).toBe('0')
     expect(b.getAttribute('data-rot')).toBe('180')
-    expect(b.textContent).toContain('B')
     unmount()
 
     render(<TableRenderer view={view(null)} mode="tv" />)
@@ -409,5 +408,61 @@ describe('a rotated table (C5): my seat at the bottom', () => {
     render(<TableRenderer ref={ref} view={view(null)} mode="tv" scale={1} rotate={180} />)
     expect(ref.current?.toTable(500, 300)).toEqual({ x: 0, y: 0 })
     expect(ref.current?.toTable(600, 400)).toEqual({ x: -100, y: -100 })
+  })
+})
+
+describe('what the screen is pointed at (C)', () => {
+  it('reports the card under the pointer, and that there is none again when it leaves', () => {
+    const { view, faceUp } = buildScene()
+    const onInspect = vi.fn()
+    render(<TableRenderer view={view(null)} mode="tv" scale={2} onInspect={onInspect} />)
+
+    const card = document.querySelector(`[data-component="${faceUp}"]`)!
+    fireEvent.pointerEnter(card)
+    expect(onInspect).toHaveBeenLastCalledWith(expect.objectContaining({ id: faceUp }))
+    fireEvent.pointerLeave(card)
+    expect(onInspect).toHaveBeenLastCalledWith(null)
+
+    // The top of a pile is a card too: a face-up discard is worth looking at.
+    const top = document.querySelector('[data-zone="discard"] .byd-pile-top')!
+    fireEvent.pointerEnter(top)
+    expect(onInspect).toHaveBeenLastCalledWith(expect.objectContaining({ zone: 'discard' }))
+  })
+})
+
+describe('how a pile says what it is', () => {
+  it('is a count badge with the name in caps beneath on the TV, and one pill on the felt', () => {
+    const { view } = buildScene()
+    const { unmount } = render(<TableRenderer view={view(null)} mode="tv" scale={1} />)
+    const tv = document.querySelector('[data-zone="discard"]')!
+    expect(tv.querySelector('.byd-pile-n')!.textContent).toBe('3')
+    expect(tv.querySelector('.byd-pile-name')!.textContent).toBe('Kasthög')
+    unmount()
+
+    render(<TableRenderer view={view(null)} mode="table" scale={1} />)
+    const felt = document.querySelector('[data-zone="discard"]')!
+    expect(felt.querySelector('.byd-pile-n')!.textContent).toBe('3')
+    expect(felt.querySelector('.byd-pile-name')!.textContent).toBe('Kasthög')
+    // A pile that only exists because someone stacked two cards has no name to say (K1).
+    expect(document.querySelector('[data-zone="draw"] .byd-pile-name')!.textContent).toBe('Draghög')
+  })
+})
+
+describe('where a seat has its name (B)', () => {
+  it('writes the name along that seat’s own edge and leaves the count on the fan', () => {
+    const { view } = buildScene()
+    const { unmount } = render(<TableRenderer view={view(null)} mode="table" scale={1} />)
+    const ada = document.querySelector('[data-seat-name="A"]')!
+    expect(ada.textContent).toBe('Ada')
+    // A's hand lies along the bottom edge, B's along the top: each name turns toward its seat.
+    expect(ada.getAttribute('data-edge')).toBe('S')
+    expect(document.querySelector('[data-seat-name="B"]')!.getAttribute('data-edge')).toBe('N')
+    expect(document.querySelector('[data-zone="hand:A"] .byd-hand-count')!.textContent).toBe('2')
+    unmount()
+
+    // On the TV the dock says who sits where; the felt does not repeat it.
+    render(<TableRenderer view={view(null)} mode="tv" scale={1} />)
+    expect(document.querySelector('[data-seat-name]')).toBeNull()
+    expect(document.querySelector('[data-zone="hand:A"] .byd-hand-count')!.textContent).toBe('2')
   })
 })

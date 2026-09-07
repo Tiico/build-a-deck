@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { Intent } from '@byd/protocol'
+import type { Intent, VisibleComponentState } from '@byd/protocol'
 import './table.css'
 import { TableRenderer, type TableMode } from './TableRenderer.js'
 import { TvChrome } from './TvChrome.js'
@@ -7,25 +7,34 @@ import { useTableClient } from './useTableClient.js'
 import { previewOf, whereTo, whoDecides } from './rewind.js'
 import { usePresence, useRecent } from './usePresence.js'
 
+type SessionRecord = { name?: string; version?: string }
+
 // /table?session=…&mode=table|tv&code=…&server=ws://…
 // The `table` role: no seat, sees only what is public. `server` defaults to this origin.
 export function TablePage() {
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const sessionId = params.get('session')
   const mode: TableMode = params.get('mode') === 'tv' ? 'tv' : 'table'
-  const roomCode = params.get('code') ?? sessionId ?? ''
+  const roomCode = params.get('code') ?? ''
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
   const { client, view, status, activity, observers } = useTableClient(sessionId ? { url, sessionId, seat: null } : null)
-  // The end of a session (C9): which version the log is locked on, from the session record.
-  const [version, setVersion] = useState<string | null>(null)
+  // The session record: which game this table runs and which version of it (L5, C9). The name
+  // titles the screen; the version is also what the log is locked on when the session ends.
+  const [record, setRecord] = useState<SessionRecord | null>(null)
   useEffect(() => {
-    if (!sessionId || !view?.ended || version) return
+    if (!sessionId) return
+    let live = true
     void fetch(`${url.replace(/^ws/, 'http')}/sessions/${encodeURIComponent(sessionId)}`)
-      .then((r) => (r.ok ? (r.json() as Promise<{ version: string }>) : Promise.reject(new Error(String(r.status)))))
-      .then((s) => setVersion(s.version))
-      .catch(() => setVersion('?'))
-  }, [sessionId, view?.ended, version, url])
+      .then((r) => (r.ok ? (r.json() as Promise<SessionRecord>) : Promise.reject(new Error(String(r.status)))))
+      .then((s) => live && setRecord(s))
+      .catch(() => live && setRecord({}))
+    return () => {
+      live = false
+    }
+  }, [sessionId, url])
 
+  // What the screen is pointed at (C): only the TV has a panel to show it in.
+  const [inspecting, setInspecting] = useState<VisibleComponentState | null>(null)
   const presence = usePresence(client, view)
   const recent = useRecent(activity)
 
@@ -56,13 +65,14 @@ export function TablePage() {
       recent={recent}
       onPresence={client ? (p) => client.sendPresence(p) : undefined}
       camera={mode === 'tv'}
+      onInspect={mode === 'tv' ? setInspecting : undefined}
     />
   )
   const ended = view.ended && (
     <div className="byd-ended" data-ended>
       <div>
         <h1>Sessionen är avslutad</h1>
-        <p>Loggen är låst på {version ?? '…'}. Enkäten finns på telefonerna.</p>
+        <p>Loggen är låst på {record === null ? '…' : (record.version ?? '?')}. Enkäten finns på telefonerna.</p>
         <div className="byd-ended-summary">
           <span>
             <b>{view.seq}</b> rader
@@ -91,8 +101,12 @@ export function TablePage() {
   )
   return (
     <div data-page="table" data-status={status} className="byd-fit">
+      {mode === 'table' && (
+        // The felt is the whole screen (B); a quiet line along its top says which game this is.
+        <h1 className="byd-table-plate">{[record?.name ?? 'Bordet', record?.version, roomCode].filter(Boolean).join(' · ')}</h1>
+      )}
       {mode === 'tv' ? (
-        <TvChrome view={previewOf(view)} activity={activity} roomCode={roomCode} joinUrl={joinUrl} observers={observers}>
+        <TvChrome view={previewOf(view)} activity={activity} roomCode={roomCode} joinUrl={joinUrl} title={record?.name} version={record?.version} inspecting={inspecting} faces={url.replace(/^ws/, 'http')} observers={observers}>
           {table}
         </TvChrome>
       ) : (

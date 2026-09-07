@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { TableClient } from '../src/client.js'
 import { TablePage } from '../src/table/TablePage.js'
-import { createSession, startServer, type Running } from './fixture.js'
+import { createNamedSession, createSession, startServer, type Running } from './fixture.js'
 
 let run: Running
 beforeEach(async () => {
@@ -28,7 +28,73 @@ describe('TablePage', () => {
     await other.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'hand:A', count: 3 })
     expect(await screen.findByText(/Ada satte sig/)).toBeTruthy()
     expect(document.querySelector('[data-zone="draw"]')!.getAttribute('data-count')).toBe('7')
-    expect(document.querySelector('[data-zone="hand:A"]')!.textContent).toContain('Ada')
+    expect(document.querySelector('[data-zone="hand:A"]')!.getAttribute('data-count')).toBe('3')
+    expect(screen.getByRole('list', { name: /platser/i }).textContent).toMatch(/Ada.*3 kort på hand/)
+    other.close()
+  })
+})
+
+describe('the screen says which game it runs (C)', () => {
+  it('titles the TV with the game name and version from the session record', async () => {
+    const id = await createNamedSession(run, 'Skogens herrar')
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&code=KX7P&server=${encodeURIComponent(run.url)}`)
+    render(<TablePage />)
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Skogens herrar v0.7'))
+  })
+})
+
+describe('the table mode names the game too (B)', () => {
+  it('writes the game, its version and the room code along the top of the felt', async () => {
+    const id = await createNamedSession(run, 'Skogens herrar')
+    history.replaceState(null, '', `/table?session=${id}&mode=table&code=KX7P&server=${encodeURIComponent(run.url)}`)
+    render(<TablePage />)
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Skogens herrar · v0.7 · KX7P'))
+    // The felt is the whole screen in table mode: no TV chrome around it.
+    expect(document.querySelector('[data-tv]')).toBeNull()
+  })
+})
+
+describe('a screen that joins mid-game (#20)', () => {
+  it('fills SENAST from the log the moment it connects, not only with what happens afterwards', async () => {
+    const id = await createSession(run.store)
+    const played = TableClient.connect({ url: run.url, sessionId: id, seat: null })
+    await played.ready()
+    await played.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
+    await played.send({ v: 'draw', from: 'draw', to: 'discard', count: 2 })
+    played.close()
+
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&code=KX7P&server=${encodeURIComponent(run.url)}`)
+    render(<TablePage />)
+    await screen.findByText('KX7P')
+
+    const feed = screen.getByRole('list', { name: /senast/i })
+    await waitFor(() => expect(within(feed).getAllByRole('listitem')).toHaveLength(2))
+    expect(within(feed).getAllByRole('listitem').map((l) => l.textContent)).toEqual([
+      expect.stringMatching(/^2.*Bordet drog 2 från Draghög/),
+      expect.stringMatching(/^1.*Ada satte sig/),
+    ])
+  })
+})
+
+describe('pointing at a card on the TV (C)', () => {
+  it('fills the inspection panel from the table underneath it', async () => {
+    const id = await createSession(run.store)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&code=KX7P&server=${encodeURIComponent(run.url)}`)
+    render(<TablePage />)
+    await screen.findByText('KX7P')
+
+    const other = TableClient.connect({ url: run.url, sessionId: id, seat: null })
+    await other.ready()
+    await other.send({ v: 'draw', from: 'draw', to: 'table', count: 1 })
+    await waitFor(() => expect(document.querySelector('.byd-card')).toBeTruthy())
+    const card = document.querySelector('.byd-card')!
+
+    const panel = screen.getByRole('region', { name: /inspektion/i })
+    expect(panel.textContent).toMatch(/peka på ett kort/)
+    fireEvent.pointerEnter(card)
+    await waitFor(() => expect(panel.textContent).toMatch(/dolt kort/))
+    fireEvent.pointerLeave(card)
+    await waitFor(() => expect(panel.textContent).toMatch(/peka på ett kort/))
     other.close()
   })
 })

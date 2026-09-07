@@ -89,3 +89,11 @@ export async function createSession(store: MemoryLogStore, id = 's1'): Promise<s
   await store.createSession({ id, version: 'v1', setup: twoSeatSetup() })
   return id
 }
+
+// A table started from a project, the way the editor starts one (L5): the game has a name.
+export async function createNamedSession(run: Running, name: string, id = 's1', version = 'v0.7'): Promise<string> {
+  const { zones, seats, floor } = twoSeatSetup()
+  await run.projects.create(`p-${id}`, { name, template: { faces: { front: { base: [], variants: {} }, back: { base: [], variants: {} } } }, rows: [], icons: {}, setup: { zones, seats, floor, deckZone: 'draw' } })
+  await run.store.createSession({ id, version, setup: twoSeatSetup(), project: `p-${id}` })
+  return id
+}

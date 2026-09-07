@@ -107,12 +107,14 @@ const discard = (await snapshot()).zones.find((z) => z.id === 'discard') as { or
 await send(discard.order.map((id) => ({ v: 'flip', component: id, face: 'front' }) as Intent))
 await send([{ v: 'draw', from: 'draw', to: 'table', count: 3 }])
 const loose = (await snapshot()).components.filter((c) => c.zone === 'table').map((c) => c.id) as [string, string, string]
+// Coordinates are relative to the zone, so a loose card on the floor runs 0…1200 by 0…800 —
+// negative ones would lay the demo's cards off the felt entirely.
 await send([
-  { v: 'move', component: loose[0], to: 'table', x: -80, y: 170, rot: -6 },
+  { v: 'move', component: loose[0], to: 'table', x: 520, y: 570, rot: -6 },
   { v: 'flip', component: loose[0], face: 'front' },
-  { v: 'move', component: loose[1], to: 'table', x: 30, y: 180, rot: 4 },
+  { v: 'move', component: loose[1], to: 'table', x: 630, y: 580, rot: 4 },
   { v: 'flip', component: loose[1], face: 'front' },
-  { v: 'move', component: loose[2], to: 'table', x: 380, y: 40, rot: 88 },
+  { v: 'move', component: loose[2], to: 'table', x: 980, y: 440, rot: 88 },
 ])
 ws.close()
 console.log(`session ${id} ready`)

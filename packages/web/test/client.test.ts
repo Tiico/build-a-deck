@@ -99,6 +99,24 @@ describe('activity', () => {
     expect(b.activity.every((l) => !('outcome' in l))).toBe(true)
     expect(seen).toContain(2)
   })
+
+  it('fills the feed from the log the moment it connects, and a reconnect says nothing twice', async () => {
+    const id = await createSession(run.store)
+    const table = await connect(id, null)
+    await table.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
+    await table.send({ v: 'draw', from: 'draw', to: 'discard', count: 2 })
+
+    const late = await connect(id, null)
+    await waitUntil(() => late.activity.length === 2)
+    expect(late.activity.map((l) => l.seq)).toEqual([1, 2])
+
+    // The screen loses the server and comes back to a table that has moved on.
+    await run.restart()
+    const after = await connect(id, null)
+    await after.send({ v: 'shuffle', pile: 'draw' })
+    await waitUntil(() => late.activity.length === 3)
+    expect(late.activity.map((l) => l.seq)).toEqual([1, 2, 3])
+  })
 })
 
 describe('presence (K6)', () => {

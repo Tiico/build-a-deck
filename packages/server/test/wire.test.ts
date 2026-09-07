@@ -200,6 +200,28 @@ describe('activity on the wire', () => {
     expect(b.frames.join('\n')).not.toContain('rekey')
     expect(b.frames.join('\n')).not.toContain('outcome')
   })
+
+  // A screen that joins mid-game must be able to say what has happened, not only what happens
+  // next: the feed on the TV is empty otherwise (#20).
+  it('hands a joining connection the log so far, redacted the same way', async () => {
+    const id = await createSession(run.http)
+    const table = await connect(id, null)
+    await table.send(null, { v: 'seat.claim', seat: 'A', name: 'Ada' })
+    await table.send(null, { v: 'shuffle', pile: 'draw' })
+    await table.send(null, { v: 'draw', from: 'draw', to: 'discard', count: 2 })
+
+    const late = await connect(id, null)
+    const history = await late.waitFor((m) => m.t === 'activity')
+    if (history.t !== 'activity') throw new Error('unreachable')
+    expect(history.lines.map((l) => [l.seq, l.intent.v])).toEqual([
+      [1, 'seat.claim'],
+      [2, 'shuffle'],
+      [3, 'draw'],
+    ])
+    expect(late.frames.join('\n')).not.toContain('rekey')
+    // The snapshot comes first: the feed is never ahead of the table it describes.
+    expect(late.messages.findIndex((m) => m.t === 'snapshot')).toBeLessThan(late.messages.findIndex((m) => m.t === 'activity'))
+  })
 })
 
 describe('textures (TUNN-SKIVA §5)', () => {

@@ -181,10 +181,16 @@ export class TableClient {
         this.settleSeqWaiters()
         this.notify()
         break
-      case 'activity':
-        this.activity = [...this.activity, ...msg.lines].slice(-ACTIVITY_LIMIT)
+      case 'activity': {
+        // A connection is handed the log so far, and again after a reconnect. `seq` is the line's
+        // identity, so saying the same line twice adds nothing.
+        const known = new Set(this.activity.map((l) => l.seq))
+        const fresh = msg.lines.filter((l) => !known.has(l.seq))
+        if (fresh.length === 0) break
+        this.activity = [...this.activity, ...fresh].sort((a, b) => a.seq - b.seq).slice(-ACTIVITY_LIMIT)
         this.notify()
         break
+      }
       case 'ack':
         this.settle(msg.id, { ok: true, seqs: msg.seqs })
         break

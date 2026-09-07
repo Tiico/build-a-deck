@@ -203,7 +203,7 @@ describe('a session record (C9)', () => {
   it('GET /sessions/:id says which version it runs and whether it has ended', async () => {
     const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
     const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
-    expect(await (await fetch(`${run.http}/sessions/${sessionId}`)).json()).toEqual({ id: sessionId, version: 'rev-1', ended: false, project: id })
+    expect(await (await fetch(`${run.http}/sessions/${sessionId}`)).json()).toEqual({ id: sessionId, version: 'rev-1', ended: false, project: id, name: 'Skogens herrar' })
     const table = await WireClient.connect(run.base, sessionId, null)
     await table.send(null, { v: 'session.end' })
     await table.close()
