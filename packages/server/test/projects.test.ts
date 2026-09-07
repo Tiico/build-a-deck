@@ -431,4 +431,45 @@ describe('a group rules what a card looks like on the table (#13)', () => {
     expect(revealed['trap']!.faces!['back']).not.toBe(revealed['dragon']!.faces!['back'])
     await table.close()
   })
+
+  it('exports paired print faces from the current project and queues each PDF only once', async () => {
+    const { id } = (await (await json('POST', '/projects', groupedProject())).json()) as { id: string }
+
+    const first = await json('POST', `/projects/${id}/print`, {})
+    expect(first.status).toBe(202)
+    const manifest = (await first.json()) as { project: string; rev: number; cards: { cardRef: string; faces: Record<string, string> }[] }
+    expect(manifest.project).toBe(id)
+    expect(manifest.rev).toBe(1)
+    expect(manifest.cards.map((card) => card.cardRef)).toEqual(['dragon', 'trap'])
+    expect(manifest.cards.every((card) => Object.keys(card.faces).sort().join(',') === 'back,front')).toBe(true)
+    expect(manifest.cards[0]!.faces.back).not.toBe(manifest.cards[1]!.faces.back)
+    expect(JSON.stringify(manifest)).not.toContain('compiled')
+    expect(JSON.stringify(manifest)).not.toContain('data-card')
+
+    // Asking for the same revision again returns the same content-addressed manifest and does
+    // not make duplicate work for the renderer.
+    const again = await json('POST', `/projects/${id}/print`, {})
+    expect(again.status).toBe(202)
+    expect(await again.json()).toEqual(manifest)
+    const jobs = []
+    for (;;) {
+      const job = await run.renders.claim(Date.now())
+      if (!job) break
+      jobs.push(job)
+    }
+    expect(jobs).toHaveLength(4)
+    expect(new Set(jobs.map((job) => job.hash)).size).toBe(4)
+    expect(jobs.every((job) => job.kind.kind === 'pdf' && job.priority === 'print')).toBe(true)
+  })
+
+  it('keeps a project print export private to its owner', async () => {
+    const { id } = (await (await json('POST', '/projects', groupedProject())).json()) as { id: string }
+    expect((await fetch(`${run.http}/projects/${id}/print`, { method: 'POST' })).status).toBe(401)
+
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com' }) })
+    const link = /\/auth\/verify\?token=\S+/.exec(run.mail.sent.at(-1)?.text ?? '')?.[0] ?? ''
+    const verified = await fetch(`${run.http}${link}`, { redirect: 'manual' })
+    const otherCookie = (verified.headers.get('set-cookie') ?? '').split(';')[0] ?? ''
+    expect((await fetch(`${run.http}/projects/${id}/print`, { method: 'POST', headers: { cookie: otherCookie } })).status).toBe(403)
+  })
 })

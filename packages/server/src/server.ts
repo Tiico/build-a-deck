@@ -15,7 +15,7 @@ import { ProjectDoc, deckFromProject, setupFromProject, type ProjectRecord, type
 import { SurveyAnswer, type SurveyStore } from './surveys.js'
 import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountOf, hash, loginMail, safeNext, token, type Account, type AuthStore, type Mailer } from './auth.js'
 import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
-import { facesOf } from './faces.js'
+import { facesOf, printExportOf } from './faces.js'
 import { TEXTURE_DPI } from './actor.js'
 
 // `staticDir`: the built web app, served from the same origin as the API (README, DRIFT §1).
@@ -501,6 +501,26 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     if (result === 'missing') json(res, 404, { error: 'unknown project' })
     else if (result === 'conflict') json(res, 409, { error: 'project changed since rev ' + rev })
     else json(res, 200, { id: result.id, rev: result.rev })
+    return true
+  }
+  // The project's current revision as print work (#14): one manifest entry per physical card,
+  // with every face compiled from that same row. The response is safe metadata only; compiled
+  // HTML/CSS stays inside the render queue, where the existing Chromium worker consumes it.
+  const print = /^\/projects\/([^/]+)\/print$/.exec(url.pathname)
+  if (print && req.method === 'POST') {
+    const gate = await owned(decodeURIComponent(print[1] ?? ''))
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    if (!opts.renders) {
+      json(res, 503, { error: 'render queue unavailable' })
+      return true
+    }
+    const rec = gate.rec
+    const printed = printExportOf(deckFromProject(rec), setupFromProject(rec), opts.registry, clock(opts).getTime())
+    for (const job of printed.jobs) await opts.renders.enqueue(job)
+    json(res, 202, { project: rec.id, rev: rec.rev, cards: printed.cards })
     return true
   }
   const start = /^\/projects\/([^/]+)\/sessions$/.exec(url.pathname)

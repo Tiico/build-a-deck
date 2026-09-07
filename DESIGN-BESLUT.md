@@ -919,6 +919,7 @@ Verifierat och färdigställt 2026-09-07 (#14):
 Ett dolt kort projiceras med just den baksideshash som dess rads grupp väljer, men utan `cardRef` eller framsideshash; det är testat på de råa WebSocket-frames som lämnar servern.
 Trycköverlämningen är ett kortmanifest, inte två fristående listor: varje fysisk komponent bär hash för alla sina ansikten från samma kompilering av samma rad. Därmed kan en gruppframsida inte paras med standardbaksidan, kopior behåller varsin manifestpost och identiskt renderinnehåll delar jobb genom hashen.
 Både fram- och baksida går genom `compileCard` med utfall och vidare som PDF-jobb till samma Chromium-renderare som övriga tryckunderlag.
+`POST /projects/:id/print` gör överlämningen från projektets aktuella revision för dess inloggade ägare, köar de deduplicerade jobben och svarar med manifestets hashpar utan att lämna ut kompilerad HTML eller CSS.
 
 ### L8. Editorns utseende: kortväggen som hem, duken för mallen, tabellen som flik (prototypat 2026-09-06)
 
