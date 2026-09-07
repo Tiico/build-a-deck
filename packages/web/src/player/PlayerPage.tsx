@@ -44,8 +44,8 @@ export function PlayerPage() {
   const hand = view.components.filter((c) => c.zone === `hand:${seat}`)
   const toPlay = lifted ? (selected.has(lifted.id) ? hand.filter((c) => selected.has(c.id)) : [lifted]) : []
 
-  const play = (zone: string) => {
-    void client.send(...playIntents(view, toPlay, zone))
+  const play = (zone: string, at: 'top' | 'bottom') => {
+    void client.send(...playIntents(view, toPlay, zone, undefined, at))
     setLifted(null)
     setSelected(new Set())
   }

@@ -185,6 +185,9 @@ Fullt bord går att fälla ut vid behov.
 Följdkrav:
 Zonnamn måste vara begripliga utan att man ser bordet.
 
+Byggt 2026-09-07: en zon kan bära en genväg (`shortcut`) med verbet telefonen visar och var i en hög kortet hamnar, överst eller underst; utan genväg visar telefonen zonens namn.
+Wizarden ger draghögen "Lägg underst" och kasthögen "Kasta". Editorns flik "Bord" redigerar namn och genvägar för varje zon som inte är en hand, med telefonens ark som förhandsvisning; hela setup-editorn (zoner, platser, geometri) är fortfarande fas 2.
+
 ### C5. Rumslig modell: konfigurerbart TV- eller bordsläge (fråga 32)
 
 Sessionen väljer vid start mellan TV-läge, där allt orienteras mot betraktaren och platser radas längs nedre kanten, och bordsläge, där platser ligger runt om och orientering följer platsen.

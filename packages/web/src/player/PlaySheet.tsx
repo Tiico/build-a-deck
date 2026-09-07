@@ -1,14 +1,22 @@
 import type { Snapshot } from '@byd/protocol'
 
-export type PlaySheetProps = { view: Snapshot; count: number; label: string; onPlay(zone: string): void; onClose(): void }
+export type Placement = 'top' | 'bottom'
+export type PlaySheetProps = { view: Snapshot; count: number; label: string; onPlay(zone: string, at: Placement): void; onClose(): void }
+
+// What a zone offers the phone (C4): the shortcut's verb, or the zone's name when the designer
+// gave none; and for a pile, whether a card played there goes on top or underneath. The same
+// rule for the sheet and for the editor's preview of it.
+export type ZoneLike = { id: string; kind: 'pile' | 'area' | 'hand'; name: string; shortcut?: { label: string; at: Placement } | undefined }
+export function shortcutsOf<Z extends ZoneLike>(zones: readonly Z[], floor: string): (Z & { label: string; at: Placement })[] {
+  return zones.filter((z) => z.kind !== 'hand' && z.id !== floor).map((z) => ({ ...z, label: z.shortcut?.label ?? z.name, at: z.shortcut?.at ?? 'top' }))
+}
 
 // Where a lifted card can go (C4): every named zone that is not a hand, in the setup's order,
-// and the floor last as "Bordet". Zone names are the designer's — they are the UX here (B5).
+// and the floor last as "Bordet". Zone names and shortcuts are the designer's — they are the UX
+// here (B5).
 export function targetsOf(view: Snapshot) {
-  const named = view.zones
-    .filter((z) => z.kind !== 'hand' && z.id !== view.floor)
-    .map((z) => ({ id: z.id, name: z.name, kind: z.kind, count: z.mode === 'count' ? z.count : z.order.length }))
-  return [...named, { id: view.floor, name: 'Bordet', kind: 'area' as const, count: 0 }]
+  const named = shortcutsOf(view.zones, view.floor).map((z) => ({ id: z.id, name: z.name, label: z.label, at: z.at, kind: z.kind, count: z.mode === 'count' ? z.count : z.order.length }))
+  return [...named, { id: view.floor, name: 'Bordet', label: 'Bordet', at: 'top' as Placement, kind: 'area' as const, count: 0 }]
 }
 
 export function PlaySheet({ view, count, label, onPlay, onClose }: PlaySheetProps) {
@@ -29,9 +37,9 @@ export function PlaySheet({ view, count, label, onPlay, onClose }: PlaySheetProp
         </p>
         <div className="byd-sheet-targets">
           {targetsOf(view).map((t) => (
-            <button key={t.id} type="button" onClick={() => onPlay(t.id)}>
-              <span>{t.name}</span>
-              <small>{t.kind === 'pile' ? `${t.count} kort · lägg överst` : 'lägg fritt'}</small>
+            <button key={t.id} type="button" onClick={() => onPlay(t.id, t.at)}>
+              <span>{t.label}</span>
+              <small>{t.kind === 'pile' ? `${t.count} kort · ${t.at === 'bottom' ? 'underst' : 'överst'} i ${t.name}` : 'lägg fritt'}</small>
             </button>
           ))}
         </div>

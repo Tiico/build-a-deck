@@ -67,6 +67,21 @@ export class ProjectClient {
     this.commit({ ...this.doc, name })
   }
 
+  // A zone's name (what the table shows) and its shortcut (the verb the phone shows, C4); an
+  // undefined shortcut removes it, so the phone falls back to the name.
+  patchZone(id: string, patch: { name?: string; shortcut?: { label: string; at: 'top' | 'bottom' } | undefined }): void {
+    if (!this.doc.setup.zones.some((z) => z.id === id)) throw new Error(`no zone ${id}`)
+    const zones = this.doc.setup.zones.map((z) => {
+      if (z.id !== id) return z
+      const next = { ...z, ...(patch.name !== undefined ? { name: patch.name } : {}) }
+      const shortcut = 'shortcut' in patch ? patch.shortcut : z.shortcut
+      if (shortcut) next.shortcut = shortcut
+      else delete next.shortcut
+      return next
+    })
+    this.commit({ ...this.doc, setup: { ...this.doc.setup, zones } })
+  }
+
   async save(): Promise<SaveResult> {
     const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}`, withCredentials({
       method: 'PUT',

@@ -17,6 +17,14 @@ describe('playIntents', () => {
       { v: 'flip', component: a.id, face: 'front' },
     ])
     expect(playIntents(v, [a], 'draw')).toEqual([{ v: 'move', component: a.id, to: 'draw' }])
+    // Underneath a hidden pile of three: index 3, still face down.
+    expect(playIntents(v, [a], 'draw', undefined, 'bottom')).toEqual([{ v: 'move', component: a.id, to: 'draw', index: 3 }])
+    expect(playIntents(v, [a, b], 'discard', undefined, 'bottom')).toEqual([
+      { v: 'move', component: a.id, to: 'discard', index: 3 },
+      { v: 'flip', component: a.id, face: 'front' },
+      { v: 'move', component: b.id, to: 'discard', index: 4 },
+      { v: 'flip', component: b.id, face: 'front' },
+    ])
     expect(playIntents(v, [a, b], 'table', { x: 10, y: 20 })).toEqual([
       { v: 'move', component: a.id, to: 'table', x: 10, y: 20 },
       { v: 'flip', component: a.id, face: 'front' },
