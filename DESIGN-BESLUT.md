@@ -842,7 +842,7 @@ Duken får en flik per grupp plus "Bas (alla)"; det som ändras med en gruppflik
 Lagerordningen är basens och delas av alla grupper — den ändras därför bara med basfliken vald.
 Lagerpanelen säger per lager om det är basens eller gruppens och hur många kort gruppen gäller; variant B:s regellista står kvar som sammanfattning i samma panel.
 Variant C valdes bort som redigeringsväg — tjugo fällor skulle kräva tjugo val — men tabellen visar vilken grupp en rad faller i, läsbart och inte redigerbart.
-Prototypen `packages/web/src/prototype/groups` står kvar tills #14 har svarat.
+Prototypen `packages/web/src/prototype/groups` togs bort när även baksidesflödet i #14 hade svarat.
 
 ### L4. Datatabellen: kolumntyper från registryt, systemkolumn `antal`
 
@@ -914,6 +914,11 @@ Byggt 2026-09-07 (#13):
 Mallfliken har en fram-/baksideväxel, så att baksidan redigeras med samma duk, samma lagerpanel och samma verktyg som framsidan.
 Växeln är en radiogrupp med rovande tabindex: hela växeln är ett tabstopp och pilarna både flyttar och väljer.
 En grupp kan skriva över element på båda ansiktena; det som inte skrivs över ärvs från basen, vilket är det som gör en särskild baksida per grupp möjlig (#14).
+
+Verifierat och färdigställt 2026-09-07 (#14):
+Ett dolt kort projiceras med just den baksideshash som dess rads grupp väljer, men utan `cardRef` eller framsideshash; det är testat på de råa WebSocket-frames som lämnar servern.
+Trycköverlämningen är ett kortmanifest, inte två fristående listor: varje fysisk komponent bär hash för alla sina ansikten från samma kompilering av samma rad. Därmed kan en gruppframsida inte paras med standardbaksidan, kopior behåller varsin manifestpost och identiskt renderinnehåll delar jobb genom hashen.
+Både fram- och baksida går genom `compileCard` med utfall och vidare som PDF-jobb till samma Chromium-renderare som övriga tryckunderlag.
 
 ### L8. Editorns utseende: kortväggen som hem, duken för mallen, tabellen som flik (prototypat 2026-09-06)
 

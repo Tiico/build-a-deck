@@ -68,7 +68,7 @@ Editorn:
 - ✅ Grafisk wizard för en liten startlek: fält syns direkt på exempelkorten, bildfält kan fyllas och editorn är den tydliga nästa vägen; CSV importeras och exporteras i editorns tabell (E1, E3, L6).
 - ✅ Editor till bord med förrenderade texturer; bytet är atomiskt för spelarna (L5).
 - ✅ "Bord"-fliken: spelets alla bord med miniatyr ur bordets egen snapshot, vem som spelar, vilken version som körs och vägarna in — TV, bordsläge, spela härifrån, titta på, QR — plus avslut med bekräftelse (L5, K9, C7, C9).
-- ✅ Kortgrupper som regler på en kolumn: en flik per grupp över duken, fram- och baksida redigeras likadant, lagerpanelen säger om ett lager är basens eller gruppens, och tabellen visar vilken grupp en rad faller i (L3, L7).
+- ✅ Kortgrupper som regler på en kolumn: en flik per grupp över duken, fram- och baksida redigeras likadant, lagerpanelen säger om ett lager är basens eller gruppens, och tabellen visar vilken grupp en rad faller i; dolda kort får gruppens baksida utan identitetsläcka och tryckmanifestet håller varje fram-/baksidespar ihop (L3, L7).
 - ✅ "Mina spel" och inloggningskortet (G1).
 
 Drift:

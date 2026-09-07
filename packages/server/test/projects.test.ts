@@ -403,4 +403,32 @@ describe('a group rules what a card looks like on the table (#13)', () => {
     expect(Buffer.from(trapFront!).equals(Buffer.from(baseFront!))).toBe(false)
     expect(Buffer.from(trapBack!).equals(Buffer.from(baseBack!))).toBe(false)
   }, 90_000)
+
+  it('sends a hidden card only its group back, without its row or front hash in the frame', async () => {
+    const { id } = (await (await json('POST', '/projects', groupedProject())).json()) as { id: string }
+    const { id: sessionId, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
+    const table = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
+
+    const beforeDraw = table.frames.length
+    await table.send(null, { v: 'draw', from: 'draw', to: 'table', count: 2 })
+    await table.synced(1)
+    const hidden = table.view!.components
+    const drawFrames = table.frames.slice(beforeDraw).join('\n')
+    expect(hidden).toHaveLength(2)
+    expect(hidden.every((card) => card.cardRef === null && Object.keys(card.faces ?? {}).join(',') === 'back')).toBe(true)
+    expect(drawFrames).not.toContain('dragon')
+    expect(drawFrames).not.toContain('trap')
+    expect(drawFrames).not.toContain('"front"')
+
+    // Reveal only after checking the raw frames. The stable opaque id lets the test prove that
+    // the back already sent for each hidden component belongs to the row later revealed there.
+    const hiddenBack = new Map(hidden.map((card) => [card.id, card.faces!['back']!]))
+    await table.send(null, ...hidden.map((card) => ({ v: 'flip' as const, component: card.id, face: 'front' as const })))
+    await table.synced(3)
+    const revealed = Object.fromEntries(table.view!.components.map((card) => [card.cardRef, card]))
+    expect(hiddenBack.get(revealed['trap']!.id)).toBe(revealed['trap']!.faces!['back'])
+    expect(hiddenBack.get(revealed['dragon']!.id)).toBe(revealed['dragon']!.faces!['back'])
+    expect(revealed['trap']!.faces!['back']).not.toBe(revealed['dragon']!.faces!['back'])
+    await table.close()
+  })
 })
