@@ -21,8 +21,11 @@ profiles=""
 # (§3) and migrates its schema on start, so the order is: have the image, then up.
 if [ -n "${BYD_REGISTRY:-}" ]; then
   sha="$(git rev-parse HEAD)"
-  export BYD_APP_IMAGE="${BYD_REGISTRY}/app:${sha}"
-  export BYD_RENDER_IMAGE="${BYD_REGISTRY}/render:${sha}"
+  # A registry repository name must be lowercase; the owner written in .env need not be. Without
+  # this the manifest check below never finds the image and the box stalls on "images-not-ready".
+  registry="$(echo "$BYD_REGISTRY" | tr '[:upper:]' '[:lower:]')"
+  export BYD_APP_IMAGE="${registry}/app:${sha}"
+  export BYD_RENDER_IMAGE="${registry}/render:${sha}"
   if [ -n "${GHCR_TOKEN:-}" ]; then
     echo "$GHCR_TOKEN" | docker login ghcr.io -u "${GHCR_USER:-token}" --password-stdin > /dev/null
   fi
