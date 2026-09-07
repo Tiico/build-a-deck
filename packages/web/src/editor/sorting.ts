@@ -33,7 +33,9 @@ export function nextSort(sort: SortState | null, field: string): SortState | nul
   return sort.dir === 'ascending' ? { field, dir: 'descending' } : null
 }
 
-function cellOf(row: ProjectRow, field: string): unknown {
+// What a cell of a column holds. The id is a column of its own, so sorting and the filter (#16)
+// read a row the same way.
+export function cellOf(row: ProjectRow, field: string): unknown {
   return field === 'id' ? row.id : row.fields[field]
 }
 

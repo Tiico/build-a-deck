@@ -84,6 +84,46 @@
 .byd-data td { padding: 0; border-bottom: 1px solid #20232b; }
 /* The header is the sort control (#15): the column's name, the state as an arrow beside it. */
 .byd-data-sort { margin: 0 0 8px; color: #7d8597; font-size: 12px; }
+/* The filter (#16): a search field over all fields and a chip per value of the deck's own
+   category column, as the approved prototype B. It sits above the sort line, because the
+   question "which cards" comes before the question "in what order". */
+.byd-table-wrap {
+  --byd-editor-table-panel-bg: #23262e;
+  --byd-editor-filter-bg: #1b1d23;
+  --byd-editor-filter-ink: #dce3f2;
+  --byd-editor-filter-quiet: #9aa3b8;
+  --byd-editor-count-ink: #c3cbdd;
+  --byd-editor-chip-on-bg: #7dd3a0;
+  --byd-editor-chip-on-ink: #0b2a18;
+}
+.byd-data-filter { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.byd-data-search {
+  min-width: 220px;
+  padding: 7px 11px;
+  border: 1px solid #3b414e;
+  border-radius: 8px;
+  background: var(--byd-editor-filter-bg);
+  color: var(--byd-editor-filter-ink);
+  font: inherit;
+}
+.byd-data-search::placeholder { color: var(--byd-editor-filter-quiet); }
+.byd-data-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.byd-data-chip {
+  padding: 6px 12px;
+  border: 1px solid #3b414e;
+  border-radius: 999px;
+  background: var(--byd-editor-filter-bg);
+  color: var(--byd-editor-filter-ink);
+  font: inherit;
+  cursor: pointer;
+}
+.byd-data-chip[aria-pressed='true'] { background: var(--byd-editor-chip-on-bg); border-color: var(--byd-editor-chip-on-bg); color: var(--byd-editor-chip-on-ink); font-weight: 700; }
+.byd-data-count { margin: 0; color: var(--byd-editor-count-ink); font-variant-numeric: tabular-nums; }
+.byd-data-pinned { color: var(--byd-editor-filter-quiet); }
+.byd-data-clear { border: 1px solid #3b414e; border-radius: 8px; padding: 6px 12px; background: transparent; color: var(--byd-editor-filter-quiet); font: inherit; cursor: pointer; }
+.byd-data-clear:hover { color: var(--byd-editor-filter-ink); }
+.byd-data-empty { margin: 16px 0 0; color: var(--byd-editor-count-ink); }
+.byd-data-search:focus-visible, .byd-data-chip:focus-visible, .byd-data-clear:focus-visible { outline: 3px solid #3c8ce7; outline-offset: 3px; }
 .byd-data th button { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
 .byd-data th button span { color: #6b7386; }
 .byd-data th button:hover { color: #dce3f2; }

@@ -44,6 +44,12 @@ const SHELL = `
     <div role="tabpanel" tabindex="0" data-stop="the table panel">
       <div class="byd-table-wrap">
         <div class="byd-data-tools"><label>Importera CSV<input type="file" data-stop="the CSV import" /></label><a href="#" data-stop="the CSV export">Exportera CSV</a></div>
+        <div class="byd-data-filter">
+          <input type="search" class="byd-data-search" data-stop="the search field" />
+          <div class="byd-data-chips" role="group"><button class="byd-data-chip" aria-pressed="false" data-stop="a type chip">fälla</button></div>
+          <p class="byd-data-count">1 av 3 kort</p>
+          <button class="byd-data-clear" data-stop="the clear-filter button">Rensa filter</button>
+        </div>
         <table class="byd-data"><tbody><tr aria-selected="true"><td><input data-stop="a cell" /></td><td><button data-stop="a row's delete">Ta bort</button></td></tr></tbody></table>
         <button class="byd-data-add" data-stop="the add-row button">Lägg till kort</button>
       </div>
@@ -110,6 +116,9 @@ describe('the editor under a keyboard', () => {
       'the table panel',
       'the CSV import',
       'the CSV export',
+      'the search field',
+      'a type chip',
+      'the clear-filter button',
       'a cell',
       "a row's delete",
       'the add-row button',

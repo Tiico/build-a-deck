@@ -4,6 +4,7 @@ import { fieldsOf } from './fields.js'
 import type { Cell } from './ProjectClient.js'
 import { exportCardsCsv, importCardsCsv } from './csv.js'
 import { keepOrder, nextSort, sortRows, type SortState } from './sorting.js'
+import { countLabel, discreteColumns, filterRows, isFiltering, noFilter, toggleValue, type FilterState } from './filtering.js'
 
 export type DataTableProps = {
   doc: ProjectDoc
@@ -20,12 +21,28 @@ export type DataTableProps = {
 export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onImportRows }: DataTableProps) {
   const [importError, setImportError] = useState<string | null>(null)
   const [sort, setSort] = useState<SortState | null>(null)
+  const [filter, setFilter] = useState<FilterState>(noFilter)
+  // The card created by "Nytt kort" while a filter is on, kept on screen until the filter moves.
+  const [pinned, setPinned] = useState<string | null>(null)
   // The order held while a cell is being edited, as the ids that were on screen when it was entered.
   const [held, setHeld] = useState<string[] | null>(null)
   const fields = fieldsOf(doc)
-  // What the table shows is a view of the project, never its order: sorting here, and later the
-  // filter (#16) and the selection (#17), decide the rows on screen and leave `doc.rows` alone.
-  const shown = held ? keepOrder(doc.rows, held) : sortRows(doc.rows, sort)
+  // What the table shows is a view of the project, never its order: the sort (#15) and the filter
+  // (#16) decide the rows on screen and leave `doc.rows` alone. This one line is the whole view,
+  // and it is the seam the selection (#17) slots into — "markera alla synliga" means `shown`.
+  // While a cell is being typed in, the screen is frozen to the rows that were on it: neither the
+  // order nor the filter may move or take away the row under the cursor before it is left.
+  const columns = ['id', ...fields]
+  const discrete = discreteColumns(doc.rows, columns)
+  const shown = held
+    ? keepOrder(doc.rows.filter((row) => held.includes(row.id)), held)
+    : filterRows(sortRows(doc.rows, sort), columns, filter, pinned)
+  // Every way of changing the filter goes through here, so the pinned card is released exactly
+  // when the designer asks a new question of the deck.
+  const changeFilter = (next: FilterState) => {
+    setFilter(next)
+    setPinned(null)
+  }
   const nextRef = () => {
     let n = doc.rows.length + 1
     while (doc.rows.some((r) => r.id === `kort-${n}`)) n++
@@ -53,6 +70,45 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
         <a href={csvHref} download={filename}>Exportera CSV</a>
         <span>Import ersätter korten i tabellen. Spara när resultatet ser rätt ut.</span>
         {importError && <span role="alert">{importError}</span>}
+      </div>
+      <div className="byd-data-filter">
+        <input
+          type="search"
+          className="byd-data-search"
+          aria-label="Sök i alla fält"
+          placeholder="Sök i alla fält…"
+          value={filter.query}
+          onChange={(event) => changeFilter({ ...filter, query: event.target.value })}
+        />
+        {discrete.map(({ field, values }) => (
+          <div key={field} className="byd-data-chips" role="group" aria-label={`Filtrera på ${field}`}>
+            {values.map((value) => (
+              <button
+                key={value}
+                type="button"
+                className="byd-data-chip"
+                aria-pressed={(filter.values[field] ?? []).includes(value)}
+                onClick={() => changeFilter(toggleValue(filter, field, value))}
+              >
+                {value}
+              </button>
+            ))}
+          </div>
+        ))}
+        <p className="byd-data-count" aria-live="polite">
+          <span>{countLabel(shown.length, doc.rows.length)}</span>
+          {pinned !== null && (
+            <>
+              <span aria-hidden="true"> · </span>
+              <span className="byd-data-pinned">nytt kort visas trots filtret</span>
+            </>
+          )}
+        </p>
+        {isFiltering(filter) && (
+          <button type="button" className="byd-data-clear" onClick={() => changeFilter(noFilter)}>
+            Rensa filter
+          </button>
+        )}
       </div>
       <p className="byd-data-sort" role="status">{sortLabel(sort)}</p>
       <table className="byd-data">
@@ -91,7 +147,13 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
           ))}
         </tbody>
       </table>
-      <button type="button" className="byd-data-add" onClick={() => onAddRow(nextRef())}>
+      {/* A deck with no cards at all is not a filter's doing: then the button below is the answer. */}
+      {shown.length === 0 && isFiltering(filter) && <p className="byd-data-empty">Inga kort matchar filtret.</p>}
+      <button type="button" className="byd-data-add" onClick={() => {
+          const cardRef = nextRef()
+          onAddRow(cardRef)
+          setPinned(isFiltering(filter) ? cardRef : null)
+        }}>
         + Nytt kort
       </button>
     </div>

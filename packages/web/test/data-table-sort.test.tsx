@@ -174,6 +174,8 @@ describe('DataTable sorting from the keyboard (#15)', () => {
     expect(document.activeElement).toBe(screen.getByLabelText('Importera CSV'))
     await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('link', { name: 'Exportera CSV' }))
+    await user.tab()
+    expect(document.activeElement).toBe(screen.getByLabelText('Sök i alla fält'))
 
     const buttons = headerButtons()
     expect(buttons.map((button) => button.textContent?.trim().split(' ')[0])).toEqual(['id', 'title', 'body', 'kostnad', 'antal'])
