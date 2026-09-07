@@ -100,6 +100,11 @@ function bind(store: MemoryLogStore): LogStore {
     append: (id, lines) => store.append(id, lines),
     read: (id) => store.read(id),
     staleSessions: (d) => store.staleSessions(d),
+    sessionByCode: (code) => store.sessionByCode(code),
+    setCode: (id, code, at) => store.setCode(id, code, at),
+    issueGuest: (id, g) => store.issueGuest(id, g),
+    guestByToken: (id, h) => store.guestByToken(id, h),
+    revokeGuests: (id, seat, at) => store.revokeGuests(id, seat, at),
   }
 }
 

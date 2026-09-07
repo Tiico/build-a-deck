@@ -83,7 +83,44 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean }
   }
 }
 
-export async function createSession(store: MemoryLogStore, id = 's1'): Promise<string> {
-  await store.createSession({ id, version: 'v1', setup: twoSeatSetup() })
-  return id
+// Admission (DRIFT §9), by session id: what the fixture made each session with.
+const rooms = new Map<string, { code: string; hostKey: string }>()
+
+// A session made through the server, so it has a code and a host key; `deck` optional.
+export async function createSession(run: Running, id = 's1', deck?: unknown): Promise<string> {
+  const res = await fetch(`${run.http}/sessions`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, version: 'v1', setup: twoSeatSetup(), ...(deck ? { deck } : {}) }) })
+  if (res.status !== 201) throw new Error(`create failed: ${res.status} ${await res.text()}`)
+  const made = (await res.json()) as { id: string; code: string; hostKey: string }
+  rooms.set(made.id, { code: made.code, hostKey: made.hostKey })
+  return made.id
+}
+
+// A session made elsewhere (a project's table), so the fixture can admit people to it.
+export function registerRoom(id: string, room: { code: string; hostKey: string }): void {
+  rooms.set(id, room)
+}
+
+export function roomOf(id: string): { code: string; hostKey: string } {
+  const room = rooms.get(id)
+  if (!room) throw new Error(`no room for ${id}`)
+  return room
+}
+
+// A guest token for a seat (or for watching, with no seat), bought with the room's code.
+export async function admit(run: Running, id: string, seat: string | null, name = seat === null ? 'Eva' : `Guest ${seat}`): Promise<string> {
+  const res = await fetch(`${run.http}/rooms/${roomOf(id).code}/join`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, ...(seat === null ? {} : { seat }) }) })
+  if (res.status !== 201) throw new Error(`join failed: ${res.status} ${await res.text()}`)
+  return ((await res.json()) as { token: string }).token
+}
+
+// Connection options admitted the way a real one is: the table with the host key, a seat or
+// an observer with a token.
+export async function asTable(run: Running, id: string): Promise<{ url: string; sessionId: string; seat: null; host: string }> {
+  return { url: run.url, sessionId: id, seat: null, host: roomOf(id).hostKey }
+}
+export async function asSeat(run: Running, id: string, seat: string, name?: string): Promise<{ url: string; sessionId: string; seat: string; token: string }> {
+  return { url: run.url, sessionId: id, seat, token: await admit(run, id, seat, name) }
+}
+export async function asObserver(run: Running, id: string, name: string): Promise<{ url: string; sessionId: string; seat: null; observer: string; token: string }> {
+  return { url: run.url, sessionId: id, seat: null, observer: name, token: await admit(run, id, null, name) }
 }

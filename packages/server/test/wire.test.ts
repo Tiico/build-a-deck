@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { WireClient } from './client.js'
-import { createSession, start, twoSeatSetup, type Running } from './fixture.js'
+import { createSession, registerRoom, start, twoSeatSetup, type Running } from './fixture.js'
 import { deck } from './deck.js'
 import { MemoryObjectStore } from '@byd/render'
 
@@ -16,8 +16,10 @@ afterEach(async () => {
   await run.stop()
 })
 
-async function connect(sessionId: string, seat: string | null): Promise<WireClient> {
-  const c = await WireClient.connect(run.base, sessionId, seat)
+// Admitted the way a real connection is (DRIFT §9): the table with the host key, a seat with
+// a token bought for it.
+async function connect(sessionId: string, seat: string | null, as?: { role: 'observer'; name: string }): Promise<WireClient> {
+  const c = await run.connect(sessionId, seat, as)
   clients.push(c)
   return c
 }
@@ -232,6 +234,7 @@ describe('textures (TUNN-SKIVA §5)', () => {
       body: JSON.stringify({ id: 'tex', version: 'v1', setup: twoSeatSetup(), deck }),
     })
     expect(res.status).toBe(201)
+    registerRoom('tex', (await res.json()) as { code: string; hostKey: string })
     const a = await connect('tex', 'A')
     const b = await connect('tex', 'B')
     await a.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
@@ -272,6 +275,7 @@ describe('faces in R2 (DRIFT §4)', () => {
     run = await start({ objects: r2 })
     const res = await fetch(`${run.http}/sessions`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: 'r2', version: 'v1', setup: twoSeatSetup(), deck }) })
     expect(res.status).toBe(201)
+    registerRoom('r2', (await res.json()) as { code: string; hostKey: string })
     const a = await connect('r2', 'A')
     await a.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
     const front = (await a.synced(1)).components.find((c) => c.zone === 'hand:A')!.faces!['front']!
@@ -377,7 +381,7 @@ describe('the observer (C8): sees everything, is seen by everyone, touches nothi
     const table = await connect(id, null)
     await a.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
 
-    const eva = await WireClient.connect(run.base, id, null, { role: 'observer', name: 'Eva' })
+    const eva = await connect(id, null, { role: 'observer', name: 'Eva' })
     clients.push(eva)
     const hand = eva.view!.components.filter((c) => c.zone === 'hand:A')
     expect(hand.map((c) => c.cardRef)).toEqual([expect.any(String), expect.any(String)])

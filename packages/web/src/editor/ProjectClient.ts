@@ -83,15 +83,29 @@ export class ProjectClient {
     return { ok: true, rev }
   }
 
-  // "Uppdatera bordet" (L5): a table from the saved project. Unsaved edits are saved first.
-  async startTable(): Promise<{ id: string; version: string }> {
+  // "Uppdatera bordet" (L5): a table from the saved project, with the room code guests join by
+  // and the host key that opens its screen (DRIFT §9). Unsaved edits are saved first.
+  async startTable(): Promise<{ id: string; version: string; code: string; hostKey: string }> {
     if (this.dirty) {
       const saved = await this.save()
       if (!saved.ok) throw new Error(`could not save before starting a table: ${saved.reason}`)
     }
     const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}/sessions`, withCredentials({ method: 'POST' }))
     if (!res.ok) throw new Error(`could not start a table: ${res.status}`)
-    return (await res.json()) as { id: string; version: string }
+    return (await res.json()) as { id: string; version: string; code: string; hostKey: string }
+  }
+
+  // The host's controls (DRIFT §9): a new code, so those who have the old one can no longer
+  // come in; and a kick, which frees the seat and ends its connections. The host key the table
+  // was started with is the authority, with or without an account.
+  async rotateCode(sessionId: string, hostKey: string): Promise<{ code: string; expiresAt: string }> {
+    const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/code`, { method: 'POST', headers: { authorization: `Bearer ${hostKey}` } })
+    if (!res.ok) throw new Error(`could not rotate the code: ${res.status}`)
+    return (await res.json()) as { code: string; expiresAt: string }
+  }
+  async kick(sessionId: string, hostKey: string, seat: string): Promise<void> {
+    const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/kick`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${hostKey}` }, body: JSON.stringify({ seat }) })
+    if (!res.ok) throw new Error(`could not kick ${seat}: ${res.status}`)
   }
 
   // "Uppdatera bordet" on a running table (C7, L5): unsaved edits are saved first, then the

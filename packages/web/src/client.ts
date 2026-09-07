@@ -8,6 +8,11 @@ export type ConnectOptions = {
   seat: SeatId | null
   // Watch as a named observer (C8): seatless, sees everything, may only flag.
   observer?: string
+  // Admission (DRIFT §9): a guest token for a seat or an observer, the host key for the table's
+  // own screen, or the lobby role, which looks at the seats and may do nothing.
+  token?: string
+  host?: string
+  lobby?: boolean
   // First reconnect delay; doubles per attempt up to ten times this.
   reconnectDelayMs?: number
 }
@@ -47,6 +52,10 @@ export class TableClient {
   activity: Activity[] = []
   // Who is watching (C8), as the server last told us.
   observers: { id: string; name: string }[] = []
+  // The room code (DRIFT §9), told to the host's screens only; null for everyone else.
+  room: { code: string; expiresAt: string } | null = null
+  // Why the server would not have this connection (DRIFT §9): no reconnecting after that.
+  refused: string | null = null
   private ws: WebSocketLike
   private readonly readyPromise: Promise<void>
   private resolveReady!: () => void
@@ -140,12 +149,15 @@ export class TableClient {
   }
 
   private open(): WebSocketLike {
-    const { url, sessionId, seat, observer } = this.opts
+    const { url, sessionId, seat, observer, token, host, lobby } = this.opts
     const q = new URLSearchParams()
-    if (observer !== undefined) {
+    if (lobby) q.set('role', 'lobby')
+    else if (observer !== undefined) {
       q.set('role', 'observer')
       q.set('name', observer)
     } else if (seat !== null) q.set('seat', seat)
+    if (token !== undefined) q.set('token', token)
+    if (host !== undefined) q.set('host', host)
     const ws = makeSocket(`${url}/sessions/${encodeURIComponent(sessionId)}${q.size > 0 ? `?${q.toString()}` : ''}`)
     ws.addEventListener('message', (ev) => this.receive(ServerMessage.parse(JSON.parse(String(ev.data)))))
     ws.addEventListener('close', () => this.dropped(ws))
@@ -156,7 +168,7 @@ export class TableClient {
   // The connection went away without us asking. Whatever was in flight is unknown to us:
   // the view after resync is the truth, so pending envelopes are told so and let go.
   private dropped(ws: WebSocketLike): void {
-    if (ws !== this.ws || this.status === 'closed') return
+    if (ws !== this.ws || this.status === 'closed' || this.refused !== null) return
     for (const resolve of this.pending.values()) resolve({ ok: false, reason: 'connection lost' })
     this.pending.clear()
     this.setStatus('reconnecting')
@@ -199,6 +211,16 @@ export class TableClient {
         break
       case 'bye':
         // The server will close; `dropped` handles the rest.
+        break
+      case 'refused':
+        // Not admitted, or kicked: the connection ends here and stays ended.
+        this.refused = msg.reason
+        this.setStatus('closed')
+        this.resolveReady()
+        break
+      case 'room':
+        this.room = { code: msg.code, expiresAt: msg.expiresAt }
+        this.notify()
         break
       case 'presence':
         for (const l of this.presenceListeners) l(msg.from, msg.presence)

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { TableClient } from '../src/client.js'
-import { createSession, startServer, type Running } from './fixture.js'
+import { asObserver, asSeat, asTable, createSession, roomOf, startServer, type Running } from './fixture.js'
 
 let run: Running
 let clients: TableClient[] = []
@@ -15,7 +15,7 @@ afterEach(async () => {
 })
 
 async function connect(sessionId: string, seat: string | null): Promise<TableClient> {
-  const c = TableClient.connect({ url: run.url, sessionId, seat, reconnectDelayMs: 50 })
+  const c = TableClient.connect({ ...(seat === null ? await asTable(run, sessionId) : await asSeat(run, sessionId, seat)), reconnectDelayMs: 50 })
   clients.push(c)
   await c.ready()
   return c
@@ -23,7 +23,7 @@ async function connect(sessionId: string, seat: string | null): Promise<TableCli
 
 describe('TableClient', () => {
   it('connects and exposes the snapshot for its seat', async () => {
-    const id = await createSession(run.store)
+    const id = await createSession(run)
     const a = await connect(id, 'A')
     expect(a.status).toBe('open')
     expect(a.view).toMatchObject({ seq: 0, seat: 'A' })
@@ -33,7 +33,7 @@ describe('TableClient', () => {
 
 describe('sending intents', () => {
   it('resolves with the seqs the envelope produced and the view follows via patches', async () => {
-    const id = await createSession(run.store)
+    const id = await createSession(run)
     const a = await connect(id, 'A')
     const b = await connect(id, 'B')
 
@@ -50,7 +50,7 @@ describe('sending intents', () => {
 
 describe('rejections', () => {
   it('surfaces a refused envelope as a result, and the view does not move', async () => {
-    const id = await createSession(run.store)
+    const id = await createSession(run)
     const a = await connect(id, 'A')
     const result = await a.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 99 })
     expect(result).toMatchObject({ ok: false, reason: /fewer than 99/ })
@@ -60,7 +60,7 @@ describe('rejections', () => {
 
 describe('reconnection', () => {
   it('reconnects after the server restarts and resyncs to the current seq', async () => {
-    const id = await createSession(run.store)
+    const id = await createSession(run)
     const a = await connect(id, 'A')
     const statuses: string[] = []
     a.subscribe((_view, status) => statuses.push(status))
@@ -80,7 +80,7 @@ describe('reconnection', () => {
 
 describe('activity', () => {
   it('keeps the recent redacted log lines and notifies subscribers when they arrive', async () => {
-    const id = await createSession(run.store)
+    const id = await createSession(run)
     const table = await connect(id, null)
     const b = await connect(id, 'B')
     const seen: number[] = []
@@ -100,7 +100,7 @@ describe('activity', () => {
   })
 
   it('a client that connects mid-game starts with the lines the snapshot carries, and a reconnect replaces rather than repeats them', async () => {
-    const id = await createSession(run.store)
+    const id = await createSession(run)
     const table = await connect(id, null)
     await table.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
     await table.send({ v: 'shuffle', pile: 'draw' })
@@ -122,9 +122,9 @@ describe('activity', () => {
 
 describe('presence (K6)', () => {
   it('reaches the others at the table and never the log; cursor updates are throttled, the last one always arrives', async () => {
-    const id = await createSession(run.store)
-    const a = TableClient.connect({ url: run.url, sessionId: id, seat: 'A' })
-    const b = TableClient.connect({ url: run.url, sessionId: id, seat: 'B' })
+    const id = await createSession(run)
+    const a = TableClient.connect(await asSeat(run, id, 'A'))
+    const b = TableClient.connect(await asSeat(run, id, 'B'))
     await Promise.all([a.ready(), b.ready()])
     const seen: { from: { seat: string | null }; presence: { kind: string; x?: number } }[] = []
     b.onPresence((from, presence) => seen.push({ from, presence }))
@@ -155,15 +155,15 @@ async function waitUntil(pred: () => boolean, timeoutMs = 2000): Promise<void> {
 
 describe('the observer (C8) and the roster', () => {
   it('connects as a named observer who sees every hand, and every client learns who is watching', async () => {
-    const id = await createSession(run.store)
-    const a = TableClient.connect({ url: run.url, sessionId: id, seat: 'A' })
+    const id = await createSession(run)
+    const a = TableClient.connect(await asSeat(run, id, 'A'))
     await a.ready()
     await a.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
-    const table = TableClient.connect({ url: run.url, sessionId: id, seat: null })
+    const table = TableClient.connect(await asTable(run, id))
     await table.ready()
     expect(table.observers).toEqual([])
 
-    const eva = TableClient.connect({ url: run.url, sessionId: id, seat: null, observer: 'Eva' })
+    const eva = TableClient.connect(await asObserver(run, id, 'Eva'))
     await eva.ready()
     expect(eva.view!.components.filter((c) => c.zone === 'hand:A').map((c) => c.cardRef)).toEqual([expect.any(String), expect.any(String)])
     await waitUntil(() => table.observers.length === 1)
@@ -174,5 +174,39 @@ describe('the observer (C8) and the roster', () => {
     await waitUntil(() => table.observers.length === 0)
     a.close()
     table.close()
+  })
+})
+
+async function until(cond: () => boolean, ms = 2000): Promise<void> {
+  const start = Date.now()
+  while (!cond()) {
+    if (Date.now() - start > ms) throw new Error('timed out')
+    await new Promise((r) => setTimeout(r, 10))
+  }
+}
+
+describe('admission (DRIFT §9)', () => {
+  it('a connection without its token is refused, says why, and does not reconnect', async () => {
+    const id = await createSession(run)
+    const c = TableClient.connect({ url: run.url, sessionId: id, seat: 'A', reconnectDelayMs: 20 })
+    clients.push(c)
+    await c.ready()
+    expect(c.status).toBe('closed')
+    expect(c.refused).toBe('a seat needs its token')
+    await new Promise((r) => setTimeout(r, 100))
+    expect(c.status).toBe('closed')
+    expect(c.view).toBeNull()
+  })
+
+  it('the host\'s screen is told the room code, and a rotation reaches it', async () => {
+    const id = await createSession(run)
+    const tv = TableClient.connect(await asTable(run, id))
+    clients.push(tv)
+    await tv.ready()
+    await until(() => tv.room?.code === roomOf(id).code)
+    const rotated = await fetch(`${run.http}/sessions/${id}/code`, { method: 'POST', headers: { authorization: `Bearer ${roomOf(id).hostKey}` } })
+    const { code } = (await rotated.json()) as { code: string }
+    await until(() => tv.room?.code === code)
+    expect(tv.room?.code).toBe(code)
   })
 })

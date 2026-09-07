@@ -6,6 +6,12 @@ import { FlagSheet, EndSheet } from './SessionSheets.js'
 import { Survey } from './Survey.js'
 import { submitSurvey } from './surveyApi.js'
 
+// Why the server would not have us (DRIFT §9), in words for the screen.
+export function refusedText(reason: string): string {
+  if (reason === 'kicked') return 'Värden har tagit bort dig från bordet.'
+  return 'Länken gäller inte längre. Gå med igen med rumskoden.'
+}
+
 // What a seat's screen carries beside the hand, on the phone and online alike (C2): the toast,
 // the flag and end sheets, the rewind proposal, and the survey once the log is locked.
 

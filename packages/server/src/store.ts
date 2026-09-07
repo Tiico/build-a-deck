@@ -10,7 +10,13 @@ export type { Deck }
 
 // `deck` is what the table's textures are compiled from; a session without one plays with blank cards.
 // `project` is the project a table was started from, so it can be refreshed to a newer rev (C7).
-export type SessionRecord = { id: string; version: GameVersionId; setup: SetupDef; deck?: Deck; project?: string }
+// Admission (DRIFT §9): `code` is what guests reach the table by, alive until `codeExpiresAt`,
+// and `hostKeyHash` is the hash of the key that opens the table's own view.
+export type SessionRecord = { id: string; version: GameVersionId; setup: SetupDef; deck?: Deck; project?: string; code?: string; codeExpiresAt?: string; hostKeyHash?: string }
+
+// A guest's admission (DRIFT §9): the hash of the token a phone or an observer connects with,
+// what it admits to, and the name it was bought under. A kick sets `revokedAt`.
+export type GuestRecord = { tokenHash: string; kind: 'seat' | 'observer'; seat: string | null; name: string; issuedAt: string; revokedAt?: string }
 
 export type LogStore = {
   createSession(record: SessionRecord): Promise<void>
@@ -20,6 +26,13 @@ export type LogStore = {
   // Sessions whose latest line (or creation, if none) is older than `olderThan` and that have
   // not ended: what the timeout in C9 ends for a group that forgot.
   staleSessions(olderThan: Date): Promise<string[]>
+  // Admission (DRIFT §9): the session behind a code, and giving a session its (next) code.
+  sessionByCode(code: string): Promise<{ id: string; codeExpiresAt: string } | null>
+  setCode(sessionId: string, code: string, expiresAt: string): Promise<void>
+  issueGuest(sessionId: string, guest: GuestRecord): Promise<void>
+  guestByToken(sessionId: string, tokenHash: string): Promise<GuestRecord | null>
+  // Revokes every token for a seat (or every observer token, for null); returns how many.
+  revokeGuests(sessionId: string, seat: string | null, at: string): Promise<number>
 }
 
 export class SeqConflictError extends Error {
@@ -34,6 +47,7 @@ export class MemoryLogStore implements LogStore {
   private readonly sessions = new Map<string, SessionRecord>()
   private readonly logs = new Map<string, Applied[]>()
   private readonly createdAt = new Map<string, number>()
+  private readonly guests = new Map<string, GuestRecord[]>()
 
   async createSession(record: SessionRecord): Promise<void> {
     if (this.sessions.has(record.id)) throw new Error(`session ${record.id} already exists`)
@@ -64,6 +78,44 @@ export class MemoryLogStore implements LogStore {
     const log = this.logs.get(sessionId)
     if (!log) throw new Error(`unknown session ${sessionId}`)
     return structuredClone(log)
+  }
+
+  async sessionByCode(code: string): Promise<{ id: string; codeExpiresAt: string } | null> {
+    for (const r of this.sessions.values()) {
+      if (r.code === code && r.codeExpiresAt !== undefined) return { id: r.id, codeExpiresAt: r.codeExpiresAt }
+    }
+    return null
+  }
+
+  async setCode(sessionId: string, code: string, expiresAt: string): Promise<void> {
+    const r = this.sessions.get(sessionId)
+    if (!r) throw new Error(`unknown session ${sessionId}`)
+    for (const other of this.sessions.values()) {
+      if (other.id !== sessionId && other.code === code) throw new Error(`code ${code} is taken`)
+    }
+    r.code = code
+    r.codeExpiresAt = expiresAt
+  }
+
+  async issueGuest(sessionId: string, guest: GuestRecord): Promise<void> {
+    if (!this.sessions.has(sessionId)) throw new Error(`unknown session ${sessionId}`)
+    this.guests.set(sessionId, [...(this.guests.get(sessionId) ?? []), structuredClone(guest)])
+  }
+
+  async guestByToken(sessionId: string, tokenHash: string): Promise<GuestRecord | null> {
+    const g = (this.guests.get(sessionId) ?? []).find((x) => x.tokenHash === tokenHash)
+    return g ? structuredClone(g) : null
+  }
+
+  async revokeGuests(sessionId: string, seat: string | null, at: string): Promise<number> {
+    let n = 0
+    for (const g of this.guests.get(sessionId) ?? []) {
+      if (g.seat === seat && g.revokedAt === undefined) {
+        g.revokedAt = at
+        n++
+      }
+    }
+    return n
   }
 
   async staleSessions(olderThan: Date): Promise<string[]> {

@@ -6,19 +6,21 @@ import { Texture, textureUrl } from '../table/Texture.js'
 import { HandStrip } from './HandStrip.js'
 import { PlaySheet } from './PlaySheet.js'
 import { TableSummary } from './TableSummary.js'
-import { SessionButtons, SessionOverlays, useSessionVersion, useToast } from './SessionOverlays.js'
+import { SessionButtons, SessionOverlays, refusedText, useSessionVersion, useToast } from './SessionOverlays.js'
 import { playIntents } from './play.js'
 import './player.css'
 
-// /play?session=…&seat=A&name=Ada&server=ws://…
+// /play?session=…&seat=A&name=Ada&token=…&server=ws://…
 // The `player` role: one seat, its hand and private zones, and the zone shortcuts to play to.
+// The token was bought with the room code on the join page (DRIFT §9).
 export function PlayerPage() {
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const sessionId = params.get('session')
   const seat = params.get('seat')
   const name = params.get('name')
+  const token = params.get('token') ?? undefined
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
-  const { client, view, status, activity } = useTableClient(sessionId && seat ? { url, sessionId, seat } : null)
+  const { client, view, status, activity, refused } = useTableClient(sessionId && seat ? { url, sessionId, seat, ...(token ? { token } : {}) } : null)
   const faces = url.replace(/^ws/, 'http')
 
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
@@ -35,6 +37,7 @@ export function PlayerPage() {
   }, [client, view === null, seat, name, seatFree])
 
   if (!sessionId || !seat) return <p>Ingen session eller plats angiven.</p>
+  if (refused) return <p role="alert" data-refused={refused}>{refusedText(refused)}</p>
   if (!view || !client) return <p data-status={status}>Ansluter…</p>
 
   const me = view.seats.find((s) => s.id === seat)

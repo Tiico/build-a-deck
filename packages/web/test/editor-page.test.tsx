@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { EditorPage } from '../src/editor/EditorPage.js'
+import { TableClient } from '../src/client.js'
 import { projectDoc } from './project-doc.js'
-import { startServer, type Running } from './fixture.js'
+import { asSeat, registerRoom, startServer, type Running } from './fixture.js'
 
 let run: Running
 beforeEach(async () => {
@@ -102,7 +103,7 @@ describe('EditorPage', () => {
     await screen.findByText(/renderar kort/i)
     await run.completeRenders()
     const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
-    expect(link.href).toMatch(/\/table\?session=[0-9a-f-]{36}&mode=tv/)
+    expect(link.href).toMatch(/\/table\?session=[0-9a-f-]{36}&host=[A-Za-z0-9_-]{20,}&mode=tv/)
     expect((await run.store.loadSession(new URL(link.href).searchParams.get('session')!))?.version).toBe('rev-2')
   }, 20_000)
 
@@ -216,5 +217,31 @@ describe('"Uppdatera bordet" switches the table only when the new cards can be s
     await run.completeRenders()
     await screen.findByText(/bordet uppdaterat på rev-2/i)
     expect((await run.store.read(sessionId)).map((line) => line.intent.v)).toEqual(['version.change'])
+  })
+})
+
+describe('the host\'s controls (DRIFT §9)', () => {
+  it('shows the room code with "Ny kod", and each seated guest with a kick that frees the seat', async () => {
+    await run.projects.create('p1', projectDoc())
+    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('button', { name: /uppdatera bordet/i }))
+    const code = await screen.findByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' })
+    const first = code.textContent ?? ''
+    await run.completeRenders()
+    const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
+    const sessionId = new URL(link.href).searchParams.get('session') ?? ''
+    registerRoom(sessionId, { code: first, hostKey: new URL(link.href).searchParams.get('host') ?? '' })
+
+    const ada = TableClient.connect(await asSeat(run, sessionId, 'A', 'Ada'))
+    await ada.ready()
+    await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
+    fireEvent.click(await screen.findByRole('button', { name: 'Sparka Ada' }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Sparka Ada' })).toBeNull())
+    await waitFor(() => expect(ada.refused).toBe('kicked'))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ny kod' }))
+    await waitFor(() => expect(screen.getByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' }).textContent).not.toBe(first))
   })
 })
