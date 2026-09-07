@@ -181,7 +181,8 @@ function detach(state: TableState, id: ComponentId): void {
 }
 
 // Inserting into a zone other than the one the component came from clears its overrides:
-// knowledge granted in a place does not travel with the component (B6).
+// knowledge granted in a place does not travel with the component (B6). A pile squares its
+// cards (K1): whatever a card was turned to, in a pile it lies as the pile does.
 function attach(state: TableState, id: ComponentId, zoneId: ZoneId, index: number, keepOverrides = false): void {
   const c = componentOf(state, id)
   const to = zoneOf(state, zoneId)
@@ -194,6 +195,7 @@ function attach(state: TableState, id: ComponentId, zoneId: ZoneId, index: numbe
       c.y = 0
     }
   }
+  if (to.kind === 'pile') c.rot = to.geometry.rot
   c.zone = zoneId
 }
 
@@ -209,7 +211,8 @@ function relocate(
   const c = componentOf(state, id)
   if (pos.x !== undefined) c.x = pos.x
   if (pos.y !== undefined) c.y = pos.y
-  if (pos.rot !== undefined) c.rot = pos.rot
+  // A rotation asked for on the way into a pile is the pile's to decide (K1).
+  if (pos.rot !== undefined && zoneOf(state, zoneId).kind !== 'pile') c.rot = pos.rot
 }
 
 // Moves the top `count` components of `from` onto the top of `to`, preserving their order.

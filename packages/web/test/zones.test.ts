@@ -36,3 +36,23 @@ describe('zoneAt (K2)', () => {
     expect(zoneAt(zones, 'table', 0, 0)).toEqual({ zone: 'market', x: 100, y: 100 })
   })
 })
+
+// Zones may overlap (K2, decided 2026-09-07): the smallest zone that holds the point wins,
+// and between equals the one listed first in the setup.
+describe('overlapping zones', () => {
+  it('a partial overlap goes to the smaller zone, and equals go to the first listed', () => {
+    const overlapping: ZoneView[] = [
+      zone('table', 'area', -500, -300, 1000, 600),
+      zone('river', 'area', -200, -50, 400, 100),
+      zone('camp', 'area', 100, -100, 200, 200),
+      zone('twin-a', 'area', 300, 100, 100, 100),
+      zone('twin-b', 'area', 350, 100, 100, 100),
+    ]
+    // (150, 0) lies in both river (400×100) and camp (200×200): the river is smaller.
+    expect(zoneAt(overlapping, 'table', 150, 0).zone).toBe('river')
+    // (250, 50) lies only in camp.
+    expect(zoneAt(overlapping, 'table', 250, 50).zone).toBe('camp')
+    // (375, 150) lies in both twins, equal in size: the first listed.
+    expect(zoneAt(overlapping, 'table', 375, 150).zone).toBe('twin-a')
+  })
+})

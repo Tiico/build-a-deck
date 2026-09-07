@@ -588,11 +588,16 @@ Zoner kan tillkomma och försvinna i patchar.
 Pile-zoner har en position.
 Ett verb för att flytta en hel hög som enhet — ett medvetet tillägg till det slutna vokabuläret, eftersom "plocka upp högen" är en fysisk handling.
 
+Blandad orientering (beslutat 2026-09-07): en hög kvadrerar sina kort.
+Ett kort som läggs i en hög tar högens vridning, vilken det än hade, som en hand gör när den jämnar till en hög; tillståndet och bilden säger samma sak.
+Den som vill markera med ett tvärställt kort lägger det löst bredvid högen.
+
 ### K2. Fri placering, zoner som rektanglar med släpp-in
 
 Setup ger varje zon en rektangel, eller en punkt för högar, i bordskoordinater.
 Släpp inom rektangeln är `move` till zonen med relativ position; släpp utanför är fri placering i bakgrundsarean.
 Ingen grid, inga slots.
+Zoner får överlappa (beslutat 2026-09-07): ett släpp landar i den minsta zon vars rektangel innehåller punkten, och mellan lika stora i den som står först i setupen. Nästling är huvudfallet; ett medvetet överlapp får en förutsägbar mening utan validering.
 
 Följdkrav:
 Zonrektanglarna är direkt återanvändbara som spelplansunderlag vid tryck.
@@ -958,9 +963,7 @@ Aktivitetsflödet vid anslutning: löst 2026-09-07, snapshoten bär de senaste f
 Behörighetsroller i detalj: ägare, medredigerare, testledare, observatör.
 Tillgänglighet i verktyget självt, till skillnad från i de spel som skapas i det.
 
-Spelupplevelse, kvar efter avsnitt K:
-Hur en hög i en area visas med blandad orientering av kort.
-Om zonrektanglar ska kunna överlappa, och vad ett släpp i överlappet betyder.
+Spelupplevelse, kvar efter avsnitt K: inga; de två sista avgjordes 2026-09-07, se K1 och K2.
 
 ---
 

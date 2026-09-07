@@ -87,7 +87,7 @@ Målet är att en grupp kan spela vilket kortspel som helst utan att sakna någo
 - ✅ Högens topp som adress i `stack` och `flip`, så att översta kortet i en dold hög kan staplas på ett löst kort och vändas; ett uppvänt kort överst i en hög ses av alla (K15).
 - ✅ Räknare och privata zoner på telefonen: en räknartyp `token.counter`, en yta "Framför mig" och en räknarzon per plats från wizarden; telefonen visar räknarna som piller och korten framför sig som en remsa med vänd, ta upp och spela; bordet ritar räknare som brickor (C4).
 - ✅ Aktivitetshistorik i snapshoten: de senaste femtio raderna följer med vid anslutning, så en skärm som ansluter mitt i ett spel ser vad som hänt (I, teknik).
-- ⬜ Hur en hög i en area visas med blandad orientering, och om zonrektanglar får överlappa (I, spelupplevelse).
+- ✅ En hög kvadrerar sina kort, och zoner får överlappa med minsta zonen som vinnare, lika stora efter setupens ordning (K1, K2).
 - ✅ Rumskoder: sex tecken utan förväxlingsbara, går ut tre timmar efter senaste anslutning, köper tokens för plats och observatör; bordet öppnas med värdnyckel; värden roterar koden och sparkar från editorn (DRIFT §9, G1 följdkrav).
 - ✅ Zongenvägar per spel: varje zon kan bära ett verb för telefonen ("Kasta", "Lägg underst") skilt från bordets namn, med placering överst eller underst; editorns flik "Bord" redigerar namn och genvägar med telefonens ark som förhandsvisning (C4 följdkrav).
 - ❓ Fler komponenttyper än standardkortet — tärning, bricka, meeple, bräde (B1, B2, B3).
@@ -176,7 +176,6 @@ Från DESIGN-BESLUT I och DRIFT:
 - Anonymisering av replay-korpusen (fas 4).
 - UPS och extern pulskoll (fas 4).
 - Behörighetsroller i detalj (fas 3).
-- Blandad orientering i högar, överlappande zoner (fas 1).
 - Tillgänglighet utöver grundnivån (fas 6).
 
 ---
