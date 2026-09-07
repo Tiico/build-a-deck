@@ -4,6 +4,7 @@
   "type": "module",
   "packageManager": "pnpm@11.24.0",
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks || true",
     "test": "pnpm -r --workspace-concurrency=1 test",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
