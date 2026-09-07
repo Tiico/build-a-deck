@@ -5,6 +5,7 @@ import { MemoryLogStore, type LogStore } from './store.js'
 import { MemoryProjectStore, type ProjectStore } from './projects.js'
 import { MemorySurveyStore, type SurveyStore } from './surveys.js'
 import { ConsoleMailer, MemoryAuthStore, ResendMailer, type AuthStore, type Mailer } from './auth.js'
+import { MemoryAssetStore, type AssetStore } from './assets.js'
 import { PostgresLogStore } from './store-postgres.js'
 import { MemoryRenderStore, PostgresRenderStore, assetsFromEnv, type RenderStore } from '@byd/render/queue'
 
@@ -36,6 +37,7 @@ let renders: RenderStore
 let projects: ProjectStore
 let surveys: SurveyStore
 let auth: AuthStore
+let assets: AssetStore
 let closeStore: () => Promise<void> = async () => undefined
 if (databaseUrl) {
   const pg = PostgresLogStore.connect(databaseUrl)
@@ -48,6 +50,7 @@ if (databaseUrl) {
   projects = pg.projects()
   surveys = pg.surveys()
   auth = pg.auth()
+  assets = pg.assets(objects)
   closeStore = async () => {
     await pg.close()
     await rq.close()
@@ -59,6 +62,7 @@ if (databaseUrl) {
   projects = new MemoryProjectStore()
   surveys = new MemorySurveyStore()
   auth = new MemoryAuthStore()
+  assets = new MemoryAssetStore()
   console.log(JSON.stringify({ msg: 'store', kind: 'memory', warning: 'log is not durable; textures render nowhere' }))
 }
 
@@ -69,7 +73,7 @@ const appOrigin = process.env['WEB_ORIGIN']
 const authBypass = process.env['AUTH_BYPASS'] === 'true'
 const resendKey = process.env['RESEND_API_KEY']
 const mailer: Mailer = resendKey ? new ResendMailer(resendKey, process.env['MAIL_FROM'] ?? 'build-your-deck <login@example.com>') : new ConsoleMailer()
-const server = createServer({ host, store, registry, renders, projects, surveys, auth, mailer, authBypass, ...(objects ? { objects } : {}), ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}) })
+const server = createServer({ host, store, registry, renders, projects, assets, surveys, auth, mailer, authBypass, ...(objects ? { objects } : {}), ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}) })
 server.listen(port, () => console.log(JSON.stringify({ msg: 'listening', port })))
 
 const evictor = setInterval(() => {

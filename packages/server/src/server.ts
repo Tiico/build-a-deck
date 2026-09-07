@@ -16,6 +16,7 @@ import { SurveyAnswer, type SurveyStore } from './surveys.js'
 import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountOf, hash, loginMail, safeNext, token, type Account, type AuthStore, type Mailer } from './auth.js'
 import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
 import { facesOf, printExportOf } from './faces.js'
+import { resolveAssets, type AssetStore } from './assets.js'
 import { TEXTURE_DPI } from './actor.js'
 
 // `staticDir`: the built web app, served from the same origin as the API (README, DRIFT §1).
@@ -28,6 +29,8 @@ export type ServerOptions = {
   renders?: RenderStore
   // The object store the outputs live in (DRIFT §4), asked by /health (§2).
   objects?: ObjectStore
+  // The project's images (E1): uploaded by creators, served by hash.
+  assets?: AssetStore
   projects?: ProjectStore
   surveys?: SurveyStore
   staticDir?: string
@@ -292,6 +295,10 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       await actor?.kick(seat)
       return json(res, 200, { ok: true, revoked })
     }
+    if (opts.assets) {
+      const handled = await routeAssets(opts, opts.assets, req, res, url)
+      if (handled) return
+    }
     if (opts.projects) {
       const handled = await routeProjects(opts, opts.projects, req, res, url)
       if (handled) return
@@ -488,6 +495,60 @@ async function attach(opts: ServerOptions, req: IncomingMessage, ws: WebSocket, 
 
 // Projects (L4, L5): a revisioned document, and "start a table" which expands the rows into a
 // session with its deck so textures start rendering at once.
+// The deck a table or a print is made from: the project's rows with their images inlined (E1),
+// so the compiled page is complete and the render worker needs nothing but the page.
+async function deckOf(opts: ServerOptions, rec: ProjectRecord): Promise<Deck> {
+  return deckFromProject(opts.assets ? { ...rec, rows: await resolveAssets(rec.rows, opts.assets) } : rec)
+}
+
+const ASSET_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/svg+xml'])
+const ASSET_MAX_BYTES = 8 * 1024 * 1024
+const ASSET_LINK_TTL_S = 3600
+
+// Images (E1, DRIFT §4): POST /assets takes one from a logged-in creator and answers with its
+// hash; GET /assets/:hash serves it to whoever knows the hash, from R2 when there is one.
+async function routeAssets(opts: ServerOptions, assets: AssetStore, req: IncomingMessage, res: ServerResponse, url: URL): Promise<boolean> {
+  if (req.method === 'POST' && url.pathname === '/assets') {
+    const account = opts.auth ? await accountOf(opts.auth, req) : null
+    if (opts.auth && !account) {
+      json(res, 401, { error: 'log in first' })
+      return true
+    }
+    const contentType = (req.headers['content-type'] ?? '').split(';')[0]?.trim() ?? ''
+    if (!ASSET_TYPES.has(contentType)) {
+      json(res, 415, { error: 'not an image' })
+      return true
+    }
+    const bytes = await readBytes(req, ASSET_MAX_BYTES)
+    if (!bytes) {
+      json(res, 413, { error: 'too big' })
+      return true
+    }
+    const hash = await assets.put(bytes, contentType)
+    json(res, 201, { hash })
+    return true
+  }
+  const one = /^\/assets\/([0-9a-f]{64})$/.exec(url.pathname)
+  if (one && req.method === 'GET') {
+    const hash = one[1] ?? ''
+    const link = await assets.link(hash, ASSET_LINK_TTL_S)
+    if (link) {
+      res.writeHead(302, { location: link, 'cache-control': `private, max-age=${ASSET_LINK_TTL_S - FACE_LINK_SLACK_S}` })
+      res.end()
+      return true
+    }
+    const got = await assets.get(hash)
+    if (!got) {
+      json(res, 404, { error: 'unknown asset' })
+      return true
+    }
+    res.writeHead(200, { 'content-type': got.contentType, 'cache-control': 'public, max-age=31536000, immutable' })
+    res.end(Buffer.from(got.bytes))
+    return true
+  }
+  return false
+}
+
 async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: IncomingMessage, res: ServerResponse, url: URL): Promise<boolean> {
   // Who is asking (G1): with accounts on, creating needs one, and an owned project answers only
   // its owner. A project without an owner is from before accounts and stays open.
@@ -557,7 +618,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       return true
     }
     const rec = gate.rec
-    const printed = printExportOf(deckFromProject(rec), setupFromProject(rec), opts.registry, clock(opts).getTime())
+    const printed = printExportOf(await deckOf(opts, rec), setupFromProject(rec), opts.registry, clock(opts).getTime())
     for (const job of printed.jobs) await opts.renders.enqueue(job)
     json(res, 202, { project: rec.id, rev: rec.rev, cards: printed.cards })
     return true
@@ -590,7 +651,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     const rec = gate.rec
     const id = randomUUID()
     const room = admission(opts)
-    await opts.store.createSession({ id, version: `rev-${rec.rev}`, setup: setupFromProject(rec), deck: deckFromProject(rec), project: rec.id, ...room.record })
+    await opts.store.createSession({ id, version: `rev-${rec.rev}`, setup: setupFromProject(rec), deck: await deckOf(opts, rec), project: rec.id, ...room.record })
     await opts.host.get(id)
     json(res, 201, { id, version: `rev-${rec.rev}`, code: room.code, hostKey: room.hostKey })
     return true
@@ -672,7 +733,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, 404, { error: session ? 'unknown project' : 'unknown session' })
       return true
     }
-    const compiled = facesOf(deckFromProject(rec), setupFromProject(rec), opts.registry, TEXTURE_DPI, Date.now())
+    const compiled = facesOf(await deckOf(opts, rec), setupFromProject(rec), opts.registry, TEXTURE_DPI, Date.now())
     // A job that failed for good stays failed here (#10): enqueueing it again would put it back
     // in the queue and the editor would poll a dead render forever, never learning it was dead.
     // `?retry=1` is the one place that says "try it anyway", and it comes from a person asking.
@@ -707,7 +768,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       return true
     }
     const setup = setupFromProject(rec)
-    await actor.refreshDeck(deckFromProject(rec), setup)
+    await actor.refreshDeck(await deckOf(opts, rec), setup)
     const version = `rev-${rec.rev}`
     const decision = await actor.submit({ id: randomUUID(), seat: null, intents: [{ v: 'version.change', to: version, components: setup.components }] })
     if (!decision.ok) json(res, 409, { error: decision.reason })
@@ -791,6 +852,20 @@ async function createLoginSession(opts: ServerOptions, auth: AuthStore, email: s
 function json(res: ServerResponse, status: number, body: unknown): void {
   res.writeHead(status, { 'content-type': 'application/json' })
   res.end(JSON.stringify(body))
+}
+
+// The body as bytes, or null once it grows past `max`.
+function readBytes(req: IncomingMessage, max: number): Promise<Uint8Array | null> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = []
+    let size = 0
+    req.on('data', (c: Buffer) => {
+      size += c.length
+      if (size <= max) chunks.push(c)
+    })
+    req.on('end', () => resolve(size > max ? null : new Uint8Array(Buffer.concat(chunks))))
+    req.on('error', reject)
+  })
 }
 
 function readBody(req: IncomingMessage): Promise<string> {

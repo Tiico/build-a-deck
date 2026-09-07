@@ -209,6 +209,16 @@ export class ProjectClient {
     this.commit({ ...this.doc, setup: { ...this.doc.setup, zones } })
   }
 
+  // An image for the project (E1): uploaded once, named by its bytes; the cell then points at it.
+  async uploadAsset(file: Blob): Promise<string> {
+    const res = await fetch(`${this.http}/assets`, withCredentials({ method: 'POST', headers: { 'content-type': file.type || 'application/octet-stream' }, body: file }))
+    if (res.status === 401) throw new Unauthorized()
+    if (res.status === 415) throw new Error('bara bilder kan laddas upp')
+    if (res.status === 413) throw new Error('bilden är för stor (max 8 MB)')
+    if (!res.ok) throw new Error(`kunde inte ladda upp bilden: ${res.status}`)
+    return ((await res.json()) as { hash: string }).hash
+  }
+
   async save(): Promise<SaveResult> {
     const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}`, withCredentials({
       method: 'PUT',

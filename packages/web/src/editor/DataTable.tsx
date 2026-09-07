@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ProjectDoc, ProjectRow } from './types.js'
 import { fieldsOf } from './fields.js'
+import { ASSET_DRAG_TYPE, assetRef, assetUrl, assetsInUse, imageFieldsOf, isAssetRef, ASSET_PREFIX } from './assets.js'
 import type { Cell } from './ProjectClient.js'
 import { exportCardsCsv, importCardsCsv } from './csv.js'
 import { keepOrder, nextSort, sortRows, type SortState } from './sorting.js'
@@ -18,12 +19,30 @@ export type DataTableProps = {
   // The whole list of rows at once: a CSV import, and every change the selection makes (#17).
   // One call is one change to the project, so a bulk edit is saved and undone as one.
   onReplaceRows(rows: ProjectRow[]): void
+  // The project's images (E1): where they are served from, and how a chosen file becomes one.
+  // Without both, image fields are edited as text.
+  assetBase?: string | undefined
+  onUpload?: ((file: File) => Promise<string>) | undefined
 }
 
 // The table (B as a tab): one row per card, the template's fields as columns, `antal` last (L4).
 // This is where the designer already lives; a change here reaches every copy of the card.
-export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows }: DataTableProps) {
+export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, assetBase, onUpload }: DataTableProps) {
   const [importError, setImportError] = useState<string | null>(null)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  // Which image cell a drag is over.
+  const [over, setOver] = useState<string | null>(null)
+  const imageFields = assetBase && onUpload ? imageFieldsOf(doc) : []
+  const images = assetsInUse(doc)
+  const upload = async (cardRef: string, field: string, file: File | undefined) => {
+    if (!file || !onUpload) return
+    try {
+      onCell(cardRef, field, assetRef(await onUpload(file)))
+      setUploadError(null)
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : String(err))
+    }
+  }
   const [sort, setSort] = useState<SortState | null>(null)
   const [filter, setFilter] = useState<FilterState>(noFilter)
   const [selected, setSelected] = useState<Selection>(noSelection)
@@ -111,6 +130,25 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
         <span>Import ersätter korten i tabellen. Spara när resultatet ser rätt ut.</span>
         {importError && <span role="alert">{importError}</span>}
       </div>
+      {imageFields.length > 0 && assetBase && (
+        // The deck's images (E1), once each: drag one onto a card's cell to use it again.
+        <div className="byd-data-images">
+          <span>Bilder i spelet</span>
+          {images.length === 0 ? (
+            <em>inga ännu — välj en bild i tabellen</em>
+          ) : (
+            <ul aria-label="Bilder i spelet">
+              {images.map(({ hash, cards }) => (
+                <li key={hash} data-asset={hash}>
+                  <img src={assetUrl(assetBase, hash)} alt={`Bild på ${cards.join(', ')}`} draggable onDragStart={(e) => e.dataTransfer.setData(ASSET_DRAG_TYPE, hash)} />
+                  <small>{cards.length} kort</small>
+                </li>
+              ))}
+            </ul>
+          )}
+          {uploadError && <span role="alert">{uploadError}</span>}
+        </div>
+      )}
       <div className="byd-data-filter">
         <input
           type="search"
@@ -251,7 +289,41 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                 />
               </td>
               <td className="byd-data-id">{cardRef}</td>
-              {fields.map((f) => (
+              {fields.map((f) =>
+                imageFields.includes(f) && assetBase ? (
+                  <td key={f} className="byd-data-image">
+                    <div
+                      className="byd-data-drop"
+                      role="group"
+                      aria-label={`Bild för ${cardRef}`}
+                      data-image-cell={cardRef}
+                      data-over={over === `${cardRef}:${f}` ? 'true' : undefined}
+                      onDragOver={(e) => {
+                        e.preventDefault()
+                        setOver(`${cardRef}:${f}`)
+                      }}
+                      onDragLeave={() => setOver(null)}
+                      onDrop={(e) => {
+                        e.preventDefault()
+                        setOver(null)
+                        const hash = e.dataTransfer.getData(ASSET_DRAG_TYPE)
+                        if (hash) onCell(cardRef, f, assetRef(hash))
+                        else void upload(cardRef, f, e.dataTransfer.files?.[0])
+                      }}
+                    >
+                      {isAssetRef(row[f]) ? <img src={assetUrl(assetBase, String(row[f]).slice(ASSET_PREFIX.length))} alt={`${cardRef} ${f}`} /> : <span>släpp en bild här</span>}
+                      <label className="byd-data-file">
+                        {isAssetRef(row[f]) ? 'Byt' : 'Välj'}
+                        <input type="file" accept="image/*" aria-label={`Välj bild för ${cardRef}`} onChange={(e) => void upload(cardRef, f, e.target.files?.[0])} />
+                      </label>
+                      {isAssetRef(row[f]) && (
+                        <button type="button" aria-label={`Ta bort bild för ${cardRef}`} onClick={() => onCell(cardRef, f, '')}>
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                ) : (
                 <td key={f}>
                   <input
                     type={f === 'antal' ? 'number' : 'text'}
@@ -263,7 +335,8 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                     aria-label={`${cardRef} ${f}`}
                   />
                 </td>
-              ))}
+                ),
+              )}
               {grouping && <GroupCell doc={doc} column={grouping} cardRef={cardRef} row={row} />}
               <td>
                 <button type="button" onClick={() => onRemoveRow(cardRef)} aria-label={`ta bort ${cardRef}`}>

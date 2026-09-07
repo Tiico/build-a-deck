@@ -374,6 +374,14 @@ Följdkrav:
 Enstaka avvikande kort kräver en genomtänkt undantagsmekanism i form av mallvarianter.
 Datan blir diffbar, vilket ger versionshanteringen dess mening.
 
+Illustrationer i editorn (prototypat och byggt 2026-09-07):
+Tre sätt prövades: bildceller i tabellen, släpp på kortet på väggen med spelets bilder i en bricka, och ett bibliotek som matchar filer mot kort på namn.
+Valet blev bildceller i tabellen: bildfältet är en cell med tumnagel, en knapp att välja eller byta, ett kryss att ta bort, och en plats att släppa en fil eller en av spelets bilder på.
+Ovanför tabellen står spelets bilder en gång var med hur många kort de sitter på; en bild dras därifrån till en cell för att användas igen.
+En bild är en innehållsadresserad asset (DRIFT §4): raden bär `asset:<hash>`, inte bytesen, så projektdokumentet är litet och samma bild på tio kort är en uppladdning.
+Kompilatorn får en URL där den anropas: i webbläsaren `/assets/<hash>`, på servern en data-URL ur lagret, så den kompilerade sidan bär sina bilder och renderworkern behöver inget annat än sidan.
+Wizarden laddar upp sina valda bilder innan projektet skapas och pekar på dem på samma sätt.
+
 ### E2. En enda renderare: HTML/CSS via headless Chromium (fråga 9)
 
 Mallen är HTML och CSS.

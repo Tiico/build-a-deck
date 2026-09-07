@@ -10,11 +10,12 @@ export type DeckWallProps = {
   onSelectRow(cardRef: string): void
   onSelectElement(id: string): void
   scale?: number
+  assetBase?: string | undefined
 }
 
 // The deck as a wall (K-editor answer, C): every row as a card, copies and warnings on each,
 // the whole deck visible at once — a balance change on forty cards is seen as one thing.
-export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, scale = 0.6 }: DeckWallProps) {
+export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, scale = 0.6, assetBase }: DeckWallProps) {
   const faceTemplate = doc.template.faces[face]
   const [warnings, setWarnings] = useState<Record<string, number>>({})
   const onWarnings = useCallback((cardRef: string, w: Warning[]) => {
@@ -41,6 +42,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
               row={row}
               icons={doc.icons}
               scale={scale}
+              assetBase={assetBase}
               onSelectElement={onSelectElement}
               onWarnings={(w) => onWarnings(cardRef, w)}
             />

@@ -1,10 +1,12 @@
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import postgres from 'postgres'
+import type { ObjectStore } from '@byd/render'
 import type { Applied } from '@byd/protocol'
 import { liftLine, type SetupDef } from '@byd/engine'
 import { SeqConflictError, type Deck, type GuestRecord, type LogStore, type SessionRecord, type SessionSummary, type PlayedRecord } from './store.js'
 import type { ProjectDoc, ProjectRecord, ProjectStore, ProjectSummary } from './projects.js'
+import { PostgresAssetStore } from './assets.js'
 import type { Account, AuthStore } from './auth.js'
 
 export class PostgresAuthStore implements AuthStore {
@@ -86,6 +88,11 @@ export class PostgresLogStore implements LogStore {
 
   auth(): PostgresAuthStore {
     return new PostgresAuthStore(this.sql)
+  }
+
+  // The project's images (E1): in the object store when there is one, else in this database.
+  assets(objects?: ObjectStore): PostgresAssetStore {
+    return new PostgresAssetStore(this.sql, objects)
   }
 
   // Idempotent schema for the slice. DRIFT §7 moves this into a migration step before start.

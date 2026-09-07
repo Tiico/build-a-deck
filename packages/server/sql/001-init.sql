@@ -98,3 +98,13 @@ create unique index if not exists guest_tokens_live_seat
 -- The account a project belongs to; null for projects from before accounts.
 alter table projects add column if not exists owner text;
 create index if not exists projects_owner on projects (owner);
+
+-- The project's images (E1, DRIFT §4): by content hash. With R2 the bytes live there under
+-- assets/<hash> and `bytes` stays null; without it they stay here.
+create table if not exists assets (
+  hash          text primary key,
+  content_type  text not null,
+  size          integer not null,
+  bytes         bytea,
+  created_at    timestamptz not null default now()
+);

@@ -234,3 +234,18 @@ describe('the setup in the editor (B5, K2)', () => {
     expect(stored?.setup.counters).toEqual([{ name: 'Poäng', start: 0 }])
   })
 })
+
+describe('images (E1)', () => {
+  it('uploads an image once and gets its hash back, the same hash for the same bytes', async () => {
+    const created = await run.projects.create('p1', projectDoc())
+    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    const file = new File([new Uint8Array([137, 80, 78, 71])], 'drake.png', { type: 'image/png' })
+    const hash = await client.uploadAsset(file)
+    expect(hash).toMatch(/^[0-9a-f]{64}$/)
+    expect(await client.uploadAsset(file)).toBe(hash)
+    const served = await fetch(`${run.http}/assets/${hash}`)
+    expect(served.status).toBe(200)
+    expect(new Uint8Array(await served.arrayBuffer())).toEqual(new Uint8Array([137, 80, 78, 71]))
+    await expect(client.uploadAsset(new File(['x'], 'x.txt', { type: 'text/plain' }))).rejects.toThrow(/bara bilder/)
+  })
+})

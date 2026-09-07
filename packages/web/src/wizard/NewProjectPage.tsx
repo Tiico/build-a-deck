@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CardPreview } from '../editor/CardPreview.js'
 import { loginUrl, withCredentials } from '../account/api.js'
+import { assetRef, bytesOfDataUrl } from '../editor/assets.js'
 import { buildProject, type WizardState } from './build.js'
 import { DEFAULT_FIELDS, DEFAULT_FRAME, FRAMES, type Field } from './frames.js'
 import './wizard.css'
@@ -76,7 +77,15 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     setBusy(true)
     setError(null)
     try {
-      const res = await fetch(`${http}/projects`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(buildProject(s)) }))
+      // The chosen images go up first (E1): the project's rows point at them by hash, not by
+      // carrying the bytes. A login asked for here is the same login the project needs.
+      const uploaded = await uploadImages(http, s)
+      if (uploaded === 'login') {
+        rememberWizard({ state: s, server })
+        onNavigate(loginUrl(location.pathname + location.search, server))
+        throw new Error('logga in först')
+      }
+      const res = await fetch(`${http}/projects`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(buildProject(uploaded)) }))
       if (res.status === 401) {
         rememberWizard({ state: s, server })
         onNavigate(loginUrl(location.pathname + location.search, server))
@@ -182,4 +191,26 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       </div>
     </div>
   )
+}
+
+// Every image field holding a chosen image becomes an asset reference; the state comes back
+// with the references in place. 'login' when the server wants an account first.
+async function uploadImages(http: string, state: WizardState): Promise<WizardState | 'login'> {
+  const imageKeys = state.fields.filter((f) => f.kind === 'image').map((f) => f.key)
+  const rows: Record<string, string>[] = []
+  for (const row of state.rows) {
+    const next = { ...row }
+    for (const key of imageKeys) {
+      const value = row[key] ?? ''
+      if (!value.startsWith('data:')) continue
+      const image = bytesOfDataUrl(value)
+      if (!image) continue
+      const res = await fetch(`${http}/assets`, withCredentials({ method: 'POST', headers: { 'content-type': image.type }, body: image.bytes }))
+      if (res.status === 401) return 'login'
+      if (!res.ok) throw new Error(`kunde inte ladda upp bilden: ${res.status}`)
+      next[key] = assetRef(((await res.json()) as { hash: string }).hash)
+    }
+    rows.push(next)
+  }
+  return { ...state, rows }
 }

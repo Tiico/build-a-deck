@@ -246,6 +246,21 @@
 .byd-data { border-collapse: collapse; width: 100%; background: #1b1d23; }
 .byd-data th { text-align: left; padding: 8px 10px; color: #7d8597; font-weight: 600; border-bottom: 1px solid #2f333d; position: sticky; top: 0; background: #1b1d23; }
 .byd-data td { padding: 0; border-bottom: 1px solid #20232b; }
+/* Image cells (E1): a thumbnail with a place to drop, a button to choose, a × to clear. */
+.byd-data-image { padding: 3px 6px !important; }
+.byd-data-drop { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 3px; border: 1px dashed transparent; border-radius: 8px; }
+.byd-data-drop[data-over='true'] { border-color: #ffd98a; background: rgba(255, 217, 138, 0.1); }
+.byd-data-drop > img { width: 60px; height: 40px; object-fit: cover; border-radius: 5px; background: #14161c; }
+.byd-data-drop > span { width: 60px; height: 40px; display: grid; place-items: center; border: 1px dashed #4a5163; border-radius: 5px; color: #7d8597; font-size: 10px; text-align: center; }
+.byd-data-file { position: relative; overflow: hidden; border: 1px solid #3b414e; border-radius: 6px; padding: 4px 9px; background: #1b1d23; color: #dce3f2; font-size: 12px; font-weight: 700; cursor: pointer; }
+.byd-data-file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.byd-data-drop > button { border: 0; background: transparent; color: #9aa3b8; font-size: 16px; cursor: pointer; }
+.byd-data-images { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; color: #7d8597; }
+.byd-data-images > span { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+.byd-data-images ul { display: flex; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.byd-data-images li { display: grid; justify-items: center; gap: 2px; font-size: 10px; }
+.byd-data-images img { width: 56px; height: 38px; object-fit: cover; border-radius: 5px; background: #14161c; cursor: grab; }
+.byd-data-images [role='alert'] { color: #f0b64a; }
 /* The header is the sort control (#15): the column's name, the state as an arrow beside it. */
 .byd-data-sort { margin: 0 0 8px; color: #7d8597; font-size: 12px; }
 /* The filter (#16): a search field over all fields and a chip per value of the deck's own

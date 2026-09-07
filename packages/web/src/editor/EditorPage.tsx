@@ -119,6 +119,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
     wall: () => (
       <DeckWall
         doc={doc}
+        assetBase={http}
         face="front"
         selectedRow={row}
         onSelectRow={setRow}
@@ -131,6 +132,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
     template: () => (
       <TemplateCanvas
         doc={doc}
+        assetBase={http}
         face={face}
         onSelectFace={setFace}
         row={row}
@@ -155,6 +157,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
     table: () => (
       <DataTable
         doc={doc}
+        assetBase={http}
+        onUpload={(file) => client.uploadAsset(file)}
         selectedRow={row}
         onSelectRow={setRow}
         onCell={(cardRef, field, value) => client.setCell(cardRef, field, value)}

@@ -11,6 +11,7 @@ import { useRoving } from './roving.js'
 
 export type TemplateCanvasProps = {
   doc: ProjectDoc
+  assetBase?: string | undefined
   face: string
   // Which face is being edited (#13, L7). The back is a template like the front, and the switch
   // is what issue #14 hangs the default back and the group's own backs on.
@@ -36,7 +37,7 @@ export type TemplateCanvasProps = {
 // Template mode (A): layers on the left, the card large in the middle with the selected element
 // outlined, and its properties on the right. Every change goes through `onPatch` and lands on
 // every card of the deck — there are no per-card exceptions (L3).
-export function TemplateCanvas({ doc, face, onSelectFace, row, selectedElement, onSelectElement, onPatch, onRemove, onAdd, onReorder, group, onSelectGroup, onGroupColumn, onReset }: TemplateCanvasProps) {
+export function TemplateCanvas({ doc, assetBase, face, onSelectFace, row, selectedElement, onSelectElement, onPatch, onRemove, onAdd, onReorder, group, onSelectGroup, onGroupColumn, onReset }: TemplateCanvasProps) {
   const faceTemplate = doc.template.faces[face]
   const column = groupColumn(doc)
   const groups = groupsOf(doc)
@@ -128,6 +129,7 @@ export function TemplateCanvas({ doc, face, onSelectFace, row, selectedElement, 
             row={rowData}
             icons={doc.icons}
             scale={scale}
+            assetBase={assetBase}
             selectedElement={selectedElement}
             onSelectElement={onSelectElement}
             overlay={<DragLayer grid={grid} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={onPatch} />}

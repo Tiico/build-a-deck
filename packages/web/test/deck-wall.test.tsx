@@ -27,3 +27,17 @@ describe('DeckWall (C as the home view)', () => {
     expect(onSelectElement).toHaveBeenCalledWith('title')
   })
 })
+
+describe('images on the wall (E1)', () => {
+  it('draws a card whose row points at an asset with the image from the server', () => {
+    const doc = projectDoc()
+    const hash = 'f'.repeat(64)
+    doc.template.faces['front']!.base.push({ kind: 'image', id: 'art', x: 4, y: 4, w: 55, h: 36, bind: { field: 'art' } })
+    doc.rows[0]!.fields['art'] = `asset:${hash}`
+    render(<DeckWall doc={doc} face="front" selectedRow={null} onSelectRow={() => undefined} onSelectElement={() => undefined} assetBase="http://api.local" />)
+    const img = document.querySelector('[data-card-ref="dragon"] img[data-element="art"]') as HTMLImageElement
+    expect(img.getAttribute('src')).toBe(`http://api.local/assets/${hash}`)
+    // A card without an image draws the element empty, not with a reference as its address.
+    expect(document.querySelector('[data-card-ref="knight"] img[data-element="art"]')).toBeNull()
+  })
+})

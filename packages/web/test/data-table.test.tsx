@@ -50,3 +50,49 @@ describe('DataTable (B as a tab)', () => {
     ]))
   })
 })
+
+describe('image cells (E1)', () => {
+  const HASH = 'c'.repeat(64)
+  const withArt = () => {
+    const doc = projectDoc()
+    doc.template.faces['front']!.base.push({ kind: 'image', id: 'art', x: 4, y: 4, w: 55, h: 36, bind: { field: 'art' } })
+    doc.rows[0]!.fields['art'] = `asset:${HASH}`
+    return doc
+  }
+
+  it('shows an image field as a thumbnail from the server, uploads a chosen file into the cell, and clears it', async () => {
+    const doc = withArt()
+    const onCell = vi.fn()
+    const onUpload = vi.fn(async () => 'd'.repeat(64))
+    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} assetBase="http://api.local" onUpload={onUpload} />)
+    const rows = screen.getAllByRole('row').slice(1)
+    const thumb = within(rows[0]!).getByRole('img', { name: 'dragon art' }) as HTMLImageElement
+    expect(thumb.src).toBe(`http://api.local/assets/${HASH}`)
+    // A card without an image has a place for one, not a broken picture.
+    expect(within(rows[1]!).queryByRole('img')).toBeNull()
+
+    const file = new File(['png'], 'riddare.png', { type: 'image/png' })
+    fireEvent.change(within(rows[1]!).getByLabelText('Välj bild för knight'), { target: { files: [file] } })
+    await waitFor(() => expect(onCell).toHaveBeenCalledWith('knight', 'art', `asset:${'d'.repeat(64)}`))
+    expect(onUpload).toHaveBeenCalledWith(file)
+
+    fireEvent.click(within(rows[0]!).getByRole('button', { name: 'Ta bort bild för dragon' }))
+    expect(onCell).toHaveBeenCalledWith('dragon', 'art', '')
+  })
+
+  it('lists the deck\'s images once each above the table, and a drop of one on a cell uses it again', () => {
+    const doc = withArt()
+    doc.rows[1]!.fields['art'] = `asset:${HASH}`
+    const onCell = vi.fn()
+    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} assetBase="http://api.local" onUpload={async () => 'e'.repeat(64)} />)
+    const strip = screen.getByRole('list', { name: 'Bilder i spelet' })
+    const thumbs = within(strip).getAllByRole('img')
+    expect(thumbs).toHaveLength(1)
+    expect(strip.textContent).toContain('2 kort')
+
+    const rows = screen.getAllByRole('row').slice(1)
+    const cell = within(rows[2]!).getByLabelText('Bild för wizard')
+    fireEvent.drop(cell, { dataTransfer: { getData: (type: string) => (type === 'text/x-byd-asset' ? HASH : ''), files: [] } })
+    expect(onCell).toHaveBeenCalledWith('wizard', 'art', `asset:${HASH}`)
+  })
+})
