@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createRoom, start, twoSeatSetup, type Running } from './fixture.js'
 import { WireClient } from './client.js'
 import { template } from './deck.js'
+import { GUEST_PENDING_TTL_MS } from '../src/rooms.js'
 
 // Room codes (DRIFT §9): short, without confusable characters, resolving to a session for a
 // few hours after the last connection, and the host's key that opens the table's own view.
@@ -64,6 +65,26 @@ describe('guest tokens', () => {
       post(run.http, `/rooms/${code}/join`, { name: 'Bo', seat: 'A' }),
     ])
     expect(attempts.map((res) => res.status).sort()).toEqual([201, 409])
+  })
+
+  it('releases an abandoned reservation, but keeps one whose token connected', async () => {
+    const { id, code } = await createRoom(run.http)
+    const abandoned = await post(run.http, `/rooms/${code}/join`, { name: 'Ada', seat: 'A' })
+    const abandonedToken = ((await abandoned.json()) as { token: string }).token
+    now = new Date(now.getTime() + GUEST_PENDING_TTL_MS + 1)
+
+    const replacement = await post(run.http, `/rooms/${code}/join`, { name: 'Bo', seat: 'A' })
+    expect(replacement.status).toBe(201)
+    const token = ((await replacement.json()) as { token: string }).token
+    const expired = await WireClient.connect(run.base, id, 'A', undefined, { token: abandonedToken })
+    expect(expired.messages[0]).toMatchObject({ t: 'refused', reason: 'a seat needs its token' })
+    await expired.close()
+
+    const active = await WireClient.connect(run.base, id, 'A', undefined, { token })
+    expect(active.messages[0]?.t).toBe('snapshot')
+    await active.close()
+    now = new Date(now.getTime() + GUEST_PENDING_TTL_MS + 1)
+    expect((await post(run.http, `/rooms/${code}/join`, { name: 'Cid', seat: 'A' })).status).toBe(409)
   })
 
   it('a code and a name buy a token for a free seat; unknown codes and seats, and taken seats, refuse', async () => {

@@ -85,6 +85,8 @@ describe('projects (L4, L5)', () => {
 
 describe('cross-origin (the editor is served from another origin in development)', () => {
   it('answers preflights, echoes the origin so the cookie may ride along, and stays open without one', async () => {
+    await run.stop()
+    run = await start({ appOrigin: 'http://localhost:5173' })
     const preflight = await fetch(`${run.http}/projects/x`, { method: 'OPTIONS', headers: { origin: 'http://localhost:5173', 'access-control-request-method': 'PUT' } })
     expect(preflight.status).toBe(204)
     expect(preflight.headers.get('access-control-allow-origin')).toBe('http://localhost:5173')
@@ -302,7 +304,7 @@ describe('the tables a project has (#19)', () => {
     const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
     const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
     for (const query of ['owner=1', 'seat=A&owner=1', 'role=observer&name=Designern&owner=1']) {
-      const ws = new WebSocket(`${run.base}/sessions/${sessionId}?${query}`, { headers: { cookie } })
+      const ws = new WebSocket(`${run.base}/sessions/${sessionId}?${query}`, { headers: { cookie, origin: 'http://test.local' } })
       const message = await new Promise<unknown>((resolve, reject) => {
         ws.once('message', (raw) => resolve(JSON.parse(raw.toString())))
         ws.once('error', reject)
@@ -311,7 +313,7 @@ describe('the tables a project has (#19)', () => {
       ws.close()
     }
 
-    const stranger = new WebSocket(`${run.base}/sessions/${sessionId}?owner=1`, { headers: { cookie: 'byd_session=nope' } })
+    const stranger = new WebSocket(`${run.base}/sessions/${sessionId}?owner=1`, { headers: { cookie: 'byd_session=nope', origin: 'http://test.local' } })
     const refused = await new Promise<unknown>((resolve, reject) => {
       stranger.once('message', (raw) => resolve(JSON.parse(raw.toString())))
       stranger.once('error', reject)
@@ -320,7 +322,7 @@ describe('the tables a project has (#19)', () => {
     stranger.close()
 
     for (const query of [`seat=Q&owner=1`, `role=observer&name=${'x'.repeat(65)}&owner=1`]) {
-      const invalid = new WebSocket(`${run.base}/sessions/${sessionId}?${query}`, { headers: { cookie } })
+      const invalid = new WebSocket(`${run.base}/sessions/${sessionId}?${query}`, { headers: { cookie, origin: 'http://test.local' } })
       const message = await new Promise<unknown>((resolve, reject) => {
         invalid.once('message', (raw) => resolve(JSON.parse(raw.toString())))
         invalid.once('error', reject)
@@ -328,5 +330,13 @@ describe('the tables a project has (#19)', () => {
       expect(message).toMatchObject({ t: 'refused' })
       invalid.close()
     }
+
+    const foreign = new WebSocket(`${run.base}/sessions/${sessionId}?owner=1`, { headers: { cookie, origin: 'https://foreign.example' } })
+    const blocked = await new Promise<unknown>((resolve, reject) => {
+      foreign.once('message', (raw) => resolve(JSON.parse(raw.toString())))
+      foreign.once('error', reject)
+    })
+    expect(blocked).toEqual({ t: 'refused', reason: 'the table needs the host key or its owner' })
+    foreign.close()
   })
 })

@@ -14,9 +14,9 @@ afterEach(async () => {
   stop = null
 })
 
-async function serve(staticDir?: string, store = new MemoryLogStore()) {
+async function serve(staticDir?: string, store = new MemoryLogStore(), appOrigin?: string) {
   const host = new TableHost(registry, store)
-  const server = createServer({ host, store, registry, ...(staticDir ? { staticDir } : {}) })
+  const server = createServer({ host, store, registry, ...(staticDir ? { staticDir } : {}), ...(appOrigin ? { appOrigin } : {}) })
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
   const { port } = server.address() as AddressInfo
   stop = () => new Promise((resolve) => server.close(() => resolve()))
@@ -25,7 +25,7 @@ async function serve(staticDir?: string, store = new MemoryLogStore()) {
 
 describe('serving the web app (DRIFT §1)', () => {
   it('allows the split development editor to send host authorization', async () => {
-    const http = await serve()
+    const http = await serve(undefined, new MemoryLogStore(), 'http://127.0.0.1:5173')
     const res = await fetch(`${http}/sessions/example/code`, {
       method: 'OPTIONS',
       headers: { origin: 'http://127.0.0.1:5173', 'access-control-request-headers': 'authorization' },
@@ -34,6 +34,10 @@ describe('serving the web app (DRIFT §1)', () => {
     expect(res.headers.get('access-control-allow-origin')).toBe('http://127.0.0.1:5173')
     expect(res.headers.get('access-control-allow-credentials')).toBe('true')
     expect(res.headers.get('access-control-allow-headers')).toContain('authorization')
+
+    const foreign = await fetch(`${http}/health`, { headers: { origin: 'https://foreign.example' } })
+    expect(foreign.headers.get('access-control-allow-origin')).toBeNull()
+    expect(foreign.headers.get('access-control-allow-credentials')).toBeNull()
   })
 
   it('serves files from STATIC_DIR with their types, falls back to index.html for app routes, and keeps the API first', async () => {

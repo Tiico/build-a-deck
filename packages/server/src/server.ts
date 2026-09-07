@@ -14,7 +14,7 @@ import type { Deck, LogStore, SessionRecord } from './store.js'
 import { ProjectDoc, deckFromProject, setupFromProject, type ProjectRecord, type ProjectStore } from './projects.js'
 import { SurveyAnswer, type SurveyStore } from './surveys.js'
 import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountOf, hash, loginMail, safeNext, token, type Account, type AuthStore, type Mailer } from './auth.js'
-import { codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
+import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
 import { facesOf } from './faces.js'
 import { TEXTURE_DPI } from './actor.js'
 
@@ -123,24 +123,42 @@ export function createServer(given: ServerOptions): Server {
 }
 
 // Play is capability-based (room codes, face hashes); the creator's account rides in a cookie.
-// In development the editor is served from another port than the server, so the origin is
-// echoed and credentials allowed; in production everything is one origin.
-const CORS: Record<string, string> = {
-  'access-control-allow-origin': '*',
+// Cookie-bearing requests are accepted only from this server or the configured development app.
+const CORS_BASE: Record<string, string> = {
   'access-control-allow-methods': 'GET, POST, PUT, OPTIONS',
   'access-control-allow-headers': 'content-type, authorization',
   'access-control-max-age': '86400',
 }
+
+function originOf(value: string | undefined): string | null {
+  if (!value) return null
+  try {
+    return new URL(value).origin
+  } catch {
+    return null
+  }
+}
+
+function browserOriginAllowed(opts: ServerOptions, req: IncomingMessage): boolean {
+  const origin = originOf(req.headers.origin)
+  if (!origin) return false
+  const forwarded = String(req.headers['x-forwarded-proto'] ?? '').split(',')[0]?.trim()
+  const own = req.headers.host ? `${forwarded || (originOf(opts.publicOrigin)?.startsWith('https:') ? 'https' : 'http')}://${req.headers.host}` : null
+  return [opts.publicOrigin, opts.appOrigin, own].some((candidate) => originOf(candidate ?? undefined) === origin)
+}
+
+function corsHeaders(opts: ServerOptions, req: IncomingMessage): Record<string, string> {
+  const origin = req.headers.origin
+  if (!origin) return { ...CORS_BASE, 'access-control-allow-origin': '*' }
+  if (!browserOriginAllowed(opts, req)) return { ...CORS_BASE, vary: 'origin' }
+  return { ...CORS_BASE, 'access-control-allow-origin': origin, 'access-control-allow-credentials': 'true', vary: 'origin' }
+}
+
 async function route(opts: ServerOptions, req: IncomingMessage, res: ServerResponse): Promise<void> {
   const url = new URL(req.url ?? '/', 'http://localhost')
-  const origin = req.headers.origin
-  if (origin) {
-    CORS['access-control-allow-origin'] = origin
-    CORS['access-control-allow-credentials'] = 'true'
-    CORS['vary'] = 'origin'
-  }
+  for (const [name, value] of Object.entries(corsHeaders(opts, req))) res.setHeader(name, value)
   if (req.method === 'OPTIONS') {
-    res.writeHead(204, CORS)
+    res.writeHead(204)
     res.end()
     return
   }
@@ -200,7 +218,15 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
         if (seat.name !== null) return json(res, 409, { error: `seat ${body.seat} is taken` })
       }
       const guestToken = newSecret()
-      const issued = await opts.store.issueGuest(found.id, { tokenHash: hash(guestToken), kind: body.seat !== undefined ? 'seat' : 'observer', seat: body.seat ?? null, name: body.name, issuedAt: clock(opts).toISOString() })
+      const issuedAt = clock(opts)
+      const issued = await opts.store.issueGuest(found.id, {
+        tokenHash: hash(guestToken),
+        kind: body.seat !== undefined ? 'seat' : 'observer',
+        seat: body.seat ?? null,
+        name: body.name,
+        issuedAt: issuedAt.toISOString(),
+        expiresAt: new Date(issuedAt.getTime() + GUEST_PENDING_TTL_MS).toISOString(),
+      })
       if (!issued) return json(res, 409, { error: `seat ${body.seat} is reserved` })
       return json(res, 201, { session: found.id, token: guestToken })
     }
@@ -239,13 +265,13 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       // life, so a texture is one round trip to the house and then none.
       const link = await opts.renders.link(hash, FACE_LINK_TTL_S)
       if (link) {
-        res.writeHead(302, { ...CORS, location: link, 'cache-control': `private, max-age=${FACE_LINK_TTL_S - FACE_LINK_SLACK_S}` })
+        res.writeHead(302, { location: link, 'cache-control': `private, max-age=${FACE_LINK_TTL_S - FACE_LINK_SLACK_S}` })
         res.end()
         return
       }
       const bytes = await opts.renders.output(hash)
       if (bytes) {
-        res.writeHead(200, { ...CORS, 'content-type': 'image/png', 'cache-control': 'public, max-age=31536000, immutable' })
+        res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'public, max-age=31536000, immutable' })
         res.end(Buffer.from(bytes))
         return
       }
@@ -301,7 +327,7 @@ async function serveStatic(dir: string, pathname: string, res: ServerResponse): 
   if (!file) return false
   const type = MIME[extname(file).toLowerCase()] ?? 'application/octet-stream'
   const hashed = file.includes(`${sep}assets${sep}`)
-  res.writeHead(200, { ...CORS, 'content-type': type, 'cache-control': hashed ? 'public, max-age=31536000, immutable' : 'no-cache' })
+  res.writeHead(200, { 'content-type': type, 'cache-control': hashed ? 'public, max-age=31536000, immutable' : 'no-cache' })
   await new Promise<void>((resolve, reject) => createReadStream(file).on('error', reject).on('end', () => resolve()).pipe(res))
   return true
 }
@@ -325,7 +351,7 @@ async function admit(opts: ServerOptions, req: IncomingMessage, session: Session
   // An editor marks its project-owner connection explicitly. Accounts verify the cookie; when
   // accounts are disabled, projects are intentionally open and the same development flow works.
   if (ask.owner) {
-    if (!session.project || (opts.auth && (await hostOf(opts, req, session)) !== 'host')) return { refused: 'the table needs the host key or its owner' }
+    if (!session.project || (opts.auth && (!browserOriginAllowed(opts, req) || (await hostOf(opts, req, session)) !== 'host'))) return { refused: 'the table needs the host key or its owner' }
     if (ask.seat !== null && !session.setup.seats.includes(ask.seat)) return { refused: `unknown seat ${ask.seat}` }
     if (ask.role === 'observer') {
       const name = ask.name?.trim()
@@ -334,8 +360,10 @@ async function admit(opts: ServerOptions, req: IncomingMessage, session: Session
     return { seat: ask.seat }
   }
   if (ask.host !== null) return session.hostKeyHash && hash(ask.host) === session.hostKeyHash ? { seat: null } : { refused: 'the table needs the host key' }
-  const guest = ask.token !== null ? await opts.store.guestByToken(session.id, hash(ask.token)) : null
-  const live = guest && guest.revokedAt === undefined ? guest : null
+  const now = clock(opts)
+  const live = ask.token !== null
+    ? await opts.store.activateGuest(session.id, hash(ask.token), now.toISOString(), new Date(now.getTime() + CODE_TTL_MS).toISOString())
+    : null
   if (ask.role === 'observer') return live?.kind === 'observer' ? { seat: null, observer: live.name } : { refused: 'an observer needs a token' }
   if (ask.seat !== null) return live?.kind === 'seat' && live.seat === ask.seat ? { seat: ask.seat } : { refused: 'a seat needs its token' }
   return { refused: 'the table needs the host key' }
@@ -650,7 +678,6 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
     if (opts.limiter && !opts.limiter.allow(email, Date.now())) return json(res, 429, { error: 'too many links; try again later' })
     if (opts.authBypass) {
       res.writeHead(200, {
-        ...CORS,
         'content-type': 'application/json',
         'set-cookie': await createLoginSession(opts, auth, email),
       })
@@ -670,7 +697,6 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
     const email = t ? await auth.redeemToken(hash(t), now().toISOString()) : null
     if (!email) return json(res, 400, { error: 'the link is spent or too old; ask for a new one' })
     res.writeHead(302, {
-      ...CORS,
       'set-cookie': await createLoginSession(opts, auth, email),
       location: `${opts.appOrigin ?? ''}${safeNext(url.searchParams.get('next') ?? undefined)}`,
     })
@@ -684,7 +710,7 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
   if (req.method === 'POST' && url.pathname === '/auth/logout') {
     const sid = req.headers.cookie?.match(new RegExp(`${COOKIE}=([^;]+)`))?.[1]
     if (sid) await auth.deleteSession(hash(sid))
-    res.writeHead(200, { ...CORS, 'content-type': 'application/json', 'set-cookie': `${COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0` })
+    res.writeHead(200, { 'content-type': 'application/json', 'set-cookie': `${COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0` })
     res.end(JSON.stringify({ ok: true }))
     return
   }
@@ -701,7 +727,7 @@ async function createLoginSession(opts: ServerOptions, auth: AuthStore, email: s
 }
 
 function json(res: ServerResponse, status: number, body: unknown): void {
-  res.writeHead(status, { ...CORS, 'content-type': 'application/json' })
+  res.writeHead(status, { 'content-type': 'application/json' })
   res.end(JSON.stringify(body))
 }
 

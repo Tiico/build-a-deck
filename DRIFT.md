@@ -128,7 +128,7 @@ Värden kan sparka en gäst, vilket ogiltigförklarar dennes anslutningstoken.
 
 Byggt 2026-09-07:
 Koden är sex tecken ur ett alfabet utan I, L, O, 0 och 1, går ut tre timmar efter senaste anslutning och förlängs av varje anslutning; `GET /rooms/:kod` löser upp den.
-`POST /rooms/:kod/join` med namn och plats (eller utan plats, för att titta) ger en token; en upptagen plats ger 409.
+`POST /rooms/:kod/join` med namn och plats (eller utan plats, för att titta) ger en token; en upptagen plats ger 409. En oanvänd platsreservation löper ut efter två minuter; första WebSocket-anslutningen förlänger token till tre timmar och varje återanslutning förlänger den igen.
 WebSocket-anslutningen kräver token för platser och observatörer, värdnyckeln (`host`) för bordets egen vy, eller rollen `lobby`, som ser platserna och inget mer.
 Editorn kan uttryckligen ansluta bord, plats eller observatör med `owner=1`; servern godtar då bara projektägaren via kontokakan (eller ett öppet projekt när konton är avstängda lokalt).
 Allt annat får `refused` och stängs; klienten återansluter aldrig efter det.

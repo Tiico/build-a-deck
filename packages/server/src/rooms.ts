@@ -8,6 +8,8 @@ import { randomBytes, randomInt } from 'node:crypto'
 export const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
 export const CODE_LENGTH = 6
 export const CODE_TTL_MS = 3 * 3600_000
+// A guest has this long to open the socket before an unclaimed seat reservation is released.
+export const GUEST_PENDING_TTL_MS = 2 * 60_000
 
 export function newCode(): string {
   let out = ''
