@@ -55,11 +55,69 @@
 .byd-wall-copies, .byd-wall-warnings { position: absolute; border-radius: 999px; font-size: 11px; font-weight: 700; padding: 1px 6px; }
 .byd-wall-copies { bottom: -6px; right: -6px; background: #1b1d23; color: #fff; border: 1px solid #444; }
 .byd-wall-warnings { top: -6px; right: -6px; background: #f0b64a; color: #1c1c1c; }
-.byd-preview { line-height: 1; }
+.byd-preview { line-height: 1; position: relative; }
+
+/* The layer that takes the pointer over a card being edited (#18). It sits in the card's own
+   coordinates, so a box here is the millimetres the template holds. `touch-action: none` is what
+   makes a trackpad and a touch screen drag the element instead of scrolling the stage. */
+.byd-drag-layer { position: absolute; inset: 0; touch-action: none; }
+.byd-drag-box { position: absolute; touch-action: none; cursor: move; }
+/* The optional grid: a millimetre rule to see by, with every tenth line darker so a centimetre
+   can be counted. It takes no pointer — it is under the boxes and is not one of them. */
+.byd-drag-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(to right, rgba(60, 140, 231, 0.4) 0 0.08mm, transparent 0.08mm 10mm),
+    repeating-linear-gradient(to bottom, rgba(60, 140, 231, 0.4) 0 0.08mm, transparent 0.08mm 10mm),
+    repeating-linear-gradient(to right, rgba(60, 140, 231, 0.16) 0 0.06mm, transparent 0.06mm 1mm),
+    repeating-linear-gradient(to bottom, rgba(60, 140, 231, 0.16) 0 0.06mm, transparent 0.06mm 1mm);
+}
+.byd-drag-handle { position: absolute; width: 2.4mm; height: 2.4mm; background: #fff; border: 0.4mm solid #3c8ce7; box-sizing: border-box; touch-action: none; }
+.byd-drag-handle[data-handle='nw'] { left: -1.2mm; top: -1.2mm; cursor: nwse-resize; }
+.byd-drag-handle[data-handle='ne'] { right: -1.2mm; top: -1.2mm; cursor: nesw-resize; }
+.byd-drag-handle[data-handle='sw'] { left: -1.2mm; bottom: -1.2mm; cursor: nesw-resize; }
+.byd-drag-handle[data-handle='se'] { right: -1.2mm; bottom: -1.2mm; cursor: nwse-resize; }
+/* The line an element has lined up with, while it is being dragged. Magenta because nothing a
+   card is made of is magenta: a guide can never be mistaken for the card itself. */
+.byd-drag-guide { position: absolute; background: #ff2ec4; }
+.byd-drag-guide[data-guide='x'] { top: 0; bottom: 0; width: 0.3mm; }
+.byd-drag-guide[data-guide='y'] { left: 0; right: 0; height: 0.3mm; }
 
 /* Canvas */
-.byd-canvas { height: 100%; display: grid; grid-template-columns: 220px 1fr 280px; }
-.byd-canvas h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #7d8597; margin: 0 0 8px; }
+.byd-canvas {
+  --byd-editor-canvas-bg: #23262e;
+  --byd-editor-tool-bg: #1b1d23;
+  --byd-editor-tool-ink: #dce3f2;
+  /* Everything the canvas says beside the card — the panel headings and the note on the layer
+     order — is quiet, but never quieter than AA against the panel it is read on. */
+  --byd-editor-hint-ink: #9aa3b8;
+  height: 100%;
+  display: grid;
+  grid-template-columns: 68px 220px 1fr 280px;
+}
+/* The tools that add an element (#18, variant A): a rail down the left, glyph over name, so the
+   four kinds are one glance and one click away wherever the eye is on the card. */
+.byd-canvas-tools { display: flex; flex-direction: column; gap: 6px; padding: 12px 8px; border-right: 1px solid #2f333d; }
+.byd-canvas-tools button {
+  display: grid;
+  gap: 2px;
+  justify-items: center;
+  padding: 8px 2px;
+  border: 1px solid #2f333d;
+  border-radius: 8px;
+  background: var(--byd-editor-tool-bg);
+  color: var(--byd-editor-tool-ink);
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+.byd-canvas-tools button span { font-size: 15px; line-height: 1; }
+.byd-canvas-tools button:hover { border-color: #3c8ce7; }
+.byd-canvas-grid-toggle { display: flex; align-items: center; gap: 7px; color: var(--byd-editor-hint-ink); font-size: 12px; margin-top: 12px; cursor: pointer; }
+.byd-canvas-hint { color: var(--byd-editor-hint-ink); font-size: 11px; line-height: 1.4; margin: 10px 0 0; }
+.byd-canvas h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--byd-editor-hint-ink); margin: 0 0 8px; }
 .byd-canvas-layers { border-right: 1px solid #2f333d; padding: 12px; overflow: auto; }
 .byd-canvas-layers ul { list-style: none; margin: 0; padding: 0; }
 .byd-canvas-layers li { padding: 6px 8px; border-radius: 6px; cursor: pointer; display: flex; gap: 8px; }

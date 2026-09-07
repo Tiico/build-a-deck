@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { useState } from 'react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { LayerList } from '../src/editor/LayerList.js'
@@ -13,10 +13,30 @@ function Layers({ ids }: { ids: string[] }) {
   return (
     <>
       <h2 id="test-layers-heading">Lager</h2>
-      <LayerList layers={ids.map((id) => base.find((e) => e.id === id)!)} selected={selected} onSelect={setSelected} labelledBy="test-layers-heading" />
+      <LayerList layers={layersOf(ids)} selected={selected} onSelect={setSelected} onReorder={vi.fn()} labelledBy="test-layers-heading" />
     </>
   )
 }
+
+// The same list, but holding the order itself: a move is reported out and comes back as a new
+// order, the way the template does it.
+function MovableLayers({ ids }: { ids: string[] }) {
+  const [order, setOrder] = useState(ids)
+  const reorder = (id: string, to: number) =>
+    setOrder((was) => {
+      const next = was.filter((other) => other !== id)
+      next.splice(to, 0, id)
+      return next
+    })
+  return (
+    <>
+      <h2 id="test-layers-heading">Lager</h2>
+      <LayerList layers={layersOf(order)} selected="title" onSelect={vi.fn()} onReorder={reorder} labelledBy="test-layers-heading" />
+    </>
+  )
+}
+
+const layersOf = (ids: string[]) => ids.map((id) => base.find((e) => e.id === id)!)
 const named = () => screen.getAllByRole('option').map((o) => o.textContent)
 
 describe('the layer list when the template changes under the keyboard', () => {
@@ -57,5 +77,24 @@ describe('the layer list when the template changes under the keyboard', () => {
     rerender(<Layers ids={['body', 'title', 'frame']} />)
     expect(document.activeElement).toBe(title)
     expect(screen.getByRole('option', { name: 'text body' }).getAttribute('tabindex')).toBe('-1')
+  })
+})
+
+describe('moving a layer in the list itself', () => {
+  it('keeps the moved layer focused and the plain arrows moving the focus', async () => {
+    const user = userEvent.setup()
+    render(<MovableLayers ids={['body', 'title', 'frame']} />)
+    await user.tab()
+    const title = screen.getByRole('option', { name: 'text title' })
+    expect(document.activeElement).toBe(title)
+
+    await user.keyboard('{Alt>}{ArrowUp}{/Alt}')
+    expect(named()).toEqual(['text title', 'text body', 'shape frame'])
+    expect(document.activeElement).toBe(title)
+
+    // Without Alt the same key is the roving tabindex again, and only the focus moves.
+    await user.keyboard('{ArrowDown}')
+    expect(named()).toEqual(['text title', 'text body', 'shape frame'])
+    expect(document.activeElement).toBe(screen.getByRole('option', { name: 'text body' }))
   })
 })

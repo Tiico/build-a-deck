@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef } from 'react'
+import { useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import { compile, fitInDocument, type FaceTemplate, type Row, type Warning } from '@byd/template'
 
@@ -12,11 +12,14 @@ export type CardPreviewProps = {
   selectedElement?: string | null
   onSelectElement?(id: string): void
   onWarnings?(warnings: Warning[]): void
+  // Drawn over the card, in the card's own coordinates: the editor's handles and guides (#18).
+  // It shows no card content — the compiler above is still the only thing that renders a card.
+  overlay?: ReactNode
 }
 
 // One card through the real compiler and the real DOM fitting — the same code the renderer runs,
 // so what the editor shows is what the table and the print get (E2).
-export function CardPreview({ face, row, icons, id, scale = 1, selectedElement, onSelectElement, onWarnings }: CardPreviewProps) {
+export function CardPreview({ face, row, icons, id, scale = 1, selectedElement, onSelectElement, onWarnings, overlay }: CardPreviewProps) {
   const out = useMemo(() => compile({ type: CARD_STANDARD_63x88, face, row, icons, scope: `#${id}` }), [face, row, icons, id])
   const ref = useRef<HTMLDivElement | null>(null)
   // The DOM measures for real; the compiler's text warnings are an estimate for headless use.
@@ -46,6 +49,7 @@ export function CardPreview({ face, row, icons, id, scale = 1, selectedElement, 
           }
         }}
       />
+      {overlay}
     </div>
   )
 }

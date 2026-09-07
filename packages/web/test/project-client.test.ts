@@ -60,3 +60,40 @@ describe('refreshing a running table (C7, L5)', () => {
     expect(log.map((l) => l.intent.v)).toEqual(['version.change'])
   })
 })
+
+describe('editing the template on the canvas (#18)', () => {
+  const ids = (client: ProjectClient) => client.doc.template.faces['front']!.base.map((e) => e.id)
+  const added = { kind: 'shape', id: 'shape-1', x: 1, y: 1, w: 5, h: 5, shape: 'rect' } as const
+
+  it('adds an element on top, takes one away, and moves one in the stack — all through the one write path', async () => {
+    const created = await run.projects.create('p1', projectDoc())
+    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    expect(ids(client)).toEqual(['frame', 'title', 'body'])
+
+    // A new element is drawn over the ones already there.
+    client.addElement('front', added)
+    expect(ids(client)).toEqual(['frame', 'title', 'body', 'shape-1'])
+    expect(client.dirty).toBe(true)
+
+    // The order in the base list is the drawing order; moving a layer moves it there.
+    client.moveElement('front', 'shape-1', 1)
+    expect(ids(client)).toEqual(['frame', 'shape-1', 'title', 'body'])
+    client.moveElement('front', 'frame', 3)
+    expect(ids(client)).toEqual(['shape-1', 'title', 'body', 'frame'])
+
+    client.removeElement('front', 'title')
+    expect(ids(client)).toEqual(['shape-1', 'body', 'frame'])
+
+    // The change is the project's, so it saves and reloads like any other.
+    expect(await client.save()).toEqual({ ok: true, rev: 2 })
+    expect((await run.projects.load('p1'))?.template.faces['front']?.base.map((e) => e.id)).toEqual(['shape-1', 'body', 'frame'])
+  })
+
+  it('refuses an element whose id is already on the face, and a face that does not exist', async () => {
+    const created = await run.projects.create('p1', projectDoc())
+    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    expect(() => client.addElement('front', { ...added, id: 'title' })).toThrow(/title/)
+    expect(() => client.addElement('sida', added)).toThrow(/sida/)
+    expect(client.dirty).toBe(false)
+  })
+})

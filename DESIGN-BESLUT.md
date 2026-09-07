@@ -781,6 +781,17 @@ Motivering:
 Fria undantag per kort är där mall-och-data-modellen brukar dö: när 30 av 200 kort avviker finns ingen mall längre.
 Promokortet blir en variant med ett kort i, vilket är ärligt.
 
+Byggt 2026-09-07 (prototypat i tre varianter, godkänd variant A med variant C:s dragbara lagerpanel — #18):
+Mallen redigeras på duken, inte i sifferfält.
+En verktygsrad till vänster lägger till text, bild, ikonrad och form; det nya elementet hamnar mitt på kortet, blir markerat och bundet till lekens första fält.
+Elementen flyttas med pekaren — pointer capture och `touch-action: none`, så att pekplatta och pekskärm flyttar elementet i stället för att rulla duken — och storleksändras med handtag i kortets fyra hörn.
+Piltangenterna flyttar 0,5 mm och med shift 5 mm; de ignoreras när fokus ligger i ett fält och när en lista redan har svarat på tangenten. Delete och backsteg tar bort det markerade elementet.
+Hjälplinjer visas mot andra elements kanter och kortets mitt, och det som hamnar närmare än en millimeter snäpper dit.
+Rutnätet från variant C finns som ett valfritt lager, av som standard, och är något att se efter — det snäpper inte, för ett rutnät på en millimeter skulle ta ifrån en halvmillimetersjustering.
+Duken renderar fortfarande genom `CardPreview` och kompilatorn (E2): lagret som tar pekaren ligger ovanpå kortet i kortets egna millimeter och ritar inget kortinnehåll.
+Lagerordningen ändras genom att dra en rad i panelen och, eftersom en lista som bara kan dras är en lista tangentbordet har förlorat, med Alt och piltangent.
+Prototypen `packages/web/src/prototype/canvas` togs bort när den hade svarat.
+
 ### L4. Datatabellen: kolumntyper från registryt, systemkolumn `antal`
 
 Kolumntyper följer typregistryts `editorSchema`: text, tal, bild, boolean.

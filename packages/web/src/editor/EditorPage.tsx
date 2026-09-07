@@ -128,7 +128,20 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
       />
     ),
     template: () => (
-      <TemplateCanvas doc={doc} face={face} row={row} selectedElement={element} onSelectElement={setElement} onPatch={(id, patch) => client.patchElement(face, id, patch)} />
+      <TemplateCanvas
+        doc={doc}
+        face={face}
+        row={row}
+        selectedElement={element}
+        onSelectElement={setElement}
+        onPatch={(id, patch) => client.patchElement(face, id, patch)}
+        onAdd={(el) => client.addElement(face, el)}
+        onReorder={(id, to) => client.moveElement(face, id, to)}
+        onRemove={(id) => {
+          client.removeElement(face, id)
+          setElement(null)
+        }}
+      />
     ),
     table: () => (
       <DataTable

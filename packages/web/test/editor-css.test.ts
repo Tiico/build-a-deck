@@ -28,10 +28,16 @@ const SHELL = `
     </div>
     <div role="tabpanel" tabindex="0" data-stop="the template panel">
       <div class="byd-canvas">
+        <aside class="byd-canvas-tools" role="toolbar" aria-label="Verktyg">
+          <button data-stop="a tool" tabindex="0"><span>T</span>Text</button>
+          <button tabindex="-1"><span>▣</span>Bild</button>
+        </aside>
         <aside class="byd-canvas-layers">
           <ul role="listbox">
-            <li role="option" aria-selected="true" tabindex="0" data-stop="the selected layer"><span class="byd-layer-kind">text</span> <span>title</span></li>
+            <li role="option" aria-selected="true" tabindex="0" draggable="true" data-stop="the selected layer"><span class="byd-layer-kind">text</span> <span>title</span></li>
           </ul>
+          <label class="byd-canvas-grid-toggle"><input type="checkbox" data-stop="the grid toggle" />Rutnät 1 mm</label>
+          <p class="byd-canvas-hint">Dra ett lager för att ändra ordningen, eller håll Alt och tryck pil upp eller ner.</p>
         </aside>
         <aside class="byd-canvas-props">
           <div class="byd-props">
@@ -121,7 +127,9 @@ describe('the editor under a keyboard', () => {
       'Uppdatera bordet',
       'the wall panel',
       'the template panel',
+      'a tool',
       'the selected layer',
+      'the grid toggle',
       'a property field',
       'a property choice',
       'the table panel',

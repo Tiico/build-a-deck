@@ -253,10 +253,67 @@ describe('the layers of the template by keyboard (UX-04)', () => {
     expect(document.activeElement).toBe(layers[2])
     expect(layers[2]!.getAttribute('aria-selected')).toBe('true')
     expect(screen.getByRole('heading', { name: /egenskaper · frame/i })).toBeTruthy()
-    // The property panel is a keyboard's next stop, and it edits the layer just picked: the
-    // field is controlled by the document, so a new value there is a patch that landed on frame.
+    // Past the grid, which is a layer of its own (#18), the property panel is the next stop, and
+    // it edits the layer just picked: the field is controlled by the document, so a new value
+    // there is a patch that landed on frame.
+    await user.tab()
+    expect(document.activeElement).toBe(screen.getByRole('checkbox', { name: /rutnät/i }))
     await user.tab()
     await user.keyboard('9')
     expect((screen.getByLabelText(/^x/i) as HTMLInputElement).value).toBe('9')
   })
+})
+
+describe('editing the template on the canvas (#18)', () => {
+  it('adds an element from the tool rail and takes it away again, as unsaved changes to the project', async () => {
+    const user = userEvent.setup()
+    await run.projects.create('p1', projectDoc())
+    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('tab', { name: /mall/i }))
+
+    // The new element is on the card, on top, selected, and its properties are open.
+    await user.click(screen.getByRole('button', { name: 'Text' }))
+    const layers = () => screen.getAllByRole('option', { name: /^(text|shape|image|icons) / }).map((l) => l.textContent)
+    expect(layers()).toEqual(['text text-1', 'text body', 'text title', 'shape frame'])
+    expect(document.querySelector('[data-layer="text-1"]')!.getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('heading', { name: /egenskaper · text-1/i })).toBeTruthy()
+    expect(document.querySelector('[data-element="text-1"]')).toBeTruthy()
+
+    // It lands in the saved project through the same path every other editor change takes.
+    fireEvent.click(screen.getByRole('button', { name: /spara/i }))
+    await screen.findByText('rev 2')
+    const stored = await run.projects.load('p1')
+    expect(stored?.template.faces['front']?.base.map((e) => e.id)).toEqual(['frame', 'title', 'body', 'text-1'])
+
+    // Delete takes the selected element away, and the layer list follows.
+    await user.keyboard('{Delete}')
+    expect(layers()).toEqual(['text body', 'text title', 'shape frame'])
+    expect(document.querySelector('[data-element="text-1"]')).toBeNull()
+  }, 20_000)
+})
+
+describe('the order of the layers (#18)', () => {
+  it('moves a layer with Alt and an arrow, and the card is drawn in the new order', async () => {
+    const user = userEvent.setup()
+    await run.projects.create('p1', projectDoc())
+    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('tab', { name: /mall/i }))
+    const drawn = () => [...document.querySelectorAll('#canvas [data-element]')].map((e) => e.getAttribute('data-element'))
+    expect(drawn()).toEqual(['frame', 'title', 'body'])
+
+    // Up the layer list is towards the front of the card, so `title` is drawn last.
+    const title = document.querySelector('[data-layer="title"]') as HTMLElement
+    title.focus()
+    await user.keyboard('{Alt>}{ArrowUp}{/Alt}')
+    expect([...document.querySelectorAll('[data-layer]')].map((l) => l.getAttribute('data-layer'))).toEqual(['title', 'body', 'frame'])
+    expect(drawn()).toEqual(['frame', 'body', 'title'])
+
+    fireEvent.click(screen.getByRole('button', { name: /spara/i }))
+    await screen.findByText('rev 2')
+    expect((await run.projects.load('p1'))?.template.faces['front']?.base.map((e) => e.id)).toEqual(['frame', 'body', 'title'])
+  }, 20_000)
 })

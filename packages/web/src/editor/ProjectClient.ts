@@ -57,10 +57,45 @@ export class ProjectClient {
 
   // Replaces fields of one element in one face's base by id (L1); the variants are untouched.
   patchElement(face: string, id: string, patch: Partial<Element>): void {
+    const current = this.faceOf(face)
+    this.writeFace(face, { ...current, base: current.base.map((e) => (e.id === id ? ({ ...e, ...patch } as Element) : e)) })
+  }
+
+  private faceOf(face: string): FaceTemplate {
     const current = this.doc.template.faces[face]
     if (!current) throw new Error(`template has no face ${face}`)
-    const next: FaceTemplate = { ...current, base: current.base.map((e) => (e.id === id ? ({ ...e, ...patch } as Element) : e)) }
+    return current
+  }
+
+  // The one way a face of the template is written: every canvas edit — a patch, an addition, a
+  // removal, a move — leaves as one commit of the project.
+  private writeFace(face: string, next: FaceTemplate): void {
     this.commit({ ...this.doc, template: { ...this.doc.template, faces: { ...this.doc.template.faces, [face]: next } } })
+  }
+
+  // Adding an element from the canvas (#18): it goes last in the base list, which is the drawing
+  // order, so a new element is on top of what is already there and can be seen at once.
+  addElement(face: string, element: Element): void {
+    const current = this.faceOf(face)
+    if (current.base.some((e) => e.id === element.id)) throw new Error(`face ${face} already has an element ${element.id}`)
+    this.writeFace(face, { ...current, base: [...current.base, element] })
+  }
+
+  removeElement(face: string, id: string): void {
+    const current = this.faceOf(face)
+    this.writeFace(face, { ...current, base: current.base.filter((e) => e.id !== id) })
+  }
+
+  // Reordering the layers (#18): the base list is the drawing order, so a layer moved in the
+  // panel is a layer moved here. The index is where the element ends up in that list.
+  moveElement(face: string, id: string, to: number): void {
+    const current = this.faceOf(face)
+    const from = current.base.findIndex((e) => e.id === id)
+    if (from < 0) throw new Error(`face ${face} has no element ${id}`)
+    const base = [...current.base]
+    const moved = base.splice(from, 1)
+    base.splice(Math.max(0, Math.min(base.length, to)), 0, ...moved)
+    this.writeFace(face, { ...current, base })
   }
 
   rename(name: string): void {

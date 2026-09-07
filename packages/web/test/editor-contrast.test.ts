@@ -55,3 +55,16 @@ describe('the palette the table action row is drawn in', () => {
     expect(contrastRatio(token(ink), token(on))).toBeGreaterThanOrEqual(4.5)
   })
 })
+
+// The template canvas got a tool rail and a line telling how the layer order is changed (#18).
+// Both are read beside a card that is meant to hold the eye, so they are held to the same bar as
+// everything else the editor says.
+describe('the palette the template canvas is drawn in', () => {
+  it.each([
+    { what: 'the name under a tool', ink: '--byd-editor-tool-ink', on: '--byd-editor-tool-bg' },
+    { what: 'the note on how the layers are ordered', ink: '--byd-editor-hint-ink', on: '--byd-editor-canvas-bg' },
+    { what: 'the heading over each panel', ink: '--byd-editor-hint-ink', on: '--byd-editor-canvas-bg' },
+  ])('gives $what AA contrast', ({ ink, on }) => {
+    expect(contrastRatio(token(ink), token(on))).toBeGreaterThanOrEqual(4.5)
+  })
+})
