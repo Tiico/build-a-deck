@@ -52,6 +52,27 @@ describe('EditorPage', () => {
     expect(link.href).toMatch(/\/table\?session=[0-9a-f-]{36}&mode=tv/)
     expect((await run.store.loadSession(new URL(link.href).searchParams.get('session')!))?.version).toBe('rev-2')
   }, 20_000)
+
+  it('imports cards as an unsaved table edit and persists them on save', async () => {
+    await run.projects.create('p1', projectDoc())
+    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
+
+    const file = new File(['id,title,body,antal\nphoenix,Fenix,Återföds,3'], 'kort.csv', { type: 'text/csv' })
+    fireEvent.change(screen.getByLabelText('Importera CSV'), { target: { files: [file] } })
+    expect(await screen.findByLabelText('phoenix title')).toBeTruthy()
+    expect(document.querySelectorAll('[data-card-ref]')).toHaveLength(1)
+    const save = screen.getByRole('button', { name: /spara/i }) as HTMLButtonElement
+    expect(save.disabled).toBe(false)
+
+    fireEvent.click(save)
+    await screen.findByText('rev 2')
+    expect((await run.projects.load('p1'))?.rows).toEqual([
+      { id: 'phoenix', fields: { title: 'Fenix', body: 'Återföds', antal: 3 } },
+    ])
+  })
 })
 
 describe('the table follows the editor (C7, L5)', () => {

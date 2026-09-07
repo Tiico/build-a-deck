@@ -17,31 +17,43 @@ function open(onNavigate: (url: string) => void) {
   render(<NewProjectPage onNavigate={onNavigate} />)
 }
 
-describe('NewProjectPage (L6, prototype B)', () => {
-  it('keeps the large preview optional for people building many cards in the wizard', () => {
+describe('NewProjectPage (L6, approved prototype A)', () => {
+  it('builds starter cards graphically and shows a newly added field on every card', () => {
     open(() => undefined)
 
-    expect(document.querySelector('.byd-wizard > aside')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Visa stor preview' }))
-    expect(document.querySelector('.byd-wizard > aside')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Dölj stor preview' }))
-    expect(document.querySelector('.byd-wizard > aside')).toBeNull()
+    expect(screen.queryByLabelText('Kort som CSV')).toBeNull()
+    expect(screen.getByLabelText('kort 1 Titel')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '+ Textfält' }))
+    expect(screen.getByLabelText('kort 1 Nytt textfält')).toBeTruthy()
+    expect(screen.getByText('Placeras på mallen i editorn')).toBeTruthy()
+  })
+
+  it('lets the designer choose an image for an image field and previews it', async () => {
+    open(() => undefined)
+    const input = screen.getByLabelText('kort 1 Illustration') as HTMLInputElement
+    expect(input.type).toBe('file')
+
+    const file = new File(['bilddata'], 'drake.png', { type: 'image/png' })
+    fireEvent.change(input, { target: { files: [file] } })
+    expect(await screen.findByRole('img', { name: 'Förhandsvisning av Illustration' })).toBeTruthy()
   })
 
   it('builds a project from the form with a live card, and hands off to the editor', async () => {
     const gone: string[] = []
     open((url) => gone.push(url))
-    fireEvent.click(screen.getByRole('button', { name: 'Visa stor preview' }))
-    const live = () => within(document.querySelector('.byd-wizard-live') as HTMLElement)
-    expect(live().getByText('Drake')).toBeTruthy() // the sample row on the live card
+    const live = () => within(document.querySelector('.byd-wizard-preview') as HTMLElement)
+    expect(live().getByText('Kort 1')).toBeTruthy()
 
     fireEvent.change(screen.getByLabelText('Namn'), { target: { value: 'Skogens herrar' } })
     fireEvent.click(screen.getByRole('button', { name: /^3$/ }))
-    fireEvent.click(screen.getByRole('button', { name: /minimal/i }))
-    fireEvent.click(screen.getByRole('button', { name: /använd exemplet/i }))
-    expect(within(document.querySelector('.byd-wizard-data-actions') as HTMLElement).getByText('4 kort')).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('kort 1 Titel'), { target: { value: 'Drake' } })
+    const file = new File(['bilddata'], 'drake.png', { type: 'image/png' })
+    fireEvent.change(screen.getByLabelText('kort 1 Illustration'), { target: { files: [file] } })
+    await screen.findByRole('img', { name: 'Förhandsvisning av Illustration' })
+    fireEvent.click(screen.getByRole('button', { name: '+ Nytt kort' }))
+    fireEvent.change(screen.getByLabelText('kort 2 Titel'), { target: { value: 'Riddare' } })
 
-    fireEvent.click(screen.getByRole('button', { name: /till editorn/i }))
+    fireEvent.click(screen.getByRole('button', { name: /skapa spelet och fortsätt i editorn/i }))
     await waitFor(() => expect(gone).toHaveLength(1))
     const url = new URL(gone[0]!, 'http://x')
     expect(url.pathname).toBe('/editor')
@@ -49,31 +61,24 @@ describe('NewProjectPage (L6, prototype B)', () => {
     expect(url.searchParams.get('server')).toBe(run.http)
     const stored = await run.projects.load(id)
     expect(stored?.name).toBe('Skogens herrar')
-    expect(stored?.rows.map((r) => r.id)).toEqual(['drake', 'riddare', 'trollkarl', 'tjuv'])
+    expect(stored?.rows.map((r) => r.id)).toEqual(['drake', 'riddare'])
+    expect(stored?.rows[0]?.fields['art']).toMatch(/^data:image\/png;base64,/)
     expect(stored?.setup.seats).toEqual(['A', 'B', 'C'])
-    expect(stored?.template.faces['front']?.base.map((e) => e.id)).not.toContain('art')
+    expect(stored?.template.faces['front']?.base.map((e) => e.id)).toContain('art')
   })
 
-  it('"Öppna bordet" creates the project and a table and goes there', async () => {
-    const gone: string[] = []
-    open((url) => gone.push(url))
-    fireEvent.change(screen.getByLabelText('Namn'), { target: { value: 'Snabbt' } })
-    fireEvent.click(screen.getByRole('button', { name: /5 tomma rader/i }))
-    fireEvent.click(screen.getByRole('button', { name: /öppna bordet/i }))
-    await waitFor(() => expect(gone).toHaveLength(1))
-    const url = new URL(gone[0]!, 'http://x')
-    expect(url.pathname).toBe('/table')
-    expect(url.searchParams.get('mode')).toBe('tv')
-    const session = await run.store.loadSession(url.searchParams.get('session')!)
-    expect(session?.setup.components).toHaveLength(5)
-  })
-
-  it('cannot proceed without a name and at least one card', () => {
+  it('makes the editor the clear next step instead of offering a direct table', () => {
     open(() => undefined)
-    expect((screen.getByRole('button', { name: /till editorn/i }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByText('Wizarden är startpunkten')).toBeTruthy()
+    expect(screen.getByText(/csv-verktyg väntar i editorn/i)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /öppna bordet/i })).toBeNull()
+  })
+
+  it('cannot proceed without a name', () => {
+    open(() => undefined)
+    const next = screen.getByRole('button', { name: /fortsätt i editorn/i }) as HTMLButtonElement
+    expect(next.disabled).toBe(true)
     fireEvent.change(screen.getByLabelText('Namn'), { target: { value: 'X' } })
-    expect((screen.getByRole('button', { name: /till editorn/i }) as HTMLButtonElement).disabled).toBe(true)
-    fireEvent.click(screen.getByRole('button', { name: /5 tomma rader/i }))
-    expect((screen.getByRole('button', { name: /till editorn/i }) as HTMLButtonElement).disabled).toBe(false)
+    expect(next.disabled).toBe(false)
   })
 })

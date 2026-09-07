@@ -1,4 +1,4 @@
-import type { ProjectDoc } from '@byd/server'
+import type { ProjectDoc, ProjectRow } from '@byd/server'
 import type { Element, FaceTemplate } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
 
@@ -49,6 +49,10 @@ export class ProjectClient {
 
   removeRow(cardRef: string): void {
     this.commit({ ...this.doc, rows: this.doc.rows.filter((r) => r.id !== cardRef) })
+  }
+
+  replaceRows(rows: ProjectRow[]): void {
+    this.commit({ ...this.doc, rows })
   }
 
   // Replaces fields of one element in one face's base by id (L1); the variants are untouched.

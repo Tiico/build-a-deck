@@ -65,7 +65,7 @@ Editorn:
 - ✅ Elementmodell kompilerad till HTML/CSS, inline-syntax, varianter, datatabell med `antal`, baksida som egen mall (E1, E2, L1–L4, L7).
 - ✅ Textanpassning ned till minimigräns, mätt i DOM (E6).
 - ✅ Kortväggen som hem, duken för mallen, tabellen som flik (L8).
-- ✅ Wizarden på en sida med levande ramkort och frivillig stor preview för flera kort (E3, L6).
+- ✅ Grafisk wizard för en liten startlek: fält syns direkt på exempelkorten, bildfält kan fyllas och editorn är den tydliga nästa vägen; CSV importeras och exporteras i editorns tabell (E1, E3, L6).
 - ✅ Editor till bord med förrenderade texturer; bytet är atomiskt för spelarna (L5).
 - ✅ "Mina spel" och inloggningskortet (G1).
 
@@ -97,7 +97,7 @@ Målet är att en grupp kan spela vilket kortspel som helst utan att sakna någo
 Målet är att designern aldrig behöver ett annat verktyg för att göra leken.
 
 - ⬜ Setup-editor: zoner, platser, händer, draghög och startuppställning i editorn i stället för wizardens fasta setup (B5, K2).
-- ⬜ Bilder: uppladdning av illustrationer till bildytor, lagrade i R2 (E1, DRIFT §4).
+- 🔶 Bilder: wizarden kan lägga in illustrationer på startkort; kvar är editorns fulla assetflöde med innehållsadresserad lagring i R2 (E1, DRIFT §4).
 - ⬜ Symbolbibliotek med CC0- och CC-BY-ikoner, platshållarramar och färgblock (E4).
 - 🔶 Fysisk validering: textanpassning finns (E6); kvar är minsta textstorlek som varning, kontrast, färgblindhet, utfall och linjetjocklek (E5).
 - 🔶 Versionering: revisionsräknare finns; kvar är oföränderlig historik med namngivna milstolpar, diff och att öppna en äldre version (B4).

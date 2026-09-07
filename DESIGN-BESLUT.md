@@ -365,8 +365,12 @@ Ny användare möts av ett steg-för-steg-flöde: antal spelare, komponenter, an
 
 Villkor som gör valet hållbart:
 Wizarden måste skapa exakt samma domänobjekt som den vanliga editorn — ingen parallell kodväg.
-CSV-import bör ligga inuti wizarden som ett steg, inte som en konkurrerande ingång.
+Wizarden är en kort grafisk start, inte en förenklad full editor: varje valt fält visas direkt på några exempelkort och bildfält kan fyllas med en bild.
+Hela leken, mallplacering och CSV-import/export hör hemma i editorn; wizarden ska tydligt hänvisa dit som nästa steg.
 Ingen levande tvåvägssynk mot Google Sheets — import och ominport med diff, eftersom synk ger två sanningskällor och krockar med oföränderlig historik och samredigering.
+
+Reviderat och byggt 2026-09-06 efter prototypvariant A, ”Guidad start”.
+CSV-steget togs bort eftersom det gjorde onboarding beroende av ett externt kalkylblad och dolde sambandet mellan fält och kortdata.
 
 ### E4. Assets: kurerat CC0- och CC-BY-bibliotek för symboler (fråga 23)
 
