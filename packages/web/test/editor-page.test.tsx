@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
+import { userEvent } from '@testing-library/user-event'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
@@ -171,4 +172,63 @@ describe('"Uppdatera bordet" switches the table only when the new cards can be s
     expect(document.querySelector('.byd-editor-table-link')!.hasAttribute('data-lost')).toBe(false)
     expect((await run.store.read(sessionId)).map((l) => l.intent.v)).toEqual(['version.change'])
   }, 20_000)
+})
+
+describe('the editor by keyboard alone (UX-04)', () => {
+  it('switches mode from the tablist, and every tab names the panel it controls', async () => {
+    const user = userEvent.setup()
+    await run.projects.create('p1', projectDoc())
+    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+
+    for (const name of ['Kortvägg', 'Mall', 'Tabell']) {
+      const tab = screen.getByRole('tab', { name })
+      const panel = document.getElementById(tab.getAttribute('aria-controls')!)!
+      expect(panel.getAttribute('role')).toBe('tabpanel')
+      expect(panel.getAttribute('aria-labelledby')).toBe(tab.id)
+    }
+    expect(screen.getByRole('tabpanel', { name: 'Kortvägg' })).toBeTruthy()
+
+    await user.tab()
+    expect(document.activeElement).toBe(screen.getByRole('tab', { name: 'Kortvägg' }))
+    await user.keyboard('{ArrowRight}{Enter}')
+    expect(document.querySelector('[data-mode]')!.getAttribute('data-mode')).toBe('template')
+    expect(screen.getByRole('tabpanel', { name: 'Mall' })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: 'Mall' }).getAttribute('aria-selected')).toBe('true')
+
+    // Only the open panel is on the tab path; the closed ones are not reachable at all.
+    expect(document.querySelectorAll('[role="tabpanel"]:not([hidden])')).toHaveLength(1)
+    const panel = screen.getByRole('tabpanel', { name: 'Mall' })
+    for (let i = 0; i < 6 && !panel.contains(document.activeElement); i++) await user.tab()
+    expect(panel.contains(document.activeElement)).toBe(true)
+  })
+})
+
+describe('the layers of the template by keyboard (UX-04)', () => {
+  it('reaches the layer list from the tablist and picks a layer, and the property panel follows', async () => {
+    const user = userEvent.setup()
+    await run.projects.create('p1', projectDoc())
+    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+
+    await user.tab()
+    await user.keyboard('{ArrowRight}{Enter}')
+    const layers = screen.getAllByRole('option')
+    expect(layers.map((l) => l.textContent)).toEqual(['text body', 'text title', 'shape frame'])
+    for (let i = 0; i < 6 && !layers.includes(document.activeElement as HTMLElement); i++) await user.tab()
+    expect(document.activeElement).toBe(layers[0])
+    expect(screen.getByRole('heading', { name: /egenskaper · body/i })).toBeTruthy()
+
+    await user.keyboard('{End}')
+    expect(document.activeElement).toBe(layers[2])
+    expect(layers[2]!.getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('heading', { name: /egenskaper · frame/i })).toBeTruthy()
+    // The property panel is a keyboard's next stop, and it edits the layer just picked: the
+    // field is controlled by the document, so a new value there is a patch that landed on frame.
+    await user.tab()
+    await user.keyboard('9')
+    expect((screen.getByLabelText(/^x/i) as HTMLInputElement).value).toBe('9')
+  })
 })

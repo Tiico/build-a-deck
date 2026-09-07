@@ -3,9 +3,9 @@
 .byd-editor > header { display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #2f333d; }
 .byd-editor > header strong { color: #fff; font-size: 15px; }
 .byd-editor-rev { color: #7d8597; }
-.byd-editor nav { display: flex; background: #1b1d23; border-radius: 8px; padding: 3px; margin-left: 12px; }
-.byd-editor nav button { border: 0; border-radius: 6px; padding: 6px 14px; background: transparent; color: #9aa3b8; font-weight: 600; cursor: pointer; }
-.byd-editor nav button[aria-selected='true'] { background: #2f3a55; color: #fff; }
+.byd-editor [role='tablist'] { display: flex; background: #1b1d23; border-radius: 8px; padding: 3px; margin-left: 12px; }
+.byd-editor [role='tab'] { border: 0; border-radius: 6px; padding: 6px 14px; background: transparent; color: #9aa3b8; font-weight: 600; cursor: pointer; }
+.byd-editor [role='tab'][aria-selected='true'] { background: #2f3a55; color: #fff; }
 .byd-editor-spacer { flex: 1; }
 .byd-editor-notice { color: #f0b64a; }
 .byd-editor > header > button { border: 1px solid #2f333d; border-radius: 8px; padding: 8px 14px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
@@ -40,7 +40,13 @@
   font-weight: 700;
   cursor: pointer;
 }
-.byd-editor > main { min-height: 0; overflow: auto; }
+/* The middle row belongs to the table link, which is only there once a table is running; the
+   open mode always takes the last row, so the canvas reaches the bottom of the window either way. */
+.byd-editor > main { grid-row: 3; min-height: 0; overflow: auto; }
+.byd-editor > main > [role='tabpanel'] { height: 100%; min-height: 0; }
+/* A keyboard has to be able to see where it is, in every mode: one ring for every stop in the
+   editor, light enough to carry 3:1 against each of the surfaces it lands on. */
+.byd-editor :focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
 
 /* Wall */
 .byd-wall { padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; align-content: start; }

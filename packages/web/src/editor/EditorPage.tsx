@@ -1,13 +1,12 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { DeckWall } from './DeckWall.js'
+import { EditorTabs, MODES, panelId, tabId, type Mode } from './EditorTabs.js'
 import { TemplateCanvas } from './TemplateCanvas.js'
 import { DataTable } from './DataTable.js'
 import { useProjectClient } from './useProjectClient.js'
 import type { Textures } from './ProjectClient.js'
 import { loginUrl } from '../account/api.js'
 import './editor.css'
-
-type Mode = 'wall' | 'template' | 'table'
 
 // /editor?project=…&server=http://…
 // The editor (L, prototype answer): the deck wall as home, the template canvas for the template,
@@ -115,24 +114,41 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
     return `/table?${q.toString()}`
   }
 
+  const panel: Record<Mode, () => ReactNode> = {
+    wall: () => (
+      <DeckWall
+        doc={doc}
+        face={face}
+        selectedRow={row}
+        onSelectRow={setRow}
+        onSelectElement={(id) => {
+          setElement(id)
+          setMode('template')
+        }}
+      />
+    ),
+    template: () => (
+      <TemplateCanvas doc={doc} face={face} row={row} selectedElement={element} onSelectElement={setElement} onPatch={(id, patch) => client.patchElement(face, id, patch)} />
+    ),
+    table: () => (
+      <DataTable
+        doc={doc}
+        selectedRow={row}
+        onSelectRow={setRow}
+        onCell={(cardRef, field, value) => client.setCell(cardRef, field, value)}
+        onAddRow={(cardRef) => client.addRow(cardRef, { title: '', antal: 1 })}
+        onRemoveRow={(cardRef) => client.removeRow(cardRef)}
+        onImportRows={(rows) => client.replaceRows(rows)}
+      />
+    ),
+  }
+
   return (
     <div className="byd-editor" data-page="editor" data-mode={mode}>
       <header>
         <strong>{doc.name}</strong>
         <span className="byd-editor-rev">rev {client.rev}</span>
-        <nav role="tablist">
-          {(
-            [
-              ['wall', 'Kortvägg'],
-              ['template', 'Mall'],
-              ['table', 'Tabell'],
-            ] as const
-          ).map(([m, label]) => (
-            <button key={m} role="tab" type="button" aria-selected={mode === m ? 'true' : 'false'} onClick={() => setMode(m)}>
-              {label}
-            </button>
-          ))}
-        </nav>
+        <EditorTabs mode={mode} onSelect={setMode} />
         <span className="byd-editor-spacer" />
         {notice && <span role="status" className="byd-editor-notice">{notice}</span>}
         <button type="button" onClick={() => void save()} disabled={!client.dirty || saving}>
@@ -170,32 +186,13 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
         </div>
       )}
       <main>
-        {mode === 'wall' && (
-          <DeckWall
-            doc={doc}
-            face={face}
-            selectedRow={row}
-            onSelectRow={setRow}
-            onSelectElement={(id) => {
-              setElement(id)
-              setMode('template')
-            }}
-          />
-        )}
-        {mode === 'template' && (
-          <TemplateCanvas doc={doc} face={face} row={row} selectedElement={element} onSelectElement={setElement} onPatch={(id, patch) => client.patchElement(face, id, patch)} />
-        )}
-        {mode === 'table' && (
-          <DataTable
-            doc={doc}
-            selectedRow={row}
-            onSelectRow={setRow}
-            onCell={(cardRef, field, value) => client.setCell(cardRef, field, value)}
-            onAddRow={(cardRef) => client.addRow(cardRef, { title: '', antal: 1 })}
-            onRemoveRow={(cardRef) => client.removeRow(cardRef)}
-            onImportRows={(rows) => client.replaceRows(rows)}
-          />
-        )}
+        {MODES.map(([m]) => (
+          // One panel per tab, so every tab's `aria-controls` names a panel that exists; only the
+          // open one carries content, so switching mode still mounts a single canvas.
+          <div key={m} id={panelId(m)} role="tabpanel" aria-labelledby={tabId(m)} tabIndex={0} hidden={mode !== m}>
+            {mode === m && panel[m]()}
+          </div>
+        ))}
       </main>
     </div>
   )

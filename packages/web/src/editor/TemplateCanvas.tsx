@@ -1,6 +1,7 @@
 import type { Element, ProjectDoc } from './types.js'
 import { CardPreview } from './CardPreview.js'
 import { fieldsOf } from './fields.js'
+import { LayerList } from './LayerList.js'
 
 export type TemplateCanvasProps = {
   doc: ProjectDoc
@@ -26,19 +27,7 @@ export function TemplateCanvas({ doc, face, row, selectedElement, onSelectElemen
     <div className="byd-canvas">
       <aside className="byd-canvas-layers">
         <h2 id="layers-heading">Lager</h2>
-        <ul role="list" aria-labelledby="layers-heading">
-          {[...faceTemplate.base].reverse().map((e) => (
-            <li
-              key={e.id}
-              role="listitem"
-              data-layer={e.id}
-              aria-selected={e.id === selectedElement ? 'true' : 'false'}
-              onClick={() => onSelectElement(e.id)}
-            >
-              <span className="byd-layer-kind">{e.kind}</span> <span>{e.id}</span>
-            </li>
-          ))}
-        </ul>
+        <LayerList layers={[...faceTemplate.base].reverse()} selected={selectedElement} onSelect={onSelectElement} labelledBy="layers-heading" />
       </aside>
       <main className="byd-canvas-stage" onClick={() => onSelectElement(null)}>
         <CardPreview id="canvas" face={faceTemplate} row={rowData} icons={doc.icons} scale={2.6} selectedElement={selectedElement} onSelectElement={onSelectElement} />
