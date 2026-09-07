@@ -167,10 +167,16 @@ describe('connections', () => {
     const id = await createSession(run.http)
     const table = await connect(id, null)
     await table.send(null, { v: 'draw', from: 'draw', to: 'table', count: 2 })
-    const b1 = await connect(id, 'B')
+    const token = await run.admit(id, 'B')
+    const reconnect = async () => {
+      const client = await WireClient.connect(run.base, id, 'B', undefined, { token })
+      clients.push(client)
+      return client
+    }
+    const b1 = await reconnect()
     await b1.close()
     await table.send(null, { v: 'draw', from: 'draw', to: 'hand:B', count: 1 })
-    const b2 = await connect(id, 'B')
+    const b2 = await reconnect()
     expect(b2.view).toMatchObject({ seq: 2, seat: 'B' })
     expect(b2.view!.components.filter((c) => c.zone === 'hand:B')).toHaveLength(1)
   })

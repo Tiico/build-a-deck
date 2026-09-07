@@ -43,10 +43,13 @@
   border: 2px solid rgba(255, 255, 255, 0.18);
   border-radius: 10px;
 }
+/* The name straddles the zone's top border rather than lying inside it: a zone that fills up
+   with cards would otherwise bury its own label (#20). */
 .byd-zone > span {
-  position: absolute; left: 8px; top: 4px;
-  font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: rgba(255, 255, 255, 0.4);
+  position: absolute; left: 8px; bottom: calc(100% + 2px);
+  font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: rgba(255, 255, 255, 0.45);
 }
+.byd-table-frame[data-mode='tv'] .byd-zone > span { left: 10px; font-size: 13px; letter-spacing: 1.5px; color: #7d8597; }
 
 /* Cards: a coloured face or a striped back. */
 .byd-card {
@@ -76,13 +79,33 @@
   background: repeating-linear-gradient(45deg, #3a4d7a, #3a4d7a 4px, #2f4068 4px, #2f4068 8px);
 }
 .byd-pile[data-count='0'] .byd-pile-top { background: transparent; border: 2px dashed rgba(255, 255, 255, 0.25); }
+/* On the felt (B) the name and the count are one pill under the pile. */
 .byd-pile-count {
   position: absolute; left: 50%; bottom: -22px; transform: translateX(-50%);
   background: rgba(0, 0, 0, 0.55); color: #f3e9d6;
   border-radius: 999px; padding: 2px 8px; font-size: 12px; white-space: nowrap;
 }
+.byd-pile-n { font-weight: 600; }
+.byd-table-frame[data-mode='table'] .byd-pile-name::after { content: ' · '; }
+/* A pile that only exists because two cards were stacked (K1) has no name worth saying. */
+.byd-table-frame[data-mode='table'] .byd-pile[data-dynamic='true'] .byd-pile-name { display: none; }
 
-/* Hands: a fan of backs and a name pill, oriented toward the seat's edge. */
+/* On the TV (C) the count is a badge on the pile and the name stands in caps beneath it. */
+.byd-table-frame[data-mode='tv'] .byd-pile-count {
+  inset: 0; transform: none;
+  background: none; padding: 0; pointer-events: none;
+}
+.byd-table-frame[data-mode='tv'] .byd-pile-name {
+  position: absolute; left: 50%; bottom: -24px; transform: translateX(-50%); pointer-events: auto;
+  font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; color: #7d8597; white-space: nowrap;
+}
+.byd-table-frame[data-mode='tv'] .byd-pile-n {
+  position: absolute; right: -14px; top: -14px; pointer-events: auto;
+  min-width: 30px; height: 30px; padding: 0 6px; box-sizing: border-box; border-radius: 999px;
+  background: #e8eaf0; color: #0d0f14; display: grid; place-items: center; font-size: 15px; font-weight: 800;
+}
+
+/* Hands: a fan of backs and a count, oriented toward the seat's edge. */
 .byd-hand { position: absolute; width: 0; height: 0; }
 .byd-hand-fan { position: absolute; left: 0; top: 0; }
 .byd-hand-fan > i {
@@ -90,12 +113,28 @@
   border-radius: 6px; transform-origin: 50% 140%;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
 }
-.byd-hand-name {
+.byd-hand-count {
   position: absolute; left: 50%; top: 50px; transform: translateX(-50%);
-  padding: 3px 10px; border-radius: 999px; background: var(--seat, #666); color: #fff;
+  padding: 2px 8px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); color: #f3e9d6;
+  font-size: 12px; font-weight: 600; white-space: nowrap;
+}
+
+/* The seat's name lies along its own edge of the table, turned toward whoever sits there (B). */
+.byd-seat-name {
+  position: absolute; padding: 3px 10px; border-radius: 999px;
+  background: var(--seat, #666); color: #fff;
   font-size: 12px; font-weight: 700; letter-spacing: 1px; white-space: nowrap;
 }
-.byd-hand-name b { margin-left: 6px; opacity: 0.85; font-weight: 600; }
+.byd-seat-name[data-edge='S'] { transform: translateX(-50%); }
+.byd-seat-name[data-edge='N'] { transform: translateX(-50%) rotate(180deg); }
+.byd-seat-name[data-edge='E'] { transform: translateY(-50%) rotate(-90deg); }
+.byd-seat-name[data-edge='W'] { transform: translateY(-50%) rotate(90deg); }
+
+/* The felt has no chrome (B): the game, its version and the room code, quietly along the top. */
+.byd-table-plate {
+  position: fixed; top: 14px; left: 18px; z-index: 3; margin: 0;
+  font-size: 13px; font-weight: 400; color: #f3e9d6; opacity: 0.7;
+}
 
 /* Hold to inspect: private, large, flat. */
 .byd-inspect {
@@ -119,29 +158,59 @@
   grid-column: 1 / 3; display: flex; align-items: center; justify-content: space-between;
   padding: 0 28px; border-bottom: 1px solid #232733;
 }
-[data-tv] > header > span { color: #7d8597; }
-[data-tv] .byd-tv-join { display: flex; align-items: center; gap: 16px; }
-[data-tv] .byd-tv-join small { color: #7d8597; font-size: 13px; }
+[data-tv] > header h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
+[data-tv] > header h1 em { color: #7d8597; font-weight: 400; font-style: normal; }
+[data-tv] .byd-tv-join { display: flex; align-items: center; gap: 24px; }
+[data-tv] .byd-tv-join > span { color: #7d8597; }
 [data-tv] .byd-qr { border-radius: 6px; background: #fff; }
 [data-tv] > header strong {
   font-family: ui-monospace, monospace; font-size: 26px; letter-spacing: 6px;
   background: #1a1e29; padding: 4px 14px; border-radius: 8px;
 }
 [data-tv] > main { display: grid; place-items: center; padding: 16px; }
-[data-tv] > aside { border-left: 1px solid #232733; padding: 20px; overflow: auto; }
+[data-tv] > aside { border-left: 1px solid #232733; display: grid; grid-template-rows: auto 1fr; min-height: 0; }
+/* Inspection on a TV (K8, C): the card everyone in the room looks at, beside the table. */
+[data-tv] .byd-tv-inspect { padding: 20px; border-bottom: 1px solid #232733; }
+[data-tv] .byd-tv-inspect > div {
+  position: relative; overflow: hidden;
+  width: 210px; height: 294px; border-radius: 12px; padding: 16px; box-sizing: border-box;
+  font-size: 22px; font-weight: 700; color: #1c1c1c;
+  background: hsl(var(--hue, 0) 40% 86%);
+}
+[data-tv] .byd-tv-inspect > div[data-face='back'] { background: #33405a; color: #ddd; }
+/* Waiting for a card: the line sits at the top of the empty card, where prototype C put it —
+   not floating in its middle, which reads as a card that failed to load. */
+[data-tv] .byd-tv-inspect > div[data-empty] {
+  display: grid; align-content: start; text-align: center;
+  background: #1a1e29; border: 1px dashed #2c3242;
+  color: #7d8597; font-size: 13px; font-weight: 400;
+}
+[data-tv] .byd-tv-inspect img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+[data-tv] .byd-tv-inspect > div > img ~ span:not([data-texture]) { visibility: hidden; }
+[data-tv] .byd-tv-feed { padding: 20px; overflow: auto; min-height: 0; }
 [data-tv] h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; margin: 0 0 10px; }
 [data-tv] ol { list-style: none; margin: 0; padding: 0; }
-[data-tv] ol li { padding: 6px 0; border-bottom: 1px solid #1a1e29; font-size: 14px; }
+[data-tv] ol li { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid #1a1e29; font-size: 14px; }
+[data-tv] ol li b { flex: 0 0 30px; font-family: ui-monospace, monospace; font-weight: 400; color: #4c5468; }
+[data-tv] ol li span { color: var(--seat, #9aa3b8); }
 [data-tv] > footer {
   grid-column: 1 / 3; padding: 14px 28px; border-top: 1px solid #232733;
 }
 [data-tv] > footer h2 { display: none; }
-[data-tv] > footer ul { list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; gap: 14px; }
+[data-tv] > footer ul { list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 14px; }
 [data-tv] > footer li {
-  background: #151924; border-radius: 14px; padding: 14px 18px;
-  border-left: 6px solid var(--seat, #7d8597); font-size: 20px; font-weight: 700;
+  display: grid; grid-template-columns: 56px 1fr; gap: 14px; align-items: center; min-width: 0;
+  background: #151924; border-radius: 14px; padding: 14px;
+  border-left: 6px solid var(--seat, #7d8597);
 }
-[data-tv] > footer li span + span { display: block; color: #9aa3b8; font-size: 14px; font-weight: 400; }
+[data-tv] > footer li [data-avatar] {
+  width: 56px; height: 56px; border-radius: 50%; background: var(--seat, #7d8597);
+  display: grid; place-items: center; font: 800 24px/1 system-ui, sans-serif; font-style: normal; color: #0d0f14;
+}
+[data-tv] > footer li > div { min-width: 0; }
+[data-tv] > footer li span { display: block; font-size: 20px; font-weight: 700; }
+[data-tv] > footer li span + span { color: #9aa3b8; font-size: 14px; font-weight: 400; }
+[data-tv] > footer li small { display: block; margin-top: 2px; color: #7d8597; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* Textures: the image fills the card; the name stays underneath for cards without one. */
 .byd-card { position: relative; overflow: hidden; }
@@ -175,7 +244,9 @@
 /* Direct manipulation (K1, K2, C): the frame is the anchor for pointer geometry. */
 .byd-table-frame { position: relative; }
 .byd-table-frame[data-playable] .byd-card, .byd-table-frame[data-playable] .byd-pile-top { touch-action: none; cursor: grab; }
-.byd-table-frame[data-playable] .byd-pile-count[data-handle] { cursor: grab; touch-action: none; padding: 3px 10px; border: 1px solid rgba(255, 255, 255, 0.3); }
+.byd-table-frame[data-playable] .byd-pile-count[data-handle] { cursor: grab; touch-action: none; }
+.byd-table-frame[data-mode='table'][data-playable] .byd-pile-count[data-handle] { padding: 3px 10px; border: 1px solid rgba(255, 255, 255, 0.3); }
+.byd-table-frame[data-mode='tv'][data-playable] .byd-pile-count[data-handle] > * { cursor: grab; touch-action: none; }
 .byd-card[data-dragging], .byd-pile[data-dragging] { z-index: 60; }
 .byd-card[data-dragging] { box-shadow: 0 18px 30px rgba(0, 0, 0, 0.6); scale: 1.06; cursor: grabbing; }
 .byd-pile[data-count='0'] .byd-pile-top { cursor: default; }
@@ -237,5 +308,5 @@
 
 /* On a turned table (C5) the cards turn with it, but labels are interface and stay readable. */
 [data-table] .byd-pile-count, [data-table] .byd-zone > span, [data-table] .byd-peer-cursor span, [data-table] .byd-peer-tag, [data-table] .byd-peer-pulse span { rotate: var(--unrotate, 0deg); }
-/* A hand's name pill also undoes the hand's own edge orientation. */
-[data-table] .byd-hand-name { rotate: calc(var(--unrotate, 0deg) + var(--hand-unrot, 0deg)); }
+/* A seat's own name and its hand count are not interface but furniture: they lie on the table
+   turned toward that seat (B), so they turn with it rather than against it. */

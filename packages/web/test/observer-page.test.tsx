@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { TableClient } from '../src/client.js'
 import { ObserverPage } from '../src/observer/ObserverPage.js'
-import { admit, asSeat, createSession, startServer, type Running } from './fixture.js'
+import { admit, asSeat, asTable, createSession, startServer, type Running } from './fixture.js'
 
 let run: Running
 beforeEach(async () => {
@@ -32,5 +32,36 @@ describe('ObserverPage (C8)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Flagga' }))
     await waitFor(async () => expect((await run.store.read(id)).at(-1)).toMatchObject({ by: null, intent: { v: 'flag', note: 'Ada tvekade', observer: 'Eva' } }))
     ada.close()
+  })
+})
+
+describe('the observer inspects too (C8, K8)', () => {
+  it('fills the inspection panel from the card she points at', async () => {
+    const id = await createSession(run)
+    const table = TableClient.connect(await asTable(run, id))
+    await table.ready()
+    await table.send({ v: 'draw', from: 'draw', to: 'table', count: 1 })
+    history.replaceState(null, '', `/observe?session=${id}&name=Eva&token=${await admit(run, id, null, 'Eva')}&server=${encodeURIComponent(run.url)}`)
+    render(<ObserverPage />)
+    await screen.findByText(/Du är observatör/)
+    await waitFor(() => expect(document.querySelector('.byd-card')).toBeTruthy())
+
+    const panel = screen.getByRole('region', { name: /inspektion/i })
+    expect(panel.textContent).toMatch(/peka på ett kort/)
+    fireEvent.pointerEnter(document.querySelector('.byd-card')!)
+    // She sees every face (C8), so the card names itself rather than saying it is hidden.
+    await waitFor(() => expect(panel.textContent).toMatch(/dragon/))
+    table.close()
+  })
+})
+
+describe('the observer screen is not a screen to join from (K12)', () => {
+  it('shows no room code at all rather than the session id spelled out', async () => {
+    const id = await createSession(run)
+    history.replaceState(null, '', `/observe?session=${id}&name=Eva&token=${await admit(run, id, null, 'Eva')}&server=${encodeURIComponent(run.url)}`)
+    render(<ObserverPage />)
+    await screen.findByText(/Du är observatör/)
+    expect(screen.queryByText(id)).toBeNull()
+    expect(screen.queryByText(/anslut med telefon/)).toBeNull()
   })
 })

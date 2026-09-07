@@ -22,7 +22,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
   const http = params.get('server') ?? location.origin
   const { client, error } = useProjectClient(http, projectId)
   const [mode, setMode] = useState<Mode>('wall')
-  const [face] = useState('front')
+  // Which face the canvas edits (#13, L7). The wall is the deck seen from the front.
+  const [face, setFace] = useState('front')
+  // Which group the canvas edits (#13), or nothing for the base every card inherits.
+  const [group, setGroup] = useState<string | null>(null)
   const [row, setRow] = useState<string | null>(null)
   const [element, setElement] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -115,7 +118,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
     wall: () => (
       <DeckWall
         doc={doc}
-        face={face}
+        face="front"
         selectedRow={row}
         onSelectRow={setRow}
         onSelectElement={(id) => {
@@ -128,16 +131,24 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
       <TemplateCanvas
         doc={doc}
         face={face}
+        onSelectFace={setFace}
         row={row}
         selectedElement={element}
         onSelectElement={setElement}
-        onPatch={(id, patch) => client.patchElement(face, id, patch)}
-        onAdd={(el) => client.addElement(face, el)}
+        onPatch={(id, patch) => client.patchElement(face, id, patch, group)}
+        onAdd={(el) => client.addElement(face, el, group)}
         onReorder={(id, to) => client.moveElement(face, id, to)}
         onRemove={(id) => {
-          client.removeElement(face, id)
+          client.removeElement(face, id, group)
           setElement(null)
         }}
+        group={group}
+        onSelectGroup={setGroup}
+        onGroupColumn={(column) => {
+          client.setGroupColumn(column)
+          setGroup(null)
+        }}
+        onReset={(id) => group && client.resetElement(face, id, group)}
       />
     ),
     table: () => (

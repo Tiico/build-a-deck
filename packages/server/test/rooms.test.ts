@@ -130,9 +130,11 @@ describe('guest tokens', () => {
     // The lobby (the join page) sees the seats live and may not act.
     const lobby = await WireClient.connect(run.base, id, null, { role: 'lobby' })
     expect(lobby.messages[0]?.t).toBe('snapshot')
+    expect(lobby.view).toMatchObject({ zones: [], components: [], rewind: null, undo: null })
     await a.send('A', { v: 'seat.claim', seat: 'A', name: 'Ada' })
     await lobby.synced(1)
     expect(lobby.view?.seats.find((s) => s.id === 'A')?.name).toBe('Ada')
+    expect(lobby.messages.some((message) => message.t === 'activity' || message.t === 'roster' || message.t === 'presence')).toBe(false)
     const rejected = await lobby.send(null, { v: 'seat.release', seat: 'A' })
     expect(rejected).toMatchObject({ t: 'reject', reason: 'a lobby may only look' })
     lobby.sendRaw(JSON.stringify({ t: 'presence', presence: { kind: 'point', x: 777, y: 888 } }))

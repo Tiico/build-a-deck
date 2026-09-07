@@ -195,15 +195,24 @@ Följdkrav:
 Läget hör hemma i lobbyn, inte i användarinställningar, eftersom det varierar per tillfälle.
 
 Byggt 2026-09-06:
-Renderaren kan vridas i kvartsvarv (`rotate`), pekaren projiceras tillbaka genom vridningen, och etiketter (högnamn, platsnamn, zonnamn, markörnamn) vrids tillbaka så de förblir läsbara medan korten följer bordet som vid ett riktigt bord.
+Renderaren kan vridas i kvartsvarv (`rotate`), pekaren projiceras tillbaka genom vridningen, och etiketter (högnamn, zonnamn, markörnamn) vrids tillbaka så de förblir läsbara medan korten följer bordet som vid ett riktigt bord.
 Distansvyn använder det för att lägga den egna platsen nederst.
+Reviderat 2026-09-07 (#20): platsens namn är undantaget och vrids inte tillbaka.
+Det ligger längs sin egen kant vänt mot den som sitter där, som ett namnkort på ett riktigt bord, vilket är vad prototyp B visade och vad distansvyn gör rätt av sig själv: den egna platsen ligger nederst och är därmed den enda som står upprätt.
 
 Kameran (prototypad och byggd 2026-09-07):
 Tre varianter prövades: en kamera som följer innehållet, en regissör som klipper mellan fasta bilder, och hela bordet med en lupp. Valet blev den följande kameran: den är C5:s ordalydelse och behöver inget av protokollet.
-I TV-läge ramar bilden in det som är i spel med marginal och glider när det ändras; den går aldrig närmare än att drygt åtta kort ryms i bredd, aldrig utanför bordet.
+I TV-läge ramar bilden in det som är i spel med marginal och glider när det ändras; den går aldrig närmare än att drygt åtta kort ryms i bredd, aldrig utanför bordet och det som ligger på det.
 I spel är de lösa korten, setupens högar och areor (spelplanen, tomma eller inte) och högar som bildats under spel så länge de finns. Händerna räknas inte: de ligger vid kanten och finns alltid, så med dem inräknade blev bilden nästan alltid hela bordet. Docken nederst visar ändå varje plats.
 Scroll eller nyp zoomar kring pekaren, dubbeltryck går nära och tillbaka; efter sex sekunder återgår kameran av sig själv. Under ett drag står kameran stilla, eftersom pekarens avbildning låstes när draget började.
 Det lutade bordsläget har ingen kamera: en panorering på det lutade planet bryter perspektivet.
+
+Reviderat 2026-09-07 (#20): kameran får sträcka sig utanför bordets kant, men bara så långt som något som är i spel faktiskt ligger där.
+Ett kort kan hamna utanför filten — en delning bredvid en hög vid kanten lägger det där (K1, K15) — och då är valet mellan att visa en strimma tomrum utanför bordets kant och att kapa ett kort mitt itu vid skärmkanten.
+Det senare läses som ett fel, det förra som en bildram, så kameran följer med ut.
+Räckvidden är bordet plus det som är i spel, omarginalerat: marginalen runt spelet är luft och får beskäras vid kanten, så kameran driver aldrig ut i tomrummet bara för att ge plats.
+En zoomning är en vy och inte innehåll, och vidgar därför aldrig räckvidden: att zooma ut stannar vid bordet som förut.
+Följden är den invariant som mäts i renderaren: inget kort som kameran är riktad mot skärs av av ramen.
 
 ### C6. Ångra: personlig ångra plus gruppens tillbakaspolning (fråga 18)
 
@@ -639,6 +648,34 @@ Snapshot bär platserna med namn och golvzonen.
 Servern skickar varje committad rad som redigerad aktivitet, utan utfall.
 Snapshoten bär de senaste femtio raderna på samma sätt (2026-09-07), så att en skärm som ansluter mitt i ett spel ser vad som hänt; klienten byter ut sitt flöde mot dem vid varje återanslutning.
 
+Byggt 2026-09-07 (bordet ställt sida vid sida med de godkända prototyperna B och C, #20):
+TV-läget har åter rubriken — spelets namn och den version aktören kör — där hela join-URL:en tidigare stod i klartext; adressen finns kvar som QR-kodens alternativtext, så den går att skriva av utan kamera.
+Namnet kommer ur projektet bordet startades ur (L5) och `GET /sessions/:id` svarar därför också med det; ett bord som startats utan projekt heter bara "Bordet".
+INSPEKTION är tillbaka: kortet pekaren vilar på visas stort bredvid bordet genom samma texturväg som bordet självt (K9, E2), och panelen ber om "peka på ett kort" när ingen pekar.
+Ett kort skärmen inte får se heter "dolt kort" och inget annat (B6).
+SENAST fylls från loggen vid anslutning: aktören skickar de senaste femtio raderna som ett vanligt `activity`-meddelande direkt efter ögonblicksbilden, med samma redigering som under spel, och klienten slår ihop på `seq` så en återanslutning aldrig säger samma rad två gånger.
+Raderna är numrerade och färgade av platsen som gjorde dem, och platsdocken bär avatar med initial, "n kort på hand" och platsens senaste handling.
+Högarna säger antalet på två sätt, som prototyperna gjorde: en bricka på högen med versalt namn under i TV-läge, en pill under högen på filten.
+Bordsläget har rubrikraden "spel · version · rumskod", och platsernas namn ligger längs sin egen kant vända mot den som sitter där, ritade efter korten så att en giv inte begraver namnet; antalet ligger kvar som bricka på handen.
+Zonens namn ligger utanför zonens innehåll, ovanför överkanten, i båda lägena — prototyperna la det innanför, där ett kort i zonens övre vänstra hörn döljer det.
+
+Avvikelser från prototyperna som är avsiktliga och står kvar:
+Händerna ritas som solfjädrar även i TV-läge, fast variant C inte ritade några: utan dem säger bilden inte var någon sitter, och eftersom docken redan säger namnen bär solfjädern där bara antalet.
+Avatarens initial står i mörk text på platsens färg, inte i ljus som prototypen, eftersom ljus text på gult och grönt inte går att läsa på avstånd.
+Versionen är projektets revision (`rev-n`), inte prototypens påhittade "v0.7".
+Kortens yta är texturen (E2), inte prototypens färg per kortnamn; utan renderade texturer visas väntetillståndet från #10.
+Kameran ramar in det som är i spel och beskär därför bordets kant (C5), vilket den fasta prototypbilden aldrig gjorde; genom ett kort skär den däremot aldrig.
+
+Reviderat 2026-09-07 (andra genomgången sida vid sida, #20):
+Platsernas färger följer prototyperna i deras ordning — röd, blå, grön, gul — och inte en egen.
+Färgen är platsens identitet överallt (hand, markör, dock, flöde), så ordningen i paletten är beslutet och inte en detalj i docken.
+Filten i bordsläge håller prototyp B:s proportion i stället för att fylla ramen: marginalen är 0,16 av ramens kortare sida, vilket ger 0,85 av naturlig storlek på en skärm på 1600 × 1000 — skalan B godkändes i — och samma proportion på varje annan skärm.
+Den fasta marginalen i pixlar som fanns dessförinnan gav bordet nästan hela skärmen på en stor skärm och trängde undan det mörka omlandet som B lever av.
+INSPEKTION:s väntetext ligger överst i det tomma kortet som i prototyp C, inte mitt i det, där den läses som ett kort som inte gick att ladda.
+Kameran skär inte längre genom ett kort som ligger utanför filten; beslutet och dess skäl står under C5.
+
+Referensprototypen `packages/web/src/prototype/table-ref` togs bort när den hade svarat.
+
 ### K10. Telefonvyns utseende: remsan (prototypat 2026-09-06)
 
 Tre prototyper: remsan, ett kort i taget i fullskärm, och minibord med brickor plus handen i rutnät.
@@ -793,6 +830,17 @@ Duken renderar fortfarande genom `CardPreview` och kompilatorn (E2): lagret som 
 Lagerordningen ändras genom att dra en rad i panelen och, eftersom en lista som bara kan dras är en lista tangentbordet har förlorat, med Alt och piltangent.
 Prototypen `packages/web/src/prototype/canvas` togs bort när den hade svarat.
 
+Byggt 2026-09-07 (prototypat i tre varianter, godkänd variant A med variant B:s regellista som sammanfattning — #13):
+En grupp är en regel på en kolumn, aldrig en lista med kort-id:n.
+Kolumnen är `variantBy` och gruppens namn är kolumnens värde, alltså precis den modell L3 redan beskriver — kompilatorn behövde inga nya begrepp.
+Kolumnen väljs en gång för hela leken och sätts på varje ansikte, så att en grupp är en sak med både fram- och baksida (L7) och inte en regel per sida.
+Grupperna är kolumnens värden: ett nytt kort med värdet får gruppens utseende utan att någon rör mallen, och en grupp vars kort försvunnit finns kvar så länge mallen har ritat den.
+Duken får en flik per grupp plus "Bas (alla)"; det som ändras med en gruppflik vald blir gruppens `override` på det ansiktet, det som tas bort blir gruppens `remove`, och "Återgå till basen" tar bort båda.
+Lagerordningen är basens och delas av alla grupper — den ändras därför bara med basfliken vald.
+Lagerpanelen säger per lager om det är basens eller gruppens och hur många kort gruppen gäller; variant B:s regellista står kvar som sammanfattning i samma panel.
+Variant C valdes bort som redigeringsväg — tjugo fällor skulle kräva tjugo val — men tabellen visar vilken grupp en rad faller i, läsbart och inte redigerbart.
+Prototypen `packages/web/src/prototype/groups` står kvar tills #14 har svarat.
+
 ### L4. Datatabellen: kolumntyper från registryt, systemkolumn `antal`
 
 Kolumntyper följer typregistryts `editorSchema`: text, tal, bild, boolean.
@@ -858,6 +906,11 @@ Baksidan är en vanlig elementmall, oftast med en bild och utan bindningar, men 
 
 Följdkrav:
 En baksida med bindningar ger unik textur per kort även bak och fördubblar renderjobben — editorn varnar när det sker.
+
+Byggt 2026-09-07 (#13):
+Mallfliken har en fram-/baksideväxel, så att baksidan redigeras med samma duk, samma lagerpanel och samma verktyg som framsidan.
+Växeln är en radiogrupp med rovande tabindex: hela växeln är ett tabstopp och pilarna både flyttar och väljer.
+En grupp kan skriva över element på båda ansiktena; det som inte skrivs över ärvs från basen, vilket är det som gör en särskild baksida per grupp möjlig (#14).
 
 ### L8. Editorns utseende: kortväggen som hem, duken för mallen, tabellen som flik (prototypat 2026-09-06)
 

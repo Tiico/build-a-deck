@@ -126,3 +126,14 @@ export async function asSeat(run: Running, id: string, seat: string, name?: stri
 export async function asObserver(run: Running, id: string, name: string): Promise<{ url: string; sessionId: string; seat: null; observer: string; token: string }> {
   return { url: run.url, sessionId: id, seat: null, observer: name, token: await admit(run, id, null, name) }
 }
+
+// A table started from a project, the way the editor starts one (L5): the game has a name.
+export async function createNamedSession(run: Running, name: string, id = 's1'): Promise<string> {
+  const { zones, seats, floor } = twoSeatSetup()
+  await run.projects.create(`p-${id}`, { name, template: { faces: { front: { base: [], variants: {} }, back: { base: [], variants: {} } } }, rows: [], icons: {}, setup: { zones, seats, floor, deckZone: 'draw' } })
+  const res = await fetch(`${run.http}/projects/p-${id}/sessions`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })
+  if (res.status !== 201) throw new Error(`create named session failed: ${res.status} ${await res.text()}`)
+  const made = (await res.json()) as { id: string; code: string; hostKey: string }
+  rooms.set(made.id, { code: made.code, hostKey: made.hostKey })
+  return made.id
+}

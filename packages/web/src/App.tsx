@@ -7,7 +7,6 @@ import { OnlinePage } from './online/OnlinePage.js'
 import { NewProjectPage } from './wizard/NewProjectPage.js'
 import { HomePage } from './account/HomePage.js'
 import { LoginPage } from './account/LoginPage.js'
-import { TablePrototype } from './prototype/table-ref/index.js'
 import { GroupsPrototype } from './prototype/groups/index.js'
 import { TextureFailures } from './table/TextureFailures.js'
 
@@ -19,7 +18,6 @@ export function App() {
 // Every screen that shows cards is under one live region for lost textures (#10); App is the
 // only place that is mounted exactly once whichever route is showing.
 function route() {
-  if (location.pathname.startsWith('/prototype/table-ref')) return <TablePrototype />
   if (location.pathname.startsWith('/prototype/groups')) return <GroupsPrototype />
   if (location.pathname === '/table') return <TablePage />
   if (location.pathname === '/play') return <PlayerPage />

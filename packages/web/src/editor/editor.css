@@ -98,9 +98,68 @@
   /* Everything the canvas says beside the card — the panel headings and the note on the layer
      order — is quiet, but never quieter than AA against the panel it is read on. */
   --byd-editor-hint-ink: #9aa3b8;
+  /* The strip over the card (#13): which group and which side of it is being edited. It sits
+     between two panels and the card, so it is a shade of its own — dark enough to leave the card
+     the brightest thing on screen, light enough for every word on it to clear AA. */
+  --byd-editor-strip-bg: #1b1d23;
+  --byd-editor-strip-ink: #b9c2d6;
+  --byd-editor-strip-on-bg: #2f3a55;
+  --byd-editor-strip-on-ink: #ffffff;
+  /* What a layer belongs to, said on the layer itself: quieter than its name, never quieter
+     than AA against the panel it is read on. */
+  --byd-editor-source-ink: #9aa3b8;
   height: 100%;
   display: grid;
   grid-template-columns: 68px 220px 1fr 280px;
+}
+/* The card and the strip that says what is on it share a column: the strip is a fixed row over a
+   stage that takes what is left. */
+.byd-canvas-main { display: grid; grid-template-rows: auto 1fr; min-height: 0; }
+.byd-canvas-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--byd-editor-strip-bg);
+  border-bottom: 1px solid #2f333d;
+  flex-wrap: wrap;
+}
+.byd-canvas-group-column { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--byd-editor-hint-ink); }
+.byd-canvas-group-column select { background: #0f1115; border: 1px solid #2a2d36; color: #dce3f2; border-radius: 6px; padding: 4px 6px; font-size: 12px; }
+.byd-canvas-groups, .byd-canvas-faces { display: flex; gap: 4px; }
+.byd-canvas-groups button, .byd-canvas-faces button {
+  border: 1px solid #2f333d;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--byd-editor-strip-ink);
+  font: inherit;
+  font-size: 12px;
+  padding: 5px 11px;
+  cursor: pointer;
+}
+.byd-canvas-groups button[aria-selected='true'], .byd-canvas-faces button[aria-checked='true'] {
+  background: var(--byd-editor-strip-on-bg);
+  color: var(--byd-editor-strip-on-ink);
+  border-color: #3c8ce7;
+}
+/* Variant B's rule list, kept as the summary: every group as the rule it is, read not pressed. */
+.byd-canvas-rules { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.byd-canvas-rules li { font-size: 11px; line-height: 1.4; color: var(--byd-editor-hint-ink); }
+.byd-canvas-affects { margin: 0 0 8px; font-size: 11px; color: var(--byd-editor-source-ink); }
+.byd-layer-source { color: var(--byd-editor-source-ink); }
+/* A layer the open group takes away is still listed — struck through, not dimmed, so it stays
+   as readable as everything else beside it. */
+.byd-canvas-layers li[data-removed] > span:not(.byd-layer-source) { text-decoration: line-through; }
+.byd-canvas-reset {
+  margin-top: 12px;
+  border: 1px solid #3b414e;
+  border-radius: 8px;
+  background: #1b1d23;
+  color: #dce3f2;
+  font: inherit;
+  font-size: 12px;
+  padding: 7px 11px;
+  cursor: pointer;
 }
 /* The tools that add an element (#18, variant A): a rail down the left, glyph over name, so the
    four kinds are one glance and one click away wherever the eye is on the card. */

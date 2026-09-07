@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { TableClient } from '../src/client.js'
 import { TablePage } from '../src/table/TablePage.js'
-import { asSeat, asTable, createSession, roomOf, startServer, type Running } from './fixture.js'
+import { asSeat, asTable, createNamedSession, createSession, roomOf, startServer, type Running } from './fixture.js'
 
 let run: Running
 beforeEach(async () => {
@@ -28,7 +28,73 @@ describe('TablePage', () => {
     await other.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'hand:A', count: 3 })
     expect(await screen.findByText(/Ada satte sig/)).toBeTruthy()
     expect(document.querySelector('[data-zone="draw"]')!.getAttribute('data-count')).toBe('7')
-    expect(document.querySelector('[data-zone="hand:A"]')!.textContent).toContain('Ada')
+    expect(document.querySelector('[data-zone="hand:A"]')!.getAttribute('data-count')).toBe('3')
+    expect(screen.getByRole('list', { name: /platser/i }).textContent).toMatch(/Ada.*3 kort på hand/)
+    other.close()
+  })
+})
+
+describe('the screen says which game it runs (C)', () => {
+  it('titles the TV with the game name and version from the session record', async () => {
+    const id = await createNamedSession(run, 'Skogens herrar')
+    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    render(<TablePage />)
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Skogens herrar rev-1'))
+  })
+})
+
+describe('the table mode names the game too (B)', () => {
+  it('writes the game, its version and the room code along the top of the felt', async () => {
+    const id = await createNamedSession(run, 'Skogens herrar')
+    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=table&server=${encodeURIComponent(run.url)}`)
+    render(<TablePage />)
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(`Skogens herrar · rev-1 · ${roomOf(id).code}`))
+    // The felt is the whole screen in table mode: no TV chrome around it.
+    expect(document.querySelector('[data-tv]')).toBeNull()
+  })
+})
+
+describe('a screen that joins mid-game (#20)', () => {
+  it('fills SENAST from the log the moment it connects, not only with what happens afterwards', async () => {
+    const id = await createSession(run)
+    const played = TableClient.connect(await asTable(run, id))
+    await played.ready()
+    await played.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
+    await played.send({ v: 'draw', from: 'draw', to: 'discard', count: 2 })
+    played.close()
+
+    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    render(<TablePage />)
+    await screen.findByText(roomOf(id).code)
+
+    const feed = screen.getByRole('list', { name: /senast/i })
+    await waitFor(() => expect(within(feed).getAllByRole('listitem')).toHaveLength(2))
+    expect(within(feed).getAllByRole('listitem').map((l) => l.textContent)).toEqual([
+      expect.stringMatching(/^2.*Bordet drog 2 från Draghög/),
+      expect.stringMatching(/^1.*Ada satte sig/),
+    ])
+  })
+})
+
+describe('pointing at a card on the TV (C)', () => {
+  it('fills the inspection panel from the table underneath it', async () => {
+    const id = await createSession(run)
+    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    render(<TablePage />)
+    await screen.findByText(roomOf(id).code)
+
+    const other = TableClient.connect(await asTable(run, id))
+    await other.ready()
+    await other.send({ v: 'draw', from: 'draw', to: 'table', count: 1 })
+    await waitFor(() => expect(document.querySelector('.byd-card')).toBeTruthy())
+    const card = document.querySelector('.byd-card')!
+
+    const panel = screen.getByRole('region', { name: /inspektion/i })
+    expect(panel.textContent).toMatch(/peka på ett kort/)
+    fireEvent.pointerEnter(card)
+    await waitFor(() => expect(panel.textContent).toMatch(/dolt kort/))
+    fireEvent.pointerLeave(card)
+    await waitFor(() => expect(panel.textContent).toMatch(/peka på ett kort/))
     other.close()
   })
 })
@@ -184,7 +250,7 @@ describe('the host\'s screen (DRIFT §9)', () => {
     history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
     render(<TablePage />)
     expect(await screen.findByText(roomOf(id).code)).toBeTruthy()
-    const qr = document.querySelector('.byd-tv-join small')
-    expect(qr?.textContent).toContain(`join?code=${roomOf(id).code}`)
+    const qr = await screen.findByAltText(new RegExp(`join\\?code=${roomOf(id).code}`))
+    expect(qr.getAttribute('alt')).toContain(`join?code=${roomOf(id).code}`)
   })
 })

@@ -1,5 +1,5 @@
 import type { ProjectDoc, ProjectRow } from '@byd/server'
-import type { Element, FaceTemplate } from '@byd/template'
+import type { Element, FaceTemplate, Variant } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
 
 export type ProjectListener = (client: ProjectClient) => void
@@ -58,10 +58,49 @@ export class ProjectClient {
     this.commit({ ...this.doc, rows })
   }
 
-  // Replaces fields of one element in one face's base by id (L1); the variants are untouched.
-  patchElement(face: string, id: string, patch: Partial<Element>): void {
+  // Replaces fields of one element by id (L1). Without a group that is the face's base, and the
+  // change reaches every card; with one it becomes that group's override of the same id (#13),
+  // and the base stays exactly as it was.
+  patchElement(face: string, id: string, patch: Partial<Element>, group?: string | null): void {
     const current = this.faceOf(face)
-    this.writeFace(face, { ...current, base: current.base.map((e) => (e.id === id ? ({ ...e, ...patch } as Element) : e)) })
+    if (!group) return this.writeFace(face, { ...current, base: current.base.map((e) => (e.id === id ? ({ ...e, ...patch } as Element) : e)) })
+    const from = this.elementInGroup(current, id, group)
+    if (!from) throw new Error(`face ${face} has no element ${id}`)
+    this.writeVariant(face, current, group, (v) => ({ ...v, override: replaceById(v.override ?? [], { ...from, ...patch } as Element) }))
+  }
+
+  // The element a group sees for an id: its own override if it has one, otherwise the base's.
+  private elementInGroup(face: FaceTemplate, id: string, group: string): Element | undefined {
+    return (face.variants[group]?.override ?? []).find((e) => e.id === id) ?? face.base.find((e) => e.id === id)
+  }
+
+  // The column that makes the groups (#13): one column for the whole deck, so a group is one
+  // thing with a front and a back (L7), not a different rule per face. `null` ungroups the deck;
+  // the variants stay, because ungrouping is not a reason to throw away a design.
+  setGroupColumn(column: string | null): void {
+    const faces = Object.fromEntries(
+      Object.entries(this.doc.template.faces).map(([id, face]) => {
+        if (column) return [id, { ...face, variantBy: column }]
+        const rest: FaceTemplate = { base: face.base, variants: face.variants }
+        return [id, rest]
+      }),
+    )
+    this.commit({ ...this.doc, template: { ...this.doc.template, faces } })
+  }
+
+  // Stops a group from overriding an id: the layer goes back to being the base's (#13).
+  resetElement(face: string, id: string, group: string): void {
+    const current = this.faceOf(face)
+    this.writeVariant(face, current, group, (v) => ({
+      ...v,
+      override: (v.override ?? []).filter((e) => e.id !== id),
+      remove: (v.remove ?? []).filter((r) => r !== id),
+    }))
+  }
+
+  private writeVariant(face: string, current: FaceTemplate, group: string, change: (variant: Variant) => Variant): void {
+    const next = change(current.variants[group] ?? {})
+    this.writeFace(face, { ...current, variants: { ...current.variants, [group]: next } })
   }
 
   private faceOf(face: string): FaceTemplate {
@@ -78,15 +117,26 @@ export class ProjectClient {
 
   // Adding an element from the canvas (#18): it goes last in the base list, which is the drawing
   // order, so a new element is on top of what is already there and can be seen at once.
-  addElement(face: string, element: Element): void {
+  addElement(face: string, element: Element, group?: string | null): void {
     const current = this.faceOf(face)
     if (current.base.some((e) => e.id === element.id)) throw new Error(`face ${face} already has an element ${element.id}`)
-    this.writeFace(face, { ...current, base: [...current.base, element] })
+    if (!group) return this.writeFace(face, { ...current, base: [...current.base, element] })
+    // An element added with a group open belongs to that group alone: the base never learns of it.
+    if ((current.variants[group]?.override ?? []).some((e) => e.id === element.id)) throw new Error(`face ${face} already has an element ${element.id}`)
+    this.writeVariant(face, current, group, (v) => ({ ...v, override: [...(v.override ?? []), element] }))
   }
 
-  removeElement(face: string, id: string): void {
+  // Without a group the element leaves the face for every card; with one it leaves for that
+  // group's cards only — as a removal against the base, or, when the group added it, by going.
+  removeElement(face: string, id: string, group?: string | null): void {
     const current = this.faceOf(face)
-    this.writeFace(face, { ...current, base: current.base.filter((e) => e.id !== id) })
+    if (!group) return this.writeFace(face, { ...current, base: current.base.filter((e) => e.id !== id) })
+    const inBase = current.base.some((e) => e.id === id)
+    this.writeVariant(face, current, group, (v) => ({
+      ...v,
+      override: (v.override ?? []).filter((e) => e.id !== id),
+      ...(inBase ? { remove: [...new Set([...(v.remove ?? []), id])] } : {}),
+    }))
   }
 
   // Reordering the layers (#18): the base list is the drawing order, so a layer moved in the
@@ -197,4 +247,9 @@ export class ProjectClient {
   private notify(): void {
     for (const l of this.listeners) l(this)
   }
+}
+
+// One element in, one out, by id: an override list is a set keyed by id, not an order.
+function replaceById(list: Element[], element: Element): Element[] {
+  return list.some((e) => e.id === element.id) ? list.map((e) => (e.id === element.id ? element : e)) : [...list, element]
 }

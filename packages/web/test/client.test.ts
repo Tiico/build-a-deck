@@ -107,16 +107,16 @@ describe('activity', () => {
     await table.send({ v: 'shuffle', pile: 'draw' })
 
     const late = await connect(id, 'B')
+    await waitUntil(() => late.activity.length === 2)
     expect(late.activity.map((l) => [l.seq, l.intent.v])).toEqual([
       [1, 'seat.claim'],
       [2, 'shuffle'],
     ])
 
     await run.restart()
-    await new Promise((r) => setTimeout(r, 300))
-    await table.send({ v: 'flag' })
-    await late.synced(3)
-    await new Promise((r) => setTimeout(r, 20))
+    const after = await connect(id, null)
+    await after.send({ v: 'flag' })
+    await waitUntil(() => late.activity.length === 3)
     expect(late.activity.map((l) => l.seq)).toEqual([1, 2, 3])
   })
 })

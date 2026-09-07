@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { TableClient } from '../src/client.js'
@@ -243,7 +243,7 @@ describe('the layers of the template by keyboard (UX-04)', () => {
     await screen.findByText('Skogens herrar')
     await user.tab()
     await user.keyboard('{ArrowRight}{Enter}')
-    const layers = screen.getAllByRole('option')
+    const layers = within(screen.getByRole('listbox', { name: /lager/i })).getAllByRole('option')
     expect(layers.map((l) => l.textContent)).toEqual(['text body', 'text title', 'shape frame'])
     for (let i = 0; i < 6 && !layers.includes(document.activeElement as HTMLElement); i++) await user.tab()
     expect(document.activeElement).toBe(layers[0])
@@ -253,11 +253,17 @@ describe('the layers of the template by keyboard (UX-04)', () => {
     expect(document.activeElement).toBe(layers[2])
     expect(layers[2]!.getAttribute('aria-selected')).toBe('true')
     expect(screen.getByRole('heading', { name: /egenskaper · frame/i })).toBeTruthy()
-    // Past the grid, which is a layer of its own (#18), the property panel is the next stop, and
-    // it edits the layer just picked: the field is controlled by the document, so a new value
-    // there is a patch that landed on frame.
+    // Past the grid, which is a layer of its own (#18), and past the strip over the card — the
+    // grouping column and the face switch, one tab stop each (#13) — the property panel is the
+    // next stop, and it
+    // edits the layer just picked: the field is controlled by the document, so a new value there
+    // is a patch that landed on frame.
     await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('checkbox', { name: /rutnät/i }))
+    await user.tab()
+    expect(document.activeElement).toBe(screen.getByLabelText(/grupperas av kolumnen/i))
+    await user.tab()
+    expect(document.activeElement).toBe(screen.getByRole('radio', { name: 'Framsida' }))
     await user.tab()
     await user.keyboard('9')
     expect((screen.getByLabelText(/^x/i) as HTMLInputElement).value).toBe('9')

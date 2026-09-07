@@ -69,6 +69,20 @@ describe('the palette the template canvas is drawn in', () => {
   })
 })
 
+// The strip over the card (#13) says which group and which side of the card is being edited, and
+// the layer list says per layer whether it is the base's or the group's. All of it is read while
+// the eye is on the card, so it is held to the same bar as the rest of the editor.
+describe('the palette the group strip is drawn in', () => {
+  it.each([
+    { what: 'a group that is not open', ink: '--byd-editor-strip-ink', on: '--byd-editor-strip-bg' },
+    { what: 'the group that is open', ink: '--byd-editor-strip-on-ink', on: '--byd-editor-strip-on-bg' },
+    { what: 'the label over the grouping column', ink: '--byd-editor-hint-ink', on: '--byd-editor-strip-bg' },
+    { what: 'what a layer belongs to', ink: '--byd-editor-source-ink', on: '--byd-editor-canvas-bg' },
+  ])('gives $what AA contrast', ({ ink, on }) => {
+    expect(contrastRatio(token(ink), token(on))).toBeGreaterThanOrEqual(4.5)
+  })
+})
+
 // The Bord tab (#19) is a list of running games read across the room from the screen: which
 // version a table runs, whether the project has left it behind, who is at it, and the ways in.
 // Every one of those words is held to the same bar as the rest of the editor.

@@ -110,12 +110,20 @@ export class TableActor {
     return this.subscribers.size > 0 ? 0 : Date.now() - this.lastActivity
   }
 
-  subscribe(sub: Subscriber): void {
+  // A tokenless lobby exists only to choose a seat. Keep the snapshot envelope so the regular
+  // client can follow seat patches, but strip the table, cards, rewind state and activity.
+  private viewFor(sub: Subscriber): Snapshot {
     const snapshot = project(this.state, this.registry, sub.seat, this.faces, this.deps.history, sub.observer !== undefined)
+    if (!sub.lobby) return snapshot
+    return { ...snapshot, floor: 'lobby', zones: [], components: [], rewind: null, undo: null, ended: false }
+  }
+
+  subscribe(sub: Subscriber): void {
+    const snapshot = this.viewFor(sub)
     this.subscribers.set(sub, snapshot)
-    sub.send({ t: 'snapshot', snapshot, activity: this.log.slice(-SNAPSHOT_ACTIVITY).map(projectActivity) })
+    sub.send({ t: 'snapshot', snapshot, activity: sub.lobby ? [] : this.log.slice(-SNAPSHOT_ACTIVITY).map(projectActivity) })
     if (sub.observer !== undefined) this.broadcastRoster()
-    else sub.send({ t: 'roster', observers: this.observers() })
+    else if (!sub.lobby) sub.send({ t: 'roster', observers: this.observers() })
     this.lastActivity = Date.now()
   }
 
@@ -151,7 +159,7 @@ export class TableActor {
 
   private broadcastRoster(): void {
     const observers = this.observers()
-    for (const sub of this.subscribers.keys()) sub.send({ t: 'roster', observers })
+    for (const sub of this.subscribers.keys()) if (!sub.lobby) sub.send({ t: 'roster', observers })
   }
 
   unsubscribe(sub: Subscriber): void {
@@ -167,7 +175,7 @@ export class TableActor {
   // Presence (K6): straight to every other connection, never through decide or the log.
   relay(from: Subscriber, presence: Presence): void {
     for (const sub of this.subscribers.keys()) {
-      if (sub !== from) sub.send({ t: 'presence', from: { seat: from.seat, id: from.id }, presence })
+      if (sub !== from && !sub.lobby) sub.send({ t: 'presence', from: { seat: from.seat, id: from.id }, presence })
     }
   }
 
@@ -201,11 +209,11 @@ export class TableActor {
 
     const activity = decision.applied.map(projectActivity)
     for (const [sub, previous] of this.subscribers) {
-      const next = project(this.state, this.registry, sub.seat, this.faces, this.deps.history, sub.observer !== undefined)
+      const next = this.viewFor(sub)
       const patch = diff(previous, next)
       this.subscribers.set(sub, next)
       if (patch.ops.length > 0 || patch.seq !== previous.seq) sub.send({ t: 'patch', patch })
-      sub.send({ t: 'activity', lines: activity })
+      if (!sub.lobby) sub.send({ t: 'activity', lines: activity })
     }
     return decision
   }
