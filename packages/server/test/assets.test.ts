@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { MemoryObjectStore } from '@byd/render'
-import { MemoryAssetStore, assetHash, resolveAssets } from '../src/assets.js'
+import { MemoryAssetStore, assetHash, resolveAssets, resolveIcons } from '../src/assets.js'
 import { start, twoSeatSetup, type Running } from './fixture.js'
 import { template } from './deck.js'
 
@@ -81,5 +81,54 @@ describe('assets over HTTP', () => {
     const { id } = (await started.json()) as { id: string }
     const session = await run.store.loadSession(id)
     expect(session?.deck?.rows['dragon']?.['art']).toBe(`data:image/png;base64,${Buffer.from(PNG).toString('base64')}`)
+  })
+})
+
+describe('symbols in a project (E4): the icon set is assets too, and the licence follows', () => {
+  let run: Running
+  let cookie = ''
+  beforeEach(async () => {
+    run = await start()
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
+    const link = /\/auth\/verify\?token=\S+/.exec(run.mail.sent.at(-1)?.text ?? '')?.[0] ?? ''
+    const res = await fetch(`${run.http}${link}`, { redirect: 'manual' })
+    cookie = (res.headers.get('set-cookie') ?? '').split(';')[0] ?? ''
+  })
+  afterEach(async () => {
+    await run.stop()
+  })
+
+  const SVG = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"/>')
+
+  it('resolves an icon set that points at assets, so a compiled card carries its symbols', async () => {
+    const store = new MemoryAssetStore()
+    const hash = await store.put(SVG, 'image/svg+xml')
+    const icons = await resolveIcons({ 'sköld': `asset:${hash}`, 'egen': 'https://example.test/x.svg' }, store)
+    expect(icons['sköld']).toBe(`data:image/svg+xml;base64,${Buffer.from(SVG).toString('base64')}`)
+    // Anything that is not an asset reference is left as it stands.
+    expect(icons['egen']).toBe('https://example.test/x.svg')
+  })
+
+  it('keeps the credits with the project and hands them to the print export, so the licences reach the printer', async () => {
+    const up = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/svg+xml', cookie }, body: SVG })
+    const { hash } = (await up.json()) as { hash: string }
+    const { zones, seats, floor } = twoSeatSetup()
+    const doc = {
+      name: 'Skogens herrar',
+      template,
+      rows: [{ id: 'dragon', fields: { title: 'Drake', body: 'Sköld {sköld}.', antal: 1 } }],
+      icons: { 'sköld': `asset:${hash}` },
+      credits: { 'sköld': { licence: 'CC0-1.0', by: 'build-your-deck', source: 'skold' } },
+      setup: { zones, seats, floor, deckZone: 'draw' },
+    }
+    const created = await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ id: 'p1', ...doc }) })
+    expect(created.status).toBe(201)
+    const stored = await run.projects.load('p1')
+    expect(stored?.credits).toEqual(doc.credits)
+
+    const printed = await fetch(`${run.http}/projects/p1/print`, { method: 'POST', headers: { cookie } })
+    expect(printed.status).toBe(202)
+    const body = (await printed.json()) as { credits: { name: string; licence: string; by: string }[] }
+    expect(body.credits).toEqual([{ name: 'sköld', licence: 'CC0-1.0', by: 'build-your-deck', source: 'skold' }])
   })
 })

@@ -76,6 +76,22 @@ export class PostgresAssetStore implements AssetStore {
   }
 }
 
+// The icon set as the compiler needs it (E4): a symbol taken from the library is one of the
+// project's assets, so `{namn}` resolves the same way a card's image does. A URL that is not an
+// asset reference is left as it stands.
+export async function resolveIcons(icons: Record<string, string>, assets: AssetStore): Promise<Record<string, string>> {
+  const out: Record<string, string> = {}
+  for (const [name, url] of Object.entries(icons)) out[name] = isAssetRef(url) ? await dataUrlOf(url.slice(ASSET_PREFIX.length), assets) : url
+  return out
+}
+
+// The bytes of an asset as a data URL; empty when the asset is gone, so a card loses a picture
+// rather than carrying a broken reference.
+async function dataUrlOf(hash: string, assets: AssetStore): Promise<string> {
+  const got = await assets.get(hash)
+  return got ? `data:${got.contentType};base64,${Buffer.from(got.bytes).toString('base64')}` : ''
+}
+
 // The rows as the compiler needs them: every asset reference swapped for a data URL, so the
 // compiled page carries its images and the render worker needs nothing but the page. An asset
 // that is gone leaves the field empty rather than a broken reference on the card.
@@ -90,10 +106,7 @@ export async function resolveAssets(rows: readonly ProjectRow[], assets: AssetSt
         continue
       }
       const hash = v.slice(ASSET_PREFIX.length)
-      if (!urls.has(hash)) {
-        const got = await assets.get(hash)
-        urls.set(hash, got ? `data:${got.contentType};base64,${Buffer.from(got.bytes).toString('base64')}` : '')
-      }
+      if (!urls.has(hash)) urls.set(hash, await dataUrlOf(hash, assets))
       fields[k] = urls.get(hash) ?? ''
     }
     out.push({ id: row.id, fields })

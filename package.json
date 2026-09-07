@@ -6,7 +6,6 @@
   "scripts": {
     "prepare": "git config core.hooksPath .githooks || true",
     "test": "pnpm -r --workspace-concurrency=1 test",
-    "proto": "pnpm --filter @byd/web dev --open /prototype/symbols?variant=A",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
     "dev:web": "pnpm --filter @byd/web dev",

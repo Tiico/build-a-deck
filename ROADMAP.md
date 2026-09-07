@@ -100,7 +100,7 @@ Målet är att designern aldrig behöver ett annat verktyg för att göra leken.
 
 - ✅ Setup-editor: recept som start, bordet som finjustering — zoner, platser, händer, högar, räknare och egna zoner i editorns flik "Bord" (B5, K2).
 - ✅ Bilder: bildceller i editorns tabell, spelets bilder en gång var, innehållsadresserad lagring i R2 via `/assets` (E1, DRIFT §4).
-- ⬜ Symbolbibliotek med CC0- och CC-BY-ikoner, platshållarramar och färgblock (E4).
+- ✅ Symbolbibliotek: fliken "Symboler" med sök och kategorier, väljare vid klammern i tabellen, symboler som projektets assets och licenser hela vägen till trycket (E4).
 - 🔶 Fysisk validering: textanpassning finns (E6); kvar är minsta textstorlek som varning, kontrast, färgblindhet, utfall och linjetjocklek (E5).
 - 🔶 Versionering: revisionsräknare finns; kvar är oföränderlig historik med namngivna milstolpar, diff och att öppna en äldre version (B4).
 - ⬜ Regelboken som versionerat dokument som refererar komponenter och zoner (B7).

@@ -421,6 +421,16 @@ Följdkrav:
 Licensmetadata per asset måste följa med hela vägen in i tryckunderlaget.
 Kuratering och licensbokföring blir ett löpande arbete.
 
+Symbolbiblioteket i editorn (prototypat och byggt 2026-09-08):
+Tre sätt prövades: en bibliotekspanel, en väljare som öppnas vid klammern medan man skriver, och en bricka att dra symboler från till kortet.
+Valet blev panelen som hem och klammern medan man skriver; båda fyller samma sak.
+Fliken "Symboler" i editorn är biblioteket: sökning på namn, nyckelord eller kategori, kategorierna Resurser, Handlingar, Tillstånd och Platshållare, och licensen skriven på varje symbol.
+Att skriva `{` i en textcell i tabellen öppnar samma sökning där markören står; piltangenter väljer, Enter skriver in `{namn}` och tar in symbolen. Ett rent tal i klamrar är en pip (L2) och slår inte upp något.
+Spelets egen uppsättning står bredvid biblioteket med vad man skriver, vilken licens symbolen har och hur många kort den används på; namnet går att byta och symbolen att ta bort.
+En symbol som tas in blir ett av projektets assets (E1): bytesen laddas upp och uppsättningen pekar på `asset:<hash>`, så kortens utseende inte hänger på att biblioteket står stilla.
+Licensen lagras i dokumentets `credits` bredvid uppsättningen, så kompilatorns `icons` förblir namn → URL, och `POST /projects/:id/print` svarar med licenserna tillsammans med korten — det är följdkravet att licensmetadata når tryckunderlaget.
+Biblioteket är ritat för projektet och släppt som CC0; strukturen bär licens och upphovsman per symbol, så kurerat CC-BY-material kan läggas till utan ändring.
+
 ### E5. Fysisk validering med varningar (fråga 30)
 
 Kontinuerliga kontroller mot fysiskt mått: minsta textstorlek i punkter, kontrastförhållande, färgblindhetssimulering, skärmargin mot utfall, minsta linjetjocklek.

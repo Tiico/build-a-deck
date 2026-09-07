@@ -11,12 +11,12 @@ import { Template } from '@byd/template'
 import type { ObjectStore, RenderStore } from '@byd/render/queue'
 import type { Subscriber, TableHost } from './actor.js'
 import type { Deck, LogStore, SessionRecord } from './store.js'
-import { ProjectDoc, deckFromProject, setupFromProject, type ProjectRecord, type ProjectStore } from './projects.js'
+import { ProjectDoc, deckFromProject, setupFromProject, type ProjectCredit, type ProjectRecord, type ProjectStore } from './projects.js'
 import { SurveyAnswer, type SurveyStore } from './surveys.js'
 import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountOf, hash, loginMail, safeNext, token, type Account, type AuthStore, type Mailer } from './auth.js'
 import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
 import { facesOf, printExportOf } from './faces.js'
-import { resolveAssets, type AssetStore } from './assets.js'
+import { resolveAssets, resolveIcons, type AssetStore } from './assets.js'
 import { TEXTURE_DPI } from './actor.js'
 
 // `staticDir`: the built web app, served from the same origin as the API (README, DRIFT §1).
@@ -498,7 +498,13 @@ async function attach(opts: ServerOptions, req: IncomingMessage, ws: WebSocket, 
 // The deck a table or a print is made from: the project's rows with their images inlined (E1),
 // so the compiled page is complete and the render worker needs nothing but the page.
 async function deckOf(opts: ServerOptions, rec: ProjectRecord): Promise<Deck> {
-  return deckFromProject(opts.assets ? { ...rec, rows: await resolveAssets(rec.rows, opts.assets) } : rec)
+  if (!opts.assets) return deckFromProject(rec)
+  return deckFromProject({ ...rec, rows: await resolveAssets(rec.rows, opts.assets), icons: await resolveIcons(rec.icons, opts.assets) })
+}
+
+// The project's credits as a list, in the icon set's order: what a print order carries (E4).
+function creditsOf(rec: ProjectRecord): (ProjectCredit & { name: string })[] {
+  return Object.entries(rec.credits ?? {}).map(([name, c]) => ({ name, ...c }))
 }
 
 const ASSET_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/svg+xml'])
@@ -620,7 +626,9 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     const rec = gate.rec
     const printed = printExportOf(await deckOf(opts, rec), setupFromProject(rec), opts.registry, clock(opts).getTime())
     for (const job of printed.jobs) await opts.renders.enqueue(job)
-    json(res, 202, { project: rec.id, rev: rec.rev, cards: printed.cards })
+    // The licences of every symbol the game uses go with the order (E4): the printer is handed
+    // what the deck is made of, not only how it looks.
+    json(res, 202, { project: rec.id, rev: rec.rev, cards: printed.cards, credits: creditsOf(rec) })
     return true
   }
   const start = /^\/projects\/([^/]+)\/sessions$/.exec(url.pathname)

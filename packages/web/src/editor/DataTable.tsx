@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ProjectDoc, ProjectRow } from './types.js'
 import { fieldsOf } from './fields.js'
 import { ASSET_DRAG_TYPE, assetRef, assetUrl, assetsInUse, imageFieldsOf, isAssetRef, ASSET_PREFIX } from './assets.js'
+import { searchSymbols, symbolPreview, type GameSymbol } from './symbols.js'
 import type { Cell } from './ProjectClient.js'
 import { exportCardsCsv, importCardsCsv } from './csv.js'
 import { keepOrder, nextSort, sortRows, type SortState } from './sorting.js'
@@ -23,15 +24,47 @@ export type DataTableProps = {
   // Without both, image fields are edited as text.
   assetBase?: string | undefined
   onUpload?: ((file: File) => Promise<string>) | undefined
+  // Taking a symbol into the game from where it is written (E4): returns the name it got in the
+  // project's icon set. Without it, a brace in a cell is just a brace.
+  onSymbol?: ((symbol: GameSymbol) => Promise<string>) | undefined
 }
 
 // The table (B as a tab): one row per card, the template's fields as columns, `antal` last (L4).
 // This is where the designer already lives; a change here reaches every copy of the card.
-export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, assetBase, onUpload }: DataTableProps) {
+export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, assetBase, onUpload, onSymbol }: DataTableProps) {
   const [importError, setImportError] = useState<string | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
   // Which image cell a drag is over.
   const [over, setOver] = useState<string | null>(null)
+  // The symbol picker (E4): which cell has an open brace before the cursor, what has been typed
+  // since it, and which symbol is under the arrow keys.
+  const [brace, setBrace] = useState<{ cardRef: string; field: string; at: number; query: string } | null>(null)
+  const [choice, setChoice] = useState(0)
+  const matches = brace ? searchSymbols(brace.query, null).slice(0, 8) : []
+  const closeBrace = () => {
+    setBrace(null)
+    setChoice(0)
+  }
+  // What a cell shows now: the row's value, unless the picker is open on it, since the cell is
+  // typed into before the project has the change.
+  const typing = useRef<Record<string, string>>({})
+  const openBrace = (cardRef: string, field: string, el: HTMLInputElement) => {
+    const upto = el.value.slice(0, el.selectionStart ?? el.value.length)
+    const at = upto.lastIndexOf('{')
+    const word = at >= 0 ? upto.slice(at + 1) : ''
+    // A closed brace is written, and a bare number in braces is a pip (L2): neither is a lookup.
+    if (at < 0 || word.includes('}') || /^\d+$/.test(word)) return closeBrace()
+    setBrace({ cardRef, field, at, query: word })
+    setChoice(0)
+  }
+  const takeSymbol = (symbol: GameSymbol) => {
+    const open = brace
+    if (!open || !onSymbol) return
+    const key = `${open.cardRef}:${open.field}`
+    const current = typing.current[key] ?? String(doc.rows.find((r) => r.id === open.cardRef)?.fields[open.field] ?? '')
+    closeBrace()
+    void onSymbol(symbol).then((name) => onCell(open.cardRef, open.field, `${current.slice(0, open.at)}{${name}}${current.slice(open.at + 1 + open.query.length)}`))
+  }
   const imageFields = assetBase && onUpload ? imageFieldsOf(doc) : []
   const images = assetsInUse(doc)
   const upload = async (cardRef: string, field: string, file: File | undefined) => {
@@ -324,16 +357,56 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                     </div>
                   </td>
                 ) : (
-                <td key={f}>
+                <td key={f} className={brace?.cardRef === cardRef && brace.field === f ? 'byd-data-picking' : undefined}>
                   <input
                     type={f === 'antal' ? 'number' : 'text'}
                     min={f === 'antal' ? 0 : undefined}
                     value={row[f] === undefined || row[f] === null ? (f === 'antal' ? '1' : '') : String(row[f])}
-                    onChange={(e) => onCell(cardRef, f, f === 'antal' ? Number(e.target.value) : e.target.value)}
+                    onChange={(e) => {
+                      typing.current[`${cardRef}:${f}`] = e.target.value
+                      onCell(cardRef, f, f === 'antal' ? Number(e.target.value) : e.target.value)
+                      if (onSymbol && f !== 'antal') openBrace(cardRef, f, e.target)
+                    }}
+                    onKeyDown={(e) => {
+                      if (!brace || brace.cardRef !== cardRef || brace.field !== f || matches.length === 0) return
+                      if (e.key === 'ArrowDown') {
+                        e.preventDefault()
+                        setChoice((c) => Math.min(matches.length - 1, c + 1))
+                      } else if (e.key === 'ArrowUp') {
+                        e.preventDefault()
+                        setChoice((c) => Math.max(0, c - 1))
+                      } else if (e.key === 'Enter') {
+                        const picked = matches[choice]
+                        if (!picked) return
+                        e.preventDefault()
+                        takeSymbol(picked)
+                      } else if (e.key === 'Escape') closeBrace()
+                    }}
                     onFocus={() => setHeld(shown.map((r) => r.id))}
                     onBlur={() => setHeld(null)}
                     aria-label={`${cardRef} ${f}`}
                   />
+                  {brace?.cardRef === cardRef && brace.field === f && matches.length > 0 && (
+                    // The library where the cursor stands (E4): the same set the Symboler tab
+                    // fills, reached without leaving the sentence being written.
+                    <div className="byd-data-symbols" role="listbox" aria-label="Symboler">
+                      {matches.map((sym, i) => (
+                        <button
+                          key={sym.id}
+                          type="button"
+                          role="option"
+                          data-symbol={sym.name}
+                          aria-selected={i === choice}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => takeSymbol(sym)}
+                        >
+                          <img src={symbolPreview(sym)} alt="" />
+                          <span>{sym.name}</span>
+                          <small>{sym.category}</small>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </td>
                 ),
               )}

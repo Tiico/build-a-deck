@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ProjectClient } from '../src/editor/ProjectClient.js'
 import { projectDoc } from './project-doc.js'
+import { LIBRARY } from '../src/editor/symbols.js'
 import { startServer, type Running } from './fixture.js'
 
 let run: Running
@@ -247,5 +248,41 @@ describe('images (E1)', () => {
     expect(served.status).toBe(200)
     expect(new Uint8Array(await served.arrayBuffer())).toEqual(new Uint8Array([137, 80, 78, 71]))
     await expect(client.uploadAsset(new File(['x'], 'x.txt', { type: 'text/plain' }))).rejects.toThrow(/bara bilder/)
+  })
+})
+
+describe('symbols (E4)', () => {
+  it('takes a symbol into the project: the bytes become an asset, the set gets the name, and the licence is kept beside it', async () => {
+    const created = await run.projects.create('p1', projectDoc())
+    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    const skold = LIBRARY.find((s) => s.name === 'sköld')!
+
+    const name = await client.useSymbol(skold)
+    expect(name).toBe('sköld')
+    expect(client.doc.icons['sköld']).toMatch(/^asset:[0-9a-f]{64}$/)
+    expect(client.doc.credits?.['sköld']).toEqual({ licence: skold.licence, by: skold.by, source: skold.id })
+    // The symbol is served from the project's own assets, not from the library.
+    const served = await fetch(`${run.http}/assets/${client.doc.icons['sköld']!.slice('asset:'.length)}`)
+    expect(served.headers.get('content-type')).toBe('image/svg+xml')
+    expect(await served.text()).toBe(skold.svg)
+
+    // The same symbol again is the same entry, not a second name.
+    expect(await client.useSymbol(skold)).toBe('sköld')
+    expect(Object.keys(client.doc.icons)).toEqual(['sköld'])
+    // A second, different symbol under a name already taken gets a name of its own.
+    const svard = LIBRARY.find((s) => s.name === 'svärd')!
+    expect(await client.useSymbol(svard, 'sköld')).toBe('sköld-2')
+
+    client.renameIcon('sköld-2', 'anfall')
+    expect(client.doc.icons['sköld-2']).toBeUndefined()
+    expect(client.doc.credits?.['anfall']?.source).toBe('svard')
+    client.removeIcon('anfall')
+    expect(client.doc.icons['anfall']).toBeUndefined()
+    expect(client.doc.credits?.['anfall']).toBeUndefined()
+
+    expect(await client.save()).toEqual({ ok: true, rev: 2 })
+    const stored = await run.projects.load('p1')
+    expect(stored?.icons['sköld']).toBe(client.doc.icons['sköld'])
+    expect(stored?.credits).toEqual({ 'sköld': { licence: 'CC0-1.0', by: 'build-your-deck', source: 'skold' } })
   })
 })

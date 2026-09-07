@@ -96,3 +96,65 @@ describe('image cells (E1)', () => {
     expect(onCell).toHaveBeenCalledWith('wizard', 'art', `asset:${HASH}`)
   })
 })
+
+describe('the symbol picker at the brace (E4)', () => {
+  const setup = () => {
+    const doc = projectDoc()
+    const onCell = vi.fn()
+    const onSymbol = vi.fn(async (s: { name: string }) => s.name)
+    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onSymbol={onSymbol} />)
+    const cell = within(screen.getAllByRole('row')[1]!).getByLabelText('dragon body') as HTMLInputElement
+    return { cell, onCell, onSymbol }
+  }
+  const type = (cell: HTMLInputElement, value: string) => {
+    fireEvent.change(cell, { target: { value, selectionStart: value.length } })
+  }
+
+  it('opens the library where the cursor stands, narrows as the name is typed, and writes the chosen symbol into the text', async () => {
+    const { cell, onCell, onSymbol } = setup()
+    expect(screen.queryByRole('listbox')).toBeNull()
+    type(cell, 'Flygande. {')
+    const list = screen.getByRole('listbox', { name: 'Symboler' })
+    expect(within(list).getAllByRole('option').length).toBeGreaterThan(3)
+    type(cell, 'Flygande. {sköl')
+    expect(within(list).getAllByRole('option').map((o) => o.textContent)).toEqual([expect.stringContaining('sköld')])
+
+    fireEvent.click(within(list).getAllByRole('option')[0]!)
+    await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'body', 'Flygande. {sköld}'))
+    expect(onSymbol).toHaveBeenCalledWith(expect.objectContaining({ name: 'sköld' }))
+    expect(screen.queryByRole('listbox')).toBeNull()
+  })
+
+  it('moves through the list with the arrow keys, takes one with Enter, and closes on Escape', async () => {
+    const { cell, onCell } = setup()
+    type(cell, '{s')
+    const list = screen.getByRole('listbox', { name: 'Symboler' })
+    const names = within(list).getAllByRole('option').map((o) => o.getAttribute('data-symbol'))
+    expect(within(list).getAllByRole('option')[0]!.getAttribute('aria-selected')).toBe('true')
+    fireEvent.keyDown(cell, { key: 'ArrowDown' })
+    expect(within(list).getAllByRole('option')[1]!.getAttribute('aria-selected')).toBe('true')
+    fireEvent.keyDown(cell, { key: 'ArrowUp' })
+    fireEvent.keyDown(cell, { key: 'ArrowUp' })
+    expect(within(list).getAllByRole('option')[0]!.getAttribute('aria-selected')).toBe('true')
+
+    fireEvent.keyDown(cell, { key: 'Enter' })
+    await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'body', `{${names[0]}}`))
+
+    type(cell, '{s')
+    expect(screen.getByRole('listbox')).toBeTruthy()
+    fireEvent.keyDown(cell, { key: 'Escape' })
+    expect(screen.queryByRole('listbox')).toBeNull()
+  })
+
+  it('stays out of the way: a closed brace, a number in braces, and a cell that is not text', () => {
+    const { cell } = setup()
+    type(cell, 'Betala {2} för att anfalla.')
+    expect(screen.queryByRole('listbox')).toBeNull()
+    type(cell, 'Betala {2')
+    // A bare number is a pip (L2), not a symbol: nothing to look up.
+    expect(screen.queryByRole('listbox')).toBeNull()
+    const antal = within(screen.getAllByRole('row')[1]!).getByLabelText('dragon antal') as HTMLInputElement
+    fireEvent.change(antal, { target: { value: '{s' } })
+    expect(screen.queryByRole('listbox')).toBeNull()
+  })
+})

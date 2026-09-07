@@ -5,6 +5,7 @@ import { TemplateCanvas } from './TemplateCanvas.js'
 import { DataTable } from './DataTable.js'
 import { TableMenu, TablesTab } from './TablesTab.js'
 import { SetupEditor } from './SetupEditor.js'
+import { SymbolPanel } from './SymbolPanel.js'
 import { tvUrl } from './tableLinks.js'
 import { useProjectClient } from './useProjectClient.js'
 import { useTableClient } from '../table/useTableClient.js'
@@ -159,6 +160,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
         doc={doc}
         assetBase={http}
         onUpload={(file) => client.uploadAsset(file)}
+        onSymbol={(symbol) => client.useSymbol(symbol)}
         selectedRow={row}
         onSelectRow={setRow}
         onCell={(cardRef, field, value) => client.setCell(cardRef, field, value)}
@@ -167,6 +169,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
         onReplaceRows={(rows) => client.replaceRows(rows)}
       />
     ),
+    symbols: () => <SymbolPanel doc={doc} client={client} assetBase={http} />,
     // Bord is the home for both the game's board vocabulary and its running tables (#19, C4).
     tables: () => (
       <>

@@ -33,11 +33,17 @@ const Cell = z.union([z.string(), z.number(), z.boolean(), z.null()])
 // table's order in the editor. An object would lose it in storage and for numeric-looking ids.
 export const ProjectRow = z.object({ id: z.string().min(1), fields: z.record(z.string(), Cell) })
 export type ProjectRow = z.infer<typeof ProjectRow>
+// Where a symbol in the icon set came from and under what licence (E4). It is kept beside the
+// set rather than inside it, so the compiler's `icons` stays a plain name → URL map, and it
+// travels into the print hand-off, which is what the licences are for.
+export const ProjectCredit = z.object({ licence: z.string().min(1), by: z.string().min(1), source: z.string().optional() })
+export type ProjectCredit = z.infer<typeof ProjectCredit>
 export const ProjectDoc = z.object({
   name: z.string().min(1),
   template: Template,
   rows: z.array(ProjectRow),
   icons: z.record(z.string(), z.string()),
+  credits: z.record(z.string(), ProjectCredit).optional(),
   setup: ProjectSetup,
 })
 export type ProjectDoc = z.infer<typeof ProjectDoc>

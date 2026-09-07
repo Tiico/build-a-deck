@@ -2,6 +2,8 @@ import type { ProjectDoc, ProjectRow } from '@byd/server'
 import type { Element, FaceTemplate, Variant } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
 import { applyRecipe, point, recipeOf, rect, type Geometry, type Recipe, type Zone } from '../setup/recipe.js'
+import { ASSET_PREFIX } from './assets.js'
+import { freeIconName, svgBytes, type GameSymbol } from './symbols.js'
 
 export type ProjectListener = (client: ProjectClient) => void
 export type SaveResult = { ok: true; rev: number } | { ok: false; reason: 'conflict' | 'missing' | string }
@@ -32,7 +34,7 @@ export class ProjectClient {
     if (res.status === 404) throw new Error(`unknown project ${opts.id}`)
     if (!res.ok) throw new Error(`could not load project: ${res.status}`)
     const rec = (await res.json()) as ProjectDoc & { id: string; rev: number }
-    const doc: ProjectDoc = { name: rec.name, template: rec.template, rows: rec.rows, icons: rec.icons, setup: rec.setup }
+    const doc: ProjectDoc = { name: rec.name, template: rec.template, rows: rec.rows, icons: rec.icons, setup: rec.setup, ...(rec.credits ? { credits: rec.credits } : {}) }
     return new ProjectClient(opts.http, opts.id, doc, rec.rev)
   }
 
@@ -209,6 +211,40 @@ export class ProjectClient {
     this.commit({ ...this.doc, setup: { ...this.doc.setup, zones } })
   }
 
+  // A symbol from the library taken into the game (E4): its bytes become one of the project's
+  // assets, the icon set gets a name for it, and the licence is kept beside the set so it can
+  // travel to the printer. The same symbol twice is the same entry, not a second name.
+  async useSymbol(symbol: GameSymbol, as?: string): Promise<string> {
+    const file = svgBytes(symbol)
+    const ref = `${ASSET_PREFIX}${await this.uploadAsset(new Blob([file.bytes], { type: file.type }))}`
+    const already = Object.entries(this.doc.icons).find(([, url]) => url === ref)
+    if (already) return already[0]
+    const name = freeIconName(as ?? symbol.name, this.doc.icons)
+    this.commit({
+      ...this.doc,
+      icons: { ...this.doc.icons, [name]: ref },
+      credits: { ...(this.doc.credits ?? {}), [name]: { licence: symbol.licence, by: symbol.by, source: symbol.id } },
+    })
+    return name
+  }
+
+  // The name is what card text writes between braces, so renaming one moves its credit too.
+  renameIcon(from: string, to: string): void {
+    const url = this.doc.icons[from]
+    if (url === undefined) throw new Error(`no icon ${from}`)
+    if (this.doc.icons[to] !== undefined) throw new Error(`icon ${to} already exists`)
+    const credit = this.doc.credits?.[from]
+    this.commit({
+      ...this.doc,
+      icons: { ...without(this.doc.icons, from), [to]: url },
+      credits: { ...without(this.doc.credits ?? {}, from), ...(credit ? { [to]: credit } : {}) },
+    })
+  }
+
+  removeIcon(name: string): void {
+    this.commit({ ...this.doc, icons: without(this.doc.icons, name), credits: without(this.doc.credits ?? {}, name) })
+  }
+
   // An image for the project (E1): uploaded once, named by its bytes; the cell then points at it.
   async uploadAsset(file: Blob): Promise<string> {
     const res = await fetch(`${this.http}/assets`, withCredentials({ method: 'POST', headers: { 'content-type': file.type || 'application/octet-stream' }, body: file }))
@@ -314,6 +350,11 @@ export class ProjectClient {
 }
 
 // One element in, one out, by id: an override list is a set keyed by id, not an order.
+// A record without one key, since deleting a computed key is not how records are built here.
+function without<T>(record: Record<string, T>, key: string): Record<string, T> {
+  return Object.fromEntries(Object.entries(record).filter(([k]) => k !== key))
+}
+
 function replaceById(list: Element[], element: Element): Element[] {
   return list.some((e) => e.id === element.id) ? list.map((e) => (e.id === element.id ? element : e)) : [...list, element]
 }
