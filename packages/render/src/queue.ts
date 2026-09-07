@@ -2,4 +2,5 @@
 // textures and serve outputs. Importing this never loads Playwright.
 export * from './hash.js'
 export * from './store.js'
+export * from './objects.js'
 export * from './store-postgres.js'

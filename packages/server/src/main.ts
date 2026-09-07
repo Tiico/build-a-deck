@@ -6,7 +6,7 @@ import { MemoryProjectStore, type ProjectStore } from './projects.js'
 import { MemorySurveyStore, type SurveyStore } from './surveys.js'
 import { ConsoleMailer, MemoryAuthStore, ResendMailer, type AuthStore, type Mailer } from './auth.js'
 import { PostgresLogStore } from './store-postgres.js'
-import { MemoryRenderStore, PostgresRenderStore, type RenderStore } from '@byd/render/queue'
+import { MemoryRenderStore, PostgresRenderStore, assetsFromEnv, type RenderStore } from '@byd/render/queue'
 
 // Entry point for the container. Configuration is environment only.
 //   DATABASE_URL   — Postgres; without it the log lives in memory and dies with the process.
@@ -19,6 +19,9 @@ import { MemoryRenderStore, PostgresRenderStore, type RenderStore } from '@byd/r
 //                    web app is served from another port than the API
 //   RESEND_API_KEY, MAIL_FROM — mail through Resend (DRIFT §12); without a key links go to the log
 //   AUTH_BYPASS    — `true` logs in immediately after POST /auth/login; local/test use only
+//   R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ASSETS_BUCKET — rendered textures
+//                    and print files in R2 (DRIFT §4), served through short-lived signed links;
+//                    without them the bytes stay in Postgres and go through this process
 
 const port = Number(process.env['PORT'] ?? 8080)
 const idleEvictMs = Number(process.env['IDLE_EVICT_MS'] ?? 30 * 60 * 1000)
@@ -26,6 +29,7 @@ const databaseUrl = process.env['DATABASE_URL']
 const idleEndMs = Number(process.env['IDLE_END_MS'] ?? 24 * 3600 * 1000)
 
 const registry = new TypeRegistry([CARD_STANDARD_63x88])
+const objects = assetsFromEnv(process.env)
 
 let store: LogStore
 let renders: RenderStore
@@ -37,7 +41,7 @@ if (databaseUrl) {
   const pg = PostgresLogStore.connect(databaseUrl)
   await pg.migrate()
   // The render queue lives in the same database; the render container drains it (DRIFT §6).
-  const rq = PostgresRenderStore.connect(databaseUrl)
+  const rq = PostgresRenderStore.connect(databaseUrl, objects)
   await rq.migrate()
   store = pg
   renders = rq
@@ -48,7 +52,7 @@ if (databaseUrl) {
     await pg.close()
     await rq.close()
   }
-  console.log(JSON.stringify({ msg: 'store', kind: 'postgres' }))
+  console.log(JSON.stringify({ msg: 'store', kind: 'postgres', assets: objects ? 'r2' : 'postgres' }))
 } else {
   store = new MemoryLogStore()
   renders = new MemoryRenderStore()
@@ -65,7 +69,7 @@ const appOrigin = process.env['WEB_ORIGIN']
 const authBypass = process.env['AUTH_BYPASS'] === 'true'
 const resendKey = process.env['RESEND_API_KEY']
 const mailer: Mailer = resendKey ? new ResendMailer(resendKey, process.env['MAIL_FROM'] ?? 'build-your-deck <login@example.com>') : new ConsoleMailer()
-const server = createServer({ host, store, registry, renders, projects, surveys, auth, mailer, authBypass, ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}) })
+const server = createServer({ host, store, registry, renders, projects, surveys, auth, mailer, authBypass, ...(objects ? { objects } : {}), ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}) })
 server.listen(port, () => console.log(JSON.stringify({ msg: 'listening', port })))
 
 const evictor = setInterval(() => {

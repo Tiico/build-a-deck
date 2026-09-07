@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { MemoryRenderStore, type RenderRequest } from '../src/store.js'
+import { MemoryObjectStore } from '../src/objects.js'
 
 const req = (id: string, priority: 'texture' | 'print', at: number): RenderRequest => ({
   hash: `h-${id}`,
@@ -44,5 +45,21 @@ describe('render queue (DRIFT §6)', () => {
     expect(await q.claim(8)).toBeNull()
     expect(await q.reap(60_000, 7 + 60_001)).toEqual(['h-a'])
     expect((await q.claim(9 + 60_001))?.hash).toBe('h-a')
+  })
+})
+
+describe('outputs in an object store (DRIFT §4)', () => {
+  it('keeps outputs in the object store under the hash, and links to them when the store can', async () => {
+    const objects = new MemoryObjectStore()
+    const linking = { ...objects, put: objects.put.bind(objects), get: objects.get.bind(objects), check: objects.check.bind(objects), link: async (key: string, ttl: number) => `https://r2.test/${key}?ttl=${ttl}` }
+    const q = new MemoryRenderStore(linking)
+    await q.enqueue(req('a', 'texture', 1))
+    const job = await q.claim(5)
+    await q.complete(job!.hash, new Uint8Array([1, 2, 3]))
+    expect(await objects.get('renders/h-a')).toEqual(new Uint8Array([1, 2, 3]))
+    expect(await q.output('h-a')).toEqual(new Uint8Array([1, 2, 3]))
+    expect(await q.link('h-a', 60)).toBe('https://r2.test/renders/h-a?ttl=60')
+    expect(await q.link('h-missing', 60)).toBeNull()
+    expect(await new MemoryRenderStore().link('h-a', 60)).toBeNull()
   })
 })

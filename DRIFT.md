@@ -61,6 +61,12 @@ Följdkrav:
 Klienten måste cacha signerade URL:er under deras livstid, annars blir varje textur två rundturer.
 Att visa ett kort kräver att R2 är nåbart — ett externt beroende för kärnfunktion.
 
+Byggt 2026-09-07:
+Renderworkern skriver sina utdata till R2 under `renders/<hash>` med rätt content-type; Postgres behåller bara att de finns.
+`GET /faces/:hash` svarar 302 till en signerad URL som lever en timme, med `Cache-Control: private, max-age=3000`: webbläsaren återanvänder länken i femtio minuter och hämtar aldrig en som just gått ut. Det är svaret på den öppna frågan om livslängd.
+S3-protokollet talas utan SDK: fyra anrop med Signature Version 4, verifierade mot AWS dokumenterade exempel och mot MinIO.
+Utan R2-variabler stannar bytesen i Postgres och går genom `app`, som förut; `/health` frågar R2 med en tom listning (§2).
+
 ## 5. Backup: WAL-arkivering till R2 med återställningstest
 
 pgBackRest eller WAL-G arkiverar varje WAL-segment till en egen R2-bucket inom sekunder.
@@ -165,12 +171,11 @@ CI (`.github/workflows/ci.yml`) kör lint, typecheck och alla tester mot Postgre
 Korpusen anonymiserar namn, kommentarer och observatörer men behåller kortens id:n; `GET /sessions/:id/export` och `pnpm --filter @byd/engine corpus` lägger till riktiga loggar.
 Händelseschemats `schemaVersion` och upcasters (§7) återstår; tills vidare är grinden att varje rad i korpusen parsas av dagens schema.
 Backup (§5) är i första steget en nattlig `pg_dump` till R2 med 30 dagars kvarhållning och `ops/restore-test.sh` som återställningsprov; WAL-arkivering återstår.
-Assets i R2 (§4) återstår: texturerna serveras ännu från Postgres genom `app`.
+Assets i R2 (§4) byggt 2026-09-07, se §4.
 Administration över Tailscale (§10) är lådans sak; Postgres lyssnar bara på 127.0.0.1.
 
 ## Öppna frågor
 
 Hur replay-korpusen anonymiseras utan att förlora det som gör den värdefull.
-Exakt livslängd på signerade R2-URL:er mot klientens cache.
 UPS för lådan — billig, men inte beslutad.
 Om en extern pulskoll ska läggas till trots beslut 8.

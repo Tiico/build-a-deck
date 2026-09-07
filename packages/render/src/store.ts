@@ -1,8 +1,10 @@
 import type { CompiledLike, RenderKind } from './hash.js'
+import { MemoryObjectStore, type ObjectStore } from './objects.js'
 
 // The render queue (DRIFT §6): jobs keyed by content hash, textures before prints, oldest
 // first, one worker at a time per job, and a reaper for jobs whose Chromium hung.
-// Outputs are stored under the hash; a hash already rendered is a no-op forever.
+// Outputs are stored under the hash; a hash already rendered is a no-op forever. They live in
+// an object store (DRIFT §4) — R2 on the box, memory in tests — under `renders/<hash>`.
 
 export type Priority = 'texture' | 'print'
 export type RenderRequest = { hash: string; kind: RenderKind; priority: Priority; compiled: CompiledLike; requestedAt: number }
@@ -19,15 +21,23 @@ export type RenderStore = {
   fail(hash: string, error: string): Promise<void>
   status(hash: string): Promise<JobStatus | null>
   output(hash: string): Promise<Uint8Array | null>
+  // A URL a browser may fetch the finished output from directly for `ttlSeconds` (DRIFT §4);
+  // null when there is no such output, or when the bytes have to come through the server.
+  link(hash: string, ttlSeconds: number): Promise<string | null>
   // Jobs running longer than `olderThanMs` as of `now` go back to the queue; returns their hashes.
   reap(olderThanMs: number, now: number): Promise<string[]>
 }
 
 const RANK: Record<Priority, number> = { texture: 0, print: 1 }
 
+export const outputKey = (hash: string): string => `renders/${hash}`
+export const contentTypeOf = (kind: RenderKind | undefined): string => (kind?.kind === 'pdf' ? 'application/pdf' : kind?.kind === 'png' ? 'image/png' : 'application/octet-stream')
+
 export class MemoryRenderStore implements RenderStore {
   private readonly jobs = new Map<string, RenderRequest & JobStatus>()
-  private readonly outputs = new Map<string, Uint8Array>()
+  private readonly outputs = new Set<string>()
+
+  constructor(private readonly objects: ObjectStore = new MemoryObjectStore()) {}
 
   async enqueue(req: RenderRequest): Promise<EnqueueResult> {
     if (this.outputs.has(req.hash)) return 'cached'
@@ -50,8 +60,9 @@ export class MemoryRenderStore implements RenderStore {
 
   async complete(hash: string, output: Uint8Array): Promise<void> {
     const job = this.jobs.get(hash)
+    await this.objects.put(outputKey(hash), output, contentTypeOf(job?.kind))
     if (job) job.state = 'done'
-    this.outputs.set(hash, output)
+    this.outputs.add(hash)
   }
 
   async fail(hash: string, error: string): Promise<void> {
@@ -71,7 +82,11 @@ export class MemoryRenderStore implements RenderStore {
   }
 
   async output(hash: string): Promise<Uint8Array | null> {
-    return this.outputs.get(hash) ?? null
+    return this.outputs.has(hash) ? this.objects.get(outputKey(hash)) : null
+  }
+
+  async link(hash: string, ttlSeconds: number): Promise<string | null> {
+    return this.outputs.has(hash) ? this.objects.link(outputKey(hash), ttlSeconds) : null
   }
 
   async reap(olderThanMs: number, now: number): Promise<string[]> {

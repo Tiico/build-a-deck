@@ -2,7 +2,7 @@ import type { AddressInfo } from 'node:net'
 import type { Server } from 'node:http'
 import { CARD_STANDARD_63x88, TypeRegistry, type SetupDef } from '@byd/engine'
 import { TableHost, createServer, MemoryLogStore, MemoryProjectStore, MemorySurveyStore, MemoryAuthStore, MemoryMailer } from '../src/index.js'
-import { MemoryRenderStore, Renderer, runWorker } from '@byd/render'
+import { MemoryRenderStore, Renderer, runWorker, type ObjectStore } from '@byd/render'
 
 export const registry = new TypeRegistry([CARD_STANDARD_63x88])
 export const CARD = { id: CARD_STANDARD_63x88.id, version: 1 }
@@ -28,14 +28,14 @@ export function twoSeatSetup(): SetupDef {
 
 export type Running = { server: Server; base: string; http: string; store: MemoryLogStore; renders: MemoryRenderStore; host: TableHost; projects: MemoryProjectStore; mail: MemoryMailer; renderAll(): Promise<void>; restart(): Promise<void>; stop(): Promise<void> }
 
-export async function start(opts: { appOrigin?: string; authBypass?: boolean } = {}): Promise<Running> {
+export async function start(opts: { appOrigin?: string; authBypass?: boolean; objects?: ObjectStore } = {}): Promise<Running> {
   const store = new MemoryLogStore()
-  const renders = new MemoryRenderStore()
+  const renders = new MemoryRenderStore(opts.objects)
   const projects = new MemoryProjectStore()
   const host = new TableHost(registry, store, undefined, renders)
   const mail = new MemoryMailer()
   const authBypass = opts.authBypass ? { authBypass: true } : {}
-  const server = createServer({ host, store, registry, renders, projects, surveys: new MemorySurveyStore(), auth: new MemoryAuthStore(), mailer: mail, publicOrigin: 'http://test.local', ...(opts.appOrigin ? { appOrigin: opts.appOrigin } : {}), ...authBypass })
+  const server = createServer({ host, store, registry, renders, projects, surveys: new MemorySurveyStore(), auth: new MemoryAuthStore(), mailer: mail, publicOrigin: 'http://test.local', ...(opts.appOrigin ? { appOrigin: opts.appOrigin } : {}), ...(opts.objects ? { objects: opts.objects } : {}), ...authBypass })
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
   const { port } = server.address() as AddressInfo
   return {

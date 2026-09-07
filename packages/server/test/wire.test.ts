@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { WireClient } from './client.js'
 import { createSession, start, twoSeatSetup, type Running } from './fixture.js'
 import { deck } from './deck.js'
+import { MemoryObjectStore } from '@byd/render'
 
 let run: Running
 let clients: WireClient[] = []
@@ -231,6 +232,42 @@ describe('textures (TUNN-SKIVA §5)', () => {
     expect(png.status).toBe(200)
     expect(png.headers.get('content-type')).toBe('image/png')
     expect(new Uint8Array(await png.arrayBuffer()).subarray(1, 4)).toEqual(new Uint8Array([0x50, 0x4e, 0x47]))
+  }, 60_000)
+})
+
+describe('faces in R2 (DRIFT §4)', () => {
+  it('answers a rendered face with a redirect to a short-lived link the browser caches, and /health asks the store', async () => {
+    await run.stop()
+    const objects = new MemoryObjectStore()
+    let reachable = true
+    const r2 = {
+      put: objects.put.bind(objects),
+      get: objects.get.bind(objects),
+      link: async (key: string, ttl: number) => `https://r2.test/byd-assets/${key}?X-Amz-Expires=${ttl}`,
+      check: async () => {
+        if (!reachable) throw new Error('bucket byd-assets: 503')
+      },
+    }
+    run = await start({ objects: r2 })
+    const res = await fetch(`${run.http}/sessions`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: 'r2', version: 'v1', setup: twoSeatSetup(), deck }) })
+    expect(res.status).toBe(201)
+    const a = await connect('r2', 'A')
+    await a.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    const front = (await a.synced(1)).components.find((c) => c.zone === 'hand:A')!.faces!['front']!
+    expect((await fetch(`${run.http}/faces/${front}`)).status).toBe(202)
+
+    await run.renderAll()
+    const face = await fetch(`${run.http}/faces/${front}`, { redirect: 'manual' })
+    expect(face.status).toBe(302)
+    expect(face.headers.get('location')).toBe(`https://r2.test/byd-assets/renders/${front}?X-Amz-Expires=3600`)
+    expect(face.headers.get('cache-control')).toBe('private, max-age=3000')
+    expect(await objects.get(`renders/${front}`)).not.toBeNull()
+
+    expect((await fetch(`${run.http}/health`)).status).toBe(200)
+    reachable = false
+    const sick = await fetch(`${run.http}/health`)
+    expect(sick.status).toBe(503)
+    expect(await sick.json()).toMatchObject({ ok: false, assets: 'bucket byd-assets: 503' })
   }, 60_000)
 })
 
