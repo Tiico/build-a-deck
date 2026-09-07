@@ -29,8 +29,9 @@ export const ClientMessage = z.discriminatedUnion('t', [
 export type ClientMessage = z.infer<typeof ClientMessage>
 
 export const ServerMessage = z.discriminatedUnion('t', [
-  // Sent on connect and reconnect: the full projection for this seat.
-  z.object({ t: z.literal('snapshot'), snapshot: Snapshot }),
+  // Sent on connect and reconnect: the full projection for this seat, and the most recent
+  // committed lines, redacted like `activity`, so a view joining mid-game sees what happened.
+  z.object({ t: z.literal('snapshot'), snapshot: Snapshot, activity: z.array(Activity) }),
   z.object({ t: z.literal('patch'), patch: Patch }),
   // The committed lines behind the preceding patch, redacted for every view alike.
   z.object({ t: z.literal('activity'), lines: z.array(Activity) }),

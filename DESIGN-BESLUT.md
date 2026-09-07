@@ -637,6 +637,7 @@ Planritningen kan bli ett felsökningsläge senare.
 Följdkrav som prototypen avslöjade och som nu är införda:
 Snapshot bär platserna med namn och golvzonen.
 Servern skickar varje committad rad som redigerad aktivitet, utan utfall.
+Snapshoten bär de senaste femtio raderna på samma sätt (2026-09-07), så att en skärm som ansluter mitt i ett spel ser vad som hänt; klienten byter ut sitt flöde mot dem vid varje återanslutning.
 
 ### K10. Telefonvyns utseende: remsan (prototypat 2026-09-06)
 
@@ -880,7 +881,7 @@ GDPR för gästdeltagare, särskilt enkätsvar och flaggor från personer utan k
 Fontlicensiering, som krockar med kravet i B3 att behålla fontfiler permanent.
 
 Teknik:
-Aktivitetsflödet är tomt vid anslutning — historik följer inte med snapshot, så en TV som ansluter mitt i ett spel ser inget av det som hänt. Nyligen aktivitet bör ingå i snapshot.
+Aktivitetsflödet vid anslutning: löst 2026-09-07, snapshoten bär de senaste femtio raderna, se K9.
 Migreringsstrategi för händelseschemat — riktning beslutad i DRIFT.md avsnitt 7 (`schemaVersion` på varje rad, upcasters vid inläsning), detaljer kvar.
 Behörighetsroller i detalj: ägare, medredigerare, testledare, observatör.
 Hantering av missbruk av öppna rumskoder.

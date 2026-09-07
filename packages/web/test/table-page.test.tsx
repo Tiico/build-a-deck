@@ -33,6 +33,21 @@ describe('TablePage', () => {
   })
 })
 
+describe('a screen that joins mid-game', () => {
+  it('shows what has happened so far in the feed, not an empty list', async () => {
+    const id = await createSession(run.store)
+    const other = TableClient.connect({ url: run.url, sessionId: id, seat: null })
+    await other.ready()
+    await other.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
+    other.close()
+
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&code=KX7P&server=${encodeURIComponent(run.url)}`)
+    render(<TablePage />)
+    expect(await screen.findByText(/Ada satte sig/)).toBeTruthy()
+    expect(screen.getByText(/drog 2 från Draghög/)).toBeTruthy()
+  })
+})
+
 describe('a proposed rewind on the table (C)', () => {
   it('shows the table as it was, says who is waited on, has no buttons, and returns to the present when it is settled', async () => {
     const id = await createSession(run.store)

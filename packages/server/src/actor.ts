@@ -22,6 +22,8 @@ import { facesOf, type Deck } from './faces.js'
 import type { LogStore } from './store.js'
 
 export const TEXTURE_DPI = 150
+// How much of the log a snapshot carries: enough for a feed, never the whole game.
+export const SNAPSHOT_ACTIVITY = 50
 
 // One actor owns one table. A serial queue makes concurrency impossible; the order
 // decide → append (commit) → apply → broadcast makes the log the truth (DRIFT §3).
@@ -109,7 +111,7 @@ export class TableActor {
   subscribe(sub: Subscriber): void {
     const snapshot = project(this.state, this.registry, sub.seat, this.faces, this.deps.history, sub.observer !== undefined)
     this.subscribers.set(sub, snapshot)
-    sub.send({ t: 'snapshot', snapshot })
+    sub.send({ t: 'snapshot', snapshot, activity: this.log.slice(-SNAPSHOT_ACTIVITY).map(projectActivity) })
     if (sub.observer !== undefined) this.broadcastRoster()
     else sub.send({ t: 'roster', observers: this.observers() })
     this.lastActivity = Date.now()

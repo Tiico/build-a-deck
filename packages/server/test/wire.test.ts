@@ -201,6 +201,27 @@ describe('activity on the wire', () => {
     expect(b.frames.join('\n')).not.toContain('rekey')
     expect(b.frames.join('\n')).not.toContain('outcome')
   })
+
+  it('a view that connects mid-game gets the last fifty lines with its snapshot, redacted alike', async () => {
+    const id = await createSession(run.http)
+    const table = await connect(id, null)
+    await table.send(null, { v: 'seat.claim', seat: 'A', name: 'Ada' })
+    await table.send(null, { v: 'shuffle', pile: 'draw' })
+    for (let i = 0; i < 51; i++) await table.send(null, { v: 'flag', note: `moment ${i}` })
+
+    const late = await connect(id, 'B')
+    const snapshot = late.messages.find((m) => m.t === 'snapshot')
+    if (snapshot?.t !== 'snapshot') throw new Error('no snapshot')
+    expect(snapshot.activity).toHaveLength(50)
+    expect(snapshot.activity[0]).toMatchObject({ seq: 4, intent: { v: 'flag', note: 'moment 1' } })
+    expect(snapshot.activity.at(-1)).toMatchObject({ seq: 53, by: null })
+    expect(late.frames.join('\n')).not.toContain('outcome')
+
+    // A fresh table: nothing has happened yet.
+    const empty = await connect(await createSession(run.http, 's2'), null)
+    const first = empty.messages.find((m) => m.t === 'snapshot')
+    expect(first?.t === 'snapshot' ? first.activity : null).toEqual([])
+  })
 })
 
 describe('textures (TUNN-SKIVA §5)', () => {
