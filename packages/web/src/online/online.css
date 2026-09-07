@@ -18,8 +18,7 @@
 }
 .byd-fan-card:hover { transform: translateY(-28px) rotate(0deg); z-index: 2; }
 .byd-fan-card[data-lifted] { opacity: 0.3; }
-.byd-fan-card img, .byd-fan-ghost img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
-.byd-fan-card img + span, .byd-fan-ghost img + span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.byd-fan-card > .byd-texture + span, .byd-fan-ghost > .byd-texture + span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .byd-fan-ghost {
   position: fixed; z-index: 100; pointer-events: none; width: 112px; aspect-ratio: 63 / 88; border-radius: 10px; padding: 10px; box-sizing: border-box; overflow: hidden;
   background: hsl(var(--hue, 0) 40% 86%); color: #1c1c1c; font: 700 14px system-ui, sans-serif; box-shadow: 0 24px 40px rgba(0, 0, 0, 0.6);

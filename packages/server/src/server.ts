@@ -428,7 +428,14 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       return true
     }
     const compiled = facesOf(deckFromProject(rec), setupFromProject(rec), opts.registry, TEXTURE_DPI, Date.now())
-    if (opts.renders) for (const job of compiled.jobs) await opts.renders.enqueue(job)
+    const retryFailed = url.searchParams.get('retry') === '1'
+    if (opts.renders) {
+      for (const job of compiled.jobs) {
+        const status = await opts.renders.status(job.hash)
+        if (!retryFailed && status?.state === 'failed') continue
+        await opts.renders.enqueue(job)
+      }
+    }
     json(res, 200, await progress(opts, compiled.jobs.map((j) => j.hash)))
     return true
   }

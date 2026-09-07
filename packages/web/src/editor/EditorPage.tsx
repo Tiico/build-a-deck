@@ -30,6 +30,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
   // growing pause while anything is still rendering.
   const [textures, setTextures] = useState<Textures | null>(null)
   const [preparing, setPreparing] = useState<Textures | null>(null)
+  const [renderError, setRenderError] = useState<number | null>(null)
   useEffect(() => {
     if (!client || !table) return
     let stop = false
@@ -81,19 +82,27 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
   // Once a table exists, the primary button pushes the current rev to it (C7, L5) — but only
   // after the new textures are rendered, so the switch is atomic for the players: prepare,
   // poll with a growing pause, then refresh.
-  const updateTable = async () => {
+  const updateTable = async (retryFailed = false) => {
     if (!table) return startTable()
     try {
+      setRenderError(null)
       let delay = 100
+      let first = true
       for (;;) {
-        const t = await client.prepareTable(table.id)
+        const t = await client.prepareTable(table.id, retryFailed && first)
+        first = false
         setPreparing(t)
-        if (t.done + t.failed.length >= t.total) break
+        if (t.failed.length > 0) {
+          setRenderError(t.failed.length)
+          return
+        }
+        if (t.done >= t.total) break
         await new Promise((r) => setTimeout(r, delay))
         delay = Math.min(1000, delay * 2)
       }
       const { version } = await client.refreshTable(table.id)
       setTable({ ...table, version, kind: 'refreshed' })
+      setRenderError(null)
     } catch (err) {
       setNotice(err instanceof Error ? err.message : String(err))
     } finally {
@@ -142,7 +151,12 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
       {table && (
         <div className="byd-editor-table-link" role="status">
           {table.kind === 'new' ? 'Nytt bord startat' : 'Bordet uppdaterat'} på {table.version} —{' '}
-          {preparing ? (
+          {renderError !== null ? (
+            <>
+              <span className="byd-editor-warning" role="alert">{renderError} {renderError === 1 ? 'textur kunde' : 'texturer kunde'} inte renderas. Bordet har inte uppdaterats.</span>{' '}
+              <button type="button" onClick={() => void updateTable(true)}>Försök igen</button>
+            </>
+          ) : preparing ? (
             <span className="byd-editor-rendering">renderar kort {preparing.done}/{preparing.total}</span>
           ) : textures && textures.done + textures.failed.length >= textures.total ? (
             <a href={tableUrl(table.id)} target="_blank" rel="noreferrer">

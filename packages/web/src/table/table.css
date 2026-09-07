@@ -145,8 +145,7 @@
 
 /* Textures: the image fills the card; the name stays underneath for cards without one. */
 .byd-card { position: relative; overflow: hidden; }
-.byd-card > img, .byd-pile-top > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
-.byd-card > img + span, .byd-pile-top > img + span { visibility: hidden; }
+.byd-card > .byd-texture + span, .byd-pile-top > .byd-texture + span { visibility: hidden; }
 .byd-pile-top { overflow: hidden; }
 
 /* A proposed rewind (C): the table as it was, framed and labelled; nothing to press. */
@@ -230,8 +229,7 @@
 /* A hand this view may read (the observer, C8): the cards themselves, fanned. */
 .byd-hand-fan > i.byd-hand-card { border-radius: 6px; background: hsl(var(--hue, 0) 40% 86%); color: #1c1c1c; font: 600 9px/1.1 system-ui, sans-serif; padding: 4px; box-sizing: border-box; overflow: hidden; border: 1px solid rgba(0, 0, 0, 0.35); font-style: normal; }
 .byd-hand-fan > i.byd-hand-card[data-face='back'] { border: 2px solid #1f2b4a; background: repeating-linear-gradient(45deg, #3a4d7a, #3a4d7a 4px, #2f4068 4px, #2f4068 8px); }
-.byd-hand-fan > i.byd-hand-card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.byd-hand-fan > i.byd-hand-card span { position: relative; }
+.byd-hand-fan > i.byd-hand-card > span { position: relative; }
 
 /* On a turned table (C5) the cards turn with it, but labels are interface and stay readable. */
 [data-table] .byd-pile-count, [data-table] .byd-zone > span, [data-table] .byd-peer-cursor span, [data-table] .byd-peer-tag, [data-table] .byd-peer-pulse span { rotate: var(--unrotate, 0deg); }

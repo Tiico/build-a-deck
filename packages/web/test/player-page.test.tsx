@@ -3,7 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { TableClient } from '../src/client.js'
 import { PlayerPage } from '../src/player/PlayerPage.js'
+import { deckFromProject, setupFromProject } from '@byd/server'
 import { createSession, startServer, type Running } from './fixture.js'
+import { projectDoc } from './project-doc.js'
 
 let run: Running
 beforeEach(async () => {
@@ -21,6 +23,24 @@ async function open(sessionId: string, seat: string, name: string) {
 }
 
 describe('PlayerPage', () => {
+  it('keeps the visible card name while an inspected texture is pending', async () => {
+    const doc = projectDoc()
+    const id = 'textured-player'
+    await run.store.createSession({ id, version: 'v1', setup: setupFromProject(doc), deck: deckFromProject(doc) })
+    const table = TableClient.connect({ url: run.url, sessionId: id, seat: null })
+    await table.ready()
+    await table.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    await open(id, 'A', 'Ada')
+    await waitFor(() => expect(document.querySelector('[data-hand-card]')).toBeTruthy())
+    const card = document.querySelector('[data-hand-card]')!
+
+    fireEvent.pointerDown(card, { clientX: 100, clientY: 500 })
+    fireEvent.pointerUp(card, { clientX: 100, clientY: 500 })
+
+    expect((await screen.findByText('dragon', { selector: '[data-inspect] .byd-texture-fallback strong' })).textContent).toBe('dragon')
+    table.close()
+  })
+
   it('claims its seat by name on connect and shows the hand it is dealt', async () => {
     const id = await createSession(run.store)
     const table = TableClient.connect({ url: run.url, sessionId: id, seat: null })

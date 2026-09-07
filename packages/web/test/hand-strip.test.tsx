@@ -45,6 +45,17 @@ describe('gestures (K4)', () => {
 })
 
 describe('textures in the hand (TUNN-SKIVA §5)', () => {
+  it('shows the visible card name in the pending fallback', () => {
+    const { view } = buildScene()
+    const snapshot = view('A')
+    const first = snapshot.components.find((c) => c.zone === 'hand:A')!
+    const withFaces = { ...snapshot, components: snapshot.components.map((c) => (c.id === first.id ? { ...c, faces: { front: 'a'.repeat(64) } } : c)) }
+
+    render(<HandStrip view={withFaces} selected={new Set()} faces="http://faces.test" onTap={() => undefined} onHold={() => undefined} onLift={() => undefined} />)
+
+    expect(document.querySelector(`[data-hand-card="${first.id}"] .byd-texture-fallback strong`)?.textContent).toBe(first.cardRef)
+  })
+
   it('shows the front image of a card whose hash is known, by name otherwise', () => {
     const { view } = buildScene()
     const snapshot = view('A')

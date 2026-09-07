@@ -288,6 +288,23 @@ describe('textures (TUNN-SKIVA §5)', () => {
 })
 
 describe('textures that are not ready yet', () => {
+  it('names a visible pending card but keeps a hidden pending front identity-free', () => {
+    const { view, faceUp, faceDown } = buildScene()
+    const snapshot = view(null)
+    const withFaces = {
+      ...snapshot,
+      components: snapshot.components.map((c) =>
+        c.id === faceUp ? { ...c, faces: { front: 'a'.repeat(64) } } : c.id === faceDown ? { ...c, faces: { back: 'b'.repeat(64) } } : c,
+      ),
+    }
+
+    render(<TableRenderer view={withFaces} mode="table" faces="http://faces.test" />)
+
+    expect(document.querySelector(`[data-component="${faceUp}"] .byd-texture-fallback strong`)?.textContent).toBe('wizard')
+    expect(document.querySelector(`[data-component="${faceDown}"] .byd-texture-fallback strong`)).toBeNull()
+    expect(document.querySelector(`[data-component="${faceDown}"]`)?.textContent).not.toContain('rogue')
+  })
+
   it('retries an image that failed to load, with a cache-busting query, a bounded number of times', () => {
     vi.useFakeTimers()
     const { view, faceUp } = buildScene()

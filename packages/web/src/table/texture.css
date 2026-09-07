@@ -1,0 +1,55 @@
+.byd-texture {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: inherit;
+  z-index: 1;
+}
+
+.byd-texture-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 0.35em;
+  padding: 8%;
+  box-sizing: border-box;
+  background: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0 8px, rgba(0, 0, 0, 0.06) 8px 16px);
+  color: inherit;
+  text-align: center;
+}
+
+.byd-texture-fallback strong,
+.byd-texture-fallback small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.byd-texture-fallback small {
+  font-size: 0.65em;
+}
+
+.byd-texture-fallback button {
+  position: relative;
+  z-index: 1;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 0.3em 0.55em;
+  background: rgba(255, 255, 255, 0.82);
+  color: #35291f;
+  font: inherit;
+  font-size: 0.65em;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.byd-texture > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
+}

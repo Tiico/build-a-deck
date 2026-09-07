@@ -335,7 +335,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 data-face={c?.cardRef ? 'front' : 'back'}
                 style={{ position: 'absolute', left: left(p.drag.x), top: top(p.drag.y), width: px(CARD_MM.w), height: px(CARD_MM.h), transform: `rotate(${c?.rot ?? 0}deg)`, ['--peer' as string]: colourOf(p.seat), ...(c?.cardRef ? { ['--hue' as string]: hue(c.cardRef) } : {}) }}
               >
-                {c && textureUrl(faces, c) && <Texture src={textureUrl(faces, c) ?? ''} />}
+                {c && textureUrl(faces, c) && <Texture src={textureUrl(faces, c) ?? ''} label={c.cardRef ?? undefined} />}
                 <span>{c?.cardRef ?? ''}</span>
                 <b className="byd-peer-tag">{p.name}</b>
               </div>
@@ -384,7 +384,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       {held && (
         <div className="byd-inspect" onClick={() => setHeld(null)}>
           <div data-inspect={held.id} data-face={held.cardRef === null ? 'back' : 'front'} style={held.cardRef === null ? undefined : { ['--hue' as string]: hue(held.cardRef) }}>
-            {textureUrl(faces, held) ? <Texture src={textureUrl(faces, held) ?? ''} /> : null}
+            {textureUrl(faces, held) ? <Texture src={textureUrl(faces, held) ?? ''} label={held.cardRef ?? undefined} /> : null}
             <span>{held.cardRef ?? ''}</span>
           </div>
         </div>
@@ -481,7 +481,7 @@ function Card({ c, left, top, px, dragging, carried, by, src, handlers }: { c: V
         ...(by ? { ['--peer' as string]: by.colour } : {}),
       }}
     >
-      {src && <Texture src={src} />}
+      {src && <Texture src={src} label={c.cardRef ?? undefined} />}
       <span>{c.cardRef ?? ''}</span>
     </div>
   )
@@ -492,7 +492,7 @@ function Ghost({ card, faces, left, top, px }: { card: VisibleComponentState | u
   const src = card ? textureUrl(faces, card) : undefined
   return (
     <div className="byd-card" data-ghost data-dragging="true" data-face={card?.cardRef ? 'front' : 'back'} style={{ position: 'absolute', left, top, width: px(CARD_MM.w), height: px(CARD_MM.h), pointerEvents: 'none', ...(card?.cardRef ? { ['--hue' as string]: hue(card.cardRef) } : {}) }}>
-      {src && <Texture src={src} />}
+      {src && <Texture src={src} label={card?.cardRef ?? undefined} />}
       <span>{card?.cardRef ?? ''}</span>
     </div>
   )
@@ -526,7 +526,7 @@ function Pile({ zone, count, topCard, faces, left, top, px, lifted, topHandlers,
         {...topHandlers}
         style={{ boxShadow: thickness, transform: `translateY(${-(layers - 1) * 1.2}px)`, ...(topCard?.cardRef ? { ['--hue' as string]: hue(topCard.cardRef) } : {}) }}
       >
-        {src && <Texture src={src} />}
+        {src && <Texture src={src} label={topCard?.cardRef ?? undefined} />}
         <span>{count > 0 ? topCard?.cardRef ?? '' : ''}</span>
       </div>
       <span className="byd-pile-count" data-handle={labelHandlers ? 'true' : undefined} {...labelHandlers}>
@@ -562,7 +562,7 @@ function Hand({ zone, name, color, rot, left, top, cards, faces }: { zone: ZoneV
                 data-face={c.cardRef === null ? 'back' : 'front'}
                 style={{ transform: `translateX(${(i - (Math.min(cards.length, FAN_MAX) - 1) / 2) * 26}px) rotate(${(i - (Math.min(cards.length, FAN_MAX) - 1) / 2) * 7}deg)`, ...(c.cardRef === null ? {} : { ['--hue' as string]: hue(c.cardRef) }) }}
               >
-                {textureUrl(faces, c) && <Texture src={textureUrl(faces, c) ?? ''} />}
+                {textureUrl(faces, c) && <Texture src={textureUrl(faces, c) ?? ''} label={c.cardRef ?? undefined} />}
                 <span>{c.cardRef ?? ''}</span>
               </i>
             ))

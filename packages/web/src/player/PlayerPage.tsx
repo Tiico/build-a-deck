@@ -69,7 +69,7 @@ export function PlayerPage() {
       {inspect && (
         <div className="byd-inspect" onClick={() => setInspect(null)}>
           <div data-inspect={inspect.id} data-face="front" style={{ ['--hue' as string]: hue(inspect.cardRef ?? '') }}>
-            {textureUrl(faces, inspect) && <Texture src={textureUrl(faces, inspect) ?? ''} />}
+            {textureUrl(faces, inspect) && <Texture src={textureUrl(faces, inspect) ?? ''} label={inspect.cardRef ?? undefined} />}
             <span>{inspect.cardRef}</span>
           </div>
         </div>

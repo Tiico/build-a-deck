@@ -40,13 +40,13 @@ export function HandFan({ cards, faces, onPlay }: HandFanProps) {
           onPointerUp={(e) => up(c, e)}
           onPointerCancel={() => setDrag(null)}
         >
-          {textureUrl(faces, c) && <Texture src={textureUrl(faces, c) ?? ''} />}
+          {textureUrl(faces, c) && <Texture src={textureUrl(faces, c) ?? ''} label={c.cardRef ?? undefined} />}
           <span>{c.cardRef}</span>
         </div>
       ))}
       {drag && lifted && (
         <div className="byd-fan-ghost" style={{ left: drag.x, top: drag.y, ['--hue' as string]: hue(lifted.cardRef ?? '') }}>
-          {textureUrl(faces, lifted) && <Texture src={textureUrl(faces, lifted) ?? ''} />}
+          {textureUrl(faces, lifted) && <Texture src={textureUrl(faces, lifted) ?? ''} label={lifted.cardRef ?? undefined} />}
           <span>{lifted.cardRef}</span>
         </div>
       )}

@@ -61,7 +61,7 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, faces }: Hand
           onPointerUp={up}
           onPointerCancel={up}
         >
-          {textureUrl(faces, c) && <Texture src={textureUrl(faces, c) ?? ''} />}
+          {textureUrl(faces, c) && <Texture src={textureUrl(faces, c) ?? ''} label={c.cardRef ?? undefined} />}
           <strong>{c.cardRef}</strong>
         </div>
       ))}

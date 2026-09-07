@@ -138,4 +138,30 @@ describe('"Uppdatera bordet" switches the table only when the new cards can be s
     expect((await run.store.read(sessionId)).map((l) => l.intent.v)).toEqual(['version.change'])
     expect(screen.getByRole('link', { name: /öppna bordet/i })).toBeTruthy()
   })
+
+  it('keeps the old table revision on a terminal render error and retries only when asked', async () => {
+    await run.projects.create('p1', projectDoc())
+    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('button', { name: /uppdatera bordet/i }))
+    await screen.findByText(/renderar kort/i)
+    await run.completeRenders()
+    const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
+    const sessionId = new URL(link.href).searchParams.get('session')!
+
+    fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
+    fireEvent.change(screen.getByLabelText('dragon title'), { target: { value: 'Drakhona' } })
+    fireEvent.click(screen.getByRole('button', { name: /uppdatera bordet/i }))
+    expect(await screen.findByText(/renderar kort 3\/4/i)).toBeTruthy()
+    expect(await run.failRenders()).toBe(1)
+
+    expect(await screen.findByText('1 textur kunde inte renderas. Bordet har inte uppdaterats.')).toBeTruthy()
+    expect((await run.store.read(sessionId)).map((line) => line.intent.v)).toEqual([])
+    fireEvent.click(screen.getByRole('button', { name: 'Försök igen' }))
+    await screen.findByText(/renderar kort 3\/4/i)
+    await run.completeRenders()
+    await screen.findByText(/bordet uppdaterat på rev-2/i)
+    expect((await run.store.read(sessionId)).map((line) => line.intent.v)).toEqual(['version.change'])
+  })
 })
