@@ -24,4 +24,9 @@ C avråds som primär väg men kolumnen "grupp" i tabellen bör visa vilken grup
 
 ## Svar
 
-_(fylls i när Nicklas valt)_
+A, byggd 2026-09-07 (#13): gruppkolumn plus flikar på duken, med B:s regellista som sammanfattning i sidopanelen.
+Kolumnen väljs i remsan över kortet och sätts som `variantBy` på båda ansiktena; grupperna är kolumnens värden.
+Fram- och baksidan växlas i samma remsa, och en grupp kan skriva över element på båda.
+C blev tabellens läsbara "grupp"-kolumn, inte en redigeringsväg.
+
+Prototypen står kvar tills #14 (standardbaksida och särskilda baksidor per kortgrupp) har svarat.

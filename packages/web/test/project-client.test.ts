@@ -112,3 +112,89 @@ describe('the tables a project has (#19)', () => {
     ])
   })
 })
+
+// A group is a rule on a column (#13): the column is the faces' `variantBy`, the value is the
+// variant's key, and what the designer changes with a group open becomes that group's override
+// on that face. The base is never touched by it, and no card is ever named.
+describe('grouping cards and letting the group rule a face (#13)', () => {
+  const front = (client: ProjectClient) => client.doc.template.faces['front']!
+  const back = (client: ProjectClient) => client.doc.template.faces['back']!
+  const open = async () => {
+    const created = await run.projects.create('p1', projectDoc())
+    return ProjectClient.open({ http: run.http, id: created.id })
+  }
+
+  it('groups the whole deck by one column, on every face, and ungroups it again', async () => {
+    const client = await open()
+    client.setGroupColumn('typ')
+    expect(front(client).variantBy).toBe('typ')
+    expect(back(client).variantBy).toBe('typ')
+    expect(client.dirty).toBe(true)
+
+    client.setGroupColumn(null)
+    expect(front(client).variantBy).toBeUndefined()
+    expect(back(client).variantBy).toBeUndefined()
+  })
+
+  it('turns an edit made with a group open into that group’s override, leaving the base alone', async () => {
+    const client = await open()
+    client.setGroupColumn('typ')
+    client.patchElement('front', 'title', { x: 9 }, 'fälla')
+
+    expect(front(client).base.find((e) => e.id === 'title')).toMatchObject({ x: 5 })
+    expect(front(client).variants['fälla']?.override).toMatchObject([{ id: 'title', x: 9 }])
+
+    // A second edit sharpens the same override rather than making a second one.
+    client.patchElement('front', 'title', { y: 12 }, 'fälla')
+    expect(front(client).variants['fälla']?.override).toMatchObject([{ id: 'title', x: 9, y: 12 }])
+  })
+
+  it('gives the group a back of its own without disturbing the base’s back', async () => {
+    const client = await open()
+    client.setGroupColumn('typ')
+    client.patchElement('back', 'bg', { fill: '#3a1c1c' }, 'fälla')
+    expect(back(client).base).toMatchObject([{ id: 'bg', fill: '#2f4068' }])
+    expect(back(client).variants['fälla']?.override).toMatchObject([{ id: 'bg', fill: '#3a1c1c' }])
+  })
+
+  it('adds an element for the group only, and takes a base element away for the group only', async () => {
+    const client = await open()
+    client.setGroupColumn('typ')
+    const stamp = { kind: 'shape', id: 'stamp', x: 40, y: 70, w: 10, h: 10, shape: 'circle' } as const
+
+    client.addElement('front', stamp, 'fälla')
+    expect(front(client).base.map((e) => e.id)).toEqual(['frame', 'title', 'body'])
+    expect(front(client).variants['fälla']?.override?.map((e) => e.id)).toEqual(['stamp'])
+
+    client.removeElement('front', 'body', 'fälla')
+    expect(front(client).base.map((e) => e.id)).toEqual(['frame', 'title', 'body'])
+    expect(front(client).variants['fälla']?.remove).toEqual(['body'])
+
+    // Taking away what the group itself added is not a removal against the base: it just goes.
+    client.removeElement('front', 'stamp', 'fälla')
+    expect(front(client).variants['fälla']?.override).toEqual([])
+    expect(front(client).variants['fälla']?.remove).toEqual(['body'])
+  })
+
+  it('lets a layer fall back to the base, which is how a group stops overriding it', async () => {
+    const client = await open()
+    client.setGroupColumn('typ')
+    client.patchElement('front', 'title', { x: 9 }, 'fälla')
+    client.removeElement('front', 'body', 'fälla')
+
+    client.resetElement('front', 'title', 'fälla')
+    client.resetElement('front', 'body', 'fälla')
+    expect(front(client).variants['fälla']?.override).toEqual([])
+    expect(front(client).variants['fälla']?.remove).toEqual([])
+  })
+
+  it('saves and reloads the group as part of the project, like every other template change', async () => {
+    const client = await open()
+    client.setGroupColumn('typ')
+    client.patchElement('front', 'title', { color: '#e74c3c' }, 'fälla')
+    expect(await client.save()).toEqual({ ok: true, rev: 2 })
+    const stored = await run.projects.load('p1')
+    expect(stored?.template.faces['front']?.variantBy).toBe('typ')
+    expect(stored?.template.faces['front']?.variants['fälla']?.override).toMatchObject([{ id: 'title', color: '#e74c3c' }])
+  })
+})

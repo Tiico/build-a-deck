@@ -10,6 +10,11 @@ function canvas(over: Partial<TemplateCanvasProps> = {}) {
   const props: TemplateCanvasProps = {
     doc: structuredClone(projectDoc()),
     face: 'front',
+    onSelectFace: vi.fn(),
+    group: null,
+    onSelectGroup: vi.fn(),
+    onGroupColumn: vi.fn(),
+    onReset: vi.fn(),
     row: 'dragon',
     selectedElement: 'title',
     onSelectElement: vi.fn(),

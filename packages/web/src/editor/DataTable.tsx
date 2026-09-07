@@ -6,6 +6,7 @@ import { exportCardsCsv, importCardsCsv } from './csv.js'
 import { keepOrder, nextSort, sortRows, type SortState } from './sorting.js'
 import { countLabel, discreteColumns, filterRows, isFiltering, noFilter, toggleValue, type FilterState } from './filtering.js'
 import { duplicateRows, keepRows, markRows, noSelection, removeRows, selectionLabel, setColumn, toggleRow, type Selection } from './selection.js'
+import { groupColumn, groupOfRow, ruleLabel } from './groups.js'
 
 export type DataTableProps = {
   doc: ProjectDoc
@@ -48,6 +49,9 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
   // The order held while a cell is being edited, as the ids that were on screen when it was entered.
   const [held, setHeld] = useState<string[] | null>(null)
   const fields = fieldsOf(doc)
+  // Which group a row falls into (#13, from variant C): read here, decided on the canvas. A deck
+  // that is not grouped says nothing at all, rather than a column of the same word on every row.
+  const grouping = groupColumn(doc)
   // What the table shows is a view of the project, never its order: the sort (#15) and the filter
   // (#16) decide the rows on screen and leave `doc.rows` alone. This one line is the whole view,
   // and it is the seam the selection (#17) slots into — "markera alla synliga" means `shown`.
@@ -228,6 +232,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
             {fields.map((f) => (
               <SortableHeader key={f} field={f} sort={sort} onSort={setSort} />
             ))}
+            {grouping && <th>grupp</th>}
             <th></th>
           </tr>
         </thead>
@@ -259,6 +264,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                   />
                 </td>
               ))}
+              {grouping && <GroupCell doc={doc} column={grouping} cardRef={cardRef} row={row} />}
               <td>
                 <button type="button" onClick={() => onRemoveRow(cardRef)} aria-label={`ta bort ${cardRef}`}>
                   ×
@@ -278,6 +284,17 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
         + Nytt kort
       </button>
     </div>
+  )
+}
+
+// Which group a row falls into (#13). A card whose column is empty takes the base look (L3), and
+// the cell says exactly that rather than leaving the eye to guess at a blank.
+function GroupCell({ doc, column, cardRef, row }: { doc: ProjectDoc; column: string; cardRef: string; row: ProjectRow['fields'] }) {
+  const group = groupOfRow(doc, { id: cardRef, fields: row })
+  return (
+    <td className="byd-data-group" data-group-of={cardRef}>
+      {group === null ? 'Bas' : ruleLabel(column, group)}
+    </td>
   )
 }
 

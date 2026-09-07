@@ -829,6 +829,17 @@ Duken renderar fortfarande genom `CardPreview` och kompilatorn (E2): lagret som 
 Lagerordningen ändras genom att dra en rad i panelen och, eftersom en lista som bara kan dras är en lista tangentbordet har förlorat, med Alt och piltangent.
 Prototypen `packages/web/src/prototype/canvas` togs bort när den hade svarat.
 
+Byggt 2026-09-07 (prototypat i tre varianter, godkänd variant A med variant B:s regellista som sammanfattning — #13):
+En grupp är en regel på en kolumn, aldrig en lista med kort-id:n.
+Kolumnen är `variantBy` och gruppens namn är kolumnens värde, alltså precis den modell L3 redan beskriver — kompilatorn behövde inga nya begrepp.
+Kolumnen väljs en gång för hela leken och sätts på varje ansikte, så att en grupp är en sak med både fram- och baksida (L7) och inte en regel per sida.
+Grupperna är kolumnens värden: ett nytt kort med värdet får gruppens utseende utan att någon rör mallen, och en grupp vars kort försvunnit finns kvar så länge mallen har ritat den.
+Duken får en flik per grupp plus "Bas (alla)"; det som ändras med en gruppflik vald blir gruppens `override` på det ansiktet, det som tas bort blir gruppens `remove`, och "Återgå till basen" tar bort båda.
+Lagerordningen är basens och delas av alla grupper — den ändras därför bara med basfliken vald.
+Lagerpanelen säger per lager om det är basens eller gruppens och hur många kort gruppen gäller; variant B:s regellista står kvar som sammanfattning i samma panel.
+Variant C valdes bort som redigeringsväg — tjugo fällor skulle kräva tjugo val — men tabellen visar vilken grupp en rad faller i, läsbart och inte redigerbart.
+Prototypen `packages/web/src/prototype/groups` står kvar tills #14 har svarat.
+
 ### L4. Datatabellen: kolumntyper från registryt, systemkolumn `antal`
 
 Kolumntyper följer typregistryts `editorSchema`: text, tal, bild, boolean.
@@ -894,6 +905,11 @@ Baksidan är en vanlig elementmall, oftast med en bild och utan bindningar, men 
 
 Följdkrav:
 En baksida med bindningar ger unik textur per kort även bak och fördubblar renderjobben — editorn varnar när det sker.
+
+Byggt 2026-09-07 (#13):
+Mallfliken har en fram-/baksideväxel, så att baksidan redigeras med samma duk, samma lagerpanel och samma verktyg som framsidan.
+Växeln är en radiogrupp med rovande tabindex: hela växeln är ett tabstopp och pilarna både flyttar och väljer.
+En grupp kan skriva över element på båda ansiktena; det som inte skrivs över ärvs från basen, vilket är det som gör en särskild baksida per grupp möjlig (#14).
 
 ### L8. Editorns utseende: kortväggen som hem, duken för mallen, tabellen som flik (prototypat 2026-09-06)
 

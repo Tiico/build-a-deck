@@ -1,15 +1,20 @@
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
-import type { Element, ProjectDoc } from './types.js'
+import type { Element, ProjectDoc, Row } from './types.js'
 import { CardPreview } from './CardPreview.js'
 import { arrowMove, fitScale, HANDLES, movedTo, newElement, resizedTo, snapped, STAGE_SCALE, TOOLS, type Box, type ElementKind, type Grab, type Guides, type Handle } from './canvas.js'
+import { elementsFor } from '@byd/template'
 import { fieldsOf } from './fields.js'
+import { cardsInGroup, groupColumn, groupsOf, layersOf, overriddenIds, ruleLabel, type Layer } from './groups.js'
 import { LayerList } from './LayerList.js'
 import { useRoving } from './roving.js'
 
 export type TemplateCanvasProps = {
   doc: ProjectDoc
   face: string
+  // Which face is being edited (#13, L7). The back is a template like the front, and the switch
+  // is what issue #14 hangs the default back and the group's own backs on.
+  onSelectFace(face: string): void
   // The row the preview shows.
   row: string | null
   selectedElement: string | null
@@ -19,14 +24,34 @@ export type TemplateCanvasProps = {
   onAdd(element: Element): void
   // Where a layer ends up in the face's base list, which is the order the card is drawn in.
   onReorder(id: string, to: number): void
+  // The group whose look is being edited, or nothing for the base every card inherits (#13).
+  group: string | null
+  onSelectGroup(group: string | null): void
+  // The column whose values are the groups; `null` ungroups the deck.
+  onGroupColumn(column: string | null): void
+  // Stops the open group from overriding a layer, so it is the base's again.
+  onReset(id: string): void
 }
 
 // Template mode (A): layers on the left, the card large in the middle with the selected element
 // outlined, and its properties on the right. Every change goes through `onPatch` and lands on
 // every card of the deck — there are no per-card exceptions (L3).
-export function TemplateCanvas({ doc, face, row, selectedElement, onSelectElement, onPatch, onRemove, onAdd, onReorder }: TemplateCanvasProps) {
+export function TemplateCanvas({ doc, face, onSelectFace, row, selectedElement, onSelectElement, onPatch, onRemove, onAdd, onReorder, group, onSelectGroup, onGroupColumn, onReset }: TemplateCanvasProps) {
   const faceTemplate = doc.template.faces[face]
-  const el = faceTemplate?.base.find((e) => e.id === selectedElement)
+  const column = groupColumn(doc)
+  const groups = groupsOf(doc)
+  // The card the canvas shows: with a group open it must be a card of that group, or the group
+  // could not be seen. A group whose cards have all gone is shown on the rule itself.
+  const rowData = previewRow(doc, column, group, row)
+  // What the open group actually draws: the base with its overrides in place and its removals
+  // taken out. The compiler decides that (L3), so the canvas asks the compiler rather than
+  // working it out a second time.
+  const shown = faceTemplate ? elementsFor(faceTemplate, rowData) : []
+  // The panel is the drawn layers plus the ones this group has taken away, so a removal can be
+  // seen and undone; the card itself draws only what the compiler returned.
+  const panel = faceTemplate ? layersOf(faceTemplate, group) : []
+  const layer = panel.find((l) => l.element.id === selectedElement)
+  const el = layer?.source === 'removed' ? undefined : layer?.element
   useElementKeys(el, onPatch, onRemove)
   const stage = useRef<HTMLElement | null>(null)
   const scale = useStageFit(stage)
@@ -35,12 +60,12 @@ export function TemplateCanvas({ doc, face, row, selectedElement, onSelectElemen
   // what place things, and a 1 mm grid would take the half millimetre away.
   const [grid, setGrid] = useState(false)
   if (!faceTemplate) return <p>Mallen saknar sidan {face}.</p>
-  const rowData = doc.rows.find((r) => r.id === row)?.fields ?? doc.rows[0]?.fields ?? {}
+  const overridden = group ? overriddenIds(faceTemplate, group) : new Set<string>()
   const fields = fieldsOf(doc)
   // A new element is added where it can be seen and is selected at once, so the next thing the
   // designer does — drag it, nudge it, bind it — is about the element they just asked for.
   const add = (kind: ElementKind) => {
-    const element = newElement(kind, { taken: faceTemplate.base.map((e) => e.id), field: fields[0], card: CARD_STANDARD_63x88.physical })
+    const element = newElement(kind, { taken: shown.map((e) => e.id), field: fields[0], card: CARD_STANDARD_63x88.physical })
     onAdd(element)
     onSelectElement(element.id)
   }
@@ -49,37 +74,75 @@ export function TemplateCanvas({ doc, face, row, selectedElement, onSelectElemen
     <div className="byd-canvas">
       <ToolRail onAdd={add} />
       <aside className="byd-canvas-layers">
-        <h2 id="layers-heading">Lager</h2>
+        <h2 id="layers-heading">Lager · {(FACE_NAMES[face] ?? face).toLowerCase()}</h2>
+        <p className="byd-canvas-affects">{affectsLabel(doc, column, group)}</p>
         <LayerList
-          layers={[...faceTemplate.base].reverse()}
+          layers={[...panel].reverse().map((l) => l.element)}
           selected={selectedElement}
           onSelect={onSelectElement}
           // The list reads top-most first; the base list is drawn back to front. One is the other
           // turned around, and that is the only place the two orders meet.
-          onReorder={(id, to) => onReorder(id, faceTemplate.base.length - 1 - to)}
+          // The order is the base's, shared by every group, so it is only moved from the base.
+          {...(group ? {} : { onReorder: (id: string, to: number) => onReorder(id, faceTemplate.base.length - 1 - to) })}
+          markOf={(id) => markOf(panel, column, group, id)}
+          removed={new Set(panel.filter((l) => l.source === 'removed').map((l) => l.element.id))}
           labelledBy="layers-heading"
         />
         <label className="byd-canvas-grid-toggle">
           <input type="checkbox" checked={grid} onChange={(event) => setGrid(event.target.checked)} />
           Rutnät 1 mm
         </label>
-        <p className="byd-canvas-hint">Dra ett lager för att ändra ordningen, eller håll Alt och tryck pil upp eller ner.</p>
+        <p className="byd-canvas-hint">
+          {group
+            ? 'Lagrens ordning är basens och ändras med basfliken vald.'
+            : 'Dra ett lager för att ändra ordningen, eller håll Alt och tryck pil upp eller ner.'}
+        </p>
+        {column && <GroupRules doc={doc} column={column} groups={groups} />}
       </aside>
-      <main className="byd-canvas-stage" ref={stage} onClick={() => onSelectElement(null)}>
-        <CardPreview
-          id="canvas"
-          face={faceTemplate}
-          row={rowData}
-          icons={doc.icons}
-          scale={scale}
-          selectedElement={selectedElement}
-          onSelectElement={onSelectElement}
-          overlay={<DragLayer grid={grid} boxes={faceTemplate.base.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={onPatch} />}
-        />
-      </main>
+      <div className="byd-canvas-main">
+        <div className="byd-canvas-strip">
+          <label className="byd-canvas-group-column">
+            Grupperas av kolumnen
+            <select value={column ?? ''} onChange={(event) => onGroupColumn(event.target.value === '' ? null : event.target.value)}>
+              <option value="">— ingen —</option>
+              {fields.map((f) => (
+                <option key={f} value={f}>
+                  {f}
+                </option>
+              ))}
+            </select>
+          </label>
+          {column && <GroupTabs column={column} groups={groups} group={group} onSelect={onSelectGroup} />}
+          <span className="byd-editor-spacer" />
+          <FaceSwitch faces={Object.keys(doc.template.faces)} face={face} onSelect={onSelectFace} />
+        </div>
+        <main
+          className="byd-canvas-stage"
+          ref={stage}
+          onClick={() => onSelectElement(null)}
+          {...(column ? { role: 'tabpanel', id: GROUP_PANEL, 'aria-labelledby': groupTabId(group) } : {})}
+        >
+          <CardPreview
+            id="canvas"
+            face={faceTemplate}
+            row={rowData}
+            icons={doc.icons}
+            scale={scale}
+            selectedElement={selectedElement}
+            onSelectElement={onSelectElement}
+            overlay={<DragLayer grid={grid} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={onPatch} />}
+          />
+        </main>
+      </div>
       <aside className="byd-canvas-props">
-        <h2>{el ? `Egenskaper · ${el.id}` : 'Egenskaper'}</h2>
+        <h2>{layer ? `Egenskaper · ${layer.element.id}` : 'Egenskaper'}</h2>
+        {layer?.source === 'removed' && <p className="byd-canvas-affects">Lagret är borttaget i {ruleLabel(column ?? '', group ?? '')}.</p>}
         {el && <Properties el={el} fields={fields} onPatch={(patch) => onPatch(el.id, patch)} />}
+        {layer && group && overridden.has(layer.element.id) && (
+          <button type="button" className="byd-canvas-reset" onClick={() => onReset(layer.element.id)}>
+            Återgå till basen
+          </button>
+        )}
       </aside>
     </div>
   )
@@ -179,6 +242,110 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch }: { boxes: BoxEle
       ))}
       {guides.x !== null && <div className="byd-drag-guide" data-guide="x" style={{ left: `${guides.x}mm` }} />}
       {guides.y !== null && <div className="byd-drag-guide" data-guide="y" style={{ top: `${guides.y}mm` }} />}
+    </div>
+  )
+}
+
+// The groups on the canvas (#13, variant A): the base every card inherits, then one tab per
+// value the grouping column carries. A tab is a rule, never a bag of cards — which is why the
+// tab says `typ = fälla` and not "fällorna".
+const GROUP_PANEL = 'byd-canvas-group-panel'
+const groupTabId = (group: string | null) => `byd-group-tab-${group ?? 'bas'}`
+
+function GroupTabs({ column, groups, group, onSelect }: { column: string; groups: string[]; group: string | null; onSelect(group: string | null): void }) {
+  const ids = ['', ...groups]
+  const { itemProps } = useRoving({ ids, selected: group ?? '', orientation: 'horizontal' })
+  return (
+    <div className="byd-canvas-groups" role="tablist" aria-label="Kortgrupper">
+      {ids.map((g) => (
+        <button
+          key={g}
+          id={groupTabId(g === '' ? null : g)}
+          role="tab"
+          type="button"
+          aria-selected={(group ?? '') === g ? 'true' : 'false'}
+          aria-controls={GROUP_PANEL}
+          onClick={() => onSelect(g === '' ? null : g)}
+          {...itemProps(g)}
+        >
+          {g === '' ? 'Bas (alla)' : ruleLabel(column, g)}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// Variant B's rule list, kept as the summary beside the canvas: every group as its rule, how many
+// cards it is about, and what it changes against the base on each face. Reading, not editing —
+// the editing is the tabs and the card.
+function GroupRules({ doc, column, groups }: { doc: ProjectDoc; column: string; groups: string[] }) {
+  return (
+    <>
+      <h2 id="groups-heading">Grupper</h2>
+      <ul className="byd-canvas-rules" aria-labelledby="groups-heading">
+        {groups.map((g) => (
+          <li key={g}>
+            {ruleLabel(column, g)} · {cardsLabel(cardsInGroup(doc, g).length)} · {changesLabel(doc, g)}
+          </li>
+        ))}
+      </ul>
+    </>
+  )
+}
+
+// What a group changes against the base, face by face. A group that changes nothing yet is not
+// an error — it is a group waiting to be designed — so it says so instead of showing an empty line.
+function changesLabel(doc: ProjectDoc, group: string): string {
+  const parts: string[] = []
+  for (const [id, face] of Object.entries(doc.template.faces)) {
+    const ids = [...overriddenIds(face, group)]
+    if (ids.length > 0) parts.push(`${(FACE_NAMES[id] ?? id).toLowerCase()}: ${ids.join(', ')}`)
+  }
+  return parts.length > 0 ? parts.join(' · ') : 'ärver basen helt'
+}
+
+// What a layer belongs to, said on the layer itself: the base every card inherits, the open
+// group, or — for a base layer the group has taken away — that it is gone for this group's cards.
+function markOf(panel: Layer[], column: string | null, group: string | null, id: string): string | null {
+  if (!group) return null
+  const source = panel.find((l) => l.element.id === id)?.source
+  if (source === 'removed') return `borttaget i ${ruleLabel(column ?? '', group)}`
+  return source === 'group' ? ruleLabel(column ?? '', group) : 'bas'
+}
+
+// Which cards the open tab is about: the whole deck for the base, the cards the rule matches for
+// a group. A designer must never have to count rows to know what a change will reach.
+function affectsLabel(doc: ProjectDoc, column: string | null, group: string | null): string {
+  if (!column || !group) return `Alla ${doc.rows.length} kort`
+  return `${cardsLabel(cardsInGroup(doc, group).length)} med ${ruleLabel(column, group)}`
+}
+
+function cardsLabel(count: number): string {
+  return `${count} kort`
+}
+
+// The card the canvas shows. With a group open it is a card of that group; a group whose cards
+// have all gone is still shown, on a row made of the rule itself, so its design can be reached.
+function previewRow(doc: ProjectDoc, column: string | null, group: string | null, row: string | null): Row {
+  if (column && group) return cardsInGroup(doc, group)[0]?.fields ?? { [column]: group }
+  const picked = doc.rows.find((r) => r.id === row)?.fields ?? doc.rows[0]?.fields ?? {}
+  return picked
+}
+
+// Which face is being edited (#13, L7). A radio group, not a tablist: the canvas is one surface
+// and this says which side of the card it shows, so the arrows both move and choose (APG), and
+// the whole switch is a single tab stop.
+export const FACE_NAMES: Record<string, string> = { front: 'Framsida', back: 'Baksida' }
+
+function FaceSwitch({ faces, face, onSelect }: { faces: string[]; face: string; onSelect(face: string): void }) {
+  const { itemProps } = useRoving({ ids: faces, selected: face, orientation: 'horizontal', followFocus: true, onActivate: onSelect })
+  return (
+    <div className="byd-canvas-faces" role="radiogroup" aria-label="Kortsida">
+      {faces.map((f) => (
+        <button key={f} type="button" role="radio" aria-checked={f === face ? 'true' : 'false'} onClick={() => onSelect(f)} {...itemProps(f)}>
+          {FACE_NAMES[f] ?? f}
+        </button>
+      ))}
     </div>
   )
 }

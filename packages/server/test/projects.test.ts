@@ -297,3 +297,67 @@ describe('the tables a project has (#19)', () => {
     expect(stranger.status).toBe(401)
   })
 })
+
+// A group is a rule on a column (#13): the template's `variantBy` names the column, the variant's
+// key is the value. Nothing here is new to the compiler (L3, L7) — what this proves is that the
+// rule reaches the table, where a trap must actually look like a trap on both sides.
+describe('a group rules what a card looks like on the table (#13)', () => {
+  const groupedProject = () => {
+    const base = project()
+    const front = template.faces['front']!
+    const back = template.faces['back']!
+    return {
+      ...base,
+      template: {
+        faces: {
+          front: {
+            ...front,
+            variantBy: 'typ',
+            variants: { fälla: { override: [{ kind: 'shape', id: 'frame', x: 1, y: 1, w: 61, h: 86, shape: 'rect', fill: '#2b1d1f', stroke: '#c0392b', strokeMm: 1, radiusMm: 3 }] } },
+          },
+          back: {
+            ...back,
+            variantBy: 'typ',
+            variants: { fälla: { override: [{ kind: 'shape', id: 'bg', x: 0, y: 0, w: 63, h: 88, shape: 'rect', fill: '#3a1c1c' }] } },
+          },
+        },
+      },
+      rows: [
+        { id: 'dragon', fields: { typ: 'varelse', title: 'Drake', antal: 1 } },
+        { id: 'trap', fields: { typ: 'fälla', title: 'Fallgrop', antal: 1 } },
+      ],
+    }
+  }
+
+  it('renders a different texture for each group, on the front and on the back', async () => {
+    const { id } = (await (await json('POST', '/projects', groupedProject())).json()) as { id: string }
+    const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
+    const table = await WireClient.connect(run.base, sessionId, null)
+    await table.send(null, { v: 'draw', from: 'draw', to: 'table', count: 2 }, { v: 'flip', component: 'c0', face: 'front' }, { v: 'flip', component: 'c1', face: 'front' })
+    await table.synced(3)
+
+    const seen = Object.fromEntries(table.view!.components.map((c) => [c.cardRef, c.faces!]))
+    expect(Object.keys(seen).sort()).toEqual(['dragon', 'trap'])
+    // The rule alone made these two cards different, on both sides.
+    expect(seen['trap']!['front']).not.toBe(seen['dragon']!['front'])
+    expect(seen['trap']!['back']).not.toBe(seen['dragon']!['back'])
+    await table.close()
+
+    await run.renderAll()
+    const png = async (hash: string) => {
+      const res = await fetch(`${run.http}/faces/${hash}`)
+      expect(res.status).toBe(200)
+      expect(res.headers.get('content-type')).toBe('image/png')
+      return new Uint8Array(await res.arrayBuffer())
+    }
+    const [trapFront, baseFront, trapBack, baseBack] = await Promise.all([
+      png(seen['trap']!['front']!),
+      png(seen['dragon']!['front']!),
+      png(seen['trap']!['back']!),
+      png(seen['dragon']!['back']!),
+    ])
+    // Different pictures, not just different names for the same one.
+    expect(Buffer.from(trapFront!).equals(Buffer.from(baseFront!))).toBe(false)
+    expect(Buffer.from(trapBack!).equals(Buffer.from(baseBack!))).toBe(false)
+  }, 90_000)
+})
