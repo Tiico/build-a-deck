@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { userEvent } from '@testing-library/user-event'
 import { TableClient } from '../src/client.js'
 import { ObserverPage } from '../src/observer/ObserverPage.js'
 import { createSession, startServer, type Running } from './fixture.js'
@@ -63,5 +64,42 @@ describe('the observer screen is not a screen to join from (K12)', () => {
     await screen.findByText(/Du är observatör/)
     expect(screen.queryByText(id)).toBeNull()
     expect(screen.queryByText(/anslut med telefon/)).toBeNull()
+  })
+})
+
+// The shape #6 asked for: the observer watches, so the table is the screen and everything else —
+// the feed, the seats and the whole sentence about what she is — is called in behind a handle,
+// under the table and never over it.
+describe('the observer summons what is not the table (#6)', () => {
+  it('keeps who she is and the way to flag on a handle of its own, and calls the rest in', async () => {
+    const user = userEvent.setup()
+    const id = await createSession(run.store)
+    history.replaceState(null, '', `/observe?session=${id}&name=Eva&server=${encodeURIComponent(run.url)}`)
+    render(<ObserverPage />)
+    await screen.findByText(/Du är observatör/)
+
+    const handle = document.querySelector('.byd-observer-handle')!
+    expect(handle.textContent).toMatch(/Eva tittar på/)
+    expect(handle.querySelector('.byd-observer-flag')).toBeTruthy()
+    // Nothing floats over the table any more: the banner is a row of the layout.
+    expect(document.querySelector('.byd-observer-banner')).toBeNull()
+
+    const more = screen.getByRole('button', { name: /Senast och platser/ })
+    expect(document.querySelector('[data-page="observe"]')!.getAttribute('data-drawer')).toBe('shut')
+    expect(more.getAttribute('aria-expanded')).toBe('false')
+    await user.click(more)
+    expect(document.querySelector('[data-page="observe"]')!.getAttribute('data-drawer')).toBe('open')
+    expect(more.getAttribute('aria-expanded')).toBe('true')
+    // What it opened is the column the table already talks in, with her own sentence at the top
+    // of it — one copy of each, not a second one summoned beside the first.
+    const aside = document.querySelector('[data-tv] > aside')!
+    expect(aside.querySelector('.byd-observer-note')!.textContent).toMatch(/du ser allas händer/)
+    expect(document.querySelectorAll('.byd-observer-note')).toHaveLength(1)
+    expect(screen.getByRole('region', { name: /inspektion/i })).toBeTruthy()
+
+    // A drawer, not a dialog: it takes no focus, traps none, and closes the way it opened.
+    expect(document.activeElement).toBe(more)
+    await user.keyboard('{Enter}')
+    expect(document.querySelector('[data-page="observe"]')!.getAttribute('data-drawer')).toBe('shut')
   })
 })

@@ -11,8 +11,10 @@ export const MODES: readonly (readonly [Mode, string])[] = [
   ['tables', 'Bord'],
 ]
 
-export const panelId = (mode: Mode) => `byd-editor-panel-${mode}`
-export const tabId = (mode: Mode) => `byd-editor-tab-${mode}`
+// A mode on the desk and a stage on anything smaller name the same panel, because only one of
+// the two shapes is ever mounted (see `room.ts`): one document, one id per panel.
+export const panelId = (key: string) => `byd-editor-panel-${key}`
+export const tabId = (key: string) => `byd-editor-tab-${key}`
 
 export type EditorTabsProps = { mode: Mode; onSelect(mode: Mode): void }
 

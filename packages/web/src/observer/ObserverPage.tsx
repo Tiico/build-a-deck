@@ -34,6 +34,10 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
   const links = statusLinks({ server: params.get('server'), sessionId })
   usePageTitle({ state: sessionId ? live.state : 'missing', room: sessionId })
   const [sheet, setSheet] = useState(false)
+  // Whether the column beside the table is called in (#6, prototype B). The observer watches, so
+  // the table is the whole screen and everything else is summoned; on a desk there is room for
+  // both at once and the drawer is simply the column it has always been.
+  const [drawer, setDrawer] = useState(false)
   const flagged = useRefusal('table')
   const [inspecting, setInspecting] = useState<VisibleComponentState | null>(null)
   const [toast, setToast] = useState<string | null>(null)
@@ -56,13 +60,29 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
 
   return (
     <>
-      <div data-page="observe" data-status={status} className={`byd-fit${live.stale ? ' byd-status-stale' : ''}`} {...(live.stale ? { inert: true } : {})}>
-      <TvChrome view={view} activity={activity} inspecting={inspecting} faces={http} observers={observers}>
+      <div data-page="observe" data-drawer={drawer ? 'open' : 'shut'} data-status={status} className={`byd-fit byd-observer${live.stale ? ' byd-status-stale' : ''}`} {...(live.stale ? { inert: true } : {})}>
+      <TvChrome
+        view={view}
+        activity={activity}
+        inspecting={inspecting}
+        faces={http}
+        observers={observers}
+        note={<p className="byd-observer-note">Du är observatör: du ser allas händer och alla högar. Alla vet att du är här.</p>}
+      >
         <TableRenderer view={view} mode="tv" faces={http} onInspect={setInspecting} />
       </TvChrome>
-      <div className="byd-observer-banner">
-        <span>Du är observatör: du ser allas händer och alla högar. Alla vet att du är här.</span>
-        <button type="button" disabled={view.ended} onClick={() => setSheet(true)}>
+      {/* The handle (#6): a row of its own under the table, never a banner over it. What she is
+          is always on it; the rest of the sentence, the feed and the seats are one press away and
+          open under the table rather than across it. */}
+      <div className="byd-observer-handle">
+        <span className="byd-observer-mark">
+          <i aria-hidden="true" />
+          {name} tittar på
+        </span>
+        <button type="button" className="byd-observer-more" aria-expanded={drawer} onClick={() => setDrawer((open) => !open)}>
+          Senast och platser
+        </button>
+        <button type="button" className="byd-observer-flag" disabled={view.ended} onClick={() => setSheet(true)}>
           ⚑ Flagga
         </button>
       </div>

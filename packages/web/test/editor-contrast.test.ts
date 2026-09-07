@@ -25,6 +25,20 @@ describe('the palette a blocked table update is drawn in', () => {
   })
 })
 
+// The two strips the small screens add (L10): the sentence about what a phone does not hold, and
+// the strip of stages with the two actions pinned to it. Both are read in passing, so both are
+// held to the same bar as everything else the editor says.
+describe('the palette the small screens are drawn in', () => {
+  it.each([
+    { what: 'what a phone does not offer', ink: '--byd-editor-narrow-ink', on: '--byd-editor-narrow-bg' },
+    { what: 'a stage that is not open', ink: '--byd-editor-stage-ink', on: '--byd-editor-stage-bg' },
+    { what: 'the stage that is open', ink: '--byd-editor-stage-on-ink', on: '--byd-editor-stage-on-bg' },
+    { what: 'the actions pinned beside them', ink: '--byd-editor-stage-action-ink', on: '--byd-editor-stage-action-bg' },
+  ])('gives $what AA contrast', ({ ink, on }) => {
+    expect(contrastRatio(token(ink), token(on))).toBeGreaterThanOrEqual(4.5)
+  })
+})
+
 // The table's filter row (#16) is read at a glance while the eye is really on the rows: the
 // count, the search field, and a chip pressed or not are all held to the same bar.
 describe('the palette the table filter is drawn in', () => {

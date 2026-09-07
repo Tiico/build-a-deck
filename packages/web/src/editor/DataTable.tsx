@@ -247,10 +247,16 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
           {cardLabel(removing)} ur leken?
         </Question>
       )}
+      {/* A wide table on a narrow screen has one honest answer: the table scrolls inside its own
+          box, the page never scrolls sideways, and the column that removes a card is pinned to
+          the right edge so it cannot be scrolled away — it is the thing that would be lost
+          first. */}
+      <div className="byd-data-scroll">
       <table className="byd-data">
         <thead>
           <tr>
             <th className="byd-data-check">
+              <label className="byd-data-tick">
               <input
                 type="checkbox"
                 aria-label="Markera alla synliga"
@@ -262,13 +268,16 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                 }}
                 onChange={(event) => setSelected(markRows(selected, shown.map((row) => row.id), event.target.checked))}
               />
+              </label>
             </th>
             <SortableHeader field="id" sort={sort} onSort={setSort} />
             {fields.map((f) => (
               <SortableHeader key={f} field={f} sort={sort} onSort={setSort} />
             ))}
             {grouping && <th>grupp</th>}
-            <th></th>
+            <th className="byd-data-remove">
+              <span className="byd-offscreen">Ta bort</span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -278,12 +287,14 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                   change is about this card, the row itself says the card is the one being looked
                   at. A click on the checkbox is only ever the first of them. */}
               <td className="byd-data-check" onClick={(event) => event.stopPropagation()}>
-                <input
-                  type="checkbox"
-                  checked={selected.has(cardRef)}
-                  onChange={() => setSelected(toggleRow(selected, cardRef))}
-                  aria-label={`markera ${cardRef}`}
-                />
+                <label className="byd-data-tick">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(cardRef)}
+                    onChange={() => setSelected(toggleRow(selected, cardRef))}
+                    aria-label={`markera ${cardRef}`}
+                  />
+                </label>
               </td>
               <td className="byd-data-id">{cardRef}</td>
               {fields.map((f) => (
@@ -300,7 +311,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                 </td>
               ))}
               {grouping && <GroupCell doc={doc} column={grouping} cardRef={cardRef} row={row} />}
-              <td>
+              <td className="byd-data-remove">
                 <button
                   type="button"
                   ref={(el) => {
@@ -322,6 +333,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
           ))}
         </tbody>
       </table>
+      </div>
       {/* A deck with no cards at all is not a filter's doing: then the button below is the answer. */}
       {shown.length === 0 && isFiltering(filter) && <p className="byd-data-empty">Inga kort matchar filtret.</p>}
       <button type="button" className="byd-data-add" onClick={() => {

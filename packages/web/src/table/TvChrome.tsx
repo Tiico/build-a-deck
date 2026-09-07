@@ -22,12 +22,16 @@ export type TvChromeProps = {
   faces?: string | undefined
   // Who is watching (C8): observers are never invisible.
   observers?: readonly { id: string; name: string }[] | undefined
+  // A line the surrounding screen wants said beside the table rather than over it — the
+  // observer's own sentence about what she is (#6). It stands at the top of the column the table
+  // talks in, so it is read where the table is read and covers nothing.
+  note?: ReactNode
   children: ReactNode
 }
 
 // TV mode (C5, prototype C): the table in the middle, a header with the room code to join by,
 // a dock with every seat, and what just happened in words — all legible from across a room.
-export function TvChrome({ view, activity, roomCode, joinUrl, title, version, inspecting, faces, observers = [], children }: TvChromeProps) {
+export function TvChrome({ view, activity, roomCode, joinUrl, title, version, inspecting, faces, observers = [], note, children }: TvChromeProps) {
   const handCount = (seat: string) => {
     const hand = view.zones.find((z) => z.kind === 'hand' && z.owner === seat)
     if (!hand) return 0
@@ -52,6 +56,7 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
       </header>
       <main>{children}</main>
       <aside>
+        {note}
         <section className="byd-tv-inspect" aria-labelledby="tv-inspect">
           <h2 id="tv-inspect">Inspektion</h2>
           {inspecting ? (

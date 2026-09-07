@@ -988,6 +988,48 @@ Dirty som en jämförelse mot servern i stället för ett minne av tangenttryck 
 
 Byggt 2026-09-07 (ingen ny prototyp: mönstret för frågan är det som redan är byggt och godkänt i #17 och #19).
 
+### L10. Rummet en verktygstät yta får: etapper i editorn och wizarden, bordet först hos observatören (prototypat 2026-09-07)
+
+`/editor`, `/new` och `/observe` gick sönder på små skärmar av samma skäl: de var byggda för en bredd och hade inget svar på att inte få den.
+Frågan var aldrig vilken brytpunkt utan vad en yta *ger upp* när rummet tar slut, och tre svar prototypades mot varandra: krympa allt (A), kalla fram det som inte är arbetsytan (B), eller dela ytan i namngivna etapper (C).
+
+Valet blev **C för editorn och wizarden och B för observatören**.
+Editorn och wizarden är verktyg: de har redan flikar och roving-fokus (#11, #13, #18), så etapper lägger inte till en enda ny interaktionsmodell — bara en plattare version av den som redan är beslutad.
+Observatören tittar i stället för att arbeta: hennes yta är ett bord och lite text, så bordet tar hela skärmen och allt annat kallas in bakom ett handtag.
+Att blanda är inte en inkonsekvens; A, B och C är svar på hur mycket verktyg en yta har.
+
+Editorn har tre rum, och gränsen mellan dem är vad ytan ärligt rymmer.
+Från 1024 px är den editorn den alltid har varit: lägena i huvudet, duken i fyra kolumner.
+Mellan 768 och 1023 px blir mallens fyra paneler fyra egna etapper i samma platta lista som lägena — `Kortvägg · Verktyg · Lager · Duk · Egenskaper · Tabell · Bord` — i en list längst ner, där `Spara` och `Uppdatera bordet` är fastnitade till höger så att de aldrig scrollar bort.
+**Under 768 px finns ingen duk.**
+Telefonen får `Kortvägg`, `Tabell`, `Bord`, `Spara` och `Uppdatera bordet`, och gränssnittet säger rakt ut vad som saknas och varför i stället för att tyst utelämna det: ett kort läggs ut i millimeter mot fyra paneler, och en yta som låtsas kunna det på 390 px ljuger för den som står i den.
+En designer på en telefon ska lära sig att layout kräver en bredare skärm, inte undra var verktygen tog vägen.
+
+Etapperna och skrivbordet monteras aldrig samtidigt.
+Rummet avgörs i JavaScript och inte bara i CSS, eftersom två kopior av samma panel vore två av varje widget och två av varje element-id i ett dokument, och en skärmläsare skulle läsa den gömda kopian som verklig.
+`Nytt bord` och pilen bredvid `Uppdatera bordet` lämnar huvudet under 1024 px; båda är genvägar till det `Bord`-fliken redan äger (L5), så ingenting blir onåbart.
+
+Datatabellen har bara ett ärligt svar på en bred tabell och en smal skärm, och det är inte ett variantval: tabellen scrollar i sin egen box, sidan gör det aldrig, och kolumnen som tar bort en rad är fastnitad till höger så att den inte kan scrollas bort — den låg längst ut och försvann först.
+Under 1024 px är filtret staplade rader där varje chip-grupp scrollar i sidled på en rad, eftersom en lek med en meningslång kolumn annars trycker ut raderna, som är det fliken finns för.
+
+Wizarden är tre steg med ett mål var — `1 · Spelet`, `2 · Fälten`, `3 · Korten` — under 1024 px, och de två kolumnerna den alltid haft ovanför.
+`Startram` ligger i steg 2 tillsammans med fälten den ramar in i stället för 700 px från kortet den ändrar, och förhandsvisningen äger toppen av sitt eget steg i full bredd.
+På skrivbordet får förhandsvisningens kolumn aldrig bli smalare än ett helt 63 mm-kort: en förhandsvisning som klipper ljuger om kortet den visar.
+
+Observatören har ingen banner.
+`.byd-observer-banner` var `position: fixed` och låg ovanpå både bordet och rubriken `INSPEKTERA` — vid 390, 768 och 1280 px.
+I stället är hennes status en rad i layouten längst ner: vem hon är, vägen till `Senast och platser`, och `⚑ Flagga`.
+Under 1024 px är bordet hela skärmen och kolumnen är en låda som *tar rum från bordet* när den öppnas — under bordet, aldrig över det — med bordet kvar i ungefär hälften av ytan; i lådan står hennes hela mening överst, sedan flödet och platserna, och inspektionspanelen sist eftersom den är ett pekdons svar.
+Från 1024 px är TV:ns egen layout orörd (#6): kolumnen står där den stått, och handtaget behåller bara det som är dess eget — vägen att flagga.
+
+Grindarna gäller alla tre ytorna och mäts i Chromium på den markup de faktiskt monterar: ingen horisontell sidscroll vid 390, 768 och 1024 px, ingen träffyta under 44 × 44 px, och ingen krom som överlappar spelinnehåll på `/observe`.
+Före: `/editor` var 893 px bred oavsett fönster (503 px utanför vid 390, 125 px vid 768) med `Spara`, `Uppdatera bordet` och flikarna oåtkomliga; `/new` hade 24–27 träffytor under 44 px och klippte förhandsvisningen vid 1024; `/observe` gav bordet 13 % av bredden vid 390.
+En remsa som scrollar i sidled drar den fokuserade fliken in i vy, annars flyttar roving tabindex fokus till något ingen ser.
+Wizardens accent är nedtonad från `#d85b36` till `#b8461f`, som bär AA i 11 px text mot pappret.
+
+Två fynd på vägen är egna issues och inte lösta här: primärblå `#3c8ce7` ger vit text 3.44:1 (#22), och `TableRenderer` ritar handsolfjädrar i fasta pixlar och passar bara in golvet i sin ram, så ett bord som passats kant i kant alltid klipper sina egna händer (#23) — det syns fortfarande på `/observe` vid 390 och 768 px.
+Prototypen `packages/web/src/prototype/responsive` togs bort när den hade svarat; dess resonemang står här.
+
 ---
 
 ## I. Öppna frågor

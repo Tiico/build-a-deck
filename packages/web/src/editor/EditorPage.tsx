@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { DeckWall } from './DeckWall.js'
 import { EditorTabs, MODES, panelId, tabId, type Mode } from './EditorTabs.js'
+import { EditorStages, isCanvasStage, modeOf, STAGES, type Stage } from './EditorStages.js'
+import { useRoom } from '../room.js'
 import { TemplateCanvas } from './TemplateCanvas.js'
 import { DataTable } from './DataTable.js'
 import { TableMenu, TablesTab } from './TablesTab.js'
@@ -25,7 +27,18 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
   const projectId = params.get('project')
   const http = params.get('server') ?? location.origin
   const { client, fault, retry } = useProjectClient(http, projectId)
-  const [mode, setMode] = useState<Mode>('wall')
+  // How much room there is (L10), and where the designer is standing. One state answers both:
+  // the desk shows a mode, a smaller screen shows the stage that mode is made of.
+  const room = useRoom()
+  const stages = room === 'desk' ? null : STAGES[room]
+  const [stage, setStage] = useState<Stage>('wall')
+  // A room that does not offer the stage that was open — a phone has no canvas — puts the
+  // designer on the deck wall rather than on a panel that is not there.
+  const here: Stage = stages && !stages.some(([s]) => s === stage) ? 'wall' : stage
+  const mode: Mode = modeOf(here)
+  // Which of the template's four panels the canvas draws: all four on the desk, one at a time
+  // below it.
+  const canvasStage = room === 'desk' ? null : isCanvasStage(here) ? here : 'canvas'
   // Which face the canvas edits (#13, L7). The wall is the deck seen from the front.
   const [face, setFace] = useState('front')
   // Which group the canvas edits (#13), or nothing for the base every card inherits.
@@ -186,12 +199,15 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
         onSelectRow={setRow}
         onSelectElement={(id) => {
           setElement(id)
-          setMode('template')
+          // A phone has no canvas to open, so an element on the wall is only chosen there; every
+          // wider screen goes on to the card it belongs to.
+          if (room !== 'phone') setStage('canvas')
         }}
       />
     ),
     template: () => (
       <TemplateCanvas
+        stage={canvasStage}
         doc={doc}
         face={face}
         onSelectFace={setFace}
@@ -228,8 +244,21 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
     tables: () => <TablesTab client={client} server={params.get('server')} />,
   }
 
+  // Saving and reaching the table are the same two buttons wherever they stand: in the header on
+  // a desk, pinned to the end of the stage strip below one. They are written once.
+  const saveButton = (
+    <button type="button" onClick={() => void save()} disabled={!unsaved || saving}>
+      {saving ? 'Sparar…' : 'Spara'}
+    </button>
+  )
+  const updateButton = (
+    <button type="button" className="byd-editor-primary" onClick={() => void updateTable()}>
+      Uppdatera bordet
+    </button>
+  )
+
   return (
-    <div className="byd-editor" data-page="editor" data-mode={mode}>
+    <div className="byd-editor" data-page="editor" data-mode={mode} data-room={room}>
       <header>
         <a
           ref={leaveRef}
@@ -250,24 +279,38 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
         <span className="byd-editor-saved" role="status" data-unsaved={unsaved}>
           {unsaved ? 'Osparade ändringar' : 'Sparat'}
         </span>
-        <EditorTabs mode={mode} onSelect={setMode} />
+        {/* The modes are the header's on a desk; below one they are the stage strip at the
+            bottom of the screen, and mounting both would put two of every tab in the document. */}
+        {room === 'desk' && <EditorTabs mode={mode} onSelect={(m) => setStage(m === 'template' ? 'canvas' : m)} />}
         <span className="byd-editor-spacer" />
         {/* A save that could not happen is not a passing remark: it is spoken at once, because
             the work it was about is still only in this tab. */}
         {notice && <span role="alert" className="byd-editor-notice">{notice}</span>}
-        <button type="button" onClick={() => void save()} disabled={!unsaved || saving}>
-          {saving ? 'Sparar…' : 'Spara'}
-        </button>
-        {table && (
-          <button type="button" onClick={() => void startTable()}>
-            Nytt bord
-          </button>
+        {/* "Nytt bord" and the shortcut beside "Uppdatera bordet" are two ways to the tables that
+            the Bord stage also holds, so below the desk they leave the header rather than being
+            squeezed into it: nothing they reach becomes unreachable. */}
+        {room === 'desk' && (
+          <>
+            {saveButton}
+            {table && (
+              <button type="button" onClick={() => void startTable()}>
+                Nytt bord
+              </button>
+            )}
+            {updateButton}
+            <TableMenu client={client} server={params.get('server')} onShowTables={() => setStage('tables')} />
+          </>
         )}
-        <button type="button" className="byd-editor-primary" onClick={() => void updateTable()}>
-          Uppdatera bordet
-        </button>
-        <TableMenu client={client} server={params.get('server')} onShowTables={() => setMode('tables')} />
       </header>
+      {/* Said out loud, because a tool that is quietly missing reads as a tool that is broken: on
+          a phone the editor is a reading and writing surface, and laying a card out waits for a
+          wider screen (L10). */}
+      {room === 'phone' && (
+        <p className="byd-editor-narrow">
+          Mallen ritas inte på telefon. Duken, verktygen, lagren och egenskaperna finns från 768 pixlars bredd — öppna spelet på en
+          surfplatta eller dator för att flytta något på kortet. Här går kortväggen, tabellen och borden att arbeta med.
+        </p>
+      )}
       {leaving && (
         <Question
           className="byd-editor-leave"
@@ -306,14 +349,20 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
         </div>
       )}
       <main>
-        {MODES.map(([m]) => (
+        {(stages ?? MODES).map(([key]) => (
           // One panel per tab, so every tab's `aria-controls` names a panel that exists; only the
           // open one carries content, so switching mode still mounts a single canvas.
-          <div key={m} id={panelId(m)} role="tabpanel" aria-labelledby={tabId(m)} tabIndex={0} hidden={mode !== m}>
-            {mode === m && panel[m]()}
+          <div key={key} id={panelId(key)} role="tabpanel" aria-labelledby={tabId(key)} tabIndex={0} hidden={(stages ? here : mode) !== key}>
+            {(stages ? here === key : mode === key) && panel[modeOf(key as Stage)]()}
           </div>
         ))}
       </main>
+      {stages && (
+        <EditorStages stages={stages} stage={here} onSelect={setStage}>
+          {saveButton}
+          {updateButton}
+        </EditorStages>
+      )}
     </div>
   )
 }

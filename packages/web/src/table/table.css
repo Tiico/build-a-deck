@@ -293,10 +293,85 @@
 .byd-ended-summary { margin-top: 28px; display: flex; gap: 28px; justify-content: center; font-size: clamp(13px, 1.5vw, 22px); color: #ddd; }
 .byd-ended-summary b { display: block; font-size: clamp(24px, 3vw, 40px); color: #ffd98a; }
 
-/* The observer's own view (C8). */
-.byd-observer-banner { position: fixed; left: 50%; top: 84px; transform: translateX(-50%); z-index: 6; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; justify-content: center; max-width: calc(100% - 48px); padding: 12px 22px; border-radius: 28px; background: rgba(42, 36, 23, 0.95); color: #ffd98a; border: 1px solid #5a4a22; font-size: clamp(13px, 1.3vw, 20px); font-weight: 700; text-align: center; }
-.byd-observer-banner button { padding: 8px 16px; border: 0; border-radius: 999px; background: #ffd98a; color: #2a2417; font-size: clamp(13px, 1.3vw, 18px); font-weight: 800; }
-.byd-observer-banner button:disabled { opacity: 0.35; }
+/* The observer's own view (C8, #6, prototype B). She watches rather than works: the table takes
+   the screen, everything else is called in behind a handle, and nothing about her is ever drawn
+   on top of the game. The handle is a row of the layout — the banner it replaces was `position:
+   fixed` and lay over the table and over the inspection panel at every width. */
+.byd-observer { --byd-tap: 44px; display: flex; flex-direction: column; min-height: 100vh; }
+.byd-fit.byd-observer [data-tv] { flex: 1 1 auto; height: auto; min-height: 0; }
+.byd-observer-handle {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 6px 14px;
+  background: #1a1710;
+  border-top: 1px solid #3a3220;
+}
+.byd-observer-mark { display: inline-flex; align-items: center; gap: 9px; min-height: var(--byd-tap); color: #ffd98a; font-weight: 700; }
+.byd-observer-mark i { width: 10px; height: 10px; border-radius: 50%; background: #ffd98a; box-shadow: 0 0 0 4px rgb(255 217 138 / 28%); }
+.byd-observer-handle button {
+  min-height: var(--byd-tap);
+  min-width: var(--byd-tap);
+  padding: 0 16px;
+  border: 1px solid #5a4a22;
+  border-radius: 999px;
+  background: #2a2417;
+  color: #ffd98a;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.byd-observer-handle .byd-observer-flag { margin-left: auto; background: #ffd98a; border-color: #ffd98a; color: #2a2417; }
+.byd-observer-handle button:disabled { opacity: 0.35; cursor: default; }
+/* Which way the drawer goes, said on the button rather than only in its colour. */
+.byd-observer-more::after { content: ' ▲'; }
+[data-drawer='open'] .byd-observer-more::after { content: ' ▼'; }
+/* Her own sentence stands at the top of the column the table talks in. */
+.byd-observer-note { margin: 0; padding: 12px 20px; background: #2a2417; color: #ffd98a; font-weight: 650; line-height: 1.4; border-bottom: 1px solid #3a3220; }
+[data-tv] > aside:has(.byd-observer-note) { grid-template-rows: auto auto minmax(0, 1fr); }
+/* Below the desk the table is the whole screen and the column is a drawer under it — under, never
+   over: it takes room from the table instead of covering it. The TV's own screen is a big screen
+   and is left exactly as it was. */
+@media (max-width: 1023px) {
+  .byd-observer [data-tv] { grid-template-columns: minmax(0, 1fr); }
+  .byd-observer [data-tv] > header { grid-column: 1; padding: 0 14px; }
+  .byd-observer [data-tv] > header h1 { font-size: 17px; }
+  .byd-observer [data-tv] > footer { grid-column: 1; padding: 10px 14px; min-height: 0; overflow: auto; }
+  .byd-observer [data-tv] > footer ul { grid-auto-flow: row; gap: 8px; }
+  .byd-observer [data-tv] > aside { border-left: 0; border-top: 1px solid #232733; min-height: 0; overflow: auto; }
+  /* The card the eye is on is a pointing device's answer; on a small screen it gives its room —
+     and its place in the reading order — back to what the handle promised: what just happened,
+     and who is sitting. */
+  /* One scroll rather than three fixed rows: on a small screen the column is a drawer, and a
+     drawer is read top to bottom. */
+  .byd-observer [data-tv] > aside { display: flex; flex-direction: column; }
+  .byd-observer [data-tv] > aside > * { flex: 0 0 auto; }
+  .byd-observer [data-tv] .byd-tv-feed { order: 2; border-bottom: 1px solid #232733; }
+  .byd-observer [data-tv] .byd-tv-inspect { order: 3; border-bottom: 0; padding: 12px 14px; }
+  .byd-observer [data-tv] .byd-tv-inspect > div { width: 120px; height: 168px; padding: 10px; font-size: 15px; }
+  /* Shut, the table is the screen. Open, the drawer takes its room from the table in shares of
+     what there is — so the table is smaller, never gone, and never underneath anything. */
+  .byd-observer[data-drawer='shut'] [data-tv] { grid-template-rows: auto minmax(0, 1fr); }
+  .byd-observer[data-drawer='shut'] [data-tv] > aside,
+  .byd-observer[data-drawer='shut'] [data-tv] > footer { display: none; }
+  .byd-observer[data-drawer='open'] [data-tv] { grid-template-rows: auto minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 0.7fr); }
+}
+/* On the narrowest screens the handle is two rows: who she is, and the two things she can do.
+   A right-aligned button alone on a second row reads as something that fell off the first. */
+@media (max-width: 600px) {
+  .byd-observer-handle { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+  .byd-observer-mark { grid-column: 1 / -1; }
+  .byd-observer-handle .byd-observer-flag { margin-left: 0; }
+}
+@media (min-width: 1024px) {
+  /* On a desk the column is always there, so there is nothing to call in — and her own sentence
+     stands at the top of it, with the seats' own row saying who is watching. The handle keeps
+     only what it alone carries: the way to flag a moment. */
+  .byd-observer-more, .byd-observer-handle .byd-observer-mark { display: none; }
+  .byd-observer-handle { justify-content: flex-end; }
+}
 
 /* A hand this view may read (the observer, C8): the cards themselves, fanned. */
 .byd-hand-fan > i.byd-hand-card { border-radius: 6px; background: hsl(var(--hue, 0) 40% 86%); color: #1c1c1c; font: 600 9px/1.1 system-ui, sans-serif; padding: 4px; box-sizing: border-box; overflow: hidden; border: 1px solid rgba(0, 0, 0, 0.35); font-style: normal; }

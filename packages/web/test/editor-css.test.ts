@@ -281,11 +281,13 @@ describe('the editor fills the window', () => {
   }, 60_000)
 })
 
-// The header is one 48 px row (the grid says so) and it now carries a fourth tab and the
-// shortcut beside "Uppdatera bordet" (#19). On a narrow screen a header that wraps does not
-// push the panel down — it spills over it — so nothing in it may wrap.
-describe('the editor header on a narrow screen', () => {
-  it.each([768, 1024, 1280])('keeps every control inside its row at %i px', async (width) => {
+// On a desk the header is one 56 px row — tall enough for a 44 px target — and it carries the
+// four tabs, the two actions and the shortcut beside "Uppdatera bordet" (#19). Below 1024 px the
+// modes and the actions are the stage strip at the bottom of the screen instead (L10), so this
+// is the desk's question: nothing in the row may wrap, because a header that wraps does not push
+// the panel down, it spills over it.
+describe('the editor header on a desk', () => {
+  it.each([1024, 1280])('keeps every control inside its row at %i px', async (width) => {
     const page = await browser.newPage({ viewport: { width, height: 700 } })
     try {
       await page.setContent(`<!doctype html><html><head><style>body{margin:0}${css}</style></head><body>${SHELL}</body></html>`, { waitUntil: 'load' })
@@ -297,7 +299,7 @@ describe('the editor header on a narrow screen', () => {
             // Two line boxes mean the text broke in two, which a 48 px row has no room for.
             // (Clipped text reports several rects on the same line; those are one line.)
             const lines = new Set([...range.getClientRects()].map((r) => Math.round(r.top)))
-            return lines.size > 1 || el.getBoundingClientRect().bottom > 48
+            return lines.size > 1 || el.getBoundingClientRect().bottom > 56
           })
           .map((el) => el.textContent?.trim().slice(0, 20)),
       )

@@ -15,9 +15,10 @@ describe('DataTable (B as a tab)', () => {
     render(<DataTable doc={doc} selectedRow="knight" onSelectRow={() => undefined} onCell={onCell} onAddRow={onAddRow} onRemoveRow={onRemoveRow} onReplaceRows={onReplaceRows} />)
 
     // Every column header is a sort control (#15): its name is the column, the arrow is the state.
-    // The first and last columns carry no name: the selection's checkbox (#17) and the row's ×.
+    // The first column carries no name: the selection's checkbox is its own label (#17). The last
+    // is the pinned column that removes a card, and it says so for a reader who cannot see the ×.
     const headers = screen.getAllByRole('columnheader').map((h) => h.textContent!.replace(/\s*[↕↑↓]$/, ''))
-    expect(headers).toEqual(['', 'id', 'title', 'body', 'antal', ''])
+    expect(headers).toEqual(['', 'id', 'title', 'body', 'antal', 'Ta bort'])
     const rows = screen.getAllByRole('row').slice(1)
     expect(rows.map((r) => r.getAttribute('data-card-ref'))).toEqual(['dragon', 'knight', 'wizard'])
     expect(rows[1]!.getAttribute('aria-selected')).toBe('true')
