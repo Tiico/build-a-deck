@@ -13,7 +13,8 @@ describe('DataTable (B as a tab)', () => {
     const onImportRows = vi.fn()
     render(<DataTable doc={doc} selectedRow="knight" onSelectRow={() => undefined} onCell={onCell} onAddRow={onAddRow} onRemoveRow={onRemoveRow} onImportRows={onImportRows} />)
 
-    const headers = screen.getAllByRole('columnheader').map((h) => h.textContent)
+    // Every column header is a sort control (#15): its name is the column, the arrow is the state.
+    const headers = screen.getAllByRole('columnheader').map((h) => h.textContent!.replace(/\s*[↕↑↓]$/, ''))
     expect(headers).toEqual(['id', 'title', 'body', 'antal', ''])
     const rows = screen.getAllByRole('row').slice(1)
     expect(rows.map((r) => r.getAttribute('data-card-ref'))).toEqual(['dragon', 'knight', 'wizard'])

@@ -82,6 +82,14 @@
 .byd-data { border-collapse: collapse; width: 100%; background: #1b1d23; }
 .byd-data th { text-align: left; padding: 8px 10px; color: #7d8597; font-weight: 600; border-bottom: 1px solid #2f333d; position: sticky; top: 0; background: #1b1d23; }
 .byd-data td { padding: 0; border-bottom: 1px solid #20232b; }
+/* The header is the sort control (#15): the column's name, the state as an arrow beside it. */
+.byd-data-sort { margin: 0 0 8px; color: #7d8597; font-size: 12px; }
+.byd-data th button { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
+.byd-data th button span { color: #6b7386; }
+.byd-data th button:hover { color: #dce3f2; }
+.byd-data th button[data-active='true'] { color: #dce3f2; }
+.byd-data th button[data-active='true'] span { color: #7dd3a0; }
+.byd-data th button:focus-visible { outline: 3px solid #3c8ce7; outline-offset: 3px; }
 .byd-data tr[aria-selected='true'] { background: #2f3a55; }
 .byd-data-id { padding: 7px 10px !important; color: #7d8597; font-family: ui-monospace, monospace; font-size: 12px; }
 .byd-data input { background: transparent; border: 0; color: #ddd; padding: 7px 10px; width: 100%; box-sizing: border-box; font-size: 12px; }
