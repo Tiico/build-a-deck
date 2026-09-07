@@ -7,6 +7,8 @@ import { TableMenu, TablesTab } from './TablesTab.js'
 import { tvUrl } from './tableLinks.js'
 import { useProjectClient } from './useProjectClient.js'
 import { useTableClient } from '../table/useTableClient.js'
+import { shortcutsOf } from '../player/PlaySheet.js'
+import type { ProjectDoc } from './types.js'
 import type { ProjectClient, Textures } from './ProjectClient.js'
 import { loginUrl } from '../account/api.js'
 import './editor.css'
@@ -162,7 +164,13 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
         onReplaceRows={(rows) => client.replaceRows(rows)}
       />
     ),
-    tables: () => <TablesTab client={client} server={params.get('server')} />,
+    // Bord is the home for both the game's board vocabulary and its running tables (#19, C4).
+    tables: () => (
+      <>
+        <ZonesPanel doc={doc} onPatch={(id, patch) => client.patchZone(id, patch)} />
+        <TablesTab client={client} server={params.get('server')} />
+      </>
+    ),
   }
 
   const wsUrl = (params.get('server') ?? location.origin).replace(/^http/, 'ws')
@@ -256,5 +264,59 @@ function HostSeats({ client, sessionId, hostKey, ws, onNotice }: { client: Proje
         </span>
       ))}
     </span>
+  )
+}
+
+// The table's zones (C4): the name the table shows, and the verb the phone shows with where a
+// card goes — next to a preview of the phone's sheet, so a designer sees the buttons players get
+// without seeing the table. Hands are not targets and are not listed.
+function ZonesPanel({ doc, onPatch }: { doc: ProjectDoc; onPatch(id: string, patch: { name?: string; shortcut?: { label: string; at: 'top' | 'bottom' } | undefined }): void }) {
+  const zones = doc.setup.zones.filter((z) => z.kind !== 'hand')
+  const preview = shortcutsOf(doc.setup.zones, doc.setup.floor)
+  return (
+    <div className="byd-zones">
+      <div className="byd-zones-list">
+        <h2>Zoner</h2>
+        <p>Namnet syns på bordet. Genvägen är knappen på telefonen; utan genväg visar telefonen namnet.</p>
+        {zones.map((z) => (
+          <div key={z.id} className="byd-zones-row" data-zone-row={z.id}>
+            <span className="byd-zones-kind">{z.id === doc.setup.floor ? 'golv' : z.kind === 'pile' ? 'hög' : 'area'}</span>
+            <input aria-label={`Namn för ${z.name}`} value={z.name} onChange={(e) => onPatch(z.id, { name: e.target.value })} />
+            {z.id !== doc.setup.floor && (
+              <>
+                <input
+                  aria-label={`Genväg för ${z.name}`}
+                  placeholder={z.name}
+                  value={z.shortcut?.label ?? ''}
+                  onChange={(e) => onPatch(z.id, { shortcut: e.target.value ? { label: e.target.value, at: z.shortcut?.at ?? 'top' } : undefined })}
+                />
+                {z.kind === 'pile' && (
+                  <select aria-label={`Placering för ${z.name}`} value={z.shortcut?.at ?? 'top'} onChange={(e) => onPatch(z.id, { shortcut: { label: z.shortcut?.label ?? z.name, at: e.target.value === 'bottom' ? 'bottom' : 'top' } })}>
+                    <option value="top">överst</option>
+                    <option value="bottom">underst</option>
+                  </select>
+                )}
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="byd-zones-preview" data-sheet-preview>
+        <h2>Så ser spelaren det</h2>
+        <p>Spela <strong>ett kort</strong> till</p>
+        <div className="byd-sheet-targets">
+          {preview.map((t) => (
+            <div key={t.id} role="presentation">
+              <span>{t.label}</span>
+              <small>{t.kind === 'pile' ? `${t.at === 'bottom' ? 'underst' : 'överst'} i ${t.name}` : 'lägg fritt'}</small>
+            </div>
+          ))}
+          <div role="presentation">
+            <span>Bordet</span>
+            <small>lägg fritt</small>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }

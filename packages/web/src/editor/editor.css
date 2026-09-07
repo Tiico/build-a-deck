@@ -53,6 +53,19 @@
    editor, light enough to carry 3:1 against each of the surfaces it lands on. */
 .byd-editor :focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
 
+/* Zones (C4): the list, and the phone's sheet as the player will see it. */
+.byd-zones { display: grid; grid-template-columns: 1fr 320px; gap: 24px; padding: 20px; }
+.byd-zones h2 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; }
+.byd-zones p { margin: 0 0 14px; color: #9aa3b8; }
+.byd-zones-row { display: grid; grid-template-columns: 52px 1fr 1fr 110px; gap: 8px; align-items: center; margin-bottom: 8px; }
+.byd-zones-kind { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #7d8597; }
+.byd-zones-row input, .byd-zones-row select { padding: 8px 10px; border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; color: #fff; font: inherit; }
+.byd-zones-preview { align-self: start; padding: 16px; border-radius: 16px; background: #14161c; border: 1px solid #2f333d; }
+.byd-zones-preview .byd-sheet-targets { display: grid; gap: 8px; }
+.byd-zones-preview .byd-sheet-targets > div { display: grid; padding: 10px 12px; border-radius: 10px; background: #242938; }
+.byd-zones-preview .byd-sheet-targets span { font-weight: 700; color: #fff; }
+.byd-zones-preview .byd-sheet-targets small { color: #9aa3b8; }
+
 /* Wall */
 .byd-wall { padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; align-content: start; }
 .byd-wall-card { position: relative; border-radius: 8px; cursor: pointer; }

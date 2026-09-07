@@ -349,3 +349,33 @@ describe('the host\'s controls (DRIFT §9)', () => {
     await waitFor(() => expect(screen.getByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' }).textContent).not.toBe(first))
   })
 })
+
+describe('the table tab: zone names and the phone\'s verbs (C4)', () => {
+  it('lists the zones with name and shortcut, previews the phone\'s sheet, and saves the edit', async () => {
+    await run.projects.create('p1', projectDoc())
+    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
+
+    const label = screen.getByLabelText('Genväg för Kasthög') as HTMLInputElement
+    expect(label.value).toBe('Kasta')
+    expect(screen.getByText('Kasta', { selector: '[data-sheet-preview] span' })).toBeTruthy()
+    // Without a shortcut the phone shows the name.
+    fireEvent.change(label, { target: { value: '' } })
+    expect(screen.getByText('Kasthög', { selector: '[data-sheet-preview] span' })).toBeTruthy()
+    fireEvent.change(label, { target: { value: 'Kasta i påsen' } })
+    expect(screen.getByText('Kasta i påsen', { selector: '[data-sheet-preview] span' })).toBeTruthy()
+    fireEvent.change(screen.getByLabelText('Placering för Kasthög'), { target: { value: 'bottom' } })
+    fireEvent.change(screen.getByLabelText('Namn för Draghög'), { target: { value: 'Leken' } })
+    expect(screen.getByText(/underst i Leken/)).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    await waitFor(async () => expect((await run.projects.load('p1'))?.rev).toBe(2))
+    const stored = await run.projects.load('p1')
+    expect(stored?.setup.zones.find((z) => z.id === 'discard')).toMatchObject({ name: 'Kasthög', shortcut: { label: 'Kasta i påsen', at: 'bottom' } })
+    expect(stored?.setup.zones.find((z) => z.id === 'draw')?.name).toBe('Leken')
+    // The hands are not the phone's targets and are not listed.
+    expect(screen.queryByLabelText(/Genväg för Hand/)).toBeNull()
+  })
+})

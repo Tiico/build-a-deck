@@ -89,7 +89,7 @@ Målet är att en grupp kan spela vilket kortspel som helst utan att sakna någo
 - ✅ Aktivitetshistorik i snapshoten: de senaste femtio raderna följer med vid anslutning, så en skärm som ansluter mitt i ett spel ser vad som hänt (I, teknik).
 - ⬜ Hur en hög i en area visas med blandad orientering, och om zonrektanglar får överlappa (I, spelupplevelse).
 - ✅ Rumskoder: sex tecken utan förväxlingsbara, går ut tre timmar efter senaste anslutning, köper tokens för plats och observatör; bordet öppnas med värdnyckel; värden roterar koden och sparkar från editorn (DRIFT §9, G1 följdkrav).
-- ⬜ Zongenvägar per spel med begripliga namn utan att se bordet (C4 följdkrav): namnen kommer från setupen, men setupen redigeras inte i editorn ännu.
+- ✅ Zongenvägar per spel: varje zon kan bära ett verb för telefonen ("Kasta", "Lägg underst") skilt från bordets namn, med placering överst eller underst; editorns flik "Bord" redigerar namn och genvägar med telefonens ark som förhandsvisning (C4 följdkrav).
 - ❓ Fler komponenttyper än standardkortet — tärning, bricka, meeple, bräde (B1, B2, B3).
   Registryt och tryckprofilerna är byggda för det, men bara ett kort finns.
   Frågan är om release är "kortspel" eller "kort- och brädspel"; A1 talar för kort först.

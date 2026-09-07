@@ -40,8 +40,8 @@ export function buildProject(state: WizardState): ProjectDoc {
       deckZone: 'draw',
       zones: [
         { id: 'table', kind: 'area', name: 'Spelyta', visibility: 'all', geometry: rect(-600, -400, 1200, 800) },
-        { id: 'draw', kind: 'pile', name: 'Draghög', visibility: 'none', geometry: point(-140, 0) },
-        { id: 'discard', kind: 'pile', name: 'Kasthög', visibility: 'all', geometry: point(140, 0) },
+        { id: 'draw', kind: 'pile', name: 'Draghög', visibility: 'none', geometry: point(-140, 0), shortcut: { label: 'Lägg underst', at: 'bottom' } },
+        { id: 'discard', kind: 'pile', name: 'Kasthög', visibility: 'all', geometry: point(140, 0), shortcut: { label: 'Kasta', at: 'top' } },
         ...hands,
       ],
     },

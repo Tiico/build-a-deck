@@ -16,6 +16,8 @@ const ZoneDef = z.object({
   geometry: Geometry,
   owner: z.string().optional(),
   returnTo: z.string().optional(),
+  // The verb the phone shows for playing here (C4), and where in a pile the card goes.
+  shortcut: z.object({ label: z.string().min(1).max(40), at: z.enum(['top', 'bottom']) }).optional(),
 })
 export const ProjectSetup = z.object({
   zones: z.array(ZoneDef),
@@ -96,6 +98,7 @@ export function setupFromProject(doc: ProjectDoc): SetupDef {
     geometry: z.geometry,
     ...(z.owner !== undefined ? { owner: z.owner } : {}),
     ...(z.returnTo !== undefined ? { returnTo: z.returnTo } : {}),
+    ...(z.shortcut !== undefined ? { shortcut: z.shortcut } : {}),
   }))
   return { zones, seats: doc.setup.seats, floor: doc.setup.floor, components }
 }
