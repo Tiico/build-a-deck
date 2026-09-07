@@ -3,7 +3,7 @@ import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
   // Prototypes are throwaway by definition (see CLAUDE.md); they are not held to lint.
-  { ignores: ['**/dist/**', '**/node_modules/**', '**/prototype/**'] },
+  { ignores: ['**/dist/**', '**/node_modules/**', '**/prototype/**', '.claude/worktrees/**'] },
   js.configs.recommended,
   ...tseslint.configs.strict,
   ...tseslint.configs.stylistic,

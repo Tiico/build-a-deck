@@ -56,9 +56,14 @@ jobs:
       matrix:
         include:
           - name: app
+            context: .
             dockerfile: Dockerfile
           - name: render
+            context: .
             dockerfile: Dockerfile.render
+          - name: postgres
+            context: ops
+            dockerfile: ops/Dockerfile.postgres
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -69,7 +74,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
           # The box is amd64 (DRIFT); add linux/arm64 here the day it is not.
           platforms: linux/amd64

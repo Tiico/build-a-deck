@@ -1,13 +1,12 @@
 #!/bin/sh
-# Rehearse a restore (DRIFT §5): the newest dump from R2 into a throwaway Postgres, then count
-# sessions and events. A backup nobody has read back is a hope. Reads .env for credentials.
+# Rehearse a restore (DRIFT §5): the latest base backup and its WAL from R2 into a throwaway
+# Postgres in the backup image, then the newest session's log replayed through the engine in
+# the app image. A backup nobody has read back is a hope; a log that does not replay is not a
+# backup. Reads .env for R2 through compose. Usage: ops/restore-test.sh [backup name]
 set -eu
 cd "$(dirname "$0")/.."
-run="docker compose --profile backup run --rm -T backup /usr/local/bin/backup.sh"
-latest="$($run latest)"
-echo "restoring $latest"
-docker run -d --rm --name byd-restore-test -e POSTGRES_PASSWORD=x -e POSTGRES_USER=byd -e POSTGRES_DB=byd postgres:17-alpine > /dev/null
-trap 'docker rm -f byd-restore-test > /dev/null' EXIT
-until docker exec byd-restore-test pg_isready -U byd -d byd > /dev/null 2>&1; do sleep 1; done
-$run fetch "$latest" | docker exec -i byd-restore-test sh -c 'cat > /tmp/r.dump && pg_restore -U byd -d byd /tmp/r.dump'
-docker exec byd-restore-test psql -U byd -d byd -tAc "select count(*) || ' sessions, ' || (select count(*) from events) || ' events' from sessions"
+out="$(mktemp)"
+trap 'rm -f "$out"' EXIT
+docker compose --profile backup run --rm --no-deps -T --user postgres backup /usr/local/bin/restore.sh "${1:-LATEST}" > "$out"
+grep '"msg":"restored"' "$out"
+grep '"msg":"export"' "$out" | docker compose run --rm --no-deps -T app node packages/server/node_modules/tsx/dist/cli.mjs packages/engine/scripts/replay-check.ts

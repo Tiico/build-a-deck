@@ -124,7 +124,7 @@ Målet är att kunna ta betalt och lämna ifrån sig allt.
 Målet är att tjänsten tål riktiga användare, dygnet runt, på en låda hemma.
 
 - ✅ Assets i R2: renderade texturer och tryckfiler i R2, `/faces/:hash` svarar 302 till en signerad URL som lever en timme och cachas i femtio minuter; hashen är förmågan (DRIFT §4).
-- ⬜ WAL-arkivering till R2 med pgBackRest eller WAL-G, nattlig basbackup, schemalagt återställningstest som kör replay (DRIFT §5).
+- ✅ WAL-arkivering till R2 med WAL-G i Postgres-bilden, nattlig basbackup, återställningsprov som spelar upp den senaste sessionen genom motorn (DRIFT §5).
 - ✅ Hälsokontroll som även prövar R2 (DRIFT §2).
 - ⬜ Händelseschemats `schemaVersion` och upcasters vid inläsning (DRIFT §7).
 - ⬜ Riktiga loggar i replay-korpusen, anonymiserade; svar på hur anonymiseringen behåller det värdefulla (DRIFT §7, öppen fråga).
