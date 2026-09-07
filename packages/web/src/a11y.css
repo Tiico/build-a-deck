@@ -1,0 +1,19 @@
+/* Reduced motion, for every route (UX-KONTROLLER: kontrast, textskalning, träffytor och
+   `prefers-reduced-motion`).
+
+   Nothing in the product carries meaning in its movement: the pulsing rewind frame, the pointing
+   ring, the glow on a card someone just moved and the gliding peer cursors all say the same thing
+   standing still. So the motion is cut to nothing rather than removed — a kept `forwards`
+   animation still lands on its final frame, which is where those effects mean to end up. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}
