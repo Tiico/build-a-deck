@@ -8,12 +8,10 @@ import { NewProjectPage } from './wizard/NewProjectPage.js'
 import { HomePage } from './account/HomePage.js'
 import { LoginPage } from './account/LoginPage.js'
 import { ClaimPage } from './account/ClaimPage.js'
-import { PhoneMorePrototype } from './prototype/phone-more/index.js'
 import { TextureFailures } from './table/TextureFailures.js'
 
 // Routing is a path check for now; a router arrives with the first real page.
 export function App() {
-  if (location.pathname.startsWith('/prototype/phone-more')) return <PhoneMorePrototype />
   return <TextureFailures>{route()}</TextureFailures>
 }
 

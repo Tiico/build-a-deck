@@ -1,11 +1,11 @@
 import type { AddressInfo } from 'node:net'
 import type { Server } from 'node:http'
-import { CARD_STANDARD_63x88, TypeRegistry, type SetupDef } from '@byd/engine'
+import { CARD_STANDARD_63x88, TOKEN_COUNTER, TypeRegistry, type SetupDef, STANDARD_TYPES } from '@byd/engine'
 import { TableHost, createServer, MemoryLogStore, MemoryProjectStore, MemorySurveyStore, MemoryAuthStore, MemoryMailer } from '@byd/server'
 import { MemoryRenderStore } from '@byd/render/queue'
 
 // A real server in-process. Client tests talk to it over a real socket — no mocks.
-export const registry = new TypeRegistry([CARD_STANDARD_63x88])
+export const registry = new TypeRegistry(STANDARD_TYPES)
 const CARD = { id: CARD_STANDARD_63x88.id, version: 1 }
 const CARDS = ['dragon', 'knight', 'wizard', 'rogue', 'priest', 'archer', 'golem', 'witch', 'bard', 'ogre']
 const rect = (x: number, y: number, w: number, h: number) => ({ x, y, w, h, rot: 0 })
@@ -23,6 +23,30 @@ export function twoSeatSetup(): SetupDef {
       { id: 'hand:B', kind: 'hand', name: 'Hand', visibility: 'owner', owner: 'B', returnTo: 'draw', geometry: rect(-300, -420, 600, 100) },
     ],
     components: CARDS.map((cardRef) => ({ type: CARD, cardRef, zone: 'draw', face: 'back' })),
+  }
+}
+
+// A setup where every seat owns an area in front of it and a counters zone with two counters
+// (C4), as the wizard makes them.
+export function seatSetup(): SetupDef {
+  const base = twoSeatSetup()
+  const token = { id: TOKEN_COUNTER.id, version: 1 }
+  return {
+    ...base,
+    zones: [
+      ...base.zones,
+      { id: 'mine:A', kind: 'area', name: 'Framför A', visibility: 'owner', owner: 'A', geometry: rect(-300, 220, 380, 90), shortcut: { label: 'Framför mig', at: 'top' } },
+      { id: 'mine:B', kind: 'area', name: 'Framför B', visibility: 'owner', owner: 'B', geometry: rect(-300, -310, 380, 90), shortcut: { label: 'Framför mig', at: 'top' } },
+      { id: 'counters:A', kind: 'area', name: 'Räknare A', visibility: 'all', owner: 'A', geometry: rect(100, 220, 110, 90) },
+      { id: 'counters:B', kind: 'area', name: 'Räknare B', visibility: 'all', owner: 'B', geometry: rect(100, -310, 110, 90) },
+    ],
+    components: [
+      ...base.components,
+      ...(['A', 'B'] as const).flatMap((s) => [
+        { type: token, cardRef: 'Liv', zone: `counters:${s}`, face: 'front', counter: 20, x: 8, y: 8 },
+        { type: token, cardRef: 'Guld', zone: `counters:${s}`, face: 'front', counter: 3, x: 40, y: 8 },
+      ]),
+    ],
   }
 }
 
@@ -89,8 +113,8 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean }
 const rooms = new Map<string, { code: string; hostKey: string }>()
 
 // A session made through the server, so it has a code and a host key; `deck` optional.
-export async function createSession(run: Running, id = 's1', deck?: unknown): Promise<string> {
-  const res = await fetch(`${run.http}/sessions`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, version: 'v1', setup: twoSeatSetup(), ...(deck ? { deck } : {}) }) })
+export async function createSession(run: Running, id = 's1', deck?: unknown, setup: SetupDef = twoSeatSetup()): Promise<string> {
+  const res = await fetch(`${run.http}/sessions`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id, version: 'v1', setup, ...(deck ? { deck } : {}) }) })
   if (res.status !== 201) throw new Error(`create failed: ${res.status} ${await res.text()}`)
   const made = (await res.json()) as { id: string; code: string; hostKey: string }
   rooms.set(made.id, { code: made.code, hostKey: made.hostKey })

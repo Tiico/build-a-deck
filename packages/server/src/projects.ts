@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { CARD_STANDARD_63x88, type SetupDef } from '@byd/engine'
+import { CARD_STANDARD_63x88, TOKEN_COUNTER, type SetupDef } from '@byd/engine'
 import { Template, type Row } from '@byd/template'
 import type { Deck } from './faces.js'
 
@@ -25,6 +25,8 @@ export const ProjectSetup = z.object({
   floor: z.string().min(1),
   // Where every card starts, face down.
   deckZone: z.string().min(1),
+  // What every seat keeps count of (C4): one counter token per entry in the seat's counters zone.
+  counters: z.array(z.object({ name: z.string().min(1).max(24), start: z.number().int() })).optional(),
 })
 const Cell = z.union([z.string(), z.number(), z.boolean(), z.null()])
 // Rows are an ordered list: their order is the deck's order until the first shuffle, and the
@@ -88,6 +90,13 @@ export function setupFromProject(doc: ProjectDoc): SetupDef {
   for (const { id: cardRef, fields } of doc.rows) {
     const copies = Math.max(0, Math.floor(Number(fields['antal'] ?? 1)) || 0)
     for (let i = 0; i < copies; i++) components.push({ type, cardRef, zone: doc.setup.deckZone, face: 'back' })
+  }
+  // A seat's counters (C4) live in its counters zone, when the setup has one.
+  const token = { id: TOKEN_COUNTER.id, version: TOKEN_COUNTER.version }
+  for (const seat of doc.setup.seats) {
+    const zone = doc.setup.zones.find((z) => z.id === `counters:${seat}`)
+    if (!zone) continue
+    ;(doc.setup.counters ?? []).forEach((c, i) => components.push({ type: token, cardRef: c.name, zone: zone.id, face: 'front', counter: c.start, x: 8 + (i % 3) * 32, y: 8 + Math.floor(i / 3) * 32 }))
   }
   // Optional keys that are present but undefined are dropped: the engine's types are exact.
   const zones: SetupDef['zones'] = doc.setup.zones.map((z) => ({

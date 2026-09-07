@@ -1,11 +1,11 @@
 import type { AddressInfo } from 'node:net'
 import type { Server } from 'node:http'
-import { CARD_STANDARD_63x88, TypeRegistry, type SetupDef } from '@byd/engine'
+import { CARD_STANDARD_63x88, TypeRegistry, type SetupDef, STANDARD_TYPES } from '@byd/engine'
 import { TableHost, createServer, MemoryLogStore, MemoryProjectStore, MemorySurveyStore, MemoryAuthStore, MemoryMailer } from '../src/index.js'
 import { MemoryRenderStore, Renderer, runWorker, type ObjectStore } from '@byd/render'
 import { WireClient } from './client.js'
 
-export const registry = new TypeRegistry([CARD_STANDARD_63x88])
+export const registry = new TypeRegistry(STANDARD_TYPES)
 export const CARD = { id: CARD_STANDARD_63x88.id, version: 1 }
 export const CARDS = ['dragon', 'knight', 'wizard', 'rogue', 'priest', 'archer', 'golem', 'witch', 'bard', 'ogre']
 

@@ -1,6 +1,8 @@
 import type { Snapshot } from '@byd/protocol'
 
 export type Placement = 'top' | 'bottom'
+// The counter token's type id (engine's TOKEN_COUNTER), which the phone treats as a count, not a card.
+export const COUNTER_TYPE = 'token.counter'
 export type PlaySheetProps = { view: Snapshot; count: number; label: string; onPlay(zone: string, at: Placement): void; onClose(): void }
 
 // What a zone offers the phone (C4): the shortcut's verb, or the zone's name when the designer
@@ -15,7 +17,16 @@ export function shortcutsOf<Z extends ZoneLike>(zones: readonly Z[], floor: stri
 // and the floor last as "Bordet". Zone names and shortcuts are the designer's — they are the UX
 // here (B5).
 export function targetsOf(view: Snapshot) {
-  const named = shortcutsOf(view.zones, view.floor).map((z) => ({ id: z.id, name: z.name, label: z.label, at: z.at, kind: z.kind, count: z.mode === 'count' ? z.count : z.order.length }))
+  // Another seat's own area is not a place to play to, and a zone that only holds counters
+  // (C4) is not a place for cards at all.
+  const byZone = new Map<string, Snapshot['components']>()
+  for (const c of view.components) byZone.set(c.zone, [...(byZone.get(c.zone) ?? []), c])
+  const playable = view.zones.filter((z) => {
+    if (z.owner !== undefined && z.owner !== view.seat) return false
+    const inside = byZone.get(z.id) ?? []
+    return !(inside.length > 0 && inside.every((c) => c.type.id === COUNTER_TYPE))
+  })
+  const named = shortcutsOf(playable, view.floor).map((z) => ({ id: z.id, name: z.name, label: z.label, at: z.at, kind: z.kind, count: z.mode === 'count' ? z.count : z.order.length }))
   return [...named, { id: view.floor, name: 'Bordet', label: 'Bordet', at: 'top' as Placement, kind: 'area' as const, count: 0 }]
 }
 

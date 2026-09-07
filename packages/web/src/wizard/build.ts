@@ -1,7 +1,9 @@
 import type { ProjectDoc } from '@byd/server'
 import { DEFAULT_FRAME, FRAMES, type Field } from './frames.js'
 
-export type WizardState = { name: string; players: number; fields: Field[]; frame: string; rows: Record<string, string>[] }
+// `counters` (C4): what every seat keeps count of, from the start value; one score by default.
+export type WizardState = { name: string; players: number; fields: Field[]; frame: string; rows: Record<string, string>[]; counters?: { name: string; start: number }[] }
+export const DEFAULT_COUNTERS: { name: string; start: number }[] = [{ name: 'Poäng', start: 0 }]
 
 const SEAT_IDS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
 const rect = (x: number, y: number, w: number, h: number) => ({ x, y, w, h, rot: 0 })
@@ -20,6 +22,25 @@ export function buildProject(state: WizardState): ProjectDoc {
     owner: seat,
     returnTo: 'draw',
     geometry: handGeometry(i, seats.length),
+  }))
+  // In front of every seat (C4): an area only its owner reads, and the seat's counters, which
+  // everyone may read. Both sit at the seat's edge, inside its hand.
+  const mine = seats.map((seat, i) => ({
+    id: `mine:${seat}`,
+    kind: 'area' as const,
+    name: `Framför ${seat}`,
+    visibility: 'owner' as const,
+    owner: seat,
+    geometry: inFront(i, seats.length),
+    shortcut: { label: 'Framför mig', at: 'top' as const },
+  }))
+  const counters = seats.map((seat, i) => ({
+    id: `counters:${seat}`,
+    kind: 'area' as const,
+    name: `Räknare ${seat}`,
+    visibility: 'all' as const,
+    owner: seat,
+    geometry: countersAt(i, seats.length),
   }))
   const ids = new Set<string>()
   const rows = state.rows.map((row, i) => {
@@ -42,10 +63,47 @@ export function buildProject(state: WizardState): ProjectDoc {
         { id: 'table', kind: 'area', name: 'Spelyta', visibility: 'all', geometry: rect(-600, -400, 1200, 800) },
         { id: 'draw', kind: 'pile', name: 'Draghög', visibility: 'none', geometry: point(-140, 0), shortcut: { label: 'Lägg underst', at: 'bottom' } },
         { id: 'discard', kind: 'pile', name: 'Kasthög', visibility: 'all', geometry: point(140, 0), shortcut: { label: 'Kasta', at: 'top' } },
+        ...mine,
+        ...counters,
         ...hands,
       ],
+      counters: state.counters ?? DEFAULT_COUNTERS,
     },
   }
+}
+
+// The area in front of a seat lies just inside its hand; its counters sit beside that area.
+function inFront(i: number, count: number) {
+  const hand = handGeometry(i, count)
+  const edge = edgeOf(i, count)
+  switch (edge) {
+    case 'N':
+      return rect(hand.x, hand.y + hand.h + 10, 380, 100)
+    case 'E':
+      return rect(hand.x - 110, hand.y, 100, 380)
+    case 'W':
+      return rect(hand.x + hand.w + 10, hand.y, 100, 380)
+    default:
+      return rect(hand.x, hand.y - 110, 380, 100)
+  }
+}
+function countersAt(i: number, count: number) {
+  const hand = handGeometry(i, count)
+  const edge = edgeOf(i, count)
+  switch (edge) {
+    case 'N':
+      return rect(hand.x + 390, hand.y + hand.h + 10, 110, 100)
+    case 'E':
+      return rect(hand.x - 110, hand.y + 390, 100, 110)
+    case 'W':
+      return rect(hand.x + hand.w + 10, hand.y + 390, 100, 110)
+    default:
+      return rect(hand.x + 390, hand.y - 110, 110, 100)
+  }
+}
+function edgeOf(i: number, count: number): 'N' | 'E' | 'S' | 'W' {
+  const edges = count <= 2 ? ['S', 'N'] : count === 3 ? ['S', 'N', 'E'] : ['S', 'N', 'E', 'W', 'S', 'N', 'E', 'W']
+  return (edges[i] ?? 'S') as 'N' | 'E' | 'S' | 'W'
 }
 
 // Hands go S, N, E, W, then the corners, so two players face each other.

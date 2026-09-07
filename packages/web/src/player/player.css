@@ -27,7 +27,7 @@
 }
 
 .byd-player {
-  height: 100vh; display: grid; grid-template-rows: auto 1fr auto auto;
+  height: 100vh; display: grid; grid-template-rows: auto auto 1fr auto auto auto;
   background: var(--byd-bg); color: var(--byd-ink); font-family: system-ui, sans-serif;
 }
 /* The row wraps rather than shrink its controls below a thumb's width at 320px; who you are
@@ -46,6 +46,25 @@
   background: var(--byd-control); color: var(--byd-ink-strong); font-size: 13px; font-weight: 700;
 }
 .byd-player > header button:disabled { opacity: 0.35; }
+
+/* Counters (C4): a row of pills under the head; tap the sides to count, the number to type. */
+.byd-counters { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; padding: 10px 16px 0; }
+.byd-counter { display: grid; grid-template-columns: 34px 1fr 34px; align-items: center; background: var(--byd-surface); border-radius: 14px; overflow: hidden; }
+.byd-counter button { min-height: 44px; border: 0; padding: 0; background: var(--byd-control); color: var(--byd-ink-strong); font-size: 18px; font-weight: 800; }
+.byd-counter > div { display: grid; text-align: center; padding: 4px 6px; }
+.byd-counter b { font-size: 18px; color: var(--byd-ink-strong); line-height: 1; }
+.byd-counter span { font-size: 11px; color: var(--byd-ink-muted); text-transform: uppercase; letter-spacing: 1px; }
+
+/* The cards in front of you (C4): a smaller strip above the hand, each with its actions. */
+.byd-mine { padding: 6px 16px 0; }
+.byd-mine h2 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--byd-ink-muted); font-weight: 600; }
+.byd-mine-strip { display: flex; gap: 10px; overflow-x: auto; }
+.byd-mine-card { position: relative; flex: 0 0 150px; border-radius: 10px; padding: 10px; box-sizing: border-box; background: hsl(var(--hue, 0) var(--byd-card-face-s) var(--byd-card-face-l)); color: var(--byd-card-ink); display: grid; gap: 6px; overflow: hidden; }
+.byd-mine-card[data-face='back'] { background: repeating-linear-gradient(45deg, #3a4d7a, #3a4d7a 4px, #2f4068 4px, #2f4068 8px); color: #fff; }
+.byd-mine-card strong { font-size: 14px; position: relative; }
+.byd-mine-actions { display: flex; flex-wrap: wrap; gap: 4px; position: relative; }
+.byd-mine-actions button { min-height: 32px; border: 0; border-radius: 8px; padding: 0 8px; background: rgba(0, 0, 0, 0.55); color: #fff; font-size: 11px; font-weight: 700; }
+.byd-mine-empty { color: var(--byd-ink-quiet); font-size: 12px; margin: 4px 0; }
 
 .byd-summary { padding: 14px 18px; overflow: auto; font-size: 13px; color: var(--byd-ink-muted); }
 .byd-summary-zones { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }

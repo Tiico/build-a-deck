@@ -1,10 +1,10 @@
-import { CARD_STANDARD_63x88, TypeRegistry, apply, counterIds, decide, initialState, project, replay, seededRng, type DecideDeps } from '@byd/engine'
+import { TypeRegistry, apply, counterIds, decide, initialState, project, replay, seededRng, type DecideDeps, STANDARD_TYPES } from '@byd/engine'
 import type { Applied, Intent, Snapshot } from '@byd/protocol'
 import { twoSeatSetup } from './fixture.js'
 
 // A small table for view tests, produced by the real engine: A holds two cards, one card
 // lies face-up on the table, one face-down, three in the discard, the rest in the draw pile.
-export const registry = new TypeRegistry([CARD_STANDARD_63x88])
+export const registry = new TypeRegistry(STANDARD_TYPES)
 
 export function buildScene() {
   const initial = initialState('v1', twoSeatSetup(), registry)

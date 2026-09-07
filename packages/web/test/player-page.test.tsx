@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { TableClient } from '../src/client.js'
 import { PlayerPage } from '../src/player/PlayerPage.js'
-import { admit, asSeat, asTable, createSession, roomOf, startServer, type Running } from './fixture.js'
+import { admit, asSeat, asTable, createSession, roomOf, seatSetup, startServer, type Running } from './fixture.js'
 
 let run: Running
 beforeEach(async () => {
@@ -261,5 +261,49 @@ describe('saving the session to an account (G1)', () => {
     expect(url.searchParams.get('token')).toBe(token)
     expect(url.searchParams.get('server')).toBe(run.http)
     table.close()
+  })
+})
+
+describe('counters and the area in front of you (C4)', () => {
+  it('shows the seat\'s counters as a row and counts with a tap; the log carries setCounter', async () => {
+    const id = await createSession(run, 's1', undefined, seatSetup())
+    await open(id, 'A', 'Ada')
+    const liv = await screen.findByText('Liv', { selector: '[data-counter="Liv"] span' })
+    expect(liv.parentElement?.querySelector('b')?.textContent).toBe('20')
+    fireEvent.click(screen.getByRole('button', { name: 'Liv minus' }))
+    await waitFor(() => expect(screen.getByText('19', { selector: '[data-counter="Liv"] b' })).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Guld plus' }))
+    await waitFor(() => expect(screen.getByText('4', { selector: '[data-counter="Guld"] b' })).toBeTruthy())
+    const log = await run.store.read(id)
+    expect(log.at(-1)).toMatchObject({ by: 'A', intent: { v: 'setCounter', value: 4 } })
+    // The other seat's counters are not this phone's to change, nor listed as zones to play to.
+    expect(screen.getAllByRole('button', { name: /minus/ })).toHaveLength(2)
+    expect(document.querySelectorAll('[data-counter]')).toHaveLength(2)
+    expect(document.querySelector('[data-zone-summary="counters:B"]')).toBeNull()
+  })
+
+  it('shows the cards in front of you as a strip with take up, flip and play, and hides the other seat\'s', async () => {
+    const id = await createSession(run, 's1', undefined, seatSetup())
+    const token = await open(id, 'A', 'Ada')
+    const me = TableClient.connect({ url: run.url, sessionId: id, seat: 'A', token })
+    await me.ready()
+    await me.send({ v: 'draw', from: 'draw', to: 'mine:A', count: 2 })
+    const mine = await waitFor(() => {
+      const cards = document.querySelectorAll('[data-mine-card]')
+      expect(cards).toHaveLength(2)
+      return cards
+    })
+    expect(screen.getByText(/Framför dig · 2/)).toBeTruthy()
+    fireEvent.click(mine[0]!.querySelector('button[data-act="flip"]')!)
+    await waitFor(() => expect(document.querySelector('[data-mine-card][data-face="front"]')).toBeTruthy())
+    fireEvent.click(document.querySelector('[data-mine-card] button[data-act="take"]')!)
+    await waitFor(() => expect(document.querySelectorAll('[data-mine-card]')).toHaveLength(1))
+    expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1)
+    fireEvent.click(document.querySelector('[data-mine-card] button[data-act="play"]')!)
+    expect(await screen.findByRole('dialog', { name: 'Spela till' })).toBeTruthy()
+    const targets = screen.getAllByRole('button').map((b) => b.textContent ?? '')
+    expect(targets.some((t) => t.startsWith('Framför mig'))).toBe(true)
+    expect(targets.some((t) => t.includes('Framför B'))).toBe(false)
+    me.close()
   })
 })

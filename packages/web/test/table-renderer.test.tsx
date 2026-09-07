@@ -466,3 +466,17 @@ describe('where a seat has its name (B)', () => {
     expect(document.querySelector('[data-zone="hand:A"] .byd-hand-count')!.textContent).toBe('2')
   })
 })
+
+describe('counters on the table (C4)', () => {
+  it('draws a counter token as a chip with its name and value, never as a card', () => {
+    const { view } = buildScene()
+    const v = view(null)
+    const chip = { id: 'k1', type: { id: 'token.counter', version: 1 }, zone: 'table', face: 'front', x: 10, y: 10, rot: 0, counter: 17, cardRef: 'Liv' }
+    render(<TableRenderer view={{ ...v, components: [...v.components, chip] }} mode="tv" scale={1} />)
+    const el = document.querySelector('[data-counter-token="k1"]')!
+    expect(el).toBeTruthy()
+    expect(el.textContent).toContain('17')
+    expect(el.textContent).toContain('Liv')
+    expect(document.querySelector('[data-component="k1"]')).toBeNull()
+  })
+})

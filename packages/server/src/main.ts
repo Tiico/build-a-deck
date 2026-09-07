@@ -1,4 +1,4 @@
-import { CARD_STANDARD_63x88, TypeRegistry } from '@byd/engine'
+import { TypeRegistry, STANDARD_TYPES } from '@byd/engine'
 import { TableHost } from './actor.js'
 import { createServer } from './server.js'
 import { MemoryLogStore, type LogStore } from './store.js'
@@ -28,7 +28,7 @@ const idleEvictMs = Number(process.env['IDLE_EVICT_MS'] ?? 30 * 60 * 1000)
 const databaseUrl = process.env['DATABASE_URL']
 const idleEndMs = Number(process.env['IDLE_END_MS'] ?? 24 * 3600 * 1000)
 
-const registry = new TypeRegistry([CARD_STANDARD_63x88])
+const registry = new TypeRegistry(STANDARD_TYPES)
 const objects = assetsFromEnv(process.env)
 
 let store: LogStore

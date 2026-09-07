@@ -46,6 +46,9 @@ const HOLD_MS = 350
 const POINT_MS = 450
 const DRAG_MM = 4
 const TABLE_GREY = '#8a93a8'
+// A counter token (C4) is drawn as a chip, not a card.
+const COUNTER_TYPE = 'token.counter'
+const TOKEN_MM = 24
 // How much room the felt leaves around itself in table mode, as a share of the frame's shorter
 // side: prototype B's proportion. 0.16 puts the table at 0.85 of life size on a 1600 × 1000
 // screen — the scale B was approved at — and keeps that proportion on any other screen (K9).
@@ -323,6 +326,14 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           {loose.map((c) => {
             const a = absoluteOf(view, c)
             const m = moving.has(c.id)
+            if (c.type.id === COUNTER_TYPE) {
+              return (
+                <div key={c.id} className="byd-token" data-counter-token={c.id} style={{ position: 'absolute', left: left(a.x), top: top(a.y), width: px(TOKEN_MM), height: px(TOKEN_MM) }}>
+                  <b>{c.counter ?? 0}</b>
+                  <span>{c.cardRef ?? ''}</span>
+                </div>
+              )
+            }
             return (
               <Card
                 key={c.id}

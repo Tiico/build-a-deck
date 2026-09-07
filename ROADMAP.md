@@ -85,7 +85,7 @@ Målet är att en grupp kan spela vilket kortspel som helst utan att sakna någo
 
 - ✅ Kamera i TV-läge: bordet ramar in det som är i spel och glider med, tillfällig zoom kring pekaren med återgång (C5).
 - ✅ Högens topp som adress i `stack` och `flip`, så att översta kortet i en dold hög kan staplas på ett löst kort och vändas; ett uppvänt kort överst i en hög ses av alla (K15).
-- ⬜ Räknare och privata zoner på telefonen utöver handen (C4).
+- ✅ Räknare och privata zoner på telefonen: en räknartyp `token.counter`, en yta "Framför mig" och en räknarzon per plats från wizarden; telefonen visar räknarna som piller och korten framför sig som en remsa med vänd, ta upp och spela; bordet ritar räknare som brickor (C4).
 - ✅ Aktivitetshistorik i snapshoten: de senaste femtio raderna följer med vid anslutning, så en skärm som ansluter mitt i ett spel ser vad som hänt (I, teknik).
 - ⬜ Hur en hög i en area visas med blandad orientering, och om zonrektanglar får överlappa (I, spelupplevelse).
 - ✅ Rumskoder: sex tecken utan förväxlingsbara, går ut tre timmar efter senaste anslutning, köper tokens för plats och observatör; bordet öppnas med värdnyckel; värden roterar koden och sparkar från editorn (DRIFT §9, G1 följdkrav).

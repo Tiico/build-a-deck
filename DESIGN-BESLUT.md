@@ -185,6 +185,12 @@ Fullt bord går att fälla ut vid behov.
 Följdkrav:
 Zonnamn måste vara begripliga utan att man ser bordet.
 
+Räknare och privata zoner (prototypat och byggt 2026-09-07):
+En räknare är en komponent av en egen typ, `token.counter` (B1, B2), med ett värde och en yta; `setCounter` är dess verb och protokollet är orört.
+Wizarden ger varje plats en yta "Framför mig" som bara ägaren ser och en räknarzon som alla ser, med räknarna ur en lista (en poängräknare som standard).
+Tre varianter prövades för telefonen; valet blev staplat: räknarna som piller under huvudet, bordsöversikten som förut, korten framför dig som en mindre remsa ovanför handen med vänd, ta upp och spela. Bordet ritar en räknare som en bricka med värdet.
+Arket och översikten erbjuder aldrig en annan plats privata yta, och aldrig en zon som bara håller räknare.
+
 Byggt 2026-09-07: en zon kan bära en genväg (`shortcut`) med verbet telefonen visar och var i en hög kortet hamnar, överst eller underst; utan genväg visar telefonen zonens namn.
 Wizarden ger draghögen "Lägg underst" och kasthögen "Kasta". Editorns flik "Bord" redigerar namn och genvägar för varje zon som inte är en hand, med telefonens ark som förhandsvisning; hela setup-editorn (zoner, platser, geometri) är fortfarande fas 2.
 

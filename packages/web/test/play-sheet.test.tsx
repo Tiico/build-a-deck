@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { PlaySheet } from '../src/player/PlaySheet.js'
+import { PlaySheet, targetsOf } from '../src/player/PlaySheet.js'
 import { buildScene } from './scene.js'
 
 describe('PlaySheet (C4 zone shortcuts)', () => {
@@ -40,5 +40,19 @@ describe('PlaySheet (C4 zone shortcuts)', () => {
 
     expect(onClose).toHaveBeenCalledOnce()
     expect(onPlay).not.toHaveBeenCalled()
+  })
+})
+
+describe('what is not a target (C4)', () => {
+  it('leaves out another seat\'s private area and any zone that holds only counters, and keeps one\'s own area', () => {
+    const { view } = buildScene()
+    const v = view('A')
+    const zone = (id: string, owner: string) => ({ mode: 'order' as const, id, kind: 'area' as const, name: id, geometry: { x: 0, y: 0, w: 10, h: 10, rot: 0 }, dynamic: false, owner, order: [] as string[] })
+    const counter = { id: 'k1', type: { id: 'token.counter', version: 1 }, zone: 'counters:B', face: 'front', x: 0, y: 0, rot: 0, counter: 20, cardRef: 'Liv' }
+    const more = { ...v, zones: [...v.zones, zone('mine:A', 'A'), zone('mine:B', 'B'), { ...zone('counters:B', 'B'), order: ['k1'] }], components: [...v.components, counter] }
+    const ids = targetsOf(more).map((t) => t.id)
+    expect(ids).toContain('mine:A')
+    expect(ids).not.toContain('mine:B')
+    expect(ids).not.toContain('counters:B')
   })
 })

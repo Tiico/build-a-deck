@@ -14,10 +14,9 @@ import {
   type Sources,
   type Decision,
   type SetupDef,
-  type TableState,
-} from '../src/index.js'
+  type TableState, STANDARD_TYPES } from '../src/index.js'
 
-export const registry = new TypeRegistry([CARD_STANDARD_63x88])
+export const registry = new TypeRegistry(STANDARD_TYPES)
 export const CARD = { id: CARD_STANDARD_63x88.id, version: 1 }
 export const CARDS = ['dragon', 'knight', 'wizard', 'rogue', 'priest', 'archer', 'golem', 'witch', 'bard', 'ogre']
 export const SEATS: (SeatId | null)[] = ['A', 'B', null]

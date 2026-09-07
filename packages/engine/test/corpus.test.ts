@@ -1,14 +1,14 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { CARD_STANDARD_63x88, TypeRegistry, initialState, liftLog, project, replay } from '../src/index.js'
+import { TypeRegistry, initialState, liftLog, project, replay, STANDARD_TYPES } from '../src/index.js'
 import { anonymise, record, type CorpusEntry } from '../scripts/corpus.js'
 import { Harness } from './fixture.js'
 
 // The replay corpus (DRIFT §7): real logs that must replay identically, and project identically
 // for every viewer, on every commit. This is the gate; there is no staging.
 const dir = join(import.meta.dirname, '../../../corpus')
-const registry = new TypeRegistry([CARD_STANDARD_63x88])
+const registry = new TypeRegistry(STANDARD_TYPES)
 const files = readdirSync(dir).filter((f) => f.endsWith('.json'))
 
 describe('the replay corpus', () => {

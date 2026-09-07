@@ -4,6 +4,7 @@ import { useTableClient } from '../table/useTableClient.js'
 import { hue } from '../table/hue.js'
 import { Texture } from '../table/Texture.js'
 import { HandStrip } from './HandStrip.js'
+import { CountersRow, MineStrip } from './SeatExtras.js'
 import { PlaySheet } from './PlaySheet.js'
 import { TableSummary } from './TableSummary.js'
 import { SessionButtons, SessionOverlays, refusedText, useSessionVersion, useToast } from './SessionOverlays.js'
@@ -43,6 +44,7 @@ export function PlayerPage() {
 
   const me = view.seats.find((s) => s.id === seat)
   const hand = view.components.filter((c) => c.zone === `hand:${seat}`)
+  // A lifted card is played alone unless it is one of the selected hand cards (K3).
   const toPlay = lifted ? (selected.has(lifted.id) ? hand.filter((c) => selected.has(c.id)) : [lifted]) : []
 
   const play = (zone: string, at: 'top' | 'bottom') => {
@@ -65,7 +67,15 @@ export function PlayerPage() {
         <span>{hand.length} kort</span>
         <SessionButtons client={client} view={view} onSheet={setSheet} />
       </header>
+      <CountersRow view={view} onSet={(c, value) => void client.send({ v: 'setCounter', component: c.id, value })} />
       <TableSummary view={view} activity={activity} />
+      <MineStrip
+        view={view}
+        faces={faces}
+        onFlip={(c) => void client.send({ v: 'flip', component: c.id, face: c.face === 'front' ? 'back' : 'front' })}
+        onTake={(c) => void client.send({ v: 'move', component: c.id, to: `hand:${seat}` })}
+        onPlay={setLifted}
+      />
       <HandStrip view={view} selected={selected} faces={faces} onTap={setInspect} onHold={toggle} onLift={setLifted} />
       <p className="byd-hint">
         {selected.size > 0 ? `${selected.size} valda · dra upp för att spela` : 'tryck = titta · dra upp = spela · håll = välj flera'}

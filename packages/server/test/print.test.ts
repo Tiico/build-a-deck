@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { CARD_STANDARD_63x88, TypeRegistry, type SetupDef } from '@byd/engine'
+import { CARD_STANDARD_63x88, TypeRegistry, type SetupDef, STANDARD_TYPES } from '@byd/engine'
 import type { Deck } from '../src/faces.js'
 import { printExportOf } from '../src/faces.js'
 
-const registry = new TypeRegistry([CARD_STANDARD_63x88])
+const registry = new TypeRegistry(STANDARD_TYPES)
 const type = { id: CARD_STANDARD_63x88.id, version: CARD_STANDARD_63x88.version }
 
 const deck: Deck = {
