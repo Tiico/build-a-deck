@@ -1,0 +1,184 @@
+/* PROTOTYPE — one family of error, empty and connection states (#12, #7).
+
+   The palette is the app's own: player.css tokens for the ground and the ink, editor.css's
+   warn/lost pairs for the two kinds of trouble. Every ink/ground pair here is checked against
+   the same 4.5:1 bar the editor and the player are held to, and every control is at least
+   44 px tall and wide, so the prototype cannot flatter itself. */
+.pe {
+  --pe-bg: #14161c;
+  --pe-surface: #1b1e27;
+  --pe-raise: #242938;
+  --pe-ink: #eef1f8;
+  --pe-quiet: #b6bfd2;
+  --pe-line: #2c3242;
+
+  /* Waiting: nothing is wrong yet. */
+  --pe-wait-bg: #1f2637;
+  --pe-wait-ink: #dfe7f7;
+  --pe-wait-edge: #6d82b5;
+
+  /* Gone: the thing you asked for is not there. Grey, because nothing is broken. */
+  --pe-gone-bg: #232733;
+  --pe-gone-ink: #e3e8f4;
+  --pe-gone-edge: #7c88a4;
+
+  /* Shut: it exists, it is not yours. Amber, a lock, not a fault. */
+  --pe-shut-bg: #3b3222;
+  --pe-shut-ink: #ffeccc;
+  --pe-shut-edge: #f0b64a;
+
+  /* Broken: the line to the service is down, or the service said no. */
+  --pe-broke-bg: #3d2632;
+  --pe-broke-ink: #ffe4ea;
+  --pe-broke-edge: #d98aa0;
+
+  /* Good again. */
+  --pe-ok-bg: #1e3327;
+  --pe-ok-ink: #d8f5e5;
+  --pe-ok-edge: #7dd3a0;
+
+  --pe-primary-bg: #7dd3a0;
+  --pe-primary-ink: #0b2a18;
+
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  background: var(--pe-bg);
+  color: var(--pe-ink);
+  font: 14px/1.5 system-ui, sans-serif;
+  overflow: hidden;
+}
+.pe *, .pe *::before, .pe *::after { box-sizing: border-box; }
+
+/* ---------- the prototype's own controls ---------- */
+.pe-rail { display: grid; gap: 8px; padding: 10px 12px; background: #0e1016; border-bottom: 1px solid var(--pe-line); }
+.pe-rail-row { display: flex; gap: 6px; align-items: center; overflow-x: auto; scrollbar-width: thin; }
+.pe-rail-row > b { font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--pe-quiet); flex: 0 0 auto; width: 58px; }
+.pe-chip { flex: 0 0 auto; min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--pe-line); background: var(--pe-raise); color: var(--pe-ink); font-size: 13px; font-weight: 600; cursor: pointer; }
+.pe-chip[aria-pressed='true'] { background: var(--pe-primary-bg); color: var(--pe-primary-ink); border-color: var(--pe-primary-bg); }
+.pe-title-line { font-size: 12px; color: var(--pe-quiet); font-family: ui-monospace, monospace; }
+
+/* ---------- the frame the mocked route lives in ---------- */
+.pe-viewport { position: relative; overflow: hidden; min-height: 0; }
+.pe-frame { position: relative; overflow: hidden; height: 100%; }
+/* A message above and the route under it, both sized by the frame rather than by guesswork. */
+.pe-frame.pe-rows { display: grid; grid-template-rows: auto 1fr; }
+.pe-under { position: relative; min-height: 0; overflow: hidden; }
+.pe-frame:not(.pe-rows) > .pe-under { position: absolute; inset: 0; }
+.pe-sp { margin-left: auto; }
+.pe-dim { color: var(--pe-quiet); }
+.pe-blank { background: #15181f; }
+.pe-tries { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 0; font-size: 13px; }
+
+/* ---------- the mocked routes ---------- */
+.pe-scene { position: relative; height: 100%; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
+/* Old data must not read as current. Half the contrast and most of the colour is enough to say
+   "this is a photograph, not a window" without hiding what someone was in the middle of. */
+.pe-scene[data-stale='true'] .pe-felt,
+.pe-scene[data-stale='true'] .pe-wall,
+.pe-scene[data-stale='true'] .pe-phone { opacity: 0.4; filter: grayscale(0.85); }
+/* Nothing here is real — not even the room code in the header — so the whole route goes quiet. */
+.pe-scene[data-void] { opacity: 0.3; filter: grayscale(1); }
+.pe-scene header { display: flex; gap: 10px; align-items: center; padding: 12px 16px; background: #0f1116; border-bottom: 1px solid var(--pe-line); }
+.pe-scene header strong { font-size: 18px; letter-spacing: 2px; }
+.pe-scene header .pe-sp { margin-left: auto; }
+.pe-scene footer { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 12px 16px; background: #0f1116; border-top: 1px solid var(--pe-line); }
+/* The felt spreads its cards to the edges, so a message standing in the middle of the table
+   still leaves the table itself visible around it — the point being that you can see the old
+   picture and see that it is old at the same time. */
+.pe-felt { background: radial-gradient(circle at 50% 45%, #23603f, #14301f); display: flex; flex-direction: column; justify-content: space-between; gap: 12px; padding: 20px 24px; }
+.pe-felt-row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
+.pe-card { width: 84px; height: 118px; border-radius: 8px; background: #f4ead8; color: #1c1c1c; padding: 8px; font-size: 11px; font-weight: 700; box-shadow: 0 4px 12px rgb(0 0 0 / 40%); flex: 0 0 auto; }
+.pe-pile { width: 84px; height: 118px; border-radius: 8px; background: #2f4068; color: #e6eefc; display: grid; place-items: center; font-size: 11px; text-align: center; flex: 0 0 auto; }
+.pe-hand { background: #101319; display: flex; gap: 8px; align-items: flex-end; justify-content: center; padding: 16px 8px; overflow-x: auto; }
+/* The phone shows a slice of the table above its own hand, so "det du ser är gammalt" has
+   something to be about. */
+.pe-mini { background: radial-gradient(circle at 50% 40%, #23603f, #14301f); display: flex; gap: 10px; align-items: center; justify-content: center; padding: 14px; }
+.pe-mini .pe-card, .pe-mini .pe-pile { width: 62px; height: 88px; }
+.pe-phone { display: grid; grid-template-rows: 1fr auto; min-height: 0; }
+.pe-wall { background: #191c23; display: flex; flex-wrap: wrap; gap: 10px; align-content: flex-start; padding: 16px; overflow: auto; }
+.pe-wall .pe-card { width: 70px; height: 98px; }
+
+.pe-btn { min-height: 44px; min-width: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--pe-line); background: var(--pe-raise); color: var(--pe-ink); font-size: 14px; font-weight: 600; cursor: pointer; }
+.pe-btn[data-primary] { background: var(--pe-primary-bg); color: var(--pe-primary-ink); border-color: var(--pe-primary-bg); }
+.pe-btn:focus-visible { outline: 3px solid #7dd3a0; outline-offset: 2px; }
+
+/* ---------- the besked itself, in its three placements ---------- */
+.pe-besked { display: grid; gap: 10px; }
+.pe-besked h2 { margin: 0; font-size: 20px; line-height: 1.25; }
+.pe-besked p { margin: 0; color: inherit; opacity: 0.92; max-width: 46ch; }
+.pe-besked h2:focus-visible { outline: 3px solid currentcolor; outline-offset: 4px; }
+.pe-besked.pe-tight { gap: 2px; }
+.pe-besked.pe-tight h2 { font-size: 15px; }
+.pe-besked.pe-tight p { font-size: 13px; }
+.pe-acts { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 2px; }
+.pe-mark { font-size: 12px; font-weight: 800; letter-spacing: 1.6px; text-transform: uppercase; }
+
+.pe-tone-vänta { background: var(--pe-wait-bg); color: var(--pe-wait-ink); border-color: var(--pe-wait-edge); }
+.pe-tone-saknas { background: var(--pe-gone-bg); color: var(--pe-gone-ink); border-color: var(--pe-gone-edge); }
+.pe-tone-stängd { background: var(--pe-shut-bg); color: var(--pe-shut-ink); border-color: var(--pe-shut-edge); }
+.pe-tone-brutet { background: var(--pe-broke-bg); color: var(--pe-broke-ink); border-color: var(--pe-broke-edge); }
+.pe-tone-ok { background: var(--pe-ok-bg); color: var(--pe-ok-ink); border-color: var(--pe-ok-edge); }
+
+/* A — the whole view */
+.pe-full { position: absolute; inset: 0; display: grid; place-content: center; justify-items: start; gap: 14px; padding: 28px; border: 0; }
+.pe-full h2 { font-size: 26px; }
+
+/* B — one strip that is always there */
+.pe-strip { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; padding: 12px 16px; border-bottom: 2px solid; }
+.pe-strip h2 { font-size: 15px; }
+.pe-strip p { font-size: 13px; }
+.pe-strip .pe-acts { margin-left: auto; }
+.pe-strip-empty { min-height: 4px; background: #0e1016; }
+
+/* C — a card on the felt, a sheet on the phone, a bar in the editor chrome */
+.pe-card-mid { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(560px, calc(100% - 32px)); padding: 24px; border-radius: 16px; border: 2px solid; box-shadow: 0 18px 50px rgb(0 0 0 / 55%); }
+.pe-card-mid h2 { font-size: 28px; }
+.pe-card-mid p { font-size: 17px; max-width: none; }
+.pe-sheet { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom)); border-radius: 18px 18px 0 0; border: 2px solid; border-bottom: 0; box-shadow: 0 -14px 40px rgb(0 0 0 / 55%); }
+.pe-bar { padding: 10px 16px; border-bottom: 2px solid; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.pe-bar h2 { font-size: 14px; }
+.pe-bar p { font-size: 13px; }
+.pe-bar .pe-acts { margin-left: auto; }
+
+/* An inline rejection, tied to the control that caused it. */
+.pe-inline { display: inline-flex; gap: 8px; align-items: center; padding: 8px 12px; border-radius: 10px; border: 1px solid; font-size: 13px; font-weight: 600; }
+
+/* A control that has just been refused. */
+.pe-refused { box-shadow: 0 0 0 2px var(--pe-broke-edge); }
+
+/* ---------- waiting, without motion carrying meaning ---------- */
+.pe-spin { width: 22px; height: 22px; flex: 0 0 auto; border-radius: 50%; border: 3px solid currentcolor; border-top-color: transparent; animation: pe-turn 900ms linear infinite; }
+@keyframes pe-turn { to { transform: rotate(360deg); } }
+.pe-countdown { display: inline-flex; gap: 8px; align-items: center; font-variant-numeric: tabular-nums; font-weight: 700; }
+
+/* a11y.css already stills every animation on `reduce`, which would leave the ring standing there
+   pretending to spin. So the ring is replaced by a dashed, honestly static one, and the wait is
+   carried by the words and by the counter, which changes value rather than moves. */
+@media (prefers-reduced-motion: reduce) {
+  .pe-spin { border-style: dashed; border-top-color: currentcolor; opacity: 0.75; }
+}
+
+/* ---------- contact sheet (?alla=1): every state of one variant at once ---------- */
+/* The sheet is a document, not a viewport: it grows and the page scrolls, so nine states can be
+   looked at side by side (and screenshotted in one go). */
+.pe[data-sheet] { position: static; display: block; min-height: 100%; overflow: visible; }
+.pe-sheetgrid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); padding: 14px; align-content: start; }
+.pe-cell { margin: 0; border: 1px solid var(--pe-line); border-radius: 12px; overflow: hidden; background: #0f1116; }
+.pe-cell > figcaption { padding: 8px 12px; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--pe-quiet); border-bottom: 1px solid var(--pe-line); }
+.pe-cell > .pe-frame { height: 340px; }
+
+@media (max-width: 700px) {
+  .pe-sheetgrid { grid-template-columns: 1fr; }
+  /* The prototype's own controls must not eat the phone it is meant to show. */
+  .pe-rail { padding: 8px; gap: 6px; }
+  .pe-rail-row > b { width: 40px; font-size: 10px; letter-spacing: 1px; }
+  .pe-chip { min-height: 40px; padding: 0 11px; font-size: 12px; }
+  .pe-title-line { display: none; }
+  .pe-full { padding: 20px; }
+  .pe-full h2 { font-size: 22px; }
+  .pe-card-mid h2 { font-size: 22px; }
+  .pe-card-mid p { font-size: 15px; }
+  .pe-strip .pe-acts, .pe-bar .pe-acts { margin-left: 0; }
+}

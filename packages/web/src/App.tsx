@@ -8,6 +8,7 @@ import { NewProjectPage } from './wizard/NewProjectPage.js'
 import { HomePage } from './account/HomePage.js'
 import { LoginPage } from './account/LoginPage.js'
 import { GroupsPrototype } from './prototype/groups/index.js'
+import { ErrorsPrototype } from './prototype/errors/index.js'
 import { TextureFailures } from './table/TextureFailures.js'
 
 // Routing is a path check for now; a router arrives with the first real page.
@@ -19,6 +20,7 @@ export function App() {
 // only place that is mounted exactly once whichever route is showing.
 function route() {
   if (location.pathname.startsWith('/prototype/groups')) return <GroupsPrototype />
+  if (location.pathname.startsWith('/prototype/errors')) return <ErrorsPrototype />
   if (location.pathname === '/table') return <TablePage />
   if (location.pathname === '/play') return <PlayerPage />
   if (location.pathname === '/join') return <JoinPage />
