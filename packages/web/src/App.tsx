@@ -7,6 +7,7 @@ import { OnlinePage } from './online/OnlinePage.js'
 import { NewProjectPage } from './wizard/NewProjectPage.js'
 import { HomePage } from './account/HomePage.js'
 import { LoginPage } from './account/LoginPage.js'
+import { CameraPrototype } from './prototype/camera/index.js'
 import { TablePrototype } from './prototype/table-ref/index.js'
 import { TableEditorPrototype } from './prototype/datatable/index.js'
 import { CanvasPrototype } from './prototype/canvas/index.js'
@@ -20,6 +21,7 @@ export function App() {
   if (location.pathname.startsWith('/prototype/canvas')) return <CanvasPrototype />
   if (location.pathname.startsWith('/prototype/editor-nav')) return <EditorNavPrototype />
   if (location.pathname.startsWith('/prototype/groups')) return <GroupsPrototype />
+  if (location.pathname.startsWith('/prototype/camera')) return <CameraPrototype />
   if (location.pathname === '/table') return <TablePage />
   if (location.pathname === '/play') return <PlayerPage />
   if (location.pathname === '/join') return <JoinPage />

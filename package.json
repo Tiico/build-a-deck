@@ -5,6 +5,7 @@
   "packageManager": "pnpm@11.24.0",
   "scripts": {
     "test": "pnpm -r --workspace-concurrency=1 test",
+    "proto": "pnpm --filter @byd/web dev --open /prototype/camera?variant=A",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
     "dev:web": "pnpm --filter @byd/web dev",
