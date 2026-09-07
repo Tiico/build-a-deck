@@ -9,6 +9,7 @@ import { refusedText } from '../player/SessionOverlays.js'
 import { FlagSheet } from '../player/SessionSheets.js'
 import { Survey } from '../player/Survey.js'
 import { submitSurvey } from '../player/surveyApi.js'
+import { claimUrl } from '../account/api.js'
 
 // /observe?session=…&name=Eva&server=ws://…
 // The observer (C8): sees every hand and every hidden pile, is announced to everyone, and can
@@ -65,7 +66,7 @@ export function ObserverPage() {
           onClose={() => setSheet(false)}
         />
       )}
-      {view.ended && <Survey who={name} version={version ?? '…'} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat: null, observer: true, answers })} />}
+      {view.ended && <Survey saveUrl={token ? claimUrl(token, params.get('server')) : null} who={name} version={version ?? '…'} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat: null, observer: true, answers })} />}
     </div>
   )
 }

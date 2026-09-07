@@ -491,7 +491,12 @@ Skaparen loggar in med en magisk länk (DRIFT §11): `POST /auth/login` mejlar e
 Projekt som skapas med konto tillhör kontot: bara ägaren läser, skriver, listar och startar bord; projekt från före konton förblir öppna.
 Startsidan `/` är inloggningskortet tills länken följts, sedan "Mina spel" som ett rutnät av spelkort med "Nytt spel"; editorn och wizarden skickar vidare till `/login?next=` vid 401. Ett inskickat wizardutkast och dess mål bevaras under auth-rundan i samma flik och återupptas automatiskt efter login, så att skaparen inte behöver bygga spelet två gånger.
 Gäster loggar aldrig in: bord, telefon, distansvy och observatör nås med rumskod; inloggningskortet säger det.
-Att claima en gästsession till ett konto, passkeys och OAuth återstår.
+Passkeys och OAuth återstår.
+
+Claimat (prototypat och byggt 2026-09-07):
+Gästens admission, den token telefonen spelade under (DRIFT §9), är det som claimas: `POST /guests/claim` med kontots kaka knyter den till kontot, en gång, och 409 om ett annat konto redan har den.
+Telefonen erbjuder "Spara till ditt konto" i enkäten när sessionen är slut; länken går via inloggningskortet till `/claim`, som sedan landar på startsidan med ett besked.
+Tre varianter prövades för startsidan; valet blev två rutnät: egna spel först som förut, sedan "Bord du spelat vid" med platsens färg, spelet, namnet man spelade under, enkät och flaggor, och "Tillbaka till bordet" medan det pågår och koden lever. En ren gäst utan egna spel ser "Nytt spel" som inbjudan ovanför sina bord.
 
 ### G2. Kommunikation: ingen inbyggd röst (fråga 19)
 

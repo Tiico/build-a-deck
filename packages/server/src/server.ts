@@ -63,6 +63,27 @@ const DeckBody = z.object({
 // Buying admission (DRIFT §9): a name, and a seat to sit at or none to watch.
 const JoinBody = z.object({ name: z.string().trim().min(1).max(64), seat: z.string().min(1).optional() })
 const KickBody = z.object({ seat: z.string().min(1) })
+const ClaimBody = z.object({ token: z.string().min(1) })
+
+// The tables an account sat at (G1), newest first, each with what came of it: the game's name,
+// whether it ended, whether the survey was answered from that seat, how many moments were flagged
+// from it, and the code to come back by while the table is open and the code lives.
+export type Played = { session: string; seat: string | null; name: string; kind: 'seat' | 'observer'; at: string; game: string | null; version: string; ended: boolean; surveyed: boolean; flags: number; code?: string }
+async function playedBy(opts: ServerOptions, accountId: string): Promise<Played[]> {
+  const out: Played[] = []
+  for (const g of await opts.store.guestsOf(accountId)) {
+    const session = await opts.store.loadSession(g.sessionId)
+    if (!session) continue
+    const project = session.project && opts.projects ? await opts.projects.load(session.project) : null
+    const log = await opts.store.read(g.sessionId)
+    const ended = log.some((l) => l.intent.v === 'session.end')
+    const flags = log.filter((l) => l.intent.v === 'flag' && (g.kind === 'seat' ? l.by === g.seat : l.intent.observer === g.name)).length
+    const surveyed = opts.surveys ? (await opts.surveys.list(g.sessionId)).some((s) => (g.kind === 'seat' ? s.seat === g.seat : s.observer === true && s.who === g.name)) : false
+    const codeLives = session.code !== undefined && session.codeExpiresAt !== undefined && Date.parse(session.codeExpiresAt) > clock(opts).getTime()
+    out.push({ session: g.sessionId, seat: g.seat, name: g.name, kind: g.kind, at: g.issuedAt, game: project?.name ?? null, version: session.version, ended, surveyed, flags, ...(!ended && codeLives && session.code ? { code: session.code } : {}) })
+  }
+  return out
+}
 
 // Who may control a table (DRIFT §9): whoever holds the host key, or the account that owns the
 // project it was started from. 'unknown' has shown nothing; 'wrong' has shown a key that is not it.
@@ -230,6 +251,24 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       if (!issued) return json(res, 409, { error: `seat ${body.seat} is reserved` })
       return json(res, 201, { session: found.id, token: guestToken })
     }
+    // Claiming a guest session to an account afterwards (G1): the admission the phone played under
+    // becomes the account's, and with it the seat, the name, the flags and the survey.
+    if (req.method === 'POST' && url.pathname === '/guests/claim') {
+      if (!opts.auth) return json(res, 404, { error: 'accounts are off' })
+      const account = await accountOf(opts.auth, req)
+      if (!account) return json(res, 401, { error: 'log in first' })
+      const { token: guestToken } = ClaimBody.parse(JSON.parse(await readBody(req)))
+      const claimed = await opts.store.claimGuest(hash(guestToken), account.id)
+      if (claimed === null) return json(res, 404, { error: 'unknown token' })
+      if (claimed === 'other') return json(res, 409, { error: 'another account has this session' })
+      return json(res, 200, { session: claimed.sessionId, seat: claimed.seat, name: claimed.name })
+    }
+    if (req.method === 'GET' && url.pathname === '/me/played') {
+      if (!opts.auth) return json(res, 404, { error: 'accounts are off' })
+      const account = await accountOf(opts.auth, req)
+      if (!account) return json(res, 401, { error: 'log in first' })
+      return json(res, 200, await playedBy(opts, account.id))
+    }
     // The host's controls (DRIFT §9): a new code, and a kick. With the host key, or the owner's cookie.
     const control = /^\/sessions\/([^/]+)\/(code|kick)$/.exec(url.pathname)
     if (req.method === 'POST' && control) {
@@ -315,7 +354,7 @@ const MIME: Record<string, string> = {
 // The built web app: hashed assets forever, everything else briefly, and the app's own routes
 // (/table, /play, …) fall back to index.html so the client can pick the page. Never a byte
 // outside the directory.
-const API_PREFIXES = ['/sessions', '/projects', '/faces', '/health', '/rooms']
+const API_PREFIXES = ['/sessions', '/projects', '/faces', '/health', '/rooms', '/guests', '/me']
 async function serveStatic(dir: string, pathname: string, res: ServerResponse): Promise<boolean> {
   // The API never falls back to the app, whatever is or is not mounted.
   if (API_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))) return false

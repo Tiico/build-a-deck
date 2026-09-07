@@ -7,6 +7,7 @@ import { HandStrip } from './HandStrip.js'
 import { PlaySheet } from './PlaySheet.js'
 import { TableSummary } from './TableSummary.js'
 import { SessionButtons, SessionOverlays, refusedText, useSessionVersion, useToast } from './SessionOverlays.js'
+import { claimUrl } from '../account/api.js'
 import { playIntents } from './play.js'
 import './player.css'
 
@@ -80,7 +81,7 @@ export function PlayerPage() {
       {lifted && (
         <PlaySheet view={view} count={toPlay.length} label={lifted.cardRef ?? ''} onPlay={play} onClose={() => setLifted(null)} />
       )}
-      <SessionOverlays client={client} view={view} seat={seat} name={me?.name ?? seat} http={faces} sessionId={sessionId} sheet={sheet} onSheet={setSheet} toast={toast} onToast={setToast} version={version} />
+      <SessionOverlays client={client} view={view} seat={seat} name={me?.name ?? seat} http={faces} sessionId={sessionId} sheet={sheet} onSheet={setSheet} toast={toast} onToast={setToast} version={version} saveUrl={token ? claimUrl(token, params.get('server')) : null} />
     </div>
   )
 }

@@ -120,6 +120,7 @@
 .byd-survey { position: fixed; inset: 0; z-index: 35; background: var(--byd-bg); color: var(--byd-ink); display: grid; grid-template-rows: auto 1fr auto; padding: 22px 20px; box-sizing: border-box; }
 .byd-survey h1 { margin: 0; font-size: 22px; }
 .byd-survey-sub { color: var(--byd-ink-muted); font-size: 13px; margin-top: 4px; }
+.byd-survey-save { display: inline-block; margin-top: 12px; color: #7dd3a0; font-weight: 700; }
 .byd-survey-q { display: grid; align-content: center; gap: 16px; }
 .byd-survey-q h2 { margin: 0; font-size: 20px; font-weight: 700; }
 .byd-survey-scale { display: flex; gap: 8px; }

@@ -227,3 +227,50 @@ describe('the owner', () => {
     expect((await post(run.http, `/sessions/${id}/kick`, { seat: 'A' }, { cookie })).status).toBe(200)
   })
 })
+
+// A guest's session, claimed to an account afterwards (G1): the admission the phone played
+// under is the thing claimed, so the seat, the name, the flags and the survey become the
+// account's, and the start page can list the tables it sat at.
+async function login(email: string): Promise<string> {
+  await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email }) })
+  const link = /\/auth\/verify\?token=\S+/.exec(run.mail.sent.at(-1)?.text ?? '')?.[0] ?? ''
+  return ((await fetch(`${run.http}${link}`, { redirect: 'manual' })).headers.get('set-cookie') ?? '').split(';')[0] ?? ''
+}
+
+describe('claiming a guest session to an account (G1)', () => {
+  it('needs a login, takes the admission once, refuses another account, and forgives the same one again', async () => {
+    const { id } = await createRoom(run.http)
+    const token = await run.admit(id, 'A', 'Ada')
+    expect((await post(run.http, '/guests/claim', { token })).status).toBe(401)
+    const bo = await login('bo@example.com')
+    const claimed = await post(run.http, '/guests/claim', { token }, { cookie: bo })
+    expect(claimed.status).toBe(200)
+    expect(await claimed.json()).toEqual({ session: id, seat: 'A', name: 'Ada' })
+    expect((await post(run.http, '/guests/claim', { token }, { cookie: bo })).status).toBe(200)
+    const cy = await login('cy@example.com')
+    expect((await post(run.http, '/guests/claim', { token }, { cookie: cy })).status).toBe(409)
+    expect((await post(run.http, '/guests/claim', { token: 'nope' }, { cookie: bo })).status).toBe(404)
+  })
+
+  it('lists the tables the account sat at, with what came of them', async () => {
+    const { id, code } = await createRoom(run.http)
+    const token = await run.admit(id, 'A', 'Ada')
+    const ada = await WireClient.connect(run.base, id, 'A', undefined, { token })
+    await ada.send('A', { v: 'seat.claim', seat: 'A', name: 'Ada' })
+    await ada.send('A', { v: 'flag', note: 'kul' })
+    const bo = await login('bo@example.com')
+    expect(await (await fetch(`${run.http}/me/played`, { headers: { cookie: bo } })).json()).toEqual([])
+    await post(run.http, '/guests/claim', { token }, { cookie: bo })
+
+    const open = (await (await fetch(`${run.http}/me/played`, { headers: { cookie: bo } })).json()) as Record<string, unknown>[]
+    expect(open).toEqual([expect.objectContaining({ session: id, seat: 'A', name: 'Ada', game: null, version: 'v1', ended: false, surveyed: false, flags: 1, code })])
+
+    await ada.send('A', { v: 'session.end' })
+    await post(run.http, `/sessions/${id}/survey`, { who: 'Ada', seat: 'A', answers: { fun: 4, clarity: 3, balance: 5, change: '' } })
+    const done = (await (await fetch(`${run.http}/me/played`, { headers: { cookie: bo } })).json()) as Record<string, unknown>[]
+    expect(done[0]).toMatchObject({ ended: true, surveyed: true, flags: 1 })
+    expect(done[0]).not.toHaveProperty('code')
+    expect((await fetch(`${run.http}/me/played`)).status).toBe(401)
+    await ada.close()
+  })
+})

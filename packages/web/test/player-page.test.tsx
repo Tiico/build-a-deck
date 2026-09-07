@@ -246,3 +246,20 @@ describe('being kicked (DRIFT §9)', () => {
     expect(document.querySelector('[data-refused]')?.getAttribute('data-refused')).toBe('kicked')
   })
 })
+
+describe('saving the session to an account (G1)', () => {
+  it('once the session has ended, the phone offers to save it, through the claim page with its token', async () => {
+    const id = await createSession(run)
+    const token = await open(id, 'A', 'Ada')
+    expect(screen.queryByText(/Spara till ditt konto/)).toBeNull()
+    const table = TableClient.connect(await asTable(run, id))
+    await table.ready()
+    await table.send({ v: 'session.end' })
+    const link = (await screen.findByRole('link', { name: /Spara till ditt konto/ })) as HTMLAnchorElement
+    const url = new URL(link.href, 'http://x')
+    expect(url.pathname).toBe('/claim')
+    expect(url.searchParams.get('token')).toBe(token)
+    expect(url.searchParams.get('server')).toBe(run.http)
+    table.close()
+  })
+})

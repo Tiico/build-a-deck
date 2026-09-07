@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url'
 import postgres from 'postgres'
 import type { Applied } from '@byd/protocol'
 import { liftLine, type SetupDef } from '@byd/engine'
-import { SeqConflictError, type Deck, type GuestRecord, type LogStore, type SessionRecord, type SessionSummary } from './store.js'
+import { SeqConflictError, type Deck, type GuestRecord, type LogStore, type SessionRecord, type SessionSummary, type PlayedRecord } from './store.js'
 import type { ProjectDoc, ProjectRecord, ProjectStore, ProjectSummary } from './projects.js'
 import type { Account, AuthStore } from './auth.js'
 
@@ -170,6 +170,25 @@ export class PostgresLogStore implements LogStore {
       : null
   }
 
+  async claimGuest(tokenHash: string, accountId: string): Promise<PlayedRecord | 'other' | null> {
+    const [row] = await this.sql<GuestRow[]>`
+      update guest_tokens set account_id = ${accountId}
+      where token_hash = ${tokenHash} and (account_id is null or account_id = ${accountId})
+      returning session_id, token_hash, kind, seat, name, issued_at, expires_at, revoked_at, account_id
+    `
+    if (row) return played(row)
+    const [taken] = await this.sql`select 1 from guest_tokens where token_hash = ${tokenHash}`
+    return taken ? 'other' : null
+  }
+
+  async guestsOf(accountId: string): Promise<PlayedRecord[]> {
+    const rows = await this.sql<GuestRow[]>`
+      select session_id, token_hash, kind, seat, name, issued_at, expires_at, revoked_at, account_id
+      from guest_tokens where account_id = ${accountId} order by issued_at desc
+    `
+    return rows.map(played)
+  }
+
   async revokeGuests(sessionId: string, seat: string | null, at: string): Promise<number> {
     const rows = await this.sql`
       update guest_tokens set revoked_at = ${at}
@@ -274,5 +293,20 @@ export class PostgresProjectStore implements ProjectStore {
       await tx`update projects set rev = ${rev}, doc = ${tx.json(doc as never)}, updated_at = now() where id = ${id}`
       return { ...doc, id, rev }
     })
+  }
+}
+
+type GuestRow = { session_id: string; token_hash: string; kind: 'seat' | 'observer'; seat: string | null; name: string; issued_at: Date; expires_at: Date; revoked_at: Date | null; account_id: string | null }
+function played(row: GuestRow): PlayedRecord {
+  return {
+    sessionId: row.session_id,
+    tokenHash: row.token_hash,
+    kind: row.kind,
+    seat: row.seat,
+    name: row.name,
+    issuedAt: row.issued_at.toISOString(),
+    expiresAt: row.expires_at.toISOString(),
+    ...(row.revoked_at ? { revokedAt: row.revoked_at.toISOString() } : {}),
+    ...(row.account_id ? { accountId: row.account_id } : {}),
   }
 }

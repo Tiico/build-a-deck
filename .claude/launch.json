@@ -25,15 +25,14 @@
     },
     {
       "name": "web-5175",
-      "runtimeExecutable": "env",
+      "runtimeExecutable": "pnpm",
       "runtimeArgs": [
-        "PORT=5175",
-        "pnpm",
         "--filter",
         "@byd/web",
         "dev"
       ],
-      "port": 5175
+      "port": 5175,
+      "autoPort": true
     },
     {
       "name": "server-r2",
@@ -52,6 +51,19 @@
         "dev"
       ],
       "port": 8090
+    },
+    {
+      "name": "server-dev",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "WEB_ORIGIN=http://localhost:5173",
+        "pnpm",
+        "--filter",
+        "@byd/server",
+        "dev"
+      ],
+      "port": 8080,
+      "autoPort": true
     }
   ]
 }

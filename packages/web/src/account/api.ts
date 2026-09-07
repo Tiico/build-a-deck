@@ -38,6 +38,31 @@ export async function myProjects(http: string): Promise<ProjectSummary[]> {
   return (await res.json()) as ProjectSummary[]
 }
 
+// A guest session claimed to the account afterwards (G1), and the tables the account sat at.
+export type Played = { session: string; seat: string | null; name: string; kind: 'seat' | 'observer'; at: string; game: string | null; version: string; ended: boolean; surveyed: boolean; flags: number; code?: string }
+export async function claimGuest(http: string, token: string): Promise<{ ok: true; session: string; seat: string | null; name: string } | { ok: false; reason: 'not-logged-in' | 'unknown' | 'other' }> {
+  const res = await fetch(`${http}/guests/claim`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token }) }))
+  if (res.status === 401) return { ok: false, reason: 'not-logged-in' }
+  if (res.status === 404) return { ok: false, reason: 'unknown' }
+  if (res.status === 409) return { ok: false, reason: 'other' }
+  if (!res.ok) throw new Error(`could not claim: ${res.status}`)
+  return { ok: true, ...((await res.json()) as { session: string; seat: string | null; name: string }) }
+}
+export async function myPlayed(http: string): Promise<Played[]> {
+  const res = await fetch(`${http}/me/played`, withCredentials())
+  if (res.status === 401) throw new Unauthorized()
+  if (!res.ok) throw new Error(`could not list played tables: ${res.status}`)
+  return (await res.json()) as Played[]
+}
+
+// The phone's way to save a session (G1): the claim page, which asks for a login first when
+// there is none. The phone names its server as a WebSocket origin; the account pages speak HTTP.
+export function claimUrl(token: string, server: string | null): string {
+  const claim = new URLSearchParams({ token })
+  if (server) claim.set('server', server.replace(/^ws/, 'http'))
+  return `/claim?${claim.toString()}`
+}
+
 // Where to log in from a page, and come back to it after.
 export function loginUrl(next: string, server: string | null): string {
   const q = new URLSearchParams({ next })

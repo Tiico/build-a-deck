@@ -50,9 +50,11 @@ export type SessionOverlaysProps = {
   toast: string | null
   onToast(msg: string): void
   version: string | null
+  // Where to save the session to an account afterwards (G1); absent without a guest token.
+  saveUrl?: string | null | undefined
 }
 
-export function SessionOverlays({ client, view, seat, name, http, sessionId, sheet, onSheet, toast, onToast, version }: SessionOverlaysProps) {
+export function SessionOverlays({ client, view, seat, name, http, sessionId, sheet, onSheet, toast, onToast, version, saveUrl }: SessionOverlaysProps) {
   const proposal = view.rewind
   const settle = (v: 'rewind.confirm' | 'rewind.reject') => {
     if (proposal) void client.send({ v, proposal: proposal.id })
@@ -80,7 +82,7 @@ export function SessionOverlays({ client, view, seat, name, http, sessionId, she
           onClose={() => onSheet(null)}
         />
       )}
-      {view.ended && <Survey who={name} version={version ?? '…'} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat, answers })} />}
+      {view.ended && <Survey who={name} version={version ?? '…'} saveUrl={saveUrl} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat, answers })} />}
       {proposal && proposal.by === seat && (
         <div className="byd-rewind-mine" data-rewind-mine>
           <span>Du föreslår att spola tillbaka. Bordet visar hur det såg ut; {whoDecides(view, proposal)} avgör.</span>

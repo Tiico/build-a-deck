@@ -12,6 +12,7 @@ import { zoneAt } from '../zones.js'
 import { CARD_MM } from '../table/drop.js'
 import { playIntents } from '../player/play.js'
 import { SessionButtons, SessionOverlays, useSessionVersion, useToast, refusedText } from '../player/SessionOverlays.js'
+import { claimUrl } from '../account/api.js'
 import { HandFan } from './HandFan.js'
 import { seatRotation, withoutHand } from './seat.js'
 
@@ -82,7 +83,7 @@ export function OnlinePage() {
         <SessionButtons client={client} view={view} onSheet={setSheet} />
       </div>
       <HandFan cards={hand} faces={http} onPlay={play} />
-      <SessionOverlays client={client} view={view} seat={seat} name={me?.name ?? seat} http={http} sessionId={sessionId} sheet={sheet} onSheet={setSheet} toast={toast} onToast={setToast} version={version} />
+      <SessionOverlays client={client} view={view} seat={seat} name={me?.name ?? seat} http={http} sessionId={sessionId} sheet={sheet} onSheet={setSheet} toast={toast} onToast={setToast} version={version} saveUrl={token ? claimUrl(token, params.get('server')) : null} />
     </div>
   )
 }

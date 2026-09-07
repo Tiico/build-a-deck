@@ -17,7 +17,9 @@ export type SessionRecord = { id: string; version: GameVersionId; setup: SetupDe
 // A guest's admission (DRIFT §9): the hash of the token a phone or an observer connects with,
 // what it admits to, and the name it was bought under. A pending admission expires unless it
 // connects and is activated; a kick or expiry sets `revokedAt`.
-export type GuestRecord = { tokenHash: string; kind: 'seat' | 'observer'; seat: string | null; name: string; issuedAt: string; expiresAt: string; revokedAt?: string }
+// `accountId` is set when the guest claims the session to an account afterwards (G1).
+export type GuestRecord = { tokenHash: string; kind: 'seat' | 'observer'; seat: string | null; name: string; issuedAt: string; expiresAt: string; revokedAt?: string; accountId?: string }
+export type PlayedRecord = GuestRecord & { sessionId: string }
 
 export type LogStore = {
   createSession(record: SessionRecord): Promise<void>
@@ -41,6 +43,11 @@ export type LogStore = {
   guestByToken(sessionId: string, tokenHash: string): Promise<GuestRecord | null>
   // Revokes every token for a seat (or every observer token, for null); returns how many.
   revokeGuests(sessionId: string, seat: string | null, at: string): Promise<number>
+  // Claiming (G1): the admission behind a token becomes the account's, once; null when there
+  // is no such token, 'other' when another account has it already.
+  claimGuest(tokenHash: string, accountId: string): Promise<PlayedRecord | 'other' | null>
+  // Every admission an account has claimed, newest first.
+  guestsOf(accountId: string): Promise<PlayedRecord[]>
 }
 
 // A table as a list can show it before anyone opens it: which session, and the moment of its
@@ -141,6 +148,25 @@ export class MemoryLogStore implements LogStore {
     if (!g || g.revokedAt !== undefined || Date.parse(g.expiresAt) <= Date.parse(now)) return null
     if (Date.parse(expiresAt) > Date.parse(g.expiresAt)) g.expiresAt = expiresAt
     return structuredClone(g)
+  }
+
+  async claimGuest(tokenHash: string, accountId: string): Promise<PlayedRecord | 'other' | null> {
+    for (const [sessionId, guests] of this.guests) {
+      const g = guests.find((x) => x.tokenHash === tokenHash)
+      if (!g) continue
+      if (g.accountId !== undefined && g.accountId !== accountId) return 'other'
+      g.accountId = accountId
+      return { ...structuredClone(g), sessionId }
+    }
+    return null
+  }
+
+  async guestsOf(accountId: string): Promise<PlayedRecord[]> {
+    const out: PlayedRecord[] = []
+    for (const [sessionId, guests] of this.guests) {
+      for (const g of guests) if (g.accountId === accountId) out.push({ ...structuredClone(g), sessionId })
+    }
+    return out.sort((a, b) => b.issuedAt.localeCompare(a.issuedAt))
   }
 
   async revokeGuests(sessionId: string, seat: string | null, at: string): Promise<number> {

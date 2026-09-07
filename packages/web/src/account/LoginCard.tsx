@@ -3,7 +3,8 @@ import { requestLink } from './api.js'
 
 // Logging in (G1, prototype A): one field, one button, one sentence about guests. Never a
 // password, never a word about whether the address is known.
-export function LoginCard({ http, next, onNavigate = (url) => location.assign(url) }: { http: string; next: string; onNavigate?(url: string): void }) {
+// `lead` replaces the pitch line when the card is reached for one thing, like saving a session.
+export function LoginCard({ http, next, onNavigate = (url) => location.assign(url), lead }: { http: string; next: string; onNavigate?(url: string): void; lead?: string | undefined }) {
   const [email, setEmail] = useState('')
   const [state, setState] = useState<'open' | 'busy' | 'sent' | 'too-many' | 'invalid' | 'failed'>('open')
   const submit = async (e: FormEvent) => {
@@ -23,7 +24,7 @@ export function LoginCard({ http, next, onNavigate = (url) => location.assign(ur
   return (
     <div className="byd-login" data-login>
       <h1>build-your-deck</h1>
-      <p className="byd-muted">Skapa ditt kortspel, speltesta det på skärmen, beställ hem det. Logga in för att komma till dina spel.</p>
+      <p className="byd-muted">{lead ?? 'Skapa ditt kortspel, speltesta det på skärmen, beställ hem det. Logga in för att komma till dina spel.'}</p>
       {state === 'sent' ? (
         <div className="byd-login-sent" role="status">
           <strong>Kolla mejlen.</strong>
