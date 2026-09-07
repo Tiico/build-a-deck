@@ -8,10 +8,12 @@ import { NewProjectPage } from './wizard/NewProjectPage.js'
 import { HomePage } from './account/HomePage.js'
 import { LoginPage } from './account/LoginPage.js'
 import { ClaimPage } from './account/ClaimPage.js'
+import { AssetsPrototype } from './prototype/assets/index.js'
 import { TextureFailures } from './table/TextureFailures.js'
 
 // Routing is a path check for now; a router arrives with the first real page.
 export function App() {
+  if (location.pathname.startsWith('/prototype/assets')) return <AssetsPrototype />
   return <TextureFailures>{route()}</TextureFailures>
 }
 
