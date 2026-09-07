@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { WireClient } from './client.js'
 import { createSession, start, twoSeatSetup, type Running } from './fixture.js'
 import { deck } from './deck.js'
+import { MemoryObjectStore } from '@byd/render'
 
 let run: Running
 let clients: WireClient[] = []
@@ -261,6 +262,42 @@ describe('a face whose render died (#10)', () => {
     // A hash nobody ever queued is still unknown; a retry does not invent a job.
     expect((await fetch(`${run.http}/faces/${'0'.repeat(64)}?retry=1`)).status).toBe(404)
   })
+})
+
+describe('faces in R2 (DRIFT §4)', () => {
+  it('answers a rendered face with a redirect to a short-lived link the browser caches, and /health asks the store', async () => {
+    await run.stop()
+    const objects = new MemoryObjectStore()
+    let reachable = true
+    const r2 = {
+      put: objects.put.bind(objects),
+      get: objects.get.bind(objects),
+      link: async (key: string, ttl: number) => `https://r2.test/byd-assets/${key}?X-Amz-Expires=${ttl}`,
+      check: async () => {
+        if (!reachable) throw new Error('bucket byd-assets: 503')
+      },
+    }
+    run = await start({ objects: r2 })
+    const res = await fetch(`${run.http}/sessions`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: 'r2', version: 'v1', setup: twoSeatSetup(), deck }) })
+    expect(res.status).toBe(201)
+    const a = await connect('r2', 'A')
+    await a.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    const front = (await a.synced(1)).components.find((c) => c.zone === 'hand:A')!.faces!['front']!
+    expect((await fetch(`${run.http}/faces/${front}`)).status).toBe(202)
+
+    await run.renderAll()
+    const face = await fetch(`${run.http}/faces/${front}`, { redirect: 'manual' })
+    expect(face.status).toBe(302)
+    expect(face.headers.get('location')).toBe(`https://r2.test/byd-assets/renders/${front}?X-Amz-Expires=3600`)
+    expect(face.headers.get('cache-control')).toBe('private, max-age=3000')
+    expect(await objects.get(`renders/${front}`)).not.toBeNull()
+
+    expect((await fetch(`${run.http}/health`)).status).toBe(200)
+    reachable = false
+    const sick = await fetch(`${run.http}/health`)
+    expect(sick.status).toBe(503)
+    expect(await sick.json()).toMatchObject({ ok: false, assets: 'bucket byd-assets: 503' })
+  }, 60_000)
 })
 
 describe('rewind on the wire (B)', () => {

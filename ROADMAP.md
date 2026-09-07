@@ -124,9 +124,9 @@ Målet är att kunna ta betalt och lämna ifrån sig allt.
 
 Målet är att tjänsten tål riktiga användare, dygnet runt, på en låda hemma.
 
-- ⬜ Assets i R2 med signerade, kortlivade URL:er kontrollerade mot aktörens synlighet, så att texturer och tryckfiler aldrig går genom bostadsfibern (DRIFT §4).
+- ✅ Assets i R2: renderade texturer och tryckfiler i R2, `/faces/:hash` svarar 302 till en signerad URL som lever en timme och cachas i femtio minuter; hashen är förmågan (DRIFT §4).
 - ⬜ WAL-arkivering till R2 med pgBackRest eller WAL-G, nattlig basbackup, schemalagt återställningstest som kör replay (DRIFT §5).
-- ⬜ Hälsokontroll som även prövar R2 (DRIFT §2).
+- ✅ Hälsokontroll som även prövar R2 (DRIFT §2).
 - ⬜ Händelseschemats `schemaVersion` och upcasters vid inläsning (DRIFT §7).
 - ⬜ Riktiga loggar i replay-korpusen, anonymiserade; svar på hur anonymiseringen behåller det värdefulla (DRIFT §7, öppen fråga).
 - ⬜ Cloudflare rate limiting mot join- och login-endpointerna (DRIFT §9).
@@ -174,7 +174,6 @@ Från DESIGN-BESLUT I och DRIFT:
 ## Öppna frågor som inte blockerar release
 
 - Anonymisering av replay-korpusen (fas 4).
-- Livslängd på signerade R2-URL:er mot klientens cache (fas 4).
 - UPS och extern pulskoll (fas 4).
 - Behörighetsroller i detalj (fas 3).
 - Blandad orientering i högar, överlappande zoner (fas 1).

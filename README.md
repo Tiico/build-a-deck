@@ -81,6 +81,8 @@ Utan `RESEND_API_KEY` skriver servern inloggningslänken i sin logg i stället f
 
 Stacken i [docker-compose.yml](docker-compose.yml) är den från [DRIFT.md](DRIFT.md): `postgres`, `app` (aktörer, WebSockets, API och den byggda webben från samma origin), `render` (Chromium-worker) och, med profiler, `cloudflared` (tunnel) och `backup` (nattlig `pg_dump` till R2).
 Inga portar mot gatan: `app` och `postgres` lyssnar bara på lådans 127.0.0.1, tunneln når `app` på compose-nätet.
+Med R2-variabler i `.env` skriver `render` texturerna till R2 och `app` svarar på `/faces/:hash` med en signerad länk som webbläsaren följer och behåller (DRIFT §4); utan dem stannar bytesen i Postgres.
+Lokalt går samma väg att köra mot en MinIO: sätt `R2_ENDPOINT=http://127.0.0.1:9000` och nycklarna, som i `.claude/launch.json`.
 
 Första gången på en Ubuntu-låda med Docker:
 

@@ -8,7 +8,7 @@ import { z } from 'zod'
 import { ClientMessage, type ServerMessage } from '@byd/protocol'
 import { validateSetup, type SetupDef, type TypeRegistry } from '@byd/engine'
 import { Template } from '@byd/template'
-import type { RenderStore } from '@byd/render/queue'
+import type { ObjectStore, RenderStore } from '@byd/render/queue'
 import type { Subscriber, TableHost } from './actor.js'
 import type { Deck, LogStore } from './store.js'
 import { ProjectDoc, deckFromProject, setupFromProject, type ProjectRecord, type ProjectStore } from './projects.js'
@@ -25,6 +25,8 @@ export type ServerOptions = {
   store: LogStore
   registry: TypeRegistry
   renders?: RenderStore
+  // The object store the outputs live in (DRIFT §4), asked by /health (§2).
+  objects?: ObjectStore
   projects?: ProjectStore
   surveys?: SurveyStore
   staticDir?: string
@@ -122,7 +124,14 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       } catch (err) {
         return json(res, 503, { ok: false, tables: loaded.length, store: err instanceof Error ? err.message : String(err) })
       }
-      return json(res, 200, { ok: true, tables: loaded.length, store: 'ok' })
+      if (opts.objects) {
+        try {
+          await opts.objects.check()
+        } catch (err) {
+          return json(res, 503, { ok: false, tables: loaded.length, store: 'ok', assets: err instanceof Error ? err.message : String(err) })
+        }
+      }
+      return json(res, 200, { ok: true, tables: loaded.length, store: 'ok', ...(opts.objects ? { assets: 'ok' } : {}) })
     }
     if (req.method === 'POST' && url.pathname === '/sessions') {
       const body = CreateSession.parse(JSON.parse(await readBody(req)))
@@ -142,6 +151,14 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
     if (req.method === 'GET' && face && opts.renders) {
       // The hash is the capability: only a seat that may see a face was ever told its hash.
       const hash = face[1] ?? ''
+      // In R2 (DRIFT §4): a short-lived link the browser follows and keeps for most of its
+      // life, so a texture is one round trip to the house and then none.
+      const link = await opts.renders.link(hash, FACE_LINK_TTL_S)
+      if (link) {
+        res.writeHead(302, { ...CORS, location: link, 'cache-control': `private, max-age=${FACE_LINK_TTL_S - FACE_LINK_SLACK_S}` })
+        res.end()
+        return
+      }
       const bytes = await opts.renders.output(hash)
       if (bytes) {
         res.writeHead(200, { ...CORS, 'content-type': 'image/png', 'cache-control': 'public, max-age=31536000, immutable' })
@@ -167,6 +184,11 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
     json(res, 400, { error: err instanceof Error ? err.message : String(err) })
   }
 }
+
+// A face link lives an hour; the browser may reuse it for all but the last ten minutes, so a
+// cached link is never one that has just expired.
+const FACE_LINK_TTL_S = 3600
+const FACE_LINK_SLACK_S = 600
 
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',

@@ -15,6 +15,8 @@ create index if not exists render_jobs_queue on render_jobs (priority, requested
 
 create table if not exists render_outputs (
   hash        text primary key,
-  bytes       bytea not null,
+  bytes       bytea,
   created_at  timestamptz not null default now()
 );
+-- Outputs moved to the object store (DRIFT §4): a row without bytes is one that lives there.
+alter table render_outputs alter column bytes drop not null;
