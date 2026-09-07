@@ -14,6 +14,59 @@ afterEach(async () => {
 })
 
 describe('EditorPage', () => {
+  it('uses one tab stop and moves focus and selection with ArrowRight', async () => {
+    await run.projects.create('p1', projectDoc())
+    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+
+    const wall = screen.getByRole('tab', { name: 'Kortvägg' })
+    const template = screen.getByRole('tab', { name: 'Mall' })
+    const table = screen.getByRole('tab', { name: 'Tabell' })
+    expect([wall, template, table].map((tab) => tab.getAttribute('tabindex'))).toEqual(['0', '-1', '-1'])
+
+    wall.focus()
+    fireEvent.keyDown(wall, { key: 'ArrowRight' })
+    expect(document.activeElement).toBe(template)
+    expect(template.getAttribute('aria-selected')).toBe('true')
+  })
+
+  it('wraps with ArrowLeft and supports Home and End', async () => {
+    await run.projects.create('p1', projectDoc())
+    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+
+    const wall = screen.getByRole('tab', { name: 'Kortvägg' })
+    wall.focus()
+    fireEvent.keyDown(wall, { key: 'ArrowLeft' })
+    const table = screen.getByRole('tab', { name: 'Tabell' })
+    expect(document.activeElement).toBe(table)
+
+    fireEvent.keyDown(table, { key: 'Home' })
+    expect(document.activeElement).toBe(wall)
+    fireEvent.keyDown(wall, { key: 'End' })
+    expect(document.activeElement).toBe(table)
+    expect(table.getAttribute('aria-selected')).toBe('true')
+  })
+
+  it('connects each tab to an accessibly named tabpanel', async () => {
+    await run.projects.create('p1', projectDoc())
+    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+
+    expect(screen.getByRole('tablist', { name: 'Editorlägen' })).toBeTruthy()
+    for (const [name, panelId] of [
+      ['Kortvägg', 'editor-panel-wall'],
+      ['Mall', 'editor-panel-template'],
+      ['Tabell', 'editor-panel-table'],
+    ] as const) {
+      expect(screen.getByRole('tab', { name }).getAttribute('aria-controls')).toBe(panelId)
+    }
+    expect(screen.getByRole('tabpanel', { name: 'Kortvägg' }).id).toBe('editor-panel-wall')
+  })
+
   it('opens the project on the wall, moves between modes, saves, and starts a table', async () => {
     await run.projects.create('p1', projectDoc())
     history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
@@ -25,7 +78,7 @@ describe('EditorPage', () => {
     // Clicking an element on any card opens template mode with it selected.
     fireEvent.click(document.querySelector('[data-card-ref="knight"] [data-element="title"]')!)
     expect(document.querySelector('[data-mode]')!.getAttribute('data-mode')).toBe('template')
-    expect(document.querySelector('[data-layer="title"]')!.getAttribute('aria-selected')).toBe('true')
+    expect(document.querySelector('[data-layer="title"] button')!.getAttribute('aria-pressed')).toBe('true')
     fireEvent.change(screen.getByLabelText(/storlek/i), { target: { value: '18' } })
 
     // The table tab edits data; the save button reflects unsaved work.

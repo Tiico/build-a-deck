@@ -121,15 +121,37 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
       <header>
         <strong>{doc.name}</strong>
         <span className="byd-editor-rev">rev {client.rev}</span>
-        <nav role="tablist">
+        <nav role="tablist" aria-label="Editorlägen">
           {(
             [
               ['wall', 'Kortvägg'],
               ['template', 'Mall'],
               ['table', 'Tabell'],
             ] as const
-          ).map(([m, label]) => (
-            <button key={m} role="tab" type="button" aria-selected={mode === m ? 'true' : 'false'} onClick={() => setMode(m)}>
+          ).map(([m, label], index, modes) => (
+            <button
+              key={m}
+              id={`editor-tab-${m}`}
+              role="tab"
+              type="button"
+              aria-controls={`editor-panel-${m}`}
+              aria-selected={mode === m ? 'true' : 'false'}
+              tabIndex={mode === m ? 0 : -1}
+              onClick={() => setMode(m)}
+              onKeyDown={(event) => {
+                let next: number
+                if (event.key === 'ArrowRight') next = (index + 1) % modes.length
+                else if (event.key === 'ArrowLeft') next = (index - 1 + modes.length) % modes.length
+                else if (event.key === 'Home') next = 0
+                else if (event.key === 'End') next = modes.length - 1
+                else return
+                const nextMode = modes[next]?.[0]
+                if (!nextMode) return
+                event.preventDefault()
+                setMode(nextMode)
+                event.currentTarget.parentElement?.querySelectorAll<HTMLElement>('[role="tab"]')[next]?.focus()
+              }}
+            >
               {label}
             </button>
           ))}
@@ -169,32 +191,38 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
         </div>
       )}
       <main>
-        {mode === 'wall' && (
-          <DeckWall
-            doc={doc}
-            face={face}
-            selectedRow={row}
-            onSelectRow={setRow}
-            onSelectElement={(id) => {
-              setElement(id)
-              setMode('template')
-            }}
-          />
-        )}
-        {mode === 'template' && (
-          <TemplateCanvas doc={doc} face={face} row={row} selectedElement={element} onSelectElement={setElement} onPatch={(id, patch) => client.patchElement(face, id, patch)} />
-        )}
-        {mode === 'table' && (
-          <DataTable
-            doc={doc}
-            selectedRow={row}
-            onSelectRow={setRow}
-            onCell={(cardRef, field, value) => client.setCell(cardRef, field, value)}
-            onAddRow={(cardRef) => client.addRow(cardRef, { title: '', antal: 1 })}
-            onRemoveRow={(cardRef) => client.removeRow(cardRef)}
-            onImportRows={(rows) => client.replaceRows(rows)}
-          />
-        )}
+        <section id="editor-panel-wall" className="byd-editor-panel" role="tabpanel" aria-labelledby="editor-tab-wall" hidden={mode !== 'wall'}>
+          {mode === 'wall' && (
+            <DeckWall
+              doc={doc}
+              face={face}
+              selectedRow={row}
+              onSelectRow={setRow}
+              onSelectElement={(id) => {
+                setElement(id)
+                setMode('template')
+              }}
+            />
+          )}
+        </section>
+        <section id="editor-panel-template" className="byd-editor-panel" role="tabpanel" aria-labelledby="editor-tab-template" hidden={mode !== 'template'}>
+          {mode === 'template' && (
+            <TemplateCanvas doc={doc} face={face} row={row} selectedElement={element} onSelectElement={setElement} onPatch={(id, patch) => client.patchElement(face, id, patch)} />
+          )}
+        </section>
+        <section id="editor-panel-table" className="byd-editor-panel" role="tabpanel" aria-labelledby="editor-tab-table" hidden={mode !== 'table'}>
+          {mode === 'table' && (
+            <DataTable
+              doc={doc}
+              selectedRow={row}
+              onSelectRow={setRow}
+              onCell={(cardRef, field, value) => client.setCell(cardRef, field, value)}
+              onAddRow={(cardRef) => client.addRow(cardRef, { title: '', antal: 1 })}
+              onRemoveRow={(cardRef) => client.removeRow(cardRef)}
+              onImportRows={(rows) => client.replaceRows(rows)}
+            />
+          )}
+        </section>
       </main>
     </div>
   )

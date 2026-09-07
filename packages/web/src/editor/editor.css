@@ -6,6 +6,7 @@
 .byd-editor nav { display: flex; background: #1b1d23; border-radius: 8px; padding: 3px; margin-left: 12px; }
 .byd-editor nav button { border: 0; border-radius: 6px; padding: 6px 14px; background: transparent; color: #9aa3b8; font-weight: 600; cursor: pointer; }
 .byd-editor nav button[aria-selected='true'] { background: #2f3a55; color: #fff; }
+.byd-editor :focus-visible { outline: 3px solid #f0b64a; outline-offset: 2px; }
 .byd-editor-spacer { flex: 1; }
 .byd-editor-notice { color: #f0b64a; }
 .byd-editor > header > button { border: 1px solid #2f333d; border-radius: 8px; padding: 8px 14px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
@@ -14,6 +15,7 @@
 .byd-editor-table-link { padding: 8px 16px; background: #1f2a1f; color: #7dd3a0; border-bottom: 1px solid #2f333d; }
 .byd-editor-table-link a { color: #fff; }
 .byd-editor > main { min-height: 0; overflow: auto; }
+.byd-editor-panel { height: 100%; }
 
 /* Wall */
 .byd-wall { padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; align-content: start; }
@@ -29,8 +31,9 @@
 .byd-canvas h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #7d8597; margin: 0 0 8px; }
 .byd-canvas-layers { border-right: 1px solid #2f333d; padding: 12px; overflow: auto; }
 .byd-canvas-layers ul { list-style: none; margin: 0; padding: 0; }
-.byd-canvas-layers li { padding: 6px 8px; border-radius: 6px; cursor: pointer; display: flex; gap: 8px; }
-.byd-canvas-layers li[aria-selected='true'] { background: #2f3a55; }
+.byd-canvas-layers li { margin: 0; padding: 0; }
+.byd-canvas-layers li button { width: 100%; padding: 6px 8px; border: 0; border-radius: 6px; background: transparent; color: inherit; cursor: pointer; display: flex; gap: 8px; font: inherit; text-align: left; }
+.byd-canvas-layers li button[aria-pressed='true'] { background: #2f3a55; }
 .byd-layer-kind { color: #7d8597; width: 44px; }
 .byd-canvas-stage { display: grid; place-items: center; overflow: auto; background: repeating-conic-gradient(#20232b 0 25%, #1b1d23 0 50%) 0 0 / 24px 24px; }
 .byd-canvas-props { border-left: 1px solid #2f333d; padding: 12px; overflow: auto; }

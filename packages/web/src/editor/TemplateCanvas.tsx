@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from 'react'
 import type { Element, ProjectDoc } from './types.js'
 import { CardPreview } from './CardPreview.js'
 import { fieldsOf } from './fields.js'
@@ -17,6 +18,27 @@ export type TemplateCanvasProps = {
 // every card of the deck — there are no per-card exceptions (L3).
 export function TemplateCanvas({ doc, face, row, selectedElement, onSelectElement, onPatch }: TemplateCanvasProps) {
   const faceTemplate = doc.template.faces[face]
+  const layers = faceTemplate ? [...faceTemplate.base].reverse() : []
+  const layerIds = layers.map((layer) => layer.id)
+  const layerOrder = layerIds.join('\0')
+  const layerList = useRef<HTMLUListElement>(null)
+  const layerButtons = useRef(new Map<string, HTMLButtonElement>())
+  const focusedLayer = useRef<string | null>(null)
+  const previousLayerIds = useRef<string[]>([])
+
+  useLayoutEffect(() => {
+    const focusedId = focusedLayer.current
+    if (focusedId && !layerIds.includes(focusedId)) {
+      const previousIndex = previousLayerIds.current.indexOf(focusedId)
+      const nextId = layerIds[Math.min(Math.max(previousIndex, 0), layerIds.length - 1)] ?? null
+      if (nextId) layerButtons.current.get(nextId)?.focus()
+      else layerList.current?.focus()
+      focusedLayer.current = nextId
+      onSelectElement(nextId)
+    }
+    previousLayerIds.current = layerIds
+  }, [layerOrder, onSelectElement])
+
   if (!faceTemplate) return <p>Mallen saknar sidan {face}.</p>
   const rowData = doc.rows.find((r) => r.id === row)?.fields ?? doc.rows[0]?.fields ?? {}
   const el = faceTemplate.base.find((e) => e.id === selectedElement)
@@ -26,16 +48,31 @@ export function TemplateCanvas({ doc, face, row, selectedElement, onSelectElemen
     <div className="byd-canvas">
       <aside className="byd-canvas-layers">
         <h2 id="layers-heading">Lager</h2>
-        <ul role="list" aria-labelledby="layers-heading">
-          {[...faceTemplate.base].reverse().map((e) => (
+        <ul ref={layerList} role="list" aria-labelledby="layers-heading" tabIndex={-1}>
+          {layers.map((e) => (
             <li
               key={e.id}
               role="listitem"
               data-layer={e.id}
-              aria-selected={e.id === selectedElement ? 'true' : 'false'}
-              onClick={() => onSelectElement(e.id)}
             >
-              <span className="byd-layer-kind">{e.kind}</span> <span>{e.id}</span>
+              <button
+                ref={(button) => {
+                  if (button) layerButtons.current.set(e.id, button)
+                  else layerButtons.current.delete(e.id)
+                }}
+                type="button"
+                data-layer-control={e.id}
+                aria-pressed={e.id === selectedElement}
+                onFocus={() => {
+                  focusedLayer.current = e.id
+                }}
+                onBlur={(event) => {
+                  if (!layerList.current?.contains(event.relatedTarget as Node | null)) focusedLayer.current = null
+                }}
+                onClick={() => onSelectElement(e.id)}
+              >
+                <span className="byd-layer-kind">{e.kind}</span> <span>{e.id}</span>
+              </button>
             </li>
           ))}
         </ul>
