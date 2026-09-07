@@ -1,12 +1,16 @@
-# CI builds, the box fetches (DRIFT §7). Every push: lint, typecheck, every test against a real
-# Postgres and a real Chromium, and the replay corpus as the gate. On main: images to GHCR
-# tagged with the git SHA, which ops/deploy.sh on the box pulls. CI has no way into the house.
+# CI checks pull requests, a tag builds the images, the box fetches (DRIFT §7). A pull request
+# gets lint, typecheck, every test against a real Postgres and a real Chromium, and the replay
+# corpus as the gate. main is the trunk and runs no workflow at all; the pre-push hook in
+# .githooks/ is what stands in front of it. Pushing a v-tag builds images to GHCR tagged with the
+# git SHA and the release name, which ops/deploy.sh on the box pulls. CI has no way into the house.
 name: ci
 
 on:
-  push:
-    branches: [main]
   pull_request:
+  push:
+    tags: ["v*"]
+  # Build an image for a commit you have not tagged, from the Actions tab.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -14,6 +18,7 @@ permissions:
 
 jobs:
   check:
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -49,8 +54,9 @@ jobs:
         run: pnpm --filter @byd/engine exec vitest run test/corpus.test.ts
 
   images:
-    needs: check
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    # A tag is cut from a commit that was already green as a pull request, so this does not
+    # re-run check; the pre-push hook keeps the trunk green in between.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -79,8 +85,11 @@ jobs:
           # The box is amd64 (DRIFT); add linux/arm64 here the day it is not.
           platforms: linux/amd64
           push: true
+          # The SHA is the identity deploy.sh pulls by. The release name rides along on a tag
+          # build so a human can read the registry. No `latest`: nothing consumes it, and a
+          # manual build would move it onto a commit that was never released.
           tags: |
             ghcr.io/${{ env.image_repo }}/${{ matrix.name }}:${{ github.sha }}
-            ghcr.io/${{ env.image_repo }}/${{ matrix.name }}:latest
+            ${{ startsWith(github.ref, 'refs/tags/') && format('ghcr.io/{0}/{1}:{2}', env.image_repo, matrix.name, github.ref_name) || '' }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

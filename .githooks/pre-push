@@ -1,0 +1,46 @@
+#!/bin/sh
+# main is the trunk and no workflow runs on it (DRIFT §7): pull requests are checked in CI and
+# releases are cut from tags. This hook is the only thing standing in front of the trunk, so a
+# push to main must come from a clean tree and pass the same gates a pull request passes. A
+# release tag is cut from a commit that came through here, so the gate holds for what ships too.
+# Installed by the repo's prepare script, which points core.hooksPath at this directory.
+# --no-verify skips it, and then the trunk is your problem.
+set -eu
+
+target=""
+while read -r _local_ref local_sha remote_ref _remote_sha; do
+  if [ "$remote_ref" != "refs/heads/main" ]; then
+    continue
+  fi
+  case "$local_sha" in
+    # All zeros means main is being deleted; that is not this hook's business.
+    *[!0]*) target="$local_sha" ;;
+    *) ;;
+  esac
+done
+
+if [ -z "$target" ]; then
+  exit 0
+fi
+
+if [ "$(git rev-parse HEAD)" != "$target" ]; then
+  echo "pre-push: $target is not HEAD, so checking this tree would prove nothing about it." >&2
+  echo "          Check that commit out and push from there." >&2
+  exit 1
+fi
+
+dirty="$(git status --porcelain)"
+if [ -n "$dirty" ]; then
+  echo "pre-push: the tree is dirty, so what you push is not what gets checked." >&2
+  echo "$dirty" >&2
+  exit 1
+fi
+
+echo "pre-push: main is the trunk and CI does not check it. Running the gates."
+if [ -z "${DATABASE_URL:-}" ]; then
+  echo "pre-push: DATABASE_URL is unset, so the Postgres tests will skip here. A pull request runs them."
+fi
+pnpm lint
+pnpm typecheck
+pnpm test
+echo "pre-push: green."
