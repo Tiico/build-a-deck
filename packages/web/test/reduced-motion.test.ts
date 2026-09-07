@@ -6,7 +6,7 @@ import { chromium, type Browser } from 'playwright'
 // Non-essential motion has to stop when the reader asks for it, and the only honest place to
 // measure that is an engine that knows the media query.
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
-const SHEETS = ['src/a11y.css', 'src/table/table.css', 'src/table/texture.css', 'src/online/online.css', 'src/player/player.css']
+const SHEETS = ['src/a11y.css', 'src/table/table.css', 'src/table/texture.css', 'src/online/online.css', 'src/player/player.css', 'src/status/status.css']
 
 // Every element in the app that moves on its own, with the property that carries the motion.
 const MOVERS = {
@@ -17,6 +17,7 @@ const MOVERS = {
   "a peer's carried card gliding": { html: '<div class="byd-peer-ghost"></div>', sel: '.byd-peer-ghost', pseudo: null, prop: 'transitionDuration' },
   'a card in the online fan tilting': { html: '<div class="byd-fan-card"></div>', sel: '.byd-fan-card', pseudo: null, prop: 'transitionDuration' },
   'a card waiting for its texture': { html: '<span class="byd-texture-state" data-texture="pending"></span>', sel: '.byd-texture-state[data-texture="pending"]', pseudo: null, prop: 'animationDuration' },
+  'the ring while a connection is being waited for': { html: '<span class="byd-status-spin"></span>', sel: '.byd-status-spin', pseudo: null, prop: 'animationDuration' },
 } as const
 
 let browser: Browser

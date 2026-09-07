@@ -9,6 +9,10 @@ import { Question } from './Question.js'
 import { useProjectClient } from './useProjectClient.js'
 import type { Textures } from './ProjectClient.js'
 import { loginUrl } from '../account/api.js'
+import { StatusNotice } from '../status/StatusNotice.js'
+import { noticeFor } from '../status/notice.js'
+import { statusLinks } from '../status/links.js'
+import { usePageTitle } from '../status/DocumentTitle.js'
 import './editor.css'
 
 // /editor?project=…&server=http://…
@@ -20,7 +24,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const projectId = params.get('project')
   const http = params.get('server') ?? location.origin
-  const { client, error } = useProjectClient(http, projectId)
+  const { client, fault, retry } = useProjectClient(http, projectId)
   const [mode, setMode] = useState<Mode>('wall')
   // Which face the canvas edits (#13, L7). The wall is the deck seen from the front.
   const [face, setFace] = useState('front')
@@ -38,6 +42,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
   // Set the moment the designer has answered the question herself. Every way out of the editor is
   // a page load, so without this the browser would ask her the same thing a second time.
   const answered = useRef(false)
+  const links = statusLinks({ server: params.get('server') })
+  // The tab says which game is open, and what is wrong with it while something is (#12).
+  usePageTitle({ state: projectId ? (fault === 'unauthorized' ? null : fault ?? (client ? null : 'loading')) : 'missing', game: client?.doc.name ?? null })
   const [table, setTable] = useState<{ id: string; version: string; kind: 'new' | 'refreshed' } | null>(null)
   // The table's textures (L5): the link opens only when every card can be seen. Polled with a
   // growing pause while anything is still rendering.
@@ -94,14 +101,16 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
     return () => window.removeEventListener('beforeunload', hold)
   }, [unsaved])
 
-  if (!projectId) return <p>Inget projekt angivet.</p>
-  if (error === 'not logged in') {
+  if (!projectId) return <StatusNotice notice={noticeFor('missing', 'editor')} surface="page" links={links} />
+  if (fault === 'unauthorized') {
     // Not logged in (G1): to the login card and back here after.
     onNavigate(loginUrl(location.pathname + location.search, params.get('server')))
     return <p>Loggar in…</p>
   }
-  if (error) return <p role="alert">{error}</p>
-  if (!client) return <p>Laddar projektet…</p>
+  // A project that is missing, shut or out of reach says so in the editor's own words, with a
+  // way back and — where waiting can help — a way to ask again (#12, UX-07).
+  if (fault) return <StatusNotice notice={noticeFor(fault, 'editor')} surface="page" links={links} onRetry={retry} />
+  if (!client) return <StatusNotice notice={noticeFor('loading', 'editor')} surface="page" links={links} />
   const doc = client.doc
 
   const save = async (): Promise<boolean> => {

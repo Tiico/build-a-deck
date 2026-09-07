@@ -337,6 +337,46 @@ Följdkrav:
 Händelseschemat är ett kontrakt som måste versioneras och migreras vid varje ändring.
 Migreringsstrategin är fortfarande en öppen fråga.
 
+### D5. Fel-, tom- och anslutningslägen: nio lägen med en modell och en form per route (prototypat 2026-09-07)
+
+Ett saknat projekt, en tappad WebSocket och ett avvisat drag är inte tre saker.
+Det är nio lägen ur samma familj: laddar, laddar länge, 404 saknas, 401/403 stängt, nät-/serverfel, ansluter, tappad anslutning, återansluten och avvisad handling.
+Modellen är gemensam och ligger på ett ställe: en ton per läge, en regel för polite kontra assertive, en regel för om väntan hjälper, och en uppsättning vägar ut.
+Formen är routens egen.
+
+Sex av de nio inträffar i stället för en vy och tar då hela skärmen, formulerade för routen: "Vi hittar inte spelet" i editorn, "Rummet är slut" på bordet, "Rummet finns inte — läs QR-koden på TV:n igen" på telefonen.
+Tre av dem — tappad, återansluten och avvisad — inträffar ovanpå en vy som redan håller data, och lägger sig där routen har plats: ett kort mitt på filten som rummet kan läsa på tre meters håll, en sheet under tummen på telefonen, en rad i editorns chrome där spar-statusen redan bor.
+Ett avvisat drag står inline vid kontrollen som avvisades, med `aria-describedby` från knappen till svaret.
+En route väljer placering och formulering ur modellen; den hittar inte på egna lägen.
+
+Assertive används bara när det som står på skärmen har slutat vara sant, eller när något någon bad om inte hände: tappad, avvisad, 404, 401/403 och nätfel.
+Laddar, ansluter och återansluten är polite.
+Båda regionerna ligger i trädet från start och tomma, i `App`, av samma skäl som `TextureFailures` gör det (#10): en live-region som skapas tillsammans med sin text är en region ingen lyssnade på.
+När ett läge tar hela vyn flyttas fokus till rubriken, annars står tangentbordsläsaren kvar i ett dokument som inte längre innehåller det hon läste.
+
+Återhämtning är både och, aldrig `location.reload()`.
+Transporten försöker själv med synlig nedräkning och ger sedan upp och väntar på en människa; allt en människa måste besluta får en knapp eller en länk från första stund, för ett 404 som görs om är fortfarande ett 404.
+Den initiala anslutningen har en tidsgräns, vilket den inte hade förut: `ansluter` blir `laddar länge` och sedan `nät-/serverfel` med förklaring, återförsök och hemväg.
+Gammal data tonas och tas ur tabbordningen med `inert` så länge den inte går att lita på, och beskedet säger vilken tidpunkt bilden är från — annars ser ett fruset bord ut som ett bord som står stilla.
+Serverns egna meningar når aldrig skärmen: en avvisad `SendResult` översätts till en svensk mening, med en egen mening som reserv för ett skäl översättningen inte känner igen.
+
+Dokumenttiteln sätts på ett ställe, av routen, med lägets överskrivning: `Bordet · Rum 4KJ2 · build-your-deck` när allt är uppe, `Frånkopplad · build-your-deck` när linan är nere.
+Namnet ligger först eftersom en flik klipps från höger, och titeln är inte ett meddelande: den som behöver ordet "fel" får det i vyn och i live-regionen, inte i fliken.
+En okänd sökväg är en egen route som säger att sidan inte finns; förut föll den igenom till startsidan, så en felstavad länk visade tyst någon annans spel.
+
+Motivering:
+Ett bord på en TV och en telefon i en hand är inte samma yta.
+En enda helsidesmall river ner bordet för att sätta upp det igen när fyra personer tappar nätet i två sekunder; en enda statusremsa går inte att läsa från en soffa, och lämnar vid ett 404 kvar en kuliss av ett rum som inte finns.
+Det som ska vara gemensamt är därför modellen och inte formen.
+
+Följdkrav:
+`TableClient` äger tidsgränsen och återförsöksplanen, rapporterar varför den har slutat försöka och kan startas om av en människa utan att vyn kastas bort.
+Priset är fler formuleringar att hålla i sär: rutterna kan glida isär i ton om ingen vaktar dem, och det är den enda verkliga risken med valet.
+
+Byggt 2026-09-07 (prototypat i tre varianter, godkänd variant C — #12 och #7).
+Planen 2, 4, 8 sekunder fick ett snabbt första försök på 500 ms före sig, så att en blink läker innan någon hinner läsa ett besked om den.
+Fem frågor från prototypen är fortfarande obesvarade och står kvar i avsnitt I.
+
 ---
 
 ## E. Editorn
@@ -968,6 +1008,13 @@ Tillgänglighet i verktyget självt, till skillnad från i de spel som skapas i 
 Spelupplevelse, kvar efter avsnitt K:
 Hur en hög i en area visas med blandad orientering av kort.
 Om zonrektanglar ska kunna överlappa, och vad ett släpp i överlappet betyder.
+
+Fellägen, kvar efter D5:
+Om tidpunkten i "Det du ser är från 14:32" ska vara absolut eller relativ; implementationen står på absolut, som är entydig men läses sämre i ett spel som pågår.
+Om bordet ska frysas synligt vid tappad anslutning eller om korten ska tas bort helt tills snapshoten är tillbaka; implementationen fryser och tonar, vilket är ett spelbeslut och inte ett UI-beslut.
+Om 401 och 403 ska skiljas åt i orden; de slås i dag ihop till "Du har inte tillgång" med både inloggning och hemväg, eftersom en gäst sällan vet vilket som gäller.
+Om det finns en väg ut ur ett bord från telefonen alls, eller om bara TV:n kan avsluta ett rum.
+Om en observatör (C8) ska få samma ord som en spelare, eller ord som inte antyder en plats.
 
 ---
 

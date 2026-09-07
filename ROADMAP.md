@@ -86,6 +86,7 @@ Målet är att en grupp kan spela vilket kortspel som helst utan att sakna någo
 
 - ✅ Kamera i TV-läge: bordet ramar in det som är i spel och glider med, tillfällig zoom kring pekaren med återgång (C5).
 - ✅ Högens topp som adress i `stack` och `flip`, så att översta kortet i en dold hög kan staplas på ett löst kort och vändas; ett uppvänt kort överst i en hög ses av alla (K15).
+- ✅ Fel-, tom- och anslutningslägen som en familj: nio lägen med gemensam modell och en form per route, initial timeout på anslutningen, tappad och återansluten ovanpå vyn, avvisade drag vid kontrollen, och en egen dokumenttitel per huvudroute (D5).
 - ⬜ Räknare och privata zoner på telefonen utöver handen (C4).
 - ⬜ Aktivitetshistorik i snapshoten, så att en skärm som ansluter mitt i ett spel ser vad som hänt (I, teknik).
 - ⬜ Hur en hög i en area visas med blandad orientering, och om zonrektanglar får överlappa (I, spelupplevelse).

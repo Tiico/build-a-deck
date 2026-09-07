@@ -8,19 +8,29 @@ import { NewProjectPage } from './wizard/NewProjectPage.js'
 import { HomePage } from './account/HomePage.js'
 import { LoginPage } from './account/LoginPage.js'
 import { GroupsPrototype } from './prototype/groups/index.js'
-import { ErrorsPrototype } from './prototype/errors/index.js'
 import { TextureFailures } from './table/TextureFailures.js'
+import { NotFoundPage } from './status/NotFoundPage.js'
+import { DocumentTitle } from './status/DocumentTitle.js'
+import { StatusLive } from './status/StatusLive.js'
 
 // Routing is a path check for now; a router arrives with the first real page.
 export function App() {
-  return <TextureFailures>{route()}</TextureFailures>
+  return (
+    // Two things belong to the screen rather than to any route: the tab's name (#12) and the
+    // pair of live regions every state is said in (#7). Both live here, the only place mounted
+    // exactly once whichever route is showing, for the same reason `TextureFailures` does.
+    <DocumentTitle>
+      <StatusLive>
+        <TextureFailures>{route()}</TextureFailures>
+      </StatusLive>
+    </DocumentTitle>
+  )
 }
 
 // Every screen that shows cards is under one live region for lost textures (#10); App is the
 // only place that is mounted exactly once whichever route is showing.
 function route() {
   if (location.pathname.startsWith('/prototype/groups')) return <GroupsPrototype />
-  if (location.pathname.startsWith('/prototype/errors')) return <ErrorsPrototype />
   if (location.pathname === '/table') return <TablePage />
   if (location.pathname === '/play') return <PlayerPage />
   if (location.pathname === '/join') return <JoinPage />
@@ -29,5 +39,7 @@ function route() {
   if (location.pathname === '/editor') return <EditorPage />
   if (location.pathname === '/new') return <NewProjectPage />
   if (location.pathname === '/login') return <LoginPage />
-  return <HomePage />
+  if (location.pathname === '/') return <HomePage />
+  // Anything else is a page that does not exist, and says so.
+  return <NotFoundPage />
 }

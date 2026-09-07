@@ -2,13 +2,23 @@ import { ServerMessage, type Activity, type Envelope, type Intent, type Presence
 import { applyPatch } from '@byd/engine'
 
 export type ClientStatus = 'connecting' | 'open' | 'reconnecting' | 'closed'
+// Why the client has stopped trying. A status says what it is doing; a trouble says that it is
+// no longer doing anything and why (#7). Only a person clears one.
+export type ClientTrouble = 'missing' | 'timeout' | 'exhausted'
 export type ConnectOptions = {
   url: string
   sessionId: string
   seat: SeatId | null
   // Watch as a named observer (C8): seatless, sees everything, may only flag.
   observer?: string
-  // First reconnect delay; doubles per attempt up to ten times this.
+  // How long the very first connection may take before it is called off. Without this
+  // `connecting` could stand for ever, which is the bug in #7.
+  connectTimeoutMs?: number
+  // The waits before each automatic reconnect, in order. The plan is finite on purpose: the
+  // transport tries by itself while trying is likely to help, and then it hands the decision to
+  // a person rather than blinking at them for ever.
+  retryPlanMs?: readonly number[]
+  // The first wait, when no whole plan is given: the rest of the plan doubles from it.
   reconnectDelayMs?: number
 }
 export type SendResult = { ok: true; seqs: number[] } | { ok: false; reason: string }
@@ -16,6 +26,10 @@ export type Listener = (view: Snapshot | null, status: ClientStatus) => void
 export type PresenceListener = (from: PresenceFrom, presence: Presence) => void
 
 const ACTIVITY_LIMIT = 200
+// One quick attempt so that a blink heals before anyone can read a message about it, then the
+// approved 2, 4 and 8 seconds, and then a person decides.
+const RETRY_PLAN_MS = [500, 2000, 4000, 8000] as const
+const CONNECT_TIMEOUT_MS = 10_000
 // Cursor updates are coalesced (K6): at most one in flight per this many ms, the latest wins.
 const CURSOR_MS = 50
 
@@ -41,6 +55,10 @@ const makeSocket = (url: string): WebSocketLike => new (implementation ?? (globa
 export class TableClient {
   view: Snapshot | null = null
   status: ClientStatus = 'connecting'
+  // Set when the client has stopped of its own accord; cleared only by `retry`.
+  trouble: ClientTrouble | null = null
+  // When the next automatic attempt is due, for a countdown that makes the wait visible.
+  nextRetryAt: number | null = null
   // The most recent committed lines, redacted by the server; oldest first, bounded.
   activity: Activity[] = []
   // Who is watching (C8), as the server last told us.
@@ -56,12 +74,28 @@ export class TableClient {
   private pendingCursor: Presence | null = null
   private envelopes = 0
   private readonly nonce = Math.random().toString(36).slice(2, 10)
-  private attempts = 0
+  private made = 0
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null
+  private connectTimer: ReturnType<typeof setTimeout> | null = null
+  // Whether a snapshot has ever arrived. The first connection is the one with a deadline; after
+  // that the retry plan is what limits the trying.
+  private everOpen = false
 
   private constructor(private readonly opts: ConnectOptions) {
     this.readyPromise = new Promise((resolve) => (this.resolveReady = resolve))
+    this.armConnectTimeout()
     this.ws = this.open()
+  }
+
+  // How many automatic attempts have been made, and how many the plan allows.
+  get attempts(): { made: number; of: number } {
+    return { made: this.made, of: this.plan.length }
+  }
+
+  private get plan(): readonly number[] {
+    if (this.opts.retryPlanMs) return this.opts.retryPlanMs
+    const base = this.opts.reconnectDelayMs
+    return base === undefined ? RETRY_PLAN_MS : [base, base * 2, base * 4, base * 8]
   }
 
   static connect(opts: ConnectOptions): TableClient {
@@ -132,9 +166,50 @@ export class TableClient {
 
   close(): void {
     this.setStatus('closed')
-    if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
+    this.clearTimers()
     if (this.cursorTimer) clearTimeout(this.cursorTimer)
     this.ws.close()
+  }
+
+  // What a person pressing "Försök igen" does. Never a reload: the view, the activity and the
+  // seat are all still here, and throwing them away to ask the same question is how a page ends
+  // up in a loop.
+  retry(): void {
+    if (this.status === 'closed') return
+    this.clearTimers()
+    this.trouble = null
+    this.nextRetryAt = null
+    this.made = 0
+    if (!this.everOpen) this.armConnectTimeout()
+    this.setStatus(this.view ? 'reconnecting' : 'connecting')
+    this.ws.close()
+    this.ws = this.open()
+    this.notify()
+  }
+
+  private clearTimers(): void {
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
+    if (this.connectTimer) clearTimeout(this.connectTimer)
+    this.reconnectTimer = null
+    this.connectTimer = null
+  }
+
+  private armConnectTimeout(): void {
+    const ms = this.opts.connectTimeoutMs ?? CONNECT_TIMEOUT_MS
+    this.connectTimer = setTimeout(() => {
+      this.connectTimer = null
+      if (!this.everOpen && this.status !== 'closed') this.giveUp('timeout')
+    }, ms)
+  }
+
+  // Stops trying and says why. Whatever socket is open is let go of, so nothing keeps arriving
+  // behind a screen that has already said the line is down.
+  private giveUp(trouble: ClientTrouble): void {
+    this.clearTimers()
+    this.trouble = trouble
+    this.nextRetryAt = null
+    this.ws.close()
+    this.notify()
   }
 
   private open(): WebSocketLike {
@@ -154,24 +229,37 @@ export class TableClient {
   // The connection went away without us asking. Whatever was in flight is unknown to us:
   // the view after resync is the truth, so pending envelopes are told so and let go.
   private dropped(ws: WebSocketLike): void {
-    if (ws !== this.ws || this.status === 'closed') return
+    if (ws !== this.ws || this.status === 'closed' || this.trouble !== null) return
     for (const resolve of this.pending.values()) resolve({ ok: false, reason: 'connection lost' })
     this.pending.clear()
     this.setStatus('reconnecting')
-    const base = this.opts.reconnectDelayMs ?? 500
-    const delay = Math.min(base * 2 ** this.attempts, base * 10)
-    this.attempts++
+    const delay = this.plan[this.made]
+    // The plan is spent: trying again on our own would only be a page blinking at nobody.
+    if (delay === undefined) {
+      this.giveUp('exhausted')
+      return
+    }
+    this.made++
+    this.nextRetryAt = Date.now() + delay
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null
-      if (this.status !== 'closed') this.ws = this.open()
+      this.nextRetryAt = null
+      if (this.status !== 'closed' && this.trouble === null) this.ws = this.open()
     }, delay)
+    this.notify()
   }
 
   private receive(msg: ServerMessage): void {
     switch (msg.t) {
       case 'snapshot':
         this.view = msg.snapshot
-        this.attempts = 0
+        this.made = 0
+        this.nextRetryAt = null
+        this.everOpen = true
+        if (this.connectTimer) {
+          clearTimeout(this.connectTimer)
+          this.connectTimer = null
+        }
         this.setStatus('open')
         this.resolveReady()
         this.settleSeqWaiters()
@@ -199,6 +287,10 @@ export class TableClient {
         break
       case 'error':
         if (msg.id !== null) this.settle(msg.id, { ok: false, reason: msg.message })
+        // An error with no envelope to blame is about the connection itself, and the only one
+        // the server sends is a session it has never heard of. Asking again gives the same
+        // answer, so the client stops rather than reconnecting into the same wall.
+        else if (/^unknown session/.test(msg.message)) this.giveUp('missing')
         break
       case 'bye':
         // The server will close; `dropped` handles the rest.

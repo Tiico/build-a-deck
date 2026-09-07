@@ -14,19 +14,33 @@ import { playIntents } from '../player/play.js'
 import { SessionButtons, SessionOverlays, useSessionVersion, useToast } from '../player/SessionOverlays.js'
 import { HandFan } from './HandFan.js'
 import { seatRotation, withoutHand } from './seat.js'
+import { DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
+import { useLiveStatus } from '../status/useLiveStatus.js'
+import { RouteStatus } from '../status/RouteStatus.js'
+import { StatusNotice } from '../status/StatusNotice.js'
+import { statusLinks } from '../status/links.js'
+import { noticeFor } from '../status/notice.js'
+import { usePageTitle } from '../status/DocumentTitle.js'
 
 // /online?session=…&seat=A&name=Ada&server=ws://…
 // Fully online (C2): both roles in one window. The table, turned so this seat's edge is at the
 // bottom, playable as the table screen is; the seat's hand as a fan on the felt (prototype B);
 // the phone's controls in the corner.
-export function OnlinePage() {
+export type OnlinePageProps = { timing?: StatusTiming }
+
+export function OnlinePage({ timing = DEFAULT_TIMING }: OnlinePageProps = {}) {
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const sessionId = params.get('session')
   const seat = params.get('seat')
   const name = params.get('name')
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
   const http = url.replace(/^ws/, 'http')
-  const { client, view, status, activity, observers } = useTableClient(sessionId && seat ? { url, sessionId, seat } : null)
+  const conn = useTableClient(sessionId && seat ? { url, sessionId, seat, connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs } : null)
+  const { client, view, status, activity, observers } = conn
+  // A whole table on a whole screen: the message stands on the felt, like the TV's.
+  const live = useLiveStatus(conn, 'table', timing)
+  const links = statusLinks({ server: params.get('server'), sessionId })
+  usePageTitle({ state: sessionId && seat ? live.state : 'missing', room: sessionId })
   const presence = usePresence(client, view)
   const recent = useRecent(activity)
   const table = useRef<TableHandle>(null)
@@ -39,8 +53,8 @@ export function OnlinePage() {
     if (client && view && seat && name && seatFree) void client.send({ v: 'seat.claim', seat, name })
   }, [client, view === null, seat, name, seatFree])
 
-  if (!sessionId || !seat) return <p>Ingen session eller plats angiven.</p>
-  if (!view || !client) return <p data-status={status}>{status === 'connecting' ? 'Ansluter…' : status}</p>
+  if (!sessionId || !seat) return <StatusNotice notice={noticeFor('missing', 'table')} surface="page" links={links} />
+  if (!view || !client) return <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
 
   const me = view.seats.find((s) => s.id === seat)
   const hand = view.components.filter((c) => c.zone === `hand:${seat}`)
@@ -57,7 +71,8 @@ export function OnlinePage() {
   }
 
   return (
-    <div data-page="online" data-status={status} className="byd-fit byd-online" style={{ ['--seat' as string]: seatColor(Math.max(0, view.seats.findIndex((s) => s.id === seat))) }}>
+    <>
+      <div data-page="online" data-status={status} className={`byd-fit byd-online${live.stale ? ' byd-status-stale' : ''}`} {...(live.stale ? { inert: true } : {})} style={{ ['--seat' as string]: seatColor(Math.max(0, view.seats.findIndex((s) => s.id === seat))) }}>
       <TableRenderer
         ref={table}
         view={shown}
@@ -80,6 +95,8 @@ export function OnlinePage() {
       </div>
       <HandFan cards={hand} faces={http} onPlay={play} />
       <SessionOverlays client={client} view={view} seat={seat} name={me?.name ?? seat} http={http} sessionId={sessionId} sheet={sheet} onSheet={setSheet} toast={toast} onToast={setToast} version={version} />
-    </div>
+      </div>
+      <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
+    </>
   )
 }

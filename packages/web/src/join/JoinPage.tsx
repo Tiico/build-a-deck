@@ -2,29 +2,43 @@ import { useMemo, useState } from 'react'
 import { useTableClient } from '../table/useTableClient.js'
 import { seatColor } from '../table/seatColor.js'
 import { seatEdge, type Edge } from './edges.js'
+import { usePageTitle } from '../status/DocumentTitle.js'
+import { DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
+import { useLiveStatus } from '../status/useLiveStatus.js'
+import { RouteStatus } from '../status/RouteStatus.js'
+import { StatusNotice } from '../status/StatusNotice.js'
+import { statusLinks } from '../status/links.js'
+import { noticeFor } from '../status/notice.js'
 import './join.css'
 
 // /join?session=…&server=ws://…  — what the QR on the TV points at.
 // Sits down at the table (A with C's preselection, K12): the table as a seat picker with the
 // next free seat chosen already, so the indifferent just type a name and go.
-export type JoinPageProps = { onSit?(url: string): void }
+export type JoinPageProps = { onSit?(url: string): void; timing?: StatusTiming }
 
-export function JoinPage({ onSit = (url) => location.assign(url) }: JoinPageProps) {
+export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAULT_TIMING }: JoinPageProps) {
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const sessionId = params.get('session')
   const server = params.get('server')
   const url = server ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
   // Looking at the seats needs no seat: the table role sees them.
-  const { view, status } = useTableClient(sessionId ? { url, sessionId, seat: null } : null)
+  const conn = useTableClient(sessionId ? { url, sessionId, seat: null, connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs } : null)
+  const { view } = conn
+  // A phone answers under the thumb: a sheet at the bottom, where its own sheets already are.
+  const live = useLiveStatus(conn, 'phone', timing)
+  const links = statusLinks({ server, sessionId })
   const [pick, setPick] = useState<string | null>(null)
   const [name, setName] = useState('')
+  // The room is the tab's name here (#12): a phone with three tabs open has to be able to tell
+  // which room each of them is waiting to get into.
+  usePageTitle({ state: sessionId ? live.state : 'missing', room: sessionId })
 
   const free = view?.seats.filter((s) => s.name === null) ?? []
   // The next free seat is chosen until you choose another; a pick someone else just took is let go.
   const chosen = pick && free.some((s) => s.id === pick) ? pick : (free[0]?.id ?? null)
 
-  if (!sessionId) return <p>Ingen session angiven.</p>
-  if (!view) return <p data-status={status}>Ansluter…</p>
+  if (!sessionId) return <StatusNotice notice={noticeFor('missing', 'phone')} surface="page" links={links} />
+  if (!view) return <RouteStatus status={live} over="sheet" links={links} onRetry={conn.retry} />
 
   const sit = () => {
     if (!chosen || !name.trim()) return
@@ -48,7 +62,8 @@ export function JoinPage({ onSit = (url) => location.assign(url) }: JoinPageProp
   }
 
   return (
-    <div className="byd-join" data-page="join">
+    <>
+      <div className={`byd-join${live.stale ? ' byd-status-stale' : ''}`} data-page="join" {...(live.stale ? { inert: true } : {})}>
       <header>
         <span>Du är på väg in i</span>
         <strong>Rum {sessionId}</strong>
@@ -91,6 +106,8 @@ export function JoinPage({ onSit = (url) => location.assign(url) }: JoinPageProp
           Bara titta (ser allt, alla ser dig)
         </button>
       </form>
-    </div>
+      </div>
+      <RouteStatus status={live} over="sheet" links={links} onRetry={conn.retry} />
+    </>
   )
 }

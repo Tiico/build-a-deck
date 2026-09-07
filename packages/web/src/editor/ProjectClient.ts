@@ -3,6 +3,16 @@ import type { Element, FaceTemplate, Variant } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
 
 export type ProjectListener = (client: ProjectClient) => void
+
+// Why a project could not be opened, as one of the states the whole product shares (#12). The
+// server's own sentence is a fact about a request, not a message to a person, so it stops here.
+export type ProjectFault = 'missing' | 'forbidden' | 'offline'
+export class ProjectUnavailable extends Error {
+  constructor(readonly fault: ProjectFault) {
+    super(fault)
+    this.name = 'ProjectUnavailable'
+  }
+}
 export type SaveResult = { ok: true; rev: number } | { ok: false; reason: 'conflict' | 'missing' | string }
 export type Cell = string | number | boolean | null
 export type Textures = { total: number; done: number; failed: string[] }
@@ -40,9 +50,9 @@ export class ProjectClient {
   static async open(opts: { http: string; id: string }): Promise<ProjectClient> {
     const res = await fetch(`${opts.http}/projects/${encodeURIComponent(opts.id)}`, withCredentials())
     if (res.status === 401) throw new Unauthorized()
-    if (res.status === 403) throw new Error('det här spelet tillhör någon annan')
-    if (res.status === 404) throw new Error(`unknown project ${opts.id}`)
-    if (!res.ok) throw new Error(`could not load project: ${res.status}`)
+    if (res.status === 403) throw new ProjectUnavailable('forbidden')
+    if (res.status === 404) throw new ProjectUnavailable('missing')
+    if (!res.ok) throw new ProjectUnavailable('offline')
     const rec = (await res.json()) as ProjectDoc & { id: string; rev: number }
     const doc: ProjectDoc = { name: rec.name, template: rec.template, rows: rec.rows, icons: rec.icons, setup: rec.setup }
     return new ProjectClient(opts.http, opts.id, doc, rec.rev)

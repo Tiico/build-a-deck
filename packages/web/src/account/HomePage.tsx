@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { LoginCard } from './LoginCard.js'
 import { hue } from '../table/hue.js'
 import { logout, myProjects, whoAmI, type ProjectSummary } from './api.js'
+import { StatusNotice } from '../status/StatusNotice.js'
+import { noticeFor } from '../status/notice.js'
+import { usePageTitle } from '../status/DocumentTitle.js'
 import './account.css'
 
 // /  — "Mina spel" (G1, prototype A): the account's projects as a grid of game cards, and a new
@@ -14,21 +17,26 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   const http = server ?? location.origin
   const [email, setEmail] = useState<string | null | undefined>(undefined)
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  // The start page is where every other route's way home leads, so it is the last place that
+  // may answer with a sentence written for a developer (#12).
+  const [offline, setOffline] = useState(false)
+  const [attempt, setAttempt] = useState(0)
   useEffect(() => {
+    setOffline(false)
     void whoAmI(http)
       .then((e) => {
         setEmail(e)
         return e ? myProjects(http).then(setProjects) : undefined
       })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
-  }, [http])
+      .catch(() => setOffline(true))
+  }, [http, attempt])
+  usePageTitle({ state: offline ? 'offline' : email === undefined ? 'loading' : null })
   const suffix = (q: URLSearchParams) => {
     if (server) q.set('server', server)
     return q.toString()
   }
-  if (error) return <p role="alert">{error}</p>
-  if (email === undefined) return <p>Laddar…</p>
+  if (offline) return <StatusNotice notice={noticeFor('offline', 'app')} surface="page" onRetry={() => setAttempt((n) => n + 1)} />
+  if (email === undefined) return <StatusNotice notice={noticeFor('loading', 'app')} surface="page" />
   if (email === null) {
     return (
       <div className="byd-account" data-page="home">

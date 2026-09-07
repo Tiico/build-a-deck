@@ -1,8 +1,22 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { Activity, Snapshot } from '@byd/protocol'
-import { TableClient, type ClientStatus, type ConnectOptions } from '../client.js'
+import { TableClient, type ClientStatus, type ClientTrouble, type ConnectOptions } from '../client.js'
+import type { RetrySchedule } from '../status/connection.js'
 
-export type TableConnection = { client: TableClient | null; view: Snapshot | null; status: ClientStatus; activity: readonly Activity[]; observers: readonly { id: string; name: string }[] }
+export type TableConnection = {
+  client: TableClient | null
+  view: Snapshot | null
+  status: ClientStatus
+  activity: readonly Activity[]
+  observers: readonly { id: string; name: string }[]
+  // Why the client has stopped trying, and when it will try next (#7). A status alone cannot
+  // tell a view whether anything is still going to happen.
+  trouble: ClientTrouble | null
+  schedule: RetrySchedule
+  retry(): void
+}
+
+const NO_RETRY: RetrySchedule = { nextRetryAt: null, made: 0, of: 0 }
 
 // One client per mounted page; React only sees what the client publishes.
 export function useTableClient(opts: ConnectOptions | null): TableConnection {
@@ -11,6 +25,8 @@ export function useTableClient(opts: ConnectOptions | null): TableConnection {
   const [status, setStatus] = useState<ClientStatus>('connecting')
   const [activity, setActivity] = useState<readonly Activity[]>([])
   const [observers, setObservers] = useState<readonly { id: string; name: string }[]>([])
+  const [trouble, setTrouble] = useState<ClientTrouble | null>(null)
+  const [schedule, setSchedule] = useState<RetrySchedule>(NO_RETRY)
   // Reconnect only when the address changes, not when the caller re-creates an equal options object.
   const key = opts ? `${opts.url}|${opts.sessionId}|${opts.seat ?? ''}|${opts.observer ?? ''}` : ''
   const latest = useRef(opts)
@@ -21,15 +37,23 @@ export function useTableClient(opts: ConnectOptions | null): TableConnection {
     if (!current) return
     const c = TableClient.connect(current)
     setClient(c)
+    const publish = () => {
+      setActivity(c.activity)
+      setObservers(c.observers)
+      setTrouble(c.trouble)
+      // A fresh object each time on purpose: the schedule changes without the status changing,
+      // and a view that shows a countdown has to hear about it.
+      setSchedule({ nextRetryAt: c.nextRetryAt, made: c.attempts.made, of: c.attempts.of })
+    }
     const unsubscribe = c.subscribe((v, s) => {
       setView(v)
       setStatus(s)
-      setActivity(c.activity)
-      setObservers(c.observers)
+      publish()
     })
     void c.ready().then(() => {
       setView(c.view)
       setStatus(c.status)
+      publish()
     })
     return () => {
       unsubscribe()
@@ -38,5 +62,6 @@ export function useTableClient(opts: ConnectOptions | null): TableConnection {
     }
   }, [key])
 
-  return { client, view, status, activity, observers }
+  const retry = useCallback(() => client?.retry(), [client])
+  return { client, view, status, activity, observers, trouble, schedule, retry }
 }
