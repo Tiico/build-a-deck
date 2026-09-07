@@ -60,6 +60,24 @@ create table if not exists auth_sessions (
   account_id   bigint not null references accounts(id) on delete cascade,
   expires_at   timestamptz not null
 );
+-- Admission (DRIFT §9): the room code, when it lapses, and the host key's hash. Sessions from
+-- before codes have none: they cannot be reached by code or opened as the table.
+alter table sessions add column if not exists code text;
+alter table sessions add column if not exists code_expires_at timestamptz;
+alter table sessions add column if not exists host_key_hash text;
+create unique index if not exists sessions_code on sessions (code) where code is not null;
+-- Guests' admissions: the token a phone or an observer connects with, hashed; a kick revokes.
+create table if not exists guest_tokens (
+  session_id  text not null references sessions(id) on delete cascade,
+  token_hash  text primary key,
+  kind        text not null check (kind in ('seat', 'observer')),
+  seat        text,
+  name        text not null,
+  issued_at   timestamptz not null,
+  revoked_at  timestamptz
+);
+create index if not exists guest_tokens_session on guest_tokens (session_id);
+
 -- The account a project belongs to; null for projects from before accounts.
 alter table projects add column if not exists owner text;
 create index if not exists projects_owner on projects (owner);

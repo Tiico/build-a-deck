@@ -10,10 +10,11 @@ import { validateSetup, type SetupDef, type TypeRegistry } from '@byd/engine'
 import { Template } from '@byd/template'
 import type { ObjectStore, RenderStore } from '@byd/render/queue'
 import type { Subscriber, TableHost } from './actor.js'
-import type { Deck, LogStore } from './store.js'
+import type { Deck, LogStore, SessionRecord } from './store.js'
 import { ProjectDoc, deckFromProject, setupFromProject, type ProjectRecord, type ProjectStore } from './projects.js'
 import { SurveyAnswer, type SurveyStore } from './surveys.js'
 import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountOf, hash, loginMail, safeNext, token, type Account, type AuthStore, type Mailer } from './auth.js'
+import { codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
 import { facesOf } from './faces.js'
 import { TEXTURE_DPI } from './actor.js'
 
@@ -41,6 +42,16 @@ export type ServerOptions = {
   authBypass?: boolean
   // One per server: how many login links an address may get per hour.
   limiter?: LoginLimiter
+  // The clock, for tests: what codes and tokens expire against.
+  now?: () => Date
+}
+const clock = (opts: ServerOptions): Date => (opts.now ?? (() => new Date()))()
+
+// A fresh code and host key for a new session (DRIFT §9); the key is shown once and kept hashed.
+function admission(opts: ServerOptions): { code: string; hostKey: string; record: { code: string; codeExpiresAt: string; hostKeyHash: string } } {
+  const code = newCode()
+  const hostKey = newSecret()
+  return { code, hostKey, record: { code, codeExpiresAt: codeExpiry(clock(opts)), hostKeyHash: hash(hostKey) } }
 }
 
 const DeckBody = z.object({
@@ -48,6 +59,22 @@ const DeckBody = z.object({
   rows: z.record(z.string(), z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))),
   icons: z.record(z.string(), z.string()),
 })
+
+// Buying admission (DRIFT §9): a name, and a seat to sit at or none to watch.
+const JoinBody = z.object({ name: z.string().trim().min(1).max(64), seat: z.string().min(1).optional() })
+const KickBody = z.object({ seat: z.string().min(1) })
+
+// Who may control a table (DRIFT §9): whoever holds the host key, or the account that owns the
+// project it was started from. 'unknown' has shown nothing; 'wrong' has shown a key that is not it.
+async function hostOf(opts: ServerOptions, req: IncomingMessage, session: SessionRecord): Promise<'host' | 'unknown' | 'wrong'> {
+  const bearer = /^Bearer\s+(\S+)$/i.exec(req.headers.authorization ?? '')?.[1]
+  if (bearer !== undefined) return session.hostKeyHash !== undefined && hash(bearer) === session.hostKeyHash ? 'host' : 'wrong'
+  if (!opts.auth || !opts.projects || !session.project) return 'unknown'
+  const account = await accountOf(opts.auth, req)
+  if (!account) return 'unknown'
+  const project = await opts.projects.load(session.project)
+  return project?.owner === account.id ? 'host' : 'wrong'
+}
 
 const CreateSession = z.object({
   id: z.string().min(1).optional(),
@@ -71,10 +98,9 @@ export function createServer(given: ServerOptions): Server {
       return
     }
     const sessionId = decodeURIComponent(match[1] ?? '')
-    const seat = url.searchParams.get('seat')
-    // An observer (C8) is seatless and named; the name is what everyone else sees.
-    const observer = url.searchParams.get('role') === 'observer' ? (url.searchParams.get('name') ?? 'observatör').slice(0, 64) || 'observatör' : undefined
-    wss.handleUpgrade(req, socket, head, (ws) => void attach(opts, ws, sessionId, observer === undefined ? seat : null, observer))
+    const q = url.searchParams
+    const ask: Admission = { seat: q.get('seat'), role: q.get('role') === 'observer' ? 'observer' : q.get('role') === 'lobby' ? 'lobby' : null, token: q.get('token'), host: q.get('host') }
+    wss.handleUpgrade(req, socket, head, (ws) => void attach(opts, ws, sessionId, ask))
   })
 
   // `close` waits for every connection to end, and WebSockets never end on their own:
@@ -138,10 +164,60 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       validateSetup(body.setup, opts.registry)
       const id = body.id ?? randomUUID()
       const deck: Deck | undefined = body.deck
-      await opts.store.createSession({ id, version: body.version, setup: body.setup, ...(deck ? { deck } : {}) })
+      const room = admission(opts)
+      await opts.store.createSession({ id, version: body.version, setup: body.setup, ...(deck ? { deck } : {}), ...room.record })
       // Textures start rendering now rather than when the first screen connects.
       if (deck) await opts.host.get(id)
-      return json(res, 201, { id })
+      return json(res, 201, { id, code: room.code, hostKey: room.hostKey })
+    }
+    // A code resolves to a session while it lives (DRIFT §9): what the join page asks first.
+    const room = /^\/rooms\/([^/]+)$/.exec(url.pathname)
+    if (req.method === 'GET' && room) {
+      const code = normaliseCode(decodeURIComponent(room[1] ?? ''))
+      const found = code ? await opts.store.sessionByCode(code) : null
+      if (!found || Date.parse(found.codeExpiresAt) <= clock(opts).getTime()) return json(res, 404, { error: 'unknown or expired code' })
+      return json(res, 200, { session: found.id })
+    }
+    // A code and a name buy a token (DRIFT §9): for a free seat, or for watching (C8).
+    const join = /^\/rooms\/([^/]+)\/join$/.exec(url.pathname)
+    if (req.method === 'POST' && join) {
+      const code = normaliseCode(decodeURIComponent(join[1] ?? ''))
+      const found = code ? await opts.store.sessionByCode(code) : null
+      if (!found || Date.parse(found.codeExpiresAt) <= clock(opts).getTime()) return json(res, 404, { error: 'unknown or expired code' })
+      const body = JoinBody.parse(JSON.parse(await readBody(req)))
+      const actor = await opts.host.get(found.id)
+      if (!actor) return json(res, 404, { error: 'unknown session' })
+      if (body.seat !== undefined) {
+        const seat = actor.seats().find((s) => s.id === body.seat)
+        if (!seat) return json(res, 404, { error: `unknown seat ${body.seat}` })
+        if (seat.name !== null) return json(res, 409, { error: `seat ${body.seat} is taken` })
+      }
+      const guestToken = newSecret()
+      await opts.store.issueGuest(found.id, { tokenHash: hash(guestToken), kind: body.seat !== undefined ? 'seat' : 'observer', seat: body.seat ?? null, name: body.name, issuedAt: clock(opts).toISOString() })
+      return json(res, 201, { session: found.id, token: guestToken })
+    }
+    // The host's controls (DRIFT §9): a new code, and a kick. With the host key, or the owner's cookie.
+    const control = /^\/sessions\/([^/]+)\/(code|kick)$/.exec(url.pathname)
+    if (req.method === 'POST' && control) {
+      const sessionId = decodeURIComponent(control[1] ?? '')
+      const session = await opts.store.loadSession(sessionId)
+      if (!session) return json(res, 404, { error: 'unknown session' })
+      const who = await hostOf(opts, req, session)
+      if (who !== 'host') return json(res, who === 'wrong' ? 403 : 401, { error: who === 'wrong' ? 'wrong host key' : 'the host key or the owner\'s login is needed' })
+      const actor = await opts.host.get(sessionId)
+      if (control[2] === 'code') {
+        const expiresAt = codeExpiry(clock(opts))
+        let code = newCode()
+        for (let tries = 0; (await opts.store.sessionByCode(code)) !== null && tries < 5; tries++) code = newCode()
+        await opts.store.setCode(sessionId, code, expiresAt)
+        actor?.tellTable({ t: 'room', code, expiresAt })
+        return json(res, 200, { code, expiresAt })
+      }
+      const { seat } = KickBody.parse(JSON.parse(await readBody(req)))
+      if (!session.setup.seats.includes(seat)) return json(res, 404, { error: `unknown seat ${seat}` })
+      const revoked = await opts.store.revokeGuests(sessionId, seat, clock(opts).toISOString())
+      await actor?.kick(seat)
+      return json(res, 200, { ok: true, revoked })
     }
     if (opts.projects) {
       const handled = await routeProjects(opts, opts.projects, req, res, url)
@@ -205,7 +281,7 @@ const MIME: Record<string, string> = {
 // The built web app: hashed assets forever, everything else briefly, and the app's own routes
 // (/table, /play, …) fall back to index.html so the client can pick the page. Never a byte
 // outside the directory.
-const API_PREFIXES = ['/sessions', '/projects', '/faces', '/health']
+const API_PREFIXES = ['/sessions', '/projects', '/faces', '/health', '/rooms']
 async function serveStatic(dir: string, pathname: string, res: ServerResponse): Promise<boolean> {
   // The API never falls back to the app, whatever is or is not mounted.
   if (API_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))) return false
@@ -231,18 +307,48 @@ async function fileAt(path: string): Promise<string | null> {
   }
 }
 
-async function attach(opts: ServerOptions, ws: WebSocket, sessionId: string, seat: string | null, observer?: string): Promise<void> {
+// What a connection asks to be (DRIFT §9), from its query string.
+type Admission = { seat: string | null; role: 'observer' | 'lobby' | null; token: string | null; host: string | null }
+// Who it is allowed to be: the table (with the host key), a seat or an observer (with a token
+// bought for that), or a lobby that only looks. Anything else is refused.
+type Admitted = { seat: string | null; observer?: string; lobby?: true }
+async function admit(opts: ServerOptions, session: SessionRecord, ask: Admission): Promise<Admitted | { refused: string }> {
+  if (ask.role === 'lobby') return { seat: null, lobby: true }
+  if (ask.host !== null) return session.hostKeyHash && hash(ask.host) === session.hostKeyHash ? { seat: null } : { refused: 'the table needs the host key' }
+  const guest = ask.token !== null ? await opts.store.guestByToken(session.id, hash(ask.token)) : null
+  const live = guest && guest.revokedAt === undefined ? guest : null
+  if (ask.role === 'observer') return live?.kind === 'observer' ? { seat: null, observer: live.name } : { refused: 'an observer needs a token' }
+  if (ask.seat !== null) return live?.kind === 'seat' && live.seat === ask.seat ? { seat: ask.seat } : { refused: 'a seat needs its token' }
+  return { refused: 'the table needs the host key' }
+}
+
+async function attach(opts: ServerOptions, ws: WebSocket, sessionId: string, ask: Admission): Promise<void> {
   const send = (message: ServerMessage) => {
     if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(message))
   }
-  const actor = await opts.host.get(sessionId)
-  if (!actor) {
+  const session = await opts.store.loadSession(sessionId)
+  const actor = session ? await opts.host.get(sessionId) : null
+  if (!session || !actor) {
     send({ t: 'error', id: null, message: `unknown session ${sessionId}` })
     ws.close(4004, 'unknown session')
     return
   }
-  const sub: Subscriber = { seat, id: randomUUID(), send, ...(observer !== undefined ? { observer } : {}) }
+  const who = await admit(opts, session, ask)
+  if ('refused' in who) {
+    send({ t: 'refused', reason: who.refused })
+    ws.close(4003, who.refused)
+    return
+  }
+  const seat = who.seat
+  const sub: Subscriber = { seat, id: randomUUID(), send, close: () => ws.close(4003, 'kicked'), ...(who.observer !== undefined ? { observer: who.observer } : {}), ...(who.lobby ? { lobby: true } : {}) }
   actor.subscribe(sub)
+  // A connection keeps the code alive for another few hours (DRIFT §9); the host's screen is
+  // told the code, since it is what the room is joined by.
+  if (session.code) {
+    const expiresAt = codeExpiry(clock(opts))
+    await opts.store.setCode(sessionId, session.code, expiresAt)
+    if (seat === null && who.observer === undefined && !who.lobby) send({ t: 'room', code: session.code, expiresAt })
+  }
   ws.on('close', () => actor.unsubscribe(sub))
 
   ws.on('message', (data) => {
@@ -258,13 +364,18 @@ async function attach(opts: ServerOptions, ws: WebSocket, sessionId: string, sea
         actor.relay(sub, msg.presence)
         return
       }
+      // A lobby looks at the seats and nothing more (DRIFT §9).
+      if (sub.lobby) {
+        send({ t: 'reject', id: msg.envelope.id, reason: 'a lobby may only look' })
+        return
+      }
       // The connection's seat is authoritative; a client cannot speak for another seat.
       if (msg.envelope.seat !== seat) {
         send({ t: 'reject', id: msg.envelope.id, reason: 'envelope seat does not match connection seat' })
         return
       }
       // An observer may only flag (C8), and a flag says who flagged it: only the server stamps that.
-      if (observer !== undefined && msg.envelope.intents.some((it) => it.v !== 'flag')) {
+      if (sub.observer !== undefined && msg.envelope.intents.some((it) => it.v !== 'flag')) {
         send({ t: 'reject', id: msg.envelope.id, reason: 'an observer can only flag' })
         return
       }
@@ -273,7 +384,7 @@ async function attach(opts: ServerOptions, ws: WebSocket, sessionId: string, sea
         intents: msg.envelope.intents.map((it) => {
           if (it.v !== 'flag') return it
           const flag = { v: 'flag' as const, ...(it.note !== undefined ? { note: it.note } : {}) }
-          return observer !== undefined ? { ...flag, observer } : flag
+          return sub.observer !== undefined ? { ...flag, observer: sub.observer } : flag
         }),
       }
       void actor.submit(envelope).then(
@@ -372,9 +483,10 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     }
     const rec = gate.rec
     const id = randomUUID()
-    await opts.store.createSession({ id, version: `rev-${rec.rev}`, setup: setupFromProject(rec), deck: deckFromProject(rec), project: rec.id })
+    const room = admission(opts)
+    await opts.store.createSession({ id, version: `rev-${rec.rev}`, setup: setupFromProject(rec), deck: deckFromProject(rec), project: rec.id, ...room.record })
     await opts.host.get(id)
-    json(res, 201, { id, version: `rev-${rec.rev}` })
+    json(res, 201, { id, version: `rev-${rec.rev}`, code: room.code, hostKey: room.hostKey })
     return true
   }
   // The whole log for the replay corpus (DRIFT §7): version, setup and every line with its

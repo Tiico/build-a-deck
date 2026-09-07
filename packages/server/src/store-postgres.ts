@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url'
 import postgres from 'postgres'
 import { Applied } from '@byd/protocol'
 import type { SetupDef } from '@byd/engine'
-import { SeqConflictError, type Deck, type LogStore, type SessionRecord, type SessionSummary } from './store.js'
+import { SeqConflictError, type Deck, type GuestRecord, type LogStore, type SessionRecord, type SessionSummary } from './store.js'
 import type { ProjectDoc, ProjectRecord, ProjectStore, ProjectSummary } from './projects.js'
 import type { Account, AuthStore } from './auth.js'
 
@@ -90,18 +90,61 @@ export class PostgresLogStore implements LogStore {
 
   async createSession(record: SessionRecord): Promise<void> {
     await this.sql`
-      insert into sessions (id, version, setup, deck, project)
-      values (${record.id}, ${record.version}, ${this.sql.json(record.setup as never)}, ${record.deck ? this.sql.json(record.deck as never) : null}, ${record.project ?? null})
+      insert into sessions (id, version, setup, deck, project, code, code_expires_at, host_key_hash)
+      values (${record.id}, ${record.version}, ${this.sql.json(record.setup as never)}, ${record.deck ? this.sql.json(record.deck as never) : null}, ${record.project ?? null},
+              ${record.code ?? null}, ${record.codeExpiresAt ?? null}, ${record.hostKeyHash ?? null})
     `
   }
 
   async loadSession(id: string): Promise<SessionRecord | null> {
-    const rows = await this.sql<{ id: string; version: string; setup: SetupDef; deck: Deck | null; project: string | null }[]>`
-      select id, version, setup, deck, project from sessions where id = ${id}
+    const rows = await this.sql<{ id: string; version: string; setup: SetupDef; deck: Deck | null; project: string | null; code: string | null; code_expires_at: Date | null; host_key_hash: string | null }[]>`
+      select id, version, setup, deck, project, code, code_expires_at, host_key_hash from sessions where id = ${id}
     `
     const row = rows[0]
     if (!row) return null
-    return { id: row.id, version: row.version, setup: row.setup, ...(row.deck ? { deck: row.deck } : {}), ...(row.project ? { project: row.project } : {}) }
+    return {
+      id: row.id,
+      version: row.version,
+      setup: row.setup,
+      ...(row.deck ? { deck: row.deck } : {}),
+      ...(row.project ? { project: row.project } : {}),
+      ...(row.code ? { code: row.code } : {}),
+      ...(row.code_expires_at ? { codeExpiresAt: row.code_expires_at.toISOString() } : {}),
+      ...(row.host_key_hash ? { hostKeyHash: row.host_key_hash } : {}),
+    }
+  }
+
+  async sessionByCode(code: string): Promise<{ id: string; codeExpiresAt: string } | null> {
+    const [row] = await this.sql<{ id: string; code_expires_at: Date }[]>`select id, code_expires_at from sessions where code = ${code} and code_expires_at is not null`
+    return row ? { id: row.id, codeExpiresAt: row.code_expires_at.toISOString() } : null
+  }
+
+  async setCode(sessionId: string, code: string, expiresAt: string): Promise<void> {
+    await this.sql`update sessions set code = ${code}, code_expires_at = ${expiresAt} where id = ${sessionId}`
+  }
+
+  async issueGuest(sessionId: string, g: GuestRecord): Promise<void> {
+    await this.sql`
+      insert into guest_tokens (session_id, token_hash, kind, seat, name, issued_at, revoked_at)
+      values (${sessionId}, ${g.tokenHash}, ${g.kind}, ${g.seat}, ${g.name}, ${g.issuedAt}, ${g.revokedAt ?? null})
+    `
+  }
+
+  async guestByToken(sessionId: string, tokenHash: string): Promise<GuestRecord | null> {
+    const [row] = await this.sql<{ token_hash: string; kind: 'seat' | 'observer'; seat: string | null; name: string; issued_at: Date; revoked_at: Date | null }[]>`
+      select token_hash, kind, seat, name, issued_at, revoked_at from guest_tokens where session_id = ${sessionId} and token_hash = ${tokenHash}
+    `
+    if (!row) return null
+    return { tokenHash: row.token_hash, kind: row.kind, seat: row.seat, name: row.name, issuedAt: row.issued_at.toISOString(), ...(row.revoked_at ? { revokedAt: row.revoked_at.toISOString() } : {}) }
+  }
+
+  async revokeGuests(sessionId: string, seat: string | null, at: string): Promise<number> {
+    const rows = await this.sql`
+      update guest_tokens set revoked_at = ${at}
+      where session_id = ${sessionId} and revoked_at is null and seat is not distinct from ${seat}
+      returning token_hash
+    `
+    return rows.length
   }
 
   async append(sessionId: string, lines: readonly Applied[]): Promise<void> {

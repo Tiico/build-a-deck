@@ -60,12 +60,12 @@ describe('projects (L4, L5)', () => {
   })
 
   it('starts a table from a project: antal becomes copies in the deck zone, and textures are queued', async () => {
-    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string; hostKey: string }
     const started = await json('POST', `/projects/${id}/sessions`, {})
     expect(started.status).toBe(201)
-    const { id: sessionId } = (await started.json()) as { id: string }
+    const { id: sessionId, hostKey } = (await started.json()) as { id: string; hostKey: string }
 
-    const table = await WireClient.connect(run.base, sessionId, null)
+    const table = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
     expect(table.view?.zones.find((z) => z.id === 'draw')).toMatchObject({ mode: 'count', count: 5 })
     await table.send(null, { v: 'draw', from: 'draw', to: 'table', count: 5 })
     await table.synced(1)
@@ -97,9 +97,9 @@ describe('cross-origin (the editor is served from another origin in development)
 
 describe('refreshing a running table from its project (C7, L5)', () => {
   it('applies the project\'s current rev as version.change: new copies in the deck, textures queued, cards on the table untouched', async () => {
-    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
-    const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
-    const table = await WireClient.connect(run.base, sessionId, null)
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string; hostKey: string }
+    const { id: sessionId, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
+    const table = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
     await table.send(null, { v: 'draw', from: 'draw', to: 'table', count: 1 })
     await table.synced(1)
     const onTable = table.view!.components[0]!.id
@@ -140,8 +140,8 @@ describe('refreshing a running table from its project (C7, L5)', () => {
 
 describe('texture readiness (L5)', () => {
   it('reports how many of a table\'s textures are rendered, so the editor can wait before opening it', async () => {
-    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
-    const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string; hostKey: string }
+    const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
     const before = await (await fetch(`${run.http}/sessions/${sessionId}/textures`)).json()
     // Three cards, two faces each: the back is one shared texture, the fronts are three.
     expect(before).toEqual({ total: 4, done: 0, failed: [] })
@@ -154,10 +154,10 @@ describe('texture readiness (L5)', () => {
 
 describe('a version change is atomic for the players (L5)', () => {
   it('prepare queues the next rev\'s textures without touching the table; refresh after that swaps everything at once', async () => {
-    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
-    const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string; hostKey: string }
+    const { id: sessionId, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
     await run.renderAll()
-    const table = await WireClient.connect(run.base, sessionId, null)
+    const table = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
     await table.send(null, { v: 'draw', from: 'draw', to: 'table', count: 1 }, { v: 'flip', component: 'c0', face: 'front' })
     await table.synced(2)
     const before = table.view!.components[0]!.faces!['front']
@@ -184,12 +184,12 @@ describe('a version change is atomic for the players (L5)', () => {
 
 describe('the survey after a session (G3)', () => {
   it('accepts one structured answer per participant once the session has ended, tied to its version, and lists them', async () => {
-    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
-    const { id: sessionId, version } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; version: string }
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string; hostKey: string }
+    const { id: sessionId, version, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; version: string; hostKey: string }
     const answer = { who: 'Ada', seat: 'A', answers: { fun: 4, clarity: 3, balance: 2, change: 'Draken är för stark' } }
     expect((await json('POST', `/sessions/${sessionId}/survey`, answer)).status).toBe(409)
 
-    const table = await WireClient.connect(run.base, sessionId, null)
+    const table = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
     await table.send(null, { v: 'session.end' })
     await table.close()
     expect((await json('POST', `/sessions/${sessionId}/survey`, answer)).status).toBe(201)
@@ -201,10 +201,10 @@ describe('the survey after a session (G3)', () => {
 
 describe('a session record (C9)', () => {
   it('GET /sessions/:id says which version it runs and whether it has ended', async () => {
-    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
-    const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string; hostKey: string }
+    const { id: sessionId, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
     expect(await (await fetch(`${run.http}/sessions/${sessionId}`)).json()).toEqual({ id: sessionId, version: 'rev-1', ended: false, project: id })
-    const table = await WireClient.connect(run.base, sessionId, null)
+    const table = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
     await table.send(null, { v: 'session.end' })
     await table.close()
     expect(await (await fetch(`${run.http}/sessions/${sessionId}`)).json()).toMatchObject({ ended: true })
@@ -214,9 +214,9 @@ describe('a session record (C9)', () => {
 
 describe('exporting a session for the replay corpus (DRIFT §7)', () => {
   it('GET /sessions/:id/export hands over version, setup and the whole log, outcomes included, never the deck', async () => {
-    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
-    const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
-    const table = await WireClient.connect(run.base, sessionId, null)
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string; hostKey: string }
+    const { id: sessionId, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
+    const table = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
     await table.send(null, { v: 'shuffle', pile: 'draw' })
     await table.close()
     const exported = (await (await fetch(`${run.http}/sessions/${sessionId}/export`)).json()) as { version: string; setup: unknown; log: { outcome?: unknown }[]; deck?: unknown }

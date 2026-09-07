@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import type { Applied, Envelope, Presence, SeatId, ServerMessage, Snapshot } from '@byd/protocol'
 import {
   apply,
@@ -29,8 +30,9 @@ export const SNAPSHOT_ACTIVITY = 50
 // decide → append (commit) → apply → broadcast makes the log the truth (DRIFT §3).
 // Nothing in memory is authoritative: an actor is rebuilt from its log on load.
 
-// `observer` (C8) names a watcher: seatless, sees everything, may only flag.
-export type Subscriber = { seat: SeatId | null; id: string; observer?: string; send(message: ServerMessage): void }
+// `observer` (C8) names a watcher: seatless, sees everything, may only flag. `lobby` (DRIFT §9)
+// is the join page: sees the seats, may do nothing.
+export type Subscriber = { seat: SeatId | null; id: string; observer?: string; lobby?: true; send(message: ServerMessage): void; close?(): void }
 
 export class TableActor {
   private queue: Promise<unknown> = Promise.resolve()
@@ -115,6 +117,32 @@ export class TableActor {
     if (sub.observer !== undefined) this.broadcastRoster()
     else sub.send({ t: 'roster', observers: this.observers() })
     this.lastActivity = Date.now()
+  }
+
+  // The seats as they are: who sits where, for admission (DRIFT §9).
+  seats(): { id: SeatId; name: string | null }[] {
+    return this.state.setup.seats.map((id) => ({ id, name: this.state.seats[id]?.name ?? null }))
+  }
+
+  // To the host's own screens only (DRIFT §9): the table role, not seats, observers or lobbies.
+  tellTable(message: ServerMessage): void {
+    for (const sub of this.subscribers.keys()) {
+      if (sub.seat === null && sub.observer === undefined && !sub.lobby) sub.send(message)
+    }
+  }
+
+  // A kick (DRIFT §9): every connection at the seat is refused and closed, and the seat is
+  // given back to the table so someone else can take it. The token is the server's to revoke.
+  async kick(seat: SeatId): Promise<void> {
+    for (const sub of [...this.subscribers.keys()]) {
+      if (sub.seat !== seat) continue
+      sub.send({ t: 'refused', reason: 'kicked' })
+      this.unsubscribe(sub)
+      sub.close?.()
+    }
+    if (this.state.seats[seat]?.name !== null) {
+      await this.submit({ id: `kick-${seat}-${randomUUID()}`, seat: null, intents: [{ v: 'seat.release', seat }] })
+    }
   }
 
   private observers(): { id: string; name: string }[] {

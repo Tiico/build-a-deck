@@ -472,7 +472,7 @@ Fem personer runt ett bord som ska skapa konto på sina telefoner är en död se
 Följdkrav:
 QR-knappen i `table`-vyn är produktens viktigaste knapp.
 Feedback från gäster är svagt attribuerad.
-Missbruk av öppna rumskoder måste hanteras — fortfarande öppen fråga.
+Missbruk av öppna rumskoder hanteras i DRIFT §9 (byggt 2026-09-07): koden köper en token, går ut och kan roteras, och värden kan sparka.
 
 Byggt 2026-09-06 (prototypat, variant "kort i mitten"):
 Skaparen loggar in med en magisk länk (DRIFT §11): `POST /auth/login` mejlar en engångslänk som gäller i 15 minuter och svarar alltid 200, `GET /auth/verify` löser in den, skapar kontot första gången och sätter en HttpOnly-kaka i 30 dagar.
@@ -659,9 +659,9 @@ Spel med "spela nedvänt" som mekanik behöver ett andra val i arket.
 
 ### K12. Anslutningsflödet: bordet som platsväljare med nästa lediga förvald (prototypat 2026-09-06)
 
-QR-koden i TV-läget pekar på `/join?session=…`.
-Telefonen ser platserna live — upptagna med namn, lediga tryckbara — runt ett litet bord vars kanter följer setupens handzoner, med nästa lediga plats förvald.
-Namn plus "Sätt dig" leder till `/play`, som claimar platsen.
+QR-koden i TV-läget pekar på `/join?code=…` (från 2026-09-07 en rumskod, DRIFT §9).
+Telefonen ser platserna live genom lobbyrollen — upptagna med namn, lediga tryckbara — runt ett litet bord vars kanter följer setupens handzoner, med nästa lediga plats förvald.
+Namn plus "Sätt dig" köper en token för platsen och leder till `/play`, som claimar platsen.
 
 Motivering:
 I bordsläge betyder platsen något — den avgör vilken kant handen orienteras mot — så valet ska vara rumsligt.
@@ -884,7 +884,6 @@ Teknik:
 Aktivitetsflödet vid anslutning: löst 2026-09-07, snapshoten bär de senaste femtio raderna, se K9.
 Migreringsstrategi för händelseschemat — riktning beslutad i DRIFT.md avsnitt 7 (`schemaVersion` på varje rad, upcasters vid inläsning), detaljer kvar.
 Behörighetsroller i detalj: ägare, medredigerare, testledare, observatör.
-Hantering av missbruk av öppna rumskoder.
 Tillgänglighet i verktyget självt, till skillnad från i de spel som skapas i det.
 
 Spelupplevelse, kvar efter avsnitt K:

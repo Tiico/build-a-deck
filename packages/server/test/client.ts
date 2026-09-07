@@ -28,20 +28,22 @@ export class WireClient {
     })
   }
 
-  static async connect(base: string, sessionId: string, seat: string | null, as?: { role: 'observer'; name: string }): Promise<WireClient> {
+  static async connect(base: string, sessionId: string, seat: string | null, as?: { role: 'observer'; name: string } | { role: 'lobby' }, auth?: { host?: string; token?: string }): Promise<WireClient> {
     const q = new URLSearchParams()
     if (seat !== null) q.set('seat', seat)
     if (as) {
       q.set('role', as.role)
-      q.set('name', as.name)
+      if ('name' in as) q.set('name', as.name)
     }
+    if (auth?.host) q.set('host', auth.host)
+    if (auth?.token) q.set('token', auth.token)
     const url = `${base}/sessions/${sessionId}${q.size > 0 ? `?${q.toString()}` : ''}`
     const c = new WireClient(url)
     await new Promise<void>((resolve, reject) => {
       c.ws.addEventListener('open', () => resolve(), { once: true })
       c.ws.addEventListener('error', () => reject(new Error('ws error')), { once: true })
     })
-    await c.waitFor((m) => m.t === 'snapshot' || m.t === 'error')
+    await c.waitFor((m) => m.t === 'snapshot' || m.t === 'error' || m.t === 'refused')
     return c
   }
 
@@ -62,6 +64,18 @@ export class WireClient {
 
   sendRaw(text: string): void {
     this.ws.send(text)
+  }
+
+  // Resolves once the server has closed the socket (a kick, a refusal).
+  closed(timeoutMs = 2000): Promise<void> {
+    if (this.ws.readyState === this.ws.CLOSED) return Promise.resolve()
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('timed out waiting for close')), timeoutMs)
+      this.ws.addEventListener('close', () => {
+        clearTimeout(timer)
+        resolve()
+      }, { once: true })
+    })
   }
 
   // Sends one envelope and resolves with its ack or reject.

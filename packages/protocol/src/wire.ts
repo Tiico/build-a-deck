@@ -42,6 +42,11 @@ export const ServerMessage = z.discriminatedUnion('t', [
   z.object({ t: z.literal('error'), id: z.string().nullable(), message: z.string() }),
   // The server is going away; reconnect after a moment.
   z.object({ t: z.literal('bye'), reason: z.string() }),
+  // This connection is not admitted (DRIFT §9): no token, a revoked one, a wrong host key, or a
+  // kick. The server closes after it; the client must not reconnect on its own.
+  z.object({ t: z.literal('refused'), reason: z.string() }),
+  // The room code (DRIFT §9), to the host's screens only: on connect and whenever it rotates.
+  z.object({ t: z.literal('room'), code: z.string(), expiresAt: z.string() }),
   z.object({ t: z.literal('presence'), from: PresenceFrom, presence: Presence }),
   // Who is watching (C8): sent to everyone on connect and whenever it changes. Observers are
   // never invisible.

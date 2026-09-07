@@ -11,7 +11,8 @@ const to = (path: string, q: URLSearchParams, server: string | null): string => 
   return `${path}?${q.toString()}`
 }
 
-export const tvUrl = (session: string, server: string | null): string => to('/table', new URLSearchParams({ session, mode: 'tv' }), server)
+export const tvUrl = (session: string, server: string | null, host?: string): string =>
+  to('/table', new URLSearchParams({ session, mode: 'tv', ...(host ? { host } : {}) }), server)
 export const tableModeUrl = (session: string, server: string | null): string => to('/table', new URLSearchParams({ session, mode: 'table' }), server)
 export const onlineUrl = (session: string, server: string | null, seat: SeatId): string =>
   to('/online', new URLSearchParams({ session, seat, name: DESIGNER }), server)

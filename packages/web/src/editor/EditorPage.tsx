@@ -6,7 +6,8 @@ import { DataTable } from './DataTable.js'
 import { TableMenu, TablesTab } from './TablesTab.js'
 import { tvUrl } from './tableLinks.js'
 import { useProjectClient } from './useProjectClient.js'
-import type { Textures } from './ProjectClient.js'
+import { useTableClient } from '../table/useTableClient.js'
+import type { ProjectClient, Textures } from './ProjectClient.js'
 import { loginUrl } from '../account/api.js'
 import './editor.css'
 
@@ -26,7 +27,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
   const [element, setElement] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
-  const [table, setTable] = useState<{ id: string; version: string; kind: 'new' | 'refreshed' } | null>(null)
+  // A running table (L5) with what admits people to it (DRIFT §9): the code and the host key.
+  const [table, setTable] = useState<{ id: string; version: string; code: string; hostKey: string; kind: 'new' | 'refreshed' } | null>(null)
   // The table's textures (L5): the link opens only when every card can be seen. Polled with a
   // growing pause while anything is still rendering.
   const [textures, setTextures] = useState<Textures | null>(null)
@@ -109,7 +111,6 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
       setPreparing(null)
     }
   }
-
   const panel: Record<Mode, () => ReactNode> = {
     wall: () => (
       <DeckWall
@@ -153,6 +154,17 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
     tables: () => <TablesTab client={client} server={params.get('server')} />,
   }
 
+  const wsUrl = (params.get('server') ?? location.origin).replace(/^http/, 'ws')
+  const rotate = async () => {
+    if (!table) return
+    try {
+      const { code } = await client.rotateCode(table.id, table.hostKey)
+      setTable({ ...table, code })
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : String(err))
+    }
+  }
+
   return (
     <div className="byd-editor" data-page="editor" data-mode={mode}>
       <header>
@@ -187,13 +199,18 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
           ) : preparing ? (
             <span className="byd-editor-rendering">renderar kort {preparing.done}/{preparing.total}</span>
           ) : textures && textures.done + textures.failed.length >= textures.total ? (
-            <a href={tvUrl(table.id, params.get('server'))} target="_blank" rel="noreferrer">
+            <a href={tvUrl(table.id, params.get('server'), table.hostKey)} target="_blank" rel="noreferrer">
               öppna bordet
             </a>
           ) : (
             <span className="byd-editor-rendering">renderar kort {textures?.done ?? 0}/{textures?.total ?? '…'}</span>
           )}
           {textures && textures.failed.length > 0 && <span className="byd-editor-warning"> · {textures.failed.length} kort kunde inte renderas</span>}
+          <span className="byd-editor-room">
+            {' '}· rumskod <strong data-room-code>{table.code}</strong>{' '}
+            <button type="button" onClick={() => void rotate()}>Ny kod</button>
+          </span>
+          <HostSeats client={client} sessionId={table.id} hostKey={table.hostKey} ws={wsUrl} onNotice={setNotice} />
         </div>
       )}
       <main>
@@ -206,5 +223,27 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
         ))}
       </main>
     </div>
+  )
+}
+
+// The seats as the lobby sees them (DRIFT §9), each taken one with a kick: the host's control
+// over who is at the table, from the screen the host already has open.
+function HostSeats({ client, sessionId, hostKey, ws, onNotice }: { client: ProjectClient; sessionId: string; hostKey: string; ws: string; onNotice(text: string | null): void }) {
+  const { view } = useTableClient({ url: ws, sessionId, seat: null, lobby: true })
+  if (!view) return null
+  const taken = view.seats.filter((s) => s.name !== null)
+  if (taken.length === 0) return null
+  return (
+    <span className="byd-editor-seats">
+      {' '}· vid bordet:{' '}
+      {taken.map((s) => (
+        <span key={s.id} data-host-seat={s.id}>
+          {s.name}{' '}
+          <button type="button" onClick={() => void client.kick(sessionId, hostKey, s.id).catch((err: unknown) => onNotice(err instanceof Error ? err.message : String(err)))}>
+            Sparka {s.name}
+          </button>{' '}
+        </span>
+      ))}
+    </span>
   )
 }

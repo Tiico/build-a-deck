@@ -11,7 +11,7 @@ import { seatColor } from '../table/seatColor.js'
 import { zoneAt } from '../zones.js'
 import { CARD_MM } from '../table/drop.js'
 import { playIntents } from '../player/play.js'
-import { SessionButtons, SessionOverlays, useSessionVersion, useToast } from '../player/SessionOverlays.js'
+import { SessionButtons, SessionOverlays, useSessionVersion, useToast, refusedText } from '../player/SessionOverlays.js'
 import { HandFan } from './HandFan.js'
 import { seatRotation, withoutHand } from './seat.js'
 
@@ -24,9 +24,10 @@ export function OnlinePage() {
   const sessionId = params.get('session')
   const seat = params.get('seat')
   const name = params.get('name')
+  const token = params.get('token') ?? undefined
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
   const http = url.replace(/^ws/, 'http')
-  const { client, view, status, activity, observers } = useTableClient(sessionId && seat ? { url, sessionId, seat } : null)
+  const { client, view, status, activity, observers, refused } = useTableClient(sessionId && seat ? { url, sessionId, seat, ...(token ? { token } : {}) } : null)
   const presence = usePresence(client, view)
   const recent = useRecent(activity)
   const table = useRef<TableHandle>(null)
@@ -40,6 +41,7 @@ export function OnlinePage() {
   }, [client, view === null, seat, name, seatFree])
 
   if (!sessionId || !seat) return <p>Ingen session eller plats angiven.</p>
+  if (refused) return <p role="alert" data-refused={refused}>{refusedText(refused)}</p>
   if (!view || !client) return <p data-status={status}>{status === 'connecting' ? 'Ansluter…' : status}</p>
 
   const me = view.seats.find((s) => s.id === seat)

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { TableClient } from '../src/client.js'
 import { ObserverPage } from '../src/observer/ObserverPage.js'
-import { createSession, startServer, type Running } from './fixture.js'
+import { admit, asSeat, createSession, startServer, type Running } from './fixture.js'
 
 let run: Running
 beforeEach(async () => {
@@ -15,11 +15,11 @@ afterEach(async () => {
 
 describe('ObserverPage (C8)', () => {
   it('sees every hand, says what she is, and can only flag — stamped with her name', async () => {
-    const id = await createSession(run.store)
-    const ada = TableClient.connect({ url: run.url, sessionId: id, seat: 'A' })
+    const id = await createSession(run)
+    const ada = TableClient.connect(await asSeat(run, id, 'A'))
     await ada.ready()
     await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
-    history.replaceState(null, '', `/observe?session=${id}&name=Eva&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/observe?session=${id}&name=Eva&token=${await admit(run, id, null, 'Eva')}&server=${encodeURIComponent(run.url)}`)
     render(<ObserverPage />)
     expect(await screen.findByText(/Du är observatör/)).toBeTruthy()
     // A's hand is on her screen by name, which no table screen shows.

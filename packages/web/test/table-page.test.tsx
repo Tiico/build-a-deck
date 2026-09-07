@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { TableClient } from '../src/client.js'
 import { TablePage } from '../src/table/TablePage.js'
-import { createSession, startServer, type Running } from './fixture.js'
+import { asSeat, asTable, createSession, roomOf, startServer, type Running } from './fixture.js'
 
 let run: Running
 beforeEach(async () => {
@@ -15,15 +15,15 @@ afterEach(async () => {
 
 describe('TablePage', () => {
   it('connects from the URL, renders the table with TV chrome, and follows the table live', async () => {
-    const id = await createSession(run.store)
-    history.replaceState(null, '', `/table?session=${id}&mode=tv&code=KX7P&server=${encodeURIComponent(run.url)}`)
+    const id = await createSession(run)
+    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
     render(<TablePage />)
 
-    expect(await screen.findByText('KX7P')).toBeTruthy()
+    expect(await screen.findByText(roomOf(id).code)).toBeTruthy()
     expect(document.querySelector('[data-table]')).toBeTruthy()
     expect(document.querySelector('[data-zone="draw"]')!.getAttribute('data-count')).toBe('10')
 
-    const other = TableClient.connect({ url: run.url, sessionId: id, seat: null })
+    const other = TableClient.connect(await asTable(run, id))
     await other.ready()
     await other.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'hand:A', count: 3 })
     expect(await screen.findByText(/Ada satte sig/)).toBeTruthy()
@@ -35,13 +35,13 @@ describe('TablePage', () => {
 
 describe('a screen that joins mid-game', () => {
   it('shows what has happened so far in the feed, not an empty list', async () => {
-    const id = await createSession(run.store)
-    const other = TableClient.connect({ url: run.url, sessionId: id, seat: null })
+    const id = await createSession(run)
+    const other = TableClient.connect(await asTable(run, id))
     await other.ready()
     await other.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
     other.close()
 
-    history.replaceState(null, '', `/table?session=${id}&mode=tv&code=KX7P&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
     render(<TablePage />)
     expect(await screen.findByText(/Ada satte sig/)).toBeTruthy()
     expect(screen.getByText(/drog 2 från Draghög/)).toBeTruthy()
@@ -50,13 +50,13 @@ describe('a screen that joins mid-game', () => {
 
 describe('a proposed rewind on the table (C)', () => {
   it('shows the table as it was, says who is waited on, has no buttons, and returns to the present when it is settled', async () => {
-    const id = await createSession(run.store)
-    history.replaceState(null, '', `/table?session=${id}&mode=tv&code=KX7P&server=${encodeURIComponent(run.url)}`)
+    const id = await createSession(run)
+    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
     render(<TablePage />)
-    await screen.findByText('KX7P')
+    await screen.findByText(roomOf(id).code)
 
-    const ada = TableClient.connect({ url: run.url, sessionId: id, seat: 'A' })
-    const bo = TableClient.connect({ url: run.url, sessionId: id, seat: 'B' })
+    const ada = TableClient.connect(await asSeat(run, id, 'A'))
+    const bo = TableClient.connect(await asSeat(run, id, 'B'))
     await Promise.all([ada.ready(), bo.ready()])
     await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
     await bo.send({ v: 'seat.claim', seat: 'B', name: 'Bo' }, { v: 'draw', from: 'draw', to: 'discard', count: 3 })
@@ -80,11 +80,11 @@ describe('a proposed rewind on the table (C)', () => {
 
 describe('playing on the table (K1, K2, C)', () => {
   it('a drag on the table screen becomes an envelope the server commits', async () => {
-    const id = await createSession(run.store)
-    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    const id = await createSession(run)
+    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
     render(<TablePage />)
     await screen.findByText(/Draghög/)
-    const other = TableClient.connect({ url: run.url, sessionId: id, seat: null })
+    const other = TableClient.connect(await asTable(run, id))
     await other.ready()
     await other.send({ v: 'draw', from: 'draw', to: 'table', count: 1 })
     const card = await waitFor(() => {
@@ -105,11 +105,11 @@ describe('playing on the table (K1, K2, C)', () => {
 
 describe('presence on the table screen (K6)', () => {
   it('shows where the others are and what they carry, forgets them when they leave, and sends its own pointer', async () => {
-    const id = await createSession(run.store)
-    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    const id = await createSession(run)
+    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
     render(<TablePage />)
     await screen.findByText(/Draghög/)
-    const ada = TableClient.connect({ url: run.url, sessionId: id, seat: 'A' })
+    const ada = TableClient.connect(await asSeat(run, id, 'A'))
     await ada.ready()
     await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'table', count: 1 })
     const cardId = ada.view!.components[0]!.id
@@ -137,11 +137,11 @@ describe('presence on the table screen (K6)', () => {
   })
 
   it('a card that just moved carries the colour of the seat that moved it, for a moment', async () => {
-    const id = await createSession(run.store)
-    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    const id = await createSession(run)
+    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
     render(<TablePage />)
     await screen.findByText(/Draghög/)
-    const ada = TableClient.connect({ url: run.url, sessionId: id, seat: 'A' })
+    const ada = TableClient.connect(await asSeat(run, id, 'A'))
     await ada.ready()
     await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'table', count: 1 })
     const cardId = ada.view!.components[0]!.id
@@ -153,11 +153,11 @@ describe('presence on the table screen (K6)', () => {
 
 describe('the end of a session on the table (C9)', () => {
   it('says the session is over, on which version, with a summary, and points to the phones', async () => {
-    const id = await createSession(run.store)
-    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    const id = await createSession(run)
+    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
     render(<TablePage />)
     await screen.findByText(/Draghög/)
-    const ada = TableClient.connect({ url: run.url, sessionId: id, seat: 'A' })
+    const ada = TableClient.connect(await asSeat(run, id, 'A'))
     await ada.ready()
     await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
     await ada.send({ v: 'flag', note: 'hm' })
@@ -169,5 +169,22 @@ describe('the end of a session on the table (C9)', () => {
     expect(overlay.textContent).toMatch(/1 spelare/)
     expect(overlay.textContent).toMatch(/telefonerna/)
     ada.close()
+  })
+})
+
+describe('the host\'s screen (DRIFT §9)', () => {
+  it('opens only with the host key, and shows the room code it is told rather than anything from the URL', async () => {
+    const id = await createSession(run)
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    const { unmount } = render(<TablePage />)
+    expect(await screen.findByText(/värdens länk/)).toBeTruthy()
+    expect(document.querySelector('[data-table]')).toBeNull()
+    unmount()
+
+    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    render(<TablePage />)
+    expect(await screen.findByText(roomOf(id).code)).toBeTruthy()
+    const qr = document.querySelector('.byd-tv-join small')
+    expect(qr?.textContent).toContain(`join?code=${roomOf(id).code}`)
   })
 })

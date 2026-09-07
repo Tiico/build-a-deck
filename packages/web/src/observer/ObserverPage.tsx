@@ -4,6 +4,7 @@ import '../player/player.css'
 import { TableRenderer } from '../table/TableRenderer.js'
 import { TvChrome } from '../table/TvChrome.js'
 import { useTableClient } from '../table/useTableClient.js'
+import { refusedText } from '../player/SessionOverlays.js'
 import { FlagSheet } from '../player/SessionSheets.js'
 import { Survey } from '../player/Survey.js'
 import { submitSurvey } from '../player/surveyApi.js'
@@ -15,9 +16,10 @@ export function ObserverPage() {
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const sessionId = params.get('session')
   const name = params.get('name') ?? 'observatör'
+  const token = params.get('token') ?? undefined
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
   const http = url.replace(/^ws/, 'http')
-  const { client, view, status, activity, observers } = useTableClient(sessionId ? { url, sessionId, seat: null, observer: name } : null)
+  const { client, view, status, activity, observers, refused } = useTableClient(sessionId ? { url, sessionId, seat: null, observer: name, ...(token ? { token } : {}) } : null)
   const [sheet, setSheet] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [version, setVersion] = useState<string | null>(null)
@@ -35,6 +37,7 @@ export function ObserverPage() {
   }, [sessionId, view?.ended, version, http])
 
   if (!sessionId) return <p>Ingen session angiven.</p>
+  if (refused) return <p role="alert" data-refused={refused}>{refusedText(refused)}</p>
   if (!view || !client) return <p data-status={status}>{status === 'connecting' ? 'Ansluter…' : status}</p>
 
   return (

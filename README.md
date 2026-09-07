@@ -68,11 +68,11 @@ Telefonen ansluter via QR-koden i TV-läget, eller direkt: `/join?session=…`.
 | `/login?next=…` | magisk länk via e-post; inget lösenord |
 | `/new` | wizarden: namn, spelare, fält, ram, kort → projekt (kräver inloggning) |
 | `/editor?project=…` | kortväggen, mallen, tabellen; "Uppdatera bordet" startar ett bord |
-| `/table?session=…&mode=table\|tv` | storskärmen — bordsläge eller TV-läge med rumskod och QR |
-| `/join?session=…` | platsväljaren telefonen landar i |
-| `/play?session=…&seat=…&name=…` | telefonens hand |
-| `/online?session=…&seat=…&name=…` | distansläget: bordet vridet till din kant och din hand som en solfjäder, i ett fönster |
-| `/observe?session=…&name=…` | observatören: ser allt, alla ser henne, kan bara flagga |
+| `/table?session=…&host=…&mode=table\|tv` | storskärmen — bordsläge eller TV-läge med rumskod och QR; värdnyckeln från editorn öppnar den |
+| `/join?code=…` | platsväljaren telefonen landar i; rumskoden köper en token för platsen |
+| `/play?session=…&seat=…&name=…&token=…` | telefonens hand |
+| `/online?session=…&seat=…&name=…&token=…` | distansläget: bordet vridet till din kant och din hand som en solfjäder, i ett fönster |
+| `/observe?session=…&name=…&token=…` | observatören: ser allt, alla ser henne, kan bara flagga |
 
 I utveckling pekar `server=` på API:et (http för editor och wizard, ws för bord och telefon); i produktion är allt samma origin.
 Utan `RESEND_API_KEY` skriver servern inloggningslänken i sin logg i stället för att mejla den; sätt `WEB_ORIGIN=http://localhost:5173` så landar länken i webbappen.

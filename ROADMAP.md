@@ -87,7 +87,7 @@ Målet är att en grupp kan spela vilket kortspel som helst utan att sakna någo
 - ⬜ Räknare och privata zoner på telefonen utöver handen (C4).
 - ✅ Aktivitetshistorik i snapshoten: de senaste femtio raderna följer med vid anslutning, så en skärm som ansluter mitt i ett spel ser vad som hänt (I, teknik).
 - ⬜ Hur en hög i en area visas med blandad orientering, och om zonrektanglar får överlappa (I, spelupplevelse).
-- ⬜ Rumskoder som är korta, går ut och kan roteras; värden kan sparka en gäst (DRIFT §9, G1 följdkrav).
+- ✅ Rumskoder: sex tecken utan förväxlingsbara, går ut tre timmar efter senaste anslutning, köper tokens för plats och observatör; bordet öppnas med värdnyckel; värden roterar koden och sparkar från editorn (DRIFT §9, G1 följdkrav).
 - ⬜ Zongenvägar per spel med begripliga namn utan att se bordet (C4 följdkrav): namnen kommer från setupen, men setupen redigeras inte i editorn ännu.
 - ❓ Fler komponenttyper än standardkortet — tärning, bricka, meeple, bräde (B1, B2, B3).
   Registryt och tryckprofilerna är byggda för det, men bara ett kort finns.
@@ -168,7 +168,6 @@ Från DESIGN-BESLUT I och DRIFT:
 - GDPR för gästdeltagare (fas 3).
 - Fontlicensiering mot kravet att bevara fontfiler (fas 2 och 5).
 - Prisnivåernas tak (fas 3 och 6).
-- Missbruk av öppna rumskoder (fas 1).
 - Om release omfattar fler komponenttyper än kort (fas 1).
 
 ## Öppna frågor som inte blockerar release
