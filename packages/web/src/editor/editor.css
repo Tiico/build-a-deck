@@ -40,6 +40,12 @@
 
 /* Table */
 .byd-table-wrap { padding: 16px; }
+.byd-data-tools { margin-bottom: 12px; display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.byd-data-tools label, .byd-data-tools a { border: 1px solid #3b414e; border-radius: 8px; padding: 7px 11px; background: #1b1d23; color: #dce3f2; font-weight: 700; text-decoration: none; cursor: pointer; }
+.byd-data-tools label { position: relative; overflow: hidden; }
+.byd-data-tools label input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.byd-data-tools > span { color: #7d8597; }
+.byd-data-tools > [role='alert'] { color: #f0b64a; }
 .byd-data { border-collapse: collapse; width: 100%; background: #1b1d23; }
 .byd-data th { text-align: left; padding: 8px 10px; color: #7d8597; font-weight: 600; border-bottom: 1px solid #2f333d; position: sticky; top: 0; background: #1b1d23; }
 .byd-data td { padding: 0; border-bottom: 1px solid #20232b; }

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { DataTable } from '../src/editor/DataTable.js'
 import { projectDoc } from './project-doc.js'
 
@@ -10,7 +10,8 @@ describe('DataTable (B as a tab)', () => {
     const onCell = vi.fn()
     const onAddRow = vi.fn()
     const onRemoveRow = vi.fn()
-    render(<DataTable doc={doc} selectedRow="knight" onSelectRow={() => undefined} onCell={onCell} onAddRow={onAddRow} onRemoveRow={onRemoveRow} />)
+    const onImportRows = vi.fn()
+    render(<DataTable doc={doc} selectedRow="knight" onSelectRow={() => undefined} onCell={onCell} onAddRow={onAddRow} onRemoveRow={onRemoveRow} onImportRows={onImportRows} />)
 
     const headers = screen.getAllByRole('columnheader').map((h) => h.textContent)
     expect(headers).toEqual(['id', 'title', 'body', 'antal', ''])
@@ -29,5 +30,21 @@ describe('DataTable (B as a tab)', () => {
     expect(onAddRow).toHaveBeenCalledWith(expect.stringMatching(/^kort-\d+$/))
     fireEvent.click(within(rows[2]!).getByRole('button', { name: /ta bort/i }))
     expect(onRemoveRow).toHaveBeenCalledWith('wizard')
+  })
+
+  it('exports the current table and imports a selected CSV file', async () => {
+    const doc = projectDoc()
+    const onImportRows = vi.fn()
+    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onImportRows={onImportRows} />)
+
+    const download = screen.getByRole('link', { name: 'Exportera CSV' }) as HTMLAnchorElement
+    expect(download.download).toBe('skogens-herrar-kort.csv')
+    expect(decodeURIComponent(download.href.split(',')[1] ?? '')).toContain('id,title,body,antal')
+
+    const file = new File(['id,title,body,antal\ndrake,Drake,Flygande,2'], 'kort.csv', { type: 'text/csv' })
+    fireEvent.change(screen.getByLabelText('Importera CSV'), { target: { files: [file] } })
+    await waitFor(() => expect(onImportRows).toHaveBeenCalledWith([
+      { id: 'drake', fields: { title: 'Drake', body: 'Flygande', antal: 2 } },
+    ]))
   })
 })

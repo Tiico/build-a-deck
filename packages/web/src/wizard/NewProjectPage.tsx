@@ -1,23 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CardPreview } from '../editor/CardPreview.js'
 import { loginUrl, withCredentials } from '../account/api.js'
-import { parseCsv } from './csv.js'
 import { buildProject, type WizardState } from './build.js'
 import { DEFAULT_FIELDS, DEFAULT_FRAME, FRAMES, type Field } from './frames.js'
 import './wizard.css'
 
 export type NewProjectPageProps = { onNavigate?(url: string): void }
 
-const SAMPLE_CSV = `title,cost,body
-Drake,5,Flygande. När Drake anfaller: gör 2 skada på alla motståndare.
-Riddare,3,Sköld 1. Kostar 1 mindre om du kontrollerar ett **Torn**.
-Trollkarl,2,När du spelar Trollkarl: dra ett kort.
-Tjuv,1,Ta ett slumpmässigt kort från en motståndares hand.`
-const SAMPLE_ROW = { title: 'Drake', cost: '5', body: 'Flygande. När Drake anfaller: gör 2 skada på alla motståndare.' }
-const EMPTY_STATE: WizardState = { name: '', players: 2, fields: DEFAULT_FIELDS, frame: 'classic', rows: [] }
+const firstRow = (): Record<string, string> => ({ title: 'Kort 1', cost: '1', body: '', art: '' })
+const emptyState = (): WizardState => ({ name: '', players: 2, fields: DEFAULT_FIELDS, frame: 'classic', rows: [firstRow()] })
 const PENDING_KEY = 'byd.pending-wizard'
-type PendingAction = 'editor' | 'table'
-type PendingWizard = { state: WizardState; csv: string; action: PendingAction; server: string | null }
+type PendingWizard = { state: WizardState; server: string | null }
 
 function pendingWizard(server: string | null): PendingWizard | null {
   try {
@@ -27,14 +20,12 @@ function pendingWizard(server: string | null): PendingWizard | null {
     const state = value.state
     if (
       value.server !== server ||
-      (value.action !== 'editor' && value.action !== 'table') ||
       !state ||
       typeof state.name !== 'string' ||
       typeof state.players !== 'number' ||
       typeof state.frame !== 'string' ||
       !Array.isArray(state.fields) ||
-      !Array.isArray(state.rows) ||
-      typeof value.csv !== 'string'
+      !Array.isArray(state.rows)
     ) return null
     return value as PendingWizard
   } catch {
@@ -58,167 +49,137 @@ function forgetWizard(): void {
   }
 }
 
-// /new?server=http://…  — the wizard (L6), one page with a live card (prototype answer B).
-// It produces exactly the document the editor edits, then hands off to the editor or a table.
+const mappedByStarterFrame = (key: string) => ['title', 'cost', 'body', 'art'].includes(key)
+
+// /new?server=http://… — a short graphical starter flow. It creates the same document the
+// editor edits, then sends the designer there for the rest of the deck and template work.
 export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: NewProjectPageProps) {
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const server = params.get('server')
   const http = server ?? location.origin
   const pending = useMemo(() => pendingWizard(server), [server])
-  const [s, setS] = useState<WizardState>(pending?.state ?? EMPTY_STATE)
-  const [csv, setCsv] = useState(pending?.csv ?? '')
-  const [showLargePreview, setShowLargePreview] = useState(false)
-  const [busy, setBusy] = useState<string | null>(null)
+  const [s, setS] = useState<WizardState>(pending?.state ?? emptyState())
+  const [selectedRow, setSelectedRow] = useState(0)
+  const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const resumed = useRef(false)
-  const frame = FRAMES.find((f) => f.id === s.frame) ?? DEFAULT_FRAME
+  const frame = FRAMES.find((candidate) => candidate.id === s.frame) ?? DEFAULT_FRAME
   const ready = s.name.trim().length > 0 && s.rows.length > 0 && s.fields.length > 0
   const front = useMemo(() => frame.front(s.fields), [frame, s.fields])
-  const first = s.rows[0] ?? SAMPLE_ROW
+  const row = s.rows[selectedRow] ?? s.rows[0] ?? firstRow()
 
   const suffix = (q: URLSearchParams) => {
     if (server) q.set('server', server)
     return q.toString()
   }
-  const create = async (action: PendingAction) => {
-    const res = await fetch(`${http}/projects`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(buildProject(s)) }))
-    if (res.status === 401) {
-      // Not logged in (G1): to the login card and back to the wizard after.
-      rememberWizard({ state: s, csv, action, server })
-      onNavigate(loginUrl(location.pathname + location.search, server))
-      throw new Error('logga in först')
-    }
-    if (!res.ok) throw new Error(`kunde inte skapa projektet: ${res.status}`)
-    forgetWizard()
-    return ((await res.json()) as { id: string }).id
-  }
   const toEditor = async () => {
-    setBusy('editor')
+    setBusy(true)
+    setError(null)
     try {
-      const id = await create('editor')
+      const res = await fetch(`${http}/projects`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(buildProject(s)) }))
+      if (res.status === 401) {
+        rememberWizard({ state: s, server })
+        onNavigate(loginUrl(location.pathname + location.search, server))
+        throw new Error('logga in först')
+      }
+      if (!res.ok) throw new Error(`kunde inte skapa projektet: ${res.status}`)
+      forgetWizard()
+      const { id } = (await res.json()) as { id: string }
       onNavigate(`/editor?${suffix(new URLSearchParams({ project: id }))}`)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
-      setBusy(null)
-    }
-  }
-  const toTable = async () => {
-    setBusy('table')
-    try {
-      const id = await create('table')
-      const res = await fetch(`${http}/projects/${encodeURIComponent(id)}/sessions`, withCredentials({ method: 'POST' }))
-      if (!res.ok) throw new Error(`kunde inte starta bordet: ${res.status}`)
-      const { id: session } = (await res.json()) as { id: string }
-      const q = new URLSearchParams({ session, mode: 'tv' })
-      if (server) q.set('server', server.replace(/^http/, 'ws'))
-      onNavigate(`/table?${q.toString()}`)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
-      setBusy(null)
+      setBusy(false)
     }
   }
   useEffect(() => {
     if (!pending || resumed.current) return
     resumed.current = true
-    if (pending.action === 'table') void toTable()
-    else void toEditor()
+    void toEditor()
   }, [])
-  const setFields = (fields: Field[]) => setS({ ...s, fields })
+
+  const setFields = (fields: Field[]) => setS((current) => ({ ...current, fields }))
+  const updateRow = (index: number, key: string, value: string) => setS((current) => ({
+    ...current,
+    rows: current.rows.map((candidate, rowIndex) => rowIndex === index ? { ...candidate, [key]: value } : candidate),
+  }))
+  const chooseImage = (index: number, key: string, file: File | undefined) => {
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => updateRow(index, key, String(reader.result ?? ''))
+    reader.readAsDataURL(file)
+  }
+  const addField = (kind: Field['kind']) => {
+    const base = kind === 'image' ? 'bild' : kind === 'number' ? 'värde' : 'fält'
+    let n = 1
+    while (s.fields.some((field) => field.key === `${base}${n}`)) n++
+    const field: Field = {
+      key: `${base}${n}`,
+      label: kind === 'image' ? 'Ny bild' : kind === 'number' ? 'Nytt tal' : 'Nytt textfält',
+      kind,
+    }
+    setS((current) => ({
+      ...current,
+      fields: [...current.fields, field],
+      rows: current.rows.map((candidate) => ({ ...candidate, [field.key]: '' })),
+    }))
+  }
+  const removeField = (key: string) => setS((current) => ({
+    ...current,
+    fields: current.fields.filter((field) => field.key !== key),
+    rows: current.rows.map((candidate) => Object.fromEntries(Object.entries(candidate).filter(([field]) => field !== key))),
+  }))
+  const addRow = () => {
+    const next = Object.fromEntries(s.fields.map((field) => [field.key, field.key === 'title' ? `Kort ${s.rows.length + 1}` : field.key === 'cost' ? '1' : '']))
+    setS((current) => ({ ...current, rows: [...current.rows, next] }))
+    setSelectedRow(s.rows.length)
+  }
+  const removeRow = (index: number) => {
+    if (s.rows.length === 1) return
+    setS((current) => ({ ...current, rows: current.rows.filter((_, rowIndex) => rowIndex !== index) }))
+    setSelectedRow(Math.max(0, Math.min(selectedRow, s.rows.length - 2)))
+  }
 
   return (
-    <div className={`byd-wizard${showLargePreview ? ' byd-wizard-preview-open' : ''}`} data-page="new">
-      <main>
-        <h1>Nytt spel</h1>
-        <section>
-          <h2><span>1</span>Namn</h2>
-          <input aria-label="Namn" value={s.name} onChange={(e) => setS({ ...s, name: e.target.value })} placeholder="Skogens herrar" />
-        </section>
-        <section>
-          <h2><span>2</span>Spelare</h2>
-          <div className="byd-wizard-players">
-            {[1, 2, 3, 4, 5, 6].map((n) => (
-              <button key={n} type="button" aria-pressed={s.players === n ? 'true' : 'false'} onClick={() => setS({ ...s, players: n })}>{n}</button>
-            ))}
-          </div>
-          <p>Ger {s.players} platser med varsin hand. Går att ändra senare.</p>
-        </section>
-        <section>
-          <h2><span>3</span>Fält på kortet</h2>
-          <div className="byd-wizard-fields">
-            {s.fields.map((f, i) => (
-              <div key={i}>
-                <input aria-label={`fält ${i + 1} namn`} value={f.label} onChange={(e) => setFields(s.fields.map((x, k) => (k === i ? { ...x, label: e.target.value, key: x.key || e.target.value.toLowerCase() } : x)))} placeholder="Namn" />
-                <input aria-label={`fält ${i + 1} kolumn`} className="byd-mono" value={f.key} onChange={(e) => setFields(s.fields.map((x, k) => (k === i ? { ...x, key: e.target.value } : x)))} placeholder="kolumn" />
-                <select aria-label={`fält ${i + 1} typ`} value={f.kind} onChange={(e) => setFields(s.fields.map((x, k) => (k === i ? { ...x, kind: e.target.value as Field['kind'] } : x)))}>
-                  <option value="text">text</option>
-                  <option value="number">tal</option>
-                  <option value="image">bild</option>
-                </select>
-                <button type="button" aria-label={`ta bort fält ${i + 1}`} onClick={() => setFields(s.fields.filter((_, k) => k !== i))}>×</button>
-              </div>
-            ))}
-            <div className="byd-wizard-fields-actions">
-              <button type="button" onClick={() => setFields([...s.fields, { key: '', label: '', kind: 'text' }])}>+ Fält</button>
-              <button type="button" onClick={() => setFields(DEFAULT_FIELDS)}>Förslag: titel, kostnad, text</button>
-            </div>
-          </div>
-        </section>
-        <section>
-          <h2><span>4</span>Ram</h2>
-          <div className="byd-wizard-frames">
-            {FRAMES.map((f) => (
-              <button key={f.id} type="button" aria-pressed={s.frame === f.id ? 'true' : 'false'} onClick={() => setS({ ...s, frame: f.id })}>
-                <CardPreview id={`frame-${f.id}`} face={f.front(s.fields)} row={first} icons={{}} scale={0.8} />
-                <strong>{f.name}</strong>
-                <small>{f.blurb}</small>
-              </button>
-            ))}
-          </div>
-        </section>
-        <section>
-          <h2><span>5</span>Kort</h2>
-          <p>Klistra in från ditt kalkylblad — första raden är rubriker — eller börja med tomma rader.</p>
-          <textarea aria-label="Kort som CSV" rows={7} value={csv} placeholder={SAMPLE_CSV} onChange={(e) => {
-            setCsv(e.target.value)
-            setS({ ...s, rows: parseCsv(e.target.value).rows })
-          }} />
-          <div className="byd-wizard-data-actions">
-            <button type="button" onClick={() => {
-              setCsv(SAMPLE_CSV)
-              setS({ ...s, rows: parseCsv(SAMPLE_CSV).rows })
-            }}>Använd exemplet</button>
-            <button type="button" onClick={() => setS({ ...s, rows: Array.from({ length: 5 }, (_, i) => ({ title: `Kort ${i + 1}`, cost: '1', body: '' })) })}>5 tomma rader</button>
-            <span>{s.rows.length} kort</span>
-            <button type="button" className="byd-wizard-preview-toggle" aria-expanded={showLargePreview} onClick={() => setShowLargePreview(!showLargePreview)}>
-              {showLargePreview ? 'Dölj stor preview' : 'Visa stor preview'}
-            </button>
-          </div>
-        </section>
-        <section className="byd-wizard-actions">
-          <button type="button" className="byd-wizard-primary" disabled={!ready || busy !== null} onClick={() => void toTable()}>
-            {busy === 'table' ? 'Startar…' : 'Öppna bordet'}
-          </button>
-          <button type="button" disabled={!ready || busy !== null} onClick={() => void toEditor()}>
-            {busy === 'editor' ? 'Skapar…' : 'Till editorn'}
-          </button>
-          {error && <span role="alert">{error}</span>}
-        </section>
-      </main>
-      {showLargePreview && (
+    <div className="byd-wizard" data-page="new">
+      <header>
+        <div><span>Guidad start</span><h1>Ge spelet en flygande start</h1></div>
+        <span>3 enkla steg · cirka 3 min</span>
+      </header>
+      <div className="byd-wizard-grid">
         <aside>
-          <div className="byd-wizard-caption">{s.name || 'Ditt spel'} · {s.rows.length} kort · {s.players} spelare</div>
-          <div className="byd-wizard-live">
-            <CardPreview id="live" face={front} row={first} icons={{}} />
-          </div>
-          {s.rows.length > 1 && (
-            <div className="byd-wizard-thumbs">
-              {s.rows.slice(1, 9).map((r, i) => (
-                <CardPreview key={i} id={`thumb-${i}`} face={front} row={r} icons={{}} scale={0.35} />
-              ))}
+          <div className="byd-wizard-handoff"><strong>Wizarden är startpunkten</strong><p>Skapa några exempelkort här. Layout, hela leken och CSV-verktyg väntar i editorn.</p></div>
+          <section>
+            <span className="byd-wizard-step">1</span>
+            <div>
+              <label className="byd-wizard-label">Spelets namn<input aria-label="Namn" value={s.name} onChange={(event) => setS({ ...s, name: event.target.value })} placeholder="Skogens herrar" /></label>
+              <fieldset><legend>Spelare</legend><div className="byd-wizard-players">{[1, 2, 3, 4, 5, 6].map((n) => <button key={n} type="button" aria-pressed={s.players === n} onClick={() => setS({ ...s, players: n })}>{n}</button>)}</div></fieldset>
             </div>
-          )}
+          </section>
+          <section>
+            <span className="byd-wizard-step">2</span>
+            <div className="byd-wizard-fields">
+              <div><h2>Fält</h2><p>Varje fält blir direkt en kontroll på varje exempelkort.</p></div>
+              <div className="byd-wizard-field-list">{s.fields.map((field) => <div className="byd-wizard-field" key={field.key}>
+                <span>{field.kind === 'image' ? 'Bild' : field.kind === 'number' ? 'Tal' : 'Text'}</span>
+                <input aria-label={`${field.label} namn`} value={field.label} onChange={(event) => setFields(s.fields.map((candidate) => candidate.key === field.key ? { ...candidate, label: event.target.value } : candidate))} />
+                <small>{mappedByStarterFrame(field.key) ? 'Visas i startramen' : 'Placeras på mallen i editorn'}</small>
+                <button type="button" aria-label={`Ta bort ${field.label}`} onClick={() => removeField(field.key)}>×</button>
+              </div>)}</div>
+              <div className="byd-wizard-add-fields"><button type="button" onClick={() => addField('text')}>+ Textfält</button><button type="button" onClick={() => addField('number')}>+ Talfält</button><button type="button" onClick={() => addField('image')}>+ Bildfält</button></div>
+            </div>
+          </section>
+          <div className="byd-wizard-frames"><span>Startram</span>{FRAMES.map((candidate) => <button key={candidate.id} type="button" aria-pressed={s.frame === candidate.id} onClick={() => setS({ ...s, frame: candidate.id })}>{candidate.name}</button>)}</div>
         </aside>
-      )}
+        <main>
+          <div className="byd-wizard-cards-head"><div><span className="byd-wizard-step">3</span><div><h2>Gör några exempelkort</h2><p>De hjälper editorn att visa hur fälten faktiskt används.</p></div></div><span>{s.rows.length} kort</span></div>
+          <div className="byd-wizard-card-workspace">
+            <div className="byd-wizard-preview"><CardPreview id="wizard-live" face={front} row={row} icons={{}} /><span>Levande förhandsvisning</span></div>
+            <div className="byd-wizard-card-form">{s.fields.map((field) => field.kind === 'image' ? <div key={field.key} className="byd-wizard-image-field is-wide"><span>{field.label}{!mappedByStarterFrame(field.key) && <em>placera i editorn</em>}</span><div>{row[field.key] ? <img src={row[field.key]} alt={`Förhandsvisning av ${field.label}`} /> : <i>Ingen bild vald</i>}<label className="byd-wizard-file-button">{row[field.key] ? 'Byt bild' : 'Välj bild'}<input type="file" accept="image/*" aria-label={`kort ${selectedRow + 1} ${field.label}`} onChange={(event) => chooseImage(selectedRow, field.key, event.target.files?.[0])} /></label>{row[field.key] && <button type="button" onClick={() => updateRow(selectedRow, field.key, '')}>Ta bort</button>}</div></div> : <label key={field.key} className={field.key === 'body' ? 'is-wide' : ''}><span>{field.label}{!mappedByStarterFrame(field.key) && <em>placera i editorn</em>}</span>{field.key === 'body' ? <textarea rows={4} aria-label={`kort ${selectedRow + 1} ${field.label}`} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} /> : <input type={field.kind === 'number' ? 'number' : 'text'} aria-label={`kort ${selectedRow + 1} ${field.label}`} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} />}</label>)}</div>
+          </div>
+          <div className="byd-wizard-card-tabs">{s.rows.map((candidate, index) => <button type="button" key={index} aria-pressed={selectedRow === index} onClick={() => setSelectedRow(index)}><b>{index + 1}</b>{candidate['title'] || 'Namnlöst kort'}</button>)}<button type="button" className="is-add" onClick={addRow}>+ Nytt kort</button><button type="button" disabled={s.rows.length === 1} onClick={() => removeRow(selectedRow)}>Ta bort valt kort</button></div>
+          <footer><p>Du kan lägga till resten av leken, importera CSV och finjustera mallen efter nästa steg.</p><button type="button" className="byd-wizard-primary" disabled={!ready || busy} onClick={() => void toEditor()}>{busy ? 'Skapar…' : 'Skapa spelet och fortsätt i editorn →'}</button>{error && <span role="alert">{error}</span>}</footer>
+        </main>
+      </div>
     </div>
   )
 }

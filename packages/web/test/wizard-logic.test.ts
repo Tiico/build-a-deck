@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseCsv } from '../src/wizard/csv.js'
+import { parseCsv } from '../src/editor/csv.js'
 import { buildProject, type WizardState } from '../src/wizard/build.js'
 
 describe('parseCsv', () => {

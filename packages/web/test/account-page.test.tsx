@@ -84,8 +84,7 @@ describe('pages that need an account send you to log in and back', () => {
     const gone: string[] = []
     render(<NewProjectPage onNavigate={(u) => gone.push(u)} />)
     fireEvent.change(screen.getByLabelText('Namn'), { target: { value: 'Första försöket' } })
-    fireEvent.click(screen.getByRole('button', { name: /använd exemplet/i }))
-    fireEvent.click(screen.getByRole('button', { name: /till editorn/i }))
+    fireEvent.click(screen.getByRole('button', { name: /fortsätt i editorn/i }))
     await waitFor(() => expect(gone.at(-1)).toMatch(/^\/login\?next=%2Fnew/))
 
     const login = new URL(gone.at(-1)!, 'http://web.local')
@@ -112,8 +111,7 @@ describe('pages that need an account send you to log in and back', () => {
     const gone: string[] = []
     render(<NewProjectPage onNavigate={(u) => gone.push(u)} />)
     fireEvent.change(screen.getByLabelText('Namn'), { target: { value: 'Skogens herrar' } })
-    fireEvent.click(screen.getByRole('button', { name: /använd exemplet/i }))
-    fireEvent.click(screen.getByRole('button', { name: /till editorn/i }))
+    fireEvent.click(screen.getByRole('button', { name: /fortsätt i editorn/i }))
     await waitFor(() => expect(gone.at(-1)).toMatch(/^\/login\?next=%2Fnew/))
     cleanup()
 

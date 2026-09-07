@@ -82,4 +82,5 @@ export const DEFAULT_FIELDS: Field[] = [
   { key: 'title', label: 'Titel', kind: 'text' },
   { key: 'cost', label: 'Kostnad', kind: 'number' },
   { key: 'body', label: 'Text', kind: 'text' },
+  { key: 'art', label: 'Illustration', kind: 'image' },
 ]
