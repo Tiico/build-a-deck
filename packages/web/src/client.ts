@@ -13,6 +13,8 @@ export type ConnectOptions = {
   token?: string
   host?: string
   lobby?: boolean
+  // The editor's explicit project-owner route; the server verifies its account cookie.
+  owner?: boolean
   // First reconnect delay; doubles per attempt up to ten times this.
   reconnectDelayMs?: number
 }
@@ -149,7 +151,7 @@ export class TableClient {
   }
 
   private open(): WebSocketLike {
-    const { url, sessionId, seat, observer, token, host, lobby } = this.opts
+    const { url, sessionId, seat, observer, token, host, lobby, owner } = this.opts
     const q = new URLSearchParams()
     if (lobby) q.set('role', 'lobby')
     else if (observer !== undefined) {
@@ -158,6 +160,7 @@ export class TableClient {
     } else if (seat !== null) q.set('seat', seat)
     if (token !== undefined) q.set('token', token)
     if (host !== undefined) q.set('host', host)
+    if (owner) q.set('owner', '1')
     const ws = makeSocket(`${url}/sessions/${encodeURIComponent(sessionId)}${q.size > 0 ? `?${q.toString()}` : ''}`)
     ws.addEventListener('message', (ev) => this.receive(ServerMessage.parse(JSON.parse(String(ev.data)))))
     ws.addEventListener('close', () => this.dropped(ws))

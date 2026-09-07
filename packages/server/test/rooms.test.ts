@@ -57,6 +57,15 @@ const post = (http: string, path: string, body: unknown, headers: Record<string,
   fetch(`${http}${path}`, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body) })
 
 describe('guest tokens', () => {
+  it('reserves a seat atomically when two guests join at the same time', async () => {
+    const { code } = await createRoom(run.http)
+    const attempts = await Promise.all([
+      post(run.http, `/rooms/${code}/join`, { name: 'Ada', seat: 'A' }),
+      post(run.http, `/rooms/${code}/join`, { name: 'Bo', seat: 'A' }),
+    ])
+    expect(attempts.map((res) => res.status).sort()).toEqual([201, 409])
+  })
+
   it('a code and a name buy a token for a free seat; unknown codes and seats, and taken seats, refuse', async () => {
     const { id, code } = await createRoom(run.http)
     const joined = await post(run.http, `/rooms/${code.toLowerCase()}/join`, { name: 'Ada', seat: 'A' })
@@ -105,6 +114,9 @@ describe('guest tokens', () => {
     expect(lobby.view?.seats.find((s) => s.id === 'A')?.name).toBe('Ada')
     const rejected = await lobby.send(null, { v: 'seat.release', seat: 'A' })
     expect(rejected).toMatchObject({ t: 'reject', reason: 'a lobby may only look' })
+    lobby.sendRaw(JSON.stringify({ t: 'presence', presence: { kind: 'point', x: 777, y: 888 } }))
+    await new Promise((resolve) => setTimeout(resolve, 30))
+    expect(tv.messages.some((message) => message.t === 'presence' && message.presence.kind === 'point' && message.presence.x === 777)).toBe(false)
     await Promise.all([tv.close(), a.close(), lobby.close()])
   })
 

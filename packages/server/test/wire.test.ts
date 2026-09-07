@@ -269,6 +269,7 @@ describe('a face whose render died (#10)', () => {
       body: JSON.stringify({ id: 'dead', version: 'v1', setup: twoSeatSetup(), deck }),
     })
     expect(res.status).toBe(201)
+    registerRoom('dead', (await res.json()) as { code: string; hostKey: string })
     const a = await connect('dead', 'A')
     await a.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
     const front = (await a.synced(1)).components.find((c) => c.zone === 'hand:A')!.faces!['front']!

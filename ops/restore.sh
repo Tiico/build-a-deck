@@ -25,7 +25,7 @@ echo "{\"msg\":\"restored\",\"backup\":\"${1:-LATEST}\",\"sessions\":$(q 'select
 q "select json_build_object('msg', 'export', 'session', json_build_object(
      'id', s.id, 'version', s.version, 'setup', s.setup,
      'log', coalesce((select json_agg(json_strip_nulls(json_build_object(
-        'seq', e.seq, 'batch', e.batch, 'by', e.by_seat, 'intent', e.intent, 'outcome', e.outcome,
+        'schemaVersion', e.schema_version, 'seq', e.seq, 'batch', e.batch, 'by', e.by_seat, 'intent', e.intent, 'outcome', e.outcome,
         'at', to_char(e.at at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.MS\"Z\"'))) order by e.seq)
       from events e where e.session_id = s.id), '[]'::json)))
    from sessions s order by (select max(at) from events e where e.session_id = s.id) desc nulls last limit 1"

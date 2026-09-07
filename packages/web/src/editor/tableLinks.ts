@@ -11,14 +11,16 @@ const to = (path: string, q: URLSearchParams, server: string | null): string => 
   return `${path}?${q.toString()}`
 }
 
-export const tvUrl = (session: string, server: string | null, host?: string): string =>
-  to('/table', new URLSearchParams({ session, mode: 'tv', ...(host ? { host } : {}) }), server)
-export const tableModeUrl = (session: string, server: string | null): string => to('/table', new URLSearchParams({ session, mode: 'table' }), server)
-export const onlineUrl = (session: string, server: string | null, seat: SeatId): string =>
-  to('/online', new URLSearchParams({ session, seat, name: DESIGNER }), server)
-export const observeUrl = (session: string, server: string | null): string => to('/observe', new URLSearchParams({ session, name: DESIGNER }), server)
-// What the QR on the TV encodes (K12): the phone's seat picker for this table.
-export const joinUrl = (session: string, server: string | null): string => `${location.origin}${to('/join', new URLSearchParams({ session }), server)}`
+export const tvUrl = (session: string, server: string | null, host?: string, owner = false): string =>
+  to('/table', new URLSearchParams({ session, ...(host ? { host } : {}), mode: 'tv', ...(owner ? { owner: '1' } : {}) }), server)
+export const tableModeUrl = (session: string, server: string | null, owner = false): string =>
+  to('/table', new URLSearchParams({ session, mode: 'table', ...(owner ? { owner: '1' } : {}) }), server)
+export const onlineUrl = (session: string, server: string | null, seat: SeatId, owner = false): string =>
+  to('/online', new URLSearchParams({ session, seat, name: DESIGNER, ...(owner ? { owner: '1' } : {}) }), server)
+export const observeUrl = (session: string, server: string | null, owner = false): string =>
+  to('/observe', new URLSearchParams({ session, name: DESIGNER, ...(owner ? { owner: '1' } : {}) }), server)
+// What the QR on the TV encodes (K12): the room code opens the phone's live seat picker.
+export const joinUrl = (code: string, server: string | null): string => `${location.origin}${to('/join', new URLSearchParams({ code }), server)}`
 
 // What a table is called where a person has to tell two of them apart. The session id is a
 // UUID; its head is enough to match the code the TV shows.

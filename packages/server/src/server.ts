@@ -99,8 +99,15 @@ export function createServer(given: ServerOptions): Server {
     }
     const sessionId = decodeURIComponent(match[1] ?? '')
     const q = url.searchParams
-    const ask: Admission = { seat: q.get('seat'), role: q.get('role') === 'observer' ? 'observer' : q.get('role') === 'lobby' ? 'lobby' : null, token: q.get('token'), host: q.get('host') }
-    wss.handleUpgrade(req, socket, head, (ws) => void attach(opts, ws, sessionId, ask))
+    const ask: Admission = {
+      seat: q.get('seat'),
+      role: q.get('role') === 'observer' ? 'observer' : q.get('role') === 'lobby' ? 'lobby' : null,
+      name: q.get('name'),
+      token: q.get('token'),
+      host: q.get('host'),
+      owner: q.get('owner') === '1',
+    }
+    wss.handleUpgrade(req, socket, head, (ws) => void attach(opts, req, ws, sessionId, ask))
   })
 
   // `close` waits for every connection to end, and WebSockets never end on their own:
@@ -121,7 +128,7 @@ export function createServer(given: ServerOptions): Server {
 const CORS: Record<string, string> = {
   'access-control-allow-origin': '*',
   'access-control-allow-methods': 'GET, POST, PUT, OPTIONS',
-  'access-control-allow-headers': 'content-type',
+  'access-control-allow-headers': 'content-type, authorization',
   'access-control-max-age': '86400',
 }
 async function route(opts: ServerOptions, req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -193,7 +200,8 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
         if (seat.name !== null) return json(res, 409, { error: `seat ${body.seat} is taken` })
       }
       const guestToken = newSecret()
-      await opts.store.issueGuest(found.id, { tokenHash: hash(guestToken), kind: body.seat !== undefined ? 'seat' : 'observer', seat: body.seat ?? null, name: body.name, issuedAt: clock(opts).toISOString() })
+      const issued = await opts.store.issueGuest(found.id, { tokenHash: hash(guestToken), kind: body.seat !== undefined ? 'seat' : 'observer', seat: body.seat ?? null, name: body.name, issuedAt: clock(opts).toISOString() })
+      if (!issued) return json(res, 409, { error: `seat ${body.seat} is reserved` })
       return json(res, 201, { session: found.id, token: guestToken })
     }
     // The host's controls (DRIFT §9): a new code, and a kick. With the host key, or the owner's cookie.
@@ -308,12 +316,23 @@ async function fileAt(path: string): Promise<string | null> {
 }
 
 // What a connection asks to be (DRIFT §9), from its query string.
-type Admission = { seat: string | null; role: 'observer' | 'lobby' | null; token: string | null; host: string | null }
+type Admission = { seat: string | null; role: 'observer' | 'lobby' | null; name: string | null; token: string | null; host: string | null; owner: boolean }
 // Who it is allowed to be: the table (with the host key), a seat or an observer (with a token
 // bought for that), or a lobby that only looks. Anything else is refused.
 type Admitted = { seat: string | null; observer?: string; lobby?: true }
-async function admit(opts: ServerOptions, session: SessionRecord, ask: Admission): Promise<Admitted | { refused: string }> {
+async function admit(opts: ServerOptions, req: IncomingMessage, session: SessionRecord, ask: Admission): Promise<Admitted | { refused: string }> {
   if (ask.role === 'lobby') return { seat: null, lobby: true }
+  // An editor marks its project-owner connection explicitly. Accounts verify the cookie; when
+  // accounts are disabled, projects are intentionally open and the same development flow works.
+  if (ask.owner) {
+    if (!session.project || (opts.auth && (await hostOf(opts, req, session)) !== 'host')) return { refused: 'the table needs the host key or its owner' }
+    if (ask.seat !== null && !session.setup.seats.includes(ask.seat)) return { refused: `unknown seat ${ask.seat}` }
+    if (ask.role === 'observer') {
+      const name = ask.name?.trim()
+      return name && name.length <= 64 ? { seat: null, observer: name } : { refused: 'an observer needs a name of at most 64 characters' }
+    }
+    return { seat: ask.seat }
+  }
   if (ask.host !== null) return session.hostKeyHash && hash(ask.host) === session.hostKeyHash ? { seat: null } : { refused: 'the table needs the host key' }
   const guest = ask.token !== null ? await opts.store.guestByToken(session.id, hash(ask.token)) : null
   const live = guest && guest.revokedAt === undefined ? guest : null
@@ -322,7 +341,7 @@ async function admit(opts: ServerOptions, session: SessionRecord, ask: Admission
   return { refused: 'the table needs the host key' }
 }
 
-async function attach(opts: ServerOptions, ws: WebSocket, sessionId: string, ask: Admission): Promise<void> {
+async function attach(opts: ServerOptions, req: IncomingMessage, ws: WebSocket, sessionId: string, ask: Admission): Promise<void> {
   const send = (message: ServerMessage) => {
     if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(message))
   }
@@ -333,7 +352,7 @@ async function attach(opts: ServerOptions, ws: WebSocket, sessionId: string, ask
     ws.close(4004, 'unknown session')
     return
   }
-  const who = await admit(opts, session, ask)
+  const who = await admit(opts, req, session, ask)
   if ('refused' in who) {
     send({ t: 'refused', reason: who.refused })
     ws.close(4003, who.refused)
@@ -360,13 +379,13 @@ async function attach(opts: ServerOptions, ws: WebSocket, sessionId: string, ask
         if (typeof env?.id === 'string') id = env.id
       }
       const msg = ClientMessage.parse(raw)
-      if (msg.t === 'presence') {
-        actor.relay(sub, msg.presence)
+      // A lobby looks at the seats and does nothing — including no ephemeral presence.
+      if (sub.lobby) {
+        if (msg.t === 'envelope') send({ t: 'reject', id: msg.envelope.id, reason: 'a lobby may only look' })
         return
       }
-      // A lobby looks at the seats and nothing more (DRIFT §9).
-      if (sub.lobby) {
-        send({ t: 'reject', id: msg.envelope.id, reason: 'a lobby may only look' })
+      if (msg.t === 'presence') {
+        actor.relay(sub, msg.presence)
         return
       }
       // The connection's seat is authoritative; a client cannot speak for another seat.

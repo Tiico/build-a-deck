@@ -15,8 +15,9 @@ export function TablePage() {
   const sessionId = params.get('session')
   const mode: TableMode = params.get('mode') === 'tv' ? 'tv' : 'table'
   const host = params.get('host') ?? undefined
+  const owner = params.get('owner') === '1'
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
-  const { client, view, status, activity, observers, room, refused } = useTableClient(sessionId ? { url, sessionId, seat: null, ...(host ? { host } : {}) } : null)
+  const { client, view, status, activity, observers, room, refused } = useTableClient(sessionId ? { url, sessionId, seat: null, ...(host ? { host } : {}), ...(owner ? { owner: true } : {}) } : null)
   const roomCode = room?.code ?? ''
   // The end of a session (C9): which version the log is locked on, from the session record.
   const [version, setVersion] = useState<string | null>(null)

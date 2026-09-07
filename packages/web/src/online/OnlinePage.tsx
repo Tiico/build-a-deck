@@ -25,9 +25,10 @@ export function OnlinePage() {
   const seat = params.get('seat')
   const name = params.get('name')
   const token = params.get('token') ?? undefined
+  const owner = params.get('owner') === '1'
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
   const http = url.replace(/^ws/, 'http')
-  const { client, view, status, activity, observers, refused } = useTableClient(sessionId && seat ? { url, sessionId, seat, ...(token ? { token } : {}) } : null)
+  const { client, view, status, activity, observers, refused } = useTableClient(sessionId && seat ? { url, sessionId, seat, ...(token ? { token } : {}), ...(owner ? { owner: true } : {}) } : null)
   const presence = usePresence(client, view)
   const recent = useRecent(activity)
   const table = useRef<TableHandle>(null)

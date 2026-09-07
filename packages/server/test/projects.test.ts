@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import WebSocket from 'ws'
 import { WireClient } from './client.js'
 import { start, twoSeatSetup, type Running } from './fixture.js'
 import { template } from './deck.js'
@@ -263,10 +264,10 @@ describe('a texture that failed for good (#10)', () => {
 describe('the tables a project has (#19)', () => {
   it('lists them newest first, each with the version it runs, whether it has ended and when it last moved', async () => {
     const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
-    const older = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
-    const newer = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
+    const older = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
+    const newer = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
 
-    const table = await WireClient.connect(run.base, older.id, null)
+    const table = await WireClient.connect(run.base, older.id, null, undefined, { host: older.hostKey })
     await table.send(null, { v: 'draw', from: 'draw', to: 'table', count: 1 })
     await table.synced(1)
     await table.close()
@@ -282,11 +283,11 @@ describe('the tables a project has (#19)', () => {
 
   it('says which version a refreshed table runs and which table has ended, and shows nothing of another account\'s game', async () => {
     const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
-    const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
+    const { id: sessionId, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
     expect((await json('PUT', `/projects/${id}`, { ...project(), name: 'Skogens herrar v2', rev: 1 })).status).toBe(200)
     expect((await json('POST', `/sessions/${sessionId}/refresh`, {})).status).toBe(200)
 
-    const table = await WireClient.connect(run.base, sessionId, null)
+    const table = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
     await table.send(null, { v: 'session.end' })
     await table.close()
 
@@ -295,5 +296,37 @@ describe('the tables a project has (#19)', () => {
 
     const stranger = await fetch(`${run.http}/projects/${id}/sessions`)
     expect(stranger.status).toBe(401)
+  })
+
+  it('admits the signed-in project owner as table, player or observer without exposing the host key', async () => {
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
+    const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
+    for (const query of ['owner=1', 'seat=A&owner=1', 'role=observer&name=Designern&owner=1']) {
+      const ws = new WebSocket(`${run.base}/sessions/${sessionId}?${query}`, { headers: { cookie } })
+      const message = await new Promise<unknown>((resolve, reject) => {
+        ws.once('message', (raw) => resolve(JSON.parse(raw.toString())))
+        ws.once('error', reject)
+      })
+      expect(message).toMatchObject({ t: 'snapshot' })
+      ws.close()
+    }
+
+    const stranger = new WebSocket(`${run.base}/sessions/${sessionId}?owner=1`, { headers: { cookie: 'byd_session=nope' } })
+    const refused = await new Promise<unknown>((resolve, reject) => {
+      stranger.once('message', (raw) => resolve(JSON.parse(raw.toString())))
+      stranger.once('error', reject)
+    })
+    expect(refused).toEqual({ t: 'refused', reason: 'the table needs the host key or its owner' })
+    stranger.close()
+
+    for (const query of [`seat=Q&owner=1`, `role=observer&name=${'x'.repeat(65)}&owner=1`]) {
+      const invalid = new WebSocket(`${run.base}/sessions/${sessionId}?${query}`, { headers: { cookie } })
+      const message = await new Promise<unknown>((resolve, reject) => {
+        invalid.once('message', (raw) => resolve(JSON.parse(raw.toString())))
+        invalid.once('error', reject)
+      })
+      expect(message).toMatchObject({ t: 'refused' })
+      invalid.close()
+    }
   })
 })

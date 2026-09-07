@@ -5,7 +5,7 @@ import { userEvent } from '@testing-library/user-event'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { TableClient } from '../src/client.js'
 import { projectDoc } from './project-doc.js'
-import { startServer, type Running } from './fixture.js'
+import { asObserver, asSeat, asTable, registerRoom, roomOf, startServer, type Running } from './fixture.js'
 
 let run: Running
 beforeEach(async () => {
@@ -19,7 +19,9 @@ afterEach(async () => {
 async function startTable(project = 'p1'): Promise<string> {
   const res = await fetch(`${run.http}/projects/${project}/sessions`, { method: 'POST' })
   if (!res.ok) throw new Error(`could not start a table: ${res.status}`)
-  return ((await res.json()) as { id: string }).id
+  const made = (await res.json()) as { id: string; code: string; hostKey: string }
+  registerRoom(made.id, made)
+  return made.id
 }
 
 async function openTables(): Promise<void> {
@@ -63,10 +65,10 @@ describe('the ways into a table (#19)', () => {
     await within(row).findByRole('link', { name: /Spela härifrån/ })
     const ways = within(row).getAllByRole('link')
     expect(ways.map((a) => a.getAttribute('href'))).toEqual([
-      `/table?session=${id}&mode=tv&server=${encodeURIComponent(ws)}`,
-      `/table?session=${id}&mode=table&server=${encodeURIComponent(ws)}`,
-      `/online?session=${id}&seat=A&name=Designern&server=${encodeURIComponent(ws)}`,
-      `/observe?session=${id}&name=Designern&server=${encodeURIComponent(ws)}`,
+      `/table?session=${id}&mode=tv&owner=1&server=${encodeURIComponent(ws)}`,
+      `/table?session=${id}&mode=table&owner=1&server=${encodeURIComponent(ws)}`,
+      `/online?session=${id}&seat=A&name=Designern&owner=1&server=${encodeURIComponent(ws)}`,
+      `/observe?session=${id}&name=Designern&owner=1&server=${encodeURIComponent(ws)}`,
     ])
     // A link that leaves the editor behind says so, and says which table it is about: four
     // identical rows of links are otherwise four times the same word to a screen reader.
@@ -83,10 +85,10 @@ describe('what the Bord tab says about a running table (#19, C7)', () => {
   it('names who is seated and who is watching, and marks a table the project has left behind', async () => {
     await run.projects.create('p1', projectDoc())
     const id = await startTable()
-    const ada = TableClient.connect({ url: run.url, sessionId: id, seat: 'A' })
+    const ada = TableClient.connect(await asSeat(run, id, 'A', 'Ada'))
     await ada.ready()
     await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
-    const eva = TableClient.connect({ url: run.url, sessionId: id, seat: null, observer: 'Eva' })
+    const eva = TableClient.connect(await asObserver(run, id, 'Eva'))
     await eva.ready()
     // The designer keeps working: the project is on rev 2, the table still plays rev-1 (C7).
     await run.projects.replace('p1', 1, { ...projectDoc(), name: 'Skogens herrar' })
@@ -107,7 +109,7 @@ describe('what the Bord tab says about a running table (#19, C7)', () => {
     await run.projects.create('p1', projectDoc())
     const id = await startTable()
     await run.projects.replace('p1', 1, { ...projectDoc(), name: 'Skogens herrar' })
-    const table = TableClient.connect({ url: run.url, sessionId: id, seat: null })
+    const table = TableClient.connect(await asTable(run, id))
     await table.ready()
     await table.send({ v: 'session.end' })
     table.close()
@@ -141,7 +143,7 @@ describe('the thumbnail of a table (#19, K9)', () => {
     const draw = () => row.querySelector('[data-zone="draw"]')?.getAttribute('data-count')
     await waitFor(() => expect(draw()).toBe('4'))
 
-    const ada = TableClient.connect({ url: run.url, sessionId: id, seat: 'A' })
+    const ada = TableClient.connect(await asSeat(run, id, 'A', 'Ada'))
     await ada.ready()
     await ada.send({ v: 'draw', from: 'draw', to: 'table', count: 2 })
     await waitFor(() => expect(draw()).toBe('2'))
@@ -192,7 +194,7 @@ describe('the QR for the phones (#19, K12)', () => {
     await openTables()
     const row = await screen.findByRole('listitem')
     const ws = run.http.replace(/^http/, 'ws')
-    const join = `${location.origin}/join?session=${id}&server=${encodeURIComponent(ws)}`
+    const join = `${location.origin}/join?code=${roomOf(id).code}&server=${encodeURIComponent(ws)}`
 
     const show = within(row).getByRole('button', { name: `QR för telefoner ${id.slice(0, 8)}` })
     expect(show.getAttribute('aria-expanded')).toBe('false')
@@ -242,7 +244,7 @@ describe('the shortcut to the table from every other tab (#19, variant B)', () =
     // The shortcut is about the newest table — the one being played — and offers the same ways
     // as the Bord tab, because it is the same row.
     const shortcut = await screen.findByRole('group', { name: 'Bordet' })
-    const row = within(shortcut).getByRole('listitem')
+    const row = await within(shortcut).findByRole('listitem')
     expect(row.getAttribute('data-table')).toBe(newest)
     expect(within(row).getByRole('link', { name: `Öppna TV-vyn för bordet ${newest.slice(0, 8)} (öppnas i ny flik)` })).toBeTruthy()
 

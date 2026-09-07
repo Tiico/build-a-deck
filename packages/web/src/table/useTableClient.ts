@@ -14,7 +14,7 @@ export function useTableClient(opts: ConnectOptions | null): TableConnection {
   const [room, setRoom] = useState<{ code: string; expiresAt: string } | null>(null)
   const [refused, setRefused] = useState<string | null>(null)
   // Reconnect only when the address changes, not when the caller re-creates an equal options object.
-  const key = opts ? `${opts.url}|${opts.sessionId}|${opts.seat ?? ''}|${opts.observer ?? ''}|${opts.token ?? ''}|${opts.host ?? ''}|${opts.lobby ? 'lobby' : ''}` : ''
+  const key = opts ? `${opts.url}|${opts.sessionId}|${opts.seat ?? ''}|${opts.observer ?? ''}|${opts.token ?? ''}|${opts.host ?? ''}|${opts.lobby ? 'lobby' : ''}|${opts.owner ? 'owner' : ''}` : ''
   const latest = useRef(opts)
   latest.current = opts
 

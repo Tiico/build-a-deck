@@ -24,6 +24,18 @@ async function serve(staticDir?: string, store = new MemoryLogStore()) {
 }
 
 describe('serving the web app (DRIFT §1)', () => {
+  it('allows the split development editor to send host authorization', async () => {
+    const http = await serve()
+    const res = await fetch(`${http}/sessions/example/code`, {
+      method: 'OPTIONS',
+      headers: { origin: 'http://127.0.0.1:5173', 'access-control-request-headers': 'authorization' },
+    })
+    expect(res.status).toBe(204)
+    expect(res.headers.get('access-control-allow-origin')).toBe('http://127.0.0.1:5173')
+    expect(res.headers.get('access-control-allow-credentials')).toBe('true')
+    expect(res.headers.get('access-control-allow-headers')).toContain('authorization')
+  })
+
   it('serves files from STATIC_DIR with their types, falls back to index.html for app routes, and keeps the API first', async () => {
     const dir = await mkdtemp(join(tmpdir(), 'byd-static-'))
     await mkdir(join(dir, 'assets'))
