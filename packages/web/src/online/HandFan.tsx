@@ -1,7 +1,7 @@
 import { useState, type PointerEvent as RPointerEvent } from 'react'
 import type { VisibleComponentState } from '@byd/protocol'
 import { hue } from '../table/hue.js'
-import { Texture, textureUrl } from '../table/Texture.js'
+import { Texture } from '../table/Texture.js'
 
 export type HandFanProps = {
   cards: readonly VisibleComponentState[]
@@ -40,13 +40,13 @@ export function HandFan({ cards, faces, onPlay }: HandFanProps) {
           onPointerUp={(e) => up(c, e)}
           onPointerCancel={() => setDrag(null)}
         >
-          {textureUrl(faces, c) && <Texture src={textureUrl(faces, c) ?? ''} />}
+          <Texture faces={faces} c={c} />
           <span>{c.cardRef}</span>
         </div>
       ))}
       {drag && lifted && (
         <div className="byd-fan-ghost" style={{ left: drag.x, top: drag.y, ['--hue' as string]: hue(lifted.cardRef ?? '') }}>
-          {textureUrl(faces, lifted) && <Texture src={textureUrl(faces, lifted) ?? ''} />}
+          <Texture faces={faces} c={lifted} />
           <span>{lifted.cardRef}</span>
         </div>
       )}

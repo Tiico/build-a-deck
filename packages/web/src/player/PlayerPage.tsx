@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { VisibleComponentState } from '@byd/protocol'
 import { useTableClient } from '../table/useTableClient.js'
 import { hue } from '../table/hue.js'
-import { Texture, textureUrl } from '../table/Texture.js'
+import { Texture } from '../table/Texture.js'
 import { HandStrip } from './HandStrip.js'
 import { PlaySheet } from './PlaySheet.js'
 import { TableSummary } from './TableSummary.js'
@@ -69,7 +69,7 @@ export function PlayerPage() {
       {inspect && (
         <div className="byd-inspect" onClick={() => setInspect(null)}>
           <div data-inspect={inspect.id} data-face="front" style={{ ['--hue' as string]: hue(inspect.cardRef ?? '') }}>
-            {textureUrl(faces, inspect) && <Texture src={textureUrl(faces, inspect) ?? ''} />}
+            <Texture faces={faces} c={inspect} />
             <span>{inspect.cardRef}</span>
           </div>
         </div>

@@ -103,7 +103,7 @@
 /* Textures (TUNN-SKIVA §5): the rendered face fills the card; the name stays for screen readers. */
 .byd-strip-card { position: relative; overflow: hidden; }
 .byd-strip-card img, .byd-player .byd-inspect img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
-.byd-strip-card img + strong, .byd-player .byd-inspect img + span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.byd-strip-card img ~ strong, .byd-player .byd-inspect img ~ span:not([data-texture]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .byd-player .byd-inspect > div { position: relative; overflow: hidden; }
 
 /* Flagging, ending, the survey (G3, C9, prototype A). */

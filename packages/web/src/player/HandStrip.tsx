@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import type { Snapshot, VisibleComponentState } from '@byd/protocol'
 import { hue } from '../table/hue.js'
-import { Texture, textureUrl } from '../table/Texture.js'
+import { Texture } from '../table/Texture.js'
 import { HOLD_MS, begin, end, move, timeout, type Tracking } from './gesture.js'
 
 export type HandStripProps = {
@@ -61,7 +61,7 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, faces }: Hand
           onPointerUp={up}
           onPointerCancel={up}
         >
-          {textureUrl(faces, c) && <Texture src={textureUrl(faces, c) ?? ''} />}
+          <Texture faces={faces} c={c} />
           <strong>{c.cardRef}</strong>
         </div>
       ))}

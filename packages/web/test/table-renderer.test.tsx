@@ -308,6 +308,25 @@ describe('textures that are not ready yet', () => {
     expect(img().src).toBe(`${base}?retry=2`)
     vi.useRealTimers()
   })
+
+  it('waits behind a fallback that names a face-up card and never names a face-down one', () => {
+    const { state, view, faceUp, faceDown } = buildScene()
+    const snapshot = view(null)
+    const withFaces = {
+      ...snapshot,
+      components: snapshot.components.map((c) =>
+        c.id === faceUp ? { ...c, faces: { front: 'a'.repeat(64) } } : c.id === faceDown ? { ...c, faces: { back: 'b'.repeat(64) } } : c,
+      ),
+    }
+    render(<TableRenderer view={withFaces} mode="table" faces="http://faces.test" />)
+
+    const up = document.querySelector(`[data-component="${faceUp}"] [data-texture="pending"]`)!
+    expect(up.textContent).toMatch(state.components[faceUp]!.cardRef)
+
+    const down = document.querySelector(`[data-component="${faceDown}"] [data-texture="pending"]`)!
+    expect(down.textContent).toMatch(/[Rr]enderas/)
+    expect(down.textContent).not.toMatch(state.components[faceDown]!.cardRef)
+  })
 })
 
 describe('presence (K6): the others on the table', () => {

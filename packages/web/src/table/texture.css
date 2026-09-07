@@ -1,0 +1,103 @@
+/* The state a card face is in while it is not yet an image (issue #10). The fallback lies exactly
+   over the image box, so the box never changes size and the swap when the render lands is a
+   repaint and nothing else. Every consumer — table, phone, online, observer — gets this by
+   importing the component, so there is one look for the state and no copies to drift apart.
+
+   The same state is drawn on a 54px card in someone else's hand and on a 252px card held up on
+   the phone. It is therefore sized against the card it lies on rather than against the page: the
+   state declares itself a container, and how much it says grows with the room it has. */
+.byd-texture-state {
+  --byd-texture-bg: #232a3a;
+  --byd-texture-sweep: #2e3750;
+  --byd-texture-ink: #eef2fb;
+  --byd-texture-quiet: #a7b0c4;
+  --byd-texture-fail-bg: #3d2632;
+  --byd-texture-fail-ink: #ffe4ea;
+  --byd-texture-fail-quiet: #f4b9c7;
+  --byd-texture-button-bg: #6d4356;
+  --byd-texture-button-line: #a2778a;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4%;
+  box-sizing: border-box;
+  padding: 6%;
+  overflow: hidden;
+  border-radius: inherit;
+  text-align: center;
+  line-height: 1.25;
+  container-type: inline-size;
+  background: var(--byd-texture-bg);
+  color: var(--byd-texture-quiet);
+}
+.byd-texture-state > b {
+  font-size: clamp(8px, 14cqw, 19px);
+  font-weight: 700;
+  color: var(--byd-texture-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  white-space: nowrap;
+}
+/* Below that, a card is a thumbnail: the ground and the name are all it can carry legibly. */
+.byd-texture-state > i, .byd-texture-state > button { display: none; }
+@container (min-width: 72px) {
+  .byd-texture-state > i {
+    display: block;
+    font-size: clamp(7px, 9cqw, 14px);
+    font-style: normal;
+  }
+}
+
+/* Waiting: a quiet skeleton sweep, so a queued render reads as work in progress and not as a
+   broken card. It carries no meaning of its own (a11y.css cuts it under reduced motion). */
+.byd-texture-state[data-texture='pending'] {
+  background: linear-gradient(100deg, var(--byd-texture-bg) 30%, var(--byd-texture-sweep) 50%, var(--byd-texture-bg) 70%) var(--byd-texture-bg);
+  background-size: 300% 100%;
+  animation: byd-texture-sweep 1.6s linear infinite;
+}
+@keyframes byd-texture-sweep {
+  from { background-position: 150% 0; }
+  to { background-position: -50% 0; }
+}
+
+/* Lost: an honest sentence and a way back, rather than the browser's broken-image icon. */
+.byd-texture-state[data-texture='failed'] {
+  background: var(--byd-texture-fail-bg);
+  color: var(--byd-texture-fail-quiet);
+}
+.byd-texture-state[data-texture='failed'] > b { color: var(--byd-texture-fail-ink); }
+
+/* The way back, wherever a thumb can land on it (UX-KONTROLLER: 44 by 44). A card smaller than
+   that gets no button rather than an unpressable one; it is read by holding it up, and the big
+   view it opens in carries the retry. */
+@container (min-width: 96px) {
+  .byd-texture-state > button {
+    display: block;
+    min-width: 44px;
+    min-height: 44px;
+    max-width: 100%;
+    padding: 6px 14px;
+    border: 1px solid var(--byd-texture-button-line);
+    border-radius: 999px;
+    background: var(--byd-texture-button-bg);
+    color: var(--byd-texture-fail-ink);
+    font-size: clamp(9px, 8cqw, 15px);
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+  }
+}
+
+/* While the state is on show it speaks for the card, so the name underneath must not be read
+   out a second time. */
+[data-texture] ~ span, [data-texture] ~ strong { display: none; }
+
+/* A face that failed leaves nothing of the browser's own broken-image rendering behind. */
+.byd-texture[data-state='failed'] { visibility: hidden; }

@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type MouseEvent as RMouseEvent, type PointerEvent as RPointerEvent, type WheelEvent as RWheelEvent } from 'react'
-import { Texture, textureUrl } from './Texture.js'
+import { Texture } from './Texture.js'
 import type { Intent, Presence, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
 import type { Peer, Pulse, Recent } from './presence.js'
 import { hue } from './hue.js'
@@ -318,7 +318,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 dragging={m}
                 carried={carried.has(c.id)}
                 by={movedBy.has(c.id) ? { seat: movedBy.get(c.id) ?? null, colour: colourOf(movedBy.get(c.id) ?? null) } : undefined}
-                src={textureUrl(faces, c)}
+                faces={faces}
                 handlers={onAct ? handlers({ kind: 'card', id: c.id }) : undefined}
               />
             )
@@ -335,7 +335,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 data-face={c?.cardRef ? 'front' : 'back'}
                 style={{ position: 'absolute', left: left(p.drag.x), top: top(p.drag.y), width: px(CARD_MM.w), height: px(CARD_MM.h), transform: `rotate(${c?.rot ?? 0}deg)`, ['--peer' as string]: colourOf(p.seat), ...(c?.cardRef ? { ['--hue' as string]: hue(c.cardRef) } : {}) }}
               >
-                {c && textureUrl(faces, c) && <Texture src={textureUrl(faces, c) ?? ''} />}
+                <Texture faces={faces} c={c} />
                 <span>{c?.cardRef ?? ''}</span>
                 <b className="byd-peer-tag">{p.name}</b>
               </div>
@@ -384,7 +384,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       {held && (
         <div className="byd-inspect" onClick={() => setHeld(null)}>
           <div data-inspect={held.id} data-face={held.cardRef === null ? 'back' : 'front'} style={held.cardRef === null ? undefined : { ['--hue' as string]: hue(held.cardRef) }}>
-            {textureUrl(faces, held) ? <Texture src={textureUrl(faces, held) ?? ''} /> : null}
+            <Texture faces={faces} c={held} />
             <span>{held.cardRef ?? ''}</span>
           </div>
         </div>
@@ -459,7 +459,7 @@ function ringItems(view: Snapshot, target: DragTarget, act: (intents: Intent[]) 
 
 type Handlers = { onPointerDown(e: RPointerEvent): void; onPointerMove(e: RPointerEvent): void; onPointerUp(e: RPointerEvent): void; onPointerCancel(e: RPointerEvent): void }
 
-function Card({ c, left, top, px, dragging, carried, by, src, handlers }: { c: VisibleComponentState; left: number; top: number; px: (mm: number) => number; dragging: boolean; carried?: boolean; by?: { seat: string | null; colour: string } | undefined; src?: string | undefined; handlers?: Handlers | undefined }) {
+function Card({ c, left, top, px, dragging, carried, by, faces, handlers }: { c: VisibleComponentState; left: number; top: number; px: (mm: number) => number; dragging: boolean; carried?: boolean; by?: { seat: string | null; colour: string } | undefined; faces?: string | undefined; handlers?: Handlers | undefined }) {
   const face = c.cardRef === null ? 'back' : 'front'
   return (
     <div
@@ -481,7 +481,7 @@ function Card({ c, left, top, px, dragging, carried, by, src, handlers }: { c: V
         ...(by ? { ['--peer' as string]: by.colour } : {}),
       }}
     >
-      {src && <Texture src={src} />}
+      <Texture faces={faces} c={c} />
       <span>{c.cardRef ?? ''}</span>
     </div>
   )
@@ -489,10 +489,9 @@ function Card({ c, left, top, px, dragging, carried, by, src, handlers }: { c: V
 
 // The top card of a pile while it is being dragged off.
 function Ghost({ card, faces, left, top, px }: { card: VisibleComponentState | undefined; faces: string | undefined; left: number; top: number; px: (mm: number) => number }) {
-  const src = card ? textureUrl(faces, card) : undefined
   return (
     <div className="byd-card" data-ghost data-dragging="true" data-face={card?.cardRef ? 'front' : 'back'} style={{ position: 'absolute', left, top, width: px(CARD_MM.w), height: px(CARD_MM.h), pointerEvents: 'none', ...(card?.cardRef ? { ['--hue' as string]: hue(card.cardRef) } : {}) }}>
-      {src && <Texture src={src} />}
+      <Texture faces={faces} c={card} />
       <span>{card?.cardRef ?? ''}</span>
     </div>
   )
@@ -508,7 +507,6 @@ function topIdOf(z: ZoneView, skip = 0): string | undefined {
 // A pile is a point; the stack is centred on it. A hidden pile has a count and nothing else,
 // unless its top lies face-up.
 function Pile({ zone, count, topCard, faces, left, top, px, lifted, topHandlers, labelHandlers }: { zone: ZoneView; count: number; topCard: VisibleComponentState | undefined; faces: string | undefined; left: number; top: number; px: (mm: number) => number; lifted: boolean; topHandlers?: Handlers | undefined; labelHandlers?: Handlers | undefined }) {
-  const src = topCard ? textureUrl(faces, topCard) : undefined
   const layers = Math.min(Math.max(count, 0), 12)
   const thickness = Array.from({ length: layers }, (_, i) => `0 ${-i * 1.2}px 0 #1f2b4a`).join(', ')
   return (
@@ -526,7 +524,7 @@ function Pile({ zone, count, topCard, faces, left, top, px, lifted, topHandlers,
         {...topHandlers}
         style={{ boxShadow: thickness, transform: `translateY(${-(layers - 1) * 1.2}px)`, ...(topCard?.cardRef ? { ['--hue' as string]: hue(topCard.cardRef) } : {}) }}
       >
-        {src && <Texture src={src} />}
+        <Texture faces={faces} c={topCard} />
         <span>{count > 0 ? topCard?.cardRef ?? '' : ''}</span>
       </div>
       <span className="byd-pile-count" data-handle={labelHandlers ? 'true' : undefined} {...labelHandlers}>
@@ -562,7 +560,7 @@ function Hand({ zone, name, color, rot, left, top, cards, faces }: { zone: ZoneV
                 data-face={c.cardRef === null ? 'back' : 'front'}
                 style={{ transform: `translateX(${(i - (Math.min(cards.length, FAN_MAX) - 1) / 2) * 26}px) rotate(${(i - (Math.min(cards.length, FAN_MAX) - 1) / 2) * 7}deg)`, ...(c.cardRef === null ? {} : { ['--hue' as string]: hue(c.cardRef) }) }}
               >
-                {textureUrl(faces, c) && <Texture src={textureUrl(faces, c) ?? ''} />}
+                <Texture faces={faces} c={c} />
                 <span>{c.cardRef ?? ''}</span>
               </i>
             ))
