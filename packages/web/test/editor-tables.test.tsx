@@ -93,8 +93,10 @@ describe('what the Bord tab says about a running table (#19, C7)', () => {
 
     await openTables()
     const row = await screen.findByRole('listitem')
+    // Who sits comes in the snapshot and who watches in the roster — two frames, so two renders
+    // are possible; both are waited for rather than read off whichever arrived first.
     expect(await within(row).findByText(/Ada spelar/)).toBeTruthy()
-    expect(within(row).getByText(/Eva tittar på/)).toBeTruthy()
+    expect(await within(row).findByText(/Eva tittar på/)).toBeTruthy()
     expect(row.textContent).toContain('rev-1')
     expect(within(row).getByText(/ligger efter rev-2/)).toBeTruthy()
     expect(row.getAttribute('data-stale')).toBe('true')
@@ -240,9 +242,10 @@ describe('the shortcut to the table from every other tab (#19, variant B)', () =
     expect(more.getAttribute('aria-expanded')).toBe('true')
 
     // The shortcut is about the newest table — the one being played — and offers the same ways
-    // as the Bord tab, because it is the same row.
+    // as the Bord tab, because it is the same row. The menu opens before it knows its tables, so
+    // the row is waited for, not read out of the frame the menu opened in.
     const shortcut = await screen.findByRole('group', { name: 'Bordet' })
-    const row = within(shortcut).getByRole('listitem')
+    const row = await within(shortcut).findByRole('listitem')
     expect(row.getAttribute('data-table')).toBe(newest)
     expect(within(row).getByRole('link', { name: `Öppna TV-vyn för bordet ${newest.slice(0, 8)} (öppnas i ny flik)` })).toBeTruthy()
 

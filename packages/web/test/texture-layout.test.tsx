@@ -73,7 +73,7 @@ beforeAll(async () => {
 }, 60_000)
 afterAll(async () => {
   await browser.close()
-})
+}, 60_000)
 
 async function measure(inner: string): Promise<Record<string, Measured>> {
   const page = await browser.newPage({ viewport: { width: 420, height: 900 } })

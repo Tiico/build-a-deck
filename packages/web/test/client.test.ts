@@ -89,7 +89,8 @@ describe('activity', () => {
     await table.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
     await table.send({ v: 'shuffle', pile: 'draw' })
     await b.synced(2)
-    await new Promise((r) => setTimeout(r, 20))
+    // Activity is its own message, not the patch: wait for the lines themselves to land.
+    await waitUntil(() => b.activity.length === 2)
 
     expect(b.activity.map((l) => [l.seq, l.by, l.intent.v])).toEqual([
       [1, null, 'seat.claim'],
@@ -114,7 +115,10 @@ describe('presence (K6)', () => {
     expect(seen[0]).toMatchObject({ from: { seat: 'A' }, presence: { kind: 'point', x: 1 } })
 
     for (let i = 0; i < 20; i++) a.sendPresence({ kind: 'cursor', x: i, y: 0 })
-    await new Promise((r) => setTimeout(r, 150))
+    // The last cursor is the one the throttle promises will arrive; waiting for it is what makes
+    // the count below a measurement of the throttle rather than of how fast the machine is. An
+    // unthrottled client would have sent all twenty in the same loop, so they would be here too.
+    await waitUntil(() => seen.some((s) => s.presence.kind === 'cursor' && s.presence.x === 19))
     const cursors = seen.filter((s) => s.presence.kind === 'cursor')
     expect(cursors.length).toBeGreaterThanOrEqual(1)
     expect(cursors.length).toBeLessThanOrEqual(3)

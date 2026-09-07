@@ -8,7 +8,7 @@ beforeAll(async () => {
 }, 60_000)
 afterAll(async () => {
   await renderer.close()
-})
+}, 60_000)
 
 describe('Renderer.renderPng', () => {
   it('renders the card at the requested DPI with pixel dimensions from its millimetres, identically every time', async () => {

@@ -25,7 +25,7 @@ beforeAll(async () => {
 }, 60_000)
 afterAll(async () => {
   await browser.close()
-})
+}, 60_000)
 
 async function durations(reducedMotion: 'reduce' | 'no-preference'): Promise<Record<string, number>> {
   const page = await browser.newPage({ reducedMotion })

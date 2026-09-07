@@ -11,7 +11,7 @@ beforeAll(async () => {
 }, 60_000)
 afterAll(async () => {
   await renderer.close()
-})
+}, 60_000)
 
 describe('runWorker', () => {
   it('drains the queue: textures as PNG, prints as PDF, each stored under its hash', async () => {
