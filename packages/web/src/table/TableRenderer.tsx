@@ -1,10 +1,11 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type PointerEvent as RPointerEvent } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type MouseEvent as RMouseEvent, type PointerEvent as RPointerEvent, type WheelEvent as RWheelEvent } from 'react'
 import { Texture, textureUrl } from './Texture.js'
 import type { Intent, Presence, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
 import type { Peer, Pulse, Recent } from './presence.js'
 import { hue } from './hue.js'
 import { seatColor } from './seatColor.js'
 import { fitScale } from './fit.js'
+import { activeBounds, cameraOf, fitFloor, frameRect, pad, same, tween, zoomAround, type Rect, type Size } from './camera.js'
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
 import { CARD_MM, absoluteOf, dropIntents, type Drag, type DragTarget } from './drop.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
@@ -18,6 +19,9 @@ export type TableMode = 'table' | 'tv'
 // `recent` which cards just moved and by whom; `onPresence` reports this screen's own.
 // `rotate` turns the table so a seat's edge is at the bottom (C5). The ref answers where a client
 // point is on the table, for things dragged in from outside (a hand beside the table).
+// `camera` (C5, TV mode): the frame shows what is in play rather than the whole table, gliding as
+// that changes; a scroll or a double tap zooms around the pointer and the view returns by itself.
+// `size` is the frame's size when the renderer should not measure it; `glideMs` the glide.
 export type TableHandle = { toTable(clientX: number, clientY: number): Point | null }
 export type TableRendererProps = {
   view: Snapshot
@@ -30,6 +34,9 @@ export type TableRendererProps = {
   pulses?: readonly Pulse[] | undefined
   recent?: readonly Recent[] | undefined
   onPresence?: ((p: Presence) => void) | undefined
+  camera?: boolean | undefined
+  size?: Size | undefined
+  glideMs?: number | undefined
 }
 
 const FAN_MAX = 12
@@ -37,39 +44,66 @@ const HOLD_MS = 350
 const POINT_MS = 450
 const DRAG_MM = 4
 const TABLE_GREY = '#8a93a8'
+// The camera: room around what is in play, how close it may come, and how long a zoom holds.
+const CAMERA_PAD_MM = 60
+const CAMERA_MIN_MM = 520
+const CAMERA_RETURN_MS = 6000
+const GLIDE_MS = 700
 
 type Live = Drag & { started: boolean }
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], onPresence }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], onPresence, camera = false, size: fixedSize, glideMs = GLIDE_MS }, ref) {
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
   const frame = useRef<HTMLDivElement | null>(null)
   const wood = useRef<HTMLDivElement | null>(null)
   const table = useRef<HTMLDivElement | null>(null)
   // Nothing is painted until the frame has been measured: a first paint at 1:1 would flash.
-  const [fitted, setFitted] = useState<number | null>(null)
+  const [measuredSize, setMeasuredSize] = useState<Size | null>(null)
   const margin = mode === 'table' ? 80 : 44
   useEffect(() => {
     const el = frame.current
-    if (fixedScale !== undefined || !el) return
+    if (fixedScale !== undefined || fixedSize !== undefined || !el) return
     if (typeof ResizeObserver === 'undefined') {
-      setFitted(1)
+      setMeasuredSize({ w: 0, h: 0 })
       return
     }
-    const update = () => setFitted(fitScale({ w: floor.geometry.w, h: floor.geometry.h }, { w: el.clientWidth, h: el.clientHeight }, margin))
+    const update = () => setMeasuredSize({ w: el.clientWidth, h: el.clientHeight })
     update()
     const ro = new ResizeObserver(update)
     ro.observe(el)
     return () => ro.disconnect()
-  }, [fixedScale, floor.geometry.w, floor.geometry.h, margin])
-  const scale = fixedScale ?? fitted ?? 1
-  const measured = fixedScale !== undefined || fitted !== null
+  }, [fixedScale, fixedSize])
+  const size = fixedSize ?? measuredSize
+  const floorRect: Rect = { x: floor.geometry.x, y: floor.geometry.y, w: floor.geometry.w, h: floor.geometry.h }
+  const fitted = size === null ? null : size.w > 0 && size.h > 0 ? fitScale({ w: floorRect.w, h: floorRect.h }, size, margin) : 1
 
   // Inspection (K8): "Titta" in the ring, private to this screen, until tapped away.
   const [held, setHeld] = useState<VisibleComponentState | null>(null)
   const [drag, setDrag] = useState<Live | null>(null)
   const [ring, setRing] = useState<Ring | null>(null)
+
+  // The camera (C5): what is in play, or where someone zoomed for a moment. It holds still while
+  // something is dragged, since the pointer's mapping was fixed when the drag began.
+  const following = camera && mode === 'tv' && size !== null && size.w > 0 && size.h > 0
+  const [manual, setManual] = useState<Rect | null>(null)
+  const manualTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const zoomTo = (rect: Rect | null) => {
+    if (manualTimer.current) clearTimeout(manualTimer.current)
+    manualTimer.current = rect ? setTimeout(() => setManual(null), CAMERA_RETURN_MS) : null
+    setManual(rect)
+  }
+  useEffect(() => () => {
+    if (manualTimer.current) clearTimeout(manualTimer.current)
+  }, [])
+  const auto = following ? frameRect(pad(activeBounds(view) ?? floorRect, CAMERA_PAD_MM), size, floorRect, CAMERA_MIN_MM) : null
+  const heldCamera = useRef<Rect | null>(null)
+  if (!drag) heldCamera.current = manual ?? auto
+  const cam = useGlide(following ? heldCamera.current : null, glideMs)
+  const placed = following && cam ? cameraOf(cam, size, floorRect) : null
+  const scale = fixedScale ?? placed?.scale ?? fitted ?? 1
+  const measured = fixedScale !== undefined || (size !== null && (!following || placed !== null))
   const live = useRef<Live | null>(null)
   const toTable = useRef<((cx: number, cy: number) => Point) | null>(null)
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -167,6 +201,19 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   }
   const handlers = (target: DragTarget) => ({ onPointerDown: (e: RPointerEvent) => down(e, target), onPointerMove: move, onPointerUp: up, onPointerCancel: up })
 
+  // A zoom for a moment (C5): scroll or pinch around the pointer, double tap to go close and
+  // again to come back. The camera returns by itself.
+  const wheel = (e: RWheelEvent) => {
+    const map = mapper()
+    if (!following || !cam || !map) return
+    zoomTo(zoomAround(manual ?? cam, map(e.clientX, e.clientY), Math.exp(e.deltaY * 0.002), size, floorRect, CAMERA_MIN_MM))
+  }
+  const doubleTap = (e: RMouseEvent) => {
+    const map = mapper()
+    if (!following || !map) return
+    zoomTo(manual ? null : zoomAround(fitFloor(floorRect, size), map(e.clientX, e.clientY), 1 / 2.6, size, floorRect, CAMERA_MIN_MM))
+  }
+
   // The felt itself: where this pointer is, and a hold that points (K6).
   const pointTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const clearPoint = () => {
@@ -208,8 +255,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const liftedKind = drag?.started && drag.target.kind !== 'card' ? drag.target.kind : null
   const topOf = (z: ZoneView, skip = 0) => byId.get(topIdOf(z, skip) ?? '')
 
-  return (
-    <div className="byd-table-frame" data-mode={mode} data-playable={onAct ? 'true' : undefined} ref={frame} style={measured ? undefined : { visibility: 'hidden' }}>
+  const felt = (
       <div className="byd-table-wood" ref={wood}>
         <div
           data-table
@@ -315,6 +361,25 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           )}
         </div>
       </div>
+  )
+  return (
+    <div
+      className="byd-table-frame"
+      data-mode={mode}
+      data-camera={placed ? 'follow' : undefined}
+      data-playable={onAct ? 'true' : undefined}
+      ref={frame}
+      style={measured ? undefined : { visibility: 'hidden' }}
+      onWheel={following ? wheel : undefined}
+      onDoubleClick={following ? doubleTap : undefined}
+    >
+      {placed ? (
+        <div className="byd-camera-world" style={{ left: placed.left, top: placed.top, width: px(floorRect.w), height: px(floorRect.h) }}>
+          {felt}
+        </div>
+      ) : (
+        felt
+      )}
       {ring && onAct && <RadialMenu id={ring.target.kind === 'card' ? ring.target.id : ring.target.pile} x={ring.x} y={ring.y} items={ringItems(view, ring.target, onAct, setHeld)} onClose={() => setRing(null)} />}
       {held && (
         <div className="byd-inspect" onClick={() => setHeld(null)}>
@@ -327,6 +392,36 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     </div>
   )
 })
+
+// The camera glides to its target so the eye can follow; the first frame, and a glide of zero,
+// cut straight there.
+function useGlide(target: Rect | null, ms: number): Rect | null {
+  const [cur, setCur] = useState<Rect | null>(target)
+  const curRef = useRef<Rect | null>(target)
+  const raf = useRef(0)
+  const key = target ? `${target.x},${target.y},${target.w},${target.h}` : ''
+  useEffect(() => {
+    if (!target) return
+    const from = curRef.current
+    if (ms <= 0 || !from || same(from, target) || typeof requestAnimationFrame === 'undefined') {
+      curRef.current = target
+      setCur(target)
+      return
+    }
+    const start = performance.now()
+    const step = (now: number) => {
+      const k = Math.min(1, (now - start) / ms)
+      const next = tween(from, target, 1 - Math.pow(1 - k, 3))
+      curRef.current = next
+      setCur(next)
+      if (k < 1) raf.current = requestAnimationFrame(step)
+    }
+    raf.current = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(raf.current)
+    // The target is keyed by value: a fresh object with the same rectangle is no new target.
+  }, [key, ms])
+  return cur
+}
 
 // The verbs a drag cannot say (C): for a card, for a pile.
 function ringItems(view: Snapshot, target: DragTarget, act: (intents: Intent[]) => void, inspect: (c: VisibleComponentState) => void): RadialItem[] {

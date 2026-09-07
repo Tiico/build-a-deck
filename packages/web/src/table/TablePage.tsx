@@ -55,6 +55,7 @@ export function TablePage() {
       pulses={presence.pulses}
       recent={recent}
       onPresence={client ? (p) => client.sendPresence(p) : undefined}
+      camera={mode === 'tv'}
     />
   )
   const ended = view.ended && (

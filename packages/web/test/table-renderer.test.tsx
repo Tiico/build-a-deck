@@ -4,6 +4,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import { createRef } from 'react'
 import { TableRenderer, type TableHandle } from '../src/table/TableRenderer.js'
 import { buildScene } from './scene.js'
+import { activeBounds, cameraOf, frameRect, pad } from '../src/table/camera.js'
 
 describe('TableRenderer', () => {
   it('places a face-up card by name at its position, and a face-down one as a back without a name', () => {
@@ -64,6 +65,51 @@ describe('the top of a hidden pile (K15)', () => {
     act(() => vi.advanceTimersByTime(400))
     fireEvent.pointerUp(screen.getByRole('button', { name: 'Vänd översta' }), client(-200, -60))
     expect(onAct).toHaveBeenLastCalledWith([{ v: 'flip', component: { top: 'draw' }, face: 'back' }])
+    vi.useRealTimers()
+  })
+})
+
+describe('the camera (C5)', () => {
+  it('in TV mode frames what is in play, padded, at the frame\'s aspect: the table is laid out under that camera', () => {
+    const { view } = buildScene()
+    const snapshot = view(null)
+    const size = { w: 1000, h: 500 }
+    render(<TableRenderer view={snapshot} mode="tv" camera size={size} glideMs={0} />)
+
+    const floor = snapshot.zones.find((z) => z.id === snapshot.floor)!.geometry
+    const cam = frameRect(pad(activeBounds(snapshot)!, 60), size, floor, 520)
+    const { scale, left, top } = cameraOf(cam, size, floor)
+    expect(scale).toBeGreaterThan(1)
+    const frame = document.querySelector('.byd-table-frame')!
+    expect(frame.getAttribute('data-camera')).toBe('follow')
+    const world = document.querySelector('.byd-camera-world') as HTMLElement
+    expect(world.style.left).toBe(`${left}px`)
+    expect(world.style.top).toBe(`${top}px`)
+    const table = document.querySelector('[data-table]') as HTMLElement
+    expect(table.style.width).toBe(`${floor.w * scale}px`)
+  })
+
+  it('a scroll zooms around the pointer for a moment, a double tap goes close and back, and the camera returns by itself', () => {
+    vi.useFakeTimers()
+    const { view } = buildScene()
+    const size = { w: 1000, h: 500 }
+    render(<TableRenderer view={view(null)} mode="tv" camera size={size} glideMs={0} />)
+    const frame = document.querySelector('.byd-table-frame')!
+    const table = document.querySelector('[data-table]') as HTMLElement
+    const following = table.style.width
+
+    fireEvent.wheel(frame, { deltaY: -400, clientX: 500, clientY: 250 })
+    const zoomed = parseFloat(table.style.width)
+    expect(zoomed).toBeGreaterThan(parseFloat(following))
+    act(() => vi.advanceTimersByTime(5900))
+    expect(table.style.width).toBe(`${zoomed}px`)
+    act(() => vi.advanceTimersByTime(200))
+    expect(table.style.width).toBe(following)
+
+    fireEvent.doubleClick(frame, { clientX: 500, clientY: 250 })
+    expect(parseFloat(table.style.width)).toBeGreaterThan(parseFloat(following))
+    fireEvent.doubleClick(frame, { clientX: 500, clientY: 250 })
+    expect(table.style.width).toBe(following)
     vi.useRealTimers()
   })
 })

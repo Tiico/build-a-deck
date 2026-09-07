@@ -196,7 +196,14 @@ Läget hör hemma i lobbyn, inte i användarinställningar, eftersom det variera
 
 Byggt 2026-09-06:
 Renderaren kan vridas i kvartsvarv (`rotate`), pekaren projiceras tillbaka genom vridningen, och etiketter (högnamn, platsnamn, zonnamn, markörnamn) vrids tillbaka så de förblir läsbara medan korten följer bordet som vid ett riktigt bord.
-Distansvyn använder det för att lägga den egna platsen nederst. Kamera och tillfällig zoom återstår.
+Distansvyn använder det för att lägga den egna platsen nederst.
+
+Kameran (prototypad och byggd 2026-09-07):
+Tre varianter prövades: en kamera som följer innehållet, en regissör som klipper mellan fasta bilder, och hela bordet med en lupp. Valet blev den följande kameran: den är C5:s ordalydelse och behöver inget av protokollet.
+I TV-läge ramar bilden in det som är i spel med marginal och glider när det ändras; den går aldrig närmare än att drygt åtta kort ryms i bredd, aldrig utanför bordet.
+I spel är de lösa korten, setupens högar och areor (spelplanen, tomma eller inte) och högar som bildats under spel så länge de finns. Händerna räknas inte: de ligger vid kanten och finns alltid, så med dem inräknade blev bilden nästan alltid hela bordet. Docken nederst visar ändå varje plats.
+Scroll eller nyp zoomar kring pekaren, dubbeltryck går nära och tillbaka; efter sex sekunder återgår kameran av sig själv. Under ett drag står kameran stilla, eftersom pekarens avbildning låstes när draget började.
+Det lutade bordsläget har ingen kamera: en panorering på det lutade planet bryter perspektivet.
 
 ### C6. Ångra: personlig ångra plus gruppens tillbakaspolning (fråga 18)
 
