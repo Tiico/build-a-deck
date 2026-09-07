@@ -108,13 +108,15 @@
 /* Hands: a fan of backs and a count, oriented toward the seat's edge. */
 .byd-hand { position: absolute; width: 0; height: 0; }
 .byd-hand-fan { position: absolute; left: 0; top: 0; }
+/* The box a card in the fan occupies is millimetres of felt and comes from the renderer (#23);
+   only the shape it is drawn with belongs here. */
 .byd-hand-fan > i {
-  position: absolute; left: -27px; top: -25px; width: 54px; height: 75px;
+  position: absolute;
   border-radius: 6px; transform-origin: 50% 140%;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
 }
 .byd-hand-count {
-  position: absolute; left: 50%; top: 50px; transform: translateX(-50%);
+  position: absolute; left: 50%; top: var(--hand-drop, 50px); transform: translateX(-50%);
   padding: 2px 8px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); color: #f3e9d6;
   font-size: 12px; font-weight: 600; white-space: nowrap;
 }

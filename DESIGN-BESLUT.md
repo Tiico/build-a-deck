@@ -713,6 +713,16 @@ Den fasta marginalen i pixlar som fanns dessförinnan gav bordet nästan hela sk
 INSPEKTION:s väntetext ligger överst i det tomma kortet som i prototyp C, inte mitt i det, där den läses som ett kort som inte gick att ladda.
 Kameran skär inte längre genom ett kort som ligger utanför filten; beslutet och dess skäl står under C5.
 
+Reviderat 2026-09-08 (#23): handsolfjädern är millimeter på filten, inte pixlar på skärmen.
+Kortet i en hand, hur brett isär fläkten står och hur långt antalet hänger under den mäts i bordets eget mått och skalas med det, precis som ett kort som ligger på filten.
+Dessförinnan ritades den i 54 × 75 px med 26 px isär oavsett bordets skala, och i en ram smalare än ungefär 700 px blev händerna bredare än bordet de satt vid och hängde utanför båda kanterna.
+Inpassningen räknar in dem: det som ska rymmas i ramen är filten *med händerna på* — golvet utvidgat lika mycket åt båda hållen tills varje fläkt ligger innanför — så ett inpassat bord klipper aldrig sina egna händer.
+Utvidgningen är symmetrisk eftersom ramen centrerar golvet; att växa åt ett håll skulle lägga bordet snett i sin egen ram.
+Antalet under handen är en etikett i pixlar, som högens namn, och ryms i luften ramen ändå lämnar.
+Ett kvartsvridet bord (C5) passas in i den form det faktiskt ritas i, och träramen tar samma form: dessförinnan fick en plats vid en sidokant på `/online` ett bord som stack ut både ur sin ram och ur skärmen.
+Måtten och regeln för var ett kort i fläkten hamnar bor i `packages/web/src/table/hand.ts` och ställs av både den som ritar fläkten och den som mäter den, så de kan inte glida isär.
+Kvar står att TV-lägets kamera beskär bordets kant och därmed kan skära genom en handfläkt: händerna räknas inte som innehåll kameran riktas mot (C5), och det är ett beslut, inte ett fynd.
+
 Referensprototypen `packages/web/src/prototype/table-ref` togs bort när den hade svarat.
 
 ### K10. Telefonvyns utseende: remsan (prototypat 2026-09-06)

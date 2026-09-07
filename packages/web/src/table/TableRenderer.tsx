@@ -9,6 +9,7 @@ import { activeBounds, cameraOf, fitFloor, frameRect, pad, reachOf, same, tween,
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
 import { CARD_MM, absoluteOf, dropIntents, type Drag, type DragTarget } from './drop.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
+import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_MM, edgeRotation, fanPlace, feltWithHands, handExtent } from './hand.js'
 
 export type TableMode = 'table' | 'tv'
 // Without an explicit `scale`, the renderer fits the table to its own frame.
@@ -41,7 +42,6 @@ export type TableRendererProps = {
   glideMs?: number | undefined
 }
 
-const FAN_MAX = 12
 const HOLD_MS = 350
 const POINT_MS = 450
 const DRAG_MM = 4
@@ -85,7 +85,18 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   }, [fixedScale, fixedSize])
   const size = fixedSize ?? measuredSize
   const floorRect: Rect = { x: floor.geometry.x, y: floor.geometry.y, w: floor.geometry.w, h: floor.geometry.h }
-  const fitted = size === null ? null : size.w > 0 && size.h > 0 ? fitScale({ w: floorRect.w, h: floorRect.h }, size, margin) : 1
+  // A hand is turned toward its own edge in table mode; the fan is drawn by that rotation and
+  // measured by it, so both ask the same question of the same rule.
+  const hands = view.zones.filter((z) => z.kind === 'hand')
+  const handRot = (z: ZoneView) => (mode === 'table' ? edgeRotation(z, floor) : 0)
+  // What the fit has to pass into the frame is the felt *with its hands on* (#23): a hand is part
+  // of the table, so a table fitted to the floor alone would clip one that reaches past the rim.
+  const felted = feltWithHands(floorRect, hands.map((z) => handExtent(z, handRot(z))))
+  // A quarter turn (C5) puts the table's width where its height was, so that is the shape the
+  // fit has to pass into the frame — otherwise a seat at a side edge gets a table cut off at the
+  // top and bottom of its own screen.
+  const drawn = rotate % 180 === 0 ? felted : { w: felted.h, h: felted.w }
+  const fitted = size === null ? null : size.w > 0 && size.h > 0 ? fitScale(drawn, size, margin) : 1
 
   // Inspection (K8): "Titta" in the ring, private to this screen, until tapped away.
   const [held, setHeld] = useState<VisibleComponentState | null>(null)
@@ -261,7 +272,6 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
 
   const areas = view.zones.filter((z) => z.kind === 'area' && z.id !== floor.id)
   const piles = view.zones.filter((z) => z.kind === 'pile')
-  const hands = view.zones.filter((z) => z.kind === 'hand')
   const loose = view.components.filter((c) => zoneById.get(c.zone)?.kind === 'area')
   const dx = drag?.started ? drag.at.x - drag.grab.x : 0
   const dy = drag?.started ? drag.at.y - drag.grab.y : 0
@@ -270,13 +280,19 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const liftedKind = drag?.started && drag.target.kind !== 'card' ? drag.target.kind : null
   const topOf = (z: ZoneView, skip = 0) => byId.get(topIdOf(z, skip) ?? '')
 
+  // A quarter-turned table (C5) is as tall as the floor is wide, so the wood it lies on takes
+  // that shape too and holds it centred; otherwise the felt hangs over its own frame.
+  const turnedWood = rotate % 180 === 0 ? undefined : { width: px(floor.geometry.h), height: px(floor.geometry.w) }
+  // The felt's own box keeps the floor's shape whatever the turn, so it is nudged by half the
+  // difference to sit centred on the wood that now has the other shape.
+  const turnedFelt = rotate % 180 === 0 ? {} : { marginLeft: px((floor.geometry.h - floor.geometry.w) / 2), marginTop: px((floor.geometry.w - floor.geometry.h) / 2) }
   const felt = (
-      <div className="byd-table-wood" ref={wood}>
+      <div className="byd-table-wood" ref={wood} style={turnedWood}>
         <div
           data-table
           data-rotate={rotate}
           ref={table}
-          style={{ position: 'relative', width: px(floor.geometry.w), height: px(floor.geometry.h), transform: rotate ? `rotate(${rotate}deg)` : undefined, ['--unrotate' as string]: `${-rotate}deg` }}
+          style={{ position: 'relative', width: px(floor.geometry.w), height: px(floor.geometry.h), ...turnedFelt, transform: rotate ? `rotate(${rotate}deg)` : undefined, ['--unrotate' as string]: `${-rotate}deg` }}
           onPointerMove={feltMove}
           onPointerDown={feltDown}
           onPointerUp={clearPoint}
@@ -313,9 +329,10 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
               key={z.id}
               zone={z}
               color={seatColor(seatIndex(z.owner))}
-              rot={mode === 'table' ? edgeRotation(z, floor) : 0}
+              rot={handRot(z)}
               left={left(z.geometry.x + z.geometry.w / 2)}
               top={top(z.geometry.y + z.geometry.h / 2)}
+              px={px}
               cards={z.mode === 'order' ? z.order.flatMap((id) => byId.get(id) ?? []) : undefined}
               faces={faces}
             />
@@ -565,14 +582,6 @@ function marginFor(mode: TableMode, size: Size | null): number {
   return size === null ? 0 : Math.round(Math.min(size.w, size.h) * TABLE_MARGIN)
 }
 
-// In table mode a hand faces the edge it sits at, like a real player would (C5).
-function edgeRotation(hand: ZoneView, floor: ZoneView): number {
-  const dx = hand.geometry.x + hand.geometry.w / 2 - (floor.geometry.x + floor.geometry.w / 2)
-  const dy = hand.geometry.y + hand.geometry.h / 2 - (floor.geometry.y + floor.geometry.h / 2)
-  if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? -90 : 90
-  return dy > 0 ? 0 : 180
-}
-
 const EDGES: Record<number, 'N' | 'E' | 'S' | 'W'> = { 0: 'S', 180: 'N', [-90]: 'E', 90: 'W' }
 
 // Who sits at this edge (B): the name lies along the table's own border, turned toward the seat
@@ -592,12 +601,19 @@ function SeatName({ zone, floor, name, color, left, top }: { zone: ZoneView; flo
 }
 
 // Other seats' hands are a fan of backs and a count; the owner reads theirs on the phone. A hand
-// whose order this view may see (the observer, C8) fans the cards themselves.
-function Hand({ zone, color, rot, left, top, cards, faces }: { zone: ZoneView; color: string; rot: number; left: number; top: number; cards?: VisibleComponentState[] | undefined; faces?: string | undefined }) {
+// whose order this view may see (the observer, C8) fans the cards themselves. Every measure in
+// the fan is a millimetre on the felt, so it shrinks with the table rather than swamping it (#23).
+function Hand({ zone, color, rot, left, top, px, cards, faces }: { zone: ZoneView; color: string; rot: number; left: number; top: number; px: (mm: number) => number; cards?: VisibleComponentState[] | undefined; faces?: string | undefined }) {
   const count = zone.mode === 'count' ? zone.count : zone.order.length
   const fan = Math.min(count, FAN_MAX)
+  const shown = cards ? Math.min(cards.length, FAN_MAX) : fan
+  const box = { left: px(HAND_CARD_BOX.x), top: px(HAND_CARD_BOX.y), width: px(HAND_CARD_BOX.w), height: px(HAND_CARD_BOX.h) }
+  const place = (i: number, spread: boolean) => {
+    const { step, tilt } = fanPlace(i, shown, spread)
+    return `translateX(${px(step)}px) rotate(${tilt}deg)`
+  }
   return (
-    <div className="byd-hand" data-zone={zone.id} data-count={count} data-rot={rot} style={{ left, top, transform: `rotate(${rot}deg)`, ['--seat' as string]: color, ['--hand-unrot' as string]: `${-rot}deg` }}>
+    <div className="byd-hand" data-zone={zone.id} data-count={count} data-rot={rot} style={{ left, top, transform: `rotate(${rot}deg)`, ['--seat' as string]: color, ['--hand-unrot' as string]: `${-rot}deg`, ['--hand-drop' as string]: `${px(HAND_COUNT_MM)}px` }}>
       <div className="byd-hand-fan">
         {cards
           ? cards.slice(0, FAN_MAX).map((c, i) => (
@@ -606,13 +622,13 @@ function Hand({ zone, color, rot, left, top, cards, faces }: { zone: ZoneView; c
                 className="byd-hand-card"
                 data-component={c.id}
                 data-face={c.cardRef === null ? 'back' : 'front'}
-                style={{ transform: `translateX(${(i - (Math.min(cards.length, FAN_MAX) - 1) / 2) * 26}px) rotate(${(i - (Math.min(cards.length, FAN_MAX) - 1) / 2) * 7}deg)`, ...(c.cardRef === null ? {} : { ['--hue' as string]: hue(c.cardRef) }) }}
+                style={{ ...box, transform: place(i, true), ...(c.cardRef === null ? {} : { ['--hue' as string]: hue(c.cardRef) }) }}
               >
                 <Texture faces={faces} c={c} />
                 <span>{c.cardRef ?? ''}</span>
               </i>
             ))
-          : Array.from({ length: fan }, (_, i) => <i key={i} className="byd-back" style={{ transform: `rotate(${(i - (fan - 1) / 2) * 9}deg)` }} />)}
+          : Array.from({ length: fan }, (_, i) => <i key={i} className="byd-back" style={{ ...box, transform: place(i, false) }} />)}
       </div>
       <b className="byd-hand-count">{count}</b>
     </div>

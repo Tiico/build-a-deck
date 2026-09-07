@@ -39,6 +39,29 @@ function scene(): Snapshot {
   }
 }
 
+// The same table as the observer sees it (C8): four seats around the rim, every hand fanned
+// face-up, and the northern one at the very edge of the felt where a fan drawn too large runs
+// straight off it. Two of the hands hold the twelve the fan tops out at.
+function handScene(): Snapshot {
+  const seats = [
+    { id: 'S', geometry: { x: -250, y: 260, w: 500, h: 60, rot: 0 } },
+    { id: 'N', geometry: { x: -250, y: -400, w: 500, h: 60, rot: 0 } },
+    { id: 'W', geometry: { x: -600, y: -150, w: 60, h: 300, rot: 0 } },
+    { id: 'E', geometry: { x: 540, y: -150, w: 60, h: 300, rot: 0 } },
+  ] as const
+  const held = { S: 5, N: 12, W: 3, E: 12 } as const
+  const cards = seats.flatMap((s) => Array.from({ length: held[s.id] }, (_, i) => card(`h${s.id}${i}`, `hand:${s.id}`, 0, 0, `Kort ${s.id}${i}`)))
+  return {
+    ...scene(),
+    seats: seats.map((s) => ({ id: s.id, name: `Spelare ${s.id}` })),
+    zones: [
+      ...scene().zones.filter((z) => z.kind !== 'hand'),
+      ...seats.map((s) => ({ mode: 'order' as const, id: `hand:${s.id}`, kind: 'hand' as const, name: 'Hand', owner: s.id, geometry: s.geometry, dynamic: false, order: cards.filter((c) => c.zone === `hand:${s.id}`).map((c) => c.id) })),
+    ],
+    components: [...scene().components, ...cards],
+  }
+}
+
 // The markup a component actually produces, taken from a real mount.
 function markupOf(node: ReactElement): string {
   const { container, unmount } = render(node)
@@ -115,6 +138,7 @@ async function measureAll(html: string, size: Size, selector: string): Promise<{
 const measure = (mode: TableMode, selectors: Record<string, string>) => measureHtml(markup(mode), FRAME, selectors, mode)
 
 const overlaps = (a: Box, b: Box) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+const outside = (frame: Box, boxes: readonly Box[]) => boxes.filter((b) => b.x < frame.x || b.y < frame.y || b.x + b.w > frame.x + frame.w || b.y + b.h > frame.y + frame.h)
 
 describe('a pile says how many it holds (C)', () => {
   it('puts the count as a badge on the corner of the pile and the name below it, clear of the cards', async () => {
@@ -223,4 +247,102 @@ describe('the inspection panel waits like prototype C (K8, #20)', () => {
     expect(hint.y - box.y).toBeLessThan(box.h / 4)
     expect(Math.abs(hint.x + hint.w / 2 - (box.x + box.w / 2))).toBeLessThanOrEqual(1)
   }, 60_000)
+})
+
+// Every hand around the rim, as the browser lays it out at a given frame size: the frame, the
+// felt, every card in every fan, and each fan on its own.
+async function handsAt(size: Size, mode: TableMode = 'tv') {
+  const html = markupOf(<TableRenderer view={handScene()} mode={mode} size={size} />)
+  const seen = await onPage(html, size, (page) =>
+    page.evaluate(() => {
+      const box = (el: Element) => {
+        const r = el.getBoundingClientRect()
+        return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }
+      }
+      const one = (sel: string) => {
+        const el = document.querySelector(sel)
+        return el ? box(el) : null
+      }
+      return {
+        frame: one('.byd-table-frame'),
+        table: one('[data-table]'),
+        fans: [...document.querySelectorAll('.byd-hand')].map((h) => [...h.querySelectorAll('.byd-hand-fan > i')].map(box)),
+      }
+    }),
+  )
+  if (!seen.frame || !seen.table || seen.fans.length === 0) throw new Error(`nothing to measure at ${size.w}`)
+  return { frame: seen.frame, table: seen.table, fans: seen.fans, cards: seen.fans.flat() }
+}
+
+describe('a hand is drawn in the table’s own millimetres (#23)', () => {
+  it('keeps the fan the same share of the table at every width', async () => {
+    const wide = await handsAt({ w: 1280, h: 800 })
+    const narrow = await handsAt({ w: 390, h: 780 })
+    // A card in a hand is table furniture, not chrome: it holds its proportion to the felt the
+    // way a card lying on the felt does, instead of staying 54 px wide while the table shrinks.
+    // Within a pixel, which is what two rounded measurements can promise each other.
+    const expected = (wide.cards[0]?.w ?? 0) * (narrow.table.w / wide.table.w)
+    expect(Math.abs((narrow.cards[0]?.w ?? 0) - expected)).toBeLessThanOrEqual(1)
+  }, 60_000)
+})
+
+describe('a table that has been fitted keeps its own hands (#23)', () => {
+  for (const size of [{ w: 390, h: 780 }, { w: 768, h: 900 }, { w: 1280, h: 800 }] as const) {
+    it(`cuts no hand card off at the frame's edge at ${size.w}`, async () => {
+      const { frame, cards } = await handsAt(size)
+      // The fit passes the table into its frame; a hand is part of the table, not an afterthought
+      // drawn outside it, so a fitted table never clips one.
+      expect({ width: size.w, cut: outside(frame, cards).length }).toEqual({ width: size.w, cut: 0 })
+    }, 60_000)
+  }
+
+  // The tilted felt (K9) is the same fit seen through a perspective, and the editor's Bord tab
+  // (#19) is that same felt in a box the size of a thumbnail.
+  for (const size of [{ w: 390, h: 780 }, { w: 768, h: 900 }, { w: 1280, h: 800 }, { w: 640, h: 384 }] as const) {
+    it(`cuts no hand card off the tilted table at ${size.w}`, async () => {
+      const { frame, cards } = await handsAt(size, 'table')
+      expect({ width: size.w, cut: outside(frame, cards).length }).toEqual({ width: size.w, cut: 0 })
+    }, 60_000)
+  }
+})
+
+describe('a hand is never wider than the table it sits at (#23)', () => {
+  for (const size of [{ w: 390, h: 780 }, { w: 768, h: 900 }] as const) {
+    it(`keeps a full fan of twelve inside the table's own width at ${size.w}`, async () => {
+      const { table, fans } = await handsAt(size)
+      const width = (fan: Box[]) => Math.max(...fan.map((c) => c.x + c.w)) - Math.min(...fan.map((c) => c.x))
+      // The finding in its own words: under roughly 700 px the hands were wider than the table
+      // they sit at, and hung off both its edges.
+      expect({ width: size.w, wider: fans.filter((f) => width(f) > table.w).length }).toEqual({ width: size.w, wider: 0 })
+    }, 60_000)
+  }
+})
+
+describe('the table a distant seat is turned to still fits its frame (C5, #23)', () => {
+  // `/online` turns the felt so the player's own edge is at the bottom, which for a seat on the
+  // left or right means a quarter turn: the table then needs the frame's height where it needed
+  // its width, and its hands come round with it.
+  for (const size of [{ w: 390, h: 780 }, { w: 768, h: 900 }, { w: 1280, h: 800 }] as const) {
+    it(`cuts nothing off a quarter-turned table at ${size.w}`, async () => {
+      const html = markupOf(<TableRenderer view={handScene()} mode="table" rotate={90} size={size} />)
+      const boxes = await measureAll(html, size, '.byd-table-frame, [data-table], .byd-hand-fan > i, .byd-card, .byd-pile')
+      const [frame, ...rest] = boxes.map((b) => b.box)
+      if (!frame) throw new Error('no frame')
+      expect({ width: size.w, cut: outside(frame, rest).length }).toEqual({ width: size.w, cut: 0 })
+    }, 60_000)
+  }
+})
+
+describe('the wood wraps the table it carries (K9, C5)', () => {
+  for (const rotate of [0, 90] as const) {
+    it(`holds the felt inside its own border at ${rotate}°`, async () => {
+      const size = { w: 1280, h: 800 }
+      const html = markupOf(<TableRenderer view={handScene()} mode="table" rotate={rotate} size={size} />)
+      const at = await measureHtml(html, size, { wood: '.byd-table-wood', felt: '[data-table]' }, `rotate ${rotate}`)
+      const [wood, felt] = [at('wood'), at('felt')]
+      // The wood is the table's frame, so the felt lies on it — a quarter-turned felt that keeps
+      // the wood's old shape hangs over its edge at the top and the bottom.
+      expect({ rotate, over: outside(wood, [felt]).length }).toEqual({ rotate, over: 0 })
+    }, 60_000)
+  }
 })
