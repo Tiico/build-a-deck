@@ -135,21 +135,39 @@ export class PostgresLogStore implements LogStore {
   }
 
   async issueGuest(sessionId: string, g: GuestRecord): Promise<boolean> {
-    const rows = await this.sql`
-      insert into guest_tokens (session_id, token_hash, kind, seat, name, issued_at, revoked_at)
-      values (${sessionId}, ${g.tokenHash}, ${g.kind}, ${g.seat}, ${g.name}, ${g.issuedAt}, ${g.revokedAt ?? null})
-      on conflict do nothing
-      returning token_hash
-    `
-    return rows.length === 1
+    return this.sql.begin(async (tx) => {
+      await tx`
+        update guest_tokens set revoked_at = ${g.issuedAt}
+        where session_id = ${sessionId} and revoked_at is null and expires_at <= ${g.issuedAt}
+      `
+      const rows = await tx`
+        insert into guest_tokens (session_id, token_hash, kind, seat, name, issued_at, expires_at, revoked_at)
+        values (${sessionId}, ${g.tokenHash}, ${g.kind}, ${g.seat}, ${g.name}, ${g.issuedAt}, ${g.expiresAt}, ${g.revokedAt ?? null})
+        on conflict do nothing
+        returning token_hash
+      `
+      return rows.length === 1
+    })
   }
 
   async guestByToken(sessionId: string, tokenHash: string): Promise<GuestRecord | null> {
-    const [row] = await this.sql<{ token_hash: string; kind: 'seat' | 'observer'; seat: string | null; name: string; issued_at: Date; revoked_at: Date | null }[]>`
-      select token_hash, kind, seat, name, issued_at, revoked_at from guest_tokens where session_id = ${sessionId} and token_hash = ${tokenHash}
+    const [row] = await this.sql<{ token_hash: string; kind: 'seat' | 'observer'; seat: string | null; name: string; issued_at: Date; expires_at: Date; revoked_at: Date | null }[]>`
+      select token_hash, kind, seat, name, issued_at, expires_at, revoked_at from guest_tokens where session_id = ${sessionId} and token_hash = ${tokenHash}
     `
     if (!row) return null
-    return { tokenHash: row.token_hash, kind: row.kind, seat: row.seat, name: row.name, issuedAt: row.issued_at.toISOString(), ...(row.revoked_at ? { revokedAt: row.revoked_at.toISOString() } : {}) }
+    return { tokenHash: row.token_hash, kind: row.kind, seat: row.seat, name: row.name, issuedAt: row.issued_at.toISOString(), expiresAt: row.expires_at.toISOString(), ...(row.revoked_at ? { revokedAt: row.revoked_at.toISOString() } : {}) }
+  }
+
+  async activateGuest(sessionId: string, tokenHash: string, now: string, expiresAt: string): Promise<GuestRecord | null> {
+    const [row] = await this.sql<{ token_hash: string; kind: 'seat' | 'observer'; seat: string | null; name: string; issued_at: Date; expires_at: Date }[]>`
+      update guest_tokens set expires_at = greatest(expires_at, ${expiresAt})
+      where session_id = ${sessionId} and token_hash = ${tokenHash}
+        and revoked_at is null and expires_at > ${now}
+      returning token_hash, kind, seat, name, issued_at, expires_at
+    `
+    return row
+      ? { tokenHash: row.token_hash, kind: row.kind, seat: row.seat, name: row.name, issuedAt: row.issued_at.toISOString(), expiresAt: row.expires_at.toISOString() }
+      : null
   }
 
   async revokeGuests(sessionId: string, seat: string | null, at: string): Promise<number> {

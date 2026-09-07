@@ -15,8 +15,9 @@ export type { Deck }
 export type SessionRecord = { id: string; version: GameVersionId; setup: SetupDef; deck?: Deck; project?: string; code?: string; codeExpiresAt?: string; hostKeyHash?: string }
 
 // A guest's admission (DRIFT §9): the hash of the token a phone or an observer connects with,
-// what it admits to, and the name it was bought under. A kick sets `revokedAt`.
-export type GuestRecord = { tokenHash: string; kind: 'seat' | 'observer'; seat: string | null; name: string; issuedAt: string; revokedAt?: string }
+// what it admits to, and the name it was bought under. A pending admission expires unless it
+// connects and is activated; a kick or expiry sets `revokedAt`.
+export type GuestRecord = { tokenHash: string; kind: 'seat' | 'observer'; seat: string | null; name: string; issuedAt: string; expiresAt: string; revokedAt?: string }
 
 export type LogStore = {
   createSession(record: SessionRecord): Promise<void>
@@ -35,6 +36,8 @@ export type LogStore = {
   // Atomically reserves a live seat. False means another live guest already holds it.
   // Observer admissions do not reserve a seat.
   issueGuest(sessionId: string, guest: GuestRecord): Promise<boolean>
+  // Turns a still-valid pending admission into a longer-lived active admission.
+  activateGuest(sessionId: string, tokenHash: string, now: string, expiresAt: string): Promise<GuestRecord | null>
   guestByToken(sessionId: string, tokenHash: string): Promise<GuestRecord | null>
   // Revokes every token for a seat (or every observer token, for null); returns how many.
   revokeGuests(sessionId: string, seat: string | null, at: string): Promise<number>
@@ -118,14 +121,26 @@ export class MemoryLogStore implements LogStore {
 
   async issueGuest(sessionId: string, guest: GuestRecord): Promise<boolean> {
     if (!this.sessions.has(sessionId)) throw new Error(`unknown session ${sessionId}`)
-    if (guest.seat !== null && (this.guests.get(sessionId) ?? []).some((g) => g.seat === guest.seat && g.revokedAt === undefined)) return false
-    this.guests.set(sessionId, [...(this.guests.get(sessionId) ?? []), structuredClone(guest)])
+    const guests = this.guests.get(sessionId) ?? []
+    const issuedAt = Date.parse(guest.issuedAt)
+    for (const existing of guests) {
+      if (existing.revokedAt === undefined && Date.parse(existing.expiresAt) <= issuedAt) existing.revokedAt = guest.issuedAt
+    }
+    if (guest.seat !== null && guests.some((g) => g.seat === guest.seat && g.revokedAt === undefined)) return false
+    this.guests.set(sessionId, [...guests, structuredClone(guest)])
     return true
   }
 
   async guestByToken(sessionId: string, tokenHash: string): Promise<GuestRecord | null> {
     const g = (this.guests.get(sessionId) ?? []).find((x) => x.tokenHash === tokenHash)
     return g ? structuredClone(g) : null
+  }
+
+  async activateGuest(sessionId: string, tokenHash: string, now: string, expiresAt: string): Promise<GuestRecord | null> {
+    const g = (this.guests.get(sessionId) ?? []).find((x) => x.tokenHash === tokenHash)
+    if (!g || g.revokedAt !== undefined || Date.parse(g.expiresAt) <= Date.parse(now)) return null
+    if (Date.parse(expiresAt) > Date.parse(g.expiresAt)) g.expiresAt = expiresAt
+    return structuredClone(g)
   }
 
   async revokeGuests(sessionId: string, seat: string | null, at: string): Promise<number> {

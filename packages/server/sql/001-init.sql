@@ -77,8 +77,14 @@ create table if not exists guest_tokens (
   seat        text,
   name        text not null,
   issued_at   timestamptz not null,
+  expires_at  timestamptz not null,
   revoked_at  timestamptz
 );
+-- Existing admissions predate pending-token expiry. Preserve them until normal activation or
+-- revocation rather than invalidating guests during rollout.
+alter table guest_tokens add column if not exists expires_at timestamptz;
+update guest_tokens set expires_at = '9999-12-31 23:59:59.999+00' where expires_at is null;
+alter table guest_tokens alter column expires_at set not null;
 create index if not exists guest_tokens_session on guest_tokens (session_id);
 -- A seat can have only one live admission. Revoked admissions remain as audit history, and
 -- observer admissions (whose seat is null) remain unlimited.
