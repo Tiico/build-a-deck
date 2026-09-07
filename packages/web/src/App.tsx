@@ -12,9 +12,16 @@ import { TableEditorPrototype } from './prototype/datatable/index.js'
 import { CanvasPrototype } from './prototype/canvas/index.js'
 import { EditorNavPrototype } from './prototype/editor-nav/index.js'
 import { GroupsPrototype } from './prototype/groups/index.js'
+import { TextureFailures } from './table/TextureFailures.js'
 
 // Routing is a path check for now; a router arrives with the first real page.
 export function App() {
+  return <TextureFailures>{route()}</TextureFailures>
+}
+
+// Every screen that shows cards is under one live region for lost textures (#10); App is the
+// only place that is mounted exactly once whichever route is showing.
+function route() {
   if (location.pathname.startsWith('/prototype/table-ref')) return <TablePrototype />
   if (location.pathname.startsWith('/prototype/datatable')) return <TableEditorPrototype />
   if (location.pathname.startsWith('/prototype/canvas')) return <CanvasPrototype />

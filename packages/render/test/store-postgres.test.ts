@@ -45,4 +45,13 @@ describe.skipIf(!url)('PostgresRenderStore', () => {
     expect(await store.reap(1000, 20 + 1001)).toEqual([`${tag}-p`])
     expect((await store.claim(30_000))?.hash).toBe(`${tag}-p`)
   })
+
+  // Parity with MemoryRenderStore: the one way back from `failed` (#10).
+  it('requeues a failed job when asked, and leaves every other state alone', async () => {
+    await store.fail(`${tag}-p`, 'boom')
+    expect(await store.requeue(`${tag}-p`)).toBe(true)
+    expect(await store.status(`${tag}-p`)).toEqual({ state: 'queued' })
+    expect(await store.requeue(`${tag}-p`)).toBe(false)
+    expect(await store.requeue(`${tag}-nothing`)).toBe(false)
+  })
 })

@@ -11,8 +11,35 @@
 .byd-editor > header > button { border: 1px solid #2f333d; border-radius: 8px; padding: 8px 14px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
 .byd-editor > header > button:disabled { color: #5b6478; cursor: default; }
 .byd-editor > header > .byd-editor-primary { background: #3c8ce7; border-color: #3c8ce7; }
-.byd-editor-table-link { padding: 8px 16px; background: #1f2a1f; color: #7dd3a0; border-bottom: 1px solid #2f333d; }
+.byd-editor-table-link {
+  --byd-editor-table-bg: #1f2a1f;
+  /* A card that could not be rendered wears the same colours here as it does on the table
+     (texture.css), so one fact has one look wherever it is met. */
+  --byd-editor-lost-bg: #3d2632;
+  --byd-editor-lost-ink: #ffe4ea;
+  --byd-editor-lost-quiet: #f4b9c7;
+  --byd-editor-lost-button-bg: #6d4356;
+  --byd-editor-lost-button-line: #a2778a;
+  padding: 8px 16px;
+  background: var(--byd-editor-table-bg);
+  color: #7dd3a0;
+  border-bottom: 1px solid #2f333d;
+}
 .byd-editor-table-link a { color: #fff; }
+/* A blocked update is not the good news this row otherwise carries, and must not be green. */
+.byd-editor-table-link[data-lost] { background: var(--byd-editor-lost-bg); color: var(--byd-editor-lost-quiet); }
+.byd-editor-warning { color: var(--byd-editor-lost-ink); font-weight: 600; }
+.byd-editor-table-link button {
+  min-height: 32px;
+  padding: 4px 14px;
+  border: 1px solid var(--byd-editor-lost-button-line);
+  border-radius: 999px;
+  background: var(--byd-editor-lost-button-bg);
+  color: var(--byd-editor-lost-ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
 .byd-editor > main { min-height: 0; overflow: auto; }
 
 /* Wall */

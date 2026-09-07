@@ -16,6 +16,15 @@ const faceUp: VisibleComponentState = { ...base, face: 'front', cardRef: 'wizard
 // What the server sends for a card this seat may not see: no identity, and no front hash.
 const faceDown: VisibleComponentState = { ...base, face: 'back', cardRef: null, faces: { back: BACK } }
 
+// The render farm is behind, or the job died: after the bounded ladder of retries the browser
+// would be left with its own broken-image icon, which says nothing to a player.
+function exhaust(img: () => HTMLImageElement) {
+  for (let i = 0; i <= 8; i++) {
+    fireEvent.error(img())
+    act(() => vi.advanceTimersByTime(1500 * (i + 1)))
+  }
+}
+
 describe('a texture that is still being rendered', () => {
   it('names a card the seat may see, and never names one it may not', () => {
     const shown = render(<Texture faces={FACES} c={faceUp} />)
@@ -25,6 +34,39 @@ describe('a texture that is still being rendered', () => {
     const fallback = hidden.container.querySelector('[data-texture="pending"]')!
     expect(fallback.textContent).toMatch(/[Rr]enderas/)
     expect(fallback.textContent).not.toMatch(/wizard/)
+  })
+
+  // Both states are read by people who are not developers, so they are sentences about the card
+  // and never about the machinery: no "textur", no "hash", no "job".
+  it('speaks about the card, in whole Swedish sentences', () => {
+    const waiting = render(<Texture faces={FACES} c={faceUp} />)
+    expect(waiting.container.querySelector('[data-texture="pending"] i')!.textContent).toBe('Kortet renderas…')
+
+    vi.useFakeTimers()
+    const lost = render(<Texture faces={FACES} c={faceUp} />)
+    exhaust(() => lost.container.querySelector('img') as HTMLImageElement)
+    expect(lost.container.querySelector('[data-texture="failed"] i')!.textContent).toBe('Bilden kunde inte laddas')
+    vi.useRealTimers()
+  })
+})
+
+// A card's face can change under it — the same component flipped, or a new revision of the
+// deck. Keeping the <img> and only swapping `src` leaves the browser showing the decoded old
+// bitmap until the new one arrives, so the card lies for a frame. A fresh element cannot.
+describe('a texture that is replaced by another', () => {
+  it('mounts a new image for a new face, so the old one is never shown under the new src', () => {
+    const OTHER = 'c'.repeat(64)
+    const { container, rerender } = render(<Texture faces={FACES} c={faceUp} />)
+    const first = container.querySelector('img') as HTMLImageElement
+    fireEvent.load(first)
+    expect(first.getAttribute('data-state')).toBe('ready')
+
+    rerender(<Texture faces={FACES} c={{ ...faceUp, faces: { front: OTHER, back: BACK } }} />)
+    const second = container.querySelector('img') as HTMLImageElement
+    expect(second).not.toBe(first)
+    expect(second.src).toBe(`${FACES}/faces/${OTHER}`)
+    expect(second.getAttribute('data-state')).toBe('pending')
+    expect(container.querySelector('[data-texture="pending"]')).not.toBeNull()
   })
 })
 
@@ -43,15 +85,6 @@ describe('a texture that arrives', () => {
   })
 })
 
-// The render farm is behind, or the job died: after the bounded ladder of retries the browser
-// would be left with its own broken-image icon, which says nothing to a player.
-function exhaust(img: () => HTMLImageElement) {
-  for (let i = 0; i <= 8; i++) {
-    fireEvent.error(img())
-    act(() => vi.advanceTimersByTime(1500 * (i + 1)))
-  }
-}
-
 describe('a texture that never arrives', () => {
   it('says so in Swedish, keeps naming a card the seat may see, and retries when asked', () => {
     vi.useFakeTimers()
@@ -67,7 +100,21 @@ describe('a texture that never arrives', () => {
       fireEvent.click(screen.getByRole('button', { name: /försök igen/i }))
     })
     expect(container.querySelector('[data-texture="pending"]')).not.toBeNull()
-    expect(img().src).toBe(`${FACES}/faces/${FRONT}?retry=9`)
+    // The ask reaches the render queue: a job that died is only revived by `retry=1`.
+    expect(img().src).toBe(`${FACES}/faces/${FRONT}?retry=1&t=9`)
+    vi.useRealTimers()
+  })
+
+  it('waits its way up the ladder without asking for a fresh render', () => {
+    vi.useFakeTimers()
+    const { container } = render(<Texture faces={FACES} c={faceUp} />)
+    const img = () => container.querySelector('img') as HTMLImageElement
+    // Waiting is not asking: the queue must not be given work while it is still doing it.
+    for (let i = 0; i < 3; i++) {
+      fireEvent.error(img())
+      act(() => vi.advanceTimersByTime(1500 * (i + 1)))
+      expect(img().src).toBe(`${FACES}/faces/${FRONT}?t=${i + 1}`)
+    }
     vi.useRealTimers()
   })
 

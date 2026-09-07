@@ -30,6 +30,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
   // growing pause while anything is still rendering.
   const [textures, setTextures] = useState<Textures | null>(null)
   const [preparing, setPreparing] = useState<Textures | null>(null)
+  // How many cards of the pending revision are lost for good. While this is set the table keeps
+  // the version it has: a card without a face on the table is worse than a table left alone.
+  const [lost, setLost] = useState<number | null>(null)
   useEffect(() => {
     if (!client || !table) return
     let stop = false
@@ -81,14 +84,19 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
   // Once a table exists, the primary button pushes the current rev to it (C7, L5) — but only
   // after the new textures are rendered, so the switch is atomic for the players: prepare,
   // poll with a growing pause, then refresh.
-  const updateTable = async () => {
+  const updateTable = async (retryLost = false) => {
     if (!table) return startTable()
     try {
+      setLost(null)
       let delay = 100
-      for (;;) {
-        const t = await client.prepareTable(table.id)
+      // Only the first call carries the retry: it is what puts the dead renders back in the
+      // queue, and the polling after it must not keep queueing them.
+      for (let first = true; ; first = false) {
+        const t = await client.prepareTable(table.id, retryLost && first)
         setPreparing(t)
-        if (t.done + t.failed.length >= t.total) break
+        // A render that failed is not a render that finished. Stop here and say so.
+        if (t.failed.length > 0) return setLost(t.failed.length)
+        if (t.done >= t.total) break
         await new Promise((r) => setTimeout(r, delay))
         delay = Math.min(1000, delay * 2)
       }
@@ -140,9 +148,16 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
         </button>
       </header>
       {table && (
-        <div className="byd-editor-table-link" role="status">
+        <div className="byd-editor-table-link" role="status" {...(lost !== null ? { 'data-lost': '' } : {})}>
           {table.kind === 'new' ? 'Nytt bord startat' : 'Bordet uppdaterat'} på {table.version} —{' '}
-          {preparing ? (
+          {lost !== null ? (
+            <>
+              <span className="byd-editor-warning">{lost} kort kunde inte renderas. Bordet står kvar på sin gamla version.</span>{' '}
+              <button type="button" onClick={() => void updateTable(true)}>
+                Försök igen
+              </button>
+            </>
+          ) : preparing ? (
             <span className="byd-editor-rendering">renderar kort {preparing.done}/{preparing.total}</span>
           ) : textures && textures.done + textures.failed.length >= textures.total ? (
             <a href={tableUrl(table.id)} target="_blank" rel="noreferrer">

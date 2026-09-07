@@ -150,7 +150,13 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       }
       const status = await opts.renders.status(hash)
       if (status && (status.state === 'queued' || status.state === 'running')) return json(res, 202, { state: status.state })
-      if (status?.state === 'failed') return json(res, 500, { error: status.error ?? 'render failed' })
+      if (status?.state === 'failed') {
+        // "Försök igen" on the card (#10). A dead job cannot be revived by fetching it again,
+        // so the ask reaches the queue: the same page is rendered once more. The hash is the
+        // capability, and asking twice costs one render, not two — a queued job is left alone.
+        if (url.searchParams.get('retry') === '1' && (await opts.renders.requeue(hash))) return json(res, 202, { state: 'queued' })
+        return json(res, 500, { error: status.error ?? 'render failed' })
+      }
       return json(res, 404, { error: 'unknown face' })
     }
     if (opts.staticDir && (req.method === 'GET' || req.method === 'HEAD')) {
@@ -406,7 +412,16 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       return true
     }
     const compiled = facesOf(deckFromProject(rec), setupFromProject(rec), opts.registry, TEXTURE_DPI, Date.now())
-    if (opts.renders) for (const job of compiled.jobs) await opts.renders.enqueue(job)
+    // A job that failed for good stays failed here (#10): enqueueing it again would put it back
+    // in the queue and the editor would poll a dead render forever, never learning it was dead.
+    // `?retry=1` is the one place that says "try it anyway", and it comes from a person asking.
+    const retryFailed = url.searchParams.get('retry') === '1'
+    if (opts.renders) {
+      for (const job of compiled.jobs) {
+        if (!retryFailed && (await opts.renders.status(job.hash))?.state === 'failed') continue
+        await opts.renders.enqueue(job)
+      }
+    }
     json(res, 200, await progress(opts, compiled.jobs.map((j) => j.hash)))
     return true
   }

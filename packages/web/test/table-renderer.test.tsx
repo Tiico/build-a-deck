@@ -301,11 +301,11 @@ describe('textures that are not ready yet', () => {
     fireEvent.error(img())
     expect(img().src).toBe(base)
     act(() => vi.advanceTimersByTime(1500))
-    expect(img().src).toBe(`${base}?retry=1`)
+    expect(img().src).toBe(`${base}?t=1`)
 
     fireEvent.error(img())
     act(() => vi.advanceTimersByTime(3000))
-    expect(img().src).toBe(`${base}?retry=2`)
+    expect(img().src).toBe(`${base}?t=2`)
     vi.useRealTimers()
   })
 

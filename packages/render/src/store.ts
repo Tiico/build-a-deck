@@ -18,6 +18,9 @@ export type RenderStore = {
   complete(hash: string, output: Uint8Array): Promise<void>
   fail(hash: string, error: string): Promise<void>
   status(hash: string): Promise<JobStatus | null>
+  // A job that failed goes back in the queue, keeping the compiled page it was made from;
+  // false when there is no such job or it did not fail. The one way back from `failed`.
+  requeue(hash: string): Promise<boolean>
   output(hash: string): Promise<Uint8Array | null>
   // Jobs running longer than `olderThanMs` as of `now` go back to the queue; returns their hashes.
   reap(olderThanMs: number, now: number): Promise<string[]>
@@ -68,6 +71,15 @@ export class MemoryRenderStore implements RenderStore {
     if (job.error !== undefined) s.error = job.error
     if (job.startedAt !== undefined) s.startedAt = job.startedAt
     return s
+  }
+
+  async requeue(hash: string): Promise<boolean> {
+    const job = this.jobs.get(hash)
+    if (!job || job.state !== 'failed') return false
+    job.state = 'queued'
+    delete job.error
+    delete job.startedAt
+    return true
   }
 
   async output(hash: string): Promise<Uint8Array | null> {

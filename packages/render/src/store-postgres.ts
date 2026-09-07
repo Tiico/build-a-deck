@@ -86,6 +86,15 @@ export class PostgresRenderStore implements RenderStore {
     return s
   }
 
+  async requeue(hash: string): Promise<boolean> {
+    const rows = await this.sql`
+      update render_jobs set state = 'queued', error = null, started_at = null
+      where hash = ${hash} and state = 'failed'
+      returning hash
+    `
+    return rows.length > 0
+  }
+
   async output(hash: string): Promise<Uint8Array | null> {
     const [row] = await this.sql<{ bytes: Uint8Array }[]>`select bytes from render_outputs where hash = ${hash}`
     return row ? new Uint8Array(row.bytes) : null

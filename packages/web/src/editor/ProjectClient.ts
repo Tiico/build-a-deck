@@ -108,12 +108,15 @@ export class ProjectClient {
 
   // Queues the textures of the saved project for a running table without switching it (L5),
   // and says how far they have come. Idempotent: call it until done equals total.
-  async prepareTable(sessionId: string): Promise<Textures> {
+  // `retryFailed` is a person asking again after a render died for good (#10): without it the
+  // server leaves a failed job failed, so the editor learns that it is dead instead of polling
+  // a queue that will never move.
+  async prepareTable(sessionId: string, retryFailed = false): Promise<Textures> {
     if (this.dirty) {
       const saved = await this.save()
       if (!saved.ok) throw new Error(`could not save before preparing the table: ${saved.reason}`)
     }
-    const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/prepare`, withCredentials({ method: 'POST' }))
+    const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/prepare${retryFailed ? '?retry=1' : ''}`, withCredentials({ method: 'POST' }))
     if (!res.ok) throw new Error(`could not prepare the table: ${res.status}`)
     return (await res.json()) as Textures
   }

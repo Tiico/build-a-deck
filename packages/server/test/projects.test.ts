@@ -227,3 +227,33 @@ describe('exporting a session for the replay corpus (DRIFT §7)', () => {
     expect((await fetch(`${run.http}/sessions/nope/export`)).status).toBe(404)
   })
 })
+
+// A render job that failed for good (#10). Left alone, "Uppdatera bordet" would poll forever:
+// `prepare` queued every job again on every call, so a dead job never showed up as dead.
+describe('a texture that failed for good (#10)', () => {
+  it('prepare keeps reporting the failure, and only an explicit retry puts the job back in the queue', async () => {
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
+    const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
+    const prepare = async (query = '') => (await (await json('POST', `/sessions/${sessionId}/prepare${query}`, {})).json()) as { total: number; done: number; failed: string[] }
+
+    const job = (await run.renders.claim(Date.now()))!
+    await run.renders.fail(job.hash, 'chromium gave up')
+
+    expect(await prepare()).toEqual({ total: 4, done: 0, failed: [job.hash] })
+    // Asking again is not a retry: a dead job stays dead until someone says otherwise.
+    expect(await prepare()).toEqual({ total: 4, done: 0, failed: [job.hash] })
+    expect((await run.renders.status(job.hash))?.state).toBe('failed')
+
+    expect(await prepare('?retry=1')).toEqual({ total: 4, done: 0, failed: [] })
+    // Back in the queue for real: a worker claims it along with the rest and finishes it.
+    const claimed: string[] = []
+    for (;;) {
+      const next = await run.renders.claim(Date.now())
+      if (!next) break
+      claimed.push(next.hash)
+      await run.renders.complete(next.hash, new Uint8Array([137, 80, 78, 71]))
+    }
+    expect(claimed).toContain(job.hash)
+    expect(await prepare()).toEqual({ total: 4, done: 4, failed: [] })
+  })
+})

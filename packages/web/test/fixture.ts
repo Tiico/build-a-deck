@@ -26,7 +26,7 @@ export function twoSeatSetup(): SetupDef {
   }
 }
 
-export type Running = { url: string; http: string; store: MemoryLogStore; projects: MemoryProjectStore; mail: MemoryMailer; stop(): Promise<void>; restart(): Promise<void>; completeRenders(): Promise<number> }
+export type Running = { url: string; http: string; store: MemoryLogStore; projects: MemoryProjectStore; mail: MemoryMailer; stop(): Promise<void>; restart(): Promise<void>; completeRenders(): Promise<number>; failRenders(): Promise<number> }
 
 // With `auth`, accounts are on (G1): projects need a login and belong to whoever made them.
 export async function startServer(opts: { auth?: boolean; authBypass?: boolean } = {}): Promise<Running> {
@@ -62,6 +62,17 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean }
         const job = await renders.claim(Date.now())
         if (!job) return n
         await renders.complete(job.hash, new Uint8Array([137, 80, 78, 71]))
+        n++
+      }
+    },
+    // The other ending: every queued texture dies the way a render container that keeps
+    // crashing on the same page would leave it — failed for good, not merely late (#10).
+    failRenders: async () => {
+      let n = 0
+      for (;;) {
+        const job = await renders.claim(Date.now())
+        if (!job) return n
+        await renders.fail(job.hash, 'synthetic render failure')
         n++
       }
     },

@@ -101,3 +101,18 @@
 
 /* A face that failed leaves nothing of the browser's own broken-image rendering behind. */
 .byd-texture[data-state='failed'] { visibility: hidden; }
+
+/* The one announcement of lost cards for the whole screen (TextureFailures). The cards
+   themselves already carry the message where it can be seen, so this is only for the ear:
+   present in the layout as nothing at all, and never a scrollbar of its own. */
+.byd-texture-lost {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

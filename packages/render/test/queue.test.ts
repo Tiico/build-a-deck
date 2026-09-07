@@ -45,4 +45,22 @@ describe('render queue (DRIFT §6)', () => {
     expect(await q.reap(60_000, 7 + 60_001)).toEqual(['h-a'])
     expect((await q.claim(9 + 60_001))?.hash).toBe('h-a')
   })
+
+  // The one way back from `failed` (#10): a person asked for the card again. Everything else
+  // leaves a dead job dead, so the editor and the table can tell "not yet" from "never".
+  it('puts a failed job back in the queue when asked, and only then', async () => {
+    const q = new MemoryRenderStore()
+    await q.enqueue(req('a', 'texture', 1))
+    expect(await q.requeue('h-a')).toBe(false)
+    const job = await q.claim(5)
+    await q.fail(job!.hash, 'boom')
+    expect(await q.status('h-a')).toMatchObject({ state: 'failed', error: 'boom' })
+
+    expect(await q.requeue('h-a')).toBe(true)
+    expect(await q.status('h-a')).toEqual({ state: 'queued' })
+    expect((await q.claim(6))?.hash).toBe('h-a')
+    // A job already queued or running is left alone, and an unknown hash invents nothing.
+    expect(await q.requeue('h-a')).toBe(false)
+    expect(await q.requeue('h-nothing')).toBe(false)
+  })
 })

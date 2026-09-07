@@ -234,6 +234,35 @@ describe('textures (TUNN-SKIVA §5)', () => {
   }, 60_000)
 })
 
+// The one repair a player has at the table is the card's own "Försök igen" (#10). A plain
+// re-fetch cannot help a job the render container gave up on, so the ask has to reach the queue.
+describe('a face whose render died (#10)', () => {
+  it('stays 500 however often it is fetched, and goes back in the queue when the player asks', async () => {
+    const res = await fetch(`${run.http}/sessions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: 'dead', version: 'v1', setup: twoSeatSetup(), deck }),
+    })
+    expect(res.status).toBe(201)
+    const a = await connect('dead', 'A')
+    await a.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    const front = (await a.synced(1)).components.find((c) => c.zone === 'hand:A')!.faces!['front']!
+
+    const job = (await run.renders.claim(Date.now()))!
+    await run.renders.fail(job.hash, 'chromium gave up')
+    expect((await fetch(`${run.http}/faces/${job.hash}`)).status).toBe(500)
+    // Busting the cache is not asking again; the job is still dead.
+    expect((await fetch(`${run.http}/faces/${job.hash}?t=3`)).status).toBe(500)
+    expect((await run.renders.status(job.hash))?.state).toBe('failed')
+
+    expect((await fetch(`${run.http}/faces/${job.hash}?retry=1`)).status).toBe(202)
+    expect((await run.renders.status(job.hash))?.state).toBe('queued')
+    expect(front).toMatch(/^[0-9a-f]{64}$/)
+    // A hash nobody ever queued is still unknown; a retry does not invent a job.
+    expect((await fetch(`${run.http}/faces/${'0'.repeat(64)}?retry=1`)).status).toBe(404)
+  })
+})
+
 describe('rewind on the wire (B)', () => {
   it('undo.self puts a drawn card back; the restored pile carries fresh ids so nobody can track it', async () => {
     const id = await createSession(run.http)

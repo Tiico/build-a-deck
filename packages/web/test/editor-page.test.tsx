@@ -138,4 +138,37 @@ describe('"Uppdatera bordet" switches the table only when the new cards can be s
     expect((await run.store.read(sessionId)).map((l) => l.intent.v)).toEqual(['version.change'])
     expect(screen.getByRole('link', { name: /öppna bordet/i })).toBeTruthy()
   })
+
+  // The reason the switch waits for the renders is that the players must never meet a card
+  // without a face. A render that failed for good is exactly that case, so it has to stop the
+  // switch rather than count as "done" (#10).
+  it('leaves the table on its old version when a card is lost for good, and switches only after a retry succeeds', async () => {
+    await run.projects.create('p1', projectDoc())
+    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('button', { name: /uppdatera bordet/i }))
+    await screen.findByText(/renderar kort/i)
+    await run.completeRenders()
+    const link = (await screen.findByRole('link', { name: /öppna bordet/i })) as HTMLAnchorElement
+    const sessionId = new URL(link.href).searchParams.get('session')!
+
+    fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
+    fireEvent.change(screen.getByLabelText('dragon title'), { target: { value: 'Drakhona' } })
+    fireEvent.click(screen.getByRole('button', { name: /uppdatera bordet/i }))
+    expect(await screen.findByText(/renderar kort 3\/4/i)).toBeTruthy()
+    expect(await run.failRenders()).toBe(1)
+
+    expect(await screen.findByText('1 kort kunde inte renderas. Bordet står kvar på sin gamla version.')).toBeTruthy()
+    // The row is a green "it worked" banner the rest of the time; a blocked update is not that.
+    expect(document.querySelector('.byd-editor-table-link')!.hasAttribute('data-lost')).toBe(true)
+    expect((await run.store.read(sessionId)).map((l) => l.intent.v)).toEqual([])
+
+    fireEvent.click(screen.getByRole('button', { name: 'Försök igen' }))
+    await screen.findByText(/renderar kort 3\/4/i)
+    await run.completeRenders()
+    await screen.findByText(/bordet uppdaterat på rev-2/i)
+    expect(document.querySelector('.byd-editor-table-link')!.hasAttribute('data-lost')).toBe(false)
+    expect((await run.store.read(sessionId)).map((l) => l.intent.v)).toEqual(['version.change'])
+  }, 20_000)
 })
