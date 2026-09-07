@@ -80,6 +80,11 @@ create table if not exists guest_tokens (
   revoked_at  timestamptz
 );
 create index if not exists guest_tokens_session on guest_tokens (session_id);
+-- A seat can have only one live admission. Revoked admissions remain as audit history, and
+-- observer admissions (whose seat is null) remain unlimited.
+create unique index if not exists guest_tokens_live_seat
+  on guest_tokens (session_id, seat)
+  where kind = 'seat' and revoked_at is null;
 
 -- The account a project belongs to; null for projects from before accounts.
 alter table projects add column if not exists owner text;

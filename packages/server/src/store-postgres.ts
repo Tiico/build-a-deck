@@ -134,11 +134,14 @@ export class PostgresLogStore implements LogStore {
     await this.sql`update sessions set code = ${code}, code_expires_at = ${expiresAt} where id = ${sessionId}`
   }
 
-  async issueGuest(sessionId: string, g: GuestRecord): Promise<void> {
-    await this.sql`
+  async issueGuest(sessionId: string, g: GuestRecord): Promise<boolean> {
+    const rows = await this.sql`
       insert into guest_tokens (session_id, token_hash, kind, seat, name, issued_at, revoked_at)
       values (${sessionId}, ${g.tokenHash}, ${g.kind}, ${g.seat}, ${g.name}, ${g.issuedAt}, ${g.revokedAt ?? null})
+      on conflict do nothing
+      returning token_hash
     `
+    return rows.length === 1
   }
 
   async guestByToken(sessionId: string, tokenHash: string): Promise<GuestRecord | null> {

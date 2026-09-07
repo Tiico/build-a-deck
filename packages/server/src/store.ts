@@ -32,7 +32,9 @@ export type LogStore = {
   // Admission (DRIFT §9): the session behind a code, and giving a session its (next) code.
   sessionByCode(code: string): Promise<{ id: string; codeExpiresAt: string } | null>
   setCode(sessionId: string, code: string, expiresAt: string): Promise<void>
-  issueGuest(sessionId: string, guest: GuestRecord): Promise<void>
+  // Atomically reserves a live seat. False means another live guest already holds it.
+  // Observer admissions do not reserve a seat.
+  issueGuest(sessionId: string, guest: GuestRecord): Promise<boolean>
   guestByToken(sessionId: string, tokenHash: string): Promise<GuestRecord | null>
   // Revokes every token for a seat (or every observer token, for null); returns how many.
   revokeGuests(sessionId: string, seat: string | null, at: string): Promise<number>
@@ -114,9 +116,11 @@ export class MemoryLogStore implements LogStore {
     r.codeExpiresAt = expiresAt
   }
 
-  async issueGuest(sessionId: string, guest: GuestRecord): Promise<void> {
+  async issueGuest(sessionId: string, guest: GuestRecord): Promise<boolean> {
     if (!this.sessions.has(sessionId)) throw new Error(`unknown session ${sessionId}`)
+    if (guest.seat !== null && (this.guests.get(sessionId) ?? []).some((g) => g.seat === guest.seat && g.revokedAt === undefined)) return false
     this.guests.set(sessionId, [...(this.guests.get(sessionId) ?? []), structuredClone(guest)])
+    return true
   }
 
   async guestByToken(sessionId: string, tokenHash: string): Promise<GuestRecord | null> {
