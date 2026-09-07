@@ -84,7 +84,7 @@ Målet är att en grupp kan spela vilket kortspel som helst utan att sakna någo
 - ✅ Kamera i TV-läge: bordet ramar in det som är i spel och glider med, tillfällig zoom kring pekaren med återgång (C5).
 - ✅ Högens topp som adress i `stack` och `flip`, så att översta kortet i en dold hög kan staplas på ett löst kort och vändas; ett uppvänt kort överst i en hög ses av alla (K15).
 - ⬜ Räknare och privata zoner på telefonen utöver handen (C4).
-- ⬜ Aktivitetshistorik i snapshoten, så att en skärm som ansluter mitt i ett spel ser vad som hänt (I, teknik).
+- ✅ Aktivitetshistorik i snapshoten: de senaste femtio raderna följer med vid anslutning, så en skärm som ansluter mitt i ett spel ser vad som hänt (I, teknik).
 - ⬜ Hur en hög i en area visas med blandad orientering, och om zonrektanglar får överlappa (I, spelupplevelse).
 - ⬜ Rumskoder som är korta, går ut och kan roteras; värden kan sparka en gäst (DRIFT §9, G1 följdkrav).
 - ⬜ Zongenvägar per spel med begripliga namn utan att se bordet (C4 följdkrav): namnen kommer från setupen, men setupen redigeras inte i editorn ännu.

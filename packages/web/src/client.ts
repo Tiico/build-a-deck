@@ -41,7 +41,9 @@ const makeSocket = (url: string): WebSocketLike => new (implementation ?? (globa
 export class TableClient {
   view: Snapshot | null = null
   status: ClientStatus = 'connecting'
-  // The most recent committed lines, redacted by the server; oldest first, bounded.
+  // The most recent committed lines, redacted by the server; oldest first, bounded. A snapshot
+  // brings the lines before it, so a client joining mid-game (or reconnecting) starts with
+  // what happened rather than with nothing; from then on `activity` messages extend them.
   activity: Activity[] = []
   // Who is watching (C8), as the server last told us.
   observers: { id: string; name: string }[] = []
@@ -171,6 +173,7 @@ export class TableClient {
     switch (msg.t) {
       case 'snapshot':
         this.view = msg.snapshot
+        this.activity = msg.activity.slice(-ACTIVITY_LIMIT)
         this.attempts = 0
         this.setStatus('open')
         this.resolveReady()
