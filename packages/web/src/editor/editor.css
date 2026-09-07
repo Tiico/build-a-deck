@@ -1,8 +1,13 @@
 /* Editor — the wall as home, the canvas for the template, the table as a tab. */
 .byd-editor { height: 100vh; display: grid; grid-template-rows: 48px auto 1fr; background: #23262e; color: #ddd; font: 13px system-ui, sans-serif; }
 .byd-editor > header { display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #2f333d; }
-.byd-editor > header strong { color: #fff; font-size: 15px; }
-.byd-editor-rev { color: #7d8597; }
+/* The header is one 48 px row and it holds a lot: the game's name, four tabs, and the buttons
+   that reach the table (#19). Nothing in it may wrap onto a second line — the row would not grow,
+   the text would only get cramped — so the controls stay on one line and the game's name, the one
+   thing that can be any length, is the one thing that gives way. */
+.byd-editor > header strong { color: #fff; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 3ch; }
+.byd-editor > header button { white-space: nowrap; }
+.byd-editor-rev { color: #7d8597; white-space: nowrap; }
 .byd-editor [role='tablist'] { display: flex; background: #1b1d23; border-radius: 8px; padding: 3px; margin-left: 12px; }
 .byd-editor [role='tab'] { border: 0; border-radius: 6px; padding: 6px 14px; background: transparent; color: #9aa3b8; font-weight: 600; cursor: pointer; }
 .byd-editor [role='tab'][aria-selected='true'] { background: #2f3a55; color: #fff; }
@@ -256,3 +261,99 @@
 .byd-data tr[aria-selected='false']:has(.byd-data-check input:checked) { background: var(--byd-editor-marked-bg); }
 .byd-data tr:has(.byd-data-check input:checked) .byd-data-check { box-shadow: inset 3px 0 0 var(--byd-editor-marked-edge); }
 .byd-data tr:has(.byd-data-check input:checked) .byd-data-id { color: var(--byd-editor-marked-ink); }
+
+/* Bord (#19, prototype variant A): the tables of this game, as a list of live games. The row is
+   the same wherever it is shown — in the tab, and in the header's shortcut from the other tabs
+   (variant B) — because it is the same component. */
+.byd-editor {
+  --byd-tables-bg: #1b1e27;
+  --byd-tables-ink: #e6ecfa;
+  --byd-tables-quiet: #a9b3c9;
+  /* A table the project has left behind (C7) is the one thing in the list that asks for a
+     decision, so it is the one thing drawn in a colour that is not grey. */
+  --byd-tables-stale-ink: #ffd98a;
+  --byd-tables-way-bg: #242938;
+  --byd-tables-way-ink: #e6ecfa;
+  /* Ending a table cannot be looked at afterwards; the question wears the same colours as the
+     one the table's delete asks, so one kind of question has one look. */
+  --byd-tables-ask-bg: #3d2632;
+  --byd-tables-ask-ink: #ffe4ea;
+}
+.byd-tables { height: 100%; box-sizing: border-box; overflow: auto; padding: 24px; display: grid; gap: 14px; align-content: start; max-width: 900px; }
+.byd-tables-lead, .byd-tables-empty { margin: 0; color: var(--byd-tables-quiet); max-width: 62ch; }
+.byd-tables > ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.byd-table-row { display: grid; grid-template-columns: 160px 1fr; gap: 16px; padding: 14px; border-radius: 14px; background: var(--byd-tables-bg); border: 1px solid #2c3242; }
+.byd-table-row[data-stale='true'] { border-color: #4a4230; }
+/* A table whose log is locked (C9) is still worth reading, but it is not a game going on: it
+   is drawn dimmer, so a glance down the list finds the live ones first. */
+.byd-table-row[data-ended='true'] .byd-tables-mini { filter: grayscale(0.8) brightness(0.65); }
+.byd-tables-mini { width: 160px; height: 96px; border-radius: 10px; overflow: hidden; background: #14161c; }
+/* The table is drawn at full size and shrunk as a picture, so the labels shrink with it. */
+.byd-tables-mini-inner { width: 640px; height: 384px; transform: scale(0.25); transform-origin: top left; }
+.byd-tables-info { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.byd-tables-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; color: var(--byd-tables-quiet); }
+.byd-tables-head strong { color: var(--byd-tables-ink); font-family: ui-monospace, monospace; }
+.byd-tables-stale { color: var(--byd-tables-stale-ink); font-style: normal; font-weight: 600; }
+.byd-tables-ways { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.byd-tables-ways a, .byd-tables-ways button {
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: var(--byd-tables-way-bg);
+  color: var(--byd-tables-way-ink);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+.byd-tables-ways a.byd-editor-primary { background: #3c8ce7; border-color: #3c8ce7; color: #fff; }
+.byd-tables-ways button[data-kind='quiet'] { background: transparent; border-color: #3a4050; color: var(--byd-tables-quiet); font-weight: 400; }
+.byd-tables-note { color: var(--byd-tables-quiet); }
+.byd-tables-qr { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.byd-tables-qr .byd-qr { background: #fff; border-radius: 8px; }
+.byd-tables-qr a { color: var(--byd-tables-ink); }
+.byd-tables-question {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border: 1px solid #7a3243;
+  border-radius: 8px;
+  background: var(--byd-tables-ask-bg);
+  color: var(--byd-tables-ask-ink);
+}
+.byd-tables-question p { margin: 0; font-weight: 700; }
+.byd-tables-question button { min-height: 32px; padding: 6px 12px; border: 1px solid #3b414e; border-radius: 8px; background: transparent; color: var(--byd-tables-ask-ink); font: inherit; font-weight: 700; cursor: pointer; }
+.byd-tables-question button[data-kind='danger'] { background: #7a3243; border-color: #7a3243; }
+.byd-tables-new { justify-self: start; border: 1px dashed #3a4050; border-radius: 12px; padding: 10px 16px; background: transparent; color: var(--byd-tables-quiet); font: inherit; cursor: pointer; }
+.byd-tables-new:disabled { cursor: default; }
+/* The shortcut in the header (variant B): "Uppdatera bordet" keeps its job, and the caret beside
+   it opens the newest table wherever the designer is standing. */
+.byd-editor-split { position: relative; display: inline-flex; }
+.byd-editor > header > .byd-editor-primary:has(+ .byd-editor-split) { border-radius: 8px 0 0 8px; }
+.byd-editor-split > .byd-editor-caret { border: 1px solid #3c8ce7; border-radius: 0 8px 8px 0; margin-left: 1px; padding: 8px 12px; background: #3c8ce7; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+.byd-editor-ways {
+  position: absolute;
+  right: 0;
+  top: 42px;
+  z-index: 20;
+  width: 520px;
+  max-width: 80vw;
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid #3a4050;
+  border-radius: 12px;
+  background: #1b1e27;
+  box-shadow: 0 16px 40px rgb(0 0 0 / 60%);
+  text-align: left;
+}
+.byd-editor-ways > p { margin: 0; color: var(--byd-tables-quiet); }
+.byd-editor-ways > ul { list-style: none; margin: 0; padding: 0; }
+.byd-editor-ways > button { justify-self: start; border: 1px solid #3b414e; border-radius: 8px; padding: 7px 12px; background: transparent; color: var(--byd-tables-ink); font: inherit; font-weight: 700; cursor: pointer; }
+/* Said only to a screen reader: which table a repeated word is about. */
+.byd-offscreen { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }

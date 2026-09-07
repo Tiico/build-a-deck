@@ -1,13 +1,14 @@
 import { useRoving } from './roving.js'
 
-export type Mode = 'wall' | 'template' | 'table'
+export type Mode = 'wall' | 'template' | 'table' | 'tables'
 
-// The editor's three modes, in the order they are read (L): the wall is home, the canvas is the
-// template, the table is the data.
+// The editor's four modes, in the order they are read (L, #19): the wall is home, the canvas is
+// the template, the table is the data, and Bord is where the game is played from.
 export const MODES: readonly (readonly [Mode, string])[] = [
   ['wall', 'Kortvägg'],
   ['template', 'Mall'],
   ['table', 'Tabell'],
+  ['tables', 'Bord'],
 ]
 
 export const panelId = (mode: Mode) => `byd-editor-panel-${mode}`

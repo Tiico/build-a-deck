@@ -97,3 +97,18 @@ describe('editing the template on the canvas (#18)', () => {
     expect(client.dirty).toBe(false)
   })
 })
+
+describe('the tables a project has (#19)', () => {
+  it('lists them newest first, with the version each runs and whether it has ended', async () => {
+    const created = await run.projects.create('p1', projectDoc())
+    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    expect(await client.tables()).toEqual([])
+
+    const older = await client.startTable()
+    const newer = await client.startTable()
+    expect(await client.tables()).toEqual([
+      { id: newer.id, version: 'rev-1', ended: false, lastAt: null },
+      { id: older.id, version: 'rev-1', ended: false, lastAt: null },
+    ])
+  })
+})

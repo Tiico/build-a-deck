@@ -14,13 +14,19 @@ const SHELL = `
 <div class="byd-editor" data-page="editor">
   <header>
     <strong>Skogens herrar</strong>
+    <span class="byd-editor-rev">rev 12</span>
     <nav role="tablist" aria-label="Editorlägen">
       <button role="tab" aria-selected="true" data-stop="the open tab">Kortvägg</button>
       <button role="tab" aria-selected="false" tabindex="-1">Mall</button>
+      <button role="tab" aria-selected="false" tabindex="-1">Bord</button>
     </nav>
     <span class="byd-editor-spacer"></span>
     <button data-stop="Spara">Spara</button>
+    <button data-stop="Nytt bord">Nytt bord</button>
     <button class="byd-editor-primary" data-stop="Uppdatera bordet">Uppdatera bordet</button>
+    <span class="byd-editor-split">
+      <button class="byd-editor-primary byd-editor-caret" aria-expanded="false" data-stop="the table shortcut">▾</button>
+    </span>
   </header>
   <main>
     <div role="tabpanel" tabindex="0" data-stop="the wall panel">
@@ -71,6 +77,34 @@ const SHELL = `
         <button class="byd-data-add" data-stop="the add-row button">Lägg till kort</button>
       </div>
     </div>
+    <div role="tabpanel" tabindex="0" data-stop="the tables panel">
+      <div class="byd-tables">
+        <p class="byd-tables-lead">Varje bord är en session från det här spelet.</p>
+        <ul>
+          <li class="byd-table-row" data-stale="true">
+            <div class="byd-tables-mini"></div>
+            <div class="byd-tables-info">
+              <p class="byd-tables-head"><strong>rev-2</strong><em class="byd-tables-stale">ligger efter rev-3</em><span>Ada spelar</span><span>senaste drag 19:41</span></p>
+              <div class="byd-tables-ways">
+                <a class="byd-editor-primary" href="#" data-stop="the TV view">Öppna TV-vyn</a>
+                <a href="#" data-stop="the table mode">Bordsläge</a>
+                <a href="#" data-stop="playing from here">Spela härifrån</a>
+                <a href="#" data-stop="watching">Titta på</a>
+                <button aria-expanded="true" data-stop="the QR toggle">QR för telefoner</button>
+                <button data-kind="quiet" data-stop="ending the table">Avsluta bordet</button>
+              </div>
+              <div class="byd-tables-qr"><a href="#" data-stop="the join link">Anslutningssidan</a></div>
+              <div class="byd-tables-question" role="alertdialog">
+                <p>Avsluta bordet 1a2b3c4d?</p>
+                <button data-kind="danger" data-stop="the yes to ending">Ja, avsluta</button>
+                <button data-stop="the way out of ending">Avbryt</button>
+              </div>
+            </div>
+          </li>
+        </ul>
+        <button class="byd-tables-new" data-stop="the new-table button">Nytt bord från rev 3</button>
+      </div>
+    </div>
   </main>
 </div>`
 
@@ -91,7 +125,7 @@ async function tabThrough(): Promise<Stop[]> {
   try {
     await page.setContent(`<!doctype html><html><head><style>${css}</style></head><body>${SHELL}</body></html>`, { waitUntil: 'load' })
     const stops: Stop[] = []
-    for (let i = 0; i < 40; i++) {
+    for (let i = 0; i < 60; i++) {
       await page.keyboard.press('Tab')
       const stop = await page.evaluate(() => {
         const el = document.activeElement
@@ -124,7 +158,9 @@ describe('the editor under a keyboard', () => {
     expect(stops.map((s) => s.what)).toEqual([
       'the open tab',
       'Spara',
+      'Nytt bord',
       'Uppdatera bordet',
+      'the table shortcut',
       'the wall panel',
       'the template panel',
       'a tool',
@@ -149,6 +185,17 @@ describe('the editor under a keyboard', () => {
       'a cell',
       "a row's delete",
       'the add-row button',
+      'the tables panel',
+      'the TV view',
+      'the table mode',
+      'playing from here',
+      'watching',
+      'the QR toggle',
+      'ending the table',
+      'the join link',
+      'the yes to ending',
+      'the way out of ending',
+      'the new-table button',
     ])
     const dim = stops.filter((s) => s.style === 'none' || !(s.width >= 2) || contrastRatio(s.color, s.on) < 3)
     expect(dim.map((s) => s.what)).toEqual([])
@@ -209,6 +256,33 @@ describe('the editor fills the window', () => {
         )
       }
       expect(measured).toEqual({ 'on its own': [700, 700, 700], 'with a table link': [700, 700, 700] })
+    } finally {
+      await page.close()
+    }
+  }, 60_000)
+})
+
+// The header is one 48 px row (the grid says so) and it now carries a fourth tab and the
+// shortcut beside "Uppdatera bordet" (#19). On a narrow screen a header that wraps does not
+// push the panel down — it spills over it — so nothing in it may wrap.
+describe('the editor header on a narrow screen', () => {
+  it.each([768, 1024, 1280])('keeps every control inside its row at %i px', async (width) => {
+    const page = await browser.newPage({ viewport: { width, height: 700 } })
+    try {
+      await page.setContent(`<!doctype html><html><head><style>body{margin:0}${css}</style></head><body>${SHELL}</body></html>`, { waitUntil: 'load' })
+      const wrapped = await page.evaluate(() =>
+        [...document.querySelectorAll('.byd-editor > header strong, .byd-editor > header button, .byd-editor-rev')]
+          .filter((el) => {
+            const range = document.createRange()
+            range.selectNodeContents(el)
+            // Two line boxes mean the text broke in two, which a 48 px row has no room for.
+            // (Clipped text reports several rects on the same line; those are one line.)
+            const lines = new Set([...range.getClientRects()].map((r) => Math.round(r.top)))
+            return lines.size > 1 || el.getBoundingClientRect().bottom > 48
+          })
+          .map((el) => el.textContent?.trim().slice(0, 20)),
+      )
+      expect(wrapped).toEqual([])
     } finally {
       await page.close()
     }

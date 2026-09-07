@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url'
 import postgres from 'postgres'
 import { Applied } from '@byd/protocol'
 import type { SetupDef } from '@byd/engine'
-import { SeqConflictError, type Deck, type LogStore, type SessionRecord } from './store.js'
+import { SeqConflictError, type Deck, type LogStore, type SessionRecord, type SessionSummary } from './store.js'
 import type { ProjectDoc, ProjectRecord, ProjectStore, ProjectSummary } from './projects.js'
 import type { Account, AuthStore } from './auth.js'
 
@@ -127,6 +127,16 @@ export class PostgresLogStore implements LogStore {
         `
       }
     })
+  }
+
+  async sessionsOf(project: string): Promise<SessionSummary[]> {
+    const rows = await this.sql<{ id: string; last_at: Date | null }[]>`
+      select s.id, last.at as last_at from sessions s
+      left join lateral (select at from events e where e.session_id = s.id order by seq desc limit 1) last on true
+      where s.project = ${project}
+      order by s.created_at desc, s.id desc
+    `
+    return rows.map((r) => ({ id: r.id, lastAt: r.last_at ? new Date(r.last_at).toISOString() : null }))
   }
 
   async staleSessions(olderThan: Date): Promise<string[]> {

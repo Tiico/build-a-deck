@@ -822,6 +822,16 @@ Motivering:
 Varje tangenttryck som versionsbyte skulle fragmentera loggen och få kort att flimra.
 Loggen ska få ett segment per medvetet beslut.
 
+Byggt 2026-09-07 (prototypat i tre varianter, godkänd variant A med B:s meny som snabbväg):
+Editorn har en fjärde flik, "Bord", som listar spelets alla bord — miniatyr, vilken version bordet kör, vem som sitter och tittar på, när det senast rörde sig — och vägarna in: TV-vyn, bordsläget, spela härifrån (`/online`), titta på (`/observe`) och QR-koden telefonerna läser.
+Flera bord per spel är verkligheten så fort man testat två gånger, vilket är varför fliken och inte "det senaste bordet" blev hemmet för dem; en statusrad längst ner (variant C) valdes bort för att den stjäl höjd från duken på mallfliken.
+Från de andra flikarna når man samma sak genom en pil bredvid "Uppdatera bordet" som fäller ut det nyaste bordets rad, alltså samma komponent och inte en andra beskrivning av bordet.
+Listan är serverns svar: `GET /projects/:id/sessions` säger vilka sessioner som startats ur projektet, med versionen aktören faktiskt kör och om loggen är låst.
+Miniatyren är bordet ritat av bordsrenderaren ur den snapshot TV:n läser, genom en vanlig seat-lös anslutning — inte en egen ritväg (K9) — så en rad som spelas rör sig i listan medan man tittar.
+Ett bord som projektet har lämnat efter sig märks med "ligger efter rev-n" (C7); ett avslutat bord säger "avslutat", tappar vägarna som sätter någon vid det och märks aldrig som efter, eftersom en låst logg inte kan uppdateras (C9).
+"Avsluta bordet" frågar först i en `alertdialog` som namnger bordet, tar och lämnar tillbaka fokus och svarar på Escape, och skickar sedan `session.end` över radens egen anslutning — samma väg som telefonens avslut.
+Prototypen `packages/web/src/prototype/editor-nav` togs bort när den hade svarat.
+
 ### L6. Wizardens steg: namn, spelare, fält, ram, data, spela
 
 Spelets namn.

@@ -100,6 +100,7 @@ function bind(store: MemoryLogStore): LogStore {
     append: (id, lines) => store.append(id, lines),
     read: (id) => store.read(id),
     staleSessions: (d) => store.staleSessions(d),
+    sessionsOf: (project) => store.sessionsOf(project),
   }
 }
 

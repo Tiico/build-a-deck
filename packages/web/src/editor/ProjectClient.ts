@@ -6,6 +6,9 @@ export type ProjectListener = (client: ProjectClient) => void
 export type SaveResult = { ok: true; rev: number } | { ok: false; reason: 'conflict' | 'missing' | string }
 export type Cell = string | number | boolean | null
 export type Textures = { total: number; done: number; failed: string[] }
+// A table of this game as the Bord tab lists it (#19): which session, the version it runs,
+// whether its log is locked (C9), and when it last moved.
+export type TableSummary = { id: string; version: string; ended: boolean; lastAt: string | null }
 
 // The project as the editor holds it: the document, its revision, local edits, and saving with
 // optimistic concurrency (a stale save is a conflict to resolve, never a silent overwrite).
@@ -116,6 +119,14 @@ export class ProjectClient {
     this.dirty = false
     this.notify()
     return { ok: true, rev }
+  }
+
+  // The tables started from this game (#19), newest first. The editor keeps no list of its own:
+  // a table is a session that names the project, and the server is the one that knows.
+  async tables(): Promise<TableSummary[]> {
+    const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}/sessions`, withCredentials())
+    if (!res.ok) throw new Error(`could not list the tables: ${res.status}`)
+    return (await res.json()) as TableSummary[]
   }
 
   // "Uppdatera bordet" (L5): a table from the saved project. Unsaved edits are saved first.

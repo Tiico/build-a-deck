@@ -3,6 +3,8 @@ import { DeckWall } from './DeckWall.js'
 import { EditorTabs, MODES, panelId, tabId, type Mode } from './EditorTabs.js'
 import { TemplateCanvas } from './TemplateCanvas.js'
 import { DataTable } from './DataTable.js'
+import { TableMenu, TablesTab } from './TablesTab.js'
+import { tvUrl } from './tableLinks.js'
 import { useProjectClient } from './useProjectClient.js'
 import type { Textures } from './ProjectClient.js'
 import { loginUrl } from '../account/api.js'
@@ -107,12 +109,6 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
       setPreparing(null)
     }
   }
-  const tableUrl = (id: string) => {
-    const q = new URLSearchParams({ session: id, mode: 'tv' })
-    const ws = params.get('server')
-    if (ws) q.set('server', ws.replace(/^http/, 'ws'))
-    return `/table?${q.toString()}`
-  }
 
   const panel: Record<Mode, () => ReactNode> = {
     wall: () => (
@@ -154,6 +150,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
         onReplaceRows={(rows) => client.replaceRows(rows)}
       />
     ),
+    tables: () => <TablesTab client={client} server={params.get('server')} />,
   }
 
   return (
@@ -175,6 +172,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
         <button type="button" className="byd-editor-primary" onClick={() => void updateTable()}>
           Uppdatera bordet
         </button>
+        <TableMenu client={client} server={params.get('server')} onShowTables={() => setMode('tables')} />
       </header>
       {table && (
         <div className="byd-editor-table-link" role="status" {...(lost !== null ? { 'data-lost': '' } : {})}>
@@ -189,7 +187,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
           ) : preparing ? (
             <span className="byd-editor-rendering">renderar kort {preparing.done}/{preparing.total}</span>
           ) : textures && textures.done + textures.failed.length >= textures.total ? (
-            <a href={tableUrl(table.id)} target="_blank" rel="noreferrer">
+            <a href={tvUrl(table.id, params.get('server'))} target="_blank" rel="noreferrer">
               öppna bordet
             </a>
           ) : (

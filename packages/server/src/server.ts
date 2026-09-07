@@ -324,6 +324,24 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     return true
   }
   const start = /^\/projects\/([^/]+)\/sessions$/.exec(url.pathname)
+  // The tables this game has (#19): the editor's Bord tab reads them here. The version and
+  // whether the log is locked come from the actor, the same source `GET /sessions/:id` answers
+  // from, so a refreshed table says the rev it actually runs.
+  if (start && req.method === 'GET') {
+    const gate = await owned(decodeURIComponent(start[1] ?? ''))
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    const summaries = await opts.store.sessionsOf(gate.rec.id)
+    const tables: { id: string; version: string; ended: boolean; lastAt: string | null }[] = []
+    for (const summary of summaries) {
+      const actor = await opts.host.get(summary.id)
+      if (actor) tables.push({ id: summary.id, version: actor.version, ended: actor.ended, lastAt: summary.lastAt })
+    }
+    json(res, 200, tables)
+    return true
+  }
   if (start && req.method === 'POST') {
     const gate = await owned(decodeURIComponent(start[1] ?? ''))
     if (!('rec' in gate)) {

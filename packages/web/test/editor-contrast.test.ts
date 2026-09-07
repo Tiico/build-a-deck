@@ -68,3 +68,18 @@ describe('the palette the template canvas is drawn in', () => {
     expect(contrastRatio(token(ink), token(on))).toBeGreaterThanOrEqual(4.5)
   })
 })
+
+// The Bord tab (#19) is a list of running games read across the room from the screen: which
+// version a table runs, whether the project has left it behind, who is at it, and the ways in.
+// Every one of those words is held to the same bar as the rest of the editor.
+describe('the palette the Bord tab is drawn in', () => {
+  it.each([
+    { what: 'the version a table runs', ink: '--byd-tables-ink', on: '--byd-tables-bg' },
+    { what: 'who is seated and when it last moved', ink: '--byd-tables-quiet', on: '--byd-tables-bg' },
+    { what: 'the mark that the project has left the table behind (C7)', ink: '--byd-tables-stale-ink', on: '--byd-tables-bg' },
+    { what: 'a way into the table', ink: '--byd-tables-way-ink', on: '--byd-tables-way-bg' },
+    { what: 'the question an ending asks first (C9)', ink: '--byd-tables-ask-ink', on: '--byd-tables-ask-bg' },
+  ])('gives $what AA contrast', ({ ink, on }) => {
+    expect(contrastRatio(token(ink), token(on))).toBeGreaterThanOrEqual(4.5)
+  })
+})

@@ -257,3 +257,43 @@ describe('a texture that failed for good (#10)', () => {
     expect(await prepare()).toEqual({ total: 4, done: 4, failed: [] })
   })
 })
+
+// The editor's Bord tab (#19) needs to know which tables a game has, without keeping a list of
+// its own: the tables are the sessions started from the project.
+describe('the tables a project has (#19)', () => {
+  it('lists them newest first, each with the version it runs, whether it has ended and when it last moved', async () => {
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
+    const older = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
+    const newer = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
+
+    const table = await WireClient.connect(run.base, older.id, null)
+    await table.send(null, { v: 'draw', from: 'draw', to: 'table', count: 1 })
+    await table.synced(1)
+    await table.close()
+
+    const listed = await json('GET', `/projects/${id}/sessions`)
+    expect(listed.status).toBe(200)
+    const tables = (await listed.json()) as { id: string; version: string; ended: boolean; lastAt: string | null }[]
+    expect(tables.map((t) => t.id)).toEqual([newer.id, older.id])
+    expect(tables[0]).toMatchObject({ version: 'rev-1', ended: false, lastAt: null })
+    expect(tables[1]).toMatchObject({ version: 'rev-1', ended: false })
+    expect(Date.parse(tables[1]!.lastAt!)).toBeGreaterThan(0)
+  })
+
+  it('says which version a refreshed table runs and which table has ended, and shows nothing of another account\'s game', async () => {
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
+    const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
+    expect((await json('PUT', `/projects/${id}`, { ...project(), name: 'Skogens herrar v2', rev: 1 })).status).toBe(200)
+    expect((await json('POST', `/sessions/${sessionId}/refresh`, {})).status).toBe(200)
+
+    const table = await WireClient.connect(run.base, sessionId, null)
+    await table.send(null, { v: 'session.end' })
+    await table.close()
+
+    const tables = (await (await json('GET', `/projects/${id}/sessions`)).json()) as { version: string; ended: boolean }[]
+    expect(tables).toEqual([expect.objectContaining({ version: 'rev-2', ended: true })])
+
+    const stranger = await fetch(`${run.http}/projects/${id}/sessions`)
+    expect(stranger.status).toBe(401)
+  })
+})

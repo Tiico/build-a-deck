@@ -20,7 +20,14 @@ export type LogStore = {
   // Sessions whose latest line (or creation, if none) is older than `olderThan` and that have
   // not ended: what the timeout in C9 ends for a group that forgot.
   staleSessions(olderThan: Date): Promise<string[]>
+  // The tables one project has started (#19), newest first, with when each last moved. The
+  // editor keeps no list of its own: a table is a session that names the project.
+  sessionsOf(project: string): Promise<SessionSummary[]>
 }
+
+// A table as a list can show it before anyone opens it: which session, and the moment of its
+// latest line — null while nothing has happened yet.
+export type SessionSummary = { id: string; lastAt: string | null }
 
 export class SeqConflictError extends Error {
   constructor(sessionId: string, expected: number, got: number) {
@@ -64,6 +71,16 @@ export class MemoryLogStore implements LogStore {
     const log = this.logs.get(sessionId)
     if (!log) throw new Error(`unknown session ${sessionId}`)
     return structuredClone(log)
+  }
+
+  async sessionsOf(project: string): Promise<SessionSummary[]> {
+    const out: SessionSummary[] = []
+    for (const [id, record] of this.sessions) {
+      if (record.project !== project) continue
+      out.push({ id, lastAt: this.logs.get(id)?.at(-1)?.at ?? null })
+    }
+    // Insertion order is the order they were started; the newest table is the one being played.
+    return out.reverse()
   }
 
   async staleSessions(olderThan: Date): Promise<string[]> {
