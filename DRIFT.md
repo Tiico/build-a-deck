@@ -186,7 +186,7 @@ Appen kör `tsx` mot källorna, som workern; arbetsytans paket exporterar TypeSc
 Deploy är pull-baserad (§7): `ops/deploy.sh` via en systemd-timer hämtar `origin/main`, drar CI:s bilder från GHCR för det SHA:t (eller bygger på lådan utan registry), kör `compose up` och väntar på `/health`.
 CI (`.github/workflows/ci.yml`) kör lint, typecheck och alla tester mot Postgres och Chromium, med replay-korpusen i `corpus/` som grind, och bygger bilderna till GHCR på `main`.
 Korpusen anonymiserar namn, kommentarer och observatörer men behåller kortens id:n; `GET /sessions/:id/export` och `pnpm --filter @byd/engine corpus` lägger till riktiga loggar.
-Händelseschemats `schemaVersion` och upcasters (§7) återstår; tills vidare är grinden att varje rad i korpusen parsas av dagens schema.
+Händelseschemats `schemaVersion` och upcasters (§7) byggda 2026-09-07: varje ny rad bär `SCHEMA_VERSION`, rader utan fält är version 0, motorn lyfter dem steg för steg vid inläsning (`liftLine`), Postgres skriver versionen i `schema_version` och lämnar gamla rader orörda, och korpusens filer ligger kvar som de spelades in medan grinden lyfter dem.
 Backup (§5) byggd 2026-09-07 med WAL-G, se §5; den nattliga `pg_dump`-dumpen är ersatt.
 Assets i R2 (§4) byggt 2026-09-07, se §4.
 Administration över Tailscale (§10) är lådans sak; Postgres lyssnar bara på 127.0.0.1.

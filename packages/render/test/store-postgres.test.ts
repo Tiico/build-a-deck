@@ -5,7 +5,9 @@ import { MemoryObjectStore } from '../src/objects.js'
 import postgres from 'postgres'
 
 // Runs only against a real Postgres: DATABASE_URL=postgres://... pnpm test
+// In a schema of its own, so a stack running against the same database never takes its jobs.
 const url = process.env['DATABASE_URL']
+const schema = `test_render_${process.pid}_${Date.now()}`
 
 describe.skipIf(!url)('PostgresRenderStore', () => {
   let store: PostgresRenderStore
@@ -19,10 +21,11 @@ describe.skipIf(!url)('PostgresRenderStore', () => {
   })
 
   beforeAll(async () => {
-    store = PostgresRenderStore.connect(url!)
+    store = PostgresRenderStore.connect(url!, undefined, { schema })
     await store.migrate()
   })
   afterAll(async () => {
+    await store.dropSchema()
     await store.close()
   })
 
@@ -54,8 +57,10 @@ describe.skipIf(!url)('PostgresRenderStore with an object store (DRIFT §4)', ()
     const objects = new MemoryObjectStore()
     const links: string[] = []
     const linking = { put: objects.put.bind(objects), get: objects.get.bind(objects), check: objects.check.bind(objects), link: async (key: string, ttl: number) => (links.push(`${key}:${ttl}`), `https://r2.test/${key}`) }
-    const sql = postgres(url!, { max: 2, onnotice: () => undefined })
-    const store = new PostgresRenderStore(sql, linking)
+    // Its own schema too: the first describe drops its own when it is done.
+    const own = `${schema}_r2`
+    const sql = postgres(url!, { max: 2, onnotice: () => undefined, connection: { search_path: own } })
+    const store = PostgresRenderStore.connect(url!, linking, { schema: own })
     const tag = `${Date.now()}-r2`
     try {
       await store.migrate()
@@ -81,6 +86,8 @@ describe.skipIf(!url)('PostgresRenderStore with an object store (DRIFT §4)', ()
       expect(await plain.link(`${tag}-plain`, 600)).toBeNull()
     } finally {
       await sql.end()
+      await store.dropSchema()
+      await store.close()
     }
   })
 })

@@ -4,18 +4,18 @@
 //   node … replay-check.ts < export.json      (also: replay-check.ts export.json)
 import { readFileSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
-import { Applied } from '@byd/protocol'
-import { CARD_STANDARD_63x88, TypeRegistry, initialState, replay, type SetupDef } from '../src/index.js'
+import { CARD_STANDARD_63x88, TypeRegistry, initialState, liftLine, replay, type SetupDef } from '../src/index.js'
 
-// The database export strips JSON nulls: a line by the table comes without `by`.
-const Line = Applied.extend({ by: Applied.shape.by.default(null) })
+// The database export strips JSON nulls: a line by the table comes without `by`. Every line is
+// then lifted to today's schema (DRIFT §7).
+const line = (raw: unknown) => liftLine(typeof raw === 'object' && raw !== null ? { by: null, ...raw } : raw)
 
 export type Export = { msg?: string; session: { id: string; version: string; setup: SetupDef; log: unknown[] } }
 export type Report = { msg: 'replayed'; session: string; lines: number; seq: number; components: number }
 
 export function replayExport(input: Export): Report {
   const registry = new TypeRegistry([CARD_STANDARD_63x88])
-  const log = input.session.log.map((l) => Line.parse(l))
+  const log = input.session.log.map(line)
   const state = replay(initialState(input.session.version, input.session.setup, registry), registry, log)
   return { msg: 'replayed', session: input.session.id, lines: log.length, seq: state.seq, components: Object.keys(state.components).length }
 }

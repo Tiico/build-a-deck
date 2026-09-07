@@ -1,8 +1,8 @@
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import postgres from 'postgres'
-import { Applied } from '@byd/protocol'
-import type { SetupDef } from '@byd/engine'
+import type { Applied } from '@byd/protocol'
+import { liftLine, type SetupDef } from '@byd/engine'
 import { SeqConflictError, type Deck, type GuestRecord, type LogStore, type SessionRecord } from './store.js'
 import type { ProjectDoc, ProjectRecord, ProjectStore, ProjectSummary } from './projects.js'
 import type { Account, AuthStore } from './auth.js'
@@ -61,8 +61,18 @@ export class PostgresSurveyStore implements SurveyStore {
 export class PostgresLogStore implements LogStore {
   constructor(private readonly sql: postgres.Sql) {}
 
-  static connect(url: string): PostgresLogStore {
-    return new PostgresLogStore(postgres(url, { max: 5, onnotice: () => undefined }))
+  // `schema` puts the tables in a schema of their own — a test run's, so it never shares
+  // sessions with a stack running against the same database.
+  static connect(url: string, options: { schema?: string } = {}): PostgresLogStore {
+    const store = new PostgresLogStore(postgres(url, { max: 5, onnotice: () => undefined, ...(options.schema ? { connection: { search_path: options.schema } } : {}) }))
+    store.schema = options.schema
+    return store
+  }
+  private schema: string | undefined
+
+  // Drops a schema made for a test run.
+  async dropSchema(): Promise<void> {
+    if (this.schema) await this.sql.unsafe(`drop schema if exists "${this.schema.replace(/"/g, '')}" cascade`)
   }
 
   // Projects and surveys share the connection and the schema.
@@ -80,6 +90,7 @@ export class PostgresLogStore implements LogStore {
 
   // Idempotent schema for the slice. DRIFT §7 moves this into a migration step before start.
   async migrate(): Promise<void> {
+    if (this.schema) await this.sql.unsafe(`create schema if not exists "${this.schema.replace(/"/g, '')}"`)
     const path = fileURLToPath(new URL('../sql/001-init.sql', import.meta.url))
     await this.sql.unsafe(await readFile(path, 'utf8'))
   }
@@ -161,11 +172,12 @@ export class PostgresLogStore implements LogStore {
       for (const [i, line] of lines.entries()) {
         if (line.seq !== first.seq + i) throw new Error('lines in one append must be consecutive')
         await tx`
-          insert into events (session_id, seq, batch, at, by_seat, intent, outcome)
+          insert into events (session_id, seq, batch, at, by_seat, intent, outcome, schema_version)
           values (
             ${sessionId}, ${line.seq}, ${line.batch}, ${line.at}, ${line.by},
             ${tx.json(line.intent as never)},
-            ${line.outcome === undefined ? null : tx.json(line.outcome as never)}
+            ${line.outcome === undefined ? null : tx.json(line.outcome as never)},
+            ${line.schemaVersion}
           )
         `
       }
@@ -182,15 +194,17 @@ export class PostgresLogStore implements LogStore {
     return rows.map((r) => r.id)
   }
 
+  // Lines are lifted to today's schema as they are read (DRIFT §7); the rows stay as written.
   async read(sessionId: string): Promise<Applied[]> {
     const rows = await this.sql<
-      { seq: number; batch: string; at: Date; by_seat: string | null; intent: unknown; outcome: unknown }[]
+      { seq: number; batch: string; at: Date; by_seat: string | null; intent: unknown; outcome: unknown; schema_version: number | null }[]
     >`
-      select seq, batch, at, by_seat, intent, outcome
+      select seq, batch, at, by_seat, intent, outcome, schema_version
       from events where session_id = ${sessionId} order by seq
     `
     return rows.map((r) =>
-      Applied.parse({
+      liftLine({
+        ...(r.schema_version === null ? {} : { schemaVersion: r.schema_version }),
         seq: r.seq,
         batch: r.batch,
         at: r.at.toISOString(),

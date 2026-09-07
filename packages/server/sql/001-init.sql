@@ -18,6 +18,9 @@ create table if not exists events (
   primary key (session_id, seq)
 );
 
+-- The schema version a line was written under (DRIFT §7); null for lines from before versioning.
+alter table events add column if not exists schema_version integer;
+
 -- The deck the textures are compiled from (TUNN-SKIVA §5); null for sessions without one.
 alter table sessions add column if not exists deck jsonb;
 -- The project a table was started from, for refreshing to a newer rev (C7).
