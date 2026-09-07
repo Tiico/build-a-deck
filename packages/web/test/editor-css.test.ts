@@ -116,7 +116,7 @@ beforeAll(async () => {
 }, 60_000)
 afterAll(async () => {
   await browser.close()
-})
+}, 60_000)
 
 // Walks the whole tab order and reports the focus ring at every stop, with the background it has
 // to be seen against.

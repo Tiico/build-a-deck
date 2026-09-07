@@ -91,7 +91,7 @@ beforeAll(async () => {
 }, 60_000)
 afterAll(async () => {
   await browser.close()
-})
+}, 60_000)
 beforeEach(async () => {
   run = await startServer()
   const id = await createSession(run)
