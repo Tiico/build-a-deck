@@ -198,3 +198,39 @@ describe('grouping cards and letting the group rule a face (#13)', () => {
     expect(stored?.template.faces['front']?.variants['fälla']?.override).toMatchObject([{ id: 'title', color: '#e74c3c' }])
   })
 })
+
+describe('the setup in the editor (B5, K2)', () => {
+  it('turns the recipe, adds and removes free zones, moves and reshapes a zone, and saves it all', async () => {
+    const created = await run.projects.create('p1', projectDoc())
+    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    expect(client.recipe).toEqual({ players: 2, mine: false, discard: true, market: false, counters: [] })
+
+    client.setRecipe({ ...client.recipe, players: 3, market: true, counters: [{ name: 'Poäng', start: 0 }] })
+    expect(client.doc.setup.seats).toEqual(['A', 'B', 'C'])
+    expect(client.doc.setup.zones.find((z) => z.id === 'market')?.kind).toBe('area')
+    expect(client.doc.setup.zones.find((z) => z.id === 'counters:C')?.owner).toBe('C')
+    expect(client.recipe.players).toBe(3)
+
+    const altar = client.addZone('area')
+    const bag = client.addZone('pile')
+    expect(altar).not.toBe(bag)
+    expect(client.doc.setup.zones.find((z) => z.id === altar)).toMatchObject({ kind: 'area', visibility: 'all', geometry: { w: 300, h: 120 } })
+    expect(client.doc.setup.zones.find((z) => z.id === bag)).toMatchObject({ kind: 'pile', visibility: 'all', geometry: { w: 0, h: 0 } })
+
+    client.patchZone(altar, { name: 'Altaret', geometry: { x: 10, y: 20, w: 250, h: 100, rot: 0 }, visibility: 'owner', owner: 'B' })
+    expect(client.doc.setup.zones.find((z) => z.id === altar)).toMatchObject({ name: 'Altaret', geometry: { x: 10, y: 20, w: 250, h: 100 }, visibility: 'owner', owner: 'B' })
+    client.patchZone(altar, { owner: undefined })
+    expect(client.doc.setup.zones.find((z) => z.id === altar)?.owner).toBeUndefined()
+    client.removeZone(bag)
+    expect(client.doc.setup.zones.some((z) => z.id === bag)).toBe(false)
+    // The floor and the deck zone cannot go.
+    expect(() => client.removeZone('table')).toThrow()
+    expect(() => client.removeZone('draw')).toThrow()
+
+    expect(await client.save()).toEqual({ ok: true, rev: 2 })
+    const stored = await run.projects.load('p1')
+    expect(stored?.setup.seats).toEqual(['A', 'B', 'C'])
+    expect(stored?.setup.zones.find((z) => z.id === altar)?.name).toBe('Altaret')
+    expect(stored?.setup.counters).toEqual([{ name: 'Poäng', start: 0 }])
+  })
+})

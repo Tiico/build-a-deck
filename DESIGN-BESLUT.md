@@ -110,6 +110,16 @@ Zon- och setupdefinitionen återanvänds för regelbokens uppställningsbild och
 Zonnamn blir användarsynlig UX på telefonen, inte kosmetik.
 Setup måste redigeras när spelet ändras.
 
+Setup-editorn (prototypad och byggd 2026-09-07):
+Tre sätt prövades: en lista med mått i millimeter, bordet som arbetsyta med handtag, och ett recept med några rattar.
+Valet blev recept som start och bordet som finjustering.
+Receptet är wizardens rattar, vridbara efteråt i editorns flik "Bord": antal spelare, om varje plats har en yta framför sig, räknarna med startvärden, om bordet har en kasthög och en marknad.
+Receptet äger en namnrymd av zoner (golv, draghög, kasthög, marknad, varje plats hand, yta och räknarzon); byte av antal spelare lägger dem på nytt, allt annat rör det inte.
+Bordet är den riktiga renderaren matad ur setupen, med tjugo platshållarkort i draghögen och varje plats räknare: varje zon utom golvet är ett handtag att dra, ändra storlek på (hörnet) och knuffa med piltangenterna, i hela millimeter på ett femmillimetersraster.
+Egna zoner läggs till som yta eller hög, får namn, genväg, ägare och synlighet, och kan tas bort; receptets zoner får namn och genväg men ägare och synlighet är receptets.
+Setupen valideras av motorn i webbläsaren: går bordet inte att bygga säger editorn det i stället för att rita.
+Telefonens ark står bredvid som förhandsvisning av spelarens verb.
+
 ### B6. Synlighet: zonhärledd standard med undantag per komponent (fråga 35)
 
 Synlighet är i grunden en egenskap hos zonen: hand är bara ägaren, bord är alla, draghög är ingen.
@@ -192,7 +202,7 @@ Tre varianter prövades för telefonen; valet blev staplat: räknarna som piller
 Arket och översikten erbjuder aldrig en annan plats privata yta, och aldrig en zon som bara håller räknare.
 
 Byggt 2026-09-07: en zon kan bära en genväg (`shortcut`) med verbet telefonen visar och var i en hög kortet hamnar, överst eller underst; utan genväg visar telefonen zonens namn.
-Wizarden ger draghögen "Lägg underst" och kasthögen "Kasta". Editorns flik "Bord" redigerar namn och genvägar för varje zon som inte är en hand, med telefonens ark som förhandsvisning; hela setup-editorn (zoner, platser, geometri) är fortfarande fas 2.
+Wizarden ger draghögen "Lägg underst" och kasthögen "Kasta". Editorns flik "Bord" redigerar namn och genvägar för varje zon som inte är en hand, med telefonens ark som förhandsvisning; sedan 2026-09-07 är fliken hela setup-editorn (B5).
 
 ### C5. Rumslig modell: konfigurerbart TV- eller bordsläge (fråga 32)
 

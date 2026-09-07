@@ -1,6 +1,7 @@
 import type { ProjectDoc, ProjectRow } from '@byd/server'
 import type { Element, FaceTemplate, Variant } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
+import { applyRecipe, point, recipeOf, rect, type Geometry, type Recipe, type Zone } from '../setup/recipe.js'
 
 export type ProjectListener = (client: ProjectClient) => void
 export type SaveResult = { ok: true; rev: number } | { ok: false; reason: 'conflict' | 'missing' | string }
@@ -8,6 +9,7 @@ export type Cell = string | number | boolean | null
 export type Textures = { total: number; done: number; failed: string[] }
 // A table of this game as the Bord tab lists it (#19): which session, the version it runs,
 // whether its log is locked (C9), and when it last moved.
+export type ZonePatch = { name?: string; geometry?: Geometry; visibility?: Zone['visibility']; shortcut?: { label: string; at: 'top' | 'bottom' } | undefined; owner?: string | undefined }
 export type TableSummary = { id: string; version: string; ended: boolean; lastAt: string | null }
 
 // The project as the editor holds it: the document, its revision, local edits, and saving with
@@ -155,16 +157,53 @@ export class ProjectClient {
     this.commit({ ...this.doc, name })
   }
 
-  // A zone's name (what the table shows) and its shortcut (the verb the phone shows, C4); an
-  // undefined shortcut removes it, so the phone falls back to the name.
-  patchZone(id: string, patch: { name?: string; shortcut?: { label: string; at: 'top' | 'bottom' } | undefined }): void {
+  // The setup's recipe (B5): the knobs the wizard turned, turned again here. Recipe zones come
+  // and go with it; the designer's own zones stay.
+  get recipe(): Recipe {
+    return recipeOf(this.doc.setup)
+  }
+  setRecipe(recipe: Recipe): void {
+    this.commit({ ...this.doc, setup: applyRecipe(this.doc.setup, recipe) })
+  }
+
+  // A zone of the designer's own (K2): an area of a card's rows or a pile at a point, in the
+  // middle of the table until it is dragged somewhere. Returns its id.
+  addZone(kind: 'area' | 'pile'): string {
+    const ids = new Set(this.doc.setup.zones.map((z) => z.id))
+    const base = kind === 'pile' ? 'hog' : 'yta'
+    let n = 1
+    while (ids.has(`${base}-${n}`)) n++
+    const id = `${base}-${n}`
+    const zone: Zone = kind === 'pile' ? { id, kind, name: `Hög ${n}`, visibility: 'all', geometry: point(0, 150) } : { id, kind, name: `Yta ${n}`, visibility: 'all', geometry: rect(-150, 100, 300, 120) }
+    this.commit({ ...this.doc, setup: { ...this.doc.setup, zones: [...this.doc.setup.zones, zone] } })
+    return id
+  }
+
+  removeZone(id: string): void {
+    if (id === this.doc.setup.floor || id === this.doc.setup.deckZone) throw new Error(`zone ${id} cannot be removed`)
+    if (!this.doc.setup.zones.some((z) => z.id === id)) throw new Error(`no zone ${id}`)
+    this.commit({ ...this.doc, setup: { ...this.doc.setup, zones: this.doc.setup.zones.filter((z) => z.id !== id) } })
+  }
+
+  // A zone's name (what the table shows), its shortcut (the verb the phone shows, C4), where it
+  // lies and how big it is (K2), who owns it and who sees into it. An undefined shortcut or
+  // owner removes it: the phone falls back to the name, the zone becomes everyone's.
+  patchZone(id: string, patch: ZonePatch): void {
     if (!this.doc.setup.zones.some((z) => z.id === id)) throw new Error(`no zone ${id}`)
     const zones = this.doc.setup.zones.map((z) => {
       if (z.id !== id) return z
-      const next = { ...z, ...(patch.name !== undefined ? { name: patch.name } : {}) }
-      const shortcut = 'shortcut' in patch ? patch.shortcut : z.shortcut
-      if (shortcut) next.shortcut = shortcut
-      else delete next.shortcut
+      const next: Zone = { ...z }
+      if (patch.name !== undefined) next.name = patch.name
+      if (patch.geometry !== undefined) next.geometry = patch.geometry
+      if (patch.visibility !== undefined) next.visibility = patch.visibility
+      if ('shortcut' in patch) {
+        if (patch.shortcut) next.shortcut = patch.shortcut
+        else delete next.shortcut
+      }
+      if ('owner' in patch) {
+        if (patch.owner) next.owner = patch.owner
+        else delete next.owner
+      }
       return next
     })
     this.commit({ ...this.doc, setup: { ...this.doc.setup, zones } })

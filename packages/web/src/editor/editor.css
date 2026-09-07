@@ -53,13 +53,42 @@
    editor, light enough to carry 3:1 against each of the surfaces it lands on. */
 .byd-editor :focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
 
-/* Zones (C4): the list, and the phone's sheet as the player will see it. */
-.byd-zones { display: grid; grid-template-columns: 1fr 320px; gap: 24px; padding: 20px; }
-.byd-zones h2 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; }
-.byd-zones p { margin: 0 0 14px; color: #9aa3b8; }
-.byd-zones-row { display: grid; grid-template-columns: 52px 1fr 1fr 110px; gap: 8px; align-items: center; margin-bottom: 8px; }
-.byd-zones-kind { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #7d8597; }
-.byd-zones-row input, .byd-zones-row select { padding: 8px 10px; border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; color: #fff; font: inherit; }
+/* The setup editor (B5, K2): the recipe's knobs, the felt as the workspace, the phone's sheet. */
+.byd-setup { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px; padding: 20px; align-items: start; }
+.byd-setup-side { display: grid; gap: 20px; }
+.byd-setup h2 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; }
+.byd-setup-recipe { display: grid; gap: 18px; }
+.byd-setup-recipe label { display: flex; gap: 8px; align-items: center; margin: 6px 0; color: #e6ecfa; }
+.byd-setup-recipe input[type='checkbox'] { width: 16px; height: 16px; accent-color: #3c8ce7; }
+.byd-setup-players { display: flex; gap: 6px; }
+.byd-setup-players button, .byd-setup-tools button, .byd-setup-counters > button, .byd-setup-props button { border: 1px solid #2f333d; border-radius: 8px; padding: 7px 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
+.byd-setup-players button[aria-pressed='true'] { background: #3c8ce7; border-color: #3c8ce7; }
+.byd-setup-counters { margin: 8px 0 0 24px; display: grid; gap: 6px; justify-items: start; }
+.byd-setup-counters > span { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #9aa3b8; }
+.byd-setup-counter { display: flex; gap: 6px; align-items: center; color: #9aa3b8; }
+.byd-setup-counter button { border: 0; background: transparent; color: #9aa3b8; font-size: 16px; cursor: pointer; }
+.byd-setup input:not([type='checkbox']), .byd-setup select { padding: 7px 9px; border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; color: #fff; font: inherit; min-width: 0; }
+.byd-setup-counter input:not([type='number']) { width: 110px; }
+.byd-setup input[type='number'] { width: 64px; }
+.byd-setup-hint { margin: 0; color: #7d8597; font-size: 12px; line-height: 1.5; }
+.byd-setup-canvas { position: relative; display: grid; gap: 10px; min-width: 0; }
+.byd-setup-tools { display: flex; gap: 8px; align-items: center; color: #9aa3b8; font-size: 12px; }
+/* The felt takes the room it gets: the frame must not size itself after the table it holds. */
+.byd-setup-felt { position: relative; height: min(70vh, 640px); background: #0d0f14; border-radius: 16px; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); user-select: none; touch-action: none; }
+.byd-setup-felt .byd-table-frame { width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; }
+.byd-setup-invalid { margin: 0; padding: 24px; border-radius: 16px; background: #2a1b1b; color: #ff9a9a; line-height: 1.5; }
+/* A handle per zone, on the felt with the felt's mapping; the label sits above it. */
+.byd-setup-handle { position: absolute; box-sizing: border-box; border: 2px dashed rgba(255, 217, 138, 0.55); border-radius: 8px; cursor: grab; outline: none; }
+.byd-setup-handle[data-kind='pile'] { border-style: solid; }
+.byd-setup-handle[aria-pressed='true'], .byd-setup-handle:focus-visible { border-color: #ffd98a; border-style: solid; box-shadow: 0 0 0 3px rgba(255, 217, 138, 0.25); }
+/* The felt already names areas and piles; the handle names only the hands, and whatever is selected. */
+.byd-setup-handle > span { display: none; position: absolute; right: 6px; bottom: 3px; font: 600 11px system-ui, sans-serif; color: #ffd98a; white-space: nowrap; pointer-events: none; }
+.byd-setup-handle[data-kind='hand'] > span, .byd-setup-handle[aria-pressed='true'] > span { display: block; }
+.byd-setup-corner { position: absolute; right: -6px; bottom: -6px; width: 12px; height: 12px; border-radius: 3px; background: #ffd98a; cursor: nwse-resize; }
+.byd-setup-props { position: absolute; right: 12px; top: 52px; width: 220px; display: grid; gap: 8px; padding: 14px; border-radius: 14px; background: rgba(23, 26, 35, 0.97); border: 1px solid #3b4358; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45); }
+.byd-setup-props label { display: grid; gap: 4px; font-size: 11px; color: #9aa3b8; }
+.byd-setup-props strong { color: #fff; }
+.byd-setup-where { font: 12px ui-monospace, monospace; color: #7d8597; }
 .byd-zones-preview { align-self: start; padding: 16px; border-radius: 16px; background: #14161c; border: 1px solid #2f333d; }
 .byd-zones-preview .byd-sheet-targets { display: grid; gap: 8px; }
 .byd-zones-preview .byd-sheet-targets > div { display: grid; padding: 10px 12px; border-radius: 10px; background: #242938; }

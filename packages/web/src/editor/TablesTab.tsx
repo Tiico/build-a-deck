@@ -19,7 +19,10 @@ export function TablesTab({ client, server }: TablesTabProps) {
   const [asked, setAsked] = useState(0)
   useEffect(() => {
     let live = true
-    void client.tables().then((t) => live && setTables(t))
+    client.tables().then(
+      (t) => live && setTables(t),
+      (err: unknown) => live && setNotice(err instanceof Error ? err.message : String(err)),
+    )
     return () => {
       live = false
     }
@@ -71,7 +74,10 @@ export function TableMenu({ client, server, onShowTables }: { client: ProjectCli
   useEffect(() => {
     if (!open) return
     let live = true
-    void client.tables().then((t) => live && setTables(t))
+    client.tables().then(
+      (t) => live && setTables(t),
+      () => live && setTables([]),
+    )
     return () => {
       live = false
     }

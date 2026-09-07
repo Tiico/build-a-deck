@@ -98,7 +98,7 @@ Målet är att en grupp kan spela vilket kortspel som helst utan att sakna någo
 
 Målet är att designern aldrig behöver ett annat verktyg för att göra leken.
 
-- ⬜ Setup-editor: zoner, platser, händer, draghög och startuppställning i editorn i stället för wizardens fasta setup (B5, K2).
+- ✅ Setup-editor: recept som start, bordet som finjustering — zoner, platser, händer, högar, räknare och egna zoner i editorns flik "Bord" (B5, K2).
 - 🔶 Bilder: wizarden kan lägga in illustrationer på startkort; kvar är editorns fulla assetflöde med innehållsadresserad lagring i R2 (E1, DRIFT §4).
 - ⬜ Symbolbibliotek med CC0- och CC-BY-ikoner, platshållarramar och färgblock (E4).
 - 🔶 Fysisk validering: textanpassning finns (E6); kvar är minsta textstorlek som varning, kontrast, färgblindhet, utfall och linjetjocklek (E5).

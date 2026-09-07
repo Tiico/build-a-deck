@@ -480,3 +480,15 @@ describe('counters on the table (C4)', () => {
     expect(document.querySelector('[data-component="k1"]')).toBeNull()
   })
 })
+
+describe('an overlay on the felt (B5)', () => {
+  it('renders what the editor lays over the table inside the felt, with the felt\'s own pixel mapping', () => {
+    const { view } = buildScene()
+    render(<TableRenderer view={view(null)} mode="tv" scale={2} overlay={(fit) => <div data-overlay style={{ left: fit.left(-400), top: fit.top(-200), width: fit.px(50) }} />} />)
+    const overlay = document.querySelector('[data-table] [data-overlay]') as HTMLElement
+    // The floor starts at (-500, -300); scale 2.
+    expect(overlay.style.left).toBe('200px')
+    expect(overlay.style.top).toBe('200px')
+    expect(overlay.style.width).toBe('100px')
+  })
+})
