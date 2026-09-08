@@ -30,12 +30,30 @@ export async function logout(http: string): Promise<void> {
   await fetch(`${http}/auth/logout`, withCredentials({ method: 'POST' }))
 }
 
-export type ProjectSummary = { id: string; name: string; rev: number }
+// A game as "Mina spel" lists it (G1): where its history stands, how many tables it has, and
+// when one of them was last played at.
+export type ProjectSummary = { id: string; name: string; rev: number; tables?: number; lastPlayed?: string | null }
 export async function myProjects(http: string): Promise<ProjectSummary[]> {
   const res = await fetch(`${http}/projects`, withCredentials())
   if (res.status === 401) throw new Unauthorized()
   if (!res.ok) throw new Error(`could not list projects: ${res.status}`)
   return (await res.json()) as ProjectSummary[]
+}
+
+// Starting a table from the home page (G1): the same session the editor starts, so the code and
+// the host key come from the server and nowhere else.
+export async function startTable(http: string, project: string): Promise<{ id: string; code: string; hostKey: string }> {
+  const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/sessions`, withCredentials({ method: 'POST' }))
+  if (res.status === 401) throw new Unauthorized()
+  if (!res.ok) throw new Error(`kunde inte starta ett bord: ${res.status}`)
+  return (await res.json()) as { id: string; code: string; hostKey: string }
+}
+
+// Taking a game away (G1): its whole history goes with it, so the page asks first.
+export async function removeProject(http: string, project: string): Promise<void> {
+  const res = await fetch(`${http}/projects/${encodeURIComponent(project)}`, withCredentials({ method: 'DELETE' }))
+  if (res.status === 401) throw new Unauthorized()
+  if (!res.ok) throw new Error(`kunde inte ta bort spelet: ${res.status}`)
 }
 
 // A guest session claimed to the account afterwards (G1), and the tables the account sat at.

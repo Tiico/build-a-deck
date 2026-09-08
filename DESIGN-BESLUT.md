@@ -569,6 +569,12 @@ Gästens admission, den token telefonen spelade under (DRIFT §9), är det som c
 Telefonen erbjuder "Spara till ditt konto" i enkäten när sessionen är slut; länken går via inloggningskortet till `/claim`, som sedan landar på startsidan med ett besked.
 Tre varianter prövades för startsidan; valet blev två rutnät: egna spel först som förut, sedan "Bord du spelat vid" med platsens färg, spelet, namnet man spelade under, enkät och flaggor, och "Tillbaka till bordet" medan det pågår och koden lever. En ren gäst utan egna spel ser "Nytt spel" som inbjudan ovanför sina bord.
 
+Startsidan färdig 2026-09-08:
+Varje spel säger hur många bord det har och när ett av dem senast spelades vid; ett spel ingen satt sig till säger "aldrig spelat". Uppgiften kommer ur loggen, inte ur något listan håller själv.
+Kortets ansikte öppnar editorn. Menyn bredvid startar ett bord och lämnar rumskoden på plats med en väg till bordets skärm, eller tar bort spelet efter en fråga; hela historien följer med och det går inte att ångra.
+Ett fel i en åtgärd tar aldrig spelen från skärmen; bara en sida som inte gick att läsa alls ersätter dem.
+CORS-svaret tillät inte DELETE, så borttagningen stoppades i webbläsaren utan att servern märkte något. Ett test på preflight-svaret täcker nu varje metod API:et faktiskt betjänar.
+
 ### G2. Kommunikation: ingen inbyggd röst (fråga 19)
 
 Användarna kör Discord eller motsvarande vid sidan om.

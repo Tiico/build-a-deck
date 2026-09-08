@@ -63,7 +63,9 @@ export const ProjectDoc = z.object({
 export type ProjectDoc = z.infer<typeof ProjectDoc>
 // `owner` is the account that made it (G1); a project from before accounts has none and stays open.
 export type ProjectRecord = ProjectDoc & { id: string; rev: number; owner?: string }
-export type ProjectSummary = { id: string; name: string; rev: number }
+// A game as "Mina spel" lists it (G1): what it is called, where its history stands, how many
+// tables have been started from it and when one of them was last played at.
+export type ProjectSummary = { id: string; name: string; rev: number; tables?: number; lastPlayed?: string | null }
 
 // A version in the history (B4): every save is one, and none of them is ever written again.
 // `label` is the name a designer gave the versions that meant something — a blind test, a print
@@ -82,6 +84,8 @@ export type ProjectStore = {
   at(id: string, rev: number): Promise<ProjectRecord | null>
   // Names a version, or takes the name back with null.
   label(id: string, rev: number, label: string | null): Promise<VersionSummary | 'missing'>
+  // Takes a game away with its whole history; false when there was no such game.
+  remove(id: string): Promise<boolean>
 }
 
 export class MemoryProjectStore implements ProjectStore {
@@ -135,6 +139,12 @@ export class MemoryProjectStore implements ProjectStore {
     if (label === null) delete found.label
     else found.label = label
     return { rev, at: found.at, ...(found.label !== undefined ? { label: found.label } : {}) }
+  }
+
+  async remove(id: string): Promise<boolean> {
+    const had = this.docs.delete(id)
+    this.history.delete(id)
+    return had
   }
 }
 

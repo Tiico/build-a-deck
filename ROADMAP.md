@@ -107,7 +107,7 @@ Målet är att designern aldrig behöver ett annat verktyg för att göra leken.
 - ⬜ Samredigering med en aktör per projekt och en logg, samma mönster som bordet (D3).
 - ⬜ Typsnitt: val av font i mallen, med fontfiler som bevaras per version (B3) — kolliderar med fontlicensieringen (I).
 - ⬜ Flerspråkighet i verktyget: i18n-infrastruktur, engelska och svenska (A4).
-- ⬜ "Mina spel" med senast spelat, starta bord direkt, ta bort spel (G1 följdkrav från prototypen).
+- ✅ "Mina spel" med senast spelat, starta bord direkt från kortet och ta bort spel med hela dess historia (G1).
 
 ## Fas 3 — Konton, betalning och data
 

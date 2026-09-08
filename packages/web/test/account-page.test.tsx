@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { HomePage } from '../src/account/HomePage.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
@@ -66,7 +66,8 @@ describe('HomePage and the login card', () => {
     expect(screen.getByText('ada@example.com', { exact: false })).toBeTruthy()
     await waitFor(() => expect(document.querySelector('[data-project="p1"]')).toBeTruthy())
     expect(document.querySelector('[data-project="p1"]')!.textContent).toContain('Skogens herrar')
-    fireEvent.click(document.querySelector('[data-project="p1"]')!)
+    // The card's face is the way into the editor; the menu beside it is not (G1).
+    fireEvent.click(document.querySelector('[data-project="p1"] .byd-home-open')!)
     expect(gone.at(-1)).toMatch(/^\/editor\?project=p1/)
     fireEvent.click(screen.getByText(/Nytt spel/))
     expect(gone.at(-1)).toMatch(/^\/new\?/)
@@ -143,5 +144,77 @@ describe('the tables the account sat at (G1)', () => {
     expect(card.textContent).toContain('du var Ada')
     expect(card.textContent).toContain('pågår')
     expect(screen.getByRole('status').textContent).toMatch(/Sparat.*som Ada/)
+  })
+})
+
+describe('a game on the home page (G1)', () => {
+  // A logged-in account with one game, listed on the home page.
+  async function home(): Promise<void> {
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
+    await followMailedLink()
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: 'p1', ...projectDoc() }) })
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    render(<HomePage />)
+    await screen.findByText('Skogens herrar')
+  }
+  const card = () => document.querySelector('[data-project="p1"]') as HTMLElement
+
+  it('says it has never been played, and afterwards when it last was', async () => {
+    await home()
+    expect(card().textContent).toContain('aldrig spelat')
+
+    await fetch(`${run.http}/projects/p1/sessions`, { method: 'POST' })
+    cleanup()
+    render(<HomePage />)
+    await screen.findByText('Skogens herrar')
+    expect(card().textContent).toContain('1 bord')
+  })
+
+  it('starts a table from the card and hands over the room code', async () => {
+    await home()
+    fireEvent.click(within(card()).getByRole('button', { name: 'Fler val för Skogens herrar' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Starta bord' }))
+    const said = await screen.findByRole('status')
+    expect(said.textContent).toMatch(/[A-Z2-9]{6}/)
+    // The table is the server's, not something the page made up.
+    const tables = (await (await fetch(`${run.http}/projects/p1/sessions`)).json()) as unknown[]
+    expect(tables).toHaveLength(1)
+  })
+
+  it('asks before taking a game away, and takes it away when the answer is yes', async () => {
+    await home()
+    fireEvent.click(within(card()).getByRole('button', { name: 'Fler val för Skogens herrar' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Ta bort spelet' }))
+    expect(screen.getByRole('alertdialog', { name: 'Ta bort spelet' }).textContent).toContain('Skogens herrar')
+    // The question can be taken back.
+    fireEvent.click(screen.getByRole('button', { name: 'Behåll' }))
+    expect(card()).toBeTruthy()
+
+    fireEvent.click(within(card()).getByRole('button', { name: 'Fler val för Skogens herrar' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Ta bort spelet' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ta bort' }))
+    await waitFor(() => expect(document.querySelector('[data-project="p1"]')).toBeNull())
+    expect((await (await fetch(`${run.http}/projects/p1`)).status)).toBe(404)
+  })
+})
+
+describe('when something goes wrong on the home page (G1)', () => {
+  it('says so without taking the games off the screen', async () => {
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
+    await followMailedLink()
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: 'p1', ...projectDoc() }) })
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    render(<HomePage />)
+    await screen.findByText('Skogens herrar')
+
+    // The game is taken away behind the page's back; the page's own attempt then fails.
+    await fetch(`${run.http}/projects/p1`, { method: 'DELETE' })
+    fireEvent.click(within(document.querySelector('[data-project="p1"]') as HTMLElement).getByRole('button', { name: 'Fler val för Skogens herrar' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Ta bort spelet' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ta bort' }))
+
+    expect(await screen.findByRole('alert')).toBeTruthy()
+    expect(screen.getByText('Mina spel')).toBeTruthy()
+    expect(document.querySelector('[data-project="p1"]')).toBeTruthy()
   })
 })

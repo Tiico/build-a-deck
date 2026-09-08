@@ -31,3 +31,21 @@
 .byd-home-seat { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--seat); color: #fff; font-style: normal; font-weight: 800; font-size: 12px; }
 .byd-home-facts { color: #cfd5e3; font-size: 13px; }
 .byd-home-action { color: #7dd3a0; font-weight: 700; text-decoration: none; }
+
+/* A game's own actions on the home page (G1): the card opens the editor, the menu does the rest. */
+.byd-home-game { position: relative; padding: 0; }
+.byd-home-open { display: grid; gap: 8px; padding: 16px; color: #fff; text-decoration: none; }
+.byd-home-more { position: absolute; right: 8px; top: 8px; border: 0; border-radius: 8px; padding: 2px 8px; background: transparent; color: #9aa3b8; font-size: 16px; cursor: pointer; }
+.byd-home-more:hover, .byd-home-more[aria-expanded='true'] { background: #262a35; color: #fff; }
+.byd-home-menu { position: absolute; right: 8px; top: 34px; z-index: 5; display: grid; padding: 6px; border-radius: 10px; background: #1b1f2a; border: 1px solid #3b4358; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5); }
+.byd-home-menu button { border: 0; border-radius: 7px; padding: 8px 12px; background: transparent; color: #e6ecfa; font: inherit; text-align: left; white-space: nowrap; cursor: pointer; }
+.byd-home-menu button:hover { background: #262a35; }
+.byd-home-started, .byd-home-asking { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 12px 16px; border-radius: 12px; }
+.byd-home-started { background: #1b2a22; color: #d8ffe8; }
+.byd-home-started strong { font: 700 15px ui-monospace, monospace; letter-spacing: 2px; }
+.byd-home-started a { color: #7dd3a0; }
+.byd-home-asking { background: #2a1b1b; color: #ffd8d8; }
+.byd-home-asking button { border: 1px solid #4a3232; border-radius: 8px; padding: 6px 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
+.byd-home-asking .byd-home-remove { background: #a12b2b; border-color: #a12b2b; }
+.byd-home-game[data-new] { padding: 16px; }
+.byd-home-notice { margin: 0; padding: 10px 14px; border-radius: 10px; background: #2a1b1b; color: #ffd8d8; }

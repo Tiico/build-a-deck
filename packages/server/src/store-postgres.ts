@@ -321,6 +321,12 @@ export class PostgresProjectStore implements ProjectStore {
     return { ...row.doc, id, rev, ...(own?.owner ? { owner: own.owner } : {}) }
   }
 
+  // The history goes with the game: `project_versions` cascades on the project row.
+  async remove(id: string): Promise<boolean> {
+    const rows = await this.sql`delete from projects where id = ${id} returning id`
+    return rows.length > 0
+  }
+
   async label(id: string, rev: number, label: string | null): Promise<VersionSummary | 'missing'> {
     const [row] = await this.sql<{ rev: number; created_at: Date; label: string | null }[]>`
       update project_versions set label = ${label} where project_id = ${id} and rev = ${rev} returning rev, created_at, label

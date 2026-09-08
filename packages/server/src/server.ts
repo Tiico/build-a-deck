@@ -151,7 +151,7 @@ export function createServer(given: ServerOptions): Server {
 // Play is capability-based (room codes, face hashes); the creator's account rides in a cookie.
 // Cookie-bearing requests are accepted only from this server or the configured development app.
 const CORS_BASE: Record<string, string> = {
-  'access-control-allow-methods': 'GET, POST, PUT, OPTIONS',
+  'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'access-control-allow-headers': 'content-type, authorization',
   'access-control-max-age': '86400',
 }
@@ -588,7 +588,17 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, 401, { error: 'log in first' })
       return true
     }
-    json(res, 200, await projects.list(account.id))
+    // Every game with how many tables it has and when one was last played at (G1). The tables
+    // are the log's, not something the list keeps of its own.
+    const mine = await projects.list(account.id)
+    const played = await Promise.all(
+      mine.map(async (p) => {
+        const sessions = await opts.store.sessionsOf(p.id)
+        const last = sessions.map((s) => s.lastAt).filter((at): at is string => at !== null)
+        return { ...p, tables: sessions.length, lastPlayed: last.sort().at(-1) ?? null }
+      }),
+    )
+    json(res, 200, played)
     return true
   }
   if (req.method === 'POST' && url.pathname === '/projects') {
@@ -683,6 +693,16 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
   // The project's current revision as print work (#14): one manifest entry per physical card,
   // with every face compiled from that same row. The response is safe metadata only; compiled
   // HTML/CSS stays inside the render queue, where the existing Chromium worker consumes it.
+  // Taking a game away (G1): the owner's alone, and it takes the whole history with it.
+  if (one && req.method === 'DELETE') {
+    const gate = await owned(decodeURIComponent(one[1] ?? ''))
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    json(res, 200, { ok: await projects.remove(gate.rec.id) })
+    return true
+  }
   const print = /^\/projects\/([^/]+)\/print$/.exec(url.pathname)
   if (print && req.method === 'POST') {
     const gate = await owned(decodeURIComponent(print[1] ?? ''))

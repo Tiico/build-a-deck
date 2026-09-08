@@ -86,7 +86,8 @@ describe('projects belong to accounts (G1)', () => {
     expect((await post('/projects', { id: 'p1', ...project() })).status).toBe(401)
     const ada = await login('ada@example.com')
     expect((await post('/projects', { id: 'p1', ...project() }, ada)).status).toBe(201)
-    expect(await (await get('/projects', ada)).json()).toEqual([{ id: 'p1', name: 'Mitt spel', rev: 1 }])
+    // The listing also says what has been played (G1): no tables yet, so nothing has.
+    expect(await (await get('/projects', ada)).json()).toEqual([{ id: 'p1', name: 'Mitt spel', rev: 1, tables: 0, lastPlayed: null }])
     const bo = await login('bo@example.com')
     expect((await get('/projects/p1', bo)).status).toBe(403)
     expect((await get('/projects/p1')).status).toBe(401)
