@@ -53,9 +53,9 @@
    tabs' padding give way before anything gives up its place — measured in Chromium in
    `editor-viewport.test.ts`. */
 @media (min-width: 1024px) and (max-width: 1279px) {
-  .byd-editor > header { gap: 8px; }
-  .byd-editor > header [role='tablist'] { margin-left: 8px; }
-  .byd-editor > header [role='tab'] { padding: 0 6px; }
+  .byd-editor > header { gap: 6px; padding: 0 12px; }
+  .byd-editor > header [role='tablist'] { margin-left: 0; }
+  .byd-editor > header [role='tab'] { padding: 0 5px; }
   .byd-editor > header > button { padding: 0 10px; }
 }
 /* What a phone does not get, said where the tools would have been (L10). */
@@ -113,8 +113,19 @@
 .byd-editor-offline { margin: 0; padding: 8px 16px; background: #2a1f18; color: #ffd8b0; font-size: 12px; }
 /* A role that may not edit says so once, rather than letting every change be refused (D3). */
 .byd-editor-readonly { margin: 0; padding: 8px 16px; background: #2a2418; color: #ffe4b0; font-size: 12px; }
-/* The people in the header (D3): who is here, and the door to who has the game at all. */
-.byd-editor-here { display: flex; gap: 4px; align-items: center; margin-left: 8px; border: 0; border-radius: 20px; padding: 3px 8px 3px 3px; background: transparent; cursor: pointer; }
+/* The people in the header (D3): who is here, and the door to who has the game at all. How many
+   are here must not change how wide the header is — someone arriving would otherwise push the
+   row, and at 1024 there is nothing to push into. So the faces overlap and the button is capped:
+   it is the same size alone as in a crowd. */
+.byd-editor-here { display: flex; gap: 4px; align-items: center; justify-content: center; flex: none; max-width: 140px; overflow: hidden; margin-left: 8px; border: 0; border-radius: 20px; padding: 3px 8px 3px 3px; background: transparent; cursor: pointer; }
+.byd-editor-here i + i { margin-left: -10px; }
+/* At the width the desk begins the row has no air to give (UX-KONTROLLER: 1024), so here the
+   button is exactly one target wide whoever is here: the faces overlap under it and the count
+   goes, because pressing it opens the list that says all of it anyway. */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .byd-editor > header > .byd-editor-here { max-width: var(--byd-tap); margin-left: 0; padding: 0; }
+  .byd-editor > header > .byd-editor-here b { display: none; }
+}
 .byd-editor-here:hover, .byd-editor-here[aria-expanded='true'] { background: #1b1d23; }
 .byd-editor-here i { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--who); color: #10131a; font: 800 11px system-ui; font-style: normal; }
 .byd-editor-here b { color: #9aa3b8; font: 600 11px system-ui; }
