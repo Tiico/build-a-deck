@@ -41,6 +41,13 @@ export type TableSummary = { id: string; version: string; ended: boolean; lastAt
 export class ProjectClient {
   private listeners = new Set<ProjectListener>()
   private socket: WebSocketLike | null = null
+  // Whether the actor can be reached. A socket that breaks comes back by itself; one this editor
+  // closed stays closed.
+  public connected = false
+  private name = 'Någon'
+  private left = false
+  private retry: ReturnType<typeof setTimeout> | null = null
+  private attempt = 0
   private me: string | null = null
   // Edits made before the socket was open, or made and not yet echoed back. They are sent when
   // the socket opens, and laid on top again whenever the actor hands over its document.
@@ -78,21 +85,30 @@ export class ProjectClient {
   // The socket to the project's actor. The editor works without it — the document was read over
   // HTTP — but then it is alone with its own edits until it saves.
   private connect(name: string): void {
+    this.name = name
     const url = `${this.http.replace(/^http/, 'ws')}/projects/${encodeURIComponent(this.id)}/edit?name=${encodeURIComponent(name)}`
     const socket = makeEditSocket(url)
     this.socket = socket
     socket.onopen = () => {
+      this.connected = true
+      this.attempt = 0
       for (const message of this.outbox) socket.send(message)
       this.outbox = []
+      this.notify()
     }
     socket.onmessage = (event: { data: unknown }) => {
       const message = JSON.parse(String(event.data)) as EditorMessage
       this.receive(message)
     }
-    // A socket that breaks is simply gone: the editor carries on with what it holds, saves the
-    // old way, and is alone with its edits until the page is opened again.
+    // A socket that breaks is picked up again: the editor carries on with what it holds, and
+    // what was written in the dark is sent when the line is back. The actor hands over its
+    // document on the new connection, so nothing has to be asked for.
     const dropped = () => {
-      if (this.socket === socket) this.socket = null
+      if (this.socket !== socket) return
+      this.socket = null
+      this.connected = false
+      this.notify()
+      this.reconnect()
     }
     socket.onclose = dropped
     socket.onerror = dropped
@@ -153,6 +169,17 @@ export class ProjectClient {
     }
   }
 
+  // Waiting a little longer each time, so a server that is down is not hammered, and never so
+  // long that someone sits and waits for it.
+  private reconnect(): void {
+    if (this.left || this.retry) return
+    const wait = Math.min(4000, 200 * 2 ** this.attempt++)
+    this.retry = setTimeout(() => {
+      this.retry = null
+      if (!this.left) this.connect(this.name)
+    }, wait)
+  }
+
   private finishSave(result: SaveResult): void {
     const waiting = this.saving
     this.saving = null
@@ -160,17 +187,21 @@ export class ProjectClient {
   }
 
   // A socket that has not opened yet keeps what it was given until it can send it.
+  // What cannot be sent now is kept until the line is back, in the order it was written.
   private post(message: string): void {
     const socket = this.socket
-    if (!socket) return
-    if (socket.readyState === 1) socket.send(message)
+    if (socket && socket.readyState === 1) socket.send(message)
     else this.outbox.push(message)
   }
 
   // Leaves the project: the others stop being told this editor is here.
   close(): void {
+    this.left = true
+    if (this.retry) clearTimeout(this.retry)
+    this.retry = null
     this.socket?.close()
     this.socket = null
+    this.connected = false
   }
 
   subscribe(listener: ProjectListener): () => void {

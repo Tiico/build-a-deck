@@ -106,7 +106,8 @@ describe('a role that may not edit (D3)', () => {
     await fetch(`${run.http}/invites/${token}`, { method: 'POST' })
 
     await openEditor()
-    const said = await screen.findByRole('status')
+    await waitFor(() => expect(document.querySelector('[data-role-note]')).toBeTruthy())
+    const said = document.querySelector('[data-role-note]')!
     expect(said.textContent).toContain('testledare')
     expect(said.textContent).toMatch(/inte ändra det/)
   })
@@ -116,6 +117,6 @@ describe('a role that may not edit (D3)', () => {
     await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: 'p1', ...projectDoc() }) })
     await openEditor()
     await screen.findByRole('button', { name: 'Vilka som har spelet' })
-    await waitFor(() => expect(screen.queryByText(/inte ändra det/)).toBeNull())
+    await waitFor(() => expect(document.querySelector('[data-role-note]')).toBeNull())
   })
 })

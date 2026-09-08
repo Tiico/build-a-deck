@@ -262,8 +262,13 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
           <HostSeats client={client} sessionId={table.id} hostKey={table.hostKey} ws={wsUrl} onNotice={setNotice} />
         </div>
       )}
+      {!client.connected && (
+        <p className="byd-editor-offline" role="status" data-offline>
+          Ingen förbindelse med spelet. Det du skriver stannar här tills linjen är tillbaka.
+        </p>
+      )}
       {!client.mayEdit && (
-        <p className="byd-editor-readonly" role="status">
+        <p className="byd-editor-readonly" role="status" data-role-note>
           Du är {client.role === 'tester' ? 'testledare' : 'betraktare'} här: du kan {client.role === 'tester' ? 'starta bord och läsa spelet' : 'läsa spelet'}, men inte ändra det.
         </p>
       )}

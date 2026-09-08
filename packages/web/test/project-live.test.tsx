@@ -103,3 +103,74 @@ describe('who else is in the editor (D3)', () => {
     await waitFor(() => expect(door.querySelectorAll('i')).toHaveLength(1))
   })
 })
+
+describe('a socket that breaks (D3)', () => {
+  it('comes back by itself and picks up what happened while it was gone', async () => {
+    await run.projects.create('p1', projectDoc())
+    const ada = await open()
+    await settle()
+    expect(ada.connected).toBe(true)
+
+    // The server goes away and comes back, as a laptop lid does.
+    await run.restart()
+    await settle()
+    expect(ada.connected).toBe(false)
+
+    // Someone else edits while this editor is away.
+    const bo = await open()
+    await settle()
+    bo.setCell('dragon', 'title', 'Drakhona')
+    await settle()
+
+    for (let i = 0; i < 60 && !ada.connected; i++) await new Promise((r) => setTimeout(r, 50))
+    expect(ada.connected).toBe(true)
+    expect(ada.doc.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drakhona')
+    ada.close()
+    bo.close()
+  })
+
+  it('keeps what was written while it was gone and sends it when it is back', async () => {
+    await run.projects.create('p1', projectDoc())
+    const ada = await open()
+    await settle()
+    await run.restart()
+    await settle()
+
+    ada.setCell('dragon', 'title', 'Skrivet i mörkret')
+    expect(ada.doc.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Skrivet i mörkret')
+
+    for (let i = 0; i < 60 && !ada.connected; i++) await new Promise((r) => setTimeout(r, 50))
+    await settle()
+    // The actor has it too, so anyone else opening the project sees it.
+    const bo = await open()
+    await settle()
+    expect(bo.doc.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Skrivet i mörkret')
+    ada.close()
+    bo.close()
+  })
+
+  it('stays gone when the editor itself closed it', async () => {
+    await run.projects.create('p1', projectDoc())
+    const ada = await open()
+    await settle()
+    ada.close()
+    await new Promise((r) => setTimeout(r, 400))
+    expect(ada.connected).toBe(false)
+  })
+})
+
+describe('the editor when the line is gone (D3)', () => {
+  it('says so while it is away, and stops saying it when it is back', async () => {
+    const { render, screen, waitFor } = await import('@testing-library/react')
+    const { EditorPage } = await import('../src/editor/EditorPage.js')
+    await run.projects.create('p1', projectDoc())
+    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    await waitFor(() => expect(document.querySelector('[data-offline]')).toBeNull())
+
+    await run.restart()
+    await waitFor(() => expect(document.querySelector('[data-offline]')).toBeTruthy())
+    await waitFor(() => expect(screen.queryByText(/Ingen förbindelse/)).toBeNull(), { timeout: 4000 })
+  })
+})

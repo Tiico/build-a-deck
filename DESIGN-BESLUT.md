@@ -383,7 +383,10 @@ Behörigheter är en modell, inte ett fält: ägare, medredigerare, testledare, 
 En inbjudan mejlas till en adress, lever en vecka och går att använda en gång. Den säger ingenting om spelet förrän den använts, så en vilsen länk berättar inget för en främling. Den som följer den medan hen är inloggad går med i den roll den nämner och landar i editorn.
 Ytan prototypades i tre former: en panel från editorns huvud, ett ark på spelets kort, och de som är inne som dörren. Valet blev det sista: vilka som är inne nu och vilka som får vara med är samma fråga, så en lista svarar på den, med de närvarande överst.
 Ett projekt från före konton tillhör fortfarande ingen och är öppet för alla, som det alltid varit.
-Kvar: återuppkoppling — ett brutet socket lämnar editorn ensam med det den håller tills sidan öppnas igen.
+Återuppkoppling, byggt 2026-09-08:
+Ett brutet socket kopplar upp sig igen av sig självt, med allt längre väntan mellan försöken så en nere server inte hamras, och aldrig så länge att någon sitter och väntar.
+Det som skrivs medan linjen är borta stannar i editorn och skickas när den är tillbaka, i den ordning det skrevs. Aktören lämnar över sitt dokument på den nya förbindelsen, så ingenting behöver frågas efter.
+Editorn säger att förbindelsen är borta medan den är det. Ett socket som editorn själv stängde kopplar aldrig upp sig igen.
 
 ### D4. Teststrategi: deterministisk återspelning som ryggrad (fråga 28)
 

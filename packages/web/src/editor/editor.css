@@ -33,6 +33,8 @@
 .byd-editor [role='tab'] { border: 0; border-radius: 6px; padding: 6px 14px; background: transparent; color: #9aa3b8; font-weight: 600; cursor: pointer; }
 .byd-editor [role='tab'][aria-selected='true'] { background: #2f3a55; color: #fff; }
 .byd-editor-spacer { flex: 1; }
+/* A line that is gone says so, and what is written meanwhile is kept until it is back (D3). */
+.byd-editor-offline { margin: 0; padding: 8px 16px; background: #2a1f18; color: #ffd8b0; font-size: 12px; }
 /* A role that may not edit says so once, rather than letting every change be refused (D3). */
 .byd-editor-readonly { margin: 0; padding: 8px 16px; background: #2a2418; color: #ffe4b0; font-size: 12px; }
 /* The people in the header (D3): who is here, and the door to who has the game at all. */
