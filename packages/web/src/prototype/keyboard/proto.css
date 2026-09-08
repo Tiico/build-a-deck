@@ -1,0 +1,119 @@
+/* PROTOTYPE — playing with a keyboard (#1, #2). */
+
+/* The prototype's own two bars sit outside the surface being judged: the route bar along the
+   top, the variant bar along the foot. `?bare` hides both and gives the surface the whole page. */
+.kb-stage { box-sizing: border-box; height: 100vh; background: #0f1116; color: #eee; font-family: system-ui, sans-serif; padding: 34px 0 36px; }
+.kb-stage[data-bare='true'] { padding: 0; }
+.kb-stage > *:first-child { height: 100%; }
+.kb-stage > * { box-sizing: border-box; }
+.kb-live { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+/* One focus ring for the whole prototype, on everything the keyboard can stand on — including
+   the nodes the real renderer draws, which today have none anywhere on these three routes. */
+.kb-stage :focus-visible,
+.kb-stage [data-kbd]:focus { outline: 3px solid #9cc6ff; outline-offset: 2px; z-index: 70; }
+.kb-stage [data-kbd] { cursor: pointer; }
+.kb-stage [data-kbd][data-kbd-state='carry'], .kb-stage [data-kbd][data-kbd-state='carry']:focus { outline: 3px solid #ffd98a; outline-offset: 3px; z-index: 71; box-shadow: 0 18px 30px rgba(0, 0, 0, 0.6); scale: 1.06; }
+.kb-stage [data-kbd-state='open'] { outline: 3px solid #7dd3a0; outline-offset: 2px; }
+/* An area is a destination, not a picture: it needs to be visible when focus is on it. */
+.kb-stage .byd-zone[data-kbd]:focus { background: rgba(156, 198, 255, 0.14); }
+
+.kb-felt { position: relative; width: 100%; height: 100%; min-height: 0; }
+.kb-felt > .byd-table-frame { width: 100%; height: 100%; }
+.kb-keys { display: contents; }
+
+/* The banner is the visible half of what the live regions say; the legend is the key card. */
+.kb-banner { margin: 0; padding: 8px 14px; min-height: 44px; display: flex; align-items: center; background: #1b1e27; color: #ffd98a; font-size: 13px; font-weight: 600; border-top: 1px solid #262a35; }
+.kb-banner[data-empty] { color: #7d8597; font-weight: 400; }
+.kb-legend { margin: 0; padding: 8px 14px; background: #14161c; color: #9aa3b8; font-size: 12px; line-height: 1.5; }
+.kb-hint { margin: 10px 0 0; color: #9aa3b8; font-size: 12px; line-height: 1.5; }
+.kb-carry { margin: 0 0 8px; padding: 10px 12px; border-radius: 10px; background: #2a2417; color: #ffd98a; font-size: 13px; font-weight: 700; }
+
+/* --- the phone --------------------------------------------------------------------------- */
+.kb-phone { height: 100%; grid-template-rows: auto 1fr auto auto auto; }
+.kb-phone-body { padding: 12px 14px; overflow: auto; min-height: 0; }
+.kb-phone-felt { min-height: 0; background: #17120f; position: relative; }
+.kb-strip { padding: 10px 14px; }
+.kb-hand-card {
+  border: 0; text-align: left; font: inherit; position: relative;
+  background: hsl(var(--hue, 0) 40% 86%); color: #1c1c1c;
+}
+.byd-strip.kb-strip > .kb-hand-card { flex: 0 0 auto; height: min(30vh, 230px); aspect-ratio: 63 / 88; border-radius: 12px; padding: 12px; font-weight: 800; font-size: 17px; align-items: flex-start; display: flex; }
+.byd-fan.kb-fan > .kb-hand-card { display: flex; align-items: flex-start; }
+.kb-hand-card[data-selected='true'] { box-shadow: 0 0 0 3px #7dd3a0, 0 8px 18px rgba(0, 0, 0, 0.5); }
+
+/* --- the table screen -------------------------------------------------------------------- */
+.kb-tv { height: 100%; display: grid; grid-template-columns: 1fr 330px; grid-template-rows: 56px 1fr; background: #0b0d12; }
+.kb-tv > header { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding: 0 18px; background: #14161c; border-bottom: 1px solid #262a35; font-size: 14px; color: #9aa3b8; }
+.kb-tv > header strong { color: #fff; font-size: 17px; }
+.kb-spacer { flex: 1; }
+.kb-room { font: 700 15px ui-monospace, monospace; color: #fff; letter-spacing: 2px; }
+.kb-tv > main { min-width: 0; min-height: 0; position: relative; background: #17120f; }
+.kb-tv > aside { min-height: 0; overflow: auto; padding: 14px; background: #14161c; border-left: 1px solid #262a35; }
+.kb-tv > aside h2 { margin: 14px 0 6px; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: #7d8597; }
+.kb-tv > aside h2:first-child { margin-top: 0; }
+.kb-seats { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 13px; color: #cfd5e2; }
+.kb-seats li { padding: 6px 8px; border-radius: 8px; background: #1b1e27; border-left: 4px solid var(--seat); }
+.kb-seats b { color: #fff; }
+
+.kb-split { display: grid; grid-template-columns: 1fr 340px; height: 100%; min-height: 0; }
+.kb-aside { min-height: 0; overflow: auto; padding: 12px; background: #14161c; border-left: 1px solid #262a35; }
+
+/* --- online ------------------------------------------------------------------------------ */
+.kb-online { height: 100%; position: relative; display: grid; grid-template-rows: 1fr; }
+.kb-online > .kb-keys { display: contents; }
+.kb-online .kb-felt, .kb-online .kb-split-online { min-width: 0; min-height: 0; }
+.kb-online-say { position: absolute; left: 0; right: 0; bottom: 0; z-index: 20; background: rgba(11, 13, 18, 0.94); }
+.kb-online .kb-banner { border-top: 0; }
+.kb-online .byd-online-me, .kb-online .byd-online-tools { position: absolute; }
+.kb-online .byd-online-me { bottom: 118px; }
+.kb-online .byd-fan { position: absolute; bottom: 96px; }
+.kb-felt-cell { position: relative; min-width: 0; min-height: 0; }
+.kb-felt-cell > .byd-fan { left: 50%; transform: translateX(-50%); }
+
+/* --- variant A: the table as a list of places --------------------------------------------- */
+.kb-list { display: grid; gap: 2px; }
+.kb-row {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 8px 12px;
+  border: 0; border-radius: 10px; background: #1b1e27; color: #e6e9f0; font: 600 14px system-ui, sans-serif; text-align: left;
+}
+.kb-row[data-depth='1'] { margin-left: 18px; background: #191c24; font-weight: 500; }
+.kb-row[data-kind='zone'] { background: #242938; }
+.kb-row[data-kind='pile'] { background: #202537; }
+.kb-row[data-carry='true'] { outline: 3px dashed #ffd98a; }
+.kb-row[aria-selected='true'] { box-shadow: inset 3px 0 0 #7dd3a0; }
+.kb-row-name { flex: 1; }
+.kb-row-hint { color: #9aa3b8; font-weight: 500; font-size: 12px; }
+
+/* --- variant C: the panel of verbs and places --------------------------------------------- */
+.kb-panel-backdrop { position: fixed; inset: 0; z-index: 80; background: rgba(6, 8, 12, 0.55); display: grid; place-items: end center; }
+.kb-panel {
+  width: min(520px, 100%); max-height: 86vh; overflow: auto; padding: 16px;
+  border-radius: 18px 18px 0 0; background: #1b1e27; border: 1px solid #2c3242; border-bottom: 0;
+}
+.kb-panel h2 { margin: 0 0 4px; font-size: 19px; color: #fff; }
+.kb-panel h3 { margin: 14px 0 6px; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; color: #7d8597; }
+.kb-panel-list { display: grid; gap: 6px; }
+.kb-panel-list button {
+  display: flex; align-items: baseline; gap: 10px; min-height: 44px; padding: 10px 14px;
+  border: 0; border-radius: 12px; background: #242938; color: #fff; font: 700 15px system-ui, sans-serif; text-align: left;
+}
+.kb-panel-list button small { margin-left: auto; color: #9aa3b8; font-weight: 500; font-size: 12px; text-align: right; }
+.kb-panel-list button:disabled { opacity: 0.55; background: #191c24; }
+.kb-panel-no { border: 1px dashed #3a4050 !important; }
+.kb-panel-close { margin-top: 14px; width: 100%; min-height: 44px; border: 0; border-radius: 12px; background: #14161c; color: #cfd5e2; font: 700 15px system-ui, sans-serif; }
+/* On a phone the panel is a sheet under the thumb; on a wide screen it is a rail beside the
+   table, because the table is what the answer is about and must stay visible while it is read. */
+@media (min-width: 900px) {
+  .kb-panel-backdrop { background: rgba(6, 8, 12, 0.25); place-items: stretch end; }
+  .kb-panel { width: 400px; max-height: none; border-radius: 18px 0 0 18px; border-bottom: 1px solid #2c3242; }
+}
+.kb-look { z-index: 90; display: grid; place-items: center; gap: 14px; align-content: center; }
+.kb-look button { min-height: 44px; padding: 0 20px; border: 0; border-radius: 12px; background: #242938; color: #fff; font: 700 15px system-ui, sans-serif; }
+
+/* --- the prototype's own bar -------------------------------------------------------------- */
+.kb-routebar { position: fixed; top: 0; left: 0; right: 0; z-index: 9998; display: flex; gap: 4px; justify-content: center; padding: 4px 6px; background: #111; border-bottom: 1px solid #333; overflow-x: auto; }
+.kb-routebar button { min-height: 26px; padding: 0 10px; border: 0; border-radius: 999px; background: #333; color: #fff; font: 600 11px ui-monospace, monospace; white-space: nowrap; }
+.kb-routebar button[aria-pressed='true'] { background: #9cc6ff; color: #0b0d12; }
+
+.kb-chips { grid-template-columns: repeat(2, 1fr); }

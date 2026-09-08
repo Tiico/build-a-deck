@@ -22,18 +22,6 @@
       ],
       "port": 8080,
       "autoPort": true
-    },
-    {
-      "name": "web-5175",
-      "runtimeExecutable": "env",
-      "runtimeArgs": [
-        "PORT=5175",
-        "pnpm",
-        "--filter",
-        "@byd/web",
-        "dev"
-      ],
-      "port": 5175
     }
   ]
 }
