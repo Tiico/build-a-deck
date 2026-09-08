@@ -13,6 +13,8 @@ import { TableRenderer, type TableMode } from '../src/table/TableRenderer.js'
 import { TvChrome } from '../src/table/TvChrome.js'
 import { ActionPanel } from '../src/table/ActionPanel.js'
 import { feltLabels, intentsForPlace, landedKeyFor, type Thing } from '../src/table/keyboard.js'
+import { edgeRotation, feltWithHands, handExtent } from '../src/table/hand.js'
+import { fitScale } from '../src/table/fit.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const SHEETS = ['src/table/table.css', 'src/table/texture.css', 'src/table/keyboard.css']
@@ -300,10 +302,10 @@ describe('a table that has been fitted keeps its own hands (#23)', () => {
 
   // The tilted felt (K9) is the same fit seen through a perspective, and the editor's Bord tab
   // (#19) is that same felt in a box the size of a thumbnail.
-  for (const size of [{ w: 390, h: 780 }, { w: 768, h: 900 }, { w: 1280, h: 800 }, { w: 640, h: 384 }] as const) {
-    it(`cuts no hand card off the tilted table at ${size.w}`, async () => {
+  for (const size of [{ w: 390, h: 780 }, { w: 768, h: 900 }, { w: 1280, h: 800 }, { w: 640, h: 384 }, { w: 1280, h: 515 }, { w: 1440, h: 615 }, { w: 390, h: 550 }] as const) {
+    it(`cuts no hand card off the tilted table at ${size.w}×${size.h}`, async () => {
       const { frame, cards } = await handsAt(size, 'table')
-      expect({ width: size.w, cut: outside(frame, cards).length }).toEqual({ width: size.w, cut: 0 })
+      expect({ at: `${size.w}×${size.h}`, cut: outside(frame, cards).length }).toEqual({ at: `${size.w}×${size.h}`, cut: 0 })
     }, 60_000)
   }
 })
@@ -345,6 +347,100 @@ describe('the wood wraps the table it carries (K9, C5)', () => {
       // The wood is the table's frame, so the felt lies on it — a quarter-turned felt that keeps
       // the wood's old shape hangs over its edge at the top and the bottom.
       expect({ rotate, over: outside(wood, [felt]).length }).toEqual({ rotate, over: 0 })
+    }, 60_000)
+  }
+})
+
+// `/online`'s own table (C2, K17): the recipe's four seats around a 1200 × 800 floor, every hand
+// folded to a count — the seat's own included, since it is read in the band and not on the felt.
+function onlineScene(held: number): Snapshot {
+  const seats = [
+    { id: 'A', geometry: { x: -250, y: 340, w: 500, h: 60, rot: 0 }, held },
+    { id: 'B', geometry: { x: -250, y: -400, w: 500, h: 60, rot: 0 }, held: 7 },
+    { id: 'C', geometry: { x: 540, y: -250, w: 60, h: 500, rot: 0 }, held: 7 },
+    { id: 'D', geometry: { x: -600, y: -250, w: 60, h: 500, rot: 0 }, held: 7 },
+  ]
+  return {
+    ...scene(),
+    seats: seats.map((s) => ({ id: s.id, name: `Spelare ${s.id}` })),
+    zones: [
+      ...scene().zones.filter((z) => z.kind !== 'hand'),
+      ...seats.map((s) => ({ mode: 'count' as const, id: `hand:${s.id}`, kind: 'hand' as const, name: 'Hand', owner: s.id, geometry: s.geometry, dynamic: false, count: s.held })),
+    ],
+  }
+}
+
+// The table with its hands on, in millimetres: what the fit has to pass into the frame (#23).
+function feltedOf(view: Snapshot, rotate: number): Size {
+  const floor = view.zones.find((z) => z.id === view.floor)
+  if (!floor) throw new Error('no floor')
+  const rect_ = { x: floor.geometry.x, y: floor.geometry.y, w: floor.geometry.w, h: floor.geometry.h }
+  const hands = view.zones.filter((z) => z.kind === 'hand')
+  const felted = feltWithHands(rect_, hands.map((z) => handExtent(z, edgeRotation(z, floor))))
+  return rotate % 180 === 0 ? felted : { w: felted.h, h: felted.w }
+}
+
+// The scale the renderer actually chose, read off the felt's own laid-out width rather than off
+// its painted one: the tilt (K9) magnifies what is painted, and the question here is the fit.
+async function scaleAt(view: Snapshot, size: Size, rotate: 0 | 90 = 0): Promise<number> {
+  const floor = view.zones.find((z) => z.id === view.floor)
+  if (!floor) throw new Error('no floor')
+  const html = markupOf(<TableRenderer view={view} mode="table" rotate={rotate} size={size} />)
+  const wide = await onPage(html, size, (page) => page.evaluate(() => (document.querySelector('[data-table]') as HTMLElement | null)?.offsetWidth ?? 0))
+  if (wide === 0) throw new Error('no felt')
+  return wide / floor.geometry.w
+}
+
+// The least air the felt ever leaves between itself and the frame that holds it: the wooden rim
+// is drawn in the frame's own pixels, outside the millimetres the fit measures, and the TV's
+// chrome leaves the same (K9).
+const LEAST_AIR = 44
+// The share of the frame the felt covers when the frame has room to give it: prototype B's
+// proportion, read as a share of the frame's area instead of as a margin on its shorter side.
+const FELT_SHARE = 0.4
+
+describe('the felt uses the room the frame actually has (K9, K17, #24)', () => {
+  // Every frame the one renderer is given in table mode: `/table`'s whole screen, the felt row
+  // `/online` is left once the band is a layout row of its own (K17), and the editor's Bord tab
+  // (#19). The row heights are the ones online-viewport.test.tsx measures on the real page.
+  const FRAMES = [
+    { what: '/table at 1600×1000', view: scene(), size: { w: 1600, h: 1000 } },
+    { what: 'the Bord tab thumbnail', view: scene(), size: { w: 640, h: 384 } },
+    { what: "/online's row at 1280", view: onlineScene(21), size: { w: 1280, h: 515 } },
+    { what: "/online's row at 1440", view: onlineScene(21), size: { w: 1440, h: 615 } },
+    { what: "/online's row at 390", view: onlineScene(21), size: { w: 390, h: 550 } },
+    { what: "/online's row at 1280, three cards", view: onlineScene(3), size: { w: 1280, h: 528 } },
+    { what: 'the observer’s four fanned hands at 768', view: handScene(), size: { w: 768, h: 900 } },
+  ] as const
+
+  for (const frame of FRAMES) {
+    it(`leaves no room unused in ${frame.what}`, async () => {
+      const felted = feltedOf(frame.view, 0)
+      const scale = await scaleAt(frame.view, frame.size)
+      // The invariant, and not a pixel count: the felt covers its decided share of the frame —
+      // area, so that a frame far wider than the table counts for as much as one the table's own
+      // shape — or, where the frame's shape forbids that, it is simply as large as the frame can
+      // hold. A felt that is neither has left room on the table's own axis unused.
+      const covered = (scale * scale * felted.w * felted.h) / (frame.size.w * frame.size.h)
+      const most = fitScale(felted, frame.size, LEAST_AIR)
+      expect({
+        at: frame.what,
+        covered: Math.round(covered * 100) / 100,
+        enough: covered >= FELT_SHARE - 0.02 || scale >= most - 0.005,
+      }).toEqual({ at: frame.what, covered: Math.round(covered * 100) / 100, enough: true })
+    }, 60_000)
+  }
+})
+
+describe('the felt keeps prototype B’s proportion where the frame can give it (K9, #20)', () => {
+  // The two frames the table-mode renderer has always had to itself. Pinned from both sides:
+  // this is the proportion #4/#5/#6 tuned and #24 may not move in either direction.
+  for (const frame of [{ what: '/table at 1600×1000', size: { w: 1600, h: 1000 } }, { what: 'the Bord tab thumbnail', size: { w: 640, h: 384 } }] as const) {
+    it(`covers two fifths of ${frame.what} and no more`, async () => {
+      const felted = feltedOf(scene(), 0)
+      const scale = await scaleAt(scene(), frame.size)
+      const covered = (scale * scale * felted.w * felted.h) / (frame.size.w * frame.size.h)
+      expect({ at: frame.what, low: covered < 0.38, high: covered > 0.42, covered: Math.round(covered * 1000) / 1000 }).toEqual({ at: frame.what, low: false, high: false, covered: Math.round(covered * 1000) / 1000 })
     }, 60_000)
   }
 })

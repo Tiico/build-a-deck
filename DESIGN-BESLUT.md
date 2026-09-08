@@ -224,6 +224,17 @@ Arket och översikten erbjuder aldrig en annan plats privata yta, och aldrig en 
 Byggt 2026-09-07: en zon kan bära en genväg (`shortcut`) med verbet telefonen visar och var i en hög kortet hamnar, överst eller underst; utan genväg visar telefonen zonens namn.
 Wizarden ger draghögen "Lägg underst" och kasthögen "Kasta". Editorns flik "Bord" redigerar namn och genvägar för varje zon som inte är en hand, med telefonens ark som förhandsvisning; sedan 2026-09-07 är fliken hela setup-editorn (B5).
 
+Reviderat 2026-09-08 (#24, #25): i distansvyn ligger Ångra, Flagga och Avsluta överst, inte nederst.
+C4 la dem nederst för tummens skull, och det beslutet står kvar för `/play` — telefonens egen vy, där handen är K10:s remsa och botten rymmer båda.
+`/online` rymmer det inte, och det är mätt och inte tyckt: vid 390 px är det nedre bandet 358 px brett, och 358 px rymmer **åtta** träffytor på 44 px och inte fler.
+Handen ensam behöver dem alla, och därtill ligger `Ada · n kort` och de tre verktygen redan i samma band; krocken började vid **tre** kort och vid varje bredd, inte vid tjugoen och inte bara på telefon.
+Två ytor kan inte dela en pixel, så en av dem måste flytta, och den som flyttar är den som inte är själva spelet.
+
+Priset är uttryckligt och accepterat av produktägaren när variant A valdes: på just den skärm där tummen betyder mest ligger verktygen längst från den.
+Det mildras av att de tre är sällanhandlingar — ångra, flagga ett ögonblick, avsluta sessionen — medan handen är varje drag, och en yta ger det närmaste rummet åt det som görs oftast.
+Alternativen var att ta bort solfjädern (K9, C2) eller att gömma handen tills den kallas fram, och båda kostade mer.
+Vad som faktiskt ligger i bandet, och de två lägen handen har, står i K17.
+
 ### C5. Rumslig modell: konfigurerbart TV- eller bordsläge (fråga 32)
 
 Sessionen väljer vid start mellan TV-läge, där allt orienteras mot betraktaren och platser radas längs nedre kanten, och bordsläge, där platser ligger runt om och orientering följer platsen.
@@ -808,6 +819,20 @@ Men ett kort i den vrids kring en punkt under sig självt och sänks, alltså m�
 Formen och rummet formen behöver är nu ett och samma svar i `packages/web/src/online/fan.ts`, som `table/hand.ts` är det för filten.
 Kortet är prototyp B:s storlek och aldrig större, krymper för att rymmas på bredden, och går aldrig under en fingertopps 44 px — där tätnar i stället steget, som en hand med fler kort än rum håller dem tätare i stället för att bli oåtkomlig.
 
+Reviderat 2026-09-08 (K17, #24): filten mäts mot ramens yta och inte mot dess kortare sida.
+Marginalen 0,16 av kortare sidan tog en tredjedel av just den sida bordet var kortast om — 32 % av höjden i en låg, bred ram, 32 % av bredden i en hög, smal — och överskottet på den andra axeln blev ett dött band.
+Regeln var tunad mot en nästan kvadratisk ram och märktes därför inte förrän K17 gjorde handbandet till en egen layoutrad: filtraden på `/online` vid 1280 × 800 är 1280 × 515, och där krympte inpassningen bordet till 26 % av radens yta med sexhundra pixlar bredd oanvända.
+Regeln är nu att filten *med händerna på* täcker två femtedelar av ramens yta, aldrig mer än ramen rymmer och aldrig mer än naturlig storlek.
+Ytan väger båda axlarna lika, vilket den kortare sidan aldrig gjorde: i en ram nära bordets egen form ger den samma proportion som 0,16 gav, och i en ram långt ifrån den växer bordet in i det rum som faktiskt finns.
+En marginal uttryckt som andel av en axel — vilken axel som helst, ramens eller bordets — ger samma svar som förut så snart den axel som binder också är den kortaste, vilket den är i alla fyra ytorna; skillnaden mellan `/table` och `/online` ligger enbart i överskottet på den lösa axeln, och bara ett mått som räknar in det kan skilja dem åt.
+Minsta luft är 44 px, densamma som TV-läget alltid lämnat innanför sin krom: träramen ritas i skärmens egna pixlar utanför de millimeter inpassningen mäter, så en filt som kom närmare hade fått sin egen ram avskuren.
+Mätt på bordet som fyra platser sitter vid: `/table` på 1600 × 1000 går från 0,781 till 0,765 i skala och från 0,416 till 0,400 av ramens yta, alltså under två procent och samma bild; miniatyren i editorns Bord-flik (640 × 384) går från 0,301 till 0,300.
+`/online` går från 0,389 till 0,473 vid 1280 med tjugoen kort — träramen från 527 till 628 px bred och filtens andel av raden från 26 % till 39 % — från 0,421 till 0,502 vid tre kort, och från 0,212 till 0,241 vid 390.
+Kvar vid 390 står luften ovanför och under bordet: ett landskapsbord på 1200 × 800 mm i en stående rad på 390 × 550 px kan inte fylla höjden utan att gå utanför bredden, och den luften är formernas skillnad och inte slack i inpassningen — bordet tar där 90 % av radens bredd.
+TV-läget rör regeln inte: det ramas in av sin egen krom och passas in precis som förut, med samma 44 px.
+Regeln bor i `packages/web/src/table/fit.ts` som `feltScale`, och de fyra ytor som ritar ett bord — `/online`, `/table`, TV:n och Bord-flikens miniatyrer — hämtar den ur samma funktion; ingen yta har ett undantag.
+Grinden är en invariant och inte ett tal: vid varje ram täcker filten sin andel av ytan eller är så stor som ramen rymmer, mätt i Chromium på den markup vyerna faktiskt monterar, vid `/table`s, miniatyrens och filtradens egna former.
+
 Referensprototypen `packages/web/src/prototype/table-ref` togs bort när den hade svarat.
 
 ### K10. Telefonvyns utseende: remsan (prototypat 2026-09-06)
@@ -967,6 +992,70 @@ En hög erbjuds aldrig sig själv som destination, eftersom bordet svarar ”can
 
 Byggt 2026-09-08 (#1, #2). Prototypen `packages/web/src/prototype/keyboard` togs bort när den hade svarat; dess resonemang står här.
 Fem frågor som prototypen väckte och som inte är besvarade står i avsnitt I.
+
+### K17. Distansvyns nedre band: facket, med uppslaget bakom `Visa alla` (prototypat och byggt 2026-09-08)
+
+Två issues, en yta, ett svar.
+#24 sa att solfjädern blir en regnbåge när handen är stor; #25 att fjädern och hörnens kontroller slåss om samma fyrtio pixlar vid 390.
+De hänger ihop: en fjäder som packar tätare krockar också mindre, så den som löser det ena har redan bestämt det andra.
+Därför en prototyp och ett svar.
+
+**Mätt först, inte räknat ur issuetexten.**
+Bågen var 8° per kort utan tak, alltså (n−1)·8: en hand på tjugoen kort spände 160°, och dess yttersta kort stod 80° från lodrätt och gick inte att läsa.
+Krocken med `Ada · n kort` och med Ångra/Flagga/Avsluta började vid **tre** kort vid 390 och vid tretton vid 1280 — vid varje bredd, alltså, och inte bara på telefon som #25 antog.
+Den minsta träffytan var aldrig kortet utan **steget** till nästa kort, eftersom ett kort täcks av dem som ritas efter det: 11 px vid tjugoen kort på 390.
+Och Ångra, Flagga och Avsluta mätte 76 × 32, 77 × 32 och 70 × 32 px vid varje bredd, ett brott mot 44 px som fanns före båda issuesen.
+
+Den geometriska sanning som styrde hela valet: vid 390 px är bandet 358 px brett, och 358 px rymmer **åtta** träffytor på 44 px och inte fler.
+En hand på tretton eller tjugoen kort kan alltså inte vara en rad med tryckbara kort på en telefon — inte vid någon lutning, inte vid någon kortstorlek.
+Det lämnar exakt tre svar: rulla, radbryt, eller visa dem inte hela tiden.
+Tre varianter prototypades mot varandra: **A, Facket** — fjädern överlever, bågen får tak och handen rullar; **B, Remsan** — K10:s remsa given åt `/online` också; **C, Uppslaget** — handen kallas fram som ett rutnät i stället för att alltid ligga där.
+
+**Valet blev A, med C:s uppslag lånat som andra läge.**
+
+B avråddes för att solfjädern är ett fattat beslut och inte en smaksak: K9 skriver in handfläkten i bordets bild och C2:s prototyp B är handen som fjäder vid filtens kant.
+#24 är ett fel i *hur brett* fjädern fjädrar, inte ett argument för att fjädern var fel, och att svara på en trasig båge med att ta bort bågen är att kasta ett beslut för att en konstant saknade tak.
+C avråddes som grundläge för att en hand man inte ser medan man spelar tar bort halva skälet till att en hand ritas alls, och för att den vid tre kort på en bred skärm gömmer något som ryms.
+Vid 1280 — där `/online` faktiskt lever, eftersom det är distansvyn med både bord och hand i samma fönster — löser A allt utan att ta något, och där ger B och C bort något för ett problem som inte finns.
+
+Så här är A byggd, och siffrorna är mätta i Chromium på den markup vyn faktiskt monterar.
+**Bågen har tak på 30° totalt** (`FAN_ARC_MAX` i `packages/web/src/online/fan.ts`): 8° mellan två kort tills det blir för många, sedan 30/(n−1).
+Sänkningen följer lutningen ned, annars hänger en nästan flat hand fortfarande.
+Mätt: 16° vid tre kort, 30° vid tretton och vid tjugoen, vid 390, 1280 och 1440 — mot 160° före.
+**Kortet behåller sin läsbara storlek och krymper inte längre för att rymmas**: 112 px som prototyp B läste det, 22 % av skärmens bredd, aldrig under 56 px. Mätt: 86 px vid 390, 112 px vid 1280.
+**Det som ger vika är steget, och det bottnar på en fingertopp.** Steget dras ihop tills handen ryms i bandet och stannar där på 44 px. Mätt: 68 px vid tre kort på 1280, 52 px vid tjugoen på 1280, 44 px vid tretton och tjugoen på 390 — mot 23 och 14 px före.
+**En hand som fortfarande är bredare än bandet rullar i sidled som fjäder.** Mätt: 673 px att rulla vid tjugoen kort på 390, 321 px vid tretton, ingenting alls vid någon bredd på 1280. Sidan själv rullar aldrig i sidled, vid någon bredd eller något antal.
+**Hörnen lämnar bottenbandet**, av skälen och till priset som står under C4.
+Och **Ångra, Flagga och Avsluta är 44 px** i båda riktningarna, tillsammans med `Visa alla`.
+
+**Uppslaget är handens andra läge, inte dess grundläge.**
+`Visa alla` fäller upp hela handen som ett rutnät i läsbar storlek över ett nedtonat bord, och där är inget vridet, inget överlappat och ingenting att rulla i sidled.
+Då är C:s enda verkliga vinst — hela handen läsbar samtidigt vid vilket antal som helst — kvar, medan dess pris betalas bara av den som ber om det.
+Det är samma mönster som K8:s "håll för att förstora" och K16:s panel: grundytan är direkt, och det som inte får plats i den kallas fram.
+Uppslaget är `Question.tsx`:s uppförande tillämpat på en yta, precis som K16:s adresspanel är det: det tar fokus så att det läses där det står, det svarar på Escape, det lämnar tillbaka fokus till `Visa alla`, och det fångar ingenting.
+Fokus landar på **första kortet** och inte på Stäng, för uppslaget fälldes upp för att läsas.
+
+Två avsteg från prototyp C är avsiktliga.
+Uppslaget täcker filten och bandet men **aldrig topplisten**, så Ångra, Flagga och Avsluta står kvar och är nåbara; en yta som täcker sidans enda Ångra har gjort den onåbar och inte bara gömd, och alternativet — att låta verktygen följa med upp i uppslagets huvud på en telefon — vore två kopior av samma tre knappar i ett dokument, vilket L10 redan har avvisat.
+Och en hand som är större än skärmen **rullar i sin egen box medan sidan aldrig gör det**, vilket är L10:s regel för datatabellen tillämpad här. Mätt: alla tjugoen korten ligger utan att rullas vid 1280; vid 390 ryms femton och resten är 255 px ned i rutnätets egen rullyta.
+
+Handen är **en kontroll och en kopia av sig själv i taget**.
+Medan uppslaget står är bandet fortfarande ritat, nedtonat under det, men det ligger utanför tabbordningen och utanför tillgänglighetsträdet — som sidan bakom vilken uppfälld yta som helst. Två levande kopior av samma tjugoen kort vore tjugoen kort två gånger för en skärmläsare.
+
+**K16 står orört och är mätt på nytt i båda lägena.**
+Hela handen är ett tabbstopp med piltangenterna inuti, varje kort är en `button` med projektionens namn, och Enter öppnar adresspanelen.
+Mätt: från första kortet i en hand på tjugoen når 20 × ArrowRight det tjugoförsta, i fjädern och i rutnätet; i fjädern drar `scrollIntoView` in det i den rullande ytan, vilket är L10:s regel för en remsa som rullar i sidled.
+Rutnätet är `orientation: 'both'`, som filten, och roving-tabindexen är editorns `roving.ts` — ingen yta skriver en egen.
+
+**Formen och rummet formen behöver är fortfarande ett och samma svar**, i `fan.ts` (K9, revideringen 2026-09-08).
+Det gäller nu mer och inte mindre: en rullyta som reserverade mindre än de vridna korten målar skulle klippa exakt det taket infördes för.
+Hur långt utanför sin egen ruta ett vridet kort målar beror bara på dess egen lutning och inte på hur långt isär korten står, så en och samma form svarar för varje steg skärmen kan råka välja.
+Rutnätets radhöjd kommer ur samma tal, uttryckligen: en automatisk rad tar sin höjd ur vad kortet innehåller och inte ur kortets `aspect-ratio`, och stängde vid tjugoen kort på en telefon ihop till 83 px kring 120 px höga kort — alltså la rutnätet korten ovanpå varandra igen, det enda läget finns för att inte göra.
+
+Grindarna är invarianter och inte tal, mätta vid 3, 13 och 21 kort och vid 390, 1280 och 1440 px: inget kort skärs av skärmen när bandet har hämtat fram det, ingen kontroll ligger över ett kort, ingen kontroll är under 44 × 44 px, inget steg är under 44 px, kortet är alltid mellan 56 och 112 px, sidan rullar aldrig i sidled, och i uppslaget överlappar inget kort ett annat.
+
+Byggt 2026-09-08 (#24, #25). Prototypen `packages/web/src/prototype/band` togs bort när den hade svarat; dess resonemang står här.
+Tre frågor som prototypen väckte och som produktägaren inte svarade på är avgjorda av implementationen och står i avsnitt I.
 
 ---
 
@@ -1234,6 +1323,27 @@ Utläggningsregeln för ett kort som flyttas till en yta: klienten lägger det p
 Vem tangentbordet är på `/table`: bordsskärmen har ingen plats och agerar som ”Bordet”, så fokus är en enda markör på en skärm ett helt rum tittar på. Till skillnad från två pekare syns det inte att det är en kö. Kanske är svaret att tangentbordsvägen där bara är till för den som sitter vid skärmen.
 Om vi namnger mer än pekaren visar: ”Marknad: Skugga, Gruva, Spion” gör korträkning lättare än att läsa filten på tre meters håll. Det är samma information, och det är behandlat som tillåtet, men det är ett produktbeslut om playtestets naturlighet (C8 resonerar likadant om observatören).
 ”Titta” loggas inte: ringens och panelens ”Titta” sätter bara lokalt tillstånd och skickar ingen `peek`, medan B6 säger att varje titt loggas som händelse. Avvikelsen fanns redan i pekarvägen; tangentbordet gör den synlig, eftersom verbet nu står i en lista med de andra. Ska ”Titta” bli `peek`, eller är B6:s ”titt” bara den som ger ny kunskap?
+
+Distansvyns hand, kvar efter K17 (2026-09-08).
+Prototypen ställde tre frågor som produktägaren inte svarade på, och implementationen har svarat på alla tre.
+De står här för att de är produktbeslut och inte kodval, och för att de annars försvinner.
+
+Rullning kontra dragning i fjädern: uppdelningen är en riktningströskel, avgjord en gång per tryck och aldrig omprövad.
+Den första rörelsen som är 12 px lång bestämmer, efter vilken av de två axlarna den gick längst: uppåt eller nedåt är ett kort som spelas och tar pekaren, i sidled är fjädern som rullar och trycket kan därefter inte spela alls, hur det än slutar.
+Webbläsaren får samma besked i `touch-action: pan-x`, så en fingerdragning som panorerar är rullytans redan innan den når kortet.
+Alternativen var ett handtag som rullar, eller rullning bara med piltangenter; båda tar bort det som är hela poängen med en fjäder, att ett kort greppas där det ligger.
+Följden som är värd att veta: ett tryck som inte färdas alls spelar numera ingenting, där det förut spelade kortet dit fingret råkade släppa — bandet ligger under filten, så punkten ett tryck släpper på är inte en plats på bordet att lägga ett kort.
+En dag då ett tryck ska betyda något (inspektera, som K8 gör på telefonen) är det den lediga gesten.
+
+Om 30° är rätt tak: det är en gissning som ser rätt ut, inte ett mätt tal.
+30 är valt för att handen ska läsas som en hand snarare än som en båge; 24 packar hårdare och låter fler kort rymmas innan bandet börjar rulla, 40 ser mer ut som ett riktigt kortfack.
+Det är avsiktligt en enda konstant, `FAN_ARC_MAX` i `packages/web/src/online/fan.ts`, och både ritningen och rummet ritningen behöver räknas ur den, så att ändra talet ändrar båda i samma andetag och kan göras utan att någonting annat rörs.
+
+Om `/online` på en telefon ska vara samma hand som `/play`: valet av A framför B säger nej, tills vidare.
+`/play` är K10:s remsa och `/online` är K17:s fjäder, alltså får en spelare som spelar på telefon via `/online` och en som spelar via `/play` två olika händer på samma sorts skärm.
+Skälet är att `/online` är distansvyn med både bord och hand i samma fönster och därför i praktiken lever på en bred skärm, medan `/play` är telefonens egen vy och bara har handen att visa.
+Det är försvarbart men det är inte skrivet någonstans som ett beslut: K9 bör säga varför distansvyn har en egen hand, eller så bör de två slås ihop.
+Anser produktägaren att de ska vara oskiljbara är remsan svaret på båda, och då är K10 det som ska skrivas om och inte K9.
 
 Spelupplevelse, kvar efter avsnitt K: inga; de två sista avgjordes 2026-09-07, se K1 och K2.
 

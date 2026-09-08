@@ -73,6 +73,8 @@ Editorn:
 - ✅ Skydd för osparat arbete: osparat mätt mot servern, fråga vid vägen ut, `beforeunload` vid stängning och omladdning, bekräftelse innan ett kort tas bort, och sparat/osparat i huvudet (L9).
 - ✅ Editorn, wizarden och observatören på små skärmar: namngivna etapper under 1024 px, ingen duk under 768 px och gränssnittet säger det, tre steg i wizarden, bordet först och ingen banner över spelet hos observatören (L10, #4, #5, #6).
 - ✅ Handsolfjädrarna i bordets eget mått: fläkten skalar med filten, inpassningen räknar in händerna och ett kvartsvridet bord passas in i den form det ritas i, mätt i Chromium vid 390, 768 och 1280 i alla fyra konsumenter (K9, C5, #23).
+- ✅ Distansvyns nedre band: bågen kapad vid 30°, kortet kvar i läsbar storlek, steget bottnat på 44 px och en hand bredare än bandet som rullar i sidled; hörnen uppe i en topplist och hela handen som rutnät bakom `Visa alla` (K17, C4, #24, #25).
+- ✅ Filten mot ramens yta i stället för mot dess kortare sida: två femtedelar av ramen, minst 44 px luft, en enda regel för `/online`, `/table`, TV:n och Bord-flikens miniatyrer (K9, K17, #24).
 
 Drift:
 - ✅ Compose-stack med minnestak och loggrotation: Postgres, app som serverar webben från samma origin, render-worker, tunnel- och backupprofiler (DRIFT §1, §2, §6, §8).

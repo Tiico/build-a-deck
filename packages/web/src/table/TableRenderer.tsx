@@ -4,7 +4,7 @@ import type { Intent, Presence, Snapshot, VisibleComponentState, ZoneView } from
 import type { Peer, Pulse, Recent } from './presence.js'
 import { hue } from './hue.js'
 import { seatColor } from './seatColor.js'
-import { fitScale } from './fit.js'
+import { feltScale, fitScale, LEAST_AIR_PX } from './fit.js'
 import { activeBounds, cameraOf, fitFloor, frameRect, pad, reachOf, same, tween, zoomAround, type Rect, type Size } from './camera.js'
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
 import { CARD_MM, absoluteOf, dropIntents, type Drag, type DragTarget } from './drop.js'
@@ -74,12 +74,6 @@ const TABLE_GREY = '#8a93a8'
 // A counter token (C4) is drawn as a chip, not a card.
 const COUNTER_TYPE = 'token.counter'
 const TOKEN_MM = 24
-// How much room the felt leaves around itself in table mode, as a share of the frame's shorter
-// side: prototype B's proportion. 0.16 puts the table at 0.85 of life size on a 1600 × 1000
-// screen — the scale B was approved at — and keeps that proportion on any other screen (K9).
-const TABLE_MARGIN = 0.16
-// TV mode is framed by its own chrome, so the felt only needs a hair of air inside it.
-const TV_MARGIN_PX = 44
 // The camera: room around what is in play, how close it may come, and how long a zoom holds.
 const CAMERA_PAD_MM = 60
 const CAMERA_MIN_MM = 520
@@ -97,7 +91,6 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const table = useRef<HTMLDivElement | null>(null)
   // Nothing is painted until the frame has been measured: a first paint at 1:1 would flash.
   const [measuredSize, setMeasuredSize] = useState<Size | null>(null)
-  const margin = marginFor(mode, fixedSize ?? measuredSize)
   useEffect(() => {
     const el = frame.current
     if (fixedScale !== undefined || fixedSize !== undefined || !el) return
@@ -124,7 +117,11 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // fit has to pass into the frame — otherwise a seat at a side edge gets a table cut off at the
   // top and bottom of its own screen.
   const drawn = rotate % 180 === 0 ? felted : { w: felted.h, h: felted.w }
-  const fitted = size === null ? null : size.w > 0 && size.h > 0 ? fitScale(drawn, size, margin) : 1
+  // How the felt meets its frame is one rule for every screen that shows a table (K9, K17): the
+  // TV is framed by its own chrome and only needs air inside it, the felt table stands on the
+  // dark and holds back to its share of it. Both leave the same least air, so neither cuts the
+  // wooden rim the frame draws in its own pixels.
+  const fitted = size === null ? null : size.w > 0 && size.h > 0 ? (mode === 'table' ? feltScale(drawn, size) : fitScale(drawn, size, LEAST_AIR_PX)) : 1
 
   // Inspection (K8): "Titta" in the ring, private to this screen, until tapped away.
   const [held, setHeld] = useState<VisibleComponentState | null>(null)
@@ -653,12 +650,6 @@ function Pile({ zone, count, topCard, faces, left, top, px, lifted, topHandlers,
       </span>
     </div>
   )
-}
-
-// The room the felt leaves around itself in the frame it was given.
-function marginFor(mode: TableMode, size: Size | null): number {
-  if (mode !== 'table') return TV_MARGIN_PX
-  return size === null ? 0 : Math.round(Math.min(size.w, size.h) * TABLE_MARGIN)
 }
 
 const EDGES: Record<number, 'N' | 'E' | 'S' | 'W'> = { 0: 'S', 180: 'N', [-90]: 'E', 90: 'W' }
