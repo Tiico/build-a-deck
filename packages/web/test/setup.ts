@@ -10,13 +10,27 @@ import { WebSocket as WsClient } from 'ws'
 import { useWebSocketImplementation, type WebSocketCtor } from '../src/client.js'
 import { useEditSocketImplementation, type EditSocketCtor } from '../src/editor/ProjectClient.js'
 if (typeof document !== 'undefined') useWebSocketImplementation(WsClient as unknown as WebSocketCtor)
-// The editor's own socket (D3) speaks the same shape and needs the same stand-in under jsdom.
-useEditSocketImplementation(WsClient as unknown as EditSocketCtor)
 
 // A cookie jar for fetch under jsdom: the session cookie (G1) must survive from the login link to
 // the next request, as it does in a browser. Cookies are kept per origin and sent back to it.
+const jar = new Map<string, Map<string, string>>()
+const cookieFor = (origin: string): string => {
+  const bag = jar.get(origin)
+  return bag && bag.size > 0 ? [...bag].map(([k, v]) => `${k}=${v}`).join('; ') : ''
+}
+
+// The editor's own socket (D3) needs the stand-in and the cookie: a browser sends the session
+// with the handshake, and under jsdom nothing does it for us.
+useEditSocketImplementation(
+  class extends WsClient {
+    constructor(url: string) {
+      const cookie = cookieFor(new URL(url).origin.replace(/^ws/, 'http'))
+      super(url, cookie ? { headers: { cookie } } : {})
+    }
+  } as unknown as EditSocketCtor,
+)
+
 if (typeof document !== 'undefined') {
-  const jar = new Map<string, Map<string, string>>()
   const realFetch = globalThis.fetch
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)

@@ -1,5 +1,6 @@
 import { applyEdit, type EditIntent } from './edits.js'
 import type { ProjectDoc, ProjectStore } from './projects.js'
+import type { Role } from './roles.js'
 
 // One actor owns one project (D3). A project is structurally the same as a table — shared state
 // several people change at once, which belongs in the history — so it gets the table's shape: a
@@ -12,14 +13,14 @@ import type { ProjectDoc, ProjectStore } from './projects.js'
 // `from` is the connection the edit came from, so an editor can tell its own echo from someone
 // else's edit and not apply what it already applied.
 export type AppliedEdit = { seq: number; at: string; by?: string; from?: string; intent: EditIntent }
-export type Editor = { id: string; name: string; send(message: EditorMessage): void; close?(): void }
+export type Editor = { id: string; name: string; role?: Role; send(message: EditorMessage): void; close?(): void }
 export type EditorMessage =
   | { v: 'project'; doc: ProjectDoc; rev: number; seq: number; here: Presence[]; you: Presence }
   | { v: 'edits'; edits: AppliedEdit[] }
   | { v: 'here'; here: Presence[] }
   | { v: 'saved'; rev: number }
   | { v: 'refused'; why: string }
-export type Presence = { id: string; name: string }
+export type Presence = { id: string; name: string; role?: Role }
 
 export class ProjectActor {
   private queue: Promise<unknown> = Promise.resolve()
@@ -51,13 +52,13 @@ export class ProjectActor {
     return this.at
   }
   get here(): Presence[] {
-    return [...this.editors].map((e) => ({ id: e.id, name: e.name }))
+    return [...this.editors].map((e) => ({ id: e.id, name: e.name, ...(e.role ? { role: e.role } : {}) }))
   }
 
   // An editor joins: it is given the document as it stands, and everyone is told who is here.
   subscribe(editor: Editor): () => void {
     this.editors.add(editor)
-    editor.send({ v: 'project', doc: this.current, rev: this.rev, seq: this.at, here: this.here, you: { id: editor.id, name: editor.name } })
+    editor.send({ v: 'project', doc: this.current, rev: this.rev, seq: this.at, here: this.here, you: { id: editor.id, name: editor.name, ...(editor.role ? { role: editor.role } : {}) } })
     this.tellPresence()
     return () => {
       this.editors.delete(editor)
@@ -95,7 +96,7 @@ export class ProjectActor {
   // An editor whose edit was refused has drifted from the truth: it is handed the document as it
   // stands, so it can carry on from what is real rather than from what it thought.
   resync(editor: Editor): void {
-    editor.send({ v: 'project', doc: this.current, rev: this.rev, seq: this.at, here: this.here, you: { id: editor.id, name: editor.name } })
+    editor.send({ v: 'project', doc: this.current, rev: this.rev, seq: this.at, here: this.here, you: { id: editor.id, name: editor.name, ...(editor.role ? { role: editor.role } : {}) } })
   }
 
   private tell(message: EditorMessage): void {

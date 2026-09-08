@@ -6,6 +6,7 @@ import { applyEdit, recipeOf, type EditIntent, type Recipe, type ZonePatch } fro
 import { ASSET_PREFIX } from './assets.js'
 import { freeIconName, svgBytes, type GameSymbol } from './symbols.js'
 import type { EditorMessage, Presence } from '@byd/server'
+import { canEdit, type Role } from '@byd/server/doc'
 
 // The editor's socket, kept small on purpose: the same shape the table's client speaks, so a
 // test can hand it Node's WebSocket the way it hands one to the table.
@@ -51,6 +52,8 @@ export class ProjectClient {
   public here: Presence[] = []
   // This editor's own connection, so a view can leave itself out of the list.
   public who: string | null = null
+  // What this account may do with the project (D3): a viewer or a test leader may not edit it.
+  public role: Role | null = null
   private constructor(
     private readonly http: string,
     readonly id: string,
@@ -101,6 +104,7 @@ export class ProjectClient {
       case 'project': {
         this.me = message.you.id
         this.who = message.you.id
+        this.role = message.you.role ?? null
         this.rev = message.rev
         this.here = message.here
         // Whatever this editor did while it was alone is laid on top again; an edit that no
@@ -176,6 +180,12 @@ export class ProjectClient {
 
   // Every edit goes the same way (D3): an intent, applied by the one pure function the actor
   // will apply it with too. The editor holds the result until it is saved.
+  // Whether this account may change the project at all (D3). Until the actor has said, the
+  // editor assumes it may: a project without accounts is everyone's.
+  get mayEdit(): boolean {
+    return this.role === null || canEdit(this.role)
+  }
+
   edit(intent: EditIntent): void {
     // It must apply here before it is sent: an edit that makes no sense is the editor's mistake
     // to see, not something to find out about a round trip later.

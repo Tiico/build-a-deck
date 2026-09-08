@@ -33,11 +33,32 @@
 .byd-editor [role='tab'] { border: 0; border-radius: 6px; padding: 6px 14px; background: transparent; color: #9aa3b8; font-weight: 600; cursor: pointer; }
 .byd-editor [role='tab'][aria-selected='true'] { background: #2f3a55; color: #fff; }
 .byd-editor-spacer { flex: 1; }
-/* Who else has the project open (D3): an initial each, the name on hover. */
-.byd-editor-here { display: flex; gap: 4px; margin-left: 8px; }
-.byd-editor-here i { position: relative; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--who); color: #10131a; font: 800 11px system-ui; font-style: normal; }
-.byd-editor-here b { position: absolute; top: 28px; left: 50%; transform: translateX(-50%); display: none; padding: 3px 8px; border-radius: 6px; background: #10131a; color: #e6ecfa; font: 400 11px system-ui; white-space: nowrap; }
-.byd-editor-here i:hover b { display: block; }
+/* A role that may not edit says so once, rather than letting every change be refused (D3). */
+.byd-editor-readonly { margin: 0; padding: 8px 16px; background: #2a2418; color: #ffe4b0; font-size: 12px; }
+/* The people in the header (D3): who is here, and the door to who has the game at all. */
+.byd-editor-here { display: flex; gap: 4px; align-items: center; margin-left: 8px; border: 0; border-radius: 20px; padding: 3px 8px 3px 3px; background: transparent; cursor: pointer; }
+.byd-editor-here:hover, .byd-editor-here[aria-expanded='true'] { background: #1b1d23; }
+.byd-editor-here i { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--who); color: #10131a; font: 800 11px system-ui; font-style: normal; }
+.byd-editor-here b { color: #9aa3b8; font: 600 11px system-ui; }
+/* Who has the game: the list hangs from the people it is about. */
+.byd-share { position: absolute; right: 16px; top: 46px; z-index: 20; width: 340px; max-height: 70vh; overflow: auto; padding: 16px; border-radius: 14px; background: #171a23; border: 1px solid #3b4358; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5); }
+.byd-share header { display: flex; align-items: center; gap: 10px; }
+.byd-share h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; }
+.byd-share header button { margin-left: auto; border: 0; background: transparent; color: #9aa3b8; font-size: 18px; padding: 0 4px; cursor: pointer; }
+.byd-share > p { margin: 8px 0 12px; color: #9aa3b8; font-size: 12px; line-height: 1.5; }
+.byd-share [role='alert'] { color: #f0b64a; }
+.byd-share ul { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 8px; }
+.byd-share li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 10px; background: #1b1f2a; }
+.byd-share li[data-here] { box-shadow: inset 3px 0 0 #7dd3a0; }
+.byd-share li i { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--who); color: #10131a; font: 800 11px system-ui; font-style: normal; }
+.byd-share li span { display: grid; min-width: 0; }
+.byd-share li b { color: #fff; font-size: 12px; overflow: hidden; text-overflow: ellipsis; }
+.byd-share li small { color: #9aa3b8; font-size: 11px; }
+.byd-share li button { margin-left: auto; border: 1px solid #2f333d; border-radius: 7px; padding: 3px 8px; background: #1b1d23; color: #9aa3b8; font: 11px system-ui; cursor: pointer; }
+.byd-share form { display: grid; grid-template-columns: 1fr auto auto; gap: 6px; }
+.byd-share form input, .byd-share form select { padding: 7px 9px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; font: 12px system-ui; min-width: 0; }
+.byd-share form button { border: 1px solid #3c8ce7; border-radius: 8px; padding: 7px 11px; background: #3c8ce7; color: #fff; font: 700 12px system-ui; cursor: pointer; }
+.byd-share form [role='status'] { grid-column: 1 / -1; margin: 4px 0 0; color: #7dd3a0; font-size: 12px; line-height: 1.5; }
 .byd-editor-notice { color: #f0b64a; }
 .byd-editor > header > button { border: 1px solid #2f333d; border-radius: 8px; padding: 8px 14px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
 .byd-editor > header > button:disabled { color: #5b6478; cursor: default; }

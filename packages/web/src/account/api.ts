@@ -1,6 +1,8 @@
 // The creator's account (G1, DRIFT §11) from the browser's side: a magic link by mail, a cookie
 // the browser keeps, and the projects that belong to the account. `http` is the server origin;
 // in development it is another port, so credentials are sent explicitly.
+import type { Role } from '@byd/server/doc'
+
 export class Unauthorized extends Error {
   constructor() {
     super('not logged in')
@@ -38,6 +40,37 @@ export async function myProjects(http: string): Promise<ProjectSummary[]> {
   if (res.status === 401) throw new Unauthorized()
   if (!res.ok) throw new Error(`could not list projects: ${res.status}`)
   return (await res.json()) as ProjectSummary[]
+}
+
+// Sharing a game (D3): who it is shared with, an invitation to an address, and taking it back.
+export type Member = { email: string; role: Role }
+export async function projectMembers(http: string, project: string): Promise<Member[]> {
+  const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/members`, withCredentials())
+  if (res.status === 401) throw new Unauthorized()
+  if (!res.ok) throw new Error(`kunde inte läsa vilka som har spelet: ${res.status}`)
+  return (await res.json()) as Member[]
+}
+
+export async function inviteToProject(http: string, project: string, email: string, role: Role): Promise<void> {
+  const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/invites`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, role }) }))
+  if (res.status === 401) throw new Unauthorized()
+  if (res.status === 403) throw new Error('bara ägaren kan dela spelet')
+  if (!res.ok) throw new Error(`kunde inte bjuda in: ${res.status}`)
+}
+
+export async function unshareProject(http: string, project: string, email: string): Promise<void> {
+  const res = await fetch(`${http}/projects/${encodeURIComponent(project)}/members/${encodeURIComponent(email)}`, withCredentials({ method: 'DELETE' }))
+  if (res.status === 401) throw new Unauthorized()
+  if (!res.ok) throw new Error(`kunde inte ta bort: ${res.status}`)
+}
+
+// Following an invitation: 'not-logged-in' asks for a login first, 'spent' means it is gone.
+export async function acceptInvite(http: string, token: string): Promise<{ project: string; role: Role } | 'not-logged-in' | 'spent'> {
+  const res = await fetch(`${http}/invites/${encodeURIComponent(token)}`, withCredentials({ method: 'POST' }))
+  if (res.status === 401) return 'not-logged-in'
+  if (res.status === 404) return 'spent'
+  if (!res.ok) throw new Error(`kunde inte gå med: ${res.status}`)
+  return (await res.json()) as { project: string; role: Role }
 }
 
 // Starting a table from the home page (G1): the same session the editor starts, so the code and

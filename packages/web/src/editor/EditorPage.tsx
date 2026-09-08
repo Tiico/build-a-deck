@@ -8,13 +8,13 @@ import { SetupEditor } from './SetupEditor.js'
 import { SymbolPanel } from './SymbolPanel.js'
 import { HistoryPanel } from './HistoryPanel.js'
 import { RulesPanel } from './RulesPanel.js'
+import { SharePanel, colourOf } from './SharePanel.js'
 import { tvUrl } from './tableLinks.js'
 import { useProjectClient } from './useProjectClient.js'
 import type { ProjectDoc } from '@byd/server'
 import { useTableClient } from '../table/useTableClient.js'
 import type { ProjectClient, Textures } from './ProjectClient.js'
 import { loginUrl } from '../account/api.js'
-import { hue } from '../table/hue.js'
 import './editor.css'
 
 // /editor?project=…&server=http://…
@@ -38,6 +38,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
   const [notice, setNotice] = useState<string | null>(null)
   // The history (B4) opens from the revision, which is where the version is already named.
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
   // An older version the table is held against (B4), fetched once when the comparison starts.
   const [compare, setCompare] = useState<{ rev: number; label?: string | undefined; doc: ProjectDoc } | null>(null)
   // A running table (L5) with what admits people to it (DRIFT §9): the code and the host key.
@@ -209,19 +210,16 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
           rev {client.rev}
         </button>
         <EditorTabs mode={mode} onSelect={setMode} />
-        {/* Who else has the project open (D3). Alone, there is nobody to name. */}
-        {client.here.length > 1 && (
-          <span className="byd-editor-here" data-here aria-label="Andra i spelet">
-            {client.here
-              .filter((p) => p.id !== client.who)
-              .map((p) => (
-                <i key={p.id} title={p.name} style={{ ['--who' as string]: colourOf(p.id) }}>
-                  {p.name.slice(0, 1).toUpperCase()}
-                  <b>{p.name}</b>
-                </i>
-              ))}
-          </span>
-        )}
+        {/* The people in the header are the door to who has the game at all (D3): who is here
+            now and who may be here is one question. */}
+        <button type="button" className="byd-editor-here" data-here aria-label="Vilka som har spelet" aria-expanded={shareOpen} onClick={() => setShareOpen((on) => !on)}>
+          {client.here.map((p) => (
+            <i key={p.id} title={p.name} style={{ ['--who' as string]: colourOf(p.name) }}>
+              {p.name.slice(0, 1).toUpperCase()}
+            </i>
+          ))}
+          {client.here.length > 1 && <b>{client.here.length} inne</b>}
+        </button>
         <span className="byd-editor-spacer" />
         {notice && <span role="status" className="byd-editor-notice">{notice}</span>}
         <button type="button" onClick={() => void save()} disabled={!client.dirty || saving}>
@@ -264,6 +262,12 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
           <HostSeats client={client} sessionId={table.id} hostKey={table.hostKey} ws={wsUrl} onNotice={setNotice} />
         </div>
       )}
+      {!client.mayEdit && (
+        <p className="byd-editor-readonly" role="status">
+          Du är {client.role === 'tester' ? 'testledare' : 'betraktare'} här: du kan {client.role === 'tester' ? 'starta bord och läsa spelet' : 'läsa spelet'}, men inte ändra det.
+        </p>
+      )}
+      {shareOpen && projectId && <SharePanel http={http} project={projectId} here={client.here} onClose={() => setShareOpen(false)} />}
       {historyOpen && (
         <HistoryPanel
           client={client}
@@ -313,7 +317,3 @@ function HostSeats({ client, sessionId, hostKey, ws, onNotice }: { client: Proje
     </span>
   )
 }
-
-// A colour per editor, from the connection's own id, so the same person keeps theirs while
-// they are here.
-const colourOf = (id: string): string => `hsl(${hue(id)} 55% 55%)`

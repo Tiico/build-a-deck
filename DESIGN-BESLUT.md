@@ -377,7 +377,13 @@ Sparandet är fortfarande det som gör en version (B4). Loggen bär svansen mell
 Editorn applicerar sin egen redigering direkt och skickar den; ekot säger bara att den landade. Det som skrevs innan socketen hann öppna skickas när den öppnar och läggs tillbaka ovanpå om aktören lämnar över sitt dokument.
 Att ta tillbaka en äldre version är en redigering som vilken annan och går samma väg.
 Huvudet visar vilka andra som har spelet öppet, med kontots adress som namn.
-Kvar: roller (ägare, medredigerare, testledare, betraktare) och att bjuda in någon — bara ägaren släpps in i dag. Och återuppkoppling: ett brutet socket lämnar editorn ensam med det den håller tills sidan öppnas igen.
+Roller och inbjudningar, byggt 2026-09-08:
+Behörigheter är en modell, inte ett fält: ägare, medredigerare, testledare, betraktare, och varje väg frågar vad rollen får göra i stället för att minnas reglerna.
+Ägaren delar spelet och tar bort det. En medredigerare ändrar det. En testledare startar bord och kör speltest utan att röra leken. En betraktare ser projektet ändras på tråden utan att kunna ändra det, och får veta det i huvudet i stället för att varje ändring avvisas.
+En inbjudan mejlas till en adress, lever en vecka och går att använda en gång. Den säger ingenting om spelet förrän den använts, så en vilsen länk berättar inget för en främling. Den som följer den medan hen är inloggad går med i den roll den nämner och landar i editorn.
+Ytan prototypades i tre former: en panel från editorns huvud, ett ark på spelets kort, och de som är inne som dörren. Valet blev det sista: vilka som är inne nu och vilka som får vara med är samma fråga, så en lista svarar på den, med de närvarande överst.
+Ett projekt från före konton tillhör fortfarande ingen och är öppet för alla, som det alltid varit.
+Kvar: återuppkoppling — ett brutet socket lämnar editorn ensam med det den håller tills sidan öppnas igen.
 
 ### D4. Teststrategi: deterministisk återspelning som ryggrad (fråga 28)
 

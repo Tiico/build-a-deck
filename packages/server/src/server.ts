@@ -463,7 +463,7 @@ async function attachEditor(opts: ServerOptions, req: IncomingMessage, ws: WebSo
     ws.close(4004, 'unknown project')
     return
   }
-  const editor = { id: randomUUID(), name, send, close: () => ws.close(4003, 'gone') }
+  const editor = { id: randomUUID(), name, role, send, close: () => ws.close(4003, 'gone') }
   const leave = actor.subscribe(editor)
   ws.on('close', leave)
   ws.on('message', (data) => {
