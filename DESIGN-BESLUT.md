@@ -900,6 +900,67 @@ Gamla loggrader parsar oförändrade; korpusen har en skriptad session med högf
 Synlighetsoraklet i motorns test känner den fjärde rätten: uppvänd överst i en hög.
 `peek`, `reveal` och `rotate` tar fortfarande bara id; att ge dem högformen är ett nytt beslut om det behövs.
 
+### K16. Att spela utan pekdon: adressen (prototypat och byggt 2026-09-08)
+
+Ett kort på bordet har en position, och en dragning säger ”lägg det där”.
+Ett tangentbord har ingen position.
+Det var hela frågan, och den var densamma i handen, på filten och i distansvyn — alltså fick den ett svar och inte tre.
+
+Före det här var pekaruteslutningen total och mätt, inte läst ur en issuetext.
+`/table` hade noll tabbstopp: en sökning efter fokuserbara element i hela vyn gav tom lista, och det enda Tab landade på var en överfull rullyta.
+`/play` och `/online` hade två var, ”Flagga” och ”Avsluta”.
+Radialmenyn öppnades bara av ett pekarhåll på 350 ms, så `flip`, `rotate`, `reveal`, `shuffle`, `split` och `movePile` hade ingen tangentväg alls, och handens tre gester — tryck, håll, dra upp — hade ingen motsvarighet, vilket betydde att `PlaySheet` aldrig kunde öppnas och att en tangentbordsanvändare inte kunde spela ett enda kort.
+`table.css`, `player.css` och `online.css` innehöll inte ordet `focus` en enda gång.
+Och ingenting som hände på bordet nådde en skärmläsare: `describeActivity` skrev redan meningen, men den nådde aldrig en live-region.
+
+Tre modeller prototypades mot varandra och kördes i webbläsaren: **A, zonlistan** — bordet är ett träd av namngivna platser och positionen finns inte; **B, kompassen** — kortet lyfts och stegas en kortbredd i taget över filten; **C, adressen** — allt på filten är en kontroll med ett namn, och Enter öppnar en panel med vad som kan göras och vart det kan flyttas.
+
+**Valet blev C.**
+
+A avråddes för att den inte är ärlig mot bordet.
+Ett bord utan positioner är inte det bord produkten har beslutat sig för: K2 säger fri placering utan rutnät och C1 säger att tillståndet är position, rotation och z-ordning.
+A gör tangentbordsanvändaren till en andra klass med ett annat bord, och den slipper ändå inte koordinater: `movePile` och `split` utan `to` kräver x och y i protokollet.
+Mätt i prototypen landade dessutom två kort som spelades till samma yta på exakt samma punkt och täckte varandra, eftersom `move` utan x och y låter kortet behålla sina gamla koordinater och ett handkort har 0,0.
+
+B kan säga varje punkt på bordet och är därför det enda svaret för ett spel som lägger ut en tablå, en rad eller ett rutnät.
+Den är för dyr som grundmodell: bordet är 1200 × 800 mm och ett steg är 63 mm, alltså nitton tryck för att korsa filten, och det är det vanliga draget och inte undantaget.
+På en telefon tvingar den dessutom fram en utfälld filt som huvudyta, vilket är en revidering av K10 och inte en implementationsdetalj.
+B är därför ett andra steg och inte grunden.
+
+C är byggd så här.
+Allt på filten — varje löst kort, varje högs topp och varje hög som helhet — är en kontroll med roll, namn och fokusmarkering, och hela filten är ett tabbstopp med piltangenterna inuti.
+Namnet är projektionens: ”Kung, kort i Spelyta, vridet. Enter öppnar handlingar.”, ”Draghög, hela högen, 9 kort.”
+Enter öppnar en panel med **Gör** — vänd, vrid, avslöja, titta, blanda, dela — och **Flytta till** — zonerna vid namn, högarna, händerna, ”Bordet” och varje löst kort som ”På Drake”, vilket är `stack` och bildar en hög (K1).
+Panelen är `Question.tsx`:s uppförande tillämpat på en lista i stället för ett svar (L9): den tar fokus så att den besvaras där den läses, den svarar på Escape, den lämnar tillbaka fokus till det som öppnade den, och den fångar ingenting — den som tabbar förbi lämnar den stående.
+Efter en flytt följer fokus kortet dit det landade, för det är dit blicken går; har kortet lämnat filten går fokus till det första stoppet som är kvar och aldrig till ingenting.
+
+Klienten räknar ut en koordinat, eftersom protokollet vill ha en och tangentbordet inte har någon: nästa lediga plats i en rad inne i zonen, relativt zonen (K2).
+Två kort som spelas med tangentbord landar därför aldrig på samma millimeter.
+Vokabuläret är orört: `move` med uträknad x/y, `stack`, `split`, `movePile`, `flip`, `rotate`, `shuffle`, `reveal`.
+Ingen protokollmigrering, inget nytt verb.
+
+**Det tangentbordet inte kan säga är en godtycklig punkt på filten, och panelen säger det själv.**
+Raden ”Fri placering — en punkt på filten” står där, avstängd, med ”kräver pekdon; med tangentbord finns bara platser med namn”.
+Det är ärligt och inte gratis: ett spel där avståndet mellan två kort betyder något — en tidslinje, ett spår, en karta som spelarna lägger — kan en tangentbordsanvändare inte bygga, bara approximera kort för kort genom att adressera dem mot varandra.
+Det är acceptabelt av tre skäl.
+Ingen av produktens beslutade ytor kräver i dag att en punkt kan sägas, eftersom zonerna är rektanglar med släpp-in och inte rutnät (K2).
+Alternativet var att låtsas — att låta ”lägg i zonen” se ut som fri placering — och en yta som låtsas kunna något den inte kan ljuger för den som står i den, precis som telefonen inte får låtsas rita en mall (L10).
+Och vägen ut är redan ritad: raden är ingången till B:s stegande den dag den behövs, och då blir den avstängda raden en påslagen rad utan att någonting annat i modellen ändras.
+
+Uppläsningen är D5:s egen indelning, med `describeActivity`:s meningar och inga nya formuleringar.
+Det jag själv gör sägs på en gång i den artiga regionen; det de andra gör samlas ihop och sägs på ett taktslag om 1,4 s, så att tre drag i samma andetag blir ”3 drag av de andra, senast: Ada blandade Draghög” i stället för tre avbrott; ett avvisat drag är svaret på något någon bad om och avbryter.
+Regionerna är `StatusLive`:s två, de som redan fanns sedan #7, och inte nya — en rutt som gjorde sina egna vore en andra uppläsare i samma rum.
+
+Följdkrav som är införda:
+`TableRenderer` fick attribut på de noder den redan ritar och ingen andra kodväg (K9); ett bord som bara visas — editorns miniatyrer i fliken Bord, setup-duken, observatörens vy — skickar ingen tangentbordslager och får därför noll tabbstopp, för en miniatyr ingen kan spela på är inte en kontroll.
+Roving tabindex är editorns `roving.ts` med en tredje orientering, `both`, eftersom filten är en lista i två dimensioner; ingen yta skrev en egen.
+Fokusmarkeringen är två band mot varandra, ett ljust och ett mörkt, eftersom en enda ljus ring försvinner mot ett blekt kortansikte — vilket är precis var ett handkort lägger den; `keyboard-contrast.test.ts` mäter båda mot filten, träet, TV:ns mörker, panelen och kortansiktets hela ramp.
+Dold information bevisas fortfarande på tråden och inte på skärmen (D4, B6): `keyboard-hidden.test.tsx` spelar in varje rå frame sidans egen socket tog emot och visar att namnen aldrig kom fram, och därför att kontrollen bara kan heta ”Dolt kort”.
+En hög erbjuds aldrig sig själv som destination, eftersom bordet svarar ”cannot split a pile onto itself” och en panel inte ska fråga om det.
+
+Byggt 2026-09-08 (#1, #2). Prototypen `packages/web/src/prototype/keyboard` togs bort när den hade svarat; dess resonemang står här.
+Fem frågor som prototypen väckte och som inte är besvarade står i avsnitt I.
+
 ---
 
 ## L. Editorn (grillad 2026-09-06)
@@ -1158,6 +1219,14 @@ Teknik:
 Aktivitetsflödet vid anslutning: löst 2026-09-07, snapshoten bär de senaste femtio raderna, se K9.
 Behörighetsroller i detalj: ägare, medredigerare, testledare, observatör.
 Tillgänglighet i verktyget självt, till skillnad från i de spel som skapas i det.
+
+Tangentbordet på bordet, kvar efter K16 (2026-09-08).
+Implementationen följer prototypens egna val på alla fem; de står här för att de är produktbeslut och inte kodval, och för att de annars försvinner.
+Utläggningsregeln för ett kort som flyttas till en yta: klienten lägger det på nästa lediga plats i en rad, uträknat ur zonens bredd. Det är prototypens gissning. K2 säger fri placering utan rutnät och säger ingenting om vad ”i zonen” betyder när ingen pekar, och ett riktigt svar ändrar hur filten ser ut också för pekaranvändare.
+`movePile` och `split` utan `to` kräver x och y i protokollet, och ett tangentbord har inga: klienten hittar på zonens eget hörn. Alternativen är en zonrelativ form av de två verben, vilket är en protokollmigrering och ett eget beslut, eller att hela högar förblir pekaruteslutande.
+Vem tangentbordet är på `/table`: bordsskärmen har ingen plats och agerar som ”Bordet”, så fokus är en enda markör på en skärm ett helt rum tittar på. Till skillnad från två pekare syns det inte att det är en kö. Kanske är svaret att tangentbordsvägen där bara är till för den som sitter vid skärmen.
+Om vi namnger mer än pekaren visar: ”Marknad: Skugga, Gruva, Spion” gör korträkning lättare än att läsa filten på tre meters håll. Det är samma information, och det är behandlat som tillåtet, men det är ett produktbeslut om playtestets naturlighet (C8 resonerar likadant om observatören).
+”Titta” loggas inte: ringens och panelens ”Titta” sätter bara lokalt tillstånd och skickar ingen `peek`, medan B6 säger att varje titt loggas som händelse. Avvikelsen fanns redan i pekarvägen; tangentbordet gör den synlig, eftersom verbet nu står i en lista med de andra. Ska ”Titta” bli `peek`, eller är B6:s ”titt” bara den som ger ny kunskap?
 
 Spelupplevelse, kvar efter avsnitt K: inga; de två sista avgjordes 2026-09-07, se K1 och K2.
 

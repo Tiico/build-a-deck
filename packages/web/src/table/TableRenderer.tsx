@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type MouseEvent as RMouseEvent, type ReactNode, type PointerEvent as RPointerEvent, type WheelEvent as RWheelEvent } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent as RKeyboardEvent, type MouseEvent as RMouseEvent, type ReactNode, type PointerEvent as RPointerEvent, type WheelEvent as RWheelEvent } from 'react'
 import { Texture } from './Texture.js'
 import type { Intent, Presence, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
 import type { Peer, Pulse, Recent } from './presence.js'
@@ -24,6 +24,26 @@ export type TableMode = 'table' | 'tv'
 // that changes; a scroll or a double tap zooms around the pointer and the view returns by itself.
 // `size` is the frame's size when the renderer should not measure it; `glideMs` the glide.
 export type TableHandle = { toTable(clientX: number, clientY: number): Point | null }
+// The keyboard's layer over the felt (#1, #2, variant C). It draws nothing: it puts a role, a
+// name, one tab stop and a focus ring on the nodes this renderer already draws, which is what
+// keeps K9 — one renderer, one way to draw a card. A table that is only shown passes none of
+// this and grows no tab stops: the editor's Bord tab renders thumbnails through this component,
+// and a thumbnail nobody can play is not a control.
+export type FeltItemProps = {
+  tabIndex: number
+  ref(el: HTMLElement | null): void
+  onKeyDown(event: RKeyboardEvent): void
+  onFocus(): void
+}
+export type FeltKeyboard = {
+  // Every node the keyboard may stand on, keyed `card:<id>`, `top:<zone>` or `pile:<zone>`,
+  // with the sentence that names it. Nodes this map does not mention stay pictures.
+  labels: ReadonlyMap<string, string>
+  // Which node the panel currently stands open on, if any.
+  open?: string | null | undefined
+  itemProps(key: string): FeltItemProps
+  onActivate(key: string): void
+}
 // The felt's own mapping from millimetres to pixels, for whatever is laid over it.
 export type FeltFit = { px(mm: number): number; left(mmX: number): number; top(mmY: number): number; scale: number }
 export type TableRendererProps = {
@@ -44,6 +64,7 @@ export type TableRendererProps = {
   glideMs?: number | undefined
   // What the editor lays over the felt (B5): zone handles, drawn last with the felt's mapping.
   overlay?: ((fit: FeltFit) => ReactNode) | undefined
+  keyboard?: FeltKeyboard | undefined
 }
 
 const HOLD_MS = 350
@@ -68,7 +89,7 @@ const GLIDE_MS = 700
 type Live = Drag & { started: boolean }
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], onPresence, camera = false, onInspect, size: fixedSize, glideMs = GLIDE_MS, overlay }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], onPresence, camera = false, onInspect, size: fixedSize, glideMs = GLIDE_MS, overlay, keyboard }, ref) {
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
   const frame = useRef<HTMLDivElement | null>(null)
@@ -234,6 +255,32 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const inspects = (c: VisibleComponentState | undefined) =>
     onInspect && c ? { onPointerEnter: () => onInspect(c), onPointerLeave: () => onInspect(null) } : undefined
 
+  // What the keyboard adds to a node this renderer already draws: the role and the name a
+  // reader hears, the one tab stop the roving list is holding, and Enter or Space to open the
+  // panel. A node the layer does not name keeps nothing.
+  const keys = (key: string) => {
+    const label = keyboard?.labels.get(key)
+    if (!keyboard || label === undefined) return undefined
+    const item = keyboard.itemProps(key)
+    return {
+      role: 'button',
+      'aria-label': label,
+      'data-kbd': key,
+      'data-kbd-state': keyboard.open === key ? 'open' : undefined,
+      tabIndex: item.tabIndex,
+      ref: item.ref,
+      onFocus: item.onFocus,
+      onKeyDown: (e: RKeyboardEvent) => {
+        if (e.key !== 'Enter' && e.key !== ' ') {
+          item.onKeyDown(e)
+          return
+        }
+        e.preventDefault()
+        keyboard.onActivate(key)
+      },
+    }
+  }
+
   // A zoom for a moment (C5): scroll or pinch around the pointer, double tap to go close and
   // again to come back. The camera returns by itself.
   const wheel = (e: RWheelEvent) => {
@@ -328,6 +375,8 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 topInspects={inspects(lifting ? topOf(z, 1) : topOf(z))}
                 topHandlers={onAct && count > 0 ? handlers({ kind: 'pileTop', pile: z.id }) : undefined}
                 labelHandlers={onAct ? handlers({ kind: 'pile', pile: z.id }) : undefined}
+                topKeys={keys(`top:${z.id}`)}
+                labelKeys={keys(`pile:${z.id}`)}
               />
             )
           })}
@@ -368,6 +417,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 faces={faces}
                 handlers={onAct ? handlers({ kind: 'card', id: c.id }) : undefined}
                 inspects={inspects(c)}
+                keys={keys(`card:${c.id}`)}
               />
             )
           })}
@@ -512,9 +562,20 @@ function ringItems(view: Snapshot, target: DragTarget, act: (intents: Intent[]) 
 }
 
 type Handlers = { onPointerDown(e: RPointerEvent): void; onPointerMove(e: RPointerEvent): void; onPointerUp(e: RPointerEvent): void; onPointerCancel(e: RPointerEvent): void }
+// What the keyboard layer hands a drawn node: a role, a name, a tab stop and its key handling.
+type FeltNodeProps = {
+  role: string
+  'aria-label': string
+  'data-kbd': string
+  'data-kbd-state': string | undefined
+  tabIndex: number
+  ref(el: HTMLElement | null): void
+  onFocus(): void
+  onKeyDown(e: RKeyboardEvent): void
+}
 type Pointing = { onPointerEnter(): void; onPointerLeave(): void }
 
-function Card({ c, left, top, px, dragging, carried, by, faces, handlers, inspects }: { c: VisibleComponentState; left: number; top: number; px: (mm: number) => number; dragging: boolean; carried?: boolean; by?: { seat: string | null; colour: string } | undefined; faces?: string | undefined; handlers?: Handlers | undefined; inspects?: Pointing | undefined }) {
+function Card({ c, left, top, px, dragging, carried, by, faces, handlers, inspects, keys }: { c: VisibleComponentState; left: number; top: number; px: (mm: number) => number; dragging: boolean; carried?: boolean; by?: { seat: string | null; colour: string } | undefined; faces?: string | undefined; handlers?: Handlers | undefined; inspects?: Pointing | undefined; keys?: FeltNodeProps | undefined }) {
   const face = c.cardRef === null ? 'back' : 'front'
   return (
     <div
@@ -526,6 +587,7 @@ function Card({ c, left, top, px, dragging, carried, by, faces, handlers, inspec
       data-by={by ? by.seat ?? 'table' : undefined}
       {...inspects}
       {...handlers}
+      {...keys}
       style={{
         position: 'absolute',
         left,
@@ -562,7 +624,7 @@ function topIdOf(z: ZoneView, skip = 0): string | undefined {
 
 // A pile is a point; the stack is centred on it. A hidden pile has a count and nothing else,
 // unless its top lies face-up.
-function Pile({ zone, count, topCard, faces, left, top, px, lifted, topHandlers, topInspects, labelHandlers }: { zone: ZoneView; count: number; topCard: VisibleComponentState | undefined; faces: string | undefined; left: number; top: number; px: (mm: number) => number; lifted: boolean; topHandlers?: Handlers | undefined; topInspects?: Pointing | undefined; labelHandlers?: Handlers | undefined }) {
+function Pile({ zone, count, topCard, faces, left, top, px, lifted, topHandlers, topInspects, labelHandlers, topKeys, labelKeys }: { zone: ZoneView; count: number; topCard: VisibleComponentState | undefined; faces: string | undefined; left: number; top: number; px: (mm: number) => number; lifted: boolean; topHandlers?: Handlers | undefined; topInspects?: Pointing | undefined; labelHandlers?: Handlers | undefined; topKeys?: FeltNodeProps | undefined; labelKeys?: FeltNodeProps | undefined }) {
   const layers = Math.min(Math.max(count, 0), 12)
   const thickness = Array.from({ length: layers }, (_, i) => `0 ${-i * 1.2}px 0 #1f2b4a`).join(', ')
   return (
@@ -579,12 +641,13 @@ function Pile({ zone, count, topCard, faces, left, top, px, lifted, topHandlers,
         data-face={topCard?.cardRef ? 'front' : 'back'}
         {...topInspects}
         {...topHandlers}
+        {...topKeys}
         style={{ boxShadow: thickness, transform: `translateY(${-(layers - 1) * 1.2}px)`, ...(topCard?.cardRef ? { ['--hue' as string]: hue(topCard.cardRef) } : {}) }}
       >
         <Texture faces={faces} c={topCard} />
         <span>{count > 0 ? topCard?.cardRef ?? '' : ''}</span>
       </div>
-      <span className="byd-pile-count" data-handle={labelHandlers ? 'true' : undefined} {...labelHandlers}>
+      <span className="byd-pile-count" data-handle={labelHandlers ? 'true' : undefined} {...labelHandlers} {...labelKeys}>
         <span className="byd-pile-name">{zone.dynamic ? 'hög' : zone.name}</span>
         <b className="byd-pile-n">{count}</b>
       </span>

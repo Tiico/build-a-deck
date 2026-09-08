@@ -11,9 +11,11 @@ import { chromium, type Browser } from 'playwright'
 import type { Snapshot, VisibleComponentState } from '@byd/protocol'
 import { TableRenderer, type TableMode } from '../src/table/TableRenderer.js'
 import { TvChrome } from '../src/table/TvChrome.js'
+import { ActionPanel } from '../src/table/ActionPanel.js'
+import { feltLabels, intentsForPlace, landedKeyFor, type Thing } from '../src/table/keyboard.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
-const SHEETS = ['src/table/table.css', 'src/table/texture.css']
+const SHEETS = ['src/table/table.css', 'src/table/texture.css', 'src/table/keyboard.css']
 
 const CARD = { id: 'card.standard.63x88', version: 1 }
 const card = (id: string, zone: string, x: number, y: number, cardRef: string | null): VisibleComponentState => ({ id, type: CARD, zone, face: cardRef === null ? 'back' : 'front', x, y, rot: 0, cardRef })
@@ -345,4 +347,62 @@ describe('the wood wraps the table it carries (K9, C5)', () => {
       expect({ rotate, over: outside(wood, [felt]).length }).toEqual({ rotate, over: 0 })
     }, 60_000)
   }
+})
+
+// ================================================================================================
+// The keyboard's own two gates (#1, #2): there has to be something to see where the focus is, and
+// the panel has to be pressable at a table's width. Before this, `table.css`, `player.css` and
+// `online.css` did not contain the word `focus` once.
+
+describe('the keyboard can be seen standing on the felt (#2)', () => {
+  it('draws a real ring around whichever card or pile has the focus', async () => {
+    const view = scene()
+    const labels = feltLabels(view)
+    const keyboard = {
+      labels,
+      itemProps: (key: string) => ({ tabIndex: key === 'card:m1' ? 0 : -1, ref: () => undefined, onKeyDown: () => undefined, onFocus: () => undefined }),
+      onActivate: () => undefined,
+    }
+    const html = markupOf(<TableRenderer view={view} mode="tv" scale={1} keyboard={keyboard} />)
+    const ring = await onPage(html, FRAME, async (page) => {
+      await page.evaluate(() => (document.querySelector('[data-kbd="card:m1"]') as HTMLElement).focus())
+      return await page.evaluate(() => {
+        const el = document.querySelector('[data-kbd="card:m1"]') as HTMLElement
+        const style = getComputedStyle(el)
+        return { focused: document.activeElement === el, width: parseFloat(style.outlineWidth), style: style.outlineStyle }
+      })
+    })
+    expect(ring.focused).toBe(true)
+    expect(ring.style).not.toBe('none')
+    expect(ring.width).toBeGreaterThanOrEqual(2)
+  }, 60_000)
+})
+
+describe('the address panel beside a table (#1, #2)', () => {
+  it('keeps every row pressable and never pushes the page sideways at 1280', async () => {
+    const view = scene()
+    const thing: Thing = { key: 'card:m1', kind: 'card', id: 'm1', name: 'Gruva', zone: 'market' }
+    const html = markupOf(
+      <ActionPanel
+        view={view}
+        thing={thing}
+        cards={[]}
+        onClose={() => undefined}
+        onRun={() => undefined}
+        onLook={() => undefined}
+        intentsFor={(place, moving) => intentsForPlace(view, place, thing, moving)}
+        landedKey={(place) => landedKeyFor(view, place, thing)}
+      />,
+    )
+    const measured = await onPage(html, { w: 1280, h: 720 }, (page) =>
+      page.evaluate(() => ({
+        small: [...document.querySelectorAll('button')]
+          .map((el) => ({ what: (el.textContent ?? '').slice(0, 20), box: el.getBoundingClientRect() }))
+          .filter(({ box }) => box.height < 44)
+          .map(({ what, box }) => `${what}: ${Math.round(box.width)}×${Math.round(box.height)}`),
+        sideways: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      })),
+    )
+    expect(measured).toEqual({ small: [], sideways: 0 })
+  }, 60_000)
 })

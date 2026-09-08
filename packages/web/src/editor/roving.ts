@@ -5,7 +5,9 @@ export type RovingOptions = {
   ids: string[]
   // What the surrounding view considers current; the single tab stop starts there.
   selected: string | null
-  orientation: 'horizontal' | 'vertical'
+  // `both` is a list laid out in two dimensions — the felt, where a card is above and beside
+  // its neighbours at once — and takes all four arrows into the same one order.
+  orientation: 'horizontal' | 'vertical' | 'both'
   // A list whose selection follows focus tells the outside world about every move; a list that
   // activates on purpose (a tablist over costly panels) leaves that to Enter, Space or a click.
   followFocus?: boolean
@@ -33,15 +35,19 @@ export function useRoving({ ids, selected, orientation, followFocus = false, onA
     if (focused !== selected) setFocused(selected)
   }
   const here = focused && ids.includes(focused) ? focused : selected && ids.includes(selected) ? selected : (ids[0] ?? null)
-  const back = orientation === 'horizontal' ? 'ArrowLeft' : 'ArrowUp'
-  const forward = orientation === 'horizontal' ? 'ArrowRight' : 'ArrowDown'
+  const back = orientation === 'horizontal' ? ['ArrowLeft'] : orientation === 'vertical' ? ['ArrowUp'] : ['ArrowUp', 'ArrowLeft']
+  const forward = orientation === 'horizontal' ? ['ArrowRight'] : orientation === 'vertical' ? ['ArrowDown'] : ['ArrowDown', 'ArrowRight']
 
   // Moving focus is the whole move: a list whose selection follows focus reports it from the
   // focus handler, so arriving by Tab, by arrow or by click all say the same thing.
-  const moveTo = (id: string | undefined) => {
-    if (!id) return
+  // Answers whether the item was actually there to be focused: a list that is waiting for the
+  // server to send a card's new home has to know when the node it is aiming at has arrived.
+  const moveTo = (id: string | undefined): boolean => {
+    if (!id) return false
+    const el = elements.current.get(id)
     setFocused(id)
-    elements.current.get(id)?.focus()
+    el?.focus()
+    return el !== undefined
   }
 
   // The list can change under the keyboard: a layer is removed, added or moved. Removing the
@@ -73,8 +79,8 @@ export function useRoving({ ids, selected, orientation, followFocus = false, onA
     onKeyDown: (event) => {
       const at = ids.indexOf(id)
       // The ends wrap: a list this short is quicker to leave through its own end than to walk back.
-      if (event.key === forward) moveTo(ids[(at + 1) % ids.length])
-      else if (event.key === back) moveTo(ids[(at - 1 + ids.length) % ids.length])
+      if (forward.includes(event.key)) moveTo(ids[(at + 1) % ids.length])
+      else if (back.includes(event.key)) moveTo(ids[(at - 1 + ids.length) % ids.length])
       else if (event.key === 'Home') moveTo(ids[0])
       else if (event.key === 'End') moveTo(ids[ids.length - 1])
       else return
@@ -82,5 +88,7 @@ export function useRoving({ ids, selected, orientation, followFocus = false, onA
     },
   })
 
-  return { itemProps }
+  // Where the tab stop stands now, and a way to put it somewhere on purpose: after a move the
+  // felt sends focus after the card, because that is where the eye goes too.
+  return { here, itemProps, focus: moveTo }
 }

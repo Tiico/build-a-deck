@@ -15,6 +15,8 @@ import { SessionButtons, SessionOverlays, useSessionVersion, useToast, refusedTe
 import { claimUrl } from '../account/api.js'
 import { HandFan } from './HandFan.js'
 import { seatRotation, withoutHand } from './seat.js'
+import { useFeltKeyboard } from '../table/useFeltKeyboard.js'
+import { useActivityLive } from '../table/useActivityLive.js'
 import { DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
 import { useLiveStatus } from '../status/useLiveStatus.js'
 import { RouteStatus } from '../status/RouteStatus.js'
@@ -50,6 +52,12 @@ export function OnlinePage({ timing = DEFAULT_TIMING }: OnlinePageProps = {}) {
   const [sheet, setSheet] = useState<'flag' | 'end' | null>(null)
   const [toast, setToast] = useToast()
   const version = useSessionVersion(http, sessionId, view?.ended === true)
+  // The felt and the fan, both as controls, both opening the same address panel (#1, #2).
+  const kbd = useFeltKeyboard(view, view !== null && !view.rewind && !view.ended && client !== null, {
+    act: (intents) => (client ? client.send(...intents) : Promise.resolve({ ok: false as const, reason: 'not connected' })),
+    faces: http,
+  })
+  useActivityLive(activity, view, seat)
 
   const seatFree = view?.seats.find((s) => s.id === seat)?.name === null
   useEffect(() => {
@@ -85,6 +93,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING }: OnlinePageProps = {}) {
         rotate={seatRotation(view, seat)}
         faces={http}
         onAct={playable ? onAct : undefined}
+        keyboard={kbd.keyboard}
         peers={Object.values(presence.peers)}
         pulses={presence.pulses}
         recent={recent}
@@ -98,7 +107,8 @@ export function OnlinePage({ timing = DEFAULT_TIMING }: OnlinePageProps = {}) {
       <div className="byd-online-tools">
         <SessionButtons client={client} view={view} onSheet={setSheet} />
       </div>
-      <HandFan cards={hand} faces={http} onPlay={play} />
+      <HandFan cards={hand} faces={http} onPlay={play} onOpen={(c) => kbd.openHand(c, [])} />
+      {kbd.panel}
       <SessionOverlays client={client} view={view} seat={seat} name={me?.name ?? seat} http={http} sessionId={sessionId} sheet={sheet} onSheet={setSheet} toast={toast} onToast={setToast} version={version} saveUrl={token ? claimUrl(token, params.get('server')) : null} />
       </div>
       <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />

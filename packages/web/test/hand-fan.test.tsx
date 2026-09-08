@@ -10,7 +10,7 @@ const opaque: VisibleComponentState = { ...base, id: 'c2', face: 'back', cardRef
 
 describe('a texture the online fan is still waiting for (#10)', () => {
   it('names the card the seat holds, and says nothing about one it may not see', () => {
-    render(<HandFan cards={[mine, opaque]} faces="http://faces.test" onPlay={() => undefined} />)
+    render(<HandFan cards={[mine, opaque]} faces="http://faces.test" onPlay={() => undefined} onOpen={() => undefined} />)
 
     expect(document.querySelector('[data-hand-card="c1"] [data-texture="pending"]')!.textContent).toContain('dragon')
     const hidden = document.querySelector('[data-hand-card="c2"] [data-texture="pending"]')!
@@ -23,7 +23,7 @@ describe('retrying a lost texture in the fan', () => {
   it('does not play the card the player only meant to reload', () => {
     vi.useFakeTimers()
     const onPlay = vi.fn()
-    render(<HandFan cards={[mine]} faces="http://faces.test" onPlay={onPlay} />)
+    render(<HandFan cards={[mine]} faces="http://faces.test" onPlay={onPlay} onOpen={() => undefined} />)
     const img = () => document.querySelector('img') as HTMLImageElement
     for (let i = 0; i <= 8; i++) {
       fireEvent.error(img())

@@ -7,7 +7,6 @@ import { OnlinePage } from './online/OnlinePage.js'
 import { NewProjectPage } from './wizard/NewProjectPage.js'
 import { HomePage } from './account/HomePage.js'
 import { LoginPage } from './account/LoginPage.js'
-import { KeyboardPrototype } from './prototype/keyboard/index.js'
 import { ClaimPage } from './account/ClaimPage.js'
 import { TextureFailures } from './table/TextureFailures.js'
 import { NotFoundPage } from './status/NotFoundPage.js'
@@ -31,7 +30,6 @@ export function App() {
 // Every screen that shows cards is under one live region for lost textures (#10); App is the
 // only place that is mounted exactly once whichever route is showing.
 function route() {
-  if (location.pathname.startsWith('/prototype/keyboard')) return <KeyboardPrototype />
   if (location.pathname === '/table') return <TablePage />
   if (location.pathname === '/play') return <PlayerPage />
   if (location.pathname === '/join') return <JoinPage />

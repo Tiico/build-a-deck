@@ -19,6 +19,8 @@ import { statusLinks } from '../status/links.js'
 import { noticeFor } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useRefusal } from '../status/Refusal.js'
+import { useFeltKeyboard } from '../table/useFeltKeyboard.js'
+import { useActivityLive } from '../table/useActivityLive.js'
 
 // /play?session=…&seat=A&name=Ada&token=…&server=ws://…
 // The `player` role: one seat, its hand and private zones, and the zone shortcuts to play to.
@@ -48,6 +50,13 @@ export function PlayerPage({ timing = DEFAULT_TIMING }: PlayerPageProps = {}) {
   const [refusedZone, setRefusedZone] = useState<string | null>(null)
   const [toast, setToast] = useToast()
   const version = useSessionVersion(faces, sessionId, view?.ended === true)
+  // The phone has no felt, so the keyboard here is the hand and the address panel it opens (#1).
+  const kbd = useFeltKeyboard(view, false, {
+    act: (intents) => (client ? client.send(...intents) : Promise.resolve({ ok: false as const, reason: 'not connected' })),
+    onPlayed: () => setSelected(new Set()),
+    faces,
+  })
+  useActivityLive(activity, view, seat)
 
   // Sit down on first contact: claim the seat with the name from the link, if it is still free.
   const seatFree = view?.seats.find((s) => s.id === seat)?.name === null
@@ -102,7 +111,7 @@ export function PlayerPage({ timing = DEFAULT_TIMING }: PlayerPageProps = {}) {
         onTake={(c) => void client.send({ v: 'move', component: c.id, to: `hand:${seat}` })}
         onPlay={setLifted}
       />
-      <HandStrip view={view} selected={selected} faces={faces} onTap={setInspect} onHold={toggle} onLift={setLifted} />
+      <HandStrip view={view} selected={selected} faces={faces} onTap={setInspect} onHold={toggle} onLift={setLifted} onOpen={(c) => kbd.openHand(c, [...selected])} />
       <p className="byd-hint">
         {selected.size > 0 ? `${selected.size} valda · dra upp för att spela` : 'tryck = titta · dra upp = spela · håll = välj flera'}
       </p>
@@ -129,6 +138,7 @@ export function PlayerPage({ timing = DEFAULT_TIMING }: PlayerPageProps = {}) {
           refusedZone={refusedZone}
         />
       )}
+      {kbd.panel}
       <SessionOverlays client={client} view={view} seat={seat} name={me?.name ?? seat} http={faces} sessionId={sessionId} sheet={sheet} onSheet={setSheet} toast={toast} onToast={setToast} version={version} saveUrl={token ? claimUrl(token, params.get('server')) : null} />
       </div>
       <RouteStatus status={live} over="sheet" links={links} onRetry={conn.retry} />

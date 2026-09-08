@@ -6,6 +6,8 @@ import { TvChrome } from './TvChrome.js'
 import { useTableClient } from './useTableClient.js'
 import { previewOf, whereTo, whoDecides } from './rewind.js'
 import { usePresence, useRecent } from './usePresence.js'
+import { useFeltKeyboard } from './useFeltKeyboard.js'
+import { useActivityLive } from './useActivityLive.js'
 import { DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
 import { useLiveStatus } from '../status/useLiveStatus.js'
 import { RouteStatus } from '../status/RouteStatus.js'
@@ -55,6 +57,12 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   const [inspecting, setInspecting] = useState<VisibleComponentState | null>(null)
   const presence = usePresence(client, view)
   const recent = useRecent(activity)
+  // The felt as controls (#2): the table screen plays as the table itself, so what it can reach
+  // is what a table may see.
+  const playable = view !== null && !view.rewind && !view.ended && client !== null
+  const felt = useFeltKeyboard(view, playable, { act: (intents) => (client ? client.send(...intents) : Promise.resolve({ ok: false, reason: 'not connected' })) })
+  // The table screen acts as the table itself, so a line with no seat on it is its own (K14).
+  useActivityLive(activity, view, null)
 
   const joinUrl = useMemo(() => {
     if (!roomCode) return undefined
@@ -82,6 +90,7 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
       mode={mode}
       faces={url.replace(/^ws/, 'http')}
       onAct={proposal || view.ended ? undefined : onAct}
+      keyboard={felt.keyboard}
       peers={Object.values(presence.peers)}
       pulses={presence.pulses}
       recent={recent}
@@ -140,6 +149,7 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
       ) : (
         table
       )}
+        {felt.panel}
         {ended}
       </div>
       <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />

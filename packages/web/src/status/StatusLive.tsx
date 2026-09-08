@@ -28,6 +28,13 @@ export function StatusLive({ children }: { children: ReactNode }) {
   )
 }
 
+// The channel itself, for what is not a notice: the table's own activity, said in the words
+// `describeActivity` already writes (#1, #2). Everything that speaks on a screen speaks through
+// these two regions — a route that made its own would be a second reader in the same room.
+export function useSay(): Say | null {
+  return useContext(Channel)
+}
+
 // Says a notice once, in the channel the model chose for it, and takes it back when the state
 // it belongs to is over.
 export function useAnnounce(notice: Notice | null): void {
