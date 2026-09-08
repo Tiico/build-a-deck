@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { CARD_STANDARD_63x88, TOKEN_COUNTER, type SetupDef } from '@byd/engine'
-import { Template, type Row } from '@byd/template'
+import { Template, type Names, type Row } from '@byd/template'
 import type { Deck } from './faces.js'
 
 // A project is what the editor edits: the template, the rows keyed by cardRef, the icon set and
@@ -38,12 +38,25 @@ export type ProjectRow = z.infer<typeof ProjectRow>
 // travels into the print hand-off, which is what the licences are for.
 export const ProjectCredit = z.object({ licence: z.string().min(1), by: z.string().min(1), source: z.string().optional() })
 export type ProjectCredit = z.infer<typeof ProjectCredit>
+// The rulebook (B7): part of the document, so it is versioned in the same history as the cards
+// (B4) and locked into a session at start like everything else. Its references are ids, never
+// names, so renaming a zone rewrites every rule that mentions it.
+const RuleBlock = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('heading'), id: z.string().min(1), level: z.union([z.literal(1), z.literal(2)]), text: z.string() }),
+  z.object({ kind: z.literal('text'), id: z.string().min(1), text: z.string() }),
+  z.object({ kind: z.literal('list'), id: z.string().min(1), items: z.array(z.string()), ordered: z.boolean().optional() }),
+  z.object({ kind: z.literal('setup'), id: z.string().min(1), caption: z.string().optional() }),
+])
+export const RuleDoc = z.object({ title: z.string(), blocks: z.array(RuleBlock) })
+export type RuleDoc = z.infer<typeof RuleDoc>
+
 export const ProjectDoc = z.object({
   name: z.string().min(1),
   template: Template,
   rows: z.array(ProjectRow),
   icons: z.record(z.string(), z.string()),
   credits: z.record(z.string(), ProjectCredit).optional(),
+  rules: RuleDoc.optional(),
   setup: ProjectSetup,
 })
 export type ProjectDoc = z.infer<typeof ProjectDoc>
@@ -152,6 +165,17 @@ export function setupFromProject(doc: ProjectDoc): SetupDef {
     ...(z.shortcut !== undefined ? { shortcut: z.shortcut } : {}),
   }))
   return { zones, seats: doc.setup.seats, floor: doc.setup.floor, components }
+}
+
+// What the rulebook's references stand for right now (B7): zones by the name the table shows,
+// cards by their title. A card without a title falls back to its id, so a reference is never
+// empty on the page.
+export function namesOfProject(doc: ProjectDoc): Names {
+  const zones: Record<string, string> = {}
+  for (const zone of doc.setup.zones) zones[zone.id] = zone.name
+  const cards: Record<string, string> = {}
+  for (const row of doc.rows) cards[row.id] = String(row.fields['title'] ?? '').trim() || row.id
+  return { zones, cards }
 }
 
 export function deckFromProject(doc: ProjectDoc): Deck {

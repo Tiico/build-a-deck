@@ -3,6 +3,7 @@ import WebSocket from 'ws'
 import { WireClient } from './client.js'
 import { start, twoSeatSetup, type Running } from './fixture.js'
 import { template } from './deck.js'
+import type { RuleDoc } from '../src/projects.js'
 
 let run: Running
 beforeEach(async () => {
@@ -503,5 +504,44 @@ describe('physical validation at the order (E5)', () => {
     const body = (await res.json()) as { warnings: { cardRef: string; code: string }[]; cards: unknown[] }
     expect(body.cards.length).toBeGreaterThan(0)
     expect(body.warnings.map((w) => w.code)).toContain('text-too-small')
+  })
+})
+
+describe('the rulebook in the project (B7)', () => {
+  const rules: RuleDoc = {
+    title: 'Skogens herrar',
+    blocks: [
+      { kind: 'heading', id: 'h1', level: 1, text: 'Så spelar ni' },
+      { kind: 'text', id: 't1', text: 'Dra ett kort ur [[zon:draw]] och lägg det i [[zon:discard]].' },
+      { kind: 'setup', id: 's1', caption: 'Bordet' },
+    ],
+  }
+
+  it('is part of the document, so it is versioned with the cards and nothing else is needed', async () => {
+    const created = await json('POST', '/projects', { id: 'p-rules', ...project(), rules })
+    expect(created.status).toBe(201)
+    const stored = await run.projects.load('p-rules')
+    expect(stored?.rules).toEqual(rules)
+
+    const changed = { ...project(), rules: { ...rules, blocks: [...rules.blocks, { kind: 'text', id: 't2', text: 'Spelet slutar när [[zon:draw]] är tom.' }] } }
+    expect((await json('PUT', '/projects/p-rules', { rev: 1, ...changed })).status).toBe(200)
+    // The older version keeps the rules it had.
+    expect((await run.projects.at('p-rules', 1))?.rules?.blocks).toHaveLength(3)
+    expect((await run.projects.at('p-rules', 2))?.rules?.blocks).toHaveLength(4)
+  })
+
+  it('refuses a rulebook the model does not allow', async () => {
+    const bad = { ...project(), rules: { title: 'X', blocks: [{ kind: 'kapitel', id: 'k', text: 'nej' }] } }
+    expect((await json('POST', '/projects', { id: 'p-bad', ...bad })).status).toBe(400)
+  })
+
+  it('says what the rules\' references stand for right now, from the project itself', async () => {
+    const { namesOfProject } = await import('../src/projects.js')
+    const doc = { ...project(), rules }
+    const names = namesOfProject(doc)
+    expect(names.zones['discard']).toBe('Kasthög')
+    expect(names.cards['dragon']).toBe('Drake')
+    // A card with no title falls back to its id, so a reference is never empty.
+    expect(namesOfProject({ ...doc, rows: [{ id: 'namnlöst', fields: {} }] }).cards['namnlöst']).toBe('namnlöst')
   })
 })
