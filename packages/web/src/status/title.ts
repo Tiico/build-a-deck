@@ -4,13 +4,14 @@ import type { StatusKey } from './notice.js'
 // a place too, and a tab that says nothing is a tab nobody can find their way back to.
 export const APP = 'build-your-deck'
 
-export const ROUTES = ['home', 'login', 'new', 'editor', 'table', 'join', 'play', 'online', 'observe', 'prototype', 'unknown'] as const
+export const ROUTES = ['home', 'login', 'new', 'claim', 'editor', 'table', 'join', 'play', 'online', 'observe', 'prototype', 'unknown'] as const
 export type Route = (typeof ROUTES)[number]
 
 const PATHS: Record<string, Route> = {
   '/': 'home',
   '/login': 'login',
   '/new': 'new',
+  '/claim': 'claim',
   '/editor': 'editor',
   '/table': 'table',
   '/join': 'join',
@@ -43,6 +44,8 @@ function nameOf(route: Route, ctx: TitleContext): string[] {
       return ['Logga in']
     case 'new':
       return ['Nytt spel']
+    case 'claim':
+      return ['Spara bordet']
     case 'editor':
       return [ctx.game ?? null, 'Editor'].filter((s): s is string => s !== null)
     case 'table':

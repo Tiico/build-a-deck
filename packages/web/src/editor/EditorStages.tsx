@@ -6,7 +6,7 @@ import type { Room } from '../room.js'
 // Below the desk the editor is a flat list of named stages, one at a time (L10, prototype C).
 // The four panels of the template mode become four stages beside the three modes, so there is one
 // tablist and never a tablist inside a tablist.
-export type Stage = 'wall' | 'tools' | 'layers' | 'canvas' | 'props' | 'table' | 'tables'
+export type Stage = 'wall' | 'tools' | 'layers' | 'canvas' | 'props' | 'table' | 'symbols' | 'rules' | 'tables'
 
 // The stages of the template mode — the ones that are not offered at all on a phone.
 export type CanvasStage = 'tools' | 'layers' | 'canvas' | 'props'
@@ -14,11 +14,14 @@ export const CANVAS_STAGES: readonly CanvasStage[] = ['tools', 'layers', 'canvas
 export const isCanvasStage = (stage: Stage): stage is CanvasStage => (CANVAS_STAGES as readonly string[]).includes(stage)
 
 export const STAGES: Record<Exclude<Room, 'desk'>, readonly (readonly [Stage, string])[]> = {
-  // A phone gets the deck, the data and the tables. Laying a card out needs a wider screen, and
-  // the editor says that where the stages are rather than leaving a gap in the list.
+  // A phone gets the deck, the data, the library, the rulebook and the tables. Only laying a
+  // card out needs a wider screen, and the editor says that where the stages are rather than
+  // leaving a gap in the list.
   phone: [
     ['wall', 'Kortvägg'],
     ['table', 'Tabell'],
+    ['symbols', 'Symboler'],
+    ['rules', 'Regler'],
     ['tables', 'Bord'],
   ],
   tablet: [
@@ -28,6 +31,8 @@ export const STAGES: Record<Exclude<Room, 'desk'>, readonly (readonly [Stage, st
     ['canvas', 'Duk'],
     ['props', 'Egenskaper'],
     ['table', 'Tabell'],
+    ['symbols', 'Symboler'],
+    ['rules', 'Regler'],
     ['tables', 'Bord'],
   ],
 }

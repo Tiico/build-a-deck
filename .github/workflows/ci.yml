@@ -62,9 +62,14 @@ jobs:
       matrix:
         include:
           - name: app
+            context: .
             dockerfile: Dockerfile
           - name: render
+            context: .
             dockerfile: Dockerfile.render
+          - name: postgres
+            context: ops
+            dockerfile: ops/Dockerfile.postgres
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
@@ -80,7 +85,7 @@ jobs:
           echo "image_repo=$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
       - uses: docker/build-push-action@v7
         with:
-          context: .
+          context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
           # The box is amd64 (DRIFT); add linux/arm64 here the day it is not.
           platforms: linux/amd64

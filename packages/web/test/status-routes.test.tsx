@@ -12,7 +12,7 @@ import { PlayerPage } from '../src/player/PlayerPage.js'
 import { JoinPage } from '../src/join/JoinPage.js'
 import { OnlinePage } from '../src/online/OnlinePage.js'
 import { ObserverPage } from '../src/observer/ObserverPage.js'
-import { createSession, startServer, type Running } from './fixture.js'
+import { admit, asTable, createSession, roomOf, startServer, type Running } from './fixture.js'
 import type { Route } from '../src/status/title.js'
 
 let run: Running
@@ -56,13 +56,28 @@ const LIVE: Live[] = [
   { path: '/observe', route: 'observe', page: (timing) => <ObserverPage timing={timing} />, seated: false },
 ]
 
-function open(live: Live, opts: { session: string; url?: string; timing?: StatusTiming }) {
-  const q = new URLSearchParams({ session: opts.session, server: opts.url ?? run.url })
-  if (live.seated) {
-    q.set('seat', 'A')
-    q.set('name', 'Ada')
+// Admission (DRIFT §9) is part of opening a route now: the table with the host key, a seat or an
+// observer with a token bought from the code, and /join with the code itself. `real` says whether
+// there is a room to be admitted to — a room that does not exist has no key to hand out.
+async function open(live: Live, opts: { session: string; url?: string; timing?: StatusTiming; real?: boolean }) {
+  const q = new URLSearchParams({ server: opts.url ?? run.url })
+  const room = opts.real ? roomOf(opts.session) : null
+  if (live.route === 'join') {
+    q.set('code', room?.code ?? 'NOSUCH')
+  } else {
+    q.set('session', opts.session)
+    if (live.seated) {
+      q.set('seat', 'A')
+      q.set('name', 'Ada')
+    }
+    if (live.route === 'observe') q.set('name', 'Eva')
+    if (room) {
+      // The code travels with everyone the join page lets in, and is what names the room.
+      q.set('code', room.code)
+      if (live.route === 'table') q.set('host', room.hostKey)
+      else q.set('token', await admit(run, opts.session, live.seated ? 'A' : null, live.seated ? 'Ada' : 'Eva'))
+    }
   }
-  if (live.route === 'observe') q.set('name', 'Eva')
   history.replaceState(null, '', `${live.path}?${q.toString()}`)
   return render(
     <DocumentTitle route={live.route}>
@@ -76,7 +91,7 @@ const noticeState = () => notice()?.getAttribute('data-status-notice') ?? null
 
 describe.each(LIVE)('$path when the room does not exist', (live) => {
   it('says so in Swedish, never in the server s own words', async () => {
-    open(live, { session: 'no-such-room' })
+    await open(live, { session: 'no-such-room' })
     await waitFor(() => expect(noticeState()).toBe('missing'))
     const said = notice()!.textContent ?? ''
     expect(said).toMatch(/rummet/i)
@@ -84,7 +99,7 @@ describe.each(LIVE)('$path when the room does not exist', (live) => {
   })
 
   it('offers a way out that is a link and not a reload', async () => {
-    open(live, { session: 'no-such-room' })
+    await open(live, { session: 'no-such-room' })
     await waitFor(() => expect(noticeState()).toBe('missing'))
     const out = within(notice() as HTMLElement).getAllByRole('link')
     expect(out.length).toBeGreaterThan(0)
@@ -92,12 +107,12 @@ describe.each(LIVE)('$path when the room does not exist', (live) => {
   })
 
   it('says it in the tab as well, so a screen nobody is watching is honest', async () => {
-    open(live, { session: 'no-such-room' })
+    await open(live, { session: 'no-such-room' })
     await waitFor(() => expect(document.title).toBe('Rummet finns inte · build-your-deck'))
   })
 
   it('announces it assertively, because it is an answer to something someone asked for', async () => {
-    open(live, { session: 'no-such-room' })
+    await open(live, { session: 'no-such-room' })
     await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toMatch(/rummet/i))
     expect(document.querySelector('[data-status-live="polite"]')!.textContent).toBe('')
   })
@@ -106,7 +121,7 @@ describe.each(LIVE)('$path when the room does not exist', (live) => {
 describe.each(LIVE)('$path while the service does not answer at all', (live) => {
   it('stops waiting, explains why, and offers a retry and a way home', async () => {
     const deaf = await deafServer()
-    open(live, { session: 's1', url: deaf.url })
+    await open(live, { session: 's1', url: deaf.url })
     await waitFor(() => expect(noticeState()).toBe('offline'), { timeout: 4000 })
     const panel = notice() as HTMLElement
     expect(panel.textContent).toMatch(/når inte|kontakt/i)
@@ -118,7 +133,7 @@ describe.each(LIVE)('$path while the service does not answer at all', (live) => 
 
   it('says it is taking long before it says it has failed, so waiting is never silent', async () => {
     const deaf = await deafServer()
-    open(live, { session: 's1', url: deaf.url })
+    await open(live, { session: 's1', url: deaf.url })
     await waitFor(() => expect(noticeState()).toBe('slow'))
     await deaf.stop()
   })
@@ -126,8 +141,8 @@ describe.each(LIVE)('$path while the service does not answer at all', (live) => 
 
 describe.each(LIVE)('$path when the line dies mid-game', (live) => {
   it('lays the message over what is on the screen instead of tearing it down', async () => {
-    const id = await createSession(run.store)
-    open(live, { session: id })
+    const id = await createSession(run)
+    await open(live, { session: id, real: true })
     await waitFor(() => expect(noticeState()).toBeNull())
     const before = document.querySelector('[data-page]')!.innerHTML.length
 
@@ -137,8 +152,8 @@ describe.each(LIVE)('$path when the line dies mid-game', (live) => {
   })
 
   it('marks the old picture as old and takes it out of reach', async () => {
-    const id = await createSession(run.store)
-    open(live, { session: id })
+    const id = await createSession(run)
+    await open(live, { session: id, real: true })
     await waitFor(() => expect(noticeState()).toBeNull())
     await run.stop()
     await waitFor(() => expect(noticeState()).toBe('dropped'))
@@ -150,8 +165,8 @@ describe.each(LIVE)('$path when the line dies mid-game', (live) => {
   })
 
   it('says the line is down assertively, because the screen has stopped being true', async () => {
-    const id = await createSession(run.store)
-    open(live, { session: id })
+    const id = await createSession(run)
+    await open(live, { session: id, real: true })
     await waitFor(() => expect(noticeState()).toBeNull())
     await run.stop()
     await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toMatch(/kontakt|frånkopplad|bröts/i))
@@ -162,8 +177,8 @@ describe.each(LIVE)('$path when the line dies mid-game', (live) => {
 // a screen that keeps blinking for reasons nobody is told (#7).
 describe('the wait for the next automatic attempt', () => {
   it('is counted down in seconds, and stops counting once the plan is spent', async () => {
-    const id = await createSession(run.store)
-    open(LIVE[0]!, { session: id, timing: { ...FAST, retryPlanMs: [1_500] } })
+    const id = await createSession(run)
+    await open(LIVE[0]!, { session: id, timing: { ...FAST, retryPlanMs: [1_500] }, real: true })
     await waitFor(() => expect(noticeState()).toBeNull())
     await run.stop()
 
@@ -178,8 +193,8 @@ describe('the wait for the next automatic attempt', () => {
 
 describe.each(LIVE)('$path when the line comes back', (live) => {
   it('restores the snapshot and says so, once', async () => {
-    const id = await createSession(run.store)
-    open(live, { session: id, timing: SLOWER })
+    const id = await createSession(run)
+    await open(live, { session: id, timing: SLOWER, real: true })
     await waitFor(() => expect(noticeState()).toBeNull())
     await run.restart()
     await waitFor(() => expect(noticeState()).toBe('dropped'))
@@ -191,8 +206,8 @@ describe.each(LIVE)('$path when the line comes back', (live) => {
   })
 
   it('writes nothing to the log twice on the way back', async () => {
-    const id = await createSession(run.store)
-    open(live, { session: id, timing: SLOWER })
+    const id = await createSession(run)
+    await open(live, { session: id, timing: SLOWER, real: true })
     await waitFor(() => expect(noticeState()).toBeNull())
     await run.restart()
     await waitFor(() => expect(noticeState()).toBe('resumed'), { timeout: 4000 })
@@ -205,20 +220,21 @@ describe.each(LIVE)('$path when the line comes back', (live) => {
 
 describe('a room that is up says which room it is in the tab', () => {
   it.each(LIVE)('$path', async (live) => {
-    const id = await createSession(run.store)
-    open(live, { session: id })
+    const id = await createSession(run)
+    await open(live, { session: id, real: true })
     await waitFor(() => expect(noticeState()).toBeNull())
-    await waitFor(() => expect(document.title).toContain(id))
+    // The room code is what a room is called out loud (DRIFT §9), so it is what the tab says.
+    await waitFor(() => expect(document.title).toContain(roomOf(id).code))
     expect(document.title.endsWith('· build-your-deck')).toBe(true)
   })
 })
 
 describe('a table that is up is not covered by anything', () => {
   it('shows no message at all while everything is working', async () => {
-    const id = await createSession(run.store)
-    const other = TableClient.connect({ url: run.url, sessionId: id, seat: null })
+    const id = await createSession(run)
+    const other = TableClient.connect(await asTable(run, id))
     await other.ready()
-    open(LIVE[0]!, { session: id })
+    await open(LIVE[0]!, { session: id, real: true })
     await waitFor(() => expect(document.querySelector('[data-table]')).toBeTruthy())
     expect(noticeState()).toBeNull()
     expect(screen.queryByRole('heading', { name: /kontakt|finns inte/i })).toBeNull()

@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import WebSocket from 'ws'
 import { WireClient } from './client.js'
 import { start, twoSeatSetup, type Running } from './fixture.js'
 import { template } from './deck.js'
+import type { RuleDoc } from '../src/projects.js'
 
 let run: Running
 beforeEach(async () => {
@@ -60,12 +62,12 @@ describe('projects (L4, L5)', () => {
   })
 
   it('starts a table from a project: antal becomes copies in the deck zone, and textures are queued', async () => {
-    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string; hostKey: string }
     const started = await json('POST', `/projects/${id}/sessions`, {})
     expect(started.status).toBe(201)
-    const { id: sessionId } = (await started.json()) as { id: string }
+    const { id: sessionId, hostKey } = (await started.json()) as { id: string; hostKey: string }
 
-    const table = await WireClient.connect(run.base, sessionId, null)
+    const table = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
     expect(table.view?.zones.find((z) => z.id === 'draw')).toMatchObject({ mode: 'count', count: 5 })
     await table.send(null, { v: 'draw', from: 'draw', to: 'table', count: 5 })
     await table.synced(1)
@@ -84,6 +86,8 @@ describe('projects (L4, L5)', () => {
 
 describe('cross-origin (the editor is served from another origin in development)', () => {
   it('answers preflights, echoes the origin so the cookie may ride along, and stays open without one', async () => {
+    await run.stop()
+    run = await start({ appOrigin: 'http://localhost:5173' })
     const preflight = await fetch(`${run.http}/projects/x`, { method: 'OPTIONS', headers: { origin: 'http://localhost:5173', 'access-control-request-method': 'PUT' } })
     expect(preflight.status).toBe(204)
     expect(preflight.headers.get('access-control-allow-origin')).toBe('http://localhost:5173')
@@ -97,9 +101,9 @@ describe('cross-origin (the editor is served from another origin in development)
 
 describe('refreshing a running table from its project (C7, L5)', () => {
   it('applies the project\'s current rev as version.change: new copies in the deck, textures queued, cards on the table untouched', async () => {
-    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
-    const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
-    const table = await WireClient.connect(run.base, sessionId, null)
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string; hostKey: string }
+    const { id: sessionId, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
+    const table = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
     await table.send(null, { v: 'draw', from: 'draw', to: 'table', count: 1 })
     await table.synced(1)
     const onTable = table.view!.components[0]!.id
@@ -140,8 +144,8 @@ describe('refreshing a running table from its project (C7, L5)', () => {
 
 describe('texture readiness (L5)', () => {
   it('reports how many of a table\'s textures are rendered, so the editor can wait before opening it', async () => {
-    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
-    const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string; hostKey: string }
+    const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
     const before = await (await fetch(`${run.http}/sessions/${sessionId}/textures`)).json()
     // Three cards, two faces each: the back is one shared texture, the fronts are three.
     expect(before).toEqual({ total: 4, done: 0, failed: [] })
@@ -154,10 +158,10 @@ describe('texture readiness (L5)', () => {
 
 describe('a version change is atomic for the players (L5)', () => {
   it('prepare queues the next rev\'s textures without touching the table; refresh after that swaps everything at once', async () => {
-    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
-    const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string; hostKey: string }
+    const { id: sessionId, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
     await run.renderAll()
-    const table = await WireClient.connect(run.base, sessionId, null)
+    const table = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
     await table.send(null, { v: 'draw', from: 'draw', to: 'table', count: 1 }, { v: 'flip', component: 'c0', face: 'front' })
     await table.synced(2)
     const before = table.view!.components[0]!.faces!['front']
@@ -184,12 +188,12 @@ describe('a version change is atomic for the players (L5)', () => {
 
 describe('the survey after a session (G3)', () => {
   it('accepts one structured answer per participant once the session has ended, tied to its version, and lists them', async () => {
-    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
-    const { id: sessionId, version } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; version: string }
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string; hostKey: string }
+    const { id: sessionId, version, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; version: string; hostKey: string }
     const answer = { who: 'Ada', seat: 'A', answers: { fun: 4, clarity: 3, balance: 2, change: 'Draken är för stark' } }
     expect((await json('POST', `/sessions/${sessionId}/survey`, answer)).status).toBe(409)
 
-    const table = await WireClient.connect(run.base, sessionId, null)
+    const table = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
     await table.send(null, { v: 'session.end' })
     await table.close()
     expect((await json('POST', `/sessions/${sessionId}/survey`, answer)).status).toBe(201)
@@ -201,10 +205,10 @@ describe('the survey after a session (G3)', () => {
 
 describe('a session record (C9)', () => {
   it('GET /sessions/:id says which version it runs and whether it has ended', async () => {
-    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
-    const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string; hostKey: string }
+    const { id: sessionId, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
     expect(await (await fetch(`${run.http}/sessions/${sessionId}`)).json()).toEqual({ id: sessionId, version: 'rev-1', ended: false, project: id, name: 'Skogens herrar' })
-    const table = await WireClient.connect(run.base, sessionId, null)
+    const table = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
     await table.send(null, { v: 'session.end' })
     await table.close()
     expect(await (await fetch(`${run.http}/sessions/${sessionId}`)).json()).toMatchObject({ ended: true })
@@ -214,9 +218,9 @@ describe('a session record (C9)', () => {
 
 describe('exporting a session for the replay corpus (DRIFT §7)', () => {
   it('GET /sessions/:id/export hands over version, setup and the whole log, outcomes included, never the deck', async () => {
-    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
-    const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
-    const table = await WireClient.connect(run.base, sessionId, null)
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string; hostKey: string }
+    const { id: sessionId, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
+    const table = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
     await table.send(null, { v: 'shuffle', pile: 'draw' })
     await table.close()
     const exported = (await (await fetch(`${run.http}/sessions/${sessionId}/export`)).json()) as { version: string; setup: unknown; log: { outcome?: unknown }[]; deck?: unknown }
@@ -263,10 +267,10 @@ describe('a texture that failed for good (#10)', () => {
 describe('the tables a project has (#19)', () => {
   it('lists them newest first, each with the version it runs, whether it has ended and when it last moved', async () => {
     const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
-    const older = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
-    const newer = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
+    const older = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
+    const newer = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
 
-    const table = await WireClient.connect(run.base, older.id, null)
+    const table = await WireClient.connect(run.base, older.id, null, undefined, { host: older.hostKey })
     await table.send(null, { v: 'draw', from: 'draw', to: 'table', count: 1 })
     await table.synced(1)
     await table.close()
@@ -282,11 +286,11 @@ describe('the tables a project has (#19)', () => {
 
   it('says which version a refreshed table runs and which table has ended, and shows nothing of another account\'s game', async () => {
     const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
-    const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
+    const { id: sessionId, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
     expect((await json('PUT', `/projects/${id}`, { ...project(), name: 'Skogens herrar v2', rev: 1 })).status).toBe(200)
     expect((await json('POST', `/sessions/${sessionId}/refresh`, {})).status).toBe(200)
 
-    const table = await WireClient.connect(run.base, sessionId, null)
+    const table = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
     await table.send(null, { v: 'session.end' })
     await table.close()
 
@@ -295,6 +299,46 @@ describe('the tables a project has (#19)', () => {
 
     const stranger = await fetch(`${run.http}/projects/${id}/sessions`)
     expect(stranger.status).toBe(401)
+  })
+
+  it('admits the signed-in project owner as table, player or observer without exposing the host key', async () => {
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
+    const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
+    for (const query of ['owner=1', 'seat=A&owner=1', 'role=observer&name=Designern&owner=1']) {
+      const ws = new WebSocket(`${run.base}/sessions/${sessionId}?${query}`, { headers: { cookie, origin: 'http://test.local' } })
+      const message = await new Promise<unknown>((resolve, reject) => {
+        ws.once('message', (raw) => resolve(JSON.parse(raw.toString())))
+        ws.once('error', reject)
+      })
+      expect(message).toMatchObject({ t: 'snapshot' })
+      ws.close()
+    }
+
+    const stranger = new WebSocket(`${run.base}/sessions/${sessionId}?owner=1`, { headers: { cookie: 'byd_session=nope', origin: 'http://test.local' } })
+    const refused = await new Promise<unknown>((resolve, reject) => {
+      stranger.once('message', (raw) => resolve(JSON.parse(raw.toString())))
+      stranger.once('error', reject)
+    })
+    expect(refused).toEqual({ t: 'refused', reason: 'the table needs the host key or its owner' })
+    stranger.close()
+
+    for (const query of [`seat=Q&owner=1`, `role=observer&name=${'x'.repeat(65)}&owner=1`]) {
+      const invalid = new WebSocket(`${run.base}/sessions/${sessionId}?${query}`, { headers: { cookie, origin: 'http://test.local' } })
+      const message = await new Promise<unknown>((resolve, reject) => {
+        invalid.once('message', (raw) => resolve(JSON.parse(raw.toString())))
+        invalid.once('error', reject)
+      })
+      expect(message).toMatchObject({ t: 'refused' })
+      invalid.close()
+    }
+
+    const foreign = new WebSocket(`${run.base}/sessions/${sessionId}?owner=1`, { headers: { cookie, origin: 'https://foreign.example' } })
+    const blocked = await new Promise<unknown>((resolve, reject) => {
+      foreign.once('message', (raw) => resolve(JSON.parse(raw.toString())))
+      foreign.once('error', reject)
+    })
+    expect(blocked).toEqual({ t: 'refused', reason: 'the table needs the host key or its owner' })
+    foreign.close()
   })
 })
 
@@ -313,12 +357,12 @@ describe('a group rules what a card looks like on the table (#13)', () => {
           front: {
             ...front,
             variantBy: 'typ',
-            variants: { fälla: { override: [{ kind: 'shape', id: 'frame', x: 1, y: 1, w: 61, h: 86, shape: 'rect', fill: '#2b1d1f', stroke: '#c0392b', strokeMm: 1, radiusMm: 3 }] } },
+            variants: { fälla: { override: [{ kind: 'shape', id: 'paper', x: -3, y: -3, w: 69, h: 94, shape: 'rect', fill: '#2b1d1f' }, { kind: 'shape', id: 'frame', x: 3, y: 3, w: 57, h: 82, shape: 'rect', stroke: '#c0392b', strokeMm: 1, radiusMm: 3 }, { kind: 'text', id: 'title', x: 5, y: 5, w: 53, h: 10, bind: { field: 'title' }, font: { family: 'sans-serif', sizePt: 14, weight: 700 }, color: '#f4ead8' }] } },
           },
           back: {
             ...back,
             variantBy: 'typ',
-            variants: { fälla: { override: [{ kind: 'shape', id: 'bg', x: 0, y: 0, w: 63, h: 88, shape: 'rect', fill: '#3a1c1c' }] } },
+            variants: { fälla: { override: [{ kind: 'shape', id: 'bg', x: -3, y: -3, w: 69, h: 94, shape: 'rect', fill: '#3a1c1c' }] } },
           },
         },
       },
@@ -331,8 +375,8 @@ describe('a group rules what a card looks like on the table (#13)', () => {
 
   it('renders a different texture for each group, on the front and on the back', async () => {
     const { id } = (await (await json('POST', '/projects', groupedProject())).json()) as { id: string }
-    const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
-    const table = await WireClient.connect(run.base, sessionId, null)
+    const { id: sessionId, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
+    const table = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
     await table.send(null, { v: 'draw', from: 'draw', to: 'table', count: 2 }, { v: 'flip', component: 'c0', face: 'front' }, { v: 'flip', component: 'c1', face: 'front' })
     await table.synced(3)
 
@@ -360,4 +404,144 @@ describe('a group rules what a card looks like on the table (#13)', () => {
     expect(Buffer.from(trapFront!).equals(Buffer.from(baseFront!))).toBe(false)
     expect(Buffer.from(trapBack!).equals(Buffer.from(baseBack!))).toBe(false)
   }, 90_000)
+
+  it('sends a hidden card only its group back, without its row or front hash in the frame', async () => {
+    const { id } = (await (await json('POST', '/projects', groupedProject())).json()) as { id: string }
+    const { id: sessionId, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
+    const table = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
+
+    const beforeDraw = table.frames.length
+    await table.send(null, { v: 'draw', from: 'draw', to: 'table', count: 2 })
+    await table.synced(1)
+    const hidden = table.view!.components
+    const drawFrames = table.frames.slice(beforeDraw).join('\n')
+    expect(hidden).toHaveLength(2)
+    expect(hidden.every((card) => card.cardRef === null && Object.keys(card.faces ?? {}).join(',') === 'back')).toBe(true)
+    expect(drawFrames).not.toContain('dragon')
+    expect(drawFrames).not.toContain('trap')
+    expect(drawFrames).not.toContain('"front"')
+
+    // Reveal only after checking the raw frames. The stable opaque id lets the test prove that
+    // the back already sent for each hidden component belongs to the row later revealed there.
+    const hiddenBack = new Map(hidden.map((card) => [card.id, card.faces!['back']!]))
+    await table.send(null, ...hidden.map((card) => ({ v: 'flip' as const, component: card.id, face: 'front' as const })))
+    await table.synced(3)
+    const revealed = Object.fromEntries(table.view!.components.map((card) => [card.cardRef, card]))
+    expect(hiddenBack.get(revealed['trap']!.id)).toBe(revealed['trap']!.faces!['back'])
+    expect(hiddenBack.get(revealed['dragon']!.id)).toBe(revealed['dragon']!.faces!['back'])
+    expect(revealed['trap']!.faces!['back']).not.toBe(revealed['dragon']!.faces!['back'])
+    await table.close()
+  })
+
+  it('exports paired print faces from the current project and queues each PDF only once', async () => {
+    const { id } = (await (await json('POST', '/projects', groupedProject())).json()) as { id: string }
+
+    const first = await json('POST', `/projects/${id}/print`, {})
+    expect(first.status).toBe(202)
+    const manifest = (await first.json()) as { project: string; rev: number; cards: { cardRef: string; faces: Record<string, string> }[] }
+    expect(manifest.project).toBe(id)
+    expect(manifest.rev).toBe(1)
+    expect(manifest.cards.map((card) => card.cardRef)).toEqual(['dragon', 'trap'])
+    expect(manifest.cards.every((card) => Object.keys(card.faces).sort().join(',') === 'back,front')).toBe(true)
+    expect(manifest.cards[0]!.faces.back).not.toBe(manifest.cards[1]!.faces.back)
+    expect(JSON.stringify(manifest)).not.toContain('compiled')
+    expect(JSON.stringify(manifest)).not.toContain('data-card')
+
+    // Asking for the same revision again returns the same content-addressed manifest and does
+    // not make duplicate work for the renderer.
+    const again = await json('POST', `/projects/${id}/print`, {})
+    expect(again.status).toBe(202)
+    expect(await again.json()).toEqual(manifest)
+    const jobs = []
+    for (;;) {
+      const job = await run.renders.claim(Date.now())
+      if (!job) break
+      jobs.push(job)
+    }
+    expect(jobs).toHaveLength(4)
+    expect(new Set(jobs.map((job) => job.hash)).size).toBe(4)
+    expect(jobs.every((job) => job.kind.kind === 'pdf' && job.priority === 'print')).toBe(true)
+  })
+
+  it('keeps a project print export private to its owner', async () => {
+    const { id } = (await (await json('POST', '/projects', groupedProject())).json()) as { id: string }
+    expect((await fetch(`${run.http}/projects/${id}/print`, { method: 'POST' })).status).toBe(401)
+
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com' }) })
+    const link = /\/auth\/verify\?token=\S+/.exec(run.mail.sent.at(-1)?.text ?? '')?.[0] ?? ''
+    const verified = await fetch(`${run.http}${link}`, { redirect: 'manual' })
+    const otherCookie = (verified.headers.get('set-cookie') ?? '').split(';')[0] ?? ''
+    expect((await fetch(`${run.http}/projects/${id}/print`, { method: 'POST', headers: { cookie: otherCookie } })).status).toBe(403)
+  })
+})
+
+describe('physical validation at the order (E5)', () => {
+  const withText = (sizePt: number) => ({
+    ...project(),
+    template: {
+      faces: {
+        front: { base: [{ kind: 'shape', id: 'bg', x: -3, y: -3, w: 69, h: 94, shape: 'rect', fill: '#ffffff' }, { kind: 'text', id: 'body', x: 6, y: 30, w: 51, h: 40, bind: { field: 'body' }, font: { family: 'system-ui', sizePt }, color: '#111111' }], variants: {} },
+        back: { base: [{ kind: 'shape', id: 'bg', x: -3, y: -3, w: 69, h: 94, shape: 'rect', fill: '#2f4068' }], variants: {} },
+      },
+    },
+  })
+
+  it('refuses a print order while a card would come back unreadable, and says which card and why', async () => {
+    expect((await json('POST', '/projects', { id: 'p-small', ...withText(4) })).status).toBe(201)
+    const res = await json('POST', '/projects/p-small/print')
+    expect(res.status).toBe(422)
+    const body = (await res.json()) as { errors: { cardRef: string; face: string; element: string; code: string; detail: string }[] }
+    expect(body.errors.length).toBeGreaterThan(0)
+    expect(body.errors[0]).toMatchObject({ face: 'front', element: 'body', code: 'text-too-small' })
+    expect(body.errors.map((e) => e.cardRef)).toContain('dragon')
+    expect(body.errors[0]?.detail).toContain('6')
+  })
+
+  it('lets an order through when only warnings stand, and says what they were', async () => {
+    expect((await json('POST', '/projects', { id: 'p-warn', ...withText(7) })).status).toBe(201)
+    const res = await json('POST', '/projects/p-warn/print')
+    expect(res.status).toBe(202)
+    const body = (await res.json()) as { warnings: { cardRef: string; code: string }[]; cards: unknown[] }
+    expect(body.cards.length).toBeGreaterThan(0)
+    expect(body.warnings.map((w) => w.code)).toContain('text-too-small')
+  })
+})
+
+describe('the rulebook in the project (B7)', () => {
+  const rules: RuleDoc = {
+    title: 'Skogens herrar',
+    blocks: [
+      { kind: 'heading', id: 'h1', level: 1, text: 'Så spelar ni' },
+      { kind: 'text', id: 't1', text: 'Dra ett kort ur [[zon:draw]] och lägg det i [[zon:discard]].' },
+      { kind: 'setup', id: 's1', caption: 'Bordet' },
+    ],
+  }
+
+  it('is part of the document, so it is versioned with the cards and nothing else is needed', async () => {
+    const created = await json('POST', '/projects', { id: 'p-rules', ...project(), rules })
+    expect(created.status).toBe(201)
+    const stored = await run.projects.load('p-rules')
+    expect(stored?.rules).toEqual(rules)
+
+    const changed = { ...project(), rules: { ...rules, blocks: [...rules.blocks, { kind: 'text', id: 't2', text: 'Spelet slutar när [[zon:draw]] är tom.' }] } }
+    expect((await json('PUT', '/projects/p-rules', { rev: 1, ...changed })).status).toBe(200)
+    // The older version keeps the rules it had.
+    expect((await run.projects.at('p-rules', 1))?.rules?.blocks).toHaveLength(3)
+    expect((await run.projects.at('p-rules', 2))?.rules?.blocks).toHaveLength(4)
+  })
+
+  it('refuses a rulebook the model does not allow', async () => {
+    const bad = { ...project(), rules: { title: 'X', blocks: [{ kind: 'kapitel', id: 'k', text: 'nej' }] } }
+    expect((await json('POST', '/projects', { id: 'p-bad', ...bad })).status).toBe(400)
+  })
+
+  it('says what the rules\' references stand for right now, from the project itself', async () => {
+    const { namesOfProject } = await import('../src/doc.js')
+    const doc = { ...project(), rules }
+    const names = namesOfProject(doc)
+    expect(names.zones['discard']).toBe('Kasthög')
+    expect(names.cards['dragon']).toBe('Drake')
+    // A card with no title falls back to its id, so a reference is never empty.
+    expect(namesOfProject({ ...doc, rows: [{ id: 'namnlöst', fields: {} }] }).cards['namnlöst']).toBe('namnlöst')
+  })
 })

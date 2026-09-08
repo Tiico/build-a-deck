@@ -1,6 +1,10 @@
-import type { ProjectDoc, ProjectRow } from '@byd/server'
+import type { ProjectDoc, ProjectRow, RuleDoc, VersionSummary } from '@byd/server'
+import type { DocDiff } from '@byd/server/doc'
 import type { Element, FaceTemplate, Variant } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
+import { applyRecipe, point, recipeOf, rect, type Geometry, type Recipe, type Zone } from '../setup/recipe.js'
+import { ASSET_PREFIX } from './assets.js'
+import { freeIconName, svgBytes, type GameSymbol } from './symbols.js'
 
 export type ProjectListener = (client: ProjectClient) => void
 
@@ -18,6 +22,7 @@ export type Cell = string | number | boolean | null
 export type Textures = { total: number; done: number; failed: string[] }
 // A table of this game as the Bord tab lists it (#19): which session, the version it runs,
 // whether its log is locked (C9), and when it last moved.
+export type ZonePatch = { name?: string; geometry?: Geometry; visibility?: Zone['visibility']; shortcut?: { label: string; at: 'top' | 'bottom' } | undefined; owner?: string | undefined }
 export type TableSummary = { id: string; version: string; ended: boolean; lastAt: string | null }
 
 // The project as the editor holds it: the document, its revision, local edits, and saving with
@@ -54,7 +59,7 @@ export class ProjectClient {
     if (res.status === 404) throw new ProjectUnavailable('missing')
     if (!res.ok) throw new ProjectUnavailable('offline')
     const rec = (await res.json()) as ProjectDoc & { id: string; rev: number }
-    const doc: ProjectDoc = { name: rec.name, template: rec.template, rows: rec.rows, icons: rec.icons, setup: rec.setup }
+    const doc: ProjectDoc = { name: rec.name, template: rec.template, rows: rec.rows, icons: rec.icons, setup: rec.setup, ...(rec.credits ? { credits: rec.credits } : {}), ...(rec.rules ? { rules: rec.rules } : {}) }
     return new ProjectClient(opts.http, opts.id, doc, rec.rev)
   }
 
@@ -179,6 +184,150 @@ export class ProjectClient {
     this.commit({ ...this.doc, name })
   }
 
+  // The setup's recipe (B5): the knobs the wizard turned, turned again here. Recipe zones come
+  // and go with it; the designer's own zones stay.
+  get recipe(): Recipe {
+    return recipeOf(this.doc.setup)
+  }
+  setRecipe(recipe: Recipe): void {
+    this.commit({ ...this.doc, setup: applyRecipe(this.doc.setup, recipe) })
+  }
+
+  // A zone of the designer's own (K2): an area of a card's rows or a pile at a point, in the
+  // middle of the table until it is dragged somewhere. Returns its id.
+  addZone(kind: 'area' | 'pile'): string {
+    const ids = new Set(this.doc.setup.zones.map((z) => z.id))
+    const base = kind === 'pile' ? 'hog' : 'yta'
+    let n = 1
+    while (ids.has(`${base}-${n}`)) n++
+    const id = `${base}-${n}`
+    const zone: Zone = kind === 'pile' ? { id, kind, name: `Hög ${n}`, visibility: 'all', geometry: point(0, 150) } : { id, kind, name: `Yta ${n}`, visibility: 'all', geometry: rect(-150, 100, 300, 120) }
+    this.commit({ ...this.doc, setup: { ...this.doc.setup, zones: [...this.doc.setup.zones, zone] } })
+    return id
+  }
+
+  removeZone(id: string): void {
+    if (id === this.doc.setup.floor || id === this.doc.setup.deckZone) throw new Error(`zone ${id} cannot be removed`)
+    if (!this.doc.setup.zones.some((z) => z.id === id)) throw new Error(`no zone ${id}`)
+    this.commit({ ...this.doc, setup: { ...this.doc.setup, zones: this.doc.setup.zones.filter((z) => z.id !== id) } })
+  }
+
+  // A zone's name (what the table shows), its shortcut (the verb the phone shows, C4), where it
+  // lies and how big it is (K2), who owns it and who sees into it. An undefined shortcut or
+  // owner removes it: the phone falls back to the name, the zone becomes everyone's.
+  patchZone(id: string, patch: ZonePatch): void {
+    if (!this.doc.setup.zones.some((z) => z.id === id)) throw new Error(`no zone ${id}`)
+    const zones = this.doc.setup.zones.map((z) => {
+      if (z.id !== id) return z
+      const next: Zone = { ...z }
+      if (patch.name !== undefined) next.name = patch.name
+      if (patch.geometry !== undefined) next.geometry = patch.geometry
+      if (patch.visibility !== undefined) next.visibility = patch.visibility
+      if ('shortcut' in patch) {
+        if (patch.shortcut) next.shortcut = patch.shortcut
+        else delete next.shortcut
+      }
+      if ('owner' in patch) {
+        if (patch.owner) next.owner = patch.owner
+        else delete next.owner
+      }
+      return next
+    })
+    this.commit({ ...this.doc, setup: { ...this.doc.setup, zones } })
+  }
+
+  // The rulebook (B7): part of the document, so it is saved and versioned with the cards.
+  setRules(rules: RuleDoc): void {
+    this.commit({ ...this.doc, rules })
+  }
+
+  // The project's history (B4): every save is a version, kept whole and never rewritten. The
+  // list is the server's answer, not something the editor keeps of its own.
+  async versions(): Promise<VersionSummary[]> {
+    const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}/versions`, withCredentials())
+    if (res.status === 401) throw new Unauthorized()
+    if (!res.ok) throw new Error(`could not read the history: ${res.status}`)
+    return (await res.json()) as VersionSummary[]
+  }
+
+  // The project as it stood at a revision, or null when there is no such version.
+  async at(rev: number): Promise<ProjectDoc | null> {
+    const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}/versions/${rev}`, withCredentials())
+    if (res.status === 404) return null
+    if (res.status === 401) throw new Unauthorized()
+    if (!res.ok) throw new Error(`could not open version ${rev}: ${res.status}`)
+    const rec = (await res.json()) as ProjectDoc
+    return { name: rec.name, template: rec.template, rows: rec.rows, icons: rec.icons, setup: rec.setup, ...(rec.credits ? { credits: rec.credits } : {}), ...(rec.rules ? { rules: rec.rules } : {}) }
+  }
+
+  // What a version changed against the one before it; null for the first version of all.
+  async diff(rev: number): Promise<DocDiff | null> {
+    if (rev <= 1) return null
+    const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}/versions/${rev}/diff`, withCredentials())
+    if (res.status === 401) throw new Unauthorized()
+    if (!res.ok) throw new Error(`could not read what version ${rev} changed: ${res.status}`)
+    return (await res.json()) as DocDiff
+  }
+
+  // Names a version, or takes the name back with null. Naming does not change the document.
+  async nameVersion(rev: number, label: string | null): Promise<void> {
+    const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}/versions/${rev}/label`, withCredentials({ method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ label }) }))
+    if (res.status === 401) throw new Unauthorized()
+    if (!res.ok) throw new Error(`could not name version ${rev}: ${res.status}`)
+  }
+
+  // Bringing an older version back is an edit like any other: it becomes the next version when
+  // saved, and the one it came from stays exactly as it was.
+  async restore(rev: number): Promise<void> {
+    const old = await this.at(rev)
+    if (!old) throw new Error(`no version ${rev}`)
+    this.commit(old)
+  }
+
+  // A symbol from the library taken into the game (E4): its bytes become one of the project's
+  // assets, the icon set gets a name for it, and the licence is kept beside the set so it can
+  // travel to the printer. The same symbol twice is the same entry, not a second name.
+  async useSymbol(symbol: GameSymbol, as?: string): Promise<string> {
+    const file = svgBytes(symbol)
+    const ref = `${ASSET_PREFIX}${await this.uploadAsset(new Blob([file.bytes], { type: file.type }))}`
+    const already = Object.entries(this.doc.icons).find(([, url]) => url === ref)
+    if (already) return already[0]
+    const name = freeIconName(as ?? symbol.name, this.doc.icons)
+    this.commit({
+      ...this.doc,
+      icons: { ...this.doc.icons, [name]: ref },
+      credits: { ...(this.doc.credits ?? {}), [name]: { licence: symbol.licence, by: symbol.by, source: symbol.id } },
+    })
+    return name
+  }
+
+  // The name is what card text writes between braces, so renaming one moves its credit too.
+  renameIcon(from: string, to: string): void {
+    const url = this.doc.icons[from]
+    if (url === undefined) throw new Error(`no icon ${from}`)
+    if (this.doc.icons[to] !== undefined) throw new Error(`icon ${to} already exists`)
+    const credit = this.doc.credits?.[from]
+    this.commit({
+      ...this.doc,
+      icons: { ...without(this.doc.icons, from), [to]: url },
+      credits: { ...without(this.doc.credits ?? {}, from), ...(credit ? { [to]: credit } : {}) },
+    })
+  }
+
+  removeIcon(name: string): void {
+    this.commit({ ...this.doc, icons: without(this.doc.icons, name), credits: without(this.doc.credits ?? {}, name) })
+  }
+
+  // An image for the project (E1): uploaded once, named by its bytes; the cell then points at it.
+  async uploadAsset(file: Blob): Promise<string> {
+    const res = await fetch(`${this.http}/assets`, withCredentials({ method: 'POST', headers: { 'content-type': file.type || 'application/octet-stream' }, body: file }))
+    if (res.status === 401) throw new Unauthorized()
+    if (res.status === 415) throw new Error('bara bilder kan laddas upp')
+    if (res.status === 413) throw new Error('bilden är för stor (max 8 MB)')
+    if (!res.ok) throw new Error(`kunde inte ladda upp bilden: ${res.status}`)
+    return ((await res.json()) as { hash: string }).hash
+  }
+
   async save(): Promise<SaveResult> {
     const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}`, withCredentials({
       method: 'PUT',
@@ -203,15 +352,29 @@ export class ProjectClient {
     return (await res.json()) as TableSummary[]
   }
 
-  // "Uppdatera bordet" (L5): a table from the saved project. Unsaved edits are saved first.
-  async startTable(): Promise<{ id: string; version: string }> {
+  // "Uppdatera bordet" (L5): a table from the saved project, with the room code guests join by
+  // and the host key that opens its screen (DRIFT §9). Unsaved edits are saved first.
+  async startTable(): Promise<{ id: string; version: string; code: string; hostKey: string }> {
     if (this.dirty) {
       const saved = await this.save()
       if (!saved.ok) throw new Error(`could not save before starting a table: ${saved.reason}`)
     }
     const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}/sessions`, withCredentials({ method: 'POST' }))
     if (!res.ok) throw new Error(`could not start a table: ${res.status}`)
-    return (await res.json()) as { id: string; version: string }
+    return (await res.json()) as { id: string; version: string; code: string; hostKey: string }
+  }
+
+  // The host's controls (DRIFT §9): a new code, so those who have the old one can no longer
+  // come in; and a kick, which frees the seat and ends its connections. The host key the table
+  // was started with is the authority, with or without an account.
+  async rotateCode(sessionId: string, hostKey: string): Promise<{ code: string; expiresAt: string }> {
+    const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/code`, { method: 'POST', headers: { authorization: `Bearer ${hostKey}` } })
+    if (!res.ok) throw new Error(`could not rotate the code: ${res.status}`)
+    return (await res.json()) as { code: string; expiresAt: string }
+  }
+  async kick(sessionId: string, hostKey: string, seat: string): Promise<void> {
+    const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/kick`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${hostKey}` }, body: JSON.stringify({ seat }) })
+    if (!res.ok) throw new Error(`could not kick ${seat}: ${res.status}`)
   }
 
   // "Uppdatera bordet" on a running table (C7, L5): unsaved edits are saved first, then the
@@ -259,6 +422,11 @@ export class ProjectClient {
 }
 
 // One element in, one out, by id: an override list is a set keyed by id, not an order.
+// A record without one key, since deleting a computed key is not how records are built here.
+function without<T>(record: Record<string, T>, key: string): Record<string, T> {
+  return Object.fromEntries(Object.entries(record).filter(([k]) => k !== key))
+}
+
 function replaceById(list: Element[], element: Element): Element[] {
   return list.some((e) => e.id === element.id) ? list.map((e) => (e.id === element.id ? element : e)) : [...list, element]
 }

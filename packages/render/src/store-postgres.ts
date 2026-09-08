@@ -2,7 +2,8 @@ import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import postgres from 'postgres'
 import type { RenderKind } from './hash.js'
-import type { ClaimedJob, EnqueueResult, JobStatus, RenderRequest, RenderStore } from './store.js'
+import { contentTypeOf, outputKey, type ClaimedJob, type EnqueueResult, type JobStatus, type RenderRequest, type RenderStore } from './store.js'
+import type { ObjectStore } from './objects.js'
 
 type Row = {
   hash: string
@@ -17,15 +18,31 @@ type Row = {
 
 // The queue in Postgres: `claim` takes the next queued row with SKIP LOCKED, so several
 // workers never take the same job, and the whole thing is backed up with the log (DRIFT §5).
+// With an object store (DRIFT §4) the outputs go there and Postgres keeps only that they exist;
+// without one, the bytes stay in Postgres and are served through the app.
 export class PostgresRenderStore implements RenderStore {
-  constructor(private readonly sql: postgres.Sql) {}
+  constructor(
+    private readonly sql: postgres.Sql,
+    private readonly objects?: ObjectStore,
+  ) {}
 
-  static connect(url: string): PostgresRenderStore {
-    return new PostgresRenderStore(postgres(url, { max: 3, onnotice: () => undefined }))
+  // `schema` puts the tables in a schema of their own — a test run's, so it never shares a
+  // queue with a stack running against the same database.
+  static connect(url: string, objects?: ObjectStore, options: { schema?: string } = {}): PostgresRenderStore {
+    const store = new PostgresRenderStore(postgres(url, { max: 3, onnotice: () => undefined, ...(options.schema ? { connection: { search_path: options.schema } } : {}) }), objects)
+    store.schema = options.schema
+    return store
   }
+  private schema: string | undefined
 
   async migrate(): Promise<void> {
+    if (this.schema) await this.sql.unsafe(`create schema if not exists "${this.schema.replace(/"/g, '')}"`)
     await this.sql.unsafe(await readFile(fileURLToPath(new URL('../sql/001-render.sql', import.meta.url)), 'utf8'))
+  }
+
+  // Drops a schema made for a test run.
+  async dropSchema(): Promise<void> {
+    if (this.schema) await this.sql.unsafe(`drop schema if exists "${this.schema.replace(/"/g, '')}" cascade`)
   }
 
   async close(): Promise<void> {
@@ -64,8 +81,13 @@ export class PostgresRenderStore implements RenderStore {
   }
 
   async complete(hash: string, output: Uint8Array): Promise<void> {
+    if (this.objects) {
+      const [job] = await this.sql<Pick<Row, 'kind'>[]>`select kind from render_jobs where hash = ${hash}`
+      await this.objects.put(outputKey(hash), output, contentTypeOf(job?.kind))
+    }
+    const bytes = this.objects ? null : Buffer.from(output)
     await this.sql.begin(async (tx) => {
-      await tx`insert into render_outputs (hash, bytes) values (${hash}, ${Buffer.from(output)}) on conflict (hash) do update set bytes = excluded.bytes`
+      await tx`insert into render_outputs (hash, bytes) values (${hash}, ${bytes}) on conflict (hash) do update set bytes = excluded.bytes`
       await tx`update render_jobs set state = 'done' where hash = ${hash}`
     })
   }
@@ -96,8 +118,16 @@ export class PostgresRenderStore implements RenderStore {
   }
 
   async output(hash: string): Promise<Uint8Array | null> {
-    const [row] = await this.sql<{ bytes: Uint8Array }[]>`select bytes from render_outputs where hash = ${hash}`
-    return row ? new Uint8Array(row.bytes) : null
+    const [row] = await this.sql<{ bytes: Uint8Array | null }[]>`select bytes from render_outputs where hash = ${hash}`
+    if (!row) return null
+    if (row.bytes) return new Uint8Array(row.bytes)
+    return this.objects ? this.objects.get(outputKey(hash)) : null
+  }
+
+  async link(hash: string, ttlSeconds: number): Promise<string | null> {
+    if (!this.objects) return null
+    const [row] = await this.sql<{ bytes: Uint8Array | null }[]>`select bytes from render_outputs where hash = ${hash}`
+    return row && row.bytes === null ? this.objects.link(outputKey(hash), ttlSeconds) : null
   }
 
   async reap(olderThanMs: number, now: number): Promise<string[]> {

@@ -4,7 +4,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { TableClient } from '../src/client.js'
 import { ObserverPage } from '../src/observer/ObserverPage.js'
-import { createSession, startServer, type Running } from './fixture.js'
+import { admit, asSeat, asTable, createSession, startServer, type Running } from './fixture.js'
 
 let run: Running
 beforeEach(async () => {
@@ -16,11 +16,11 @@ afterEach(async () => {
 
 describe('ObserverPage (C8)', () => {
   it('sees every hand, says what she is, and can only flag — stamped with her name', async () => {
-    const id = await createSession(run.store)
-    const ada = TableClient.connect({ url: run.url, sessionId: id, seat: 'A' })
+    const id = await createSession(run)
+    const ada = TableClient.connect(await asSeat(run, id, 'A'))
     await ada.ready()
     await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
-    history.replaceState(null, '', `/observe?session=${id}&name=Eva&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/observe?session=${id}&name=Eva&token=${await admit(run, id, null, 'Eva')}&server=${encodeURIComponent(run.url)}`)
     render(<ObserverPage />)
     expect(await screen.findByText(/Du är observatör/)).toBeTruthy()
     // A's hand is on her screen by name, which no table screen shows.
@@ -38,11 +38,11 @@ describe('ObserverPage (C8)', () => {
 
 describe('the observer inspects too (C8, K8)', () => {
   it('fills the inspection panel from the card she points at', async () => {
-    const id = await createSession(run.store)
-    const table = TableClient.connect({ url: run.url, sessionId: id, seat: null })
+    const id = await createSession(run)
+    const table = TableClient.connect(await asTable(run, id))
     await table.ready()
     await table.send({ v: 'draw', from: 'draw', to: 'table', count: 1 })
-    history.replaceState(null, '', `/observe?session=${id}&name=Eva&server=${encodeURIComponent(run.url)}`)
+    history.replaceState(null, '', `/observe?session=${id}&name=Eva&token=${await admit(run, id, null, 'Eva')}&server=${encodeURIComponent(run.url)}`)
     render(<ObserverPage />)
     await screen.findByText(/Du är observatör/)
     await waitFor(() => expect(document.querySelector('.byd-card')).toBeTruthy())
@@ -58,8 +58,8 @@ describe('the observer inspects too (C8, K8)', () => {
 
 describe('the observer screen is not a screen to join from (K12)', () => {
   it('shows no room code at all rather than the session id spelled out', async () => {
-    const id = await createSession(run.store)
-    history.replaceState(null, '', `/observe?session=${id}&name=Eva&server=${encodeURIComponent(run.url)}`)
+    const id = await createSession(run)
+    history.replaceState(null, '', `/observe?session=${id}&name=Eva&token=${await admit(run, id, null, 'Eva')}&server=${encodeURIComponent(run.url)}`)
     render(<ObserverPage />)
     await screen.findByText(/Du är observatör/)
     expect(screen.queryByText(id)).toBeNull()
@@ -73,8 +73,8 @@ describe('the observer screen is not a screen to join from (K12)', () => {
 describe('the observer summons what is not the table (#6)', () => {
   it('keeps who she is and the way to flag on a handle of its own, and calls the rest in', async () => {
     const user = userEvent.setup()
-    const id = await createSession(run.store)
-    history.replaceState(null, '', `/observe?session=${id}&name=Eva&server=${encodeURIComponent(run.url)}`)
+    const id = await createSession(run)
+    history.replaceState(null, '', `/observe?session=${id}&name=Eva&token=${await admit(run, id, null, 'Eva')}&server=${encodeURIComponent(run.url)}`)
     render(<ObserverPage />)
     await screen.findByText(/Du är observatör/)
 

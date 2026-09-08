@@ -10,7 +10,7 @@ import { chromium, type Browser, type Page } from 'playwright'
 import { contrastRatio, flatten } from '../src/player/contrast.js'
 import { TableClient } from '../src/client.js'
 import { ObserverPage } from '../src/observer/ObserverPage.js'
-import { createSession, startServer, type Running } from './fixture.js'
+import { admit, asSeat, createSession, startServer, type Running } from './fixture.js'
 import { atWidth } from './viewport.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
@@ -26,11 +26,11 @@ const document_ = (html: string) =>
 // The observer's page as it mounts against a real session, with two seats holding cards.
 async function markup(width: number): Promise<string> {
   atWidth(width)
-  const id = await createSession(run.store)
-  const ada = TableClient.connect({ url: run.url, sessionId: id, seat: 'A' })
+  const id = await createSession(run)
+  const ada = TableClient.connect(await asSeat(run, id, 'A'))
   await ada.ready()
   await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'hand:A', count: 3 })
-  history.replaceState(null, '', `/observe?session=${id}&name=Eva&server=${encodeURIComponent(run.url)}`)
+  history.replaceState(null, '', `/observe?session=${id}&name=Eva&token=${await admit(run, id, null, 'Eva')}&server=${encodeURIComponent(run.url)}`)
   const { unmount } = render(<ObserverPage />)
   try {
     await screen.findByText(/Du är observatör/)

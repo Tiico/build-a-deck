@@ -5,7 +5,7 @@ import { HomePage } from '../src/account/HomePage.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { projectDoc } from './project-doc.js'
-import { startServer, type Running } from './fixture.js'
+import { admit, createSession, startServer, type Running } from './fixture.js'
 
 // Accounts (G1, prototype A): the home page is the login card until the link in the mail has
 // been followed; then it is "Mina spel". The cookie jar in test/setup.ts plays the browser.
@@ -123,5 +123,25 @@ describe('pages that need an account send you to log in and back', () => {
     history.replaceState(null, '', `/editor?project=bos&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage onNavigate={(u) => gone.push(u)} />)
     await waitFor(() => expect(gone.at(-1)).toMatch(/^\/login\?next=%2Feditor%3Fproject%3Dbos/))
+  })
+})
+
+describe('the tables the account sat at (G1)', () => {
+  it('lists claimed sessions as a second grid with the seat, the name and what came of it, and says so after a claim', async () => {
+    await run.stop()
+    run = await startServer({ auth: true, authBypass: true })
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com' }) })
+    const id = await createSession(run)
+    const token = await admit(run, id, 'A', 'Ada')
+    const claimed = await fetch(`${run.http}/guests/claim`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ token }) })
+    expect(claimed.status).toBe(200)
+
+    history.replaceState(null, '', `/?claimed=${id}&server=${encodeURIComponent(run.http)}`)
+    render(<HomePage onNavigate={() => undefined} />)
+    expect(await screen.findByText('Bord du spelat vid')).toBeTruthy()
+    const card = await waitFor(() => document.querySelector(`[data-played="${id}"]`)!)
+    expect(card.textContent).toContain('du var Ada')
+    expect(card.textContent).toContain('pågår')
+    expect(screen.getByRole('status').textContent).toMatch(/Sparat.*som Ada/)
   })
 })

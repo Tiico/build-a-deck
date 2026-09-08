@@ -1,3 +1,4 @@
+import { assetsFromEnv } from './objects.js'
 import { Renderer } from './renderer.js'
 import { PostgresRenderStore } from './store-postgres.js'
 import { runWorker } from './worker.js'
@@ -5,6 +6,8 @@ import { runWorker } from './worker.js'
 // The render worker container (DRIFT §6): one Chromium, one page at a time, a Postgres queue.
 //   DATABASE_URL    — required
 //   REAP_AFTER_MS   — a job running longer than this goes back to the queue; default 3 min
+//   R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ASSETS_BUCKET — outputs go to R2
+//                     (DRIFT §4), the same variables as the app; without them, to Postgres
 
 const url = process.env['DATABASE_URL']
 if (!url) {
@@ -14,10 +17,11 @@ if (!url) {
 const reapAfterMs = Number(process.env['REAP_AFTER_MS'] ?? 3 * 60 * 1000)
 const log = (line: Record<string, unknown>) => console.log(JSON.stringify(line))
 
-const store = PostgresRenderStore.connect(url)
+const objects = assetsFromEnv(process.env)
+const store = PostgresRenderStore.connect(url, objects)
 await store.migrate()
 const renderer = await Renderer.launch()
-log({ msg: 'render-worker', state: 'ready' })
+log({ msg: 'render-worker', state: 'ready', outputs: objects ? 'r2' : 'postgres' })
 
 const reaper = setInterval(() => {
   void store.reap(reapAfterMs, Date.now()).then((hashes) => {

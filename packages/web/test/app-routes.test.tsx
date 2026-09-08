@@ -42,7 +42,7 @@ describe('every main route names itself in the tab', () => {
   // `status-routes.test.tsx`; here the point is that the state wins over the route while there
   // is one, so a tab never claims to hold a room it has not reached.
   it('lets the state of a session route win over the route while it is still connecting', async () => {
-    open('/join?session=4KJ2')
+    open('/table?session=4KJ2')
     await waitFor(() => expect(document.title).toBe('Ansluter · build-your-deck'))
   })
 })

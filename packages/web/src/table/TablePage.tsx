@@ -16,23 +16,26 @@ import { usePageTitle } from '../status/DocumentTitle.js'
 
 type SessionRecord = { name?: string; version?: string }
 
-// /table?session=…&mode=table|tv&code=…&server=ws://…
-// The `table` role: no seat, sees only what is public. `server` defaults to this origin.
+// /table?session=…&host=…&mode=table|tv&server=ws://…
+// The `table` role: no seat, sees only what is public, acts for the group (K14). It is the
+// host's screen (DRIFT §9): the host key opens it, and it is told the room code to show.
 export type TablePageProps = { timing?: StatusTiming }
 
 export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const sessionId = params.get('session')
   const mode: TableMode = params.get('mode') === 'tv' ? 'tv' : 'table'
-  const roomCode = params.get('code') ?? ''
+  const host = params.get('host') ?? undefined
+  const owner = params.get('owner') === '1'
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
-  const conn = useTableClient(sessionId ? { url, sessionId, seat: null, connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs } : null)
-  const { client, view, status, activity, observers } = conn
+  const conn = useTableClient(sessionId ? { url, sessionId, seat: null, ...(host ? { host } : {}), ...(owner ? { owner: true } : {}), connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs } : null)
+  const { client, view, status, activity, observers, room, refused } = conn
+  const roomCode = room?.code ?? params.get('code') ?? ''
   // The room reads its own state across a room, so a message that lands on top of the felt is a
   // card in the middle of it (#12, #7, variant C).
   const live = useLiveStatus(conn, 'table', timing)
-  const links = statusLinks({ server: params.get('server'), sessionId })
-  usePageTitle({ state: sessionId ? live.state : 'missing', room: params.get('code') ?? sessionId })
+  const links = statusLinks({ server: params.get('server'), code: roomCode })
+  usePageTitle({ state: sessionId ? (refused ? 'forbidden' : live.state) : 'missing', room: roomCode || sessionId })
   // The session record: which game this table runs and which version of it (L5, C9). The name
   // titles the screen; the version is also what the log is locked on when the session ends.
   const [record, setRecord] = useState<SessionRecord | null>(null)
@@ -54,15 +57,17 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   const recent = useRecent(activity)
 
   const joinUrl = useMemo(() => {
-    if (!sessionId) return undefined
-    const q = new URLSearchParams({ session: sessionId })
+    if (!roomCode) return undefined
+    const q = new URLSearchParams({ code: roomCode })
     const server = params.get('server')
     if (server) q.set('server', server)
     return `${location.origin}/join?${q.toString()}`
-  }, [params, sessionId])
+  }, [params, roomCode])
 
   // A link with no room in it is a link to a room that does not exist.
   if (!sessionId) return <StatusNotice notice={noticeFor('missing', 'table')} surface="page" links={links} />
+  // The host key is what opens this screen (DRIFT §9); without it the door is shut, not broken.
+  if (refused) return <StatusNotice notice={{ ...noticeFor('forbidden', 'table'), text: 'Bordsvyn öppnas med värdens länk från editorn.' }} surface="page" links={links} />
   // Nothing behind worth protecting: the message is the whole screen, in the room's own words.
   if (!view) return <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
 

@@ -149,6 +149,10 @@ function renderNode(n: InlineNode, element: string, icons: Record<string, string
       return `<strong>${n.children.map((c) => renderNode(c, element, icons, warnings)).join('')}</strong>`
     case 'italic':
       return `<em>${n.children.map((c) => renderNode(c, element, icons, warnings)).join('')}</em>`
+    // A reference (B7) is the rulebook's, not a card's: card text is parsed without them, so
+    // this can only be reached by handing the compiler a rulebook tree. It says what it is.
+    case 'ref':
+      return escape(`[[${n.of === 'zone' ? 'zon' : 'kort'}:${n.id}]]`)
     case 'icon': {
       const src = icons[n.name]
       // A bare number is a pip (L2 addendum) unless the icon set names it.

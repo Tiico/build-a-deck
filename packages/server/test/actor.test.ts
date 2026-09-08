@@ -1,3 +1,4 @@
+import { SCHEMA_VERSION } from '@byd/protocol'
 import { describe, expect, it } from 'vitest'
 import type { Applied, ServerMessage } from '@byd/protocol'
 import { counterIds, seededRng } from '@byd/engine'
@@ -101,6 +102,14 @@ function bind(store: MemoryLogStore): LogStore {
     read: (id) => store.read(id),
     staleSessions: (d) => store.staleSessions(d),
     sessionsOf: (project) => store.sessionsOf(project),
+    sessionByCode: (code) => store.sessionByCode(code),
+    setCode: (id, code, at) => store.setCode(id, code, at),
+    issueGuest: (id, g) => store.issueGuest(id, g),
+    activateGuest: (id, token, now, expires) => store.activateGuest(id, token, now, expires),
+    guestByToken: (id, h) => store.guestByToken(id, h),
+    revokeGuests: (id, seat, at) => store.revokeGuests(id, seat, at),
+    claimGuest: (h, a) => store.claimGuest(h, a),
+    guestsOf: (a) => store.guestsOf(a),
   }
 }
 
@@ -112,9 +121,9 @@ describe('abandoned tables (C9)', () => {
     await store.createSession({ id: 'fresh', version: 'v1', setup: twoSeatSetup() })
     await store.createSession({ id: 'done', version: 'v1', setup: twoSeatSetup() })
     const at = (ms: number) => new Date(t0 + ms).toISOString()
-    await store.append('old', [{ seq: 1, batch: 'b1', at: at(0), by: null, intent: { v: 'setup.reset' } }])
-    await store.append('fresh', [{ seq: 1, batch: 'b2', at: at(3 * 3600_000), by: null, intent: { v: 'setup.reset' } }])
-    await store.append('done', [{ seq: 1, batch: 'b3', at: at(0), by: null, intent: { v: 'session.end' } }])
+    await store.append('old', [{ schemaVersion: SCHEMA_VERSION, seq: 1, batch: 'b1', at: at(0), by: null, intent: { v: 'setup.reset' } }])
+    await store.append('fresh', [{ schemaVersion: SCHEMA_VERSION, seq: 1, batch: 'b2', at: at(3 * 3600_000), by: null, intent: { v: 'setup.reset' } }])
+    await store.append('done', [{ schemaVersion: SCHEMA_VERSION, seq: 1, batch: 'b3', at: at(0), by: null, intent: { v: 'session.end' } }])
 
     const stale = await store.staleSessions(new Date(t0 + 2 * 3600_000))
     expect(stale.sort()).toEqual(['old'])

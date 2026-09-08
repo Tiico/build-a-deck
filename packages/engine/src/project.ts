@@ -8,8 +8,8 @@ import { canSeeFace, canSeeZoneOrder, faceUpOnTop } from './visibility.js'
 // A log line as every view may see it. The outcome never leaves the server: a shuffle's
 // re-keying says exactly where each card went, which no one at a physical table knows.
 export function projectActivity(line: Applied): Activity {
-  const { seq, batch, at, by, intent } = line
-  return { seq, batch, at, by, intent }
+  const { schemaVersion, seq, batch, at, by, intent } = line
+  return { schemaVersion, seq, batch, at, by, intent }
 }
 
 // Projects the authoritative state into what one seat is allowed to know.
@@ -67,6 +67,7 @@ function zoneBase(z: Zone) {
     geometry: { ...z.geometry },
     dynamic: z.dynamic,
     ...(z.owner !== undefined ? { owner: z.owner } : {}),
+    ...(z.shortcut !== undefined ? { shortcut: { ...z.shortcut } } : {}),
   }
 }
 

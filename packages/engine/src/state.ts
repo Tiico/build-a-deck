@@ -10,6 +10,7 @@ import type {
   TypeRef,
   ZoneId,
   ZoneKind,
+  ZoneShortcut,
 } from '@byd/protocol'
 
 // Who may see the faces of components in this zone by default (B6).
@@ -26,6 +27,8 @@ export type ZoneDef = {
   owner?: SeatId
   // Hand zones: where the hand is shuffled back into when the seat is released (C9).
   returnTo?: ZoneId
+  // The verb the phone shows for playing here (C4), and where in a pile the card goes.
+  shortcut?: ZoneShortcut
 }
 
 // `order[0]` is the top of a pile, the leftmost card of a hand, the topmost object of an area.

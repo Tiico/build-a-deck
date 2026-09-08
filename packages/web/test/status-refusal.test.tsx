@@ -6,7 +6,7 @@ import { DocumentTitle } from '../src/status/DocumentTitle.js'
 import { StatusLive } from '../src/status/StatusLive.js'
 import { PlayerPage } from '../src/player/PlayerPage.js'
 import { ObserverPage } from '../src/observer/ObserverPage.js'
-import { createSession, startServer, type Running } from './fixture.js'
+import { admit, asTable, createSession, startServer, type Running } from './fixture.js'
 
 let run: Running
 beforeEach(async () => {
@@ -17,7 +17,8 @@ afterEach(async () => {
 })
 
 async function seated(id: string) {
-  history.replaceState(null, '', `/play?session=${id}&seat=A&name=Ada&server=${encodeURIComponent(run.url)}`)
+  const token = await admit(run, id, 'A', 'Ada')
+  history.replaceState(null, '', `/play?session=${id}&seat=A&name=Ada&token=${token}&server=${encodeURIComponent(run.url)}`)
   render(
     <DocumentTitle route="play">
       <StatusLive>
@@ -38,8 +39,8 @@ const lift = (card: Element) => {
 // a move the table refused simply did not happen and nobody was told why.
 describe('an action the table refuses', () => {
   it('says so where it was asked, in Swedish, and never in the server s own words', async () => {
-    const id = await createSession(run.store)
-    const table = TableClient.connect({ url: run.url, sessionId: id, seat: null })
+    const id = await createSession(run)
+    const table = TableClient.connect(await asTable(run, id))
     await table.ready()
     await seated(id)
     await table.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
@@ -59,8 +60,8 @@ describe('an action the table refuses', () => {
   })
 
   it('ties the message to the control that was refused', async () => {
-    const id = await createSession(run.store)
-    const table = TableClient.connect({ url: run.url, sessionId: id, seat: null })
+    const id = await createSession(run)
+    const table = TableClient.connect(await asTable(run, id))
     await table.ready()
     await seated(id)
     await table.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
@@ -78,8 +79,8 @@ describe('an action the table refuses', () => {
   })
 
   it('announces it assertively, because it is something someone asked for that did not happen', async () => {
-    const id = await createSession(run.store)
-    const table = TableClient.connect({ url: run.url, sessionId: id, seat: null })
+    const id = await createSession(run)
+    const table = TableClient.connect(await asTable(run, id))
     await table.ready()
     await seated(id)
     await table.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
@@ -93,8 +94,8 @@ describe('an action the table refuses', () => {
   })
 
   it('keeps the question open so the answer stands where the reader is looking', async () => {
-    const id = await createSession(run.store)
-    const table = TableClient.connect({ url: run.url, sessionId: id, seat: null })
+    const id = await createSession(run)
+    const table = TableClient.connect(await asTable(run, id))
     await table.ready()
     await seated(id)
     await table.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
@@ -111,8 +112,8 @@ describe('an action the table refuses', () => {
   })
 
   it('takes the message back when the same control is asked again', async () => {
-    const id = await createSession(run.store)
-    const table = TableClient.connect({ url: run.url, sessionId: id, seat: null })
+    const id = await createSession(run)
+    const table = TableClient.connect(await asTable(run, id))
     await table.ready()
     await seated(id)
     await table.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
@@ -132,7 +133,7 @@ describe('an action the table refuses', () => {
 describe('a flag the table refuses', () => {
   it.each([
     ['/play', async (id: string) => {
-      history.replaceState(null, '', `/play?session=${id}&seat=A&name=Ada&server=${encodeURIComponent(run.url)}`)
+      history.replaceState(null, '', `/play?session=${id}&seat=A&name=Ada&token=${await admit(run, id, 'A', 'Ada')}&server=${encodeURIComponent(run.url)}`)
       render(
         <DocumentTitle route="play">
           <StatusLive>
@@ -143,7 +144,7 @@ describe('a flag the table refuses', () => {
       await screen.findByText('Ada')
     }],
     ['/observe', async (id: string) => {
-      history.replaceState(null, '', `/observe?session=${id}&name=Eva&server=${encodeURIComponent(run.url)}`)
+      history.replaceState(null, '', `/observe?session=${id}&name=Eva&token=${await admit(run, id, null, 'Eva')}&server=${encodeURIComponent(run.url)}`)
       render(
         <DocumentTitle route="observe">
           <StatusLive>
@@ -154,8 +155,8 @@ describe('a flag the table refuses', () => {
       await screen.findByRole('button', { name: /Flagga/ })
     }],
   ])('says why beside the button that was pressed on %s', async (_path, mount) => {
-    const id = await createSession(run.store)
-    const table = TableClient.connect({ url: run.url, sessionId: id, seat: null })
+    const id = await createSession(run)
+    const table = TableClient.connect(await asTable(run, id))
     await table.ready()
     await mount(id)
 

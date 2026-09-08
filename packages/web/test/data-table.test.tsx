@@ -105,3 +105,158 @@ describe('DataTable row delete (#8)', () => {
     expect(document.querySelectorAll('[data-card-ref]')).toHaveLength(3)
   })
 })
+
+describe('image cells (E1)', () => {
+  const HASH = 'c'.repeat(64)
+  const withArt = () => {
+    const doc = projectDoc()
+    doc.template.faces['front']!.base.push({ kind: 'image', id: 'art', x: 4, y: 4, w: 55, h: 36, bind: { field: 'art' } })
+    doc.rows[0]!.fields['art'] = `asset:${HASH}`
+    return doc
+  }
+
+  it('shows an image field as a thumbnail from the server, uploads a chosen file into the cell, and clears it', async () => {
+    const doc = withArt()
+    const onCell = vi.fn()
+    const onUpload = vi.fn(async () => 'd'.repeat(64))
+    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} assetBase="http://api.local" onUpload={onUpload} />)
+    const rows = screen.getAllByRole('row').slice(1)
+    const thumb = within(rows[0]!).getByRole('img', { name: 'dragon art' }) as HTMLImageElement
+    expect(thumb.src).toBe(`http://api.local/assets/${HASH}`)
+    // A card without an image has a place for one, not a broken picture.
+    expect(within(rows[1]!).queryByRole('img')).toBeNull()
+
+    const file = new File(['png'], 'riddare.png', { type: 'image/png' })
+    fireEvent.change(within(rows[1]!).getByLabelText('Välj bild för knight'), { target: { files: [file] } })
+    await waitFor(() => expect(onCell).toHaveBeenCalledWith('knight', 'art', `asset:${'d'.repeat(64)}`))
+    expect(onUpload).toHaveBeenCalledWith(file)
+
+    fireEvent.click(within(rows[0]!).getByRole('button', { name: 'Ta bort bild för dragon' }))
+    expect(onCell).toHaveBeenCalledWith('dragon', 'art', '')
+  })
+
+  it('lists the deck\'s images once each above the table, and a drop of one on a cell uses it again', () => {
+    const doc = withArt()
+    doc.rows[1]!.fields['art'] = `asset:${HASH}`
+    const onCell = vi.fn()
+    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} assetBase="http://api.local" onUpload={async () => 'e'.repeat(64)} />)
+    const strip = screen.getByRole('list', { name: 'Bilder i spelet' })
+    const thumbs = within(strip).getAllByRole('img')
+    expect(thumbs).toHaveLength(1)
+    expect(strip.textContent).toContain('2 kort')
+
+    const rows = screen.getAllByRole('row').slice(1)
+    const cell = within(rows[2]!).getByLabelText('Bild för wizard')
+    fireEvent.drop(cell, { dataTransfer: { getData: (type: string) => (type === 'text/x-byd-asset' ? HASH : ''), files: [] } })
+    expect(onCell).toHaveBeenCalledWith('wizard', 'art', `asset:${HASH}`)
+  })
+})
+
+describe('the symbol picker at the brace (E4)', () => {
+  const setup = () => {
+    const doc = projectDoc()
+    const onCell = vi.fn()
+    const onSymbol = vi.fn(async (s: { name: string }) => s.name)
+    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onSymbol={onSymbol} />)
+    const cell = within(screen.getAllByRole('row')[1]!).getByLabelText('dragon body') as HTMLInputElement
+    return { cell, onCell, onSymbol }
+  }
+  const type = (cell: HTMLInputElement, value: string) => {
+    fireEvent.change(cell, { target: { value, selectionStart: value.length } })
+  }
+
+  it('opens the library where the cursor stands, narrows as the name is typed, and writes the chosen symbol into the text', async () => {
+    const { cell, onCell, onSymbol } = setup()
+    expect(screen.queryByRole('listbox')).toBeNull()
+    type(cell, 'Flygande. {')
+    const list = screen.getByRole('listbox', { name: 'Symboler' })
+    expect(within(list).getAllByRole('option').length).toBeGreaterThan(3)
+    type(cell, 'Flygande. {sköl')
+    expect(within(list).getAllByRole('option').map((o) => o.textContent)).toEqual([expect.stringContaining('sköld')])
+
+    fireEvent.click(within(list).getAllByRole('option')[0]!)
+    await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'body', 'Flygande. {sköld}'))
+    expect(onSymbol).toHaveBeenCalledWith(expect.objectContaining({ name: 'sköld' }))
+    expect(screen.queryByRole('listbox')).toBeNull()
+  })
+
+  it('moves through the list with the arrow keys, takes one with Enter, and closes on Escape', async () => {
+    const { cell, onCell } = setup()
+    type(cell, '{s')
+    const list = screen.getByRole('listbox', { name: 'Symboler' })
+    const names = within(list).getAllByRole('option').map((o) => o.getAttribute('data-symbol'))
+    expect(within(list).getAllByRole('option')[0]!.getAttribute('aria-selected')).toBe('true')
+    fireEvent.keyDown(cell, { key: 'ArrowDown' })
+    expect(within(list).getAllByRole('option')[1]!.getAttribute('aria-selected')).toBe('true')
+    fireEvent.keyDown(cell, { key: 'ArrowUp' })
+    fireEvent.keyDown(cell, { key: 'ArrowUp' })
+    expect(within(list).getAllByRole('option')[0]!.getAttribute('aria-selected')).toBe('true')
+
+    fireEvent.keyDown(cell, { key: 'Enter' })
+    await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'body', `{${names[0]}}`))
+
+    type(cell, '{s')
+    expect(screen.getByRole('listbox')).toBeTruthy()
+    fireEvent.keyDown(cell, { key: 'Escape' })
+    expect(screen.queryByRole('listbox')).toBeNull()
+  })
+
+  it('stays out of the way: a closed brace, a number in braces, and a cell that is not text', () => {
+    const { cell } = setup()
+    type(cell, 'Betala {2} för att anfalla.')
+    expect(screen.queryByRole('listbox')).toBeNull()
+    type(cell, 'Betala {2')
+    // A bare number is a pip (L2), not a symbol: nothing to look up.
+    expect(screen.queryByRole('listbox')).toBeNull()
+    const antal = within(screen.getAllByRole('row')[1]!).getByLabelText('dragon antal') as HTMLInputElement
+    fireEvent.change(antal, { target: { value: '{s' } })
+    expect(screen.queryByRole('listbox')).toBeNull()
+  })
+})
+
+describe('comparing with an older version in the table (B4)', () => {
+  const older = () => {
+    const doc = projectDoc()
+    doc.rows[0]!.fields['title'] = 'Drake'
+    doc.rows = [doc.rows[0]!, doc.rows[1]!, { id: 'troll', fields: { title: 'Troll', body: 'Stor.', antal: 1 } }]
+    return doc
+  }
+  const now = () => {
+    const doc = projectDoc()
+    doc.rows[0]!.fields['title'] = 'Drakhona'
+    return doc
+  }
+
+  it('shows what moved since a chosen version: the old value struck through, and rows added or gone', () => {
+    render(
+      <DataTable
+        doc={now()}
+        selectedRow={null}
+        onSelectRow={() => undefined}
+        onCell={() => undefined}
+        onAddRow={() => undefined}
+        onRemoveRow={() => undefined}
+        onReplaceRows={() => undefined}
+        compareWith={{ rev: 1, doc: older() }}
+      />,
+    )
+    expect(screen.getByText(/Jämför med version 1/)).toBeTruthy()
+    const rows = screen.getAllByRole('row').slice(1)
+    // The removed card is shown too, at the end, so it can be seen at all.
+    expect(rows.map((r) => r.getAttribute('data-card-ref'))).toEqual(['dragon', 'knight', 'wizard', 'troll'])
+    expect(rows[0]!.getAttribute('data-change')).toBe('changed')
+    expect(rows[2]!.getAttribute('data-change')).toBe('added')
+    expect(rows[3]!.getAttribute('data-change')).toBe('removed')
+
+    const title = within(rows[0]!).getByRole('cell', { name: /Drakhona/ })
+    expect(within(title).getByText('Drake')!.tagName).toBe('S')
+    // A cell that did not move says it once.
+    expect(within(rows[1]!).queryByText('Riddare', { selector: 's' })).toBeNull()
+  })
+
+  it('is not in the way when nothing is being compared', () => {
+    render(<DataTable doc={now()} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} />)
+    expect(screen.queryByText(/Jämför med/)).toBeNull()
+    expect(screen.getAllByRole('row').slice(1).map((r) => r.getAttribute('data-change'))).toEqual([null, null, null])
+  })
+})

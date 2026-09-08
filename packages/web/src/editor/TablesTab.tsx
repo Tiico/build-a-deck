@@ -20,7 +20,10 @@ export function TablesTab({ client, server }: TablesTabProps) {
   const [asked, setAsked] = useState(0)
   useEffect(() => {
     let live = true
-    void client.tables().then((t) => live && setTables(t))
+    client.tables().then(
+      (t) => live && setTables(t),
+      (err: unknown) => live && setNotice(err instanceof Error ? err.message : String(err)),
+    )
     return () => {
       live = false
     }
@@ -72,7 +75,10 @@ export function TableMenu({ client, server, onShowTables }: { client: ProjectCli
   useEffect(() => {
     if (!open) return
     let live = true
-    void client.tables().then((t) => live && setTables(t))
+    client.tables().then(
+      (t) => live && setTables(t),
+      () => live && setTables([]),
+    )
     return () => {
       live = false
     }
@@ -129,7 +135,7 @@ const THUMBNAIL = { w: 640, h: 384 }
 // what the row says about the table is what the table itself says.
 function TableRow({ table, server, rev }: { table: TableSummary; server: string | null; rev: number }) {
   const url = server ? server.replace(/^http/, 'ws') : `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
-  const { client, view, observers } = useTableClient({ url, sessionId: table.id, seat: null })
+  const { client, view, observers, room } = useTableClient({ url, sessionId: table.id, seat: null, owner: true })
   // Ending a table is the one thing here that cannot be looked at afterwards (C9), so it is
   // asked about first, and the question gives the focus back to the button that opened it.
   const [asking, setAsking] = useState(false)
@@ -172,10 +178,10 @@ function TableRow({ table, server, rev }: { table: TableSummary; server: string 
           <span>{lastMove(table.lastAt)}</span>
         </p>
         <div className="byd-tables-ways">
-          <Way href={tvUrl(table.id, server)} label="Öppna TV-vyn" table={name} primary />
-          <Way href={tableModeUrl(table.id, server)} label="Bordsläge" table={name} />
-          {ended ? null : free ? <Way href={onlineUrl(table.id, server, free)} label="Spela härifrån" table={name} /> : <span className="byd-tables-note">alla platser upptagna</span>}
-          <Way href={observeUrl(table.id, server)} label="Titta på" table={name} />
+          <Way href={tvUrl(table.id, server, undefined, true)} label="Öppna TV-vyn" table={name} primary />
+          <Way href={tableModeUrl(table.id, server, true)} label="Bordsläge" table={name} />
+          {ended ? null : free ? <Way href={onlineUrl(table.id, server, free, true)} label="Spela härifrån" table={name} /> : <span className="byd-tables-note">alla platser upptagna</span>}
+          <Way href={observeUrl(table.id, server, true)} label="Titta på" table={name} />
           <button type="button" aria-expanded={showQr} onClick={() => setShowQr((on) => !on)}>
             QR för telefoner <span className="byd-offscreen">{name}</span>
           </button>
@@ -185,10 +191,10 @@ function TableRow({ table, server, rev }: { table: TableSummary; server: string 
             </button>
           )}
         </div>
-        {showQr && (
+        {showQr && room && (
           <div className="byd-tables-qr">
-            <QrCode text={joinUrl(table.id, server)} />
-            <Way href={joinUrl(table.id, server)} label="Anslutningssidan" table={name} />
+            <QrCode text={joinUrl(room.code, server)} />
+            <Way href={joinUrl(room.code, server)} label="Anslutningssidan" table={name} />
           </div>
         )}
         {asking && (

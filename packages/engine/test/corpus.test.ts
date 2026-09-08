@@ -1,15 +1,14 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { Applied } from '@byd/protocol'
-import { CARD_STANDARD_63x88, TypeRegistry, initialState, project, replay } from '../src/index.js'
+import { TypeRegistry, initialState, liftLog, project, replay, STANDARD_TYPES } from '../src/index.js'
 import { anonymise, record, type CorpusEntry } from '../scripts/corpus.js'
 import { Harness } from './fixture.js'
 
 // The replay corpus (DRIFT §7): real logs that must replay identically, and project identically
 // for every viewer, on every commit. This is the gate; there is no staging.
 const dir = join(import.meta.dirname, '../../../corpus')
-const registry = new TypeRegistry([CARD_STANDARD_63x88])
+const registry = new TypeRegistry(STANDARD_TYPES)
 const files = readdirSync(dir).filter((f) => f.endsWith('.json'))
 
 describe('the replay corpus', () => {
@@ -18,12 +17,13 @@ describe('the replay corpus', () => {
   })
 
   for (const file of files) {
-    it(`${file}: every line still parses, replays, and projects as it did when recorded`, () => {
+    it(`${file}: every line still lifts to today's schema, replays, and projects as it did when recorded`, () => {
       const entry = JSON.parse(readFileSync(join(dir, file), 'utf8')) as CorpusEntry
-      for (const line of entry.log) Applied.parse(line)
+      // Lifted, never rewritten (DRIFT §7): the files stay as they were recorded.
+      const log = liftLog(entry.log)
       const initial = initialState(entry.version, entry.setup, registry)
-      const state = replay(initial, registry, entry.log)
-      const history = { stateAt: (seq: number) => replay(initial, registry, entry.log.filter((l) => l.seq <= seq)), lines: () => entry.log }
+      const state = replay(initial, registry, log)
+      const history = { stateAt: (seq: number) => replay(initial, registry, log.filter((l) => l.seq <= seq)), lines: () => log }
       for (const [viewer, expected] of Object.entries(entry.expected)) {
         const seat = viewer === 'table' ? null : viewer === 'observer' ? null : viewer
         expect(project(state, registry, seat, undefined, history, viewer === 'observer')).toEqual(expected)

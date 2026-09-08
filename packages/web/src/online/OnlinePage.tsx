@@ -11,7 +11,8 @@ import { seatColor } from '../table/seatColor.js'
 import { zoneAt } from '../zones.js'
 import { CARD_MM } from '../table/drop.js'
 import { playIntents } from '../player/play.js'
-import { SessionButtons, SessionOverlays, useSessionVersion, useToast } from '../player/SessionOverlays.js'
+import { SessionButtons, SessionOverlays, useSessionVersion, useToast, refusedText } from '../player/SessionOverlays.js'
+import { claimUrl } from '../account/api.js'
 import { HandFan } from './HandFan.js'
 import { seatRotation, withoutHand } from './seat.js'
 import { DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
@@ -33,14 +34,16 @@ export function OnlinePage({ timing = DEFAULT_TIMING }: OnlinePageProps = {}) {
   const sessionId = params.get('session')
   const seat = params.get('seat')
   const name = params.get('name')
+  const token = params.get('token') ?? undefined
+  const owner = params.get('owner') === '1'
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
   const http = url.replace(/^ws/, 'http')
-  const conn = useTableClient(sessionId && seat ? { url, sessionId, seat, connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs } : null)
-  const { client, view, status, activity, observers } = conn
+  const conn = useTableClient(sessionId && seat ? { url, sessionId, seat, ...(token ? { token } : {}), ...(owner ? { owner: true } : {}), connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs } : null)
+  const { client, view, status, activity, observers, refused } = conn
   // A whole table on a whole screen: the message stands on the felt, like the TV's.
   const live = useLiveStatus(conn, 'table', timing)
-  const links = statusLinks({ server: params.get('server'), sessionId })
-  usePageTitle({ state: sessionId && seat ? live.state : 'missing', room: sessionId })
+  const links = statusLinks({ server: params.get('server'), code: params.get('code') })
+  usePageTitle({ state: sessionId && seat ? (refused ? 'forbidden' : live.state) : 'missing', room: params.get('code') ?? sessionId })
   const presence = usePresence(client, view)
   const recent = useRecent(activity)
   const table = useRef<TableHandle>(null)
@@ -54,6 +57,8 @@ export function OnlinePage({ timing = DEFAULT_TIMING }: OnlinePageProps = {}) {
   }, [client, view === null, seat, name, seatFree])
 
   if (!sessionId || !seat) return <StatusNotice notice={noticeFor('missing', 'table')} surface="page" links={links} />
+  // Not admitted, or kicked (DRIFT §9): a shut door rather than a broken line.
+  if (refused) return <StatusNotice notice={{ ...noticeFor('forbidden', 'table'), text: refusedText(refused) }} surface="page" links={links} />
   if (!view || !client) return <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
 
   const me = view.seats.find((s) => s.id === seat)
@@ -94,7 +99,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING }: OnlinePageProps = {}) {
         <SessionButtons client={client} view={view} onSheet={setSheet} />
       </div>
       <HandFan cards={hand} faces={http} onPlay={play} />
-      <SessionOverlays client={client} view={view} seat={seat} name={me?.name ?? seat} http={http} sessionId={sessionId} sheet={sheet} onSheet={setSheet} toast={toast} onToast={setToast} version={version} />
+      <SessionOverlays client={client} view={view} seat={seat} name={me?.name ?? seat} http={http} sessionId={sessionId} sheet={sheet} onSheet={setSheet} toast={toast} onToast={setToast} version={version} saveUrl={token ? claimUrl(token, params.get('server')) : null} />
       </div>
       <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
     </>

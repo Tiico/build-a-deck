@@ -101,3 +101,20 @@ export const CARD_STANDARD_63x88: ComponentTypeDef = {
   },
   manufacturableBy: [],
 }
+
+// A counter token (C4): a seat's life, gold or score as a component with a value. One face,
+// nothing to shuffle or flip; `setCounter` is its verb. Drawn as a chip with the value.
+export const TOKEN_COUNTER: ComponentTypeDef = {
+  id: 'token.counter',
+  version: 1,
+  physical: { shape: 'circle', widthMm: 20, heightMm: 20, thicknessMm: 2, material: 'acrylic' },
+  faces: ['front'],
+  contentFace: 'front',
+  behaviours: { stackable: false, shufflable: false, flippable: false, rollable: false, counter: true },
+  editorSchema: [{ key: 'title', label: 'Title', kind: 'text', required: true }],
+  print: { bleedMm: 0, safeMm: 1, dpi: 300, colorProfile: 'sRGB', minPtByScript: { Latn: 6 } },
+  manufacturableBy: [],
+}
+
+// What every table knows.
+export const STANDARD_TYPES: readonly ComponentTypeDef[] = [CARD_STANDARD_63x88, TOKEN_COUNTER]

@@ -41,6 +41,11 @@
   box-shadow: none;
 }
 
+/* A counter token (C4): a chip with its value and name. */
+.byd-token { border-radius: 50%; background: #f0b64a; color: #1c1c1c; display: grid; place-items: center; align-content: center; line-height: 1; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); font: 700 11px system-ui, sans-serif; }
+.byd-token b { font-size: 12px; }
+.byd-token span { font-size: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+
 /* Zones that are areas other than the floor get an outline and a label. */
 .byd-zone {
   position: absolute;

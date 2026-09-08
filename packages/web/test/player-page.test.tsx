@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { TableClient } from '../src/client.js'
 import { PlayerPage } from '../src/player/PlayerPage.js'
-import { createSession, startServer, type Running } from './fixture.js'
+import { admit, asSeat, asTable, createSession, roomOf, seatSetup, startServer, type Running } from './fixture.js'
 
 let run: Running
 beforeEach(async () => {
@@ -14,16 +14,20 @@ afterEach(async () => {
   await run.stop()
 })
 
-async function open(sessionId: string, seat: string, name: string) {
-  history.replaceState(null, '', `/play?session=${sessionId}&seat=${seat}&name=${name}&server=${encodeURIComponent(run.url)}`)
+// Opens the phone for a seat with a token bought for it, and returns that token: the same
+// guest on another connection (a test helper) is the same token, not a second admission.
+async function open(sessionId: string, seat: string, name: string): Promise<string> {
+  const token = await admit(run, sessionId, seat, name)
+  history.replaceState(null, '', `/play?session=${sessionId}&seat=${seat}&name=${name}&token=${token}&server=${encodeURIComponent(run.url)}`)
   render(<PlayerPage />)
   await screen.findByText(name)
+  return token
 }
 
 describe('PlayerPage', () => {
   it('claims its seat by name on connect and shows the hand it is dealt', async () => {
-    const id = await createSession(run.store)
-    const table = TableClient.connect({ url: run.url, sessionId: id, seat: null })
+    const id = await createSession(run)
+    const table = TableClient.connect(await asTable(run, id))
     await table.ready()
     await open(id, 'A', 'Ada')
     await table.synced(1)
@@ -36,8 +40,8 @@ describe('PlayerPage', () => {
   })
 
   it('lifting a card and choosing a zone plays it there — one envelope, seen by the table', async () => {
-    const id = await createSession(run.store)
-    const table = TableClient.connect({ url: run.url, sessionId: id, seat: null })
+    const id = await createSession(run)
+    const table = TableClient.connect(await asTable(run, id))
     await table.ready()
     await open(id, 'A', 'Ada')
     await table.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 3 })
@@ -63,8 +67,8 @@ describe('PlayerPage', () => {
   })
 
   it('holding two cards and lifting plays both in one atomic envelope', async () => {
-    const id = await createSession(run.store)
-    const table = TableClient.connect({ url: run.url, sessionId: id, seat: null })
+    const id = await createSession(run)
+    const table = TableClient.connect(await asTable(run, id))
     await table.ready()
     await open(id, 'A', 'Ada')
     await table.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 3 })
@@ -96,8 +100,8 @@ describe('PlayerPage', () => {
 
 describe('playing turns the card face-up (K11)', () => {
   it('flips when the target is public and leaves it face-down for a hidden pile, in one envelope', async () => {
-    const id = await createSession(run.store)
-    const table = TableClient.connect({ url: run.url, sessionId: id, seat: null })
+    const id = await createSession(run)
+    const table = TableClient.connect(await asTable(run, id))
     await table.ready()
     await open(id, 'A', 'Ada')
     await table.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
@@ -129,12 +133,12 @@ describe('playing turns the card face-up (K11)', () => {
 
 describe('undo and rewind on the phone (B, C)', () => {
   it('one tap undoes the seat\'s own last act while it is uncontested', async () => {
-    const id = await createSession(run.store)
-    await open(id, 'A', 'Ada')
+    const id = await createSession(run)
+    const token = await open(id, 'A', 'Ada')
     const undo = () => screen.getByRole('button', { name: /Ångra/ }) as HTMLButtonElement
     expect(undo().disabled).toBe(true)
 
-    const me = TableClient.connect({ url: run.url, sessionId: id, seat: 'A' })
+    const me = TableClient.connect({ url: run.url, sessionId: id, seat: 'A', token })
     await me.ready()
     await me.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
     await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(2))
@@ -148,10 +152,10 @@ describe('undo and rewind on the phone (B, C)', () => {
   })
 
   it('once someone else has acted, the same tap proposes a rewind, and the proposer can withdraw it', async () => {
-    const id = await createSession(run.store)
-    await open(id, 'A', 'Ada')
-    const me = TableClient.connect({ url: run.url, sessionId: id, seat: 'A' })
-    const other = TableClient.connect({ url: run.url, sessionId: id, seat: 'B' })
+    const id = await createSession(run)
+    const token = await open(id, 'A', 'Ada')
+    const me = TableClient.connect({ url: run.url, sessionId: id, seat: 'A', token })
+    const other = TableClient.connect(await asSeat(run, id, 'B'))
     await Promise.all([me.ready(), other.ready()])
     await me.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
     await other.send({ v: 'seat.claim', seat: 'B', name: 'Bo' }, { v: 'draw', from: 'draw', to: 'hand:B', count: 1 })
@@ -170,12 +174,12 @@ describe('undo and rewind on the phone (B, C)', () => {
   })
 
   it('the other phone is asked and can approve, which restores the table', async () => {
-    const id = await createSession(run.store)
-    await open(id, 'B', 'Bo')
-    const ada = TableClient.connect({ url: run.url, sessionId: id, seat: 'A' })
+    const id = await createSession(run)
+    const token = await open(id, 'B', 'Bo')
+    const ada = TableClient.connect(await asSeat(run, id, 'A'))
     await ada.ready()
     await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
-    const bo = TableClient.connect({ url: run.url, sessionId: id, seat: 'B' })
+    const bo = TableClient.connect({ url: run.url, sessionId: id, seat: 'B', token })
     await bo.ready()
     await bo.send({ v: 'draw', from: 'draw', to: 'hand:B', count: 1 })
     await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1))
@@ -193,7 +197,7 @@ describe('undo and rewind on the phone (B, C)', () => {
 
 describe('flagging a moment (G3)', () => {
   it('a tap on Flagga, an optional note, and the moment is in the log', async () => {
-    const id = await createSession(run.store)
+    const id = await createSession(run)
     await open(id, 'A', 'Ada')
     fireEvent.click(screen.getByRole('button', { name: /Flagga/ }))
     fireEvent.change(screen.getByPlaceholderText(/Vad hände/), { target: { value: 'Draken känns för stark här' } })
@@ -206,7 +210,7 @@ describe('flagging a moment (G3)', () => {
 
 describe('ending the session and the survey after it (C9, G3)', () => {
   it('Avsluta asks first, then locks the log; the survey takes one question at a time and lands on the server, tied to the version', async () => {
-    const id = await createSession(run.store)
+    const id = await createSession(run)
     await open(id, 'A', 'Ada')
     fireEvent.click(screen.getByRole('button', { name: /Avsluta/ }))
     expect(screen.getByText(/Avsluta sessionen\?/)).toBeTruthy()
@@ -228,5 +232,80 @@ describe('ending the session and the survey after it (C9, G3)', () => {
     expect(await screen.findByText(/Tack, Ada/)).toBeTruthy()
     const listed = (await (await fetch(`${run.http}/sessions/${id}/surveys`)).json()) as unknown[]
     expect(listed).toEqual([expect.objectContaining({ who: 'Ada', seat: 'A', version: 'v1', answers: { fun: 4, clarity: 3, balance: 2, change: 'Draken är för stark' } })])
+  })
+})
+
+describe('being kicked (DRIFT §9)', () => {
+  it('the phone is told the host removed it and does not come back on its own', async () => {
+    const id = await createSession(run)
+    await open(id, 'A', 'Ada')
+    const kicked = await fetch(`${run.http}/sessions/${id}/kick`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${roomOf(id).hostKey}` }, body: JSON.stringify({ seat: 'A' }) })
+    expect(kicked.status).toBe(200)
+    expect(await screen.findByText(/Värden har tagit bort dig/)).toBeTruthy()
+    await new Promise((r) => setTimeout(r, 200))
+    // A shut door is one of the nine states (#12): the phone says it as `forbidden` and stays
+    // there, rather than reconnecting into the same answer.
+    expect(document.querySelector('[data-status-notice]')?.getAttribute('data-status-notice')).toBe('forbidden')
+  })
+})
+
+describe('saving the session to an account (G1)', () => {
+  it('once the session has ended, the phone offers to save it, through the claim page with its token', async () => {
+    const id = await createSession(run)
+    const token = await open(id, 'A', 'Ada')
+    expect(screen.queryByText(/Spara till ditt konto/)).toBeNull()
+    const table = TableClient.connect(await asTable(run, id))
+    await table.ready()
+    await table.send({ v: 'session.end' })
+    const link = (await screen.findByRole('link', { name: /Spara till ditt konto/ })) as HTMLAnchorElement
+    const url = new URL(link.href, 'http://x')
+    expect(url.pathname).toBe('/claim')
+    expect(url.searchParams.get('token')).toBe(token)
+    expect(url.searchParams.get('server')).toBe(run.http)
+    table.close()
+  })
+})
+
+describe('counters and the area in front of you (C4)', () => {
+  it('shows the seat\'s counters as a row and counts with a tap; the log carries setCounter', async () => {
+    const id = await createSession(run, 's1', undefined, seatSetup())
+    await open(id, 'A', 'Ada')
+    const liv = await screen.findByText('Liv', { selector: '[data-counter="Liv"] span' })
+    expect(liv.parentElement?.querySelector('b')?.textContent).toBe('20')
+    fireEvent.click(screen.getByRole('button', { name: 'Liv minus' }))
+    await waitFor(() => expect(screen.getByText('19', { selector: '[data-counter="Liv"] b' })).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Guld plus' }))
+    await waitFor(() => expect(screen.getByText('4', { selector: '[data-counter="Guld"] b' })).toBeTruthy())
+    const log = await run.store.read(id)
+    expect(log.at(-1)).toMatchObject({ by: 'A', intent: { v: 'setCounter', value: 4 } })
+    // The other seat's counters are not this phone's to change, nor listed as zones to play to.
+    expect(screen.getAllByRole('button', { name: /minus/ })).toHaveLength(2)
+    expect(document.querySelectorAll('[data-counter]')).toHaveLength(2)
+    expect(document.querySelector('[data-zone-summary="counters:B"]')).toBeNull()
+  })
+
+  it('shows the cards in front of you as a strip with take up, flip and play, and hides the other seat\'s', async () => {
+    const id = await createSession(run, 's1', undefined, seatSetup())
+    const token = await open(id, 'A', 'Ada')
+    const me = TableClient.connect({ url: run.url, sessionId: id, seat: 'A', token })
+    await me.ready()
+    await me.send({ v: 'draw', from: 'draw', to: 'mine:A', count: 2 })
+    const mine = await waitFor(() => {
+      const cards = document.querySelectorAll('[data-mine-card]')
+      expect(cards).toHaveLength(2)
+      return cards
+    })
+    expect(screen.getByText(/Framför dig · 2/)).toBeTruthy()
+    fireEvent.click(mine[0]!.querySelector('button[data-act="flip"]')!)
+    await waitFor(() => expect(document.querySelector('[data-mine-card][data-face="front"]')).toBeTruthy())
+    fireEvent.click(document.querySelector('[data-mine-card] button[data-act="take"]')!)
+    await waitFor(() => expect(document.querySelectorAll('[data-mine-card]')).toHaveLength(1))
+    expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1)
+    fireEvent.click(document.querySelector('[data-mine-card] button[data-act="play"]')!)
+    expect(await screen.findByRole('dialog', { name: 'Spela till' })).toBeTruthy()
+    const targets = screen.getAllByRole('button').map((b) => b.textContent ?? '')
+    expect(targets.some((t) => t.startsWith('Framför mig'))).toBe(true)
+    expect(targets.some((t) => t.includes('Framför B'))).toBe(false)
+    me.close()
   })
 })

@@ -7,10 +7,28 @@ x-logging: &logging
       max-size: "20m"
       max-file: "5"
 
+# WAL-G (DRIFT §5): where the archive lives, spoken S3 to R2. R2_ENDPOINT overrides the
+# endpoint for an S3 stand-in in development. Without credentials nothing is archived.
+x-walg: &walg
+  WALG_S3_PREFIX: s3://${R2_BACKUP_BUCKET:-byd-backup}/wal-g
+  AWS_ENDPOINT: ${R2_ENDPOINT:-https://${R2_ACCOUNT_ID:-}.r2.cloudflarestorage.com}
+  AWS_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+  AWS_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+  AWS_REGION: auto
+  AWS_S3_FORCE_PATH_STYLE: "true"
+  WALG_DELTA_MAX_STEPS: "0"
+
 services:
+  # Postgres with WAL-G in the image (ops/Dockerfile.postgres): every finished WAL segment goes
+  # to R2 within a minute (DRIFT §5). The same image is the backup agent below.
   postgres:
-    image: postgres:17-alpine
+    build:
+      context: ops
+      dockerfile: Dockerfile.postgres
+    image: ${BYD_POSTGRES_IMAGE:-byd-postgres:${BYD_TAG:-latest}}
+    command: postgres -c wal_level=replica -c archive_mode=on -c archive_command=/usr/local/bin/archive.sh\ %p -c archive_timeout=60
     environment:
+      <<: *walg
       POSTGRES_DB: byd
       POSTGRES_USER: byd
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-byd}
@@ -37,6 +55,11 @@ services:
       PORT: "8080"
       IDLE_EVICT_MS: ${IDLE_EVICT_MS:-1800000}
       IDLE_END_MS: ${IDLE_END_MS:-86400000}
+      # Assets in R2 (DRIFT §4): with credentials, textures are served as signed links.
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+      R2_ASSETS_BUCKET: ${R2_ASSETS_BUCKET:-byd-assets}
     # The tunnel reaches the app on the compose network; this host port is for the box itself.
     ports:
       - "127.0.0.1:8080:8080"
@@ -55,6 +78,11 @@ services:
     image: ${BYD_RENDER_IMAGE:-byd-render:${BYD_TAG:-latest}}
     environment:
       DATABASE_URL: postgres://byd:${POSTGRES_PASSWORD:-byd}@postgres:5432/byd
+      # The worker writes its outputs where the app serves them from (DRIFT §4).
+      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
+      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
+      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
+      R2_ASSETS_BUCKET: ${R2_ASSETS_BUCKET:-byd-assets}
     depends_on:
       postgres:
         condition: service_healthy
@@ -78,22 +106,22 @@ services:
     restart: unless-stopped
     <<: *logging
 
-  # Backup (DRIFT §5, first step): a nightly pg_dump to R2 through rclone, kept 30 days.
-  # WAL archiving with a restore rehearsal is the next step; ops/restore-test.sh rehearses this one.
+  # Backup (DRIFT §5): a nightly base backup with WAL-G over the data volume, the last
+  # BACKUP_KEEP kept with their WAL; ops/restore-test.sh rehearses a restore in this image.
   backup:
-    build:
-      context: ops
-      dockerfile: Dockerfile.backup
+    image: ${BYD_POSTGRES_IMAGE:-byd-postgres:${BYD_TAG:-latest}}
+    command: /usr/local/bin/backup.sh loop
     environment:
+      <<: *walg
       PGHOST: postgres
       PGUSER: byd
       PGPASSWORD: ${POSTGRES_PASSWORD:-byd}
       PGDATABASE: byd
-      R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
-      R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
-      R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
-      R2_BUCKET: ${R2_BACKUP_BUCKET:-byd-backup}
+      PGDATA: /var/lib/postgresql/data
       BACKUP_HOUR: ${BACKUP_HOUR:-03}
+      BACKUP_KEEP: ${BACKUP_KEEP:-7}
+    volumes:
+      - pgdata:/var/lib/postgresql/data:ro
     depends_on:
       postgres:
         condition: service_healthy

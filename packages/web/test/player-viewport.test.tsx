@@ -16,7 +16,7 @@ import { TableSummary } from '../src/player/TableSummary.js'
 import { SessionButtons, SessionOverlays } from '../src/player/SessionOverlays.js'
 import { EndSheet, FlagSheet } from '../src/player/SessionSheets.js'
 import { Survey } from '../src/player/Survey.js'
-import { createSession, startServer, type Running } from './fixture.js'
+import { asSeat, createSession, startServer, type Running } from './fixture.js'
 
 // The shipped document and the shipped stylesheet, verbatim. (jsdom replaces the global URL,
 // which node:fs will not take, so the paths are joined rather than resolved from import.meta.url.)
@@ -94,8 +94,8 @@ afterAll(async () => {
 }, 60_000)
 beforeEach(async () => {
   run = await startServer()
-  const id = await createSession(run.store)
-  const client = TableClient.connect({ url: run.url, sessionId: id, seat: 'A' })
+  const id = await createSession(run)
+  const client = TableClient.connect(await asSeat(run, id, 'A', 'Ada'))
   await client.ready()
   await client.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
   await client.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 4 })

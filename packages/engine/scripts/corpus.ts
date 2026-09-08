@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { Applied, Snapshot } from '@byd/protocol'
-import { CARD_STANDARD_63x88, TypeRegistry, initialState, project, replay, type SetupDef } from '../src/index.js'
+import { TypeRegistry, initialState, project, replay, type SetupDef, STANDARD_TYPES } from '../src/index.js'
 
 // The replay corpus (DRIFT §7): anonymised real logs with what every viewer saw at the end.
 // `record` builds an entry; the test in test/corpus.test.ts is the gate on every commit.
@@ -16,7 +16,8 @@ export type CorpusEntry = {
   recordedAt: string
   version: string
   setup: SetupDef
-  log: Applied[]
+  // As recorded: lines keep the schema version they were written under, or none (version 0).
+  log: unknown[]
   // Final projections keyed by viewer: a seat id, 'table', or 'observer'.
   expected: Record<string, Snapshot>
 }
@@ -66,7 +67,7 @@ if (isMain) {
     console.error('usage: corpus <name> <export.json | http://host/sessions/:id/export>')
     process.exit(1)
   }
-  const registry = new TypeRegistry([CARD_STANDARD_63x88])
+  const registry = new TypeRegistry(STANDARD_TYPES)
   const load = async (): Promise<{ version: string; setup: SetupDef; log: Applied[] }> => {
     if (/^https?:/.test(source)) {
       const res = await fetch(source)

@@ -5,9 +5,11 @@ import '../player/player.css'
 import { TableRenderer } from '../table/TableRenderer.js'
 import { TvChrome } from '../table/TvChrome.js'
 import { useTableClient } from '../table/useTableClient.js'
+import { refusedText } from '../player/SessionOverlays.js'
 import { FlagSheet } from '../player/SessionSheets.js'
 import { Survey } from '../player/Survey.js'
 import { submitSurvey } from '../player/surveyApi.js'
+import { claimUrl } from '../account/api.js'
 import { DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
 import { useLiveStatus } from '../status/useLiveStatus.js'
 import { RouteStatus } from '../status/RouteStatus.js'
@@ -26,13 +28,15 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const sessionId = params.get('session')
   const name = params.get('name') ?? 'observatör'
+  const token = params.get('token') ?? undefined
+  const owner = params.get('owner') === '1'
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
   const http = url.replace(/^ws/, 'http')
-  const conn = useTableClient(sessionId ? { url, sessionId, seat: null, observer: name, connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs } : null)
-  const { client, view, status, activity, observers } = conn
+  const conn = useTableClient(sessionId ? { url, sessionId, seat: null, observer: name, ...(token ? { token } : {}), ...(owner ? { owner: true } : {}), connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs } : null)
+  const { client, view, status, activity, observers, refused } = conn
   const live = useLiveStatus(conn, 'table', timing)
-  const links = statusLinks({ server: params.get('server'), sessionId })
-  usePageTitle({ state: sessionId ? live.state : 'missing', room: sessionId })
+  const links = statusLinks({ server: params.get('server'), code: params.get('code') })
+  usePageTitle({ state: sessionId ? (refused ? 'forbidden' : live.state) : 'missing', room: params.get('code') ?? sessionId })
   const [sheet, setSheet] = useState(false)
   // Whether the column beside the table is called in (#6, prototype B). The observer watches, so
   // the table is the whole screen and everything else is summoned; on a desk there is room for
@@ -56,6 +60,8 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
   }, [sessionId, view?.ended, version, http])
 
   if (!sessionId) return <StatusNotice notice={noticeFor('missing', 'table')} surface="page" links={links} />
+  // Not admitted, or kicked (DRIFT §9): a shut door rather than a broken line.
+  if (refused) return <StatusNotice notice={{ ...noticeFor('forbidden', 'table'), text: refusedText(refused) }} surface="page" links={links} />
   if (!view || !client) return <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
 
   return (
@@ -103,7 +109,7 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
           }}
         />
       )}
-      {view.ended && <Survey who={name} version={version ?? '…'} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat: null, observer: true, answers })} />}
+      {view.ended && <Survey saveUrl={token ? claimUrl(token, params.get('server')) : null} who={name} version={version ?? '…'} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat: null, observer: true, answers })} />}
       </div>
       <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
     </>

@@ -43,6 +43,14 @@ describe('buildProject', () => {
     const kinds = Object.fromEntries(doc.setup.zones.map((z) => [z.id, z.kind]))
     expect(kinds).toMatchObject({ table: 'area', draw: 'pile', discard: 'pile', 'hand:A': 'hand', 'hand:B': 'hand', 'hand:C': 'hand' })
     expect(doc.setup.zones.filter((z) => z.kind === 'hand').every((z) => z.returnTo === 'draw' && z.visibility === 'owner')).toBe(true)
+    // The phone's verbs (C4) from the start: cast onto the discard, put back underneath the draw pile.
+    expect(doc.setup.zones.find((z) => z.id === 'discard')?.shortcut).toEqual({ label: 'Kasta', at: 'top' })
+    expect(doc.setup.zones.find((z) => z.id === 'draw')?.shortcut).toEqual({ label: 'Lägg underst', at: 'bottom' })
+    // Every seat owns an area in front of it (C4), reachable from the sheet as "Framför mig",
+    // and a counters zone everyone may see; the counters themselves are the wizard's list.
+    expect(doc.setup.zones.find((z) => z.id === 'mine:A')).toMatchObject({ kind: 'area', owner: 'A', visibility: 'owner', shortcut: { label: 'Framför mig', at: 'top' } })
+    expect(doc.setup.zones.find((z) => z.id === 'counters:C')).toMatchObject({ kind: 'area', owner: 'C', visibility: 'all' })
+    expect(doc.setup.counters).toEqual([{ name: 'Poäng', start: 0 }])
 
     const front = doc.template.faces['front']!
     const bound = front.base.flatMap((e) => ('bind' in e && 'field' in e.bind ? [e.bind.field] : []))

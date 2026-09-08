@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { QUESTIONS, type SurveyAnswers } from './surveyApi.js'
 
-export type SurveyProps = { who: string; version: string; onSubmit(answers: SurveyAnswers): Promise<void> }
+// `saveUrl` (G1): where the guest goes to keep this session on an account; absent without a token.
+export type SurveyProps = { who: string; version: string; onSubmit(answers: SurveyAnswers): Promise<void>; saveUrl?: string | null | undefined }
 
 // The survey after a session (G3, prototype A): one question at a time with big buttons, a free
 // line last, then thanks. Answers are tied to the version the session ended on.
-export function Survey({ who, version, onSubmit }: SurveyProps) {
+export function Survey({ who, version, onSubmit, saveUrl }: SurveyProps) {
   const [step, setStep] = useState(0)
   const [scales, setScales] = useState<Partial<Record<'fun' | 'clarity' | 'balance', number>>>({})
   const [change, setChange] = useState('')
@@ -29,6 +30,7 @@ export function Survey({ who, version, onSubmit }: SurveyProps) {
         <div className="byd-survey-thanks">
           <strong>Tack, {who}.</strong>
           <span>Dina svar är knutna till {version}.</span>
+          {saveUrl && <a className="byd-survey-save" href={saveUrl}>Spara till ditt konto</a>}
         </div>
         <div />
       </div>
@@ -80,6 +82,7 @@ export function Survey({ who, version, onSubmit }: SurveyProps) {
           </button>
         )}
       </div>
+      {saveUrl && <a className="byd-survey-save" href={saveUrl}>Spara till ditt konto</a>}
     </div>
   )
 }

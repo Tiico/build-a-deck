@@ -100,6 +100,16 @@ Följdkrav:
 Assets måste vara innehållsadresserade, annars sväller lagringen ohållbart.
 Historiken måste presenteras utan att lära ut git.
 
+Byggt 2026-09-08:
+Varje sparning lägger till en version som behålls hel och aldrig skrivs om, i minnet och i Postgres (`project_versions`). En version kan namnges, öppnas och jämföras.
+Diffen är den korttabellen visar: kort tillagda, borttagna och ändrade med fältet som rörde sig och vad det rörde sig från. Lekens ordning är en egen sorts ändring, och mall, uppställning och symboler nämns som ändrade utan att stavas ut — en diff av ett elementträd är en diff för en maskin.
+Diffen ligger i `packages/server` men exporteras på egen väg (`@byd/server/diff`), så editorn kan använda den utan att dra in servern i webbläsaren.
+Ytan prototypades i tre former: en lista med versioner, skillnaden i korttabellen, och en remsa att dra leken genom. Valet blev listan plus skillnaden i tabellen.
+Historiken öppnas från revisionsnumret i editorns huvud, där versionen redan står namngiven. Panelen listar versionerna med datum, namn och — när en rad öppnas — vad den ändrade i ord. Vad en version ändrade hämtas först när raden öppnas; en lång historia ska inte vara en lång väntan på något ingen tittade på.
+Att ta tillbaka en äldre version är en redigering som vilken annan: den blir nästa version när den sparas, och den den kom från står kvar orörd.
+"Jämför med den här i tabellen" öppnar Tabell-fliken hållen mot den versionen: det gamla värdet överstruket i cellen, tillagda och borttagna rader tonade, och de borttagna korten kvar sist så att de går att se alls.
+Revisionsknappen blev editorns första tabbstopp, före fliklistan. Det är avsiktligt: den står där versionen står, och tangentbordstesterna dokumenterar ordningen.
+
 ### B5. Logikgräns: affordances plus deklarativ setup (fråga 5)
 
 Systemet kan manipulera — blanda, dra, vända, rotera, stapla, räkna, slå — och känner till spelets struktur: namngivna zoner, per-spelare-områden, startuppställning, drag- och kasthögar.
@@ -109,6 +119,16 @@ Följdkrav:
 Zon- och setupdefinitionen återanvänds för regelbokens uppställningsbild och för lådans inlägg.
 Zonnamn blir användarsynlig UX på telefonen, inte kosmetik.
 Setup måste redigeras när spelet ändras.
+
+Setup-editorn (prototypad och byggd 2026-09-07):
+Tre sätt prövades: en lista med mått i millimeter, bordet som arbetsyta med handtag, och ett recept med några rattar.
+Valet blev recept som start och bordet som finjustering.
+Receptet är wizardens rattar, vridbara efteråt i editorns flik "Bord": antal spelare, om varje plats har en yta framför sig, räknarna med startvärden, om bordet har en kasthög och en marknad.
+Receptet äger en namnrymd av zoner (golv, draghög, kasthög, marknad, varje plats hand, yta och räknarzon); byte av antal spelare lägger dem på nytt, allt annat rör det inte.
+Bordet är den riktiga renderaren matad ur setupen, med tjugo platshållarkort i draghögen och varje plats räknare: varje zon utom golvet är ett handtag att dra, ändra storlek på (hörnet) och knuffa med piltangenterna, i hela millimeter på ett femmillimetersraster.
+Egna zoner läggs till som yta eller hög, får namn, genväg, ägare och synlighet, och kan tas bort; receptets zoner får namn och genväg men ägare och synlighet är receptets.
+Setupen valideras av motorn i webbläsaren: går bordet inte att bygga säger editorn det i stället för att rita.
+Telefonens ark står bredvid som förhandsvisning av spelarens verb.
 
 ### B6. Synlighet: zonhärledd standard med undantag per komponent (fråga 35)
 
@@ -125,6 +145,16 @@ Detta är den mest sannolika källan till informationsläckor och behöver testa
 
 Reglerna bor i projektet, versioneras i samma oföränderliga historik som korten, och kan referera komponenter och zoner så att namnändringar följer med.
 Renderas till referenspanel vid bordet och till tryckfärdigt häfte.
+
+Byggt 2026-09-08:
+Reglerna ligger i projektdokumentet, så de versioneras i samma historia som korten (B4) och låses in i en session vid start som allt annat.
+En regel namnger en zon eller ett kort med dess id, aldrig med dess namn: `[[zon:discard]]` och `[[kort:drake]]`. Att döpa om kasthögen skriver om varje regel som nämner den, eftersom reglerna aldrig höll namnet.
+En referens till något spelet inte längre har visas som det som skrevs, markerad, precis som en okänd ikon på ett kort (L2).
+Inline-parsern fick en konstruktion till, som bara regelboken ber om, så korttexten har fortfarande exakt de fyra L2 tillåter.
+Renderaren returnerar block, inte HTML, eftersom samma rendering ska till tre ställen: editorn, bordets referenspanel och det tryckta häftet.
+Ytan prototypades i tre former: block bredvid boken, ett fält i stenografi, och sidan själv som redigerare. Valet blev sidan själv: ett stycke öppnas där det står och stängs när det lämnas, så det man skriver alltid är det läsaren möter.
+Fliken "Regler" i editorn är boken. Referenser sätts in ur en lista över vad spelet har. Uppställningsbilden är spelets egna zoner (B5), inte en teckning bredvid dem.
+Kvar av B7: referenspanelen vid bordet och det tryckfärdiga häftet.
 
 Motivering:
 Trycket kräver en regelbok för att ordern ska kunna läggas.
@@ -184,6 +214,15 @@ Fullt bord går att fälla ut vid behov.
 
 Följdkrav:
 Zonnamn måste vara begripliga utan att man ser bordet.
+
+Räknare och privata zoner (prototypat och byggt 2026-09-07):
+En räknare är en komponent av en egen typ, `token.counter` (B1, B2), med ett värde och en yta; `setCounter` är dess verb och protokollet är orört.
+Wizarden ger varje plats en yta "Framför mig" som bara ägaren ser och en räknarzon som alla ser, med räknarna ur en lista (en poängräknare som standard).
+Tre varianter prövades för telefonen; valet blev staplat: räknarna som piller under huvudet, bordsöversikten som förut, korten framför dig som en mindre remsa ovanför handen med vänd, ta upp och spela. Bordet ritar en räknare som en bricka med värdet.
+Arket och översikten erbjuder aldrig en annan plats privata yta, och aldrig en zon som bara håller räknare.
+
+Byggt 2026-09-07: en zon kan bära en genväg (`shortcut`) med verbet telefonen visar och var i en hög kortet hamnar, överst eller underst; utan genväg visar telefonen zonens namn.
+Wizarden ger draghögen "Lägg underst" och kasthögen "Kasta". Editorns flik "Bord" redigerar namn och genvägar för varje zon som inte är en hand, med telefonens ark som förhandsvisning; sedan 2026-09-07 är fliken hela setup-editorn (B5).
 
 ### C5. Rumslig modell: konfigurerbart TV- eller bordsläge (fråga 32)
 
@@ -335,7 +374,7 @@ Svåra buggar är samtidighet och synlighet, inte utseende, och de reproduceras 
 
 Följdkrav:
 Händelseschemat är ett kontrakt som måste versioneras och migreras vid varje ändring.
-Migreringsstrategin är fortfarande en öppen fråga.
+Migreringsstrategin är beslutad i DRIFT §7 och byggd 2026-09-07: version per rad, upcasters vid inläsning.
 
 ### D5. Fel-, tom- och anslutningslägen: nio lägen med en modell och en form per route (prototypat 2026-09-07)
 
@@ -395,6 +434,14 @@ Följdkrav:
 Enstaka avvikande kort kräver en genomtänkt undantagsmekanism i form av mallvarianter.
 Datan blir diffbar, vilket ger versionshanteringen dess mening.
 
+Illustrationer i editorn (prototypat och byggt 2026-09-07):
+Tre sätt prövades: bildceller i tabellen, släpp på kortet på väggen med spelets bilder i en bricka, och ett bibliotek som matchar filer mot kort på namn.
+Valet blev bildceller i tabellen: bildfältet är en cell med tumnagel, en knapp att välja eller byta, ett kryss att ta bort, och en plats att släppa en fil eller en av spelets bilder på.
+Ovanför tabellen står spelets bilder en gång var med hur många kort de sitter på; en bild dras därifrån till en cell för att användas igen.
+En bild är en innehållsadresserad asset (DRIFT §4): raden bär `asset:<hash>`, inte bytesen, så projektdokumentet är litet och samma bild på tio kort är en uppladdning.
+Kompilatorn får en URL där den anropas: i webbläsaren `/assets/<hash>`, på servern en data-URL ur lagret, så den kompilerade sidan bär sina bilder och renderworkern behöver inget annat än sidan.
+Wizarden laddar upp sina valda bilder innan projektet skapas och pekar på dem på samma sätt.
+
 ### E2. En enda renderare: HTML/CSS via headless Chromium (fråga 9)
 
 Mallen är HTML och CSS.
@@ -434,6 +481,16 @@ Följdkrav:
 Licensmetadata per asset måste följa med hela vägen in i tryckunderlaget.
 Kuratering och licensbokföring blir ett löpande arbete.
 
+Symbolbiblioteket i editorn (prototypat och byggt 2026-09-08):
+Tre sätt prövades: en bibliotekspanel, en väljare som öppnas vid klammern medan man skriver, och en bricka att dra symboler från till kortet.
+Valet blev panelen som hem och klammern medan man skriver; båda fyller samma sak.
+Fliken "Symboler" i editorn är biblioteket: sökning på namn, nyckelord eller kategori, kategorierna Resurser, Handlingar, Tillstånd och Platshållare, och licensen skriven på varje symbol.
+Att skriva `{` i en textcell i tabellen öppnar samma sökning där markören står; piltangenter väljer, Enter skriver in `{namn}` och tar in symbolen. Ett rent tal i klamrar är en pip (L2) och slår inte upp något.
+Spelets egen uppsättning står bredvid biblioteket med vad man skriver, vilken licens symbolen har och hur många kort den används på; namnet går att byta och symbolen att ta bort.
+En symbol som tas in blir ett av projektets assets (E1): bytesen laddas upp och uppsättningen pekar på `asset:<hash>`, så kortens utseende inte hänger på att biblioteket står stilla.
+Licensen lagras i dokumentets `credits` bredvid uppsättningen, så kompilatorns `icons` förblir namn → URL, och `POST /projects/:id/print` svarar med licenserna tillsammans med korten — det är följdkravet att licensmetadata når tryckunderlaget.
+Biblioteket är ritat för projektet och släppt som CC0; strukturen bär licens och upphovsman per symbol, så kurerat CC-BY-material kan läggas till utan ändring.
+
 ### E5. Fysisk validering med varningar (fråga 30)
 
 Kontinuerliga kontroller mot fysiskt mått: minsta textstorlek i punkter, kontrastförhållande, färgblindhetssimulering, skärmargin mot utfall, minsta linjetjocklek.
@@ -443,6 +500,16 @@ Motivering:
 Text som ser lagom ut på en 27-tumsskärm blir 5 punkter i handen.
 Effektsymboler som bara skiljs åt av rött och grönt är osynliga för åtta procent av männen som spelar spelet.
 Inget av detta upptäcks vid ett digitalt playtest, eftersom bordet zoomar in.
+
+Byggt 2026-09-08:
+Kontrollerna sitter i `packages/template` och körs både i editorn och vid order, så det är samma dom på båda ställena.
+Sex slag: text mot komponenttypens egen minsta storlek för skriften, kontrast mot det som ligger bakom, innehåll innanför skyddsmarginalen, bakgrunder som når snittet men inte utfallet, linjer tunnare än pressen klarar, och färgpar som blir ett vid simulerad färgblindhet.
+Varje anmärkning är antingen fel eller varning. `POST /projects/:id/print` svarar 422 med kort, sida och element så länge ett fel står kvar; varningar följer med ordern i stället för att stoppa den.
+Ytan prototypades i tre former: markerat på kortet, en rapport över hela leken, och att se leken med läsarens ögon. Valet blev rapporten plus ögonen, båda på kortväggen.
+Rapporten samlar anmärkningarna per slag med hur många kort de gäller, eftersom ett fel i mallen är ett fel på varje kort som ärver elementet; en rad öppnar detaljen och ramar in korten den gäller.
+Ögonen är lägen över de riktiga korten: deuteranopi, protanopi, tritanopi och gråskala som filter med samma matriser som kontrollen använder, snitt och skyddsmarginal inritade i millimeter, och kortet på armlängds avstånd. Färgblindhet går inte att beskriva i ord.
+Kortets eget märke räknar fortfarande bara kortets egna varningar; ett mallfel sägs en gång i rapporten i stället för fyrtio gånger på väggen.
+Kontrollen fann tre fel i vårt eget arbete första gången den kördes: startramarna målade bakgrunder ända till snittet, en ram låg en millimeter från kniven, och en mörk variant i testleken behöll en nästan svart titel.
 
 Följdkrav:
 Reglerna måste kalibreras mot faktiskt tryckta provkort, annars blir de brus som stängs av.
@@ -521,14 +588,19 @@ Fem personer runt ett bord som ska skapa konto på sina telefoner är en död se
 Följdkrav:
 QR-knappen i `table`-vyn är produktens viktigaste knapp.
 Feedback från gäster är svagt attribuerad.
-Missbruk av öppna rumskoder måste hanteras — fortfarande öppen fråga.
+Missbruk av öppna rumskoder hanteras i DRIFT §9 (byggt 2026-09-07): koden köper en token, går ut och kan roteras, och värden kan sparka.
 
 Byggt 2026-09-06 (prototypat, variant "kort i mitten"):
 Skaparen loggar in med en magisk länk (DRIFT §11): `POST /auth/login` mejlar en engångslänk som gäller i 15 minuter och svarar alltid 200, `GET /auth/verify` löser in den, skapar kontot första gången och sätter en HttpOnly-kaka i 30 dagar.
 Projekt som skapas med konto tillhör kontot: bara ägaren läser, skriver, listar och startar bord; projekt från före konton förblir öppna.
 Startsidan `/` är inloggningskortet tills länken följts, sedan "Mina spel" som ett rutnät av spelkort med "Nytt spel"; editorn och wizarden skickar vidare till `/login?next=` vid 401. Ett inskickat wizardutkast och dess mål bevaras under auth-rundan i samma flik och återupptas automatiskt efter login, så att skaparen inte behöver bygga spelet två gånger.
 Gäster loggar aldrig in: bord, telefon, distansvy och observatör nås med rumskod; inloggningskortet säger det.
-Att claima en gästsession till ett konto, passkeys och OAuth återstår.
+Passkeys och OAuth återstår.
+
+Claimat (prototypat och byggt 2026-09-07):
+Gästens admission, den token telefonen spelade under (DRIFT §9), är det som claimas: `POST /guests/claim` med kontots kaka knyter den till kontot, en gång, och 409 om ett annat konto redan har den.
+Telefonen erbjuder "Spara till ditt konto" i enkäten när sessionen är slut; länken går via inloggningskortet till `/claim`, som sedan landar på startsidan med ett besked.
+Tre varianter prövades för startsidan; valet blev två rutnät: egna spel först som förut, sedan "Bord du spelat vid" med platsens färg, spelet, namnet man spelade under, enkät och flaggor, och "Tillbaka till bordet" medan det pågår och koden lever. En ren gäst utan egna spel ser "Nytt spel" som inbjudan ovanför sina bord.
 
 ### G2. Kommunikation: ingen inbyggd röst (fråga 19)
 
@@ -614,11 +686,16 @@ Zoner kan tillkomma och försvinna i patchar.
 Pile-zoner har en position.
 Ett verb för att flytta en hel hög som enhet — ett medvetet tillägg till det slutna vokabuläret, eftersom "plocka upp högen" är en fysisk handling.
 
+Blandad orientering (beslutat 2026-09-07): en hög kvadrerar sina kort.
+Ett kort som läggs i en hög tar högens vridning, vilken det än hade, som en hand gör när den jämnar till en hög; tillståndet och bilden säger samma sak.
+Den som vill markera med ett tvärställt kort lägger det löst bredvid högen.
+
 ### K2. Fri placering, zoner som rektanglar med släpp-in
 
 Setup ger varje zon en rektangel, eller en punkt för högar, i bordskoordinater.
 Släpp inom rektangeln är `move` till zonen med relativ position; släpp utanför är fri placering i bakgrundsarean.
 Ingen grid, inga slots.
+Zoner får överlappa (beslutat 2026-09-07): ett släpp landar i den minsta zon vars rektangel innehåller punkten, och mellan lika stora i den som står först i setupen. Nästling är huvudfallet; ett medvetet överlapp får en förutsägbar mening utan validering.
 
 Följdkrav:
 Zonrektanglarna är direkt återanvändbara som spelplansunderlag vid tryck.
@@ -686,6 +763,7 @@ Planritningen kan bli ett felsökningsläge senare.
 Följdkrav som prototypen avslöjade och som nu är införda:
 Snapshot bär platserna med namn och golvzonen.
 Servern skickar varje committad rad som redigerad aktivitet, utan utfall.
+Snapshoten bär de senaste femtio raderna på samma sätt (2026-09-07), så att en skärm som ansluter mitt i ett spel ser vad som hänt; klienten byter ut sitt flöde mot dem vid varje återanslutning.
 
 Byggt 2026-09-07 (bordet ställt sida vid sida med de godkända prototyperna B och C, #20):
 TV-läget har åter rubriken — spelets namn och den version aktören kör — där hela join-URL:en tidigare stod i klartext; adressen finns kvar som QR-kodens alternativtext, så den går att skriva av utan kamera.
@@ -745,9 +823,9 @@ Spel med "spela nedvänt" som mekanik behöver ett andra val i arket.
 
 ### K12. Anslutningsflödet: bordet som platsväljare med nästa lediga förvald (prototypat 2026-09-06)
 
-QR-koden i TV-läget pekar på `/join?session=…`.
-Telefonen ser platserna live — upptagna med namn, lediga tryckbara — runt ett litet bord vars kanter följer setupens handzoner, med nästa lediga plats förvald.
-Namn plus "Sätt dig" leder till `/play`, som claimar platsen.
+QR-koden i TV-läget pekar på `/join?code=…` (från 2026-09-07 en rumskod, DRIFT §9).
+Telefonen ser platserna live genom lobbyrollen — upptagna med namn, lediga tryckbara — runt ett litet bord vars kanter följer setupens handzoner, med nästa lediga plats förvald.
+Namn plus "Sätt dig" köper en token för platsen och leder till `/play`, som claimar platsen.
 
 Motivering:
 I bordsläge betyder platsen något — den avgör vilken kant handen orienteras mot — så valet ska vara rumsligt.
@@ -888,7 +966,7 @@ Duken får en flik per grupp plus "Bas (alla)"; det som ändras med en gruppflik
 Lagerordningen är basens och delas av alla grupper — den ändras därför bara med basfliken vald.
 Lagerpanelen säger per lager om det är basens eller gruppens och hur många kort gruppen gäller; variant B:s regellista står kvar som sammanfattning i samma panel.
 Variant C valdes bort som redigeringsväg — tjugo fällor skulle kräva tjugo val — men tabellen visar vilken grupp en rad faller i, läsbart och inte redigerbart.
-Prototypen `packages/web/src/prototype/groups` står kvar tills #14 har svarat.
+Prototypen `packages/web/src/prototype/groups` togs bort när även baksidesflödet i #14 hade svarat.
 
 ### L4. Datatabellen: kolumntyper från registryt, systemkolumn `antal`
 
@@ -960,6 +1038,12 @@ Byggt 2026-09-07 (#13):
 Mallfliken har en fram-/baksideväxel, så att baksidan redigeras med samma duk, samma lagerpanel och samma verktyg som framsidan.
 Växeln är en radiogrupp med rovande tabindex: hela växeln är ett tabstopp och pilarna både flyttar och väljer.
 En grupp kan skriva över element på båda ansiktena; det som inte skrivs över ärvs från basen, vilket är det som gör en särskild baksida per grupp möjlig (#14).
+
+Verifierat och färdigställt 2026-09-07 (#14):
+Ett dolt kort projiceras med just den baksideshash som dess rads grupp väljer, men utan `cardRef` eller framsideshash; det är testat på de råa WebSocket-frames som lämnar servern.
+Trycköverlämningen är ett kortmanifest, inte två fristående listor: varje fysisk komponent bär hash för alla sina ansikten från samma kompilering av samma rad. Därmed kan en gruppframsida inte paras med standardbaksidan, kopior behåller varsin manifestpost och identiskt renderinnehåll delar jobb genom hashen.
+Både fram- och baksida går genom `compileCard` med utfall och vidare som PDF-jobb till samma Chromium-renderare som övriga tryckunderlag.
+`POST /projects/:id/print` gör överlämningen från projektets aktuella revision för dess inloggade ägare, köar de deduplicerade jobben och svarar med manifestets hashpar utan att lämna ut kompilerad HTML eller CSS.
 
 ### L8. Editorns utseende: kortväggen som hem, duken för mallen, tabellen som flik (prototypat 2026-09-06)
 
@@ -1071,15 +1155,11 @@ GDPR för gästdeltagare, särskilt enkätsvar och flaggor från personer utan k
 Fontlicensiering, som krockar med kravet i B3 att behålla fontfiler permanent.
 
 Teknik:
-Aktivitetsflödet är tomt vid anslutning — historik följer inte med snapshot, så en TV som ansluter mitt i ett spel ser inget av det som hänt. Nyligen aktivitet bör ingå i snapshot.
-Migreringsstrategi för händelseschemat — riktning beslutad i DRIFT.md avsnitt 7 (`schemaVersion` på varje rad, upcasters vid inläsning), detaljer kvar.
+Aktivitetsflödet vid anslutning: löst 2026-09-07, snapshoten bär de senaste femtio raderna, se K9.
 Behörighetsroller i detalj: ägare, medredigerare, testledare, observatör.
-Hantering av missbruk av öppna rumskoder.
 Tillgänglighet i verktyget självt, till skillnad från i de spel som skapas i det.
 
-Spelupplevelse, kvar efter avsnitt K:
-Hur en hög i en area visas med blandad orientering av kort.
-Om zonrektanglar ska kunna överlappa, och vad ett släpp i överlappet betyder.
+Spelupplevelse, kvar efter avsnitt K: inga; de två sista avgjordes 2026-09-07, se K1 och K2.
 
 Fellägen, kvar efter D5:
 Om tidpunkten i "Det du ser är från 14:32" ska vara absolut eller relativ; implementationen står på absolut, som är entydig men läses sämre i ett spel som pågår.

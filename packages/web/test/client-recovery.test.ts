@@ -3,7 +3,7 @@ import { createServer, type Server, type Socket } from 'node:net'
 import type { AddressInfo } from 'node:net'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { TableClient } from '../src/client.js'
-import { createSession, startServer, type Running } from './fixture.js'
+import { asSeat, asTable, createSession, startServer, type Running } from './fixture.js'
 
 let run: Running
 beforeEach(async () => {
@@ -80,8 +80,8 @@ describe('a session the server does not know', () => {
 
 describe('reconnecting on its own', () => {
   it('comes back by itself while the plan lasts', async () => {
-    const id = await createSession(run.store)
-    const c = TableClient.connect({ url: run.url, sessionId: id, seat: null, retryPlanMs: [20, 40, 80] })
+    const id = await createSession(run)
+    const c = TableClient.connect({ ...(await asTable(run, id)), retryPlanMs: [20, 40, 80] })
     await c.ready()
     const back = watch(c)
     await run.restart()
@@ -91,8 +91,8 @@ describe('reconnecting on its own', () => {
   })
 
   it('stops when the plan is spent and hands the decision to a person', async () => {
-    const id = await createSession(run.store)
-    const c = TableClient.connect({ url: run.url, sessionId: id, seat: null, retryPlanMs: [20, 20] })
+    const id = await createSession(run)
+    const c = TableClient.connect({ ...(await asTable(run, id)), retryPlanMs: [20, 20] })
     await c.ready()
     await run.stop()
     expect(await settles(() => c.trouble === 'exhausted')).toBe(true)
@@ -101,8 +101,8 @@ describe('reconnecting on its own', () => {
   })
 
   it('starts over when a person asks, and keeps the view it already had', async () => {
-    const id = await createSession(run.store)
-    const c = TableClient.connect({ url: run.url, sessionId: id, seat: null, retryPlanMs: [20, 20] })
+    const id = await createSession(run)
+    const c = TableClient.connect({ ...(await asTable(run, id)), retryPlanMs: [20, 20] })
     await c.ready()
     const before = c.view!.seq
     await run.stop()
@@ -116,8 +116,8 @@ describe('reconnecting on its own', () => {
   })
 
   it('counts down to the next attempt so the wait is visible rather than a page that blinks', async () => {
-    const id = await createSession(run.store)
-    const c = TableClient.connect({ url: run.url, sessionId: id, seat: null, retryPlanMs: [400, 400] })
+    const id = await createSession(run)
+    const c = TableClient.connect({ ...(await asTable(run, id)), retryPlanMs: [400, 400] })
     await c.ready()
     await run.stop()
     expect(await settles(() => c.status === 'reconnecting')).toBe(true)
@@ -131,8 +131,8 @@ describe('reconnecting on its own', () => {
 // The whole point of a log the server owns: a client that comes back says nothing twice.
 describe('what a reconnect writes to the log', () => {
   it('resyncs to the snapshot without any envelope landing in the log twice', async () => {
-    const id = await createSession(run.store)
-    const c = TableClient.connect({ url: run.url, sessionId: id, seat: 'A', retryPlanMs: [20, 40, 80] })
+    const id = await createSession(run)
+    const c = TableClient.connect({ ...(await asSeat(run, id, 'A')), retryPlanMs: [20, 40, 80] })
     await c.ready()
     expect(await c.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })).toEqual({ ok: true, seqs: expect.any(Array) })
 
@@ -151,8 +151,8 @@ describe('what a reconnect writes to the log', () => {
   })
 
   it('lets go of an envelope that was in flight when the line died rather than sending it again', async () => {
-    const id = await createSession(run.store)
-    const c = TableClient.connect({ url: run.url, sessionId: id, seat: 'A', retryPlanMs: [20, 40, 80] })
+    const id = await createSession(run)
+    const c = TableClient.connect({ ...(await asSeat(run, id, 'A')), retryPlanMs: [20, 40, 80] })
     await c.ready()
     const back = watch(c)
     const inFlight = c.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 3 })

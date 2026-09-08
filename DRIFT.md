@@ -61,6 +61,18 @@ Följdkrav:
 Klienten måste cacha signerade URL:er under deras livstid, annars blir varje textur två rundturer.
 Att visa ett kort kräver att R2 är nåbart — ett externt beroende för kärnfunktion.
 
+Byggt 2026-09-07:
+Renderworkern skriver sina utdata till R2 under `renders/<hash>` med rätt content-type; Postgres behåller bara att de finns.
+`GET /faces/:hash` svarar 302 till en signerad URL som lever en timme, med `Cache-Control: private, max-age=3000`: webbläsaren återanvänder länken i femtio minuter och hämtar aldrig en som just gått ut. Det är svaret på den öppna frågan om livslängd.
+S3-protokollet talas utan SDK: fyra anrop med Signature Version 4, verifierade mot AWS dokumenterade exempel och mot MinIO.
+Utan R2-variabler stannar bytesen i Postgres och går genom `app`, som förut; `/health` frågar R2 med en tom listning (§2).
+
+Uppladdade bilder (E1) byggt 2026-09-07:
+`POST /assets` tar en bild (png, jpeg, webp, gif, svg; högst 8 MB) från en inloggad skapare och svarar med dess sha256-hash; samma bytes ger samma hash och kostar inget andra gången.
+Bytesen ligger under `assets/<hash>` i R2 och tabellen `assets` håller hash, typ och storlek; utan R2 ligger bytesen i tabellen.
+`GET /assets/<hash>` svarar som `/faces`: 302 till en signerad länk när R2 finns, annars bytesen med oföränderlig cache. Hashen är kapabiliteten, som för ansikten.
+När ett bord eller ett tryck görs av projektet löses radernas `asset:<hash>` till data-URL:er innan kompileringen, så sessionens lek bär sina bilder som förut och renderworkern behöver inget annat än sidan.
+
 ## 5. Backup: WAL-arkivering till R2 med återställningstest
 
 pgBackRest eller WAL-G arkiverar varje WAL-segment till en egen R2-bucket inom sekunder.
@@ -70,6 +82,13 @@ Ett schemalagt skript återställer senaste backupen i en tom container och kör
 Motivering:
 Förlustfönstret måste vara nära noll så fort någon har betalat.
 En backup som aldrig lästs tillbaka är en förhoppning.
+
+Byggt 2026-09-07: WAL-G.
+Postgres-bilden (`ops/Dockerfile.postgres`) är fortfarande Alpine — lådans data initierades på musl, och ett libc-byte skulle ändra kollationerna under indexen — med `gcompat` för WAL-G:s binär, låst till version och checksumma.
+`archive_command` skickar varje färdigt WAL-segment till R2 inom en minut (`archive_timeout=60`); utan R2-nycklar släpps segmentet och loggen säger det en gång, så att Postgres aldrig samlar WAL i väntan på en bucket som inte finns.
+`backup`-containern är samma bild över datavolymen: en basbackup per natt, de senaste `BACKUP_KEEP` behålls med sitt WAL.
+`ops/restore-test.sh` hämtar senaste basbackupen och allt WAL efter den till en tom katalog i backup-bilden, startar Postgres där, räknar, och spelar upp den senaste sessionens logg genom motorn i app-bilden.
+Bytet av Postgres-bild startar om databasen en gång vid deployen; volymen är densamma.
 
 ## 6. Renderfarm: Postgres-kö, en worker, cache per innehållshash
 
@@ -112,6 +131,17 @@ En buggrapport är ett sessions-id och ett seq-nummer; `replay` till den punkten
 Cloudflares rate limiting stoppar brute force mot join-endpointen innan det når huset.
 Rumskoder är 6–8 tecken utan förväxlingsbara tecken, går ut efter några timmar utan anslutning, och kan roteras av värden.
 Värden kan sparka en gäst, vilket ogiltigförklarar dennes anslutningstoken.
+
+Byggt 2026-09-07:
+Koden är sex tecken ur ett alfabet utan I, L, O, 0 och 1, går ut tre timmar efter senaste anslutning och förlängs av varje anslutning; `GET /rooms/:kod` löser upp den.
+`POST /rooms/:kod/join` med namn och plats (eller utan plats, för att titta) ger en token; en upptagen plats ger 409. En oanvänd platsreservation löper ut efter två minuter; första WebSocket-anslutningen förlänger token till tre timmar och varje återanslutning förlänger den igen.
+WebSocket-anslutningen kräver token för platser och observatörer, värdnyckeln (`host`) för bordets egen vy, eller rollen `lobby`, som ser platserna och inget mer.
+Editorn kan uttryckligen ansluta bord, plats eller observatör med `owner=1`; servern godtar då bara projektägaren via kontokakan (eller ett öppet projekt när konton är avstängda lokalt).
+Allt annat får `refused` och stängs; klienten återansluter aldrig efter det.
+Värdnyckeln skapas med sessionen, visas en gång för den som startar bordet och lagras hashad, som tokens.
+`POST /sessions/:id/code` roterar koden och `POST /sessions/:id/kick` sparkar en plats: tokens ogiltigförklaras, anslutningarna stängs med `refused: kicked`, platsen släpps. Värdnyckeln som bearer eller ägarens kaka är behörigheten.
+Bordsskärmen får koden i ett `room`-meddelande, vid anslutning och vid rotation; gäster får den aldrig.
+Sessioner från före koder saknar kod och nyckel: de kan inte nås med kod eller öppnas som bordet.
 
 ## 10. Administration: Tailscale
 
@@ -167,14 +197,13 @@ Deploy är pull-baserad (§7): `ops/deploy.sh` via en systemd-timer hämtar tagg
 CI (`.github/workflows/ci.yml`) kör lint, typecheck och alla tester mot Postgres och Chromium på varje pull request, med replay-korpusen i `corpus/` som grind, och bygger bilderna till GHCR när en `v*`-tagg pushas.
 Trunken har ingen CI framför sig; `.githooks/pre-push` kör samma grindar lokalt innan något når `main`.
 Korpusen anonymiserar namn, kommentarer och observatörer men behåller kortens id:n; `GET /sessions/:id/export` och `pnpm --filter @byd/engine corpus` lägger till riktiga loggar.
-Händelseschemats `schemaVersion` och upcasters (§7) återstår; tills vidare är grinden att varje rad i korpusen parsas av dagens schema.
-Backup (§5) är i första steget en nattlig `pg_dump` till R2 med 30 dagars kvarhållning och `ops/restore-test.sh` som återställningsprov; WAL-arkivering återstår.
-Assets i R2 (§4) återstår: texturerna serveras ännu från Postgres genom `app`.
+Händelseschemats `schemaVersion` och upcasters (§7) byggda 2026-09-07: varje ny rad bär `SCHEMA_VERSION`, rader utan fält är version 0, motorn lyfter dem steg för steg vid inläsning (`liftLine`), Postgres skriver versionen i `schema_version` och lämnar gamla rader orörda, och korpusens filer ligger kvar som de spelades in medan grinden lyfter dem.
+Backup (§5) byggd 2026-09-07 med WAL-G, se §5; den nattliga `pg_dump`-dumpen är ersatt.
+Assets i R2 (§4) byggt 2026-09-07, se §4.
 Administration över Tailscale (§10) är lådans sak; Postgres lyssnar bara på 127.0.0.1.
 
 ## Öppna frågor
 
 Hur replay-korpusen anonymiseras utan att förlora det som gör den värdefull.
-Exakt livslängd på signerade R2-URL:er mot klientens cache.
 UPS för lådan — billig, men inte beslutad.
 Om en extern pulskoll ska läggas till trots beslut 8.

@@ -11,6 +11,13 @@ export type ConnectOptions = {
   seat: SeatId | null
   // Watch as a named observer (C8): seatless, sees everything, may only flag.
   observer?: string
+  // Admission (DRIFT §9): a guest token for a seat or an observer, the host key for the table's
+  // own screen, or the lobby role, which looks at the seats and may do nothing.
+  token?: string
+  host?: string
+  lobby?: boolean
+  // The editor's explicit project-owner route; the server verifies its account cookie.
+  owner?: boolean
   // How long the very first connection may take before it is called off. Without this
   // `connecting` could stand for ever, which is the bug in #7.
   connectTimeoutMs?: number
@@ -59,10 +66,16 @@ export class TableClient {
   trouble: ClientTrouble | null = null
   // When the next automatic attempt is due, for a countdown that makes the wait visible.
   nextRetryAt: number | null = null
-  // The most recent committed lines, redacted by the server; oldest first, bounded.
+  // The most recent committed lines, redacted by the server; oldest first, bounded. A snapshot
+  // brings the lines before it, so a client joining mid-game (or reconnecting) starts with
+  // what happened rather than with nothing; from then on `activity` messages extend them.
   activity: Activity[] = []
   // Who is watching (C8), as the server last told us.
   observers: { id: string; name: string }[] = []
+  // The room code (DRIFT §9), told to the host's screens only; null for everyone else.
+  room: { code: string; expiresAt: string } | null = null
+  // Why the server would not have this connection (DRIFT §9): no reconnecting after that.
+  refused: string | null = null
   private ws: WebSocketLike
   private readonly readyPromise: Promise<void>
   private resolveReady!: () => void
@@ -213,12 +226,16 @@ export class TableClient {
   }
 
   private open(): WebSocketLike {
-    const { url, sessionId, seat, observer } = this.opts
+    const { url, sessionId, seat, observer, token, host, lobby, owner } = this.opts
     const q = new URLSearchParams()
-    if (observer !== undefined) {
+    if (lobby) q.set('role', 'lobby')
+    else if (observer !== undefined) {
       q.set('role', 'observer')
       q.set('name', observer)
     } else if (seat !== null) q.set('seat', seat)
+    if (token !== undefined) q.set('token', token)
+    if (host !== undefined) q.set('host', host)
+    if (owner) q.set('owner', '1')
     const ws = makeSocket(`${url}/sessions/${encodeURIComponent(sessionId)}${q.size > 0 ? `?${q.toString()}` : ''}`)
     ws.addEventListener('message', (ev) => this.receive(ServerMessage.parse(JSON.parse(String(ev.data)))))
     ws.addEventListener('close', () => this.dropped(ws))
@@ -229,7 +246,7 @@ export class TableClient {
   // The connection went away without us asking. Whatever was in flight is unknown to us:
   // the view after resync is the truth, so pending envelopes are told so and let go.
   private dropped(ws: WebSocketLike): void {
-    if (ws !== this.ws || this.status === 'closed' || this.trouble !== null) return
+    if (ws !== this.ws || this.status === 'closed' || this.trouble !== null || this.refused !== null) return
     for (const resolve of this.pending.values()) resolve({ ok: false, reason: 'connection lost' })
     this.pending.clear()
     this.setStatus('reconnecting')
@@ -253,6 +270,9 @@ export class TableClient {
     switch (msg.t) {
       case 'snapshot':
         this.view = msg.snapshot
+        // The snapshot carries the lines before it. Merging rather than replacing keeps what a
+        // reconnecting client already had beyond the server's window.
+        this.remember(msg.activity)
         this.made = 0
         this.nextRetryAt = null
         this.everOpen = true
@@ -269,16 +289,9 @@ export class TableClient {
         this.settleSeqWaiters()
         this.notify()
         break
-      case 'activity': {
-        // A connection is handed the log so far, and again after a reconnect. `seq` is the line's
-        // identity, so saying the same line twice adds nothing.
-        const known = new Set(this.activity.map((l) => l.seq))
-        const fresh = msg.lines.filter((l) => !known.has(l.seq))
-        if (fresh.length === 0) break
-        this.activity = [...this.activity, ...fresh].sort((a, b) => a.seq - b.seq).slice(-ACTIVITY_LIMIT)
-        this.notify()
+      case 'activity':
+        if (this.remember(msg.lines)) this.notify()
         break
-      }
       case 'ack':
         this.settle(msg.id, { ok: true, seqs: msg.seqs })
         break
@@ -295,6 +308,16 @@ export class TableClient {
       case 'bye':
         // The server will close; `dropped` handles the rest.
         break
+      case 'refused':
+        // Not admitted, or kicked: the connection ends here and stays ended.
+        this.refused = msg.reason
+        this.setStatus('closed')
+        this.resolveReady()
+        break
+      case 'room':
+        this.room = { code: msg.code, expiresAt: msg.expiresAt }
+        this.notify()
+        break
       case 'presence':
         for (const l of this.presenceListeners) l(msg.from, msg.presence)
         break
@@ -303,6 +326,16 @@ export class TableClient {
         this.notify()
         break
     }
+  }
+
+  // A connection is handed the log so far, and again after a reconnect. `seq` is the line's
+  // identity, so saying the same line twice adds nothing. Returns whether anything was new.
+  private remember(lines: readonly Activity[]): boolean {
+    const known = new Set(this.activity.map((l) => l.seq))
+    const fresh = lines.filter((l) => !known.has(l.seq))
+    if (fresh.length === 0) return false
+    this.activity = [...this.activity, ...fresh].sort((a, b) => a.seq - b.seq).slice(-ACTIVITY_LIMIT)
+    return true
   }
 
   private settle(id: string, result: SendResult): void {

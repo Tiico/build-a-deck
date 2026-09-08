@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { WireClient } from './client.js'
-import { createSession, start, twoSeatSetup, type Running } from './fixture.js'
+import { createSession, registerRoom, start, twoSeatSetup, type Running } from './fixture.js'
 import { deck } from './deck.js'
+import { MemoryObjectStore } from '@byd/render'
 
 let run: Running
 let clients: WireClient[] = []
@@ -15,8 +16,10 @@ afterEach(async () => {
   await run.stop()
 })
 
-async function connect(sessionId: string, seat: string | null): Promise<WireClient> {
-  const c = await WireClient.connect(run.base, sessionId, seat)
+// Admitted the way a real connection is (DRIFT §9): the table with the host key, a seat with
+// a token bought for it.
+async function connect(sessionId: string, seat: string | null, as?: { role: 'observer'; name: string }): Promise<WireClient> {
+  const c = await run.connect(sessionId, seat, as)
   clients.push(c)
   return c
 }
@@ -164,10 +167,16 @@ describe('connections', () => {
     const id = await createSession(run.http)
     const table = await connect(id, null)
     await table.send(null, { v: 'draw', from: 'draw', to: 'table', count: 2 })
-    const b1 = await connect(id, 'B')
+    const token = await run.admit(id, 'B')
+    const reconnect = async () => {
+      const client = await WireClient.connect(run.base, id, 'B', undefined, { token })
+      clients.push(client)
+      return client
+    }
+    const b1 = await reconnect()
     await b1.close()
     await table.send(null, { v: 'draw', from: 'draw', to: 'hand:B', count: 1 })
-    const b2 = await connect(id, 'B')
+    const b2 = await reconnect()
     expect(b2.view).toMatchObject({ seq: 2, seat: 'B' })
     expect(b2.view!.components.filter((c) => c.zone === 'hand:B')).toHaveLength(1)
   })
@@ -201,26 +210,25 @@ describe('activity on the wire', () => {
     expect(b.frames.join('\n')).not.toContain('outcome')
   })
 
-  // A screen that joins mid-game must be able to say what has happened, not only what happens
-  // next: the feed on the TV is empty otherwise (#20).
-  it('hands a joining connection the log so far, redacted the same way', async () => {
+  it('a view that connects mid-game gets the last fifty lines with its snapshot, redacted alike', async () => {
     const id = await createSession(run.http)
     const table = await connect(id, null)
     await table.send(null, { v: 'seat.claim', seat: 'A', name: 'Ada' })
     await table.send(null, { v: 'shuffle', pile: 'draw' })
-    await table.send(null, { v: 'draw', from: 'draw', to: 'discard', count: 2 })
+    for (let i = 0; i < 51; i++) await table.send(null, { v: 'flag', note: `moment ${i}` })
 
-    const late = await connect(id, null)
-    const history = await late.waitFor((m) => m.t === 'activity')
-    if (history.t !== 'activity') throw new Error('unreachable')
-    expect(history.lines.map((l) => [l.seq, l.intent.v])).toEqual([
-      [1, 'seat.claim'],
-      [2, 'shuffle'],
-      [3, 'draw'],
-    ])
-    expect(late.frames.join('\n')).not.toContain('rekey')
-    // The snapshot comes first: the feed is never ahead of the table it describes.
-    expect(late.messages.findIndex((m) => m.t === 'snapshot')).toBeLessThan(late.messages.findIndex((m) => m.t === 'activity'))
+    const late = await connect(id, 'B')
+    const snapshot = late.messages.find((m) => m.t === 'snapshot')
+    if (snapshot?.t !== 'snapshot') throw new Error('no snapshot')
+    expect(snapshot.activity).toHaveLength(50)
+    expect(snapshot.activity[0]).toMatchObject({ seq: 4, intent: { v: 'flag', note: 'moment 1' } })
+    expect(snapshot.activity.at(-1)).toMatchObject({ seq: 53, by: null })
+    expect(late.frames.join('\n')).not.toContain('outcome')
+
+    // A fresh table: nothing has happened yet.
+    const empty = await connect(await createSession(run.http, 's2'), null)
+    const first = empty.messages.find((m) => m.t === 'snapshot')
+    expect(first?.t === 'snapshot' ? first.activity : null).toEqual([])
   })
 })
 
@@ -232,6 +240,7 @@ describe('textures (TUNN-SKIVA §5)', () => {
       body: JSON.stringify({ id: 'tex', version: 'v1', setup: twoSeatSetup(), deck }),
     })
     expect(res.status).toBe(201)
+    registerRoom('tex', (await res.json()) as { code: string; hostKey: string })
     const a = await connect('tex', 'A')
     const b = await connect('tex', 'B')
     await a.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
@@ -266,6 +275,7 @@ describe('a face whose render died (#10)', () => {
       body: JSON.stringify({ id: 'dead', version: 'v1', setup: twoSeatSetup(), deck }),
     })
     expect(res.status).toBe(201)
+    registerRoom('dead', (await res.json()) as { code: string; hostKey: string })
     const a = await connect('dead', 'A')
     await a.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
     const front = (await a.synced(1)).components.find((c) => c.zone === 'hand:A')!.faces!['front']!
@@ -283,6 +293,43 @@ describe('a face whose render died (#10)', () => {
     // A hash nobody ever queued is still unknown; a retry does not invent a job.
     expect((await fetch(`${run.http}/faces/${'0'.repeat(64)}?retry=1`)).status).toBe(404)
   })
+})
+
+describe('faces in R2 (DRIFT §4)', () => {
+  it('answers a rendered face with a redirect to a short-lived link the browser caches, and /health asks the store', async () => {
+    await run.stop()
+    const objects = new MemoryObjectStore()
+    let reachable = true
+    const r2 = {
+      put: objects.put.bind(objects),
+      get: objects.get.bind(objects),
+      link: async (key: string, ttl: number) => `https://r2.test/byd-assets/${key}?X-Amz-Expires=${ttl}`,
+      check: async () => {
+        if (!reachable) throw new Error('bucket byd-assets: 503')
+      },
+    }
+    run = await start({ objects: r2 })
+    const res = await fetch(`${run.http}/sessions`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: 'r2', version: 'v1', setup: twoSeatSetup(), deck }) })
+    expect(res.status).toBe(201)
+    registerRoom('r2', (await res.json()) as { code: string; hostKey: string })
+    const a = await connect('r2', 'A')
+    await a.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    const front = (await a.synced(1)).components.find((c) => c.zone === 'hand:A')!.faces!['front']!
+    expect((await fetch(`${run.http}/faces/${front}`)).status).toBe(202)
+
+    await run.renderAll()
+    const face = await fetch(`${run.http}/faces/${front}`, { redirect: 'manual' })
+    expect(face.status).toBe(302)
+    expect(face.headers.get('location')).toBe(`https://r2.test/byd-assets/renders/${front}?X-Amz-Expires=3600`)
+    expect(face.headers.get('cache-control')).toBe('private, max-age=3000')
+    expect(await objects.get(`renders/${front}`)).not.toBeNull()
+
+    expect((await fetch(`${run.http}/health`)).status).toBe(200)
+    reachable = false
+    const sick = await fetch(`${run.http}/health`)
+    expect(sick.status).toBe(503)
+    expect(await sick.json()).toMatchObject({ ok: false, assets: 'bucket byd-assets: 503' })
+  }, 60_000)
 })
 
 describe('rewind on the wire (B)', () => {
@@ -370,7 +417,7 @@ describe('the observer (C8): sees everything, is seen by everyone, touches nothi
     const table = await connect(id, null)
     await a.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
 
-    const eva = await WireClient.connect(run.base, id, null, { role: 'observer', name: 'Eva' })
+    const eva = await connect(id, null, { role: 'observer', name: 'Eva' })
     clients.push(eva)
     const hand = eva.view!.components.filter((c) => c.zone === 'hand:A')
     expect(hand.map((c) => c.cardRef)).toEqual([expect.any(String), expect.any(String)])

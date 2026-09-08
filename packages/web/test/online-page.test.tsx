@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { TableClient } from '../src/client.js'
 import { OnlinePage } from '../src/online/OnlinePage.js'
-import { createSession, startServer, type Running } from './fixture.js'
+import { admit, asTable, createSession, startServer, type Running } from './fixture.js'
 
 let run: Running
 beforeEach(async () => {
@@ -14,15 +14,15 @@ afterEach(async () => {
 })
 
 async function open(sessionId: string, seat: string, name: string) {
-  history.replaceState(null, '', `/online?session=${sessionId}&seat=${seat}&name=${name}&server=${encodeURIComponent(run.url)}`)
+  history.replaceState(null, '', `/online?session=${sessionId}&seat=${seat}&name=${name}&token=${await admit(run, sessionId, seat, name)}&server=${encodeURIComponent(run.url)}`)
   render(<OnlinePage />)
   await screen.findByText(/Draghög/)
 }
 
 describe('OnlinePage (C2): both roles in one window', () => {
   it('sits down, fans its own hand by name at the bottom, shows the others as backs, and turns the table so its seat is at the bottom', async () => {
-    const id = await createSession(run.store)
-    const table = TableClient.connect({ url: run.url, sessionId: id, seat: null })
+    const id = await createSession(run)
+    const table = TableClient.connect(await asTable(run, id))
     await table.ready()
     await table.send({ v: 'deal', from: 'draw', to: ['hand:A', 'hand:B'], each: 2 })
     await open(id, 'B', 'Bo')
@@ -40,8 +40,8 @@ describe('OnlinePage (C2): both roles in one window', () => {
   })
 
   it('a card dragged out of the fan lands on the table face-up, in one envelope', async () => {
-    const id = await createSession(run.store)
-    const table = TableClient.connect({ url: run.url, sessionId: id, seat: null })
+    const id = await createSession(run)
+    const table = TableClient.connect(await asTable(run, id))
     await table.ready()
     await table.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
     await open(id, 'A', 'Ada')
@@ -61,7 +61,7 @@ describe('OnlinePage (C2): both roles in one window', () => {
   })
 
   it('carries the phone\'s controls: flag, undo, end, and the survey after', async () => {
-    const id = await createSession(run.store)
+    const id = await createSession(run)
     await open(id, 'A', 'Ada')
     fireEvent.click(screen.getByRole('button', { name: /Flagga/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Flagga' }))

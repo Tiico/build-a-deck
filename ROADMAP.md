@@ -68,7 +68,7 @@ Editorn:
 - ✅ Grafisk wizard för en liten startlek: fält syns direkt på exempelkorten, bildfält kan fyllas och editorn är den tydliga nästa vägen; CSV importeras och exporteras i editorns tabell (E1, E3, L6).
 - ✅ Editor till bord med förrenderade texturer; bytet är atomiskt för spelarna (L5).
 - ✅ "Bord"-fliken: spelets alla bord med miniatyr ur bordets egen snapshot, vem som spelar, vilken version som körs och vägarna in — TV, bordsläge, spela härifrån, titta på, QR — plus avslut med bekräftelse (L5, K9, C7, C9).
-- ✅ Kortgrupper som regler på en kolumn: en flik per grupp över duken, fram- och baksida redigeras likadant, lagerpanelen säger om ett lager är basens eller gruppens, och tabellen visar vilken grupp en rad faller i (L3, L7).
+- ✅ Kortgrupper som regler på en kolumn: en flik per grupp över duken, fram- och baksida redigeras likadant, lagerpanelen säger om ett lager är basens eller gruppens, och tabellen visar vilken grupp en rad faller i; dolda kort får gruppens baksida utan identitetsläcka och tryckmanifestet håller varje fram-/baksidespar ihop (L3, L7).
 - ✅ "Mina spel" och inloggningskortet (G1).
 - ✅ Skydd för osparat arbete: osparat mätt mot servern, fråga vid vägen ut, `beforeunload` vid stängning och omladdning, bekräftelse innan ett kort tas bort, och sparat/osparat i huvudet (L9).
 - ✅ Editorn, wizarden och observatören på små skärmar: namngivna etapper under 1024 px, ingen duk under 768 px och gränssnittet säger det, tre steg i wizarden, bordet först och ingen banner över spelet hos observatören (L10, #4, #5, #6).
@@ -89,11 +89,11 @@ Målet är att en grupp kan spela vilket kortspel som helst utan att sakna någo
 - ✅ Kamera i TV-läge: bordet ramar in det som är i spel och glider med, tillfällig zoom kring pekaren med återgång (C5).
 - ✅ Högens topp som adress i `stack` och `flip`, så att översta kortet i en dold hög kan staplas på ett löst kort och vändas; ett uppvänt kort överst i en hög ses av alla (K15).
 - ✅ Fel-, tom- och anslutningslägen som en familj: nio lägen med gemensam modell och en form per route, initial timeout på anslutningen, tappad och återansluten ovanpå vyn, avvisade drag vid kontrollen, och en egen dokumenttitel per huvudroute (D5).
-- ⬜ Räknare och privata zoner på telefonen utöver handen (C4).
-- ⬜ Aktivitetshistorik i snapshoten, så att en skärm som ansluter mitt i ett spel ser vad som hänt (I, teknik).
-- ⬜ Hur en hög i en area visas med blandad orientering, och om zonrektanglar får överlappa (I, spelupplevelse).
-- ⬜ Rumskoder som är korta, går ut och kan roteras; värden kan sparka en gäst (DRIFT §9, G1 följdkrav).
-- ⬜ Zongenvägar per spel med begripliga namn utan att se bordet (C4 följdkrav): namnen kommer från setupen, men setupen redigeras inte i editorn ännu.
+- ✅ Räknare och privata zoner på telefonen: en räknartyp `token.counter`, en yta "Framför mig" och en räknarzon per plats från wizarden; telefonen visar räknarna som piller och korten framför sig som en remsa med vänd, ta upp och spela; bordet ritar räknare som brickor (C4).
+- ✅ Aktivitetshistorik i snapshoten: de senaste femtio raderna följer med vid anslutning, så en skärm som ansluter mitt i ett spel ser vad som hänt (I, teknik).
+- ✅ En hög kvadrerar sina kort, och zoner får överlappa med minsta zonen som vinnare, lika stora efter setupens ordning (K1, K2).
+- ✅ Rumskoder: sex tecken utan förväxlingsbara, går ut tre timmar efter senaste anslutning, köper tokens för plats och observatör; bordet öppnas med värdnyckel; värden roterar koden och sparkar från editorn (DRIFT §9, G1 följdkrav).
+- ✅ Zongenvägar per spel: varje zon kan bära ett verb för telefonen ("Kasta", "Lägg underst") skilt från bordets namn, med placering överst eller underst; editorns flik "Bord" redigerar namn och genvägar med telefonens ark som förhandsvisning (C4 följdkrav).
 - ❓ Fler komponenttyper än standardkortet — tärning, bricka, meeple, bräde (B1, B2, B3).
   Registryt och tryckprofilerna är byggda för det, men bara ett kort finns.
   Frågan är om release är "kortspel" eller "kort- och brädspel"; A1 talar för kort först.
@@ -102,12 +102,12 @@ Målet är att en grupp kan spela vilket kortspel som helst utan att sakna någo
 
 Målet är att designern aldrig behöver ett annat verktyg för att göra leken.
 
-- ⬜ Setup-editor: zoner, platser, händer, draghög och startuppställning i editorn i stället för wizardens fasta setup (B5, K2).
-- 🔶 Bilder: wizarden kan lägga in illustrationer på startkort; kvar är editorns fulla assetflöde med innehållsadresserad lagring i R2 (E1, DRIFT §4).
-- ⬜ Symbolbibliotek med CC0- och CC-BY-ikoner, platshållarramar och färgblock (E4).
-- 🔶 Fysisk validering: textanpassning finns (E6); kvar är minsta textstorlek som varning, kontrast, färgblindhet, utfall och linjetjocklek (E5).
-- 🔶 Versionering: revisionsräknare finns; kvar är oföränderlig historik med namngivna milstolpar, diff och att öppna en äldre version (B4).
-- ⬜ Regelboken som versionerat dokument som refererar komponenter och zoner (B7).
+- ✅ Setup-editor: recept som start, bordet som finjustering — zoner, platser, händer, högar, räknare och egna zoner i editorns flik "Bord" (B5, K2).
+- ✅ Bilder: bildceller i editorns tabell, spelets bilder en gång var, innehållsadresserad lagring i R2 via `/assets` (E1, DRIFT §4).
+- ✅ Symbolbibliotek: fliken "Symboler" med sök och kategorier, väljare vid klammern i tabellen, symboler som projektets assets och licenser hela vägen till trycket (E4).
+- ✅ Fysisk validering: minsta textstorlek, kontrast, färgblindhet, utfall och linjetjocklek, som rapport på kortväggen och blockerande fel vid order (E5, E6).
+- ✅ Versionering: oföränderlig historik, namngivna milstolpar, diff i korttabellen och att ta tillbaka en äldre version (B4).
+- 🔶 Regelboken: versionerat dokument med referenser till zoner och kort, skrivet i fliken "Regler" där sidan själv är redigeraren; kvar är referenspanelen vid bordet och det tryckfärdiga häftet (B7).
 - ⬜ Samredigering med en aktör per projekt och en logg, samma mönster som bordet (D3).
 - ⬜ Typsnitt: val av font i mallen, med fontfiler som bevaras per version (B3) — kolliderar med fontlicensieringen (I).
 - ⬜ Flerspråkighet i verktyget: i18n-infrastruktur, engelska och svenska (A4).
@@ -119,7 +119,7 @@ Målet är att kunna ta betalt och lämna ifrån sig allt.
 
 - ⬜ Abonnemang via Stripe: gratisnivå med tak på projekt, kort och sessioner, betalnivåer, kvoter (A2, DRIFT §12).
 - ⬜ Full export i dokumenterat JSON med assets, mallar, historik och tryckfiler; läsläge vid utgånget abonnemang (G5).
-- ⬜ Att claima en gästsession till ett konto efteråt (G1).
+- ✅ Att claima en gästsession till ett konto efteråt: telefonen erbjuder det när sessionen är slut, claim-sidan knyter gästens admission till kontot, och startsidan visar "Bord du spelat vid" med plats, namn, utfall och vägen tillbaka (G1).
 - ⬜ Passkeys och OAuth som bekvämlighet; passkey-återställning som UX (DRIFT §11).
 - ⬜ Behörighetsroller: ägare, medredigerare, testledare, observatör (I).
 - ⬜ GDPR för gäster: enkätsvar och flaggor från personer utan konto, radering (I).
@@ -129,10 +129,10 @@ Målet är att kunna ta betalt och lämna ifrån sig allt.
 
 Målet är att tjänsten tål riktiga användare, dygnet runt, på en låda hemma.
 
-- ⬜ Assets i R2 med signerade, kortlivade URL:er kontrollerade mot aktörens synlighet, så att texturer och tryckfiler aldrig går genom bostadsfibern (DRIFT §4).
-- ⬜ WAL-arkivering till R2 med pgBackRest eller WAL-G, nattlig basbackup, schemalagt återställningstest som kör replay (DRIFT §5).
-- ⬜ Hälsokontroll som även prövar R2 (DRIFT §2).
-- ⬜ Händelseschemats `schemaVersion` och upcasters vid inläsning (DRIFT §7).
+- ✅ Assets i R2: renderade texturer och tryckfiler i R2, `/faces/:hash` svarar 302 till en signerad URL som lever en timme och cachas i femtio minuter; hashen är förmågan (DRIFT §4).
+- ✅ WAL-arkivering till R2 med WAL-G i Postgres-bilden, nattlig basbackup, återställningsprov som spelar upp den senaste sessionen genom motorn (DRIFT §5).
+- ✅ Hälsokontroll som även prövar R2 (DRIFT §2).
+- ✅ Händelseschemats `schemaVersion` på varje rad och upcasters vid inläsning; korpusens filer lyfts, aldrig skrivs om (DRIFT §7).
 - ⬜ Riktiga loggar i replay-korpusen, anonymiserade; svar på hur anonymiseringen behåller det värdefulla (DRIFT §7, öppen fråga).
 - ⬜ Cloudflare rate limiting mot join- och login-endpointerna (DRIFT §9).
 - ⬜ Tailscale för administration, UPS för lådan, och beslutet om en extern pulskoll (DRIFT §10, öppna frågor).
@@ -173,16 +173,13 @@ Från DESIGN-BESLUT I och DRIFT:
 - GDPR för gästdeltagare (fas 3).
 - Fontlicensiering mot kravet att bevara fontfiler (fas 2 och 5).
 - Prisnivåernas tak (fas 3 och 6).
-- Missbruk av öppna rumskoder (fas 1).
 - Om release omfattar fler komponenttyper än kort (fas 1).
 
 ## Öppna frågor som inte blockerar release
 
 - Anonymisering av replay-korpusen (fas 4).
-- Livslängd på signerade R2-URL:er mot klientens cache (fas 4).
 - UPS och extern pulskoll (fas 4).
 - Behörighetsroller i detalj (fas 3).
-- Blandad orientering i högar, överlappande zoner (fas 1).
 - Tillgänglighet utöver grundnivån (fas 6).
 
 ---

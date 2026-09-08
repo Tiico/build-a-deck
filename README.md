@@ -68,19 +68,22 @@ Telefonen ansluter via QR-koden i TV-läget, eller direkt: `/join?session=…`.
 | `/login?next=…` | magisk länk via e-post; inget lösenord |
 | `/new` | wizarden: namn, spelare, fält, ram, kort → projekt (kräver inloggning) |
 | `/editor?project=…` | kortväggen, mallen, tabellen; "Uppdatera bordet" startar ett bord |
-| `/table?session=…&mode=table\|tv` | storskärmen — bordsläge eller TV-läge med rumskod och QR |
-| `/join?session=…` | platsväljaren telefonen landar i |
-| `/play?session=…&seat=…&name=…` | telefonens hand |
-| `/online?session=…&seat=…&name=…` | distansläget: bordet vridet till din kant och din hand som en solfjäder, i ett fönster |
-| `/observe?session=…&name=…` | observatören: ser allt, alla ser henne, kan bara flagga |
+| `/table?session=…&host=…&mode=table\|tv` | storskärmen — bordsläge eller TV-läge med rumskod och QR; värdnyckeln från editorn öppnar den |
+| `/join?code=…` | platsväljaren telefonen landar i; rumskoden köper en token för platsen |
+| `/play?session=…&seat=…&name=…&token=…` | telefonens hand |
+| `/online?session=…&seat=…&name=…&token=…` | distansläget: bordet vridet till din kant och din hand som en solfjäder, i ett fönster |
+| `/observe?session=…&name=…&token=…` | observatören: ser allt, alla ser henne, kan bara flagga |
 
 I utveckling pekar `server=` på API:et (http för editor och wizard, ws för bord och telefon); i produktion är allt samma origin.
 Utan `RESEND_API_KEY` skriver servern inloggningslänken i sin logg i stället för att mejla den; sätt `WEB_ORIGIN=http://localhost:5173` så landar länken i webbappen.
 
 ## Drift på lådan
 
-Stacken i [docker-compose.yml](docker-compose.yml) är den från [DRIFT.md](DRIFT.md): `postgres`, `app` (aktörer, WebSockets, API och den byggda webben från samma origin), `render` (Chromium-worker) och, med profiler, `cloudflared` (tunnel) och `backup` (nattlig `pg_dump` till R2).
+Stacken i [docker-compose.yml](docker-compose.yml) är den från [DRIFT.md](DRIFT.md): `postgres` (med WAL-G i bilden), `app` (aktörer, WebSockets, API och den byggda webben från samma origin), `render` (Chromium-worker) och, med profiler, `cloudflared` (tunnel) och `backup` (nattlig basbackup till R2).
 Inga portar mot gatan: `app` och `postgres` lyssnar bara på lådans 127.0.0.1, tunneln når `app` på compose-nätet.
+Med R2-variabler i `.env` skriver `render` texturerna till R2 och `app` svarar på `/faces/:hash` med en signerad länk som webbläsaren följer och behåller (DRIFT §4); utan dem stannar bytesen i Postgres.
+Uppladdade illustrationer går samma väg: `POST /assets` tar en bild från en inloggad skapare och svarar med dess hash, `GET /assets/:hash` serverar den (E1).
+Lokalt går samma väg att köra mot en MinIO: sätt `R2_ENDPOINT=http://127.0.0.1:9000` och nycklarna, som i `.claude/launch.json`.
 
 Första gången på en Ubuntu-låda med Docker:
 
@@ -96,7 +99,9 @@ Deployen är pull-baserad (DRIFT §7): `ops/deploy.sh` hämtar taggar, rullar ti
 `main` är trunk och deployas aldrig i sig; att sätta en `v*`-tagg är att deploya, och en ny commit på trunken rör inte lådan.
 Appen dränerar på SIGTERM och migrerar schemat vid start, så bytet är kort.
 Tunnelns publika värdnamn pekas på `http://app:8080` i Cloudflares panel.
-`ops/restore-test.sh` hämtar senaste dumpen från R2 till en tillfällig Postgres och räknar sessioner och rader: en backup som aldrig lästs tillbaka är en förhoppning.
+Med R2-nycklar arkiverar Postgres varje WAL-segment till R2 inom en minut och `backup` tar en basbackup per natt (DRIFT §5); utan nycklar arkiveras inget och loggen säger det.
+`ops/restore-test.sh` återställer senaste basbackupen och allt WAL efter den i en tillfällig Postgres, räknar sessioner och rader, och spelar upp den senaste sessionens logg genom motorn: en backup som aldrig lästs tillbaka är en förhoppning.
+Samma sak går att prova lokalt mot en MinIO med `R2_ENDPOINT=http://host.docker.internal:9000`.
 
 ## CI och replay-korpusen
 

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ProjectClient } from '../src/editor/ProjectClient.js'
 import { projectDoc } from './project-doc.js'
+import { LIBRARY } from '../src/editor/symbols.js'
 import { startServer, type Running } from './fixture.js'
 
 let run: Running
@@ -225,5 +226,123 @@ describe('what counts as unsaved (#8)', () => {
 
     client.patchElement('front', 'title', { x: 6 })
     expect(client.dirty).toBe(true)
+  })
+})
+
+describe('the setup in the editor (B5, K2)', () => {
+  it('turns the recipe, adds and removes free zones, moves and reshapes a zone, and saves it all', async () => {
+    const created = await run.projects.create('p1', projectDoc())
+    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    expect(client.recipe).toEqual({ players: 2, mine: false, discard: true, market: false, counters: [] })
+
+    client.setRecipe({ ...client.recipe, players: 3, market: true, counters: [{ name: 'Poäng', start: 0 }] })
+    expect(client.doc.setup.seats).toEqual(['A', 'B', 'C'])
+    expect(client.doc.setup.zones.find((z) => z.id === 'market')?.kind).toBe('area')
+    expect(client.doc.setup.zones.find((z) => z.id === 'counters:C')?.owner).toBe('C')
+    expect(client.recipe.players).toBe(3)
+
+    const altar = client.addZone('area')
+    const bag = client.addZone('pile')
+    expect(altar).not.toBe(bag)
+    expect(client.doc.setup.zones.find((z) => z.id === altar)).toMatchObject({ kind: 'area', visibility: 'all', geometry: { w: 300, h: 120 } })
+    expect(client.doc.setup.zones.find((z) => z.id === bag)).toMatchObject({ kind: 'pile', visibility: 'all', geometry: { w: 0, h: 0 } })
+
+    client.patchZone(altar, { name: 'Altaret', geometry: { x: 10, y: 20, w: 250, h: 100, rot: 0 }, visibility: 'owner', owner: 'B' })
+    expect(client.doc.setup.zones.find((z) => z.id === altar)).toMatchObject({ name: 'Altaret', geometry: { x: 10, y: 20, w: 250, h: 100 }, visibility: 'owner', owner: 'B' })
+    client.patchZone(altar, { owner: undefined })
+    expect(client.doc.setup.zones.find((z) => z.id === altar)?.owner).toBeUndefined()
+    client.removeZone(bag)
+    expect(client.doc.setup.zones.some((z) => z.id === bag)).toBe(false)
+    // The floor and the deck zone cannot go.
+    expect(() => client.removeZone('table')).toThrow()
+    expect(() => client.removeZone('draw')).toThrow()
+
+    expect(await client.save()).toEqual({ ok: true, rev: 2 })
+    const stored = await run.projects.load('p1')
+    expect(stored?.setup.seats).toEqual(['A', 'B', 'C'])
+    expect(stored?.setup.zones.find((z) => z.id === altar)?.name).toBe('Altaret')
+    expect(stored?.setup.counters).toEqual([{ name: 'Poäng', start: 0 }])
+  })
+})
+
+describe('images (E1)', () => {
+  it('uploads an image once and gets its hash back, the same hash for the same bytes', async () => {
+    const created = await run.projects.create('p1', projectDoc())
+    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    const file = new File([new Uint8Array([137, 80, 78, 71])], 'drake.png', { type: 'image/png' })
+    const hash = await client.uploadAsset(file)
+    expect(hash).toMatch(/^[0-9a-f]{64}$/)
+    expect(await client.uploadAsset(file)).toBe(hash)
+    const served = await fetch(`${run.http}/assets/${hash}`)
+    expect(served.status).toBe(200)
+    expect(new Uint8Array(await served.arrayBuffer())).toEqual(new Uint8Array([137, 80, 78, 71]))
+    await expect(client.uploadAsset(new File(['x'], 'x.txt', { type: 'text/plain' }))).rejects.toThrow(/bara bilder/)
+  })
+})
+
+describe('symbols (E4)', () => {
+  it('takes a symbol into the project: the bytes become an asset, the set gets the name, and the licence is kept beside it', async () => {
+    const created = await run.projects.create('p1', projectDoc())
+    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    const skold = LIBRARY.find((s) => s.name === 'sköld')!
+
+    const name = await client.useSymbol(skold)
+    expect(name).toBe('sköld')
+    expect(client.doc.icons['sköld']).toMatch(/^asset:[0-9a-f]{64}$/)
+    expect(client.doc.credits?.['sköld']).toEqual({ licence: skold.licence, by: skold.by, source: skold.id })
+    // The symbol is served from the project's own assets, not from the library.
+    const served = await fetch(`${run.http}/assets/${client.doc.icons['sköld']!.slice('asset:'.length)}`)
+    expect(served.headers.get('content-type')).toBe('image/svg+xml')
+    expect(await served.text()).toBe(skold.svg)
+
+    // The same symbol again is the same entry, not a second name.
+    expect(await client.useSymbol(skold)).toBe('sköld')
+    expect(Object.keys(client.doc.icons)).toEqual(['sköld'])
+    // A second, different symbol under a name already taken gets a name of its own.
+    const svard = LIBRARY.find((s) => s.name === 'svärd')!
+    expect(await client.useSymbol(svard, 'sköld')).toBe('sköld-2')
+
+    client.renameIcon('sköld-2', 'anfall')
+    expect(client.doc.icons['sköld-2']).toBeUndefined()
+    expect(client.doc.credits?.['anfall']?.source).toBe('svard')
+    client.removeIcon('anfall')
+    expect(client.doc.icons['anfall']).toBeUndefined()
+    expect(client.doc.credits?.['anfall']).toBeUndefined()
+
+    expect(await client.save()).toEqual({ ok: true, rev: 2 })
+    const stored = await run.projects.load('p1')
+    expect(stored?.icons['sköld']).toBe(client.doc.icons['sköld'])
+    expect(stored?.credits).toEqual({ 'sköld': { licence: 'CC0-1.0', by: 'build-your-deck', source: 'skold' } })
+  })
+})
+
+describe('the history (B4)', () => {
+  it('lists the versions, opens an older one, names it, and brings it back as a new version', async () => {
+    const created = await run.projects.create('p1', projectDoc())
+    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    client.setCell('dragon', 'title', 'Drakhona')
+    expect(await client.save()).toEqual({ ok: true, rev: 2 })
+
+    const versions = await client.versions()
+    expect(versions.map((v) => v.rev)).toEqual([2, 1])
+    expect(versions.every((v) => typeof v.at === 'string')).toBe(true)
+
+    const first = await client.at(1)
+    expect(first?.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drake')
+    expect(await client.at(9)).toBeNull()
+
+    await client.nameVersion(1, 'Första blindtestet')
+    expect((await client.versions()).find((v) => v.rev === 1)?.label).toBe('Första blindtestet')
+    await client.nameVersion(1, null)
+    expect((await client.versions()).find((v) => v.rev === 1)?.label).toBeUndefined()
+
+    // Bringing an old version back is an edit like any other: it becomes the next version.
+    await client.restore(1)
+    expect(client.dirty).toBe(true)
+    expect(client.doc.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drake')
+    expect(await client.save()).toEqual({ ok: true, rev: 3 })
+    expect((await client.versions()).map((v) => v.rev)).toEqual([3, 2, 1])
+    // And the version it came from is untouched.
+    expect((await client.at(2))?.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drakhona')
   })
 })

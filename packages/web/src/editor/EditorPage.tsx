@@ -6,10 +6,16 @@ import { useRoom } from '../room.js'
 import { TemplateCanvas } from './TemplateCanvas.js'
 import { DataTable } from './DataTable.js'
 import { TableMenu, TablesTab } from './TablesTab.js'
+import { SetupEditor } from './SetupEditor.js'
+import { SymbolPanel } from './SymbolPanel.js'
+import { HistoryPanel } from './HistoryPanel.js'
+import { RulesPanel } from './RulesPanel.js'
 import { tvUrl } from './tableLinks.js'
 import { Question } from './Question.js'
 import { useProjectClient } from './useProjectClient.js'
-import type { Textures } from './ProjectClient.js'
+import type { ProjectDoc } from '@byd/server'
+import { useTableClient } from '../table/useTableClient.js'
+import type { ProjectClient, Textures } from './ProjectClient.js'
 import { loginUrl } from '../account/api.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { noticeFor } from '../status/notice.js'
@@ -58,7 +64,12 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
   const links = statusLinks({ server: params.get('server') })
   // The tab says which game is open, and what is wrong with it while something is (#12).
   usePageTitle({ state: projectId ? (fault === 'unauthorized' ? null : fault ?? (client ? null : 'loading')) : 'missing', game: client?.doc.name ?? null })
-  const [table, setTable] = useState<{ id: string; version: string; kind: 'new' | 'refreshed' } | null>(null)
+  // The history (B4) opens from the revision, which is where the version is already named.
+  const [historyOpen, setHistoryOpen] = useState(false)
+  // An older version the table is held against (B4), fetched once when the comparison starts.
+  const [compare, setCompare] = useState<{ rev: number; label?: string | undefined; doc: ProjectDoc } | null>(null)
+  // A running table (L5) with what admits people to it (DRIFT §9): the code and the host key.
+  const [table, setTable] = useState<{ id: string; version: string; code: string; hostKey: string; kind: 'new' | 'refreshed' } | null>(null)
   // The table's textures (L5): the link opens only when every card can be seen. Polled with a
   // growing pause while anything is still rendering.
   const [textures, setTextures] = useState<Textures | null>(null)
@@ -189,11 +200,11 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
       setPreparing(null)
     }
   }
-
   const panel: Record<Mode, () => ReactNode> = {
     wall: () => (
       <DeckWall
         doc={doc}
+        assetBase={http}
         face="front"
         selectedRow={row}
         onSelectRow={setRow}
@@ -209,6 +220,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
       <TemplateCanvas
         stage={canvasStage}
         doc={doc}
+        assetBase={http}
         face={face}
         onSelectFace={setFace}
         row={row}
@@ -233,6 +245,11 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
     table: () => (
       <DataTable
         doc={doc}
+        assetBase={http}
+        onUpload={(file) => client.uploadAsset(file)}
+        onSymbol={(symbol) => client.useSymbol(symbol)}
+        compareWith={compare ?? undefined}
+        onStopCompare={() => setCompare(null)}
         selectedRow={row}
         onSelectRow={setRow}
         onCell={(cardRef, field, value) => client.setCell(cardRef, field, value)}
@@ -241,7 +258,26 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
         onReplaceRows={(rows) => client.replaceRows(rows)}
       />
     ),
-    tables: () => <TablesTab client={client} server={params.get('server')} />,
+    symbols: () => <SymbolPanel doc={doc} client={client} assetBase={http} />,
+    rules: () => <RulesPanel doc={doc} client={client} />,
+    // Bord is the home for both the game's board vocabulary and its running tables (#19, C4).
+    tables: () => (
+      <>
+        <SetupEditor doc={doc} client={client} />
+        <TablesTab client={client} server={params.get('server')} />
+      </>
+    ),
+  }
+
+  const wsUrl = (params.get('server') ?? location.origin).replace(/^http/, 'ws')
+  const rotate = async () => {
+    if (!table) return
+    try {
+      const { code } = await client.rotateCode(table.id, table.hostKey)
+      setTable({ ...table, code })
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : String(err))
+    }
   }
 
   // Saving and reaching the table are the same two buttons wherever they stand: in the header on
@@ -272,7 +308,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
           Mina spel
         </a>
         <strong>{doc.name}</strong>
-        <span className="byd-editor-rev">rev {client.rev}</span>
+        {/* The revision is also the way into the history (B4): the version is already named here. */}
+        <button type="button" className="byd-editor-rev" aria-expanded={historyOpen} onClick={() => setHistoryOpen((on) => !on)}>
+          rev {client.rev}
+        </button>
         {/* Whether the work is safe, in words and in colour (#8). It is a live region, so the
             change from saved to unsaved and back is spoken as it happens rather than found by
             someone going looking for a greyed-out button. */}
@@ -339,14 +378,34 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
           ) : preparing ? (
             <span className="byd-editor-rendering">renderar kort {preparing.done}/{preparing.total}</span>
           ) : textures && textures.done + textures.failed.length >= textures.total ? (
-            <a href={tvUrl(table.id, params.get('server'))} target="_blank" rel="noreferrer">
+            <a href={tvUrl(table.id, params.get('server'), table.hostKey)} target="_blank" rel="noreferrer">
               öppna bordet
             </a>
           ) : (
             <span className="byd-editor-rendering">renderar kort {textures?.done ?? 0}/{textures?.total ?? '…'}</span>
           )}
           {textures && textures.failed.length > 0 && <span className="byd-editor-warning"> · {textures.failed.length} kort kunde inte renderas</span>}
+          <span className="byd-editor-room">
+            {' '}· rumskod <strong data-room-code>{table.code}</strong>{' '}
+            <button type="button" onClick={() => void rotate()}>Ny kod</button>
+          </span>
+          <HostSeats client={client} sessionId={table.id} hostKey={table.hostKey} ws={wsUrl} onNotice={setNotice} />
         </div>
+      )}
+      {historyOpen && (
+        <HistoryPanel
+          client={client}
+          onClose={() => setHistoryOpen(false)}
+          onRestored={() => setHistoryOpen(false)}
+          onCompare={(rev, label) => {
+            void client.at(rev).then((old) => {
+              if (!old) return
+              setCompare({ rev, doc: old, ...(label !== undefined ? { label } : {}) })
+              setHistoryOpen(false)
+              setStage('table')
+            })
+          }}
+        />
       )}
       <main>
         {(stages ?? MODES).map(([key]) => (
@@ -370,4 +429,26 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
 // The way back to "Mina spel", keeping the server the editor was opened against.
 function homeUrl(server: string | null): string {
   return server ? `/?${new URLSearchParams({ server }).toString()}` : '/'
+}
+
+// The seats as the lobby sees them (DRIFT §9), each taken one with a kick: the host's control
+// over who is at the table, from the screen the host already has open.
+function HostSeats({ client, sessionId, hostKey, ws, onNotice }: { client: ProjectClient; sessionId: string; hostKey: string; ws: string; onNotice(text: string | null): void }) {
+  const { view } = useTableClient({ url: ws, sessionId, seat: null, lobby: true })
+  if (!view) return null
+  const taken = view.seats.filter((s) => s.name !== null)
+  if (taken.length === 0) return null
+  return (
+    <span className="byd-editor-seats">
+      {' '}· vid bordet:{' '}
+      {taken.map((s) => (
+        <span key={s.id} data-host-seat={s.id}>
+          {s.name}{' '}
+          <button type="button" onClick={() => void client.kick(sessionId, hostKey, s.id).catch((err: unknown) => onNotice(err instanceof Error ? err.message : String(err)))}>
+            Sparka {s.name}
+          </button>{' '}
+        </span>
+      ))}
+    </span>
+  )
 }

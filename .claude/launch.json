@@ -33,6 +33,38 @@
       ],
       "port": 5390,
       "autoPort": true
+    },
+    {
+      "name": "server-r2",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "PORT=8090",
+        "DATABASE_URL=postgres://byd:byd@127.0.0.1:5432/byd",
+        "R2_ACCOUNT_ID=local",
+        "R2_ACCESS_KEY_ID=minioadmin",
+        "R2_SECRET_ACCESS_KEY=minioadmin",
+        "R2_ENDPOINT=http://127.0.0.1:9000",
+        "R2_ASSETS_BUCKET=byd-assets",
+        "pnpm",
+        "--filter",
+        "@byd/server",
+        "dev"
+      ],
+      "port": 8090,
+      "autoPort": true
+    },
+    {
+      "name": "server-dev",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "WEB_ORIGIN=http://localhost:5173",
+        "pnpm",
+        "--filter",
+        "@byd/server",
+        "dev"
+      ],
+      "port": 8080,
+      "autoPort": true
     }
   ]
 }

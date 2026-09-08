@@ -7,6 +7,12 @@ import { Survey } from './Survey.js'
 import { submitSurvey } from './surveyApi.js'
 import { useRefusal } from '../status/Refusal.js'
 
+// Why the server would not have us (DRIFT §9), in words for the screen.
+export function refusedText(reason: string): string {
+  if (reason === 'kicked') return 'Värden har tagit bort dig från bordet.'
+  return 'Länken gäller inte längre. Gå med igen med rumskoden.'
+}
+
 // What a seat's screen carries beside the hand, on the phone and online alike (C2): the toast,
 // the flag and end sheets, the rewind proposal, and the survey once the log is locked.
 
@@ -45,9 +51,11 @@ export type SessionOverlaysProps = {
   toast: string | null
   onToast(msg: string): void
   version: string | null
+  // Where to save the session to an account afterwards (G1); absent without a guest token.
+  saveUrl?: string | null | undefined
 }
 
-export function SessionOverlays({ client, view, seat, name, http, sessionId, sheet, onSheet, toast, onToast, version }: SessionOverlaysProps) {
+export function SessionOverlays({ client, view, seat, name, http, sessionId, sheet, onSheet, toast, onToast, version, saveUrl }: SessionOverlaysProps) {
   const proposal = view.rewind
   // A sheet that sends something can be answered no, and the answer stands beside the button
   // that was pressed rather than in a toast that says the opposite of what happened (#7).
@@ -88,7 +96,7 @@ export function SessionOverlays({ client, view, seat, name, http, sessionId, she
           }}
         />
       )}
-      {view.ended && <Survey who={name} version={version ?? '…'} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat, answers })} />}
+      {view.ended && <Survey who={name} version={version ?? '…'} saveUrl={saveUrl} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat, answers })} />}
       {proposal && proposal.by === seat && (
         <div className="byd-rewind-mine" data-rewind-mine>
           <span>Du föreslår att spola tillbaka. Bordet visar hur det såg ut; {whoDecides(view, proposal)} avgör.</span>

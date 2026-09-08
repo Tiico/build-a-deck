@@ -35,10 +35,16 @@ export const Geometry = z.object({
 })
 export type Geometry = z.infer<typeof Geometry>
 
+// The shortcut a zone offers the phone (C4): the verb on the button, apart from the name the
+// table shows, and where in a pile a card played there goes. Without one, the name is the verb.
+export const ZoneShortcut = z.object({ label: z.string().min(1).max(40), at: z.enum(['top', 'bottom']) })
+export type ZoneShortcut = z.infer<typeof ZoneShortcut>
+
 const zoneBase = {
   id: ZoneId,
   kind: ZoneKind,
   name: z.string(),
+  shortcut: ZoneShortcut.optional(),
   owner: SeatId.optional(),
   geometry: Geometry,
   // Created during play by stacking (K1); dissolves when one component remains.

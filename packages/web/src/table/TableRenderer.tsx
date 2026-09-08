@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type MouseEvent as RMouseEvent, type PointerEvent as RPointerEvent, type WheelEvent as RWheelEvent } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type MouseEvent as RMouseEvent, type ReactNode, type PointerEvent as RPointerEvent, type WheelEvent as RWheelEvent } from 'react'
 import { Texture } from './Texture.js'
 import type { Intent, Presence, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
 import type { Peer, Pulse, Recent } from './presence.js'
@@ -24,6 +24,8 @@ export type TableMode = 'table' | 'tv'
 // that changes; a scroll or a double tap zooms around the pointer and the view returns by itself.
 // `size` is the frame's size when the renderer should not measure it; `glideMs` the glide.
 export type TableHandle = { toTable(clientX: number, clientY: number): Point | null }
+// The felt's own mapping from millimetres to pixels, for whatever is laid over it.
+export type FeltFit = { px(mm: number): number; left(mmX: number): number; top(mmY: number): number; scale: number }
 export type TableRendererProps = {
   view: Snapshot
   mode: TableMode
@@ -40,12 +42,17 @@ export type TableRendererProps = {
   onInspect?: ((c: VisibleComponentState | null) => void) | undefined
   size?: Size | undefined
   glideMs?: number | undefined
+  // What the editor lays over the felt (B5): zone handles, drawn last with the felt's mapping.
+  overlay?: ((fit: FeltFit) => ReactNode) | undefined
 }
 
 const HOLD_MS = 350
 const POINT_MS = 450
 const DRAG_MM = 4
 const TABLE_GREY = '#8a93a8'
+// A counter token (C4) is drawn as a chip, not a card.
+const COUNTER_TYPE = 'token.counter'
+const TOKEN_MM = 24
 // How much room the felt leaves around itself in table mode, as a share of the frame's shorter
 // side: prototype B's proportion. 0.16 puts the table at 0.85 of life size on a 1600 × 1000
 // screen — the scale B was approved at — and keeps that proportion on any other screen (K9).
@@ -61,7 +68,7 @@ const GLIDE_MS = 700
 type Live = Drag & { started: boolean }
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], onPresence, camera = false, onInspect, size: fixedSize, glideMs = GLIDE_MS }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], onPresence, camera = false, onInspect, size: fixedSize, glideMs = GLIDE_MS, overlay }, ref) {
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
   const frame = useRef<HTMLDivElement | null>(null)
@@ -340,6 +347,14 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           {loose.map((c) => {
             const a = absoluteOf(view, c)
             const m = moving.has(c.id)
+            if (c.type.id === COUNTER_TYPE) {
+              return (
+                <div key={c.id} className="byd-token" data-counter-token={c.id} style={{ position: 'absolute', left: left(a.x), top: top(a.y), width: px(TOKEN_MM), height: px(TOKEN_MM) }}>
+                  <b>{c.counter ?? 0}</b>
+                  <span>{c.cardRef ?? ''}</span>
+                </div>
+              )
+            }
             return (
               <Card
                 key={c.id}
@@ -397,6 +412,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           {drag?.started && drag.target.kind === 'pileTop' && (
             <Ghost card={topOf(zoneById.get(drag.target.pile) ?? floor)} faces={faces} left={left(drag.at.x) - px(CARD_MM.w / 2)} top={top(drag.at.y) - px(CARD_MM.h / 2)} px={px} />
           )}
+          {overlay?.({ px, left, top, scale })}
         </div>
       </div>
   )

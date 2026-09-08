@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ProjectDoc, ProjectRow } from './types.js'
 import { fieldsOf } from './fields.js'
+import { ASSET_DRAG_TYPE, assetRef, assetUrl, assetsInUse, imageFieldsOf, isAssetRef, ASSET_PREFIX } from './assets.js'
+import { searchSymbols, symbolPreview, type GameSymbol } from './symbols.js'
+import { diffProjects, type RowChange } from '@byd/server/doc'
+import { Summary } from './HistoryPanel.js'
 import type { Cell } from './ProjectClient.js'
 import { exportCardsCsv, importCardsCsv } from './csv.js'
 import { keepOrder, nextSort, sortRows, type SortState } from './sorting.js'
@@ -19,12 +23,72 @@ export type DataTableProps = {
   // The whole list of rows at once: a CSV import, and every change the selection makes (#17).
   // One call is one change to the project, so a bulk edit is saved and undone as one.
   onReplaceRows(rows: ProjectRow[]): void
+  // The project's images (E1): where they are served from, and how a chosen file becomes one.
+  // Without both, image fields are edited as text.
+  assetBase?: string | undefined
+  onUpload?: ((file: File) => Promise<string>) | undefined
+  // Taking a symbol into the game from where it is written (E4): returns the name it got in the
+  // project's icon set. Without it, a brace in a cell is just a brace.
+  onSymbol?: ((symbol: GameSymbol) => Promise<string>) | undefined
+  // An older version to hold the table against (B4): what moved is shown in the cells, and the
+  // cards that came or went are shown as rows.
+  compareWith?: { rev: number; label?: string | undefined; doc: ProjectDoc } | undefined
+  onStopCompare?: (() => void) | undefined
 }
 
 // The table (B as a tab): one row per card, the template's fields as columns, `antal` last (L4).
 // This is where the designer already lives; a change here reaches every copy of the card.
-export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows }: DataTableProps) {
+export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, assetBase, onUpload, onSymbol, compareWith, onStopCompare }: DataTableProps) {
   const [importError, setImportError] = useState<string | null>(null)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  // Which image cell a drag is over.
+  const [over, setOver] = useState<string | null>(null)
+  // The symbol picker (E4): which cell has an open brace before the cursor, what has been typed
+  // since it, and which symbol is under the arrow keys.
+  const [brace, setBrace] = useState<{ cardRef: string; field: string; at: number; query: string } | null>(null)
+  const [choice, setChoice] = useState(0)
+  const matches = brace ? searchSymbols(brace.query, null).slice(0, 8) : []
+  const closeBrace = () => {
+    setBrace(null)
+    setChoice(0)
+  }
+  // What a cell shows now: the row's value, unless the picker is open on it, since the cell is
+  // typed into before the project has the change.
+  const typing = useRef<Record<string, string>>({})
+  const openBrace = (cardRef: string, field: string, el: HTMLInputElement) => {
+    const upto = el.value.slice(0, el.selectionStart ?? el.value.length)
+    const at = upto.lastIndexOf('{')
+    const word = at >= 0 ? upto.slice(at + 1) : ''
+    // A closed brace is written, and a bare number in braces is a pip (L2): neither is a lookup.
+    if (at < 0 || word.includes('}') || /^\d+$/.test(word)) return closeBrace()
+    setBrace({ cardRef, field, at, query: word })
+    setChoice(0)
+  }
+  const takeSymbol = (symbol: GameSymbol) => {
+    const open = brace
+    if (!open || !onSymbol) return
+    const key = `${open.cardRef}:${open.field}`
+    const current = typing.current[key] ?? String(doc.rows.find((r) => r.id === open.cardRef)?.fields[open.field] ?? '')
+    closeBrace()
+    void onSymbol(symbol).then((name) => onCell(open.cardRef, open.field, `${current.slice(0, open.at)}{${name}}${current.slice(open.at + 1 + open.query.length)}`))
+  }
+  // What moved since the version being compared with (B4), and the cards that are no longer
+  // there — shown after the deck, since they have no place in it any more.
+  const diff = compareWith ? diffProjects(compareWith.doc, doc) : null
+  const changeOf = (cardRef: string) => diff?.rows.find((r) => r.cardRef === cardRef)
+  const goneRows: ProjectRow[] = compareWith && diff ? compareWith.doc.rows.filter((r) => diff.rows.some((c) => c.kind === 'removed' && c.cardRef === r.id)) : []
+  const wasCell = (cardRef: string, field: string) => compareWith?.doc.rows.find((r) => r.id === cardRef)?.fields[field]
+  const imageFields = assetBase && onUpload ? imageFieldsOf(doc) : []
+  const images = assetsInUse(doc)
+  const upload = async (cardRef: string, field: string, file: File | undefined) => {
+    if (!file || !onUpload) return
+    try {
+      onCell(cardRef, field, assetRef(await onUpload(file)))
+      setUploadError(null)
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : String(err))
+    }
+  }
   const [sort, setSort] = useState<SortState | null>(null)
   const [filter, setFilter] = useState<FilterState>(noFilter)
   const [selected, setSelected] = useState<Selection>(noSelection)
@@ -124,6 +188,36 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
         <span>Import ersätter korten i tabellen. Spara när resultatet ser rätt ut.</span>
         {importError && <span role="alert">{importError}</span>}
       </div>
+      {imageFields.length > 0 && assetBase && (
+        // The deck's images (E1), once each: drag one onto a card's cell to use it again.
+        <div className="byd-data-images">
+          <span>Bilder i spelet</span>
+          {images.length === 0 ? (
+            <em>inga ännu — välj en bild i tabellen</em>
+          ) : (
+            <ul aria-label="Bilder i spelet">
+              {images.map(({ hash, cards }) => (
+                <li key={hash} data-asset={hash}>
+                  <img src={assetUrl(assetBase, hash)} alt={`Bild på ${cards.join(', ')}`} draggable onDragStart={(e) => e.dataTransfer.setData(ASSET_DRAG_TYPE, hash)} />
+                  <small>{cards.length} kort</small>
+                </li>
+              ))}
+            </ul>
+          )}
+          {uploadError && <span role="alert">{uploadError}</span>}
+        </div>
+      )}
+      {compareWith && diff && (
+        <p className="byd-data-compare" role="status">
+          Jämför med version {compareWith.rev}
+          {compareWith.label ? ` · ${compareWith.label}` : ''}: <Summary diff={diff} />{' '}
+          {onStopCompare && (
+            <button type="button" onClick={onStopCompare}>
+              Sluta jämföra
+            </button>
+          )}
+        </p>
+      )}
       <div className="byd-data-filter">
         <input
           type="search"
@@ -281,8 +375,8 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
           </tr>
         </thead>
         <tbody>
-          {shown.map(({ id: cardRef, fields: row }) => (
-            <tr key={cardRef} data-card-ref={cardRef} aria-selected={selectedRow === cardRef ? 'true' : 'false'} onClick={() => onSelectRow(cardRef)}>
+          {[...shown, ...goneRows].map(({ id: cardRef, fields: row }) => (
+            <tr key={cardRef} data-card-ref={cardRef} data-change={changeOf(cardRef)?.kind} aria-selected={selectedRow === cardRef ? 'true' : 'false'} onClick={() => onSelectRow(cardRef)}>
               {/* Two different meanings of "selected" meet in a row: the tick says the next bulk
                   change is about this card, the row itself says the card is the one being looked
                   at. A click on the checkbox is only ever the first of them. */}
@@ -297,19 +391,95 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                 </label>
               </td>
               <td className="byd-data-id">{cardRef}</td>
-              {fields.map((f) => (
-                <td key={f}>
+              {fields.map((f) =>
+                imageFields.includes(f) && assetBase ? (
+                  <td key={f} className="byd-data-image">
+                    <div
+                      className="byd-data-drop"
+                      role="group"
+                      aria-label={`Bild för ${cardRef}`}
+                      data-image-cell={cardRef}
+                      data-over={over === `${cardRef}:${f}` ? 'true' : undefined}
+                      onDragOver={(e) => {
+                        e.preventDefault()
+                        setOver(`${cardRef}:${f}`)
+                      }}
+                      onDragLeave={() => setOver(null)}
+                      onDrop={(e) => {
+                        e.preventDefault()
+                        setOver(null)
+                        const hash = e.dataTransfer.getData(ASSET_DRAG_TYPE)
+                        if (hash) onCell(cardRef, f, assetRef(hash))
+                        else void upload(cardRef, f, e.dataTransfer.files?.[0])
+                      }}
+                    >
+                      {isAssetRef(row[f]) ? <img src={assetUrl(assetBase, String(row[f]).slice(ASSET_PREFIX.length))} alt={`${cardRef} ${f}`} /> : <span>släpp en bild här</span>}
+                      <label className="byd-data-file">
+                        {isAssetRef(row[f]) ? 'Byt' : 'Välj'}
+                        <input type="file" accept="image/*" aria-label={`Välj bild för ${cardRef}`} onChange={(e) => void upload(cardRef, f, e.target.files?.[0])} />
+                      </label>
+                      {isAssetRef(row[f]) && (
+                        <button type="button" aria-label={`Ta bort bild för ${cardRef}`} onClick={() => onCell(cardRef, f, '')}>
+                          ×
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                ) : (
+                <td key={f} className={brace?.cardRef === cardRef && brace.field === f ? 'byd-data-picking' : undefined}>
+                  {moved(changeOf(cardRef), f) && <s className="byd-data-was">{String(wasCell(cardRef, f) ?? '')}</s>}
                   <input
                     type={f === 'antal' ? 'number' : 'text'}
                     min={f === 'antal' ? 0 : undefined}
                     value={row[f] === undefined || row[f] === null ? (f === 'antal' ? '1' : '') : String(row[f])}
-                    onChange={(e) => onCell(cardRef, f, f === 'antal' ? Number(e.target.value) : e.target.value)}
+                    onChange={(e) => {
+                      typing.current[`${cardRef}:${f}`] = e.target.value
+                      onCell(cardRef, f, f === 'antal' ? Number(e.target.value) : e.target.value)
+                      if (onSymbol && f !== 'antal') openBrace(cardRef, f, e.target)
+                    }}
+                    onKeyDown={(e) => {
+                      if (!brace || brace.cardRef !== cardRef || brace.field !== f || matches.length === 0) return
+                      if (e.key === 'ArrowDown') {
+                        e.preventDefault()
+                        setChoice((c) => Math.min(matches.length - 1, c + 1))
+                      } else if (e.key === 'ArrowUp') {
+                        e.preventDefault()
+                        setChoice((c) => Math.max(0, c - 1))
+                      } else if (e.key === 'Enter') {
+                        const picked = matches[choice]
+                        if (!picked) return
+                        e.preventDefault()
+                        takeSymbol(picked)
+                      } else if (e.key === 'Escape') closeBrace()
+                    }}
                     onFocus={() => setHeld(shown.map((r) => r.id))}
                     onBlur={() => setHeld(null)}
                     aria-label={`${cardRef} ${f}`}
                   />
+                  {brace?.cardRef === cardRef && brace.field === f && matches.length > 0 && (
+                    // The library where the cursor stands (E4): the same set the Symboler tab
+                    // fills, reached without leaving the sentence being written.
+                    <div className="byd-data-symbols" role="listbox" aria-label="Symboler">
+                      {matches.map((sym, i) => (
+                        <button
+                          key={sym.id}
+                          type="button"
+                          role="option"
+                          data-symbol={sym.name}
+                          aria-selected={i === choice}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => takeSymbol(sym)}
+                        >
+                          <img src={symbolPreview(sym)} alt="" />
+                          <span>{sym.name}</span>
+                          <small>{sym.category}</small>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </td>
-              ))}
+                ),
+              )}
               {grouping && <GroupCell doc={doc} column={grouping} cardRef={cardRef} row={row} />}
               <td className="byd-data-remove">
                 <button
@@ -387,3 +557,6 @@ function sortLabel(sort: SortState | null): string {
   if (!sort) return 'Osorterad: kortens ordning i projektet.'
   return `Sorterad på ${sort.field}, ${sort.dir === 'ascending' ? 'stigande' : 'fallande'}.`
 }
+
+// A field that moved between the two versions being held against each other (B4).
+const moved = (change: RowChange | undefined, field: string): boolean => change?.kind === 'changed' && change.fields.some((f) => f.field === field)

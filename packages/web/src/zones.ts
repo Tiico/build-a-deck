@@ -3,7 +3,8 @@ import type { ZoneView } from '@byd/protocol'
 export type Drop = { zone: string; x: number; y: number }
 
 // Where a point on the table lands (K2): the smallest area or hand whose rectangle contains
-// it, else the floor. Piles are points and never hit — dropping onto a pile is `stack`, decided
+// it, else the floor. Zones may overlap: the smallest wins, and between equals the one listed
+// first in the setup. Piles are points and never hit — dropping onto a pile is `stack`, decided
 // by hit-testing the card on top, not by geometry.
 export function zoneAt(zones: readonly ZoneView[], floor: string, x: number, y: number): Drop {
   let best: ZoneView | null = null

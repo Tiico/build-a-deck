@@ -10,10 +10,12 @@ export type Measure = (text: string, font: MeasureFont, widthMm: number) => numb
 export const PT_TO_MM = 25.4 / 72
 const STEP_PT = 0.5
 
-// Flattens the inline tree to what takes up width: text as itself, an icon as one em ("M").
+// Flattens the inline tree to what takes up width: text as itself, an icon as one em ("M"). A
+// reference (B7) belongs to the rulebook and never reaches a card, but it measures as what it
+// is written as, so nothing here can be surprised by one.
 export function measurableText(text: string): string[] {
   const flat = (nodes: InlineNode[]): string =>
-    nodes.map((n) => (n.type === 'text' ? n.text : n.type === 'icon' ? 'M' : flat(n.children))).join('')
+    nodes.map((n) => (n.type === 'text' ? n.text : n.type === 'icon' ? 'M' : n.type === 'ref' ? `[[${n.of}:${n.id}]]` : flat(n.children))).join('')
   return parseInline(text).map((p) => flat(p.children))
 }
 

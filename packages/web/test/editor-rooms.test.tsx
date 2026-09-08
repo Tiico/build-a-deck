@@ -31,7 +31,7 @@ const tabNames = () => screen.getAllByRole('tab').map((tab) => tab.textContent?.
 describe('the editor on a phone (L10)', () => {
   it('offers the deck, the data and the tables — and says in so many words what needs a wider screen', async () => {
     await editorAt(390)
-    expect(tabNames()).toEqual(['Kortvägg', 'Tabell', 'Bord'])
+    expect(tabNames()).toEqual(['Kortvägg', 'Tabell', 'Symboler', 'Regler', 'Bord'])
     // Not a gap where the tools were: a sentence a designer can act on.
     const said = screen.getByText(/Mallen ritas inte på telefon/)
     expect(said.textContent).toMatch(/768/)
@@ -52,7 +52,7 @@ describe('the editor on a phone (L10)', () => {
 describe('the editor on a tablet (L10)', () => {
   it('lays the template out as four stages beside the three modes, one panel at a time', async () => {
     await editorAt(800)
-    expect(tabNames()).toEqual(['Kortvägg', 'Verktyg', 'Lager', 'Duk', 'Egenskaper', 'Tabell', 'Bord'])
+    expect(tabNames()).toEqual(['Kortvägg', 'Verktyg', 'Lager', 'Duk', 'Egenskaper', 'Tabell', 'Symboler', 'Regler', 'Bord'])
 
     await userEvent.click(screen.getByRole('tab', { name: 'Duk' }))
     expect(document.querySelector('.byd-canvas')!.getAttribute('data-stage')).toBe('canvas')
@@ -78,7 +78,7 @@ describe('the editor on a tablet (L10)', () => {
     const user = userEvent.setup()
     await editorAt(800)
     const tabs = screen.getAllByRole('tab')
-    expect(tabs.map((tab) => tab.getAttribute('tabindex'))).toEqual(['0', '-1', '-1', '-1', '-1', '-1', '-1'])
+    expect(tabs.map((tab) => tab.getAttribute('tabindex'))).toEqual(['0', '-1', '-1', '-1', '-1', '-1', '-1', '-1', '-1'])
 
     tabs[0]!.focus()
     await user.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}')
@@ -101,7 +101,7 @@ describe('the editor on a tablet (L10)', () => {
 describe('the editor on a desk (L10)', () => {
   it('is the editor it has always been: four modes in the header and the canvas in four columns', async () => {
     await editorAt(1280)
-    expect(tabNames()).toEqual(['Kortvägg', 'Mall', 'Tabell', 'Bord'])
+    expect(tabNames()).toEqual(['Kortvägg', 'Mall', 'Tabell', 'Symboler', 'Regler', 'Bord'])
     expect(screen.queryByText(/Mallen ritas inte på telefon/)).toBeNull()
     await userEvent.click(screen.getByRole('tab', { name: 'Mall' }))
     const canvas = document.querySelector('.byd-canvas')!

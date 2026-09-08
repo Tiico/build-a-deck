@@ -466,3 +466,29 @@ describe('where a seat has its name (B)', () => {
     expect(document.querySelector('[data-zone="hand:A"] .byd-hand-count')!.textContent).toBe('2')
   })
 })
+
+describe('counters on the table (C4)', () => {
+  it('draws a counter token as a chip with its name and value, never as a card', () => {
+    const { view } = buildScene()
+    const v = view(null)
+    const chip = { id: 'k1', type: { id: 'token.counter', version: 1 }, zone: 'table', face: 'front', x: 10, y: 10, rot: 0, counter: 17, cardRef: 'Liv' }
+    render(<TableRenderer view={{ ...v, components: [...v.components, chip] }} mode="tv" scale={1} />)
+    const el = document.querySelector('[data-counter-token="k1"]')!
+    expect(el).toBeTruthy()
+    expect(el.textContent).toContain('17')
+    expect(el.textContent).toContain('Liv')
+    expect(document.querySelector('[data-component="k1"]')).toBeNull()
+  })
+})
+
+describe('an overlay on the felt (B5)', () => {
+  it('renders what the editor lays over the table inside the felt, with the felt\'s own pixel mapping', () => {
+    const { view } = buildScene()
+    render(<TableRenderer view={view(null)} mode="tv" scale={2} overlay={(fit) => <div data-overlay style={{ left: fit.left(-400), top: fit.top(-200), width: fit.px(50) }} />} />)
+    const overlay = document.querySelector('[data-table] [data-overlay]') as HTMLElement
+    // The floor starts at (-500, -300); scale 2.
+    expect(overlay.style.left).toBe('200px')
+    expect(overlay.style.top).toBe('200px')
+    expect(overlay.style.width).toBe('100px')
+  })
+})

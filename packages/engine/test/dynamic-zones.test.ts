@@ -160,3 +160,28 @@ describe('dynamic piles lie in table coordinates (K1, K2)', () => {
     expect(last).toMatchObject({ x: 620, y: 220 })
   })
 })
+
+// A pile squares its cards (K1, decided 2026-09-07): a card that joins a pile takes the pile's
+// rotation, whatever it had, as a hand does when it evens a pile. State and picture say the same.
+describe('a pile squares its cards', () => {
+  it('a turned card stacked onto a loose card, a card moved into a pile, and a card drawn into one all take the pile\'s rotation', () => {
+    const h = new Harness()
+    h.do(null, { v: 'draw', from: 'draw', to: 'table', count: 3 })
+    const [turned, lower, another] = h.zone('table') as [string, string, string]
+    h.do(null, { v: 'move', component: lower, to: 'table', x: 100, y: 50, rot: 15 })
+    h.do(null, { v: 'move', component: turned, to: 'table', x: -100, y: 0, rot: 90 })
+    h.do(null, { v: 'stack', component: turned, onto: lower })
+    const [pile] = h.piles()
+    expect(h.state.components[turned]?.rot).toBe(15)
+    expect(h.state.components[lower]?.rot).toBe(15)
+
+    h.do(null, { v: 'move', component: another, to: 'table', x: 0, y: 0, rot: 45 })
+    h.do(null, { v: 'move', component: another, to: 'discard', rot: 45 })
+    expect(h.state.components[another]?.rot).toBe(0)
+    h.do(null, { v: 'draw', from: 'discard', to: pile!, count: 1 })
+    expect(h.state.components[another]?.rot).toBe(15)
+    // Dissolving leaves the last card with the pile's rotation, as before.
+    h.do(null, { v: 'draw', from: pile!, to: 'discard', count: 2 })
+    expect(h.state.components[lower]).toMatchObject({ zone: 'table', rot: 15 })
+  })
+})

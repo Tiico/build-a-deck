@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import type { Applied, Envelope, Presence, SeatId, ServerMessage, Snapshot } from '@byd/protocol'
 import {
   apply,
@@ -22,16 +23,16 @@ import { facesOf, type Deck } from './faces.js'
 import type { LogStore } from './store.js'
 
 export const TEXTURE_DPI = 150
-// How much of the log a joining connection is handed, so a screen that comes in mid-game can
-// say what has happened (#20). Enough to fill a feed, not the whole session.
-const HISTORY_LINES = 50
+// How much of the log a snapshot carries: enough for a feed, never the whole game.
+export const SNAPSHOT_ACTIVITY = 50
 
 // One actor owns one table. A serial queue makes concurrency impossible; the order
 // decide → append (commit) → apply → broadcast makes the log the truth (DRIFT §3).
 // Nothing in memory is authoritative: an actor is rebuilt from its log on load.
 
-// `observer` (C8) names a watcher: seatless, sees everything, may only flag.
-export type Subscriber = { seat: SeatId | null; id: string; observer?: string; send(message: ServerMessage): void }
+// `observer` (C8) names a watcher: seatless, sees everything, may only flag. `lobby` (DRIFT §9)
+// is the join page: sees the seats, may do nothing.
+export type Subscriber = { seat: SeatId | null; id: string; observer?: string; lobby?: true; send(message: ServerMessage): void; close?(): void }
 
 export class TableActor {
   private queue: Promise<unknown> = Promise.resolve()
@@ -109,16 +110,47 @@ export class TableActor {
     return this.subscribers.size > 0 ? 0 : Date.now() - this.lastActivity
   }
 
-  subscribe(sub: Subscriber): void {
+  // A tokenless lobby exists only to choose a seat. Keep the snapshot envelope so the regular
+  // client can follow seat patches, but strip the table, cards, rewind state and activity.
+  private viewFor(sub: Subscriber): Snapshot {
     const snapshot = project(this.state, this.registry, sub.seat, this.faces, this.deps.history, sub.observer !== undefined)
+    if (!sub.lobby) return snapshot
+    return { ...snapshot, floor: 'lobby', zones: [], components: [], rewind: null, undo: null, ended: false }
+  }
+
+  subscribe(sub: Subscriber): void {
+    const snapshot = this.viewFor(sub)
     this.subscribers.set(sub, snapshot)
-    sub.send({ t: 'snapshot', snapshot })
-    // After the table, what led to it: the same redaction every view gets while playing.
-    const history = this.log.slice(-HISTORY_LINES).map(projectActivity)
-    if (history.length > 0) sub.send({ t: 'activity', lines: history })
+    sub.send({ t: 'snapshot', snapshot, activity: sub.lobby ? [] : this.log.slice(-SNAPSHOT_ACTIVITY).map(projectActivity) })
     if (sub.observer !== undefined) this.broadcastRoster()
-    else sub.send({ t: 'roster', observers: this.observers() })
+    else if (!sub.lobby) sub.send({ t: 'roster', observers: this.observers() })
     this.lastActivity = Date.now()
+  }
+
+  // The seats as they are: who sits where, for admission (DRIFT §9).
+  seats(): { id: SeatId; name: string | null }[] {
+    return this.state.setup.seats.map((id) => ({ id, name: this.state.seats[id]?.name ?? null }))
+  }
+
+  // To the host's own screens only (DRIFT §9): the table role, not seats, observers or lobbies.
+  tellTable(message: ServerMessage): void {
+    for (const sub of this.subscribers.keys()) {
+      if (sub.seat === null && sub.observer === undefined && !sub.lobby) sub.send(message)
+    }
+  }
+
+  // A kick (DRIFT §9): every connection at the seat is refused and closed, and the seat is
+  // given back to the table so someone else can take it. The token is the server's to revoke.
+  async kick(seat: SeatId): Promise<void> {
+    for (const sub of [...this.subscribers.keys()]) {
+      if (sub.seat !== seat) continue
+      sub.send({ t: 'refused', reason: 'kicked' })
+      this.unsubscribe(sub)
+      sub.close?.()
+    }
+    if (this.state.seats[seat]?.name !== null) {
+      await this.submit({ id: `kick-${seat}-${randomUUID()}`, seat: null, intents: [{ v: 'seat.release', seat }] })
+    }
   }
 
   private observers(): { id: string; name: string }[] {
@@ -127,7 +159,7 @@ export class TableActor {
 
   private broadcastRoster(): void {
     const observers = this.observers()
-    for (const sub of this.subscribers.keys()) sub.send({ t: 'roster', observers })
+    for (const sub of this.subscribers.keys()) if (!sub.lobby) sub.send({ t: 'roster', observers })
   }
 
   unsubscribe(sub: Subscriber): void {
@@ -143,7 +175,7 @@ export class TableActor {
   // Presence (K6): straight to every other connection, never through decide or the log.
   relay(from: Subscriber, presence: Presence): void {
     for (const sub of this.subscribers.keys()) {
-      if (sub !== from) sub.send({ t: 'presence', from: { seat: from.seat, id: from.id }, presence })
+      if (sub !== from && !sub.lobby) sub.send({ t: 'presence', from: { seat: from.seat, id: from.id }, presence })
     }
   }
 
@@ -177,11 +209,11 @@ export class TableActor {
 
     const activity = decision.applied.map(projectActivity)
     for (const [sub, previous] of this.subscribers) {
-      const next = project(this.state, this.registry, sub.seat, this.faces, this.deps.history, sub.observer !== undefined)
+      const next = this.viewFor(sub)
       const patch = diff(previous, next)
       this.subscribers.set(sub, next)
       if (patch.ops.length > 0 || patch.seq !== previous.seq) sub.send({ t: 'patch', patch })
-      sub.send({ t: 'activity', lines: activity })
+      if (!sub.lobby) sub.send({ t: 'activity', lines: activity })
     }
     return decision
   }
