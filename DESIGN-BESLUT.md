@@ -100,6 +100,16 @@ Följdkrav:
 Assets måste vara innehållsadresserade, annars sväller lagringen ohållbart.
 Historiken måste presenteras utan att lära ut git.
 
+Byggt 2026-09-08:
+Varje sparning lägger till en version som behålls hel och aldrig skrivs om, i minnet och i Postgres (`project_versions`). En version kan namnges, öppnas och jämföras.
+Diffen är den korttabellen visar: kort tillagda, borttagna och ändrade med fältet som rörde sig och vad det rörde sig från. Lekens ordning är en egen sorts ändring, och mall, uppställning och symboler nämns som ändrade utan att stavas ut — en diff av ett elementträd är en diff för en maskin.
+Diffen ligger i `packages/server` men exporteras på egen väg (`@byd/server/diff`), så editorn kan använda den utan att dra in servern i webbläsaren.
+Ytan prototypades i tre former: en lista med versioner, skillnaden i korttabellen, och en remsa att dra leken genom. Valet blev listan plus skillnaden i tabellen.
+Historiken öppnas från revisionsnumret i editorns huvud, där versionen redan står namngiven. Panelen listar versionerna med datum, namn och — när en rad öppnas — vad den ändrade i ord. Vad en version ändrade hämtas först när raden öppnas; en lång historia ska inte vara en lång väntan på något ingen tittade på.
+Att ta tillbaka en äldre version är en redigering som vilken annan: den blir nästa version när den sparas, och den den kom från står kvar orörd.
+"Jämför med den här i tabellen" öppnar Tabell-fliken hållen mot den versionen: det gamla värdet överstruket i cellen, tillagda och borttagna rader tonade, och de borttagna korten kvar sist så att de går att se alls.
+Revisionsknappen blev editorns första tabbstopp, före fliklistan. Det är avsiktligt: den står där versionen står, och tangentbordstesterna dokumenterar ordningen.
+
 ### B5. Logikgräns: affordances plus deklarativ setup (fråga 5)
 
 Systemet kan manipulera — blanda, dra, vända, rotera, stapla, räkna, slå — och känner till spelets struktur: namngivna zoner, per-spelare-områden, startuppställning, drag- och kasthögar.

@@ -158,3 +158,50 @@ describe('the symbol picker at the brace (E4)', () => {
     expect(screen.queryByRole('listbox')).toBeNull()
   })
 })
+
+describe('comparing with an older version in the table (B4)', () => {
+  const older = () => {
+    const doc = projectDoc()
+    doc.rows[0]!.fields['title'] = 'Drake'
+    doc.rows = [doc.rows[0]!, doc.rows[1]!, { id: 'troll', fields: { title: 'Troll', body: 'Stor.', antal: 1 } }]
+    return doc
+  }
+  const now = () => {
+    const doc = projectDoc()
+    doc.rows[0]!.fields['title'] = 'Drakhona'
+    return doc
+  }
+
+  it('shows what moved since a chosen version: the old value struck through, and rows added or gone', () => {
+    render(
+      <DataTable
+        doc={now()}
+        selectedRow={null}
+        onSelectRow={() => undefined}
+        onCell={() => undefined}
+        onAddRow={() => undefined}
+        onRemoveRow={() => undefined}
+        onReplaceRows={() => undefined}
+        compareWith={{ rev: 1, doc: older() }}
+      />,
+    )
+    expect(screen.getByText(/Jämför med version 1/)).toBeTruthy()
+    const rows = screen.getAllByRole('row').slice(1)
+    // The removed card is shown too, at the end, so it can be seen at all.
+    expect(rows.map((r) => r.getAttribute('data-card-ref'))).toEqual(['dragon', 'knight', 'wizard', 'troll'])
+    expect(rows[0]!.getAttribute('data-change')).toBe('changed')
+    expect(rows[2]!.getAttribute('data-change')).toBe('added')
+    expect(rows[3]!.getAttribute('data-change')).toBe('removed')
+
+    const title = within(rows[0]!).getByRole('cell', { name: /Drakhona/ })
+    expect(within(title).getByText('Drake')!.tagName).toBe('S')
+    // A cell that did not move says it once.
+    expect(within(rows[1]!).queryByText('Riddare', { selector: 's' })).toBeNull()
+  })
+
+  it('is not in the way when nothing is being compared', () => {
+    render(<DataTable doc={now()} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} />)
+    expect(screen.queryByText(/Jämför med/)).toBeNull()
+    expect(screen.getAllByRole('row').slice(1).map((r) => r.getAttribute('data-change'))).toEqual([null, null, null])
+  })
+})

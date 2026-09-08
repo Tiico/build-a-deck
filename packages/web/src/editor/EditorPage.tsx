@@ -6,8 +6,10 @@ import { DataTable } from './DataTable.js'
 import { TableMenu, TablesTab } from './TablesTab.js'
 import { SetupEditor } from './SetupEditor.js'
 import { SymbolPanel } from './SymbolPanel.js'
+import { HistoryPanel } from './HistoryPanel.js'
 import { tvUrl } from './tableLinks.js'
 import { useProjectClient } from './useProjectClient.js'
+import type { ProjectDoc } from '@byd/server'
 import { useTableClient } from '../table/useTableClient.js'
 import type { ProjectClient, Textures } from './ProjectClient.js'
 import { loginUrl } from '../account/api.js'
@@ -32,6 +34,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
   const [element, setElement] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
+  // The history (B4) opens from the revision, which is where the version is already named.
+  const [historyOpen, setHistoryOpen] = useState(false)
+  // An older version the table is held against (B4), fetched once when the comparison starts.
+  const [compare, setCompare] = useState<{ rev: number; label?: string | undefined; doc: ProjectDoc } | null>(null)
   // A running table (L5) with what admits people to it (DRIFT §9): the code and the host key.
   const [table, setTable] = useState<{ id: string; version: string; code: string; hostKey: string; kind: 'new' | 'refreshed' } | null>(null)
   // The table's textures (L5): the link opens only when every card can be seen. Polled with a
@@ -161,6 +167,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
         assetBase={http}
         onUpload={(file) => client.uploadAsset(file)}
         onSymbol={(symbol) => client.useSymbol(symbol)}
+        compareWith={compare ?? undefined}
+        onStopCompare={() => setCompare(null)}
         selectedRow={row}
         onSelectRow={setRow}
         onCell={(cardRef, field, value) => client.setCell(cardRef, field, value)}
@@ -194,7 +202,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
     <div className="byd-editor" data-page="editor" data-mode={mode}>
       <header>
         <strong>{doc.name}</strong>
-        <span className="byd-editor-rev">rev {client.rev}</span>
+        <button type="button" className="byd-editor-rev" aria-expanded={historyOpen} onClick={() => setHistoryOpen((on) => !on)}>
+          rev {client.rev}
+        </button>
         <EditorTabs mode={mode} onSelect={setMode} />
         <span className="byd-editor-spacer" />
         {notice && <span role="status" className="byd-editor-notice">{notice}</span>}
@@ -237,6 +247,21 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
           </span>
           <HostSeats client={client} sessionId={table.id} hostKey={table.hostKey} ws={wsUrl} onNotice={setNotice} />
         </div>
+      )}
+      {historyOpen && (
+        <HistoryPanel
+          client={client}
+          onClose={() => setHistoryOpen(false)}
+          onRestored={() => setHistoryOpen(false)}
+          onCompare={(rev, label) => {
+            void client.at(rev).then((old) => {
+              if (!old) return
+              setCompare({ rev, doc: old, ...(label !== undefined ? { label } : {}) })
+              setHistoryOpen(false)
+              setMode('table')
+            })
+          }}
+        />
       )}
       <main>
         {MODES.map(([m]) => (

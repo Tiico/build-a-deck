@@ -102,7 +102,7 @@ Målet är att designern aldrig behöver ett annat verktyg för att göra leken.
 - ✅ Bilder: bildceller i editorns tabell, spelets bilder en gång var, innehållsadresserad lagring i R2 via `/assets` (E1, DRIFT §4).
 - ✅ Symbolbibliotek: fliken "Symboler" med sök och kategorier, väljare vid klammern i tabellen, symboler som projektets assets och licenser hela vägen till trycket (E4).
 - ✅ Fysisk validering: minsta textstorlek, kontrast, färgblindhet, utfall och linjetjocklek, som rapport på kortväggen och blockerande fel vid order (E5, E6).
-- 🔶 Versionering: revisionsräknare finns; kvar är oföränderlig historik med namngivna milstolpar, diff och att öppna en äldre version (B4).
+- ✅ Versionering: oföränderlig historik, namngivna milstolpar, diff i korttabellen och att ta tillbaka en äldre version (B4).
 - ⬜ Regelboken som versionerat dokument som refererar komponenter och zoner (B7).
 - ⬜ Samredigering med en aktör per projekt och en logg, samma mönster som bordet (D3).
 - ⬜ Typsnitt: val av font i mallen, med fontfiler som bevaras per version (B3) — kolliderar med fontlicensieringen (I).

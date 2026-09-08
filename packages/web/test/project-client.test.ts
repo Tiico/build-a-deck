@@ -286,3 +286,34 @@ describe('symbols (E4)', () => {
     expect(stored?.credits).toEqual({ 'sköld': { licence: 'CC0-1.0', by: 'build-your-deck', source: 'skold' } })
   })
 })
+
+describe('the history (B4)', () => {
+  it('lists the versions, opens an older one, names it, and brings it back as a new version', async () => {
+    const created = await run.projects.create('p1', projectDoc())
+    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    client.setCell('dragon', 'title', 'Drakhona')
+    expect(await client.save()).toEqual({ ok: true, rev: 2 })
+
+    const versions = await client.versions()
+    expect(versions.map((v) => v.rev)).toEqual([2, 1])
+    expect(versions.every((v) => typeof v.at === 'string')).toBe(true)
+
+    const first = await client.at(1)
+    expect(first?.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drake')
+    expect(await client.at(9)).toBeNull()
+
+    await client.nameVersion(1, 'Första blindtestet')
+    expect((await client.versions()).find((v) => v.rev === 1)?.label).toBe('Första blindtestet')
+    await client.nameVersion(1, null)
+    expect((await client.versions()).find((v) => v.rev === 1)?.label).toBeUndefined()
+
+    // Bringing an old version back is an edit like any other: it becomes the next version.
+    await client.restore(1)
+    expect(client.dirty).toBe(true)
+    expect(client.doc.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drake')
+    expect(await client.save()).toEqual({ ok: true, rev: 3 })
+    expect((await client.versions()).map((v) => v.rev)).toEqual([3, 2, 1])
+    // And the version it came from is untouched.
+    expect((await client.at(2))?.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drakhona')
+  })
+})

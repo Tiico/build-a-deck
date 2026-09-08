@@ -3,6 +3,8 @@ import type { ProjectDoc, ProjectRow } from './types.js'
 import { fieldsOf } from './fields.js'
 import { ASSET_DRAG_TYPE, assetRef, assetUrl, assetsInUse, imageFieldsOf, isAssetRef, ASSET_PREFIX } from './assets.js'
 import { searchSymbols, symbolPreview, type GameSymbol } from './symbols.js'
+import { diffProjects, type RowChange } from '@byd/server/diff'
+import { Summary } from './HistoryPanel.js'
 import type { Cell } from './ProjectClient.js'
 import { exportCardsCsv, importCardsCsv } from './csv.js'
 import { keepOrder, nextSort, sortRows, type SortState } from './sorting.js'
@@ -27,11 +29,15 @@ export type DataTableProps = {
   // Taking a symbol into the game from where it is written (E4): returns the name it got in the
   // project's icon set. Without it, a brace in a cell is just a brace.
   onSymbol?: ((symbol: GameSymbol) => Promise<string>) | undefined
+  // An older version to hold the table against (B4): what moved is shown in the cells, and the
+  // cards that came or went are shown as rows.
+  compareWith?: { rev: number; label?: string | undefined; doc: ProjectDoc } | undefined
+  onStopCompare?: (() => void) | undefined
 }
 
 // The table (B as a tab): one row per card, the template's fields as columns, `antal` last (L4).
 // This is where the designer already lives; a change here reaches every copy of the card.
-export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, assetBase, onUpload, onSymbol }: DataTableProps) {
+export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, assetBase, onUpload, onSymbol, compareWith, onStopCompare }: DataTableProps) {
   const [importError, setImportError] = useState<string | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
   // Which image cell a drag is over.
@@ -65,6 +71,12 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
     closeBrace()
     void onSymbol(symbol).then((name) => onCell(open.cardRef, open.field, `${current.slice(0, open.at)}{${name}}${current.slice(open.at + 1 + open.query.length)}`))
   }
+  // What moved since the version being compared with (B4), and the cards that are no longer
+  // there — shown after the deck, since they have no place in it any more.
+  const diff = compareWith ? diffProjects(compareWith.doc, doc) : null
+  const changeOf = (cardRef: string) => diff?.rows.find((r) => r.cardRef === cardRef)
+  const goneRows: ProjectRow[] = compareWith && diff ? compareWith.doc.rows.filter((r) => diff.rows.some((c) => c.kind === 'removed' && c.cardRef === r.id)) : []
+  const wasCell = (cardRef: string, field: string) => compareWith?.doc.rows.find((r) => r.id === cardRef)?.fields[field]
   const imageFields = assetBase && onUpload ? imageFieldsOf(doc) : []
   const images = assetsInUse(doc)
   const upload = async (cardRef: string, field: string, file: File | undefined) => {
@@ -181,6 +193,17 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
           )}
           {uploadError && <span role="alert">{uploadError}</span>}
         </div>
+      )}
+      {compareWith && diff && (
+        <p className="byd-data-compare" role="status">
+          Jämför med version {compareWith.rev}
+          {compareWith.label ? ` · ${compareWith.label}` : ''}: <Summary diff={diff} />{' '}
+          {onStopCompare && (
+            <button type="button" onClick={onStopCompare}>
+              Sluta jämföra
+            </button>
+          )}
+        </p>
       )}
       <div className="byd-data-filter">
         <input
@@ -308,8 +331,8 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
           </tr>
         </thead>
         <tbody>
-          {shown.map(({ id: cardRef, fields: row }) => (
-            <tr key={cardRef} data-card-ref={cardRef} aria-selected={selectedRow === cardRef ? 'true' : 'false'} onClick={() => onSelectRow(cardRef)}>
+          {[...shown, ...goneRows].map(({ id: cardRef, fields: row }) => (
+            <tr key={cardRef} data-card-ref={cardRef} data-change={changeOf(cardRef)?.kind} aria-selected={selectedRow === cardRef ? 'true' : 'false'} onClick={() => onSelectRow(cardRef)}>
               {/* Two different meanings of "selected" meet in a row: the tick says the next bulk
                   change is about this card, the row itself says the card is the one being looked
                   at. A click on the checkbox is only ever the first of them. */}
@@ -358,6 +381,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                   </td>
                 ) : (
                 <td key={f} className={brace?.cardRef === cardRef && brace.field === f ? 'byd-data-picking' : undefined}>
+                  {moved(changeOf(cardRef), f) && <s className="byd-data-was">{String(wasCell(cardRef, f) ?? '')}</s>}
                   <input
                     type={f === 'antal' ? 'number' : 'text'}
                     min={f === 'antal' ? 0 : undefined}
@@ -491,3 +515,6 @@ function sortLabel(sort: SortState | null): string {
   if (!sort) return 'Osorterad: kortens ordning i projektet.'
   return `Sorterad på ${sort.field}, ${sort.dir === 'ascending' ? 'stigande' : 'fallande'}.`
 }
+
+// A field that moved between the two versions being held against each other (B4).
+const moved = (change: RowChange | undefined, field: string): boolean => change?.kind === 'changed' && change.fields.some((f) => f.field === field)
