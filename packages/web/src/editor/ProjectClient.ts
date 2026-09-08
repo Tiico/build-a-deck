@@ -49,6 +49,8 @@ export class ProjectClient {
   private saving: ((result: SaveResult) => void) | null = null
   // Who else has this project open (D3). Empty until the socket says otherwise.
   public here: Presence[] = []
+  // This editor's own connection, so a view can leave itself out of the list.
+  public who: string | null = null
   private constructor(
     private readonly http: string,
     readonly id: string,
@@ -98,6 +100,7 @@ export class ProjectClient {
       // The document as the actor holds it: on joining, and again whenever this editor drifted.
       case 'project': {
         this.me = message.you.id
+        this.who = message.you.id
         this.rev = message.rev
         this.here = message.here
         // Whatever this editor did while it was alone is laid on top again; an edit that no

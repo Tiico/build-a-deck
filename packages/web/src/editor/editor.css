@@ -33,6 +33,11 @@
 .byd-editor [role='tab'] { border: 0; border-radius: 6px; padding: 6px 14px; background: transparent; color: #9aa3b8; font-weight: 600; cursor: pointer; }
 .byd-editor [role='tab'][aria-selected='true'] { background: #2f3a55; color: #fff; }
 .byd-editor-spacer { flex: 1; }
+/* Who else has the project open (D3): an initial each, the name on hover. */
+.byd-editor-here { display: flex; gap: 4px; margin-left: 8px; }
+.byd-editor-here i { position: relative; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--who); color: #10131a; font: 800 11px system-ui; font-style: normal; }
+.byd-editor-here b { position: absolute; top: 28px; left: 50%; transform: translateX(-50%); display: none; padding: 3px 8px; border-radius: 6px; background: #10131a; color: #e6ecfa; font: 400 11px system-ui; white-space: nowrap; }
+.byd-editor-here i:hover b { display: block; }
 .byd-editor-notice { color: #f0b64a; }
 .byd-editor > header > button { border: 1px solid #2f333d; border-radius: 8px; padding: 8px 14px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
 .byd-editor > header > button:disabled { color: #5b6478; cursor: default; }

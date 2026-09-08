@@ -14,6 +14,7 @@ import type { ProjectDoc } from '@byd/server'
 import { useTableClient } from '../table/useTableClient.js'
 import type { ProjectClient, Textures } from './ProjectClient.js'
 import { loginUrl } from '../account/api.js'
+import { hue } from '../table/hue.js'
 import './editor.css'
 
 // /editor?project=…&server=http://…
@@ -208,6 +209,19 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
           rev {client.rev}
         </button>
         <EditorTabs mode={mode} onSelect={setMode} />
+        {/* Who else has the project open (D3). Alone, there is nobody to name. */}
+        {client.here.length > 1 && (
+          <span className="byd-editor-here" data-here aria-label="Andra i spelet">
+            {client.here
+              .filter((p) => p.id !== client.who)
+              .map((p) => (
+                <i key={p.id} title={p.name} style={{ ['--who' as string]: colourOf(p.id) }}>
+                  {p.name.slice(0, 1).toUpperCase()}
+                  <b>{p.name}</b>
+                </i>
+              ))}
+          </span>
+        )}
         <span className="byd-editor-spacer" />
         {notice && <span role="status" className="byd-editor-notice">{notice}</span>}
         <button type="button" onClick={() => void save()} disabled={!client.dirty || saving}>
@@ -300,3 +314,6 @@ function HostSeats({ client, sessionId, hostKey, ws, onNotice }: { client: Proje
   )
 }
 
+// A colour per editor, from the connection's own id, so the same person keeps theirs while
+// they are here.
+const colourOf = (id: string): string => `hsl(${hue(id)} 55% 55%)`

@@ -369,6 +369,16 @@ Följdkrav:
 Närvaro och konflikthantering i mallytan måste lösas.
 Behörigheter blir en riktig modell, inte ett fält.
 
+Byggt 2026-09-08:
+Redigeringarna är en sluten vokabulär av intents som en enda ren funktion applicerar. Editorn kör den på det den håller, aktören på sanningen, och båda får samma dokument.
+En aktör per projekt, med samma ordning som bordets: den måste gå att applicera, den committas i loggen, den appliceras, och alla får veta. En aktör byggs om från den sparade versionen plus de redigeringar som skett sedan; inget i minnet är sanningen.
+Sparandet är fortfarande det som gör en version (B4). Loggen bär svansen mellan sparningar och varje version noterar hur långt den kommit, så två redigerare ser varandras arbete utan att någon behöver spara. Sparkonflikten är därmed borta: aktören är den enda som skriver.
+`/projects/:id/edit` är tråden: dokumentet vid uppkoppling, varje redigering när den landar, vilka som är inne, och varför en redigering avvisades. En avvisad redigerare får dokumentet med avslaget och kan fortsätta från det som är verkligt.
+Editorn applicerar sin egen redigering direkt och skickar den; ekot säger bara att den landade. Det som skrevs innan socketen hann öppna skickas när den öppnar och läggs tillbaka ovanpå om aktören lämnar över sitt dokument.
+Att ta tillbaka en äldre version är en redigering som vilken annan och går samma väg.
+Huvudet visar vilka andra som har spelet öppet, med kontots adress som namn.
+Kvar: roller (ägare, medredigerare, testledare, betraktare) och att bjuda in någon — bara ägaren släpps in i dag. Och återuppkoppling: ett brutet socket lämnar editorn ensam med det den håller tills sidan öppnas igen.
+
 ### D4. Teststrategi: deterministisk återspelning som ryggrad (fråga 28)
 
 Inspelade sessionsloggar är testfall.

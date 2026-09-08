@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ProjectClient } from '../src/editor/ProjectClient.js'
 import { projectDoc } from './project-doc.js'
@@ -78,5 +79,24 @@ describe('two editors on the same project (D3)', () => {
     ada.close()
     // A project that is not there is still an error, as before.
     await expect(open('nope')).rejects.toThrow(/nope/)
+  })
+})
+
+describe('who else is in the editor (D3)', () => {
+  it('names the others in the header, and says nothing at all when one is alone', async () => {
+    const { render, screen, waitFor } = await import('@testing-library/react')
+    const { EditorPage } = await import('../src/editor/EditorPage.js')
+    await run.projects.create('p1', projectDoc())
+    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    // Alone with the project, there is nobody to name.
+    await waitFor(() => expect(document.querySelector('[data-here]')).toBeNull())
+
+    const bo = await ProjectClient.open({ http: run.http, id: 'p1', name: 'Bo' })
+    const here = await screen.findByLabelText('Andra i spelet')
+    expect(here.textContent).toContain('Bo')
+    bo.close()
+    await waitFor(() => expect(document.querySelector('[data-here]')).toBeNull())
   })
 })
