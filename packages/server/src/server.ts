@@ -462,9 +462,10 @@ async function attachEditor(opts: ServerOptions, req: IncomingMessage, ws: WebSo
           if (!saved.ok) send({ v: 'refused', why: saved.reason })
           return
         }
-        await actor.edit(msg.intent as EditIntent, account?.id)
+        await actor.edit(msg.intent as EditIntent, account?.id, editor.id)
       } catch (err) {
         send({ v: 'refused', why: err instanceof Error ? err.message : String(err) })
+        actor.resync(editor)
       }
     })()
   })

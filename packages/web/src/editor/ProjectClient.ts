@@ -5,6 +5,25 @@ import { Unauthorized, withCredentials } from '../account/api.js'
 import { applyEdit, recipeOf, type EditIntent, type Recipe, type ZonePatch } from '@byd/server/doc'
 import { ASSET_PREFIX } from './assets.js'
 import { freeIconName, svgBytes, type GameSymbol } from './symbols.js'
+import type { EditorMessage, Presence } from '@byd/server'
+
+// The editor's socket, kept small on purpose: the same shape the table's client speaks, so a
+// test can hand it Node's WebSocket the way it hands one to the table.
+export type WebSocketLike = {
+  send(data: string): void
+  close(): void
+  readyState: number
+  onopen: (() => void) | null
+  onmessage: ((event: { data: unknown }) => void) | null
+  onclose: (() => void) | null
+  onerror: (() => void) | null
+}
+export type EditSocketCtor = new (url: string) => WebSocketLike
+let editSocket: EditSocketCtor | null = null
+export function useEditSocketImplementation(ctor: EditSocketCtor | null): void {
+  editSocket = ctor
+}
+const makeEditSocket = (url: string): WebSocketLike => new (editSocket ?? (globalThis.WebSocket as unknown as EditSocketCtor))(url)
 
 export type ProjectListener = (client: ProjectClient) => void
 export type SaveResult = { ok: true; rev: number } | { ok: false; reason: 'conflict' | 'missing' | string }
@@ -14,11 +33,22 @@ export type Textures = { total: number; done: number; failed: string[] }
 // whether its log is locked (C9), and when it last moved.
 export type TableSummary = { id: string; version: string; ended: boolean; lastAt: string | null }
 
-// The project as the editor holds it: the document, its revision, local edits, and saving with
-// optimistic concurrency (a stale save is a conflict to resolve, never a silent overwrite).
-// Framework-free so views stay thin; every edit notifies subscribers.
+// The project as the editor holds it, and its end of the actor (D3): the document, who else has
+// it open, and one socket the edits go both ways over. An edit is applied here at once and sent;
+// the actor's echo of one's own edit is skipped, and everyone else's is applied as it lands.
+// Framework-free so views stay thin; every change notifies subscribers.
 export class ProjectClient {
   private listeners = new Set<ProjectListener>()
+  private socket: WebSocketLike | null = null
+  private me: string | null = null
+  // Edits made before the socket was open, or made and not yet echoed back. They are sent when
+  // the socket opens, and laid on top again whenever the actor hands over its document.
+  private pending: EditIntent[] = []
+  private outbox: string[] = []
+  // A save asked for over the socket, waiting for the actor to say what became of it.
+  private saving: ((result: SaveResult) => void) | null = null
+  // Who else has this project open (D3). Empty until the socket says otherwise.
+  public here: Presence[] = []
   private constructor(
     private readonly http: string,
     readonly id: string,
@@ -27,7 +57,7 @@ export class ProjectClient {
     public dirty = false,
   ) {}
 
-  static async open(opts: { http: string; id: string }): Promise<ProjectClient> {
+  static async open(opts: { http: string; id: string; name?: string }): Promise<ProjectClient> {
     const res = await fetch(`${opts.http}/projects/${encodeURIComponent(opts.id)}`, withCredentials())
     if (res.status === 401) throw new Unauthorized()
     if (res.status === 403) throw new Error('det här spelet tillhör någon annan')
@@ -35,7 +65,105 @@ export class ProjectClient {
     if (!res.ok) throw new Error(`could not load project: ${res.status}`)
     const rec = (await res.json()) as ProjectDoc & { id: string; rev: number }
     const doc: ProjectDoc = { name: rec.name, template: rec.template, rows: rec.rows, icons: rec.icons, setup: rec.setup, ...(rec.credits ? { credits: rec.credits } : {}), ...(rec.rules ? { rules: rec.rules } : {}) }
-    return new ProjectClient(opts.http, opts.id, doc, rec.rev)
+    const client = new ProjectClient(opts.http, opts.id, doc, rec.rev)
+    client.connect(opts.name ?? 'Någon')
+    return client
+  }
+
+  // The socket to the project's actor. The editor works without it — the document was read over
+  // HTTP — but then it is alone with its own edits until it saves.
+  private connect(name: string): void {
+    const url = `${this.http.replace(/^http/, 'ws')}/projects/${encodeURIComponent(this.id)}/edit?name=${encodeURIComponent(name)}`
+    const socket = makeEditSocket(url)
+    this.socket = socket
+    socket.onopen = () => {
+      for (const message of this.outbox) socket.send(message)
+      this.outbox = []
+    }
+    socket.onmessage = (event: { data: unknown }) => {
+      const message = JSON.parse(String(event.data)) as EditorMessage
+      this.receive(message)
+    }
+    // A socket that breaks is simply gone: the editor carries on with what it holds, saves the
+    // old way, and is alone with its edits until the page is opened again.
+    const dropped = () => {
+      if (this.socket === socket) this.socket = null
+    }
+    socket.onclose = dropped
+    socket.onerror = dropped
+  }
+
+  private receive(message: EditorMessage): void {
+    switch (message.v) {
+      // The document as the actor holds it: on joining, and again whenever this editor drifted.
+      case 'project': {
+        this.me = message.you.id
+        this.rev = message.rev
+        this.here = message.here
+        // Whatever this editor did while it was alone is laid on top again; an edit that no
+        // longer makes sense against the actor's document is simply gone.
+        let doc = message.doc
+        const kept: EditIntent[] = []
+        for (const intent of this.pending) {
+          try {
+            doc = applyEdit(doc, intent)
+            kept.push(intent)
+          } catch {
+            // The actor will refuse it too; there is nothing to keep.
+          }
+        }
+        this.pending = kept
+        this.doc = doc
+        this.dirty = kept.length > 0
+        this.notify()
+        return
+      }
+      case 'edits': {
+        // An edit of one's own was applied when it was made; its echo only says it landed.
+        const mine = message.edits.filter((e) => e.from === this.me)
+        if (mine.length > 0) this.pending = this.pending.slice(mine.length)
+        const theirs = message.edits.filter((e) => e.from !== this.me)
+        if (theirs.length === 0) return
+        this.doc = theirs.reduce((d, e) => applyEdit(d, e.intent), this.doc)
+        this.dirty = true
+        this.notify()
+        return
+      }
+      case 'here':
+        this.here = message.here
+        this.notify()
+        return
+      case 'saved':
+        this.rev = message.rev
+        this.dirty = false
+        this.finishSave({ ok: true, rev: message.rev })
+        this.notify()
+        return
+      case 'refused':
+        // The actor sends the document with it, so nothing has to be asked for again.
+        this.finishSave({ ok: false, reason: message.why })
+        return
+    }
+  }
+
+  private finishSave(result: SaveResult): void {
+    const waiting = this.saving
+    this.saving = null
+    waiting?.(result)
+  }
+
+  // A socket that has not opened yet keeps what it was given until it can send it.
+  private post(message: string): void {
+    const socket = this.socket
+    if (!socket) return
+    if (socket.readyState === 1) socket.send(message)
+    else this.outbox.push(message)
+  }
+
+  // Leaves the project: the others stop being told this editor is here.
+  close(): void {
+    this.socket?.close()
+    this.socket = null
   }
 
   subscribe(listener: ProjectListener): () => void {
@@ -46,7 +174,11 @@ export class ProjectClient {
   // Every edit goes the same way (D3): an intent, applied by the one pure function the actor
   // will apply it with too. The editor holds the result until it is saved.
   edit(intent: EditIntent): void {
+    // It must apply here before it is sent: an edit that makes no sense is the editor's mistake
+    // to see, not something to find out about a round trip later.
     this.commit(applyEdit(this.doc, intent))
+    this.pending.push(intent)
+    this.post(JSON.stringify({ t: 'edit', intent }))
   }
 
   setCell(cardRef: string, field: string, value: Cell): void {
@@ -167,7 +299,7 @@ export class ProjectClient {
   async restore(rev: number): Promise<void> {
     const old = await this.at(rev)
     if (!old) throw new Error(`no version ${rev}`)
-    this.commit(old)
+    this.edit({ v: 'restore', doc: old })
   }
 
   // A symbol from the library taken into the game (E4): its bytes become one of the project's
@@ -202,7 +334,17 @@ export class ProjectClient {
     return ((await res.json()) as { hash: string }).hash
   }
 
+  // Saving makes a version (B4). With a socket the actor makes it, so everyone with the project
+  // open is told which version it became; without one the document is written the old way.
   async save(): Promise<SaveResult> {
+    if (this.socket) {
+      const answered = new Promise<SaveResult>((resolve) => {
+        this.saving = resolve
+      })
+      this.post(JSON.stringify({ t: 'save' }))
+      const timeout = new Promise<SaveResult>((resolve) => setTimeout(() => resolve({ ok: false, reason: 'save failed' }), 2000))
+      return Promise.race([answered, timeout])
+    }
     const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}`, withCredentials({
       method: 'PUT',
       headers: { 'content-type': 'application/json' },

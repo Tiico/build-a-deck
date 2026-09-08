@@ -35,6 +35,9 @@ export type EditIntent =
   | { v: 'renameIcon'; from: string; to: string }
   | { v: 'removeIcon'; name: string }
   | { v: 'setRules'; rules: RuleDoc }
+  // Taking an older version back (B4) is an edit like any other: it lands in the log, everyone
+  // with the project open sees it, and it becomes the next version when saved.
+  | { v: 'restore'; doc: ProjectDoc }
 
 export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
   switch (intent.v) {
@@ -180,6 +183,8 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       return { ...doc, icons: without(doc.icons, intent.name), credits: without(doc.credits ?? {}, intent.name) }
     case 'setRules':
       return { ...doc, rules: intent.rules }
+    case 'restore':
+      return intent.doc
   }
 }
 

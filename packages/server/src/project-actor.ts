@@ -9,10 +9,12 @@ import type { ProjectDoc, ProjectStore } from './projects.js'
 //
 // Saving is still what makes a version (B4). The log carries the tail between saves, so two
 // editors see each other's work at once without either of them having to save first.
-export type AppliedEdit = { seq: number; at: string; by?: string; intent: EditIntent }
+// `from` is the connection the edit came from, so an editor can tell its own echo from someone
+// else's edit and not apply what it already applied.
+export type AppliedEdit = { seq: number; at: string; by?: string; from?: string; intent: EditIntent }
 export type Editor = { id: string; name: string; send(message: EditorMessage): void; close?(): void }
 export type EditorMessage =
-  | { v: 'project'; doc: ProjectDoc; rev: number; seq: number; here: Presence[] }
+  | { v: 'project'; doc: ProjectDoc; rev: number; seq: number; here: Presence[]; you: Presence }
   | { v: 'edits'; edits: AppliedEdit[] }
   | { v: 'here'; here: Presence[] }
   | { v: 'saved'; rev: number }
@@ -55,7 +57,7 @@ export class ProjectActor {
   // An editor joins: it is given the document as it stands, and everyone is told who is here.
   subscribe(editor: Editor): () => void {
     this.editors.add(editor)
-    editor.send({ v: 'project', doc: this.current, rev: this.rev, seq: this.at, here: this.here })
+    editor.send({ v: 'project', doc: this.current, rev: this.rev, seq: this.at, here: this.here, you: { id: editor.id, name: editor.name } })
     this.tellPresence()
     return () => {
       this.editors.delete(editor)
@@ -65,10 +67,10 @@ export class ProjectActor {
 
   // One edit, in the only order there is: it must apply, then it is committed, then it is applied
   // for real, then everyone is told. An edit that makes no sense moves neither log nor document.
-  async edit(intent: EditIntent, by?: string): Promise<AppliedEdit> {
+  async edit(intent: EditIntent, by?: string, from?: string): Promise<AppliedEdit> {
     return this.serial(async () => {
       const next = applyEdit(this.current, intent)
-      const entry: AppliedEdit = { seq: this.at + 1, at: new Date().toISOString(), ...(by ? { by } : {}), intent }
+      const entry: AppliedEdit = { seq: this.at + 1, at: new Date().toISOString(), ...(by ? { by } : {}), ...(from ? { from } : {}), intent }
       await this.store.appendEdits(this.id, [entry])
       this.current = next
       this.at = entry.seq
@@ -88,6 +90,12 @@ export class ProjectActor {
       this.tell({ v: 'saved', rev: result.rev })
       return { ok: true as const, rev: result.rev }
     })
+  }
+
+  // An editor whose edit was refused has drifted from the truth: it is handed the document as it
+  // stands, so it can carry on from what is real rather than from what it thought.
+  resync(editor: Editor): void {
+    editor.send({ v: 'project', doc: this.current, rev: this.rev, seq: this.at, here: this.here, you: { id: editor.id, name: editor.name } })
   }
 
   private tell(message: EditorMessage): void {
