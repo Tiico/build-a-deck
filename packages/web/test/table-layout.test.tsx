@@ -30,9 +30,15 @@ function scene(): Snapshot {
       { mode: 'order', id: 'table', kind: 'area', name: 'Spelyta', geometry: { x: -600, y: -400, w: 1200, h: 800, rot: 0 }, dynamic: false, order: [] },
       { mode: 'order', id: 'market', kind: 'area', name: 'Marknad', geometry: { x: -330, y: -330, w: 660, h: 120, rot: 0 }, dynamic: false, order: ['m1', 'm2'] },
       { mode: 'count', id: 'draw', kind: 'pile', name: 'Draghög', geometry: { x: -140, y: 0, w: 0, h: 0, rot: 0 }, dynamic: false, count: 8 },
+      { mode: 'count', id: 'discard', kind: 'pile', name: 'Kasthög', geometry: { x: 140, y: 0, w: 0, h: 0, rot: 0 }, dynamic: false, count: 3 },
       { mode: 'count', id: 'hand:N', kind: 'hand', name: 'Hand', owner: 'N', geometry: { x: -250, y: -400, w: 500, h: 60, rot: 0 }, dynamic: false, count: 5 },
     ],
-    components: [card('m1', 'market', 4, 4, 'Gruva'), card('m2', 'market', 170, 4, 'Torn')],
+    components: [
+      card('m1', 'market', 4, 4, 'Gruva'),
+      card('m2', 'market', 170, 4, 'Torn'),
+      // A seat's counter (C4): a chip with its value and, where there is room, its name.
+      { id: 't1', type: { id: 'token.counter', version: 1 }, zone: 'table', face: 'front', x: 300, y: 100, rot: 0, cardRef: 'Poäng', counter: 3 } as unknown as VisibleComponentState,
+    ],
     rewind: null,
     undo: null,
     ended: false,
@@ -131,6 +137,38 @@ describe('a pile says how many it holds (C)', () => {
     // The name stands under the pile, centred, and never on top of the card.
     expect(name.y).toBeGreaterThanOrEqual(pile.y + pile.h)
     expect(Math.abs(name.x + name.w / 2 - (pile.x + pile.w / 2))).toBeLessThanOrEqual(1)
+  }, 60_000)
+})
+
+describe('two piles on a phone-sized felt (C5)', () => {
+  it('never lays one pile\'s label over the next one\'s, however long the names are', async () => {
+    // The felt shrinks with the screen while the words do not, so on a phone the room between
+    // two piles is a thumb's width. What a player reads at a glance is the count; the name is a
+    // tap away in the play sheet.
+    const phone = { w: 375, h: 812 }
+    // The felt as a phone fits it: a 1200 mm table drawn about 260 px wide.
+    const onPhone = markupOf(<TableRenderer view={scene()} mode="table" scale={0.22} />)
+    const labels = await measureAll(onPhone, phone, '.byd-pile-count')
+    expect(labels).toHaveLength(2)
+    expect(overlaps(labels[0]!.box, labels[1]!.box)).toBe(false)
+    const counts = await measureAll(onPhone, phone, '.byd-pile-n')
+    expect(counts.every((c) => c.box.w > 0)).toBe(true)
+
+    // An area's name is no better off: it stands over the zone's top edge and would lie across
+    // the next one, so it goes the same way.
+    const zones = await measureAll(onPhone, phone, '.byd-zone > span')
+    expect(zones.every((z) => z.box.w === 0)).toBe(true)
+
+    // A counter's own name is six pixels tall on a felt this size; its value is the whole point.
+    const tokens = await measureAll(onPhone, phone, '.byd-token span')
+    expect(tokens).toHaveLength(1)
+    expect(tokens.every((z) => z.box.w === 0)).toBe(true)
+
+    // On a screen with room, the names are back.
+    const named = await measureAll(markup('table'), FRAME, '.byd-pile-name')
+    expect(named.every((n) => n.box.w > 0)).toBe(true)
+    const feltZones = await measureAll(markup('table'), FRAME, '.byd-zone > span')
+    expect(feltZones.every((z) => z.box.w > 0)).toBe(true)
   }, 60_000)
 })
 

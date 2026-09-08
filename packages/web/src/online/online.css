@@ -1,10 +1,19 @@
 /* Fully online (C2, prototype B): the felt with my hand fanned at my edge. */
 .byd-online { position: relative; background: #17120f; }
 .byd-online > .byd-table-frame { height: 100%; }
-.byd-online-me { position: fixed; left: 16px; bottom: 16px; z-index: 12; display: flex; align-items: baseline; gap: 10px; padding: 8px 14px; border-radius: 999px; background: rgba(20, 22, 28, 0.9); color: #9aa3b8; font-size: 13px; border-left: 4px solid var(--seat); }
-.byd-online-me strong { color: #fff; font-size: 15px; }
+/* One row along the bottom of the felt: who you are at one end, what you can do at the other.
+   They are laid out together, so the name — a person's own, and longer in one language than
+   another — gives way rather than growing across the buttons. */
+.byd-online-bar { position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 12; display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; pointer-events: none; }
+.byd-online-bar > * { pointer-events: auto; }
+.byd-online-me {
+  display: flex; align-items: baseline; gap: 10px; min-width: 0; padding: 8px 14px; border-radius: 999px;
+  background: rgba(20, 22, 28, 0.9); color: #9aa3b8; font-size: 13px; border-left: 4px solid var(--seat);
+}
+.byd-online-me strong { color: #fff; font-size: 15px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.byd-online-me span { white-space: nowrap; }
 .byd-online-me em { font-style: normal; color: #ffd98a; }
-.byd-online-tools { position: fixed; right: 16px; bottom: 16px; z-index: 12; display: flex; gap: 6px; }
+.byd-online-tools { display: flex; gap: 6px; flex: none; }
 .byd-online-tools button { padding: 8px 12px; border: 0; border-radius: 10px; background: rgba(36, 41, 56, 0.92); color: #fff; font-size: 13px; font-weight: 700; }
 .byd-online-tools .byd-end { background: rgba(58, 42, 45, 0.92); color: #ff9a9a; }
 .byd-online-tools button:disabled { opacity: 0.35; }

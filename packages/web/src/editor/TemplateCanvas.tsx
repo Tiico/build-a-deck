@@ -10,6 +10,7 @@ import { LayerList } from './LayerList.js'
 import { useRoving } from './roving.js'
 import { familiesInUse, previewFonts } from './fonts.js'
 import type { ProjectCredit } from '@byd/server'
+import { useT, type Key, type T } from '../i18n/index.js'
 
 export type TemplateCanvasProps = {
   doc: ProjectDoc
@@ -46,6 +47,7 @@ export type TemplateCanvasProps = {
 // outlined, and its properties on the right. Every change goes through `onPatch` and lands on
 // every card of the deck — there are no per-card exceptions (L3).
 export function TemplateCanvas({ doc, assetBase, face, onSelectFace, row, selectedElement, onSelectElement, onPatch, onRemove, onAdd, onReorder, group, onSelectGroup, onGroupColumn, onReset, onFontFile, onFontLicence, onRemoveFont }: TemplateCanvasProps) {
+  const t = useT()
   const faceTemplate = doc.template.faces[face]
   const column = groupColumn(doc)
   const groups = groupsOf(doc)
@@ -68,7 +70,7 @@ export function TemplateCanvas({ doc, assetBase, face, onSelectFace, row, select
   // is asked for, and it never rounds an element to itself — the guides and the arrow keys are
   // what place things, and a 1 mm grid would take the half millimetre away.
   const [grid, setGrid] = useState(false)
-  if (!faceTemplate) return <p>Mallen saknar sidan {face}.</p>
+  if (!faceTemplate) return <p>{t('template.faceMissing', { face })}</p>
   const overridden = group ? overriddenIds(faceTemplate, group) : new Set<string>()
   const fields = fieldsOf(doc)
   // A new element is added where it can be seen and is selected at once, so the next thing the
@@ -83,8 +85,8 @@ export function TemplateCanvas({ doc, assetBase, face, onSelectFace, row, select
     <div className="byd-canvas">
       <ToolRail onAdd={add} />
       <aside className="byd-canvas-layers">
-        <h2 id="layers-heading">Lager · {(FACE_NAMES[face] ?? face).toLowerCase()}</h2>
-        <p className="byd-canvas-affects">{affectsLabel(doc, column, group)}</p>
+        <h2 id="layers-heading">{t('canvas.layers', { face: faceName(face, t).toLowerCase() })}</h2>
+        <p className="byd-canvas-affects">{affectsLabel(doc, column, group, t)}</p>
         <LayerList
           layers={[...panel].reverse().map((l) => l.element)}
           selected={selectedElement}
@@ -93,27 +95,25 @@ export function TemplateCanvas({ doc, assetBase, face, onSelectFace, row, select
           // turned around, and that is the only place the two orders meet.
           // The order is the base's, shared by every group, so it is only moved from the base.
           {...(group ? {} : { onReorder: (id: string, to: number) => onReorder(id, faceTemplate.base.length - 1 - to) })}
-          markOf={(id) => markOf(panel, column, group, id)}
+          markOf={(id) => markOf(panel, column, group, id, t)}
           removed={new Set(panel.filter((l) => l.source === 'removed').map((l) => l.element.id))}
           labelledBy="layers-heading"
         />
         <label className="byd-canvas-grid-toggle">
           <input type="checkbox" checked={grid} onChange={(event) => setGrid(event.target.checked)} />
-          Rutnät 1 mm
+          {t('canvas.grid')}
         </label>
         <p className="byd-canvas-hint">
-          {group
-            ? 'Lagrens ordning är basens och ändras med basfliken vald.'
-            : 'Dra ett lager för att ändra ordningen, eller håll Alt och tryck pil upp eller ner.'}
+          {t(group ? 'canvas.hint.group' : 'canvas.hint.base')}
         </p>
         {column && <GroupRules doc={doc} column={column} groups={groups} />}
       </aside>
       <div className="byd-canvas-main">
         <div className="byd-canvas-strip">
           <label className="byd-canvas-group-column">
-            Grupperas av kolumnen
+            {t('canvas.groupBy')}
             <select value={column ?? ''} onChange={(event) => onGroupColumn(event.target.value === '' ? null : event.target.value)}>
-              <option value="">— ingen —</option>
+              <option value="">{t('canvas.groupBy.none')}</option>
               {fields.map((f) => (
                 <option key={f} value={f}>
                   {f}
@@ -146,12 +146,12 @@ export function TemplateCanvas({ doc, assetBase, face, onSelectFace, row, select
         </main>
       </div>
       <aside className="byd-canvas-props">
-        <h2>{layer ? `Egenskaper · ${layer.element.id}` : 'Egenskaper'}</h2>
-        {layer?.source === 'removed' && <p className="byd-canvas-affects">Lagret är borttaget i {ruleLabel(column ?? '', group ?? '')}.</p>}
+        <h2>{layer ? t('canvas.props.of', { id: layer.element.id }) : t('canvas.props')}</h2>
+        {layer?.source === 'removed' && <p className="byd-canvas-affects">{t('canvas.removedIn', { rule: ruleLabel(column ?? '', group ?? '') })}</p>}
         {el && <Properties el={el} fields={fields} fonts={Object.keys(doc.fonts ?? {})} onPatch={(patch) => onPatch(el.id, patch)} />}
         {layer && group && overridden.has(layer.element.id) && (
           <button type="button" className="byd-canvas-reset" onClick={() => onReset(layer.element.id)}>
-            Återgå till basen
+            {t('canvas.reset')}
           </button>
         )}
         <FontShelf doc={doc} onFontFile={onFontFile} onFontLicence={onFontLicence} onRemoveFont={onRemoveFont} />
@@ -166,6 +166,7 @@ export function TemplateCanvas({ doc, assetBase, face, onSelectFace, row, select
 // both. A family no element is set in can go; one in use has no button, so a card is never
 // left pointing at a family the game no longer has.
 function FontShelf({ doc, onFontFile, onFontLicence, onRemoveFont }: Pick<TemplateCanvasProps, 'doc' | 'onFontFile' | 'onFontLicence' | 'onRemoveFont'>) {
+  const t = useT()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const families = Object.entries(doc.fonts ?? {})
@@ -180,9 +181,9 @@ function FontShelf({ doc, onFontFile, onFontLicence, onRemoveFont }: Pick<Templa
   }
   return (
     <section className="byd-fonts">
-      <h2 id="byd-fonts-heading">Typsnitt i spelet</h2>
+      <h2 id="byd-fonts-heading">{t('fonts.title')}</h2>
       {families.length === 0 ? (
-        <p className="byd-canvas-affects">Inget eget typsnitt ännu. Utan en fil sätts korten i vad tryckeriets dator råkar ha.</p>
+        <p className="byd-canvas-affects">{t('fonts.none')}</p>
       ) : (
         <ul aria-labelledby="byd-fonts-heading">
           {families.map(([family, font]) => (
@@ -192,17 +193,17 @@ function FontShelf({ doc, onFontFile, onFontLicence, onRemoveFont }: Pick<Templa
               </span>
               {!used.includes(family) && (
                 <button type="button" onClick={() => onRemoveFont(family)}>
-                  Ta bort
+                  {t('fonts.remove')}
                 </button>
               )}
-              <small>{font.asset ? 'följer med till trycket' : 'följer inte med till trycket'}</small>
+              <small>{t(font.asset ? 'fonts.travels' : 'fonts.staysBehind')}</small>
               <Licence family={family} licence={font.licence} onFontLicence={onFontLicence} />
             </li>
           ))}
         </ul>
       )}
       <label className="byd-fonts-upload">
-        Ladda upp typsnitt
+        {t('fonts.upload')}
         <input type="file" accept=".woff2,.woff,.ttf,.otf,font/woff2,font/woff,font/ttf,font/otf" disabled={busy} onChange={(e) => take(e.target.files?.[0])} />
       </label>
       {error && <p role="alert">{error}</p>}
@@ -214,6 +215,7 @@ function FontShelf({ doc, onFontFile, onFontLicence, onRemoveFont }: Pick<Templa
 // licence with no holder credits no one, and a holder with no licence says nothing about what
 // may be printed. Emptying either takes the credit away again.
 function Licence({ family, licence, onFontLicence }: { family: string; licence: ProjectCredit | undefined; onFontLicence: TemplateCanvasProps['onFontLicence'] }) {
+  const t = useT()
   const [what, setWhat] = useState(licence?.licence ?? '')
   const [by, setBy] = useState(licence?.by ?? '')
   const write = (nextWhat: string, nextBy: string) => {
@@ -227,8 +229,8 @@ function Licence({ family, licence, onFontLicence }: { family: string; licence: 
   }
   return (
     <span className="byd-fonts-licence">
-      <input aria-label={`Licens för ${family}`} placeholder="Licens" value={what} onChange={(e) => setWhat(e.target.value)} onBlur={() => write(what, by)} />
-      <input aria-label={`Upphovsperson för ${family}`} placeholder="Upphovsperson" value={by} onChange={(e) => setBy(e.target.value)} onBlur={() => write(what, by)} />
+      <input aria-label={t('fonts.licence.of', { family })} placeholder={t('fonts.licence')} value={what} onChange={(e) => setWhat(e.target.value)} onBlur={() => write(what, by)} />
+      <input aria-label={t('fonts.by.of', { family })} placeholder={t('fonts.by')} value={by} onChange={(e) => setBy(e.target.value)} onBlur={() => write(what, by)} />
     </span>
   )
 }
@@ -338,10 +340,11 @@ const GROUP_PANEL = 'byd-canvas-group-panel'
 const groupTabId = (group: string | null) => `byd-group-tab-${group ?? 'bas'}`
 
 function GroupTabs({ column, groups, group, onSelect }: { column: string; groups: string[]; group: string | null; onSelect(group: string | null): void }) {
+  const t = useT()
   const ids = ['', ...groups]
   const { itemProps } = useRoving({ ids, selected: group ?? '', orientation: 'horizontal' })
   return (
-    <div className="byd-canvas-groups" role="tablist" aria-label="Kortgrupper">
+    <div className="byd-canvas-groups" role="tablist" aria-label={t('canvas.groups')}>
       {ids.map((g) => (
         <button
           key={g}
@@ -353,7 +356,7 @@ function GroupTabs({ column, groups, group, onSelect }: { column: string; groups
           onClick={() => onSelect(g === '' ? null : g)}
           {...itemProps(g)}
         >
-          {g === '' ? 'Bas (alla)' : ruleLabel(column, g)}
+          {g === '' ? t('canvas.group.base') : ruleLabel(column, g)}
         </button>
       ))}
     </div>
@@ -364,13 +367,14 @@ function GroupTabs({ column, groups, group, onSelect }: { column: string; groups
 // cards it is about, and what it changes against the base on each face. Reading, not editing —
 // the editing is the tabs and the card.
 function GroupRules({ doc, column, groups }: { doc: ProjectDoc; column: string; groups: string[] }) {
+  const t = useT()
   return (
     <>
-      <h2 id="groups-heading">Grupper</h2>
+      <h2 id="groups-heading">{t('canvas.rules')}</h2>
       <ul className="byd-canvas-rules" aria-labelledby="groups-heading">
         {groups.map((g) => (
           <li key={g}>
-            {ruleLabel(column, g)} · {cardsLabel(cardsInGroup(doc, g).length)} · {changesLabel(doc, g)}
+            {ruleLabel(column, g)} · {cardsLabel(cardsInGroup(doc, g).length, t)} · {changesLabel(doc, g, t)}
           </li>
         ))}
       </ul>
@@ -380,33 +384,33 @@ function GroupRules({ doc, column, groups }: { doc: ProjectDoc; column: string; 
 
 // What a group changes against the base, face by face. A group that changes nothing yet is not
 // an error — it is a group waiting to be designed — so it says so instead of showing an empty line.
-function changesLabel(doc: ProjectDoc, group: string): string {
+function changesLabel(doc: ProjectDoc, group: string, t: T): string {
   const parts: string[] = []
   for (const [id, face] of Object.entries(doc.template.faces)) {
     const ids = [...overriddenIds(face, group)]
-    if (ids.length > 0) parts.push(`${(FACE_NAMES[id] ?? id).toLowerCase()}: ${ids.join(', ')}`)
+    if (ids.length > 0) parts.push(`${faceName(id, t).toLowerCase()}: ${ids.join(', ')}`)
   }
-  return parts.length > 0 ? parts.join(' · ') : 'ärver basen helt'
+  return parts.length > 0 ? parts.join(' · ') : t('canvas.group.inherits')
 }
 
 // What a layer belongs to, said on the layer itself: the base every card inherits, the open
 // group, or — for a base layer the group has taken away — that it is gone for this group's cards.
-function markOf(panel: Layer[], column: string | null, group: string | null, id: string): string | null {
+function markOf(panel: Layer[], column: string | null, group: string | null, id: string, t: T): string | null {
   if (!group) return null
   const source = panel.find((l) => l.element.id === id)?.source
-  if (source === 'removed') return `borttaget i ${ruleLabel(column ?? '', group)}`
-  return source === 'group' ? ruleLabel(column ?? '', group) : 'bas'
+  if (source === 'removed') return t('canvas.mark.removedIn', { rule: ruleLabel(column ?? '', group) })
+  return source === 'group' ? ruleLabel(column ?? '', group) : t('canvas.mark.base')
 }
 
 // Which cards the open tab is about: the whole deck for the base, the cards the rule matches for
 // a group. A designer must never have to count rows to know what a change will reach.
-function affectsLabel(doc: ProjectDoc, column: string | null, group: string | null): string {
-  if (!column || !group) return `Alla ${doc.rows.length} kort`
-  return `${cardsLabel(cardsInGroup(doc, group).length)} med ${ruleLabel(column, group)}`
+function affectsLabel(doc: ProjectDoc, column: string | null, group: string | null, t: T): string {
+  if (!column || !group) return t(doc.rows.length === 1 ? 'canvas.affects.all.one' : 'canvas.affects.all.other', { n: doc.rows.length })
+  return t('canvas.affects.group', { cards: cardsLabel(cardsInGroup(doc, group).length, t), rule: ruleLabel(column, group) })
 }
 
-function cardsLabel(count: number): string {
-  return `${count} kort`
+function cardsLabel(count: number, t: T): string {
+  return t(count === 1 ? 'wall.cards.one' : 'wall.cards.other', { n: count })
 }
 
 // The card the canvas shows. With a group open it is a card of that group; a group whose cards
@@ -420,15 +424,23 @@ function previewRow(doc: ProjectDoc, column: string | null, group: string | null
 // Which face is being edited (#13, L7). A radio group, not a tablist: the canvas is one surface
 // and this says which side of the card it shows, so the arrows both move and choose (APG), and
 // the whole switch is a single tab stop.
-export const FACE_NAMES: Record<string, string> = { front: 'Framsida', back: 'Baksida' }
+export const FACE_NAMES: Record<string, Key> = { front: 'canvas.face.front', back: 'canvas.face.back' }
+
+// A face by the name the reader's language gives it; a face the template invented keeps its own
+// id, which is the designer's word and not the tool's.
+export function faceName(face: string, t: T): string {
+  const key = FACE_NAMES[face]
+  return key ? t(key) : face
+}
 
 function FaceSwitch({ faces, face, onSelect }: { faces: string[]; face: string; onSelect(face: string): void }) {
+  const t = useT()
   const { itemProps } = useRoving({ ids: faces, selected: face, orientation: 'horizontal', followFocus: true, onActivate: onSelect })
   return (
-    <div className="byd-canvas-faces" role="radiogroup" aria-label="Kortsida">
+    <div className="byd-canvas-faces" role="radiogroup" aria-label={t('canvas.faceSwitch')}>
       {faces.map((f) => (
         <button key={f} type="button" role="radio" aria-checked={f === face ? 'true' : 'false'} onClick={() => onSelect(f)} {...itemProps(f)}>
-          {FACE_NAMES[f] ?? f}
+          {faceName(f, t)}
         </button>
       ))}
     </div>
@@ -439,13 +451,14 @@ function FaceSwitch({ faces, face, onSelect }: { faces: string[]; face: string; 
 // moving inside it (APG), the same roving tabindex the tablist and the layer list already use, so
 // the way to the card is never four presses of Tab longer than it has to be.
 function ToolRail({ onAdd }: { onAdd(kind: ElementKind): void }) {
-  const { itemProps } = useRoving({ ids: TOOLS.map((t) => t.kind), selected: null, orientation: 'vertical' })
+  const t = useT()
+  const { itemProps } = useRoving({ ids: TOOLS.map((tool) => tool.kind), selected: null, orientation: 'vertical' })
   return (
-    <aside className="byd-canvas-tools" role="toolbar" aria-label="Verktyg" aria-orientation="vertical">
+    <aside className="byd-canvas-tools" role="toolbar" aria-label={t('canvas.tools')} aria-orientation="vertical">
       {TOOLS.map((tool) => (
         <button key={tool.kind} type="button" onClick={() => onAdd(tool.kind)} {...itemProps(tool.kind)}>
           <span aria-hidden="true">{tool.glyph}</span>
-          {tool.name}
+          {t(tool.name)}
         </button>
       ))}
     </aside>
@@ -489,24 +502,25 @@ function isTyping(target: EventTarget | null): boolean {
 }
 
 function Properties({ el, fields, fonts, onPatch }: { el: Element; fields: string[]; fonts: string[]; onPatch(patch: Partial<Element>): void }) {
-  const num = (label: string, key: 'x' | 'y' | 'w' | 'h') =>
+  const t = useT()
+  const num = (label: Key, key: 'x' | 'y' | 'w' | 'h') =>
     key in el ? (
       <label>
-        {label}
+        {t(label)}
         <input type="number" step={0.5} value={(el as Record<string, unknown>)[key] as number} onChange={(e) => onPatch({ [key]: Number(e.target.value) } as Partial<Element>)} />
       </label>
     ) : null
   return (
     <div className="byd-props">
-      {num('X (mm)', 'x')}
-      {num('Y (mm)', 'y')}
-      {num('Bredd (mm)', 'w')}
-      {num('Höjd (mm)', 'h')}
+      {num('canvas.props.x', 'x')}
+      {num('canvas.props.y', 'y')}
+      {num('canvas.props.w', 'w')}
+      {num('canvas.props.h', 'h')}
       {'bind' in el && (
         // Every element that shows data says which column it shows — a picture and a row of
         // icons as much as a text box, or one added from the tool rail could never be bound.
         <label>
-          Fält
+          {t('canvas.props.field')}
           <select value={'field' in el.bind ? el.bind.field : ''} onChange={(e) => onPatch({ bind: { field: e.target.value } })}>
             {fields.map((f) => (
               <option key={f} value={f}>
@@ -522,7 +536,7 @@ function Properties({ el, fields, fonts, onPatch }: { el: Element; fields: strin
             {/* The families the project names, and the one this element is already set in even
                 when the project has forgotten it — an element is never moved to another type
                 behind the designer's back. */}
-            Typsnitt
+            {t('canvas.props.font')}
             <select value={el.font.family} onChange={(e) => onPatch({ font: { ...el.font, family: e.target.value } })}>
               {[...new Set([...fonts, el.font.family])].map((f) => (
                 <option key={f} value={f}>
@@ -532,11 +546,11 @@ function Properties({ el, fields, fonts, onPatch }: { el: Element; fields: strin
             </select>
           </label>
           <label>
-            Storlek (pt)
+            {t('canvas.props.size')}
             <input type="number" step={0.5} value={el.font.sizePt} onChange={(e) => onPatch({ font: { ...el.font, sizePt: Number(e.target.value) } })} />
           </label>
           <label>
-            Vikt
+            {t('canvas.props.weight')}
             <select value={el.font.weight ?? 400} onChange={(e) => onPatch({ font: { ...el.font, weight: Number(e.target.value) as 400 | 600 | 700 | 800 } })}>
               {[400, 600, 700, 800].map((w) => (
                 <option key={w} value={w}>
@@ -546,21 +560,21 @@ function Properties({ el, fields, fonts, onPatch }: { el: Element; fields: strin
             </select>
           </label>
           <label>
-            Färg
+            {t('canvas.props.color')}
             <input type="color" value={el.color} onChange={(e) => onPatch({ color: e.target.value })} />
           </label>
           <label>
-            Anpassning
+            {t('canvas.props.fit')}
             <select value={el.fit ?? 'shrink'} onChange={(e) => onPatch({ fit: e.target.value as 'shrink' | 'fixed' })}>
-              <option value="shrink">krymp till gräns</option>
-              <option value="fixed">fast storlek</option>
+              <option value="shrink">{t('canvas.fit.shrink')}</option>
+              <option value="fixed">{t('canvas.fit.fixed')}</option>
             </select>
           </label>
         </>
       )}
       {el.kind === 'shape' && (
         <label>
-          Fyllning
+          {t('canvas.props.fill')}
           <input type="color" value={el.fill ?? '#000000'} onChange={(e) => onPatch({ fill: e.target.value })} />
         </label>
       )}

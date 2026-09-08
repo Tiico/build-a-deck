@@ -23,6 +23,9 @@
 .byd-table-frame[data-mode='tv'] .byd-table-wood { padding: 0; }
 
 [data-table] {
+  /* The felt is the measure for what fits on it: a label under a pile has only the room
+     between one pile and the next, and that shrinks with the screen, not with the window. */
+  container-type: inline-size;
   border-radius: 16px;
   background: radial-gradient(ellipse at 50% 40%, #2e6b46, #1f4a30 70%, #173a26);
   box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.45);
@@ -92,6 +95,17 @@
 }
 .byd-pile-n { font-weight: 600; }
 .byd-table-frame[data-mode='table'] .byd-pile-name::after { content: ' · '; }
+/* On a felt this narrow two piles stand a thumb apart, and an area is a few centimetres wide:
+   their names would lie on top of each other and on the cards. What a player reads at a glance
+   is the count and the shape; the names are a tap away in the play sheet, and they are all there
+   on the table's own screen. */
+@container (max-width: 460px) {
+  .byd-table-frame[data-mode='table'] .byd-pile-name,
+  .byd-table-frame[data-mode='table'] .byd-zone > span,
+  .byd-table-frame[data-mode='table'] .byd-token span {
+    display: none;
+  }
+}
 /* A pile that only exists because two cards were stacked (K1) has no name worth saying. */
 .byd-table-frame[data-mode='table'] .byd-pile[data-dynamic='true'] .byd-pile-name { display: none; }
 

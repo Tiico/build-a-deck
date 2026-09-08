@@ -16,15 +16,46 @@ export const MAX_PLAYERS = SEAT_IDS.length
 export const rect = (x: number, y: number, w: number, h: number): Geometry => ({ x, y, w, h, rot: 0 })
 export const point = (x: number, y: number): Geometry => ({ x, y, w: 0, h: 0, rot: 0 })
 
+// What the recipe's own zones are called. They are the designer's document from the moment they
+// are made, so they are written in the language the designer is building the game in (A4); the
+// tool supplies the words, and Swedish is what it falls back to. `{seat}` is the seat's letter.
+export type RecipeWords = {
+  floor: string
+  draw: string
+  drawShortcut: string
+  discard: string
+  discardShortcut: string
+  market: string
+  marketShortcut: string
+  mine: string
+  mineShortcut: string
+  counters: string
+  hand: string
+}
+export const SWEDISH_WORDS: RecipeWords = {
+  floor: 'Spelyta',
+  draw: 'Draghög',
+  drawShortcut: 'Lägg underst',
+  discard: 'Kasthög',
+  discardShortcut: 'Kasta',
+  market: 'Marknad',
+  marketShortcut: 'Till marknaden',
+  mine: 'Framför {seat}',
+  mineShortcut: 'Framför mig',
+  counters: 'Räknare {seat}',
+  hand: 'Hand',
+}
+const forSeat = (word: string, seat: string): string => word.replace('{seat}', seat)
+
 // A table with nothing but a floor and a draw pile: what every setup grows from.
-export function emptySetup(): Setup {
+export function emptySetup(words: RecipeWords = SWEDISH_WORDS): Setup {
   return {
     seats: [],
     floor: 'table',
     deckZone: 'draw',
     zones: [
-      { id: 'table', kind: 'area', name: 'Spelyta', visibility: 'all', geometry: rect(-600, -400, 1200, 800) },
-      { id: 'draw', kind: 'pile', name: 'Draghög', visibility: 'none', geometry: point(-140, 0), shortcut: { label: 'Lägg underst', at: 'bottom' } },
+      { id: 'table', kind: 'area', name: words.floor, visibility: 'all', geometry: rect(-600, -400, 1200, 800) },
+      { id: 'draw', kind: 'pile', name: words.draw, visibility: 'none', geometry: point(-140, 0), shortcut: { label: words.drawShortcut, at: 'bottom' } },
     ],
   }
 }
@@ -43,18 +74,18 @@ export function recipeOf(setup: Setup): Recipe {
 // Turns the knobs: recipe zones are added, removed or, when the number of players changes, laid
 // out again around the table; a recipe zone that stays keeps its name, shortcut and, unless the
 // seats moved, its place. Free zones are carried over untouched.
-export function applyRecipe(setup: Setup, recipe: Recipe): Setup {
+export function applyRecipe(setup: Setup, recipe: Recipe, words: RecipeWords = SWEDISH_WORDS): Setup {
   const seats = SEAT_IDS.slice(0, Math.max(1, Math.min(MAX_PLAYERS, Math.floor(recipe.players))))
   const relayout = seats.length !== setup.seats.length
   const wanted: Zone[] = [
-    { id: setup.floor, kind: 'area', name: 'Spelyta', visibility: 'all', geometry: rect(-600, -400, 1200, 800) },
-    { id: setup.deckZone, kind: 'pile', name: 'Draghög', visibility: 'none', geometry: point(-140, 0), shortcut: { label: 'Lägg underst', at: 'bottom' } },
+    { id: setup.floor, kind: 'area', name: words.floor, visibility: 'all', geometry: rect(-600, -400, 1200, 800) },
+    { id: setup.deckZone, kind: 'pile', name: words.draw, visibility: 'none', geometry: point(-140, 0), shortcut: { label: words.drawShortcut, at: 'bottom' } },
   ]
-  if (recipe.discard) wanted.push({ id: 'discard', kind: 'pile', name: 'Kasthög', visibility: 'all', geometry: point(140, 0), shortcut: { label: 'Kasta', at: 'top' } })
-  if (recipe.market) wanted.push({ id: 'market', kind: 'area', name: 'Marknad', visibility: 'all', geometry: rect(-260, -200, 520, 120), shortcut: { label: 'Till marknaden', at: 'top' } })
-  if (recipe.mine) seats.forEach((seat, i) => wanted.push({ id: `mine:${seat}`, kind: 'area', name: `Framför ${seat}`, visibility: 'owner', owner: seat, geometry: inFront(i, seats.length), shortcut: { label: 'Framför mig', at: 'top' } }))
-  if (recipe.counters.length > 0) seats.forEach((seat, i) => wanted.push({ id: `counters:${seat}`, kind: 'area', name: `Räknare ${seat}`, visibility: 'all', owner: seat, geometry: countersAt(i, seats.length) }))
-  seats.forEach((seat, i) => wanted.push({ id: `hand:${seat}`, kind: 'hand', name: 'Hand', visibility: 'owner', owner: seat, returnTo: setup.deckZone, geometry: handGeometry(i, seats.length) }))
+  if (recipe.discard) wanted.push({ id: 'discard', kind: 'pile', name: words.discard, visibility: 'all', geometry: point(140, 0), shortcut: { label: words.discardShortcut, at: 'top' } })
+  if (recipe.market) wanted.push({ id: 'market', kind: 'area', name: words.market, visibility: 'all', geometry: rect(-260, -200, 520, 120), shortcut: { label: words.marketShortcut, at: 'top' } })
+  if (recipe.mine) seats.forEach((seat, i) => wanted.push({ id: `mine:${seat}`, kind: 'area', name: forSeat(words.mine, seat), visibility: 'owner', owner: seat, geometry: inFront(i, seats.length), shortcut: { label: words.mineShortcut, at: 'top' } }))
+  if (recipe.counters.length > 0) seats.forEach((seat, i) => wanted.push({ id: `counters:${seat}`, kind: 'area', name: forSeat(words.counters, seat), visibility: 'all', owner: seat, geometry: countersAt(i, seats.length) }))
+  seats.forEach((seat, i) => wanted.push({ id: `hand:${seat}`, kind: 'hand', name: words.hand, visibility: 'owner', owner: seat, returnTo: setup.deckZone, geometry: handGeometry(i, seats.length) }))
 
   const wantedIds = new Set(wanted.map((z) => z.id))
   const seatZone = (id: string) => /^(hand|mine|counters):/.test(id)

@@ -10,14 +10,16 @@ import { FlagSheet } from '../player/SessionSheets.js'
 import { Survey } from '../player/Survey.js'
 import { submitSurvey } from '../player/surveyApi.js'
 import { claimUrl } from '../account/api.js'
+import { useT } from '../i18n/index.js'
 
 // /observe?session=…&name=Eva&server=ws://…
 // The observer (C8): sees every hand and every hidden pile, is announced to everyone, and can
 // flag but never touch. After the session she answers the survey too, marked as an observer.
 export function ObserverPage() {
+  const t = useT()
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const sessionId = params.get('session')
-  const name = params.get('name') ?? 'observatör'
+  const name = params.get('name') ?? t('observer.name')
   const token = params.get('token') ?? undefined
   const owner = params.get('owner') === '1'
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
@@ -40,9 +42,9 @@ export function ObserverPage() {
       .catch(() => setVersion('?'))
   }, [sessionId, view?.ended, version, http])
 
-  if (!sessionId) return <p>Ingen session angiven.</p>
-  if (refused) return <p role="alert" data-refused={refused}>{refusedText(refused)}</p>
-  if (!view || !client) return <p data-status={status}>{status === 'connecting' ? 'Ansluter…' : status}</p>
+  if (!sessionId) return <p>{t('play.session.missing')}</p>
+  if (refused) return <p role="alert" data-refused={refused}>{refusedText(refused, t)}</p>
+  if (!view || !client) return <p data-status={status}>{status === 'connecting' ? t('play.connecting') : status}</p>
 
   return (
     <div data-page="observe" data-status={status} className="byd-fit">
@@ -50,9 +52,9 @@ export function ObserverPage() {
         <TableRenderer view={view} mode="tv" faces={http} onInspect={setInspecting} />
       </TvChrome>
       <div className="byd-observer-banner">
-        <span>Du är observatör: du ser allas händer och alla högar. Alla vet att du är här.</span>
+        <span>{t('observer.banner')}</span>
         <button type="button" disabled={view.ended} onClick={() => setSheet(true)}>
-          ⚑ Flagga
+          {t('session.flag')}
         </button>
       </div>
       {toast && <div className="byd-toast">{toast}</div>}
@@ -61,7 +63,7 @@ export function ObserverPage() {
           onFlag={(note) => {
             void client.send({ v: 'flag', ...(note ? { note } : {}) })
             setSheet(false)
-            setToast('Ögonblicket är flaggat')
+            setToast(t('session.flagged'))
           }}
           onClose={() => setSheet(false)}
         />

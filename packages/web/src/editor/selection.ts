@@ -1,5 +1,10 @@
 import type { Cell } from './ProjectClient.js'
 import type { ProjectRow } from './types.js'
+import { translate, type T } from '../i18n/index.js'
+
+// Without a catalogue of its own this module speaks Swedish, exactly as a surface mounted
+// without a language provider does: the table hands over its own `t` (A4).
+const swedish: T = (key, params) => translate('sv', key, params)
 
 // The table's selection (#17): which of the cards on screen the next change is about.
 // A view of the project like the sort (#15) and the filter (#16) — it decides what an action
@@ -35,8 +40,8 @@ export function keepRows(selection: Selection, cardRefs: readonly string[]): Sel
 
 // How many cards the next action is about. The number is what makes a bulk change safe to press,
 // so it is said in the same live region as the count of shown cards.
-export function selectionLabel(count: number): string {
-  return `${count} ${count === 1 ? 'markerat' : 'markerade'} kort`
+export function selectionLabel(count: number, t: T = swedish): string {
+  return t(count === 1 ? 'table.selected.one' : 'table.selected.other', { n: count })
 }
 
 // Taking the marked cards out of the deck. One call gives the whole list of rows back, so a bulk

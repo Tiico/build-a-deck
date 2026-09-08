@@ -38,7 +38,9 @@ export function CardPreview({ face, row, icons, fonts, id, scale = 1, selectedEl
     const report = fitInDocument(ref.current)
     const fromDom: Warning[] = report
       .filter((r) => r.overflow)
-      .map((r) => ({ element: r.element, code: 'text-too-small', detail: `texten ryms inte ens vid ${r.sizePt}pt` }))
+      // The compiler's own warnings are counted, never read out: their detail is a note for
+      // whoever is debugging, in the language the rest of the compiler speaks (A4).
+      .map((r) => ({ element: r.element, code: 'text-too-small', detail: `the text does not fit even at ${r.sizePt}pt` }))
     onWarnings?.([...out.warnings.filter((w) => w.code !== 'text-too-small' && w.code !== 'text-overflow'), ...fromDom])
   }, [out.html, out.css, out.warnings, onWarnings])
   const highlight = selectedElement ? `#${id} [data-element="${selectedElement}"]{outline:0.6mm solid #3c8ce7;outline-offset:0.3mm}` : ''

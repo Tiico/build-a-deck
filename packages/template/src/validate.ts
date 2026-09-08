@@ -9,7 +9,10 @@ import type { Element, FaceTemplate, Row } from './model.js'
 // a white edge when the knife wanders. Warnings belong in the editor, errors block an order.
 export type IssueCode = 'text-too-small' | 'low-contrast' | 'outside-safe-area' | 'short-of-bleed' | 'hairline' | 'colour-only' | 'unpinned-font'
 export type Severity = 'warning' | 'error'
-export type Issue = { element: string; code: IssueCode; severity: Severity; detail: string }
+// A fault is what was measured, not a sentence about it: the words belong where the reader is,
+// in the language they are reading in (A4). `values` carries exactly what the sentence needs.
+export type IssueValues = Record<string, string | number>
+export type Issue = { element: string; code: IssueCode; severity: Severity; values: IssueValues }
 // `fonts` is what the version is pinned to (B3): a family without a file of its own renders as
 // whatever the machine happens to have, which is a difference nobody sees until the print.
 export type ValidateInput = { type: ComponentTypeDef; face: FaceTemplate; row: Row; fonts?: Record<string, { stack: string; asset?: string | undefined }> }
@@ -27,8 +30,6 @@ const APART = 22
 const TOGETHER = 11
 const BLINDNESS = ['protanopia', 'deuteranopia', 'tritanopia'] as const
 export type Blindness = (typeof BLINDNESS)[number]
-const SWEDISH: Record<Blindness, string> = { protanopia: 'protanopi', deuteranopia: 'deuteranopi', tritanopia: 'tritanopi' }
-
 type Box = { id: string; x: number; y: number; w: number; h: number; el: Element }
 
 export function validateCard({ type, face, row, fonts }: ValidateInput): Issue[] {
@@ -42,14 +43,14 @@ export function validateCard({ type, face, row, fonts }: ValidateInput): Issue[]
     if (el.kind === 'text') {
       const value = 'literal' in el.bind ? el.bind.literal : String(row[el.bind.field] ?? '')
       const floor = minPtByScript[detectScript(value)] ?? minPtByScript['Latn'] ?? 6
-      if (el.font.sizePt < floor) issues.push({ element: el.id, code: 'text-too-small', severity: 'error', detail: `${el.font.sizePt} pt är under ${floor} pt, som är minsta läsbara storlek för skriften` })
-      else if (el.font.sizePt < floor * SMALL_TEXT_FACTOR) issues.push({ element: el.id, code: 'text-too-small', severity: 'warning', detail: `${el.font.sizePt} pt är nära gränsen ${floor} pt; i handen blir det litet` })
+      if (el.font.sizePt < floor) issues.push({ element: el.id, code: 'text-too-small', severity: 'error', values: { sizePt: el.font.sizePt, floor } })
+      else if (el.font.sizePt < floor * SMALL_TEXT_FACTOR) issues.push({ element: el.id, code: 'text-too-small', severity: 'warning', values: { sizePt: el.font.sizePt, floor } })
 
       const behind = behindOf(box, boxes)
       if (behind) {
         const ratio = contrastRatio(el.color, behind)
-        if (ratio < CONTRAST_ERROR) issues.push({ element: el.id, code: 'low-contrast', severity: 'error', detail: `kontrasten mot bakgrunden är ${ratio.toFixed(1)}:1, under ${CONTRAST_ERROR}:1` })
-        else if (ratio < CONTRAST_WARNING) issues.push({ element: el.id, code: 'low-contrast', severity: 'warning', detail: `kontrasten mot bakgrunden är ${ratio.toFixed(1)}:1, under ${CONTRAST_WARNING}:1` })
+        if (ratio < CONTRAST_ERROR) issues.push({ element: el.id, code: 'low-contrast', severity: 'error', values: { ratio: ratio.toFixed(1), limit: CONTRAST_ERROR } })
+        else if (ratio < CONTRAST_WARNING) issues.push({ element: el.id, code: 'low-contrast', severity: 'warning', values: { ratio: ratio.toFixed(1), limit: CONTRAST_WARNING } })
       }
     }
 
@@ -60,13 +61,13 @@ export function validateCard({ type, face, row, fonts }: ValidateInput): Issue[]
     const bled = box.x <= -bleedMm && box.y <= -bleedMm && box.x + box.w >= widthMm + bleedMm && box.y + box.h >= heightMm + bleedMm
     const near = box.x < safeMm || box.y < safeMm || box.x + box.w > widthMm - safeMm || box.y + box.h > heightMm - safeMm
     const background = el.kind === 'shape' || el.kind === 'image'
-    if (reaches && background && !bled) issues.push({ element: box.id, code: 'short-of-bleed', severity: 'error', detail: `når kanten men inte ut till utfallet ${bleedMm} mm; snittet kan lämna en vit kant` })
-    else if (reaches && !background) issues.push({ element: box.id, code: 'outside-safe-area', severity: 'error', detail: 'når kortets kant och kommer att skäras' })
-    else if (!reaches && near) issues.push({ element: box.id, code: 'outside-safe-area', severity: 'warning', detail: `ligger närmare kanten än skyddsmarginalen ${safeMm} mm och kan skäras` })
+    if (reaches && background && !bled) issues.push({ element: box.id, code: 'short-of-bleed', severity: 'error', values: { bleedMm } })
+    else if (reaches && !background) issues.push({ element: box.id, code: 'outside-safe-area', severity: 'error', values: {} })
+    else if (!reaches && near) issues.push({ element: box.id, code: 'outside-safe-area', severity: 'warning', values: { safeMm } })
 
     if (el.kind === 'shape' && el.stroke && el.strokeMm !== undefined && el.strokeMm > 0) {
-      if (el.strokeMm < HAIRLINE_ERROR_MM) issues.push({ element: el.id, code: 'hairline', severity: 'error', detail: `linjen är ${el.strokeMm} mm, under ${HAIRLINE_ERROR_MM} mm som pressen klarar` })
-      else if (el.strokeMm < HAIRLINE_WARNING_MM) issues.push({ element: el.id, code: 'hairline', severity: 'warning', detail: `linjen är ${el.strokeMm} mm och kan bli ojämn under ${HAIRLINE_WARNING_MM} mm` })
+      if (el.strokeMm < HAIRLINE_ERROR_MM) issues.push({ element: el.id, code: 'hairline', severity: 'error', values: { strokeMm: el.strokeMm, limit: HAIRLINE_ERROR_MM } })
+      else if (el.strokeMm < HAIRLINE_WARNING_MM) issues.push({ element: el.id, code: 'hairline', severity: 'warning', values: { strokeMm: el.strokeMm, limit: HAIRLINE_WARNING_MM } })
     }
   }
 
@@ -79,7 +80,7 @@ export function validateCard({ type, face, row, fonts }: ValidateInput): Issue[]
       element: first.id,
       code: 'unpinned-font',
       severity: 'warning',
-      detail: `${loose.join(', ')} följer inte med spelet: trycket kan bli ett annat typsnitt än det du ser`,
+      values: { families: loose.join(', ') },
     })
 
   issues.push(...colourOnly(boxes))
@@ -94,7 +95,7 @@ function colourOnly(boxes: Box[]): Issue[] {
     for (const b of carried.slice(i + 1)) {
       if (distance(a.colour, b.colour) < APART) continue
       const lost = BLINDNESS.find((kind) => distance(simulate(a.colour, kind), simulate(b.colour, kind)) < TOGETHER)
-      if (lost) issues.push({ element: b.id, code: 'colour-only', severity: 'warning', detail: `${a.id} och ${b.id} skiljs bara åt av färg och blir samma vid ${SWEDISH[lost]}` })
+      if (lost) issues.push({ element: b.id, code: 'colour-only', severity: 'warning', values: { a: a.id, b: b.id, blindness: lost } })
     }
   }
   return issues

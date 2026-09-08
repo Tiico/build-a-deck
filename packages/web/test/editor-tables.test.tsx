@@ -32,6 +32,19 @@ async function openTables(): Promise<void> {
   await user.click(screen.getByRole('tab', { name: 'Bord' }))
 }
 
+describe('when the tables cannot be listed', () => {
+  it('says so, rather than saying "loading" for ever', async () => {
+    await run.projects.create('p1', projectDoc())
+    // The list is the server's; a server that cannot answer must not leave the tab pretending
+    // to be busy, because nothing will ever arrive to end it.
+    const { TablesTab } = await import('../src/editor/TablesTab.js')
+    const client = { rev: 1, tables: () => Promise.reject(new Error('kunde inte hämta borden')), startTable: () => Promise.reject(new Error('nej')) }
+    render(<TablesTab client={client as unknown as Parameters<typeof TablesTab>[0]['client']} server={run.http} />)
+    expect((await screen.findByRole('alert')).textContent).toBe('kunde inte hämta borden')
+    expect(screen.queryByText(/laddar bord/i)).toBeNull()
+  })
+})
+
 describe('the Bord tab (#19)', () => {
   it('lists the tables this game has, with the version each runs and that nothing has happened yet', async () => {
     await run.projects.create('p1', projectDoc())

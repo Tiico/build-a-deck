@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { DataTable } from '../src/editor/DataTable.js'
 import { projectDoc } from './project-doc.js'
+import { symbolName, type GameSymbol } from '../src/editor/symbols.js'
 
 describe('DataTable (B as a tab)', () => {
   it('shows one row per card with the fields the template binds plus antal, edits cells, adds and removes rows', () => {
@@ -101,7 +102,9 @@ describe('the symbol picker at the brace (E4)', () => {
   const setup = () => {
     const doc = projectDoc()
     const onCell = vi.fn()
-    const onSymbol = vi.fn(async (s: { name: string }) => s.name)
+    // The editor answers with the name the symbol has in the designer's own language, which is
+    // what lands in the icon set and between the braces (E4, A4).
+    const onSymbol = vi.fn(async (s: GameSymbol) => symbolName(s))
     render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onSymbol={onSymbol} />)
     const cell = within(screen.getAllByRole('row')[1]!).getByLabelText('dragon body') as HTMLInputElement
     return { cell, onCell, onSymbol }
@@ -121,7 +124,7 @@ describe('the symbol picker at the brace (E4)', () => {
 
     fireEvent.click(within(list).getAllByRole('option')[0]!)
     await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'body', 'Flygande. {sköld}'))
-    expect(onSymbol).toHaveBeenCalledWith(expect.objectContaining({ name: 'sköld' }))
+    expect(onSymbol).toHaveBeenCalledWith(expect.objectContaining({ id: 'skold' }))
     expect(screen.queryByRole('listbox')).toBeNull()
   })
 

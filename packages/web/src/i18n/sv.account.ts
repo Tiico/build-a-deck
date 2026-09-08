@@ -1,3 +1,144 @@
 // Kontot: inloggning, "Mina spel", inbjudningar, att claima en gästsession och guiden som gör
 // ett nytt spel.
-export const svAccount = {} as const
+export const svAccount = {
+  // Språkvalet, där det står: på inloggningskortet och över "Mina spel".
+  'account.language': 'Språk',
+
+  // Inloggningskortet (G1): ett fält, en knapp och en mening om gäster. Aldrig ett lösenord.
+  'login.lead': 'Skapa ditt kortspel, speltesta det på skärmen, beställ hem det. Logga in för att komma till dina spel.',
+  'login.sent.title': 'Kolla mejlen.',
+  'login.sent.body': 'Vi skickade en länk till {email}. Den fungerar i 15 minuter och bara en gång. Inget lösenord att komma ihåg.',
+  'login.email': 'E-post',
+  'login.email.placeholder': 'din@epost.se',
+  'login.submit': 'Skicka inloggningslänk',
+  'login.error.too-many': 'Vi har redan skickat flera länkar till den adressen. Kolla mejlen, eller vänta en stund.',
+  'login.error.invalid': 'Det där ser inte ut som en e-postadress.',
+  'login.error.failed': 'Det gick inte att skicka. Försök igen.',
+  'login.no-password': 'Inget lösenord. Länken i mejlet loggar in dig; första gången skapar den ditt konto.',
+  'login.guest': 'Ska du bara spela? Skanna QR-koden på bordet — inget konto behövs.',
+
+  // "Mina spel" (G1): kontots spel som ett rutnät, och bordet som just startades.
+  'home.loading': 'Laddar…',
+  'home.title': 'Mina spel',
+  'home.logout': 'logga ut',
+  'home.claimed': 'Sparat: du spelade {game} som {name}. Enkäten och flaggorna hör nu till ditt konto.',
+  'home.claimed.some-table': 'ett bord',
+  'home.started': 'Bordet är igång. Rumskoden är {code}.',
+  'home.started.open': 'Öppna bordet',
+  'home.remove.title': 'Ta bort spelet',
+  'home.remove.ask': 'Ta bort {name}? Hela historien följer med, och det går inte att ångra.',
+  'home.remove.keep': 'Behåll',
+  'home.remove.confirm': 'Ta bort',
+  'home.menu.more': 'Fler val för {name}',
+  'home.menu.label': 'Val för {name}',
+  'home.menu.start': 'Starta bord',
+  'home.menu.remove': 'Ta bort spelet',
+  'home.new': '＋ Nytt spel',
+
+  // Vad ett spel säger om sig självt innan det öppnas: revision, bord och senaste gången.
+  'home.card.line': 'rev {rev} · {played}',
+  'home.card.never': 'aldrig spelat',
+  'home.card.nothing': 'inget spelat än',
+  'home.card.last': 'senast {when}',
+  'home.card.tables.one': '{n} bord · {at}',
+  'home.card.tables.other': '{n} bord · {at}',
+  'home.when.today': 'i dag',
+  'home.when.yesterday': 'i går',
+  'home.when.days': 'för {n} dagar sedan',
+
+  // Borden kontot suttit vid (G1): det andra rutnätet.
+  'home.played.title': 'Bord du spelat vid',
+  'home.played.some-table': 'Ett bord',
+  'home.played.you': '{version} · du var {name}',
+  'home.played.surveyed': 'enkät besvarad',
+  'home.played.unsurveyed': 'enkät obesvarad',
+  'home.played.running': 'pågår',
+  'home.played.flags': '{n} flaggade',
+  'home.played.back': 'Tillbaka till bordet',
+
+  // Att spara en gästsession till kontot (G1): dit telefonens länk leder.
+  'claim.no-token': 'Ingen länk angiven.',
+  'claim.loading': 'Laddar…',
+  'claim.saving': 'Sparar…',
+  'claim.lead': 'Logga in för att spara bordet du spelade vid till ditt konto.',
+  'claim.error.other': 'Det här bordet är redan sparat till ett annat konto.',
+  'claim.error.unknown': 'Länken gäller inte. Gå tillbaka till telefonen och tryck på "Spara till ditt konto" igen.',
+
+  // Att följa en inbjudan till ett spel (D3).
+  'invite.title': 'Inbjudan',
+  'invite.opening': 'Öppnar spelet…',
+  'invite.spent': 'Den här inbjudan är använd eller har gått ut. Be den som bjöd in dig om en ny.',
+
+  // Guidad start (L6): tre steg som gör dokumentet editorn sedan redigerar.
+  'wizard.eyebrow': 'Guidad start',
+  'wizard.title': 'Ge spelet en flygande start',
+  'wizard.steps': '3 enkla steg · cirka 3 min',
+  'wizard.handoff.title': 'Wizarden är startpunkten',
+  'wizard.handoff.body': 'Skapa några exempelkort här. Layout, hela leken och CSV-verktyg väntar i editorn.',
+  'wizard.name': 'Spelets namn',
+  'wizard.name.label': 'Namn',
+  'wizard.name.placeholder': 'Skogens herrar',
+  'wizard.players': 'Spelare',
+
+  // Fälten: vad varje kort har, och vad startramen redan visar.
+  'wizard.fields': 'Fält',
+  'wizard.fields.body': 'Varje fält blir direkt en kontroll på varje exempelkort.',
+  'wizard.kind.text': 'Text',
+  'wizard.kind.number': 'Tal',
+  'wizard.kind.image': 'Bild',
+  'wizard.field.name': '{label} namn',
+  'wizard.field.in-frame': 'Visas i startramen',
+  'wizard.field.in-editor': 'Placeras på mallen i editorn',
+  'wizard.field.place': 'placera i editorn',
+  'wizard.field.remove': 'Ta bort {label}',
+  'wizard.field.new.text': 'Nytt textfält',
+  'wizard.field.new.number': 'Nytt tal',
+  'wizard.field.new.image': 'Ny bild',
+  'wizard.add.text': '+ Textfält',
+  'wizard.add.number': '+ Talfält',
+  'wizard.add.image': '+ Bildfält',
+
+  // De fält varje nytt spel börjar med, och de ramar det kan börja i.
+  'wizard.field.default.title': 'Titel',
+  'wizard.field.default.cost': 'Kostnad',
+  'wizard.field.default.body': 'Text',
+  'wizard.field.default.art': 'Illustration',
+  'wizard.frame': 'Startram',
+  'wizard.frame.classic': 'Klassisk',
+  'wizard.frame.minimal': 'Minimal',
+  'wizard.frame.dark': 'Mörk',
+
+  // Exempelkorten och den levande förhandsvisningen bredvid dem.
+  'wizard.cards.title': 'Gör några exempelkort',
+  'wizard.cards.body': 'De hjälper editorn att visa hur fälten faktiskt används.',
+  'wizard.cards.count.one': '{n} kort',
+  'wizard.cards.count.other': '{n} kort',
+  'wizard.preview': 'Levande förhandsvisning',
+  'wizard.image.preview': 'Förhandsvisning av {label}',
+  'wizard.image.none': 'Ingen bild vald',
+  'wizard.image.change': 'Byt bild',
+  'wizard.image.choose': 'Välj bild',
+  'wizard.image.remove': 'Ta bort',
+  'wizard.card.field': 'kort {n} {label}',
+  'wizard.card.untitled': 'Namnlöst kort',
+  'wizard.card.add': '+ Nytt kort',
+  'wizard.card.remove': 'Ta bort valt kort',
+  'wizard.footer': 'Du kan lägga till resten av leken, importera CSV och finjustera mallen efter nästa steg.',
+  'wizard.creating': 'Skapar…',
+  'wizard.create': 'Skapa spelet och fortsätt i editorn →',
+  'wizard.error.login': 'logga in först',
+  'wizard.error.create': 'kunde inte skapa projektet: {status}',
+  'wizard.error.upload': 'kunde inte ladda upp bilden: {status}',
+
+  // Ord guiden föreslår och som designern sedan får ändra: de skrivs på det språk spelet byggs i.
+
+  // Vad som gick fel, sagt till den som läser — inte till den som skrev koden.
+  'error.members.failed': 'kunde inte läsa vilka som har spelet: {status}',
+  'error.invite.notOwner': 'bara ägaren kan dela spelet',
+  'error.invite.failed': 'kunde inte bjuda in: {status}',
+  'error.unshare.failed': 'kunde inte ta bort: {status}',
+  'error.join.failed': 'kunde inte gå med: {status}',
+  'error.startTable.failed': 'kunde inte starta ett bord: {status}',
+  'error.removeGame.failed': 'kunde inte ta bort spelet: {status}',
+  'wizard.card.n': 'Kort {n}',
+} as const

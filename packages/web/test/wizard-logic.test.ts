@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { parseCsv } from '../src/editor/csv.js'
 import { buildProject, type WizardState } from '../src/wizard/build.js'
+import { translate } from '../src/i18n/index.js'
 
 describe('parseCsv', () => {
   it('reads a header line and rows, with commas or tabs, quoted fields, and CRLF', () => {
@@ -51,6 +52,9 @@ describe('buildProject', () => {
     expect(doc.setup.zones.find((z) => z.id === 'mine:A')).toMatchObject({ kind: 'area', owner: 'A', visibility: 'owner', shortcut: { label: 'Framför mig', at: 'top' } })
     expect(doc.setup.zones.find((z) => z.id === 'counters:C')).toMatchObject({ kind: 'area', owner: 'C', visibility: 'all' })
     expect(doc.setup.counters).toEqual([{ name: 'Poäng', start: 0 }])
+    // The counter the wizard suggests is a word the designer will read and rename, so it is
+    // written in the language they are building the game in (A4).
+    expect(buildProject(state, (key, params) => translate('en', key, params)).setup.counters).toEqual([{ name: 'Score', start: 0 }])
 
     const front = doc.template.faces['front']!
     const bound = front.base.flatMap((e) => ('bind' in e && 'field' in e.bind ? [e.bind.field] : []))

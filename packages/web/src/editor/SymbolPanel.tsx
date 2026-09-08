@@ -2,8 +2,9 @@ import { useState } from 'react'
 import type { ProjectDoc } from './types.js'
 import { CardPreview } from './CardPreview.js'
 import { previewFonts } from './fonts.js'
-import { CATEGORIES, LIBRARY, searchSymbols, symbolPreview, type GameSymbol } from './symbols.js'
+import { CATEGORIES, LIBRARY, searchSymbols, symbolName, symbolPreview, type GameSymbol } from './symbols.js'
 import type { ProjectClient } from './ProjectClient.js'
+import { useT } from '../i18n/index.js'
 
 // The symbol library (E4), from the prototype: the library is a surface of its own, with search,
 // categories and the licence on every symbol. Taking one in names it in the project's icon set,
@@ -12,38 +13,39 @@ import type { ProjectClient } from './ProjectClient.js'
 export type SymbolPanelProps = { doc: ProjectDoc; client: ProjectClient; assetBase: string }
 
 export function SymbolPanel({ doc, client, assetBase }: SymbolPanelProps) {
+  const t = useT()
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
-  const found = searchSymbols(query, category)
+  const found = searchSymbols(query, category, t)
   const front = doc.template.faces['front']
   const take = (symbol: GameSymbol) => {
-    void client.useSymbol(symbol).catch((err: unknown) => setNotice(err instanceof Error ? err.message : String(err)))
+    void client.useSymbol(symbol, undefined, t).catch((err: unknown) => setNotice(err instanceof Error ? err.message : String(err)))
   }
   return (
     <div className="byd-symbols" data-symbol-panel>
       <aside className="byd-symbols-library">
-        <h2>Symbolbibliotek</h2>
-        <p>Fritt licensierade symboler, platshållarramar och färgblock. Licensen följer med in i trycket.</p>
-        <input type="search" aria-label="Sök symbol" placeholder="Sök symbol…" value={query} onChange={(e) => setQuery(e.target.value)} />
-        <div className="byd-symbols-cats" role="group" aria-label="Kategorier">
+        <h2>{t('symbols.library')}</h2>
+        <p>{t('symbols.lead')}</p>
+        <input type="search" aria-label={t('symbols.search')} placeholder={t('symbols.search.placeholder')} value={query} onChange={(e) => setQuery(e.target.value)} />
+        <div className="byd-symbols-cats" role="group" aria-label={t('symbols.categories')}>
           <button type="button" aria-pressed={category === null} onClick={() => setCategory(null)}>
-            Alla
+            {t('symbols.all')}
           </button>
           {CATEGORIES.map((c) => (
             <button key={c} type="button" aria-pressed={category === c} onClick={() => setCategory(category === c ? null : c)}>
-              {c}
+              {t(c)}
             </button>
           ))}
         </div>
         {found.length === 0 ? (
-          <p className="byd-symbols-empty">Inget med det namnet. Sök på vad symbolen är till för, som "försvar" eller "skörd".</p>
+          <p className="byd-symbols-empty">{t('symbols.none')}</p>
         ) : (
           <div className="byd-symbols-grid">
             {found.map((s) => (
-              <button key={s.id} type="button" className="byd-symbols-tile" aria-label={`Ta in ${s.name}`} onClick={() => take(s)}>
+              <button key={s.id} type="button" className="byd-symbols-tile" aria-label={t('symbols.take', { name: symbolName(s, t) })} onClick={() => take(s)}>
                 <img src={symbolPreview(s)} alt="" />
-                <span>{s.name}</span>
+                <span>{symbolName(s, t)}</span>
                 <small>{s.licence}</small>
               </button>
             ))}
@@ -68,14 +70,15 @@ export function SymbolPanel({ doc, client, assetBase }: SymbolPanelProps) {
 
 // The game's own set: what to write, what it is licensed under, and where it is already used.
 function ProjectSet({ doc, client, assetBase }: SymbolPanelProps) {
+  const t = useT()
   const [error, setError] = useState<string | null>(null)
   const names = Object.keys(doc.icons)
   const usedBy = (name: string) => doc.rows.filter((r) => Object.values(r.fields).some((v) => typeof v === 'string' && v.includes(`{${name}}`))).length
-  if (names.length === 0) return <p className="byd-symbols-empty">Inga symboler ännu. Ta in en ur biblioteket och skriv {'{namn}'} i korttexten.</p>
+  if (names.length === 0) return <p className="byd-symbols-empty">{t('symbols.set.none')}</p>
   return (
     <section className="byd-symbols-set">
-      <h2>Symboler i spelet</h2>
-      <ul aria-label="Symboler i spelet">
+      <h2>{t('symbols.inGame')}</h2>
+      <ul aria-label={t('symbols.inGame')}>
         {names.map((name) => {
           const credit = doc.credits?.[name]
           const used = usedBy(name)
@@ -84,7 +87,7 @@ function ProjectSet({ doc, client, assetBase }: SymbolPanelProps) {
               <img src={iconSrc(doc.icons[name] ?? '', assetBase)} alt="" />
               <code>{`{${name}}`}</code>
               <input
-                aria-label={`Namn för ${name}`}
+                aria-label={t('symbols.rename', { name })}
                 defaultValue={name}
                 onBlur={(e) => {
                   const next = e.target.value.trim()
@@ -98,9 +101,9 @@ function ProjectSet({ doc, client, assetBase }: SymbolPanelProps) {
                   }
                 }}
               />
-              <small>{credit ? `${credit.licence} · ${credit.by}` : 'egen'}</small>
-              <small>{used} kort</small>
-              <button type="button" aria-label={`Ta bort ${name}`} onClick={() => client.removeIcon(name)}>
+              <small>{credit ? `${credit.licence} · ${credit.by}` : t('symbols.own')}</small>
+              <small>{t(used === 1 ? 'wall.cards.one' : 'wall.cards.other', { n: used })}</small>
+              <button type="button" aria-label={t('symbols.remove', { name })} onClick={() => client.removeIcon(name)}>
                 ×
               </button>
             </li>

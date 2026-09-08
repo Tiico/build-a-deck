@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { VisibleComponentState } from '@byd/protocol'
 import { useTextureFailure } from './TextureFailures.js'
+import { useT } from '../i18n/index.js'
 import './texture.css'
 
 // A texture may not exist yet: the server answers 202 while the render job is queued, the browser
@@ -29,6 +30,7 @@ export function Texture({ faces, c }: { faces: string | undefined; c: VisibleCom
 }
 
 function TextureFace({ src, c }: { src: string; c: VisibleComponentState }) {
+  const t = useT()
   // `attempt` only busts the cache and never goes backwards; `rung` is where on the ladder of
   // growing pauses we are, and a player asking again starts it over.
   const [attempt, setAttempt] = useState(0)
@@ -75,12 +77,12 @@ function TextureFace({ src, c }: { src: string; c: VisibleComponentState }) {
       {phase !== 'ready' && (
         <span className="byd-texture-state" data-texture={phase}>
           {name !== null && <b>{name}</b>}
-          <i>{phase === 'pending' ? 'Kortet renderas…' : 'Bilden kunde inte laddas'}</i>
+          <i>{phase === 'pending' ? t('texture.pending') : t('texture.failed')}</i>
           {phase === 'failed' && (
             // The card is a drag handle everywhere it appears; pressing the button must not
             // start a drag as well.
             <button type="button" onPointerDown={(e) => e.stopPropagation()} onClick={again}>
-              Försök igen
+              {t('texture.retry')}
             </button>
           )}
         </span>

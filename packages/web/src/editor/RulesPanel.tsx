@@ -3,6 +3,7 @@ import { namesOfProject } from '@byd/server/doc'
 import type { ProjectDoc, RuleBlock, RuleDoc } from '@byd/server'
 import { renderRules, type Names, type RenderedBlock, type RenderedNode } from '@byd/template'
 import type { ProjectClient } from './ProjectClient.js'
+import { useT, type T } from '../i18n/index.js'
 
 // The rulebook (B7), from the prototype: the page itself is the editor. A block opens where it
 // stands and closes when it is left, so what is being written is always what the reader will
@@ -11,16 +12,17 @@ import type { ProjectClient } from './ProjectClient.js'
 export type RulesPanelProps = { doc: ProjectDoc; client: ProjectClient }
 
 export function RulesPanel({ doc, client }: RulesPanelProps) {
+  const t = useT()
   const [editing, setEditing] = useState<string | null>(null)
   const names = namesOfProject(doc)
   const rules = doc.rules
   if (!rules) {
     return (
       <div className="byd-rules-empty">
-        <h2>Regelboken</h2>
-        <p>Inga regler ännu. Reglerna bor i spelet och versioneras med korten; en regel som nämner en zon eller ett kort följer med när det byter namn.</p>
-        <button type="button" onClick={() => client.setRules(startingRules(doc.name))}>
-          Börja skriva reglerna
+        <h2>{t('rules.title')}</h2>
+        <p>{t('rules.empty')}</p>
+        <button type="button" onClick={() => client.setRules(startingRules(doc.name, t))}>
+          {t('rules.start')}
         </button>
       </div>
     )
@@ -30,7 +32,7 @@ export function RulesPanel({ doc, client }: RulesPanelProps) {
     client.setRules({ ...rules, blocks: rules.blocks.map((b) => (b.id === id ? ({ ...b, ...next } as RuleBlock) : b)) })
   const addAfter = (id: string) => {
     const at = rules.blocks.findIndex((b) => b.id === id)
-    const fresh: RuleBlock = { kind: 'text', id: freeId(rules), text: 'Ny text.' }
+    const fresh: RuleBlock = { kind: 'text', id: freeId(rules), text: t('rules.newText') }
     client.setRules({ ...rules, blocks: [...rules.blocks.slice(0, at + 1), fresh, ...rules.blocks.slice(at + 1)] })
     setEditing(fresh.id)
   }
@@ -41,12 +43,12 @@ export function RulesPanel({ doc, client }: RulesPanelProps) {
   return (
     <div className="byd-rules">
       <div className="byd-rules-bar">
-        <h2>Regelboken</h2>
+        <h2>{t('rules.title')}</h2>
         <Booklet client={client} />
-        <span>Klicka i sidan för att skriva. En regel som nämner en zon eller ett kort följer med när det byter namn.</span>
+        <span>{t('rules.hint')}</span>
         {out.warnings.length > 0 && (
           <span className="byd-rules-warn" role="status">
-            {out.warnings.length} {out.warnings.length === 1 ? 'referens pekar' : 'referenser pekar'} på något spelet inte har
+            {t(out.warnings.length === 1 ? 'rules.warnings.one' : 'rules.warnings.other', { n: out.warnings.length })}
           </span>
         )}
       </div>
@@ -63,7 +65,7 @@ export function RulesPanel({ doc, client }: RulesPanelProps) {
                   <Block block={b} names={names} />
                 </div>
               )}
-              <button type="button" className="byd-rules-add" aria-label={`Lägg till efter ${b.id}`} onClick={() => addAfter(b.id)}>
+              <button type="button" className="byd-rules-add" aria-label={t('rules.addAfter', { id: b.id })} onClick={() => addAfter(b.id)}>
                 ＋
               </button>
             </div>
@@ -77,16 +79,17 @@ export function RulesPanel({ doc, client }: RulesPanelProps) {
 // The rulebook as a booklet for print (B7): one rendering of the rules as they stand, through
 // the same worker that renders every card. The link is offered only once there is a file.
 function Booklet({ client }: { client: ProjectClient }) {
+  const t = useT()
   const [state, setState] = useState<'idle' | 'working' | { hash: string } | { error: string }>('idle')
   const order = async () => {
     setState('working')
     try {
-      const hash = await client.orderBooklet()
+      const hash = await client.orderBooklet(t)
       for (let i = 0; i < 120; i++) {
         if (await client.rendered(hash)) return setState({ hash })
         await new Promise((r) => setTimeout(r, 250))
       }
-      setState({ error: 'häftet blev inte färdigt' })
+      setState({ error: t('rules.booklet.failed') })
     } catch (err) {
       setState({ error: err instanceof Error ? err.message : String(err) })
     }
@@ -94,16 +97,16 @@ function Booklet({ client }: { client: ProjectClient }) {
   if (typeof state === 'object' && 'hash' in state) {
     return (
       <a className="byd-rules-booklet" href={client.bookletUrl(state.hash)} target="_blank" rel="noreferrer">
-        Öppna häftet
+        {t('rules.booklet.open')}
       </a>
     )
   }
   return (
     <>
       <button type="button" className="byd-rules-booklet" disabled={state === 'working'} onClick={() => void order()}>
-        Häfte för tryck
+        {t('rules.booklet')}
       </button>
-      {state === 'working' && <span role="status">Häftet renderas…</span>}
+      {state === 'working' && <span role="status">{t('rules.booklet.rendering')}</span>}
       {typeof state === 'object' && 'error' in state && <span role="alert">{state.error}</span>}
     </>
   )
@@ -111,19 +114,20 @@ function Booklet({ client }: { client: ProjectClient }) {
 
 // One block open for writing, with the things the game has to hand.
 function Editing({ block, names, onPatch, onClose, onRemove }: { block: RuleBlock; names: Names; onPatch(next: Partial<RuleBlock>): void; onClose(): void; onRemove(): void }) {
+  const t = useT()
   const insert = (ref: string) => {
     if (block.kind === 'text' || block.kind === 'heading') onPatch({ text: `${block.text} ${ref}` })
     else if (block.kind === 'list') onPatch({ items: [...block.items.slice(0, -1), `${block.items[block.items.length - 1] ?? ''} ${ref}`] })
   }
   return (
     <div className="byd-rules-edit">
-      {block.kind === 'text' && <textarea autoFocus rows={4} aria-label={`Text ${block.id}`} value={block.text} onChange={(e) => onPatch({ text: e.target.value })} onBlur={onClose} />}
+      {block.kind === 'text' && <textarea autoFocus rows={4} aria-label={t('rules.block.text', { id: block.id })} value={block.text} onChange={(e) => onPatch({ text: e.target.value })} onBlur={onClose} />}
       {block.kind === 'heading' && (
         <div className="byd-rules-row">
-          <input autoFocus aria-label={`Rubrik ${block.id}`} value={block.text} onChange={(e) => onPatch({ text: e.target.value })} onBlur={onClose} />
-          <select aria-label={`Nivå på ${block.id}`} value={block.level} onChange={(e) => onPatch({ level: e.target.value === '1' ? 1 : 2 })}>
-            <option value="1">Rubrik</option>
-            <option value="2">Underrubrik</option>
+          <input autoFocus aria-label={t('rules.block.heading', { id: block.id })} value={block.text} onChange={(e) => onPatch({ text: e.target.value })} onBlur={onClose} />
+          <select aria-label={t('rules.block.level', { id: block.id })} value={block.level} onChange={(e) => onPatch({ level: e.target.value === '1' ? 1 : 2 })}>
+            <option value="1">{t('rules.level.1')}</option>
+            <option value="2">{t('rules.level.2')}</option>
           </select>
         </div>
       )}
@@ -133,26 +137,26 @@ function Editing({ block, names, onPatch, onClose, onRemove }: { block: RuleBloc
             <input
               key={i}
               {...(i === 0 ? { autoFocus: true } : {})}
-              aria-label={`Punkt ${i + 1} i ${block.id}`}
+              aria-label={t('rules.block.item', { n: i + 1, id: block.id })}
               value={item}
               onChange={(e) => onPatch({ items: block.items.map((x, j) => (j === i ? e.target.value : x)) })}
             />
           ))}
           <button type="button" onClick={() => onPatch({ items: [...block.items, ''] })}>
-            ＋ Punkt
+            {t('rules.addItem')}
           </button>
         </>
       )}
-      {block.kind === 'setup' && <input autoFocus aria-label={`Bildtext ${block.id}`} placeholder="Bildtext…" value={block.caption ?? ''} onChange={(e) => onPatch({ caption: e.target.value })} onBlur={onClose} />}
+      {block.kind === 'setup' && <input autoFocus aria-label={t('rules.block.caption', { id: block.id })} placeholder={t('rules.caption.placeholder')} value={block.caption ?? ''} onChange={(e) => onPatch({ caption: e.target.value })} onBlur={onClose} />}
       <div className="byd-rules-picker">
-        <span>Sätt in:</span>
+        <span>{t('rules.insert')}</span>
         {referables(names).map((r) => (
-          <button key={`${r.of}:${r.id}`} type="button" aria-label={`Sätt in ${r.name}`} onMouseDown={(e) => e.preventDefault()} onClick={() => insert(refFor(r.of, r.id))}>
+          <button key={`${r.of}:${r.id}`} type="button" aria-label={t('rules.insert.of', { name: r.name })} onMouseDown={(e) => e.preventDefault()} onClick={() => insert(refFor(r.of, r.id))}>
             {r.name}
           </button>
         ))}
         <button type="button" className="byd-rules-remove" onClick={onRemove}>
-          Ta bort blocket
+          {t('rules.removeBlock')}
         </button>
       </div>
     </div>
@@ -250,15 +254,15 @@ const freeId = (rules: RuleDoc): string => {
 }
 
 // What a rulebook starts as: the game's name, and the two headings every game needs.
-function startingRules(name: string): RuleDoc {
+function startingRules(name: string, t: T): RuleDoc {
   return {
     title: name,
     blocks: [
-      { kind: 'heading', id: 'b1', level: 1, text: 'Så spelar ni' },
-      { kind: 'text', id: 'b2', text: 'Skriv här hur spelet går till.' },
-      { kind: 'heading', id: 'b3', level: 2, text: 'En tur' },
-      { kind: 'list', id: 'b4', ordered: true, items: ['Det första man gör.'] },
-      { kind: 'setup', id: 'b5', caption: 'Så ställs bordet upp' },
+      { kind: 'heading', id: 'b1', level: 1, text: t('rules.starting.how') },
+      { kind: 'text', id: 'b2', text: t('rules.starting.howText') },
+      { kind: 'heading', id: 'b3', level: 2, text: t('rules.starting.turn') },
+      { kind: 'list', id: 'b4', ordered: true, items: [t('rules.starting.turnItem')] },
+      { kind: 'setup', id: 'b5', caption: t('rules.starting.setup') },
     ],
   }
 }

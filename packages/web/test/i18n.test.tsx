@@ -2,9 +2,14 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
-import { Language, LanguagePicker, chosenLang, detectLang, rememberLang, translate, useT } from '../src/i18n/index.js'
+import { Language, LanguagePicker, chosenLang, detectLang, rememberLang, translate, useT, type T } from '../src/i18n/index.js'
 import { en } from '../src/i18n/en.js'
 import { sv } from '../src/i18n/sv.js'
+import { svEditor } from '../src/i18n/sv.editor.js'
+import { svPlay } from '../src/i18n/sv.play.js'
+import { svAccount } from '../src/i18n/sv.account.js'
+import { inviteToProject, requestLink } from '../src/account/api.js'
+import { ProjectClient } from '../src/editor/ProjectClient.js'
 
 function Sample() {
   const t = useT()
@@ -19,6 +24,10 @@ describe('the tool in the reader\'s own language (A4)', () => {
     // never be half-translated without the compiler saying so. This is the runtime half.
     expect(Object.keys(en).sort()).toEqual(Object.keys(sv).sort())
     expect(Object.values(en).every((m) => m.trim() !== '')).toBe(true)
+    // The catalogue is written in one file per surface and merged into one. Two surfaces that
+    // happen to pick the same key would silently overwrite each other, and one of the two texts
+    // would simply never be seen; the count says whether that has happened.
+    expect(Object.keys(sv)).toHaveLength(Object.keys(svEditor).length + Object.keys(svPlay).length + Object.keys(svAccount).length)
   })
 
   it('puts what a message is about into it, rather than gluing sentences together', () => {
@@ -61,6 +70,59 @@ describe('the tool in the reader\'s own language (A4)', () => {
     expect(() => rememberLang('en')).not.toThrow()
     expect(chosenLang()).toBeNull()
     expect(detectLang()).toBe('en')
+  })
+
+  it('says which language it is asking in, so what the server writes back comes in that language', async () => {
+    const seen: { url: string; body: unknown }[] = []
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      seen.push({ url: String(input), body: JSON.parse(String(init?.body ?? '{}')) })
+      return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'content-type': 'application/json' } })
+    }) as typeof fetch
+    try {
+      document.documentElement.lang = 'en'
+      await requestLink('http://server.test', 'ada@example.com', '/')
+      await inviteToProject('http://server.test', 'p1', 'bo@example.com', 'editor')
+      expect(seen.map((r) => (r.body as { lang?: string }).lang)).toEqual(['en', 'en'])
+      // The page that never said which language it is in asks for nothing in particular.
+      document.documentElement.lang = ''
+      await requestLink('http://server.test', 'ada@example.com', '/')
+      expect((seen.at(-1)?.body as { lang?: string }).lang).toBeUndefined()
+    } finally {
+      globalThis.fetch = real
+      document.documentElement.lang = ''
+    }
+  })
+
+  it('says what went wrong in the reader\'s language, not in the language the code was written in', async () => {
+    const real = globalThis.fetch
+    globalThis.fetch = (async () => new Response('{}', { status: 403 })) as typeof fetch
+    const english: T = (key, params) => translate('en', key, params)
+    try {
+      await expect(inviteToProject('http://server.test', 'p1', 'bo@example.com', 'editor', english)).rejects.toThrow('only the owner can share the game')
+      await expect(inviteToProject('http://server.test', 'p1', 'bo@example.com', 'editor')).rejects.toThrow('bara ägaren kan dela spelet')
+    } finally {
+      globalThis.fetch = real
+    }
+  })
+
+  it('orders the printed rulebook in the language it was ordered in, so its one tool-written heading matches', async () => {
+    const seen: string[] = []
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: RequestInfo | URL) => {
+      seen.push(String(input))
+      return new Response(JSON.stringify({ hash: 'a'.repeat(64) }), { status: 202, headers: { 'content-type': 'application/json' } })
+    }) as typeof fetch
+    try {
+      document.documentElement.lang = 'en'
+      const client = Object.create(ProjectClient.prototype) as ProjectClient
+      Object.assign(client, { http: 'http://server.test', id: 'p1' })
+      await client.orderBooklet()
+      expect(seen.at(-1)).toContain('lang=en')
+    } finally {
+      globalThis.fetch = real
+      document.documentElement.lang = ''
+    }
   })
 
   it('takes the language the address asks for before anything else', () => {

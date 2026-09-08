@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { acceptInvite, loginUrl } from './api.js'
+import { useT } from '../i18n/index.js'
 import './account.css'
 
 // /invites/:token — following an invitation to a game (D3). Whoever is signed in when they
@@ -9,6 +10,7 @@ import './account.css'
 export type InvitePageProps = { onNavigate?(url: string): void }
 
 export function InvitePage({ onNavigate = (url) => location.assign(url) }: InvitePageProps) {
+  const t = useT()
   const params = new URLSearchParams(location.search)
   const server = params.get('server')
   const http = server ?? location.origin
@@ -16,7 +18,7 @@ export function InvitePage({ onNavigate = (url) => location.assign(url) }: Invit
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {
     let live = true
-    void acceptInvite(http, decodeURIComponent(token)).then(
+    void acceptInvite(http, decodeURIComponent(token), t).then(
       (joined) => {
         if (!live) return
         if (joined === 'not-logged-in') {
@@ -24,7 +26,7 @@ export function InvitePage({ onNavigate = (url) => location.assign(url) }: Invit
           return
         }
         if (joined === 'spent') {
-          setError('Den här inbjudan är använd eller har gått ut. Be den som bjöd in dig om en ny.')
+          setError(t('invite.spent'))
           return
         }
         const q = new URLSearchParams({ project: joined.project })
@@ -36,18 +38,19 @@ export function InvitePage({ onNavigate = (url) => location.assign(url) }: Invit
     return () => {
       live = false
     }
-    // The token is the page: it cannot change while the page is open.
+    // The token is the page: it cannot change while the page is open, and neither the language
+    // the answer is read in is a reason to follow the invitation a second time.
   }, [http, token, server, onNavigate])
   return (
     <div className="byd-account" data-page="invite">
       <div className="byd-login">
-        <h1>Inbjudan</h1>
+        <h1>{t('invite.title')}</h1>
         {error ? (
           <p role="alert" className="byd-login-error">
             {error}
           </p>
         ) : (
-          <p className="byd-muted">Öppnar spelet…</p>
+          <p className="byd-muted">{t('invite.opening')}</p>
         )}
       </div>
     </div>

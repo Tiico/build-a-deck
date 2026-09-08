@@ -2,11 +2,19 @@ import type { ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc, Versi
 import type { DocDiff } from '@byd/server/doc'
 import type { Element } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
-import { applyEdit, recipeOf, type EditIntent, type Recipe, type ZonePatch } from '@byd/server/doc'
+import { applyEdit, recipeOf, type EditIntent, type Recipe, type RecipeWords, type ZonePatch } from '@byd/server/doc'
 import { ASSET_PREFIX } from './assets.js'
-import { freeIconName, svgBytes, type GameSymbol } from './symbols.js'
+import { freeIconName, svgBytes, symbolName, type GameSymbol } from './symbols.js'
 import type { EditorMessage, Presence } from '@byd/server'
 import { canEdit, type Role } from '@byd/server/doc'
+import { translate, type T } from '../i18n/index.js'
+
+// Without a catalogue of its own this module speaks Swedish, exactly as a surface mounted
+// without a language provider does: the surface that opened the project hands over its own
+// `t` (A4). Only what a designer is meant to act on is a message; the rest of what can go
+// wrong here is a diagnostic, and stays in the language the code is written in.
+const swedish: T = (key, params) => translate('sv', key, params)
+
 
 // The editor's socket, kept small on purpose: the same shape the table's client speaks, so a
 // test can hand it Node's WebSocket the way it hands one to the table.
@@ -69,10 +77,11 @@ export class ProjectClient {
     public dirty = false,
   ) {}
 
-  static async open(opts: { http: string; id: string; name?: string }): Promise<ProjectClient> {
+  static async open(opts: { http: string; id: string; name?: string; t?: T }): Promise<ProjectClient> {
+    const t = opts.t ?? swedish
     const res = await fetch(`${opts.http}/projects/${encodeURIComponent(opts.id)}`, withCredentials())
     if (res.status === 401) throw new Unauthorized()
-    if (res.status === 403) throw new Error('det här spelet tillhör någon annan')
+    if (res.status === 403) throw new Error(t('project.notMine'))
     if (res.status === 404) throw new Error(`unknown project ${opts.id}`)
     if (!res.ok) throw new Error(`could not load project: ${res.status}`)
     const rec = (await res.json()) as ProjectDoc & { id: string; rev: number }
@@ -276,19 +285,21 @@ export class ProjectClient {
   get recipe(): Recipe {
     return recipeOf(this.doc.setup)
   }
-  setRecipe(recipe: Recipe): void {
-    this.edit({ v: 'setRecipe', recipe })
+  setRecipe(recipe: Recipe, words?: RecipeWords): void {
+    this.edit({ v: 'setRecipe', recipe, ...(words ? { words } : {}) })
   }
 
   // A zone of the designer's own (K2): an area of a card's rows or a pile at a point, in the
   // middle of the table until it is dragged somewhere. Returns its id.
-  addZone(kind: 'area' | 'pile'): string {
+  // A zone the designer adds is theirs, and it is named in the language they are working in
+  // (A4); they rename it from there.
+  addZone(kind: 'area' | 'pile', t: T = swedish): string {
     const taken = new Set(this.doc.setup.zones.map((z) => z.id))
     const base = kind === 'pile' ? 'hog' : 'yta'
     let n = 1
     while (taken.has(`${base}-${n}`)) n++
     const id = `${base}-${n}`
-    this.edit({ v: 'addZone', id, kind, name: kind === 'pile' ? `Hög ${n}` : `Yta ${n}` })
+    this.edit({ v: 'addZone', id, kind, name: kind === 'pile' ? t('zone.new.pile', { n }) : t('zone.new.area', { n }) })
     return id
   }
 
@@ -351,12 +362,14 @@ export class ProjectClient {
   // A symbol from the library taken into the game (E4): its bytes become one of the project's
   // assets, the icon set gets a name for it, and the licence is kept beside the set so it can
   // travel to the printer. The same symbol twice is the same entry, not a second name.
-  async useSymbol(symbol: GameSymbol, as?: string): Promise<string> {
+  async useSymbol(symbol: GameSymbol, as?: string, t: T = swedish): Promise<string> {
     const file = svgBytes(symbol)
-    const ref = `${ASSET_PREFIX}${await this.uploadAsset(new Blob([file.bytes], { type: file.type }))}`
+    const ref = `${ASSET_PREFIX}${await this.uploadAsset(new Blob([file.bytes], { type: file.type }), t)}`
     const already = Object.entries(this.doc.icons).find(([, url]) => url === ref)
     if (already) return already[0]
-    const name = freeIconName(as ?? symbol.name, this.doc.icons)
+    // What the symbol is called in the language the designer is working in: the icon name is
+    // theirs from here on, and card text writes it between braces (L2, A4).
+    const name = freeIconName(as ?? symbolName(symbol, t), this.doc.icons)
     this.edit({ v: 'setIcon', name, url: ref, credit: { licence: symbol.licence, by: symbol.by, source: symbol.id } })
     return name
   }
@@ -375,8 +388,8 @@ export class ProjectClient {
   // pins the file, so what is printed a year from now is what was designed today.
   //
   // A licence is not in the file: only the designer knows it, and it is stated beside the family.
-  async useFont(file: File): Promise<string> {
-    const ref = `${ASSET_PREFIX}${await this.uploadAsset(file)}`
+  async useFont(file: File, t: T = swedish): Promise<string> {
+    const ref = `${ASSET_PREFIX}${await this.uploadAsset(file, t)}`
     const already = Object.entries(this.doc.fonts ?? {}).find(([, f]) => f.asset === ref)
     if (already) return already[0]
     const family = freeFamily(familyFromFile(file.name), this.doc.fonts ?? {})
@@ -396,12 +409,12 @@ export class ProjectClient {
   }
 
   // An image for the project (E1): uploaded once, named by its bytes; the cell then points at it.
-  async uploadAsset(file: Blob): Promise<string> {
+  async uploadAsset(file: Blob, t: T = swedish): Promise<string> {
     const res = await fetch(`${this.http}/assets`, withCredentials({ method: 'POST', headers: { 'content-type': file.type || 'application/octet-stream' }, body: file }))
     if (res.status === 401) throw new Unauthorized()
-    if (res.status === 415) throw new Error('bara bilder och typsnittsfiler kan laddas upp')
-    if (res.status === 413) throw new Error('filen är för stor (max 8 MB)')
-    if (!res.ok) throw new Error(`kunde inte ladda upp filen: ${res.status}`)
+    if (res.status === 415) throw new Error(t('upload.wrongType'))
+    if (res.status === 413) throw new Error(t('upload.tooBig'))
+    if (!res.ok) throw new Error(t('upload.failed', { status: res.status }))
     return ((await res.json()) as { hash: string }).hash
   }
 
@@ -494,11 +507,15 @@ export class ProjectClient {
   // How far a table's textures have come (L5).
   // The rulebook as a booklet for print (B7): the queue answers with the rendering's hash, and
   // the file is fetched where every other rendering is once it is done.
-  async orderBooklet(): Promise<string> {
-    const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}/rulebook`, withCredentials({ method: 'POST' }))
+  async orderBooklet(t: T = swedish): Promise<string> {
+    // The booklet is the designer's own words with one heading of the tool's, and that heading
+    // is set in the language the order was placed in (A4, B7).
+    const lang = typeof document === 'undefined' ? '' : document.documentElement.lang
+    const where = `${this.http}/projects/${encodeURIComponent(this.id)}/rulebook${lang ? `?lang=${encodeURIComponent(lang)}` : ''}`
+    const res = await fetch(where, withCredentials({ method: 'POST' }))
     if (res.status === 401) throw new Unauthorized()
-    if (res.status === 404) throw new Error('spelet har inga regler att trycka')
-    if (!res.ok) throw new Error(`kunde inte beställa häftet: ${res.status}`)
+    if (res.status === 404) throw new Error(t('rules.booklet.noRules'))
+    if (!res.ok) throw new Error(t('rules.booklet.orderFailed', { status: res.status }))
     return ((await res.json()) as { hash: string }).hash
   }
 

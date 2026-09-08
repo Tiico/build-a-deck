@@ -2,14 +2,16 @@ import { useEffect, useRef, useState } from 'react'
 import type { Activity, Snapshot } from '@byd/protocol'
 import type { TableClient } from '../client.js'
 import { RECENT_MS, emptyPresence, prunePresence, reducePresence, type PresenceState, type Recent } from './presence.js'
+import { useT } from '../i18n/index.js'
 
 // Presence (K6) for a screen that shows the table: the others' cursors and carried cards, pruned
 // as they go idle; and which cards just moved, stamped when their lines arrive so no clocks have
 // to agree. Shared by the table screen and the online player's screen (C2).
 export function usePresence(client: TableClient | null, view: Snapshot | null): PresenceState {
+  const t = useT()
   const [presence, setPresence] = useState<PresenceState>(emptyPresence)
   const nameRef = useRef<(seat: string | null) => string>(() => '')
-  nameRef.current = (seat) => (seat === null ? 'bordet' : view?.seats.find((s) => s.id === seat)?.name ?? seat)
+  nameRef.current = (seat) => (seat === null ? t('play.peer.table') : view?.seats.find((s) => s.id === seat)?.name ?? seat)
   useEffect(() => {
     if (!client) return
     const off = client.onPresence((from, p) => setPresence((s) => reducePresence(s, from, p, Date.now(), nameRef.current)))

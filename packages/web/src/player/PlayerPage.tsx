@@ -11,12 +11,14 @@ import { SessionButtons, SessionOverlays, refusedText, useSessionVersion, useToa
 import { RuleDrawer } from '../rules/RuleDrawer.js'
 import { claimUrl } from '../account/api.js'
 import { playIntents } from './play.js'
+import { useT } from '../i18n/index.js'
 import './player.css'
 
 // /play?session=…&seat=A&name=Ada&token=…&server=ws://…
 // The `player` role: one seat, its hand and private zones, and the zone shortcuts to play to.
 // The token was bought with the room code on the join page (DRIFT §9).
 export function PlayerPage() {
+  const t = useT()
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const sessionId = params.get('session')
   const seat = params.get('seat')
@@ -39,9 +41,9 @@ export function PlayerPage() {
     if (client && view && seat && name && seatFree) void client.send({ v: 'seat.claim', seat, name })
   }, [client, view === null, seat, name, seatFree])
 
-  if (!sessionId || !seat) return <p>Ingen session eller plats angiven.</p>
-  if (refused) return <p role="alert" data-refused={refused}>{refusedText(refused)}</p>
-  if (!view || !client) return <p data-status={status}>Ansluter…</p>
+  if (!sessionId || !seat) return <p>{t('play.session.seat.missing')}</p>
+  if (refused) return <p role="alert" data-refused={refused}>{refusedText(refused, t)}</p>
+  if (!view || !client) return <p data-status={status}>{t('play.connecting')}</p>
 
   const me = view.seats.find((s) => s.id === seat)
   const hand = view.components.filter((c) => c.zone === `hand:${seat}`)
@@ -65,7 +67,7 @@ export function PlayerPage() {
     <div className="byd-player" data-page="player" data-status={status}>
       <header>
         <strong>{me?.name ?? seat}</strong>
-        <span>{hand.length} kort</span>
+        <span>{t(hand.length === 1 ? 'play.cards.one' : 'play.cards.other', { n: hand.length })}</span>
         <SessionButtons client={client} view={view} onSheet={setSheet} />
         {/* The rules this table plays by (B7), one press away beside the session's own buttons. */}
         {sessionId && <RuleDrawer http={faces} sessionId={sessionId} placement="phone" />}
@@ -81,7 +83,9 @@ export function PlayerPage() {
       />
       <HandStrip view={view} selected={selected} faces={faces} onTap={setInspect} onHold={toggle} onLift={setLifted} />
       <p className="byd-hint">
-        {selected.size > 0 ? `${selected.size} valda · dra upp för att spela` : 'tryck = titta · dra upp = spela · håll = välj flera'}
+        {selected.size > 0
+          ? t(selected.size === 1 ? 'player.hint.selected.one' : 'player.hint.selected.other', { n: selected.size })
+          : t('player.hint')}
       </p>
       {inspect && (
         <div className="byd-inspect" onClick={() => setInspect(null)}>

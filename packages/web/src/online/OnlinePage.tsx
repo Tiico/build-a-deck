@@ -13,14 +13,17 @@ import { CARD_MM } from '../table/drop.js'
 import { playIntents } from '../player/play.js'
 import { SessionButtons, SessionOverlays, useSessionVersion, useToast, refusedText } from '../player/SessionOverlays.js'
 import { claimUrl } from '../account/api.js'
+import { SeatLine } from './SeatLine.js'
 import { HandFan } from './HandFan.js'
 import { seatRotation, withoutHand } from './seat.js'
+import { useT } from '../i18n/index.js'
 
 // /online?session=…&seat=A&name=Ada&server=ws://…
 // Fully online (C2): both roles in one window. The table, turned so this seat's edge is at the
 // bottom, playable as the table screen is; the seat's hand as a fan on the felt (prototype B);
 // the phone's controls in the corner.
 export function OnlinePage() {
+  const t = useT()
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const sessionId = params.get('session')
   const seat = params.get('seat')
@@ -42,9 +45,9 @@ export function OnlinePage() {
     if (client && view && seat && name && seatFree) void client.send({ v: 'seat.claim', seat, name })
   }, [client, view === null, seat, name, seatFree])
 
-  if (!sessionId || !seat) return <p>Ingen session eller plats angiven.</p>
-  if (refused) return <p role="alert" data-refused={refused}>{refusedText(refused)}</p>
-  if (!view || !client) return <p data-status={status}>{status === 'connecting' ? 'Ansluter…' : status}</p>
+  if (!sessionId || !seat) return <p>{t('play.session.seat.missing')}</p>
+  if (refused) return <p role="alert" data-refused={refused}>{refusedText(refused, t)}</p>
+  if (!view || !client) return <p data-status={status}>{status === 'connecting' ? t('play.connecting') : status}</p>
 
   const me = view.seats.find((s) => s.id === seat)
   const hand = view.components.filter((c) => c.zone === `hand:${seat}`)
@@ -74,13 +77,14 @@ export function OnlinePage() {
         recent={recent}
         onPresence={(p) => client.sendPresence(p)}
       />
-      <div className="byd-online-me">
-        <strong>{me?.name ?? seat}</strong>
-        <span>{hand.length} kort</span>
-        {observers.length > 0 && <em>{observers.map((o) => o.name).join(', ')} tittar på</em>}
-      </div>
-      <div className="byd-online-tools">
-        <SessionButtons client={client} view={view} onSheet={setSheet} />
+      {/* One row along the bottom: who you are at one end, what you can do at the other. They
+          are laid out together so neither can grow across the other, whatever the name is or
+          how long the words are in the language being read (A4). */}
+      <div className="byd-online-bar">
+        <SeatLine name={me?.name ?? seat} hand={hand.length} observers={observers.map((o) => o.name)} t={t} />
+        <div className="byd-online-tools">
+          <SessionButtons client={client} view={view} onSheet={setSheet} />
+        </div>
       </div>
       <HandFan cards={hand} faces={http} onPlay={play} />
       <SessionOverlays client={client} view={view} seat={seat} name={me?.name ?? seat} http={http} sessionId={sessionId} sheet={sheet} onSheet={setSheet} toast={toast} onToast={setToast} version={version} saveUrl={token ? claimUrl(token, params.get('server')) : null} />

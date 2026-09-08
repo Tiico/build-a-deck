@@ -65,6 +65,10 @@ Nyckeln säger var texten hör hemma, inte vad den råkar heta: `editor.tab.wall
 En yta som monteras ensam — en förhandsvisning, ett test — talar svenska. Hela appen ligger under en språkleverantör som tar läsarens eget val först, sedan adressens `?lang=`, sedan webbläsarens. Valet minns till nästa besök, och ett val skriver också `lang` på sidan självt, eftersom uppläsning läser sidan på det språk sidan säger sig vara på. En webbläsare som vägrar lagra något byter ändå språk; den glömmer bara.
 Det verktyget säger översätts. Det en designer skrivit — korttext, regler, zonnamn, spelets namn — översätts aldrig: det är spelets språk, inte verktygets.
 Mejlen följer med: inloggningslänken och inbjudan skrivs på det språk den som utlöste dem läser verktyget i, och ett språk verktyget inte talar är inget fel — då går brevet på svenska.
+Gränsen mellan verktygets ord och designerns går vid vem som äger ordet efteråt, inte vid vem som skrev det först. Det verktyget föreslår när ett spel skapas — fältnamnen, exempelkortets titel, räknaren, zonerna receptet lägger ut, en symbol som tas in ur biblioteket — skrivs på designerns språk och blir sedan deras. Det som redan står i dokumentet rörs aldrig: en zon behåller sitt namn när receptet vrids om, och ett spel byter inte språk för att någon annan öppnar det.
+Symbolbiblioteket är verktygets, så det söks och läses på läsarens språk; namnet den tar in är det designern såg.
+Den fysiska kontrollen (E5) mäter och lämnar ifrån sig siffrorna, inte meningen: felet bär `code`, `severity` och `values`, och orden sätts där de läses. Samma sak går ut över tråden vid en tryckorder, så den som tar emot den skriver den på sitt språk.
+En engelsk mening är längre än en svensk, och det är layouten som får veta det: filtens namn under högar, zoner och räknare göms när filten är telefonsmal, och raden längst ner på filten är en rad — namnet viker undan i stället för att växa över knapparna.
 
 ---
 

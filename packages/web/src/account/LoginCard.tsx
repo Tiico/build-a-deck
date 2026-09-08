@@ -1,10 +1,12 @@
 import { useState, type FormEvent } from 'react'
 import { requestLink } from './api.js'
+import { LanguagePicker, useT } from '../i18n/index.js'
 
 // Logging in (G1, prototype A): one field, one button, one sentence about guests. Never a
 // password, never a word about whether the address is known.
 // `lead` replaces the pitch line when the card is reached for one thing, like saving a session.
 export function LoginCard({ http, next, onNavigate = (url) => location.assign(url), lead }: { http: string; next: string; onNavigate?(url: string): void; lead?: string | undefined }) {
+  const t = useT()
   const [email, setEmail] = useState('')
   const [state, setState] = useState<'open' | 'busy' | 'sent' | 'too-many' | 'invalid' | 'failed'>('open')
   const submit = async (e: FormEvent) => {
@@ -24,25 +26,30 @@ export function LoginCard({ http, next, onNavigate = (url) => location.assign(ur
   return (
     <div className="byd-login" data-login>
       <h1>build-your-deck</h1>
-      <p className="byd-muted">{lead ?? 'Skapa ditt kortspel, speltesta det på skärmen, beställ hem det. Logga in för att komma till dina spel.'}</p>
+      <p className="byd-muted">{lead ?? t('login.lead')}</p>
       {state === 'sent' ? (
         <div className="byd-login-sent" role="status">
-          <strong>Kolla mejlen.</strong>
-          <span>Vi skickade en länk till {email.trim()}. Den fungerar i 15 minuter och bara en gång. Inget lösenord att komma ihåg.</span>
+          <strong>{t('login.sent.title')}</strong>
+          <span>{t('login.sent.body', { email: email.trim() })}</span>
         </div>
       ) : (
         <form onSubmit={(e) => void submit(e)}>
-          <input type="email" placeholder="din@epost.se" aria-label="E-post" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" autoFocus required />
+          <input type="email" placeholder={t('login.email.placeholder')} aria-label={t('login.email')} value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" autoFocus required />
           <button type="submit" disabled={state === 'busy' || !email.includes('@')}>
-            Skicka inloggningslänk
+            {t('login.submit')}
           </button>
-          {state === 'too-many' && <p className="byd-login-error" role="alert">Vi har redan skickat flera länkar till den adressen. Kolla mejlen, eller vänta en stund.</p>}
-          {state === 'invalid' && <p className="byd-login-error" role="alert">Det där ser inte ut som en e-postadress.</p>}
-          {state === 'failed' && <p className="byd-login-error" role="alert">Det gick inte att skicka. Försök igen.</p>}
-          <p className="byd-muted">Inget lösenord. Länken i mejlet loggar in dig; första gången skapar den ditt konto.</p>
+          {state === 'too-many' && <p className="byd-login-error" role="alert">{t('login.error.too-many')}</p>}
+          {state === 'invalid' && <p className="byd-login-error" role="alert">{t('login.error.invalid')}</p>}
+          {state === 'failed' && <p className="byd-login-error" role="alert">{t('login.error.failed')}</p>}
+          <p className="byd-muted">{t('login.no-password')}</p>
         </form>
       )}
-      <p className="byd-muted">Ska du bara spela? Skanna QR-koden på bordet — inget konto behövs.</p>
+      <p className="byd-muted">{t('login.guest')}</p>
+      {/* The reader who cannot read this card is the one who most needs the switch on it. */}
+      <label className="byd-lang">
+        {t('account.language')}
+        <LanguagePicker />
+      </label>
     </div>
   )
 }

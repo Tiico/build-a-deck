@@ -9,6 +9,7 @@ import { activeBounds, cameraOf, fitFloor, frameRect, pad, reachOf, same, tween,
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
 import { CARD_MM, absoluteOf, dropIntents, type Drag, type DragTarget } from './drop.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
+import { useT, type T } from '../i18n/index.js'
 
 export type TableMode = 'table' | 'tv'
 // Without an explicit `scale`, the renderer fits the table to its own frame.
@@ -69,6 +70,7 @@ type Live = Drag & { started: boolean }
 type Ring = { target: DragTarget; x: number; y: number }
 
 export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], onPresence, camera = false, onInspect, size: fixedSize, glideMs = GLIDE_MS, overlay }, ref) {
+  const t = useT()
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
   const frame = useRef<HTMLDivElement | null>(null)
@@ -417,7 +419,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       ) : (
         felt
       )}
-      {ring && onAct && <RadialMenu id={ring.target.kind === 'card' ? ring.target.id : ring.target.pile} x={ring.x} y={ring.y} items={ringItems(view, ring.target, onAct, setHeld)} onClose={() => setRing(null)} />}
+      {ring && onAct && <RadialMenu id={ring.target.kind === 'card' ? ring.target.id : ring.target.pile} x={ring.x} y={ring.y} items={ringItems(view, ring.target, onAct, setHeld, t)} onClose={() => setRing(null)} />}
       {held && (
         <div className="byd-inspect" onClick={() => setHeld(null)}>
           <div data-inspect={held.id} data-face={held.cardRef === null ? 'back' : 'front'} style={held.cardRef === null ? undefined : { ['--hue' as string]: hue(held.cardRef) }}>
@@ -461,18 +463,18 @@ function useGlide(target: Rect | null, ms: number): Rect | null {
 }
 
 // The verbs a drag cannot say (C): for a card, for a pile.
-function ringItems(view: Snapshot, target: DragTarget, act: (intents: Intent[]) => void, inspect: (c: VisibleComponentState) => void): RadialItem[] {
-  const flip = (c: VisibleComponentState): RadialItem => ({ label: 'Vänd', run: () => act([{ v: 'flip', component: c.id, face: c.face === 'front' ? 'back' : 'front' }]) })
-  const look = (c: VisibleComponentState | undefined): RadialItem => ({ label: 'Titta', run: c ? () => inspect(c) : null })
-  const close: RadialItem = { label: 'Stäng', run: null, kind: 'no' }
+function ringItems(view: Snapshot, target: DragTarget, act: (intents: Intent[]) => void, inspect: (c: VisibleComponentState) => void, t: T): RadialItem[] {
+  const flip = (c: VisibleComponentState): RadialItem => ({ label: t('ring.flip'), run: () => act([{ v: 'flip', component: c.id, face: c.face === 'front' ? 'back' : 'front' }]) })
+  const look = (c: VisibleComponentState | undefined): RadialItem => ({ label: t('ring.look'), run: c ? () => inspect(c) : null })
+  const close: RadialItem = { label: t('ring.close'), run: null, kind: 'no' }
   if (target.kind === 'card') {
     const c = view.components.find((x) => x.id === target.id)
     if (!c) return [close]
     return [
       flip(c),
-      { label: 'Vrid', run: () => act([{ v: 'rotate', component: c.id, rot: (c.rot + 90) % 360 }]) },
+      { label: t('ring.rotate'), run: () => act([{ v: 'rotate', component: c.id, rot: (c.rot + 90) % 360 }]) },
       look(c),
-      { label: 'Avslöja', run: c.cardRef === null ? () => act([{ v: 'reveal', components: [c.id] }]) : null },
+      { label: t('ring.reveal'), run: c.cardRef === null ? () => act([{ v: 'reveal', components: [c.id] }]) : null },
       close,
     ]
   }
@@ -485,10 +487,10 @@ function ringItems(view: Snapshot, target: DragTarget, act: (intents: Intent[]) 
   // is by definition not face-up.
   const flipTop = (): Intent[] => [{ v: 'flip', component: { top: z.id }, face: top?.face === 'front' ? 'back' : 'front' }]
   return [
-    { label: 'Blanda', run: count > 1 ? () => act([{ v: 'shuffle', pile: z.id }]) : null },
-    { label: 'Dra 1', run: count > 0 ? () => act([{ v: 'split', pile: z.id, at: 1, ...beside }]) : null },
-    { label: 'Dela på hälften', run: count > 1 ? () => act([{ v: 'split', pile: z.id, at: Math.ceil(count / 2), ...beside }]) : null },
-    { label: 'Vänd översta', run: count > 0 ? () => act(flipTop()) : null },
+    { label: t('ring.shuffle'), run: count > 1 ? () => act([{ v: 'shuffle', pile: z.id }]) : null },
+    { label: t('ring.draw'), run: count > 0 ? () => act([{ v: 'split', pile: z.id, at: 1, ...beside }]) : null },
+    { label: t('ring.half'), run: count > 1 ? () => act([{ v: 'split', pile: z.id, at: Math.ceil(count / 2), ...beside }]) : null },
+    { label: t('ring.flipTop'), run: count > 0 ? () => act(flipTop()) : null },
     look(top),
     close,
   ]
@@ -546,6 +548,7 @@ function topIdOf(z: ZoneView, skip = 0): string | undefined {
 // A pile is a point; the stack is centred on it. A hidden pile has a count and nothing else,
 // unless its top lies face-up.
 function Pile({ zone, count, topCard, faces, left, top, px, lifted, topHandlers, topInspects, labelHandlers }: { zone: ZoneView; count: number; topCard: VisibleComponentState | undefined; faces: string | undefined; left: number; top: number; px: (mm: number) => number; lifted: boolean; topHandlers?: Handlers | undefined; topInspects?: Pointing | undefined; labelHandlers?: Handlers | undefined }) {
+  const t = useT()
   const layers = Math.min(Math.max(count, 0), 12)
   const thickness = Array.from({ length: layers }, (_, i) => `0 ${-i * 1.2}px 0 #1f2b4a`).join(', ')
   return (
@@ -568,7 +571,7 @@ function Pile({ zone, count, topCard, faces, left, top, px, lifted, topHandlers,
         <span>{count > 0 ? topCard?.cardRef ?? '' : ''}</span>
       </div>
       <span className="byd-pile-count" data-handle={labelHandlers ? 'true' : undefined} {...labelHandlers}>
-        <span className="byd-pile-name">{zone.dynamic ? 'hög' : zone.name}</span>
+        <span className="byd-pile-name">{zone.dynamic ? t('pile.dynamic') : zone.name}</span>
         <b className="byd-pile-n">{count}</b>
       </span>
     </div>

@@ -1,6 +1,6 @@
 import type { Element, FaceTemplate, Variant } from '@byd/template'
 import type { Cell, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc } from './projects.js'
-import { applyRecipe, point, rect, type Geometry, type Recipe, type Zone } from './recipe.js'
+import { applyRecipe, point, rect, type Geometry, type Recipe, type RecipeWords, type Zone } from './recipe.js'
 
 // An edit is a thing that happened to a project (D3). A project is structurally the same as a
 // table — shared state several people change at once, which belongs in the history — so it gets
@@ -26,7 +26,9 @@ export type EditIntent =
   | { v: 'resetElement'; face: string; id: string; group: string }
   | { v: 'setGroupColumn'; column: string | null }
   // The table (B5, K2)
-  | { v: 'setRecipe'; recipe: Recipe }
+  // The words come with the edit, so the actor writes the same zone names the editor showed the
+  // designer — their own language, not the tool's home one (A4).
+  | { v: 'setRecipe'; recipe: Recipe; words?: RecipeWords }
   | { v: 'addZone'; id: string; kind: 'area' | 'pile'; name: string }
   | { v: 'removeZone'; id: string }
   | { v: 'patchZone'; id: string; patch: ZonePatch }
@@ -128,7 +130,7 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
     }
 
     case 'setRecipe':
-      return { ...doc, setup: applyRecipe(doc.setup, intent.recipe) }
+      return { ...doc, setup: applyRecipe(doc.setup, intent.recipe, intent.words) }
     case 'addZone': {
       if (doc.setup.zones.some((z) => z.id === intent.id)) throw new Error(`zone ${intent.id} already exists`)
       const zone: Zone =

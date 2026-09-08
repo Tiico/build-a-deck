@@ -490,11 +490,13 @@ describe('physical validation at the order (E5)', () => {
     expect((await json('POST', '/projects', { id: 'p-small', ...withText(4) })).status).toBe(201)
     const res = await json('POST', '/projects/p-small/print')
     expect(res.status).toBe(422)
-    const body = (await res.json()) as { errors: { cardRef: string; face: string; element: string; code: string; detail: string }[] }
+    const body = (await res.json()) as { errors: { cardRef: string; face: string; element: string; code: string; values: Record<string, string | number> }[] }
     expect(body.errors.length).toBeGreaterThan(0)
     expect(body.errors[0]).toMatchObject({ face: 'front', element: 'body', code: 'text-too-small' })
     expect(body.errors.map((e) => e.cardRef)).toContain('dragon')
-    expect(body.errors[0]?.detail).toContain('6')
+    // What was measured travels; the sentence is written where it is read, in the reader's own
+    // language (A4).
+    expect(body.errors[0]?.values).toEqual({ sizePt: 4, floor: 6 })
   })
 
   it('lets an order through when only warnings stand, and says what they were', async () => {

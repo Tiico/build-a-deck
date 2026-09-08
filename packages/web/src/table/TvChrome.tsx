@@ -5,6 +5,7 @@ import { seatColor } from './seatColor.js'
 import { QrCode } from './QrCode.js'
 import { Texture } from './Texture.js'
 import { hue } from './hue.js'
+import { useT } from '../i18n/index.js'
 
 export type TvChromeProps = {
   view: Snapshot
@@ -28,6 +29,7 @@ export type TvChromeProps = {
 // TV mode (C5, prototype C): the table in the middle, a header with the room code to join by,
 // a dock with every seat, and what just happened in words — all legible from across a room.
 export function TvChrome({ view, activity, roomCode, joinUrl, title, version, inspecting, faces, observers = [], children }: TvChromeProps) {
+  const t = useT()
   const handCount = (seat: string) => {
     const hand = view.zones.find((z) => z.kind === 'hand' && z.owner === seat)
     if (!hand) return 0
@@ -39,12 +41,12 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
     <div data-tv>
       <header>
         <h1>
-          {title ?? 'Bordet'}
+          {title ?? t('play.table')}
           {version !== undefined && <em> {version}</em>}
         </h1>
         {(roomCode || joinUrl) && (
           <div className="byd-tv-join">
-            <span>anslut med telefon</span>
+            <span>{t('tv.join')}</span>
             {roomCode && <strong>{roomCode}</strong>}
             {joinUrl && <QrCode text={joinUrl} size={52} />}
           </div>
@@ -53,7 +55,7 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
       <main>{children}</main>
       <aside>
         <section className="byd-tv-inspect" aria-labelledby="tv-inspect">
-          <h2 id="tv-inspect">Inspektion</h2>
+          <h2 id="tv-inspect">{t('tv.inspect')}</h2>
           {inspecting ? (
             <div
               data-inspect={inspecting.id}
@@ -61,21 +63,21 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
               style={inspecting.cardRef === null ? undefined : { ['--hue' as string]: hue(inspecting.cardRef) }}
             >
               <Texture faces={faces} c={inspecting} />
-              <span>{inspecting.cardRef ?? 'dolt kort'}</span>
+              <span>{inspecting.cardRef ?? t('tv.inspect.hidden')}</span>
             </div>
           ) : (
             <div data-empty>
-              <span>peka på ett kort</span>
+              <span>{t('tv.inspect.empty')}</span>
             </div>
           )}
         </section>
         <section className="byd-tv-feed">
-          <h2 id="tv-feed">Senast</h2>
+          <h2 id="tv-feed">{t('play.latest')}</h2>
           <ol aria-labelledby="tv-feed">
             {recent.map((l) => (
               <li key={l.seq} style={l.by === null ? undefined : { ['--seat' as string]: seatColor(seatIndex(l.by)) }}>
                 <b>{l.seq}</b>
-                <span>{describeActivity(l, view)}</span>
+                <span>{describeActivity(l, view, t)}</span>
               </li>
             ))}
           </ol>
@@ -85,12 +87,10 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
         {observers.length > 0 && (
           <div className="byd-tv-observers" data-observers>
             <i />
-            <span>
-              {observers.map((o) => o.name).join(', ')} tittar på · ser allt
-            </span>
+            <span>{t(observers.length === 1 ? 'tv.observers.one' : 'tv.observers.other', { names: observers.map((o) => o.name).join(', ') })}</span>
           </div>
         )}
-        <h2 id="tv-seats">Platser</h2>
+        <h2 id="tv-seats">{t('tv.seats')}</h2>
         <ul aria-labelledby="tv-seats">
           {view.seats.map((s, i) => {
             const last = [...activity].reverse().find((l) => l.by === s.id)
@@ -99,8 +99,8 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
                 <i data-avatar>{(s.name ?? s.id).slice(0, 1)}</i>
                 <div>
                   <span>{s.name ?? s.id}</span>
-                  <span>{handCount(s.id)} kort på hand</span>
-                  <small>{last ? describeActivity(last, view) : '—'}</small>
+                  <span>{t(handCount(s.id) === 1 ? 'tv.seat.hand.one' : 'tv.seat.hand.other', { n: handCount(s.id) })}</span>
+                  <small>{last ? describeActivity(last, view, t) : '—'}</small>
                 </div>
               </li>
             )

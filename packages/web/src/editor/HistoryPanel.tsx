@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react'
 import type { DocDiff, RowChange } from '@byd/server/doc'
 import type { VersionSummary } from '@byd/server'
 import type { ProjectClient } from './ProjectClient.js'
+import { translate, useT, type T } from '../i18n/index.js'
+
+// Without a catalogue of its own this module speaks Swedish, exactly as a surface mounted
+// without a language provider does: the panel hands over its own `t` (A4).
+const swedish: T = (key, params) => translate('sv', key, params)
 
 // The project's history (B4), from the prototype: every save is a version, kept whole and never
 // rewritten. It is presented as versions with a date and, for the ones that meant something, a
@@ -10,6 +15,7 @@ import type { ProjectClient } from './ProjectClient.js'
 export type HistoryPanelProps = { client: ProjectClient; onClose(): void; onRestored(): void; onCompare(rev: number, label: string | undefined): void }
 
 export function HistoryPanel({ client, onClose, onRestored, onCompare }: HistoryPanelProps) {
+  const t = useT()
   const [versions, setVersions] = useState<VersionSummary[] | null>(null)
   const [open, setOpen] = useState<number | null>(null)
   const [diffs, setDiffs] = useState<Record<number, DocDiff | 'first'>>({})
@@ -55,17 +61,17 @@ export function HistoryPanel({ client, onClose, onRestored, onCompare }: History
     }
   }
   return (
-    <div className="byd-history" role="dialog" aria-label="Historik" aria-modal="false">
+    <div className="byd-history" role="dialog" aria-label={t('history.title')} aria-modal="false">
       <header>
-        <h2>Historik</h2>
-        <button type="button" aria-label="Stäng historiken" onClick={onClose}>
+        <h2>{t('history.title')}</h2>
+        <button type="button" aria-label={t('history.close')} onClick={onClose}>
           ×
         </button>
       </header>
-      <p className="byd-history-lead">Varje sparning är en version. Ingen av dem skrivs om; den du tar tillbaka blir nästa version.</p>
+      <p className="byd-history-lead">{t('history.lead')}</p>
       {error && <p role="alert">{error}</p>}
       {!versions ? (
-        <p>Laddar historiken…</p>
+        <p>{t('history.loading')}</p>
       ) : (
         <ol>
           {versions.map((v) => {
@@ -73,29 +79,29 @@ export function HistoryPanel({ client, onClose, onRestored, onCompare }: History
             return (
               <li key={v.rev} data-rev={v.rev} {...(v.rev === client.rev ? { 'data-current': 'true' } : {})} data-named={v.label ? 'true' : undefined}>
                 <button type="button" aria-expanded={open === v.rev} onClick={() => show(v.rev)}>
-                  <b>{v.label ?? `Version ${v.rev}`}</b>
-                  <span>{when(v.at)}</span>
-                  {v.rev === client.rev && <small>öppen nu</small>}
+                  <b>{v.label ?? t('history.version', { rev: v.rev })}</b>
+                  <span>{when(v.at, Date.now(), t)}</span>
+                  {v.rev === client.rev && <small>{t('history.current')}</small>}
                 </button>
                 {open === v.rev && (
                   <div className="byd-history-detail">
-                    <p>{diff === undefined ? 'Läser…' : diff === 'first' ? 'Spelet skapades.' : <Summary diff={diff} />}</p>
+                    <p>{diff === undefined ? t('history.reading') : diff === 'first' ? t('history.created') : <Summary diff={diff} />}</p>
                     <label>
-                      Namn
+                      {t('history.name')}
                       <input
-                        aria-label={`Namn på version ${v.rev}`}
-                        placeholder="Ge versionen ett namn…"
+                        aria-label={t('history.name.of', { rev: v.rev })}
+                        placeholder={t('history.name.placeholder')}
                         defaultValue={v.label ?? ''}
                         onBlur={(e) => void name(v.rev, e.target.value.trim() || null)}
                       />
                     </label>
                     {v.rev !== client.rev && (
                       <>
-                        <button type="button" aria-label={`Jämför version ${v.rev} i tabellen`} onClick={() => onCompare(v.rev, v.label)}>
-                          Jämför med den här i tabellen
+                        <button type="button" aria-label={t('history.compare.of', { rev: v.rev })} onClick={() => onCompare(v.rev, v.label)}>
+                          {t('history.compare')}
                         </button>
-                        <button type="button" aria-label={`Återställ version ${v.rev}`} onClick={() => void restore(v.rev)}>
-                          Ta tillbaka den här versionen
+                        <button type="button" aria-label={t('history.restore.of', { rev: v.rev })} onClick={() => void restore(v.rev)}>
+                          {t('history.restore')}
                         </button>
                       </>
                     )}
@@ -113,24 +119,25 @@ export function HistoryPanel({ client, onClose, onRestored, onCompare }: History
 // What a version changed, in the words a designer already uses. The template, the setup and the
 // symbols are named as having moved: a diff of an element tree is a diff for a machine.
 export function Summary({ diff }: { diff: DocDiff }) {
+  const t = useT()
   const n = (kind: RowChange['kind']) => diff.rows.filter((r) => r.kind === kind).length
   const parts: string[] = []
-  if (n('added')) parts.push(`${n('added')} nya kort`)
-  if (n('removed')) parts.push(`${n('removed')} borttagna`)
-  if (n('changed')) parts.push(`${n('changed')} ändrade`)
-  if (diff.reordered) parts.push('leken omordnad')
-  if (diff.template) parts.push('mallen ändrad')
-  if (diff.setup) parts.push('uppställningen ändrad')
-  if (diff.icons) parts.push('symbolerna ändrade')
-  if (diff.name) parts.push(`spelet döpt om till ${diff.name.to}`)
-  return <>{parts.length === 0 ? 'Inget ändrat.' : `${parts.join(' · ')}.`}</>
+  if (n('added')) parts.push(t('history.diff.added', { n: n('added') }))
+  if (n('removed')) parts.push(t('history.diff.removed', { n: n('removed') }))
+  if (n('changed')) parts.push(t('history.diff.changed', { n: n('changed') }))
+  if (diff.reordered) parts.push(t('history.diff.reordered'))
+  if (diff.template) parts.push(t('history.diff.template'))
+  if (diff.setup) parts.push(t('history.diff.setup'))
+  if (diff.icons) parts.push(t('history.diff.icons'))
+  if (diff.name) parts.push(t('history.diff.renamed', { name: diff.name.to }))
+  return <>{parts.length === 0 ? t('history.diff.none') : `${parts.join(' · ')}.`}</>
 }
 
 // A date as a designer reads it, not as a machine writes it.
-export function when(iso: string, now = Date.now()): string {
+export function when(iso: string, now = Date.now(), t: T = swedish): string {
   const days = Math.floor((now - Date.parse(iso)) / 86400_000)
-  if (days <= 0) return 'i dag'
-  if (days === 1) return 'i går'
-  if (days < 7) return `för ${days} dagar sedan`
+  if (days <= 0) return t('history.today')
+  if (days === 1) return t('history.yesterday')
+  if (days < 7) return t('history.daysAgo', { n: days })
   return new Date(iso).toLocaleDateString('sv-SE')
 }

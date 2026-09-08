@@ -1,61 +1,63 @@
 import type { Activity, Snapshot } from '@byd/protocol'
+import type { T } from '../i18n/index.js'
 
-// One line of Swedish per log line, for the activity feed. Names come from the view;
-// zone names too, so "Draghög" rather than "draw".
-export function describeActivity(line: Activity, view: Snapshot): string {
-  const who = line.by === null ? 'Bordet' : view.seats.find((s) => s.id === line.by)?.name ?? line.by
+// One line per log line, for the activity feed, in whichever language the reader is given (A4).
+// Names come from the view; zone names too, so "Draghög" rather than "draw" — a zone's name is
+// the designer's word and is never translated.
+export function describeActivity(line: Activity, view: Snapshot, t: T): string {
+  const who = line.by === null ? t('play.table') : view.seats.find((s) => s.id === line.by)?.name ?? line.by
   const zone = (id: string) => view.zones.find((z) => z.id === id)?.name ?? id
   const it = line.intent
   switch (it.v) {
     case 'move':
-      return `${who} flyttade ett kort till ${zone(it.to)}`
+      return t('activity.move', { who, zone: zone(it.to) })
     case 'rotate':
-      return `${who} vred ett kort`
+      return t('activity.rotate', { who })
     case 'flip':
-      return `${who} vände ett kort`
+      return t('activity.flip', { who })
     case 'stack':
-      return `${who} lade ett kort på ett annat`
+      return t('activity.stack', { who })
     case 'split':
-      return `${who} delade ${zone(it.pile)}`
+      return t('activity.split', { who, zone: zone(it.pile) })
     case 'shuffle':
-      return `${who} blandade ${zone(it.pile)}`
+      return t('activity.shuffle', { who, zone: zone(it.pile) })
     case 'draw':
-      return `${who} drog ${it.count} från ${zone(it.from)}`
+      return t('activity.draw', { who, n: it.count, zone: zone(it.from) })
     case 'deal':
-      return `${who} delade ut ${it.each} var`
+      return t('activity.deal', { who, n: it.each })
     case 'roll':
-      return `${who} slog en tärning`
+      return t('activity.roll', { who })
     case 'setCounter':
-      return `${who} satte en räknare till ${it.value}`
+      return t('activity.setCounter', { who, value: it.value })
     case 'peek':
-      return `${who} tittade på ett kort`
+      return t('activity.peek', { who })
     case 'showTo':
-      return `${who} visade ett kort för ${it.seats.map((s) => view.seats.find((x) => x.id === s)?.name ?? s).join(', ')}`
+      return t('activity.showTo', { who, seats: it.seats.map((s) => view.seats.find((x) => x.id === s)?.name ?? s).join(', ') })
     case 'reveal':
-      return `${who} avslöjade ett kort`
+      return t('activity.reveal', { who })
     case 'movePile':
-      return `${who} flyttade en hög`
+      return t('activity.movePile', { who })
     case 'seat.claim':
-      return `${it.name} satte sig på plats ${it.seat}`
+      return t('activity.seat.claim', { name: it.name, seat: it.seat })
     case 'seat.release':
-      return `Plats ${it.seat} lämnades`
+      return t('activity.seat.release', { seat: it.seat })
     case 'setup.reset':
-      return `${who} återställde bordet`
+      return t('activity.setup.reset', { who })
     case 'session.end':
-      return 'Sessionen avslutades'
+      return t('activity.session.end')
     case 'version.change':
-      return `Spelet uppdaterades till ${it.to}`
+      return t('activity.version.change', { to: it.to })
     case 'undo.self':
-      return `${who} ångrade sitt senaste drag`
+      return t('activity.undo.self', { who })
     case 'rewind.propose':
-      return `${who} föreslog att spola tillbaka`
+      return t('activity.rewind.propose', { who })
     case 'rewind.confirm':
-      return `${who} godkände tillbakaspolningen`
+      return t('activity.rewind.confirm', { who })
     case 'rewind.reject':
-      return `${who} avvisade tillbakaspolningen`
+      return t('activity.rewind.reject', { who })
     case 'flag': {
-      const flagger = it.observer ? `${it.observer} (observatör)` : who
-      return it.note ? `${flagger} flaggade: ${it.note}` : `${flagger} flaggade ögonblicket`
+      const flagger = it.observer ? t('activity.flag.observer', { name: it.observer }) : who
+      return it.note ? t('activity.flag.note', { who: flagger, note: it.note }) : t('activity.flag', { who: flagger })
     }
   }
 }

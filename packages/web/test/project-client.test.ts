@@ -255,7 +255,7 @@ describe('symbols (E4)', () => {
   it('takes a symbol into the project: the bytes become an asset, the set gets the name, and the licence is kept beside it', async () => {
     const created = await run.projects.create('p1', projectDoc())
     const client = await ProjectClient.open({ http: run.http, id: created.id })
-    const skold = LIBRARY.find((s) => s.name === 'sköld')!
+    const skold = LIBRARY.find((s) => s.id === 'skold')!
 
     const name = await client.useSymbol(skold)
     expect(name).toBe('sköld')
@@ -270,7 +270,7 @@ describe('symbols (E4)', () => {
     expect(await client.useSymbol(skold)).toBe('sköld')
     expect(Object.keys(client.doc.icons)).toEqual(['sköld'])
     // A second, different symbol under a name already taken gets a name of its own.
-    const svard = LIBRARY.find((s) => s.name === 'svärd')!
+    const svard = LIBRARY.find((s) => s.id === 'svard')!
     expect(await client.useSymbol(svard, 'sköld')).toBe('sköld-2')
 
     client.renameIcon('sköld-2', 'anfall')

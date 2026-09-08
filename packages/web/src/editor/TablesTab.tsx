@@ -4,6 +4,7 @@ import { TableRenderer } from '../table/TableRenderer.js'
 import { useTableClient } from '../table/useTableClient.js'
 import { joinUrl, observeUrl, onlineUrl, tableModeUrl, tableName, tvUrl } from './tableLinks.js'
 import type { ProjectClient, TableSummary } from './ProjectClient.js'
+import { useT, type Key, type T } from '../i18n/index.js'
 
 // The Bord tab (#19): every table this game has, and the ways into it. A table is a session
 // started from the project (C9: it survives everyone disconnecting), so the list is the server's
@@ -11,6 +12,7 @@ import type { ProjectClient, TableSummary } from './ProjectClient.js'
 export type TablesTabProps = { client: ProjectClient; server: string | null }
 
 export function TablesTab({ client, server }: TablesTabProps) {
+  const t = useT()
   const [tables, setTables] = useState<TableSummary[] | null>(null)
   const [starting, setStarting] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
@@ -41,14 +43,22 @@ export function TablesTab({ client, server }: TablesTabProps) {
     }
   }
 
-  if (!tables) return <p className="byd-tables-empty">Laddar bord…</p>
+  // A list that never arrived is not a list that is still coming: when the server could not
+  // answer, the tab says what happened instead of waiting for ever on something that will not
+  // come.
+  if (!tables)
+    return notice ? (
+      <p className="byd-tables-empty" role="alert">
+        {notice}
+      </p>
+    ) : (
+      <p className="byd-tables-empty">{t('tables.loading')}</p>
+    )
   return (
     <div className="byd-tables">
-      <p className="byd-tables-lead">
-        Varje bord är en session från det här spelet. Ett bord överlever att alla kopplar ner; det avslutas uttryckligen eller efter ett dygn.
-      </p>
+      <p className="byd-tables-lead">{t('tables.lead')}</p>
       {tables.length === 0 ? (
-        <p className="byd-tables-empty">Inget bord ännu. "Uppdatera bordet" startar ett från den sparade versionen.</p>
+        <p className="byd-tables-empty">{t('tables.none')}</p>
       ) : (
         <ul>
           {tables.map((table) => (
@@ -58,7 +68,7 @@ export function TablesTab({ client, server }: TablesTabProps) {
       )}
       {notice && <p role="alert">{notice}</p>}
       <button type="button" className="byd-tables-new" disabled={starting} onClick={() => void startTable()}>
-        {starting ? 'Startar…' : `Nytt bord från rev ${client.rev}`}
+        {starting ? t('tables.starting') : t('tables.new', { n: client.rev })}
       </button>
     </div>
   )
@@ -68,6 +78,7 @@ export function TablesTab({ client, server }: TablesTabProps) {
 // designer is standing (#19). It is the same row as in the Bord tab — not a second telling of
 // the same table — and the way on to all of them.
 export function TableMenu({ client, server, onShowTables }: { client: ProjectClient; server: string | null; onShowTables(): void }) {
+  const t = useT()
   const [open, setOpen] = useState(false)
   const [tables, setTables] = useState<TableSummary[] | null>(null)
   const caret = useRef<HTMLButtonElement>(null)
@@ -95,19 +106,19 @@ export function TableMenu({ client, server, onShowTables }: { client: ProjectCli
         if (open && event.key === 'Escape') close()
       }}
     >
-      <button ref={caret} type="button" className="byd-editor-primary byd-editor-caret" aria-label="Fler vägar till bordet" aria-expanded={open} onClick={() => setOpen((on) => !on)}>
+      <button ref={caret} type="button" className="byd-editor-primary byd-editor-caret" aria-label={t('tables.more')} aria-expanded={open} onClick={() => setOpen((on) => !on)}>
         ▾
       </button>
       {open && (
-        <div className="byd-editor-ways" role="group" aria-label="Bordet">
+        <div className="byd-editor-ways" role="group" aria-label={t('tables.group')}>
           {!tables ? (
-            <p>Laddar bord…</p>
+            <p>{t('tables.loading')}</p>
           ) : newest ? (
             <ul>
               <TableRow table={newest} server={server} rev={client.rev} />
             </ul>
           ) : (
-            <p>Inget bord ännu. "Uppdatera bordet" startar ett.</p>
+            <p>{t('tables.menu.none')}</p>
           )}
           <button
             type="button"
@@ -116,7 +127,7 @@ export function TableMenu({ client, server, onShowTables }: { client: ProjectCli
               onShowTables()
             }}
           >
-            Alla bord
+            {t('tables.all')}
           </button>
         </div>
       )}
@@ -133,6 +144,7 @@ const THUMBNAIL = { w: 640, h: 384 }
 // One table, live: the same connection the TV makes (seatless, sees only what is public), so
 // what the row says about the table is what the table itself says.
 function TableRow({ table, server, rev }: { table: TableSummary; server: string | null; rev: number }) {
+  const t = useT()
   const url = server ? server.replace(/^http/, 'ws') : `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
   const { client, view, observers, room } = useTableClient({ url, sessionId: table.id, seat: null, owner: true })
   // Ending a table is the one thing here that cannot be looked at afterwards (C9), so it is
@@ -172,28 +184,28 @@ function TableRow({ table, server, rev }: { table: TableSummary; server: string 
       <div className="byd-tables-info">
         <p className="byd-tables-head">
           <strong>{table.version}</strong>
-          {stale && <em className="byd-tables-stale">ligger efter rev-{rev}</em>}
-          <span>{ended ? 'avslutat' : seated(view?.seats ?? null, observers)}</span>
-          <span>{lastMove(table.lastAt)}</span>
+          {stale && <em className="byd-tables-stale">{t('tables.stale', { rev })}</em>}
+          <span>{ended ? t('tables.ended') : seated(view?.seats ?? null, observers, t)}</span>
+          <span>{lastMove(table.lastAt, t)}</span>
         </p>
         <div className="byd-tables-ways">
-          <Way href={tvUrl(table.id, server, undefined, true)} label="Öppna TV-vyn" table={name} primary />
-          <Way href={tableModeUrl(table.id, server, true)} label="Bordsläge" table={name} />
-          {ended ? null : free ? <Way href={onlineUrl(table.id, server, free, true)} label="Spela härifrån" table={name} /> : <span className="byd-tables-note">alla platser upptagna</span>}
-          <Way href={observeUrl(table.id, server, true)} label="Titta på" table={name} />
+          <Way href={tvUrl(table.id, server, undefined, true)} label="tables.way.tv" table={name} primary />
+          <Way href={tableModeUrl(table.id, server, true)} label="tables.way.tableMode" table={name} />
+          {ended ? null : free ? <Way href={onlineUrl(table.id, server, free, true, t)} label="tables.way.play" table={name} /> : <span className="byd-tables-note">{t('tables.full')}</span>}
+          <Way href={observeUrl(table.id, server, true, t)} label="tables.way.watch" table={name} />
           <button type="button" aria-expanded={showQr} onClick={() => setShowQr((on) => !on)}>
-            QR för telefoner <span className="byd-offscreen">{name}</span>
+            {t('tables.qr')} <span className="byd-offscreen">{name}</span>
           </button>
           {!ended && (
             <button type="button" data-kind="quiet" ref={askRef} onClick={() => setAsking(true)}>
-              Avsluta bordet <span className="byd-offscreen">{name}</span>
+              {t('tables.end')} <span className="byd-offscreen">{name}</span>
             </button>
           )}
         </div>
         {showQr && room && (
           <div className="byd-tables-qr">
             <QrCode text={joinUrl(room.code, server)} />
-            <Way href={joinUrl(room.code, server)} label="Anslutningssidan" table={name} />
+            <Way href={joinUrl(room.code, server)} label="tables.way.join" table={name} />
           </div>
         )}
         {asking && (
@@ -221,11 +233,12 @@ function TableRow({ table, server, rev }: { table: TableSummary; server: string 
 // takes the focus so it is answered where it is read, answers Escape, and names the table in
 // both its own name and its sentence — "Avsluta bordet" alone is the same words for every row.
 function EndQuestion({ table, onConfirm, onCancel }: { table: string; onConfirm(): void; onCancel(): void }) {
+  const t = useT()
   return (
     <div
       className="byd-tables-question"
       role="alertdialog"
-      aria-label={`Avsluta bordet ${table}`}
+      aria-label={t('tables.end.of', { table })}
       onKeyDown={(event) => {
         if (event.key !== 'Escape') return
         // The question is what Escape is about while it stands; whatever opened around it keeps
@@ -234,12 +247,12 @@ function EndQuestion({ table, onConfirm, onCancel }: { table: string; onConfirm(
         onCancel()
       }}
     >
-      <p>Avsluta bordet {table}? Loggen låses, spelet kan inte fortsätta, och enkäten går ut till telefonerna.</p>
+      <p>{t('tables.end.question', { table })}</p>
       <button type="button" data-kind="danger" autoFocus onClick={onConfirm}>
-        Ja, avsluta
+        {t('tables.end.yes')}
       </button>
       <button type="button" onClick={onCancel}>
-        Avbryt
+        {t('editor.cancel')}
       </button>
     </div>
   )
@@ -249,10 +262,11 @@ function EndQuestion({ table, onConfirm, onCancel }: { table: string; onConfirm(
 // The label on the screen is short; the name a screen reader hears says which table it leads to
 // and that a new tab opens, because these four words repeat once per table and the visible row
 // is what tells them apart for the eye.
-function Way({ href, label, table, primary = false }: { href: string; label: string; table: string; primary?: boolean }) {
+function Way({ href, label, table, primary = false }: { href: string; label: Key; table: string; primary?: boolean }) {
+  const t = useT()
   return (
-    <a href={href} target="_blank" rel="noreferrer" aria-label={`${label} för bordet ${table} (öppnas i ny flik)`} className={primary ? 'byd-editor-primary' : undefined}>
-      {label}
+    <a href={href} target="_blank" rel="noreferrer" aria-label={t('tables.way.aria', { label: t(label), table })} className={primary ? 'byd-editor-primary' : undefined}>
+      {t(label)}
     </a>
   )
 }
@@ -260,17 +274,17 @@ function Way({ href, label, table, primary = false }: { href: string; label: str
 // Who is at the table right now, from the table's own answer: the seats that carry a name, and
 // the observers the server announces to everyone (C8). Before the first snapshot nothing is
 // known, and saying nothing is better than saying "ingen".
-function seated(seats: readonly { id: string; name: string | null }[] | null, observers: readonly { name: string }[]): string {
-  if (!seats) return 'ansluter…'
+function seated(seats: readonly { id: string; name: string | null }[] | null, observers: readonly { name: string }[], t: T): string {
+  if (!seats) return t('tables.connecting')
   const players = seats.filter((s) => s.name !== null).map((s) => s.name)
   const watching = observers.map((o) => o.name)
-  const who = players.length === 0 ? 'ingen sitter än' : `${players.join(', ')} spelar`
-  return watching.length === 0 ? who : `${who} · ${watching.join(', ')} tittar på`
+  const who = players.length === 0 ? t('tables.nobody') : t('tables.playing', { names: players.join(', ') })
+  return watching.length === 0 ? who : t('tables.watching', { who, names: watching.join(', ') })
 }
 
 // When the table last moved, in the words a designer uses about it. A table nobody has played
 // has no moment at all, and saying "inga drag än" is truer than showing when it was started.
-function lastMove(at: string | null): string {
-  if (at === null) return 'inga drag än'
-  return `senaste drag ${new Date(at).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}`
+function lastMove(at: string | null, t: T): string {
+  if (at === null) return t('tables.noMoves')
+  return t('tables.lastMove', { at: new Date(at).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }) })
 }

@@ -1,5 +1,10 @@
 import type { ProjectRow } from './types.js'
 import { cellOf, columnKind } from './sorting.js'
+import { translate, type T } from '../i18n/index.js'
+
+// Without a catalogue of its own this module speaks Swedish, exactly as a surface mounted
+// without a language provider does: the table hands over its own `t` (A4).
+const swedish: T = (key, params) => translate('sv', key, params)
 
 export type FilterState = { query: string; values: Readonly<Record<string, readonly string[]>> }
 
@@ -54,8 +59,8 @@ export function filterRows(
 
 // How much of the deck is on screen. The whole deck is still counted, because a filter hides
 // rows and never removes them: "6 av 24 kort" says both what is shown and what is waiting.
-export function countLabel(shown: number, total: number): string {
-  return `${shown} av ${total} kort`
+export function countLabel(shown: number, total: number, t: T = swedish): string {
+  return t('table.count', { shown, total })
 }
 
 // A chip is a toggle: pressing it adds its value to the column's alternatives, pressing it again

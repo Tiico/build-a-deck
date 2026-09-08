@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ProjectDoc, ProjectRow } from './types.js'
-import { fieldsOf } from './fields.js'
+import { fieldsOf, fieldLabel } from './fields.js'
 import { ASSET_DRAG_TYPE, assetRef, assetUrl, assetsInUse, imageFieldsOf, isAssetRef, ASSET_PREFIX } from './assets.js'
-import { searchSymbols, symbolPreview, type GameSymbol } from './symbols.js'
+import { searchSymbols, symbolName, symbolPreview, type GameSymbol } from './symbols.js'
 import { diffProjects, type RowChange } from '@byd/server/doc'
 import { Summary } from './HistoryPanel.js'
 import type { Cell } from './ProjectClient.js'
@@ -11,6 +11,7 @@ import { keepOrder, nextSort, sortRows, type SortState } from './sorting.js'
 import { countLabel, discreteColumns, filterRows, isFiltering, noFilter, toggleValue, type FilterState } from './filtering.js'
 import { duplicateRows, keepRows, markRows, noSelection, removeRows, selectionLabel, setColumn, toggleRow, type Selection } from './selection.js'
 import { groupColumn, groupOfRow, ruleLabel } from './groups.js'
+import { useT, type T } from '../i18n/index.js'
 
 export type DataTableProps = {
   doc: ProjectDoc
@@ -38,6 +39,7 @@ export type DataTableProps = {
 // The table (B as a tab): one row per card, the template's fields as columns, `antal` last (L4).
 // This is where the designer already lives; a change here reaches every copy of the card.
 export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, assetBase, onUpload, onSymbol, compareWith, onStopCompare }: DataTableProps) {
+  const t = useT()
   const [importError, setImportError] = useState<string | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
   // Which image cell a drag is over.
@@ -46,7 +48,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
   // since it, and which symbol is under the arrow keys.
   const [brace, setBrace] = useState<{ cardRef: string; field: string; at: number; query: string } | null>(null)
   const [choice, setChoice] = useState(0)
-  const matches = brace ? searchSymbols(brace.query, null).slice(0, 8) : []
+  const matches = brace ? searchSymbols(brace.query, null, t).slice(0, 8) : []
   const closeBrace = () => {
     setBrace(null)
     setChoice(0)
@@ -157,7 +159,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
     const reader = new FileReader()
     reader.onload = () => {
       try {
-        onReplaceRows(importCardsCsv(String(reader.result ?? '')))
+        onReplaceRows(importCardsCsv(String(reader.result ?? ''), t))
         setImportError(null)
       } catch (err) {
         setImportError(err instanceof Error ? err.message : String(err))
@@ -170,23 +172,23 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
   return (
     <div className="byd-table-wrap">
       <div className="byd-data-tools">
-        <label>Importera CSV<input type="file" accept=".csv,text/csv,text/tab-separated-values" aria-label="Importera CSV" onChange={(event) => importFile(event.target.files?.[0])} /></label>
-        <a href={csvHref} download={filename}>Exportera CSV</a>
-        <span>Import ersätter korten i tabellen. Spara när resultatet ser rätt ut.</span>
+        <label>{t('table.import')}<input type="file" accept=".csv,text/csv,text/tab-separated-values" aria-label={t('table.import')} onChange={(event) => importFile(event.target.files?.[0])} /></label>
+        <a href={csvHref} download={filename}>{t('table.export')}</a>
+        <span>{t('table.import.note')}</span>
         {importError && <span role="alert">{importError}</span>}
       </div>
       {imageFields.length > 0 && assetBase && (
         // The deck's images (E1), once each: drag one onto a card's cell to use it again.
         <div className="byd-data-images">
-          <span>Bilder i spelet</span>
+          <span>{t('table.images')}</span>
           {images.length === 0 ? (
-            <em>inga ännu — välj en bild i tabellen</em>
+            <em>{t('table.images.none')}</em>
           ) : (
-            <ul aria-label="Bilder i spelet">
+            <ul aria-label={t('table.images')}>
               {images.map(({ hash, cards }) => (
                 <li key={hash} data-asset={hash}>
-                  <img src={assetUrl(assetBase, hash)} alt={`Bild på ${cards.join(', ')}`} draggable onDragStart={(e) => e.dataTransfer.setData(ASSET_DRAG_TYPE, hash)} />
-                  <small>{cards.length} kort</small>
+                  <img src={assetUrl(assetBase, hash)} alt={t('table.image.alt', { cards: cards.join(', ') })} draggable onDragStart={(e) => e.dataTransfer.setData(ASSET_DRAG_TYPE, hash)} />
+                  <small>{t(cards.length === 1 ? 'wall.cards.one' : 'wall.cards.other', { n: cards.length })}</small>
                 </li>
               ))}
             </ul>
@@ -196,11 +198,11 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
       )}
       {compareWith && diff && (
         <p className="byd-data-compare" role="status">
-          Jämför med version {compareWith.rev}
+          {t('table.compare', { rev: compareWith.rev })}
           {compareWith.label ? ` · ${compareWith.label}` : ''}: <Summary diff={diff} />{' '}
           {onStopCompare && (
             <button type="button" onClick={onStopCompare}>
-              Sluta jämföra
+              {t('table.compare.stop')}
             </button>
           )}
         </p>
@@ -209,13 +211,13 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
         <input
           type="search"
           className="byd-data-search"
-          aria-label="Sök i alla fält"
-          placeholder="Sök i alla fält…"
+          aria-label={t('table.search')}
+          placeholder={t('table.search.placeholder')}
           value={filter.query}
           onChange={(event) => changeFilter({ ...filter, query: event.target.value })}
         />
         {discrete.map(({ field, values }) => (
-          <div key={field} className="byd-data-chips" role="group" aria-label={`Filtrera på ${field}`}>
+          <div key={field} className="byd-data-chips" role="group" aria-label={t('table.filterOn', { field })}>
             {values.map((value) => (
               <button
                 key={value}
@@ -230,30 +232,31 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
           </div>
         ))}
         <p className="byd-data-count" aria-live="polite">
-          <span>{countLabel(shown.length, doc.rows.length)}</span>
+          <span>{countLabel(shown.length, doc.rows.length, t)}</span>
           {chosen.length > 0 && (
             <>
               <span aria-hidden="true"> · </span>
-              <span className="byd-data-chosen">{selectionLabel(chosen.length)}</span>
+              <span className="byd-data-chosen">{selectionLabel(chosen.length, t)}</span>
             </>
           )}
           {pinned !== null && (
             <>
               <span aria-hidden="true"> · </span>
-              <span className="byd-data-pinned">nytt kort visas trots filtret</span>
+              <span className="byd-data-pinned">{t('table.pinned')}</span>
             </>
           )}
         </p>
         {isFiltering(filter) && (
           <button type="button" className="byd-data-clear" onClick={() => changeFilter(noFilter)}>
-            Rensa filter
+            {t('table.filter.clear')}
           </button>
         )}
       </div>
-      <p className="byd-data-sort" role="status">{sortLabel(sort)}</p>
+      <p className="byd-data-sort" role="status">{sortLabel(sort, t)}</p>
       {chosen.length > 0 &&
         (confirming ? (
           <RemoveQuestion
+            t={t}
             count={chosen.length}
             onConfirm={() => {
               onReplaceRows(removeRows(doc.rows, chosenIds))
@@ -267,13 +270,13 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
             }}
           />
         ) : (
-          <div className="byd-data-bulk" role="toolbar" aria-label="Markerade kort">
+          <div className="byd-data-bulk" role="toolbar" aria-label={t('table.bulk')}>
             <label>
-              Sätt
-              <select aria-label="Kolumn" value={field} onChange={(event) => setBulkField(event.target.value)}>
+              {t('table.bulk.field')}
+              <select aria-label={t('table.column')} value={field} onChange={(event) => setBulkField(event.target.value)}>
                 {fields.map((f) => (
                   <option key={f} value={f}>
-                    {f}
+                    {fieldLabel(f, t)}
                   </option>
                 ))}
               </select>
@@ -281,7 +284,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
             <input
               type={field === 'antal' ? 'number' : 'text'}
               min={field === 'antal' ? 0 : undefined}
-              aria-label="Värde"
+              aria-label={t('table.value')}
               value={bulkValue}
               onChange={(event) => setBulkValue(event.target.value)}
             />
@@ -293,16 +296,16 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                 setBulkValue('')
               }}
             >
-              Sätt {field} på {chosen.length} kort
+              {t('table.bulk.set', { field, n: chosen.length })}
             </button>
             <button type="button" onClick={() => onReplaceRows(duplicateRows(doc.rows, chosenIds))}>
-              Duplicera {chosen.length} kort
+              {t(chosen.length === 1 ? 'table.bulk.duplicate.one' : 'table.bulk.duplicate.other', { n: chosen.length })}
             </button>
             <button type="button" data-kind="danger" ref={removeRef} onClick={() => setConfirming(true)}>
-              {removeLabel(chosen.length)}
+              {removeLabel(chosen.length, t)}
             </button>
             <button type="button" data-kind="quiet" onClick={() => setSelected(noSelection)}>
-              Avmarkera alla
+              {t('table.bulk.unmark')}
             </button>
           </div>
         ))}
@@ -312,7 +315,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
             <th className="byd-data-check">
               <input
                 type="checkbox"
-                aria-label="Markera alla synliga"
+                aria-label={t('table.selectAllShown')}
                 checked={chosen.length > 0 && chosen.length === shown.length}
                 ref={(el) => {
                   allRef.current = el
@@ -322,11 +325,11 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                 onChange={(event) => setSelected(markRows(selected, shown.map((row) => row.id), event.target.checked))}
               />
             </th>
-            <SortableHeader field="id" sort={sort} onSort={setSort} />
+            <SortableHeader field="id" label="id" sort={sort} onSort={setSort} />
             {fields.map((f) => (
-              <SortableHeader key={f} field={f} sort={sort} onSort={setSort} />
+              <SortableHeader key={f} field={f} label={fieldLabel(f, t)} sort={sort} onSort={setSort} />
             ))}
-            {grouping && <th>grupp</th>}
+            {grouping && <th>{t('table.group')}</th>}
             <th></th>
           </tr>
         </thead>
@@ -341,7 +344,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                   type="checkbox"
                   checked={selected.has(cardRef)}
                   onChange={() => setSelected(toggleRow(selected, cardRef))}
-                  aria-label={`markera ${cardRef}`}
+                  aria-label={t('table.mark', { cardRef })}
                 />
               </td>
               <td className="byd-data-id">{cardRef}</td>
@@ -351,7 +354,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                     <div
                       className="byd-data-drop"
                       role="group"
-                      aria-label={`Bild för ${cardRef}`}
+                      aria-label={t('table.imageFor', { cardRef })}
                       data-image-cell={cardRef}
                       data-over={over === `${cardRef}:${f}` ? 'true' : undefined}
                       onDragOver={(e) => {
@@ -367,13 +370,13 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                         else void upload(cardRef, f, e.dataTransfer.files?.[0])
                       }}
                     >
-                      {isAssetRef(row[f]) ? <img src={assetUrl(assetBase, String(row[f]).slice(ASSET_PREFIX.length))} alt={`${cardRef} ${f}`} /> : <span>släpp en bild här</span>}
+                      {isAssetRef(row[f]) ? <img src={assetUrl(assetBase, String(row[f]).slice(ASSET_PREFIX.length))} alt={`${cardRef} ${f}`} /> : <span>{t('table.image.drop')}</span>}
                       <label className="byd-data-file">
-                        {isAssetRef(row[f]) ? 'Byt' : 'Välj'}
-                        <input type="file" accept="image/*" aria-label={`Välj bild för ${cardRef}`} onChange={(e) => void upload(cardRef, f, e.target.files?.[0])} />
+                        {isAssetRef(row[f]) ? t('table.image.replace') : t('table.image.choose')}
+                        <input type="file" accept="image/*" aria-label={t('table.image.chooseFor', { cardRef })} onChange={(e) => void upload(cardRef, f, e.target.files?.[0])} />
                       </label>
                       {isAssetRef(row[f]) && (
-                        <button type="button" aria-label={`Ta bort bild för ${cardRef}`} onClick={() => onCell(cardRef, f, '')}>
+                        <button type="button" aria-label={t('table.image.removeFor', { cardRef })} onClick={() => onCell(cardRef, f, '')}>
                           ×
                         </button>
                       )}
@@ -413,20 +416,20 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                   {brace?.cardRef === cardRef && brace.field === f && matches.length > 0 && (
                     // The library where the cursor stands (E4): the same set the Symboler tab
                     // fills, reached without leaving the sentence being written.
-                    <div className="byd-data-symbols" role="listbox" aria-label="Symboler">
+                    <div className="byd-data-symbols" role="listbox" aria-label={t('table.symbols')}>
                       {matches.map((sym, i) => (
                         <button
                           key={sym.id}
                           type="button"
                           role="option"
-                          data-symbol={sym.name}
+                          data-symbol={symbolName(sym, t)}
                           aria-selected={i === choice}
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => takeSymbol(sym)}
                         >
                           <img src={symbolPreview(sym)} alt="" />
-                          <span>{sym.name}</span>
-                          <small>{sym.category}</small>
+                          <span>{symbolName(sym, t)}</span>
+                          <small>{t(sym.category)}</small>
                         </button>
                       ))}
                     </div>
@@ -436,7 +439,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
               )}
               {grouping && <GroupCell doc={doc} column={grouping} cardRef={cardRef} row={row} />}
               <td>
-                <button type="button" onClick={() => onRemoveRow(cardRef)} aria-label={`ta bort ${cardRef}`}>
+                <button type="button" onClick={() => onRemoveRow(cardRef)} aria-label={t('table.removeRow', { cardRef })}>
                   ×
                 </button>
               </td>
@@ -445,13 +448,13 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
         </tbody>
       </table>
       {/* A deck with no cards at all is not a filter's doing: then the button below is the answer. */}
-      {shown.length === 0 && isFiltering(filter) && <p className="byd-data-empty">Inga kort matchar filtret.</p>}
+      {shown.length === 0 && isFiltering(filter) && <p className="byd-data-empty">{t('table.empty')}</p>}
       <button type="button" className="byd-data-add" onClick={() => {
           const cardRef = nextRef()
           onAddRow(cardRef)
           setPinned(isFiltering(filter) ? cardRef : null)
         }}>
-        + Nytt kort
+        {t('table.addCard')}
       </button>
     </div>
   )
@@ -460,22 +463,23 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
 // Which group a row falls into (#13). A card whose column is empty takes the base look (L3), and
 // the cell says exactly that rather than leaving the eye to guess at a blank.
 function GroupCell({ doc, column, cardRef, row }: { doc: ProjectDoc; column: string; cardRef: string; row: ProjectRow['fields'] }) {
+  const t = useT()
   const group = groupOfRow(doc, { id: cardRef, fields: row })
   return (
     <td className="byd-data-group" data-group-of={cardRef}>
-      {group === null ? 'Bas' : ruleLabel(column, group)}
+      {group === null ? t('table.group.base') : ruleLabel(column, group)}
     </td>
   )
 }
 
 // One header per column (variant A): a real button, so the tab order and Enter/Space come for
 // free, and `aria-sort` on the `th` for the state. The arrow is the same fact for the eye.
-function SortableHeader({ field, sort, onSort }: { field: string; sort: SortState | null; onSort(next: SortState | null): void }) {
+function SortableHeader({ field, label, sort, onSort }: { field: string; label: string; sort: SortState | null; onSort(next: SortState | null): void }) {
   const active = sort?.field === field ? sort.dir : null
   return (
     <th aria-sort={active ?? 'none'}>
       <button type="button" data-active={active !== null} onClick={() => onSort(nextSort(sort, field))}>
-        {field} <span aria-hidden="true">{active === 'ascending' ? '↑' : active === 'descending' ? '↓' : '↕'}</span>
+        {label} <span aria-hidden="true">{active === 'ascending' ? '↑' : active === 'descending' ? '↓' : '↕'}</span>
       </button>
     </th>
   )
@@ -484,22 +488,22 @@ function SortableHeader({ field, sort, onSort }: { field: string; sort: SortStat
 // The question a delete asks first (#17). It takes the focus so it is answered where it is read,
 // gives it back on Escape, and says how many cards it is about in both its name and its sentence
 // — a designer must never have to count the ticks to know what "Ja" means.
-function RemoveQuestion({ count, onConfirm, onCancel }: { count: number; onConfirm(): void; onCancel(): void }) {
+function RemoveQuestion({ count, t, onConfirm, onCancel }: { count: number; t: T; onConfirm(): void; onCancel(): void }) {
   return (
     <div
       className="byd-data-bulk"
       role="alertdialog"
-      aria-label={removeLabel(count)}
+      aria-label={removeLabel(count, t)}
       onKeyDown={(event) => {
         if (event.key === 'Escape') onCancel()
       }}
     >
-      <p>{removeLabel(count)} ur leken?</p>
+      <p>{t(count === 1 ? 'table.remove.question.one' : 'table.remove.question.other', { n: count })}</p>
       <button type="button" data-kind="danger" autoFocus onClick={onConfirm}>
-        Ja, ta bort
+        {t('table.remove.yes')}
       </button>
       <button type="button" onClick={onCancel}>
-        Avbryt
+        {t('editor.cancel')}
       </button>
     </div>
   )
@@ -507,13 +511,13 @@ function RemoveQuestion({ count, onConfirm, onCancel }: { count: number; onConfi
 
 // What a delete is about, in cards. The same words name the button and the question it opens, so
 // pressing one and reading the other is the same sentence twice.
-function removeLabel(count: number): string {
-  return `Ta bort ${count} kort`
+function removeLabel(count: number, t: T): string {
+  return t(count === 1 ? 'table.bulk.remove.one' : 'table.bulk.remove.other', { n: count })
 }
 
-function sortLabel(sort: SortState | null): string {
-  if (!sort) return 'Osorterad: kortens ordning i projektet.'
-  return `Sorterad på ${sort.field}, ${sort.dir === 'ascending' ? 'stigande' : 'fallande'}.`
+function sortLabel(sort: SortState | null, t: T): string {
+  if (!sort) return t('table.sort.none')
+  return t(sort.dir === 'ascending' ? 'table.sort.ascending' : 'table.sort.descending', { field: sort.field })
 }
 
 // A field that moved between the two versions being held against each other (B4).

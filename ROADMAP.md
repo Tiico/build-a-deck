@@ -94,9 +94,10 @@ Målet är att en grupp kan spela vilket kortspel som helst utan att sakna någo
   Registryt och tryckprofilerna är byggda för det, men bara ett kort finns.
   Frågan är om release är "kortspel" eller "kort- och brädspel"; A1 talar för kort först.
 
-## Fas 2 — Editorn färdig
+## Fas 2 — Editorn färdig ✅
 
 Målet är att designern aldrig behöver ett annat verktyg för att göra leken.
+Klar 2026-09-08: varje punkt nedan är byggd, och besluten bakom dem står i DESIGN-BESLUT.
 
 - ✅ Setup-editor: recept som start, bordet som finjustering — zoner, platser, händer, högar, räknare och egna zoner i editorns flik "Bord" (B5, K2).
 - ✅ Bilder: bildceller i editorns tabell, spelets bilder en gång var, innehållsadresserad lagring i R2 via `/assets` (E1, DRIFT §4).
@@ -106,7 +107,7 @@ Målet är att designern aldrig behöver ett annat verktyg för att göra leken.
 - ✅ Regelboken: versionerat dokument med referenser till zoner och kort, skrivet i fliken "Regler", läst vid bordet och på telefonen, och tryckt som häfte i A5 genom samma renderare som korten (B7).
 - ✅ Samredigering: en aktör per projekt med en redigeringslogg, live över `/projects/:id/edit`, med närvaro, roller, inbjudningar och återuppkoppling (D3).
 - ✅ Typsnitt: familjen väljs i mallens egenskapspanel, filen laddas upp som projektets asset och pinnas av versionen, licensen anges bredvid familjen och följer med till trycket, och en familj utan fil är ett varsel i den fysiska kontrollen (B3, E5) — licensfrågan i (I) står kvar, verktyget levererar inga egna fontfiler.
-- ⬜ Flerspråkighet i verktyget: i18n-infrastruktur, engelska och svenska (A4).
+- ✅ Flerspråkighet i verktyget: en katalog per språk och yta, en språkväljare, och hela editorn, bordet, telefonen, kontot och guiden på svenska eller engelska; mejlen och regelhäftets enda verktygsrubrik följer med, och ett spel som skapas på engelska får engelska zoner, räknare och kolumnnamn (A4).
 - ✅ "Mina spel" med senast spelat, starta bord direkt från kortet och ta bort spel med hela dess historia (G1).
 
 ## Fas 3 — Konton, betalning och data

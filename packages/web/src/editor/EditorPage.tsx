@@ -15,6 +15,7 @@ import type { ProjectDoc } from '@byd/server'
 import { useTableClient } from '../table/useTableClient.js'
 import type { ProjectClient, Textures } from './ProjectClient.js'
 import { loginUrl } from '../account/api.js'
+import { useT } from '../i18n/index.js'
 import './editor.css'
 
 // /editor?project=…&server=http://…
@@ -23,6 +24,7 @@ import './editor.css'
 export type EditorPageProps = { onNavigate?(url: string): void }
 
 export function EditorPage({ onNavigate = (url) => location.assign(url) }: EditorPageProps = {}) {
+  const t = useT()
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const projectId = params.get('project')
   const http = params.get('server') ?? location.origin
@@ -73,21 +75,21 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
     }
   }, [client, table?.id, table?.version])
 
-  if (!projectId) return <p>Inget projekt angivet.</p>
+  if (!projectId) return <p>{t('editor.noProject')}</p>
   if (error === 'not logged in') {
     // Not logged in (G1): to the login card and back here after.
     onNavigate(loginUrl(location.pathname + location.search, params.get('server')))
-    return <p>Loggar in…</p>
+    return <p>{t('editor.loggingIn')}</p>
   }
   if (error) return <p role="alert">{error}</p>
-  if (!client) return <p>Laddar projektet…</p>
+  if (!client) return <p>{t('editor.loading')}</p>
   const doc = client.doc
 
   const save = async () => {
     setSaving(true)
     const result = await client.save()
     setSaving(false)
-    setNotice(result.ok ? null : result.reason === 'conflict' ? 'Någon annan har sparat sedan du laddade. Ladda om och gör om ändringen.' : result.reason)
+    setNotice(result.ok ? null : result.reason === 'conflict' ? t('editor.conflict') : result.reason)
   }
   const startTable = async () => {
     try {
@@ -155,7 +157,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
           client.removeElement(face, id, group)
           setElement(null)
         }}
-        onFontFile={(file) => client.useFont(file)}
+        onFontFile={(file) => client.useFont(file, t)}
         onFontLicence={(family, licence) => client.setFontLicence(family, licence)}
         onRemoveFont={(family) => client.removeFont(family)}
         group={group}
@@ -171,8 +173,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
       <DataTable
         doc={doc}
         assetBase={http}
-        onUpload={(file) => client.uploadAsset(file)}
-        onSymbol={(symbol) => client.useSymbol(symbol)}
+        onUpload={(file) => client.uploadAsset(file, t)}
+        onSymbol={(symbol) => client.useSymbol(symbol, undefined, t)}
         compareWith={compare ?? undefined}
         onStopCompare={() => setCompare(null)}
         selectedRow={row}
@@ -210,69 +212,69 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
       <header>
         <strong>{doc.name}</strong>
         <button type="button" className="byd-editor-rev" aria-expanded={historyOpen} onClick={() => setHistoryOpen((on) => !on)}>
-          rev {client.rev}
+          {t('editor.rev', { n: client.rev })}
         </button>
         <EditorTabs mode={mode} onSelect={setMode} />
         {/* The people in the header are the door to who has the game at all (D3): who is here
             now and who may be here is one question. */}
-        <button type="button" className="byd-editor-here" data-here aria-label="Vilka som har spelet" aria-expanded={shareOpen} onClick={() => setShareOpen((on) => !on)}>
+        <button type="button" className="byd-editor-here" data-here aria-label={t('share.title')} aria-expanded={shareOpen} onClick={() => setShareOpen((on) => !on)}>
           {client.here.map((p) => (
             <i key={p.id} title={p.name} style={{ ['--who' as string]: colourOf(p.name) }}>
               {p.name.slice(0, 1).toUpperCase()}
             </i>
           ))}
-          {client.here.length > 1 && <b>{client.here.length} inne</b>}
+          {client.here.length > 1 && <b>{t('editor.here.count', { n: client.here.length })}</b>}
         </button>
         <span className="byd-editor-spacer" />
         {notice && <span role="status" className="byd-editor-notice">{notice}</span>}
         <button type="button" onClick={() => void save()} disabled={!client.dirty || saving}>
-          {saving ? 'Sparar…' : 'Spara'}
+          {saving ? t('editor.saving') : t('editor.save')}
         </button>
         {table && (
           <button type="button" onClick={() => void startTable()}>
-            Nytt bord
+            {t('editor.newTable')}
           </button>
         )}
         <button type="button" className="byd-editor-primary" onClick={() => void updateTable()}>
-          Uppdatera bordet
+          {t('editor.updateTable')}
         </button>
         <TableMenu client={client} server={params.get('server')} onShowTables={() => setMode('tables')} />
       </header>
       {table && (
         <div className="byd-editor-table-link" role="status" {...(lost !== null ? { 'data-lost': '' } : {})}>
-          {table.kind === 'new' ? 'Nytt bord startat' : 'Bordet uppdaterat'} på {table.version} —{' '}
+          {t(table.kind === 'new' ? 'editor.table.started' : 'editor.table.refreshed', { version: table.version })}{' '}
           {lost !== null ? (
             <>
-              <span className="byd-editor-warning">{lost} kort kunde inte renderas. Bordet står kvar på sin gamla version.</span>{' '}
+              <span className="byd-editor-warning">{t('editor.table.lost', { n: lost })}</span>{' '}
               <button type="button" onClick={() => void updateTable(true)}>
-                Försök igen
+                {t('editor.table.retry')}
               </button>
             </>
           ) : preparing ? (
-            <span className="byd-editor-rendering">renderar kort {preparing.done}/{preparing.total}</span>
+            <span className="byd-editor-rendering">{t('editor.table.rendering', { done: preparing.done, total: preparing.total })}</span>
           ) : textures && textures.done + textures.failed.length >= textures.total ? (
             <a href={tvUrl(table.id, params.get('server'), table.hostKey)} target="_blank" rel="noreferrer">
-              öppna bordet
+              {t('editor.table.open')}
             </a>
           ) : (
-            <span className="byd-editor-rendering">renderar kort {textures?.done ?? 0}/{textures?.total ?? '…'}</span>
+            <span className="byd-editor-rendering">{t('editor.table.rendering', { done: textures?.done ?? 0, total: textures?.total ?? '…' })}</span>
           )}
-          {textures && textures.failed.length > 0 && <span className="byd-editor-warning"> · {textures.failed.length} kort kunde inte renderas</span>}
+          {textures && textures.failed.length > 0 && <span className="byd-editor-warning"> · {t('editor.table.failed', { n: textures.failed.length })}</span>}
           <span className="byd-editor-room">
-            {' '}· rumskod <strong data-room-code>{table.code}</strong>{' '}
-            <button type="button" onClick={() => void rotate()}>Ny kod</button>
+            {' '}· {t('editor.table.roomCode')} <strong data-room-code>{table.code}</strong>{' '}
+            <button type="button" onClick={() => void rotate()}>{t('editor.table.newCode')}</button>
           </span>
           <HostSeats client={client} sessionId={table.id} hostKey={table.hostKey} ws={wsUrl} onNotice={setNotice} />
         </div>
       )}
       {!client.connected && (
         <p className="byd-editor-offline" role="status" data-offline>
-          Ingen förbindelse med spelet. Det du skriver stannar här tills linjen är tillbaka.
+          {t('editor.offline')}
         </p>
       )}
       {!client.mayEdit && (
         <p className="byd-editor-readonly" role="status" data-role-note>
-          Du är {client.role === 'tester' ? 'testledare' : 'betraktare'} här: du kan {client.role === 'tester' ? 'starta bord och läsa spelet' : 'läsa spelet'}, men inte ändra det.
+          {t(client.role === 'tester' ? 'editor.role.tester' : 'editor.role.viewer')}
         </p>
       )}
       {shareOpen && projectId && <SharePanel http={http} project={projectId} here={client.here} onClose={() => setShareOpen(false)} />}
@@ -307,18 +309,19 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
 // The seats as the lobby sees them (DRIFT §9), each taken one with a kick: the host's control
 // over who is at the table, from the screen the host already has open.
 function HostSeats({ client, sessionId, hostKey, ws, onNotice }: { client: ProjectClient; sessionId: string; hostKey: string; ws: string; onNotice(text: string | null): void }) {
+  const t = useT()
   const { view } = useTableClient({ url: ws, sessionId, seat: null, lobby: true })
   if (!view) return null
   const taken = view.seats.filter((s) => s.name !== null)
   if (taken.length === 0) return null
   return (
     <span className="byd-editor-seats">
-      {' '}· vid bordet:{' '}
+      {' '}· {t('editor.seats.at')}{' '}
       {taken.map((s) => (
         <span key={s.id} data-host-seat={s.id}>
           {s.name}{' '}
           <button type="button" onClick={() => void client.kick(sessionId, hostKey, s.id).catch((err: unknown) => onNotice(err instanceof Error ? err.message : String(err)))}>
-            Sparka {s.name}
+            {t('editor.seats.kick', { name: s.name ?? '' })}
           </button>{' '}
         </span>
       ))}

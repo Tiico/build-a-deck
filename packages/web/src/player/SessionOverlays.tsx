@@ -5,11 +5,11 @@ import { whoDecides } from '../table/rewind.js'
 import { FlagSheet, EndSheet } from './SessionSheets.js'
 import { Survey } from './Survey.js'
 import { submitSurvey } from './surveyApi.js'
+import { useT, type T } from '../i18n/index.js'
 
 // Why the server would not have us (DRIFT §9), in words for the screen.
-export function refusedText(reason: string): string {
-  if (reason === 'kicked') return 'Värden har tagit bort dig från bordet.'
-  return 'Länken gäller inte längre. Gå med igen med rumskoden.'
+export function refusedText(reason: string, t: T): string {
+  return t(reason === 'kicked' ? 'session.refused.kicked' : 'session.refused.gone')
 }
 
 // What a seat's screen carries beside the hand, on the phone and online alike (C2): the toast,
@@ -55,6 +55,7 @@ export type SessionOverlaysProps = {
 }
 
 export function SessionOverlays({ client, view, seat, name, http, sessionId, sheet, onSheet, toast, onToast, version, saveUrl }: SessionOverlaysProps) {
+  const t = useT()
   const proposal = view.rewind
   const settle = (v: 'rewind.confirm' | 'rewind.reject') => {
     if (proposal) void client.send({ v, proposal: proposal.id })
@@ -67,14 +68,14 @@ export function SessionOverlays({ client, view, seat, name, http, sessionId, she
           onFlag={(note) => {
             void client.send({ v: 'flag', ...(note ? { note } : {}) })
             onSheet(null)
-            onToast('Ögonblicket är flaggat')
+            onToast(t('session.flagged'))
           }}
           onClose={() => onSheet(null)}
         />
       )}
       {sheet === 'end' && (
         <EndSheet
-          version={version ?? 'den här versionen'}
+          version={version ?? t('session.version.this')}
           onEnd={() => {
             void client.send({ v: 'session.end' })
             onSheet(null)
@@ -85,19 +86,19 @@ export function SessionOverlays({ client, view, seat, name, http, sessionId, she
       {view.ended && <Survey who={name} version={version ?? '…'} saveUrl={saveUrl} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat, answers })} />}
       {proposal && proposal.by === seat && (
         <div className="byd-rewind-mine" data-rewind-mine>
-          <span>Du föreslår att spola tillbaka. Bordet visar hur det såg ut; {whoDecides(view, proposal)} avgör.</span>
-          <button onClick={() => settle('rewind.reject')}>Dra tillbaka förslaget</button>
+          <span>{t('rewind.mine', { who: whoDecides(view, proposal, t) })}</span>
+          <button onClick={() => settle('rewind.reject')}>{t('rewind.withdraw')}</button>
         </div>
       )}
       {proposal && proposal.by !== seat && (
         <div className="byd-rewind-ask" data-rewind-ask>
-          <h1>{view.seats.find((s) => s.id === proposal.by)?.name ?? 'Bordet'} vill spola tillbaka</h1>
-          <p>Bordet visar hur det såg ut. Draghögen blandas om.</p>
+          <h1>{t('rewind.ask.title', { who: view.seats.find((s) => s.id === proposal.by)?.name ?? t('play.table') })}</h1>
+          <p>{t('rewind.ask.body')}</p>
           <button data-kind="ok" onClick={() => settle('rewind.confirm')}>
-            Godkänn
+            {t('rewind.approve')}
           </button>
           <button data-kind="no" onClick={() => settle('rewind.reject')}>
-            Neka
+            {t('rewind.decline')}
           </button>
         </div>
       )}
@@ -107,6 +108,7 @@ export function SessionOverlays({ client, view, seat, name, http, sessionId, she
 
 // The three buttons every seat has: undo (B, C), flag (G3), end (C9).
 export function SessionButtons({ client, view, onSheet }: { client: TableClient; view: Snapshot; onSheet(sheet: 'flag' | 'end'): void }) {
+  const t = useT()
   const tapUndo = () => {
     if (!view.undo) return
     void client.send(view.undo.contested ? { v: 'rewind.propose', toSeq: view.undo.toSeq } : { v: 'undo.self' })
@@ -114,13 +116,13 @@ export function SessionButtons({ client, view, onSheet }: { client: TableClient;
   return (
     <>
       <button className="byd-undo" disabled={!view.undo || !!view.rewind || view.ended} onClick={tapUndo}>
-        ↶ Ångra
+        {t('session.undo')}
       </button>
       <button className="byd-flag" disabled={view.ended} onClick={() => onSheet('flag')}>
-        ⚑ Flagga
+        {t('session.flag')}
       </button>
       <button className="byd-end" disabled={view.ended} onClick={() => onSheet('end')}>
-        Avsluta
+        {t('session.end')}
       </button>
     </>
   )

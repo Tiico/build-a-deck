@@ -1,9 +1,10 @@
 import type { FaceTemplate } from '@byd/template'
+import type { Key, T } from '../i18n/index.js'
 
 // The frame gallery (L6): a few looks that bind whatever fields the game has. Elements for
 // fields the game lacks are left out, so a game without cost has no cost circle.
 export type Field = { key: string; label: string; kind: 'text' | 'number' | 'image' }
-export type Frame = { id: string; name: string; blurb: string; front(fields: Field[]): FaceTemplate; back: FaceTemplate }
+export type Frame = { id: string; name: Key; front(fields: Field[]): FaceTemplate; back: FaceTemplate }
 
 const has = (fields: Field[], key: string) => fields.some((f) => f.key === key)
 const plainBack = (fill: string, inner?: string): FaceTemplate => ({
@@ -16,8 +17,7 @@ const plainBack = (fill: string, inner?: string): FaceTemplate => ({
 
 const classic: Frame = {
     id: 'classic',
-    name: 'Klassisk',
-    blurb: 'Konstyta upptill, titel och text under, kostnad i hörnet.',
+    name: 'wizard.frame.classic',
     back: plainBack('#2f4068', '#3a4d7a'),
     front: (fields) => ({
       base: [
@@ -44,8 +44,7 @@ export const FRAMES: Frame[] = [
   classic,
   {
     id: 'minimal',
-    name: 'Minimal',
-    blurb: 'Bara text på vit botten. Snabbast att läsa vid bordet.',
+    name: 'wizard.frame.minimal',
     back: plainBack('#111111'),
     front: (fields) => ({
       base: [
@@ -61,8 +60,7 @@ export const FRAMES: Frame[] = [
   },
   {
     id: 'dark',
-    name: 'Mörk',
-    blurb: 'Mörk ram, ljus text, konstyta som fyller halva kortet.',
+    name: 'wizard.frame.dark',
     back: plainBack('#0f1115', '#1b1d23'),
     front: (fields) => ({
       base: [
@@ -80,9 +78,11 @@ export const FRAMES: Frame[] = [
   },
 ]
 
-export const DEFAULT_FIELDS: Field[] = [
-  { key: 'title', label: 'Titel', kind: 'text' },
-  { key: 'cost', label: 'Kostnad', kind: 'number' },
-  { key: 'body', label: 'Text', kind: 'text' },
-  { key: 'art', label: 'Illustration', kind: 'image' },
+// The fields every new game starts with. The keys are the document's and never move; the labels
+// are the tool's suggestion in the designer's own language, and become theirs to rename.
+export const defaultFields = (t: T): Field[] => [
+  { key: 'title', label: t('wizard.field.default.title'), kind: 'text' },
+  { key: 'cost', label: t('wizard.field.default.cost'), kind: 'number' },
+  { key: 'body', label: t('wizard.field.default.body'), kind: 'text' },
+  { key: 'art', label: t('wizard.field.default.art'), kind: 'image' },
 ]

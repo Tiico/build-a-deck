@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { LoginCard } from './LoginCard.js'
 import { hue } from '../table/hue.js'
 import { logout, myPlayed, myProjects, removeProject, startTable, whoAmI, type Played, type ProjectSummary } from './api.js'
 import { seatColor } from '../table/seatColor.js'
+import { LanguagePicker, useLang, useT, type Lang, type T } from '../i18n/index.js'
 import './account.css'
 
 // /  — "Mina spel" (G1, prototype A): the account's projects as a grid of game cards, and a new
@@ -10,6 +11,8 @@ import './account.css'
 export type HomePageProps = { onNavigate?(url: string): void }
 
 export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePageProps) {
+  const t = useT()
+  const { lang } = useLang()
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const server = params.get('server')
   const http = server ?? location.origin
@@ -41,7 +44,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   }
   const justSaved = claimed ? played?.find((p) => p.session === claimed) : undefined
   if (error) return <p role="alert">{error}</p>
-  if (email === undefined) return <p>Laddar…</p>
+  if (email === undefined) return <p>{t('home.loading')}</p>
   if (email === null) {
     return (
       <div className="byd-account" data-page="home">
@@ -54,11 +57,16 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
       <div className="byd-home">
         {justSaved && (
           <div className="byd-home-claimed" role="status">
-            <span>Sparat: du spelade <b>{justSaved.game ?? 'ett bord'}</b> som <b>{justSaved.name}</b>. Enkäten och flaggorna hör nu till ditt konto.</span>
+            <span>
+              {marked(t('home.claimed'), {
+                game: <b>{justSaved.game ?? t('home.claimed.some-table')}</b>,
+                name: <b>{justSaved.name}</b>,
+              })}
+            </span>
           </div>
         )}
         <header>
-          <h1>Mina spel</h1>
+          <h1>{t('home.title')}</h1>
           <span className="byd-who">
             {email} ·{' '}
             <a
@@ -68,8 +76,13 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                 void logout(http).then(() => setEmail(null))
               }}
             >
-              logga ut
-            </a>
+              {t('home.logout')}
+            </a>{' '}
+            ·{' '}
+            <label className="byd-lang">
+              {t('account.language')}
+              <LanguagePicker />
+            </label>
           </span>
         </header>
         {notice && (
@@ -79,31 +92,29 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
         )}
         {started && (
           <div className="byd-home-started" role="status">
-            Bordet är igång. Rumskoden är <strong>{started.code}</strong>.{' '}
+            {marked(t('home.started'), { code: <strong>{started.code}</strong> })}{' '}
             <a href={tableUrl(started.id, started.hostKey, server)} target="_blank" rel="noreferrer">
-              Öppna bordet
+              {t('home.started.open')}
             </a>
           </div>
         )}
         {asking && (
-          <div className="byd-home-asking" role="alertdialog" aria-label="Ta bort spelet">
-            <span>
-              Ta bort <b>{asking.name}</b>? Hela historien följer med, och det går inte att ångra.
-            </span>
-            <button type="button" onClick={() => setAsking(null)}>Behåll</button>
+          <div className="byd-home-asking" role="alertdialog" aria-label={t('home.remove.title')}>
+            <span>{marked(t('home.remove.ask'), { name: <b>{asking.name}</b> })}</span>
+            <button type="button" onClick={() => setAsking(null)}>{t('home.remove.keep')}</button>
             <button
               type="button"
               className="byd-home-remove"
               onClick={() => {
                 const gone = asking
                 setAsking(null)
-                void removeProject(http, gone.id).then(
+                void removeProject(http, gone.id, t).then(
                   () => setProjects((list) => (list ?? []).filter((x) => x.id !== gone.id)),
                   (err: unknown) => setNotice(err instanceof Error ? err.message : String(err)),
                 )
               }}
             >
-              Ta bort
+              {t('home.remove.confirm')}
             </button>
           </div>
         )}
@@ -124,27 +135,27 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                   ))}
                 </div>
                 <strong>{p.name}</strong>
-                <span className="byd-muted">rev {p.rev} · {playedLine(p)}</span>
+                <span className="byd-muted">{t('home.card.line', { rev: p.rev, played: playedLine(t, lang, p) })}</span>
               </a>
-              <button type="button" className="byd-home-more" aria-label={`Fler val för ${p.name}`} aria-expanded={menu === p.id} onClick={() => setMenu(menu === p.id ? null : p.id)}>
+              <button type="button" className="byd-home-more" aria-label={t('home.menu.more', { name: p.name })} aria-expanded={menu === p.id} onClick={() => setMenu(menu === p.id ? null : p.id)}>
                 ⋯
               </button>
               {menu === p.id && (
-                <div className="byd-home-menu" role="group" aria-label={`Val för ${p.name}`}>
+                <div className="byd-home-menu" role="group" aria-label={t('home.menu.label', { name: p.name })}>
                   <button
                     type="button"
                     onClick={() => {
                       setMenu(null)
-                      void startTable(http, p.id).then(
-                        (t) => {
-                          setStarted({ project: p.id, ...t })
+                      void startTable(http, p.id, t).then(
+                        (table) => {
+                          setStarted({ project: p.id, ...table })
                           setProjects((list) => (list ?? []).map((x) => (x.id === p.id ? { ...x, tables: (x.tables ?? 0) + 1 } : x)))
                         },
                         (err: unknown) => setNotice(err instanceof Error ? err.message : String(err)),
                       )
                     }}
                   >
-                    Starta bord
+                    {t('home.menu.start')}
                   </button>
                   <button
                     type="button"
@@ -153,35 +164,35 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                       setAsking(p)
                     }}
                   >
-                    Ta bort spelet
+                    {t('home.menu.remove')}
                   </button>
                 </div>
               )}
             </div>
           ))}
           <a className="byd-home-game" data-new href={`/new?${suffix(new URLSearchParams())}`} onClick={(e) => { e.preventDefault(); onNavigate(`/new?${suffix(new URLSearchParams())}`) }}>
-            ＋ Nytt spel
+            {t('home.new')}
           </a>
         </div>
         {played && played.length > 0 && (
           <>
-            <h2 className="byd-home-h2">Bord du spelat vid</h2>
+            <h2 className="byd-home-h2">{t('home.played.title')}</h2>
             <div className="byd-home-grid" data-played-tables>
               {played.map((p) => (
                 <div key={p.session} className="byd-home-game byd-home-played" data-played={p.session}>
                   <div className="byd-home-played-top">
                     <i className="byd-home-seat" style={{ ['--seat' as string]: p.seat === null ? '#7d8597' : seatColor(seatIndexOf(p.seat)) }}>{p.seat ?? '👁'}</i>
-                    <span className="byd-muted">{when(p.at)}</span>
+                    <span className="byd-muted">{when(t, lang, p.at)}</span>
                   </div>
-                  <strong>{p.game ?? 'Ett bord'}</strong>
-                  <span className="byd-muted">{p.version} · du var {p.name}</span>
+                  <strong>{p.game ?? t('home.played.some-table')}</strong>
+                  <span className="byd-muted">{t('home.played.you', { version: p.version, name: p.name })}</span>
                   <span className="byd-home-facts">
-                    {p.ended ? (p.surveyed ? 'enkät besvarad' : 'enkät obesvarad') : 'pågår'}
-                    {p.flags > 0 && ` · ${p.flags} flaggade`}
+                    {p.ended ? (p.surveyed ? t('home.played.surveyed') : t('home.played.unsurveyed')) : t('home.played.running')}
+                    {p.flags > 0 && ` · ${t('home.played.flags', { n: p.flags })}`}
                   </span>
                   {p.code && (
                     <a className="byd-home-action" href={`/join?${suffix(new URLSearchParams({ code: p.code }))}`} onClick={(e) => { e.preventDefault(); onNavigate(`/join?${suffix(new URLSearchParams({ code: p.code ?? '' }))}`) }}>
-                      Tillbaka till bordet
+                      {t('home.played.back')}
                     </a>
                   )}
                 </div>
@@ -194,13 +205,23 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   )
 }
 
+// A sentence stays one sentence in the catalogue even when part of it is the reader's own — a
+// game, a person, a room code. The catalogue holds the whole message; only the parts it names
+// are handed over as nodes, so no language has to be glued together from halves.
+function marked(message: string, parts: Record<string, ReactNode>): ReactNode[] {
+  return message.split(/(\{\w+\})/).map((piece, i) => {
+    const name = /^\{(\w+)\}$/.exec(piece)?.[1]
+    return name && name in parts ? <Fragment key={i}>{parts[name]}</Fragment> : piece
+  })
+}
+
 // What a game says about itself before it is opened (G1): how many tables it has, and when one
 // was last played at. A game nobody has sat down to says so plainly.
-function playedLine(p: ProjectSummary): string {
+function playedLine(t: T, lang: Lang, p: ProjectSummary): string {
   const tables = p.tables ?? 0
-  if (tables === 0) return 'aldrig spelat'
-  const at = p.lastPlayed ? `senast ${when(p.lastPlayed)}` : 'inget spelat än'
-  return `${tables} ${tables === 1 ? 'bord' : 'bord'} · ${at}`
+  if (tables === 0) return t('home.card.never')
+  const at = p.lastPlayed ? t('home.card.last', { when: when(t, lang, p.lastPlayed) }) : t('home.card.nothing')
+  return t(tables === 1 ? 'home.card.tables.one' : 'home.card.tables.other', { n: tables, at })
 }
 
 // The table's own screen, opened with the host key it was just handed (DRIFT §9).
@@ -212,11 +233,12 @@ function tableUrl(session: string, hostKey: string, server: string | null): stri
 
 // Seats are lettered from A; the colour follows the letter, as it does on the table.
 const seatIndexOf = (seat: string): number => Math.max(0, seat.charCodeAt(0) - 65)
-// When a table was sat at, in a word or two.
-function when(iso: string): string {
+// When a table was sat at, in a word or two. A date older than a week is written the way the
+// reader's own language writes dates.
+function when(t: T, lang: Lang, iso: string): string {
   const days = Math.floor((Date.now() - Date.parse(iso)) / 86400_000)
-  if (days <= 0) return 'i dag'
-  if (days === 1) return 'i går'
-  if (days < 7) return `för ${days} dagar sedan`
-  return new Date(iso).toLocaleDateString('sv-SE')
+  if (days <= 0) return t('home.when.today')
+  if (days === 1) return t('home.when.yesterday')
+  if (days < 7) return t('home.when.days', { n: days })
+  return new Date(iso).toLocaleDateString(lang === 'sv' ? 'sv-SE' : 'en-GB')
 }

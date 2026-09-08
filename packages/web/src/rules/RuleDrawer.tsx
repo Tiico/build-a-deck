@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { RenderedBlock, RenderedNode, RenderedRules } from '@byd/template'
 import { findRules } from './search.js'
+import { useT } from '../i18n/index.js'
 import './rules.css'
 
 // The rules at the table (B7): the rulebook a session hands out, rendered against the version it
@@ -10,6 +11,7 @@ import './rules.css'
 export type RuleDrawerProps = { http: string; sessionId: string; placement: 'table' | 'phone' }
 
 export function RuleDrawer({ http, sessionId, placement }: RuleDrawerProps) {
+  const t = useT()
   const [rules, setRules] = useState<RenderedRules | null | 'none'>(null)
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
@@ -29,22 +31,22 @@ export function RuleDrawer({ http, sessionId, placement }: RuleDrawerProps) {
   return (
     <div className="byd-rules-drawer" data-placement={placement}>
       <button type="button" className="byd-rules-open" onClick={() => setOpen((o) => !o)}>
-        {open ? 'Stäng reglerna' : 'Regler'}
+        {open ? t('rules.drawer.close') : t('rules.drawer.open')}
       </button>
       {open && (
-        <aside className="byd-rules-panel" role="dialog" aria-label="Regler">
+        <aside className="byd-rules-panel" role="dialog" aria-label={t('rules.drawer.open')}>
           <div className="byd-rules-ask">
-            <input type="search" aria-label="Vad undrar du?" placeholder="Vad undrar du?" value={query} onChange={(e) => setQuery(e.target.value)} />
-            <button type="button" aria-label="Stäng reglerna" onClick={() => setOpen(false)}>
+            <input type="search" aria-label={t('rules.drawer.ask')} placeholder={t('rules.drawer.ask')} value={query} onChange={(e) => setQuery(e.target.value)} />
+            <button type="button" aria-label={t('rules.drawer.close')} onClick={() => setOpen(false)}>
               ×
             </button>
           </div>
           <div className="byd-rules-body">
             {rules === null ? (
-              <p>Läser reglerna…</p>
+              <p>{t('rules.drawer.loading')}</p>
             ) : query.trim() ? (
               hits.length === 0 ? (
-                <p className="byd-rules-none">Ingen regel nämner det. Fråga den som gjorde spelet.</p>
+                <p className="byd-rules-none">{t('rules.drawer.none')}</p>
               ) : (
                 <ol className="byd-rules-hits">
                   {hits.map((h) => (
@@ -100,6 +102,7 @@ export function RuleBlockView({ block }: { block: RenderedBlock }) {
 }
 
 export function RuleSpan({ nodes }: { nodes: readonly RenderedNode[] }) {
+  const t = useT()
   return (
     <>
       {nodes.map((n, i) => {
@@ -129,7 +132,7 @@ export function RuleSpan({ nodes }: { nodes: readonly RenderedNode[] }) {
           case 'ref':
             return (
               <i key={i} className="byd-rules-ref" data-ref={n.id} {...(n.name ? {} : { 'data-missing': 'true' })}>
-                {n.name ?? `${n.of === 'zone' ? 'zon' : 'kort'}:${n.id}`}
+                {n.name ?? `${t(n.of === 'zone' ? 'rules.drawer.ref.zone' : 'rules.drawer.ref.card')}:${n.id}`}
               </i>
             )
         }

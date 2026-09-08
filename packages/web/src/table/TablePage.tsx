@@ -7,6 +7,7 @@ import { useTableClient } from './useTableClient.js'
 import { previewOf, whereTo, whoDecides } from './rewind.js'
 import { usePresence, useRecent } from './usePresence.js'
 import { RuleDrawer } from '../rules/RuleDrawer.js'
+import { useT, type Key } from '../i18n/index.js'
 
 type SessionRecord = { name?: string; version?: string }
 
@@ -14,6 +15,7 @@ type SessionRecord = { name?: string; version?: string }
 // The `table` role: no seat, sees only what is public, acts for the group (K14). It is the
 // host's screen (DRIFT §9): the host key opens it, and it is told the room code to show.
 export function TablePage() {
+  const t = useT()
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const sessionId = params.get('session')
   const mode: TableMode = params.get('mode') === 'tv' ? 'tv' : 'table'
@@ -50,9 +52,9 @@ export function TablePage() {
     return `${location.origin}/join?${q.toString()}`
   }, [params, roomCode])
 
-  if (!sessionId) return <p>Ingen session angiven.</p>
-  if (refused) return <p role="alert" data-refused={refused}>Bordsvyn öppnas med värdens länk från editorn.</p>
-  if (!view) return <p data-status={status}>{status === 'connecting' ? 'Ansluter…' : status}</p>
+  if (!sessionId) return <p>{t('play.session.missing')}</p>
+  if (refused) return <p role="alert" data-refused={refused}>{t('play.refused.host')}</p>
+  if (!view) return <p data-status={status}>{status === 'connecting' ? t('play.connecting') : status}</p>
 
   // A proposed rewind (C): the screen shows the table as it was at the target and who is waited
   // on. It has no buttons — the phones decide.
@@ -73,21 +75,17 @@ export function TablePage() {
       onInspect={mode === 'tv' ? setInspecting : undefined}
     />
   )
+  const flags = activity.filter((l) => l.intent.v === 'flag').length
+  const players = view.seats.filter((s) => s.name !== null).length
   const ended = view.ended && (
     <div className="byd-ended" data-ended>
       <div>
-        <h1>Sessionen är avslutad</h1>
-        <p>Loggen är låst på {record === null ? '…' : (record.version ?? '?')}. Enkäten finns på telefonerna.</p>
+        <h1>{t('ended.title')}</h1>
+        <p>{t('ended.locked', { version: record === null ? '…' : (record.version ?? '?') })}</p>
         <div className="byd-ended-summary">
-          <span>
-            <b>{view.seq}</b> rader
-          </span>
-          <span>
-            <b>{activity.filter((l) => l.intent.v === 'flag').length}</b> flaggade ögonblick
-          </span>
-          <span>
-            <b>{view.seats.filter((s) => s.name !== null).length}</b> spelare
-          </span>
+          <Count n={view.seq} one="ended.rows.one" other="ended.rows.other" />
+          <Count n={flags} one="ended.flags.one" other="ended.flags.other" />
+          <Count n={players} one="ended.players.one" other="ended.players.other" />
         </div>
       </div>
     </div>
@@ -96,9 +94,9 @@ export function TablePage() {
     <div className="byd-rewind-preview" data-rewind-preview={proposal.id}>
       {rendered}
       <div className="byd-rewind-label">
-        <span>Förslag</span>
-        <span>så här såg bordet ut {whereTo(view, proposal, activity)}</span>
-        <span>· väntar på {whoDecides(view, proposal)}</span>
+        <span>{t('rewind.proposal')}</span>
+        <span>{t('rewind.looked', { where: whereTo(view, proposal, activity, t) })}</span>
+        <span>{t('rewind.waiting', { who: whoDecides(view, proposal, t) })}</span>
       </div>
     </div>
   ) : (
@@ -108,7 +106,7 @@ export function TablePage() {
     <div data-page="table" data-status={status} className="byd-fit">
       {mode === 'table' && (
         // The felt is the whole screen (B); a quiet line along its top says which game this is.
-        <h1 className="byd-table-plate">{[record?.name ?? 'Bordet', record?.version, roomCode].filter(Boolean).join(' · ')}</h1>
+        <h1 className="byd-table-plate">{[record?.name ?? t('play.table'), record?.version, roomCode].filter(Boolean).join(' · ')}</h1>
       )}
       {mode === 'tv' ? (
         <TvChrome view={previewOf(view)} activity={activity} roomCode={roomCode} joinUrl={joinUrl} title={record?.name} version={record?.version} inspecting={inspecting} faces={url.replace(/^ws/, 'http')} observers={observers}>
@@ -121,5 +119,16 @@ export function TablePage() {
       {sessionId && <RuleDrawer http={url.replace(/^ws/, 'http')} sessionId={sessionId} placement="table" />}
       {ended}
     </div>
+  )
+}
+
+// A number and the word for what it counts: the number is the big one on the ended screen, so
+// the two stay separate elements rather than one sentence.
+function Count({ n, one, other }: { n: number; one: Key; other: Key }) {
+  const t = useT()
+  return (
+    <span>
+      <b>{n}</b> {t(n === 1 ? one : other, { n })}
+    </span>
   )
 }

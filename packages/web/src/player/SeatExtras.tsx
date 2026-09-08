@@ -2,6 +2,7 @@ import type { Snapshot, VisibleComponentState } from '@byd/protocol'
 import { hue } from '../table/hue.js'
 import { Texture } from '../table/Texture.js'
 import { COUNTER_TYPE } from './PlaySheet.js'
+import { useT } from '../i18n/index.js'
 
 // What a seat owns beside its hand (C4, prototype A): its counters as a row of pills under the
 // head, and the cards in front of it as a smaller strip above the hand.
@@ -19,13 +20,14 @@ export function inFrontOf(view: Snapshot): VisibleComponentState[] {
 
 // A counter as a pill: tap the sides to count, tap the number to type a value.
 export function CountersRow({ view, onSet }: { view: Snapshot; onSet(c: VisibleComponentState, value: number): void }) {
+  const t = useT()
   const counters = countersOf(view)
   if (counters.length === 0) return null
   return (
     <div className="byd-counters" data-counters>
       {counters.map((c) => (
         <div key={c.id} className="byd-counter" data-counter={c.cardRef ?? c.id}>
-          <button type="button" aria-label={`${c.cardRef} minus`} onClick={() => onSet(c, (c.counter ?? 0) - 1)}>
+          <button type="button" aria-label={t('player.counter.minus', { name: c.cardRef ?? '' })} onClick={() => onSet(c, (c.counter ?? 0) - 1)}>
             −
           </button>
           <div
@@ -37,7 +39,7 @@ export function CountersRow({ view, onSet }: { view: Snapshot; onSet(c: VisibleC
             <b>{c.counter ?? 0}</b>
             <span>{c.cardRef}</span>
           </div>
-          <button type="button" aria-label={`${c.cardRef} plus`} onClick={() => onSet(c, (c.counter ?? 0) + 1)}>
+          <button type="button" aria-label={t('player.counter.plus', { name: c.cardRef ?? '' })} onClick={() => onSet(c, (c.counter ?? 0) + 1)}>
             +
           </button>
         </div>
@@ -49,12 +51,13 @@ export function CountersRow({ view, onSet }: { view: Snapshot; onSet(c: VisibleC
 // The cards in front of you, each with what you can do to it: turn it, take it up, play it on.
 export type MineStripProps = { view: Snapshot; faces?: string | undefined; onFlip(c: VisibleComponentState): void; onTake(c: VisibleComponentState): void; onPlay(c: VisibleComponentState): void }
 export function MineStrip({ view, faces, onFlip, onTake, onPlay }: MineStripProps) {
+  const t = useT()
   const mine = inFrontOf(view)
   const hasArea = view.zones.some((z) => z.owner === view.seat && z.kind === 'area' && !view.components.some((c) => c.zone === z.id && c.type.id === COUNTER_TYPE))
   if (!hasArea && mine.length === 0) return null
   return (
     <section className="byd-mine" data-mine>
-      <h2>Framför dig · {mine.length}</h2>
+      <h2>{t('player.mine.title', { n: mine.length })}</h2>
       <div className="byd-mine-strip">
         {mine.map((c) => {
           const up = c.cardRef !== null
@@ -64,19 +67,19 @@ export function MineStrip({ view, faces, onFlip, onTake, onPlay }: MineStripProp
               <strong>{c.cardRef ?? ''}</strong>
               <div className="byd-mine-actions">
                 <button type="button" data-act="flip" onClick={() => onFlip(c)}>
-                  {up ? 'Vänd ner' : 'Vänd upp'}
+                  {up ? t('player.mine.flip.down') : t('player.mine.flip.up')}
                 </button>
                 <button type="button" data-act="take" onClick={() => onTake(c)}>
-                  Ta upp
+                  {t('player.mine.take')}
                 </button>
                 <button type="button" data-act="play" onClick={() => onPlay(c)}>
-                  Spela…
+                  {t('player.mine.play')}
                 </button>
               </div>
             </div>
           )
         })}
-        {mine.length === 0 && <p className="byd-mine-empty">Inget framför dig. Spela ett kort hit från handen.</p>}
+        {mine.length === 0 && <p className="byd-mine-empty">{t('player.mine.empty')}</p>}
       </div>
     </section>
   )

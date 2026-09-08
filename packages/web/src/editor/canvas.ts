@@ -2,6 +2,7 @@
 // own unit, so everything here speaks millimetres. Framework-free, like the table's `sorting`,
 // `filtering` and `selection`, so the canvas itself stays a thin consumer of it.
 import type { Element } from './types.js'
+import type { Key } from '../i18n/index.js'
 
 // The keyboard's two steps: a nudge for the eye, a step for the layout.
 export const NUDGE_MM = 0.5
@@ -36,13 +37,14 @@ export function round(mm: number): number {
 export type ElementKind = 'text' | 'image' | 'icons' | 'shape'
 export type CardSize = { widthMm: number; heightMm: number }
 
-// The four kinds a designer can add from the canvas, in the order the tool rail reads them, with
-// the Swedish name of each. The vocabulary is the template model's (L1) — no new kinds here.
-export const TOOLS: readonly { kind: ElementKind; name: string; glyph: string }[] = [
-  { kind: 'text', name: 'Text', glyph: 'T' },
-  { kind: 'image', name: 'Bild', glyph: '▣' },
-  { kind: 'icons', name: 'Ikonrad', glyph: '●●' },
-  { kind: 'shape', name: 'Form', glyph: '◻' },
+// The four kinds a designer can add from the canvas, in the order the tool rail reads them, each
+// named by what the catalogue calls it (A4). The vocabulary is the template model's (L1) — no new
+// kinds here.
+export const TOOLS: readonly { kind: ElementKind; name: Key; glyph: string }[] = [
+  { kind: 'text', name: 'canvas.tool.text', glyph: 'T' },
+  { kind: 'image', name: 'canvas.tool.image', glyph: '▣' },
+  { kind: 'icons', name: 'canvas.tool.icons', glyph: '●●' },
+  { kind: 'shape', name: 'canvas.tool.shape', glyph: '◻' },
 ]
 
 const SIZES: Record<ElementKind, { w: number; h: number }> = {

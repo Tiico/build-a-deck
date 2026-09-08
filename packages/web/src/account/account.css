@@ -49,3 +49,9 @@
 .byd-home-asking .byd-home-remove { background: #a12b2b; border-color: #a12b2b; }
 .byd-home-game[data-new] { padding: 16px; }
 .byd-home-notice { margin: 0; padding: 10px 14px; border-radius: 10px; background: #2a1b1b; color: #ffd8d8; }
+
+/* The language switch (A4): on the login card and beside who is signed in, so a reader who
+   cannot read the page can still change what it speaks. */
+.byd-lang { display: inline-flex; gap: 6px; align-items: center; color: #9aa3b8; font-size: 13px; }
+.byd-lang select { border: 1px solid #2c3242; border-radius: 8px; padding: 4px 8px; background: #14161c; color: #e6e6e6; font: inherit; cursor: pointer; }
+.byd-login .byd-lang { justify-content: flex-start; margin-top: 2px; }

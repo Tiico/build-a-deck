@@ -64,6 +64,19 @@ describe('an edit is a thing that happened to the project (D3)', () => {
   it('writes the table: the recipe, a zone of one\'s own, and what a zone is called', () => {
     const three = applyEdit(base(), { v: 'setRecipe', recipe: { players: 3, mine: true, discard: true, market: false, counters: [] } })
     expect(three.setup.seats).toEqual(['A', 'B', 'C'])
+    expect(three.setup.zones.find((z) => z.id === 'discard')?.name).toBe('Kasthög')
+    // A zone the recipe makes is named in the language the designer is building the game in
+    // (A4): the words come with the edit, so the actor writes exactly what the editor showed.
+    const english = applyEdit(base(), {
+      v: 'setRecipe',
+      recipe: { players: 2, mine: true, discard: true, market: true, counters: [{ name: 'Score', start: 0 }] },
+      words: { floor: 'Table', draw: 'Draw pile', drawShortcut: 'Put underneath', discard: 'Discard pile', discardShortcut: 'Discard', market: 'Market', marketShortcut: 'To the market', mine: 'In front of {seat}', mineShortcut: 'In front of me', counters: 'Counters {seat}', hand: 'Hand' },
+    })
+    expect(english.setup.zones.find((z) => z.id === 'market')?.name).toBe('Market')
+    expect(english.setup.zones.find((z) => z.id === 'market')?.shortcut?.label).toBe('To the market')
+    expect(english.setup.zones.find((z) => z.id === 'counters:A')?.name).toBe('Counters A')
+    // A zone that was already there keeps the name it was given: renaming is the designer's.
+    expect(english.setup.zones.find((z) => z.id === 'discard')?.name).toBe('Kasthög')
 
     const withZone = applyEdit(three, { v: 'addZone', id: 'altar', kind: 'area', name: 'Altaret' })
     expect(withZone.setup.zones.at(-1)).toMatchObject({ id: 'altar', kind: 'area', name: 'Altaret', visibility: 'all' })

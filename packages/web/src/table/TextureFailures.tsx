@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
 import './texture.css'
+import { useT } from '../i18n/index.js'
 
 // A card whose texture is lost says so on its own face (issue #10), but a face is not an
 // announcement: a screen reader is told nothing. The obvious repair — a live region per card —
@@ -12,6 +13,7 @@ import './texture.css'
 const Report = createContext<((delta: number) => void) | null>(null)
 
 export function TextureFailures({ children }: { children: ReactNode }) {
+  const t = useT()
   const [lost, setLost] = useState(0)
   const report = useCallback((delta: number) => setLost((n) => n + delta), [])
   return (
@@ -21,7 +23,7 @@ export function TextureFailures({ children }: { children: ReactNode }) {
           region nothing was listening to. Polite, because a card that cannot be drawn is worth
           hearing about at the next pause and never worth cutting someone off for. */}
       <p className="byd-texture-lost" data-texture-failures role="status">
-        {lost > 0 ? `${lost} kort kunde inte renderas` : ''}
+        {lost > 0 ? t(lost === 1 ? 'texture.lost.one' : 'texture.lost.other', { n: lost }) : ''}
       </p>
     </Report.Provider>
   )

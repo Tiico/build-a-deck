@@ -31,7 +31,9 @@ describe('physical validation (E5): what looks fine on a screen and fails in the
     expect(codes(check([bg(), text({ font: { family: 'system-ui', sizePt: 7 } })]))).toEqual(['text-too-small:warning'])
     const tiny = check([bg(), text({ font: { family: 'system-ui', sizePt: 5 } })])
     expect(codes(tiny)).toEqual(['text-too-small:error'])
-    expect(tiny[0]?.detail).toContain('6')
+    // A fault is facts, not a sentence: the words are written where the reader is, in the
+    // language they are reading in (A4).
+    expect(tiny[0]?.values).toEqual({ sizePt: 5, floor: 6 })
     expect(tiny[0]?.element).toBe('body')
   })
 
@@ -71,7 +73,7 @@ describe('physical validation (E5): what looks fine on a screen and fails in the
     expect(check([bg(), text(), bg({ id: 'fara', x: 6, y: 6, w: 8, h: 8, fill: red }), bg({ id: 'ljus', x: 18, y: 6, w: 8, h: 8, fill: '#2ecc40' })])).toEqual([])
     const issues = check([bg(), text(), bg({ id: 'fara', x: 6, y: 6, w: 8, h: 8, fill: red }), bg({ id: 'trygg', x: 18, y: 6, w: 8, h: 8, fill: green })])
     expect(codes(issues)).toEqual(['colour-only:warning'])
-    expect(issues[0]?.detail).toMatch(/deuteranopi/i)
+    expect(issues[0]?.values).toEqual({ a: 'fara', b: 'trygg', blindness: 'deuteranopia' })
     // Two colours that stay apart under every simulation say nothing.
     expect(check([bg(), text(), bg({ id: 'fara', x: 6, y: 6, w: 8, h: 8, fill: '#1c1c1c' }), bg({ id: 'trygg', x: 18, y: 6, w: 8, h: 8, fill: '#f4ead8' })])).toEqual([])
   })
@@ -89,7 +91,7 @@ describe('a font the version is not pinned to (B3, E5)', () => {
   it('warns when what renders is whatever the machine has, and says nothing when the file is carried', () => {
     const loose = validateCard({ type: CARD_STANDARD_63x88, face: face(withFont('Georgia, serif')), row: {} })
     expect(loose.map((i) => `${i.code}:${i.severity}`)).toEqual(['unpinned-font:warning'])
-    expect(loose[0]?.detail).toContain('Georgia, serif')
+    expect(loose[0]?.values).toEqual({ families: 'Georgia, serif' })
 
     const pinned = validateCard({
       type: CARD_STANDARD_63x88,

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { deckIssues, groupIssues } from '../src/editor/checks.js'
+import { deckIssues, groupIssues, issueDetail } from '../src/editor/checks.js'
 import { projectDoc } from './project-doc.js'
 import type { Element } from '../src/editor/types.js'
+import { translate, type T } from '../src/i18n/index.js'
 
 const tiny: Element = { kind: 'text', id: 'flavour', x: 6, y: 70, w: 51, h: 10, bind: { field: 'flavour' }, font: { family: 'system-ui', sizePt: 5 }, color: '#111111' }
 const bled: Element = { kind: 'shape', id: 'paper', x: -3, y: -3, w: 69, h: 94, shape: 'rect', fill: '#ffffff' }
@@ -12,6 +13,8 @@ function deck() {
   doc.template.faces['back']!.base = [bled]
   return doc
 }
+
+const swedish: T = (key, params) => translate('sv', key, params)
 
 describe('the physical checks over a whole deck (E5)', () => {
   it('reads every card on every face and says which card each anmärkning belongs to', () => {
@@ -35,7 +38,10 @@ describe('the physical checks over a whole deck (E5)', () => {
       ['hairline', 'warning', 3],
     ])
     expect(groups[0]?.elements).toEqual(['flavour'])
-    expect(groups[0]?.detail).toContain('6 pt')
+    // The group carries what was measured; the words are written where the reader is (A4).
+    expect(groups[0]?.values).toMatchObject({ sizePt: 5, floor: 6 })
+    expect(issueDetail(groups[0]!, swedish)).toContain('5 pt är under 6 pt')
+    expect(issueDetail(groups[0]!, (key, params) => translate('en', key, params))).toContain('smallest readable size')
     expect(groups[0]?.faces).toEqual(['front'])
   })
 
