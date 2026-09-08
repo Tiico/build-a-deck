@@ -26,7 +26,13 @@ export const SESSION_TTL_MS = 30 * 24 * 3600 * 1000
 export const COOKIE = 'byd_session'
 const LOGINS_PER_HOUR = 5
 
-export const LoginBody = z.object({ email: z.string().email().max(254), next: z.string().max(2000).optional() })
+// The language the reader asked for (A4). Anything the tool does not speak is not an error: the
+// mail simply goes out in Swedish, which is the language the tool is written in.
+export const LANGS = ['sv', 'en'] as const
+export type Lang = (typeof LANGS)[number]
+export const langOf = (value: unknown): Lang => (LANGS.includes(value as Lang) ? (value as Lang) : 'sv')
+
+export const LoginBody = z.object({ email: z.string().email().max(254), next: z.string().max(2000).optional(), lang: z.string().max(8).optional() })
 
 export const hash = (s: string): string => createHash('sha256').update(s).digest('hex')
 export const token = (): string => randomBytes(32).toString('base64url')
@@ -127,7 +133,14 @@ export function safeNext(next: string | undefined): string {
   return next && next.startsWith('/') && !next.startsWith('//') ? next : '/'
 }
 
-export function loginMail(to: string, link: string): Mail {
+export function loginMail(to: string, link: string, lang: Lang = 'sv'): Mail {
+  if (lang === 'en') {
+    return {
+      to,
+      subject: 'Sign in to build-your-deck',
+      text: `Hello!\n\nClick to sign in: ${link}\n\nThe link works for 15 minutes and only once. If you did not ask for it, you can ignore this mail.`,
+    }
+  }
   return {
     to,
     subject: 'Logga in på build-your-deck',

@@ -57,6 +57,15 @@ Följdkrav:
 Innehållsspråket är separat och obegränsat — renderaren behöver fonter för alla skriftsystem.
 Den fysiska valideringen behöver olika minimigränser per skriftsystem, eftersom CJK kräver större punktstorlek än latinsk skrift.
 
+Byggt 2026-09-08:
+Ingen i18n-motor. Behovet är en uppslagning och en insättning, så infrastrukturen är en katalog per språk, en `translate`, och en React-kontext som säger vilket språk som är på.
+Svenska är katalogen: varje text skrivs där först, och engelskan skrivs mot den nyckel för nyckel. Katalogens typ är löftet — en nyckel som saknas i ett språk kompilerar inte, och en text som saknas vid körning visar svenskan i stället för en nyckel.
+Katalogen är delad per yta — editorn, spelandet, kontot — så att flera kan skriva i den samtidigt utan att mötas, och slås ihop till en.
+Nyckeln säger var texten hör hemma, inte vad den råkar heta: `editor.tab.wall`, aldrig `kortvagg`. `{namn}` byts mot det anropet skickar med. Räkneord har `.one` och `.other` och anropet väljer vilken; en plural-motor vore mer maskineri än de två språken kräver.
+En yta som monteras ensam — en förhandsvisning, ett test — talar svenska. Hela appen ligger under en språkleverantör som tar läsarens eget val först, sedan adressens `?lang=`, sedan webbläsarens. Valet minns till nästa besök, och ett val skriver också `lang` på sidan självt, eftersom uppläsning läser sidan på det språk sidan säger sig vara på. En webbläsare som vägrar lagra något byter ändå språk; den glömmer bara.
+Det verktyget säger översätts. Det en designer skrivit — korttext, regler, zonnamn, spelets namn — översätts aldrig: det är spelets språk, inte verktygets.
+Mejlen följer med: inloggningslänken och inbjudan skrivs på det språk den som utlöste dem läser verktyget i, och ett språk verktyget inte talar är inget fel — då går brevet på svenska.
+
 ---
 
 ## B. Domänmodellen

@@ -18,7 +18,7 @@ import { ProjectHost, type EditorMessage } from './project-actor.js'
 import type { EditIntent } from './edits.js'
 import { namesOfProject } from './names.js'
 import { SurveyAnswer, type SurveyStore } from './surveys.js'
-import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountOf, hash, loginMail, safeNext, token, type Account, type AuthStore, type Mailer } from './auth.js'
+import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountOf, hash, langOf, loginMail, safeNext, token, type Account, type AuthStore, type Mailer } from './auth.js'
 import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
 import { canDelete, canEdit, canRead, canShare, canStartTables, INVITE_TTL_MS, roleWord, ROLES, type Role } from './roles.js'
 import { facesOf, printExportOf } from './faces.js'
@@ -801,16 +801,26 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, gate.status, { error: gate.error })
       return true
     }
-    const body = z.object({ email: z.string().email().max(254), role: z.enum(ROLES) }).parse(JSON.parse(await readBody(req)))
+    const body = z.object({ email: z.string().email().max(254), role: z.enum(ROLES), lang: z.string().max(8).optional() }).parse(JSON.parse(await readBody(req)))
+    const lang = langOf(body.lang)
     const token = newSecret()
     const expiresAt = new Date(clock(opts).getTime() + INVITE_TTL_MS).toISOString()
     await projects.invite({ tokenHash: hash(token), project: gate.rec.id, email: body.email, role: body.role, ...(account ? { by: account.id } : {}), expiresAt })
     const where = opts.appOrigin ?? opts.publicOrigin ?? ''
-    await opts.mailer?.send({
-      to: body.email,
-      subject: `Du är inbjuden till ${gate.rec.name}`,
-      text: `Hej!\n\n${account?.email ?? 'Någon'} vill dela spelet ${gate.rec.name} med dig som ${roleWord(body.role)}.\n\nKlicka för att gå med: ${where}/invites/${token}\n\nLänken fungerar i sju dagar och bara en gång.`,
-    })
+    // The game's own name is the game's, in every language.
+    await opts.mailer?.send(
+      lang === 'en'
+        ? {
+            to: body.email,
+            subject: `You are invited to ${gate.rec.name}`,
+            text: `Hello!\n\n${account?.email ?? 'Someone'} would like to share the game ${gate.rec.name} with you as a ${roleWord(body.role, 'en')}.\n\nClick to join: ${where}/invites/${token}\n\nThe link works for seven days and only once.`,
+          }
+        : {
+            to: body.email,
+            subject: `Du är inbjuden till ${gate.rec.name}`,
+            text: `Hej!\n\n${account?.email ?? 'Någon'} vill dela spelet ${gate.rec.name} med dig som ${roleWord(body.role)}.\n\nKlicka för att gå med: ${where}/invites/${token}\n\nLänken fungerar i sju dagar och bara en gång.`,
+          },
+    )
     json(res, 201, { ok: true })
     return true
   }
@@ -1123,7 +1133,7 @@ async function routeAuth(opts: ServerOptions, auth: AuthStore, req: IncomingMess
     // The link must come back to this API, where the cookie lives: never the page's origin.
     const base = opts.publicOrigin ?? `http://${req.headers.host ?? 'localhost'}`
     const link = `${base}/auth/verify?token=${t}&next=${encodeURIComponent(safeNext(parsed.data.next))}`
-    await opts.mailer?.send(loginMail(email, link))
+    await opts.mailer?.send(loginMail(email, link, langOf(parsed.data.lang)))
     return json(res, 200, { ok: true })
   }
   if (req.method === 'GET' && url.pathname === '/auth/verify') {

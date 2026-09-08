@@ -19,6 +19,10 @@ export const canDelete = (role: Role): boolean => role === 'owner'
 // An invitation lives a week: long enough to be read on a Monday, short enough to expire.
 export const INVITE_TTL_MS = 7 * 24 * 3600 * 1000
 
-// What a role is called to the person being invited.
-export const roleWord = (role: Role): string =>
-  role === 'owner' ? 'ägare' : role === 'editor' ? 'medredigerare' : role === 'tester' ? 'testledare' : 'betraktare'
+// What a role is called to the person being invited, in the language they are being written to
+// in (A4). Swedish is what the tool falls back to, as everywhere else.
+const ROLE_WORDS: Record<'sv' | 'en', Record<Role, string>> = {
+  sv: { owner: 'ägare', editor: 'medredigerare', tester: 'testledare', viewer: 'betraktare' },
+  en: { owner: 'owner', editor: 'co-editor', tester: 'test leader', viewer: 'viewer' },
+}
+export const roleWord = (role: Role, lang: 'sv' | 'en' = 'sv'): string => ROLE_WORDS[lang][role]

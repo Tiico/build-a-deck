@@ -79,6 +79,22 @@ describe('an invitation to a project (D3)', () => {
     await run.stop()
   })
 
+  it('is written in the language the one who invites is reading the tool in (A4)', async () => {
+    const ada = await login('ada@example.com')
+    await send('POST', '/projects', ada, { id: 'p1', ...doc() })
+
+    await send('POST', '/projects/p1/invites', ada, { email: 'bo@example.com', role: 'editor', lang: 'en' })
+    const english = run.mail.sent.at(-1)!
+    expect(english.subject).toBe('You are invited to Skogens herrar')
+    expect(english.text).toContain('as a co-editor')
+    expect(english.text).toContain('/invites/')
+
+    await send('POST', '/projects/p1/invites', ada, { email: 'cee@example.com', role: 'viewer' })
+    const swedish = run.mail.sent.at(-1)!
+    expect(swedish.subject).toBe('Du är inbjuden till Skogens herrar')
+    expect(swedish.text).toContain('som betraktare')
+  })
+
   it('is mailed to an address, and joins the project to whoever follows it', async () => {
     const ada = await login('ada@example.com')
     expect((await send('POST', '/projects', ada, { id: 'p1', ...doc() })).status).toBe(201)

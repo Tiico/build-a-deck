@@ -10,10 +10,18 @@ import { LoginPage } from './account/LoginPage.js'
 import { ClaimPage } from './account/ClaimPage.js'
 import { InvitePage } from './account/InvitePage.js'
 import { TextureFailures } from './table/TextureFailures.js'
+import { Language, detectLang } from './i18n/index.js'
 
 // Routing is a path check for now; a router arrives with the first real page.
+// The whole app is under one language (A4): the reader's own choice, then the address, then what
+// their browser asks for. A surface mounted on its own — a preview, a test — speaks Swedish,
+// which is the catalogue's own language.
 export function App() {
-  return <TextureFailures>{route()}</TextureFailures>
+  return (
+    <Language lang={detectLang()}>
+      <TextureFailures>{route()}</TextureFailures>
+    </Language>
+  )
 }
 
 // Every screen that shows cards is under one live region for lost textures (#10); App is the
