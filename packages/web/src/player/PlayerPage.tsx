@@ -8,6 +8,7 @@ import { CountersRow, MineStrip } from './SeatExtras.js'
 import { PlaySheet } from './PlaySheet.js'
 import { TableSummary } from './TableSummary.js'
 import { SessionButtons, SessionOverlays, refusedText, useSessionVersion, useToast } from './SessionOverlays.js'
+import { RuleDrawer } from '../rules/RuleDrawer.js'
 import { claimUrl } from '../account/api.js'
 import { playIntents } from './play.js'
 import './player.css'
@@ -66,6 +67,8 @@ export function PlayerPage() {
         <strong>{me?.name ?? seat}</strong>
         <span>{hand.length} kort</span>
         <SessionButtons client={client} view={view} onSheet={setSheet} />
+        {/* The rules this table plays by (B7), one press away beside the session's own buttons. */}
+        {sessionId && <RuleDrawer http={faces} sessionId={sessionId} placement="phone" />}
       </header>
       <CountersRow view={view} onSet={(c, value) => void client.send({ v: 'setCounter', component: c.id, value })} />
       <TableSummary view={view} activity={activity} />

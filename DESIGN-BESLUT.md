@@ -154,7 +154,14 @@ Inline-parsern fick en konstruktion till, som bara regelboken ber om, så kortte
 Renderaren returnerar block, inte HTML, eftersom samma rendering ska till tre ställen: editorn, bordets referenspanel och det tryckta häftet.
 Ytan prototypades i tre former: block bredvid boken, ett fält i stenografi, och sidan själv som redigerare. Valet blev sidan själv: ett stycke öppnas där det står och stängs när det lämnas, så det man skriver alltid är det läsaren möter.
 Fliken "Regler" i editorn är boken. Referenser sätts in ur en lista över vad spelet har. Uppställningsbilden är spelets egna zoner (B5), inte en teckning bredvid dem.
-Kvar av B7: referenspanelen vid bordet och det tryckfärdiga häftet.
+Reglerna vid bordet, byggt 2026-09-08:
+`GET /sessions/:id/rules` renderar regelboken mot just den version sessionen låstes till vid start, så ett pågående spel aldrig skrivs om under spelarna.
+Ytan prototypades i tre former: en lucka från kanten, boken som föremål på bordet, och en fråga som ger de stycken som svarar. Valet blev luckan med frågan överst.
+Luckan finns på både bordets skärm och telefonen, ett tryck bort. Är frågerutan tom står hela boken där, för den som aldrig spelat; skrivs något i den svarar den med de stycken som nämner ordet, under den rubrik de står. En lista är ett stycke: dess steg går inte att dela.
+Sökningen läser den renderade texten, alltså de namn läsaren ser, aldrig id:n bakom dem. Ett spel utan regelbok erbjuder ingenting alls.
+Den renderade utdatan bär numera namnet i referensnoden, så den som ritar den — editorn, bordet, häftet — inte behöver något mer.
+
+Kvar av B7: det tryckfärdiga häftet.
 
 Motivering:
 Trycket kräver en regelbok för att ordern ska kunna läggas.

@@ -1,0 +1,52 @@
+/* The rules at the table and on the phone (B7): a drawer with the book, and the question on top. */
+.byd-rules-drawer[data-placement='table'] { position: absolute; right: 0; top: 0; bottom: 0; z-index: 30; pointer-events: none; }
+.byd-rules-drawer[data-placement='table'] > * { pointer-events: auto; }
+.byd-rules-open {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  border: 1px solid #3b4358;
+  border-radius: 10px;
+  padding: 8px 14px;
+  background: rgba(11, 13, 18, 0.9);
+  color: #e6ecfa;
+  font: 700 13px system-ui, sans-serif;
+  cursor: pointer;
+}
+.byd-rules-panel {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: min(380px, 92vw);
+  display: grid;
+  grid-template-rows: auto 1fr;
+  background: #f7f3ea;
+  color: #23201a;
+  box-shadow: -14px 0 34px rgba(0, 0, 0, 0.45);
+}
+.byd-rules-ask { display: flex; gap: 8px; padding: 12px; background: #ece5d8; border-bottom: 1px solid #d8cdb8; }
+.byd-rules-ask input { flex: 1; min-width: 0; padding: 9px 11px; border: 1px solid #cbbfa8; border-radius: 10px; background: #fff; color: #23201a; font: 14px system-ui, sans-serif; }
+.byd-rules-ask button { border: 0; background: transparent; color: #6b6255; font-size: 20px; padding: 0 6px; cursor: pointer; }
+.byd-rules-body { overflow: auto; padding: 18px 20px; }
+.byd-rules-page { font: 14px/1.7 Georgia, serif; }
+.byd-rules-page h2 { margin: 0 0 12px; font-size: 20px; }
+.byd-rules-page h3 { margin: 16px 0 6px; font-size: 16px; }
+.byd-rules-page h4 { margin: 14px 0 4px; font-size: 13px; color: #4a4438; }
+.byd-rules-page p { margin: 0 0 8px; }
+.byd-rules-page ol, .byd-rules-page ul { margin: 0 0 10px; padding-left: 20px; }
+.byd-rules-caption { font-style: italic; color: #6b6255; }
+.byd-rules-ref { font-style: normal; color: #7a4d1d; border-bottom: 1px dotted #b08a5a; }
+.byd-rules-ref[data-missing] { color: #a12b2b; background: #f4d9d9; border-bottom: 0; padding: 0 3px; border-radius: 3px; }
+.byd-rules-pip { display: inline-grid; place-items: center; width: 1.2em; height: 1.2em; border-radius: 50%; background: #23201a; color: #f7f3ea; font: 700 0.75em system-ui; vertical-align: -0.15em; }
+.byd-rules-hits { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.byd-rules-hits li { padding: 12px 14px; border-radius: 10px; background: #ece5d8; }
+.byd-rules-hits h3 { margin: 0 0 4px; font: 700 10px system-ui, sans-serif; text-transform: uppercase; letter-spacing: 1px; color: #6b6255; }
+.byd-rules-hits p { margin: 0; font: 14px/1.6 Georgia, serif; white-space: pre-line; }
+.byd-rules-none { color: #6b6255; font: 13px system-ui, sans-serif; }
+
+/* On the phone the drawer is the screen: there is nothing behind it worth keeping in view. */
+/* On the phone the button rides in the header beside the session's own; the panel is the screen. */
+.byd-rules-drawer[data-placement='phone'] { display: contents; }
+.byd-rules-drawer[data-placement='phone'] .byd-rules-open { position: static; border-radius: 8px; padding: 6px 10px; font-size: 12px; }
+.byd-rules-drawer[data-placement='phone'] .byd-rules-panel { position: fixed; inset: 0; width: auto; z-index: 40; }

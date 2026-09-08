@@ -6,6 +6,7 @@ import { TvChrome } from './TvChrome.js'
 import { useTableClient } from './useTableClient.js'
 import { previewOf, whereTo, whoDecides } from './rewind.js'
 import { usePresence, useRecent } from './usePresence.js'
+import { RuleDrawer } from '../rules/RuleDrawer.js'
 
 type SessionRecord = { name?: string; version?: string }
 
@@ -116,6 +117,8 @@ export function TablePage() {
       ) : (
         table
       )}
+      {/* The rules this table plays by (B7), one press away on either screen. */}
+      {sessionId && <RuleDrawer http={url.replace(/^ws/, 'http')} sessionId={sessionId} placement="table" />}
       {ended}
     </div>
   )

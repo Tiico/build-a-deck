@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { namesOfProject } from '@byd/server/doc'
 import type { ProjectDoc, RuleBlock, RuleDoc } from '@byd/server'
-import { renderRules, type InlineNode, type Names, type RenderedBlock } from '@byd/template'
+import { renderRules, type Names, type RenderedBlock, type RenderedNode } from '@byd/template'
 import type { ProjectClient } from './ProjectClient.js'
 
 // The rulebook (B7), from the prototype: the page itself is the editor. A block opens where it
@@ -132,7 +132,7 @@ function Block({ block, names }: { block: RenderedBlock; names: Names }) {
         <>
           {block.paragraphs.map((p, i) => (
             <p key={i}>
-              <Span nodes={p.children} names={names} />
+              <Span nodes={p.children} />
             </p>
           ))}
         </>
@@ -140,7 +140,7 @@ function Block({ block, names }: { block: RenderedBlock; names: Names }) {
     case 'list': {
       const items = block.items.map((item, i) => (
         <li key={i}>
-          <Span nodes={item} names={names} />
+          <Span nodes={item} />
         </li>
       ))
       return block.ordered ? <ol>{items}</ol> : <ul>{items}</ul>
@@ -162,7 +162,7 @@ function Block({ block, names }: { block: RenderedBlock; names: Names }) {
   }
 }
 
-function Span({ nodes, names }: { nodes: readonly InlineNode[]; names: Names }) {
+function Span({ nodes }: { nodes: readonly RenderedNode[] }) {
   return (
     <>
       {nodes.map((n, i) => {
@@ -172,13 +172,13 @@ function Span({ nodes, names }: { nodes: readonly InlineNode[]; names: Names }) 
           case 'bold':
             return (
               <strong key={i}>
-                <Span nodes={n.children} names={names} />
+                <Span nodes={n.children} />
               </strong>
             )
           case 'italic':
             return (
               <em key={i}>
-                <Span nodes={n.children} names={names} />
+                <Span nodes={n.children} />
               </em>
             )
           case 'icon':
@@ -187,14 +187,12 @@ function Span({ nodes, names }: { nodes: readonly InlineNode[]; names: Names }) 
                 {n.name}
               </b>
             )
-          case 'ref': {
-            const found = (n.of === 'zone' ? names.zones : names.cards)[n.id]
+          case 'ref':
             return (
-              <i key={i} className="byd-rules-ref" data-ref={n.id} {...(found ? {} : { 'data-missing': 'true' })}>
-                {found ?? `${n.of === 'zone' ? 'zon' : 'kort'}:${n.id}`}
+              <i key={i} className="byd-rules-ref" data-ref={n.id} {...(n.name ? {} : { 'data-missing': 'true' })}>
+                {n.name ?? `${n.of === 'zone' ? 'zon' : 'kort'}:${n.id}`}
               </i>
             )
-          }
         }
       })}
     </>
