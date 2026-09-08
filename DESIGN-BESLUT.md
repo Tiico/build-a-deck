@@ -441,6 +441,16 @@ Text som ser lagom ut på en 27-tumsskärm blir 5 punkter i handen.
 Effektsymboler som bara skiljs åt av rött och grönt är osynliga för åtta procent av männen som spelar spelet.
 Inget av detta upptäcks vid ett digitalt playtest, eftersom bordet zoomar in.
 
+Byggt 2026-09-08:
+Kontrollerna sitter i `packages/template` och körs både i editorn och vid order, så det är samma dom på båda ställena.
+Sex slag: text mot komponenttypens egen minsta storlek för skriften, kontrast mot det som ligger bakom, innehåll innanför skyddsmarginalen, bakgrunder som når snittet men inte utfallet, linjer tunnare än pressen klarar, och färgpar som blir ett vid simulerad färgblindhet.
+Varje anmärkning är antingen fel eller varning. `POST /projects/:id/print` svarar 422 med kort, sida och element så länge ett fel står kvar; varningar följer med ordern i stället för att stoppa den.
+Ytan prototypades i tre former: markerat på kortet, en rapport över hela leken, och att se leken med läsarens ögon. Valet blev rapporten plus ögonen, båda på kortväggen.
+Rapporten samlar anmärkningarna per slag med hur många kort de gäller, eftersom ett fel i mallen är ett fel på varje kort som ärver elementet; en rad öppnar detaljen och ramar in korten den gäller.
+Ögonen är lägen över de riktiga korten: deuteranopi, protanopi, tritanopi och gråskala som filter med samma matriser som kontrollen använder, snitt och skyddsmarginal inritade i millimeter, och kortet på armlängds avstånd. Färgblindhet går inte att beskriva i ord.
+Kortets eget märke räknar fortfarande bara kortets egna varningar; ett mallfel sägs en gång i rapporten i stället för fyrtio gånger på väggen.
+Kontrollen fann tre fel i vårt eget arbete första gången den kördes: startramarna målade bakgrunder ända till snittet, en ram låg en millimeter från kniven, och en mörk variant i testleken behöll en nästan svart titel.
+
 Följdkrav:
 Reglerna måste kalibreras mot faktiskt tryckta provkort, annars blir de brus som stängs av.
 

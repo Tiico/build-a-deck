@@ -96,6 +96,40 @@
 .byd-zones-preview .byd-sheet-targets small { color: #9aa3b8; }
 
 /* Wall */
+.byd-wall-view { display: grid; grid-template-columns: minmax(0, 1fr) 320px; grid-template-rows: auto 1fr; gap: 0 20px; padding: 12px 16px; align-items: start; }
+.byd-eye-filters { position: absolute; width: 0; height: 0; }
+.byd-wall-tools { grid-column: 1 / -1; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; padding: 0 4px 10px; }
+.byd-wall-tools > div { display: flex; gap: 6px; }
+.byd-wall-tools button { border: 1px solid #2f333d; border-radius: 8px; padding: 6px 11px; background: #1b1d23; color: #fff; font-weight: 700; font-size: 12px; cursor: pointer; }
+.byd-wall-tools button[aria-pressed='true'] { background: #3c8ce7; border-color: #3c8ce7; }
+.byd-wall-tools label { display: flex; gap: 6px; align-items: center; color: #cfd5e3; font-size: 12px; }
+/* Another eye over the real cards (E5), and the trim the knife will follow. */
+.byd-wall[data-eye='deuteranopia'] { filter: url(#byd-eye-deuteranopia); }
+.byd-wall[data-eye='protanopia'] { filter: url(#byd-eye-protanopia); }
+.byd-wall[data-eye='tritanopia'] { filter: url(#byd-eye-tritanopia); }
+.byd-wall[data-eye='gray'] { filter: grayscale(1); }
+/* The guides hug the card, not its cell, and are drawn in millimetres inside the card's own
+   coordinate space, so they mean the same thing at every scale. */
+.byd-wall[data-trim] .byd-wall-card [data-card] { outline: 0.3mm dashed rgba(224, 92, 92, 0.9); outline-offset: -0.15mm; }
+.byd-wall[data-trim] .byd-wall-card [data-card]::after { content: ''; position: absolute; inset: 3mm; border: 0.3mm dashed rgba(125, 211, 160, 0.85); pointer-events: none; }
+/* At arm's length the cards are small; the wall packs them closer instead of leaving holes. */
+.byd-wall[data-arm] { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
+.byd-wall-card[data-marked] { outline: 3px solid #f0b64a; outline-offset: 3px; }
+.byd-wall-checks { align-self: start; padding: 16px; border-radius: 16px; background: #171a23; border: 1px solid #2f333d; }
+.byd-wall-checks h2 { margin: 0 0 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; }
+.byd-wall-ok { margin: 0; color: #7dd3a0; line-height: 1.5; }
+.byd-wall-lead { margin: 0 0 10px; color: #9aa3b8; font-size: 12px; line-height: 1.5; }
+.byd-wall-checks ul { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 8px; }
+.byd-wall-checks li { border-radius: 10px; overflow: hidden; border-left: 3px solid #f0b64a; background: #1b1f2a; }
+.byd-wall-checks li[data-severity='error'] { border-left-color: #e05c5c; }
+.byd-wall-checks li > button { display: flex; width: 100%; align-items: center; gap: 10px; border: 0; background: transparent; padding: 9px 11px; color: #e6ecfa; font: inherit; text-align: left; cursor: pointer; }
+.byd-wall-checks li > button b { color: #fff; }
+.byd-wall-checks li > button span { color: #9aa3b8; }
+.byd-wall-checks li > button small { margin-left: auto; color: #7d8597; text-transform: uppercase; letter-spacing: 1px; font-size: 10px; }
+.byd-wall-check-detail { padding: 0 11px 10px; display: grid; gap: 6px; }
+.byd-wall-check-detail p { margin: 0; color: #cfd5e3; font-size: 12px; line-height: 1.5; }
+.byd-wall-check-detail span { color: #7d8597; font: 11px ui-monospace, monospace; }
+
 .byd-wall { padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; align-content: start; }
 .byd-wall-card { position: relative; border-radius: 8px; cursor: pointer; }
 .byd-wall-card[aria-selected='true'] { outline: 3px solid #3c8ce7; outline-offset: 3px; }
