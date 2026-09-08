@@ -10,6 +10,9 @@ import { LoginPage } from './account/LoginPage.js'
 import { ClaimPage } from './account/ClaimPage.js'
 import { InvitePage } from './account/InvitePage.js'
 import { TextureFailures } from './table/TextureFailures.js'
+import { NotFoundPage } from './status/NotFoundPage.js'
+import { DocumentTitle } from './status/DocumentTitle.js'
+import { StatusLive } from './status/StatusLive.js'
 import { Language, detectLang } from './i18n/index.js'
 
 // Routing is a path check for now; a router arrives with the first real page.
@@ -18,8 +21,16 @@ import { Language, detectLang } from './i18n/index.js'
 // which is the catalogue's own language.
 export function App() {
   return (
+    // Three things belong to the screen rather than to any route: the language the tool speaks
+    // (A4), the tab's name (#12) and the pair of live regions every state is said in (#7). All
+    // live here, the only place mounted exactly once whichever route is showing, for the same
+    // reason `TextureFailures` does.
     <Language lang={detectLang()}>
-      <TextureFailures>{route()}</TextureFailures>
+      <DocumentTitle>
+        <StatusLive>
+          <TextureFailures>{route()}</TextureFailures>
+        </StatusLive>
+      </DocumentTitle>
     </Language>
   )
 }
@@ -37,5 +48,7 @@ function route() {
   if (location.pathname === '/login') return <LoginPage />
   if (location.pathname === '/claim') return <ClaimPage />
   if (location.pathname.startsWith('/invites/')) return <InvitePage />
-  return <HomePage />
+  if (location.pathname === '/') return <HomePage />
+  // Anything else is a page that does not exist, and says so.
+  return <NotFoundPage />
 }

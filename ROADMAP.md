@@ -70,6 +70,11 @@ Editorn:
 - ✅ "Bord"-fliken: spelets alla bord med miniatyr ur bordets egen snapshot, vem som spelar, vilken version som körs och vägarna in — TV, bordsläge, spela härifrån, titta på, QR — plus avslut med bekräftelse (L5, K9, C7, C9).
 - ✅ Kortgrupper som regler på en kolumn: en flik per grupp över duken, fram- och baksida redigeras likadant, lagerpanelen säger om ett lager är basens eller gruppens, och tabellen visar vilken grupp en rad faller i; dolda kort får gruppens baksida utan identitetsläcka och tryckmanifestet håller varje fram-/baksidespar ihop (L3, L7).
 - ✅ "Mina spel" och inloggningskortet (G1).
+- ✅ Skydd för osparat arbete: osparat mätt mot servern, fråga vid vägen ut, `beforeunload` vid stängning och omladdning, bekräftelse innan ett kort tas bort, och sparat/osparat i huvudet (L9).
+- ✅ Editorn, wizarden och observatören på små skärmar: namngivna etapper under 1024 px, ingen duk under 768 px och gränssnittet säger det, tre steg i wizarden, bordet först och ingen banner över spelet hos observatören (L10, #4, #5, #6).
+- ✅ Handsolfjädrarna i bordets eget mått: fläkten skalar med filten, inpassningen räknar in händerna och ett kvartsvridet bord passas in i den form det ritas i, mätt i Chromium vid 390, 768 och 1280 i alla fyra konsumenter (K9, C5, #23).
+- ✅ Distansvyns nedre band: bågen kapad vid 30°, kortet kvar i läsbar storlek, steget bottnat på 44 px och en hand bredare än bandet som rullar i sidled; hörnen uppe i en topplist och hela handen som rutnät bakom `Visa alla` (K17, C4, #24, #25).
+- ✅ Filten mot ramens yta i stället för mot dess kortare sida: två femtedelar av ramen, minst 44 px luft, en enda regel för `/online`, `/table`, TV:n och Bord-flikens miniatyrer (K9, K17, #24).
 
 Drift:
 - ✅ Compose-stack med minnestak och loggrotation: Postgres, app som serverar webben från samma origin, render-worker, tunnel- och backupprofiler (DRIFT §1, §2, §6, §8).
@@ -85,6 +90,7 @@ Målet är att en grupp kan spela vilket kortspel som helst utan att sakna någo
 
 - ✅ Kamera i TV-läge: bordet ramar in det som är i spel och glider med, tillfällig zoom kring pekaren med återgång (C5).
 - ✅ Högens topp som adress i `stack` och `flip`, så att översta kortet i en dold hög kan staplas på ett löst kort och vändas; ett uppvänt kort överst i en hög ses av alla (K15).
+- ✅ Fel-, tom- och anslutningslägen som en familj: nio lägen med gemensam modell och en form per route, initial timeout på anslutningen, tappad och återansluten ovanpå vyn, avvisade drag vid kontrollen, och en egen dokumenttitel per huvudroute (D5).
 - ✅ Räknare och privata zoner på telefonen: en räknartyp `token.counter`, en yta "Framför mig" och en räknarzon per plats från wizarden; telefonen visar räknarna som piller och korten framför sig som en remsa med vänd, ta upp och spela; bordet ritar räknare som brickor (C4).
 - ✅ Aktivitetshistorik i snapshoten: de senaste femtio raderna följer med vid anslutning, så en skärm som ansluter mitt i ett spel ser vad som hänt (I, teknik).
 - ✅ En hög kvadrerar sina kort, och zoner får överlappa med minsta zonen som vinnare, lika stora efter setupens ordning (K1, K2).

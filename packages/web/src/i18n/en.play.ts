@@ -148,6 +148,8 @@ export const enPlay = {
 
   'observer.name': 'spectator',
   'observer.banner': 'You are a spectator: you see everyone’s hands and every pile. Everyone knows you are here.',
+  'observer.watching': '{name} is watching',
+  'observer.more': 'Latest and seats',
 
   'join.code.missing': 'No room code given.',
   'join.code.gone': 'The room code {code} is no longer valid. Ask the host for a new one.',
@@ -164,6 +166,7 @@ export const enPlay = {
   'join.online': 'Play on this screen (the table and your hand here)',
   'join.observe': 'Just watch (you see everything, everyone sees you)',
 
+  'online.showall': 'Show all',
   'online.observers.one': '{names} is watching',
   'online.observers.other': '{names} are watching',
 

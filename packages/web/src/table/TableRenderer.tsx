@@ -1,14 +1,15 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type MouseEvent as RMouseEvent, type ReactNode, type PointerEvent as RPointerEvent, type WheelEvent as RWheelEvent } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent as RKeyboardEvent, type MouseEvent as RMouseEvent, type ReactNode, type PointerEvent as RPointerEvent, type WheelEvent as RWheelEvent } from 'react'
 import { Texture } from './Texture.js'
 import type { Intent, Presence, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
 import type { Peer, Pulse, Recent } from './presence.js'
 import { hue } from './hue.js'
 import { seatColor } from './seatColor.js'
-import { fitScale } from './fit.js'
+import { feltScale, fitScale, LEAST_AIR_PX } from './fit.js'
 import { activeBounds, cameraOf, fitFloor, frameRect, pad, reachOf, same, tween, zoomAround, type Rect, type Size } from './camera.js'
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
 import { CARD_MM, absoluteOf, dropIntents, type Drag, type DragTarget } from './drop.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
+import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_MM, edgeRotation, fanPlace, feltWithHands, handExtent } from './hand.js'
 import { useT, type T } from '../i18n/index.js'
 
 export type TableMode = 'table' | 'tv'
@@ -24,6 +25,26 @@ export type TableMode = 'table' | 'tv'
 // that changes; a scroll or a double tap zooms around the pointer and the view returns by itself.
 // `size` is the frame's size when the renderer should not measure it; `glideMs` the glide.
 export type TableHandle = { toTable(clientX: number, clientY: number): Point | null }
+// The keyboard's layer over the felt (#1, #2, variant C). It draws nothing: it puts a role, a
+// name, one tab stop and a focus ring on the nodes this renderer already draws, which is what
+// keeps K9 — one renderer, one way to draw a card. A table that is only shown passes none of
+// this and grows no tab stops: the editor's Bord tab renders thumbnails through this component,
+// and a thumbnail nobody can play is not a control.
+export type FeltItemProps = {
+  tabIndex: number
+  ref(el: HTMLElement | null): void
+  onKeyDown(event: RKeyboardEvent): void
+  onFocus(): void
+}
+export type FeltKeyboard = {
+  // Every node the keyboard may stand on, keyed `card:<id>`, `top:<zone>` or `pile:<zone>`,
+  // with the sentence that names it. Nodes this map does not mention stay pictures.
+  labels: ReadonlyMap<string, string>
+  // Which node the panel currently stands open on, if any.
+  open?: string | null | undefined
+  itemProps(key: string): FeltItemProps
+  onActivate(key: string): void
+}
 // The felt's own mapping from millimetres to pixels, for whatever is laid over it.
 export type FeltFit = { px(mm: number): number; left(mmX: number): number; top(mmY: number): number; scale: number }
 export type TableRendererProps = {
@@ -44,9 +65,9 @@ export type TableRendererProps = {
   glideMs?: number | undefined
   // What the editor lays over the felt (B5): zone handles, drawn last with the felt's mapping.
   overlay?: ((fit: FeltFit) => ReactNode) | undefined
+  keyboard?: FeltKeyboard | undefined
 }
 
-const FAN_MAX = 12
 const HOLD_MS = 350
 const POINT_MS = 450
 const DRAG_MM = 4
@@ -54,12 +75,6 @@ const TABLE_GREY = '#8a93a8'
 // A counter token (C4) is drawn as a chip, not a card.
 const COUNTER_TYPE = 'token.counter'
 const TOKEN_MM = 24
-// How much room the felt leaves around itself in table mode, as a share of the frame's shorter
-// side: prototype B's proportion. 0.16 puts the table at 0.85 of life size on a 1600 × 1000
-// screen — the scale B was approved at — and keeps that proportion on any other screen (K9).
-const TABLE_MARGIN = 0.16
-// TV mode is framed by its own chrome, so the felt only needs a hair of air inside it.
-const TV_MARGIN_PX = 44
 // The camera: room around what is in play, how close it may come, and how long a zoom holds.
 const CAMERA_PAD_MM = 60
 const CAMERA_MIN_MM = 520
@@ -69,7 +84,7 @@ const GLIDE_MS = 700
 type Live = Drag & { started: boolean }
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], onPresence, camera = false, onInspect, size: fixedSize, glideMs = GLIDE_MS, overlay }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], onPresence, camera = false, onInspect, size: fixedSize, glideMs = GLIDE_MS, overlay, keyboard }, ref) {
   const t = useT()
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
@@ -78,7 +93,6 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const table = useRef<HTMLDivElement | null>(null)
   // Nothing is painted until the frame has been measured: a first paint at 1:1 would flash.
   const [measuredSize, setMeasuredSize] = useState<Size | null>(null)
-  const margin = marginFor(mode, fixedSize ?? measuredSize)
   useEffect(() => {
     const el = frame.current
     if (fixedScale !== undefined || fixedSize !== undefined || !el) return
@@ -94,7 +108,22 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   }, [fixedScale, fixedSize])
   const size = fixedSize ?? measuredSize
   const floorRect: Rect = { x: floor.geometry.x, y: floor.geometry.y, w: floor.geometry.w, h: floor.geometry.h }
-  const fitted = size === null ? null : size.w > 0 && size.h > 0 ? fitScale({ w: floorRect.w, h: floorRect.h }, size, margin) : 1
+  // A hand is turned toward its own edge in table mode; the fan is drawn by that rotation and
+  // measured by it, so both ask the same question of the same rule.
+  const hands = view.zones.filter((z) => z.kind === 'hand')
+  const handRot = (z: ZoneView) => (mode === 'table' ? edgeRotation(z, floor) : 0)
+  // What the fit has to pass into the frame is the felt *with its hands on* (#23): a hand is part
+  // of the table, so a table fitted to the floor alone would clip one that reaches past the rim.
+  const felted = feltWithHands(floorRect, hands.map((z) => handExtent(z, handRot(z))))
+  // A quarter turn (C5) puts the table's width where its height was, so that is the shape the
+  // fit has to pass into the frame — otherwise a seat at a side edge gets a table cut off at the
+  // top and bottom of its own screen.
+  const drawn = rotate % 180 === 0 ? felted : { w: felted.h, h: felted.w }
+  // How the felt meets its frame is one rule for every screen that shows a table (K9, K17): the
+  // TV is framed by its own chrome and only needs air inside it, the felt table stands on the
+  // dark and holds back to its share of it. Both leave the same least air, so neither cuts the
+  // wooden rim the frame draws in its own pixels.
+  const fitted = size === null ? null : size.w > 0 && size.h > 0 ? (mode === 'table' ? feltScale(drawn, size) : fitScale(drawn, size, LEAST_AIR_PX)) : 1
 
   // Inspection (K8): "Titta" in the ring, private to this screen, until tapped away.
   const [held, setHeld] = useState<VisibleComponentState | null>(null)
@@ -225,6 +254,32 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const inspects = (c: VisibleComponentState | undefined) =>
     onInspect && c ? { onPointerEnter: () => onInspect(c), onPointerLeave: () => onInspect(null) } : undefined
 
+  // What the keyboard adds to a node this renderer already draws: the role and the name a
+  // reader hears, the one tab stop the roving list is holding, and Enter or Space to open the
+  // panel. A node the layer does not name keeps nothing.
+  const keys = (key: string) => {
+    const label = keyboard?.labels.get(key)
+    if (!keyboard || label === undefined) return undefined
+    const item = keyboard.itemProps(key)
+    return {
+      role: 'button',
+      'aria-label': label,
+      'data-kbd': key,
+      'data-kbd-state': keyboard.open === key ? 'open' : undefined,
+      tabIndex: item.tabIndex,
+      ref: item.ref,
+      onFocus: item.onFocus,
+      onKeyDown: (e: RKeyboardEvent) => {
+        if (e.key !== 'Enter' && e.key !== ' ') {
+          item.onKeyDown(e)
+          return
+        }
+        e.preventDefault()
+        keyboard.onActivate(key)
+      },
+    }
+  }
+
   // A zoom for a moment (C5): scroll or pinch around the pointer, double tap to go close and
   // again to come back. The camera returns by itself.
   const wheel = (e: RWheelEvent) => {
@@ -270,7 +325,6 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
 
   const areas = view.zones.filter((z) => z.kind === 'area' && z.id !== floor.id)
   const piles = view.zones.filter((z) => z.kind === 'pile')
-  const hands = view.zones.filter((z) => z.kind === 'hand')
   const loose = view.components.filter((c) => zoneById.get(c.zone)?.kind === 'area')
   const dx = drag?.started ? drag.at.x - drag.grab.x : 0
   const dy = drag?.started ? drag.at.y - drag.grab.y : 0
@@ -279,13 +333,19 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const liftedKind = drag?.started && drag.target.kind !== 'card' ? drag.target.kind : null
   const topOf = (z: ZoneView, skip = 0) => byId.get(topIdOf(z, skip) ?? '')
 
+  // A quarter-turned table (C5) is as tall as the floor is wide, so the wood it lies on takes
+  // that shape too and holds it centred; otherwise the felt hangs over its own frame.
+  const turnedWood = rotate % 180 === 0 ? undefined : { width: px(floor.geometry.h), height: px(floor.geometry.w) }
+  // The felt's own box keeps the floor's shape whatever the turn, so it is nudged by half the
+  // difference to sit centred on the wood that now has the other shape.
+  const turnedFelt = rotate % 180 === 0 ? {} : { marginLeft: px((floor.geometry.h - floor.geometry.w) / 2), marginTop: px((floor.geometry.w - floor.geometry.h) / 2) }
   const felt = (
-      <div className="byd-table-wood" ref={wood}>
+      <div className="byd-table-wood" ref={wood} style={turnedWood}>
         <div
           data-table
           data-rotate={rotate}
           ref={table}
-          style={{ position: 'relative', width: px(floor.geometry.w), height: px(floor.geometry.h), transform: rotate ? `rotate(${rotate}deg)` : undefined, ['--unrotate' as string]: `${-rotate}deg` }}
+          style={{ position: 'relative', width: px(floor.geometry.w), height: px(floor.geometry.h), ...turnedFelt, transform: rotate ? `rotate(${rotate}deg)` : undefined, ['--unrotate' as string]: `${-rotate}deg` }}
           onPointerMove={feltMove}
           onPointerDown={feltDown}
           onPointerUp={clearPoint}
@@ -314,6 +374,8 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 topInspects={inspects(lifting ? topOf(z, 1) : topOf(z))}
                 topHandlers={onAct && count > 0 ? handlers({ kind: 'pileTop', pile: z.id }) : undefined}
                 labelHandlers={onAct ? handlers({ kind: 'pile', pile: z.id }) : undefined}
+                topKeys={keys(`top:${z.id}`)}
+                labelKeys={keys(`pile:${z.id}`)}
               />
             )
           })}
@@ -322,9 +384,10 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
               key={z.id}
               zone={z}
               color={seatColor(seatIndex(z.owner))}
-              rot={mode === 'table' ? edgeRotation(z, floor) : 0}
+              rot={handRot(z)}
               left={left(z.geometry.x + z.geometry.w / 2)}
               top={top(z.geometry.y + z.geometry.h / 2)}
+              px={px}
               cards={z.mode === 'order' ? z.order.flatMap((id) => byId.get(id) ?? []) : undefined}
               faces={faces}
             />
@@ -353,6 +416,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 faces={faces}
                 handlers={onAct ? handlers({ kind: 'card', id: c.id }) : undefined}
                 inspects={inspects(c)}
+                keys={keys(`card:${c.id}`)}
               />
             )
           })}
@@ -497,9 +561,20 @@ function ringItems(view: Snapshot, target: DragTarget, act: (intents: Intent[]) 
 }
 
 type Handlers = { onPointerDown(e: RPointerEvent): void; onPointerMove(e: RPointerEvent): void; onPointerUp(e: RPointerEvent): void; onPointerCancel(e: RPointerEvent): void }
+// What the keyboard layer hands a drawn node: a role, a name, a tab stop and its key handling.
+type FeltNodeProps = {
+  role: string
+  'aria-label': string
+  'data-kbd': string
+  'data-kbd-state': string | undefined
+  tabIndex: number
+  ref(el: HTMLElement | null): void
+  onFocus(): void
+  onKeyDown(e: RKeyboardEvent): void
+}
 type Pointing = { onPointerEnter(): void; onPointerLeave(): void }
 
-function Card({ c, left, top, px, dragging, carried, by, faces, handlers, inspects }: { c: VisibleComponentState; left: number; top: number; px: (mm: number) => number; dragging: boolean; carried?: boolean; by?: { seat: string | null; colour: string } | undefined; faces?: string | undefined; handlers?: Handlers | undefined; inspects?: Pointing | undefined }) {
+function Card({ c, left, top, px, dragging, carried, by, faces, handlers, inspects, keys }: { c: VisibleComponentState; left: number; top: number; px: (mm: number) => number; dragging: boolean; carried?: boolean; by?: { seat: string | null; colour: string } | undefined; faces?: string | undefined; handlers?: Handlers | undefined; inspects?: Pointing | undefined; keys?: FeltNodeProps | undefined }) {
   const face = c.cardRef === null ? 'back' : 'front'
   return (
     <div
@@ -511,6 +586,7 @@ function Card({ c, left, top, px, dragging, carried, by, faces, handlers, inspec
       data-by={by ? by.seat ?? 'table' : undefined}
       {...inspects}
       {...handlers}
+      {...keys}
       style={{
         position: 'absolute',
         left,
@@ -547,7 +623,7 @@ function topIdOf(z: ZoneView, skip = 0): string | undefined {
 
 // A pile is a point; the stack is centred on it. A hidden pile has a count and nothing else,
 // unless its top lies face-up.
-function Pile({ zone, count, topCard, faces, left, top, px, lifted, topHandlers, topInspects, labelHandlers }: { zone: ZoneView; count: number; topCard: VisibleComponentState | undefined; faces: string | undefined; left: number; top: number; px: (mm: number) => number; lifted: boolean; topHandlers?: Handlers | undefined; topInspects?: Pointing | undefined; labelHandlers?: Handlers | undefined }) {
+function Pile({ zone, count, topCard, faces, left, top, px, lifted, topHandlers, topInspects, labelHandlers, topKeys, labelKeys }: { zone: ZoneView; count: number; topCard: VisibleComponentState | undefined; faces: string | undefined; left: number; top: number; px: (mm: number) => number; lifted: boolean; topHandlers?: Handlers | undefined; topInspects?: Pointing | undefined; labelHandlers?: Handlers | undefined; topKeys?: FeltNodeProps | undefined; labelKeys?: FeltNodeProps | undefined }) {
   const t = useT()
   const layers = Math.min(Math.max(count, 0), 12)
   const thickness = Array.from({ length: layers }, (_, i) => `0 ${-i * 1.2}px 0 #1f2b4a`).join(', ')
@@ -565,31 +641,18 @@ function Pile({ zone, count, topCard, faces, left, top, px, lifted, topHandlers,
         data-face={topCard?.cardRef ? 'front' : 'back'}
         {...topInspects}
         {...topHandlers}
+        {...topKeys}
         style={{ boxShadow: thickness, transform: `translateY(${-(layers - 1) * 1.2}px)`, ...(topCard?.cardRef ? { ['--hue' as string]: hue(topCard.cardRef) } : {}) }}
       >
         <Texture faces={faces} c={topCard} />
         <span>{count > 0 ? topCard?.cardRef ?? '' : ''}</span>
       </div>
-      <span className="byd-pile-count" data-handle={labelHandlers ? 'true' : undefined} {...labelHandlers}>
+      <span className="byd-pile-count" data-handle={labelHandlers ? 'true' : undefined} {...labelHandlers} {...labelKeys}>
         <span className="byd-pile-name">{zone.dynamic ? t('pile.dynamic') : zone.name}</span>
         <b className="byd-pile-n">{count}</b>
       </span>
     </div>
   )
-}
-
-// The room the felt leaves around itself in the frame it was given.
-function marginFor(mode: TableMode, size: Size | null): number {
-  if (mode !== 'table') return TV_MARGIN_PX
-  return size === null ? 0 : Math.round(Math.min(size.w, size.h) * TABLE_MARGIN)
-}
-
-// In table mode a hand faces the edge it sits at, like a real player would (C5).
-function edgeRotation(hand: ZoneView, floor: ZoneView): number {
-  const dx = hand.geometry.x + hand.geometry.w / 2 - (floor.geometry.x + floor.geometry.w / 2)
-  const dy = hand.geometry.y + hand.geometry.h / 2 - (floor.geometry.y + floor.geometry.h / 2)
-  if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? -90 : 90
-  return dy > 0 ? 0 : 180
 }
 
 const EDGES: Record<number, 'N' | 'E' | 'S' | 'W'> = { 0: 'S', 180: 'N', [-90]: 'E', 90: 'W' }
@@ -611,12 +674,19 @@ function SeatName({ zone, floor, name, color, left, top }: { zone: ZoneView; flo
 }
 
 // Other seats' hands are a fan of backs and a count; the owner reads theirs on the phone. A hand
-// whose order this view may see (the observer, C8) fans the cards themselves.
-function Hand({ zone, color, rot, left, top, cards, faces }: { zone: ZoneView; color: string; rot: number; left: number; top: number; cards?: VisibleComponentState[] | undefined; faces?: string | undefined }) {
+// whose order this view may see (the observer, C8) fans the cards themselves. Every measure in
+// the fan is a millimetre on the felt, so it shrinks with the table rather than swamping it (#23).
+function Hand({ zone, color, rot, left, top, px, cards, faces }: { zone: ZoneView; color: string; rot: number; left: number; top: number; px: (mm: number) => number; cards?: VisibleComponentState[] | undefined; faces?: string | undefined }) {
   const count = zone.mode === 'count' ? zone.count : zone.order.length
   const fan = Math.min(count, FAN_MAX)
+  const shown = cards ? Math.min(cards.length, FAN_MAX) : fan
+  const box = { left: px(HAND_CARD_BOX.x), top: px(HAND_CARD_BOX.y), width: px(HAND_CARD_BOX.w), height: px(HAND_CARD_BOX.h) }
+  const place = (i: number, spread: boolean) => {
+    const { step, tilt } = fanPlace(i, shown, spread)
+    return `translateX(${px(step)}px) rotate(${tilt}deg)`
+  }
   return (
-    <div className="byd-hand" data-zone={zone.id} data-count={count} data-rot={rot} style={{ left, top, transform: `rotate(${rot}deg)`, ['--seat' as string]: color, ['--hand-unrot' as string]: `${-rot}deg` }}>
+    <div className="byd-hand" data-zone={zone.id} data-count={count} data-rot={rot} style={{ left, top, transform: `rotate(${rot}deg)`, ['--seat' as string]: color, ['--hand-unrot' as string]: `${-rot}deg`, ['--hand-drop' as string]: `${px(HAND_COUNT_MM)}px` }}>
       <div className="byd-hand-fan">
         {cards
           ? cards.slice(0, FAN_MAX).map((c, i) => (
@@ -625,13 +695,13 @@ function Hand({ zone, color, rot, left, top, cards, faces }: { zone: ZoneView; c
                 className="byd-hand-card"
                 data-component={c.id}
                 data-face={c.cardRef === null ? 'back' : 'front'}
-                style={{ transform: `translateX(${(i - (Math.min(cards.length, FAN_MAX) - 1) / 2) * 26}px) rotate(${(i - (Math.min(cards.length, FAN_MAX) - 1) / 2) * 7}deg)`, ...(c.cardRef === null ? {} : { ['--hue' as string]: hue(c.cardRef) }) }}
+                style={{ ...box, transform: place(i, true), ...(c.cardRef === null ? {} : { ['--hue' as string]: hue(c.cardRef) }) }}
               >
                 <Texture faces={faces} c={c} />
                 <span>{c.cardRef ?? ''}</span>
               </i>
             ))
-          : Array.from({ length: fan }, (_, i) => <i key={i} className="byd-back" style={{ transform: `rotate(${(i - (fan - 1) / 2) * 9}deg)` }} />)}
+          : Array.from({ length: fan }, (_, i) => <i key={i} className="byd-back" style={{ ...box, transform: place(i, false) }} />)}
       </div>
       <b className="byd-hand-count">{count}</b>
     </div>

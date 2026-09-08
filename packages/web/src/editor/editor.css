@@ -1,14 +1,90 @@
 /* Editor — the wall as home, the canvas for the template, the table as a tab. */
-.byd-editor { position: relative; height: 100vh; display: grid; grid-template-rows: 48px auto 1fr; background: #23262e; color: #ddd; font: 13px system-ui, sans-serif; }
-.byd-editor > header { display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #2f333d; }
-/* The header is one 48 px row and it holds a lot: the game's name, four tabs, and the buttons
-   that reach the table (#19). Nothing in it may wrap onto a second line — the row would not grow,
-   the text would only get cramped — so the controls stay on one line and the game's name, the one
-   thing that can be any length, is the one thing that gives way. */
+.byd-editor {
+  /* The history panel (B4) hangs from the revision it opened from, inside this box. */
+  position: relative;
+  /* The chrome the editor's own words are read on: the header, and the strips under it. */
+  --byd-editor-chrome-bg: #23262e;
+  --byd-editor-home-ink: #c3cbdd;
+  --byd-editor-saved-ink: #9aa3b8;
+  --byd-editor-unsaved-ink: #f0b64a;
+  /* What a phone cannot hold, said in the amber the editor says everything it wants looked at in
+     (L10) — and the strip of stages under it: the open one, the rest, and the two actions. */
+  --byd-editor-narrow-bg: #2a2417;
+  --byd-editor-narrow-ink: #ffd98a;
+  --byd-editor-stage-bg: #1b1d23;
+  --byd-editor-stage-ink: #9aa3b8;
+  --byd-editor-stage-on-bg: #2f3a55;
+  --byd-editor-stage-on-ink: #ffffff;
+  --byd-editor-stage-action-bg: #23262e;
+  --byd-editor-stage-action-ink: #ffffff;
+  /* The blue the editor's first action is painted in (#22). It has two jobs and they carry two
+     different bars, so it is two tokens and not one: the fill under a white label is text and
+     has to clear 4.5:1 — `#3c8ce7` gave 3.44:1 and did not — while a mark, an edge or a ring is
+     a graphic and has to clear 3:1 against the surface it lands on, which the lighter blue does
+     and the darker one would not. Both are declared once, here, and measured in
+     `editor-contrast.test.ts`. */
+  --byd-editor-primary-bg: #1f6fd0;
+  --byd-editor-primary-ink: #ffffff;
+  --byd-editor-primary-mark: #3c8ce7;
+  /* Every target in the editor is at least this, at every width the audit checks
+     (UX-KONTROLLER: träffytor). A tool a thumb cannot hit is a tool the editor does not have. */
+  --byd-tap: 44px;
+  height: 100vh;
+  display: grid;
+  /* Header, what the room cannot hold (L10), the question asked on the way out (#8), the running
+     table's row (L5), the open mode, and — below the desk — the stage strip. Every middle row is
+     empty most of the time and takes no height then; when several are there they stack, because
+     one of them alone must never push another off the screen. */
+  grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
+  background: var(--byd-editor-chrome-bg);
+  color: #ddd;
+  font: 13px system-ui, sans-serif;
+}
+.byd-editor > header { grid-row: 1; min-height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #2f333d; }
+/* Below the desk the modes and the two actions have left the header for the stage strip, so what
+   is left is who and what: the way out, the game, the revision and whether the work is safe. A
+   save that failed is spoken here too, and it is the one thing long enough to need a second row. */
+@media (max-width: 1023px) {
+  .byd-editor > header { flex-wrap: wrap; padding: 6px 12px; }
+}
+/* Six modes, two actions, the people who have the game (D3) and everything that says whose game
+   this is, all in one row. On a wide desk they fit; at the width the desk begins they do not, and
+   the row must still not push the page sideways (UX-KONTROLLER: 1024). The row's own air and the
+   tabs' padding give way before anything gives up its place — measured in Chromium in
+   `editor-viewport.test.ts`. */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .byd-editor > header { gap: 8px; }
+  .byd-editor > header [role='tablist'] { margin-left: 8px; }
+  .byd-editor > header [role='tab'] { padding: 0 6px; }
+  .byd-editor > header > button { padding: 0 10px; }
+}
+/* What a phone does not get, said where the tools would have been (L10). */
+.byd-editor-narrow {
+  grid-row: 2;
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--byd-editor-narrow-bg);
+  color: var(--byd-editor-narrow-ink);
+  border-bottom: 1px solid #4a4230;
+  line-height: 1.45;
+}
+/* On a desk the header is one row and it holds a lot: the game's name, four tabs, and the buttons
+   that reach the table (#19). Nothing in it may wrap there — the row would only get cramped — so
+   the controls stay on one line and the game's name, the one thing that can be any length, is the
+   one thing that gives way. */
 .byd-editor > header strong { color: #fff; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 3ch; }
 .byd-editor > header button { white-space: nowrap; }
-.byd-editor-rev { border: 0; background: transparent; padding: 4px 6px; border-radius: 6px; color: #7d8597; white-space: nowrap; font: inherit; cursor: pointer; }
+/* The revision is a button now: it opens the history (B4). It is a target like any other in the
+   editor, so it carries the same minimum. */
+.byd-editor-rev { display: inline-flex; align-items: center; min-height: var(--byd-tap); border: 0; background: transparent; padding: 4px 6px; border-radius: 6px; color: #7d8597; white-space: nowrap; font: inherit; cursor: pointer; }
 .byd-editor-rev:hover, .byd-editor-rev[aria-expanded='true'] { background: #1b1d23; color: #dce3f2; }
+/* The way out of the editor, first in the header because that is where a way back belongs. */
+.byd-editor-home { display: inline-flex; align-items: center; min-height: var(--byd-tap); color: var(--byd-editor-home-ink); white-space: nowrap; text-decoration: none; font-weight: 600; }
+.byd-editor-home:hover { text-decoration: underline; }
+/* Whether the work is safe (#8): grey while it is on the server, amber the moment it is not —
+   the same amber the editor says everything it wants looked at in. */
+.byd-editor-saved { color: var(--byd-editor-saved-ink); white-space: nowrap; }
+.byd-editor-saved[data-unsaved='true'] { color: var(--byd-editor-unsaved-ink); font-weight: 700; }
 /* The history (B4): a panel that hangs from the revision it opened from. */
 .byd-history { position: absolute; left: 120px; top: 46px; z-index: 20; width: 340px; max-height: 70vh; overflow: auto; padding: 16px; border-radius: 14px; background: #171a23; border: 1px solid #3b4358; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5); }
 .byd-history header { display: flex; align-items: center; gap: 10px; }
@@ -17,7 +93,7 @@
 .byd-history-lead { margin: 8px 0 12px; color: #9aa3b8; font-size: 12px; line-height: 1.5; }
 .byd-history ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .byd-history li { border-radius: 10px; background: #1b1f2a; border: 1px solid #262b38; overflow: hidden; }
-.byd-history li[data-named='true'] { border-color: #3c8ce7; }
+.byd-history li[data-named='true'] { border-color: var(--byd-editor-primary-mark); }
 .byd-history li[data-current] { border-color: #7dd3a0; }
 .byd-history li > button { display: flex; align-items: baseline; gap: 8px; width: 100%; border: 0; background: transparent; padding: 9px 11px; color: #e6ecfa; font: inherit; text-align: left; cursor: pointer; }
 .byd-history li > button b { color: #fff; }
@@ -30,7 +106,7 @@
 .byd-history-detail button { border: 1px solid #2f333d; border-radius: 8px; padding: 6px 10px; background: #1b1d23; color: #fff; font-weight: 700; font-size: 12px; cursor: pointer; }
 .byd-history [role='alert'] { color: #f0b64a; font-size: 12px; }
 .byd-editor [role='tablist'] { display: flex; background: #1b1d23; border-radius: 8px; padding: 3px; margin-left: 12px; }
-.byd-editor [role='tab'] { border: 0; border-radius: 6px; padding: 6px 14px; background: transparent; color: #9aa3b8; font-weight: 600; cursor: pointer; }
+.byd-editor [role='tab'] { min-height: var(--byd-tap); border: 0; border-radius: 6px; padding: 0 14px; background: transparent; color: #9aa3b8; font-weight: 600; cursor: pointer; }
 .byd-editor [role='tab'][aria-selected='true'] { background: #2f3a55; color: #fff; }
 .byd-editor-spacer { flex: 1; }
 /* A line that is gone says so, and what is written meanwhile is kept until it is back (D3). */
@@ -59,13 +135,18 @@
 .byd-share li button { margin-left: auto; border: 1px solid #2f333d; border-radius: 7px; padding: 3px 8px; background: #1b1d23; color: #9aa3b8; font: 11px system-ui; cursor: pointer; }
 .byd-share form { display: grid; grid-template-columns: 1fr auto auto; gap: 6px; }
 .byd-share form input, .byd-share form select { padding: 7px 9px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; font: 12px system-ui; min-width: 0; }
-.byd-share form button { border: 1px solid #3c8ce7; border-radius: 8px; padding: 7px 11px; background: #3c8ce7; color: #fff; font: 700 12px system-ui; cursor: pointer; }
+.byd-share form button { border: 1px solid var(--byd-editor-primary-bg); border-radius: 8px; padding: 7px 11px; background: var(--byd-editor-primary-bg); color: var(--byd-editor-primary-ink); font: 700 12px system-ui; cursor: pointer; }
 .byd-share form [role='status'] { grid-column: 1 / -1; margin: 4px 0 0; color: #7dd3a0; font-size: 12px; line-height: 1.5; }
-.byd-editor-notice { color: #f0b64a; }
-.byd-editor > header > button { border: 1px solid #2f333d; border-radius: 8px; padding: 8px 14px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
+/* A save that could not happen has to be readable, so it wraps rather than pushing the header
+   sideways; on a desk the header has a whole row of its own for it. */
+.byd-editor-notice { min-width: 0; color: #f0b64a; }
+.byd-editor > header > button { min-height: var(--byd-tap); min-width: var(--byd-tap); border: 1px solid #2f333d; border-radius: 8px; padding: 0 14px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
 .byd-editor > header > button:disabled { color: #5b6478; cursor: default; }
-.byd-editor > header > .byd-editor-primary { background: #3c8ce7; border-color: #3c8ce7; }
+.byd-editor > header > .byd-editor-primary { background: var(--byd-editor-primary-bg); border-color: var(--byd-editor-primary-bg); }
 .byd-editor-table-link {
+  /* Fourth row, whether or not the question above it is standing: neither strip may push the
+     other off the screen, and neither may take the mode's row. */
+  grid-row: 4;
   --byd-editor-table-bg: #1f2a1f;
   /* A card that could not be rendered wears the same colours here as it does on the table
      (texture.css), so one fact has one look wherever it is met. */
@@ -94,13 +175,105 @@
   font-weight: 700;
   cursor: pointer;
 }
-/* The middle row belongs to the table link, which is only there once a table is running; the
-   open mode always takes the last row, so the canvas reaches the bottom of the window either way. */
-.byd-editor > main { grid-row: 3; min-height: 0; overflow: auto; }
+/* The middle rows belong to the question on the way out and to the table link, and both are
+   usually absent; the open mode always takes the last row, so the canvas reaches the bottom of
+   the window however many of them are there. */
+.byd-editor > main { grid-row: 5; min-height: 0; overflow: auto; }
+/* The question asked before the editor is left with unsaved work (#8), in the same shape as the
+   other questions the editor asks first: one strip, across the way out, with the answer that
+   loses nothing under the focus. Amber, because it is about unsaved work and not about a
+   deletion; the one answer that does throw work away is the red one. */
+.byd-editor-leave {
+  grid-row: 3;
+  --byd-editor-leave-bg: #3b3222;
+  --byd-editor-leave-ink: #ffeccc;
+  --byd-editor-leave-save-bg: #1f5fa8;
+  --byd-editor-leave-save-ink: #ffffff;
+  --byd-editor-leave-danger-bg: #7a3243;
+  --byd-editor-leave-danger-ink: #ffe4ea;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 16px;
+  background: var(--byd-editor-leave-bg);
+  color: var(--byd-editor-leave-ink);
+  border-bottom: 1px solid #2f333d;
+}
+.byd-editor-leave p { margin: 0; font-weight: 700; }
+.byd-editor-leave button {
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 1px solid #6b5c3c;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--byd-editor-leave-ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.byd-editor-leave button[data-kind='keep'] { background: var(--byd-editor-leave-save-bg); border-color: var(--byd-editor-leave-save-bg); color: var(--byd-editor-leave-save-ink); }
+.byd-editor-leave button[data-kind='danger'] { background: var(--byd-editor-leave-danger-bg); border-color: var(--byd-editor-leave-danger-bg); color: var(--byd-editor-leave-danger-ink); }
 .byd-editor > main > [role='tabpanel'] { height: 100%; min-height: 0; }
 /* A keyboard has to be able to see where it is, in every mode: one ring for every stop in the
    editor, light enough to carry 3:1 against each of the surfaces it lands on. */
 .byd-editor :focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+/* Every target the editor draws is at least 44 by 44 CSS pixels, at every width the audit checks
+   (UX-KONTROLLER: träffytor). A tick box keeps the size a tick box has and is hit through the
+   label around it, which is the target the eye sees; a file input lies invisible across its own
+   label and is that label's size already. */
+.byd-editor button,
+.byd-editor a[href],
+.byd-editor input:not([type='checkbox']):not([type='file']),
+.byd-editor select,
+.byd-editor textarea,
+.byd-editor [role='option'],
+.byd-editor label:has(> input) { min-height: var(--byd-tap); }
+.byd-editor button { min-width: var(--byd-tap); }
+.byd-editor a[href] { display: inline-flex; align-items: center; }
+
+/* Stages (L10, prototype C): below the desk the modes and the template's four panels are one flat
+   strip at the bottom of the screen, in thumb's reach. The strip scrolls sideways when the stages
+   do not fit; the page never does, and the two actions that must not be scrolled away are pinned
+   to its end. */
+.byd-editor-stagebar {
+  grid-row: 6;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px 8px;
+  background: var(--byd-editor-stage-bg);
+  border-top: 1px solid #2f333d;
+}
+.byd-editor-stagebar [role='tab'] { color: var(--byd-editor-stage-ink); }
+.byd-editor-stagebar [role='tab'][aria-selected='true'] { background: var(--byd-editor-stage-on-bg); color: var(--byd-editor-stage-on-ink); }
+.byd-editor-stagebar [role='tablist'] { flex: 1 1 auto; min-width: 0; margin-left: 0; padding: 0; background: transparent; border-radius: 0; gap: 4px; overflow-x: auto; scrollbar-width: thin; }
+.byd-editor-stagebar [role='tab'] { flex: 0 0 auto; white-space: nowrap; border-radius: 9px; }
+.byd-editor-stagebar-actions {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding-left: 10px;
+  background: var(--byd-editor-stage-bg);
+  box-shadow: -14px 0 14px -8px rgb(0 0 0 / 95%);
+}
+.byd-editor-stagebar-actions button {
+  min-height: var(--byd-tap);
+  min-width: var(--byd-tap);
+  padding: 0 12px;
+  white-space: nowrap;
+  border: 1px solid #2f333d;
+  border-radius: 8px;
+  background: var(--byd-editor-stage-action-bg);
+  color: var(--byd-editor-stage-action-ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.byd-editor-stagebar-actions button:disabled { color: #5b6478; cursor: default; }
+.byd-editor-stagebar-actions .byd-editor-primary { background: var(--byd-editor-primary-bg); border-color: var(--byd-editor-primary-bg); }
 
 /* The setup editor (B5, K2): the recipe's knobs, the felt as the workspace, the phone's sheet. */
 .byd-setup { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px; padding: 20px; align-items: start; }
@@ -108,10 +281,10 @@
 .byd-setup h2 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; }
 .byd-setup-recipe { display: grid; gap: 18px; }
 .byd-setup-recipe label { display: flex; gap: 8px; align-items: center; margin: 6px 0; color: #e6ecfa; }
-.byd-setup-recipe input[type='checkbox'] { width: 16px; height: 16px; accent-color: #3c8ce7; }
+.byd-setup-recipe input[type='checkbox'] { width: 16px; height: 16px; accent-color: var(--byd-editor-primary-mark); }
 .byd-setup-players { display: flex; gap: 6px; }
 .byd-setup-players button, .byd-setup-tools button, .byd-setup-counters > button, .byd-setup-props button { border: 1px solid #2f333d; border-radius: 8px; padding: 7px 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
-.byd-setup-players button[aria-pressed='true'] { background: #3c8ce7; border-color: #3c8ce7; }
+.byd-setup-players button[aria-pressed='true'] { background: var(--byd-editor-primary-bg); border-color: var(--byd-editor-primary-bg); }
 .byd-setup-counters { margin: 8px 0 0 24px; display: grid; gap: 6px; justify-items: start; }
 .byd-setup-counters > span { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #9aa3b8; }
 .byd-setup-counter { display: flex; gap: 6px; align-items: center; color: #9aa3b8; }
@@ -150,7 +323,7 @@
 .byd-wall-tools { grid-column: 1 / -1; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; padding: 0 4px 10px; }
 .byd-wall-tools > div { display: flex; gap: 6px; }
 .byd-wall-tools button { border: 1px solid #2f333d; border-radius: 8px; padding: 6px 11px; background: #1b1d23; color: #fff; font-weight: 700; font-size: 12px; cursor: pointer; }
-.byd-wall-tools button[aria-pressed='true'] { background: #3c8ce7; border-color: #3c8ce7; }
+.byd-wall-tools button[aria-pressed='true'] { background: var(--byd-editor-primary-bg); border-color: var(--byd-editor-primary-bg); }
 .byd-wall-tools label { display: flex; gap: 6px; align-items: center; color: #cfd5e3; font-size: 12px; }
 /* Another eye over the real cards (E5), and the trim the knife will follow. */
 .byd-wall[data-eye='deuteranopia'] { filter: url(#byd-eye-deuteranopia); }
@@ -181,7 +354,7 @@
 
 .byd-wall { padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; align-content: start; }
 .byd-wall-card { position: relative; border-radius: 8px; cursor: pointer; }
-.byd-wall-card[aria-selected='true'] { outline: 3px solid #3c8ce7; outline-offset: 3px; }
+.byd-wall-card[aria-selected='true'] { outline: 3px solid var(--byd-editor-primary-mark); outline-offset: 3px; }
 .byd-wall-copies, .byd-wall-warnings { position: absolute; border-radius: 999px; font-size: 11px; font-weight: 700; padding: 1px 6px; }
 .byd-wall-copies { bottom: -6px; right: -6px; background: #1b1d23; color: #fff; border: 1px solid #444; }
 .byd-wall-warnings { top: -6px; right: -6px; background: #f0b64a; color: #1c1c1c; }
@@ -199,12 +372,12 @@
   inset: 0;
   pointer-events: none;
   background:
-    repeating-linear-gradient(to right, rgba(60, 140, 231, 0.4) 0 0.08mm, transparent 0.08mm 10mm),
-    repeating-linear-gradient(to bottom, rgba(60, 140, 231, 0.4) 0 0.08mm, transparent 0.08mm 10mm),
-    repeating-linear-gradient(to right, rgba(60, 140, 231, 0.16) 0 0.06mm, transparent 0.06mm 1mm),
-    repeating-linear-gradient(to bottom, rgba(60, 140, 231, 0.16) 0 0.06mm, transparent 0.06mm 1mm);
+    repeating-linear-gradient(to right, var(--byd-editor-grid-cm) 0 0.08mm, transparent 0.08mm 10mm),
+    repeating-linear-gradient(to bottom, var(--byd-editor-grid-cm) 0 0.08mm, transparent 0.08mm 10mm),
+    repeating-linear-gradient(to right, var(--byd-editor-grid-mm) 0 0.06mm, transparent 0.06mm 1mm),
+    repeating-linear-gradient(to bottom, var(--byd-editor-grid-mm) 0 0.06mm, transparent 0.06mm 1mm);
 }
-.byd-drag-handle { position: absolute; width: 2.4mm; height: 2.4mm; background: #fff; border: 0.4mm solid #3c8ce7; box-sizing: border-box; touch-action: none; }
+.byd-drag-handle { position: absolute; width: 2.4mm; height: 2.4mm; background: var(--byd-editor-handle-bg); border: 0.4mm solid var(--byd-editor-primary-mark); box-sizing: border-box; touch-action: none; }
 .byd-drag-handle[data-handle='nw'] { left: -1.2mm; top: -1.2mm; cursor: nwse-resize; }
 .byd-drag-handle[data-handle='ne'] { right: -1.2mm; top: -1.2mm; cursor: nesw-resize; }
 .byd-drag-handle[data-handle='sw'] { left: -1.2mm; bottom: -1.2mm; cursor: nesw-resize; }
@@ -223,6 +396,13 @@
   /* Everything the canvas says beside the card — the panel headings and the note on the layer
      order — is quiet, but never quieter than AA against the panel it is read on. */
   --byd-editor-hint-ink: #9aa3b8;
+  /* The millimetre rule over the card is the same blue diluted twice: a centimetre line and a
+     millimetre one. Both are the mark, so a change to the blue reaches them too. */
+  --byd-editor-grid-cm: color-mix(in srgb, var(--byd-editor-primary-mark) 40%, transparent);
+  --byd-editor-grid-mm: color-mix(in srgb, var(--byd-editor-primary-mark) 16%, transparent);
+  /* A drag handle is a white square with a blue edge: the white is what the eye finds on a card
+     of any colour, the edge is what says the square is the editor's and not the card's. */
+  --byd-editor-handle-bg: #ffffff;
   /* The strip over the card (#13): which group and which side of it is being edited. It sits
      between two panels and the card, so it is a shade of its own — dark enough to leave the card
      the brightest thing on screen, light enough for every word on it to clear AA. */
@@ -235,23 +415,38 @@
   --byd-editor-source-ink: #9aa3b8;
   height: 100%;
   display: grid;
-  grid-template-columns: 68px 220px 1fr 280px;
+  /* The middle column may be as narrow as the room allows: an `1fr` that refuses to shrink under
+     its own content is what made the whole editor 893 px wide whatever the window was (#5). */
+  grid-template-columns: 68px 220px minmax(0, 1fr) 280px;
 }
+/* Below the desk the four panels are four stages, one at a time (L10): the open one takes the
+   whole width, and the borders that divided the columns have nothing left to divide. */
+.byd-canvas[data-stage] { grid-template-columns: minmax(0, 1fr); }
+.byd-canvas[data-stage] > .byd-canvas-tools { flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid #2f333d; }
+.byd-canvas[data-stage] > .byd-canvas-layers { border-right: 0; }
+.byd-canvas[data-stage] > .byd-canvas-props { border-left: 0; }
 /* The card and the strip that says what is on it share a column: the strip is a fixed row over a
    stage that takes what is left. */
 .byd-canvas-main { display: grid; grid-template-rows: auto 1fr; min-height: 0; }
+/* The strip over the card (#13): two rows at every width. What is being edited and which side of
+   it is being edited share the first row, and the group tabs — the one thing here that can run
+   out of room — take the second and scroll inside it. That way the front/back switch keeps its
+   own right edge instead of being pushed past the screen. */
 .byd-canvas-strip {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
+  gap: 8px 10px;
   padding: 8px 12px;
   background: var(--byd-editor-strip-bg);
   border-bottom: 1px solid #2f333d;
-  flex-wrap: wrap;
 }
-.byd-canvas-group-column { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--byd-editor-hint-ink); }
-.byd-canvas-group-column select { background: #0f1115; border: 1px solid #2a2d36; color: #dce3f2; border-radius: 6px; padding: 4px 6px; font-size: 12px; }
+.byd-canvas-group-column { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 11px; color: var(--byd-editor-hint-ink); }
+.byd-canvas-group-column select { min-width: 0; background: #0f1115; border: 1px solid #2a2d36; color: #dce3f2; border-radius: 6px; padding: 4px 6px; font-size: 12px; }
 .byd-canvas-groups, .byd-canvas-faces { display: flex; gap: 4px; }
+.byd-canvas-groups { grid-column: 1 / -1; grid-row: 2; overflow-x: auto; scrollbar-width: thin; padding: 2px; }
+.byd-canvas-groups button { flex: 0 0 auto; white-space: nowrap; }
+.byd-canvas-faces { justify-self: end; flex: 0 0 auto; }
 .byd-canvas-groups button, .byd-canvas-faces button {
   border: 1px solid #2f333d;
   border-radius: 999px;
@@ -265,7 +460,7 @@
 .byd-canvas-groups button[aria-selected='true'], .byd-canvas-faces button[aria-checked='true'] {
   background: var(--byd-editor-strip-on-bg);
   color: var(--byd-editor-strip-on-ink);
-  border-color: #3c8ce7;
+  border-color: var(--byd-editor-primary-mark);
 }
 /* Variant B's rule list, kept as the summary: every group as the rule it is, read not pressed. */
 .byd-canvas-rules { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
@@ -303,13 +498,13 @@
   cursor: pointer;
 }
 .byd-canvas-tools button span { font-size: 15px; line-height: 1; }
-.byd-canvas-tools button:hover { border-color: #3c8ce7; }
+.byd-canvas-tools button:hover { border-color: var(--byd-editor-primary-mark); }
 .byd-canvas-grid-toggle { display: flex; align-items: center; gap: 7px; color: var(--byd-editor-hint-ink); font-size: 12px; margin-top: 12px; cursor: pointer; }
 .byd-canvas-hint { color: var(--byd-editor-hint-ink); font-size: 11px; line-height: 1.4; margin: 10px 0 0; }
 .byd-canvas h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--byd-editor-hint-ink); margin: 0 0 8px; }
 .byd-canvas-layers { border-right: 1px solid #2f333d; padding: 12px; overflow: auto; }
 .byd-canvas-layers ul { list-style: none; margin: 0; padding: 0; }
-.byd-canvas-layers li { padding: 6px 8px; border-radius: 6px; cursor: pointer; display: flex; gap: 8px; }
+.byd-canvas-layers li { padding: 6px 8px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
 .byd-canvas-layers li[aria-selected='true'] { background: #2f3a55; }
 .byd-layer-kind { color: #7d8597; width: 44px; }
 .byd-canvas-stage { display: grid; place-items: center; overflow: auto; background: repeating-conic-gradient(#20232b 0 25%, #1b1d23 0 50%) 0 0 / 24px 24px; }
@@ -333,16 +528,23 @@
 .byd-fonts [role='alert'] { margin: 8px 0 0; font-size: 11px; color: #f0b64a; }
 
 /* Table */
-.byd-table-wrap { padding: 16px; }
+/* The tab is a column: the tools, the filter and what is marked stay put, and only the rows
+   scroll — sideways in their own box, never with the page. */
+.byd-table-wrap { padding: 16px; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; min-height: 0; }
+.byd-data-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
 .byd-data-tools { margin-bottom: 12px; display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
 .byd-data-tools label, .byd-data-tools a { border: 1px solid #3b414e; border-radius: 8px; padding: 7px 11px; background: #1b1d23; color: #dce3f2; font-weight: 700; text-decoration: none; cursor: pointer; }
 .byd-data-tools label { position: relative; overflow: hidden; }
 .byd-data-tools label input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .byd-data-tools > span { color: #7d8597; }
 .byd-data-tools > [role='alert'] { color: #f0b64a; }
-.byd-data { border-collapse: collapse; width: 100%; background: #1b1d23; }
-.byd-data th { text-align: left; padding: 8px 10px; color: #7d8597; font-weight: 600; border-bottom: 1px solid #2f333d; position: sticky; top: 0; background: #1b1d23; }
+/* `separate` rather than `collapse`, because a collapsed border is drawn by the table and a
+   sticky cell then leaves its own edges behind as it scrolls. */
+.byd-data { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; background: #1b1d23; }
+.byd-data th { text-align: left; padding: 8px 10px; color: #7d8597; font-weight: 600; border-bottom: 1px solid #2f333d; position: sticky; top: 0; z-index: 1; background: #1b1d23; }
 .byd-data td { padding: 0; border-bottom: 1px solid #20232b; }
+/* A cell is as wide as a field needs, not as wide as the window has: the box scrolls. */
+.byd-data td input { min-width: 12ch; }
 /* Image cells (E1): a thumbnail with a place to drop, a button to choose, a × to clear. */
 .byd-data-image { padding: 3px 6px !important; }
 .byd-data-drop { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 3px; border: 1px dashed transparent; border-radius: 8px; }
@@ -370,7 +572,7 @@
 .byd-data-picking { z-index: 2; }
 .byd-data-symbols { position: absolute; left: 4px; top: 100%; z-index: 5; width: 230px; max-height: 230px; overflow: auto; display: grid; gap: 2px; padding: 6px; border-radius: 10px; background: #171a23; border: 1px solid #3b4358; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5); }
 .byd-data-symbols button { display: flex; align-items: center; gap: 8px; border: 0; border-radius: 7px; padding: 5px 7px; background: transparent; color: #e6ecfa; font: inherit; text-align: left; cursor: pointer; }
-.byd-data-symbols button[aria-selected='true'] { background: #3c8ce7; }
+.byd-data-symbols button[aria-selected='true'] { background: var(--byd-editor-primary-bg); }
 .byd-data-symbols img { width: 20px; height: 20px; padding: 2px; border-radius: 5px; background: #e8e2d4; }
 .byd-data-symbols small { margin-left: auto; color: #9aa3b8; font-size: 11px; }
 /* The header is the sort control (#15): the column's name, the state as an arrow beside it. */
@@ -388,7 +590,6 @@
   --byd-editor-chip-on-ink: #0b2a18;
   --byd-editor-marked-bg: #253044;
   --byd-editor-marked-ink: #c3cbdd;
-  --byd-editor-marked-edge: #3c8ce7;
 }
 .byd-data-filter { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
 .byd-data-search {
@@ -417,17 +618,27 @@
 .byd-data-clear { border: 1px solid #3b414e; border-radius: 8px; padding: 6px 12px; background: transparent; color: var(--byd-editor-filter-quiet); font: inherit; cursor: pointer; }
 .byd-data-clear:hover { color: var(--byd-editor-filter-ink); }
 .byd-data-empty { margin: 16px 0 0; color: var(--byd-editor-count-ink); }
-.byd-data-search:focus-visible, .byd-data-chip:focus-visible, .byd-data-clear:focus-visible { outline: 3px solid #3c8ce7; outline-offset: 3px; }
+/* Below the desk the filter is a stack of single lines that scroll in their own boxes rather
+   than a field of wrapped chips: a deck with a sentence-long column would otherwise push the
+   rows — the thing the tab is for — off the bottom of the screen. */
+@media (max-width: 1023px) {
+  .byd-data-filter { display: grid; grid-template-columns: minmax(0, 1fr); align-items: stretch; }
+  .byd-data-chips { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; padding-bottom: 2px; }
+  .byd-data-chip { flex: 0 0 auto; max-width: 22ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .byd-data-clear { justify-self: start; }
+}
+.byd-data-search:focus-visible, .byd-data-chip:focus-visible, .byd-data-clear:focus-visible { outline: 3px solid var(--byd-editor-primary-mark); outline-offset: 3px; }
 .byd-data th button { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
 .byd-data th button span { color: #6b7386; }
 .byd-data th button:hover { color: #dce3f2; }
 .byd-data th button[data-active='true'] { color: #dce3f2; }
 .byd-data th button[data-active='true'] span { color: #7dd3a0; }
-.byd-data th button:focus-visible { outline: 3px solid #3c8ce7; outline-offset: 3px; }
+.byd-data th button:focus-visible { outline: 3px solid var(--byd-editor-primary-mark); outline-offset: 3px; }
 .byd-data tr[aria-selected='true'] { background: #2f3a55; }
 .byd-data-id { padding: 7px 10px !important; color: #7d8597; font-family: ui-monospace, monospace; font-size: 12px; }
 .byd-data input { background: transparent; border: 0; color: #ddd; padding: 7px 10px; width: 100%; box-sizing: border-box; font-size: 12px; }
 .byd-data button { background: transparent; border: 0; color: #7d8597; cursor: pointer; padding: 6px 10px; }
+.byd-data-search { min-height: var(--byd-tap); box-sizing: border-box; }
 .byd-data-add { margin-top: 10px; border: 1px dashed #2f333d; background: transparent; color: #9aa3b8; border-radius: 8px; padding: 8px 14px; cursor: pointer; }
 /* The action row (#17, prototype A): it is not there at all until a card is marked, and then it
    stands between the filter and the rows — right where the eye goes after ticking a box. The
@@ -477,17 +688,24 @@
 .byd-data-bulk button:disabled { color: var(--byd-editor-bulk-quiet); cursor: default; }
 .byd-data-bulk button[data-kind='danger'] { background: var(--byd-editor-bulk-danger-bg); border-color: var(--byd-editor-bulk-danger-bg); color: var(--byd-editor-bulk-danger-ink); }
 .byd-data-bulk button[data-kind='quiet'] { border-color: transparent; color: var(--byd-editor-bulk-quiet); font-weight: 400; }
-/* The checkbox column (#17): wide enough for a real hit target, and the tick is the same blue as
-   the focus ring, so "marked" and "here" read as the same family. */
-.byd-data-check { width: 34px; text-align: center; padding: 0 4px !important; }
-.byd-data-check input { width: 16px; height: 16px; padding: 0; accent-color: #3c8ce7; cursor: pointer; }
+/* The checkbox column (#17): wide enough for a real hit target, and the tick is the editor's own
+   blue, so "marked" and "here" read as the same family. It is the fill and not the mark, because
+   what a browser draws inside it is a white tick and that is a white-on-blue pair like any other. */
+.byd-data-check { width: var(--byd-tap); text-align: center; padding: 0 !important; }
+/* The tick keeps the size a tick has; what a thumb hits is the label around it. */
+.byd-data-tick { display: grid; place-items: center; min-width: var(--byd-tap); min-height: var(--byd-tap); cursor: pointer; }
+.byd-data-check input { width: 18px; height: 18px; padding: 0; accent-color: var(--byd-editor-primary-bg); cursor: pointer; }
+/* The column that removes a card is pinned to the right edge of the scrolling box: it is the
+   first thing a narrow screen would lose, and it is the one thing that must not be lost. */
+.byd-data .byd-data-remove { position: sticky; right: 0; z-index: 2; width: var(--byd-tap); padding: 0 !important; background: #1b1d23; box-shadow: -8px 0 12px -8px rgb(0 0 0 / 80%); }
+.byd-data thead .byd-data-remove { z-index: 3; }
 .byd-data-chosen { color: var(--byd-editor-count-ink); font-weight: 700; }
 /* A marked row is read from across the table, not from its checkbox: the tick is the control,
    the tint and the edge are the answer to "did I get the right four cards". Being marked and
    being the card on the preview are two different things, so the row being looked at keeps its
    own blue and only takes the edge — the two cues differ in kind, not only in shade. */
 .byd-data tr[aria-selected='false']:has(.byd-data-check input:checked) { background: var(--byd-editor-marked-bg); }
-.byd-data tr:has(.byd-data-check input:checked) .byd-data-check { box-shadow: inset 3px 0 0 var(--byd-editor-marked-edge); }
+.byd-data tr:has(.byd-data-check input:checked) .byd-data-check { box-shadow: inset 3px 0 0 var(--byd-editor-primary-mark); }
 .byd-data tr:has(.byd-data-check input:checked) .byd-data-id { color: var(--byd-editor-marked-ink); }
 
 /* Bord (#19, prototype variant A): the tables of this game, as a list of live games. The row is
@@ -537,7 +755,7 @@
   text-decoration: none;
   cursor: pointer;
 }
-.byd-tables-ways a.byd-editor-primary { background: #3c8ce7; border-color: #3c8ce7; color: #fff; }
+.byd-tables-ways a.byd-editor-primary { background: var(--byd-editor-primary-bg); border-color: var(--byd-editor-primary-bg); color: var(--byd-editor-primary-ink); }
 .byd-tables-ways button[data-kind='quiet'] { background: transparent; border-color: #3a4050; color: var(--byd-tables-quiet); font-weight: 400; }
 .byd-tables-note { color: var(--byd-tables-quiet); }
 .byd-tables-qr { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -561,9 +779,11 @@
 .byd-tables-new:disabled { cursor: default; }
 /* The shortcut in the header (variant B): "Uppdatera bordet" keeps its job, and the caret beside
    it opens the newest table wherever the designer is standing. */
-.byd-editor-split { position: relative; display: inline-flex; }
+/* The caret is the other half of "Uppdatera bordet", so it sits against it: the header's own
+   12 px gap is taken back, leaving the 1 px seam a split button has. */
+.byd-editor-split { position: relative; display: inline-flex; margin-left: -11px; }
 .byd-editor > header > .byd-editor-primary:has(+ .byd-editor-split) { border-radius: 8px 0 0 8px; }
-.byd-editor-split > .byd-editor-caret { border: 1px solid #3c8ce7; border-radius: 0 8px 8px 0; margin-left: 1px; padding: 8px 12px; background: #3c8ce7; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+.byd-editor-split > .byd-editor-caret { border: 1px solid var(--byd-editor-primary-bg); border-radius: 0 8px 8px 0; margin-left: 1px; padding: 8px 12px; background: var(--byd-editor-primary-bg); color: var(--byd-editor-primary-ink); font: inherit; font-weight: 700; cursor: pointer; }
 .byd-editor-ways {
   position: absolute;
   right: 0;
@@ -594,7 +814,7 @@
 .byd-symbols input[type='search'], .byd-symbols-set input { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; font: inherit; }
 .byd-symbols-cats { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0; }
 .byd-symbols button { border: 1px solid #2f333d; border-radius: 8px; padding: 6px 11px; background: #1b1d23; color: #fff; font-weight: 700; font-size: 12px; cursor: pointer; }
-.byd-symbols button[aria-pressed='true'] { background: #3c8ce7; border-color: #3c8ce7; }
+.byd-symbols button[aria-pressed='true'] { background: var(--byd-editor-primary-bg); border-color: var(--byd-editor-primary-bg); }
 .byd-symbols-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; max-height: 58vh; overflow: auto; }
 .byd-symbols-tile { display: grid; justify-items: center; gap: 3px; padding: 8px 4px; font-weight: 400; font-size: 10px; color: #9aa3b8; }
 .byd-symbols-tile small { color: #6d7488; font-size: 9px; }
@@ -636,7 +856,7 @@
 .byd-rules-block { position: relative; }
 .byd-rules-block > [role='button'] { border-radius: 6px; padding: 2px 6px; margin: 0 -6px; cursor: text; }
 .byd-rules-block > [role='button']:hover { background: #ece5d8; }
-.byd-rules-block > [role='button']:focus-visible { outline: 2px solid #3c8ce7; }
+.byd-rules-block > [role='button']:focus-visible { outline: 2px solid var(--byd-editor-primary-mark); }
 .byd-rules-edit { display: grid; gap: 6px; padding: 12px; margin: 8px -12px; border-radius: 10px; background: #23262e; }
 .byd-rules-edit input, .byd-rules-edit textarea, .byd-rules-edit select { width: 100%; box-sizing: border-box; padding: 7px 9px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; font: 13px/1.6 system-ui, sans-serif; }
 .byd-rules-row { display: flex; gap: 8px; }
@@ -651,4 +871,4 @@
 .byd-rules-empty { display: grid; gap: 12px; justify-items: start; max-width: 520px; padding: 24px; }
 .byd-rules-empty h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; }
 .byd-rules-empty p { margin: 0; color: #9aa3b8; line-height: 1.6; }
-.byd-rules-empty button { border: 1px solid #2f333d; border-radius: 8px; padding: 8px 14px; background: #3c8ce7; border-color: #3c8ce7; color: #fff; font-weight: 700; cursor: pointer; }
+.byd-rules-empty button { border: 1px solid #2f333d; border-radius: 8px; padding: 8px 14px; background: var(--byd-editor-primary-bg); border-color: var(--byd-editor-primary-bg); color: #fff; font-weight: 700; cursor: pointer; }

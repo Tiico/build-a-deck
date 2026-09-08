@@ -7,12 +7,16 @@ import { elementsFor } from '@byd/template'
 import { fieldsOf } from './fields.js'
 import { cardsInGroup, groupColumn, groupsOf, layersOf, overriddenIds, ruleLabel, type Layer } from './groups.js'
 import { LayerList } from './LayerList.js'
+import type { CanvasStage } from './EditorStages.js'
 import { useRoving } from './roving.js'
 import { familiesInUse, previewFonts } from './fonts.js'
 import type { ProjectCredit } from '@byd/server'
 import { useT, type Key, type T } from '../i18n/index.js'
 
 export type TemplateCanvasProps = {
+  // Which of the four panels to draw, or nothing at all for the desk's four columns (L10). Below
+  // 1024 px they are stages one at a time, and the canvas draws the one that is open.
+  stage?: CanvasStage | null
   doc: ProjectDoc
   assetBase?: string | undefined
   face: string
@@ -46,7 +50,7 @@ export type TemplateCanvasProps = {
 // Template mode (A): layers on the left, the card large in the middle with the selected element
 // outlined, and its properties on the right. Every change goes through `onPatch` and lands on
 // every card of the deck — there are no per-card exceptions (L3).
-export function TemplateCanvas({ doc, assetBase, face, onSelectFace, row, selectedElement, onSelectElement, onPatch, onRemove, onAdd, onReorder, group, onSelectGroup, onGroupColumn, onReset, onFontFile, onFontLicence, onRemoveFont }: TemplateCanvasProps) {
+export function TemplateCanvas({ stage = null, doc, assetBase, face, onSelectFace, row, selectedElement, onSelectElement, onPatch, onRemove, onAdd, onReorder, group, onSelectGroup, onGroupColumn, onReset, onFontFile, onFontLicence, onRemoveFont }: TemplateCanvasProps) {
   const t = useT()
   const faceTemplate = doc.template.faces[face]
   const column = groupColumn(doc)
@@ -64,8 +68,8 @@ export function TemplateCanvas({ doc, assetBase, face, onSelectFace, row, select
   const layer = panel.find((l) => l.element.id === selectedElement)
   const el = layer?.source === 'removed' ? undefined : layer?.element
   useElementKeys(el, onPatch, onRemove)
-  const stage = useRef<HTMLElement | null>(null)
-  const scale = useStageFit(stage)
+  const stageEl = useRef<HTMLElement | null>(null)
+  const scale = useStageFit(stageEl)
   // The grid is a layer to see by, not a rule (variant C, kept as an option): it is off until it
   // is asked for, and it never rounds an element to itself — the guides and the arrow keys are
   // what place things, and a 1 mm grid would take the half millimetre away.
@@ -81,9 +85,13 @@ export function TemplateCanvas({ doc, assetBase, face, onSelectFace, row, select
     onSelectElement(element.id)
   }
 
+  // One panel or all four: a stage draws exactly what it is named after, so nothing is mounted
+  // twice and nothing a tab does not point at is left in the tab order.
+  const shows = (which: CanvasStage) => stage === null || stage === which
   return (
-    <div className="byd-canvas">
-      <ToolRail onAdd={add} />
+    <div className="byd-canvas" {...(stage ? { 'data-stage': stage } : {})}>
+      {shows('tools') && <ToolRail onAdd={add} />}
+      {shows('layers') && (
       <aside className="byd-canvas-layers">
         <h2 id="layers-heading">{t('canvas.layers', { face: faceName(face, t).toLowerCase() })}</h2>
         <p className="byd-canvas-affects">{affectsLabel(doc, column, group, t)}</p>
@@ -108,6 +116,8 @@ export function TemplateCanvas({ doc, assetBase, face, onSelectFace, row, select
         </p>
         {column && <GroupRules doc={doc} column={column} groups={groups} />}
       </aside>
+      )}
+      {shows('canvas') && (
       <div className="byd-canvas-main">
         <div className="byd-canvas-strip">
           <label className="byd-canvas-group-column">
@@ -122,12 +132,14 @@ export function TemplateCanvas({ doc, assetBase, face, onSelectFace, row, select
             </select>
           </label>
           {column && <GroupTabs column={column} groups={groups} group={group} onSelect={onSelectGroup} />}
-          <span className="byd-editor-spacer" />
+          {/* The strip is two rows at every width: the group tabs are the one thing in it that
+              can run out of room, and they scroll, so the front/back switch keeps its own right
+              edge instead of being pushed past it (#13). */}
           <FaceSwitch faces={Object.keys(doc.template.faces)} face={face} onSelect={onSelectFace} />
         </div>
         <main
           className="byd-canvas-stage"
-          ref={stage}
+          ref={stageEl}
           onClick={() => onSelectElement(null)}
           {...(column ? { role: 'tabpanel', id: GROUP_PANEL, 'aria-labelledby': groupTabId(group) } : {})}
         >
@@ -145,9 +157,14 @@ export function TemplateCanvas({ doc, assetBase, face, onSelectFace, row, select
           />
         </main>
       </div>
+      )}
+      {shows('props') && (
       <aside className="byd-canvas-props">
         <h2>{layer ? t('canvas.props.of', { id: layer.element.id }) : t('canvas.props')}</h2>
         {layer?.source === 'removed' && <p className="byd-canvas-affects">{t('canvas.removedIn', { rule: ruleLabel(column ?? '', group ?? '') })}</p>}
+        {/* A panel with nothing in it says why rather than looking broken — and on a small screen
+            the layers are another stage away, so it says where to go. */}
+        {!layer && <p className="byd-canvas-hint">{t('canvas.props.empty')}</p>}
         {el && <Properties el={el} fields={fields} fonts={Object.keys(doc.fonts ?? {})} onPatch={(patch) => onPatch(el.id, patch)} />}
         {layer && group && overridden.has(layer.element.id) && (
           <button type="button" className="byd-canvas-reset" onClick={() => onReset(layer.element.id)}>
@@ -156,6 +173,7 @@ export function TemplateCanvas({ doc, assetBase, face, onSelectFace, row, select
         )}
         <FontShelf doc={doc} onFontFile={onFontFile} onFontLicence={onFontLicence} onRemoveFont={onRemoveFont} />
       </aside>
+      )}
     </div>
   )
 }

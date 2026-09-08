@@ -3,6 +3,9 @@ import { LoginCard } from './LoginCard.js'
 import { hue } from '../table/hue.js'
 import { logout, myPlayed, myProjects, removeProject, startTable, whoAmI, type Played, type ProjectSummary } from './api.js'
 import { seatColor } from '../table/seatColor.js'
+import { StatusNotice } from '../status/StatusNotice.js'
+import { noticeFor } from '../status/notice.js'
+import { usePageTitle } from '../status/DocumentTitle.js'
 import { LanguagePicker, useLang, useT, type Lang, type T } from '../i18n/index.js'
 import './account.css'
 
@@ -21,9 +24,12 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   const [played, setPlayed] = useState<Played[] | null>(null)
   // Landing here from the claim page (G1): which session was just saved.
   const claimed = params.get('claimed')
-  // A page that could not be read at all is one thing; an action that failed is another. The
-  // second must never take the games off the screen.
-  const [error, setError] = useState<string | null>(null)
+  // The start page is where every other route's way home leads, so it is the last place that
+  // may answer with a sentence written for a developer (#12). A page that could not be read at
+  // all is one thing; an action that failed is another, and the second must never take the games
+  // off the screen.
+  const [offline, setOffline] = useState(false)
+  const [attempt, setAttempt] = useState(0)
   const [notice, setNotice] = useState<string | null>(null)
   // A game's own menu (G1): which card has it open, which one is being asked about, and what the
   // last table started from here was, so the code can be read off.
@@ -31,20 +37,22 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   const [asking, setAsking] = useState<ProjectSummary | null>(null)
   const [started, setStarted] = useState<{ project: string; code: string; id: string; hostKey: string } | null>(null)
   useEffect(() => {
+    setOffline(false)
     void whoAmI(http)
       .then((e) => {
         setEmail(e)
         return e ? Promise.all([myProjects(http).then(setProjects), myPlayed(http).then(setPlayed)]) : undefined
       })
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
-  }, [http])
+      .catch(() => setOffline(true))
+  }, [http, attempt])
+  usePageTitle({ state: offline ? 'offline' : email === undefined ? 'loading' : null })
   const suffix = (q: URLSearchParams) => {
     if (server) q.set('server', server)
     return q.toString()
   }
   const justSaved = claimed ? played?.find((p) => p.session === claimed) : undefined
-  if (error) return <p role="alert">{error}</p>
-  if (email === undefined) return <p>{t('home.loading')}</p>
+  if (offline) return <StatusNotice notice={noticeFor('offline', 'app')} surface="page" onRetry={() => setAttempt((n) => n + 1)} />
+  if (email === undefined) return <StatusNotice notice={noticeFor('loading', 'app')} surface="page" />
   if (email === null) {
     return (
       <div className="byd-account" data-page="home">

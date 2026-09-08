@@ -5,6 +5,7 @@ import { whoDecides } from '../table/rewind.js'
 import { FlagSheet, EndSheet } from './SessionSheets.js'
 import { Survey } from './Survey.js'
 import { submitSurvey } from './surveyApi.js'
+import { useRefusal } from '../status/Refusal.js'
 import { useT, type T } from '../i18n/index.js'
 
 // Why the server would not have us (DRIFT §9), in words for the screen.
@@ -57,6 +58,10 @@ export type SessionOverlaysProps = {
 export function SessionOverlays({ client, view, seat, name, http, sessionId, sheet, onSheet, toast, onToast, version, saveUrl }: SessionOverlaysProps) {
   const t = useT()
   const proposal = view.rewind
+  // A sheet that sends something can be answered no, and the answer stands beside the button
+  // that was pressed rather than in a toast that says the opposite of what happened (#7).
+  const flagged = useRefusal('phone')
+  const ended = useRefusal('phone')
   const settle = (v: 'rewind.confirm' | 'rewind.reject') => {
     if (proposal) void client.send({ v, proposal: proposal.id })
   }
@@ -65,22 +70,31 @@ export function SessionOverlays({ client, view, seat, name, http, sessionId, she
       {toast && <div className="byd-toast" role="status">{toast}</div>}
       {sheet === 'flag' && (
         <FlagSheet
+          refusal={flagged}
           onFlag={(note) => {
-            void client.send({ v: 'flag', ...(note ? { note } : {}) })
-            onSheet(null)
-            onToast(t('session.flagged'))
+            void flagged.watch(client.send({ v: 'flag', ...(note ? { note } : {}) })).then((result) => {
+              if (!result.ok) return
+              onSheet(null)
+              onToast(t('session.flagged'))
+            })
           }}
-          onClose={() => onSheet(null)}
+          onClose={() => {
+            flagged.clear()
+            onSheet(null)
+          }}
         />
       )}
       {sheet === 'end' && (
         <EndSheet
           version={version ?? t('session.version.this')}
+          refusal={ended}
           onEnd={() => {
-            void client.send({ v: 'session.end' })
+            void ended.watch(client.send({ v: 'session.end' })).then((result) => result.ok && onSheet(null))
+          }}
+          onClose={() => {
+            ended.clear()
             onSheet(null)
           }}
-          onClose={() => onSheet(null)}
         />
       )}
       {view.ended && <Survey who={name} version={version ?? '…'} saveUrl={saveUrl} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat, answers })} />}

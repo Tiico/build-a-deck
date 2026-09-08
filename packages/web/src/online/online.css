@@ -1,36 +1,86 @@
-/* Fully online (C2, prototype B): the felt with my hand fanned at my edge. */
-.byd-online { position: relative; background: #17120f; }
-.byd-online > .byd-table-frame { height: 100%; }
-/* One row along the bottom of the felt: who you are at one end, what you can do at the other.
-   They are laid out together, so the name — a person's own, and longer in one language than
-   another — gives way rather than growing across the buttons. */
-.byd-online-bar { position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 12; display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; pointer-events: none; }
-.byd-online-bar > * { pointer-events: auto; }
-.byd-online-me {
-  display: flex; align-items: baseline; gap: 10px; min-width: 0; padding: 8px 14px; border-radius: 999px;
-  background: rgba(20, 22, 28, 0.9); color: #9aa3b8; font-size: 13px; border-left: 4px solid var(--seat);
-}
+/* Fully online (C2, prototype B): the felt with my hand fanned under it.
+
+   The page is three rows and nothing lies on top of anything (#25). Three `position: fixed`
+   layers sharing the bottom forty pixels was the collision itself, so the band is layout: the
+   seat's line and the session's tools have a row of their own at the top, the felt takes what is
+   left, and the hand owns the bottom alone. */
+.byd-online { position: relative; background: #17120f; display: flex; flex-direction: column; }
+.byd-online-felt { position: relative; flex: 1 1 auto; min-height: 0; }
+.byd-online-felt > .byd-table-frame { width: 100%; height: 100%; }
+.byd-online-top { flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 8px 16px; background: #100d0b; border-bottom: 1px solid #2a221c; }
+.byd-online-me { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; min-width: 0; min-height: 44px; padding: 0 14px; border-radius: 999px; background: rgba(20, 22, 28, 0.9); color: #9aa3b8; font-size: 13px; border-left: 4px solid var(--seat); }
 .byd-online-me strong { color: #fff; font-size: 15px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .byd-online-me span { white-space: nowrap; }
 .byd-online-me em { font-style: normal; color: #ffd98a; }
 .byd-online-tools { display: flex; gap: 6px; flex: none; }
-.byd-online-tools button { padding: 8px 12px; border: 0; border-radius: 10px; background: rgba(36, 41, 56, 0.92); color: #fff; font-size: 13px; font-weight: 700; }
+/* The way into the hand's second mode (#24): the grid, for when the fan cannot show it all. */
+.byd-online-showall { min-height: 44px; min-width: 44px; margin-right: auto; padding: 0 14px; border: 1px solid #3a2f26; border-radius: 10px; background: #1d1815; color: #e8e2d8; font-size: 13px; font-weight: 700; }
+/* 44 px in both directions, which these three have never been: 76×32, 77×32 and 70×32 at every
+   width, under the gate since before either issue was written (#6, L10). */
+.byd-online-tools button { min-height: 44px; min-width: 44px; padding: 0 12px; border: 0; border-radius: 10px; background: rgba(36, 41, 56, 0.92); color: #fff; font-size: 13px; font-weight: 700; }
 .byd-online-tools .byd-end { background: rgba(58, 42, 45, 0.92); color: #ff9a9a; }
 .byd-online-tools button:disabled { opacity: 0.35; }
 
-.byd-fan { position: fixed; left: 50%; bottom: 6px; transform: translateX(-50%); display: flex; z-index: 11; }
-.byd-fan-card {
-  position: relative; width: 112px; aspect-ratio: 63 / 88; margin: 0 -22px; border-radius: 10px; padding: 10px; box-sizing: border-box; overflow: hidden;
-  background: hsl(var(--hue, 0) 40% 86%); color: #1c1c1c; font: 700 14px system-ui, sans-serif;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5); cursor: grab; touch-action: none; user-select: none;
-  transform-origin: 50% 130%; transform: rotate(var(--fan)) translateY(var(--dip)); transition: transform 0.15s;
+/* The fan's shape — how wide a card is, how far the row steps, and how far below its own box the
+   turned cards paint — is written out by `fan.ts`, which is also what works out the room they
+   need. The fallbacks are prototype B's own numbers, so the sheet still draws a fan on its own. */
+.byd-online-play { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.byd-hand-under { flex: 0 0 auto; }
+.byd-hand-band { position: relative; }
+/* Safe centring: the fan sits in the middle of the band while it fits, and starts at its own
+   first card when it does not — plain centring would push a hand wider than the band half out
+   of its own scroller, where no amount of scrolling brings the first card back. */
+.byd-fan-scroll { display: flex; justify-content: safe center; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: thin; }
+/* Exactly the room `fan.ts` says the turned cards paint into, plus the rise a lifted card needs
+   and the gutter the focus ring reaches into. */
+.byd-fan-room {
+  flex: 0 0 auto;
+  padding: calc(var(--fan-lift, 0) * var(--fan-card, 112px) + var(--fan-rise, 28px)) calc(var(--fan-over, 0.43) * var(--fan-card, 112px) + var(--fan-gutter, 12px)) calc(var(--fan-drop, 0.24) * var(--fan-card, 112px) + var(--fan-gutter, 12px));
 }
-.byd-fan-card:hover { transform: translateY(-28px) rotate(0deg); z-index: 2; }
+.byd-fan { position: relative; width: calc((var(--fan-count, 1) - 1) * var(--fan-step, 68px) + var(--fan-card, 112px)); height: calc(var(--fan-card, 112px) * 88 / 63); }
+/* A card of the seat's own hand, at the size it is read at — the one face both modes draw. */
+.byd-hand-face, .byd-fan-card {
+  border: 0; width: var(--fan-card, 112px); aspect-ratio: 63 / 88;
+  border-radius: calc(var(--fan-card, 112px) * 0.09); padding: calc(var(--fan-card, 112px) * 0.09); box-sizing: border-box; overflow: hidden;
+  background: hsl(var(--hue, 0) 40% 86%); color: #1c1c1c; font: 700 clamp(11px, calc(var(--fan-card, 112px) * 0.125), 14px) system-ui, sans-serif;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5); cursor: grab; user-select: none;
+}
+.byd-fan-card {
+  position: absolute; top: 0; left: calc(var(--i, 0) * var(--fan-step, 68px));
+  /* The browser owns the sideways pan, so a touch that scrolls the fan is the scroller's before
+     it ever reaches the card's own gesture split. */
+  touch-action: pan-x;
+  transform-origin: 50% var(--fan-pivot, 130%); transform: rotate(var(--fan)) translateY(calc(var(--dip, 0) * var(--fan-card, 112px))); transition: transform 0.15s;
+}
+.byd-fan-card:hover, .byd-fan-card:focus-visible { transform: translateY(calc(-1 * var(--fan-rise, 28px))) rotate(0deg); z-index: 2; }
 .byd-fan-card[data-lifted] { opacity: 0.3; }
-.byd-fan-card img, .byd-fan-ghost img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
-.byd-fan-card img ~ span:not([data-texture]), .byd-fan-ghost img ~ span:not([data-texture]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.byd-hand-face img, .byd-fan-card img, .byd-fan-ghost img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+.byd-hand-face img ~ span:not([data-texture]), .byd-fan-card img ~ span:not([data-texture]), .byd-fan-ghost img ~ span:not([data-texture]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .byd-fan-ghost {
-  position: fixed; z-index: 100; pointer-events: none; width: 112px; aspect-ratio: 63 / 88; border-radius: 10px; padding: 10px; box-sizing: border-box; overflow: hidden;
+  position: fixed; z-index: 100; pointer-events: none; width: var(--fan-card, 112px); aspect-ratio: 63 / 88; border-radius: calc(var(--fan-card, 112px) * 0.09); padding: calc(var(--fan-card, 112px) * 0.09); box-sizing: border-box; overflow: hidden;
   background: hsl(var(--hue, 0) 40% 86%); color: #1c1c1c; font: 700 14px system-ui, sans-serif; box-shadow: 0 24px 40px rgba(0, 0, 0, 0.6);
   transform: translate(-50%, -50%) scale(1.06);
 }
+
+/* The hand read all at once (#24, prototype C's Uppslaget as the fan's second mode): the whole
+   hand flat in a grid at reading size, over a dimmed table. It covers the felt and the band and
+   stops short of the top bar, so the session's own controls are never underneath it. */
+.byd-hand-spread { position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; justify-content: flex-end; background: rgba(10, 8, 7, 0.7); }
+.byd-hand-sheet {
+  display: flex; flex-direction: column; min-height: 0; max-height: 100%; box-sizing: border-box;
+  padding: 10px 16px 14px; background: #1a1512; border-top: 1px solid #3a2f26; border-radius: 18px 18px 0 0; box-shadow: 0 -18px 50px rgba(0, 0, 0, 0.6);
+}
+.byd-hand-sheet-head { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; padding-bottom: 10px; color: #9aa3b8; font-size: 13px; }
+.byd-hand-sheet-head strong { color: #fff; font-size: 15px; }
+.byd-hand-sheet-head button { min-height: 44px; min-width: 44px; margin-left: auto; padding: 0 14px; border: 0; border-radius: 10px; background: rgba(36, 41, 56, 0.92); color: #fff; font: 700 13px system-ui, sans-serif; }
+/* A hand larger than the screen scrolls in its own box; the page never does (L10).
+   The row is a card tall, said outright. An automatic row takes its size from what the card
+   holds and not from the card's own `aspect-ratio`, so at twenty-one cards on a phone the rows
+   closed to 83 px around 120 px cards and the grid laid them on top of each other again — the
+   one thing this mode exists not to do. The height is the same answer the fan is drawn from. */
+.byd-hand-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, var(--fan-card, 112px)); grid-auto-rows: calc(var(--fan-card, 112px) * 88 / 63);
+  justify-content: center; align-content: start; align-items: start; gap: 10px;
+  min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; padding: 4px;
+}
+.byd-spread-card { cursor: pointer; }

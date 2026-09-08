@@ -7,6 +7,15 @@ import { useTableClient } from './useTableClient.js'
 import { previewOf, whereTo, whoDecides } from './rewind.js'
 import { usePresence, useRecent } from './usePresence.js'
 import { RuleDrawer } from '../rules/RuleDrawer.js'
+import { useFeltKeyboard } from './useFeltKeyboard.js'
+import { useActivityLive } from './useActivityLive.js'
+import { DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
+import { useLiveStatus } from '../status/useLiveStatus.js'
+import { RouteStatus } from '../status/RouteStatus.js'
+import { StatusNotice } from '../status/StatusNotice.js'
+import { statusLinks } from '../status/links.js'
+import { noticeFor } from '../status/notice.js'
+import { usePageTitle } from '../status/DocumentTitle.js'
 import { useT, type Key } from '../i18n/index.js'
 
 type SessionRecord = { name?: string; version?: string }
@@ -14,7 +23,9 @@ type SessionRecord = { name?: string; version?: string }
 // /table?session=…&host=…&mode=table|tv&server=ws://…
 // The `table` role: no seat, sees only what is public, acts for the group (K14). It is the
 // host's screen (DRIFT §9): the host key opens it, and it is told the room code to show.
-export function TablePage() {
+export type TablePageProps = { timing?: StatusTiming }
+
+export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   const t = useT()
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const sessionId = params.get('session')
@@ -22,8 +33,14 @@ export function TablePage() {
   const host = params.get('host') ?? undefined
   const owner = params.get('owner') === '1'
   const url = params.get('server') ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
-  const { client, view, status, activity, observers, room, refused } = useTableClient(sessionId ? { url, sessionId, seat: null, ...(host ? { host } : {}), ...(owner ? { owner: true } : {}) } : null)
+  const conn = useTableClient(sessionId ? { url, sessionId, seat: null, ...(host ? { host } : {}), ...(owner ? { owner: true } : {}), connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs } : null)
+  const { client, view, status, activity, observers, room, refused } = conn
   const roomCode = room?.code ?? params.get('code') ?? ''
+  // The room reads its own state across a room, so a message that lands on top of the felt is a
+  // card in the middle of it (#12, #7, variant C).
+  const live = useLiveStatus(conn, 'table', timing)
+  const links = statusLinks({ server: params.get('server'), code: roomCode })
+  usePageTitle({ state: sessionId ? (refused ? 'forbidden' : live.state) : 'missing', room: roomCode || sessionId })
   // The session record: which game this table runs and which version of it (L5, C9). The name
   // titles the screen; the version is also what the log is locked on when the session ends.
   const [record, setRecord] = useState<SessionRecord | null>(null)
@@ -43,6 +60,12 @@ export function TablePage() {
   const [inspecting, setInspecting] = useState<VisibleComponentState | null>(null)
   const presence = usePresence(client, view)
   const recent = useRecent(activity)
+  // The felt as controls (#2): the table screen plays as the table itself, so what it can reach
+  // is what a table may see.
+  const playable = view !== null && !view.rewind && !view.ended && client !== null
+  const felt = useFeltKeyboard(view, playable, { act: (intents) => (client ? client.send(...intents) : Promise.resolve({ ok: false, reason: 'not connected' })) })
+  // The table screen acts as the table itself, so a line with no seat on it is its own (K14).
+  useActivityLive(activity, view, null)
 
   const joinUrl = useMemo(() => {
     if (!roomCode) return undefined
@@ -52,9 +75,12 @@ export function TablePage() {
     return `${location.origin}/join?${q.toString()}`
   }, [params, roomCode])
 
-  if (!sessionId) return <p>{t('play.session.missing')}</p>
-  if (refused) return <p role="alert" data-refused={refused}>{t('play.refused.host')}</p>
-  if (!view) return <p data-status={status}>{status === 'connecting' ? t('play.connecting') : status}</p>
+  // A link with no room in it is a link to a room that does not exist.
+  if (!sessionId) return <StatusNotice notice={noticeFor('missing', 'table')} surface="page" links={links} />
+  // The host key is what opens this screen (DRIFT §9); without it the door is shut, not broken.
+  if (refused) return <StatusNotice notice={{ ...noticeFor('forbidden', 'table'), text: t('play.refused.host') }} surface="page" links={links} />
+  // Nothing behind worth protecting: the message is the whole screen, in the room's own words.
+  if (!view) return <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
 
   // A proposed rewind (C): the screen shows the table as it was at the target and who is waited
   // on. It has no buttons — the phones decide.
@@ -67,6 +93,7 @@ export function TablePage() {
       mode={mode}
       faces={url.replace(/^ws/, 'http')}
       onAct={proposal || view.ended ? undefined : onAct}
+      keyboard={felt.keyboard}
       peers={Object.values(presence.peers)}
       pulses={presence.pulses}
       recent={recent}
@@ -103,7 +130,13 @@ export function TablePage() {
     rendered
   )
   return (
-    <div data-page="table" data-status={status} className="byd-fit">
+    <>
+      <div
+        data-page="table"
+        data-status={status}
+        className={`byd-fit${live.stale ? ' byd-status-stale' : ''}`}
+        {...(live.stale ? { inert: true } : {})}
+      >
       {mode === 'table' && (
         // The felt is the whole screen (B); a quiet line along its top says which game this is.
         <h1 className="byd-table-plate">{[record?.name ?? t('play.table'), record?.version, roomCode].filter(Boolean).join(' · ')}</h1>
@@ -115,10 +148,13 @@ export function TablePage() {
       ) : (
         table
       )}
-      {/* The rules this table plays by (B7), one press away on either screen. */}
-      {sessionId && <RuleDrawer http={url.replace(/^ws/, 'http')} sessionId={sessionId} placement="table" />}
-      {ended}
-    </div>
+        {/* The rules this table plays by (B7), one press away on either screen. */}
+        {sessionId && <RuleDrawer http={url.replace(/^ws/, 'http')} sessionId={sessionId} placement="table" />}
+        {felt.panel}
+        {ended}
+      </div>
+      <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
+    </>
   )
 }
 

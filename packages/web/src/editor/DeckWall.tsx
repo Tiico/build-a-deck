@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { ProjectDoc } from '@byd/server'
 import type { Warning } from '@byd/template'
 import { CardPreview } from './CardPreview.js'
@@ -39,6 +39,10 @@ const ARM_SCALE = 0.34
 export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, scale = 0.6, assetBase }: DeckWallProps) {
   const t = useT()
   const faceTemplate = doc.template.faces[face]
+  // The fonts the version is pinned to (B3), worked out once per document: a fresh object every
+  // render is a fresh compile of every card on the wall, and a card recompiled under the pointer
+  // is a card that cannot be clicked.
+  const fonts = useMemo(() => previewFonts(doc, assetBase), [doc, assetBase])
   const [warnings, setWarnings] = useState<Record<string, number>>({})
   const [eye, setEye] = useState<string>('normal')
   const [trim, setTrim] = useState(false)
@@ -94,7 +98,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
                 face={faceTemplate}
                 row={row}
                 icons={doc.icons}
-                fonts={previewFonts(doc, assetBase)}
+                fonts={fonts}
                 scale={arm ? ARM_SCALE : scale}
                 assetBase={assetBase}
                 onSelectElement={onSelectElement}

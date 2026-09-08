@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { StatusLive } from '../src/status/StatusLive.js'
 import { TableClient } from '../src/client.js'
 import { JoinPage } from '../src/join/JoinPage.js'
 import { asSeat, asTable, createSession, roomOf, startServer, type Running } from './fixture.js'
@@ -81,7 +82,10 @@ describe('watching instead of playing (C8)', () => {
     fireEvent.change(screen.getByLabelText('Ditt namn'), { target: { value: 'Eva' } })
     fireEvent.click(screen.getByRole('button', { name: /Bara titta/ }))
     await waitFor(() => expect(seen).toHaveLength(1))
-    expect(seen[0]).toMatch(new RegExp(`^/observe\\?session=${id}&name=Eva&token=`))
+    const link = new URL(seen[0] ?? '', 'http://x')
+    expect(link.pathname).toBe('/observe')
+    expect(Object.fromEntries(link.searchParams)).toMatchObject({ session: id, name: 'Eva' })
+    expect(link.searchParams.get('token')?.length).toBeGreaterThan(20)
   })
 })
 
@@ -95,14 +99,25 @@ describe('playing from this screen (C2)', () => {
     fireEvent.change(screen.getByLabelText('Ditt namn'), { target: { value: 'Ada' } })
     fireEvent.click(screen.getByRole('button', { name: /Spela på den här skärmen/ }))
     await waitFor(() => expect(seen).toHaveLength(1))
-    expect(seen[0]).toMatch(new RegExp(`^/online\\?session=${id}&seat=A&name=Ada&token=`))
+    const link = new URL(seen[0] ?? '', 'http://x')
+    expect(link.pathname).toBe('/online')
+    expect(Object.fromEntries(link.searchParams)).toMatchObject({ session: id, seat: 'A', name: 'Ada' })
+    expect(link.searchParams.get('token')?.length).toBeGreaterThan(20)
   })
 })
 
 describe('a code that does not resolve (DRIFT §9)', () => {
   it('says the code no longer applies instead of connecting', async () => {
     history.replaceState(null, '', `/join?code=ZZZZZZ&server=${encodeURIComponent(run.url)}`)
-    render(<JoinPage />)
-    expect(await screen.findByRole('alert')).toHaveProperty('textContent', expect.stringContaining('ZZZZZZ'))
+    // The page says it where every state is said (#7): the one assertive live region the app
+    // mounts, rather than a `role="alert"` of its own invention.
+    render(
+      <StatusLive>
+        <JoinPage />
+      </StatusLive>,
+    )
+    const said = await screen.findByText(/gäller inte längre/)
+    expect(said.textContent).toContain('ZZZZZZ')
+    await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toMatch(/rummet finns inte/i))
   })
 })

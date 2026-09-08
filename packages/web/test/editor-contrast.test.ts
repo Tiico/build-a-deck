@@ -25,6 +25,20 @@ describe('the palette a blocked table update is drawn in', () => {
   })
 })
 
+// The two strips the small screens add (L10): the sentence about what a phone does not hold, and
+// the strip of stages with the two actions pinned to it. Both are read in passing, so both are
+// held to the same bar as everything else the editor says.
+describe('the palette the small screens are drawn in', () => {
+  it.each([
+    { what: 'what a phone does not offer', ink: '--byd-editor-narrow-ink', on: '--byd-editor-narrow-bg' },
+    { what: 'a stage that is not open', ink: '--byd-editor-stage-ink', on: '--byd-editor-stage-bg' },
+    { what: 'the stage that is open', ink: '--byd-editor-stage-on-ink', on: '--byd-editor-stage-on-bg' },
+    { what: 'the actions pinned beside them', ink: '--byd-editor-stage-action-ink', on: '--byd-editor-stage-action-bg' },
+  ])('gives $what AA contrast', ({ ink, on }) => {
+    expect(contrastRatio(token(ink), token(on))).toBeGreaterThanOrEqual(4.5)
+  })
+})
+
 // The table's filter row (#16) is read at a glance while the eye is really on the rows: the
 // count, the search field, and a chip pressed or not are all held to the same bar.
 describe('the palette the table filter is drawn in', () => {
@@ -95,5 +109,64 @@ describe('the palette the Bord tab is drawn in', () => {
     { what: 'the question an ending asks first (C9)', ink: '--byd-tables-ask-ink', on: '--byd-tables-ask-bg' },
   ])('gives $what AA contrast', ({ ink, on }) => {
     expect(contrastRatio(token(ink), token(on))).toBeGreaterThanOrEqual(4.5)
+  })
+})
+
+// Whether the work is saved, and the question asked before the editor is left with work that is
+// not (#8). Both are read in a hurry, on the way out of the room, so they carry the same bar.
+describe('the palette unsaved work is drawn in', () => {
+  it.each([
+    { what: 'the word for work that is saved', ink: '--byd-editor-saved-ink', on: '--byd-editor-chrome-bg' },
+    { what: 'the word for work that is not saved', ink: '--byd-editor-unsaved-ink', on: '--byd-editor-chrome-bg' },
+    { what: 'the way back to the games', ink: '--byd-editor-home-ink', on: '--byd-editor-chrome-bg' },
+    { what: 'the question asked before leaving', ink: '--byd-editor-leave-ink', on: '--byd-editor-leave-bg' },
+    { what: 'saving on the way out', ink: '--byd-editor-leave-save-ink', on: '--byd-editor-leave-save-bg' },
+    { what: 'leaving the work behind', ink: '--byd-editor-leave-danger-ink', on: '--byd-editor-leave-danger-bg' },
+  ])('gives $what AA contrast', ({ ink, on }) => {
+    expect(contrastRatio(token(ink), token(on))).toBeGreaterThanOrEqual(4.5)
+  })
+})
+
+// The blue the editor's first action is painted in (#22). `#3c8ce7` carried white text at 3.44:1
+// and did not clear AA, so the fill a label sits on is one token with one definition and is
+// measured here rather than judged by eye.
+describe('the palette the editor primary is drawn in', () => {
+  it('gives the label on a primary button AA contrast', () => {
+    expect(contrastRatio(token('--byd-editor-primary-ink'), token('--byd-editor-primary-bg'))).toBeGreaterThanOrEqual(4.5)
+  })
+})
+
+// The other half of the same blue (#22): the mark on a marked row, the outline round the card
+// being looked at, the ring the table's own controls draw, and the edge of a drag handle. None of
+// them is text, so the bar is 3:1 — but it is 3:1 against the surface each one actually lands on,
+// and those surfaces are not the same shade.
+describe('the marks and edges built on the editor primary', () => {
+  it.each([
+    { what: 'the outline round the card being looked at', on: '--byd-editor-chrome-bg' },
+    { what: 'the edge of the group that is open', on: '--byd-editor-strip-on-bg' },
+    { what: 'the edge a tool takes under the pointer', on: '--byd-editor-tool-bg' },
+    { what: 'the mark down the side of a marked row', on: '--byd-editor-marked-bg' },
+    { what: "the ring round the table's own controls", on: '--byd-editor-table-panel-bg' },
+    { what: 'the ring inside the filter row', on: '--byd-editor-filter-bg' },
+    { what: 'the edge of a drag handle', on: '--byd-editor-handle-bg' },
+  ])('lets $what be seen', ({ on }) => {
+    expect(contrastRatio(token('--byd-editor-primary-mark'), token(on))).toBeGreaterThanOrEqual(3)
+  })
+})
+
+// One definition each, so changing the editor's blue is one line and the tests above measure what
+// actually ships. Everything that wears either blue — including the outline the canvas draws
+// round the element being edited, which lives in a compiled `<style>` and not in the stylesheet —
+// reaches for the token instead of repeating the hex.
+const preview = readFileSync(join(import.meta.dirname, '..', 'src/editor/CardPreview.tsx'), 'utf8')
+// A comment may name a colour it is telling the story of; only declarations count as definitions.
+const declarations = (source: string) => source.replaceAll(/\/\*[\s\S]*?\*\//g, '')
+describe('the editor primary as one definition', () => {
+  it.each(['#1f6fd0', '#3c8ce7'])('declares %s exactly once in the whole editor', (hex) => {
+    expect([...declarations(`${css}${preview}`).matchAll(new RegExp(hex, 'gi'))]).toHaveLength(1)
+  })
+
+  it('keeps no rgb() copy of it in the grid over the card', () => {
+    expect(declarations(css)).not.toMatch(/rgba?\(\s*60[\s,]+140[\s,]+231/)
   })
 })

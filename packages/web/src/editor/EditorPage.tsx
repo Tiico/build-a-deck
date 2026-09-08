@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { DeckWall } from './DeckWall.js'
 import { EditorTabs, MODES, panelId, tabId, type Mode } from './EditorTabs.js'
+import { EditorStages, isCanvasStage, modeOf, STAGES, type Stage } from './EditorStages.js'
+import { useRoom } from '../room.js'
 import { TemplateCanvas } from './TemplateCanvas.js'
 import { DataTable } from './DataTable.js'
 import { TableMenu, TablesTab } from './TablesTab.js'
@@ -10,11 +12,16 @@ import { HistoryPanel } from './HistoryPanel.js'
 import { RulesPanel } from './RulesPanel.js'
 import { SharePanel, colourOf } from './SharePanel.js'
 import { tvUrl } from './tableLinks.js'
+import { Question } from './Question.js'
 import { useProjectClient } from './useProjectClient.js'
 import type { ProjectDoc } from '@byd/server'
 import { useTableClient } from '../table/useTableClient.js'
 import type { ProjectClient, Textures } from './ProjectClient.js'
 import { loginUrl } from '../account/api.js'
+import { StatusNotice } from '../status/StatusNotice.js'
+import { noticeFor } from '../status/notice.js'
+import { statusLinks } from '../status/links.js'
+import { usePageTitle } from '../status/DocumentTitle.js'
 import { useT } from '../i18n/index.js'
 import './editor.css'
 
@@ -28,8 +35,19 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const projectId = params.get('project')
   const http = params.get('server') ?? location.origin
-  const { client, error } = useProjectClient(http, projectId)
-  const [mode, setMode] = useState<Mode>('wall')
+  const { client, fault, retry } = useProjectClient(http, projectId)
+  // How much room there is (L10), and where the designer is standing. One state answers both:
+  // the desk shows a mode, a smaller screen shows the stage that mode is made of.
+  const room = useRoom()
+  const stages = room === 'desk' ? null : STAGES[room]
+  const [stage, setStage] = useState<Stage>('wall')
+  // A room that does not offer the stage that was open — a phone has no canvas — puts the
+  // designer on the deck wall rather than on a panel that is not there.
+  const here: Stage = stages && !stages.some(([s]) => s === stage) ? 'wall' : stage
+  const mode: Mode = modeOf(here)
+  // Which of the template's four panels the canvas draws: all four on the desk, one at a time
+  // below it.
+  const canvasStage = room === 'desk' ? null : isCanvasStage(here) ? here : 'canvas'
   // Which face the canvas edits (#13, L7). The wall is the deck seen from the front.
   const [face, setFace] = useState('front')
   // Which group the canvas edits (#13), or nothing for the base every card inherits.
@@ -38,6 +56,17 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
   const [element, setElement] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
+  // The question asked before the editor is left with work that is not saved (#8), and the way
+  // back to the link that asked it: a question that takes the focus has to give it back.
+  const [leaving, setLeaving] = useState(false)
+  const [refocusLeave, setRefocusLeave] = useState(false)
+  const leaveRef = useRef<HTMLAnchorElement>(null)
+  // Set the moment the designer has answered the question herself. Every way out of the editor is
+  // a page load, so without this the browser would ask her the same thing a second time.
+  const answered = useRef(false)
+  const links = statusLinks({ server: params.get('server') })
+  // The tab says which game is open, and what is wrong with it while something is (#12).
+  usePageTitle({ state: projectId ? (fault === 'unauthorized' ? null : fault ?? (client ? null : 'loading')) : 'missing', game: client?.doc.name ?? null })
   // The history (B4) opens from the revision, which is where the version is already named.
   const [historyOpen, setHistoryOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
@@ -75,21 +104,69 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
     }
   }, [client, table?.id, table?.version])
 
-  if (!projectId) return <p>{t('editor.noProject')}</p>
-  if (error === 'not logged in') {
+  // Whether the project differs from the one the server holds (#8, L9). Everything the editor
+  // does about unsaved work hangs off this one fact, and it is a comparison and not a memory of
+  // something having been typed.
+  const unsaved = client?.dirty === true
+  useEffect(() => {
+    if (!refocusLeave) return
+    leaveRef.current?.focus()
+    setRefocusLeave(false)
+  }, [refocusLeave])
+  // Closing or reloading the tab is the one way out the page cannot ask its own question about:
+  // the browser asks it instead, and only when there is something to lose. The listener is there
+  // exactly while the project differs from the saved one, so a deck nobody has changed closes
+  // without a word.
+  useEffect(() => {
+    if (!unsaved) return
+    const hold = (event: BeforeUnloadEvent) => {
+      if (answered.current) return
+      event.preventDefault()
+      // Older browsers read the answer off the event instead of the cancellation.
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', hold)
+    return () => window.removeEventListener('beforeunload', hold)
+  }, [unsaved])
+
+  if (!projectId) return <StatusNotice notice={noticeFor('missing', 'editor')} surface="page" links={links} />
+  if (fault === 'unauthorized') {
     // Not logged in (G1): to the login card and back here after.
     onNavigate(loginUrl(location.pathname + location.search, params.get('server')))
     return <p>{t('editor.loggingIn')}</p>
   }
-  if (error) return <p role="alert">{error}</p>
-  if (!client) return <p>{t('editor.loading')}</p>
+  // A project that is missing, shut or out of reach says so in the editor's own words, with a
+  // way back and — where waiting can help — a way to ask again (#12, UX-07).
+  if (fault) return <StatusNotice notice={noticeFor(fault, 'editor')} surface="page" links={links} onRetry={retry} />
+  if (!client) return <StatusNotice notice={noticeFor('loading', 'editor')} surface="page" links={links} />
   const doc = client.doc
 
-  const save = async () => {
+  const save = async (): Promise<boolean> => {
     setSaving(true)
     const result = await client.save()
     setSaving(false)
     setNotice(result.ok ? null : result.reason === 'conflict' ? t('editor.conflict') : result.reason)
+    return result.ok
+  }
+  // Out of the editor and back to the games. Work that differs from the saved project is asked
+  // about first (#8); a project as it was loaded is simply left.
+  const home = homeUrl(params.get('server'))
+  const goHome = () => {
+    answered.current = true
+    onNavigate(home)
+  }
+  const leave = () => (unsaved ? setLeaving(true) : goHome())
+  const stay = () => {
+    setLeaving(false)
+    setRefocusLeave(true)
+  }
+  // "Spara och lämna" only leaves once the work is actually on the server: a save that collides
+  // with someone else keeps the designer here, with the edit and the reason in
+  // front of her.
+  const saveAndLeave = async () => {
+    if (!(await save())) return stay()
+    setLeaving(false)
+    goHome()
   }
   const startTable = async () => {
     try {
@@ -137,12 +214,15 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
         onSelectRow={setRow}
         onSelectElement={(id) => {
           setElement(id)
-          setMode('template')
+          // A phone has no canvas to open, so an element on the wall is only chosen there; every
+          // wider screen goes on to the card it belongs to.
+          if (room !== 'phone') setStage('canvas')
         }}
       />
     ),
     template: () => (
       <TemplateCanvas
+        stage={canvasStage}
         doc={doc}
         assetBase={http}
         face={face}
@@ -207,14 +287,47 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
     }
   }
 
+  // Saving and reaching the table are the same two buttons wherever they stand: in the header on
+  // a desk, pinned to the end of the stage strip below one. They are written once.
+  const saveButton = (
+    <button type="button" onClick={() => void save()} disabled={!unsaved || saving}>
+      {t(saving ? 'editor.saving' : 'editor.save')}
+    </button>
+  )
+  const updateButton = (
+    <button type="button" className="byd-editor-primary" onClick={() => void updateTable()}>
+      {t('editor.updateTable')}
+    </button>
+  )
+
   return (
-    <div className="byd-editor" data-page="editor" data-mode={mode}>
+    <div className="byd-editor" data-page="editor" data-mode={mode} data-room={room}>
       <header>
+        <a
+          ref={leaveRef}
+          className="byd-editor-home"
+          href={home}
+          onClick={(event) => {
+            event.preventDefault()
+            leave()
+          }}
+        >
+          Mina spel
+        </a>
         <strong>{doc.name}</strong>
+        {/* The revision is also the way into the history (B4): the version is already named here. */}
         <button type="button" className="byd-editor-rev" aria-expanded={historyOpen} onClick={() => setHistoryOpen((on) => !on)}>
           {t('editor.rev', { n: client.rev })}
         </button>
-        <EditorTabs mode={mode} onSelect={setMode} />
+        {/* Whether the work is safe, in words and in colour (#8). It is a live region, so the
+            change from saved to unsaved and back is spoken as it happens rather than found by
+            someone going looking for a greyed-out button. */}
+        <span className="byd-editor-saved" role="status" data-unsaved={unsaved}>
+          {t(unsaved ? 'editor.unsaved' : 'editor.saved')}
+        </span>
+        {/* The modes are the header's on a desk; below one they are the stage strip at the
+            bottom of the screen, and mounting both would put two of every tab in the document. */}
+        {room === 'desk' && <EditorTabs mode={mode} onSelect={(m) => setStage(m === 'template' ? 'canvas' : m)} />}
         {/* The people in the header are the door to who has the game at all (D3): who is here
             now and who may be here is one question. */}
         <button type="button" className="byd-editor-here" data-here aria-label={t('share.title')} aria-expanded={shareOpen} onClick={() => setShareOpen((on) => !on)}>
@@ -226,20 +339,49 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
           {client.here.length > 1 && <b>{t('editor.here.count', { n: client.here.length })}</b>}
         </button>
         <span className="byd-editor-spacer" />
-        {notice && <span role="status" className="byd-editor-notice">{notice}</span>}
-        <button type="button" onClick={() => void save()} disabled={!client.dirty || saving}>
-          {saving ? t('editor.saving') : t('editor.save')}
-        </button>
-        {table && (
-          <button type="button" onClick={() => void startTable()}>
-            {t('editor.newTable')}
-          </button>
+        {/* A save that could not happen is not a passing remark: it is spoken at once, because
+            the work it was about is still only in this tab. */}
+        {notice && <span role="alert" className="byd-editor-notice">{notice}</span>}
+        {/* "Nytt bord" and the shortcut beside "Uppdatera bordet" are two ways to the tables that
+            the Bord stage also holds, so below the desk they leave the header rather than being
+            squeezed into it: nothing they reach becomes unreachable. */}
+        {room === 'desk' && (
+          <>
+            {saveButton}
+            {table && (
+              <button type="button" onClick={() => void startTable()}>
+                {t('editor.newTable')}
+              </button>
+            )}
+            {updateButton}
+            <TableMenu client={client} server={params.get('server')} onShowTables={() => setStage('tables')} />
+          </>
         )}
-        <button type="button" className="byd-editor-primary" onClick={() => void updateTable()}>
-          {t('editor.updateTable')}
-        </button>
-        <TableMenu client={client} server={params.get('server')} onShowTables={() => setMode('tables')} />
       </header>
+      {/* Said out loud, because a tool that is quietly missing reads as a tool that is broken: on
+          a phone the editor is a reading and writing surface, and laying a card out waits for a
+          wider screen (L10). */}
+      {room === 'phone' && (
+        <p className="byd-editor-narrow">
+          Mallen ritas inte på telefon. Duken, verktygen, lagren och egenskaperna finns från 768 pixlars bredd — öppna spelet på en
+          surfplatta eller dator för att flytta något på kortet. Här går kortväggen, tabellen och borden att arbeta med.
+        </p>
+      )}
+      {leaving && (
+        <Question
+          className="byd-editor-leave"
+          label="Osparade ändringar"
+          keep={{ label: saving ? 'Sparar…' : 'Spara och lämna', disabled: saving, onChoose: () => void saveAndLeave() }}
+          confirm="Lämna utan att spara"
+          onConfirm={() => {
+            setLeaving(false)
+            goHome()
+          }}
+          onCancel={stay}
+        >
+          Osparade ändringar i {doc.name}. Vad vill du göra innan du lämnar editorn?
+        </Question>
+      )}
       {table && (
         <div className="byd-editor-table-link" role="status" {...(lost !== null ? { 'data-lost': '' } : {})}>
           {t(table.kind === 'new' ? 'editor.table.started' : 'editor.table.refreshed', { version: table.version })}{' '}
@@ -267,7 +409,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
           <HostSeats client={client} sessionId={table.id} hostKey={table.hostKey} ws={wsUrl} onNotice={setNotice} />
         </div>
       )}
-      {!client.connected && (
+      {client.lineDown && (
         <p className="byd-editor-offline" role="status" data-offline>
           {t('editor.offline')}
         </p>
@@ -288,22 +430,33 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
               if (!old) return
               setCompare({ rev, doc: old, ...(label !== undefined ? { label } : {}) })
               setHistoryOpen(false)
-              setMode('table')
+              setStage('table')
             })
           }}
         />
       )}
       <main>
-        {MODES.map(([m]) => (
+        {(stages ?? MODES).map(([key]) => (
           // One panel per tab, so every tab's `aria-controls` names a panel that exists; only the
           // open one carries content, so switching mode still mounts a single canvas.
-          <div key={m} id={panelId(m)} role="tabpanel" aria-labelledby={tabId(m)} tabIndex={0} hidden={mode !== m}>
-            {mode === m && panel[m]()}
+          <div key={key} id={panelId(key)} role="tabpanel" aria-labelledby={tabId(key)} tabIndex={0} hidden={(stages ? here : mode) !== key}>
+            {(stages ? here === key : mode === key) && panel[modeOf(key as Stage)]()}
           </div>
         ))}
       </main>
+      {stages && (
+        <EditorStages stages={stages} stage={here} onSelect={setStage}>
+          {saveButton}
+          {updateButton}
+        </EditorStages>
+      )}
     </div>
   )
+}
+
+// The way back to "Mina spel", keeping the server the editor was opened against.
+function homeUrl(server: string | null): string {
+  return server ? `/?${new URLSearchParams({ server }).toString()}` : '/'
 }
 
 // The seats as the lobby sees them (DRIFT §9), each taken one with a kick: the host's control

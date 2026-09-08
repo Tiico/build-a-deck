@@ -1,4 +1,5 @@
 import type { Snapshot } from '@byd/protocol'
+import { Refusal, type RefusalHandle } from '../status/Refusal.js'
 import { translate, useT, type Key, type T } from '../i18n/index.js'
 
 // Without a language given, the catalogue's own: `targetsOf` is a plain function and is read
@@ -8,7 +9,17 @@ const swedish: T = (key, params) => translate('sv', key, params)
 export type Placement = 'top' | 'bottom'
 // The counter token's type id (engine's TOKEN_COUNTER), which the phone treats as a count, not a card.
 export const COUNTER_TYPE = 'token.counter'
-export type PlaySheetProps = { view: Snapshot; count: number; label: string; onPlay(zone: string, at: Placement): void; onClose(): void }
+export type PlaySheetProps = {
+  view: Snapshot
+  count: number
+  label: string
+  onPlay(zone: string, at: Placement): void
+  onClose(): void
+  // The answer to the last press, and which button it was an answer to (#7). A refusal stands
+  // at the control that caused it, not at the top of the document.
+  refusal?: RefusalHandle
+  refusedZone?: string | null
+}
 
 // What a zone offers the phone (C4): the shortcut's verb, or the zone's name when the designer
 // gave none; and for a pile, whether a card played there goes on top or underneath. The same
@@ -36,7 +47,7 @@ export function targetsOf(view: Snapshot, t: T = swedish) {
   return [...named, { id: view.floor, name: table, label: table, at: 'top' as Placement, kind: 'area' as const, count: 0 }]
 }
 
-export function PlaySheet({ view, count, label, onPlay, onClose }: PlaySheetProps) {
+export function PlaySheet({ view, count, label, onPlay, onClose, refusal, refusedZone = null }: PlaySheetProps) {
   const t = useT()
   return (
     <div className="byd-sheet-backdrop" onClick={onClose}>
@@ -55,12 +66,19 @@ export function PlaySheet({ view, count, label, onPlay, onClose }: PlaySheetProp
         </p>
         <div className="byd-sheet-targets">
           {targetsOf(view, t).map((target) => (
-            <button key={target.id} type="button" onClick={() => onPlay(target.id, target.at)}>
+            <button
+              key={target.id}
+              type="button"
+              onClick={() => onPlay(target.id, target.at)}
+              className={refusedZone === target.id ? 'byd-status-refused-control' : undefined}
+              {...(refusedZone === target.id && refusal ? refusal.control : {})}
+            >
               <span>{target.label}</span>
               <small>{target.kind === 'pile' ? t(placeKey(target.at, target.count), { n: target.count, zone: target.name }) : t('play.target.free')}</small>
             </button>
           ))}
         </div>
+        {refusal && <Refusal handle={refusal} />}
       </div>
     </div>
   )

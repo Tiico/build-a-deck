@@ -2,6 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { useTableClient } from '../table/useTableClient.js'
 import { seatColor } from '../table/seatColor.js'
 import { seatEdge, type Edge } from './edges.js'
+import { usePageTitle } from '../status/DocumentTitle.js'
+import { DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
+import { useLiveStatus } from '../status/useLiveStatus.js'
+import { RouteStatus } from '../status/RouteStatus.js'
+import { StatusNotice } from '../status/StatusNotice.js'
+import { statusLinks } from '../status/links.js'
+import { noticeFor } from '../status/notice.js'
 import { useT } from '../i18n/index.js'
 import './join.css'
 
@@ -9,38 +16,76 @@ import './join.css'
 // Sits down at the table (A with C's preselection, K12): the table as a seat picker with the
 // next free seat chosen already, so the indifferent just type a name and go. The code buys a
 // token for the seat (DRIFT §9); the token is what the phone connects with.
-export type JoinPageProps = { onSit?(url: string): void }
+export type JoinPageProps = { onSit?(url: string): void; timing?: StatusTiming }
 
-export function JoinPage({ onSit = (url) => location.assign(url) }: JoinPageProps) {
+export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAULT_TIMING }: JoinPageProps) {
   const t = useT()
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const code = params.get('code')
   const server = params.get('server')
   const url = server ?? `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
   const http = url.replace(/^ws/, 'http')
-  // The code resolves to a session while it lives; an unknown or lapsed one says so.
+  // The code resolves to a session while it lives. Looking it up is a hop like any other, so it
+  // carries the same deadline the socket does (#7): without one, "kopplar upp" stands for ever.
+  // And the two ways it can fail are two different states — a code the server will not honour is
+  // a room that is gone, a line that answers nothing is the service being unreachable.
   const [sessionId, setSessionId] = useState<string | null>(null)
-  const [gone, setGone] = useState(false)
+  const [lookup, setLookup] = useState<'gone' | 'offline' | null>(null)
+  const [attempt, setAttempt] = useState(0)
   useEffect(() => {
     if (!code) return
+    let alive = true
+    // The deadline is a race and not an abort: what matters is that the page stops waiting, and
+    // a fetch left running answers into a `alive` that is already false.
+    const deadline = setTimeout(() => alive && setLookup('offline'), timing.connectTimeoutMs)
     void fetch(`${http}/rooms/${encodeURIComponent(code)}`)
-      .then((r) => (r.ok ? (r.json() as Promise<{ session: string }>) : Promise.reject(new Error(String(r.status)))))
-      .then((r) => setSessionId(r.session))
-      .catch(() => setGone(true))
-  }, [code, http])
+      .then(async (r) => {
+        if (!alive) return
+        clearTimeout(deadline)
+        if (r.ok) setSessionId(((await r.json()) as { session: string }).session)
+        // A code the server has heard of and will not honour is a room that is gone; anything
+        // else it answers, or does not answer, is the service.
+        else setLookup(r.status === 404 || r.status === 410 ? 'gone' : 'offline')
+      })
+      .catch(() => {
+        if (!alive) return
+        clearTimeout(deadline)
+        setLookup('offline')
+      })
+    return () => {
+      alive = false
+      clearTimeout(deadline)
+    }
+  }, [code, http, attempt, timing.connectTimeoutMs])
   // Looking at the seats needs no seat: the lobby role sees them and may do nothing else.
-  const { view, status } = useTableClient(sessionId ? { url, sessionId, seat: null, lobby: true } : null)
+  const conn = useTableClient(sessionId ? { url, sessionId, seat: null, lobby: true, connectTimeoutMs: timing.connectTimeoutMs, retryPlanMs: timing.retryPlanMs } : null)
+  const { view } = conn
+  // A phone answers under the thumb: a sheet at the bottom, where its own sheets already are.
+  const live = useLiveStatus(conn, 'phone', timing)
+  const links = statusLinks({ server, code })
+  // Asking again starts the whole way in over: the lookup first, then the socket it leads to.
+  const retry = () => {
+    setLookup(null)
+    setAttempt((n) => n + 1)
+    conn.retry()
+  }
   const [pick, setPick] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [problem, setProblem] = useState<string | null>(null)
+  // The room is the tab's name here (#12): a phone with three tabs open has to be able to tell
+  // which room each of them is waiting to get into.
+  usePageTitle({ state: !code ? 'missing' : lookup === 'gone' ? 'missing' : lookup ?? live.state, room: code })
 
   const free = view?.seats.filter((s) => s.name === null) ?? []
   // The next free seat is chosen until you choose another; a pick someone else just took is let go.
   const chosen = pick && free.some((s) => s.id === pick) ? pick : (free[0]?.id ?? null)
 
-  if (!code) return <p>{t('join.code.missing')}</p>
-  if (gone) return <p role="alert">{t('join.code.gone', { code: code.toUpperCase() })}</p>
-  if (!view || !sessionId) return <p data-status={status}>{t('play.connecting')}</p>
+  // A code that names nothing — never issued, or lapsed — is the phone's 404. It is one of the
+  // nine states like any other, said in the words the room it failed to reach would have used.
+  if (!code) return <StatusNotice notice={noticeFor('missing', 'phone')} surface="page" links={links} />
+  if (lookup === 'gone') return <StatusNotice notice={{ ...noticeFor('missing', 'phone'), text: t('join.code.gone', { code: code.toUpperCase() }) }} surface="page" links={links} />
+  if (lookup === 'offline') return <StatusNotice notice={noticeFor('offline', 'phone')} surface="page" links={links} onRetry={retry} />
+  if (!view || !sessionId) return <RouteStatus status={live} over="sheet" links={links} onRetry={retry} />
 
   // The way in: a token for the seat (or for watching), then the page for it.
   const admit = async (seat: string | null): Promise<string | null> => {
@@ -63,13 +108,15 @@ export function JoinPage({ onSit = (url) => location.assign(url) }: JoinPageProp
     if (!name.trim() || (page !== '/observe' && !seat)) return
     const token = await admit(seat)
     if (!token) return
-    const next = new URLSearchParams({ session: sessionId, ...(seat === null ? {} : { seat }), name: name.trim(), token })
+    // The code travels with them: it is the only way back to this picker (#12, DRIFT §9).
+    const next = new URLSearchParams({ session: sessionId, code, ...(seat === null ? {} : { seat }), name: name.trim(), token })
     if (server) next.set('server', server)
     onSit(`${page}?${next.toString()}`)
   }
 
   return (
-    <div className="byd-join" data-page="join">
+    <>
+      <div className={`byd-join${live.stale ? ' byd-status-stale' : ''}`} data-page="join" {...(live.stale ? { inert: true } : {})}>
       <header>
         <span>{t('join.into')}</span>
         <strong>{t('join.room', { code: code.toUpperCase() })}</strong>
@@ -113,6 +160,8 @@ export function JoinPage({ onSit = (url) => location.assign(url) }: JoinPageProp
           {t('join.observe')}
         </button>
       </form>
-    </div>
+      </div>
+      <RouteStatus status={live} over="sheet" links={links} onRetry={retry} />
+    </>
   )
 }

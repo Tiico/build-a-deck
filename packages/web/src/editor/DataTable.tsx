@@ -11,6 +11,7 @@ import { keepOrder, nextSort, sortRows, type SortState } from './sorting.js'
 import { countLabel, discreteColumns, filterRows, isFiltering, noFilter, toggleValue, type FilterState } from './filtering.js'
 import { duplicateRows, keepRows, markRows, noSelection, removeRows, selectionLabel, setColumn, toggleRow, type Selection } from './selection.js'
 import { groupColumn, groupOfRow, ruleLabel } from './groups.js'
+import { Question } from './Question.js'
 import { useT, type T } from '../i18n/index.js'
 
 export type DataTableProps = {
@@ -96,18 +97,25 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
   // Deleting cards is the one action that cannot be looked at afterwards, so it is asked about
   // first — and the question says how many cards it is about.
   const [confirming, setConfirming] = useState(false)
+  // The card a single row's × is asking about (#8). The little button at the end of a row used to
+  // take a card out of the deck on the way past it; it asks the same question the action row
+  // asks, and names the card, because one card is not "1 kort" to the person who drew it.
+  const [removing, setRemoving] = useState<string | null>(null)
   // A question that takes the focus has to give it back: to the button that asked it, or — when
   // the cards it was about are gone with it — to the header's own checkbox above the rows.
-  const [refocus, setRefocus] = useState<'remove' | 'all' | null>(null)
+  const [refocus, setRefocus] = useState<'remove' | 'all' | { cardRef: string } | null>(null)
   // What the action row writes: a column of the table and the value to give it. An empty value
   // is not a change worth pressing by mistake, so the button waits for one.
   const [bulkField, setBulkField] = useState<string | null>(null)
   const [bulkValue, setBulkValue] = useState('')
   const removeRef = useRef<HTMLButtonElement>(null)
   const allRef = useRef<HTMLInputElement>(null)
+  // The × of every row on screen, so the question a row asks can hand the focus back to it.
+  const rowRemoveRefs = useRef(new Map<string, HTMLButtonElement>())
   useEffect(() => {
     if (!refocus) return
-    ;(refocus === 'remove' ? removeRef.current : allRef.current)?.focus()
+    if (typeof refocus === 'object') rowRemoveRefs.current.get(refocus.cardRef)?.focus()
+    else (refocus === 'remove' ? removeRef.current : allRef.current)?.focus()
     setRefocus(null)
   }, [refocus])
   // The card created by "Nytt kort" while a filter is on, kept on screen until the filter moves.
@@ -136,10 +144,15 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
   // one is made.
   const field = bulkField ?? fields[0] ?? 'antal'
   // A question about cards that are no longer marked is not a question any more: unmarking them,
-  // or filtering them away, takes it back.
+  // or filtering them away, takes it back. The same holds for the question one row asks (#8): a
+  // filter that takes the card off the screen takes its question with it.
   useEffect(() => {
     if (chosen.length === 0) setConfirming(false)
   }, [chosen.length])
+  const onScreen = removing !== null && shown.some((r) => r.id === removing)
+  useEffect(() => {
+    if (!onScreen) setRemoving(null)
+  }, [onScreen])
   // Every way of changing the filter goes through here, so the pinned card is released exactly
   // when the designer asks a new question of the deck.
   const changeFilter = (next: FilterState) => {
@@ -255,9 +268,11 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
       <p className="byd-data-sort" role="status">{sortLabel(sort, t)}</p>
       {chosen.length > 0 &&
         (confirming ? (
-          <RemoveQuestion
-            t={t}
-            count={chosen.length}
+          <Question
+            className="byd-data-bulk"
+            label={removeLabel(chosen.length, t)}
+            confirm={t('table.remove.yes')}
+            cancel={t('editor.cancel')}
             onConfirm={() => {
               onReplaceRows(removeRows(doc.rows, chosenIds))
               setSelected(noSelection)
@@ -268,7 +283,9 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
               setConfirming(false)
               setRefocus('remove')
             }}
-          />
+          >
+            {t(chosen.length === 1 ? 'table.remove.question.one' : 'table.remove.question.other', { n: chosen.length })}
+          </Question>
         ) : (
           <div className="byd-data-bulk" role="toolbar" aria-label={t('table.bulk')}>
             <label>
@@ -309,10 +326,35 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
             </button>
           </div>
         ))}
+      {removing !== null && (
+        <Question
+          className="byd-data-bulk"
+          label={t('table.remove.card', { cardRef: removing })}
+          confirm={t('table.remove.yes')}
+          cancel={t('editor.cancel')}
+          onConfirm={() => {
+            onRemoveRow(removing)
+            setRemoving(null)
+            setRefocus('all')
+          }}
+          onCancel={() => {
+            setRemoving(null)
+            setRefocus({ cardRef: removing })
+          }}
+        >
+          {t('table.remove.card.question', { cardRef: removing })}
+        </Question>
+      )}
+      {/* A wide table on a narrow screen has one honest answer: the table scrolls inside its own
+          box, the page never scrolls sideways, and the column that removes a card is pinned to
+          the right edge so it cannot be scrolled away — it is the thing that would be lost
+          first. */}
+      <div className="byd-data-scroll">
       <table className="byd-data">
         <thead>
           <tr>
             <th className="byd-data-check">
+              <label className="byd-data-tick">
               <input
                 type="checkbox"
                 aria-label={t('table.selectAllShown')}
@@ -324,13 +366,16 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                 }}
                 onChange={(event) => setSelected(markRows(selected, shown.map((row) => row.id), event.target.checked))}
               />
+              </label>
             </th>
             <SortableHeader field="id" label="id" sort={sort} onSort={setSort} />
             {fields.map((f) => (
               <SortableHeader key={f} field={f} label={fieldLabel(f, t)} sort={sort} onSort={setSort} />
             ))}
             {grouping && <th>{t('table.group')}</th>}
-            <th></th>
+            <th className="byd-data-remove">
+              <span className="byd-offscreen">{t('table.remove.column')}</span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -340,12 +385,14 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                   change is about this card, the row itself says the card is the one being looked
                   at. A click on the checkbox is only ever the first of them. */}
               <td className="byd-data-check" onClick={(event) => event.stopPropagation()}>
-                <input
-                  type="checkbox"
-                  checked={selected.has(cardRef)}
-                  onChange={() => setSelected(toggleRow(selected, cardRef))}
-                  aria-label={t('table.mark', { cardRef })}
-                />
+                <label className="byd-data-tick">
+                  <input
+                    type="checkbox"
+                    checked={selected.has(cardRef)}
+                    onChange={() => setSelected(toggleRow(selected, cardRef))}
+                    aria-label={t('table.mark', { cardRef })}
+                  />
+                </label>
               </td>
               <td className="byd-data-id">{cardRef}</td>
               {fields.map((f) =>
@@ -438,8 +485,21 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                 ),
               )}
               {grouping && <GroupCell doc={doc} column={grouping} cardRef={cardRef} row={row} />}
-              <td>
-                <button type="button" onClick={() => onRemoveRow(cardRef)} aria-label={t('table.removeRow', { cardRef })}>
+              <td className="byd-data-remove">
+                <button
+                  type="button"
+                  ref={(el) => {
+                    if (el) rowRemoveRefs.current.set(cardRef, el)
+                    else rowRemoveRefs.current.delete(cardRef)
+                  }}
+                  onClick={(event) => {
+                    // Asking about a card is not looking at it: the click stops here, so the
+                    // canvas keeps showing whatever card was being worked on.
+                    event.stopPropagation()
+                    setRemoving(cardRef)
+                  }}
+                  aria-label={t('table.removeRow', { cardRef })}
+                >
                   ×
                 </button>
               </td>
@@ -447,6 +507,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
           ))}
         </tbody>
       </table>
+      </div>
       {/* A deck with no cards at all is not a filter's doing: then the button below is the answer. */}
       {shown.length === 0 && isFiltering(filter) && <p className="byd-data-empty">{t('table.empty')}</p>}
       <button type="button" className="byd-data-add" onClick={() => {
@@ -482,30 +543,6 @@ function SortableHeader({ field, label, sort, onSort }: { field: string; label: 
         {label} <span aria-hidden="true">{active === 'ascending' ? '↑' : active === 'descending' ? '↓' : '↕'}</span>
       </button>
     </th>
-  )
-}
-
-// The question a delete asks first (#17). It takes the focus so it is answered where it is read,
-// gives it back on Escape, and says how many cards it is about in both its name and its sentence
-// — a designer must never have to count the ticks to know what "Ja" means.
-function RemoveQuestion({ count, t, onConfirm, onCancel }: { count: number; t: T; onConfirm(): void; onCancel(): void }) {
-  return (
-    <div
-      className="byd-data-bulk"
-      role="alertdialog"
-      aria-label={removeLabel(count, t)}
-      onKeyDown={(event) => {
-        if (event.key === 'Escape') onCancel()
-      }}
-    >
-      <p>{t(count === 1 ? 'table.remove.question.one' : 'table.remove.question.other', { n: count })}</p>
-      <button type="button" data-kind="danger" autoFocus onClick={onConfirm}>
-        {t('table.remove.yes')}
-      </button>
-      <button type="button" onClick={onCancel}>
-        {t('editor.cancel')}
-      </button>
-    </div>
   )
 }
 

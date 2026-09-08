@@ -4,6 +4,7 @@ import { TableRenderer } from '../table/TableRenderer.js'
 import { useTableClient } from '../table/useTableClient.js'
 import { joinUrl, observeUrl, onlineUrl, tableModeUrl, tableName, tvUrl } from './tableLinks.js'
 import type { ProjectClient, TableSummary } from './ProjectClient.js'
+import { Question } from './Question.js'
 import { useT, type Key, type T } from '../i18n/index.js'
 
 // The Bord tab (#19): every table this game has, and the ways into it. A table is a session
@@ -209,8 +210,11 @@ function TableRow({ table, server, rev }: { table: TableSummary; server: string 
           </div>
         )}
         {asking && (
-          <EndQuestion
-            table={name}
+          <Question
+            className="byd-tables-question"
+            label={t('tables.end.of', { table: name })}
+            confirm={t('tables.end.yes')}
+            cancel={t('editor.cancel')}
             onConfirm={() => {
               // The same connection the row is already listening on, as the table itself: this is
               // the path every other end goes through (C9), not a second one.
@@ -222,39 +226,12 @@ function TableRow({ table, server, rev }: { table: TableSummary; server: string 
               setAsking(false)
               setRefocus(true)
             }}
-          />
+          >
+            {t('tables.end.question', { table: name })}
+          </Question>
         )}
       </div>
     </li>
-  )
-}
-
-// The question a table's ending asks first (C9), in the pattern the table's bulk delete set: it
-// takes the focus so it is answered where it is read, answers Escape, and names the table in
-// both its own name and its sentence — "Avsluta bordet" alone is the same words for every row.
-function EndQuestion({ table, onConfirm, onCancel }: { table: string; onConfirm(): void; onCancel(): void }) {
-  const t = useT()
-  return (
-    <div
-      className="byd-tables-question"
-      role="alertdialog"
-      aria-label={t('tables.end.of', { table })}
-      onKeyDown={(event) => {
-        if (event.key !== 'Escape') return
-        // The question is what Escape is about while it stands; whatever opened around it keeps
-        // standing.
-        event.stopPropagation()
-        onCancel()
-      }}
-    >
-      <p>{t('tables.end.question', { table })}</p>
-      <button type="button" data-kind="danger" autoFocus onClick={onConfirm}>
-        {t('tables.end.yes')}
-      </button>
-      <button type="button" onClick={onCancel}>
-        {t('editor.cancel')}
-      </button>
-    </div>
   )
 }
 

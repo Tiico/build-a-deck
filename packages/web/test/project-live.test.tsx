@@ -77,8 +77,8 @@ describe('two editors on the same project (D3)', () => {
     expect(ada.doc.name).toBe('Skogens herrar')
     expect(ada.rev).toBe(1)
     ada.close()
-    // A project that is not there is still an error, as before.
-    await expect(open('nope')).rejects.toThrow(/nope/)
+    // A project that is not there is still an error, and it says which of the states it is (#12).
+    await expect(open('nope')).rejects.toMatchObject({ fault: 'missing' })
   })
 })
 

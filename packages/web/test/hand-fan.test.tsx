@@ -10,7 +10,7 @@ const opaque: VisibleComponentState = { ...base, id: 'c2', face: 'back', cardRef
 
 describe('a texture the online fan is still waiting for (#10)', () => {
   it('names the card the seat holds, and says nothing about one it may not see', () => {
-    render(<HandFan cards={[mine, opaque]} faces="http://faces.test" onPlay={() => undefined} />)
+    render(<HandFan cards={[mine, opaque]} faces="http://faces.test" onPlay={() => undefined} onOpen={() => undefined} />)
 
     expect(document.querySelector('[data-hand-card="c1"] [data-texture="pending"]')!.textContent).toContain('dragon')
     const hidden = document.querySelector('[data-hand-card="c2"] [data-texture="pending"]')!
@@ -23,7 +23,7 @@ describe('retrying a lost texture in the fan', () => {
   it('does not play the card the player only meant to reload', () => {
     vi.useFakeTimers()
     const onPlay = vi.fn()
-    render(<HandFan cards={[mine]} faces="http://faces.test" onPlay={onPlay} />)
+    render(<HandFan cards={[mine]} faces="http://faces.test" onPlay={onPlay} onOpen={() => undefined} />)
     const img = () => document.querySelector('img') as HTMLImageElement
     for (let i = 0; i <= 8; i++) {
       fireEvent.error(img())
@@ -45,5 +45,57 @@ describe('retrying a lost texture in the fan', () => {
     expect(onPlay).not.toHaveBeenCalled()
     expect(document.querySelector('[data-texture="pending"]')).not.toBeNull()
     vi.useRealTimers()
+  })
+})
+
+// The band scrolls sideways and a card is played by dragging it up out of the fan (#24), so one
+// press has to mean one of the two and can never mean both.
+describe('scrolling the fan and playing a card out of it are told apart by direction (#24)', () => {
+  const press = (el: Element, steps: [number, number][]) => {
+    const [x0, y0] = steps[0]!
+    act(() => {
+      fireEvent.pointerDown(el, { clientX: x0, clientY: y0, pointerId: 1, isPrimary: true, button: 0 })
+    })
+    for (const [x, y] of steps.slice(1)) act(() => void fireEvent.pointerMove(el, { clientX: x, clientY: y, pointerId: 1 }))
+    const [xn, yn] = steps.at(-1)!
+    act(() => {
+      fireEvent.pointerUp(el, { clientX: xn, clientY: yn, pointerId: 1 })
+    })
+  }
+  const card = () => document.querySelector('[data-hand-card="c1"]')!
+
+  it('plays a card the player dragged up out of the fan', () => {
+    const onPlay = vi.fn()
+    render(<HandFan cards={[mine]} faces="http://faces.test" onPlay={onPlay} onOpen={() => undefined} />)
+    press(card(), [
+      [200, 700],
+      [204, 660],
+      [210, 400],
+    ])
+    expect(onPlay).toHaveBeenCalledWith(mine, 210, 400)
+  })
+
+  it('plays nothing from a press that set off sideways, even when it swings up before it ends', () => {
+    const onPlay = vi.fn()
+    render(<HandFan cards={[mine]} faces="http://faces.test" onPlay={onPlay} onOpen={() => undefined} />)
+    // A thumb dragging the fan along, then lifting away from the screen at an angle: the first
+    // movement said scroll, and nothing later in the same press may take that back.
+    press(card(), [
+      [200, 700],
+      [160, 698],
+      [90, 690],
+      [80, 300],
+    ])
+    expect(onPlay).not.toHaveBeenCalled()
+  })
+
+  it('plays nothing from a tap that never travelled at all', () => {
+    const onPlay = vi.fn()
+    render(<HandFan cards={[mine]} faces="http://faces.test" onPlay={onPlay} onOpen={() => undefined} />)
+    press(card(), [
+      [200, 700],
+      [202, 703],
+    ])
+    expect(onPlay).not.toHaveBeenCalled()
   })
 })

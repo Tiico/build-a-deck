@@ -1,0 +1,310 @@
+/* The family of error, empty and connection states (#12, #7), variant C: one model, one tone per
+   state, and a form chosen by the route — a whole page when there is nothing behind to protect,
+   a card mid-felt the room reads across a table, a sheet under the thumb on the phone, a bar in
+   the editor chrome where the save status already lives.
+
+   The palette is the app's own: player.css for the ground and the ink, editor.css's warn and
+   lost pairs for the two kinds of trouble. Every ink/ground pair is held to 4.5:1 and every
+   edge to 3:1 by `status-contrast.test.ts`, and every control is at least 44 x 44 px
+   (UX-KONTROLLER). */
+:root {
+  --byd-status-page-bg: #14161c;
+  --byd-status-page-ink: #eef1f8;
+
+  /* Waiting: nothing is wrong yet. */
+  --byd-status-wait-bg: #1f2637;
+  --byd-status-wait-ink: #dfe7f7;
+  --byd-status-wait-edge: #7f93c4;
+
+  /* Gone: the thing you asked for is not there. Grey, because nothing is broken. */
+  --byd-status-gone-bg: #232733;
+  --byd-status-gone-ink: #e3e8f4;
+  --byd-status-gone-edge: #8b97b3;
+
+  /* Shut: it exists, it is not yours. Amber, a lock, not a fault. */
+  --byd-status-shut-bg: #3b3222;
+  --byd-status-shut-ink: #ffeccc;
+  --byd-status-shut-edge: #f0b64a;
+
+  /* Broken: the line to the service is down, or the service said no. */
+  --byd-status-broken-bg: #3d2632;
+  --byd-status-broken-ink: #ffe4ea;
+  --byd-status-broken-edge: #d98aa0;
+
+  /* Good again. */
+  --byd-status-ok-bg: #1e3327;
+  --byd-status-ok-ink: #d8f5e5;
+  --byd-status-ok-edge: #7dd3a0;
+
+  --byd-status-button-bg: #242938;
+  --byd-status-button-ink: #eef1f8;
+  --byd-status-button-edge: #7d879f;
+  --byd-status-primary-bg: #7dd3a0;
+  --byd-status-primary-ink: #0b2a18;
+}
+
+/* The live regions themselves are never seen; they exist so that what is on the screen is also
+   said. Not `display: none`, which is not read either. */
+.byd-status-live {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.byd-status {
+  display: grid;
+  gap: 10px;
+  box-sizing: border-box;
+  font: 14px/1.5 system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+.byd-status * {
+  box-sizing: border-box;
+}
+.byd-status h1,
+.byd-status h2 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.25;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.byd-status p {
+  margin: 0;
+  max-width: 46ch;
+}
+.byd-status h1:focus-visible,
+.byd-status h2:focus-visible {
+  outline: 3px solid currentcolor;
+  outline-offset: 4px;
+}
+.byd-status-mark {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+}
+.byd-status-as-of {
+  font-weight: 700;
+}
+.byd-status-acts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 2px;
+}
+.byd-status-act {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 16px;
+  border-radius: 10px;
+  border: 1px solid var(--byd-status-button-edge);
+  background: var(--byd-status-button-bg);
+  color: var(--byd-status-button-ink);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+.byd-status-act[data-primary] {
+  background: var(--byd-status-primary-bg);
+  color: var(--byd-status-primary-ink);
+  border-color: var(--byd-status-primary-bg);
+}
+.byd-status-act:focus-visible {
+  outline: 3px solid var(--byd-status-primary-bg);
+  outline-offset: 2px;
+}
+
+/* One tone per state, whichever form it lands in. */
+.byd-status[data-tone='wait'] {
+  background: var(--byd-status-wait-bg);
+  color: var(--byd-status-wait-ink);
+  border-color: var(--byd-status-wait-edge);
+}
+.byd-status[data-tone='gone'] {
+  background: var(--byd-status-gone-bg);
+  color: var(--byd-status-gone-ink);
+  border-color: var(--byd-status-gone-edge);
+}
+.byd-status[data-tone='shut'] {
+  background: var(--byd-status-shut-bg);
+  color: var(--byd-status-shut-ink);
+  border-color: var(--byd-status-shut-edge);
+}
+.byd-status[data-tone='broken'] {
+  background: var(--byd-status-broken-bg);
+  color: var(--byd-status-broken-ink);
+  border-color: var(--byd-status-broken-edge);
+}
+.byd-status[data-tone='ok'] {
+  background: var(--byd-status-ok-bg);
+  color: var(--byd-status-ok-ink);
+  border-color: var(--byd-status-ok-edge);
+}
+
+/* page — nothing behind worth protecting, so the message is the page. */
+.byd-status[data-surface='page'] {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  place-content: center;
+  justify-items: start;
+  gap: 14px;
+  padding: 28px;
+  border: 0;
+}
+.byd-status[data-surface='page'] h1 {
+  font-size: 26px;
+}
+
+/* card — mid-felt, so that a room three metres from the TV can read it while still seeing the
+   table it is about. */
+.byd-status[data-surface='card'] {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(560px, calc(100% - 32px));
+  padding: 24px;
+  border-radius: 16px;
+  border: 2px solid;
+  box-shadow: 0 18px 50px rgb(0 0 0 / 55%);
+  z-index: 40;
+}
+.byd-status[data-surface='card'] h2 {
+  font-size: 28px;
+}
+.byd-status[data-surface='card'] p {
+  font-size: 17px;
+  max-width: none;
+}
+
+/* sheet — under the thumb, where the phone's own sheets already are. */
+.byd-status[data-surface='sheet'] {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
+  border-radius: 18px 18px 0 0;
+  border: 2px solid;
+  border-bottom: 0;
+  box-shadow: 0 -14px 40px rgb(0 0 0 / 55%);
+  z-index: 40;
+}
+
+/* bar — the editor's chrome, in the row where saved and unsaved already live. */
+.byd-status[data-surface='bar'] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  align-items: center;
+  padding: 10px 16px;
+  border-bottom: 2px solid;
+}
+.byd-status[data-surface='bar'] h2 {
+  font-size: 14px;
+}
+.byd-status[data-surface='bar'] p {
+  font-size: 13px;
+}
+.byd-status[data-surface='bar'] .byd-status-acts {
+  margin-left: auto;
+}
+.byd-status[data-surface='bar'] .byd-status-mark {
+  display: none;
+}
+
+/* A refusal stands at the control that was refused, not at the top of the document. */
+.byd-status-refusal {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--byd-status-broken-edge);
+  background: var(--byd-status-broken-bg);
+  color: var(--byd-status-broken-ink);
+  font: 13px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-weight: 600;
+}
+.byd-status-refused-control {
+  box-shadow: 0 0 0 2px var(--byd-status-broken-edge);
+}
+
+/* Data that cannot be trusted must not read as current. Half the contrast and most of the
+   colour says "this is a photograph, not a window" without hiding what someone was in the
+   middle of, and `inert` takes it out of the tab order so nothing can be pressed into a
+   connection that is not there. */
+.byd-status-stale {
+  opacity: 0.4;
+  filter: grayscale(0.85);
+}
+
+/* Waiting, without motion carrying the meaning. */
+.byd-status-spin {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  border: 3px solid currentcolor;
+  border-top-color: transparent;
+  animation: byd-status-turn 900ms linear infinite;
+}
+@keyframes byd-status-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.byd-status-countdown {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+/* a11y.css stills every animation on `reduce`, which would leave the ring standing there
+   pretending to spin. So the ring becomes an honestly static dashed one, and the wait is
+   carried by the words and by the counter, which changes value instead of moving. */
+@media (prefers-reduced-motion: reduce) {
+  .byd-status-spin {
+    border-style: dashed;
+    border-top-color: currentcolor;
+    opacity: 0.75;
+  }
+}
+
+@media (max-width: 700px) {
+  .byd-status[data-surface='page'] {
+    padding: 20px;
+  }
+  .byd-status[data-surface='page'] h1 {
+    font-size: 22px;
+  }
+  .byd-status[data-surface='card'] h2 {
+    font-size: 22px;
+  }
+  .byd-status[data-surface='card'] p {
+    font-size: 15px;
+  }
+  .byd-status[data-surface='bar'] .byd-status-acts {
+    margin-left: 0;
+  }
+}
+
+/* The 404 is the only route that is nothing but a message, so it brings its own ground. */
+.byd-status-page {
+  position: fixed;
+  inset: 0;
+  background: var(--byd-status-page-bg);
+  color: var(--byd-status-page-ink);
+}

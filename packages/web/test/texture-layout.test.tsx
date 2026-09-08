@@ -55,8 +55,10 @@ const HOLDERS = {
     `<div class="byd-table-frame"><div class="byd-card" style="position:absolute;left:20px;top:20px;width:90px;height:126px">${inner}<span>wizard</span></div></div>`,
   'the top of a pile': (inner: string) =>
     `<div class="byd-pile" style="position:absolute;left:20px;top:20px;width:90px;height:126px"><div class="byd-pile-top">${inner}<span>wizard</span></div></div>`,
+  // The fan's box is millimetres of felt written out by the renderer (#23), so the holder says
+  // it here the way the renderer would at life size.
   "a card in another seat's hand": (inner: string) =>
-    `<div class="byd-hand" style="left:200px;top:200px"><div class="byd-hand-fan"><i class="byd-hand-card">${inner}<span>wizard</span></i></div></div>`,
+    `<div class="byd-hand" style="left:200px;top:200px"><div class="byd-hand-fan"><i class="byd-hand-card" style="left:-27px;top:-25px;width:54px;height:75px">${inner}<span>wizard</span></i></div></div>`,
   'a card in the phone hand': (inner: string) =>
     `<div class="byd-player"><div class="byd-strip"><div class="byd-strip-card">${inner}<strong>wizard</strong></div></div></div>`,
   'a card held up on the phone': (inner: string) =>

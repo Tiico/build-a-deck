@@ -30,6 +30,11 @@ export function CardPreview({ face, row, icons, fonts, id, scale = 1, selectedEl
     [face, row, icons, fonts, id, assetBase],
   )
   const ref = useRef<HTMLDivElement | null>(null)
+  // Held by identity, not just by value: React writes `innerHTML` again whenever this object is a
+  // new one, whatever it holds. A fresh object every render rebuilds every card in the DOM on
+  // every render — the fitting is redone, and a card is replaced under the pointer that is
+  // clicking it.
+  const inner = useMemo(() => ({ __html: out.html }), [out.html])
   // The DOM measures for real; the compiler's text warnings are an estimate for headless use.
   // What the editor reports is what the browser saw: overflow after fitting, plus the
   // compiler's non-text warnings (icons and the like).
@@ -43,14 +48,14 @@ export function CardPreview({ face, row, icons, fonts, id, scale = 1, selectedEl
       .map((r) => ({ element: r.element, code: 'text-too-small', detail: `the text does not fit even at ${r.sizePt}pt` }))
     onWarnings?.([...out.warnings.filter((w) => w.code !== 'text-too-small' && w.code !== 'text-overflow'), ...fromDom])
   }, [out.html, out.css, out.warnings, onWarnings])
-  const highlight = selectedElement ? `#${id} [data-element="${selectedElement}"]{outline:0.6mm solid #3c8ce7;outline-offset:0.3mm}` : ''
+  const highlight = selectedElement ? `#${id} [data-element="${selectedElement}"]{outline:0.6mm solid var(--byd-editor-primary-mark);outline-offset:0.3mm}` : ''
   return (
     <div id={id} className="byd-preview" style={{ zoom: scale }}>
       <style>{out.css}</style>
       <style>{highlight}</style>
       <div
         ref={ref}
-        dangerouslySetInnerHTML={{ __html: out.html }}
+        dangerouslySetInnerHTML={inner}
         onClick={(e) => {
           const el = (e.target as HTMLElement).closest('[data-element]')
           if (el instanceof HTMLElement && onSelectElement) {

@@ -169,6 +169,8 @@ export const svPlay = {
   // Åskådaren (C8).
   'observer.name': 'observatör',
   'observer.banner': 'Du är observatör: du ser allas händer och alla högar. Alla vet att du är här.',
+  'observer.watching': '{name} tittar på',
+  'observer.more': 'Senast och platser',
 
   // Att sätta sig vid bordet (K12).
   'join.code.missing': 'Ingen rumskod angiven.',
@@ -187,6 +189,7 @@ export const svPlay = {
   'join.observe': 'Bara titta (ser allt, alla ser dig)',
 
   // Helt online (C2): bordet och handen i samma fönster.
+  'online.showall': 'Visa alla',
   'online.observers.one': '{names} tittar på',
   'online.observers.other': '{names} tittar på',
 

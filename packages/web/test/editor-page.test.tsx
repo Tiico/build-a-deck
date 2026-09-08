@@ -219,8 +219,10 @@ describe('the editor by keyboard alone (UX-04)', () => {
     }
     expect(screen.getByRole('tabpanel', { name: 'Kortvägg' })).toBeTruthy()
 
-    // The revision is the first stop: it names the version and opens the history (B4). The
-    // tablist follows it, and the arrow keys move inside the tablist as before.
+    // "Mina spel" is the header's first stop (#8) — a way back belongs before what it leads away
+    // from — and the revision, which names the version and opens the history (B4), is the next.
+    // The tablist follows them, and the arrow keys move inside it as before.
+    await user.tab()
     await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('button', { name: /rev 1/ }))
     await user.tab()
@@ -245,6 +247,7 @@ describe('the layers of the template by keyboard (UX-04)', () => {
     history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
+    await user.tab()
     await user.tab()
     await user.tab()
     await user.keyboard('{ArrowRight}{Enter}')

@@ -259,6 +259,17 @@ Arket och översikten erbjuder aldrig en annan plats privata yta, och aldrig en 
 Byggt 2026-09-07: en zon kan bära en genväg (`shortcut`) med verbet telefonen visar och var i en hög kortet hamnar, överst eller underst; utan genväg visar telefonen zonens namn.
 Wizarden ger draghögen "Lägg underst" och kasthögen "Kasta". Editorns flik "Bord" redigerar namn och genvägar för varje zon som inte är en hand, med telefonens ark som förhandsvisning; sedan 2026-09-07 är fliken hela setup-editorn (B5).
 
+Reviderat 2026-09-08 (#24, #25): i distansvyn ligger Ångra, Flagga och Avsluta överst, inte nederst.
+C4 la dem nederst för tummens skull, och det beslutet står kvar för `/play` — telefonens egen vy, där handen är K10:s remsa och botten rymmer båda.
+`/online` rymmer det inte, och det är mätt och inte tyckt: vid 390 px är det nedre bandet 358 px brett, och 358 px rymmer **åtta** träffytor på 44 px och inte fler.
+Handen ensam behöver dem alla, och därtill ligger `Ada · n kort` och de tre verktygen redan i samma band; krocken började vid **tre** kort och vid varje bredd, inte vid tjugoen och inte bara på telefon.
+Två ytor kan inte dela en pixel, så en av dem måste flytta, och den som flyttar är den som inte är själva spelet.
+
+Priset är uttryckligt och accepterat av produktägaren när variant A valdes: på just den skärm där tummen betyder mest ligger verktygen längst från den.
+Det mildras av att de tre är sällanhandlingar — ångra, flagga ett ögonblick, avsluta sessionen — medan handen är varje drag, och en yta ger det närmaste rummet åt det som görs oftast.
+Alternativen var att ta bort solfjädern (K9, C2) eller att gömma handen tills den kallas fram, och båda kostade mer.
+Vad som faktiskt ligger i bandet, och de två lägen handen har, står i K17.
+
 ### C5. Rumslig modell: konfigurerbart TV- eller bordsläge (fråga 32)
 
 Sessionen väljer vid start mellan TV-läge, där allt orienteras mot betraktaren och platser radas längs nedre kanten, och bordsläge, där platser ligger runt om och orientering följer platsen.
@@ -429,6 +440,46 @@ Svåra buggar är samtidighet och synlighet, inte utseende, och de reproduceras 
 Följdkrav:
 Händelseschemat är ett kontrakt som måste versioneras och migreras vid varje ändring.
 Migreringsstrategin är beslutad i DRIFT §7 och byggd 2026-09-07: version per rad, upcasters vid inläsning.
+
+### D5. Fel-, tom- och anslutningslägen: nio lägen med en modell och en form per route (prototypat 2026-09-07)
+
+Ett saknat projekt, en tappad WebSocket och ett avvisat drag är inte tre saker.
+Det är nio lägen ur samma familj: laddar, laddar länge, 404 saknas, 401/403 stängt, nät-/serverfel, ansluter, tappad anslutning, återansluten och avvisad handling.
+Modellen är gemensam och ligger på ett ställe: en ton per läge, en regel för polite kontra assertive, en regel för om väntan hjälper, och en uppsättning vägar ut.
+Formen är routens egen.
+
+Sex av de nio inträffar i stället för en vy och tar då hela skärmen, formulerade för routen: "Vi hittar inte spelet" i editorn, "Rummet är slut" på bordet, "Rummet finns inte — läs QR-koden på TV:n igen" på telefonen.
+Tre av dem — tappad, återansluten och avvisad — inträffar ovanpå en vy som redan håller data, och lägger sig där routen har plats: ett kort mitt på filten som rummet kan läsa på tre meters håll, en sheet under tummen på telefonen, en rad i editorns chrome där spar-statusen redan bor.
+Ett avvisat drag står inline vid kontrollen som avvisades, med `aria-describedby` från knappen till svaret.
+En route väljer placering och formulering ur modellen; den hittar inte på egna lägen.
+
+Assertive används bara när det som står på skärmen har slutat vara sant, eller när något någon bad om inte hände: tappad, avvisad, 404, 401/403 och nätfel.
+Laddar, ansluter och återansluten är polite.
+Båda regionerna ligger i trädet från start och tomma, i `App`, av samma skäl som `TextureFailures` gör det (#10): en live-region som skapas tillsammans med sin text är en region ingen lyssnade på.
+När ett läge tar hela vyn flyttas fokus till rubriken, annars står tangentbordsläsaren kvar i ett dokument som inte längre innehåller det hon läste.
+
+Återhämtning är både och, aldrig `location.reload()`.
+Transporten försöker själv med synlig nedräkning och ger sedan upp och väntar på en människa; allt en människa måste besluta får en knapp eller en länk från första stund, för ett 404 som görs om är fortfarande ett 404.
+Den initiala anslutningen har en tidsgräns, vilket den inte hade förut: `ansluter` blir `laddar länge` och sedan `nät-/serverfel` med förklaring, återförsök och hemväg.
+Gammal data tonas och tas ur tabbordningen med `inert` så länge den inte går att lita på, och beskedet säger vilken tidpunkt bilden är från — annars ser ett fruset bord ut som ett bord som står stilla.
+Serverns egna meningar når aldrig skärmen: en avvisad `SendResult` översätts till en svensk mening, med en egen mening som reserv för ett skäl översättningen inte känner igen.
+
+Dokumenttiteln sätts på ett ställe, av routen, med lägets överskrivning: `Bordet · Rum 4KJ2 · build-your-deck` när allt är uppe, `Frånkopplad · build-your-deck` när linan är nere.
+Namnet ligger först eftersom en flik klipps från höger, och titeln är inte ett meddelande: den som behöver ordet "fel" får det i vyn och i live-regionen, inte i fliken.
+En okänd sökväg är en egen route som säger att sidan inte finns; förut föll den igenom till startsidan, så en felstavad länk visade tyst någon annans spel.
+
+Motivering:
+Ett bord på en TV och en telefon i en hand är inte samma yta.
+En enda helsidesmall river ner bordet för att sätta upp det igen när fyra personer tappar nätet i två sekunder; en enda statusremsa går inte att läsa från en soffa, och lämnar vid ett 404 kvar en kuliss av ett rum som inte finns.
+Det som ska vara gemensamt är därför modellen och inte formen.
+
+Följdkrav:
+`TableClient` äger tidsgränsen och återförsöksplanen, rapporterar varför den har slutat försöka och kan startas om av en människa utan att vyn kastas bort.
+Priset är fler formuleringar att hålla i sär: rutterna kan glida isär i ton om ingen vaktar dem, och det är den enda verkliga risken med valet.
+
+Byggt 2026-09-07 (prototypat i tre varianter, godkänd variant C — #12 och #7).
+Planen 2, 4, 8 sekunder fick ett snabbt första försök på 500 ms före sig, så att en blink läker innan någon hinner läsa ett besked om den.
+Fem frågor från prototypen är fortfarande obesvarade och står kvar i avsnitt I.
 
 ---
 
@@ -811,6 +862,37 @@ Den fasta marginalen i pixlar som fanns dessförinnan gav bordet nästan hela sk
 INSPEKTION:s väntetext ligger överst i det tomma kortet som i prototyp C, inte mitt i det, där den läses som ett kort som inte gick att ladda.
 Kameran skär inte längre genom ett kort som ligger utanför filten; beslutet och dess skäl står under C5.
 
+Reviderat 2026-09-08 (#23): handsolfjädern är millimeter på filten, inte pixlar på skärmen.
+Kortet i en hand, hur brett isär fläkten står och hur långt antalet hänger under den mäts i bordets eget mått och skalas med det, precis som ett kort som ligger på filten.
+Dessförinnan ritades den i 54 × 75 px med 26 px isär oavsett bordets skala, och i en ram smalare än ungefär 700 px blev händerna bredare än bordet de satt vid och hängde utanför båda kanterna.
+Inpassningen räknar in dem: det som ska rymmas i ramen är filten *med händerna på* — golvet utvidgat lika mycket åt båda hållen tills varje fläkt ligger innanför — så ett inpassat bord klipper aldrig sina egna händer.
+Utvidgningen är symmetrisk eftersom ramen centrerar golvet; att växa åt ett håll skulle lägga bordet snett i sin egen ram.
+Antalet under handen är en etikett i pixlar, som högens namn, och ryms i luften ramen ändå lämnar.
+Ett kvartsvridet bord (C5) passas in i den form det faktiskt ritas i, och träramen tar samma form: dessförinnan fick en plats vid en sidokant på `/online` ett bord som stack ut både ur sin ram och ur skärmen.
+Måtten och regeln för var ett kort i fläkten hamnar bor i `packages/web/src/table/hand.ts` och ställs av både den som ritar fläkten och den som mäter den, så de kan inte glida isär.
+Kvar står att TV-lägets kamera beskär bordets kant och därmed kan skära genom en handfläkt: händerna räknas inte som innehåll kameran riktas mot (C5), och det är ett beslut, inte ett fynd.
+
+Reviderat 2026-09-08: distansvyns egen hand mäter också det den ritar.
+Den handen är inte filtens fläkt utan `HandFan` — korten spelaren själv håller, framför skärmen, i den storlek de läses i — och är därför pixlar där filtens är millimeter (#23).
+Men ett kort i den vrids kring en punkt under sig självt och sänks, alltså målas det utanför den ruta raden lägger det i: tre kort i prototyp B:s storlek når fjorton pixlar under raden och trettiofem utanför dess sidor.
+`online.css` reserverade sex gissade pixlar för det, och skärmen klippte resten — vid varje bredd och varje höjd, eftersom överhänget är fläktens eget och inte fönstrets.
+Formen och rummet formen behöver är nu ett och samma svar i `packages/web/src/online/fan.ts`, som `table/hand.ts` är det för filten.
+Kortet är prototyp B:s storlek och aldrig större, krymper för att rymmas på bredden, och går aldrig under en fingertopps 44 px — där tätnar i stället steget, som en hand med fler kort än rum håller dem tätare i stället för att bli oåtkomlig.
+
+Reviderat 2026-09-08 (K17, #24): filten mäts mot ramens yta och inte mot dess kortare sida.
+Marginalen 0,16 av kortare sidan tog en tredjedel av just den sida bordet var kortast om — 32 % av höjden i en låg, bred ram, 32 % av bredden i en hög, smal — och överskottet på den andra axeln blev ett dött band.
+Regeln var tunad mot en nästan kvadratisk ram och märktes därför inte förrän K17 gjorde handbandet till en egen layoutrad: filtraden på `/online` vid 1280 × 800 är 1280 × 515, och där krympte inpassningen bordet till 26 % av radens yta med sexhundra pixlar bredd oanvända.
+Regeln är nu att filten *med händerna på* täcker två femtedelar av ramens yta, aldrig mer än ramen rymmer och aldrig mer än naturlig storlek.
+Ytan väger båda axlarna lika, vilket den kortare sidan aldrig gjorde: i en ram nära bordets egen form ger den samma proportion som 0,16 gav, och i en ram långt ifrån den växer bordet in i det rum som faktiskt finns.
+En marginal uttryckt som andel av en axel — vilken axel som helst, ramens eller bordets — ger samma svar som förut så snart den axel som binder också är den kortaste, vilket den är i alla fyra ytorna; skillnaden mellan `/table` och `/online` ligger enbart i överskottet på den lösa axeln, och bara ett mått som räknar in det kan skilja dem åt.
+Minsta luft är 44 px, densamma som TV-läget alltid lämnat innanför sin krom: träramen ritas i skärmens egna pixlar utanför de millimeter inpassningen mäter, så en filt som kom närmare hade fått sin egen ram avskuren.
+Mätt på bordet som fyra platser sitter vid: `/table` på 1600 × 1000 går från 0,781 till 0,765 i skala och från 0,416 till 0,400 av ramens yta, alltså under två procent och samma bild; miniatyren i editorns Bord-flik (640 × 384) går från 0,301 till 0,300.
+`/online` går från 0,389 till 0,473 vid 1280 med tjugoen kort — träramen från 527 till 628 px bred och filtens andel av raden från 26 % till 39 % — från 0,421 till 0,502 vid tre kort, och från 0,212 till 0,241 vid 390.
+Kvar vid 390 står luften ovanför och under bordet: ett landskapsbord på 1200 × 800 mm i en stående rad på 390 × 550 px kan inte fylla höjden utan att gå utanför bredden, och den luften är formernas skillnad och inte slack i inpassningen — bordet tar där 90 % av radens bredd.
+TV-läget rör regeln inte: det ramas in av sin egen krom och passas in precis som förut, med samma 44 px.
+Regeln bor i `packages/web/src/table/fit.ts` som `feltScale`, och de fyra ytor som ritar ett bord — `/online`, `/table`, TV:n och Bord-flikens miniatyrer — hämtar den ur samma funktion; ingen yta har ett undantag.
+Grinden är en invariant och inte ett tal: vid varje ram täcker filten sin andel av ytan eller är så stor som ramen rymmer, mätt i Chromium på den markup vyerna faktiskt monterar, vid `/table`s, miniatyrens och filtradens egna former.
+
 Referensprototypen `packages/web/src/prototype/table-ref` togs bort när den hade svarat.
 
 ### K10. Telefonvyns utseende: remsan (prototypat 2026-09-06)
@@ -909,6 +991,131 @@ Följdkrav:
 Gamla loggrader parsar oförändrade; korpusen har en skriptad session med högformen.
 Synlighetsoraklet i motorns test känner den fjärde rätten: uppvänd överst i en hög.
 `peek`, `reveal` och `rotate` tar fortfarande bara id; att ge dem högformen är ett nytt beslut om det behövs.
+
+### K16. Att spela utan pekdon: adressen (prototypat och byggt 2026-09-08)
+
+Ett kort på bordet har en position, och en dragning säger ”lägg det där”.
+Ett tangentbord har ingen position.
+Det var hela frågan, och den var densamma i handen, på filten och i distansvyn — alltså fick den ett svar och inte tre.
+
+Före det här var pekaruteslutningen total och mätt, inte läst ur en issuetext.
+`/table` hade noll tabbstopp: en sökning efter fokuserbara element i hela vyn gav tom lista, och det enda Tab landade på var en överfull rullyta.
+`/play` och `/online` hade två var, ”Flagga” och ”Avsluta”.
+Radialmenyn öppnades bara av ett pekarhåll på 350 ms, så `flip`, `rotate`, `reveal`, `shuffle`, `split` och `movePile` hade ingen tangentväg alls, och handens tre gester — tryck, håll, dra upp — hade ingen motsvarighet, vilket betydde att `PlaySheet` aldrig kunde öppnas och att en tangentbordsanvändare inte kunde spela ett enda kort.
+`table.css`, `player.css` och `online.css` innehöll inte ordet `focus` en enda gång.
+Och ingenting som hände på bordet nådde en skärmläsare: `describeActivity` skrev redan meningen, men den nådde aldrig en live-region.
+
+Tre modeller prototypades mot varandra och kördes i webbläsaren: **A, zonlistan** — bordet är ett träd av namngivna platser och positionen finns inte; **B, kompassen** — kortet lyfts och stegas en kortbredd i taget över filten; **C, adressen** — allt på filten är en kontroll med ett namn, och Enter öppnar en panel med vad som kan göras och vart det kan flyttas.
+
+**Valet blev C.**
+
+A avråddes för att den inte är ärlig mot bordet.
+Ett bord utan positioner är inte det bord produkten har beslutat sig för: K2 säger fri placering utan rutnät och C1 säger att tillståndet är position, rotation och z-ordning.
+A gör tangentbordsanvändaren till en andra klass med ett annat bord, och den slipper ändå inte koordinater: `movePile` och `split` utan `to` kräver x och y i protokollet.
+Mätt i prototypen landade dessutom två kort som spelades till samma yta på exakt samma punkt och täckte varandra, eftersom `move` utan x och y låter kortet behålla sina gamla koordinater och ett handkort har 0,0.
+
+B kan säga varje punkt på bordet och är därför det enda svaret för ett spel som lägger ut en tablå, en rad eller ett rutnät.
+Den är för dyr som grundmodell: bordet är 1200 × 800 mm och ett steg är 63 mm, alltså nitton tryck för att korsa filten, och det är det vanliga draget och inte undantaget.
+På en telefon tvingar den dessutom fram en utfälld filt som huvudyta, vilket är en revidering av K10 och inte en implementationsdetalj.
+B är därför ett andra steg och inte grunden.
+
+C är byggd så här.
+Allt på filten — varje löst kort, varje högs topp och varje hög som helhet — är en kontroll med roll, namn och fokusmarkering, och hela filten är ett tabbstopp med piltangenterna inuti.
+Namnet är projektionens: ”Kung, kort i Spelyta, vridet. Enter öppnar handlingar.”, ”Draghög, hela högen, 9 kort.”
+Enter öppnar en panel med **Gör** — vänd, vrid, avslöja, titta, blanda, dela — och **Flytta till** — zonerna vid namn, högarna, händerna, ”Bordet” och varje löst kort som ”På Drake”, vilket är `stack` och bildar en hög (K1).
+Panelen är `Question.tsx`:s uppförande tillämpat på en lista i stället för ett svar (L9): den tar fokus så att den besvaras där den läses, den svarar på Escape, den lämnar tillbaka fokus till det som öppnade den, och den fångar ingenting — den som tabbar förbi lämnar den stående.
+Efter en flytt följer fokus kortet dit det landade, för det är dit blicken går; har kortet lämnat filten går fokus till det första stoppet som är kvar och aldrig till ingenting.
+
+Klienten räknar ut en koordinat, eftersom protokollet vill ha en och tangentbordet inte har någon: nästa lediga plats i en rad inne i zonen, relativt zonen (K2).
+Två kort som spelas med tangentbord landar därför aldrig på samma millimeter.
+Vokabuläret är orört: `move` med uträknad x/y, `stack`, `split`, `movePile`, `flip`, `rotate`, `shuffle`, `reveal`.
+Ingen protokollmigrering, inget nytt verb.
+
+**Det tangentbordet inte kan säga är en godtycklig punkt på filten, och panelen säger det själv.**
+Raden ”Fri placering — en punkt på filten” står där, avstängd, med ”kräver pekdon; med tangentbord finns bara platser med namn”.
+Det är ärligt och inte gratis: ett spel där avståndet mellan två kort betyder något — en tidslinje, ett spår, en karta som spelarna lägger — kan en tangentbordsanvändare inte bygga, bara approximera kort för kort genom att adressera dem mot varandra.
+Det är acceptabelt av tre skäl.
+Ingen av produktens beslutade ytor kräver i dag att en punkt kan sägas, eftersom zonerna är rektanglar med släpp-in och inte rutnät (K2).
+Alternativet var att låtsas — att låta ”lägg i zonen” se ut som fri placering — och en yta som låtsas kunna något den inte kan ljuger för den som står i den, precis som telefonen inte får låtsas rita en mall (L10).
+Och vägen ut är redan ritad: raden är ingången till B:s stegande den dag den behövs, och då blir den avstängda raden en påslagen rad utan att någonting annat i modellen ändras.
+
+Uppläsningen är D5:s egen indelning, med `describeActivity`:s meningar och inga nya formuleringar.
+Det jag själv gör sägs på en gång i den artiga regionen; det de andra gör samlas ihop och sägs på ett taktslag om 1,4 s, så att tre drag i samma andetag blir ”3 drag av de andra, senast: Ada blandade Draghög” i stället för tre avbrott; ett avvisat drag är svaret på något någon bad om och avbryter.
+Regionerna är `StatusLive`:s två, de som redan fanns sedan #7, och inte nya — en rutt som gjorde sina egna vore en andra uppläsare i samma rum.
+
+Följdkrav som är införda:
+`TableRenderer` fick attribut på de noder den redan ritar och ingen andra kodväg (K9); ett bord som bara visas — editorns miniatyrer i fliken Bord, setup-duken, observatörens vy — skickar ingen tangentbordslager och får därför noll tabbstopp, för en miniatyr ingen kan spela på är inte en kontroll.
+Roving tabindex är editorns `roving.ts` med en tredje orientering, `both`, eftersom filten är en lista i två dimensioner; ingen yta skrev en egen.
+Fokusmarkeringen är två band mot varandra, ett ljust och ett mörkt, eftersom en enda ljus ring försvinner mot ett blekt kortansikte — vilket är precis var ett handkort lägger den; `keyboard-contrast.test.ts` mäter båda mot filten, träet, TV:ns mörker, panelen och kortansiktets hela ramp.
+Dold information bevisas fortfarande på tråden och inte på skärmen (D4, B6): `keyboard-hidden.test.tsx` spelar in varje rå frame sidans egen socket tog emot och visar att namnen aldrig kom fram, och därför att kontrollen bara kan heta ”Dolt kort”.
+En hög erbjuds aldrig sig själv som destination, eftersom bordet svarar ”cannot split a pile onto itself” och en panel inte ska fråga om det.
+
+Byggt 2026-09-08 (#1, #2). Prototypen `packages/web/src/prototype/keyboard` togs bort när den hade svarat; dess resonemang står här.
+Fem frågor som prototypen väckte och som inte är besvarade står i avsnitt I.
+
+### K17. Distansvyns nedre band: facket, med uppslaget bakom `Visa alla` (prototypat och byggt 2026-09-08)
+
+Två issues, en yta, ett svar.
+#24 sa att solfjädern blir en regnbåge när handen är stor; #25 att fjädern och hörnens kontroller slåss om samma fyrtio pixlar vid 390.
+De hänger ihop: en fjäder som packar tätare krockar också mindre, så den som löser det ena har redan bestämt det andra.
+Därför en prototyp och ett svar.
+
+**Mätt först, inte räknat ur issuetexten.**
+Bågen var 8° per kort utan tak, alltså (n−1)·8: en hand på tjugoen kort spände 160°, och dess yttersta kort stod 80° från lodrätt och gick inte att läsa.
+Krocken med `Ada · n kort` och med Ångra/Flagga/Avsluta började vid **tre** kort vid 390 och vid tretton vid 1280 — vid varje bredd, alltså, och inte bara på telefon som #25 antog.
+Den minsta träffytan var aldrig kortet utan **steget** till nästa kort, eftersom ett kort täcks av dem som ritas efter det: 11 px vid tjugoen kort på 390.
+Och Ångra, Flagga och Avsluta mätte 76 × 32, 77 × 32 och 70 × 32 px vid varje bredd, ett brott mot 44 px som fanns före båda issuesen.
+
+Den geometriska sanning som styrde hela valet: vid 390 px är bandet 358 px brett, och 358 px rymmer **åtta** träffytor på 44 px och inte fler.
+En hand på tretton eller tjugoen kort kan alltså inte vara en rad med tryckbara kort på en telefon — inte vid någon lutning, inte vid någon kortstorlek.
+Det lämnar exakt tre svar: rulla, radbryt, eller visa dem inte hela tiden.
+Tre varianter prototypades mot varandra: **A, Facket** — fjädern överlever, bågen får tak och handen rullar; **B, Remsan** — K10:s remsa given åt `/online` också; **C, Uppslaget** — handen kallas fram som ett rutnät i stället för att alltid ligga där.
+
+**Valet blev A, med C:s uppslag lånat som andra läge.**
+
+B avråddes för att solfjädern är ett fattat beslut och inte en smaksak: K9 skriver in handfläkten i bordets bild och C2:s prototyp B är handen som fjäder vid filtens kant.
+#24 är ett fel i *hur brett* fjädern fjädrar, inte ett argument för att fjädern var fel, och att svara på en trasig båge med att ta bort bågen är att kasta ett beslut för att en konstant saknade tak.
+C avråddes som grundläge för att en hand man inte ser medan man spelar tar bort halva skälet till att en hand ritas alls, och för att den vid tre kort på en bred skärm gömmer något som ryms.
+Vid 1280 — där `/online` faktiskt lever, eftersom det är distansvyn med både bord och hand i samma fönster — löser A allt utan att ta något, och där ger B och C bort något för ett problem som inte finns.
+
+Så här är A byggd, och siffrorna är mätta i Chromium på den markup vyn faktiskt monterar.
+**Bågen har tak på 30° totalt** (`FAN_ARC_MAX` i `packages/web/src/online/fan.ts`): 8° mellan två kort tills det blir för många, sedan 30/(n−1).
+Sänkningen följer lutningen ned, annars hänger en nästan flat hand fortfarande.
+Mätt: 16° vid tre kort, 30° vid tretton och vid tjugoen, vid 390, 1280 och 1440 — mot 160° före.
+**Kortet behåller sin läsbara storlek och krymper inte längre för att rymmas**: 112 px som prototyp B läste det, 22 % av skärmens bredd, aldrig under 56 px. Mätt: 86 px vid 390, 112 px vid 1280.
+**Det som ger vika är steget, och det bottnar på en fingertopp.** Steget dras ihop tills handen ryms i bandet och stannar där på 44 px. Mätt: 68 px vid tre kort på 1280, 52 px vid tjugoen på 1280, 44 px vid tretton och tjugoen på 390 — mot 23 och 14 px före.
+**En hand som fortfarande är bredare än bandet rullar i sidled som fjäder.** Mätt: 673 px att rulla vid tjugoen kort på 390, 321 px vid tretton, ingenting alls vid någon bredd på 1280. Sidan själv rullar aldrig i sidled, vid någon bredd eller något antal.
+**Hörnen lämnar bottenbandet**, av skälen och till priset som står under C4.
+Och **Ångra, Flagga och Avsluta är 44 px** i båda riktningarna, tillsammans med `Visa alla`.
+
+**Uppslaget är handens andra läge, inte dess grundläge.**
+`Visa alla` fäller upp hela handen som ett rutnät i läsbar storlek över ett nedtonat bord, och där är inget vridet, inget överlappat och ingenting att rulla i sidled.
+Då är C:s enda verkliga vinst — hela handen läsbar samtidigt vid vilket antal som helst — kvar, medan dess pris betalas bara av den som ber om det.
+Det är samma mönster som K8:s "håll för att förstora" och K16:s panel: grundytan är direkt, och det som inte får plats i den kallas fram.
+Uppslaget är `Question.tsx`:s uppförande tillämpat på en yta, precis som K16:s adresspanel är det: det tar fokus så att det läses där det står, det svarar på Escape, det lämnar tillbaka fokus till `Visa alla`, och det fångar ingenting.
+Fokus landar på **första kortet** och inte på Stäng, för uppslaget fälldes upp för att läsas.
+
+Två avsteg från prototyp C är avsiktliga.
+Uppslaget täcker filten och bandet men **aldrig topplisten**, så Ångra, Flagga och Avsluta står kvar och är nåbara; en yta som täcker sidans enda Ångra har gjort den onåbar och inte bara gömd, och alternativet — att låta verktygen följa med upp i uppslagets huvud på en telefon — vore två kopior av samma tre knappar i ett dokument, vilket L10 redan har avvisat.
+Och en hand som är större än skärmen **rullar i sin egen box medan sidan aldrig gör det**, vilket är L10:s regel för datatabellen tillämpad här. Mätt: alla tjugoen korten ligger utan att rullas vid 1280; vid 390 ryms femton och resten är 255 px ned i rutnätets egen rullyta.
+
+Handen är **en kontroll och en kopia av sig själv i taget**.
+Medan uppslaget står är bandet fortfarande ritat, nedtonat under det, men det ligger utanför tabbordningen och utanför tillgänglighetsträdet — som sidan bakom vilken uppfälld yta som helst. Två levande kopior av samma tjugoen kort vore tjugoen kort två gånger för en skärmläsare.
+
+**K16 står orört och är mätt på nytt i båda lägena.**
+Hela handen är ett tabbstopp med piltangenterna inuti, varje kort är en `button` med projektionens namn, och Enter öppnar adresspanelen.
+Mätt: från första kortet i en hand på tjugoen når 20 × ArrowRight det tjugoförsta, i fjädern och i rutnätet; i fjädern drar `scrollIntoView` in det i den rullande ytan, vilket är L10:s regel för en remsa som rullar i sidled.
+Rutnätet är `orientation: 'both'`, som filten, och roving-tabindexen är editorns `roving.ts` — ingen yta skriver en egen.
+
+**Formen och rummet formen behöver är fortfarande ett och samma svar**, i `fan.ts` (K9, revideringen 2026-09-08).
+Det gäller nu mer och inte mindre: en rullyta som reserverade mindre än de vridna korten målar skulle klippa exakt det taket infördes för.
+Hur långt utanför sin egen ruta ett vridet kort målar beror bara på dess egen lutning och inte på hur långt isär korten står, så en och samma form svarar för varje steg skärmen kan råka välja.
+Rutnätets radhöjd kommer ur samma tal, uttryckligen: en automatisk rad tar sin höjd ur vad kortet innehåller och inte ur kortets `aspect-ratio`, och stängde vid tjugoen kort på en telefon ihop till 83 px kring 120 px höga kort — alltså la rutnätet korten ovanpå varandra igen, det enda läget finns för att inte göra.
+
+Grindarna är invarianter och inte tal, mätta vid 3, 13 och 21 kort och vid 390, 1280 och 1440 px: inget kort skärs av skärmen när bandet har hämtat fram det, ingen kontroll ligger över ett kort, ingen kontroll är under 44 × 44 px, inget steg är under 44 px, kortet är alltid mellan 56 och 112 px, sidan rullar aldrig i sidled, och i uppslaget överlappar inget kort ett annat.
+
+Byggt 2026-09-08 (#24, #25). Prototypen `packages/web/src/prototype/band` togs bort när den hade svarat; dess resonemang står här.
+Tre frågor som prototypen väckte och som produktägaren inte svarade på är avgjorda av implementationen och står i avsnitt I.
 
 ---
 
@@ -1066,6 +1273,94 @@ Kompilatorn har ett `scope`-alternativ så att många kort kan dela sida.
 Ett rent tal i klamrar är en pip (L2).
 Projekt är revisionerade dokument på servern med optimistisk samtidighet tills projektaktören (D3) finns; "uppdatera bordet" startar ett bord ur projektet (L5).
 
+### L9. Osparat arbete: skillnaden mot servern, en fråga på vägen ut, bekräftelse före en radering
+
+"Osparat" betyder att projektets dokument skiljer sig från det servern håller, inte att något har skrivits i editorn.
+En ändring som skriver värdet som redan stod där, och en ändring som tas tillbaka för hand, lämnar leken sparad.
+
+Skyddet gäller bara verkligt osparat arbete och finns på tre vägar.
+`beforeunload` är registrerad exakt medan dokumentet skiljer sig, så en flik som stängs eller laddas om över en orörd lek stängs utan ett ord.
+"Mina spel" i huvudet går direkt när ingenting ändrats och frågar annars, med "Spara och lämna", "Lämna utan att spara" och "Avbryt".
+Ett sparande som krockar med någon annan lämnar inte editorn: konflikten sägs som `alert` och arbetet står kvar där det är.
+Sparat eller osparat står i huvudet som ord och som färg, i en `role="status"`, så att bytet både syns och sägs.
+
+Radering av ett kort från radens × frågar först, med samma ord och i samma remsa som åtgärdsradens massborttagning, och namnger kortet i stället för att räkna det.
+Editorn har ingen ångra-stack; bekräftelsen är därför skyddet, och en ångra-historik över projektet är ett eget beslut.
+
+Varje fråga editorn ställer före något som inte kan tittas på efteråt är en och samma komponent, `Question` (#17, #19, #8): en remsa där handlingen begärdes, som tar fokus, svarar på Escape och lämnar tillbaka fokus, och som aldrig fångar tangentbordet.
+Frågan öppnar alltid på ett svar som inte förlorar något: "Spara och lämna" när det finns ett sådant, annars "Avbryt".
+Fokus ligger aldrig på svaret som inte kan ångras, så den reflex som besvarar en fråga på vägen förbi — Enter på det som råkar hålla fokus — behåller arbetet i stället för att kasta det.
+Svaret som inte kan ångras står kvar där det stod, i rött och med ord som säger vad det gör ("Ja, ta bort", "Ja, avsluta"): ett tabbsteg bort, inte ett steg längre in i frågan.
+`Question` räknar själv ut vilket av sina svar som är det säkra; ett anropsställe talar om vad varje svar kostar, aldrig vilket av dem som ska ha fokus.
+
+Motivering:
+En varning som kommer när ingenting har ändrats lär designern att avfärda varningar, och skyddar då ingenting alls.
+Dirty som en jämförelse mot servern i stället för ett minne av tangenttryck är det enda som gör den skillnaden möjlig att lita på.
+
+Byggt 2026-09-07 (ingen ny prototyp: mönstret för frågan är det som redan är byggt och godkänt i #17 och #19).
+
+### L10. Rummet en verktygstät yta får: etapper i editorn och wizarden, bordet först hos observatören (prototypat 2026-09-07)
+
+`/editor`, `/new` och `/observe` gick sönder på små skärmar av samma skäl: de var byggda för en bredd och hade inget svar på att inte få den.
+Frågan var aldrig vilken brytpunkt utan vad en yta *ger upp* när rummet tar slut, och tre svar prototypades mot varandra: krympa allt (A), kalla fram det som inte är arbetsytan (B), eller dela ytan i namngivna etapper (C).
+
+Valet blev **C för editorn och wizarden och B för observatören**.
+Editorn och wizarden är verktyg: de har redan flikar och roving-fokus (#11, #13, #18), så etapper lägger inte till en enda ny interaktionsmodell — bara en plattare version av den som redan är beslutad.
+Observatören tittar i stället för att arbeta: hennes yta är ett bord och lite text, så bordet tar hela skärmen och allt annat kallas in bakom ett handtag.
+Att blanda är inte en inkonsekvens; A, B och C är svar på hur mycket verktyg en yta har.
+
+Editorn har tre rum, och gränsen mellan dem är vad ytan ärligt rymmer.
+Från 1024 px är den editorn den alltid har varit: lägena i huvudet, duken i fyra kolumner.
+Mellan 768 och 1023 px blir mallens fyra paneler fyra egna etapper i samma platta lista som lägena — `Kortvägg · Verktyg · Lager · Duk · Egenskaper · Tabell · Bord` — i en list längst ner, där `Spara` och `Uppdatera bordet` är fastnitade till höger så att de aldrig scrollar bort.
+**Under 768 px finns ingen duk.**
+Telefonen får `Kortvägg`, `Tabell`, `Bord`, `Spara` och `Uppdatera bordet`, och gränssnittet säger rakt ut vad som saknas och varför i stället för att tyst utelämna det: ett kort läggs ut i millimeter mot fyra paneler, och en yta som låtsas kunna det på 390 px ljuger för den som står i den.
+En designer på en telefon ska lära sig att layout kräver en bredare skärm, inte undra var verktygen tog vägen.
+
+Etapperna och skrivbordet monteras aldrig samtidigt.
+Rummet avgörs i JavaScript och inte bara i CSS, eftersom två kopior av samma panel vore två av varje widget och två av varje element-id i ett dokument, och en skärmläsare skulle läsa den gömda kopian som verklig.
+`Nytt bord` och pilen bredvid `Uppdatera bordet` lämnar huvudet under 1024 px; båda är genvägar till det `Bord`-fliken redan äger (L5), så ingenting blir onåbart.
+
+Datatabellen har bara ett ärligt svar på en bred tabell och en smal skärm, och det är inte ett variantval: tabellen scrollar i sin egen box, sidan gör det aldrig, och kolumnen som tar bort en rad är fastnitad till höger så att den inte kan scrollas bort — den låg längst ut och försvann först.
+Under 1024 px är filtret staplade rader där varje chip-grupp scrollar i sidled på en rad, eftersom en lek med en meningslång kolumn annars trycker ut raderna, som är det fliken finns för.
+
+Wizarden är tre steg med ett mål var — `1 · Spelet`, `2 · Fälten`, `3 · Korten` — under 1024 px, och de två kolumnerna den alltid haft ovanför.
+`Startram` ligger i steg 2 tillsammans med fälten den ramar in i stället för 700 px från kortet den ändrar, och förhandsvisningen äger toppen av sitt eget steg i full bredd.
+På skrivbordet får förhandsvisningens kolumn aldrig bli smalare än ett helt 63 mm-kort: en förhandsvisning som klipper ljuger om kortet den visar.
+
+Observatören har ingen banner.
+`.byd-observer-banner` var `position: fixed` och låg ovanpå både bordet och rubriken `INSPEKTERA` — vid 390, 768 och 1280 px.
+I stället är hennes status en rad i layouten längst ner: vem hon är, vägen till `Senast och platser`, och `⚑ Flagga`.
+Under 1024 px är bordet hela skärmen och kolumnen är en låda som *tar rum från bordet* när den öppnas — under bordet, aldrig över det — med bordet kvar i ungefär hälften av ytan; i lådan står hennes hela mening överst, sedan flödet och platserna, och inspektionspanelen sist eftersom den är ett pekdons svar.
+Från 1024 px är TV:ns egen layout orörd (#6): kolumnen står där den stått, och handtaget behåller bara det som är dess eget — vägen att flagga.
+
+Grindarna gäller alla tre ytorna och mäts i Chromium på den markup de faktiskt monterar: ingen horisontell sidscroll vid 390, 768 och 1024 px, ingen träffyta under 44 × 44 px, och ingen krom som överlappar spelinnehåll på `/observe`.
+Före: `/editor` var 893 px bred oavsett fönster (503 px utanför vid 390, 125 px vid 768) med `Spara`, `Uppdatera bordet` och flikarna oåtkomliga; `/new` hade 24–27 träffytor under 44 px och klippte förhandsvisningen vid 1024; `/observe` gav bordet 13 % av bredden vid 390.
+En remsa som scrollar i sidled drar den fokuserade fliken in i vy, annars flyttar roving tabindex fokus till något ingen ser.
+Wizardens accent är nedtonad från `#d85b36` till `#b8461f`, som bär AA i 11 px text mot pappret.
+
+Två fynd på vägen är egna issues och inte lösta här: primärblå `#3c8ce7` ger vit text 3.44:1 (#22, avgjort i L11), och `TableRenderer` ritar handsolfjädrar i fasta pixlar och passar bara in golvet i sin ram, så ett bord som passats kant i kant alltid klipper sina egna händer (#23) — det syns fortfarande på `/observe` vid 390 och 768 px.
+Prototypen `packages/web/src/prototype/responsive` togs bort när den hade svarat; dess resonemang står här.
+
+### L11. Primärblått är två tokens, och en platsfärg bär mörk text (2026-09-08)
+
+`#3c8ce7` var en färg med två jobb och klarade bara det ena.
+Som fyllning under en vit etikett mätte den 3.44:1 och föll under AA; som kant, ring och märke på editorns mörka ytor låg den mellan 3.3:1 och 4.9:1 och gjorde precis det den skulle.
+En enda mörkare blå hade lagat knappen och tagit sönder kanterna: `#1f6fd0` ger 4.95:1 mot vitt men bara 2.68:1 mot en markerad rad och 2.28:1 mot den öppna gruppens remsa.
+
+Beslutet är därför att dela färgen efter jobb och inte efter yta.
+`--byd-editor-primary-bg` är `#1f6fd0` och bär `--byd-editor-primary-ink` — vit text, 4.95:1 — på varje knapp, länk och kryssruta som är editorns första handling.
+`--byd-editor-primary-mark` behåller `#3c8ce7` och är allt som bara ritas: markeringen på en markerad rad, ringen runt kortet som tittas på, fokusringen i datatabellen, handtagens kant och millimeterrutnätet över kortet.
+Två bar, två tokens: 4.5:1 för text, 3:1 för grafik, mätt mot den yta var och en faktiskt landar på.
+Båda står deklarerade en enda gång i `editor.css`, och `editor-contrast.test.ts` låser både talen och att ingen yta skriver hexen på nytt.
+
+Platsfärgerna (#20, K9) är inte primärfärgen och ändras inte.
+Att den andra platsen råkar vara samma `#3c8ce7` är en sammanträffande identitet, inte en delad token, och paletten är hämtad ur godkända prototyper.
+Felet låg i bläcket: anslutningssidans platsknappar och bordets namnbrickor bar vit text på en platsfärg, vilket ger 3.44:1 på den blå och 2.44:1 på den gula.
+Paletten är däremot redan gjord för mörkt bläck — TV-dockans avatarer använde `#0d0f14` hela tiden — så namnbrickan och platsknappen tar samma bläck som avataren, och varje plats landar mellan 4.80:1 och 7.84:1.
+`--byd-seat-ink` är den ena definitionen, och `seat-contrast.test.ts` mäter den mot hela paletten i båda riktningarna: bläcket på platsen, och platsen som text och kant mot mörkret den läses på.
+
+Wizardens `--accent` är dess egen varumärkesfärg och ingenting av detta rör den.
+
 ---
 
 ## I. Öppna frågor
@@ -1081,7 +1376,43 @@ Aktivitetsflödet vid anslutning: löst 2026-09-07, snapshoten bär de senaste f
 Behörighetsroller i detalj: löst 2026-09-08 som en modell i D3 — ägare, medredigerare, testledare, betraktare, med inbjudan per adress.
 Tillgänglighet i verktyget självt, till skillnad från i de spel som skapas i det.
 
+Tangentbordet på bordet, kvar efter K16 (2026-09-08).
+Implementationen följer prototypens egna val på alla fem; de står här för att de är produktbeslut och inte kodval, och för att de annars försvinner.
+Utläggningsregeln för ett kort som flyttas till en yta: klienten lägger det på nästa lediga plats i en rad, uträknat ur zonens bredd. Det är prototypens gissning. K2 säger fri placering utan rutnät och säger ingenting om vad ”i zonen” betyder när ingen pekar, och ett riktigt svar ändrar hur filten ser ut också för pekaranvändare.
+`movePile` och `split` utan `to` kräver x och y i protokollet, och ett tangentbord har inga: klienten hittar på zonens eget hörn. Alternativen är en zonrelativ form av de två verben, vilket är en protokollmigrering och ett eget beslut, eller att hela högar förblir pekaruteslutande.
+Vem tangentbordet är på `/table`: bordsskärmen har ingen plats och agerar som ”Bordet”, så fokus är en enda markör på en skärm ett helt rum tittar på. Till skillnad från två pekare syns det inte att det är en kö. Kanske är svaret att tangentbordsvägen där bara är till för den som sitter vid skärmen.
+Om vi namnger mer än pekaren visar: ”Marknad: Skugga, Gruva, Spion” gör korträkning lättare än att läsa filten på tre meters håll. Det är samma information, och det är behandlat som tillåtet, men det är ett produktbeslut om playtestets naturlighet (C8 resonerar likadant om observatören).
+”Titta” loggas inte: ringens och panelens ”Titta” sätter bara lokalt tillstånd och skickar ingen `peek`, medan B6 säger att varje titt loggas som händelse. Avvikelsen fanns redan i pekarvägen; tangentbordet gör den synlig, eftersom verbet nu står i en lista med de andra. Ska ”Titta” bli `peek`, eller är B6:s ”titt” bara den som ger ny kunskap?
+
+Distansvyns hand, kvar efter K17 (2026-09-08).
+Prototypen ställde tre frågor som produktägaren inte svarade på, och implementationen har svarat på alla tre.
+De står här för att de är produktbeslut och inte kodval, och för att de annars försvinner.
+
+Rullning kontra dragning i fjädern: uppdelningen är en riktningströskel, avgjord en gång per tryck och aldrig omprövad.
+Den första rörelsen som är 12 px lång bestämmer, efter vilken av de två axlarna den gick längst: uppåt eller nedåt är ett kort som spelas och tar pekaren, i sidled är fjädern som rullar och trycket kan därefter inte spela alls, hur det än slutar.
+Webbläsaren får samma besked i `touch-action: pan-x`, så en fingerdragning som panorerar är rullytans redan innan den når kortet.
+Alternativen var ett handtag som rullar, eller rullning bara med piltangenter; båda tar bort det som är hela poängen med en fjäder, att ett kort greppas där det ligger.
+Följden som är värd att veta: ett tryck som inte färdas alls spelar numera ingenting, där det förut spelade kortet dit fingret råkade släppa — bandet ligger under filten, så punkten ett tryck släpper på är inte en plats på bordet att lägga ett kort.
+En dag då ett tryck ska betyda något (inspektera, som K8 gör på telefonen) är det den lediga gesten.
+
+Om 30° är rätt tak: det är en gissning som ser rätt ut, inte ett mätt tal.
+30 är valt för att handen ska läsas som en hand snarare än som en båge; 24 packar hårdare och låter fler kort rymmas innan bandet börjar rulla, 40 ser mer ut som ett riktigt kortfack.
+Det är avsiktligt en enda konstant, `FAN_ARC_MAX` i `packages/web/src/online/fan.ts`, och både ritningen och rummet ritningen behöver räknas ur den, så att ändra talet ändrar båda i samma andetag och kan göras utan att någonting annat rörs.
+
+Om `/online` på en telefon ska vara samma hand som `/play`: valet av A framför B säger nej, tills vidare.
+`/play` är K10:s remsa och `/online` är K17:s fjäder, alltså får en spelare som spelar på telefon via `/online` och en som spelar via `/play` två olika händer på samma sorts skärm.
+Skälet är att `/online` är distansvyn med både bord och hand i samma fönster och därför i praktiken lever på en bred skärm, medan `/play` är telefonens egen vy och bara har handen att visa.
+Det är försvarbart men det är inte skrivet någonstans som ett beslut: K9 bör säga varför distansvyn har en egen hand, eller så bör de två slås ihop.
+Anser produktägaren att de ska vara oskiljbara är remsan svaret på båda, och då är K10 det som ska skrivas om och inte K9.
+
 Spelupplevelse, kvar efter avsnitt K: inga; de två sista avgjordes 2026-09-07, se K1 och K2.
+
+Fellägen, kvar efter D5:
+Om tidpunkten i "Det du ser är från 14:32" ska vara absolut eller relativ; implementationen står på absolut, som är entydig men läses sämre i ett spel som pågår.
+Om bordet ska frysas synligt vid tappad anslutning eller om korten ska tas bort helt tills snapshoten är tillbaka; implementationen fryser och tonar, vilket är ett spelbeslut och inte ett UI-beslut.
+Om 401 och 403 ska skiljas åt i orden; de slås i dag ihop till "Du har inte tillgång" med både inloggning och hemväg, eftersom en gäst sällan vet vilket som gäller.
+Om det finns en väg ut ur ett bord från telefonen alls, eller om bara TV:n kan avsluta ett rum.
+Om en observatör (C8) ska få samma ord som en spelare, eller ord som inte antyder en plats.
 
 ---
 

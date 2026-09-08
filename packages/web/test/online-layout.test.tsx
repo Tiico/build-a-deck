@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 // The felt view's own furniture, measured in a real engine at phone widths: jsdom lays nothing
-// out, and the fault this is about is two fixed corners of the screen growing into each other.
+// out, and the fault this is about is the seat's line and the session's tools growing into each
+// other in the row they share (#25).
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -18,6 +19,10 @@ const noop = (): undefined => undefined
 const idle = { send: async () => undefined } as unknown as Parameters<typeof SessionButtons>[0]['client']
 const view = { seq: 3, zones: [], components: [], seats: [{ id: 'A', name: 'The designer' }] } as unknown as Snapshot
 
+// Two boxes that do not lie over each other: beside each other, or one under the other.
+type Box = { left: number; right: number; top: number; bottom: number }
+const apart = (a: Box, b: Box) => a.right <= b.left || b.right <= a.left || a.bottom <= b.top || b.bottom <= a.top
+
 const page = (body: string) =>
   shell
     .replace('<script type="module" src="/src/main.tsx"></script>', '')
@@ -27,16 +32,16 @@ const page = (body: string) =>
 let browser: Browser
 beforeAll(async () => {
   browser = await chromium.launch()
-})
+}, 60_000)
 afterAll(async () => {
   await browser.close()
-})
+}, 60_000)
 
 describe('the felt view on a phone (C5)', () => {
   it('keeps who you are apart from what you can do, however long the name is', async () => {
     const t = (key: Parameters<typeof translate>[1], params?: Record<string, string | number>) => translate('en', key, params)
     const body = renderToStaticMarkup(
-      <div className="byd-online-bar">
+      <div className="byd-online-top">
         <SeatLine name="The designer" hand={0} observers={[]} t={t} />
         <div className="byd-online-tools">
           <SessionButtons client={idle} view={view} onSheet={noop} />
@@ -55,13 +60,14 @@ describe('the felt view on a phone (C5)', () => {
         }
         return { me: box('.byd-online-me'), tools: box('.byd-online-tools') }
       })
-      // Two corners of the same row: the one must end before the other starts, or a tap meant
-      // for "undo" lands on the name.
-      expect(boxes.me.right).toBeLessThanOrEqual(boxes.tools.left)
+      // The row gives the two ends of itself: the one must never lie over the other, or a tap
+      // meant for "undo" lands on the name. Where the width runs out the row wraps, and being on
+      // a line of one's own is as apart as being at the other end of one.
+      expect(apart(boxes.me, boxes.tools)).toBe(true)
       expect(boxes.me.left).toBeGreaterThanOrEqual(0)
       // A name far longer than the screen still gives way rather than pushing the buttons off.
       const long = renderToStaticMarkup(
-        <div className="byd-online-bar">
+        <div className="byd-online-top">
           <SeatLine name="Ada Augusta Byron King, Countess of Lovelace" hand={12} observers={['Bo', 'Cilla']} t={t} />
           <div className="byd-online-tools">
             <SessionButtons client={idle} view={view} onSheet={noop} />
@@ -72,11 +78,11 @@ describe('the felt view on a phone (C5)', () => {
       const wide = await tab.evaluate(() => {
         const box = (sel: string) => {
           const r = document.querySelector(sel)!.getBoundingClientRect()
-          return { left: r.left, right: r.right }
+          return { left: r.left, right: r.right, top: r.top, bottom: r.bottom }
         }
         return { me: box('.byd-online-me'), tools: box('.byd-online-tools'), width: document.documentElement.clientWidth }
       })
-      expect(wide.me.right).toBeLessThanOrEqual(wide.tools.left)
+      expect(apart(wide.me, wide.tools)).toBe(true)
       expect(wide.tools.right).toBeLessThanOrEqual(wide.width)
     } finally {
       await tab.close()

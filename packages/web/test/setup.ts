@@ -21,14 +21,13 @@ const cookieFor = (origin: string): string => {
 
 // The editor's own socket (D3) needs the stand-in and the cookie: a browser sends the session
 // with the handshake, and under jsdom nothing does it for us.
-useEditSocketImplementation(
-  class extends WsClient {
-    constructor(url: string) {
-      const cookie = cookieFor(new URL(url).origin.replace(/^ws/, 'http'))
-      super(url, cookie ? { headers: { cookie } } : {})
-    }
-  } as unknown as EditSocketCtor,
-)
+export class EditSocket extends WsClient {
+  constructor(url: string) {
+    const cookie = cookieFor(new URL(url).origin.replace(/^ws/, 'http'))
+    super(url, cookie ? { headers: { cookie } } : {})
+  }
+}
+useEditSocketImplementation(EditSocket as unknown as EditSocketCtor)
 
 if (typeof document !== 'undefined') {
   const realFetch = globalThis.fetch

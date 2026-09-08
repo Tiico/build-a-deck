@@ -243,7 +243,9 @@ describe('being kicked (DRIFT §9)', () => {
     expect(kicked.status).toBe(200)
     expect(await screen.findByText(/Värden har tagit bort dig/)).toBeTruthy()
     await new Promise((r) => setTimeout(r, 200))
-    expect(document.querySelector('[data-refused]')?.getAttribute('data-refused')).toBe('kicked')
+    // A shut door is one of the nine states (#12): the phone says it as `forbidden` and stays
+    // there, rather than reconnecting into the same answer.
+    expect(document.querySelector('[data-status-notice]')?.getAttribute('data-status-notice')).toBe('forbidden')
   })
 })
 

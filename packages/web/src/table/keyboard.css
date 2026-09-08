@@ -1,0 +1,177 @@
+/* Playing with a keyboard (#1, #2, variant C "adressen").
+
+   Two things live here and nowhere else: the ring that shows where the keyboard is standing —
+   before this, `table.css`, `player.css` and `online.css` did not contain the word `focus` once,
+   so there was nothing to see even on the buttons that already existed — and the address panel
+   the felt and the hand both open. The colours are the player view's own tokens, repeated here
+   because the panel is rendered on three routes and only one of them is `.byd-player`. */
+
+.byd-kbd-panel,
+.byd-kbd-look {
+  --byd-kbd-bg: #1b1e27;
+  --byd-kbd-control: #242938;
+  --byd-kbd-off: #191c24;
+  --byd-kbd-ink: #fff;
+  --byd-kbd-ink-muted: #9aa3b8;
+  --byd-kbd-line: #2c3242;
+}
+
+/* Where the keyboard is standing. One ring for everything it can stand on: the nodes the table
+   renderer draws, the cards in the hand, and the rows of the panel. Never `outline: none`.
+   The ring is two colours and not one. A single light blue reads on the felt, the wood and the
+   dark of the TV — and disappears on a pale card face, which is exactly where a hand card puts
+   it. So a dark edge is drawn on both sides of it: whichever of the two the ground swallows, the
+   other one stands. `keyboard-contrast.test.ts` measures both against every ground there is. */
+:root {
+  --byd-kbd-ring: #9cc6ff;
+  --byd-kbd-open: #7dd3a0;
+  --byd-kbd-ring-edge: #0d0f14;
+}
+/* The attribute is doubled so that focus beats the green marking on a card that is also chosen:
+   both are one class and one attribute, and source order between two stylesheets is not a thing
+   to rely on. */
+[data-kbd][data-kbd]:focus-visible,
+[data-hand-card][data-hand-card]:focus-visible,
+.byd-kbd-panel button:focus-visible,
+.byd-kbd-look button:focus-visible {
+  outline: 3px solid var(--byd-kbd-ring);
+  outline-offset: 2px;
+  box-shadow:
+    0 0 0 2px var(--byd-kbd-ring-edge),
+    0 0 0 8px var(--byd-kbd-ring-edge);
+  z-index: 70;
+}
+/* The felt draws its own stacking, so a ring on a card has to come forward to be seen whole. */
+[data-table] [data-kbd]:focus-visible {
+  position: relative;
+}
+/* The thing the panel is open on stays marked while the reader is looking at the list. */
+[data-kbd][data-kbd-state='open'] {
+  outline: 3px solid var(--byd-kbd-open);
+  outline-offset: 2px;
+  box-shadow:
+    0 0 0 2px var(--byd-kbd-ring-edge),
+    0 0 0 8px var(--byd-kbd-ring-edge);
+}
+
+/* The panel. On a phone it is a sheet under the thumb; from 900px it is a rail beside the table,
+   because the felt is what the answer is about and has to stay readable while it is read. */
+.byd-kbd-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(6, 8, 12, 0.55);
+  display: grid;
+  place-items: end center;
+}
+.byd-kbd-panel {
+  box-sizing: border-box;
+  width: min(520px, 100%);
+  max-height: 86vh;
+  overflow: auto;
+  padding: 16px;
+  border-radius: 18px 18px 0 0;
+  background: var(--byd-kbd-bg);
+  border: 1px solid var(--byd-kbd-line);
+  border-bottom: 0;
+  font-family: system-ui, sans-serif;
+}
+.byd-kbd-panel h2 {
+  margin: 0 0 4px;
+  font-size: 19px;
+  color: var(--byd-kbd-ink);
+}
+.byd-kbd-panel h3 {
+  margin: 14px 0 6px;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--byd-kbd-ink-muted);
+}
+.byd-kbd-list {
+  display: grid;
+  gap: 6px;
+}
+.byd-kbd-list button {
+  box-sizing: border-box;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--byd-kbd-control);
+  color: var(--byd-kbd-ink);
+  font: 700 15px system-ui, sans-serif;
+  text-align: left;
+}
+.byd-kbd-list button small {
+  margin-left: auto;
+  color: var(--byd-kbd-ink-muted);
+  font-weight: 500;
+  font-size: 12px;
+  text-align: right;
+}
+/* Off, not faded: an opacity would take the words below AA on the way to looking unavailable. */
+.byd-kbd-list button:disabled {
+  background: var(--byd-kbd-off);
+  color: var(--byd-kbd-ink-muted);
+}
+.byd-kbd-no {
+  border: 1px dashed var(--byd-kbd-line) !important;
+}
+.byd-kbd-close {
+  box-sizing: border-box;
+  margin-top: 14px;
+  width: 100%;
+  min-height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--byd-kbd-off);
+  color: var(--byd-kbd-ink);
+  font: 700 15px system-ui, sans-serif;
+}
+@media (min-width: 900px) {
+  .byd-kbd-backdrop {
+    background: rgba(6, 8, 12, 0.25);
+    place-items: stretch end;
+  }
+  .byd-kbd-panel {
+    width: 400px;
+    max-height: none;
+    border-radius: 18px 0 0 18px;
+    border-bottom: 1px solid var(--byd-kbd-line);
+  }
+}
+
+/* "Titta" (K8) opened from the panel: the card large, and a way out that is a control. */
+.byd-kbd-look {
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 14px;
+}
+.byd-kbd-look button {
+  box-sizing: border-box;
+  min-height: 44px;
+  min-width: 96px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--byd-kbd-control);
+  color: var(--byd-kbd-ink);
+  font: 700 15px system-ui, sans-serif;
+}
+
+/* A hand card became a real control (#1); a button brings its own font, border and alignment. */
+.byd-strip-card,
+.byd-fan-card {
+  border: 0;
+  font: inherit;
+  text-align: left;
+}
+.byd-strip-card {
+  display: block;
+}

@@ -35,6 +35,16 @@ export function useEditSocketImplementation(ctor: EditSocketCtor | null): void {
 const makeEditSocket = (url: string): WebSocketLike => new (editSocket ?? (globalThis.WebSocket as unknown as EditSocketCtor))(url)
 
 export type ProjectListener = (client: ProjectClient) => void
+
+// Why a project could not be opened, as one of the states the whole product shares (#12). The
+// server's own sentence is a fact about a request, not a message to a person, so it stops here.
+export type ProjectFault = 'missing' | 'forbidden' | 'offline'
+export class ProjectUnavailable extends Error {
+  constructor(readonly fault: ProjectFault) {
+    super(fault)
+    this.name = 'ProjectUnavailable'
+  }
+}
 export type SaveResult = { ok: true; rev: number } | { ok: false; reason: 'conflict' | 'missing' | string }
 export type Cell = string | number | boolean | null
 export type Textures = { total: number; done: number; failed: string[] }
@@ -52,6 +62,10 @@ export class ProjectClient {
   // Whether the actor can be reached. A socket that breaks comes back by itself; one this editor
   // closed stays closed.
   public connected = false
+  // Whether the line is known to be gone, which is not the same as not being up yet. A socket
+  // takes a moment to open on every load, and a banner that says "no connection" for that moment
+  // — and then takes itself away — is a false alarm on every single open.
+  public lineDown = false
   private name = 'Någon'
   private left = false
   private retry: ReturnType<typeof setTimeout> | null = null
@@ -69,21 +83,34 @@ export class ProjectClient {
   public who: string | null = null
   // What this account may do with the project (D3): a viewer or a test leader may not edit it.
   public role: Role | null = null
+  // The document as the server holds it, in a form two documents can be compared in. "Unsaved"
+  // is the difference between that and `doc`, never a memory of something having been typed
+  // (#8): an edit that writes the value already there changes nothing, and taking an edit back
+  // by hand is the deck saved again.
+  private saved: string
+  // The last document that was measured, and what it measured as. A document is replaced whole on
+  // every edit, so the reference is enough to know the answer still holds.
+  private measured: { doc: ProjectDoc; stamp: string } | null = null
   private constructor(
     private readonly http: string,
     readonly id: string,
     public doc: ProjectDoc,
     public rev: number,
-    public dirty = false,
-  ) {}
+  ) {
+    this.saved = stamp(doc)
+  }
 
-  static async open(opts: { http: string; id: string; name?: string; t?: T }): Promise<ProjectClient> {
-    const t = opts.t ?? swedish
+  get dirty(): boolean {
+    if (this.measured?.doc !== this.doc) this.measured = { doc: this.doc, stamp: stamp(this.doc) }
+    return this.measured.stamp !== this.saved
+  }
+
+  static async open(opts: { http: string; id: string; name?: string }): Promise<ProjectClient> {
     const res = await fetch(`${opts.http}/projects/${encodeURIComponent(opts.id)}`, withCredentials())
     if (res.status === 401) throw new Unauthorized()
-    if (res.status === 403) throw new Error(t('project.notMine'))
-    if (res.status === 404) throw new Error(`unknown project ${opts.id}`)
-    if (!res.ok) throw new Error(`could not load project: ${res.status}`)
+    if (res.status === 403) throw new ProjectUnavailable('forbidden')
+    if (res.status === 404) throw new ProjectUnavailable('missing')
+    if (!res.ok) throw new ProjectUnavailable('offline')
     const rec = (await res.json()) as ProjectDoc & { id: string; rev: number }
     // Everything the document has is the document; only what the record adds around it is left
     // behind. Picking fields by name here is how a project quietly loses one it gained later.
@@ -102,6 +129,7 @@ export class ProjectClient {
     this.socket = socket
     socket.onopen = () => {
       this.connected = true
+      this.lineDown = false
       this.attempt = 0
       for (const message of this.outbox) socket.send(message)
       this.outbox = []
@@ -118,6 +146,7 @@ export class ProjectClient {
       if (this.socket !== socket) return
       this.socket = null
       this.connected = false
+      this.lineDown = true
       this.notify()
       this.reconnect()
     }
@@ -136,7 +165,8 @@ export class ProjectClient {
         this.here = message.here
         // Whatever this editor did while it was alone is laid on top again; an edit that no
         // longer makes sense against the actor's document is simply gone.
-        let doc = message.doc
+        const held = message.doc
+        let doc = held
         const kept: EditIntent[] = []
         for (const intent of this.pending) {
           try {
@@ -147,8 +177,12 @@ export class ProjectClient {
           }
         }
         this.pending = kept
-        this.doc = doc
-        this.dirty = kept.length > 0
+        // A handover that says nothing new keeps the document it already has. The wall draws a
+        // card from the object it was given, so replacing an identical document with a fresh copy
+        // rebuilds every card on the screen — under the pointer, and under whoever is reading it.
+        const fresh = stamp(doc)
+        if (fresh !== stamp(this.doc)) this.doc = doc
+        this.saved = stamp(held)
         this.notify()
         return
       }
@@ -159,7 +193,6 @@ export class ProjectClient {
         const theirs = message.edits.filter((e) => e.from !== this.me)
         if (theirs.length === 0) return
         this.doc = theirs.reduce((d, e) => applyEdit(d, e.intent), this.doc)
-        this.dirty = true
         this.notify()
         return
       }
@@ -169,7 +202,7 @@ export class ProjectClient {
         return
       case 'saved':
         this.rev = message.rev
-        this.dirty = false
+        this.saved = stamp(this.doc)
         this.finishSave({ ok: true, rev: message.rev })
         this.notify()
         return
@@ -439,7 +472,7 @@ export class ProjectClient {
     if (!res.ok) return { ok: false, reason: `save failed: ${res.status}` }
     const { rev } = (await res.json()) as { rev: number }
     this.rev = rev
-    this.dirty = false
+    this.saved = stamp(this.doc)
     this.notify()
     return { ok: true, rev }
   }
@@ -537,7 +570,6 @@ export class ProjectClient {
 
   private commit(doc: ProjectDoc): void {
     this.doc = doc
-    this.dirty = true
     this.notify()
   }
 
@@ -557,4 +589,15 @@ function familyFromFile(name: string): string {
 function freeFamily(wanted: string, taken: Record<string, ProjectFont>): string {
   if (!taken[wanted]) return wanted
   for (let n = 2; ; n++) if (!taken[`${wanted} ${n}`]) return `${wanted} ${n}`
+}
+
+// A document as one comparable string: object keys in a fixed order, so two documents built by
+// different routes to the same content are the same string. Undefined is left out, as it is in
+// the JSON that reaches the server.
+function stamp(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null'
+  if (Array.isArray(value)) return `[${value.map(stamp).join(',')}]`
+  const entries = Object.entries(value as Record<string, unknown>).filter(([, v]) => v !== undefined)
+  entries.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+  return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${stamp(v)}`).join(',')}}`
 }

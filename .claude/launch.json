@@ -24,14 +24,14 @@
       "autoPort": true
     },
     {
-      "name": "web-5175",
+      "name": "web-agent",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": [
         "--filter",
         "@byd/web",
         "dev"
       ],
-      "port": 5175,
+      "port": 5390,
       "autoPort": true
     },
     {
@@ -50,7 +50,8 @@
         "@byd/server",
         "dev"
       ],
-      "port": 8090
+      "port": 8090,
+      "autoPort": true
     },
     {
       "name": "server-dev",

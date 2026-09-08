@@ -16,13 +16,18 @@ import { TableSummary } from '../src/player/TableSummary.js'
 import { SessionButtons, SessionOverlays } from '../src/player/SessionOverlays.js'
 import { EndSheet, FlagSheet } from '../src/player/SessionSheets.js'
 import { Survey } from '../src/player/Survey.js'
+import { ActionPanel } from '../src/table/ActionPanel.js'
+import { CardLook } from '../src/table/CardLook.js'
+import { intentsForPlace, landedKeyFor, type Thing } from '../src/table/keyboard.js'
 import { asSeat, createSession, startServer, type Running } from './fixture.js'
 
 // The shipped document and the shipped stylesheet, verbatim. (jsdom replaces the global URL,
 // which node:fs will not take, so the paths are joined rather than resolved from import.meta.url.)
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
-const css = read('src/player/player.css')
+// The address panel (#1) is drawn on all three routes and brings its own stylesheet, so the
+// phone is measured with both of the sheets it actually ships with.
+const css = `${read('src/player/player.css')}\n${read('src/table/keyboard.css')}`
 
 const document_ = (body: ReactNode) =>
   shell
@@ -53,7 +58,7 @@ function surfaces(view: Snapshot) {
           <SessionButtons client={idle} view={view} onSheet={noop} />
         </header>
         <TableSummary view={view} activity={[]} />
-        <HandStrip view={view} selected={new Set()} onTap={noop} onHold={noop} onLift={noop} />
+        <HandStrip view={view} selected={new Set()} onTap={noop} onHold={noop} onLift={noop} onOpen={noop} />
         <p className="byd-hint">tryck = titta · dra upp = spela · håll = välj flera</p>
       </div>
     ),
@@ -75,6 +80,30 @@ function surfaces(view: Snapshot) {
     survey: (
       <div className="byd-player">
         <Survey who="Ada" version="v1" onSubmit={async () => undefined} />
+      </div>
+    ),
+    // Enter on a hand card: the verbs and the named places (#1, variant C).
+    address: (() => {
+      const card = view.components.find((c) => c.zone === 'hand:A')!
+      const thing: Thing = { key: `card:${card.id}`, kind: 'card', id: card.id, name: card.cardRef ?? 'Dolt kort', zone: card.zone }
+      return (
+        <div className="byd-player">
+          <ActionPanel
+            view={view}
+            thing={thing}
+            cards={[]}
+            onClose={noop}
+            onRun={noop}
+            onLook={noop}
+            intentsFor={(place, moving) => intentsForPlace(view, place, thing, moving)}
+            landedKey={(place) => landedKeyFor(view, place, thing)}
+          />
+        </div>
+      )
+    })(),
+    look: (
+      <div className="byd-player">
+        <CardLook card={view.components.find((c) => c.zone === 'hand:A')!} onClose={noop} />
       </div>
     ),
     rewindMine: overlays({ ...view, rewind: { ...proposal, by: 'A', waiting: ['B'] } } as Snapshot),
