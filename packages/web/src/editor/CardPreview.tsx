@@ -33,7 +33,7 @@ export function CardPreview({ face, row, icons, id, scale = 1, selectedElement, 
       .map((r) => ({ element: r.element, code: 'text-too-small', detail: `texten ryms inte ens vid ${r.sizePt}pt` }))
     onWarnings?.([...out.warnings.filter((w) => w.code !== 'text-too-small' && w.code !== 'text-overflow'), ...fromDom])
   }, [out.html, out.css, out.warnings, onWarnings])
-  const highlight = selectedElement ? `#${id} [data-element="${selectedElement}"]{outline:0.6mm solid #3c8ce7;outline-offset:0.3mm}` : ''
+  const highlight = selectedElement ? `#${id} [data-element="${selectedElement}"]{outline:0.6mm solid var(--byd-editor-primary-mark);outline-offset:0.3mm}` : ''
   return (
     <div id={id} className="byd-preview" style={{ zoom: scale }}>
       <style>{out.css}</style>

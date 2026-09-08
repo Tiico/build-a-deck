@@ -5,6 +5,11 @@
 .byd-fit [data-tv] > main { min-height: 0; overflow: hidden; padding: 0; }
 .byd-fit [data-tv] > main > .byd-table-frame { width: 100%; height: 100%; }
 
+/* The ink a seat colour carries (#22). The palette (#20, K9) is tuned to be read on the dark and
+   to carry dark ink — the dock's avatars already do — so a name tag laid on a seat takes the same
+   ink rather than the white it used to, which measured 3.44:1 on the blue seat and worse on three
+   of the others. The palette itself is untouched. */
+.byd-table-frame, [data-tv] { --byd-seat-ink: #0d0f14; }
 .byd-table-frame { display: grid; place-items: center; width: 100%; height: 100%; }
 .byd-table-frame[data-mode='table'] {
   height: 100%;
@@ -124,7 +129,7 @@
 /* The seat's name lies along its own edge of the table, turned toward whoever sits there (B). */
 .byd-seat-name {
   position: absolute; padding: 3px 10px; border-radius: 999px;
-  background: var(--seat, #666); color: #fff;
+  background: var(--seat, #666); color: var(--byd-seat-ink);
   font-size: 12px; font-weight: 700; letter-spacing: 1px; white-space: nowrap;
 }
 .byd-seat-name[data-edge='S'] { transform: translateX(-50%); }
@@ -207,7 +212,7 @@
 }
 [data-tv] > footer li [data-avatar] {
   width: 56px; height: 56px; border-radius: 50%; background: var(--seat, #7d8597);
-  display: grid; place-items: center; font: 800 24px/1 system-ui, sans-serif; font-style: normal; color: #0d0f14;
+  display: grid; place-items: center; font: 800 24px/1 system-ui, sans-serif; font-style: normal; color: var(--byd-seat-ink);
 }
 [data-tv] > footer li > div { min-width: 0; }
 [data-tv] > footer li span { display: block; font-size: 20px; font-weight: 700; }
