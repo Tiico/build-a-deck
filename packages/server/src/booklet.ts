@@ -16,6 +16,9 @@ export type BookletInput = {
   zones?: string[]
   // What the licences of the game's symbols are (E4), printed at the back.
   credits?: (ProjectCredit & { name: string })[]
+  // The language the tool speaks in the one heading it contributes (A4). Everything else in a
+  // booklet is the designer's own words and is never touched.
+  lang?: 'sv' | 'en'
 }
 export type Booklet = { html: string; css: string }
 
@@ -25,7 +28,7 @@ export const A5 = { w: 148, h: 210 }
 export function bookletOf(input: BookletInput): Booklet {
   const { w, h } = input.pageMm
   const body = input.rules.blocks.map((b) => blockHtml(b, input)).join('\n')
-  const credits = (input.credits ?? []).length > 0 ? creditsHtml(input.credits ?? []) : ''
+  const credits = (input.credits ?? []).length > 0 ? creditsHtml(input.credits ?? [], input.lang ?? 'sv') : ''
   const html = `<div data-booklet><h1>${escape(input.rules.title)}</h1>${body}${credits}</div>`
   return { html, css: css(w, h) }
 }
@@ -74,9 +77,10 @@ function span(nodes: readonly RenderedNode[], icons: Record<string, string>): st
     .join('')
 }
 
-function creditsHtml(credits: (ProjectCredit & { name: string })[]): string {
+const CREDITS_HEADING = { sv: 'Symboler och licenser', en: 'Symbols and licences' }
+function creditsHtml(credits: (ProjectCredit & { name: string })[], lang: 'sv' | 'en'): string {
   const rows = credits.map((c) => `<li>${escape(c.name)} — ${escape(c.licence)}, ${escape(c.by)}</li>`).join('')
-  return `<section class="byd-credits"><h3>Symboler och licenser</h3><ul>${rows}</ul></section>`
+  return `<section class="byd-credits"><h3>${escape(CREDITS_HEADING[lang])}</h3><ul>${rows}</ul></section>`
 }
 
 // Print measures: millimetres for the page, points for the type, and a margin wide enough that

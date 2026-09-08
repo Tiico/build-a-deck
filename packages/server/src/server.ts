@@ -882,6 +882,8 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       pageMm: A5,
       zones: rec.setup.zones.map((z) => z.name),
       credits: creditsOf(rec),
+      // The one heading the tool contributes follows the language the order was placed in (A4).
+      lang: langOf(url.searchParams.get('lang')),
     })
     const hash = contentHash(compiled, BOOKLET)
     await opts.renders.enqueue({ hash, kind: BOOKLET, priority: 'print', compiled, requestedAt: clock(opts).getTime() })

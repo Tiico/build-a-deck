@@ -68,6 +68,19 @@ describe('the rulebook as a booklet for print (B7)', () => {
   })
 })
 
+describe('the booklet in the language the game is made in (A4)', () => {
+  it('prints the one heading the tool contributes in the language the order was placed in', () => {
+    const credits = [{ name: 'sköld', licence: 'CC0-1.0', by: 'build-your-deck' }]
+    const swedish = bookletOf({ rules: renderRules(doc, names), icons, pageMm: A5, credits })
+    expect(swedish.html).toContain('Symboler och licenser')
+    const english = bookletOf({ rules: renderRules(doc, names), icons, pageMm: A5, credits, lang: 'en' })
+    expect(english.html).toContain('Symbols and licences')
+    // Everything else in a booklet is the designer's own words and is never translated.
+    expect(english.html).toContain('Skogens herrar')
+    expect(english.html).toContain('Draghög')
+  })
+})
+
 describe('ordering the booklet (B7)', () => {
   let run: Running
   let cookie = ''
