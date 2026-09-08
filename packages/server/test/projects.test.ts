@@ -545,3 +545,49 @@ describe('the rulebook in the project (B7)', () => {
     expect(namesOfProject({ ...doc, rows: [{ id: 'namnlöst', fields: {} }] }).cards['namnlöst']).toBe('namnlöst')
   })
 })
+
+describe('the rules a table plays by (B7)', () => {
+  const rulesDoc: RuleDoc = {
+    title: 'Skogens herrar',
+    blocks: [
+      { kind: 'heading', id: 'h1', level: 1, text: 'Så spelar ni' },
+      { kind: 'text', id: 't1', text: 'Dra ur [[zon:draw]] och lägg i [[zon:discard]].' },
+    ],
+  }
+
+  it('hands a table its own rules, rendered against the version it was started from', async () => {
+    await json('POST', '/projects', { id: 'p-rules-table', ...project(), rules: rulesDoc })
+    const started = await json('POST', '/projects/p-rules-table/sessions', {})
+    const { id } = (await started.json()) as { id: string }
+
+    const res = await fetch(`${run.http}/sessions/${id}/rules`)
+    expect(res.status).toBe(200)
+    const body = (await res.json()) as { title: string; blocks: { kind: string }[]; warnings: unknown[]; text: string }
+    expect(body.title).toBe('Skogens herrar')
+    expect(body.blocks.map((b) => b.kind)).toEqual(['heading', 'text'])
+    // References are already resolved: the table reads names, not ids.
+    expect(body.text).toContain('Dra ur Draghög och lägg i Kasthög.')
+    expect(body.warnings).toEqual([])
+  })
+
+  it('keeps the rules the table started with, even after the project moves on', async () => {
+    await json('POST', '/projects', { id: 'p-moving', ...project(), rules: rulesDoc })
+    const started = await json('POST', '/projects/p-moving/sessions', {})
+    const { id } = (await started.json()) as { id: string }
+
+    const later = { ...project(), rules: { ...rulesDoc, blocks: [{ kind: 'text' as const, id: 't1', text: 'Helt andra regler.' }] } }
+    expect((await json('PUT', '/projects/p-moving', { rev: 1, ...later })).status).toBe(200)
+
+    const body = (await (await fetch(`${run.http}/sessions/${id}/rules`)).json()) as { text: string }
+    expect(body.text).toContain('Dra ur Draghög')
+    expect(body.text).not.toContain('Helt andra regler')
+  })
+
+  it('says there are none when the game has no rulebook, and nothing at all for an unknown table', async () => {
+    await json('POST', '/projects', { id: 'p-none', ...project() })
+    const started = await json('POST', '/projects/p-none/sessions', {})
+    const { id } = (await started.json()) as { id: string }
+    expect((await fetch(`${run.http}/sessions/${id}/rules`)).status).toBe(404)
+    expect((await fetch(`${run.http}/sessions/nope/rules`)).status).toBe(404)
+  })
+})

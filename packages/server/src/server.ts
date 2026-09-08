@@ -7,12 +7,13 @@ import { WebSocketServer, type WebSocket } from 'ws'
 import { z } from 'zod'
 import { ClientMessage, type ServerMessage } from '@byd/protocol'
 import { CARD_STANDARD_63x88, validateSetup, type SetupDef, type TypeRegistry } from '@byd/engine'
-import { Template, validateCard, type Issue } from '@byd/template'
+import { renderRules, Template, validateCard, type Issue } from '@byd/template'
 import type { ObjectStore, RenderStore } from '@byd/render/queue'
 import type { Subscriber, TableHost } from './actor.js'
 import type { Deck, LogStore, SessionRecord } from './store.js'
 import { ProjectDoc, deckFromProject, setupFromProject, type ProjectCredit, type ProjectRecord, type ProjectStore } from './projects.js'
 import { diffProjects } from './diff.js'
+import { namesOfProject } from './names.js'
 import { SurveyAnswer, type SurveyStore } from './surveys.js'
 import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountOf, hash, loginMail, safeNext, token, type Account, type AuthStore, type Mailer } from './auth.js'
 import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
@@ -771,7 +772,22 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     json(res, 200, { id: sessionId, version: actor.version, ended: actor.ended, ...(session.project ? { project: session.project } : {}), ...(named ? { name: named.name } : {}) })
     return true
   }
-    // The survey after a session (G3): one structured answer per participant, once the log is
+    // The rules a table plays by (B7): rendered against the very version the session was locked
+  // to at start (B4), so a game in progress is never rewritten under the players. References are
+  // resolved here — the table and the phone read names, never ids.
+  const sessionRules = /^\/sessions\/([^/]+)\/rules$/.exec(url.pathname)
+  if (sessionRules && req.method === 'GET') {
+    const session = await opts.store.loadSession(decodeURIComponent(sessionRules[1] ?? ''))
+    const rev = Number(/^rev-(\d+)$/.exec(session?.version ?? '')?.[1])
+    const rec = session?.project && Number.isFinite(rev) ? await projects.at(session.project, rev) : null
+    if (!rec?.rules) {
+      json(res, 404, { error: 'no rules' })
+      return true
+    }
+    json(res, 200, renderRules(rec.rules, namesOfProject(rec)))
+    return true
+  }
+  // The survey after a session (G3): one structured answer per participant, once the log is
   // locked, tied to the version it ended on.
   const survey = /^\/sessions\/([^/]+)\/survey$/.exec(url.pathname)
   if (survey && req.method === 'POST' && opts.surveys) {
