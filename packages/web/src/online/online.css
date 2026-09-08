@@ -9,19 +9,26 @@
 .byd-online-tools .byd-end { background: rgba(58, 42, 45, 0.92); color: #ff9a9a; }
 .byd-online-tools button:disabled { opacity: 0.35; }
 
-.byd-fan { position: fixed; left: 50%; bottom: 6px; transform: translateX(-50%); display: flex; z-index: 11; }
+/* The fan's shape — how wide a card is, how far the row steps, and how far below its own box the
+   turned cards paint — is written out by `fan.ts`, which is also what works out the room they
+   need. The fallbacks are prototype B's own numbers, so the sheet still draws a fan on its own. */
+.byd-fan {
+  position: fixed; left: 50%; bottom: calc(var(--fan-gutter, 12px) + var(--fan-drop, 0) * var(--fan-card, 112px));
+  transform: translateX(-50%); display: flex; z-index: 11;
+}
 .byd-fan-card {
-  position: relative; width: 112px; aspect-ratio: 63 / 88; margin: 0 -22px; border-radius: 10px; padding: 10px; box-sizing: border-box; overflow: hidden;
-  background: hsl(var(--hue, 0) 40% 86%); color: #1c1c1c; font: 700 14px system-ui, sans-serif;
+  position: relative; width: var(--fan-card, 112px); aspect-ratio: 63 / 88; margin: 0 calc((var(--fan-step, 68px) - var(--fan-card, 112px)) / 2);
+  border-radius: calc(var(--fan-card, 112px) * 0.09); padding: calc(var(--fan-card, 112px) * 0.09); box-sizing: border-box; overflow: hidden;
+  background: hsl(var(--hue, 0) 40% 86%); color: #1c1c1c; font: 700 clamp(11px, calc(var(--fan-card, 112px) * 0.125), 14px) system-ui, sans-serif;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5); cursor: grab; touch-action: none; user-select: none;
-  transform-origin: 50% 130%; transform: rotate(var(--fan)) translateY(var(--dip)); transition: transform 0.15s;
+  transform-origin: 50% var(--fan-pivot, 130%); transform: rotate(var(--fan)) translateY(calc(var(--dip, 0) * var(--fan-card, 112px))); transition: transform 0.15s;
 }
 .byd-fan-card:hover { transform: translateY(-28px) rotate(0deg); z-index: 2; }
 .byd-fan-card[data-lifted] { opacity: 0.3; }
 .byd-fan-card img, .byd-fan-ghost img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
 .byd-fan-card img ~ span:not([data-texture]), .byd-fan-ghost img ~ span:not([data-texture]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .byd-fan-ghost {
-  position: fixed; z-index: 100; pointer-events: none; width: 112px; aspect-ratio: 63 / 88; border-radius: 10px; padding: 10px; box-sizing: border-box; overflow: hidden;
+  position: fixed; z-index: 100; pointer-events: none; width: var(--fan-card, 112px); aspect-ratio: 63 / 88; border-radius: calc(var(--fan-card, 112px) * 0.09); padding: calc(var(--fan-card, 112px) * 0.09); box-sizing: border-box; overflow: hidden;
   background: hsl(var(--hue, 0) 40% 86%); color: #1c1c1c; font: 700 14px system-ui, sans-serif; box-shadow: 0 24px 40px rgba(0, 0, 0, 0.6);
   transform: translate(-50%, -50%) scale(1.06);
 }

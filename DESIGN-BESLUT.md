@@ -801,6 +801,13 @@ Ett kvartsvridet bord (C5) passas in i den form det faktiskt ritas i, och trära
 Måtten och regeln för var ett kort i fläkten hamnar bor i `packages/web/src/table/hand.ts` och ställs av både den som ritar fläkten och den som mäter den, så de kan inte glida isär.
 Kvar står att TV-lägets kamera beskär bordets kant och därmed kan skära genom en handfläkt: händerna räknas inte som innehåll kameran riktas mot (C5), och det är ett beslut, inte ett fynd.
 
+Reviderat 2026-09-08: distansvyns egen hand mäter också det den ritar.
+Den handen är inte filtens fläkt utan `HandFan` — korten spelaren själv håller, framför skärmen, i den storlek de läses i — och är därför pixlar där filtens är millimeter (#23).
+Men ett kort i den vrids kring en punkt under sig självt och sänks, alltså målas det utanför den ruta raden lägger det i: tre kort i prototyp B:s storlek når fjorton pixlar under raden och trettiofem utanför dess sidor.
+`online.css` reserverade sex gissade pixlar för det, och skärmen klippte resten — vid varje bredd och varje höjd, eftersom överhänget är fläktens eget och inte fönstrets.
+Formen och rummet formen behöver är nu ett och samma svar i `packages/web/src/online/fan.ts`, som `table/hand.ts` är det för filten.
+Kortet är prototyp B:s storlek och aldrig större, krymper för att rymmas på bredden, och går aldrig under en fingertopps 44 px — där tätnar i stället steget, som en hand med fler kort än rum håller dem tätare i stället för att bli oåtkomlig.
+
 Referensprototypen `packages/web/src/prototype/table-ref` togs bort när den hade svarat.
 
 ### K10. Telefonvyns utseende: remsan (prototypat 2026-09-06)

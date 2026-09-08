@@ -4,6 +4,7 @@ import { hue } from '../table/hue.js'
 import { Texture } from '../table/Texture.js'
 import { useRoving } from '../editor/roving.js'
 import { handLabel } from '../table/keyboard.js'
+import { fanPlace, fanStyle } from './fan.js'
 
 export type HandFanProps = {
   cards: readonly VisibleComponentState[]
@@ -33,9 +34,10 @@ export function HandFan({ cards, faces, onPlay, onOpen }: HandFanProps) {
   }
   const lifted = drag ? cards.find((c) => c.id === drag.id) : undefined
   return (
-    <div className="byd-fan" data-hand-fan>
+    <div className="byd-fan" data-hand-fan style={fanStyle(n)}>
       {cards.map((c, i) => {
         const item = roving.itemProps(c.id)
+        const { tilt, dip } = fanPlace(i, n)
         return (
           <button
             key={c.id}
@@ -44,7 +46,7 @@ export function HandFan({ cards, faces, onPlay, onOpen }: HandFanProps) {
             data-hand-card={c.id}
             data-lifted={drag?.id === c.id ? 'true' : undefined}
             aria-label={handLabel(c, false)}
-            style={{ ['--hue' as string]: hue(c.cardRef ?? ''), ['--fan' as string]: `${(i - (n - 1) / 2) * 8}deg`, ['--dip' as string]: `${Math.abs(i - (n - 1) / 2) * 6}px` }}
+            style={{ ['--hue' as string]: hue(c.cardRef ?? ''), ['--fan' as string]: `${tilt}deg`, ['--dip' as string]: `${dip}` }}
             tabIndex={item.tabIndex}
             ref={item.ref}
             onFocus={item.onFocus}
