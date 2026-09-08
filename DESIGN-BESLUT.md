@@ -161,7 +161,12 @@ Luckan finns på både bordets skärm och telefonen, ett tryck bort. Är fråger
 Sökningen läser den renderade texten, alltså de namn läsaren ser, aldrig id:n bakom dem. Ett spel utan regelbok erbjuder ingenting alls.
 Den renderade utdatan bär numera namnet i referensnoden, så den som ritar den — editorn, bordet, häftet — inte behöver något mer.
 
-Kvar av B7: det tryckfärdiga häftet.
+Häftet för tryck, byggt 2026-09-08:
+Samma rendering som editorn och bordet läser läggs ut som sidor i A5 och går genom samma Chromium-worker som varje kort (E2). Ett häfte är ett dokument, inte ett kort, så det är en egen renderingssort: sidstorleken kommer ur `@page` och Chromium bryter sidorna. Inget `[data-card]` finns, och kortets väg är orörd.
+Ingenting en designer skrivit når renderaren som markup: varje sträng escapas i häftet.
+Uppställningsbilden är spelets egna zoner (B5), och symbolernas licenser trycks sist (E4).
+`POST /projects/:id/rulebook` köar en rendering av reglerna som de står och svarar med dess hash; samma regler två gånger kostar en rendering, eftersom kön nycklas på sidan. Filen hämtas där varje annan rendering hämtas.
+Fliken "Regler" har knappen; länken erbjuds först när det finns en fil bakom den.
 
 Motivering:
 Trycket kräver en regelbok för att ordern ska kunna läggas.

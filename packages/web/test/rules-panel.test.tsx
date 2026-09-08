@@ -100,3 +100,21 @@ describe('the rulebook in the editor (B7)', () => {
     await waitFor(async () => expect((await run.projects.load('p1'))?.rules?.blocks.length).toBeGreaterThan(0))
   })
 })
+
+describe('the rulebook as a booklet (B7)', () => {
+  it('is ordered from the rules and opens when it is rendered', async () => {
+    await openRules()
+    const order = screen.getByRole('button', { name: 'Häfte för tryck' })
+    fireEvent.click(order)
+    expect(await screen.findByText(/Häftet renderas/)).toBeTruthy()
+
+    await run.completeRenders()
+    const link = await screen.findByRole('link', { name: 'Öppna häftet' }, { timeout: 3000 })
+    expect(link.getAttribute('href')).toMatch(/\/faces\/[0-9a-f]{64}$/)
+  })
+
+  it('is not offered at all before there are any rules', async () => {
+    await openRules(false)
+    expect(screen.queryByRole('button', { name: 'Häfte för tryck' })).toBeNull()
+  })
+})

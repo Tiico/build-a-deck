@@ -465,6 +465,26 @@ export class ProjectClient {
   }
 
   // How far a table's textures have come (L5).
+  // The rulebook as a booklet for print (B7): the queue answers with the rendering's hash, and
+  // the file is fetched where every other rendering is once it is done.
+  async orderBooklet(): Promise<string> {
+    const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}/rulebook`, withCredentials({ method: 'POST' }))
+    if (res.status === 401) throw new Unauthorized()
+    if (res.status === 404) throw new Error('spelet har inga regler att trycka')
+    if (!res.ok) throw new Error(`kunde inte beställa häftet: ${res.status}`)
+    return ((await res.json()) as { hash: string }).hash
+  }
+
+  // Whether a rendering is finished, so a link is offered only when there is a file behind it.
+  async rendered(hash: string): Promise<boolean> {
+    const res = await fetch(`${this.http}/faces/${hash}`, { ...withCredentials(), redirect: 'follow' })
+    return res.ok
+  }
+
+  bookletUrl(hash: string): string {
+    return `${this.http}/faces/${hash}`
+  }
+
   async textures(sessionId: string): Promise<Textures> {
     const res = await fetch(`${this.http}/sessions/${encodeURIComponent(sessionId)}/textures`, withCredentials())
     if (!res.ok) throw new Error(`could not read texture status: ${res.status}`)

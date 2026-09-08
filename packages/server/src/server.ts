@@ -8,7 +8,8 @@ import { z } from 'zod'
 import { ClientMessage, type ServerMessage } from '@byd/protocol'
 import { CARD_STANDARD_63x88, validateSetup, type SetupDef, type TypeRegistry } from '@byd/engine'
 import { renderRules, Template, validateCard, type Issue } from '@byd/template'
-import type { ObjectStore, RenderStore } from '@byd/render/queue'
+import { A5, bookletOf } from './booklet.js'
+import { contentHash, type ObjectStore, type RenderKind, type RenderStore } from '@byd/render/queue'
 import type { Subscriber, TableHost } from './actor.js'
 import type { Deck, LogStore, SessionRecord } from './store.js'
 import { ProjectDoc, deckFromProject, setupFromProject, type ProjectCredit, type ProjectRecord, type ProjectStore } from './projects.js'
@@ -53,6 +54,7 @@ export type ServerOptions = {
   // The clock, for tests: what codes and tokens expire against.
   now?: () => Date
 }
+const BOOKLET: RenderKind = { kind: 'booklet' }
 const clock = (opts: ServerOptions): Date => (opts.now ?? (() => new Date()))()
 
 // A fresh code and host key for a new session (DRIFT §9); the key is shown once and kept hashed.
@@ -833,6 +835,39 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     }
     await projects.unshare(gate.rec.id, leaving.account)
     json(res, 200, { ok: true })
+    return true
+  }
+  // The rulebook as a booklet for print (B7): the rules as they stand, through the same worker
+  // that renders every card. The same rules asked for twice are one rendering, since the queue
+  // is keyed by what is on the page.
+  const rulebook = /^\/projects\/([^/]+)\/rulebook$/.exec(url.pathname)
+  if (rulebook && req.method === 'POST') {
+    const gate = await allowed(decodeURIComponent(rulebook[1] ?? ''), canRead)
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    if (!opts.renders) {
+      json(res, 503, { error: 'render queue unavailable' })
+      return true
+    }
+    const rec = gate.rec
+    if (!rec.rules) {
+      json(res, 404, { error: 'no rules' })
+      return true
+    }
+    const names = namesOfProject(rec)
+    const icons = opts.assets ? await resolveIcons(rec.icons, opts.assets) : rec.icons
+    const compiled = bookletOf({
+      rules: renderRules(rec.rules, names),
+      icons,
+      pageMm: A5,
+      zones: rec.setup.zones.map((z) => z.name),
+      credits: creditsOf(rec),
+    })
+    const hash = contentHash(compiled, BOOKLET)
+    await opts.renders.enqueue({ hash, kind: BOOKLET, priority: 'print', compiled, requestedAt: clock(opts).getTime() })
+    json(res, 202, { hash })
     return true
   }
   // The project's current revision as print work (#14): one manifest entry per physical card,

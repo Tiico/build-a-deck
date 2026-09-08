@@ -103,7 +103,7 @@ Målet är att designern aldrig behöver ett annat verktyg för att göra leken.
 - ✅ Symbolbibliotek: fliken "Symboler" med sök och kategorier, väljare vid klammern i tabellen, symboler som projektets assets och licenser hela vägen till trycket (E4).
 - ✅ Fysisk validering: minsta textstorlek, kontrast, färgblindhet, utfall och linjetjocklek, som rapport på kortväggen och blockerande fel vid order (E5, E6).
 - ✅ Versionering: oföränderlig historik, namngivna milstolpar, diff i korttabellen och att ta tillbaka en äldre version (B4).
-- 🔶 Regelboken: versionerat dokument med referenser till zoner och kort, skrivet i fliken "Regler", läst vid bordet och på telefonen i en lucka med fråga; kvar är det tryckfärdiga häftet (B7).
+- ✅ Regelboken: versionerat dokument med referenser till zoner och kort, skrivet i fliken "Regler", läst vid bordet och på telefonen, och tryckt som häfte i A5 genom samma renderare som korten (B7).
 - ✅ Samredigering: en aktör per projekt med en redigeringslogg, live över `/projects/:id/edit`, med närvaro, roller, inbjudningar och återuppkoppling (D3).
 - ⬜ Typsnitt: val av font i mallen, med fontfiler som bevaras per version (B3) — kolliderar med fontlicensieringen (I).
 - ⬜ Flerspråkighet i verktyget: i18n-infrastruktur, engelska och svenska (A4).

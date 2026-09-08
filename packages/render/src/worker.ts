@@ -28,7 +28,9 @@ export async function runWorker(opts: WorkerOptions): Promise<string[]> {
       const output =
         job.kind.kind === 'png'
           ? await opts.renderer.renderPng(job.compiled, { dpi: job.kind.dpi })
-          : await opts.renderer.renderPdf(job.compiled)
+          : job.kind.kind === 'booklet'
+            ? await opts.renderer.renderBooklet(job.compiled)
+            : await opts.renderer.renderPdf(job.compiled)
       await opts.store.complete(job.hash, output)
       done.push(job.hash)
       opts.log?.({ msg: 'rendered', hash: job.hash, kind: job.kind.kind, bytes: output.byteLength })

@@ -42,6 +42,7 @@ export function RulesPanel({ doc, client }: RulesPanelProps) {
     <div className="byd-rules">
       <div className="byd-rules-bar">
         <h2>Regelboken</h2>
+        <Booklet client={client} />
         <span>Klicka i sidan för att skriva. En regel som nämner en zon eller ett kort följer med när det byter namn.</span>
         {out.warnings.length > 0 && (
           <span className="byd-rules-warn" role="status">
@@ -70,6 +71,41 @@ export function RulesPanel({ doc, client }: RulesPanelProps) {
         })}
       </article>
     </div>
+  )
+}
+
+// The rulebook as a booklet for print (B7): one rendering of the rules as they stand, through
+// the same worker that renders every card. The link is offered only once there is a file.
+function Booklet({ client }: { client: ProjectClient }) {
+  const [state, setState] = useState<'idle' | 'working' | { hash: string } | { error: string }>('idle')
+  const order = async () => {
+    setState('working')
+    try {
+      const hash = await client.orderBooklet()
+      for (let i = 0; i < 120; i++) {
+        if (await client.rendered(hash)) return setState({ hash })
+        await new Promise((r) => setTimeout(r, 250))
+      }
+      setState({ error: 'häftet blev inte färdigt' })
+    } catch (err) {
+      setState({ error: err instanceof Error ? err.message : String(err) })
+    }
+  }
+  if (typeof state === 'object' && 'hash' in state) {
+    return (
+      <a className="byd-rules-booklet" href={client.bookletUrl(state.hash)} target="_blank" rel="noreferrer">
+        Öppna häftet
+      </a>
+    )
+  }
+  return (
+    <>
+      <button type="button" className="byd-rules-booklet" disabled={state === 'working'} onClick={() => void order()}>
+        Häfte för tryck
+      </button>
+      {state === 'working' && <span role="status">Häftet renderas…</span>}
+      {typeof state === 'object' && 'error' in state && <span role="alert">{state.error}</span>}
+    </>
   )
 }
 

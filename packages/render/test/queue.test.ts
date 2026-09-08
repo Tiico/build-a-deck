@@ -81,3 +81,17 @@ describe('outputs in an object store (DRIFT §4)', () => {
     expect(await new MemoryRenderStore().link('h-a', 60)).toBeNull()
   })
 })
+
+describe('a booklet is a document, not a card (B7)', () => {
+  it('is a kind of its own, hashed apart from a PDF of the same page', async () => {
+    const { contentHash } = await import('../src/hash.js')
+    const compiled = { html: '<div data-booklet>Regler</div>', css: '@page{size:148mm 210mm}' }
+    expect(contentHash(compiled, { kind: 'booklet' })).not.toBe(contentHash(compiled, { kind: 'pdf' }))
+    expect(contentHash(compiled, { kind: 'booklet' })).toBe(contentHash(compiled, { kind: 'booklet' }))
+  })
+
+  it('is stored as a PDF, since that is what a printer is handed', async () => {
+    const { contentTypeOf } = await import('../src/store.js')
+    expect(contentTypeOf({ kind: 'booklet' })).toBe('application/pdf')
+  })
+})

@@ -603,6 +603,8 @@
 .byd-rules-bar h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; }
 .byd-rules-bar span { color: #9aa3b8; font-size: 12px; }
 .byd-rules-warn { color: #f0b64a !important; }
+.byd-rules-booklet { border: 1px solid #2f333d; border-radius: 8px; padding: 5px 11px; background: #1b1d23; color: #fff; font: 700 12px system-ui; text-decoration: none; cursor: pointer; }
+.byd-rules-booklet:disabled { color: #5b6478; cursor: default; }
 .byd-rulebook { justify-self: center; width: min(760px, 100%); box-sizing: border-box; background: #f7f3ea; color: #23201a; border-radius: 14px; padding: 32px 40px; font: 14px/1.7 Georgia, serif; }
 .byd-rulebook h1 { margin: 0 0 18px; font-size: 26px; }
 .byd-rulebook h2 { margin: 22px 0 8px; font-size: 19px; }

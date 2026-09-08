@@ -33,6 +33,10 @@ export class Renderer {
     return renderPdfWith(this.browser, compiled)
   }
 
+  renderBooklet(compiled: CompiledLike): Promise<Uint8Array> {
+    return renderBookletWith(this.browser, compiled)
+  }
+
   // Fits every text element with Chromium's own metrics and reports the outcome (E6).
   // The same function runs in the editor; the renderer just runs it where the truth is.
   async fit(compiled: CompiledLike): Promise<FitReport[]> {
@@ -77,6 +81,20 @@ async function cardBox(page: Page): Promise<{ x: number; y: number; width: numbe
     const r = el.getBoundingClientRect()
     return { x: r.x, y: r.y, width: r.width, height: r.height }
   })
+}
+
+// A booklet (B7): a document of as many pages as the rules need, sized by its own `@page` and
+// broken by Chromium. Nothing here looks for a card, because a booklet is not one.
+export async function renderBookletWith(browser: Browser, compiled: CompiledLike): Promise<Uint8Array> {
+  const context = await browser.newContext({ viewport: { width: 1200, height: 1600 } })
+  try {
+    const page = await context.newPage()
+    await page.setContent(hostDocument(compiled), { waitUntil: 'load' })
+    await page.evaluate(() => document.fonts.ready)
+    return await page.pdf({ printBackground: true, preferCSSPageSize: true })
+  } finally {
+    await context.close()
+  }
 }
 
 // A PDF page exactly the card's size, vector text and all; the bleed is part of the compiled
