@@ -5,3 +5,5 @@ export * from './diff.js'
 export * from './names.js'
 export * from './recipe.js'
 export * from './edits.js'
+// The roles a project is shared in (D3): the editor speaks them too, and they are pure data.
+export * from './roles.js'

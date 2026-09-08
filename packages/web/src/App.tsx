@@ -8,10 +8,12 @@ import { NewProjectPage } from './wizard/NewProjectPage.js'
 import { HomePage } from './account/HomePage.js'
 import { LoginPage } from './account/LoginPage.js'
 import { ClaimPage } from './account/ClaimPage.js'
+import { SharePrototype } from './prototype/share/index.js'
 import { TextureFailures } from './table/TextureFailures.js'
 
 // Routing is a path check for now; a router arrives with the first real page.
 export function App() {
+  if (location.pathname.startsWith('/prototype/share')) return <SharePrototype />
   return <TextureFailures>{route()}</TextureFailures>
 }
 
