@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { CARD_STANDARD_63x88, TOKEN_COUNTER, type SetupDef } from '@byd/engine'
-import { Template, type Names, type Row } from '@byd/template'
+import { Template, type Row } from '@byd/template'
 import type { Deck } from './faces.js'
 
 // A project is what the editor edits: the template, the rows keyed by cardRef, the icon set and
@@ -49,6 +49,7 @@ const RuleBlock = z.discriminatedUnion('kind', [
 ])
 export const RuleDoc = z.object({ title: z.string(), blocks: z.array(RuleBlock) })
 export type RuleDoc = z.infer<typeof RuleDoc>
+export type RuleBlock = RuleDoc['blocks'][number]
 
 export const ProjectDoc = z.object({
   name: z.string().min(1),
@@ -165,17 +166,6 @@ export function setupFromProject(doc: ProjectDoc): SetupDef {
     ...(z.shortcut !== undefined ? { shortcut: z.shortcut } : {}),
   }))
   return { zones, seats: doc.setup.seats, floor: doc.setup.floor, components }
-}
-
-// What the rulebook's references stand for right now (B7): zones by the name the table shows,
-// cards by their title. A card without a title falls back to its id, so a reference is never
-// empty on the page.
-export function namesOfProject(doc: ProjectDoc): Names {
-  const zones: Record<string, string> = {}
-  for (const zone of doc.setup.zones) zones[zone.id] = zone.name
-  const cards: Record<string, string> = {}
-  for (const row of doc.rows) cards[row.id] = String(row.fields['title'] ?? '').trim() || row.id
-  return { zones, cards }
 }
 
 export function deckFromProject(doc: ProjectDoc): Deck {

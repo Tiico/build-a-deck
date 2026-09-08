@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { DocDiff, RowChange } from '@byd/server/diff'
+import type { DocDiff, RowChange } from '@byd/server/doc'
 import type { VersionSummary } from '@byd/server'
 import type { ProjectClient } from './ProjectClient.js'
 

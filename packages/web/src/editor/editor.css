@@ -568,3 +568,43 @@
 .byd-symbols-set small { color: #7d8597; font-size: 11px; }
 .byd-symbols-set button { padding: 2px 8px; font-size: 15px; color: #9aa3b8; }
 .byd-symbols [role='alert'] { color: #f0b64a; }
+
+/* The rulebook (B7): the page itself is the editor, so it is paper, not a dark surface. */
+.byd-rules { display: grid; gap: 14px; padding: 16px 20px; align-content: start; }
+.byd-rules-bar { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
+.byd-rules-bar h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; }
+.byd-rules-bar span { color: #9aa3b8; font-size: 12px; }
+.byd-rules-warn { color: #f0b64a !important; }
+.byd-rulebook { justify-self: center; width: min(760px, 100%); box-sizing: border-box; background: #f7f3ea; color: #23201a; border-radius: 14px; padding: 32px 40px; font: 14px/1.7 Georgia, serif; }
+.byd-rulebook h1 { margin: 0 0 18px; font-size: 26px; }
+.byd-rulebook h2 { margin: 22px 0 8px; font-size: 19px; }
+.byd-rulebook h3 { margin: 18px 0 6px; font-size: 15px; color: #4a4438; }
+.byd-rulebook p { margin: 0 0 10px; }
+.byd-rulebook ol, .byd-rulebook ul { margin: 0 0 12px; padding-left: 22px; }
+.byd-rulebook li { margin-bottom: 4px; }
+.byd-rules-ref { font-style: normal; color: #7a4d1d; border-bottom: 1px dotted #b08a5a; }
+.byd-rules-ref[data-missing] { color: #a12b2b; background: #f4d9d9; border-bottom: 0; padding: 0 3px; border-radius: 3px; }
+.byd-rules-pip { display: inline-grid; place-items: center; width: 1.2em; height: 1.2em; border-radius: 50%; background: #23201a; color: #f7f3ea; font: 700 0.75em system-ui; vertical-align: -0.15em; }
+.byd-rules-setup > div { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; padding: 18px; border-radius: 10px; background: #e7dfd0; border: 1px dashed #b8ab93; }
+.byd-rules-setup span { padding: 8px 12px; border-radius: 6px; background: #f7f3ea; border: 1px solid #cbbfa8; font: 12px system-ui; }
+.byd-rules-setup figcaption { margin-top: 6px; text-align: center; font: italic 12px Georgia, serif; color: #6b6255; }
+.byd-rules-setup { margin: 14px 0; }
+.byd-rules-block { position: relative; }
+.byd-rules-block > [role='button'] { border-radius: 6px; padding: 2px 6px; margin: 0 -6px; cursor: text; }
+.byd-rules-block > [role='button']:hover { background: #ece5d8; }
+.byd-rules-block > [role='button']:focus-visible { outline: 2px solid #3c8ce7; }
+.byd-rules-edit { display: grid; gap: 6px; padding: 12px; margin: 8px -12px; border-radius: 10px; background: #23262e; }
+.byd-rules-edit input, .byd-rules-edit textarea, .byd-rules-edit select { width: 100%; box-sizing: border-box; padding: 7px 9px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; font: 13px/1.6 system-ui, sans-serif; }
+.byd-rules-row { display: flex; gap: 8px; }
+.byd-rules-row select { width: 150px; }
+.byd-rules-edit > button { justify-self: start; border: 1px solid #2f333d; border-radius: 8px; padding: 5px 10px; background: #1b1d23; color: #fff; font: 700 12px system-ui; cursor: pointer; }
+.byd-rules-picker { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.byd-rules-picker > span { color: #7d8597; font: 10px system-ui; text-transform: uppercase; letter-spacing: 1px; }
+.byd-rules-picker button { border: 1px solid #2f333d; border-radius: 7px; padding: 3px 8px; background: #1b1d23; color: #dce3f2; font: 11px system-ui; cursor: pointer; }
+.byd-rules-remove { margin-left: auto; color: #ff9a9a !important; }
+.byd-rules-add { position: absolute; right: -34px; top: 2px; width: 24px; height: 24px; padding: 0; border: 1px solid #cbbfa8; border-radius: 7px; background: #ece5d8; color: #6b6255; cursor: pointer; opacity: 0; }
+.byd-rules-block:hover .byd-rules-add, .byd-rules-add:focus-visible { opacity: 1; }
+.byd-rules-empty { display: grid; gap: 12px; justify-items: start; max-width: 520px; padding: 24px; }
+.byd-rules-empty h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; }
+.byd-rules-empty p { margin: 0; color: #9aa3b8; line-height: 1.6; }
+.byd-rules-empty button { border: 1px solid #2f333d; border-radius: 8px; padding: 8px 14px; background: #3c8ce7; border-color: #3c8ce7; color: #fff; font-weight: 700; cursor: pointer; }

@@ -1,5 +1,5 @@
-import type { ProjectDoc, ProjectRow, VersionSummary } from '@byd/server'
-import type { DocDiff } from '@byd/server/diff'
+import type { ProjectDoc, ProjectRow, RuleDoc, VersionSummary } from '@byd/server'
+import type { DocDiff } from '@byd/server/doc'
 import type { Element, FaceTemplate, Variant } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
 import { applyRecipe, point, recipeOf, rect, type Geometry, type Recipe, type Zone } from '../setup/recipe.js'
@@ -35,7 +35,7 @@ export class ProjectClient {
     if (res.status === 404) throw new Error(`unknown project ${opts.id}`)
     if (!res.ok) throw new Error(`could not load project: ${res.status}`)
     const rec = (await res.json()) as ProjectDoc & { id: string; rev: number }
-    const doc: ProjectDoc = { name: rec.name, template: rec.template, rows: rec.rows, icons: rec.icons, setup: rec.setup, ...(rec.credits ? { credits: rec.credits } : {}) }
+    const doc: ProjectDoc = { name: rec.name, template: rec.template, rows: rec.rows, icons: rec.icons, setup: rec.setup, ...(rec.credits ? { credits: rec.credits } : {}), ...(rec.rules ? { rules: rec.rules } : {}) }
     return new ProjectClient(opts.http, opts.id, doc, rec.rev)
   }
 
@@ -212,6 +212,11 @@ export class ProjectClient {
     this.commit({ ...this.doc, setup: { ...this.doc.setup, zones } })
   }
 
+  // The rulebook (B7): part of the document, so it is saved and versioned with the cards.
+  setRules(rules: RuleDoc): void {
+    this.commit({ ...this.doc, rules })
+  }
+
   // The project's history (B4): every save is a version, kept whole and never rewritten. The
   // list is the server's answer, not something the editor keeps of its own.
   async versions(): Promise<VersionSummary[]> {
@@ -228,7 +233,7 @@ export class ProjectClient {
     if (res.status === 401) throw new Unauthorized()
     if (!res.ok) throw new Error(`could not open version ${rev}: ${res.status}`)
     const rec = (await res.json()) as ProjectDoc
-    return { name: rec.name, template: rec.template, rows: rec.rows, icons: rec.icons, setup: rec.setup, ...(rec.credits ? { credits: rec.credits } : {}) }
+    return { name: rec.name, template: rec.template, rows: rec.rows, icons: rec.icons, setup: rec.setup, ...(rec.credits ? { credits: rec.credits } : {}), ...(rec.rules ? { rules: rec.rules } : {}) }
   }
 
   // What a version changed against the one before it; null for the first version of all.

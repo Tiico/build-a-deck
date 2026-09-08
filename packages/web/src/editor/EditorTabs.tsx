@@ -1,15 +1,16 @@
 import { useRoving } from './roving.js'
 
-export type Mode = 'wall' | 'template' | 'table' | 'symbols' | 'tables'
+export type Mode = 'wall' | 'template' | 'table' | 'symbols' | 'rules' | 'tables'
 
-// The editor's five modes, in the order they are read (L, #19): the wall is home, the canvas is
+// The editor's six modes, in the order they are read (L, #19): the wall is home, the canvas is
 // the template, the table is the data, Symboler is the library the cards draw from (E4), and
-// Bord is where the game is played from.
+// Regler is the rulebook (B7), and Bord is where the game is played from.
 export const MODES: readonly (readonly [Mode, string])[] = [
   ['wall', 'Kortvägg'],
   ['template', 'Mall'],
   ['table', 'Tabell'],
   ['symbols', 'Symboler'],
+  ['rules', 'Regler'],
   ['tables', 'Bord'],
 ]
 

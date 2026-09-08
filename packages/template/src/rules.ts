@@ -7,9 +7,9 @@ import { parseInline, type InlineNode, type Paragraph } from './inline.js'
 export type RuleBlock =
   | { kind: 'heading'; id: string; level: 1 | 2; text: string }
   | { kind: 'text'; id: string; text: string }
-  | { kind: 'list'; id: string; items: string[]; ordered?: boolean }
+  | { kind: 'list'; id: string; items: string[]; ordered?: boolean | undefined }
   // The setup picture is the zones themselves (B5's follow-on), not a drawing kept beside them.
-  | { kind: 'setup'; id: string; caption?: string }
+  | { kind: 'setup'; id: string; caption?: string | undefined }
 export type RuleDoc = { title: string; blocks: RuleBlock[] }
 
 // What the names of things are right now. The rulebook asks for them at render time; it never
@@ -21,7 +21,7 @@ export type RenderedBlock =
   | { kind: 'heading'; id: string; level: 1 | 2; text: string }
   | { kind: 'text'; id: string; paragraphs: Paragraph[] }
   | { kind: 'list'; id: string; ordered: boolean; items: InlineNode[][] }
-  | { kind: 'setup'; id: string; caption?: string }
+  | { kind: 'setup'; id: string; caption?: string | undefined }
 // `text` is the whole rulebook as plain text: what a search reads, and what a test can hold on to.
 export type RenderedRules = { title: string; blocks: RenderedBlock[]; warnings: RuleWarning[]; text: string }
 

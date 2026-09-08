@@ -536,7 +536,7 @@ describe('the rulebook in the project (B7)', () => {
   })
 
   it('says what the rules\' references stand for right now, from the project itself', async () => {
-    const { namesOfProject } = await import('../src/projects.js')
+    const { namesOfProject } = await import('../src/doc.js')
     const doc = { ...project(), rules }
     const names = namesOfProject(doc)
     expect(names.zones['discard']).toBe('Kasthög')

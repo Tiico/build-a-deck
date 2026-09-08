@@ -27,6 +27,6 @@
   },
   "exports": {
     ".": "./src/index.ts",
-    "./diff": "./src/diff.ts"
+    "./doc": "./src/doc.ts"
   }
 }

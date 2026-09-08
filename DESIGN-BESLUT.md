@@ -146,6 +146,16 @@ Detta är den mest sannolika källan till informationsläckor och behöver testa
 Reglerna bor i projektet, versioneras i samma oföränderliga historik som korten, och kan referera komponenter och zoner så att namnändringar följer med.
 Renderas till referenspanel vid bordet och till tryckfärdigt häfte.
 
+Byggt 2026-09-08:
+Reglerna ligger i projektdokumentet, så de versioneras i samma historia som korten (B4) och låses in i en session vid start som allt annat.
+En regel namnger en zon eller ett kort med dess id, aldrig med dess namn: `[[zon:discard]]` och `[[kort:drake]]`. Att döpa om kasthögen skriver om varje regel som nämner den, eftersom reglerna aldrig höll namnet.
+En referens till något spelet inte längre har visas som det som skrevs, markerad, precis som en okänd ikon på ett kort (L2).
+Inline-parsern fick en konstruktion till, som bara regelboken ber om, så korttexten har fortfarande exakt de fyra L2 tillåter.
+Renderaren returnerar block, inte HTML, eftersom samma rendering ska till tre ställen: editorn, bordets referenspanel och det tryckta häftet.
+Ytan prototypades i tre former: block bredvid boken, ett fält i stenografi, och sidan själv som redigerare. Valet blev sidan själv: ett stycke öppnas där det står och stängs när det lämnas, så det man skriver alltid är det läsaren möter.
+Fliken "Regler" i editorn är boken. Referenser sätts in ur en lista över vad spelet har. Uppställningsbilden är spelets egna zoner (B5), inte en teckning bredvid dem.
+Kvar av B7: referenspanelen vid bordet och det tryckfärdiga häftet.
+
 Motivering:
 Trycket kräver en regelbok för att ordern ska kunna läggas.
 Blindtest kräver att testare kan läsa reglerna utan designern.

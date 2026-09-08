@@ -7,6 +7,7 @@ import { TableMenu, TablesTab } from './TablesTab.js'
 import { SetupEditor } from './SetupEditor.js'
 import { SymbolPanel } from './SymbolPanel.js'
 import { HistoryPanel } from './HistoryPanel.js'
+import { RulesPanel } from './RulesPanel.js'
 import { tvUrl } from './tableLinks.js'
 import { useProjectClient } from './useProjectClient.js'
 import type { ProjectDoc } from '@byd/server'
@@ -178,6 +179,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
       />
     ),
     symbols: () => <SymbolPanel doc={doc} client={client} assetBase={http} />,
+    rules: () => <RulesPanel doc={doc} client={client} />,
     // Bord is the home for both the game's board vocabulary and its running tables (#19, C4).
     tables: () => (
       <>
