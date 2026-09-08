@@ -6,8 +6,8 @@ import { extname, join, normalize, resolve, sep } from 'node:path'
 import { WebSocketServer, type WebSocket } from 'ws'
 import { z } from 'zod'
 import { ClientMessage, type ServerMessage } from '@byd/protocol'
-import { validateSetup, type SetupDef, type TypeRegistry } from '@byd/engine'
-import { Template } from '@byd/template'
+import { CARD_STANDARD_63x88, validateSetup, type SetupDef, type TypeRegistry } from '@byd/engine'
+import { Template, validateCard, type Issue } from '@byd/template'
 import type { ObjectStore, RenderStore } from '@byd/render/queue'
 import type { Subscriber, TableHost } from './actor.js'
 import type { Deck, LogStore, SessionRecord } from './store.js'
@@ -502,6 +502,20 @@ async function deckOf(opts: ServerOptions, rec: ProjectRecord): Promise<Deck> {
   return deckFromProject({ ...rec, rows: await resolveAssets(rec.rows, opts.assets), icons: await resolveIcons(rec.icons, opts.assets) })
 }
 
+// Every card of the project through the physical checks (E5), once per face, named by the card
+// the reader would hold. The row is what the card actually says, so a check reads the same thing
+// the compiler does.
+function checkedCards(rec: ProjectRecord, registry: TypeRegistry): (Issue & { cardRef: string; face: string })[] {
+  const type = registry.get({ id: CARD_STANDARD_63x88.id, version: CARD_STANDARD_63x88.version })
+  const out: (Issue & { cardRef: string; face: string })[] = []
+  for (const row of rec.rows) {
+    for (const [face, template] of Object.entries(rec.template.faces)) {
+      for (const issue of validateCard({ type, face: template, row: row.fields })) out.push({ ...issue, cardRef: row.id, face })
+    }
+  }
+  return out
+}
+
 // The project's credits as a list, in the icon set's order: what a print order carries (E4).
 function creditsOf(rec: ProjectRecord): (ProjectCredit & { name: string })[] {
   return Object.entries(rec.credits ?? {}).map(([name, c]) => ({ name, ...c }))
@@ -624,11 +638,19 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       return true
     }
     const rec = gate.rec
+    // Physical validation (E5): warnings live in the editor, errors stop an order. A card that
+    // would come back unreadable is cheaper to catch here than in five hundred printed copies.
+    const found = checkedCards(rec, opts.registry)
+    const errors = found.filter((f) => f.severity === 'error')
+    if (errors.length > 0) {
+      json(res, 422, { project: rec.id, rev: rec.rev, errors })
+      return true
+    }
     const printed = printExportOf(await deckOf(opts, rec), setupFromProject(rec), opts.registry, clock(opts).getTime())
     for (const job of printed.jobs) await opts.renders.enqueue(job)
     // The licences of every symbol the game uses go with the order (E4): the printer is handed
     // what the deck is made of, not only how it looks.
-    json(res, 202, { project: rec.id, rev: rec.rev, cards: printed.cards, credits: creditsOf(rec) })
+    json(res, 202, { project: rec.id, rev: rec.rev, cards: printed.cards, credits: creditsOf(rec), warnings: found })
     return true
   }
   const start = /^\/projects\/([^/]+)\/sessions$/.exec(url.pathname)

@@ -356,12 +356,12 @@ describe('a group rules what a card looks like on the table (#13)', () => {
           front: {
             ...front,
             variantBy: 'typ',
-            variants: { fälla: { override: [{ kind: 'shape', id: 'frame', x: 1, y: 1, w: 61, h: 86, shape: 'rect', fill: '#2b1d1f', stroke: '#c0392b', strokeMm: 1, radiusMm: 3 }] } },
+            variants: { fälla: { override: [{ kind: 'shape', id: 'paper', x: -3, y: -3, w: 69, h: 94, shape: 'rect', fill: '#2b1d1f' }, { kind: 'shape', id: 'frame', x: 3, y: 3, w: 57, h: 82, shape: 'rect', stroke: '#c0392b', strokeMm: 1, radiusMm: 3 }, { kind: 'text', id: 'title', x: 5, y: 5, w: 53, h: 10, bind: { field: 'title' }, font: { family: 'sans-serif', sizePt: 14, weight: 700 }, color: '#f4ead8' }] } },
           },
           back: {
             ...back,
             variantBy: 'typ',
-            variants: { fälla: { override: [{ kind: 'shape', id: 'bg', x: 0, y: 0, w: 63, h: 88, shape: 'rect', fill: '#3a1c1c' }] } },
+            variants: { fälla: { override: [{ kind: 'shape', id: 'bg', x: -3, y: -3, w: 69, h: 94, shape: 'rect', fill: '#3a1c1c' }] } },
           },
         },
       },
@@ -471,5 +471,37 @@ describe('a group rules what a card looks like on the table (#13)', () => {
     const verified = await fetch(`${run.http}${link}`, { redirect: 'manual' })
     const otherCookie = (verified.headers.get('set-cookie') ?? '').split(';')[0] ?? ''
     expect((await fetch(`${run.http}/projects/${id}/print`, { method: 'POST', headers: { cookie: otherCookie } })).status).toBe(403)
+  })
+})
+
+describe('physical validation at the order (E5)', () => {
+  const withText = (sizePt: number) => ({
+    ...project(),
+    template: {
+      faces: {
+        front: { base: [{ kind: 'shape', id: 'bg', x: -3, y: -3, w: 69, h: 94, shape: 'rect', fill: '#ffffff' }, { kind: 'text', id: 'body', x: 6, y: 30, w: 51, h: 40, bind: { field: 'body' }, font: { family: 'system-ui', sizePt }, color: '#111111' }], variants: {} },
+        back: { base: [{ kind: 'shape', id: 'bg', x: -3, y: -3, w: 69, h: 94, shape: 'rect', fill: '#2f4068' }], variants: {} },
+      },
+    },
+  })
+
+  it('refuses a print order while a card would come back unreadable, and says which card and why', async () => {
+    expect((await json('POST', '/projects', { id: 'p-small', ...withText(4) })).status).toBe(201)
+    const res = await json('POST', '/projects/p-small/print')
+    expect(res.status).toBe(422)
+    const body = (await res.json()) as { errors: { cardRef: string; face: string; element: string; code: string; detail: string }[] }
+    expect(body.errors.length).toBeGreaterThan(0)
+    expect(body.errors[0]).toMatchObject({ face: 'front', element: 'body', code: 'text-too-small' })
+    expect(body.errors.map((e) => e.cardRef)).toContain('dragon')
+    expect(body.errors[0]?.detail).toContain('6')
+  })
+
+  it('lets an order through when only warnings stand, and says what they were', async () => {
+    expect((await json('POST', '/projects', { id: 'p-warn', ...withText(7) })).status).toBe(201)
+    const res = await json('POST', '/projects/p-warn/print')
+    expect(res.status).toBe(202)
+    const body = (await res.json()) as { warnings: { cardRef: string; code: string }[]; cards: unknown[] }
+    expect(body.cards.length).toBeGreaterThan(0)
+    expect(body.warnings.map((w) => w.code)).toContain('text-too-small')
   })
 })
