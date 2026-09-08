@@ -1,5 +1,6 @@
-import type { ProjectDoc } from '@byd/server'
+import type { ProjectDoc } from './projects.js'
 
+// Imported by the editor as well as the server, so this module stays free of anything Node.
 // The setup as the editor holds it (B5, K2), and the recipe behind it: what the wizard once laid
 // out, as knobs the editor turns afterwards. The recipe owns a namespace of zones — the floor,
 // the draw pile, the discard pile, the market, and every seat's hand, area in front and counters

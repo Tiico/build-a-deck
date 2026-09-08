@@ -3,8 +3,9 @@ import type { ProjectDoc } from '@byd/server'
 import { shortcutsOf } from '../player/PlaySheet.js'
 import { TableRenderer, type FeltFit, type TableHandle } from '../table/TableRenderer.js'
 import { previewOf } from '../setup/preview.js'
-import { isRecipeZone, MAX_PLAYERS, type Counter, type Geometry, type Zone } from '../setup/recipe.js'
-import type { ProjectClient, ZonePatch } from './ProjectClient.js'
+import { isRecipeZone, MAX_PLAYERS, type Counter, type Geometry, type Zone } from '@byd/server/doc'
+import type { ProjectClient } from './ProjectClient.js'
+import type { ZonePatch } from '@byd/server/doc'
 
 // The setup editor (B5, K2), from the prototype: the recipe's knobs on the left lay the table
 // out; the table itself is the workspace, where every zone is a handle to drag, resize and name;

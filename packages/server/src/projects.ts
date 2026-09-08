@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { CARD_STANDARD_63x88, TOKEN_COUNTER, type SetupDef } from '@byd/engine'
 import { Template, type Row } from '@byd/template'
 import type { Deck } from './faces.js'
+import type { AppliedEdit } from './project-actor.js'
 
 // A project is what the editor edits: the template, the rows keyed by cardRef, the icon set and
 // the table setup without its components — those come from the rows and their `antal` (L4).
@@ -29,6 +30,7 @@ export const ProjectSetup = z.object({
   counters: z.array(z.object({ name: z.string().min(1).max(24), start: z.number().int() })).optional(),
 })
 const Cell = z.union([z.string(), z.number(), z.boolean(), z.null()])
+export type Cell = z.infer<typeof Cell>
 // Rows are an ordered list: their order is the deck's order until the first shuffle, and the
 // table's order in the editor. An object would lose it in storage and for numeric-looking ids.
 export const ProjectRow = z.object({ id: z.string().min(1), fields: z.record(z.string(), Cell) })
@@ -70,14 +72,16 @@ export type ProjectSummary = { id: string; name: string; rev: number; tables?: n
 // A version in the history (B4): every save is one, and none of them is ever written again.
 // `label` is the name a designer gave the versions that meant something — a blind test, a print
 // order — and nothing else needs naming: the user never has to commit.
-export type VersionSummary = { rev: number; at: string; label?: string }
+// `atSeq` is how far the edit log had come when the version was made (D3), so an actor knows
+// which edits are already in it.
+export type VersionSummary = { rev: number; at: string; label?: string; atSeq?: number }
 
 export type ProjectStore = {
   create(id: string, doc: ProjectDoc, owner?: string): Promise<ProjectRecord>
   load(id: string): Promise<ProjectRecord | null>
   list(owner: string): Promise<ProjectSummary[]>
   // Replaces the document if `expectedRev` is current; 'conflict' otherwise (optimistic concurrency).
-  replace(id: string, expectedRev: number, doc: ProjectDoc): Promise<ProjectRecord | 'conflict' | 'missing'>
+  replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number): Promise<ProjectRecord | 'conflict' | 'missing'>
   // The history, newest first.
   versions(id: string): Promise<VersionSummary[]>
   // The project as it stood at a revision; null when there is no such version.
@@ -86,12 +90,17 @@ export type ProjectStore = {
   label(id: string, rev: number, label: string | null): Promise<VersionSummary | 'missing'>
   // Takes a game away with its whole history; false when there was no such game.
   remove(id: string): Promise<boolean>
+  // The edit log between saves (D3): committed before an edit is applied, read back on load.
+  appendEdits(id: string, edits: AppliedEdit[]): Promise<void>
+  readEdits(id: string, sinceSeq: number): Promise<AppliedEdit[]>
 }
 
 export class MemoryProjectStore implements ProjectStore {
   private readonly docs = new Map<string, ProjectRecord>()
   // The history (B4), by project: one entry per save, appended and never rewritten.
-  private readonly history = new Map<string, { rev: number; at: string; label?: string; doc: ProjectDoc }[]>()
+  private readonly history = new Map<string, { rev: number; at: string; label?: string; atSeq?: number; doc: ProjectDoc }[]>()
+  // The edit log between saves (D3), by project.
+  private readonly edits = new Map<string, AppliedEdit[]>()
 
   async create(id: string, doc: ProjectDoc, owner?: string): Promise<ProjectRecord> {
     if (this.docs.has(id)) throw new Error(`project ${id} already exists`)
@@ -110,20 +119,28 @@ export class MemoryProjectStore implements ProjectStore {
     return [...this.docs.values()].filter((r) => r.owner === owner).map((r) => ({ id: r.id, name: r.name, rev: r.rev }))
   }
 
-  async replace(id: string, expectedRev: number, doc: ProjectDoc): Promise<ProjectRecord | 'conflict' | 'missing'> {
+  async replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number): Promise<ProjectRecord | 'conflict' | 'missing'> {
     const rec = this.docs.get(id)
     if (!rec) return 'missing'
     if (rec.rev !== expectedRev) return 'conflict'
     const next: ProjectRecord = { ...structuredClone(doc), id, rev: rec.rev + 1, ...(rec.owner !== undefined ? { owner: rec.owner } : {}) }
     this.docs.set(id, next)
-    this.history.get(id)?.push({ rev: next.rev, at: new Date().toISOString(), doc: structuredClone(doc) })
+    this.history.get(id)?.push({ rev: next.rev, at: new Date().toISOString(), ...(atSeq !== undefined ? { atSeq } : {}), doc: structuredClone(doc) })
     return structuredClone(next)
+  }
+
+  async appendEdits(id: string, edits: AppliedEdit[]): Promise<void> {
+    this.edits.set(id, [...(this.edits.get(id) ?? []), ...structuredClone(edits)])
+  }
+
+  async readEdits(id: string, sinceSeq: number): Promise<AppliedEdit[]> {
+    return structuredClone((this.edits.get(id) ?? []).filter((e) => e.seq > sinceSeq))
   }
 
   async versions(id: string): Promise<VersionSummary[]> {
     return [...(this.history.get(id) ?? [])]
       .sort((a, b) => b.rev - a.rev)
-      .map((v) => ({ rev: v.rev, at: v.at, ...(v.label !== undefined ? { label: v.label } : {}) }))
+      .map((v) => ({ rev: v.rev, at: v.at, ...(v.label !== undefined ? { label: v.label } : {}), ...(v.atSeq !== undefined ? { atSeq: v.atSeq } : {}) }))
   }
 
   async at(id: string, rev: number): Promise<ProjectRecord | null> {
@@ -144,6 +161,7 @@ export class MemoryProjectStore implements ProjectStore {
   async remove(id: string): Promise<boolean> {
     const had = this.docs.delete(id)
     this.history.delete(id)
+    this.edits.delete(id)
     return had
   }
 }

@@ -116,6 +116,20 @@ create table if not exists project_versions (
   rev         integer not null,
   doc         jsonb not null,
   label       text,
+  -- How far the edit log had come when the version was made (D3).
+  at_seq      integer,
   created_at  timestamptz not null default now(),
   primary key (project_id, rev)
+);
+alter table project_versions add column if not exists at_seq integer;
+
+-- What several people did to a project between two saves (D3): committed before it is applied,
+-- exactly as a table's log is.
+create table if not exists project_events (
+  project_id  text not null references projects(id) on delete cascade,
+  seq         integer not null,
+  intent      jsonb not null,
+  by_account  text,
+  created_at  timestamptz not null default now(),
+  primary key (project_id, seq)
 );

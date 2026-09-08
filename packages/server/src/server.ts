@@ -13,6 +13,8 @@ import type { Subscriber, TableHost } from './actor.js'
 import type { Deck, LogStore, SessionRecord } from './store.js'
 import { ProjectDoc, deckFromProject, setupFromProject, type ProjectCredit, type ProjectRecord, type ProjectStore } from './projects.js'
 import { diffProjects } from './diff.js'
+import { ProjectHost, type EditorMessage } from './project-actor.js'
+import type { EditIntent } from './edits.js'
 import { namesOfProject } from './names.js'
 import { SurveyAnswer, type SurveyStore } from './surveys.js'
 import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountOf, hash, loginMail, safeNext, token, type Account, type AuthStore, type Mailer } from './auth.js'
@@ -118,6 +120,14 @@ export function createServer(given: ServerOptions): Server {
 
   http.on('upgrade', (req, socket, head) => {
     const url = new URL(req.url ?? '/', 'http://localhost')
+    // Editing a project together (D3): the same actor pattern as a table, on its own path.
+    const editing = /^\/projects\/([^/]+)\/edit$/.exec(url.pathname)
+    if (editing && opts.projects) {
+      const projectId = decodeURIComponent(editing[1] ?? '')
+      const name = url.searchParams.get('name') ?? 'Någon'
+      wss.handleUpgrade(req, socket, head, (ws) => void attachEditor(opts, req, ws, projectId, name))
+      return
+    }
     const match = /^\/sessions\/([^/]+)$/.exec(url.pathname)
     if (!match) {
       socket.destroy()
@@ -416,6 +426,62 @@ async function admit(opts: ServerOptions, req: IncomingMessage, session: Session
   if (ask.seat !== null) return live?.kind === 'seat' && live.seat === ask.seat ? { seat: ask.seat } : { refused: 'a seat needs its token' }
   return { refused: 'the table needs the host key' }
 }
+
+// One editor on one project (D3). Only the account that owns the project may edit it; roles for
+// co-editors and testers are a model of their own and come later.
+async function attachEditor(opts: ServerOptions, req: IncomingMessage, ws: WebSocket, projectId: string, name: string): Promise<void> {
+  const send = (message: EditorMessage) => {
+    if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(message))
+  }
+  const projects = opts.projects
+  const account = opts.auth ? await accountOf(opts.auth, req) : null
+  const rec = projects ? await projects.load(projectId) : null
+  if (!projects || !rec) {
+    ws.close(4004, 'unknown project')
+    return
+  }
+  if (rec.owner !== undefined && rec.owner !== account?.id) {
+    ws.close(4003, 'not your project')
+    return
+  }
+  const actor = await editors(opts, projects).get(projectId)
+  if (!actor) {
+    ws.close(4004, 'unknown project')
+    return
+  }
+  const editor = { id: randomUUID(), name, send, close: () => ws.close(4003, 'gone') }
+  const leave = actor.subscribe(editor)
+  ws.on('close', leave)
+  ws.on('message', (data) => {
+    void (async () => {
+      try {
+        const raw: unknown = JSON.parse(data.toString())
+        const msg = EditorRequest.parse(raw)
+        if (msg.t === 'save') {
+          const saved = await actor.save()
+          if (!saved.ok) send({ v: 'refused', why: saved.reason })
+          return
+        }
+        await actor.edit(msg.intent as EditIntent, account?.id)
+      } catch (err) {
+        send({ v: 'refused', why: err instanceof Error ? err.message : String(err) })
+      }
+    })()
+  })
+}
+
+// The editing actors of this server, made on first use so a server without projects has none.
+const HOSTS = new WeakMap<ServerOptions, ProjectHost>()
+function editors(opts: ServerOptions, projects: ProjectStore): ProjectHost {
+  const existing = HOSTS.get(opts)
+  if (existing) return existing
+  const host = new ProjectHost(projects)
+  HOSTS.set(opts, host)
+  return host
+}
+
+// What an editor may send: an edit, or an ask to make a version of what stands now.
+const EditorRequest = z.union([z.object({ t: z.literal('edit'), intent: z.record(z.string(), z.unknown()) }), z.object({ t: z.literal('save') })])
 
 async function attach(opts: ServerOptions, req: IncomingMessage, ws: WebSocket, sessionId: string, ask: Admission): Promise<void> {
   const send = (message: ServerMessage) => {

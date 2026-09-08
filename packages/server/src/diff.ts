@@ -7,7 +7,7 @@ import type { ProjectDoc, ProjectRow } from './projects.js'
 // with the field that moved and what it moved from. The template, the setup and the symbol set
 // are named as having moved without being spelled out — a diff of an element tree is a diff for
 // a machine, and the canvas shows the change better than a list can.
-export type Cell = ProjectRow['fields'][string]
+import type { Cell } from './projects.js'
 export type FieldChange = { field: string; from: Cell | null; to: Cell | null }
 export type RowChange =
   | { kind: 'added'; cardRef: string }

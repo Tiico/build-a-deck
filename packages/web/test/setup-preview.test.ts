@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyRecipe, emptySetup } from '../src/setup/recipe.js'
+import { applyRecipe, emptySetup } from '@byd/server/doc'
 import { previewOf } from '../src/setup/preview.js'
 
 describe('the preview of a setup (B5): the table as the screen would show it before anyone sat down', () => {

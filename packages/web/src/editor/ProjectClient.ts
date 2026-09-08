@@ -1,8 +1,8 @@
 import type { ProjectDoc, ProjectRow, RuleDoc, VersionSummary } from '@byd/server'
 import type { DocDiff } from '@byd/server/doc'
-import type { Element, FaceTemplate, Variant } from '@byd/template'
+import type { Element } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
-import { applyRecipe, point, recipeOf, rect, type Geometry, type Recipe, type Zone } from '../setup/recipe.js'
+import { applyEdit, recipeOf, type EditIntent, type Recipe, type ZonePatch } from '@byd/server/doc'
 import { ASSET_PREFIX } from './assets.js'
 import { freeIconName, svgBytes, type GameSymbol } from './symbols.js'
 
@@ -12,7 +12,6 @@ export type Cell = string | number | boolean | null
 export type Textures = { total: number; done: number; failed: string[] }
 // A table of this game as the Bord tab lists it (#19): which session, the version it runs,
 // whether its log is locked (C9), and when it last moved.
-export type ZonePatch = { name?: string; geometry?: Geometry; visibility?: Zone['visibility']; shortcut?: { label: string; at: 'top' | 'bottom' } | undefined; owner?: string | undefined }
 export type TableSummary = { id: string; version: string; ended: boolean; lastAt: string | null }
 
 // The project as the editor holds it: the document, its revision, local edits, and saving with
@@ -44,120 +43,54 @@ export class ProjectClient {
     return () => this.listeners.delete(listener)
   }
 
-  setCell(cardRef: string, field: string, value: Cell): void {
-    if (!this.doc.rows.some((r) => r.id === cardRef)) throw new Error(`no row ${cardRef}`)
-    this.commit({ ...this.doc, rows: this.doc.rows.map((r) => (r.id === cardRef ? { ...r, fields: { ...r.fields, [field]: value } } : r)) })
+  // Every edit goes the same way (D3): an intent, applied by the one pure function the actor
+  // will apply it with too. The editor holds the result until it is saved.
+  edit(intent: EditIntent): void {
+    this.commit(applyEdit(this.doc, intent))
   }
 
-  // Appends a row: new cards go to the end of the deck.
+  setCell(cardRef: string, field: string, value: Cell): void {
+    this.edit({ v: 'setCell', cardRef, field, value })
+  }
+
   addRow(cardRef: string, fields: Record<string, Cell> = {}): void {
-    if (this.doc.rows.some((r) => r.id === cardRef)) throw new Error(`row ${cardRef} already exists`)
-    this.commit({ ...this.doc, rows: [...this.doc.rows, { id: cardRef, fields }] })
+    this.edit({ v: 'addRow', cardRef, fields })
   }
 
   removeRow(cardRef: string): void {
-    this.commit({ ...this.doc, rows: this.doc.rows.filter((r) => r.id !== cardRef) })
+    this.edit({ v: 'removeRow', cardRef })
   }
 
   replaceRows(rows: ProjectRow[]): void {
-    this.commit({ ...this.doc, rows })
+    this.edit({ v: 'replaceRows', rows })
   }
 
-  // Replaces fields of one element by id (L1). Without a group that is the face's base, and the
-  // change reaches every card; with one it becomes that group's override of the same id (#13),
-  // and the base stays exactly as it was.
   patchElement(face: string, id: string, patch: Partial<Element>, group?: string | null): void {
-    const current = this.faceOf(face)
-    if (!group) return this.writeFace(face, { ...current, base: current.base.map((e) => (e.id === id ? ({ ...e, ...patch } as Element) : e)) })
-    const from = this.elementInGroup(current, id, group)
-    if (!from) throw new Error(`face ${face} has no element ${id}`)
-    this.writeVariant(face, current, group, (v) => ({ ...v, override: replaceById(v.override ?? [], { ...from, ...patch } as Element) }))
+    this.edit({ v: 'patchElement', face, id, patch, ...(group !== undefined ? { group } : {}) })
   }
 
-  // The element a group sees for an id: its own override if it has one, otherwise the base's.
-  private elementInGroup(face: FaceTemplate, id: string, group: string): Element | undefined {
-    return (face.variants[group]?.override ?? []).find((e) => e.id === id) ?? face.base.find((e) => e.id === id)
-  }
-
-  // The column that makes the groups (#13): one column for the whole deck, so a group is one
-  // thing with a front and a back (L7), not a different rule per face. `null` ungroups the deck;
-  // the variants stay, because ungrouping is not a reason to throw away a design.
   setGroupColumn(column: string | null): void {
-    const faces = Object.fromEntries(
-      Object.entries(this.doc.template.faces).map(([id, face]) => {
-        if (column) return [id, { ...face, variantBy: column }]
-        const rest: FaceTemplate = { base: face.base, variants: face.variants }
-        return [id, rest]
-      }),
-    )
-    this.commit({ ...this.doc, template: { ...this.doc.template, faces } })
+    this.edit({ v: 'setGroupColumn', column })
   }
 
-  // Stops a group from overriding an id: the layer goes back to being the base's (#13).
   resetElement(face: string, id: string, group: string): void {
-    const current = this.faceOf(face)
-    this.writeVariant(face, current, group, (v) => ({
-      ...v,
-      override: (v.override ?? []).filter((e) => e.id !== id),
-      remove: (v.remove ?? []).filter((r) => r !== id),
-    }))
+    this.edit({ v: 'resetElement', face, id, group })
   }
 
-  private writeVariant(face: string, current: FaceTemplate, group: string, change: (variant: Variant) => Variant): void {
-    const next = change(current.variants[group] ?? {})
-    this.writeFace(face, { ...current, variants: { ...current.variants, [group]: next } })
-  }
-
-  private faceOf(face: string): FaceTemplate {
-    const current = this.doc.template.faces[face]
-    if (!current) throw new Error(`template has no face ${face}`)
-    return current
-  }
-
-  // The one way a face of the template is written: every canvas edit — a patch, an addition, a
-  // removal, a move — leaves as one commit of the project.
-  private writeFace(face: string, next: FaceTemplate): void {
-    this.commit({ ...this.doc, template: { ...this.doc.template, faces: { ...this.doc.template.faces, [face]: next } } })
-  }
-
-  // Adding an element from the canvas (#18): it goes last in the base list, which is the drawing
-  // order, so a new element is on top of what is already there and can be seen at once.
   addElement(face: string, element: Element, group?: string | null): void {
-    const current = this.faceOf(face)
-    if (current.base.some((e) => e.id === element.id)) throw new Error(`face ${face} already has an element ${element.id}`)
-    if (!group) return this.writeFace(face, { ...current, base: [...current.base, element] })
-    // An element added with a group open belongs to that group alone: the base never learns of it.
-    if ((current.variants[group]?.override ?? []).some((e) => e.id === element.id)) throw new Error(`face ${face} already has an element ${element.id}`)
-    this.writeVariant(face, current, group, (v) => ({ ...v, override: [...(v.override ?? []), element] }))
+    this.edit({ v: 'addElement', face, element, ...(group !== undefined ? { group } : {}) })
   }
 
-  // Without a group the element leaves the face for every card; with one it leaves for that
-  // group's cards only — as a removal against the base, or, when the group added it, by going.
   removeElement(face: string, id: string, group?: string | null): void {
-    const current = this.faceOf(face)
-    if (!group) return this.writeFace(face, { ...current, base: current.base.filter((e) => e.id !== id) })
-    const inBase = current.base.some((e) => e.id === id)
-    this.writeVariant(face, current, group, (v) => ({
-      ...v,
-      override: (v.override ?? []).filter((e) => e.id !== id),
-      ...(inBase ? { remove: [...new Set([...(v.remove ?? []), id])] } : {}),
-    }))
+    this.edit({ v: 'removeElement', face, id, ...(group !== undefined ? { group } : {}) })
   }
 
-  // Reordering the layers (#18): the base list is the drawing order, so a layer moved in the
-  // panel is a layer moved here. The index is where the element ends up in that list.
   moveElement(face: string, id: string, to: number): void {
-    const current = this.faceOf(face)
-    const from = current.base.findIndex((e) => e.id === id)
-    if (from < 0) throw new Error(`face ${face} has no element ${id}`)
-    const base = [...current.base]
-    const moved = base.splice(from, 1)
-    base.splice(Math.max(0, Math.min(base.length, to)), 0, ...moved)
-    this.writeFace(face, { ...current, base })
+    this.edit({ v: 'moveElement', face, id, to })
   }
 
   rename(name: string): void {
-    this.commit({ ...this.doc, name })
+    this.edit({ v: 'rename', name })
   }
 
   // The setup's recipe (B5): the knobs the wizard turned, turned again here. Recipe zones come
@@ -166,55 +99,32 @@ export class ProjectClient {
     return recipeOf(this.doc.setup)
   }
   setRecipe(recipe: Recipe): void {
-    this.commit({ ...this.doc, setup: applyRecipe(this.doc.setup, recipe) })
+    this.edit({ v: 'setRecipe', recipe })
   }
 
   // A zone of the designer's own (K2): an area of a card's rows or a pile at a point, in the
   // middle of the table until it is dragged somewhere. Returns its id.
   addZone(kind: 'area' | 'pile'): string {
-    const ids = new Set(this.doc.setup.zones.map((z) => z.id))
+    const taken = new Set(this.doc.setup.zones.map((z) => z.id))
     const base = kind === 'pile' ? 'hog' : 'yta'
     let n = 1
-    while (ids.has(`${base}-${n}`)) n++
+    while (taken.has(`${base}-${n}`)) n++
     const id = `${base}-${n}`
-    const zone: Zone = kind === 'pile' ? { id, kind, name: `Hög ${n}`, visibility: 'all', geometry: point(0, 150) } : { id, kind, name: `Yta ${n}`, visibility: 'all', geometry: rect(-150, 100, 300, 120) }
-    this.commit({ ...this.doc, setup: { ...this.doc.setup, zones: [...this.doc.setup.zones, zone] } })
+    this.edit({ v: 'addZone', id, kind, name: kind === 'pile' ? `Hög ${n}` : `Yta ${n}` })
     return id
   }
 
   removeZone(id: string): void {
-    if (id === this.doc.setup.floor || id === this.doc.setup.deckZone) throw new Error(`zone ${id} cannot be removed`)
-    if (!this.doc.setup.zones.some((z) => z.id === id)) throw new Error(`no zone ${id}`)
-    this.commit({ ...this.doc, setup: { ...this.doc.setup, zones: this.doc.setup.zones.filter((z) => z.id !== id) } })
+    this.edit({ v: 'removeZone', id })
   }
 
-  // A zone's name (what the table shows), its shortcut (the verb the phone shows, C4), where it
-  // lies and how big it is (K2), who owns it and who sees into it. An undefined shortcut or
-  // owner removes it: the phone falls back to the name, the zone becomes everyone's.
   patchZone(id: string, patch: ZonePatch): void {
-    if (!this.doc.setup.zones.some((z) => z.id === id)) throw new Error(`no zone ${id}`)
-    const zones = this.doc.setup.zones.map((z) => {
-      if (z.id !== id) return z
-      const next: Zone = { ...z }
-      if (patch.name !== undefined) next.name = patch.name
-      if (patch.geometry !== undefined) next.geometry = patch.geometry
-      if (patch.visibility !== undefined) next.visibility = patch.visibility
-      if ('shortcut' in patch) {
-        if (patch.shortcut) next.shortcut = patch.shortcut
-        else delete next.shortcut
-      }
-      if ('owner' in patch) {
-        if (patch.owner) next.owner = patch.owner
-        else delete next.owner
-      }
-      return next
-    })
-    this.commit({ ...this.doc, setup: { ...this.doc.setup, zones } })
+    this.edit({ v: 'patchZone', id, patch })
   }
 
   // The rulebook (B7): part of the document, so it is saved and versioned with the cards.
   setRules(rules: RuleDoc): void {
-    this.commit({ ...this.doc, rules })
+    this.edit({ v: 'setRules', rules })
   }
 
   // The project's history (B4): every save is a version, kept whole and never rewritten. The
@@ -269,29 +179,17 @@ export class ProjectClient {
     const already = Object.entries(this.doc.icons).find(([, url]) => url === ref)
     if (already) return already[0]
     const name = freeIconName(as ?? symbol.name, this.doc.icons)
-    this.commit({
-      ...this.doc,
-      icons: { ...this.doc.icons, [name]: ref },
-      credits: { ...(this.doc.credits ?? {}), [name]: { licence: symbol.licence, by: symbol.by, source: symbol.id } },
-    })
+    this.edit({ v: 'setIcon', name, url: ref, credit: { licence: symbol.licence, by: symbol.by, source: symbol.id } })
     return name
   }
 
   // The name is what card text writes between braces, so renaming one moves its credit too.
   renameIcon(from: string, to: string): void {
-    const url = this.doc.icons[from]
-    if (url === undefined) throw new Error(`no icon ${from}`)
-    if (this.doc.icons[to] !== undefined) throw new Error(`icon ${to} already exists`)
-    const credit = this.doc.credits?.[from]
-    this.commit({
-      ...this.doc,
-      icons: { ...without(this.doc.icons, from), [to]: url },
-      credits: { ...without(this.doc.credits ?? {}, from), ...(credit ? { [to]: credit } : {}) },
-    })
+    this.edit({ v: 'renameIcon', from, to })
   }
 
   removeIcon(name: string): void {
-    this.commit({ ...this.doc, icons: without(this.doc.icons, name), credits: without(this.doc.credits ?? {}, name) })
+    this.edit({ v: 'removeIcon', name })
   }
 
   // An image for the project (E1): uploaded once, named by its bytes; the cell then points at it.
@@ -399,11 +297,4 @@ export class ProjectClient {
 }
 
 // One element in, one out, by id: an override list is a set keyed by id, not an order.
-// A record without one key, since deleting a computed key is not how records are built here.
-function without<T>(record: Record<string, T>, key: string): Record<string, T> {
-  return Object.fromEntries(Object.entries(record).filter(([k]) => k !== key))
-}
 
-function replaceById(list: Element[], element: Element): Element[] {
-  return list.some((e) => e.id === element.id) ? list.map((e) => (e.id === element.id ? element : e)) : [...list, element]
-}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyRecipe, emptySetup, recipeOf, type Recipe } from '../src/setup/recipe.js'
+import { applyRecipe, emptySetup, recipeOf, type Recipe } from '@byd/server/doc'
 
 const base: Recipe = { players: 3, mine: true, discard: true, market: false, counters: [{ name: 'Poäng', start: 0 }] }
 

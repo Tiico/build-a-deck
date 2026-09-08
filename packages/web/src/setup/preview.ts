@@ -1,6 +1,6 @@
 import { CARD_STANDARD_63x88, STANDARD_TYPES, TOKEN_COUNTER, TypeRegistry, initialState, project, type SetupDef } from '@byd/engine'
 import type { Snapshot } from '@byd/protocol'
-import type { Setup } from './recipe.js'
+import type { Setup } from '@byd/server/doc'
 
 // The table a setup makes (B5), as the screen would show it before anyone sat down: a deck of
 // placeholder cards face down in the deck zone, and every seat's counters at their start values.

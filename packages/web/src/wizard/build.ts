@@ -1,6 +1,6 @@
 import type { ProjectDoc } from '@byd/server'
 import { DEFAULT_FRAME, FRAMES, type Field } from './frames.js'
-import { applyRecipe, emptySetup } from '../setup/recipe.js'
+import { applyRecipe, emptySetup } from '@byd/server/doc'
 
 // `counters` (C4): what every seat keeps count of, from the start value; one score by default.
 export type WizardState = { name: string; players: number; fields: Field[]; frame: string; rows: Record<string, string>[]; counters?: { name: string; start: number }[] }

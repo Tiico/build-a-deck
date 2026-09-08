@@ -7,6 +7,8 @@ import { liftLine, type SetupDef } from '@byd/engine'
 import { SeqConflictError, type Deck, type GuestRecord, type LogStore, type SessionRecord, type SessionSummary, type PlayedRecord } from './store.js'
 import type { ProjectDoc, ProjectRecord, ProjectStore, ProjectSummary, VersionSummary } from './projects.js'
 import { PostgresAssetStore } from './assets.js'
+import type { AppliedEdit } from './project-actor.js'
+import type { EditIntent } from './edits.js'
 import type { Account, AuthStore } from './auth.js'
 
 export class PostgresAuthStore implements AuthStore {
@@ -294,7 +296,29 @@ export class PostgresProjectStore implements ProjectStore {
     return rows.map((r) => ({ id: r.id, name: r.name, rev: r.rev }))
   }
 
-  async replace(id: string, expectedRev: number, doc: ProjectDoc): Promise<ProjectRecord | 'conflict' | 'missing'> {
+  // The edit log between saves (D3): committed before an edit is applied, read back on load.
+  async appendEdits(id: string, edits: AppliedEdit[]): Promise<void> {
+    if (edits.length === 0) return
+    await this.sql`
+      insert into project_events ${this.sql(
+        edits.map((e) => ({ project_id: id, seq: e.seq, intent: this.sql.json(e.intent as never), by_account: e.by ?? null, created_at: e.at })),
+        'project_id',
+        'seq',
+        'intent',
+        'by_account',
+        'created_at',
+      )}
+    `
+  }
+
+  async readEdits(id: string, sinceSeq: number): Promise<AppliedEdit[]> {
+    const rows = await this.sql<{ seq: number; intent: EditIntent; by_account: string | null; created_at: Date }[]>`
+      select seq, intent, by_account, created_at from project_events where project_id = ${id} and seq > ${sinceSeq} order by seq
+    `
+    return rows.map((r) => ({ seq: r.seq, at: r.created_at.toISOString(), ...(r.by_account ? { by: r.by_account } : {}), intent: r.intent }))
+  }
+
+  async replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number): Promise<ProjectRecord | 'conflict' | 'missing'> {
     return this.sql.begin(async (tx) => {
       const [row] = await tx<{ rev: number }[]>`select rev from projects where id = ${id} for update`
       if (!row) return 'missing'
@@ -302,16 +326,16 @@ export class PostgresProjectStore implements ProjectStore {
       const rev = row.rev + 1
       await tx`update projects set rev = ${rev}, doc = ${tx.json(doc as never)}, updated_at = now() where id = ${id}`
       // The history (B4) grows by one; nothing already in it is ever written again.
-      await tx`insert into project_versions (project_id, rev, doc) values (${id}, ${rev}, ${tx.json(doc as never)})`
+      await tx`insert into project_versions (project_id, rev, doc, at_seq) values (${id}, ${rev}, ${tx.json(doc as never)}, ${atSeq ?? null})`
       return { ...doc, id, rev }
     })
   }
 
   async versions(id: string): Promise<VersionSummary[]> {
-    const rows = await this.sql<{ rev: number; created_at: Date; label: string | null }[]>`
-      select rev, created_at, label from project_versions where project_id = ${id} order by rev desc
+    const rows = await this.sql<{ rev: number; created_at: Date; label: string | null; at_seq: number | null }[]>`
+      select rev, created_at, label, at_seq from project_versions where project_id = ${id} order by rev desc
     `
-    return rows.map((r) => ({ rev: r.rev, at: r.created_at.toISOString(), ...(r.label ? { label: r.label } : {}) }))
+    return rows.map((r) => ({ rev: r.rev, at: r.created_at.toISOString(), ...(r.label ? { label: r.label } : {}), ...(r.at_seq !== null ? { atSeq: r.at_seq } : {}) }))
   }
 
   async at(id: string, rev: number): Promise<ProjectRecord | null> {
