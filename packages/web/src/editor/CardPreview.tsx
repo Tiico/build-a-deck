@@ -7,6 +7,8 @@ export type CardPreviewProps = {
   face: FaceTemplate
   row: Row
   icons: Record<string, string>
+  // The fonts the version is pinned to (B3), already resolved to something the page can load.
+  fonts?: Record<string, { stack: string; src?: string }> | undefined
   // A unique id per mounted card; the compiled CSS is scoped to it.
   id: string
   scale?: number
@@ -22,8 +24,11 @@ export type CardPreviewProps = {
 
 // One card through the real compiler and the real DOM fitting — the same code the renderer runs,
 // so what the editor shows is what the table and the print get (E2).
-export function CardPreview({ face, row, icons, id, scale = 1, selectedElement, onSelectElement, onWarnings, overlay, assetBase }: CardPreviewProps) {
-  const out = useMemo(() => compile({ type: CARD_STANDARD_63x88, face, row: assetBase ? resolveAssetRow(row, assetBase) : row, icons, scope: `#${id}` }), [face, row, icons, id, assetBase])
+export function CardPreview({ face, row, icons, fonts, id, scale = 1, selectedElement, onSelectElement, onWarnings, overlay, assetBase }: CardPreviewProps) {
+  const out = useMemo(
+    () => compile({ type: CARD_STANDARD_63x88, face, row: assetBase ? resolveAssetRow(row, assetBase) : row, icons, scope: `#${id}`, ...(fonts ? { fonts } : {}) }),
+    [face, row, icons, fonts, id, assetBase],
+  )
   const ref = useRef<HTMLDivElement | null>(null)
   // The DOM measures for real; the compiler's text warnings are an estimate for headless use.
   // What the editor reports is what the browser saw: overflow after fitting, plus the

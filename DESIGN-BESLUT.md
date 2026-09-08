@@ -89,6 +89,16 @@ Följdkrav:
 Allt renderingspåverkande måste innehållsadresseras, inklusive fontfiler.
 Fontlicenser måste tillåta att filerna behålls permanent — det gör få licenser, och det är en öppen fråga.
 
+Typsnitten, byggt 2026-09-08:
+Ett spel namnger sina typsnitt själv: en familj i dokumentet är en CSS-stack och, när designern laddat upp en fil, en asset (E1) som versionen därmed pinnar.
+Filen laddas upp dit varje annan asset går, `POST /assets`, och namnges av sitt innehåll. Formaten är de Chromium kan rita ur ett `@font-face`: woff2, woff, ttf och otf. Allt annat avvisas.
+Kompilatorn skriver ett `@font-face` för varje familj som både har en fil och används av mallen, och aldrig för en som inte används: en fil som ingen sätter text i följer inte med kortet.
+Servern löser en familjs asset till bytes innan den kompilerar, eftersom renderarens webbläsare varken har session eller kaka att hämta med. Editorn löser samma familj till `/assets/<hash>`, så förhandsvisningen visar det som kommer att tryckas.
+En familj utan fil är ett varsel i den fysiska kontrollen (E5): "följer inte med spelet — trycket kan bli ett annat typsnitt än det du ser". Ett varsel per kort, med familjerna uppräknade, eftersom fyrtio element i samma typsnitt är ett misstag.
+Typsnittet väljs där elementet ritas, i mallens egenskapspanel, och familjerna spelet har står under den: vilka som följer med, vad de är lånade under, och en väg in för en fil till. Ett typsnitt som ingen text är satt i går att ta bort; ett som används har ingen sådan knapp.
+Licensen står inte i filen — bara designern vet den — så den anges bredvid familjen och följer med i tryckordern precis som en symbols licens (E4). Båda halvorna behövs: en licens utan upphovsperson krediterar ingen.
+Inga typsnittsfiler följer med produkten: verktyget levererar ingen tredjepartsfont, det pinnar bara den designern själv har rätt att använda. Frågan i I står kvar.
+
 ### B4. Versionering: automatisk oföränderlig historik plus namngivna milstolpar (fråga 13)
 
 Varje redigering läggs till i en oföränderlig historik.

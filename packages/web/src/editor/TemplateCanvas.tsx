@@ -8,6 +8,8 @@ import { fieldsOf } from './fields.js'
 import { cardsInGroup, groupColumn, groupsOf, layersOf, overriddenIds, ruleLabel, type Layer } from './groups.js'
 import { LayerList } from './LayerList.js'
 import { useRoving } from './roving.js'
+import { familiesInUse, previewFonts } from './fonts.js'
+import type { ProjectCredit } from '@byd/server'
 
 export type TemplateCanvasProps = {
   doc: ProjectDoc
@@ -32,12 +34,18 @@ export type TemplateCanvasProps = {
   onGroupColumn(column: string | null): void
   // Stops the open group from overriding a layer, so it is the base's again.
   onReset(id: string): void
+  // The type the game is set in (B3). Uploading is the client's work — the file becomes one of
+  // the project's assets — so the canvas asks for it and is told what the family came to be
+  // called. What a typeface is licensed under is not in the file: only the designer knows it.
+  onFontFile(file: File): Promise<string>
+  onFontLicence(family: string, licence: ProjectCredit | null): void
+  onRemoveFont(family: string): void
 }
 
 // Template mode (A): layers on the left, the card large in the middle with the selected element
 // outlined, and its properties on the right. Every change goes through `onPatch` and lands on
 // every card of the deck — there are no per-card exceptions (L3).
-export function TemplateCanvas({ doc, assetBase, face, onSelectFace, row, selectedElement, onSelectElement, onPatch, onRemove, onAdd, onReorder, group, onSelectGroup, onGroupColumn, onReset }: TemplateCanvasProps) {
+export function TemplateCanvas({ doc, assetBase, face, onSelectFace, row, selectedElement, onSelectElement, onPatch, onRemove, onAdd, onReorder, group, onSelectGroup, onGroupColumn, onReset, onFontFile, onFontLicence, onRemoveFont }: TemplateCanvasProps) {
   const faceTemplate = doc.template.faces[face]
   const column = groupColumn(doc)
   const groups = groupsOf(doc)
@@ -128,6 +136,7 @@ export function TemplateCanvas({ doc, assetBase, face, onSelectFace, row, select
             face={faceTemplate}
             row={rowData}
             icons={doc.icons}
+            fonts={previewFonts(doc, assetBase)}
             scale={scale}
             assetBase={assetBase}
             selectedElement={selectedElement}
@@ -139,14 +148,88 @@ export function TemplateCanvas({ doc, assetBase, face, onSelectFace, row, select
       <aside className="byd-canvas-props">
         <h2>{layer ? `Egenskaper · ${layer.element.id}` : 'Egenskaper'}</h2>
         {layer?.source === 'removed' && <p className="byd-canvas-affects">Lagret är borttaget i {ruleLabel(column ?? '', group ?? '')}.</p>}
-        {el && <Properties el={el} fields={fields} onPatch={(patch) => onPatch(el.id, patch)} />}
+        {el && <Properties el={el} fields={fields} fonts={Object.keys(doc.fonts ?? {})} onPatch={(patch) => onPatch(el.id, patch)} />}
         {layer && group && overridden.has(layer.element.id) && (
           <button type="button" className="byd-canvas-reset" onClick={() => onReset(layer.element.id)}>
             Återgå till basen
           </button>
         )}
+        <FontShelf doc={doc} onFontFile={onFontFile} onFontLicence={onFontLicence} onRemoveFont={onRemoveFont} />
       </aside>
     </div>
+  )
+}
+
+// The fonts the game carries (B3), under the properties because that is where a family is
+// chosen. Each one says whether it travels to the printer, and under what licence it is
+// borrowed — a typeface is borrowed exactly as a symbol is (E4), and the print order carries
+// both. A family no element is set in can go; one in use has no button, so a card is never
+// left pointing at a family the game no longer has.
+function FontShelf({ doc, onFontFile, onFontLicence, onRemoveFont }: Pick<TemplateCanvasProps, 'doc' | 'onFontFile' | 'onFontLicence' | 'onRemoveFont'>) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const families = Object.entries(doc.fonts ?? {})
+  const used = familiesInUse(doc)
+  const take = (file: File | undefined) => {
+    if (!file) return
+    setBusy(true)
+    setError(null)
+    void onFontFile(file)
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)))
+      .finally(() => setBusy(false))
+  }
+  return (
+    <section className="byd-fonts">
+      <h2 id="byd-fonts-heading">Typsnitt i spelet</h2>
+      {families.length === 0 ? (
+        <p className="byd-canvas-affects">Inget eget typsnitt ännu. Utan en fil sätts korten i vad tryckeriets dator råkar ha.</p>
+      ) : (
+        <ul aria-labelledby="byd-fonts-heading">
+          {families.map(([family, font]) => (
+            <li key={family} data-font={family}>
+              <span className="byd-fonts-name" style={{ fontFamily: font.stack }}>
+                {family}
+              </span>
+              {!used.includes(family) && (
+                <button type="button" onClick={() => onRemoveFont(family)}>
+                  Ta bort
+                </button>
+              )}
+              <small>{font.asset ? 'följer med till trycket' : 'följer inte med till trycket'}</small>
+              <Licence family={family} licence={font.licence} onFontLicence={onFontLicence} />
+            </li>
+          ))}
+        </ul>
+      )}
+      <label className="byd-fonts-upload">
+        Ladda upp typsnitt
+        <input type="file" accept=".woff2,.woff,.ttf,.otf,font/woff2,font/woff,font/ttf,font/otf" disabled={busy} onChange={(e) => take(e.target.files?.[0])} />
+      </label>
+      {error && <p role="alert">{error}</p>}
+    </section>
+  )
+}
+
+// What a typeface is borrowed under. Both halves are needed before anything is written: a
+// licence with no holder credits no one, and a holder with no licence says nothing about what
+// may be printed. Emptying either takes the credit away again.
+function Licence({ family, licence, onFontLicence }: { family: string; licence: ProjectCredit | undefined; onFontLicence: TemplateCanvasProps['onFontLicence'] }) {
+  const [what, setWhat] = useState(licence?.licence ?? '')
+  const [by, setBy] = useState(licence?.by ?? '')
+  const write = (nextWhat: string, nextBy: string) => {
+    const stated = nextWhat.trim() !== '' && nextBy.trim() !== ''
+    if (stated) {
+      if (nextWhat.trim() === licence?.licence && nextBy.trim() === licence.by) return
+      onFontLicence(family, { licence: nextWhat.trim(), by: nextBy.trim() })
+      return
+    }
+    if (licence) onFontLicence(family, null)
+  }
+  return (
+    <span className="byd-fonts-licence">
+      <input aria-label={`Licens för ${family}`} placeholder="Licens" value={what} onChange={(e) => setWhat(e.target.value)} onBlur={() => write(what, by)} />
+      <input aria-label={`Upphovsperson för ${family}`} placeholder="Upphovsperson" value={by} onChange={(e) => setBy(e.target.value)} onBlur={() => write(what, by)} />
+    </span>
   )
 }
 
@@ -405,7 +488,7 @@ function isTyping(target: EventTarget | null): boolean {
   return target.tagName === 'TEXTAREA' || target.tagName === 'SELECT'
 }
 
-function Properties({ el, fields, onPatch }: { el: Element; fields: string[]; onPatch(patch: Partial<Element>): void }) {
+function Properties({ el, fields, fonts, onPatch }: { el: Element; fields: string[]; fonts: string[]; onPatch(patch: Partial<Element>): void }) {
   const num = (label: string, key: 'x' | 'y' | 'w' | 'h') =>
     key in el ? (
       <label>
@@ -435,6 +518,19 @@ function Properties({ el, fields, onPatch }: { el: Element; fields: string[]; on
       )}
       {el.kind === 'text' && (
         <>
+          <label>
+            {/* The families the project names, and the one this element is already set in even
+                when the project has forgotten it — an element is never moved to another type
+                behind the designer's back. */}
+            Typsnitt
+            <select value={el.font.family} onChange={(e) => onPatch({ font: { ...el.font, family: e.target.value } })}>
+              {[...new Set([...fonts, el.font.family])].map((f) => (
+                <option key={f} value={f}>
+                  {f}
+                </option>
+              ))}
+            </select>
+          </label>
           <label>
             Storlek (pt)
             <input type="number" step={0.5} value={el.font.sizePt} onChange={(e) => onPatch({ font: { ...el.font, sizePt: Number(e.target.value) } })} />

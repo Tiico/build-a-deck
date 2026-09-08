@@ -191,3 +191,49 @@ describe('pips (L2 addendum)', () => {
     expect(named.html).not.toContain('byd-pip')
   })
 })
+
+describe('the fonts a version is pinned to (B3)', () => {
+  const face = (family: string) => ({
+    base: [{ kind: 'text' as const, id: 'title', x: 5, y: 5, w: 50, h: 10, bind: { literal: 'Drake' }, font: { family, sizePt: 12 }, color: '#111' }],
+    variants: {},
+  })
+
+  it('writes a font the project carries as a face of its own, so the file is what renders', () => {
+    const out = compile({
+      type: CARD_STANDARD_63x88,
+      face: face('Rubrik'),
+      row: {},
+      icons: {},
+      fonts: { Rubrik: { stack: '"Rubrik", Georgia, serif', src: 'data:font/woff2;base64,AAA' } },
+    })
+    expect(out.css).toContain('@font-face')
+    expect(out.css).toContain('font-family:"Rubrik"')
+    expect(out.css).toContain('data:font/woff2;base64,AAA')
+    // The element uses the stack the project named, not the bare name.
+    expect(out.css).toContain('font-family:"Rubrik", Georgia, serif')
+  })
+
+  it('leaves a family the project does not name as the stack it is, so older templates are untouched', () => {
+    const out = compile({ type: CARD_STANDARD_63x88, face: face('Georgia, serif'), row: {}, icons: {} })
+    expect(out.css).not.toContain('@font-face')
+    expect(out.css).toContain('font-family:Georgia, serif')
+  })
+
+  it('writes each face once however many elements use it', () => {
+    const two = {
+      base: [
+        { kind: 'text' as const, id: 'title', x: 5, y: 5, w: 50, h: 10, bind: { literal: 'Drake' }, font: { family: 'Rubrik', sizePt: 12 }, color: '#111' },
+        { kind: 'text' as const, id: 'body', x: 5, y: 20, w: 50, h: 30, bind: { literal: 'Flygande.' }, font: { family: 'Rubrik', sizePt: 9 }, color: '#111' },
+      ],
+      variants: {},
+    }
+    const out = compile({ type: CARD_STANDARD_63x88, face: two, row: {}, icons: {}, fonts: { Rubrik: { stack: '"Rubrik", serif', src: 'data:font/woff2;base64,AAA' } } })
+    expect(out.css.match(/@font-face/g)).toHaveLength(1)
+  })
+
+  it('uses a project font that has no file as the stack it stands for, and says nothing of a face', () => {
+    const out = compile({ type: CARD_STANDARD_63x88, face: face('Brödtext'), row: {}, icons: {}, fonts: { 'Brödtext': { stack: 'Georgia, serif' } } })
+    expect(out.css).not.toContain('@font-face')
+    expect(out.css).toContain('font-family:Georgia, serif')
+  })
+})

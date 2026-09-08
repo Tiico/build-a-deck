@@ -155,6 +155,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
           client.removeElement(face, id, group)
           setElement(null)
         }}
+        onFontFile={(file) => client.useFont(file)}
+        onFontLicence={(family, licence) => client.setFontLicence(family, licence)}
+        onRemoveFont={(family) => client.removeFont(family)}
         group={group}
         onSelectGroup={setGroup}
         onGroupColumn={(column) => {

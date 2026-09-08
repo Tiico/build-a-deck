@@ -287,6 +287,36 @@ describe('symbols (E4)', () => {
   })
 })
 
+describe('the type the game is set in (B3)', () => {
+  it('takes a font file into the project, names the family from the file, and keeps the licence the designer states', async () => {
+    const created = await run.projects.create('p1', projectDoc())
+    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    const file = new File([new Uint8Array([119, 79, 70, 50, 0, 1, 0, 0])], 'Rubrikserif.woff2', { type: 'font/woff2' })
+
+    const family = await client.useFont(file)
+    expect(family).toBe('Rubrikserif')
+    expect(client.doc.fonts?.[family]?.asset).toMatch(/^asset:[0-9a-f]{64}$/)
+    // The family is written first and a generic stack behind it, so a card still reads if the
+    // file ever fails to load.
+    expect(client.doc.fonts?.[family]?.stack).toBe('"Rubrikserif", sans-serif')
+    // Nothing about a file says what it is licensed under; only the designer does.
+    expect(client.doc.fonts?.[family]?.licence).toBeUndefined()
+    client.setFontLicence(family, { licence: 'OFL-1.1', by: 'Typverket', source: 'Rubrikserif.woff2' })
+    expect(client.doc.fonts?.[family]?.licence).toEqual({ licence: 'OFL-1.1', by: 'Typverket', source: 'Rubrikserif.woff2' })
+
+    // The same file again is the same family, not a second one beside it.
+    expect(await client.useFont(file)).toBe('Rubrikserif')
+    expect(Object.keys(client.doc.fonts ?? {})).toEqual(['sans-serif', 'system-ui', 'Rubrikserif'])
+
+    expect(await client.save()).toEqual({ ok: true, rev: 2 })
+    const stored = await run.projects.load('p1')
+    expect(stored?.fonts?.['Rubrikserif']?.licence?.by).toBe('Typverket')
+
+    client.removeFont(family)
+    expect(client.doc.fonts?.[family]).toBeUndefined()
+  })
+})
+
 describe('the history (B4)', () => {
   it('lists the versions, opens an older one, names it, and brings it back as a new version', async () => {
     const created = await run.projects.create('p1', projectDoc())

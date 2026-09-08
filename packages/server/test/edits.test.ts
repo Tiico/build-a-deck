@@ -87,6 +87,20 @@ describe('an edit is a thing that happened to the project (D3)', () => {
     expect(applyEdit(doc, { v: 'removeIcon', name: 'försvar' }).icons).toEqual({})
   })
 
+  it('pins the type the game is set in, licence and all, and lets one go again (B3)', () => {
+    const doc = after(
+      base(),
+      { v: 'setFont', family: 'Rubrik', font: { stack: '"Rubrik", Georgia, serif', asset: 'asset:abc', licence: { licence: 'OFL-1.1', by: 'Typverket', source: 'rubrik.woff2' } } },
+      { v: 'setFont', family: 'Brödtext', font: { stack: 'Georgia, serif' } },
+    )
+    expect(doc.fonts?.['Rubrik']?.asset).toBe('asset:abc')
+    expect(doc.fonts?.['Rubrik']?.licence?.licence).toBe('OFL-1.1')
+    // Naming the same family again replaces it: a file swapped for a better one is one entry.
+    const swapped = applyEdit(doc, { v: 'setFont', family: 'Rubrik', font: { stack: '"Rubrik", Georgia, serif', asset: 'asset:def' } })
+    expect(swapped.fonts?.['Rubrik']).toEqual({ stack: '"Rubrik", Georgia, serif', asset: 'asset:def' })
+    expect(Object.keys(applyEdit(doc, { v: 'removeFont', family: 'Rubrik' }).fonts ?? {})).toEqual(['Brödtext'])
+  })
+
   it('refuses an edit that names something the project does not have, rather than writing nonsense', () => {
     expect(() => applyEdit(base(), { v: 'setCell', cardRef: 'ingen', field: 'title', value: 'x' })).toThrow(/ingen/)
     expect(() => applyEdit(base(), { v: 'addRow', cardRef: 'dragon', fields: {} })).toThrow(/dragon/)

@@ -22,6 +22,9 @@ function canvas(over: Partial<TemplateCanvasProps> = {}) {
     onRemove: vi.fn(),
     onAdd: vi.fn(),
     onReorder: vi.fn(),
+    onFontFile: async () => 'Typsnitt',
+    onFontLicence: vi.fn(),
+    onRemoveFont: vi.fn(),
     ...over,
   }
   render(<TemplateCanvas {...props} />)

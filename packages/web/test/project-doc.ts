@@ -28,6 +28,12 @@ export function projectDoc(): ProjectDoc {
       { id: 'wizard', fields: { title: 'Trollkarl', body: 'Dra ett kort.', antal: 1 } },
     ],
     icons: {},
+    // The fixture pins its font (B3), so a test about contrast or bleed is not also a test
+    // about a font that does not travel with the game.
+    fonts: {
+      'sans-serif': { stack: 'sans-serif', asset: `asset:${'a'.repeat(64)}` },
+      'system-ui': { stack: 'system-ui', asset: `asset:${'b'.repeat(64)}` },
+    },
     setup: { zones, seats, floor, deckZone: 'draw' },
   }
 }

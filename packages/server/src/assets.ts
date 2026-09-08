@@ -92,6 +92,22 @@ async function dataUrlOf(hash: string, assets: AssetStore): Promise<string> {
   return got ? `data:${got.contentType};base64,${Buffer.from(got.bytes).toString('base64')}` : ''
 }
 
+// The fonts as the compiler needs them (B3): a project font that carries a file is handed over
+// with the file inlined, so the compiled page renders from what the version pinned rather than
+// from whatever the machine happens to have. A font that is only a stack is passed as it is.
+export async function resolveFonts(fonts: Record<string, { stack: string; asset?: string | undefined }>, assets: AssetStore): Promise<Record<string, { stack: string; src?: string }>> {
+  const out: Record<string, { stack: string; src?: string }> = {}
+  for (const [name, font] of Object.entries(fonts)) {
+    if (!isAssetRef(font.asset)) {
+      out[name] = { stack: font.stack }
+      continue
+    }
+    const src = await dataUrlOf(font.asset.slice(ASSET_PREFIX.length), assets)
+    out[name] = src ? { stack: font.stack, src } : { stack: font.stack }
+  }
+  return out
+}
+
 // The rows as the compiler needs them: every asset reference swapped for a data URL, so the
 // compiled page carries its images and the render worker needs nothing but the page. An asset
 // that is gone leaves the field empty rather than a broken reference on the card.

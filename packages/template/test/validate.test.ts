@@ -17,7 +17,9 @@ const text = (over: Partial<Extract<Element, { kind: 'text' }>> = {}): Element =
   ...over,
 })
 const bg = (over: Partial<Extract<Element, { kind: 'shape' }>> = {}): Element => ({ kind: 'shape', id: 'bg', x: -3, y: -3, w: 69, h: 94, shape: 'rect', fill: '#f4ead8', ...over })
-const check = (base: Element[], row = {}): Issue[] => validateCard({ type: CARD_STANDARD_63x88, face: face(base), row })
+// Every check but the font one is about something else, so the deck's font is pinned here (B3).
+const PINNED = { 'system-ui': { stack: 'system-ui', asset: 'asset:abc' }, 'Georgia, serif': { stack: 'Georgia, serif', asset: 'asset:def' } }
+const check = (base: Element[], row = {}): Issue[] => validateCard({ type: CARD_STANDARD_63x88, face: face(base), row, fonts: PINNED })
 const codes = (issues: Issue[]) => issues.map((i) => `${i.code}:${i.severity}`)
 
 describe('physical validation (E5): what looks fine on a screen and fails in the hand', () => {
@@ -78,5 +80,27 @@ describe('physical validation (E5): what looks fine on a screen and fails in the
     const hidden: Element = { kind: 'if', id: 'maybe', when: { field: 'sällsynt', nonEmpty: true }, children: [text({ id: 'rare', font: { family: 'system-ui', sizePt: 4 } })] }
     expect(check([bg(), text(), hidden])).toEqual([])
     expect(codes(check([bg(), text(), hidden], { 'sällsynt': 'ja' }))).toEqual(['text-too-small:error'])
+  })
+})
+
+describe('a font the version is not pinned to (B3, E5)', () => {
+  const withFont = (family: string): Element[] => [bg(), text({ font: { family, sizePt: 10 } })]
+
+  it('warns when what renders is whatever the machine has, and says nothing when the file is carried', () => {
+    const loose = validateCard({ type: CARD_STANDARD_63x88, face: face(withFont('Georgia, serif')), row: {} })
+    expect(loose.map((i) => `${i.code}:${i.severity}`)).toEqual(['unpinned-font:warning'])
+    expect(loose[0]?.detail).toContain('Georgia, serif')
+
+    const pinned = validateCard({
+      type: CARD_STANDARD_63x88,
+      face: face(withFont('Rubrik')),
+      row: {},
+      fonts: { Rubrik: { stack: '"Rubrik", serif', asset: 'asset:abc' } },
+    })
+    expect(pinned).toEqual([])
+
+    // A project font that names a stack and carries no file is still whatever the machine has.
+    const named = validateCard({ type: CARD_STANDARD_63x88, face: face(withFont('Brödtext')), row: {}, fonts: { 'Brödtext': { stack: 'Georgia, serif' } } })
+    expect(named.map((i) => i.code)).toEqual(['unpinned-font'])
   })
 })

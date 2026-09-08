@@ -11,6 +11,10 @@ export type CompileInput = {
   row: Row
   // Project icon set (L2): name → URL. Unknown names render as a visible warning.
   icons: Record<string, string>
+  // The fonts this version is pinned to (B3): a family the project names is written as a face
+  // of its own when it carries a file, so what renders is the file and not whatever the machine
+  // happens to have. A family the project does not name is used as the CSS stack it already is.
+  fonts?: Record<string, { stack: string; src?: string }>
   // Print: extend the card by the type's bleed on every side and shift content accordingly.
   bleed?: boolean
   // Text measurement (E6). Defaults to a glyph-width estimate; inject Chromium to measure for real.
@@ -32,6 +36,12 @@ export function compile(input: CompileInput): Compiled {
   css.push(`[data-card]{position:relative;width:${physical.widthMm + 2 * bleed}mm;height:${physical.heightMm + 2 * bleed}mm;overflow:hidden;}`)
   css.push(`[data-element]{position:absolute;box-sizing:border-box;margin:0;overflow:hidden;}`)
   css.push(`[data-element] p{margin:0;}[data-element] p+p{margin-top:0.5em;}`)
+  // The faces first, since a rule cannot use a font that has not been declared.
+  for (const [name, font] of Object.entries(input.fonts ?? {})) {
+    if (!font.src) continue
+    if (!usesFont(input.face, name)) continue
+    rules.push(`@font-face{font-family:"${attr(name)}";src:url("${attr(font.src)}");font-display:block;}`)
+  }
   css.push(`.byd-icon{height:1em;width:auto;vertical-align:-0.15em;}`)
   css.push(`.byd-icon-missing{color:#c00;background:#fee;font-weight:700;}`)
   css.push(`.byd-pip{display:inline-block;min-width:1.15em;height:1.15em;line-height:1.15em;border-radius:50%;text-align:center;font-weight:700;font-size:0.85em;border:0.12em solid currentColor;vertical-align:-0.15em;padding:0 0.1em;box-sizing:border-box;}`)
@@ -63,7 +73,7 @@ function render(el: Element, dx: number, dy: number, input: CompileInput, html: 
       }
       css.push(
         `[data-element="${attr(el.id)}"]{left:${el.x + dx}mm;top:${el.y + dy}mm;width:${el.w}mm;height:${el.h}mm;font-size:${fit.sizePt}pt;` +
-          `font-family:${f.family};font-weight:${f.weight ?? 400};text-align:${f.align ?? 'left'};line-height:${f.lineHeight ?? 1.25};color:${el.color};}`,
+          `font-family:${familyOf(f.family, input.fonts)};font-weight:${f.weight ?? 400};text-align:${f.align ?? 'left'};line-height:${f.lineHeight ?? 1.25};color:${el.color};}`,
       )
       html.push(
         `<div data-element="${attr(el.id)}" data-fit="${el.fit ?? 'shrink'}" data-size-pt="${f.sizePt}" data-min-pt="${minPt}">` +
@@ -116,6 +126,18 @@ function holds(when: Condition, row: Row): boolean {
 // The variant a row asks for (L3): base elements, with the variant's overrides replacing
 // elements of the same id in place and its removals taken out. A value with no variant of
 // that name is the base look — most cards are base, and a warning on each would be noise.
+// What a family name stands for: the stack the project pinned, or the family as written.
+function familyOf(family: string, fonts: CompileInput['fonts']): string {
+  return fonts?.[family]?.stack ?? family
+}
+
+// Whether any element of the face asks for this family, so an unused file is never carried.
+function usesFont(face: FaceTemplate, family: string): boolean {
+  const walk = (els: readonly Element[]): boolean =>
+    els.some((el) => ('font' in el && el.font.family === family) || ((el.kind === 'if' || el.kind === 'group') && walk(el.children)))
+  return walk(face.base) || Object.values(face.variants).some((v) => walk(v.override ?? []))
+}
+
 export function elementsFor(face: FaceTemplate, row: Row): Element[] {
   const name = face.variantBy ? row[face.variantBy] : undefined
   if (name === undefined || name === null || name === '') return face.base
@@ -183,7 +205,7 @@ export function compileCard(input: CompileCardInput): Record<string, Compiled> {
   for (const faceId of input.type.faces) {
     const face = input.template.faces[faceId]
     if (!face) throw new Error(`template has no face "${faceId}", which ${input.type.id} requires`)
-    out[faceId] = compile({ type: input.type, row: input.row, icons: input.icons, face, ...(input.bleed !== undefined ? { bleed: input.bleed } : {}), ...(input.measure ? { measure: input.measure } : {}) })
+    out[faceId] = compile({ type: input.type, row: input.row, icons: input.icons, face, ...(input.fonts ? { fonts: input.fonts } : {}), ...(input.bleed !== undefined ? { bleed: input.bleed } : {}), ...(input.measure ? { measure: input.measure } : {}) })
   }
   return out
 }

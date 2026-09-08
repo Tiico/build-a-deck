@@ -318,6 +318,20 @@
 .byd-props label { display: grid; gap: 3px; font-size: 11px; color: #9aa3b8; }
 .byd-props input, .byd-props select { background: #0f1115; border: 1px solid #2a2d36; color: #fff; border-radius: 6px; padding: 6px 8px; font-size: 13px; width: 100%; box-sizing: border-box; }
 
+/* The fonts the game carries (B3): under the properties, because that is where a family is
+   chosen. Each row says whether the file travels to the printer and under what licence. */
+.byd-fonts { margin-top: 18px; border-top: 1px solid #2f333d; padding-top: 12px; }
+.byd-fonts ul { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 10px; }
+.byd-fonts li { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: baseline; }
+.byd-fonts-name { font-size: 14px; color: #dce3f2; overflow: hidden; text-overflow: ellipsis; }
+.byd-fonts li small { grid-column: 1 / -1; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--byd-editor-hint-ink); }
+.byd-fonts-licence { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.byd-fonts-licence input { background: #0f1115; border: 1px solid #2a2d36; color: #fff; border-radius: 6px; padding: 5px 7px; font-size: 12px; width: 100%; box-sizing: border-box; }
+.byd-fonts li > button { justify-self: end; border: 1px solid #3b414e; border-radius: 6px; background: #1b1d23; color: #9aa3b8; font-size: 11px; padding: 3px 8px; cursor: pointer; }
+.byd-fonts-upload { position: relative; overflow: hidden; display: inline-block; border: 1px solid #3b414e; border-radius: 8px; padding: 7px 11px; background: #1b1d23; color: #dce3f2; font-size: 12px; font-weight: 700; cursor: pointer; }
+.byd-fonts-upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.byd-fonts [role='alert'] { margin: 8px 0 0; font-size: 11px; color: #f0b64a; }
+
 /* Table */
 .byd-table-wrap { padding: 16px; }
 .byd-data-tools { margin-bottom: 12px; display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }

@@ -27,6 +27,23 @@ function watcher(id = 'w', name = 'Ada') {
   return { id, name, seen, send }
 }
 
+describe('the document the actor hands out', () => {
+  it('carries every field the project has, so nothing a project gained later is dropped on the way (B3)', async () => {
+    const store = new MemoryProjectStore()
+    await store.create('p1', { ...doc(), fonts: { Rubrik: { stack: '"Rubrik", serif', asset: `asset:${'a'.repeat(64)}` } } }, 'ada')
+    const actor = (await ProjectActor.load('p1', store))!
+    let handed: ProjectDoc | null = null
+    actor.subscribe({ id: 'w', name: 'Ada', send: (m: EditorMessage) => m.v === 'project' && (handed = m.doc) })
+    expect(handed).not.toBeNull()
+    expect((handed as unknown as ProjectDoc).fonts?.['Rubrik']?.asset).toBe(`asset:${'a'.repeat(64)}`)
+
+    // And saving what it holds keeps them: a version is what the designer had, not a subset.
+    await actor.edit({ v: 'rename', name: 'Skogens herrar II' }, 'ada')
+    await actor.save()
+    expect((await store.load('p1'))?.fonts?.['Rubrik']?.stack).toBe('"Rubrik", serif')
+  })
+})
+
 describe('one actor owns one project (D3)', () => {
   it('commits an edit to the log before applying it, and hands the same document to everyone', async () => {
     const store = new MemoryProjectStore()

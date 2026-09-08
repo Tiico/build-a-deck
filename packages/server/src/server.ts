@@ -22,7 +22,7 @@ import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountO
 import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
 import { canDelete, canEdit, canRead, canShare, canStartTables, INVITE_TTL_MS, roleWord, ROLES, type Role } from './roles.js'
 import { facesOf, printExportOf } from './faces.js'
-import { resolveAssets, resolveIcons, type AssetStore } from './assets.js'
+import { resolveAssets, resolveFonts, resolveIcons, type AssetStore } from './assets.js'
 import { TEXTURE_DPI } from './actor.js'
 
 // `staticDir`: the built web app, served from the same origin as the API (README, DRIFT §1).
@@ -589,7 +589,8 @@ async function attach(opts: ServerOptions, req: IncomingMessage, ws: WebSocket, 
 // so the compiled page is complete and the render worker needs nothing but the page.
 async function deckOf(opts: ServerOptions, rec: ProjectRecord): Promise<Deck> {
   if (!opts.assets) return deckFromProject(rec)
-  return deckFromProject({ ...rec, rows: await resolveAssets(rec.rows, opts.assets), icons: await resolveIcons(rec.icons, opts.assets) })
+  const doc = deckFromProject({ ...rec, rows: await resolveAssets(rec.rows, opts.assets), icons: await resolveIcons(rec.icons, opts.assets) })
+  return { ...doc, fonts: await resolveFonts(rec.fonts ?? {}, opts.assets) }
 }
 
 // Every card of the project through the physical checks (E5), once per face, named by the card
@@ -600,18 +601,25 @@ function checkedCards(rec: ProjectRecord, registry: TypeRegistry): (Issue & { ca
   const out: (Issue & { cardRef: string; face: string })[] = []
   for (const row of rec.rows) {
     for (const [face, template] of Object.entries(rec.template.faces)) {
-      for (const issue of validateCard({ type, face: template, row: row.fields })) out.push({ ...issue, cardRef: row.id, face })
+      for (const issue of validateCard({ type, face: template, row: row.fields, ...(rec.fonts ? { fonts: rec.fonts } : {}) })) out.push({ ...issue, cardRef: row.id, face })
     }
   }
   return out
 }
 
-// The project's credits as a list, in the icon set's order: what a print order carries (E4).
+// The project's credits as a list: the symbols first, in the icon set's order, then the
+// typefaces the version is pinned to (B3). Both are borrowed under a licence, and both travel
+// with a print order (E4).
 function creditsOf(rec: ProjectRecord): (ProjectCredit & { name: string })[] {
-  return Object.entries(rec.credits ?? {}).map(([name, c]) => ({ name, ...c }))
+  const icons = Object.entries(rec.credits ?? {}).map(([name, c]) => ({ name, ...c }))
+  const fonts = Object.entries(rec.fonts ?? {}).flatMap(([name, f]) => (f.licence ? [{ name, ...f.licence }] : []))
+  return [...icons, ...fonts]
 }
 
-const ASSET_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/svg+xml'])
+// What a project may carry: the pictures a card is drawn from (E1) and the type it is set in
+// (B3). The font formats are the ones Chromium loads from a `@font-face`, so a file that is
+// taken here is a file the renderer can honour.
+const ASSET_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/svg+xml', 'font/woff2', 'font/woff', 'font/ttf', 'font/otf'])
 const ASSET_MAX_BYTES = 8 * 1024 * 1024
 const ASSET_LINK_TTL_S = 3600
 
@@ -626,7 +634,7 @@ async function routeAssets(opts: ServerOptions, assets: AssetStore, req: Incomin
     }
     const contentType = (req.headers['content-type'] ?? '').split(';')[0]?.trim() ?? ''
     if (!ASSET_TYPES.has(contentType)) {
-      json(res, 415, { error: 'not an image' })
+      json(res, 415, { error: 'not an image or a font' })
       return true
     }
     const bytes = await readBytes(req, ASSET_MAX_BYTES)

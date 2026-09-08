@@ -7,10 +7,12 @@ import type { Element, FaceTemplate, Row } from './model.js'
 // arm's length is five points in the hand; two effect colours that differ only in red and green
 // are one colour to eight percent of the men at the table; a background drawn to the trim leaves
 // a white edge when the knife wanders. Warnings belong in the editor, errors block an order.
-export type IssueCode = 'text-too-small' | 'low-contrast' | 'outside-safe-area' | 'short-of-bleed' | 'hairline' | 'colour-only'
+export type IssueCode = 'text-too-small' | 'low-contrast' | 'outside-safe-area' | 'short-of-bleed' | 'hairline' | 'colour-only' | 'unpinned-font'
 export type Severity = 'warning' | 'error'
 export type Issue = { element: string; code: IssueCode; severity: Severity; detail: string }
-export type ValidateInput = { type: ComponentTypeDef; face: FaceTemplate; row: Row }
+// `fonts` is what the version is pinned to (B3): a family without a file of its own renders as
+// whatever the machine happens to have, which is a difference nobody sees until the print.
+export type ValidateInput = { type: ComponentTypeDef; face: FaceTemplate; row: Row; fonts?: Record<string, { stack: string; asset?: string | undefined }> }
 
 // Text below the type's own minimum for the script cannot be read; a little above it is a risk.
 const SMALL_TEXT_FACTOR = 1.35
@@ -29,7 +31,7 @@ const SWEDISH: Record<Blindness, string> = { protanopia: 'protanopi', deuteranop
 
 type Box = { id: string; x: number; y: number; w: number; h: number; el: Element }
 
-export function validateCard({ type, face, row }: ValidateInput): Issue[] {
+export function validateCard({ type, face, row, fonts }: ValidateInput): Issue[] {
   const issues: Issue[] = []
   const boxes = flatten(elementsFor(face, row), 0, 0, row)
   const { widthMm, heightMm } = type.physical
@@ -67,6 +69,18 @@ export function validateCard({ type, face, row }: ValidateInput): Issue[] {
       else if (el.strokeMm < HAIRLINE_WARNING_MM) issues.push({ element: el.id, code: 'hairline', severity: 'warning', detail: `linjen är ${el.strokeMm} mm och kan bli ojämn under ${HAIRLINE_WARNING_MM} mm` })
     }
   }
+
+  // A font the version does not carry is whatever the machine has (B3). It is said once per
+  // card with every family it is true of: forty elements in the same font are one mistake.
+  const loose = [...new Set(boxes.flatMap((b) => (b.el.kind === 'text' && !fonts?.[b.el.font.family]?.asset ? [b.el.font.family] : [])))]
+  const first = boxes.find((b) => b.el.kind === 'text' && loose.includes(b.el.font.family))
+  if (loose.length > 0 && first)
+    issues.push({
+      element: first.id,
+      code: 'unpinned-font',
+      severity: 'warning',
+      detail: `${loose.join(', ')} följer inte med spelet: trycket kan bli ett annat typsnitt än det du ser`,
+    })
 
   issues.push(...colourOnly(boxes))
   return issues

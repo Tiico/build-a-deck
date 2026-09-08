@@ -105,7 +105,7 @@ Målet är att designern aldrig behöver ett annat verktyg för att göra leken.
 - ✅ Versionering: oföränderlig historik, namngivna milstolpar, diff i korttabellen och att ta tillbaka en äldre version (B4).
 - ✅ Regelboken: versionerat dokument med referenser till zoner och kort, skrivet i fliken "Regler", läst vid bordet och på telefonen, och tryckt som häfte i A5 genom samma renderare som korten (B7).
 - ✅ Samredigering: en aktör per projekt med en redigeringslogg, live över `/projects/:id/edit`, med närvaro, roller, inbjudningar och återuppkoppling (D3).
-- ⬜ Typsnitt: val av font i mallen, med fontfiler som bevaras per version (B3) — kolliderar med fontlicensieringen (I).
+- ✅ Typsnitt: familjen väljs i mallens egenskapspanel, filen laddas upp som projektets asset och pinnas av versionen, licensen anges bredvid familjen och följer med till trycket, och en familj utan fil är ett varsel i den fysiska kontrollen (B3, E5) — licensfrågan i (I) står kvar, verktyget levererar inga egna fontfiler.
 - ⬜ Flerspråkighet i verktyget: i18n-infrastruktur, engelska och svenska (A4).
 - ✅ "Mina spel" med senast spelat, starta bord direkt från kortet och ta bort spel med hela dess historia (G1).
 

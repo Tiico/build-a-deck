@@ -54,6 +54,12 @@ export const RuleDoc = z.object({ title: z.string(), blocks: z.array(RuleBlock) 
 export type RuleDoc = z.infer<typeof RuleDoc>
 export type RuleBlock = RuleDoc['blocks'][number]
 
+// A font the version is pinned to (B3). `stack` is what the CSS says; `asset` is the file the
+// project carries, so a locked version renders the same tomorrow as it did when it was tested.
+// A font without a file is whatever the machine has, which is a warning at print time (E5).
+export const ProjectFont = z.object({ stack: z.string().min(1), asset: z.string().optional(), licence: ProjectCredit.optional() })
+export type ProjectFont = z.infer<typeof ProjectFont>
+
 export const ProjectDoc = z.object({
   name: z.string().min(1),
   template: Template,
@@ -61,6 +67,7 @@ export const ProjectDoc = z.object({
   icons: z.record(z.string(), z.string()),
   credits: z.record(z.string(), ProjectCredit).optional(),
   rules: RuleDoc.optional(),
+  fonts: z.record(z.string(), ProjectFont).optional(),
   setup: ProjectSetup,
 })
 export type ProjectDoc = z.infer<typeof ProjectDoc>
@@ -256,5 +263,5 @@ export function setupFromProject(doc: ProjectDoc): SetupDef {
 export function deckFromProject(doc: ProjectDoc): Deck {
   const rows: Record<string, Row> = {}
   for (const { id, fields } of doc.rows) rows[id] = fields
-  return { template: doc.template, rows, icons: doc.icons }
+  return { template: doc.template, rows, icons: doc.icons, ...(doc.fonts ? { fonts: doc.fonts } : {}) }
 }

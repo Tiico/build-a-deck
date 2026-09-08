@@ -10,6 +10,10 @@ export default tseslint.config(
   {
     rules: {
       '@typescript-eslint/consistent-type-definitions': ['error', 'type'],
+      // Leaving fields out by destructuring the rest is how a record becomes the document it
+      // wraps; the names left behind are the point, not an oversight. This is the base rule's
+      // own default, which the TypeScript rule does not carry over.
+      '@typescript-eslint/no-unused-vars': ['error', { ignoreRestSiblings: true }],
     },
   },
   {

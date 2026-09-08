@@ -11,7 +11,7 @@ describe('TemplateCanvas (A as the template mode)', () => {
     const doc = projectDoc()
     const onSelectElement = vi.fn()
     const onPatch = vi.fn()
-    render(<TemplateCanvas doc={doc} face="front" row="dragon" selectedElement="title" onSelectElement={onSelectElement} onPatch={onPatch} onRemove={vi.fn()} onAdd={vi.fn()} onReorder={vi.fn()} onSelectFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onReset={vi.fn()} />)
+    render(<TemplateCanvas doc={doc} face="front" row="dragon" selectedElement="title" onSelectElement={onSelectElement} onPatch={onPatch} onRemove={vi.fn()} onAdd={vi.fn()} onReorder={vi.fn()} onSelectFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onReset={vi.fn()} onFontFile={async () => 'Typsnitt'} onFontLicence={vi.fn()} onRemoveFont={vi.fn()} />)
 
     const layers = within(screen.getByRole('listbox', { name: /lager/i })).getAllByRole('option')
     expect(layers.map((l) => l.getAttribute('data-layer'))).toEqual(['body', 'title', 'frame'])
@@ -38,7 +38,7 @@ describe('the layer list by keyboard (UX-04)', () => {
   it('is a single-select listbox: every layer says its type and name, and the selection follows focus', async () => {
     const user = userEvent.setup()
     const onSelectElement = vi.fn()
-    render(<TemplateCanvas doc={projectDoc()} face="front" row="dragon" selectedElement="title" onSelectElement={onSelectElement} onPatch={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onReorder={vi.fn()} onSelectFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onReset={vi.fn()} />)
+    render(<TemplateCanvas doc={projectDoc()} face="front" row="dragon" selectedElement="title" onSelectElement={onSelectElement} onPatch={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onReorder={vi.fn()} onSelectFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onReset={vi.fn()} onFontFile={async () => 'Typsnitt'} onFontLicence={vi.fn()} onRemoveFont={vi.fn()} />)
 
     const list = screen.getByRole('listbox', { name: /lager/i })
     const layers = within(list).getAllByRole('option')
@@ -66,7 +66,7 @@ describe('the layer list while the template changes under the keyboard (UX-04)',
   it('keeps focus on the layer being moved, leaves it alone when one is added, and hands it to a neighbour when it is removed', async () => {
     const user = userEvent.setup()
     const onSelectElement = vi.fn()
-    const canvas = (doc: ProjectDoc) => <TemplateCanvas doc={doc} face="front" row="dragon" selectedElement="title" onSelectElement={onSelectElement} onPatch={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onReorder={vi.fn()} onSelectFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onReset={vi.fn()} />
+    const canvas = (doc: ProjectDoc) => <TemplateCanvas doc={doc} face="front" row="dragon" selectedElement="title" onSelectElement={onSelectElement} onPatch={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onReorder={vi.fn()} onSelectFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onReset={vi.fn()} onFontFile={async () => 'Typsnitt'} onFontLicence={vi.fn()} onRemoveFont={vi.fn()} />
     const { rerender } = render(canvas(structuredClone(projectDoc())))
     // The property panel has `option` elements of its own, so the layers are read inside the list.
     const list = () => within(screen.getByRole('listbox', { name: /lager/i }))

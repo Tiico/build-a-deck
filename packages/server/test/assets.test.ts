@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { MemoryObjectStore } from '@byd/render'
-import { MemoryAssetStore, assetHash, resolveAssets, resolveIcons } from '../src/assets.js'
+import { MemoryAssetStore, assetHash, resolveAssets, resolveFonts, resolveIcons } from '../src/assets.js'
 import { start, twoSeatSetup, type Running } from './fixture.js'
 import { template } from './deck.js'
 
@@ -63,6 +63,20 @@ describe('assets over HTTP', () => {
     expect((await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'text/html', cookie }, body: '<b>' })).status).toBe(415)
   })
 
+  it('takes a font file as an asset too, so a version can pin the type it was drawn in (B3)', async () => {
+    const woff2 = new Uint8Array([119, 79, 70, 50, 0, 1, 0, 0])
+    const res = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'font/woff2', cookie }, body: woff2 })
+    expect(res.status).toBe(201)
+    const { hash } = (await res.json()) as { hash: string }
+    const got = await fetch(`${run.http}/assets/${hash}`)
+    expect(got.headers.get('content-type')).toBe('font/woff2')
+    // The formats Chromium can draw from a @font-face, and nothing else.
+    for (const type of ['font/woff', 'font/ttf', 'font/otf']) {
+      expect((await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': type, cookie }, body: woff2 })).status).toBe(201)
+    }
+    expect((await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'application/x-font-eot', cookie }, body: woff2 })).status).toBe(415)
+  })
+
   it('compiles a card whose row points at an asset with the image inlined, so the render worker needs nothing but the page', async () => {
     const up = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/png', cookie }, body: PNG })
     const { hash } = (await up.json()) as { hash: string }
@@ -119,6 +133,7 @@ describe('symbols in a project (E4): the icon set is assets too, and the licence
       rows: [{ id: 'dragon', fields: { title: 'Drake', body: 'Sköld {sköld}.', antal: 1 } }],
       icons: { 'sköld': `asset:${hash}` },
       credits: { 'sköld': { licence: 'CC0-1.0', by: 'build-your-deck', source: 'skold' } },
+      fonts: { Rubrik: { stack: '"Rubrik", Georgia, serif', asset: 'asset:' + '0'.repeat(64), licence: { licence: 'OFL-1.1', by: 'Typverket', source: 'rubrik.woff2' } } },
       setup: { zones, seats, floor, deckZone: 'draw' },
     }
     const created = await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ id: 'p1', ...doc }) })
@@ -129,6 +144,28 @@ describe('symbols in a project (E4): the icon set is assets too, and the licence
     const printed = await fetch(`${run.http}/projects/p1/print`, { method: 'POST', headers: { cookie } })
     expect(printed.status).toBe(202)
     const body = (await printed.json()) as { credits: { name: string; licence: string; by: string }[] }
-    expect(body.credits).toEqual([{ name: 'sköld', licence: 'CC0-1.0', by: 'build-your-deck', source: 'skold' }])
+    // A typeface is borrowed under a licence exactly as a symbol is, so it travels with the
+    // print order too (B3, E4).
+    expect(body.credits).toEqual([
+      { name: 'sköld', licence: 'CC0-1.0', by: 'build-your-deck', source: 'skold' },
+      { name: 'Rubrik', licence: 'OFL-1.1', by: 'Typverket', source: 'rubrik.woff2' },
+    ])
+  })
+})
+
+describe('the fonts a version is pinned to (B3)', () => {
+  it('resolves a project font that carries a file, and leaves a stack alone', async () => {
+    const store = new MemoryAssetStore()
+    const bytes = new Uint8Array([119, 79, 70, 50])
+    const hash = await store.put(bytes, 'font/woff2')
+    const fonts = await resolveFonts(
+      {
+        Rubrik: { stack: '"Rubrik", Georgia, serif', asset: `asset:${hash}` },
+        'Brödtext': { stack: 'Georgia, serif' },
+      },
+      store,
+    )
+    expect(fonts['Rubrik']).toEqual({ stack: '"Rubrik", Georgia, serif', src: `data:font/woff2;base64,${Buffer.from(bytes).toString('base64')}` })
+    expect(fonts['Brödtext']).toEqual({ stack: 'Georgia, serif' })
   })
 })

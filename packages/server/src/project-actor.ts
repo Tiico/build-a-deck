@@ -113,16 +113,11 @@ export class ProjectActor {
 }
 
 // The document without the record's own fields: what an editor holds and an edit applies to.
+// Everything else is the document, whatever it has come to hold — naming the fields here is how
+// a project would quietly lose one that the schema gained later.
 function stripped(rec: ProjectDoc & { id: string; rev: number; owner?: string }): ProjectDoc {
-  return {
-    name: rec.name,
-    template: rec.template,
-    rows: rec.rows,
-    icons: rec.icons,
-    setup: rec.setup,
-    ...(rec.credits ? { credits: rec.credits } : {}),
-    ...(rec.rules ? { rules: rec.rules } : {}),
-  }
+  const { id, rev, owner, ...doc } = rec
+  return doc
 }
 
 // One actor per project, in this process, exactly as one actor per table (D2, D3).

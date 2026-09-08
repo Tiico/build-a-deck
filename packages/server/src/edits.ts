@@ -1,5 +1,5 @@
 import type { Element, FaceTemplate, Variant } from '@byd/template'
-import type { Cell, ProjectCredit, ProjectDoc, ProjectRow, RuleDoc } from './projects.js'
+import type { Cell, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc } from './projects.js'
 import { applyRecipe, point, rect, type Geometry, type Recipe, type Zone } from './recipe.js'
 
 // An edit is a thing that happened to a project (D3). A project is structurally the same as a
@@ -35,6 +35,10 @@ export type EditIntent =
   | { v: 'renameIcon'; from: string; to: string }
   | { v: 'removeIcon'; name: string }
   | { v: 'setRules'; rules: RuleDoc }
+  // The type the game is set in (B3). A family the project names carries the file it is drawn
+  // from, so a version prints as it was designed rather than as the printer's machine guesses.
+  | { v: 'setFont'; family: string; font: ProjectFont }
+  | { v: 'removeFont'; family: string }
   // Taking an older version back (B4) is an edit like any other: it lands in the log, everyone
   // with the project open sees it, and it becomes the next version when saved.
   | { v: 'restore'; doc: ProjectDoc }
@@ -183,6 +187,13 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       return { ...doc, icons: without(doc.icons, intent.name), credits: without(doc.credits ?? {}, intent.name) }
     case 'setRules':
       return { ...doc, rules: intent.rules }
+    // Naming a family again replaces it, so swapping the file for a better cut is one entry.
+    case 'setFont':
+      return { ...doc, fonts: { ...(doc.fonts ?? {}), [intent.family]: intent.font } }
+    // A family that goes is a family the cards fall back from: the name is then a CSS stack as
+    // written, which is what the unpinned-font warning is about (E5).
+    case 'removeFont':
+      return { ...doc, fonts: without(doc.fonts ?? {}, intent.family) }
     case 'restore':
       return intent.doc
   }

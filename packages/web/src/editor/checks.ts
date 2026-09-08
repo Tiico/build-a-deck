@@ -12,7 +12,7 @@ export function deckIssues(doc: ProjectDoc): Found[] {
   const found: Found[] = []
   for (const row of doc.rows) {
     for (const [face, template] of Object.entries(doc.template.faces)) {
-      for (const issue of validateCard({ type: CARD_STANDARD_63x88, face: template, row: row.fields })) found.push({ ...issue, cardRef: row.id, face })
+      for (const issue of validateCard({ type: CARD_STANDARD_63x88, face: template, row: row.fields, ...(doc.fonts ? { fonts: doc.fonts } : {}) })) found.push({ ...issue, cardRef: row.id, face })
     }
   }
   return found
@@ -43,6 +43,7 @@ export const ISSUE_WORDS: Record<IssueCode, string> = {
   'outside-safe-area': 'för nära kanten',
   'short-of-bleed': 'når inte utfallet',
   hairline: 'för tunn linje',
+  'unpinned-font': 'typsnitt som inte följer med',
   'colour-only': 'skiljs bara av färg',
 }
 export { CARD_STANDARD_63x88 }

@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react'
 import type { ProjectDoc } from '@byd/server'
 import type { Warning } from '@byd/template'
 import { CardPreview } from './CardPreview.js'
+import { previewFonts } from './fonts.js'
 import { deckIssues, groupIssues, ISSUE_WORDS } from './checks.js'
 
 export type DeckWallProps = {
@@ -90,6 +91,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
                 face={faceTemplate}
                 row={row}
                 icons={doc.icons}
+                fonts={previewFonts(doc, assetBase)}
                 scale={arm ? ARM_SCALE : scale}
                 assetBase={assetBase}
                 onSelectElement={onSelectElement}

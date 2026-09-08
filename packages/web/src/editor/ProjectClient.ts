@@ -1,4 +1,4 @@
-import type { ProjectDoc, ProjectRow, RuleDoc, VersionSummary } from '@byd/server'
+import type { ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc, VersionSummary } from '@byd/server'
 import type { DocDiff } from '@byd/server/doc'
 import type { Element } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
@@ -76,8 +76,10 @@ export class ProjectClient {
     if (res.status === 404) throw new Error(`unknown project ${opts.id}`)
     if (!res.ok) throw new Error(`could not load project: ${res.status}`)
     const rec = (await res.json()) as ProjectDoc & { id: string; rev: number }
-    const doc: ProjectDoc = { name: rec.name, template: rec.template, rows: rec.rows, icons: rec.icons, setup: rec.setup, ...(rec.credits ? { credits: rec.credits } : {}), ...(rec.rules ? { rules: rec.rules } : {}) }
-    const client = new ProjectClient(opts.http, opts.id, doc, rec.rev)
+    // Everything the document has is the document; only what the record adds around it is left
+    // behind. Picking fields by name here is how a project quietly loses one it gained later.
+    const { id, rev, ...doc } = rec
+    const client = new ProjectClient(opts.http, opts.id, doc, rev)
     client.connect(opts.name ?? 'Någon')
     return client
   }
@@ -368,13 +370,38 @@ export class ProjectClient {
     this.edit({ v: 'removeIcon', name })
   }
 
+  // A typeface the game is set in (B3): the file becomes one of the project's assets, and the
+  // family is named after the file, which is what a designer calls it anyway. The version then
+  // pins the file, so what is printed a year from now is what was designed today.
+  //
+  // A licence is not in the file: only the designer knows it, and it is stated beside the family.
+  async useFont(file: File): Promise<string> {
+    const ref = `${ASSET_PREFIX}${await this.uploadAsset(file)}`
+    const already = Object.entries(this.doc.fonts ?? {}).find(([, f]) => f.asset === ref)
+    if (already) return already[0]
+    const family = freeFamily(familyFromFile(file.name), this.doc.fonts ?? {})
+    this.edit({ v: 'setFont', family, font: { stack: `"${family}", sans-serif`, asset: ref } })
+    return family
+  }
+
+  setFontLicence(family: string, licence: ProjectCredit | null): void {
+    const font = this.doc.fonts?.[family]
+    if (!font) throw new Error(`no font ${family}`)
+    const { licence: was, ...rest } = font
+    this.edit({ v: 'setFont', family, font: licence ? { ...rest, licence } : rest })
+  }
+
+  removeFont(family: string): void {
+    this.edit({ v: 'removeFont', family })
+  }
+
   // An image for the project (E1): uploaded once, named by its bytes; the cell then points at it.
   async uploadAsset(file: Blob): Promise<string> {
     const res = await fetch(`${this.http}/assets`, withCredentials({ method: 'POST', headers: { 'content-type': file.type || 'application/octet-stream' }, body: file }))
     if (res.status === 401) throw new Unauthorized()
-    if (res.status === 415) throw new Error('bara bilder kan laddas upp')
-    if (res.status === 413) throw new Error('bilden är för stor (max 8 MB)')
-    if (!res.ok) throw new Error(`kunde inte ladda upp bilden: ${res.status}`)
+    if (res.status === 415) throw new Error('bara bilder och typsnittsfiler kan laddas upp')
+    if (res.status === 413) throw new Error('filen är för stor (max 8 MB)')
+    if (!res.ok) throw new Error(`kunde inte ladda upp filen: ${res.status}`)
     return ((await res.json()) as { hash: string }).hash
   }
 
@@ -504,3 +531,13 @@ export class ProjectClient {
 
 // One element in, one out, by id: an override list is a set keyed by id, not an order.
 
+// What a font file is called, as a family name: the name without its format, and without the
+// weight suffix a foundry writes into it, since that is a file's business rather than a game's.
+function familyFromFile(name: string): string {
+  const bare = name.replace(/\.(woff2?|ttf|otf)$/i, '').replace(/[_-]+/g, ' ').trim()
+  return bare === '' ? 'Typsnitt' : bare
+}
+function freeFamily(wanted: string, taken: Record<string, ProjectFont>): string {
+  if (!taken[wanted]) return wanted
+  for (let n = 2; ; n++) if (!taken[`${wanted} ${n}`]) return `${wanted} ${n}`
+}

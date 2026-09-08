@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CARD_STANDARD_63x88, TypeRegistry, type SetupDef, STANDARD_TYPES } from '@byd/engine'
+import { CARD_STANDARD_63x88, TOKEN_COUNTER, TypeRegistry, type SetupDef, STANDARD_TYPES } from '@byd/engine'
 import type { Deck } from '../src/faces.js'
 import { printExportOf } from '../src/faces.js'
 
@@ -55,6 +55,18 @@ describe('the print export (#14)', () => {
     expect(jobs.get(trap.faces.back!)?.compiled.css).toContain('#441111')
     expect(jobs.get(dragon.faces.front!)?.compiled.css).toContain('#eeeeee')
     expect(jobs.get(dragon.faces.back!)?.compiled.css).toContain('#334477')
+  })
+
+  it('prints the deck, not the seats\' counters: a token is no card and names no row (C4)', () => {
+    const counter = { id: TOKEN_COUNTER.id, version: TOKEN_COUNTER.version }
+    const withCounters: SetupDef = {
+      ...setup,
+      components: [...setup.components, { type: counter, cardRef: 'Poäng', zone: 'table', face: 'front', counter: 0 }],
+    }
+    const printed = printExportOf(deck, withCounters, registry, 123)
+    expect(printed.cards.map((card) => card.cardRef)).toEqual(['trap', 'dragon', 'trap'])
+    // A card of the deck that names no row is still a broken deck, and says so.
+    expect(() => printExportOf(deck, { ...setup, components: [{ type, cardRef: 'ingen', zone: 'table', face: 'back' }] }, registry, 123)).toThrow(/ingen/)
   })
 
   it('sends both faces through the ordinary compiler with print bleed, then queues PDFs', () => {
