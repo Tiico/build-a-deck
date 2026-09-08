@@ -108,3 +108,14 @@ create table if not exists assets (
   bytes         bytea,
   created_at    timestamptz not null default now()
 );
+
+-- The project's history (B4): one row per save, never written again. A named version is a
+-- milestone the designer cared about; the rest are simply what happened.
+create table if not exists project_versions (
+  project_id  text not null references projects(id) on delete cascade,
+  rev         integer not null,
+  doc         jsonb not null,
+  label       text,
+  created_at  timestamptz not null default now(),
+  primary key (project_id, rev)
+);

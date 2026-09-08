@@ -51,21 +51,35 @@ export type ProjectDoc = z.infer<typeof ProjectDoc>
 export type ProjectRecord = ProjectDoc & { id: string; rev: number; owner?: string }
 export type ProjectSummary = { id: string; name: string; rev: number }
 
+// A version in the history (B4): every save is one, and none of them is ever written again.
+// `label` is the name a designer gave the versions that meant something — a blind test, a print
+// order — and nothing else needs naming: the user never has to commit.
+export type VersionSummary = { rev: number; at: string; label?: string }
+
 export type ProjectStore = {
   create(id: string, doc: ProjectDoc, owner?: string): Promise<ProjectRecord>
   load(id: string): Promise<ProjectRecord | null>
   list(owner: string): Promise<ProjectSummary[]>
   // Replaces the document if `expectedRev` is current; 'conflict' otherwise (optimistic concurrency).
   replace(id: string, expectedRev: number, doc: ProjectDoc): Promise<ProjectRecord | 'conflict' | 'missing'>
+  // The history, newest first.
+  versions(id: string): Promise<VersionSummary[]>
+  // The project as it stood at a revision; null when there is no such version.
+  at(id: string, rev: number): Promise<ProjectRecord | null>
+  // Names a version, or takes the name back with null.
+  label(id: string, rev: number, label: string | null): Promise<VersionSummary | 'missing'>
 }
 
 export class MemoryProjectStore implements ProjectStore {
   private readonly docs = new Map<string, ProjectRecord>()
+  // The history (B4), by project: one entry per save, appended and never rewritten.
+  private readonly history = new Map<string, { rev: number; at: string; label?: string; doc: ProjectDoc }[]>()
 
   async create(id: string, doc: ProjectDoc, owner?: string): Promise<ProjectRecord> {
     if (this.docs.has(id)) throw new Error(`project ${id} already exists`)
     const rec: ProjectRecord = { ...structuredClone(doc), id, rev: 1, ...(owner !== undefined ? { owner } : {}) }
     this.docs.set(id, rec)
+    this.history.set(id, [{ rev: 1, at: new Date().toISOString(), doc: structuredClone(doc) }])
     return structuredClone(rec)
   }
 
@@ -84,7 +98,29 @@ export class MemoryProjectStore implements ProjectStore {
     if (rec.rev !== expectedRev) return 'conflict'
     const next: ProjectRecord = { ...structuredClone(doc), id, rev: rec.rev + 1, ...(rec.owner !== undefined ? { owner: rec.owner } : {}) }
     this.docs.set(id, next)
+    this.history.get(id)?.push({ rev: next.rev, at: new Date().toISOString(), doc: structuredClone(doc) })
     return structuredClone(next)
+  }
+
+  async versions(id: string): Promise<VersionSummary[]> {
+    return [...(this.history.get(id) ?? [])]
+      .sort((a, b) => b.rev - a.rev)
+      .map((v) => ({ rev: v.rev, at: v.at, ...(v.label !== undefined ? { label: v.label } : {}) }))
+  }
+
+  async at(id: string, rev: number): Promise<ProjectRecord | null> {
+    const found = this.history.get(id)?.find((v) => v.rev === rev)
+    const owner = this.docs.get(id)?.owner
+    if (!found) return null
+    return { ...structuredClone(found.doc), id, rev, ...(owner !== undefined ? { owner } : {}) }
+  }
+
+  async label(id: string, rev: number, label: string | null): Promise<VersionSummary | 'missing'> {
+    const found = this.history.get(id)?.find((v) => v.rev === rev)
+    if (!found) return 'missing'
+    if (label === null) delete found.label
+    else found.label = label
+    return { rev, at: found.at, ...(found.label !== undefined ? { label: found.label } : {}) }
   }
 }
 

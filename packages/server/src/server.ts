@@ -12,6 +12,7 @@ import type { ObjectStore, RenderStore } from '@byd/render/queue'
 import type { Subscriber, TableHost } from './actor.js'
 import type { Deck, LogStore, SessionRecord } from './store.js'
 import { ProjectDoc, deckFromProject, setupFromProject, type ProjectCredit, type ProjectRecord, type ProjectStore } from './projects.js'
+import { diffProjects } from './diff.js'
 import { SurveyAnswer, type SurveyStore } from './surveys.js'
 import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountOf, hash, loginMail, safeNext, token, type Account, type AuthStore, type Mailer } from './auth.js'
 import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
@@ -621,6 +622,61 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     if (result === 'missing') json(res, 404, { error: 'unknown project' })
     else if (result === 'conflict') json(res, 409, { error: 'project changed since rev ' + rev })
     else json(res, 200, { id: result.id, rev: result.rev })
+    return true
+  }
+  // The history (B4): every save is a version, none of them is ever rewritten. It is presented
+  // as versions with a date and, for the ones that meant something, a name — never as commits.
+  const versions = /^\/projects\/([^/]+)\/versions$/.exec(url.pathname)
+  if (versions && req.method === 'GET') {
+    const gate = await owned(decodeURIComponent(versions[1] ?? ''))
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    json(res, 200, await projects.versions(gate.rec.id))
+    return true
+  }
+  const oneVersion = /^\/projects\/([^/]+)\/versions\/(\d+)$/.exec(url.pathname)
+  if (oneVersion && req.method === 'GET') {
+    const gate = await owned(decodeURIComponent(oneVersion[1] ?? ''))
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    const rec = await projects.at(gate.rec.id, Number(oneVersion[2]))
+    if (!rec) json(res, 404, { error: 'unknown version' })
+    else json(res, 200, rec)
+    return true
+  }
+  const naming = /^\/projects\/([^/]+)\/versions\/(\d+)\/label$/.exec(url.pathname)
+  if (naming && req.method === 'PUT') {
+    const gate = await owned(decodeURIComponent(naming[1] ?? ''))
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    const body = z.object({ label: z.string().min(1).max(80).nullable() }).parse(JSON.parse(await readBody(req)))
+    const named = await projects.label(gate.rec.id, Number(naming[2]), body.label)
+    if (named === 'missing') json(res, 404, { error: 'unknown version' })
+    else json(res, 200, named)
+    return true
+  }
+  // What changed between two versions, as changes in the card table. Without `from`, against
+  // the version just before this one.
+  const diffing = /^\/projects\/([^/]+)\/versions\/(\d+)\/diff$/.exec(url.pathname)
+  if (diffing && req.method === 'GET') {
+    const gate = await owned(decodeURIComponent(diffing[1] ?? ''))
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    const to = Number(diffing[2])
+    const asked = url.searchParams.get('from')
+    const before = await projects.at(gate.rec.id, asked === null ? to - 1 : Number(asked))
+    const after = await projects.at(gate.rec.id, to)
+    if (!after) json(res, 404, { error: 'unknown version' })
+    else if (!before) json(res, 200, { rows: after.rows.map((r) => ({ kind: 'added', cardRef: r.id })), reordered: false, template: true, setup: true, icons: true })
+    else json(res, 200, diffProjects(before, after))
     return true
   }
   // The project's current revision as print work (#14): one manifest entry per physical card,

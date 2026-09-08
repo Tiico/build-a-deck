@@ -5,7 +5,7 @@ import type { ObjectStore } from '@byd/render'
 import type { Applied } from '@byd/protocol'
 import { liftLine, type SetupDef } from '@byd/engine'
 import { SeqConflictError, type Deck, type GuestRecord, type LogStore, type SessionRecord, type SessionSummary, type PlayedRecord } from './store.js'
-import type { ProjectDoc, ProjectRecord, ProjectStore, ProjectSummary } from './projects.js'
+import type { ProjectDoc, ProjectRecord, ProjectStore, ProjectSummary, VersionSummary } from './projects.js'
 import { PostgresAssetStore } from './assets.js'
 import type { Account, AuthStore } from './auth.js'
 
@@ -277,7 +277,10 @@ export class PostgresProjectStore implements ProjectStore {
   constructor(private readonly sql: postgres.Sql) {}
 
   async create(id: string, doc: ProjectDoc, owner?: string): Promise<ProjectRecord> {
-    await this.sql`insert into projects (id, rev, doc, owner) values (${id}, 1, ${this.sql.json(doc as never)}, ${owner ?? null})`
+    await this.sql.begin(async (tx) => {
+      await tx`insert into projects (id, rev, doc, owner) values (${id}, 1, ${tx.json(doc as never)}, ${owner ?? null})`
+      await tx`insert into project_versions (project_id, rev, doc) values (${id}, 1, ${tx.json(doc as never)})`
+    })
     return { ...doc, id, rev: 1, ...(owner !== undefined ? { owner } : {}) }
   }
 
@@ -298,8 +301,32 @@ export class PostgresProjectStore implements ProjectStore {
       if (row.rev !== expectedRev) return 'conflict'
       const rev = row.rev + 1
       await tx`update projects set rev = ${rev}, doc = ${tx.json(doc as never)}, updated_at = now() where id = ${id}`
+      // The history (B4) grows by one; nothing already in it is ever written again.
+      await tx`insert into project_versions (project_id, rev, doc) values (${id}, ${rev}, ${tx.json(doc as never)})`
       return { ...doc, id, rev }
     })
+  }
+
+  async versions(id: string): Promise<VersionSummary[]> {
+    const rows = await this.sql<{ rev: number; created_at: Date; label: string | null }[]>`
+      select rev, created_at, label from project_versions where project_id = ${id} order by rev desc
+    `
+    return rows.map((r) => ({ rev: r.rev, at: r.created_at.toISOString(), ...(r.label ? { label: r.label } : {}) }))
+  }
+
+  async at(id: string, rev: number): Promise<ProjectRecord | null> {
+    const [row] = await this.sql<{ doc: ProjectDoc }[]>`select doc from project_versions where project_id = ${id} and rev = ${rev}`
+    if (!row) return null
+    const [own] = await this.sql<{ owner: string | null }[]>`select owner from projects where id = ${id}`
+    return { ...row.doc, id, rev, ...(own?.owner ? { owner: own.owner } : {}) }
+  }
+
+  async label(id: string, rev: number, label: string | null): Promise<VersionSummary | 'missing'> {
+    const [row] = await this.sql<{ rev: number; created_at: Date; label: string | null }[]>`
+      update project_versions set label = ${label} where project_id = ${id} and rev = ${rev} returning rev, created_at, label
+    `
+    if (!row) return 'missing'
+    return { rev: row.rev, at: row.created_at.toISOString(), ...(row.label ? { label: row.label } : {}) }
   }
 }
 
