@@ -1050,7 +1050,7 @@ Fontlicensiering, som krockar med kravet i B3 att behålla fontfiler permanent.
 
 Teknik:
 Aktivitetsflödet vid anslutning: löst 2026-09-07, snapshoten bär de senaste femtio raderna, se K9.
-Behörighetsroller i detalj: ägare, medredigerare, testledare, observatör.
+Behörighetsroller i detalj: löst 2026-09-08 som en modell i D3 — ägare, medredigerare, testledare, betraktare, med inbjudan per adress.
 Tillgänglighet i verktyget självt, till skillnad från i de spel som skapas i det.
 
 Spelupplevelse, kvar efter avsnitt K: inga; de två sista avgjordes 2026-09-07, se K1 och K2.

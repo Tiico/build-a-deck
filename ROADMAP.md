@@ -117,7 +117,7 @@ Målet är att kunna ta betalt och lämna ifrån sig allt.
 - ⬜ Full export i dokumenterat JSON med assets, mallar, historik och tryckfiler; läsläge vid utgånget abonnemang (G5).
 - ✅ Att claima en gästsession till ett konto efteråt: telefonen erbjuder det när sessionen är slut, claim-sidan knyter gästens admission till kontot, och startsidan visar "Bord du spelat vid" med plats, namn, utfall och vägen tillbaka (G1).
 - ⬜ Passkeys och OAuth som bekvämlighet; passkey-återställning som UX (DRIFT §11).
-- ⬜ Behörighetsroller: ägare, medredigerare, testledare, observatör (I).
+- ✅ Behörighetsroller: ägare, medredigerare, testledare, betraktare, med inbjudan per adress; byggt med D3 i fas 2.
 - ⬜ GDPR för gäster: enkätsvar och flaggor från personer utan konto, radering (I).
 - ⬜ Villkor med garantiklausul om IP (F4).
 
@@ -175,7 +175,6 @@ Från DESIGN-BESLUT I och DRIFT:
 
 - Anonymisering av replay-korpusen (fas 4).
 - UPS och extern pulskoll (fas 4).
-- Behörighetsroller i detalj (fas 3).
 - Tillgänglighet utöver grundnivån (fas 6).
 
 ---
