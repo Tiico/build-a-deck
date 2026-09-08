@@ -133,3 +133,25 @@ create table if not exists project_events (
   created_at  timestamptz not null default now(),
   primary key (project_id, seq)
 );
+
+-- Who a project is shared with (D3): the owner is the project's own column, everyone else a row.
+create table if not exists project_members (
+  project_id  text not null references projects(id) on delete cascade,
+  -- Accounts are numbered, so a member is too; the rest of the API speaks of them as text.
+  account_id  bigint not null references accounts(id) on delete cascade,
+  role        text not null,
+  added_at    timestamptz not null default now(),
+  primary key (project_id, account_id)
+);
+
+-- An invitation to a project (D3): mailed to an address, good once, and gone when it is used.
+create table if not exists project_invites (
+  token_hash  text primary key,
+  project_id  text not null references projects(id) on delete cascade,
+  email       text not null,
+  role        text not null,
+  invited_by  bigint references accounts(id) on delete set null,
+  expires_at  timestamptz not null,
+  accepted_at timestamptz,
+  created_at  timestamptz not null default now()
+);

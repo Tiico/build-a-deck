@@ -19,6 +19,7 @@ import { namesOfProject } from './names.js'
 import { SurveyAnswer, type SurveyStore } from './surveys.js'
 import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountOf, hash, loginMail, safeNext, token, type Account, type AuthStore, type Mailer } from './auth.js'
 import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
+import { canDelete, canEdit, canRead, canShare, canStartTables, INVITE_TTL_MS, roleWord, ROLES, type Role } from './roles.js'
 import { facesOf, printExportOf } from './faces.js'
 import { resolveAssets, resolveIcons, type AssetStore } from './assets.js'
 import { TEXTURE_DPI } from './actor.js'
@@ -307,6 +308,18 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
       await actor?.kick(seat)
       return json(res, 200, { ok: true, revoked })
     }
+    // Following an invitation (D3): whoever is signed in when they follow it joins the project
+    // with the role it names. The link is good once, and says nothing about the project until it
+    // has been used, so a stray link tells a stranger nothing.
+    const invite = /^\/invites\/([A-Za-z0-9_-]+)$/.exec(url.pathname)
+    if (invite && req.method === 'POST' && opts.projects) {
+      const account = opts.auth ? await accountOf(opts.auth, req) : null
+      if (!account) return json(res, 401, { error: 'log in first' })
+      const accepted = await opts.projects.acceptInvite(hash(decodeURIComponent(invite[1] ?? '')), clock(opts).toISOString())
+      if (!accepted) return json(res, 404, { error: 'unknown or spent invitation' })
+      await opts.projects.share(accepted.project, account.id, accepted.role)
+      return json(res, 200, { project: accepted.project, role: accepted.role })
+    }
     if (opts.assets) {
       const handled = await routeAssets(opts, opts.assets, req, res, url)
       if (handled) return
@@ -373,7 +386,7 @@ const MIME: Record<string, string> = {
 // The built web app: hashed assets forever, everything else briefly, and the app's own routes
 // (/table, /play, …) fall back to index.html so the client can pick the page. Never a byte
 // outside the directory.
-const API_PREFIXES = ['/sessions', '/projects', '/faces', '/health', '/rooms', '/guests', '/me']
+const API_PREFIXES = ['/sessions', '/projects', '/faces', '/health', '/rooms', '/guests', '/me', '/invites']
 async function serveStatic(dir: string, pathname: string, res: ServerResponse): Promise<boolean> {
   // The API never falls back to the app, whatever is or is not mounted.
   if (API_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + '/'))) return false
@@ -440,7 +453,8 @@ async function attachEditor(opts: ServerOptions, req: IncomingMessage, ws: WebSo
     ws.close(4004, 'unknown project')
     return
   }
-  if (rec.owner !== undefined && rec.owner !== account?.id) {
+  const role = rec.owner === undefined ? 'owner' : account ? await projects.roleOf(projectId, account.id) : null
+  if (!role) {
     ws.close(4003, 'not your project')
     return
   }
@@ -457,6 +471,11 @@ async function attachEditor(opts: ServerOptions, req: IncomingMessage, ws: WebSo
       try {
         const raw: unknown = JSON.parse(data.toString())
         const msg = EditorRequest.parse(raw)
+        // A viewer watches the project change and does not change it (D3).
+        if (!canEdit(role)) {
+          send({ v: 'refused', why: `en ${roleWord(role)} kan bara titta` })
+          return
+        }
         if (msg.t === 'save') {
           const saved = await actor.save()
           if (!saved.ok) send({ v: 'refused', why: saved.reason })
@@ -642,14 +661,20 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
   // Who is asking (G1): with accounts on, creating needs one, and an owned project answers only
   // its owner. A project without an owner is from before accounts and stays open.
   const account = opts.auth ? await accountOf(opts.auth, req) : null
-  const owned = async (id: string): Promise<{ rec: ProjectRecord } | { status: number; error: string }> => {
+  // What this account may do with a project (D3): the role decides, and every route asks the
+  // role rather than remembering the rules. A project from before accounts belongs to nobody and
+  // is open to anyone, as it always was.
+  const allowed = async (id: string, may: (role: Role) => boolean): Promise<{ rec: ProjectRecord; role: Role } | { status: number; error: string }> => {
     const rec = await projects.load(id)
     if (!rec) return { status: 404, error: 'unknown project' }
-    if (rec.owner === undefined) return { rec }
+    if (rec.owner === undefined) return { rec, role: 'owner' }
     if (!account) return { status: 401, error: 'log in first' }
-    if (rec.owner !== account.id) return { status: 403, error: 'not your project' }
-    return { rec }
+    const role = await projects.roleOf(id, account.id)
+    if (!role) return { status: 403, error: 'not your project' }
+    if (!may(role)) return { status: 403, error: `a ${role} may not do that` }
+    return { rec, role }
   }
+  const owned = (id: string) => allowed(id, canRead)
   if (req.method === 'GET' && url.pathname === '/projects') {
     if (!account) {
       json(res, 401, { error: 'log in first' })
@@ -688,7 +713,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     return true
   }
   if (one && req.method === 'PUT') {
-    const gate = await owned(decodeURIComponent(one[1] ?? ''))
+    const gate = await allowed(decodeURIComponent(one[1] ?? ''), canEdit)
     if (!('rec' in gate)) {
       json(res, gate.status, { error: gate.error })
       return true
@@ -757,12 +782,65 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     else json(res, 200, diffProjects(before, after))
     return true
   }
+  // Sharing a project (D3): the owner mails an invitation to an address, good once. Whoever
+  // follows it while signed in joins with the role it names.
+  const inviting = /^\/projects\/([^/]+)\/invites$/.exec(url.pathname)
+  if (inviting && req.method === 'POST') {
+    const gate = await allowed(decodeURIComponent(inviting[1] ?? ''), canShare)
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    const body = z.object({ email: z.string().email().max(254), role: z.enum(ROLES) }).parse(JSON.parse(await readBody(req)))
+    const token = newSecret()
+    const expiresAt = new Date(clock(opts).getTime() + INVITE_TTL_MS).toISOString()
+    await projects.invite({ tokenHash: hash(token), project: gate.rec.id, email: body.email, role: body.role, ...(account ? { by: account.id } : {}), expiresAt })
+    const where = opts.appOrigin ?? opts.publicOrigin ?? ''
+    await opts.mailer?.send({
+      to: body.email,
+      subject: `Du är inbjuden till ${gate.rec.name}`,
+      text: `Hej!\n\n${account?.email ?? 'Någon'} vill dela spelet ${gate.rec.name} med dig som ${roleWord(body.role)}.\n\nKlicka för att gå med: ${where}/invites/${token}\n\nLänken fungerar i sju dagar och bara en gång.`,
+    })
+    json(res, 201, { ok: true })
+    return true
+  }
+  const members = /^\/projects\/([^/]+)\/members$/.exec(url.pathname)
+  if (members && req.method === 'GET') {
+    const gate = await allowed(decodeURIComponent(members[1] ?? ''), canRead)
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    const rows = await projects.members(gate.rec.id)
+    const named = await Promise.all(rows.map(async (m) => ({ email: (await opts.auth?.accountById(m.account))?.email ?? m.account, role: m.role })))
+    json(res, 200, named)
+    return true
+  }
+  const member = /^\/projects\/([^/]+)\/members\/([^/]+)$/.exec(url.pathname)
+  if (member && req.method === 'DELETE') {
+    const gate = await allowed(decodeURIComponent(member[1] ?? ''), canShare)
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    const email = decodeURIComponent(member[2] ?? '')
+    const rows = await projects.members(gate.rec.id)
+    const found = await Promise.all(rows.map(async (m) => ({ ...m, email: (await opts.auth?.accountById(m.account))?.email ?? m.account })))
+    const leaving = found.find((m) => m.email === email)
+    if (!leaving || leaving.role === 'owner') {
+      json(res, 404, { error: 'not shared with them' })
+      return true
+    }
+    await projects.unshare(gate.rec.id, leaving.account)
+    json(res, 200, { ok: true })
+    return true
+  }
   // The project's current revision as print work (#14): one manifest entry per physical card,
   // with every face compiled from that same row. The response is safe metadata only; compiled
   // HTML/CSS stays inside the render queue, where the existing Chromium worker consumes it.
   // Taking a game away (G1): the owner's alone, and it takes the whole history with it.
   if (one && req.method === 'DELETE') {
-    const gate = await owned(decodeURIComponent(one[1] ?? ''))
+    const gate = await allowed(decodeURIComponent(one[1] ?? ''), canDelete)
     if (!('rec' in gate)) {
       json(res, gate.status, { error: gate.error })
       return true
@@ -817,7 +895,8 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     return true
   }
   if (start && req.method === 'POST') {
-    const gate = await owned(decodeURIComponent(start[1] ?? ''))
+    // Running a playtest is the test leader's whole purpose (D3); a viewer only looks.
+    const gate = await allowed(decodeURIComponent(start[1] ?? ''), canStartTables)
     if (!('rec' in gate)) {
       json(res, gate.status, { error: gate.error })
       return true

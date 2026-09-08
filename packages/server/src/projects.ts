@@ -3,6 +3,7 @@ import { CARD_STANDARD_63x88, TOKEN_COUNTER, type SetupDef } from '@byd/engine'
 import { Template, type Row } from '@byd/template'
 import type { Deck } from './faces.js'
 import type { AppliedEdit } from './project-actor.js'
+import type { Role } from './roles.js'
 
 // A project is what the editor edits: the template, the rows keyed by cardRef, the icon set and
 // the table setup without its components — those come from the rows and their `antal` (L4).
@@ -67,7 +68,7 @@ export type ProjectDoc = z.infer<typeof ProjectDoc>
 export type ProjectRecord = ProjectDoc & { id: string; rev: number; owner?: string }
 // A game as "Mina spel" lists it (G1): what it is called, where its history stands, how many
 // tables have been started from it and when one of them was last played at.
-export type ProjectSummary = { id: string; name: string; rev: number; tables?: number; lastPlayed?: string | null }
+export type ProjectSummary = { id: string; name: string; rev: number; tables?: number; lastPlayed?: string | null; role?: Role }
 
 // A version in the history (B4): every save is one, and none of them is ever written again.
 // `label` is the name a designer gave the versions that meant something — a blind test, a print
@@ -93,6 +94,15 @@ export type ProjectStore = {
   // The edit log between saves (D3): committed before an edit is applied, read back on load.
   appendEdits(id: string, edits: AppliedEdit[]): Promise<void>
   readEdits(id: string, sinceSeq: number): Promise<AppliedEdit[]>
+  // Who a project is shared with (D3). The owner is the project's own; the rest are members.
+  // A project from before accounts belongs to nobody, so anyone is its owner, as it always was.
+  roleOf(id: string, account: string): Promise<Role | null>
+  members(id: string): Promise<{ account: string; role: Role }[]>
+  share(id: string, account: string, role: Role): Promise<void>
+  unshare(id: string, account: string): Promise<void>
+  // An invitation (D3): kept hashed like every other secret, good once, and gone when used.
+  invite(invite: { tokenHash: string; project: string; email: string; role: Role; by?: string; expiresAt: string }): Promise<void>
+  acceptInvite(tokenHash: string, now: string): Promise<{ project: string; email: string; role: Role } | null>
 }
 
 export class MemoryProjectStore implements ProjectStore {
@@ -101,6 +111,9 @@ export class MemoryProjectStore implements ProjectStore {
   private readonly history = new Map<string, { rev: number; at: string; label?: string; atSeq?: number; doc: ProjectDoc }[]>()
   // The edit log between saves (D3), by project.
   private readonly edits = new Map<string, AppliedEdit[]>()
+  // Who else a project is shared with (D3), by project.
+  private readonly shared = new Map<string, Map<string, Role>>()
+  private readonly invites = new Map<string, { project: string; email: string; role: Role; expiresAt: string; used?: boolean }>()
 
   async create(id: string, doc: ProjectDoc, owner?: string): Promise<ProjectRecord> {
     if (this.docs.has(id)) throw new Error(`project ${id} already exists`)
@@ -115,8 +128,51 @@ export class MemoryProjectStore implements ProjectStore {
     return rec ? structuredClone(rec) : null
   }
 
-  async list(owner: string): Promise<ProjectSummary[]> {
-    return [...this.docs.values()].filter((r) => r.owner === owner).map((r) => ({ id: r.id, name: r.name, rev: r.rev }))
+  // Every project the account can see: its own, and the ones shared with it.
+  async list(account: string): Promise<ProjectSummary[]> {
+    const out: ProjectSummary[] = []
+    for (const rec of this.docs.values()) {
+      const role = await this.roleOf(rec.id, account)
+      if (role) out.push({ id: rec.id, name: rec.name, rev: rec.rev, role })
+    }
+    return out
+  }
+
+  async roleOf(id: string, account: string): Promise<Role | null> {
+    const rec = this.docs.get(id)
+    if (!rec) return null
+    if (rec.owner === undefined) return 'owner'
+    if (rec.owner === account) return 'owner'
+    return this.shared.get(id)?.get(account) ?? null
+  }
+
+  async members(id: string): Promise<{ account: string; role: Role }[]> {
+    const rec = this.docs.get(id)
+    if (!rec) return []
+    const owner = rec.owner === undefined ? [] : [{ account: rec.owner, role: 'owner' as Role }]
+    return [...owner, ...[...(this.shared.get(id) ?? new Map())].map(([account, role]) => ({ account, role }))]
+  }
+
+  async share(id: string, account: string, role: Role): Promise<void> {
+    const shared = this.shared.get(id) ?? new Map<string, Role>()
+    shared.set(account, role)
+    this.shared.set(id, shared)
+  }
+
+  async unshare(id: string, account: string): Promise<void> {
+    if (this.docs.get(id)?.owner === account) throw new Error('the owner cannot be unshared')
+    this.shared.get(id)?.delete(account)
+  }
+
+  async invite(invite: { tokenHash: string; project: string; email: string; role: Role; by?: string; expiresAt: string }): Promise<void> {
+    this.invites.set(invite.tokenHash, { project: invite.project, email: invite.email, role: invite.role, expiresAt: invite.expiresAt })
+  }
+
+  async acceptInvite(tokenHash: string, now: string): Promise<{ project: string; email: string; role: Role } | null> {
+    const found = this.invites.get(tokenHash)
+    if (!found || found.used || found.expiresAt < now) return null
+    found.used = true
+    return { project: found.project, email: found.email, role: found.role }
   }
 
   async replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number): Promise<ProjectRecord | 'conflict' | 'missing'> {
@@ -162,6 +218,7 @@ export class MemoryProjectStore implements ProjectStore {
     const had = this.docs.delete(id)
     this.history.delete(id)
     this.edits.delete(id)
+    this.shared.delete(id)
     return had
   }
 }

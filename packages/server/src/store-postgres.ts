@@ -9,6 +9,7 @@ import type { ProjectDoc, ProjectRecord, ProjectStore, ProjectSummary, VersionSu
 import { PostgresAssetStore } from './assets.js'
 import type { AppliedEdit } from './project-actor.js'
 import type { EditIntent } from './edits.js'
+import type { Role } from './roles.js'
 import type { Account, AuthStore } from './auth.js'
 
 export class PostgresAuthStore implements AuthStore {
@@ -27,6 +28,10 @@ export class PostgresAuthStore implements AuthStore {
       insert into accounts (email) values (${email}) on conflict (email) do update set email = excluded.email returning id
     `
     return { id: String(rows[0]?.id), email }
+  }
+  async accountById(id: string): Promise<Account | null> {
+    const [row] = await this.sql<{ id: string; email: string }[]>`select id, email from accounts where id = ${id}`
+    return row ? { id: String(row.id), email: row.email } : null
   }
   async createSession(sessionHash: string, accountId: string, expiresAt: string): Promise<void> {
     await this.sql`insert into auth_sessions (session_hash, account_id, expires_at) values (${sessionHash}, ${accountId}, ${expiresAt})`
@@ -291,9 +296,62 @@ export class PostgresProjectStore implements ProjectStore {
     return row ? { ...row.doc, id, rev: row.rev, ...(row.owner ? { owner: row.owner } : {}) } : null
   }
 
-  async list(owner: string): Promise<ProjectSummary[]> {
-    const rows = await this.sql<{ id: string; rev: number; name: string }[]>`select id, rev, doc->>'name' as name from projects where owner = ${owner} order by updated_at desc`
-    return rows.map((r) => ({ id: r.id, name: r.name, rev: r.rev }))
+  // Every project the account can see (D3): its own, and the ones shared with it.
+  async list(account: string): Promise<ProjectSummary[]> {
+    const rows = await this.sql<{ id: string; rev: number; name: string; role: string }[]>`
+      select p.id, p.rev, p.doc->>'name' as name,
+             case when p.owner = ${account} or p.owner is null then 'owner' else m.role end as role
+      from projects p
+      left join project_members m on m.project_id = p.id and m.account_id = ${account}
+      where p.owner = ${account} or p.owner is null or m.role is not null
+      order by p.updated_at desc
+    `
+    return rows.map((r) => ({ id: r.id, name: r.name, rev: r.rev, role: r.role as Role }))
+  }
+
+  async roleOf(id: string, account: string): Promise<Role | null> {
+    const [row] = await this.sql<{ owner: string | null }[]>`select owner from projects where id = ${id}`
+    if (!row) return null
+    if (row.owner === null || row.owner === account) return 'owner'
+    const [member] = await this.sql<{ role: string }[]>`select role from project_members where project_id = ${id} and account_id = ${account}`
+    return member ? (member.role as Role) : null
+  }
+
+  async members(id: string): Promise<{ account: string; role: Role }[]> {
+    const [row] = await this.sql<{ owner: string | null }[]>`select owner from projects where id = ${id}`
+    if (!row) return []
+    const rows = await this.sql<{ account_id: string; role: string }[]>`select account_id, role from project_members where project_id = ${id} order by added_at`
+    const owner = row.owner ? [{ account: row.owner, role: 'owner' as Role }] : []
+    return [...owner, ...rows.map((r) => ({ account: r.account_id, role: r.role as Role }))]
+  }
+
+  async share(id: string, account: string, role: Role): Promise<void> {
+    await this.sql`
+      insert into project_members (project_id, account_id, role) values (${id}, ${account}, ${role})
+      on conflict (project_id, account_id) do update set role = excluded.role
+    `
+  }
+
+  async unshare(id: string, account: string): Promise<void> {
+    const [row] = await this.sql<{ owner: string | null }[]>`select owner from projects where id = ${id}`
+    if (row?.owner === account) throw new Error('the owner cannot be unshared')
+    await this.sql`delete from project_members where project_id = ${id} and account_id = ${account}`
+  }
+
+  async invite(invite: { tokenHash: string; project: string; email: string; role: Role; by?: string; expiresAt: string }): Promise<void> {
+    await this.sql`
+      insert into project_invites (token_hash, project_id, email, role, invited_by, expires_at)
+      values (${invite.tokenHash}, ${invite.project}, ${invite.email}, ${invite.role}, ${invite.by ?? null}, ${invite.expiresAt})
+    `
+  }
+
+  async acceptInvite(tokenHash: string, now: string): Promise<{ project: string; email: string; role: Role } | null> {
+    const [row] = await this.sql<{ project_id: string; email: string; role: string }[]>`
+      update project_invites set accepted_at = now()
+      where token_hash = ${tokenHash} and accepted_at is null and expires_at > ${now}
+      returning project_id, email, role
+    `
+    return row ? { project: row.project_id, email: row.email, role: row.role as Role } : null
   }
 
   // The edit log between saves (D3): committed before an edit is applied, read back on load.

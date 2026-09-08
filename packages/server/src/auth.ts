@@ -11,6 +11,8 @@ export type AuthStore = {
   // The email behind an unused, unexpired token; marks it used.
   redeemToken(tokenHash: string, now: string): Promise<string | null>
   ensureAccount(email: string): Promise<Account>
+  // The account behind an id, so a members list (D3) can show addresses rather than ids.
+  accountById(id: string): Promise<Account | null>
   createSession(sessionHash: string, accountId: string, expiresAt: string): Promise<void>
   sessionAccount(sessionHash: string, now: string): Promise<Account | null>
   deleteSession(sessionHash: string): Promise<void>
@@ -48,6 +50,9 @@ export class MemoryAuthStore implements AuthStore {
     const account = { id: token(), email }
     this.accounts.set(email, account)
     return account
+  }
+  async accountById(id: string): Promise<Account | null> {
+    return [...this.accounts.values()].find((a) => a.id === id) ?? null
   }
   async createSession(sessionHash: string, accountId: string, expiresAt: string): Promise<void> {
     this.sessions.set(sessionHash, { accountId, expiresAt })
