@@ -1,0 +1,62 @@
+/* PROTOTYPE — physical validation in the editor (E5). */
+.ck-stage { min-height: 100vh; background: #23262e; color: #ddd; font: 13px system-ui, sans-serif; display: grid; grid-template-rows: auto 1fr; }
+.ck-state { display: flex; gap: 16px; align-items: center; padding: 8px 16px; font: 12px ui-monospace, monospace; color: #7d8597; border-bottom: 1px solid #1a1e29; background: #0b0d12; }
+.ck-state b { color: #fff; }
+.ck-foot { grid-column: 1 / -1; text-align: center; color: #7d8597; font-size: 12px; margin: 0; padding: 8px 0 70px; }
+.ck-hint { color: #9aa3b8; font-size: 12px; line-height: 1.5; }
+.ck-ok { color: #7dd3a0; }
+.ck-stage h2 { margin: 0 0 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; }
+.ck-stage button { border: 1px solid #2f333d; border-radius: 8px; padding: 6px 11px; background: #1b1d23; color: #fff; font-weight: 700; font-size: 12px; cursor: pointer; }
+.ck-stage button[aria-pressed='true'] { background: #3c8ce7; border-color: #3c8ce7; }
+.ck-card { position: relative; }
+.ck-wall { display: flex; flex-wrap: wrap; gap: 16px; align-content: start; }
+
+/* A */
+.ck-a { display: grid; grid-template-columns: 120px minmax(0, 1fr) 320px; gap: 20px; padding: 16px 20px; }
+.ck-a-deck { display: grid; gap: 10px; align-content: start; }
+.ck-a-thumb { position: relative; padding: 4px; }
+.ck-a-thumb i { position: absolute; right: 0; top: 0; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: #f0b64a; color: #1c1c1c; font-style: normal; font-size: 11px; font-weight: 800; }
+.ck-a-thumb i[data-bad] { background: #e05c5c; color: #fff; }
+.ck-a-big { display: grid; place-items: start center; }
+.ck-stage button.ck-mark { position: absolute; border-radius: 4px; background: transparent; padding: 0; border: 2px solid #f0b64a; box-shadow: 0 0 0 2px rgba(240, 182, 74, 0.2); cursor: pointer; }
+.ck-stage button.ck-mark[data-severity='error'] { border-color: #e05c5c; box-shadow: 0 0 0 2px rgba(224, 92, 92, 0.25); }
+.ck-stage button.ck-mark[data-on] { background: rgba(240, 182, 74, 0.25); }
+.ck-a-notes { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; align-content: start; }
+.ck-a-notes li { display: grid; gap: 2px; padding: 10px 12px; border-radius: 10px; background: #171a23; border-left: 3px solid #f0b64a; }
+.ck-a-notes li[data-severity='error'] { border-left-color: #e05c5c; }
+.ck-a-notes li[data-on] { background: #1f2531; }
+.ck-a-notes b { color: #fff; }
+.ck-a-notes span { color: #ffd98a; font: 11px ui-monospace, monospace; }
+.ck-a-notes small { color: #9aa3b8; line-height: 1.4; }
+
+/* B */
+.ck-b { display: grid; grid-template-columns: 380px minmax(0, 1fr); gap: 20px; padding: 16px 20px; }
+.ck-b-report { align-self: start; padding: 16px; border-radius: 16px; background: #171a23; border: 1px solid #2f333d; }
+.ck-b-report ul { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; }
+.ck-b-report li { border-radius: 10px; overflow: hidden; border-left: 3px solid #f0b64a; background: #1b1f2a; }
+.ck-b-report li[data-severity='error'] { border-left-color: #e05c5c; }
+.ck-b-report li > button { display: flex; width: 100%; align-items: center; gap: 10px; border: 0; border-radius: 0; background: transparent; padding: 10px 12px; text-align: left; }
+.ck-b-report li > button span { color: #9aa3b8; font-weight: 400; }
+.ck-b-report li > button small { margin-left: auto; color: #7d8597; text-transform: uppercase; letter-spacing: 1px; font-size: 10px; }
+.ck-b-detail { padding: 0 12px 12px; display: grid; gap: 10px; }
+.ck-b-detail p { margin: 0; color: #cfd5e3; line-height: 1.5; }
+.ck-b-detail span { color: #7d8597; font: 11px ui-monospace, monospace; }
+.ck-b-cards { display: flex; gap: 10px; flex-wrap: wrap; }
+.ck-fix { width: 100%; }
+.ck-fix:disabled { opacity: 0.5; cursor: default; }
+
+/* C */
+.ck-c { display: grid; grid-template-rows: auto 1fr; gap: 16px; padding: 16px 20px; }
+.ck-filters { position: absolute; width: 0; height: 0; }
+.ck-c-tools { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.ck-c-tools > div { display: flex; gap: 6px; }
+.ck-c-tools label { display: flex; gap: 6px; align-items: center; color: #cfd5e3; }
+.ck-wall[data-eye='deuteranopia'] { filter: url(#ck-deuteranopia); }
+.ck-wall[data-eye='protanopia'] { filter: url(#ck-protanopia); }
+.ck-wall[data-eye='tritanopia'] { filter: url(#ck-tritanopia); }
+.ck-wall[data-eye='gray'] { filter: grayscale(1); }
+/* The trim and the safe margin drawn over the card: 3 mm of each, at the shown scale. */
+.ck-wall[data-trim] .ck-c-card::after { content: ''; position: absolute; inset: 0; outline: 1px dashed rgba(224, 92, 92, 0.9); pointer-events: none; }
+.ck-wall[data-trim] .ck-c-card::before { content: ''; position: absolute; inset: calc(3mm * var(--s, 0.85) * 3.78 / 1); border: 1px dashed rgba(125, 211, 160, 0.85); pointer-events: none; z-index: 2; }
+.ck-c-card { --s: 0.85; }
+.ck-wall[data-arm] .ck-c-card { --s: 0.38; }
