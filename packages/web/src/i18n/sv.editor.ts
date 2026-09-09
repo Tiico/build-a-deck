@@ -9,9 +9,9 @@ export const svEditor = {
   'editor.tab.tables': 'Bord',
 
   // Ramen runt allt: rubriken, spara, och vägen till bordet.
-  'editor.noProject': 'Inget projekt angivet.',
+  'editor.noProject': 'Inget spel angivet.',
   'editor.loggingIn': 'Loggar in…',
-  'editor.loading': 'Laddar projektet…',
+  'editor.loading': 'Laddar spelet…',
   'editor.conflict': 'Någon annan har sparat sedan du laddade. Ladda om och gör om ändringen.',
   'editor.rev': 'rev {n}',
   'editor.here.count': '{n} inne',
@@ -97,7 +97,7 @@ export const svEditor = {
   'table.selected.other': '{n} markerade kort',
   'table.pinned': 'nytt kort visas trots filtret',
   'table.filter.clear': 'Rensa filter',
-  'table.sort.none': 'Osorterad: kortens ordning i projektet.',
+  'table.sort.none': 'Osorterad: kortens ordning i spelet.',
   'table.sort.ascending': 'Sorterad på {field}, stigande.',
   'table.sort.descending': 'Sorterad på {field}, fallande.',
   'table.bulk': 'Markerade kort',
@@ -288,7 +288,7 @@ export const svEditor = {
 
   // Borden: sessionerna som spelas ur spelet, och vägarna in i dem.
   'tables.loading': 'Laddar bord…',
-  'tables.lead': 'Varje bord är en session från det här spelet. Ett bord överlever att alla kopplar ner; det avslutas uttryckligen eller efter ett dygn.',
+  'tables.lead': 'Varje bord hör till det här spelet. Ett bord överlever att alla kopplar ner; det avslutas uttryckligen eller efter ett dygn.',
   'tables.none': 'Inget bord ännu. "Uppdatera bordet" startar ett från den sparade versionen.',
   'tables.menu.none': 'Inget bord ännu. "Uppdatera bordet" startar ett.',
   'tables.starting': 'Startar…',

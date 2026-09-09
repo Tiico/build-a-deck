@@ -92,7 +92,7 @@ const SHELL = `
     </div>
     <div role="tabpanel" tabindex="0" data-stop="the tables panel">
       <div class="byd-tables">
-        <p class="byd-tables-lead">Varje bord är en session från det här spelet.</p>
+        <p class="byd-tables-lead">Varje bord hör till det här spelet.</p>
         <ul>
           <li class="byd-table-row" data-stale="true">
             <div class="byd-tables-mini"></div>

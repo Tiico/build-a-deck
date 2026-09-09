@@ -135,7 +135,7 @@ export const svAccount = {
   'wizard.creating': 'Skapar…',
   'wizard.create': 'Skapa spelet och fortsätt i editorn →',
   'wizard.error.login': 'logga in först',
-  'wizard.error.create': 'kunde inte skapa projektet: {status}',
+  'wizard.error.create': 'kunde inte skapa spelet: {status}',
   'wizard.error.upload': 'kunde inte ladda upp bilden: {status}',
 
   // Ord guiden föreslår och som designern sedan får ändra: de skrivs på det språk spelet byggs i.

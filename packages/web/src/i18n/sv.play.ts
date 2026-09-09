@@ -5,8 +5,8 @@
 export const svPlay = {
   // Gemensamt för alla spelytor.
   'play.connecting': 'Ansluter…',
-  'play.session.missing': 'Ingen session angiven.',
-  'play.session.seat.missing': 'Ingen session eller plats angiven.',
+  'play.session.missing': 'Inget bord angivet.',
+  'play.session.seat.missing': 'Bord eller plats saknas.',
   'play.cards.one': '{n} kort',
   'play.cards.other': '{n} kort',
   'play.latest': 'Senast',
@@ -24,7 +24,7 @@ export const svPlay = {
 
   // Bordsskärmen.
   'play.refused.host': 'Bordsvyn öppnas med värdens länk från editorn.',
-  'ended.title': 'Sessionen är avslutad',
+  'ended.title': 'Bordet är avslutat',
   'ended.locked': 'Loggen är låst på {version}. Enkäten finns på telefonerna.',
   'ended.rows.one': 'rader',
   'ended.rows.other': 'rader',
@@ -78,7 +78,7 @@ export const svPlay = {
   'activity.seat.claim': '{name} satte sig på plats {seat}',
   'activity.seat.release': 'Plats {seat} lämnades',
   'activity.setup.reset': '{who} återställde bordet',
-  'activity.session.end': 'Sessionen avslutades',
+  'activity.session.end': 'Bordet avslutades',
   'activity.version.change': 'Spelet uppdaterades till {to}',
   'activity.undo.self': '{who} ångrade sitt senaste drag',
   'activity.rewind.propose': '{who} föreslog att spola tillbaka',
@@ -139,14 +139,14 @@ export const svPlay = {
   'flag.sheet.note': 'Vad hände? (frivilligt)',
   'flag.sheet.flag': 'Flagga',
   'flag.sheet.cancel': 'Avbryt',
-  'end.sheet.title': 'Avsluta sessionen?',
+  'end.sheet.title': 'Avsluta bordet?',
   'end.sheet.body':
     'Loggen låses på {version}, bordet kan inte spelas vidare, och alla får enkäten på sin telefon. Att bara lägga ifrån sig telefonen avslutar inget: bordet väntar.',
   'end.sheet.end': 'Avsluta för alla',
   'end.sheet.not': 'Inte än',
 
   // Enkäten efter sessionen (G3).
-  'survey.title': 'Sessionen är slut',
+  'survey.title': 'Bordet är avslutat',
   'survey.sub': 'Fyra frågor, en minut. Svaren knyts till version {version}.',
   'survey.q.fun': 'Hur kul var det?',
   'survey.q.fun.low': 'segt',

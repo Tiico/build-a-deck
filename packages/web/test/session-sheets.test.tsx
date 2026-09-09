@@ -22,7 +22,7 @@ describe('session sheets', () => {
     const onClose = vi.fn()
     render(<EndSheet version="v0.7" onEnd={onEnd} onClose={onClose} />)
 
-    const dialog = screen.getByRole('dialog', { name: 'Avsluta sessionen?' })
+    const dialog = screen.getByRole('dialog', { name: 'Avsluta bordet?' })
     expect(dialog.getAttribute('aria-modal')).toBe('true')
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Inte än' }))
     fireEvent.keyDown(dialog, { key: 'Escape' })

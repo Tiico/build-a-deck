@@ -123,7 +123,7 @@ export function asOf(at: Date): string {
 const REFUSALS: { match: RegExp; say: string }[] = [
   { match: /^not connected$/, say: 'Du är inte uppkopplad, så draget skickades aldrig.' },
   { match: /^connection lost$/, say: 'Anslutningen bröts innan draget kom fram.' },
-  { match: /session has ended/, say: 'Sessionen är avslutad, så bordet tar inte emot fler drag.' },
+  { match: /session has ended/, say: 'Bordet är avslutat och tar inte emot fler drag.' },
   { match: /an observer can only flag/, say: 'Som observatör kan du titta och flagga, men inte spela.' },
   { match: /seat does not match/, say: 'Draget hörde till en annan plats än din.' },
   { match: /was already used/, say: 'Draget hade redan skickats.' },

@@ -1,7 +1,7 @@
 export const enPlay = {
   'play.connecting': 'Connecting…',
-  'play.session.missing': 'No session given.',
-  'play.session.seat.missing': 'No session or seat given.',
+  'play.session.missing': 'No table given.',
+  'play.session.seat.missing': 'No table or seat given.',
   'play.cards.one': '{n} card',
   'play.cards.other': '{n} cards',
   'play.latest': 'Latest',
@@ -15,7 +15,7 @@ export const enPlay = {
   'texture.lost.other': '{n} cards could not be rendered',
 
   'play.refused.host': 'The table view opens with the host’s link from the editor.',
-  'ended.title': 'The session is over',
+  'ended.title': 'This table has ended',
   'ended.locked': 'The log is locked to {version}. The survey is on the phones.',
   'ended.rows.one': 'row',
   'ended.rows.other': 'rows',
@@ -65,7 +65,7 @@ export const enPlay = {
   'activity.seat.claim': '{name} took seat {seat}',
   'activity.seat.release': 'Seat {seat} was left',
   'activity.setup.reset': '{who} reset the table',
-  'activity.session.end': 'The session ended',
+  'activity.session.end': 'The table was ended',
   'activity.version.change': 'The game was updated to {to}',
   'activity.undo.self': '{who} undid their last move',
   'activity.rewind.propose': '{who} proposed a rewind',
@@ -120,13 +120,13 @@ export const enPlay = {
   'flag.sheet.note': 'What happened? (optional)',
   'flag.sheet.flag': 'Flag',
   'flag.sheet.cancel': 'Cancel',
-  'end.sheet.title': 'End the session?',
+  'end.sheet.title': 'End the table?',
   'end.sheet.body':
     'The log is locked to {version}, the table cannot be played on, and everyone gets the survey on their phone. Just putting the phone down ends nothing: the table waits.',
   'end.sheet.end': 'End it for everyone',
   'end.sheet.not': 'Not yet',
 
-  'survey.title': 'The session is over',
+  'survey.title': 'This table has ended',
   'survey.sub': 'Four questions, one minute. The answers are tied to version {version}.',
   'survey.q.fun': 'How much fun was it?',
   'survey.q.fun.low': 'a slog',

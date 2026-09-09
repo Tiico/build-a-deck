@@ -213,10 +213,10 @@ describe('ending the session and the survey after it (C9, G3)', () => {
     const id = await createSession(run)
     await open(id, 'A', 'Ada')
     fireEvent.click(screen.getByRole('button', { name: /Avsluta/ }))
-    expect(screen.getByText(/Avsluta sessionen\?/)).toBeTruthy()
+    expect(screen.getByText(/Avsluta bordet\?/)).toBeTruthy()
     expect((await run.store.read(id)).some((l) => l.intent.v === 'session.end')).toBe(false)
     fireEvent.click(screen.getByRole('button', { name: /Avsluta för alla/ }))
-    expect(await screen.findByText(/Sessionen är slut/)).toBeTruthy()
+    expect(await screen.findByText(/Bordet är avslutat/)).toBeTruthy()
     expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'session.end' } })
 
     const next = () => fireEvent.click(screen.getByRole('button', { name: 'Nästa' }))

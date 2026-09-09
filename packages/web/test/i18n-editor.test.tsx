@@ -65,7 +65,7 @@ describe('the editor in the reader\'s own language (A4)', () => {
     expect(screen.getByRole('link', { name: 'Export CSV' })).toBeTruthy()
     expect(screen.getByPlaceholderText('Search every field…')).toBeTruthy()
     expect(screen.getByText('3 of 3 cards')).toBeTruthy()
-    expect(screen.getByText('Unsorted: the cards’ order in the project.')).toBeTruthy()
+    expect(screen.getByText('Unsorted: the cards’ order in the game.')).toBeTruthy()
     expect(screen.getByRole('button', { name: '+ New card' })).toBeTruthy()
     expect(screen.getByLabelText('Select all shown')).toBeTruthy()
     // `title` and `body` are the designer's own columns and stay as they are. `antal` is not

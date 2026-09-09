@@ -122,7 +122,7 @@ export const enAccount = {
   'wizard.creating': 'Creating…',
   'wizard.create': 'Create the game and continue in the editor →',
   'wizard.error.login': 'log in first',
-  'wizard.error.create': 'could not create the project: {status}',
+  'wizard.error.create': 'could not create the game: {status}',
   'wizard.error.upload': 'could not upload the image: {status}',
 
 

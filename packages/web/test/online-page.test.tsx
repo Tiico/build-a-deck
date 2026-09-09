@@ -68,6 +68,6 @@ describe('OnlinePage (C2): both roles in one window', () => {
     await waitFor(async () => expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'flag' } }))
     fireEvent.click(screen.getByRole('button', { name: /Avsluta/ }))
     fireEvent.click(screen.getByRole('button', { name: /Avsluta för alla/ }))
-    expect(await screen.findByText(/Sessionen är slut/)).toBeTruthy()
+    expect(await screen.findByText(/Bordet är avslutat/)).toBeTruthy()
   })
 })

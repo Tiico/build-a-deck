@@ -219,7 +219,7 @@ describe('what happens on the table reaches a reader (#1, #2, D5)', () => {
     await other.send({ v: 'session.end' })
     await waitFor(() => expect(document.querySelector('[data-ended]')).toBeTruthy())
     await user.click(panel.getByRole('button', { name: /^Vänd/ }))
-    await waitFor(() => expect(live('assertive')).toMatch(/Sessionen är avslutad/))
+    await waitFor(() => expect(live('assertive')).toMatch(/Bordet är avslutat/))
     bo.close()
     other.close()
     expect((await run.store.read(id)).at(-1)?.intent.v).toBe('session.end')

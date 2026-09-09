@@ -54,7 +54,7 @@ describe('an action the table refuses', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Kasthög/ }))
 
     const said = await screen.findByTestId('refusal')
-    expect(said.textContent).toMatch(/avslutad/i)
+    expect(said.textContent).toMatch(/avslutat/i)
     expect(said.textContent).not.toMatch(/session has ended|Error/)
     table.close()
   })
@@ -89,7 +89,7 @@ describe('an action the table refuses', () => {
 
     lift(document.querySelector('[data-hand-card]')!)
     fireEvent.click(await screen.findByRole('button', { name: /Kasthög/ }))
-    await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toMatch(/avslutad/i))
+    await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toMatch(/avslutat/i))
     table.close()
   })
 
@@ -167,9 +167,9 @@ describe('a flag the table refuses', () => {
     fireEvent.click(flag)
 
     const said = await screen.findByTestId('refusal')
-    expect(said.textContent).toMatch(/avslutad/i)
+    expect(said.textContent).toMatch(/avslutat/i)
     expect(flag.getAttribute('aria-describedby')).toBe(said.id)
-    await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toMatch(/avslutad/i))
+    await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toMatch(/avslutat/i))
     table.close()
   })
 })

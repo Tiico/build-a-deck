@@ -27,7 +27,7 @@ const SHELL = `
   <div class="byd-sheet-targets">
     <button type="button" class="byd-status-refused-control" data-stop="a refused control" aria-describedby="r1"><span>Kasthög</span><small>7 kort · lägg överst</small></button>
   </div>
-  <span id="r1" class="byd-status-refusal">Sessionen är avslutad.</span>
+  <span id="r1" class="byd-status-refusal">Bordet är avslutat.</span>
 </div>`
 
 let browser: Browser

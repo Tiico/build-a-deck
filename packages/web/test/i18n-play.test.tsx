@@ -66,13 +66,13 @@ describe('the play surfaces in the reader\'s own language (A4)', () => {
     flag.unmount()
 
     english(<EndSheet version="v1" onEnd={() => undefined} onClose={() => undefined} />)
-    expect(screen.getByRole('dialog', { name: 'End the session?' })).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: 'End the table?' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Not yet' })).toBeTruthy()
   })
 
   it('asks the survey in English', () => {
     english(<Survey who="Ada" version="v1" onSubmit={async () => undefined} />)
-    expect(screen.getByRole('heading', { name: 'The session is over' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'This table has ended' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: /How much fun/i })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Next' })).toBeTruthy()
   })

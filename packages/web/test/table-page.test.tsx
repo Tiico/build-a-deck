@@ -228,7 +228,7 @@ describe('the end of a session on the table (C9)', () => {
     await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
     await ada.send({ v: 'flag', note: 'hm' })
     await ada.send({ v: 'session.end' })
-    const over = await screen.findByText(/Sessionen är avslutad/)
+    const over = await screen.findByText(/Bordet är avslutat/)
     const overlay = over.closest('[data-ended]')!
     await waitFor(() => expect(overlay.textContent).toMatch(/v1/))
     expect(overlay.textContent).toMatch(/1 flaggade ögonblick/)

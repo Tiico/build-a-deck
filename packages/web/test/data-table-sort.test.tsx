@@ -93,7 +93,7 @@ describe('DataTable sorting (a view, #15)', () => {
     const kostnad = screen.getByRole('button', { name: /^kostnad/ })
     const headerOf = (button: HTMLElement) => button.closest('th') as HTMLElement
     expect(headerOf(kostnad).getAttribute('aria-sort')).toBe('none')
-    expect(screen.getByRole('status').textContent).toBe('Osorterad: kortens ordning i projektet.')
+    expect(screen.getByRole('status').textContent).toBe('Osorterad: kortens ordning i spelet.')
 
     kostnad.focus()
     expect(document.activeElement).toBe(kostnad)
@@ -111,7 +111,7 @@ describe('DataTable sorting (a view, #15)', () => {
 
     fireEvent.click(kostnad)
     expect(headerOf(kostnad).getAttribute('aria-sort')).toBe('none')
-    expect(screen.getByRole('status').textContent).toBe('Osorterad: kortens ordning i projektet.')
+    expect(screen.getByRole('status').textContent).toBe('Osorterad: kortens ordning i spelet.')
   })
 
   it('holds the row still while a cell is being typed in and reorders when the field is left', () => {
@@ -195,7 +195,7 @@ describe('DataTable sorting from the keyboard (#15)', () => {
     const kostnad = screen.getByRole('button', { name: /^kostnad/ })
     const header = kostnad.closest('th') as HTMLElement
     expect(header.getAttribute('aria-sort')).toBe('none')
-    expect(screen.getByRole('status').textContent).toBe('Osorterad: kortens ordning i projektet.')
+    expect(screen.getByRole('status').textContent).toBe('Osorterad: kortens ordning i spelet.')
 
     await tabTo(user, kostnad)
 
@@ -212,7 +212,7 @@ describe('DataTable sorting from the keyboard (#15)', () => {
     await user.keyboard('{Enter}')
     expect(shownOrder()).toEqual(['dragon', 'knight', 'wizard'])
     expect(header.getAttribute('aria-sort')).toBe('none')
-    expect(screen.getByRole('status').textContent).toBe('Osorterad: kortens ordning i projektet.')
+    expect(screen.getByRole('status').textContent).toBe('Osorterad: kortens ordning i spelet.')
 
     expect(document.activeElement).toBe(kostnad)
   })

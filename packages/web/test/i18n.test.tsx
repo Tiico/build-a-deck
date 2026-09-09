@@ -30,6 +30,26 @@ describe('the tool in the reader\'s own language (A4)', () => {
     expect(Object.keys(sv)).toHaveLength(Object.keys(svEditor).length + Object.keys(svPlay).length + Object.keys(svAccount).length)
   })
 
+  // The glossary (A4): one concept, one word. What it retired is the code's own vocabulary leaking
+  // into the reader's text — the game a designer made is not a "project" to them, and the surface
+  // they play on is not a "session". `leken` is not on the list: a deck is not a game, and both
+  // languages already held that difference. A test is what keeps the next key from bringing the
+  // retired words back (#38).
+  it('calls each thing by the one word the glossary gives it', () => {
+    // Word-bounded so a compound that means something else is not caught, and case-insensitive
+    // because a word at the start of a sentence is the same word.
+    const says = (catalogue: Record<string, string>, words: string[]) =>
+      Object.entries(catalogue)
+        .filter(([, text]) => words.some((word) => new RegExp(`\\b${word}\\b`, 'i').test(text)))
+        .map(([key]) => key)
+        .sort()
+
+    expect(says(sv, ['projekt', 'projektet', 'session', 'sessionen', 'sessioner', 'rummet'])).toEqual([])
+    // "room code" stays: the code is its own concept and not the table (K12), so the room is only
+    // retired where it stands for the table itself.
+    expect(says(en, ['project', 'session', 'sessions', 'the room(?!\\s+code)'])).toEqual([])
+  })
+
   it('puts what a message is about into it, rather than gluing sentences together', () => {
     expect(translate('sv', 'wall.cards.other', { n: 3 })).toContain('3')
     expect(translate('en', 'wall.cards.other', { n: 3 })).toContain('3')

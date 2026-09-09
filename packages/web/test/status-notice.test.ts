@@ -98,7 +98,7 @@ describe('a refusal in the reader s language', () => {
   it.each([
     ['not connected', /uppkopplad/i],
     ['connection lost', /anslutningen bröts/i],
-    ['session has ended', /avslutad/i],
+    ['session has ended', /avslutat/i],
     ['an observer can only flag', /observatör/i],
     ['envelope seat does not match connection seat', /annan plats/i],
     ['pile draw is empty', /tom/i],
@@ -116,7 +116,7 @@ describe('a refusal in the reader s language', () => {
   })
 
   it('carries the reason into the refused notice so a control can show it where it happened', () => {
-    expect(refusal('session has ended', 'phone').text).toMatch(/avslutad/i)
+    expect(refusal('session has ended', 'phone').text).toMatch(/avslutat/i)
     expect(refusal('session has ended', 'phone').live).toBe('assertive')
   })
 })
