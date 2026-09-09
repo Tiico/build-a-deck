@@ -7,7 +7,8 @@ import { ASSET_PREFIX } from './assets.js'
 import { freeIconName, svgBytes, symbolName, type GameSymbol } from './symbols.js'
 import type { EditorMessage, Presence } from '@byd/server'
 import { canEdit, type Role } from '@byd/server/doc'
-import { translate, type T } from '../i18n/index.js'
+import { translate, type Key, type T } from '../i18n/index.js'
+import { UNDO_STEPS, whatOf } from './undo.js'
 
 // Without a catalogue of its own this module speaks Swedish, exactly as a surface mounted
 // without a language provider does: the surface that opened the project hands over its own
@@ -74,6 +75,10 @@ export class ProjectClient {
   // Edits made before the socket was open, or made and not yet echoed back. They are sent when
   // the socket opens, and laid on top again whenever the actor hands over its document.
   private pending: EditIntent[] = []
+  // The steps the designer took in this tab, each kept as the document it was taken from, and the
+  // ones taken back and waiting to come forward again (#35).
+  private past: { doc: ProjectDoc; what: Key }[] = []
+  private future: { doc: ProjectDoc; what: Key }[] = []
   private outbox: string[] = []
   // A save asked for over the socket, waiting for the actor to say what became of it.
   private saving: ((result: SaveResult) => void) | null = null
@@ -262,11 +267,48 @@ export class ProjectClient {
   }
 
   edit(intent: EditIntent): void {
+    // Where the designer was before this: a step back is `restore` with that document, which is
+    // already how taking a document back is said (B4), so no new verb is needed (#35). A new edit
+    // is a new branch, so what was taken back stops waiting to come forward.
+    this.past.push({ doc: this.doc, what: whatOf(intent) })
+    if (this.past.length > UNDO_STEPS) this.past.shift()
+    this.future = []
+    this.send(intent)
+  }
+
+  // The edit itself, without touching the stack: this is the path a step of the stack takes, and
+  // recording those would be a stack that can never be emptied.
+  private send(intent: EditIntent): void {
     // It must apply here before it is sent: an edit that makes no sense is the editor's mistake
     // to see, not something to find out about a round trip later.
     this.commit(applyEdit(this.doc, intent))
     this.pending.push(intent)
     this.post(JSON.stringify({ t: 'edit', intent }))
+  }
+
+  get canUndo(): boolean {
+    return this.past.length > 0
+  }
+  get canRedo(): boolean {
+    return this.future.length > 0
+  }
+
+  // A step back, and the word for what it took. Null when there is nothing behind: the view says
+  // nothing rather than saying it undid something.
+  undo(): Key | null {
+    const step = this.past.pop()
+    if (!step) return null
+    this.future.push({ doc: this.doc, what: step.what })
+    this.send({ v: 'restore', doc: step.doc })
+    return step.what
+  }
+
+  redo(): Key | null {
+    const step = this.future.pop()
+    if (!step) return null
+    this.past.push({ doc: this.doc, what: step.what })
+    this.send({ v: 'restore', doc: step.doc })
+    return step.what
   }
 
   setCell(cardRef: string, field: string, value: Cell): void {

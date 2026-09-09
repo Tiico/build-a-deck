@@ -20,6 +20,7 @@ import type { ProjectClient, Textures } from './ProjectClient.js'
 import { loginUrl } from '../account/api.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { noticeFor } from '../status/notice.js'
+import { chordOf, isTyping } from './keys.js'
 import { statusLinks } from '../status/links.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useT } from '../i18n/index.js'
@@ -342,6 +343,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
         {/* A save that could not happen is not a passing remark: it is spoken at once, because
             the work it was about is still only in this tab. */}
         {notice && <span role="alert" className="byd-editor-notice">{notice}</span>}
+        <EditorChords client={client} onSave={() => void save()} onNotice={setNotice} />
         {/* "Nytt bord" and the shortcut beside "Uppdatera bordet" are two ways to the tables that
             the Bord stage also holds, so below the desk they leave the header rather than being
             squeezed into it: nothing they reach becomes unreachable. */}
@@ -455,6 +457,34 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
 }
 
 // The way back to "Mina spel", keeping the server the editor was opened against.
+// The chords the whole editor answers (#35), wherever the focus is. Its own component, so the
+// listener is hung once the editor has a project to act on rather than by a hook that would have
+// to run before there is one. The callbacks are read through a ref so the editor's every keystroke
+// does not swap the listener out.
+function EditorChords({ client, onSave, onNotice }: { client: ProjectClient; onSave(): void; onNotice(text: string): void }) {
+  const t = useT()
+  const latest = useRef({ client, onSave, onNotice, t })
+  latest.current = { client, onSave, onNotice, t }
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return
+      const chord = chordOf(event)
+      if (!chord) return
+      // Saving is the editor's wherever it is pressed; a step back belongs to the field first.
+      if (chord !== 'save' && isTyping(event.target)) return
+      event.preventDefault()
+      const now = latest.current
+      if (chord === 'save') return now.onSave()
+      const what = chord === 'undo' ? now.client.undo() : now.client.redo()
+      // Nothing behind, or nothing ahead: the editor says nothing rather than claiming it undid.
+      if (what) now.onNotice(now.t(chord === 'undo' ? 'undo.took' : 'undo.redid', { what: now.t(what) }))
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [])
+  return null
+}
+
 function homeUrl(server: string | null): string {
   return server ? `/?${new URLSearchParams({ server }).toString()}` : '/'
 }

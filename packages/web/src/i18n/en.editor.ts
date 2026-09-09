@@ -62,6 +62,17 @@ export const enEditor = {
   'wall.issue.unpinned-font': 'typeface that does not travel',
   'wall.issue.colour-only': 'told apart by colour alone',
 
+  // One step back (#35): what it took back, in the designer's own words rather than the verb's.
+  'undo.took': 'Took back: {what}',
+  'undo.redid': 'Put back: {what}',
+  'undo.what.name': "the game's name",
+  'undo.what.deck': 'a change to the deck',
+  'undo.what.template': 'a change to the template',
+  'undo.what.table': 'a change to the table',
+  'undo.what.symbols': 'a change among the symbols',
+  'undo.what.rules': 'a change to the rules',
+  'undo.what.font': 'a change among the typefaces',
+  'undo.what.version': 'a version taken back',
   'table.import': 'Import CSV',
   'table.export': 'Export CSV',
   'table.import.note': 'An import replaces the cards in the table. Save once the result looks right.',

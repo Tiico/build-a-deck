@@ -5,6 +5,7 @@ import { CardPreview } from './CardPreview.js'
 import { arrowMove, fitScale, HANDLES, movedTo, newElement, resizedTo, snapped, STAGE_SCALE, TOOLS, type Box, type ElementKind, type Grab, type Guides, type Handle } from './canvas.js'
 import { elementsFor } from '@byd/template'
 import { fieldsOf } from './fields.js'
+import { isTyping } from './keys.js'
 import { cardsInGroup, groupColumn, groupsOf, layersOf, overriddenIds, ruleLabel, type Layer } from './groups.js'
 import { LayerList } from './LayerList.js'
 import type { CanvasStage } from './EditorStages.js'
@@ -507,17 +508,6 @@ function useElementKeys(el: Element | undefined, onPatch: TemplateCanvasProps['o
   })
 }
 
-// Backspace deletes a card element only when it is not deleting a character, and an arrow moves
-// one only when it is not stepping a number or picking an option: a field being typed in owns
-// every key it gets. A tick box owns none of them — it answers only the space bar — so the card
-// still hears the keyboard from there.
-const TICKED = ['checkbox', 'radio', 'button', 'submit', 'reset']
-function isTyping(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false
-  if (target.isContentEditable) return true
-  if (target instanceof HTMLInputElement) return !TICKED.includes(target.type)
-  return target.tagName === 'TEXTAREA' || target.tagName === 'SELECT'
-}
 
 function Properties({ el, fields, fonts, onPatch }: { el: Element; fields: string[]; fonts: string[]; onPatch(patch: Partial<Element>): void }) {
   const t = useT()

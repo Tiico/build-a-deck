@@ -1,0 +1,84 @@
+// @vitest-environment jsdom
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { userEvent } from '@testing-library/user-event'
+import { EditorPage } from '../src/editor/EditorPage.js'
+import { projectDoc } from './project-doc.js'
+import { startServer, type Running } from './fixture.js'
+
+let run: Running
+beforeEach(async () => {
+  run = await startServer()
+})
+afterEach(async () => {
+  await run.stop()
+})
+
+async function openEditor() {
+  await run.projects.create('p1', projectDoc())
+  history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+  render(<EditorPage />)
+  await screen.findByText('Skogens herrar')
+}
+
+// The editor had no modifier chord at all: arrows nudged an element and Delete removed one, and
+// that was the whole keyboard. The way back was the version panel, which is a different thing —
+// a whole saving, named and comparable (B4) — not the step just taken (#35).
+describe('a step back in the editor (#35)', () => {
+  it('takes the last change back on Ctrl+Z, puts it forward on Shift+Ctrl+Z, and says what it did', async () => {
+    await openEditor()
+    fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
+    const cell = await waitFor(() => {
+      const el = document.querySelector('.byd-data tbody td:not(.byd-data-check) input') as HTMLInputElement | null
+      if (!el) throw new Error('no cell yet')
+      return el
+    })
+    await userEvent.clear(cell)
+    await userEvent.type(cell, 'Drakhona')
+    // The focus leaves the field, so the chord is the project's and not the field's.
+    ;(document.activeElement as HTMLElement | null)?.blur()
+    await waitFor(() => expect((document.querySelector('.byd-data tbody td:not(.byd-data-check) input') as HTMLInputElement).value).toBe('Drakhona'))
+
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
+    expect(await screen.findByText(/Tog tillbaka: en ändring i kortleken/)).toBeTruthy()
+
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true, shiftKey: true })
+    expect(await screen.findByText(/Gjorde om: en ändring i kortleken/)).toBeTruthy()
+  })
+
+  it('leaves the chord to a field being typed in, whose own step back the browser already does well', async () => {
+    await openEditor()
+    fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
+    const cell = await waitFor(() => {
+      const el = document.querySelector('.byd-data tbody td:not(.byd-data-check) input') as HTMLInputElement | null
+      if (!el) throw new Error('no cell yet')
+      return el
+    })
+    await userEvent.clear(cell)
+    await userEvent.type(cell, 'Drakhona')
+
+    cell.focus()
+    fireEvent.keyDown(cell, { key: 'z', ctrlKey: true })
+    expect(screen.queryByText(/Tog tillbaka/)).toBeNull()
+  })
+
+  it('saves on Ctrl+S rather than letting the browser save the page', async () => {
+    await openEditor()
+    fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
+    const cell = await waitFor(() => {
+      const el = document.querySelector('.byd-data tbody td:not(.byd-data-check) input') as HTMLInputElement | null
+      if (!el) throw new Error('no cell yet')
+      return el
+    })
+    await userEvent.clear(cell)
+    await userEvent.type(cell, 'Drakhona')
+    await screen.findByText('Osparade ändringar')
+
+    // Pressed from inside the field: saving is the editor's wherever it is asked for, and the
+    // browser's own "save this page" must not be what happens instead.
+    const event = new KeyboardEvent('keydown', { key: 's', ctrlKey: true, cancelable: true, bubbles: true })
+    cell.dispatchEvent(event)
+    expect(event.defaultPrevented).toBe(true)
+    await waitFor(async () => expect((await run.projects.load('p1'))?.rev).toBe(2))
+  })
+})

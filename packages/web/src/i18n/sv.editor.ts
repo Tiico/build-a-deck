@@ -67,6 +67,17 @@ export const svEditor = {
   'wall.issue.colour-only': 'skiljs bara av färg',
 
   // Tabellen: import och export, filtret, det markerade och raderna.
+  // Ett steg bakåt (#35): vad det tog tillbaka, i designerns egna ord snarare än verbets.
+  'undo.took': 'Tog tillbaka: {what}',
+  'undo.redid': 'Gjorde om: {what}',
+  'undo.what.name': 'namnet på spelet',
+  'undo.what.deck': 'en ändring i kortleken',
+  'undo.what.template': 'en ändring i mallen',
+  'undo.what.table': 'en ändring på bordet',
+  'undo.what.symbols': 'en ändring bland symbolerna',
+  'undo.what.rules': 'en ändring i reglerna',
+  'undo.what.font': 'en ändring bland typsnitten',
+  'undo.what.version': 'en tillbakatagen version',
   'table.import': 'Importera CSV',
   'table.export': 'Exportera CSV',
   'table.import.note': 'Import ersätter korten i tabellen. Spara när resultatet ser rätt ut.',

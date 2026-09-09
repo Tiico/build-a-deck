@@ -38,6 +38,39 @@ describe('ProjectClient', () => {
     expect(client.dirty).toBe(true)
   })
 
+  // Ctrl+Z is not the version history (B4). The history is a whole saving, named and comparable;
+  // this is the step the designer just took. It travels as a `restore` edit, which is already how
+  // taking a document back is said, so no new verb enters the vocabulary (#35).
+  it('takes the last edit back, puts it forward again, and says what each step was', async () => {
+    const created = await run.projects.create('p1', projectDoc())
+    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    expect(client.canUndo).toBe(false)
+    expect(client.undo()).toBeNull()
+
+    client.setCell('dragon', 'title', 'Drakhona')
+    client.rename('Skogens herrar v2')
+    expect(client.canUndo).toBe(true)
+
+    expect(client.undo()).toBe('undo.what.name')
+    expect(client.doc.name).toBe('Skogens herrar')
+    expect(client.doc.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drakhona')
+
+    expect(client.undo()).toBe('undo.what.deck')
+    expect(client.doc.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drake')
+    expect(client.canUndo).toBe(false)
+
+    expect(client.redo()).toBe('undo.what.deck')
+    expect(client.doc.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drakhona')
+    expect(client.redo()).toBe('undo.what.name')
+    expect(client.doc.name).toBe('Skogens herrar v2')
+    expect(client.canRedo).toBe(false)
+
+    // A new edit is a new branch: what was taken back is not waiting to come forward any more.
+    client.undo()
+    client.setCell('knight', 'antal', '3')
+    expect(client.canRedo).toBe(false)
+  })
+
   it('starts a table from the saved project and returns the session id', async () => {
     const created = await run.projects.create('p1', projectDoc())
     const client = await ProjectClient.open({ http: run.http, id: created.id })
