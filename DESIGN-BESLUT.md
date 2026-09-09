@@ -72,21 +72,28 @@ En engelsk mening är längre än en svensk, och det är layouten som får veta 
 
 Ordlistan, 2026-09-09:
 Ett begrepp, ett ord.
-Katalogen hade fyra ord för formgivarens spel och tre för bordet, och fyra ord läses som fyra saker.
-Att texterna var översatta hjälpte inte: en enhetlig katalog på två språk är två inkonsekventa texter.
+Katalogen kallade formgivarens spel för både `spelet` och `projektet`, och bordet för både `bordet` och `sessionen` — kodens egna ord, läckta ut i läsarens text.
+Att texterna var översatta hjälpte inte: samma inkonsekvens fanns på båda språken.
 
 | Begrepp | Ordet | Utgår |
 | --- | --- | --- |
-| Formgivarens spel | `spelet` | `leken`, `projekt`, `projektet` |
+| Formgivarens spel | `spelet` | `projekt`, `projektet` |
+| Korten i spelet | `leken` | — |
 | Ytan man spelar på | `bordet` | `rummet`, `sessionen` |
 | Koden telefonen skriver in | `rumskod` | — |
 | Biblioteket med symboler, ramar och färgblock | `symbol` | — |
 | Den lilla bilden i en korttext eller på duken | `ikon` | — |
 
+`leken` är inte spelet, och står därför kvar.
+En lek är korten, ett spel är det designade spelet, och båda språken höll redan skillnaden: `Ta bort {n} kort ur leken?` mot `Remove {n} card from the deck?`.
+Ett ord som bär sitt eget begrepp är inte en avvikelse bara för att det finns flera ord i närheten.
 `sessionen` är motorns ord. Det stannar i loggen, i koden och i exporten och står inte i läsarens text.
 Att koden och API:t säger `project` är medvetet och rörs inte: koden är kodens språk.
 `rumskod` står kvar därför att koden är ett eget begrepp och inte bordet (K12); den skrivs in på en telefon och hör till vägen in.
 Biblioteket heter `symbol` därför att det rymmer mer än ikoner — också platshållarramar och färgblock. `ikon` är den enskilda bilden, och det ordet står där en sätts: i tabellcellen och på duken.
+
+Ordlistan gäller strängarnas värden, inte koden runt dem.
+En kommentar får kalla saker vad den vill; det är läsarens text som ska vara enhetlig.
 
 Knappform: verb, plus objekt när sammanhanget inte säger vad.
 "Spara" där det är tydligt, "Uppdatera bordet" där det inte är det.
