@@ -24,6 +24,14 @@ beforeEach(async () => {
 const json = (method: string, path: string, body?: unknown) =>
   fetch(`${run.http}${path}`, { method, headers: { 'content-type': 'application/json', cookie }, body: body === undefined ? null : JSON.stringify(body) })
 
+// A second person, logged in as the first one is: the magic link out of the mailbox (G1).
+const login = async (email: string): Promise<string> => {
+  await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email }) })
+  const link = /\/auth\/verify\?token=\S+/.exec(run.mail.sent.at(-1)?.text ?? '')?.[0] ?? ''
+  const res = await fetch(`${run.http}${link}`, { redirect: 'manual' })
+  return (res.headers.get('set-cookie') ?? '').split(';')[0] ?? ''
+}
+
 function project() {
   const { zones, seats, floor } = twoSeatSetup()
   return {
@@ -306,41 +314,70 @@ describe('the tables a project has (#19)', () => {
     const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
     for (const query of ['owner=1', 'seat=A&owner=1', 'role=observer&name=Designern&owner=1']) {
       const ws = new WebSocket(`${run.base}/sessions/${sessionId}?${query}`, { headers: { cookie, origin: 'http://test.local' } })
-      const message = await new Promise<unknown>((resolve, reject) => {
-        ws.once('message', (raw) => resolve(JSON.parse(raw.toString())))
-        ws.once('error', reject)
-      })
-      expect(message).toMatchObject({ t: 'snapshot' })
+      expect(await firstMessage(ws)).toMatchObject({ t: 'snapshot' })
       ws.close()
     }
 
     const stranger = new WebSocket(`${run.base}/sessions/${sessionId}?owner=1`, { headers: { cookie: 'byd_session=nope', origin: 'http://test.local' } })
-    const refused = await new Promise<unknown>((resolve, reject) => {
-      stranger.once('message', (raw) => resolve(JSON.parse(raw.toString())))
-      stranger.once('error', reject)
-    })
-    expect(refused).toEqual({ t: 'refused', reason: 'the table needs the host key or its owner' })
+    expect(await firstMessage(stranger)).toEqual({ t: 'refused', reason: 'the table needs the host key or its owner' })
     stranger.close()
 
     for (const query of [`seat=Q&owner=1`, `role=observer&name=${'x'.repeat(65)}&owner=1`]) {
       const invalid = new WebSocket(`${run.base}/sessions/${sessionId}?${query}`, { headers: { cookie, origin: 'http://test.local' } })
-      const message = await new Promise<unknown>((resolve, reject) => {
-        invalid.once('message', (raw) => resolve(JSON.parse(raw.toString())))
-        invalid.once('error', reject)
-      })
-      expect(message).toMatchObject({ t: 'refused' })
+      expect(await firstMessage(invalid)).toMatchObject({ t: 'refused' })
       invalid.close()
     }
 
     const foreign = new WebSocket(`${run.base}/sessions/${sessionId}?owner=1`, { headers: { cookie, origin: 'https://foreign.example' } })
-    const blocked = await new Promise<unknown>((resolve, reject) => {
-      foreign.once('message', (raw) => resolve(JSON.parse(raw.toString())))
-      foreign.once('error', reject)
-    })
-    expect(blocked).toEqual({ t: 'refused', reason: 'the table needs the host key or its owner' })
+    expect(await firstMessage(foreign)).toEqual({ t: 'refused', reason: 'the table needs the host key or its owner' })
     foreign.close()
   })
+
+  // Every way into a table other than the host key asks `owner=1` (DRIFT §9), and that question
+  // has to be answered by the same gate the editor itself uses (D3): the role, not the owner
+  // field. Otherwise a game is editable while its own table is shut.
+  it('admits owner=1 on a table from a project that belongs to nobody, as the editor\'s own gate does', async () => {
+    await run.projects.create('open', project())
+    const { id: sessionId } = (await (await fetch(`${run.http}/projects/open/sessions`, { method: 'POST' })).json()) as { id: string }
+
+    const ws = new WebSocket(`${run.base}/sessions/${sessionId}?owner=1`, { headers: { origin: 'http://test.local' } })
+    expect(await firstMessage(ws)).toMatchObject({ t: 'snapshot' })
+    ws.close()
+  })
+
+  // A test leader runs playtests without touching the deck (D3). Starting a table and opening the
+  // one you started are the same errand, so the same role has to carry through both.
+  it('admits owner=1 for an invited test leader, and refuses a viewer, since owner=1 can take a seat', async () => {
+    const { id } = (await (await json('POST', '/projects', project())).json()) as { id: string }
+    const { id: sessionId } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string }
+
+    const invite = async (email: string, role: string): Promise<string> => {
+      expect((await json('POST', `/projects/${id}/invites`, { email, role })).status).toBe(201)
+      const token = /\/invites\/([A-Za-z0-9_-]+)/.exec(run.mail.sent.at(-1)?.text ?? '')?.[1] ?? ''
+      const theirs = await login(email)
+      expect((await fetch(`${run.http}/invites/${token}`, { method: 'POST', headers: { cookie: theirs } })).status).toBe(200)
+      return theirs
+    }
+
+    const tester = await invite('bo@example.com', 'tester')
+    const seated = new WebSocket(`${run.base}/sessions/${sessionId}?owner=1`, { headers: { cookie: tester, origin: 'http://test.local' } })
+    expect(await firstMessage(seated)).toMatchObject({ t: 'snapshot' })
+    seated.close()
+
+    const viewer = await invite('cee@example.com', 'viewer')
+    const looking = new WebSocket(`${run.base}/sessions/${sessionId}?owner=1`, { headers: { cookie: viewer, origin: 'http://test.local' } })
+    expect(await firstMessage(looking)).toEqual({ t: 'refused', reason: 'the table needs the host key or its owner' })
+    looking.close()
+  })
 })
+
+// The first message a raw connection gets: the snapshot it was admitted to, or the refusal.
+function firstMessage(ws: WebSocket): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    ws.once('message', (raw) => resolve(JSON.parse(raw.toString())))
+    ws.once('error', reject)
+  })
+}
 
 // A group is a rule on a column (#13): the template's `variantBy` names the column, the variant's
 // key is the value. Nothing here is new to the compiler (L3, L7) — what this proves is that the

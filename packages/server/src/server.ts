@@ -95,16 +95,25 @@ async function playedBy(opts: ServerOptions, accountId: string): Promise<Played[
   return out
 }
 
-// Who may control a table (DRIFT §9): whoever holds the host key, or the account that owns the
-// project it was started from. 'unknown' has shown nothing; 'wrong' has shown a key that is not it.
+// Who may control a table (DRIFT §9): whoever holds the host key, or an account whose role on the
+// project it was started from may start tables (D3). The role is the same question the editor's
+// own gate asks, so a game cannot be editable while its own table is shut.
+// 'unknown' has shown nothing; 'wrong' has shown a key, or a role, that is not it.
 async function hostOf(opts: ServerOptions, req: IncomingMessage, session: SessionRecord): Promise<'host' | 'unknown' | 'wrong'> {
   const bearer = /^Bearer\s+(\S+)$/i.exec(req.headers.authorization ?? '')?.[1]
   if (bearer !== undefined) return session.hostKeyHash !== undefined && hash(bearer) === session.hostKeyHash ? 'host' : 'wrong'
   if (!opts.auth || !opts.projects || !session.project) return 'unknown'
+  const project = await opts.projects.load(session.project)
+  if (!project) return 'unknown'
+  // A project from before accounts belongs to nobody and is open to anyone, exactly as the
+  // editor's own gate has it (D3). Asked before the login, because there is nothing to log in to.
+  if (project.owner === undefined) return 'host'
   const account = await accountOf(opts.auth, req)
   if (!account) return 'unknown'
-  const project = await opts.projects.load(session.project)
-  return project?.owner === account.id ? 'host' : 'wrong'
+  // The role decides, as it does everywhere else (D3): whoever may start a table may open the one
+  // they started. A viewer may not, because `owner=1` can take a seat and play.
+  const role = await opts.projects.roleOf(session.project, account.id)
+  return role !== null && canStartTables(role) ? 'host' : 'wrong'
 }
 
 const CreateSession = z.object({
