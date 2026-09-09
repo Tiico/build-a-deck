@@ -381,6 +381,42 @@ describe('a table that has been fitted keeps its own hands (#23)', () => {
   }
 })
 
+// The felt already hides pile names when it is narrow (K9): under 460 container pixels there is no
+// room between one pile and the next for a word. But the container is the felt's own layout box,
+// and the online view turns the felt to the player's edge — so a turned felt is measured across the
+// axis it is no longer shown across, the query does not fire, and the names run into each other
+// (#26).
+describe('pile names on a turned felt (K9, #26)', () => {
+  const overlaps = (a: Box, b: Box) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+  const collisions = (names: { what: string; box: Box }[]) =>
+    names.flatMap((a, i) => names.slice(i + 1).filter((b) => overlaps(a.box, b.box)).map((b) => `${a.what}/${b.what}`))
+  // A long table: the felt's two axes are far enough apart that turning it changes which one the
+  // layout box measures. This is the shape the fault was found on.
+  const longScene = (): Snapshot => {
+    const base = scene()
+    return { ...base, zones: base.zones.map((z) => (z.id === 'table' ? { ...z, geometry: { x: -800, y: -300, w: 1600, h: 600, rot: 0 } } : z)) }
+  }
+
+  // Proof the selector is not measuring nothing: given room, the names are there to collide.
+  it('shows the pile names when the felt has room for them', async () => {
+    const size = { w: 1280, h: 800 }
+    const names = await measureAll(markupOf(<TableRenderer view={scene()} mode="table" size={size} />), size, '.byd-pile-name')
+    expect(names.length).toBeGreaterThan(1)
+    expect(names.every((n) => n.box.w > 0)).toBe(true)
+    expect(collisions(names)).toEqual([])
+  }, 60_000)
+
+  // Every edge a seat can sit at (K9): the online view turns the felt to the player's own.
+  for (const rotate of [0, 90, 180, 270] as const) {
+    it(`keeps two pile names apart on a long felt at 390, turned ${rotate}°`, async () => {
+      const size = { w: 390, h: 780 }
+      const html = markupOf(<TableRenderer view={longScene()} mode="table" rotate={rotate} size={size} />)
+      const names = await measureAll(html, size, '.byd-pile-name')
+      expect({ rotate, collided: collisions(names) }).toEqual({ rotate, collided: [] })
+    }, 60_000)
+  }
+})
+
 describe('a hand is never wider than the table it sits at (#23)', () => {
   for (const size of [{ w: 390, h: 780 }, { w: 768, h: 900 }] as const) {
     it(`keeps a full fan of twelve inside the table's own width at ${size.w}`, async () => {
