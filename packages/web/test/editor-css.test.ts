@@ -121,7 +121,9 @@ const SHELL = `
   </main>
 </div>`
 
-type Stop = { what: string; style: string; width: number; color: string; on: string }
+// What a stop says about itself: the ring outside it, the mark inside it, and the background both
+// have to be seen against. A field is a stop the reader types into; the rest are controls.
+type Stop = { what: string; style: string; width: number; color: string; on: string; inside: string | null; typed: boolean }
 
 let browser: Browser
 beforeAll(async () => {
@@ -154,7 +156,9 @@ async function tabThrough(): Promise<Stop[]> {
           }
           node = node.parentElement
         }
-        return { what: el.getAttribute('data-stop') ?? el.tagName.toLowerCase(), style: style.outlineStyle, width: parseFloat(style.outlineWidth), color: style.outlineColor, on }
+        const inside = /(rgba?\([^)]*\))/.exec(style.boxShadow.includes('inset') ? style.boxShadow : '')?.[1] ?? null
+        const typed = el.matches('textarea, input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=button]):not([type=submit]):not([type=reset])')
+        return { what: el.getAttribute('data-stop') ?? el.tagName.toLowerCase(), style: style.outlineStyle, width: parseFloat(style.outlineWidth), color: style.outlineColor, on, inside, typed }
       })
       if (!stop) break
       stops.push(stop)
@@ -216,8 +220,19 @@ describe('the editor under a keyboard', () => {
       'the way out of ending',
       'the new-table button',
     ])
-    const dim = stops.filter((s) => s.style === 'none' || !(s.width >= 2) || contrastRatio(s.color, s.on) < 3)
+    // A control says where the keyboard is with a ring outside itself.
+    const controls = stops.filter((s) => !s.typed)
+    const dim = controls.filter((s) => s.style === 'none' || !(s.width >= 2) || contrastRatio(s.color, s.on) < 3)
     expect(dim.map((s) => s.what)).toEqual([])
+
+    // A field says it inside its own box instead (#34). A ring around a table cell is read as a
+    // marked cell rather than as focus, and the card table is nothing but fields.
+    const fields = stops.filter((s) => s.typed)
+    expect(fields.map((s) => s.what)).toContain('a cell')
+    const unmarked = fields.filter((s) => s.inside === null || contrastRatio(s.inside, s.on) < 3)
+    expect(unmarked.map((s) => s.what)).toEqual([])
+    const ringed = fields.filter((s) => s.style !== 'none')
+    expect(ringed.map((s) => s.what)).toEqual([])
   }, 60_000)
 })
 
@@ -229,7 +244,7 @@ const MARKED = `
     <table class="byd-data"><tbody>
       <tr id="plain" aria-selected="false"><td class="byd-data-check"><input type="checkbox" /></td><td class="byd-data-id">drake</td></tr>
       <tr id="marked" aria-selected="false"><td class="byd-data-check"><input type="checkbox" checked /></td><td class="byd-data-id">grop</td></tr>
-      <tr id="looked-at" aria-selected="true"><td class="byd-data-check"><input type="checkbox" checked /></td><td class="byd-data-id">alv</td></tr>
+      <tr id="looked-at" aria-selected="true"><td class="byd-data-check"><input type="checkbox" checked /></td><td class="byd-data-id">alv</td><td><input id="cell" value="Alv" /></td></tr>
     </tbody></table>
   </div></div></main>
 </div>`
@@ -246,6 +261,17 @@ describe('the table under a selection', () => {
       // The card on the preview keeps its own colour whether it is marked or not.
       expect(lookedAt).not.toBe(marked)
       expect(lookedAt).not.toBe(plain)
+
+      // Focus and marking are two facts about the same row, so they are said in two channels: the
+      // field marks itself inside, the row keeps its own background (#34). A focused cell must not
+      // repaint the row, or the reader cannot tell "I am here" from "I picked this".
+      await page.focus('#cell')
+      const [rowNow, cell] = await page.evaluate(() => {
+        const input = document.querySelector('#cell')!
+        return [getComputedStyle(document.querySelector('#looked-at')!).backgroundColor, getComputedStyle(input).boxShadow]
+      })
+      expect(rowNow).toBe(lookedAt)
+      expect(cell).toContain('inset')
     } finally {
       await page.close()
     }

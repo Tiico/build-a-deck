@@ -228,7 +228,17 @@
 .byd-editor > main > [role='tabpanel'] { height: 100%; min-height: 0; }
 /* A keyboard has to be able to see where it is, in every mode: one ring for every stop in the
    editor, light enough to carry 3:1 against each of the surfaces it lands on. */
+/* Where the keyboard is, said one way. A control says it with a ring outside itself. A field says
+   it inside its own box instead: the card table is nothing but fields, and a ring around a cell is
+   read as a marked cell rather than as focus (#34). One colour for both, so the two readings are
+   the same fact seen in two shapes. */
 .byd-editor :focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+.byd-editor textarea:focus-visible,
+.byd-editor input:focus-visible:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='button']):not([type='submit']):not([type='reset']) {
+  outline: none;
+  border-color: #9cc6ff;
+  box-shadow: inset 0 0 0 2px #9cc6ff;
+}
 /* Every target the editor draws is at least 44 by 44 CSS pixels, at every width the audit checks
    (UX-KONTROLLER: träffytor). A tick box keeps the size a tick box has and is hit through the
    label around it, which is the target the eye sees; a file input lies invisible across its own
@@ -313,6 +323,8 @@
 /* A handle per zone, on the felt with the felt's mapping; the label sits above it. */
 .byd-setup-handle { position: absolute; box-sizing: border-box; border: 2px dashed rgba(255, 217, 138, 0.55); border-radius: 8px; cursor: grab; outline: none; }
 .byd-setup-handle[data-kind='pile'] { border-style: solid; }
+/* The handle on the felt says it inside its own dashes, in the felt's own amber rather than the
+   editor's blue: it lies on a picture of a table, not in a panel (#34). */
 .byd-setup-handle[aria-pressed='true'], .byd-setup-handle:focus-visible { border-color: #ffd98a; border-style: solid; box-shadow: 0 0 0 3px rgba(255, 217, 138, 0.25); }
 /* The felt already names areas and piles; the handle names only the hands, and whatever is selected. */
 .byd-setup-handle > span { display: none; position: absolute; right: 6px; bottom: 3px; font: 600 11px system-ui, sans-serif; color: #ffd98a; white-space: nowrap; pointer-events: none; }
@@ -638,13 +650,11 @@
   .byd-data-chip { flex: 0 0 auto; max-width: 22ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .byd-data-clear { justify-self: start; }
 }
-.byd-data-search:focus-visible, .byd-data-chip:focus-visible, .byd-data-clear:focus-visible { outline: 3px solid var(--byd-editor-primary-mark); outline-offset: 3px; }
 .byd-data th button { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
 .byd-data th button span { color: #6b7386; }
 .byd-data th button:hover { color: #dce3f2; }
 .byd-data th button[data-active='true'] { color: #dce3f2; }
 .byd-data th button[data-active='true'] span { color: #7dd3a0; }
-.byd-data th button:focus-visible { outline: 3px solid var(--byd-editor-primary-mark); outline-offset: 3px; }
 .byd-data tr[aria-selected='true'] { background: #2f3a55; }
 .byd-data-id { padding: 7px 10px !important; color: #7d8597; font-family: ui-monospace, monospace; font-size: 12px; }
 .byd-data input { background: transparent; border: 0; color: #ddd; padding: 7px 10px; width: 100%; box-sizing: border-box; font-size: 12px; }
@@ -867,7 +877,6 @@
 .byd-rules-block { position: relative; }
 .byd-rules-block > [role='button'] { border-radius: 6px; padding: 2px 6px; margin: 0 -6px; cursor: text; }
 .byd-rules-block > [role='button']:hover { background: #ece5d8; }
-.byd-rules-block > [role='button']:focus-visible { outline: 2px solid var(--byd-editor-primary-mark); }
 .byd-rules-edit { display: grid; gap: 6px; padding: 12px; margin: 8px -12px; border-radius: 10px; background: #23262e; }
 .byd-rules-edit input, .byd-rules-edit textarea, .byd-rules-edit select { width: 100%; box-sizing: border-box; padding: 7px 9px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; font: 13px/1.6 system-ui, sans-serif; }
 .byd-rules-row { display: flex; gap: 8px; }
