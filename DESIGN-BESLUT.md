@@ -70,6 +70,39 @@ Symbolbiblioteket är verktygets, så det söks och läses på läsarens språk;
 Den fysiska kontrollen (E5) mäter och lämnar ifrån sig siffrorna, inte meningen: felet bär `code`, `severity` och `values`, och orden sätts där de läses. Samma sak går ut över tråden vid en tryckorder, så den som tar emot den skriver den på sitt språk.
 En engelsk mening är längre än en svensk, och det är layouten som får veta det: filtens namn under högar, zoner och räknare göms när filten är telefonsmal, och raden längst ner på filten är en rad — namnet viker undan i stället för att växa över knapparna.
 
+Ordlistan, 2026-09-09:
+Ett begrepp, ett ord.
+Katalogen hade fyra ord för formgivarens spel och tre för bordet, och fyra ord läses som fyra saker.
+Att texterna var översatta hjälpte inte: en enhetlig katalog på två språk är två inkonsekventa texter.
+
+| Begrepp | Ordet | Utgår |
+| --- | --- | --- |
+| Formgivarens spel | `spelet` | `leken`, `projekt`, `projektet` |
+| Ytan man spelar på | `bordet` | `rummet`, `sessionen` |
+| Koden telefonen skriver in | `rumskod` | — |
+| Biblioteket med symboler, ramar och färgblock | `symbol` | — |
+| Den lilla bilden i en korttext eller på duken | `ikon` | — |
+
+`sessionen` är motorns ord. Det stannar i loggen, i koden och i exporten och står inte i läsarens text.
+Att koden och API:t säger `project` är medvetet och rörs inte: koden är kodens språk.
+`rumskod` står kvar därför att koden är ett eget begrepp och inte bordet (K12); den skrivs in på en telefon och hör till vägen in.
+Biblioteket heter `symbol` därför att det rymmer mer än ikoner — också platshållarramar och färgblock. `ikon` är den enskilda bilden, och det ordet står där en sätts: i tabellcellen och på duken.
+
+Knappform: verb, plus objekt när sammanhanget inte säger vad.
+"Spara" där det är tydligt, "Uppdatera bordet" där det inte är det.
+Det är en bedömning och inte en mekanisk regel, så inget test kan låsa den.
+
+Skiljetecken: punkt i hela meningar, också i live-regioner, där en uppläsning behöver pausen.
+Ingen punkt i fragment: knappar, etiketter, flikar, rubriker.
+Det går att låsa: en knapps eller etiketts text slutar inte på punkt.
+
+Rösterna i `status/notice.ts` är avsiktliga och plattas inte ut: bordet dukar, telefonen hämtar en hand, editorn öppnar spelet.
+Det är samma tillstånd sagt i den yta läsaren står i, och det är hela poängen med dem.
+Vad ordlistan tar bort är de oavsiktliga varianterna — fyra olika sätt att säga att något laddas.
+
+Utanför ordlistan står spelets egna ord: fältnamn, symbolnamn, zonnamn, kortnamn, och allt en formgivare skrivit.
+Gränsen är A4:s egen: verktyget talar läsarens språk, spelet sitt eget.
+
 ---
 
 ## B. Domänmodellen
