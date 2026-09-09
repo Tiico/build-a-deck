@@ -58,9 +58,21 @@ if (res.status !== 201) {
   console.error('create failed', res.status, await res.text())
   process.exit(1)
 }
+// The key the table is opened with (DRIFT §9). A seatless connection without it is refused, so
+// the script has to carry the one it was just handed.
+const { hostKey, code } = (await res.json()) as { hostKey: string; code: string }
 
-const ws = new WebSocket(`${base.replace(/^http/, 'ws')}/sessions/${id}`)
+const ws = new WebSocket(`${base.replace(/^http/, 'ws')}/sessions/${id}?host=${encodeURIComponent(hostKey)}`)
 await new Promise<void>((r) => ws.addEventListener('open', () => r()))
+// A refusal carries no envelope id, so waiting for an ack that matches would wait for ever. Say
+// what happened instead of hanging.
+ws.addEventListener('message', (ev: MessageEvent) => {
+  const m = JSON.parse(String(ev.data))
+  if (m.t === 'refused') {
+    console.error('refused:', m.reason)
+    process.exit(1)
+  }
+})
 let n = 0
 const send = (intents: Intent[]) =>
   new Promise<void>((resolve, reject) => {
@@ -117,6 +129,15 @@ await send([
   { v: 'move', component: loose[2], to: 'table', x: 980, y: 440, rot: 88 },
 ])
 ws.close()
+// The links only work if they carry what opens a table (DRIFT §9), and the room code is the one
+// the server just made rather than a constant. WEB_ORIGIN moves them to whichever port the web
+// app is on.
+const web = process.env['WEB_ORIGIN'] ?? 'http://localhost:5173'
+const server = encodeURIComponent(base.replace(/^http/, 'ws'))
+const host = encodeURIComponent(hostKey)
 console.log(`session ${id} ready`)
-console.log(`  table:  http://localhost:5173/table?session=${id}&mode=table&code=KX7P&server=${encodeURIComponent(base.replace(/^http/, 'ws'))}`)
-console.log(`  tv:     http://localhost:5173/table?session=${id}&mode=tv&code=KX7P&server=${encodeURIComponent(base.replace(/^http/, 'ws'))}`)
+console.log(`  code:     ${code}`)
+console.log(`  host key: ${hostKey}`)
+console.log(`  table:    ${web}/table?session=${id}&mode=table&host=${host}&code=${code}&server=${server}`)
+console.log(`  tv:       ${web}/table?session=${id}&mode=tv&host=${host}&code=${code}&server=${server}`)
+console.log(`  join:     ${web}/join?code=${code}&server=${server}`)
