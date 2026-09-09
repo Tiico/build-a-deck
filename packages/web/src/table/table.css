@@ -186,6 +186,9 @@
 }
 [data-tv] > header h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
 [data-tv] > header h1 em { color: #7d8597; font-weight: 400; font-style: normal; }
+/* The header's right-hand side: the way in and the rulebook side by side, so neither has to lie
+   over the other to be reached (#30). */
+[data-tv] .byd-tv-head-right { display: flex; align-items: center; gap: 20px; }
 [data-tv] .byd-tv-join { display: flex; align-items: center; gap: 24px; }
 [data-tv] .byd-tv-join > span { color: #7d8597; }
 [data-tv] .byd-qr { border-radius: 6px; background: #fff; }

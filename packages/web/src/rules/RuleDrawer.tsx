@@ -8,7 +8,8 @@ import './rules.css'
 // was locked to at start. From the prototype: a drawer from the edge holding the whole book for
 // whoever has never played, with the question on top for whoever is mid-turn and wants one rule.
 // A game with no rulebook offers nothing at all.
-export type RuleDrawerProps = { http: string; sessionId: string; placement: 'table' | 'phone' }
+// Where the press lives: over the felt, in a header (a TV's, #30), or in the phone's own row.
+export type RuleDrawerProps = { http: string; sessionId: string; placement: 'table' | 'tv' | 'phone' }
 
 export function RuleDrawer({ http, sessionId, placement }: RuleDrawerProps) {
   const t = useT()

@@ -117,6 +117,9 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
       </div>
     </div>
   )
+  // The rules this table plays by (B7), one press away on either screen; where the press lives is
+  // the screen's business.
+  const rules = (placement: 'table' | 'tv') => (sessionId ? <RuleDrawer http={url.replace(/^ws/, 'http')} sessionId={sessionId} placement={placement} /> : null)
   const table = proposal?.preview ? (
     <div className="byd-rewind-preview" data-rewind-preview={proposal.id}>
       {rendered}
@@ -142,14 +145,16 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
         <h1 className="byd-table-plate">{[record?.name ?? t('play.table'), record?.version, roomCode].filter(Boolean).join(' · ')}</h1>
       )}
       {mode === 'tv' ? (
-        <TvChrome view={previewOf(view)} activity={activity} roomCode={roomCode} joinUrl={joinUrl} title={record?.name} version={record?.version} inspecting={inspecting} faces={url.replace(/^ws/, 'http')} observers={observers}>
+        // On a TV the rulebook goes into the header, where the way in already is: the two wanted
+        // the same corner, and only the header can lay both out (#30).
+        <TvChrome view={previewOf(view)} activity={activity} roomCode={roomCode} joinUrl={joinUrl} title={record?.name} version={record?.version} inspecting={inspecting} faces={url.replace(/^ws/, 'http')} observers={observers} rules={rules('tv')}>
           {table}
         </TvChrome>
       ) : (
         table
       )}
-        {/* The rules this table plays by (B7), one press away on either screen. */}
-        {sessionId && <RuleDrawer http={url.replace(/^ws/, 'http')} sessionId={sessionId} placement="table" />}
+        {/* The felt's own screen has no header, so the drawer stands over the felt as it did. */}
+        {mode !== 'tv' && rules('table')}
         {felt.panel}
         {ended}
       </div>

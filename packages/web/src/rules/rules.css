@@ -1,10 +1,9 @@
 /* The rules at the table and on the phone (B7): a drawer with the book, and the question on top. */
 .byd-rules-drawer[data-placement='table'] { position: absolute; right: 0; top: 0; bottom: 0; z-index: 30; pointer-events: none; }
 .byd-rules-drawer[data-placement='table'] > * { pointer-events: auto; }
+/* The button says what it is; where it sits is the placement's business. A button that carried its
+   own corner is how it came to lie over the QR code on a TV (#30). */
 .byd-rules-open {
-  position: absolute;
-  right: 16px;
-  top: 16px;
   border: 1px solid #3b4358;
   border-radius: 10px;
   padding: 8px 14px;
@@ -13,6 +12,7 @@
   font: 700 13px system-ui, sans-serif;
   cursor: pointer;
 }
+.byd-rules-drawer[data-placement='table'] .byd-rules-open { position: absolute; right: 16px; top: 16px; }
 .byd-rules-panel {
   position: absolute;
   right: 0;
@@ -45,8 +45,14 @@
 .byd-rules-hits p { margin: 0; font: 14px/1.6 Georgia, serif; white-space: pre-line; }
 .byd-rules-none { color: #6b6255; font: 13px system-ui, sans-serif; }
 
+/* In a TV's header the button is laid out by the header, so the drawer is nothing but its two
+   children; the book itself is fixed to the screen's own right edge rather than to a strip on the
+   page, which is what let it cover the way in (#30). */
+.byd-rules-drawer[data-placement='tv'] { display: contents; }
+.byd-rules-drawer[data-placement='tv'] .byd-rules-panel { position: fixed; z-index: 40; }
+
 /* On the phone the drawer is the screen: there is nothing behind it worth keeping in view. */
 /* On the phone the button rides in the header beside the session's own; the panel is the screen. */
 .byd-rules-drawer[data-placement='phone'] { display: contents; }
-.byd-rules-drawer[data-placement='phone'] .byd-rules-open { position: static; border-radius: 8px; padding: 6px 10px; font-size: 12px; }
+.byd-rules-drawer[data-placement='phone'] .byd-rules-open { border-radius: 8px; padding: 6px 10px; font-size: 12px; }
 .byd-rules-drawer[data-placement='phone'] .byd-rules-panel { position: fixed; inset: 0; width: auto; z-index: 40; }

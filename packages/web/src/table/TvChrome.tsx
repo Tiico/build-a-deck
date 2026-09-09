@@ -27,12 +27,16 @@ export type TvChromeProps = {
   // observer's own sentence about what she is (#6). It stands at the top of the column the table
   // talks in, so it is read where the table is read and covers nothing.
   note?: ReactNode
+  // The rulebook, one press away on the same screen (B7). It stands in the header beside the way
+  // in rather than over it: both wanted the top right corner, and only the header can lay both
+  // out (#30).
+  rules?: ReactNode
   children: ReactNode
 }
 
 // TV mode (C5, prototype C): the table in the middle, a header with the room code to join by,
 // a dock with every seat, and what just happened in words — all legible from across a room.
-export function TvChrome({ view, activity, roomCode, joinUrl, title, version, inspecting, faces, observers = [], note, children }: TvChromeProps) {
+export function TvChrome({ view, activity, roomCode, joinUrl, title, version, inspecting, faces, observers = [], note, rules, children }: TvChromeProps) {
   const t = useT()
   const handCount = (seat: string) => {
     const hand = view.zones.find((z) => z.kind === 'hand' && z.owner === seat)
@@ -48,13 +52,18 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
           {title ?? t('play.table')}
           {version !== undefined && <em> {version}</em>}
         </h1>
-        {(roomCode || joinUrl) && (
-          <div className="byd-tv-join">
-            <span>{t('tv.join')}</span>
-            {roomCode && <strong>{roomCode}</strong>}
-            {joinUrl && <QrCode text={joinUrl} size={52} />}
-          </div>
-        )}
+        {/* Everything the header holds beside the game's name, laid out rather than stacked: the
+            way in when there is one, and the rulebook, which every screen has (#30). */}
+        <div className="byd-tv-head-right">
+          {(roomCode || joinUrl) && (
+            <div className="byd-tv-join">
+              <span>{t('tv.join')}</span>
+              {roomCode && <strong>{roomCode}</strong>}
+              {joinUrl && <QrCode text={joinUrl} size={52} />}
+            </div>
+          )}
+          {rules}
+        </div>
       </header>
       <main>{children}</main>
       <aside>

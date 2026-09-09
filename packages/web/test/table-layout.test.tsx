@@ -17,7 +17,7 @@ import { edgeRotation, feltWithHands, handExtent } from '../src/table/hand.js'
 import { fitScale } from '../src/table/fit.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
-const SHEETS = ['src/table/table.css', 'src/table/texture.css', 'src/table/keyboard.css']
+const SHEETS = ['src/table/table.css', 'src/table/texture.css', 'src/table/keyboard.css', 'src/rules/rules.css']
 
 const CARD = { id: 'card.standard.63x88', version: 1 }
 const card = (id: string, zone: string, x: number, y: number, cardRef: string | null): VisibleComponentState => ({ id, type: CARD, zone, face: cardRef === null ? 'back' : 'front', x, y, rot: 0, cardRef })
@@ -274,6 +274,39 @@ describe('the felt keeps prototype B’s proportions on the screen (K9, #20)', (
     const least = Math.min(...Object.values(gaps)) / Math.min(frame.w, frame.h)
     expect({ ...gaps, least: least > 0.09 }).toEqual({ ...gaps, least: true })
   }, 60_000)
+})
+
+// The room code and the QR are how a phone gets in (K12); the rulebook is one press away on the
+// same screen (B7). Both wanted the top right corner, and the drawer took it by lying over the
+// header. The header has to lay all three out instead (#30).
+describe('the rules button and the way in share the TV header (#30)', () => {
+  const withRules = () =>
+    markupOf(
+      <TvChrome view={scene()} activity={[]} roomCode="KX7P" joinUrl="https://byd.example/join?code=KX7P" rules={<button type="button" className="byd-rules-open">Regler</button>}>
+        <div />
+      </TvChrome>,
+    )
+
+  it('lays the rules button out beside the room code and the QR, never over them', async () => {
+    const at = await measureHtml(withRules(), FRAME, { rules: '.byd-rules-open', code: '[data-tv] > header strong', qr: '[data-tv] .byd-qr' }, 'tv chrome')
+    const [rules, code, qr] = [at('rules'), at('code'), at('qr')]
+    const overlaps = (a: Box, b: Box) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+    expect({ overCode: overlaps(rules, code), overQr: overlaps(rules, qr) }).toEqual({ overCode: false, overQr: false })
+    // And it is inside the header, so no future placement can drift back over them.
+    expect(withRules()).toMatch(/<header[\s\S]*byd-rules-open[\s\S]*<\/header>/)
+  }, 60_000)
+
+  // The way in is not on every screen that uses this chrome — the observer's has none — so the
+  // rules cannot hang off the join block.
+  it('holds the rules in the header even when there is no way in to show', () => {
+    const html = markupOf(
+      <TvChrome view={scene()} activity={[]} rules={<button type="button" className="byd-rules-open">Regler</button>}>
+        <div />
+      </TvChrome>,
+    )
+    expect(html).not.toContain('byd-tv-join')
+    expect(html).toMatch(/<header[\s\S]*byd-rules-open[\s\S]*<\/header>/)
+  })
 })
 
 describe('the inspection panel waits like prototype C (K8, #20)', () => {

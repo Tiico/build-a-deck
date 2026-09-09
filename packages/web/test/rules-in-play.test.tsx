@@ -43,6 +43,28 @@ describe('the rules where the game is played (B7)', () => {
     expect(panel.textContent).toContain('Dra ur Draghög och lägg i Kasthög.')
   })
 
+  // Two things wanted the TV's top right corner: the way a phone gets in, and the rulebook. The
+  // header lays both out now; the felt's own screen keeps the drawer over the felt (#30).
+  it('stands in the TV header beside the way in, and over the felt in table mode', async () => {
+    const id = await tableWithRules()
+    const { host } = await asTable(run, id)
+    const open = (mode: string) => {
+      history.replaceState(null, '', `/table?session=${id}&mode=${mode}&host=${encodeURIComponent(host)}&server=${encodeURIComponent(run.url)}`)
+      return render(<TablePage />)
+    }
+
+    const tv = open('tv')
+    const inHeader = await screen.findByRole('button', { name: 'Regler' })
+    expect(inHeader.closest('[data-tv] > header')).toBeTruthy()
+    expect(inHeader.closest('.byd-rules-drawer')?.getAttribute('data-placement')).toBe('tv')
+    tv.unmount()
+
+    open('table')
+    const overFelt = await screen.findByRole('button', { name: 'Regler' })
+    expect(overFelt.closest('[data-tv]')).toBeNull()
+    expect(overFelt.closest('.byd-rules-drawer')?.getAttribute('data-placement')).toBe('table')
+  })
+
   it('is one press away on the phone too', async () => {
     const id = await tableWithRules()
     const { token } = await asSeat(run, id, 'A', 'Ada')
