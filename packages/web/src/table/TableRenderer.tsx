@@ -8,6 +8,7 @@ import { feltScale, fitScale, LEAST_AIR_PX } from './fit.js'
 import { activeBounds, cameraOf, fitFloor, frameRect, pad, reachOf, same, tween, zoomAround, type Rect, type Size } from './camera.js'
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
 import { CARD_MM, absoluteOf, dropIntents, type Drag, type DragTarget } from './drop.js'
+import { DEFAULT_TIMING } from '../status/connection.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
 import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_MM, edgeRotation, fanPlace, feltWithHands, handExtent } from './hand.js'
 import { useT, type T } from '../i18n/index.js'
@@ -82,6 +83,9 @@ const CAMERA_RETURN_MS = 6000
 const GLIDE_MS = 700
 
 type Live = Drag & { started: boolean }
+// A card that has been put down but that the table has not moved yet (K1). The drop and the patch
+// are different moments; this is what is drawn in between, so a move never looks like a flinch.
+type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: number; y: number } | null; dx: number; dy: number }
 type Ring = { target: DragTarget; x: number; y: number }
 
 export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], onPresence, camera = false, onInspect, size: fixedSize, glideMs = GLIDE_MS, overlay, keyboard }, ref) {
@@ -128,6 +132,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // Inspection (K8): "Titta" in the ring, private to this screen, until tapped away.
   const [held, setHeld] = useState<VisibleComponentState | null>(null)
   const [drag, setDrag] = useState<Live | null>(null)
+  const [settling, setSettling] = useState<Settled | null>(null)
   const [ring, setRing] = useState<Ring | null>(null)
 
   // The camera (C5): what is in play, or where someone zoomed for a moment. It holds still while
@@ -165,6 +170,32 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
 
   const zoneById = new Map(view.zones.map((z) => [z.id, z]))
   const byId = new Map(view.components.map((c) => [c.id, c]))
+  // The drop's own placement is let go the moment the table has moved the card: from there on the
+  // table is the truth, as it always was (#29). A card that has left the view — into a hidden pile
+  // — has moved too.
+  useEffect(() => {
+    if (!settling) return
+    const cardMoved = settling.ids.some((id) => {
+      const c = byId.get(id)
+      if (!c) return true
+      const was = settling.origin[id]
+      const now = absoluteOf(view, c)
+      return was === undefined || now.x !== was.x || now.y !== was.y
+    })
+    const held = settling.pile
+    const zone = held ? zoneById.get(held.id) : undefined
+    const pileMoved = held !== null && (!zone || zone.geometry.x !== held.x || zone.geometry.y !== held.y)
+    if (cardMoved || pileMoved) setSettling(null)
+  })
+  // A drop the table never answers — refused, or lost — has no patch to wait for, so it cannot
+  // hold its placement for ever. It is held exactly as long as the tool still considers the
+  // connection fine; after that the table is the truth again and the reader sees where the card
+  // really is (#29).
+  useEffect(() => {
+    if (!settling) return
+    const timer = setTimeout(() => setSettling(null), DEFAULT_TIMING.slowAfterMs)
+    return () => clearTimeout(timer)
+  }, [settling])
   const px = (mm: number) => mm * scale
   const left = (mmX: number) => px(mmX - floor.geometry.x)
   const top = (mmY: number) => px(mmY - floor.geometry.y)
@@ -247,7 +278,21 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     if (d?.started && d.target.kind === 'card') onPresence?.({ kind: 'drop' })
     if (!d || !d.started || !onAct) return
     const intents = dropIntents(view, d)
-    if (intents.length > 0) onAct(intents)
+    if (intents.length === 0) return
+    onAct(intents)
+    // The card stays where it was put until the table has moved it. Between here and the patch the
+    // view still says where the card came from, and drawing it there is the flinch (#29).
+    // A whole pile waits for the same patch, and is held by where its zone was rather than by ids.
+    const target = d.target
+    const wholePile = target.kind === 'pile' ? view.zones.find((z) => z.id === target.pile) : undefined
+    if (d.ids.length === 0 && !wholePile) return
+    setSettling({
+      ids: d.ids,
+      origin: d.origin,
+      pile: wholePile ? { id: wholePile.id, x: wholePile.geometry.x, y: wholePile.geometry.y } : null,
+      dx: d.at.x - d.grab.x,
+      dy: d.at.y - d.grab.y,
+    })
   }
   const handlers = (target: DragTarget) => ({ onPointerDown: (e: RPointerEvent) => down(e, target), onPointerMove: move, onPointerUp: up, onPointerCancel: up })
   // Pointing at a card is not touching it: it only says what the screen should show large.
@@ -326,9 +371,13 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const areas = view.zones.filter((z) => z.kind === 'area' && z.id !== floor.id)
   const piles = view.zones.filter((z) => z.kind === 'pile')
   const loose = view.components.filter((c) => zoneById.get(c.zone)?.kind === 'area')
-  const dx = drag?.started ? drag.at.x - drag.grab.x : 0
-  const dy = drag?.started ? drag.at.y - drag.grab.y : 0
-  const moving = new Set(drag?.started ? drag.ids : [])
+  const dx = drag?.started ? drag.at.x - drag.grab.x : (settling?.dx ?? 0)
+  const dy = drag?.started ? drag.at.y - drag.grab.y : (settling?.dy ?? 0)
+  // Held in the hand, and therefore drawn lifted. A card that has been put down is not.
+  const lifted = new Set(drag?.started ? drag.ids : [])
+  // Drawn away from where the table says it is: while carried, and while the drop waits for its
+  // patch (#29).
+  const shifted = new Set(drag?.started ? drag.ids : (settling?.ids ?? []))
   const liftedPile = drag?.started && drag.target.kind !== 'card' ? drag.target.pile : null
   const liftedKind = drag?.started && drag.target.kind !== 'card' ? drag.target.kind : null
   const topOf = (z: ZoneView, skip = 0) => byId.get(topIdOf(z, skip) ?? '')
@@ -358,6 +407,8 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           ))}
           {piles.map((z) => {
             const whole = liftedPile === z.id && liftedKind === 'pile'
+            // Put down, and still drawn where it was put: the patch has not come back yet (#29).
+            const settled = settling?.pile?.id === z.id
             const lifting = liftedPile === z.id && liftedKind === 'pileTop'
             const count = z.mode === 'count' ? z.count : z.order.length
             return (
@@ -367,8 +418,8 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 count={lifting ? count - 1 : count}
                 topCard={lifting ? topOf(z, 1) : topOf(z)}
                 faces={faces}
-                left={left(z.geometry.x + (whole ? dx : 0))}
-                top={top(z.geometry.y + (whole ? dy : 0))}
+                left={left(z.geometry.x + (whole || settled ? dx : 0))}
+                top={top(z.geometry.y + (whole || settled ? dy : 0))}
                 px={px}
                 lifted={whole}
                 topInspects={inspects(lifting ? topOf(z, 1) : topOf(z))}
@@ -394,7 +445,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           ))}
           {loose.map((c) => {
             const a = absoluteOf(view, c)
-            const m = moving.has(c.id)
+            const m = shifted.has(c.id)
             if (c.type.id === COUNTER_TYPE) {
               return (
                 <div key={c.id} className="byd-token" data-counter-token={c.id} style={{ position: 'absolute', left: left(a.x), top: top(a.y), width: px(TOKEN_MM), height: px(TOKEN_MM) }}>
@@ -410,7 +461,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 left={left(a.x + (m ? dx : 0))}
                 top={top(a.y + (m ? dy : 0))}
                 px={px}
-                dragging={m}
+                dragging={lifted.has(c.id)}
                 carried={carried.has(c.id)}
                 by={movedBy.has(c.id) ? { seat: movedBy.get(c.id) ?? null, colour: colourOf(movedBy.get(c.id) ?? null) } : undefined}
                 faces={faces}

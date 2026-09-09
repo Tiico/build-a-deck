@@ -5,6 +5,7 @@ import { createRef } from 'react'
 import { TableRenderer, type TableHandle } from '../src/table/TableRenderer.js'
 import { buildScene } from './scene.js'
 import { activeBounds, cameraOf, frameRect, pad } from '../src/table/camera.js'
+import { DEFAULT_TIMING } from '../src/status/connection.js'
 
 describe('TableRenderer', () => {
   it('places a face-up card by name at its position, and a face-down one as a back without a name', () => {
@@ -490,5 +491,70 @@ describe('an overlay on the felt (B5)', () => {
     expect(overlay.style.left).toBe('200px')
     expect(overlay.style.top).toBe('200px')
     expect(overlay.style.width).toBe('100px')
+  })
+})
+
+// The drop and the patch are not the same moment (K1). The pointer goes up, the intent travels,
+// and until it comes back the table still says where the card was. What is drawn over that gap
+// decides whether a move looks like a move or like a flinch.
+describe('the gap between the drop and the patch (K1)', () => {
+  it('a dropped card keeps where it was put while the table still says where it came from', () => {
+    const { view, faceUp } = buildScene()
+    const onAct = vi.fn()
+    render(<TableRenderer view={view(null)} mode="tv" scale={1} onAct={onAct} />)
+    const placed = () => document.querySelector(`[data-component="${faceUp}"]`) as HTMLElement
+    // The card lies at (100, 50) inside the table area; scale 1 → px.
+    expect(placed().style.left).toBe('100px')
+    expect(placed().style.top).toBe('50px')
+
+    fireEvent.pointerDown(placed(), client(100, 50))
+    fireEvent.pointerMove(placed(), client(300, 150))
+    fireEvent.pointerUp(placed(), client(300, 150))
+    expect(onAct).toHaveBeenCalledTimes(1)
+
+    // Nothing has come back yet: the view is the one it was dropped on. The card must stand where
+    // it was put, not back where it came from.
+    expect(placed().style.left).toBe('300px')
+    expect(placed().style.top).toBe('150px')
+  })
+
+  it('gives the card back to the table when nothing ever comes of the drop', () => {
+    vi.useFakeTimers()
+    const { view, faceUp } = buildScene()
+    const onAct = vi.fn()
+    render(<TableRenderer view={view(null)} mode="tv" scale={1} onAct={onAct} />)
+    const placed = () => document.querySelector(`[data-component="${faceUp}"]`) as HTMLElement
+
+    fireEvent.pointerDown(placed(), client(100, 50))
+    fireEvent.pointerMove(placed(), client(300, 150))
+    fireEvent.pointerUp(placed(), client(300, 150))
+    expect(placed().style.left).toBe('300px')
+
+    // A refused drop never becomes a patch, so the placement has nothing to wait for. It is held
+    // only as long as the tool still considers the connection fine; after that the table is the
+    // truth again and the reader sees where the card really is.
+    act(() => vi.advanceTimersByTime(DEFAULT_TIMING.slowAfterMs))
+    expect(placed().style.left).toBe('100px')
+    expect(placed().style.top).toBe('50px')
+    vi.useRealTimers()
+  })
+
+  // A whole pile moved across the felt waits for the same patch a card does.
+  it('a dropped pile keeps where it was put while the table still says where it came from', () => {
+    const { view } = buildScene()
+    const onAct = vi.fn()
+    render(<TableRenderer view={view(null)} mode="tv" scale={1} onAct={onAct} />)
+    const pile = () => document.querySelector('[data-zone="draw"]') as HTMLElement
+    const handle = pile().querySelector('.byd-pile-count')!
+    const home = pile().style.left
+
+    fireEvent.pointerDown(handle, client(-200, 0))
+    fireEvent.pointerMove(handle, client(-100, 60))
+    const carried = pile().style.left
+    expect(carried).not.toBe(home)
+
+    fireEvent.pointerUp(handle, client(-100, 60))
+    expect(onAct).toHaveBeenCalledTimes(1)
+    expect(pile().style.left).toBe(carried)
   })
 })
