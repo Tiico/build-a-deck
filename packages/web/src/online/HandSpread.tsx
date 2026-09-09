@@ -4,6 +4,7 @@ import { hue } from '../table/hue.js'
 import { Texture } from '../table/Texture.js'
 import { useRoving } from '../editor/roving.js'
 import { handLabel } from '../table/keyboard.js'
+import { useT } from '../i18n/index.js'
 import { fanStyle } from './fan.js'
 
 export type HandSpreadProps = {
@@ -31,6 +32,7 @@ export type HandSpreadProps = {
 // unreachable and not merely hidden. When the hand is larger than the screen the grid scrolls in
 // its own box and the page never does, which is L10's rule for the data table applied here.
 export function HandSpread({ cards, faces, onOpen, onClose }: HandSpreadProps) {
+  const t = useT()
   const n = cards.length
   const roving = useRoving({ ids: cards.map((c) => c.id), selected: null, orientation: 'both' })
   const first = cards[0]?.id
@@ -69,7 +71,7 @@ export function HandSpread({ cards, faces, onOpen, onClose }: HandSpreadProps) {
                 type="button"
                 className="byd-hand-face byd-spread-card"
                 data-spread-card={c.id}
-                aria-label={handLabel(c, false)}
+                aria-label={handLabel(c, false, t)}
                 style={{ ['--hue' as string]: hue(c.cardRef ?? '') }}
                 tabIndex={item.tabIndex}
                 ref={item.ref}

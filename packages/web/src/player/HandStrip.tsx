@@ -4,6 +4,7 @@ import { hue } from '../table/hue.js'
 import { Texture } from '../table/Texture.js'
 import { useRoving } from '../editor/roving.js'
 import { handLabel } from '../table/keyboard.js'
+import { useT } from '../i18n/index.js'
 import { HOLD_MS, begin, end, move, timeout, type Tracking } from './gesture.js'
 
 export type HandStripProps = {
@@ -26,6 +27,7 @@ export type HandStripProps = {
 // second one written here. Space marks and unmarks, Enter opens the address panel. The gestures
 // K4 settled are untouched: tap looks, a drag upwards plays, a hold marks.
 export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces }: HandStripProps) {
+  const t = useT()
   const hand = view.components.filter((c) => c.zone === `hand:${view.seat}`)
   const roving = useRoving({ ids: hand.map((c) => c.id), selected: null, orientation: 'horizontal' })
   const tracking = useRef<{ card: VisibleComponentState; t: Tracking; timer: ReturnType<typeof setTimeout> } | null>(null)
@@ -68,7 +70,7 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
             className="byd-strip-card"
             data-hand-card={c.id}
             data-selected={selected.has(c.id) ? 'true' : 'false'}
-            aria-label={handLabel(c, selected.has(c.id))}
+            aria-label={handLabel(c, selected.has(c.id), t)}
             aria-pressed={selected.has(c.id)}
             style={{ ['--hue' as string]: hue(c.cardRef ?? '') }}
             tabIndex={item.tabIndex}

@@ -130,7 +130,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
     return () => window.removeEventListener('beforeunload', hold)
   }, [unsaved])
 
-  if (!projectId) return <StatusNotice notice={noticeFor('missing', 'editor')} surface="page" links={links} />
+  if (!projectId) return <StatusNotice notice={noticeFor('missing', 'editor', t)} surface="page" links={links} />
   if (fault === 'unauthorized') {
     // Not logged in (G1): to the login card and back here after.
     onNavigate(loginUrl(location.pathname + location.search, params.get('server')))
@@ -138,8 +138,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
   }
   // A project that is missing, shut or out of reach says so in the editor's own words, with a
   // way back and — where waiting can help — a way to ask again (#12, UX-07).
-  if (fault) return <StatusNotice notice={noticeFor(fault, 'editor')} surface="page" links={links} onRetry={retry} />
-  if (!client) return <StatusNotice notice={noticeFor('loading', 'editor')} surface="page" links={links} />
+  if (fault) return <StatusNotice notice={noticeFor(fault, 'editor', t)} surface="page" links={links} onRetry={retry} />
+  if (!client) return <StatusNotice notice={noticeFor('loading', 'editor', t)} surface="page" links={links} />
   const doc = client.doc
 
   const save = async (): Promise<boolean> => {
@@ -313,7 +313,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
             leave()
           }}
         >
-          Mina spel
+          {t('editor.home')}
         </a>
         <strong>{doc.name}</strong>
         {/* The revision is also the way into the history (B4): the version is already named here. */}
@@ -364,24 +364,23 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
           a phone the editor is a reading and writing surface, and laying a card out waits for a
           wider screen (L10). */}
       {room === 'phone' && (
-        <p className="byd-editor-narrow">
-          Mallen ritas inte på telefon. Duken, verktygen, lagren och egenskaperna finns från 768 pixlars bredd — öppna spelet på en
-          surfplatta eller dator för att flytta något på kortet. Här går kortväggen, tabellen och borden att arbeta med.
-        </p>
+        <p className="byd-editor-narrow">{t('editor.narrow')}</p>
       )}
       {leaving && (
         <Question
           className="byd-editor-leave"
-          label="Osparade ändringar"
-          keep={{ label: saving ? 'Sparar…' : 'Spara och lämna', disabled: saving, onChoose: () => void saveAndLeave() }}
-          confirm="Lämna utan att spara"
+          label={t('editor.leave.title')}
+          keep={{ label: t(saving ? 'editor.saving' : 'editor.leave.save'), disabled: saving, onChoose: () => void saveAndLeave() }}
+          confirm={t('editor.leave.discard')}
           onConfirm={() => {
             setLeaving(false)
             goHome()
           }}
           onCancel={stay}
         >
-          Osparade ändringar i {doc.name}. Vad vill du göra innan du lämnar editorn?
+          {/* The game's own name goes into the sentence rather than beside it: what a designer
+              named her game is hers and is never translated (A4, B5). */}
+          {t('editor.leave.body', { game: doc.name })}
         </Question>
       )}
       {table && (

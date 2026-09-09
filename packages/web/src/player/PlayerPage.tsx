@@ -67,10 +67,10 @@ export function PlayerPage({ timing = DEFAULT_TIMING }: PlayerPageProps = {}) {
     if (client && view && seat && name && seatFree) void client.send({ v: 'seat.claim', seat, name })
   }, [client, view === null, seat, name, seatFree])
 
-  if (!sessionId || !seat) return <StatusNotice notice={noticeFor('missing', 'phone')} surface="page" links={links} />
+  if (!sessionId || !seat) return <StatusNotice notice={noticeFor('missing', 'phone', t)} surface="page" links={links} />
   // Not admitted, or kicked (DRIFT §9). The door is shut, so it is the `forbidden` state — said
   // in the model's form, with the server's own reason for the sentence.
-  if (refused) return <StatusNotice notice={{ ...noticeFor('forbidden', 'phone'), text: refusedText(refused, t) }} surface="page" links={links} />
+  if (refused) return <StatusNotice notice={{ ...noticeFor('forbidden', 'phone', t), text: refusedText(refused, t) }} surface="page" links={links} />
   if (!view || !client) return <RouteStatus status={live} over="sheet" links={links} onRetry={conn.retry} />
 
   const me = view.seats.find((s) => s.id === seat)

@@ -61,9 +61,9 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
       .catch(() => setVersion('?'))
   }, [sessionId, view?.ended, version, http])
 
-  if (!sessionId) return <StatusNotice notice={noticeFor('missing', 'table')} surface="page" links={links} />
+  if (!sessionId) return <StatusNotice notice={noticeFor('missing', 'table', t)} surface="page" links={links} />
   // Not admitted, or kicked (DRIFT §9): a shut door rather than a broken line.
-  if (refused) return <StatusNotice notice={{ ...noticeFor('forbidden', 'table'), text: refusedText(refused, t) }} surface="page" links={links} />
+  if (refused) return <StatusNotice notice={{ ...noticeFor('forbidden', 'table', t), text: refusedText(refused, t) }} surface="page" links={links} />
   if (!view || !client) return <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
 
   return (

@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { documentTitle, routeOf, type Route, type TitleContext } from './title.js'
+import { useT } from '../i18n/index.js'
 
 // One writer for `document.title` (#12). The route is known here; the room, the game and the
 // state are known by the page, so the page reports them and this is what writes them down.
@@ -8,10 +9,11 @@ import { documentTitle, routeOf, type Route, type TitleContext } from './title.j
 const Report = createContext<((ctx: TitleContext) => void) | null>(null)
 
 export function DocumentTitle({ route = routeOf(location.pathname), children }: { route?: Route; children: ReactNode }) {
+  const t = useT()
   const [ctx, setCtx] = useState<TitleContext>({})
   useEffect(() => {
-    document.title = documentTitle(route, ctx)
-  }, [route, ctx])
+    document.title = documentTitle(route, ctx, t)
+  }, [route, ctx, t])
   return <Report.Provider value={setCtx}>{children}</Report.Provider>
 }
 

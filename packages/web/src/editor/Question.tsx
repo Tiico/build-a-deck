@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { useT } from '../i18n/index.js'
 
 // The one question the editor asks before something cannot be looked at afterwards: taking cards
 // out of the deck (#17, #8), ending a table (#19), leaving unsaved work behind (#8).
@@ -24,7 +25,9 @@ export type QuestionProps = {
   // The answer that cannot be undone, in the words for what it does ("Ja, ta bort").
   confirm: string
   onConfirm(): void
-  // The answer that does nothing, and is therefore always the safe one. Every question has it.
+  // The answer that does nothing, and is therefore always the safe one. Every question has it,
+  // and a question that does not name it gets the catalogue's word in the reader's language —
+  // never a Swedish default written into the code (A4).
   onCancel(): void
   cancel?: string
   // An answer that loses nothing and does the work anyway ("Spara och lämna"). When there is one
@@ -43,11 +46,12 @@ type Answer = {
   onChoose(): void
 }
 
-export function Question({ label, className, children, confirm, onConfirm, onCancel, cancel = 'Avbryt', keep }: QuestionProps) {
+export function Question({ label, className, children, confirm, onConfirm, onCancel, cancel, keep }: QuestionProps) {
+  const t = useT()
   const answers: Answer[] = [
     ...(keep ? [{ key: 'keep', kind: 'keep' as const, label: keep.label, disabled: keep.disabled === true, safe: true, onChoose: keep.onChoose }] : []),
     { key: 'confirm', kind: 'danger', label: confirm, disabled: false, safe: false, onChoose: onConfirm },
-    { key: 'cancel', kind: undefined, label: cancel, disabled: false, safe: true, onChoose: onCancel },
+    { key: 'cancel', kind: undefined, label: cancel ?? t('editor.cancel'), disabled: false, safe: true, onChoose: onCancel },
   ]
   // The first answer that loses nothing and can actually be given. Not an index the call sites
   // count out: the question works out for itself which of its answers is the safe one.

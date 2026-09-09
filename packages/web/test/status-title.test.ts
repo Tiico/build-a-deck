@@ -62,7 +62,8 @@ describe('the title while something is wrong', () => {
     ['slow', 'table', 'Laddar · build-your-deck'],
     ['connecting', 'table', 'Ansluter · build-your-deck'],
     ['missing', 'editor', 'Spelet finns inte · build-your-deck'],
-    ['missing', 'play', 'Rummet finns inte · build-your-deck'],
+    // The glossary calls the surface people play on `bordet` (A4); the tab had kept `rummet`.
+    ['missing', 'play', 'Bordet finns inte · build-your-deck'],
     ['missing', 'home', 'Sidan finns inte · build-your-deck'],
     ['forbidden', 'editor', 'Ingen tillgång · build-your-deck'],
     ['offline', 'play', 'Ingen kontakt · build-your-deck'],

@@ -1,5 +1,11 @@
 import type { Intent, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
+import { translate, type T } from '../i18n/index.js'
 import { CARD_MM } from './drop.js'
+
+// Everything the keyboard says is the tool's own, so it is looked up where the reader is (A4).
+// A call from outside React — a test, a label built before a provider is mounted — gets Swedish,
+// which is what the catalogue is written in.
+const swedish: T = (key, params) => translate('sv', key, params)
 
 // Playing with a keyboard, variant C — "adressen" (#1, #2). Everything on the felt and in the
 // hand is a control with a name; Enter opens a panel of what can be done and where it can go.
@@ -9,8 +15,6 @@ import { CARD_MM } from './drop.js'
 // `Dolt kort` and nothing more — not because this file hides it, but because there is nothing
 // here to hide. The keyboard therefore learns exactly what the pointer learns.
 
-export const HIDDEN = 'Dolt kort'
-
 // What a keyboard may stand on, in reading order: down the felt, then across. Hands are not
 // here — they are destinations with names, not places to stand.
 export type Thing =
@@ -18,7 +22,9 @@ export type Thing =
   | { key: string; kind: 'pileTop'; pile: string; name: string }
   | { key: string; kind: 'pile'; pile: string; name: string; count: number }
 
-export const cardName = (c: VisibleComponentState | undefined): string => c?.cardRef ?? HIDDEN
+// A card's own name is the designer's and is never translated (B5); the words for a card this
+// view may not see are the tool's.
+export const cardName = (c: VisibleComponentState | undefined, t: T = swedish): string => c?.cardRef ?? t('kbd.hidden')
 export const zoneName = (view: Snapshot, id: string): string => view.zones.find((z) => z.id === id)?.name ?? id
 export const countOf = (z: ZoneView): number => (z.mode === 'count' ? z.count : z.order.length)
 const topIdOf = (z: ZoneView): string | undefined => (z.mode === 'order' ? z.order[0] : z.top)
@@ -31,17 +37,17 @@ function absolute(view: Snapshot, c: VisibleComponentState): { x: number; y: num
   return z ? { x: z.geometry.x + c.x, y: z.geometry.y + c.y } : { x: c.x, y: c.y }
 }
 
-export function thingsOn(view: Snapshot): Thing[] {
+export function thingsOn(view: Snapshot, t: T = swedish): Thing[] {
   const areas = new Set(view.zones.filter((z) => z.kind === 'area').map((z) => z.id))
   const placed = view.components
     .filter((c) => areas.has(c.zone))
-    .map((c) => ({ at: absolute(view, c), thing: { key: `card:${c.id}`, kind: 'card' as const, id: c.id, name: cardName(c), zone: c.zone } }))
+    .map((c) => ({ at: absolute(view, c), thing: { key: `card:${c.id}`, kind: 'card' as const, id: c.id, name: cardName(c, t), zone: c.zone } }))
   const piles = view.zones
     .filter((z) => z.kind === 'pile')
     .flatMap((z) => {
       const at = { x: z.geometry.x, y: z.geometry.y }
       return [
-        { at, thing: { key: `top:${z.id}`, kind: 'pileTop' as const, pile: z.id, name: cardName(topOf(view, z)) } },
+        { at, thing: { key: `top:${z.id}`, kind: 'pileTop' as const, pile: z.id, name: cardName(topOf(view, z), t) } },
         { at, thing: { key: `pile:${z.id}`, kind: 'pile' as const, pile: z.id, name: z.name, count: countOf(z) } },
       ]
     })
@@ -51,22 +57,24 @@ export function thingsOn(view: Snapshot): Thing[] {
 }
 
 // The sentence a reader hears when focus lands on a thing.
-export function labelOf(view: Snapshot, t: Thing): string {
-  if (t.kind === 'card') {
-    const c = view.components.find((x) => x.id === t.id)
-    return `${t.name}, kort i ${zoneName(view, t.zone)}${c && c.rot % 360 !== 0 ? ', vridet' : ''}`
+export function labelOf(view: Snapshot, thing: Thing, t: T = swedish): string {
+  if (thing.kind === 'card') {
+    const c = view.components.find((x) => x.id === thing.id)
+    const turned = c !== undefined && c.rot % 360 !== 0
+    return t(turned ? 'kbd.card.rotated' : 'kbd.card', { name: thing.name, zone: zoneName(view, thing.zone) })
   }
-  if (t.kind === 'pileTop') {
-    const z = view.zones.find((x) => x.id === t.pile)
-    return z && countOf(z) === 0 ? `${zoneName(view, t.pile)}, tom` : `Översta kortet i ${zoneName(view, t.pile)}: ${t.name}`
+  if (thing.kind === 'pileTop') {
+    const z = view.zones.find((x) => x.id === thing.pile)
+    const zone = zoneName(view, thing.pile)
+    return z && countOf(z) === 0 ? t('kbd.pile.empty', { zone }) : t('kbd.pile.top', { zone, name: thing.name })
   }
-  return `${zoneName(view, t.pile)}, hela högen, ${t.count} kort`
+  return t(thing.count === 1 ? 'kbd.pile.whole.one' : 'kbd.pile.whole.other', { zone: zoneName(view, thing.pile), n: thing.count })
 }
 
 // What every node on the felt is called, keyed the way the renderer knows it. The sentence ends
 // by saying what Enter does, because a control that opens a panel should say so.
-export function feltLabels(view: Snapshot): Map<string, string> {
-  return new Map(thingsOn(view).map((t) => [t.key, `${labelOf(view, t)}. Enter öppnar handlingar.`]))
+export function feltLabels(view: Snapshot, t: T = swedish): Map<string, string> {
+  return new Map(thingsOn(view, t).map((thing) => [thing.key, t('kbd.enter', { label: labelOf(view, thing, t) })]))
 }
 
 // ================================================================================================
@@ -79,32 +87,32 @@ export function feltLabels(view: Snapshot): Map<string, string> {
 // only opens the card on this screen (K8).
 export type Act = { key: string; label: string; hint?: string; intents: Intent[] | null; look?: string }
 
-export function verbsFor(view: Snapshot, t: Thing): Act[] {
-  if (t.kind === 'card') {
-    const c = view.components.find((x) => x.id === t.id)
+export function verbsFor(view: Snapshot, thing: Thing, t: T = swedish): Act[] {
+  if (thing.kind === 'card') {
+    const c = view.components.find((x) => x.id === thing.id)
     if (!c) return []
     return [
-      { key: 'flip', label: 'Vänd', intents: [{ v: 'flip', component: c.id, face: c.face === 'front' ? 'back' : 'front' }] },
-      { key: 'rotate', label: 'Vrid 90°', intents: [{ v: 'rotate', component: c.id, rot: (c.rot + 90) % 360 }] },
-      { key: 'reveal', label: 'Avslöja', hint: 'visar kortet för alla', intents: c.cardRef === null ? [{ v: 'reveal', components: [c.id] }] : null },
-      { key: 'look', label: 'Titta', hint: 'bara på den här skärmen', intents: [], look: c.id },
+      { key: 'flip', label: t('ring.flip'), intents: [{ v: 'flip', component: c.id, face: c.face === 'front' ? 'back' : 'front' }] },
+      { key: 'rotate', label: t('kbd.verb.rotate'), intents: [{ v: 'rotate', component: c.id, rot: (c.rot + 90) % 360 }] },
+      { key: 'reveal', label: t('ring.reveal'), hint: t('kbd.hint.reveal'), intents: c.cardRef === null ? [{ v: 'reveal', components: [c.id] }] : null },
+      { key: 'look', label: t('ring.look'), hint: t('kbd.hint.look'), intents: [], look: c.id },
     ]
   }
-  const z = view.zones.find((x) => x.id === t.pile)
+  const z = view.zones.find((x) => x.id === thing.pile)
   if (!z) return []
   const n = countOf(z)
   const top = topOf(view, z)
-  if (t.kind === 'pileTop') {
+  if (thing.kind === 'pileTop') {
     return [
       // The top is flipped by naming the pile (K15) — a hidden pile grants no id to say instead.
-      { key: 'flipTop', label: 'Vänd översta', intents: n > 0 ? [{ v: 'flip', component: { top: z.id }, face: top?.face === 'front' ? 'back' : 'front' }] : null },
-      { key: 'look', label: 'Titta på översta', hint: 'bara på den här skärmen', intents: top ? [] : null, ...(top ? { look: top.id } : {}) },
+      { key: 'flipTop', label: t('ring.flipTop'), intents: n > 0 ? [{ v: 'flip', component: { top: z.id }, face: top?.face === 'front' ? 'back' : 'front' }] : null },
+      { key: 'look', label: t('kbd.verb.lookTop'), hint: t('kbd.hint.look'), intents: top ? [] : null, ...(top ? { look: top.id } : {}) },
     ]
   }
   return [
-    { key: 'shuffle', label: 'Blanda', intents: n > 1 ? [{ v: 'shuffle', pile: z.id }] : null },
-    ...(view.seat === null ? [] : [{ key: 'toHand', label: 'Dra 1 till min hand', intents: n > 0 ? [{ v: 'split' as const, pile: z.id, at: 1, to: `hand:${view.seat}` }] : null }]),
-    { key: 'half', label: 'Dela på hälften', hint: 'ny hög bredvid', intents: n > 1 ? [{ v: 'split', pile: z.id, at: Math.ceil(n / 2), x: z.geometry.x + CARD_MM.w + 14, y: z.geometry.y }] : null },
+    { key: 'shuffle', label: t('ring.shuffle'), intents: n > 1 ? [{ v: 'shuffle', pile: z.id }] : null },
+    ...(view.seat === null ? [] : [{ key: 'toHand', label: t('kbd.verb.toHand'), intents: n > 0 ? [{ v: 'split' as const, pile: z.id, at: 1, to: `hand:${view.seat}` }] : null }]),
+    { key: 'half', label: t('ring.half'), hint: t('kbd.hint.half'), intents: n > 1 ? [{ v: 'split', pile: z.id, at: Math.ceil(n / 2), x: z.geometry.x + CARD_MM.w + 14, y: z.geometry.y }] : null },
   ]
 }
 
@@ -121,31 +129,44 @@ export type Place = {
   anchor?: VisibleComponentState
 }
 
-const handName = (view: Snapshot, z: ZoneView): string => {
+const handName = (view: Snapshot, z: ZoneView, t: T): string => {
   const seat = view.seats.find((s) => s.id === z.owner)
-  return z.owner === view.seat ? 'Min hand' : `${seat?.name ?? z.owner ?? ''}s hand`
+  // Whoever is sitting there named themselves; only the word "hand" around it is the tool's.
+  return z.owner === view.seat ? t('kbd.hand.my') : t('kbd.hand.other', { name: seat?.name ?? z.owner ?? '' })
 }
 
-export function placesFor(view: Snapshot, moving: ReadonlySet<string>, sourceZone: string | null): Place[] {
+export function placesFor(view: Snapshot, moving: ReadonlySet<string>, sourceZone: string | null, t: T = swedish): Place[] {
   // A hand nobody is sitting at is not a place to put a card: it would be handed to no one, and
   // it has no name to be offered under either.
   const seated = new Set(view.seats.filter((s) => s.name !== null).map((s) => s.id))
   const zones: Place[] = view.zones
     .filter((z) => !(z.kind === 'area' && z.id === view.floor))
     .filter((z) => z.kind !== 'hand' || (z.owner !== undefined && seated.has(z.owner)))
-    .map((z): Place => ({
-      key: `z:${z.id}`,
-      label: z.kind === 'hand' ? handName(view, z) : z.name,
-      hint: z.kind === 'pile' ? `${countOf(z)} kort · överst` : z.kind === 'hand' ? `${countOf(z)} kort` : `${countOf(z)} kort · fri yta`,
-      zone: z.id,
-      kind: z.kind,
-    }))
+    .map((z): Place => {
+      const n = countOf(z)
+      const one = n === 1 ? 'one' : 'other'
+      return {
+        key: `z:${z.id}`,
+        // A zone's own name is the designer's (B5); the count beside it is the tool's.
+        label: z.kind === 'hand' ? handName(view, z, t) : z.name,
+        hint: t(z.kind === 'pile' ? `kbd.place.pile.${one}` : z.kind === 'hand' ? `kbd.place.hand.${one}` : `kbd.place.area.${one}`, { n }),
+        zone: z.id,
+        kind: z.kind,
+      }
+    })
   const floor = view.zones.find((z) => z.id === view.floor)
-  const onFloor: Place[] = floor ? [{ key: `z:${floor.id}`, label: 'Bordet', hint: 'fri yta', zone: floor.id, kind: 'area' }] : []
+  const onFloor: Place[] = floor ? [{ key: `z:${floor.id}`, label: t('kbd.place.floor'), hint: t('kbd.place.floor.hint'), zone: floor.id, kind: 'area' }] : []
   const areas = new Set(view.zones.filter((z) => z.kind === 'area').map((z) => z.id))
   const cards: Place[] = view.components
     .filter((c) => areas.has(c.zone) && !moving.has(c.id))
-    .map((c): Place => ({ key: `c:${c.id}`, label: `På ${cardName(c)}`, hint: `bildar en hög i ${zoneName(view, c.zone)}`, zone: c.zone, kind: 'card', anchor: c }))
+    .map((c): Place => ({
+      key: `c:${c.id}`,
+      label: t('kbd.place.onCard', { name: cardName(c, t) }),
+      hint: t('kbd.place.onCard.hint', { zone: zoneName(view, c.zone) }),
+      zone: c.zone,
+      kind: 'card',
+      anchor: c,
+    }))
   return [...zones, ...onFloor, ...cards].filter((p) => p.zone !== sourceZone || p.kind === 'card')
 }
 
@@ -206,6 +227,6 @@ export function landedKeyFor(view: Snapshot, place: Place, thing: Thing): string
 
 // A card in this seat's own hand, for a reader. The hand is not on the felt, so it is not a
 // `Thing`; the sentence is the same shape all the same, and marking says so out loud (K3).
-export function handLabel(c: VisibleComponentState, marked: boolean): string {
-  return `${cardName(c)}, i min hand${marked ? ', markerat' : ''}. Enter öppnar handlingar.`
+export function handLabel(c: VisibleComponentState, marked: boolean, t: T = swedish): string {
+  return t('kbd.enter', { label: t(marked ? 'kbd.hand.mine.marked' : 'kbd.hand.mine', { name: cardName(c, t) }) })
 }

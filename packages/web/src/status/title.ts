@@ -1,4 +1,7 @@
+import { translate, type T } from '../i18n/index.js'
 import type { StatusKey } from './notice.js'
+
+const swedish: T = (key, params) => translate('sv', key, params)
 
 // Until #12 there was one title for the whole product: the static line in index.html. A tab is
 // a place too, and a tab that says nothing is a tab nobody can find their way back to.
@@ -35,61 +38,63 @@ export type TitleContext = { state?: StatusKey | null; room?: string | null; gam
 
 // The name of the page first, because a tab is clipped from the right, and `·` because that is
 // already the app's separator.
-function nameOf(route: Route, ctx: TitleContext): string[] {
-  const room = ctx.room ? `Rum ${ctx.room}` : null
+function nameOf(route: Route, ctx: TitleContext, t: T): string[] {
+  const room = ctx.room ? t('title.room', { code: ctx.room }) : null
   switch (route) {
     case 'home':
-      return ['Mina spel']
+      return [t('title.home')]
     case 'login':
-      return ['Logga in']
+      return [t('title.login')]
     case 'new':
-      return ['Nytt spel']
+      return [t('title.new')]
     case 'claim':
-      return ['Spara bordet']
+      return [t('title.claim')]
     case 'editor':
-      return [ctx.game ?? null, 'Editor'].filter((s): s is string => s !== null)
+      // The game's own name is the designer's and is never translated (A4); only the word beside
+      // it is the tool's.
+      return [ctx.game ?? null, t('title.editor')].filter((s): s is string => s !== null)
     case 'table':
-      return ['Bordet', room].filter((s): s is string => s !== null)
+      return [t('title.table'), room].filter((s): s is string => s !== null)
     case 'join':
-      return [ctx.room ? `Gå med i rum ${ctx.room}` : 'Gå med i ett rum']
+      return [ctx.room ? t('title.join', { code: ctx.room }) : t('title.join.any')]
     case 'play':
-      return ['Din hand', room].filter((s): s is string => s !== null)
+      return [t('title.play'), room].filter((s): s is string => s !== null)
     case 'online':
-      return ['Spela', room].filter((s): s is string => s !== null)
+      return [t('title.online'), room].filter((s): s is string => s !== null)
     case 'observe':
-      return [ctx.room ? `Tittar på rum ${ctx.room}` : 'Tittar på']
+      return [ctx.room ? t('title.observe', { code: ctx.room }) : t('title.observe.any')]
     case 'prototype':
-      return ['Prototyp']
+      return [t('title.prototype')]
     case 'unknown':
-      return ['Sidan finns inte']
+      return [t('title.unknown')]
   }
 }
 
 // The state wins over the route while there is one, so a tab in the background says the truth.
 // The title is not a message, though: whoever needs the word "fel" gets it in the view and in
 // the live region, not in the tab.
-function stateName(state: StatusKey, route: Route): string | null {
+function stateName(state: StatusKey, route: Route, t: T): string | null {
   switch (state) {
     case 'loading':
     case 'slow':
-      return 'Laddar'
+      return t('title.state.loading')
     case 'connecting':
-      return 'Ansluter'
+      return t('title.state.connecting')
     case 'missing':
-      return route === 'editor' ? 'Spelet finns inte' : route === 'home' || route === 'unknown' ? 'Sidan finns inte' : 'Rummet finns inte'
+      return t(route === 'editor' ? 'title.state.missing.game' : route === 'home' || route === 'unknown' ? 'title.unknown' : 'title.state.missing.table')
     case 'forbidden':
-      return 'Ingen tillgång'
+      return t('title.state.forbidden')
     case 'offline':
-      return 'Ingen kontakt'
+      return t('title.state.offline')
     case 'dropped':
-      return 'Frånkopplad'
+      return t('title.state.dropped')
     case 'resumed':
     case 'refused':
       return null
   }
 }
 
-export function documentTitle(route: Route, ctx: TitleContext = {}): string {
-  const override = ctx.state ? stateName(ctx.state, route) : null
-  return [...(override !== null ? [override] : nameOf(route, ctx)), APP].join(' · ')
+export function documentTitle(route: Route, ctx: TitleContext = {}, t: T = swedish): string {
+  const override = ctx.state ? stateName(ctx.state, route, t) : null
+  return [...(override !== null ? [override] : nameOf(route, ctx, t)), APP].join(' · ')
 }

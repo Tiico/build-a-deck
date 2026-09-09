@@ -3,8 +3,11 @@ import { describe, expect, it } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { App } from '../src/App.js'
 
+// The address asks for Swedish, because that is what these expectations are written in. Before
+// #27 it made no difference: the tab and the 404 were Swedish whoever was reading. Now they are
+// not, so a test that wants Swedish has to be a Swedish reader.
 function open(path: string) {
-  history.replaceState(null, '', path)
+  history.replaceState(null, '', `${path}${path.includes('?') ? '&' : '?'}lang=sv`)
   render(<App />)
 }
 

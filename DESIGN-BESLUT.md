@@ -110,6 +110,26 @@ Vad ordlistan tar bort är de oavsiktliga varianterna — fyra olika sätt att s
 Utanför ordlistan står spelets egna ord: fältnamn, symbolnamn, zonnamn, kortnamn, och allt en formgivare skrivit.
 Gränsen är A4:s egen: verktyget talar läsarens språk, spelet sitt eget.
 
+Den andra stammen, 2026-09-09:
+De nio delade tillstånden (#12, #7), rummen och frågorna innan arbete går förlorat växte fram vid sidan av katalogen och slogs ihop med den i `0c8cd71`.
+De texter som kom in utan konflikt stod kvar på svenska i koden och följde alltså inte språkväljaren.
+De går nu genom katalogen som allt annat: `packages/web/src/i18n/sv.status.ts` bär tillstånden, flikens namn och vad bordet vägrar med; resten flyttade in i de kataloger ytorna redan hade.
+Tillstånden hade också missat ordlistan: bordet hette `rummet` i tre av fyra röster och i fliken. Det heter `bordet` nu, på båda språken.
+Tangentbordets verb är ringens och delar nycklar med den — `ring.flip`, `ring.shuffle`, `ring.half` — eftersom tangentbordet säger exakt de verb pekdonet säger och aldrig ett nytt.
+`Question` har inget svenskt standardsvar kvar: en fråga som inte namnger sitt trygga svar får katalogens ord på läsarens språk.
+
+Två fall på gränsen, avgjorda:
+
+Nyckeln ett nytt fält får i wizarden (`bild2`, `värde3`) byter *inte* språk med läsaren.
+En nyckel är en identifierare i dokumentet, inte en text, och två personer som trycker på samma knapp måste få samma kolumn — annars binder en mall `bild2` för den ena och `image2` för den andra.
+Att de fyra nycklar wizarden redan lägger ut heter `title`, `cost`, `body` och `art` på en svensk yta är samma beslut, taget tidigare.
+Det verktyget föreslår vid skapandet och sedan lämnar ifrån sig är *etiketten*, och den skrivs på formgivarens språk och fryses där.
+
+Namnet en redigerare utan konto visas som för de andra (D3) skrivs på det språk den som kommer in läser verktyget i, och blir sedan hennes.
+Det kan inte följa varje läsare: namnet går över tråden en gång, vid uppkopplingen, och läses av alla andra i spelet.
+Ett namn tillhör den det namnger — samma gräns som gör att den som skriver in sitt namn vid ett bord får stå som hon skrev det.
+Att byta språk mitt i döper därför inte om någon som redan är inne.
+
 ---
 
 ## B. Domänmodellen

@@ -78,8 +78,10 @@ describe('the way out of a state', () => {
 describe('each route says the same state in its own words', () => {
   it('names what is missing rather than what a route is', () => {
     expect(noticeFor('missing', 'editor').heading).toMatch(/spelet/i)
-    expect(noticeFor('missing', 'table').heading).toMatch(/rummet/i)
-    expect(noticeFor('missing', 'phone').heading).toMatch(/rummet/i)
+    // The glossary's word for the surface people play on is `bordet` (A4); `rummet` was the
+    // code's own vocabulary and went out with #38, which these two voices had not yet heard.
+    expect(noticeFor('missing', 'table').heading).toMatch(/bordet/i)
+    expect(noticeFor('missing', 'phone').heading).toMatch(/bordet/i)
     // The QR on the TV is the phone's real way back in, and it is a thing to do rather than a
     // link to press, so it is said in the sentence and not offered as a control.
     expect(noticeFor('missing', 'phone').text).toMatch(/QR-koden/)

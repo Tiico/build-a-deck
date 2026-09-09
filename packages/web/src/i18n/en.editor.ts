@@ -7,12 +7,19 @@ export const enEditor = {
   'editor.tab.rules': 'Rules',
   'editor.tab.tables': 'Tables',
 
+  'editor.stages': 'Editor stages',
+  'editor.stage.tools': 'Tools',
+  'editor.stage.layers': 'Layers',
+  'editor.stage.canvas': 'Canvas',
+  'editor.stage.props': 'Properties',
+
   'editor.noProject': 'No game given.',
   'editor.loggingIn': 'Signing in…',
   'editor.loading': 'Loading the game…',
   'editor.conflict': 'Someone else has saved since you loaded this. Reload and make the change again.',
   'editor.rev': 'rev {n}',
   'editor.here.count': '{n} here',
+  'editor.here.someone': 'Someone',
   'editor.saved': 'Saved',
   'editor.unsaved': 'Unsaved changes',
   'editor.save': 'Save',
@@ -34,6 +41,13 @@ export const enEditor = {
   'editor.role.viewer': 'You are a viewer here: you can read the game, but not change it.',
   'editor.seats.at': 'at the table:',
   'editor.seats.kick': 'Kick {name}',
+  'editor.home': 'My games',
+  'editor.narrow':
+    'The template is not drawn on a phone. The canvas, the tools, the layers and the properties are there from 768 pixels wide — open the game on a tablet or a computer to move anything on the card. The card wall, the data and the tables can be worked on here.',
+  'editor.leave.title': 'Unsaved changes',
+  'editor.leave.body': 'Unsaved changes in {game}. What would you like to do before you leave the editor?',
+  'editor.leave.save': 'Save and leave',
+  'editor.leave.discard': 'Leave without saving',
 
   'wall.cards.one': '{n} card',
   'wall.cards.other': '{n} cards',

@@ -51,8 +51,8 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
     return q.toString()
   }
   const justSaved = claimed ? played?.find((p) => p.session === claimed) : undefined
-  if (offline) return <StatusNotice notice={noticeFor('offline', 'app')} surface="page" onRetry={() => setAttempt((n) => n + 1)} />
-  if (email === undefined) return <StatusNotice notice={noticeFor('loading', 'app')} surface="page" />
+  if (offline) return <StatusNotice notice={noticeFor('offline', 'app', t)} surface="page" onRetry={() => setAttempt((n) => n + 1)} />
+  if (email === undefined) return <StatusNotice notice={noticeFor('loading', 'app', t)} surface="page" />
   if (email === null) {
     return (
       <div className="byd-account" data-page="home">

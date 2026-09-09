@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ProjectClient, ProjectUnavailable, type ProjectFault } from './ProjectClient.js'
 import { Unauthorized, whoAmI } from '../account/api.js'
+import { useT } from '../i18n/index.js'
 
 // Which of the shared states (#12) the project is in, plus the one that is not a message but a
 // redirect: not logged in sends the designer to the login card and back.
@@ -15,6 +16,11 @@ export type ProjectState = { client: ProjectClient | null; fault: ProjectTrouble
 export function useProjectClient(http: string | null, id: string | null): ProjectState {
   const [state, setState] = useState<{ client: ProjectClient | null; fault: ProjectTrouble | null; tick: number }>({ client: null, fault: null, tick: 0 })
   const [attempt, setAttempt] = useState(0)
+  // Read through a ref, not a dependency: the word for somebody is settled once, when this
+  // editor arrives. Switching language later renames nobody who is already in the project.
+  const t = useT()
+  const reader = useRef(t)
+  reader.current = t
   useEffect(() => {
     if (!http || !id) return
     let live = true
@@ -23,10 +29,11 @@ export function useProjectClient(http: string | null, id: string | null): Projec
     setState({ client: null, fault: null, tick: 0 })
     const start = async () => {
       // The name the others see is the account's own; without one the editor is simply someone,
-      // which is what a project from before accounts has.
+      // which is what a game from before accounts has. That word is the reader's own, taken
+      // where she arrives and frozen there — see A4's boundary and the note on `open`.
       const email = await whoAmI(http).catch(() => null)
       if (!live) return
-      const client = await ProjectClient.open({ http, id, ...(email ? { name: email } : {}) })
+      const client = await ProjectClient.open({ http, id, t: reader.current, ...(email ? { name: email } : {}) })
       if (!live) {
         client.close()
         return

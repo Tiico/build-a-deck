@@ -1,6 +1,15 @@
+import { translate, type Key, type T } from '../i18n/index.js'
+
 // The nine states a screen can be in when it cannot show what it promised (#12, #7), and the
 // one thing every route shares. A route picks where the message stands and says it in its own
 // words; it never invents a state of its own.
+//
+// The words themselves are the catalogue's (A4): this file decides which state a screen is in
+// and which voice says it, never what the sentence reads like in one language or another. A
+// caller that has no reader — a test, a module outside React — gets Swedish, which is what the
+// catalogue is written in.
+const swedish: T = (key, params) => translate('sv', key, params)
+
 export const STATUS_KEYS = ['loading', 'slow', 'missing', 'forbidden', 'offline', 'connecting', 'dropped', 'resumed', 'refused'] as const
 export type StatusKey = (typeof STATUS_KEYS)[number]
 
@@ -40,76 +49,82 @@ export type Notice = {
   retryable: boolean
 }
 
-const retry = (label = 'Försök igen'): Action => ({ kind: 'retry', label, primary: true })
-const login: Action = { kind: 'login', label: 'Logga in', primary: true }
-const home = (label = 'Till mina spel'): Action => ({ kind: 'home', label })
+const retry = (t: T, key: Key = 'status.act.retry'): Action => ({ kind: 'retry', label: t(key), primary: true })
+const login = (t: T): Action => ({ kind: 'login', label: t('status.act.login'), primary: true })
+const home = (t: T, key: Key = 'status.act.home'): Action => ({ kind: 'home', label: t(key) })
 // Back to the seat picker: the one way out of a phone that is not a link somewhere else.
-const rescan: Action = { kind: 'rescan', label: 'Välj plats igen' }
+const rescan = (t: T): Action => ({ kind: 'rescan', label: t('status.act.rescan'), primary: true })
 
 // One wording for every route: the model's own voice, which each route may sharpen but never
 // contradict.
-function base(state: StatusKey): Notice {
+function base(state: StatusKey, t: T): Notice {
   switch (state) {
     case 'loading':
-      return { state, tone: 'wait', mark: 'Laddar', heading: 'Hämtar…', text: 'Det brukar ta en sekund.', actions: [], live: 'polite', retryable: true }
+      return { state, tone: 'wait', mark: t('status.loading.mark'), heading: t('status.loading.heading'), text: t('status.loading.text'), actions: [], live: 'polite', retryable: true }
     case 'slow':
-      return { state, tone: 'wait', mark: 'Laddar', heading: 'Det här tar längre tid än vanligt', text: 'Vi väntar fortfarande på svar. Vänta kvar, eller försök igen.', actions: [retry(), home()], live: 'polite', retryable: true }
+      return { state, tone: 'wait', mark: t('status.slow.mark'), heading: t('status.slow.heading'), text: t('status.slow.text'), actions: [retry(t), home(t)], live: 'polite', retryable: true }
     case 'missing':
-      return { state, tone: 'gone', mark: 'Finns inte', heading: 'Vi hittar inte det du sökte', text: 'Länken pekar på något som inte finns längre. Kontrollera adressen, eller gå till dina spel.', actions: [home('Till mina spel')], live: 'assertive', retryable: false }
+      return { state, tone: 'gone', mark: t('status.missing.mark'), heading: t('status.missing.heading'), text: t('status.missing.text'), actions: [home(t)], live: 'assertive', retryable: false }
     case 'forbidden':
-      return { state, tone: 'shut', mark: 'Stängt', heading: 'Du har inte tillgång', text: 'Det här hör till ett annat konto. Logga in med rätt konto, eller be den som äger det att bjuda in dig.', actions: [login, home()], live: 'assertive', retryable: false }
+      return { state, tone: 'shut', mark: t('status.forbidden.mark'), heading: t('status.forbidden.heading'), text: t('status.forbidden.text'), actions: [login(t), home(t)], live: 'assertive', retryable: false }
     case 'offline':
-      return { state, tone: 'broken', mark: 'Ingen kontakt', heading: 'Vi når inte tjänsten', text: 'Det kan vara nätet där du är, eller så är tjänsten nere en stund. Inget av ditt arbete är borta.', actions: [retry(), home()], live: 'assertive', retryable: true }
+      return { state, tone: 'broken', mark: t('status.offline.mark'), heading: t('status.offline.heading'), text: t('status.offline.text'), actions: [retry(t), home(t)], live: 'assertive', retryable: true }
     case 'connecting':
-      return { state, tone: 'wait', mark: 'Ansluter', heading: 'Ansluter…', text: 'Vi kopplar upp mot bordet.', actions: [], live: 'polite', retryable: true }
+      return { state, tone: 'wait', mark: t('status.connecting.mark'), heading: t('status.connecting.heading'), text: t('status.connecting.text'), actions: [], live: 'polite', retryable: true }
     case 'dropped':
-      return { state, tone: 'broken', mark: 'Frånkopplad', heading: 'Anslutningen bröts', text: 'Det du ser kan ha ändrats sedan dess. Ingenting du gör nu kommer fram.', actions: [retry('Försök nu'), home()], live: 'assertive', retryable: true }
+      return { state, tone: 'broken', mark: t('status.dropped.mark'), heading: t('status.dropped.heading'), text: t('status.dropped.text'), actions: [retry(t, 'status.act.retry.now'), home(t)], live: 'assertive', retryable: true }
     case 'resumed':
-      return { state, tone: 'ok', mark: 'Uppkopplad', heading: 'Uppkopplad igen', text: 'Bilden är uppdaterad till hur det ser ut nu.', actions: [], live: 'polite', retryable: false }
+      return { state, tone: 'ok', mark: t('status.resumed.mark'), heading: t('status.resumed.heading'), text: t('status.resumed.text'), actions: [], live: 'polite', retryable: false }
     case 'refused':
-      return { state, tone: 'broken', mark: 'Gick inte', heading: 'Draget gick inte igenom', text: '', actions: [], live: 'assertive', retryable: false }
+      // A refusal has no sentence of its own until a reason is carried into it, so its text is
+      // an absence rather than a message, and there is nothing in the catalogue for it.
+      return { state, tone: 'broken', mark: t('status.refused.mark'), heading: t('status.refused.heading'), text: '', actions: [], live: 'assertive', retryable: false }
   }
 }
 
 // The same nine states, said in the words of the route they land on. A route may change the
 // heading, the sentence and where its way out leads; it may not change the tone, the live
 // region or whether waiting helps.
-const PER_VOICE: Record<Voice, Partial<Record<StatusKey, Partial<Notice>>>> = {
+//
+// Each entry names its keys rather than spelling them out of the state and the voice, so a
+// sentence a voice is missing is a compile error and not a line that quietly stays in Swedish.
+type Voiced = (t: T) => Partial<Notice>
+const PER_VOICE: Record<Voice, Partial<Record<StatusKey, Voiced>>> = {
   app: {},
   table: {
-    loading: { heading: 'Dukar bordet…', text: 'Rummet hämtas.' },
-    slow: { heading: 'Bordet dröjer', text: 'Vi väntar fortfarande på spelet. Ingen behöver göra något än.' },
-    missing: { heading: 'Rummet är slut', text: 'Koden som stod här gäller inte längre. Starta ett nytt rum från Mina spel.' },
-    forbidden: { heading: 'Bordet hör till ett annat konto', text: 'Logga in på kontot som äger spelet för att visa det på den här skärmen.' },
-    offline: { heading: 'Bordet når inte tjänsten', text: 'Kontrollera nätet på den här skärmen. Spelet ligger kvar och ingenting har gått förlorat.' },
-    connecting: { heading: 'Kopplar upp bordet…', text: 'Rummet är på väg upp.' },
-    dropped: { heading: 'Bordet har tappat kontakten', text: 'Ingen kan spela förrän kontakten är tillbaka.' },
-    resumed: { heading: 'Bordet är igång igen', text: 'Bilden visar hur det ser ut nu.' },
+    loading: (t) => ({ heading: t('status.loading.table.heading'), text: t('status.loading.table.text') }),
+    slow: (t) => ({ heading: t('status.slow.table.heading'), text: t('status.slow.table.text') }),
+    missing: (t) => ({ heading: t('status.missing.table.heading'), text: t('status.missing.table.text') }),
+    forbidden: (t) => ({ heading: t('status.forbidden.table.heading'), text: t('status.forbidden.table.text') }),
+    offline: (t) => ({ heading: t('status.offline.table.heading'), text: t('status.offline.table.text') }),
+    connecting: (t) => ({ heading: t('status.connecting.table.heading'), text: t('status.connecting.table.text') }),
+    dropped: (t) => ({ heading: t('status.dropped.table.heading'), text: t('status.dropped.table.text') }),
+    resumed: (t) => ({ heading: t('status.resumed.table.heading'), text: t('status.resumed.table.text') }),
   },
   phone: {
-    loading: { heading: 'Hämtar din hand…', text: 'Ett ögonblick.' },
-    slow: { heading: 'Det tar längre tid än vanligt', text: 'Vi väntar fortfarande på rummet.', actions: [retry(), home('Till startsidan')] },
-    missing: { heading: 'Rummet finns inte', text: 'Rummet kan ha avslutats. Läs QR-koden på TV:n igen så kommer du in i det som pågår.', actions: [home('Till startsidan')] },
-    forbidden: { heading: 'Din plats är inte längre din', text: 'Någon annan sitter på platsen. Välj en ledig plats igen, eller läs QR-koden på TV:n.', actions: [{ ...rescan, primary: true }, login, home('Till startsidan')] },
-    offline: { heading: 'Vi når inte rummet', text: 'Kontrollera nätet på telefonen. Din plats står kvar så länge spelet pågår.', actions: [retry(), home('Till startsidan')] },
-    connecting: { heading: 'Kopplar upp…', text: 'Vi letar upp ditt rum.' },
-    dropped: { heading: 'Du är frånkopplad', text: 'Handen du ser är gammal och ingenting du gör nu kommer fram. Vi försöker igen.', actions: [retry('Försök nu'), home('Till startsidan')] },
-    resumed: { heading: 'Uppkopplad igen', text: 'Din hand är uppdaterad.' },
+    loading: (t) => ({ heading: t('status.loading.phone.heading'), text: t('status.loading.phone.text') }),
+    slow: (t) => ({ heading: t('status.slow.phone.heading'), text: t('status.slow.phone.text'), actions: [retry(t), home(t, 'status.act.home.start')] }),
+    missing: (t) => ({ heading: t('status.missing.phone.heading'), text: t('status.missing.phone.text'), actions: [home(t, 'status.act.home.start')] }),
+    forbidden: (t) => ({ heading: t('status.forbidden.phone.heading'), text: t('status.forbidden.phone.text'), actions: [rescan(t), login(t), home(t, 'status.act.home.start')] }),
+    offline: (t) => ({ heading: t('status.offline.phone.heading'), text: t('status.offline.phone.text'), actions: [retry(t), home(t, 'status.act.home.start')] }),
+    connecting: (t) => ({ heading: t('status.connecting.phone.heading'), text: t('status.connecting.phone.text') }),
+    dropped: (t) => ({ heading: t('status.dropped.phone.heading'), text: t('status.dropped.phone.text'), actions: [retry(t, 'status.act.retry.now'), home(t, 'status.act.home.start')] }),
+    resumed: (t) => ({ heading: t('status.resumed.phone.heading'), text: t('status.resumed.phone.text') }),
   },
   editor: {
-    loading: { heading: 'Öppnar spelet…', text: 'Vi hämtar leken.' },
-    slow: { heading: 'Spelet dröjer', text: 'Vi väntar fortfarande på servern.' },
-    missing: { heading: 'Vi hittar inte spelet', text: 'Spelet kan vara borttaget, eller så blev det ett tecken fel i länken.' },
-    forbidden: { heading: 'Spelet hör till någon annan', text: 'Be den som äger spelet att bjuda in dig, eller logga in på rätt konto.' },
-    offline: { heading: 'Vi når inte servern', text: 'Ändringarna du gjort ligger kvar här. Vi sparar så fort kontakten är tillbaka.' },
-    connecting: { heading: 'Kopplar upp…', text: 'Vi hämtar den senaste versionen.' },
-    dropped: { heading: 'Ingen kontakt med servern', text: 'Osparat arbete ligger kvar här tills kontakten är tillbaka.' },
-    resumed: { heading: 'Sparat och uppkopplat igen', text: 'Allt du hann göra ligger på servern.' },
+    loading: (t) => ({ heading: t('status.loading.editor.heading'), text: t('status.loading.editor.text') }),
+    slow: (t) => ({ heading: t('status.slow.editor.heading'), text: t('status.slow.editor.text') }),
+    missing: (t) => ({ heading: t('status.missing.editor.heading'), text: t('status.missing.editor.text') }),
+    forbidden: (t) => ({ heading: t('status.forbidden.editor.heading'), text: t('status.forbidden.editor.text') }),
+    offline: (t) => ({ heading: t('status.offline.editor.heading'), text: t('status.offline.editor.text') }),
+    connecting: (t) => ({ heading: t('status.connecting.editor.heading'), text: t('status.connecting.editor.text') }),
+    dropped: (t) => ({ heading: t('status.dropped.editor.heading'), text: t('status.dropped.editor.text') }),
+    resumed: (t) => ({ heading: t('status.resumed.editor.heading'), text: t('status.resumed.editor.text') }),
   },
 }
 
-export function noticeFor(state: StatusKey, voice: Voice): Notice {
-  return { ...base(state), ...(PER_VOICE[voice][state] ?? {}) }
+export function noticeFor(state: StatusKey, voice: Voice, t: T = swedish): Notice {
+  return { ...base(state, t), ...(PER_VOICE[voice][state]?.(t) ?? {}) }
 }
 
 // When old data is left on the screen the reader has to be told how old it is, or the picture
@@ -120,31 +135,31 @@ export function asOf(at: Date): string {
 
 // A refusal comes back from the server as a developer's sentence in English. It is a fact about
 // the intent, not a message to a person, so it is translated here and never shown as it stands.
-const REFUSALS: { match: RegExp; say: string }[] = [
-  { match: /^not connected$/, say: 'Du är inte uppkopplad, så draget skickades aldrig.' },
-  { match: /^connection lost$/, say: 'Anslutningen bröts innan draget kom fram.' },
-  { match: /session has ended/, say: 'Bordet är avslutat och tar inte emot fler drag.' },
-  { match: /an observer can only flag/, say: 'Som observatör kan du titta och flagga, men inte spela.' },
-  { match: /seat does not match/, say: 'Draget hörde till en annan plats än din.' },
-  { match: /was already used/, say: 'Draget hade redan skickats.' },
-  { match: /is empty/, say: 'Högen är tom.' },
-  { match: /fewer than/, say: 'Det finns inte så många kort kvar.' },
-  { match: /cannot be flipped|has no face/, say: 'Kortet kan inte vändas.' },
-  { match: /cannot be stacked|onto itself/, say: 'Korten kan inte läggas på varandra.' },
-  { match: /cannot be shuffled/, say: 'Högen kan inte blandas.' },
-  { match: /cannot be rolled/, say: 'Kortet kan inte slås.' },
-  { match: /has no counter/, say: 'Kortet har ingen räknare.' },
-  { match: /is not a pile|is not an area|into itself|needs x and y/, say: 'Det går inte att lägga korten där.' },
-  { match: /cannot peek/, say: 'Den här skärmen har ingen hand att titta i.' },
-  { match: /^unknown (component|zone|seat)/, say: 'Kortet eller zonen finns inte längre på bordet.' },
+const REFUSALS: { match: RegExp; say: Key }[] = [
+  { match: /^not connected$/, say: 'refusal.notConnected' },
+  { match: /^connection lost$/, say: 'refusal.connectionLost' },
+  { match: /session has ended/, say: 'refusal.ended' },
+  { match: /an observer can only flag/, say: 'refusal.observer' },
+  { match: /seat does not match/, say: 'refusal.seat' },
+  { match: /was already used/, say: 'refusal.spent' },
+  { match: /is empty/, say: 'refusal.empty' },
+  { match: /fewer than/, say: 'refusal.tooFew' },
+  { match: /cannot be flipped|has no face/, say: 'refusal.flip' },
+  { match: /cannot be stacked|onto itself/, say: 'refusal.stack' },
+  { match: /cannot be shuffled/, say: 'refusal.shuffle' },
+  { match: /cannot be rolled/, say: 'refusal.roll' },
+  { match: /has no counter/, say: 'refusal.counter' },
+  { match: /is not a pile|is not an area|into itself|needs x and y/, say: 'refusal.place' },
+  { match: /cannot peek/, say: 'refusal.peek' },
+  { match: /^unknown (component|zone|seat)/, say: 'refusal.unknown' },
 ]
 
-export function refusalText(reason: string): string {
-  return REFUSALS.find((r) => r.match.test(reason))?.say ?? 'Bordet tog inte emot draget. Försök igen om en stund.'
+export function refusalText(reason: string, t: T = swedish): string {
+  return t(REFUSALS.find((r) => r.match.test(reason))?.say ?? 'refusal.other')
 }
 
 // The refusal as a notice, so that the inline message at the control is the same model as
 // everything else — only smaller and standing somewhere different.
-export function refusal(reason: string, voice: Voice): Notice {
-  return { ...noticeFor('refused', voice), text: refusalText(reason) }
+export function refusal(reason: string, voice: Voice, t: T = swedish): Notice {
+  return { ...noticeFor('refused', voice, t), text: refusalText(reason, t) }
 }

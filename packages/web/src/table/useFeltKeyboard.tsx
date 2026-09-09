@@ -4,6 +4,7 @@ import type { SendResult } from '../client.js'
 import { useRoving } from '../editor/roving.js'
 import { refusalText } from '../status/notice.js'
 import { useSay } from '../status/StatusLive.js'
+import { useT } from '../i18n/index.js'
 import { ActionPanel } from './ActionPanel.js'
 import { CardLook } from './CardLook.js'
 import { feltLabels, intentsForPlace, landedKeyFor, thingsOn, type Thing } from './keyboard.js'
@@ -41,6 +42,7 @@ export type FeltKeyboardOptions = {
 // at all, and so grow no tab stops (K9).
 export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: FeltKeyboardOptions): FeltKeyboardHandle {
   const say = useSay()
+  const t = useT()
   const [open, setOpen] = useState<{ thing: Thing; cards: string[] } | null>(null)
   const [looking, setLooking] = useState<VisibleComponentState | null>(null)
   const returnTo = useRef<HTMLElement | null>(null)
@@ -48,7 +50,7 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
   // yet when the move is sent, so it is claimed on the first render that draws it.
   const pending = useRef<string | null>(null)
   const on = view !== null && felt
-  const things = on ? thingsOn(view) : []
+  const things = on ? thingsOn(view, t) : []
   const roving = useRoving({ ids: things.map((t) => t.key), selected: null, orientation: 'both' })
 
   useLayoutEffect(() => {
@@ -82,7 +84,7 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
   const keyboard: FeltKeyboard | undefined =
     view && on
       ? {
-          labels: feltLabels(view),
+          labels: feltLabels(view, t),
           open: open?.thing.key ?? null,
           itemProps: roving.itemProps,
           onActivate: (key) => {
@@ -109,7 +111,7 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
           // A refusal is an answer to something someone asked for that did not happen, so it
           // cuts in (D5). Nothing else on this path is worth interrupting a reader for.
           void options.act(intents).then((result) => {
-            if (!result.ok) say?.('assertive', refusalText(result.reason))
+            if (!result.ok) say?.('assertive', refusalText(result.reason, t))
           })
           options.onPlayed?.()
           close(landedOn)

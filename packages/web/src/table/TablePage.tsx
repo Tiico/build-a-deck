@@ -76,9 +76,9 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   }, [params, roomCode])
 
   // A link with no room in it is a link to a room that does not exist.
-  if (!sessionId) return <StatusNotice notice={noticeFor('missing', 'table')} surface="page" links={links} />
+  if (!sessionId) return <StatusNotice notice={noticeFor('missing', 'table', t)} surface="page" links={links} />
   // The host key is what opens this screen (DRIFT §9); without it the door is shut, not broken.
-  if (refused) return <StatusNotice notice={{ ...noticeFor('forbidden', 'table'), text: t('play.refused.host') }} surface="page" links={links} />
+  if (refused) return <StatusNotice notice={{ ...noticeFor('forbidden', 'table', t), text: t('play.refused.host') }} surface="page" links={links} />
   // Nothing behind worth protecting: the message is the whole screen, in the room's own words.
   if (!view) return <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
 

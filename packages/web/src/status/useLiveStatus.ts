@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { TableConnection } from '../table/useTableClient.js'
 import { connectionState, countdownFrom, DEFAULT_TIMING, isStale, type StatusTiming } from './connection.js'
 import { asOf, noticeFor, type Notice, type StatusKey, type Voice } from './notice.js'
+import { useT } from '../i18n/index.js'
 import type { Countdown } from './StatusNotice.js'
 
 // How long "uppkopplad igen" stays on the screen. Long enough to be read across a room, short
@@ -21,6 +22,7 @@ export type LiveStatus = {
 // One connection turned into one of the nine states, in the words of one route. Everything a
 // live route needs to say about itself, and the only place that decides it.
 export function useLiveStatus(conn: TableConnection, voice: Voice, timing: StatusTiming = DEFAULT_TIMING): LiveStatus {
+  const t = useT()
   const { status, view, trouble, schedule } = conn
   const hasView = view !== null
 
@@ -75,7 +77,7 @@ export function useLiveStatus(conn: TableConnection, voice: Voice, timing: Statu
 
   return {
     state,
-    notice: state ? noticeFor(state, voice) : null,
+    notice: state ? noticeFor(state, voice, t) : null,
     countdown: state === 'dropped' ? countdownFrom(schedule, now) : null,
     stale: isStale(state),
     asOf: stamp.current,

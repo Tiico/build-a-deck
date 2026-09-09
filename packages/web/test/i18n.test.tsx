@@ -8,6 +8,7 @@ import { sv } from '../src/i18n/sv.js'
 import { svEditor } from '../src/i18n/sv.editor.js'
 import { svPlay } from '../src/i18n/sv.play.js'
 import { svAccount } from '../src/i18n/sv.account.js'
+import { svStatus } from '../src/i18n/sv.status.js'
 import { inviteToProject, requestLink } from '../src/account/api.js'
 import { ProjectClient } from '../src/editor/ProjectClient.js'
 
@@ -27,7 +28,7 @@ describe('the tool in the reader\'s own language (A4)', () => {
     // The catalogue is written in one file per surface and merged into one. Two surfaces that
     // happen to pick the same key would silently overwrite each other, and one of the two texts
     // would simply never be seen; the count says whether that has happened.
-    expect(Object.keys(sv)).toHaveLength(Object.keys(svEditor).length + Object.keys(svPlay).length + Object.keys(svAccount).length)
+    expect(Object.keys(sv)).toHaveLength(Object.keys(svEditor).length + Object.keys(svPlay).length + Object.keys(svAccount).length + Object.keys(svStatus).length)
   })
 
   // The glossary (A4): one concept, one word. What it retired is the code's own vocabulary leaking

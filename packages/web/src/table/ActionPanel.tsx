@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import type { Intent, Snapshot, VisibleComponentState } from '@byd/protocol'
 import { placesFor, verbsFor, type Place, type Thing } from './keyboard.js'
+import { useT } from '../i18n/index.js'
 import './keyboard.css'
 
 // The address panel (#1, #2, variant C). Enter on anything on the felt or in the hand opens it:
@@ -27,14 +28,17 @@ export type ActionPanelProps = {
 }
 
 export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, intentsFor, landedKey }: ActionPanelProps) {
+  const t = useT()
   const moving = cards.length > 0 ? [...cards] : thing.kind === 'card' ? [thing.id] : []
-  const verbs = verbsFor(view, thing)
+  const verbs = verbsFor(view, thing, t)
   // A thing is never offered the place it already is: a card its own zone, a pile itself —
   // the table refuses "cannot split a pile onto itself", so the panel does not ask.
-  const places = placesFor(view, new Set(moving), thing.kind === 'card' ? thing.zone : thing.pile)
+  const places = placesFor(view, new Set(moving), thing.kind === 'card' ? thing.zone : thing.pile, t)
   const first = useRef<HTMLButtonElement | null>(null)
   useEffect(() => first.current?.focus(), [])
-  const what = cards.length > 1 ? `${cards.length} kort` : thing.name
+  // Several marked cards are counted; a single thing is called what it is called, which for a
+  // card and a zone is the designer's word (B5).
+  const what = cards.length > 1 ? t('play.cards.other', { n: cards.length }) : thing.name
 
   return (
     <div className="byd-kbd-backdrop" onClick={onClose}>
@@ -44,7 +48,7 @@ export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, intent
         // Not modal: the felt behind it is what the answer is about, and it must stay readable
         // and reachable. Nothing here takes the keyboard hostage.
         aria-modal="false"
-        aria-label={`Handlingar för ${what}`}
+        aria-label={t('kbd.panel.label', { what })}
         onClick={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           if (e.key !== 'Escape') return
@@ -53,7 +57,7 @@ export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, intent
         }}
       >
         <h2>{what}</h2>
-        {verbs.length > 0 && <h3>Gör</h3>}
+        {verbs.length > 0 && <h3>{t('kbd.panel.do')}</h3>}
         <div className="byd-kbd-list">
           {verbs.map((a, i) => (
             <button
@@ -75,7 +79,7 @@ export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, intent
             </button>
           ))}
         </div>
-        <h3>Flytta till</h3>
+        <h3>{t('kbd.panel.moveTo')}</h3>
         <div className="byd-kbd-list">
           {places.map((p) => (
             <button key={p.key} type="button" onClick={() => onRun(intentsFor(p, moving), landedKey(p))}>
@@ -85,12 +89,12 @@ export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, intent
           ))}
           {/* The one address a keyboard cannot say. It is a row and not a silence. */}
           <button type="button" disabled className="byd-kbd-no">
-            <span>Fri placering — en punkt på filten</span>
-            <small>kräver pekdon; med tangentbord finns bara platser med namn</small>
+            <span>{t('kbd.panel.free')}</span>
+            <small>{t('kbd.panel.free.hint')}</small>
           </button>
         </div>
         <button type="button" className="byd-kbd-close" onClick={onClose}>
-          Stäng
+          {t('kbd.panel.close')}
         </button>
       </div>
     </div>

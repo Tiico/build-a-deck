@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { blocksView, type ActionKind, type Notice } from './notice.js'
+import { useT } from '../i18n/index.js'
 import { useAnnounce } from './StatusLive.js'
 import './status.css'
 
@@ -27,6 +28,7 @@ export type StatusNoticeProps = {
 }
 
 export function StatusNotice({ notice, surface, links = {}, onRetry, countdown = null, asOf = null }: StatusNoticeProps) {
+  const t = useT()
   useAnnounce(notice)
   // A message that replaces the view takes the focus with it. Without that a keyboard reader is
   // left standing in a document that no longer holds what she was reading.
@@ -48,14 +50,12 @@ export function StatusNotice({ notice, surface, links = {}, onRetry, countdown =
       </Heading>
       {notice.text !== '' && <p>{notice.text}</p>}
       {asOf !== null && (
-        <p className="byd-status-as-of">
-          Det du ser är från {asOf} och kan ha ändrats sedan dess.
-        </p>
+        <p className="byd-status-as-of">{t('status.asOf', { at: asOf })}</p>
       )}
       {countdown && (
         <p className="byd-status-countdown">
           <span className="byd-status-spin" aria-hidden="true" />
-          Nytt försök om {countdown.seconds} s · försök {countdown.attempt} av {countdown.attempts}
+          {t('status.countdown', { seconds: countdown.seconds, attempt: countdown.attempt, attempts: countdown.attempts })}
         </p>
       )}
       {actions.length > 0 && (

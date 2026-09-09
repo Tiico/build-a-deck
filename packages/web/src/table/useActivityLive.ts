@@ -9,14 +9,14 @@ import { useT } from '../i18n/index.js'
 const BEAT_MS = 1400
 
 // What happens on the table, said out loud (#1, #2, D5). `describeActivity` has written the
-// Swedish sentence since the activity feed was built; until now it never reached a live region,
-// so a reader who could not see the felt was never told that anything moved.
+// sentence since the activity feed was built; until now it never reached a live region, so a
+// reader who could not see the felt was never told that anything moved.
 //
 // The rule is D5's own split. What I did myself is said at once, because it is the answer to
 // something I just asked for. What everybody else did is gathered up and said on a beat — three
-// moves at once become "3 drag av de andra, senast: …" rather than three interruptions, which is
-// the flooding the requirement forbids. A refusal is assertive and lives elsewhere, at the
-// control that caused it.
+// moves at once become one sentence with a count rather than three interruptions, which is the
+// flooding the requirement forbids. A refusal is assertive and lives elsewhere, at the control
+// that caused it.
 export function useActivityLive(activity: readonly Activity[], view: Snapshot | null, me: string | null): void {
   const say = useSay()
   const t = useT()
@@ -57,7 +57,9 @@ export function useActivityLive(activity: readonly Activity[], view: Snapshot | 
       queue.current = []
       const latest = lines.at(-1)
       if (latest === undefined) return
-      say('polite', lines.length === 1 ? latest : `${lines.length} drag av de andra, senast: ${latest}`)
+      // The summary is the catalogue's, plural and all: a language whose rule for one line is
+      // not the rule for three says so in its own text rather than in a branch here.
+      say('polite', t(lines.length === 1 ? 'activity.others.one' : 'activity.others.other', { n: lines.length, latest }))
     }, BEAT_MS)
   }, [say, t, activity, view, me])
 }

@@ -94,7 +94,7 @@ describe.each(LIVE)('$path when the room does not exist', (live) => {
     await open(live, { session: 'no-such-room' })
     await waitFor(() => expect(noticeState()).toBe('missing'))
     const said = notice()!.textContent ?? ''
-    expect(said).toMatch(/rummet/i)
+    expect(said).toMatch(/bordet/i)
     expect(said).not.toMatch(/unknown session|Error/)
   })
 
@@ -108,12 +108,12 @@ describe.each(LIVE)('$path when the room does not exist', (live) => {
 
   it('says it in the tab as well, so a screen nobody is watching is honest', async () => {
     await open(live, { session: 'no-such-room' })
-    await waitFor(() => expect(document.title).toBe('Rummet finns inte · build-your-deck'))
+    await waitFor(() => expect(document.title).toBe('Bordet finns inte · build-your-deck'))
   })
 
   it('announces it assertively, because it is an answer to something someone asked for', async () => {
     await open(live, { session: 'no-such-room' })
-    await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toMatch(/rummet/i))
+    await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toMatch(/bordet/i))
     expect(document.querySelector('[data-status-live="polite"]')!.textContent).toBe('')
   })
 })

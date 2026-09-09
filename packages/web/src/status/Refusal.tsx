@@ -1,6 +1,7 @@
 import { useCallback, useId, useState } from 'react'
 import type { SendResult } from '../client.js'
 import { refusal, type Notice, type Voice } from './notice.js'
+import { useT } from '../i18n/index.js'
 import { useAnnounce } from './StatusLive.js'
 import './status.css'
 
@@ -21,6 +22,7 @@ export type RefusalHandle = {
 // not happen and nobody was told why. A refusal belongs at the control that caused it and not at
 // the top of the document — you should not have to go looking for the answer to your own press.
 export function useRefusal(voice: Voice): RefusalHandle {
+  const t = useT()
   const id = useId()
   const [reason, setReason] = useState<string | null>(null)
   const watch = useCallback(async (sent: Promise<SendResult>) => {
@@ -28,7 +30,7 @@ export function useRefusal(voice: Voice): RefusalHandle {
     setReason(result.ok ? null : result.reason)
     return result
   }, [])
-  const notice = reason === null ? null : refusal(reason, voice)
+  const notice = reason === null ? null : refusal(reason, voice, t)
   return {
     notice,
     id,

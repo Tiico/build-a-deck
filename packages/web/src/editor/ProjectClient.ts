@@ -67,7 +67,9 @@ export class ProjectClient {
   // takes a moment to open on every load, and a banner that says "no connection" for that moment
   // — and then takes itself away — is a false alarm on every single open.
   public lineDown = false
-  private name = 'Någon'
+  // What the others are told this editor is called (D3). It is set by `connect` on the first
+  // socket and kept across every reconnection, so nobody's name changes under them mid-session.
+  private name = ''
   private left = false
   private retry: ReturnType<typeof setTimeout> | null = null
   private attempt = 0
@@ -110,7 +112,10 @@ export class ProjectClient {
     return this.measured.stamp !== this.saved
   }
 
-  static async open(opts: { http: string; id: string; name?: string }): Promise<ProjectClient> {
+  // `name` is what the others see. Without an account it is the tool's word for somebody, and
+  // that word is settled here rather than inside the client: a name belongs to whoever it names
+  // (A4), so it is written in the language of the person arriving and then travels with them.
+  static async open(opts: { http: string; id: string; name?: string; t?: T }): Promise<ProjectClient> {
     const res = await fetch(`${opts.http}/projects/${encodeURIComponent(opts.id)}`, withCredentials())
     if (res.status === 401) throw new Unauthorized()
     if (res.status === 403) throw new ProjectUnavailable('forbidden')
@@ -121,7 +126,7 @@ export class ProjectClient {
     // behind. Picking fields by name here is how a project quietly loses one it gained later.
     const { id, rev, ...doc } = rec
     const client = new ProjectClient(opts.http, opts.id, doc, rev)
-    client.connect(opts.name ?? 'Någon')
+    client.connect(opts.name ?? (opts.t ?? swedish)('editor.here.someone'))
     return client
   }
 

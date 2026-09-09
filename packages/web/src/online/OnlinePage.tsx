@@ -71,9 +71,9 @@ export function OnlinePage({ timing = DEFAULT_TIMING }: OnlinePageProps = {}) {
     if (client && view && seat && name && seatFree) void client.send({ v: 'seat.claim', seat, name })
   }, [client, view === null, seat, name, seatFree])
 
-  if (!sessionId || !seat) return <StatusNotice notice={noticeFor('missing', 'table')} surface="page" links={links} />
+  if (!sessionId || !seat) return <StatusNotice notice={noticeFor('missing', 'table', t)} surface="page" links={links} />
   // Not admitted, or kicked (DRIFT §9): a shut door rather than a broken line.
-  if (refused) return <StatusNotice notice={{ ...noticeFor('forbidden', 'table'), text: refusedText(refused, t) }} surface="page" links={links} />
+  if (refused) return <StatusNotice notice={{ ...noticeFor('forbidden', 'table', t), text: refusedText(refused, t) }} surface="page" links={links} />
   if (!view || !client) return <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
 
   const me = view.seats.find((s) => s.id === seat)

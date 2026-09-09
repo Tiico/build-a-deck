@@ -8,6 +8,13 @@ export const svEditor = {
   'editor.tab.rules': 'Regler',
   'editor.tab.tables': 'Bord',
 
+  // Etappremsan under skrivbordet (L10): samma paneler, flata och en i taget.
+  'editor.stages': 'Editorns etapper',
+  'editor.stage.tools': 'Verktyg',
+  'editor.stage.layers': 'Lager',
+  'editor.stage.canvas': 'Duk',
+  'editor.stage.props': 'Egenskaper',
+
   // Ramen runt allt: rubriken, spara, och vägen till bordet.
   'editor.noProject': 'Inget spel angivet.',
   'editor.loggingIn': 'Loggar in…',
@@ -15,6 +22,11 @@ export const svEditor = {
   'editor.conflict': 'Någon annan har sparat sedan du laddade. Ladda om och gör om ändringen.',
   'editor.rev': 'rev {n}',
   'editor.here.count': '{n} inne',
+  // Namnet en redigerare utan konto visas som för de andra (D3). Se A4:s gräns: ett namn tillhör
+  // den det namnger, så ordet skrivs på det språk den som kommer in läser verktyget i och blir
+  // sedan hennes — det kan inte följa varje läsare, för det går över tråden en gång och läses av
+  // alla.
+  'editor.here.someone': 'Någon',
   'editor.saved': 'Sparat',
   'editor.unsaved': 'Osparade ändringar',
   'editor.save': 'Spara',
@@ -36,6 +48,15 @@ export const svEditor = {
   'editor.role.viewer': 'Du är betraktare här: du kan läsa spelet, men inte ändra det.',
   'editor.seats.at': 'vid bordet:',
   'editor.seats.kick': 'Sparka {name}',
+  // Vägen hem, och det telefonen inte får plats med.
+  'editor.home': 'Mina spel',
+  'editor.narrow':
+    'Mallen ritas inte på telefon. Duken, verktygen, lagren och egenskaperna finns från 768 pixlars bredd — öppna spelet på en surfplatta eller dator för att flytta något på kortet. Här går kortväggen, tabellen och borden att arbeta med.',
+  // Frågan innan arbete går förlorat (#8). Spelets namn är formgivarens och står som hon skrev det.
+  'editor.leave.title': 'Osparade ändringar',
+  'editor.leave.body': 'Osparade ändringar i {game}. Vad vill du göra innan du lämnar editorn?',
+  'editor.leave.save': 'Spara och lämna',
+  'editor.leave.discard': 'Lämna utan att spara',
 
   // Kortväggen: ögonen att läsa leken med och den fysiska kontrollen bredvid.
   'wall.cards.one': '{n} kort',

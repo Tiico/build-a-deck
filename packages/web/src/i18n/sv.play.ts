@@ -60,6 +60,48 @@ export const svPlay = {
   'ring.half': 'Dela på hälften',
   'ring.flipTop': 'Vänd översta',
 
+  // Tangentbordet på filten (#1, #2, variant C "adressen"). Zonnamn och kortnamn kommer från
+  // spelet och står i meningarna som designern skrev dem; allt runt dem är verktygets.
+  //
+  // Verben är ringens: tangentbordet säger exakt de verb pekdonet säger och aldrig ett nytt, så
+  // de delar nycklar. Det som bara finns här — en vridning i steg, en dragning till min hand —
+  // har egna.
+  'kbd.hidden': 'Dolt kort',
+  'kbd.card': '{name}, kort i {zone}',
+  'kbd.card.rotated': '{name}, kort i {zone}, vridet',
+  'kbd.pile.top': 'Översta kortet i {zone}: {name}',
+  'kbd.pile.empty': '{zone}, tom',
+  'kbd.pile.whole.one': '{zone}, hela högen, {n} kort',
+  'kbd.pile.whole.other': '{zone}, hela högen, {n} kort',
+  // Vad Enter gör, sagt sist i meningen: en kontroll som öppnar en panel ska säga det.
+  'kbd.enter': '{label}. Enter öppnar handlingar.',
+  'kbd.hand.mine': '{name}, i min hand',
+  'kbd.hand.mine.marked': '{name}, i min hand, markerat',
+  'kbd.verb.rotate': 'Vrid 90°',
+  'kbd.verb.lookTop': 'Titta på översta',
+  'kbd.verb.toHand': 'Dra 1 till min hand',
+  'kbd.hint.reveal': 'visar kortet för alla',
+  'kbd.hint.look': 'bara på den här skärmen',
+  'kbd.hint.half': 'ny hög bredvid',
+  'kbd.hand.my': 'Min hand',
+  'kbd.hand.other': '{name}s hand',
+  'kbd.place.floor': 'Bordet',
+  'kbd.place.floor.hint': 'fri yta',
+  'kbd.place.onCard': 'På {name}',
+  'kbd.place.onCard.hint': 'bildar en hög i {zone}',
+  'kbd.place.pile.one': '{n} kort · överst',
+  'kbd.place.pile.other': '{n} kort · överst',
+  'kbd.place.hand.one': '{n} kort',
+  'kbd.place.hand.other': '{n} kort',
+  'kbd.place.area.one': '{n} kort · fri yta',
+  'kbd.place.area.other': '{n} kort · fri yta',
+  'kbd.panel.label': 'Handlingar för {what}',
+  'kbd.panel.do': 'Gör',
+  'kbd.panel.moveTo': 'Flytta till',
+  'kbd.panel.free': 'Fri placering — en punkt på filten',
+  'kbd.panel.free.hint': 'kräver pekdon; med tangentbord finns bara platser med namn',
+  'kbd.panel.close': 'Stäng',
+
   // En rad ur loggen i ord. Namn och zoner kommer från vyn och översätts inte.
   'activity.move': '{who} flyttade ett kort till {zone}',
   'activity.rotate': '{who} vred ett kort',
@@ -87,6 +129,10 @@ export const svPlay = {
   'activity.flag': '{who} flaggade ögonblicket',
   'activity.flag.note': '{who} flaggade: {note}',
   'activity.flag.observer': '{name} (observatör)',
+  // Flera rader i samma andetag blir en mening i den artiga live-regionen (D5). Singularformen
+  // är ingen sammanfattning alls: en ensam rad sägs som den mening den är.
+  'activity.others.one': '{latest}',
+  'activity.others.other': '{n} drag av de andra, senast: {latest}',
 
   // Att spola tillbaka: vart, och vem som avgör.
   'rewind.someone': 'någon annan',

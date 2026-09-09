@@ -4,6 +4,7 @@ import { hue } from '../table/hue.js'
 import { Texture } from '../table/Texture.js'
 import { useRoving } from '../editor/roving.js'
 import { handLabel } from '../table/keyboard.js'
+import { useT } from '../i18n/index.js'
 import { fanPlace, fanStyle, FAN_AIM_PX } from './fan.js'
 
 export type HandFanProps = {
@@ -30,6 +31,7 @@ export type HandFanProps = {
 // a card played somewhere the hand never aimed. The browser is told the same thing in
 // `touch-action: pan-x`, so a touch that pans is already the scroller's before it reaches us.
 export function HandFan({ cards, faces, onPlay, onOpen }: HandFanProps) {
+  const t = useT()
   const [drag, setDrag] = useState<{ id: string; x: number; y: number } | null>(null)
   // Where the press started and whether it may still become a play; a press that turned out to
   // be a scroll is forgotten here and nothing downstream can revive it.
@@ -87,7 +89,7 @@ export function HandFan({ cards, faces, onPlay, onOpen }: HandFanProps) {
                   className="byd-fan-card"
                   data-hand-card={c.id}
                   data-lifted={drag?.id === c.id ? 'true' : undefined}
-                  aria-label={handLabel(c, false)}
+                  aria-label={handLabel(c, false, t)}
                   style={{ ['--hue' as string]: hue(c.cardRef ?? ''), ['--i' as string]: `${i}`, ['--fan' as string]: `${tilt}deg`, ['--dip' as string]: `${dip}` }}
                   tabIndex={item.tabIndex}
                   ref={item.ref}

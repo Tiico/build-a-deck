@@ -1,0 +1,152 @@
+// De nio delade tillstånden (#12, #7): vad en skärm säger när den inte kan visa det den lovat,
+// vad fliken heter under tiden, och vad bordet svarar när ett drag inte gick igenom.
+//
+// Basen är appens egen röst. En röst som säger samma tillstånd med sina egna ord — bordet dukar,
+// telefonen hämtar en hand, editorn öppnar spelet — skriver om rubriken och meningen under
+// `status.<tillstånd>.<röst>.…` och ärver resten. Rösterna är avsiktliga och plattas inte ut (A4).
+export const svStatus = {
+  // Vägarna ut. Aldrig en omladdning: den kastar bort just det tillstånd läsaren försöker behålla.
+  'status.act.retry': 'Försök igen',
+  'status.act.retry.now': 'Försök nu',
+  'status.act.login': 'Logga in',
+  'status.act.home': 'Till mina spel',
+  'status.act.home.start': 'Till startsidan',
+  'status.act.rescan': 'Välj plats igen',
+
+  // Flikens namn per rutt (#12). Namnet står först, för en flik klipps från höger.
+  'title.home': 'Mina spel',
+  'title.login': 'Logga in',
+  'title.new': 'Nytt spel',
+  'title.claim': 'Spara bordet',
+  'title.editor': 'Editor',
+  'title.table': 'Bordet',
+  'title.join': 'Gå med i rum {code}',
+  'title.join.any': 'Gå med i ett rum',
+  'title.play': 'Din hand',
+  'title.online': 'Spela',
+  'title.observe': 'Tittar på rum {code}',
+  'title.observe.any': 'Tittar på',
+  'title.prototype': 'Prototyp',
+  'title.unknown': 'Sidan finns inte',
+  'title.room': 'Rum {code}',
+  // Tillståndet vinner över rutten så länge det finns ett, så att en flik i bakgrunden säger
+  // sanningen. Ordet "fel" står aldrig här; det hör hemma i vyn och i live-regionen.
+  'title.state.loading': 'Laddar',
+  'title.state.connecting': 'Ansluter',
+  'title.state.missing.game': 'Spelet finns inte',
+  'title.state.missing.table': 'Bordet finns inte',
+  'title.state.forbidden': 'Ingen tillgång',
+  'title.state.offline': 'Ingen kontakt',
+  'title.state.dropped': 'Frånkopplad',
+
+  // Två meningar hör till meddelandets ram och inte till något enskilt tillstånd: hur gammalt
+  // det som ligger kvar bakom har blivit (#7), och när nästa försök kommer.
+  'status.asOf': 'Det du ser är från {at} och kan ha ändrats sedan dess.',
+  'status.countdown': 'Nytt försök om {seconds} s · försök {attempt} av {attempts}',
+
+  'status.loading.mark': 'Laddar',
+  'status.loading.heading': 'Hämtar…',
+  'status.loading.text': 'Det brukar ta en sekund.',
+  'status.loading.table.heading': 'Dukar bordet…',
+  'status.loading.table.text': 'Bordet hämtas.',
+  'status.loading.phone.heading': 'Hämtar din hand…',
+  'status.loading.phone.text': 'Ett ögonblick.',
+  'status.loading.editor.heading': 'Öppnar spelet…',
+  'status.loading.editor.text': 'Vi hämtar leken.',
+
+  'status.slow.mark': 'Laddar',
+  'status.slow.heading': 'Det här tar längre tid än vanligt',
+  'status.slow.text': 'Vi väntar fortfarande på svar. Vänta kvar, eller försök igen.',
+  'status.slow.table.heading': 'Bordet dröjer',
+  'status.slow.table.text': 'Vi väntar fortfarande på spelet. Ingen behöver göra något än.',
+  'status.slow.phone.heading': 'Det tar längre tid än vanligt',
+  'status.slow.phone.text': 'Vi väntar fortfarande på bordet.',
+  'status.slow.editor.heading': 'Spelet dröjer',
+  'status.slow.editor.text': 'Vi väntar fortfarande på servern.',
+
+  'status.missing.mark': 'Finns inte',
+  'status.missing.heading': 'Vi hittar inte det du sökte',
+  'status.missing.text': 'Länken pekar på något som inte finns längre. Kontrollera adressen, eller gå till dina spel.',
+  'status.missing.table.heading': 'Bordet är slut',
+  'status.missing.table.text': 'Koden som stod här gäller inte längre. Starta ett nytt bord från Mina spel.',
+  'status.missing.phone.heading': 'Bordet finns inte',
+  'status.missing.phone.text': 'Bordet kan ha avslutats. Läs QR-koden på TV:n igen så kommer du in i det som pågår.',
+  'status.missing.editor.heading': 'Vi hittar inte spelet',
+  'status.missing.editor.text': 'Spelet kan vara borttaget, eller så blev det ett tecken fel i länken.',
+
+  'status.forbidden.mark': 'Stängt',
+  'status.forbidden.heading': 'Du har inte tillgång',
+  'status.forbidden.text': 'Det här hör till ett annat konto. Logga in med rätt konto, eller be den som äger det att bjuda in dig.',
+  'status.forbidden.table.heading': 'Bordet hör till ett annat konto',
+  'status.forbidden.table.text': 'Logga in på kontot som äger spelet för att visa det på den här skärmen.',
+  'status.forbidden.phone.heading': 'Din plats är inte längre din',
+  'status.forbidden.phone.text': 'Någon annan sitter på platsen. Välj en ledig plats igen, eller läs QR-koden på TV:n.',
+  'status.forbidden.editor.heading': 'Spelet hör till någon annan',
+  'status.forbidden.editor.text': 'Be den som äger spelet att bjuda in dig, eller logga in på rätt konto.',
+
+  'status.offline.mark': 'Ingen kontakt',
+  'status.offline.heading': 'Vi når inte tjänsten',
+  'status.offline.text': 'Det kan vara nätet där du är, eller så är tjänsten nere en stund. Inget av ditt arbete är borta.',
+  'status.offline.table.heading': 'Bordet når inte tjänsten',
+  'status.offline.table.text': 'Kontrollera nätet på den här skärmen. Spelet ligger kvar och ingenting har gått förlorat.',
+  'status.offline.phone.heading': 'Vi når inte bordet',
+  'status.offline.phone.text': 'Kontrollera nätet på telefonen. Din plats står kvar så länge spelet pågår.',
+  'status.offline.editor.heading': 'Vi når inte servern',
+  'status.offline.editor.text': 'Ändringarna du gjort ligger kvar här. Vi sparar så fort kontakten är tillbaka.',
+
+  'status.connecting.mark': 'Ansluter',
+  'status.connecting.heading': 'Ansluter…',
+  'status.connecting.text': 'Vi kopplar upp mot bordet.',
+  'status.connecting.table.heading': 'Kopplar upp bordet…',
+  'status.connecting.table.text': 'Bordet är på väg upp.',
+  'status.connecting.phone.heading': 'Kopplar upp…',
+  'status.connecting.phone.text': 'Vi letar upp ditt bord.',
+  'status.connecting.editor.heading': 'Kopplar upp…',
+  'status.connecting.editor.text': 'Vi hämtar den senaste versionen.',
+
+  'status.dropped.mark': 'Frånkopplad',
+  'status.dropped.heading': 'Anslutningen bröts',
+  'status.dropped.text': 'Det du ser kan ha ändrats sedan dess. Ingenting du gör nu kommer fram.',
+  'status.dropped.table.heading': 'Bordet har tappat kontakten',
+  'status.dropped.table.text': 'Ingen kan spela förrän kontakten är tillbaka.',
+  'status.dropped.phone.heading': 'Du är frånkopplad',
+  'status.dropped.phone.text': 'Handen du ser är gammal och ingenting du gör nu kommer fram. Vi försöker igen.',
+  'status.dropped.editor.heading': 'Ingen kontakt med servern',
+  'status.dropped.editor.text': 'Osparat arbete ligger kvar här tills kontakten är tillbaka.',
+
+  'status.resumed.mark': 'Uppkopplad',
+  'status.resumed.heading': 'Uppkopplad igen',
+  'status.resumed.text': 'Bilden är uppdaterad till hur det ser ut nu.',
+  'status.resumed.table.heading': 'Bordet är igång igen',
+  'status.resumed.table.text': 'Bilden visar hur det ser ut nu.',
+  'status.resumed.phone.heading': 'Uppkopplad igen',
+  'status.resumed.phone.text': 'Din hand är uppdaterad.',
+  'status.resumed.editor.heading': 'Sparat och uppkopplat igen',
+  'status.resumed.editor.text': 'Allt du hann göra ligger på servern.',
+
+  // Vägran har ingen egen mening förrän ett skäl bärs in i den, så den har ingen `text` här.
+  'status.refused.mark': 'Gick inte',
+  'status.refused.heading': 'Draget gick inte igenom',
+
+  // Skälet bordet vägrade med. Det kommer över tråden som en utvecklarmening på engelska — ett
+  // faktum om ett kuvert, inte ett meddelande till en människa — och sätts i ord först här.
+  'refusal.notConnected': 'Du är inte uppkopplad, så draget skickades aldrig.',
+  'refusal.connectionLost': 'Anslutningen bröts innan draget kom fram.',
+  'refusal.ended': 'Bordet är avslutat och tar inte emot fler drag.',
+  'refusal.observer': 'Som observatör kan du titta och flagga, men inte spela.',
+  'refusal.seat': 'Draget hörde till en annan plats än din.',
+  'refusal.spent': 'Draget hade redan skickats.',
+  'refusal.empty': 'Högen är tom.',
+  'refusal.tooFew': 'Det finns inte så många kort kvar.',
+  'refusal.flip': 'Kortet kan inte vändas.',
+  'refusal.stack': 'Korten kan inte läggas på varandra.',
+  'refusal.shuffle': 'Högen kan inte blandas.',
+  'refusal.roll': 'Kortet kan inte slås.',
+  'refusal.counter': 'Kortet har ingen räknare.',
+  'refusal.place': 'Det går inte att lägga korten där.',
+  'refusal.peek': 'Den här skärmen har ingen hand att titta i.',
+  'refusal.unknown': 'Kortet eller zonen finns inte längre på bordet.',
+  // Ett skäl den här klienten aldrig hört talas om får en mening av sin egen i stället för att
+  // utvecklarens engelska ord skrivs ut på skärmen.
+  'refusal.other': 'Bordet tog inte emot draget. Försök igen om en stund.',
+} as const

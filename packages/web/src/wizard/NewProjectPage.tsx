@@ -139,8 +139,13 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     reader.readAsDataURL(file)
   }
   const addField = (kind: Field['kind']) => {
-    // The key belongs to the document and stays as it is; only the name the designer reads and
-    // renames is written in their own language.
+    // Decided, not left alone by accident (#27, A4): the key is an identifier in the document
+    // and does not follow the reader. Two people clicking the same button must get the same
+    // column, or a template that binds `bild2` would break for whoever was reading in the other
+    // language — and the four keys the wizard already lays out (`title`, `cost`, `body`, `art`)
+    // are English on a Swedish surface for exactly that reason. What the tool suggests at
+    // creation and then hands over is the *label* below, which is written in the designer's own
+    // language and frozen there.
     const base = kind === 'image' ? 'bild' : kind === 'number' ? 'värde' : 'fält'
     let n = 1
     while (s.fields.some((field) => field.key === `${base}${n}`)) n++

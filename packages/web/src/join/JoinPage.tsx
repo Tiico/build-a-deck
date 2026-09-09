@@ -82,9 +82,9 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
 
   // A code that names nothing — never issued, or lapsed — is the phone's 404. It is one of the
   // nine states like any other, said in the words the room it failed to reach would have used.
-  if (!code) return <StatusNotice notice={noticeFor('missing', 'phone')} surface="page" links={links} />
-  if (lookup === 'gone') return <StatusNotice notice={{ ...noticeFor('missing', 'phone'), text: t('join.code.gone', { code: code.toUpperCase() }) }} surface="page" links={links} />
-  if (lookup === 'offline') return <StatusNotice notice={noticeFor('offline', 'phone')} surface="page" links={links} onRetry={retry} />
+  if (!code) return <StatusNotice notice={noticeFor('missing', 'phone', t)} surface="page" links={links} />
+  if (lookup === 'gone') return <StatusNotice notice={{ ...noticeFor('missing', 'phone', t), text: t('join.code.gone', { code: code.toUpperCase() }) }} surface="page" links={links} />
+  if (lookup === 'offline') return <StatusNotice notice={noticeFor('offline', 'phone', t)} surface="page" links={links} onRetry={retry} />
   if (!view || !sessionId) return <RouteStatus status={live} over="sheet" links={links} onRetry={retry} />
 
   // The way in: a token for the seat (or for watching), then the page for it.

@@ -118,6 +118,6 @@ describe('a code that does not resolve (DRIFT §9)', () => {
     )
     const said = await screen.findByText(/gäller inte längre/)
     expect(said.textContent).toContain('ZZZZZZ')
-    await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toMatch(/rummet finns inte/i))
+    await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toMatch(/bordet finns inte/i))
   })
 })
