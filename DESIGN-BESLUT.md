@@ -134,6 +134,9 @@ Filnamnet, 2026-09-10:
 
 Namnet på filen tabellen exporterar (`skogens-herrar-kort.csv`) är två ord i ett, och gränsen går rakt igenom det.
 Spelets eget namn är spelets: det viks bara ihop till något ett filsystem bär och översätts aldrig.
+Att vika ihop är inte att skriva om.
+Bokstäver och siffror står kvar i vilket skriftsystem de än är skrivna i — innehållsspråket är obegränsat, så `森の王` exporteras som `森の王-kort.csv` — och det som faller bort är bara det en sökväg kan byggas av: avgränsare, punkter, mellanslag.
+Ett filnamn rymmer 255 byte, inte 255 tecken, och ett namn som är längre klipps av räknat i byte, mellan bokstäver och aldrig genom en.
 Ordet verktyget lägger till om filen — `kort`, och `spel` när spelets namn inte lämnar något kvar att bygga ett filnamn av — är verktygets, och följer läsaren som allt annat verktyget säger.
 En engelsk läsare får alltså `skogens-herrar-cards.csv`, och ett namnlöst spel `game-cards.csv`.
 Det är samma gräns som i de två fallen ovan, sedd från andra hållet: där var det verktyget lämnar ifrån sig formgivarens, här är det verktyget behåller sitt eget.

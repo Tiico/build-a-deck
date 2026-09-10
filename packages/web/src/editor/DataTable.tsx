@@ -43,6 +43,27 @@ export type DataTableProps = {
   onStopCompare?: (() => void) | undefined
 }
 
+// The game's own name, folded down to something a file system will carry — and folding is all
+// that happens to it. Every letter and digit survives in whatever script it was written in,
+// because the content language is unbounded (A4) and a name is the designer's: a game called
+// 森の王 leaves under its own name, not under the tool's word for a game it could not spell. A
+// `download` attribute is UTF-8 and has been carried by every file system this reaches for
+// twenty years. What goes is only what a path could be built out of — separators, dots, spaces,
+// everything that is neither letter nor digit — so nothing a designer types reaches out of the
+// directory the reader saves into.
+// A file name is 255 bytes on APFS and on ext4, and bytes are not letters: a name in a script
+// that spends three of them a letter runs out in eighty-five. The game's name is cut to fit,
+// between letters and never through one, and what the tool adds about the file always has room.
+const NAME_BYTES = 200
+export function fileSafe(name: string) {
+  const folded = name.toLowerCase().normalize('NFC').replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '')
+  const written = new TextEncoder().encode(folded)
+  if (written.length <= NAME_BYTES) return folded
+  // Cutting the bytes can cut a letter in half; the decoder marks the half it could not read and
+  // the mark comes off with the hyphen a cut can leave hanging.
+  return new TextDecoder().decode(written.slice(0, NAME_BYTES)).replace(/\uFFFD+$/, '').replace(/-+$/, '')
+}
+
 // The table (B as a tab): one row per card, the template's fields as columns, `antal` last (L4).
 // This is where the designer already lives; a change here reaches every copy of the card.
 export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, onAddField, onRemoveField, assetBase, onUpload, onSymbol, compareWith, onStopCompare }: DataTableProps) {
@@ -217,8 +238,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
   // reader (A4). The game's own name inside it is the game's: it is only folded into something a
   // file system will carry, never translated, and a name that leaves nothing behind falls back to
   // the tool's own stand-in — which is the tool's word too, and follows the reader with the rest.
-  const named = doc.name.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
-  const filename = t('table.export.filename', { name: named || t('table.export.unnamed') })
+  const filename = t('table.export.filename', { name: fileSafe(doc.name) || t('table.export.unnamed') })
   const csvHref = `data:text/csv;charset=utf-8,${encodeURIComponent('\uFEFF' + exportCardsCsv(doc))}`
   return (
     <div className="byd-table-wrap">
