@@ -87,10 +87,10 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       // edit, and by the verb that already knows how to write a binding — into the base or into
       // the open group's own override, exactly as `patchElement` would have done it alone.
       const { face, id, group } = intent.bind
-      // `patchElement` maps over the base without asking whether the id is there, so on its own it
-      // would write the column and bind nothing, quietly. Half a composite edit is the same
-      // silence a whole one would be, so the column goes with the refusal.
-      if (!group && !faceOf(doc, face).base.some((e) => e.id === id)) throw new Error(`face ${face} has no element ${id}`)
+      // Half a composite edit is the same silence a whole one would be, so the column goes with
+      // the refusal — and it is `patchElement`'s own refusal that takes it, now that the verb
+      // looks the id up instead of mapping over the base (#41). What is thrown away when it
+      // refuses is this document, the column written on every card and all.
       return applyEdit(written, { v: 'patchElement', face, id, patch: { bind: { field: intent.field } }, ...(group !== undefined ? { group } : {}) })
     }
     // And a column that goes takes with it everything that pointed at it: the value on every
@@ -124,7 +124,14 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
     // and the base stays exactly as it was.
     case 'patchElement': {
       const face = faceOf(doc, intent.face)
-      if (!intent.group) return writeFace(doc, intent.face, { ...face, base: face.base.map((e) => (e.id === intent.id ? ({ ...e, ...intent.patch } as Element) : e)) })
+      if (!intent.group) {
+        // A lookup that can fail, not a mapping: written as a map over the base, an id the face
+        // does not have handed back the document it was given, and the edit still became a version
+        // and a step back — the designer saw nothing happen and had spent a Ctrl+Z on it (#41, B4).
+        const from = face.base.find((e) => e.id === intent.id)
+        if (!from) throw new Error(`face ${intent.face} has no element ${intent.id}`)
+        return writeFace(doc, intent.face, { ...face, base: replaceById(face.base, { ...from, ...intent.patch } as Element) })
+      }
       const from = inGroup(face, intent.id, intent.group)
       if (!from) throw new Error(`face ${intent.face} has no element ${intent.id}`)
       return writeVariant(doc, intent.face, face, intent.group, (v) => ({ ...v, override: replaceById(v.override ?? [], { ...from, ...intent.patch } as Element) }))

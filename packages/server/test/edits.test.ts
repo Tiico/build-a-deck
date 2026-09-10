@@ -45,6 +45,10 @@ describe('an edit is a thing that happened to the project (D3)', () => {
   it('writes the template: an element patched, added, moved and taken away, in the base or in a group', () => {
     const moved = applyEdit(base(), { v: 'patchElement', face: 'front', id: 'title', patch: { x: 9 } })
     expect(moved.template.faces['front']?.base.find((e) => e.id === 'title')).toMatchObject({ x: 9 })
+    // And a patch that lands on the value the element already had goes through like any other:
+    // what is refused is an id the face does not have (#41), not a change that changes nothing.
+    const same = applyEdit(base(), { v: 'patchElement', face: 'front', id: 'title', patch: { x: 5 } })
+    expect(same.template.faces['front']?.base.find((e) => e.id === 'title')).toMatchObject({ x: 5 })
 
     const added = applyEdit(base(), { v: 'addElement', face: 'front', element: { kind: 'shape', id: 'ny', x: 5, y: 5, w: 10, h: 10, shape: 'rect', fill: '#fff' } })
     expect(added.template.faces['front']?.base.at(-1)?.id).toBe('ny')
@@ -222,5 +226,6 @@ describe('an edit is a thing that happened to the project (D3)', () => {
     expect(() => applyEdit(base(), { v: 'renameIcon', from: 'ingen', to: 'x' })).toThrow(/ingen/)
     expect(() => applyEdit(base(), { v: 'moveElement', face: 'front', id: 'ingen', to: 0 })).toThrow(/ingen/)
     expect(() => applyEdit(base(), { v: 'patchElement', face: 'baksidan', id: 'title', patch: {} })).toThrow(/baksidan/)
+    expect(() => applyEdit(base(), { v: 'patchElement', face: 'front', id: 'ingen', patch: { x: 1 } })).toThrow(/ingen/)
   })
 })
