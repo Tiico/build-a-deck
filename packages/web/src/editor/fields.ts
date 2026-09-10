@@ -34,6 +34,15 @@ export const fieldsOf = (doc: ProjectDoc): string[] => [...columnsOf(doc).filter
 // back by. Both doors into a new field ask the same question of the same list.
 export const takenNames = (doc: ProjectDoc): string[] => ['id', ...fieldsOf(doc)]
 
+// Whether a column made from the table's head would have anywhere to be kept (#32). A column is a
+// key written onto every card, so on a deck with no cards `addField` hands back the document it
+// was given: the form would close, a version would be written and a step would go on the undo
+// stack, and no column would appear anywhere. Every card can be deleted — by the row's × or in
+// bulk — so this is a deck a designer can be standing in front of.
+// The canvas's door never asks it. That one binds an element to the column in the same edit, and
+// a template binding is a place for a column to live whether or not a card mentions it.
+export const deckKeepsFields = (doc: ProjectDoc): boolean => doc.rows.length > 0
+
 // What a column is called on screen. Every column is the designer's own word except one:
 // `antal` is the engine's — how many copies of the card the deck holds (L4) — so it is the one
 // the tool names, in the reader's language (A4). The field itself keeps its name everywhere it

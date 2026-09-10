@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ProjectDoc, ProjectRow } from './types.js'
-import { fieldsOf, fieldLabel, takenNames } from './fields.js'
+import { deckKeepsFields, fieldsOf, fieldLabel, takenNames } from './fields.js'
 import { ANTAL, drawnBy } from '@byd/server/doc'
 import { NewField } from './NewField.js'
 import { ASSET_DRAG_TYPE, assetRef, assetUrl, assetsInUse, imageFieldsOf, isAssetRef, ASSET_PREFIX } from './assets.js'
@@ -434,6 +434,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
               {adding && (
                 <NewField
                   taken={takenNames(doc)}
+                  keeps={deckKeepsFields(doc)}
                   onCreate={(field) => {
                     onAddField(field)
                     setAdding(false)

@@ -12,7 +12,11 @@ import { projectDoc } from './project-doc.js'
 // The table doing its own work: every edit it asks for is applied by the one pure function the
 // actor applies it with, and the answer goes straight back into the document the table is drawn
 // from. So a new column is seen where it will stand rather than only in a spy's log.
-function Editing({ doc: initial = projectDoc() }: { doc?: ProjectDoc }) {
+// `asked` is every field the table asked for, in order, so a test can tell a refusal that never
+// asked from one that asked and got nothing back. The difference is the whole of #32's "with a
+// word about why, not in silence": an edit that reaches the client is a version and a step of the
+// undo stack whether or not it changed anything.
+function Editing({ doc: initial = projectDoc(), asked }: { doc?: ProjectDoc; asked?: string[] }) {
   const [doc, setDoc] = useState(initial)
   return (
     <DataTable
@@ -23,7 +27,10 @@ function Editing({ doc: initial = projectDoc() }: { doc?: ProjectDoc }) {
       onAddRow={() => undefined}
       onRemoveRow={() => undefined}
       onReplaceRows={(rows: ProjectRow[]) => setDoc((current) => ({ ...current, rows }))}
-      onAddField={(field) => setDoc((current) => applyEdit(current, { v: 'addField', field }))}
+      onAddField={(field) => {
+        asked?.push(field)
+        setDoc((current) => applyEdit(current, { v: 'addField', field }))
+      }}
       onRemoveField={(field) => setDoc((current) => applyEdit(current, { v: 'removeField', field }))}
     />
   )
@@ -71,6 +78,29 @@ describe('a field arrives in the editor (#32)', () => {
     await user.click(screen.getByRole('button', { name: 'Lägg till' }))
     expect(screen.getByRole('alert').textContent).toBe('Ett fält behöver ett namn.')
     expect(screen.getByRole('form', { name: 'Nytt fält' })).toBeTruthy()
+  })
+
+  // A column is a key written onto every card, so a deck with no cards has nowhere to keep one and
+  // the add is a no-op: the form closes, a version is written, a step goes on the undo stack, and
+  // the table looks exactly as it did. Every card can be deleted — by the row's × or in bulk — so
+  // this is a deck a designer can be standing in front of, not a state only a test can reach.
+  it('refuses a column on a deck with no cards, rather than closing the form on nothing', async () => {
+    const user = userEvent.setup()
+    const asked: string[] = []
+    render(<Editing doc={{ ...projectDoc(), rows: [] }} asked={asked} />)
+
+    await user.click(screen.getByRole('button', { name: '+ Nytt fält' }))
+    await user.click(screen.getByRole('button', { name: 'Lägg till' }))
+
+    expect(screen.getByRole('alert').textContent).toBe('Ett fält är en kolumn på korten. Lägg till ett kort först.')
+    // Refused the way a taken name is: the form stands open with the name still in it, so the
+    // answer is to make a card and press the button again rather than to start over.
+    expect(screen.getByRole('form', { name: 'Nytt fält' })).toBeTruthy()
+    expect((screen.getByLabelText('Namn') as HTMLInputElement).value).toBe('fält1')
+    // And nothing was asked of the document. An edit that reaches the client is a version and a
+    // step to take back even when it changes nothing, which is the silence #32 forbids.
+    expect(asked).toEqual([])
+    expect(column('fält1')).toBeNull()
   })
 
   it('says what a column takes with it — the value on every card — before it takes it', async () => {

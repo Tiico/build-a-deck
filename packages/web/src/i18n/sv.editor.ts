@@ -164,6 +164,7 @@ export const svEditor = {
   'table.field.kind.image': 'Bild',
   'table.field.create': 'Lägg till',
   'table.field.needsName': 'Ett fält behöver ett namn.',
+  'table.field.needsCards': 'Ett fält är en kolumn på korten. Lägg till ett kort först.',
   'table.field.taken': 'Det finns redan ett fält som heter {field}.',
   'table.field.remove': 'Ta bort fältet {field}',
   'table.field.remove.none': 'Ta bort {field}? Inget kort har ett värde i den.',

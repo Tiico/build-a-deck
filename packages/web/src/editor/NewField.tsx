@@ -12,6 +12,11 @@ export type NewFieldProps = {
   // Every name the table already answers to: the fields, `antal`, and the card's own `id`. A
   // name that is one of them is not a new column but a collision, and is said so.
   taken: readonly string[]
+  // Whether a column made here would have anywhere to be kept (#32). The head's door asks the
+  // deck, because a column is a key on every card and a deck with no cards keeps nothing; the
+  // canvas's door binds an element to the column as it makes it, which is a place of its own, so
+  // it never has to ask. A door that says nothing is a door that can keep what it makes.
+  keeps?: boolean
   onCreate(field: string): void
   onCancel(): void
 }
@@ -20,7 +25,7 @@ export type NewFieldProps = {
 // template's binding opens it where the designer noticed the field was missing. It is the same
 // component either way, so the designer never has to leave what she is doing to make a field
 // possible.
-export function NewField({ taken, onCreate, onCancel }: NewFieldProps) {
+export function NewField({ taken, keeps = true, onCreate, onCancel }: NewFieldProps) {
   const t = useT()
   const group = useId()
   const [kind, setKind] = useState<FieldKind>('text')
@@ -35,6 +40,10 @@ export function NewField({ taken, onCreate, onCancel }: NewFieldProps) {
   }
   const submit = () => {
     const field = name.trim()
+    // Asked before anything about the name, because when the deck keeps nothing the name is not
+    // what is wrong. A refusal here never reaches the document: an edit that changes nothing is
+    // still a version and still a step to take back, and that is the silence #32 forbids.
+    if (!keeps) return setRefused(t('table.field.needsCards'))
     if (field === '') return setRefused(t('table.field.needsName'))
     if (taken.includes(field)) return setRefused(t('table.field.taken', { field }))
     onCreate(field)

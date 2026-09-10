@@ -150,6 +150,7 @@ export const enEditor = {
   'table.field.kind.image': 'Image',
   'table.field.create': 'Add',
   'table.field.needsName': 'A field needs a name.',
+  'table.field.needsCards': 'A field is a column on the cards. Add a card first.',
   'table.field.taken': 'There is already a field called {field}.',
   'table.field.remove': 'Remove the field {field}',
   'table.field.remove.none': 'Remove {field}? No card has a value in it.',
