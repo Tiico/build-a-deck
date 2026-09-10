@@ -227,6 +227,10 @@ export const svEditor = {
   // säger det i stället för att peka på lekens första kolumn som om den vore vald (#33).
   'canvas.props.field.none': 'inget fält',
   'canvas.props.icon': 'Ikon',
+  // Och åt andra hållet: ett element bundet till en kolumn har ingen egen ikon, och väljaren säger
+  // varifrån ikonerna kommer i stället. Att namnge en ikon där är vägen tillbaka från kolumnen,
+  // precis som att välja en kolumn är vägen dit — ingen av dem gissar åt formgivaren (#33).
+  'canvas.props.icon.fromField': 'från kolumnen',
   'canvas.props.font': 'Typsnitt',
   'canvas.props.size': 'Storlek (pt)',
   'canvas.props.weight': 'Vikt',

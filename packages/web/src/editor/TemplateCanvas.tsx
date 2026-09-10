@@ -694,12 +694,18 @@ function Properties({ el, fields, taken, fonts, icons, onPatch, onAddField }: { 
           card — so the set is what it is chosen from, and the field picker below is the way to
           make it the row's after all. The name it already carries is offered whatever the set
           holds, exactly as the family picker offers the one an element is already set in: an
-          element is never moved to another icon behind the designer's back. */}
-      {el.kind === 'icons' && 'literal' in el.bind && (
+          element is never moved to another icon behind the designer's back.
+
+          And it stays here when the element has been bound to a column, saying that the icons
+          come from there rather than pointing at a name the element does not show. Naming one is
+          then the way back: the two pickers are two ways of saying the same thing, so each is the
+          way out of what the other did, and neither has to guess a name to go back to. */}
+      {el.kind === 'icons' && (icons.length > 0 || 'literal' in el.bind) && (
         <label>
           {t('canvas.props.icon')}
-          <select value={el.bind.literal} onChange={(e) => onPatch({ bind: { literal: e.target.value } })}>
-            {[...new Set([...icons, el.bind.literal])].map((name) => (
+          <select value={'literal' in el.bind ? el.bind.literal : ''} onChange={(e) => e.target.value !== '' && onPatch({ bind: { literal: e.target.value } })}>
+            {'field' in el.bind && <option value="">{t('canvas.props.icon.fromField')}</option>}
+            {[...new Set([...icons, ...('literal' in el.bind ? [el.bind.literal] : [])])].map((name) => (
               <option key={name} value={name}>
                 {name}
               </option>

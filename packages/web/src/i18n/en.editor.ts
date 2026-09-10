@@ -206,6 +206,10 @@ export const enEditor = {
   // instead of pointing at the deck's first column as though it were chosen (#33).
   'canvas.props.field.none': 'no field',
   'canvas.props.icon': 'Icon',
+  // And the other way round: an element bound to a column has no icon of its own, and the picker
+  // says where the icons come from instead. Naming one there is the way back from the column, as
+  // choosing a column is the way there — and neither guesses on the designer's behalf (#33).
+  'canvas.props.icon.fromField': 'from the column',
   'canvas.props.font': 'Typeface',
   'canvas.props.size': 'Size (pt)',
   'canvas.props.weight': 'Weight',

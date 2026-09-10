@@ -259,6 +259,33 @@ describe('the icon as a tool on the canvas (#33)', () => {
     expect(document.querySelector('#canvas img.byd-icon')).toBeNull()
   })
 
+  // The panel binds a placed icon to a column "for the day it should differ per card". There has
+  // to be a day it should stop: the two pickers are two ways of saying the same thing, so each one
+  // is the way out of what the other did, and neither guesses on the designer's behalf.
+  it('lets an icon bound to a column be an icon again', async () => {
+    const tools = await openTemplate()
+    fireEvent.click(within(tools).getByRole('button', { name: 'Ikon' }))
+    fireEvent.click(within(await screen.findByRole('listbox', { name: 'Symboler' })).getByRole('option', { name: /svärd/ }))
+    await screen.findByRole('heading', { name: /icon-1/ })
+
+    fireEvent.change(screen.getByLabelText('Fält'), { target: { value: 'title' } })
+    await waitFor(() => expect((screen.getByLabelText('Fält') as HTMLSelectElement).value).toBe('title'))
+    // It is the column's now, so the card draws whatever that column says — which is not an icon.
+    await waitFor(() => expect(document.querySelector('#canvas img.byd-icon')).toBeNull())
+
+    // And the icon picker is still there, claiming nothing: it says the element takes its icons
+    // from the column, exactly as the field picker says "inget fält" for one bound to a name.
+    const icon = screen.getByLabelText('Ikon') as HTMLSelectElement
+    expect(icon.value).toBe('')
+    expect(within(icon).getByRole('option', { name: 'från kolumnen' }).getAttribute('value')).toBe('')
+
+    // Naming an icon is saying this icon rather than the row's, which is the way back.
+    fireEvent.change(icon, { target: { value: 'svärd' } })
+    await waitFor(() => expect(document.querySelector('#canvas img.byd-icon')).toBeTruthy())
+    expect((screen.getByLabelText('Fält') as HTMLSelectElement).value).toBe('')
+    expect((screen.getByLabelText('Ikon') as HTMLSelectElement).value).toBe('svärd')
+  })
+
   it('closes when the focus leaves the rail, instead of hanging over the canvas', async () => {
     const tools = await openTemplate()
     const tool = within(tools).getByRole('button', { name: 'Ikon' })
