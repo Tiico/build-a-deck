@@ -473,7 +473,9 @@ describe('counters on the table (C4)', () => {
     const { view } = buildScene()
     const v = view(null)
     const chip = { id: 'k1', type: { id: 'token.counter', version: 1 }, zone: 'table', face: 'front', x: 10, y: 10, rot: 0, counter: 17, cardRef: 'Liv' }
-    render(<TableRenderer view={{ ...v, components: [...v.components, chip] }} mode="tv" scale={1} />)
+    // Drawn at a scale that gives the 24 mm chip room for the word in it; below that it keeps
+    // the value alone, which `table-token.test.tsx` measures.
+    render(<TableRenderer view={{ ...v, components: [...v.components, chip] }} mode="tv" scale={2} />)
     const el = document.querySelector('[data-counter-token="k1"]')!
     expect(el).toBeTruthy()
     expect(el.textContent).toContain('17')

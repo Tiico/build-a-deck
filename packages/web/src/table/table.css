@@ -106,8 +106,7 @@
    on the table's own screen. */
 @container (max-width: 460px) {
   .byd-table-frame[data-mode='table'] .byd-pile-name,
-  .byd-table-frame[data-mode='table'] .byd-zone > span,
-  .byd-table-frame[data-mode='table'] .byd-token span {
+  .byd-table-frame[data-mode='table'] .byd-zone > span {
     display: none;
   }
 }

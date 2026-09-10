@@ -187,10 +187,10 @@ describe('two piles on a phone-sized felt (C5)', () => {
     const zones = await measureAll(onPhone, phone, '.byd-zone > span')
     expect(zones.every((z) => z.box.w === 0)).toBe(true)
 
-    // A counter's own name is six pixels tall on a felt this size; its value is the whole point.
-    const tokens = await measureAll(onPhone, phone, '.byd-token span')
-    expect(tokens).toHaveLength(1)
-    expect(tokens.every((z) => z.box.w === 0)).toBe(true)
+    // A counter's own name is six pixels tall on a felt this size, and wider than the chip it
+    // stands in; its value is the whole point, so the chip draws no name at all.
+    expect(await measureAll(onPhone, phone, '.byd-token span')).toHaveLength(0)
+    expect((await measureAll(onPhone, phone, '.byd-token b')).every((z) => z.box.w > 0)).toBe(true)
 
     // On a screen with room, the names are back.
     const named = await measureAll(markup('table'), FRAME, '.byd-pile-name')
