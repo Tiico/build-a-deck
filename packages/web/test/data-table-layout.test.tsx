@@ -23,7 +23,10 @@ const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel),
 type Box = { x: number; y: number; w: number; h: number }
 // `box` is the header cell; `ink` is the control the designer actually reads inside it, which is
 // what a row grown taller moves even when the cell's own top stays where it was.
-type Head = { row: Box; headings: { name: string; box: Box; ink: Box }[]; form: Box | null; scroll: Box; firstRow: Box }
+// `columns` is every cell of the head paired with the cell under it in the first card's row, in
+// document order — the head's own class on each, so a drift can be named rather than counted.
+type Column = { head: string; body: string | null; headBox: Box; bodyBox: Box | null }
+type Head = { row: Box; headings: { name: string; box: Box; ink: Box }[]; form: Box | null; scroll: Box; firstRow: Box; columns: Column[] }
 
 const VIEW = { w: 1280, h: 800 }
 
@@ -85,12 +88,23 @@ async function measure(html: string, extra = ''): Promise<Head> {
       const headings = [...document.querySelectorAll('.byd-data thead th')]
         .map((th) => ({ name: (th.querySelector('button')?.textContent ?? th.textContent ?? '').trim(), box: box(th)!, ink: box(th.querySelector('button') ?? th)! }))
         .filter((h) => h.name !== '')
+      // A cell says which column it is by the class the table gives it; a heading with no class
+      // of its own is named by the word in it, which is enough to read a mismatch by.
+      const named = (cell: Element): string => cell.className.replace('byd-data-', '') || (cell.querySelector('button')?.textContent ?? cell.textContent ?? '').trim() || '(blank)'
+      const heads = [...document.querySelectorAll('.byd-data thead th')]
+      const bodies = [...(document.querySelector('.byd-data tbody tr')?.children ?? [])]
       return {
         row: box(document.querySelector('.byd-data thead tr'))!,
         headings,
         form: box(document.querySelector('.byd-newfield')),
         scroll: box(document.querySelector('.byd-data-scroll'))!,
         firstRow: box(document.querySelector('.byd-data tbody tr'))!,
+        columns: heads.map((th, i) => ({
+          head: named(th),
+          body: bodies[i] ? named(bodies[i]!) : null,
+          headBox: box(th)!,
+          bodyBox: box(bodies[i] ?? null),
+        })),
       }
     })) as Head
   } finally {
@@ -139,5 +153,56 @@ describe('the form that makes a column (#32)', () => {
     const pushed = inFlow.headings.filter((h, i) => h.ink.y > held.headings[i]!.ink.y)
     expect(pushed.map((h) => h.name)).toEqual(['id ↕', 'title ↕', 'body ↕', 'antal ↕'])
     expect(inFlow.firstRow.y).toBeGreaterThan(held.firstRow.y)
+  }, 60_000)
+})
+
+// The head grew a column in #32 and the body did not, which no test could see: both guards above
+// measure the head against itself, and the tests that read the table's markup count headings or
+// find a cell by its label. Nothing compared a heading to the cell standing under it.
+//
+// So every card's row ended one `<td>` short of the head. A table with seven headings and six
+// cells is still a legal table — the browser lays the columns out and the row simply stops early
+// — and what the designer saw was the pinned × sitting under "+ Nytt fält", twice the width it is
+// meant to be, with a phantom empty column after it.
+describe('the head and the rows are the same table (#32)', () => {
+  it('puts every card cell under the heading it belongs to, at the same width', async () => {
+    const { columns } = await measure(await markup(false))
+
+    // The head really does have the column the issue added, so this is not a guard over a table
+    // without the cell in question.
+    expect(columns.map((c) => c.head)).toEqual(['check', 'id ↕', 'title ↕', 'body ↕', 'antal ↕', 'newfield', 'remove'])
+
+    // Nothing in the head stands over nothing.
+    expect(columns.filter((c) => c.bodyBox === null).map((c) => c.head)).toEqual([])
+    // And what stands under each heading is that heading's own column, in the same place and at
+    // the same width. Position alone would not have caught it: the fault put a cell at the right
+    // x with the wrong width.
+    expect(columns.map((c) => ({ head: c.head, x: c.headBox.x, w: c.headBox.w }))).toEqual(
+      columns.map((c) => ({ head: c.head, x: c.bodyBox!.x, w: c.bodyBox!.w })),
+    )
+    // The pinned column is where the fault showed: `--byd-tap` wide, in the head and in the row.
+    expect(columns.at(-1)!.body).toBe('remove')
+    expect(columns.at(-1)!.headBox.w).toBe(44)
+    expect(columns.at(-1)!.bodyBox!.w).toBe(44)
+  }, 60_000)
+
+  it('is a condition that can fail: take the new cell back out and the × slides under the wrong heading', async () => {
+    // The same markup with the body's cell hidden is the table exactly as #32 shipped it. If this
+    // passed too, the assertion above would be measuring the browser rather than the markup.
+    const html = await markup(false)
+    const short = await measure(html, '.byd-data tbody .byd-data-newfield { display: none; }')
+
+    // A cell taken out of the layout leaves the table exactly as short as one that was never
+    // written: the head keeps its seven columns and the rows lay out six.
+    const drift = short.columns.filter((c) => c.bodyBox!.x !== c.headBox.x || c.bodyBox!.w !== c.headBox.w)
+    expect(drift.map((c) => c.head)).toEqual(['newfield', 'remove'])
+
+    // And the drift is the one that shipped: the × has slid a whole heading to the left, onto
+    // "+ Nytt fält", and taken that heading's width instead of a tap target's.
+    const newfield = short.columns.find((c) => c.head === 'newfield')!
+    const remove = short.columns.find((c) => c.head === 'remove')!
+    expect(remove.bodyBox!.x).toBe(newfield.headBox.x)
+    expect(remove.bodyBox!.w).toBe(newfield.headBox.w)
+    expect(newfield.headBox.w).toBeGreaterThan(44)
   }, 60_000)
 })

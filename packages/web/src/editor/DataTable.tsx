@@ -557,6 +557,12 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                 ),
               )}
               {grouping && <GroupCell doc={doc} column={grouping} cardRef={cardRef} row={row} />}
+              {/* The button that makes a column stands in a column of its own, so every row has
+                  that column too — empty, because nothing about a card belongs under it. A row
+                  one cell short of the head is still a legal table and the browser lays it out
+                  without complaint: what the designer sees is the pinned × under the wrong
+                  heading, at the wrong width, with a phantom column after it. */}
+              <td className="byd-data-newfield" />
               <td className="byd-data-remove">
                 <button
                   type="button"
