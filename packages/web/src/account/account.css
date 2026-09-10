@@ -13,8 +13,10 @@
 .byd-home { width: min(920px, 100%); display: grid; gap: 18px; }
 .byd-home header { display: flex; align-items: baseline; justify-content: space-between; }
 .byd-home h1 { margin: 0; font-size: 28px; }
-.byd-who { color: #9aa3b8; font-size: 13px; }
-.byd-who a { color: #9aa3b8; }
+.byd-who { color: #9aa3b8; font-size: 13px; display: inline-flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+/* The way out is a word in a sentence, and a word in a sentence is 16 px tall. It keeps the look
+   and takes the room every control in the product takes (UX-KONTROLLER: träffytor). */
+.byd-who a { color: #9aa3b8; display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px; }
 .byd-home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
 .byd-home-game { background: #171a23; border: 1px solid #262a35; border-radius: 16px; padding: 16px; display: grid; gap: 8px; text-align: left; color: #fff; text-decoration: none; cursor: pointer; }
 .byd-home-game strong { font-size: 17px; }
@@ -35,7 +37,9 @@
 /* A game's own actions on the home page (G1): the card opens the editor, the menu does the rest. */
 .byd-home-game { position: relative; padding: 0; }
 .byd-home-open { display: grid; gap: 8px; padding: 16px; color: #fff; text-decoration: none; }
-.byd-home-more { position: absolute; right: 8px; top: 8px; border: 0; border-radius: 8px; padding: 2px 8px; background: transparent; color: #9aa3b8; font-size: 16px; cursor: pointer; }
+/* A game's own menu sits in the corner of its card and is reached with a thumb like everything
+   else (UX-KONTROLLER: träffytor); the dots stay the same size, the button around them grows. */
+.byd-home-more { position: absolute; right: 4px; top: 4px; display: inline-grid; place-items: center; min-width: 44px; min-height: 44px; border: 0; border-radius: 8px; padding: 0 8px; background: transparent; color: #9aa3b8; font-size: 16px; cursor: pointer; }
 .byd-home-more:hover, .byd-home-more[aria-expanded='true'] { background: #262a35; color: #fff; }
 .byd-home-menu { position: absolute; right: 8px; top: 34px; z-index: 5; display: grid; padding: 6px; border-radius: 10px; background: #1b1f2a; border: 1px solid #3b4358; box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5); }
 .byd-home-menu button { border: 0; border-radius: 7px; padding: 8px 12px; background: transparent; color: #e6ecfa; font: inherit; text-align: left; white-space: nowrap; cursor: pointer; }
@@ -53,5 +57,6 @@
 /* The language switch (A4): on the login card and beside who is signed in, so a reader who
    cannot read the page can still change what it speaks. */
 .byd-lang { display: inline-flex; gap: 6px; align-items: center; color: #9aa3b8; font-size: 13px; }
-.byd-lang select { border: 1px solid #2c3242; border-radius: 8px; padding: 4px 8px; background: #14161c; color: #e6e6e6; font: inherit; cursor: pointer; }
+/* The picker the reader who cannot read this page reaches for first, at the size a thumb needs. */
+.byd-lang select { min-height: 44px; border: 1px solid #2c3242; border-radius: 8px; padding: 4px 8px; background: #14161c; color: #e6e6e6; font: inherit; cursor: pointer; }
 .byd-login .byd-lang { justify-content: flex-start; margin-top: 2px; }

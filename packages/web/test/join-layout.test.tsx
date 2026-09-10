@@ -128,3 +128,20 @@ describe('the table as a seat picker (K12, #39)', () => {
     }
   }, 60_000)
 })
+
+// The picker is the one screen in the product that is only ever met with a thumb, and a seat is
+// the first thing that thumb has to hit. UX-KONTROLLER holds every control to 44 px; the pills
+// came out 37 px tall, and the offsets that hang them off the felt's edge were written for that
+// height (UX-kontroll 2026-09-10).
+describe('a seat is a thumb-sized target (UX-KONTROLLER: träffytor)', () => {
+  it('draws every seat at least 44 px in both directions, still apart and still on its own edge', async () => {
+    const { seats: boxes } = await measure(await picker(twoSeatSetup()))
+    for (const box of boxes) {
+      expect(box.h).toBeGreaterThanOrEqual(44)
+      expect(box.w).toBeGreaterThanOrEqual(44)
+    }
+    const [a, b] = boxes as [Box, Box]
+    expect(place(a)).not.toBe(place(b))
+    expect(a.y).toBeGreaterThan(b.y)
+  }, 60_000)
+})

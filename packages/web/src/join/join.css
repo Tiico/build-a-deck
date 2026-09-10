@@ -21,8 +21,12 @@
      the table gives no edge, which stand on the felt side by side. */
   display: flex; flex-wrap: wrap; align-content: center; align-items: center; justify-content: center; gap: 6px;
 }
+/* The picker is met with a thumb and nothing else, so a seat is held to the 44 px every control
+   in the product is held to (UX-KONTROLLER: träffytor). The pill grows around its word rather
+   than the word growing: the label is a seat's name, not a button's size. */
 .byd-join-table button {
-  padding: 8px 14px; min-width: 60px; border-radius: 999px; white-space: nowrap;
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 8px 14px; min-width: 60px; min-height: 44px; border-radius: 999px; white-space: nowrap;
   border: 3px solid transparent; background: var(--seat); color: var(--byd-seat-ink); font-weight: 700; font-size: 13px;
 }
 /* A seat with an edge is hung off that edge of the felt. A seat without one — a table that gives
