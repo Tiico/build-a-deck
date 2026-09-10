@@ -306,13 +306,17 @@ export function columnsOf(doc: ProjectDoc): string[] {
 
 // How many elements of the template would go with a column, counted across every face and every
 // group's own override. What `removeField` takes, in other words, so a question about it can say
-// so before it is answered.
+// so before it is answered — and the two walk the tree the same way on purpose. A condition on
+// the column goes with everything it was guarding, so counting the condition as one element and
+// stopping there promised one and took a subtree.
 export function drawnBy(doc: ProjectDoc, field: string): number {
+  // Every element of a subtree, itself included: what is lost when the subtree is dropped whole.
+  const all = (els: readonly Element[]): number => els.reduce((n, el) => n + 1 + ('children' in el ? all(el.children) : 0), 0)
   const count = (els: readonly Element[]): number => {
     let n = 0
     for (const el of els) {
       if ('bind' in el && 'field' in el.bind && el.bind.field === field) n++
-      else if (el.kind === 'if' && el.when.field === field) n++
+      else if (el.kind === 'if' && el.when.field === field) n += 1 + all(el.children)
       else if (el.kind === 'if' || el.kind === 'group') n += count(el.children)
     }
     return n

@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { applyEdit, type EditIntent } from '../src/edits.js'
+import { applyEdit, drawnBy, type EditIntent } from '../src/edits.js'
 import { template } from './deck.js'
 import { twoSeatSetup } from './fixture.js'
 import type { ProjectDoc } from '../src/projects.js'
+import type { Element } from '@byd/template'
 
 const base = (): ProjectDoc => {
   const { zones, seats, floor } = twoSeatSetup()
@@ -134,6 +135,64 @@ describe('an edit is a thing that happened to the project (D3)', () => {
     expect(gone.template.faces['front']?.variantBy).toBeUndefined()
     // The card's copies are the engine's column and cannot be taken away (L4).
     expect(() => applyEdit(base(), { v: 'removeField', field: 'antal' })).toThrow(/antal/)
+  })
+
+  // `drawnBy` is the sentence the × puts in front of the designer before it takes a column, so it
+  // is the B4 guarantee in the only form she ever sees it: what she is told is about to happen.
+  // It and `removeField` describe the same operation and must say the same number, whatever the
+  // template is shaped like — which is worth pinning now rather than the day the canvas grows an
+  // `if` tool and a promise of one element quietly takes four.
+  it('counts exactly the elements a column takes with it, condition and contents alike', () => {
+    // Three ways an element can point at `styrka`: bound to it directly, bound to it inside a
+    // group that stays, and guarded by a condition on it — and that condition is guarding two
+    // elements that name nothing at all, which go with it because children shown only sometimes
+    // must not become children shown always.
+    const withIf = (): ProjectDoc => {
+      const doc = base()
+      const front = doc.template.faces['front']!
+      return {
+        ...doc,
+        template: {
+          ...doc.template,
+          faces: {
+            ...doc.template.faces,
+            front: {
+              ...front,
+              base: [
+                ...front.base,
+                { kind: 'text', id: 'styrka', x: 5, y: 60, w: 20, h: 8, bind: { field: 'styrka' }, font: { family: 'sans-serif', sizePt: 10 }, color: '#111' },
+                {
+                  kind: 'if',
+                  id: 'stark',
+                  when: { field: 'styrka', nonEmpty: true },
+                  children: [
+                    { kind: 'shape', id: 'glow', x: 0, y: 0, w: 10, h: 10, shape: 'circle', fill: '#fd0' },
+                    { kind: 'group', id: 'märke', x: 0, y: 0, children: [{ kind: 'shape', id: 'ring', x: 1, y: 1, w: 4, h: 4, shape: 'circle', fill: '#000' }] },
+                  ],
+                },
+                { kind: 'group', id: 'fot', x: 0, y: 70, children: [{ kind: 'text', id: 'fotnot', x: 0, y: 0, w: 20, h: 5, bind: { field: 'styrka' }, font: { family: 'sans-serif', sizePt: 6 }, color: '#333' }] },
+              ],
+            },
+          },
+        },
+      }
+    }
+
+    const doc = withIf()
+    const size = (els: readonly Element[]): number => els.reduce((n, el) => n + 1 + ('children' in el ? size(el.children) : 0), 0)
+    const elements = (d: ProjectDoc) => Object.values(d.template.faces).reduce((n, f) => n + size(f.base), 0)
+
+    // The promise and what is kept, measured against each other rather than against a number
+    // written twice. Six elements go: the one bound to it, the condition with its shape, its
+    // group and the shape inside that, and the one bound to it down in `fot`.
+    const gone = elements(doc) - elements(applyEdit(doc, { v: 'removeField', field: 'styrka' }))
+    expect(gone).toBe(6)
+    expect(drawnBy(doc, 'styrka')).toBe(gone)
+
+    // And the group itself stays, since nothing about it named the column: a designer told that
+    // six elements go should not find her footer gone too.
+    const after = applyEdit(doc, { v: 'removeField', field: 'styrka' }).template.faces['front']!
+    expect(after.base.map((e) => e.id)).toEqual(['paper', 'frame', 'title', 'fot'])
   })
 
   it('refuses an edit that names something the project does not have, rather than writing nonsense', () => {
