@@ -139,18 +139,32 @@ export class TableActor {
     }
   }
 
-  // A kick (DRIFT §9): every connection at the seat is refused and closed, and the seat is
-  // given back to the table so someone else can take it. The token is the server's to revoke.
+  // A kick (DRIFT §9): the seat is given back to the table so someone else can take it, and
+  // everything else that emptying a seat means follows from the commit, as it does when the
+  // player leaves of their own accord. A seat already standing empty has no line to write, but
+  // it may still have somebody hanging on to it, so the emptying is done directly.
   async kick(seat: SeatId): Promise<void> {
+    if (this.state.seats[seat]?.name !== null) {
+      await this.submit({ id: `kick-${seat}-${randomUUID()}`, seat: null, intents: [{ v: 'seat.release', seat }] })
+      return
+    }
+    await this.emptied(seat, 'kicked')
+  }
+
+  // What a released seat means beyond the log, wherever the release came from. A seat has three
+  // halves: the one the log knows, the reservation at the door (DRIFT §9), and the sockets that
+  // were sitting at it. `viewFor` projects a connection by the seat it was admitted to, so a
+  // socket left at a seat somebody else then takes is dealt that somebody's hand — which is the
+  // one thing D1 does not allow. Emptying is therefore one path, not two that can drift: the
+  // bug was precisely that `kick` knew something the way out did not.
+  private async emptied(seat: SeatId, reason: string): Promise<void> {
     for (const sub of [...this.subscribers.keys()]) {
       if (sub.seat !== seat) continue
-      sub.send({ t: 'refused', reason: 'kicked' })
+      sub.send({ t: 'refused', reason })
       this.unsubscribe(sub)
       sub.close?.()
     }
-    if (this.state.seats[seat]?.name !== null) {
-      await this.submit({ id: `kick-${seat}-${randomUUID()}`, seat: null, intents: [{ v: 'seat.release', seat }] })
-    }
+    await this.store.revokeGuests(this.id, seat, new Date().toISOString())
   }
 
   private observers(): { id: string; name: string }[] {
@@ -215,11 +229,11 @@ export class TableActor {
       if (patch.ops.length > 0 || patch.seq !== previous.seq) sub.send({ t: 'patch', patch })
       if (!sub.lobby) sub.send({ t: 'activity', lines: activity })
     }
-    // A seat has two halves: the one the log knows, and the reservation at the door (DRIFT §9).
-    // Whoever empties the seat — a kick, or the player's own way out (#31) — empties both, or
-    // the seat the table shows as free is one nobody can buy a token for.
+    // Whoever empties the seat — a kick, or the player's own way out (#31) — empties all of it.
+    // `by` says which it was, and the connection is owed the true reason: only the table can
+    // take a seat off somebody, and only the seat itself can leave.
     for (const line of decision.applied) {
-      if (line.intent.v === 'seat.release') await this.store.revokeGuests(this.id, line.intent.seat, new Date().toISOString())
+      if (line.intent.v === 'seat.release') await this.emptied(line.intent.seat, line.by === null ? 'kicked' : 'left')
     }
     return decision
   }

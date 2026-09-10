@@ -532,7 +532,12 @@ async function attach(opts: ServerOptions, req: IncomingMessage, ws: WebSocket, 
     return
   }
   const seat = who.seat
-  const sub: Subscriber = { seat, id: randomUUID(), send, close: () => ws.close(4003, 'kicked'), ...(who.observer !== undefined ? { observer: who.observer } : {}), ...(who.lobby ? { lobby: true } : {}) }
+  // The door shuts once this turn's answers have gone out. A seat that asks for its own way out
+  // (#31) is emptied as part of that very commit, and is still owed the ack for it; `ws.close`
+  // puts the socket into CLOSING at once, where `send` drops every later frame. Waiting a macro
+  // tick costs nothing and hangs up on nobody mid-sentence — the actor has already taken the
+  // subscriber off the table, so the wait carries no frames of its own.
+  const sub: Subscriber = { seat, id: randomUUID(), send, close: () => setImmediate(() => ws.close(4003, 'gone')), ...(who.observer !== undefined ? { observer: who.observer } : {}), ...(who.lobby ? { lobby: true } : {}) }
   actor.subscribe(sub)
   // A connection keeps the code alive for another few hours (DRIFT §9); the host's screen is
   // told the code, since it is what the room is joined by.

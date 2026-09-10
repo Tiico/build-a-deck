@@ -78,3 +78,34 @@ describe('a seat leaves the table (#31)', () => {
     expect(back.frames.join('\n')).not.toMatch(/seat\.release/)
   })
 })
+
+// A seat has a third half beside the log and the door, and it is the one the rule in CLAUDE.md is
+// about: the sockets that were sitting at it. A connection is projected by the seat it was
+// admitted to, so a socket whose seat has been given up still reads as that seat — and the next
+// guest's hand is dealt straight into it. `kick` knew to hang up; leaving did not. The evidence
+// is the raw frames, on the wire, where hidden information is decided (D1).
+describe('the socket that left (D1)', () => {
+  it('is dealt nothing more once the next guest has the seat', async () => {
+    const { id } = await createRoom(run.http)
+    const ada = keep(await WireClient.connect(run.base, id, 'A', undefined, { token: await run.admit(id, 'A', 'Ada') }))
+    await ada.send('A', { v: 'seat.claim', seat: 'A', name: 'Ada' })
+    await ada.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 3 })
+    expect((await ada.send('A', { v: 'seat.release', seat: 'A' })).t).toBe('ack')
+    // Ada's phone has gone nowhere: the socket is held open on purpose, which is what a blocked
+    // navigation, a back button, or any way out that does not load a new page really does.
+    const mark = ada.frames.length
+
+    const bo = keep(await WireClient.connect(run.base, id, 'A', undefined, { token: await run.admit(id, 'A', 'Bo') }))
+    await bo.send('A', { v: 'seat.claim', seat: 'A', name: 'Bo' })
+    await bo.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 3 })
+    const held = (bo.view?.components ?? []).filter((c) => c.zone === 'hand:A').map((c) => c.cardRef)
+    expect(held).toHaveLength(3)
+    expect(held.every((ref) => typeof ref === 'string')).toBe(true)
+
+    // The control, without which seeing nothing would prove nothing: Bo's own socket did carry
+    // the three cards across the wire.
+    for (const ref of held) expect(bo.frames.join('\n')).toContain(ref)
+    // And the proof: not one of them ever reached the socket that left.
+    for (const ref of held) expect(ada.frames.slice(mark).join('\n')).not.toContain(ref)
+  })
+})

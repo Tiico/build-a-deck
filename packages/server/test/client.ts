@@ -10,6 +10,9 @@ export class WireClient {
   private readonly ws: WebSocket
   private waiters: { pred: (m: ServerMessage) => boolean; resolve: (m: ServerMessage) => void }[] = []
   private envelopes = 0
+  // Envelope ids are unique per session, not per connection, so two clients at the same seat
+  // must not number from the same one. The real client carries a nonce for exactly this.
+  private readonly nonce = Math.random().toString(36).slice(2, 8)
 
   private constructor(url: string) {
     this.ws = new WebSocket(url)
@@ -80,7 +83,7 @@ export class WireClient {
 
   // Sends one envelope and resolves with its ack or reject.
   async send(seat: string | null, ...intents: Intent[]): Promise<ServerMessage> {
-    const env: Envelope = { id: `${seat ?? 'table'}-${this.envelopes++}`, seat, intents }
+    const env: Envelope = { id: `${seat ?? 'table'}-${this.nonce}-${this.envelopes++}`, seat, intents }
     this.ws.send(JSON.stringify({ t: 'envelope', envelope: env }))
     return this.waitFor((m) => (m.t === 'ack' || m.t === 'reject' || m.t === 'error') && m.id === env.id)
   }
