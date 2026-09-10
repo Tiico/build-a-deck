@@ -14,6 +14,7 @@ function canvas(over: Partial<TemplateCanvasProps> = {}) {
     group: null,
     onSelectGroup: vi.fn(),
     onGroupColumn: vi.fn(),
+    onAddField: vi.fn(),
     onReset: vi.fn(),
     row: 'dragon',
     selectedElement: 'title',
@@ -353,6 +354,50 @@ describe('how much of the card the stage shows (#18)', () => {
   it('keeps the zoom it has when nothing can be measured', () => {
     canvas()
     expect((document.getElementById('canvas') as HTMLElement).style.zoom).toBe('2.6')
+  })
+})
+
+// One form, two doors (#32). The table head is the first; this is the second, where a designer
+// who has just drawn a box and gone looking for the column it should show finds that the column
+// does not exist yet. She never has to leave the canvas to make it possible.
+describe('the second door into a new field (#32)', () => {
+  it('makes the field where the binding was missing it, and binds the element to it in the same breath', async () => {
+    const user = userEvent.setup()
+    const onAddField = vi.fn()
+    const { onPatch } = canvas({ onAddField })
+
+    const field = screen.getByLabelText('Fält') as HTMLSelectElement
+    expect([...field.options].map((o) => o.textContent)).toEqual(['title', 'body', 'antal', 'nytt fält…'])
+    await user.selectOptions(field, within(field).getByRole('option', { name: 'nytt fält…' }))
+
+    const form = screen.getByRole('form', { name: 'Nytt fält' })
+    await user.clear(within(form).getByLabelText('Namn'))
+    await user.type(within(form).getByLabelText('Namn'), 'styrka')
+    await user.click(within(form).getByRole('button', { name: 'Lägg till' }))
+
+    expect(onAddField).toHaveBeenCalledWith('styrka')
+    expect(onPatch).toHaveBeenCalledWith('title', { bind: { field: 'styrka' } })
+    expect(screen.queryByRole('form', { name: 'Nytt fält' })).toBeNull()
+    // The binding did not quietly move to the sentinel that opened the form.
+    expect(field.value).toBe('title')
+  })
+
+  it('is the same form: it refuses a name the deck already answers to, and can be left alone', async () => {
+    const user = userEvent.setup()
+    const onAddField = vi.fn()
+    canvas({ onAddField })
+    const field = screen.getByLabelText('Fält') as HTMLSelectElement
+
+    await user.selectOptions(field, within(field).getByRole('option', { name: 'nytt fält…' }))
+    const form = screen.getByRole('form', { name: 'Nytt fält' })
+    await user.clear(within(form).getByLabelText('Namn'))
+    await user.type(within(form).getByLabelText('Namn'), 'body')
+    await user.click(within(form).getByRole('button', { name: 'Lägg till' }))
+    expect(within(form).getByRole('alert').textContent).toBe('Det finns redan ett fält som heter body.')
+    expect(onAddField).not.toHaveBeenCalled()
+
+    await user.click(within(form).getByRole('button', { name: 'Avbryt' }))
+    expect(screen.queryByRole('form', { name: 'Nytt fält' })).toBeNull()
   })
 })
 

@@ -541,6 +541,11 @@
 .byd-props { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .byd-props label { display: grid; gap: 3px; font-size: 11px; color: #9aa3b8; }
 .byd-props input, .byd-props select { background: #0f1115; border: 1px solid #2a2d36; color: #fff; border-radius: 6px; padding: 6px 8px; font-size: 13px; width: 100%; box-sizing: border-box; }
+/* The binding is the second door into a new field (#32). The form hangs under the picker rather
+   than growing the properties column, for the same reason it does not grow the table's head. */
+.byd-props-field { position: relative; }
+.byd-props-field .byd-newfield { top: calc(100% + 4px); right: 0; }
+.byd-props-field .byd-newfield input[type='radio'] { width: auto; }
 
 /* The fonts the game carries (B3): under the properties, because that is where a family is
    chosen. Each row says whether the file travels to the printer and under what licence. */

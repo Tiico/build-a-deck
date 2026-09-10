@@ -246,6 +246,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
           client.removeElement(face, id, group)
           setElement(null)
         }}
+        onAddField={(field) => client.addField(field)}
         onFontFile={(file) => client.useFont(file, t)}
         onFontLicence={(family, licence) => client.setFontLicence(family, licence)}
         onRemoveFont={(family) => client.removeFont(family)}

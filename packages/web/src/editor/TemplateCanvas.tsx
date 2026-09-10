@@ -5,6 +5,7 @@ import { CardPreview } from './CardPreview.js'
 import { arrowMove, fitScale, HANDLES, movedTo, newElement, resizedTo, snapped, STAGE_SCALE, TOOLS, type Box, type ElementKind, type Grab, type Guides, type Handle } from './canvas.js'
 import { elementsFor } from '@byd/template'
 import { fieldsOf } from './fields.js'
+import { NewField } from './NewField.js'
 import { isTyping } from './keys.js'
 import { cardsInGroup, groupColumn, groupsOf, layersOf, overriddenIds, ruleLabel, type Layer } from './groups.js'
 import { LayerList } from './LayerList.js'
@@ -38,6 +39,9 @@ export type TemplateCanvasProps = {
   onSelectGroup(group: string | null): void
   // The column whose values are the groups; `null` ungroups the deck.
   onGroupColumn(column: string | null): void
+  // A column the deck does not have yet (#32). The binding is where a designer finds out it is
+  // missing, so it is one of the two places the same form is opened from.
+  onAddField(field: string): void
   // Stops the open group from overriding a layer, so it is the base's again.
   onReset(id: string): void
   // The type the game is set in (B3). Uploading is the client's work — the file becomes one of
@@ -51,7 +55,7 @@ export type TemplateCanvasProps = {
 // Template mode (A): layers on the left, the card large in the middle with the selected element
 // outlined, and its properties on the right. Every change goes through `onPatch` and lands on
 // every card of the deck — there are no per-card exceptions (L3).
-export function TemplateCanvas({ stage = null, doc, assetBase, face, onSelectFace, row, selectedElement, onSelectElement, onPatch, onRemove, onAdd, onReorder, group, onSelectGroup, onGroupColumn, onReset, onFontFile, onFontLicence, onRemoveFont }: TemplateCanvasProps) {
+export function TemplateCanvas({ stage = null, doc, assetBase, face, onSelectFace, row, selectedElement, onSelectElement, onPatch, onRemove, onAdd, onReorder, group, onSelectGroup, onGroupColumn, onAddField, onReset, onFontFile, onFontLicence, onRemoveFont }: TemplateCanvasProps) {
   const t = useT()
   const faceTemplate = doc.template.faces[face]
   const column = groupColumn(doc)
@@ -166,7 +170,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, face, onSelectFac
         {/* A panel with nothing in it says why rather than looking broken — and on a small screen
             the layers are another stage away, so it says where to go. */}
         {!layer && <p className="byd-canvas-hint">{t('canvas.props.empty')}</p>}
-        {el && <Properties el={el} fields={fields} fonts={Object.keys(doc.fonts ?? {})} onPatch={(patch) => onPatch(el.id, patch)} />}
+        {el && <Properties el={el} fields={fields} fonts={Object.keys(doc.fonts ?? {})} onPatch={(patch) => onPatch(el.id, patch)} onAddField={onAddField} />}
         {layer && group && overridden.has(layer.element.id) && (
           <button type="button" className="byd-canvas-reset" onClick={() => onReset(layer.element.id)}>
             {t('canvas.reset')}
@@ -509,8 +513,15 @@ function useElementKeys(el: Element | undefined, onPatch: TemplateCanvasProps['o
 }
 
 
-function Properties({ el, fields, fonts, onPatch }: { el: Element; fields: string[]; fonts: string[]; onPatch(patch: Partial<Element>): void }) {
+// The value the field picker carries for its last entry, which is not a field but a door (#32).
+// A key is at least one character in the document, so nothing a designer can name collides with
+// it, and the empty string is already what an element bound to a literal shows.
+const NEW_FIELD = ' new'
+
+function Properties({ el, fields, fonts, onPatch, onAddField }: { el: Element; fields: string[]; fonts: string[]; onPatch(patch: Partial<Element>): void; onAddField(field: string): void }) {
   const t = useT()
+  // Whether the picker's last entry has been chosen and the form is standing open under it.
+  const [making, setMaking] = useState(false)
   const num = (label: Key, key: 'x' | 'y' | 'w' | 'h') =>
     key in el ? (
       <label>
@@ -527,15 +538,32 @@ function Properties({ el, fields, fonts, onPatch }: { el: Element; fields: strin
       {'bind' in el && (
         // Every element that shows data says which column it shows — a picture and a row of
         // icons as much as a text box, or one added from the tool rail could never be bound.
-        <label>
+        <label className="byd-props-field">
           {t('canvas.props.field')}
-          <select value={'field' in el.bind ? el.bind.field : ''} onChange={(e) => onPatch({ bind: { field: e.target.value } })}>
+          <select
+            value={'field' in el.bind ? el.bind.field : ''}
+            onChange={(e) => (e.target.value === NEW_FIELD ? setMaking(true) : onPatch({ bind: { field: e.target.value } }))}
+          >
             {fields.map((f) => (
               <option key={f} value={f}>
                 {f}
               </option>
             ))}
+            {/* The second door (#32): the designer noticed the column was missing here, so this
+                is where she is allowed to make it — and the element is bound to it at once. */}
+            <option value={NEW_FIELD}>{t('canvas.props.field.new')}</option>
           </select>
+          {making && (
+            <NewField
+              taken={fields}
+              onCreate={(field) => {
+                onAddField(field)
+                onPatch({ bind: { field } })
+                setMaking(false)
+              }}
+              onCancel={() => setMaking(false)}
+            />
+          )}
         </label>
       )}
       {el.kind === 'text' && (

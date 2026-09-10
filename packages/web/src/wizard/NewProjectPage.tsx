@@ -4,6 +4,7 @@ import { useRoving } from '../editor/roving.js'
 import { useRoom } from '../room.js'
 import { loginUrl, withCredentials } from '../account/api.js'
 import { assetRef, bytesOfDataUrl } from '../editor/assets.js'
+import { suggestFieldKey } from '../editor/fields.js'
 import { buildProject, type WizardState } from './build.js'
 import { defaultFields, DEFAULT_FRAME, FRAMES, type Field } from './frames.js'
 import { useT, type Key, type T } from '../i18n/index.js'
@@ -146,11 +147,11 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     // are English on a Swedish surface for exactly that reason. What the tool suggests at
     // creation and then hands over is the *label* below, which is written in the designer's own
     // language and frozen there.
-    const base = kind === 'image' ? 'bild' : kind === 'number' ? 'värde' : 'fält'
-    let n = 1
-    while (s.fields.some((field) => field.key === `${base}${n}`)) n++
+    //
+    // The editor's own form suggests from the same place (#32), so the two doors into a new
+    // field cannot come to suggest different names for it.
     const field: Field = {
-      key: `${base}${n}`,
+      key: suggestFieldKey(kind, s.fields.map((f) => f.key)),
       label: t(kind === 'image' ? 'wizard.field.new.image' : kind === 'number' ? 'wizard.field.new.number' : 'wizard.field.new.text'),
       kind,
     }

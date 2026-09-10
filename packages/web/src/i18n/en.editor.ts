@@ -190,6 +190,7 @@ export const enEditor = {
   'canvas.props.w': 'Width (mm)',
   'canvas.props.h': 'Height (mm)',
   'canvas.props.field': 'Field',
+  'canvas.props.field.new': 'new field…',
   'canvas.props.font': 'Typeface',
   'canvas.props.size': 'Size (pt)',
   'canvas.props.weight': 'Weight',

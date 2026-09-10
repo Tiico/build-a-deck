@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { useState } from 'react'
 import { describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { applyEdit } from '@byd/server/doc'
+import { Language } from '../src/i18n/index.js'
 import { DataTable } from '../src/editor/DataTable.js'
 import type { ProjectDoc, ProjectRow } from '../src/editor/types.js'
 import { projectDoc } from './project-doc.js'
@@ -102,5 +103,40 @@ describe('a field arrives in the editor (#32)', () => {
 
     await user.click(screen.getByRole('button', { name: 'Ta bort fältet fält1' }))
     expect(screen.getByText('Ta bort fält1? Inget kort har ett värde i den.')).toBeTruthy()
+  })
+
+  // The boundary A4 draws, and #27 drew again for exactly this case: what the tool *says* follows
+  // the reader, what the tool *suggests as a key* does not. Two designers pressing the same
+  // button in different languages must get the same column, or one of them would bind `bild1` in
+  // the template and the other `image1`.
+  it('says the form in the reader\'s language and suggests a key in neither', async () => {
+    const user = userEvent.setup()
+    render(
+      <Language lang="en">
+        <Editing />
+      </Language>,
+    )
+    await user.click(screen.getByRole('button', { name: '+ New field' }))
+    const form = screen.getByRole('form', { name: 'New field' })
+    const name = () => within(form).getByLabelText('Name') as HTMLInputElement
+    expect(within(form).getByRole('button', { name: 'Add' })).toBeTruthy()
+    expect(name().value).toBe('fält1')
+
+    // The kind is the wizard's three, in the reader's words; the key it suggests is the wizard's.
+    expect(within(form).getAllByRole('radio').map((r) => r.parentElement?.textContent)).toEqual(['Text', 'Number', 'Image'])
+    await user.click(within(form).getByRole('radio', { name: 'Image' }))
+    expect(name().value).toBe('bild1')
+
+    await user.click(within(form).getByRole('button', { name: 'Add' }))
+    expect(column('bild1')).toBeTruthy()
+    // And a designer who writes her own word gets hers, kind or no kind.
+    await user.click(screen.getByRole('button', { name: '+ New field' }))
+    const second = screen.getByRole('form', { name: 'New field' })
+    await user.clear(within(second).getByLabelText('Name'))
+    await user.type(within(second).getByLabelText('Name'), 'styrka')
+    await user.click(within(second).getByRole('radio', { name: 'Number' }))
+    expect((within(second).getByLabelText('Name') as HTMLInputElement).value).toBe('styrka')
+    await user.click(within(second).getByRole('button', { name: 'Add' }))
+    expect(column('styrka')).toBeTruthy()
   })
 })

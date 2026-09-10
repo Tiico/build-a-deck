@@ -205,6 +205,7 @@ export const svEditor = {
   'canvas.props.w': 'Bredd (mm)',
   'canvas.props.h': 'Höjd (mm)',
   'canvas.props.field': 'Fält',
+  'canvas.props.field.new': 'nytt fält…',
   'canvas.props.font': 'Typsnitt',
   'canvas.props.size': 'Storlek (pt)',
   'canvas.props.weight': 'Vikt',
