@@ -37,14 +37,22 @@ export function round(mm: number): number {
 export type ElementKind = 'text' | 'image' | 'icons' | 'shape'
 export type CardSize = { widthMm: number; heightMm: number }
 
-// The four kinds a designer can add from the canvas, in the order the tool rail reads them, each
-// named by what the catalogue calls it (A4). The vocabulary is the template model's (L1) — no new
-// kinds here.
-export const TOOLS: readonly { kind: ElementKind; name: Key; glyph: string }[] = [
-  { kind: 'text', name: 'canvas.tool.text', glyph: 'T' },
-  { kind: 'image', name: 'canvas.tool.image', glyph: '▣' },
-  { kind: 'icons', name: 'canvas.tool.icons', glyph: '●●' },
-  { kind: 'shape', name: 'canvas.tool.shape', glyph: '◻' },
+// What a tool in the rail places. Four of them are an element kind each; `icon` is the fifth and
+// is not a kind — it is the single image the glossary calls an `ikon` (A4), which is the `icons`
+// element showing one name instead of a column's list. That is why the template model needed
+// nothing for it: one renderer, one element kind, two ways to fill it (#33).
+export type ToolId = ElementKind | 'icon'
+
+// The tools a designer can add from the canvas, in the order the tool rail reads them, each named
+// by what the catalogue calls it (A4). The vocabulary is the template model's (L1) — no new kinds
+// here. One dot is one icon and two are a row of them, which is the whole difference between the
+// two tools that place the same kind.
+export const TOOLS: readonly { id: ToolId; name: Key; glyph: string }[] = [
+  { id: 'text', name: 'canvas.tool.text', glyph: 'T' },
+  { id: 'image', name: 'canvas.tool.image', glyph: '▣' },
+  { id: 'icon', name: 'canvas.tool.icon', glyph: '●' },
+  { id: 'icons', name: 'canvas.tool.icons', glyph: '●●' },
+  { id: 'shape', name: 'canvas.tool.shape', glyph: '◻' },
 ]
 
 const SIZES: Record<ElementKind, { w: number; h: number }> = {
@@ -73,7 +81,33 @@ export function newElement(kind: ElementKind, opts: { taken: readonly string[]; 
   }
 }
 
-function freeId(kind: ElementKind, taken: readonly string[]): string {
+// How big a single icon lands: square, and filled edge to edge, so what is dragged is what shows.
+const ICON_MM = 8
+
+// One icon placed on the card (#33). It is the `icons` element the tool rail already had, bound to
+// a name rather than to a column — the element splits its value on spaces and commas (L1), and one
+// name is a list of one. Nothing in packages/template was needed for it, and nothing else renders
+// it: the same compiler draws this element as draws a row of them.
+//
+// A literal and not a field, because this icon is the card's and not the row's: a suit mark or a
+// frame badge is the same on every card, and asking for a column to hold the same word on all of
+// them would be a column that says nothing. The property panel binds it to one all the same, for
+// the day it should differ per card.
+export function iconElement(name: string, opts: { taken: readonly string[]; card: CardSize }): Element {
+  return {
+    kind: 'icons',
+    id: freeId('icon', opts.taken),
+    x: round((opts.card.widthMm - ICON_MM) / 2),
+    y: round((opts.card.heightMm - ICON_MM) / 2),
+    w: ICON_MM,
+    h: ICON_MM,
+    bind: { literal: name },
+    iconMm: ICON_MM,
+    gapMm: 0,
+  }
+}
+
+function freeId(kind: string, taken: readonly string[]): string {
   for (let n = 1; ; n++) if (!taken.includes(`${kind}-${n}`)) return `${kind}-${n}`
 }
 

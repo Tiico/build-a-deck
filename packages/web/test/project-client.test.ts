@@ -406,6 +406,35 @@ describe('symbols (E4)', () => {
   })
 })
 
+// The icon placed from the tool row (#33): the symbol has to be in the game before an element can
+// show it, and the designer asked for both with one press. So it is one edit — and the licence
+// travels with it exactly as it does when a symbol is taken in from the Symboler tab (E4).
+describe('an icon placed on the card (#33, E4)', () => {
+  it('takes the symbol in and places the element as one edit, and a second placing is a second element and not a second symbol', async () => {
+    const created = await run.projects.create('p1', projectDoc())
+    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    const svard = LIBRARY.find((s) => s.id === 'svard')!
+
+    expect(await client.placeIcon(svard, 'front', null)).toBe('icon-1')
+    expect(client.doc.icons['svärd']).toMatch(/^asset:[0-9a-f]{64}$/)
+    expect(client.doc.credits?.['svärd']).toEqual({ licence: svard.licence, by: svard.by, source: svard.id })
+    // Bound to the name and not to a column: this icon is the card's, not the row's.
+    expect(client.doc.template.faces['front']?.base.at(-1)).toMatchObject({ kind: 'icons', id: 'icon-1', bind: { literal: 'svärd' } })
+
+    // One edit, so one step back takes the element and the symbol together (B4).
+    expect(client.undo()).toBe('undo.what.template')
+    expect(client.doc.icons['svärd']).toBeUndefined()
+    expect(client.doc.template.faces['front']?.base.some((e) => e.id === 'icon-1')).toBe(false)
+    client.redo()
+    expect(client.doc.icons['svärd']).toMatch(/^asset:[0-9a-f]{64}$/)
+
+    // The same symbol again is a second element showing the one entry the game has, not a second
+    // entry under a name of its own — the bytes are the same bytes, and so is the licence.
+    expect(await client.placeIcon(svard, 'front', null)).toBe('icon-2')
+    expect(Object.keys(client.doc.icons)).toEqual(['svärd'])
+  })
+})
+
 describe('the type the game is set in (B3)', () => {
   it('takes a font file into the project, names the family from the file, and keeps the licence the designer states', async () => {
     const created = await run.projects.create('p1', projectDoc())

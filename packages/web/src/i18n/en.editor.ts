@@ -187,8 +187,11 @@ export const enEditor = {
   'canvas.reset': 'Back to the base',
   'canvas.faceSwitch': 'Card side',
   'canvas.tools': 'Tools',
+  'canvas.symbols': 'Symbols',
   'canvas.tool.text': 'Text',
   'canvas.tool.image': 'Image',
+  // The icon as a tool on the canvas (#33): one icon, against the row that reads a column.
+  'canvas.tool.icon': 'Icon',
   'canvas.tool.icons': 'Icon row',
   'canvas.tool.shape': 'Shape',
   'canvas.props': 'Properties',
@@ -199,6 +202,10 @@ export const enEditor = {
   'canvas.props.h': 'Height (mm)',
   'canvas.props.field': 'Field',
   'canvas.props.field.new': 'new field…',
+  // An element bound to a value rather than to a column shows no field, and the picker says so
+  // instead of pointing at the deck's first column as though it were chosen (#33).
+  'canvas.props.field.none': 'no field',
+  'canvas.props.icon': 'Icon',
   'canvas.props.font': 'Typeface',
   'canvas.props.size': 'Size (pt)',
   'canvas.props.weight': 'Weight',

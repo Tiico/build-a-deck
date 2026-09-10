@@ -4,6 +4,7 @@ import type { Element, FaceTemplate, ProjectDoc, Row } from './types.js'
 import { CardPreview } from './CardPreview.js'
 import { arrowMove, fitScale, HANDLES, movedTo, newElement, resizedTo, snapped, STAGE_SCALE, TOOLS, type Box, type ElementKind, type Grab, type Guides, type Handle } from './canvas.js'
 import { elementsFor } from '@byd/template'
+import { previewIcons } from './assets.js'
 import { fieldsOf, takenNames } from './fields.js'
 import { NewField } from './NewField.js'
 import { isTyping } from './keys.js'
@@ -12,6 +13,7 @@ import { LayerList } from './LayerList.js'
 import type { CanvasStage } from './EditorStages.js'
 import { useRoving } from './roving.js'
 import { familiesInUse, previewFonts } from './fonts.js'
+import { LIBRARY, symbolName, symbolPreview, type GameSymbol } from './symbols.js'
 import type { ProjectCredit } from '@byd/server'
 import { useT, type Key, type T } from '../i18n/index.js'
 
@@ -32,6 +34,12 @@ export type TemplateCanvasProps = {
   onPatch(id: string, patch: Partial<Element>): void
   onRemove(id: string): void
   onAdd(element: Element): void
+  // An icon placed from the tool row (#33). The symbol has to come into the game before an
+  // element can show it, and the canvas cannot do that — only the client can name a symbol and
+  // upload its bytes — so the canvas says which symbol was chosen and the client does both halves
+  // as one edit. Two edits would be two versions and two steps back (B4), and the step in between
+  // would be an element on the card pointing at an icon the game does not have.
+  onPlaceIcon(symbol: GameSymbol): void
   // Where a layer ends up in the face's base list, which is the order the card is drawn in.
   onReorder(id: string, to: number): void
   // The group whose look is being edited, or nothing for the base every card inherits (#13).
@@ -58,7 +66,7 @@ export type TemplateCanvasProps = {
 // Template mode (A): layers on the left, the card large in the middle with the selected element
 // outlined, and its properties on the right. Every change goes through `onPatch` and lands on
 // every card of the deck — there are no per-card exceptions (L3).
-export function TemplateCanvas({ stage = null, doc, assetBase, face, onSelectFace, row, selectedElement, onSelectElement, onPatch, onRemove, onAdd, onReorder, group, onSelectGroup, onGroupColumn, onAddField, onReset, onFontFile, onFontLicence, onRemoveFont }: TemplateCanvasProps) {
+export function TemplateCanvas({ stage = null, doc, assetBase, face, onSelectFace, row, selectedElement, onSelectElement, onPatch, onRemove, onAdd, onPlaceIcon, onReorder, group, onSelectGroup, onGroupColumn, onAddField, onReset, onFontFile, onFontLicence, onRemoveFont }: TemplateCanvasProps) {
   const t = useT()
   const faceTemplate = doc.template.faces[face]
   const column = groupColumn(doc)
@@ -101,7 +109,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, face, onSelectFac
   const shows = (which: CanvasStage) => stage === null || stage === which
   return (
     <div className="byd-canvas" {...(stage ? { 'data-stage': stage } : {})}>
-      {shows('tools') && <ToolRail onAdd={add} />}
+      {shows('tools') && <ToolRail onAdd={add} onPlaceIcon={onPlaceIcon} />}
       {shows('layers') && (
       <aside className="byd-canvas-layers">
         <h2 id="layers-heading">{t('canvas.layers', { face: faceName(face, t).toLowerCase() })}</h2>
@@ -158,7 +166,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, face, onSelectFac
             id="canvas"
             face={tabFace}
             row={rowData}
-            icons={doc.icons}
+            icons={previewIcons(doc, assetBase)}
             fonts={previewFonts(doc, assetBase)}
             scale={scale}
             assetBase={assetBase}
@@ -176,7 +184,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, face, onSelectFac
         {/* A panel with nothing in it says why rather than looking broken — and on a small screen
             the layers are another stage away, so it says where to go. */}
         {!layer && <p className="byd-canvas-hint">{t('canvas.props.empty')}</p>}
-        {el && <Properties el={el} fields={fields} taken={takenNames(doc)} fonts={Object.keys(doc.fonts ?? {})} onPatch={(patch) => onPatch(el.id, patch)} onAddField={onAddField} />}
+        {el && <Properties el={el} fields={fields} taken={takenNames(doc)} fonts={Object.keys(doc.fonts ?? {})} icons={Object.keys(doc.icons)} onPatch={(patch) => onPatch(el.id, patch)} onAddField={onAddField} />}
         {layer && group && overridden.has(layer.element.id) && (
           <button type="button" className="byd-canvas-reset" onClick={() => onReset(layer.element.id)}>
             {t('canvas.reset')}
@@ -496,20 +504,83 @@ function FaceSwitch({ faces, face, onSelect }: { faces: string[]; face: string; 
   )
 }
 
-// The four tools that add an element (#18, variant A). A toolbar is one tab stop with the arrows
+// The tools that add an element (#18, variant A). A toolbar is one tab stop with the arrows
 // moving inside it (APG), the same roving tabindex the tablist and the layer list already use, so
 // the way to the card is never four presses of Tab longer than it has to be.
-function ToolRail({ onAdd }: { onAdd(kind: ElementKind): void }) {
+//
+// The icon is the one tool that asks something before it places anything (#33): every other kind
+// has a default it can be given, and an icon has no default that is not somebody's guess. So the
+// library opens where the icon will stand, rather than two tabs away in the Symboler panel.
+function ToolRail({ onAdd, onPlaceIcon }: { onAdd(kind: ElementKind): void; onPlaceIcon(symbol: GameSymbol): void }) {
   const t = useT()
-  const { itemProps } = useRoving({ ids: TOOLS.map((tool) => tool.kind), selected: null, orientation: 'vertical' })
+  const { itemProps, focus } = useRoving({ ids: TOOLS.map((tool) => tool.id), selected: null, orientation: 'vertical' })
+  const [picking, setPicking] = useState(false)
+  // The way out of the library, and back to the tool it was opened from (#8). Closing it unmounts
+  // whatever was focused inside it, so without this the focus falls to `<body>` and a rail reached
+  // with the keyboard has to be reached again from the top.
+  const close = () => {
+    setPicking(false)
+    focus('icon')
+  }
   return (
-    <aside className="byd-canvas-tools" role="toolbar" aria-label={t('canvas.tools')} aria-orientation="vertical">
-      {TOOLS.map((tool) => (
-        <button key={tool.kind} type="button" onClick={() => onAdd(tool.kind)} {...itemProps(tool.kind)}>
-          <span aria-hidden="true">{tool.glyph}</span>
-          {t(tool.name)}
-        </button>
-      ))}
+    <aside
+      className="byd-canvas-tools"
+      role="toolbar"
+      aria-label={t('canvas.tools')}
+      aria-orientation="vertical"
+      onKeyDown={(event) => {
+        if (event.key !== 'Escape' || !picking) return
+        event.preventDefault()
+        close()
+      }}
+    >
+      {TOOLS.map((tool) => {
+        const button = (
+          <button
+            key={tool.id}
+            type="button"
+            {...(tool.id === 'icon' ? { 'aria-expanded': picking } : {})}
+            onClick={() => (tool.id === 'icon' ? setPicking((open) => !open) : onAdd(tool.id))}
+            {...itemProps(tool.id)}
+          >
+            <span aria-hidden="true">{tool.glyph}</span>
+            {t(tool.name)}
+          </button>
+        )
+        if (tool.id !== 'icon') return button
+        // The library hangs off the tool it was opened from and not off the rail, so it opens
+        // beside the button that was pressed rather than two rows above it. That is what the
+        // wrapper is for and all it is for.
+        return (
+          <div key={tool.id} className="byd-canvas-tool-icon">
+            {button}
+            {picking && (
+              // The same library the Symboler tab fills (E4), offered beside the card. Choosing
+              // here is choosing an icon and placing it at once: one thing the designer did, so
+              // one edit and one step back (B4, #32).
+              <div className="byd-canvas-symbols" role="listbox" aria-label={t('canvas.symbols')}>
+                {LIBRARY.map((symbol) => (
+                  <button
+                    key={symbol.id}
+                    type="button"
+                    role="option"
+                    aria-selected="false"
+                    data-symbol={symbolName(symbol, t)}
+                    onClick={() => {
+                      setPicking(false)
+                      onPlaceIcon(symbol)
+                    }}
+                  >
+                    <img src={symbolPreview(symbol)} alt="" />
+                    <span>{symbolName(symbol, t)}</span>
+                    <small>{t(symbol.category)}</small>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })}
     </aside>
   )
 }
@@ -552,8 +623,9 @@ function useElementKeys(el: Element | undefined, onPatch: TemplateCanvasProps['o
 const NEW_FIELD = ' new'
 
 // `fields` are the columns the picker offers; `taken` is every name a new one would collide with,
-// which is those plus the card's own id (#32).
-function Properties({ el, fields, taken, fonts, onPatch, onAddField }: { el: Element; fields: string[]; taken: string[]; fonts: string[]; onPatch(patch: Partial<Element>): void; onAddField(field: string, bindTo: string): void }) {
+// which is those plus the card's own id (#32). `icons` is the game's own set (E4), which is what
+// an icon placed on the card is chosen from and changed to.
+function Properties({ el, fields, taken, fonts, icons, onPatch, onAddField }: { el: Element; fields: string[]; taken: string[]; fonts: string[]; icons: string[]; onPatch(patch: Partial<Element>): void; onAddField(field: string, bindTo: string): void }) {
   const t = useT()
   // Whether the picker's last entry has been chosen and the form is standing open under it.
   const [making, setMaking] = useState(false)
@@ -585,6 +657,24 @@ function Properties({ el, fields, taken, fonts, onPatch, onAddField }: { el: Ele
       {num('canvas.props.y', 'y')}
       {num('canvas.props.w', 'w')}
       {num('canvas.props.h', 'h')}
+      {/* Which icon a single one shows (#33). It is bound to a name rather than to a column
+          because this icon is the card's and not the row's — a suit mark is the same on every
+          card — so the set is what it is chosen from, and the field picker below is the way to
+          make it the row's after all. The name it already carries is offered whatever the set
+          holds, exactly as the family picker offers the one an element is already set in: an
+          element is never moved to another icon behind the designer's back. */}
+      {el.kind === 'icons' && 'literal' in el.bind && (
+        <label>
+          {t('canvas.props.icon')}
+          <select value={el.bind.literal} onChange={(e) => onPatch({ bind: { literal: e.target.value } })}>
+            {[...new Set([...icons, el.bind.literal])].map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       {'bind' in el && (
         // Every element that shows data says which column it shows — a picture and a row of
         // icons as much as a text box, or one added from the tool rail could never be bound.
@@ -593,8 +683,12 @@ function Properties({ el, fields, taken, fonts, onPatch, onAddField }: { el: Ele
           <select
             ref={fieldRef}
             value={'field' in el.bind ? el.bind.field : ''}
-            onChange={(e) => (e.target.value === NEW_FIELD ? setMaking(true) : onPatch({ bind: { field: e.target.value } }))}
+            onChange={(e) => (e.target.value === NEW_FIELD ? setMaking(true) : e.target.value !== '' && onPatch({ bind: { field: e.target.value } }))}
           >
+            {/* An element bound to a value shows no column, and the picker says so. Without this
+                the browser draws the first column as the chosen one and the panel states a
+                binding the element does not have. */}
+            {!('field' in el.bind) && <option value="">{t('canvas.props.field.none')}</option>}
             {fields.map((f) => (
               <option key={f} value={f}>
                 {f}

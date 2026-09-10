@@ -17,6 +17,18 @@ export function resolveAssetRow(row: Row, base: string): Row {
   return out
 }
 
+// The project's icon set as a preview can load it (E1). A symbol taken into a game becomes one of
+// the project's own assets, so the set holds `asset:<hash>` — which is a reference the store
+// understands and a browser does not. The renderer is handed resolved icons on the server side
+// too; this is the same resolution on the editor's side, so the card the designer looks at draws
+// the symbols rather than three broken images.
+export function previewIcons(doc: ProjectDoc, assetBase: string | undefined): Record<string, string> {
+  if (!assetBase) return doc.icons
+  const out: Record<string, string> = {}
+  for (const [name, url] of Object.entries(doc.icons)) out[name] = isAssetRef(url) ? assetUrl(assetBase, url.slice(ASSET_PREFIX.length)) : url
+  return out
+}
+
 // The fields the template draws as images, in template order.
 // The columns a row of icons reads (L1). Such a cell is a list of names split on spaces and
 // commas, not card text — so an icon written there wears no braces, and one written with them

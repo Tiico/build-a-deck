@@ -17,6 +17,7 @@ function canvas(over: Partial<React.ComponentProps<typeof TemplateCanvas>> = {})
     onPatch: vi.fn(),
     onRemove: vi.fn(),
     onAdd: vi.fn(),
+    onPlaceIcon: vi.fn(),
     onReorder: vi.fn(),
     onSelectFace: vi.fn(),
     group: null,

@@ -4,6 +4,9 @@ import type { Element } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
 import { applyEdit, recipeOf, type EditIntent, type Recipe, type RecipeWords, type ZonePatch } from '@byd/server/doc'
 import { ASSET_PREFIX } from './assets.js'
+import { iconElement } from './canvas.js'
+import { idsOnFace } from './groups.js'
+import { CARD_STANDARD_63x88 } from '@byd/engine'
 import { freeIconName, svgBytes, symbolName, type GameSymbol } from './symbols.js'
 import type { EditorMessage, Presence } from '@byd/server'
 import { canEdit, type Role } from '@byd/server/doc'
@@ -467,6 +470,32 @@ export class ProjectClient {
     const name = freeIconName(as ?? symbolName(symbol, t), this.doc.icons)
     this.edit({ v: 'setIcon', name, url: ref, credit: { licence: symbol.licence, by: symbol.by, source: symbol.id } })
     return name
+  }
+
+  // An icon placed on the card from the tool row (#33). Two things have to be true afterwards —
+  // the game has the symbol, and the template has an element showing it — and the designer did
+  // one thing to ask for both, so they leave as one edit and come back with one Ctrl+Z (B4).
+  //
+  // The element is the `icons` element the canvas already had, bound to the name rather than to a
+  // column, so the one renderer draws it and packages/template needed nothing (L1).
+  async placeIcon(symbol: GameSymbol, face: string, group: string | null, t: T = swedish): Promise<string> {
+    const faceTemplate = this.doc.template.faces[face]
+    if (!faceTemplate) throw new Error(`template has no face ${face}`)
+    const file = svgBytes(symbol)
+    const ref = `${ASSET_PREFIX}${await this.uploadAsset(new Blob([file.bytes], { type: file.type }), t)}`
+    // The same symbol twice is the same entry (E4), and then there is nothing to take in: the
+    // edit places the element alone and the icon set is left exactly as it was.
+    const already = Object.entries(this.doc.icons).find(([, url]) => url === ref)?.[0]
+    const name = already ?? freeIconName(symbolName(symbol, t), this.doc.icons)
+    const element = iconElement(name, { taken: idsOnFace(faceTemplate), card: CARD_STANDARD_63x88.physical })
+    this.edit({
+      v: 'addElement',
+      face,
+      element,
+      group,
+      ...(already ? {} : { icon: { name, url: ref, credit: { licence: symbol.licence, by: symbol.by, source: symbol.id } } }),
+    })
+    return element.id
   }
 
   // The name is what card text writes between braces, so renaming one moves its credit too.

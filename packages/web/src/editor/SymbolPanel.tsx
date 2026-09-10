@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { ProjectDoc } from './types.js'
 import { CardPreview } from './CardPreview.js'
+import { previewIcons } from './assets.js'
 import { previewFonts } from './fonts.js'
 import { CATEGORIES, LIBRARY, searchSymbols, symbolName, symbolPreview, type GameSymbol } from './symbols.js'
 import type { ProjectClient } from './ProjectClient.js'
@@ -59,7 +60,7 @@ export function SymbolPanel({ doc, client, assetBase }: SymbolPanelProps) {
           {front &&
             doc.rows.map((r) => (
               <div key={r.id} role="listitem" className="byd-wall-card" data-card-ref={r.id}>
-                <CardPreview id={`sym-${r.id}`} face={front} row={r.fields} icons={doc.icons} fonts={previewFonts(doc, assetBase)} assetBase={assetBase} scale={0.55} />
+                <CardPreview id={`sym-${r.id}`} face={front} row={r.fields} icons={previewIcons(doc, assetBase)} fonts={previewFonts(doc, assetBase)} assetBase={assetBase} scale={0.55} />
               </div>
             ))}
         </div>

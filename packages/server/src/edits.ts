@@ -31,7 +31,12 @@ export type EditIntent =
   | { v: 'removeField'; field: string }
   // The template (L1, #13, #18)
   | { v: 'patchElement'; face: string; id: string; patch: Partial<Element>; group?: string | null }
-  | { v: 'addElement'; face: string; element: Element; group?: string | null }
+  // `icon` is the canvas's other door (#33), and it is the field door's twin: the designer asked
+  // for an icon on the card, and an icon on the card is two things at once — a symbol the game did
+  // not have, and an element that shows it. She did one thing, so it is one edit. Sent separately
+  // they would be two versions and two steps back (B4), and between the two presses the card would
+  // carry an element pointing at a name the icon set does not answer to.
+  | { v: 'addElement'; face: string; element: Element; group?: string | null; icon?: { name: string; url: string; credit?: ProjectCredit } }
   | { v: 'removeElement'; face: string; id: string; group?: string | null }
   | { v: 'moveElement'; face: string; id: string; to: number }
   | { v: 'resetElement'; face: string; id: string; group: string }
@@ -139,6 +144,14 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
     // Adding an element from the canvas (#18): it goes last in the base list, which is the
     // drawing order, so a new element is on top of what is already there.
     case 'addElement': {
+      // The symbol comes into the icon set first, by the verb that already knows how to put one
+      // there, so an element that shows it never exists in a document that has not heard of it.
+      // A refusal below throws the whole of this away, symbol and all, exactly as the column door
+      // does (#32): half a composite edit is the same silence a whole one would be.
+      if (intent.icon) {
+        const { icon, ...rest } = intent
+        return applyEdit(applyEdit(doc, { v: 'setIcon', ...icon }), rest)
+      }
       const face = faceOf(doc, intent.face)
       if (face.base.some((e) => e.id === intent.element.id)) throw new Error(`face ${intent.face} already has an element ${intent.element.id}`)
       if (!intent.group) return writeFace(doc, intent.face, { ...face, base: [...face.base, intent.element] })

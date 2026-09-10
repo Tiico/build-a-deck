@@ -241,6 +241,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
         onSelectElement={setElement}
         onPatch={(id, patch) => client.patchElement(face, id, patch, group)}
         onAdd={(el) => client.addElement(face, el, group)}
+        // The symbol's bytes travel before anything is placed (E1), so this is the one tool in the
+        // rail that can fail on the way. It says so where the editor says everything else.
+        onPlaceIcon={(symbol) => void client.placeIcon(symbol, face, group, t).then(setElement, (err: unknown) => setNotice(err instanceof Error ? err.message : String(err)))}
         onReorder={(id, to) => client.moveElement(face, id, to)}
         onRemove={(id) => {
           client.removeElement(face, id, group)

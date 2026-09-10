@@ -23,6 +23,7 @@ function canvas(over: Partial<TemplateCanvasProps> = {}) {
     onPatch: vi.fn(),
     onRemove: vi.fn(),
     onAdd: vi.fn(),
+    onPlaceIcon: vi.fn(),
     onReorder: vi.fn(),
     onFontFile: async () => 'Typsnitt',
     onFontLicence: vi.fn(),
@@ -137,15 +138,15 @@ describe('the tool rail by keyboard (#18, UX-04)', () => {
     const user = userEvent.setup()
     canvas()
     const tools = within(screen.getByRole('toolbar', { name: /verktyg/i })).getAllByRole('button')
-    expect(tools.map((t) => t.textContent)).toEqual(['TText', '▣Bild', '●●Ikonrad', '◻Form'])
-    expect(tools.map((t) => t.getAttribute('tabindex'))).toEqual(['0', '-1', '-1', '-1'])
+    expect(tools.map((t) => t.textContent)).toEqual(['TText', '▣Bild', '●Ikon', '●●Ikonrad', '◻Form'])
+    expect(tools.map((t) => t.getAttribute('tabindex'))).toEqual(['0', '-1', '-1', '-1', '-1'])
 
     await user.tab()
     expect(document.activeElement).toBe(tools[0])
     await user.keyboard('{ArrowDown}')
     expect(document.activeElement).toBe(tools[1])
     await user.keyboard('{End}')
-    expect(document.activeElement).toBe(tools[3])
+    expect(document.activeElement).toBe(tools[4])
 
     // Out of the rail in one Tab, and the layer list is where the next stop is.
     await user.tab()

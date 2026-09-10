@@ -528,6 +528,18 @@
 }
 .byd-canvas-tools button span { font-size: 15px; line-height: 1; }
 .byd-canvas-tools button:hover { border-color: var(--byd-editor-primary-mark); }
+/* The library where the icon will stand (#33, E4). It is the cell picker's list in the cell
+   picker's clothes — one library, seen the same way wherever it is opened — hung off the rail it
+   was opened from. When the rail lies down as a stage strip it hangs under itself instead, since
+   there is no room beside it there. */
+.byd-canvas-tool-icon { position: relative; display: grid; }
+.byd-canvas-symbols { position: absolute; left: calc(100% + 6px); top: -6px; z-index: 5; width: 230px; max-height: 260px; overflow: auto; display: grid; gap: 2px; padding: 6px; border-radius: 10px; background: #171a23; border: 1px solid #3b4358; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5); }
+.byd-canvas-tools .byd-canvas-symbols button { display: flex; align-items: center; gap: 8px; border: 0; border-radius: 7px; padding: 5px 7px; background: transparent; color: #e6ecfa; font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
+.byd-canvas-tools .byd-canvas-symbols button:hover { background: var(--byd-editor-primary-bg); }
+.byd-canvas-tools .byd-canvas-symbols button span { font-size: 12px; line-height: 1.3; }
+.byd-canvas-symbols img { width: 20px; height: 20px; padding: 2px; border-radius: 5px; background: #e8e2d4; }
+.byd-canvas-symbols small { margin-left: auto; color: #9aa3b8; font-size: 11px; }
+.byd-canvas[data-stage] .byd-canvas-symbols { left: 8px; top: calc(100% + 4px); }
 .byd-canvas-grid-toggle { display: flex; align-items: center; gap: 7px; color: var(--byd-editor-hint-ink); font-size: 12px; margin-top: 12px; cursor: pointer; }
 .byd-canvas-hint { color: var(--byd-editor-hint-ink); font-size: 11px; line-height: 1.4; margin: 10px 0 0; }
 .byd-canvas h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--byd-editor-hint-ink); margin: 0 0 8px; }

@@ -207,8 +207,12 @@ export const svEditor = {
   'canvas.reset': 'Återgå till basen',
   'canvas.faceSwitch': 'Kortsida',
   'canvas.tools': 'Verktyg',
+  'canvas.symbols': 'Symboler',
   'canvas.tool.text': 'Text',
   'canvas.tool.image': 'Bild',
+  // Ikonen som verktyg på duken (#33). `ikon` är den enskilda bilden och `ikonrad` raden som
+  // läser en kolumn; ordlistan säger att `ikon` står där en sätts — i tabellcellen och på duken (A4).
+  'canvas.tool.icon': 'Ikon',
   'canvas.tool.icons': 'Ikonrad',
   'canvas.tool.shape': 'Form',
   'canvas.props': 'Egenskaper',
@@ -219,6 +223,10 @@ export const svEditor = {
   'canvas.props.h': 'Höjd (mm)',
   'canvas.props.field': 'Fält',
   'canvas.props.field.new': 'nytt fält…',
+  // Ett element bundet till ett värde i stället för en kolumn visar inget fält, och väljaren
+  // säger det i stället för att peka på lekens första kolumn som om den vore vald (#33).
+  'canvas.props.field.none': 'inget fält',
+  'canvas.props.icon': 'Ikon',
   'canvas.props.font': 'Typsnitt',
   'canvas.props.size': 'Storlek (pt)',
   'canvas.props.weight': 'Vikt',

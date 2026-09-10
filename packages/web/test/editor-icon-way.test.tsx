@@ -79,3 +79,120 @@ describe('the way to an icon (#33)', () => {
     expect(cellFor('marks').value.trim()).not.toBe('')
   })
 })
+
+async function openTemplate(doc = projectDoc()) {
+  await run.projects.create('p1', doc)
+  history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+  render(<EditorPage />)
+  await screen.findByText('Skogens herrar')
+  fireEvent.click(screen.getByRole('tab', { name: 'Mall' }))
+  return await screen.findByRole('toolbar', { name: 'Verktyg' })
+}
+
+// The other half of #33, and a different question from the cell's: this one is about the card
+// rather than about a sentence. The glossary settled the word and where it stands — `ikon` is the
+// single image, and it belongs "där en sätts: i tabellcellen och på duken" (A4).
+describe('the icon as a tool on the canvas (#33)', () => {
+  it('opens the library from the tool row, so an icon is chosen rather than remembered', async () => {
+    const tools = await openTemplate()
+
+    // The control case: a row of icons is a tool of its own, and it is not this one.
+    expect(within(tools).getByRole('button', { name: 'Ikonrad' })).toBeTruthy()
+
+    fireEvent.click(within(tools).getByRole('button', { name: 'Ikon' }))
+    const list = await screen.findByRole('listbox', { name: 'Symboler' })
+    expect(within(list).getAllByRole('option').length).toBeGreaterThan(0)
+  })
+
+  it('puts the chosen icon on the card, drawn by the one renderer', async () => {
+    const tools = await openTemplate()
+    // The control case: nothing draws an icon on this card until one is placed, so the assertion
+    // below is about what the tool did and not about what the fixture already held.
+    expect(document.querySelectorAll('#canvas img.byd-icon')).toHaveLength(0)
+
+    fireEvent.click(within(tools).getByRole('button', { name: 'Ikon' }))
+    fireEvent.click(within(await screen.findByRole('listbox', { name: 'Symboler' })).getByRole('option', { name: /svärd/ }))
+
+    // `byd-icon` is a class only the compiler in packages/template writes, so an image wearing it
+    // inside the preview is the card having gone through the one renderer (E2) and nothing else.
+    const icon = await waitFor(() => {
+      const found = document.querySelector('#canvas img.byd-icon') as HTMLImageElement | null
+      if (!found) throw new Error('no icon on the card yet')
+      return found
+    })
+    // And it is an icon that can actually be fetched: a symbol lives in the project's own assets
+    // (E1), so a preview handed the raw `asset:` reference draws a broken image and calls it done.
+    const src = icon.getAttribute('src') ?? ''
+    expect(src.startsWith(`${run.http}/assets/`)).toBe(true)
+    expect(src).toMatch(/\/assets\/[0-9a-f]{64}$/)
+    expect((await fetch(src)).headers.get('content-type')).toBe('image/svg+xml')
+  })
+
+  // Placing an icon is two things at once — a symbol the game did not have and an element that
+  // shows it — and the designer did one thing to ask for both. So it is one edit, one version and
+  // one step back (B4, #32). Two would leave a state nobody asked for between the presses: a card
+  // carrying an element that points at a name the icon set no longer answers to.
+  it('is one edit: the symbol and the element that shows it come and go together', async () => {
+    const tools = await openTemplate()
+    fireEvent.click(within(tools).getByRole('button', { name: 'Ikon' }))
+    fireEvent.click(within(await screen.findByRole('listbox', { name: 'Symboler' })).getByRole('option', { name: /svärd/ }))
+    await waitFor(() => expect(document.querySelector('#canvas img.byd-icon')).toBeTruthy())
+
+    // Both halves happened: the element is on the card, and the game's set has the symbol.
+    fireEvent.click(screen.getByRole('tab', { name: 'Symboler' }))
+    expect(await screen.findByText('{svärd}')).toBeTruthy()
+
+    // And one press takes both back. Not the element first and the symbol on the next press.
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
+    await waitFor(() => expect(screen.queryByText('{svärd}')).toBeNull())
+    fireEvent.click(screen.getByRole('tab', { name: 'Mall' }))
+    await waitFor(() => expect(document.querySelector('#canvas img.byd-icon')).toBeNull())
+
+    // The same fact from the other side: one step forward brings both halves back together.
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true, shiftKey: true })
+    await waitFor(() => expect(document.querySelector('#canvas img.byd-icon')).toBeTruthy())
+    fireEvent.click(screen.getByRole('tab', { name: 'Symboler' }))
+    expect(await screen.findByText('{svärd}')).toBeTruthy()
+  })
+
+  it('lands selected and behaves like every other element, and says which icon it shows', async () => {
+    const tools = await openTemplate()
+    fireEvent.click(within(tools).getByRole('button', { name: 'Ikon' }))
+    fireEvent.click(within(await screen.findByRole('listbox', { name: 'Symboler' })).getByRole('option', { name: /svärd/ }))
+
+    // Selected the moment it lands, so the next thing the designer does is about it (#18).
+    await screen.findByRole('heading', { name: /icon-1/ })
+    // The card is 63 × 88 mm, so a centred 8 mm square starts at 27,5.
+    const x = screen.getByLabelText(/^x/i) as HTMLInputElement
+    expect(x.value).toBe('27.5')
+
+    // The panel says which icon this is, and it does not claim a column it does not show: the
+    // picker names the first field for anything bound to a literal, and that would be a lie.
+    expect((screen.getByLabelText('Ikon') as HTMLSelectElement).value).toBe('svärd')
+    const field = screen.getByLabelText('Fält') as HTMLSelectElement
+    expect(field.value).toBe('')
+    expect(within(field).getByRole('option', { name: 'inget fält' }).getAttribute('value')).toBe('')
+
+    // Nudged and taken away by the same keys as everything else on the canvas.
+    fireEvent.keyDown(document, { key: 'ArrowRight' })
+    await waitFor(() => expect((screen.getByLabelText(/^x/i) as HTMLInputElement).value).toBe('28'))
+    fireEvent.keyDown(document, { key: 'Delete' })
+    await waitFor(() => expect(document.querySelector('#canvas img.byd-icon')).toBeNull())
+  })
+
+  it('closes the library with Escape, placing nothing and leaving the focus where it was', async () => {
+    const tools = await openTemplate()
+    const tool = within(tools).getByRole('button', { name: 'Ikon' })
+    fireEvent.click(tool)
+    await screen.findByRole('listbox', { name: 'Symboler' })
+    expect(tool.getAttribute('aria-expanded')).toBe('true')
+
+    fireEvent.keyDown(tools, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('listbox', { name: 'Symboler' })).toBeNull())
+    expect(tool.getAttribute('aria-expanded')).toBe('false')
+    // The way out gives the focus back to what opened it (#8): a rail reached with the keyboard
+    // must not have to be reached again from the top.
+    expect(document.activeElement).toBe(tool)
+    expect(document.querySelector('#canvas img.byd-icon')).toBeNull()
+  })
+})
