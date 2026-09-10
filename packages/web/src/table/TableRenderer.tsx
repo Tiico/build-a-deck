@@ -76,6 +76,8 @@ const TABLE_GREY = '#8a93a8'
 // A counter token (C4) is drawn as a chip, not a card.
 const COUNTER_TYPE = 'token.counter'
 const TOKEN_MM = 24
+// The narrowest chip that still has room for the name under the number, in screen pixels.
+const TOKEN_NAME_PX = 34
 // The camera: room around what is in play, how close it may come, and how long a zoom holds.
 const CAMERA_PAD_MM = 60
 const CAMERA_MIN_MM = 520
@@ -465,10 +467,19 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
             const a = absoluteOf(view, c)
             const m = shifted.has(c.id)
             if (c.type.id === COUNTER_TYPE) {
+              // A token is a thing on the felt like any other, so it carries the keyboard's node
+              // too. `thingsOn` has always counted it, and the single tab stop can land on it;
+              // a token that drew no node took that stop with it and left the felt unreachable.
+              //
+              // The chip is 24 mm and the word in it is not: on a felt scaled down to a screen the
+              // name grows wider than the disc it stands in and smears over the table. Below the
+              // width the word needs, the number stands alone — which is what a counter is for.
+              // The name is still on the table's own screen, in the panel and in the zone's label.
+              const wide = px(TOKEN_MM) >= TOKEN_NAME_PX
               return (
-                <div key={c.id} className="byd-token" data-counter-token={c.id} style={{ position: 'absolute', left: left(a.x), top: top(a.y), width: px(TOKEN_MM), height: px(TOKEN_MM) }}>
+                <div key={c.id} className="byd-token" data-counter-token={c.id} {...keys(`card:${c.id}`)} style={{ position: 'absolute', left: left(a.x), top: top(a.y), width: px(TOKEN_MM), height: px(TOKEN_MM) }}>
                   <b>{c.counter ?? 0}</b>
-                  <span>{c.cardRef ?? ''}</span>
+                  {wide && <span>{c.cardRef ?? ''}</span>}
                 </div>
               )
             }

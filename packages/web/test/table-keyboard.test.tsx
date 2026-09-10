@@ -5,7 +5,7 @@ import { userEvent } from '@testing-library/user-event'
 import { TableClient } from '../src/client.js'
 import { TablePage } from '../src/table/TablePage.js'
 import { StatusLive } from '../src/status/StatusLive.js'
-import { asSeat, asTable, createSession, roomOf, startServer, twoSeatSetup, type Running } from './fixture.js'
+import { asSeat, asTable, createSession, roomOf, seatSetup, startServer, twoSeatSetup, type Running } from './fixture.js'
 
 // The same table with one more public area to play into, so the landing rule has somewhere to
 // land: `twoSeatSetup` has only the floor.
@@ -250,5 +250,23 @@ describe('the places are the ones a card can actually go to', () => {
     const panel = within(await screen.findByRole('dialog'))
     expect(panel.getAllByRole('button', { name: /hand/ }).map((b) => b.textContent)).toEqual([expect.stringContaining('Adas hand')])
     other.close()
+  })
+})
+
+describe('the felt a table opens on (#2)', () => {
+  // Laid out the way the wizard lays one out: an area in front of each seat with a counter token
+  // standing in it, and every card still in the draw pile. Nothing has been played yet, which is
+  // the state every session starts in — and the one a keyboard has to be able to reach.
+  it('holds one tab stop before a single card has been played onto it', async () => {
+    const id = await createSession(run, 's1', undefined, seatSetup())
+    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    render(
+      <StatusLive>
+        <TablePage />
+      </StatusLive>,
+    )
+    await screen.findAllByRole('button', { name: /Draghög/ })
+
+    expect(stops().filter((s) => s.endsWith(':0'))).toHaveLength(1)
   })
 })
