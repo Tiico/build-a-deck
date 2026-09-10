@@ -203,7 +203,7 @@ describe('DataTable filtering as a view only (#16)', () => {
     expect(shownIds()).toHaveLength(4)
 
     expect(doc.rows.map((row) => row.id)).toHaveLength(8)
-    const csv = decodeURIComponent((screen.getByRole('link', { name: 'Exportera CSV' }) as HTMLAnchorElement).href)
+    const csv = decodeURIComponent((screen.getByRole('link', { name: 'Ladda ner CSV' }) as HTMLAnchorElement).href)
     for (const id of ['drake', 'grop', 'alv', 'nat', 'troll', 'stock', 'orm', 'grav']) expect(csv).toContain(id)
 
     await user.click(screen.getByRole('button', { name: 'varelse' }))
@@ -238,9 +238,9 @@ describe('DataTable filtering from the keyboard (#16)', () => {
     renderTable(bigDoc())
 
     await user.tab()
-    expect(document.activeElement).toBe(screen.getByLabelText('Importera CSV'))
+    expect(document.activeElement).toBe(screen.getByLabelText('Importera CSV…'))
     await user.tab()
-    expect(document.activeElement).toBe(screen.getByRole('link', { name: 'Exportera CSV' }))
+    expect(document.activeElement).toBe(screen.getByRole('link', { name: 'Ladda ner CSV' }))
     await user.tab()
     expect(document.activeElement).toBe(screen.getByLabelText('Sök i alla fält'))
     for (const name of ['fälla', 'plats', 'varelse']) {

@@ -63,7 +63,7 @@ describe('EditorPage', () => {
     fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
 
     const file = new File(['id,title,body,antal\nphoenix,Fenix,Återföds,3'], 'kort.csv', { type: 'text/csv' })
-    fireEvent.change(screen.getByLabelText('Importera CSV'), { target: { files: [file] } })
+    fireEvent.change(screen.getByLabelText('Importera CSV…'), { target: { files: [file] } })
     expect(await screen.findByLabelText('phoenix title')).toBeTruthy()
     expect(document.querySelectorAll('[data-card-ref]')).toHaveLength(1)
     const save = screen.getByRole('button', { name: /spara/i }) as HTMLButtonElement

@@ -63,7 +63,7 @@ const SHELL = `
     </div>
     <div role="tabpanel" tabindex="0" data-stop="the table panel">
       <div class="byd-table-wrap">
-        <div class="byd-data-tools"><label>Importera CSV<input type="file" data-stop="the CSV import" /></label><a href="#" data-stop="the CSV export">Exportera CSV</a></div>
+        <div class="byd-data-tools"><label>Importera CSV…<input type="file" data-stop="the CSV import" aria-describedby="import-note" /></label><span id="import-note">Import ersätter korten i tabellen. Spara när resultatet ser rätt ut.</span><a href="#" data-stop="the CSV export">Ladda ner CSV</a></div>
         <div class="byd-data-filter">
           <input type="search" class="byd-data-search" data-stop="the search field" />
           <div class="byd-data-chips" role="group"><button class="byd-data-chip" aria-pressed="false" data-stop="a type chip">fälla</button></div>

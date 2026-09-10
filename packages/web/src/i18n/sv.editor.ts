@@ -103,9 +103,16 @@ export const svEditor = {
   // Genvägen som var en hemlighet (#33): { i en cell öppnar ikonväljaren, och nu syns det.
   'table.icon.insert': 'Sätt in en ikon',
   'table.icon.hint': 'Sätt in en ikon — eller skriv {',
-  'table.import': 'Importera CSV',
-  'table.export': 'Exportera CSV',
+  // De två står bredvid varandra i samma ram, men den ena stannar och frågar efter en fil medan
+  // den andra lämnar ifrån sig en direkt. Orden säger vilken som är vilken: tre punkter är den
+  // väljare som öppnas, och "ladda ner" är filen som landar.
+  'table.import': 'Importera CSV…',
+  'table.export': 'Ladda ner CSV',
   'table.import.note': 'Import ersätter korten i tabellen. Spara när resultatet ser rätt ut.',
+  // Vad filen heter är verktygets ord om filen, inte spelets, så det följer läsaren (A4).
+  // `{name}` är spelets eget namn och rörs aldrig — det står där formgivaren skrev det.
+  'table.export.filename': '{name}-kort.csv',
+  'table.export.unnamed': 'spel',
   'table.import.needsId': 'CSV-filen behöver en id-kolumn',
   'table.import.noId': 'Alla kort behöver ett id',
   'table.import.duplicateId': 'Kort-id {id} förekommer flera gånger',

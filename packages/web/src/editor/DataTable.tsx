@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { ProjectDoc, ProjectRow } from './types.js'
 import { deckKeepsFields, fieldsOf, fieldLabel, takenNames } from './fields.js'
 import { ANTAL, drawnBy } from '@byd/server/doc'
@@ -47,6 +47,9 @@ export type DataTableProps = {
 // This is where the designer already lives; a change here reaches every copy of the card.
 export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, onAddField, onRemoveField, assetBase, onUpload, onSymbol, compareWith, onStopCompare }: DataTableProps) {
   const t = useT()
+  // What the import warns about is bound to the import control by this, so the warning is read
+  // with it and not merely next to it (#36).
+  const noteId = useId()
   const [importError, setImportError] = useState<string | null>(null)
   const [uploadError, setUploadError] = useState<string | null>(null)
   // Which image cell a drag is over.
@@ -210,15 +213,25 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
     }
     reader.readAsText(file)
   }
-  const filename = `${doc.name.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'spel'}-kort.csv`
+  // What the file is called is the tool's word about the file, not the game's, so it follows the
+  // reader (A4). The game's own name inside it is the game's: it is only folded into something a
+  // file system will carry, never translated, and a name that leaves nothing behind falls back to
+  // the tool's own stand-in — which is the tool's word too, and follows the reader with the rest.
+  const named = doc.name.toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+  const filename = t('table.export.filename', { name: named || t('table.export.unnamed') })
   const csvHref = `data:text/csv;charset=utf-8,${encodeURIComponent('\uFEFF' + exportCardsCsv(doc))}`
   return (
     <div className="byd-table-wrap">
       <div className="byd-data-tools">
-        <label>{t('table.import')}<input type="file" accept=".csv,text/csv,text/tab-separated-values" aria-label={t('table.import')} onChange={(event) => importFile(event.target.files?.[0])} /></label>
-        <a href={csvHref} download={filename}>{t('table.export')}</a>
-        <span>{t('table.import.note')}</span>
+        <label>{t('table.import')}<input type="file" accept=".csv,text/csv,text/tab-separated-values" aria-label={t('table.import')} aria-describedby={noteId} onChange={(event) => importFile(event.target.files?.[0])} /></label>
+        {/* What an import costs is import's own warning (#36). It stands where it is read — after
+            the control it warns about, before the one it says nothing about — and it is bound to
+            that control besides, so a reader who never sees the two standing next to each other
+            hears the warning as part of the thing that carries it. What the import refused is
+            import's word too and keeps its own live region. */}
+        <span id={noteId}>{t('table.import.note')}</span>
         {importError && <span role="alert">{importError}</span>}
+        <a href={csvHref} download={filename}>{t('table.export')}</a>
       </div>
       {imageFields.length > 0 && assetBase && (
         // The deck's images (E1), once each: drag one onto a card's cell to use it again.

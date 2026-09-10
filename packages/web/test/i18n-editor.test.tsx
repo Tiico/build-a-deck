@@ -61,8 +61,8 @@ describe('the editor in the reader\'s own language (A4)', () => {
   it('says the data table in English and keeps the designer\'s own column names', async () => {
     await openEditor()
     openTab('Data')
-    expect(screen.getByLabelText('Import CSV')).toBeTruthy()
-    expect(screen.getByRole('link', { name: 'Export CSV' })).toBeTruthy()
+    expect(screen.getByLabelText('Import CSV…')).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Download CSV' })).toBeTruthy()
     expect(screen.getByPlaceholderText('Search every field…')).toBeTruthy()
     expect(screen.getByText('3 of 3 cards')).toBeTruthy()
     expect(screen.getByText('Unsorted: the cards’ order in the game.')).toBeTruthy()

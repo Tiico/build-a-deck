@@ -91,9 +91,11 @@ export const enEditor = {
   // The shortcut that was a secret (#33): { in a cell opens the icon picker, and now it shows.
   'table.icon.insert': 'Insert an icon',
   'table.icon.hint': 'Insert an icon — or type {',
-  'table.import': 'Import CSV',
-  'table.export': 'Export CSV',
+  'table.import': 'Import CSV…',
+  'table.export': 'Download CSV',
   'table.import.note': 'An import replaces the cards in the table. Save once the result looks right.',
+  'table.export.filename': '{name}-cards.csv',
+  'table.export.unnamed': 'game',
   'table.import.needsId': 'The CSV file needs an id column',
   'table.import.noId': 'Every card needs an id',
   'table.import.duplicateId': 'Card id {id} appears more than once',

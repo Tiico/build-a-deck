@@ -149,7 +149,7 @@ describe('DataTable sorting (a view, #15)', () => {
     expect(onRemoveRow).toHaveBeenCalledWith('knight')
 
     expect(doc.rows.map((row) => row.id)).toEqual(['dragon', 'knight', 'wizard'])
-    const csv = screen.getByRole('link', { name: 'Exportera CSV' }) as HTMLAnchorElement
+    const csv = screen.getByRole('link', { name: 'Ladda ner CSV' }) as HTMLAnchorElement
     expect(decodeURIComponent(csv.href).indexOf('dragon')).toBeLessThan(decodeURIComponent(csv.href).indexOf('knight'))
   })
 })
@@ -175,9 +175,9 @@ describe('DataTable sorting from the keyboard (#15)', () => {
     renderTable(costedDoc())
 
     await user.tab()
-    expect(document.activeElement).toBe(screen.getByLabelText('Importera CSV'))
+    expect(document.activeElement).toBe(screen.getByLabelText('Importera CSV…'))
     await user.tab()
-    expect(document.activeElement).toBe(screen.getByRole('link', { name: 'Exportera CSV' }))
+    expect(document.activeElement).toBe(screen.getByRole('link', { name: 'Ladda ner CSV' }))
     await user.tab()
     expect(document.activeElement).toBe(screen.getByLabelText('Sök i alla fält'))
     // The header's own checkbox (#17) sits in the first column, before the columns that sort.

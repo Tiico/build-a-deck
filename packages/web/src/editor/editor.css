@@ -571,7 +571,11 @@
 .byd-data-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
 .byd-data-tools { margin-bottom: 12px; display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
 .byd-data-tools label, .byd-data-tools a { border: 1px solid #3b414e; border-radius: 8px; padding: 7px 11px; background: #1b1d23; color: #dce3f2; font-weight: 700; text-decoration: none; cursor: pointer; }
-.byd-data-tools label { position: relative; overflow: hidden; }
+/* The import is a label with an invisible file input lying across it, and the tap rule stretches
+   that label to a thumb's height — which left its word at the top while the export link, an
+   inline flex box already, kept its own in the middle. Two frames that are meant to read as a
+   pair have to set their words on the same line, so the label centres its own too. */
+.byd-data-tools label { position: relative; overflow: hidden; display: inline-flex; align-items: center; }
 .byd-data-tools label input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .byd-data-tools > span { color: #7d8597; }
 .byd-data-tools > [role='alert'] { color: #f0b64a; }

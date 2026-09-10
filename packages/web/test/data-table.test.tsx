@@ -46,12 +46,12 @@ describe('DataTable (B as a tab)', () => {
     const onReplaceRows = vi.fn()
     render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} />)
 
-    const download = screen.getByRole('link', { name: 'Exportera CSV' }) as HTMLAnchorElement
+    const download = screen.getByRole('link', { name: 'Ladda ner CSV' }) as HTMLAnchorElement
     expect(download.download).toBe('skogens-herrar-kort.csv')
     expect(decodeURIComponent(download.href.split(',')[1] ?? '')).toContain('id,title,body,antal')
 
     const file = new File(['id,title,body,antal\ndrake,Drake,Flygande,2'], 'kort.csv', { type: 'text/csv' })
-    fireEvent.change(screen.getByLabelText('Importera CSV'), { target: { files: [file] } })
+    fireEvent.change(screen.getByLabelText('Importera CSV…'), { target: { files: [file] } })
     await waitFor(() => expect(onReplaceRows).toHaveBeenCalledWith([
       { id: 'drake', fields: { title: 'Drake', body: 'Flygande', antal: 2 } },
     ]))

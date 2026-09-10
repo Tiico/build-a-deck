@@ -130,6 +130,14 @@ Det kan inte följa varje läsare: namnet går över tråden en gång, vid uppko
 Ett namn tillhör den det namnger — samma gräns som gör att den som skriver in sitt namn vid ett bord får stå som hon skrev det.
 Att byta språk mitt i döper därför inte om någon som redan är inne.
 
+Filnamnet, 2026-09-10:
+
+Namnet på filen tabellen exporterar (`skogens-herrar-kort.csv`) är två ord i ett, och gränsen går rakt igenom det.
+Spelets eget namn är spelets: det viks bara ihop till något ett filsystem bär och översätts aldrig.
+Ordet verktyget lägger till om filen — `kort`, och `spel` när spelets namn inte lämnar något kvar att bygga ett filnamn av — är verktygets, och följer läsaren som allt annat verktyget säger.
+En engelsk läsare får alltså `skogens-herrar-cards.csv`, och ett namnlöst spel `game-cards.csv`.
+Det är samma gräns som i de två fallen ovan, sedd från andra hållet: där var det verktyget lämnar ifrån sig formgivarens, här är det verktyget behåller sitt eget.
+
 ---
 
 ## B. Domänmodellen
