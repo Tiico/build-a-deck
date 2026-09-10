@@ -63,7 +63,12 @@ describe('closing the tab with unsaved work (#8)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /spara/i }))
     await screen.findByText('rev 2')
-    expect(closingTheTab()).toBe(false)
+    // The listener is taken off in an effect, and an effect runs after the commit that the new
+    // version number is painted in — so the tab lets go a beat after the number appears rather
+    // than with it. Waiting for the number and then asking the question in the same breath is
+    // asking it one tick early, which is a test that passes on a quiet machine and fails in a
+    // full suite. The question is asked until it is answered.
+    await waitFor(() => expect(closingTheTab()).toBe(false))
   })
 
   it('lets go of the tab when the edit is taken back by hand, without anything being saved', async () => {
