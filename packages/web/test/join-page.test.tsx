@@ -106,6 +106,27 @@ describe('playing from this screen (C2)', () => {
   })
 })
 
+// Where the way out lands (#31). Whoever left is back where she chose her seat, and the picker is
+// what tells her the leaving actually happened — the seat she gave up is drawn free like any
+// other, so without a word she would be looking at a picker she cannot tell from the one she came
+// in through.
+describe('coming back to the picker after leaving (#31)', () => {
+  it('says the seat is free and the hand is back in the pile, and offers the seat again at once', async () => {
+    const id = await createSession(run)
+    history.replaceState(null, '', `/join?code=${roomOf(id).code}&left=1&server=${encodeURIComponent(run.url)}`)
+    render(<JoinPage />)
+    await screen.findByRole('button', { name: /Sätt dig/ })
+    expect(screen.getByText(/Din plats är ledig och handen ligger tillbaka i draghögen/)).toBeTruthy()
+    expect(document.querySelector('[data-seat="A"]')!.getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('says nothing of the sort to somebody who simply scanned the code', async () => {
+    const id = await createSession(run)
+    await open(id)
+    expect(screen.queryByText(/Din plats är ledig/)).toBeNull()
+  })
+})
+
 describe('a code that does not resolve (DRIFT §9)', () => {
   it('says the code no longer applies instead of connecting', async () => {
     history.replaceState(null, '', `/join?code=ZZZZZZ&server=${encodeURIComponent(run.url)}`)

@@ -11,7 +11,7 @@ import { seatColor } from '../table/seatColor.js'
 import { zoneAt } from '../zones.js'
 import { CARD_MM } from '../table/drop.js'
 import { playIntents } from '../player/play.js'
-import { SessionButtons, SessionOverlays, useSessionVersion, useToast, refusedText } from '../player/SessionOverlays.js'
+import { SessionButtons, SessionOverlays, useSessionVersion, useToast, refusedText, type Sheet } from '../player/SessionOverlays.js'
 import { claimUrl } from '../account/api.js'
 import { SeatLine } from './SeatLine.js'
 import { HandFan } from './HandFan.js'
@@ -23,7 +23,7 @@ import { DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
 import { useLiveStatus } from '../status/useLiveStatus.js'
 import { RouteStatus } from '../status/RouteStatus.js'
 import { StatusNotice } from '../status/StatusNotice.js'
-import { statusLinks } from '../status/links.js'
+import { statusLinks, wayBack } from '../status/links.js'
 import { noticeFor } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useT } from '../i18n/index.js'
@@ -32,9 +32,10 @@ import { useT } from '../i18n/index.js'
 // Fully online (C2): both roles in one window. The table, turned so this seat's edge is at the
 // bottom, playable as the table screen is; the seat's hand as a fan on the felt (prototype B);
 // the phone's controls in the corner.
-export type OnlinePageProps = { timing?: StatusTiming }
+// `onLeave` is where the way out (#31) sends the browser; a test hands it somewhere it can read.
+export type OnlinePageProps = { timing?: StatusTiming; onLeave?(url: string): void }
 
-export function OnlinePage({ timing = DEFAULT_TIMING }: OnlinePageProps = {}) {
+export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => location.assign(url) }: OnlinePageProps = {}) {
   const t = useT()
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const sessionId = params.get('session')
@@ -53,7 +54,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING }: OnlinePageProps = {}) {
   const presence = usePresence(client, view)
   const recent = useRecent(activity)
   const table = useRef<TableHandle>(null)
-  const [sheet, setSheet] = useState<'flag' | 'end' | null>(null)
+  const [sheet, setSheet] = useState<Sheet>(null)
   // The hand's second mode (#24): the fan at rest, the whole hand as a grid when it is asked for.
   const [spread, setSpread] = useState(false)
   const showAll = useRef<HTMLButtonElement>(null)
@@ -66,9 +67,14 @@ export function OnlinePage({ timing = DEFAULT_TIMING }: OnlinePageProps = {}) {
   })
   useActivityLive(activity, view, seat)
 
+  // Once, and only once: a seat that falls empty later was emptied on purpose, and sitting
+  // straight back down would undo the way out (#31).
   const seatFree = view?.seats.find((s) => s.id === seat)?.name === null
+  const sat = useRef(false)
   useEffect(() => {
-    if (client && view && seat && name && seatFree) void client.send({ v: 'seat.claim', seat, name })
+    if (!client || !view || !seat || !name || !seatFree || sat.current) return
+    sat.current = true
+    void client.send({ v: 'seat.claim', seat, name })
   }, [client, view === null, seat, name, seatFree])
 
   if (!sessionId || !seat) return <StatusNotice notice={noticeFor('missing', 'table', t)} surface="page" links={links} />
@@ -106,7 +112,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING }: OnlinePageProps = {}) {
           </button>
         )}
         <div className="byd-online-tools">
-          <SessionButtons client={client} view={view} onSheet={setSheet} />
+          <SessionButtons client={client} view={view} sheet={sheet} onSheet={setSheet} />
         </div>
       </div>
       <div className="byd-online-play">
@@ -145,7 +151,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING }: OnlinePageProps = {}) {
         )}
       </div>
       {kbd.panel}
-      <SessionOverlays client={client} view={view} seat={seat} name={me?.name ?? seat} http={http} sessionId={sessionId} sheet={sheet} onSheet={setSheet} toast={toast} onToast={setToast} version={version} saveUrl={token ? claimUrl(token, params.get('server')) : null} />
+      <SessionOverlays client={client} view={view} seat={seat} name={me?.name ?? seat} http={http} sessionId={sessionId} sheet={sheet} onSheet={setSheet} onLeft={() => onLeave(wayBack(links))} toast={toast} onToast={setToast} version={version} saveUrl={token ? claimUrl(token, params.get('server')) : null} />
       </div>
       <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
     </>

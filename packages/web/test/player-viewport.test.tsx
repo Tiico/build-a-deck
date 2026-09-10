@@ -14,7 +14,8 @@ import { HandStrip } from '../src/player/HandStrip.js'
 import { PlaySheet } from '../src/player/PlaySheet.js'
 import { TableSummary } from '../src/player/TableSummary.js'
 import { SessionButtons, SessionOverlays } from '../src/player/SessionOverlays.js'
-import { EndSheet, FlagSheet } from '../src/player/SessionSheets.js'
+import { EndSheet, ExitSheet, FlagSheet } from '../src/player/SessionSheets.js'
+import { RuleDrawer } from '../src/rules/RuleDrawer.js'
 import { Survey } from '../src/player/Survey.js'
 import { ActionPanel } from '../src/table/ActionPanel.js'
 import { CardLook } from '../src/table/CardLook.js'
@@ -27,7 +28,9 @@ const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel),
 const shell = read('index.html')
 // The address panel (#1) is drawn on all three routes and brings its own stylesheet, so the
 // phone is measured with both of the sheets it actually ships with.
-const css = `${read('src/player/player.css')}\n${read('src/table/keyboard.css')}`
+// The rulebook's own button rides in the same row on the phone (B7), so the row is measured with
+// the sheet that shapes it too (#31).
+const css = `${read('src/player/player.css')}\n${read('src/table/keyboard.css')}\n${read('src/rules/rules.css')}`
 
 const document_ = (body: ReactNode) =>
   shell
@@ -45,7 +48,7 @@ const idle = { send: async () => undefined } as unknown as Parameters<typeof Ses
 function surfaces(view: Snapshot) {
   const overlays = (v: Snapshot) => (
     <div className="byd-player">
-      <SessionOverlays client={idle} view={v} seat="A" name="Ada" http="" sessionId="s1" sheet={null} onSheet={noop} toast="Ögonblicket är flaggat" onToast={noop} version="v1" />
+      <SessionOverlays client={idle} view={v} seat="A" name="Ada" http="" sessionId="s1" sheet={null} onSheet={noop} onLeft={noop} toast="Ögonblicket är flaggat" onToast={noop} version="v1" />
     </div>
   )
   const proposal = { id: 'p1', toSeq: 1, by: 'B', confirmed: [] as string[], waiting: ['A'] }
@@ -55,7 +58,7 @@ function surfaces(view: Snapshot) {
         <header>
           <strong>Ada</strong>
           <span>{view.components.length} kort</span>
-          <SessionButtons client={idle} view={view} onSheet={noop} />
+          <SessionButtons client={idle} view={view} sheet={null} onSheet={noop} />
         </header>
         <TableSummary view={view} activity={[]} />
         <HandStrip view={view} selected={new Set()} onTap={noop} onHold={noop} onLift={noop} onOpen={noop} />
@@ -75,6 +78,11 @@ function surfaces(view: Snapshot) {
     end: (
       <div className="byd-player">
         <EndSheet version="v1" onEnd={noop} onClose={noop} />
+      </div>
+    ),
+    exit: (
+      <div className="byd-player">
+        <ExitSheet onLeave={noop} onEnd={noop} onClose={noop} />
       </div>
     ),
     survey: (
@@ -207,5 +215,54 @@ describe.each(WIDTHS)('the player view at %ipx', (width) => {
       page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth),
     )
     expect(measured).toEqual(Object.fromEntries(Object.keys(measured).map((name) => [name, 0])))
+  }, 60_000)
+})
+
+// The phone's control row (#31). The prototype measured this row at 375 px and its finding is what
+// chose the variant: the row is already full. A fourth control does not squeeze in, it falls to a
+// second line — and in the variant that put `Lämna` beside the red `Avsluta`, it fell directly
+// underneath it, which is two exits stacked on one another. C keeps the row to three by replacing
+// a control rather than adding one, and this is the measurement that keeps it three.
+describe("the seat's control row at 375px (#31)", () => {
+  it('holds its three controls on one line, and shows what a fourth would do to them', async () => {
+    const page = await browser.newPage({ viewport: { width: 375, height: 812 } })
+    const row = async (extra: ReactNode = null) => {
+      await page.setContent(
+        document_(
+          <div className="byd-player">
+            <header>
+              <strong>Ada</strong>
+              <span>{view.components.length} kort</span>
+              <SessionButtons client={idle} view={view} sheet={null} onSheet={noop} />
+              {extra}
+            </header>
+          </div>,
+        ),
+        { waitUntil: 'load' },
+      )
+      return await page.$$eval('.byd-player > header button', (els) =>
+        els.map((el) => {
+          const box = el.getBoundingClientRect()
+          return { label: (el.textContent ?? '').trim(), top: Math.round(box.top), right: Math.round(box.right) }
+        }),
+      )
+    }
+    try {
+      const three = await row()
+      expect(three.map((c) => c.label)).toEqual(['↶ Ångra', '⚑ Flagga', 'Ut…'])
+      // One line: every control shares a top edge, and none is pushed off the screen.
+      expect(new Set(three.map((c) => c.top)).size).toBe(1)
+      expect(Math.max(...three.map((c) => c.right))).toBeLessThanOrEqual(375)
+
+      // The control, and the reason the variant was chosen: a fourth control in the same row —
+      // here the rulebook's own button, which every game with rules brings (B7) — lands on a
+      // second line. The single line above is therefore a row that fits, not a measurement that
+      // cannot tell the difference.
+      const four = await row(<RuleDrawer http="http://rules.invalid" sessionId="s1" placement="phone" />)
+      expect(four).toHaveLength(4)
+      expect(new Set(four.map((c) => c.top)).size).toBe(2)
+    } finally {
+      await page.close()
+    }
   }, 60_000)
 })

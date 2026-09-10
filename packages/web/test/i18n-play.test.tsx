@@ -5,7 +5,7 @@ import { projectActivity } from '@byd/engine'
 import { Language } from '../src/i18n/index.js'
 import { TvChrome } from '../src/table/TvChrome.js'
 import { PlaySheet } from '../src/player/PlaySheet.js'
-import { EndSheet, FlagSheet } from '../src/player/SessionSheets.js'
+import { EndSheet, ExitSheet, FlagSheet } from '../src/player/SessionSheets.js'
 import { Survey } from '../src/player/Survey.js'
 import { TableSummary } from '../src/player/TableSummary.js'
 import { buildScene } from './scene.js'
@@ -65,9 +65,18 @@ describe('the play surfaces in the reader\'s own language (A4)', () => {
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeTruthy()
     flag.unmount()
 
-    english(<EndSheet version="v1" onEnd={() => undefined} onClose={() => undefined} />)
+    const end = english(<EndSheet version="v1" onEnd={() => undefined} onClose={() => undefined} />)
     expect(screen.getByRole('dialog', { name: 'End the table?' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Not yet' })).toBeTruthy()
+    end.unmount()
+
+    // The way out (#31), in English: both exits named, and both consequences said — including the
+    // one the whole wording exists for, that losing the connection is not this.
+    english(<ExitSheet onLeave={() => undefined} onEnd={() => undefined} onClose={() => undefined} />)
+    const exit = screen.getByRole('dialog', { name: 'On your way out?' })
+    expect(within(exit).getAllByRole('button').map((b) => b.textContent)).toEqual(['Leave the table', 'End the table for everyone', 'Stay'])
+    expect(exit.textContent).toMatch(/Lose the connection instead and your seat stands/)
+    expect(exit.textContent).toMatch(/We ask once more before that happens/)
   })
 
   it('asks the survey in English', () => {

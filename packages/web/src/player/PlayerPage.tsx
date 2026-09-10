@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { VisibleComponentState } from '@byd/protocol'
 import { useTableClient } from '../table/useTableClient.js'
 import { hue } from '../table/hue.js'
@@ -7,7 +7,7 @@ import { HandStrip } from './HandStrip.js'
 import { CountersRow, MineStrip } from './SeatExtras.js'
 import { PlaySheet } from './PlaySheet.js'
 import { TableSummary } from './TableSummary.js'
-import { SessionButtons, SessionOverlays, refusedText, useSessionVersion, useToast } from './SessionOverlays.js'
+import { SessionButtons, SessionOverlays, refusedText, useSessionVersion, useToast, type Sheet } from './SessionOverlays.js'
 import { RuleDrawer } from '../rules/RuleDrawer.js'
 import { claimUrl } from '../account/api.js'
 import { playIntents } from './play.js'
@@ -17,7 +17,7 @@ import { DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
 import { useLiveStatus } from '../status/useLiveStatus.js'
 import { RouteStatus } from '../status/RouteStatus.js'
 import { StatusNotice } from '../status/StatusNotice.js'
-import { statusLinks } from '../status/links.js'
+import { statusLinks, wayBack } from '../status/links.js'
 import { noticeFor } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useRefusal } from '../status/Refusal.js'
@@ -27,9 +27,10 @@ import { useActivityLive } from '../table/useActivityLive.js'
 // /play?session=…&seat=A&name=Ada&token=…&server=ws://…
 // The `player` role: one seat, its hand and private zones, and the zone shortcuts to play to.
 // The token was bought with the room code on the join page (DRIFT §9).
-export type PlayerPageProps = { timing?: StatusTiming }
+// `onLeave` is where the way out (#31) sends the browser; a test hands it somewhere it can read.
+export type PlayerPageProps = { timing?: StatusTiming; onLeave?(url: string): void }
 
-export function PlayerPage({ timing = DEFAULT_TIMING }: PlayerPageProps = {}) {
+export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => location.assign(url) }: PlayerPageProps = {}) {
   const t = useT()
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const sessionId = params.get('session')
@@ -47,7 +48,7 @@ export function PlayerPage({ timing = DEFAULT_TIMING }: PlayerPageProps = {}) {
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set())
   const [inspect, setInspect] = useState<VisibleComponentState | null>(null)
   const [lifted, setLifted] = useState<VisibleComponentState | null>(null)
-  const [sheet, setSheet] = useState<'flag' | 'end' | null>(null)
+  const [sheet, setSheet] = useState<Sheet>(null)
   // Which target the table said no to, and why.
   const refusal = useRefusal('phone')
   const [refusedZone, setRefusedZone] = useState<string | null>(null)
@@ -61,10 +62,15 @@ export function PlayerPage({ timing = DEFAULT_TIMING }: PlayerPageProps = {}) {
   })
   useActivityLive(activity, view, seat)
 
-  // Sit down on first contact: claim the seat with the name from the link, if it is still free.
+  // Sit down on first contact, and only on first contact: claim the seat with the name from the
+  // link, if it is still free. Once is the whole of it — a seat that falls empty later fell empty
+  // because somebody emptied it, and sitting straight back down would undo the way out (#31).
   const seatFree = view?.seats.find((s) => s.id === seat)?.name === null
+  const sat = useRef(false)
   useEffect(() => {
-    if (client && view && seat && name && seatFree) void client.send({ v: 'seat.claim', seat, name })
+    if (!client || !view || !seat || !name || !seatFree || sat.current) return
+    sat.current = true
+    void client.send({ v: 'seat.claim', seat, name })
   }, [client, view === null, seat, name, seatFree])
 
   if (!sessionId || !seat) return <StatusNotice notice={noticeFor('missing', 'phone', t)} surface="page" links={links} />
@@ -103,7 +109,7 @@ export function PlayerPage({ timing = DEFAULT_TIMING }: PlayerPageProps = {}) {
       <header>
         <strong>{me?.name ?? seat}</strong>
         <span>{t(hand.length === 1 ? 'play.cards.one' : 'play.cards.other', { n: hand.length })}</span>
-        <SessionButtons client={client} view={view} onSheet={setSheet} />
+        <SessionButtons client={client} view={view} sheet={sheet} onSheet={setSheet} />
         {/* The rules this table plays by (B7), one press away beside the session's own buttons. */}
         {sessionId && <RuleDrawer http={faces} sessionId={sessionId} placement="phone" />}
       </header>
@@ -146,7 +152,7 @@ export function PlayerPage({ timing = DEFAULT_TIMING }: PlayerPageProps = {}) {
         />
       )}
       {kbd.panel}
-      <SessionOverlays client={client} view={view} seat={seat} name={me?.name ?? seat} http={faces} sessionId={sessionId} sheet={sheet} onSheet={setSheet} toast={toast} onToast={setToast} version={version} saveUrl={token ? claimUrl(token, params.get('server')) : null} />
+      <SessionOverlays client={client} view={view} seat={seat} name={me?.name ?? seat} http={faces} sessionId={sessionId} sheet={sheet} onSheet={setSheet} onLeft={() => onLeave(wayBack(links))} toast={toast} onToast={setToast} version={version} saveUrl={token ? claimUrl(token, params.get('server')) : null} />
       </div>
       <RouteStatus status={live} over="sheet" links={links} onRetry={conn.retry} />
     </>

@@ -17,3 +17,11 @@ export function statusLinks(opts: { server?: string | null; code?: string | null
   }
   return links
 }
+
+// Where a seat's own way out leads once the seat has been given up (#31): the picker it was
+// chosen in, told that the person arriving there has just left one. Without a room code there is
+// no picker to come back to — the code is what buys a token — so it is the way home instead, and
+// the picker's acknowledgement goes unsaid rather than said in the wrong place.
+export function wayBack(links: StatusLinks): string {
+  return links.rescan === undefined ? (links.home ?? '/') : `${links.rescan}&left=1`
+}

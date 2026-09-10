@@ -18,7 +18,6 @@
 /* 44 px in both directions, which these three have never been: 76×32, 77×32 and 70×32 at every
    width, under the gate since before either issue was written (#6, L10). */
 .byd-online-tools button { min-height: 44px; min-width: 44px; padding: 0 12px; border: 0; border-radius: 10px; background: rgba(36, 41, 56, 0.92); color: #fff; font-size: 13px; font-weight: 700; }
-.byd-online-tools .byd-end { background: rgba(58, 42, 45, 0.92); color: #ff9a9a; }
 .byd-online-tools button:disabled { opacity: 0.35; }
 
 /* The fan's shape — how wide a card is, how far the row steps, and how far below its own box the

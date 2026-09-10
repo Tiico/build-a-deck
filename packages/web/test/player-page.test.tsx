@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { TableClient } from '../src/client.js'
-import { PlayerPage } from '../src/player/PlayerPage.js'
+import { PlayerPage, type PlayerPageProps } from '../src/player/PlayerPage.js'
 import { admit, asSeat, asTable, createSession, roomOf, seatSetup, startServer, type Running } from './fixture.js'
 
 let run: Running
@@ -16,10 +16,12 @@ afterEach(async () => {
 
 // Opens the phone for a seat with a token bought for it, and returns that token: the same
 // guest on another connection (a test helper) is the same token, not a second admission.
-async function open(sessionId: string, seat: string, name: string): Promise<string> {
+async function open(sessionId: string, seat: string, name: string, props: PlayerPageProps = {}): Promise<string> {
   const token = await admit(run, sessionId, seat, name)
-  history.replaceState(null, '', `/play?session=${sessionId}&seat=${seat}&name=${name}&token=${token}&server=${encodeURIComponent(run.url)}`)
-  render(<PlayerPage />)
+  // The room code travels with the phone the way the picker sends it (#12, DRIFT §9); it is the
+  // only address the way out has to go back to.
+  history.replaceState(null, '', `/play?session=${sessionId}&seat=${seat}&name=${name}&token=${token}&code=${roomOf(sessionId).code}&server=${encodeURIComponent(run.url)}`)
+  render(<PlayerPage {...props} />)
   await screen.findByText(name)
   return token
 }
@@ -209,10 +211,14 @@ describe('flagging a moment (G3)', () => {
 })
 
 describe('ending the session and the survey after it (C9, G3)', () => {
-  it('Avsluta asks first, then locks the log; the survey takes one question at a time and lands on the server, tied to the version', async () => {
+  // The way out (#31) put a question in front of the question: `Ut…` asks which exit is meant
+  // before `Avsluta bordet?` asks whether. Ending is a press further away than it was, and every
+  // step after it is exactly what it was.
+  it('asks first, then locks the log; the survey takes one question at a time and lands on the server, tied to the version', async () => {
     const id = await createSession(run)
     await open(id, 'A', 'Ada')
-    fireEvent.click(screen.getByRole('button', { name: /Avsluta/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ut…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Avsluta bordet för alla' }))
     expect(screen.getByText(/Avsluta bordet\?/)).toBeTruthy()
     expect((await run.store.read(id)).some((l) => l.intent.v === 'session.end')).toBe(false)
     fireEvent.click(screen.getByRole('button', { name: /Avsluta för alla/ }))
@@ -232,6 +238,84 @@ describe('ending the session and the survey after it (C9, G3)', () => {
     expect(await screen.findByText(/Tack, Ada/)).toBeTruthy()
     const listed = (await (await fetch(`${run.http}/sessions/${id}/surveys`)).json()) as unknown[]
     expect(listed).toEqual([expect.objectContaining({ who: 'Ada', seat: 'A', version: 'v1', answers: { fun: 4, clarity: 3, balance: 2, change: 'Draken är för stark' } })])
+  })
+})
+
+// The way out (#31, prototype variant C). The row is already full at 375 px, so the exit is not a
+// fourth control beside the red one: `Avsluta` becomes `Ut…`, and the sheet behind it asks which
+// way out is meant with both consequences written out.
+describe('leaving the table (#31)', () => {
+  it('Ut… asks which way out, and leaving sends seat.release and lands back in the seat picker', async () => {
+    const id = await createSession(run)
+    const table = TableClient.connect(await asTable(run, id))
+    await table.ready()
+    await open(id, 'A', 'Ada', { onLeave: () => undefined })
+    await table.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 3 })
+    await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(3))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ut…' }))
+    const sheet = screen.getByRole('dialog', { name: 'På väg ut?' })
+    // Both exits stand in it, each under what it costs; asking is not yet answering.
+    expect(sheet.textContent).toMatch(/Din plats blir ledig och korten i din hand går tillbaka i draghögen/)
+    expect(sheet.textContent).toMatch(/Tappar du nätet i stället står platsen kvar/)
+    expect((await run.store.read(id)).some((l) => ['seat.release', 'session.end'].includes(l.intent.v))).toBe(false)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Lämna bordet' }))
+    await waitFor(async () => expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'seat.release', seat: 'A' } }))
+    // The seat is free again for everyone else, and the hand is back in the pile it came from.
+    await table.synced(3)
+    expect(table.view?.seats.find((s) => s.id === 'A')).toEqual({ id: 'A', name: null })
+    expect(table.view?.zones.find((z) => z.id === 'draw')).toMatchObject({ count: 10 })
+    table.close()
+  })
+
+  it('lands her in the seat picker for the same room, told what happened to the seat she gave up', async () => {
+    const id = await createSession(run)
+    const went: string[] = []
+    await open(id, 'A', 'Ada', { onLeave: (url) => went.push(url) })
+    fireEvent.click(screen.getByRole('button', { name: 'Ut…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Lämna bordet' }))
+    await waitFor(() => expect(went).toHaveLength(1))
+    const back = new URL(went[0] ?? '', 'http://x')
+    expect(back.pathname).toBe('/join')
+    // The code, not the session: the code is what buys a token, and a picker that cannot admit
+    // anyone is not a way out (DRIFT §9).
+    expect(back.searchParams.get('code')).toBe(roomOf(id).code)
+    expect(back.searchParams.get('server')).toBe(run.url)
+    expect(back.searchParams.get('left')).toBe('1')
+  })
+
+  it('does not sit straight back down on the seat it just gave up', async () => {
+    const id = await createSession(run)
+    await open(id, 'A', 'Ada', { onLeave: () => undefined })
+    fireEvent.click(screen.getByRole('button', { name: 'Ut…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Lämna bordet' }))
+    await waitFor(async () => expect((await run.store.read(id)).at(-1)?.intent.v).toBe('seat.release'))
+    // The page is still standing where the browser has not navigated away from it yet, and the
+    // seat it is looking at is free. Sitting down is what the way in does, once.
+    await new Promise((r) => setTimeout(r, 120))
+    expect((await run.store.read(id)).map((l) => l.intent.v)).toEqual(['seat.claim', 'seat.release'])
+  })
+
+  it('asks its own question before ending the table, so ending is one press further away than it was', async () => {
+    const id = await createSession(run)
+    await open(id, 'A', 'Ada')
+    fireEvent.click(screen.getByRole('button', { name: 'Ut…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Avsluta bordet för alla' }))
+    expect(screen.getByRole('dialog', { name: 'Avsluta bordet?' })).toBeTruthy()
+    expect((await run.store.read(id)).some((l) => l.intent.v === 'session.end')).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: 'Avsluta för alla' }))
+    expect(await screen.findByText(/Bordet är avslutat/)).toBeTruthy()
+  })
+
+  it('hands the focus back to the control that opened it, whichever way the question was answered', async () => {
+    const id = await createSession(run)
+    await open(id, 'A', 'Ada')
+    const out = screen.getByRole('button', { name: 'Ut…' })
+    fireEvent.click(out)
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Stanna kvar' }))
+    fireEvent.keyDown(screen.getByRole('dialog', { name: 'På väg ut?' }), { key: 'Escape' })
+    await waitFor(() => expect(document.activeElement).toBe(out))
   })
 })
 

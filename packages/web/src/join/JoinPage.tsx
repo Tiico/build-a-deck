@@ -121,6 +121,14 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
         <span>{t('join.into')}</span>
         <strong>{t('join.room', { code: code.toUpperCase() })}</strong>
         <span>{chosen ? t('join.seat.chosen', { seat: chosen }) : t(free.length === 0 ? 'join.seats.full' : 'join.seat.pick')}</span>
+        {/* Whoever just left a seat comes back here (#31). The picker looks exactly as it did on
+            the way in, so the acknowledgement is the only thing saying the leaving happened —
+            and what became of the seat and of the hand that was on it. */}
+        {params.get('left') === '1' && (
+          <p className="byd-join-left" role="status">
+            {t('join.left')}
+          </p>
+        )}
       </header>
       <div className="byd-join-table">
         {view.seats.map((s, i) => {

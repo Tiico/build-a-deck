@@ -103,3 +103,17 @@ describe('the observer summons what is not the table (#6)', () => {
     expect(document.querySelector('[data-page="observe"]')!.getAttribute('data-drawer')).toBe('shut')
   })
 })
+
+// The way out is a seat's (#31), and an observer has no seat. Her screen keeps exactly the two
+// controls it had — the drawer and the flag — and is offered nothing to leave.
+describe('the observer has no seat to leave (#31)', () => {
+  it('is offered no way out, and keeps the controls she had', async () => {
+    const id = await createSession(run)
+    history.replaceState(null, '', `/observe?session=${id}&name=Eva&token=${await admit(run, id, null, 'Eva')}&server=${encodeURIComponent(run.url)}`)
+    render(<ObserverPage />)
+    expect(await screen.findByText(/Du är observatör/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Ut…' })).toBeNull()
+    expect(screen.queryByText(/Lämna bordet/)).toBeNull()
+    expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual([expect.stringMatching(/Senast och platser/), expect.stringMatching(/Flagga/)])
+  })
+})

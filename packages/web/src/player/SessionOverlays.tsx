@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Snapshot } from '@byd/protocol'
 import type { TableClient } from '../client.js'
 import { whoDecides } from '../table/rewind.js'
-import { FlagSheet, EndSheet } from './SessionSheets.js'
+import { FlagSheet, EndSheet, ExitSheet } from './SessionSheets.js'
 import { Survey } from './Survey.js'
 import { submitSurvey } from './surveyApi.js'
 import { useRefusal } from '../status/Refusal.js'
@@ -14,7 +14,11 @@ export function refusedText(reason: string, t: T): string {
 }
 
 // What a seat's screen carries beside the hand, on the phone and online alike (C2): the toast,
-// the flag and end sheets, the rewind proposal, and the survey once the log is locked.
+// the flag, exit and end sheets, the rewind proposal, and the survey once the log is locked.
+
+// Which sheet the seat's screen has raised. `exit` is the way out asking which way out (#31); it
+// is the only one that opens another, and the one it opens is `end`, unchanged.
+export type Sheet = 'flag' | 'exit' | 'end' | null
 
 // The version the session runs on, from the session record; the survey and the end sheet say it.
 export function useSessionVersion(http: string, sessionId: string | null, when: boolean): string | null {
@@ -46,8 +50,11 @@ export type SessionOverlaysProps = {
   name: string
   http: string
   sessionId: string
-  sheet: 'flag' | 'end' | null
-  onSheet(sheet: 'flag' | 'end' | null): void
+  sheet: Sheet
+  onSheet(sheet: Sheet): void
+  // Where the way out leads once the seat has been given up (#31): the seat picker, with the
+  // acknowledgement of what happened to the seat and the hand.
+  onLeft(): void
   toast: string | null
   onToast(msg: string): void
   version: string | null
@@ -55,13 +62,14 @@ export type SessionOverlaysProps = {
   saveUrl?: string | null | undefined
 }
 
-export function SessionOverlays({ client, view, seat, name, http, sessionId, sheet, onSheet, toast, onToast, version, saveUrl }: SessionOverlaysProps) {
+export function SessionOverlays({ client, view, seat, name, http, sessionId, sheet, onSheet, onLeft, toast, onToast, version, saveUrl }: SessionOverlaysProps) {
   const t = useT()
   const proposal = view.rewind
   // A sheet that sends something can be answered no, and the answer stands beside the button
   // that was pressed rather than in a toast that says the opposite of what happened (#7).
   const flagged = useRefusal('phone')
   const ended = useRefusal('phone')
+  const gone = useRefusal('phone')
   const settle = (v: 'rewind.confirm' | 'rewind.reject') => {
     if (proposal) void client.send({ v, proposal: proposal.id })
   }
@@ -80,6 +88,26 @@ export function SessionOverlays({ client, view, seat, name, http, sessionId, she
           }}
           onClose={() => {
             flagged.clear()
+            onSheet(null)
+          }}
+        />
+      )}
+      {sheet === 'exit' && (
+        <ExitSheet
+          refusal={gone}
+          onLeave={() => {
+            void gone.watch(client.send({ v: 'seat.release', seat })).then((result) => {
+              if (!result.ok) return
+              onSheet(null)
+              onLeft()
+            })
+          }}
+          onEnd={() => {
+            gone.clear()
+            onSheet('end')
+          }}
+          onClose={() => {
+            gone.clear()
             onSheet(null)
           }}
         />
@@ -120,9 +148,27 @@ export function SessionOverlays({ client, view, seat, name, http, sessionId, she
   )
 }
 
-// The three buttons every seat has: undo (B, C), flag (G3), end (C9).
-export function SessionButtons({ client, view, onSheet }: { client: TableClient; view: Snapshot; onSheet(sheet: 'flag' | 'end'): void }) {
+// The three buttons every seat has, and three is the number (#31): the row is full at 375 px,
+// and a game with a rulebook puts a fourth control of its own beside them. Undo (B, C), flag
+// (G3), and the way out (C9, #31) — which is one control for both exits rather than two exits
+// standing next to each other.
+//
+// Whichever of them opened a sheet takes the focus back when the last sheet closes, wherever the
+// chain went — `Question.tsx`'s manners, which say a question hands the focus back to what opened
+// it. The row is what opened it, so the row is where it is handed back.
+export function SessionButtons({ client, view, sheet, onSheet }: { client: TableClient; view: Snapshot; sheet: Sheet; onSheet(sheet: Sheet): void }) {
   const t = useT()
+  const opener = useRef<HTMLButtonElement | null>(null)
+  useEffect(() => {
+    if (sheet !== null) return
+    const from = opener.current
+    opener.current = null
+    if (from?.isConnected && !from.disabled) from.focus()
+  }, [sheet])
+  const raise = (which: Sheet) => (event: { currentTarget: HTMLButtonElement }) => {
+    opener.current = event.currentTarget
+    onSheet(which)
+  }
   const tapUndo = () => {
     if (!view.undo) return
     void client.send(view.undo.contested ? { v: 'rewind.propose', toSeq: view.undo.toSeq } : { v: 'undo.self' })
@@ -132,11 +178,11 @@ export function SessionButtons({ client, view, onSheet }: { client: TableClient;
       <button className="byd-undo" disabled={!view.undo || !!view.rewind || view.ended} onClick={tapUndo}>
         {t('session.undo')}
       </button>
-      <button className="byd-flag" disabled={view.ended} onClick={() => onSheet('flag')}>
+      <button className="byd-flag" disabled={view.ended} onClick={raise('flag')}>
         {t('session.flag')}
       </button>
-      <button className="byd-end" disabled={view.ended} onClick={() => onSheet('end')}>
-        {t('session.end')}
+      <button className="byd-exit" disabled={view.ended} onClick={raise('exit')}>
+        {t('session.exit')}
       </button>
     </>
   )

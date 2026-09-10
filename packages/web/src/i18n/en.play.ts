@@ -146,7 +146,7 @@ export const enPlay = {
 
   'session.undo': '↶ Undo',
   'session.flag': '⚑ Flag',
-  'session.end': 'End',
+  'session.exit': 'Exit…',
   'session.flagged': 'The moment is flagged',
   'session.version.this': 'this version',
   'session.refused.kicked': 'The host has removed you from the table.',
@@ -162,6 +162,14 @@ export const enPlay = {
     'The log is locked to {version}, the table cannot be played on, and everyone gets the survey on their phone. Just putting the phone down ends nothing: the table waits.',
   'end.sheet.end': 'End it for everyone',
   'end.sheet.not': 'Not yet',
+
+  'exit.sheet.title': 'On your way out?',
+  'exit.sheet.leave': 'Leave the table',
+  'exit.sheet.leave.body':
+    'Your seat opens up and the cards in your hand go back into the draw pile. The others play on. Lose the connection instead and your seat stands: you come back to your hand.',
+  'exit.sheet.end': 'End the table for everyone',
+  'exit.sheet.end.body': 'Nobody can play on, and everyone gets the survey on their phone. We ask once more before that happens.',
+  'exit.sheet.stay': 'Stay',
 
   'survey.title': 'This table has ended',
   'survey.sub': 'Four questions, one minute. The answers are tied to version {version}.',
@@ -192,6 +200,7 @@ export const enPlay = {
   'join.code.gone': 'The room code {code} is no longer valid. Ask the host for a new one.',
   'join.code.expired': 'The room code is no longer valid. Ask the host for a new one.',
   'join.seat.taken': 'That seat was just taken by someone else. Choose another.',
+  'join.left': 'Your seat is open and your hand is back in the draw pile. The others play on.',
   'join.into': 'You are on your way into',
   'join.room': 'Room {code}',
   'join.seat.chosen': 'Seat {seat} chosen',

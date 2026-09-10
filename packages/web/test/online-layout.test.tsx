@@ -44,7 +44,7 @@ describe('the felt view on a phone (C5)', () => {
       <div className="byd-online-top">
         <SeatLine name="The designer" hand={0} observers={[]} t={t} />
         <div className="byd-online-tools">
-          <SessionButtons client={idle} view={view} onSheet={noop} />
+          <SessionButtons client={idle} view={view} sheet={null} onSheet={noop} />
         </div>
       </div>,
     )
@@ -70,7 +70,7 @@ describe('the felt view on a phone (C5)', () => {
         <div className="byd-online-top">
           <SeatLine name="Ada Augusta Byron King, Countess of Lovelace" hand={12} observers={['Bo', 'Cilla']} t={t} />
           <div className="byd-online-tools">
-            <SessionButtons client={idle} view={view} onSheet={noop} />
+            <SessionButtons client={idle} view={view} sheet={null} onSheet={noop} />
           </div>
         </div>,
       )

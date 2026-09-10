@@ -173,7 +173,7 @@ export const svPlay = {
   // Sessionens egna knappar och det den vägrar med.
   'session.undo': '↶ Ångra',
   'session.flag': '⚑ Flagga',
-  'session.end': 'Avsluta',
+  'session.exit': 'Ut…',
   'session.flagged': 'Ögonblicket är flaggat',
   'session.version.this': 'den här versionen',
   'session.refused.kicked': 'Värden har tagit bort dig från bordet.',
@@ -190,6 +190,17 @@ export const svPlay = {
     'Loggen låses på {version}, bordet kan inte spelas vidare, och alla får enkäten på sin telefon. Att bara lägga ifrån sig telefonen avslutar inget: bordet väntar.',
   'end.sheet.end': 'Avsluta för alla',
   'end.sheet.not': 'Inte än',
+
+  // Vägen ut (#31, prototypens variant C). Telefonens rad är redan full vid 375 px, så utgången
+  // är ingen fjärde kontroll bredvid den röda: den byter ut den. Arket ställer valet, och de två
+  // utgångarna hålls isär av vad de kostar, skrivet under var sin knapp.
+  'exit.sheet.title': 'På väg ut?',
+  'exit.sheet.leave': 'Lämna bordet',
+  'exit.sheet.leave.body':
+    'Din plats blir ledig och korten i din hand går tillbaka i draghögen. De andra spelar vidare. Tappar du nätet i stället står platsen kvar och du kommer tillbaka till din hand.',
+  'exit.sheet.end': 'Avsluta bordet för alla',
+  'exit.sheet.end.body': 'Ingen kan spela vidare, och alla får enkäten på sin telefon. Vi frågar en gång till innan det sker.',
+  'exit.sheet.stay': 'Stanna kvar',
 
   // Enkäten efter sessionen (G3).
   'survey.title': 'Bordet är avslutat',
@@ -223,6 +234,9 @@ export const svPlay = {
   'join.code.gone': 'Rumskoden {code} gäller inte längre. Be värden om en ny.',
   'join.code.expired': 'Rumskoden gäller inte längre. Be värden om en ny.',
   'join.seat.taken': 'Platsen togs precis av någon annan. Välj en annan.',
+  // Kvitteringen för den som just lämnat: hon kommer tillbaka hit, och får veta vad som hände
+  // med platsen och handen hon lämnade (#31).
+  'join.left': 'Din plats är ledig och handen ligger tillbaka i draghögen. De andra spelar vidare.',
   'join.into': 'Du är på väg in i',
   'join.room': 'Rum {code}',
   'join.seat.chosen': 'Plats {seat} vald',

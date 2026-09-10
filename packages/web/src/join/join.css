@@ -10,6 +10,9 @@
 }
 .byd-join > header { display: grid; gap: 4px; font-size: 13px; color: #9aa3b8; }
 .byd-join > header strong { font-size: 22px; color: #fff; }
+/* The acknowledgement the way out leaves behind it (#31): a line in the head, in the ink the head
+   already reads in, rather than a banner the eye has to get past on every other visit. */
+.byd-join-left { margin: 6px 0 0; color: #cdd4e4; font-size: 14px; }
 .byd-join-table {
   position: relative; place-self: center; width: 220px; height: 150px; border-radius: 16px;
   background: radial-gradient(ellipse at 50% 40%, #2e6b46, #1f4a30 70%, #173a26);

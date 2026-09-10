@@ -125,8 +125,9 @@
 .byd-strip-card img ~ strong, .byd-player .byd-inspect img ~ span:not([data-texture]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 .byd-player .byd-inspect > div { position: relative; overflow: hidden; }
 
-/* Flagging, ending, the survey (G3, C9, prototype A). */
-.byd-player > header .byd-end { background: var(--byd-danger-bg); color: var(--byd-danger); }
+/* Flagging, the way out, ending, the survey (G3, C9, #31, prototype A). The way out is a plain
+   control like the other two: the row holds no red one any more, because the difference between
+   leaving your seat and ending everyone's table is a decision and not a colour (#31, variant C). */
 .byd-toast { position: fixed; left: 50%; top: 64px; transform: translateX(-50%); z-index: 40; background: var(--byd-warn); color: var(--byd-warn-bg); padding: 8px 14px; border-radius: 999px; font-size: 13px; font-weight: 700; }
 .byd-sheet-title { font-size: 16px; color: var(--byd-ink-strong); margin: 0 0 10px; }
 .byd-session-sheet textarea { width: 100%; box-sizing: border-box; min-height: 70px; border-radius: 12px; border: 1px solid var(--byd-line); background: var(--byd-bg); color: var(--byd-ink-strong); padding: 10px; font: 14px system-ui; }
@@ -136,6 +137,16 @@
 .byd-sheet-actions button[data-kind='flag'] { background: var(--byd-warn); color: var(--byd-warn-bg); }
 .byd-sheet-actions button[data-kind='no'] { background: var(--byd-danger-bg); color: var(--byd-danger); }
 .byd-sheet-actions button[data-kind='quiet'] { background: var(--byd-control); color: var(--byd-ink-strong); }
+/* The way out (#31): one exit per block, with what it costs written underneath it, so the two
+   are read apart rather than told apart by where the thumb happens to land. */
+.byd-exit-choice { margin-top: 18px; }
+.byd-exit-choice button { width: 100%; padding: 14px; border: 0; border-radius: 12px; font-size: 15px; font-weight: 700; }
+.byd-exit-choice button[data-kind='leave'] { background: var(--byd-control); color: var(--byd-ink-strong); }
+.byd-exit-choice button[data-kind='no'] { background: var(--byd-danger-bg); color: var(--byd-danger); }
+/* Closer to the exit it belongs to than to the next one, so which consequence is whose is read
+   off the spacing and not worked out from the order. */
+.byd-exit-choice p { margin: 6px 2px 0; font-size: 13px; color: var(--byd-ink-muted); }
+.byd-exit-sheet .byd-sheet-actions { margin-top: 20px; }
 .byd-survey { position: fixed; inset: 0; z-index: 35; background: var(--byd-bg); color: var(--byd-ink); display: grid; grid-template-rows: auto 1fr auto; padding: 22px 20px; box-sizing: border-box; }
 .byd-survey h1 { margin: 0; font-size: 22px; }
 .byd-survey-sub { color: var(--byd-ink-muted); font-size: 13px; margin-top: 4px; }
