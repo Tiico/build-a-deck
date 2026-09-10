@@ -130,6 +130,26 @@ describe('editing the template on the canvas (#18)', () => {
     expect(() => client.addElement('sida', added)).toThrow(/sida/)
     expect(client.dirty).toBe(false)
   })
+
+  // An edit that was refused never happened, so it costs neither a version nor a Ctrl+Z (#41,
+  // B4). A patch to an id the face does not have used to hand back the same document without
+  // saying anything: the designer saw nothing move and had spent a step back on it anyway.
+  it('refuses a patch to an element the face does not have, and charges no step back for it', async () => {
+    const created = await run.projects.create('p1', projectDoc())
+    const client = await ProjectClient.open({ http: run.http, id: created.id })
+
+    expect(() => client.patchElement('front', 'ingen', { x: 9 })).toThrow(/ingen/)
+    expect(client.dirty).toBe(false)
+    expect(client.canUndo).toBe(false)
+
+    // And the patch the designer actually meant still goes through, and is a step back.
+    client.patchElement('front', 'title', { x: 9 })
+    expect(client.doc.template.faces['front']?.base.find((e) => e.id === 'title')).toMatchObject({ x: 9 })
+    expect(client.canUndo).toBe(true)
+    expect(client.undo()).toBe('undo.what.template')
+    expect(client.doc.template.faces['front']?.base.find((e) => e.id === 'title')).toMatchObject({ x: 5 })
+    expect(client.canUndo).toBe(false)
+  })
 })
 
 describe('the tables a project has (#19)', () => {
@@ -256,6 +276,10 @@ describe('what counts as unsaved (#8)', () => {
 
     client.patchElement('front', 'title', { x: 5, y: 5 })
     expect(client.dirty).toBe(false)
+    // It is still an edit the designer made, and it is still a step back: what #41 refuses is an
+    // id the face does not have, never a patch that happens to land on the values already there.
+    // A guard that read "the document did not change, so refuse" would take this one with it.
+    expect(client.canUndo).toBe(true)
 
     client.patchElement('front', 'title', { x: 6 })
     expect(client.dirty).toBe(true)

@@ -272,21 +272,26 @@ export class ProjectClient {
   }
 
   edit(intent: EditIntent): void {
+    // It applies before anything is recorded, and that order is the whole of it: an edit the
+    // document refuses never happened, so it must cost neither a version nor a step back (#41,
+    // B4). `applyEdit` throws from here, with the stack untouched and nothing sent.
+    const next = applyEdit(this.doc, intent)
     // Where the designer was before this: a step back is `restore` with that document, which is
     // already how taking a document back is said (B4), so no new verb is needed (#35). A new edit
     // is a new branch, so what was taken back stops waiting to come forward.
     this.past.push({ doc: this.doc, what: whatOf(intent) })
     if (this.past.length > UNDO_STEPS) this.past.shift()
     this.future = []
-    this.send(intent)
+    this.send(intent, next)
   }
 
   // The edit itself, without touching the stack: this is the path a step of the stack takes, and
   // recording those would be a stack that can never be emptied.
-  private send(intent: EditIntent): void {
-    // It must apply here before it is sent: an edit that makes no sense is the editor's mistake
-    // to see, not something to find out about a round trip later.
-    this.commit(applyEdit(this.doc, intent))
+  // It must apply before it is sent: an edit that makes no sense is the editor's mistake to see,
+  // not something to find out about a round trip later. `edit` has already applied it by the time
+  // it gets here, and hands over what came out rather than having it worked out twice.
+  private send(intent: EditIntent, next: ProjectDoc = applyEdit(this.doc, intent)): void {
+    this.commit(next)
     this.pending.push(intent)
     this.post(JSON.stringify({ t: 'edit', intent }))
   }
