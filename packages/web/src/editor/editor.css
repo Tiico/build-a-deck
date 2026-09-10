@@ -577,7 +577,14 @@
    pair have to set their words on the same line, so the label centres its own too. */
 .byd-data-tools label { position: relative; overflow: hidden; display: inline-flex; align-items: center; }
 .byd-data-tools label input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-.byd-data-tools > span { color: #7d8597; }
+/* What an import costs is written into the row straight after the control it warns about, which
+   is where it is read (#36) — but a whole sentence set down between the two frames is a sentence
+   set down through the middle of the pair, and at a phone's width it pushes the export onto a row
+   of its own. So the row draws its controls first and its sentences after, whatever order they
+   are written in: the pair stays a pair at every width, and the warning still belongs to import
+   for anyone reading the page rather than looking at it. Neither sentence is focusable, so the
+   tab stops still fall in the order the eye meets them. */
+.byd-data-tools > span { order: 1; color: #7d8597; }
 .byd-data-tools > [role='alert'] { color: #f0b64a; }
 /* `separate` rather than `collapse`, because a collapsed border is drawn by the table and a
    sticky cell then leaves its own edges behind as it scrolls. */

@@ -52,7 +52,10 @@ const before = (first: Element, second: Element) => Boolean(first.compareDocumen
 // jsdom lays nothing out, so where the two controls' words actually sit is measured in a real
 // engine against the stylesheet the editor ships, the way the head of the table is (#32).
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
-type Box = { y: number; h: number; ink: number }
+// The gap the row itself sets between what it holds — the widest the two frames may stand apart
+// and still be one pair.
+const GAP = 9
+type Box = { x: number; y: number; w: number; h: number; ink: number; wordH: number }
 
 let browser: Browser
 beforeAll(async () => {
@@ -81,12 +84,19 @@ async function pair(width: number): Promise<{ import: Box; export: Box }> {
         const text = [...el.childNodes].find((n): n is Text => n.nodeType === 3 && n.textContent!.trim() !== '')!
         const range = document.createRange()
         range.selectNode(text)
-        const r = range.getBoundingClientRect()
-        return r.y + r.height / 2
+        return range.getBoundingClientRect()
       }
       const of = (el: Element): Box => {
-        const r = el.getBoundingClientRect()
-        return { y: Math.round(r.y), h: Math.round(r.height), ink: Math.round(word(el)) }
+        const frame = el.getBoundingClientRect()
+        const ink = word(el)
+        return {
+          x: Math.round(frame.x),
+          y: Math.round(frame.y),
+          w: Math.round(frame.width),
+          h: Math.round(frame.height),
+          ink: Math.round(ink.y + ink.height / 2),
+          wordH: Math.round(ink.height),
+        }
       }
       return {
         import: of(document.querySelector('.byd-data-tools label')!),
@@ -127,8 +137,14 @@ describe('the CSV pair above the table (#36)', () => {
     // have; nothing about the frame says which is which.
     expect(exportLink().textContent).toContain('Ladda ner CSV')
     // So a reader who only hears them gets two names that differ in more than a first syllable,
-    // on two kinds of control that are announced differently.
-    expect(screen.getByLabelText('Importera CSV…').getAttribute('type')).toBe('file')
+    // on two kinds of control that are announced differently. What each one is has to be pinned
+    // as firmly as what it is called: the chooser is a file input, which a screen reader offers a
+    // file to, and it is not the row's link — the row has exactly one of those, and handing a
+    // file over is what it does.
+    const chooser = screen.getByLabelText('Importera CSV…')
+    expect(chooser.tagName).toBe('INPUT')
+    expect(chooser.getAttribute('type')).toBe('file')
+    expect(screen.getAllByRole('link')).toEqual([exportLink()])
     expect(screen.getByRole('link', { name: 'Ladda ner CSV' })).toBe(exportLink())
     unmount()
 
@@ -152,16 +168,28 @@ describe('the CSV pair above the table (#36)', () => {
     expect(describedAs(exportLink())).toBe('')
   })
 
-  // Telling the two apart by their words only works if they are drawn as one pair to begin with.
-  // The file input lies invisible across its own label, so the label is stretched to a thumb's
-  // height (UX-KONTROLLER: träffytor) while the word inside it was left sitting at the top — the
-  // import read a line higher than the export standing beside it.
-  it.each([1280, 390])('sets the words in the two frames on the same line at %ipx', async (width) => {
+  // Telling the two apart by their words only works if they are drawn as one pair to begin with,
+  // and a pair is two frames the eye takes in at once: side by side, on one line. The file input
+  // lies invisible across its own label, so the label is stretched to a thumb's height
+  // (UX-KONTROLLER: träffytor) while the word inside it was left sitting at the top — the import
+  // read a line higher than the export standing beside it. Every width the control matrix asks
+  // for is measured, because what holds at 1280 is exactly what a phone breaks.
+  it.each([1280, 768, 390, 320])('stands the two frames side by side with their words on one line at %ipx', async (width) => {
     const { import: left, export: right } = await pair(width)
 
-    // Both frames are a thumb's height, which is what pushed the words apart in the first place.
+    // Nothing stands between them: the only thing separating the two frames is the row's own gap,
+    // so whatever else the row carries is not carried through the middle of the pair.
+    expect(right.y).toBe(left.y)
+    expect(right.x - (left.x + left.w)).toBeLessThanOrEqual(GAP)
+    expect(right.x).toBeGreaterThan(left.x)
+
+    // Both frames are a thumb's height and so stand taller than the words they hold — which is
+    // what pushed the words apart to begin with, and what leaves the centring below something
+    // real to say rather than something the box grants for free.
     expect(left.h).toBeGreaterThanOrEqual(44)
     expect(right.h).toBeGreaterThanOrEqual(44)
+    expect(left.h).toBeGreaterThan(left.wordH)
+    expect(right.h).toBeGreaterThan(right.wordH)
 
     // Each word sits in the middle of its own frame, and so the two read as one row.
     expect(Math.abs(left.ink - (left.y + left.h / 2))).toBeLessThanOrEqual(1)
