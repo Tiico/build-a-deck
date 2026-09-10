@@ -79,7 +79,7 @@ afterEach(async () => {
   await run.stop()
 })
 
-const WIDTHS = [390, 768, 1024] as const
+const WIDTHS = [390, 768, 1024, 1280] as const
 
 // Everything a pointer or a thumb is meant to hit. A control inside a label is hit through the
 // label — that is the target the eye sees and the one the browser forwards the click from.
