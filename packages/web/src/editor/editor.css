@@ -738,6 +738,10 @@
    typed. So the form lies over the rows instead: absolutely positioned against the cell, which
    is already a containing block by being `sticky`. Nothing here may set `position` on the
    header cell itself; that would unstick the head. */
+/* The × that takes a column away rides its own heading, quiet next to the word it belongs to,
+   and on the same line as the sort control so that no heading is taller than another. */
+.byd-data th .byd-data-dropfield { margin-left: 6px; padding: 0 3px; color: #5b6376; font-size: 13px; line-height: 1; vertical-align: middle; }
+.byd-data th .byd-data-dropfield:hover, .byd-data th .byd-data-dropfield:focus-visible { color: #e05c5c; }
 .byd-data thead .byd-data-newfield { z-index: 4; white-space: nowrap; }
 .byd-data thead .byd-data-newfield > button { color: var(--byd-editor-count-ink); }
 .byd-newfield {

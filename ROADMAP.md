@@ -66,6 +66,7 @@ Editorn:
 - ✅ Textanpassning ned till minimigräns, mätt i DOM (E6).
 - ✅ Kortväggen som hem, duken för mallen, tabellen som flik (L8).
 - ✅ Grafisk wizard för en liten startlek: fält syns direkt på exempelkorten, bildfält kan fyllas och editorn är den tydliga nästa vägen; CSV importeras och exporteras i editorns tabell (E1, E3, L6).
+- ✅ Ett fält görs i editorn: samma blankett från tabellhuvudets sista cell och från mallens bindning, wizardens tre typer och wizardens nyckelförslag, blanketten ligger över raden så huvudet aldrig växer, och `addField`/`removeField` är en redigering var — kolumnen tas bort med värdena och de element som ritade den, och `antal` är motorns (L4, B4, A4, #32).
 - ✅ Editor till bord med förrenderade texturer; bytet är atomiskt för spelarna (L5).
 - ✅ "Bord"-fliken: spelets alla bord med miniatyr ur bordets egen snapshot, vem som spelar, vilken version som körs och vägarna in — TV, bordsläge, spela härifrån, titta på, QR — plus avslut med bekräftelse (L5, K9, C7, C9).
 - ✅ Kortgrupper som regler på en kolumn: en flik per grupp över duken, fram- och baksida redigeras likadant, lagerpanelen säger om ett lager är basens eller gruppens, och tabellen visar vilken grupp en rad faller i; dolda kort får gruppens baksida utan identitetsläcka och tryckmanifestet håller varje fram-/baksidespar ihop (L3, L7).

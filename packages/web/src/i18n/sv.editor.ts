@@ -169,6 +169,8 @@ export const svEditor = {
   'table.field.remove.none': 'Ta bort {field}? Inget kort har ett värde i den.',
   'table.field.remove.one': 'Ta bort {field}? Värdet försvinner på {n} kort.',
   'table.field.remove.other': 'Ta bort {field}? Värdet försvinner på {n} kort.',
+  'table.field.drawn.one': 'Elementet som visar den tas bort ur mallen.',
+  'table.field.drawn.other': '{n} element som visar den tas bort ur mallen.',
 
   // Mallen på duken: lagren, grupperna, egenskaperna och verktygen.
   'template.faceMissing': 'Mallen saknar sidan {face}.',

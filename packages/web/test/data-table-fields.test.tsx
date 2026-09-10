@@ -77,8 +77,12 @@ describe('a field arrives in the editor (#32)', () => {
     const user = userEvent.setup()
     render(<Editing />)
 
+    // The values are what the criterion asks the question to name, and they are named. But the
+    // template draws `body` too, and the element that draws it goes with the column — a template
+    // binding a column that is not there would draw nothing on every card — so the question says
+    // that as well rather than doing it quietly.
     await user.click(screen.getByRole('button', { name: 'Ta bort fältet body' }))
-    expect(screen.getByText('Ta bort body? Värdet försvinner på 3 kort.')).toBeTruthy()
+    expect(screen.getByText('Ta bort body? Värdet försvinner på 3 kort. Elementet som visar den tas bort ur mallen.')).toBeTruthy()
     // The question is a question: saying no leaves the column exactly where it was.
     await user.click(screen.getByRole('button', { name: 'Avbryt' }))
     expect(column('body')).toBeTruthy()
@@ -103,6 +107,28 @@ describe('a field arrives in the editor (#32)', () => {
 
     await user.click(screen.getByRole('button', { name: 'Ta bort fältet fält1' }))
     expect(screen.getByText('Ta bort fält1? Inget kort har ett värde i den.')).toBeTruthy()
+  })
+
+  // A question that takes the focus has to give it back (#8). Where back is depends on the
+  // answer: to the × that asked, or — when what it asked about is gone with it — to the button
+  // that would make a column, which is the only thing left in the head that was not there before.
+  it('hands the focus back where the question was asked from, and to the head when the column has gone', async () => {
+    const user = userEvent.setup()
+    render(<Editing />)
+
+    await user.click(screen.getByRole('button', { name: '+ Nytt fält' }))
+    expect(document.activeElement).toBe(screen.getByLabelText('Namn'))
+    await user.click(screen.getByRole('button', { name: 'Avbryt' }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: '+ Nytt fält' }))
+
+    await user.click(screen.getByRole('button', { name: 'Ta bort fältet body' }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Avbryt' }))
+    await user.keyboard('{Escape}')
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Ta bort fältet body' }))
+
+    await user.click(screen.getByRole('button', { name: 'Ta bort fältet body' }))
+    await user.click(screen.getByRole('button', { name: 'Ja, ta bort' }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: '+ Nytt fält' }))
   })
 
   // The boundary A4 draws, and #27 drew again for exactly this case: what the tool *says* follows

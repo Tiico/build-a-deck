@@ -155,6 +155,8 @@ export const enEditor = {
   'table.field.remove.none': 'Remove {field}? No card has a value in it.',
   'table.field.remove.one': 'Remove {field}? The value on {n} card goes with it.',
   'table.field.remove.other': 'Remove {field}? The values on {n} cards go with it.',
+  'table.field.drawn.one': 'The element that draws it leaves the template.',
+  'table.field.drawn.other': '{n} elements that draw it leave the template.',
 
   'template.faceMissing': 'The template has no {face} side.',
   'canvas.face.front': 'Front',

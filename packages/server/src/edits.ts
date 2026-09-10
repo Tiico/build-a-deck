@@ -304,6 +304,27 @@ export function columnsOf(doc: ProjectDoc): string[] {
   return out
 }
 
+// How many elements of the template would go with a column, counted across every face and every
+// group's own override. What `removeField` takes, in other words, so a question about it can say
+// so before it is answered.
+export function drawnBy(doc: ProjectDoc, field: string): number {
+  const count = (els: readonly Element[]): number => {
+    let n = 0
+    for (const el of els) {
+      if ('bind' in el && 'field' in el.bind && el.bind.field === field) n++
+      else if (el.kind === 'if' && el.when.field === field) n++
+      else if (el.kind === 'if' || el.kind === 'group') n += count(el.children)
+    }
+    return n
+  }
+  let n = 0
+  for (const face of Object.values(doc.template.faces)) {
+    n += count(face.base)
+    for (const v of Object.values(face.variants)) n += count(v.override ?? [])
+  }
+  return n
+}
+
 // The elements left when a column goes: those that drew it are gone, and a condition on it goes
 // with what it was guarding, since children shown only sometimes should not become children
 // shown always.

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ProjectDoc, ProjectRow } from './types.js'
 import { fieldsOf, fieldLabel } from './fields.js'
-import { ANTAL } from '@byd/server/doc'
+import { ANTAL, drawnBy } from '@byd/server/doc'
 import { NewField } from './NewField.js'
 import { ASSET_DRAG_TYPE, assetRef, assetUrl, assetsInUse, imageFieldsOf, isAssetRef, ASSET_PREFIX } from './assets.js'
 import { searchSymbols, symbolName, symbolPreview, type GameSymbol } from './symbols.js'
@@ -109,7 +109,9 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
   const [removing, setRemoving] = useState<string | null>(null)
   // A question that takes the focus has to give it back: to the button that asked it, or — when
   // the cards it was about are gone with it — to the header's own checkbox above the rows.
-  const [refocus, setRefocus] = useState<'remove' | 'all' | { cardRef: string } | null>(null)
+  // A column's × goes with the column, so the head's own button — the one thing there that was
+  // not there before — is where the focus lands when a column has been taken away (#32).
+  const [refocus, setRefocus] = useState<'remove' | 'all' | 'addField' | { cardRef: string } | { field: string } | null>(null)
   // What the action row writes: a column of the table and the value to give it. An empty value
   // is not a change worth pressing by mistake, so the button waits for one.
   const [bulkField, setBulkField] = useState<string | null>(null)
@@ -122,9 +124,15 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
   const allRef = useRef<HTMLInputElement>(null)
   // The × of every row on screen, so the question a row asks can hand the focus back to it.
   const rowRemoveRefs = useRef(new Map<string, HTMLButtonElement>())
+  // The same for every column's ×, and for the button that makes one.
+  const dropRefs = useRef(new Map<string, HTMLButtonElement>())
+  const addRef = useRef<HTMLButtonElement>(null)
   useEffect(() => {
     if (!refocus) return
-    if (typeof refocus === 'object') rowRemoveRefs.current.get(refocus.cardRef)?.focus()
+    if (typeof refocus === 'object') {
+      if ('cardRef' in refocus) rowRemoveRefs.current.get(refocus.cardRef)?.focus()
+      else dropRefs.current.get(refocus.field)?.focus()
+    } else if (refocus === 'addField') addRef.current?.focus()
     else (refocus === 'remove' ? removeRef.current : allRef.current)?.focus()
     setRefocus(null)
   }, [refocus])
@@ -345,8 +353,13 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
           onConfirm={() => {
             onRemoveField(dropping)
             setDropping(null)
+            setRefocus('addField')
           }}
-          onCancel={() => setDropping(null)}
+          onCancel={() => {
+            const field = dropping
+            setDropping(null)
+            setRefocus({ field })
+          }}
         >
           {dropLabel(doc, dropping, t)}
         </Question>
@@ -395,7 +408,19 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
             </th>
             <SortableHeader field="id" label="id" sort={sort} onSort={setSort} />
             {fields.map((f) => (
-              <SortableHeader key={f} field={f} label={fieldLabel(f, t)} sort={sort} onSort={setSort} t={t} onRemove={f === ANTAL ? undefined : () => setDropping(f)} />
+              <SortableHeader
+                key={f}
+                field={f}
+                label={fieldLabel(f, t)}
+                sort={sort}
+                onSort={setSort}
+                t={t}
+                onRemove={f === ANTAL ? undefined : () => setDropping(f)}
+                removeRef={(el) => {
+                  if (el) dropRefs.current.set(f, el)
+                  else dropRefs.current.delete(f)
+                }}
+              />
             ))}
             {grouping && <th>{t('table.group')}</th>}
             {/* Variant A (#32): the head's last named cell is the button, because the column
@@ -403,7 +428,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                 absolutely positioned in a cell that is already `sticky`, so the head keeps its
                 height and no heading moves while the designer types. */}
             <th className="byd-data-newfield">
-              <button type="button" aria-expanded={adding} onClick={() => setAdding(!adding)}>
+              <button type="button" ref={addRef} aria-expanded={adding} onClick={() => setAdding(!adding)}>
                 {t('table.field.add')}
               </button>
               {adding && (
@@ -413,7 +438,10 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                     onAddField(field)
                     setAdding(false)
                   }}
-                  onCancel={() => setAdding(false)}
+                  onCancel={() => {
+                    setAdding(false)
+                    setRefocus('addField')
+                  }}
                 />
               )}
             </th>
@@ -579,7 +607,7 @@ function GroupCell({ doc, column, cardRef, row }: { doc: ProjectDoc; column: str
 
 // One header per column (variant A): a real button, so the tab order and Enter/Space come for
 // free, and `aria-sort` on the `th` for the state. The arrow is the same fact for the eye.
-function SortableHeader({ field, label, sort, onSort, onRemove, t }: { field: string; label: string; sort: SortState | null; onSort(next: SortState | null): void; onRemove?: (() => void) | undefined; t?: T | undefined }) {
+function SortableHeader({ field, label, sort, onSort, onRemove, removeRef, t }: { field: string; label: string; sort: SortState | null; onSort(next: SortState | null): void; onRemove?: (() => void) | undefined; removeRef?: ((el: HTMLButtonElement | null) => void) | undefined; t?: T | undefined }) {
   const active = sort?.field === field ? sort.dir : null
   return (
     <th aria-sort={active ?? 'none'}>
@@ -590,7 +618,7 @@ function SortableHeader({ field, label, sort, onSort, onRemove, t }: { field: st
           that are not hers — the card's id, and `antal`, which is the engine's (L4) — are given
           no ×, so the head says which are hers by which can be undone. */}
       {onRemove && t && (
-        <button type="button" className="byd-data-dropfield" aria-label={t('table.field.remove', { field })} onClick={onRemove}>
+        <button type="button" ref={removeRef} className="byd-data-dropfield" aria-label={t('table.field.remove', { field })} onClick={onRemove}>
           ×
         </button>
       )}
@@ -598,12 +626,16 @@ function SortableHeader({ field, label, sort, onSort, onRemove, t }: { field: st
   )
 }
 
-// What a column takes with it: the cards that actually hold a value in it. A column nobody has
-// written in loses nothing, and the question says so rather than counting to zero.
+// What a column takes with it, in the two things it can take: the value on the cards that hold
+// one — a column nobody has written in loses nothing, and the question says so rather than
+// counting to zero — and the elements of the template that drew it, which have nothing left to
+// draw once it is gone. The second sentence is only there when there is something to say.
 function dropLabel(doc: ProjectDoc, field: string, t: T): string {
   const held = doc.rows.filter((row) => row.fields[field] !== undefined && row.fields[field] !== '').length
-  if (held === 0) return t('table.field.remove.none', { field })
-  return t(held === 1 ? 'table.field.remove.one' : 'table.field.remove.other', { field, n: held })
+  const values = held === 0 ? t('table.field.remove.none', { field }) : t(held === 1 ? 'table.field.remove.one' : 'table.field.remove.other', { field, n: held })
+  const drawn = drawnBy(doc, field)
+  if (drawn === 0) return values
+  return `${values} ${t(drawn === 1 ? 'table.field.drawn.one' : 'table.field.drawn.other', { n: drawn })}`
 }
 
 // What a delete is about, in cards. The same words name the button and the question it opens, so
