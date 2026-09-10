@@ -1415,17 +1415,23 @@ Wizardens accent är nedtonad från `#d85b36` till `#b8461f`, som bär AA i 11 p
 Två fynd på vägen är egna issues och inte lösta här: primärblå `#3c8ce7` ger vit text 3.44:1 (#22, avgjort i L11), och `TableRenderer` ritar handsolfjädrar i fasta pixlar och passar bara in golvet i sin ram, så ett bord som passats kant i kant alltid klipper sina egna händer (#23) — det syns fortfarande på `/observe` vid 390 och 768 px.
 Prototypen `packages/web/src/prototype/responsive` togs bort när den hade svarat; dess resonemang står här.
 
-### L11. Primärblått är två tokens, och en platsfärg bär mörk text (2026-09-08)
+### L11. Primärblått är två tokens, och en platsfärg bär mörk text (2026-09-08, reviderad 2026-09-10)
 
 `#3c8ce7` var en färg med två jobb och klarade bara det ena.
 Som fyllning under en vit etikett mätte den 3.44:1 och föll under AA; som kant, ring och märke på editorns mörka ytor låg den mellan 3.3:1 och 4.9:1 och gjorde precis det den skulle.
 En enda mörkare blå hade lagat knappen och tagit sönder kanterna: `#1f6fd0` ger 4.95:1 mot vitt men bara 2.68:1 mot en markerad rad och 2.28:1 mot den öppna gruppens remsa.
 
 Beslutet är därför att dela färgen efter jobb och inte efter yta.
-`--byd-editor-primary-bg` är `#1f6fd0` och bär `--byd-editor-primary-ink` — vit text, 4.95:1 — på varje knapp, länk och kryssruta som är editorns första handling.
-`--byd-editor-primary-mark` behåller `#3c8ce7` och är allt som bara ritas: markeringen på en markerad rad, ringen runt kortet som tittas på, fokusringen i datatabellen, handtagens kant och millimeterrutnätet över kortet.
+`--byd-editor-primary-bg` är `#1f6fd0` och bär `--byd-editor-primary-ink` — vit text, 4.95:1 — på varje knapp och länk som är editorns första handling.
+`--byd-editor-primary-mark` behåller `#3c8ce7` och är allt som bara ritas: markeringen på en markerad rad, ringen runt kortet som tittas på, fokusringen i datatabellen, handtagens kant, millimeterrutnätet över kortet och editorns kryssruta.
 Två bar, två tokens: 4.5:1 för text, 3:1 för grafik, mätt mot den yta var och en faktiskt landar på.
 Båda står deklarerade en enda gång i `editor.css`, och `editor-contrast.test.ts` låser både talen och att ingen yta skriver hexen på nytt.
+
+Kryssrutan flyttades från fyllningen till märket 2026-09-10 (#45).
+Den var först räknad som en första handling och bar därför `--byd-editor-primary-bg`, men en ikryssad ruta är ingen etikett: bocken i den är grafik och håller 3:1, vilket `#3c8ce7` gör mot vitt med 3.44:1.
+Editorn ritar därmed en enda kryssruta på alla sina ytor — en storlek, `--byd-tick`, och en blå, med `color-scheme` satt så att den oikryssade rutan ritas i det mörker den står i.
+Rutan är boxen och inte träffytan: det en tumme träffar är etiketten runt den, som är `--byd-tap` stor, så att en rad i kortbordets tabell behåller sin höjd.
+`editor-viewport.test.tsx` mäter allt det i Chromium på varje flik och varje bredd granskningen läser.
 
 Platsfärgerna (#20, K9) är inte primärfärgen och ändras inte.
 Att den andra platsen råkar vara samma `#3c8ce7` är en sammanträffande identitet, inte en delad token, och paletten är hämtad ur godkända prototyper.
