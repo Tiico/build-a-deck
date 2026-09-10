@@ -1,42 +1,39 @@
-import type { Element, ProjectDoc } from './types.js'
+import type { ProjectDoc } from './types.js'
 import type { T } from '../i18n/index.js'
-import type { RecipeWords } from '@byd/server/doc'
+import { ANTAL, columnsOf, type RecipeWords } from '@byd/server/doc'
 
-// The columns a project's table has: every field the template binds, in template order,
-// then the system column `antal` (L4). Fields in rows but not in the template come last.
-export function fieldsOf(doc: ProjectDoc): string[] {
-  const seen = new Set<string>()
-  const out: string[] = []
-  const add = (f: string) => {
-    if (!seen.has(f)) {
-      seen.add(f)
-      out.push(f)
-    }
-  }
-  const walk = (els: Element[]) => {
-    for (const el of els) {
-      if ('bind' in el && 'field' in el.bind) add(el.bind.field)
-      if (el.kind === 'if') {
-        add(el.when.field)
-        walk(el.children)
-      }
-      if (el.kind === 'group') walk(el.children)
-    }
-  }
-  for (const face of Object.values(doc.template.faces)) {
-    if (face.variantBy) add(face.variantBy)
-    walk(face.base)
-    for (const v of Object.values(face.variants)) walk(v.override ?? [])
-  }
-  for (const row of doc.rows) for (const k of Object.keys(row.fields)) add(k)
-  return [...out.filter((f) => f !== 'antal'), 'antal']
+// The three kinds a field can be, and they are the wizard's three — the editor does not get a
+// fourth (L4 leaves boolean to the type registry, not to this form).
+export type FieldKind = 'text' | 'number' | 'image'
+export const FIELD_KINDS: readonly FieldKind[] = ['text', 'number', 'image']
+
+// The name the tool puts in the box when a field is made — in the wizard and in the editor, from
+// here, so the two doors cannot drift apart. It is a *key*, and #27 settled what that means: an
+// identifier in the document, not a text, so it does not change language when the reader does.
+// Two designers pressing the same button must get the same column, or a template would bind
+// `bild2` for one of them and `image2` for the other. What the tool writes in the reader's own
+// language and then hands over is the label beside it in the wizard; the editor's table names a
+// column by its key, so the key is the whole of what it suggests — and the designer types over
+// it whenever she has a better word.
+export function suggestFieldKey(kind: FieldKind, taken: readonly string[]): string {
+  const base = kind === 'image' ? 'bild' : kind === 'number' ? 'värde' : 'fält'
+  let n = 1
+  while (taken.includes(`${base}${n}`)) n++
+  return `${base}${n}`
 }
+
+// The columns a project's table has: every name the deck answers to — what the template binds,
+// in template order, then whatever else the cards carry — and the system column `antal` last,
+// which the table shows whether or not a card happens to carry it (L4). Which names those are is
+// the document's own question and is answered where the edits are, so the editor and the actor
+// cannot come to different conclusions about what a column is.
+export const fieldsOf = (doc: ProjectDoc): string[] => [...columnsOf(doc).filter((f) => f !== ANTAL), ANTAL]
 
 // What a column is called on screen. Every column is the designer's own word except one:
 // `antal` is the engine's — how many copies of the card the deck holds (L4) — so it is the one
 // the tool names, in the reader's language (A4). The field itself keeps its name everywhere it
 // matters: in the document, in the CSV, and in what the engine reads.
-export const fieldLabel = (field: string, t: T): string => (field === 'antal' ? t('table.field.antal') : field)
+export const fieldLabel = (field: string, t: T): string => (field === ANTAL ? t('table.field.antal') : field)
 
 // The words the recipe names its zones with (B5, A4). They are the designer's document the
 // moment the zone exists, so they are written in the language the designer is working in; the

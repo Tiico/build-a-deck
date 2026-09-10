@@ -272,6 +272,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
         onAddRow={(cardRef) => client.addRow(cardRef, { title: '', antal: 1 })}
         onRemoveRow={(cardRef) => client.removeRow(cardRef)}
         onReplaceRows={(rows) => client.replaceRows(rows)}
+        onAddField={(field) => client.addField(field)}
+        onRemoveField={(field) => client.removeField(field)}
       />
     ),
     symbols: () => <SymbolPanel doc={doc} client={client} assetBase={http} />,

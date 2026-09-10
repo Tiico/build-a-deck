@@ -93,6 +93,7 @@ export const svEditor = {
   'undo.redid': 'Gjorde om: {what}',
   'undo.what.name': 'namnet på spelet',
   'undo.what.deck': 'en ändring i kortleken',
+  'undo.what.field': 'ett fält i kortleken',
   'undo.what.template': 'en ändring i mallen',
   'undo.what.table': 'en ändring på bordet',
   'undo.what.symbols': 'en ändring bland symbolerna',
@@ -151,6 +152,23 @@ export const svEditor = {
   'table.removeRow': 'ta bort {cardRef}',
   'table.empty': 'Inga kort matchar filtret.',
   'table.addCard': '+ Nytt kort',
+
+  // Ett nytt fält, från tabellhuvudet eller från mallens bindning (#32). Namnet verktyget
+  // föreslår är en nyckel och står därför inte här: den byter inte språk med läsaren (#27).
+  'table.field.add': '+ Nytt fält',
+  'table.field.new': 'Nytt fält',
+  'table.field.name': 'Namn',
+  'table.field.kind': 'Typ',
+  'table.field.kind.text': 'Text',
+  'table.field.kind.number': 'Tal',
+  'table.field.kind.image': 'Bild',
+  'table.field.create': 'Lägg till',
+  'table.field.needsName': 'Ett fält behöver ett namn.',
+  'table.field.taken': 'Det finns redan ett fält som heter {field}.',
+  'table.field.remove': 'Ta bort fältet {field}',
+  'table.field.remove.none': 'Ta bort {field}? Inget kort har ett värde i den.',
+  'table.field.remove.one': 'Ta bort {field}? Värdet försvinner på {n} kort.',
+  'table.field.remove.other': 'Ta bort {field}? Värdet försvinner på {n} kort.',
 
   // Mallen på duken: lagren, grupperna, egenskaperna och verktygen.
   'template.faceMissing': 'Mallen saknar sidan {face}.',

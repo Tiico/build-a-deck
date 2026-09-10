@@ -34,6 +34,8 @@ function renderTable(doc: ProjectDoc, handlers: Partial<DataTableProps> = {}) {
       onAddRow={noop}
       onRemoveRow={noop}
       onReplaceRows={noop}
+      onAddField={() => undefined}
+      onRemoveField={() => undefined}
       {...handlers}
     />,
   )
@@ -56,6 +58,8 @@ function BulkTable({ start, onRows = () => undefined }: { start: ProjectDoc; onR
         onRows(rows)
         setDoc((d) => ({ ...d, rows }))
       }}
+      onAddField={noop}
+      onRemoveField={noop}
     />
   )
 }
@@ -181,7 +185,7 @@ describe('DataTable bulk delete from the keyboard (#17)', () => {
 
     // The action row stands between the filter and the table, so it is a shift-tab away.
     const remove = screen.getByRole('button', { name: 'Ta bort 1 kort' })
-    for (let i = 0; i < 20 && document.activeElement !== remove; i++) await user.tab({ shift: true })
+    for (let i = 0; i < 40 && document.activeElement !== remove; i++) await user.tab({ shift: true })
     expect(document.activeElement).toBe(remove)
 
     await user.keyboard('{Enter}')

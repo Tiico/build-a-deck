@@ -34,6 +34,8 @@ function renderTable(doc: ProjectDoc, handlers: Partial<DataTableProps> = {}) {
       onAddRow={noop}
       onRemoveRow={noop}
       onReplaceRows={noop}
+      onAddField={() => undefined}
+      onRemoveField={() => undefined}
       {...handlers}
     />,
   )
@@ -139,6 +141,8 @@ function EditedTable({ start }: { start: ProjectDoc }) {
       onAddRow={noop}
       onRemoveRow={noop}
       onReplaceRows={noop}
+      onAddField={() => undefined}
+      onRemoveField={() => undefined}
     />
   )
 }
@@ -156,6 +160,8 @@ function AddableTable({ start }: { start: ProjectDoc }) {
       onAddRow={(cardRef) => setDoc((d) => ({ ...d, rows: [...d.rows, { id: cardRef, fields: { title: '', antal: 1 } }] }))}
       onRemoveRow={noop}
       onReplaceRows={noop}
+      onAddField={() => undefined}
+      onRemoveField={() => undefined}
     />
   )
 }

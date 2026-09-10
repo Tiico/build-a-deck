@@ -332,6 +332,14 @@ export class ProjectClient {
     this.edit({ v: 'replaceRows', rows })
   }
 
+  addField(field: string): void {
+    this.edit({ v: 'addField', field })
+  }
+
+  removeField(field: string): void {
+    this.edit({ v: 'removeField', field })
+  }
+
   patchElement(face: string, id: string, patch: Partial<Element>, group?: string | null): void {
     this.edit({ v: 'patchElement', face, id, patch, ...(group !== undefined ? { group } : {}) })
   }

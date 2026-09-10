@@ -726,6 +726,43 @@
    first thing a narrow screen would lose, and it is the one thing that must not be lost. */
 .byd-data .byd-data-remove { position: sticky; right: 0; z-index: 2; width: var(--byd-tap); padding: 0 !important; background: #1b1d23; box-shadow: -8px 0 12px -8px rgb(0 0 0 / 80%); }
 .byd-data thead .byd-data-remove { z-index: 3; }
+
+/* A field arrives in the editor (#32, prototype variant A): the head's last named cell is the
+   button, so the column grows where it will stand. The form it opens must not make that cell
+   tall — the prototype's did, and every heading beside it was pushed down while the designer
+   typed. So the form lies over the rows instead: absolutely positioned against the cell, which
+   is already a containing block by being `sticky`. Nothing here may set `position` on the
+   header cell itself; that would unstick the head. */
+.byd-data thead .byd-data-newfield { z-index: 4; white-space: nowrap; }
+.byd-data thead .byd-data-newfield > button { color: var(--byd-editor-count-ink); }
+.byd-newfield {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 6;
+  width: 230px;
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #3b4358;
+  border-radius: 10px;
+  background: #171a23;
+  box-shadow: 0 12px 30px rgb(0 0 0 / 50%);
+  color: #dce3f2;
+  font-weight: 400;
+  white-space: normal;
+  text-align: left;
+}
+.byd-newfield label { display: grid; gap: 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #7d8597; }
+.byd-newfield input[type='text'], .byd-newfield > label input { width: 100%; border: 1px solid #3b414e; border-radius: 6px; padding: 6px 8px; background: #1b1d23; color: #e6ecfa; font: inherit; }
+.byd-newfield fieldset { display: flex; gap: 10px; margin: 0; padding: 0; border: 0; }
+.byd-newfield legend { padding: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #7d8597; }
+.byd-newfield fieldset label { display: flex; align-items: center; gap: 4px; font-size: 12px; text-transform: none; letter-spacing: 0; color: #dce3f2; }
+.byd-newfield fieldset input { width: auto; accent-color: var(--byd-editor-primary-bg); }
+.byd-newfield [role='alert'] { margin: 0; color: #f0b64a; font-size: 12px; font-weight: 400; }
+.byd-newfield-do { display: flex; gap: 8px; }
+.byd-newfield-do button { border: 1px solid #3b414e; border-radius: 8px; padding: 6px 12px; background: var(--byd-editor-primary-bg); color: var(--byd-editor-primary-ink); font: inherit; font-weight: 700; cursor: pointer; }
+.byd-newfield-do button[data-kind='quiet'] { background: transparent; color: #9aa3b8; font-weight: 400; }
 .byd-data-chosen { color: var(--byd-editor-count-ink); font-weight: 700; }
 /* A marked row is read from across the table, not from its checkbox: the tick is the control,
    the tint and the edge are the answer to "did I get the right four cards". Being marked and

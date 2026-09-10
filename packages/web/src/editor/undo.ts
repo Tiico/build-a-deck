@@ -17,6 +17,11 @@ export function whatOf(intent: EditIntent): Key {
     case 'removeRow':
     case 'replaceRows':
       return 'undo.what.deck'
+    // A column is its own kind of change: it reaches every card at once and, when it goes, the
+    // template with it, so the step back says a field rather than "a change in the deck" (#32).
+    case 'addField':
+    case 'removeField':
+      return 'undo.what.field'
     case 'patchElement':
     case 'addElement':
     case 'removeElement':

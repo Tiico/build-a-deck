@@ -114,6 +114,28 @@ describe('an edit is a thing that happened to the project (D3)', () => {
     expect(Object.keys(applyEdit(doc, { v: 'removeFont', family: 'Rubrik' }).fonts ?? {})).toEqual(['Brödtext'])
   })
 
+  // A column of the deck (#32). It is one edit and not a rewritten table, because that is what
+  // makes it one version and one step back (B4) — and because a log entry for a new empty column
+  // should not carry five hundred cards.
+  it('makes a column and takes one away, values, elements and grouping together', () => {
+    const doc = applyEdit(base(), { v: 'addField', field: 'styrka' })
+    expect(doc.rows.map((r) => r.fields['styrka'])).toEqual(['', ''])
+    // A name the deck already answers to is a collision, not a second column.
+    expect(() => applyEdit(doc, { v: 'addField', field: 'styrka' })).toThrow(/styrka/)
+    expect(() => applyEdit(doc, { v: 'addField', field: 'title' })).toThrow(/title/)
+    expect(() => applyEdit(doc, { v: 'addField', field: 'antal' })).toThrow(/antal/)
+
+    // Taking a column away takes everything that pointed at it: the value on every card, the
+    // elements on the template that drew it, and the grouping if it was grouped by it (#13).
+    const grouped = after(base(), { v: 'setGroupColumn', column: 'title' })
+    const gone = applyEdit(grouped, { v: 'removeField', field: 'title' })
+    expect(gone.rows.every((r) => !('title' in r.fields))).toBe(true)
+    expect(gone.template.faces['front']?.base.map((e) => e.id)).toEqual(['paper', 'frame'])
+    expect(gone.template.faces['front']?.variantBy).toBeUndefined()
+    // The card's copies are the engine's column and cannot be taken away (L4).
+    expect(() => applyEdit(base(), { v: 'removeField', field: 'antal' })).toThrow(/antal/)
+  })
+
   it('refuses an edit that names something the project does not have, rather than writing nonsense', () => {
     expect(() => applyEdit(base(), { v: 'setCell', cardRef: 'ingen', field: 'title', value: 'x' })).toThrow(/ingen/)
     expect(() => applyEdit(base(), { v: 'addRow', cardRef: 'dragon', fields: {} })).toThrow(/dragon/)

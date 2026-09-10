@@ -31,6 +31,8 @@ function renderTable(doc: ProjectDoc, handlers: Partial<{ onCell: DataTableProps
       onAddRow={noop}
       onRemoveRow={handlers.onRemoveRow ?? noop}
       onReplaceRows={noop}
+      onAddField={() => undefined}
+      onRemoveField={() => undefined}
     />,
   )
 }
@@ -50,6 +52,8 @@ function EditedTable({ start }: { start: ProjectDoc }) {
       onAddRow={noop}
       onRemoveRow={noop}
       onReplaceRows={noop}
+      onAddField={() => undefined}
+      onRemoveField={() => undefined}
     />
   )
 }
@@ -155,11 +159,10 @@ describe('DataTable sorting (a view, #15)', () => {
 // button the way a key press does, rather than dispatching a click at it.
 type User = ReturnType<typeof userEvent.setup>
 
-const headerButtons = () =>
-  screen
-    .getAllByRole('columnheader')
-    .map((th) => within(th).queryByRole('button'))
-    .filter((button): button is HTMLElement => button !== null)
+// Every control in the head, in the order the keyboard reaches them: each column's sort, and —
+// for a column the designer made — the × that takes it away again beside it (#32).
+const headerButtons = () => screen.getAllByRole('columnheader').flatMap((th) => within(th).queryAllByRole('button'))
+const nameOf = (button: HTMLElement) => button.getAttribute('aria-label') ?? button.textContent?.replace(/\s*[↕↑↓]\s*$/, '').trim()
 
 async function tabTo(user: User, target: HTMLElement) {
   for (let i = 0; i < 20 && document.activeElement !== target; i++) await user.tab()
@@ -182,7 +185,17 @@ describe('DataTable sorting from the keyboard (#15)', () => {
     expect(document.activeElement).toBe(screen.getByLabelText('Markera alla synliga'))
 
     const buttons = headerButtons()
-    expect(buttons.map((button) => button.textContent?.trim().split(' ')[0])).toEqual(['id', 'title', 'body', 'kostnad', 'antal'])
+    expect(buttons.map(nameOf)).toEqual([
+      'id',
+      'title',
+      'Ta bort fältet title',
+      'body',
+      'Ta bort fältet body',
+      'kostnad',
+      'Ta bort fältet kostnad',
+      'antal',
+      '+ Nytt fält',
+    ])
     for (const button of buttons) {
       await user.tab()
       expect(document.activeElement).toBe(button)

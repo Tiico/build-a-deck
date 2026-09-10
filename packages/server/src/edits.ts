@@ -18,6 +18,12 @@ export type EditIntent =
   | { v: 'addRow'; cardRef: string; fields: Record<string, Cell> }
   | { v: 'removeRow'; cardRef: string }
   | { v: 'replaceRows'; rows: ProjectRow[] }
+  // A column of the deck (#32). One edit and not a rewritten table: that is what makes a new
+  // column one version and one step back (B4), and it keeps a log entry for an empty column from
+  // carrying every card in the game. `field` is the key as it stands in the document — an
+  // identifier, never a translated word (A4, #27).
+  | { v: 'addField'; field: string }
+  | { v: 'removeField'; field: string }
   // The template (L1, #13, #18)
   | { v: 'patchElement'; face: string; id: string; patch: Partial<Element>; group?: string | null }
   | { v: 'addElement'; face: string; element: Element; group?: string | null }
@@ -63,6 +69,40 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       return { ...doc, rows: doc.rows.filter((r) => r.id !== intent.cardRef) }
     case 'replaceRows':
       return { ...doc, rows: intent.rows }
+
+    // A column exists because the cards carry the key or because the template draws it, so a new
+    // one is written onto every card, empty, and a name either of those already answers to is a
+    // collision rather than a second column.
+    case 'addField': {
+      if (intent.field === ANTAL) throw new Error(`field ${ANTAL} is the deck's own`)
+      if (columnsOf(doc).includes(intent.field)) throw new Error(`field ${intent.field} already exists`)
+      return { ...doc, rows: doc.rows.map((r) => ({ ...r, fields: { ...r.fields, [intent.field]: '' } })) }
+    }
+    // And a column that goes takes with it everything that pointed at it: the value on every
+    // card, the elements that drew it — a condition on it takes what it was guarding with it, so
+    // no card is left showing what was only meant to appear sometimes — and the grouping, if the
+    // deck was grouped by that column (#13). `antal` is the engine's and is not the designer's
+    // to take away (L4).
+    case 'removeField': {
+      if (intent.field === ANTAL) throw new Error(`field ${ANTAL} cannot be removed`)
+      const faces = Object.fromEntries(
+        Object.entries(doc.template.faces).map(([id, face]) => {
+          const next: FaceTemplate = {
+            base: withoutField(face.base, intent.field),
+            variants: Object.fromEntries(
+              Object.entries(face.variants).map(([name, v]) => [name, { ...v, ...(v.override ? { override: withoutField(v.override, intent.field) } : {}) }]),
+            ),
+            ...(face.variantBy && face.variantBy !== intent.field ? { variantBy: face.variantBy } : {}),
+          }
+          return [id, next]
+        }),
+      )
+      return {
+        ...doc,
+        rows: doc.rows.map((r) => ({ ...r, fields: without(r.fields, intent.field) })),
+        template: { ...doc.template, faces },
+      }
+    }
 
     // Replaces fields of one element by id (L1). Without a group that is the face's base, and the
     // change reaches every card; with one it becomes that group's override of the same id (#13),
@@ -227,4 +267,60 @@ function replaceById(list: Element[], element: Element): Element[] {
 // A record without one key, since deleting a computed key is not how records are built here.
 function without<T>(record: Record<string, T>, key: string): Record<string, T> {
   return Object.fromEntries(Object.entries(record).filter(([k]) => k !== key))
+}
+
+// The one column the engine reads: how many copies of the card the deck holds (L4). It is not
+// the designer's to make or to take away, in the wizard or in the editor.
+export const ANTAL = 'antal'
+
+// Every name the deck answers to, in the order a table shows them: what the template draws,
+// face by face, then whatever else the cards carry. This is the truth about which columns a
+// project has — there is no list of fields in the document, and there is deliberately none:
+// a column is either drawn or written in, and both are visible here.
+export function columnsOf(doc: ProjectDoc): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  const add = (field: string) => {
+    if (seen.has(field)) return
+    seen.add(field)
+    out.push(field)
+  }
+  const walk = (els: readonly Element[]) => {
+    for (const el of els) {
+      if ('bind' in el && 'field' in el.bind) add(el.bind.field)
+      if (el.kind === 'if') {
+        add(el.when.field)
+        walk(el.children)
+      }
+      if (el.kind === 'group') walk(el.children)
+    }
+  }
+  for (const face of Object.values(doc.template.faces)) {
+    if (face.variantBy) add(face.variantBy)
+    walk(face.base)
+    for (const v of Object.values(face.variants)) walk(v.override ?? [])
+  }
+  for (const row of doc.rows) for (const key of Object.keys(row.fields)) add(key)
+  return out
+}
+
+// The elements left when a column goes: those that drew it are gone, and a condition on it goes
+// with what it was guarding, since children shown only sometimes should not become children
+// shown always.
+function withoutField(els: readonly Element[], field: string): Element[] {
+  const out: Element[] = []
+  for (const el of els) {
+    if ('bind' in el && 'field' in el.bind && el.bind.field === field) continue
+    if (el.kind === 'if') {
+      if (el.when.field === field) continue
+      out.push({ ...el, children: withoutField(el.children, field) })
+      continue
+    }
+    if (el.kind === 'group') {
+      out.push({ ...el, children: withoutField(el.children, field) })
+      continue
+    }
+    out.push(el)
+  }
+  return out
 }
