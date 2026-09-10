@@ -4,6 +4,12 @@
   position: relative;
   /* The chrome the editor's own words are read on: the header, and the strips under it. */
   --byd-editor-chrome-bg: #23262e;
+  /* The register everything quiet is read in: a section heading, a hint, a row's id, the arrow
+     that sorts a column, the × that drops one. It is small text and there is a great deal of it,
+     so it carries the same 4.5:1 as every other sentence — and on the panels, which are the
+     lighter of the two shades it lands on, the old var(--byd-editor-quiet) gave 4.09:1 and did not.
+     Measured in `editor-contrast.test.ts`. */
+  --byd-editor-quiet: #868ea3;
   --byd-editor-home-ink: #c3cbdd;
   --byd-editor-saved-ink: #9aa3b8;
   --byd-editor-unsaved-ink: #f0b64a;
@@ -83,7 +89,7 @@
 .byd-editor > header button { white-space: nowrap; }
 /* The revision is a button now: it opens the history (B4). It is a target like any other in the
    editor, so it carries the same minimum. */
-.byd-editor-rev { display: inline-flex; align-items: center; min-height: var(--byd-tap); border: 0; background: transparent; padding: 4px 6px; border-radius: 6px; color: #7d8597; white-space: nowrap; font: inherit; cursor: pointer; }
+.byd-editor-rev { display: inline-flex; align-items: center; min-height: var(--byd-tap); border: 0; background: transparent; padding: 4px 6px; border-radius: 6px; color: var(--byd-editor-quiet); white-space: nowrap; font: inherit; cursor: pointer; }
 .byd-editor-rev:hover, .byd-editor-rev[aria-expanded='true'] { background: #1b1d23; color: #dce3f2; }
 /* The way out of the editor, first in the header because that is where a way back belongs. */
 .byd-editor-home { display: inline-flex; align-items: center; min-height: var(--byd-tap); color: var(--byd-editor-home-ink); white-space: nowrap; text-decoration: none; font-weight: 600; }
@@ -95,7 +101,7 @@
 /* The history (B4): a panel that hangs from the revision it opened from. */
 .byd-history { position: absolute; left: 120px; top: 46px; z-index: 20; width: 340px; max-height: 70vh; overflow: auto; padding: 16px; border-radius: 14px; background: #171a23; border: 1px solid #3b4358; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5); }
 .byd-history header { display: flex; align-items: center; gap: 10px; }
-.byd-history h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; }
+.byd-history h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-history header button { margin-left: auto; border: 0; background: transparent; color: #9aa3b8; font-size: 18px; cursor: pointer; padding: 0 4px; }
 .byd-history-lead { margin: 8px 0 12px; color: #9aa3b8; font-size: 12px; line-height: 1.5; }
 .byd-history ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
@@ -104,7 +110,7 @@
 .byd-history li[data-current] { border-color: #7dd3a0; }
 .byd-history li > button { display: flex; align-items: baseline; gap: 8px; width: 100%; border: 0; background: transparent; padding: 9px 11px; color: #e6ecfa; font: inherit; text-align: left; cursor: pointer; }
 .byd-history li > button b { color: #fff; }
-.byd-history li > button span { color: #7d8597; font-size: 12px; }
+.byd-history li > button span { color: var(--byd-editor-quiet); font-size: 12px; }
 .byd-history li > button small { margin-left: auto; color: #7dd3a0; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
 .byd-history-detail { padding: 0 11px 11px; display: grid; gap: 8px; }
 .byd-history-detail p { margin: 0; color: #cfd5e3; font-size: 12px; line-height: 1.5; }
@@ -139,7 +145,7 @@
 /* Who has the game: the list hangs from the people it is about. */
 .byd-share { position: absolute; right: 16px; top: 46px; z-index: 20; width: 340px; max-height: 70vh; overflow: auto; padding: 16px; border-radius: 14px; background: #171a23; border: 1px solid #3b4358; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5); }
 .byd-share header { display: flex; align-items: center; gap: 10px; }
-.byd-share h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; }
+.byd-share h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-share header button { margin-left: auto; border: 0; background: transparent; color: #9aa3b8; font-size: 18px; padding: 0 4px; cursor: pointer; }
 .byd-share > p { margin: 8px 0 12px; color: #9aa3b8; font-size: 12px; line-height: 1.5; }
 .byd-share [role='alert'] { color: #f0b64a; }
@@ -340,7 +346,7 @@
 /* The setup editor (B5, K2): the recipe's knobs, the felt as the workspace, the phone's sheet. */
 .byd-setup { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px; padding: 20px; align-items: start; }
 .byd-setup-side { display: grid; gap: 20px; }
-.byd-setup h2 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; }
+.byd-setup h2 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-setup-recipe { display: grid; gap: 18px; }
 .byd-setup-recipe label { display: flex; gap: 8px; align-items: center; margin: 6px 0; color: #e6ecfa; }
 .byd-setup-players { display: flex; gap: 6px; }
@@ -353,7 +359,7 @@
 .byd-setup input:not([type='checkbox']), .byd-setup select { padding: 7px 9px; border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; color: #fff; font: inherit; min-width: 0; }
 .byd-setup-counter input:not([type='number']) { width: 110px; }
 .byd-setup input[type='number'] { width: 64px; }
-.byd-setup-hint { margin: 0; color: #7d8597; font-size: 12px; line-height: 1.5; }
+.byd-setup-hint { margin: 0; color: var(--byd-editor-quiet); font-size: 12px; line-height: 1.5; }
 .byd-setup-canvas { position: relative; display: grid; gap: 10px; min-width: 0; }
 .byd-setup-tools { display: flex; gap: 8px; align-items: center; color: #9aa3b8; font-size: 12px; }
 /* The felt takes the room it gets: the frame must not size itself after the table it holds. */
@@ -373,7 +379,7 @@
 .byd-setup-props { position: absolute; right: 12px; top: 52px; width: 220px; display: grid; gap: 8px; padding: 14px; border-radius: 14px; background: rgba(23, 26, 35, 0.97); border: 1px solid #3b4358; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45); }
 .byd-setup-props label { display: grid; gap: 4px; font-size: 11px; color: #9aa3b8; }
 .byd-setup-props strong { color: #fff; }
-.byd-setup-where { font: 12px ui-monospace, monospace; color: #7d8597; }
+.byd-setup-where { font: 12px ui-monospace, monospace; color: var(--byd-editor-quiet); }
 .byd-zones-preview { align-self: start; padding: 16px; border-radius: 16px; background: #14161c; border: 1px solid #2f333d; }
 .byd-zones-preview .byd-sheet-targets { display: grid; gap: 8px; }
 .byd-zones-preview .byd-sheet-targets > div { display: grid; padding: 10px 12px; border-radius: 10px; background: #242938; }
@@ -401,7 +407,7 @@
 .byd-wall[data-arm] { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
 .byd-wall-card[data-marked] { outline: 3px solid #f0b64a; outline-offset: 3px; }
 .byd-wall-checks { align-self: start; padding: 16px; border-radius: 16px; background: #171a23; border: 1px solid #2f333d; }
-.byd-wall-checks h2 { margin: 0 0 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; }
+.byd-wall-checks h2 { margin: 0 0 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-wall-ok { margin: 0; color: #7dd3a0; line-height: 1.5; }
 .byd-wall-lead { margin: 0 0 10px; color: #9aa3b8; font-size: 12px; line-height: 1.5; }
 .byd-wall-checks ul { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 8px; }
@@ -410,10 +416,10 @@
 .byd-wall-checks li > button { display: flex; width: 100%; align-items: center; gap: 10px; border: 0; background: transparent; padding: 9px 11px; color: #e6ecfa; font: inherit; text-align: left; cursor: pointer; }
 .byd-wall-checks li > button b { color: #fff; }
 .byd-wall-checks li > button span { color: #9aa3b8; }
-.byd-wall-checks li > button small { margin-left: auto; color: #7d8597; text-transform: uppercase; letter-spacing: 1px; font-size: 10px; }
+.byd-wall-checks li > button small { margin-left: auto; color: var(--byd-editor-quiet); text-transform: uppercase; letter-spacing: 1px; font-size: 10px; }
 .byd-wall-check-detail { padding: 0 11px 10px; display: grid; gap: 6px; }
 .byd-wall-check-detail p { margin: 0; color: #cfd5e3; font-size: 12px; line-height: 1.5; }
-.byd-wall-check-detail span { color: #7d8597; font: 11px ui-monospace, monospace; }
+.byd-wall-check-detail span { color: var(--byd-editor-quiet); font: 11px ui-monospace, monospace; }
 
 .byd-wall { padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; align-content: start; }
 .byd-wall-card { position: relative; border-radius: 8px; cursor: pointer; }
@@ -578,7 +584,7 @@
 .byd-canvas-layers ul { list-style: none; margin: 0; padding: 0; }
 .byd-canvas-layers li { padding: 6px 8px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
 .byd-canvas-layers li[aria-selected='true'] { background: #2f3a55; }
-.byd-layer-kind { color: #7d8597; width: 44px; }
+.byd-layer-kind { color: var(--byd-editor-quiet); width: 44px; }
 .byd-canvas-stage { display: grid; place-items: center; overflow: auto; background: repeating-conic-gradient(#20232b 0 25%, #1b1d23 0 50%) 0 0 / 24px 24px; }
 .byd-canvas-props { border-left: 1px solid #2f333d; padding: 12px; overflow: auto; }
 .byd-props { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -630,12 +636,12 @@
    are written in: the pair stays a pair at every width, and the warning still belongs to import
    for anyone reading the page rather than looking at it. Neither sentence is focusable, so the
    tab stops still fall in the order the eye meets them. */
-.byd-data-tools > span { order: 1; color: #7d8597; }
+.byd-data-tools > span { order: 1; color: var(--byd-editor-quiet); }
 .byd-data-tools > [role='alert'] { color: #f0b64a; }
 /* `separate` rather than `collapse`, because a collapsed border is drawn by the table and a
    sticky cell then leaves its own edges behind as it scrolls. */
 .byd-data { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; background: #1b1d23; }
-.byd-data th { text-align: left; padding: 8px 10px; color: #7d8597; font-weight: 600; border-bottom: 1px solid #2f333d; position: sticky; top: 0; z-index: 1; background: #1b1d23; }
+.byd-data th { text-align: left; padding: 8px 10px; color: var(--byd-editor-quiet); font-weight: 600; border-bottom: 1px solid #2f333d; position: sticky; top: 0; z-index: 1; background: #1b1d23; }
 .byd-data td { padding: 0; border-bottom: 1px solid #20232b; }
 /* A cell is as wide as a field needs, not as wide as the window has: the box scrolls. A field is
    what this is about — the tick in the first column is a box of a fixed size (#45), and this rule
@@ -646,11 +652,11 @@
 .byd-data-drop { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 3px; border: 1px dashed transparent; border-radius: 8px; }
 .byd-data-drop[data-over='true'] { border-color: #ffd98a; background: rgba(255, 217, 138, 0.1); }
 .byd-data-drop > img { width: 60px; height: 40px; object-fit: cover; border-radius: 5px; background: #14161c; }
-.byd-data-drop > span { width: 60px; height: 40px; display: grid; place-items: center; border: 1px dashed #4a5163; border-radius: 5px; color: #7d8597; font-size: 10px; text-align: center; }
+.byd-data-drop > span { width: 60px; height: 40px; display: grid; place-items: center; border: 1px dashed #4a5163; border-radius: 5px; color: var(--byd-editor-quiet); font-size: 10px; text-align: center; }
 .byd-data-file { position: relative; overflow: hidden; border: 1px solid #3b414e; border-radius: 6px; padding: 4px 9px; background: #1b1d23; color: #dce3f2; font-size: 12px; font-weight: 700; cursor: pointer; }
 .byd-data-file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .byd-data-drop > button { border: 0; background: transparent; color: #9aa3b8; font-size: 16px; cursor: pointer; }
-.byd-data-images { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; color: #7d8597; }
+.byd-data-images { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; color: var(--byd-editor-quiet); }
 .byd-data-images > span { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
 .byd-data-images ul { display: flex; gap: 10px; margin: 0; padding: 0; list-style: none; }
 .byd-data-images li { display: grid; justify-items: center; gap: 2px; font-size: 10px; }
@@ -677,7 +683,7 @@
 .byd-symbol-list img { width: 20px; height: 20px; padding: 2px; border-radius: 5px; background: #e8e2d4; }
 .byd-symbol-list small { margin-left: auto; color: #9aa3b8; font-size: 11px; }
 /* The header is the sort control (#15): the column's name, the state as an arrow beside it. */
-.byd-data-sort { margin: 0 0 8px; color: #7d8597; font-size: 12px; }
+.byd-data-sort { margin: 0 0 8px; color: var(--byd-editor-quiet); font-size: 12px; }
 /* The filter (#16): a search field over all fields and a chip per value of the deck's own
    category column, as the approved prototype B. It sits above the sort line, because the
    question "which cards" comes before the question "in what order". */
@@ -729,14 +735,14 @@
   .byd-data-clear { justify-self: start; }
 }
 .byd-data th button { display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
-.byd-data th button span { color: #6b7386; }
+.byd-data th button span { color: var(--byd-editor-quiet); }
 .byd-data th button:hover { color: #dce3f2; }
 .byd-data th button[data-active='true'] { color: #dce3f2; }
 .byd-data th button[data-active='true'] span { color: #7dd3a0; }
 .byd-data tr[aria-selected='true'] { background: #2f3a55; }
-.byd-data-id { padding: 7px 10px !important; color: #7d8597; font-family: ui-monospace, monospace; font-size: 12px; }
+.byd-data-id { padding: 7px 10px !important; color: var(--byd-editor-quiet); font-family: ui-monospace, monospace; font-size: 12px; }
 .byd-data input { background: transparent; border: 0; color: #ddd; padding: 7px 10px; width: 100%; box-sizing: border-box; font-size: 12px; }
-.byd-data button { background: transparent; border: 0; color: #7d8597; cursor: pointer; padding: 6px 10px; }
+.byd-data button { background: transparent; border: 0; color: var(--byd-editor-quiet); cursor: pointer; padding: 6px 10px; }
 .byd-data-search { min-height: var(--byd-tap); box-sizing: border-box; }
 .byd-data-add { margin-top: 10px; border: 1px dashed #2f333d; background: transparent; color: #9aa3b8; border-radius: 8px; padding: 8px 14px; cursor: pointer; }
 /* The action row (#17, prototype A): it is not there at all until a card is marked, and then it
@@ -806,7 +812,7 @@
    header cell itself; that would unstick the head. */
 /* The × that takes a column away rides its own heading, quiet next to the word it belongs to,
    and on the same line as the sort control so that no heading is taller than another. */
-.byd-data th .byd-data-dropfield { margin-left: 6px; padding: 0 3px; color: #5b6376; font-size: 13px; line-height: 1; vertical-align: middle; }
+.byd-data th .byd-data-dropfield { margin-left: 6px; padding: 0 3px; color: var(--byd-editor-quiet); font-size: 13px; line-height: 1; vertical-align: middle; }
 .byd-data th .byd-data-dropfield:hover, .byd-data th .byd-data-dropfield:focus-visible { color: #e05c5c; }
 .byd-data thead .byd-data-newfield { z-index: 4; white-space: nowrap; }
 .byd-data thead .byd-data-newfield > button { color: var(--byd-editor-count-ink); }
@@ -828,10 +834,10 @@
   white-space: normal;
   text-align: left;
 }
-.byd-newfield label { display: grid; gap: 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #7d8597; }
+.byd-newfield label { display: grid; gap: 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--byd-editor-quiet); }
 .byd-newfield input[type='text'], .byd-newfield > label input { width: 100%; border: 1px solid #3b414e; border-radius: 6px; padding: 6px 8px; background: #1b1d23; color: #e6ecfa; font: inherit; }
 .byd-newfield fieldset { display: flex; gap: 10px; margin: 0; padding: 0; border: 0; }
-.byd-newfield legend { padding: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #7d8597; }
+.byd-newfield legend { padding: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--byd-editor-quiet); }
 .byd-newfield fieldset label { display: flex; align-items: center; gap: 4px; font-size: 12px; text-transform: none; letter-spacing: 0; color: #dce3f2; }
 .byd-newfield [role='alert'] { margin: 0; color: #f0b64a; font-size: 12px; font-weight: 400; }
 /* Two classes deep on purpose: the head's own `.byd-data th button` strips buttons back to bare
@@ -948,7 +954,7 @@
 
 /* The symbol library (E4): the library on the left, the game's own set and the cards on the right. */
 .byd-symbols { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 20px; padding: 20px; align-items: start; }
-.byd-symbols h2 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; }
+.byd-symbols h2 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-symbols p { margin: 0 0 12px; color: #9aa3b8; line-height: 1.5; }
 .byd-symbols-library { padding: 16px; border-radius: 16px; background: #171a23; border: 1px solid #2f333d; }
 .byd-symbols input[type='search'], .byd-symbols-set input { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; font: inherit; }
@@ -957,7 +963,7 @@
 .byd-symbols button[aria-pressed='true'] { background: var(--byd-editor-primary-bg); border-color: var(--byd-editor-primary-bg); }
 .byd-symbols-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; max-height: 58vh; overflow: auto; }
 .byd-symbols-tile { display: grid; justify-items: center; gap: 3px; padding: 8px 4px; font-weight: 400; font-size: 10px; color: #9aa3b8; }
-.byd-symbols-tile small { color: #6d7488; font-size: 9px; }
+.byd-symbols-tile small { color: var(--byd-editor-quiet); font-size: 9px; }
 /* A symbol reaches the card as an image, so it cannot take the colour of the text around it:
    it is drawn dark, and needs a light chip to be seen against the editor's dark surfaces. */
 .byd-symbols img { width: 22px; height: 22px; padding: 3px; border-radius: 6px; background: #e8e2d4; }
@@ -967,14 +973,14 @@
 .byd-symbols-set li { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 10px; background: #171a23; border: 1px solid #2f333d; }
 .byd-symbols-set code { color: #ffd98a; font-size: 12px; }
 .byd-symbols-set input { width: 96px; padding: 5px 8px; }
-.byd-symbols-set small { color: #7d8597; font-size: 11px; }
+.byd-symbols-set small { color: var(--byd-editor-quiet); font-size: 11px; }
 .byd-symbols-set button { padding: 2px 8px; font-size: 15px; color: #9aa3b8; }
 .byd-symbols [role='alert'] { color: #f0b64a; }
 
 /* The rulebook (B7): the page itself is the editor, so it is paper, not a dark surface. */
 .byd-rules { display: grid; gap: 14px; padding: 16px 20px; align-content: start; }
 .byd-rules-bar { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
-.byd-rules-bar h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; }
+.byd-rules-bar h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-rules-bar span { color: #9aa3b8; font-size: 12px; }
 .byd-rules-warn { color: #f0b64a !important; }
 .byd-rules-booklet { border: 1px solid #2f333d; border-radius: 8px; padding: 5px 11px; background: #1b1d23; color: #fff; font: 700 12px system-ui; text-decoration: none; cursor: pointer; }
@@ -1002,13 +1008,13 @@
 .byd-rules-row select { width: 150px; }
 .byd-rules-edit > button { justify-self: start; border: 1px solid #2f333d; border-radius: 8px; padding: 5px 10px; background: #1b1d23; color: #fff; font: 700 12px system-ui; cursor: pointer; }
 .byd-rules-picker { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-.byd-rules-picker > span { color: #7d8597; font: 10px system-ui; text-transform: uppercase; letter-spacing: 1px; }
+.byd-rules-picker > span { color: var(--byd-editor-quiet); font: 10px system-ui; text-transform: uppercase; letter-spacing: 1px; }
 .byd-rules-picker button { border: 1px solid #2f333d; border-radius: 7px; padding: 3px 8px; background: #1b1d23; color: #dce3f2; font: 11px system-ui; cursor: pointer; }
 .byd-rules-remove { margin-left: auto; color: #ff9a9a !important; }
 .byd-rules-add { position: absolute; right: -34px; top: 2px; width: 24px; height: 24px; padding: 0; border: 1px solid #cbbfa8; border-radius: 7px; background: #ece5d8; color: #6b6255; cursor: pointer; opacity: 0; }
 .byd-rules-block:hover .byd-rules-add, .byd-rules-add:focus-visible { opacity: 1; }
 .byd-rules-empty { display: grid; gap: 12px; justify-items: start; max-width: 520px; padding: 24px; }
-.byd-rules-empty h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; }
+.byd-rules-empty h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-rules-empty p { margin: 0; color: #9aa3b8; line-height: 1.6; }
 .byd-rules-empty button { border: 1px solid #2f333d; border-radius: 8px; padding: 8px 14px; background: var(--byd-editor-primary-bg); border-color: var(--byd-editor-primary-bg); color: #fff; font-weight: 700; cursor: pointer; }
 

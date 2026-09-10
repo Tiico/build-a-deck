@@ -178,3 +178,21 @@ describe('the editor primary as one definition', () => {
     expect(declarations(css)).not.toMatch(/rgba?\(\s*60[\s,]+140[\s,]+231/)
   })
 })
+
+// The register the editor says everything quiet in: a section heading, a hint, the id of a row,
+// the arrow that sorts a column, the × that drops one, a licence under a symbol. It is small
+// text and there is a lot of it, so it carries the same 4.5:1 as every other sentence — on both
+// shades it is ever read on, the panels and the darker chrome under them.
+describe('the palette the editor says its quiet things in', () => {
+  it.each([{ on: '--byd-editor-table-panel-bg' }, { on: '--byd-editor-stage-bg' }, { on: '--byd-editor-chrome-bg' }])('gives quiet text AA contrast on $on', ({ on }) => {
+    expect(contrastRatio(token('--byd-editor-quiet'), token(on))).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('declares that grey once and reaches for the token everywhere else', () => {
+    expect([...declarations(css).matchAll(/#868ea3/gi)]).toHaveLength(1)
+    // The shades it replaced are gone: a quiet thing that kept its own hex kept its own contrast.
+    for (const hex of ['#7d8597', '#6b7386', '#6d7488', '#5b6376']) {
+      expect(declarations(css)).not.toMatch(new RegExp(hex, 'i'))
+    }
+  })
+})
