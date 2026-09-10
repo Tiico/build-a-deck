@@ -199,6 +199,48 @@ describe('resizing an element with the handles (#18)', () => {
   })
 })
 
+// A card carrying both things the `icons` element can be: one symbol chosen by name, which is
+// what the Ikon tool places (#33), and a row of them reading a column (L1).
+const withIcons = () => {
+  const doc = structuredClone(projectDoc())
+  doc.template.faces['front']!.base.push(
+    { kind: 'icons', id: 'icon-1', x: 27.5, y: 40, w: 8, h: 8, bind: { literal: 'svärd' }, iconMm: 8, gapMm: 0 },
+    { kind: 'icons', id: 'marks', x: 5, y: 72, w: 40, h: 6, bind: { field: 'marks' }, iconMm: 5 },
+  )
+  return doc
+}
+
+// The tool places a square filled edge to edge and says so, and the symbol is drawn from `iconMm`
+// rather than from the box — so a corner dragged used to grow an empty container around an 8 mm
+// symbol. For a tool whose whole product is one image, the size is the thing being edited (#33).
+describe('resizing a single icon (#33)', () => {
+  it('keeps the box square and the symbol filling it, anchored at the corner that did not move', () => {
+    const { onPatch } = canvas({ doc: withIcons(), selectedElement: 'icon-1' })
+    laidOut()
+
+    // 5 mm out and 2 mm down from the lower right corner. The square is what the drag encloses on
+    // both axes, so the symbol never grows into room the pointer did not sweep.
+    drag(handle('se'), [100, 100], [130, 112])
+    expect(onPatch).toHaveBeenLastCalledWith('icon-1', { x: 27.5, y: 40, w: 10, h: 10, iconMm: 10 })
+
+    // The upper left corner holds the lower right one where it is: 26,5 + 9 is 35,5, which is
+    // where the right edge was, and 39 + 9 is 48, which is where the bottom edge was.
+    drag(handle('nw'), [100, 100], [88, 94])
+    expect(onPatch).toHaveBeenLastCalledWith('icon-1', { x: 26.5, y: 39, w: 9, h: 9, iconMm: 9 })
+  })
+
+  it('leaves a row of icons alone, because its box is a strip and not a symbol', () => {
+    const { onPatch } = canvas({ doc: withIcons(), selectedElement: 'marks' })
+    laidOut()
+
+    // The control: the same drag on the same kind of element, bound to a column instead of to a
+    // name. A row is as wide and as tall as it is dragged, and how big its symbols are is a
+    // separate measure (L1) — so nothing here is squared and `iconMm` is left where it was.
+    drag(handle('se'), [100, 100], [130, 112])
+    expect(onPatch).toHaveBeenLastCalledWith('marks', { x: 5, y: 72, w: 45, h: 8 })
+  })
+})
+
 const guide = (axis: 'x' | 'y') => document.querySelector(`[data-guide="${axis}"]`) as HTMLElement | null
 
 describe('guide lines while an element is dragged (#18)', () => {

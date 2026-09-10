@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEven
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import type { Element, FaceTemplate, ProjectDoc, Row } from './types.js'
 import { CardPreview } from './CardPreview.js'
-import { arrowMove, fitScale, HANDLES, movedTo, newElement, resizedTo, snapped, STAGE_SCALE, TOOLS, type Box, type ElementKind, type Grab, type Guides, type Handle } from './canvas.js'
+import { arrowMove, fitScale, HANDLES, iconSized, movedTo, newElement, resizedTo, snapped, STAGE_SCALE, TOOLS, type Box, type ElementKind, type Grab, type Guides, type Handle } from './canvas.js'
 import { elementsFor } from '@byd/template'
 import { previewIcons } from './assets.js'
 import { fieldsOf, takenNames } from './fields.js'
@@ -91,7 +91,11 @@ export function TemplateCanvas({ stage = null, doc, assetBase, face, onSelectFac
   const panel = faceTemplate ? layersOf(faceTemplate, group) : []
   const layer = panel.find((l) => l.element.id === selectedElement)
   const el = layer?.source === 'removed' ? undefined : layer?.element
-  useElementKeys(el, onPatch, onRemove)
+  // One door for every change to an element, so a rule about a kind is applied once instead of at
+  // each of the ways to make the change. A single icon is its box (#33): the corner handles and
+  // the two numbers in the panel are two ways to the same thing, and both come through here.
+  const patch = (id: string, changed: Partial<Element>) => onPatch(id, iconSized(panel.find((l) => l.element.id === id)?.element, changed))
+  useElementKeys(el, patch, onRemove)
   const stageEl = useRef<HTMLElement | null>(null)
   const scale = useStageFit(stageEl)
   // The grid is a layer to see by, not a rule (variant C, kept as an option): it is off until it
@@ -177,7 +181,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, face, onSelectFac
             assetBase={assetBase}
             selectedElement={selectedElement}
             onSelectElement={onSelectElement}
-            overlay={<DragLayer grid={grid} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={onPatch} />}
+            overlay={<DragLayer grid={grid} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={patch} />}
           />
         </main>
       </div>
@@ -189,7 +193,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, face, onSelectFac
         {/* A panel with nothing in it says why rather than looking broken — and on a small screen
             the layers are another stage away, so it says where to go. */}
         {!layer && <p className="byd-canvas-hint">{t('canvas.props.empty')}</p>}
-        {el && <Properties el={el} fields={fields} taken={takenNames(doc)} fonts={Object.keys(doc.fonts ?? {})} icons={Object.keys(doc.icons)} onPatch={(patch) => onPatch(el.id, patch)} onAddField={onAddField} />}
+        {el && <Properties el={el} fields={fields} taken={takenNames(doc)} fonts={Object.keys(doc.fonts ?? {})} icons={Object.keys(doc.icons)} onPatch={(changed) => patch(el.id, changed)} onAddField={onAddField} />}
         {layer && group && overridden.has(layer.element.id) && (
           <button type="button" className="byd-canvas-reset" onClick={() => onReset(layer.element.id)}>
             {t('canvas.reset')}

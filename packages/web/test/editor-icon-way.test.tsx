@@ -89,6 +89,14 @@ async function openTemplate(doc = projectDoc()) {
   return await screen.findByRole('toolbar', { name: 'Verktyg' })
 }
 
+// How big the symbol is actually drawn, read off the CSS the compiler wrote for that element.
+// The size on the screen is the only place the answer is: the panel's numbers are the box, and
+// the whole trouble was that the box and the symbol had come apart.
+function drawnMm(id: string): number | null {
+  const css = [...document.querySelectorAll('#canvas style')].map((s) => s.textContent).join('\n')
+  return Number(new RegExp(`\\[data-element="${id}"\\] \\.byd-icon\\{height:([0-9.]+)mm`).exec(css)?.[1] ?? NaN) || null
+}
+
 // The other half of #33, and a different question from the cell's: this one is about the card
 // rather than about a sentence. The glossary settled the word and where it stands — `ikon` is the
 // single image, and it belongs "där en sätts: i tabellcellen och på duken" (A4).
@@ -178,6 +186,28 @@ describe('the icon as a tool on the canvas (#33)', () => {
     await waitFor(() => expect((screen.getByLabelText(/^x/i) as HTMLInputElement).value).toBe('28'))
     fireEvent.keyDown(document, { key: 'Delete' })
     await waitFor(() => expect(document.querySelector('#canvas img.byd-icon')).toBeNull())
+  })
+
+  // The tool places a square filled edge to edge, and that was true only at the instant of
+  // placing: the compiler sizes the symbol from `iconMm`, and nothing afterwards touched it, so
+  // dragging a corner grew an empty box around an 8 mm symbol that then sat off to one side. For
+  // a tool whose whole product is one image, the size is the thing being edited.
+  it('grows the symbol with the box, so what is dragged is what shows', async () => {
+    const tools = await openTemplate()
+    fireEvent.click(within(tools).getByRole('button', { name: 'Ikon' }))
+    fireEvent.click(within(await screen.findByRole('listbox', { name: 'Symboler' })).getByRole('option', { name: /svärd/ }))
+    await screen.findByRole('heading', { name: /icon-1/ })
+
+    // The control: it is placed at 8 mm, and the compiler draws it at 8 mm.
+    expect(drawnMm('icon-1')).toBe(8)
+
+    fireEvent.change(screen.getByLabelText('Bredd (mm)'), { target: { value: '20' } })
+
+    // Measured on what the one renderer emits (E2), not on what the panel says.
+    await waitFor(() => expect(drawnMm('icon-1')).toBe(20))
+    // And the box is still the symbol: a single icon is a square thing, so the two sides are one
+    // measurement and the other one followed.
+    expect((screen.getByLabelText('Höjd (mm)') as HTMLInputElement).value).toBe('20')
   })
 
   it('closes the library with Escape, placing nothing and leaving the focus where it was', async () => {

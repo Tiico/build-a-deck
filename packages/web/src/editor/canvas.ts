@@ -81,7 +81,9 @@ export function newElement(kind: ElementKind, opts: { taken: readonly string[]; 
   }
 }
 
-// How big a single icon lands: square, and filled edge to edge, so what is dragged is what shows.
+// How big a single icon lands: square, and filled edge to edge. It stays that way when it is
+// resized — see `iconSized` below, which is what makes "what is dragged is what shows" a promise
+// about the tool rather than about the instant of placing.
 const ICON_MM = 8
 
 // One icon placed on the card (#33). It is the `icons` element the tool rail already had, bound to
@@ -104,6 +106,43 @@ export function iconElement(name: string, opts: { taken: readonly string[]; card
     bind: { literal: name },
     iconMm: ICON_MM,
     gapMm: 0,
+  }
+}
+
+// What a change of size means for a single icon (#33). The compiler draws the symbol at `iconMm`
+// and not at the box, so without this the box grew and the symbol stayed 8 mm, adrift in a
+// container it no longer filled — and the tool's promise, that what is dragged is what shows, was
+// true only for the instant of placing. Every way the size can change goes through here: the
+// corner handles and the two numbers in the panel.
+//
+// The two sides are one measurement, because the symbol is a square thing and a box that is not
+// square is a box the symbol cannot fill. So a corner drag squares off, anchored at the corner
+// that did not move — a box dragged by its top-left grows up and to the left, rather than jumping
+// away to the other side — and setting either of W and H in the panel sets both.
+//
+// Only for an icon bound to a name. A row of icons reads a column (L1) and its box is a strip
+// several symbols stand in; how big they are is a separate measure there, and rightly so.
+export function iconSized(el: Element | undefined, patch: Partial<Element>): Partial<Element> {
+  if (!el || el.kind !== 'icons' || 'field' in el.bind) return patch
+  const box = patch as Partial<Box>
+  if (box.w === undefined && box.h === undefined) return patch
+  const w = box.w ?? el.w
+  const h = box.h ?? el.h
+  // A side that was named is the side: typing 20 into the panel's width means 20, and the other
+  // number follows it. A corner drag names both, and then the square is the one the drag encloses
+  // on either axis — the symbol never grows into room the pointer did not sweep.
+  // `iconMm` must be a positive measure, so the floor is the one every box already has: a box
+  // that cannot be seen cannot be grabbed back.
+  const named = box.w !== undefined && box.h !== undefined ? Math.min(w, h) : (box.w ?? box.h ?? 0)
+  const side = round(Math.max(MIN_MM, named))
+  const moved = (was: number, to: number | undefined) => to !== undefined && to !== was
+  return {
+    ...patch,
+    x: round(moved(el.x, box.x) ? box.x! + w - side : (box.x ?? el.x)),
+    y: round(moved(el.y, box.y) ? box.y! + h - side : (box.y ?? el.y)),
+    w: side,
+    h: side,
+    iconMm: side,
   }
 }
 
