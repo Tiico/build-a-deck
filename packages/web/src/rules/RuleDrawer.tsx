@@ -19,8 +19,9 @@ export function RuleDrawer({ http, sessionId, placement }: RuleDrawerProps) {
   // The rules of a running table never change under the players, so they are read once.
   useEffect(() => {
     let live = true
+    // 204 is the table saying it has no rulebook, which is an answer and not a failure.
     fetch(`${http}/sessions/${encodeURIComponent(sessionId)}/rules`)
-      .then(async (res) => (res.ok ? ((await res.json()) as RenderedRules) : 'none'))
+      .then(async (res) => (res.ok && res.status !== 204 ? ((await res.json()) as RenderedRules) : 'none'))
       .then((r) => live && setRules(r))
       .catch(() => live && setRules('none'))
     return () => {

@@ -622,11 +622,17 @@ describe('the rules a table plays by (B7)', () => {
     expect(body.text).not.toContain('Helt andra regler')
   })
 
-  it('says there are none when the game has no rulebook, and nothing at all for an unknown table', async () => {
+  // A table without a rulebook is not a mistake — most tables are that, and every phone at one
+  // asks this route on the way in. Answering 404 made every one of them log an error in its
+  // console over a game that is working exactly as intended, which is how a real error gets lost
+  // (UX-kontroll 2026-09-10). A table that does not exist is a different answer, and stays one.
+  it('answers a table with no rulebook with nothing, and an unknown table with an error', async () => {
     await json('POST', '/projects', { id: 'p-none', ...project() })
     const started = await json('POST', '/projects/p-none/sessions', {})
     const { id } = (await started.json()) as { id: string }
-    expect((await fetch(`${run.http}/sessions/${id}/rules`)).status).toBe(404)
+    const none = await fetch(`${run.http}/sessions/${id}/rules`)
+    expect(none.status).toBe(204)
+    expect(await none.text()).toBe('')
     expect((await fetch(`${run.http}/sessions/nope/rules`)).status).toBe(404)
   })
 })

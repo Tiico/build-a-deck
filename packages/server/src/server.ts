@@ -1015,8 +1015,15 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     const session = await opts.store.loadSession(decodeURIComponent(sessionRules[1] ?? ''))
     const rev = Number(/^rev-(\d+)$/.exec(session?.version ?? '')?.[1])
     const rec = session?.project && Number.isFinite(rev) ? await projects.at(session.project, rev) : null
+    // A table nobody has written rules for is most tables, and every phone at one asks this on
+    // the way in: the answer is nothing, not an error, or every ordinary session leaves a red
+    // line in its players' consoles and a real error has somewhere to hide.
+    if (!session) {
+      json(res, 404, { error: 'no table' })
+      return true
+    }
     if (!rec?.rules) {
-      json(res, 404, { error: 'no rules' })
+      res.writeHead(204).end()
       return true
     }
     json(res, 200, renderRules(rec.rules, namesOfProject(rec)))
