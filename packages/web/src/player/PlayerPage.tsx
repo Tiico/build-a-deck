@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { VisibleComponentState } from '@byd/protocol'
 import { useTableClient } from '../table/useTableClient.js'
 import { hue } from '../table/hue.js'
@@ -8,6 +8,7 @@ import { CountersRow, MineStrip } from './SeatExtras.js'
 import { PlaySheet } from './PlaySheet.js'
 import { TableSummary } from './TableSummary.js'
 import { SessionButtons, SessionOverlays, refusedText, useSessionVersion, useToast, type Sheet } from './SessionOverlays.js'
+import { useSitDown } from './useSitDown.js'
 import { RuleDrawer } from '../rules/RuleDrawer.js'
 import { claimUrl } from '../account/api.js'
 import { playIntents } from './play.js'
@@ -63,15 +64,8 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   useActivityLive(activity, view, seat)
 
   // Sit down on first contact, and only on first contact: claim the seat with the name from the
-  // link, if it is still free. Once is the whole of it — a seat that falls empty later fell empty
-  // because somebody emptied it, and sitting straight back down would undo the way out (#31).
-  const seatFree = view?.seats.find((s) => s.id === seat)?.name === null
-  const sat = useRef(false)
-  useEffect(() => {
-    if (!client || !view || !seat || !name || !seatFree || sat.current) return
-    sat.current = true
-    void client.send({ v: 'seat.claim', seat, name })
-  }, [client, view === null, seat, name, seatFree])
+  // link, if it is still free.
+  useSitDown(client, view, seat, name)
 
   if (!sessionId || !seat) return <StatusNotice notice={noticeFor('missing', 'phone', t)} surface="page" links={links} />
   // Not admitted, or kicked (DRIFT §9). The door is shut, so it is the `forbidden` state — said

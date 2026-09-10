@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { Intent } from '@byd/protocol'
 import '../table/table.css'
 import '../player/player.css'
@@ -12,6 +12,7 @@ import { zoneAt } from '../zones.js'
 import { CARD_MM } from '../table/drop.js'
 import { playIntents } from '../player/play.js'
 import { SessionButtons, SessionOverlays, useSessionVersion, useToast, refusedText, type Sheet } from '../player/SessionOverlays.js'
+import { useSitDown } from '../player/useSitDown.js'
 import { claimUrl } from '../account/api.js'
 import { SeatLine } from './SeatLine.js'
 import { HandFan } from './HandFan.js'
@@ -67,15 +68,8 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   })
   useActivityLive(activity, view, seat)
 
-  // Once, and only once: a seat that falls empty later was emptied on purpose, and sitting
-  // straight back down would undo the way out (#31).
-  const seatFree = view?.seats.find((s) => s.id === seat)?.name === null
-  const sat = useRef(false)
-  useEffect(() => {
-    if (!client || !view || !seat || !name || !seatFree || sat.current) return
-    sat.current = true
-    void client.send({ v: 'seat.claim', seat, name })
-  }, [client, view === null, seat, name, seatFree])
+  // Distance mode has a seat like any other screen with one, and sits down the same way.
+  useSitDown(client, view, seat, name)
 
   if (!sessionId || !seat) return <StatusNotice notice={noticeFor('missing', 'table', t)} surface="page" links={links} />
   // Not admitted, or kicked (DRIFT §9): a shut door rather than a broken line.

@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { TableClient } from '../src/client.js'
+import { WebSocket as WsClient } from 'ws'
+import { TableClient, useWebSocketImplementation, type WebSocketCtor } from '../src/client.js'
 import { PlayerPage, type PlayerPageProps } from '../src/player/PlayerPage.js'
+import { DEFAULT_TIMING } from '../src/status/connection.js'
 import { admit, asSeat, asTable, createSession, roomOf, seatSetup, startServer, type Running } from './fixture.js'
 
 let run: Running
@@ -11,6 +13,7 @@ beforeEach(async () => {
 })
 afterEach(async () => {
   vi.useRealTimers()
+  useWebSocketImplementation(WsClient as unknown as WebSocketCtor)
   await run.stop()
 })
 
@@ -26,6 +29,23 @@ async function open(sessionId: string, seat: string, name: string, props: Player
   return token
 }
 
+// A socket that loses the envelope the phone sits down with and then drops, which is what a lift
+// eating the signal at the wrong moment looks like from the page. Everything after it is an
+// ordinary socket, so the reconnection is the real one.
+function losesTheFirstClaim(): WebSocketCtor {
+  let eaten = false
+  return class extends WsClient {
+    override send(data: string): void {
+      if (!eaten && data.includes('seat.claim')) {
+        eaten = true
+        this.close()
+        return
+      }
+      super.send(data)
+    }
+  } as unknown as WebSocketCtor
+}
+
 describe('PlayerPage', () => {
   it('claims its seat by name on connect and shows the hand it is dealt', async () => {
     const id = await createSession(run)
@@ -39,6 +59,23 @@ describe('PlayerPage', () => {
     await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(2))
     expect(screen.getByText('dragon')).toBeTruthy()
     table.close()
+  })
+
+  // Sitting down is one envelope, and an envelope can be lost: `send` answers a socket that is
+  // not there without throwing, and anything in flight is failed when the line drops. Latching
+  // on the attempt rather than on the answer left a phone looking at a seat it never took, with
+  // its own name in the link, until somebody thought to reload the page.
+  it('sits down again when the first claim never lands', async () => {
+    const id = await createSession(run)
+    useWebSocketImplementation(losesTheFirstClaim())
+    const token = await admit(run, id, 'A', 'Ada')
+    history.replaceState(null, '', `/play?session=${id}&seat=A&name=Ada&token=${token}&code=${roomOf(id).code}&server=${encodeURIComponent(run.url)}`)
+    render(<PlayerPage timing={{ ...DEFAULT_TIMING, retryPlanMs: [20, 40, 80] }} />)
+
+    expect(await screen.findByText('Ada', undefined, { timeout: 4000 })).toBeTruthy()
+    // Once, still: the claim that was lost is the one that comes back, not a second one on top
+    // of a seat already taken.
+    expect((await run.store.read(id)).map((l) => l.intent.v)).toEqual(['seat.claim'])
   })
 
   it('lifting a card and choosing a zone plays it there — one envelope, seen by the table', async () => {
