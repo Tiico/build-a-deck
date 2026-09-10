@@ -167,4 +167,22 @@ describe('the host keeps one actor per project (D3)', () => {
     expect(one).toBe(two)
     expect(await host.get('nope')).toBeNull()
   })
+
+  // A load that fell over is not an answer about the project, and it must not become one: the
+  // host held the rejected promise and handed the same failure to everyone who asked afterwards,
+  // so one unreachable moment closed the project for the life of the process.
+  it('keeps nothing from a load that failed, so the project opens on the next ask', async () => {
+    const store = new MemoryProjectStore()
+    await store.create('p1', doc())
+    const host = new ProjectHost(store)
+    const stumble = vi.spyOn(store, 'readEdits').mockRejectedValueOnce(new Error('the log was unreachable'))
+
+    await expect(host.get('p1')).rejects.toThrow(/unreachable/)
+    expect(stumble).toHaveBeenCalledTimes(1)
+
+    // The store is itself again, so the next ask is a fresh load and not the failure kept.
+    const actor = await host.get('p1')
+    expect(actor?.doc.name).toBe('Skogens herrar')
+    expect(await host.get('p1')).toBe(actor)
+  })
 })

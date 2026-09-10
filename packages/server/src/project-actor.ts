@@ -157,7 +157,15 @@ export class ProjectHost {
       if (actor) return actor
       this.actors.delete(id)
     }
-    const loading = ProjectActor.load(id, this.store)
+    // A load that fell over is not an answer about the project, so nothing is kept from it: the
+    // entry goes as the load settles, whichever way it settled. Held, the rejected promise would
+    // be handed to every later asker — one unreachable moment would close the project until the
+    // process was restarted — and the asker that made the entry cannot clear it itself, because
+    // it never comes back from the `await` to do so.
+    const loading = ProjectActor.load(id, this.store).catch((err: unknown) => {
+      this.actors.delete(id)
+      throw err
+    })
     this.actors.set(id, loading)
     const actor = await loading
     if (!actor) this.actors.delete(id)
