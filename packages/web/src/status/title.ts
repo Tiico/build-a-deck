@@ -33,8 +33,11 @@ export function routeOf(pathname: string): Route {
 }
 
 // Which room a session route is about is not always a code: only the TV is given one, so the
-// session id stands in for it everywhere else.
-export type TitleContext = { state?: StatusKey | null; room?: string | null; game?: string | null }
+// session id stands in for it everywhere else. And `route` is what the page is showing rather
+// than where it stands: `/` is the games for whoever is logged in and the login card for whoever
+// is not, and a tab that says "Mina spel" over the second one names a page that is not there.
+// Only a page with two shapes reports it, and the address decides for every other one.
+export type TitleContext = { state?: StatusKey | null; room?: string | null; game?: string | null; route?: Route | null }
 
 // The name of the page first, because a tab is clipped from the right, and `·` because that is
 // already the app's separator.
@@ -95,6 +98,7 @@ function stateName(state: StatusKey, route: Route, t: T): string | null {
 }
 
 export function documentTitle(route: Route, ctx: TitleContext = {}, t: T = swedish): string {
-  const override = ctx.state ? stateName(ctx.state, route, t) : null
-  return [...(override !== null ? [override] : nameOf(route, ctx, t)), APP].join(' · ')
+  const here = ctx.route ?? route
+  const override = ctx.state ? stateName(ctx.state, here, t) : null
+  return [...(override !== null ? [override] : nameOf(here, ctx, t)), APP].join(' · ')
 }

@@ -45,7 +45,8 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
       })
       .catch(() => setOffline(true))
   }, [http, attempt])
-  usePageTitle({ state: offline ? 'offline' : email === undefined ? 'loading' : null })
+  // Logged out, `/` is the login card and the tab says so rather than promising games (#12).
+  usePageTitle({ state: offline ? 'offline' : email === undefined ? 'loading' : null, route: email === null ? 'login' : null })
   const suffix = (q: URLSearchParams) => {
     if (server) q.set('server', server)
     return q.toString()

@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { DocumentTitle } from '../src/status/DocumentTitle.js'
 import { StatusLive } from '../src/status/StatusLive.js'
 import { HomePage } from '../src/account/HomePage.js'
+import { startServer, type Running } from './fixture.js'
 
 function open(server: string) {
   history.replaceState(null, '', `/?server=${encodeURIComponent(server)}`)
@@ -35,5 +36,31 @@ describe('the start page when the service cannot be reached', () => {
     open('http://127.0.0.1:1')
     expect(notice()?.getAttribute('data-status-notice')).toBe('loading')
     expect(screen.queryByRole('alert')?.textContent ?? '').not.toMatch(/fetch/i)
+  })
+})
+
+// `/` has two shapes: the games for whoever is logged in, and the login card for whoever is not.
+// The tab said "Mina spel" over both, which is a promise the second one does not keep — and the
+// name of the tab is how someone finds their way back to it (#12, UX-kontroll 2026-09-10).
+describe('the tab over the way in', () => {
+  let run: Running
+  beforeEach(async () => {
+    run = await startServer({ auth: true })
+  })
+  afterEach(async () => {
+    await run.stop()
+  })
+
+  it('says what the page is showing: the login card, and then the games', async () => {
+    open(run.http)
+    await screen.findByLabelText('E-post')
+    await waitFor(() => expect(document.title).toBe('Logga in · build-your-deck'))
+
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
+    const link = /\/auth\/verify\?token=\S+/.exec(run.mail.sent.at(-1)?.text ?? '')![0]
+    await fetch(`${run.http}${link}`, { redirect: 'manual' })
+    open(run.http)
+    await screen.findAllByText('Mina spel')
+    await waitFor(() => expect(document.title).toBe('Mina spel · build-your-deck'))
   })
 })
