@@ -433,6 +433,30 @@ describe('an icon placed on the card (#33, E4)', () => {
     expect(await client.placeIcon(svard, 'front', null)).toBe('icon-2')
     expect(Object.keys(client.doc.icons)).toEqual(['svärd'])
   })
+
+  // Uploading the bytes takes as long as the network takes, and the face is what the free id is
+  // worked out from. Two presses that overlap — or somebody else in the game adding an element
+  // while the upload is in flight (D3) — both read the face as it was before either landed, and
+  // both mint `icon-1`. The second is refused by the template, and because `edit` applies before
+  // it records, the whole placement is thrown away and the designer is told an error instead of
+  // being handed the icon she asked for.
+  it('gives each of two placements that overlap an element of its own', async () => {
+    const created = await run.projects.create('p1', projectDoc())
+    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    const svard = LIBRARY.find((s) => s.id === 'svard')!
+    const skold = LIBRARY.find((s) => s.id === 'skold')!
+
+    const [first, second] = await Promise.all([client.placeIcon(svard, 'front', null), client.placeIcon(skold, 'front', null)])
+
+    expect(new Set([first, second])).toEqual(new Set(['icon-1', 'icon-2']))
+    const ids = client.doc.template.faces['front']!.base.map((e) => e.id)
+    expect(ids).toContain(first)
+    expect(ids).toContain(second)
+    // Both symbols came into the game with their elements, and each element shows its own.
+    expect(Object.keys(client.doc.icons).sort()).toEqual(['sköld', 'svärd'])
+    const shows = (id: string) => client.doc.template.faces['front']!.base.find((e) => e.id === id) as { bind: { literal: string } }
+    expect(new Set([shows(first).bind.literal, shows(second).bind.literal])).toEqual(new Set(['svärd', 'sköld']))
+  })
 })
 
 describe('the type the game is set in (B3)', () => {

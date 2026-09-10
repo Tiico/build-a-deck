@@ -479,10 +479,16 @@ export class ProjectClient {
   // The element is the `icons` element the canvas already had, bound to the name rather than to a
   // column, so the one renderer draws it and packages/template needed nothing (L1).
   async placeIcon(symbol: GameSymbol, face: string, group: string | null, t: T = swedish): Promise<string> {
-    const faceTemplate = this.doc.template.faces[face]
-    if (!faceTemplate) throw new Error(`template has no face ${face}`)
+    if (!this.doc.template.faces[face]) throw new Error(`template has no face ${face}`)
     const file = svgBytes(symbol)
     const ref = `${ASSET_PREFIX}${await this.uploadAsset(new Blob([file.bytes], { type: file.type }), t)}`
+    // Everything the edit is worked out from is read after the upload, never before it. The
+    // upload takes as long as the network takes, and the document moves while it is in flight —
+    // a second press, or somebody else in the game (D3). A face read before the wait would give
+    // this element the id the placement that landed first has already taken, and the template
+    // refuses it: `edit` applies before it records, so the whole placement would be lost.
+    const faceTemplate = this.doc.template.faces[face]
+    if (!faceTemplate) throw new Error(`template has no face ${face}`)
     // The same symbol twice is the same entry (E4), and then there is nothing to take in: the
     // edit places the element alone and the icon set is left exactly as it was.
     const already = Object.entries(this.doc.icons).find(([, url]) => url === ref)?.[0]
