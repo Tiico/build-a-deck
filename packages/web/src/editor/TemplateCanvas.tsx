@@ -539,6 +539,8 @@ function ToolRail({ onAdd, onPlaceIcon }: { onAdd(kind: ElementKind): void; onPl
     setChoice(0)
     focus('icon')
   }
+  // Which symbol the arrows are on, when the library is open at all.
+  const under = LIBRARY[choice]
   const pick = (symbol: GameSymbol) => {
     setPicking(false)
     setChoice(0)
@@ -572,7 +574,7 @@ function ToolRail({ onAdd, onPlaceIcon }: { onAdd(kind: ElementKind): void; onPl
           <button
             key={tool.id}
             type="button"
-            {...(tool.id === 'icon' ? { 'aria-expanded': picking, ...(picking ? { 'aria-controls': TOOL_SYMBOLS, 'aria-activedescendant': symbolOptionId(TOOL_SYMBOLS, LIBRARY[choice] ?? LIBRARY[0]!) } : {}) } : {})}
+            {...(tool.id === 'icon' ? { 'aria-expanded': picking, ...(picking && under ? { 'aria-controls': TOOL_SYMBOLS, 'aria-activedescendant': symbolOptionId(TOOL_SYMBOLS, under) } : {}) } : {})}
             // Another tool is another element, and the library was opened for this one: leaving it
             // floating over the rail while a text box lands on the card is a list about nothing.
             onClick={() => {
@@ -590,7 +592,7 @@ function ToolRail({ onAdd, onPlaceIcon }: { onAdd(kind: ElementKind): void; onPl
               if (!act) return roving.onKeyDown(event)
               event.preventDefault()
               if (act === 'close') return close()
-              if (act === 'pick') return pick(LIBRARY[choice]!)
+              if (act === 'pick') return void (under && pick(under))
               setChoice(act.active)
             }}
           >

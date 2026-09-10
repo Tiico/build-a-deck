@@ -135,11 +135,13 @@ export function iconSized(el: Element | undefined, patch: Partial<Element>): Par
   // that cannot be seen cannot be grabbed back.
   const named = box.w !== undefined && box.h !== undefined ? Math.min(w, h) : (box.w ?? box.h ?? 0)
   const side = round(Math.max(MIN_MM, named))
-  const moved = (was: number, to: number | undefined) => to !== undefined && to !== was
+  // An edge that moved is an edge the drag took hold of, so the opposite one is the anchor and
+  // stays where it was; an edge the patch left alone stays where it was too.
+  const held = (was: number, to: number | undefined, along: number) => (to === undefined ? was : to === was ? to : to + along - side)
   return {
     ...patch,
-    x: round(moved(el.x, box.x) ? box.x! + w - side : (box.x ?? el.x)),
-    y: round(moved(el.y, box.y) ? box.y! + h - side : (box.y ?? el.y)),
+    x: round(held(el.x, box.x, w)),
+    y: round(held(el.y, box.y, h)),
     w: side,
     h: side,
     iconMm: side,

@@ -84,6 +84,8 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
   const [brace, setBrace] = useState<{ cardRef: string; field: string; at: number; query: string } | null>(null)
   const [choice, setChoice] = useState(0)
   const matches = brace ? searchSymbols(brace.query, null, t).slice(0, 8) : []
+  // The one the keys are on, which is what Enter takes and what the cell points at.
+  const active = matches[choice]
   const closeBrace = () => {
     setBrace(null)
     setChoice(0)
@@ -605,7 +607,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                       if (!act) return
                       e.preventDefault()
                       if (act === 'close') return closeBrace()
-                      if (act === 'pick') return takeSymbol(matches[choice]!)
+                      if (act === 'pick') return void (active && takeSymbol(active))
                       setChoice(act.active)
                     }}
                     onFocus={() => {
@@ -617,7 +619,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                       setHere((at) => (at?.cardRef === cardRef && at.field === f ? null : at))
                     }}
                     aria-label={`${cardRef} ${f}`}
-                    {...(brace?.cardRef === cardRef && brace.field === f && matches[choice] ? { 'aria-controls': CELL_SYMBOLS, 'aria-activedescendant': symbolOptionId(CELL_SYMBOLS, matches[choice]!) } : {})}
+                    {...(brace?.cardRef === cardRef && brace.field === f && active ? { 'aria-controls': CELL_SYMBOLS, 'aria-activedescendant': symbolOptionId(CELL_SYMBOLS, active) } : {})}
                   />
                   {brace?.cardRef === cardRef && brace.field === f && matches.length > 0 && (
                     // The library where the cursor stands (E4): the same set the Symboler tab
