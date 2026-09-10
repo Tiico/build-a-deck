@@ -18,7 +18,7 @@ afterEach(async () => {
 
 // A deck whose cards carry a `typ` column, so there is something to group by.
 function typed(): ProjectDoc {
-  const doc = structuredClone(projectDoc())
+  const doc = projectDoc()
   doc.rows = [
     { id: 'dragon', fields: { typ: 'varelse', title: 'Drake', body: 'Flygande.', antal: 2 } },
     { id: 'trap', fields: { typ: 'fälla', title: 'Fallgrop', body: 'Spelas dolt.', antal: 1 } },

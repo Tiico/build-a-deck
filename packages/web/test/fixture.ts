@@ -6,7 +6,9 @@ import { MemoryRenderStore } from '@byd/render/queue'
 
 // A real server in-process. Client tests talk to it over a real socket — no mocks.
 export const registry = new TypeRegistry(STANDARD_TYPES)
-const CARD = { id: CARD_STANDARD_63x88.id, version: 1 }
+// A fresh reference each time it is asked for, so that no two components in a setup — and
+// no two setups — are looking at the one object (#49).
+const CARD = () => ({ id: CARD_STANDARD_63x88.id, version: 1 })
 const CARDS = ['dragon', 'knight', 'wizard', 'rogue', 'priest', 'archer', 'golem', 'witch', 'bard', 'ogre']
 const rect = (x: number, y: number, w: number, h: number) => ({ x, y, w, h, rot: 0 })
 const point = (x: number, y: number) => ({ x, y, w: 0, h: 0, rot: 0 })
@@ -22,7 +24,7 @@ export function twoSeatSetup(): SetupDef {
       { id: 'hand:A', kind: 'hand', name: 'Hand', visibility: 'owner', owner: 'A', returnTo: 'draw', geometry: rect(-300, 320, 600, 100) },
       { id: 'hand:B', kind: 'hand', name: 'Hand', visibility: 'owner', owner: 'B', returnTo: 'draw', geometry: rect(-300, -420, 600, 100) },
     ],
-    components: CARDS.map((cardRef) => ({ type: CARD, cardRef, zone: 'draw', face: 'back' })),
+    components: CARDS.map((cardRef) => ({ type: CARD(), cardRef, zone: 'draw', face: 'back' })),
   }
 }
 
@@ -30,7 +32,7 @@ export function twoSeatSetup(): SetupDef {
 // (C4), as the wizard makes them.
 export function seatSetup(): SetupDef {
   const base = twoSeatSetup()
-  const token = { id: TOKEN_COUNTER.id, version: 1 }
+  const token = () => ({ id: TOKEN_COUNTER.id, version: 1 })
   return {
     ...base,
     zones: [
@@ -43,8 +45,8 @@ export function seatSetup(): SetupDef {
     components: [
       ...base.components,
       ...(['A', 'B'] as const).flatMap((s) => [
-        { type: token, cardRef: 'Liv', zone: `counters:${s}`, face: 'front', counter: 20, x: 8, y: 8 },
-        { type: token, cardRef: 'Guld', zone: `counters:${s}`, face: 'front', counter: 3, x: 40, y: 8 },
+        { type: token(), cardRef: 'Liv', zone: `counters:${s}`, face: 'front', counter: 20, x: 8, y: 8 },
+        { type: token(), cardRef: 'Guld', zone: `counters:${s}`, face: 'front', counter: 3, x: 40, y: 8 },
       ]),
     ],
   }

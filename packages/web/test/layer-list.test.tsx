@@ -6,7 +6,7 @@ import { userEvent } from '@testing-library/user-event'
 import { LayerList } from '../src/editor/LayerList.js'
 import { template } from './project-doc.js'
 
-const base = template.faces['front']!.base
+const base = template().faces['front']!.base
 // The layers a test wants, by id, in the order the list shows them.
 function Layers({ ids }: { ids: string[] }) {
   const [selected, setSelected] = useState<string | null>('title')

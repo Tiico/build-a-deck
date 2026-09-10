@@ -67,7 +67,7 @@ describe('the layer list while the template changes under the keyboard (UX-04)',
     const user = userEvent.setup()
     const onSelectElement = vi.fn()
     const canvas = (doc: ProjectDoc) => <TemplateCanvas doc={doc} face="front" row="dragon" selectedElement="title" onSelectElement={onSelectElement} onPatch={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onPlaceIcon={vi.fn()} onReorder={vi.fn()} onSelectFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} onFontFile={async () => 'Typsnitt'} onFontLicence={vi.fn()} onRemoveFont={vi.fn()} />
-    const { rerender } = render(canvas(structuredClone(projectDoc())))
+    const { rerender } = render(canvas(projectDoc()))
     // The property panel has `option` elements of its own, so the layers are read inside the list.
     const list = () => within(screen.getByRole('listbox', { name: /lager/i }))
     const option = (name: string) => list().getByRole('option', { name })
@@ -82,7 +82,7 @@ describe('the layer list while the template changes under the keyboard (UX-04)',
     expect(named()).toEqual(['text body', 'text title', 'shape frame'])
 
     // Moved to the top of the card: the same layer keeps the focus and the tab stop.
-    const reordered = structuredClone(projectDoc())
+    const reordered = projectDoc()
     const front = reordered.template.faces['front']!
     const [frame, titleEl, bodyEl] = front.base
     front.base = [titleEl!, bodyEl!, frame!]

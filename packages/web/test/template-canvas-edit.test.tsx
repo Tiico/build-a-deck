@@ -9,7 +9,7 @@ import { drag, laidOut, target } from './drag.js'
 // The canvas as the editor mounts it, with every edit it can make reported back.
 function canvas(over: Partial<TemplateCanvasProps> = {}) {
   const props: TemplateCanvasProps = {
-    doc: structuredClone(projectDoc()),
+    doc: projectDoc(),
     face: 'front',
     onSelectFace: vi.fn(),
     group: null,
@@ -113,7 +113,7 @@ describe('adding an element from the canvas (#18)', () => {
 
   it('gives the new element a free id when one of that kind is already there', async () => {
     const user = userEvent.setup()
-    const doc = structuredClone(projectDoc())
+    const doc = projectDoc()
     doc.template.faces['front']!.base.push({ kind: 'shape', id: 'shape-1', x: 0, y: 0, w: 5, h: 5, shape: 'rect' })
     const { onAdd } = canvas({ doc })
 
@@ -124,7 +124,7 @@ describe('adding an element from the canvas (#18)', () => {
 
 describe('the properties of an added element (#18)', () => {
   it('lets an image and an icon row be bound to a field, the way a text box already could', async () => {
-    const doc = structuredClone(projectDoc())
+    const doc = projectDoc()
     doc.template.faces['front']!.base.push({ kind: 'image', id: 'image-1', x: 10, y: 10, w: 20, h: 20, bind: { field: 'title' }, fit: 'contain' })
     const { onPatch } = canvas({ doc, selectedElement: 'image-1' })
 
@@ -202,7 +202,7 @@ describe('resizing an element with the handles (#18)', () => {
 // A card carrying both things the `icons` element can be: one symbol chosen by name, which is
 // what the Ikon tool places (#33), and a row of them reading a column (L1).
 const withIcons = () => {
-  const doc = structuredClone(projectDoc())
+  const doc = projectDoc()
   doc.template.faces['front']!.base.push(
     { kind: 'icons', id: 'icon-1', x: 27.5, y: 40, w: 8, h: 8, bind: { literal: 'svärd' }, iconMm: 8, gapMm: 0 },
     { kind: 'icons', id: 'marks', x: 5, y: 72, w: 40, h: 6, bind: { field: 'marks' }, iconMm: 5 },
@@ -246,7 +246,7 @@ const guide = (axis: 'x' | 'y') => document.querySelector(`[data-guide="${axis}"
 describe('guide lines while an element is dragged (#18)', () => {
   // A narrow element as well as the wide ones, so a centre is not already a centre.
   const withCost = () => {
-    const doc = structuredClone(projectDoc())
+    const doc = projectDoc()
     doc.template.faces['front']!.base.push({ kind: 'text', id: 'cost', x: 50, y: 4, w: 10, h: 10, bind: { field: 'antal' }, font: { family: 'sans-serif', sizePt: 12 }, color: '#111' })
     return doc
   }
