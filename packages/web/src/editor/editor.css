@@ -541,10 +541,13 @@
 .byd-props { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .byd-props label { display: grid; gap: 3px; font-size: 11px; color: #9aa3b8; }
 .byd-props input, .byd-props select { background: #0f1115; border: 1px solid #2a2d36; color: #fff; border-radius: 6px; padding: 6px 8px; font-size: 13px; width: 100%; box-sizing: border-box; }
-/* The binding is the second door into a new field (#32). The form hangs under the picker rather
-   than growing the properties column, for the same reason it does not grow the table's head. */
-.byd-props-field { position: relative; }
-.byd-props-field .byd-newfield { top: calc(100% + 4px); right: 0; }
+/* The binding is the second door into a new field (#32). Here the form stands in the flow under
+   the picker rather than over it: the properties are a scrolling column, so a sheet hanging out
+   of it would be cut off at the panel's edge — and a column of fields growing by one is what a
+   properties panel does anyway. It takes the full width while it is open so the three kinds fit
+   on one line. */
+.byd-props-field:has(.byd-newfield) { grid-column: 1 / -1; }
+.byd-props-field .byd-newfield { position: static; width: auto; margin-top: 6px; }
 .byd-props-field .byd-newfield input[type='radio'] { width: auto; }
 
 /* The fonts the game carries (B3): under the properties, because that is where a family is
@@ -769,9 +772,11 @@
 .byd-newfield fieldset label { display: flex; align-items: center; gap: 4px; font-size: 12px; text-transform: none; letter-spacing: 0; color: #dce3f2; }
 .byd-newfield fieldset input { width: auto; accent-color: var(--byd-editor-primary-bg); }
 .byd-newfield [role='alert'] { margin: 0; color: #f0b64a; font-size: 12px; font-weight: 400; }
-.byd-newfield-do { display: flex; gap: 8px; }
-.byd-newfield-do button { border: 1px solid #3b414e; border-radius: 8px; padding: 6px 12px; background: var(--byd-editor-primary-bg); color: var(--byd-editor-primary-ink); font: inherit; font-weight: 700; cursor: pointer; }
-.byd-newfield-do button[data-kind='quiet'] { background: transparent; color: #9aa3b8; font-weight: 400; }
+/* Two classes deep on purpose: the head's own `.byd-data th button` strips buttons back to bare
+   text, which is right for a column heading and wrong for the answers to a form. */
+.byd-newfield-do { display: flex; gap: 8px; margin-top: 2px; }
+.byd-newfield .byd-newfield-do button { border: 1px solid var(--byd-editor-primary-bg); border-radius: 8px; padding: 6px 12px; background: var(--byd-editor-primary-bg); color: var(--byd-editor-primary-ink); font: inherit; font-weight: 700; cursor: pointer; }
+.byd-newfield .byd-newfield-do button[data-kind='quiet'] { border-color: #3b414e; background: transparent; color: #9aa3b8; font-weight: 400; }
 .byd-data-chosen { color: var(--byd-editor-count-ink); font-weight: 700; }
 /* A marked row is read from across the table, not from its checkbox: the tick is the control,
    the tint and the edge are the answer to "did I get the right four cards". Being marked and

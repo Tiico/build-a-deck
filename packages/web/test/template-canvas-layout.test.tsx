@@ -6,7 +6,8 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-import { render } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
+import { userEvent } from '@testing-library/user-event'
 import { chromium, type Browser } from 'playwright'
 import { TemplateCanvas } from '../src/editor/TemplateCanvas.js'
 import { projectDoc } from './project-doc.js'
@@ -18,6 +19,20 @@ function markup(): string {
   const { container, unmount } = render(
     <TemplateCanvas doc={projectDoc()} face="front" row="dragon" selectedElement="title" onSelectElement={vi.fn()} onPatch={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onReorder={vi.fn()} onSelectFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} onFontFile={async () => 'Typsnitt'} onFontLicence={vi.fn()} onRemoveFont={vi.fn()} />,
   )
+  const html = container.innerHTML
+  unmount()
+  return html
+}
+
+// The same canvas with the binding's last entry chosen, which is what opens the form (#32). The
+// choosing has to happen in React, so it happens here and the markup that comes out is measured.
+async function markupWithForm(): Promise<string> {
+  const user = userEvent.setup()
+  const { container, unmount } = render(
+    <TemplateCanvas doc={projectDoc()} face="front" row="dragon" selectedElement="title" onSelectElement={vi.fn()} onPatch={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onReorder={vi.fn()} onSelectFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} onFontFile={async () => 'Typsnitt'} onFontLicence={vi.fn()} onRemoveFont={vi.fn()} />,
+  )
+  const select = screen.getByLabelText('Fält') as HTMLSelectElement
+  await user.selectOptions(select, within(select).getByRole('option', { name: 'nytt fält…' }))
   const html = container.innerHTML
   unmount()
   return html
@@ -107,6 +122,54 @@ describe('the drag layer where it is actually drawn (#18)', () => {
     // Big enough to hit with a mouse on a card drawn at the stage's zoom.
     for (const [corner, handle] of Object.entries(seen.handles)) {
       expect({ [corner]: handle.w >= 6 && handle.h >= 6 }).toEqual({ [corner]: true })
+    }
+  }, 60_000)
+})
+
+// The second door into a new field (#32). The properties are a column that scrolls, so a form
+// hanging out of the picker would be cut off at the panel's edge — which is the opposite mistake
+// to the one the table's head had to avoid, and needs measuring for the same reason.
+describe('the form the binding opens (#32)', () => {
+  it('stands in the column rather than over the properties under it, and inside the panel’s own edges', async () => {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
+    try {
+      const shell = read('index.html')
+        .replace('<script type="module" src="/src/main.tsx"></script>', '')
+        .replace('</head>', `<style>${read('src/editor/editor.css')}</style></head>`)
+        .replace(
+          '<div id="root"></div>',
+          `<div id="root"><div class="byd-editor" data-page="editor" data-mode="template"><header></header><div></div><main><div role="tabpanel">${await markupWithForm()}</div></main></div></div>`,
+        )
+      await page.setContent(shell, { waitUntil: 'load' })
+      const seen = await page.evaluate(() => {
+        const box = (el: Element | null) => {
+          const r = (el ?? document.body).getBoundingClientRect()
+          return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }
+        }
+        const props = document.querySelector('.byd-canvas-props')!
+        return {
+          props: box(props),
+          form: box(document.querySelector('.byd-newfield')),
+          // Every other property of the element, which the form must not lie across.
+          others: [...document.querySelectorAll('.byd-props > label:not(.byd-props-field)')].map((el) => ({ name: el.textContent?.split('\n')[0]?.trim() ?? '', box: box(el) })),
+          sideways: props.scrollWidth - props.clientWidth,
+        }
+      })
+      const overlaps = (a: Box, b: Box) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
+
+      expect(seen.form.w).toBeGreaterThan(0)
+      expect(seen.others.length).toBeGreaterThan(3)
+      // The properties are a column that scrolls, so a sheet hanging over it would cover the
+      // controls under the picker and be cut off at the panel's edge. It takes its own place in
+      // the column instead — which is the opposite answer to the table head's, and right for the
+      // opposite reason.
+      expect(seen.others.filter((o) => overlaps(seen.form, o.box)).map((o) => o.name)).toEqual([])
+      expect(seen.form.x).toBeGreaterThanOrEqual(seen.props.x)
+      expect(seen.form.x + seen.form.w).toBeLessThanOrEqual(seen.props.x + seen.props.w)
+      // And it does not push the column sideways to make room for itself.
+      expect(seen.sideways).toBe(0)
+    } finally {
+      await page.close()
     }
   }, 60_000)
 })
