@@ -88,6 +88,9 @@ export const enEditor = {
   'undo.what.rules': 'a change to the rules',
   'undo.what.font': 'a change among the typefaces',
   'undo.what.version': 'a version taken back',
+  // The shortcut that was a secret (#33): { in a cell opens the icon picker, and now it shows.
+  'table.icon.insert': 'Insert an icon',
+  'table.icon.hint': 'Insert an icon — or type {',
   'table.import': 'Import CSV',
   'table.export': 'Export CSV',
   'table.import.note': 'An import replaces the cards in the table. Save once the result looks right.',

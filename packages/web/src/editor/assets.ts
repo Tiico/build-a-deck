@@ -18,6 +18,24 @@ export function resolveAssetRow(row: Row, base: string): Row {
 }
 
 // The fields the template draws as images, in template order.
+// The columns a row of icons reads (L1). Such a cell is a list of names split on spaces and
+// commas, not card text — so an icon written there wears no braces, and one written with them
+// would simply never be found (#33).
+export function iconFieldsOf(doc: ProjectDoc): string[] {
+  const out: string[] = []
+  const walk = (els: ProjectDoc['template']['faces'][string]['base']) => {
+    for (const el of els) {
+      if (el.kind === 'icons' && 'field' in el.bind && !out.includes(el.bind.field)) out.push(el.bind.field)
+      if (el.kind === 'if' || el.kind === 'group') walk(el.children)
+    }
+  }
+  for (const face of Object.values(doc.template.faces)) {
+    walk(face.base)
+    for (const v of Object.values(face.variants)) walk(v.override ?? [])
+  }
+  return out
+}
+
 export function imageFieldsOf(doc: ProjectDoc): string[] {
   const out: string[] = []
   const walk = (els: ProjectDoc['template']['faces'][string]['base']) => {

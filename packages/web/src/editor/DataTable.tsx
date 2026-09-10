@@ -3,7 +3,7 @@ import type { ProjectDoc, ProjectRow } from './types.js'
 import { deckKeepsFields, fieldsOf, fieldLabel, takenNames } from './fields.js'
 import { ANTAL, drawnBy } from '@byd/server/doc'
 import { NewField } from './NewField.js'
-import { ASSET_DRAG_TYPE, assetRef, assetUrl, assetsInUse, imageFieldsOf, isAssetRef, ASSET_PREFIX } from './assets.js'
+import { ASSET_DRAG_TYPE, assetRef, assetUrl, assetsInUse, iconFieldsOf, imageFieldsOf, isAssetRef, ASSET_PREFIX } from './assets.js'
 import { searchSymbols, symbolName, symbolPreview, type GameSymbol } from './symbols.js'
 import { diffProjects, type RowChange } from '@byd/server/doc'
 import { Summary } from './HistoryPanel.js'
@@ -63,6 +63,10 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
   // What a cell shows now: the row's value, unless the picker is open on it, since the cell is
   // typed into before the project has the change.
   const typing = useRef<Record<string, string>>({})
+  // Which cell the designer is standing in, so the way to an icon is offered there and nowhere
+  // else (#33). Which cell it is belongs to React, not to the stylesheet: a handle hidden by CSS
+  // is still a stop in the tab order, and there would be one per cell.
+  const [here, setHere] = useState<{ cardRef: string; field: string } | null>(null)
   const openBrace = (cardRef: string, field: string, el: HTMLInputElement) => {
     const upto = el.value.slice(0, el.selectionStart ?? el.value.length)
     const at = upto.lastIndexOf('{')
@@ -78,7 +82,15 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
     const key = `${open.cardRef}:${open.field}`
     const current = typing.current[key] ?? String(doc.rows.find((r) => r.id === open.cardRef)?.fields[open.field] ?? '')
     closeBrace()
-    void onSymbol(symbol).then((name) => onCell(open.cardRef, open.field, `${current.slice(0, open.at)}{${name}}${current.slice(open.at + 1 + open.query.length)}`))
+    // In card text an icon is its name in braces (L2). In a cell a row of icons reads, it is the
+    // bare name among others, because that element splits the cell on spaces and commas (#33).
+    const bare = iconFieldsOf(doc).includes(open.field)
+    void onSymbol(symbol).then((name) => {
+      const before = current.slice(0, open.at)
+      const after = current.slice(open.at + 1 + open.query.length)
+      const written = bare ? `${before.replace(/\{$/, '')}${name}${after}`.trim() : `${before}{${name}}${after}`
+      onCell(open.cardRef, open.field, written)
+    })
   }
   // What moved since the version being compared with (B4), and the cards that are no longer
   // there — shown after the deck, since they have no place in it any more.
@@ -510,6 +522,33 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                 ) : (
                 <td key={f} className={brace?.cardRef === cardRef && brace.field === f ? 'byd-data-picking' : undefined}>
                   {moved(changeOf(cardRef), f) && <s className="byd-data-was">{String(wasCell(cardRef, f) ?? '')}</s>}
+                  {/* The brace, made visible in the cell the designer is standing in (#33). It
+                      writes the brace and opens the same picker typing one does — one way in, seen
+                      rather than known. Only in the cell being worked in: one handle per cell is a
+                      wall of braces on screen, and a hundred stops in the tab order. */}
+                  {onSymbol && f !== 'antal' && here?.cardRef === cardRef && here.field === f && (
+                    <button
+                      type="button"
+                      className="byd-data-icon"
+                      aria-label={t('table.icon.insert')}
+                      title={t('table.icon.hint')}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={(event) => {
+                        const input = event.currentTarget.parentElement?.querySelector('input')
+                        if (!input) return
+                        const at = input.selectionStart ?? input.value.length
+                        const next = `${input.value.slice(0, at)}{${input.value.slice(at)}`
+                        typing.current[`${cardRef}:${f}`] = next
+                        onCell(cardRef, f, next)
+                        input.value = next
+                        input.focus()
+                        input.setSelectionRange(at + 1, at + 1)
+                        openBrace(cardRef, f, input)
+                      }}
+                    >
+                      {'{ }'}
+                    </button>
+                  )}
                   <input
                     type={f === 'antal' ? 'number' : 'text'}
                     min={f === 'antal' ? 0 : undefined}
@@ -534,8 +573,14 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                         takeSymbol(picked)
                       } else if (e.key === 'Escape') closeBrace()
                     }}
-                    onFocus={() => setHeld(shown.map((r) => r.id))}
-                    onBlur={() => setHeld(null)}
+                    onFocus={() => {
+                      setHeld(shown.map((r) => r.id))
+                      setHere({ cardRef, field: f })
+                    }}
+                    onBlur={() => {
+                      setHeld(null)
+                      setHere((at) => (at?.cardRef === cardRef && at.field === f ? null : at))
+                    }}
                     aria-label={`${cardRef} ${f}`}
                   />
                   {brace?.cardRef === cardRef && brace.field === f && matches.length > 0 && (

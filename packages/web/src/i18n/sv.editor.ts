@@ -100,6 +100,9 @@ export const svEditor = {
   'undo.what.rules': 'en ändring i reglerna',
   'undo.what.font': 'en ändring bland typsnitten',
   'undo.what.version': 'en tillbakatagen version',
+  // Genvägen som var en hemlighet (#33): { i en cell öppnar ikonväljaren, och nu syns det.
+  'table.icon.insert': 'Sätt in en ikon',
+  'table.icon.hint': 'Sätt in en ikon — eller skriv {',
   'table.import': 'Importera CSV',
   'table.export': 'Exportera CSV',
   'table.import.note': 'Import ersätter korten i tabellen. Spara när resultatet ser rätt ut.',
