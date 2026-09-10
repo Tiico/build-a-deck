@@ -514,9 +514,16 @@ function useElementKeys(el: Element | undefined, onPatch: TemplateCanvasProps['o
 
 
 // The value the field picker carries for its last entry, which is not a field but a door (#32).
-// A key is at least one character in the document, so nothing a designer can name collides with
-// it, and the empty string is already what an element bound to a literal shows.
-const NEW_FIELD = ' new'
+// Every way a column can come into a deck trims the name it is given — the form that makes one
+// does, and a CSV import's headers do — so no key in any document begins with a space, and this
+// value does. That is a guarantee about the document rather than a guess about what a designer is
+// unlikely to type. The empty string could not be used: it is already what the picker shows for
+// an element bound to a literal.
+//
+// This was a NUL byte first. A NUL has the same property and one other: grep and rg decide a file
+// is binary by finding one, and skip the whole of it in silence, so every name in this file fell
+// out of codebase search at once and nothing said so.
+const NEW_FIELD = ' new'
 
 // `fields` are the columns the picker offers; `taken` is every name a new one would collide with,
 // which is those plus the card's own id (#32).
