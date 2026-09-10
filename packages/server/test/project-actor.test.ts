@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { MemoryProjectStore } from '../src/index.js'
 import { ProjectActor, ProjectHost } from '../src/project-actor.js'
 import { template } from './deck.js'
@@ -119,6 +119,41 @@ describe('one actor owns one project (D3)', () => {
     leave()
     actor.subscribe({ id: 'c', name: 'Cilla', send: () => undefined })
     expect(actor.here.map((p) => p.name)).toEqual(['Bo', 'Cilla'])
+  })
+})
+
+// The log is the truth and it must always replay identically (CLAUDE.md, DRIFT §7). A verb whose
+// validity changed under an already-written log is therefore the log's problem, not the verb's:
+// `patchElement` accepted an id the face did not have until #41, so entries like this one sit in
+// the tail of every project saved before that change.
+describe('a log written before the rules changed still opens (#41, DRIFT §7)', () => {
+  const gone: EditIntent = { v: 'patchElement', face: 'front', id: 'borta', patch: { x: 9 } }
+
+  it('replays past an edit that is no longer legal, keeps the rest of the log, and says so where an operator can see it', async () => {
+    const store = new MemoryProjectStore()
+    await store.create('p1', doc())
+    await store.appendEdits('p1', [
+      { seq: 1, at: '2026-09-01T10:00:00.000Z', intent: { v: 'rename', name: 'Skogens andar' } },
+      { seq: 2, at: '2026-09-01T10:01:00.000Z', intent: gone },
+      { seq: 3, at: '2026-09-01T10:02:00.000Z', intent: { v: 'setCell', cardRef: 'dragon', field: 'antal', value: 5 } },
+    ])
+    const said: string[] = []
+    const quiet = vi.spyOn(console, 'error').mockImplementation((line: string) => void said.push(line))
+
+    const actor = (await ProjectActor.load('p1', store))!
+    expect(actor.doc.name).toBe('Skogens andar')
+    expect(actor.doc.rows[0]?.fields['antal']).toBe(5)
+    expect(actor.seq).toBe(3)
+
+    // Only container logs exist (DRIFT §8), so the skipped line is named on stderr, with the seq a
+    // bug report would carry.
+    expect(said.map((l) => JSON.parse(l) as unknown)).toEqual([
+      { msg: 'edit-skipped', project: 'p1', seq: 2, intent: 'patchElement', error: expect.stringContaining('borta') },
+    ])
+    quiet.mockRestore()
+
+    // And the tolerance is the log's alone: the same intent arriving live is still refused (#41).
+    await expect(actor.edit(gone)).rejects.toThrow(/borta/)
   })
 })
 

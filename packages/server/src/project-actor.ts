@@ -35,13 +35,38 @@ export class ProjectActor {
   ) {}
 
   // The saved version, then everything that has happened since it.
+  //
+  // Replay is tolerant and the live door is not (#41). The log is written once and never
+  // rewritten, so an entry in it was legal when it was written, by the rules of the day it was
+  // written; a verb that grows stricter afterwards cannot be allowed to make yesterday's log
+  // unreadable — a project nobody can open again is a worse answer than an edit that no longer
+  // means anything. `patchElement` is the case that made this real: until #41 it accepted an id
+  // the face does not have, so lines like that sit in the tail of every project saved before it.
+  //
+  // Tolerated rather than lifted (DRIFT §7), because there is nothing here to lift. An upcaster
+  // moves a line from the shape one version wrote to the shape this one reads, and it knows which
+  // step to take because the line carries its schema version — an `AppliedEdit` carries none, and
+  // the shape never changed anyway. What changed is what the intent means, and an entry that
+  // means nothing has no newer shape to be lifted into; it can only be passed over. The editor
+  // has had exactly this tolerance for exactly this reason (`ProjectClient.receive`, case
+  // 'project'), so the two ends of the same log agree about what a stale intent is worth.
+  //
+  // Passed over, never swallowed: the seq is named on stderr, which is the whole of what the box
+  // can be asked (DRIFT §8), and it is the seq a bug report already carries.
   static async load(id: string, store: ProjectStore): Promise<ProjectActor | null> {
     const rec = await store.load(id)
     if (!rec) return null
     const versions = await store.versions(id)
     const from = versions.find((v) => v.rev === rec.rev)?.atSeq ?? 0
     const tail = await store.readEdits(id, from)
-    const doc = tail.reduce((d, e) => applyEdit(d, e.intent), stripped(rec))
+    let doc = stripped(rec)
+    for (const entry of tail) {
+      try {
+        doc = applyEdit(doc, entry.intent)
+      } catch (err) {
+        console.error(JSON.stringify({ msg: 'edit-skipped', project: id, seq: entry.seq, intent: entry.intent.v, error: err instanceof Error ? err.message : String(err) }))
+      }
+    }
     return new ProjectActor(id, doc, rec.rev, tail.at(-1)?.seq ?? from, store)
   }
 
