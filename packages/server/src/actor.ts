@@ -215,6 +215,12 @@ export class TableActor {
       if (patch.ops.length > 0 || patch.seq !== previous.seq) sub.send({ t: 'patch', patch })
       if (!sub.lobby) sub.send({ t: 'activity', lines: activity })
     }
+    // A seat has two halves: the one the log knows, and the reservation at the door (DRIFT §9).
+    // Whoever empties the seat — a kick, or the player's own way out (#31) — empties both, or
+    // the seat the table shows as free is one nobody can buy a token for.
+    for (const line of decision.applied) {
+      if (line.intent.v === 'seat.release') await this.store.revokeGuests(this.id, line.intent.seat, new Date().toISOString())
+    }
     return decision
   }
 }
