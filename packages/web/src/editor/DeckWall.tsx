@@ -44,6 +44,9 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   // render is a fresh compile of every card on the wall, and a card recompiled under the pointer
   // is a card that cannot be clicked.
   const fonts = useMemo(() => previewFonts(doc, assetBase), [doc, assetBase])
+  // The project's icons, resolved once for the same reason: `previewIcons` builds a fresh object
+  // every call, and a fresh object is a fresh compile of the whole wall (E1).
+  const icons = useMemo(() => previewIcons(doc, assetBase), [doc, assetBase])
   const [warnings, setWarnings] = useState<Record<string, number>>({})
   const [eye, setEye] = useState<string>('normal')
   const [trim, setTrim] = useState(false)
@@ -98,7 +101,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
                 id={`wall-${cardRef}`}
                 face={faceTemplate}
                 row={row}
-                icons={previewIcons(doc, assetBase)}
+                icons={icons}
                 fonts={fonts}
                 scale={arm ? ARM_SCALE : scale}
                 assetBase={assetBase}

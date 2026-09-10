@@ -77,6 +77,11 @@ export function TemplateCanvas({ stage = null, doc, assetBase, face, onSelectFac
   // The face the open tab is about (#13): with a group open, the face as it stands, so the group
   // is applied; with no group open, the face without its grouping rule, which is the base.
   const tabFace = useMemo(() => faceOfTab(faceTemplate, group), [faceTemplate, group])
+  // What the card is compiled from, worked out once per document. Both build a fresh object every
+  // call, and the compiler is memoised on identity — so without this the card is compiled again
+  // for every re-render of the canvas, which is every pointer move of a drag (E1, B3).
+  const icons = useMemo(() => previewIcons(doc, assetBase), [doc, assetBase])
+  const fonts = useMemo(() => previewFonts(doc, assetBase), [doc, assetBase])
   // What the open tab actually draws: the base with the group's overrides in place and its
   // removals taken out. The compiler decides that (L3), so the canvas asks the compiler rather
   // than working it out a second time.
@@ -166,8 +171,8 @@ export function TemplateCanvas({ stage = null, doc, assetBase, face, onSelectFac
             id="canvas"
             face={tabFace}
             row={rowData}
-            icons={previewIcons(doc, assetBase)}
-            fonts={previewFonts(doc, assetBase)}
+            icons={icons}
+            fonts={fonts}
             scale={scale}
             assetBase={assetBase}
             selectedElement={selectedElement}

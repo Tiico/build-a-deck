@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { ProjectDoc } from './types.js'
 import { CardPreview } from './CardPreview.js'
 import { previewIcons } from './assets.js'
@@ -20,6 +20,11 @@ export function SymbolPanel({ doc, client, assetBase }: SymbolPanelProps) {
   const [notice, setNotice] = useState<string | null>(null)
   const found = searchSymbols(query, category, t)
   const front = doc.template.faces['front']
+  // What the deck below is compiled from, worked out once per document. Both of these build a
+  // fresh object every call, and a fresh object is a fresh compile of every card in the deck —
+  // so without this, searching the library recompiles the whole deck on every keystroke.
+  const icons = useMemo(() => previewIcons(doc, assetBase), [doc, assetBase])
+  const fonts = useMemo(() => previewFonts(doc, assetBase), [doc, assetBase])
   const take = (symbol: GameSymbol) => {
     void client.useSymbol(symbol, undefined, t).catch((err: unknown) => setNotice(err instanceof Error ? err.message : String(err)))
   }
@@ -60,7 +65,7 @@ export function SymbolPanel({ doc, client, assetBase }: SymbolPanelProps) {
           {front &&
             doc.rows.map((r) => (
               <div key={r.id} role="listitem" className="byd-wall-card" data-card-ref={r.id}>
-                <CardPreview id={`sym-${r.id}`} face={front} row={r.fields} icons={previewIcons(doc, assetBase)} fonts={previewFonts(doc, assetBase)} assetBase={assetBase} scale={0.55} />
+                <CardPreview id={`sym-${r.id}`} face={front} row={r.fields} icons={icons} fonts={fonts} assetBase={assetBase} scale={0.55} />
               </div>
             ))}
         </div>
