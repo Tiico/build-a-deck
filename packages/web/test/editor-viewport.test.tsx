@@ -103,6 +103,35 @@ describe.each(WIDTHS)('the editor at %ipx', (width) => {
     expect(measured).toEqual(nothing(measured, [] as string[]))
   }, 90_000)
 
+  // The editor's tick boxes (#45). A browser's own is 13 by 13, painted in whatever the platform
+  // likes and stretched to whatever cell it lands in; the editor draws one box — one size, one
+  // blue, and dark like the room it stands in — wherever a tick stands, so ticking a card and
+  // ticking a rule look like the same act. The size and the blue are read back out of the
+  // stylesheet through a probe, so the test says "the box the editor declares" and not a number
+  // of its own.
+  it('draws every tick box as the one box the editor declares', async () => {
+    const measured = await measure(width, (page) =>
+      page.$$eval("input[type='checkbox']", (els) => {
+        const probe = document.querySelector('.byd-editor')!.appendChild(document.createElement('span'))
+        probe.style.cssText = 'display: block; width: var(--byd-tick); height: var(--byd-tick); color: var(--byd-editor-primary-mark)'
+        const want = `${probe.offsetWidth}×${probe.offsetHeight} ${getComputedStyle(probe).color} on dark`
+        probe.remove()
+        return els
+          .filter((el) => el.checkVisibility())
+          .map((el) => {
+            const box = el.getBoundingClientRect()
+            return {
+              what: (el.getAttribute('aria-label') ?? el.parentElement?.textContent ?? el.tagName).trim().slice(0, 24),
+              drawn: `${Math.round(box.width)}×${Math.round(box.height)} ${getComputedStyle(el).accentColor} on ${getComputedStyle(el).colorScheme}`,
+            }
+          })
+          .filter(({ drawn }) => drawn !== want)
+          .map(({ what, drawn }) => `${what}: ${drawn}, not ${want}`)
+      }),
+    )
+    expect(measured).toEqual(nothing(measured, [] as string[]))
+  }, 90_000)
+
   // A tick is hit through the label around it, and that target grows *around* the drawn box and
   // never with it (#45): a row in the card table stays the height of one target and the rule
   // under it, so a taller tick can never push a card off the screen. Both numbers are read out of

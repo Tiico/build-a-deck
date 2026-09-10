@@ -32,6 +32,10 @@
   /* Every target in the editor is at least this, at every width the audit checks
      (UX-KONTROLLER: träffytor). A tool a thumb cannot hit is a tool the editor does not have. */
   --byd-tap: 44px;
+  /* The box a tick is drawn in (#45). It is the box and not the target: what a thumb hits is the
+     label around it, and that is `--byd-tap` big — so the room a tick asks for never grows with
+     it, and a row in the card table stays the height it was. */
+  --byd-tick: 18px;
   height: 100vh;
   display: grid;
   /* Header, what the room cannot hold (L10), the question asked on the way out (#8), the running
@@ -258,6 +262,29 @@
 .byd-editor label:has(> input) { min-height: var(--byd-tap); }
 .byd-editor button { min-width: var(--byd-tap); }
 .byd-editor a[href] { display: inline-flex; align-items: center; }
+/* One tick box for the whole editor (#45): the recipe's knobs, the wall's two filters, the mm
+   grid beside the canvas and every row in the card table. Left to itself a browser draws 13 by 13
+   in the platform's own colour, and stretches it to whatever cell it lands in — a row in the card
+   table had an 80 by 18 one. The mark is `accent-color` and not a box drawn by hand, so the tick,
+   the ring and the greyed-out state stay the ones the platform draws; it is the lighter of the
+   two blues because a mark is a graphic and carries the 3:1 bar, not the 4.5:1 one
+   (`editor-contrast.test.ts`). A box that is *not* ticked is drawn by the platform too, and a
+   white one in a dark room is the very thing that read as "not ours" — so the box is told which
+   room it stands in, and the platform draws its unticked state to match. */
+.byd-editor input[type='checkbox'] {
+  flex: none;
+  box-sizing: border-box;
+  width: var(--byd-tick);
+  height: var(--byd-tick);
+  margin: 0;
+  padding: 0;
+  accent-color: var(--byd-editor-primary-mark);
+  color-scheme: dark;
+  cursor: pointer;
+}
+/* The target is the label, and it is a target wide as well as tall: it grows around the drawn
+   box and never with it. */
+.byd-editor label:has(> input[type='checkbox']) { min-width: var(--byd-tap); }
 
 /* Stages (L10, prototype C): below the desk the modes and the template's four panels are one flat
    strip at the bottom of the screen, in thumb's reach. The strip scrolls sideways when the stages
@@ -308,7 +335,6 @@
 .byd-setup h2 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; }
 .byd-setup-recipe { display: grid; gap: 18px; }
 .byd-setup-recipe label { display: flex; gap: 8px; align-items: center; margin: 6px 0; color: #e6ecfa; }
-.byd-setup-recipe input[type='checkbox'] { width: 16px; height: 16px; accent-color: var(--byd-editor-primary-mark); }
 .byd-setup-players { display: flex; gap: 6px; }
 .byd-setup-players button, .byd-setup-tools button, .byd-setup-counters > button, .byd-setup-props button { border: 1px solid #2f333d; border-radius: 8px; padding: 7px 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
 .byd-setup-players button[aria-pressed='true'] { background: var(--byd-editor-primary-bg); border-color: var(--byd-editor-primary-bg); }
@@ -600,8 +626,10 @@
 .byd-data { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; background: #1b1d23; }
 .byd-data th { text-align: left; padding: 8px 10px; color: #7d8597; font-weight: 600; border-bottom: 1px solid #2f333d; position: sticky; top: 0; z-index: 1; background: #1b1d23; }
 .byd-data td { padding: 0; border-bottom: 1px solid #20232b; }
-/* A cell is as wide as a field needs, not as wide as the window has: the box scrolls. */
-.byd-data td input { min-width: 12ch; }
+/* A cell is as wide as a field needs, not as wide as the window has: the box scrolls. A field is
+   what this is about — the tick in the first column is a box of a fixed size (#45), and this rule
+   stretched it to 80 by 18 while it said nothing. */
+.byd-data td input:not([type='checkbox']) { min-width: 12ch; }
 /* Image cells (E1): a thumbnail with a place to drop, a button to choose, a × to clear. */
 .byd-data-image { padding: 3px 6px !important; }
 .byd-data-drop { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 3px; border: 1px dashed transparent; border-radius: 8px; }
@@ -748,13 +776,12 @@
 .byd-data-bulk button:disabled { color: var(--byd-editor-bulk-quiet); cursor: default; }
 .byd-data-bulk button[data-kind='danger'] { background: var(--byd-editor-bulk-danger-bg); border-color: var(--byd-editor-bulk-danger-bg); color: var(--byd-editor-bulk-danger-ink); }
 .byd-data-bulk button[data-kind='quiet'] { border-color: transparent; color: var(--byd-editor-bulk-quiet); font-weight: 400; }
-/* The checkbox column (#17): wide enough for a real hit target, and the tick is the editor's own
-   blue, so "marked" and "here" read as the same family. It is the fill and not the mark, because
-   what a browser draws inside it is a white tick and that is a white-on-blue pair like any other. */
+/* The checkbox column (#17): wide enough for a real hit target. The tick itself is the editor's
+   one tick box (#45) and is drawn nowhere but there, so "marked" here and "marked" in the recipe
+   are the same blue and the same square. */
 .byd-data-check { width: var(--byd-tap); text-align: center; padding: 0 !important; }
 /* The tick keeps the size a tick has; what a thumb hits is the label around it. */
 .byd-data-tick { display: grid; place-items: center; min-width: var(--byd-tap); min-height: var(--byd-tap); cursor: pointer; }
-.byd-data-check input { width: 18px; height: 18px; padding: 0; accent-color: var(--byd-editor-primary-bg); cursor: pointer; }
 /* The column that removes a card is pinned to the right edge of the scrolling box: it is the
    first thing a narrow screen would lose, and it is the one thing that must not be lost. */
 .byd-data .byd-data-remove { position: sticky; right: 0; z-index: 2; width: var(--byd-tap); padding: 0 !important; background: #1b1d23; box-shadow: -8px 0 12px -8px rgb(0 0 0 / 80%); }

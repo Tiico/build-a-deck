@@ -153,6 +153,13 @@ describe('the marks and edges built on the editor primary', () => {
   ])('lets $what be seen', ({ on }) => {
     expect(contrastRatio(token('--byd-editor-primary-mark'), token(on))).toBeGreaterThanOrEqual(3)
   })
+
+  // The editor's tick box (#45) is filled with the mark and the platform draws a white tick in
+  // it. The tick is a graphic and not a word, so it carries the same 3:1 bar as the marks above —
+  // which is why the fill can be the lighter blue and does not have to be the darker one.
+  it('lets the tick inside a ticked box be seen', () => {
+    expect(contrastRatio(token('--byd-editor-primary-ink'), token('--byd-editor-primary-mark'))).toBeGreaterThanOrEqual(3)
+  })
 })
 
 // One definition each, so changing the editor's blue is one line and the tests above measure what
