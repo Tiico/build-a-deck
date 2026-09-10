@@ -985,6 +985,9 @@ På distans betyder den inget, så förvalet gör det till en gest.
 
 Följdkrav:
 Snapshot saknar spelets namn; lobbyn visar rumskoden i stället. Spelets namn hör hemma i snapshot.
+Kanten är en upplysning om platsen och inte om filten, så den reser i platslistan (`SeatView.edge`) och härleds en enda gång, i `project`.
+Lobbyn ser därmed fortfarande inga zoner — den gräns #31 hårdnade står orörd — och väljaren ritar ur kanten i stället för ur bordet (#39).
+En plats som bordet inte ger någon hand har ingen kant, och ritas på filten i stället för att gissa en sida.
 
 ### K13. Ångra och tillbakaspolning: förhandsvisning på bordet, beslut på telefonerna (prototypat 2026-09-06)
 

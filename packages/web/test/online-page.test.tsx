@@ -28,7 +28,7 @@ describe('OnlinePage (C2): both roles in one window', () => {
     await table.send({ v: 'deal', from: 'draw', to: ['hand:A', 'hand:B'], each: 2 })
     await open(id, 'B', 'Bo')
     await table.synced(2)
-    expect(table.view?.seats.find((s) => s.id === 'B')).toEqual({ id: 'B', name: 'Bo' })
+    expect(table.view?.seats.find((s) => s.id === 'B')).toEqual({ id: 'B', name: 'Bo', edge: 'N' })
     await waitFor(() => expect(document.querySelectorAll('[data-hand-fan] [data-hand-card]')).toHaveLength(2))
     // B sits at the top of the setup; the table is turned around so B is at the bottom.
     expect(document.querySelector('[data-table]')!.getAttribute('data-rotate')).toBe('180')
@@ -89,7 +89,7 @@ describe('OnlinePage (C2): both roles in one window', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Lämna bordet' }))
     await waitFor(async () => expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'seat.release', seat: 'A' } }))
     await table.synced(3)
-    expect(table.view?.seats.find((s) => s.id === 'A')).toEqual({ id: 'A', name: null })
+    expect(table.view?.seats.find((s) => s.id === 'A')).toEqual({ id: 'A', name: null, edge: 'S' })
     expect(new URL(went[0] ?? '', 'http://x').pathname).toBe('/join')
     table.close()
   })

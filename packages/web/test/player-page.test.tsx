@@ -53,7 +53,7 @@ describe('PlayerPage', () => {
     await table.ready()
     await open(id, 'A', 'Ada')
     await table.synced(1)
-    expect(table.view?.seats.find((s) => s.id === 'A')).toEqual({ id: 'A', name: 'Ada' })
+    expect(table.view?.seats.find((s) => s.id === 'A')).toEqual({ id: 'A', name: 'Ada', edge: 'S' })
 
     await table.send({ v: 'deal', from: 'draw', to: ['hand:A', 'hand:B'], each: 2 })
     await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(2))
@@ -301,7 +301,7 @@ describe('leaving the table (#31)', () => {
     await waitFor(async () => expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'seat.release', seat: 'A' } }))
     // The seat is free again for everyone else, and the hand is back in the pile it came from.
     await table.synced(3)
-    expect(table.view?.seats.find((s) => s.id === 'A')).toEqual({ id: 'A', name: null })
+    expect(table.view?.seats.find((s) => s.id === 'A')).toEqual({ id: 'A', name: null, edge: 'S' })
     expect(table.view?.zones.find((z) => z.id === 'draw')).toMatchObject({ count: 10 })
     table.close()
   })

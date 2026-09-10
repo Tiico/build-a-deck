@@ -20,6 +20,9 @@ export const FAN_PIVOT = { x: 0.5, y: 1.4 }
 
 // In table mode a hand faces the edge it sits at, like a real player would (C5). The rule lives
 // here because the fan is drawn by it and measured by it, and the two must never disagree.
+// This asks about a zone, not about a seat: a seat with two hands has two of them to turn, and
+// the seat's own `edge` (#39) — which is what the seat picker draws from, and all a lobby is
+// told — answers the other question, where the person sits.
 export function edgeRotation(hand: ZoneView, floor: ZoneView): number {
   const dx = hand.geometry.x + hand.geometry.w / 2 - (floor.geometry.x + floor.geometry.w / 2)
   const dy = hand.geometry.y + hand.geometry.h / 2 - (floor.geometry.y + floor.geometry.h / 2)

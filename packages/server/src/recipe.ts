@@ -103,7 +103,9 @@ export function isRecipeZone(id: string, setup: Pick<Setup, 'floor' | 'deckZone'
   return id === setup.floor || id === setup.deckZone || id === 'discard' || id === 'market' || /^(hand|mine|counters):/.test(id)
 }
 
-// Seats go S, N, E, W, then the corners, so two players face each other.
+// Seats go S, N, E, W, then the corners, so two players face each other. This lays the hands
+// out; where a seat then *is* is read back off that geometry when the table is projected (#39),
+// so a setup the editor has moved since still says where its seats sit.
 export function edgeOf(i: number, count: number): 'N' | 'E' | 'S' | 'W' {
   const edges = count <= 2 ? ['S', 'N'] : count === 3 ? ['S', 'N', 'E'] : ['S', 'N', 'E', 'W', 'S', 'N', 'E', 'W']
   return (edges[i] ?? 'S') as 'N' | 'E' | 'S' | 'W'

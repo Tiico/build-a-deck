@@ -161,7 +161,7 @@ describe('seat colours follow the approved prototypes (K9, #20)', () => {
 
   it('hands the dock those colours in seat order', () => {
     const { view, log } = buildScene()
-    const four = { ...view(null), seats: [{ id: 'A', name: 'Ada' }, { id: 'B', name: 'Bo' }, { id: 'C', name: 'Cy' }, { id: 'D', name: 'Di' }] }
+    const four = { ...view(null), seats: [{ id: 'A', name: 'Ada', edge: 'S' as const }, { id: 'B', name: 'Bo', edge: 'N' as const }, { id: 'C', name: 'Cy', edge: 'E' as const }, { id: 'D', name: 'Di', edge: 'W' as const }] }
     render(
       <TvChrome view={four} activity={log.map(projectActivity)} roomCode="KX7P">
         <div />

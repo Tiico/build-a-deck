@@ -1156,11 +1156,13 @@
       "seats": [
         {
           "id": "A",
-          "name": null
+          "name": null,
+          "edge": "S"
         },
         {
           "id": "B",
-          "name": "Spelare 2"
+          "name": "Spelare 2",
+          "edge": "N"
         }
       ],
       "zones": [
@@ -1257,11 +1259,13 @@
       "seats": [
         {
           "id": "A",
-          "name": null
+          "name": null,
+          "edge": "S"
         },
         {
           "id": "B",
-          "name": "Spelare 2"
+          "name": "Spelare 2",
+          "edge": "N"
         }
       ],
       "zones": [
@@ -1355,11 +1359,13 @@
       "seats": [
         {
           "id": "A",
-          "name": null
+          "name": null,
+          "edge": "S"
         },
         {
           "id": "B",
-          "name": "Spelare 2"
+          "name": "Spelare 2",
+          "edge": "N"
         }
       ],
       "zones": [
@@ -1453,11 +1459,13 @@
       "seats": [
         {
           "id": "A",
-          "name": null
+          "name": null,
+          "edge": "S"
         },
         {
           "id": "B",
-          "name": "Spelare 2"
+          "name": "Spelare 2",
+          "edge": "N"
         }
       ],
       "zones": [

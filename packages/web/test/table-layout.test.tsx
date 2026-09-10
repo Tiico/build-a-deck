@@ -29,7 +29,7 @@ function scene(): Snapshot {
     seq: 9,
     seat: null,
     floor: 'table',
-    seats: [{ id: 'N', name: 'Ada' }],
+    seats: [{ id: 'N', name: 'Ada', edge: 'N' as const }],
     zones: [
       { mode: 'order', id: 'table', kind: 'area', name: 'Spelyta', geometry: { x: -600, y: -400, w: 1200, h: 800, rot: 0 }, dynamic: false, order: [] },
       { mode: 'order', id: 'market', kind: 'area', name: 'Marknad', geometry: { x: -330, y: -330, w: 660, h: 120, rot: 0 }, dynamic: false, order: ['m1', 'm2'] },
@@ -63,7 +63,7 @@ function handScene(): Snapshot {
   const cards = seats.flatMap((s) => Array.from({ length: held[s.id] }, (_, i) => card(`h${s.id}${i}`, `hand:${s.id}`, 0, 0, `Kort ${s.id}${i}`)))
   return {
     ...scene(),
-    seats: seats.map((s) => ({ id: s.id, name: `Spelare ${s.id}` })),
+    seats: seats.map((s) => ({ id: s.id, name: `Spelare ${s.id}`, edge: s.id })),
     zones: [
       ...scene().zones.filter((z) => z.kind !== 'hand'),
       ...seats.map((s) => ({ mode: 'order' as const, id: `hand:${s.id}`, kind: 'hand' as const, name: 'Hand', owner: s.id, geometry: s.geometry, dynamic: false, order: cards.filter((c) => c.zone === `hand:${s.id}`).map((c) => c.id) })),
@@ -462,14 +462,14 @@ describe('the wood wraps the table it carries (K9, C5)', () => {
 // folded to a count — the seat's own included, since it is read in the band and not on the felt.
 function onlineScene(held: number): Snapshot {
   const seats = [
-    { id: 'A', geometry: { x: -250, y: 340, w: 500, h: 60, rot: 0 }, held },
-    { id: 'B', geometry: { x: -250, y: -400, w: 500, h: 60, rot: 0 }, held: 7 },
-    { id: 'C', geometry: { x: 540, y: -250, w: 60, h: 500, rot: 0 }, held: 7 },
-    { id: 'D', geometry: { x: -600, y: -250, w: 60, h: 500, rot: 0 }, held: 7 },
+    { id: 'A', edge: 'S' as const, geometry: { x: -250, y: 340, w: 500, h: 60, rot: 0 }, held },
+    { id: 'B', edge: 'N' as const, geometry: { x: -250, y: -400, w: 500, h: 60, rot: 0 }, held: 7 },
+    { id: 'C', edge: 'E' as const, geometry: { x: 540, y: -250, w: 60, h: 500, rot: 0 }, held: 7 },
+    { id: 'D', edge: 'W' as const, geometry: { x: -600, y: -250, w: 60, h: 500, rot: 0 }, held: 7 },
   ]
   return {
     ...scene(),
-    seats: seats.map((s) => ({ id: s.id, name: `Spelare ${s.id}` })),
+    seats: seats.map((s) => ({ id: s.id, name: `Spelare ${s.id}`, edge: s.edge })),
     zones: [
       ...scene().zones.filter((z) => z.kind !== 'hand'),
       ...seats.map((s) => ({ mode: 'count' as const, id: `hand:${s.id}`, kind: 'hand' as const, name: 'Hand', owner: s.id, geometry: s.geometry, dynamic: false, count: s.held })),

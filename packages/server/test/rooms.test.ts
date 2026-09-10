@@ -155,6 +155,41 @@ describe('guest tokens', () => {
   })
 })
 
+// What a lobby is told, and what it must go on never being told (K12, #39). The picker draws the
+// table as a ring of seats, so it has to know which edge a seat sits at — and it must learn that
+// without being shown the table. The edge is a fact about the seat, not about the felt: it says
+// where you will sit, not what lies there. So it travels in the seat list the lobby already gets,
+// and the zones stay on the far side of the wire, where #31 left them. The frames are the
+// evidence, as they are for every other question of hidden information (CLAUDE.md).
+describe('the seat list a lobby is told (K12, #39)', () => {
+  it('names the edge each seat sits at, and still carries not one zone', async () => {
+    const { id, hostKey } = await createRoom(run.http)
+    const lobby = await WireClient.connect(run.base, id, null, { role: 'lobby' })
+
+    // The two seats of the fixture's table face each other: A's hand lies south of the floor's
+    // middle, B's north of it.
+    expect(lobby.view?.seats).toEqual([
+      { id: 'A', name: null, edge: 'S' },
+      { id: 'B', name: null, edge: 'N' },
+    ])
+
+    // The control, without which finding nothing would prove nothing: the table's own screen was
+    // told about the very hands those edges were derived from, on this same wire in this same run.
+    const tv = await run.connectTable(id, hostKey)
+    const shown = tv.frames.join('\n')
+    for (const zone of ['hand:A', 'hand:B', 'draw', 'discard', 'geometry']) expect(shown).toContain(zone)
+
+    // And the proof: the lobby's frames name the edges and no zone whatsoever — not the hands the
+    // edges came from, not the piles, not so much as a geometry.
+    const said = lobby.frames.join('\n')
+    expect(said).toContain('"edge":"S"')
+    expect(said).toContain('"edge":"N"')
+    expect(said).toContain('"zones":[]')
+    for (const zone of ['hand:A', 'hand:B', 'draw', 'discard', 'geometry']) expect(said).not.toContain(zone)
+    await Promise.all([tv.close(), lobby.close()])
+  })
+})
+
 describe('the host', () => {
   it('rotates the code: the old one stops resolving, the table screen learns the new one, guests do not', async () => {
     const { id, code, hostKey } = await createRoom(run.http)

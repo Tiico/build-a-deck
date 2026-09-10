@@ -17,11 +17,18 @@
   position: relative; place-self: center; width: 220px; height: 150px; border-radius: 16px;
   background: radial-gradient(ellipse at 50% 40%, #2e6b46, #1f4a30 70%, #173a26);
   box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.45), 0 0 0 10px #4a2f1c;
+  /* Seats at an edge are hung off that edge and take no part in this; the row is for the seats
+     the table gives no edge, which stand on the felt side by side. */
+  display: flex; flex-wrap: wrap; align-content: center; align-items: center; justify-content: center; gap: 6px;
 }
 .byd-join-table button {
-  position: absolute; padding: 8px 14px; min-width: 60px; border-radius: 999px; white-space: nowrap;
+  padding: 8px 14px; min-width: 60px; border-radius: 999px; white-space: nowrap;
   border: 3px solid transparent; background: var(--seat); color: var(--byd-seat-ink); font-weight: 700; font-size: 13px;
 }
+/* A seat with an edge is hung off that edge of the felt. A seat without one — a table that gives
+   it no hand says nothing about which side it is on — keeps its place in the row above, because
+   a picker that guesses a side is how every seat once ended up on the same one (#39). */
+.byd-join-table button[data-edge] { position: absolute; }
 .byd-join-table button[aria-disabled='true'] { background: #2a2e3a; color: #9aa3b8; }
 .byd-join-table button[aria-pressed='true'] { border-color: #fff; }
 .byd-join-table button[data-edge='N'] { top: -26px; left: 50%; transform: translateX(-50%); }

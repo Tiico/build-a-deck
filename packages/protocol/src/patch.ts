@@ -60,8 +60,15 @@ export const ZoneView = z.discriminatedUnion('mode', [
 ])
 export type ZoneView = z.infer<typeof ZoneView>
 
-// A seat as every view sees it: who sits there, or null while it is free.
-export const SeatView = z.object({ id: SeatId, name: z.string().nullable() })
+// Which edge of the table a seat sits at (K12). It is a fact about the seat — where you will
+// sit — and not about the felt, which is why the seat picker may know it while it is still shown
+// no zones at all.
+export const SeatEdge = z.enum(['N', 'E', 'S', 'W'])
+export type SeatEdge = z.infer<typeof SeatEdge>
+
+// A seat as every view sees it: who sits there, or null while it is free, and which edge it is
+// at, or null when the table gives it none.
+export const SeatView = z.object({ id: SeatId, name: z.string().nullable(), edge: SeatEdge.nullable() })
 export type SeatView = z.infer<typeof SeatView>
 
 // A rewind waiting for someone else at the table to confirm it (B). `id` is the batch of the

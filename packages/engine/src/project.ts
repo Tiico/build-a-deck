@@ -1,4 +1,4 @@
-import type { Activity, Applied, RewindProposal, SeatId, Snapshot, TablePreview, VisibleComponentState, ZoneView } from '@byd/protocol'
+import type { Activity, Applied, RewindProposal, SeatEdge, SeatId, Snapshot, TablePreview, VisibleComponentState, ZoneView } from '@byd/protocol'
 
 import { undoTarget, type History } from './decide.js'
 import { componentOf, type ComponentInstance, type TableState, type Zone } from './state.js'
@@ -24,7 +24,7 @@ export type FaceHashes = Record<string, Record<string, string>>
 // `observer` (C8) sees every hand and every hidden pile; the view is still seatless.
 export function project(state: TableState, registry: TypeRegistry, seat: SeatId | null, faces?: FaceHashes, history?: History, observer = false): Snapshot {
   const { zones, components } = projectTable(state, registry, seat, faces, observer)
-  const seats = state.setup.seats.map((id) => ({ id, name: state.seats[id]?.name ?? null }))
+  const seats = state.setup.seats.map((id) => ({ id, name: state.seats[id]?.name ?? null, edge: seatEdge(state, id) }))
   let rewind: RewindProposal | null = state.rewind
   if (rewind && history) {
     const preview: TablePreview = projectTable(history.stateAt(rewind.toSeq), registry, seat, faces, observer)
@@ -32,6 +32,25 @@ export function project(state: TableState, registry: TypeRegistry, seat: SeatId 
   }
   const undo = seat !== null && history ? undoTarget(history.lines(), seat) : null
   return { seq: state.seq, seat, floor: state.setup.floor, seats, zones, components, rewind, undo, ended: state.ended }
+}
+
+// Which edge of the table a seat sits at (K12), from where its hand lies relative to the middle
+// of the floor. Derived here and nowhere else, and carried in the seat's own view: a view that
+// answers the question itself is a second path to the same fact, and two paths can disagree.
+// It is also what lets a lobby draw the ring of seats while it is shown no zones at all — the
+// edge says where you will sit, not what lies on the felt. A seat the table gives no hand has no
+// edge, and says so rather than quietly picking one.
+function seatEdge(state: TableState, seat: SeatId): SeatEdge | null {
+  const floor = state.zones[state.setup.floor]
+  const hands = Object.values(state.zones)
+    .filter((z) => z.kind === 'hand' && z.owner === seat)
+    .sort((a, b) => a.id.localeCompare(b.id))
+  const hand = hands[0]
+  if (!floor || !hand) return null
+  const dx = hand.geometry.x + hand.geometry.w / 2 - (floor.geometry.x + floor.geometry.w / 2)
+  const dy = hand.geometry.y + hand.geometry.h / 2 - (floor.geometry.y + floor.geometry.h / 2)
+  if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? 'E' : 'W'
+  return dy > 0 ? 'S' : 'N'
 }
 
 function projectTable(state: TableState, registry: TypeRegistry, seat: SeatId | null, faces?: FaceHashes, observer = false): TablePreview {

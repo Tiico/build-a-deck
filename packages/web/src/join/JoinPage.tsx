@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTableClient } from '../table/useTableClient.js'
 import { seatColor } from '../table/seatColor.js'
-import { seatEdge, type Edge } from './edges.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
 import { useLiveStatus } from '../status/useLiveStatus.js'
@@ -133,13 +132,12 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
       <div className="byd-join-table">
         {view.seats.map((s, i) => {
           const taken = s.name !== null
-          const edge: Edge = seatEdge(view, s.id)
           return (
             <button
               key={s.id}
               type="button"
               data-seat={s.id}
-              data-edge={edge}
+              data-edge={s.edge}
               aria-disabled={taken ? 'true' : 'false'}
               aria-pressed={chosen === s.id ? 'true' : 'false'}
               onClick={() => !taken && setPick(s.id)}

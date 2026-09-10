@@ -1,0 +1,130 @@
+// @vitest-environment jsdom
+// Where a seat lands on the picker is a layout question, and jsdom answers none of them. So the
+// markup the real JoinPage produces against a real server is measured in a real engine with the
+// real stylesheet — the same way the felt and the phone are measured (#20, #23).
+//
+// K12 calls the picker "the table as a seat picker": a ring of seats you point at to say where
+// you will sit. It only tells you anything if the seats are drawn apart, and for a while they
+// were not — every seat landed on the same spot, because a lobby is shown no zones and the edge
+// was being worked out from the zones (#39). The edge now travels in the seat list itself.
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { chromium, type Browser } from 'playwright'
+import type { SetupDef } from '@byd/engine'
+import { JoinPage } from '../src/join/JoinPage.js'
+import { createSession, roomOf, startServer, twoSeatSetup, type Running } from './fixture.js'
+
+const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
+const shell = read('index.html')
+const css = read('src/join/join.css')
+
+const document_ = (body: string) =>
+  shell
+    .replace('<script type="module" src="/src/main.tsx"></script>', '')
+    .replace('</head>', `<style>${css}</style></head>`)
+    .replace('<div id="root"></div>', `<div id="root">${body}</div>`)
+
+type Box = { seat: string; edge: string | null; x: number; y: number; w: number; h: number }
+
+let run: Running
+let browser: Browser
+
+beforeAll(async () => {
+  browser = await chromium.launch()
+}, 60_000)
+afterAll(async () => {
+  await browser.close()
+}, 60_000)
+beforeEach(async () => {
+  run = await startServer()
+})
+afterEach(async () => {
+  await run.stop()
+})
+
+// The picker as it really comes out: a live session, the real page, the real socket.
+async function picker(setup: SetupDef): Promise<string> {
+  const session = await createSession(run, 's1', undefined, setup)
+  history.replaceState(null, '', `/join?code=${roomOf(session).code}&server=${encodeURIComponent(run.url)}`)
+  const { container, unmount } = render(<JoinPage />)
+  await screen.findByRole('button', { name: /Sätt dig/ })
+  const html = container.innerHTML
+  unmount()
+  return html
+}
+
+// The felt and every seat pill on it, measured on a phone-sized screen.
+async function measure(markup: string): Promise<{ felt: Box; seats: Box[] }> {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
+  try {
+    await page.setContent(document_(markup), { waitUntil: 'load' })
+    return await page.evaluate(() => {
+      const box = (el: Element, seat: string, edge: string | null): { seat: string; edge: string | null; x: number; y: number; w: number; h: number } => {
+        const r = el.getBoundingClientRect()
+        const round = (n: number) => Math.round(n * 10) / 10
+        return { seat, edge, x: round(r.x), y: round(r.y), w: round(r.width), h: round(r.height) }
+      }
+      return {
+        felt: box(document.querySelector('.byd-join-table')!, 'felt', null),
+        seats: [...document.querySelectorAll('[data-seat]')].map((el) => box(el, (el as HTMLElement).dataset['seat'] ?? '?', (el as HTMLElement).dataset['edge'] ?? null)),
+      }
+    })
+  } finally {
+    await page.close()
+  }
+}
+
+const place = ({ x, y, w, h }: Box) => `${x},${y} ${w}×${h}`
+
+describe('the table as a seat picker (K12, #39)', () => {
+  it('draws the two seats of a two-seat table apart, on the sides their hands are on', async () => {
+    const { seats: boxes } = await measure(await picker(twoSeatSetup()))
+    expect(boxes.map((b) => b.seat)).toEqual(['A', 'B'])
+
+    // The defect, in one line: A and B used to come out at the same point to the tenth of a
+    // pixel — x: 155.3, y: 397.5, w: 64.3, h: 37 for both.
+    const [a, b] = boxes as [Box, Box]
+    expect(place(a)).not.toBe(place(b))
+
+    // And they are apart in the way that means something: the fixture's table seats A to the
+    // south of the floor and B to the north, so A is drawn below B and the two share a column.
+    expect(a.y).toBeGreaterThan(b.y)
+    expect(a.x).toBeCloseTo(b.x, 0)
+    for (const box of boxes) expect(box.w).toBeGreaterThan(40)
+  }, 60_000)
+
+  // The control, without which the measurement above proves nothing: the very same page, with
+  // every seat put on the same edge — which is what the picker did when it could not tell them
+  // apart — is measured as one box drawn twice.
+  it('would have said so: two seats on one edge do land on the same point', async () => {
+    const same = (await picker(twoSeatSetup())).replace(/data-edge="[NESW]"/g, 'data-edge="S"')
+    const { seats: boxes } = await measure(same)
+    expect(boxes).toHaveLength(2)
+    const [a, b] = boxes as [Box, Box]
+    expect(place(a)).toBe(place(b))
+  }, 60_000)
+
+  // A table can give a seat no edge at all: no hand of its own, so nothing says which side of the
+  // felt it is on. The picker then declines to say — the seat is drawn on the felt rather than
+  // hung off a side it may well not be on — and, since that is a place and not a fallback, two
+  // such seats stand beside each other rather than on top of one another.
+  it('draws a seat the table gives no edge on the felt itself, and two of them side by side', async () => {
+    const bare = twoSeatSetup()
+    const { felt, seats } = await measure(await picker({ ...bare, zones: bare.zones.filter((z) => z.kind !== 'hand') }))
+    expect(seats.map((b) => [b.seat, b.edge])).toEqual([
+      ['A', null],
+      ['B', null],
+    ])
+    const [a, b] = seats as [Box, Box]
+    expect(place(a)).not.toBe(place(b))
+    // On the felt, both of them, and not hanging off it the way an edge seat deliberately does.
+    for (const box of seats) {
+      expect(box.x).toBeGreaterThanOrEqual(felt.x)
+      expect(box.x + box.w).toBeLessThanOrEqual(felt.x + felt.w)
+      expect(box.y).toBeGreaterThanOrEqual(felt.y)
+      expect(box.y + box.h).toBeLessThanOrEqual(felt.y + felt.h)
+    }
+  }, 60_000)
+})
