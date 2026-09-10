@@ -103,6 +103,28 @@ describe.each(WIDTHS)('the editor at %ipx', (width) => {
     expect(measured).toEqual(nothing(measured, [] as string[]))
   }, 90_000)
 
+  // A tick is hit through the label around it, and that target grows *around* the drawn box and
+  // never with it (#45): a row in the card table stays the height of one target and the rule
+  // under it, so a taller tick can never push a card off the screen. Both numbers are read out of
+  // the stylesheet, so the fact stays true when the editor changes what a target is worth.
+  it('keeps a row in the card table the height of one target', async () => {
+    const measured = await measure(width, (page) =>
+      page.$$eval('.byd-data tbody tr', (els) => {
+        const editor = document.querySelector('.byd-editor')!
+        const probe = editor.appendChild(document.createElement('span'))
+        probe.style.cssText = 'display: block; height: var(--byd-tap)'
+        const tap = probe.offsetHeight
+        probe.remove()
+        return els
+          .filter((el) => el.checkVisibility())
+          .map((el) => ({ what: el.getAttribute('data-card-ref') ?? '?', h: Math.round(el.getBoundingClientRect().height) }))
+          .filter(({ h }) => h > tap + 1)
+          .map(({ what, h }) => `${what}: ${h}`)
+      }),
+    )
+    expect(measured).toEqual(nothing(measured, [] as string[]))
+  }, 90_000)
+
   it('has exactly one panel on the screen at a time', async () => {
     // A `hidden` panel is only hidden while nothing in the stylesheet gives it a `display` of its
     // own; a mode that is closed but drawn is a second copy of the editor under the first.
