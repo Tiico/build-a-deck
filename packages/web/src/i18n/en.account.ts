@@ -74,7 +74,6 @@ export const enAccount = {
   'wizard.handoff.title': 'The wizard is the starting point',
   'wizard.handoff.body': 'Make a few example cards here. Layout, the whole deck and CSV tools wait in the editor.',
   'wizard.name': 'The name of the game',
-  'wizard.name.label': 'Name',
   'wizard.name.placeholder': 'Lords of the Forest',
   'wizard.players': 'Players',
 

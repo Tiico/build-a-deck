@@ -44,7 +44,7 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
     const live = () => within(document.querySelector('.byd-wizard-preview') as HTMLElement)
     expect(live().getByText('Kort 1')).toBeTruthy()
 
-    fireEvent.change(screen.getByLabelText('Namn'), { target: { value: 'Skogens herrar' } })
+    fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Skogens herrar' } })
     fireEvent.click(screen.getByRole('button', { name: /^3$/ }))
     fireEvent.change(screen.getByLabelText('kort 1 Titel'), { target: { value: 'Drake' } })
     const file = new File(['bilddata'], 'drake.png', { type: 'image/png' })
@@ -83,7 +83,18 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
     open(() => undefined)
     const next = screen.getByRole('button', { name: /fortsätt i editorn/i }) as HTMLButtonElement
     expect(next.disabled).toBe(true)
-    fireEvent.change(screen.getByLabelText('Namn'), { target: { value: 'X' } })
+    fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'X' } })
     expect(next.disabled).toBe(false)
+  })
+})
+
+// WCAG 2.5.3: what a control is called has to contain what is written beside it, or someone who
+// says the words on the screen out loud reaches nothing. The field was labelled twice — "Spelets
+// namn" over it and "Namn" in its own name — and the shorter one won (UX-kontroll 2026-09-10).
+describe('the field is called what it says it is called', () => {
+  it('names the game field with the words standing over it', () => {
+    history.replaceState(null, '', '/new')
+    render(<NewProjectPage />)
+    expect(screen.getByRole('textbox', { name: 'Spelets namn' })).toBeTruthy()
   })
 })

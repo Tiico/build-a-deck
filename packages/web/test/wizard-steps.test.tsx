@@ -20,7 +20,7 @@ describe('the wizard on a phone', () => {
     const user = userEvent.setup()
     wizardAt(390)
     expect(tabNames()).toEqual(['1 · Spelet', '2 · Fälten', '3 · Korten'])
-    expect(screen.getByLabelText('Namn')).toBeTruthy()
+    expect(screen.getByLabelText('Spelets namn')).toBeTruthy()
     expect(screen.queryByText('Startram')).toBeNull()
 
     await user.click(screen.getByRole('tab', { name: '2 · Fälten' }))
@@ -65,10 +65,10 @@ describe('the wizard on a phone', () => {
   it('keeps what has been typed when the step changes', async () => {
     const user = userEvent.setup()
     wizardAt(390)
-    await user.type(screen.getByLabelText('Namn'), 'Skogens herrar')
+    await user.type(screen.getByLabelText('Spelets namn'), 'Skogens herrar')
     await user.click(screen.getByRole('tab', { name: '3 · Korten' }))
     await user.click(screen.getByRole('tab', { name: '1 · Spelet' }))
-    expect((screen.getByLabelText('Namn') as HTMLInputElement).value).toBe('Skogens herrar')
+    expect((screen.getByLabelText('Spelets namn') as HTMLInputElement).value).toBe('Skogens herrar')
   })
 })
 
@@ -76,7 +76,7 @@ describe('the wizard on a desk', () => {
   it('is the one page it has always been, with no steps to walk', () => {
     wizardAt(1280)
     expect(tabNames()).toEqual([])
-    expect(screen.getByLabelText('Namn')).toBeTruthy()
+    expect(screen.getByLabelText('Spelets namn')).toBeTruthy()
     expect(screen.getByText('Startram')).toBeTruthy()
     expect(screen.getByRole('button', { name: /Skapa spelet/ })).toBeTruthy()
   })

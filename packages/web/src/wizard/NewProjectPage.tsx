@@ -183,7 +183,10 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   const spelet = (
     <section className="byd-wizard-block" aria-labelledby="byd-wizard-h1">
       <h2 id="byd-wizard-h1"><span className="byd-wizard-step">1</span>{t('wizard.block.game')}</h2>
-      <label className="byd-wizard-label">{t('wizard.name')}<input aria-label={t('wizard.name.label')} value={s.name} onChange={(event) => setS({ ...s, name: event.target.value })} placeholder={t('wizard.name.placeholder')} /></label>
+      {/* The words over the field are its name. A second, shorter one in `aria-label` would win
+          over them, and then what is written on the screen and what the field is called are two
+          different things — which is the whole of WCAG 2.5.3. */}
+      <label className="byd-wizard-label">{t('wizard.name')}<input value={s.name} onChange={(event) => setS({ ...s, name: event.target.value })} placeholder={t('wizard.name.placeholder')} /></label>
       <fieldset><legend>{t('wizard.players')}</legend><div className="byd-wizard-players">{[1, 2, 3, 4, 5, 6].map((n) => <button key={n} type="button" aria-pressed={s.players === n} onClick={() => setS({ ...s, players: n })}>{n}</button>)}</div></fieldset>
     </section>
   )

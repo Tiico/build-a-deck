@@ -84,7 +84,6 @@ export const svAccount = {
   'wizard.handoff.title': 'Wizarden är startpunkten',
   'wizard.handoff.body': 'Skapa några exempelkort här. Layout, hela leken och CSV-verktyg väntar i editorn.',
   'wizard.name': 'Spelets namn',
-  'wizard.name.label': 'Namn',
   'wizard.name.placeholder': 'Skogens herrar',
   'wizard.players': 'Spelare',
 
