@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { EditorPage } from '../src/editor/EditorPage.js'
+import { StatusLive } from '../src/status/StatusLive.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 
@@ -11,15 +12,21 @@ beforeEach(async () => {
   run = await startServer()
 })
 afterEach(async () => {
+  vi.useRealTimers()
   await run.stop()
 })
 
-async function openEditor() {
+// `live` puts the editor under the app's two live regions, which is where it stands in `App`.
+// Without them a test can read what is on the screen but not what is said out loud.
+async function openEditor(opts: { live?: boolean } = {}) {
   await run.projects.create('p1', projectDoc())
   history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
-  render(<EditorPage />)
+  render(opts.live ? <StatusLive><EditorPage /></StatusLive> : <EditorPage />)
   await screen.findByText('Skogens herrar')
 }
+
+const saidIn = (live: 'polite' | 'assertive') => document.querySelector(`[data-status-live="${live}"]`)?.textContent ?? ''
+const header = () => within(document.querySelector('.byd-editor > header') as HTMLElement)
 
 // The editor had no modifier chord at all: arrows nudged an element and Delete removed one, and
 // that was the whole keyboard. The way back was the version panel, which is a different thing —
@@ -107,6 +114,31 @@ describe('a step back in the editor (#35)', () => {
     cell.dispatchEvent(event)
     expect(event.defaultPrevented).toBe(true)
     await waitFor(async () => expect((await run.projects.load('p1'))?.rev).toBe(2))
+  })
+})
+
+// A step back is not a fault, and it went into the slot faults go into: the amber one in the
+// header that says a save could not happen, spoken assertively and then left standing until the
+// next save or the next error, whichever came first.
+describe('what a step back is announced as (#35)', () => {
+  it('is said politely, and takes itself back rather than standing in the header', async () => {
+    await openEditor({ live: true })
+    fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
+    fireEvent.change(await screen.findByLabelText('dragon title'), { target: { value: 'Drakhona' } })
+
+    // The beat the confirmation is shown for is the editor's, so the clock is the test's.
+    vi.useFakeTimers()
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
+
+    // What a reader hears: the polite channel, in her own time. Nothing cuts her off.
+    expect(saidIn('polite')).toMatch(/Tog tillbaka: en ändring i kortleken/)
+    expect(saidIn('assertive')).not.toMatch(/Tog tillbaka/)
+    expect([...document.querySelectorAll('[role="alert"]')].map((el) => el.textContent).join('\n')).not.toMatch(/Tog tillbaka/)
+    // And what she sees: it is still read where it happened.
+    expect(header().getByText(/Tog tillbaka: en ändring i kortleken/)).toBeTruthy()
+
+    act(() => vi.advanceTimersByTime(30_000))
+    expect(header().queryByText(/Tog tillbaka/)).toBeNull()
   })
 })
 

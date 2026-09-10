@@ -119,6 +119,7 @@ describe('the palette unsaved work is drawn in', () => {
     { what: 'the word for work that is saved', ink: '--byd-editor-saved-ink', on: '--byd-editor-chrome-bg' },
     { what: 'the word for work that is not saved', ink: '--byd-editor-unsaved-ink', on: '--byd-editor-chrome-bg' },
     { what: 'the way back to the games', ink: '--byd-editor-home-ink', on: '--byd-editor-chrome-bg' },
+    { what: 'what a step back just took back', ink: '--byd-editor-confirm-ink', on: '--byd-editor-chrome-bg' },
     { what: 'the question asked before leaving', ink: '--byd-editor-leave-ink', on: '--byd-editor-leave-bg' },
     { what: 'saving on the way out', ink: '--byd-editor-leave-save-ink', on: '--byd-editor-leave-save-bg' },
     { what: 'leaving the work behind', ink: '--byd-editor-leave-danger-ink', on: '--byd-editor-leave-danger-bg' },

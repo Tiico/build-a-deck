@@ -7,6 +7,9 @@
   --byd-editor-home-ink: #c3cbdd;
   --byd-editor-saved-ink: #9aa3b8;
   --byd-editor-unsaved-ink: #f0b64a;
+  /* What just happened is read in the same quiet register as whether the work is safe: the amber
+     in this header means something wants looking at, and a step back does not. */
+  --byd-editor-confirm-ink: #9aa3b8;
   /* What a phone cannot hold, said in the amber the editor says everything it wants looked at in
      (L10) — and the strip of stages under it: the open one, the rest, and the two actions. */
   --byd-editor-narrow-bg: #2a2417;
@@ -151,6 +154,9 @@
 /* A save that could not happen has to be readable, so it wraps rather than pushing the header
    sideways; on a desk the header has a whole row of its own for it. */
 .byd-editor-notice { min-width: 0; color: #f0b64a; }
+/* What just happened, beside it and quieter: nothing is wrong, so nothing is amber, and it wraps
+   for the same reason the amber one does. */
+.byd-editor-confirm { min-width: 0; color: var(--byd-editor-confirm-ink); }
 .byd-editor > header > button { min-height: var(--byd-tap); min-width: var(--byd-tap); border: 1px solid #2f333d; border-radius: 8px; padding: 0 14px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
 .byd-editor > header > button:disabled { color: #5b6478; cursor: default; }
 .byd-editor > header > .byd-editor-primary { background: var(--byd-editor-primary-bg); border-color: var(--byd-editor-primary-bg); }

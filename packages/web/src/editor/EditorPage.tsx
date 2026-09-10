@@ -19,6 +19,7 @@ import { useTableClient } from '../table/useTableClient.js'
 import type { ProjectClient, Textures } from './ProjectClient.js'
 import { loginUrl } from '../account/api.js'
 import { StatusNotice } from '../status/StatusNotice.js'
+import { useSay } from '../status/StatusLive.js'
 import { noticeFor } from '../status/notice.js'
 import { chordOf, isTyping } from './keys.js'
 import { statusLinks } from '../status/links.js'
@@ -56,7 +57,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
   const [row, setRow] = useState<string | null>(null)
   const [element, setElement] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  // What could not happen, and what just did. Two states, because they are two different pieces
+  // of news and one slot could only ever hold the later of them (#35).
   const [notice, setNotice] = useState<string | null>(null)
+  const confirmation = useConfirmation()
   // The question asked before the editor is left with work that is not saved (#8), and the way
   // back to the link that asked it: a question that takes the focus has to give it back.
   const [leaving, setLeaving] = useState(false)
@@ -345,9 +349,13 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
         </button>
         <span className="byd-editor-spacer" />
         {/* A save that could not happen is not a passing remark: it is spoken at once, because
-            the work it was about is still only in this tab. */}
+            the work it was about is still only in this tab. It stands until it stops being true,
+            and nothing routine may push it out of the way. */}
         {notice && <span role="alert" className="byd-editor-notice">{notice}</span>}
-        <EditorChords client={client} onSave={() => void save()} onNotice={setNotice} />
+        {/* What just happened, in the channel routine news belongs in. It is read out politely by
+            `useConfirmation` and stands here only while it is still what just happened. */}
+        {confirmation.text && <span className="byd-editor-confirm">{confirmation.text}</span>}
+        <EditorChords client={client} onSave={() => void save()} onConfirm={confirmation.confirm} />
         {/* "Nytt bord" and the shortcut beside "Uppdatera bordet" are two ways to the tables that
             the Bord stage also holds, so below the desk they leave the header rather than being
             squeezed into it: nothing they reach becomes unreachable. */}
@@ -459,15 +467,48 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
   )
 }
 
+// How long a confirmation stands before it takes itself back. Long enough to be read after the
+// eye has already gone back to the deck, short enough never to be the answer to something that
+// happened a minute ago.
+const CONFIRM_MS = 6000
+
+// What just happened, said the way routine news is said (#35). A step back is not a fault: it is
+// spoken politely, through the app's own channel rather than a region this route made for itself,
+// and it takes itself back instead of standing in the header for the rest of the session. The
+// amber slot beside it is left to what could not happen, which is the only thing worth cutting a
+// reader off for and the only thing worth leaving on the screen until it stops being true.
+function useConfirmation(): { text: string | null; confirm(text: string): void } {
+  const say = useSay()
+  const [text, setText] = useState<string | null>(null)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current)
+    },
+    [],
+  )
+  const confirm = (next: string) => {
+    setText(next)
+    say?.('polite', next)
+    if (timer.current) clearTimeout(timer.current)
+    timer.current = setTimeout(() => {
+      timer.current = null
+      setText(null)
+      say?.('polite', '')
+    }, CONFIRM_MS)
+  }
+  return { text, confirm }
+}
+
 // The way back to "Mina spel", keeping the server the editor was opened against.
 // The chords the whole editor answers (#35), wherever the focus is. Its own component, so the
 // listener is hung once the editor has a project to act on rather than by a hook that would have
 // to run before there is one. The callbacks are read through a ref so the editor's every keystroke
 // does not swap the listener out.
-function EditorChords({ client, onSave, onNotice }: { client: ProjectClient; onSave(): void; onNotice(text: string): void }) {
+function EditorChords({ client, onSave, onConfirm }: { client: ProjectClient; onSave(): void; onConfirm(text: string): void }) {
   const t = useT()
-  const latest = useRef({ client, onSave, onNotice, t })
-  latest.current = { client, onSave, onNotice, t }
+  const latest = useRef({ client, onSave, onConfirm, t })
+  latest.current = { client, onSave, onConfirm, t }
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return
@@ -480,7 +521,7 @@ function EditorChords({ client, onSave, onNotice }: { client: ProjectClient; onS
       if (chord === 'save') return now.onSave()
       const what = chord === 'undo' ? now.client.undo() : now.client.redo()
       // Nothing behind, or nothing ahead: the editor says nothing rather than claiming it undid.
-      if (what) now.onNotice(now.t(chord === 'undo' ? 'undo.took' : 'undo.redid', { what: now.t(what) }))
+      if (what) now.onConfirm(now.t(chord === 'undo' ? 'undo.took' : 'undo.redid', { what: now.t(what) }))
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)

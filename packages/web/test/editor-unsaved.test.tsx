@@ -205,6 +205,29 @@ describe('leaving the editor with unsaved work (#8)', () => {
     expect(screen.getByText('Osparade ändringar')).toBeDefined()
     expect(closingTheTab()).toBe(true)
   })
+
+  // The news that a save did not happen is the one thing on the screen that says the work is
+  // still only in this tab. Routine confirmations shared the slot with it and simply wrote over
+  // it, so a designer who pressed Ctrl+Z next never learned that her save had failed.
+  it('keeps the news that a save failed when the designer takes a step back', async () => {
+    useEditSocketImplementation(RefusesToSave)
+    const user = userEvent.setup()
+    await run.projects.create('p1', projectDoc())
+    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
+    fireEvent.change(screen.getByLabelText('dragon title'), { target: { value: 'Drakhona' } })
+
+    await user.click(screen.getByRole('button', { name: /spara/i }))
+    expect((await screen.findByRole('alert')).textContent).toMatch(/någon annan har sparat/i)
+
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
+
+    // Both are true at once, so both are on the screen: what just happened, and what did not.
+    expect(await screen.findByText(/Tog tillbaka: en ändring i kortleken/)).toBeTruthy()
+    expect(screen.getByRole('alert').textContent).toMatch(/någon annan har sparat/i)
+  })
 })
 
 // Every way out of the editor is a page load: the browser's own question would otherwise land on
