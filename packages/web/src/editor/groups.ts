@@ -54,6 +54,15 @@ export function overriddenIds(face: FaceTemplate, group: string): Set<string> {
   return new Set([...(variant.override ?? []).map((e: Element) => e.id), ...(variant.remove ?? [])])
 }
 
+// Every id the face knows: the base's and every group's own. An id belongs to the face and not to
+// the tab it was minted on — a base element named after a group's own element would be overridden
+// by that group the moment one of its cards was drawn, so a new element must clear all of them.
+export function idsOnFace(face: FaceTemplate): string[] {
+  const out = new Set(face.base.map((e) => e.id))
+  for (const variant of Object.values(face.variants)) for (const e of variant.override ?? []) out.add(e.id)
+  return [...out]
+}
+
 function valueOf(row: ProjectRow, column: string): string {
   const v = row.fields[column]
   return v === null || v === undefined ? '' : String(v)

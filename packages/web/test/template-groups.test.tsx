@@ -5,6 +5,7 @@ import { userEvent } from '@testing-library/user-event'
 import type { ProjectDoc } from '@byd/server'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
+import { drag, laidOut, target } from './drag.js'
 import { startServer, type Running } from './fixture.js'
 
 let run: Running
@@ -213,5 +214,62 @@ describe('a layer a group takes away (#13)', () => {
     await user.click(screen.getByRole('button', { name: /återgå till basen/i }))
     expect(layers().map((l) => l.textContent)).toEqual(['text body · bas', 'text title · bas', 'shape frame · bas'])
     expect(screen.getByText('Spelas dolt.')).toBeTruthy()
+  })
+})
+
+// The base tab is the base (#13): it says so, the layer panel lists the base, and what is changed
+// there reaches every card. The card it drew did not agree. With a column chosen and no group
+// open, the preview was still a card of the deck, so it was drawn as its own group draws it —
+// the group's overrides in place and the group's own elements on top — while the panel beside it
+// listed the base alone. An element the designer could drag but could not find in the panel or
+// reach in the properties is the bug; the throw was only how it finally announced itself, since
+// a drag with no group open patches the base, where a group's own element is not (#41).
+describe('the base tab draws the base and nothing else (#13, #41)', () => {
+  const groupTabs = () => within(screen.getByRole('tablist', { name: /kortgrupper/i })).getAllByRole('tab')
+
+  it('does not offer a group’s own element to the pointer with the base tab open, and drags the base under it', async () => {
+    const user = await openTemplate()
+    await user.selectOptions(screen.getByLabelText(/grupperas av kolumnen/i), 'typ')
+
+    // The first card of the deck is a `varelse`, so what that group draws is what the base tab
+    // would be showing: give the group an element of its own.
+    await user.click(groupTabs()[1]!)
+    await user.click(screen.getByRole('button', { name: 'Form' }))
+    const mine = layers()[0]!.getAttribute('data-layer')!
+    laidOut()
+    expect(target(mine)).toBeTruthy()
+
+    // Back to the base, where that element is none of the designer's business.
+    await user.click(groupTabs()[0]!)
+    expect(layers().map((l) => l.getAttribute('data-layer'))).toEqual(['body', 'title', 'frame'])
+    expect(target(mine)).toBeNull()
+
+    // And the base element under it still drags, from the base's own place, onto the base: the
+    // tab is the base, not a card with the group's work hidden.
+    laidOut()
+    drag(target('title')!, [100, 100], [160, 120])
+    await user.click(screen.getByRole('button', { name: /spara/i }))
+    await screen.findByText('rev 2')
+    const front = (await stored())['front']!
+    expect(front.base.find((e) => e.id === 'title')).toMatchObject({ x: 15, y: 8.3 })
+    expect(front.variants['varelse']?.override?.map((e) => e.id)).toEqual([mine])
+  })
+
+  // An id belongs to the face, not to the tab it was minted on. A base element named after a
+  // group's own element would be overridden by that group the moment one of its cards was drawn:
+  // two elements, one id, and the base one invisible wherever the group applies.
+  it('does not name a new base element after an element some group already has', async () => {
+    const user = await openTemplate()
+    await user.selectOptions(screen.getByLabelText(/grupperas av kolumnen/i), 'typ')
+    await user.click(groupTabs()[1]!)
+    await user.click(screen.getByRole('button', { name: 'Form' }))
+
+    await user.click(groupTabs()[0]!)
+    await user.click(screen.getByRole('button', { name: 'Form' }))
+    await user.click(screen.getByRole('button', { name: /spara/i }))
+    await screen.findByText('rev 2')
+    const front = (await stored())['front']!
+    expect(front.base.map((e) => e.id)).toEqual(['frame', 'title', 'body', 'shape-2'])
+    expect(front.variants['varelse']?.override?.map((e) => e.id)).toEqual(['shape-1'])
   })
 })

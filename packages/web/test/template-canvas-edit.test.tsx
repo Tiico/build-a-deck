@@ -4,6 +4,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { TemplateCanvas, type TemplateCanvasProps } from '../src/editor/TemplateCanvas.js'
 import { projectDoc } from './project-doc.js'
+import { drag, laidOut, target } from './drag.js'
 
 // The canvas as the editor mounts it, with every edit it can make reported back.
 function canvas(over: Partial<TemplateCanvasProps> = {}) {
@@ -152,30 +153,13 @@ describe('the tool rail by keyboard (#18, UX-04)', () => {
   })
 })
 
-// jsdom lays nothing out, so the one thing it cannot know — how many pixels a millimetre is on
-// screen — is given to it. The card is 63 × 88 mm at 6 px per mm; where the boxes really land is
-// measured in a browser instead (see `template-canvas-css.test.ts`).
-function laidOut(pxPerMm = 6) {
-  const card = document.querySelector('[data-drag-layer]') as HTMLElement
-  card.getBoundingClientRect = () =>
-    ({ x: 0, y: 0, left: 0, top: 0, width: 63 * pxPerMm, height: 88 * pxPerMm, right: 63 * pxPerMm, bottom: 88 * pxPerMm, toJSON: () => ({}) }) as DOMRect
-  return card
-}
-const target = (id: string) => document.querySelector(`[data-drag="${id}"]`) as HTMLElement
-
-function drag(el: HTMLElement, from: [number, number], to: [number, number]) {
-  fireEvent.pointerDown(el, { pointerId: 1, button: 0, clientX: from[0], clientY: from[1] })
-  fireEvent.pointerMove(el, { pointerId: 1, clientX: to[0], clientY: to[1] })
-  fireEvent.pointerUp(el, { pointerId: 1, clientX: to[0], clientY: to[1] })
-}
-
 describe('moving an element with the pointer (#18)', () => {
   it('turns the pixels dragged into millimetres in the template, and selects what is grabbed', () => {
     const { onPatch, onSelectElement } = canvas({ selectedElement: null })
     laidOut()
 
     // `title` sits at 5, 5 mm; 60 px right and 20 px down is 10 and 3,3 mm.
-    drag(target('title'), [100, 100], [160, 120])
+    drag(target('title')!, [100, 100], [160, 120])
     expect(onSelectElement).toHaveBeenCalledWith('title')
     expect(onPatch).toHaveBeenLastCalledWith('title', { x: 15, y: 8.3 })
   })
@@ -184,7 +168,7 @@ describe('moving an element with the pointer (#18)', () => {
     const { onPatch, onSelectElement } = canvas({ selectedElement: null })
     laidOut()
 
-    drag(target('body'), [100, 100], [100, 100])
+    drag(target('body')!, [100, 100], [100, 100])
     expect(onSelectElement).toHaveBeenCalledWith('body')
     expect(onPatch).not.toHaveBeenCalled()
   })
@@ -230,15 +214,15 @@ describe('guide lines while an element is dragged (#18)', () => {
 
     // `title` starts at 5, 5; dragged 152 px down its top edge lands at 30,33 mm — within a
     // millimetre of `body`, whose top edge is at 30, so it takes it.
-    fireEvent.pointerDown(target('title'), { pointerId: 1, button: 0, clientX: 100, clientY: 100 })
-    fireEvent.pointerMove(target('title'), { pointerId: 1, clientX: 100, clientY: 252 })
+    fireEvent.pointerDown(target('title')!, { pointerId: 1, button: 0, clientX: 100, clientY: 100 })
+    fireEvent.pointerMove(target('title')!, { pointerId: 1, clientX: 100, clientY: 252 })
     expect(onPatch).toHaveBeenLastCalledWith('title', { x: 5, y: 30 })
     expect(guide('y')!.style.top).toBe('30mm')
     // Its left edge never left `body`'s, so that line is drawn too.
     expect(guide('x')!.style.left).toBe('5mm')
 
     // The lines belong to the drag; they are gone when it is let go.
-    fireEvent.pointerUp(target('title'), { pointerId: 1, clientX: 100, clientY: 252 })
+    fireEvent.pointerUp(target('title')!, { pointerId: 1, clientX: 100, clientY: 252 })
     expect(guide('y')).toBeNull()
   })
 
@@ -248,8 +232,8 @@ describe('guide lines while an element is dragged (#18)', () => {
 
     // `cost` is 10 mm wide at x 50; dragged 142 px left its middle lands at 31,33 mm, a third of
     // a millimetre from the card's own middle at 31,5.
-    fireEvent.pointerDown(target('cost'), { pointerId: 1, button: 0, clientX: 300, clientY: 100 })
-    fireEvent.pointerMove(target('cost'), { pointerId: 1, clientX: 158, clientY: 100 })
+    fireEvent.pointerDown(target('cost')!, { pointerId: 1, button: 0, clientX: 300, clientY: 100 })
+    fireEvent.pointerMove(target('cost')!, { pointerId: 1, clientX: 158, clientY: 100 })
     expect(onPatch).toHaveBeenLastCalledWith('cost', { x: 26.5, y: 4 })
     expect(guide('x')!.style.left).toBe('31.5mm')
   })
@@ -258,8 +242,8 @@ describe('guide lines while an element is dragged (#18)', () => {
     const { onPatch } = canvas({ doc: withCost(), selectedElement: 'cost' })
     laidOut()
 
-    fireEvent.pointerDown(target('cost'), { pointerId: 1, button: 0, clientX: 300, clientY: 100 })
-    fireEvent.pointerMove(target('cost'), { pointerId: 1, clientX: 240, clientY: 190 })
+    fireEvent.pointerDown(target('cost')!, { pointerId: 1, button: 0, clientX: 300, clientY: 100 })
+    fireEvent.pointerMove(target('cost')!, { pointerId: 1, clientX: 240, clientY: 190 })
     expect(onPatch).toHaveBeenLastCalledWith('cost', { x: 40, y: 19 })
     expect(guide('x')).toBeNull()
     expect(guide('y')).toBeNull()

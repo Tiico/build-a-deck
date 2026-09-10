@@ -1,13 +1,13 @@
-import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
-import type { Element, ProjectDoc, Row } from './types.js'
+import type { Element, FaceTemplate, ProjectDoc, Row } from './types.js'
 import { CardPreview } from './CardPreview.js'
 import { arrowMove, fitScale, HANDLES, movedTo, newElement, resizedTo, snapped, STAGE_SCALE, TOOLS, type Box, type ElementKind, type Grab, type Guides, type Handle } from './canvas.js'
 import { elementsFor } from '@byd/template'
 import { fieldsOf, takenNames } from './fields.js'
 import { NewField } from './NewField.js'
 import { isTyping } from './keys.js'
-import { cardsInGroup, groupColumn, groupsOf, layersOf, overriddenIds, ruleLabel, type Layer } from './groups.js'
+import { cardsInGroup, groupColumn, groupsOf, idsOnFace, layersOf, overriddenIds, ruleLabel, type Layer } from './groups.js'
 import { LayerList } from './LayerList.js'
 import type { CanvasStage } from './EditorStages.js'
 import { useRoving } from './roving.js'
@@ -66,10 +66,13 @@ export function TemplateCanvas({ stage = null, doc, assetBase, face, onSelectFac
   // The card the canvas shows: with a group open it must be a card of that group, or the group
   // could not be seen. A group whose cards have all gone is shown on the rule itself.
   const rowData = previewRow(doc, column, group, row)
-  // What the open group actually draws: the base with its overrides in place and its removals
-  // taken out. The compiler decides that (L3), so the canvas asks the compiler rather than
-  // working it out a second time.
-  const shown = faceTemplate ? elementsFor(faceTemplate, rowData) : []
+  // The face the open tab is about (#13): with a group open, the face as it stands, so the group
+  // is applied; with no group open, the face without its grouping rule, which is the base.
+  const tabFace = useMemo(() => faceOfTab(faceTemplate, group), [faceTemplate, group])
+  // What the open tab actually draws: the base with the group's overrides in place and its
+  // removals taken out. The compiler decides that (L3), so the canvas asks the compiler rather
+  // than working it out a second time.
+  const shown = elementsFor(tabFace, rowData)
   // The panel is the drawn layers plus the ones this group has taken away, so a removal can be
   // seen and undone; the card itself draws only what the compiler returned.
   const panel = faceTemplate ? layersOf(faceTemplate, group) : []
@@ -88,7 +91,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, face, onSelectFac
   // A new element is added where it can be seen and is selected at once, so the next thing the
   // designer does — drag it, nudge it, bind it — is about the element they just asked for.
   const add = (kind: ElementKind) => {
-    const element = newElement(kind, { taken: shown.map((e) => e.id), field: fields[0], card: CARD_STANDARD_63x88.physical })
+    const element = newElement(kind, { taken: idsOnFace(faceTemplate), field: fields[0], card: CARD_STANDARD_63x88.physical })
     onAdd(element)
     onSelectElement(element.id)
   }
@@ -153,7 +156,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, face, onSelectFac
         >
           <CardPreview
             id="canvas"
-            face={faceTemplate}
+            face={tabFace}
             row={rowData}
             icons={doc.icons}
             fonts={previewFonts(doc, assetBase)}
@@ -437,6 +440,26 @@ function affectsLabel(doc: ProjectDoc, column: string | null, group: string | nu
 
 function cardsLabel(count: number, t: T): string {
   return t(count === 1 ? 'wall.cards.one' : 'wall.cards.other', { n: count })
+}
+
+// A face the template does not have: the canvas says so instead, and this is what it says it of.
+const NO_FACE: FaceTemplate = { base: [], variants: {} }
+
+// The face the open tab is about (#13). With a group open that is the face as it stands, and the
+// compiler puts that group's overrides in place, drops what it removes and adds what is its own.
+// With no group open it is the face without its grouping rule — the base, which is what the tab
+// is called, what the layer panel beside it lists, and what an edit made there reaches.
+//
+// Handing the compiler the whole face on the base tab drew the preview as its own group draws it,
+// while the panel listed the base alone: the designer was shown, and could drag, elements the
+// panel did not list and the properties could not reach. A drag on one of those goes to the base,
+// where a group's own element is not, so the edit was refused from inside a pointer handler once
+// per pointermove (#41) — but the element being there at all was the bug, and the refusal only
+// how it announced itself.
+function faceOfTab(face: FaceTemplate | undefined, group: string | null): FaceTemplate {
+  if (!face) return NO_FACE
+  if (group || !face.variantBy) return face
+  return { base: face.base, variants: face.variants }
 }
 
 // The card the canvas shows. With a group open it is a card of that group; a group whose cards
