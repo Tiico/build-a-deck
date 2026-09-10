@@ -210,6 +210,71 @@ describe('the icon as a tool on the canvas (#33)', () => {
     expect((screen.getByLabelText('Höjd (mm)') as HTMLInputElement).value).toBe('20')
   })
 
+  // The two libraries are the same library (E4), so they answer the same keys and are driven the
+  // same way: from the control that opened them, with the arrows over the list, Enter on what is
+  // under them, and Escape out. The table's picker was already like this; the rail's was not, and
+  // the arrows there walked to the next tool with the list still floating over it.
+  it('is driven from the tool the way the cell picker is driven from the cell', async () => {
+    const tools = await openTemplate()
+    const tool = within(tools).getByRole('button', { name: 'Ikon' })
+    fireEvent.click(tool)
+    // A real press leaves the focus on the button it pressed; jsdom's does not.
+    tool.focus()
+    const list = await screen.findByRole('listbox', { name: 'Symboler' })
+    const options = within(list).getAllByRole('option')
+    // The list is driven, not entered: its options are no more stops in the tab order than the
+    // cell picker's are, so Tab out of the rail does not land in the middle of the library.
+    expect(options.map((o) => o.getAttribute('tabindex'))).toEqual(options.map(() => '-1'))
+
+    // One option is under the keys and says so, rather than every one of them saying it is not.
+    expect(options.map((o) => o.getAttribute('aria-selected'))).toEqual([true, ...options.slice(1).map(() => false)].map(String))
+    expect(tool.getAttribute('aria-activedescendant')).toBe(options[0]!.id)
+
+    fireEvent.keyDown(tool, { key: 'ArrowDown' })
+    await waitFor(() => expect(within(list).getAllByRole('option')[1]!.getAttribute('aria-selected')).toBe('true'))
+    // The focus never left the tool, so the arrows are the list's and not the rail's.
+    expect(document.activeElement).toBe(tool)
+    fireEvent.keyDown(tool, { key: 'ArrowUp' })
+    await waitFor(() => expect(within(list).getAllByRole('option')[0]!.getAttribute('aria-selected')).toBe('true'))
+
+    // Enter takes what is under the arrows, exactly as it does in a cell.
+    const chosen = within(list).getAllByRole('option')[0]!.getAttribute('data-symbol')
+    fireEvent.keyDown(tool, { key: 'Enter' })
+    await waitFor(() => expect(document.querySelector('#canvas img.byd-icon')).toBeTruthy())
+    expect(screen.queryByRole('listbox', { name: 'Symboler' })).toBeNull()
+    fireEvent.click(screen.getByRole('tab', { name: 'Symboler' }))
+    expect(await screen.findByText(`{${chosen}}`)).toBeTruthy()
+  })
+
+  it('closes when another tool is pressed, instead of floating over the rail', async () => {
+    const tools = await openTemplate()
+    fireEvent.click(within(tools).getByRole('button', { name: 'Ikon' }))
+    await screen.findByRole('listbox', { name: 'Symboler' })
+
+    fireEvent.click(within(tools).getByRole('button', { name: 'Text' }))
+
+    // The text box was placed, and the library it was placed through is gone.
+    await screen.findByRole('heading', { name: /text-1/ })
+    expect(screen.queryByRole('listbox', { name: 'Symboler' })).toBeNull()
+    expect(document.querySelector('#canvas img.byd-icon')).toBeNull()
+  })
+
+  it('closes when the focus leaves the rail, instead of hanging over the canvas', async () => {
+    const tools = await openTemplate()
+    const tool = within(tools).getByRole('button', { name: 'Ikon' })
+    fireEvent.click(tool)
+    tool.focus()
+    await screen.findByRole('listbox', { name: 'Symboler' })
+
+    // Away to something that is not in the rail at all. The list was opened beside a tool, and a
+    // list beside a tool nobody is on is a list about nothing.
+    const grid = screen.getByLabelText(/rutnät/i)
+    fireEvent.blur(tool, { relatedTarget: grid })
+
+    await waitFor(() => expect(screen.queryByRole('listbox', { name: 'Symboler' })).toBeNull())
+    expect(document.querySelector('#canvas img.byd-icon')).toBeNull()
+  })
+
   it('closes the library with Escape, placing nothing and leaving the focus where it was', async () => {
     const tools = await openTemplate()
     const tool = within(tools).getByRole('button', { name: 'Ikon' })

@@ -193,7 +193,13 @@ describe('the symbol picker at the brace (E4)', () => {
     const list = screen.getByRole('listbox', { name: 'Symboler' })
     const names = within(list).getAllByRole('option').map((o) => o.getAttribute('data-symbol'))
     expect(within(list).getAllByRole('option')[0]!.getAttribute('aria-selected')).toBe('true')
+    // Driven from the cell rather than entered, which is the same way the rail's Ikon tool drives
+    // the same library (E4): the options are not stops in the tab order, and the cell says which
+    // one the keys are on so a reader who cannot see the highlight is told the same thing.
+    expect(within(list).getAllByRole('option').map((o) => o.getAttribute('tabindex'))).toEqual(within(list).getAllByRole('option').map(() => '-1'))
+    expect(cell.getAttribute('aria-activedescendant')).toBe(within(list).getAllByRole('option')[0]!.id)
     fireEvent.keyDown(cell, { key: 'ArrowDown' })
+    expect(cell.getAttribute('aria-activedescendant')).toBe(within(list).getAllByRole('option')[1]!.id)
     expect(within(list).getAllByRole('option')[1]!.getAttribute('aria-selected')).toBe('true')
     fireEvent.keyDown(cell, { key: 'ArrowUp' })
     fireEvent.keyDown(cell, { key: 'ArrowUp' })

@@ -4,7 +4,8 @@ import { deckKeepsFields, fieldsOf, fieldLabel, takenNames } from './fields.js'
 import { ANTAL, drawnBy } from '@byd/server/doc'
 import { NewField } from './NewField.js'
 import { ASSET_DRAG_TYPE, assetRef, assetUrl, assetsInUse, iconFieldsOf, imageFieldsOf, isAssetRef, ASSET_PREFIX } from './assets.js'
-import { searchSymbols, symbolName, symbolPreview, type GameSymbol } from './symbols.js'
+import { searchSymbols, type GameSymbol } from './symbols.js'
+import { SymbolList, symbolListKey, symbolOptionId } from './SymbolList.js'
 import { diffProjects, type RowChange } from '@byd/server/doc'
 import { Summary } from './HistoryPanel.js'
 import type { Cell } from './ProjectClient.js'
@@ -63,6 +64,9 @@ export function fileSafe(name: string) {
   // the mark comes off with the hyphen a cut can leave hanging.
   return new TextDecoder().decode(written.slice(0, NAME_BYTES)).replace(/\uFFFD+$/, '').replace(/-+$/, '')
 }
+
+// Only one cell is ever being typed into, so the library at the brace is one list with one name.
+const CELL_SYMBOLS = 'byd-cell-symbols'
 
 // The table (B as a tab): one row per card, the template's fields as columns, `antal` last (L4).
 // This is where the designer already lives; a change here reaches every copy of the card.
@@ -591,20 +595,18 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                       onCell(cardRef, f, f === 'antal' ? Number(e.target.value) : e.target.value)
                       if (onSymbol && f !== 'antal') openBrace(cardRef, f, e.target)
                     }}
+                    // The same keys the rail's library answers, because it is the same library
+                    // (E4). They are heard here rather than in the list because the focus stays
+                    // in the sentence being written — the rail hears them on the tool for the
+                    // same reason, and both ask `symbolListKey` what the key meant.
                     onKeyDown={(e) => {
-                      if (!brace || brace.cardRef !== cardRef || brace.field !== f || matches.length === 0) return
-                      if (e.key === 'ArrowDown') {
-                        e.preventDefault()
-                        setChoice((c) => Math.min(matches.length - 1, c + 1))
-                      } else if (e.key === 'ArrowUp') {
-                        e.preventDefault()
-                        setChoice((c) => Math.max(0, c - 1))
-                      } else if (e.key === 'Enter') {
-                        const picked = matches[choice]
-                        if (!picked) return
-                        e.preventDefault()
-                        takeSymbol(picked)
-                      } else if (e.key === 'Escape') closeBrace()
+                      if (!brace || brace.cardRef !== cardRef || brace.field !== f) return
+                      const act = symbolListKey(e.key, matches.length, choice)
+                      if (!act) return
+                      e.preventDefault()
+                      if (act === 'close') return closeBrace()
+                      if (act === 'pick') return takeSymbol(matches[choice]!)
+                      setChoice(act.active)
                     }}
                     onFocus={() => {
                       setHeld(shown.map((r) => r.id))
@@ -615,27 +617,13 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                       setHere((at) => (at?.cardRef === cardRef && at.field === f ? null : at))
                     }}
                     aria-label={`${cardRef} ${f}`}
+                    {...(brace?.cardRef === cardRef && brace.field === f && matches[choice] ? { 'aria-controls': CELL_SYMBOLS, 'aria-activedescendant': symbolOptionId(CELL_SYMBOLS, matches[choice]!) } : {})}
                   />
                   {brace?.cardRef === cardRef && brace.field === f && matches.length > 0 && (
                     // The library where the cursor stands (E4): the same set the Symboler tab
-                    // fills, reached without leaving the sentence being written.
-                    <div className="byd-data-symbols" role="listbox" aria-label={t('table.symbols')}>
-                      {matches.map((sym, i) => (
-                        <button
-                          key={sym.id}
-                          type="button"
-                          role="option"
-                          data-symbol={symbolName(sym, t)}
-                          aria-selected={i === choice}
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => takeSymbol(sym)}
-                        >
-                          <img src={symbolPreview(sym)} alt="" />
-                          <span>{symbolName(sym, t)}</span>
-                          <small>{t(sym.category)}</small>
-                        </button>
-                      ))}
-                    </div>
+                    // fills and the rail's Ikon tool opens, reached without leaving the sentence
+                    // being written — and the same component, so it cannot come to differ.
+                    <SymbolList id={CELL_SYMBOLS} className="byd-data-symbols" symbols={matches} active={choice} label={t('table.symbols')} onPick={takeSymbol} />
                   )}
                 </td>
                 ),

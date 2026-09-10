@@ -13,7 +13,8 @@ import { LayerList } from './LayerList.js'
 import type { CanvasStage } from './EditorStages.js'
 import { useRoving } from './roving.js'
 import { familiesInUse, previewFonts } from './fonts.js'
-import { LIBRARY, symbolName, symbolPreview, type GameSymbol } from './symbols.js'
+import { LIBRARY, type GameSymbol } from './symbols.js'
+import { SymbolList, symbolListKey, symbolOptionId } from './SymbolList.js'
 import type { ProjectCredit } from '@byd/server'
 import { useT, type Key, type T } from '../i18n/index.js'
 
@@ -520,16 +521,28 @@ function FaceSwitch({ faces, face, onSelect }: { faces: string[]; face: string; 
 // The icon is the one tool that asks something before it places anything (#33): every other kind
 // has a default it can be given, and an icon has no default that is not somebody's guess. So the
 // library opens where the icon will stand, rather than two tabs away in the Symboler panel.
+const TOOL_SYMBOLS = 'byd-tool-symbols'
+
 function ToolRail({ onAdd, onPlaceIcon }: { onAdd(kind: ElementKind): void; onPlaceIcon(symbol: GameSymbol): void }) {
   const t = useT()
   const { itemProps, focus } = useRoving({ ids: TOOLS.map((tool) => tool.id), selected: null, orientation: 'vertical' })
   const [picking, setPicking] = useState(false)
+  // Which symbol the arrow keys are on. The focus never leaves the tool while the library is
+  // open — the cell picker keeps it in the cell being typed into for the same reason — so this is
+  // where "which one" lives, exactly as it does there.
+  const [choice, setChoice] = useState(0)
   // The way out of the library, and back to the tool it was opened from (#8). Closing it unmounts
   // whatever was focused inside it, so without this the focus falls to `<body>` and a rail reached
   // with the keyboard has to be reached again from the top.
   const close = () => {
     setPicking(false)
+    setChoice(0)
     focus('icon')
+  }
+  const pick = (symbol: GameSymbol) => {
+    setPicking(false)
+    setChoice(0)
+    onPlaceIcon(symbol)
   }
   return (
     <aside
@@ -537,20 +550,49 @@ function ToolRail({ onAdd, onPlaceIcon }: { onAdd(kind: ElementKind): void; onPl
       role="toolbar"
       aria-label={t('canvas.tools')}
       aria-orientation="vertical"
+      // Escape, wherever in the rail it was pressed. The tool below answers it first when that is
+      // where the focus is; this is the same way out for a press that arrived anywhere else.
       onKeyDown={(event) => {
-        if (event.key !== 'Escape' || !picking) return
+        if (event.key !== 'Escape' || !picking || event.defaultPrevented) return
         event.preventDefault()
         close()
       }}
+      // The focus gone out of the rail altogether takes the library with it. A list hanging beside
+      // a tool nobody is on is a list about nothing, and it hangs over the canvas being worked on.
+      // Nothing inside the library can trigger this: the options give the focus straight back.
+      onBlur={(event) => {
+        if (!picking || event.currentTarget.contains(event.relatedTarget)) return
+        setPicking(false)
+        setChoice(0)
+      }}
     >
       {TOOLS.map((tool) => {
+        const roving = itemProps(tool.id)
         const button = (
           <button
             key={tool.id}
             type="button"
-            {...(tool.id === 'icon' ? { 'aria-expanded': picking } : {})}
-            onClick={() => (tool.id === 'icon' ? setPicking((open) => !open) : onAdd(tool.id))}
-            {...itemProps(tool.id)}
+            {...(tool.id === 'icon' ? { 'aria-expanded': picking, ...(picking ? { 'aria-controls': TOOL_SYMBOLS, 'aria-activedescendant': symbolOptionId(TOOL_SYMBOLS, LIBRARY[choice] ?? LIBRARY[0]!) } : {}) } : {})}
+            // Another tool is another element, and the library was opened for this one: leaving it
+            // floating over the rail while a text box lands on the card is a list about nothing.
+            onClick={() => {
+              if (tool.id === 'icon') return setPicking((open) => !open)
+              setPicking(false)
+              setChoice(0)
+              onAdd(tool.id)
+            }}
+            {...roving}
+            // While the library is open the arrows are the list's, not the rail's. Otherwise they
+            // walk to the next tool with the list still hanging over it — which is the rail
+            // answering a key that was meant for the library.
+            onKeyDown={(event) => {
+              const act = tool.id === 'icon' && picking ? symbolListKey(event.key, LIBRARY.length, choice) : null
+              if (!act) return roving.onKeyDown(event)
+              event.preventDefault()
+              if (act === 'close') return close()
+              if (act === 'pick') return pick(LIBRARY[choice]!)
+              setChoice(act.active)
+            }}
           >
             <span aria-hidden="true">{tool.glyph}</span>
             {t(tool.name)}
@@ -563,30 +605,11 @@ function ToolRail({ onAdd, onPlaceIcon }: { onAdd(kind: ElementKind): void; onPl
         return (
           <div key={tool.id} className="byd-canvas-tool-icon">
             {button}
-            {picking && (
-              // The same library the Symboler tab fills (E4), offered beside the card. Choosing
-              // here is choosing an icon and placing it at once: one thing the designer did, so
-              // one edit and one step back (B4, #32).
-              <div className="byd-canvas-symbols" role="listbox" aria-label={t('canvas.symbols')}>
-                {LIBRARY.map((symbol) => (
-                  <button
-                    key={symbol.id}
-                    type="button"
-                    role="option"
-                    aria-selected="false"
-                    data-symbol={symbolName(symbol, t)}
-                    onClick={() => {
-                      setPicking(false)
-                      onPlaceIcon(symbol)
-                    }}
-                  >
-                    <img src={symbolPreview(symbol)} alt="" />
-                    <span>{symbolName(symbol, t)}</span>
-                    <small>{t(symbol.category)}</small>
-                  </button>
-                ))}
-              </div>
-            )}
+            {/* The same library the Symboler tab fills and the brace in a cell opens (E4), and
+                the same component: one library seen the same way wherever it is offered. Choosing
+                here is choosing an icon and placing it at once — one thing the designer did, so
+                one edit and one step back (B4, #32). */}
+            {picking && <SymbolList id={TOOL_SYMBOLS} className="byd-canvas-symbols" symbols={LIBRARY} active={choice} label={t('canvas.symbols')} onPick={pick} />}
           </div>
         )
       })}
