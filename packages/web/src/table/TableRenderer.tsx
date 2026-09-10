@@ -85,7 +85,9 @@ const GLIDE_MS = 700
 type Live = Drag & { started: boolean }
 // A card that has been put down but that the table has not moved yet (K1). The drop and the patch
 // are different moments; this is what is drawn in between, so a move never looks like a flinch.
-type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: number; y: number } | null; dx: number; dy: number }
+// `top` is a card drawn off a pile: it is held by where it was let go of and by how tall the pile
+// was, because a hidden pile hands out no component id to hold it by (K15).
+type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: number; y: number } | null; top: { pile: string; at: Point; count: number } | null; dx: number; dy: number }
 type Ring = { target: DragTarget; x: number; y: number }
 
 export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], onPresence, camera = false, onInspect, size: fixedSize, glideMs = GLIDE_MS, overlay, keyboard }, ref) {
@@ -185,7 +187,12 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     const held = settling.pile
     const zone = held ? zoneById.get(held.id) : undefined
     const pileMoved = held !== null && (!zone || zone.geometry.x !== held.x || zone.geometry.y !== held.y)
-    if (cardMoved || pileMoved) setSettling(null)
+    // A card drawn off a pile has been moved when the pile it came out of is a card shorter —
+    // the one thing the view says about it whether or not the card itself can be named (K15).
+    const offPile = settling.top
+    const source = offPile ? zoneById.get(offPile.pile) : undefined
+    const topMoved = offPile !== null && (!source || countOf(source) !== offPile.count)
+    if (cardMoved || pileMoved || topMoved) setSettling(null)
   })
   // A drop the table never answers — refused, or lost — has no patch to wait for, so it cannot
   // hold its placement for ever. It is held exactly as long as the tool still considers the
@@ -283,13 +290,16 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     // The card stays where it was put until the table has moved it. Between here and the patch the
     // view still says where the card came from, and drawing it there is the flinch (#29).
     // A whole pile waits for the same patch, and is held by where its zone was rather than by ids.
+    // And the card drawn off the top of one waits for it too, held by the pile it came out of.
     const target = d.target
     const wholePile = target.kind === 'pile' ? view.zones.find((z) => z.id === target.pile) : undefined
-    if (d.ids.length === 0 && !wholePile) return
+    const source = target.kind === 'pileTop' ? view.zones.find((z) => z.id === target.pile) : undefined
+    if (d.ids.length === 0 && !wholePile && !source) return
     setSettling({
       ids: d.ids,
       origin: d.origin,
       pile: wholePile ? { id: wholePile.id, x: wholePile.geometry.x, y: wholePile.geometry.y } : null,
+      top: source ? { pile: source.id, at: d.at, count: countOf(source) } : null,
       dx: d.at.x - d.grab.x,
       dy: d.at.y - d.grab.y,
     })
@@ -380,6 +390,14 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const shifted = new Set(drag?.started ? drag.ids : (settling?.ids ?? []))
   const liftedPile = drag?.started && drag.target.kind !== 'card' ? drag.target.pile : null
   const liftedKind = drag?.started && drag.target.kind !== 'card' ? drag.target.kind : null
+  // The card that is off the top of a pile: in the hand while it is dragged, and still out of the
+  // stack after it has been put down, until the table says where it went (#29).
+  const offTop =
+    drag?.started && drag.target.kind === 'pileTop'
+      ? { pile: drag.target.pile, at: drag.at }
+      : settling?.top
+        ? { pile: settling.top.pile, at: settling.top.at }
+        : null
   const topOf = (z: ZoneView, skip = 0) => byId.get(topIdOf(z, skip) ?? '')
 
   // A quarter-turned table (C5) is as tall as the floor is wide, so the wood it lies on takes
@@ -409,8 +427,8 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
             const whole = liftedPile === z.id && liftedKind === 'pile'
             // Put down, and still drawn where it was put: the patch has not come back yet (#29).
             const settled = settling?.pile?.id === z.id
-            const lifting = liftedPile === z.id && liftedKind === 'pileTop'
-            const count = z.mode === 'count' ? z.count : z.order.length
+            const lifting = offTop?.pile === z.id
+            const count = countOf(z)
             return (
               <Pile
                 key={z.id}
@@ -509,8 +527,8 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
               <span>{p.name}</span>
             </div>
           ))}
-          {drag?.started && drag.target.kind === 'pileTop' && (
-            <Ghost card={topOf(zoneById.get(drag.target.pile) ?? floor)} faces={faces} left={left(drag.at.x) - px(CARD_MM.w / 2)} top={top(drag.at.y) - px(CARD_MM.h / 2)} px={px} />
+          {offTop && (
+            <Ghost card={topOf(zoneById.get(offTop.pile) ?? floor)} faces={faces} left={left(offTop.at.x) - px(CARD_MM.w / 2)} top={top(offTop.at.y) - px(CARD_MM.h / 2)} px={px} />
           )}
           {overlay?.({ px, left, top, scale })}
         </div>
@@ -663,6 +681,11 @@ function Ghost({ card, faces, left, top, px }: { card: VisibleComponentState | u
       <span>{card?.cardRef ?? ''}</span>
     </div>
   )
+}
+
+// How many cards a pile holds, however much of it this view is allowed to name (K15).
+function countOf(z: ZoneView): number {
+  return z.mode === 'count' ? z.count : z.order.length
 }
 
 // The id of the card `skip` below the top of a pile, as far as this view knows: every card of a

@@ -41,10 +41,16 @@ export function buildScene() {
     run(null, { v: 'stack', component: faceDown, onto: faceUp })
     return project(state, registry, null)
   }
+  // The same table after the top of the draw pile has been split off onto the felt: the patch
+  // that answers a card drawn off a pile and dropped (K1).
+  const viewAfterDrawTop = (x: number, y: number): Snapshot => {
+    run(null, { v: 'split', pile: 'draw', at: 1, x, y })
+    return project(state, registry, null)
+  }
   // The same table after the top of the hidden draw pile is turned face-up (K15).
   const flipDrawTop = (): Snapshot => {
     run(null, { v: 'flip', component: { top: 'draw' }, face: 'front' })
     return project(state, registry, null)
   }
-  return { state, log, view, viewAfterStack, flipDrawTop, faceUp, faceDown }
+  return { state, log, view, viewAfterStack, viewAfterDrawTop, flipDrawTop, faceUp, faceDown }
 }

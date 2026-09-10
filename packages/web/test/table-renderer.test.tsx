@@ -539,6 +539,50 @@ describe('the gap between the drop and the patch (K1)', () => {
     vi.useRealTimers()
   })
 
+  // Drawing the top card off a pile is the same gap, and the one place it was never closed: the
+  // drag has no component id to hold — a hidden pile gives none — so the drop fell through the
+  // guard that holds a loose card and a whole pile, and the card was drawn back into the stack
+  // for one round trip.
+  it('a card drawn off a pile keeps where it was put, and the pile stays one card shorter', () => {
+    const { view } = buildScene()
+    const onAct = vi.fn()
+    render(<TableRenderer view={view(null)} mode="tv" scale={1} onAct={onAct} />)
+    const pile = () => document.querySelector('[data-zone="draw"]') as HTMLElement
+    const drawn = () => document.querySelector('[data-ghost]') as HTMLElement | null
+    expect(pile().getAttribute('data-count')).toBe('3')
+
+    const top = pile().querySelector('.byd-pile-top')!
+    fireEvent.pointerDown(top, client(-200, 0))
+    fireEvent.pointerMove(top, client(-100, 100))
+    const carried = { left: drawn()!.style.left, top: drawn()!.style.top }
+    expect(pile().getAttribute('data-count')).toBe('2')
+
+    fireEvent.pointerUp(top, client(-100, 100))
+    expect(onAct).toHaveBeenCalledTimes(1)
+    // Nothing has come back yet: the card is where it was let go of, and the pile has not grown
+    // it back.
+    expect(pile().getAttribute('data-count')).toBe('2')
+    expect(drawn()).not.toBeNull()
+    expect({ left: drawn()!.style.left, top: drawn()!.style.top }).toEqual(carried)
+  })
+
+  it('gives the drawn card back to the table the moment the split comes back', () => {
+    const { view, viewAfterDrawTop } = buildScene()
+    const onAct = vi.fn()
+    const { rerender } = render(<TableRenderer view={view(null)} mode="tv" scale={1} onAct={onAct} />)
+    const top = document.querySelector('[data-zone="draw"] .byd-pile-top')!
+    fireEvent.pointerDown(top, client(-200, 0))
+    fireEvent.pointerMove(top, client(-100, 100))
+    fireEvent.pointerUp(top, client(-100, 100))
+    expect(document.querySelector('[data-ghost]')).not.toBeNull()
+
+    // The pile it came out of is a card shorter, which is the table saying it has moved it. From
+    // here the table is the truth again, and holding the placement would draw the card twice.
+    rerender(<TableRenderer view={viewAfterDrawTop(-100, 100)} mode="tv" scale={1} onAct={onAct} />)
+    expect(document.querySelector('[data-ghost]')).toBeNull()
+    expect(document.querySelector('[data-zone="draw"]')!.getAttribute('data-count')).toBe('2')
+  })
+
   // A whole pile moved across the felt waits for the same patch a card does.
   it('a dropped pile keeps where it was put while the table still says where it came from', () => {
     const { view } = buildScene()
