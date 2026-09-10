@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createRoom, start, type Running } from './fixture.js'
 import { WireClient } from './client.js'
 
@@ -107,5 +107,37 @@ describe('the socket that left (D1)', () => {
     for (const ref of held) expect(bo.frames.join('\n')).toContain(ref)
     // And the proof: not one of them ever reached the socket that left.
     for (const ref of held) expect(ada.frames.slice(mark).join('\n')).not.toContain(ref)
+  })
+})
+
+// What an ack says. It says one thing: the line is in the log. Everything emptying a seat means
+// beyond that — the reservation at the door, the sockets — follows the commit and cannot undo
+// it: the log is append-only and the shuffle that put the hand back is already stored as a
+// result. So a door that will not answer must not be able to turn an accepted move into a
+// refusal, or the phone stands at a table it has already left, holding a hand that has already
+// gone back in the pile. It must not be quietly swallowed either: a live token for a seat the
+// table shows as free is the next guest's 409, and only the box can fix it (DRIFT §8).
+describe('a door that will not answer', () => {
+  it('does not take back the ack for a release the log already has', async () => {
+    const { id } = await createRoom(run.http)
+    const ada = keep(await WireClient.connect(run.base, id, 'A', undefined, { token: await run.admit(id, 'A', 'Ada') }))
+    await ada.send('A', { v: 'seat.claim', seat: 'A', name: 'Ada' })
+    await ada.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 3 })
+
+    const said: string[] = []
+    const watched = vi.spyOn(console, 'error').mockImplementation((line: unknown) => void said.push(String(line)))
+    run.store.revokeGuests = () => Promise.reject(new Error('the door is not answering'))
+    try {
+      expect((await ada.send('A', { v: 'seat.release', seat: 'A' })).t).toBe('ack')
+    } finally {
+      watched.mockRestore()
+    }
+
+    // The ack was true, which is why it stands: the seat is empty and the hand is back.
+    expect((await run.store.read(id)).at(-1)?.intent).toMatchObject({ v: 'seat.release', seat: 'A' })
+    // And the half that failed is on the record, with the table and the seat it is about.
+    expect(said.join('\n')).toContain('the door is not answering')
+    expect(said.join('\n')).toContain(id)
+    expect(said.join('\n')).toContain('"A"')
   })
 })

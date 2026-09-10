@@ -164,7 +164,17 @@ export class TableActor {
       this.unsubscribe(sub)
       sub.close?.()
     }
-    await this.store.revokeGuests(this.id, seat, new Date().toISOString())
+    // The commit has already happened and cannot be unhappened: the log is append-only and the
+    // shuffle that put the hand back is stored as a result. An ack therefore says one thing, the
+    // line is in the log, and a door that will not answer is not allowed to take that back — or
+    // the phone is told no while the seat is already free and the hand already gone. Nor is it
+    // swallowed: a live token for a seat the table shows as empty is the next guest's 409, and
+    // only whoever runs the box can put it right, so it is said where they look (DRIFT §8).
+    try {
+      await this.store.revokeGuests(this.id, seat, new Date().toISOString())
+    } catch (err) {
+      console.error(JSON.stringify({ msg: 'revoke-failed', table: this.id, seat, error: err instanceof Error ? err.message : String(err) }))
+    }
   }
 
   private observers(): { id: string; name: string }[] {
