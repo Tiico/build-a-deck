@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { ProjectClient } from '../src/editor/ProjectClient.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
+import { LIBRARY } from '../src/editor/symbols.js'
 
 let run: Running
 beforeEach(async () => {
@@ -156,6 +157,37 @@ describe('a socket that breaks (D3)', () => {
     ada.close()
     await new Promise((r) => setTimeout(r, 400))
     expect(ada.connected).toBe(false)
+  })
+})
+
+// Placing an icon is one intent carrying two things (#33), and until now only the editor's own
+// copy of the document had been asked whether that worked. A service that dropped the `icon` half
+// would leave the card looking right in the editor that placed it and wrong for everyone else,
+// until the next reload told the designer so.
+describe('an icon placed, through the actor (#33, E4, D3)', () => {
+  it('reaches the other editor and the store with both halves', async () => {
+    await run.projects.create('p1', projectDoc())
+    const ada = await open()
+    const bo = await open()
+    await settle()
+    const svard = LIBRARY.find((s) => s.id === 'svard')!
+
+    const id = await ada.placeIcon(svard, 'front', null)
+    await settle()
+
+    // The other editor was told, by the actor, about both halves of the one intent — the symbol in
+    // the game's set and the element that shows it. Neither is worked out from the other.
+    expect(bo.doc.icons['svärd']).toMatch(/^asset:[0-9a-f]{64}$/)
+    expect(bo.doc.credits?.['svärd']?.source).toBe('svard')
+    expect(bo.doc.template.faces['front']?.base.at(-1)).toMatchObject({ id, kind: 'icons', bind: { literal: 'svärd' } })
+
+    // And so was the store, once it was saved.
+    expect(await bo.save()).toEqual({ ok: true, rev: 2 })
+    const stored = await run.projects.load('p1')
+    expect(stored?.icons['svärd']).toBe(bo.doc.icons['svärd'])
+    expect(stored?.template.faces['front']?.base.some((e) => e.id === id)).toBe(true)
+    ada.close()
+    bo.close()
   })
 })
 

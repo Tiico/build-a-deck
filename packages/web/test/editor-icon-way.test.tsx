@@ -113,9 +113,11 @@ describe('the icon as a tool on the canvas (#33)', () => {
   })
 
   it('puts the chosen icon on the card, drawn by the one renderer', async () => {
-    const tools = await openTemplate()
-    // The control case: nothing draws an icon on this card until one is placed, so the assertion
-    // below is about what the tool did and not about what the fixture already held.
+    // The game already has a symbol, and the card still draws none: the control below is then a
+    // fact about this template rather than about a fixture that happens to hold an empty set.
+    const doc = projectDoc()
+    doc.icons = { pil: `asset:${'d'.repeat(64)}` }
+    const tools = await openTemplate(doc)
     expect(document.querySelectorAll('#canvas img.byd-icon')).toHaveLength(0)
 
     fireEvent.click(within(tools).getByRole('button', { name: 'Ikon' }))
@@ -123,11 +125,13 @@ describe('the icon as a tool on the canvas (#33)', () => {
 
     // `byd-icon` is a class only the compiler in packages/template writes, so an image wearing it
     // inside the preview is the card having gone through the one renderer (E2) and nothing else.
+    // And it is inside the element the tool just placed, so this is what the tool did.
     const icon = await waitFor(() => {
-      const found = document.querySelector('#canvas img.byd-icon') as HTMLImageElement | null
+      const found = document.querySelector('#canvas [data-element="icon-1"] img.byd-icon') as HTMLImageElement | null
       if (!found) throw new Error('no icon on the card yet')
       return found
     })
+    expect(document.querySelectorAll('#canvas img.byd-icon')).toHaveLength(1)
     // And it is an icon that can actually be fetched: a symbol lives in the project's own assets
     // (E1), so a preview handed the raw `asset:` reference draws a broken image and calls it done.
     const src = icon.getAttribute('src') ?? ''
