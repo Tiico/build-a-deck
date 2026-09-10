@@ -142,3 +142,22 @@ describe('a code that does not resolve (DRIFT §9)', () => {
     await waitFor(() => expect(document.querySelector('[data-status-live="assertive"]')!.textContent).toMatch(/bordet finns inte/i))
   })
 })
+
+// Two free seats say the same word, and which one a finger is pointing at is carried by colour
+// and by which edge of the table it sits on — neither of which a reader hears. The seat's own
+// letter belongs in the name, in front of the word that is already there (UX-kontroll 2026-09-10).
+describe('the seats a reader hears', () => {
+  it('says which seat each one is, free or taken', async () => {
+    const id = await createSession(run)
+    const table = TableClient.connect(await asTable(run, id))
+    await table.ready()
+    await table.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
+    await open(id)
+
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Plats A, Ada' })).toBeTruthy())
+    expect(screen.getByRole('button', { name: 'Plats B, ledig' })).toBeTruthy()
+    // What the eye reads is still the short word; the name only puts the seat in front of it.
+    expect(document.querySelector('[data-seat="B"]')!.textContent).toBe('ledig')
+    table.close()
+  })
+})

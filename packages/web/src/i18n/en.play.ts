@@ -208,6 +208,8 @@ export const enPlay = {
   'join.seats.full': 'Every seat is taken',
   'join.seat.pick': 'Tap a free seat',
   'join.seat.free': 'free',
+  'join.seat.label.free': 'Seat {seat}, free',
+  'join.seat.label.taken': 'Seat {seat}, {name}',
   'join.name': 'Your name',
   'join.sit': 'Sit down',
   'join.online': 'Play on this screen (the table and your hand here)',

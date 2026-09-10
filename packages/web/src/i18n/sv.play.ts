@@ -246,6 +246,10 @@ export const svPlay = {
   'join.seats.full': 'Alla platser är upptagna',
   'join.seat.pick': 'Tryck på en ledig plats',
   'join.seat.free': 'ledig',
+  // Två lediga platser säger samma ord, och vilken som är vilken bärs av färgen och av kanten de
+  // sitter vid. Namnet sätter platsens bokstav framför ordet ögat redan läser.
+  'join.seat.label.free': 'Plats {seat}, ledig',
+  'join.seat.label.taken': 'Plats {seat}, {name}',
   'join.name': 'Ditt namn',
   'join.sit': 'Sätt dig',
   'join.online': 'Spela på den här skärmen (bordet och handen här)',
