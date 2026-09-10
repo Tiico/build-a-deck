@@ -142,7 +142,11 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
   if (!client) return <StatusNotice notice={noticeFor('loading', 'editor', t)} surface="page" links={links} />
   const doc = client.doc
 
+  // The one guard, so the button's greyed-out look and the chord's answer are the same rule said
+  // twice rather than two rules that can drift apart (#35). A document that is already the one
+  // the server holds has nothing to save, and a save that is still travelling is not asked twice.
   const save = async (): Promise<boolean> => {
+    if (!unsaved || saving) return true
     setSaving(true)
     const result = await client.save()
     setSaving(false)

@@ -5,7 +5,7 @@ import type { ObjectStore } from '@byd/render'
 import type { Applied } from '@byd/protocol'
 import { liftLine, type SetupDef } from '@byd/engine'
 import { SeqConflictError, type Deck, type GuestRecord, type LogStore, type SessionRecord, type SessionSummary, type PlayedRecord } from './store.js'
-import type { ProjectDoc, ProjectRecord, ProjectStore, ProjectSummary, VersionSummary } from './projects.js'
+import { stamp, type ProjectDoc, type ProjectRecord, type ProjectStore, type ProjectSummary, type VersionSummary } from './projects.js'
 import { PostgresAssetStore } from './assets.js'
 import type { AppliedEdit } from './project-actor.js'
 import type { EditIntent } from './edits.js'
@@ -378,9 +378,12 @@ export class PostgresProjectStore implements ProjectStore {
 
   async replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number): Promise<ProjectRecord | 'conflict' | 'missing'> {
     return this.sql.begin(async (tx) => {
-      const [row] = await tx<{ rev: number }[]>`select rev from projects where id = ${id} for update`
+      const [row] = await tx<{ rev: number; doc: ProjectDoc; owner: string | null }[]>`select rev, doc, owner from projects where id = ${id} for update`
       if (!row) return 'missing'
       if (row.rev !== expectedRev) return 'conflict'
+      // Read under the same lock as the write, so "nothing changed" cannot be decided against a
+      // document somebody else has already replaced (B4).
+      if (stamp(row.doc) === stamp(doc)) return { ...row.doc, id, rev: row.rev, ...(row.owner ? { owner: row.owner } : {}) }
       const rev = row.rev + 1
       await tx`update projects set rev = ${rev}, doc = ${tx.json(doc as never)}, updated_at = now() where id = ${id}`
       // The history (B4) grows by one; nothing already in it is ever written again.

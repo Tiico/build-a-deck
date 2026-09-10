@@ -18,6 +18,9 @@ export function isTyping(target: EventTarget | null): boolean {
 export type Chord = 'undo' | 'redo' | 'save'
 
 export function chordOf(event: KeyboardEvent): Chord | null {
+  // A key held down is one press. The browser goes on sending it thirty times a second, and none
+  // of those is something the designer asked for a second time.
+  if (event.repeat) return null
   if (!(event.metaKey || event.ctrlKey) || event.altKey) return null
   const key = event.key.toLowerCase()
   if (key === 's') return 'save'

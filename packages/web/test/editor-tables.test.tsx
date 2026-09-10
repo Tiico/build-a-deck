@@ -103,8 +103,10 @@ describe('what the Bord tab says about a running table (#19, C7)', () => {
     await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
     const eva = TableClient.connect(await asObserver(run, id, 'Eva'))
     await eva.ready()
-    // The designer keeps working: the project is on rev 2, the table still plays rev-1 (C7).
-    await run.projects.replace('p1', 1, { ...projectDoc(), name: 'Skogens herrar' })
+    // The designer keeps working: the project is on rev 2, the table still plays rev-1 (C7). She
+    // has to have actually changed something — a saving that changes nothing is not one (B4).
+    const worked = projectDoc()
+    await run.projects.replace('p1', 1, { ...worked, rows: [...worked.rows, { id: 'älva', fields: { title: 'Älva', body: 'Flyger tyst.', antal: 1 } }] })
 
     await openTables()
     const row = await screen.findByRole('listitem')

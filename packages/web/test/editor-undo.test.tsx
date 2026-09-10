@@ -62,6 +62,33 @@ describe('a step back in the editor (#35)', () => {
     expect(screen.queryByText(/Tog tillbaka/)).toBeNull()
   })
 
+  // A key held down does not become many presses just because the browser keeps saying so. The
+  // repeats it sends are the same one press, and the editor answers a press.
+  it('answers a held key once, however long the browser goes on repeating it', async () => {
+    await openEditor()
+    fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
+    const cell = await waitFor(() => {
+      const el = document.querySelector('.byd-data tbody td:not(.byd-data-check) input') as HTMLInputElement | null
+      if (!el) throw new Error('no cell yet')
+      return el
+    })
+    await userEvent.clear(cell)
+    await userEvent.type(cell, 'Drakhona')
+    ;(document.activeElement as HTMLElement | null)?.blur()
+    const value = () => (document.querySelector('.byd-data tbody td:not(.byd-data-check) input') as HTMLInputElement).value
+    await waitFor(() => expect(value()).toBe('Drakhona'))
+
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true, repeat: true })
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true, repeat: true })
+    expect(value()).toBe('Drakhona')
+    expect(screen.queryByText(/Tog tillbaka/)).toBeNull()
+
+    // The control: a press that is a press still takes the last change back, so a green test
+    // here is never a chord that stopped working altogether.
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
+    await waitFor(() => expect(value()).not.toBe('Drakhona'))
+  })
+
   it('saves on Ctrl+S rather than letting the browser save the page', async () => {
     await openEditor()
     fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
@@ -80,5 +107,42 @@ describe('a step back in the editor (#35)', () => {
     cell.dispatchEvent(event)
     expect(event.defaultPrevented).toBe(true)
     await waitFor(async () => expect((await run.projects.load('p1'))?.rev).toBe(2))
+  })
+})
+
+// The Save button has always been greyed out when there is nothing to save. The chord went
+// straight past it, and every press made a version of a document nobody had touched — a history
+// (B4) that is meant to be worth reading, filled with entries that changed nothing.
+describe('a saving that changes nothing (B4)', () => {
+  async function typeInTheDeck(what: string) {
+    fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
+    const cell = await waitFor(() => {
+      const el = document.querySelector('.byd-data tbody td:not(.byd-data-check) input') as HTMLInputElement | null
+      if (!el) throw new Error('no cell yet')
+      return el
+    })
+    await userEvent.clear(cell)
+    await userEvent.type(cell, what)
+    await screen.findByText('Osparade ändringar')
+  }
+
+  it('is not a saving: the chord on an untouched document leaves the history where it was', async () => {
+    await openEditor()
+    // The control: a chord with something to save does make a version, so a green test here is
+    // never a chord that quietly did nothing at all.
+    await typeInTheDeck('Drakhona')
+    fireEvent.keyDown(document, { key: 's', ctrlKey: true })
+    await screen.findByText('Sparat')
+    expect((await run.projects.load('p1'))?.rev).toBe(2)
+
+    // Nothing has been typed since. However often it is asked for, there is nothing to keep.
+    fireEvent.keyDown(document, { key: 's', ctrlKey: true })
+    fireEvent.keyDown(document, { key: 's', ctrlKey: true })
+
+    // The next real change is version three: proof that the presses in between never counted.
+    await typeInTheDeck('Drakhöna')
+    fireEvent.keyDown(document, { key: 's', ctrlKey: true })
+    await waitFor(async () => expect((await run.projects.load('p1'))?.rev).toBe(3))
+    expect(await run.projects.versions('p1')).toHaveLength(3)
   })
 })

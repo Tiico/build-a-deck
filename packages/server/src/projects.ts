@@ -89,6 +89,10 @@ export type ProjectStore = {
   load(id: string): Promise<ProjectRecord | null>
   list(owner: string): Promise<ProjectSummary[]>
   // Replaces the document if `expectedRev` is current; 'conflict' otherwise (optimistic concurrency).
+  // A document that is already the stored one is not a saving (B4): the record comes back at the
+  // revision it already had, and the history gains nothing. The history is meant to be read, and
+  // a version that changed nothing is a line in it that says nothing. Every way into the history
+  // goes through here, so this is where the rule holds rather than at each of the doors.
   replace(id: string, expectedRev: number, doc: ProjectDoc, atSeq?: number): Promise<ProjectRecord | 'conflict' | 'missing'>
   // The history, newest first.
   versions(id: string): Promise<VersionSummary[]>
@@ -186,6 +190,8 @@ export class MemoryProjectStore implements ProjectStore {
     const rec = this.docs.get(id)
     if (!rec) return 'missing'
     if (rec.rev !== expectedRev) return 'conflict'
+    const { id: _id, rev: _rev, owner: _owner, ...held } = rec
+    if (stamp(held) === stamp(doc)) return structuredClone(rec)
     const next: ProjectRecord = { ...structuredClone(doc), id, rev: rec.rev + 1, ...(rec.owner !== undefined ? { owner: rec.owner } : {}) }
     this.docs.set(id, next)
     this.history.get(id)?.push({ rev: next.rev, at: new Date().toISOString(), ...(atSeq !== undefined ? { atSeq } : {}), doc: structuredClone(doc) })
@@ -258,6 +264,17 @@ export function setupFromProject(doc: ProjectDoc): SetupDef {
     ...(z.shortcut !== undefined ? { shortcut: z.shortcut } : {}),
   }))
   return { zones, seats: doc.setup.seats, floor: doc.setup.floor, components }
+}
+
+// Two documents said in one order, so "the same document" does not depend on the order the keys
+// happened to be written in — a document that has been through JSON and back comes out of the
+// database in whatever order the database kept it. A key with no value is no key at all.
+export function stamp(value: unknown): string {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null'
+  if (Array.isArray(value)) return `[${value.map(stamp).join(',')}]`
+  const entries = Object.entries(value as Record<string, unknown>).filter(([, v]) => v !== undefined)
+  entries.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+  return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${stamp(v)}`).join(',')}}`
 }
 
 export function deckFromProject(doc: ProjectDoc): Deck {
