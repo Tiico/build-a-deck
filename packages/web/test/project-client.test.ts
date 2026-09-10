@@ -126,9 +126,22 @@ describe('editing the template on the canvas (#18)', () => {
   it('refuses an element whose id is already on the face, and a face that does not exist', async () => {
     const created = await run.projects.create('p1', projectDoc())
     const client = await ProjectClient.open({ http: run.http, id: created.id })
+
+    // Something real is edited and saved first, so what follows is measured against a client that
+    // has done work rather than against a fresh one, where "nothing was touched" is where it began.
+    client.addElement('front', added)
+    expect(await client.save()).toEqual({ ok: true, rev: 2 })
+    expect(client.dirty).toBe(false)
+
     expect(() => client.addElement('front', { ...added, id: 'title' })).toThrow(/title/)
     expect(() => client.addElement('sida', added)).toThrow(/sida/)
     expect(client.dirty).toBe(false)
+
+    // And the step back is still the one the designer took, not a refusal that took a turn on the
+    // stack: the element she really added is what comes off it.
+    expect(client.undo()).toBe('undo.what.template')
+    expect(ids(client)).toEqual(['frame', 'title', 'body'])
+    expect(client.canUndo).toBe(false)
   })
 
   // An edit that was refused never happened, so it costs neither a version nor a Ctrl+Z (#41,
@@ -149,6 +162,26 @@ describe('editing the template on the canvas (#18)', () => {
     expect(client.undo()).toBe('undo.what.template')
     expect(client.doc.template.faces['front']?.base.find((e) => e.id === 'title')).toMatchObject({ x: 5 })
     expect(client.canUndo).toBe(false)
+  })
+
+  // The step back is half of it; the step forward is the other half. A new edit is a new branch,
+  // so it throws away what was waiting to come forward — and a refused edit is not a new edit. It
+  // must leave the way forward exactly where it was, or a refusal would quietly cost the designer
+  // the redo as well as nothing else (#41, B4).
+  it('leaves the step forward alone when an edit is refused', async () => {
+    const created = await run.projects.create('p1', projectDoc())
+    const client = await ProjectClient.open({ http: run.http, id: created.id })
+
+    client.patchElement('front', 'title', { x: 9 })
+    expect(client.undo()).toBe('undo.what.template')
+    expect(client.canRedo).toBe(true)
+
+    expect(() => client.patchElement('front', 'ingen', { x: 9 })).toThrow(/ingen/)
+    expect(client.canRedo).toBe(true)
+
+    // And it is the same step forward, not merely a stack with something on it.
+    expect(client.redo()).toBe('undo.what.template')
+    expect(client.doc.template.faces['front']?.base.find((e) => e.id === 'title')).toMatchObject({ x: 9 })
   })
 })
 
