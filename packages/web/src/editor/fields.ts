@@ -29,6 +29,11 @@ export function suggestFieldKey(kind: FieldKind, taken: readonly string[]): stri
 // cannot come to different conclusions about what a column is.
 export const fieldsOf = (doc: ProjectDoc): string[] => [...columnsOf(doc).filter((f) => f !== ANTAL), ANTAL]
 
+// Every name a new field would collide with (#32): the columns, and the card's own id — which is
+// a column of the table without being a field of the card, and is what a CSV import reads a deck
+// back by. Both doors into a new field ask the same question of the same list.
+export const takenNames = (doc: ProjectDoc): string[] => ['id', ...fieldsOf(doc)]
+
 // What a column is called on screen. Every column is the designer's own word except one:
 // `antal` is the engine's — how many copies of the card the deck holds (L4) — so it is the one
 // the tool names, in the reader's language (A4). The field itself keeps its name everywhere it

@@ -4,7 +4,7 @@ import type { Element, ProjectDoc, Row } from './types.js'
 import { CardPreview } from './CardPreview.js'
 import { arrowMove, fitScale, HANDLES, movedTo, newElement, resizedTo, snapped, STAGE_SCALE, TOOLS, type Box, type ElementKind, type Grab, type Guides, type Handle } from './canvas.js'
 import { elementsFor } from '@byd/template'
-import { fieldsOf } from './fields.js'
+import { fieldsOf, takenNames } from './fields.js'
 import { NewField } from './NewField.js'
 import { isTyping } from './keys.js'
 import { cardsInGroup, groupColumn, groupsOf, layersOf, overriddenIds, ruleLabel, type Layer } from './groups.js'
@@ -170,7 +170,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, face, onSelectFac
         {/* A panel with nothing in it says why rather than looking broken — and on a small screen
             the layers are another stage away, so it says where to go. */}
         {!layer && <p className="byd-canvas-hint">{t('canvas.props.empty')}</p>}
-        {el && <Properties el={el} fields={fields} fonts={Object.keys(doc.fonts ?? {})} onPatch={(patch) => onPatch(el.id, patch)} onAddField={onAddField} />}
+        {el && <Properties el={el} fields={fields} taken={takenNames(doc)} fonts={Object.keys(doc.fonts ?? {})} onPatch={(patch) => onPatch(el.id, patch)} onAddField={onAddField} />}
         {layer && group && overridden.has(layer.element.id) && (
           <button type="button" className="byd-canvas-reset" onClick={() => onReset(layer.element.id)}>
             {t('canvas.reset')}
@@ -518,7 +518,9 @@ function useElementKeys(el: Element | undefined, onPatch: TemplateCanvasProps['o
 // it, and the empty string is already what an element bound to a literal shows.
 const NEW_FIELD = ' new'
 
-function Properties({ el, fields, fonts, onPatch, onAddField }: { el: Element; fields: string[]; fonts: string[]; onPatch(patch: Partial<Element>): void; onAddField(field: string): void }) {
+// `fields` are the columns the picker offers; `taken` is every name a new one would collide with,
+// which is those plus the card's own id (#32).
+function Properties({ el, fields, taken, fonts, onPatch, onAddField }: { el: Element; fields: string[]; taken: string[]; fonts: string[]; onPatch(patch: Partial<Element>): void; onAddField(field: string): void }) {
   const t = useT()
   // Whether the picker's last entry has been chosen and the form is standing open under it.
   const [making, setMaking] = useState(false)
@@ -555,7 +557,7 @@ function Properties({ el, fields, fonts, onPatch, onAddField }: { el: Element; f
           </select>
           {making && (
             <NewField
-              taken={fields}
+              taken={taken}
               onCreate={(field) => {
                 onAddField(field)
                 onPatch({ bind: { field } })

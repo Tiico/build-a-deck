@@ -396,6 +396,14 @@ describe('the second door into a new field (#32)', () => {
     expect(within(form).getByRole('alert').textContent).toBe('Det finns redan ett fält som heter body.')
     expect(onAddField).not.toHaveBeenCalled()
 
+    // Including the card's own id, which is a column of the table without being a field, and is
+    // what a CSV import reads a deck back by. The head's form refuses it; so does this one.
+    await user.clear(within(form).getByLabelText('Namn'))
+    await user.type(within(form).getByLabelText('Namn'), 'id')
+    await user.click(within(form).getByRole('button', { name: 'Lägg till' }))
+    expect(within(form).getByRole('alert').textContent).toBe('Det finns redan ett fält som heter id.')
+    expect(onAddField).not.toHaveBeenCalled()
+
     await user.click(within(form).getByRole('button', { name: 'Avbryt' }))
     expect(screen.queryByRole('form', { name: 'Nytt fält' })).toBeNull()
   })
