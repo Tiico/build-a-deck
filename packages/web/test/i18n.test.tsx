@@ -37,18 +37,31 @@ describe('the tool in the reader\'s own language (A4)', () => {
   // languages already held that difference. A test is what keeps the next key from bringing the
   // retired words back (#38).
   it('calls each thing by the one word the glossary gives it', () => {
-    // Word-bounded so a compound that means something else is not caught, and case-insensitive
+    // Bounded where the word begins and open where it ends. Swedish inflects and compounds, so a
+    // retired word turns up as `projektets` and `sessionens`, and a pattern closed at both ends
+    // reads those as different words and lets every one of them through. Case-insensitive
     // because a word at the start of a sentence is the same word.
     const says = (catalogue: Record<string, string>, words: string[]) =>
       Object.entries(catalogue)
-        .filter(([, text]) => words.some((word) => new RegExp(`\\b${word}\\b`, 'i').test(text)))
+        .filter(([, text]) => words.some((word) => new RegExp(`\\b${word}\\w*`, 'i').test(text)))
         .map(([key]) => key)
         .sort()
+    // The stem is enough: nothing the tool says begins with these letters and means something
+    // else. `rummet` keeps its definite ending, because `rum` on its own is the way in that a
+    // code is written on, and `rumskod` is that same way in and stays (K12).
+    const retiredSv = ['projekt', 'session', 'rummet']
+    // "room code" stays for the same reason: the code is its own concept and not the table, so
+    // the room is retired only where it stands for the table itself.
+    const retiredEn = ['project', 'session', 'the room(?!\\s+code)']
 
-    expect(says(sv, ['projekt', 'projektet', 'session', 'sessionen', 'sessioner', 'rummet'])).toEqual([])
-    // "room code" stays: the code is its own concept and not the table (K12), so the room is only
-    // retired where it stands for the table itself.
-    expect(says(en, ['project', 'session', 'sessions', 'the room(?!\\s+code)'])).toEqual([])
+    expect(says(sv, retiredSv)).toEqual([])
+    expect(says(en, retiredEn)).toEqual([])
+
+    // The control, and the point of the pair: the patterns do catch the retired words in the
+    // forms the two languages actually write them in, so the two empty lists above are
+    // catalogues without them rather than patterns that match nothing at all.
+    expect(says({ a: 'Projektets namn', b: 'Sessionens bord', c: 'Rummets kod', keeps: 'Spelets namn', code: 'Rumskoden {code}' }, retiredSv)).toEqual(['a', 'b', 'c'])
+    expect(says({ a: "The project's name", b: 'Two sessions', c: 'The rooms', keeps: 'The game', code: 'The room code {code}' }, retiredEn)).toEqual(['a', 'b', 'c'])
   })
 
   it('puts what a message is about into it, rather than gluing sentences together', () => {
