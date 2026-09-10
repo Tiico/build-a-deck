@@ -332,8 +332,10 @@ export class ProjectClient {
     this.edit({ v: 'replaceRows', rows })
   }
 
-  addField(field: string): void {
-    this.edit({ v: 'addField', field })
+  // `bind` binds an element to the column in the same edit, which is what the canvas door needs:
+  // one thing the designer did, one version, one step back (B4).
+  addField(field: string, bind?: { face: string; id: string; group?: string | null }): void {
+    this.edit({ v: 'addField', field, ...(bind ? { bind } : {}) })
   }
 
   removeField(field: string): void {

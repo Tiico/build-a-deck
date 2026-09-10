@@ -104,4 +104,43 @@ describe('a field made in the editor is a field the game has (#32, B4)', () => {
     expect(saved?.rows.every((r) => !('styrka' in r.fields))).toBe(true)
     expect(saved?.template.faces['front']?.base.map((e) => e.id)).toEqual(['frame', 'body'])
   })
+
+  // The canvas door makes a column and binds the element to it, and the designer did one thing.
+  // Two edits down the socket would be two versions and two steps back — and the first step back
+  // would leave a state she never asked for and cannot read: the new column standing in the table
+  // with the element bound to the field it had before. So it goes as one edit (B4).
+  it('makes the column and binds the element in one edit, and one step back takes both', async () => {
+    const user = userEvent.setup()
+    await run.projects.create('p1', projectDoc())
+    await openEditor()
+
+    openTab('Mall')
+    await user.click(await screen.findByRole('option', { name: 'text title' }))
+    const field = await waitFor(() => screen.getByLabelText('Fält') as HTMLSelectElement)
+    await user.selectOptions(field, within(field).getByRole('option', { name: 'nytt fält…' }))
+    const form = screen.getByRole('form', { name: 'Nytt fält' })
+    await user.clear(within(form).getByLabelText('Namn'))
+    await user.type(within(form).getByLabelText('Namn'), 'styrka')
+    await user.click(within(form).getByRole('button', { name: 'Lägg till' }))
+
+    // Both halves happened: the element shows the new column, and the table has it.
+    await waitFor(() => expect((screen.getByLabelText('Fält') as HTMLSelectElement).value).toBe('styrka'))
+    openTab('Tabell')
+    await waitFor(() => expect(column('styrka')).toBeTruthy())
+
+    // And one press takes both halves back, together. Not the binding first and the column after.
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
+    expect(await screen.findAllByText(/Tog tillbaka: ett fält i kortleken/)).not.toHaveLength(0)
+    await waitFor(() => expect(column('styrka')).toBeNull())
+    openTab('Mall')
+    await waitFor(() => expect((screen.getByLabelText('Fält') as HTMLSelectElement).value).toBe('title'))
+
+    // And one step forward brings both halves back together, which is the same fact said from the
+    // other side: it is one step of the stack, not two.
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true, shiftKey: true })
+    expect(await screen.findAllByText(/Gjorde om: ett fält i kortleken/)).not.toHaveLength(0)
+    await waitFor(() => expect((screen.getByLabelText('Fält') as HTMLSelectElement).value).toBe('styrka'))
+    openTab('Tabell')
+    expect(column('styrka')).toBeTruthy()
+  })
 })

@@ -22,7 +22,12 @@ export type EditIntent =
   // column one version and one step back (B4), and it keeps a log entry for an empty column from
   // carrying every card in the game. `field` is the key as it stands in the document — an
   // identifier, never a translated word (A4, #27).
-  | { v: 'addField'; field: string }
+  // `bind` is the canvas door (#32): the designer went to say which column an element shows,
+  // found the column missing and made it there, which is one thing she did and must be one edit.
+  // Sending the column and the binding separately would be two versions and two steps back, and
+  // the first step back would leave a state nobody asked for — the new column standing in the
+  // table with the element bound to the field it had before.
+  | { v: 'addField'; field: string; bind?: { face: string; id: string; group?: string | null } }
   | { v: 'removeField'; field: string }
   // The template (L1, #13, #18)
   | { v: 'patchElement'; face: string; id: string; patch: Partial<Element>; group?: string | null }
@@ -76,7 +81,17 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
     case 'addField': {
       if (intent.field === ANTAL) throw new Error(`field ${ANTAL} is the deck's own`)
       if (columnsOf(doc).includes(intent.field)) throw new Error(`field ${intent.field} already exists`)
-      return { ...doc, rows: doc.rows.map((r) => ({ ...r, fields: { ...r.fields, [intent.field]: '' } })) }
+      const written = { ...doc, rows: doc.rows.map((r) => ({ ...r, fields: { ...r.fields, [intent.field]: '' } })) }
+      if (!intent.bind) return written
+      // The element that went looking for the column is bound to it here rather than by a second
+      // edit, and by the verb that already knows how to write a binding — into the base or into
+      // the open group's own override, exactly as `patchElement` would have done it alone.
+      const { face, id, group } = intent.bind
+      // `patchElement` maps over the base without asking whether the id is there, so on its own it
+      // would write the column and bind nothing, quietly. Half a composite edit is the same
+      // silence a whole one would be, so the column goes with the refusal.
+      if (!group && !faceOf(doc, face).base.some((e) => e.id === id)) throw new Error(`face ${face} has no element ${id}`)
+      return applyEdit(written, { v: 'patchElement', face, id, patch: { bind: { field: intent.field } }, ...(group !== undefined ? { group } : {}) })
     }
     // And a column that goes takes with it everything that pointed at it: the value on every
     // card, the elements that drew it — a condition on it takes what it was guarding with it, so

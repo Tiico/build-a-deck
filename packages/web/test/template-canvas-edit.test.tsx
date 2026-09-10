@@ -375,8 +375,12 @@ describe('the second door into a new field (#32)', () => {
     await user.type(within(form).getByLabelText('Namn'), 'styrka')
     await user.click(within(form).getByRole('button', { name: 'Lägg till' }))
 
-    expect(onAddField).toHaveBeenCalledWith('styrka')
-    expect(onPatch).toHaveBeenCalledWith('title', { bind: { field: 'styrka' } })
+    // One call and not two: the column and the binding are one thing the designer did, so they
+    // are one edit, one version and one step back (B4). The element that went looking for the
+    // column goes with the name of it.
+    expect(onAddField).toHaveBeenCalledWith('styrka', 'title')
+    expect(onAddField).toHaveBeenCalledTimes(1)
+    expect(onPatch).not.toHaveBeenCalled()
     expect(screen.queryByRole('form', { name: 'Nytt fält' })).toBeNull()
     // The binding did not quietly move to the sentinel that opened the form.
     expect(field.value).toBe('title')

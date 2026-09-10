@@ -40,8 +40,11 @@ export type TemplateCanvasProps = {
   // The column whose values are the groups; `null` ungroups the deck.
   onGroupColumn(column: string | null): void
   // A column the deck does not have yet (#32). The binding is where a designer finds out it is
-  // missing, so it is one of the two places the same form is opened from.
-  onAddField(field: string): void
+  // missing, so it is one of the two places the same form is opened from — and `bindTo` is the
+  // element that went looking for it, bound to the new column by the same edit that makes it.
+  // Making the column and binding to it are one thing the designer did, so they are one version
+  // and one step back (B4); two edits would put an incoherent half-state between the two presses.
+  onAddField(field: string, bindTo: string): void
   // Stops the open group from overriding a layer, so it is the base's again.
   onReset(id: string): void
   // The type the game is set in (B3). Uploading is the client's work — the file becomes one of
@@ -527,7 +530,7 @@ const NEW_FIELD = ' new'
 
 // `fields` are the columns the picker offers; `taken` is every name a new one would collide with,
 // which is those plus the card's own id (#32).
-function Properties({ el, fields, taken, fonts, onPatch, onAddField }: { el: Element; fields: string[]; taken: string[]; fonts: string[]; onPatch(patch: Partial<Element>): void; onAddField(field: string): void }) {
+function Properties({ el, fields, taken, fonts, onPatch, onAddField }: { el: Element; fields: string[]; taken: string[]; fonts: string[]; onPatch(patch: Partial<Element>): void; onAddField(field: string, bindTo: string): void }) {
   const t = useT()
   // Whether the picker's last entry has been chosen and the form is standing open under it.
   const [making, setMaking] = useState(false)
@@ -582,8 +585,10 @@ function Properties({ el, fields, taken, fonts, onPatch, onAddField }: { el: Ele
             <NewField
               taken={taken}
               onCreate={(field) => {
-                onAddField(field)
-                onPatch({ bind: { field } })
+                // One call, because it is one thing: the column and this element's binding to it
+                // arrive together or the first Ctrl+Z leaves the column standing with the element
+                // bound back to whatever it showed before.
+                onAddField(field, el.id)
                 closeForm()
               }}
               onCancel={closeForm}

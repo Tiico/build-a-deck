@@ -137,6 +137,26 @@ describe('an edit is a thing that happened to the project (D3)', () => {
     expect(() => applyEdit(base(), { v: 'removeField', field: 'antal' })).toThrow(/antal/)
   })
 
+  // The canvas door (#32): a designer goes to say which column an element shows, finds the column
+  // missing, and makes it there. That is one thing she did, so it is one intent — two would be two
+  // versions and two steps back, and the first step back would leave the new column standing with
+  // the element bound to the field it had before, which is a state nobody asked for.
+  it('makes a column and binds an element to it in the same edit', () => {
+    const doc = applyEdit(base(), { v: 'addField', field: 'styrka', bind: { face: 'front', id: 'title' } })
+    expect(doc.rows.map((r) => r.fields['styrka'])).toEqual(['', ''])
+    expect(doc.template.faces['front']?.base.find((e) => e.id === 'title')).toMatchObject({ bind: { field: 'styrka' } })
+
+    // With a group open it is that group's override that binds, exactly as `patchElement` alone
+    // would have written it, and the base keeps the column it had (#13).
+    const grouped = after(base(), { v: 'setGroupColumn', column: 'typ' }, { v: 'addField', field: 'styrka', bind: { face: 'front', id: 'title', group: 'fälla' } })
+    expect(grouped.template.faces['front']?.variants['fälla']?.override?.[0]).toMatchObject({ id: 'title', bind: { field: 'styrka' } })
+    expect(grouped.template.faces['front']?.base.find((e) => e.id === 'title')).toMatchObject({ bind: { field: 'title' } })
+
+    // And the whole edit is refused together: an element the face does not have takes the column
+    // with it rather than leaving a column behind that nothing asked for.
+    expect(() => applyEdit(base(), { v: 'addField', field: 'styrka', bind: { face: 'front', id: 'ingen' } })).toThrow()
+  })
+
   // `drawnBy` is the sentence the × puts in front of the designer before it takes a column, so it
   // is the B4 guarantee in the only form she ever sees it: what she is told is about to happen.
   // It and `removeField` describe the same operation and must say the same number, whatever the
