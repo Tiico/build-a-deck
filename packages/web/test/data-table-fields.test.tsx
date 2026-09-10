@@ -151,6 +151,15 @@ describe('a field arrives in the editor (#32)', () => {
     await user.click(screen.getByRole('button', { name: 'Avbryt' }))
     expect(document.activeElement).toBe(screen.getByRole('button', { name: '+ Nytt fält' }))
 
+    // Saying yes takes the focus away just as saying no does — the button that was pressed
+    // unmounts with the form — and it has to come back to the same place. Only the cancel path
+    // was ever asserted, so a designer who made a column with the keyboard was left on `<body>`
+    // and had to tab in from the top of the page to make a second one.
+    await user.click(screen.getByRole('button', { name: '+ Nytt fält' }))
+    await user.click(screen.getByRole('button', { name: 'Lägg till' }))
+    expect(column('fält1')).toBeTruthy()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: '+ Nytt fält' }))
+
     await user.click(screen.getByRole('button', { name: 'Ta bort fältet body' }))
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Avbryt' }))
     await user.keyboard('{Escape}')

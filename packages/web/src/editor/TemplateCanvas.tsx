@@ -531,6 +531,21 @@ function Properties({ el, fields, taken, fonts, onPatch, onAddField }: { el: Ele
   const t = useT()
   // Whether the picker's last entry has been chosen and the form is standing open under it.
   const [making, setMaking] = useState(false)
+  // A form that took the focus gives it back (#8). Back is the picker the door was opened from,
+  // which is where the designer was and — when the answer was yes — is now showing the column she
+  // made. Either way out unmounts the button that was pressed, so without this the focus falls to
+  // `<body>` and a panel reached with the keyboard has to be reached again from the top.
+  const fieldRef = useRef<HTMLSelectElement>(null)
+  const [refocus, setRefocus] = useState(false)
+  useEffect(() => {
+    if (!refocus) return
+    fieldRef.current?.focus()
+    setRefocus(false)
+  }, [refocus])
+  const closeForm = () => {
+    setMaking(false)
+    setRefocus(true)
+  }
   const num = (label: Key, key: 'x' | 'y' | 'w' | 'h') =>
     key in el ? (
       <label>
@@ -550,6 +565,7 @@ function Properties({ el, fields, taken, fonts, onPatch, onAddField }: { el: Ele
         <label className="byd-props-field">
           {t('canvas.props.field')}
           <select
+            ref={fieldRef}
             value={'field' in el.bind ? el.bind.field : ''}
             onChange={(e) => (e.target.value === NEW_FIELD ? setMaking(true) : onPatch({ bind: { field: e.target.value } }))}
           >
@@ -568,9 +584,9 @@ function Properties({ el, fields, taken, fonts, onPatch, onAddField }: { el: Ele
               onCreate={(field) => {
                 onAddField(field)
                 onPatch({ bind: { field } })
-                setMaking(false)
+                closeForm()
               }}
-              onCancel={() => setMaking(false)}
+              onCancel={closeForm}
             />
           )}
         </label>

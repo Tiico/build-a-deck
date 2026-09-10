@@ -407,6 +407,29 @@ describe('the second door into a new field (#32)', () => {
     await user.click(within(form).getByRole('button', { name: 'Avbryt' }))
     expect(screen.queryByRole('form', { name: 'Nytt fält' })).toBeNull()
   })
+
+  // A form that took the focus gives it back (#8), and here back is the picker the door was
+  // opened from — which, when the answer was yes, is now showing the column that was made. Both
+  // ways out drop it otherwise: the button that was pressed unmounts with the form, and the
+  // designer is left on `<body>` in a panel she reached with the keyboard.
+  it('gives the focus back to the picker it was opened from, whichever way the form is left', async () => {
+    const user = userEvent.setup()
+    canvas()
+    const field = () => screen.getByLabelText('Fält') as HTMLSelectElement
+    const open = async () => user.selectOptions(field(), within(field()).getByRole('option', { name: 'nytt fält…' }))
+
+    await open()
+    expect(document.activeElement).toBe(screen.getByLabelText('Namn'))
+    await user.click(screen.getByRole('button', { name: 'Avbryt' }))
+    expect(document.activeElement).toBe(field())
+
+    await open()
+    await user.clear(screen.getByLabelText('Namn'))
+    await user.type(screen.getByLabelText('Namn'), 'styrka')
+    await user.click(screen.getByRole('button', { name: 'Lägg till' }))
+    expect(screen.queryByRole('form', { name: 'Nytt fält' })).toBeNull()
+    expect(document.activeElement).toBe(field())
+  })
 })
 
 describe('the grid as a layer of its own (#18)', () => {

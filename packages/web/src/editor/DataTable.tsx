@@ -435,9 +435,14 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                 <NewField
                   taken={takenNames(doc)}
                   keeps={deckKeepsFields(doc)}
+                  // Yes and no leave by the same door, so they hand the focus back to the same
+                  // place: the button the form was opened from, which is still there and is
+                  // ready to make the next column. Without it the pressed button unmounts under
+                  // the designer's finger and the focus falls to `<body>`.
                   onCreate={(field) => {
                     onAddField(field)
                     setAdding(false)
+                    setRefocus('addField')
                   }}
                   onCancel={() => {
                     setAdding(false)
