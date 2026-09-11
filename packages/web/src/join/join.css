@@ -33,8 +33,11 @@
   /* "Nothing bounds the pill on this axis", said as a length so the two bounds below can always
      be compared. No name reaches it; a pill this wide would be off the phone long before. */
   --byd-seat-unbounded: 9999px;
+  /* The felt's own dark. A hex in a rule until the button language (#44) had to be measured
+     against it; a ground without a name is a ground no contrast test can ask about. */
+  --byd-join-bg: #14161c;
   min-height: 100vh; box-sizing: border-box; padding: 40px 20px 28px;
-  background: #14161c; color: #eee; font-family: system-ui, sans-serif;
+  background: var(--byd-join-bg); color: #eee; font-family: system-ui, sans-serif;
   display: grid; grid-template-rows: auto 1fr auto; gap: 20px;
 }
 .byd-join > header { display: grid; gap: 4px; font-size: 13px; color: #9aa3b8; }

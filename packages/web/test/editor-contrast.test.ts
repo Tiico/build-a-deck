@@ -1,16 +1,20 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { contrastRatio, cssCustomProperties } from '../src/player/contrast.js'
+import { contrastRatio, cssCustomProperties, cssDeclaredUnder } from '../src/player/contrast.js'
 
 // The row under the editor header is a green "the table is up" banner. When an update is blocked
 // because a card could not be rendered (#10) it says the opposite, so it is drawn in the same
 // colours a lost card carries on the table — one look for one fact — and held to the same bar.
 const css = readFileSync(join(import.meta.dirname, '..', 'src/editor/editor.css'), 'utf8')
-const tokens = cssCustomProperties(css)
+// The shared button language (#44) rides with it: the fill under the editor's first action, the
+// line round a second one and the bar under what is chosen are tokens the whole tool holds in
+// common. Only what is bound to this surface is read — the same names are green on the felt.
+const language = readFileSync(join(import.meta.dirname, '..', 'src/buttons.css'), 'utf8')
+const tokens = cssCustomProperties(`${css}\n${cssDeclaredUnder(language, '.byd-editor')}`)
 const token = (name: string) => {
   const value = tokens.get(name)
-  if (!value) throw new Error(`editor.css declares no ${name}`)
+  if (!value) throw new Error(`editor.css and the button language between them declare no ${name}`)
   return value
 }
 
@@ -133,7 +137,14 @@ describe('the palette unsaved work is drawn in', () => {
 // measured here rather than judged by eye.
 describe('the palette the editor primary is drawn in', () => {
   it('gives the label on a primary button AA contrast', () => {
-    expect(contrastRatio(token('--byd-editor-primary-ink'), token('--byd-editor-primary-bg'))).toBeGreaterThanOrEqual(4.5)
+    expect(contrastRatio(token('--byd-primary-ink'), token('--byd-primary-bg'))).toBeGreaterThanOrEqual(4.5)
+  })
+
+  // What the shared name resolves to here, said out loud. The button language is one rule for the
+  // whole tool and the editor's blue is the editor's own (#22); saying they are the same value is
+  // what keeps them from drifting into a first action that no longer matches the marks round it.
+  it('draws it in the blue #22 settled on', () => {
+    expect([token('--byd-primary-bg'), token('--byd-primary-ink')]).toEqual([token('--byd-editor-primary-bg'), token('--byd-editor-primary-ink')])
   })
 })
 

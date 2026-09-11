@@ -4,6 +4,11 @@
   --ink: #1e2620;
   --muted: #5c6459;
   --paper: #f5f3eb;
+  /* The two other grounds the paper has: the panel that holds the step strip and the left column,
+     and the white a field or a button is cut out of. Both are read against by the button language
+     (#44), so both have a name now. */
+  --byd-wizard-panel-bg: #eeece4;
+  --byd-wizard-field-bg: #ffffff;
   --line: #d9d8cc;
   /* The wizard's own red-orange, taken down until white paper carries it at AA in 11 px text:
      4.8:1 rather than 3.5:1 (UX-KONTROLLER: kontrast). It is the same colour on the pressed
@@ -18,11 +23,11 @@
 }
 .byd-wizard * { box-sizing: border-box; }
 .byd-wizard button, .byd-wizard input, .byd-wizard textarea, .byd-wizard select { font: inherit; }
-.byd-wizard button { min-height: var(--tap); min-width: var(--tap); border: 1px solid #cbcabe; border-radius: 9px; padding: 0 12px; background: #fff; color: inherit; cursor: pointer; }
+.byd-wizard button { min-height: var(--tap); min-width: var(--tap); border: 1px solid #cbcabe; border-radius: 9px; padding: 0 12px; background: var(--byd-wizard-field-bg); color: inherit; cursor: pointer; }
 .byd-wizard button:hover { border-color: #8d918a; }
 .byd-wizard button:disabled { opacity: .4; cursor: default; }
 .byd-wizard button[aria-pressed='true'] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-.byd-wizard input:not([type='file']), .byd-wizard textarea { min-height: var(--tap); width: 100%; min-width: 0; border: 1px solid #c9c9bd; border-radius: 9px; padding: 9px 11px; background: #fff; color: var(--ink); }
+.byd-wizard input:not([type='file']), .byd-wizard textarea { min-height: var(--tap); width: 100%; min-width: 0; border: 1px solid #c9c9bd; border-radius: 9px; padding: 9px 11px; background: var(--byd-wizard-field-bg); color: var(--ink); }
 .byd-wizard input:focus, .byd-wizard textarea:focus { border-color: var(--accent); outline: 3px solid color-mix(in srgb, var(--accent), transparent 82%); }
 .byd-wizard h1 { margin: 2px 0 0; font: 700 28px/1.15 Georgia, serif; }
 .byd-wizard h2 { margin: 0; display: flex; align-items: center; gap: 9px; font-size: 16px; }
@@ -44,7 +49,7 @@
 .byd-wizard[data-room='steps'] { height: 100vh; display: flex; flex-direction: column; }
 .byd-wizard[data-room='steps'] > header { flex: 0 0 auto; }
 .byd-wizard-flow { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-.byd-wizard-stepbar { flex: 0 0 auto; display: flex; gap: 6px; padding: 6px 12px; background: #eeece4; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: thin; }
+.byd-wizard-stepbar { flex: 0 0 auto; display: flex; gap: 6px; padding: 6px 12px; background: var(--byd-wizard-panel-bg); border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: thin; }
 .byd-wizard-stepbar button { flex: 0 0 auto; white-space: nowrap; border-color: transparent; background: transparent; color: #454c44; font-weight: 700; }
 .byd-wizard-stepbar button[aria-selected='true'] { background: var(--ink); color: #fff; border-color: var(--ink); }
 .byd-wizard-body { flex: 1 1 auto; min-height: 0; overflow: auto; }
@@ -57,7 +62,7 @@
 
 /* The desk: what the wizard has always looked like, with the card given room enough to be whole. */
 .byd-wizard-grid { display: grid; grid-template-columns: minmax(300px, .8fr) minmax(562px, 1.2fr); min-height: calc(100vh - 92px); }
-.byd-wizard-grid > aside { padding: 26px 30px 100px 36px; border-right: 1px solid var(--line); display: grid; align-content: start; gap: 24px; background: #eeece4; }
+.byd-wizard-grid > aside { padding: 26px 30px 100px 36px; border-right: 1px solid var(--line); display: grid; align-content: start; gap: 24px; background: var(--byd-wizard-panel-bg); }
 .byd-wizard-grid > main { min-width: 0; padding: 28px 36px 100px; display: grid; align-content: start; gap: 22px; }
 .byd-wizard-handoff { padding: 15px 17px; border: 1px solid #ecd9a8; border-radius: 12px; background: #fff3d5; }
 .byd-wizard-handoff strong { color: #7f5111; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
