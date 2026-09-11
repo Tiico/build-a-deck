@@ -12,17 +12,18 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { chromium, type Browser, type Page } from 'playwright'
 import { HomePage } from '../src/account/HomePage.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { JoinPage } from '../src/join/JoinPage.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
-import { Survey } from '../src/player/Survey.js'
-import { ExitSheet } from '../src/player/SessionSheets.js'
+import { OnlinePage } from '../src/online/OnlinePage.js'
+import { ObserverPage } from '../src/observer/ObserverPage.js'
+import { PlayerPage } from '../src/player/PlayerPage.js'
 import { TableClient } from '../src/client.js'
 import { projectDoc } from './project-doc.js'
-import { asTable, createSession, roomOf, startServer, twoSeatSetup, type Running } from './fixture.js'
+import { admit, asSeat, asTable, createSession, roomOf, startServer, twoSeatSetup, type Running } from './fixture.js'
 import { atWidth } from './viewport.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
@@ -248,25 +249,38 @@ async function editorViews(width: number): Promise<Record<string, string>> {
 
 // The phone. The survey is the screen where the seat is asked something and then moved on, so it
 // is the one that has both a set of choices and a first action standing in the same view.
+//
+// The page is mounted at its route rather than the two components being wrapped in a hand-written
+// `<div class="byd-player">`. A wrapper written here is a claim about what the route is called,
+// and a claim is exactly the thing this file exists not to make: the same two overlays open on
+// `/online` and `/observe` under class names of their own, and a hand-written `.byd-player` round
+// them said they were fine there while a browser was drawing its own grey button.
 async function playerViews(): Promise<Record<string, string>> {
-  const out: Record<string, string> = {}
-  const survey = render(
-    <div className="byd-player">
-      <Survey who="Ada" version="v1" onSubmit={async () => undefined} />
-    </div>,
-  )
-  fireEvent.click(screen.getByRole('button', { name: '4' }))
-  out['enkäten'] = survey.container.innerHTML
-  survey.unmount()
+  atWidth(390)
+  const id = await createSession(run, 'phone', undefined, twoSeatSetup())
+  const host = TableClient.connect(await asTable(run, id))
+  await host.ready()
+  const token = await admit(run, id, 'A', 'Ada')
+  history.replaceState(null, '', `/play?session=${id}&seat=A&name=Ada&token=${token}&server=${encodeURIComponent(run.url)}`)
+  const { unmount } = render(<PlayerPage />)
+  try {
+    const out: Record<string, string> = {}
+    // The way out is one of the three controls every seat has, and the sheet behind it is what
+    // the page looks like while it is being asked (#31).
+    fireEvent.click(await screen.findByRole('button', { name: /Ut…/ }))
+    await screen.findByRole('button', { name: 'Lämna bordet' })
+    out['vägen ut'] = document.querySelector('.byd-player')!.outerHTML
+    fireEvent.click(screen.getByRole('button', { name: 'Stanna kvar' }))
 
-  const exit = render(
-    <div className="byd-player">
-      <ExitSheet onLeave={() => undefined} onEnd={() => undefined} onClose={() => undefined} />
-    </div>,
-  )
-  out['vägen ut'] = exit.container.innerHTML
-  exit.unmount()
-  return out
+    await host.send({ v: 'session.end' })
+    await screen.findByRole('button', { name: 'Nästa' })
+    fireEvent.click(screen.getByRole('button', { name: '4' }))
+    out['enkäten'] = document.querySelector('.byd-player')!.outerHTML
+    return out
+  } finally {
+    unmount()
+    host.close()
+  }
 }
 
 describe('the phone', () => {
@@ -275,6 +289,86 @@ describe('the phone', () => {
     const measured = await inChromium(css, 390, await playerViews(), wearingThePrimary('.byd-player'))
     // Leaving your seat and ending everyone's table are deliberately not a first action (#31).
     expect(measured).toEqual({ enkäten: ['Nästa'], 'vägen ut': [] })
+  }, 90_000)
+})
+
+// The same overlays again, in the other two rooms they open in. `SessionOverlays` is mounted by
+// `/online` as well as by the phone, and `/observe` mounts the survey on its own — and neither of
+// those two routes is called `.byd-player`. A wrapper written by hand round the component measures
+// a class name two of the three routes do not have, so both pages are mounted here for real, at
+// the end of a session, which is the state that raises the survey.
+//
+// Every sheet each route ships with, the way its own suite loads them.
+const ONLINE_CSS = ['src/table/table.css', 'src/table/texture.css', 'src/player/player.css', 'src/online/online.css', 'src/table/keyboard.css', 'src/status/status.css', 'src/a11y.css'].map(read).join('\n')
+
+async function onlineView(): Promise<Record<string, string>> {
+  atWidth(390)
+  const id = await createSession(run, 'online', undefined, twoSeatSetup())
+  const host = TableClient.connect(await asTable(run, id))
+  await host.ready()
+  const token = await admit(run, id, 'A', 'Ada')
+  history.replaceState(null, '', `/online?session=${id}&seat=A&name=Ada&token=${token}&server=${encodeURIComponent(run.url)}`)
+  const { unmount } = render(<OnlinePage />)
+  const room = () => document.querySelector('.byd-online')!.outerHTML
+  try {
+    await waitFor(() => expect(document.querySelector('.byd-online')).toBeTruthy())
+    const out: Record<string, string> = {}
+    // Somebody else wants the table put back, which is the other overlay this route opens: a
+    // question with one answer that is the first action and one that is not (B, C).
+    const bo = TableClient.connect(await asSeat(run, id, 'B'))
+    await bo.ready()
+    await bo.send({ v: 'seat.claim', seat: 'B', name: 'Bo' }, { v: 'draw', from: 'draw', to: 'hand:B', count: 1 })
+    await bo.send({ v: 'rewind.propose', toSeq: 1 })
+    await screen.findByRole('button', { name: 'Godkänn' })
+    out['frågan om att spola tillbaka'] = room()
+    fireEvent.click(screen.getByRole('button', { name: 'Neka' }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Godkänn' })).toBeNull())
+    bo.close()
+
+    await host.send({ v: 'session.end' })
+    await screen.findByRole('button', { name: 'Nästa' })
+    fireEvent.click(screen.getByRole('button', { name: '4' }))
+    out['enkäten på storbilden'] = room()
+    return out
+  } finally {
+    unmount()
+    host.close()
+  }
+}
+
+describe('the seat that plays on the table screen', () => {
+  it('wears the primary fill on nothing but the action that moves the seat on', async () => {
+    const measured = await inChromium(ONLINE_CSS, 390, await onlineView(), wearingThePrimary('.byd-online'))
+    expect(measured).toEqual({ 'frågan om att spola tillbaka': ['Godkänn'], 'enkäten på storbilden': ['Nästa'] })
+  }, 90_000)
+})
+
+const OBSERVER_CSS = ['src/table/table.css', 'src/table/texture.css', 'src/player/player.css', 'src/status/status.css', 'src/a11y.css'].map(read).join('\n')
+
+async function observerView(): Promise<Record<string, string>> {
+  atWidth(390)
+  const id = await createSession(run, 'observe')
+  const ada = TableClient.connect(await asSeat(run, id, 'A'))
+  await ada.ready()
+  await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
+  history.replaceState(null, '', `/observe?session=${id}&name=Eva&token=${await admit(run, id, null, 'Eva')}&server=${encodeURIComponent(run.url)}`)
+  const { unmount } = render(<ObserverPage />)
+  try {
+    await screen.findByText(/Du är observatör/)
+    await ada.send({ v: 'session.end' })
+    await screen.findByRole('button', { name: 'Nästa' })
+    fireEvent.click(screen.getByRole('button', { name: '4' }))
+    return { 'enkäten hos den som tittar på': document.querySelector('.byd-observer')!.outerHTML }
+  } finally {
+    unmount()
+    ada.close()
+  }
+}
+
+describe('the one who only watches', () => {
+  it('wears the primary fill on nothing but the action that moves her on', async () => {
+    const measured = await inChromium(OBSERVER_CSS, 390, await observerView(), wearingThePrimary('.byd-observer'))
+    expect(measured).toEqual({ 'enkäten hos den som tittar på': ['Nästa'] })
   }, 90_000)
 })
 

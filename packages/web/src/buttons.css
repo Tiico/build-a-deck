@@ -23,8 +23,14 @@
   --byd-chosen-ink: #ffffff;
 }
 
-/* The player's phone is the same green room again, and it already keeps its colours as tokens. */
-.byd-player {
+/* The player's phone is the same green room again, and it already keeps its colours as tokens.
+   `/online` is that phone with the table on the screen in front of it, and it opens the same
+   sheets, the same survey and the same rewind question — so it is the same room and takes the
+   same roles. `/observe` opens one of them too: when the table is done, the one who only watched
+   is asked the same four questions as the seats were. */
+.byd-player,
+.byd-online,
+.byd-observer {
   --byd-primary-bg: var(--byd-accent);
   --byd-primary-ink: var(--byd-on-accent);
   --byd-secondary-line: #6f7a90;
@@ -58,30 +64,25 @@
 }
 
 /* ── The roles ───────────────────────────────────────────────────────────────────────────────
-   Named once per surface so that the language is physically reachable from each of them, and so
-   that a role out-ranks the surface rule it lands inside. That matters more than it looks:
-   `.byd-join-observe` already declared a quiet outlined button and lost, silently, to
-   `.byd-join form button` — (0,1,0) against (0,1,2) — which is why "Bara titta" was drawn in the
-   same green as "Sätt dig". Two classes is (0,2,0) and wins. */
+   Every root the language is spoken in, written once. A role has to out-rank the surface rule it
+   lands inside, and that matters more than it looks: `.byd-join-observe` already declared a quiet
+   outlined button and lost, silently, to `.byd-join form button` — (0,1,0) against (0,1,2) —
+   which is why "Bara titta" was drawn in the same green as "Sätt dig". `:is()` takes the
+   specificity of its heaviest branch, so a root and a role together are still two classes,
+   (0,2,0), and still win; what it buys is that a seventh room is one word here rather than
+   seven selectors spread over four blocks — which is how `/online` and `/observe` came to be
+   left out of the language while the rules they used to have were being deleted. */
 /* The first action: filled, and the only filled thing in its view. The line is the fill's own
    colour and shows nowhere — it is there so that a filled button and an outlined one beside it
    come out the same height, because an outline is drawn outside the shape it wraps. */
-.byd-account .byd-primary,
-.byd-join .byd-primary,
-.byd-wizard .byd-primary,
-.byd-editor .byd-primary,
-.byd-player .byd-primary {
+:is(.byd-account, .byd-join, .byd-wizard, .byd-editor, .byd-player, .byd-online, .byd-observer) .byd-primary {
   border: 1px solid var(--byd-primary-bg);
   background: var(--byd-primary-bg);
   color: var(--byd-primary-ink);
   font-weight: 750;
 }
 
-.byd-account .byd-secondary,
-.byd-join .byd-secondary,
-.byd-wizard .byd-secondary,
-.byd-editor .byd-secondary,
-.byd-player .byd-secondary {
+:is(.byd-account, .byd-join, .byd-wizard, .byd-editor, .byd-player, .byd-online, .byd-observer) .byd-secondary {
   background: transparent;
   border: 1px solid var(--byd-secondary-line);
   color: var(--byd-secondary-ink);
@@ -94,21 +95,7 @@
    green, in the middle of the editor. Never a fill, so a thing that is chosen can never be
    mistaken for the thing to press. `.byd-choice` marks a control that is one of a set; the
    platform's own word for which one says the rest. */
-.byd-account .byd-choice[aria-pressed='true'],
-.byd-account .byd-choice[aria-selected='true'],
-.byd-account .byd-choice[aria-checked='true'],
-.byd-join .byd-choice[aria-pressed='true'],
-.byd-join .byd-choice[aria-selected='true'],
-.byd-join .byd-choice[aria-checked='true'],
-.byd-wizard .byd-choice[aria-pressed='true'],
-.byd-wizard .byd-choice[aria-selected='true'],
-.byd-wizard .byd-choice[aria-checked='true'],
-.byd-editor .byd-choice[aria-pressed='true'],
-.byd-editor .byd-choice[aria-selected='true'],
-.byd-editor .byd-choice[aria-checked='true'],
-.byd-player .byd-choice[aria-pressed='true'],
-.byd-player .byd-choice[aria-selected='true'],
-.byd-player .byd-choice[aria-checked='true'] {
+:is(.byd-account, .byd-join, .byd-wizard, .byd-editor, .byd-player, .byd-online, .byd-observer) .byd-choice:is([aria-pressed='true'], [aria-selected='true'], [aria-checked='true']) {
   background: transparent;
   border-color: transparent;
   /* The bar is an inset shadow, and an inset shadow follows the corner it is drawn inside: left

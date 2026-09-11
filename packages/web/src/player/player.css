@@ -1,8 +1,17 @@
 /* Player view — the strip from the chosen prototype. */
 
 /* The view's colours as tokens, so a colour change is a measurable change (see contrast.ts).
-   Every ink/ground pair a player reads is listed in PLAYER_TEXT_PAIRS and measured by a test. */
-.byd-player {
+   Every ink/ground pair a player reads is listed in PLAYER_TEXT_PAIRS and measured by a test.
+
+   Bound to every room the session's own furniture opens in, and not only to the phone. The
+   sheets, the survey and the rewind question are drawn by this sheet, and `SessionOverlays`
+   mounts them on `/online` as well; `/observe` mounts the survey by itself. Named on
+   `.byd-player` alone, every token below fell back to nothing on two of the three routes, and a
+   button whose fill and ink resolve to nothing is drawn by the browser instead — a grey system
+   button on a dark felt. */
+.byd-player,
+.byd-online,
+.byd-observer {
   --byd-bg: #14161c;
   --byd-surface: #1b1e27;
   --byd-control: #242938;
