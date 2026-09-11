@@ -83,7 +83,7 @@ export function NewField({ taken, keeps = true, onCreate, onCancel }: NewFieldPr
       </fieldset>
       {refused !== null && <p role="alert">{refused}</p>}
       <div className="byd-newfield-do">
-        <button type="submit">{t('table.field.create')}</button>
+        <button type="submit" className="byd-secondary">{t('table.field.create')}</button>
         <button type="button" data-kind="quiet" onClick={onCancel}>
           {t('editor.cancel')}
         </button>

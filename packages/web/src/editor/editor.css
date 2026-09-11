@@ -33,6 +33,11 @@
   --byd-editor-primary-bg: #1f6fd0;
   --byd-editor-primary-ink: #ffffff;
   --byd-editor-primary-mark: #3c8ce7;
+  /* The deep ground every panel the editor floats stands on: the history, the share sheet, the
+     checks beside the wall, a menu, the symbol library. It was the same hex written out seven
+     times, which was harmless until the mark had to be measured against it (L11) — a ground
+     without a name is a ground no contrast test can ask about. */
+  --byd-editor-panel-bg: #171a23;
   /* Every target in the editor is at least this, at every width the audit checks
      (UX-KONTROLLER: träffytor). A tool a thumb cannot hit is a tool the editor does not have. */
   --byd-tap: 44px;
@@ -97,7 +102,7 @@
 .byd-editor-saved { color: var(--byd-editor-saved-ink); white-space: nowrap; }
 .byd-editor-saved[data-unsaved='true'] { color: var(--byd-editor-unsaved-ink); font-weight: 700; }
 /* The history (B4): a panel that hangs from the revision it opened from. */
-.byd-history { position: absolute; left: 120px; top: 46px; z-index: 20; width: 340px; max-height: 70vh; overflow: auto; padding: 16px; border-radius: 14px; background: #171a23; border: 1px solid #3b4358; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5); }
+.byd-history { position: absolute; left: 120px; top: 46px; z-index: 20; width: 340px; max-height: 70vh; overflow: auto; padding: 16px; border-radius: 14px; background: var(--byd-editor-panel-bg); border: 1px solid #3b4358; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5); }
 .byd-history header { display: flex; align-items: center; gap: 10px; }
 .byd-history h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-history header button { margin-left: auto; border: 0; background: transparent; color: #9aa3b8; font-size: 18px; cursor: pointer; padding: 0 4px; }
@@ -140,7 +145,7 @@
 .byd-editor-here i { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--who); color: #10131a; font: 800 11px system-ui; font-style: normal; }
 .byd-editor-here b { color: #9aa3b8; font: 600 11px system-ui; }
 /* Who has the game: the list hangs from the people it is about. */
-.byd-share { position: absolute; right: 16px; top: 46px; z-index: 20; width: 340px; max-height: 70vh; overflow: auto; padding: 16px; border-radius: 14px; background: #171a23; border: 1px solid #3b4358; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5); }
+.byd-share { position: absolute; right: 16px; top: 46px; z-index: 20; width: 340px; max-height: 70vh; overflow: auto; padding: 16px; border-radius: 14px; background: var(--byd-editor-panel-bg); border: 1px solid #3b4358; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5); }
 .byd-share header { display: flex; align-items: center; gap: 10px; }
 .byd-share h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-share header button { margin-left: auto; border: 0; background: transparent; color: #9aa3b8; font-size: 18px; padding: 0 4px; cursor: pointer; }
@@ -398,7 +403,7 @@
 /* At arm's length the cards are small; the wall packs them closer instead of leaving holes. */
 .byd-wall[data-arm] { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
 .byd-wall-card[data-marked] { outline: 3px solid #f0b64a; outline-offset: 3px; }
-.byd-wall-checks { align-self: start; padding: 16px; border-radius: 16px; background: #171a23; border: 1px solid #2f333d; }
+.byd-wall-checks { align-self: start; padding: 16px; border-radius: 16px; background: var(--byd-editor-panel-bg); border: 1px solid #2f333d; }
 .byd-wall-checks h2 { margin: 0 0 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-wall-ok { margin: 0; color: #7dd3a0; line-height: 1.5; }
 .byd-wall-lead { margin: 0 0 10px; color: #9aa3b8; font-size: 12px; line-height: 1.5; }
@@ -662,9 +667,17 @@
    draw the same component, so what an option is and which one the keys are on is written once.
    The two classes above are what places each of them, and that is all they are for. This block
    stands after the tool rail's own button styles, which it must outrank inside the rail. */
-.byd-symbol-list { position: absolute; z-index: 5; width: 230px; overflow: auto; display: grid; gap: 2px; padding: 6px; border-radius: 10px; background: #171a23; border: 1px solid #3b4358; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5); }
-.byd-symbol-list button { display: flex; align-items: center; gap: 8px; border: 0; border-radius: 7px; padding: 5px 7px; background: transparent; color: #e6ecfa; font: inherit; text-align: left; cursor: pointer; }
-.byd-symbol-list button:hover, .byd-symbol-list button[aria-selected='true'] { background: var(--byd-editor-primary-bg); }
+.byd-symbol-list { position: absolute; z-index: 5; width: 230px; overflow: auto; display: grid; gap: 2px; padding: 6px; border-radius: 10px; background: var(--byd-editor-panel-bg); border: 1px solid #3b4358; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5); }
+.byd-symbol-list button { display: flex; align-items: center; gap: 8px; border: 1px solid transparent; border-radius: 7px; padding: 5px 7px; background: transparent; color: #e6ecfa; font: inherit; text-align: left; cursor: pointer; }
+/* Where the next glyph will be taken from — under the pointer, or wherever the arrows have walked
+   to, which are the same state reached two ways and so are one rule. It is a cursor and not a
+   choice: nothing in this list is *on*, and the moment one is picked the list closes. So it is not
+   the language's chosen shape, which is a bar under something that stays chosen, and it is
+   certainly not the primary fill it used to be painted in — a glyph the keys happened to be
+   resting on was drawn in exactly the blue that means "this is the button to press". It takes the
+   editor's mark instead, as a ring, which is what the rail this list hangs off already does under
+   a pointer and what the editor draws round anything it is merely pointing at (L11). */
+.byd-symbol-list button:hover, .byd-symbol-list button[aria-selected='true'] { border-color: var(--byd-editor-primary-mark); }
 .byd-symbol-list img { width: 20px; height: 20px; padding: 2px; border-radius: 5px; background: #e8e2d4; }
 .byd-symbol-list small { margin-left: auto; color: #9aa3b8; font-size: 11px; }
 /* The header is the sort control (#15): the column's name, the state as an arrow beside it. */
@@ -809,7 +822,7 @@
   padding: 12px;
   border: 1px solid #3b4358;
   border-radius: 10px;
-  background: #171a23;
+  background: var(--byd-editor-panel-bg);
   box-shadow: 0 12px 30px rgb(0 0 0 / 50%);
   color: #dce3f2;
   font-weight: 400;
@@ -825,8 +838,12 @@
 /* Two classes deep on purpose: the head's own `.byd-data th button` strips buttons back to bare
    text, which is right for a column heading and wrong for the answers to a form. */
 .byd-newfield-do { display: flex; gap: 8px; margin-top: 2px; }
-.byd-newfield .byd-newfield-do button { border: 1px solid var(--byd-editor-primary-bg); border-radius: 8px; padding: 6px 12px; background: var(--byd-editor-primary-bg); color: var(--byd-editor-primary-ink); font: inherit; font-weight: 700; cursor: pointer; }
-.byd-newfield .byd-newfield-do button[data-kind='quiet'] { border-color: #3b414e; background: transparent; color: #9aa3b8; font-weight: 400; }
+/* What a button in here is shaped like, and nothing about what it is drawn in: making a column is
+   not the editor's first action — putting the work on the table is — so the shared secondary says
+   what this one looks like, and this rule must not out-rank it. A `border` here would, at
+   (0,2,1), which is how it came to wear the primary fill on a page that already had one. */
+.byd-newfield .byd-newfield-do button { border-radius: 8px; padding: 6px 12px; font: inherit; cursor: pointer; }
+.byd-newfield .byd-newfield-do button[data-kind='quiet'] { border: 1px solid #3b414e; background: transparent; color: #9aa3b8; font-weight: 400; }
 .byd-data-chosen { color: var(--byd-editor-count-ink); font-weight: 700; }
 /* A marked row is read from across the table, not from its checkbox: the tick is the control,
    the tint and the edge are the answer to "did I get the right four cards". Being marked and
@@ -937,7 +954,7 @@
 .byd-symbols { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 20px; padding: 20px; align-items: start; }
 .byd-symbols h2 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-symbols p { margin: 0 0 12px; color: #9aa3b8; line-height: 1.5; }
-.byd-symbols-library { padding: 16px; border-radius: 16px; background: #171a23; border: 1px solid #2f333d; }
+.byd-symbols-library { padding: 16px; border-radius: 16px; background: var(--byd-editor-panel-bg); border: 1px solid #2f333d; }
 .byd-symbols input[type='search'], .byd-symbols-set input { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; font: inherit; }
 .byd-symbols-cats { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0; }
 .byd-symbols button { border: 1px solid #2f333d; border-radius: 8px; padding: 6px 11px; background: #1b1d23; color: #fff; font-weight: 700; font-size: 12px; cursor: pointer; }
@@ -950,7 +967,7 @@
 .byd-symbols-main { display: grid; gap: 16px; }
 .byd-symbols-empty { color: #9aa3b8; }
 .byd-symbols-set ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
-.byd-symbols-set li { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 10px; background: #171a23; border: 1px solid #2f333d; }
+.byd-symbols-set li { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 10px; background: var(--byd-editor-panel-bg); border: 1px solid #2f333d; }
 .byd-symbols-set code { color: #ffd98a; font-size: 12px; }
 .byd-symbols-set input { width: 96px; padding: 5px 8px; }
 .byd-symbols-set small { color: var(--byd-editor-quiet); font-size: 11px; }

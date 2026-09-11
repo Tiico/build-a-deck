@@ -157,6 +157,7 @@ describe('the marks and edges built on the editor primary', () => {
     { what: "the ring round the table's own controls", on: '--byd-editor-table-panel-bg' },
     { what: 'the ring inside the filter row', on: '--byd-editor-filter-bg' },
     { what: 'the edge of a drag handle', on: '--byd-editor-handle-bg' },
+    { what: 'the cursor walking through the symbol library', on: '--byd-editor-panel-bg' },
   ])('lets $what be seen', ({ on }) => {
     expect(contrastRatio(token('--byd-editor-primary-mark'), token(on))).toBeGreaterThanOrEqual(3)
   })
