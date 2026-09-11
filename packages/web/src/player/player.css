@@ -84,7 +84,9 @@
 .byd-summary li { padding: 5px 0; border-bottom: 1px solid var(--byd-rule-soft); }
 
 /* Nothing in hand (UX-16): the same quiet voice as the line under what lies in front of you. */
-.byd-strip-empty { color: var(--byd-ink-quiet); font-size: 12px; margin: 4px 0; align-self: center; }
+/* At the top of the room the cards would take, not floating in its middle — the same
+   decision the waiting inspection panel on the TV is drawn by. */
+.byd-strip-empty { align-self: start; color: var(--byd-ink-quiet); font-size: 12px; margin: 4px 0; }
 .byd-strip { display: flex; gap: 14px; overflow-x: auto; padding: 10px 24px; scroll-snap-type: x mandatory; }
 .byd-strip-card {
   flex: 0 0 62vw; aspect-ratio: 63 / 88; scroll-snap-align: center;
