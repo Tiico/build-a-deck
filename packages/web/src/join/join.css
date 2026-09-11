@@ -9,15 +9,20 @@
      are set to leave the same air down a side as across an end, because the same step both ways
      reads as two different layouts.
 
+     These are the steps of a shared edge and of nothing else: a seat alone on its edge takes a
+     step of exactly zero, so a table of four or fewer never reads them. They are therefore the
+     numbers the wider felt below carries, not the smaller one.
+
      How far apart the pair may stand is not free: a pill is 44 px tall and hangs 26 px off its
      edge, so it reaches 18 px back onto the felt, and the outermost seat of one edge would
-     otherwise stand in the corner the outermost seat of the next edge is already in. The felt is
-     150 px tall, which leaves the east-west pair 70 px of step before its lower seat reaches the
-     south pair's top; 62 px keeps 4 px of daylight in all four corners, and the east-west step
-     then fixes the north-south one at 20 px more, which is exactly how much wider than tall a
-     pill is. More people on a side sit closer together, the way they do at a real table. */
-  --byd-seat-pitch-x: 82px;
-  --byd-seat-pitch-y: 62px;
+     otherwise stand in the corner the outermost seat of the next edge is already in. The
+     east-west step may therefore be the felt's height less 80 px, less the daylight wanted in
+     each of the two corners it passes: on a 200 px felt, 112 px leaves 4 px in all four. The
+     north-south step then follows at 20 px more, which is exactly how much wider than tall a
+     pill is, and the air comes out 67,6 px across an end against 68 px down a side. More people
+     on a side sit closer together, the way they do at a real table. */
+  --byd-seat-pitch-x: 132px;
+  --byd-seat-pitch-y: 112px;
   --byd-seat-gap: 14px;
   min-height: 100vh; box-sizing: border-box; padding: 40px 20px 28px;
   background: #14161c; color: #eee; font-family: system-ui, sans-serif;
@@ -36,6 +41,16 @@
      the table gives no edge, which stand on the felt side by side. */
   display: flex; flex-wrap: wrap; align-content: center; align-items: center; justify-content: center; gap: 6px;
 }
+/* A table that seats more people than it has sides needs a bigger table (#42). The step between
+   two seats on one edge is bounded by the felt they hang off, and on a 220 × 150 felt it came out
+   so short that the cap it sets cleared only about five letters: six of eight ordinary Swedish
+   first names were drawn as `Kri…`. So the felt grows — but only where the crowd is. The page
+   sets `data-shares` on the table for exactly the tables whose own count of the edges found a
+   pair, from the same reading that marks the pills, so a table of four or fewer is drawn at
+   220 × 150 exactly as it always was. The phone pays nothing either way: the felt stands in a
+   grid row of its own with room to spare, so the page is the same height, scrolls no more
+   sideways, and leaves "Sätt dig" where it was. */
+.byd-join-table[data-shares] { width: 260px; height: 200px; }
 /* The picker is met with a thumb and nothing else, so a seat is held to the 44 px every control
    in the product is held to (UX-KONTROLLER: träffytor). The pill grows around its word rather
    than the word growing: the label is a seat's name, not a button's size. */

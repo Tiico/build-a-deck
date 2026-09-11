@@ -47,8 +47,11 @@ afterEach(async () => {
 
 // The picker as it really comes out: a live session, the real page, the real socket. `sitting`
 // puts people in seats first, so the picker is measured with the names it will really carry.
+let made = 0
 async function picker(setup: SetupDef, sitting: Record<string, string> = {}): Promise<string> {
-  const session = await createSession(run, 's1', undefined, setup)
+  // A session id of its own each time, because a test that wants two tables to compare — the
+  // crowded one against the one nobody shares a side at — asks this twice inside one server.
+  const session = await createSession(run, `s${++made}`, undefined, setup)
   const table = TableClient.connect(await asTable(run, session))
   await table.ready()
   for (const [seat, name] of Object.entries(sitting)) await table.send({ v: 'seat.claim', seat, name })
@@ -151,6 +154,29 @@ async function reachable(markup: string): Promise<Record<string, string | null>>
         out[(el as HTMLElement).dataset['seat'] ?? '?'] = (hit?.closest('[data-seat]') as HTMLElement | null)?.dataset['seat'] ?? null
       }
       return out
+    })
+  } finally {
+    await page.close()
+  }
+}
+
+// What the phone pays for the picker: whether the page has grown sideways, how tall it has become,
+// and where the one button the whole screen exists to lead to has ended up. The felt stands in a
+// grid row of its own with slack above and below it, so it may grow a long way before any of these
+// three move — but "may" is not "does", and a picker that pushes "Sätt dig" off a phone is worse
+// than one that cuts a name.
+async function frame(markup: string): Promise<{ sideways: number; height: number; submit: string }> {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
+  try {
+    await page.setContent(document_(markup), { waitUntil: 'load' })
+    return await page.evaluate(() => {
+      const r = document.querySelector('form button[type="submit"]')!.getBoundingClientRect()
+      const round = (n: number) => Math.round(n * 10) / 10
+      return {
+        sideways: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        height: Math.round(document.documentElement.scrollHeight),
+        submit: `${round(r.x)},${round(r.y)} ${round(r.width)}×${round(r.height)}`,
+      }
     })
   } finally {
     await page.close()
@@ -274,6 +300,28 @@ describe('a table whose seats share a side (#42)', () => {
   // The other half of the bargain: spreading seats along an edge may not move the seats that have
   // an edge to themselves. Up to four players every side carries one, and one seat on a side
   // stands in the middle of it — which is where the picker has always stood it (#39).
+  //
+  // "Where it stood" is said twice over, because the felt has since grown for the tables that do
+  // share a side. The seat is still in the middle of its own edge — and the felt and every pill on
+  // it are still at the very pixel `origin/main` drew them at, read off `origin/main` itself and
+  // written down here, so that a felt that quietly grew under a four-seat table would be caught.
+  const UNSHARED: Record<number, [string, string][]> = {
+    2: [
+      ['A', '162.8,384.5 64.3×44'],
+      ['B', '162.8,226.5 64.3×44'],
+    ],
+    3: [
+      ['A', '162.8,384.5 64.3×44'],
+      ['B', '162.8,226.5 64.3×44'],
+      ['C', '270.7,305.5 64.3×44'],
+    ],
+    4: [
+      ['A', '162.8,384.5 64.3×44'],
+      ['B', '162.8,226.5 64.3×44'],
+      ['C', '270.7,305.5 64.3×44'],
+      ['D', '55,305.5 64.3×44'],
+    ],
+  }
   it.each([2, 3, 4])('leaves a table of %i, where nobody shares a side, standing where it stood', async (count) => {
     const { felt, seats } = await measure(await picker(recipeSetup(count)))
     expect(seats).toHaveLength(count)
@@ -281,6 +329,8 @@ describe('a table whose seats share a side (#42)', () => {
       if (seat.edge === 'N' || seat.edge === 'S') expect(seat.x + seat.w / 2).toBeCloseTo(felt.x + felt.w / 2, 1)
       else expect(seat.y + seat.h / 2).toBeCloseTo(felt.y + felt.h / 2, 1)
     }
+    expect(place(felt)).toBe('85,252.5 220×150')
+    expect(seats.map((s) => [s.seat, place(s)])).toEqual(UNSHARED[count])
   }, 60_000)
 
   // Not overlapping is the floor, not the look. The picker is a picture of a table, and a table
@@ -331,6 +381,35 @@ describe('a table whose seats share a side (#42)', () => {
     expect(seat.shown).toBe(long.slice(0, seat.shown.length))
     expect(seat.marked).toBe(true)
   }, 60_000)
+
+  // Cutting `Bartholomew Longbottom` is the cap doing its work. Cutting `Sigrid` is the cap being
+  // in the wrong place: an ordinary Swedish first name is not a long name, and a picker that shows
+  // six of eight players as `Kri…`, `Ale…`, `Ma…` is no longer a picture of who is at the table.
+  // So the felt is grown for the tables that share an edge, until the cap clears an ordinary name.
+  const ORDINARY = { A: 'Nina', B: 'Kristoffer', C: 'Alexandra', D: 'Bodil', E: 'Margareta', F: 'Jan-Erik', G: 'Sigrid', H: 'Dagny' } as const
+  it('wears every ordinary name whole on a table whose edges are shared', async () => {
+    const markup = await picker(recipeSetup(8), ORDINARY)
+    // Read as the reader reads it: the letters actually painted inside the pill, and whether the
+    // browser really drew an ellipsis — not what the stylesheet asked for.
+    const read = await Promise.all(Object.entries(ORDINARY).map(async ([seat, name]) => [seat, name, await pill(markup, seat)] as const))
+    const cut = read.filter(([, name, p]) => p.shown !== name || p.marked).map(([seat, name, p]) => `${seat} ${name} → ${p.shown}`)
+
+    // Before the felt grew: six of the eight, on a 68 px cap with 34 px of it spent on border and
+    // padding — B Kristoffer → Krist, C Alexandra → Alex, E Margareta → Marg, F Jan-Erik → Jan-,
+    // G Sigrid → Sigri, H Dagny → Dagn. Only Nina and Bodil were short enough to survive.
+    expect(cut).toEqual([])
+    for (const [, name, p] of read) expect(p.name).toContain(name)
+  }, 120_000)
+
+  // And the felt grows on the phone's sufferance, not at its expense. The picker is the one screen
+  // that is only ever met with a thumb, and everything it is for is below the felt.
+  it('costs the phone nothing: no sideways scroll, and "Sätt dig" where it was', async () => {
+    const shared = await frame(await picker(recipeSetup(8), ORDINARY))
+    const alone = await frame(await picker(recipeSetup(4)))
+    expect(shared.sideways).toBe(0)
+    expect(shared.height).toBe(844)
+    expect(shared.submit).toBe(alone.submit)
+  }, 120_000)
 
   // And the cap is only the cure for the thing it cures. A seat nobody shares an edge with has
   // empty felt beside it and no neighbour to reach into, so it keeps growing with its name the

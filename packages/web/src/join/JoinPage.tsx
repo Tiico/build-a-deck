@@ -96,6 +96,10 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
 
   const free = view?.seats.filter((s) => s.name === null) ?? []
   const spread = along(view?.seats ?? [])
+  // The felt itself has to know whether any edge carries company, because the room a pair needs is
+  // room the felt has to make (#42). It is the same reading the pills use, asked of the whole
+  // table rather than of one seat, so the two can never disagree.
+  const shared = [...spread.values()].some((place) => place.of > 1)
   // The next free seat is chosen until you choose another; a pick someone else just took is let go.
   const chosen = pick && free.some((s) => s.id === pick) ? pick : (free[0]?.id ?? null)
 
@@ -149,7 +153,7 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
           </p>
         )}
       </header>
-      <div className="byd-join-table">
+      <div className="byd-join-table" {...(shared ? { 'data-shares': '' } : {})}>
         {view.seats.map((s, i) => {
           const taken = s.name !== null
           const place = spread.get(s.id)
