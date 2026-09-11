@@ -35,7 +35,7 @@ export function LoginCard({ http, next, onNavigate = (url) => location.assign(ur
       ) : (
         <form onSubmit={(e) => void submit(e)}>
           <input type="email" placeholder={t('login.email.placeholder')} aria-label={t('login.email')} value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" autoFocus required />
-          <button type="submit" disabled={state === 'busy' || !email.includes('@')}>
+          <button type="submit" className="byd-primary" disabled={state === 'busy' || !email.includes('@')}>
             {t('login.submit')}
           </button>
           {state === 'too-many' && <p className="byd-login-error" role="alert">{t('login.error.too-many')}</p>}

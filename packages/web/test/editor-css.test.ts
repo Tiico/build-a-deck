@@ -6,7 +6,8 @@ import { contrastRatio } from '../src/player/contrast.js'
 // Every keyboard stop in the editor has to say where it is, in all three modes (UX-KONTROLLER:
 // "komplett … tangentbordsinteraktion samt synlig fokusmarkering"). Only an engine that knows
 // `:focus-visible` can answer that, so the shipped stylesheet is measured in one.
-const css = readFileSync(new URL('../src/editor/editor.css', import.meta.url), 'utf8')
+// The surface, and the shared button language over it — the editor that ships is both.
+const css = [new URL('../src/editor/editor.css', import.meta.url), new URL('../src/buttons.css', import.meta.url)].map((at) => readFileSync(at, 'utf8')).join('\n')
 
 // The editor's controls as they ship: the header, and one panel per mode with what can be
 // reached inside it.

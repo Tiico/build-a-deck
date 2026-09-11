@@ -1537,6 +1537,61 @@ Den är nu uppdelad per yta i samma dokument.
 Mätande tester som låser editorns layout vid 390 eller 320 låser ett krav som inte längre finns; de tas bort eller skrivs om till skrivbordsbredder när de står i vägen för ett designval, men jagas inte upp i förväg.
 Ett öppet issue vars fynd bara gäller editorn på en smal skärm är inte längre ett fynd.
 
+### L13. Ett knappspråk: tre roller, en form var (2026-09-11)
+
+Granskningen UX-13 (#44) fann tre primärknappar som inte såg ut som varandra — wizardens nästan svarta, editorns blå, inloggningens gröna — och rekommenderade en gemensam.
+Prototypen (`one-button-language`, fyra språk plus nuläget, mätt i Chromium) svarade att färgen aldrig var problemet.
+En människa som går mellan fyra ytor på fem minuter läser vikt före kulör, och det som gör knappen svår att hitta i dag är inte att den är grön här och blå där — det är att flera saker bär primärvikt på samma yta.
+Beställaren valde därför variant **B: en form, lokal färg**.
+
+Rollen bärs av vikt, storlek och form, och ingen kulör flyttar.
+Filten förblir grön, wizarden papper, editorn blå, och varje yta binder rollerna till den accent den redan äger.
+Det är också det enda valet som inte kostar någon av de fyra redan beslutade paletterna (L8, L11, wizardens accent) något.
+
+**Tre roller, en form var.**
+*Första handlingen* är fylld, och är det enda fyllda i sin vy — vad färgen än råkar vara.
+*Andra handlingen* är kantad och står bredvid den.
+*Valt* är ett stillsamt piller med en 3 px stapel under sig, aldrig en fyllning, så att något som är på aldrig kan läsas som något att trycka på.
+Reglerna som ritar dem står en enda gång, i `packages/web/src/buttons.css`, och varje rum binder sina sex tokens till sin egen accent.
+
+**Varför "valt" är en enda form.**
+Verktyget ritade "den här är på" på fem sätt, och ett av dem lånade en annan ytas färg: tabellfiltrets chip var `#7dd3a0`, kontots gröna, mitt i editorn.
+Ytorna läckte alltså redan in i varandra, bara osystematiskt.
+En markörposition i ett rutnät är däremot inte "valt" och får inte den formen: symbolbibliotekets `aria-selected` är dit pilarna gått, delar regel med `:hover`, och listan stängs i samma ögonblick som något väljs — det är en markör och bär editorns märke som ring, inte en stapel och absolut inte primärfyllningen.
+
+**Sekundärens kant är en egen färg, och den är mätt.**
+Det fanns ingen kantad knapp i verktyget innan detta.
+Det som såg ut som en var, mätt, en knapp utan kant: editorns `#3b414e` mot kromet `#23262e` ger 1.48:1 och wizardens `#cbcabe` mot pappret `#f5f3eb` ger också 1.48:1, båda långt under 3:1 för grafik.
+`--byd-secondary-line` är därför en färg med ett eget jobb — `#6f7a90` på de mörka ytorna, `#797d75` på papper — och hålls till 3:1 mot den yta den faktiskt landar på, precis som varje annan grafik (L11).
+
+**Rollen måste vinna över ytans egen regel, i varje tillstånd.**
+`.byd-join-observe` deklarerade en tyst kantad knapp och förlorade tyst mot `.byd-join form button` — (0,1,0) mot (0,1,2) — så hela deklarationen var död kod och "Titta på" ritades identiskt med "Sätt dig".
+Ett rum plus en roll är två klasser och vinner; ett rum, en roll och ett tillstånd är tre och vinner över ytans `:hover` och ytans `:disabled`.
+Det gäller inte bara i vila: wizardens `button:hover` är (0,2,1) och tog tillbaka linjen så fort primärknappen pekades på, och `/join`:s `form button:disabled` är (0,2,2) och tog fyllningen men inte linjen, vilket gav en grå knapp i en grön ring i det tillstånd sidan öppnar i.
+Båda mäts numera på beräknad stil, inte på att en regel finns.
+
+**Rummen är sju, inte fem.**
+Issuet räknade fem ytor — kontot, platsväljaren, wizarden, editorn och telefonen — men telefonens egna ark, enkäten och tillbakaspolningsfrågan öppnas också på `/online` och på `/observe`, under egna klassnamn.
+Bundna bara till `.byd-player` föll varje token tillbaka till ingenting där, och en fyllning som inte löser sig är ingen tyst knapp utan ingen deklaration alls: webbläsaren ritar sin egen gråa systemknapp på en mörk filt.
+Gränsen går vid vilket rum en överlagring faktiskt monteras i, inte vilken komponentmapp den ligger i.
+
+**Vad som medvetet lämnas utanför.**
+
+Det finns ingen destruktiv roll.
+Prototypen hade en rödkantad tredje roll, men verktygets farliga handlingar — att lämna sin plats, att avsluta bordets session för alla — är redan medvetet *inte* första handlingar (#31, C9), och de ställs som frågor i ark där texten under knappen säger vad den kostar.
+En röd knapp till hade gjort dem mer synliga, inte mer förstådda.
+Den dagen en verklig oåterkallelig radering finns i verktyget är det ett eget beslut med en egen mätning.
+
+`status.css` är en sjätte yta med en egen primärknapp och står utanför språket tills vidare.
+Den deklarerar `--byd-status-primary-bg` och `--byd-status-primary-ink` själv, och de råkar vara samma gröna som filtens.
+Ytan är statussidor — en stängd dörr, en tappad anslutning — och den ritas ovanpå vilken annan yta som helst, vilket är just skälet att inte binda den till ett rums accent förrän någon har bestämt vilket rum en statussida står i.
+Det är en känd avvikelse och inte ett förbiseende.
+
+Under skrivbordet har wizardens steg `Korten` två element med primärvikt i samma vy: sidfotens "Skapa spelet och fortsätt i editorn" och stegnavigeringens "Nästa", där den senare bara finns på smal skärm.
+Enligt L12 granskas och mäts wizarden vid skrivbordsbredder, så detta är per beslut och inte ett fynd — men det står här i stället för att vara tyst.
+
+`button-language.test.tsx` mäter allt ovanstående i Chromium på varje yta monterad vid sin egen rutt, och `button-language-contrast.test.ts` mäter varje färg språket föreslår mot den yta den landar på.
+
 ---
 
 ## I. Öppna frågor

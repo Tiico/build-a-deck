@@ -1,16 +1,20 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { contrastRatio, cssCustomProperties } from '../src/player/contrast.js'
+import { contrastRatio, cssCustomProperties, cssDeclaredUnder } from '../src/player/contrast.js'
 
 // The row under the editor header is a green "the table is up" banner. When an update is blocked
 // because a card could not be rendered (#10) it says the opposite, so it is drawn in the same
 // colours a lost card carries on the table — one look for one fact — and held to the same bar.
 const css = readFileSync(join(import.meta.dirname, '..', 'src/editor/editor.css'), 'utf8')
-const tokens = cssCustomProperties(css)
+// The shared button language (#44) rides with it: the fill under the editor's first action, the
+// line round a second one and the bar under what is chosen are tokens the whole tool holds in
+// common. Only what is bound to this surface is read — the same names are green on the felt.
+const language = readFileSync(join(import.meta.dirname, '..', 'src/buttons.css'), 'utf8')
+const tokens = cssCustomProperties(`${css}\n${cssDeclaredUnder(language, '.byd-editor')}`)
 const token = (name: string) => {
   const value = tokens.get(name)
-  if (!value) throw new Error(`editor.css declares no ${name}`)
+  if (!value) throw new Error(`editor.css and the button language between them declare no ${name}`)
   return value
 }
 
@@ -32,7 +36,6 @@ describe('the palette the small screens are drawn in', () => {
   it.each([
     { what: 'what a phone does not offer', ink: '--byd-editor-narrow-ink', on: '--byd-editor-narrow-bg' },
     { what: 'a stage that is not open', ink: '--byd-editor-stage-ink', on: '--byd-editor-stage-bg' },
-    { what: 'the stage that is open', ink: '--byd-editor-stage-on-ink', on: '--byd-editor-stage-on-bg' },
     { what: 'the actions pinned beside them', ink: '--byd-editor-stage-action-ink', on: '--byd-editor-stage-action-bg' },
   ])('gives $what AA contrast', ({ ink, on }) => {
     expect(contrastRatio(token(ink), token(on))).toBeGreaterThanOrEqual(4.5)
@@ -48,7 +51,6 @@ describe('the palette the table filter is drawn in', () => {
     { what: 'the placeholder in the search field', ink: '--byd-editor-filter-quiet', on: '--byd-editor-filter-bg' },
     { what: 'what has been searched for', ink: '--byd-editor-filter-ink', on: '--byd-editor-filter-bg' },
     { what: 'a chip that is not pressed', ink: '--byd-editor-filter-ink', on: '--byd-editor-filter-bg' },
-    { what: 'a chip that is pressed', ink: '--byd-editor-chip-on-ink', on: '--byd-editor-chip-on-bg' },
     { what: 'the note that a new card is shown anyway', ink: '--byd-editor-filter-quiet', on: '--byd-editor-table-panel-bg' },
   ])('gives $what AA contrast', ({ ink, on }) => {
     expect(contrastRatio(token(ink), token(on))).toBeGreaterThanOrEqual(4.5)
@@ -89,7 +91,6 @@ describe('the palette the template canvas is drawn in', () => {
 describe('the palette the group strip is drawn in', () => {
   it.each([
     { what: 'a group that is not open', ink: '--byd-editor-strip-ink', on: '--byd-editor-strip-bg' },
-    { what: 'the group that is open', ink: '--byd-editor-strip-on-ink', on: '--byd-editor-strip-on-bg' },
     { what: 'the label over the grouping column', ink: '--byd-editor-hint-ink', on: '--byd-editor-strip-bg' },
     { what: 'what a layer belongs to', ink: '--byd-editor-source-ink', on: '--byd-editor-canvas-bg' },
   ])('gives $what AA contrast', ({ ink, on }) => {
@@ -133,7 +134,14 @@ describe('the palette unsaved work is drawn in', () => {
 // measured here rather than judged by eye.
 describe('the palette the editor primary is drawn in', () => {
   it('gives the label on a primary button AA contrast', () => {
-    expect(contrastRatio(token('--byd-editor-primary-ink'), token('--byd-editor-primary-bg'))).toBeGreaterThanOrEqual(4.5)
+    expect(contrastRatio(token('--byd-primary-ink'), token('--byd-primary-bg'))).toBeGreaterThanOrEqual(4.5)
+  })
+
+  // What the shared name resolves to here, said out loud. The button language is one rule for the
+  // whole tool and the editor's blue is the editor's own (#22); saying they are the same value is
+  // what keeps them from drifting into a first action that no longer matches the marks round it.
+  it('draws it in the blue #22 settled on', () => {
+    expect([token('--byd-primary-bg'), token('--byd-primary-ink')]).toEqual([token('--byd-editor-primary-bg'), token('--byd-editor-primary-ink')])
   })
 })
 
@@ -144,12 +152,12 @@ describe('the palette the editor primary is drawn in', () => {
 describe('the marks and edges built on the editor primary', () => {
   it.each([
     { what: 'the outline round the card being looked at', on: '--byd-editor-chrome-bg' },
-    { what: 'the edge of the group that is open', on: '--byd-editor-strip-on-bg' },
     { what: 'the edge a tool takes under the pointer', on: '--byd-editor-tool-bg' },
     { what: 'the mark down the side of a marked row', on: '--byd-editor-marked-bg' },
     { what: "the ring round the table's own controls", on: '--byd-editor-table-panel-bg' },
     { what: 'the ring inside the filter row', on: '--byd-editor-filter-bg' },
     { what: 'the edge of a drag handle', on: '--byd-editor-handle-bg' },
+    { what: 'the cursor walking through the symbol library', on: '--byd-editor-panel-bg' },
   ])('lets $what be seen', ({ on }) => {
     expect(contrastRatio(token('--byd-editor-primary-mark'), token(on))).toBeGreaterThanOrEqual(3)
   })

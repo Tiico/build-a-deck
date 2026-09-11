@@ -1,0 +1,122 @@
+/* The one button language (#44, variant B: "en form, lokal färg").
+
+   Three roles, one shape each, and not a single hue moved: the felt stays green, the wizard stays
+   paper, the editor stays blue. What the eye reads first is weight, not colour — so the first
+   action is the only *filled* thing in its view, whatever colour that fill happens to be, and a
+   second action is drawn as an outline beside it.
+
+   Each surface binds the six role tokens below to the accent it already owns; the rules that draw
+   the roles are written once, here, and nowhere else. */
+
+/* ── The felt: the account and the seat picker are the same green room (#20, L11). ───────────── */
+.byd-account,
+.byd-join {
+  --byd-primary-bg: #7dd3a0;
+  --byd-primary-ink: #0b2a18;
+  /* No outlined button existed in the tool before this. What looked like one was measured at
+     1.48:1 against its own ground on both dark and paper — invisible to the standard — so the
+     line a secondary is drawn with is a colour of its own, held to 3:1 like any other graphic
+     (L11). */
+  --byd-secondary-line: #6f7a90;
+  --byd-secondary-ink: #dce3f2;
+  --byd-chosen-bar: #7dd3a0;
+  --byd-chosen-ink: #ffffff;
+}
+
+/* The player's phone is the same green room again, and it already keeps its colours as tokens.
+   `/online` is that phone with the table on the screen in front of it, and it opens the same
+   sheets, the same survey and the same rewind question — so it is the same room and takes the
+   same roles. `/observe` opens one of them too: when the table is done, the one who only watched
+   is asked the same four questions as the seats were. */
+.byd-player,
+.byd-online,
+.byd-observer {
+  --byd-primary-bg: var(--byd-accent);
+  --byd-primary-ink: var(--byd-on-accent);
+  --byd-secondary-line: #6f7a90;
+  --byd-secondary-ink: #dce3f2;
+  --byd-chosen-bar: var(--byd-accent);
+  --byd-chosen-ink: var(--byd-ink-strong);
+}
+
+/* ── Paper: the wizard's first action is its own ink, and its ink is not moving (L11). ───────── */
+.byd-wizard {
+  --byd-primary-bg: var(--ink);
+  --byd-primary-ink: #ffffff;
+  --byd-secondary-line: #797d75;
+  --byd-secondary-ink: var(--ink);
+  /* The wizard's red-orange is its own brand and keeps the job it already had: saying what is
+     chosen. B was built deliberately leaving it where it is. */
+  --byd-chosen-bar: var(--accent);
+  --byd-chosen-ink: var(--ink);
+}
+
+/* ── The editor: the blue #22 measured and settled on, and the dark chrome round it. ─────────── */
+.byd-editor {
+  --byd-primary-bg: var(--byd-editor-primary-bg);
+  --byd-primary-ink: var(--byd-editor-primary-ink);
+  --byd-secondary-line: #6f7a90;
+  --byd-secondary-ink: #dce3f2;
+  /* The lighter of the editor's two blues: a bar is a graphic, so it carries 3:1 and not 4.5:1,
+     and it is the same mark the editor already draws round what is being looked at. */
+  --byd-chosen-bar: var(--byd-editor-primary-mark);
+  --byd-chosen-ink: #ffffff;
+}
+
+/* ── The roles ───────────────────────────────────────────────────────────────────────────────
+   Every root the language is spoken in, written once. A role has to out-rank the surface rule it
+   lands inside, and that matters more than it looks: `.byd-join-observe` already declared a quiet
+   outlined button and lost, silently, to `.byd-join form button` — (0,1,0) against (0,1,2) —
+   which is why "Bara titta" was drawn in the same green as "Sätt dig". `:is()` takes the
+   specificity of its heaviest branch, so a root and a role together are still two classes,
+   (0,2,0), and still win; what it buys is that a seventh room is one word here rather than
+   seven selectors spread over four blocks — which is how `/online` and `/observe` came to be
+   left out of the language while the rules they used to have were being deleted. */
+/* The first action: filled, and the only filled thing in its view. The line is the fill's own
+   colour and shows nowhere — it is there so that a filled button and an outlined one beside it
+   come out the same height, because an outline is drawn outside the shape it wraps. */
+:is(.byd-account, .byd-join, .byd-wizard, .byd-editor, .byd-player, .byd-online, .byd-observer) .byd-primary {
+  border: 1px solid var(--byd-primary-bg);
+  background: var(--byd-primary-bg);
+  color: var(--byd-primary-ink);
+  font-weight: 750;
+}
+
+:is(.byd-account, .byd-join, .byd-wizard, .byd-editor, .byd-player, .byd-online, .byd-observer) .byd-secondary {
+  background: transparent;
+  border: 1px solid var(--byd-secondary-line);
+  color: var(--byd-secondary-ink);
+  font-weight: 600;
+}
+
+/* A pointer is a state of a button, not a different button. The wizard says something of its own
+   about that state — `.byd-wizard button:hover` lifts the line to `#8d918a` — and at (0,2,1) it
+   out-ranks a role at (0,2,0), so `Skapa spelet och fortsätt i editorn` grew a grey ring round a
+   nearly black pill the moment it was pointed at. On paper that reads as a button coming apart
+   under the mouse. A room, a role and a state together are three classes, so the line the role
+   drew stays the line it drew; the fill is the affordance here and it does not move. */
+:is(.byd-account, .byd-join, .byd-wizard, .byd-editor, .byd-player, .byd-online, .byd-observer) .byd-primary:hover {
+  border-color: var(--byd-primary-bg);
+}
+
+:is(.byd-account, .byd-join, .byd-wizard, .byd-editor, .byd-player, .byd-online, .byd-observer) .byd-secondary:hover {
+  border-color: var(--byd-secondary-line);
+}
+
+/* Chosen. One shape for all of it — a quiet pill with a 3 px bar under it, in whatever accent the
+   surface owns — because the tool drew "this one is on" five different ways, and one of those
+   borrowed another surface's colour: the table filter's chip was painted `#7dd3a0`, the account's
+   green, in the middle of the editor. Never a fill, so a thing that is chosen can never be
+   mistaken for the thing to press. `.byd-choice` marks a control that is one of a set; the
+   platform's own word for which one says the rest. */
+:is(.byd-account, .byd-join, .byd-wizard, .byd-editor, .byd-player, .byd-online, .byd-observer) .byd-choice:is([aria-pressed='true'], [aria-selected='true'], [aria-checked='true']) {
+  background: transparent;
+  border-color: transparent;
+  /* The bar is an inset shadow, and an inset shadow follows the corner it is drawn inside: left
+     on a 14 px radius it curves up at both ends and reads as a smile rather than a rule. So a
+     chosen thing squares its own bottom corners while it is chosen. */
+  border-radius: 6px 6px 0 0;
+  box-shadow: inset 0 -3px 0 var(--byd-chosen-bar);
+  color: var(--byd-chosen-ink);
+  font-weight: 700;
+}

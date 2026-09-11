@@ -61,7 +61,7 @@ async function measure(): Promise<Seen> {
   try {
     const shell = read('index.html')
       .replace('<script type="module" src="/src/main.tsx"></script>', '')
-      .replace('</head>', `<style>${read('src/editor/editor.css')}</style></head>`)
+      .replace('</head>', `<style>${read('src/editor/editor.css')}\n${read('src/buttons.css')}</style></head>`)
       .replace(
         '<div id="root"></div>',
         `<div id="root"><div class="byd-editor" data-page="editor" data-mode="template"><header></header><div></div><main><div role="tabpanel">${markup()}</div></main></div></div>`,
@@ -135,7 +135,7 @@ describe('the form the binding opens (#32)', () => {
     try {
       const shell = read('index.html')
         .replace('<script type="module" src="/src/main.tsx"></script>', '')
-        .replace('</head>', `<style>${read('src/editor/editor.css')}</style></head>`)
+        .replace('</head>', `<style>${read('src/editor/editor.css')}\n${read('src/buttons.css')}</style></head>`)
         .replace(
           '<div id="root"></div>',
           `<div id="root"><div class="byd-editor" data-page="editor" data-mode="template"><header></header><div></div><main><div role="tabpanel">${await markupWithForm()}</div></main></div></div>`,

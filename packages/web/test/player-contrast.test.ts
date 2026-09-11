@@ -1,13 +1,17 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { PLAYER_TEXT_PAIRS, cardFaceRamp, contrastRatio, cssCustomProperties } from '../src/player/contrast.js'
+import { PLAYER_TEXT_PAIRS, cardFaceRamp, contrastRatio, cssCustomProperties, cssDeclaredUnder } from '../src/player/contrast.js'
 
-// The stylesheet the player view actually ships is the source of truth for its colours.
+// The stylesheet the player view actually ships is the source of truth for its colours — and the
+// shared button language (#44) with it, since the phone's first action, its second and the mark on
+// what is chosen are drawn from tokens the whole tool holds in common. Only the block bound to
+// this surface is read: the same names mean a different colour in the editor, which is the point.
 const css = readFileSync(new URL('../src/player/player.css', import.meta.url), 'utf8')
-const tokens = cssCustomProperties(css)
+const language = readFileSync(new URL('../src/buttons.css', import.meta.url), 'utf8')
+const tokens = cssCustomProperties(`${css}\n${cssDeclaredUnder(language, '.byd-player')}`)
 const token = (name: string) => {
   const value = tokens.get(name)
-  if (!value) throw new Error(`player.css declares no ${name}`)
+  if (!value) throw new Error(`player.css and the button language between them declare no ${name}`)
   return value
 }
 

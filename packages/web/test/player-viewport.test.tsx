@@ -30,7 +30,7 @@ const shell = read('index.html')
 // phone is measured with both of the sheets it actually ships with.
 // The rulebook's own button rides in the same row on the phone (B7), so the row is measured with
 // the sheet that shapes it too (#31).
-const css = `${read('src/player/player.css')}\n${read('src/table/keyboard.css')}\n${read('src/rules/rules.css')}`
+const css = `${read('src/player/player.css')}\n${read('src/buttons.css')}\n${read('src/table/keyboard.css')}\n${read('src/rules/rules.css')}`
 
 const document_ = (body: ReactNode) =>
   shell

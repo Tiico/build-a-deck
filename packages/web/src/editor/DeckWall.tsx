@@ -68,7 +68,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
       <div className="byd-wall-tools">
         <div role="group" aria-label={t('wall.eyes')}>
           {EYES.map((e) => (
-            <button key={e.key} type="button" aria-pressed={eye === e.key} onClick={() => setEye(e.key)}>
+            <button key={e.key} type="button" className="byd-choice" aria-pressed={eye === e.key} onClick={() => setEye(e.key)}>
               {t(e.name)}
             </button>
           ))}

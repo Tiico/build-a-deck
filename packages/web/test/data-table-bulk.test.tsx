@@ -173,6 +173,10 @@ describe('DataTable bulk delete (#17)', () => {
 })
 
 describe('DataTable bulk delete from the keyboard (#17)', () => {
+  // The only test in the file that walks the tab order, and it walks it twice: up to eighty real
+  // key presses, each of them an await. That is comfortably inside vitest's 10 s default alone and
+  // was not inside its 5 s one when five browser suites were starting beside it, so it says how
+  // long it needs rather than flaking whenever the machine is busy.
   it('marks with Space, opens the question with Enter, and lets Escape answer no', async () => {
     const user = userEvent.setup()
     const onRows = vi.fn()
@@ -209,7 +213,7 @@ describe('DataTable bulk delete from the keyboard (#17)', () => {
     expect(shownIds()).toEqual(['drake', 'alv', 'nat', 'troll', 'stock', 'orm', 'grav'])
     // Nothing under the cursor was taken away: the focus lands on the header's own checkbox.
     expect(document.activeElement).toBe(screen.getByLabelText('Markera alla synliga'))
-  })
+  }, 30_000)
 
   it('keeps the cards when the question is answered without being read (#8)', async () => {
     const user = userEvent.setup()

@@ -187,13 +187,13 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
       >
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('join.name')} aria-label={t('join.name')} autoComplete="nickname" />
         {problem && <p role="alert">{problem}</p>}
-        <button type="submit" disabled={!chosen || !name.trim()}>
+        <button type="submit" className="byd-primary" disabled={!chosen || !name.trim()}>
           {t('join.sit')}
         </button>
-        <button type="button" className="byd-join-online" disabled={!chosen || !name.trim()} onClick={() => void go('/online', chosen)}>
+        <button type="button" className="byd-join-online byd-secondary" disabled={!chosen || !name.trim()} onClick={() => void go('/online', chosen)}>
           {t('join.online')}
         </button>
-        <button type="button" className="byd-join-observe" disabled={!name.trim()} onClick={() => void go('/observe', null)}>
+        <button type="button" className="byd-join-observe byd-secondary" disabled={!name.trim()} onClick={() => void go('/observe', null)}>
           {t('join.observe')}
         </button>
       </form>

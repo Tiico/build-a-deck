@@ -305,12 +305,12 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
   // Saving and reaching the table are the same two buttons wherever they stand: in the header on
   // a desk, pinned to the end of the stage strip below one. They are written once.
   const saveButton = (
-    <button type="button" onClick={() => void save()} disabled={!unsaved || saving}>
+    <button type="button" className="byd-secondary" onClick={() => void save()} disabled={!unsaved || saving}>
       {t(saving ? 'editor.saving' : 'editor.save')}
     </button>
   )
   const updateButton = (
-    <button type="button" className="byd-editor-primary" onClick={() => void updateTable()}>
+    <button type="button" className="byd-editor-primary byd-primary" onClick={() => void updateTable()}>
       {t('editor.updateTable')}
     </button>
   )

@@ -1,12 +1,22 @@
 /* The creator's account (G1, prototype A): a card in the middle; the games as a grid. */
-.byd-account { min-height: 100vh; display: grid; place-items: center; padding: 40px 20px; box-sizing: border-box; background: #0f1117; color: #e6e6e6; font-family: system-ui, sans-serif; }
+.byd-account {
+  /* The two darks the account is read on: the page behind everything, and the card the login
+     form and every game sit on. They were hexes repeated down the file until the button language
+     (#44) needed to be measured against them, and a ground that is not a token is a ground no
+     contrast test can name. */
+  --byd-account-bg: #0f1117;
+  --byd-account-card-bg: #171a23;
+  /* The darker well a field or a picker is sunk into, which is the seat picker's own ground. */
+  --byd-account-field-bg: #14161c;
+  min-height: 100vh; display: grid; place-items: center; padding: 40px 20px; box-sizing: border-box; background: var(--byd-account-bg); color: #e6e6e6; font-family: system-ui, sans-serif;
+}
 .byd-account-wide { align-content: start; }
 .byd-muted { color: #9aa3b8; font-size: 14px; line-height: 1.5; margin: 0; }
-.byd-login { width: min(420px, 100%); background: #171a23; border: 1px solid #262a35; border-radius: 20px; padding: 32px; display: grid; gap: 14px; box-sizing: border-box; }
+.byd-login { width: min(420px, 100%); background: var(--byd-account-card-bg); border: 1px solid #262a35; border-radius: 20px; padding: 32px; display: grid; gap: 14px; box-sizing: border-box; }
 .byd-login h1 { margin: 0; font-size: 26px; }
 .byd-login form { display: grid; gap: 10px; }
-.byd-login input { width: 100%; box-sizing: border-box; padding: 14px 16px; border-radius: 12px; border: 1px solid #2c3242; background: #14161c; color: #fff; font-size: 16px; }
-.byd-login button { padding: 14px 18px; border: 0; border-radius: 12px; background: #7dd3a0; color: #0b2a18; font-size: 16px; font-weight: 800; cursor: pointer; }
+.byd-login input { width: 100%; box-sizing: border-box; padding: 14px 16px; border-radius: 12px; border: 1px solid #2c3242; background: var(--byd-account-field-bg); color: #fff; font-size: 16px; }
+.byd-login button { padding: 14px 18px; border-radius: 12px; font-size: 16px; cursor: pointer; }
 .byd-login button:disabled { opacity: 0.4; cursor: default; }
 .byd-login-sent { padding: 18px; border-radius: 14px; background: #1b2a22; color: #d8ffe8; display: grid; gap: 6px; font-size: 14px; line-height: 1.5; }
 .byd-login-error { color: #ff9a9a; font-size: 13px; margin: 0; }
@@ -18,7 +28,7 @@
    and takes the room every control in the product takes (UX-KONTROLLER: träffytor). */
 .byd-who a { color: #9aa3b8; display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px; }
 .byd-home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
-.byd-home-game { background: #171a23; border: 1px solid #262a35; border-radius: 16px; padding: 16px; display: grid; gap: 8px; text-align: left; color: #fff; text-decoration: none; cursor: pointer; }
+.byd-home-game { background: var(--byd-account-card-bg); border: 1px solid #262a35; border-radius: 16px; padding: 16px; display: grid; gap: 8px; text-align: left; color: #fff; text-decoration: none; cursor: pointer; }
 .byd-home-game strong { font-size: 17px; }
 .byd-home-fan { display: flex; height: 70px; align-items: flex-end; }
 .byd-home-fan i { width: 40px; height: 56px; border-radius: 5px; margin-right: -14px; background: hsl(var(--hue, 0) 40% 86%); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); }
@@ -58,5 +68,5 @@
    cannot read the page can still change what it speaks. */
 .byd-lang { display: inline-flex; gap: 6px; align-items: center; color: #9aa3b8; font-size: 13px; }
 /* The picker the reader who cannot read this page reaches for first, at the size a thumb needs. */
-.byd-lang select { min-height: 44px; border: 1px solid #2c3242; border-radius: 8px; padding: 4px 8px; background: #14161c; color: #e6e6e6; font: inherit; cursor: pointer; }
+.byd-lang select { min-height: 44px; border: 1px solid #2c3242; border-radius: 8px; padding: 4px 8px; background: var(--byd-account-field-bg); color: #e6e6e6; font: inherit; cursor: pointer; }
 .byd-login .byd-lang { justify-content: flex-start; margin-top: 2px; }

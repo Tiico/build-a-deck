@@ -53,10 +53,39 @@ export function contrastRatio(a: string, b: string): number {
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)
 }
 
-// Every `--name: value` a stylesheet declares, last declaration winning.
+// The declarations a stylesheet makes under exactly one selector. A sheet shared between surfaces
+// binds the same token name once per surface — `--byd-primary-bg` is green on the felt and blue in
+// the editor — so reading it flat would hand back whichever surface happens to be written last.
+// Comments go first: a comment may tell the story of a colour, and only declarations count.
+export function cssDeclaredUnder(css: string, selector: string): string {
+  let out = ''
+  for (const [, selectors, body] of css.replaceAll(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    if (selectors?.split(',').some((one) => one.trim() === selector)) out += `${body};`
+  }
+  return out
+}
+
+// Every `--name: value` a stylesheet declares, last declaration winning — and a token whose value
+// is another token is followed through to the colour at the end of it. One surface's role may
+// honestly be another token it already owns ("the wizard's first action is its own ink"), and a
+// test that measured the literal `var(--ink)` would measure nothing at all.
 export function cssCustomProperties(css: string): Map<string, string> {
   const found = new Map<string, string>()
   for (const [, name, value] of css.matchAll(/(--[\w-]+)\s*:\s*([^;}]+)/g)) if (name && value) found.set(name, value.trim())
+  // Bounded by the number of declarations, so a token that points at itself stops rather than
+  // spinning; what is left still says `var(...)` and fails loudly where it is read.
+  for (let pass = 0; pass < found.size; pass++) {
+    let moved = false
+    for (const [name, value] of found) {
+      const pointed = /^var\(\s*(--[\w-]+)\s*\)$/.exec(value)?.[1]
+      const to = pointed === undefined || pointed === name ? undefined : found.get(pointed)
+      if (to !== undefined && to !== value) {
+        found.set(name, to)
+        moved = true
+      }
+    }
+    if (!moved) break
+  }
   return found
 }
 
@@ -81,7 +110,8 @@ export const PLAYER_TEXT_PAIRS: readonly TextPair[] = [
   { what: 'text typed into a sheet field', ink: '--byd-ink-strong', on: '--byd-bg', size: 'normal' },
   { what: "a control's label", ink: '--byd-ink-strong', on: '--byd-control', size: 'normal' },
   { what: "a play target's second line", ink: '--byd-ink-muted', on: '--byd-control', size: 'normal' },
-  { what: 'the label on an accented button', ink: '--byd-on-accent', on: '--byd-accent', size: 'normal' },
+  { what: 'the label on the first action', ink: '--byd-primary-ink', on: '--byd-primary-bg', size: 'normal' },
+  { what: 'the label of a second action beside it', ink: '--byd-secondary-ink', on: '--byd-bg', size: 'normal' },
   { what: 'the toast', ink: '--byd-warn-bg', on: '--byd-warn', size: 'normal' },
   { what: 'the rewind banner', ink: '--byd-warn', on: '--byd-warn-bg', size: 'normal' },
   { what: "the rewind banner's own button", ink: '--byd-ink-muted', on: '--byd-warn-bg', size: 'normal' },

@@ -50,7 +50,7 @@ export function Survey({ who, version, onSubmit, saveUrl }: SurveyProps) {
             <h2>{t(q.text)}</h2>
             <div className="byd-survey-scale">
               {[1, 2, 3, 4, 5].map((n) => (
-                <button key={n} type="button" aria-pressed={scales[q.key] === n} onClick={() => setScales({ ...scales, [q.key]: n })}>
+                <button key={n} type="button" className="byd-choice" aria-pressed={scales[q.key] === n} onClick={() => setScales({ ...scales, [q.key]: n })}>
                   {n}
                 </button>
               ))}
@@ -75,11 +75,11 @@ export function Survey({ who, version, onSubmit, saveUrl }: SurveyProps) {
           ))}
         </div>
         {q ? (
-          <button type="button" disabled={scales[q.key] === undefined} onClick={() => setStep(step + 1)}>
+          <button type="button" className="byd-primary" disabled={scales[q.key] === undefined} onClick={() => setStep(step + 1)}>
             {t('survey.next')}
           </button>
         ) : (
-          <button type="button" disabled={state === 'sending'} onClick={() => void send()}>
+          <button type="button" className="byd-primary" disabled={state === 'sending'} onClick={() => void send()}>
             {t('survey.send')}
           </button>
         )}

@@ -19,7 +19,7 @@ import { asTable, createSession, recipeSetup, roomOf, startServer, twoSeatSetup,
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
-const css = read('src/join/join.css')
+const css = `${read('src/join/join.css')}\n${read('src/buttons.css')}`
 
 const document_ = (body: string) =>
   shell
@@ -302,12 +302,18 @@ describe('a table whose seats share a side (#42)', () => {
   // stands in the middle of it — which is where the picker has always stood it (#39).
   //
   // "Where it stood" was once written down as the very pixels `origin/main` drew — a felt at
-  // `85,252.5` and pills `64.3` wide — read off a Mac. `system-ui` is a different typeface on the
-  // Linux runner: the header above the felt comes out two pixels shorter and a pill is as wide as
-  // its own word, so CI failed on a table nobody had touched. What the picker really promises has
-  // nothing to do with the typeface. The felt has not grown, each seat hangs off its own edge by
-  // the overhang the stylesheet names, each stands in the middle of that edge, and each is still
-  // the 44 px a thumb is owed. A pill's width is its name's business and is capped elsewhere.
+  // `85,252` and pills `64.3` wide — read off a Mac, and moved once already when the one button
+  // language (#44) went through this page: each of the three ways on gained an outline, an
+  // outline is drawn outside the shape it wraps, and "Bara titta" went back to the size it had
+  // always declared and never got, so the felt ended up centred in what was left over.
+  //
+  // It never survived a Linux runner. `system-ui` is a different typeface there: the header above
+  // the felt comes out two pixels shorter and a pill is as wide as its own word, and CI failed on
+  // a table nobody had touched. What the picker really promises has nothing to do with the
+  // typeface. The felt has not grown — 260 by 200 belongs to the tables that share a side — each
+  // seat hangs off its own edge by the overhang the stylesheet names, each stands in the middle
+  // of that edge, and each is still the 44 px a thumb is owed. How wide a pill is, is its name's
+  // business, and is held to its place in the tests that are about names.
   const HANG: Record<string, number> = { N: 26, S: 26, E: 30, W: 30 }
   it.each([2, 3, 4])('leaves a table of %i, where nobody shares a side, standing where it stood', async (count) => {
     const { felt, seats } = await measure(await picker(recipeSetup(count)))

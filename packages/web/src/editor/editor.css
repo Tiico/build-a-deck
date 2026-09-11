@@ -22,8 +22,6 @@
   --byd-editor-narrow-ink: #ffd98a;
   --byd-editor-stage-bg: #1b1d23;
   --byd-editor-stage-ink: #9aa3b8;
-  --byd-editor-stage-on-bg: #2f3a55;
-  --byd-editor-stage-on-ink: #ffffff;
   --byd-editor-stage-action-bg: #23262e;
   --byd-editor-stage-action-ink: #ffffff;
   /* The blue the editor's first action is painted in (#22). It has two jobs and they carry two
@@ -35,6 +33,11 @@
   --byd-editor-primary-bg: #1f6fd0;
   --byd-editor-primary-ink: #ffffff;
   --byd-editor-primary-mark: #3c8ce7;
+  /* The deep ground every panel the editor floats stands on: the history, the share sheet, the
+     checks beside the wall, a menu, the symbol library. It was the same hex written out seven
+     times, which was harmless until the mark had to be measured against it (L11) — a ground
+     without a name is a ground no contrast test can ask about. */
+  --byd-editor-panel-bg: #171a23;
   /* Every target in the editor is at least this, at every width the audit checks
      (UX-KONTROLLER: träffytor). A tool a thumb cannot hit is a tool the editor does not have. */
   --byd-tap: 44px;
@@ -99,7 +102,7 @@
 .byd-editor-saved { color: var(--byd-editor-saved-ink); white-space: nowrap; }
 .byd-editor-saved[data-unsaved='true'] { color: var(--byd-editor-unsaved-ink); font-weight: 700; }
 /* The history (B4): a panel that hangs from the revision it opened from. */
-.byd-history { position: absolute; left: 120px; top: 46px; z-index: 20; width: 340px; max-height: 70vh; overflow: auto; padding: 16px; border-radius: 14px; background: #171a23; border: 1px solid #3b4358; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5); }
+.byd-history { position: absolute; left: 120px; top: 46px; z-index: 20; width: 340px; max-height: 70vh; overflow: auto; padding: 16px; border-radius: 14px; background: var(--byd-editor-panel-bg); border: 1px solid #3b4358; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5); }
 .byd-history header { display: flex; align-items: center; gap: 10px; }
 .byd-history h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-history header button { margin-left: auto; border: 0; background: transparent; color: #9aa3b8; font-size: 18px; cursor: pointer; padding: 0 4px; }
@@ -120,7 +123,6 @@
 .byd-history [role='alert'] { color: #f0b64a; font-size: 12px; }
 .byd-editor [role='tablist'] { display: flex; background: #1b1d23; border-radius: 8px; padding: 3px; margin-left: 12px; }
 .byd-editor [role='tab'] { min-height: var(--byd-tap); border: 0; border-radius: 6px; padding: 0 14px; background: transparent; color: #9aa3b8; font-weight: 600; cursor: pointer; }
-.byd-editor [role='tab'][aria-selected='true'] { background: #2f3a55; color: #fff; }
 .byd-editor-spacer { flex: 1; }
 /* A line that is gone says so, and what is written meanwhile is kept until it is back (D3). */
 .byd-editor-offline { margin: 0; padding: 8px 16px; background: #2a1f18; color: #ffd8b0; font-size: 12px; }
@@ -143,7 +145,7 @@
 .byd-editor-here i { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--who); color: #10131a; font: 800 11px system-ui; font-style: normal; }
 .byd-editor-here b { color: #9aa3b8; font: 600 11px system-ui; }
 /* Who has the game: the list hangs from the people it is about. */
-.byd-share { position: absolute; right: 16px; top: 46px; z-index: 20; width: 340px; max-height: 70vh; overflow: auto; padding: 16px; border-radius: 14px; background: #171a23; border: 1px solid #3b4358; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5); }
+.byd-share { position: absolute; right: 16px; top: 46px; z-index: 20; width: 340px; max-height: 70vh; overflow: auto; padding: 16px; border-radius: 14px; background: var(--byd-editor-panel-bg); border: 1px solid #3b4358; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5); }
 .byd-share header { display: flex; align-items: center; gap: 10px; }
 .byd-share h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-share header button { margin-left: auto; border: 0; background: transparent; color: #9aa3b8; font-size: 18px; padding: 0 4px; cursor: pointer; }
@@ -169,7 +171,6 @@
 .byd-editor-confirm { min-width: 0; color: var(--byd-editor-confirm-ink); }
 .byd-editor > header > button { min-height: var(--byd-tap); min-width: var(--byd-tap); border: 1px solid #2f333d; border-radius: 8px; padding: 0 14px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
 .byd-editor > header > button:disabled { color: #5b6478; cursor: default; }
-.byd-editor > header > .byd-editor-primary { background: var(--byd-editor-primary-bg); border-color: var(--byd-editor-primary-bg); }
 .byd-editor-table-link {
   /* Fourth row, whether or not the question above it is standing: neither strip may push the
      other off the screen, and neither may take the mode's row. */
@@ -315,7 +316,6 @@
   border-top: 1px solid #2f333d;
 }
 .byd-editor-stagebar [role='tab'] { color: var(--byd-editor-stage-ink); }
-.byd-editor-stagebar [role='tab'][aria-selected='true'] { background: var(--byd-editor-stage-on-bg); color: var(--byd-editor-stage-on-ink); }
 .byd-editor-stagebar [role='tablist'] { flex: 1 1 auto; min-width: 0; margin-left: 0; padding: 0; background: transparent; border-radius: 0; gap: 4px; overflow-x: auto; scrollbar-width: thin; }
 .byd-editor-stagebar [role='tab'] { flex: 0 0 auto; white-space: nowrap; border-radius: 9px; }
 .byd-editor-stagebar-actions {
@@ -341,7 +341,6 @@
   cursor: pointer;
 }
 .byd-editor-stagebar-actions button:disabled { color: #5b6478; cursor: default; }
-.byd-editor-stagebar-actions .byd-editor-primary { background: var(--byd-editor-primary-bg); border-color: var(--byd-editor-primary-bg); }
 
 /* The setup editor (B5, K2): the recipe's knobs, the felt as the workspace, the phone's sheet. */
 .byd-setup { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px; padding: 20px; align-items: start; }
@@ -351,7 +350,6 @@
 .byd-setup-recipe label { display: flex; gap: 8px; align-items: center; margin: 6px 0; color: #e6ecfa; }
 .byd-setup-players { display: flex; gap: 6px; }
 .byd-setup-players button, .byd-setup-tools button, .byd-setup-counters > button, .byd-setup-props button { border: 1px solid #2f333d; border-radius: 8px; padding: 7px 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
-.byd-setup-players button[aria-pressed='true'] { background: var(--byd-editor-primary-bg); border-color: var(--byd-editor-primary-bg); }
 .byd-setup-counters { margin: 8px 0 0 24px; display: grid; gap: 6px; justify-items: start; }
 .byd-setup-counters > span { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #9aa3b8; }
 .byd-setup-counter { display: flex; gap: 6px; align-items: center; color: #9aa3b8; }
@@ -392,7 +390,6 @@
 .byd-wall-tools { grid-column: 1 / -1; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; padding: 0 4px 10px; }
 .byd-wall-tools > div { display: flex; gap: 6px; }
 .byd-wall-tools button { border: 1px solid #2f333d; border-radius: 8px; padding: 6px 11px; background: #1b1d23; color: #fff; font-weight: 700; font-size: 12px; cursor: pointer; }
-.byd-wall-tools button[aria-pressed='true'] { background: var(--byd-editor-primary-bg); border-color: var(--byd-editor-primary-bg); }
 .byd-wall-tools label { display: flex; gap: 6px; align-items: center; color: #cfd5e3; font-size: 12px; }
 /* Another eye over the real cards (E5), and the trim the knife will follow. */
 .byd-wall[data-eye='deuteranopia'] { filter: url(#byd-eye-deuteranopia); }
@@ -406,7 +403,7 @@
 /* At arm's length the cards are small; the wall packs them closer instead of leaving holes. */
 .byd-wall[data-arm] { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
 .byd-wall-card[data-marked] { outline: 3px solid #f0b64a; outline-offset: 3px; }
-.byd-wall-checks { align-self: start; padding: 16px; border-radius: 16px; background: #171a23; border: 1px solid #2f333d; }
+.byd-wall-checks { align-self: start; padding: 16px; border-radius: 16px; background: var(--byd-editor-panel-bg); border: 1px solid #2f333d; }
 .byd-wall-checks h2 { margin: 0 0 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-wall-ok { margin: 0; color: #7dd3a0; line-height: 1.5; }
 .byd-wall-lead { margin: 0 0 10px; color: #9aa3b8; font-size: 12px; line-height: 1.5; }
@@ -477,8 +474,6 @@
      the brightest thing on screen, light enough for every word on it to clear AA. */
   --byd-editor-strip-bg: #1b1d23;
   --byd-editor-strip-ink: #b9c2d6;
-  --byd-editor-strip-on-bg: #2f3a55;
-  --byd-editor-strip-on-ink: #ffffff;
   /* What a layer belongs to, said on the layer itself: quieter than its name, never quieter
      than AA against the panel it is read on. */
   --byd-editor-source-ink: #9aa3b8;
@@ -525,11 +520,6 @@
   font-size: 12px;
   padding: 5px 11px;
   cursor: pointer;
-}
-.byd-canvas-groups button[aria-selected='true'], .byd-canvas-faces button[aria-checked='true'] {
-  background: var(--byd-editor-strip-on-bg);
-  color: var(--byd-editor-strip-on-ink);
-  border-color: var(--byd-editor-primary-mark);
 }
 /* Variant B's rule list, kept as the summary: every group as the rule it is, read not pressed. */
 .byd-canvas-rules { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
@@ -612,7 +602,7 @@
 .byd-fonts-licence { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .byd-fonts-licence input { background: #0f1115; border: 1px solid #2a2d36; color: #fff; border-radius: 6px; padding: 5px 7px; font-size: 12px; width: 100%; box-sizing: border-box; }
 .byd-fonts li > button { justify-self: end; border: 1px solid #3b414e; border-radius: 6px; background: #1b1d23; color: #9aa3b8; font-size: 11px; padding: 3px 8px; cursor: pointer; }
-.byd-fonts-upload { position: relative; overflow: hidden; display: inline-block; border: 1px solid #3b414e; border-radius: 8px; padding: 7px 11px; background: #1b1d23; color: #dce3f2; font-size: 12px; font-weight: 700; cursor: pointer; }
+.byd-fonts-upload { position: relative; overflow: hidden; display: inline-block; border-radius: 8px; padding: 7px 11px; font-size: 12px; cursor: pointer; }
 .byd-fonts-upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .byd-fonts [role='alert'] { margin: 8px 0 0; font-size: 11px; color: #f0b64a; }
 
@@ -677,9 +667,17 @@
    draw the same component, so what an option is and which one the keys are on is written once.
    The two classes above are what places each of them, and that is all they are for. This block
    stands after the tool rail's own button styles, which it must outrank inside the rail. */
-.byd-symbol-list { position: absolute; z-index: 5; width: 230px; overflow: auto; display: grid; gap: 2px; padding: 6px; border-radius: 10px; background: #171a23; border: 1px solid #3b4358; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5); }
-.byd-symbol-list button { display: flex; align-items: center; gap: 8px; border: 0; border-radius: 7px; padding: 5px 7px; background: transparent; color: #e6ecfa; font: inherit; text-align: left; cursor: pointer; }
-.byd-symbol-list button:hover, .byd-symbol-list button[aria-selected='true'] { background: var(--byd-editor-primary-bg); }
+.byd-symbol-list { position: absolute; z-index: 5; width: 230px; overflow: auto; display: grid; gap: 2px; padding: 6px; border-radius: 10px; background: var(--byd-editor-panel-bg); border: 1px solid #3b4358; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5); }
+.byd-symbol-list button { display: flex; align-items: center; gap: 8px; border: 1px solid transparent; border-radius: 7px; padding: 5px 7px; background: transparent; color: #e6ecfa; font: inherit; text-align: left; cursor: pointer; }
+/* Where the next glyph will be taken from — under the pointer, or wherever the arrows have walked
+   to, which are the same state reached two ways and so are one rule. It is a cursor and not a
+   choice: nothing in this list is *on*, and the moment one is picked the list closes. So it is not
+   the language's chosen shape, which is a bar under something that stays chosen, and it is
+   certainly not the primary fill it used to be painted in — a glyph the keys happened to be
+   resting on was drawn in exactly the blue that means "this is the button to press". It takes the
+   editor's mark instead, as a ring, which is what the rail this list hangs off already does under
+   a pointer and what the editor draws round anything it is merely pointing at (L11). */
+.byd-symbol-list button:hover, .byd-symbol-list button[aria-selected='true'] { border-color: var(--byd-editor-primary-mark); }
 .byd-symbol-list img { width: 20px; height: 20px; padding: 2px; border-radius: 5px; background: #e8e2d4; }
 .byd-symbol-list small { margin-left: auto; color: #9aa3b8; font-size: 11px; }
 /* The header is the sort control (#15): the column's name, the state as an arrow beside it. */
@@ -693,8 +691,6 @@
   --byd-editor-filter-ink: #dce3f2;
   --byd-editor-filter-quiet: #9aa3b8;
   --byd-editor-count-ink: #c3cbdd;
-  --byd-editor-chip-on-bg: #7dd3a0;
-  --byd-editor-chip-on-ink: #0b2a18;
   --byd-editor-marked-bg: #253044;
   --byd-editor-marked-ink: #c3cbdd;
 }
@@ -719,7 +715,6 @@
   font: inherit;
   cursor: pointer;
 }
-.byd-data-chip[aria-pressed='true'] { background: var(--byd-editor-chip-on-bg); border-color: var(--byd-editor-chip-on-bg); color: var(--byd-editor-chip-on-ink); font-weight: 700; }
 .byd-data-count { margin: 0; color: var(--byd-editor-count-ink); font-variant-numeric: tabular-nums; }
 .byd-data-pinned { color: var(--byd-editor-filter-quiet); }
 .byd-data-clear { border: 1px solid #3b414e; border-radius: 8px; padding: 6px 12px; background: transparent; color: var(--byd-editor-filter-quiet); font: inherit; cursor: pointer; }
@@ -827,7 +822,7 @@
   padding: 12px;
   border: 1px solid #3b4358;
   border-radius: 10px;
-  background: #171a23;
+  background: var(--byd-editor-panel-bg);
   box-shadow: 0 12px 30px rgb(0 0 0 / 50%);
   color: #dce3f2;
   font-weight: 400;
@@ -843,8 +838,12 @@
 /* Two classes deep on purpose: the head's own `.byd-data th button` strips buttons back to bare
    text, which is right for a column heading and wrong for the answers to a form. */
 .byd-newfield-do { display: flex; gap: 8px; margin-top: 2px; }
-.byd-newfield .byd-newfield-do button { border: 1px solid var(--byd-editor-primary-bg); border-radius: 8px; padding: 6px 12px; background: var(--byd-editor-primary-bg); color: var(--byd-editor-primary-ink); font: inherit; font-weight: 700; cursor: pointer; }
-.byd-newfield .byd-newfield-do button[data-kind='quiet'] { border-color: #3b414e; background: transparent; color: #9aa3b8; font-weight: 400; }
+/* What a button in here is shaped like, and nothing about what it is drawn in: making a column is
+   not the editor's first action — putting the work on the table is — so the shared secondary says
+   what this one looks like, and this rule must not out-rank it. A `border` here would, at
+   (0,2,1), which is how it came to wear the primary fill on a page that already had one. */
+.byd-newfield .byd-newfield-do button { border-radius: 8px; padding: 6px 12px; font: inherit; cursor: pointer; }
+.byd-newfield .byd-newfield-do button[data-kind='quiet'] { border: 1px solid #3b414e; background: transparent; color: #9aa3b8; font-weight: 400; }
 .byd-data-chosen { color: var(--byd-editor-count-ink); font-weight: 700; }
 /* A marked row is read from across the table, not from its checkbox: the tick is the control,
    the tint and the edge are the answer to "did I get the right four cards". Being marked and
@@ -901,7 +900,6 @@
   text-decoration: none;
   cursor: pointer;
 }
-.byd-tables-ways a.byd-editor-primary { background: var(--byd-editor-primary-bg); border-color: var(--byd-editor-primary-bg); color: var(--byd-editor-primary-ink); }
 .byd-tables-ways button[data-kind='quiet'] { background: transparent; border-color: #3a4050; color: var(--byd-tables-quiet); font-weight: 400; }
 .byd-tables-note { color: var(--byd-tables-quiet); }
 .byd-tables-qr { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -929,7 +927,7 @@
    12 px gap is taken back, leaving the 1 px seam a split button has. */
 .byd-editor-split { position: relative; display: inline-flex; margin-left: -11px; }
 .byd-editor > header > .byd-editor-primary:has(+ .byd-editor-split) { border-radius: 8px 0 0 8px; }
-.byd-editor-split > .byd-editor-caret { border: 1px solid var(--byd-editor-primary-bg); border-radius: 0 8px 8px 0; margin-left: 1px; padding: 8px 12px; background: var(--byd-editor-primary-bg); color: var(--byd-editor-primary-ink); font: inherit; font-weight: 700; cursor: pointer; }
+.byd-editor-split > .byd-editor-caret { border-radius: 0 8px 8px 0; margin-left: 1px; padding: 8px 12px; font: inherit; cursor: pointer; }
 .byd-editor-ways {
   position: absolute;
   right: 0;
@@ -956,11 +954,10 @@
 .byd-symbols { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 20px; padding: 20px; align-items: start; }
 .byd-symbols h2 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-symbols p { margin: 0 0 12px; color: #9aa3b8; line-height: 1.5; }
-.byd-symbols-library { padding: 16px; border-radius: 16px; background: #171a23; border: 1px solid #2f333d; }
+.byd-symbols-library { padding: 16px; border-radius: 16px; background: var(--byd-editor-panel-bg); border: 1px solid #2f333d; }
 .byd-symbols input[type='search'], .byd-symbols-set input { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; font: inherit; }
 .byd-symbols-cats { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0; }
 .byd-symbols button { border: 1px solid #2f333d; border-radius: 8px; padding: 6px 11px; background: #1b1d23; color: #fff; font-weight: 700; font-size: 12px; cursor: pointer; }
-.byd-symbols button[aria-pressed='true'] { background: var(--byd-editor-primary-bg); border-color: var(--byd-editor-primary-bg); }
 .byd-symbols-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; max-height: 58vh; overflow: auto; }
 .byd-symbols-tile { display: grid; justify-items: center; gap: 3px; padding: 8px 4px; font-weight: 400; font-size: 10px; color: #9aa3b8; }
 .byd-symbols-tile small { color: var(--byd-editor-quiet); font-size: 9px; }
@@ -970,7 +967,7 @@
 .byd-symbols-main { display: grid; gap: 16px; }
 .byd-symbols-empty { color: #9aa3b8; }
 .byd-symbols-set ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
-.byd-symbols-set li { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 10px; background: #171a23; border: 1px solid #2f333d; }
+.byd-symbols-set li { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 10px; background: var(--byd-editor-panel-bg); border: 1px solid #2f333d; }
 .byd-symbols-set code { color: #ffd98a; font-size: 12px; }
 .byd-symbols-set input { width: 96px; padding: 5px 8px; }
 .byd-symbols-set small { color: var(--byd-editor-quiet); font-size: 11px; }
@@ -1016,7 +1013,7 @@
 .byd-rules-empty { display: grid; gap: 12px; justify-items: start; max-width: 520px; padding: 24px; }
 .byd-rules-empty h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-rules-empty p { margin: 0; color: #9aa3b8; line-height: 1.6; }
-.byd-rules-empty button { border: 1px solid #2f333d; border-radius: 8px; padding: 8px 14px; background: var(--byd-editor-primary-bg); border-color: var(--byd-editor-primary-bg); color: #fff; font-weight: 700; cursor: pointer; }
+.byd-rules-empty button { border-radius: 8px; padding: 8px 14px; cursor: pointer; }
 
 /* The way to an icon (#33): the brace made visible in the cell being worked in. Which cell that is
    is React's to know, not the stylesheet's — a handle hidden by CSS is still a stop in the tab

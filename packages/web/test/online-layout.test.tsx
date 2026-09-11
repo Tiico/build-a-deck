@@ -14,7 +14,7 @@ import { translate } from '../src/i18n/index.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
-const css = read('src/online/online.css') + read('src/player/player.css')
+const css = read('src/online/online.css') + read('src/player/player.css') + read('src/buttons.css')
 const noop = (): undefined => undefined
 const idle = { send: async () => undefined } as unknown as Parameters<typeof SessionButtons>[0]['client']
 const view = { seq: 3, zones: [], components: [], seats: [{ id: 'A', name: 'The designer' }] } as unknown as Snapshot

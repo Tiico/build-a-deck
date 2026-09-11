@@ -187,7 +187,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
           over them, and then what is written on the screen and what the field is called are two
           different things — which is the whole of WCAG 2.5.3. */}
       <label className="byd-wizard-label">{t('wizard.name')}<input value={s.name} onChange={(event) => setS({ ...s, name: event.target.value })} placeholder={t('wizard.name.placeholder')} /></label>
-      <fieldset><legend>{t('wizard.players')}</legend><div className="byd-wizard-players">{[1, 2, 3, 4, 5, 6].map((n) => <button key={n} type="button" aria-pressed={s.players === n} onClick={() => setS({ ...s, players: n })}>{n}</button>)}</div></fieldset>
+      <fieldset><legend>{t('wizard.players')}</legend><div className="byd-wizard-players">{[1, 2, 3, 4, 5, 6].map((n) => <button key={n} type="button" className="byd-choice" aria-pressed={s.players === n} onClick={() => setS({ ...s, players: n })}>{n}</button>)}</div></fieldset>
     </section>
   )
   const falten = (
@@ -203,7 +203,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
         </div>)}</div>
         <div className="byd-wizard-add-fields"><button type="button" onClick={() => addField('text')}>{t('wizard.add.text')}</button><button type="button" onClick={() => addField('number')}>{t('wizard.add.number')}</button><button type="button" onClick={() => addField('image')}>{t('wizard.add.image')}</button></div>
       </div>
-      <fieldset className="byd-wizard-frames"><legend>{t('wizard.frame')}</legend>{FRAMES.map((candidate) => <button key={candidate.id} type="button" aria-pressed={s.frame === candidate.id} onClick={() => setS({ ...s, frame: candidate.id })}>{t(candidate.name)}</button>)}</fieldset>
+      <fieldset className="byd-wizard-frames"><legend>{t('wizard.frame')}</legend>{FRAMES.map((candidate) => <button key={candidate.id} type="button" className="byd-choice" aria-pressed={s.frame === candidate.id} onClick={() => setS({ ...s, frame: candidate.id })}>{t(candidate.name)}</button>)}</fieldset>
     </section>
   )
   const korten = (
@@ -212,10 +212,10 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       <p>{t('wizard.cards.body')}</p>
       <div className="byd-wizard-card-workspace">
         <div className="byd-wizard-preview"><CardPreview id="wizard-live" face={front} row={row} icons={{}} /><span>{t('wizard.preview')}</span></div>
-        <div className="byd-wizard-card-form">{s.fields.map((field) => field.kind === 'image' ? <div key={field.key} className="byd-wizard-image-field is-wide"><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span><div>{row[field.key] ? <img src={row[field.key]} alt={t('wizard.image.preview', { label: field.label })} /> : <i>{t('wizard.image.none')}</i>}<label className="byd-wizard-file-button">{t(row[field.key] ? 'wizard.image.change' : 'wizard.image.choose')}<input type="file" accept="image/*" aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} onChange={(event) => chooseImage(selectedRow, field.key, event.target.files?.[0])} /></label>{row[field.key] && <button type="button" onClick={() => updateRow(selectedRow, field.key, '')}>{t('wizard.image.remove')}</button>}</div></div> : <label key={field.key} className={field.key === 'body' ? 'is-wide' : ''}><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span>{field.key === 'body' ? <textarea rows={4} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} /> : <input type={field.kind === 'number' ? 'number' : 'text'} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} />}</label>)}</div>
+        <div className="byd-wizard-card-form">{s.fields.map((field) => field.kind === 'image' ? <div key={field.key} className="byd-wizard-image-field is-wide"><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span><div>{row[field.key] ? <img src={row[field.key]} alt={t('wizard.image.preview', { label: field.label })} /> : <i>{t('wizard.image.none')}</i>}<label className="byd-wizard-file-button byd-secondary">{t(row[field.key] ? 'wizard.image.change' : 'wizard.image.choose')}<input type="file" accept="image/*" aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} onChange={(event) => chooseImage(selectedRow, field.key, event.target.files?.[0])} /></label>{row[field.key] && <button type="button" onClick={() => updateRow(selectedRow, field.key, '')}>{t('wizard.image.remove')}</button>}</div></div> : <label key={field.key} className={field.key === 'body' ? 'is-wide' : ''}><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span>{field.key === 'body' ? <textarea rows={4} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} /> : <input type={field.kind === 'number' ? 'number' : 'text'} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} />}</label>)}</div>
       </div>
-      <div className="byd-wizard-card-tabs">{s.rows.map((candidate, index) => <button type="button" key={index} aria-pressed={selectedRow === index} onClick={() => setSelectedRow(index)}><b>{index + 1}</b>{candidate['title'] || t('wizard.card.untitled')}</button>)}<button type="button" className="is-add" onClick={addRow}>{t('wizard.card.add')}</button><button type="button" disabled={s.rows.length === 1} onClick={() => removeRow(selectedRow)}>{t('wizard.card.remove')}</button></div>
-      <footer><p>{t('wizard.footer')}</p><button type="button" className="byd-wizard-primary" disabled={!ready || busy} onClick={() => void toEditor()}>{t(busy ? 'wizard.creating' : 'wizard.create')}</button>{error && <span role="alert">{error}</span>}</footer>
+      <div className="byd-wizard-card-tabs">{s.rows.map((candidate, index) => <button type="button" key={index} className="byd-choice" aria-pressed={selectedRow === index} onClick={() => setSelectedRow(index)}><b>{index + 1}</b>{candidate['title'] || t('wizard.card.untitled')}</button>)}<button type="button" className="is-add" onClick={addRow}>{t('wizard.card.add')}</button><button type="button" disabled={s.rows.length === 1} onClick={() => removeRow(selectedRow)}>{t('wizard.card.remove')}</button></div>
+      <footer><p>{t('wizard.footer')}</p><button type="button" className="byd-wizard-primary byd-primary" disabled={!ready || busy} onClick={() => void toEditor()}>{t(busy ? 'wizard.creating' : 'wizard.create')}</button>{error && <span role="alert">{error}</span>}</footer>
     </section>
   )
   const handoff = <div className="byd-wizard-handoff"><strong>{t('wizard.handoff.title')}</strong><p>{t('wizard.handoff.body')}</p></div>
@@ -246,6 +246,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
                   key={key}
                   id={`byd-wizard-tab-${key}`}
                   type="button"
+                  className="byd-choice"
                   role="tab"
                   aria-selected={step === key ? 'true' : 'false'}
                   aria-controls={`byd-wizard-panel-${key}`}
@@ -277,7 +278,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
               same move said the way a form says it, for someone who reads the page in order. */}
           <nav className="byd-wizard-steps" aria-label={t('wizard.stepnav')}>
             <button type="button" disabled={at === 0} onClick={() => setStep(STEPS[at - 1]?.[0] ?? step)}>{t('wizard.prev')}</button>
-            <button type="button" className="byd-wizard-primary" disabled={at === STEPS.length - 1} onClick={() => setStep(STEPS[at + 1]?.[0] ?? step)}>{t('wizard.next')}</button>
+            <button type="button" className="byd-wizard-primary byd-primary" disabled={at === STEPS.length - 1} onClick={() => setStep(STEPS[at + 1]?.[0] ?? step)}>{t('wizard.next')}</button>
           </nav>
         </div>
       )}

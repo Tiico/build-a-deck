@@ -33,8 +33,11 @@
   /* "Nothing bounds the pill on this axis", said as a length so the two bounds below can always
      be compared. No name reaches it; a pill this wide would be off the phone long before. */
   --byd-seat-unbounded: 9999px;
+  /* The felt's own dark. A hex in a rule until the button language (#44) had to be measured
+     against it; a ground without a name is a ground no contrast test can ask about. */
+  --byd-join-bg: #14161c;
   min-height: 100vh; box-sizing: border-box; padding: 40px 20px 28px;
-  background: #14161c; color: #eee; font-family: system-ui, sans-serif;
+  background: var(--byd-join-bg); color: #eee; font-family: system-ui, sans-serif;
   display: grid; grid-template-rows: auto 1fr auto; gap: 20px;
 }
 .byd-join > header { display: grid; gap: 4px; font-size: 13px; color: #9aa3b8; }
@@ -125,10 +128,25 @@
 .byd-join-table button[data-edge='W'] { left: calc(var(--byd-seat-hang-x) * -1); top: calc(50% + var(--seat-step) * var(--byd-seat-pitch-y)); transform: translateY(-50%); }
 .byd-join form { display: grid; gap: 10px; }
 .byd-join input { padding: 16px; border-radius: 12px; border: 1px solid #2c3242; background: #1b1e27; color: #fff; font-size: 18px; }
-.byd-join form button { padding: 18px; border-radius: 12px; border: 0; background: #7dd3a0; color: #0d0f14; font-size: 18px; font-weight: 800; }
-.byd-join form button:disabled { background: #242938; color: #5b6478; }
+.byd-join form button { padding: 18px; border-radius: 12px; border: 1px solid transparent; font-size: 18px; font-weight: 800; }
+/* Refused is a state of a role and not a role of its own, and this page opens in it: nothing is
+   chosen and nothing is typed, so all three ways on are shut. Said of `form button` it was
+   (0,2,2) and took the fill and the ink off the role but not the line, which left the first
+   action a grey pill inside a green ring — and it re-filled the two outlined ways on, so they
+   read filled while refused and outlined once allowed, backwards. So the first action goes grey
+   whole, line and all; a dimmed green would still be the green pill to press. The other two only
+   fade, because a line at a third of its strength has already said "not yet" without turning
+   into a fill. */
+.byd-join .byd-primary:disabled { background: #242938; border-color: #242938; color: #5b6478; }
 
-.byd-join-observe { background: transparent; border: 1px solid #2c3242; color: #9aa3b8; font-size: 13px; }
-.byd-join-observe:disabled { opacity: 0.35; }
-.byd-join-online { background: #242938 !important; color: #fff !important; font-size: 14px !important; }
-.byd-join-online:disabled { opacity: 0.35; }
+/* The two ways on that are not the first one. Both are sentences rather than words — "play on
+   this screen (the table and the hand here)" — so they are read at the size a sentence is read at
+   and not at the size the button that seats you shouts in. Said from the surface so the pair wins
+   over `.byd-join form button`, which is 18 px and (0,1,2); the class alone would lose, which is
+   precisely the mistake `.byd-join-observe` was making before (#44).
+
+   What they are *drawn* in is not said here at all any more: that is the shared secondary, one
+   line and one ink for the whole tool. */
+.byd-join .byd-join-online,
+.byd-join .byd-join-observe { font-size: 14px; }
+.byd-join-online:disabled, .byd-join-observe:disabled { opacity: 0.35; }

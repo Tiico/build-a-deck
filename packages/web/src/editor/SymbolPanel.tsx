@@ -35,11 +35,11 @@ export function SymbolPanel({ doc, client, assetBase }: SymbolPanelProps) {
         <p>{t('symbols.lead')}</p>
         <input type="search" aria-label={t('symbols.search')} placeholder={t('symbols.search.placeholder')} value={query} onChange={(e) => setQuery(e.target.value)} />
         <div className="byd-symbols-cats" role="group" aria-label={t('symbols.categories')}>
-          <button type="button" aria-pressed={category === null} onClick={() => setCategory(null)}>
+          <button type="button" className="byd-choice" aria-pressed={category === null} onClick={() => setCategory(null)}>
             {t('symbols.all')}
           </button>
           {CATEGORIES.map((c) => (
-            <button key={c} type="button" aria-pressed={category === c} onClick={() => setCategory(category === c ? null : c)}>
+            <button key={c} type="button" className="byd-choice" aria-pressed={category === c} onClick={() => setCategory(category === c ? null : c)}>
               {t(c)}
             </button>
           ))}

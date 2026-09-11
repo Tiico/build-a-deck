@@ -1,8 +1,17 @@
 /* Player view — the strip from the chosen prototype. */
 
 /* The view's colours as tokens, so a colour change is a measurable change (see contrast.ts).
-   Every ink/ground pair a player reads is listed in PLAYER_TEXT_PAIRS and measured by a test. */
-.byd-player {
+   Every ink/ground pair a player reads is listed in PLAYER_TEXT_PAIRS and measured by a test.
+
+   Bound to every room the session's own furniture opens in, and not only to the phone. The
+   sheets, the survey and the rewind question are drawn by this sheet, and `SessionOverlays`
+   mounts them on `/online` as well; `/observe` mounts the survey by itself. Named on
+   `.byd-player` alone, every token below fell back to nothing on two of the three routes, and a
+   button whose fill and ink resolve to nothing is drawn by the browser instead — a grey system
+   button on a dark felt. */
+.byd-player,
+.byd-online,
+.byd-observer {
   --byd-bg: #14161c;
   --byd-surface: #1b1e27;
   --byd-control: #242938;
@@ -116,7 +125,6 @@
 .byd-rewind-ask h1 { margin: 0; font-size: 26px; }
 .byd-rewind-ask p { margin: 0; color: var(--byd-ink-muted); font-size: 15px; }
 .byd-rewind-ask button { padding: 18px; border: 0; border-radius: 12px; font-size: 18px; font-weight: 700; }
-.byd-rewind-ask button[data-kind='ok'] { background: var(--byd-accent); color: var(--byd-on-accent); }
 .byd-rewind-ask button[data-kind='no'] { background: var(--byd-danger-bg); color: var(--byd-danger); }
 
 /* Textures (TUNN-SKIVA §5): the rendered face fills the card; the name stays for screen readers. */
@@ -155,7 +163,6 @@
 .byd-survey-q h2 { margin: 0; font-size: 20px; font-weight: 700; }
 .byd-survey-scale { display: flex; gap: 8px; }
 .byd-survey-scale button { flex: 1; aspect-ratio: 1; border-radius: 14px; border: 1px solid var(--byd-line); background: var(--byd-surface); color: var(--byd-ink-strong); font-size: 18px; font-weight: 700; }
-.byd-survey-scale button[aria-pressed='true'] { background: var(--byd-accent); color: var(--byd-on-accent); border-color: var(--byd-accent); }
 .byd-survey-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--byd-ink-quiet); }
 .byd-survey textarea { width: 100%; box-sizing: border-box; min-height: 110px; border-radius: 12px; border: 1px solid var(--byd-line); background: var(--byd-surface); color: var(--byd-ink-strong); padding: 12px; font: 15px system-ui; }
 .byd-survey-error { color: var(--byd-danger); font-size: 13px; margin: 0; }
@@ -163,7 +170,7 @@
 .byd-survey-dots { flex: 1; display: flex; gap: 6px; }
 .byd-survey-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--byd-line); }
 .byd-survey-dots i[data-on='true'] { background: var(--byd-accent); }
-.byd-survey-nav button { padding: 14px 18px; border: 0; border-radius: 12px; background: var(--byd-accent); color: var(--byd-on-accent); font-size: 15px; font-weight: 700; }
+.byd-survey-nav button { padding: 14px 18px; border-radius: 12px; font-size: 15px; }
 .byd-survey-nav button:disabled { opacity: 0.35; }
 .byd-survey-thanks { display: grid; place-items: center; text-align: center; gap: 8px; }
 .byd-survey-thanks strong { font-size: 24px; }
