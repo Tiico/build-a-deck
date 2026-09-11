@@ -224,6 +224,32 @@ describe('a table whose seats share a side (#42)', () => {
     expect(hit).toEqual({ A: 'A', B: 'B', C: 'C', D: 'D', E: 'E', F: 'F', G: 'G', H: 'H' })
   }, 60_000)
 
+  // Five, six and seven seats share sides too, and unevenly: at five only the south is doubled,
+  // at seven only the west is not. A table that only comes out right when it is full is not right.
+  it.each([5, 6, 7])('gives every seat of a %i-seat table a box of its own, and its own tap', async (count) => {
+    const markup = await picker(recipeSetup(count))
+    const { seats: boxes } = await measure(markup)
+    expect(boxes).toHaveLength(count)
+
+    const stacked = pairsOf(boxes)
+      .filter(([a, b]) => overlap(a, b).w > 0 && overlap(a, b).h > 0)
+      .map(([a, b]) => `${a.seat}×${b.seat} ${overlap(a, b).w}×${overlap(a, b).h}`)
+    expect(stacked).toEqual([])
+    expect(await reachable(markup)).toEqual(Object.fromEntries(boxes.map((b) => [b.seat, b.seat])))
+  }, 60_000)
+
+  // The other half of the bargain: spreading seats along an edge may not move the seats that have
+  // an edge to themselves. Up to four players every side carries one, and one seat on a side
+  // stands in the middle of it — which is where the picker has always stood it (#39).
+  it.each([2, 3, 4])('leaves a table of %i, where nobody shares a side, standing where it stood', async (count) => {
+    const { felt, seats } = await measure(await picker(recipeSetup(count)))
+    expect(seats).toHaveLength(count)
+    for (const seat of seats) {
+      if (seat.edge === 'N' || seat.edge === 'S') expect(seat.x + seat.w / 2).toBeCloseTo(felt.x + felt.w / 2, 1)
+      else expect(seat.y + seat.h / 2).toBeCloseTo(felt.y + felt.h / 2, 1)
+    }
+  }, 60_000)
+
   // Not overlapping is the floor, not the look. The picker is a picture of a table, and a table
   // whose ends are crowded and whose sides are airy is not the table anyone is sitting at.
   it('leaves the same air between two seats on a side as between two on an end', async () => {
