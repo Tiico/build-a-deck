@@ -423,3 +423,31 @@ describe('a table whose seats share a side (#42)', () => {
     expect(seat.name).toContain('Alexandra')
   }, 60_000)
 })
+
+// The same fault as #42 seen from the other side. There it was two seats on one edge; here it is
+// two on opposite edges, and nothing about sharing an edge is involved: at four seats every
+// compass point carries exactly one seat, and east and west still grow across the felt into each
+// other. A seat alone on its edge is deliberately uncapped (#42) — it has empty felt beside it
+// *along* its own edge — but the felt it has in front of it is not empty: the other seat is at
+// the far end of it.
+describe('two seats facing each other across the felt (#52)', () => {
+  // Four, five and six seats are the tables where east and west are each alone on their edge.
+  // `edgeOf` runs S, N, E, W and round again, so C is the east seat and D the west one at each
+  // of the three — and at four seats no edge is shared at all, so the felt is the small one.
+  it.each([4, 5, 6])('keeps the east and west seat of a %i-seat table apart however long their names are', async (count) => {
+    // Two long names and not one twice, because the page is read back by name and two seats
+    // wearing the same one cannot be told apart. They are the same length to the letter.
+    const east = 'Bartholomew Longbottom'
+    const west = 'Wilhelmina Ravensworth'
+    const markup = await picker(recipeSetup(count), { C: east, D: west })
+    const { seats: boxes } = await measure(markup)
+    expect(boxes.filter((b) => b.edge === 'E').map((b) => b.seat)).toEqual(['C'])
+    expect(boxes.filter((b) => b.edge === 'W').map((b) => b.seat)).toEqual(['D'])
+
+    const stacked = pairsOf(boxes)
+      .filter(([a, b]) => overlap(a, b).w > 0 && overlap(a, b).h > 0)
+      .map(([a, b]) => `${a.seat}×${b.seat} ${overlap(a, b).w}×${overlap(a, b).h}`)
+    expect(stacked).toEqual([])
+    expect(await reachable(markup)).toEqual(Object.fromEntries(boxes.map((b) => [b.seat, b.seat])))
+  }, 60_000)
+})

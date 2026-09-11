@@ -24,6 +24,15 @@
   --byd-seat-pitch-x: 132px;
   --byd-seat-pitch-y: 112px;
   --byd-seat-gap: 14px;
+  /* How far a pill hangs off the edge it belongs to. The offsets below are written from these
+     and nothing else, and so is the room a pill on that edge has to grow in (#52) — the two may
+     not be allowed to drift apart, because a pill that hangs further out than its cap was
+     reckoned for is a pill that reaches across the felt again. */
+  --byd-seat-hang-x: 30px;
+  --byd-seat-hang-y: 26px;
+  /* "Nothing bounds the pill on this axis", said as a length so the two bounds below can always
+     be compared. No name reaches it; a pill this wide would be off the phone long before. */
+  --byd-seat-unbounded: 9999px;
   min-height: 100vh; box-sizing: border-box; padding: 40px 20px 28px;
   background: #14161c; color: #eee; font-family: system-ui, sans-serif;
   display: grid; grid-template-rows: auto 1fr auto; gap: 20px;
@@ -34,7 +43,10 @@
    already reads in, rather than a banner the eye has to get past on every other visit. */
 .byd-join-left { margin: 6px 0 0; color: #cdd4e4; font-size: 14px; }
 .byd-join-table {
-  position: relative; place-self: center; width: 220px; height: 150px; border-radius: 16px;
+  /* The felt's own width is a number the pills have to know as well as the felt does (#52), so it
+     is kept where both can read it rather than written twice. */
+  --byd-felt-w: 220px;
+  position: relative; place-self: center; width: var(--byd-felt-w); height: 150px; border-radius: 16px;
   background: radial-gradient(ellipse at 50% 40%, #2e6b46, #1f4a30 70%, #173a26);
   box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.45), 0 0 0 10px #4a2f1c;
   /* Seats at an edge are hung off that edge and take no part in this; the row is for the seats
@@ -50,7 +62,7 @@
    220 × 150 exactly as it always was. The phone pays nothing either way: the felt stands in a
    grid row of its own with room to spare, so the page is the same height, scrolls no more
    sideways, and leaves "Sätt dig" where it was. */
-.byd-join-table[data-shares] { width: 260px; height: 200px; }
+.byd-join-table[data-shares] { --byd-felt-w: 260px; height: 200px; }
 /* The picker is met with a thumb and nothing else, so a seat is held to the 44 px every control
    in the product is held to (UX-KONTROLLER: träffytor). The pill grows around its word rather
    than the word growing: the label is a seat's name, not a button's size. */
@@ -59,13 +71,27 @@
   padding: 8px 14px; min-width: 60px; min-height: 44px; border-radius: 999px; white-space: nowrap;
   border: 3px solid transparent; background: var(--seat); color: var(--byd-seat-ink); font-weight: 700; font-size: 13px;
 }
-/* A name may not grow the pill into the place beside it (#42): a pill that shares its edge
-   reaches at most one pitch less the gap two seats keep, and a longer name is cut. Cut here
-   rather than in the page, so the name a screen reader says is still the whole name.
+/* A name may not grow the pill into anyone else's place, and a pill has two ways of trying. It
+   can reach *along* its own edge into the seat beside it (#42), and it can reach *across* the
+   felt into the seat on the edge opposite (#52). So a pill is as wide as the room it has, and
+   the room it has is whichever of the two is the smaller; a longer name is cut. Cut here rather
+   than in the page, so the name a screen reader says is still the whole name.
 
-   Only a pill with a neighbour, though — `data-shares` is set by the page for exactly the seats
-   its own count of the edge found company on. A seat alone on its edge has empty felt beside it
-   and nothing to reach into, so it goes on growing with its name as it always has.
+   Along the edge, only a pill with a neighbour is bounded — `data-shares` is set by the page for
+   exactly the seats its own count of the edge found company on — and it reaches at most one pitch
+   less the gap two seats keep. A seat alone on its edge has empty felt beside it and nothing to
+   reach into, so nothing bounds it there; that is #42's decision and it stands.
+
+   Across the felt it is the other way about. Two seats on one edge stand beside each other and
+   never meet across it, so north and south are unbounded this way — the seat opposite is a whole
+   felt further down, not further along. East and west are the pair that face each other, and they
+   are bounded whether they share their edge or not: the two of them have the felt's width plus the
+   two overhangs to divide between them, less the gap they keep, so half of that each. It is the
+   felt's own width that says so, not a felt that happens to be wide enough — on a 220 px felt the
+   east seat may be 133 px and on a 260 px felt 153 px, and shrinking the felt tightens the cap
+   instead of letting the pills meet in the middle. Before it did: `Bartholomew Longbottom` on both
+   grew each pill to 196 px and the two lay 112 px over each other on a four-seat table, where the
+   west seat took the east seat's tap.
 
    The name sits in a span of its own, and that span is what the cut is hung on. The pill is a
    flex container, so the name would otherwise be a flex container's own anonymous text —
@@ -74,8 +100,11 @@
    `Bartholomew Longbottom` came out as `mew Lon`, a different name with nothing on it to say it
    had been cut. A span takes the cut, `min-width: 0` lets it shrink to the pill, and the
    ellipsis lands where the name really ends. */
-.byd-join-table button[data-shares] { max-width: calc(var(--byd-seat-pitch-x) - var(--byd-seat-gap)); overflow: hidden; }
-.byd-join-table button[data-shares] > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.byd-join-table button { max-width: min(var(--seat-room-along, var(--byd-seat-unbounded)), var(--seat-room-across, var(--byd-seat-unbounded))); overflow: hidden; }
+.byd-join-table button > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.byd-join-table button[data-shares] { --seat-room-along: calc(var(--byd-seat-pitch-x) - var(--byd-seat-gap)); }
+.byd-join-table button[data-edge='E'],
+.byd-join-table button[data-edge='W'] { --seat-room-across: calc((var(--byd-felt-w) + 2 * var(--byd-seat-hang-x) - var(--byd-seat-gap)) / 2); }
 /* A seat with an edge is hung off that edge of the felt. A seat without one — a table that gives
    it no hand says nothing about which side it is on — keeps its place in the row above, because
    a picker that guesses a side is how every seat once ended up on the same one (#39).
@@ -90,10 +119,10 @@
 .byd-join-table button[data-edge] { position: absolute; --seat-at: 0; --seat-of: 1; --seat-step: calc((var(--seat-at) * 2 - var(--seat-of) + 1) / 2); }
 .byd-join-table button[aria-disabled='true'] { background: #2a2e3a; color: #9aa3b8; }
 .byd-join-table button[aria-pressed='true'] { border-color: #fff; }
-.byd-join-table button[data-edge='N'] { top: -26px; left: calc(50% + var(--seat-step) * var(--byd-seat-pitch-x)); transform: translateX(-50%); }
-.byd-join-table button[data-edge='S'] { bottom: -26px; left: calc(50% + var(--seat-step) * var(--byd-seat-pitch-x)); transform: translateX(-50%); }
-.byd-join-table button[data-edge='E'] { right: -30px; top: calc(50% + var(--seat-step) * var(--byd-seat-pitch-y)); transform: translateY(-50%); }
-.byd-join-table button[data-edge='W'] { left: -30px; top: calc(50% + var(--seat-step) * var(--byd-seat-pitch-y)); transform: translateY(-50%); }
+.byd-join-table button[data-edge='N'] { top: calc(var(--byd-seat-hang-y) * -1); left: calc(50% + var(--seat-step) * var(--byd-seat-pitch-x)); transform: translateX(-50%); }
+.byd-join-table button[data-edge='S'] { bottom: calc(var(--byd-seat-hang-y) * -1); left: calc(50% + var(--seat-step) * var(--byd-seat-pitch-x)); transform: translateX(-50%); }
+.byd-join-table button[data-edge='E'] { right: calc(var(--byd-seat-hang-x) * -1); top: calc(50% + var(--seat-step) * var(--byd-seat-pitch-y)); transform: translateY(-50%); }
+.byd-join-table button[data-edge='W'] { left: calc(var(--byd-seat-hang-x) * -1); top: calc(50% + var(--seat-step) * var(--byd-seat-pitch-y)); transform: translateY(-50%); }
 .byd-join form { display: grid; gap: 10px; }
 .byd-join input { padding: 16px; border-radius: 12px; border: 1px solid #2c3242; background: #1b1e27; color: #fff; font-size: 18px; }
 .byd-join form button { padding: 18px; border-radius: 12px; border: 0; background: #7dd3a0; color: #0d0f14; font-size: 18px; font-weight: 800; }
