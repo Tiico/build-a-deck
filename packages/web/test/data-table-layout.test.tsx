@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { useState } from 'react'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { chromium, type Browser } from 'playwright'
 import { applyEdit } from '@byd/server/doc'
@@ -420,4 +420,70 @@ describe('the head of a table that is being scrolled both ways (#53 on #17)', ()
     expect(at.pin.x + at.pin.w).toBe(at.box.x + at.box.w)
     expect(at.cut).toBe('true')
   }, 60_000)
+})
+
+// Scrolling is not the only thing that puts a column under the pin. A window pulled narrower
+// moves the pin; a field added or taken away moves every column after it. Neither is a scroll, so
+// neither would ever be heard by a scroll listener — and a cue that only listened for scrolls
+// would go on saying whatever it last said. jsdom lays nothing out, so the boxes are given to it
+// and the sizes are the fact under test; what is being measured is that the table asks again.
+type Rect = { left: number; right: number }
+
+function withBoxes(boxes: Map<Element, Rect>): () => void {
+  const real = Element.prototype.getBoundingClientRect
+  Element.prototype.getBoundingClientRect = function (this: Element) {
+    const at = boxes.get(this) ?? { left: 0, right: 0 }
+    return { x: at.left, y: 0, left: at.left, right: at.right, top: 0, bottom: 0, width: at.right - at.left, height: 0, toJSON: () => ({}) } as DOMRect
+  }
+  return () => {
+    Element.prototype.getBoundingClientRect = real
+  }
+}
+
+describe('a table that stops being the size it was (#53)', () => {
+  it('is asked again, because a field added or a window narrowed moves a column under the pin as surely as a scroll does', async () => {
+    const boxes = new Map<Element, Rect>()
+    const restore = withBoxes(boxes)
+    // jsdom has no ResizeObserver; it is given one that says what it was asked to watch and lets
+    // the test be the thing that changed size.
+    const watched: Element[] = []
+    let wake: () => void = () => undefined
+    class Stub {
+      constructor(run: () => void) {
+        wake = run
+      }
+      observe(el: Element) {
+        watched.push(el)
+      }
+      disconnect() {
+        watched.length = 0
+      }
+    }
+    ;(globalThis as { ResizeObserver?: unknown }).ResizeObserver = Stub
+    try {
+      const { container } = render(<Table doc={wideDoc()} />)
+      const scroll = container.querySelector('.byd-data-scroll')!
+      const pin = container.querySelector('.byd-data thead .byd-data-remove')!
+      const last = [...container.querySelectorAll('.byd-data thead > tr > *')].at(-3)!
+
+      // Both boxes whose size can move a column under the pin are being watched: the one that
+      // scrolls, and the table inside it.
+      expect(watched).toEqual([scroll, container.querySelector('.byd-data')])
+
+      // Nothing overlaps to begin with: the last column ends exactly where the pin begins.
+      boxes.set(pin, { left: 1220, right: 1264 })
+      boxes.set(last, { left: 1100, right: 1220 })
+      wake()
+      await waitFor(() => expect(scroll.getAttribute('data-cut')).toBe('false'))
+
+      // Now the table is wider than it was — a field was added — and that column runs on past
+      // the pin's edge without anything having been scrolled.
+      boxes.set(last, { left: 1100, right: 1250 })
+      wake()
+      await waitFor(() => expect(scroll.getAttribute('data-cut')).toBe('true'))
+    } finally {
+      restore()
+      delete (globalThis as { ResizeObserver?: unknown }).ResizeObserver
+    }
+  })
 })
