@@ -1032,7 +1032,8 @@ Ett långt namn är det andra sättet två platser hamnar på varandra: pillret 
 Ett piller som delar sin kant är därför högst en delning minus luften brett — `calc(var(--byd-seat-pitch-x) - var(--byd-seat-gap))`, 118 px — och ett längre namn kapas.
 Av de 118 px går 34 åt till ram och innerkant, så namnet självt har 84 px att stå på.
 Gränsen gäller bara den som har en granne: sidan sätter `data-shares` på just de platser dess egen räkning av kanten fann sällskap på, och css:en kapar efter det attributet.
-En ensam plats på sin kant har tom filt bredvid sig och inget att växa in i, så den bär hela sitt namn precis som före #42 — annars hade det vanligaste bordet, två till fyra spelare, betalat för ett fel det inte kan ha.
+En ensam plats på sin kant har tom filt bredvid sig och inget att växa in i *längs* kanten, så längs kanten bär den hela sitt namn precis som före #42 — annars hade det vanligaste bordet, två till fyra spelare, betalat för ett fel det inte kan ha.
+Tvärs över filten gäller något annat, och det är #52 nedan.
 Kapningen sker i css:en och inte på sidan, eftersom namnet en skärmläsare säger fortfarande ska vara hela namnet.
 
 Filten växte till 260 × 200 px 2026-09-11, därför att allting ovan hänger på hur stor den är.
@@ -1041,10 +1042,23 @@ En väljare som inte säger vem som sitter var är inte längre den bild av bord
 Sidan sätter `data-shares` på själva bordet för precis de bord vars egen räkning av kanterna fann ett par, ur samma läsning som märker de enskilda pillren, så de två aldrig kan säga emot varandra.
 Ett bord med fyra platser eller färre delar ingen kant, tar steget noll och ritas på 220 × 150 px precis som förut — filt och plats för plats på samma pixel som före #42.
 Telefonen betalar ingenting för den större filten: filten står i en egen rutnätsrad med gott om luft över och under sig, så sidan är lika hög, rullar inte mer i sidled och lämnar "Sätt dig" exakt där den stod.
-Den bredare filten håller på köpet isär två platser på motsatta kanter, som med långa namn annars kunde växa in i varandra mitt över filten.
-Ingenting här låser den effekten — den är en följd av måtten och inte ett beslut — och därför finns #52.
+
+Samma fel sett från andra hållet, 2026-09-11 (#52): ett piller växer inte bara längs sin egen kant utan också tvärs över filten, mot platsen på kanten mittemot.
+#42:s gräns resonerar bara om grannar på samma kant, så öst och väst var obundna åt det håll de faktiskt möts.
+Mätt i Chromium vid 390 px växte `Bartholomew Longbottom` på både öst och väst vart piller till 196 px: på ett fyraplatsbord — där ingen kant delas och filten alltså är den lilla — låg de 112 px på varandra och västplatsen tog östplatsens tryck, och på fem och sex platser låg de 72 px på varandra trots den bredare filten.
+Den bredare filten botade alltså aldrig något; den sköt bara upp mötet.
+Gränsen är därför en per axel, byggd av samma storheter som #42:s och inte en andra mekanism vid sidan av den.
+Längs kanten gäller #42:s gräns och bara för den som delar sin kant; tvärs över filten gäller #52:s och bara för öst och väst, som är de enda som står mitt emot varandra i sidled.
+Ett piller är det minsta av de två, `min()` i css:en, så den av dem som biter gör det oavsett vilken det är.
+Öst och väst har filtens bredd plus de två överhängen att dela på, minus luften de håller: hälften var, alltså 133 px på en 220 px filt och 153 px på en 260 px filt.
+Nord och syd är obundna tvärs över, eftersom platsen mittemot dem ligger en hel filt *ned* och inte i sidled.
+Gränsen frågar inte om kanten mittemot är tom — ett treplatsbord har ingen västplats, och östplatsen hålls ändå till sin halva — därför att ett piller som räcker förbi filtens mitt slutar säga vilken sida dess ägare sitter på, och därför att en gräns som beror på vilka platser som råkar finnas är just den andra mekanismen som inte ska finnas.
+Filtens bredd skrivs nu en enda gång, som `--byd-felt-w` på själva bordet, och överhänget som `--byd-seat-hang-x`; både filtens mått, platsernas lägen och gränsen läser dem.
+En krympt filt drar därmed åt gränsen i stället för att låta pillren mötas på mitten, och garantin hänger inte längre på att filten råkar vara bred nog.
+Kapningen sker i css:en också här, så namnet en skärmläsare säger är fortfarande hela namnet.
 
 `join-layout.test.tsx` mäter varje plats på fem-, sex-, sju- och åttaplatsbord i Chromium och träffprovar mitten av var och en: ingen ruta överlappar en annan, och varje plats svarar för sig själv.
+Samma fil sätter långa namn på både öst- och västplatsen på fyra-, fem- och sexplatsbordet och mäter om: fyraplatsbordet är fallet där kanterna är ensamma och filten den lilla, och det är där felet var störst.
 Samma fil läser åtta vanliga förnamn bokstav för bokstav ur pillren på ett åttaplatsbord — inget kapas — och håller två-, tre- och fyraplatsbordet mot de mått `origin/main` ritade dem med.
 Prototypen `packages/web/src/prototype/seats` togs bort när den hade svarat; dess resonemang står här, och dess bilder i `docs/issues/42-valjare-*.png`.
 
