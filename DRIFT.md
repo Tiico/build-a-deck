@@ -94,7 +94,7 @@ Bytet av Postgres-bild startar om databasen en gång vid deployen; volymen är d
 
 Jobbtabell i Postgres med `SELECT … FOR UPDATE SKIP LOCKED`.
 Två prioriteter: bordstextur före tryck-PDF.
-En Chromium-container med minnestak runt 2 GB och en sida i taget.
+En Chromium-container med en sida i taget och det minnestak §1 ger den — 1,5 GB sedan 2026-09-11.
 Utdata i R2 under hash av mall, rad, typversion och fontset; ett jobb vars hash redan finns är en no-op.
 En reaper återställer jobb vars `started_at` är äldre än en gräns, eftersom Chromium ibland hänger utan att dö.
 
@@ -182,8 +182,18 @@ Assets och backup: R2.
 `cloudflared` — tunnel.
 `updater` — pollar GHCR och rullar nya images.
 
-Minnesbudget på 8 GB, ungefärlig:
-`render` 2 GB, `postgres` 1–1,5 GB, `app` 0,5–1 GB, övrigt 0,5 GB, resten till OS och sidcache.
+Minnesbudget, reviderad 2026-09-11 vid första produktionssättningen:
+`render` 1,5 GB, `postgres` 768 MB, `app` 512 MB, `backup` 256 MB, `cloudflared` 128 MB.
+
+Den ursprungliga budgeten — `render` 2 GB, `postgres` 1–1,5 GB, `app` 0,5–1 GB — räknade med hela lådans 8 GB.
+Lådan är inte vår ensam: den bär redan ett trettiotal containrar bakom sin egen reverse proxy, tog 3,5 GB av 7,9 och hade 2,9 GB i swap innan något av det här startades.
+Att behålla den gamla budgeten hade varit att låta OOM-killern välja mellan vår Chromium och husets Plex, vilket är precis vad taken finns för att slippa.
+De tre som alltid är uppe ryms nu under 3 GB tillsammans, vilket är den andel av lådan stacken gör anspråk på.
+`packages/server/test/deploy.test.ts` är där siffrorna står skrivna som ett krav; de kan inte glida isär tyst.
+
+Följdkrav:
+Ett tryckjobb som behöver mer än 1,5 GB dör av sitt eget tak i stället för att ta huset med sig, och det ska synas som ett misslyckat jobb i kön, inte som tystnad.
+Den dagen tjänsten får riktiga användare är en egen låda — eller en tömd — det första som ska omprövas.
 
 ---
 

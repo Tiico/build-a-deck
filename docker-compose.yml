@@ -1,5 +1,6 @@
-# The stack from DRIFT.md. One command starts everything; memory limits are the design
-# constraint on 8 GB; nothing but the tunnel faces the street. Copy .env.example to .env.
+# The stack from DRIFT.md. One command starts everything; the memory limits are the share of a
+# box we do not have to ourselves (DRIFT §1); nothing but the tunnel faces the street.
+# Copy .env.example to .env.
 x-logging: &logging
   logging:
     driver: json-file
@@ -42,7 +43,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-    mem_limit: 1500m
+    mem_limit: 768m
     restart: unless-stopped
     <<: *logging
 
@@ -74,7 +75,7 @@ services:
       postgres:
         condition: service_healthy
     stop_grace_period: 20s
-    mem_limit: 1g
+    mem_limit: 512m
     restart: unless-stopped
     <<: *logging
 
@@ -94,7 +95,7 @@ services:
       postgres:
         condition: service_healthy
     stop_grace_period: 30s
-    mem_limit: 2g
+    mem_limit: 1500m
     shm_size: 512m
     restart: unless-stopped
     <<: *logging
