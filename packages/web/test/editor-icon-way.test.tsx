@@ -43,6 +43,16 @@ async function openTable(doc = projectDoc()) {
   })
 }
 
+// A press on the document reaches whoever is listening at the instant it is sent, and nobody
+// afterwards: the canvas hangs its key listener in a passive effect and the editor's chords hang
+// theirs the same way, so a press made before that effect has run is heard by no one and is gone
+// for good — there is no later state for a `waitFor` to wait in (#56). Both answer a key they act
+// on by preventing its default, and that is the one thing that is true only while the listener is
+// live, so the press is repeated until it is answered rather than trusted to arrive first.
+const press = async (init: KeyboardEventInit) => {
+  await waitFor(() => expect(fireEvent.keyDown(document, init)).toBe(false))
+}
+
 const cellFor = (field: string) => {
   const head = [...document.querySelectorAll('.byd-data thead th')].findIndex((th) => th.textContent?.startsWith(field))
   return document.querySelectorAll('.byd-data tbody tr')[0]!.children[head]!.querySelector('input') as HTMLInputElement
@@ -155,13 +165,13 @@ describe('the icon as a tool on the canvas (#33)', () => {
     expect(await screen.findByText('{svärd}')).toBeTruthy()
 
     // And one press takes both back. Not the element first and the symbol on the next press.
-    fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
+    await press({ key: 'z', ctrlKey: true })
     await waitFor(() => expect(screen.queryByText('{svärd}')).toBeNull())
     fireEvent.click(screen.getByRole('tab', { name: 'Mall' }))
     await waitFor(() => expect(document.querySelector('#canvas img.byd-icon')).toBeNull())
 
     // The same fact from the other side: one step forward brings both halves back together.
-    fireEvent.keyDown(document, { key: 'z', ctrlKey: true, shiftKey: true })
+    await press({ key: 'z', ctrlKey: true, shiftKey: true })
     await waitFor(() => expect(document.querySelector('#canvas img.byd-icon')).toBeTruthy())
     fireEvent.click(screen.getByRole('tab', { name: 'Symboler' }))
     expect(await screen.findByText('{svärd}')).toBeTruthy()
@@ -186,9 +196,9 @@ describe('the icon as a tool on the canvas (#33)', () => {
     expect(within(field).getByRole('option', { name: 'inget fält' }).getAttribute('value')).toBe('')
 
     // Nudged and taken away by the same keys as everything else on the canvas.
-    fireEvent.keyDown(document, { key: 'ArrowRight' })
+    await press({ key: 'ArrowRight' })
     await waitFor(() => expect((screen.getByLabelText(/^x/i) as HTMLInputElement).value).toBe('28'))
-    fireEvent.keyDown(document, { key: 'Delete' })
+    await press({ key: 'Delete' })
     await waitFor(() => expect(document.querySelector('#canvas img.byd-icon')).toBeNull())
   })
 
