@@ -22,13 +22,24 @@ Följdkrav:
 Stacken måste gå att starta om med ett kommando och innehålla allt: aktörsserver, Postgres, renderworker, backupagent, tunnel.
 Hårda minnestak per container, eftersom OOM-killern annars väljer offer själv.
 
-## 2. Exponering: Cloudflare Tunnel
+## 2. Exponering: lådans egen omvänd proxy om den har en, annars Cloudflare Tunnel
 
-`cloudflared` i stacken; inga öppna portar mot bostadsnätet.
-Tunneln löser dynamisk IP, TLS och WebSockets.
+Ursprungsbeslutet var `cloudflared` i stacken och inga öppna portar mot bostadsnätet; tunneln löser dynamisk IP, TLS och WebSockets.
+
+Reviderat 2026-09-11, vid första produktionssättningen:
+Lådan bär redan en traefik med wildcard-cert, en companion som skapar DNS-posten, och en DDNS-agent för den dynamiska IP:n — och 80 och 443 står redan öppna.
+Alla fyra skäl bakom tunnelbeslutet var alltså redan lösta på lådan, av något som var där först.
+Att lägga en andra ingång bredvid den hade varit en till väg att underhålla för ingenting.
+
+Beslutet är därför villkorat, inte omkullkastat:
+En låda som redan har en omvänd proxy lämnar appen till den; en låda som inte har det tar tunneln med sig i stacken.
+`docker-compose.traefik.yml` är överlägget för det första fallet och `tunnel`-profilen det andra; grundstacken nämner ingen av dem.
 
 Följdkrav:
 Health-endpointen bör kontrollera Postgres och R2, inte bara att processen svarar.
+Kedjan framför appen får aldrig vara husets SSO: produkten har egna konton, och en gäst kommer till bordet med en rumskod och inget konto alls (§9, §11).
+Den kedja som väljs ska däremot bära rate limiting, som är vad §9 ber om, och proxyn måste lita på Cloudflares vidarebefordrade huvuden för att räkna på rätt avsändare.
+Den dagen lådan byts mot en tom är tunneln kvar i stacken och kostar ett `COMPOSE_FILE` att byta till.
 
 ## 3. Aktörsmodellen utan Durable Objects
 

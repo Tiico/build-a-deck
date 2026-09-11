@@ -12,7 +12,7 @@ Allt nedan körs på lådan, i `/opt/build-your-deck`, om inget annat sägs.
 Du behöver:
 
 - En Ubuntu-låda med Docker och Compose, och ett konto som får köra `docker`.
-- En domän i Cloudflare, för tunneln och för inloggningslänkarna.
+- En domän i Cloudflare, för värdnamnet och för inloggningslänkarna.
 - Valfritt men rekommenderat: R2 (assets och backup), Resend (inloggningsmejl), Tailscale (administration).
 
 Vad som händer om något av det valfria saknas:
@@ -22,6 +22,8 @@ Vad som händer om något av det valfria saknas:
 | R2 | Texturer och uppladdade bilder ligger kvar i Postgres och går genom lådans uppström; ingen WAL-arkivering, alltså **ingen backup** (DRIFT §4, §5). |
 | Resend | Inloggningslänken skrivs i `app`-containerns logg i stället för att mejlas; bara den som når loggen kan logga in (DRIFT §12). |
 | Tailscale | Administration sker över SSH på det lokala nätet; Postgres lyssnar ändå bara på lådans `127.0.0.1` (DRIFT §10). |
+
+Och en väg in utifrån: antingen en omvänd proxy som redan står på lådan, eller Cloudflare Tunnel. Steg 3 säger hur.
 
 ## 2. Ny låda från noll
 
@@ -38,18 +40,22 @@ Minsta `.env` som duger i produktion:
 ```sh
 POSTGRES_PASSWORD=<något långt och slumpat>
 PUBLIC_ORIGIN=https://<ditt värdnamn>
-CLOUDFLARE_TUNNEL_TOKEN=<token från Cloudflare, steg 3>
 BYD_REGISTRY=ghcr.io/tiico/build-a-deck
 ```
 
-`PUBLIC_ORIGIN` är inte kosmetik: den avgör vart inloggningslänkarna pekar och om sessionskakan får `Secure`.
-Utan den fungerar inloggning inte som den ska bakom tunneln.
+plus de två eller den ena raden som steg 3 säger, beroende på vilken väg in lådan har.
 
-Värden som innehåller mellanslag måste citeras, eftersom filen läses både av Compose och av systemd:
+`PUBLIC_ORIGIN` är inte kosmetik: den avgör vart inloggningslänkarna pekar och om sessionskakan får `Secure`.
+Utan den fungerar inloggning inte som den ska bakom en proxy.
+
+Två saker om filens form, eftersom den läses av både Compose och systemd.
+Värden med mellanslag måste citeras:
 
 ```sh
 MAIL_FROM="build-your-deck <login@ditt-värdnamn>"
 ```
+
+Och en kommentar får bara stå först på raden. `PUBLIC_ORIGIN=https://x  # kommentar` blir värdet `https://x  # kommentar` för systemd, som bara känner igen `#` i radens början.
 
 Lägg till `R2_*` och `RESEND_API_KEY` när de finns; `.env.example` beskriver varje rad.
 Sätt aldrig `AUTH_BYPASS` här — stacken skickar den inte vidare till containern, men raden vilseleder nästa läsare.
@@ -65,16 +71,39 @@ ops/deploy.sh --force
 
 Timern pollar var femte minut efter en nyare `v*`-tagg; `--force` kör om även om lådan redan står på den nyaste.
 
-## 3. Tunneln i Cloudflare
+## 3. Vägen in
 
-Tunneln är enda vägen in; inga portar öppnas mot bostadsnätet (DRIFT §2).
+Två vägar, och lådan avgör vilken (DRIFT §2).
+
+### A. Lådan har redan en omvänd proxy
+
+Då lämnas appen till den, och proxyn håller certifikatet och DNS-posten. I `.env`:
+
+```sh
+COMPOSE_FILE=docker-compose.yml:docker-compose.traefik.yml
+BYD_HOSTNAME=deck.example
+```
+
+`docker-compose.traefik.yml` lägger `app` på proxyns nät och sätter dess etiketter: värdnamnet från `BYD_HOSTNAME`, port 8080, och kedjan `chain-no-auth@file`.
+
+Kedjan är inte fritt vald. Husets SSO får aldrig stå framför den här appen: produkten har egna konton, och en gäst kommer till bordet med en rumskod och inget konto alls (DRIFT §9, §11). En inloggningsvägg där hade avvisat varje spelare innan koden ens lästes. Kedjan som väljs ska däremot bära rate limiting, vilket är vad DRIFT §9 ber om.
+
+Kontrollera tre saker i proxyn innan du deployar:
+
+- att nätets namn i överlägget är proxyns nät (`t2_proxy` som det står),
+- att den kedja du pekar ut finns och inte innehåller någon autentisering,
+- att proxyn litar på Cloudflares vidarebefordrade huvuden, annars räknas rate limit på Cloudflares IP:n i stället för på besökarnas.
+
+### B. Lådan har ingen
+
+Då tar stacken med sig sin egen tunnel; inga portar öppnas.
 
 1. Zero Trust → Networks → Tunnels → skapa en tunnel av typen *Cloudflared*.
-2. Kopiera tunnelns token till `CLOUDFLARE_TUNNEL_TOKEN` i `.env`. Kör inte installationskommandot Cloudflare visar: `cloudflared` körs som en container i stacken, inte som en tjänst på lådan.
+2. Kopiera tunnelns token till `CLOUDFLARE_TUNNEL_TOKEN` i `.env`, och lämna `COMPOSE_FILE` osatt. Kör inte installationskommandot Cloudflare visar: `cloudflared` körs som en container i stacken, inte som en tjänst på lådan.
 3. Lägg till en *Public hostname*: ditt värdnamn, tjänst `HTTP`, URL `app:8080`.
 4. `ops/deploy.sh --force` igen, så att `tunnel`-profilen startar med token på plats.
 
-WebSockets behöver ingen inställning; tunneln bär dem.
+WebSockets behöver ingen inställning i något av fallen.
 
 ## 4. Första verifieringen
 
@@ -158,7 +187,7 @@ Det som är provat varje gång `ops/restore-test.sh` körs är att bytesen i R2 
 
 | Symptom | Vad det betyder |
 |---|---|
-| `{"msg":"images-not-ready"}` | CI har inte byggt klart bilderna för taggens SHA. Lådan står kvar där den står och försöker igen. Håller det i sig: ett paket som CI skapar för första gången blir **privat** i GHCR, även för ett publikt repo. Sätt det till publikt (GitHub → Packages → paketet → Package settings → Change visibility) eller lägg en `read:packages`-token i `GHCR_TOKEN`. |
+| `{"msg":"images-not-ready"}` | CI har inte byggt klart bilderna för taggens SHA. Lådan står kvar där den står och försöker igen. Håller det i sig: kontrollera att paketen är publika (GitHub → Packages → paketet → Package settings). Ett paket CI skapar för första gången kan bli privat, och då hittar lådan aldrig manifestet. Alternativet är en `read:packages`-token i `GHCR_TOKEN`. |
 | `{"msg":"deploy-unhealthy"}` | Stacken startade men `/health` svarade inte på en minut. `docker compose logs app` säger varför; oftast Postgres. |
 | `{"msg":"no-release"}` | Ingen `v*`-tagg nås från `origin/main`. Tagga. |
 | `/health` ger 503 med `assets` | R2-nycklarna är fel eller bucketen finns inte. Texturer slutar visas; spelet i övrigt lever. |

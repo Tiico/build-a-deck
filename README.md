@@ -80,7 +80,7 @@ Utan `RESEND_API_KEY` skriver servern inloggningslänken i sin logg i stället f
 ## Drift på lådan
 
 Stacken i [docker-compose.yml](docker-compose.yml) är den från [DRIFT.md](DRIFT.md): `postgres` (med WAL-G i bilden), `app` (aktörer, WebSockets, API och den byggda webben från samma origin), `render` (Chromium-worker) och, med profiler, `cloudflared` (tunnel) och `backup` (nattlig basbackup till R2).
-Inga portar mot gatan: `app` och `postgres` lyssnar bara på lådans 127.0.0.1, tunneln når `app` på compose-nätet.
+Stacken öppnar inga portar mot gatan själv: `app` och `postgres` lyssnar bara på lådans 127.0.0.1, och den som släpper in utifrån — tunneln eller lådans egen proxy — når `app` på ett compose-nät.
 Med R2-variabler i `.env` skriver `render` texturerna till R2 och `app` svarar på `/faces/:hash` med en signerad länk som webbläsaren följer och behåller (DRIFT §4); utan dem stannar bytesen i Postgres.
 Uppladdade illustrationer går samma väg: `POST /assets` tar en bild från en inloggad skapare och svarar med dess hash, `GET /assets/:hash` serverar den (E1).
 Lokalt går samma väg att köra mot en MinIO: sätt `R2_ENDPOINT=http://127.0.0.1:9000` och nycklarna, som i `.claude/launch.json`.
@@ -100,7 +100,7 @@ ops/deploy.sh --force                          # första bygget och starten
 Deployen är pull-baserad (DRIFT §7): `ops/deploy.sh` hämtar taggar, rullar till den nyaste `v*`-taggen som nås från `origin/main`, kör `compose up` och väntar på `/health`, som också kontrollerar att Postgres svarar.
 `main` är trunk och deployas aldrig i sig; att sätta en `v*`-tagg är att deploya, och en ny commit på trunken rör inte lådan.
 Appen dränerar på SIGTERM och migrerar schemat vid start, så bytet är kort.
-Tunnelns publika värdnamn pekas på `http://app:8080` i Cloudflares panel.
+Vägen in är lådans egen (DRIFT §2): en låda som redan har en omvänd proxy får appen lämnad till sig genom `docker-compose.traefik.yml`, som `COMPOSE_FILE` i `.env` lägger ovanpå stacken; en låda utan tar `tunnel`-profilen, vars publika värdnamn pekas på `http://app:8080` i Cloudflares panel.
 Med R2-nycklar arkiverar Postgres varje WAL-segment till R2 inom en minut och `backup` tar en basbackup per natt (DRIFT §5); utan nycklar arkiveras inget och loggen säger det.
 `ops/restore-test.sh` återställer senaste basbackupen och allt WAL efter den i en tillfällig Postgres, räknar sessioner och rader, och spelar upp den senaste sessionens logg genom motorn: en backup som aldrig lästs tillbaka är en förhoppning.
 Samma sak går att prova lokalt mot en MinIO med `R2_ENDPOINT=http://host.docker.internal:9000`.

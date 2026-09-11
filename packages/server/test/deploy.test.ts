@@ -7,6 +7,9 @@ import { ConsoleMailer, ResendMailer, mailerFromEnv } from '../src/auth.js'
 // production. Both are contracts worth a test: without mail nobody can log in, and without a
 // public origin the session cookie loses `Secure`.
 const compose = readFileSync(new URL('../../../docker-compose.yml', import.meta.url), 'utf8')
+// The overlay for a box that already carries a reverse proxy (DRIFT §2), merged on top of the
+// stack by COMPOSE_FILE. The base file knows nothing about it.
+const overlay = readFileSync(new URL('../../../docker-compose.traefik.yml', import.meta.url), 'utf8')
 
 function serviceLines(yaml: string, service: string): string[] {
   const lines = yaml.split('\n')
@@ -60,6 +63,35 @@ describe('the stack hands the app its configuration', () => {
     const env = serviceEnvironment(compose, 'app')
     expect(Object.keys(env)).not.toContain('AUTH_BYPASS')
     expect(Object.keys(env)).not.toContain('WEB_ORIGIN')
+  })
+})
+
+describe('handing the app to a reverse proxy that is already there', () => {
+  const labels = serviceLines(overlay, 'app')
+    .filter((line) => line.trim().startsWith('- "traefik.'))
+    .map((line) => line.trim().replace(/^- "|"$/g, ''))
+
+  it('routes the host the public origin names, on the port the app listens to', () => {
+    expect(labels).toContain('traefik.enable=true')
+    expect(labels).toContain('traefik.docker.network=t2_proxy')
+    // The host is not written into the repository: one box's name is not the stack's business.
+    expect(labels.find((l) => l.includes('.rule='))).toMatch(/Host\(`\$\{BYD_HOSTNAME[:?}]/)
+    expect(labels).toContain('traefik.http.services.byd-svc.loadbalancer.server.port=8080')
+  })
+
+  it('never puts the house door in front of a product with its own', () => {
+    // The guests of a table are strangers with a room code and no account (DRIFT §9); an SSO in
+    // front of the page would turn every one of them away before the code was ever read.
+    const middlewares = labels.find((l) => l.includes('.middlewares=')) ?? ''
+    expect(middlewares).toContain('chain-no-auth@file')
+    expect(middlewares).not.toContain('authelia')
+  })
+
+  it('reaches the proxy without leaving the stack it belongs to', () => {
+    expect(serviceLines(overlay, 'app').some((l) => /^ {4}networks:/.test(l))).toBe(true)
+    expect(overlay).toMatch(/t2_proxy:\n {4}external: true/)
+    // The base stack stays portable: nothing in it may name the box's proxy.
+    expect(compose).not.toContain('t2_proxy')
   })
 })
 
