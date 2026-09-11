@@ -32,6 +32,7 @@ export const enPlay = {
   'tv.inspect': 'Inspection',
   'tv.inspect.hidden': 'hidden card',
   'tv.inspect.empty': 'point at a card',
+  'tv.latest.empty': 'Nothing has happened yet. What is played at the table turns up here.',
   'tv.seats': 'Seats',
   'tv.seat.hand.one': '{n} card in hand',
   'tv.seat.hand.other': '{n} cards in hand',

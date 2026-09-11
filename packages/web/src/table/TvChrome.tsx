@@ -87,14 +87,20 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
         </section>
         <section className="byd-tv-feed">
           <h2 id="tv-feed">{t('play.latest')}</h2>
-          <ol aria-labelledby="tv-feed">
-            {recent.map((l) => (
-              <li key={l.seq} style={l.by === null ? undefined : { ['--seat' as string]: seatColor(seatIndex(l.by)) }}>
-                <b>{l.seq}</b>
-                <span>{describeActivity(l, view, t)}</span>
-              </li>
-            ))}
-          </ol>
+          {/* A table nobody has touched yet (UX-16): the heading says what will fill it, rather
+              than standing over an empty list. The list itself comes back with the first line. */}
+          {recent.length === 0 ? (
+            <p data-empty>{t('tv.latest.empty')}</p>
+          ) : (
+            <ol aria-labelledby="tv-feed">
+              {recent.map((l) => (
+                <li key={l.seq} style={l.by === null ? undefined : { ['--seat' as string]: seatColor(seatIndex(l.by)) }}>
+                  <b>{l.seq}</b>
+                  <span>{describeActivity(l, view, t)}</span>
+                </li>
+              ))}
+            </ol>
+          )}
         </section>
       </aside>
       <footer>

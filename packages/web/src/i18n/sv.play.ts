@@ -43,6 +43,8 @@ export const svPlay = {
   'tv.inspect': 'Inspektion',
   'tv.inspect.hidden': 'dolt kort',
   'tv.inspect.empty': 'peka på ett kort',
+  // "Senast" innan någon rört bordet (UX-16): rubriken säger vad listan fylls av.
+  'tv.latest.empty': 'Inget hänt ännu. Det som spelas vid bordet hamnar här.',
   'tv.seats': 'Platser',
   'tv.seat.hand.one': '{n} kort på hand',
   'tv.seat.hand.other': '{n} kort på hand',

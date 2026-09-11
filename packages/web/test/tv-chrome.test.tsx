@@ -112,6 +112,30 @@ describe('the inspection panel (C)', () => {
   })
 })
 
+describe('the feed before anything has happened (UX-16)', () => {
+  it('says what will fill it, and gives the heading its lines back as soon as the table is touched', () => {
+    const { view, log } = buildScene()
+    const snapshot = view(null)
+    const { rerender } = render(
+      <TvChrome view={snapshot} activity={[]} roomCode="KX7P">
+        <div />
+      </TvChrome>,
+    )
+    const said = screen.getByText(/Inget hänt ännu/)
+    expect(said.textContent).toBe('Inget hänt ännu. Det som spelas vid bordet hamnar här.')
+    // Under the heading it belongs to, not floating somewhere else on the screen.
+    expect(said.closest('.byd-tv-feed')!.querySelector('h2')!.textContent).toBe('Senast')
+
+    rerender(
+      <TvChrome view={snapshot} activity={log.map(projectActivity)} roomCode="KX7P">
+        <div />
+      </TvChrome>,
+    )
+    expect(screen.queryByText(/Inget hänt ännu/)).toBeNull()
+    expect(within(screen.getByRole('list', { name: /senast/i })).getAllByRole('listitem').length).toBeGreaterThan(0)
+  })
+})
+
 describe('the feed is numbered and coloured (C)', () => {
   it('gives every line its seq and the colour of the seat that made it', () => {
     const { view, log } = buildScene()
