@@ -1022,18 +1022,30 @@ Med en ensam plats på kanten blir steget exakt noll, så tvåplatsfallet från 
 Lobbyn ser fortfarande inga zoner; gränsen #31 hårdnade står orörd.
 
 Steget längs en kant är inte detsamma åt båda håll.
-Ett piller är 44 px högt och 64 px brett när det bara säger "ledig" (UX-KONTROLLER: träffytor), alltså 20 px bredare än högt, så `--byd-seat-pitch-x` är 82 px och `--byd-seat-pitch-y` 62 px, valda så att luften mellan två platser läses lika stor ned längs en sida som tvärs över en ände: 17,7 px tvärs över änden mot 18 px ned längs sidan.
+Ett piller är 44 px högt och 64 px brett när det bara säger "ledig" (UX-KONTROLLER: träffytor), alltså 20 px bredare än högt, så `--byd-seat-pitch-x` är 132 px och `--byd-seat-pitch-y` 112 px, valda så att luften mellan två platser läses lika stor ned längs en sida som tvärs över en ände: 67,7 px tvärs över änden mot 68,0 px ned längs sidan.
 Hur långt isär paret får stå är inte fritt.
 Pillret hänger 26 px utanför sin kant och räcker därmed 18 px in på filten igen, så den yttersta platsen på en kant ställer sig annars i samma hörn som den yttersta platsen på kanten bredvid — vilket den gjorde, med 8,5 × 3,5 px av det ena pillret på det andra.
-Filten är 150 px hög, vilket ger öst-väst-paret 70 px steg innan dess nedre plats når upp till sydplatsens överkant; 62 px lämnar 4 px dager i alla fyra hörnen, och nord-syd-steget följer med på de 20 px mer som pillret är bredare än högt.
-Fler vid samma sida sitter alltså tätare, precis som vid ett riktigt bord, och filten och avhängen är orörda så att bord upp till fyra ritas exakt som förut.
+Hörnen sätter alltså taket, och taket hänger på filten: öst-väst-steget får vara filtens höjd minus de 80 px som nord- och sydpillret tillsammans räcker in, minus den dager man vill ha i vart och ett av de två hörn steget passerar.
+Filten är 200 px hög, så 112 px lämnar 4 px dager i alla fyra hörnen, och nord-syd-steget följer med på de 20 px mer som pillret är bredare än högt.
+Fler vid samma sida sitter alltså tätare, precis som vid ett riktigt bord.
 Ett långt namn är det andra sättet två platser hamnar på varandra: pillret växte med texten och hade ingen breddgräns alls.
-Ett piller som delar sin kant är därför högst en delning minus luften brett — `calc(var(--byd-seat-pitch-x) - var(--byd-seat-gap))`, 68 px — och ett längre namn kapas.
-Det tätare steget gör gränsen snävare än den var: 68 px rymmer "ledig" och ungefär fem tecken till, så på ett bord där kanterna delas kapas de flesta namn på skärmen.
+Ett piller som delar sin kant är därför högst en delning minus luften brett — `calc(var(--byd-seat-pitch-x) - var(--byd-seat-gap))`, 118 px — och ett längre namn kapas.
+Av de 118 px går 34 åt till ram och innerkant, så namnet självt har 84 px att stå på.
 Gränsen gäller bara den som har en granne: sidan sätter `data-shares` på just de platser dess egen räkning av kanten fann sällskap på, och css:en kapar efter det attributet.
 En ensam plats på sin kant har tom filt bredvid sig och inget att växa in i, så den bär hela sitt namn precis som före #42 — annars hade det vanligaste bordet, två till fyra spelare, betalat för ett fel det inte kan ha.
 Kapningen sker i css:en och inte på sidan, eftersom namnet en skärmläsare säger fortfarande ska vara hela namnet.
+
+Filten växte till 260 × 200 px 2026-09-11, därför att allting ovan hänger på hur stor den är.
+På 220 × 150 px blev öst-väst-steget 62 px och gränsen 68 px, varav 34 px ram och innerkant: 34 px text rymmer "ledig" och ungefär fem tecken till, så sex av åtta vanliga svenska förnamn ritades som `Kri…`, `Ale…` och `Ma…`.
+En väljare som inte säger vem som sitter var är inte längre den bild av bordet K12 valde den för, så filten fick den plats gränsen behöver — men bara där trängseln finns.
+Sidan sätter `data-shares` på själva bordet för precis de bord vars egen räkning av kanterna fann ett par, ur samma läsning som märker de enskilda pillren, så de två aldrig kan säga emot varandra.
+Ett bord med fyra platser eller färre delar ingen kant, tar steget noll och ritas på 220 × 150 px precis som förut — filt och plats för plats på samma pixel som före #42.
+Telefonen betalar ingenting för den större filten: filten står i en egen rutnätsrad med gott om luft över och under sig, så sidan är lika hög, rullar inte mer i sidled och lämnar "Sätt dig" exakt där den stod.
+Den bredare filten håller på köpet isär två platser på motsatta kanter, som med långa namn annars kunde växa in i varandra mitt över filten.
+Ingenting här låser den effekten — den är en följd av måtten och inte ett beslut — och därför finns #52.
+
 `join-layout.test.tsx` mäter varje plats på fem-, sex-, sju- och åttaplatsbord i Chromium och träffprovar mitten av var och en: ingen ruta överlappar en annan, och varje plats svarar för sig själv.
+Samma fil läser åtta vanliga förnamn bokstav för bokstav ur pillren på ett åttaplatsbord — inget kapas — och håller två-, tre- och fyraplatsbordet mot de mått `origin/main` ritade dem med.
 Prototypen `packages/web/src/prototype/seats` togs bort när den hade svarat; dess resonemang står här, och dess bilder i `docs/issues/42-valjare-*.png`.
 
 ### K13. Ångra och tillbakaspolning: förhandsvisning på bordet, beslut på telefonerna (prototypat 2026-09-06)
