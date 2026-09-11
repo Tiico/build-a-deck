@@ -286,4 +286,16 @@ describe('a table whose seats share a side (#42)', () => {
     expect(seat.cut).toBe(true)
     expect(seat.name).toBe(long)
   }, 60_000)
+
+  // And the cap is only the cure for the thing it cures. A seat nobody shares an edge with has
+  // empty felt beside it and no neighbour to reach into, so it keeps growing with its name the
+  // way it did before the pair ever existed — otherwise the commonest table, two to four
+  // players, pays for a fault it cannot have.
+  it.each([2, 4])('lets a seat alone on its edge of a %i-seat table wear its whole name', async (count) => {
+    const markup = await picker(recipeSetup(count), { A: 'Alexandra' })
+    const seat = await pill(markup, 'A')
+    expect(seat.cut).toBe(false)
+    expect(seat.w).toBeGreaterThan(90)
+    expect(seat.name).toBe('Alexandra')
+  }, 60_000)
 })

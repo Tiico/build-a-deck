@@ -35,9 +35,15 @@
   display: inline-flex; align-items: center; justify-content: center;
   padding: 8px 14px; min-width: 60px; min-height: 44px; border-radius: 999px; white-space: nowrap;
   border: 3px solid transparent; background: var(--seat); color: var(--byd-seat-ink); font-weight: 700; font-size: 13px;
-  /* A name may not grow the pill into the place beside it (#42): a pill reaches at most one pitch
-     less the gap two seats keep, and a longer name is cut. Cut here rather than in the page, so
-     the name a screen reader says is still the whole name. */
+}
+/* A name may not grow the pill into the place beside it (#42): a pill that shares its edge
+   reaches at most one pitch less the gap two seats keep, and a longer name is cut. Cut here
+   rather than in the page, so the name a screen reader says is still the whole name.
+
+   Only a pill with a neighbour, though — `data-shares` is set by the page for exactly the seats
+   its own count of the edge found company on. A seat alone on its edge has empty felt beside it
+   and nothing to reach into, so it goes on growing with its name as it always has. */
+.byd-join-table button[data-shares] {
   max-width: calc(var(--byd-seat-pitch-x) - var(--byd-seat-gap)); overflow: hidden; text-overflow: ellipsis;
 }
 /* A seat with an edge is hung off that edge of the felt. A seat without one — a table that gives

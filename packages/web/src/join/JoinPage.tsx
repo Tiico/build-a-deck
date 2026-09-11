@@ -159,6 +159,7 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
               type="button"
               data-seat={s.id}
               data-edge={s.edge}
+              {...(place && place.of > 1 ? { 'data-shares': '' } : {})}
               aria-disabled={taken ? 'true' : 'false'}
               aria-label={taken ? t('join.seat.label.taken', { seat: s.id, name: s.name ?? '' }) : t('join.seat.label.free', { seat: s.id })}
               aria-pressed={chosen === s.id ? 'true' : 'false'}

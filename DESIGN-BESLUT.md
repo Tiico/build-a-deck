@@ -1024,7 +1024,9 @@ Lobbyn ser fortfarande inga zoner; gränsen #31 hårdnade står orörd.
 Steget längs en kant är inte detsamma åt båda håll.
 Ett piller är bredare än det är högt, så `--byd-seat-pitch-x` är 104 px och `--byd-seat-pitch-y` 77 px, valda så att luften mellan två platser läses lika stor ned längs en sida som tvärs över en ände.
 Ett långt namn är det andra sättet två platser hamnar på varandra: pillret växte med texten och hade ingen breddgräns alls.
-Ett piller är därför högst en delning minus luften brett — `calc(var(--byd-seat-pitch-x) - var(--byd-seat-gap))`, 90 px — och ett längre namn kapas.
+Ett piller som delar sin kant är därför högst en delning minus luften brett — `calc(var(--byd-seat-pitch-x) - var(--byd-seat-gap))`, 90 px — och ett längre namn kapas.
+Gränsen gäller bara den som har en granne: sidan sätter `data-shares` på just de platser dess egen räkning av kanten fann sällskap på, och css:en kapar efter det attributet.
+En ensam plats på sin kant har tom filt bredvid sig och inget att växa in i, så den bär hela sitt namn precis som före #42 — annars hade det vanligaste bordet, två till fyra spelare, betalat för ett fel det inte kan ha.
 Kapningen sker i css:en och inte på sidan, eftersom namnet en skärmläsare säger fortfarande ska vara hela namnet.
 `join-layout.test.tsx` mäter varje plats på fem-, sex-, sju- och åttaplatsbord i Chromium och träffprovar mitten av var och en: ingen ruta överlappar en annan, och varje plats svarar för sig själv.
 Prototypen `packages/web/src/prototype/seats` togs bort när den hade svarat; dess resonemang står här, och dess bilder i `docs/issues/42-valjare-*.png`.
