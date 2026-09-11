@@ -1,5 +1,6 @@
-# The stack from DRIFT.md. One command starts everything; memory limits are the design
-# constraint on 8 GB; nothing but the tunnel faces the street. Copy .env.example to .env.
+# The stack from DRIFT.md. One command starts everything; the memory limits are the share of a
+# box we do not have to ourselves (DRIFT §1); nothing but the tunnel faces the street.
+# Copy .env.example to .env.
 x-logging: &logging
   logging:
     driver: json-file
@@ -42,7 +43,7 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-    mem_limit: 1500m
+    mem_limit: 768m
     restart: unless-stopped
     <<: *logging
 
@@ -55,6 +56,13 @@ services:
       PORT: "8080"
       IDLE_EVICT_MS: ${IDLE_EVICT_MS:-1800000}
       IDLE_END_MS: ${IDLE_END_MS:-86400000}
+      # Accounts (DRIFT §11): where login links point — and whether the cookie gets `Secure` —
+      # and the mail that carries them. Without a key the link goes to this container's log,
+      # which is development, not the box. AUTH_BYPASS is deliberately not passed: the box must
+      # not be able to open the door with a typo in .env.
+      PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      MAIL_FROM: ${MAIL_FROM:-}
       # Assets in R2 (DRIFT §4): with credentials, textures are served as signed links.
       R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
       R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
@@ -67,7 +75,7 @@ services:
       postgres:
         condition: service_healthy
     stop_grace_period: 20s
-    mem_limit: 1g
+    mem_limit: 512m
     restart: unless-stopped
     <<: *logging
 
@@ -87,7 +95,7 @@ services:
       postgres:
         condition: service_healthy
     stop_grace_period: 30s
-    mem_limit: 2g
+    mem_limit: 1500m
     shm_size: 512m
     restart: unless-stopped
     <<: *logging

@@ -301,44 +301,38 @@ describe('a table whose seats share a side (#42)', () => {
   // an edge to themselves. Up to four players every side carries one, and one seat on a side
   // stands in the middle of it — which is where the picker has always stood it (#39).
   //
-  // "Where it stood" is said twice over, because the felt has since grown for the tables that do
-  // share a side. The seat is still in the middle of its own edge — and the felt and every pill on
-  // it are still at the very pixel `origin/main` drew them at, read off `origin/main` itself and
-  // written down here, so that a felt that quietly grew under a four-seat table would be caught.
+  // "Where it stood" was once written down as the very pixels `origin/main` drew — a felt at
+  // `85,252` and pills `64.3` wide — read off a Mac, and moved once already when the one button
+  // language (#44) went through this page: each of the three ways on gained an outline, an
+  // outline is drawn outside the shape it wraps, and "Bara titta" went back to the size it had
+  // always declared and never got, so the felt ended up centred in what was left over.
   //
-  // The whole picker then moved, once, when the one button language (#44) went through this page.
-  // Each of the three ways on gained an outline, and an outline is drawn outside the shape it
-  // wraps; and "Bara titta" went back to the size it had always declared and never got, because
-  // `.byd-join-observe` was (0,1,0) and lost its font size along with everything else to
-  // `.byd-join form button` at (0,1,2). Taller borders and shorter text, and the felt centred in
-  // what is left over is where it is now. It is still 220 by 150 and every pill still 64.3 by 44,
-  // which is the fact these numbers are here to hold.
-  const UNSHARED: Record<number, [string, string][]> = {
-    2: [
-      ['A', '162.8,384 64.3×44'],
-      ['B', '162.8,226 64.3×44'],
-    ],
-    3: [
-      ['A', '162.8,384 64.3×44'],
-      ['B', '162.8,226 64.3×44'],
-      ['C', '270.7,305 64.3×44'],
-    ],
-    4: [
-      ['A', '162.8,384 64.3×44'],
-      ['B', '162.8,226 64.3×44'],
-      ['C', '270.7,305 64.3×44'],
-      ['D', '55,305 64.3×44'],
-    ],
-  }
+  // It never survived a Linux runner. `system-ui` is a different typeface there: the header above
+  // the felt comes out two pixels shorter and a pill is as wide as its own word, and CI failed on
+  // a table nobody had touched. What the picker really promises has nothing to do with the
+  // typeface. The felt has not grown — 260 by 200 belongs to the tables that share a side — each
+  // seat hangs off its own edge by the overhang the stylesheet names, each stands in the middle
+  // of that edge, and each is still the 44 px a thumb is owed. How wide a pill is, is its name's
+  // business, and is held to its place in the tests that are about names.
+  const HANG: Record<string, number> = { N: 26, S: 26, E: 30, W: 30 }
   it.each([2, 3, 4])('leaves a table of %i, where nobody shares a side, standing where it stood', async (count) => {
     const { felt, seats } = await measure(await picker(recipeSetup(count)))
     expect(seats).toHaveLength(count)
+    // A felt that quietly grew under a four-seat table is caught here: 260 × 200 belongs to the
+    // tables that share a side. Its left edge is where a 390 px viewport centres it.
+    expect(`${felt.x},${felt.w}×${felt.h}`).toBe('85,220×150')
     for (const seat of seats) {
-      if (seat.edge === 'N' || seat.edge === 'S') expect(seat.x + seat.w / 2).toBeCloseTo(felt.x + felt.w / 2, 1)
-      else expect(seat.y + seat.h / 2).toBeCloseTo(felt.y + felt.h / 2, 1)
+      const hang = HANG[seat.edge ?? '']
+      expect(hang).toBeDefined()
+      if (seat.edge === 'N' || seat.edge === 'S') {
+        expect(seat.x + seat.w / 2).toBeCloseTo(felt.x + felt.w / 2, 1)
+        expect(seat.edge === 'N' ? felt.y - seat.y : seat.y + seat.h - (felt.y + felt.h)).toBeCloseTo(hang as number, 1)
+      } else {
+        expect(seat.y + seat.h / 2).toBeCloseTo(felt.y + felt.h / 2, 1)
+        expect(seat.edge === 'W' ? felt.x - seat.x : seat.x + seat.w - (felt.x + felt.w)).toBeCloseTo(hang as number, 1)
+      }
+      expect(seat.h).toBe(44)
     }
-    expect(place(felt)).toBe('85,252 220×150')
-    expect(seats.map((s) => [s.seat, place(s)])).toEqual(UNSHARED[count])
   }, 60_000)
 
   // Not overlapping is the floor, not the look. The picker is a picture of a table, and a table

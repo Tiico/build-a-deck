@@ -90,7 +90,7 @@ export class ConsoleMailer implements Mailer {
 
 // Resend (DRIFT §12): a home IP is blacklisted, so mail leaves through a provider.
 export class ResendMailer implements Mailer {
-  constructor(private readonly apiKey: string, private readonly from: string) {}
+  constructor(private readonly apiKey: string, readonly from: string) {}
   async send(mail: Mail): Promise<void> {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -99,6 +99,15 @@ export class ResendMailer implements Mailer {
     })
     if (!res.ok) throw new Error(`mail failed: ${res.status} ${await res.text()}`)
   }
+}
+
+// The one place the environment decides how a login link travels (DRIFT §12). Without a key
+// the link goes to the container log, which is the development mode; an address left empty in
+// the stack would otherwise become a `from:` Resend refuses, one login too late to notice.
+export function mailerFromEnv(env: Record<string, string | undefined>): Mailer {
+  const apiKey = env['RESEND_API_KEY']
+  if (!apiKey) return new ConsoleMailer()
+  return new ResendMailer(apiKey, env['MAIL_FROM'] || 'build-your-deck <login@example.com>')
 }
 
 // Five links an hour per address (DRIFT §9 is the outer wall; this is the inner one).

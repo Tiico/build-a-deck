@@ -85,6 +85,8 @@ Med R2-variabler i `.env` skriver `render` texturerna till R2 och `app` svarar p
 Uppladdade illustrationer går samma väg: `POST /assets` tar en bild från en inloggad skapare och svarar med dess hash, `GET /assets/:hash` serverar den (E1).
 Lokalt går samma väg att köra mot en MinIO: sätt `R2_ENDPOINT=http://127.0.0.1:9000` och nycklarna, som i `.claude/launch.json`.
 
+Handgreppen i ordning — uppsättning, tunnel, deploy, backup, återställning och felsökning — står i [ops/RUNBOOK.md](ops/RUNBOOK.md).
+
 Första gången på en Ubuntu-låda med Docker:
 
 ```bash
