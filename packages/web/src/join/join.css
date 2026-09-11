@@ -42,10 +42,11 @@
 }
 /* A seat with an edge is hung off that edge of the felt. A seat without one — a table that gives
    it no hand says nothing about which side it is on — keeps its place in the row above, because
-   a picker that guesses a side is how every seat once ended up on the same one (#39). */
-/* A table has four sides and seats up to eight, so past four players two seats share a side
-   (#42). They stand beside each other along it rather than on top of each other, which keeps the
-   picker a picture of the table — still four compass points, and no seat hidden under another.
+   a picker that guesses a side is how every seat once ended up on the same one (#39).
+
+   A table has four sides and seats up to eight, so past four players two seats share one (#42).
+   They stand beside each other along it rather than on top of each other, which keeps the picker
+   a picture of the table — still four compass points, and no seat hidden under another.
    `--seat-at` is the seat's place along its own edge and `--seat-of` how many share it, both
    counted by the page from the edges the seat list already carries. `--seat-step` is how many
    pitches from the middle of the edge that puts the seat: with one seat on an edge it works out

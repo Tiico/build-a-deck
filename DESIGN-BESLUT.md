@@ -984,7 +984,7 @@ Det är vad handen gör fysiskt, och det är en affordance, inte en regel — ko
 Följdkrav:
 Spel med "spela nedvänt" som mekanik behöver ett andra val i arket.
 
-### K12. Anslutningsflödet: bordet som platsväljare med nästa lediga förvald (prototypat 2026-09-06)
+### K12. Anslutningsflödet: bordet som platsväljare med nästa lediga förvald (prototypat 2026-09-06, utvidgad 2026-09-11)
 
 QR-koden i TV-läget pekar på `/join?code=…` (från 2026-09-07 en rumskod, DRIFT §9).
 Telefonen ser platserna live genom lobbyrollen — upptagna med namn, lediga tryckbara — runt ett litet bord vars kanter följer setupens handzoner, med nästa lediga plats förvald.
@@ -999,6 +999,35 @@ Snapshot saknar spelets namn; lobbyn visar rumskoden i stället. Spelets namn h�
 Kanten är en upplysning om platsen och inte om filten, så den reser i platslistan (`SeatView.edge`) och härleds en enda gång, i `project`.
 Lobbyn ser därmed fortfarande inga zoner — den gräns #31 hårdnade står orörd — och väljaren ritar ur kanten i stället för ur bordet (#39).
 En plats som bordet inte ger någon hand har ingen kant, och ritas på filten i stället för att gissa en sida.
+
+Platserna blev fler än kanterna 2026-09-11 (#42).
+`edgeOf` lägger ut fem till åtta platser på fyra kanter — S, N, E, W och sedan varvet om — så på ett åttaplatsbord delar A kant med E, B med F, C med G och D med H.
+Härledningen är riktig; ett bord har fyra sidor.
+Felet låg i väljaren, som gav varje väderstreck exakt ett läge, så paret hamnade i det tillsammans: hela pillret, 64 × 37 px, ritat två gånger.
+Den som stod sist i dokumentet tog trycket, så det var A, B, C och D som inte gick att välja alls.
+
+Tre svar prototypades mot varandra.
+**A — utspridda längs kanten**: fortfarande exakt fyra väderstreck, men den som delar en kant står bredvid sin granne längs den i stället för ovanpå.
+**B — åtta lägen runt bordet**: fyra sidor plus fyra hörn, ett läge per plats.
+**C — lista över fyra**: upp till fyra platser speglar väljaren fortfarande bordet, därefter blir den en rad per plats.
+
+Valet blev **A**.
+A faller vackert även när platserna inte går jämnt upp: vid fem till sju bär någon kant en ensam plats, och en ensam plats står mitt på sin kant precis som förut.
+B ser jämn ut på åtta platser och sned på sex — två hörn tagna och två tomma, och en ring vill vara hel — och ett riktigt hörn är dessutom en ändring av `SeatEdge` i `packages/protocol`, alltså en protokollmigrering, med `seatEdge` i `packages/engine` som härleder åtta lägen ur handens geometri i stället för fyra.
+C tappar det K12 valde väljaren för: man ser inte längre var man kommer att sitta i förhållande till de andra, och listan växer förbi vikningen redan vid sex platser, så "Sätt dig" hamnar under skärmkanten på en telefon vid åtta.
+
+Ingen protokollmigrering behövdes.
+Var längs en kant en plats står är ingen upplysning om bordet utan hur väljaren ritar ett, så klienten räknar själv hur många platser varje kant bär och vilken i ordningen platsen är, och lämnar det till `join.css` som `--seat-at` och `--seat-of`.
+Med en ensam plats på kanten blir steget exakt noll, så tvåplatsfallet från #39 och varje bord upp till fyra ritas där de redan ritades.
+Lobbyn ser fortfarande inga zoner; gränsen #31 hårdnade står orörd.
+
+Steget längs en kant är inte detsamma åt båda håll.
+Ett piller är bredare än det är högt, så `--byd-seat-pitch-x` är 104 px och `--byd-seat-pitch-y` 77 px, valda så att luften mellan två platser läses lika stor ned längs en sida som tvärs över en ände.
+Ett långt namn är det andra sättet två platser hamnar på varandra: pillret växte med texten och hade ingen breddgräns alls.
+Ett piller är därför högst en delning minus luften brett — `calc(var(--byd-seat-pitch-x) - var(--byd-seat-gap))`, 90 px — och ett längre namn kapas.
+Kapningen sker i css:en och inte på sidan, eftersom namnet en skärmläsare säger fortfarande ska vara hela namnet.
+`join-layout.test.tsx` mäter varje plats på fem-, sex-, sju- och åttaplatsbord i Chromium och träffprovar mitten av var och en: ingen ruta överlappar en annan, och varje plats svarar för sig själv.
+Prototypen `packages/web/src/prototype/seats` togs bort när den hade svarat; dess resonemang står här, och dess bilder i `docs/issues/42-valjare-*.png`.
 
 ### K13. Ångra och tillbakaspolning: förhandsvisning på bordet, beslut på telefonerna (prototypat 2026-09-06)
 
