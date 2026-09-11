@@ -27,6 +27,8 @@
 /* The way out is a word in a sentence, and a word in a sentence is 16 px tall. It keeps the look
    and takes the room every control in the product takes (UX-KONTROLLER: träffytor). */
 .byd-who a { color: #9aa3b8; display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px; }
+/* The sentence a brand new account reads before it presses anything (UX-16). */
+.byd-home-empty { margin: 0; max-width: 60ch; color: #9aa3b8; font-size: 14px; line-height: 1.6; }
 .byd-home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
 .byd-home-game { background: var(--byd-account-card-bg); border: 1px solid #262a35; border-radius: 16px; padding: 16px; display: grid; gap: 8px; text-align: left; color: #fff; text-decoration: none; cursor: pointer; }
 .byd-home-game strong { font-size: 17px; }

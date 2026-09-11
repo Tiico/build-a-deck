@@ -34,6 +34,8 @@ export const svAccount = {
   'home.menu.start': 'Starta bord',
   'home.menu.remove': 'Ta bort spelet',
   'home.new': '＋ Nytt spel',
+  // Ett konto utan spel: vad ett spel är, och vad det enda som står på skärmen gör (UX-16).
+  'home.empty': 'Inget spel ännu. Ett spel är en kortlek med sin mall, sina regler och sitt bord. "+ Nytt spel" frågar efter namn och kortstorlek, och öppnar editorn.',
 
   // Vad ett spel säger om sig självt innan det öppnas: revision, bord och senaste gången.
   'home.card.line': 'rev {rev} · {played}',

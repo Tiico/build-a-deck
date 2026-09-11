@@ -127,6 +127,10 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
             </button>
           </div>
         )}
+        {/* An account with nothing in it (UX-16): the page says what a game is and what the one
+            card on it does, rather than leaving a heading over an empty screen. It waits until
+            the games are actually known, so it never flashes past a slow answer. */}
+        {projects !== null && projects.length === 0 && <p className="byd-home-empty">{t('home.empty')}</p>}
         <div className="byd-home-grid" data-projects>
           {(projects ?? []).map((p) => (
             <div key={p.id} className="byd-home-game" data-project={p.id}>

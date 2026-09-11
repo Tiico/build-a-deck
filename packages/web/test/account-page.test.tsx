@@ -76,6 +76,28 @@ describe('HomePage and the login card', () => {
   })
 })
 
+describe('the first thing a new account sees (UX-16)', () => {
+  it('says what a game is and what the new-game card does, until there is a game to look at instead', async () => {
+    await run.stop()
+    run = await startServer({ auth: true, authBypass: true })
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    render(<HomePage onNavigate={() => undefined} />)
+
+    expect(await screen.findByText('Mina spel')).toBeTruthy()
+    const empty = await screen.findByText(/Inget spel ännu/)
+    // What a game is, and what the one thing on the screen will do when it is pressed.
+    expect(empty.textContent).toBe('Inget spel ännu. Ett spel är en kortlek med sin mall, sina regler och sitt bord. "+ Nytt spel" frågar efter namn och kortstorlek, och öppnar editorn.')
+
+    // The moment there is a game, the sentence has nothing left to explain and goes.
+    expect((await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: 'p1', ...projectDoc() }) })).status).toBe(201)
+    cleanup()
+    render(<HomePage onNavigate={() => undefined} />)
+    await waitFor(() => expect(document.querySelector('[data-project="p1"]')).toBeTruthy())
+    expect(screen.queryByText(/Inget spel ännu/)).toBeNull()
+  })
+})
+
 describe('pages that need an account send you to log in and back', () => {
   it('resumes the filled wizard after first login and opens the editor without making the game again', async () => {
     await run.stop()

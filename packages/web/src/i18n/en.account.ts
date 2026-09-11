@@ -29,6 +29,7 @@ export const enAccount = {
   'home.menu.start': 'Start a table',
   'home.menu.remove': 'Delete the game',
   'home.new': '＋ New game',
+  'home.empty': 'No game yet. A game is a deck with its template, its rules and its table. "+ New game" asks for a name and a card size, and opens the editor.',
 
   'home.card.line': 'rev {rev} · {played}',
   'home.card.never': 'never played',
