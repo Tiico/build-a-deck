@@ -1,8 +1,18 @@
 import { afterEach } from 'vitest'
-import { cleanup } from '@testing-library/react'
+import { cleanup, configure } from '@testing-library/react'
 
 // Testing Library only cleans up on its own with vitest globals; do it explicitly.
 afterEach(cleanup)
+
+// How long a `waitFor` or a `findBy` waits before it calls the thing it is waiting for a failure.
+// Testing Library's own default is one second, and this suite does not run in one second's worth
+// of quiet: a file starts a real server, opens real sockets, and half a dozen of them drive
+// Chromium beside it. A React state update that lands in 40 ms on an idle machine can lose that
+// race on a busy one, and then a passing test reports a wrong value — which is how eleven waits
+// in this suite came to carry a longer timeout written out one at a time. The patience belongs in
+// one place. Nothing is weakened by it: a wait that resolves still resolves at once, and a thing
+// that never happens still fails, four seconds later and inside vitest's own five.
+configure({ asyncUtilTimeout: 4000 })
 
 // Under jsdom, its WebSocket wraps Node's undici, which dispatches jsdom Events on a Node
 // EventTarget and throws. The `ws` client speaks the same API and has no such split.
