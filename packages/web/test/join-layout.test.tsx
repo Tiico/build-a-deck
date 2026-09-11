@@ -224,6 +224,21 @@ describe('a table whose seats share a side (#42)', () => {
     expect(hit).toEqual({ A: 'A', B: 'B', C: 'C', D: 'D', E: 'E', F: 'F', G: 'G', H: 'H' })
   }, 60_000)
 
+  // Not overlapping is the floor, not the look. The picker is a picture of a table, and a table
+  // whose ends are crowded and whose sides are airy is not the table anyone is sitting at.
+  it('leaves the same air between two seats on a side as between two on an end', async () => {
+    const { seats } = await measure(await picker(recipeSetup(8)))
+    const box = (id: string) => seats.find((s) => s.seat === id)!
+
+    // South carries A and E beside each other; east carries C above G.
+    const across = box('E').x - (box('A').x + box('A').w)
+    const down = box('G').y - (box('C').y + box('C').h)
+
+    // Spread along both axes by the same step, the pairs came out 39.7px apart across the ends
+    // and 9px apart down the sides — the same layout read as two different ones.
+    expect(Math.abs(down - across)).toBeLessThanOrEqual(2)
+  }, 60_000)
+
   // The other way two seats end up on top of each other, and the one spreading them does not
   // cure: the pill grows with the name it carries, and a long enough name reaches across the gap
   // into the seat beside it. So the pill is capped and the name is cut to fit — cut by the

@@ -5,9 +5,11 @@
      White on it measured 3.44:1 on the blue seat and down to 2.44:1 on the yellow one. */
   --byd-seat-ink: #0d0f14;
   /* The step from one seat to the next along a side of the felt, and the least air between two
-     pills that share a side (#42). */
+     pills that share one (#42). A pill is wider than it is tall, so the two pitches differ: they
+     are set to leave the same air down a side as across an end, because the same step both ways
+     reads as two different layouts. */
   --byd-seat-pitch-x: 104px;
-  --byd-seat-pitch-y: 46px;
+  --byd-seat-pitch-y: 77px;
   --byd-seat-gap: 14px;
   min-height: 100vh; box-sizing: border-box; padding: 40px 20px 28px;
   background: #14161c; color: #eee; font-family: system-ui, sans-serif;
