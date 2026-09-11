@@ -4,9 +4,11 @@
      palette (#20) is one palette and a seat button here is the same object as a name tag there.
      White on it measured 3.44:1 on the blue seat and down to 2.44:1 on the yellow one. */
   --byd-seat-ink: #0d0f14;
-  /* The step from one seat to the next along a side of the felt (#42). */
+  /* The step from one seat to the next along a side of the felt, and the least air between two
+     pills that share a side (#42). */
   --byd-seat-pitch-x: 104px;
   --byd-seat-pitch-y: 46px;
+  --byd-seat-gap: 14px;
   min-height: 100vh; box-sizing: border-box; padding: 40px 20px 28px;
   background: #14161c; color: #eee; font-family: system-ui, sans-serif;
   display: grid; grid-template-rows: auto 1fr auto; gap: 20px;
@@ -31,6 +33,10 @@
   display: inline-flex; align-items: center; justify-content: center;
   padding: 8px 14px; min-width: 60px; min-height: 44px; border-radius: 999px; white-space: nowrap;
   border: 3px solid transparent; background: var(--seat); color: var(--byd-seat-ink); font-weight: 700; font-size: 13px;
+  /* A name may not grow the pill into the place beside it (#42): a pill reaches at most one pitch
+     less the gap two seats keep, and a longer name is cut. Cut here rather than in the page, so
+     the name a screen reader says is still the whole name. */
+  max-width: calc(var(--byd-seat-pitch-x) - var(--byd-seat-gap)); overflow: hidden; text-overflow: ellipsis;
 }
 /* A seat with an edge is hung off that edge of the felt. A seat without one — a table that gives
    it no hand says nothing about which side it is on — keeps its place in the row above, because

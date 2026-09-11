@@ -14,7 +14,8 @@ import { render, screen } from '@testing-library/react'
 import { chromium, type Browser } from 'playwright'
 import type { SetupDef } from '@byd/engine'
 import { JoinPage } from '../src/join/JoinPage.js'
-import { createSession, recipeSetup, roomOf, startServer, twoSeatSetup, type Running } from './fixture.js'
+import { TableClient } from '../src/client.js'
+import { asTable, createSession, recipeSetup, roomOf, startServer, twoSeatSetup, type Running } from './fixture.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
@@ -44,14 +45,20 @@ afterEach(async () => {
   await run.stop()
 })
 
-// The picker as it really comes out: a live session, the real page, the real socket.
-async function picker(setup: SetupDef): Promise<string> {
+// The picker as it really comes out: a live session, the real page, the real socket. `sitting`
+// puts people in seats first, so the picker is measured with the names it will really carry.
+async function picker(setup: SetupDef, sitting: Record<string, string> = {}): Promise<string> {
   const session = await createSession(run, 's1', undefined, setup)
+  const table = TableClient.connect(await asTable(run, session))
+  await table.ready()
+  for (const [seat, name] of Object.entries(sitting)) await table.send({ v: 'seat.claim', seat, name })
   history.replaceState(null, '', `/join?code=${roomOf(session).code}&server=${encodeURIComponent(run.url)}`)
   const { container, unmount } = render(<JoinPage />)
   await screen.findByRole('button', { name: /Sätt dig/ })
+  for (const name of Object.values(sitting)) await screen.findByText(name)
   const html = container.innerHTML
   unmount()
+  table.close()
   return html
 }
 
@@ -77,6 +84,24 @@ async function measure(markup: string): Promise<{ felt: Box; seats: Box[] }> {
 }
 
 const place = ({ x, y, w, h }: Box) => `${x},${y} ${w}×${h}`
+
+// A seat pill as the browser presents it: how wide it comes out, whether the name had to be cut
+// to fit, and what the seat is called in Chromium's own accessibility tree — which is where a
+// name cut by the stylesheet still reads in full, and a name cut in JavaScript would not.
+async function pill(markup: string, seat: string): Promise<{ w: number; cut: boolean; name: string }> {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
+  try {
+    await page.setContent(document_(markup), { waitUntil: 'load' })
+    const spoken = await page.locator(`[data-seat="${seat}"]`).ariaSnapshot()
+    const size = await page.evaluate((id) => {
+      const el = document.querySelector(`[data-seat="${id}"]`) as HTMLElement
+      return { w: Math.round(el.getBoundingClientRect().width * 10) / 10, cut: el.scrollWidth > el.clientWidth }
+    }, seat)
+    return { ...size, name: /"([^"]*)"/.exec(spoken)?.[1] ?? spoken.trim() }
+  } finally {
+    await page.close()
+  }
+}
 
 // What the thumb actually lands on: the seat the browser finds at each seat's own centre. Two
 // boxes that fall on the same point are one fault; which of them takes the tap is the other, and
@@ -197,5 +222,27 @@ describe('a table whose seats share a side (#42)', () => {
     // four earlier seats answered for nobody — A→E, B→F, C→G, D→H, and A, B, C and D could
     // not be chosen at all. (The issue says the lower seat of each pair; it was the earlier one.)
     expect(hit).toEqual({ A: 'A', B: 'B', C: 'C', D: 'D', E: 'E', F: 'F', G: 'G', H: 'H' })
+  }, 60_000)
+
+  // The other way two seats end up on top of each other, and the one spreading them does not
+  // cure: the pill grows with the name it carries, and a long enough name reaches across the gap
+  // into the seat beside it. So the pill is capped and the name is cut to fit — cut by the
+  // stylesheet, which leaves the name whole to a screen reader, and not by the page, which would
+  // not. A seat the reader cannot hear the name of is a worse fault than the one being fixed.
+  it('cuts a name too long for its place instead of letting it reach into the seat beside it', async () => {
+    const long = 'Bartholomew Longbottom'
+    const markup = await picker(recipeSetup(8), { A: long })
+    const { seats: boxes } = await measure(markup)
+
+    const stacked = pairsOf(boxes)
+      .filter(([a, b]) => overlap(a, b).w > 0 && overlap(a, b).h > 0)
+      .map(([a, b]) => `${a.seat}×${b.seat} ${overlap(a, b).w}×${overlap(a, b).h}`)
+    expect(stacked).toEqual([])
+    expect((await reachable(markup))['E']).toBe('E')
+
+    // Cut on the screen, whole in the ear.
+    const seat = await pill(markup, 'A')
+    expect(seat.cut).toBe(true)
+    expect(seat.name).toBe(long)
   }, 60_000)
 })
