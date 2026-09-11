@@ -68,6 +68,32 @@ export function fileSafe(name: string) {
 // Only one cell is ever being typed into, so the library at the brace is one list with one name.
 const CELL_SYMBOLS = 'byd-cell-symbols'
 
+// The column that removes a card is pinned to the right edge of the scrolling box (#17), and what
+// scrolls under it is covered. No stylesheet can help: the content and the pin share one clipping
+// rectangle, and the only way out — a pin outside the scroller — costs the sticky heading, which
+// is not for sale (#53). Nothing is lost for good, since every column clears the pin at the end of
+// the scroll; what was wrong is that nothing said a value was still going. So the box says it, and
+// the stylesheet draws the saying.
+//
+// Whether it is happening is geometry and nothing else: a cell is under the pin when its box and
+// the pin's box overlap. The half-pixel is the edge case — at the end of the scroll the last
+// column ends exactly where the pin begins, and touching is not covering.
+//
+// Deliberately one self-contained function with no imports: the browser test runs this very
+// function inside the page, so what is measured there is what ships.
+export function markCut(box: Element): void {
+  const pin = box.querySelector('thead .byd-data-remove')
+  if (!pin) return
+  const over = pin.getBoundingClientRect()
+  let cut = false
+  for (const cell of box.querySelectorAll('thead > tr > *')) {
+    if (cell === pin) continue
+    const seen = cell.getBoundingClientRect()
+    if (seen.right > over.left + 0.5 && seen.left < over.right - 0.5) cut = true
+  }
+  box.setAttribute('data-cut', cut ? 'true' : 'false')
+}
+
 // The table (B as a tab): one row per card, the template's fields as columns, `antal` last (L4).
 // This is where the designer already lives; a change here reaches every copy of the card.
 export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, onAddField, onRemoveField, assetBase, onUpload, onSymbol, compareWith, onStopCompare }: DataTableProps) {
@@ -169,6 +195,37 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
   // The same for every column's ×, and for the button that makes one.
   const dropRefs = useRef(new Map<string, HTMLButtonElement>())
   const addRef = useRef<HTMLButtonElement>(null)
+  // The box that scrolls, so it can be asked whether a column has run in under the pin (#53).
+  const scrollRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const box = scrollRef.current
+    if (!box) return
+    // Read once a frame at most and write one attribute: a scroll must not lay the table out
+    // again, and setting the same value twice must not cost anything either.
+    let frame = 0
+    const read = () => {
+      frame = 0
+      markCut(box)
+    }
+    const queue = () => {
+      if (frame === 0) frame = requestAnimationFrame(read)
+    }
+    markCut(box)
+    box.addEventListener('scroll', queue, { passive: true })
+    // Scrolling is not the only thing that moves a column under the pin: a narrower window moves
+    // the pin, and a field added or taken away moves every column after it. The box's own size
+    // answers the first, the table's the second — so both are watched, and the question is asked
+    // again whichever of them changes.
+    const watch = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(queue)
+    watch?.observe(box)
+    const table = box.querySelector('.byd-data')
+    if (table) watch?.observe(table)
+    return () => {
+      if (frame !== 0) cancelAnimationFrame(frame)
+      box.removeEventListener('scroll', queue)
+      watch?.disconnect()
+    }
+  }, [])
   useEffect(() => {
     if (!refocus) return
     if (typeof refocus === 'object') {
@@ -438,7 +495,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
           box, the page never scrolls sideways, and the column that removes a card is pinned to
           the right edge so it cannot be scrolled away — it is the thing that would be lost
           first. */}
-      <div className="byd-data-scroll">
+      <div className="byd-data-scroll" ref={scrollRef}>
       <table className="byd-data">
         <thead>
           <tr>

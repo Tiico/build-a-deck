@@ -14,7 +14,7 @@ import { render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { chromium, type Browser } from 'playwright'
 import { applyEdit } from '@byd/server/doc'
-import { DataTable } from '../src/editor/DataTable.js'
+import { DataTable, markCut } from '../src/editor/DataTable.js'
 import type { ProjectDoc } from '../src/editor/types.js'
 import { projectDoc } from './project-doc.js'
 
@@ -69,16 +69,18 @@ afterAll(async () => {
   await browser.close()
 }, 60_000)
 
-// `extra` is a stylesheet appended after the editor's own, so a rule can be taken back for the
-// control case below.
+// The editor's own page with the table's markup dropped into it, and `extra` appended after the
+// editor's own stylesheet so a rule can be taken back for the control cases below.
+const shellOf = (html: string, extra: string) =>
+  read('index.html')
+    .replace('<script type="module" src="/src/main.tsx"></script>', '')
+    .replace('</head>', `<style>${read('src/editor/editor.css')}\n${read('src/buttons.css')}${extra}</style></head>`)
+    .replace('<div id="root"></div>', `<div id="root"><div class="byd-editor" data-page="editor" data-mode="table"><main><div role="tabpanel">${html}</div></main></div></div>`)
+
 async function measure(html: string, extra = ''): Promise<Head> {
   const page = await browser.newPage({ viewport: { width: VIEW.w, height: VIEW.h } })
   try {
-    const shell = read('index.html')
-      .replace('<script type="module" src="/src/main.tsx"></script>', '')
-      .replace('</head>', `<style>${read('src/editor/editor.css')}\n${read('src/buttons.css')}${extra}</style></head>`)
-      .replace('<div id="root"></div>', `<div id="root"><div class="byd-editor" data-page="editor" data-mode="table"><main><div role="tabpanel">${html}</div></main></div></div>`)
-    await page.setContent(shell, { waitUntil: 'load' })
+    await page.setContent(shellOf(html, extra), { waitUntil: 'load' })
     return (await page.evaluate(() => {
       const box = (el: Element | null): Box | null => {
         if (!el) return null
@@ -204,5 +206,101 @@ describe('the head and the rows are the same table (#32)', () => {
     expect(remove.bodyBox!.x).toBe(newfield.headBox.x)
     expect(remove.bodyBox!.w).toBe(newfield.headBox.w)
     expect(newfield.headBox.w).toBeGreaterThan(44)
+  }, 60_000)
+})
+
+// The pinned × lies over what scrolls under it, and no stylesheet can stop it: content and pin
+// share one clipping rectangle, and taking the pin out of the scroller costs the sticky heading
+// (#53, and the measurements in its thread). So the overlap stays and is made legible instead —
+// which first of all means the table has to know when it is happening. That is geometry, so it
+// is read in a real engine: the pin's box against every other cell's, the editor's own function
+// running inside the page it was written for.
+const FIELDS = 10
+
+// A deck wide enough that the box scrolls sideways at 1280 — which is the only width at which the
+// pin covers anything at all.
+function wideDoc(): ProjectDoc {
+  const doc = projectDoc()
+  const extra = Object.fromEntries(Array.from({ length: FIELDS }, (_, i) => [`fält${i + 1}`, `värde ${i + 1}`]))
+  return { ...doc, rows: doc.rows.map((row) => ({ ...row, fields: { ...row.fields, ...extra } })) }
+}
+
+async function markupOf(doc: ProjectDoc): Promise<string> {
+  const { container, unmount } = render(<Table doc={doc} />)
+  const html = container.innerHTML
+  unmount()
+  return html
+}
+
+// What the pin is standing on at a given scroll position, read off the boxes: where the pin is,
+// how far the box can still scroll, and every column that overlaps the pin at all with how many
+// of its pixels are under it. `at` is where the box is scrolled to before anything is read.
+type Pinned = { cut: string | null; scrollLeft: number; rest: number; pin: Box; under: { name: string; px: number }[] }
+
+async function pinned(html: string, at: 'rest' | 'end', extra = ''): Promise<Pinned> {
+  const page = await browser.newPage({ viewport: { width: VIEW.w, height: VIEW.h } })
+  try {
+    await page.setContent(shellOf(html, extra), { waitUntil: 'load' })
+    return await page.evaluate(
+      ({ end, decide }) => {
+        const scroll = document.querySelector('.byd-data-scroll') as HTMLElement
+        scroll.scrollLeft = end ? scroll.scrollWidth : 0
+        // The editor's own decision, run on the page rather than described by the test.
+        new Function('box', `(${decide})(box)`)(scroll)
+        const pin = scroll.querySelector('thead .byd-data-remove') as HTMLElement
+        const over = pin.getBoundingClientRect()
+        const under = [...scroll.querySelectorAll('thead > tr > *')]
+          .filter((cell) => cell !== pin)
+          .map((cell) => {
+            const box = cell.getBoundingClientRect()
+            const px = Math.round(Math.min(box.right, over.right) - Math.max(box.left, over.left))
+            return { name: cell.className.replace('byd-data-', '') || (cell.textContent ?? '').trim(), px }
+          })
+          .filter((c) => c.px > 0)
+        const round = (r: DOMRect): Box => ({ x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) })
+        return {
+          cut: scroll.getAttribute('data-cut'),
+          scrollLeft: Math.round(scroll.scrollLeft),
+          rest: Math.round(scroll.scrollWidth - scroll.clientWidth - scroll.scrollLeft),
+          pin: round(over),
+          under,
+        }
+      },
+      { end: at === 'end', decide: String(markCut) },
+    )
+  } finally {
+    await page.close()
+  }
+}
+
+describe('a column running in under the pinned × (#53)', () => {
+  it('is something the table knows about, at rest and not at the end of the scroll', async () => {
+    const html = await markupOf(wideDoc())
+    const [rest, end] = await Promise.all([pinned(html, 'rest'), pinned(html, 'end')])
+
+    // The guard is worth nothing if the box does not scroll: there is somewhere to scroll to at
+    // rest, and nowhere left at the end.
+    expect(rest.scrollLeft).toBe(0)
+    expect(rest.rest).toBeGreaterThan(100)
+    expect(end.rest).toBe(0)
+    // The pin is where #17 put it, at the box's right edge, at both positions.
+    expect(end.pin).toEqual(rest.pin)
+    expect(rest.pin.w).toBe(44)
+
+    // And the fault itself, read off the boxes: at rest a column really is under the pin, and at
+    // the end of the scroll none is.
+    expect(rest.under.length).toBeGreaterThan(0)
+    expect(end.under).toEqual([])
+    expect(rest.cut).toBe('true')
+    expect(end.cut).toBe('false')
+  }, 60_000)
+
+  it('is not what a narrow table does: with four fields nothing is under the pin and nothing is marked', async () => {
+    const only = await pinned(await markupOf(projectDoc()), 'rest')
+
+    // The table fits, so there is nowhere to scroll and nothing to cover.
+    expect(only.rest).toBe(0)
+    expect(only.under).toEqual([])
+    expect(only.cut).toBe('false')
   }, 60_000)
 })
