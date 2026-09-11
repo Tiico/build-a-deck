@@ -450,4 +450,19 @@ describe('two seats facing each other across the felt (#52)', () => {
     expect(stacked).toEqual([])
     expect(await reachable(markup)).toEqual(Object.fromEntries(boxes.map((b) => [b.seat, b.seat])))
   }, 60_000)
+
+  // And the cut that keeps them apart is a cut and not a rename, the same as #42's: the west seat
+  // is drawn short, marked as short, and still says its whole name to a screen reader. A four-seat
+  // table is the one to ask, because it is the smallest felt and nobody there shares an edge —
+  // before #52 the seat was uncapped, wore all 196 px of the name and lay across the east seat.
+  it('says the whole name of a cut west seat out loud, and marks the cut on the screen', async () => {
+    const west = 'Wilhelmina Ravensworth'
+    const markup = await picker(recipeSetup(4), { C: 'Bartholomew Longbottom', D: west })
+    const seat = await pill(markup, 'D')
+    expect(seat.cut).toBe(true)
+    expect(seat.shown).not.toBe(west)
+    expect(seat.shown).toBe(west.slice(0, seat.shown.length))
+    expect(seat.marked).toBe(true)
+    expect(seat.name).toContain(west)
+  }, 60_000)
 })
