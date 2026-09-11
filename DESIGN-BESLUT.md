@@ -1433,6 +1433,10 @@ Editorn ritar därmed en enda kryssruta på alla sina ytor — en storlek, `--by
 Rutan är boxen och inte träffytan: det en tumme träffar är etiketten runt den, som är `--byd-tap` stor, så att en rad i kortbordets tabell behåller sin höjd.
 `editor-viewport.test.tsx` mäter allt det i Chromium på varje flik och varje bredd granskningen läser.
 
+Radioknappen är samma bock och inte en egen (#50, 2026-09-11).
+Att välja en av tre fälttyper och att kryssa ett av många kort är samma handling att märka något, och skiljs bara åt av formen — så cirkeln och rutan står i en enda deklaration i stället för två som råkar vara överens.
+Formuläret som skapar en kolumn finns bara medan dess dörr hålls öppen, vilket är varför #45 kunde nå varje kryssruta i editorn och ändå missa de tre cirklarna i det; mätningen håller numera dörren öppen.
+
 Platsfärgerna (#20, K9) är inte primärfärgen och ändras inte.
 Att den andra platsen råkar vara samma `#3c8ce7` är en sammanträffande identitet, inte en delad token, och paletten är hämtad ur godkända prototyper.
 Felet låg i bläcket: anslutningssidans platsknappar och bordets namnbrickor bar vit text på en platsfärg, vilket ger 3.44:1 på den blå och 2.44:1 på den gula.

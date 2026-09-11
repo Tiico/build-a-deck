@@ -45,9 +45,28 @@ async function surfaces(width: number): Promise<Record<string, string>> {
   }
 }
 
+// The form that makes a column (#32) is the one surface the tabs above can never show: it exists
+// only while a door is being held open, so `.byd-newfield` is in none of that markup. That is how
+// #45 could give the editor one tick box and still leave the three radios in this form drawn by
+// the platform — nothing measured them. This holds the table's door open so something does.
+async function newField(width: number): Promise<Record<string, string>> {
+  atWidth(width)
+  history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+  const { unmount } = render(<EditorPage />)
+  try {
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
+    fireEvent.click(screen.getByRole('button', { name: '+ Nytt fält' }))
+    await screen.findByRole('form', { name: 'Nytt fält' })
+    return { 'Nytt fält': document.querySelector('.byd-editor')!.outerHTML }
+  } finally {
+    unmount()
+  }
+}
+
 // The same surfaces, in a real engine at that width, measured by `read_`.
-async function measure<T>(width: number, read_: (page: Page) => Promise<T>): Promise<Record<string, T>> {
-  const marked = await surfaces(width)
+async function measure<T>(width: number, read_: (page: Page) => Promise<T>, of: (width: number) => Promise<Record<string, string>> = surfaces): Promise<Record<string, T>> {
+  const marked = await of(width)
   const page = await browser.newPage({ viewport: { width, height: 800 } })
   try {
     const out: Record<string, T> = {}
@@ -164,5 +183,66 @@ describe.each(WIDTHS)('the editor at %ipx', (width) => {
   it('never makes the page scroll sideways', async () => {
     const measured = await measure(width, (page) => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth))
     expect(measured).toEqual(nothing(measured, 0))
+  }, 90_000)
+})
+
+// The form that makes a column, with its door held open (#50). A radio is a tick like any other:
+// the designer picks the kind of field in the same breath as she names it, and the circle she
+// picks it with stood 13 across in the platform's own paint and the darker of the two blues,
+// beside a box the editor had already taught to be 18 and the lighter one. Same numbers as the
+// tabs above, read the same way — out of the stylesheet through a probe, never out of this file.
+describe.each(WIDTHS)('the form that makes a column, at %ipx', (width) => {
+  it('draws every kind as the one tick box the editor declares', async () => {
+    const measured = await measure(
+      width,
+      (page) =>
+        page.$$eval(".byd-newfield input[type='radio']", (els) => {
+          const probe = document.querySelector('.byd-editor')!.appendChild(document.createElement('span'))
+          probe.style.cssText = 'display: block; width: var(--byd-tick); height: var(--byd-tick); color: var(--byd-editor-primary-mark)'
+          const want = `${probe.offsetWidth}×${probe.offsetHeight} ${getComputedStyle(probe).color} on dark`
+          probe.remove()
+          const seen = els.filter((el) => el.checkVisibility())
+          return {
+            // The kinds are counted as well as measured: a selector that matched nothing would
+            // otherwise report a clean form, which is the shape of guard this repo keeps finding.
+            kinds: seen.length,
+            drawn: seen
+              .map((el) => {
+                const box = el.getBoundingClientRect()
+                return {
+                  what: (el.parentElement?.textContent ?? el.tagName).trim().slice(0, 24),
+                  drawn: `${Math.round(box.width)}×${Math.round(box.height)} ${getComputedStyle(el).accentColor} on ${getComputedStyle(el).colorScheme}`,
+                }
+              })
+              .filter(({ drawn }) => drawn !== want)
+              .map(({ what, drawn }) => `${what}: ${drawn}, not ${want}`),
+          }
+        }),
+      newField,
+    )
+    expect(measured).toEqual({ 'Nytt fält': { kinds: 3, drawn: [] } })
+  }, 90_000)
+
+  it('gives every control in it a 44 by 44 pixel hit area', async () => {
+    const measured = await measure(
+      width,
+      (page) =>
+        page.$$eval(`.byd-newfield :is(${TARGETS})`, (els) => {
+          const seen = els.filter((el) => el.checkVisibility())
+          return {
+            controls: seen.length,
+            small: seen
+              .map((el) => {
+                const box = (el.closest('label') ?? el).getBoundingClientRect()
+                return { what: (el.getAttribute('aria-label') ?? el.parentElement?.textContent ?? el.tagName).trim().slice(0, 24), w: Math.round(box.width), h: Math.round(box.height) }
+              })
+              .filter(({ w, h }) => w < 44 || h < 44)
+              .map(({ what, w, h }) => `${what}: ${w}×${h}`),
+          }
+        }),
+      newField,
+    )
+    // The name, the three kinds, and the two answers.
+    expect(measured).toEqual({ 'Nytt fält': { controls: 6, small: [] } })
   }, 90_000)
 })

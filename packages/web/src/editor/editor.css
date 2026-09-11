@@ -255,23 +255,29 @@
    label and is that label's size already. */
 .byd-editor button,
 .byd-editor a[href],
-.byd-editor input:not([type='checkbox']):not([type='file']),
+.byd-editor input:not([type='checkbox']):not([type='radio']):not([type='file']),
 .byd-editor select,
 .byd-editor textarea,
 .byd-editor [role='option'],
 .byd-editor label:has(> input) { min-height: var(--byd-tap); }
 .byd-editor button { min-width: var(--byd-tap); }
 .byd-editor a[href] { display: inline-flex; align-items: center; }
-/* One tick box for the whole editor (#45): the recipe's knobs, the wall's two filters, the mm
-   grid beside the canvas and every row in the card table. Left to itself a browser draws 13 by 13
-   in the platform's own colour, and stretches it to whatever cell it lands in — a row in the card
-   table had an 80 by 18 one. The mark is `accent-color` and not a box drawn by hand, so the tick,
-   the ring and the greyed-out state stay the ones the platform draws; it is the lighter of the
-   two blues because a mark is a graphic and carries the 3:1 bar, not the 4.5:1 one
-   (`editor-contrast.test.ts`). A box that is *not* ticked is drawn by the platform too, and a
-   white one in a dark room is the very thing that read as "not ours" — so the box is told which
-   room it stands in, and the platform draws its unticked state to match. */
-.byd-editor input[type='checkbox'] {
+/* One tick box for the whole editor (#45, #50): the recipe's knobs, the wall's two filters, the mm
+   grid beside the canvas, every row in the card table, and the three kinds a new field can be.
+   Left to itself a browser draws 13 by 13 in the platform's own colour, and stretches it to
+   whatever cell it lands in — a row in the card table had an 80 by 18 one. The mark is
+   `accent-color` and not a box drawn by hand, so the tick, the ring and the greyed-out state stay
+   the ones the platform draws; it is the lighter of the two blues because a mark is a graphic and
+   carries the 3:1 bar, not the 4.5:1 one (`editor-contrast.test.ts`). A box that is *not* ticked
+   is drawn by the platform too, and a white one in a dark room is the very thing that read as
+   "not ours" — so the box is told which room it stands in, and the platform draws its unticked
+   state to match.
+
+   The circle and the square are one declaration and not two that happen to agree (#50): picking
+   one of three kinds and ticking one of many cards are the same act of marking, told apart by
+   their shape alone, and a second rule is a second place for the blue to drift. */
+.byd-editor input[type='checkbox'],
+.byd-editor input[type='radio'] {
   flex: none;
   box-sizing: border-box;
   width: var(--byd-tick);
@@ -283,8 +289,10 @@
   cursor: pointer;
 }
 /* The target is the label, and it is a target wide as well as tall: it grows around the drawn
-   box and never with it. */
-.byd-editor label:has(> input[type='checkbox']) { min-width: var(--byd-tap); }
+   box and never with it. "Tal" is the short word that proves it — the kind's own label came to
+   41 across without this, and a thumb has no more to aim at than the word is wide (#50). */
+.byd-editor label:has(> input[type='checkbox']),
+.byd-editor label:has(> input[type='radio']) { min-width: var(--byd-tap); }
 
 /* Stages (L10, prototype C): below the desk the modes and the template's four panels are one flat
    strip at the bottom of the screen, in thumb's reach. The strip scrolls sideways when the stages
@@ -583,7 +591,10 @@
    on one line. */
 .byd-props-field:has(.byd-newfield) { grid-column: 1 / -1; }
 .byd-props-field .byd-newfield { position: static; width: auto; margin-top: 6px; }
-.byd-props-field .byd-newfield input[type='radio'] { width: auto; }
+/* The kinds used to be given their width back here, and again in the form's own rules, because
+   `.byd-props input` makes every box in this column as wide as the column. The tick box (#45,
+   #50) is more specific than both and states the width it wants, so the two take-backs are gone:
+   a width said in three places is a width that can come to disagree with itself. */
 
 /* The fonts the game carries (B3): under the properties, because that is where a family is
    chosen. Each row says whether the file travels to the printer and under what licence. */
@@ -822,7 +833,6 @@
 .byd-newfield fieldset { display: flex; gap: 10px; margin: 0; padding: 0; border: 0; }
 .byd-newfield legend { padding: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #7d8597; }
 .byd-newfield fieldset label { display: flex; align-items: center; gap: 4px; font-size: 12px; text-transform: none; letter-spacing: 0; color: #dce3f2; }
-.byd-newfield fieldset input { width: auto; accent-color: var(--byd-editor-primary-bg); }
 .byd-newfield [role='alert'] { margin: 0; color: #f0b64a; font-size: 12px; font-weight: 400; }
 /* Two classes deep on purpose: the head's own `.byd-data th button` strips buttons back to bare
    text, which is right for a column heading and wrong for the answers to a form. */
