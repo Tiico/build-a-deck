@@ -498,6 +498,37 @@ describe.each(ROOTS)('a second action inside a form on $what', ({ root, css }) =
     expect(secondary).toBe(outlined)
     expect(secondary).not.toBe(plain)
   }, 90_000)
+
+  // A pointer is a state of a button, not a different button, and it is a state the surfaces have
+  // rules about. The wizard's `button:hover` is (0,2,1) and a role is (0,2,0), so the moment
+  // `Skapa spelet och fortsätt i editorn` was pointed at, the paper took the line back and drew a
+  // grey ring round a nearly black pill: `rgb(30,38,32)` at rest, `rgb(141,145,138)` under the
+  // mouse. Criterion 2 says the role wins over the surface's own `form button` rule; a criterion
+  // that is only ever measured at rest is only half measured.
+  const pair = { 'en primär och en sekundär i ett formulär': `<div class="${root}"><form><button class="byd-primary">Första vägen</button><button class="byd-secondary">Andra vägen</button></form></div>` }
+  it('is still drawn by the role under a pointer', async () => {
+    const measured = await inChromium(read(css), 1280, pair, async (page) => {
+      const named = await page.evaluate((where) => {
+        const surface = document.querySelector(where)!
+        const probe = surface.appendChild(document.createElement('span'))
+        const colourOf = (token: string) => {
+          probe.style.cssText = `color: var(${token})`
+          return getComputedStyle(probe).color
+        }
+        const out = { primary: colourOf('--byd-primary-bg'), secondary: colourOf('--byd-secondary-line') }
+        probe.remove()
+        return out
+      }, `.${root}`)
+      const pointedAt = async (role: string) => {
+        await page.hover(`.${root} .${role}`)
+        return page.$eval(`.${root} .${role}`, (el) => getComputedStyle(el).borderTopColor)
+      }
+      return { primary: await pointedAt('byd-primary'), secondary: await pointedAt('byd-secondary'), named }
+    })
+    const { primary, secondary, named } = measured['en primär och en sekundär i ett formulär']!
+    expect(primary).toBe(named.primary)
+    expect(secondary).toBe(named.secondary)
+  }, 90_000)
 })
 
 // A surface without the shared sheet under it is not the surface that ships. Every suite that

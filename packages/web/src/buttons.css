@@ -89,6 +89,20 @@
   font-weight: 600;
 }
 
+/* A pointer is a state of a button, not a different button. The wizard says something of its own
+   about that state — `.byd-wizard button:hover` lifts the line to `#8d918a` — and at (0,2,1) it
+   out-ranks a role at (0,2,0), so `Skapa spelet och fortsätt i editorn` grew a grey ring round a
+   nearly black pill the moment it was pointed at. On paper that reads as a button coming apart
+   under the mouse. A room, a role and a state together are three classes, so the line the role
+   drew stays the line it drew; the fill is the affordance here and it does not move. */
+:is(.byd-account, .byd-join, .byd-wizard, .byd-editor, .byd-player, .byd-online, .byd-observer) .byd-primary:hover {
+  border-color: var(--byd-primary-bg);
+}
+
+:is(.byd-account, .byd-join, .byd-wizard, .byd-editor, .byd-player, .byd-online, .byd-observer) .byd-secondary:hover {
+  border-color: var(--byd-secondary-line);
+}
+
 /* Chosen. One shape for all of it — a quiet pill with a 3 px bar under it, in whatever accent the
    surface owns — because the tool drew "this one is on" five different ways, and one of those
    borrowed another surface's colour: the table filter's chip was painted `#7dd3a0`, the account's
