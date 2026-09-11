@@ -76,7 +76,7 @@ async function measure(html: string, extra = ''): Promise<Head> {
   try {
     const shell = read('index.html')
       .replace('<script type="module" src="/src/main.tsx"></script>', '')
-      .replace('</head>', `<style>${read('src/editor/editor.css')}${extra}</style></head>`)
+      .replace('</head>', `<style>${read('src/editor/editor.css')}\n${read('src/buttons.css')}${extra}</style></head>`)
       .replace('<div id="root"></div>', `<div id="root"><div class="byd-editor" data-page="editor" data-mode="table"><main><div role="tabpanel">${html}</div></main></div></div>`)
     await page.setContent(shell, { waitUntil: 'load' })
     return (await page.evaluate(() => {

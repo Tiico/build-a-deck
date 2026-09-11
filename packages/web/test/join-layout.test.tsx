@@ -19,7 +19,7 @@ import { asTable, createSession, recipeSetup, roomOf, startServer, twoSeatSetup,
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
-const css = read('src/join/join.css')
+const css = `${read('src/join/join.css')}\n${read('src/buttons.css')}`
 
 const document_ = (body: string) =>
   shell
@@ -305,21 +305,27 @@ describe('a table whose seats share a side (#42)', () => {
   // share a side. The seat is still in the middle of its own edge — and the felt and every pill on
   // it are still at the very pixel `origin/main` drew them at, read off `origin/main` itself and
   // written down here, so that a felt that quietly grew under a four-seat table would be caught.
+  //
+  // The whole picker then rose three pixels, once: the one button language (#44) gave each of the
+  // three ways on from this page an outline, an outline is drawn outside the shape it wraps, so
+  // the block under the felt is six pixels taller and the felt, centred in what is left over, is
+  // three higher. The felt is still 220 by 150 and every pill still 64.3 by 44, which is the fact
+  // these numbers are here to hold.
   const UNSHARED: Record<number, [string, string][]> = {
     2: [
-      ['A', '162.8,384.5 64.3×44'],
-      ['B', '162.8,226.5 64.3×44'],
+      ['A', '162.8,381.5 64.3×44'],
+      ['B', '162.8,223.5 64.3×44'],
     ],
     3: [
-      ['A', '162.8,384.5 64.3×44'],
-      ['B', '162.8,226.5 64.3×44'],
-      ['C', '270.7,305.5 64.3×44'],
+      ['A', '162.8,381.5 64.3×44'],
+      ['B', '162.8,223.5 64.3×44'],
+      ['C', '270.7,302.5 64.3×44'],
     ],
     4: [
-      ['A', '162.8,384.5 64.3×44'],
-      ['B', '162.8,226.5 64.3×44'],
-      ['C', '270.7,305.5 64.3×44'],
-      ['D', '55,305.5 64.3×44'],
+      ['A', '162.8,381.5 64.3×44'],
+      ['B', '162.8,223.5 64.3×44'],
+      ['C', '270.7,302.5 64.3×44'],
+      ['D', '55,302.5 64.3×44'],
     ],
   }
   it.each([2, 3, 4])('leaves a table of %i, where nobody shares a side, standing where it stood', async (count) => {
@@ -329,7 +335,7 @@ describe('a table whose seats share a side (#42)', () => {
       if (seat.edge === 'N' || seat.edge === 'S') expect(seat.x + seat.w / 2).toBeCloseTo(felt.x + felt.w / 2, 1)
       else expect(seat.y + seat.h / 2).toBeCloseTo(felt.y + felt.h / 2, 1)
     }
-    expect(place(felt)).toBe('85,252.5 220×150')
+    expect(place(felt)).toBe('85,249.5 220×150')
     expect(seats.map((s) => [s.seat, place(s)])).toEqual(UNSHARED[count])
   }, 60_000)
 

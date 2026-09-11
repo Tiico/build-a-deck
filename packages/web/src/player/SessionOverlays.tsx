@@ -136,7 +136,7 @@ export function SessionOverlays({ client, view, seat, name, http, sessionId, she
         <div className="byd-rewind-ask" data-rewind-ask>
           <h1>{t('rewind.ask.title', { who: view.seats.find((s) => s.id === proposal.by)?.name ?? t('play.table') })}</h1>
           <p>{t('rewind.ask.body')}</p>
-          <button data-kind="ok" onClick={() => settle('rewind.confirm')}>
+          <button data-kind="ok" className="byd-primary" onClick={() => settle('rewind.confirm')}>
             {t('rewind.approve')}
           </button>
           <button data-kind="no" onClick={() => settle('rewind.reject')}>

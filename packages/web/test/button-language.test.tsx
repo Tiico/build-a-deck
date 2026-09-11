@@ -9,7 +9,7 @@
 // `Titta på` is drawn exactly like `Sitt ner`. A test that checked the rule existed would have
 // passed all along. So every surface below is mounted for real, laid over the stylesheet it
 // ships, and asked in Chromium which elements came out wearing the primary fill.
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
@@ -105,6 +105,22 @@ describe('the seat picker', () => {
   it('wears the primary fill on nothing but the action that seats you', async () => {
     const measured = await inChromium(read('src/join/join.css'), 390, await joinViews(), wearingThePrimary('.byd-join'))
     expect(measured).toEqual({ 'sätt dig vid bordet': ['Sätt dig'] })
+  }, 90_000)
+
+  // Filled and outlined are the same object at two weights, so they have to be the same size. An
+  // outline is drawn *outside* the shape, so a secondary that gains a line and a primary that has
+  // none come out two pixels apart and the column sits on two rhythms. The primary therefore
+  // carries a line of its own, in its own fill, where nobody can see it but the layout.
+  it('costs an outline nothing in height beside the filled action', async () => {
+    const measured = await inChromium(
+      read('src/join/join.css'),
+      390,
+      await joinViews(),
+      (page) => page.$$eval('.byd-join form button:not(.byd-join-online)', (els) => els.map((el) => `${el.textContent?.trim().slice(0, 10)}: ${el.getBoundingClientRect().height}`)),
+    )
+    const [filled, outlined] = measured['sätt dig vid bordet']!
+    expect(filled?.replace(/^[^:]+/, '')).toBe(outlined?.replace(/^[^:]+/, ''))
+    expect(measured['sätt dig vid bordet']).toHaveLength(2)
   }, 90_000)
 })
 
@@ -227,4 +243,24 @@ describe('the editor', () => {
     // drawn in two colours would read as two things to press rather than one with a menu.
     expect(measured).toEqual(Object.fromEntries(Object.keys(views).map((name) => [name, ['Uppdatera bordet', 'Fler vägar till bordet']])))
   }, 120_000)
+})
+
+// A surface without the shared sheet under it is not the surface that ships. Every suite that
+// builds a document out of one of the five stylesheets has to lay `buttons.css` over it too, or
+// it goes on measuring a page nobody sees — borders, weights and hit areas the language has since
+// changed. This is the guard that stops the next such suite from being written without it.
+const SURFACES = ['account/account', 'join/join', 'wizard/wizard', 'editor/editor', 'player/player'] as const
+const mounting = readdirSync(import.meta.dirname)
+  .filter((name) => /\.tsx?$/.test(name) && name !== 'button-language.test.tsx')
+  .map((name) => ({ name, source: readFileSync(join(import.meta.dirname, name), 'utf8') }))
+  .filter(({ source }) => SURFACES.some((surface) => source.includes(`read('src/${surface}.css')`)))
+
+describe('every suite that measures a surface', () => {
+  it('finds surfaces at all, so this guard cannot pass by matching nothing', () => {
+    expect(mounting.length).toBeGreaterThan(5)
+  })
+
+  it.each(mounting.map((s) => s.name))('lays the shared button language over %s', (name) => {
+    expect(mounting.find((s) => s.name === name)!.source).toContain("read('src/buttons.css')")
+  })
 })

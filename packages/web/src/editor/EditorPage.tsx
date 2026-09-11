@@ -310,7 +310,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
     </button>
   )
   const updateButton = (
-    <button type="button" className="byd-editor-primary" onClick={() => void updateTable()}>
+    <button type="button" className="byd-editor-primary byd-primary" onClick={() => void updateTable()}>
       {t('editor.updateTable')}
     </button>
   )

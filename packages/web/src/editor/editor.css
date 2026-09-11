@@ -169,7 +169,6 @@
 .byd-editor-confirm { min-width: 0; color: var(--byd-editor-confirm-ink); }
 .byd-editor > header > button { min-height: var(--byd-tap); min-width: var(--byd-tap); border: 1px solid #2f333d; border-radius: 8px; padding: 0 14px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
 .byd-editor > header > button:disabled { color: #5b6478; cursor: default; }
-.byd-editor > header > .byd-editor-primary { background: var(--byd-editor-primary-bg); border-color: var(--byd-editor-primary-bg); }
 .byd-editor-table-link {
   /* Fourth row, whether or not the question above it is standing: neither strip may push the
      other off the screen, and neither may take the mode's row. */
@@ -341,7 +340,6 @@
   cursor: pointer;
 }
 .byd-editor-stagebar-actions button:disabled { color: #5b6478; cursor: default; }
-.byd-editor-stagebar-actions .byd-editor-primary { background: var(--byd-editor-primary-bg); border-color: var(--byd-editor-primary-bg); }
 
 /* The setup editor (B5, K2): the recipe's knobs, the felt as the workspace, the phone's sheet. */
 .byd-setup { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px; padding: 20px; align-items: start; }
@@ -901,7 +899,6 @@
   text-decoration: none;
   cursor: pointer;
 }
-.byd-tables-ways a.byd-editor-primary { background: var(--byd-editor-primary-bg); border-color: var(--byd-editor-primary-bg); color: var(--byd-editor-primary-ink); }
 .byd-tables-ways button[data-kind='quiet'] { background: transparent; border-color: #3a4050; color: var(--byd-tables-quiet); font-weight: 400; }
 .byd-tables-note { color: var(--byd-tables-quiet); }
 .byd-tables-qr { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -929,7 +926,7 @@
    12 px gap is taken back, leaving the 1 px seam a split button has. */
 .byd-editor-split { position: relative; display: inline-flex; margin-left: -11px; }
 .byd-editor > header > .byd-editor-primary:has(+ .byd-editor-split) { border-radius: 8px 0 0 8px; }
-.byd-editor-split > .byd-editor-caret { border: 1px solid var(--byd-editor-primary-bg); border-radius: 0 8px 8px 0; margin-left: 1px; padding: 8px 12px; background: var(--byd-editor-primary-bg); color: var(--byd-editor-primary-ink); font: inherit; font-weight: 700; cursor: pointer; }
+.byd-editor-split > .byd-editor-caret { border-radius: 0 8px 8px 0; margin-left: 1px; padding: 8px 12px; font: inherit; cursor: pointer; }
 .byd-editor-ways {
   position: absolute;
   right: 0;

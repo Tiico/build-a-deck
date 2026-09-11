@@ -107,7 +107,7 @@ export function TableMenu({ client, server, onShowTables }: { client: ProjectCli
         if (open && event.key === 'Escape') close()
       }}
     >
-      <button ref={caret} type="button" className="byd-editor-primary byd-editor-caret" aria-label={t('tables.more')} aria-expanded={open} onClick={() => setOpen((on) => !on)}>
+      <button ref={caret} type="button" className="byd-editor-primary byd-primary byd-editor-caret" aria-label={t('tables.more')} aria-expanded={open} onClick={() => setOpen((on) => !on)}>
         ▾
       </button>
       {open && (
@@ -242,7 +242,7 @@ function TableRow({ table, server, rev }: { table: TableSummary; server: string 
 function Way({ href, label, table, primary = false }: { href: string; label: Key; table: string; primary?: boolean }) {
   const t = useT()
   return (
-    <a href={href} target="_blank" rel="noreferrer" aria-label={t('tables.way.aria', { label: t(label), table })} className={primary ? 'byd-editor-primary' : undefined}>
+    <a href={href} target="_blank" rel="noreferrer" aria-label={t('tables.way.aria', { label: t(label), table })} className={primary ? 'byd-editor-primary byd-primary' : undefined}>
       {t(label)}
     </a>
   )

@@ -6,7 +6,7 @@
 .byd-login h1 { margin: 0; font-size: 26px; }
 .byd-login form { display: grid; gap: 10px; }
 .byd-login input { width: 100%; box-sizing: border-box; padding: 14px 16px; border-radius: 12px; border: 1px solid #2c3242; background: #14161c; color: #fff; font-size: 16px; }
-.byd-login button { padding: 14px 18px; border: 0; border-radius: 12px; background: var(--byd-primary-bg); color: var(--byd-primary-ink); font-size: 16px; font-weight: 800; cursor: pointer; }
+.byd-login button { padding: 14px 18px; border-radius: 12px; font-size: 16px; cursor: pointer; }
 .byd-login button:disabled { opacity: 0.4; cursor: default; }
 .byd-login-sent { padding: 18px; border-radius: 14px; background: #1b2a22; color: #d8ffe8; display: grid; gap: 6px; font-size: 14px; line-height: 1.5; }
 .byd-login-error { color: #ff9a9a; font-size: 13px; margin: 0; }

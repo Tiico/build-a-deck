@@ -63,6 +63,20 @@
    `.byd-join-observe` already declared a quiet outlined button and lost, silently, to
    `.byd-join form button` — (0,1,0) against (0,1,2) — which is why "Bara titta" was drawn in the
    same green as "Sätt dig". Two classes is (0,2,0) and wins. */
+/* The first action: filled, and the only filled thing in its view. The line is the fill's own
+   colour and shows nowhere — it is there so that a filled button and an outlined one beside it
+   come out the same height, because an outline is drawn outside the shape it wraps. */
+.byd-account .byd-primary,
+.byd-join .byd-primary,
+.byd-wizard .byd-primary,
+.byd-editor .byd-primary,
+.byd-player .byd-primary {
+  border: 1px solid var(--byd-primary-bg);
+  background: var(--byd-primary-bg);
+  color: var(--byd-primary-ink);
+  font-weight: 750;
+}
+
 .byd-account .byd-secondary,
 .byd-join .byd-secondary,
 .byd-wizard .byd-secondary,

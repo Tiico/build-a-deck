@@ -116,7 +116,6 @@
 .byd-rewind-ask h1 { margin: 0; font-size: 26px; }
 .byd-rewind-ask p { margin: 0; color: var(--byd-ink-muted); font-size: 15px; }
 .byd-rewind-ask button { padding: 18px; border: 0; border-radius: 12px; font-size: 18px; font-weight: 700; }
-.byd-rewind-ask button[data-kind='ok'] { background: var(--byd-accent); color: var(--byd-on-accent); }
 .byd-rewind-ask button[data-kind='no'] { background: var(--byd-danger-bg); color: var(--byd-danger); }
 
 /* Textures (TUNN-SKIVA §5): the rendered face fills the card; the name stays for screen readers. */
@@ -162,7 +161,7 @@
 .byd-survey-dots { flex: 1; display: flex; gap: 6px; }
 .byd-survey-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--byd-line); }
 .byd-survey-dots i[data-on='true'] { background: var(--byd-accent); }
-.byd-survey-nav button { padding: 14px 18px; border: 0; border-radius: 12px; background: var(--byd-accent); color: var(--byd-on-accent); font-size: 15px; font-weight: 700; }
+.byd-survey-nav button { padding: 14px 18px; border-radius: 12px; font-size: 15px; }
 .byd-survey-nav button:disabled { opacity: 0.35; }
 .byd-survey-thanks { display: grid; place-items: center; text-align: center; gap: 8px; }
 .byd-survey-thanks strong { font-size: 24px; }

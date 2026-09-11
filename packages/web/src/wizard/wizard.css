@@ -106,7 +106,7 @@
 .byd-wizard-card-tabs b { width: 20px; height: 20px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 5px; background: #eeece5; font-size: 10px; }
 .byd-wizard-card-tabs .is-add { border-style: dashed; }
 .byd-wizard-block > footer { padding-top: 18px; display: grid; gap: 14px; border-top: 1px solid var(--line); }
-.byd-wizard-primary { padding: 0 18px !important; border-color: var(--byd-primary-bg) !important; background: var(--byd-primary-bg) !important; color: var(--byd-primary-ink) !important; font-weight: 750 !important; }
+.byd-wizard-primary { padding: 0 18px; }
 .byd-wizard [role='alert'] { color: #8d3823; }
 
 /* From the desk up the card and its fields stand side by side, and the preview column is wide

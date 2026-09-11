@@ -8,7 +8,7 @@ import { chromium, type Browser } from 'playwright'
 const read = (rel: string) => readFileSync(new URL(`../${rel}`, import.meta.url), 'utf8')
 // The phone's own stylesheet comes along because a refusal stands inside the play sheet, and a
 // control's size is the sheet's business rather than the message's.
-const CSS = `${read('src/player/player.css')}\n${read('src/status/status.css')}\n${read('src/a11y.css')}`
+const CSS = `${read('src/player/player.css')}\n${read('src/buttons.css')}\n${read('src/status/status.css')}\n${read('src/a11y.css')}`
 
 // One state of each shape: a whole page with every kind of way out, and a refusal beside the
 // control that caused it.
