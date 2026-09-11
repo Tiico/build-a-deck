@@ -147,6 +147,7 @@ export const enPlay = {
   'session.undo': '↶ Undo',
   'session.flag': '⚑ Flag',
   'session.exit': 'Exit…',
+  'session.exit.aria': '{label} the table',
   'session.flagged': 'The moment is flagged',
   'session.version.this': 'this version',
   'session.refused.kicked': 'The host has removed you from the table.',

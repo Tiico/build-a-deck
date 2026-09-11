@@ -67,7 +67,7 @@ describe('OnlinePage (C2): both roles in one window', () => {
     fireEvent.click(screen.getByRole('button', { name: /Flagga/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Flagga' }))
     await waitFor(async () => expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'flag' } }))
-    fireEvent.click(screen.getByRole('button', { name: 'Ut…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ut… ur bordet' }))
     fireEvent.click(screen.getByRole('button', { name: 'Avsluta bordet för alla' }))
     fireEvent.click(screen.getByRole('button', { name: /Avsluta för alla/ }))
     expect(await screen.findByText(/Bordet är avslutat/)).toBeTruthy()
@@ -84,7 +84,7 @@ describe('OnlinePage (C2): both roles in one window', () => {
     await table.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
     await waitFor(() => expect(document.querySelectorAll('[data-hand-fan] [data-hand-card]')).toHaveLength(2))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ut…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ut… ur bordet' }))
     expect(screen.getByRole('dialog', { name: 'På väg ut?' }).textContent).toMatch(/Tappar du nätet i stället står platsen kvar/)
     fireEvent.click(screen.getByRole('button', { name: 'Lämna bordet' }))
     await waitFor(async () => expect((await run.store.read(id)).at(-1)).toMatchObject({ by: 'A', intent: { v: 'seat.release', seat: 'A' } }))

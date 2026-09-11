@@ -153,6 +153,12 @@ export function SessionOverlays({ client, view, seat, name, http, sessionId, she
 // (G3), and the way out (C9, #31) — which is one control for both exits rather than two exits
 // standing next to each other.
 //
+// The way out is short on the screen and whole in the ear. The three words on the button are
+// what fits beside the other two at 375 px; a name has no width to run out of, so the one a
+// reader hears says which way out it is — beginning with the label itself, because WCAG 2.5.3
+// wants the visible text inside the spoken name (#48). The sheet behind it is already called
+// something plain, so the button only has to say where it leads, not what it will ask.
+//
 // Whichever of them opened a sheet takes the focus back when the last sheet closes, wherever the
 // chain went — `Question.tsx`'s manners, which say a question hands the focus back to what opened
 // it. The row is what opened it, so the row is where it is handed back.
@@ -181,7 +187,7 @@ export function SessionButtons({ client, view, sheet, onSheet }: { client: Table
       <button className="byd-flag" disabled={view.ended} onClick={raise('flag')}>
         {t('session.flag')}
       </button>
-      <button className="byd-exit" disabled={view.ended} onClick={raise('exit')}>
+      <button className="byd-exit" aria-label={t('session.exit.aria', { label: t('session.exit') })} disabled={view.ended} onClick={raise('exit')}>
         {t('session.exit')}
       </button>
     </>

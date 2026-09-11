@@ -6,11 +6,16 @@ import { Language } from '../src/i18n/index.js'
 import { TvChrome } from '../src/table/TvChrome.js'
 import { PlaySheet } from '../src/player/PlaySheet.js'
 import { EndSheet, ExitSheet, FlagSheet } from '../src/player/SessionSheets.js'
+import { SessionButtons } from '../src/player/SessionOverlays.js'
 import { Survey } from '../src/player/Survey.js'
 import { TableSummary } from '../src/player/TableSummary.js'
 import { buildScene } from './scene.js'
 
 const english = (ui: React.ReactNode) => render(<Language lang="en">{ui}</Language>)
+const swedish = (ui: React.ReactNode) => render(<Language lang="sv">{ui}</Language>)
+
+// The row's controls only ever open a sheet in these tests; nothing is sent.
+const idle = { send: async () => undefined } as unknown as Parameters<typeof SessionButtons>[0]['client']
 
 describe('the play surfaces in the reader\'s own language (A4)', () => {
   it('says the table screen in English: its headings, its seats, and what just happened', () => {
@@ -77,6 +82,29 @@ describe('the play surfaces in the reader\'s own language (A4)', () => {
     expect(within(exit).getAllByRole('button').map((b) => b.textContent)).toEqual(['Leave the table', 'End the table for everyone', 'Stay'])
     expect(exit.textContent).toMatch(/Lose the connection instead and your seat stands/)
     expect(exit.textContent).toMatch(/We ask once more before that happens/)
+  })
+
+  // The phone's row is read by two senses at once. The eye gets three controls that fit on one
+  // line at 375 px, which is why the way out is written as short as it is (#31); the ear gets a
+  // name, and a name has no width to run out of. So the way out says where it leads, and says it
+  // beginning with the very word on the button, which is what WCAG 2.5.3 asks of a label that is
+  // also spoken (#48).
+  it('names the way out by where it leads without lengthening the button, in both languages', () => {
+    const { view } = buildScene()
+    const row = <SessionButtons client={idle} view={view('A')} sheet={null} onSheet={() => undefined} />
+
+    const sv = swedish(row)
+    const svExit = screen.getByRole('button', { name: 'Ut… ur bordet' })
+    expect(svExit.textContent).toBe('Ut…')
+    expect(screen.getByRole('button', { name: '↶ Ångra' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '⚑ Flagga' })).toBeTruthy()
+    sv.unmount()
+
+    english(row)
+    const enExit = screen.getByRole('button', { name: 'Exit… the table' })
+    expect(enExit.textContent).toBe('Exit…')
+    expect(screen.getByRole('button', { name: '↶ Undo' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '⚑ Flag' })).toBeTruthy()
   })
 
   it('asks the survey in English', () => {

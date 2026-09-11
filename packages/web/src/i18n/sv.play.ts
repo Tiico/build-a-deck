@@ -174,6 +174,9 @@ export const svPlay = {
   'session.undo': '↶ Ångra',
   'session.flag': '⚑ Flagga',
   'session.exit': 'Ut…',
+  // Kortheten gäller radens bredd, inte det uppläsbara namnet: namnet börjar med etiketten på
+  // knappen och säger sedan vart den leder (#48, WCAG 2.5.3).
+  'session.exit.aria': '{label} ur bordet',
   'session.flagged': 'Ögonblicket är flaggat',
   'session.version.this': 'den här versionen',
   'session.refused.kicked': 'Värden har tagit bort dig från bordet.',

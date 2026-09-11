@@ -254,7 +254,7 @@ describe('ending the session and the survey after it (C9, G3)', () => {
   it('asks first, then locks the log; the survey takes one question at a time and lands on the server, tied to the version', async () => {
     const id = await createSession(run)
     await open(id, 'A', 'Ada')
-    fireEvent.click(screen.getByRole('button', { name: 'Ut…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ut… ur bordet' }))
     fireEvent.click(screen.getByRole('button', { name: 'Avsluta bordet för alla' }))
     expect(screen.getByText(/Avsluta bordet\?/)).toBeTruthy()
     expect((await run.store.read(id)).some((l) => l.intent.v === 'session.end')).toBe(false)
@@ -290,7 +290,7 @@ describe('leaving the table (#31)', () => {
     await table.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 3 })
     await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(3))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ut…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ut… ur bordet' }))
     const sheet = screen.getByRole('dialog', { name: 'På väg ut?' })
     // Both exits stand in it, each under what it costs; asking is not yet answering.
     expect(sheet.textContent).toMatch(/Din plats blir ledig och korten i din hand går tillbaka i draghögen/)
@@ -310,7 +310,7 @@ describe('leaving the table (#31)', () => {
     const id = await createSession(run)
     const went: string[] = []
     await open(id, 'A', 'Ada', { onLeave: (url) => went.push(url) })
-    fireEvent.click(screen.getByRole('button', { name: 'Ut…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ut… ur bordet' }))
     fireEvent.click(screen.getByRole('button', { name: 'Lämna bordet' }))
     await waitFor(() => expect(went).toHaveLength(1))
     const back = new URL(went[0] ?? '', 'http://x')
@@ -325,7 +325,7 @@ describe('leaving the table (#31)', () => {
   it('does not sit straight back down on the seat it just gave up', async () => {
     const id = await createSession(run)
     await open(id, 'A', 'Ada', { onLeave: () => undefined })
-    fireEvent.click(screen.getByRole('button', { name: 'Ut…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ut… ur bordet' }))
     fireEvent.click(screen.getByRole('button', { name: 'Lämna bordet' }))
     await waitFor(async () => expect((await run.store.read(id)).at(-1)?.intent.v).toBe('seat.release'))
     // The page is still standing where the browser has not navigated away from it yet, and the
@@ -337,7 +337,7 @@ describe('leaving the table (#31)', () => {
   it('asks its own question before ending the table, so ending is one press further away than it was', async () => {
     const id = await createSession(run)
     await open(id, 'A', 'Ada')
-    fireEvent.click(screen.getByRole('button', { name: 'Ut…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Ut… ur bordet' }))
     fireEvent.click(screen.getByRole('button', { name: 'Avsluta bordet för alla' }))
     expect(screen.getByRole('dialog', { name: 'Avsluta bordet?' })).toBeTruthy()
     expect((await run.store.read(id)).some((l) => l.intent.v === 'session.end')).toBe(false)
@@ -348,7 +348,7 @@ describe('leaving the table (#31)', () => {
   it('hands the focus back to the control that opened it, whichever way the question was answered', async () => {
     const id = await createSession(run)
     await open(id, 'A', 'Ada')
-    const out = screen.getByRole('button', { name: 'Ut…' })
+    const out = screen.getByRole('button', { name: 'Ut… ur bordet' })
     fireEvent.click(out)
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Stanna kvar' }))
     fireEvent.keyDown(screen.getByRole('dialog', { name: 'På väg ut?' }), { key: 'Escape' })
