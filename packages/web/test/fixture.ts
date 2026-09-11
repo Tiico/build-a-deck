@@ -2,6 +2,7 @@ import type { AddressInfo } from 'node:net'
 import type { Server } from 'node:http'
 import { CARD_STANDARD_63x88, TOKEN_COUNTER, TypeRegistry, type SetupDef, STANDARD_TYPES } from '@byd/engine'
 import { TableHost, createServer, MemoryLogStore, MemoryProjectStore, MemorySurveyStore, MemoryAuthStore, MemoryMailer, MemoryAssetStore } from '@byd/server'
+import { applyRecipe, emptySetup } from '@byd/server/doc'
 import { MemoryRenderStore } from '@byd/render/queue'
 
 // A real server in-process. Client tests talk to it over a real socket — no mocks.
@@ -25,6 +26,19 @@ export function twoSeatSetup(): SetupDef {
       { id: 'hand:B', kind: 'hand', name: 'Hand', visibility: 'owner', owner: 'B', returnTo: 'draw', geometry: rect(-300, -420, 600, 100) },
     ],
     components: CARDS.map((cardRef) => ({ type: CARD(), cardRef, zone: 'draw', face: 'back' })),
+  }
+}
+
+// A table laid out the way the wizard lays one out, for any number of seats the recipe allows.
+// Past four players the recipe seats two people along the same side of the felt, so this is the
+// only way to get a table whose seats share an edge (#42).
+export function recipeSetup(players: number): SetupDef {
+  const setup = applyRecipe(emptySetup(), { players, mine: false, discard: false, market: false, counters: [] })
+  return {
+    seats: setup.seats,
+    floor: setup.floor,
+    zones: setup.zones.map((z) => ({ id: z.id, kind: z.kind, name: z.name, visibility: z.visibility, geometry: z.geometry, ...(z.owner ? { owner: z.owner } : {}), ...(z.returnTo ? { returnTo: z.returnTo } : {}), ...(z.shortcut ? { shortcut: z.shortcut } : {}) })),
+    components: CARDS.map((cardRef) => ({ type: CARD(), cardRef, zone: setup.deckZone, face: 'back' })),
   }
 }
 

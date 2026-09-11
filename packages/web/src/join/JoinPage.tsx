@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { SeatView } from '@byd/protocol'
 import { useTableClient } from '../table/useTableClient.js'
 import { seatColor } from '../table/seatColor.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
@@ -16,6 +17,24 @@ import './join.css'
 // next free seat chosen already, so the indifferent just type a name and go. The code buys a
 // token for the seat (DRIFT §9); the token is what the phone connects with.
 export type JoinPageProps = { onSit?(url: string): void; timing?: StatusTiming }
+
+// A table has four sides and may seat eight, so past four players two seats share a side (#42).
+// Where along that side each of them stands is not a fact about the table — it is how the picker
+// draws one — so it is counted here, from the edges the seat list already carries, and handed to
+// the stylesheet. Nothing in the protocol has to say it.
+type Along = { at: number; of: number }
+function along(seats: readonly SeatView[]): Map<string, Along> {
+  const sides = new Map<string, SeatView[]>()
+  for (const seat of seats) {
+    if (seat.edge === null) continue
+    const side = sides.get(seat.edge) ?? []
+    side.push(seat)
+    sides.set(seat.edge, side)
+  }
+  const out = new Map<string, Along>()
+  for (const side of sides.values()) side.forEach((seat, at) => out.set(seat.id, { at, of: side.length }))
+  return out
+}
 
 export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAULT_TIMING }: JoinPageProps) {
   const t = useT()
@@ -76,6 +95,7 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
   usePageTitle({ state: !code ? 'missing' : lookup === 'gone' ? 'missing' : lookup ?? live.state, room: code })
 
   const free = view?.seats.filter((s) => s.name === null) ?? []
+  const spread = along(view?.seats ?? [])
   // The next free seat is chosen until you choose another; a pick someone else just took is let go.
   const chosen = pick && free.some((s) => s.id === pick) ? pick : (free[0]?.id ?? null)
 
@@ -132,6 +152,7 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
       <div className="byd-join-table">
         {view.seats.map((s, i) => {
           const taken = s.name !== null
+          const place = spread.get(s.id)
           return (
             <button
               key={s.id}
@@ -142,7 +163,7 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
               aria-label={taken ? t('join.seat.label.taken', { seat: s.id, name: s.name ?? '' }) : t('join.seat.label.free', { seat: s.id })}
               aria-pressed={chosen === s.id ? 'true' : 'false'}
               onClick={() => !taken && setPick(s.id)}
-              style={{ ['--seat' as string]: seatColor(i) }}
+              style={{ ['--seat' as string]: seatColor(i), ...(place ? { ['--seat-at' as string]: String(place.at), ['--seat-of' as string]: String(place.of) } : {}) }}
             >
               {s.name ?? t('join.seat.free')}
             </button>

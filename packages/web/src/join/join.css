@@ -4,6 +4,9 @@
      palette (#20) is one palette and a seat button here is the same object as a name tag there.
      White on it measured 3.44:1 on the blue seat and down to 2.44:1 on the yellow one. */
   --byd-seat-ink: #0d0f14;
+  /* The step from one seat to the next along a side of the felt (#42). */
+  --byd-seat-pitch-x: 104px;
+  --byd-seat-pitch-y: 46px;
   min-height: 100vh; box-sizing: border-box; padding: 40px 20px 28px;
   background: #14161c; color: #eee; font-family: system-ui, sans-serif;
   display: grid; grid-template-rows: auto 1fr auto; gap: 20px;
@@ -32,13 +35,20 @@
 /* A seat with an edge is hung off that edge of the felt. A seat without one — a table that gives
    it no hand says nothing about which side it is on — keeps its place in the row above, because
    a picker that guesses a side is how every seat once ended up on the same one (#39). */
-.byd-join-table button[data-edge] { position: absolute; }
+/* A table has four sides and seats up to eight, so past four players two seats share a side
+   (#42). They stand beside each other along it rather than on top of each other, which keeps the
+   picker a picture of the table — still four compass points, and no seat hidden under another.
+   `--seat-at` is the seat's place along its own edge and `--seat-of` how many share it, both
+   counted by the page from the edges the seat list already carries. `--seat-step` is how many
+   pitches from the middle of the edge that puts the seat: with one seat on an edge it works out
+   to exactly zero, so a table of four or fewer is drawn where it was drawn before. */
+.byd-join-table button[data-edge] { position: absolute; --seat-at: 0; --seat-of: 1; --seat-step: calc((var(--seat-at) * 2 - var(--seat-of) + 1) / 2); }
 .byd-join-table button[aria-disabled='true'] { background: #2a2e3a; color: #9aa3b8; }
 .byd-join-table button[aria-pressed='true'] { border-color: #fff; }
-.byd-join-table button[data-edge='N'] { top: -26px; left: 50%; transform: translateX(-50%); }
-.byd-join-table button[data-edge='S'] { bottom: -26px; left: 50%; transform: translateX(-50%); }
-.byd-join-table button[data-edge='E'] { right: -30px; top: 50%; transform: translateY(-50%); }
-.byd-join-table button[data-edge='W'] { left: -30px; top: 50%; transform: translateY(-50%); }
+.byd-join-table button[data-edge='N'] { top: -26px; left: calc(50% + var(--seat-step) * var(--byd-seat-pitch-x)); transform: translateX(-50%); }
+.byd-join-table button[data-edge='S'] { bottom: -26px; left: calc(50% + var(--seat-step) * var(--byd-seat-pitch-x)); transform: translateX(-50%); }
+.byd-join-table button[data-edge='E'] { right: -30px; top: calc(50% + var(--seat-step) * var(--byd-seat-pitch-y)); transform: translateY(-50%); }
+.byd-join-table button[data-edge='W'] { left: -30px; top: calc(50% + var(--seat-step) * var(--byd-seat-pitch-y)); transform: translateY(-50%); }
 .byd-join form { display: grid; gap: 10px; }
 .byd-join input { padding: 16px; border-radius: 12px; border: 1px solid #2c3242; background: #1b1e27; color: #fff; font-size: 18px; }
 .byd-join form button { padding: 18px; border-radius: 12px; border: 0; background: #7dd3a0; color: #0d0f14; font-size: 18px; font-weight: 800; }

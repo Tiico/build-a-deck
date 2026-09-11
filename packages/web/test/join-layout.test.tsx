@@ -14,7 +14,7 @@ import { render, screen } from '@testing-library/react'
 import { chromium, type Browser } from 'playwright'
 import type { SetupDef } from '@byd/engine'
 import { JoinPage } from '../src/join/JoinPage.js'
-import { createSession, roomOf, startServer, twoSeatSetup, type Running } from './fixture.js'
+import { createSession, recipeSetup, roomOf, startServer, twoSeatSetup, type Running } from './fixture.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
@@ -77,6 +77,27 @@ async function measure(markup: string): Promise<{ felt: Box; seats: Box[] }> {
 }
 
 const place = ({ x, y, w, h }: Box) => `${x},${y} ${w}×${h}`
+
+// What the thumb actually lands on: the seat the browser finds at each seat's own centre. Two
+// boxes that fall on the same point are one fault; which of them takes the tap is the other, and
+// only this says so. Answers the seat's own id when the seat can be reached at all.
+async function reachable(markup: string): Promise<Record<string, string | null>> {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
+  try {
+    await page.setContent(document_(markup), { waitUntil: 'load' })
+    return await page.evaluate(() => {
+      const out: Record<string, string | null> = {}
+      for (const el of document.querySelectorAll('[data-seat]')) {
+        const r = el.getBoundingClientRect()
+        const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)
+        out[(el as HTMLElement).dataset['seat'] ?? '?'] = (hit?.closest('[data-seat]') as HTMLElement | null)?.dataset['seat'] ?? null
+      }
+      return out
+    })
+  } finally {
+    await page.close()
+  }
+}
 
 describe('the table as a seat picker (K12, #39)', () => {
   it('draws the two seats of a two-seat table apart, on the sides their hands are on', async () => {
@@ -143,5 +164,38 @@ describe('a seat is a thumb-sized target (UX-KONTROLLER: träffytor)', () => {
     const [a, b] = boxes as [Box, Box]
     expect(place(a)).not.toBe(place(b))
     expect(a.y).toBeGreaterThan(b.y)
+  }, 60_000)
+})
+
+// Past four players the recipe seats two people along the same side of the felt: `edgeOf` runs
+// S, N, E, W and then round again, so on an eight-seat table A shares the south edge with E, B
+// the north with F, and so on. The derivation is right — a table really does have four sides —
+// but the picker gave each compass point exactly one place, so the pair landed in it together.
+const overlap = (a: Box, b: Box): { w: number; h: number } => ({
+  w: Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)),
+  h: Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y)),
+})
+const pairsOf = <T,>(items: T[]): [T, T][] => items.flatMap((a, i) => items.slice(i + 1).map((b): [T, T] => [a, b]))
+
+describe('a table whose seats share a side (#42)', () => {
+  it('gives every seat of an eight-seat table a box of its own', async () => {
+    const { seats: boxes } = await measure(await picker(recipeSetup(8)))
+    expect(boxes.map((b) => b.seat)).toEqual(['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'])
+
+    // The defect, in one line: each of the four pairs came out as one box drawn twice — the
+    // overlap measured the whole pill, 64.3 × 37, for A×E, B×F, C×G and D×H alike.
+    const stacked = pairsOf(boxes)
+      .filter(([a, b]) => overlap(a, b).w > 0 && overlap(a, b).h > 0)
+      .map(([a, b]) => `${a.seat}×${b.seat} ${overlap(a, b).w}×${overlap(a, b).h}`)
+    expect(stacked).toEqual([])
+  }, 60_000)
+
+  it('lets every seat of an eight-seat table be tapped, and not its neighbour', async () => {
+    const hit = await reachable(await picker(recipeSetup(8)))
+
+    // The fault as the thumb met it: the later sibling painted on top of the earlier one, so the
+    // four earlier seats answered for nobody — A→E, B→F, C→G, D→H, and A, B, C and D could
+    // not be chosen at all. (The issue says the lower seat of each pair; it was the earlier one.)
+    expect(hit).toEqual({ A: 'A', B: 'B', C: 'C', D: 'D', E: 'E', F: 'F', G: 'G', H: 'H' })
   }, 60_000)
 })
