@@ -166,7 +166,11 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
               onClick={() => !taken && setPick(s.id)}
               style={{ ['--seat' as string]: seatColor(i), ...(place ? { ['--seat-at' as string]: String(place.at), ['--seat-of' as string]: String(place.of) } : {}) }}
             >
-              {s.name ?? t('join.seat.free')}
+              {/* The name in an element of its own, because the cut that keeps a long one out of
+                  the seat beside it (#42) has to have something to take hold of: the pill is a
+                  flex container, and a flex container's own text can be neither ellipsised nor
+                  shrunk. What is spoken is still the button's label, so this cuts nothing. */}
+              <span>{s.name ?? t('join.seat.free')}</span>
             </button>
           )
         })}

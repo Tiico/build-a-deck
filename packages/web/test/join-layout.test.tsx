@@ -86,18 +86,51 @@ async function measure(markup: string): Promise<{ felt: Box; seats: Box[] }> {
 const place = ({ x, y, w, h }: Box) => `${x},${y} ${w}×${h}`
 
 // A seat pill as the browser presents it: how wide it comes out, whether the name had to be cut
-// to fit, and what the seat is called in Chromium's own accessibility tree — which is where a
+// to fit, which letters of it are actually painted inside the pill, whether the browser marked
+// the cut, and what the seat is called in Chromium's own accessibility tree — which is where a
 // name cut by the stylesheet still reads in full, and a name cut in JavaScript would not.
-async function pill(markup: string, seat: string): Promise<{ w: number; cut: boolean; name: string }> {
+//
+// `shown` is read letter by letter, because that is the only thing on the page that knows what a
+// reader can see: the rectangle a character is laid out in either falls inside the box that clips
+// it or it does not. `marked` is read by painting the pill twice, once as the stylesheet leaves
+// it and once with the cut forced to `clip`, and asking whether the two pictures differ — an
+// ellipsis that is really drawn shows up as a difference, and one the stylesheet only asks for
+// does not.
+const CLIP = '<style>.byd-join-table button, .byd-join-table button * { text-overflow: clip !important }</style>'
+async function pill(markup: string, seat: string): Promise<{ w: number; cut: boolean; shown: string; marked: boolean; name: string }> {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
   try {
     await page.setContent(document_(markup), { waitUntil: 'load' })
     const spoken = await page.locator(`[data-seat="${seat}"]`).ariaSnapshot()
     const size = await page.evaluate((id) => {
       const el = document.querySelector(`[data-seat="${id}"]`) as HTMLElement
-      return { w: Math.round(el.getBoundingClientRect().width * 10) / 10, cut: el.scrollWidth > el.clientWidth }
+      // The label is whatever element the stylesheet hung the cut on: the button itself, or the
+      // element inside it the name was put in so the cut could reach the name at all.
+      const label = (el.querySelector('span') ?? el) as HTMLElement
+      const text = label.firstChild as Text
+      const style = getComputedStyle(label)
+      const box = label.getBoundingClientRect()
+      // What overflow hides is everything outside the padding box, so that is the clip.
+      const left = box.left + parseFloat(style.borderLeftWidth)
+      const right = box.right - parseFloat(style.borderRightWidth)
+      const range = document.createRange()
+      const inside: number[] = []
+      for (let i = 0; i < text.data.length; i++) {
+        range.setStart(text, i)
+        range.setEnd(text, i + 1)
+        const r = range.getBoundingClientRect()
+        if (r.left >= left - 0.05 && r.right <= right + 0.05) inside.push(i)
+      }
+      return {
+        w: Math.round(el.getBoundingClientRect().width * 10) / 10,
+        cut: label.scrollWidth > label.clientWidth,
+        shown: inside.length === 0 ? '' : text.data.slice(inside[0]!, inside[inside.length - 1]! + 1),
+      }
     }, seat)
-    return { ...size, name: /"([^"]*)"/.exec(spoken)?.[1] ?? spoken.trim() }
+    const painted = await page.locator(`[data-seat="${seat}"]`).screenshot()
+    await page.setContent(document_(markup).replace('</head>', `${CLIP}</head>`), { waitUntil: 'load' })
+    const clipped = await page.locator(`[data-seat="${seat}"]`).screenshot()
+    return { ...size, marked: !painted.equals(clipped), name: /"([^"]*)"/.exec(spoken)?.[1] ?? spoken.trim() }
   } finally {
     await page.close()
   }
@@ -287,6 +320,16 @@ describe('a table whose seats share a side (#42)', () => {
     const seat = await pill(markup, 'A')
     expect(seat.cut).toBe(true)
     expect(seat.name).toContain(long)
+
+    // And cut is the word for it. A cut that is not marked is not a cut, it is a different name:
+    // the pill was a flex container, `text-overflow` does not reach a flex container's own text,
+    // so the cap clipped instead of ellipsising — and because the pill centres what it holds, it
+    // clipped at both ends. `Alexandra` on an eight-seat table came out as `lexandr`, which is a
+    // name, is not hers, and has nothing on it to say so. So: the beginning of the name survives,
+    // and what was taken off the end is marked as taken off.
+    expect(seat.shown).not.toBe(long)
+    expect(seat.shown).toBe(long.slice(0, seat.shown.length))
+    expect(seat.marked).toBe(true)
   }, 60_000)
 
   // And the cap is only the cure for the thing it cures. A seat nobody shares an edge with has

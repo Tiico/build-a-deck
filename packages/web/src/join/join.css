@@ -50,10 +50,17 @@
 
    Only a pill with a neighbour, though — `data-shares` is set by the page for exactly the seats
    its own count of the edge found company on. A seat alone on its edge has empty felt beside it
-   and nothing to reach into, so it goes on growing with its name as it always has. */
-.byd-join-table button[data-shares] {
-  max-width: calc(var(--byd-seat-pitch-x) - var(--byd-seat-gap)); overflow: hidden; text-overflow: ellipsis;
-}
+   and nothing to reach into, so it goes on growing with its name as it always has.
+
+   The name sits in a span of its own, and that span is what the cut is hung on. The pill is a
+   flex container, so the name would otherwise be a flex container's own anonymous text —
+   `text-overflow` does not reach one, and a flex item does not shrink below its text either. The
+   cap then clipped in silence, and since the pill centres what it holds it clipped at both ends:
+   `Bartholomew Longbottom` came out as `mew Lon`, a different name with nothing on it to say it
+   had been cut. A span takes the cut, `min-width: 0` lets it shrink to the pill, and the
+   ellipsis lands where the name really ends. */
+.byd-join-table button[data-shares] { max-width: calc(var(--byd-seat-pitch-x) - var(--byd-seat-gap)); overflow: hidden; }
+.byd-join-table button[data-shares] > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 /* A seat with an edge is hung off that edge of the felt. A seat without one — a table that gives
    it no hand says nothing about which side it is on — keeps its place in the row above, because
    a picker that guesses a side is how every seat once ended up on the same one (#39).
