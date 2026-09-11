@@ -241,7 +241,26 @@ type Where = (typeof WHERE)[number]
 // the pin's at all, with how many of its pixels are covered; `hit` is what a thumb aimed at the
 // middle of the pin actually lands on, which is the whole of #17; `strip` is a picture of the
 // last 40 px in front of the pin — the ground a value has to cross to go under it.
-type Shot = { cut: string | null; scrollLeft: number; left: number; pin: Box; box: Box; under: { name: string; px: number }[]; hit: string; strip: Buffer }
+//
+// That strip runs from the top of the box, so it takes in the head and the rows at once. The head
+// is a different kind of ground from a row: a row holds a value, the head holds the word for a
+// column and the × that takes that column away. So the same 40 px are also taken twice over,
+// banded by row — `headStrip` across the heading row, `bodyStrip` across the first card's row —
+// and `veiled` says which remove-field controls are standing in the 24 px the fade covers, so a
+// comparison over the head cannot pass by pointing at empty ground.
+type Shot = {
+  cut: string | null
+  scrollLeft: number
+  left: number
+  pin: Box
+  box: Box
+  under: { name: string; px: number }[]
+  hit: string
+  strip: Buffer
+  headStrip: Buffer
+  bodyStrip: Buffer
+  veiled: { field: string; px: number }[]
+}
 
 // One page, scrolled to each of the three places in turn, so a stylesheet costs one browser page
 // rather than three. `extra` is appended after the editor's own, which is how the cue is taken
@@ -273,6 +292,18 @@ async function pinned(html: string, extra = ''): Promise<Record<Where, Shot>> {
           // The × of the first card, and what the browser finds at the middle of it.
           const row = (scroll.querySelector('tbody tr .byd-data-remove') as HTMLElement).getBoundingClientRect()
           const at = document.elementFromPoint(row.left + row.width / 2, row.top + row.height / 2)
+          // The two rows the same ground is read across, and the controls standing in the fade.
+          const headRow = (scroll.querySelector('thead > tr') as HTMLElement).getBoundingClientRect()
+          const bodyRow = (scroll.querySelector('tbody > tr') as HTMLElement).getBoundingClientRect()
+          const veiled = [...scroll.querySelectorAll('thead .byd-data-dropfield')]
+            .map((drop) => {
+              const seen = drop.getBoundingClientRect()
+              return {
+                field: (drop.getAttribute('aria-label') ?? '').trim(),
+                px: Math.round(Math.min(seen.right, over.left) - Math.max(seen.left, over.left - 24)),
+              }
+            })
+            .filter((c) => c.px > 0)
           return {
             cut: scroll.getAttribute('data-cut'),
             scrollLeft: Math.round(scroll.scrollLeft),
@@ -280,14 +311,22 @@ async function pinned(html: string, extra = ''): Promise<Record<Where, Shot>> {
             pin: round(over),
             box: round(box),
             under,
+            veiled,
             hit: `${at?.tagName ?? '(nothing)'} in ${at?.closest('td, th')?.className ?? '(no cell)'}`,
             clip: { x: over.left - 40, y: box.top, width: 40, height: Math.min(box.height, 420) },
+            headClip: { x: over.left - 40, y: headRow.top, width: 40, height: headRow.height },
+            bodyClip: { x: over.left - 40, y: bodyRow.top, width: 40, height: bodyRow.height },
           }
         },
         { where, decide: String(markCut) },
       )
-      const { clip, ...rest } = facts
-      out[where] = { ...rest, strip: await page.screenshot({ clip }) }
+      const { clip, headClip, bodyClip, ...rest } = facts
+      out[where] = {
+        ...rest,
+        strip: await page.screenshot({ clip }),
+        headStrip: await page.screenshot({ clip: headClip }),
+        bodyStrip: await page.screenshot({ clip: bodyClip }),
+      }
     }
     return out
   } finally {
@@ -364,6 +403,33 @@ describe('what says a value is still going under the pinned × (#53)', () => {
     // And at the end of the scroll, where nothing is under the pin, nothing extra is painted:
     // the shipped picture is the picture with the cue taken away, pixel for pixel.
     expect(shown.end.strip.equals(off.end.strip)).toBe(true)
+  }, 60_000)
+
+  // The cue is about values that are cut. A heading is not a value: it holds a short field name
+  // and, next to it, the × that takes the whole column away. Dimming that × would trade contrast
+  // on a destructive control for a hint about a word that was never going to run long — a worse
+  // fault than the one the fade was drawn to fix, and against what the editor holds its controls
+  // to (editor-contrast, docs/UX-KONTROLLER.md). So the head is deliberately left uncued, and the
+  // same 40 px are read twice: across the heading row nothing extra may be painted, across the
+  // first card's row the fade must still be there.
+  it('leaves the head alone: while the cue is on, the remove-field × in front of the pin is painted exactly as it is with the cue taken away', async () => {
+    const [shown, off] = await Promise.all([pinned(await markupOf(wideDoc())), pinned(await markupOf(wideDoc()), FORCED.off)])
+
+    // The head really is the ground being read: at rest and halfway along, a control that takes a
+    // field away is standing inside the 24 px the fade covers.
+    expect(shown.rest.veiled.length).toBeGreaterThan(0)
+    expect(shown.mid.veiled.length).toBeGreaterThan(0)
+    expect(shown.rest.veiled.every((c) => c.px > 0)).toBe(true)
+
+    // The condition: the heading row in front of the pin is the same picture with the cue on as
+    // with it taken back — the × keeps every bit of the contrast it was measured at.
+    expect(shown.rest.headStrip.equals(off.rest.headStrip)).toBe(true)
+    expect(shown.mid.headStrip.equals(off.mid.headStrip)).toBe(true)
+
+    // And it is not bought by taking the cue away: the first card's row, over the same 40 px and
+    // at the same moment, is still painted differently from the ground with the fade taken back.
+    expect(shown.rest.bodyStrip.equals(off.rest.bodyStrip)).toBe(false)
+    expect(shown.mid.bodyStrip.equals(off.mid.bodyStrip)).toBe(false)
   }, 60_000)
 
   it('says nothing about a table that fits: with four fields the ground in front of the pin is the bare ground', async () => {

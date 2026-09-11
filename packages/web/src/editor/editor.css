@@ -806,8 +806,14 @@
    moves, so a reader who asks for less motion has nothing here to turn off.
    It is a veil and not a control — `pointer-events: none`, so the tap under it still reaches the
    cell it belongs to and the × keeps its own (#17). The last pixel row is left alone so the rule
-   between two cards runs all the way to the pin. */
-.byd-data .byd-data-remove::before {
+   between two cards runs all the way to the pin.
+   It is drawn across the rows and nowhere else. The head is not a value: it carries a short field
+   name and, beside it, the × that takes that whole column away. A fade over that is a contrast
+   trade on a destructive control, which is a worse fault than the cut it would be hinting at, and
+   the editor holds its controls to a measured contrast (editor-contrast, UX-KONTROLLER). So the
+   head is deliberately left uncued — nothing about it fades, and the × keeps every bit of its
+   own. */
+.byd-data tbody .byd-data-remove::before {
   content: '';
   position: absolute;
   top: 0;
@@ -821,7 +827,7 @@
 /* Only while a column really is under the pin. Which is never guessed from the number of fields:
    the box measures it and writes it down (`markCut`), and a table that fits is drawn exactly as
    it always was. */
-.byd-data-scroll[data-cut='true'] .byd-data .byd-data-remove::before { opacity: 1; }
+.byd-data-scroll[data-cut='true'] .byd-data tbody .byd-data-remove::before { opacity: 1; }
 
 /* A field arrives in the editor (#32, prototype variant A): the head's last named cell is the
    button, so the column grows where it will stand. The form it opens must not make that cell
