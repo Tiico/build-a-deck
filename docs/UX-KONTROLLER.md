@@ -22,8 +22,21 @@ vyer och tillstånd i inventeringen samma dag som de införs.
 
 ## Kontrollmatris
 
-Varje yta granskas minst i 390, 768 och 1280 CSS-pixlars bredd. Kritiska
-mobilflöden kontrolleras även vid 320 px. Kontrollera:
+Bredderna en yta granskas i följer vem som håller ytan (DESIGN-BESLUT L12):
+
+- **Spelarens ytor** — `/play`, `/online`, `/join`, observatören — granskas i 390,
+  768 och 1280, och kritiska mobilflöden även vid 320 px. Telefonen i playtestet
+  hålls i en hand och måste vara utmärkt på en liten skärm.
+- **Editorn** — `/editor`, `/new`, kortväggen, duken, tabellen, wizarden —
+  granskas i 1280 och 1024, och därutöver i 768 bara för att slå fast att inget
+  går sönder eller tappar arbete. Den är skrivbordsförst och ska degradera, inte
+  garantera, under skrivbordsbredd. Ett fynd som bara gäller editorn vid 390
+  eller 320 är inte ett fynd.
+- **Bordets skärm** — `/table` — är en TV och har sina egna mått (K9, C5).
+
+Allt annat nedan gäller **varje** yta oavsett bredd. Tillgänglighet är inte
+mobilstöd: tangentbord, fokus, läsordning, namn, roller, kontrast, träffytor och
+`prefers-reduced-motion` gäller editorn fullt ut. Kontrollera:
 
 - visuell hierarki, begriplig text, konsekvens och innehåll som inte överlappar,
 - komplett mus-, touch- och tangentbordsinteraktion samt synlig fokusmarkering,

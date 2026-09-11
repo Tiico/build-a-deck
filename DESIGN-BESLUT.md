@@ -1445,6 +1445,36 @@ Paletten är däremot redan gjord för mörkt bläck — TV-dockans avatarer anv
 
 Wizardens `--accent` är dess egen varumärkesfärg och ingenting av detta rör den.
 
+### L12. Editorn är ett skrivbordsverktyg, telefonen är spelarens (2026-09-11)
+
+Editorn och den medföljande telefonvyn har dragits mot samma krav, och det är fel krav för den ena av dem.
+
+Formgivaren sitter vid ett skrivbord.
+Hon arbetar i en datatabell med sex kolumner, drar element på en kortduk i millimeter, och håller lagerpanelen och egenskaperna i syn samtidigt.
+Det är arbete som vill ha bredd, en mus och ett tangentbord, och en editor som optimeras för en telefon blir sämre på det den faktiskt används till.
+Telefonen i playtestet är den andra saken: den hålls i en hand runt ett bord, och **den** måste vara utmärkt på en liten skärm.
+
+Beslutet är därför att skilja kraven åt efter yta:
+
+- **Editorn** (`/editor`, `/new`, kortväggen, duken, tabellen, wizarden) är skrivbordsförst.
+  Den granskas och mäts vid skrivbordsbredder.
+  Den ska **degradera, inte garantera** på en smal skärm: den förblir nåbar, får inte gå sönder och får aldrig tappa arbete — men layouten är varken optimerad eller granskad under skrivbordsbredd.
+- **Spelarens ytor** (`/play`, `/online`, `/join`, observatören) är mobilförst och granskas vid 390 och 320 som förut.
+  Bordets egen skärm (`/table`) är en TV och har sina egna mått (K9, C5).
+
+Gränsen går vid *vem som håller ytan*, inte vid vilket paket koden ligger i.
+
+**Vad detta inte betyder.**
+Tillgänglighet är inte detsamma som mobilstöd, och ingenting här rör den.
+Tangentbordsdrift, fokusordning, läsordning, uppläsbara namn och roller, kontrast och `prefers-reduced-motion` gäller editorn fullt ut — en formgivare som arbetar på tangentbord eller med skärmläsare är en *skrivbordsanvändare*, och K16 och L11 står oförändrade.
+Träffytorna i `docs/UX-KONTROLLER.md` står också kvar; 44 px skadar ingen mus, och att riva ut dem vore att lösa ett problem som inte finns.
+
+**Följdkrav.**
+Den generella regeln i `docs/UX-KONTROLLER.md` — att varje yta granskas vid 390, 768 och 1280 — gällde alla ytor lika och är det som drog editorn hit.
+Den är nu uppdelad per yta i samma dokument.
+Mätande tester som låser editorns layout vid 390 eller 320 låser ett krav som inte längre finns; de tas bort eller skrivs om till skrivbordsbredder när de står i vägen för ett designval, men jagas inte upp i förväg.
+Ett öppet issue vars fynd bara gäller editorn på en smal skärm är inte längre ett fynd.
+
 ---
 
 ## I. Öppna frågor
