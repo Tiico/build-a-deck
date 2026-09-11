@@ -11,7 +11,7 @@ import type { VisibleComponentState } from '@byd/protocol'
 import { Texture } from '../src/table/Texture.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
-const SHEETS = ['src/table/table.css', 'src/table/texture.css', 'src/online/online.css', 'src/player/player.css']
+const SHEETS = ['src/table/table.css', 'src/table/texture.css', 'src/online/online.css', 'src/player/player.css', 'src/buttons.css']
 
 const card: VisibleComponentState = {
   id: 'c1',

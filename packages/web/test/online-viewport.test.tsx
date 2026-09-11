@@ -19,7 +19,7 @@ const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel),
 const shell = read('index.html')
 // Every sheet `/online` ships with: the felt, the textures, the phone's controls it borrows, its
 // own, the keyboard's rings and panel (#1, #2), and the status surfaces.
-const css = ['src/table/table.css', 'src/table/texture.css', 'src/player/player.css', 'src/online/online.css', 'src/table/keyboard.css', 'src/status/status.css', 'src/a11y.css'].map(read).join('\n')
+const css = ['src/table/table.css', 'src/table/texture.css', 'src/player/player.css', 'src/online/online.css', 'src/table/keyboard.css', 'src/status/status.css', 'src/a11y.css', 'src/buttons.css'].map(read).join('\n')
 
 const document_ = (html: string) =>
   shell

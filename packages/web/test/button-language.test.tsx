@@ -503,19 +503,48 @@ describe.each(ROOTS)('a second action inside a form on $what', ({ root, css }) =
 // A surface without the shared sheet under it is not the surface that ships. Every suite that
 // builds a document out of one of the five stylesheets has to lay `buttons.css` over it too, or
 // it goes on measuring a page nobody sees — borders, weights and hit areas the language has since
-// changed. This is the guard that stops the next such suite from being written without it.
+// changed.
+//
+// What a suite *loads* is a path; how it spells the loading is its own business. This guard used
+// to look for the literal `read('src/<surface>.css')`, which is one of the two ways this directory
+// loads a stylesheet, and so it never saw the four suites that reach the same sheets through
+// `[...].map(read)`. Two of those four are the ones that measure `/online` and `/observe` — the
+// exact routes the language had never reached — so the guard was blindest precisely where it was
+// needed. A path is matched now, on both sides of the question.
 const SURFACES = ['account/account', 'join/join', 'wizard/wizard', 'editor/editor', 'player/player'] as const
+const loads = (source: string, sheet: string) => source.includes(`src/${sheet}.css`)
 const mounting = readdirSync(import.meta.dirname)
   .filter((name) => /\.tsx?$/.test(name) && name !== 'button-language.test.tsx')
   .map((name) => ({ name, source: readFileSync(join(import.meta.dirname, name), 'utf8') }))
-  .filter(({ source }) => SURFACES.some((surface) => source.includes(`read('src/${surface}.css')`)))
+  // Only the suites that put one into a document. A suite that opens a stylesheet to read a token
+  // out of its text has no page for the language to be laid over.
+  .filter(({ source }) => source.includes('setContent(') && SURFACES.some((surface) => loads(source, surface)))
 
 describe('every suite that measures a surface', () => {
-  it('finds surfaces at all, so this guard cannot pass by matching nothing', () => {
-    expect(mounting.length).toBeGreaterThan(5)
+  // Named rather than counted. A guard whose subject is found by a regular expression can lose
+  // its subject to a rename and go on passing over an empty list, which is what the count below
+  // it was there to prevent and did not: it said "more than five" while four were missing.
+  it('finds every suite that lays a surface into a document, by name', () => {
+    expect(mounting.map((s) => s.name).sort()).toEqual([
+      'account-viewport.test.tsx',
+      'data-table-csv-pair.test.tsx',
+      'data-table-layout.test.tsx',
+      'editor-css.test.ts',
+      'editor-viewport.test.tsx',
+      'join-layout.test.tsx',
+      'observer-viewport.test.tsx',
+      'online-layout.test.tsx',
+      'online-viewport.test.tsx',
+      'player-viewport.test.tsx',
+      'reduced-motion.test.ts',
+      'status-css.test.ts',
+      'template-canvas-layout.test.tsx',
+      'texture-layout.test.tsx',
+      'wizard-viewport.test.tsx',
+    ])
   })
 
   it.each(mounting.map((s) => s.name))('lays the shared button language over %s', (name) => {
-    expect(mounting.find((s) => s.name === name)!.source).toContain("read('src/buttons.css')")
+    expect(loads(mounting.find((s) => s.name === name)!.source, 'buttons')).toBe(true)
   })
 })

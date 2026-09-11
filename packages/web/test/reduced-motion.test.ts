@@ -6,7 +6,7 @@ import { chromium, type Browser } from 'playwright'
 // Non-essential motion has to stop when the reader asks for it, and the only honest place to
 // measure that is an engine that knows the media query.
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
-const SHEETS = ['src/a11y.css', 'src/table/table.css', 'src/table/texture.css', 'src/online/online.css', 'src/player/player.css', 'src/status/status.css']
+const SHEETS = ['src/a11y.css', 'src/table/table.css', 'src/table/texture.css', 'src/online/online.css', 'src/player/player.css', 'src/status/status.css', 'src/buttons.css']
 
 // Every element in the app that moves on its own, with the property that carries the motion.
 const MOVERS = {
