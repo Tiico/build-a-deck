@@ -1022,9 +1022,14 @@ Med en ensam plats på kanten blir steget exakt noll, så tvåplatsfallet från 
 Lobbyn ser fortfarande inga zoner; gränsen #31 hårdnade står orörd.
 
 Steget längs en kant är inte detsamma åt båda håll.
-Ett piller är bredare än det är högt, så `--byd-seat-pitch-x` är 104 px och `--byd-seat-pitch-y` 77 px, valda så att luften mellan två platser läses lika stor ned längs en sida som tvärs över en ände.
+Ett piller är 44 px högt och 64 px brett när det bara säger "ledig" (UX-KONTROLLER: träffytor), alltså 20 px bredare än högt, så `--byd-seat-pitch-x` är 82 px och `--byd-seat-pitch-y` 62 px, valda så att luften mellan två platser läses lika stor ned längs en sida som tvärs över en ände: 17,7 px tvärs över änden mot 18 px ned längs sidan.
+Hur långt isär paret får stå är inte fritt.
+Pillret hänger 26 px utanför sin kant och räcker därmed 18 px in på filten igen, så den yttersta platsen på en kant ställer sig annars i samma hörn som den yttersta platsen på kanten bredvid — vilket den gjorde, med 8,5 × 3,5 px av det ena pillret på det andra.
+Filten är 150 px hög, vilket ger öst-väst-paret 70 px steg innan dess nedre plats når upp till sydplatsens överkant; 62 px lämnar 4 px dager i alla fyra hörnen, och nord-syd-steget följer med på de 20 px mer som pillret är bredare än högt.
+Fler vid samma sida sitter alltså tätare, precis som vid ett riktigt bord, och filten och avhängen är orörda så att bord upp till fyra ritas exakt som förut.
 Ett långt namn är det andra sättet två platser hamnar på varandra: pillret växte med texten och hade ingen breddgräns alls.
-Ett piller som delar sin kant är därför högst en delning minus luften brett — `calc(var(--byd-seat-pitch-x) - var(--byd-seat-gap))`, 90 px — och ett längre namn kapas.
+Ett piller som delar sin kant är därför högst en delning minus luften brett — `calc(var(--byd-seat-pitch-x) - var(--byd-seat-gap))`, 68 px — och ett längre namn kapas.
+Det tätare steget gör gränsen snävare än den var: 68 px rymmer "ledig" och ungefär fem tecken till, så på ett bord där kanterna delas kapas de flesta namn på skärmen.
 Gränsen gäller bara den som har en granne: sidan sätter `data-shares` på just de platser dess egen räkning av kanten fann sällskap på, och css:en kapar efter det attributet.
 En ensam plats på sin kant har tom filt bredvid sig och inget att växa in i, så den bär hela sitt namn precis som före #42 — annars hade det vanligaste bordet, två till fyra spelare, betalat för ett fel det inte kan ha.
 Kapningen sker i css:en och inte på sidan, eftersom namnet en skärmläsare säger fortfarande ska vara hela namnet.
