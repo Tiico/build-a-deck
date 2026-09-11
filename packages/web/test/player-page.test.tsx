@@ -61,6 +61,25 @@ describe('PlayerPage', () => {
     table.close()
   })
 
+  // The hint describes what a finger can do to a card. With no cards it described nothing that
+  // was on the screen, which is what UX-16 caught.
+  it('holds the gesture hint back until there is a card to use it on', async () => {
+    const id = await createSession(run)
+    const table = TableClient.connect(await asTable(run, id))
+    await table.ready()
+    await open(id, 'A', 'Ada')
+    await table.synced(1)
+
+    expect(screen.queryByText(/tryck = titta/)).toBeNull()
+    expect(screen.getByText(/Tom hand/)).toBeTruthy()
+
+    await table.send({ v: 'deal', from: 'draw', to: ['hand:A'], each: 1 })
+    await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1))
+    expect(screen.getByText('tryck = titta · dra upp = spela · håll = välj flera')).toBeTruthy()
+    expect(screen.queryByText(/Tom hand/)).toBeNull()
+    table.close()
+  })
+
   // Sitting down is one envelope, and an envelope can be lost: `send` answers a socket that is
   // not there without throwing, and anything in flight is failed when the line drops. Latching
   // on the attempt rather than on the answer left a phone looking at a seat it never took, with

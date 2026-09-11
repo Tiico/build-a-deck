@@ -117,11 +117,15 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
         onPlay={setLifted}
       />
       <HandStrip view={view} selected={selected} faces={faces} onTap={setInspect} onHold={toggle} onLift={setLifted} onOpen={(c) => kbd.openHand(c, [...selected])} />
-      <p className="byd-hint">
-        {selected.size > 0
-          ? t(selected.size === 1 ? 'player.hint.selected.one' : 'player.hint.selected.other', { n: selected.size })
-          : t('player.hint')}
-      </p>
+      {/* The hint names what a finger can do to a card, so it waits for a card to exist (UX-16).
+          An empty hand says its own thing in the strip above instead. */}
+      {hand.length > 0 && (
+        <p className="byd-hint">
+          {selected.size > 0
+            ? t(selected.size === 1 ? 'player.hint.selected.one' : 'player.hint.selected.other', { n: selected.size })
+            : t('player.hint')}
+        </p>
+      )}
       {inspect && (
         <div className="byd-inspect" onClick={() => setInspect(null)}>
           <div data-inspect={inspect.id} data-face="front" style={{ ['--hue' as string]: hue(inspect.cardRef ?? '') }}>
