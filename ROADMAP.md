@@ -141,7 +141,7 @@ Målet är att tjänsten tål riktiga användare, dygnet runt, på en låda hemm
 - ⬜ Cloudflare rate limiting mot join- och login-endpointerna (DRIFT §9).
 - ⬜ Tailscale för administration, UPS för lådan, och beslutet om en extern pulskoll (DRIFT §10, öppna frågor).
 - ⬜ Minnesbudgeten provad under last: render 2 GB, Postgres 1,5 GB, app 1 GB (DRIFT §1).
-- ⬜ Dokumenterad återställning från noll: ny låda, `.env`, restore, deploy.
+- 🔶 Dokumenterad återställning från noll: ny låda, `.env`, restore, deploy — skriven som [ops/RUNBOOK.md](ops/RUNBOOK.md); vägen från R2 till den riktiga datavolymen är körd först den dag den behövs.
 
 ## Fas 5 — Tryck
 
