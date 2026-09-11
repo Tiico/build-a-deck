@@ -235,7 +235,6 @@ async function markupOf(doc: ProjectDoc): Promise<string> {
 
 // The three places the box can be: where it opens, halfway along, and as far as it goes.
 const WHERE = ['rest', 'mid', 'end'] as const
-type Where = (typeof WHERE)[number]
 // A fourth place, which is not a fraction of the scroll but a question put to the page: where is
 // a column's × actually standing in the fade? That depends on how wide the headings come out, and
 // a heading is as wide as its typeface makes it — so it is worked out on the page rather than
