@@ -209,19 +209,20 @@ describe('the head and the rows are the same table (#32)', () => {
   }, 60_000)
 })
 
-// The pinned × lies over what scrolls under it, and no stylesheet can stop it: content and pin
-// share one clipping rectangle, and taking the pin out of the scroller costs the sticky heading
-// (#53, and the measurements in its thread). So the overlap stays and is made legible instead —
-// which first of all means the table has to know when it is happening. That is geometry, so it
-// is read in a real engine: the pin's box against every other cell's, the editor's own function
-// running inside the page it was written for.
+
+// The pinned × lies over what scrolls under it, and no stylesheet can stop it: the content and the
+// pin share one clipping rectangle, and the only way out — a pin outside the scroller — costs the
+// sticky heading, which is not for sale (#53, and the measurements in its thread). So the overlap
+// stays and is made legible instead. Two things have to be true of that: the table has to know
+// when a column has run in under the pin, which is geometry; and the reader has to be able to see
+// it, which is paint. Both are read in a real engine, off the boxes and off the pixels.
 const FIELDS = 10
 
-// A deck wide enough that the box scrolls sideways at 1280 — which is the only width at which the
-// pin covers anything at all.
+// A deck wide enough that the box scrolls sideways at 1280 — the only width at which the pin
+// covers anything at all.
 function wideDoc(): ProjectDoc {
   const doc = projectDoc()
-  const extra = Object.fromEntries(Array.from({ length: FIELDS }, (_, i) => [`fält${i + 1}`, `värde ${i + 1}`]))
+  const extra = Object.fromEntries(Array.from({ length: FIELDS }, (_, i) => [`fält${i + 1}`, `värde ${i + 1} som fortsätter förbi kanten`]))
   return { ...doc, rows: doc.rows.map((row) => ({ ...row, fields: { ...row.fields, ...extra } })) }
 }
 
@@ -232,75 +233,191 @@ async function markupOf(doc: ProjectDoc): Promise<string> {
   return html
 }
 
-// What the pin is standing on at a given scroll position, read off the boxes: where the pin is,
-// how far the box can still scroll, and every column that overlaps the pin at all with how many
-// of its pixels are under it. `at` is where the box is scrolled to before anything is read.
-type Pinned = { cut: string | null; scrollLeft: number; rest: number; pin: Box; under: { name: string; px: number }[] }
+// The three places the box can be: where it opens, halfway along, and as far as it goes.
+const WHERE = ['rest', 'mid', 'end'] as const
+type Where = (typeof WHERE)[number]
 
-async function pinned(html: string, at: 'rest' | 'end', extra = ''): Promise<Pinned> {
+// What the pin is standing on at one scroll position. `under` is every column whose box overlaps
+// the pin's at all, with how many of its pixels are covered; `hit` is what a thumb aimed at the
+// middle of the pin actually lands on, which is the whole of #17; `strip` is a picture of the
+// last 40 px in front of the pin — the ground a value has to cross to go under it.
+type Shot = { cut: string | null; scrollLeft: number; left: number; pin: Box; box: Box; under: { name: string; px: number }[]; hit: string; strip: Buffer }
+
+// One page, scrolled to each of the three places in turn, so a stylesheet costs one browser page
+// rather than three. `extra` is appended after the editor's own, which is how the cue is taken
+// back for the control cases below.
+async function pinned(html: string, extra = ''): Promise<Record<Where, Shot>> {
   const page = await browser.newPage({ viewport: { width: VIEW.w, height: VIEW.h } })
   try {
     await page.setContent(shellOf(html, extra), { waitUntil: 'load' })
-    return await page.evaluate(
-      ({ end, decide }) => {
-        const scroll = document.querySelector('.byd-data-scroll') as HTMLElement
-        scroll.scrollLeft = end ? scroll.scrollWidth : 0
-        // The editor's own decision, run on the page rather than described by the test.
-        new Function('box', `(${decide})(box)`)(scroll)
-        const pin = scroll.querySelector('thead .byd-data-remove') as HTMLElement
-        const over = pin.getBoundingClientRect()
-        const under = [...scroll.querySelectorAll('thead > tr > *')]
-          .filter((cell) => cell !== pin)
-          .map((cell) => {
-            const box = cell.getBoundingClientRect()
-            const px = Math.round(Math.min(box.right, over.right) - Math.max(box.left, over.left))
-            return { name: cell.className.replace('byd-data-', '') || (cell.textContent ?? '').trim(), px }
-          })
-          .filter((c) => c.px > 0)
-        const round = (r: DOMRect): Box => ({ x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) })
-        return {
-          cut: scroll.getAttribute('data-cut'),
-          scrollLeft: Math.round(scroll.scrollLeft),
-          rest: Math.round(scroll.scrollWidth - scroll.clientWidth - scroll.scrollLeft),
-          pin: round(over),
-          under,
-        }
-      },
-      { end: at === 'end', decide: String(markCut) },
-    )
+    const out = {} as Record<Where, Shot>
+    for (const where of WHERE) {
+      const facts = await page.evaluate(
+        ({ where, decide }) => {
+          const scroll = document.querySelector('.byd-data-scroll') as HTMLElement
+          const far = scroll.scrollWidth - scroll.clientWidth
+          scroll.scrollLeft = where === 'rest' ? 0 : where === 'mid' ? Math.round(far / 2) : far
+          // The editor's own decision, run on the page rather than described by the test.
+          new Function('box', `(${decide})(box)`)(scroll)
+          const round = (r: DOMRect): Box => ({ x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) })
+          const pin = scroll.querySelector('thead .byd-data-remove') as HTMLElement
+          const over = pin.getBoundingClientRect()
+          const box = scroll.getBoundingClientRect()
+          const under = [...scroll.querySelectorAll('thead > tr > *')]
+            .filter((cell) => cell !== pin)
+            .map((cell) => {
+              const seen = cell.getBoundingClientRect()
+              return { name: cell.className.replace('byd-data-', '') || (cell.textContent ?? '').trim(), px: Math.round(Math.min(seen.right, over.right) - Math.max(seen.left, over.left)) }
+            })
+            .filter((c) => c.px > 0)
+          // The × of the first card, and what the browser finds at the middle of it.
+          const row = (scroll.querySelector('tbody tr .byd-data-remove') as HTMLElement).getBoundingClientRect()
+          const at = document.elementFromPoint(row.left + row.width / 2, row.top + row.height / 2)
+          return {
+            cut: scroll.getAttribute('data-cut'),
+            scrollLeft: Math.round(scroll.scrollLeft),
+            left: Math.round(far - scroll.scrollLeft),
+            pin: round(over),
+            box: round(box),
+            under,
+            hit: `${at?.tagName ?? '(nothing)'} in ${at?.closest('td, th')?.className ?? '(no cell)'}`,
+            clip: { x: over.left - 40, y: box.top, width: 40, height: Math.min(box.height, 420) },
+          }
+        },
+        { where, decide: String(markCut) },
+      )
+      const { clip, ...rest } = facts
+      out[where] = { ...rest, strip: await page.screenshot({ clip }) }
+    }
+    return out
   } finally {
     await page.close()
   }
 }
 
 describe('a column running in under the pinned × (#53)', () => {
-  it('is something the table knows about, at rest and not at the end of the scroll', async () => {
-    const html = await markupOf(wideDoc())
-    const [rest, end] = await Promise.all([pinned(html, 'rest'), pinned(html, 'end')])
+  it('is something the table knows about, all the way along the scroll except at the very end of it', async () => {
+    const at = await pinned(await markupOf(wideDoc()))
 
-    // The guard is worth nothing if the box does not scroll: there is somewhere to scroll to at
-    // rest, and nowhere left at the end.
-    expect(rest.scrollLeft).toBe(0)
-    expect(rest.rest).toBeGreaterThan(100)
-    expect(end.rest).toBe(0)
-    // The pin is where #17 put it, at the box's right edge, at both positions.
-    expect(end.pin).toEqual(rest.pin)
-    expect(rest.pin.w).toBe(44)
+    // The guard is worth nothing if the box does not scroll: there is somewhere to go at rest,
+    // half of it left in the middle, and nowhere at the end.
+    expect(at.rest.scrollLeft).toBe(0)
+    expect(at.rest.left).toBeGreaterThan(100)
+    expect(at.mid.scrollLeft).toBeGreaterThan(0)
+    expect(at.end.left).toBe(0)
 
-    // And the fault itself, read off the boxes: at rest a column really is under the pin, and at
-    // the end of the scroll none is.
-    expect(rest.under.length).toBeGreaterThan(0)
-    expect(end.under).toEqual([])
-    expect(rest.cut).toBe('true')
-    expect(end.cut).toBe('false')
+    // The fault itself, read off the boxes: while there is anywhere left to scroll a column
+    // really is under the pin, and at the end of the scroll none is.
+    expect(at.rest.under.length).toBeGreaterThan(0)
+    expect(at.mid.under.length).toBeGreaterThan(0)
+    expect(at.end.under).toEqual([])
+    expect(WHERE.map((w) => at[w]!.cut)).toEqual(['true', 'true', 'false'])
   }, 60_000)
 
-  it('is not what a narrow table does: with four fields nothing is under the pin and nothing is marked', async () => {
-    const only = await pinned(await markupOf(projectDoc()), 'rest')
+  it("never costs the pin itself: the × stands at the box's edge and takes the tap at every scroll position (#17)", async () => {
+    const at = await pinned(await markupOf(wideDoc()))
 
-    // The table fits, so there is nowhere to scroll and nothing to cover.
-    expect(only.rest).toBe(0)
-    expect(only.under).toEqual([])
-    expect(only.cut).toBe('false')
+    // One box, in one place, a tap wide, flush with the right edge of the box that scrolls —
+    // whatever the scroll is doing and whatever the cue is doing.
+    expect(WHERE.map((w) => at[w]!.pin)).toEqual([at.rest.pin, at.rest.pin, at.rest.pin])
+    expect(at.rest.pin.w).toBe(44)
+    expect(WHERE.map((w) => at[w]!.pin.x + at[w]!.pin.w)).toEqual(WHERE.map((w) => at[w]!.box.x + at[w]!.box.w))
+    // And a thumb aimed at the middle of a card's × lands on that button, not on what is under it.
+    expect(WHERE.map((w) => at[w]!.hit)).toEqual(Array(3).fill('BUTTON in byd-data-remove'))
+  }, 60_000)
+
+  it("is not what a narrow table does: with the fixture's four fields nothing is under the pin", async () => {
+    const at = await pinned(await markupOf(projectDoc()))
+
+    // The table fits, so there is nowhere to scroll and nothing to cover — and nothing is marked.
+    expect(WHERE.map((w) => at[w]!.left)).toEqual([0, 0, 0])
+    expect(WHERE.map((w) => at[w]!.under)).toEqual([[], [], []])
+    expect(WHERE.map((w) => at[w]!.cut)).toEqual(['false', 'false', 'false'])
+  }, 60_000)
+})
+
+// Whether the cue is really drawn is read the way the felt reads its ellipsis (join-layout): the
+// ground in front of the pin is painted twice — once as the stylesheet leaves it, once with the
+// cue's own property forced the other way — and the two pictures are compared. A fade that is
+// really painted shows up as a difference; one the stylesheet only asks for does not.
+const FORCED = {
+  off: '.byd-data .byd-data-remove::before { opacity: 0 !important; }',
+  on: '.byd-data .byd-data-remove::before { opacity: 1 !important; }',
+}
+
+describe('what says a value is still going under the pinned × (#53)', () => {
+  it('is painted in front of the pin while a column is cut, and is gone at the end of the scroll', async () => {
+    const [shown, off, on] = await Promise.all([
+      pinned(await markupOf(wideDoc())),
+      pinned(await markupOf(wideDoc()), FORCED.off),
+      pinned(await markupOf(wideDoc()), FORCED.on),
+    ])
+
+    // The control really can paint: forced on and forced off are two different pictures wherever
+    // the box stands. Without this, every comparison below could pass by painting nothing at all.
+    expect(WHERE.map((w) => on[w]!.strip.equals(off[w]!.strip))).toEqual([false, false, false])
+
+    // The cue itself: while a column is under the pin, the ground in front of the pin is painted
+    // differently from the same ground with the fade taken back.
+    expect(shown.rest.strip.equals(off.rest.strip)).toBe(false)
+    expect(shown.mid.strip.equals(off.mid.strip)).toBe(false)
+    // And at the end of the scroll, where nothing is under the pin, nothing extra is painted:
+    // the shipped picture is the picture with the cue taken away, pixel for pixel.
+    expect(shown.end.strip.equals(off.end.strip)).toBe(true)
+  }, 60_000)
+
+  it('says nothing about a table that fits: with four fields the ground in front of the pin is the bare ground', async () => {
+    const [shown, off] = await Promise.all([pinned(await markupOf(projectDoc())), pinned(await markupOf(projectDoc()), FORCED.off)])
+
+    expect(WHERE.map((w) => shown[w]!.strip.equals(off[w]!.strip))).toEqual([true, true, true])
+  }, 60_000)
+})
+
+// The sticky heading is what every nested design would have cost, and it is the thing the
+// narrowed issue refused to pay for (#53). So it is measured beside the cue rather than taken on
+// trust: a deck long enough to scroll down and wide enough for the cue to be on, scrolled both
+// ways at once.
+async function scrolled(html: string): Promise<{ head: Box; box: Box; first: string; cut: string | null; pin: Box }> {
+  const page = await browser.newPage({ viewport: { width: VIEW.w, height: VIEW.h } })
+  try {
+    await page.setContent(shellOf(html, ''), { waitUntil: 'load' })
+    return await page.evaluate((decide) => {
+      const scroll = document.querySelector('.byd-data-scroll') as HTMLElement
+      scroll.scrollTop = 300
+      scroll.scrollLeft = Math.round((scroll.scrollWidth - scroll.clientWidth) / 2)
+      new Function('box', `(${decide})(box)`)(scroll)
+      const round = (r: DOMRect): Box => ({ x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) })
+      const at = document.elementFromPoint(scroll.getBoundingClientRect().x + 60, scroll.getBoundingClientRect().y + 200)
+      return {
+        head: round((document.querySelector('.byd-data thead tr th') as HTMLElement).getBoundingClientRect()),
+        box: round(scroll.getBoundingClientRect()),
+        // Which card is standing 200 px down the box, which says the rows really did move.
+        first: at?.closest('tr')?.querySelector('.byd-data-id')?.textContent ?? '(none)',
+        cut: scroll.getAttribute('data-cut'),
+        pin: round((scroll.querySelector('thead .byd-data-remove') as HTMLElement).getBoundingClientRect()),
+      }
+    }, String(markCut))
+  } finally {
+    await page.close()
+  }
+}
+
+describe('the head of a table that is being scrolled both ways (#53 on #17)', () => {
+  it('stays at the top of the box while the cue is on, which is the whole reason the overlap was kept', async () => {
+    const wide = wideDoc()
+    const deck: ProjectDoc = { ...wide, rows: Array.from({ length: 40 }, (_, i) => ({ id: `kort-${i + 1}`, fields: { ...wide.rows[0]!.fields, title: `Kort ${i + 1}` } })) }
+    const at = await scrolled(await markupOf(deck))
+
+    // The box really was scrolled down: the card at the top of it is not the first card of the
+    // deck any more.
+    expect(at.first).not.toBe('kort-1')
+    expect(at.first).toMatch(/^kort-\d+$/)
+    // The head has not gone with them: it stands at the top of the box, which is what
+    // `position: sticky; top: 0` is for and what no nested scroller could have kept.
+    expect(at.head.y).toBe(at.box.y)
+    // And across the other axis, at the same moment: the pin is at the box's right edge and the
+    // cue is on.
+    expect(at.pin.x + at.pin.w).toBe(at.box.x + at.box.w)
+    expect(at.cut).toBe('true')
   }, 60_000)
 })
