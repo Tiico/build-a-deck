@@ -1,0 +1,31 @@
+# The box already carries a reverse proxy, so the stack does not bring its own way in (DRIFT §2).
+# This overlay is merged on top of docker-compose.yml by COMPOSE_FILE in .env; the base stack
+# stays portable and names no proxy, and a box without one still reaches the street through the
+# `tunnel` profile instead.
+#
+# `chain-no-auth@file` and not `chain-authelia@file`: the product carries its own accounts, and a
+# guest arrives at a table with a room code and no account at all (DRIFT §9, §11). The house SSO
+# in front of the page would turn every player away before the code was ever read. What the chain
+# does give is the rate limiting DRIFT §9 asks for, counted on the real caller, because the proxy
+# is told to trust Cloudflare's forwarded headers.
+networks:
+  t2_proxy:
+    external: true
+
+services:
+  app:
+    networks:
+      default:
+      t2_proxy:
+    labels:
+      - "traefik.enable=true"
+      # The app answers on two networks; the proxy has to be told which one to reach it on.
+      - "traefik.docker.network=t2_proxy"
+      - "traefik.http.routers.byd-rtr.entrypoints=https"
+      # One box's name is not the stack's business: it comes from .env, and must be the host in
+      # PUBLIC_ORIGIN. They disagree only once, and then the login loops.
+      - "traefik.http.routers.byd-rtr.rule=Host(`${BYD_HOSTNAME:?set BYD_HOSTNAME to the host in PUBLIC_ORIGIN}`)"
+      - "traefik.http.routers.byd-rtr.tls=true"
+      - "traefik.http.routers.byd-rtr.middlewares=chain-no-auth@file"
+      - "traefik.http.routers.byd-rtr.service=byd-svc"
+      - "traefik.http.services.byd-svc.loadbalancer.server.port=8080"

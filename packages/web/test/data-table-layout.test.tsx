@@ -235,7 +235,12 @@ async function markupOf(doc: ProjectDoc): Promise<string> {
 
 // The three places the box can be: where it opens, halfway along, and as far as it goes.
 const WHERE = ['rest', 'mid', 'end'] as const
-type Where = (typeof WHERE)[number]
+// A fourth place, which is not a fraction of the scroll but a question put to the page: where is
+// a column's × actually standing in the fade? That depends on how wide the headings come out, and
+// a heading is as wide as its typeface makes it — so it is worked out on the page rather than
+// written down here, where it would only ever be true on the machine it was written on.
+const PLACES = [...WHERE, 'veil'] as const
+type Place = (typeof PLACES)[number]
 
 // What the pin is standing on at one scroll position. `under` is every column whose box overlaps
 // the pin's at all, with how many of its pixels are covered; `hit` is what a thumb aimed at the
@@ -265,17 +270,26 @@ type Shot = {
 // One page, scrolled to each of the three places in turn, so a stylesheet costs one browser page
 // rather than three. `extra` is appended after the editor's own, which is how the cue is taken
 // back for the control cases below.
-async function pinned(html: string, extra = ''): Promise<Record<Where, Shot>> {
+async function pinned(html: string, extra = ''): Promise<Record<Place, Shot>> {
   const page = await browser.newPage({ viewport: { width: VIEW.w, height: VIEW.h } })
   try {
     await page.setContent(shellOf(html, extra), { waitUntil: 'load' })
-    const out = {} as Record<Where, Shot>
-    for (const where of WHERE) {
+    const out = {} as Record<Place, Shot>
+    for (const where of PLACES) {
       const facts = await page.evaluate(
         ({ where, decide }) => {
           const scroll = document.querySelector('.byd-data-scroll') as HTMLElement
           const far = scroll.scrollWidth - scroll.clientWidth
-          scroll.scrollLeft = where === 'rest' ? 0 : where === 'mid' ? Math.round(far / 2) : far
+          if (where === 'veil') {
+            // Scroll until the first × that can reach the fade has its right edge 12 px in front
+            // of the pin. The pin is sticky, so its left edge does not move while this is decided.
+            scroll.scrollLeft = 0
+            const front = (scroll.querySelector('thead .byd-data-remove') as HTMLElement).getBoundingClientRect().left
+            const reach = [...scroll.querySelectorAll('thead .byd-data-dropfield')]
+              .map((drop) => Math.round(drop.getBoundingClientRect().right - (front - 12)))
+              .find((delta) => delta > 0 && delta <= far)
+            scroll.scrollLeft = reach ?? Math.round(far / 2)
+          } else scroll.scrollLeft = where === 'rest' ? 0 : where === 'mid' ? Math.round(far / 2) : far
           // The editor's own decision, run on the page rather than described by the test.
           new Function('box', `(${decide})(box)`)(scroll)
           const round = (r: DOMRect): Box => ({ x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) })
@@ -415,19 +429,26 @@ describe('what says a value is still going under the pinned × (#53)', () => {
   it('leaves the head alone: while the cue is on, the remove-field × in front of the pin is painted exactly as it is with the cue taken away', async () => {
     const [shown, off] = await Promise.all([pinned(await markupOf(wideDoc())), pinned(await markupOf(wideDoc()), FORCED.off)])
 
-    // The head really is the ground being read: at rest and halfway along, a control that takes a
-    // field away is standing inside the 24 px the fade covers.
-    expect(shown.rest.veiled.length).toBeGreaterThan(0)
-    expect(shown.mid.veiled.length).toBeGreaterThan(0)
-    expect(shown.rest.veiled.every((c) => c.px > 0)).toBe(true)
+    // The head really is the ground being read: at the place worked out for it, a control that
+    // takes a field away is standing inside the 24 px the fade covers, with the cue on. Which
+    // scroll position that is was once assumed to be rest and halfway along; it is on a Mac and
+    // it is not on the Linux runner, because the headings are not the same width there.
+    expect(shown.veil.veiled.length).toBeGreaterThan(0)
+    expect(shown.veil.veiled.every((c) => c.px > 0)).toBe(true)
+    expect(shown.veil.cut).toBe('true')
+    // Both pictures are taken at the same moment: the cue is a paint, not a layout, so taking it
+    // back may not move anything — and if it ever did, the two would part here first.
+    expect(shown.veil.scrollLeft).toBe(off.veil.scrollLeft)
 
     // The condition: the heading row in front of the pin is the same picture with the cue on as
     // with it taken back — the × keeps every bit of the contrast it was measured at.
+    expect(shown.veil.headStrip.equals(off.veil.headStrip)).toBe(true)
     expect(shown.rest.headStrip.equals(off.rest.headStrip)).toBe(true)
     expect(shown.mid.headStrip.equals(off.mid.headStrip)).toBe(true)
 
     // And it is not bought by taking the cue away: the first card's row, over the same 40 px and
     // at the same moment, is still painted differently from the ground with the fade taken back.
+    expect(shown.veil.bodyStrip.equals(off.veil.bodyStrip)).toBe(false)
     expect(shown.rest.bodyStrip.equals(off.rest.bodyStrip)).toBe(false)
     expect(shown.mid.bodyStrip.equals(off.mid.bodyStrip)).toBe(false)
   }, 60_000)
