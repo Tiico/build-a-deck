@@ -4,7 +4,7 @@ import { createServer } from './server.js'
 import { MemoryLogStore, type LogStore } from './store.js'
 import { MemoryProjectStore, type ProjectStore } from './projects.js'
 import { MemorySurveyStore, type SurveyStore } from './surveys.js'
-import { ConsoleMailer, MemoryAuthStore, ResendMailer, type AuthStore, type Mailer } from './auth.js'
+import { MemoryAuthStore, mailerFromEnv, type AuthStore } from './auth.js'
 import { MemoryAssetStore, type AssetStore } from './assets.js'
 import { PostgresLogStore } from './store-postgres.js'
 import { MemoryRenderStore, PostgresRenderStore, assetsFromEnv, type RenderStore } from '@byd/render/queue'
@@ -71,8 +71,7 @@ const staticDir = process.env['STATIC_DIR']
 const publicOrigin = process.env['PUBLIC_ORIGIN']
 const appOrigin = process.env['WEB_ORIGIN']
 const authBypass = process.env['AUTH_BYPASS'] === 'true'
-const resendKey = process.env['RESEND_API_KEY']
-const mailer: Mailer = resendKey ? new ResendMailer(resendKey, process.env['MAIL_FROM'] ?? 'build-your-deck <login@example.com>') : new ConsoleMailer()
+const mailer = mailerFromEnv(process.env)
 const server = createServer({ host, store, registry, renders, projects, assets, surveys, auth, mailer, authBypass, ...(objects ? { objects } : {}), ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}) })
 server.listen(port, () => console.log(JSON.stringify({ msg: 'listening', port })))
 
