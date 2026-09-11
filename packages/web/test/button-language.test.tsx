@@ -126,18 +126,59 @@ async function joinViews(): Promise<Record<string, string>> {
   history.replaceState(null, '', `/join?code=${roomOf(session).code}&server=${encodeURIComponent(run.url)}`)
   const { container, unmount } = render(<JoinPage />)
   await screen.findByRole('button', { name: /Sätt dig/ })
+  // How the page opens. The next free seat is chosen for you (`chosen` falls back to `free[0]`),
+  // but no name has been typed, so all three ways on are still refused — and this is the state
+  // anybody arriving at a table sees first. Nothing measured it: the walk below picked a seat and
+  // typed a name before it looked at anything.
+  const out: Record<string, string> = { 'innan namnet är skrivet': container.innerHTML }
   fireEvent.click(screen.getByRole('button', { name: /Plats A/ }))
   fireEvent.change(screen.getByLabelText('Ditt namn'), { target: { value: 'Bo' } })
-  const html = container.innerHTML
+  out['sätt dig vid bordet'] = container.innerHTML
   unmount()
   table.close()
-  return { 'sätt dig vid bordet': html }
+  return out
 }
 
 describe('the seat picker', () => {
   it('wears the primary fill on nothing but the action that seats you', async () => {
     const measured = await inChromium(read('src/join/join.css'), 390, await joinViews(), wearingThePrimary('.byd-join'))
-    expect(measured).toEqual({ 'sätt dig vid bordet': ['Sätt dig'] })
+    expect(measured).toEqual({ 'innan namnet är skrivet': [], 'sätt dig vid bordet': ['Sätt dig'] })
+  }, 90_000)
+
+  // Refused is a state of a role, not a role of its own, and the page opens in it. `.byd-join form
+  // button:disabled` is (0,2,2) and beats the role at (0,2,0) on fill and ink but not on the line,
+  // so the first action came out a grey pill inside a green ring — half of one shape and half of
+  // another — and the two outlined ways on came out *filled* while refused and outlined once
+  // allowed, which is the wrong way round in the only state a reader can compare them in.
+  it('says "not yet" without half-changing the shape it says it in', async () => {
+    const measured = await inChromium(read('src/join/join.css'), 390, await joinViews(), (page) =>
+      page.evaluate(() => {
+        const surface = document.querySelector('.byd-join')!
+        const probe = surface.appendChild(document.createElement('span'))
+        probe.style.cssText = 'color: var(--byd-secondary-line)'
+        const line = getComputedStyle(probe).color
+        probe.remove()
+        const drawn = (el: Element) => {
+          const style = getComputedStyle(el)
+          return `${style.backgroundColor} inside ${style.borderTopWidth} of ${style.borderTopColor}`
+        }
+        const refused = [...surface.querySelectorAll<HTMLButtonElement>('form button')].filter((el) => el.disabled)
+        const first = surface.querySelector('.byd-primary')!
+        const both = getComputedStyle(first)
+        return {
+          refused: refused.length,
+          // One colour, whatever colour the surface says "not yet" in: a line of its own round a
+          // fill of another is the state applied to one half of the button.
+          oneShape: both.backgroundColor === both.borderTopColor,
+          ways: [...surface.querySelectorAll('.byd-secondary')].map(drawn),
+          outlined: `rgba(0, 0, 0, 0) inside 1px of ${line}`,
+        }
+      }),
+    )
+    const opening = measured['innan namnet är skrivet']!
+    expect(opening.refused).toBe(3)
+    expect(opening.oneShape).toBe(true)
+    expect(opening.ways).toEqual([opening.outlined, opening.outlined])
   }, 90_000)
 
   // There are two ways on from this page that are not the first one — playing on this screen, and
@@ -448,7 +489,7 @@ describe('what the whole tool draws as chosen', () => {
     }
     expect(filled).toEqual({
       'inloggningskortet, mina spel': [],
-      'sätt dig vid bordet': ['sätt dig vid bordet: Plats A, ledig'],
+      'sätt dig vid bordet': ['innan namnet är skrivet: Plats A, ledig', 'sätt dig vid bordet: Plats A, ledig'],
       'guidad start': [],
       'editorn': [],
       'telefonen': [],

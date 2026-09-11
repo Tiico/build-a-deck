@@ -129,7 +129,15 @@
 .byd-join form { display: grid; gap: 10px; }
 .byd-join input { padding: 16px; border-radius: 12px; border: 1px solid #2c3242; background: #1b1e27; color: #fff; font-size: 18px; }
 .byd-join form button { padding: 18px; border-radius: 12px; border: 1px solid transparent; font-size: 18px; font-weight: 800; }
-.byd-join form button:disabled { background: #242938; color: #5b6478; }
+/* Refused is a state of a role and not a role of its own, and this page opens in it: nothing is
+   chosen and nothing is typed, so all three ways on are shut. Said of `form button` it was
+   (0,2,2) and took the fill and the ink off the role but not the line, which left the first
+   action a grey pill inside a green ring — and it re-filled the two outlined ways on, so they
+   read filled while refused and outlined once allowed, backwards. So the first action goes grey
+   whole, line and all; a dimmed green would still be the green pill to press. The other two only
+   fade, because a line at a third of its strength has already said "not yet" without turning
+   into a fill. */
+.byd-join .byd-primary:disabled { background: #242938; border-color: #242938; color: #5b6478; }
 
 /* The two ways on that are not the first one. Both are sentences rather than words — "play on
    this screen (the table and the hand here)" — so they are read at the size a sentence is read at
