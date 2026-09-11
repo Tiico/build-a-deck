@@ -83,6 +83,8 @@
 .byd-summary ol { list-style: none; margin: 0; padding: 0; }
 .byd-summary li { padding: 5px 0; border-bottom: 1px solid var(--byd-rule-soft); }
 
+/* Nothing in hand (UX-16): the same quiet voice as the line under what lies in front of you. */
+.byd-strip-empty { color: var(--byd-ink-quiet); font-size: 12px; margin: 4px 0; align-self: center; }
 .byd-strip { display: flex; gap: 14px; overflow-x: auto; padding: 10px 24px; scroll-snap-type: x mandatory; }
 .byd-strip-card {
   flex: 0 0 62vw; aspect-ratio: 63 / 88; scroll-snap-align: center;

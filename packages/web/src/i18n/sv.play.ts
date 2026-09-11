@@ -160,6 +160,8 @@ export const svPlay = {
   'player.mine.take': 'Ta upp',
   'player.mine.play': 'Spela…',
   'player.mine.empty': 'Inget framför dig. Spela ett kort hit från handen.',
+  // Tom hand (UX-16): samma form som raden ovanför, så telefonens två tomlägen läses som ett par.
+  'player.hand.empty': 'Tom hand. Dra ett kort ur draghögen.',
 
   // Arket som säger vart ett kort går (C4). Kortets eget namn står fetstilt mitt i meningen, så
   // verbet och riktningen är två nycklar med namnet emellan.

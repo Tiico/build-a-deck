@@ -135,6 +135,7 @@ export const enPlay = {
   'player.mine.take': 'Pick up',
   'player.mine.play': 'Play…',
   'player.mine.empty': 'Nothing in front of you. Play a card here from your hand.',
+  'player.hand.empty': 'Empty hand. Draw a card from the draw pile.',
 
   'play.sheet.title': 'Play to',
   'play.sheet.verb': 'Play',

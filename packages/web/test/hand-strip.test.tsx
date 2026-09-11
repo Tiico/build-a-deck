@@ -85,3 +85,19 @@ describe('a texture the phone is still waiting for (#10)', () => {
     expect(opaque.textContent).not.toMatch(/knight/)
   })
 })
+
+describe('a hand with nothing in it (UX-16)', () => {
+  it('points at the draw pile, and steps aside the moment a card arrives', () => {
+    const { view } = buildScene()
+    const dealt = view('A')
+    const empty = { ...dealt, components: dealt.components.filter((c) => c.zone !== 'hand:A') }
+    const props = { selected: new Set<string>(), onTap: () => undefined, onHold: () => undefined, onLift: () => undefined, onOpen: () => undefined }
+    const { rerender } = render(<HandStrip view={empty} {...props} />)
+    expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(0)
+    expect(screen.getByText(/Tom hand/).textContent).toBe('Tom hand. Dra ett kort ur draghögen.')
+
+    rerender(<HandStrip view={dealt} {...props} />)
+    expect(screen.queryByText(/Tom hand/)).toBeNull()
+    expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(2)
+  })
+})

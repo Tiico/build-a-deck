@@ -99,6 +99,9 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
           </button>
         )
       })}
+      {/* A hand with nothing in it (UX-16): where the cards would be, the strip says what fills
+          it, in the same form as the line under what lies in front of the seat. */}
+      {hand.length === 0 && <p className="byd-strip-empty">{t('player.hand.empty')}</p>}
     </div>
   )
 }
