@@ -22,8 +22,6 @@
   --byd-editor-narrow-ink: #ffd98a;
   --byd-editor-stage-bg: #1b1d23;
   --byd-editor-stage-ink: #9aa3b8;
-  --byd-editor-stage-on-bg: #2f3a55;
-  --byd-editor-stage-on-ink: #ffffff;
   --byd-editor-stage-action-bg: #23262e;
   --byd-editor-stage-action-ink: #ffffff;
   /* The blue the editor's first action is painted in (#22). It has two jobs and they carry two
@@ -120,7 +118,6 @@
 .byd-history [role='alert'] { color: #f0b64a; font-size: 12px; }
 .byd-editor [role='tablist'] { display: flex; background: #1b1d23; border-radius: 8px; padding: 3px; margin-left: 12px; }
 .byd-editor [role='tab'] { min-height: var(--byd-tap); border: 0; border-radius: 6px; padding: 0 14px; background: transparent; color: #9aa3b8; font-weight: 600; cursor: pointer; }
-.byd-editor [role='tab'][aria-selected='true'] { background: #2f3a55; color: #fff; }
 .byd-editor-spacer { flex: 1; }
 /* A line that is gone says so, and what is written meanwhile is kept until it is back (D3). */
 .byd-editor-offline { margin: 0; padding: 8px 16px; background: #2a1f18; color: #ffd8b0; font-size: 12px; }
@@ -314,7 +311,6 @@
   border-top: 1px solid #2f333d;
 }
 .byd-editor-stagebar [role='tab'] { color: var(--byd-editor-stage-ink); }
-.byd-editor-stagebar [role='tab'][aria-selected='true'] { background: var(--byd-editor-stage-on-bg); color: var(--byd-editor-stage-on-ink); }
 .byd-editor-stagebar [role='tablist'] { flex: 1 1 auto; min-width: 0; margin-left: 0; padding: 0; background: transparent; border-radius: 0; gap: 4px; overflow-x: auto; scrollbar-width: thin; }
 .byd-editor-stagebar [role='tab'] { flex: 0 0 auto; white-space: nowrap; border-radius: 9px; }
 .byd-editor-stagebar-actions {
@@ -349,7 +345,6 @@
 .byd-setup-recipe label { display: flex; gap: 8px; align-items: center; margin: 6px 0; color: #e6ecfa; }
 .byd-setup-players { display: flex; gap: 6px; }
 .byd-setup-players button, .byd-setup-tools button, .byd-setup-counters > button, .byd-setup-props button { border: 1px solid #2f333d; border-radius: 8px; padding: 7px 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
-.byd-setup-players button[aria-pressed='true'] { background: var(--byd-editor-primary-bg); border-color: var(--byd-editor-primary-bg); }
 .byd-setup-counters { margin: 8px 0 0 24px; display: grid; gap: 6px; justify-items: start; }
 .byd-setup-counters > span { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #9aa3b8; }
 .byd-setup-counter { display: flex; gap: 6px; align-items: center; color: #9aa3b8; }
@@ -390,7 +385,6 @@
 .byd-wall-tools { grid-column: 1 / -1; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; padding: 0 4px 10px; }
 .byd-wall-tools > div { display: flex; gap: 6px; }
 .byd-wall-tools button { border: 1px solid #2f333d; border-radius: 8px; padding: 6px 11px; background: #1b1d23; color: #fff; font-weight: 700; font-size: 12px; cursor: pointer; }
-.byd-wall-tools button[aria-pressed='true'] { background: var(--byd-editor-primary-bg); border-color: var(--byd-editor-primary-bg); }
 .byd-wall-tools label { display: flex; gap: 6px; align-items: center; color: #cfd5e3; font-size: 12px; }
 /* Another eye over the real cards (E5), and the trim the knife will follow. */
 .byd-wall[data-eye='deuteranopia'] { filter: url(#byd-eye-deuteranopia); }
@@ -475,8 +469,6 @@
      the brightest thing on screen, light enough for every word on it to clear AA. */
   --byd-editor-strip-bg: #1b1d23;
   --byd-editor-strip-ink: #b9c2d6;
-  --byd-editor-strip-on-bg: #2f3a55;
-  --byd-editor-strip-on-ink: #ffffff;
   /* What a layer belongs to, said on the layer itself: quieter than its name, never quieter
      than AA against the panel it is read on. */
   --byd-editor-source-ink: #9aa3b8;
@@ -523,11 +515,6 @@
   font-size: 12px;
   padding: 5px 11px;
   cursor: pointer;
-}
-.byd-canvas-groups button[aria-selected='true'], .byd-canvas-faces button[aria-checked='true'] {
-  background: var(--byd-editor-strip-on-bg);
-  color: var(--byd-editor-strip-on-ink);
-  border-color: var(--byd-editor-primary-mark);
 }
 /* Variant B's rule list, kept as the summary: every group as the rule it is, read not pressed. */
 .byd-canvas-rules { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
@@ -610,7 +597,7 @@
 .byd-fonts-licence { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .byd-fonts-licence input { background: #0f1115; border: 1px solid #2a2d36; color: #fff; border-radius: 6px; padding: 5px 7px; font-size: 12px; width: 100%; box-sizing: border-box; }
 .byd-fonts li > button { justify-self: end; border: 1px solid #3b414e; border-radius: 6px; background: #1b1d23; color: #9aa3b8; font-size: 11px; padding: 3px 8px; cursor: pointer; }
-.byd-fonts-upload { position: relative; overflow: hidden; display: inline-block; border: 1px solid #3b414e; border-radius: 8px; padding: 7px 11px; background: #1b1d23; color: #dce3f2; font-size: 12px; font-weight: 700; cursor: pointer; }
+.byd-fonts-upload { position: relative; overflow: hidden; display: inline-block; border-radius: 8px; padding: 7px 11px; font-size: 12px; cursor: pointer; }
 .byd-fonts-upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .byd-fonts [role='alert'] { margin: 8px 0 0; font-size: 11px; color: #f0b64a; }
 
@@ -691,8 +678,6 @@
   --byd-editor-filter-ink: #dce3f2;
   --byd-editor-filter-quiet: #9aa3b8;
   --byd-editor-count-ink: #c3cbdd;
-  --byd-editor-chip-on-bg: #7dd3a0;
-  --byd-editor-chip-on-ink: #0b2a18;
   --byd-editor-marked-bg: #253044;
   --byd-editor-marked-ink: #c3cbdd;
 }
@@ -717,7 +702,6 @@
   font: inherit;
   cursor: pointer;
 }
-.byd-data-chip[aria-pressed='true'] { background: var(--byd-editor-chip-on-bg); border-color: var(--byd-editor-chip-on-bg); color: var(--byd-editor-chip-on-ink); font-weight: 700; }
 .byd-data-count { margin: 0; color: var(--byd-editor-count-ink); font-variant-numeric: tabular-nums; }
 .byd-data-pinned { color: var(--byd-editor-filter-quiet); }
 .byd-data-clear { border: 1px solid #3b414e; border-radius: 8px; padding: 6px 12px; background: transparent; color: var(--byd-editor-filter-quiet); font: inherit; cursor: pointer; }
@@ -957,7 +941,6 @@
 .byd-symbols input[type='search'], .byd-symbols-set input { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; font: inherit; }
 .byd-symbols-cats { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0; }
 .byd-symbols button { border: 1px solid #2f333d; border-radius: 8px; padding: 6px 11px; background: #1b1d23; color: #fff; font-weight: 700; font-size: 12px; cursor: pointer; }
-.byd-symbols button[aria-pressed='true'] { background: var(--byd-editor-primary-bg); border-color: var(--byd-editor-primary-bg); }
 .byd-symbols-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; max-height: 58vh; overflow: auto; }
 .byd-symbols-tile { display: grid; justify-items: center; gap: 3px; padding: 8px 4px; font-weight: 400; font-size: 10px; color: #9aa3b8; }
 .byd-symbols-tile small { color: var(--byd-editor-quiet); font-size: 9px; }

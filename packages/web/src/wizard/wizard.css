@@ -26,7 +26,6 @@
 .byd-wizard button { min-height: var(--tap); min-width: var(--tap); border: 1px solid #cbcabe; border-radius: 9px; padding: 0 12px; background: var(--byd-wizard-field-bg); color: inherit; cursor: pointer; }
 .byd-wizard button:hover { border-color: #8d918a; }
 .byd-wizard button:disabled { opacity: .4; cursor: default; }
-.byd-wizard button[aria-pressed='true'] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .byd-wizard input:not([type='file']), .byd-wizard textarea { min-height: var(--tap); width: 100%; min-width: 0; border: 1px solid #c9c9bd; border-radius: 9px; padding: 9px 11px; background: var(--byd-wizard-field-bg); color: var(--ink); }
 .byd-wizard input:focus, .byd-wizard textarea:focus { border-color: var(--accent); outline: 3px solid color-mix(in srgb, var(--accent), transparent 82%); }
 .byd-wizard h1 { margin: 2px 0 0; font: 700 28px/1.15 Georgia, serif; }
@@ -51,7 +50,6 @@
 .byd-wizard-flow { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .byd-wizard-stepbar { flex: 0 0 auto; display: flex; gap: 6px; padding: 6px 12px; background: var(--byd-wizard-panel-bg); border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: thin; }
 .byd-wizard-stepbar button { flex: 0 0 auto; white-space: nowrap; border-color: transparent; background: transparent; color: #454c44; font-weight: 700; }
-.byd-wizard-stepbar button[aria-selected='true'] { background: var(--ink); color: #fff; border-color: var(--ink); }
 .byd-wizard-body { flex: 1 1 auto; min-height: 0; overflow: auto; }
 .byd-wizard-body > [role='tabpanel'] { padding: 20px 20px 32px; display: grid; gap: 20px; align-content: start; }
 /* A `display` of its own would beat the `hidden` attribute, and a closed step would still take

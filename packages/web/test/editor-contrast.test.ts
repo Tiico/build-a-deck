@@ -36,7 +36,6 @@ describe('the palette the small screens are drawn in', () => {
   it.each([
     { what: 'what a phone does not offer', ink: '--byd-editor-narrow-ink', on: '--byd-editor-narrow-bg' },
     { what: 'a stage that is not open', ink: '--byd-editor-stage-ink', on: '--byd-editor-stage-bg' },
-    { what: 'the stage that is open', ink: '--byd-editor-stage-on-ink', on: '--byd-editor-stage-on-bg' },
     { what: 'the actions pinned beside them', ink: '--byd-editor-stage-action-ink', on: '--byd-editor-stage-action-bg' },
   ])('gives $what AA contrast', ({ ink, on }) => {
     expect(contrastRatio(token(ink), token(on))).toBeGreaterThanOrEqual(4.5)
@@ -52,7 +51,6 @@ describe('the palette the table filter is drawn in', () => {
     { what: 'the placeholder in the search field', ink: '--byd-editor-filter-quiet', on: '--byd-editor-filter-bg' },
     { what: 'what has been searched for', ink: '--byd-editor-filter-ink', on: '--byd-editor-filter-bg' },
     { what: 'a chip that is not pressed', ink: '--byd-editor-filter-ink', on: '--byd-editor-filter-bg' },
-    { what: 'a chip that is pressed', ink: '--byd-editor-chip-on-ink', on: '--byd-editor-chip-on-bg' },
     { what: 'the note that a new card is shown anyway', ink: '--byd-editor-filter-quiet', on: '--byd-editor-table-panel-bg' },
   ])('gives $what AA contrast', ({ ink, on }) => {
     expect(contrastRatio(token(ink), token(on))).toBeGreaterThanOrEqual(4.5)
@@ -93,7 +91,6 @@ describe('the palette the template canvas is drawn in', () => {
 describe('the palette the group strip is drawn in', () => {
   it.each([
     { what: 'a group that is not open', ink: '--byd-editor-strip-ink', on: '--byd-editor-strip-bg' },
-    { what: 'the group that is open', ink: '--byd-editor-strip-on-ink', on: '--byd-editor-strip-on-bg' },
     { what: 'the label over the grouping column', ink: '--byd-editor-hint-ink', on: '--byd-editor-strip-bg' },
     { what: 'what a layer belongs to', ink: '--byd-editor-source-ink', on: '--byd-editor-canvas-bg' },
   ])('gives $what AA contrast', ({ ink, on }) => {
@@ -155,7 +152,6 @@ describe('the palette the editor primary is drawn in', () => {
 describe('the marks and edges built on the editor primary', () => {
   it.each([
     { what: 'the outline round the card being looked at', on: '--byd-editor-chrome-bg' },
-    { what: 'the edge of the group that is open', on: '--byd-editor-strip-on-bg' },
     { what: 'the edge a tool takes under the pointer', on: '--byd-editor-tool-bg' },
     { what: 'the mark down the side of a marked row', on: '--byd-editor-marked-bg' },
     { what: "the ring round the table's own controls", on: '--byd-editor-table-panel-bg' },

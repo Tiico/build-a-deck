@@ -55,6 +55,25 @@ const wearingThePrimary = (root: string) => (page: Page) =>
       .map((el) => (el.getAttribute('aria-label') ?? el.textContent ?? el.tagName).trim().slice(0, 40))
   }, root)
 
+// What is chosen, drawn as a fill. The tool had five different answers to "this one is on" and one
+// of them reached into another surface's palette — the table filter's chip was `#7dd3a0`, the
+// account's green, in the middle of the editor. B makes all of them one shape: a quiet pill with a
+// 3 px bar under it, never a fill, so a thing that is on can never be read as the thing to press.
+// Anything still painted in a colour of its own comes back here by name.
+const CHOSEN = '[aria-pressed="true"], [aria-selected="true"], [aria-checked="true"]'
+const chosenAndFilled = (root: string) => (page: Page) =>
+  page.evaluate(
+    ([selector, chosen]) => {
+      const surface = document.querySelector(selector!)
+      if (!surface) throw new Error(`no ${selector} in this view`)
+      return [...surface.querySelectorAll<HTMLElement>(chosen!)]
+        .filter((el) => el.checkVisibility() && /^(BUTTON|A|LABEL)$/.test(el.tagName))
+        .filter((el) => !/,\s*0\)$/.test(getComputedStyle(el).backgroundColor))
+        .map((el) => (el.getAttribute('aria-label') ?? el.textContent ?? el.tagName).trim().slice(0, 40))
+    },
+    [root, CHOSEN] as const,
+  )
+
 let run: Running
 let browser: Browser
 beforeAll(async () => {
@@ -195,6 +214,16 @@ async function editorViews(width: number): Promise<Record<string, string>> {
       const tab = tabs()[i]!
       fireEvent.click(tab)
       out[tab.textContent?.trim() ?? String(i)] = document.querySelector('.byd-editor')!.outerHTML
+      // The table's filter chips are only ever on when somebody has turned one on, so the walk
+      // would otherwise never see the one place in the editor painted in the account's green.
+      if (tab.textContent?.trim() === 'Tabell') {
+        const chip = document.querySelector<HTMLElement>('.byd-data-chip')
+        if (chip) {
+          fireEvent.click(chip)
+          out['Tabell, filtrerad'] = document.querySelector('.byd-editor')!.outerHTML
+          fireEvent.click(chip)
+        }
+      }
     }
     return out
   } finally {
@@ -243,6 +272,61 @@ describe('the editor', () => {
     // drawn in two colours would read as two things to press rather than one with a menu.
     expect(measured).toEqual(Object.fromEntries(Object.keys(views).map((name) => [name, ['Uppdatera bordet', 'Fler vägar till bordet']])))
   }, 120_000)
+})
+
+// The second finding the audit wrote down (UX-13): beside the card in the editor's template stood
+// two buttons filled at the weight of a first action, where neither was the page's. One of them
+// has since moved to the wizard and been dealt with; this is the other. What a second action looks
+// like is read off the surface's own token through a probe rather than written down as a hex, so
+// the fact stays true when the line the language draws with changes.
+describe('the buttons that stand beside the card in the template', () => {
+  it('draws the way to a typeface as an outline and not as a second first action', async () => {
+    await run.projects.create('p1', projectDoc())
+    const views = await editorViews(1280)
+    const measured = await inChromium(read('src/editor/editor.css'), 1280, { Mall: views['Mall']! }, (page) =>
+      page.evaluate(() => {
+        const editor = document.querySelector('.byd-editor')!
+        const probe = editor.appendChild(document.createElement('span'))
+        probe.style.cssText = 'color: var(--byd-secondary-line)'
+        const line = getComputedStyle(probe).color
+        probe.remove()
+        const upload = [...editor.querySelectorAll<HTMLElement>('button, label')].find((el) => el.textContent?.trim().startsWith('Ladda upp typsnitt'))
+        if (!upload) throw new Error('no way to a typeface in the template')
+        const drawn = getComputedStyle(upload)
+        return { drawn: `${drawn.backgroundColor} inside ${drawn.borderTopWidth} of ${drawn.borderTopColor}`, outlined: `rgba(0, 0, 0, 0) inside 1px of ${line}` }
+      }),
+    )
+    expect(measured['Mall']!.drawn).toBe(measured['Mall']!.outlined)
+  }, 120_000)
+})
+
+// The other half of the language, walked the same way. Five surfaces, every view each of them has
+// at its review width, and the one question: is anything that is merely *chosen* still painted in
+// a fill? The seat picker is the one place where the answer is yes and stays yes — a seat's colour
+// is its identity and not a role (L11, K9, #20), and that palette is not this issue's to move.
+describe('what the whole tool draws as chosen', () => {
+  it('paints none of it in a fill of its own, bar the seats that are a palette', async () => {
+    await run.projects.create('p1', projectDoc())
+    const walked = {
+      'inloggningskortet, mina spel': [read('src/account/account.css'), 390, '.byd-account', await accountViews()],
+      'sätt dig vid bordet': [read('src/join/join.css'), 390, '.byd-join', await joinViews()],
+      'guidad start': [read('src/wizard/wizard.css'), 1280, '.byd-wizard', await wizardViews(1280)],
+      'editorn': [read('src/editor/editor.css'), 1280, '.byd-editor', await editorViews(1280)],
+      'telefonen': [`${read('src/player/player.css')}\n${read('src/table/keyboard.css')}\n${read('src/rules/rules.css')}`, 390, '.byd-player', await playerViews()],
+    } as const
+    const filled: Record<string, string[]> = {}
+    for (const [surface, [css, width, root, views]] of Object.entries(walked)) {
+      const measured = await inChromium(css, width, views, chosenAndFilled(root))
+      filled[surface] = Object.entries(measured).flatMap(([view, names]) => names.map((name) => `${view}: ${name}`))
+    }
+    expect(filled).toEqual({
+      'inloggningskortet, mina spel': [],
+      'sätt dig vid bordet': ['sätt dig vid bordet: Plats A, ledig'],
+      'guidad start': [],
+      'editorn': [],
+      'telefonen': [],
+    })
+  }, 180_000)
 })
 
 // A surface without the shared sheet under it is not the surface that ships. Every suite that

@@ -249,7 +249,7 @@ function FontShelf({ doc, onFontFile, onFontLicence, onRemoveFont }: Pick<Templa
           ))}
         </ul>
       )}
-      <label className="byd-fonts-upload">
+      <label className="byd-fonts-upload byd-secondary">
         {t('fonts.upload')}
         <input type="file" accept=".woff2,.woff,.ttf,.otf,font/woff2,font/woff,font/ttf,font/otf" disabled={busy} onChange={(e) => take(e.target.files?.[0])} />
       </label>
