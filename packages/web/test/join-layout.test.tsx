@@ -301,36 +301,32 @@ describe('a table whose seats share a side (#42)', () => {
   // an edge to themselves. Up to four players every side carries one, and one seat on a side
   // stands in the middle of it — which is where the picker has always stood it (#39).
   //
-  // "Where it stood" is said twice over, because the felt has since grown for the tables that do
-  // share a side. The seat is still in the middle of its own edge — and the felt and every pill on
-  // it are still at the very pixel `origin/main` drew them at, read off `origin/main` itself and
-  // written down here, so that a felt that quietly grew under a four-seat table would be caught.
-  const UNSHARED: Record<number, [string, string][]> = {
-    2: [
-      ['A', '162.8,384.5 64.3×44'],
-      ['B', '162.8,226.5 64.3×44'],
-    ],
-    3: [
-      ['A', '162.8,384.5 64.3×44'],
-      ['B', '162.8,226.5 64.3×44'],
-      ['C', '270.7,305.5 64.3×44'],
-    ],
-    4: [
-      ['A', '162.8,384.5 64.3×44'],
-      ['B', '162.8,226.5 64.3×44'],
-      ['C', '270.7,305.5 64.3×44'],
-      ['D', '55,305.5 64.3×44'],
-    ],
-  }
+  // "Where it stood" was once written down as the very pixels `origin/main` drew — a felt at
+  // `85,252.5` and pills `64.3` wide — read off a Mac. `system-ui` is a different typeface on the
+  // Linux runner: the header above the felt comes out two pixels shorter and a pill is as wide as
+  // its own word, so CI failed on a table nobody had touched. What the picker really promises has
+  // nothing to do with the typeface. The felt has not grown, each seat hangs off its own edge by
+  // the overhang the stylesheet names, each stands in the middle of that edge, and each is still
+  // the 44 px a thumb is owed. A pill's width is its name's business and is capped elsewhere.
+  const HANG: Record<string, number> = { N: 26, S: 26, E: 30, W: 30 }
   it.each([2, 3, 4])('leaves a table of %i, where nobody shares a side, standing where it stood', async (count) => {
     const { felt, seats } = await measure(await picker(recipeSetup(count)))
     expect(seats).toHaveLength(count)
+    // A felt that quietly grew under a four-seat table is caught here: 260 × 200 belongs to the
+    // tables that share a side. Its left edge is where a 390 px viewport centres it.
+    expect(`${felt.x},${felt.w}×${felt.h}`).toBe('85,220×150')
     for (const seat of seats) {
-      if (seat.edge === 'N' || seat.edge === 'S') expect(seat.x + seat.w / 2).toBeCloseTo(felt.x + felt.w / 2, 1)
-      else expect(seat.y + seat.h / 2).toBeCloseTo(felt.y + felt.h / 2, 1)
+      const hang = HANG[seat.edge ?? '']
+      expect(hang).toBeDefined()
+      if (seat.edge === 'N' || seat.edge === 'S') {
+        expect(seat.x + seat.w / 2).toBeCloseTo(felt.x + felt.w / 2, 1)
+        expect(seat.edge === 'N' ? felt.y - seat.y : seat.y + seat.h - (felt.y + felt.h)).toBeCloseTo(hang as number, 1)
+      } else {
+        expect(seat.y + seat.h / 2).toBeCloseTo(felt.y + felt.h / 2, 1)
+        expect(seat.edge === 'W' ? felt.x - seat.x : seat.x + seat.w - (felt.x + felt.w)).toBeCloseTo(hang as number, 1)
+      }
+      expect(seat.h).toBe(44)
     }
-    expect(place(felt)).toBe('85,252.5 220×150')
-    expect(seats.map((s) => [s.seat, place(s)])).toEqual(UNSHARED[count])
   }, 60_000)
 
   // Not overlapping is the floor, not the look. The picker is a picture of a table, and a table
