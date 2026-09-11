@@ -256,8 +256,13 @@ describe('the guided start', () => {
   }, 90_000)
 })
 
-// Every mode the editor can be showing at the desk. Whichever one is open, the blue button that
-// puts the work on the table is the only filled thing in the room.
+// Every mode the editor can be showing at the desk, and the two doors inside them that have to be
+// held open to be seen at all. Named here so that a walk which finds nothing fails instead of
+// agreeing with itself.
+const EDITOR_VIEWS = ['Bord', 'Kortvägg', 'Mall', 'Mall, ikonbiblioteket öppet', 'Regler', 'Symboler', 'Tabell', 'Tabell, ett nytt fält på väg', 'Tabell, filtrerad'] as const
+
+// Whichever mode is open, the blue button that puts the work on the table is the only filled thing
+// in the room.
 async function editorViews(width: number): Promise<Record<string, string>> {
   atWidth(width)
   history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
@@ -450,10 +455,15 @@ describe('the editor', () => {
   it('wears the primary fill on nothing but the action that puts the work on the table', async () => {
     await run.projects.create('p1', worthFiltering())
     const views = await editorViews(1280)
+    // What the walk is expected to have walked. The expectation used to be built out of the
+    // measurement — `Object.fromEntries(Object.keys(views)...)` — and `{}` equals `{}`, so an
+    // `editorViews` that found no mode tabs at all would have returned nothing and passed
+    // brilliantly. A walk has to say where it went before it says what it saw.
+    expect(Object.keys(views).sort()).toEqual(EDITOR_VIEWS)
     const measured = await inChromium(read('src/editor/editor.css'), 1280, views, wearingThePrimary('.byd-editor'))
     // The caret is not a second action: it is the same button's other half, and a split control
     // drawn in two colours would read as two things to press rather than one with a menu.
-    expect(measured).toEqual(Object.fromEntries(Object.keys(views).map((name) => [name, ['Uppdatera bordet', 'Fler vägar till bordet']])))
+    expect(measured).toEqual(Object.fromEntries(EDITOR_VIEWS.map((name) => [name, ['Uppdatera bordet', 'Fler vägar till bordet']])))
   }, 120_000)
 })
 
@@ -483,8 +493,8 @@ describe('the buttons that stand beside the card in the template', () => {
   }, 120_000)
 })
 
-// The other half of the language, walked the same way. Five surfaces, every view each of them has
-// at its review width, and the one question: is anything that is merely *chosen* still painted in
+// The other half of the language, walked the same way. Every room the language is spoken in, every
+// view each of them has at its review width, and the one question: is anything that is merely *chosen* still painted in
 // a fill? The seat picker is the one place where the answer is yes and stays yes — a seat's colour
 // is its identity and not a role (L11, K9, #20), and that palette is not this issue's to move.
 describe('what the whole tool draws as chosen', () => {
@@ -496,18 +506,37 @@ describe('what the whole tool draws as chosen', () => {
       'guidad start': [read('src/wizard/wizard.css'), 1280, '.byd-wizard', await wizardViews(1280)],
       'editorn': [read('src/editor/editor.css'), 1280, '.byd-editor', await editorViews(1280)],
       'telefonen': [`${read('src/player/player.css')}\n${read('src/table/keyboard.css')}\n${read('src/rules/rules.css')}`, 390, '.byd-player', await playerViews()],
+      'storbilden': [ONLINE_CSS, 390, '.byd-online', await onlineView()],
+      'den som tittar på': [OBSERVER_CSS, 390, '.byd-observer', await observerView()],
     } as const
     const filled: Record<string, string[]> = {}
+    const walkedThrough: Record<string, string[]> = {}
     for (const [surface, [css, width, root, views]] of Object.entries(walked)) {
       const measured = await inChromium(css, width, views, chosenAndFilled(root))
+      walkedThrough[surface] = Object.keys(measured).sort()
       filled[surface] = Object.entries(measured).flatMap(([view, names]) => names.map((name) => `${view}: ${name}`))
     }
+    // Where the walk went, before what it saw. Four of the five expectations below are `[]`, and an
+    // empty list is what "nothing was drawn wrong here" and "nothing was looked at here" both come
+    // back as — so the views are named, and a surface that quietly stops mounting fails rather than
+    // agreeing.
+    expect(walkedThrough).toEqual({
+      'inloggningskortet, mina spel': ['inloggningskortet', 'mina spel'],
+      'sätt dig vid bordet': ['innan namnet är skrivet', 'sätt dig vid bordet'],
+      'guidad start': ['hela sidan'],
+      'editorn': [...EDITOR_VIEWS],
+      'telefonen': ['enkäten', 'vägen ut'],
+      'storbilden': ['enkäten på storbilden', 'frågan om att spola tillbaka'],
+      'den som tittar på': ['enkäten hos den som tittar på'],
+    })
     expect(filled).toEqual({
       'inloggningskortet, mina spel': [],
       'sätt dig vid bordet': ['innan namnet är skrivet: Plats A, ledig', 'sätt dig vid bordet: Plats A, ledig'],
       'guidad start': [],
       'editorn': [],
       'telefonen': [],
+      'storbilden': [],
+      'den som tittar på': [],
     })
   }, 180_000)
 })
