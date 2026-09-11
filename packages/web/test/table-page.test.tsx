@@ -136,6 +136,11 @@ describe('a proposed rewind on the table (C)', () => {
     expect(screen.getByText(/väntar på Bo/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Godkänn|Avvisa/ })).toBeNull()
 
+    // The preview on the TV is the table's own socket speaking, and Bo's phone is a different
+    // one: the proposal reaches the two independently, and nothing says Bo is dealt it first.
+    // Reading the proposal's id off Bo's view therefore has to wait for Bo's view, not for the
+    // screen — the rewind is line 5, so that is what Bo must have seen.
+    await bo.synced(5)
     await bo.send({ v: 'rewind.reject', proposal: bo.view!.rewind!.id })
     await waitFor(() => expect(document.querySelector('[data-rewind-preview]')).toBeNull())
     expect(document.querySelector('[data-zone="draw"]')!.getAttribute('data-count')).toBe('6')
