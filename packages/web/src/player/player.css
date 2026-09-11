@@ -155,7 +155,6 @@
 .byd-survey-q h2 { margin: 0; font-size: 20px; font-weight: 700; }
 .byd-survey-scale { display: flex; gap: 8px; }
 .byd-survey-scale button { flex: 1; aspect-ratio: 1; border-radius: 14px; border: 1px solid var(--byd-line); background: var(--byd-surface); color: var(--byd-ink-strong); font-size: 18px; font-weight: 700; }
-.byd-survey-scale button[aria-pressed='true'] { background: var(--byd-accent); color: var(--byd-on-accent); border-color: var(--byd-accent); }
 .byd-survey-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--byd-ink-quiet); }
 .byd-survey textarea { width: 100%; box-sizing: border-box; min-height: 110px; border-radius: 12px; border: 1px solid var(--byd-line); background: var(--byd-surface); color: var(--byd-ink-strong); padding: 12px; font: 15px system-ui; }
 .byd-survey-error { color: var(--byd-danger); font-size: 13px; margin: 0; }

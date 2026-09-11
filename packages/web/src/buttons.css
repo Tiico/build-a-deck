@@ -1,0 +1,104 @@
+/* The one button language (#44, variant B: "en form, lokal färg").
+
+   Three roles, one shape each, and not a single hue moved: the felt stays green, the wizard stays
+   paper, the editor stays blue. What the eye reads first is weight, not colour — so the first
+   action is the only *filled* thing in its view, whatever colour that fill happens to be, and a
+   second action is drawn as an outline beside it.
+
+   Each surface binds the six role tokens below to the accent it already owns; the rules that draw
+   the roles are written once, here, and nowhere else. */
+
+/* ── The felt: the account and the seat picker are the same green room (#20, L11). ───────────── */
+.byd-account,
+.byd-join {
+  --byd-primary-bg: #7dd3a0;
+  --byd-primary-ink: #0b2a18;
+  /* No outlined button existed in the tool before this. What looked like one was measured at
+     1.48:1 against its own ground on both dark and paper — invisible to the standard — so the
+     line a secondary is drawn with is a colour of its own, held to 3:1 like any other graphic
+     (L11). */
+  --byd-secondary-line: #6f7a90;
+  --byd-secondary-ink: #dce3f2;
+  --byd-chosen-bar: #7dd3a0;
+  --byd-chosen-ink: #ffffff;
+}
+
+/* The player's phone is the same green room again, and it already keeps its colours as tokens. */
+.byd-player {
+  --byd-primary-bg: var(--byd-accent);
+  --byd-primary-ink: var(--byd-on-accent);
+  --byd-secondary-line: #6f7a90;
+  --byd-secondary-ink: #dce3f2;
+  --byd-chosen-bar: var(--byd-accent);
+  --byd-chosen-ink: var(--byd-ink-strong);
+}
+
+/* ── Paper: the wizard's first action is its own ink, and its ink is not moving (L11). ───────── */
+.byd-wizard {
+  --byd-primary-bg: var(--ink);
+  --byd-primary-ink: #ffffff;
+  --byd-secondary-line: #797d75;
+  --byd-secondary-ink: var(--ink);
+  /* The wizard's red-orange is its own brand and keeps the job it already had: saying what is
+     chosen. B was built deliberately leaving it where it is. */
+  --byd-chosen-bar: var(--accent);
+  --byd-chosen-ink: var(--ink);
+}
+
+/* ── The editor: the blue #22 measured and settled on, and the dark chrome round it. ─────────── */
+.byd-editor {
+  --byd-primary-bg: var(--byd-editor-primary-bg);
+  --byd-primary-ink: var(--byd-editor-primary-ink);
+  --byd-secondary-line: #6f7a90;
+  --byd-secondary-ink: #dce3f2;
+  /* The lighter of the editor's two blues: a bar is a graphic, so it carries 3:1 and not 4.5:1,
+     and it is the same mark the editor already draws round what is being looked at. */
+  --byd-chosen-bar: var(--byd-editor-primary-mark);
+  --byd-chosen-ink: #ffffff;
+}
+
+/* ── The roles ───────────────────────────────────────────────────────────────────────────────
+   Named once per surface so that the language is physically reachable from each of them, and so
+   that a role out-ranks the surface rule it lands inside. That matters more than it looks:
+   `.byd-join-observe` already declared a quiet outlined button and lost, silently, to
+   `.byd-join form button` — (0,1,0) against (0,1,2) — which is why "Bara titta" was drawn in the
+   same green as "Sätt dig". Two classes is (0,2,0) and wins. */
+.byd-account .byd-secondary,
+.byd-join .byd-secondary,
+.byd-wizard .byd-secondary,
+.byd-editor .byd-secondary,
+.byd-player .byd-secondary {
+  background: transparent;
+  border: 1px solid var(--byd-secondary-line);
+  color: var(--byd-secondary-ink);
+  font-weight: 600;
+}
+
+/* Chosen. One shape for all of it — a quiet pill with a 3 px bar under it, in whatever accent the
+   surface owns — because the tool drew "this one is on" five different ways, and one of those
+   borrowed another surface's colour: the table filter's chip was painted `#7dd3a0`, the account's
+   green, in the middle of the editor. Never a fill, so a thing that is chosen can never be
+   mistaken for the thing to press. `.byd-choice` marks a control that is one of a set; the
+   platform's own word for which one says the rest. */
+.byd-account .byd-choice[aria-pressed='true'],
+.byd-account .byd-choice[aria-selected='true'],
+.byd-account .byd-choice[aria-checked='true'],
+.byd-join .byd-choice[aria-pressed='true'],
+.byd-join .byd-choice[aria-selected='true'],
+.byd-join .byd-choice[aria-checked='true'],
+.byd-wizard .byd-choice[aria-pressed='true'],
+.byd-wizard .byd-choice[aria-selected='true'],
+.byd-wizard .byd-choice[aria-checked='true'],
+.byd-editor .byd-choice[aria-pressed='true'],
+.byd-editor .byd-choice[aria-selected='true'],
+.byd-editor .byd-choice[aria-checked='true'],
+.byd-player .byd-choice[aria-pressed='true'],
+.byd-player .byd-choice[aria-selected='true'],
+.byd-player .byd-choice[aria-checked='true'] {
+  background: transparent;
+  border-color: transparent;
+  border-radius: 6px 6px 0 0;
+  box-shadow: inset 0 -3px 0 var(--byd-chosen-bar);
+  color: var(--byd-chosen-ink);
+  font-weight: 700;
+}

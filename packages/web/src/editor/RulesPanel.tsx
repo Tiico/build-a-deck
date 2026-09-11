@@ -21,7 +21,7 @@ export function RulesPanel({ doc, client }: RulesPanelProps) {
       <div className="byd-rules-empty">
         <h2>{t('rules.title')}</h2>
         <p>{t('rules.empty')}</p>
-        <button type="button" onClick={() => client.setRules(startingRules(doc.name, t))}>
+        <button type="button" className="byd-secondary" onClick={() => client.setRules(startingRules(doc.name, t))}>
           {t('rules.start')}
         </button>
       </div>

@@ -29,7 +29,7 @@ export function EditorTabs({ mode, onSelect }: EditorTabsProps) {
   return (
     <nav role="tablist" aria-label={t('editor.tabs')}>
       {MODES.map(([m, label]) => (
-        <button key={m} id={tabId(m)} role="tab" type="button" aria-selected={mode === m ? 'true' : 'false'} aria-controls={panelId(m)} onClick={() => onSelect(m)} {...itemProps(m)}>
+        <button key={m} id={tabId(m)} className="byd-choice" role="tab" type="button" aria-selected={mode === m ? 'true' : 'false'} aria-controls={panelId(m)} onClick={() => onSelect(m)} {...itemProps(m)}>
           {t(label)}
         </button>
       ))}

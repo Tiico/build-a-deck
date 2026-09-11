@@ -69,6 +69,7 @@ export function EditorStages({ stages, stage, onSelect, children }: EditorStages
             <button
               key={s}
               id={tabId(s)}
+              className="byd-choice"
               role="tab"
               type="button"
               aria-selected={stage === s ? 'true' : 'false'}

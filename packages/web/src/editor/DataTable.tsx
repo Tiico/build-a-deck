@@ -304,7 +304,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
               <button
                 key={value}
                 type="button"
-                className="byd-data-chip"
+                className="byd-data-chip byd-choice"
                 aria-pressed={(filter.values[field] ?? []).includes(value)}
                 onClick={() => changeFilter(toggleValue(filter, field, value))}
               >

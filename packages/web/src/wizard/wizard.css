@@ -98,7 +98,7 @@
 .byd-wizard-image-field > div { min-height: 84px; padding: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; border: 1px dashed #b9b9ae; border-radius: 10px; background: #fafaf7; }
 .byd-wizard-image-field img, .byd-wizard-image-field i { width: 76px; height: 58px; border-radius: 7px; object-fit: cover; }
 .byd-wizard-image-field i { display: grid; place-items: center; background: #e9e8e1; color: #5c6459; text-align: center; font-size: 10px; }
-.byd-wizard-file-button { position: relative; overflow: hidden; display: inline-grid; place-items: center; min-height: var(--tap); border-radius: 8px; padding: 0 14px; background: var(--ink); color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; }
+.byd-wizard-file-button { position: relative; overflow: hidden; display: inline-grid; place-items: center; min-height: var(--tap); border-radius: 8px; padding: 0 14px; font-size: 12px; cursor: pointer; }
 .byd-wizard-file-button input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .byd-wizard-image-field button { margin-left: auto; border: 0; background: transparent; color: #8d3823; font-size: 12px; }
 .byd-wizard-card-tabs { padding-top: 14px; display: flex; gap: 7px; flex-wrap: wrap; border-top: 1px solid var(--line); }
@@ -106,7 +106,7 @@
 .byd-wizard-card-tabs b { width: 20px; height: 20px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 5px; background: #eeece5; font-size: 10px; }
 .byd-wizard-card-tabs .is-add { border-style: dashed; }
 .byd-wizard-block > footer { padding-top: 18px; display: grid; gap: 14px; border-top: 1px solid var(--line); }
-.byd-wizard-primary { padding: 0 18px !important; border-color: var(--ink) !important; background: var(--ink) !important; color: #fff !important; font-weight: 750 !important; }
+.byd-wizard-primary { padding: 0 18px !important; border-color: var(--byd-primary-bg) !important; background: var(--byd-primary-bg) !important; color: var(--byd-primary-ink) !important; font-weight: 750 !important; }
 .byd-wizard [role='alert'] { color: #8d3823; }
 
 /* From the desk up the card and its fields stand side by side, and the preview column is wide

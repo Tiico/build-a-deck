@@ -396,6 +396,7 @@ function GroupTabs({ column, groups, group, onSelect }: { column: string; groups
         <button
           key={g}
           id={groupTabId(g === '' ? null : g)}
+          className="byd-choice"
           role="tab"
           type="button"
           aria-selected={(group ?? '') === g ? 'true' : 'false'}
@@ -506,7 +507,7 @@ function FaceSwitch({ faces, face, onSelect }: { faces: string[]; face: string; 
   return (
     <div className="byd-canvas-faces" role="radiogroup" aria-label={t('canvas.faceSwitch')}>
       {faces.map((f) => (
-        <button key={f} type="button" role="radio" aria-checked={f === face ? 'true' : 'false'} onClick={() => onSelect(f)} {...itemProps(f)}>
+        <button key={f} type="button" className="byd-choice" role="radio" aria-checked={f === face ? 'true' : 'false'} onClick={() => onSelect(f)} {...itemProps(f)}>
           {faceName(f, t)}
         </button>
       ))}

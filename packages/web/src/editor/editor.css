@@ -1016,7 +1016,7 @@
 .byd-rules-empty { display: grid; gap: 12px; justify-items: start; max-width: 520px; padding: 24px; }
 .byd-rules-empty h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-rules-empty p { margin: 0; color: #9aa3b8; line-height: 1.6; }
-.byd-rules-empty button { border: 1px solid #2f333d; border-radius: 8px; padding: 8px 14px; background: var(--byd-editor-primary-bg); border-color: var(--byd-editor-primary-bg); color: #fff; font-weight: 700; cursor: pointer; }
+.byd-rules-empty button { border-radius: 8px; padding: 8px 14px; cursor: pointer; }
 
 /* The way to an icon (#33): the brace made visible in the cell being worked in. Which cell that is
    is React's to know, not the stylesheet's — a handle hidden by CSS is still a stop in the tab

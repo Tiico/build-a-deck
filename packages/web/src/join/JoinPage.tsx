@@ -193,7 +193,7 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
         <button type="button" className="byd-join-online" disabled={!chosen || !name.trim()} onClick={() => void go('/online', chosen)}>
           {t('join.online')}
         </button>
-        <button type="button" className="byd-join-observe" disabled={!name.trim()} onClick={() => void go('/observe', null)}>
+        <button type="button" className="byd-join-observe byd-secondary" disabled={!name.trim()} onClick={() => void go('/observe', null)}>
           {t('join.observe')}
         </button>
       </form>

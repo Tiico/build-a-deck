@@ -73,7 +73,7 @@ function RecipePanel({ client }: { client: ProjectClient }) {
         <h2 id="byd-setup-players">{t('setup.players')}</h2>
         <div className="byd-setup-players" role="group" aria-labelledby="byd-setup-players">
           {Array.from({ length: Math.min(6, MAX_PLAYERS) }, (_, i) => i + 1).map((n) => (
-            <button key={n} type="button" aria-pressed={recipe.players === n} onClick={() => turn({ players: n })}>
+            <button key={n} type="button" className="byd-choice" aria-pressed={recipe.players === n} onClick={() => turn({ players: n })}>
               {n}
             </button>
           ))}
