@@ -158,7 +158,7 @@ Det som är provat varje gång `ops/restore-test.sh` körs är att bytesen i R2 
 
 | Symptom | Vad det betyder |
 |---|---|
-| `{"msg":"images-not-ready"}` | CI har inte byggt klart bilderna för taggens SHA. Lådan står kvar där den står och försöker igen. |
+| `{"msg":"images-not-ready"}` | CI har inte byggt klart bilderna för taggens SHA. Lådan står kvar där den står och försöker igen. Håller det i sig: ett paket som CI skapar för första gången blir **privat** i GHCR, även för ett publikt repo. Sätt det till publikt (GitHub → Packages → paketet → Package settings → Change visibility) eller lägg en `read:packages`-token i `GHCR_TOKEN`. |
 | `{"msg":"deploy-unhealthy"}` | Stacken startade men `/health` svarade inte på en minut. `docker compose logs app` säger varför; oftast Postgres. |
 | `{"msg":"no-release"}` | Ingen `v*`-tagg nås från `origin/main`. Tagga. |
 | `/health` ger 503 med `assets` | R2-nycklarna är fel eller bucketen finns inte. Texturer slutar visas; spelet i övrigt lever. |
