@@ -7,9 +7,17 @@
   /* The step from one seat to the next along a side of the felt, and the least air between two
      pills that share one (#42). A pill is wider than it is tall, so the two pitches differ: they
      are set to leave the same air down a side as across an end, because the same step both ways
-     reads as two different layouts. */
-  --byd-seat-pitch-x: 104px;
-  --byd-seat-pitch-y: 77px;
+     reads as two different layouts.
+
+     How far apart the pair may stand is not free: a pill is 44 px tall and hangs 26 px off its
+     edge, so it reaches 18 px back onto the felt, and the outermost seat of one edge would
+     otherwise stand in the corner the outermost seat of the next edge is already in. The felt is
+     150 px tall, which leaves the east-west pair 70 px of step before its lower seat reaches the
+     south pair's top; 62 px keeps 4 px of daylight in all four corners, and the east-west step
+     then fixes the north-south one at 20 px more, which is exactly how much wider than tall a
+     pill is. More people on a side sit closer together, the way they do at a real table. */
+  --byd-seat-pitch-x: 82px;
+  --byd-seat-pitch-y: 62px;
   --byd-seat-gap: 14px;
   min-height: 100vh; box-sizing: border-box; padding: 40px 20px 28px;
   background: #14161c; color: #eee; font-family: system-ui, sans-serif;
