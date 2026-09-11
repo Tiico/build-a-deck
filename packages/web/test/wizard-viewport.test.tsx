@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
-// The starter flow at the widths the audit checks (#4). What a control is worth to a thumb, and
-// whether the card fits the room it is given, are questions for an engine with the real box
+// The starter flow at the widths the audit checks it at (#4). The wizard is part of the editor
+// and the editor is a desk tool (L12), so the widths are 1280 and 1024, where the desk is, and
+// 768 below them only to hold the flow to breaking nothing. What a control is worth to a thumb,
+// and whether the card fits the room it is given, are questions for an engine with the real box
 // model — so the markup the wizard mounts is measured in Chromium with the stylesheet it ships.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -68,7 +70,7 @@ afterAll(async () => {
   await browser.close()
 }, 60_000)
 
-const WIDTHS = [390, 768, 1024] as const
+const WIDTHS = [768, 1024, 1280] as const
 const TARGETS = 'button, a[href], input, select, textarea, [role="tab"]'
 
 describe.each(WIDTHS)('the wizard at %ipx', (width) => {

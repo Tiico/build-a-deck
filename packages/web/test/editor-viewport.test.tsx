@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
-// The editor at the widths the audit checks (UX-KONTROLLER: 390, 768 and 1280, and 1024 where
-// the desk begins). Whether the document scrolls sideways, and how big a target is, are layout
-// questions that only an engine with the real box model can answer — so the markup the editor
-// actually mounts is measured in Chromium against the stylesheet it actually ships (#5).
+// The editor at the widths the audit checks it at (UX-KONTROLLER, L12): 1280 and 1024, where the
+// desk is and where the designer actually works, and 768 below them only to hold the editor to
+// breaking nothing. A phone's width is no longer one of them — the editor degrades there rather
+// than being guaranteed, and what it degrades *to* is `editor-rooms.test.tsx`'s business.
+// Whether the document scrolls sideways, and how big a target is, are layout questions that only
+// an engine with the real box model can answer — so the markup the editor actually mounts is
+// measured in Chromium against the stylesheet it actually ships (#5).
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
@@ -98,7 +101,7 @@ afterEach(async () => {
   await run.stop()
 })
 
-const WIDTHS = [390, 768, 1024, 1280] as const
+const WIDTHS = [768, 1024, 1280] as const
 
 // Everything a pointer or a thumb is meant to hit. A control inside a label is hit through the
 // label — that is the target the eye sees and the one the browser forwards the click from.

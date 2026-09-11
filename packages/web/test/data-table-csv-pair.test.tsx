@@ -219,9 +219,10 @@ describe('the CSV pair above the table (#36)', () => {
   // and a pair is two frames the eye takes in at once: side by side, on one line. The file input
   // lies invisible across its own label, so the label is stretched to a thumb's height
   // (UX-KONTROLLER: träffytor) while the word inside it was left sitting at the top — the import
-  // read a line higher than the export standing beside it. Every width the control matrix asks
-  // for is measured, because what holds at 1280 is exactly what a phone breaks.
-  it.each([1280, 768, 390, 320])('stands the two frames side by side with their words on one line at %ipx', async (width) => {
+  // read a line higher than the export standing beside it. The table is the editor's, and the
+  // editor is a desk tool (L12), so the widths are the desk's: 1280 and 1024 where the designer
+  // works, and 768 under them, where the row is narrowest of the three it must still survive.
+  it.each([1280, 1024, 768])('stands the two frames side by side with their words on one line at %ipx', async (width) => {
     const { import: left, export: right } = await pair(width)
 
     // Nothing stands between them: the only thing separating the two frames is the row's own gap,
