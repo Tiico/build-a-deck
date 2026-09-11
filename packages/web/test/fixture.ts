@@ -1,4 +1,3 @@
-import type { AddressInfo } from 'node:net'
 import type { Server } from 'node:http'
 import { CARD_STANDARD_63x88, TOKEN_COUNTER, TypeRegistry, type SetupDef, STANDARD_TYPES } from '@byd/engine'
 import { TableHost, createServer, MemoryLogStore, MemoryProjectStore, MemorySurveyStore, MemoryAuthStore, MemoryMailer, MemoryAssetStore } from '@byd/server'
@@ -66,6 +65,80 @@ export function seatSetup(): SetupDef {
   }
 }
 
+// A fixture never takes its port with `listen(0)` (#58). `listen(0)` is handed a port out of the
+// operating system's ephemeral range, and that is the range every other worker draws from too: in
+// the gap where `restart()` has let go of its port in order to bind the same one again, a
+// neighbour asking for any port at all can be given that very number, and the restart then falls
+// over an EADDRINUSE inside whatever test happened to be running. Ports below 30000 are outside
+// the ephemeral range everywhere the suite runs — it starts at 32768 on Linux and 49152 on macOS
+// and Windows — so nothing the kernel hands out on its own can land on one.
+const PORT_FLOOR = 10_000
+const PORT_CEILING = 30_000
+// The band is cut so that no two fixtures alive at the same time ever want the same number: a
+// slice per test worker, a counter walking that slice, and the whole run moved aside by the pid
+// of the process the workers hang off, so a second suite on the same box sits somewhere else.
+const PORTS_PER_WORKER = 8
+const WORKERS_PER_RUN = 32
+const PORTS_PER_RUN = PORTS_PER_WORKER * WORKERS_PER_RUN
+const WORKER_SLOT = ((Number(process.env['VITEST_POOL_ID']) || 1) - 1) % WORKERS_PER_RUN
+const RUN_SLOT = (process.ppid || process.pid) % Math.floor((PORT_CEILING - PORT_FLOOR) / PORTS_PER_RUN)
+const SLICE = PORT_FLOOR + RUN_SLOT * PORTS_PER_RUN + WORKER_SLOT * PORTS_PER_WORKER
+let nth = 0
+
+// `listen` says it failed by emitting `error`, not by throwing. Without this the EADDRINUSE
+// below would reach the worker as an uncaught exception and fell whatever test was running,
+// which is how #58 was first seen.
+function listenOn(server: Server, port: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const failed = (err: Error) => {
+      server.removeListener('listening', listening)
+      reject(err)
+    }
+    const listening = () => {
+      server.removeListener('error', failed)
+      resolve()
+    }
+    server.once('error', failed)
+    server.once('listening', listening)
+    server.listen(port, '127.0.0.1')
+  })
+}
+
+// The port for a new fixture: this worker's own slice, stepping over anything another program on
+// the machine happens to be holding.
+async function claim(server: Server): Promise<number> {
+  const tried: number[] = []
+  for (let i = 0; i < PORTS_PER_WORKER; i++) {
+    const port = SLICE + (nth % PORTS_PER_WORKER)
+    nth += 1
+    tried.push(port)
+    try {
+      await listenOn(server, port)
+      return port
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'EADDRINUSE') throw err
+    }
+  }
+  throw new Error(`test fixture found no free port among 127.0.0.1:${tried.join(', ')}`)
+}
+
+// Taking a port back can fail for a moment even when nothing is wrong — `close()` has returned
+// but the kernel may still be letting the socket go — and it can be held outright by another
+// program on the machine. Keep asking for a short while, then say which port it was.
+async function bind(server: Server, port: number): Promise<void> {
+  const until = Date.now() + 1_000
+  for (let wait = 5; ; wait = Math.min(wait * 2, 100)) {
+    try {
+      await listenOn(server, port)
+      return
+    } catch (err) {
+      const again = (err as NodeJS.ErrnoException).code === 'EADDRINUSE' && Date.now() < until
+      if (!again) throw new Error(`test fixture could not listen on 127.0.0.1:${port}: ${(err as Error).message}`)
+      await new Promise((resolve) => setTimeout(resolve, wait))
+    }
+  }
+}
+
 export type Running = { url: string; http: string; store: MemoryLogStore; projects: MemoryProjectStore; mail: MemoryMailer; stop(): Promise<void>; restart(): Promise<void>; completeRenders(): Promise<number>; failRenders(): Promise<number> }
 
 // With `auth`, accounts are on (G1): projects need a login and belong to whoever made them.
@@ -80,8 +153,7 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean }
   const assets = new MemoryAssetStore()
   const make = () => createServer({ host: new TableHost(registry, store, undefined, renders), store, registry, renders, projects, assets, surveys, ...(auth ? { auth, mailer: mail, publicOrigin: http, authBypass: opts.authBypass } : {}) })
   let server: Server = make()
-  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
-  const { port } = server.address() as AddressInfo
+  const port = await claim(server)
   http = `http://127.0.0.1:${port}`
   const stop = () =>
     new Promise<void>((resolve) => {
@@ -121,7 +193,7 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean }
     restart: async () => {
       await stop()
       server = make()
-      await new Promise<void>((resolve) => server.listen(port, '127.0.0.1', resolve))
+      await bind(server, port)
     },
   }
 }
