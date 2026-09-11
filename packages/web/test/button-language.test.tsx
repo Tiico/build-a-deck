@@ -89,6 +89,19 @@ afterEach(async () => {
   await run.stop()
 })
 
+// The editor's project, with a column worth filtering on. The table only offers chips for a column
+// whose values repeat, and the chip is the one place in the editor that was painted in another
+// surface's green — so a fixture without one would leave that measurement matching nothing.
+const worthFiltering = () => ({
+  ...projectDoc(),
+  rows: [
+    { id: 'dragon', fields: { typ: 'varelse', title: 'Drake', body: 'Flygande.', antal: 2 } },
+    { id: 'knight', fields: { typ: 'varelse', title: 'Riddare', body: 'Sköld 1.', antal: 1 } },
+    { id: 'trap', fields: { typ: 'fälla', title: 'Grop', body: 'Dolt kort.', antal: 1 } },
+    { id: 'wizard', fields: { typ: 'fälla', title: 'Trollkarl', body: 'Dra ett kort.', antal: 1 } },
+  ],
+})
+
 async function inChromium<T>(css: string, width: number, views: Record<string, string>, read_: (page: Page) => Promise<T>): Promise<Record<string, T>> {
   const page = await browser.newPage({ viewport: { width, height: 900 } })
   try {
@@ -126,20 +139,21 @@ describe('the seat picker', () => {
     expect(measured).toEqual({ 'sätt dig vid bordet': ['Sätt dig'] })
   }, 90_000)
 
-  // Filled and outlined are the same object at two weights, so they have to be the same size. An
-  // outline is drawn *outside* the shape, so a secondary that gains a line and a primary that has
-  // none come out two pixels apart and the column sits on two rhythms. The primary therefore
-  // carries a line of its own, in its own fill, where nobody can see it but the layout.
-  it('costs an outline nothing in height beside the filled action', async () => {
-    const measured = await inChromium(
-      read('src/join/join.css'),
-      390,
-      await joinViews(),
-      (page) => page.$$eval('.byd-join form button:not(.byd-join-online)', (els) => els.map((el) => `${el.textContent?.trim().slice(0, 10)}: ${el.getBoundingClientRect().height}`)),
+  // There are two ways on from this page that are not the first one — playing on this screen, and
+  // only watching — and one language means they look like each other. A dark pill beside an
+  // outline is two answers to one question, which is the fault the whole issue is about, at one
+  // remove.
+  it('draws both ways on that are not the first one the same', async () => {
+    const measured = await inChromium(read('src/join/join.css'), 390, await joinViews(), (page) =>
+      page.$$eval('.byd-join-online, .byd-join-observe', (els) =>
+        els.map((el) => {
+          const drawn = getComputedStyle(el)
+          return `${drawn.backgroundColor} inside ${drawn.borderTopWidth} of ${drawn.borderTopColor}, ${drawn.color}`
+        }),
+      ),
     )
-    const [filled, outlined] = measured['sätt dig vid bordet']!
-    expect(filled?.replace(/^[^:]+/, '')).toBe(outlined?.replace(/^[^:]+/, ''))
-    expect(measured['sätt dig vid bordet']).toHaveLength(2)
+    const [screenHere, watching] = measured['sätt dig vid bordet']!
+    expect(screenHere).toBe(watching)
   }, 90_000)
 })
 
@@ -215,14 +229,15 @@ async function editorViews(width: number): Promise<Record<string, string>> {
       fireEvent.click(tab)
       out[tab.textContent?.trim() ?? String(i)] = document.querySelector('.byd-editor')!.outerHTML
       // The table's filter chips are only ever on when somebody has turned one on, so the walk
-      // would otherwise never see the one place in the editor painted in the account's green.
+      // would otherwise never see the one place in the editor painted in the account's green. The
+      // project below carries a column worth filtering on for exactly this reason, and a missing
+      // chip is an error rather than a view quietly skipped.
       if (tab.textContent?.trim() === 'Tabell') {
         const chip = document.querySelector<HTMLElement>('.byd-data-chip')
-        if (chip) {
-          fireEvent.click(chip)
-          out['Tabell, filtrerad'] = document.querySelector('.byd-editor')!.outerHTML
-          fireEvent.click(chip)
-        }
+        if (!chip) throw new Error('the table offers no filter chip, so nothing here measures one')
+        fireEvent.click(chip)
+        out['Tabell, filtrerad'] = document.querySelector('.byd-editor')!.outerHTML
+        fireEvent.click(chip)
       }
     }
     return out
@@ -264,8 +279,26 @@ describe('the phone', () => {
 })
 
 describe('the editor', () => {
+  // Filled and outlined are the same object at two weights, so they have to be the same size. An
+  // outline is drawn *outside* the shape it wraps, so a secondary that gains a line and a primary
+  // that has none come out two pixels apart, and a row of buttons then sits on two rhythms. The
+  // primary therefore carries a line of its own, in its own fill, where nobody can see it but the
+  // layout. Spara and Uppdatera bordet stand side by side in the header at one size, so they are
+  // the pair where that can be read off the page rather than argued about.
+  it('costs an outline nothing in height beside the filled action', async () => {
+    await run.projects.create('p1', worthFiltering())
+    const views = await editorViews(1280)
+    const measured = await inChromium(read('src/editor/editor.css'), 1280, { Mall: views['Mall']! }, (page) =>
+      page.$$eval('.byd-editor > header > .byd-secondary, .byd-editor > header > .byd-primary', (els) => els.map((el) => `${el.textContent?.trim().slice(0, 10)}: ${el.getBoundingClientRect().height}`)),
+    )
+    const [outlined, filled] = measured['Mall']!
+    expect(outlined).toMatch(/^Spara: /)
+    expect(filled).toMatch(/^Uppdatera /)
+    expect(outlined?.replace(/^[^:]+/, '')).toBe(filled?.replace(/^[^:]+/, ''))
+  }, 120_000)
+
   it('wears the primary fill on nothing but the action that puts the work on the table', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create('p1', worthFiltering())
     const views = await editorViews(1280)
     const measured = await inChromium(read('src/editor/editor.css'), 1280, views, wearingThePrimary('.byd-editor'))
     // The caret is not a second action: it is the same button's other half, and a split control
@@ -281,7 +314,7 @@ describe('the editor', () => {
 // the fact stays true when the line the language draws with changes.
 describe('the buttons that stand beside the card in the template', () => {
   it('draws the way to a typeface as an outline and not as a second first action', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create('p1', worthFiltering())
     const views = await editorViews(1280)
     const measured = await inChromium(read('src/editor/editor.css'), 1280, { Mall: views['Mall']! }, (page) =>
       page.evaluate(() => {
@@ -306,7 +339,7 @@ describe('the buttons that stand beside the card in the template', () => {
 // is its identity and not a role (L11, K9, #20), and that palette is not this issue's to move.
 describe('what the whole tool draws as chosen', () => {
   it('paints none of it in a fill of its own, bar the seats that are a palette', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create('p1', worthFiltering())
     const walked = {
       'inloggningskortet, mina spel': [read('src/account/account.css'), 390, '.byd-account', await accountViews()],
       'sätt dig vid bordet': [read('src/join/join.css'), 390, '.byd-join', await joinViews()],
@@ -327,6 +360,50 @@ describe('what the whole tool draws as chosen', () => {
       'telefonen': [],
     })
   }, 180_000)
+})
+
+// A role has to out-rank the surface rule it lands inside, on every surface and not just on the
+// one where the fault happened to be noticed. `.byd-join-observe` was (0,1,0) against
+// `.byd-join form button` at (0,1,2) and lost silently — background, border, ink and size, all
+// four taken over, with the declaration still sitting there looking like it did something.
+//
+// So each surface is given the worst case its own stylesheet can make: a second action standing
+// inside a form, beside a plain button that nothing has claimed. The plain one is the control. If
+// the two come out drawn the same, the role lost, and the test says which surface it lost on.
+const ROOTS = [
+  { what: 'the account', root: 'byd-account', css: 'src/account/account.css' },
+  { what: 'the seat picker', root: 'byd-join', css: 'src/join/join.css' },
+  { what: 'the wizard', root: 'byd-wizard', css: 'src/wizard/wizard.css' },
+  { what: 'the editor', root: 'byd-editor', css: 'src/editor/editor.css' },
+  { what: 'the phone', root: 'byd-player', css: 'src/player/player.css' },
+] as const
+
+describe.each(ROOTS)('a second action inside a form on $what', ({ root, css }) => {
+  const both = { 'en sekundär i ett formulär': `<div class="${root}"><form><button class="byd-secondary">Andra vägen</button><button>Vad som helst</button></form></div>` }
+  const drawing = (selector: string) => (page: Page) =>
+    page.evaluate((where) => {
+      const form = document.querySelector(where.split(' form ')[0]!)!.querySelector('form')!
+      const probe = form.appendChild(document.createElement('span'))
+      probe.style.cssText = 'color: var(--byd-secondary-line)'
+      const line = getComputedStyle(probe).color
+      probe.remove()
+      const drawn = [...form.querySelectorAll<HTMLElement>('button')].map((el) => {
+        const style = getComputedStyle(el)
+        return `${style.backgroundColor} inside ${style.borderTopWidth} of ${style.borderTopColor}`
+      })
+      return { drawn, outlined: `rgba(0, 0, 0, 0) inside 1px of ${line}` }
+    }, selector)
+
+  it('is drawn by the role and not by the surface', async () => {
+    const measured = await inChromium(read(css), 1280, both, drawing(`.${root} form button`))
+    const { drawn, outlined } = measured['en sekundär i ett formulär']!
+    const [secondary, plain] = drawn
+    // The line is read off the surface's own token rather than written down, so this stays true
+    // when the colour changes; what it must never be is the transparent line the surface's own
+    // rule would hand it, which is exactly what losing the cascade looks like.
+    expect(secondary).toBe(outlined)
+    expect(secondary).not.toBe(plain)
+  }, 90_000)
 })
 
 // A surface without the shared sheet under it is not the surface that ships. Every suite that

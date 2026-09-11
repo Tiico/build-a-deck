@@ -111,6 +111,9 @@
 .byd-player .byd-choice[aria-checked='true'] {
   background: transparent;
   border-color: transparent;
+  /* The bar is an inset shadow, and an inset shadow follows the corner it is drawn inside: left
+     on a 14 px radius it curves up at both ends and reads as a smile rather than a rule. So a
+     chosen thing squares its own bottom corners while it is chosen. */
   border-radius: 6px 6px 0 0;
   box-shadow: inset 0 -3px 0 var(--byd-chosen-bar);
   color: var(--byd-chosen-ink);

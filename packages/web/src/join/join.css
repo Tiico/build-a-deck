@@ -131,7 +131,14 @@
 .byd-join form button { padding: 18px; border-radius: 12px; border: 1px solid transparent; font-size: 18px; font-weight: 800; }
 .byd-join form button:disabled { background: #242938; color: #5b6478; }
 
-.byd-join-observe { background: transparent; border: 1px solid #2c3242; color: #9aa3b8; font-size: 13px; }
-.byd-join-observe:disabled { opacity: 0.35; }
-.byd-join-online { background: #242938 !important; color: #fff !important; font-size: 14px !important; }
-.byd-join-online:disabled { opacity: 0.35; }
+/* The two ways on that are not the first one. Both are sentences rather than words — "play on
+   this screen (the table and the hand here)" — so they are read at the size a sentence is read at
+   and not at the size the button that seats you shouts in. Said from the surface so the pair wins
+   over `.byd-join form button`, which is 18 px and (0,1,2); the class alone would lose, which is
+   precisely the mistake `.byd-join-observe` was making before (#44).
+
+   What they are *drawn* in is not said here at all any more: that is the shared secondary, one
+   line and one ink for the whole tool. */
+.byd-join .byd-join-online,
+.byd-join .byd-join-observe { font-size: 14px; }
+.byd-join-online:disabled, .byd-join-observe:disabled { opacity: 0.35; }
