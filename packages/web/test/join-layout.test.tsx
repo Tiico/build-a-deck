@@ -281,10 +281,12 @@ describe('a table whose seats share a side (#42)', () => {
     expect(stacked).toEqual([])
     expect((await reachable(markup))['E']).toBe('E')
 
-    // Cut on the screen, whole in the ear.
+    // Cut on the screen, whole in the ear. What else the seat says of itself is another
+    // decision's business — the name leads with the seat's own letter so that two free seats do
+    // not say the same word (K12) — so what is measured here is that the whole name is in there.
     const seat = await pill(markup, 'A')
     expect(seat.cut).toBe(true)
-    expect(seat.name).toBe(long)
+    expect(seat.name).toContain(long)
   }, 60_000)
 
   // And the cap is only the cure for the thing it cures. A seat nobody shares an edge with has
@@ -296,6 +298,6 @@ describe('a table whose seats share a side (#42)', () => {
     const seat = await pill(markup, 'A')
     expect(seat.cut).toBe(false)
     expect(seat.w).toBeGreaterThan(90)
-    expect(seat.name).toBe('Alexandra')
+    expect(seat.name).toContain('Alexandra')
   }, 60_000)
 })
