@@ -78,7 +78,7 @@ Editorn:
 - ✅ Filten mot ramens yta i stället för mot dess kortare sida: två femtedelar av ramen, minst 44 px luft, en enda regel för `/online`, `/table`, TV:n och Bord-flikens miniatyrer (K9, K17, #24).
 
 Drift:
-- ✅ Compose-stack med minnestak och loggrotation: Postgres, app som serverar webben från samma origin, render-worker, tunnel- och backupprofiler (DRIFT §1, §2, §6, §8).
+- ✅ Compose-stack med minnestak och loggrotation: Postgres, app som serverar webben från samma origin, render-worker, och en väg in som är lådans egen — dess omvända proxy genom ett överlägg, eller tunneln i stacken (DRIFT §1, §2, §6, §8).
 - ✅ Pull-baserad deploy på lådan via systemd-timer, som drar CI:s bilder eller bygger själv (DRIFT §7).
 - ✅ CI med lint, typecheck, tester mot Postgres och Chromium, bilder till GHCR, replay-korpusen som grind (DRIFT §7, D4).
 - ✅ Nattlig `pg_dump` till R2 med återställningsprov (DRIFT §5, första steget).
@@ -133,14 +133,17 @@ Målet är att kunna ta betalt och lämna ifrån sig allt.
 
 Målet är att tjänsten tål riktiga användare, dygnet runt, på en låda hemma.
 
+Första produktionssättningen gjordes 2026-09-12: `v0.4.0` kör på `deck.ockelberg.com`, bakom lådans egen omvända proxy (DRIFT §2, reviderad), med assets och WAL-arkivering i R2:s europeiska jurisdiktion och inloggningsmejl genom Resend.
+Deployen är pull-baserad och timern är på: att tagga är att deploya.
+
 - ✅ Assets i R2: renderade texturer och tryckfiler i R2, `/faces/:hash` svarar 302 till en signerad URL som lever en timme och cachas i femtio minuter; hashen är förmågan (DRIFT §4).
 - ✅ WAL-arkivering till R2 med WAL-G i Postgres-bilden, nattlig basbackup, återställningsprov som spelar upp den senaste sessionen genom motorn (DRIFT §5).
 - ✅ Hälsokontroll som även prövar R2 (DRIFT §2).
 - ✅ Händelseschemats `schemaVersion` på varje rad och upcasters vid inläsning; korpusens filer lyfts, aldrig skrivs om (DRIFT §7).
 - ⬜ Riktiga loggar i replay-korpusen, anonymiserade; svar på hur anonymiseringen behåller det värdefulla (DRIFT §7, öppen fråga).
-- ⬜ Cloudflare rate limiting mot join- och login-endpointerna (DRIFT §9).
-- ⬜ Tailscale för administration, UPS för lådan, och beslutet om en extern pulskoll (DRIFT §10, öppna frågor).
-- ⬜ Minnesbudgeten provad under last: render 2 GB, Postgres 1,5 GB, app 1 GB (DRIFT §1).
+- 🔶 Rate limiting mot join- och login-endpointerna (DRIFT §9): lådans egen proxy gör det sedan 2026-09-11, 100 i sekunden med burst 50, räknat på riktiga besökar-IP:n eftersom proxyn litar på Cloudflares vidarebefordrade huvuden. Kvar är att flytta den framför huset, vilket §9 ber om — den här stoppar inget innan det når fibern.
+- 🔶 Tailscale för administration är i drift sedan 2026-09-11; UPS för lådan och beslutet om en extern pulskoll står kvar (DRIFT §10, öppna frågor).
+- 🔶 Minnesbudgeten reviderad och mätt i vila 2026-09-11: taken är render 1,5 GB, Postgres 768 MB, app 512 MB på en låda som delas med ett trettiotal andra containrar, och stacken tar 605 MB av dem när ingen spelar (DRIFT §1). Under last är den oprövad.
 - 🔶 Dokumenterad återställning från noll: ny låda, `.env`, restore, deploy — skriven som [ops/RUNBOOK.md](ops/RUNBOOK.md); vägen från R2 till den riktiga datavolymen är körd först den dag den behövs.
 
 ## Fas 5 — Tryck
