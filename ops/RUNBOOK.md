@@ -182,6 +182,9 @@ ops/restore-test.sh                                                             
 `ops/restore-test.sh` hämtar senaste basbackupen och allt WAL efter den till en tillfällig Postgres, räknar sessioner och rader, och spelar upp den senaste sessionens logg genom motorn.
 Kör det efter första natten, och därefter med jämna mellanrum: en backup som aldrig lästs tillbaka är en förhoppning.
 
+"Med jämna mellanrum" är inte en vana utan ett schema (DRIFT §5).
+Provet körs varje måndag morgon av ett schemalagt jobb som rapporterar utfallet till en människa, eftersom lådan själv inte kan berätta att något gått fel (DRIFT §8) — ett rött prov som ingen läser är samma förhoppning en gång till.
+
 **Återställning från noll**, när lådan eller disken är borta:
 
 1. Sätt upp den nya lådan enligt steg 2, med **samma** `R2_*`-nycklar och samma `POSTGRES_PASSWORD`, men starta inte stacken än.
