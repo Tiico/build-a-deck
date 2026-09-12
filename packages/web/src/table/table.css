@@ -23,7 +23,13 @@
   background: linear-gradient(135deg, #5a3b22, #3a2414);
   box-shadow: 0 40px 80px rgba(0, 0, 0, 0.6), inset 0 2px 0 rgba(255, 255, 255, 0.08);
   transform: rotateX(24deg);
-  transform-style: preserve-3d;
+  /* The felt is one plane: every card, pile and label lies flat on it, and nothing ever stands
+     up out of it. Keeping the children in their own three-dimensional planes therefore draws
+     exactly the same picture — and costs the pointer. A node that carries a transform of its
+     own (a card someone has turned, the label pill a whole pile is dragged by) stops answering
+     the press: the browser hands the pointer the felt underneath instead, and the card cannot be
+     picked up at all (K14). Flattening is what the drawing already means. */
+  transform-style: flat;
 }
 .byd-table-frame[data-mode='tv'] .byd-table-wood { padding: 0; }
 

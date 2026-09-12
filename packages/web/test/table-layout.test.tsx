@@ -644,3 +644,43 @@ describe('the address panel beside a table (#1, #2)', () => {
     expect(measured).toEqual({ small: [], sideways: 0 })
   }, 60_000)
 })
+
+describe('the tilted felt hands the pointer to the thing under it (K14)', () => {
+  it('answers at its own centre for a card that has been turned, and for the label a pile is dragged by', async () => {
+    // K14 says a loose card, the top of a pile and the whole pile in its label are dragged with
+    // pointer or finger. What the felt is drawn with decides whether they ever hear the press:
+    // the tilt is a `rotateX` under perspective, and a wood that keeps its children in their own
+    // three-dimensional planes hands the pointer the felt instead of the card standing on it, for
+    // every node that carries a transform of its own — a card someone has turned (`rot`), and the
+    // label pill, which is centred with a `translateX`. Neither can be picked up at all, and the
+    // further down the plane the node stands the surer it is to be missed.
+    const view = scene()
+    const turned: Snapshot = {
+      ...view,
+      components: [...view.components, { ...card('m3', 'table', 600, 600, 'Narr'), rot: 8 }],
+    }
+    const html = markupOf(<TableRenderer view={turned} mode="table" scale={0.6} onAct={() => undefined} />)
+    const wanted = {
+      turnedCard: '[data-component="m3"]',
+      straightCard: '[data-component="m2"]',
+      pileTop: '[data-zone="draw"] .byd-pile-top',
+      pileLabel: '[data-zone="draw"] .byd-pile-count[data-handle]',
+    }
+    const reached = await onPage(html, FRAME, (page) =>
+      page.evaluate(
+        (selectors: Record<string, string>) =>
+          Object.fromEntries(
+            Object.entries(selectors).map(([name, sel]) => {
+              const el = document.querySelector(sel)
+              if (!el) return [name, 'nothing matched']
+              const r = el.getBoundingClientRect()
+              const under = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)
+              return [name, under && (under === el || el.contains(under)) ? 'itself' : 'the felt']
+            }),
+          ),
+        wanted,
+      ),
+    )
+    expect(reached).toEqual({ turnedCard: 'itself', straightCard: 'itself', pileTop: 'itself', pileLabel: 'itself' })
+  }, 60_000)
+})
