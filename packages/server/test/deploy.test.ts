@@ -59,6 +59,15 @@ describe('the stack hands the app its configuration', () => {
     expect(always).toBeLessThanOrEqual(3 * 1024)
   })
 
+  it('hands both the app and the worker the endpoint the buckets answer on', () => {
+    // R2 has more than one endpoint. A bucket created in a jurisdiction is invisible on the
+    // account's default one and answers 403 to credentials that are perfectly good, so the box
+    // has to be able to say which — and it has to reach the two containers that read from R2,
+    // not only the archiver, which already had it.
+    expect(Object.keys(serviceEnvironment(compose, 'app'))).toContain('R2_ENDPOINT')
+    expect(Object.keys(serviceEnvironment(compose, 'render'))).toContain('R2_ENDPOINT')
+  })
+
   it('keeps the development flags out of the box', () => {
     const env = serviceEnvironment(compose, 'app')
     expect(Object.keys(env)).not.toContain('AUTH_BYPASS')

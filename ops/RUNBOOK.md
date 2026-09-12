@@ -21,6 +21,22 @@ Vad som händer om något av det valfria saknas:
 | Saknas | Konsekvens |
 |---|---|
 | R2 | Texturer och uppladdade bilder ligger kvar i Postgres och går genom lådans uppström; ingen WAL-arkivering, alltså **ingen backup** (DRIFT §4, §5). |
+
+Skapar du bucketarna i en jurisdiktion — den europeiska är rimlig för nordiska användare — svarar de inte på kontots vanliga endpoint utan på sin egen. Sätt `R2_ENDPOINT` därefter; symptomet annars är 403 på nycklar som är helt riktiga.
+
+Nycklarna går att prova innan något startas, vilket är värt de tio sekunderna:
+
+```bash
+set -a; . ./.env; set +a
+docker run --rm \
+  -e WALG_S3_PREFIX="s3://$R2_BACKUP_BUCKET/wal-g" \
+  -e AWS_ENDPOINT="${R2_ENDPOINT:-https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com}" \
+  -e AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID" -e AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY" \
+  -e AWS_REGION=auto -e AWS_S3_FORCE_PATH_STYLE=true \
+  ghcr.io/tiico/build-a-deck/postgres:$(git rev-parse HEAD) wal-g backup-list
+```
+
+`No backups found` betyder att nycklarna når bucketen. `AccessDenied` betyder att de inte gör det.
 | Resend | Inloggningslänken skrivs i `app`-containerns logg i stället för att mejlas; bara den som når loggen kan logga in (DRIFT §12). |
 | Tailscale | Administration sker över SSH på det lokala nätet; Postgres lyssnar ändå bara på lådans `127.0.0.1` (DRIFT §10). |
 
@@ -194,7 +210,7 @@ Det som är provat varje gång `ops/restore-test.sh` körs är att bytesen i R2 
 | `{"msg":"images-not-ready"}` | CI har inte byggt klart bilderna för taggens SHA. Lådan står kvar där den står och försöker igen. Håller det i sig: kontrollera att paketen är publika (GitHub → Packages → paketet → Package settings). Ett paket CI skapar för första gången kan bli privat, och då hittar lådan aldrig manifestet. Alternativet är en `read:packages`-token i `GHCR_TOKEN`. |
 | `{"msg":"deploy-unhealthy"}` | Stacken startade men `/health` svarade inte på en minut. `docker compose logs app` säger varför; oftast Postgres. |
 | `{"msg":"no-release"}` | Ingen `v*`-tagg nås från `origin/main`. Tagga. |
-| `/health` ger 503 med `assets` | R2-nycklarna är fel eller bucketen finns inte. Texturer slutar visas; spelet i övrigt lever. |
+| `/health` ger 503 med `assets` | R2-nycklarna är fel, bucketen finns inte, eller — vanligast — den ligger i en jurisdiktion och svarar bara på sin egen endpoint. Sätt `R2_ENDPOINT=https://<konto>.eu.r2.cloudflarestorage.com` för den europeiska. Texturer slutar visas; spelet i övrigt lever. |
 | Inloggningsmejlet kommer inte | Ingen `RESEND_API_KEY`, eller avsändardomänen är inte verifierad. Länken finns i `docker compose logs app`. |
 | Inloggning loopar tillbaka till inloggningskortet | `PUBLIC_ORIGIN` matchar inte värdnamnet i webbläsaren, så kakan sätts på fel origin. |
 | Allt är nere och ingen vet | Lådan kan inte berätta att den är nere (DRIFT §8). Signalen är en användare som hör av sig. |

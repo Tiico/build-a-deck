@@ -92,8 +92,12 @@ export function assetsFromEnv(env: Record<string, string | undefined>): S3Object
   const secretAccessKey = env['R2_SECRET_ACCESS_KEY']
   if (!account || !accessKeyId || !secretAccessKey) return undefined
   return new S3ObjectStore({
-    endpoint: env['R2_ENDPOINT'] ?? `https://${account}.r2.cloudflarestorage.com`,
-    bucket: env['R2_ASSETS_BUCKET'] ?? 'byd-assets',
+    // `||` and not `??`: the stack hands every R2 variable over whether the box filled it in or
+    // not, so an unused override arrives as an empty string. The default endpoint is the account's
+    // own; a bucket created in a jurisdiction — the European one, say — is not visible there at
+    // all and answers 403 to credentials that are perfectly good, so the box says which.
+    endpoint: env['R2_ENDPOINT'] || `https://${account}.r2.cloudflarestorage.com`,
+    bucket: env['R2_ASSETS_BUCKET'] || 'byd-assets',
     region: 'auto',
     accessKeyId,
     secretAccessKey,

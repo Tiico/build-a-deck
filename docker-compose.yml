@@ -63,11 +63,14 @@ services:
       PUBLIC_ORIGIN: ${PUBLIC_ORIGIN:-}
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       MAIL_FROM: ${MAIL_FROM:-}
-      # Assets in R2 (DRIFT §4): with credentials, textures are served as signed links.
+      # Assets in R2 (DRIFT §4): with credentials, textures are served as signed links. The
+      # endpoint is the account's own unless the box says otherwise, which a bucket in a
+      # jurisdiction — or a MinIO in development — requires.
       R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
       R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
       R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
       R2_ASSETS_BUCKET: ${R2_ASSETS_BUCKET:-byd-assets}
+      R2_ENDPOINT: ${R2_ENDPOINT:-}
     # The tunnel reaches the app on the compose network; this host port is for the box itself.
     ports:
       - "127.0.0.1:8080:8080"
@@ -86,11 +89,13 @@ services:
     image: ${BYD_RENDER_IMAGE:-byd-render:${BYD_TAG:-latest}}
     environment:
       DATABASE_URL: postgres://byd:${POSTGRES_PASSWORD:-byd}@postgres:5432/byd
-      # The worker writes its outputs where the app serves them from (DRIFT §4).
+      # The worker writes its outputs where the app serves them from (DRIFT §4), which means the
+      # same endpoint as well as the same bucket.
       R2_ACCOUNT_ID: ${R2_ACCOUNT_ID:-}
       R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID:-}
       R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY:-}
       R2_ASSETS_BUCKET: ${R2_ASSETS_BUCKET:-byd-assets}
+      R2_ENDPOINT: ${R2_ENDPOINT:-}
     depends_on:
       postgres:
         condition: service_healthy
