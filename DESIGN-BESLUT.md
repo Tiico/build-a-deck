@@ -1151,6 +1151,13 @@ Bordsläget lutar bordet (`rotateX` under perspektiv), så pekaren projiceras ex
 Att dra översta kortet ur en dold hög och släppa det på ett löst kort, och att vända översta kortet i en dold hög, gick först inte: tråden ger inget id. Löst i K15 genom att högen adresseras i stället för kortet.
 Under ett tillbakaspolningsförslag (K13) är bordet inte spelbart.
 
+Reviderat 2026-09-12: ringen håller verb och inget annat.
+Den bar också en **Stäng**, som beslutet aldrig räknade upp och som tog en plats i cirkeln där varje annan plats gör något.
+Det som stänger ringen är allt som inte är ett verb: ryggen täcker skärmen, så ett släpp eller ett klick var som helst utanför cirkeln är vägen ut.
+Escape är samma väg för en hand på ett tangentbord, vilket den inte hade medan knappen var det enda uttalade sättet att ångra sig.
+Fyra verb i stället för fem lägger dem dessutom i väderstrecken kring fingret.
+En ring utan verb öppnas inte alls: ett kort som hunnit lämna bordet medan fingret var på väg till det hade annars gett en tom cirkel.
+
 ### K15. Högens topp som adress: `stack` och `flip` tar `{ top: hög }` (2026-09-06)
 
 `component` i `stack` och `flip` är antingen ett komponent-id eller `{ top: ZoneId }`: översta kortet i den högen, upplöst av motorn när raden appliceras.
