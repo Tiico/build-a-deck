@@ -6,6 +6,7 @@ import { TableRenderer, type TableHandle } from '../src/table/TableRenderer.js'
 import { buildScene } from './scene.js'
 import { activeBounds, cameraOf, frameRect, pad } from '../src/table/camera.js'
 import { DEFAULT_TIMING } from '../src/status/connection.js'
+import { RING_MARGIN } from '../src/table/ring.js'
 
 describe('TableRenderer', () => {
   it('places a face-up card by name at its position, and a face-down one as a back without a name', () => {
@@ -196,6 +197,82 @@ describe('direct manipulation (K1, K2, C)', () => {
     expect(onAct).toHaveBeenLastCalledWith([{ v: 'flip', component: faceUp, face: 'back' }])
     expect(document.querySelector('[data-radial]')).toBeNull()
     vi.useRealTimers()
+  })
+
+  // A click is not a hold: with a mouse, 350 ms of stillness is a demand the hand cannot meet,
+  // and the least tremor turns the wait into a drag nobody asked for. So the table has one rule
+  // instead of two — a drag moves the thing, a click asks what may be done with it — and the
+  // gesture that until now did nothing at all is the shortest way to Vänd (K14).
+  it('a click that never became a drag opens the ring where the pointer is', () => {
+    const { view, faceDown } = buildScene()
+    const onAct = vi.fn()
+    render(<TableRenderer view={view(null)} mode="tv" scale={1} onAct={onAct} />)
+    const card = document.querySelector(`[data-component="${faceDown}"]`)!
+    fireEvent.pointerDown(card, client(-200, -100))
+    fireEvent.pointerUp(card, client(-200, -100))
+    const ring = document.querySelector('[data-radial]') as HTMLElement
+    expect(ring.getAttribute('data-radial')).toBe(faceDown)
+    // Around the pointer, not around the card: the ring opens where the hand already is.
+    expect(ring.style.left).toBe('300px')
+    expect(ring.style.top).toBe('200px')
+    fireEvent.click(screen.getByRole('button', { name: 'Vänd' }))
+    expect(onAct).toHaveBeenLastCalledWith([{ v: 'flip', component: faceDown, face: 'front' }])
+    expect(document.querySelector('[data-radial]')).toBeNull()
+  })
+
+  // Vänd sits straight above the pointer, so a card near the top of the window would put the one
+  // verb the gesture exists for past the edge of the screen.
+  it('pulls the ring inside the window when the card it belongs to lies at the rim', () => {
+    const { view, faceUp } = buildScene()
+    render(<TableRenderer view={view(null)} mode="tv" scale={1} onAct={() => undefined} />)
+    const card = document.querySelector(`[data-component="${faceUp}"]`)!
+    // jsdom's window is 1024 x 768; the card sits at client (110, 60), inside the ring's reach
+    // of both the top and the left edge.
+    fireEvent.pointerDown(card, client(-390, -240))
+    fireEvent.pointerUp(card, client(-390, -240))
+    const ring = document.querySelector('[data-radial]') as HTMLElement
+    expect(ring.style.left).toBe(`${RING_MARGIN}px`)
+    expect(ring.style.top).toBe(`${RING_MARGIN}px`)
+  })
+
+  it('pulls a ring opened by a hold in just the same way', () => {
+    vi.useFakeTimers()
+    const { view, faceUp } = buildScene()
+    render(<TableRenderer view={view(null)} mode="tv" scale={1} onAct={() => undefined} />)
+    fireEvent.pointerDown(document.querySelector(`[data-component="${faceUp}"]`)!, client(-390, -240))
+    act(() => vi.advanceTimersByTime(400))
+    const ring = document.querySelector('[data-radial]') as HTMLElement
+    expect([ring.style.left, ring.style.top]).toEqual([`${RING_MARGIN}px`, `${RING_MARGIN}px`])
+    vi.useRealTimers()
+  })
+
+  it('a click on the top of a pile and on its label both open the pile ring', () => {
+    const { view } = buildScene()
+    const onAct = vi.fn()
+    render(<TableRenderer view={view(null)} mode="tv" scale={1} onAct={onAct} />)
+    const top = document.querySelector('[data-zone="discard"] .byd-pile-top')!
+    fireEvent.pointerDown(top, client(200, 0))
+    fireEvent.pointerUp(top, client(200, 0))
+    expect(document.querySelector('[data-radial]')?.getAttribute('data-radial')).toBe('discard')
+    fireEvent.click(screen.getByRole('button', { name: 'Blanda' }))
+    expect(onAct).toHaveBeenLastCalledWith([{ v: 'shuffle', pile: 'discard' }])
+
+    const label = document.querySelector('[data-zone="discard"] .byd-pile-count')!
+    fireEvent.pointerDown(label, client(200, 50))
+    fireEvent.pointerUp(label, client(200, 50))
+    expect(document.querySelector('[data-radial]')?.getAttribute('data-radial')).toBe('discard')
+  })
+
+  it('a drag is not a click: moving the card away sends the drop and opens nothing', () => {
+    const { view, faceUp, faceDown } = buildScene()
+    const onAct = vi.fn()
+    render(<TableRenderer view={view(null)} mode="tv" scale={1} onAct={onAct} />)
+    const card = document.querySelector(`[data-component="${faceUp}"]`)!
+    fireEvent.pointerDown(card, client(-390, -240))
+    fireEvent.pointerMove(card, client(-190, -90))
+    fireEvent.pointerUp(card, client(-190, -90))
+    expect(onAct).toHaveBeenLastCalledWith([{ v: 'stack', component: faceUp, onto: faceDown }])
+    expect(document.querySelector('[data-radial]')).toBeNull()
   })
 
   it('a hold on a pile offers shuffle and split; the pile label drags the whole pile', () => {

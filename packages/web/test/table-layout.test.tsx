@@ -12,6 +12,8 @@ import type { Snapshot, VisibleComponentState } from '@byd/protocol'
 import { TableRenderer, type TableMode } from '../src/table/TableRenderer.js'
 import { TvChrome } from '../src/table/TvChrome.js'
 import { ActionPanel } from '../src/table/ActionPanel.js'
+import { RadialMenu } from '../src/table/RadialMenu.js'
+import { RING_AIR, RING_REACH, ringCentre } from '../src/table/ring.js'
 import { feltLabels, intentsForPlace, landedKeyFor, type Thing } from '../src/table/keyboard.js'
 import { edgeRotation, feltWithHands, handExtent } from '../src/table/hand.js'
 import { fitScale } from '../src/table/fit.js'
@@ -149,6 +151,39 @@ const measure = (mode: TableMode, selectors: Record<string, string>) => measureH
 
 const overlaps = (a: Box, b: Box) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
 const outside = (frame: Box, boxes: readonly Box[]) => boxes.filter((b) => b.x < frame.x || b.y < frame.y || b.x + b.w > frame.x + frame.w || b.y + b.h > frame.y + frame.h)
+
+describe('the ring of verbs (K14)', () => {
+  const verbs = [
+    { label: 'Vänd', run: () => undefined },
+    { label: 'Vrid', run: () => undefined },
+    { label: 'Titta', run: () => undefined },
+    { label: 'Avslöja', run: () => undefined },
+    { label: 'Stäng', run: null, kind: 'no' as const },
+  ]
+  const ring = (x: number, y: number) => markupOf(<RadialMenu id="c1" x={x} y={y} items={verbs} onClose={() => undefined} />)
+  const WINDOW: Size = { w: 900, h: 420 }
+
+  // `RING_REACH` is a number in TypeScript and the ring is a circle in CSS, so the two can drift
+  // apart without a word. This measures the real stylesheet and holds them together.
+  it('reaches exactly as far from its centre as the code says it does', async () => {
+    const boxes = await measureAll(ring(450, 210), WINDOW, '.byd-radial button')
+    expect(boxes.length).toBe(verbs.length)
+    const far = Math.max(...boxes.flatMap((b) => [450 - b.box.x, b.box.x + b.box.w - 450, 210 - b.box.y, b.box.y + b.box.h - 210]))
+    expect(far).toBeLessThanOrEqual(RING_REACH)
+    // And not wastefully far: the room kept clear is the ring itself, not a margin around it.
+    expect(far).toBeGreaterThan(RING_REACH - 16)
+  }, 60_000)
+
+  // The clamp works in numbers; this is where those numbers meet the circle the browser draws.
+  it('puts every verb inside the window once its centre has been pulled in, edge for edge', async () => {
+    const at = ringCentre({ x: 282, y: 20 }, WINDOW)
+    const boxes = await measureAll(ring(at.x, at.y), WINDOW, '.byd-radial button')
+    const frame = { x: 0, y: 0, w: WINDOW.w, h: WINDOW.h }
+    expect(outside(frame, boxes.map((b) => b.box))).toEqual([])
+    // And not merely inside: a verb flush against the edge is inside it and still looks trapped.
+    expect(Math.min(...boxes.map((b) => b.box.y))).toBeGreaterThanOrEqual(RING_AIR)
+  }, 60_000)
+})
 
 describe('a pile says how many it holds (C)', () => {
   it('puts the count as a badge on the corner of the pile and the name below it, clear of the cards', async () => {

@@ -10,6 +10,7 @@ import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from 
 import { CARD_MM, absoluteOf, dropIntents, type Drag, type DragTarget } from './drop.js'
 import { DEFAULT_TIMING } from '../status/connection.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
+import { ringCentre } from './ring.js'
 import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_MM, edgeRotation, fanPlace, feltWithHands, handExtent } from './hand.js'
 import { useT, type T } from '../i18n/index.js'
 
@@ -17,7 +18,7 @@ export type TableMode = 'table' | 'tv'
 // Without an explicit `scale`, the renderer fits the table to its own frame.
 // `faces` is the HTTP origin that serves /faces/:hash; without it cards are plain colours.
 // With `onAct` the table can be played on (K1, K2, C): drag cards, the top of a pile, or a whole
-// pile by its label; hold for a ring of verbs. Without it the table only shows.
+// pile by its label; click or hold either for a ring of verbs. Without it the table only shows.
 // Presence (K6): `peers` are the others' cursors and carried cards, `pulses` where someone points,
 // `recent` which cards just moved and by whom; `onPresence` reports this screen's own.
 // `rotate` turns the table so a seat's edge is at the bottom (C5). The ref answers where a client
@@ -165,6 +166,12 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const measured = fixedScale !== undefined || (size !== null && (!following || placed !== null))
   const live = useRef<Live | null>(null)
   const toTable = useRef<((cx: number, cy: number) => Point) | null>(null)
+  // Opening the ring is one act however it was asked for, so both ways in pull it inside the
+  // window together: a card at the rim must not put Vänd past the edge of the screen.
+  const openRing = (target: DragTarget, x: number, y: number) => {
+    const room = typeof window === 'undefined' ? null : { w: window.innerWidth, h: window.innerHeight }
+    setRing({ target, ...(room ? ringCentre({ x, y }, room) : { x, y }) })
+  }
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const clearHold = () => {
     if (holdTimer.current) clearTimeout(holdTimer.current)
@@ -261,7 +268,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       live.current = null
       setDrag(null)
       if (typeof el.releasePointerCapture === 'function' && typeof el.hasPointerCapture === 'function' && el.hasPointerCapture(pointerId)) el.releasePointerCapture(pointerId)
-      setRing({ target, x: clientX, y: clientY })
+      openRing(target, clientX, clientY)
     }, HOLD_MS)
   }
   const move = (e: RPointerEvent) => {
@@ -279,13 +286,21 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       onPresence({ kind: 'drag', component: d.target.id, x: o.x + at.x - d.grab.x, y: o.y + at.y - d.grab.y })
     }
   }
-  const up = () => {
+  // Letting go. A pointer that never travelled has not moved anything, so it is a question and
+  // not a drop: the ring opens where the hand already is. That is the whole rule on the felt —
+  // a drag moves the thing, a click asks what may be done with it (K14). A cancelled pointer
+  // asks nothing, which is why it comes in here without a place to open at.
+  const release = (asked: Point | null) => {
     const d = live.current
     clearHold()
     live.current = null
     setDrag(null)
     if (d?.started && d.target.kind === 'card') onPresence?.({ kind: 'drop' })
-    if (!d || !d.started || !onAct) return
+    if (!d || !onAct) return
+    if (!d.started) {
+      if (asked) openRing(d.target, asked.x, asked.y)
+      return
+    }
     const intents = dropIntents(view, d)
     if (intents.length === 0) return
     onAct(intents)
@@ -306,7 +321,9 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       dy: d.at.y - d.grab.y,
     })
   }
-  const handlers = (target: DragTarget) => ({ onPointerDown: (e: RPointerEvent) => down(e, target), onPointerMove: move, onPointerUp: up, onPointerCancel: up })
+  const up = (e: RPointerEvent) => release({ x: e.clientX, y: e.clientY })
+  const cancel = () => release(null)
+  const handlers = (target: DragTarget) => ({ onPointerDown: (e: RPointerEvent) => down(e, target), onPointerMove: move, onPointerUp: up, onPointerCancel: cancel })
   // Pointing at a card is not touching it: it only says what the screen should show large.
   const inspects = (c: VisibleComponentState | undefined) =>
     onInspect && c ? { onPointerEnter: () => onInspect(c), onPointerLeave: () => onInspect(null) } : undefined

@@ -114,6 +114,13 @@ describe('hidden information on the wire', () => {
     await a.send(null, { v: 'shuffle', pile: 'draw' }).catch(() => undefined)
     // The table connection shuffles, since A's connection can only speak as A.
     const table = await connect(id, null)
+    // The card's own journey onto the pile is B's to watch, and the activity line names the
+    // component it moved. That frame must be *behind* the mark, or this test is timing and not
+    // visibility: under load it arrives after the shuffle has been asked for and then trips the
+    // assertion below, which is how it flaked (#51). Waiting for it is also what states the
+    // rule out loud — the id may be seen going in, and is gone once the pile is shuffled.
+    await b.synced(2)
+    expect(b.frames.join('\n')).toContain(known)
     const beforeShuffle = b.frames.length
     await table.send(null, { v: 'shuffle', pile: 'draw' })
     await b.synced(3)
