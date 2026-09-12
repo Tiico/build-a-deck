@@ -1,0 +1,58 @@
+/* PROTOTYPE — throwaway. Delete with PROTOTYPE-bordslage.tsx. */
+
+/* Variant B: pillret är samma pill, men i en storlek en hand kan träffa. 44 px är golvet i
+   `docs/UX-KONTROLLER.md`, och räkningen är det man läser på håll, så den bär storleken. */
+.byd-table-frame[data-proto='B'][data-mode='table'] .byd-pile-count,
+.byd-table-frame[data-proto='C'][data-mode='table'] .byd-pile-count {
+  bottom: -54px;
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  font-size: 15px;
+  box-sizing: border-box;
+}
+.byd-table-frame[data-proto='B'][data-mode='table'] .byd-pile-n,
+.byd-table-frame[data-proto='C'][data-mode='table'] .byd-pile-n {
+  font-size: 21px;
+  font-weight: 700;
+}
+
+/* Variant C: samma inpassning som B, men ett flackare bord. Lutningen kostar både höjd och
+   de bortre kortens storlek — vid 24° är fjärran kort märkbart mindre än de nära. 13° behåller
+   känslan av ett bord man står vid och ger inpassningen mer att arbeta med. Vinkeln här och
+   `setPrototypeTilt` i modulen måste vara samma tal. */
+.byd-table-frame[data-proto='C'][data-mode='table'] .byd-table-wood {
+  transform: rotateX(13deg);
+}
+
+/* Listen. Den ska synas att den inte hör till det som bedöms. */
+.byd-proto-bar {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #fff;
+  color: #111;
+  font: 13px/1 system-ui, sans-serif;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+}
+.byd-proto-bar button {
+  min-width: 40px;
+  min-height: 40px;
+  border: 1px solid #ccc;
+  border-radius: 999px;
+  background: #f4f4f4;
+  color: #111;
+  font-size: 16px;
+  cursor: pointer;
+}
+.byd-proto-bar span {
+  max-width: 62ch;
+}

@@ -17,6 +17,8 @@ import { statusLinks } from '../status/links.js'
 import { noticeFor } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useT, type Key } from '../i18n/index.js'
+// PROTOTYPE (#63, #64) — the switcher draws nothing without `?variant=`. Remove with it.
+import { PrototypeSwitcher } from './PROTOTYPE-bordslage.js'
 
 type SessionRecord = { name?: string; version?: string }
 
@@ -159,6 +161,7 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
         {ended}
       </div>
       <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
+      <PrototypeSwitcher />
     </>
   )
 }

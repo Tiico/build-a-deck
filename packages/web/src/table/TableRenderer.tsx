@@ -5,6 +5,8 @@ import type { Peer, Pulse, Recent } from './presence.js'
 import { hue } from './hue.js'
 import { seatColor } from './seatColor.js'
 import { feltScale, fitScale, LEAST_AIR_PX } from './fit.js'
+// PROTOTYPE (#63, #64) — two hooks, both off without `?variant=`. Remove with the prototype.
+import { protoFeltScale, protoVariant } from './PROTOTYPE-bordslage.js'
 import { activeBounds, cameraOf, fitFloor, frameRect, pad, reachOf, same, tween, zoomAround, type Rect, type Size } from './camera.js'
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
 import { CARD_MM, absoluteOf, dropIntents, type Drag, type DragTarget } from './drop.js'
@@ -132,7 +134,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // TV is framed by its own chrome and only needs air inside it, the felt table stands on the
   // dark and holds back to its share of it. Both leave the same least air, so neither cuts the
   // wooden rim the frame draws in its own pixels.
-  const fitted = size === null ? null : size.w > 0 && size.h > 0 ? (mode === 'table' ? feltScale(drawn, size) : fitScale(drawn, size, LEAST_AIR_PX)) : 1
+  const fitted = size === null ? null : size.w > 0 && size.h > 0 ? (mode === 'table' ? (protoFeltScale(drawn, size) ?? feltScale(drawn, size)) : fitScale(drawn, size, LEAST_AIR_PX)) : 1
 
   // Inspection (K8): "Titta" in the ring, private to this screen, until tapped away.
   const [held, setHeld] = useState<VisibleComponentState | null>(null)
@@ -566,6 +568,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     <div
       className="byd-table-frame"
       data-mode={mode}
+      data-proto={protoVariant() ?? undefined}
       data-camera={placed ? 'follow' : undefined}
       data-playable={onAct ? 'true' : undefined}
       ref={frame}

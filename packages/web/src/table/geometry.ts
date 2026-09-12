@@ -4,6 +4,14 @@
 
 export const TILT = (24 * Math.PI) / 180
 export const PERSPECTIVE = 1600
+// PROTOTYPE (#64) — the felt's tilt is being tried at other angles, and the projection has to
+// follow the stylesheet exactly or the pointer lands somewhere else than the card. Production
+// never calls the setter, so this reads `TILT`. Remove with PROTOTYPE-bordslage.
+let tilt = TILT
+const tiltNow = () => tilt
+export function setPrototypeTilt(degrees: number): void {
+  tilt = (degrees * Math.PI) / 180
+}
 // perspective-origin: 50% 30% of the frame
 const ORIGIN_X = 0.5
 const ORIGIN_Y = 0.3
@@ -20,8 +28,8 @@ export function flatToTable(tableRect: { left: number; top: number }, scale: num
 // to frame pixels. What the browser does with rotateX under perspective.
 export function projectTilted(layout: TiltLayout, p: Point): Point {
   const { cx, cy, pox, poy } = anchors(layout)
-  const y = p.y * Math.cos(TILT)
-  const z = p.y * Math.sin(TILT)
+  const y = p.y * Math.cos(tiltNow())
+  const z = p.y * Math.sin(tiltNow())
   const k = PERSPECTIVE / (PERSPECTIVE - z)
   return { x: (p.x + cx - pox) * k + pox, y: (y + cy - poy) * k + poy }
 }
@@ -33,8 +41,8 @@ export function tiltedToTable(layout: TiltLayout, frameX: number, frameY: number
   const py = frameY - poy
   const k = cy - poy
   const d = PERSPECTIVE
-  const uy = (d * (py - k)) / (d * Math.cos(TILT) + py * Math.sin(TILT))
-  const ux = (px * (d - uy * Math.sin(TILT))) / d - (cx - pox)
+  const uy = (d * (py - k)) / (d * Math.cos(tiltNow()) + py * Math.sin(tiltNow()))
+  const ux = (px * (d - uy * Math.sin(tiltNow()))) / d - (cx - pox)
   return { x: ux, y: uy }
 }
 
