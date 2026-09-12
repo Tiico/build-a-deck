@@ -90,11 +90,10 @@ Handgreppen i ordning — uppsättning, tunnel, deploy, backup, återställning 
 Första gången på en Ubuntu-låda med Docker:
 
 ```bash
-sudo git clone <repo> /opt/build-your-deck && cd /opt/build-your-deck
-cp .env.example .env && $EDITOR .env          # lösenord, tunnel-token, R2
-sudo cp ops/byd-deploy.service ops/byd-deploy.timer /etc/systemd/system/
-sudo systemctl enable --now byd-deploy.timer  # pollar efter nya releasetaggar var femte minut
-ops/deploy.sh --force                          # första bygget och starten
+sudo git clone <repo> /srv/build-your-deck && cd /srv/build-your-deck   # var lådan vill ha den
+sudo cp .env.example .env && sudo $EDITOR .env  # lösenord, värdnamn, R2, mejl
+sudo ops/install.sh                             # systemd-enheterna, med den här sökvägen i sig
+sudo ops/deploy.sh --force                      # första hämtningen och starten
 ```
 
 Deployen är pull-baserad (DRIFT §7): `ops/deploy.sh` hämtar taggar, rullar till den nyaste `v*`-taggen som nås från `origin/main`, kör `compose up` och väntar på `/health`, som också kontrollerar att Postgres svarar.

@@ -95,6 +95,23 @@ describe('handing the app to a reverse proxy that is already there', () => {
   })
 })
 
+describe('where the box keeps the checkout is the box‚Äôs business', () => {
+  const unit = readFileSync(new URL('../../../ops/byd-deploy.service', import.meta.url), 'utf8')
+  const install = readFileSync(new URL('../../../ops/install.sh', import.meta.url), 'utf8')
+
+  it('names no directory of its own', () => {
+    // A path written into the unit is a path that has to be edited by hand the day the checkout
+    // lives somewhere else ‚Äî and then the repository says one thing and the box does another.
+    expect(unit).not.toMatch(/=\/(opt|srv|home|var)\//)
+    expect(unit.match(/%DIR%/g) ?? []).toHaveLength(3)
+  })
+
+  it('is installed by a script that fills the directory in from where it stands', () => {
+    expect(install).toContain('%DIR%')
+    expect(install).toMatch(/cd "\$\(dirname "\$0"\)\/\.\." && pwd/)
+  })
+})
+
 describe('mailerFromEnv', () => {
   it('writes the link to the log when there is no key', () => {
     expect(mailerFromEnv({})).toBeInstanceOf(ConsoleMailer)

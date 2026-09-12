@@ -5,6 +5,6 @@ Requires=docker.service
 
 [Service]
 Type=oneshot
-WorkingDirectory=/opt/build-your-deck
-EnvironmentFile=/opt/build-your-deck/.env
-ExecStart=/opt/build-your-deck/ops/deploy.sh
+WorkingDirectory=%DIR%
+EnvironmentFile=%DIR%/.env
+ExecStart=%DIR%/ops/deploy.sh

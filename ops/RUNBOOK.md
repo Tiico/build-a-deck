@@ -3,7 +3,8 @@
 Hur tjänsten sätts upp, deployas, verifieras och återställs på hemmaservern.
 Besluten bakom stegen står i [DRIFT.md](../DRIFT.md); det här dokumentet är bara handgreppen, i ordning.
 
-Allt nedan körs på lådan, i `/opt/build-your-deck`, om inget annat sägs.
+Allt nedan körs på lådan, i checkouten, om inget annat sägs.
+Var den ligger är lådans sak: ingenting i repot binder sig vid en sökväg, och `ops/install.sh` fyller i den där systemd behöver den.
 
 ---
 
@@ -28,12 +29,15 @@ Och en väg in utifrån: antingen en omvänd proxy som redan står på lådan, e
 ## 2. Ny låda från noll
 
 ```bash
-sudo git clone https://github.com/Tiico/build-a-deck.git /opt/build-your-deck
-cd /opt/build-your-deck
-cp .env.example .env
-chmod 600 .env
-$EDITOR .env
+sudo git clone https://github.com/Tiico/build-a-deck.git /srv/build-your-deck   # eller var lådan vill ha den
+cd /srv/build-your-deck
+sudo cp .env.example .env
+sudo chmod 600 .env
+sudo $EDITOR .env
 ```
+
+Katalogens *namn* spelar däremot roll: Compose tar projektnamnet ur det, och därmed heter datavolymen `<katalognamn>_pgdata`.
+Byt namn på katalogen och du byter databas.
 
 Minsta `.env` som duger i produktion:
 
@@ -63,12 +67,12 @@ Sätt aldrig `AUTH_BYPASS` här — stacken skickar den inte vidare till contain
 Koppla in deployen och kör den första gången:
 
 ```bash
-sudo cp ops/byd-deploy.service ops/byd-deploy.timer /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now byd-deploy.timer
-ops/deploy.sh --force
+sudo ops/install.sh --units   # enheterna, men timern får vänta tills .env är ifylld
+sudo ops/deploy.sh --force    # första hämtningen och starten
+sudo ops/install.sh           # och nu timern
 ```
 
+`ops/install.sh` skriver in checkoutens sökväg i enheterna där den står, så flytten av en checkout är en `mv` och ett omtag på skriptet.
 Timern pollar var femte minut efter en nyare `v*`-tagg; `--force` kör om även om lådan redan står på den nyaste.
 
 ## 3. Vägen in
@@ -170,7 +174,7 @@ Kör det efter första natten, och därefter med jämna mellanrum: en backup som
    ```bash
    docker compose create postgres
    docker compose --profile backup run --rm --no-deps -T --user postgres \
-     -v build-your-deck_pgdata:/restore backup sh -eu -c '
+     -v "$(basename "$PWD")_pgdata":/restore backup sh -eu -c '
        wal-g backup-fetch /restore LATEST
        touch /restore/recovery.signal
        printf "restore_command = '\''wal-g wal-fetch %%f %%p'\''\nrecovery_target_timeline = '\''latest'\''\n" >> /restore/postgresql.auto.conf
