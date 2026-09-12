@@ -796,6 +796,18 @@ function Properties({ el, fields, taken, fonts, icons, onPatch, onAddField }: { 
           </label>
         </>
       )}
+      {/* A picture fills its frame, so the frame is exactly what is seen and the handles, the
+          outline and the guides all stand on the picture itself. The one thing that can put air
+          back between them is the picture keeping its own shape, so that is the choice offered —
+          and turning it off stretches the picture to the frame rather than fitting it inside one.
+          A picture fitted whole inside its frame keeps its proportions too, so it reads as on;
+          turning it off and on again lands on filling, which is the frame the switch is about. */}
+      {el.kind === 'image' && (
+        <label className="byd-props-switch">
+          <input type="checkbox" checked={(el.fit ?? 'cover') !== 'fill'} onChange={(e) => onPatch({ fit: e.target.checked ? 'cover' : 'fill' })} />
+          {t('canvas.props.keepRatio')}
+        </label>
+      )}
       {el.kind === 'shape' && (
         <label>
           {t('canvas.props.fill')}

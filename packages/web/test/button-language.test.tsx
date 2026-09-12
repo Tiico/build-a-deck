@@ -654,6 +654,7 @@ describe('every suite that measures a surface', () => {
       'player-viewport.test.tsx',
       'reduced-motion.test.ts',
       'status-css.test.ts',
+      'template-canvas-image.test.tsx',
       'template-canvas-layout.test.tsx',
       'texture-layout.test.tsx',
       'wizard-viewport.test.tsx',

@@ -32,7 +32,12 @@ export const ImageElement = z.object({
   kind: z.literal('image'),
   ...Box,
   bind: Bind,
-  fit: z.enum(['cover', 'contain']).optional(),
+  // How the picture meets its frame. 'cover' fills the frame and crops what will not fit, 'fill'
+  // stretches the picture to the frame, and both make the frame exactly what is seen — which is
+  // what the corner handles, the selection outline and the snap guides all stand on. 'contain'
+  // fits the whole picture inside the frame instead, and is the one that can leave the card's
+  // paper showing between the picture and its own edges.
+  fit: z.enum(['cover', 'contain', 'fill']).optional(),
 })
 export const IconsElement = z.object({
   kind: z.literal('icons'),

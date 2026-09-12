@@ -585,6 +585,12 @@
    of it would be cut off at the panel's edge — and a column of fields growing by one is what a
    properties panel does anyway. It takes the full width while it is open so the three kinds fit
    on one line. */
+/* Whether a picture keeps its own shape is a yes or a no and not a measure, so it reads as one
+   line — the box beside its own sentence — rather than as a caption over a field. It takes the
+   panel's whole width because that sentence is longer than half of it, and it states its own
+   width, which `.byd-props input` would otherwise stretch to the column. */
+.byd-props label.byd-props-switch { grid-column: 1 / -1; display: flex; align-items: center; gap: 7px; cursor: pointer; }
+.byd-props .byd-props-switch input { width: auto; flex: none; margin: 0; }
 .byd-props-field:has(.byd-newfield) { grid-column: 1 / -1; }
 .byd-props-field .byd-newfield { position: static; width: auto; margin-top: 6px; }
 /* The kinds used to be given their width back here, and again in the form's own rules, because

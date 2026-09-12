@@ -133,6 +133,48 @@ describe('the properties of an added element (#18)', () => {
   })
 })
 
+// A picture fills its frame, and the frame is what the designer drags — so the one thing that
+// can put air back between the two is the picture keeping its own shape. That is a choice, and
+// this is where it is made.
+describe('whether a picture keeps its proportions', () => {
+  const withImage = (fit?: 'cover' | 'contain' | 'fill') => {
+    const doc = projectDoc()
+    doc.template.faces['front']!.base.push({ kind: 'image', id: 'image-1', x: 10, y: 10, w: 20, h: 20, bind: { field: 'title' }, ...(fit ? { fit } : {}) })
+    return doc
+  }
+  const keeps = () => screen.getByLabelText(/proportioner/i) as HTMLInputElement
+
+  it('is on for a picture that fills its frame, and turning it off stretches the picture to the frame instead', async () => {
+    const user = userEvent.setup()
+    const { onPatch } = canvas({ doc: withImage('cover'), selectedElement: 'image-1' })
+
+    expect(keeps().checked).toBe(true)
+    await user.click(keeps())
+    expect(onPatch).toHaveBeenCalledWith('image-1', { fit: 'fill' })
+  })
+
+  it('is off for a stretched picture, and turning it on fills the frame rather than fitting inside it', async () => {
+    const user = userEvent.setup()
+    const { onPatch } = canvas({ doc: withImage('fill'), selectedElement: 'image-1' })
+
+    expect(keeps().checked).toBe(false)
+    await user.click(keeps())
+    // Filling and not fitting: a picture that fits inside the frame is the very margin the frame
+    // was meant to stop being, so it is not what the switch comes back to.
+    expect(onPatch).toHaveBeenCalledWith('image-1', { fit: 'cover' })
+  })
+
+  it('reads a picture fitted whole inside its frame as keeping its proportions, because it does', () => {
+    canvas({ doc: withImage('contain'), selectedElement: 'image-1' })
+    expect(keeps().checked).toBe(true)
+  })
+
+  it('is not offered for anything that is not a picture', () => {
+    canvas({ selectedElement: 'title' })
+    expect(screen.queryByLabelText(/proportioner/i)).toBeNull()
+  })
+})
+
 describe('the tool rail by keyboard (#18, UX-04)', () => {
   it('is one tab stop the arrows move inside, and the layer list is the next stop', async () => {
     const user = userEvent.setup()

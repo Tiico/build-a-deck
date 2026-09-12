@@ -109,6 +109,20 @@ describe('image, icons and shape elements (L1)', () => {
     expect(out.css).toContain('[data-element="frame"]{left:1mm;top:1mm;width:61mm;height:86mm;background:#fff;border:0.5mm solid #000;border-radius:3mm;}')
     expect(out.warnings).toEqual([])
   })
+
+  // The two ways a picture can meet its frame without leaving a gap in it: fill the frame and
+  // crop, or stretch to the frame. A picture that reaches its frame's edges is what makes the
+  // frame worth dragging — the handles, the outline and the guides all stand on it.
+  it('stretches a picture to its frame when it is not to keep its proportions, and fills the frame when it is', () => {
+    const at = (fit: 'cover' | 'fill' | undefined) => {
+      const f: FaceTemplate = { base: [{ kind: 'image', id: 'art', x: 3, y: 3, w: 57, h: 40, bind: { field: 'art' }, ...(fit ? { fit } : {}) }], variants: {} }
+      return compile({ type: CARD_STANDARD_63x88, face: f, row: { art: 'https://x/a.png' }, icons }).css
+    }
+    expect(at('fill')).toContain('[data-element="art"]{left:3mm;top:3mm;width:57mm;height:40mm;object-fit:fill;}')
+    // Said or unsaid, a picture fills its frame: the default is the frame, not a gap inside it.
+    expect(at('cover')).toContain('object-fit:cover;}')
+    expect(at(undefined)).toContain('object-fit:cover;}')
+  })
 })
 
 describe('bleed (print profile from the type, B2)', () => {
