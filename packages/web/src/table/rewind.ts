@@ -18,8 +18,17 @@ export function whereTo(view: Snapshot, proposal: RewindProposal, activity: read
   return first ? t('rewind.before', { what: describeActivity(first, view, t) }) : t('rewind.atSeq', { n: proposal.toSeq })
 }
 
+// The proposal a table is actually waiting on. A session that has ended is a locked log (C9):
+// the phones it would be settled from have the survey in front of them and nothing left to
+// send, so whatever stood when the log closed is over with the rest of the session. Every
+// screen that draws a proposal asks for it this way, and none of them promises a decision
+// nobody can make any more.
+export function standingRewind(view: Snapshot): RewindProposal | null {
+  return view.ended ? null : view.rewind
+}
+
 // The view with the proposal's table in place of the present one.
 export function previewOf(view: Snapshot): Snapshot {
-  const preview = view.rewind?.preview
+  const preview = standingRewind(view)?.preview
   return preview ? { ...view, zones: preview.zones, components: preview.components } : view
 }

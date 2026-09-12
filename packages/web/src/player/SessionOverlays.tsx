@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Snapshot } from '@byd/protocol'
 import type { TableClient } from '../client.js'
-import { whoDecides } from '../table/rewind.js'
+import { standingRewind, whoDecides } from '../table/rewind.js'
 import { FlagSheet, EndSheet, ExitSheet } from './SessionSheets.js'
 import { Survey } from './Survey.js'
 import { submitSurvey } from './surveyApi.js'
@@ -64,7 +64,7 @@ export type SessionOverlaysProps = {
 
 export function SessionOverlays({ client, view, seat, name, http, sessionId, sheet, onSheet, onLeft, toast, onToast, version, saveUrl }: SessionOverlaysProps) {
   const t = useT()
-  const proposal = view.rewind
+  const proposal = standingRewind(view)
   // A sheet that sends something can be answered no, and the answer stands beside the button
   // that was pressed rather than in a toast that says the opposite of what happened (#7).
   const flagged = useRefusal('phone')

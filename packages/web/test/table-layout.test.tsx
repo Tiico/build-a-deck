@@ -16,7 +16,7 @@ import { RadialMenu } from '../src/table/RadialMenu.js'
 import { RING_AIR, RING_REACH, ringCentre } from '../src/table/ring.js'
 import { feltLabels, intentsForPlace, landedKeyFor, type Thing } from '../src/table/keyboard.js'
 import { edgeRotation, feltWithHands, handExtent } from '../src/table/hand.js'
-import { fitScale } from '../src/table/fit.js'
+import { feltScale } from '../src/table/fit.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const SHEETS = ['src/table/table.css', 'src/table/texture.css', 'src/table/keyboard.css', 'src/rules/rules.css']
@@ -298,16 +298,28 @@ describe('the camera frames what is in play (C5, #20)', () => {
   }, 60_000)
 })
 
-describe('the felt keeps prototype B’s proportions on the screen (K9, #20)', () => {
-  it('leaves dark surround on every side of the tilted table', async () => {
+describe('the tilted table stands in its own dark (K9, reviderat 2026-09-12)', () => {
+  it('leaves the least air on every side of everything it draws, hands included', async () => {
     const html = markupOf(<TableRenderer view={scene()} mode="table" size={FRAME} />)
-    const at = await measureHtml(html, FRAME, { frame: '.byd-table-frame', wood: '.byd-table-wood' }, 'table')
-    const [frame, wood] = [at('frame'), at('wood')]
-    const gaps = { left: wood.x - frame.x, top: wood.y - frame.y, right: frame.x + frame.w - (wood.x + wood.w), bottom: frame.y + frame.h - (wood.y + wood.h) }
-    // Prototype B held the table at 0.85 of life size in a 1600×1000 screen, which leaves
-    // roughly a tenth of the shorter side clear even at the tilt's nearest corner.
-    const least = Math.min(...Object.values(gaps)) / Math.min(frame.w, frame.h)
-    expect({ ...gaps, least: least > 0.09 }).toEqual({ ...gaps, least: true })
+    // What has to stand in the dark is the table *with its hands on* (#23): a hand reaches past
+    // the wooden rim, and a fit that only looked at the wood would let one hang off the screen.
+    // Measured after the tilt, since a transformed element reports the box its projection covers.
+    const gaps = await onPage(html, FRAME, (page) =>
+      page.evaluate(() => {
+        const frame = document.querySelector('.byd-table-frame')!.getBoundingClientRect()
+        const drawn = [...document.querySelectorAll('.byd-table-wood, .byd-hand')].map((el) => el.getBoundingClientRect())
+        const left = Math.min(...drawn.map((r) => r.left))
+        const right = Math.max(...drawn.map((r) => r.right))
+        const top = Math.min(...drawn.map((r) => r.top))
+        const bottom = Math.max(...drawn.map((r) => r.bottom))
+        return { left: Math.round(left - frame.left), top: Math.round(top - frame.top), right: Math.round(frame.right - right), bottom: Math.round(frame.bottom - bottom) }
+      }),
+    )
+    // Air on every side, so neither the wooden rim nor a hand is ever cut by the frame. How
+    // little room is left over is the next suite's question; this one is that there is always
+    // some, on all four sides, of everything that is drawn.
+    const least = Math.min(...Object.values(gaps))
+    expect({ ...gaps, air: least >= LEAST_AIR - 1 }).toEqual({ ...gaps, air: true })
   }, 60_000)
 })
 
@@ -537,10 +549,6 @@ async function scaleAt(view: Snapshot, size: Size, rotate: 0 | 90 = 0): Promise<
 // is drawn in the frame's own pixels, outside the millimetres the fit measures, and the TV's
 // chrome leaves the same (K9).
 const LEAST_AIR = 44
-// The share of the frame the felt covers when the frame has room to give it: prototype B's
-// proportion, read as a share of the frame's area instead of as a margin on its shorter side.
-const FELT_SHARE = 0.4
-
 describe('the felt uses the room the frame actually has (K9, K17, #24)', () => {
   // Every frame the one renderer is given in table mode: `/table`'s whole screen, the felt row
   // `/online` is left once the band is a layout row of its own (K17), and the editor's Bord tab
@@ -559,32 +567,87 @@ describe('the felt uses the room the frame actually has (K9, K17, #24)', () => {
     it(`leaves no room unused in ${frame.what}`, async () => {
       const felted = feltedOf(frame.view, 0)
       const scale = await scaleAt(frame.view, frame.size)
-      // The invariant, and not a pixel count: the felt covers its decided share of the frame —
-      // area, so that a frame far wider than the table counts for as much as one the table's own
-      // shape — or, where the frame's shape forbids that, it is simply as large as the frame can
-      // hold. A felt that is neither has left room on the table's own axis unused.
-      const covered = (scale * scale * felted.w * felted.h) / (frame.size.w * frame.size.h)
-      const most = fitScale(felted, frame.size, LEAST_AIR)
-      expect({
+      // The invariant, and not a pixel count: the felt is as large as the frame can hold once the
+      // tilt is taken out of it, or life size, whichever comes first. A felt smaller than that has
+      // left room unused — which is what measuring the untilted rectangle did (#64).
+      const most = feltScale(felted, frame.size)
+      expect({ at: frame.what, scale: Math.round(scale * 1000) / 1000, enough: scale >= most - 0.005 }).toEqual({
         at: frame.what,
-        covered: Math.round(covered * 100) / 100,
-        enough: covered >= FELT_SHARE - 0.02 || scale >= most - 0.005,
-      }).toEqual({ at: frame.what, covered: Math.round(covered * 100) / 100, enough: true })
+        scale: Math.round(scale * 1000) / 1000,
+        enough: true,
+      })
     }, 60_000)
   }
 })
 
-describe('the felt keeps prototype B’s proportion where the frame can give it (K9, #20)', () => {
-  // The two frames the table-mode renderer has always had to itself. Pinned from both sides:
-  // this is the proportion #4/#5/#6 tuned and #24 may not move in either direction.
-  for (const frame of [{ what: '/table at 1600×1000', size: { w: 1600, h: 1000 } }, { what: 'the Bord tab thumbnail', size: { w: 640, h: 384 } }] as const) {
-    it(`covers two fifths of ${frame.what} and no more`, async () => {
-      const felted = feltedOf(scene(), 0)
-      const scale = await scaleAt(scene(), frame.size)
-      const covered = (scale * scale * felted.w * felted.h) / (frame.size.w * frame.size.h)
-      expect({ at: frame.what, low: covered < 0.38, high: covered > 0.42, covered: Math.round(covered * 1000) / 1000 }).toEqual({ at: frame.what, low: false, high: false, covered: Math.round(covered * 1000) / 1000 })
-    }, 60_000)
-  }
+describe('what the table screen is actually given (K9, reviderat 2026-09-12, #64)', () => {
+  // The rule is worth a number on the screen it was decided for. Two fifths of the *untilted*
+  // frame came to a third of what was drawn and a card 38 px across; the table screen is played
+  // standing at it, so the card is the measure that has to hold.
+  it('draws a table over half the screen at 1280×800, with cards a hand can take hold of', async () => {
+    const size = { w: 1280, h: 800 }
+    const html = markupOf(<TableRenderer view={scene()} mode="table" size={size} onAct={() => undefined} />)
+    const seen = await onPage(html, size, (page) =>
+      page.evaluate(() => {
+        const box = (el: Element | null) => {
+          if (!el) return null
+          const r = el.getBoundingClientRect()
+          return { w: Math.round(r.width), h: Math.round(r.height) }
+        }
+        const cards = [...document.querySelectorAll('[data-table] .byd-card[data-component]')].map((el) => {
+          const r = el.getBoundingClientRect()
+          return Math.round(Math.min(r.width, r.height))
+        })
+        return { wood: box(document.querySelector('.byd-table-wood')), shortestCard: Math.min(...cards) }
+      }),
+    )
+    const covered = seen.wood ? (seen.wood.w * seen.wood.h) / (size.w * size.h) : 0
+    expect({
+      covered: Math.round(covered * 100) / 100,
+      half: covered > 0.5,
+      card: seen.shortestCard,
+      graspable: seen.shortestCard >= 44,
+    }).toEqual({ covered: Math.round(covered * 100) / 100, half: true, card: seen.shortestCard, graspable: true })
+  }, 60_000)
+
+  // The pill under a pile is the only handle K14 gives for moving a whole one, so it is a control
+  // and takes the floor every other control takes.
+  it('gives the whole-pile handle the 44 px every control on a table gets', async () => {
+    const size = { w: 1280, h: 800 }
+    const html = markupOf(<TableRenderer view={scene()} mode="table" size={size} onAct={() => undefined} />)
+    const handles = await measureAll(html, size, '.byd-pile-count[data-handle]')
+    expect(handles.length).toBeGreaterThan(0)
+    expect(handles.filter((h) => h.box.h < 44 || h.box.w < 44).map((h) => `${h.what}: ${h.box.w}×${h.box.h}`)).toEqual([])
+  }, 60_000)
+
+  // The height was what failed the floor; the width was already over it, and the width is the one
+  // that has a neighbour. A pill that reaches more than halfway to the next pile covers that
+  // pile's own handle, and a handle nobody can press is worse than a small one.
+  it('never reaches more than halfway to the next pile, and both piles answer their own handle', async () => {
+    const size = { w: 1280, h: 800 }
+    const view = scene()
+    const piles = view.zones.filter((z) => z.kind === 'pile')
+    expect(piles).toHaveLength(2)
+    const apartMm = Math.abs((piles[0]?.geometry.x ?? 0) - (piles[1]?.geometry.x ?? 0))
+    const html = markupOf(<TableRenderer view={view} mode="table" size={size} onAct={() => undefined} />)
+    const seen = await onPage(html, size, (page) =>
+      page.evaluate(() => {
+        const felt = document.querySelector('[data-table]') as HTMLElement
+        return {
+          // px per mm, read off the felt the renderer laid out.
+          scale: felt.offsetWidth,
+          handles: [...document.querySelectorAll('.byd-pile-count[data-handle]')].map((el) => {
+            const r = el.getBoundingClientRect()
+            const under = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)
+            return { what: el.textContent ?? '', w: Math.round(r.width), answers: !!(under && (under === el || el.contains(under))) }
+          }),
+        }
+      }),
+    )
+    const apartPx = (apartMm * seen.scale) / 1200
+    expect(seen.handles.filter((h) => h.w / 2 > apartPx / 2).map((h) => `${h.what}: ${h.w} px wide, ${Math.round(apartPx)} px to the next pile`)).toEqual([])
+    expect(seen.handles.filter((h) => !h.answers).map((h) => h.what)).toEqual([])
+  }, 60_000)
 })
 
 // ================================================================================================
@@ -642,5 +705,45 @@ describe('the address panel beside a table (#1, #2)', () => {
       })),
     )
     expect(measured).toEqual({ small: [], sideways: 0 })
+  }, 60_000)
+})
+
+describe('the tilted felt hands the pointer to the thing under it (K14)', () => {
+  it('answers at its own centre for a card that has been turned, and for the label a pile is dragged by', async () => {
+    // K14 says a loose card, the top of a pile and the whole pile in its label are dragged with
+    // pointer or finger. What the felt is drawn with decides whether they ever hear the press:
+    // the tilt is a `rotateX` under perspective, and a wood that keeps its children in their own
+    // three-dimensional planes hands the pointer the felt instead of the card standing on it, for
+    // every node that carries a transform of its own — a card someone has turned (`rot`), and the
+    // label pill, which is centred with a `translateX`. Neither can be picked up at all, and the
+    // further down the plane the node stands the surer it is to be missed.
+    const view = scene()
+    const turned: Snapshot = {
+      ...view,
+      components: [...view.components, { ...card('m3', 'table', 600, 600, 'Narr'), rot: 8 }],
+    }
+    const html = markupOf(<TableRenderer view={turned} mode="table" scale={0.6} onAct={() => undefined} />)
+    const wanted = {
+      turnedCard: '[data-component="m3"]',
+      straightCard: '[data-component="m2"]',
+      pileTop: '[data-zone="draw"] .byd-pile-top',
+      pileLabel: '[data-zone="draw"] .byd-pile-count[data-handle]',
+    }
+    const reached = await onPage(html, FRAME, (page) =>
+      page.evaluate(
+        (selectors: Record<string, string>) =>
+          Object.fromEntries(
+            Object.entries(selectors).map(([name, sel]) => {
+              const el = document.querySelector(sel)
+              if (!el) return [name, 'nothing matched']
+              const r = el.getBoundingClientRect()
+              const under = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)
+              return [name, under && (under === el || el.contains(under)) ? 'itself' : 'the felt']
+            }),
+          ),
+        wanted,
+      ),
+    )
+    expect(reached).toEqual({ turnedCard: 'itself', straightCard: 'itself', pileTop: 'itself', pileLabel: 'itself' })
   }, 60_000)
 })

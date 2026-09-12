@@ -2,7 +2,13 @@
 // wood is rotateX(TILT) under a PERSPECTIVE, and a pointer has to be projected back onto the
 // tilted plane for a dragged card to stay under the finger. These match table.css exactly.
 
-export const TILT = (24 * Math.PI) / 180
+// How far the felt table leans away from the reader (K9, reviderat 2026-09-12). It was 24°
+// until the fit was measured on the shape the tilt actually draws: at that angle the far half of
+// the table is noticeably smaller than the near half, and the height the lean costs is height
+// the felt never gets back. 13° is still a table seen across, and it is the angle `table.css`
+// draws — `geometry.test.ts` holds the two to the same number, because a card drawn at one
+// angle and grabbed at another slips out from under the finger.
+export const TILT = (13 * Math.PI) / 180
 export const PERSPECTIVE = 1600
 // perspective-origin: 50% 30% of the frame
 const ORIGIN_X = 0.5

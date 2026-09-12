@@ -4,7 +4,7 @@ import './table.css'
 import { TableRenderer, type TableMode } from './TableRenderer.js'
 import { TvChrome } from './TvChrome.js'
 import { useTableClient } from './useTableClient.js'
-import { previewOf, whereTo, whoDecides } from './rewind.js'
+import { previewOf, standingRewind, whereTo, whoDecides } from './rewind.js'
 import { usePresence, useRecent } from './usePresence.js'
 import { RuleDrawer } from '../rules/RuleDrawer.js'
 import { useFeltKeyboard } from './useFeltKeyboard.js'
@@ -83,8 +83,8 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   if (!view) return <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
 
   // A proposed rewind (C): the screen shows the table as it was at the target and who is waited
-  // on. It has no buttons — the phones decide.
-  const proposal = view.rewind
+  // on. It has no buttons — the phones decide, and an ended table has nobody left to decide.
+  const proposal = standingRewind(view)
   // The table screen plays as the table itself (seat null): whoever stands at it acts for the group.
   const onAct = client ? (intents: Intent[]) => void client.send(...intents) : undefined
   const rendered = (
