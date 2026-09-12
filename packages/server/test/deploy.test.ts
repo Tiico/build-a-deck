@@ -59,6 +59,15 @@ describe('the stack hands the app its configuration', () => {
     expect(always).toBeLessThanOrEqual(3 * 1024)
   })
 
+  it('hands both the app and the worker the endpoint the buckets answer on', () => {
+    // R2 has more than one endpoint. A bucket created in a jurisdiction is invisible on the
+    // account's default one and answers 403 to credentials that are perfectly good, so the box
+    // has to be able to say which — and it has to reach the two containers that read from R2,
+    // not only the archiver, which already had it.
+    expect(Object.keys(serviceEnvironment(compose, 'app'))).toContain('R2_ENDPOINT')
+    expect(Object.keys(serviceEnvironment(compose, 'render'))).toContain('R2_ENDPOINT')
+  })
+
   it('keeps the development flags out of the box', () => {
     const env = serviceEnvironment(compose, 'app')
     expect(Object.keys(env)).not.toContain('AUTH_BYPASS')
@@ -92,6 +101,23 @@ describe('handing the app to a reverse proxy that is already there', () => {
     expect(overlay).toMatch(/t2_proxy:\n {4}external: true/)
     // The base stack stays portable: nothing in it may name the box's proxy.
     expect(compose).not.toContain('t2_proxy')
+  })
+})
+
+describe('where the box keeps the checkout is the box‚Äôs business', () => {
+  const unit = readFileSync(new URL('../../../ops/byd-deploy.service', import.meta.url), 'utf8')
+  const install = readFileSync(new URL('../../../ops/install.sh', import.meta.url), 'utf8')
+
+  it('names no directory of its own', () => {
+    // A path written into the unit is a path that has to be edited by hand the day the checkout
+    // lives somewhere else ‚Äî and then the repository says one thing and the box does another.
+    expect(unit).not.toMatch(/=\/(opt|srv|home|var)\//)
+    expect(unit.match(/%DIR%/g) ?? []).toHaveLength(3)
+  })
+
+  it('is installed by a script that fills the directory in from where it stands', () => {
+    expect(install).toContain('%DIR%')
+    expect(install).toMatch(/cd "\$\(dirname "\$0"\)\/\.\." && pwd/)
   })
 })
 

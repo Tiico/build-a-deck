@@ -126,6 +126,21 @@ describe('R2 from the environment', () => {
     const local = assetsFromEnv({ R2_ACCOUNT_ID: 'acc', R2_ACCESS_KEY_ID: 'k', R2_SECRET_ACCESS_KEY: 's', R2_ENDPOINT: 'http://127.0.0.1:9000', R2_ASSETS_BUCKET: 'dev' })!
     expect(await local.link('renders/x', 60)).toMatch(/^http:\/\/127\.0\.0\.1:9000\/dev\/renders\/x\?/)
   })
+
+  it('reads an endpoint left empty as no endpoint at all', async () => {
+    // The stack hands every R2 variable to the container whether the box filled it in or not, so
+    // an unused override arrives as an empty string rather than as nothing. Signing against `''`
+    // is a request to nowhere, and it would only be found the first time a card was drawn.
+    const blank = assetsFromEnv({ R2_ACCOUNT_ID: 'acc', R2_ACCESS_KEY_ID: 'k', R2_SECRET_ACCESS_KEY: 's', R2_ENDPOINT: '' })!
+    expect(await blank.link('renders/x', 60)).toMatch(/^https:\/\/acc\.r2\.cloudflarestorage\.com\//)
+  })
+
+  it('signs against the jurisdiction\'s own endpoint when the buckets live in one', async () => {
+    // A bucket created in the European jurisdiction is not visible on the default endpoint at all:
+    // it answers 403 to credentials that are perfectly good. The endpoint is the difference.
+    const eu = assetsFromEnv({ R2_ACCOUNT_ID: 'acc', R2_ACCESS_KEY_ID: 'k', R2_SECRET_ACCESS_KEY: 's', R2_ENDPOINT: 'https://acc.eu.r2.cloudflarestorage.com' })!
+    expect(await eu.link('renders/x', 60)).toMatch(/^https:\/\/acc\.eu\.r2\.cloudflarestorage\.com\/byd-assets\/renders\/x\?/)
+  })
 })
 
 describe('MemoryObjectStore', () => {
