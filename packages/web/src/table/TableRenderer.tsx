@@ -397,6 +397,10 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     onPresence?.({ kind: 'away' })
   }
 
+  // What the ring would hold, asked for once: a thing that has left the table while the finger
+  // was on the way to it has no verbs, and a ring with none opens on nothing (K14).
+  const ringVerbs = ring && onAct ? ringItems(view, ring.target, onAct, setHeld, t) : []
+
   const areas = view.zones.filter((z) => z.kind === 'area' && z.id !== floor.id)
   const piles = view.zones.filter((z) => z.kind === 'pile')
   const loose = view.components.filter((c) => zoneById.get(c.zone)?.kind === 'area')
@@ -580,7 +584,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       ) : (
         felt
       )}
-      {ring && onAct && <RadialMenu id={ring.target.kind === 'card' ? ring.target.id : ring.target.pile} x={ring.x} y={ring.y} items={ringItems(view, ring.target, onAct, setHeld, t)} onClose={() => setRing(null)} />}
+      {ringVerbs.length > 0 && ring && <RadialMenu id={ring.target.kind === 'card' ? ring.target.id : ring.target.pile} x={ring.x} y={ring.y} items={ringVerbs} onClose={() => setRing(null)} />}
       {held && (
         <div className="byd-inspect" onClick={() => setHeld(null)}>
           <div data-inspect={held.id} data-face={held.cardRef === null ? 'back' : 'front'} style={held.cardRef === null ? undefined : { ['--hue' as string]: hue(held.cardRef) }}>
@@ -627,20 +631,18 @@ function useGlide(target: Rect | null, ms: number): Rect | null {
 function ringItems(view: Snapshot, target: DragTarget, act: (intents: Intent[]) => void, inspect: (c: VisibleComponentState) => void, t: T): RadialItem[] {
   const flip = (c: VisibleComponentState): RadialItem => ({ label: t('ring.flip'), run: () => act([{ v: 'flip', component: c.id, face: c.face === 'front' ? 'back' : 'front' }]) })
   const look = (c: VisibleComponentState | undefined): RadialItem => ({ label: t('ring.look'), run: c ? () => inspect(c) : null })
-  const close: RadialItem = { label: t('ring.close'), run: null, kind: 'no' }
   if (target.kind === 'card') {
     const c = view.components.find((x) => x.id === target.id)
-    if (!c) return [close]
+    if (!c) return []
     return [
       flip(c),
       { label: t('ring.rotate'), run: () => act([{ v: 'rotate', component: c.id, rot: (c.rot + 90) % 360 }]) },
       look(c),
       { label: t('ring.reveal'), run: c.cardRef === null ? () => act([{ v: 'reveal', components: [c.id] }]) : null },
-      close,
     ]
   }
   const z = view.zones.find((x) => x.id === target.pile)
-  if (!z) return [close]
+  if (!z) return []
   const count = z.mode === 'count' ? z.count : z.order.length
   const top = view.components.find((c) => c.id === topIdOf(z))
   const beside = { x: z.geometry.x + CARD_MM.w + 12, y: z.geometry.y }
@@ -653,7 +655,6 @@ function ringItems(view: Snapshot, target: DragTarget, act: (intents: Intent[]) 
     { label: t('ring.half'), run: count > 1 ? () => act([{ v: 'split', pile: z.id, at: Math.ceil(count / 2), ...beside }]) : null },
     { label: t('ring.flipTop'), run: count > 0 ? () => act(flipTop()) : null },
     look(top),
-    close,
   ]
 }
 

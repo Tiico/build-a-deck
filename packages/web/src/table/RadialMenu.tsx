@@ -1,10 +1,22 @@
-import type { PointerEvent as RPointerEvent } from 'react'
+import { useEffect, type PointerEvent as RPointerEvent } from 'react'
 
-export type RadialItem = { label: string; run: (() => void) | null; kind?: 'no' }
+export type RadialItem = { label: string; run: (() => void) | null }
 
-// A ring of verbs around the finger (C). It opens on hold; the finger slides to a verb and
-// releases. A release anywhere else, or a tap on Stäng, closes it. Mouse users may also click.
+// A ring of verbs around the finger (C). It opens on a hold or a click; the finger slides to a
+// verb and releases. Everything that is not a verb closes it: the backdrop covers the screen, so
+// a release or a click anywhere outside the ring is the way out, and Escape is that way for a
+// hand on a keyboard. The ring holds verbs only — one that meant nothing but "never mind" took a
+// place in the circle where every other place does something.
 export function RadialMenu({ id, x, y, items, onClose }: { id: string; x: number; y: number; items: RadialItem[]; onClose(): void }) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      e.preventDefault()
+      onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
   const choose = (e: RPointerEvent | React.MouseEvent, item: RadialItem) => {
     e.stopPropagation()
     if (item.run) item.run()
@@ -20,8 +32,7 @@ export function RadialMenu({ id, x, y, items, onClose }: { id: string; x: number
             <button
               key={item.label}
               type="button"
-              data-kind={item.kind}
-              disabled={item.run === null && item.kind !== 'no'}
+              disabled={item.run === null}
               style={{ left: Math.cos(ang) * radius, top: Math.sin(ang) * radius }}
               onPointerUp={(e) => choose(e, item)}
               onClick={(e) => choose(e, item)}

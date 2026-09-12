@@ -54,7 +54,6 @@ export const svPlay = {
   // Ringen av verb runt fingret (C).
   'ring.flip': 'Vänd',
   'ring.look': 'Titta',
-  'ring.close': 'Stäng',
   'ring.rotate': 'Vrid',
   'ring.reveal': 'Avslöja',
   'ring.shuffle': 'Blanda',
