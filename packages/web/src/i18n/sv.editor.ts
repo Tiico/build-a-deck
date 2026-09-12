@@ -238,6 +238,7 @@ export const svEditor = {
   'canvas.props.fit': 'Anpassning',
   'canvas.fit.shrink': 'krymp till gräns',
   'canvas.fit.fixed': 'fast storlek',
+  'canvas.props.keepRatio': 'Behåll proportioner',
   'canvas.props.fill': 'Fyllning',
 
   // Typsnitten spelet bär med sig.

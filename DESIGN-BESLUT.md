@@ -1274,6 +1274,17 @@ Följdkrav:
 Allt en designer vill göra måste finnas som element eller egenskap — en önskelista som förvaltas för evigt.
 Mallen är data som versioneras, diffas och migreras.
 
+Tillägg 2026-09-12: en bildyta fyller sin ram.
+Bildens anpassning har tre värden — `cover` fyller ramen och beskär det som inte får plats, `fill` sträcker bilden till ramen, `contain` ryms hel inuti den.
+Verktygsraden placerar `cover`, och egenskapspanelen erbjuder ett av/på för om bilden ska behålla sina proportioner: på är `cover`, av är `fill`.
+`contain` finns kvar i modellen för mallar som redan använder det, men inget i editorn skapar det längre.
+
+Motivering:
+Rutan är det designern drar i — hörnhandtagen hänger på den, markeringsramen följer den och hjälplinjerna snäpper mot dess kanter.
+En bild som ryms hel inuti sin ram slutar före rutans kanter, och då står hela editorn och pekar på kortets papper i stället för på något som syns; en bred bild i en 40 × 30-ruta lämnade en hel centimeter död marginal.
+En bild som möter ramen kant i kant gör rutan sann, och sann på varje kort i leken — inte bara på det som förhandsvisas, vilket en ruta som låstes till den förhandsvisade bildens proportioner hade blivit.
+Priset är att en bild med annat format beskärs, vilket är det ordinarie valet i ett ombrytningsverktyg och som växlas av med reglaget.
+
 ### L2. Inline-syntax i korttext: fyra konstruktioner
 
 `**fet**`, `*kursiv*`, `{ikon}`, blankrad för stycke.

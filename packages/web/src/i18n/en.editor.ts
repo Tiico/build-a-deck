@@ -217,6 +217,7 @@ export const enEditor = {
   'canvas.props.fit': 'Fitting',
   'canvas.fit.shrink': 'shrink to fit',
   'canvas.fit.fixed': 'fixed size',
+  'canvas.props.keepRatio': 'Keep proportions',
   'canvas.props.fill': 'Fill',
 
   'fonts.title': 'Fonts in the game',

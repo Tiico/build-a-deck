@@ -73,7 +73,11 @@ export function newElement(kind: ElementKind, opts: { taken: readonly string[]; 
     case 'text':
       return { kind, ...box, bind, font: { family: 'sans-serif', sizePt: 10 }, color: '#111111' }
     case 'image':
-      return { kind, ...box, bind, fit: 'contain' }
+      // The picture fills its frame. A box the picture does not reach into is a box whose corner
+      // handles, selection outline and snap guides all stand on the card's paper rather than on
+      // anything the designer can see — so the frame is the picture, and a picture of another
+      // shape is cropped by it rather than floating inside it.
+      return { kind, ...box, bind, fit: 'cover' }
     case 'icons':
       return { kind, ...box, bind, iconMm: 5, gapMm: 1 }
     case 'shape':
