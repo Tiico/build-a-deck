@@ -263,6 +263,47 @@ describe('direct manipulation (K1, K2, C)', () => {
     expect(document.querySelector('[data-radial]')?.getAttribute('data-radial')).toBe('discard')
   })
 
+  // The ring closes by letting go of it: the backdrop covers the screen, so anywhere outside the
+  // verbs is a way out. A verb that only means "never mind" is a verb K14 never listed, and it
+  // takes a place in a ring where every other place does something.
+  it('offers only verbs, and closes on a press outside them', () => {
+    const { view, faceUp } = buildScene()
+    const onAct = vi.fn()
+    render(<TableRenderer view={view(null)} mode="tv" scale={1} onAct={onAct} />)
+    const card = document.querySelector(`[data-component="${faceUp}"]`)!
+    fireEvent.pointerDown(card, client(-390, -240))
+    fireEvent.pointerUp(card, client(-390, -240))
+    const ring = document.querySelector('[data-radial]')!
+    expect([...ring.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Vänd', 'Vrid', 'Titta', 'Avslöja'])
+    fireEvent.pointerUp(document.querySelector('.byd-radial-backdrop')!)
+    expect(document.querySelector('[data-radial]')).toBeNull()
+  })
+
+  it('offers a pile only its own verbs, and closes the same way', () => {
+    const { view } = buildScene()
+    render(<TableRenderer view={view(null)} mode="tv" scale={1} onAct={vi.fn()} />)
+    const label = document.querySelector('[data-zone="discard"] .byd-pile-count')!
+    fireEvent.pointerDown(label, client(100, 100))
+    fireEvent.pointerUp(label, client(100, 100))
+    const ring = document.querySelector('[data-radial]')!
+    expect([...ring.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Blanda', 'Dra 1', 'Dela på hälften', 'Vänd översta', 'Titta'])
+    fireEvent.pointerUp(document.querySelector('.byd-radial-backdrop')!)
+    expect(document.querySelector('[data-radial]')).toBeNull()
+  })
+
+  // Without the Stäng button the ring is a pointer surface with no way out for a hand on a
+  // keyboard, and a focus that has landed in it would have nowhere to go. Escape is that way.
+  it('closes on Escape, which is the way out the button used to be', () => {
+    const { view, faceUp } = buildScene()
+    render(<TableRenderer view={view(null)} mode="tv" scale={1} onAct={vi.fn()} />)
+    const card = document.querySelector(`[data-component="${faceUp}"]`)!
+    fireEvent.pointerDown(card, client(-390, -240))
+    fireEvent.pointerUp(card, client(-390, -240))
+    expect(document.querySelector('[data-radial]')).toBeTruthy()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(document.querySelector('[data-radial]')).toBeNull()
+  })
+
   it('a drag is not a click: moving the card away sends the drop and opens nothing', () => {
     const { view, faceUp, faceDown } = buildScene()
     const onAct = vi.fn()
