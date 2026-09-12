@@ -978,13 +978,20 @@ Lutningen gick samma väg: vid 24° är bordets bortre halva märkbart mindre ä
 Mätt på samma bord som förut, `/table` i bordsläge: 1280 × 800 går från 37 % till 52 % av skärmen och kortet från 38 till 45 px; 1366 × 1024 från 38 % till 61 % och 44 till 56 px; 1920 × 1080 från 39 % till 49 % och 53 till 61 px.
 Vid 2560 × 1440 ändras nästan ingenting, eftersom naturlig storlek redan är det som binder — vilket är regelns andra halva och inte ett fynd.
 
+På stående plattor blir bordet i stället mindre, och det är regeln som slutar ljuga.
+Den gamla inpassningen räknade varken träramens trettio pixlar eller händernas projicerade utsträckning, så ett liggande bord i en stående ram lämnade **1 px** luft vid 820 × 1180 och **5 px** vid 1024 × 1366 — mätt på den gamla koden, med träramen praktiskt taget mot skärmkanten, mot de 44 px regeln påstod sig lämna.
+Nu är luften 58 respektive 62 px och bredden binder, som den måste: ett bord på 1200 × 800 mm kan inte fylla höjden i en stående ram utan att gå utanför bredden.
+Det som är kvar där är formernas skillnad och inte slack i inpassningen.
+
 Tre varianter prototypades på den riktiga rutten med riktigt bord och riktig täthet: som i dag, den nya inpassningen vid 24°, och den nya inpassningen vid 13°.
 Den tredje valdes.
 Prototypen svarade också på en fråga som inte ställdes: ett runt grepp på högens hörn, det TV-läget använder, går inte på filten — ett kort är omkring 45 × 63 px där, så en bricka som nådde 44 px vore lika stor som högen den sitter på.
 Därför är höghandtaget brett och lågt.
 
 Följdkrav (#63): pillret under en hög är det enda handtag K14 ger för att flytta en hel hög, alltså är det en kontroll före det är en etikett och tar samma 44 px som varje annan kontroll.
-I bordsläge är det 112 × 45 px och följer inte skärmen nedåt.
+I bordsläge är det 101 × 45 px och följer inte skärmen nedåt.
+Höjden var det som föll under golvet; bredden låg redan över det, och bredden är den som har en granne — ett pill som växte i sidled nådde över till nästa högs och täckte den, så två högar bredvid varandra tappade ett handtag var.
+Grinden är därför två: 44 px i båda riktningarna, och aldrig mer än halvvägs till nästa hög.
 TV-läget är orört: där är namnet under kortet och räknarbrickan i hörnet två egna handtag.
 
 Referensprototypen `packages/web/src/prototype/table-ref` togs bort när den hade svarat.

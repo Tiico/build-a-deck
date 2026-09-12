@@ -619,6 +619,35 @@ describe('what the table screen is actually given (K9, reviderat 2026-09-12, #64
     expect(handles.length).toBeGreaterThan(0)
     expect(handles.filter((h) => h.box.h < 44 || h.box.w < 44).map((h) => `${h.what}: ${h.box.w}×${h.box.h}`)).toEqual([])
   }, 60_000)
+
+  // The height was what failed the floor; the width was already over it, and the width is the one
+  // that has a neighbour. A pill that reaches more than halfway to the next pile covers that
+  // pile's own handle, and a handle nobody can press is worse than a small one.
+  it('never reaches more than halfway to the next pile, and both piles answer their own handle', async () => {
+    const size = { w: 1280, h: 800 }
+    const view = scene()
+    const piles = view.zones.filter((z) => z.kind === 'pile')
+    expect(piles).toHaveLength(2)
+    const apartMm = Math.abs((piles[0]?.geometry.x ?? 0) - (piles[1]?.geometry.x ?? 0))
+    const html = markupOf(<TableRenderer view={view} mode="table" size={size} onAct={() => undefined} />)
+    const seen = await onPage(html, size, (page) =>
+      page.evaluate(() => {
+        const felt = document.querySelector('[data-table]') as HTMLElement
+        return {
+          // px per mm, read off the felt the renderer laid out.
+          scale: felt.offsetWidth,
+          handles: [...document.querySelectorAll('.byd-pile-count[data-handle]')].map((el) => {
+            const r = el.getBoundingClientRect()
+            const under = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)
+            return { what: el.textContent ?? '', w: Math.round(r.width), answers: !!(under && (under === el || el.contains(under))) }
+          }),
+        }
+      }),
+    )
+    const apartPx = (apartMm * seen.scale) / 1200
+    expect(seen.handles.filter((h) => h.w / 2 > apartPx / 2).map((h) => `${h.what}: ${h.w} px wide, ${Math.round(apartPx)} px to the next pile`)).toEqual([])
+    expect(seen.handles.filter((h) => !h.answers).map((h) => h.what)).toEqual([])
+  }, 60_000)
 })
 
 // ================================================================================================
