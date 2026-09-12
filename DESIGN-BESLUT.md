@@ -964,6 +964,29 @@ TV-läget rör regeln inte: det ramas in av sin egen krom och passas in precis s
 Regeln bor i `packages/web/src/table/fit.ts` som `feltScale`, och de fyra ytor som ritar ett bord — `/online`, `/table`, TV:n och Bord-flikens miniatyrer — hämtar den ur samma funktion; ingen yta har ett undantag.
 Grinden är en invariant och inte ett tal: vid varje ram täcker filten sin andel av ytan eller är så stor som ramen rymmer, mätt i Chromium på den markup vyerna faktiskt monterar, vid `/table`s, miniatyrens och filtradens egna former.
 
+Reviderat 2026-09-12 (#64, #63): filten mäts mot den form lutningen faktiskt ritar, och bordet lutar 13° i stället för 24°.
+Andelsregeln ovan mätte den **oluttade** rutan mot ramen och lät sedan `rotateX` krympa den, så det som faktiskt ritades hamnade under de två femtedelar som beslutades.
+På `/table` vid 1280 × 800 blev det 37 % av skärmen och ett kort 38 px över kortsidan, mot TV-lägets 63 % och 51 px — och ett playtest sammanfattade skillnaden som att bordsläget kändes opolerat bredvid TV-läget.
+Två femtedelar var alltså aldrig fel som tal; det mättes på fel form.
+Regeln är nu att filten *med händerna på* är så stor som ramen rymmer när lutningen är uttagen ur den: träets fyra hörn, projicerade genom samma vinkel som stilmallen ritar, står minst 44 px innanför ramen, och aldrig större än naturlig storlek.
+Svaret söks fram i stället för att lösas ut, eftersom projektionen beror på träets egen storlek och därmed på den skala som söks.
+
+Lutningen gick samma väg: vid 24° är bordets bortre halva märkbart mindre än den närmare, och den höjd lutningen kostar får filten aldrig tillbaka.
+13° är fortfarande ett bord man ser tvärs över, och ger inpassningen mer att arbeta med.
+`TILT` i `geometry.ts` och `rotateX` i `table.css` måste vara samma tal — ett kort som ritas i en vinkel och grips i en annan glider ur handen — och `geometry.test.ts` läser numera stilmallen och håller de två till varandra.
+
+Mätt på samma bord som förut, `/table` i bordsläge: 1280 × 800 går från 37 % till 52 % av skärmen och kortet från 38 till 45 px; 1366 × 1024 från 38 % till 61 % och 44 till 56 px; 1920 × 1080 från 39 % till 49 % och 53 till 61 px.
+Vid 2560 × 1440 ändras nästan ingenting, eftersom naturlig storlek redan är det som binder — vilket är regelns andra halva och inte ett fynd.
+
+Tre varianter prototypades på den riktiga rutten med riktigt bord och riktig täthet: som i dag, den nya inpassningen vid 24°, och den nya inpassningen vid 13°.
+Den tredje valdes.
+Prototypen svarade också på en fråga som inte ställdes: ett runt grepp på högens hörn, det TV-läget använder, går inte på filten — ett kort är omkring 45 × 63 px där, så en bricka som nådde 44 px vore lika stor som högen den sitter på.
+Därför är höghandtaget brett och lågt.
+
+Följdkrav (#63): pillret under en hög är det enda handtag K14 ger för att flytta en hel hög, alltså är det en kontroll före det är en etikett och tar samma 44 px som varje annan kontroll.
+I bordsläge är det 112 × 45 px och följer inte skärmen nedåt.
+TV-läget är orört: där är namnet under kortet och räknarbrickan i hörnet två egna handtag.
+
 Referensprototypen `packages/web/src/prototype/table-ref` togs bort när den hade svarat.
 
 ### K10. Telefonvyns utseende: remsan (prototypat 2026-09-06)

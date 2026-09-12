@@ -17,7 +17,7 @@ describe('screen → table (K2)', () => {
       expect(back.x).toBeCloseTo(p.x, 6)
       expect(back.y).toBeCloseTo(p.y, 6)
     }
-    expect(TILT).toBeCloseTo((24 * Math.PI) / 180)
+    expect(TILT).toBeCloseTo((13 * Math.PI) / 180)
     expect(PERSPECTIVE).toBe(1600)
   })
 })
@@ -33,5 +33,16 @@ describe('a rotated table (C5): the seat at the bottom', () => {
     const r = unrotate(unrotate({ x: 123, y: -45 }, floor, 270), floor, 90)
     expect(r.x).toBeCloseTo(123)
     expect(r.y).toBeCloseTo(-45)
+  })
+})
+
+describe('the tilt the stylesheet draws and the tilt the pointer is projected through (K14)', () => {
+  it('are the same angle, because a card that is drawn at one and grabbed at the other slips', async () => {
+    const { readFileSync } = await import('node:fs')
+    const { join } = await import('node:path')
+    const css = readFileSync(join(import.meta.dirname, '..', 'src/table/table.css'), 'utf8')
+    const drawn = /\.byd-table-frame\[data-mode='table'\] \.byd-table-wood \{[^}]*transform:\s*rotateX\((-?[\d.]+)deg\)/.exec(css)
+    expect(drawn, 'table.css no longer says what the felt is tilted by').toBeTruthy()
+    expect(Number(drawn![1])).toBeCloseTo((TILT * 180) / Math.PI, 6)
   })
 })

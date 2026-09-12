@@ -22,7 +22,7 @@
   border-radius: 28px;
   background: linear-gradient(135deg, #5a3b22, #3a2414);
   box-shadow: 0 40px 80px rgba(0, 0, 0, 0.6), inset 0 2px 0 rgba(255, 255, 255, 0.08);
-  transform: rotateX(24deg);
+  transform: rotateX(13deg);
   /* The felt is one plane: every card, pile and label lies flat on it, and nothing ever stands
      up out of it. Keeping the children in their own three-dimensional planes therefore draws
      exactly the same picture — and costs the pointer. A node that carries a transform of its
@@ -103,6 +103,21 @@
   position: absolute; left: 50%; bottom: -22px; transform: translateX(-50%);
   background: rgba(0, 0, 0, 0.55); color: #f3e9d6;
   border-radius: 999px; padding: 2px 8px; font-size: 12px; white-space: nowrap;
+}
+/* On the felt this pill is the only handle a whole pile is dragged by (K14), so it is a control
+   before it is a label and takes the same 44 px floor every other control does. It is wide and
+   low rather than round on purpose: a card is about 45 × 63 px on this felt, so a round grip
+   that reached 44 px would be the size of the pile it sits on. */
+.byd-table-frame[data-mode='table'][data-playable] .byd-pile-count[data-handle] {
+  bottom: -54px;
+  min-height: 44px;
+  box-sizing: border-box;
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 16px;
+  font-size: 15px;
+}
+.byd-table-frame[data-mode='table'][data-playable] .byd-pile-count[data-handle] .byd-pile-n {
+  font-size: 21px;
 }
 .byd-pile-n { font-weight: 600; }
 .byd-table-frame[data-mode='table'] .byd-pile-name::after { content: ' · '; }
