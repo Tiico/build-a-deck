@@ -1085,7 +1085,7 @@ Kuvert-id blir loggens batch och måste vara unikt per session, inte per anslutn
 Aktören håller sin logg i minnet för att kunna se bakåt.
 Utan andra sittande kan ett kontesterat förslag bara dras tillbaka; bordsskärmen får aldrig bekräfta.
 
-### K14. Bordet spelas direkt: dra, släpp, håll för en ring med verb (prototypat 2026-09-06)
+### K14. Bordet spelas direkt: dra, släpp, klicka för en ring med verb (prototypat 2026-09-06, utvidgad 2026-09-12)
 
 K1 och K2 gav reglerna; det här är hur handen gör dem.
 Lösa kort, översta kortet i en hög och hela högen (i etiketten) dras med pekare eller finger.
@@ -1093,17 +1093,30 @@ Släpp på ett löst kort staplar, på en hög lägger överst, i en zonrektange
 Översta kortet ur en hög går samma väg som en `split`; en hel hög som `movePile`.
 Bordsskärmen agerar som bordet (plats null): den som står vid den handlar för gruppen.
 
-Det en dragning inte kan säga nås genom att hålla på kort eller hög: en ring med verb öppnas runt fingret, man glider till ett och släpper.
+Det en dragning inte kan säga nås genom att klicka eller hålla på kort eller hög: en ring med verb öppnas där handen redan är, man glider till ett och släpper, eller klickar.
 Kort: Vänd, Vrid, Titta, Avslöja.
 Hög: Blanda, Dra 1, Dela på hälften, Vänd översta, Titta.
 K8:s håll-för-att-titta är "Titta" i ringen.
 Ingen markering finns på bordet; flerval hör till telefonen (K4).
 
+Regeln på filten är en enda: **en dragning flyttar saken, ett klick frågar vad som går att göra med den.**
+Hållet står kvar oförändrat för fingret; klicket är samma dörr, öppnad av den gest en mus faktiskt gör.
+
 Motivering:
 Samma gester fungerar med finger på en TV-platta och mus på distans, kräver inget tillstånd och lämnar bordet rent.
 En verktygsrad förutsätter en markering, som på ett delat bord är någons och ingens.
 
+Hållet ensamt var rätt för fingret och fel för musen.
+Det kräver 350 ms fullkomligt stilla, och minsta darrning över fyra bordsmillimeter avbryter väntan och startar i stället ett drag ingen bad om — vilket är precis vad en hand på en mus gör.
+Samtidigt gjorde ett klick på ett kort ingenting alls: den mest självklara musgesten på bordet var den enda som var utan svar.
+Att låta klicket öppna samma ring kostar inget nytt verb, ingen ny yta och ingen ny vokabulär — det ger den döda gesten den dörr som redan fanns.
+Alternativet att kapa högerklicket avvisades: webbläsarens meny är läsarens och inte verktygets, och en gest som inte finns på en pekskärm kan inte bära bordets enda väg till Vänd.
+
 Följdkrav:
+Ett klick som aldrig blev ett drag öppnar ringen för lösa kort, för högens topp och för hela högen i etiketten — de tre ställen en dragning börjar.
+En avbruten pekare (`pointercancel`) frågar ingenting: den har varken flyttat eller pekat, och öppnar därför ingen ring.
+Ringen dras in innanför fönstret när den öppnas nära en kant, oavsett om det var ett klick eller ett håll som öppnade den: Vänd ligger rakt ovanför pekaren, och ett kort nära överkanten lade annars just det verbet utanför skärmen.
+Hur långt ringen når från sin mitt står som ett tal i `ring.ts` och som en cirkel i `table.css`; ett webbläsartest mäter den riktiga stilmallen mot talet så att de inte kan glida isär i tysthet.
 Bordsläget lutar bordet (`rotateX` under perspektiv), så pekaren projiceras exakt tillbaka på bordsplanet; matten ligger i `geometry.ts` med test.
 Att dra översta kortet ur en dold hög och släppa det på ett löst kort, och att vända översta kortet i en dold hög, gick först inte: tråden ger inget id. Löst i K15 genom att högen adresseras i stället för kortet.
 Under ett tillbakaspolningsförslag (K13) är bordet inte spelbart.
