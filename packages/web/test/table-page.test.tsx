@@ -149,6 +149,36 @@ describe('a proposed rewind on the table (C)', () => {
   })
 })
 
+describe('a table that ends with a proposal still standing (C9, K13)', () => {
+  it('stops saying it waits for an answer nobody can give any more', async () => {
+    // A locked log is not a table anyone can rewind: the phones the proposal would be settled
+    // from have the survey in front of them, and the log is closed behind it. A screen that goes
+    // on showing the past and naming who is waited on promises a decision nobody can make.
+    const id = await createSession(run)
+    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    render(<TablePage />)
+    await screen.findByText(roomOf(id).code)
+
+    const ada = TableClient.connect(await asSeat(run, id, 'A'))
+    const bo = TableClient.connect(await asSeat(run, id, 'B'))
+    await Promise.all([ada.ready(), bo.ready()])
+    await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    await bo.send({ v: 'seat.claim', seat: 'B', name: 'Bo' }, { v: 'draw', from: 'draw', to: 'discard', count: 3 })
+    await ada.send({ v: 'rewind.propose', toSeq: 2 })
+    await waitFor(() => expect(document.querySelector('[data-rewind-preview]')).toBeTruthy())
+
+    await ada.send({ v: 'session.end' })
+    await screen.findByText(/Bordet är avslutat/)
+    expect(document.querySelector('[data-rewind-preview]')).toBeNull()
+    expect(screen.queryByText(/väntar på/)).toBeNull()
+    // And the table behind the notice is the one the log closed on, not the one the proposal
+    // would have gone back to.
+    expect(document.querySelector('[data-zone="discard"]')!.getAttribute('data-count')).toBe('3')
+    ada.close()
+    bo.close()
+  })
+})
+
 describe('playing on the table (K1, K2, C)', () => {
   it('a drag on the table screen becomes an envelope the server commits', async () => {
     const id = await createSession(run)

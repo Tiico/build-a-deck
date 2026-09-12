@@ -253,6 +253,31 @@ describe('undo and rewind on the phone (B, C)', () => {
   })
 })
 
+describe('a proposal still standing when the table ends (C9, K13)', () => {
+  it('takes the question off the phone, which now has the survey in front of it', async () => {
+    // The log is locked, so neither Godkänn nor Avvisa can reach it. Leaving them on the screen
+    // asks a player to settle something that is already over, on top of the survey.
+    const id = await createSession(run)
+    const token = await open(id, 'B', 'Bo')
+    const ada = TableClient.connect(await asSeat(run, id, 'A'))
+    await ada.ready()
+    await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' }, { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    const bo = TableClient.connect({ url: run.url, sessionId: id, seat: 'B', token })
+    await bo.ready()
+    await bo.send({ v: 'draw', from: 'draw', to: 'hand:B', count: 1 })
+    await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1))
+    await ada.send({ v: 'rewind.propose', toSeq: 2 })
+    expect(await screen.findByText('Ada vill spola tillbaka')).toBeTruthy()
+
+    await ada.send({ v: 'session.end' })
+    await waitFor(() => expect(document.querySelector('[data-rewind-ask]')).toBeNull())
+    expect(screen.queryByRole('button', { name: 'Godkänn' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Avvisa' })).toBeNull()
+    ada.close()
+    bo.close()
+  })
+})
+
 describe('flagging a moment (G3)', () => {
   it('a tap on Flagga, an optional note, and the moment is in the log', async () => {
     const id = await createSession(run)
