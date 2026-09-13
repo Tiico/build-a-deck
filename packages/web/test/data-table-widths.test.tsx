@@ -200,6 +200,72 @@ async function measure(doc: ProjectDoc, { width = 1280, fit = true, extra = '', 
 // because "the columns used to be equal" is the claim the whole issue rests on.
 const TODAY = '.byd-data { table-layout: auto !important; width: max-content !important; min-width: 100% !important; }'
 
+// A deck of the size the tool is actually for — five hundred cards over the same six columns.
+// Every value is its own string, so nothing is saved by two cards happening to say the same
+// thing; what is measured here is the deck and not a coincidence in the fixture.
+function bigDoc(): ProjectDoc {
+  const doc = deckDoc()
+  return {
+    ...doc,
+    rows: Array.from({ length: 500 }, (_, i) => ({
+      id: `k${i}`,
+      fields: { art: `Varelse ${i}`, title: `Kort ${i}`, body: `Regeltext nummer ${i} som fortsätter en bit till`, cost: i % 9, antal: (i % 4) + 1 },
+    })),
+  }
+}
+
+// How many times the measurement asks the engine for the width of a string, over two passes with
+// the same deck in between. `measureText` is the one call that costs anything — the canvas has to
+// shape the text to answer — and it is the browser's own, so counting it counts the real work
+// rather than a function this file happens to know the name of.
+async function measurements(doc: ProjectDoc): Promise<{ first: number; second: number; ms: number }> {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
+  try {
+    await page.setContent(shellOf(markupOf(doc), ''), { waitUntil: 'load' })
+    return await page.evaluate(
+      ({ deck, decide }) => {
+        const proto = CanvasRenderingContext2D.prototype
+        const own = proto.measureText
+        let asked = 0
+        proto.measureText = function (text: string) {
+          asked++
+          return own.call(this, text)
+        }
+        const box = document.querySelector('.byd-data-scroll') as HTMLElement
+        const run = () => new Function('box', 'deck', `(${decide})(box, deck)`)(box, deck)
+        const started = performance.now()
+        run()
+        const ms = performance.now() - started
+        const first = asked
+        asked = 0
+        run()
+        const second = asked
+        proto.measureText = own
+        return { first, second, ms }
+      },
+      { deck: deckValues(doc, sv), decide: String(fitColumns) },
+    )
+  } finally {
+    await page.close()
+  }
+}
+
+// The measurement is O(cards × columns) against a font, and for a deck of five hundred that is
+// milliseconds. It is therefore allowed to happen when the deck changes or the room does, and at
+// no other time — which `data-table-measure.test.tsx` locks on the React side. What is locked here
+// is the other half: asking twice for the same deck may not cost twice.
+describe('what a second look at the same deck costs (#46)', () => {
+  it('measures every value once and then remembers, so a re-fit walks no text at all', async () => {
+    const { first, second } = await measurements(bigDoc())
+
+    // The first pass really is the size the issue is about: every value of every column, and the
+    // guard is worth nothing without this.
+    expect(first).toBeGreaterThan(1000)
+    // And the second pass, with the same deck, asks the engine for nothing.
+    expect(second).toBe(0)
+  }, 60_000)
+})
+
 describe('a column is as wide as what stands in it (#46)', () => {
   it('gives `cost` a number\'s width and `body` the room the sentences need, at 1280', async () => {
     const [before, after] = await Promise.all([

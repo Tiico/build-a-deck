@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ProjectDoc, ProjectRow } from './types.js'
 import { deckKeepsFields, fieldsOf, fieldLabel, takenNames } from './fields.js'
 import { ANTAL, drawnBy } from '@byd/server/doc'
@@ -200,42 +200,54 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
   const scrollRef = useRef<HTMLDivElement>(null)
   // What the deck holds, by column, for the measurement below (#46). It is read off `doc.rows`
   // and never off `shown`, which is what keeps a width from moving when a filter or a sort does.
-  const deck = deckValues(doc, t)
+  // Held against the project rather than rebuilt every render: walking every value of every column
+  // into a list is the same size as measuring them, and the table renders on every keystroke.
+  const deck = useMemo(() => deckValues(doc, t), [doc, t])
   // The table's own reading of itself, in the one order the two halves of it can be true in: how
   // wide each column has to be to show what stands in it (#46), and then — at those widths —
-  // whether a column has run in under the pinned × (#53). The second question is asked of the
-  // geometry the first one just made, so they are one pass and not two observers racing.
+  // whether a column has run in under the pinned × (#53).
   //
   // A layout effect and not an effect, because no frame may ever be painted at the width the
   // table would have had without the measurement.
   useLayoutEffect(() => {
     const box = scrollRef.current
     if (!box) return
-    // Read once a frame at most: a scroll must not lay the table out again, and writing the same
-    // widths and the same attribute twice must not cost anything either.
+    // The two questions are not the same size and must not be hung on the same events. Measuring
+    // the deck walks every value of every column against a font — milliseconds for a deck of any
+    // size — while asking whether a column has run in under the pin is eight rectangles. So the
+    // measurement answers to the deck and to the room, and the pin answers to the frame rate.
     let frame = 0
-    const read = () => {
+    const pin = () => {
       frame = 0
+      markCut(box)
+    }
+    const soon = () => {
+      if (frame === 0) frame = requestAnimationFrame(pin)
+    }
+    // A new width, and then — at that width — whether a column is under the pin. In that order,
+    // because the second question is asked of the geometry the first one just made.
+    const fit = () => {
       fitColumns(box, deck)
       markCut(box)
     }
-    const queue = () => {
-      if (frame === 0) frame = requestAnimationFrame(read)
-    }
-    read()
-    box.addEventListener('scroll', queue, { passive: true })
-    // Scrolling is not the only thing that moves a column under the pin: a narrower window moves
-    // the pin, and a field added or taken away moves every column after it. The box's own size
-    // answers the first, the table's the second — so both are watched, and the question is asked
-    // again whichever of them changes.
-    const watch = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(queue)
+    fit()
+    // A scroll moves the box and nothing else. No column can have changed width during one, and
+    // the comment this replaced said as much while the code laid the whole table out again.
+    box.addEventListener('scroll', soon, { passive: true })
+    // A narrower window is the one thing besides the deck that really is a new width: there is
+    // less to share out, so the sentences give some back. The table's own size is this very
+    // function's output, so it answers the cheap question only — otherwise the measurement would
+    // be feeding itself.
+    const watch = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(fit)
     watch?.observe(box)
+    const pinned = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(soon)
     const table = box.querySelector('.byd-data')
-    if (table) watch?.observe(table)
+    if (table) pinned?.observe(table)
     return () => {
       if (frame !== 0) cancelAnimationFrame(frame)
-      box.removeEventListener('scroll', queue)
+      box.removeEventListener('scroll', soon)
       watch?.disconnect()
+      pinned?.disconnect()
     }
     // A new document is what a new width can come out of: an edit, an import, a column made or
     // taken away. Everything else the table keeps in its own state leaves the deck as it was.

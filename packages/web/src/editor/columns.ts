@@ -98,7 +98,25 @@ export function fitColumns(box: Element, deck: Record<string, readonly string[]>
     paper.font = font
     return paper.measureText(text).width
   }
-  const need = (text: string): number => Math.ceil(drawn(text) + sides)
+  // What a string is worth, remembered on the box it was measured in. Shaping text is the one
+  // expensive thing this function does — five hundred cards over six columns is six thousand
+  // calls, and the engine has to lay every glyph out to answer — while a narrower window, a
+  // column made or taken away, and a character typed into one cell all leave nearly every value
+  // of the deck exactly as it was. So a value is measured once and then recognised.
+  //
+  // Kept against the font and the padding it was measured with, because those are the only two
+  // things that can make the same string a different width: a zoom, a theme, a stylesheet
+  // reloaded in development. When either moves, everything is forgotten and measured again.
+  const kept = box as unknown as { __bydInk?: { font: string; sides: number; of: Map<string, number> } }
+  if (!kept.__bydInk || kept.__bydInk.font !== font || kept.__bydInk.sides !== sides) kept.__bydInk = { font, sides, of: new Map() }
+  const seen = kept.__bydInk.of
+  const need = (text: string): number => {
+    const had = seen.get(text)
+    if (had !== undefined) return had
+    const asked = Math.ceil(drawn(text) + sides)
+    seen.set(text, asked)
+    return asked
+  }
 
   // What a heading takes: everything standing in its flow, plus the cell's own padding. A control
   // that has been lifted out of the flow — the × that takes a column away — is not counted, which
