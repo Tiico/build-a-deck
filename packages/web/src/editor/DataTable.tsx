@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import type { ProjectDoc, ProjectRow } from './types.js'
 import { deckKeepsFields, fieldsOf, fieldLabel, takenNames } from './fields.js'
 import { ANTAL, drawnBy } from '@byd/server/doc'
@@ -11,6 +11,7 @@ import { Summary } from './HistoryPanel.js'
 import type { Cell } from './ProjectClient.js'
 import { exportCardsCsv, importCardsCsv } from './csv.js'
 import { keepOrder, nextSort, sortRows, type SortState } from './sorting.js'
+import { deckValues, fitColumns, widthKind, GROUP_COL } from './columns.js'
 import { countLabel, discreteColumns, filterRows, isFiltering, noFilter, toggleValue, type FilterState } from './filtering.js'
 import { duplicateRows, keepRows, markRows, noSelection, removeRows, selectionLabel, setColumn, toggleRow, type Selection } from './selection.js'
 import { groupColumn, groupOfRow, ruleLabel } from './groups.js'
@@ -197,20 +198,31 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
   const addRef = useRef<HTMLButtonElement>(null)
   // The box that scrolls, so it can be asked whether a column has run in under the pin (#53).
   const scrollRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
+  // What the deck holds, by column, for the measurement below (#46). It is read off `doc.rows`
+  // and never off `shown`, which is what keeps a width from moving when a filter or a sort does.
+  const deck = deckValues(doc, t)
+  // The table's own reading of itself, in the one order the two halves of it can be true in: how
+  // wide each column has to be to show what stands in it (#46), and then — at those widths —
+  // whether a column has run in under the pinned × (#53). The second question is asked of the
+  // geometry the first one just made, so they are one pass and not two observers racing.
+  //
+  // A layout effect and not an effect, because no frame may ever be painted at the width the
+  // table would have had without the measurement.
+  useLayoutEffect(() => {
     const box = scrollRef.current
     if (!box) return
-    // Read once a frame at most and write one attribute: a scroll must not lay the table out
-    // again, and setting the same value twice must not cost anything either.
+    // Read once a frame at most: a scroll must not lay the table out again, and writing the same
+    // widths and the same attribute twice must not cost anything either.
     let frame = 0
     const read = () => {
       frame = 0
+      fitColumns(box, deck)
       markCut(box)
     }
     const queue = () => {
       if (frame === 0) frame = requestAnimationFrame(read)
     }
-    markCut(box)
+    read()
     box.addEventListener('scroll', queue, { passive: true })
     // Scrolling is not the only thing that moves a column under the pin: a narrower window moves
     // the pin, and a field added or taken away moves every column after it. The box's own size
@@ -225,7 +237,9 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
       box.removeEventListener('scroll', queue)
       watch?.disconnect()
     }
-  }, [])
+    // A new document is what a new width can come out of: an edit, an import, a column made or
+    // taken away. Everything else the table keeps in its own state leaves the deck as it was.
+  }, [doc])
   useEffect(() => {
     if (!refocus) return
     if (typeof refocus === 'object') {
@@ -497,6 +511,21 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
           first. */}
       <div className="byd-data-scroll" ref={scrollRef}>
       <table className="byd-data">
+        {/* Where the measured width is said (#46). It is said to the table and not to the cells,
+            because saying it to a cell is saying it to an `<input>` again — and an input's own
+            width is its `size`, which is the whole reason the browser could never lay this table
+            out for itself. What each column is worth sizing like travels with the column, so
+            `fitColumns` needs to know nothing about what any of them is called. */}
+        <colgroup>
+          <col data-kind="tap" />
+          <col data-col="id" data-kind="key" />
+          {fields.map((f) => (
+            <col key={f} data-col={f} data-kind={widthKind(doc, f)} />
+          ))}
+          {grouping && <col data-col={GROUP_COL} data-kind="text" />}
+          <col data-kind="key" />
+          <col data-kind="tap" />
+        </colgroup>
         <thead>
           <tr>
             <th className="byd-data-check">
@@ -530,7 +559,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                 }}
               />
             ))}
-            {grouping && <th>{t('table.group')}</th>}
+            {grouping && <th data-col={GROUP_COL}>{t('table.group')}</th>}
             {/* Variant A (#32): the head's last named cell is the button, because the column
                 grows in the place it will stand. The form it opens lies *over* the row —
                 absolutely positioned in a cell that is already `sticky`, so the head keeps its
@@ -580,10 +609,10 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                   />
                 </label>
               </td>
-              <td className="byd-data-id">{cardRef}</td>
+              <td className="byd-data-id" data-col="id">{cardRef}</td>
               {fields.map((f) =>
                 imageFields.includes(f) && assetBase ? (
-                  <td key={f} className="byd-data-image">
+                  <td key={f} className="byd-data-image" data-col={f}>
                     <div
                       className="byd-data-drop"
                       role="group"
@@ -616,7 +645,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                     </div>
                   </td>
                 ) : (
-                <td key={f} className={brace?.cardRef === cardRef && brace.field === f ? 'byd-data-picking' : undefined}>
+                <td key={f} data-col={f} className={brace?.cardRef === cardRef && brace.field === f ? 'byd-data-picking' : undefined}>
                   {moved(changeOf(cardRef), f) && <s className="byd-data-was">{String(wasCell(cardRef, f) ?? '')}</s>}
                   {/* The brace, made visible in the cell the designer is standing in (#33). It
                       writes the brace and opens the same picker typing one does — one way in, seen
@@ -736,7 +765,7 @@ function GroupCell({ doc, column, cardRef, row }: { doc: ProjectDoc; column: str
   const t = useT()
   const group = groupOfRow(doc, { id: cardRef, fields: row })
   return (
-    <td className="byd-data-group" data-group-of={cardRef}>
+    <td className="byd-data-group" data-col={GROUP_COL} data-group-of={cardRef}>
       {group === null ? t('table.group.base') : ruleLabel(column, group)}
     </td>
   )
@@ -747,7 +776,7 @@ function GroupCell({ doc, column, cardRef, row }: { doc: ProjectDoc; column: str
 function SortableHeader({ field, label, sort, onSort, onRemove, removeRef, t }: { field: string; label: string; sort: SortState | null; onSort(next: SortState | null): void; onRemove?: (() => void) | undefined; removeRef?: ((el: HTMLButtonElement | null) => void) | undefined; t?: T | undefined }) {
   const active = sort?.field === field ? sort.dir : null
   return (
-    <th aria-sort={active ?? 'none'}>
+    <th data-col={field} aria-sort={active ?? 'none'}>
       <button type="button" data-active={active !== null} onClick={() => onSort(nextSort(sort, field))}>
         {label} <span aria-hidden="true">{active === 'ascending' ? '↑' : active === 'descending' ? '↓' : '↕'}</span>
       </button>

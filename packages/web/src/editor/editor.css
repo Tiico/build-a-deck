@@ -841,11 +841,41 @@
    typed. So the form lies over the rows instead: absolutely positioned against the cell, which
    is already a containing block by being `sticky`. Nothing here may set `position` on the
    header cell itself; that would unstick the head. */
-/* The × that takes a column away rides its own heading, quiet next to the word it belongs to,
-   and on the same line as the sort control so that no heading is taller than another. */
-.byd-data th .byd-data-dropfield { margin-left: 6px; padding: 0 3px; color: var(--byd-editor-quiet); font-size: 13px; line-height: 1; vertical-align: middle; }
+/* A heading is one line and stays inside its own column (#46). Both are what a measured width
+   costs: a column drawn at the width of what stands in it has no room for a heading that wraps,
+   and a wrapped heading is the very first thing a narrow column does. The head's own last cell is
+   the exception — the form that makes a column hangs out of it on purpose. */
+.byd-data th { overflow: hidden; white-space: nowrap; }
+/* The × that takes a column away has left the heading's flow, and that is what lets a number
+   column be a number wide (#46). A heading carries a sort control *and* a ×, and every button in
+   the editor is at least `--byd-tap` across — so two of them on one line put the floor at about
+   114 px however short the word above them is, and the first attempt at this issue drew `cost` at
+   113 with the heading broken over two rows. No width rule reaches that; the button has to leave
+   the flow. So it lies over the right edge of its own heading, in the head's own ground, and
+   shows itself when the column is pointed at or has the focus somewhere in it. The target stays
+   44 by 44 (L12 does not touch hit areas) and the column pays nothing for it.
+   `position: sticky` already makes the heading a containing block, so nothing here sets
+   `position` on the cell — that would unstick the head. */
+.byd-data th .byd-data-dropfield {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: var(--byd-tap);
+  margin: 0;
+  padding: 0;
+  background: linear-gradient(to right, rgb(27 29 35 / 0%), #1b1d23 35%);
+  color: var(--byd-editor-quiet);
+  font-size: 13px;
+  line-height: 1;
+  opacity: 0;
+}
+.byd-data th:hover .byd-data-dropfield, .byd-data th:focus-within .byd-data-dropfield { opacity: 1; }
 .byd-data th .byd-data-dropfield:hover, .byd-data th .byd-data-dropfield:focus-visible { color: #e05c5c; }
-.byd-data thead .byd-data-newfield { z-index: 4; white-space: nowrap; }
+.byd-data thead .byd-data-newfield { z-index: 4; overflow: visible; white-space: nowrap; }
 .byd-data thead .byd-data-newfield > button { color: var(--byd-editor-count-ink); }
 .byd-newfield {
   position: absolute;
