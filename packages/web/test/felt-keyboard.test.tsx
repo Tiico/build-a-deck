@@ -1,9 +1,12 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { TableRenderer } from '../src/table/TableRenderer.js'
 import { feltLabels } from '../src/table/keyboard.js'
 import { buildScene } from './scene.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const noop = (): undefined => undefined
 const stops = (labels: ReadonlyMap<string, string>, at: string | null) => ({

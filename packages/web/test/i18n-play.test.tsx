@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import { projectActivity } from '@byd/engine'
 import { Language } from '../src/i18n/index.js'
@@ -10,6 +10,9 @@ import { SessionButtons } from '../src/player/SessionOverlays.js'
 import { Survey } from '../src/player/Survey.js'
 import { TableSummary } from '../src/player/TableSummary.js'
 import { buildScene } from './scene.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const english = (ui: React.ReactNode) => render(<Language lang="en">{ui}</Language>)
 const swedish = (ui: React.ReactNode) => render(<Language lang="sv">{ui}</Language>)

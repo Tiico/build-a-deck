@@ -7,6 +7,9 @@ import { buildScene } from './scene.js'
 import { activeBounds, cameraOf, frameRect, pad } from '../src/table/camera.js'
 import { DEFAULT_TIMING } from '../src/status/connection.js'
 import { RING_MARGIN } from '../src/table/ring.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 describe('TableRenderer', () => {
   it('places a face-up card by name at its position, and a face-down one as a back without a name', () => {

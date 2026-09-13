@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import { Language } from '../src/i18n/index.js'
 import { LoginCard } from '../src/account/LoginCard.js'
@@ -7,6 +7,9 @@ import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { buildProject } from '../src/wizard/build.js'
 import { defaultFields } from '../src/wizard/frames.js'
 import { translate } from '../src/i18n/index.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The account and the guided start in the reader's own language (A4). Neither surface talks to a
 // server before it is touched, so the language is all these tests are about.

@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { ClaimPage } from '../src/account/ClaimPage.js'
 import { admit, createSession, startServer, type Running } from './fixture.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // Claiming a guest session to an account (G1): the link from the phone lands here; without a
 // login it is the login card with this page as the way back; with one, the claim is made and

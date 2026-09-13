@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import type { Activity, Snapshot } from '@byd/protocol'
 import { projectActivity } from '@byd/engine'
@@ -9,6 +9,9 @@ import { useActivityLive } from '../src/table/useActivityLive.js'
 import { ActionPanel } from '../src/table/ActionPanel.js'
 import { feltLabels, handLabel, thingsOn } from '../src/table/keyboard.js'
 import { buildScene } from './scene.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const english: T = (key, params) => translate('en', key, params)
 

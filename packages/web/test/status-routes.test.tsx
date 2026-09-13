@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { createServer, type Server, type Socket } from 'node:net'
 import type { AddressInfo } from 'node:net'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { TableClient } from '../src/client.js'
 import { DocumentTitle } from '../src/status/DocumentTitle.js'
@@ -14,6 +14,9 @@ import { OnlinePage } from '../src/online/OnlinePage.js'
 import { ObserverPage } from '../src/observer/ObserverPage.js'
 import { admit, asTable, createSession, roomOf, startServer, type Running } from './fixture.js'
 import type { Route } from '../src/status/title.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 let run: Running
 beforeEach(async () => {

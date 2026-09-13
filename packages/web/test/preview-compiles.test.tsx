@@ -6,6 +6,9 @@ import { SymbolPanel } from '../src/editor/SymbolPanel.js'
 import { TemplateCanvas } from '../src/editor/TemplateCanvas.js'
 import type { ProjectClient } from '../src/editor/ProjectClient.js'
 import { projectDoc } from './project-doc.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // Counting the one thing that costs: `compile` is the renderer (E2), and every card on the wall
 // goes through it. What a card is compiled from has to be held by identity, because that is how

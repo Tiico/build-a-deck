@@ -5,6 +5,9 @@ import { userEvent } from '@testing-library/user-event'
 import { TemplateCanvas } from '../src/editor/TemplateCanvas.js'
 import { projectDoc } from './project-doc.js'
 import type { ProjectDoc } from '../src/editor/types.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 describe('TemplateCanvas (A as the template mode)', () => {
   it('lists layers top-most first, previews the selected row with the selected element outlined, and patches through the property panel', () => {

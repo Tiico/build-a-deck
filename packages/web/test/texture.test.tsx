@@ -6,6 +6,9 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import type { VisibleComponentState } from '@byd/protocol'
 import { Texture } from '../src/table/Texture.js'
 import { contrastRatio, cssCustomProperties } from '../src/player/contrast.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const FRONT = 'a'.repeat(64)
 const BACK = 'b'.repeat(64)

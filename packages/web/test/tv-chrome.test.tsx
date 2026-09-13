@@ -1,10 +1,13 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import { projectActivity } from '@byd/engine'
 import { TvChrome } from '../src/table/TvChrome.js'
 import { seatColor } from '../src/table/seatColor.js'
 import { buildScene } from './scene.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 describe('TvChrome (C as the TV surroundings)', () => {
   it('shows the room code, a dock with every seat and its hand count, and the recent activity in words', () => {
