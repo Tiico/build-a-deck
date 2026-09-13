@@ -648,6 +648,7 @@ describe('every suite that measures a surface', () => {
       'data-table-widths.test.tsx',
       'editor-css.test.ts',
       'editor-viewport.test.tsx',
+      'felt-names.test.tsx',
       'join-layout.test.tsx',
       'observer-viewport.test.tsx',
       'online-layout.test.tsx',

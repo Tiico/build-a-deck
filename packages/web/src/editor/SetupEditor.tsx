@@ -72,7 +72,10 @@ function RecipePanel({ client }: { client: ProjectClient }) {
       <section>
         <h2 id="byd-setup-players">{t('setup.players')}</h2>
         <div className="byd-setup-players" role="group" aria-labelledby="byd-setup-players">
-          {Array.from({ length: Math.min(6, MAX_PLAYERS) }, (_, i) => i + 1).map((n) => (
+          {/* Every seat count the table can actually hold. It stopped at six while `MAX_PLAYERS`
+              was eight, so the two counts a designer most needed to look at — the ones where an
+              edge first carries two seats (K18) — were the two nobody could reach. */}
+          {Array.from({ length: MAX_PLAYERS }, (_, i) => i + 1).map((n) => (
             <button key={n} type="button" className="byd-choice" aria-pressed={recipe.players === n} onClick={() => turn({ players: n })}>
               {n}
             </button>
@@ -168,7 +171,12 @@ function Felt({ view, zones, floor, selected, onSelect, onGeometry }: { view: No
             className="byd-setup-handle"
             role="button"
             tabIndex={0}
-            aria-label={t('setup.zone', { name: z.name })}
+            aria-label={
+              // The handle's whole name, since it draws none (K19): the felt underneath says what
+              // the zone is called, and whose it is comes along here rather than being lost with
+              // the label that used to be printed in the handle's corner.
+              t('setup.zone', { name: z.owner ? `${z.name} · ${z.owner}` : z.name })
+            }
             aria-pressed={selected === z.id}
             data-zone-handle={z.id}
             data-kind={z.kind}
@@ -181,17 +189,18 @@ function Felt({ view, zones, floor, selected, onSelect, onGeometry }: { view: No
             onKeyDown={(e) => nudge(e, z)}
             onFocus={() => onSelect(z.id)}
           >
-            <span>
-              {z.name}
-              {z.owner ? ` · ${z.owner}` : ''}
-            </span>
             {z.kind !== 'pile' && <i className="byd-setup-corner" data-resize={z.id} onPointerDown={(e) => down(e, z, 'resize')} onPointerMove={move} onPointerUp={up} onPointerCancel={up} />}
           </div>
         )
       })
   return (
     <div className="byd-setup-felt">
-      <TableRenderer ref={table} view={view} mode="tv" overlay={overlay} />
+      {/* The handles carry no names of their own (K19): the felt underneath already names every
+          area and every pile, and `seatNames` asks it for the one name this surface would
+          otherwise be missing — whose hand is whose, which the played TV gets from its dock. The
+          handle keeps the name in its `aria-label`, so the keyboard and the screen reader lose
+          nothing by the name no longer being drawn twice. */}
+      <TableRenderer ref={table} view={view} mode="tv" overlay={overlay} seatNames />
     </div>
   )
 }

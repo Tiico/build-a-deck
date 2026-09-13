@@ -12,6 +12,7 @@ import { DEFAULT_TIMING } from '../status/connection.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
 import { ringCentre } from './ring.js'
 import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_MM, edgeRotation, fanPlace, feltWithHands, handExtent } from './hand.js'
+import { nameAt } from './labels.js'
 import { useT, type T } from '../i18n/index.js'
 
 export type TableMode = 'table' | 'tv'
@@ -67,6 +68,10 @@ export type TableRendererProps = {
   glideMs?: number | undefined
   // What the editor lays over the felt (B5): zone handles, drawn last with the felt's mapping.
   overlay?: ((fit: FeltFit) => ReactNode) | undefined
+  // Whose hand is whose. Table mode always says so on the felt; TV mode leaves it to the dock
+  // that says it already (K9). A TV-mode surface with no dock — the editor's Bord tab — asks for
+  // the cards here, so that a hand is named by the renderer like every other zone (K19).
+  seatNames?: boolean | undefined
   keyboard?: FeltKeyboard | undefined
 }
 
@@ -93,7 +98,7 @@ type Live = Drag & { started: boolean }
 type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: number; y: number } | null; top: { pile: string; at: Point; count: number } | null; dx: number; dy: number }
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], onPresence, camera = false, onInspect, size: fixedSize, glideMs = GLIDE_MS, overlay, keyboard }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], onPresence, camera = false, onInspect, size: fixedSize, glideMs = GLIDE_MS, overlay, seatNames = false, keyboard }, ref) {
   const t = useT()
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
@@ -399,6 +404,9 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
 
   const areas = view.zones.filter((z) => z.kind === 'area' && z.id !== floor.id)
   const piles = view.zones.filter((z) => z.kind === 'pile')
+  // Which of K19's four cases a zone's name is in. It is the table's own millimetres that decide,
+  // so the renderer works it out and the stylesheet draws it.
+  const handOf = (seat: string | undefined) => (seat ? view.zones.find((z) => z.kind === 'hand' && z.owner === seat) : undefined)
   const loose = view.components.filter((c) => zoneById.get(c.zone)?.kind === 'area')
   const dx = drag?.started ? drag.at.x - drag.grab.x : (settling?.dx ?? 0)
   const dy = drag?.started ? drag.at.y - drag.grab.y : (settling?.dy ?? 0)
@@ -437,11 +445,14 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           onPointerUp={clearPoint}
           onPointerLeave={feltLeave}
         >
-          {areas.map((z) => (
-            <div key={z.id} className="byd-zone" data-area={z.id} style={{ left: left(z.geometry.x), top: top(z.geometry.y), width: px(z.geometry.w), height: px(z.geometry.h) }}>
-              <span>{z.name}</span>
-            </div>
-          ))}
+          {areas.map((z) => {
+            const { rim, grow } = nameAt(z, floor, handOf(z.owner))
+            return (
+              <div key={z.id} className="byd-zone" data-area={z.id} data-rim={rim} data-grow={grow} style={{ left: left(z.geometry.x), top: top(z.geometry.y), width: px(z.geometry.w), height: px(z.geometry.h) }}>
+                <span>{z.name}</span>
+              </div>
+            )
+          })}
           {piles.map((z) => {
             const whole = liftedPile === z.id && liftedKind === 'pile'
             // Put down, and still drawn where it was put: the patch has not come back yet (#29).
@@ -517,7 +528,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
               />
             )
           })}
-          {mode === 'table' &&
+          {(mode === 'table' || seatNames) &&
             hands.map((z) => (
               // After the cards: a name card lies on the table, on top of what is dealt near it.
               <SeatName key={`name-${z.id}`} zone={z} floor={floor} name={seatName(z.owner)} color={seatColor(seatIndex(z.owner))} left={left} top={top} />

@@ -348,7 +348,8 @@
 .byd-setup h2 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-setup-recipe { display: grid; gap: 18px; }
 .byd-setup-recipe label { display: flex; gap: 8px; align-items: center; margin: 6px 0; color: #e6ecfa; }
-.byd-setup-players { display: flex; gap: 6px; }
+/* Eight of them, which is one more than the 300 mm column fits in a line. */
+.byd-setup-players { display: flex; flex-wrap: wrap; gap: 6px; }
 .byd-setup-players button, .byd-setup-tools button, .byd-setup-counters > button, .byd-setup-props button { border: 1px solid #2f333d; border-radius: 8px; padding: 7px 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
 .byd-setup-counters { margin: 8px 0 0 24px; display: grid; gap: 6px; justify-items: start; }
 .byd-setup-counters > span { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #9aa3b8; }
@@ -361,18 +362,24 @@
 .byd-setup-canvas { position: relative; display: grid; gap: 10px; min-width: 0; }
 .byd-setup-tools { display: flex; gap: 8px; align-items: center; color: #9aa3b8; font-size: 12px; }
 /* The felt takes the room it gets: the frame must not size itself after the table it holds. */
-.byd-setup-felt { position: relative; height: min(70vh, 640px); background: #0d0f14; border-radius: 16px; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); user-select: none; touch-action: none; }
+.byd-setup-felt { position: relative; height: min(70vh, 720px); background: #0d0f14; border-radius: 16px; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); user-select: none; touch-action: none; }
 .byd-setup-felt .byd-table-frame { width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; }
+/* On the played felt a zone's name is furniture and stays quiet. Here it is the work: this is the
+   surface a designer checks the names on (B5), and since the handles no longer carry one (K19) it
+   is the only place the name appears. So it is read in the felt's own amber, the colour the
+   handles already use for everything the designer may take hold of (#34). */
+.byd-setup-felt .byd-zone > span { color: #ffd98a; font-weight: 700; }
 .byd-setup-invalid { margin: 0; padding: 24px; border-radius: 16px; background: #2a1b1b; color: #ff9a9a; line-height: 1.5; }
-/* A handle per zone, on the felt with the felt's mapping; the label sits above it. */
+/* A handle per zone, on the felt with the felt's mapping. It draws no name of its own. */
 .byd-setup-handle { position: absolute; box-sizing: border-box; border: 2px dashed rgba(255, 217, 138, 0.55); border-radius: 8px; cursor: grab; outline: none; }
 .byd-setup-handle[data-kind='pile'] { border-style: solid; }
 /* The handle on the felt says it inside its own dashes, in the felt's own amber rather than the
    editor's blue: it lies on a picture of a table, not in a panel (#34). */
 .byd-setup-handle[aria-pressed='true'], .byd-setup-handle:focus-visible { border-color: #ffd98a; border-style: solid; box-shadow: 0 0 0 3px rgba(255, 217, 138, 0.25); }
-/* The felt already names areas and piles; the handle names only the hands, and whatever is selected. */
-.byd-setup-handle > span { display: none; position: absolute; right: 6px; bottom: 3px; font: 600 11px system-ui, sans-serif; color: #ffd98a; white-space: nowrap; pointer-events: none; }
-.byd-setup-handle[data-kind='hand'] > span, .byd-setup-handle[aria-pressed='true'] > span { display: block; }
+/* The handle says no name at all (K19). The felt underneath names every area, every pile and
+   every hand, so a label here was a second system writing on the same square millimetres — which
+   is how `Räknare B` came to lie under `Hand · B` (#43). The name is still on the handle for
+   anyone reading by keyboard or screen reader: it is the `aria-label`. */
 .byd-setup-corner { position: absolute; right: -6px; bottom: -6px; width: 12px; height: 12px; border-radius: 3px; background: #ffd98a; cursor: nwse-resize; }
 .byd-setup-props { position: absolute; right: 12px; top: 52px; width: 220px; display: grid; gap: 8px; padding: 14px; border-radius: 14px; background: rgba(23, 26, 35, 0.97); border: 1px solid #3b4358; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45); }
 .byd-setup-props label { display: grid; gap: 4px; font-size: 11px; color: #9aa3b8; }

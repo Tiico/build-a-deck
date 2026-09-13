@@ -117,7 +117,11 @@ describe('the setup editor (B5, K2): the designer\'s own zones', () => {
     fireEvent.change(screen.getByLabelText('Namn för Yta 1'), { target: { value: 'Altaret' } })
     fireEvent.change(screen.getByLabelText('Ägare för Altaret'), { target: { value: 'B' } })
     fireEvent.change(screen.getByLabelText('Syns för Altaret'), { target: { value: 'owner' } })
-    expect(handle('yta-1').textContent).toContain('Altaret · B')
+    // The felt says the name and the handle no longer says it a second time (K19, #43); whose the
+    // zone is travels with the handle's own name, which is what the keyboard and the reader get.
+    expect(document.querySelector('.byd-zone[data-area="yta-1"] > span')?.textContent).toBe('Altaret')
+    expect(handle('yta-1').getAttribute('aria-label')).toBe('Zon Altaret · B')
+    expect(handle('yta-1').querySelector('span')).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: '＋ Hög' }))
     expect(handle('hog-1')).toBeTruthy()

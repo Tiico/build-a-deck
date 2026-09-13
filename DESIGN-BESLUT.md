@@ -1367,6 +1367,66 @@ Det är en etikettkrock och inte en zonkrock, och var etiketterna ska ta vägen 
 Grinden är ett test och inte ett tal: `packages/server/test/recipe-geometry.test.ts` mäter varje zonpar vid varje platsantal från två till `MAX_PLAYERS`, räknar paren så att en tom lista inte kan gå igenom, och håller dessutom fast att handen är 500 mm överallt och att ett fyraplatsbord ligger på exakt de millimetrar det låg på förut.
 Den gamla täckningen slutade vid fyra platser, och det är därför felet gick att skeppa.
 
+### K19. Ett namn på ett ställe: var en zons namn ligger (prototypat och byggt 2026-09-13, #43, #71)
+
+Regeln, i en mening:
+
+> En zons namn ligger utanför zonens innehåll, på sidan bort från närmaste kant på filten, och så nära mitten av den plats som äger zonen som dess egen box tillåter — och ovanför sin egen överkant, från vänstra hörnet, när zonen står vid ingen kant, likaså när ingen äger den, vilket är den regel filten alltid har följt.
+
+Den gäller båda ytorna och varje platsantal 2–`MAX_PLAYERS`, och den ersätter tre etikettsystem med ett.
+
+**Tre system, inte två.**
+`.byd-zone > span` är renderarens zonnamn; `.byd-seat-name` är renderarens namnkort, som bara ritades i bordsläge; `.byd-setup-handle > span` var editorns egen `Hand · B`, nere i handtagets hörn.
+Två komponenter skrev på samma kvadratmillimeter utan att känna till varandra, och det var hela #43: `Räknare B` under `Hand · B`.
+#71 var det tredje systemet mot det första, sedan K18 gav en kant två platser — och den krocken finns bara i bordsläge, eftersom TV-läget låter docken säga namnen; den börjar vid **sju** platser, inte åtta som issuet uppgav.
+Nu bär handtaget inget ritat namn alls: filten namnger varje yta, varje hög och — genom namnkortet, som förhandsvisningen numera också ritar eftersom den är TV-läge utan dock — varje hand.
+Handtagets namn finns kvar som dess `aria-label`, med ägaren i, så tangentbordet och skärmläsaren förlorar ingenting på att namnet inte längre skrivs två gånger (L12).
+
+**Halva regeln är sämre än ingen regel.**
+Den föregående prototypen föreslog "utanför zonen, bort från närmaste kant".
+Byggd bokstavligen *skapar* den en krock vid sex och sju platser där dagens läge har noll: att säga vilken **sida** av zonen namnet ligger på är bara halva svaret, för namnet växer fortfarande alltid åt höger från vänstra hörnet.
+`Räknare A` är 110 mm brett och dess namn 237, så det lämnar A:s eget kuvert och landar i E:s.
+Andra halvan — åt vilket håll namnet växer — är därför inte en detalj utan det som gör regeln till en regel.
+Meningen läses två gånger: vid norra och södra kanten ligger namnet *längs* kanten och har bredd, så den ände det förankras i avgör hur mycket av grannens kuvert det täcker; vid östra och västra kanten står det *bredvid* sin zon och är en rad högt, inte en rad brett, och där finns bara ett läge att välja — det närmast platsens mitt, eftersom den andra änden är filtens hörn där nästa kants plats har sina egna namn.
+
+**En zon som ingen äger rör sig inte.**
+Villkoret är platsen, inte kanten: en delad yta har ingen platsmitt att växa mot, så att skicka dess namn bort från kanten utan att också säga åt vilket håll det växer vore precis den halva regeln som nyss förkastades.
+Mätt: marknaden ligger 200 mm in på en filt som är 800 mm hög, alltså mitt på bordet där högarna står, och ett namn skickat inåt därifrån landar på draghögens antalsbricka vid fem och sex platser.
+Så marknadens namn står kvar ovanför sin egen överkant, på millimetern där det alltid stått.
+
+**Inget kapat namn, och därför inte variant C.**
+En variant som ritade varje namn inuti sin egen rektangel fick **noll** krockar vid varje platsantal — och kapade **tolv av sexton** ytnamn till `RÄ…` och `FR…`.
+Perfekt på måttet, oanvändbar som bild.
+Kriteriet är därför att `scrollWidth > clientWidth` på någon etikett fäller, och att varje namn som bordet ska säga också hittas i mätningen; ett ensamt krocktal räcker aldrig.
+
+**Mätningen tvingar `white-space: nowrap`, och renderaren sätter det.**
+Ingenting satte det förut, så en etikett bredvid en smal zon bröts till två rader och mätte hälften så brett.
+Halva dagens goda siffror kom därifrån, och en implementation som senare lade till `nowrap` hade tyst gått sönder.
+Nu är namnet en rad, både på skärmen och i mätningen.
+
+**Förhandsvisningen är aritmetik före det är placering.**
+`.byd-setup-felt` var `height: min(70vh, 640px)`, och 640-taket låste skalan hur högt fönstret än var.
+En plats kuvert är 500 mm — från `Framför A`:s vänsterkant till `Räknare A`:s högerkant — och fick **197 px** vid 1280 × 1200 och åtta platser; dess två namn behöver omkring 196 plus den luft som skiljer dem åt.
+Det var alltså inte att etiketterna låg fel — rummet fanns fysiskt inte.
+Taket är nu **720 px**, där fönstret räcker till, vilket ger platsen **226 px** och krockarna noll.
+Grinden mäter rummet och inte bara krockarna: en plats ska vara minst 200 px längs sin egen kant vid åtta platser.
+
+**`MAX_PLAYERS` och panelens erbjudande stämmer överens.**
+Panelen stannade vid sex medan `MAX_PLAYERS` var åtta, så de två platsantal en formgivare mest behövde titta på — de där en kant först bär två platser (K18) — var de två ingen kunde nå.
+Den erbjuder nu varje platsantal bordet kan hålla.
+
+**Högarnas namn är orörda.**
+De var aldrig med i buggen: renderaren lägger redan en högs namn under högen, fritt från allt.
+Regeln gäller ytor, och mätningen läser `.byd-pile-n` och inte `.byd-pile-count`, som i TV-läge är `inset: 0` över hela högen medan brickan den ritar hänger över överkanten; namnet och antalet räknas som **en** etikett, eftersom de är två halvor av ett pill.
+Den avskurna handräknaren är `HAND_COUNT_MM` i `table/hand.ts` och avsiktligt beteende (K9), inte ett fel att laga.
+
+**Läsbarheten är orörd.**
+Kortets kortsida i TV-läge vid åtta platser: 27 px vid 1280 × 800, 40 px vid 1920 × 1080, 89 px vid 3840 × 2160 — K18:s tal på pixeln, och minsta etikett är 12 px.
+Ingenting i den här skivan rör filtens storlek, inpassningen eller kameran; etiketterna konkurrerade aldrig med korten, bara med varandra.
+
+Grinden är `packages/web/test/felt-names.test.tsx`: samma mätning på alla tre ytorna — bordsläge, TV-läge och editorns Bord-flik — vid varje platsantal 2–`MAX_PLAYERS`, med `nowrap` framtvingat, och varje läsning säger både vilka namn den såg, vilka par som ligger på varandra, vilka som kapats och vilka som ritats utanför filten.
+Regeln själv bor i `packages/web/src/table/labels.ts` och ritas av `table.css`; ingen yta har ett undantag.
+
 ---
 
 ## L. Editorn (grillad 2026-09-06)

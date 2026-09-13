@@ -62,13 +62,35 @@
   border: 2px solid rgba(255, 255, 255, 0.18);
   border-radius: 10px;
 }
-/* The name straddles the zone's top border rather than lying inside it: a zone that fills up
-   with cards would otherwise bury its own label (#20). */
+/* The name straddles the zone's border rather than lying inside it: a zone that fills up with
+   cards would otherwise bury its own label (#20). Which border it straddles is K19's one rule —
+   outside the zone's content, away from the felt's nearest rim, growing toward the middle of the
+   seat that owns it; above its own top edge from the left corner when it stands at no rim and
+   nobody owns it, which is the placement below and the rule the felt has always followed.
+   `--name-in` is how far in from the anchored end the name starts, so the TV can widen it
+   without having to say `left` again and undo the rim rules. */
 .byd-zone > span {
-  position: absolute; left: 8px; bottom: calc(100% + 2px);
+  position: absolute; --name-in: 8px;
+  left: var(--name-in); bottom: calc(100% + 2px);
   font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: rgba(255, 255, 255, 0.45);
+  /* One line, always. A name is laid out in a box as wide as its zone, so beside a narrow zone it
+     would break in two and fold back over the zone it names; away from a rim it has nothing to
+     break against at all. */
+  white-space: nowrap;
 }
-.byd-table-frame[data-mode='tv'] .byd-zone > span { left: 10px; font-size: 13px; letter-spacing: 1.5px; color: #7d8597; }
+.byd-table-frame[data-mode='tv'] .byd-zone > span { --name-in: 10px; font-size: 13px; letter-spacing: 1.5px; color: #7d8597; }
+/* Away from the nearest rim. At the north rim "above my own top edge" points straight into the
+   hand, where the seat's name card lies (#71); at the east and west rims it points into the
+   corner, where the next rim's seat keeps its own names (#43). */
+.byd-zone[data-rim='N'] > span { top: calc(100% + 3px); bottom: auto; }
+.byd-zone[data-rim='E'] > span { right: calc(100% + 6px); left: auto; top: 0; bottom: auto; }
+.byd-zone[data-rim='W'] > span { left: calc(100% + 6px); right: auto; top: 0; bottom: auto; }
+/* And toward the middle of its own seat: along the rim where the name has width, and up or down
+   where it stands beside its zone and has none. */
+.byd-zone[data-rim='N'][data-grow='back'] > span,
+.byd-zone[data-rim='S'][data-grow='back'] > span { left: auto; right: var(--name-in); }
+.byd-zone[data-rim='E'][data-grow='back'] > span,
+.byd-zone[data-rim='W'][data-grow='back'] > span { top: auto; bottom: 0; }
 
 /* Cards: a coloured face or a striped back. */
 .byd-card {
