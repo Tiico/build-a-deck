@@ -126,8 +126,10 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             : t('player.hint')}
         </p>
       )}
+      {/* Put down on the next touch, not on click: a tap is a pointerup and then a click, and the
+          click lands on what the pointerup just opened (UX-30). */}
       {inspect && (
-        <div className="byd-inspect" onClick={() => setInspect(null)}>
+        <div className="byd-inspect" onPointerDown={() => setInspect(null)}>
           <div data-inspect={inspect.id} data-face="front" style={{ ['--hue' as string]: hue(inspect.cardRef ?? '') }}>
             <Texture faces={faces} c={inspect} />
             <span>{inspect.cardRef}</span>

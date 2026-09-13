@@ -8,7 +8,8 @@ const swedish: T = (key, params) => translate('sv', key, params)
 
 export type Placement = 'top' | 'bottom'
 // The counter token's type id (engine's TOKEN_COUNTER), which the phone treats as a count, not a card.
-export const COUNTER_TYPE = 'token.counter'
+import { COUNTER_TYPE } from '../table/keyboard.js'
+export { COUNTER_TYPE }
 export type PlaySheetProps = {
   view: Snapshot
   count: number
@@ -50,13 +51,15 @@ export function targetsOf(view: Snapshot, t: T = swedish) {
 export function PlaySheet({ view, count, label, onPlay, onClose, refusal, refusedZone = null }: PlaySheetProps) {
   const t = useT()
   return (
-    <div className="byd-sheet-backdrop" onClick={onClose}>
+    // The backdrop closes on the next touch rather than on click: the sheet opens under a finger
+    // that is still down, and a click is what the browser sends when that finger lets go (UX-30).
+    <div className="byd-sheet-backdrop" onPointerDown={onClose}>
       <div
         className="byd-sheet"
         role="dialog"
         aria-modal="true"
         aria-label={t('play.sheet.title')}
-        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           if (e.key === 'Escape') onClose()
         }}
@@ -65,10 +68,13 @@ export function PlaySheet({ view, count, label, onPlay, onClose, refusal, refuse
           {t('play.sheet.verb')} <strong>{count > 1 ? t('play.cards.other', { n: count }) : label}</strong> {t('play.sheet.into')}
         </p>
         <div className="byd-sheet-targets">
-          {targetsOf(view, t).map((target) => (
+          {targetsOf(view, t).map((target, i) => (
             <button
               key={target.id}
               type="button"
+              // The sheet takes focus when it opens, on the target a thumb would land on first:
+              // a modal without focus is one Escape and Tab cannot reach.
+              autoFocus={i === 0}
               onClick={() => onPlay(target.id, target.at)}
               className={refusedZone === target.id ? 'byd-status-refused-control' : undefined}
               {...(refusedZone === target.id && refusal ? refusal.control : {})}

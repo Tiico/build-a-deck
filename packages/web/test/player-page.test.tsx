@@ -100,6 +100,30 @@ describe('PlayerPage', () => {
     expect((await run.store.read(id)).map((l) => l.intent.v)).toEqual(['seat.claim'])
   })
 
+  // A tap is a pointerdown and a pointerup, and the browser sends a click after them to whatever
+  // is under the finger by then. The inspection opened on the pointerup, so the click landed on
+  // the inspection, which closed on click: on a phone the card flashed and was gone.
+  it('a tap holds the card up, and the click the browser sends after the tap does not put it down', async () => {
+    const id = await createSession(run)
+    const table = TableClient.connect(await asTable(run, id))
+    await table.ready()
+    await open(id, 'A', 'Ada')
+    await table.synced(1)
+    await table.send({ v: 'deal', from: 'draw', to: ['hand:A'], each: 1 })
+    await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1))
+    const card = document.querySelector('[data-hand-card]')!
+    fireEvent.pointerDown(card, { clientX: 100, clientY: 600 })
+    fireEvent.pointerUp(card, { clientX: 100, clientY: 600 })
+    const held = document.querySelector('.byd-inspect')
+    expect(held).not.toBeNull()
+    fireEvent.click(held!)
+    expect(document.querySelector('.byd-inspect')).not.toBeNull()
+    // The next touch anywhere puts it down.
+    fireEvent.pointerDown(document.querySelector('.byd-inspect')!)
+    expect(document.querySelector('.byd-inspect')).toBeNull()
+    table.close()
+  })
+
   it('lifting a card and choosing a zone plays it there — one envelope, seen by the table', async () => {
     const id = await createSession(run)
     const table = TableClient.connect(await asTable(run, id))

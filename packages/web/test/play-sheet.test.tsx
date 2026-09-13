@@ -46,6 +46,18 @@ describe('PlaySheet (C4 zone shortcuts)', () => {
   })
 })
 
+describe('where the sheet leaves the keyboard', () => {
+  // A modal that opens without taking focus is one Escape and Tab cannot reach: the keys go to
+  // whatever was focused underneath. The first target is where a thumb would land too.
+  it('takes focus on its first target when it opens', () => {
+    const { view } = buildScene()
+    render(<PlaySheet view={view('A')} count={1} label="dragon" onPlay={() => undefined} onClose={() => undefined} />)
+    const dialog = screen.getByRole('dialog', { name: 'Spela till' })
+    expect(dialog.contains(document.activeElement)).toBe(true)
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: /Kasta/ }))
+  })
+})
+
 describe('what is not a target (C4)', () => {
   it('leaves out another seat\'s private area and any zone that holds only counters, and keeps one\'s own area', () => {
     const { view } = buildScene()

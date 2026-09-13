@@ -10,6 +10,7 @@ import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from 
 import { CARD_MM, absoluteOf, dropIntents, type Drag, type DragTarget } from './drop.js'
 import { DEFAULT_TIMING } from '../status/connection.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
+import { COUNTER_TYPE } from './keyboard.js'
 import { ringCentre } from './ring.js'
 import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_MM, edgeRotation, fanPlace, feltWithHands, handExtent } from './hand.js'
 import { nameAt } from './labels.js'
@@ -80,7 +81,6 @@ const POINT_MS = 450
 const DRAG_MM = 4
 const TABLE_GREY = '#8a93a8'
 // A counter token (C4) is drawn as a chip, not a card.
-const COUNTER_TYPE = 'token.counter'
 const TOKEN_MM = 24
 // The narrowest chip that still has room for the name under the number, in screen pixels.
 const TOKEN_NAME_PX = 34

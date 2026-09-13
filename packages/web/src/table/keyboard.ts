@@ -135,13 +135,27 @@ const handName = (view: Snapshot, z: ZoneView, t: T): string => {
   return z.owner === view.seat ? t('kbd.hand.my') : t('kbd.hand.other', { name: seat?.name ?? z.owner ?? '' })
 }
 
+// The counter token's type id (engine's TOKEN_COUNTER): a count with a value, never a card.
+export const COUNTER_TYPE = 'token.counter'
+
 export function placesFor(view: Snapshot, moving: ReadonlySet<string>, sourceZone: string | null, t: T = swedish): Place[] {
   // A hand nobody is sitting at is not a place to put a card: it would be handed to no one, and
   // it has no name to be offered under either.
   const seated = new Set(view.seats.filter((s) => s.name !== null).map((s) => s.id))
+  // The same two rules the phone's sheet keeps (C4): a seat is never offered another seat's own
+  // area — the table itself, which has no seat, sees them all — and a zone that holds nothing
+  // but counters is not a place for cards at all.
+  const byZone = new Map<string, VisibleComponentState[]>()
+  for (const c of view.components) byZone.set(c.zone, [...(byZone.get(c.zone) ?? []), c])
+  const countersOnly = (id: string) => {
+    const inside = byZone.get(id) ?? []
+    return inside.length > 0 && inside.every((c) => c.type.id === COUNTER_TYPE)
+  }
   const zones: Place[] = view.zones
     .filter((z) => !(z.kind === 'area' && z.id === view.floor))
     .filter((z) => z.kind !== 'hand' || (z.owner !== undefined && seated.has(z.owner)))
+    .filter((z) => view.seat === null || z.kind === 'hand' || z.owner === undefined || z.owner === view.seat)
+    .filter((z) => !countersOnly(z.id))
     .map((z): Place => {
       const n = countOf(z)
       const one = n === 1 ? 'one' : 'other'
@@ -157,8 +171,9 @@ export function placesFor(view: Snapshot, moving: ReadonlySet<string>, sourceZon
   const floor = view.zones.find((z) => z.id === view.floor)
   const onFloor: Place[] = floor ? [{ key: `z:${floor.id}`, label: t('kbd.place.floor'), hint: t('kbd.place.floor.hint'), zone: floor.id, kind: 'area' }] : []
   const areas = new Set(view.zones.filter((z) => z.kind === 'area').map((z) => z.id))
+  // A counter is not something a card stacks on (K1 is about cards).
   const cards: Place[] = view.components
-    .filter((c) => areas.has(c.zone) && !moving.has(c.id))
+    .filter((c) => areas.has(c.zone) && !moving.has(c.id) && c.type.id !== COUNTER_TYPE)
     .map((c): Place => ({
       key: `c:${c.id}`,
       label: t('kbd.place.onCard', { name: cardName(c, t) }),
