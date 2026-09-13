@@ -52,12 +52,20 @@ Eller hela stacken som containrar: `docker compose up --build`, som serverar web
 
 ### Demodata
 
+Demodatan är ett riktigt spel — *Sal's Saloon*, en vilda västern-lek — som dess designark
+exporterade det: [`packages/server/scripts/spelkort.csv`](packages/server/scripts/spelkort.csv),
+en rad per fysiskt kort, 146 kort i åtta typer och sex rariteter. Båda skripten bygger sitt spel
+från arket via [`spelkort.ts`](packages/server/scripts/spelkort.ts); identiska kort blir en rad
+med `antal`.
+
 ```bash
-pnpm --filter @byd/server seed http://localhost:8080 demo           # ett bord mitt i ett spel, fyra platser
-pnpm --filter @byd/server seed:project http://localhost:8080 demo   # ett projekt att öppna i editorn
+pnpm --filter @byd/server seed http://localhost:8080 demo           # ett bord mitt i spelet, fyra platser
+pnpm --filter @byd/server seed:project http://localhost:8080 demo   # spelet som projekt att öppna i editorn
 ```
 
-Skripten skriver ut länkarna till bordet (`/table?…`) respektive editorn (`/editor?…`).
+`seed:project` loggar in som `demo@example.com` (tredje argumentet byter adress), vilket kräver att
+servern startats med `AUTH_BYPASS=true`. Skripten skriver ut länkarna till bordet (`/table?…`)
+respektive editorn (`/editor?…`).
 Telefonen ansluter via QR-koden i TV-läget, eller direkt: `/join?session=…`.
 
 ## Sidor

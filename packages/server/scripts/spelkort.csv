@@ -1,0 +1,270 @@
+number,card title,description,cardtype,front cardtype,back cardtype,title color,rarity,rarity icon,back rarity icon
+1,Juice em' up!,Välj två andra spelare. De blandar en shot till varann,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#6D9EEB,Diamant,RarityIcon=Diamant,RarityIcon=NONE
+2,Sal's Saloon,"Saloonen öppnar! 
+Lägg upp ett shopkort per spelare som går in. I turordning från dig: slå tärningen – slaget plus ditt guld är din budget. Köp ett eller flera kort eller avstå",Location,CardFrontType=Location,CardBackType=Location,#FFD700,Guld,RarityIcon=Guld,RarityIcon=NONE
+3,Sal's Saloon,"Saloonen öppnar! 
+Lägg upp ett shopkort per spelare som går in. I turordning från dig: slå tärningen – slaget plus ditt guld är din budget. Köp ett eller flera kort eller avstå",Location,CardFrontType=Location,CardBackType=Location,#FFD700,Guld,RarityIcon=Guld,RarityIcon=NONE
+4,DustyDice Casino,"Välkommen till kasinot!
+
+Alla annonserar sin insats (1–10 klunkar) och slår sedan en tärning samtidigt.
+5–6: dela ut dubbla insatsen.
+1–4: drick din insats.
+
+🏴‍☠️ - Här går det att sälja dina stöldgods",Location,CardFrontType=Location,CardBackType=Location,#FFD700,Guld,RarityIcon=Guld,RarityIcon=NONE
+5,DustyDice Casino,"Välkommen till kasinot!
+
+Alla annonserar sin insats (1–10 klunkar) och slår sedan en tärning samtidigt.
+5–6: dela ut dubbla insatsen.
+1–4: drick din insats.
+
+🏴‍☠️ - Här går det att sälja dina stöldgods",Location,CardFrontType=Location,CardBackType=Location,#FFD700,Guld,RarityIcon=Guld,RarityIcon=NONE
+6,Free for all,Era stöldgods är i fara! Så länge effekten ligger får ni sno varandras stöldgodskort. Blir du påkommen (någon säger till medan du snor) dricker du kortets värde i klunkar,Effect,CardFrontType=Effect,CardBackType=Effect,#FF0000,Special,RarityIcon=Special,RarityIcon=NONE
+7,Duel,Utmana en spelare på duell. Förloraren dricker 3,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=NONE
+8,Duel,Utmana en spelare på duell. Förloraren dricker 3,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=NONE
+9,Duel,Utmana en spelare på duell. Förloraren dricker 3,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=NONE
+10,Duel,Utmana en spelare på duell. Förloraren dricker 3,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=NONE
+11,Duel,Utmana en spelare på duell. Förloraren dricker 5,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+12,Duel,Utmana en spelare på duell. Förloraren dricker 5,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+13,Duel,Utmana en spelare på duell. Förloraren dricker 5,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+14,Duel,Utmana en spelare på duell. Förloraren dricker 5,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+15,Duel,Utmana en spelare på duell. Förloraren dricker 7,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FFD700,Guld,RarityIcon=Guld,RarityIcon=NONE
+16,Duel,Utmana en spelare på duell. Förloraren dricker 7,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FFD700,Guld,RarityIcon=Guld,RarityIcon=NONE
+17,Duel,Utmana en spelare på duell. Vinnaren blandar en shot till förloraren,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#6D9EEB,Diamant,RarityIcon=Diamant,RarityIcon=NONE
+18,Saddle Pals,"Välj en annan spelare. Ni är allierade resten av spelet.
+När en av er får klunkar dricker BÅDA fullt.
+Båda delar ut +2 klunkar",Playcard,CardFrontType=Playcard,CardBackType=Playcard,#6D9EEB,Diamant,RarityIcon=Diamant,RarityIcon=NONE
+19,Standoff,Dela upp er i två lag efter hur ni sitter. Öppna en ny enhet och duellera lag mot lag – laget som druckit upp sist förlorar. Vinnarna går raka vägen till Sal's Saloon,Event,CardFrontType=Event,CardBackType=Event,#6D9EEB,Diamant,RarityIcon=Diamant,RarityIcon=NONE
+20,Zorro's here!,Zorro är här för att stoppa er. Slå en tärning var. Slår MINST HÄLFTEN 4 eller mer kommer ni undan. Annars beslagtar Zorro allt stöldgods och alla dricker 5,Event,CardFrontType=Event,CardBackType=Event,#FFD700,Guld,RarityIcon=Guld,RarityIcon=NONE
+21,Zorro's here!,Zorro är här för att stoppa er. Slå en tärning var. Slår MINST HÄLFTEN 4 eller mer kommer ni undan. Annars beslagtar Zorro allt stöldgods och alla dricker 5,Event,CardFrontType=Event,CardBackType=Event,#FFD700,Guld,RarityIcon=Guld,RarityIcon=NONE
+22,The Heist,"Ni ska försöka råna ett bankvalv. 
+
+Råna valvet: 3 guld + allt i The Bank. Ta upp till 2 kompanjoner och dela vinsten.
+Slå en tärning var per omgång. 4+ av någon = omgången lyckas. Tre i rad = valvet är ert.
+Miss: alla dricker 5",Event,CardFrontType=Event,CardBackType=Event,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+23,The Heist,"Ni ska försöka råna ett bankvalv. 
+
+Råna valvet: 3 guld + allt i The Bank. Ta upp till 2 kompanjoner och dela vinsten.
+Slå en tärning var per omgång. 4+ av någon = omgången lyckas. Tre i rad = valvet är ert.
+Miss: alla dricker 5",Event,CardFrontType=Event,CardBackType=Event,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+24,The Heist,"Ni ska försöka råna ett bankvalv. 
+
+Råna valvet: 3 guld + allt i The Bank. Ta upp till 2 kompanjoner och dela vinsten.
+Slå en tärning var per omgång. 4+ av någon = omgången lyckas. Tre i rad = valvet är ert.
+Miss: alla dricker 5",Event,CardFrontType=Event,CardBackType=Event,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+25,Stolen Goods,"1 värdesak! Värde 1. Säljs för 1 guld. Böter 1 klunk.
+
+Dessa går att säljas på två sätt. 
+1. Besök en plats där det står att man kan sälja dem 
+2. Bränn din runda och slå 5 eller 6, misslyckas du måste du slänga 1 stöldgods av ditt val
+
+Var försiktig för det är enkelt att bli av med dessa",Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=NONE
+26,Stolen Goods,"1 värdesak! Värde 1. Säljs för 1 guld. Böter 1 klunk.
+
+Dessa går att säljas på två sätt. 
+1. Besök en plats där det står att man kan sälja dem 
+2. Bränn din runda och slå 5 eller 6, misslyckas du måste du slänga 1 stöldgods av ditt val
+
+Var försiktig för det är enkelt att bli av med dessa",Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=NONE
+27,Stolen Goods,"1 värdesak! Värde 1. Säljs för 1 guld. Böter 1 klunk.
+
+Dessa går att säljas på två sätt. 
+1. Besök en plats där det står att man kan sälja dem 
+2. Bränn din runda och slå 5 eller 6, misslyckas du måste du slänga 1 stöldgods av ditt val
+
+Var försiktig för det är enkelt att bli av med dessa",Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=NONE
+28,Stolen Goods,"1 värdesak! Värde 1. Säljs för 1 guld. Böter 1 klunk.
+
+Dessa går att säljas på två sätt. 
+1. Besök en plats där det står att man kan sälja dem 
+2. Bränn din runda och slå 5 eller 6, misslyckas du måste du slänga 1 stöldgods av ditt val
+
+Var försiktig för det är enkelt att bli av med dessa",Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=NONE
+29,Stolen Goods,"2 värdesaker! Värde 2. Säljs för 2 guld. Böter 2 klunkar.
+
+Dessa går att säljas på två sätt. 
+1. Besök en plats där det står att man kan sälja dem 
+2. Bränn din runda och slå 5 eller 6, misslyckas du måste du slänga 1 stöldgods av ditt val
+
+Var försiktig för det är enkelt att bli av med dessa",Playcard,CardFrontType=Playcard,CardBackType=Playcard,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+30,Stolen Goods,"2 värdesaker! Värde 2. Säljs för 2 guld. Böter 2 klunkar.
+
+Dessa går att säljas på två sätt. 
+1. Besök en plats där det står att man kan sälja dem 
+2. Bränn din runda och slå 5 eller 6, misslyckas du måste du slänga 1 stöldgods av ditt val
+
+Var försiktig för det är enkelt att bli av med dessa",Playcard,CardFrontType=Playcard,CardBackType=Playcard,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+31,Stolen Goods,"2 värdesaker! Värde 2. Säljs för 2 guld. Böter 2 klunkar.
+
+Dessa går att säljas på två sätt. 
+1. Besök en plats där det står att man kan sälja dem 
+2. Bränn din runda och slå 5 eller 6, misslyckas du måste du slänga 1 stöldgods av ditt val
+
+Var försiktig för det är enkelt att bli av med dessa",Playcard,CardFrontType=Playcard,CardBackType=Playcard,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+32,Stolen Goods,"2 värdesaker! Värde 2. Säljs för 2 guld. Böter 2 klunkar.
+
+Dessa går att säljas på två sätt. 
+1. Besök en plats där det står att man kan sälja dem 
+2. Bränn din runda och slå 5 eller 6, misslyckas du måste du slänga 1 stöldgods av ditt val
+
+Var försiktig för det är enkelt att bli av med dessa",Playcard,CardFrontType=Playcard,CardBackType=Playcard,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+33,Stolen Goods,"3 värdesaker! Värde 3. Säljs för 3 guld. Böter 3 klunkar.
+
+Dessa går att säljas på två sätt. 
+1. Besök en plats där det står att man kan sälja dem 
+2. Bränn din runda och slå 5 eller 6, misslyckas du måste du slänga 1 stöldgods av ditt val
+
+Var försiktig för det är enkelt att bli av med dessa",Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FFD700,Guld,RarityIcon=Guld,RarityIcon=NONE
+34,Stolen Goods,"3 värdesaker! Värde 3. Säljs för 3 guld. Böter 3 klunkar.
+
+Dessa går att säljas på två sätt. 
+1. Besök en plats där det står att man kan sälja dem 
+2. Bränn din runda och slå 5 eller 6, misslyckas du måste du slänga 1 stöldgods av ditt val
+
+Var försiktig för det är enkelt att bli av med dessa",Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FFD700,Guld,RarityIcon=Guld,RarityIcon=NONE
+35,The Alley,"I gränden kan man stöta på mycket skumma typer, slå en tärning.
+1-2: Ajdå! Du stöter på en skum typ och blir skjuten, drick 5
+3-4: Lokala alkisen bjussar på en jäkel, dela ut 5
+5-6: Du träffar Hasse som visar dig bakvägen in till Sal's Saloon",Location,CardFrontType=Location,CardBackType=Location,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+36,The Alley,"I gränden kan man stöta på mycket skumma typer, slå en tärning.
+1-2: Ajdå! Du stöter på en skum typ och blir skjuten, drick 5
+3-4: Lokala alkisen bjussar på en jäkel, dela ut 5
+5-6: Du träffar Hasse som visar dig bakvägen in till Sal's Saloon",Location,CardFrontType=Location,CardBackType=Location,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+37,The Alley,"I gränden kan man stöta på mycket skumma typer, slå en tärning.
+1-2: Ajdå! Du stöter på en skum typ och blir skjuten, drick 5
+3-4: Lokala alkisen bjussar på en jäkel, dela ut 5
+5-6: Du träffar Hasse som visar dig bakvägen in till Sal's Saloon",Location,CardFrontType=Location,CardBackType=Location,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+38,The Alley,"I gränden kan man stöta på mycket skumma typer, slå en tärning.
+1-2: Ajdå! Du stöter på en skum typ och blir skjuten, drick 5
+3-4: Lokala alkisen bjussar på en jäkel, dela ut 5
+5-6: Du träffar Hasse som visar dig bakvägen in till Sal's Saloon",Location,CardFrontType=Location,CardBackType=Location,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+39,Sheriff's Check,"Har du stöldgods: annonsera två siffror och slå. Slår du en av siffrorna du sa så tar sheriffen allt ditt stöldgods.
+Har du inget: tjalla på någon som har. Den annonserar två egna siffror och slår i stället",Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=NONE
+40,Sheriff's Check,"Har du stöldgods: annonsera två siffror och slå. Slår du en av siffrorna du sa så tar sheriffen allt ditt stöldgods.
+Har du inget: tjalla på någon som har. Den annonserar två egna siffror och slår i stället",Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=NONE
+41,Sheriff's Check,"Har du stöldgods: annonsera två siffror och slå. Slår du en av siffrorna du sa så tar sheriffen allt ditt stöldgods.
+Har du inget: tjalla på någon som har. Den annonserar två egna siffror och slår i stället",Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=NONE
+42,Sheriff's Check,"Har du stöldgods: annonsera två siffror och slå. Slår du en av siffrorna du sa så tar sheriffen allt ditt stöldgods.
+Har du inget: tjalla på någon som har. Den annonserar två egna siffror och slår i stället",Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=NONE
+43,Deflect,"Klunkarna riktade mot dig går istället till dina grannar, båda dricker full mängd",Trap+,CardFrontType=Trap+,CardBackType=Trap+,#FFD700,Guld,RarityIcon=Guld,RarityIcon=Guld
+44,Deflect,"Klunkarna riktade mot dig går istället till dina grannar, båda dricker full mängd",Trap+,CardFrontType=Trap+,CardBackType=Trap+,#FFD700,Guld,RarityIcon=Guld,RarityIcon=Guld
+45,Reflection,"Tillbakakaka gubbjävel, ge tillbaka klunkarna till den som delade ut dem",Trap+,CardFrontType=Trap+,CardBackType=Trap+,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=Silver
+46,Reflection,"Tillbakakaka gubbjävel, ge tillbaka klunkarna till den som delade ut dem",Trap+,CardFrontType=Trap+,CardBackType=Trap+,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=Silver
+47,Reflection,"Tillbakakaka gubbjävel, ge tillbaka klunkarna till den som delade ut dem",Trap+,CardFrontType=Trap+,CardBackType=Trap+,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=Silver
+48,Reflection,"Tillbakakaka gubbjävel, ge tillbaka klunkarna till den som delade ut dem",Trap+,CardFrontType=Trap+,CardBackType=Trap+,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=Silver
+49,Double Down,Den som delar ut klunkar till dig får tillbaka dem och tar dessutom en shot som en annan spelare väljer,Trap+,CardFrontType=Trap+,CardBackType=Trap+,#6D9EEB,Diamant,RarityIcon=Diamant,RarityIcon=Diamant
+50,Final Shootout,"Sista kortet i leken, gå varvet runt och spela en stor duell mot varann, vinnaren donerar en del av sin dryck till Sal's Concucktion™ och slinker undan. Repetera tills det bara finns en spelare kvar, denna spelare måste ta sig an Sal's Concucktion™. 
+Karaktärer och shopkort från Sal's Saloon gäller här – inget annat",Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FF0000,Special,RarityIcon=Special,RarityIcon=NONE
+51,The Bank,"Du kan sätta in ditt guld i banken. Bankat guld räknas med när du handlar i saloonen, men kan gå förlorat i The Heist",Location,CardFrontType=Location,CardBackType=Location,#FFD700,Guld,RarityIcon=Guld,RarityIcon=NONE
+52,The Bank,"Du kan sätta in ditt guld i banken. Bankat guld räknas med när du handlar i saloonen, men kan gå förlorat i The Heist",Location,CardFrontType=Location,CardBackType=Location,#FFD700,Guld,RarityIcon=Guld,RarityIcon=NONE
+53,Cactus Hugger,"Dålig idé att krama en kaktus, Drick 2",Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=NONE
+54,Cactus Hugger,"Dålig idé att krama en kaktus, Drick 2",Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=NONE
+55,Snake in the boot,Orm i stöveln! Drick 4,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+56,Snake in the boot,Orm i stöveln! Drick 4,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+57,Snake in the boot,Orm i stöveln! Drick 4,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+58,Snake in the boot,Orm i stöveln! Drick 4,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+59,Buckaroo's Backfire,Hästen sparkar skiten ur dig! Drick 6,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FFD700,Guld,RarityIcon=Guld,RarityIcon=NONE
+60,Buckaroo's Backfire,Hästen sparkar skiten ur dig! Drick 6,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FFD700,Guld,RarityIcon=Guld,RarityIcon=NONE
+61,Shoot from the hip,Lyckoträff från höften. Dela ut 2,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=NONE
+62,Shoot from the hip,Lyckoträff från höften. Dela ut 2,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=NONE
+63,Quickdraw,Ingen drar snabbare än dig. Dela ut 4,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+64,Quickdraw,Ingen drar snabbare än dig. Dela ut 4,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+65,Quickdraw,Ingen drar snabbare än dig. Dela ut 4,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+66,Quickdraw,Ingen drar snabbare än dig. Dela ut 4,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+67,Bullseye,Rakt mellan ögonen. Dela ut 6,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FFD700,Guld,RarityIcon=Guld,RarityIcon=NONE
+68,Bullseye,Rakt mellan ögonen. Dela ut 6,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FFD700,Guld,RarityIcon=Guld,RarityIcon=NONE
+69,Drunken Gambler,Du dricker alltid 1 klunk mer än kortet säger. När du delar ut SHOTS delar du ut dubbelt så många,Character,CardFrontType=Character,CardBackType=Character,#FF00FF,Karaktär,RarityIcon=Karaktär,RarityIcon=NONE
+70,Lucky Luuk,Du har +1 i dueller,Character,CardFrontType=Character,CardBackType=Character,#FF00FF,Karaktär,RarityIcon=Karaktär,RarityIcon=NONE
+71,Sore Loser Lou,I dueller räknas både 1 och 6 som att du slår 6,Character,CardFrontType=Character,CardBackType=Character,#FF00FF,Karaktär,RarityIcon=Karaktär,RarityIcon=NONE
+72,Big Busta,Du delar ut och dricker 2 extra klunkar,Character,CardFrontType=Character,CardBackType=Character,#FF00FF,Karaktär,RarityIcon=Karaktär,RarityIcon=NONE
+73,Lightweight Lenny,Du delar ut och dricker 1 klunk mindre,Character,CardFrontType=Character,CardBackType=Character,#FF00FF,Karaktär,RarityIcon=Karaktär,RarityIcon=NONE
+74,Goldrush Gus,Varje gång du säljer stöldgods får du 1 guld extra,Character,CardFrontType=Character,CardBackType=Character,#FF00FF,Karaktär,RarityIcon=Karaktär,RarityIcon=NONE
+75,Lightweight Lisa,Du delar ut och dricker 1 klunk mindre,Character,CardFrontType=Character,CardBackType=Character,#FF00FF,Karaktär,RarityIcon=Karaktär,RarityIcon=NONE
+76,Beermageddon,"Alla andra spelare dricker lika många klunkar varje gång du dricker, resten av spelet",Shopcard,CardFrontType=Shopcard,CardBackType=Shopcard,#6D9EEB,Diamant,RarityIcon=Diamant,RarityIcon=Diamant
+77,Silver bullet,"""+1"" i en duel",Shopcard,CardFrontType=Shopcard,CardBackType=Shopcard,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=Koppar
+78,Silver bullet,"""+1"" i en duel",Shopcard,CardFrontType=Shopcard,CardBackType=Shopcard,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=Koppar
+79,To the brim!,Nästa gång du delar ut klunkar delar du ut 2 extra,Shopcard,CardFrontType=Shopcard,CardBackType=Shopcard,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=Koppar
+80,To the brim!,Nästa gång du delar ut klunkar delar du ut 2 extra,Shopcard,CardFrontType=Shopcard,CardBackType=Shopcard,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=Koppar
+81,Faster Than Your Own Shadow,Vinn en duell automatiskt,Shopcard,CardFrontType=Shopcard,CardBackType=Shopcard,#FFD700,Guld,RarityIcon=Guld,RarityIcon=Guld
+82,Faster Than Your Own Shadow,Vinn en duell automatiskt,Shopcard,CardFrontType=Shopcard,CardBackType=Shopcard,#FFD700,Guld,RarityIcon=Guld,RarityIcon=Guld
+83,Lazy Lloyd,Du kan när som helst be valfri spelare hämta ny dryck åt dig – vägrar den dricker den 2. En gång per spel kan du låta en annan spelare ta dina klunkar.,Character,CardFrontType=Character,CardBackType=Character,#FF00FF,Karaktär,RarityIcon=Karaktär,RarityIcon=NONE
+84,Poisoned,Lägg kortet framför en annan spelare. Den har -1 i dueller under SIN NÄSTA TUR. Sedan slängs kortet,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+85,Poisoned,Lägg kortet framför en annan spelare. Den har -1 i dueller under SIN NÄSTA TUR. Sedan slängs kortet,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+86,Jägerbomb,Blanda in kortet i spelleken upp och ner. Den som drar det dricker 6.,Shopcard,CardFrontType=Shopcard,CardBackType=Shopcard,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=Silver
+87,Jägerbomb,Blanda in kortet i spelleken upp och ner. Den som drar det dricker 6.,Shopcard,CardFrontType=Shopcard,CardBackType=Shopcard,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=Silver
+88,Cholera,Välj en spelare. Den har ett varv på sig att avsluta sin dryck. Misslyckas den tar den också en shot,Shopcard,CardFrontType=Shopcard,CardBackType=Shopcard,#6D9EEB,Diamant,RarityIcon=Diamant,RarityIcon=Diamant
+89,Tumbleweed Town,Stan är tyst. Ingen får prata under sin egen tur – den som gör det dricker 2.,Effect,CardFrontType=Effect,CardBackType=Effect,#FF0000,Special,RarityIcon=Special,RarityIcon=NONE
+90,Rolling Stone,"Stoppa bumlingen och få en belöning! Detta är ett ""växande"" kort, 
+Dela ut 1 klunk och passa kortet medsols. Nästa delar ut 2, sedan 3, upp till 8. Kedjan kan inte brytas. Den som dricker de sista 8 får 1 guld.",Playcard,CardFrontType=Playcard,CardBackType=Playcard,#6D9EEB,Diamant,RarityIcon=Diamant,RarityIcon=NONE
+91,Hit by Tumbleweed,Se upp för fan! Drick 2,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=NONE
+92,Hit by Tumbleweed,Se upp för fan! Drick 2,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=NONE
+93,Russian Roulette,"Annonsera lågt (1–3) eller högt (4–6) och slå en tärning.
+Rätt: dela ut 12. Fel: drick 6.",Shopcard,CardFrontType=Shopcard,CardBackType=Shopcard,#FFD700,Guld,RarityIcon=Guld,RarityIcon=Guld
+94,Russian Roulette,"Annonsera lågt (1–3) eller högt (4–6) och slå en tärning.
+Rätt: dela ut 12. Fel: drick 6.",Shopcard,CardFrontType=Shopcard,CardBackType=Shopcard,#FFD700,Guld,RarityIcon=Guld,RarityIcon=Guld
+95,Shots Fired,"Annonsera lågt (1–3) eller högt (4–6) och slå en tärning.
+Rätt: dela ut 2 shots till en spelare. Fel: ta 1 shot",Shopcard,CardFrontType=Shopcard,CardBackType=Shopcard,#6D9EEB,Diamant,RarityIcon=Diamant,RarityIcon=Diamant
+96,Lucky Draw,Plötsligt händer det. Dela ut 2,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=NONE
+97,Lucky Draw,Plötsligt händer det. Dela ut 2,Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=NONE
+98,Master of the Jukebox,Du bestämmer musiken resten av spelet. En gång per varv kan du peka på en spelare som måste ge namnet på artisten – annars dricker den 3.,Shopcard,CardFrontType=Shopcard,CardBackType=Shopcard,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=Koppar
+99,Master of the Jukebox,Du bestämmer musiken resten av spelet. En gång per varv kan du peka på en spelare som måste ge namnet på artisten – annars dricker den 3.,Shopcard,CardFrontType=Shopcard,CardBackType=Shopcard,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=Koppar
+100,Luck of the Draw,"Du får ett gratis shopkort. Slå en tärning för att bestämma vilket.
+1-2: Koppar
+3-4: Silver
+5: Guld
+6: Diamant",Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FFD700,Guld,RarityIcon=Guld,RarityIcon=NONE
+101,Luck of the Draw,"Du får ett gratis shopkort. Slå en tärning för att bestämma vilket.
+1-2: Koppar
+3-4: Silver
+5: Guld
+6: Diamant",Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FFD700,Guld,RarityIcon=Guld,RarityIcon=NONE
+102,High Noon,"Lägg detta kort och säg ""High Noon"", sist av medspelarna att dra fram sina fingerguns dricker 6",Shopcard,CardFrontType=Shopcard,CardBackType=Shopcard,#FFD700,Guld,RarityIcon=Guld,RarityIcon=Guld
+103,High Noon,"Lägg detta kort och säg ""High Noon"", sist av medspelarna att dra fram sina fingerguns dricker 6",Shopcard,CardFrontType=Shopcard,CardBackType=Shopcard,#FFD700,Guld,RarityIcon=Guld,RarityIcon=Guld
+104,SHOTS SHOTS SHOTS,Alla tar en shot. Du väljer en spelare som tar en dubbel,Shopcard,CardFrontType=Shopcard,CardBackType=Shopcard,#6D9EEB,Diamant,RarityIcon=Diamant,RarityIcon=Diamant
+105,The Giver,Alla andra dricker 5,Shopcard,CardFrontType=Shopcard,CardBackType=Shopcard,#FFD700,Guld,RarityIcon=Guld,RarityIcon=Guld
+106,The Giver,Alla andra dricker 5,Shopcard,CardFrontType=Shopcard,CardBackType=Shopcard,#FFD700,Guld,RarityIcon=Guld,RarityIcon=Guld
+107,Fact or Fable,"Säg ett påstående om dig själv, folk gissar sant eller falskt, förlorarna dricker 6",Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FFD700,Guld,RarityIcon=Guld,RarityIcon=NONE
+108,Fact or Fable,"Säg ett påstående om dig själv, folk gissar sant eller falskt, förlorarna dricker 6",Playcard,CardFrontType=Playcard,CardBackType=Playcard,#FFD700,Guld,RarityIcon=Guld,RarityIcon=NONE
+109,Howdy Neighbour,Välj en spelare. Den slår en tärning – den och båda dess grannar dricker så många klunkar.,Shopcard,CardFrontType=Shopcard,CardBackType=Shopcard,#FFD700,Guld,RarityIcon=Guld,RarityIcon=Guld
+110,Howdy Neighbour,Välj en spelare. Den slår en tärning – den och båda dess grannar dricker så många klunkar.,Shopcard,CardFrontType=Shopcard,CardBackType=Shopcard,#FFD700,Guld,RarityIcon=Guld,RarityIcon=Guld
+111,Reverse,"Spelriktningen byts – ni spelar motsols. Och allt byter håll: ska du DRICKA delar du i stället UT, ska du DELA UT dricker du själv.
+Trap och Debuff påverkas inte.",Effect,CardFrontType=Effect,CardBackType=Effect,#FF0000,Special,RarityIcon=Special,RarityIcon=NONE
+112,Hammer Time!,Alla klunkar är +1,Effect,CardFrontType=Effect,CardBackType=Effect,#FF0000,Special,RarityIcon=Special,RarityIcon=NONE
+113,Double Up!,Spelarna får dra två kort per runda,Effect,CardFrontType=Effect,CardBackType=Effect,#FF0000,Special,RarityIcon=Special,RarityIcon=NONE
+114,Wild West,"Fritt fram att satsa 1–5 klunkar och utmana vem du vill på duell, när du vill",Effect,CardFrontType=Effect,CardBackType=Effect,#FF0000,Special,RarityIcon=Special,RarityIcon=NONE
+115,Four-Sure Fred,"I DUELLER: 
+1–3 räknas som 1 och du dricker 3 klunkar
+4–6 räknas som 6
+
+Övriga tärningsslag slår du som vanligt",Character,CardFrontType=Character,CardBackType=Character,#FF00FF,Karaktär,RarityIcon=Karaktär,RarityIcon=NONE
+116,Trapster Trevor,"När en av dina Traps utlöses kan du slå en tärning. 
+Slår du 1–3 behöver du inte slänga kortet – det kan användas en gång till.",Character,CardFrontType=Character,CardBackType=Character,#FF00FF,Karaktär,RarityIcon=Karaktär,RarityIcon=NONE
+117,Devastating Defeat,Förlorar du en duell dricker du +4,Trap-,CardFrontType=Trap-,CardBackType=Trap-,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=Silver
+118,Devastating Defeat,Förlorar du en duell dricker du +4,Trap-,CardFrontType=Trap-,CardBackType=Trap-,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=Silver
+119,Devastating Defeat,Förlorar du en duell dricker du +4,Trap-,CardFrontType=Trap-,CardBackType=Trap-,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=Silver
+120,Devastating Defeat,Förlorar du en duell dricker du +4,Trap-,CardFrontType=Trap-,CardBackType=Trap-,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=Silver
+121,Misfire,Du har -2 i din nästa duell,Trap-,CardFrontType=Trap-,CardBackType=Trap-,#FFD700,Guld,RarityIcon=Guld,RarityIcon=Guld
+122,Misfire,Du har -2 i din nästa duell,Trap-,CardFrontType=Trap-,CardBackType=Trap-,#FFD700,Guld,RarityIcon=Guld,RarityIcon=Guld
+123,Minefield,"När någon delar ut klunkar till dig, slå två tärningar. Två lika: du klarar dig och dricker som vanligt. Annars adderas tärningarna till antalet",Trap-,CardFrontType=Trap-,CardBackType=Trap-,#6D9EEB,Diamant,RarityIcon=Diamant,RarityIcon=Diamant
+124,Mexican Standoff,"Välj tre spelare som duellerar mot varandra. Alla slår, de två lägsta förlorar. Vinnaren delar ut 5 till en av förlorarna",Shopcard,CardFrontType=Shopcard,CardBackType=Shopcard,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=Silver
+125,Mexican Standoff,"Välj tre spelare som duellerar mot varandra. Alla slår, de två lägsta förlorar. Vinnaren delar ut 5 till en av förlorarna",Shopcard,CardFrontType=Shopcard,CardBackType=Shopcard,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=Silver
+126,Selective Drawing,"På din tur: titta på de tre översta korten, välj ett och lägg tillbaka de andra i valfri ordning på toppen. Detta förbrukar din tur",Shopcard,CardFrontType=Shopcard,CardBackType=Shopcard,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=Silver
+127,Selective Drawing,"På din tur: titta på de tre översta korten, välj ett och lägg tillbaka de andra i valfri ordning på toppen. Detta förbrukar din tur",Shopcard,CardFrontType=Shopcard,CardBackType=Shopcard,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=Silver
+128,Saloon Brawl,Slagsmål bryter ut! Alla duellerar samtidigt mot sin vänstra granne. Förlorarna dricker 4,Event,CardFrontType=Event,CardBackType=Event,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=NONE
+129,Saloon Brawl,Slagsmål bryter ut! Alla duellerar samtidigt mot sin vänstra granne. Förlorarna dricker 4,Event,CardFrontType=Event,CardBackType=Event,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=NONE
+130,Saloon Brawl,Slagsmål bryter ut! Alla duellerar samtidigt mot sin vänstra granne. Förlorarna dricker 4,Event,CardFrontType=Event,CardBackType=Event,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=NONE
+131,Saloon Brawl,Slagsmål bryter ut! Alla duellerar samtidigt mot sin vänstra granne. Förlorarna dricker 4,Event,CardFrontType=Event,CardBackType=Event,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=NONE
+132,Cattle Stampede,Boskapen skenar genom stan! Alla slår en tärning. Alla som slår 1–3 trampas ner och dricker 4. Den som slår högst delar ut 4,Event,CardFrontType=Event,CardBackType=Event,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+133,Cattle Stampede,Boskapen skenar genom stan! Alla slår en tärning. Alla som slår 1–3 trampas ner och dricker 4. Den som slår högst delar ut 4,Event,CardFrontType=Event,CardBackType=Event,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+134,Cattle Stampede,Boskapen skenar genom stan! Alla slår en tärning. Alla som slår 1–3 trampas ner och dricker 4. Den som slår högst delar ut 4,Event,CardFrontType=Event,CardBackType=Event,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+135,Wanted Poster,Sheriffen spikar upp en efterlysning. Spelaren med mest stöldgods är efterlyst – alla andra med stöldgods delar ut 2 klunkar var till den efterlysta. Har ingen stöldgods är det du,Event,CardFrontType=Event,CardBackType=Event,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+136,Wanted Poster,Sheriffen spikar upp en efterlysning. Spelaren med mest stöldgods är efterlyst – alla andra med stöldgods delar ut 2 klunkar var till den efterlysta. Har ingen stöldgods är det du,Event,CardFrontType=Event,CardBackType=Event,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+137,Wanted Poster,Sheriffen spikar upp en efterlysning. Spelaren med mest stöldgods är efterlyst – alla andra med stöldgods delar ut 2 klunkar var till den efterlysta. Har ingen stöldgods är det du,Event,CardFrontType=Event,CardBackType=Event,#CCCCCC,Silver,RarityIcon=Silver,RarityIcon=NONE
+138,Last Train Out of Town,Tåget går! Slå en tärning i turordning från dig. Första spelaren som slår 6 hinner ombord och slipper undan. Slår ingen 6 på ett varv dricker alla 5,Event,CardFrontType=Event,CardBackType=Event,#FFD700,Guld,RarityIcon=Guld,RarityIcon=NONE
+139,Last Train Out of Town,Tåget går! Slå en tärning i turordning från dig. Första spelaren som slår 6 hinner ombord och slipper undan. Slår ingen 6 på ett varv dricker alla 5,Event,CardFrontType=Event,CardBackType=Event,#FFD700,Guld,RarityIcon=Guld,RarityIcon=NONE
+140,Dust Storm,"Sandstormen sveper in. Lägg alla Traps på bordet, blanda dem och dela ut dem slumpmässigt igen. Alla dricker 2 medan ni gör det",Event,CardFrontType=Event,CardBackType=Event,#6D9EEB,Diamant,RarityIcon=Diamant,RarityIcon=NONE
+141,Sundown,"Solen går ner. Alla klunkar är -1, men aldrig mindre än 1",Effect,CardFrontType=Effect,CardBackType=Effect,#FF0000,Special,RarityIcon=Special,RarityIcon=NONE
+142,Bounty Season,Alla stöldgods är dubbelt värda vid försäljning,Effect,CardFrontType=Effect,CardBackType=Effect,#FF0000,Special,RarityIcon=Special,RarityIcon=NONE
+143,Quickdraw Hour,Alla dueller avgörs med två tärningar per spelare. Summan gäller.,Effect,CardFrontType=Effect,CardBackType=Effect,#FF0000,Special,RarityIcon=Special,RarityIcon=NONE
+144,Gold Fever,Varje gång en spelare delar ut 5 klunkar eller mer får den 1 guld.,Effect,CardFrontType=Effect,CardBackType=Effect,#FF0000,Special,RarityIcon=Special,RarityIcon=NONE
+145,Steady Hand,Slå om en tärning – din egen eller någon annans.,Shopcard,CardFrontType=Shopcard,CardBackType=Shopcard,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=Koppar
+146,Steady Hand,Slå om en tärning – din egen eller någon annans.,Shopcard,CardFrontType=Shopcard,CardBackType=Shopcard,#FF9902,Koppar,RarityIcon=Koppar,RarityIcon=Koppar
