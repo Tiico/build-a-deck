@@ -7,10 +7,9 @@ import { seatColor } from './seatColor.js'
 import { feltScale, fitScale, LEAST_AIR_PX } from './fit.js'
 import { activeBounds, cameraOf, fitFloor, frameRect, pad, reachOf, same, tween, zoomAround, type Rect, type Size } from './camera.js'
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
-import { CARD_MM, absoluteOf, dropIntents, type Drag, type DragTarget } from './drop.js'
+import { CARD_MM, absoluteOf, dropIntents, isCounter, type Drag, type DragTarget } from './drop.js'
 import { DEFAULT_TIMING } from '../status/connection.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
-import { COUNTER_TYPE } from './keyboard.js'
 import { ringCentre } from './ring.js'
 import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_MM, edgeRotation, fanPlace, feltWithHands, handExtent } from './hand.js'
 import { nameAt } from './labels.js'
@@ -80,7 +79,6 @@ const HOLD_MS = 350
 const POINT_MS = 450
 const DRAG_MM = 4
 const TABLE_GREY = '#8a93a8'
-// A counter token (C4) is drawn as a chip, not a card.
 const TOKEN_MM = 24
 // The narrowest chip that still has room for the name under the number, in screen pixels.
 const TOKEN_NAME_PX = 34
@@ -513,10 +511,12 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           {loose.map((c) => {
             const a = absoluteOf(view, c)
             const m = shifted.has(c.id)
-            if (c.type.id === COUNTER_TYPE) {
+            if (isCounter(c)) {
               // A token is a thing on the felt like any other, so it carries the keyboard's node
-              // too. `thingsOn` has always counted it, and the single tab stop can land on it;
-              // a token that drew no node took that stop with it and left the felt unreachable.
+              // and the pointer's handles both. `thingsOn` has always counted it, and the single
+              // tab stop can land on it; a token that drew no node took that stop with it and
+              // left the felt unreachable. Its address says `counter:` and not `card:`, because a
+              // counter is not a card and the sentence a reader hears is built from that (C4, A4).
               //
               // The chip is 24 mm and the word in it is not: on a felt scaled down to a screen the
               // name grows wider than the disc it stands in and smears over the table. Below the
@@ -530,7 +530,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                   data-counter-token={c.id}
                   data-dragging={lifted.has(c.id) ? 'true' : undefined}
                   {...(onAct ? handlers({ kind: 'counter', id: c.id }) : {})}
-                  {...keys(`card:${c.id}`)}
+                  {...keys(`counter:${c.id}`)}
                   style={{ position: 'absolute', left: left(a.x + (m ? dx : 0)), top: top(a.y + (m ? dy : 0)), width: px(TOKEN_MM), height: px(TOKEN_MM) }}
                 >
                   <b>{c.counter ?? 0}</b>

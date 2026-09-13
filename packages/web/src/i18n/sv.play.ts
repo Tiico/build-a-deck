@@ -70,6 +70,13 @@ export const svPlay = {
   'kbd.hidden': 'Dolt kort',
   'kbd.card': '{name}, kort i {zone}',
   'kbd.card.rotated': '{name}, kort i {zone}, vridet',
+  // En räknare är inte ett kort (C4), och ordlistan ger begreppet sitt eget ord (A4). Värdet står
+  // med i meningen därför att det är det enda brickan visar — talet är hela poängen med en
+  // räknare, och på filten ryms inte ens namnet i den (se `TOKEN_NAME_PX`).
+  'kbd.counter': '{name}, räknare i {zone}, värde {n}',
+  // Namnet på en räknare är designerns (B5) och kan saknas i en vy som inte får se den. Ett korts
+  // reservord är `Dolt kort`, och det skulle smuggla tillbaka `kort` i en brickas mening.
+  'kbd.counter.unnamed': 'Räknare i {zone}, värde {n}',
   'kbd.pile.top': 'Översta kortet i {zone}: {name}',
   'kbd.pile.empty': '{zone}, tom',
   'kbd.pile.whole.one': '{zone}, hela högen, {n} kort',

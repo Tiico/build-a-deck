@@ -51,6 +51,8 @@ export const enPlay = {
   'kbd.hidden': 'Hidden card',
   'kbd.card': '{name}, card in {zone}',
   'kbd.card.rotated': '{name}, card in {zone}, turned',
+  'kbd.counter': '{name}, counter in {zone}, value {n}',
+  'kbd.counter.unnamed': 'Counter in {zone}, value {n}',
   'kbd.pile.top': 'Top card in {zone}: {name}',
   'kbd.pile.empty': '{zone}, empty',
   'kbd.pile.whole.one': '{zone}, the whole pile, {n} card',

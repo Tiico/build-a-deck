@@ -273,3 +273,36 @@ describe('the felt a table opens on (#2)', () => {
     expect(stops().filter((s) => s.endsWith(':0'))).toHaveLength(1)
   })
 })
+
+// The panel that opens on a chip used to be a card's, because the chip's address was a card's
+// (#73). A card's verbs are refused on a counter by the table itself — `token.counter` is
+// `flippable: false` and `stackable: false` — so the panel was offering four things that could
+// not happen, and "Flytta till" sent a flip along with the move and had the whole envelope turned
+// down. What a counter *can* be asked to do is #67's to settle (C4).
+describe('the panel a counter opens (C4, #73)', () => {
+  it('offers a chip no verbs at all, and moves it where it is sent', async () => {
+    const id = await createSession(run, 's1', undefined, seatSetup())
+    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    render(
+      <StatusLive>
+        <TablePage />
+      </StatusLive>,
+    )
+    const user = userEvent.setup()
+    const chip = await screen.findByRole('button', { name: /^Liv, räknare i Räknare A/ })
+    chip.focus()
+    await user.keyboard('{Enter}')
+    const panel = within(await screen.findByRole('dialog'))
+
+    expect(panel.queryByRole('heading', { name: 'Gör' })).toBeNull()
+    for (const verb of ['Vänd', 'Vrid 90°', 'Avslöja', 'Titta']) expect(panel.queryByRole('button', { name: new RegExp(`^${verb}`) })).toBeNull()
+
+    // Where it may go is a question the panel can still answer, and the answer must land.
+    expect(panel.getByRole('heading', { name: 'Flytta till' })).toBeTruthy()
+    await user.click(panel.getByRole('button', { name: /^Bordet/ }))
+    const moved = await screen.findByRole('button', { name: /^Liv, räknare i Spelyta/ })
+    // And the focus goes with it, as it does for a card: a keyboard that loses the thing it just
+    // moved has to start the walk down the felt again.
+    await waitFor(() => expect(document.activeElement).toBe(moved))
+  }, 20_000)
+})

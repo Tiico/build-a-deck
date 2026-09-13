@@ -4,6 +4,8 @@ import { fireEvent, render } from '@testing-library/react'
 import { TypeRegistry, initialState, project, STANDARD_TYPES } from '@byd/engine'
 import type { Snapshot } from '@byd/protocol'
 import { TableRenderer, type TableMode } from '../src/table/TableRenderer.js'
+import { feltLabels } from '../src/table/keyboard.js'
+import { translate, type Lang, type T } from '../src/i18n/index.js'
 import { seatSetup } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
@@ -94,5 +96,54 @@ describe('where a dropped chip lands (K2, C4)', () => {
     // Out of its counter zone and onto the felt: (398, 98) is (898, 398) inside `table`.
     expect(onAct).toHaveBeenCalledWith([{ v: 'move', component: id, to: 'table', x: 898, y: 398 }])
     expect(placeOf(chipOf(id))).toEqual({ left: '898px', top: '398px' })
+  })
+})
+
+// The chip's address was `card:<id>`, the same shape a card's address has, so the sentence a
+// reader heard began "Poäng, kort i Spelyta". A counter is not a card: it has no face to turn and
+// no back to hide, and the glossary gives the concept its own word (A4, C4, #73).
+const noop = (): undefined => undefined
+const stops = (labels: ReadonlyMap<string, string>) => ({
+  labels,
+  itemProps: () => ({ tabIndex: -1, ref: noop, onKeyDown: noop, onFocus: noop }),
+  onActivate: noop,
+})
+// Bounded where the word begins and open where it ends, as the glossary test is: Swedish inflects,
+// so `kort` has to be caught as `kortet` too.
+const saysCard = /\bkort|\bcard/i
+
+describe.each<[Lang, string, string]>([
+  ['sv', 'Liv, räknare i Räknare A, värde 20. Enter öppnar handlingar.', 'Räknare i Räknare A, värde 20. Enter öppnar handlingar.'],
+  ['en', 'Liv, counter in Räknare A, value 20. Enter opens actions.', 'Counter in Räknare A, value 20. Enter opens actions.'],
+])('what a reader is told a chip is, in %s (A4, C4)', (lang, said, saidUnnamed) => {
+  it('says it is a counter, with its value, and never calls it a card', () => {
+    const v = table()
+    const t: T = (key, params) => translate(lang, key, params)
+    render(<TableRenderer view={v} mode="table" scale={2} keyboard={stops(feltLabels(v, t))} />)
+
+    const chip = chipOf(livId(v))
+    expect(chip.getAttribute('role')).toBe('button')
+    expect(chip.getAttribute('aria-label')).toBe(said)
+    expect(chip.getAttribute('aria-label')).not.toMatch(saysCard)
+
+    // The control: the same felt, the same catalogue, a node that really is a card — so the chip's
+    // silence about cards is this sentence and not a pattern that matches nothing.
+    const top = document.querySelector('[data-kbd="top:draw"]')!
+    expect(top.getAttribute('aria-label')).toMatch(saysCard)
+  })
+
+  // A chip standing in a zone whose faces this screen may not see comes through the projection
+  // with no name at all (B6). The word a card falls back on there is `Dolt kort`, and that would
+  // walk `kort` straight back into a counter's sentence by the back door.
+  it('falls back on the counter’s own word, never on a hidden card, when the chip has no name', () => {
+    const v = table()
+    const id = livId(v)
+    const nameless = { ...v, components: v.components.map((c) => (c.id === id ? { ...c, cardRef: null } : c)) }
+    const t: T = (key, params) => translate(lang, key, params)
+    render(<TableRenderer view={nameless} mode="table" scale={2} keyboard={stops(feltLabels(nameless, t))} />)
+
+    const label = chipOf(id).getAttribute('aria-label')
+    expect(label).toBe(saidUnnamed)
+    expect(label).not.toMatch(saysCard)
   })
 })

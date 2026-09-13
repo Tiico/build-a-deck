@@ -1,6 +1,6 @@
 import type { Intent, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
 import { translate, type T } from '../i18n/index.js'
-import { CARD_MM } from './drop.js'
+import { CARD_MM, isCounter } from './drop.js'
 
 // Everything the keyboard says is the tool's own, so it is looked up where the reader is (A4).
 // A call from outside React — a test, a label built before a provider is mounted — gets Swedish,
@@ -17,10 +17,18 @@ const swedish: T = (key, params) => translate('sv', key, params)
 
 // What a keyboard may stand on, in reading order: down the felt, then across. Hands are not
 // here — they are destinations with names, not places to stand.
+// A counter stands on the felt where a card does and travels the same way, so it carries the same
+// fields; what it does not share is the word a reader hears and the verbs a card has (C4, A4).
 export type Thing =
   | { key: string; kind: 'card'; id: string; name: string; zone: string }
+  | { key: string; kind: 'counter'; id: string; name: string; zone: string; value: number }
   | { key: string; kind: 'pileTop'; pile: string; name: string }
   | { key: string; kind: 'pile'; pile: string; name: string; count: number }
+
+// The things that are components and move by `move` — a card and a counter — as against the ones
+// that are a pile or the top of one.
+export const isLoose = (thing: Thing): thing is Extract<Thing, { kind: 'card' | 'counter' }> =>
+  thing.kind === 'card' || thing.kind === 'counter'
 
 // A card's own name is the designer's and is never translated (B5); the words for a card this
 // view may not see are the tool's.
@@ -41,7 +49,14 @@ export function thingsOn(view: Snapshot, t: T = swedish): Thing[] {
   const areas = new Set(view.zones.filter((z) => z.kind === 'area').map((z) => z.id))
   const placed = view.components
     .filter((c) => areas.has(c.zone))
-    .map((c) => ({ at: absolute(view, c), thing: { key: `card:${c.id}`, kind: 'card' as const, id: c.id, name: cardName(c, t), zone: c.zone } }))
+    .map((c) => ({
+      at: absolute(view, c),
+      thing: isCounter(c)
+        ? // A counter's name is the designer's word and nothing stands in for it: a chip this view
+          // may not read has no name, rather than a card's `Dolt kort` (B5, B6).
+          ({ key: `counter:${c.id}`, kind: 'counter', id: c.id, name: c.cardRef ?? '', zone: c.zone, value: c.counter ?? 0 } satisfies Thing)
+        : ({ key: `card:${c.id}`, kind: 'card', id: c.id, name: cardName(c, t), zone: c.zone } satisfies Thing),
+    }))
   const piles = view.zones
     .filter((z) => z.kind === 'pile')
     .flatMap((z) => {
@@ -58,6 +73,10 @@ export function thingsOn(view: Snapshot, t: T = swedish): Thing[] {
 
 // The sentence a reader hears when focus lands on a thing.
 export function labelOf(view: Snapshot, thing: Thing, t: T = swedish): string {
+  if (thing.kind === 'counter') {
+    const said = { zone: zoneName(view, thing.zone), n: thing.value }
+    return thing.name === '' ? t('kbd.counter.unnamed', said) : t('kbd.counter', { name: thing.name, ...said })
+  }
   if (thing.kind === 'card') {
     const c = view.components.find((x) => x.id === thing.id)
     const turned = c !== undefined && c.rot % 360 !== 0
@@ -88,6 +107,11 @@ export function feltLabels(view: Snapshot, t: T = swedish): Map<string, string> 
 export type Act = { key: string; label: string; hint?: string; intents: Intent[] | null; look?: string }
 
 export function verbsFor(view: Snapshot, thing: Thing, t: T = swedish): Act[] {
+  // A counter has none yet, and a card's are not a counter's: it has no face to turn, no back to
+  // reveal and nothing to look at up close. What a counter can be asked to do is #67's to settle,
+  // and until it does the panel says nothing rather than offering a card's verbs on a chip. Where
+  // the chip can go is a different question, and "Flytta till" still answers it.
+  if (thing.kind === 'counter') return []
   if (thing.kind === 'card') {
     const c = view.components.find((x) => x.id === thing.id)
     if (!c) return []
@@ -213,14 +237,17 @@ export function intentsForPlace(view: Snapshot, place: Place, thing: Thing, movi
     if (place.kind === 'card' && place.anchor) return [{ v: 'stack', component: { top: thing.pile }, onto: place.anchor.id }]
     return [{ v: 'split', pile: thing.pile, at: 1, to: place.zone }]
   }
-  if (place.kind === 'card' && place.anchor) {
+  // A chip stacks on nothing — `token.counter` is `stackable: false`, and the table says so — so
+  // where a card would join the one it was sent to, a counter goes to that card's zone instead.
+  if (place.kind === 'card' && place.anchor && thing.kind !== 'counter') {
     const onto = place.anchor.id
     return moving.map((id): Intent => ({ v: 'stack', component: id, onto }))
   }
   const z = view.zones.find((x) => x.id === place.zone)
   // A card played into a public area turns face up as a hand would (K11) — the same two verbs
-  // the phone's sheet already sends.
-  const isPublic = z?.kind === 'area' && z.mode === 'order'
+  // the phone's sheet already sends. A counter has one face and no back to turn from: it is
+  // `flippable: false`, and the flip sent with the move had the whole envelope refused.
+  const isPublic = z?.kind === 'area' && z.mode === 'order' && thing.kind !== 'counter'
   return moving.flatMap((id, i): Intent[] => {
     const slot = z?.kind === 'area' ? slotIn(view, place.zone) : null
     const to: Intent = { v: 'move', component: id, to: place.zone, ...(slot ? { x: slot.x + i * (CARD_MM.w + SLOT_GAP), y: slot.y } : {}) }
@@ -234,9 +261,11 @@ const PILE_CORNER = 90
 // on the felt, otherwise on the place that swallowed it — which is where the eye goes too.
 export function landedKeyFor(view: Snapshot, place: Place, thing: Thing): string {
   const z = view.zones.find((x) => x.id === place.zone)
-  if (place.kind === 'card') return `card:${place.anchor?.id ?? ''}`
+  // A chip stacks on nothing: sent onto a card it lands in that card's zone, still itself, so the
+  // focus stays on the chip where a card's would follow it into the pile it made.
+  if (place.kind === 'card') return thing.kind === 'counter' ? thing.key : `card:${place.anchor?.id ?? ''}`
   if (z?.kind === 'pile') return `top:${z.id}`
-  if (z?.kind === 'area' && thing.kind === 'card') return `card:${thing.id}`
+  if (z?.kind === 'area' && isLoose(thing)) return thing.key
   return `top:${place.zone}`
 }
 

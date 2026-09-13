@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { Intent, Snapshot, VisibleComponentState } from '@byd/protocol'
-import { placesFor, verbsFor, type Place, type Thing } from './keyboard.js'
+import { isLoose, placesFor, verbsFor, type Place, type Thing } from './keyboard.js'
 import { useT } from '../i18n/index.js'
 import './keyboard.css'
 
@@ -29,11 +29,11 @@ export type ActionPanelProps = {
 
 export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, intentsFor, landedKey }: ActionPanelProps) {
   const t = useT()
-  const moving = cards.length > 0 ? [...cards] : thing.kind === 'card' ? [thing.id] : []
+  const moving = cards.length > 0 ? [...cards] : isLoose(thing) ? [thing.id] : []
   const verbs = verbsFor(view, thing, t)
-  // A thing is never offered the place it already is: a card its own zone, a pile itself —
-  // the table refuses "cannot split a pile onto itself", so the panel does not ask.
-  const places = placesFor(view, new Set(moving), thing.kind === 'card' ? thing.zone : thing.pile, t)
+  // A thing is never offered the place it already is: a card or a chip its own zone, a pile
+  // itself — the table refuses "cannot split a pile onto itself", so the panel does not ask.
+  const places = placesFor(view, new Set(moving), isLoose(thing) ? thing.zone : thing.pile, t)
   const first = useRef<HTMLButtonElement | null>(null)
   useEffect(() => first.current?.focus(), [])
   // Several marked cards are counted; a single thing is called what it is called, which for a
