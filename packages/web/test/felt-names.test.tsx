@@ -8,7 +8,7 @@
 // own rectangle scores zero and clips twelve names of sixteen. So each reading also says which
 // names it saw, whether any was cut short, and whether any was drawn off the felt.
 import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import type { ReactElement } from 'react'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -24,9 +24,21 @@ import { startServer, type Running } from './fixture.js'
 import { atWidth } from './viewport.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
+
+// A sheet as it ships, with the face's own bytes where the build puts them: inline, as a `data:`
+// URL. `assetsInlineLimit` in `vite.config.ts` is what does it there and this is what does it
+// here, and it is the same transformation — a woff2 the sheet points at becomes the sheet's own
+// content. Nothing else is rewritten, so what is measured below is the cascade the app declares
+// and not one this file invented (K19's own lesson, #72).
+const FACE = /url\('(\.\/[^']+\.woff2)'\)/g
+const sheet = (rel: string): string =>
+  read(rel).replace(FACE, (_all, file: string) => `url('data:font/woff2;base64,${readFileSync(join(import.meta.dirname, '..', dirname(rel), file)).toString('base64')}')`)
+
 // The editor's Bord tab is one of the five surfaces, so the shared button language goes over
-// it here as it does on the page itself; the felt's own sheets go under.
-const SHEETS = ['src/table/table.css', 'src/table/texture.css', 'src/table/keyboard.css', 'src/editor/editor.css', 'src/buttons.css', 'src/a11y.css']
+// it here as it does on the page itself; the felt's own sheets go under. The face the felt is
+// written in comes first, because it is on the entry in the app too (#95).
+const FELT_FONT = 'src/fonts/felt-font.css'
+const SHEETS = [FELT_FONT, 'src/table/table.css', 'src/table/texture.css', 'src/table/keyboard.css', 'src/editor/editor.css', 'src/buttons.css', 'src/a11y.css']
 
 const registry = new TypeRegistry(STANDARD_TYPES)
 const CARD = { id: CARD_STANDARD_63x88.id, version: 1 }
@@ -113,26 +125,49 @@ afterAll(async () => {
   await run.stop()
 }, 60_000)
 
-async function onPage<T>(html: string, size: { w: number; h: number }, look: (page: Page) => Promise<T>): Promise<T> {
+async function onPage<T>(html: string, size: { w: number; h: number }, look: (page: Page) => Promise<T>, sheets: string[] = SHEETS): Promise<T> {
   const page = await browser.newPage({ viewport: { width: size.w, height: size.h } })
   try {
     const shell = read('index.html')
       .replace('<script type="module" src="/src/main.tsx"></script>', '')
-      .replace('</head>', `<style>${SHEETS.map(read).join('\n')}</style></head>`)
+      .replace('</head>', `<style>${sheets.map(sheet).join('\n')}</style></head>`)
       .replace('<div id="root"></div>', `<div id="root" style="width:${size.w}px;height:${size.h}px">${html}</div>`)
     await page.setContent(shell, { waitUntil: 'load' })
+    // A reading taken while the face is still being decoded is a reading of the fallback, which is
+    // the state this whole slice exists to get the felt out of (#95).
+    await page.evaluate(() => document.fonts.ready.then(() => undefined))
     return await look(page)
   } finally {
     await page.close()
   }
 }
 
-type Reading = { names: string[]; pairs: string[]; clipped: string[]; outside: string[]; wrapped: string[]; smallest: number; cardPx: number }
+type Crowding = { pairs: string[]; clipped: string[]; outside: string[] }
+type Reading = Crowding & { names: string[]; wrapped: string[]; smallest: number; cardPx: number; wider: Crowding }
+
+// How much wider than the shipped face every name has to survive being drawn (#95). "No overlap"
+// is not a machine-independent claim: Linux fontconfig snaps each glyph's advance to a whole
+// pixel and macOS places them on subpixels, which is up to ~1.5 px per name and does not go away
+// because the face ships. A design that clears by two pixels therefore clears on one machine and
+// not on the next — which is exactly what it did, and what CI kept reporting.
+//
+// The number is the felt's own slack said as a proportion, because the scarcity here is relative:
+// the two pixel-shifts before this one bought *absolute* room and bought nothing. Today's tightest
+// scene has 2.0 % and DejaVu Sans draws K19's names 12–14 % wider, so 15 % is the smallest demand
+// that would have caught it. The shipped face leaves 21–22 %.
+const NAME_MARGIN = 1.15
 
 // What the two issues are about, read off the DOM: which names are visible, which pairs of them
 // lie on the same pixels, which were cut short by the box they were given, and which were drawn
-// off the felt altogether.
-const READ = `(() => {
+// off the felt altogether — and then all of that again with every name drawn `NAME_MARGIN` wider.
+//
+// Widening is done with `letter-spacing`, which is how a wider face differs from a narrower one
+// as far as this layout is concerned: every name is `nowrap` and anchored at one of its own two
+// ends with `translate(-100% …)`, so the element's own width is what moves it. Adding Δ to an
+// n-character name of width w adds n·Δ to that width, so Δ = (k−1)·w/n scales the drawn text by k
+// while the fixed insets — `--name-in`, the pill's padding — stay fixed, as they would under a
+// wider face.
+const READ = `((margin) => {
   const sel = ['.byd-zone > span', '.byd-seat-name', '.byd-setup-handle > span', '.byd-pile-name', '.byd-pile-n', '.byd-hand-count'].join(', ')
   const seen = (el) => {
     const s = getComputedStyle(el)
@@ -140,60 +175,85 @@ const READ = `(() => {
     const r = el.getBoundingClientRect()
     return r.width > 0 && r.height > 0 ? r : null
   }
-  const labels = []
-  const clipped = []
-  // A zone's name is laid out in a box as wide as the zone, so beside a narrow zone it breaks
-  // onto two lines and measures half as wide — half of every good number below would then be the
-  // wrap's doing rather than the rule's. The readings used to force one line on from the outside,
-  // which meant the shipped declaration could be deleted without a single test noticing: the
-  // injected rule stood in for it. What is read here is the cascade as it ships.
-  const wrapped = []
-  let smallest = Infinity
-  for (const el of document.querySelectorAll(sel)) {
-    const r = seen(el)
-    if (!r) continue
-    const text = (el.textContent || '').trim()
-    // A pile's name and its count are two halves of one pill ("Draghög · 20") and touch by
-    // construction. One label, not two — and it is the badge, \`.byd-pile-n\`, that is read, since
-    // in TV mode the wrapper around it covers the whole pile while the badge hangs over its top.
-    labels.push({ text, r, pill: el.closest('.byd-pile-count') })
-    if (el.matches('.byd-zone > span') && !/nowrap|pre(?!-)/.test(getComputedStyle(el).whiteSpace)) wrapped.push(text)
-    smallest = Math.min(smallest, parseFloat(getComputedStyle(el).fontSize))
-    if (el.scrollWidth > el.clientWidth + 1) clipped.push(text)
+  // The glyphs' own width, without the pill's padding: a range over the element's text. That is
+  // the quantity a wider face changes.
+  const textWidth = (el) => {
+    const range = document.createRange()
+    range.selectNodeContents(el)
+    return range.getBoundingClientRect().width
   }
-  const hits = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
-  const pairs = []
-  for (let i = 0; i < labels.length; i++)
-    for (let j = i + 1; j < labels.length; j++) {
-      if (labels[i].pill && labels[i].pill === labels[j].pill) continue
-      if (hits(labels[i].r, labels[j].r)) pairs.push(labels[i].text + ' × ' + labels[j].text)
-    }
-  // Off the felt. A hand's count is left out on purpose: it hangs a fixed distance below its own
-  // hand by \`HAND_COUNT_MM\`, which is K9's own rule for the played felt and not a stray name.
-  const felt = document.querySelector('[data-table]')?.getBoundingClientRect() ?? null
-  const outside = []
-  if (felt)
-    for (const el of document.querySelectorAll('.byd-zone > span, .byd-seat-name')) {
+  const base = [...document.querySelectorAll(sel)]
+    .filter((el) => seen(el))
+    .map((el) => {
+      const ls = getComputedStyle(el).letterSpacing
+      return { el, ls: ls === 'normal' ? 0 : parseFloat(ls) || 0, w: textWidth(el), n: Math.max(1, (el.textContent || '').trim().length) }
+    })
+  const widen = (k) => {
+    for (const b of base) b.el.style.letterSpacing = (b.ls + ((k - 1) * b.w) / b.n) + 'px'
+  }
+  const readAt = () => {
+    const labels = []
+    const clipped = []
+    // A zone's name is laid out in a box as wide as the zone, so beside a narrow zone it breaks
+    // onto two lines and measures half as wide — half of every good number below would then be the
+    // wrap's doing rather than the rule's. The readings used to force one line on from the outside,
+    // which meant the shipped declaration could be deleted without a single test noticing: the
+    // injected rule stood in for it. What is read here is the cascade as it ships.
+    const wrapped = []
+    let smallest = Infinity
+    for (const el of document.querySelectorAll(sel)) {
       const r = seen(el)
       if (!r) continue
-      if (r.left < felt.left - 1 || r.top < felt.top - 1 || r.right > felt.right + 1 || r.bottom > felt.bottom + 1) outside.push((el.textContent || '').trim())
+      const text = (el.textContent || '').trim()
+      // A pile's name and its count are two halves of one pill ("Draghög · 20") and touch by
+      // construction. One label, not two — and it is the badge, \`.byd-pile-n\`, that is read, since
+      // in TV mode the wrapper around it covers the whole pile while the badge hangs over its top.
+      labels.push({ text, r, pill: el.closest('.byd-pile-count') })
+      if (el.matches('.byd-zone > span') && !/nowrap|pre(?!-)/.test(getComputedStyle(el).whiteSpace)) wrapped.push(text)
+      smallest = Math.min(smallest, parseFloat(getComputedStyle(el).fontSize))
+      if (el.scrollWidth > el.clientWidth + 1) clipped.push(text)
     }
-  const card = document.querySelector('.byd-pile-top')
-  return {
-    names: labels.map((l) => l.text),
-    pairs,
-    clipped,
-    outside,
-    wrapped,
-    smallest: Number.isFinite(smallest) ? Math.round(smallest * 10) / 10 : 0,
-    cardPx: card ? Math.round(card.getBoundingClientRect().width) : 0,
+    const hits = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
+    const pairs = []
+    for (let i = 0; i < labels.length; i++)
+      for (let j = i + 1; j < labels.length; j++) {
+        if (labels[i].pill && labels[i].pill === labels[j].pill) continue
+        if (hits(labels[i].r, labels[j].r)) pairs.push(labels[i].text + ' × ' + labels[j].text)
+      }
+    // Off the felt. A hand's count is left out on purpose: it hangs a fixed distance below its own
+    // hand by \`HAND_COUNT_MM\`, which is K9's own rule for the played felt and not a stray name.
+    const felt = document.querySelector('[data-table]')?.getBoundingClientRect() ?? null
+    const outside = []
+    if (felt)
+      for (const el of document.querySelectorAll('.byd-zone > span, .byd-seat-name')) {
+        const r = seen(el)
+        if (!r) continue
+        if (r.left < felt.left - 1 || r.top < felt.top - 1 || r.right > felt.right + 1 || r.bottom > felt.bottom + 1) outside.push((el.textContent || '').trim())
+      }
+    const card = document.querySelector('.byd-pile-top')
+    return {
+      names: labels.map((l) => l.text),
+      pairs,
+      clipped,
+      outside,
+      wrapped,
+      smallest: Number.isFinite(smallest) ? Math.round(smallest * 10) / 10 : 0,
+      cardPx: card ? Math.round(card.getBoundingClientRect().width) : 0,
+    }
   }
-})()`
+  const at = readAt()
+  widen(margin)
+  const wide = readAt()
+  widen(1)
+  return { ...at, wider: { pairs: wide.pairs, clipped: wide.clipped, outside: wide.outside } }
+})(${NAME_MARGIN})`
 
 const readNames = (html: string, size: { w: number; h: number }): Promise<Reading> => onPage(html, size, (page) => page.evaluate(READ) as Promise<Reading>)
 
 // Everything the two issues ask of one reading, said once: the names are all there, none of them
-// lies on another, none was cut short, and none was drawn off the felt.
+// lies on another, none was cut short, and none was drawn off the felt — and the same is still
+// true when every name is drawn `NAME_MARGIN` wider, which is what makes the answer belong to the
+// design rather than to the machine it was read on (#95).
 function expectClear(reading: Reading, wanted: string[], where: string): void {
   expect({ where, names: reading.names.length > 0 }).toEqual({ where, names: true })
   expect({ where, missing: wanted.filter((n) => !reading.names.includes(n)) }).toEqual({ where, missing: [] })
@@ -201,7 +261,138 @@ function expectClear(reading: Reading, wanted: string[], where: string): void {
   expect({ where, clipped: reading.clipped }).toEqual({ where, clipped: [] })
   expect({ where, outside: reading.outside }).toEqual({ where, outside: [] })
   expect({ where, wrapped: reading.wrapped }).toEqual({ where, wrapped: [] })
+  const wide = `${where}, every name drawn ${Math.round((NAME_MARGIN - 1) * 100)} % wider`
+  expect({ where: wide, pairs: reading.wider.pairs }).toEqual({ where: wide, pairs: [] })
+  expect({ where: wide, clipped: reading.wider.clipped }).toEqual({ where: wide, clipped: [] })
+  expect({ where: wide, outside: reading.wider.outside }).toEqual({ where: wide, outside: [] })
 }
+
+// Which real face drew the glyphs, asked of the browser rather than of the cascade. A computed
+// `font-family` only says what was *asked for*; a face that failed to arrive leaves the rule
+// standing and the glyphs drawn by something else entirely, which is the whole failure this slice
+// removes. Chromium answers the real question through CDP, and says whether the face it used came
+// from the document (`isCustomFont`) or from the machine.
+const LABELS = '.byd-zone > span, .byd-seat-name, .byd-pile-name, .byd-pile-n, .byd-hand-count'
+
+type Drawn = { text: string; faces: string[]; custom: boolean }
+
+async function facesOn(page: Page, selector = LABELS): Promise<Drawn[]> {
+  const cdp = await page.context().newCDPSession(page)
+  await cdp.send('DOM.enable')
+  await cdp.send('CSS.enable')
+  const { root } = (await cdp.send('DOM.getDocument', { depth: -1 })) as { root: { nodeId: number } }
+  const { nodeIds } = (await cdp.send('DOM.querySelectorAll', { nodeId: root.nodeId, selector })) as { nodeIds: number[] }
+  const out: Drawn[] = []
+  for (const nodeId of nodeIds) {
+    const { fonts } = (await cdp.send('CSS.getPlatformFontsForNode', { nodeId })) as { fonts: { familyName: string; glyphCount: number; isCustomFont: boolean }[] }
+    const used = fonts.filter((f) => f.glyphCount > 0)
+    const { outerHTML } = (await cdp.send('DOM.getOuterHTML', { nodeId })) as { outerHTML: string }
+    out.push({ text: outerHTML.replace(/<[^>]*>/g, '').trim(), faces: used.map((f) => f.familyName), custom: used.length > 0 && used.every((f) => f.isCustomFont) })
+  }
+  await cdp.detach()
+  return out
+}
+
+// The face ships so that the felt measures the same on a Mac, on a Linux box and on a TV. That
+// only holds while the felt is actually drawn in it, and nothing above would notice if it were
+// not: every reading here is taken on one machine, so a felt that quietly fell back to that
+// machine's own face would still clear every margin on it. This is the gate against the class
+// coming back, and it costs no CI time (#94, #95).
+const SHIPPED_FACE = 'Roboto Condensed'
+
+describe('the felt is written in the face that ships with it (K19, #95)', () => {
+  it('draws every name in the shipped face, and would say so if it had fallen back to the machine’s own', async () => {
+    const html = markupOf(<TableRenderer view={sceneOf(feltOf(4))} mode="table" size={FRAME} />)
+    const drawn = await onPage(html, FRAME, (page) => facesOn(page))
+    // Found at all: a selector that matches nothing agrees with everything.
+    expect(drawn.length).toBeGreaterThan(8)
+    expect(drawn.filter((d) => d.faces.join() !== SHIPPED_FACE || !d.custom)).toEqual([])
+
+    // And the reading is not vacuous. The same markup, the same machine, the same assertions —
+    // with the one sheet that carries the face left out. If this came back in the shipped face
+    // too, the assertion above would be measuring the machine's font folder and not the app.
+    const without = SHEETS.filter((s) => s !== FELT_FONT)
+    const fallback = await onPage(html, FRAME, (page) => facesOn(page), without)
+    expect(fallback.length).toBe(drawn.length)
+    expect(fallback.filter((d) => d.faces.join() === SHIPPED_FACE || d.custom)).toEqual([])
+  }, 60_000)
+})
+
+// When the face finished loading, when the browser first painted, and how wide the names were at
+// each. Loading a face is asynchronous whatever its source is, so the very first layout is always
+// the fallback's and that is not the question; the question is whether the face is there by the
+// time anything is drawn on the screen.
+const WATCH = `<script>
+  const names = () => [...document.querySelectorAll('.byd-zone > span')].map((e) => Math.round(e.getBoundingClientRect().width * 10) / 10)
+  // The browser's own answer for when it first put something on the screen, waited for rather than
+  // sampled: a reading taken before the entry has been delivered says "never", and "never" would
+  // make every comparison below true.
+  window.__paint = new Promise((ok) => new PerformanceObserver((l, obs) => { const e = l.getEntries()[0]; if (e) { obs.disconnect(); ok(e.startTime) } }).observe({ type: 'paint', buffered: true }))
+  window.__face = document.fonts.ready.then(() => performance.now())
+  // The widths in the first frame the browser draws, read before it draws it.
+  window.__painted = new Promise((ok) => requestAnimationFrame(() => ok(names())))
+  window.__settled = () => names()
+</script>`
+
+// Unlike every other reading in this file, this one is taken over a real navigation rather than
+// through `setContent`: a document handed to an already-loaded page has already had its first
+// frame, and the question here is precisely what that frame contained.
+const HOST = 'http://byd-felt.test'
+
+type Painting = { face: number; paint: number; first: number[]; settled: number[] }
+
+async function paintingWith(html: string, face: 'in the sheet' | 'a round trip away'): Promise<Painting> {
+  const page = await browser.newPage({ viewport: { width: FRAME.w, height: FRAME.h } })
+  try {
+    // The control: the same face, the same bytes, arriving the way a face arrives when it is not
+    // in the sheet — over the network, after the document. Nothing else about the page changes.
+    const sheets = SHEETS.map((rel) =>
+      rel === FELT_FONT && face === 'a round trip away' ? read(rel).replace(FACE, (_all, file: string) => `url('${HOST}/face/${file.replace('./', '')}')`) : sheet(rel),
+    )
+    const shell = read('index.html')
+      .replace('<script type="module" src="/src/main.tsx"></script>', '')
+      .replace('</head>', `<style>${sheets.join('\n')}</style></head>`)
+      .replace('<div id="root"></div>', `<div id="root" style="width:${FRAME.w}px;height:${FRAME.h}px">${html}</div>${WATCH}`)
+    await page.route(`${HOST}/**`, async (route) => {
+      const path = new URL(route.request().url()).pathname
+      if (!path.startsWith('/face/')) return route.fulfill({ contentType: 'text/html', body: shell })
+      await new Promise((ok) => setTimeout(ok, 150))
+      return route.fulfill({ contentType: 'font/woff2', body: readFileSync(join(import.meta.dirname, '..', 'src/fonts', path.slice('/face/'.length))) })
+    })
+    await page.goto(`${HOST}/`, { waitUntil: 'load' })
+    const first = await page.evaluate(() => (window as unknown as { __painted: Promise<number[]> }).__painted)
+    const when = await page.evaluate(() =>
+      Promise.all([(window as unknown as { __face: Promise<number> }).__face, (window as unknown as { __paint: Promise<number> }).__paint]).then(([face, paint]) => ({ face, paint })),
+    )
+    return { ...when, first, settled: await page.evaluate(() => (window as unknown as { __settled: () => number[] }).__settled()) }
+  } finally {
+    await page.close()
+  }
+}
+
+describe('the face is on the felt before the first painting (K19, #95)', () => {
+  it('has the face loaded before anything is drawn, which it has not when the face is a round trip away', async () => {
+    const html = markupOf(<TableRenderer view={sceneOf(feltOf(MAX_PLAYERS)) } mode="table" size={FRAME} />)
+
+    // Carried in the sheet, the face is finished before the browser paints anything at all: there
+    // is no network to wait for, only the decoding, and the sheet the document blocks on is where
+    // the bytes already are.
+    const shipped = await paintingWith(html, 'in the sheet')
+    expect(shipped.first.length).toBeGreaterThan(8)
+    expect({ face: 'in the sheet', beforeTheFirstPainting: shipped.face <= shipped.paint }).toEqual({ face: 'in the sheet', beforeTheFirstPainting: true })
+
+    // And what that is worth, measured rather than asserted. The same face a round trip away is
+    // not there when the felt is drawn: every one of the sixteen names is painted at the fallback's
+    // width and laid out again when the face lands, and for that whole window the felt stands in
+    // the state the margin gate above fells. `font-display: block` is no answer either — it hides
+    // the glyphs and still lays the line out in the fallback's measurements, which is what the
+    // name card's pill is drawn around.
+    const late = await paintingWith(html, 'a round trip away')
+    expect({ face: 'a round trip away', beforeTheFirstPainting: late.face <= late.paint }).toEqual({ face: 'a round trip away', beforeTheFirstPainting: false })
+    expect(late.settled).toEqual(shipped.settled)
+    expect(late.first.filter((w, i) => w === late.settled[i])).toEqual([])
+  }, 60_000)
+})
 
 const seatCounts = Array.from({ length: MAX_PLAYERS - 1 }, (_, i) => i + 2)
 

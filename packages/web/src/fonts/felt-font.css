@@ -1,0 +1,153 @@
+/*! Roboto Condensed, variabel vikt — det typsnitt filten skriver i (K20, #95).
+
+   Licensen står här och inte i en fil bredvid, eftersom den måste följa med varje kopia av
+   bytesen: ansiktet bakas in i den här filen som `data:`, så det är den här filen som
+   distribuerar typsnittet. En licens i en fil vid sidan av hade inte följt med bygget.
+   `/*!` är en juridisk kommentar och överlever minifieringen; `felt-font.test.ts` läser
+   efteråt att den gjorde det.
+
+   Copyright 2011 Google Inc. All Rights Reserved. RobotoCondensed-Italic[wght].ttf: Copyright 2011 Google Inc. All Rights Reserved.
+
+   This Font Software is licensed under the SIL Open Font License, Version 1.1.
+   This license is copied below, and is also available with a FAQ at:
+   http://scripts.sil.org/OFL
+
+
+   -----------------------------------------------------------
+   SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
+   -----------------------------------------------------------
+
+   PREAMBLE
+   The goals of the Open Font License (OFL) are to stimulate worldwide
+   development of collaborative font projects, to support the font creation
+   efforts of academic and linguistic communities, and to provide a free and
+   open framework in which fonts may be shared and improved in partnership
+   with others.
+
+   The OFL allows the licensed fonts to be used, studied, modified and
+   redistributed freely as long as they are not sold by themselves. The
+   fonts, including any derivative works, can be bundled, embedded,
+   redistributed and/or sold with any software provided that any reserved
+   names are not used by derivative works. The fonts and derivatives,
+   however, cannot be released under any other type of license. The
+   requirement for fonts to remain under this license does not apply
+   to any document created using the fonts or their derivatives.
+
+   DEFINITIONS
+   "Font Software" refers to the set of files released by the Copyright
+   Holder(s) under this license and clearly marked as such. This may
+   include source files, build scripts and documentation.
+
+   "Reserved Font Name" refers to any names specified as such after the
+   copyright statement(s).
+
+   "Original Version" refers to the collection of Font Software components as
+   distributed by the Copyright Holder(s).
+
+   "Modified Version" refers to any derivative made by adding to, deleting,
+   or substituting -- in part or in whole -- any of the components of the
+   Original Version, by changing formats or by porting the Font Software to a
+   new environment.
+
+   "Author" refers to any designer, engineer, programmer, technical
+   writer or other person who contributed to the Font Software.
+
+   PERMISSION & CONDITIONS
+   Permission is hereby granted, free of charge, to any person obtaining
+   a copy of the Font Software, to use, study, copy, merge, embed, modify,
+   redistribute, and sell modified and unmodified copies of the Font
+   Software, subject to the following conditions:
+
+   1) Neither the Font Software nor any of its individual components,
+   in Original or Modified Versions, may be sold by itself.
+
+   2) Original or Modified Versions of the Font Software may be bundled,
+   redistributed and/or sold with any software, provided that each copy
+   contains the above copyright notice and this license. These can be
+   included either as stand-alone text files, human-readable headers or
+   in the appropriate machine-readable metadata fields within text or
+   binary files as long as those fields can be easily viewed by the user.
+
+   3) No Modified Version of the Font Software may use the Reserved Font
+   Name(s) unless explicit written permission is granted by the corresponding
+   Copyright Holder. This restriction only applies to the primary font name as
+   presented to the users.
+
+   4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font
+   Software shall not be used to promote, endorse or advertise any
+   Modified Version, except to acknowledge the contribution(s) of the
+   Copyright Holder(s) and the Author(s) or with their explicit written
+   permission.
+
+   5) The Font Software, modified or unmodified, in part or in whole,
+   must be distributed entirely under this license, and must not be
+   distributed under any other license. The requirement for fonts to
+   remain under this license does not apply to any document created
+   using the Font Software.
+
+   TERMINATION
+   This license becomes null and void if any of the above conditions are
+   not met.
+
+   DISCLAIMER
+   THE FONT SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+   EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF
+   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT
+   OF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE
+   COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+   INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
+   DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+   FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
+   OTHER DEALINGS IN THE FONT SOFTWARE.
+*/
+/* Filtens eget typsnitt: Roboto Condensed, variabel vikt, latin + latin-ext (K20, #95).
+ *
+ * Varför ett skeppat ansikte alls: filtens namn var måttsatta mot det typsnitt Macen råkar kalla
+ * `system-ui`, och tålde att ritas 2,0 % bredare innan de första två nuddade varandra. DejaVu Sans
+ * — det en Linux-burk och en TV faktiskt ritar med — ritar dem 12–14 % bredare. Det var aldrig en
+ * CI-fråga; det var en design som inte hade råd med något annat typsnitt än ett.
+ *
+ * Varför just den här: den är 15,8 % smalare än SF Pro och samtidigt inte mindre — versalhöjd 9,24
+ * mot 9,16 px vid 13 px, x-höjd 6,87 mot 6,84 — så K9:s tre meter och K18:s korttal står orörda per
+ * konstruktion. Den lämnar 22,4 % marginal på en Mac och 21,2 % under DejaVu. Inter, det uppenbara
+ * valet, är *bredare* än SF Pro och lämnar 3,5 %: den hade gjort CI grön utan att ta bort felet.
+ *
+ * En fil täcker alla fyra vikter filten ritar (400 zonnamn, 600 handräknare, 700 platskort,
+ * 800 högbricka), eftersom ansiktet är variabelt.
+ *
+ * Licens: SIL Open Font License 1.1, inget Reserved Font Name. Texten står överst i den här filen,
+ * eftersom det är den här filen som distribuerar bytesen. Se K20 och E4 i DESIGN-BESLUT.md.
+ *
+ * Bytesen bakas in i css-bunten som `data:` (`assetsInlineLimit` i `vite.config.ts`), så ansiktet
+ * finns i dokumentet före första målningen. Det är inte en optimering: filten lägger om sig när
+ * ansiktet landar — `Räknare A` är 88,6 px i reservtypsnittet och 75,5 px i det skeppade — och
+ * under det fönstret står bordet i exakt det läge grinden fäller. `font-display: block` räcker
+ * inte; raden läggs ut i reservens mått ändå.
+ *
+ * Källa: @fontsource-variable/roboto-condensed@5.3.0 (Google Fonts), oförändrade woff2-subset. */
+@font-face {
+  font-family: 'Roboto Condensed';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: block;
+  src: url('./roboto-condensed-latin-wght-normal.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC,
+    U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* Platsnamnen skrivs av människor (A4), så täckningen måste vara verklig: ett tecken utanför de
+   skeppade subseten ritas av ett systemansikte, och då är just det namnets bredd maskinberoende
+   igen. latin + latin-ext täcker svenska, engelska och Latin-Europa. */
+@font-face {
+  font-family: 'Roboto Condensed';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: block;
+  src: url('./roboto-condensed-latin-ext-wght-normal.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F,
+    U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+:root {
+  /* Ett namn på ett ställe, även för typsnittet: allt filten skriver namn med läser den här. */
+  --byd-felt-font: 'Roboto Condensed', system-ui, sans-serif;
+}

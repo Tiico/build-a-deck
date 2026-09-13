@@ -41,7 +41,13 @@
   background: radial-gradient(ellipse at 50% 40%, #2e6b46, #1f4a30 70%, #173a26);
   box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.45);
   color: #1c1c1c;
-  font: 600 11px/1.2 system-ui, sans-serif;
+  /* The felt writes in the face that ships with it and not in whatever the machine calls
+     `system-ui` (K19, #95). Everything drawn on the felt inherits from here — zone names, a pile's
+     name and its count, a hand's count — so there is one declaration to read and one to change.
+     The two that set a `font:` of their own say the same thing in their own shorthand, and all
+     three carry the same fallback: `fonts/felt-font.css` is what defines the variable, and a felt
+     drawn without it should go back to what it drew before rather than lose its size as well. */
+  font: 600 11px/1.2 var(--byd-felt-font, system-ui, sans-serif);
   user-select: none;
 }
 .byd-table-frame[data-mode='tv'] [data-table] {
@@ -51,7 +57,7 @@
 }
 
 /* A counter token (C4): a chip with its value and name. */
-.byd-token { border-radius: 50%; background: #f0b64a; color: #1c1c1c; display: grid; place-items: center; align-content: center; line-height: 1; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); font: 700 11px system-ui, sans-serif; }
+.byd-token { border-radius: 50%; background: #f0b64a; color: #1c1c1c; display: grid; place-items: center; align-content: center; line-height: 1; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); font: 700 11px var(--byd-felt-font, system-ui, sans-serif); }
 .byd-token b { font-size: 12px; }
 .byd-token span { font-size: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
 
@@ -217,7 +223,7 @@
 .byd-seat-name {
   position: absolute; padding: 3px 10px; border-radius: 999px;
   background: var(--seat, #666); color: var(--byd-seat-ink);
-  font: 700 12px/15px system-ui, sans-serif; letter-spacing: 1px; white-space: nowrap;
+  font: 700 12px/15px var(--byd-felt-font, system-ui, sans-serif); letter-spacing: 1px; white-space: nowrap;
   /* Half the card's own height — 3 + 15 + 3 — which is what a card turned onto its side has to
      give back. Written once, beside the line height it is half of. */
   --card-half: 10.5px;

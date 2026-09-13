@@ -1499,6 +1499,85 @@ Att sju och åtta platser nu går att nå från produkten gör samtidigt #42:s �
 De mätta talen efter ändringen, bordsläge vid 1280 × 800, varje platsantal 2–8 × varje kvartsvarv × marknad av och på: noll krockar i alla femtiosex scenerna.
 Det trängsta avståndet som beror på hur långt ett namn är, är 3 px (sex platser, två platser mitt emot varandra på en vriden filt); de övriga trånga är 2 px och är geometriska — glipan på 10 mm mellan ett kuverts två zoner — och står därför still.
 
+De 3 pixlarna ovan är 2,0 % av namnets bredd, och det visade sig vara hela buggen.
+Vad filten skriver med är därför inte längre maskinens fråga: se K20.
+
+---
+
+### K20. Filten skriver i ett eget typsnitt: Roboto Condensed, skeppat med appen (prototypat och byggt 2026-09-13, #95, #94)
+
+Beslutet, i en mening:
+
+> Filtens namn, platskort och räknarbrickor ritas i Roboto Condensed — variabel vikt, latin + latin-ext, SIL OFL 1.1 — som följer med appen och ligger i dokumentet innan något målas, och grinden kräver att varje namn tål att ritas 15 % bredare än det gör.
+
+**Buggen var ett tal, och talet var 2,0 %.**
+K19:s filt tålde att varje namn ritades två procent bredare innan de två första nuddade varandra.
+DejaVu Sans — det en Linux-burk, en CI-körare och en Android-TV faktiskt ritar med när man ber om `system-ui` — ritar K19:s namn 12–14 % bredare än Macens SF Pro.
+Det var alltså aldrig ett CI-problem: designen hade aldrig råd med något annat typsnitt än det som råkade finnas på formgivarens egen maskin, och de åtta scener CI fällde var alla «ja» på en Mac med ett par pixlar över.
+Det förklarar också varför de två tidigare pixelflyttarna inte räckte: 8 → 14/16 px `--name-in` köpte **absolut** utrymme i en design vars knapphet är **relativ**.
+
+**Att skeppa ett typsnitt räcker inte — det måste vara ett smalare.**
+Det här är prototypens viktigaste fynd och skälet till att beslutet namnger en familj i stället för att säga "ett eget typsnitt".
+Inter är det uppenbara neutrala valet och ritar `RÄKNARE H` **bredare** än SF Pro (74,3 mot 73,1 px vid 13 px); den lämnar **3,5 %** marginal.
+Den hade gjort CI grön — vilket är precis vad som gör den farlig, eftersom grönt då hade lästs som att klassen var borta, medan designen låg en etikettändring från samma fel.
+
+**Roboto Condensed köper bredden utan att köpa den av bokstavshöjden.**
+Den ritar `RÄKNARE H` 15,8 % smalare än SF Pro (61,6 mot 73,1 px) och har samtidigt en något **högre** versal — 9,24 mot 9,16 px vid 13 px — och samma x-höjd, 6,87 mot 6,84.
+Den är den enda kandidaten i uppsättningen där båda de talen är minst dagens, vilket gör K18:s läsbarhetssiffror orörda per konstruktion och inte på någons ord.
+Marginalen är **22,4 % på en Mac och 21,2 % under DejaVu**, tio gånger dagens, och de 70 mätningarna är identiska mellan de två maskinerna.
+Skälet utöver siffrorna: Android-TV ritar redan sitt eget gränssnitt i Roboto, så ögat som läser bordet på tre meters håll läser en bokstavsform det är vant vid på just den skärmen — och TV:n är den skärm K19 finns till för.
+
+Kandidaterna, marginal på Mac / under DejaVu: system-ui **2,0 / 0** (åtta fel), Inter 3,5 / 4,6, IBM Plex Sans Condensed 17,3 / 14,8, Source Sans 3 19,5 / 17,5, **Roboto Condensed 22,4 / 21,2**, Fira Sans Condensed 24,0 / 24,4, Barlow Semi Condensed 27,3 / 27,1.
+Source Sans 3 får plats genom att vara **mindre** (versal 8,58, x-höjd 6,32 — 6 respektive 8 % under dagens) och är därför inte en kandidat alls.
+IBM Plex Sans Condensed saknar vikt över 700, så högbrickans 800 hade ritats som 700 och brickan blivit lättare än K9 ritade den.
+Barlow Semi Condensed var tvåa och kostar fyra statiska filer i stället för en, plus 4 % av x-höjden.
+
+**En fil, fyra vikter.**
+Filten ritar `.byd-zone > span` i 400, `.byd-hand-count` i 600, `.byd-seat-name` i 700 och `.byd-pile-n` i 800.
+Ett variabelt ansikte täcker alla fyra: 51 kB (latin) plus 34 kB (latin-ext) woff2, minst i uppsättningen, mot fyra filer för de statiska kandidaterna.
+Båda subseten skeppas, för platsnamnen skrivs av människor (A4) och ett tecken utanför de skeppade subseten ritas av ett systemansikte — och då är just det namnets bredd maskinens svar igen.
+
+**Grinden kräver en marginal, inte "inget överlapp".**
+Ett skeppat ansikte tar bort familjeskillnaden men inte den sista pixeln: Linux fontconfig snäpper varje glyfs framflyttning till hela pixlar medan macOS lägger dem på subpixel.
+Det verifierades genom att slå av det — med `--font-render-hinting=none` blir varje kandidats marginal identisk med Macens på decimalen — och det är upp till ~1,5 px per namn som **inte** försvinner av att typsnittet skeppas.
+"Noll överlapp" är därför fortfarande ett maskinberoende påstående, och kravet är i stället att filten är ren när varje namn ritas 15 % bredare: en andel, eftersom knappheten är relativ.
+Femton procent är det minsta krav som skulle ha fångat felet, eftersom DejaVu ritar 12–14 % bredare; Roboto klarar 21–22 % och har alltså råg i ryggen.
+Breddningen görs med `letter-spacing` Δ = (k−1)·w/n, vilket är precis vad ett bredare ansikte gör med den här layouten: varje namn är `nowrap` och förankrat i en av sina egna ändar, så elementets egen bredd är det som flyttar det.
+
+**Ansiktet ska finnas innan något målas.**
+Filten lägger om sig när ansiktet landar: `Räknare A` är 88,6 px i reservtypsnittet och 75,5 px i det skeppade, och alla sexton namnen byter bredd.
+Det gäller under **både** `swap` och `block` — `block` döljer glyferna men lägger ändå ut raden i reservens mått, och platskortets piller ritas kring just de måtten.
+Under det fönstret står filten i exakt det läge grinden fäller.
+Bytesen ligger därför inbakade som `data:`-URL i css-bunten (`assetsInlineLimit` i `packages/web/vite.config.ts`), alltså i det ark dokumentet redan blockerar på: 114 kB base64 av 85 kB woff2.
+Mätt, inte antaget: med ansiktet i arket är typsnittet färdigladdat efter 30 ms och första målningen sker vid 52 ms; med samma ansikte en rundtur bort är det färdigt först vid 186 ms medan målningen skedde vid 40 ms, och då är varje namn ritat i reservens bredd.
+
+**Grinden mot att klassen kommer tillbaka.**
+Ett test slår fast att filtens text verkligen ritas i det skeppade ansiktet och inte i ett systemfallback.
+Det frågar Chromium vilket **plattformstypsnitt** som ritade glyferna, inte vad kaskaden bad om — en regel står kvar även när ansiktet inte kommer fram — och kontrollen i samma test kör samma markup utan typsnittsarket och får `.SF NS`, alltså maskinens eget.
+Det kostar ingen CI-tid och kör var som helst.
+
+**Följd för CI (#94): `main` får ingen egen workflow.**
+När ansiktet skeppas är `felt-names.test.tsx` inte längre plattformsberoende, så beroendet tas bort i stället för att köpas bort med körtid.
+Reproduktionen av den andra maskinen finns kvar som ett skript i stället: `packages/web/test/dejavu.sh` kör sviten i `mcr.microsoft.com/playwright:v1.63.0-noble` med `fonts-dejavu-core`.
+Den bara imagen går grön av sig själv — den faller tillbaka på WenQuanYi Zen Hei — så typsnittspaketet är det som gör den till CI:s maskin.
+
+**Licensen, och var den står.**
+SIL Open Font License 1.1, upphovsrätten Google Inc. 2011, och **inget Reserved Font Name** i upphovsrättsraden — kontrollerat i filen — så namnet binder oss inte om ansiktet subsettas eller byggs om.
+OFL tillåter att typsnittet skeppas med appen, även kommersiellt, på tre villkor: licenstexten och upphovsrättsraden följer med varje kopia, typsnittet säljs inte **för sig**, och en modifierad version bär inget reserverat namn.
+Villkoret med tänder är det första, och det avgör var texten ligger: eftersom bytesen bakas in i `packages/web/src/fonts/felt-font.css` är **den filen** kopian, och en licens i en fil bredvid hade inte följt med bygget.
+Hela licenstexten står därför överst i samma fil som en juridisk kommentar (`/*! … */`), `esbuild.legalComments` är satt så att minifieringen inte tar bort den, och `felt-font.test.ts` läser i det byggda arket att upphovsrättsraden och licensen finns kvar.
+Det är samma åtagande som E4:s krav på att licensmetadata följer med hela vägen till det som levereras, tillämpat på appen själv i stället för på ett kort.
+Gränsen mot B3 är värd att säga rakt ut: det här är **appens eget** ansikte för sitt eget gränssnitt, och det ändrar ingenting i att en mall får sin typsnittsfil uppladdad som projektets asset med licensen angiven bredvid familjen.
+
+**Vad som inte ändrades.**
+Kortets kortsida i TV-läge vid åtta platser är fortfarande 27 px vid 1280 × 800, 40 px vid 1920 × 1080 och 89 px vid 3840 × 2160, och minsta etikett är fortfarande 12 px — mätt i samma svit, inte påstått.
+K19:s regel om var ett namn ligger är orörd; det här beslutet rör vad namnet är skrivet med.
+
+**Var det bor.**
+`packages/web/src/fonts/felt-font.css` deklarerar ansiktet och `--byd-felt-font`, och importeras av `main.tsx` så att det hamnar i entréns ark och inte i en rutt som kan delas av.
+`table.css` läser variabeln på ett ställe — `[data-table]`, som allt filten ritar ärver från — plus de två som sätter en egen `font:`-kortform, platskortet och räknarbrickan.
+Grinden är `packages/web/test/felt-names.test.tsx` (marginalen, det skeppade ansiktet, och att ansiktet finns före målningen) och `packages/web/test/felt-font.test.ts` (bygget: arket blockerar, bytesen ligger i det, ingen fontfil att hämta, licensen kvar).
+
 ---
 
 ## L. Editorn (grillad 2026-09-06)
