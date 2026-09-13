@@ -96,7 +96,9 @@ type Live = Drag & { started: boolean }
 // `top` is a card drawn off a pile: it is held by where it was let go of and by how tall the pile
 // was, because a hidden pile hands out no component id to hold it by (K15).
 type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: number; y: number } | null; top: { pile: string; at: Point; count: number } | null; dx: number; dy: number }
-type Ring = { target: DragTarget; x: number; y: number }
+// The ring opens on what the ring has verbs for. A chip is not among them: what a counter offers
+// when it is held is a decision of its own (#67), and a card's verbs are not a counter's.
+type Ring = { target: Exclude<DragTarget, { kind: 'counter' }>; x: number; y: number }
 
 export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], onPresence, camera = false, onInspect, size: fixedSize, glideMs = GLIDE_MS, overlay, seatNames = false, keyboard }, ref) {
   const t = useT()
@@ -173,7 +175,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const toTable = useRef<((cx: number, cy: number) => Point) | null>(null)
   // Opening the ring is one act however it was asked for, so both ways in pull it inside the
   // window together: a card at the rim must not put Vänd past the edge of the screen.
-  const openRing = (target: DragTarget, x: number, y: number) => {
+  const openRing = (target: Ring['target'], x: number, y: number) => {
     const room = typeof window === 'undefined' ? null : { w: window.innerWidth, h: window.innerHeight }
     setRing({ target, ...(room ? ringCentre({ x, y }, room) : { x, y }) })
   }
@@ -253,7 +255,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     if (!map) return
     toTable.current = map
     const at = map(e.clientX, e.clientY)
-    const ids = target.kind === 'card' ? [target.id] : []
+    const ids = target.kind === 'card' || target.kind === 'counter' ? [target.id] : []
     const origin: Drag['origin'] = {}
     for (const id of ids) {
       const c = byId.get(id)
@@ -265,7 +267,10 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     const el = e.currentTarget as HTMLElement
     if (typeof el.setPointerCapture === 'function') el.setPointerCapture(e.pointerId)
     clearHold()
-    if (target.kind === 'pile') return
+    // A whole pile is dragged, never held; and a chip has no ring to wait for yet (#67), so
+    // holding one is simply a drag that has not begun to travel.
+    if (target.kind === 'pile' || target.kind === 'counter') return
+    const held = target
     const { clientX, clientY, pointerId } = e
     holdTimer.current = setTimeout(() => {
       holdTimer.current = null
@@ -273,7 +278,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       live.current = null
       setDrag(null)
       if (typeof el.releasePointerCapture === 'function' && typeof el.hasPointerCapture === 'function' && el.hasPointerCapture(pointerId)) el.releasePointerCapture(pointerId)
-      openRing(target, clientX, clientY)
+      openRing(held, clientX, clientY)
     }, HOLD_MS)
   }
   const move = (e: RPointerEvent) => {
@@ -303,7 +308,9 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     if (d?.started && d.target.kind === 'card') onPresence?.({ kind: 'drop' })
     if (!d || !onAct) return
     if (!d.started) {
-      if (asked) openRing(d.target, asked.x, asked.y)
+      // A tap on a chip asks nothing, because there is nothing yet for it to be answered with:
+      // the counter's own verbs are #67's to settle, and a card's ring would be a lie.
+      if (asked && d.target.kind !== 'counter') openRing(d.target, asked.x, asked.y)
       return
     }
     const intents = dropIntents(view, d)
@@ -419,8 +426,9 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // Drawn away from where the table says it is: while carried, and while the drop waits for its
   // patch (#29).
   const shifted = new Set(drag?.started ? drag.ids : (settling?.ids ?? []))
-  const liftedPile = drag?.started && drag.target.kind !== 'card' ? drag.target.pile : null
-  const liftedKind = drag?.started && drag.target.kind !== 'card' ? drag.target.kind : null
+  const onPile = drag?.started && (drag.target.kind === 'pile' || drag.target.kind === 'pileTop') ? drag.target : null
+  const liftedPile = onPile?.pile ?? null
+  const liftedKind = onPile?.kind ?? null
   // The card that is off the top of a pile: in the hand while it is dragged, and still out of the
   // stack after it has been put down, until the table says where it went (#29).
   const offTop =
@@ -516,7 +524,15 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
               // The name is still on the table's own screen, in the panel and in the zone's label.
               const wide = px(TOKEN_MM) >= TOKEN_NAME_PX
               return (
-                <div key={c.id} className="byd-token" data-counter-token={c.id} {...keys(`card:${c.id}`)} style={{ position: 'absolute', left: left(a.x), top: top(a.y), width: px(TOKEN_MM), height: px(TOKEN_MM) }}>
+                <div
+                  key={c.id}
+                  className="byd-token"
+                  data-counter-token={c.id}
+                  data-dragging={lifted.has(c.id) ? 'true' : undefined}
+                  {...(onAct ? handlers({ kind: 'counter', id: c.id }) : {})}
+                  {...keys(`card:${c.id}`)}
+                  style={{ position: 'absolute', left: left(a.x + (m ? dx : 0)), top: top(a.y + (m ? dy : 0)), width: px(TOKEN_MM), height: px(TOKEN_MM) }}
+                >
                   <b>{c.counter ?? 0}</b>
                   {wide && <span>{c.cardRef ?? ''}</span>}
                 </div>
@@ -646,7 +662,7 @@ function useGlide(target: Rect | null, ms: number): Rect | null {
 }
 
 // The verbs a drag cannot say (C): for a card, for a pile.
-function ringItems(view: Snapshot, target: DragTarget, act: (intents: Intent[]) => void, inspect: (c: VisibleComponentState) => void, t: T): RadialItem[] {
+function ringItems(view: Snapshot, target: Ring['target'], act: (intents: Intent[]) => void, inspect: (c: VisibleComponentState) => void, t: T): RadialItem[] {
   const flip = (c: VisibleComponentState): RadialItem => ({ label: t('ring.flip'), run: () => act([{ v: 'flip', component: c.id, face: c.face === 'front' ? 'back' : 'front' }]) })
   const look = (c: VisibleComponentState | undefined): RadialItem => ({ label: t('ring.look'), run: c ? () => inspect(c) : null })
   if (target.kind === 'card') {

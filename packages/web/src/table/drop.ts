@@ -6,7 +6,7 @@ import { zoneAt } from '../zones.js'
 export const CARD_MM = { w: 63, h: 88 }
 
 export type Point = { x: number; y: number }
-export type DragTarget = { kind: 'card'; id: string } | { kind: 'pileTop'; pile: string } | { kind: 'pile'; pile: string }
+export type DragTarget = { kind: 'card'; id: string } | { kind: 'counter'; id: string } | { kind: 'pileTop'; pile: string } | { kind: 'pile'; pile: string }
 export type Drag = {
   target: DragTarget
   // Cards moving together (a card drag); their absolute positions when the drag began.
@@ -32,6 +32,14 @@ export function dropIntents(view: Snapshot, d: Drag): Intent[] {
     const y = z.geometry.y + dy
     const under = zones.get(zoneAt(view.zones, view.floor, x, y).zone)
     return [{ v: 'movePile', pile: z.id, to: under?.kind === 'area' ? under.id : view.floor, x, y }]
+  }
+  // A chip is not a card (C4): it joins no pile and stacks on nothing, so a drop means the one
+  // thing it can mean — the counter is now at the point it was let go of, in whatever zone that
+  // point falls in. The verb is `move`, the same one a card travels by; nothing new is invented.
+  if (d.target.kind === 'counter') {
+    const o = d.origin[d.target.id] ?? d.grab
+    const dest = zoneAt(view.zones, view.floor, o.x + dx, o.y + dy)
+    return [{ v: 'move', component: d.target.id, to: dest.zone, x: dest.x, y: dest.y }]
   }
   if (d.target.kind === 'pileTop') {
     const pile = zones.get(d.target.pile)
