@@ -363,32 +363,46 @@ function crowdedDoc(): ProjectDoc {
 // nothing, and the deck runs off the right of the screen with the page scrolling after it.
 //
 // The prototype hit this and laid it at the door of `.byd-editor`, which is a grid with rows and
-// no column track. The editor was never in danger from that: two boxes on the way down already
-// clip — `.byd-editor > main` and the table's own scrolling box — and a scroll container has a
-// min-content of nought, so nothing under them can push the document sideways however wide it
-// gets. A column track here would be a declaration with no work to do. What is locked instead is
-// the property itself, and it is locked against the two boxes that really carry it.
+// no column track, and asked for `grid-template-columns: minmax(0, 1fr)` there. The editor was
+// never in danger from that, and exactly one box on the way down is the reason: `.byd-editor >
+// main` scrolls, and a scroll container has a min-content of nought, so nothing under it can push
+// the document sideways however wide it gets. A column track on the grid above it would be a
+// declaration with no work to do.
+//
+// It really is one box and not two. The table's own scrolling box was named alongside it here and
+// that was wrong — taken away on its own, the page still does not move a pixel, because `main` has
+// already refused to grow. The pair of them were taken away together by a single control, which
+// could not tell the two apart and would have read the same if only one of them had ever mattered.
+// So each is taken away on its own, and the claim is now as narrow as the fact.
 //
 // 768 is not a width the editor is designed at (L12); it is the floor at which nothing may break,
 // and a deck that runs off the screen is breaking.
 describe('the table is measured against the room it really has (#46)', () => {
   it('keeps a deck too wide for 768 inside the window, scrolling the box and never the page', async () => {
-    const [held, loose] = await Promise.all([
+    const [held, noMain, noBox] = await Promise.all([
       measure(crowdedDoc(), { width: 768 }),
-      // The two boxes that clip, taken away. Nothing else changes: the same markup, the same
-      // measurement, at the same width. If this did not run away, everything below would be
-      // measuring the browser rather than the stylesheet.
-      measure(crowdedDoc(), { width: 768, extra: '.byd-editor > main, .byd-data-scroll { overflow: visible; }' }),
+      // The box that really carries it, taken away on its own. Nothing else changes: the same
+      // markup, the same measurement, at the same width. If this did not run away, everything
+      // below would be measuring the browser rather than the stylesheet.
+      measure(crowdedDoc(), { width: 768, extra: '.byd-editor > main { overflow: visible; }' }),
+      // And the box that does not, taken away on its own beside it.
+      measure(crowdedDoc(), { width: 768, extra: '.byd-data-scroll { overflow: visible; }' }),
     ])
 
-    // The control, and it is the prototype's finding exactly: with nothing clipping, the box is as
-    // wide as the table and the table is as wide as the box, the two settle far outside a 768 px
-    // window, and the page scrolls to reach them.
-    expect(loose.scroll).toBe(loose.table)
-    expect(loose.table).toBeGreaterThan(768)
-    expect(loose.page).toBeGreaterThan(0)
+    // The control, and it is the prototype's finding exactly: with `main` no longer refusing to
+    // grow, the box is as wide as the table and the table is as wide as the box, the two settle
+    // far outside a 768 px window, and the page scrolls to reach them.
+    expect(noMain.scroll).toBe(noMain.table)
+    expect(noMain.table).toBeGreaterThan(768)
+    expect(noMain.page).toBeGreaterThan(0)
 
-    // And the table as it ships: the box is inside the window, the table is wider than the box —
+    // And its twin, which is what says the claim belongs to `main` and to nothing else: with the
+    // table's own scroller opened up instead — so the table really does stand at its full width
+    // inside it — the page still does not move.
+    expect(noBox.table).toBeGreaterThan(768)
+    expect(noBox.page).toBe(0)
+
+    // The table as it ships: the box is inside the window, the table is wider than the box —
     // a deck this wide cannot be made to fit without lying about it — and the box is what
     // scrolls. The page does not move.
     expect(held.scroll).toBeLessThanOrEqual(768)

@@ -1471,6 +1471,16 @@ Bara text ger och tar: ett tal är en siffra brett hur mycket plats som än blir
 Skälet att mäta i JavaScript och inte i CSS är att webbläsaren aldrig ser innehållet: varje cell är en `<input>`, vars egenbredd är dess `size` — tjugo tecken oavsett värdet — så auto-layouten gissade inte fel, den hade ingenting att gissa på, och alla fem kolumnerna blev 193 px vid 1280.
 Typregistrets typ räcker inte heller: `title` och `body` är båda text och skulle få lika mycket, och `body` kapas ändå.
 Mätningen läser `doc.rows` och aldrig raderna på skärmen, eftersom sortering och filter är vyer av projektet — en bredd tagen ur vyn skulle hoppa vid varje tecken i sökfältet.
+
+Avsteg från ett accepterat kriterium: `grid-template-columns: minmax(0, 1fr)` på `.byd-editor` skrivs inte.
+Kriteriet kom ur prototypen, och risken det pekar på är verklig — en mätning som frågar lådan hur bred den är, i en låda som tar sin bredd av det som står i den, hittar alltid exakt den plats den bad om och klämmer aldrig ihop någonting, så vid 768 rinner leken ut ur skärmen.
+Men den lådan finns inte i editorn: `.byd-editor > main` scrollar, och en scrollcontainer har min-content noll, så ingenting under den kan skjuta dokumentet i sidled hur brett det än blir.
+Mätt vid 768 med arton kolumner: sidan står still och tabellen klämmer ihop sig till 1294 px i en låda på 736; tas `overflow` bort från `main` växer tabellen till 2636 px och sidan scrollar 1900 px i sidled.
+Ett kolumnspår på rutnätet ovanför skulle alltså vara en deklaration utan arbete — och en deklaration utan arbete är en deklaration ingen kan ändra tryggt, eftersom ingenting går sönder när den tas bort.
+Det som låses i stället är egenskapen som faktiskt bär kravet: `overflow` på `main`, med ett `scrollWidth`-test vid 768 som tar bort just den regeln och ser sidan rinna ut.
+Tabellens egen scrollåda bär det inte — tas bara den bort står sidan still — och testets kontrollfall tar därför bort en i taget.
+Skulle `main` någon gång sluta scrolla är testet det som säger till.
+
 Följdkrav:
 `×` på en kolumnrubrik ligger inte i rubrikens flöde utan över dess högerkant och visas när kolumnen pekas på eller har fokus i sig; träffytan är kvar på 44 × 44, men två sådana på rad satte kolumnens golv vid ~114 px och gjorde en smal talkolumn omöjlig.
 Två träffytor får inte plats bredvid varandra i en kolumn som är ett tal bred — 44 och 44 går inte i 64 — så rubriken delar ut dem i tur och ordning i stället för att låtsas dela ut dem samtidigt.
