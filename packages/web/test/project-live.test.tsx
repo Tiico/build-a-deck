@@ -15,6 +15,15 @@ afterEach(async () => {
 
 const open = (id = 'p1') => ProjectClient.open({ http: run.http, id })
 const settle = () => new Promise((r) => setTimeout(r, 80))
+// A socket is open when it says it is, not when a fixed number of milliseconds have gone by. The
+// sleep above is enough for a message to go round on an idle machine and is not always enough to
+// open a connection with five browser suites running beside this one — and a sleep that is
+// usually long enough is a test that usually passes. So anything about whether a socket is up
+// waits for the socket to say so.
+async function until(ready: () => boolean, ms = 5_000): Promise<void> {
+  const stop = Date.now() + ms
+  while (!ready() && Date.now() < stop) await new Promise((r) => setTimeout(r, 20))
+}
 
 describe('two editors on the same project (D3)', () => {
   it('sees the other one\'s edit without either of them saving', async () => {
@@ -109,12 +118,12 @@ describe('a socket that breaks (D3)', () => {
   it('comes back by itself and picks up what happened while it was gone', async () => {
     await run.projects.create('p1', projectDoc())
     const ada = await open()
-    await settle()
+    await until(() => ada.connected)
     expect(ada.connected).toBe(true)
 
     // The server goes away and comes back, as a laptop lid does.
     await run.restart()
-    await settle()
+    await until(() => !ada.connected)
     expect(ada.connected).toBe(false)
 
     // Someone else edits while this editor is away.
@@ -123,7 +132,7 @@ describe('a socket that breaks (D3)', () => {
     bo.setCell('dragon', 'title', 'Drakhona')
     await settle()
 
-    for (let i = 0; i < 60 && !ada.connected; i++) await new Promise((r) => setTimeout(r, 50))
+    await until(() => ada.connected)
     expect(ada.connected).toBe(true)
     expect(ada.doc.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drakhona')
     ada.close()
@@ -133,14 +142,14 @@ describe('a socket that breaks (D3)', () => {
   it('keeps what was written while it was gone and sends it when it is back', async () => {
     await run.projects.create('p1', projectDoc())
     const ada = await open()
-    await settle()
+    await until(() => ada.connected)
     await run.restart()
-    await settle()
+    await until(() => !ada.connected)
 
     ada.setCell('dragon', 'title', 'Skrivet i mörkret')
     expect(ada.doc.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Skrivet i mörkret')
 
-    for (let i = 0; i < 60 && !ada.connected; i++) await new Promise((r) => setTimeout(r, 50))
+    await until(() => ada.connected)
     await settle()
     // The actor has it too, so anyone else opening the project sees it.
     const bo = await open()
@@ -153,7 +162,7 @@ describe('a socket that breaks (D3)', () => {
   it('stays gone when the editor itself closed it', async () => {
     await run.projects.create('p1', projectDoc())
     const ada = await open()
-    await settle()
+    await until(() => ada.connected)
     ada.close()
     await new Promise((r) => setTimeout(r, 400))
     expect(ada.connected).toBe(false)
