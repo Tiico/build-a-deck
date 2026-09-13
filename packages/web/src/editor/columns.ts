@@ -122,6 +122,12 @@ export function fitColumns(box: Element, deck: Record<string, readonly string[]>
   // that has been lifted out of the flow — the × that takes a column away — is not counted, which
   // is the whole reason a number column can be narrow at all. Two 44 px buttons on one line put
   // the floor at about 114 px however short the word above them is.
+  //
+  // What each of them takes is the widest of three answers, and the third is what keeps this from
+  // depending on where the pointer happens to be resting: the sort control's box gives way to the
+  // × while the column is pointed at (#46), so its drawn width is smaller then, and a floor read
+  // off the drawn width alone would make the same heading two different sizes. Its own declared
+  // minimum does not move, and asking the page for it keeps the number out of this file.
   const heads = Array.from(table.querySelectorAll('thead > tr > *')) as HTMLElement[]
   const headNeed = (i: number): number => {
     const th = heads[i]
@@ -131,7 +137,7 @@ export function fitColumns(box: Element, deck: Record<string, readonly string[]>
     for (const child of Array.from(th.children) as HTMLElement[]) {
       const how = getComputedStyle(child)
       if (how.position === 'absolute' || how.position === 'fixed' || how.display === 'none') continue
-      flow += Math.max(child.getBoundingClientRect().width, child.scrollWidth) + parseFloat(how.marginLeft) + parseFloat(how.marginRight)
+      flow += Math.max(child.getBoundingClientRect().width, child.scrollWidth, parseFloat(how.minWidth) || 0) + parseFloat(how.marginLeft) + parseFloat(how.marginRight)
     }
     return Math.ceil(flow + parseFloat(own.paddingLeft) + parseFloat(own.paddingRight))
   }

@@ -445,6 +445,101 @@ describe('a column nobody can take away says so (#46, L4)', () => {
   }, 60_000)
 })
 
+// What a thumb aimed at the middle of a control in the narrowest heading actually lands on.
+// Read with `elementFromPoint` rather than argued about, because that is the question the browser
+// itself answers when the click comes — and it is not the question a stylesheet looks like it is
+// answering. Two states, because the × is only there in one of them: the heading as it sits, and
+// the heading with the pointer really on it.
+type Reach = {
+  // The column, and how wide it came out.
+  width: number
+  // Each control's own box, and what the browser finds at the middle of it — `self` when that is
+  // the control itself, otherwise what is standing in the way.
+  sort: { w: number; h: number; at: string }
+  drop: { w: number; h: number; at: string }
+}
+
+async function reach(doc: ProjectDoc, { hover = false, extra = '' } = {}): Promise<Reach> {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
+  try {
+    await page.setContent(shellOf(markupOf(doc), extra), { waitUntil: 'load' })
+    await page.evaluate(
+      ({ deck, decide }) => {
+        const box = document.querySelector('.byd-data-scroll') as HTMLElement
+        new Function('box', 'deck', `(${decide})(box, deck)`)(box, deck)
+      },
+      { deck: deckValues(doc, sv), decide: String(fitColumns) },
+    )
+    // The pointer really put on the heading, so `:hover` is the browser's own and not a class the
+    // test wrote. Aimed at the heading's left edge, which is the part that is the word.
+    if (hover) {
+      const th = (await page.$('th[data-col="cost"]'))!
+      const seen = (await th.boundingBox())!
+      await page.mouse.move(seen.x + 3, seen.y + seen.height / 2)
+    }
+    return (await page.evaluate(() => {
+      const th = document.querySelector('th[data-col="cost"]') as HTMLElement
+      const look = (el: HTMLElement) => {
+        const seen = el.getBoundingClientRect()
+        const hit = document.elementFromPoint(seen.left + seen.width / 2, seen.top + seen.height / 2)
+        const name = hit === el ? 'self' : `${hit?.tagName ?? '(nothing)'}${(hit as HTMLElement | null)?.className ? `.${(hit as HTMLElement).className}` : ''}`
+        return { w: Math.round(seen.width), h: Math.round(seen.height), at: name }
+      }
+      return {
+        width: Math.round(th.getBoundingClientRect().width),
+        sort: look(th.querySelector('button:not(.byd-data-dropfield)') as HTMLElement),
+        drop: look(th.querySelector('.byd-data-dropfield') as HTMLElement),
+      }
+    })) as Reach
+  } finally {
+    await page.close()
+  }
+}
+
+// Two tap targets do not fit side by side in a column a number wide, and that is not a bug in the
+// stylesheet — it is arithmetic: 44 and 44 do not go into 64. The heading therefore hands them out
+// in turn rather than pretending to hand them out at once.
+//
+// At rest the heading is the sort control and nothing else: the × is invisible, and invisible is
+// not the same as absent — `opacity: 0` paints nothing and still takes every click, which is what
+// made the middle of `cost`'s own sort button remove the column instead of sorting it. With the
+// pointer on the heading the × is there and takes the 44 px it is entitled to, and the sort
+// control gives them up rather than being covered by them: its box ends where the ×'s begins, so
+// neither control ever sits on the other's middle at any width a column can come out at.
+describe('what a tap on the narrowest heading lands on (#46)', () => {
+  it('gives the whole heading to the sort control while the × is not showing', async () => {
+    const at = await reach(deckDoc())
+
+    // The column really is the narrow one the issue exists to make, and narrower than two tap
+    // targets — without that this is a guard over a heading with room for both.
+    expect(at.width).toBeLessThan(2 * 44)
+    // The sort control owns its own middle, and the × — which nobody can see — owns nothing.
+    expect(at.sort.at).toBe('self')
+    expect(at.drop.at).not.toBe('self')
+  }, 60_000)
+
+  it('gives the × its 44 px the moment the column is pointed at, and the sort control the rest', async () => {
+    const at = await reach(deckDoc(), { hover: true })
+
+    // The accepted criterion, unchanged: the target that takes a column away is a tap across.
+    expect(at.drop.w).toBe(44)
+    expect(at.drop.h).toBeGreaterThanOrEqual(44)
+    // And each control answers for its own middle. The sort control is small here — that is what
+    // a 64 px column costs, and it is the part of it the designer can still see.
+    expect(at.drop.at).toBe('self')
+    expect(at.sort.at).toBe('self')
+    expect(at.sort.w).toBeGreaterThan(0)
+  }, 60_000)
+
+  it('is a real condition: let the invisible × keep its clicks and the sort control loses its middle', async () => {
+    const at = await reach(deckDoc(), { extra: '.byd-data th .byd-data-dropfield { pointer-events: auto !important; max-width: none !important; } .byd-data th > button:not(.byd-data-dropfield) { max-width: none !important; }' })
+
+    // This is the table as it stood: a control painted at nought opacity, over the middle of the
+    // one control in that heading anybody uses, taking its clicks.
+    expect(at.sort.at).toBe('BUTTON.byd-data-dropfield')
+  }, 60_000)
+})
+
 // What the filter and the sort may do to a width, which is nothing at all.
 //
 // Sorting and filtering are views of the project and never touch `doc.rows` (L4), and the

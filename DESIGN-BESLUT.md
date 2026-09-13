@@ -1473,6 +1473,11 @@ Typregistrets typ räcker inte heller: `title` och `body` är båda text och sku
 Mätningen läser `doc.rows` och aldrig raderna på skärmen, eftersom sortering och filter är vyer av projektet — en bredd tagen ur vyn skulle hoppa vid varje tecken i sökfältet.
 Följdkrav:
 `×` på en kolumnrubrik ligger inte i rubrikens flöde utan över dess högerkant och visas när kolumnen pekas på eller har fokus i sig; träffytan är kvar på 44 × 44, men två sådana på rad satte kolumnens golv vid ~114 px och gjorde en smal talkolumn omöjlig.
+Två träffytor får inte plats bredvid varandra i en kolumn som är ett tal bred — 44 och 44 går inte i 64 — så rubriken delar ut dem i tur och ordning i stället för att låtsas dela ut dem samtidigt.
+I vila är hela rubriken sorteringskontrollen: `×` är osynlig, och osynlig är inte detsamma som borta — `opacity: 0` målar ingenting och tar ändå varje klick den ligger över, vilket gjorde att mitten av `cost`s egen sorteringsknapp tog bort kolumnen i stället för att sortera den, och bara dess tio vänstraste pixlar fungerade.
+Pekas kolumnen på, eller har den fokus i sig, är `×` där och tar sina 44 px; sorteringskontrollens ruta slutar då där `×`:ets börjar i stället för att täckas av den, så ingen av dem står någonsin på den andras mitt.
+I en smal rubrik lämnar det sorteringskontrollen liten (10 px vid 64), och det den lämnar är precis den del av den som fortfarande syns — `×`:ets egen botten är målad över resten.
+En träffyta som följer målningen är den ärliga; alternativet var en 44 px-knapp vars mitt tillhörde något annat.
 `id` och `antal` bär ett hänglås där de andra bär sitt `×`, med skälet skrivet bredvid: ett hål förklarar ingenting.
 Knappen som gör en kolumn flyttade in i den fastnaglade kolumnens rubrik; den hade en egen kolumn med tomma celler på varje rad, och det var de ~200 tomma pixlarna granskningen såg.
 Ett värde som ändå inte får plats tonar ut i cellens kant — samma gest som den fastnaglade kolumnens uttoning (#53) — och tonar ut också när cellen har markören, vilket `text-overflow` på en input inte gör.

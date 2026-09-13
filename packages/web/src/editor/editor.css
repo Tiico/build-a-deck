@@ -636,8 +636,12 @@
 .byd-data-tools > [role='alert'] { color: #f0b64a; }
 /* `separate` rather than `collapse`, because a collapsed border is drawn by the table and a
    sticky cell then leaves its own edges behind as it scrolls. */
-.byd-data { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; background: #1b1d23; }
-.byd-data th { text-align: left; padding: 8px 10px; color: var(--byd-editor-quiet); font-weight: 600; border-bottom: 1px solid #2f333d; position: sticky; top: 0; z-index: 1; background: #1b1d23; }
+.byd-data { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; background: #1b1d23;
+  /* What a heading keeps to itself on each side. Named because two rules need the same number:
+     this one, and the one that stops the sort control's box running under the × that is laid over
+     the heading's right edge (#46). Written twice, they would come apart. */
+  --byd-data-head-pad: 10px; }
+.byd-data th { text-align: left; padding: 8px var(--byd-data-head-pad); color: var(--byd-editor-quiet); font-weight: 600; border-bottom: 1px solid #2f333d; position: sticky; top: 0; z-index: 1; background: #1b1d23; }
 .byd-data td { padding: 0; border-bottom: 1px solid #20232b; }
 /* A field takes the width of the column it stands in and no other (#46). It used to claim a floor
    of twelve characters — written when the table laid itself out on what the browser could see,
@@ -904,8 +908,29 @@
   font-size: 13px;
   line-height: 1;
   opacity: 0;
+  /* Invisible is not the same as absent. `opacity: 0` paints nothing and still takes every click
+     it is under, and this one lies over the right 44 px of its own heading with a `z-index` to
+     win — so in a `cost` column of 64 the middle of the sort button removed the column instead of
+     sorting it, and only the leftmost ten pixels of that button still worked. Nothing anybody can
+     see says so, which is the worst kind of target: the one that answers for a control the reader
+     has no idea is there. So while it is not showing it takes nothing at all, and the heading
+     belongs to the control the designer can see. */
+  pointer-events: none;
 }
-.byd-data th:hover .byd-data-dropfield, .byd-data th:focus-within .byd-data-dropfield { opacity: 1; }
+/* Two tap targets do not fit side by side in a column a number wide — 44 and 44 do not go into 64,
+   and that is the arithmetic the whole issue is made of. So the heading hands them out in turn.
+   With the pointer on it or the focus in it the × is there and takes its 44 px, and the sort
+   control gives them up rather than being covered by them: its box ends where the ×'s begins, so
+   neither control ever sits on the other's middle at any width a column can come out at. In a
+   narrow heading that leaves the sort control small — and what it leaves it is exactly the part of
+   itself the reader can still see, since the ×'s own ground is painted over the rest. A hit area
+   that matches the paint is the honest one; the alternative on offer was a 44 px button whose
+   middle belonged to something else. */
+.byd-data th:hover .byd-data-dropfield, .byd-data th:focus-within .byd-data-dropfield { opacity: 1; pointer-events: auto; }
+.byd-data th:hover > button:not(.byd-data-dropfield), .byd-data th:focus-within > button:not(.byd-data-dropfield) {
+  min-width: 0;
+  max-width: calc(100% - var(--byd-tap) + var(--byd-data-head-pad));
+}
 .byd-data th .byd-data-dropfield:hover, .byd-data th .byd-data-dropfield:focus-visible { color: #e05c5c; }
 /* And where a column cannot be taken away at all, a padlock stands in the ×'s place (#46, L4).
    This one *is* in the flow, and deliberately: it is not a control, so it has no hover of its own
