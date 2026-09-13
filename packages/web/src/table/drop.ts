@@ -48,10 +48,17 @@ export function dropIntents(view: Snapshot, d: Drag): Intent[] {
   const hit = hitAt(view, d.at, moving, null)
   if (d.ids.length === 1 && hit?.kind === 'card') return [{ v: 'stack', component: d.ids[0] ?? '', onto: hit.id }]
   if (hit?.kind === 'pile') return d.ids.map((id): Intent => ({ v: 'move', component: id, to: hit.id }))
+  // The pointer decides (K2), as it already does for the top of a pile just above. Asking instead
+  // about the card's own stored corner put the deciding point half a card's width west and half
+  // its height north of what the hand was aiming at, which pulled a drop back into the hand along
+  // the south and east rims and pushed it out of the hand along the north and west ones — one
+  // answer at a rim and another at the rim opposite, from a point nobody can see (#74).
+  const dest = zoneAt(view.zones, view.floor, d.at.x, d.at.y)
   return d.ids.map((id): Intent => {
+    // Where in that zone the card comes to rest is still where it was dragged to: the pointer's
+    // own place in the zone, offset by where in the card it was picked up.
     const o = d.origin[id] ?? d.grab
-    const dest = zoneAt(view.zones, view.floor, o.x + dx, o.y + dy)
-    return { v: 'move', component: id, to: dest.zone, x: dest.x, y: dest.y }
+    return { v: 'move', component: id, to: dest.zone, x: dest.x + o.x - d.grab.x, y: dest.y + o.y - d.grab.y }
   })
 }
 

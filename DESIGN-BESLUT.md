@@ -839,6 +839,12 @@ Släpp inom rektangeln är `move` till zonen med relativ position; släpp utanf�
 Ingen grid, inga slots.
 Zoner får överlappa (beslutat 2026-09-07): ett släpp landar i den minsta zon vars rektangel innehåller punkten, och mellan lika stora i den som står först i setupen. Nästling är huvudfallet; ett medvetet överlapp får en förutsägbar mening utan validering.
 
+Punkten som prövas är pekarens (beslutat 2026-09-13, #74).
+Det man siktar på är det som gäller, och inget annat på bordet kan göra anspråk på att vara släppet.
+Bordet prövade i stället kortets lagrade övre vänstra hörn, som ligger en halv kortbredd och en halv korthöjd från en pekare som greppat kortet i mitten: det drog släppet tillbaka in i handens rektangel vid södra och östra kanten och ut ur den vid norra och västra, så samma gest fick ett svar vid en kant och ett annat vid den motstående, och felet växte med filtens skala.
+Var kortet sedan hamnar inne i zonen följer fortfarande greppet — pekarens plats i zonen, förskjuten med var i kortet man tog tag — för det är kortet man bär och inte pekaren.
+Två alternativ förkastades: kortets mitt, som hade varit symmetriskt men låter pekaren och det avgörande gå isär så snart kortet greppats i ett hörn, och att behålla hörnet men normalisera greppet, som hade bevarat själva felet — att den avgörande punkten är en som ingen ser.
+
 Följdkrav:
 Zonrektanglarna är direkt återanvändbara som spelplansunderlag vid tryck.
 En `slots`-zonkind kan läggas till additivt när ett riktigt spel kräver det.

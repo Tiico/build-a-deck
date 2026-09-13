@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import type { Snapshot } from '@byd/protocol'
-import { CARD_MM, dropIntents, type Drag } from '../src/table/drop.js'
+import { CARD_STANDARD_63x88, initialState, project } from '@byd/engine'
+import type { Intent, Snapshot } from '@byd/protocol'
+import { CARD_MM, dropIntents, type Drag, type Point } from '../src/table/drop.js'
+import { zoneAt } from '../src/zones.js'
+import { recipeSetup, registry } from './fixture.js'
 import { buildScene } from './scene.js'
 
 // The scene: floor `table` at (-500,-300); faceUp at (100,50) and faceDown at (300,200) in it;
@@ -60,5 +63,73 @@ describe('what a drop means (K1, K2)', () => {
     const { view } = buildScene()
     const v = view(null)
     expect(dropIntents(v, { target: { kind: 'pile', pile: 'discard' }, ids: [], grab: { x: 200, y: 30 }, at: { x: 300, y: 130 }, origin: {} })).toEqual([{ v: 'movePile', pile: 'discard', to: 'table', x: 300, y: 100 }])
+  })
+})
+
+// A four-seat felt is the plain case for what a drop is aimed at: the wizard puts a hand on each
+// of the four rims, all 60 mm deep and all the same distance from the middle (K18). The same
+// gesture can therefore be made four times over, and the four answers ought to be one answer.
+// Everything here is in the renderer's own table millimetres — the felt is 1200 × 800 mm whatever
+// the window is — so no number below is pinned to a screen size.
+const RIM_MM = 10
+const fourSeatScene = (): Snapshot => {
+  const base = recipeSetup(4)
+  const loose = { type: { id: CARD_STANDARD_63x88.id, version: 1 }, cardRef: 'dragon', zone: base.floor, face: 'front' as const, x: 500, y: 300 }
+  return project(initialState('rims', { ...base, components: [loose, ...base.components] }, registry), registry, null)
+}
+const geometryOf = (view: Snapshot, id: string) => view.zones.find((z) => z.id === id)!.geometry
+const grabbedAtItsMiddle = (view: Snapshot, id: string, at: Point): Drag => {
+  const o = abs(view, id)
+  return { target: { kind: 'card', id }, ids: [id], grab: { x: o.x + CARD_MM.w / 2, y: o.y + CARD_MM.h / 2 }, at, origin: { [id]: o } }
+}
+const grabbedAtItsCorner = (view: Snapshot, id: string, at: Point): Drag => {
+  const o = abs(view, id)
+  return { target: { kind: 'card', id }, ids: [id], grab: { x: o.x, y: o.y }, at, origin: { [id]: o } }
+}
+const landedIn = (intents: Intent[]): string[] => intents.map((i) => (i.v === 'move' ? i.to : i.v === 'split' ? (i.to ?? 'the floor') : i.v))
+
+describe('the pointer decides where a drop lands (K2, K14)', () => {
+  const v = fourSeatScene()
+  const loose = v.components.find((c) => c.zone === v.floor)!.id
+  // Seats go S, N, E, W, so hand:A lies along the south rim of the felt, hand:B the north, hand:C
+  // the east and hand:D the west. The card is let go 10 mm inside the rim at each of them, read
+  // off the felt the scene actually laid out: the same gesture four times over, each time the
+  // same distance into that seat's own hand.
+  const felt = geometryOf(v, v.floor)
+  const rims = [
+    { seat: 'A', at: { x: 0, y: felt.y + felt.h - RIM_MM } },
+    { seat: 'B', at: { x: 0, y: felt.y + RIM_MM } },
+    { seat: 'C', at: { x: felt.x + felt.w - RIM_MM, y: 0 } },
+    { seat: 'D', at: { x: felt.x + RIM_MM, y: 0 } },
+  ]
+
+  it('the point let go of lies inside that seat’s hand on every rim, which is what makes the four gestures one gesture', () => {
+    expect(rims.map((r) => zoneAt(v.zones, v.floor, r.at.x, r.at.y).zone)).toEqual(['hand:A', 'hand:B', 'hand:C', 'hand:D'])
+  })
+
+  it('the same gesture at all four rims lands in the hand at that rim', () => {
+    // Where in the hand the card then lies follows from where it was held, and a card is taller
+    // than the band it is being put into; what that ought to look like is #65's question.
+    expect(rims.map((r) => dropIntents(v, grabbedAtItsMiddle(v, loose, r.at)))).toEqual([
+      [{ v: 'move', component: loose, to: 'hand:A', x: 218.5, y: 6 }],
+      [{ v: 'move', component: loose, to: 'hand:B', x: 218.5, y: -34 }],
+      [{ v: 'move', component: loose, to: 'hand:C', x: 18.5, y: 206 }],
+      [{ v: 'move', component: loose, to: 'hand:D', x: -21.5, y: 206 }],
+    ])
+  })
+
+  it('the same card held by its middle and held by a corner, let go at the same point, lands in the same zone', () => {
+    // The middle of the south hand's band, which is far enough in that the card's own stored
+    // corner falls outside the hand while the pointer is well inside it.
+    const hand = geometryOf(v, 'hand:A')
+    const at = { x: 0, y: hand.y + hand.h / 2 }
+    expect(landedIn(dropIntents(v, grabbedAtItsMiddle(v, loose, at)))).toEqual(['hand:A'])
+    expect(landedIn(dropIntents(v, grabbedAtItsCorner(v, loose, at)))).toEqual(['hand:A'])
+  })
+
+  it('the top of a pile is decided by the same point and answers the same at all four rims', () => {
+    const draw = geometryOf(v, 'draw')
+    const fromDraw = (at: Point): Drag => ({ target: { kind: 'pileTop', pile: 'draw' }, ids: [], grab: { x: draw.x, y: draw.y }, at, origin: {} })
+    expect(rims.map((r) => landedIn(dropIntents(v, fromDraw(r.at))))).toEqual([['hand:A'], ['hand:B'], ['hand:C'], ['hand:D']])
   })
 })
