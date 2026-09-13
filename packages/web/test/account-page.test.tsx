@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { HomePage } from '../src/account/HomePage.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { projectDoc } from './project-doc.js'
 import { admit, createSession, startServer, type Running } from './fixture.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // Accounts (G1, prototype A): the home page is the login card until the link in the mail has
 // been followed; then it is "Mina spel". The cookie jar in test/setup.ts plays the browser.

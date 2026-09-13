@@ -1,8 +1,11 @@
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { createServer, type Server } from 'node:net'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { startServer } from './fixture.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The lowest port this machine hands out to a `listen(0)`. Everything at or above it can be
 // given to any process on the box that asks for "any port"; everything below it can only be had

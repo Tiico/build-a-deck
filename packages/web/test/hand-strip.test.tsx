@@ -3,6 +3,9 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { HandStrip } from '../src/player/HandStrip.js'
 import { buildScene } from './scene.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 describe('HandStrip', () => {
   it("shows the seat's own cards by name in hand order, and nothing from anywhere else", () => {

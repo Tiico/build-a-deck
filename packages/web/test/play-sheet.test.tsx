@@ -3,6 +3,9 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { PlaySheet, targetsOf } from '../src/player/PlaySheet.js'
 import { buildScene } from './scene.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 describe('PlaySheet (C4 zone shortcuts)', () => {
   it('offers every non-hand zone as a target by its shortcut, says where a card goes, the floor last as "Bordet", and reports the choice', () => {

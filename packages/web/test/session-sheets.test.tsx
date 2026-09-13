@@ -2,6 +2,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { EndSheet, FlagSheet } from '../src/player/SessionSheets.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 describe('session sheets', () => {
   it('announces the flag sheet as a modal and lets Escape cancel it', () => {

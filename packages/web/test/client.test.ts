@@ -1,6 +1,9 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TableClient } from '../src/client.js'
 import { asObserver, asSeat, asTable, createSession, roomOf, startServer, type Running } from './fixture.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 let run: Running
 let clients: TableClient[] = []

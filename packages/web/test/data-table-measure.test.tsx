@@ -17,6 +17,9 @@ import { DataTable } from '../src/editor/DataTable.js'
 import { fitColumns } from '../src/editor/columns.js'
 import type { ProjectDoc } from '../src/editor/types.js'
 import { projectDoc } from './project-doc.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The one function that walks the deck. Everything else the table does on a scroll is a handful
 // of rectangles, and those are meant to stay.

@@ -5,6 +5,9 @@ import { userEvent } from '@testing-library/user-event'
 import { DataTable } from '../src/editor/DataTable.js'
 import { projectDoc } from './project-doc.js'
 import { symbolName, type GameSymbol } from '../src/editor/symbols.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 describe('DataTable (B as a tab)', () => {
   it('shows one row per card with the fields the template binds plus antal, edits cells, adds and removes rows', () => {

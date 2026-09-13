@@ -1,9 +1,12 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { render } from '@testing-library/react'
 import { TypeRegistry, initialState, project, STANDARD_TYPES } from '@byd/engine'
 import { TableRenderer } from '../src/table/TableRenderer.js'
 import { seatSetup } from './fixture.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const registry = new TypeRegistry(STANDARD_TYPES)
 const table = () => project(initialState('v1', seatSetup(), registry), registry, null)

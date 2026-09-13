@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { TablePage } from '../src/table/TablePage.js'
 import { PlayerPage } from '../src/player/PlayerPage.js'
 import { projectDoc } from './project-doc.js'
 import { asSeat, asTable, registerRoom, startServer, type Running } from './fixture.js'
 import type { RuleDoc } from '@byd/server'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 let run: Running
 beforeEach(async () => {

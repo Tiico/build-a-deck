@@ -3,6 +3,9 @@ import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import type { VisibleComponentState } from '@byd/protocol'
 import { HandFan } from '../src/online/HandFan.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const base = { id: 'c1', type: { id: 'card.standard.63x88', version: 1 }, zone: 'hand:A', x: 0, y: 0, rot: 0 }
 const mine: VisibleComponentState = { ...base, face: 'front', cardRef: 'dragon', faces: { front: 'a'.repeat(64) } }

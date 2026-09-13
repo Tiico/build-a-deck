@@ -5,6 +5,9 @@ import { userEvent } from '@testing-library/user-event'
 import { TemplateCanvas, type TemplateCanvasProps } from '../src/editor/TemplateCanvas.js'
 import { projectDoc } from './project-doc.js'
 import { drag, laidOut, target } from './drag.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The canvas as the editor mounts it, with every edit it can make reported back.
 function canvas(over: Partial<TemplateCanvasProps> = {}) {

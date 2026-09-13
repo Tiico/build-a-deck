@@ -4,6 +4,9 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { TemplateCanvas } from '../src/editor/TemplateCanvas.js'
 import { projectDoc } from './project-doc.js'
 import type { ProjectDoc } from '../src/editor/types.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The type a game is set in (B3): the family is chosen where the element is designed, and the
 // file behind it belongs to the project, so a version prints as it was drawn.

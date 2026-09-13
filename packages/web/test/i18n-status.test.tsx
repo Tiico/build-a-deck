@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { useEffect } from 'react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { Refusal, useRefusal } from '../src/status/Refusal.js'
 import { StatusNotice } from '../src/status/StatusNotice.js'
@@ -17,6 +17,9 @@ import { documentTitle } from '../src/status/title.js'
 import { Language, translate, type T } from '../src/i18n/index.js'
 import { NotFoundPage } from '../src/status/NotFoundPage.js'
 import { STATUS_KEYS, noticeFor, refusal, refusalText, VOICES } from '../src/status/notice.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const english: T = (key, params) => translate('en', key, params)
 

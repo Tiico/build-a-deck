@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { WebSocket as WsClient } from 'ws'
@@ -7,6 +7,9 @@ import { TableClient, useWebSocketImplementation, type WebSocketCtor } from '../
 import { OnlinePage } from '../src/online/OnlinePage.js'
 import { StatusLive } from '../src/status/StatusLive.js'
 import { admit, asTable, createSession, startServer, type Running } from './fixture.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // Every frame the page's own socket was ever handed, verbatim. The repo proves hidden
 // information on the wire and not on the screen (D4, B6), so the keyboard is held to the same

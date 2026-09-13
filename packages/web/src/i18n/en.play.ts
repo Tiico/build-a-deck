@@ -41,7 +41,6 @@ export const enPlay = {
 
   'ring.flip': 'Flip',
   'ring.look': 'Look',
-  'ring.close': 'Close',
   'ring.rotate': 'Turn',
   'ring.reveal': 'Reveal',
   'ring.shuffle': 'Shuffle',

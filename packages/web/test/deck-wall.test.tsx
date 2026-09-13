@@ -3,6 +3,9 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { DeckWall } from '../src/editor/DeckWall.js'
 import { projectDoc } from './project-doc.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 describe('DeckWall (C as the home view)', () => {
   it('renders every row as a compiled card with its copies and warnings, and reports clicks on cards and elements', () => {

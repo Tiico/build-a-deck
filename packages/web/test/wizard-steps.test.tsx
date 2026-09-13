@@ -1,11 +1,14 @@
 // @vitest-environment jsdom
 // The starter flow below the desk (#4, L10): three steps with one job each, instead of one page
 // two and a half screens long where the frame is chosen half a metre from the card it changes.
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { atWidth } from './viewport.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 function wizardAt(width: number) {
   atWidth(width)

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { Language, LanguagePicker, chosenLang, detectLang, rememberLang, translate, useT, type T } from '../src/i18n/index.js'
@@ -11,6 +11,9 @@ import { svAccount } from '../src/i18n/sv.account.js'
 import { svStatus } from '../src/i18n/sv.status.js'
 import { inviteToProject, requestLink } from '../src/account/api.js'
 import { ProjectClient } from '../src/editor/ProjectClient.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 function Sample() {
   const t = useT()

@@ -5,6 +5,9 @@ import type { VisibleComponentState } from '@byd/protocol'
 import { Texture } from '../src/table/Texture.js'
 import { TextureFailures } from '../src/table/TextureFailures.js'
 import { App } from '../src/App.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 const FRONT = 'a'.repeat(64)
 const BACK = 'b'.repeat(64)

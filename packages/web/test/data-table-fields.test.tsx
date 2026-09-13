@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { useState } from 'react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { applyEdit } from '@byd/server/doc'
@@ -8,6 +8,9 @@ import { Language } from '../src/i18n/index.js'
 import { DataTable } from '../src/editor/DataTable.js'
 import type { ProjectDoc, ProjectRow } from '../src/editor/types.js'
 import { projectDoc } from './project-doc.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The table doing its own work: every edit it asks for is applied by the one pure function the
 // actor applies it with, and the answer goes straight back into the document the table is drawn

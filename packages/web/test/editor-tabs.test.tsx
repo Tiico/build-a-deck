@@ -3,6 +3,9 @@ import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { EditorTabs } from '../src/editor/EditorTabs.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 describe('the editor tablist (APG tabs)', () => {
   it('is one tab stop and moves focus along the arrow keys', async () => {
