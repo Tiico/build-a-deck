@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 // How the card table hands out its width (#46, variant B — "innehållet bestämmer").
 //
-// The whole issue is one measurement. Today every column of the table is the same width to the
-// pixel — at 1280 `art`, `title`, `body`, `cost` and `antal` come out 193 each — and the reason
-// is not that the browser guesses badly. Every cell is an `<input>`, and an input's intrinsic
-// width is its `size`: twenty characters, whatever the value inside happens to be. The browser
-// never sees the content at all. So there is no pure-CSS answer; the values have to be measured
-// in JavaScript and the width *told* to the table.
+// The whole issue is one measurement. As the table stood, every column of the deck was the same
+// width to the pixel — 193 each at 1280 in the shipped table, and 208 each under the control case
+// below, which puts the old stylesheet back over the head as it is now — and the reason is not
+// that the browser guesses badly. Every cell is an `<input>`, and an input's intrinsic width is
+// its `size`: twenty characters, whatever the value inside happens to be. The browser never sees
+// the content at all. So there is no pure-CSS answer; the values have to be measured in
+// JavaScript and the width *told* to the table.
 //
 // Which means this file has to measure in a real engine, with the real fonts and the real
 // stylesheet — jsdom lays nothing out and has no text metrics to lay it out from.
