@@ -1,6 +1,7 @@
 import type { Intent, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
 import { translate, type T } from '../i18n/index.js'
-import { CARD_MM, isCounter } from './drop.js'
+import { isCounter } from '../components.js'
+import { CARD_MM } from './drop.js'
 
 // Everything the keyboard says is the tool's own, so it is looked up where the reader is (A4).
 // A call from outside React — a test, a label built before a provider is mounted — gets Swedish,
@@ -159,9 +160,6 @@ const handName = (view: Snapshot, z: ZoneView, t: T): string => {
   return z.owner === view.seat ? t('kbd.hand.my') : t('kbd.hand.other', { name: seat?.name ?? z.owner ?? '' })
 }
 
-// The counter token's type id (engine's TOKEN_COUNTER): a count with a value, never a card.
-export const COUNTER_TYPE = 'token.counter'
-
 export function placesFor(view: Snapshot, moving: ReadonlySet<string>, sourceZone: string | null, t: T = swedish): Place[] {
   // A hand nobody is sitting at is not a place to put a card: it would be handed to no one, and
   // it has no name to be offered under either.
@@ -173,7 +171,7 @@ export function placesFor(view: Snapshot, moving: ReadonlySet<string>, sourceZon
   for (const c of view.components) byZone.set(c.zone, [...(byZone.get(c.zone) ?? []), c])
   const countersOnly = (id: string) => {
     const inside = byZone.get(id) ?? []
-    return inside.length > 0 && inside.every((c) => c.type.id === COUNTER_TYPE)
+    return inside.length > 0 && inside.every(isCounter)
   }
   const zones: Place[] = view.zones
     .filter((z) => !(z.kind === 'area' && z.id === view.floor))
@@ -197,7 +195,7 @@ export function placesFor(view: Snapshot, moving: ReadonlySet<string>, sourceZon
   const areas = new Set(view.zones.filter((z) => z.kind === 'area').map((z) => z.id))
   // A counter is not something a card stacks on (K1 is about cards).
   const cards: Place[] = view.components
-    .filter((c) => areas.has(c.zone) && !moving.has(c.id) && c.type.id !== COUNTER_TYPE)
+    .filter((c) => areas.has(c.zone) && !moving.has(c.id) && !isCounter(c))
     .map((c): Place => ({
       key: `c:${c.id}`,
       label: t('kbd.place.onCard', { name: cardName(c, t) }),
@@ -237,7 +235,7 @@ export function intentsForPlace(view: Snapshot, place: Place, thing: Thing, movi
     if (place.kind === 'card' && place.anchor) return [{ v: 'stack', component: { top: thing.pile }, onto: place.anchor.id }]
     return [{ v: 'split', pile: thing.pile, at: 1, to: place.zone }]
   }
-  // A chip stacks on nothing — `token.counter` is `stackable: false`, and the table says so — so
+  // A chip stacks on nothing — the counter type is `stackable: false`, and the table says so — so
   // where a card would join the one it was sent to, a counter goes to that card's zone instead.
   if (place.kind === 'card' && place.anchor && thing.kind !== 'counter') {
     const onto = place.anchor.id

@@ -1,15 +1,9 @@
-import { TOKEN_COUNTER } from '@byd/engine'
 import type { Intent, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
 import { zoneAt } from '../zones.js'
 
 // Card size in table millimetres. The type registry knows the real size; until the renderer
 // reads it from there, the standard card is the only type that exists.
 export const CARD_MM = { w: 63, h: 88 }
-
-// A counter is a component of a type of its own (C4). The felt draws one as a chip and the
-// keyboard addresses one as a counter, and the two must never disagree about which is which, so
-// they ask the same question here.
-export const isCounter = (c: { type: { id: string } }): boolean => c.type.id === TOKEN_COUNTER.id
 
 export type Point = { x: number; y: number }
 export type DragTarget = { kind: 'card'; id: string } | { kind: 'counter'; id: string } | { kind: 'pileTop'; pile: string } | { kind: 'pile'; pile: string }

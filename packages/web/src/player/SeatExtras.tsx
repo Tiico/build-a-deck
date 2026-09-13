@@ -1,7 +1,7 @@
 import type { Snapshot, VisibleComponentState } from '@byd/protocol'
 import { hue } from '../table/hue.js'
 import { Texture } from '../table/Texture.js'
-import { COUNTER_TYPE } from './PlaySheet.js'
+import { isCounter } from '../components.js'
 import { useT } from '../i18n/index.js'
 
 // What a seat owns beside its hand (C4, prototype A): its counters as a row of pills under the
@@ -10,12 +10,12 @@ import { useT } from '../i18n/index.js'
 // The seat's own counters: components of the counter type in a zone the seat owns.
 export function countersOf(view: Snapshot): VisibleComponentState[] {
   const own = new Set(view.zones.filter((z) => z.owner === view.seat).map((z) => z.id))
-  return view.components.filter((c) => c.type.id === COUNTER_TYPE && own.has(c.zone))
+  return view.components.filter((c) => isCounter(c) && own.has(c.zone))
 }
 // The cards in the seat's own areas: zones it owns that are areas, and hold cards.
 export function inFrontOf(view: Snapshot): VisibleComponentState[] {
   const own = new Set(view.zones.filter((z) => z.owner === view.seat && z.kind === 'area').map((z) => z.id))
-  return view.components.filter((c) => c.type.id !== COUNTER_TYPE && own.has(c.zone))
+  return view.components.filter((c) => !isCounter(c) && own.has(c.zone))
 }
 
 // A counter as a pill: tap the sides to count, tap the number to type a value.
@@ -53,7 +53,7 @@ export type MineStripProps = { view: Snapshot; faces?: string | undefined; onFli
 export function MineStrip({ view, faces, onFlip, onTake, onPlay }: MineStripProps) {
   const t = useT()
   const mine = inFrontOf(view)
-  const hasArea = view.zones.some((z) => z.owner === view.seat && z.kind === 'area' && !view.components.some((c) => c.zone === z.id && c.type.id === COUNTER_TYPE))
+  const hasArea = view.zones.some((z) => z.owner === view.seat && z.kind === 'area' && !view.components.some((c) => c.zone === z.id && isCounter(c)))
   if (!hasArea && mine.length === 0) return null
   return (
     <section className="byd-mine" data-mine>

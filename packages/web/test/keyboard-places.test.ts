@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Snapshot, VisibleComponentState } from '@byd/protocol'
-import { placesFor } from '../src/table/keyboard.js'
+import { intentsForPlace, isLoose, placesFor, thingsOn, type Thing } from '../src/table/keyboard.js'
 
 // Where the address panel lets a card go (K16). A wizard table (C4) has, per seat, a private
 // area and a zone that holds nothing but its counter; the counter is a component of its own type
@@ -61,5 +61,41 @@ describe('the places a card can be addressed to (K16, C4)', () => {
     const fromHand = placesFor(table('A'), new Set(['h1']), 'hand:A').map((p) => p.label)
     expect(fromHand).toEqual(expect.arrayContaining(['Draghög', 'Bos hand', 'Framför A', 'Bordet', 'På Torn']))
     expect(fromHand).not.toContain('Min hand')
+  })
+})
+
+// What the address then *sends* (#73). The filtering above settles which rows the panel shows; it
+// does not settle what a row means once the thing addressed is a chip. A counter is `flippable:
+// false`, so the flip that goes with a card into a public area (K11) had the whole envelope
+// refused and the chip stayed where it was; and it is `stackable: false`, so "På <kort>" cannot
+// mean for it what it means for a card. Neither case is reached by the filtering: a chip is still
+// offered the table itself, and still offered every loose card on the felt.
+describe('what a row of "Flytta till" sends a counter (C4, #73)', () => {
+  const view = table('A')
+  const chip = thingsOn(view).flatMap((x) => (x.kind === 'counter' ? [x] : []))[0]!
+  const card = thingsOn(view).flatMap((x) => (x.kind === 'card' ? [x] : []))[0]!
+  // The chip's own rows, so that the control below differs from the case in the one thing being
+  // tested: same view, same row, a card instead of a counter.
+  const rows = placesFor(view, new Set([chip.id]), chip.zone)
+  const row = (label: string) => rows.find((p) => p.label === label)!
+  const sent = (thing: Thing, label: string, moving: readonly string[]) => intentsForPlace(view, row(label), thing, moving).map((i) => i.v)
+
+  it('is asked of rows a chip is really offered, so neither rule below is unreachable', () => {
+    expect(isLoose(chip)).toBe(true)
+    expect(rows.map((p) => p.label)).toEqual(expect.arrayContaining(['Bordet', 'På Torn']))
+  })
+
+  it('sends it into a public area by `move` alone, where a card is turned face up as well', () => {
+    expect(sent(chip, 'Bordet', [chip.id])).toEqual(['move'])
+    // The same row for a card, so that what is missing above is the counter and not the row.
+    expect(sent(card, 'Bordet', [card.id])).toEqual(['move', 'flip'])
+  })
+
+  it('sends it into a card’s zone rather than onto the card, which a card is stacked onto', () => {
+    expect(sent(chip, 'På Torn', [chip.id])).toEqual(['move'])
+    // A second card sent onto the same one — the fixture holds a single loose card, so the one
+    // travelling is named rather than drawn from the felt — so that the line above is a rule
+    // about chips and not about the row.
+    expect(sent(card, 'På Torn', ['another'])).toEqual(['stack'])
   })
 })

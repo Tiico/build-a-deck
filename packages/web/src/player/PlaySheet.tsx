@@ -1,4 +1,5 @@
 import type { Snapshot } from '@byd/protocol'
+import { isCounter } from '../components.js'
 import { Refusal, type RefusalHandle } from '../status/Refusal.js'
 import { translate, useT, type Key, type T } from '../i18n/index.js'
 
@@ -7,9 +8,6 @@ import { translate, useT, type Key, type T } from '../i18n/index.js'
 const swedish: T = (key, params) => translate('sv', key, params)
 
 export type Placement = 'top' | 'bottom'
-// The counter token's type id (engine's TOKEN_COUNTER), which the phone treats as a count, not a card.
-import { COUNTER_TYPE } from '../table/keyboard.js'
-export { COUNTER_TYPE }
 export type PlaySheetProps = {
   view: Snapshot
   count: number
@@ -41,7 +39,7 @@ export function targetsOf(view: Snapshot, t: T = swedish) {
   const playable = view.zones.filter((z) => {
     if (z.owner !== undefined && z.owner !== view.seat) return false
     const inside = byZone.get(z.id) ?? []
-    return !(inside.length > 0 && inside.every((c) => c.type.id === COUNTER_TYPE))
+    return !(inside.length > 0 && inside.every(isCounter))
   })
   const named = shortcutsOf(playable, view.floor).map((z) => ({ id: z.id, name: z.name, label: z.label, at: z.at, kind: z.kind, count: z.mode === 'count' ? z.count : z.order.length }))
   const table = t('play.table')
