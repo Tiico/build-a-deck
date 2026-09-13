@@ -400,9 +400,15 @@ describe('a column running in under the pinned × (#53)', () => {
 // ground in front of the pin is painted twice — once as the stylesheet leaves it, once with the
 // cue's own property forced the other way — and the two pictures are compared. A fade that is
 // really painted shows up as a difference; one the stylesheet only asks for does not.
+// The × that takes a column away, in the state a pointer puts it in (#46).
+const SHOWING = '.byd-data th .byd-data-dropfield { opacity: 1; }'
 const FORCED = {
   off: '.byd-data .byd-data-remove::before { opacity: 0 !important; }',
   on: '.byd-data .byd-data-remove::before { opacity: 1 !important; }',
+  // The same fade laid over the heading row as well, which is the thing the head is spared. It is
+  // here so that "the head is painted the same either way" can be shown to be a fact about the
+  // head rather than a fact about two pictures of nothing.
+  head: '.byd-data thead .byd-data-remove::before { content: ""; position: absolute; top: 0; bottom: 1px; right: 100%; width: 24px; background: linear-gradient(to left, #1b1d23, rgb(27 29 35 / 0%)); opacity: 1; }',
 }
 
 describe('what says a value is still going under the pinned × (#53)', () => {
@@ -433,8 +439,18 @@ describe('what says a value is still going under the pinned × (#53)', () => {
   // to (editor-contrast, docs/UX-KONTROLLER.md). So the head is deliberately left uncued, and the
   // same 40 px are read twice: across the heading row nothing extra may be painted, across the
   // first card's row the fade must still be there.
+  //
+  // Since #46 that × is laid over the right edge of its heading and shows itself when the column
+  // is pointed at or has the focus in it, so that a number column can be a number wide. A control
+  // nobody is pointing at paints nothing, and a comparison of two pictures of nothing would agree
+  // for a reason that has nothing to do with the cue. So it is revealed here — the same state a
+  // pointer puts it in — and the contrast question is put to the control as it is actually drawn.
   it('leaves the head alone: while the cue is on, the remove-field × in front of the pin is painted exactly as it is with the cue taken away', async () => {
-    const [shown, off] = await Promise.all([pinned(await markupOf(wideDoc())), pinned(await markupOf(wideDoc()), FORCED.off)])
+    const [shown, off, over] = await Promise.all([
+      pinned(await markupOf(wideDoc()), SHOWING),
+      pinned(await markupOf(wideDoc()), `${SHOWING}${FORCED.off}`),
+      pinned(await markupOf(wideDoc()), `${SHOWING}${FORCED.head}`),
+    ])
 
     // The head really is the ground being read: at the place worked out for it, a control that
     // takes a field away is standing inside the 24 px the fade covers, with the cue on. Which
@@ -446,6 +462,10 @@ describe('what says a value is still going under the pinned × (#53)', () => {
     // Both pictures are taken at the same moment: the cue is a paint, not a layout, so taking it
     // back may not move anything — and if it ever did, the two would part here first.
     expect(shown.veil.scrollLeft).toBe(off.veil.scrollLeft)
+    // And the head is ground that a fade would really show up on: laid over the heading row as
+    // well, the same fade makes a different picture there. Without this the three comparisons
+    // below could agree by being two pictures of an empty strip.
+    expect(over.veil.headStrip.equals(off.veil.headStrip)).toBe(false)
 
     // The condition: the heading row in front of the pin is the same picture with the cue on as
     // with it taken back — the × keeps every bit of the contrast it was measured at.
