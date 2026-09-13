@@ -65,6 +65,47 @@ describe('what the card table re-measures (#46)', () => {
     expect(measured).toHaveBeenCalledTimes(1)
   })
 
+  // A width is handed out in proportion to what each column asked for, so a value that grows by a
+  // character takes a pixel or two off every other text column and moves every boundary to their
+  // right — including the one the caret is standing at. Re-fitting on the keystroke therefore
+  // moves the cell being typed in, under the hand that is typing in it. The table already holds
+  // the row order still while a cell is being edited, for the same reason; the widths are held
+  // the same way, and settle when the caret leaves.
+  it('holds every width still while a cell is being typed in, however many characters go in', async () => {
+    render(<Table doc={projectDoc()} />)
+    await frame()
+    const before = measured.mock.calls.length
+
+    const cell = screen.getByLabelText('dragon title') as HTMLInputElement
+    fireEvent.focus(cell)
+    for (const upto of ['D', 'Dr', 'Dra', 'Drak', 'Drake', 'Draken', 'Drakens']) {
+      fireEvent.change(cell, { target: { value: upto } })
+      await frame()
+    }
+
+    // Seven keystrokes, seven new documents, and not one new width.
+    expect(cell.value).toBe('Drakens')
+    expect(measured.mock.calls.length).toBe(before)
+  })
+
+  it('settles them the moment the caret leaves that cell, so the deck is measured after the edit', async () => {
+    render(<Table doc={projectDoc()} />)
+    await frame()
+    const before = measured.mock.calls.length
+    const cell = screen.getByLabelText('dragon title') as HTMLInputElement
+    fireEvent.focus(cell)
+    for (const upto of ['D', 'Dr', 'Drakens', 'Drakens hemliga namn']) {
+      fireEvent.change(cell, { target: { value: upto } })
+      await frame()
+    }
+    fireEvent.blur(cell)
+    await frame()
+
+    // One measurement for the whole edit, and it is the one after it: what the deck now says.
+    expect(measured.mock.calls.length).toBe(before + 1)
+    expect(measured.mock.calls.at(-1)![1].title).toContain('Drakens hemliga namn')
+  })
+
   it('is a real condition: a column made in the head is a new width, and that is measured', async () => {
     render(<Table doc={projectDoc()} />)
     await frame()

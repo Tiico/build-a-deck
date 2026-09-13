@@ -192,17 +192,34 @@ export function fitColumns(box: Element, deck: Record<string, readonly string[]>
   }
   table.style.tableLayout = 'fixed'
   table.style.width = `${total}px`
+}
 
-  // And which values did not fit after all. A cut is the exception once the widths are measured —
-  // nothing is cut at 1280 or at 1024 for six cards — but when it happens the cell has to say so,
-  // and the cell has to say it because the input cannot: `text-overflow` on an input goes silent
-  // the moment the cell takes focus, which is exactly when the designer is reading it.
+// Which values did not fit after all (#46).
+//
+// A separate question from the widths, and deliberately so, because it has a different answer at
+// a different moment. A width is a fact about the deck and is measured when the deck changes;
+// whether *this* value fits *this* column is a fact about a cell, and it is true or false again
+// on every character the designer types — while the width she is typing inside must not move
+// under her. So the widths are held still while a cell has the caret and this is not.
+//
+// It is asked of the browser rather than of a font, which is both cheaper and truer: since the
+// field takes exactly the width of its column (#46) an input that has scrolled is an input whose
+// value does not fit, and that is the same value the designer can see, including the half-written
+// one that is not in the project yet. A cut is the exception once the widths are measured —
+// nothing is cut at 1280 or at 1024 for six cards — but when it happens the cell has to say so,
+// and the cell has to say it because the input cannot: `text-overflow` on an input goes silent
+// the moment the cell takes focus, which is exactly when the designer is reading it.
+//
+// Deliberately one self-contained function with no imports, as `fitColumns` and `markCut` are:
+// the browser test runs this very function inside the page, so what is measured there is what
+// ships.
+export function markValues(box: Element): void {
+  const table = box.querySelector('table.byd-data') as HTMLTableElement | null
+  if (!table) return
   for (const cell of Array.from(table.querySelectorAll('tbody td[data-col]')) as HTMLTableCellElement[]) {
     const field = cell.querySelector('input:not([type=checkbox])') as HTMLInputElement | null
-    const value = field ? field.value : (cell.textContent ?? '')
-    const track = tracks[cell.cellIndex]
-    if (!track) continue
-    if (need(value) > track.width) cell.setAttribute('data-cut', 'true')
+    const runs = field ? field.scrollWidth > field.clientWidth : cell.scrollWidth > cell.clientWidth
+    if (runs) cell.setAttribute('data-cut', 'true')
     else cell.removeAttribute('data-cut')
   }
 }

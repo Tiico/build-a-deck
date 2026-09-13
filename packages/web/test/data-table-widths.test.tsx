@@ -19,7 +19,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { chromium, type Browser } from 'playwright'
 import { applyEdit } from '@byd/server/doc'
 import { DataTable } from '../src/editor/DataTable.js'
-import { deckValues, fitColumns } from '../src/editor/columns.js'
+import { deckValues, fitColumns, markValues } from '../src/editor/columns.js'
 import type { ProjectDoc } from '../src/editor/types.js'
 import { translate, type T } from '../src/i18n/index.js'
 import { projectDoc } from './project-doc.js'
@@ -485,6 +485,46 @@ describe('a width is a fact about the deck, not about the view (#46 on #15, #16)
   }, 60_000)
 })
 
+// The deck with a sentence half written into it: the longest rules text in it — the one the whole
+// column's width is taken from — with a clause being added to it a character at a time.
+function typedDoc(chars: number): ProjectDoc {
+  const doc = deckDoc()
+  const grown = `${CARDS[2]!.fields.body}${' och sedan en gång till'.slice(0, chars)}`
+  return { ...doc, rows: doc.rows.map((row) => (row.id === 'k3' ? { ...row, fields: { ...row.fields, body: grown } } : row)) }
+}
+
+// The same fact as the filter's, reached through the other door — and the one that actually moves
+// the table under the designer's hands, because she is *in* the cell while it happens.
+//
+// The slack is handed out in proportion to what each column asked for, so when `body`'s widest
+// value grows by seven pixels a character, `art` and `title` give up a pixel or two each and every
+// boundary to their right moves. That includes the right-hand edge of the cell being typed in: the
+// caret creeps away under the hand writing at it. So the widths are measured from the deck as it
+// was when the caret arrived, and settle when it leaves — which is what the table already does
+// with the row order, for the same reason.
+describe('a width does not move while its own cell is being typed in (#46)', () => {
+  it('draws every boundary where it stood, however many characters have gone into the cell', async () => {
+    const held = deckDoc()
+    const typed = await Promise.all([0, 1, 2, 3, 5, 8, 13, 21].map((chars) => measure(typedDoc(chars), { deck: held })))
+
+    // The cell really is growing — the markup differs from keystroke to keystroke — and the table
+    // does not. Every column is the width it was before the first character.
+    const first = typed[0]!
+    for (const at of typed) expect(at.width).toEqual(first.width)
+    expect(typed.at(-1)!.table).toBe(first.table)
+  }, 60_000)
+
+  it('is a real condition: measure on the keystroke instead and every boundary moves, one character at a time', async () => {
+    const [before, after] = await Promise.all([measure(typedDoc(0)), measure(typedDoc(21))])
+
+    // Named rather than merely different: the sentence being written takes the room, and it takes
+    // it from the other two text columns — which is what pushes the boundary the caret stands at.
+    expect(after.width.body!).toBeGreaterThan(before.width.body!)
+    expect(after.width.art!).toBeLessThan(before.width.art!)
+    expect(after.width.title!).toBeLessThan(before.width.title!)
+  }, 60_000)
+})
+
 // A deck with one sentence in it that no desk width could hold: whatever the slack, `body` ends
 // up on its own floor and the value runs past the edge of the cell.
 const TOO_LONG =
@@ -512,9 +552,12 @@ async function cue(doc: ProjectDoc, extra = ''): Promise<Cue> {
   try {
     await page.setContent(shellOf(markupOf(doc), extra), { waitUntil: 'load' })
     const facts = await page.evaluate(
-      ({ deck, decide }) => {
+      ({ deck, decide, mark }) => {
         const box = document.querySelector('.byd-data-scroll') as HTMLElement
+        // Both of the editor's own decisions, in the order it makes them: the widths, and then —
+        // at those widths — which values did not fit.
         new Function('box', 'deck', `(${decide})(box, deck)`)(box, deck)
+        new Function('box', `(${mark})(box)`)(box)
         const marked = [...box.querySelectorAll('tbody td[data-cut="true"]')]
         const long = box.querySelector('tr[data-card-ref="k3"] td[data-col="body"]') as HTMLElement
         const seen = long.getBoundingClientRect()
@@ -523,7 +566,7 @@ async function cue(doc: ProjectDoc, extra = ''): Promise<Cue> {
           clip: { x: seen.right - 40, y: seen.top, width: 40, height: seen.height },
         }
       },
-      { deck: deckValues(doc, sv), decide: String(fitColumns) },
+      { deck: deckValues(doc, sv), decide: String(fitColumns), mark: String(markValues) },
     )
     const atRest = await page.screenshot({ clip: facts.clip })
     // The caret put in the very cell being read, and sent to the end of the value — which is where

@@ -11,7 +11,7 @@ import { Summary } from './HistoryPanel.js'
 import type { Cell } from './ProjectClient.js'
 import { exportCardsCsv, importCardsCsv } from './csv.js'
 import { keepOrder, nextSort, sortRows, type SortState } from './sorting.js'
-import { deckValues, fitColumns, widthKind, GROUP_COL } from './columns.js'
+import { deckValues, fitColumns, markValues, widthKind, GROUP_COL } from './columns.js'
 import { countLabel, discreteColumns, filterRows, isFiltering, noFilter, toggleValue, type FilterState } from './filtering.js'
 import { duplicateRows, keepRows, markRows, noSelection, removeRows, selectionLabel, setColumn, toggleRow, type Selection } from './selection.js'
 import { groupColumn, groupOfRow, ruleLabel } from './groups.js'
@@ -124,6 +124,10 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
   // else (#33). Which cell it is belongs to React, not to the stylesheet: a handle hidden by CSS
   // is still a stop in the tab order, and there would be one per cell.
   const [here, setHere] = useState<{ cardRef: string; field: string } | null>(null)
+  // Whether the designer is standing in a cell at all, which is what holds the column widths
+  // still (#46). One boolean and not the cell itself: moving from one cell to the next is not a
+  // moment to re-measure, it is the same edit going on.
+  const editing = here !== null
   const openBrace = (cardRef: string, field: string, el: HTMLInputElement) => {
     const upto = el.value.slice(0, el.selectionStart ?? el.value.length)
     const at = upto.lastIndexOf('{')
@@ -224,10 +228,20 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
     const soon = () => {
       if (frame === 0) frame = requestAnimationFrame(pin)
     }
-    // A new width, and then — at that width — whether a column is under the pin. In that order,
-    // because the second question is asked of the geometry the first one just made.
+    // A new width, and then — at that width — which values did not fit and whether a column is
+    // under the pin. In that order, because both of those are asked of the geometry the first one
+    // just made.
+    //
+    // Unless a cell has the caret in it, and then the widths stand still. What is over is handed
+    // out in proportion to what each column asked for, so a value that grows by a character takes
+    // a pixel or two off every other sentence and moves every boundary to their right — including
+    // the one the cell being typed in ends at, so the caret creeps away from under the hand that
+    // is writing. The table already holds the row order still for exactly this reason; a width is
+    // the same promise about the same moment, and it is kept the same way. The cut cue is not
+    // held, because it is about this value in this cell and has to follow the typing.
     const fit = () => {
-      fitColumns(box, deck)
+      if (!editing) fitColumns(box, deck)
+      markValues(box)
       markCut(box)
     }
     fit()
@@ -249,9 +263,11 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
       watch?.disconnect()
       pinned?.disconnect()
     }
-    // A new document is what a new width can come out of: an edit, an import, a column made or
-    // taken away. Everything else the table keeps in its own state leaves the deck as it was.
-  }, [doc])
+    // A new deck is what a new width can come out of: an edit, an import, a column made or taken
+    // away. Everything else the table keeps in its own state leaves the deck as it was — except
+    // the caret arriving in a cell or leaving one, which is what decides whether the widths are
+    // being held; leaving one is therefore also when they settle on what was written.
+  }, [deck, editing])
   useEffect(() => {
     if (!refocus) return
     if (typeof refocus === 'object') {
