@@ -294,6 +294,10 @@ describe('the panel a counter opens (C4, #73)', () => {
     await user.keyboard('{Enter}')
     const panel = within(await screen.findByRole('dialog'))
 
+    // The panel is answered where it is read, so it takes the focus whether or not it has a verb
+    // to offer first — a panel with no "Gör" row must not leave the focus out on the felt.
+    await waitFor(() => expect(within(screen.getByRole('dialog')).getAllByRole('button')[0]).toBe(document.activeElement))
+
     expect(panel.queryByRole('heading', { name: 'Gör' })).toBeNull()
     for (const verb of ['Vänd', 'Vrid 90°', 'Avslöja', 'Titta']) expect(panel.queryByRole('button', { name: new RegExp(`^${verb}`) })).toBeNull()
 

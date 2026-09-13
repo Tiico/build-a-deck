@@ -81,8 +81,17 @@ export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, intent
         </div>
         <h3>{t('kbd.panel.moveTo')}</h3>
         <div className="byd-kbd-list">
-          {places.map((p) => (
-            <button key={p.key} type="button" onClick={() => onRun(intentsFor(p, moving), landedKey(p))}>
+          {places.map((p, i) => (
+            <button
+              key={p.key}
+              type="button"
+              // The panel is answered where it is read, so it takes the focus on the way in. That
+              // is the first verb when there is one; a thing with no verbs at all — a chip, until
+              // #67 says what a counter can do — hands it to the first place instead, rather than
+              // opening a panel and leaving the reader standing out on the felt.
+              ref={verbs.length === 0 && i === 0 ? first : undefined}
+              onClick={() => onRun(intentsFor(p, moving), landedKey(p))}
+            >
               <span>{p.label}</span>
               <small>{p.hint}</small>
             </button>
