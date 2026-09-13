@@ -158,7 +158,6 @@ describe('the ring of verbs (K14)', () => {
     { label: 'Vrid', run: () => undefined },
     { label: 'Titta', run: () => undefined },
     { label: 'Avslöja', run: () => undefined },
-    { label: 'Stäng', run: null, kind: 'no' as const },
   ]
   const ring = (x: number, y: number) => markupOf(<RadialMenu id="c1" x={x} y={y} items={verbs} onClose={() => undefined} />)
   const WINDOW: Size = { w: 900, h: 420 }
