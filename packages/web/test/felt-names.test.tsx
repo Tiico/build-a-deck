@@ -339,24 +339,37 @@ async function bordTab(seats: number, felt: { w: number; h: number } | null, des
 }
 
 // The tab as it really lays out: the box the stylesheet gives the felt, read first, then the felt
-// drawn into that box.
-async function bordTabDrawn(seats: number, desk: { w: number; h: number } = DESK, market = false, picked = 'mine:B'): Promise<string> {
-  const box = await onPage(await bordTab(seats, null, desk, market, picked), desk, (page) =>
+// drawn into that box. The box is the window's answer and not the table's — the felt's frame is
+// `width: 100%; height: 100%` inside a grid track that cannot grow with what is drawn in it — so
+// it is read once per window and kept. Mounting the whole editor out of a real project is by far
+// the slowest thing this suite does, and doing it twice for every scene starved the rest of the
+// package's sockets until a save somewhere else lost its four-second race.
+const boxes = new Map<string, { w: number; h: number }>()
+async function feltBox(desk: { w: number; h: number }): Promise<{ w: number; h: number }> {
+  const key = `${desk.w}x${desk.h}`
+  const known = boxes.get(key)
+  if (known) return known
+  const box = await onPage(await bordTab(2, null, desk, false), desk, (page) =>
     page.evaluate(() => {
       const r = document.querySelector('.byd-setup-felt')!.getBoundingClientRect()
       return { w: Math.round(r.width), h: Math.round(r.height) }
     }),
   )
-  return bordTab(seats, box, desk, market, picked)
+  boxes.set(key, box)
+  return box
+}
+
+async function bordTabDrawn(seats: number, desk: { w: number; h: number } = DESK, market = false, picked = 'mine:B'): Promise<string> {
+  return bordTab(seats, await feltBox(desk), desk, market, picked)
 }
 
 describe('one name per zone (#43)', () => {
-  it('gives every zone in the Bord tab exactly one name, and never two', async () => {
+  it('gives every zone in the Bord tab exactly one name, and it is the name on the screen', async () => {
     const html = await bordTabDrawn(2)
     const counted = await onPage(html, DESK, (page) =>
       page.evaluate(() => {
         const shown = (el: Element | null) => !!el && getComputedStyle(el).display !== 'none' && getComputedStyle(el).visibility !== 'hidden'
-        const out: Record<string, number> = {}
+        const out: Record<string, string[]> = {}
         for (const handle of document.querySelectorAll('.byd-setup-handle')) {
           const id = handle.getAttribute('data-zone-handle') ?? '?'
           const seat = id.startsWith('hand:') ? id.slice(5) : null
@@ -365,7 +378,9 @@ describe('one name per zone (#43)', () => {
             document.querySelector(`.byd-zone[data-area="${id}"] > span`),
             document.querySelector(`.byd-pile[data-zone="${id}"] .byd-pile-count`),
             seat ? document.querySelector(`.byd-seat-name[data-seat-name="${seat}"]`) : null,
-          ].filter(shown).length
+          ]
+            .filter(shown)
+            .map((el) => (el!.textContent ?? '').trim())
         }
         return out
       }),
@@ -373,7 +388,15 @@ describe('one name per zone (#43)', () => {
     // Not two — which is the whole of the reported collision — and not none either: a zone the
     // designer cannot read the name of is what this tab exists to prevent (B5).
     expect(Object.keys(counted).length).toBeGreaterThan(4)
-    expect(Object.entries(counted).filter(([, n]) => n !== 1)).toEqual([])
+    expect(Object.entries(counted).filter(([, names]) => names.length !== 1)).toEqual([])
+    // And counting is not enough: the one name drawn on a hand has to be the name that hand is
+    // actually known by. It is the seat's, because a hand has no name of its own to give — the
+    // panel no longer offers to type one, the keyboard's list of places says the same, and what
+    // the felt lays on the hand is the seat's name card (K9, K19). Counting the card while the
+    // string on it belonged to something else is how "the felt names every hand" stayed true on
+    // paper and false on the screen.
+    expect({ 'hand:A': counted['hand:A'], 'hand:B': counted['hand:B'] }).toEqual({ 'hand:A': ['A'], 'hand:B': ['B'] })
+    expect(Object.values(counted).flat()).not.toContain('Hand')
   }, 60_000)
 })
 

@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { MAX_PLAYERS } from '@byd/server/doc'
 import { contrastRatio, cssCustomProperties } from '../src/player/contrast.js'
 import { seatColor } from '../src/table/seatColor.js'
 
@@ -19,7 +20,16 @@ const tokenIn = (rel: string) => {
     return value
   }
 }
-const SEATS = [0, 1, 2, 3, 4, 5].map(seatColor)
+// Every seat the table can actually hold, and not a number written down beside `MAX_PLAYERS`.
+// The palette had six entries and wrapped, so the seventh seat took the first's red and the
+// eighth the second's blue — and K9 makes the colour the seat's identity everywhere it appears.
+const SEATS = Array.from({ length: MAX_PLAYERS }, (_, i) => seatColor(i))
+
+describe('a seat colour as an identity (K9)', () => {
+  it('gives every seat the table can hold a colour of its own', () => {
+    expect(new Set(SEATS).size).toBe(MAX_PLAYERS)
+  })
+})
 
 describe('the ink a seat colour carries', () => {
   it.each(SEATS)('gives the name written on the %s seat AA contrast on the table', (seat) => {

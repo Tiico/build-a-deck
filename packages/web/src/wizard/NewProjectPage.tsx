@@ -8,6 +8,7 @@ import { suggestFieldKey } from '../editor/fields.js'
 import { buildProject, type WizardState } from './build.js'
 import { defaultFields, DEFAULT_FRAME, FRAMES, type Field } from './frames.js'
 import { useT, type Key, type T } from '../i18n/index.js'
+import { MAX_PLAYERS } from '@byd/server/doc'
 import './wizard.css'
 
 export type NewProjectPageProps = { onNavigate?(url: string): void }
@@ -187,7 +188,10 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
           over them, and then what is written on the screen and what the field is called are two
           different things — which is the whole of WCAG 2.5.3. */}
       <label className="byd-wizard-label">{t('wizard.name')}<input value={s.name} onChange={(event) => setS({ ...s, name: event.target.value })} placeholder={t('wizard.name.placeholder')} /></label>
-      <fieldset><legend>{t('wizard.players')}</legend><div className="byd-wizard-players">{[1, 2, 3, 4, 5, 6].map((n) => <button key={n} type="button" className="byd-choice" aria-pressed={s.players === n} onClick={() => setS({ ...s, players: n })}>{n}</button>)}</div></fieldset>
+      {/* Every seat count the table can hold, and not six of them written out: `MAX_PLAYERS` is
+          eight, so a game for seven or eight could not be started here at all — the same mismatch
+          the editor's own panel had (K18, K19). */}
+      <fieldset><legend>{t('wizard.players')}</legend><div className="byd-wizard-players">{Array.from({ length: MAX_PLAYERS }, (_, i) => i + 1).map((n) => <button key={n} type="button" className="byd-choice" aria-pressed={s.players === n} onClick={() => setS({ ...s, players: n })}>{n}</button>)}</div></fieldset>
     </section>
   )
   const falten = (

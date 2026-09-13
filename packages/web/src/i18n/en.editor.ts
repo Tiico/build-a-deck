@@ -303,6 +303,7 @@ export const enEditor = {
   'setup.kind.area': 'Area',
   'setup.name': 'Name',
   'setup.name.of': 'Name for {name}',
+  'setup.name.seat': 'The seat names its own hand',
   'setup.shortcut': 'Shortcut on the phone',
   'setup.shortcut.of': 'Shortcut for {name}',
   'setup.at': 'Placement',

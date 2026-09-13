@@ -223,10 +223,19 @@ function ZoneProps({ zone, setup, onPatch, onRemove }: { zone: Zone; setup: Proj
   return (
     <div className="byd-setup-props" data-zone-props={zone.id}>
       <strong>{kind}</strong>
-      <label>
-        {t('setup.name')}
-        <input aria-label={t('setup.name.of', { name: zone.name })} value={zone.name} onChange={(e) => onPatch({ name: e.target.value })} />
-      </label>
+      {/* A hand has no name of its own to give. Whoever sits at it names it: the felt lays that
+          seat's name card on the hand (K9, K19) and the keyboard's list of places offers it under
+          the same name, so a name typed here was a string no surface ever drew — it lived in this
+          field and in an `aria-label`, and nowhere else. The field is gone and the reason stands
+          in its place, because a hole explains nothing (L4). */}
+      {zone.kind === 'hand' ? (
+        <p className="byd-setup-hint">{t('setup.name.seat')}</p>
+      ) : (
+        <label>
+          {t('setup.name')}
+          <input aria-label={t('setup.name.of', { name: zone.name })} value={zone.name} onChange={(e) => onPatch({ name: e.target.value })} />
+        </label>
+      )}
       {!floor && zone.kind !== 'hand' && (
         <label>
           {t('setup.shortcut')}

@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { MAX_PLAYERS } from '@byd/server/doc'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { startServer, type Running } from './fixture.js'
 
@@ -18,6 +19,16 @@ function open(onNavigate: (url: string) => void) {
 }
 
 describe('NewProjectPage (L6, approved prototype A)', () => {
+  // The same reconciliation the editor's own panel got (K19): the wizard offered six seat counts
+  // while the table seats `MAX_PLAYERS`, so a game for seven or eight could not be started at all
+  // — and the two counts where a rim first carries two seats (K18) were the two nobody could ask
+  // for. What is offered is what the table can hold, said once rather than written out.
+  it('offers every seat count the table can hold', () => {
+    open(() => undefined)
+    const group = screen.getByRole('group', { name: 'Spelare' })
+    expect(within(group).getAllByRole('button').map((b) => b.textContent)).toEqual(Array.from({ length: MAX_PLAYERS }, (_, i) => String(i + 1)))
+  })
+
   it('builds starter cards graphically and shows a newly added field on every card', () => {
     open(() => undefined)
 

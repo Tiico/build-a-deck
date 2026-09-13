@@ -333,6 +333,7 @@ export const svEditor = {
   'setup.kind.area': 'Yta',
   'setup.name': 'Namn',
   'setup.name.of': 'Namn för {name}',
+  'setup.name.seat': 'Platsen namnger sin hand',
   'setup.shortcut': 'Genväg på telefonen',
   'setup.shortcut.of': 'Genväg för {name}',
   'setup.at': 'Placering',

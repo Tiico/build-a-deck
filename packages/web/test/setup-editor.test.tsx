@@ -76,10 +76,15 @@ describe('the setup editor (B5, K2): a zone\'s properties', () => {
     fireEvent.click(handle('draw'))
     fireEvent.change(screen.getByLabelText('Namn för Draghög'), { target: { value: 'Leken' } })
     expect(screen.getByText(/underst i Leken/)).toBeTruthy()
-    // The hands are handles too, but they have no verb on the phone.
+    // The hands are handles too, but they have no verb on the phone — and no name of their own
+    // either. A hand is named by whoever sits at it: the felt lays that seat's name card on it
+    // (K9) and the keyboard's list of places offers it under the same name, so a name the
+    // designer typed here would have been a string nothing ever draws. The panel says who names
+    // it rather than leaving a hole where the field was.
     fireEvent.click(handle('hand:A'))
     expect(screen.queryByLabelText(/Genväg för Hand/)).toBeNull()
-    expect(screen.getByLabelText('Namn för Hand')).toBeTruthy()
+    expect(screen.queryByLabelText(/Namn för Hand/)).toBeNull()
+    expect(screen.getByText(/Platsen namnger sin hand/)).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
     await waitFor(async () => expect((await run.projects.load('p1'))?.rev).toBe(2))

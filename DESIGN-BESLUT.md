@@ -1466,6 +1466,21 @@ Mätningen sköt in `.byd-zone > span { white-space: nowrap }` i varje läsning,
 Påståendet att "mätningen tvingar det ändå" var alltså bakvänt.
 Ingenting skjuts in längre, och varje läsning säger dessutom vilka namn som faktiskt bröts till två rader; tas deklarationen bort faller alla femtiosex bordslägesscener.
 
+**En hand har inget eget namn att ge.**
+`SeatName` ritar platsens namn, aldrig handzonens `name`, och tangentbordets platslista gör detsamma — "den som sitter där har namngett sig själv; bara ordet *hand* runt omkring är verktygets".
+Egenskapspanelen erbjöd ändå ett namnfält för en hand, så det en formgivare skrev där levde i fältet och i en `aria-label` och ingen annanstans.
+Beslutet är det panelen och tangentbordet redan hade tagit halvt: en hand namnges av platsen som sitter vid den, och kan alltså inte döpas om.
+Fältet är borta och skälet står i dess ställe, eftersom ett hål inte förklarar någonting (L4).
+K19:s mening om att filten namnger varje hand står därmed kvar och är sann på skärmen och inte bara på papperet — grinden läser numera den sträng som faktiskt ritas på handen och inte bara att det finns en etikett där.
+
+**Åtta platser, åtta färger.**
+`MAX_PLAYERS` är åtta och paletten i `seatColor.ts` hade sex färger och gick runt, så plats sju tog plats ett:s röda och plats åtta plats två:s blå.
+Ingenting satte `players` över sex förrän panelen började erbjuda varje platsantal bordet kan hålla, vilket är vad som fick varvningen att träda fram; K9 gör färgen till platsens identitet på hand, markör, dock och flöde, så två spelare med samma färg är två spelare med samma identitet.
+De två nya är de två kulörer de sex första lämnar rum för: magenta i gapet mellan den lila och den röda, lime i gapet mellan den gula och den gröna.
+`#d9699f` bär `--byd-seat-ink` med 5,91:1 och läses mot mörkret med samma tal; `#9bb63c` med 8,35:1 — inom det spann de sex gamla redan ligger i (4,80–7,84), och `seat-contrast.test.ts` mäter numera varje plats bordet kan hålla i stället för sex nedskrivna index.
+Wizarden erbjöd fortfarande `[1, 2, 3, 4, 5, 6]` — samma glapp K19 sa sig ha tagit bort, en flik bort från panelen som tagit bort det — och erbjuder nu `MAX_PLAYERS`.
+Att sju och åtta platser nu går att nå från produkten gör samtidigt #42:s överlapp i platsväljaren nåbart; det står kvar öppet och lagas inte här.
+
 De mätta talen efter ändringen, bordsläge vid 1280 × 800, varje platsantal 2–8 × varje kvartsvarv × marknad av och på: noll krockar i alla femtiosex scenerna.
 Det trängsta avståndet som beror på hur långt ett namn är, är 3 px (sex platser, två platser mitt emot varandra på en vriden filt); de övriga trånga är 2 px och är geometriska — glipan på 10 mm mellan ett kuverts två zoner — och står därför still.
 
