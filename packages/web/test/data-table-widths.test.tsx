@@ -158,7 +158,7 @@ async function measure(doc: ProjectDoc, { width = 1280, fit = true, extra = '' }
           page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
         }
       },
-      { deck: deckValues(deckDoc(), sv), fit, decide: String(fitColumns) },
+      { deck: deckValues(doc, sv), fit, decide: String(fitColumns) },
     )) as Measured
   } finally {
     await page.close()
