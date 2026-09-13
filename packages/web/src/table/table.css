@@ -78,7 +78,7 @@
    two pixels above on screen at every turn, where an edge-pinned label would swing a hundred
    pixels around its own middle and land on its neighbour. */
 .byd-zone > span {
-  position: absolute; --name-in: 8px; --name-row: 1.4em; --name-off: 6px;
+  position: absolute; --name-in: 14px; --name-row: 1.4em; --name-off: 6px;
   left: var(--name-x, 0%); top: var(--name-y, 0%);
   transform-origin: 0 0;
   transform: translate(var(--name-in), calc(-100% - var(--name-off) - var(--name-row)));
@@ -102,6 +102,10 @@
    stands a line further out when it is anchored at the far end, which within a place setting is
    always exactly one of the two. Where it stands *beside* its zone the pair is already on two
    lines by construction, so nothing is added there. */
+/* A zone nobody owns has no place setting to stay inside, so it keeps the 8 px it always had:
+   the wider inset is there to hold a name clear of the felt's corner, where the next rim's seat
+   keeps its own names, and a shared zone stands at no rim. */
+.byd-zone[data-rim='none'] > span { --name-in: 8px; }
 .byd-zone[data-grow='back'] > span { --name-row: 0px; transform: translate(calc(-100% - var(--name-in)), calc(-100% - var(--name-off) - var(--name-row))); }
 .byd-zone[data-rim='N'] > span { transform: translate(var(--name-in), calc(var(--name-off) + var(--name-row))); }
 .byd-zone[data-rim='N'][data-grow='back'] > span { transform: translate(calc(-100% - var(--name-in)), calc(var(--name-off) + var(--name-row))); }

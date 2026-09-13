@@ -368,7 +368,7 @@
    surface a designer checks the names on (B5), and since the handles no longer carry one (K19) it
    is the only place the name appears. So it is read in the felt's own amber, the colour the
    handles already use for everything the designer may take hold of (#34). */
-.byd-setup-felt .byd-table-frame .byd-zone > span { color: #ffd98a; font-weight: 700; font-size: 11px; letter-spacing: 1px; --name-in: 8px; }
+.byd-setup-felt .byd-table-frame .byd-zone > span { color: #ffd98a; font-weight: 700; font-size: 11px; letter-spacing: 1px; }
 .byd-setup-invalid { margin: 0; padding: 24px; border-radius: 16px; background: #2a1b1b; color: #ff9a9a; line-height: 1.5; }
 /* A handle per zone, on the felt with the felt's mapping. It draws no name of its own. */
 .byd-setup-handle { position: absolute; box-sizing: border-box; border: 2px dashed rgba(255, 217, 138, 0.55); border-radius: 8px; cursor: grab; outline: none; }

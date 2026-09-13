@@ -1449,7 +1449,9 @@ Där namnet står *bredvid* sin zon i stället för längs kanten ligger paret r
 **Typen var en femtedel mellanrum.**
 `letter-spacing: 2px` på en elvapixlars etikett är arton pixlar av åttiosju, och på en filt vriden ett kvartsvarv vid sex platser har två platser mitt emot varandra 150 px mellan sig och ville ha 164.
 Bordsläget sätter nu 1 px, vilket är TV-lägets proportion (1,5 av 13) i stället för en egen.
-TV-lägets `--name-in` är 16 px i stället för 10: den änden namnet är förankrat i är den som pekar mot filtens hörn, där nästa kants plats har sina egna namn, och vid åtta platser låg `Räknare H` på `Framför A` med tio.
+`--name-in` — hur långt in från den förankrade änden namnet börjar — är 14 px i bordsläge och 16 i TV-läge i stället för 8 och 10: den änden namnet är förankrat i är den som pekar mot filtens hörn, där nästa kants plats har sina egna namn, och vid åtta platser låg `Räknare H` på `Framför A` i TV-läge och två pixlar ifrån det i Bord-fliken.
+Ett kuvert förlorar ingenting på en bredare indragning, eftersom dess två namn numera ligger på var sin rad.
+En zon ingen äger behåller sina 8 px: indragningen finns för att hålla ett namn innanför sitt eget kuvert, och en delad zon har inget.
 
 **Ett namnkort vid en sidokant kröp inåt när namnet blev längre.**
 `.byd-seat-name` vid öst och väst är en vågrät textruta som vrids ett kvartsvarv kring sin egen mitt, och `right: 6px` gäller den ovridna rutan: ett åtta bokstävers namn hamnade fyrtio pixlar in från kanten, ett längre ännu längre in, medan syd och nord låg på sina 6 px.
