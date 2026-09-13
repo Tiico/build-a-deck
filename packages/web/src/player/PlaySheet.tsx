@@ -51,13 +51,15 @@ export function targetsOf(view: Snapshot, t: T = swedish) {
 export function PlaySheet({ view, count, label, onPlay, onClose, refusal, refusedZone = null }: PlaySheetProps) {
   const t = useT()
   return (
-    <div className="byd-sheet-backdrop" onClick={onClose}>
+    // The backdrop closes on the next touch rather than on click: the sheet opens under a finger
+    // that is still down, and a click is what the browser sends when that finger lets go (UX-30).
+    <div className="byd-sheet-backdrop" onPointerDown={onClose}>
       <div
         className="byd-sheet"
         role="dialog"
         aria-modal="true"
         aria-label={t('play.sheet.title')}
-        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
         onKeyDown={(e) => {
           if (e.key === 'Escape') onClose()
         }}
