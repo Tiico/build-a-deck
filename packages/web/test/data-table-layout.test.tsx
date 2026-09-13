@@ -15,8 +15,24 @@ import { userEvent } from '@testing-library/user-event'
 import { chromium, type Browser } from 'playwright'
 import { applyEdit } from '@byd/server/doc'
 import { DataTable, markCut } from '../src/editor/DataTable.js'
+import { deckValues, fitColumns, markValues } from '../src/editor/columns.js'
 import type { ProjectDoc } from '../src/editor/types.js'
+import { translate, type T } from '../src/i18n/index.js'
 import { projectDoc } from './project-doc.js'
+
+// A surface mounted on its own speaks Swedish (A4), which is what the markup below is rendered in.
+const sv: T = (key, params) => translate('sv', key, params)
+
+// A table is its markup *and* what the deck holds, because since #46 the second is what decides
+// how wide the first is drawn. Handing them round together is what keeps every measurement in this
+// file taken against the layout the editor really ships: before, `markCut` was run on its own and
+// every rectangle below was read off equal-width auto-layout columns — a table that has not
+// existed since the widths were measured. The claims held; the geometry was somebody else's.
+type Table = { html: string; deck: Record<string, string[]> }
+
+// The editor's own two decisions, run on the page rather than described by the test, in the order
+// it makes them.
+const FIT = `(box, deck) => { (${String(fitColumns)})(box, deck); (${String(markValues)})(box) }`
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 
@@ -49,7 +65,7 @@ function Table({ doc: initial = projectDoc() }: { doc?: ProjectDoc }) {
 
 // The table's markup as it stands after `act`ing on it: closed, and with the form open and half a
 // name typed into it — which is the moment the prototype's head grew.
-async function markup(open: boolean): Promise<string> {
+async function markup(open: boolean): Promise<Table> {
   const user = userEvent.setup()
   const { container, unmount } = render(<Table />)
   if (open) {
@@ -58,7 +74,7 @@ async function markup(open: boolean): Promise<string> {
   }
   const html = container.innerHTML
   unmount()
-  return html
+  return { html, deck: deckValues(projectDoc(), sv) }
 }
 
 let browser: Browser
@@ -77,11 +93,12 @@ const shellOf = (html: string, extra: string) =>
     .replace('</head>', `<style>${read('src/editor/editor.css')}\n${read('src/buttons.css')}${extra}</style></head>`)
     .replace('<div id="root"></div>', `<div id="root"><div class="byd-editor" data-page="editor" data-mode="table"><main><div role="tabpanel">${html}</div></main></div></div>`)
 
-async function measure(html: string, extra = ''): Promise<Head> {
+async function measure({ html, deck }: Table, extra = ''): Promise<Head> {
   const page = await browser.newPage({ viewport: { width: VIEW.w, height: VIEW.h } })
   try {
     await page.setContent(shellOf(html, extra), { waitUntil: 'load' })
-    return (await page.evaluate(() => {
+    return (await page.evaluate(({ deck, fit }) => {
+      new Function('box', 'deck', `(${fit})(box, deck)`)(document.querySelector('.byd-data-scroll'), deck)
       const box = (el: Element | null): Box | null => {
         if (!el) return null
         const r = el.getBoundingClientRect()
@@ -111,7 +128,7 @@ async function measure(html: string, extra = ''): Promise<Head> {
           bodyBox: box(bodies[i] ?? null),
         })),
       }
-    })) as Head
+    }, { deck, fit: FIT })) as Head
   } finally {
     await page.close()
   }
@@ -227,17 +244,22 @@ const FIELDS = 10
 
 // A deck wide enough that the box scrolls sideways at 1280 — the only width at which the pin
 // covers anything at all.
+//
+// Wide by its *headings* and not only by its values, because since #46 a long value no longer
+// makes a wide column: a sentence gives its room back until it stands on its own heading, and ten
+// columns of `fält1` squeezed onto theirs came to less than a desk is wide. What a column can
+// never be pushed below is the word at the top of it, so that is what this deck is made of.
 function wideDoc(): ProjectDoc {
   const doc = projectDoc()
-  const extra = Object.fromEntries(Array.from({ length: FIELDS }, (_, i) => [`fält${i + 1}`, `värde ${i + 1} som fortsätter förbi kanten`]))
+  const extra = Object.fromEntries(Array.from({ length: FIELDS }, (_, i) => [`egenskap-nummer-${i + 1}`, `värde ${i + 1} som fortsätter förbi kanten`]))
   return { ...doc, rows: doc.rows.map((row) => ({ ...row, fields: { ...row.fields, ...extra } })) }
 }
 
-async function markupOf(doc: ProjectDoc): Promise<string> {
+async function markupOf(doc: ProjectDoc): Promise<Table> {
   const { container, unmount } = render(<Table doc={doc} />)
   const html = container.innerHTML
   unmount()
-  return html
+  return { html, deck: deckValues(doc, sv) }
 }
 
 // The three places the box can be: where it opens, halfway along, and as far as it goes.
@@ -272,15 +294,25 @@ type Shot = {
   headStrip: Buffer
   bodyStrip: Buffer
   veiled: { field: string; px: number }[]
+  // Every column of the head, in order, at the width it was drawn, and whether the table is laid
+  // out on the widths it was told or on what the browser could guess. Read so this file can say
+  // out loud which table it is measuring: `markCut` used to be run here on its own, and every
+  // rectangle below was taken off a table the editor has not drawn since #46.
+  heads: number[]
+  told: boolean
 }
 
 // One page, scrolled to each of the three places in turn, so a stylesheet costs one browser page
 // rather than three. `extra` is appended after the editor's own, which is how the cue is taken
 // back for the control cases below.
-async function pinned(html: string, extra = ''): Promise<Record<Place, Shot>> {
+async function pinned({ html, deck }: Table, extra = ''): Promise<Record<Place, Shot>> {
   const page = await browser.newPage({ viewport: { width: VIEW.w, height: VIEW.h } })
   try {
     await page.setContent(shellOf(html, extra), { waitUntil: 'load' })
+    // The widths first, once, before anything is scrolled or photographed: where the pin falls and
+    // what runs under it are facts about the table as it is drawn, and since #46 that is a table
+    // whose columns are as wide as what stands in them.
+    await page.evaluate(({ deck, fit }) => new Function('box', 'deck', `(${fit})(box, deck)`)(document.querySelector('.byd-data-scroll'), deck), { deck, fit: FIT })
     const out = {} as Record<Place, Shot>
     for (const where of PLACES) {
       const facts = await page.evaluate(
@@ -327,6 +359,8 @@ async function pinned(html: string, extra = ''): Promise<Record<Place, Shot>> {
             .filter((c) => c.px > 0)
           return {
             cut: scroll.getAttribute('data-cut'),
+            heads: [...scroll.querySelectorAll('thead > tr > *')].map((th) => Math.round(th.getBoundingClientRect().width)),
+            told: getComputedStyle(scroll.querySelector('table.byd-data') as HTMLElement).tableLayout === 'fixed',
             scrollLeft: Math.round(scroll.scrollLeft),
             left: Math.round(far - scroll.scrollLeft),
             pin: round(over),
@@ -358,6 +392,15 @@ async function pinned(html: string, extra = ''): Promise<Record<Place, Shot>> {
 describe('a column running in under the pinned × (#53)', () => {
   it('is something the table knows about, all the way along the scroll except at the very end of it', async () => {
     const at = await pinned(await markupOf(wideDoc()))
+
+    // And this is the table the editor draws, not the one the browser would have guessed: the
+    // widths were measured and told to it, which is the only way a `<col>` binds at all. Nothing
+    // below means what it says without this line — the rectangles it reads were taken off an
+    // auto-laid-out table until now.
+    expect(at.rest.told).toBe(true)
+    const deck = at.rest.heads.slice(2, -1)
+    expect(deck.length).toBeGreaterThan(FIELDS)
+    expect(new Set(deck).size).toBeGreaterThan(1)
 
     // The guard is worth nothing if the box does not scroll: there is somewhere to go at rest,
     // half of it left in the middle, and nowhere at the end.
@@ -491,12 +534,13 @@ describe('what says a value is still going under the pinned × (#53)', () => {
 // narrowed issue refused to pay for (#53). So it is measured beside the cue rather than taken on
 // trust: a deck long enough to scroll down and wide enough for the cue to be on, scrolled both
 // ways at once.
-async function scrolled(html: string): Promise<{ head: Box; box: Box; first: string; cut: string | null; pin: Box }> {
+async function scrolled({ html, deck }: Table): Promise<{ head: Box; box: Box; first: string; cut: string | null; pin: Box }> {
   const page = await browser.newPage({ viewport: { width: VIEW.w, height: VIEW.h } })
   try {
     await page.setContent(shellOf(html, ''), { waitUntil: 'load' })
-    return await page.evaluate((decide) => {
+    return await page.evaluate(({ decide, deck, fit }) => {
       const scroll = document.querySelector('.byd-data-scroll') as HTMLElement
+      new Function('box', 'deck', `(${fit})(box, deck)`)(scroll, deck)
       scroll.scrollTop = 300
       scroll.scrollLeft = Math.round((scroll.scrollWidth - scroll.clientWidth) / 2)
       new Function('box', `(${decide})(box)`)(scroll)
@@ -510,7 +554,7 @@ async function scrolled(html: string): Promise<{ head: Box; box: Box; first: str
         cut: scroll.getAttribute('data-cut'),
         pin: round((scroll.querySelector('thead .byd-data-remove') as HTMLElement).getBoundingClientRect()),
       }
-    }, String(markCut))
+    }, { decide: String(markCut), deck, fit: FIT })
   } finally {
     await page.close()
   }
