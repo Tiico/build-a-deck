@@ -900,6 +900,14 @@
 }
 .byd-data th:hover .byd-data-dropfield, .byd-data th:focus-within .byd-data-dropfield { opacity: 1; }
 .byd-data th .byd-data-dropfield:hover, .byd-data th .byd-data-dropfield:focus-visible { color: #e05c5c; }
+/* And where a column cannot be taken away at all, a padlock stands in the ×'s place (#46, L4).
+   This one *is* in the flow, and deliberately: it is not a control, so it has no hover of its own
+   to appear on and nothing would ever reveal it. Thirteen pixels and the gap before it is what
+   `id` and `antal` pay for saying out loud that they are the tool's and not the designer's — and
+   at 1280 that leaves them 83 and 84, well inside what a number column has to be able to reach.
+   A word in its place is not on offer: the shortest true one is 52 px in a column that has to be
+   able to come out at 80. */
+.byd-data th .byd-data-system { display: inline-grid; place-items: center; width: 13px; margin-left: 6px; color: var(--byd-editor-quiet); vertical-align: -2px; cursor: help; }
 /* The button that makes a column now stands in the head of the column that removes a card (#46):
    the head's last cell either way, but no longer a column of its own with an empty cell under it
    on every row. A tap-wide cell holds a `+` and nothing more, so that is what it holds; the word

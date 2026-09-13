@@ -546,7 +546,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
               />
               </label>
             </th>
-            <SortableHeader field="id" label="id" sort={sort} onSort={setSort} />
+            <SortableHeader field="id" label="id" sort={sort} onSort={setSort} t={t} />
             {fields.map((f) => (
               <SortableHeader
                 key={f}
@@ -785,13 +785,30 @@ function SortableHeader({ field, label, sort, onSort, onRemove, removeRef, t }: 
       <button type="button" data-active={active !== null} onClick={() => onSort(nextSort(sort, field))}>
         {label} <span aria-hidden="true">{active === 'ascending' ? '↑' : active === 'descending' ? '↓' : '↕'}</span>
       </button>
-      {/* A column the designer made is a column she can take away again (#32). The two columns
-          that are not hers — the card's id, and `antal`, which is the engine's (L4) — are given
-          no ×, so the head says which are hers by which can be undone. */}
-      {onRemove && t && (
+      {/* A column the designer made is a column she can take away again (#32). The two that are
+          not hers — the card's id, and `antal`, which is how many copies of the card the deck
+          holds (L4) — cannot be, and the head used to say so by leaving the × off. That is not
+          saying it: the difference between "you may not" and "there is nothing here" was a hole,
+          and a hole reads as an oversight. So a padlock stands where the other columns keep their
+          ×, with the reason written beside it. A word instead of a glyph is not on offer — the
+          shortest true one is 52 px and these are columns that have to be able to come out at 80
+          — but the padlock is thirteen, and it is the one thing in the heading that is neither a
+          control nor a name, so it is the one thing that is not hidden until the column is
+          pointed at. */}
+      {onRemove && t ? (
         <button type="button" ref={removeRef} className="byd-data-dropfield" aria-label={t('table.field.remove', { field })} onClick={onRemove}>
           ×
         </button>
+      ) : (
+        t && (
+          <span className="byd-data-system" title={t('table.field.system', { field })}>
+            <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false">
+              <path d="M3.4 5V3.6a2.6 2.6 0 0 1 5.2 0V5" fill="none" stroke="currentColor" strokeWidth="1.2" />
+              <rect x="2.2" y="5" width="7.6" height="5.6" rx="1.2" fill="currentColor" />
+            </svg>
+            <span className="byd-offscreen">{t('table.field.system', { field })}</span>
+          </span>
+        )
       )}
     </th>
   )

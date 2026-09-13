@@ -179,6 +179,9 @@ export const svEditor = {
   'table.field.needsCards': 'Ett fält är en kolumn på korten. Lägg till ett kort först.',
   'table.field.taken': 'Det finns redan ett fält som heter {field}.',
   'table.field.remove': 'Ta bort fältet {field}',
+  // Vad hänglåset i rubriken på id och antal säger (#46, L4). De två kolumnerna är verktygets
+  // egna och kan inte tas bort; tidigare saknades bara deras × och ett hål förklarar ingenting.
+  'table.field.system': '{field} är verktygets egen kolumn och kan inte tas bort',
   'table.field.remove.none': 'Ta bort {field}? Inget kort har ett värde i den.',
   'table.field.remove.one': 'Ta bort {field}? Värdet försvinner på {n} kort.',
   'table.field.remove.other': 'Ta bort {field}? Värdet försvinner på {n} kort.',

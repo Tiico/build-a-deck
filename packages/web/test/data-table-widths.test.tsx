@@ -131,6 +131,9 @@ type Measured = {
   scroll: number
   // What the whole page does — the one thing a measured layout can break that nothing else can.
   page: number
+  // What each heading says about whether its column can be taken away: the control that does it,
+  // and — when there is none — whether the head says anything at all about why.
+  heads: { col: string; canRemove: boolean; says: string; badge: number }[]
   // How many cards are on screen, which is how a filter proves it did something.
   rows: number
   // The first card on screen, which is how a sort proves it did something.
@@ -167,6 +170,19 @@ async function measure(doc: ProjectDoc, { width = 1280, fit = true, extra = '', 
           table: Math.round(table.getBoundingClientRect().width),
           scroll: Math.round(box.getBoundingClientRect().width),
           page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          heads: heads
+            .filter((th) => th.getAttribute('data-col'))
+            .map((th) => {
+              const mark = th.querySelector('.byd-data-system') as HTMLElement | null
+              return {
+                col: th.getAttribute('data-col') ?? '?',
+                canRemove: th.querySelector('.byd-data-dropfield') !== null,
+                says: (mark?.textContent ?? '').trim(),
+                // How much of the heading the mark takes: nought when there is none, and nought
+                // again if a stylesheet has drawn it somewhere nobody can see it.
+                badge: mark && mark.checkVisibility() ? Math.round(mark.getBoundingClientRect().width) : 0,
+              }
+            }),
           rows: rows.length,
           first: rows[0]?.getAttribute('data-card-ref') ?? '(none)',
         }
@@ -293,6 +309,35 @@ describe('the table is measured against the room it really has (#46)', () => {
     expect(narrow.width.antal).toBe(wide.width.antal)
     expect(narrow.width.body!).toBeLessThan(wide.width.body!)
     expect(narrow.width.cost!).toBeLessThanOrEqual(96)
+  }, 60_000)
+})
+
+// Which columns are the designer's and which are not (L4). `id` is the card's own key and `antal`
+// is how many copies of the card the deck holds; neither was made by anybody and neither can be
+// taken away. The head said so by leaving the × off those two headings, which is not saying it:
+// the difference between "you may not" and "there is nothing here" was a hole, and a hole reads
+// as an oversight.
+describe('a column nobody can take away says so (#46, L4)', () => {
+  it('puts a mark where the other columns keep their ×, on those two headings and no others', async () => {
+    const { heads, width } = await measure(deckDoc())
+
+    // The head really does have both kinds, so this is not a guard over a table of one of them.
+    expect(heads.map((h) => h.col)).toEqual(['id', 'art', 'title', 'body', 'cost', 'antal'])
+    expect(heads.filter((h) => h.canRemove).map((h) => h.col)).toEqual(['art', 'title', 'body', 'cost'])
+
+    // The two that cannot be taken away carry a mark instead of a hole, it is really drawn, and
+    // it says in words what it means — a glyph on its own is a decoration.
+    const system = heads.filter((h) => !h.canRemove)
+    expect(system.map((h) => h.col)).toEqual(['id', 'antal'])
+    expect(system.every((h) => h.badge > 0)).toBe(true)
+    expect(system.map((h) => h.says)).toEqual([sv('table.field.system', { field: 'id' }), sv('table.field.system', { field: 'antal' })])
+    // And nowhere else: a column the designer made has its × and nothing else.
+    expect(heads.filter((h) => h.canRemove && (h.badge > 0 || h.says !== ''))).toEqual([])
+
+    // It costs those two columns something, and what it costs them is affordable: both are still
+    // inside the width a number column has to be able to reach.
+    expect(width.id!).toBeLessThanOrEqual(96)
+    expect(width.antal!).toBeLessThanOrEqual(96)
   }, 60_000)
 })
 

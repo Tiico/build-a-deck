@@ -21,8 +21,14 @@ describe('DataTable (B as a tab)', () => {
     // pinned column that removes a card, which says so for a reader who cannot see the ×; the
     // button that makes a column stands in its head rather than bringing a column of its own to
     // stand in, because that column had nothing under it on any row (#46).
-    const headers = screen.getAllByRole('columnheader').map((h) => (h.getAttribute('aria-label') ?? h.textContent!).replace(/\s*[↕↑↓]\s*×?$/, ''))
+    const heads = screen.getAllByRole('columnheader')
+    const headers = heads.map((h) => (h.getAttribute('aria-label') ?? h.querySelector('button')?.textContent ?? h.textContent ?? '').replace(/\s*[↕↑↓]\s*$/, ''))
     expect(headers).toEqual(['', 'id', 'title', 'body', 'antal', 'Ta bort'])
+    // The two columns nobody made say so where the others keep their × (#46, L4), and a padlock
+    // on its own is a decoration — so the head says it in words as well, for a reader who cannot
+    // see one.
+    expect(heads.filter((h) => h.querySelector('.byd-data-system')).map((h) => h.getAttribute('data-col'))).toEqual(['id', 'antal'])
+    expect(heads.map((h) => h.textContent)).toContain('antal ↕antal är verktygets egen kolumn och kan inte tas bort')
     const rows = screen.getAllByRole('row').slice(1)
     expect(rows.map((r) => r.getAttribute('data-card-ref'))).toEqual(['dragon', 'knight', 'wizard'])
     expect(rows[1]!.getAttribute('aria-selected')).toBe('true')

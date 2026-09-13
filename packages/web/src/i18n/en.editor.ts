@@ -157,6 +157,7 @@ export const enEditor = {
   'table.field.needsCards': 'A field is a column on the cards. Add a card first.',
   'table.field.taken': 'There is already a field called {field}.',
   'table.field.remove': 'Remove the field {field}',
+  'table.field.system': '{field} is the tool’s own column and cannot be removed',
   'table.field.remove.none': 'Remove {field}? No card has a value in it.',
   'table.field.remove.one': 'Remove {field}? The value on {n} card goes with it.',
   'table.field.remove.other': 'Remove {field}? The values on {n} cards go with it.',
