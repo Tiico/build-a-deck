@@ -139,6 +139,9 @@ type Measured = {
   rows: number
   // The first card on screen, which is how a sort proves it did something.
   first: string
+  // Every cell whose field is drawn wider than the column it stands in, and by how much. A
+  // measured width means nothing if what is inside the cell refuses it.
+  spill: { col: string; px: number }[]
 }
 
 // The table laid out in a real engine at `width`, with the editor's own measurement run on the
@@ -186,6 +189,13 @@ async function measure(doc: ProjectDoc, { width = 1280, fit = true, extra = '', 
             }),
           rows: rows.length,
           first: rows[0]?.getAttribute('data-card-ref') ?? '(none)',
+          spill: [...table.querySelectorAll('tbody td[data-col]')]
+            .map((cell) => {
+              const field = cell.querySelector('input:not([type=checkbox])')
+              const over = field ? Math.round(field.getBoundingClientRect().width - cell.getBoundingClientRect().width) : 0
+              return { col: cell.getAttribute('data-col') ?? '?', px: over }
+            })
+            .filter((c) => c.px > 0),
         }
       },
       { deck: deckValues(deck, sv), fit, decide: String(fitColumns) },
@@ -249,6 +259,33 @@ async function measurements(doc: ProjectDoc): Promise<{ first: number; second: n
     await page.close()
   }
 }
+
+// A column is only as wide as what stands in it if what stands in it will accept the width. Every
+// cell is an `<input>`, and the rule that gave one a floor of twelve characters was written for
+// the auto layout it was fighting — an input whose intrinsic width is `size="20"`, in a table that
+// sized itself on what it could see. Under a measured, fixed layout that floor is 80 px and the
+// whole point of the issue is a column of 64: `cost` drew its field sixteen pixels into `antal`.
+describe('a cell keeps inside its own column (#46)', () => {
+  it('draws no field wider than the column it stands in, at either desk width', async () => {
+    const [wide, narrow] = await Promise.all([measure(deckDoc()), measure(deckDoc(), { width: 1024 })])
+
+    // The column that was doing it is really there and really narrow, so this is not a guard over
+    // a table of wide columns.
+    expect(wide.width.cost!).toBeLessThan(80)
+    expect(narrow.width.cost!).toBeLessThan(80)
+    expect(wide.spill).toEqual([])
+    expect(narrow.spill).toEqual([])
+  }, 60_000)
+
+  it("is a real condition: put the twelve-character floor back and the number column runs over its neighbour", async () => {
+    const over = await measure(deckDoc(), { extra: ".byd-data td input:not([type='checkbox']) { min-width: 12ch; }" })
+
+    // Named rather than counted, and by how much: the floor is 80 and the column is `cost`.
+    expect([...new Set(over.spill.map((c) => c.col))]).toEqual(['cost'])
+    expect(over.spill.every((c) => c.px === 80 - over.width.cost!)).toBe(true)
+    expect(over.spill.length).toBe(CARDS.length)
+  }, 60_000)
+})
 
 // The measurement is O(cards × columns) against a font, and for a deck of five hundred that is
 // milliseconds. It is therefore allowed to happen when the deck changes or the room does, and at

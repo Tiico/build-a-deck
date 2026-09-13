@@ -639,10 +639,13 @@
 .byd-data { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; background: #1b1d23; }
 .byd-data th { text-align: left; padding: 8px 10px; color: var(--byd-editor-quiet); font-weight: 600; border-bottom: 1px solid #2f333d; position: sticky; top: 0; z-index: 1; background: #1b1d23; }
 .byd-data td { padding: 0; border-bottom: 1px solid #20232b; }
-/* A cell is as wide as a field needs, not as wide as the window has: the box scrolls. A field is
-   what this is about — the tick in the first column is a box of a fixed size (#45), and this rule
-   stretched it to 80 by 18 while it said nothing. */
-.byd-data td input:not([type='checkbox']) { min-width: 12ch; }
+/* A field takes the width of the column it stands in and no other (#46). It used to claim a floor
+   of twelve characters — written when the table laid itself out on what the browser could see,
+   which in an `<input>` is `size` and never the value, so the floor was the only thing keeping a
+   cell from collapsing. The width is measured now and told to the table, and twelve characters is
+   80 px: in a `cost` column of 64 the field was drawn sixteen pixels into `antal`. So the floor
+   goes, and with it the last thing in the cell that had an opinion about the column. */
+.byd-data td input:not([type='checkbox']) { min-width: 0; }
 /* Image cells (E1): a thumbnail with a place to drop, a button to choose, a × to clear. */
 .byd-data-image { padding: 3px 6px !important; }
 .byd-data-drop { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 3px; border: 1px dashed transparent; border-radius: 8px; }
