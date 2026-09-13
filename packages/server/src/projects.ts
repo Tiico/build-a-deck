@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { CARD_STANDARD_63x88, TOKEN_COUNTER, type SetupDef } from '@byd/engine'
 import { Template, type Row } from '@byd/template'
 import type { Deck } from './faces.js'
 import type { AppliedEdit } from './project-actor.js'
@@ -234,36 +233,6 @@ export class MemoryProjectStore implements ProjectStore {
     this.shared.delete(id)
     return had
   }
-}
-
-// The table setup a project plays with: every row becomes `antal` copies (default 1) of the
-// standard card, face down in the deck zone. Row order is deck order until the first shuffle.
-export function setupFromProject(doc: ProjectDoc): SetupDef {
-  const type = { id: CARD_STANDARD_63x88.id, version: CARD_STANDARD_63x88.version }
-  const components: SetupDef['components'] = []
-  for (const { id: cardRef, fields } of doc.rows) {
-    const copies = Math.max(0, Math.floor(Number(fields['antal'] ?? 1)) || 0)
-    for (let i = 0; i < copies; i++) components.push({ type, cardRef, zone: doc.setup.deckZone, face: 'back' })
-  }
-  // A seat's counters (C4) live in its counters zone, when the setup has one.
-  const token = { id: TOKEN_COUNTER.id, version: TOKEN_COUNTER.version }
-  for (const seat of doc.setup.seats) {
-    const zone = doc.setup.zones.find((z) => z.id === `counters:${seat}`)
-    if (!zone) continue
-    ;(doc.setup.counters ?? []).forEach((c, i) => components.push({ type: token, cardRef: c.name, zone: zone.id, face: 'front', counter: c.start, x: 8 + (i % 3) * 32, y: 8 + Math.floor(i / 3) * 32 }))
-  }
-  // Optional keys that are present but undefined are dropped: the engine's types are exact.
-  const zones: SetupDef['zones'] = doc.setup.zones.map((z) => ({
-    id: z.id,
-    kind: z.kind,
-    name: z.name,
-    visibility: z.visibility,
-    geometry: z.geometry,
-    ...(z.owner !== undefined ? { owner: z.owner } : {}),
-    ...(z.returnTo !== undefined ? { returnTo: z.returnTo } : {}),
-    ...(z.shortcut !== undefined ? { shortcut: z.shortcut } : {}),
-  }))
-  return { zones, seats: doc.setup.seats, floor: doc.setup.floor, components }
 }
 
 // Two documents said in one order, so "the same document" does not depend on the order the keys

@@ -24,7 +24,7 @@ export function SetupEditor({ doc, client }: SetupEditorProps) {
   const t = useT()
   const setup = doc.setup
   const [selected, setSelected] = useState<string | null>(null)
-  const view = previewOf(setup)
+  const view = previewOf(doc)
   const sel = setup.zones.find((z) => z.id === selected) ?? null
   const add = (kind: 'area' | 'pile') => setSelected(client.addZone(kind, t))
   return (
