@@ -282,3 +282,108 @@ describe('the table is measured against the room it really has (#46)', () => {
     expect(narrow.width.cost!).toBeLessThanOrEqual(96)
   }, 60_000)
 })
+
+// A deck with one sentence in it that no desk width could hold: whatever the slack, `body` ends
+// up on its own floor and the value runs past the edge of the cell.
+const TOO_LONG =
+  'När det här kortet spelas ur handen får varje motståndare välja mellan att kasta två kort ur sin egen hand eller att lägga tillbaka det översta kortet i draghögen underst, och den som väljer det senare drar ett kort ur marknaden innan turen går vidare till nästa spelare.'
+function cutDoc(): ProjectDoc {
+  const doc = deckDoc()
+  return { ...doc, rows: doc.rows.map((row) => (row.id === 'k3' ? { ...row, fields: { ...row.fields, body: TOO_LONG } } : row)) }
+}
+
+type Cue = {
+  // Every cell the table marked as cut, as `card/column`.
+  cut: string[]
+  // The last 40 px of the long cell, painted — once as the page opens, and once with that very
+  // cell holding the caret.
+  atRest: Buffer
+  focused: Buffer
+}
+
+// The ground at the right-hand edge of the long cell, read the way the felt reads its ellipsis
+// (join-layout) and the way the pin's own fade is read (#53): painted twice and compared. A cue
+// that is really drawn shows up as a difference between two pictures; one the stylesheet only
+// asks for does not.
+async function cue(doc: ProjectDoc, extra = ''): Promise<Cue> {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
+  try {
+    await page.setContent(shellOf(markupOf(doc), extra), { waitUntil: 'load' })
+    const facts = await page.evaluate(
+      ({ deck, decide }) => {
+        const box = document.querySelector('.byd-data-scroll') as HTMLElement
+        new Function('box', 'deck', `(${decide})(box, deck)`)(box, deck)
+        const marked = [...box.querySelectorAll('tbody td[data-cut="true"]')]
+        const long = box.querySelector('tr[data-card-ref="k3"] td[data-col="body"]') as HTMLElement
+        const seen = long.getBoundingClientRect()
+        return {
+          cut: marked.map((cell) => `${cell.closest('tr')?.getAttribute('data-card-ref') ?? '?'}/${cell.getAttribute('data-col')}`),
+          clip: { x: seen.right - 40, y: seen.top, width: 40, height: seen.height },
+        }
+      },
+      { deck: deckValues(doc, sv), decide: String(fitColumns) },
+    )
+    const atRest = await page.screenshot({ clip: facts.clip })
+    // The caret put in the very cell being read, and sent to the end of the value — which is where
+    // an input scrolls to, and the moment `text-overflow` on an input has nothing left to say.
+    await page.evaluate(() => {
+      const field = document.querySelector('tr[data-card-ref="k3"] td[data-col="body"] input') as HTMLInputElement
+      field.focus()
+      field.setSelectionRange(field.value.length, field.value.length)
+    })
+    return { cut: facts.cut, atRest, focused: await page.screenshot({ clip: facts.clip }) }
+  } finally {
+    await page.close()
+  }
+}
+
+// What a value that does not fit says for itself (#46). Once the widths are measured this is the
+// exception and not the rule — six cards over `id art title body cost antal` have nothing cut at
+// 1280 or at 1024 — which turns the question round: the cue has to be honest, it does not have to
+// be beautiful, and there is already a gesture in the tool for it. #53 drew it: a value going
+// under the pinned × fades out rather than stopping mid-word. This is the same fade at the same
+// width over the same ground, at the edge of the cell rather than the edge of the pin.
+const FORCED = { off: '.byd-data td[data-cut="true"] input { mask-image: none !important; -webkit-mask-image: none !important; }' }
+
+describe('a value that does not fit says so (#46)', () => {
+  it('is marked on the cells that really are cut, and on no others', async () => {
+    const [long, fits] = await Promise.all([cue(cutDoc()), cue(deckDoc())])
+
+    // The one card whose rules text no desk width could hold is marked, in the column that holds
+    // it. Two other columns are squeezed onto their floors to pay for it, and the cards whose
+    // words are short are not marked at all.
+    expect(long.cut).toContain('k3/body')
+    expect(long.cut.filter((at) => at.endsWith('/cost') || at.endsWith('/antal'))).toEqual([])
+
+    // And the case the measurement is actually for: with six cards and the same six columns,
+    // nothing anywhere in the table is cut. A cue that were on all the time would say nothing.
+    expect(fits.cut).toEqual([])
+  }, 60_000)
+
+  it('is painted at the edge of the cell, and is still painted while that cell holds the caret', async () => {
+    const [shown, bare] = await Promise.all([cue(cutDoc()), cue(cutDoc(), FORCED.off)])
+
+    // At rest: the ground at the cell's edge is painted differently from the same ground with the
+    // cue taken back.
+    expect(shown.atRest.equals(bare.atRest)).toBe(false)
+
+    // And with the caret in that very cell, which is the whole reason the cue is drawn on the
+    // cell and not on the input inside it.
+    expect(shown.focused.equals(bare.focused)).toBe(false)
+  }, 60_000)
+
+  it('is not what an input can say for itself: its own ellipsis goes silent the moment the cell takes the caret', async () => {
+    // The cheapest possible answer, measured rather than argued about: the cue taken back and
+    // `text-overflow: ellipsis` put on the cell's own input in its place. It works — and only
+    // while nobody is reading it.
+    const cheap = await cue(cutDoc(), `${FORCED.off} .byd-data input { text-overflow: ellipsis; }`)
+    const bare = await cue(cutDoc(), FORCED.off)
+
+    // Unfocused it does say something: the ellipsis is painted where the value stops.
+    expect(cheap.atRest.equals(bare.atRest)).toBe(false)
+    // Focused it says nothing at all. The input has scrolled to the caret and the ellipsis is
+    // gone, so the two pictures are the bare ground twice over — which is the finding that put
+    // the cue on the cell.
+    expect(cheap.focused.equals(bare.focused)).toBe(true)
+  }, 60_000)
+})

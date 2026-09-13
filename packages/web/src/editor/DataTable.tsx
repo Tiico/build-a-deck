@@ -522,7 +522,11 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
           {fields.map((f) => (
             <col key={f} data-col={f} data-kind={widthKind(doc, f)} />
           ))}
-          {grouping && <col data-col={GROUP_COL} data-kind="text" />}
+          {/* Which group a card falls into is the canvas's answer read back (#13), not prose the
+              designer writes, so it takes the room its longest label needs and no share of the
+              rest — and is therefore never cut, which is as well, since it is the one column of
+              the table that is not an input to fade. */}
+          {grouping && <col data-col={GROUP_COL} data-kind="key" />}
           <col data-kind="tap" />
         </colgroup>
         <thead>

@@ -834,6 +834,32 @@
    it always was. */
 .byd-data-scroll[data-cut='true'] .byd-data tbody .byd-data-remove::before { opacity: 1; }
 
+/* What a value that does not fit in its own column says for itself (#46). Once the widths are
+   measured this is the exception and not the rule — six cards over `id art title body cost antal`
+   have nothing cut at 1280 or at 1024 — which turns the question round: the cue has to be honest,
+   it does not have to be beautiful, and the tool already has a gesture for it. The pin's fade
+   above is that gesture, written down in #53: a fade to nothing at the edge, never a hard stop.
+   This is the same fade over the same 24 px at the edge of the cell instead of the edge of the
+   pin, so a value that is both cut by its column and running in under the pin fades once and goes
+   on fading rather than being told twice in two different ways.
+   The fade is taken out of the value here rather than laid over it, and that is the one
+   difference from the pin's. The pin has one ground to dissolve into and always the same one; a
+   card's row has four — plain, the row being looked at, and the two tints a comparison with an
+   older version paints (B4). A veil would have to know all four and would be wrong in three. A
+   mask knows none of them: the last 24 px of the value simply stop being painted, over whatever
+   ground the row happens to have, so nothing else in the cell is touched and the click still
+   lands in the field. Nothing moves, so a reader who asks for less motion has nothing to turn off.
+   It is on the value and not on the input's own `text-overflow`, and that is measured rather than
+   assumed: an input's ellipsis is drawn only while the input is at rest. The moment the cell takes
+   the caret the input scrolls to the cursor and the mark is gone — so the cheap answer goes silent
+   exactly when the designer is reading it. A mask cannot scroll away.
+   Only a column of sentences is ever cut, because only a column of sentences gives its room back,
+   and every one of those is drawn as an `<input>`. So this has exactly one place to be. */
+.byd-data td[data-cut='true'] input {
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), rgb(0 0 0 / 0%));
+  mask-image: linear-gradient(to right, #000 calc(100% - 24px), rgb(0 0 0 / 0%));
+}
+
 /* A field arrives in the editor (#32, prototype variant A): the head's last named cell is the
    button, so the column grows where it will stand. The form it opens must not make that cell
    tall — the prototype's did, and every heading beside it was pushed down while the designer
