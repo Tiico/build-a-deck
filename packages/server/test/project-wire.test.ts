@@ -32,9 +32,11 @@ class Editing {
     const editor = new Editing(ws)
     ws.on('message', (data) => editor.seen.push(JSON.parse(data.toString()) as EditorMessage))
     await new Promise<void>((resolve, reject) => {
-      // A connection that is refused is opened and then closed with a reason, as a table's is,
-      // so an editor is only really open once it has stayed open.
-      ws.on('open', () => setTimeout(resolve, 60))
+      // A connection that is refused is opened and then closed with a reason, as a table's is.
+      // So the door gives one of two answers and both of them arrive on this socket: the project,
+      // which `subscribe` sends the moment an editor is let in, or the close. Wait for whichever
+      // comes. A clock here would not measure the door; it would measure the machine.
+      ws.on('message', () => resolve())
       ws.on('error', reject)
       ws.on('close', (code) => reject(new Error(`closed ${code}`)))
     })
