@@ -43,8 +43,12 @@ const seatNameOf = (seat: string): string => `Spelare ${seat.charCodeAt(0) - 64}
 // The table the recipe lays out for that many seats (K18), which is the table every surface here
 // draws — the editor's preview from the document, the played felt from the log. The seats carry
 // everything a seat can have, since the question is what happens when one edge holds two of them.
-const feltOf = (seats: number): Setup =>
-  applyRecipe(emptySetup(), { players: seats, mine: true, discard: true, market: false, counters: COUNTERS }, SWEDISH_WORDS)
+// The market is a knob on the same recipe and a zone nobody owns, 200 mm in from the north rim —
+// the one band a seat's own names were sent into when they were moved off that rim. A scene
+// pinned to one setting of it measures half a table, so every reading below is taken with it both
+// on and off.
+const feltOf = (seats: number, market = false): Setup =>
+  applyRecipe(emptySetup(), { players: seats, mine: true, discard: true, market, counters: COUNTERS }, SWEDISH_WORDS)
 
 // The same table as the engine projects it, with something lying in every hand and in every area
 // in front of a seat: a label is judged against what is dealt near it, not against bare felt.
@@ -117,18 +121,13 @@ async function onPage<T>(html: string, size: { w: number; h: number }, look: (pa
       .replace('</head>', `<style>${SHEETS.map(read).join('\n')}</style></head>`)
       .replace('<div id="root"></div>', `<div id="root" style="width:${size.w}px;height:${size.h}px">${html}</div>`)
     await page.setContent(shell, { waitUntil: 'load' })
-    // A zone's name is laid out in a box as wide as the zone, so beside a narrow zone it wraps
-    // onto two lines and measures half as wide. Half of any good number would then be the wrap's
-    // doing rather than the rule's, and a later `nowrap` — which a seat's name card already has —
-    // would quietly undo it. Every reading here is taken with the names forced onto one line.
-    await page.addStyleTag({ content: '.byd-zone > span { white-space: nowrap }' })
     return await look(page)
   } finally {
     await page.close()
   }
 }
 
-type Reading = { names: string[]; pairs: string[]; clipped: string[]; outside: string[]; smallest: number; cardPx: number }
+type Reading = { names: string[]; pairs: string[]; clipped: string[]; outside: string[]; wrapped: string[]; smallest: number; cardPx: number }
 
 // What the two issues are about, read off the DOM: which names are visible, which pairs of them
 // lie on the same pixels, which were cut short by the box they were given, and which were drawn
@@ -143,6 +142,12 @@ const READ = `(() => {
   }
   const labels = []
   const clipped = []
+  // A zone's name is laid out in a box as wide as the zone, so beside a narrow zone it breaks
+  // onto two lines and measures half as wide — half of every good number below would then be the
+  // wrap's doing rather than the rule's. The readings used to force one line on from the outside,
+  // which meant the shipped declaration could be deleted without a single test noticing: the
+  // injected rule stood in for it. What is read here is the cascade as it ships.
+  const wrapped = []
   let smallest = Infinity
   for (const el of document.querySelectorAll(sel)) {
     const r = seen(el)
@@ -152,6 +157,7 @@ const READ = `(() => {
     // construction. One label, not two — and it is the badge, \`.byd-pile-n\`, that is read, since
     // in TV mode the wrapper around it covers the whole pile while the badge hangs over its top.
     labels.push({ text, r, pill: el.closest('.byd-pile-count') })
+    if (el.matches('.byd-zone > span') && !/nowrap|pre(?!-)/.test(getComputedStyle(el).whiteSpace)) wrapped.push(text)
     smallest = Math.min(smallest, parseFloat(getComputedStyle(el).fontSize))
     if (el.scrollWidth > el.clientWidth + 1) clipped.push(text)
   }
@@ -178,6 +184,7 @@ const READ = `(() => {
     pairs,
     clipped,
     outside,
+    wrapped,
     smallest: Number.isFinite(smallest) ? Math.round(smallest * 10) / 10 : 0,
     cardPx: card ? Math.round(card.getBoundingClientRect().width) : 0,
   }
@@ -193,15 +200,25 @@ function expectClear(reading: Reading, wanted: string[], where: string): void {
   expect({ where, pairs: reading.pairs }).toEqual({ where, pairs: [] })
   expect({ where, clipped: reading.clipped }).toEqual({ where, clipped: [] })
   expect({ where, outside: reading.outside }).toEqual({ where, outside: [] })
+  expect({ where, wrapped: reading.wrapped }).toEqual({ where, wrapped: [] })
 }
 
 const seatCounts = Array.from({ length: MAX_PLAYERS - 1 }, (_, i) => i + 2)
 
+// The felt on `/online` is turned a quarter so that the reader's own edge is the one at the
+// bottom (C5), and every label is turned back about its own centre so it stays readable while the
+// cards follow the table. A name pinned to one end of its own box therefore swings around that
+// centre when the felt turns: a line that was a hundred pixels wide becomes a hundred tall, around
+// a point that did not move. A placement measured only at rest is a placement measured nowhere,
+// so every reading below is taken at all four turns.
+const TURNS = [0, 90, 180, 270] as const
+const scenes = seatCounts.flatMap((seats) => TURNS.flatMap((rotate) => [false, true].map((market) => [seats, rotate, market] as const)))
+
 describe('the played felt says every name once, in table mode (K9, #71)', () => {
-  it.each(seatCounts)('lays no name over another at %i seats', async (seats) => {
-    const setup = feltOf(seats)
-    const html = markupOf(<TableRenderer view={sceneOf(setup)} mode="table" size={FRAME} />)
-    expectClear(await readNames(html, FRAME), namesOf(setup), `table mode, ${seats} seats`)
+  it.each(scenes)('lays no name over another at %i seats, turned %i°, market %s', async (seats, rotate, market) => {
+    const setup = feltOf(seats, market)
+    const html = markupOf(<TableRenderer view={sceneOf(setup)} mode="table" rotate={rotate} size={FRAME} />)
+    expectClear(await readNames(html, FRAME), namesOf(setup), `table mode, ${seats} seats, turned ${rotate}°, market ${market}`)
   }, 60_000)
 })
 
@@ -223,20 +240,31 @@ async function tvFelt(scene: Snapshot, size: { w: number; h: number }): Promise<
   return markupOf(tv(<TableRenderer view={scene} mode="tv" camera size={main} glideMs={0} />))
 }
 
+const counted = seatCounts.flatMap((seats) => [false, true].map((market) => [seats, market] as const))
+
 describe('the played felt says every name once, in TV mode (K9, #43)', () => {
-  it.each(seatCounts)('lays no name over another, and none off the felt, at %i seats', async (seats) => {
-    const setup = feltOf(seats)
+  it.each(counted)('lays no name over another, and none off the felt, at %i seats, market %s', async (seats, market) => {
+    const setup = feltOf(seats, market)
     // The TV has a dock that says who sits where (K9), so the felt itself draws no name card
     // there; what is on it is the zones' names and the piles'.
     const wanted = namesOf(setup).filter((n) => !setup.seats.map(seatNameOf).includes(n))
-    expectClear(await readNames(await tvFelt(sceneOf(setup), FRAME), FRAME), wanted, `TV mode, ${seats} seats`)
+    expectClear(await readNames(await tvFelt(sceneOf(setup), FRAME), FRAME), wanted, `TV mode, ${seats} seats, market ${market}`)
   }, 60_000)
 })
 
 // The editor's Bord tab is the same renderer with the designer's handles laid over it, so it is
 // the same question asked a third time (#43). The tab is mounted as it ships, out of a real
 // project on a real server, and the markup that mounts is what Chromium is given.
-const DESK = { w: 1280, h: 1200 }
+// The windows a designer actually has. L12 makes the editor desk-first, and 1280 x 800 and
+// 1440 x 900 *are* desks: the felt's box was `min(70vh, 720px)`, so the 720 ceiling only ever
+// bound above about 1030 px of window, and every number the previous slice reported was taken at
+// a height almost nobody sits at. The tallest is kept because it is where the ceiling binds.
+const DESKS = [
+  { w: 1280, h: 800 },
+  { w: 1440, h: 900 },
+  { w: 1280, h: 1200 },
+] as const
+const DESK = DESKS[2]
 
 // The knobs on the left reach the felt through the project's own client, which answers when it
 // answers; the handle is what says the recipe has actually been turned.
@@ -247,7 +275,7 @@ const handleFor = (id: string): Promise<HTMLElement> =>
     return el as HTMLElement
   })
 
-async function bordTab(seats: number, felt: { w: number; h: number } | null, picked = 'mine:B'): Promise<string> {
+async function bordTab(seats: number, felt: { w: number; h: number } | null, desk: { w: number; h: number }, market: boolean, picked = 'mine:B'): Promise<string> {
   // jsdom has no layout, so the renderer's own measurement of the box it was given comes back
   // zero and the whole felt collapses. The box comes from the real stylesheet at a real window
   // (the pass before this one) and is handed to the frame here, which is the one thing jsdom
@@ -283,7 +311,7 @@ async function bordTab(seats: number, felt: { w: number; h: number } | null, pic
   // the tick box a test means to turn on would be the one it turns off.
   const project_ = `p${++projects}`
   await run.projects.create(project_, projectDoc())
-  atWidth(DESK.w)
+  atWidth(desk.w)
   history.replaceState(null, '', `/editor?project=${project_}&server=${encodeURIComponent(run.http)}`)
   const { unmount } = render(<EditorPage />)
   try {
@@ -295,6 +323,7 @@ async function bordTab(seats: number, felt: { w: number; h: number } | null, pic
     fireEvent.click(screen.getByRole('button', { name: String(seats) }))
     fireEvent.click(screen.getByLabelText(/en yta framför sig/))
     fireEvent.click(screen.getByRole('button', { name: /Räknare$/ }))
+    if (market) fireEvent.click(screen.getByLabelText(/en marknad/))
     // One zone picked up, because picking one up is when the editor has always drawn a second
     // name on it: the handle says what it is while the felt underneath is already saying so.
     fireEvent.click(await handleFor(picked))
@@ -311,14 +340,14 @@ async function bordTab(seats: number, felt: { w: number; h: number } | null, pic
 
 // The tab as it really lays out: the box the stylesheet gives the felt, read first, then the felt
 // drawn into that box.
-async function bordTabDrawn(seats: number, picked = 'mine:B'): Promise<string> {
-  const box = await onPage(await bordTab(seats, null, picked), DESK, (page) =>
+async function bordTabDrawn(seats: number, desk: { w: number; h: number } = DESK, market = false, picked = 'mine:B'): Promise<string> {
+  const box = await onPage(await bordTab(seats, null, desk, market, picked), desk, (page) =>
     page.evaluate(() => {
       const r = document.querySelector('.byd-setup-felt')!.getBoundingClientRect()
       return { w: Math.round(r.width), h: Math.round(r.height) }
     }),
   )
-  return bordTab(seats, box, picked)
+  return bordTab(seats, box, desk, market, picked)
 }
 
 describe('one name per zone (#43)', () => {
@@ -349,26 +378,39 @@ describe('one name per zone (#43)', () => {
 })
 
 describe('the Bord tab gives the felt the room its names need (#43)', () => {
-  // Arithmetic before it is placement: a seat's place setting is 500 mm, and its two names want
-  // around 200 px of it. The felt's box is what decides whether those pixels exist, and no
-  // placement rule can conjure them.
-  it('draws a seat at least 200 px along its own rim at eight seats', async () => {
-    const html = await bordTabDrawn(MAX_PLAYERS)
-    const px = await onPage(html, DESK, (page) =>
+  // Arithmetic before it is placement, and the arithmetic changed. A place setting is 500 mm and
+  // its two names used to want the whole of it side by side, which is where the 200 px floor and
+  // the felt's 720 px ceiling came from. One name to a line means a cover has to hold only the
+  // longer of the two, and the felt's box no longer has to be conjured taller than the window.
+  // What is asserted is therefore the thing the tab is for: a name fits in the cover it names.
+  it.each(DESKS)('gives a seat room for its own name at eight seats, at $w × $h', async (desk) => {
+    const html = await bordTabDrawn(MAX_PLAYERS, desk)
+    const room = await onPage(html, desk, (page) =>
       page.evaluate(() => {
         const box = (sel: string) => document.querySelector(sel)!.getBoundingClientRect()
-        return Math.round(box('[data-zone-handle="counters:A"]').right - box('[data-zone-handle="mine:A"]').left)
+        const cover = Math.round(box('[data-zone-handle="counters:A"]').right - box('[data-zone-handle="mine:A"]').left)
+        const names = [...document.querySelectorAll('.byd-zone[data-area^="mine:"] > span, .byd-zone[data-area^="counters:"] > span')]
+        return { cover, widest: Math.round(Math.max(...names.map((n) => n.getBoundingClientRect().width))) }
       }),
     )
-    expect(px).toBeGreaterThanOrEqual(200)
+    expect({ at: `${desk.w} × ${desk.h}`, fits: room.cover >= room.widest, ...room }).toEqual({ at: `${desk.w} × ${desk.h}`, fits: true, ...room })
   }, 60_000)
 
-  it.each(seatCounts)('lays no name over another at %i seats', async (seats) => {
+  // Mounting the whole editor out of a real project is the slow part of this suite, so the
+  // sweep is spent where it buys something. The shortest window draws the smallest felt and is
+  // therefore where names meet first: it carries every seat count. The taller two are only asked
+  // about the counts that crowd a felt at all — the ones where a rim first carries two seats.
+  const desks = DESKS.flatMap((desk, i) =>
+    (i === 0 ? seatCounts : seatCounts.filter((n) => n >= MAX_PLAYERS - 1)).flatMap((seats) =>
+      [false, true].map((market) => [`${desk.w} × ${desk.h}, ${seats} seats, market ${market}`, desk, seats, market] as const),
+    ),
+  )
+  it.each(desks)('lays no name over another at %s', async (_at, desk, seats, market) => {
     // What the tab is for is reading the names, so the reading has to find them all: both of
     // every seat's own zones, both shared piles, and the card that says whose hand is whose.
     const seatsHere = SEAT_IDS.slice(0, seats)
-    const wanted = [...seatsHere.flatMap((s) => [`Framför ${s}`, `Räknare ${s}`, s]), 'Draghög', 'Kasthög']
-    expectClear(await readNames(await bordTabDrawn(seats), DESK), wanted, `the Bord tab, ${seats} seats`)
+    const wanted = [...seatsHere.flatMap((s) => [`Framför ${s}`, `Räknare ${s}`, s]), 'Draghög', 'Kasthög', ...(market ? ['Marknad'] : [])]
+    expectClear(await readNames(await bordTabDrawn(seats, desk, market), desk), wanted, `the Bord tab at ${desk.w} × ${desk.h}, ${seats} seats, market ${market}`)
   }, 60_000)
 })
 

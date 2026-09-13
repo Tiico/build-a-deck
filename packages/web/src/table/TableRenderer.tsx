@@ -446,9 +446,16 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           onPointerLeave={feltLeave}
         >
           {areas.map((z) => {
-            const { rim, grow } = nameAt(z, floor, handOf(z.owner))
+            const { rim, grow, anchor } = nameAt(z, floor, handOf(z.owner), rotate)
             return (
-              <div key={z.id} className="byd-zone" data-area={z.id} data-rim={rim} data-grow={grow} style={{ left: left(z.geometry.x), top: top(z.geometry.y), width: px(z.geometry.w), height: px(z.geometry.h) }}>
+              <div
+                key={z.id}
+                className="byd-zone"
+                data-area={z.id}
+                data-rim={rim}
+                data-grow={grow}
+                style={{ left: left(z.geometry.x), top: top(z.geometry.y), width: px(z.geometry.w), height: px(z.geometry.h), ['--name-x' as string]: `${anchor.x}%`, ['--name-y' as string]: `${anchor.y}%` }}
+              >
                 <span>{z.name}</span>
               </div>
             )

@@ -1,4 +1,5 @@
 import type { ZoneView } from '@byd/protocol'
+import type { Rotation } from './geometry.js'
 
 // Where a zone's name goes (K9, K19). One rule, said once:
 //
@@ -10,19 +11,48 @@ import type { ZoneView } from '@byd/protocol'
 // The stylesheet draws it; this says which of the four cases a zone is in, because the answer is
 // in the table's millimetres and not in anything the DOM says. Piles are not part of it: the
 // renderer already puts a pile's name under the pile, clear of everything.
+//
+// "The nearest rim" is the nearest rim *of the picture*. A felt can be turned a quarter so that
+// the reader's own edge is the one at the bottom (C5), and every label is then turned back about
+// its own anchor so it stays level while the cards follow the table. A rule read in the felt's
+// own millimetres would therefore place a name along an axis the reader does not see: the felt's
+// east rim on a table turned 90° is the bottom of the screen, and a name that stood *beside* its
+// zone — one line high, taking no room along the rim — becomes a name lying *along* the rim and
+// a hundred pixels of it. Two of them then land on each other. So the geometry is turned into
+// the reader's frame first, and the rule is read there.
 export type Rim = 'N' | 'E' | 'S' | 'W' | 'none'
 // Which way a name with width is allowed to grow: `fwd` is the left corner it has always grown
 // from, `back` is the other end of its own box.
 export type Grow = 'fwd' | 'back'
+// The corner of the zone's own box the name hangs from, in per cent of that box. It is what
+// survives the turn: a label is turned back about this point, so this point — and not the edge
+// the label happens to be pinned to — is what the stylesheet can place and rely on.
+export type Anchor = { x: 0 | 100; y: 0 | 100 }
+export type NamePlace = { rim: Rim; grow: Grow; anchor: Anchor }
 
 // A zone stands at a rim when its own box comes this near the felt's edge. What stands at a rim
 // is a seat's furniture: a hand lies on the rim itself, and the area in front of a seat and its
 // counters sit 70 mm in.
 export const RIM_MM = 200
 
-function edgeOf(zone: ZoneView, floor: ZoneView): Rim {
-  const b = zone.geometry
-  const f = floor.geometry
+type Box = { x: number; y: number; w: number; h: number }
+
+// The same box as the reader sees it, on a felt turned a quarter (C5). Turning about the origin
+// is enough: every question below is asked of one box against another.
+function turn(g: Box, rotate: Rotation): Box {
+  switch (rotate) {
+    case 90:
+      return { x: -(g.y + g.h), y: g.x, w: g.h, h: g.w }
+    case 180:
+      return { x: -(g.x + g.w), y: -(g.y + g.h), w: g.w, h: g.h }
+    case 270:
+      return { x: g.y, y: -(g.x + g.w), w: g.h, h: g.w }
+    default:
+      return g
+  }
+}
+
+function edgeOf(b: Box, f: Box): Rim {
   const gaps: [Rim, number][] = [
     ['N', b.y - f.y],
     ['S', f.y + f.h - (b.y + b.h)],
@@ -44,11 +74,33 @@ function edgeOf(zone: ZoneView, floor: ZoneView): Rim {
 // wide; nothing grows along the rim there, so what matters is only which end it stands at — and
 // the safe end is the one nearest its own seat's middle, because the far end is the felt's
 // corner, where the next rim's seat keeps its own names. Hence the comparison turns around.
-function growFor(zone: ZoneView, rim: Rim, hand: ZoneView): Grow {
+function growFor(zone: Box, rim: Rim, hand: Box): Grow {
   const beside = rim === 'E' || rim === 'W'
-  const middle = (g: ZoneView['geometry']) => (beside ? g.y + g.h / 2 : g.x + g.w / 2)
-  const past = middle(zone.geometry) > middle(hand.geometry)
+  const middle = (g: Box) => (beside ? g.y + g.h / 2 : g.x + g.w / 2)
+  const past = middle(zone) > middle(hand)
   return (beside ? !past : past) ? 'back' : 'fwd'
+}
+
+// Which corner of the zone the name hangs from, said in the reader's frame first and then in the
+// felt's. The reader's answer is the whole of the rule: the corner is the end of the zone the
+// name is anchored at, on the side away from the rim. The felt's answer is the same corner under
+// another name, because a quarter turn only renames a box's corners.
+function cornerFor(rim: Rim, grow: Grow, rotate: Rotation): Anchor {
+  const beside = rim === 'E' || rim === 'W'
+  const along: 0 | 100 = grow === 'fwd' ? 0 : 100
+  const sx: 0 | 100 = beside ? (rim === 'E' ? 0 : 100) : along
+  const sy: 0 | 100 = beside ? along : rim === 'N' ? 100 : 0
+  const flip = (v: 0 | 100): 0 | 100 => (v === 0 ? 100 : 0)
+  switch (rotate) {
+    case 90:
+      return { x: sy, y: flip(sx) }
+    case 180:
+      return { x: flip(sx), y: flip(sy) }
+    case 270:
+      return { x: flip(sy), y: sx }
+    default:
+      return { x: sx, y: sy }
+  }
 }
 
 // The rule for one zone. A zone nobody owns keeps today's placement even when it stands at a rim,
@@ -57,8 +109,9 @@ function growFor(zone: ZoneView, rim: Rim, hand: ZoneView): Grow {
 // without also saying which way it grows is the half-rule that was measured and rejected — it
 // moves a collision instead of clearing it, and on the shared market it moves the name off the
 // rim and onto the draw pile.
-export function nameAt(zone: ZoneView, floor: ZoneView, hand: ZoneView | undefined): { rim: Rim; grow: Grow } {
-  if (!hand) return { rim: 'none', grow: 'fwd' }
-  const rim = edgeOf(zone, floor)
-  return rim === 'none' ? { rim, grow: 'fwd' } : { rim, grow: growFor(zone, rim, hand) }
+export function nameAt(zone: ZoneView, floor: ZoneView, hand: ZoneView | undefined, rotate: Rotation = 0): NamePlace {
+  const place = (rim: Rim, grow: Grow): NamePlace => ({ rim, grow, anchor: cornerFor(rim, grow, rotate) })
+  if (!hand) return place('none', 'fwd')
+  const rim = edgeOf(turn(zone.geometry, rotate), turn(floor.geometry, rotate))
+  return rim === 'none' ? place(rim, 'fwd') : place(rim, growFor(turn(zone.geometry, rotate), rim, turn(hand.geometry, rotate)))
 }

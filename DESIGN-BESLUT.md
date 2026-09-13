@@ -1424,8 +1424,50 @@ Den avskurna handräknaren är `HAND_COUNT_MM` i `table/hand.ts` och avsiktligt 
 Kortets kortsida i TV-läge vid åtta platser: 27 px vid 1280 × 800, 40 px vid 1920 × 1080, 89 px vid 3840 × 2160 — K18:s tal på pixeln, och minsta etikett är 12 px.
 Ingenting i den här skivan rör filtens storlek, inpassningen eller kameran; etiketterna konkurrerade aldrig med korten, bara med varandra.
 
-Grinden är `packages/web/test/felt-names.test.tsx`: samma mätning på alla tre ytorna — bordsläge, TV-läge och editorns Bord-flik — vid varje platsantal 2–`MAX_PLAYERS`, med `nowrap` framtvingat, och varje läsning säger både vilka namn den såg, vilka par som ligger på varandra, vilka som kapats och vilka som ritats utanför filten.
+Grinden är `packages/web/test/felt-names.test.tsx`: samma mätning på alla tre ytorna — bordsläge, TV-läge och editorns Bord-flik — vid varje platsantal 2–`MAX_PLAYERS`, vid varje kvartsvarv, med och utan marknad, och i editorns fall vid varje fönsterhöjd nedan; varje läsning säger både vilka namn den såg, vilka par som ligger på varandra, vilka som kapats, vilka som brutits till två rader och vilka som ritats utanför filten.
 Regeln själv bor i `packages/web/src/table/labels.ts` och ritas av `table.css`; ingen yta har ett undantag.
+
+Reviderat 2026-09-13 (#72, #73): regeln läses i den vridna bildens frame, och ett kuverts två namn delar aldrig rad.
+
+**Närmaste kant är bildens kant, inte filtens.**
+Första bygget läste regeln i filtens egna millimetrar och mätte bara ett obevekat bord.
+Men `/online` vrider filten ett kvartsvarv så att läsarens egen kant hamnar nederst (C5), och varje etikett vrids tillbaka så att den förblir läsbar.
+En etikett som är fäst vid en kant och vrids tillbaka kring sin egen mitt svänger runt den mitten: ett namn som var åttiofyra pixlar brett blir åttiofyra pixlar högt kring en punkt som inte flyttat sig.
+Vid östra och västra kanten ligger ett kuverts två namn tio millimeter isär längs kanten — de står bredvid var sin zon och är en rad höga — och efter svängen låg de på varandra.
+Mätt på det bord som ska levereras: fyra platser gav två sådana par vid 90° och 270°, åtta platser fyra, och på `origin/main` var det noll vid varje vridning.
+Regeln säger nu vilken kant zonen står vid **i bilden**: geometrin vrids först, och svaret läses där.
+Ritningen bär samma skillnad: namnet läggs vid ett hörn av sin zon — `--name-x`/`--name-y`, som renderaren räknar ut — och skjuts därifrån med `transform: translate(…)` kring `transform-origin: 0 0`.
+Ett hörn är en punkt och en punkt överlever en vridning; allt som kommer efter vridningen landar därmed i läsarens riktningar, så "sex pixlar ovanför min egen överkant" är sex pixlar uppåt på skärmen vid varje kvartsvarv.
+Marknadens namn följer vridningen på samma sätt — det är fortfarande zonens övre vänstra hörn, men läsarens övre vänstra; ett namn förankrat i filtens hörn hamnade vid 270° på kasthögens antalsbricka.
+
+**Andra halvan igen: två namn på ett kuvert delar inte rad.**
+Ett kuvert är 500 mm och dess två namn är omkring 250 mm var i de storlekar filten faktiskt ritas, alltså hela kuvertet tillsammans.
+Ingen förankring längs kanten kan då skilja dem åt: vid åtta platser på en vriden filt vill paret ha 189 px av ett kuvert på 174.
+Namnet som är förankrat i den bortre änden står därför en rad längre ut, vilket inom ett kuvert alltid är precis ett av de två — den ena zonens mitt ligger före platsens mitt och den andras efter.
+Där namnet står *bredvid* sin zon i stället för längs kanten ligger paret redan på två rader av sig självt, och då läggs ingenting till.
+
+**Typen var en femtedel mellanrum.**
+`letter-spacing: 2px` på en elvapixlars etikett är arton pixlar av åttiosju, och på en filt vriden ett kvartsvarv vid sex platser har två platser mitt emot varandra 150 px mellan sig och ville ha 164.
+Bordsläget sätter nu 1 px, vilket är TV-lägets proportion (1,5 av 13) i stället för en egen.
+TV-lägets `--name-in` är 16 px i stället för 10: den änden namnet är förankrat i är den som pekar mot filtens hörn, där nästa kants plats har sina egna namn, och vid åtta platser låg `Räknare H` på `Framför A` med tio.
+
+**Ett namnkort vid en sidokant kröp inåt när namnet blev längre.**
+`.byd-seat-name` vid öst och väst är en vågrät textruta som vrids ett kvartsvarv kring sin egen mitt, och `right: 6px` gäller den ovridna rutan: ett åtta bokstävers namn hamnade fyrtio pixlar in från kanten, ett längre ännu längre in, medan syd och nord låg på sina 6 px.
+Kortet skjuts nu tillbaka med exakt det vridningen tar, så varje plats kort ligger 6 px från sin egen kant vad det än säger (K9).
+
+**Förhandsvisningen mättes vid en fönsterhöjd nästan ingen har.**
+`min(70vh, 720px)` betyder att 720-taket binder först ovanför ungefär 1030 px fönsterhöjd, och hela den förra skivans siffror togs vid 1280 × 1200.
+Genom den riktiga inpassningen gav 1280 × 800 ett kuvert på 169 px och 1440 × 900 ett på 194 — under de 200 den förra grinden krävde, alltså krockar på två av de tre skrivbord L12 räknar som skrivbord.
+Tre saker ändrades: filtens låda är `min(78vh, 720px)`, Bord-fliken sätter etiketten i filtens egen storlek i stället för TV:ns — fliken är en bild av ett bord på ett skrivbord, inte en TV läst på tre meters håll — och kravet är inte längre 200 px utan att ett kuvert rymmer det längsta av sina egna två namn, eftersom ett namn per rad är vad ett kuvert numera behöver hålla.
+Grinden mäter det vid 1280 × 800, 1440 × 900 och 1280 × 1200.
+
+**`white-space: nowrap` kunde inte falla.**
+Mätningen sköt in `.byd-zone > span { white-space: nowrap }` i varje läsning, så den deklaration som skeppas kunde tas bort utan att ett enda test märkte det — den inskjutna regeln trädde in i dess ställe.
+Påståendet att "mätningen tvingar det ändå" var alltså bakvänt.
+Ingenting skjuts in längre, och varje läsning säger dessutom vilka namn som faktiskt bröts till två rader; tas deklarationen bort faller alla femtiosex bordslägesscener.
+
+De mätta talen efter ändringen, bordsläge vid 1280 × 800, varje platsantal 2–8 × varje kvartsvarv × marknad av och på: noll krockar i alla femtiosex scenerna.
+Det trängsta avståndet som beror på hur långt ett namn är, är 3 px (sex platser, två platser mitt emot varandra på en vriden filt); de övriga trånga är 2 px och är geometriska — glipan på 10 mm mellan ett kuverts två zoner — och står därför still.
 
 ---
 
