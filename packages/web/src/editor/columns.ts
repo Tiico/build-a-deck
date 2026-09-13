@@ -198,6 +198,14 @@ export function fitColumns(box: Element, deck: Record<string, readonly string[]>
   }
   table.style.tableLayout = 'fixed'
   table.style.width = `${total}px`
+  // And nothing else may have an opinion about it. The stylesheet's `min-width: 100%` was written
+  // for the layout this replaced, where a table that could not see its own content had to be told
+  // to fill the box; under a fixed layout it does not merely widen the table, it hands the
+  // difference back out across every column, a number column as readily as a sentence. A deck with
+  // a text column hides that entirely — the sentences take the slack until the total is the room
+  // anyway — but a deck of nothing but numbers has nothing to absorb it, and every column stretches
+  // in proportion. That is the issue's opening symptom, arrived at from the other end.
+  table.style.minWidth = '0'
 }
 
 // Which values did not fit after all (#46).

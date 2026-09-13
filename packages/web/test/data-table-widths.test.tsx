@@ -620,6 +620,74 @@ describe('a width does not move while its own cell is being typed in (#46)', () 
   }, 60_000)
 })
 
+// A deck with nothing in it that wants a sentence's room: four numbers and the card's own key.
+// Nothing here gives or takes, so the whole handing-out of the slack is skipped and every column
+// is drawn at exactly what it asked for — which is the case where the table's own declared floor
+// is the only thing left with an opinion about its width.
+function numbersDoc(): ProjectDoc {
+  const doc = projectDoc()
+  const front = doc.template.faces.front!
+  return {
+    ...doc,
+    template: {
+      ...doc.template,
+      faces: {
+        ...doc.template.faces,
+        front: {
+          ...front,
+          base: ['cost', 'styrka', 'liv'].map((field, i) => ({
+            kind: 'text' as const,
+            id: field,
+            x: 5,
+            y: 5 + i * 12,
+            w: 53,
+            h: 10,
+            bind: { field },
+            font: { family: 'sans-serif', sizePt: 9 },
+            color: '#111',
+          })),
+        },
+      },
+    },
+    rows: [
+      { id: 'k1', fields: { cost: 3, styrka: 2, liv: 5, antal: 2 } },
+      { id: 'k2', fields: { cost: 2, styrka: 4, liv: 1, antal: 4 } },
+      { id: 'k3', fields: { cost: 5, styrka: 1, liv: 3, antal: 1 } },
+    ],
+  }
+}
+
+// What the measured total is worth if the stylesheet is still allowed to overrule it.
+//
+// `min-width: 100%` was written for the layout the measurement replaced, and under `table-layout:
+// fixed` it does not merely widen the table — it hands the difference back out across every
+// column, numbers included. A deck with a text column hides that completely: the sentences absorb
+// the slack until the total is the room anyway, so the floor never bites. A deck with no text
+// column has nothing to absorb it, and every column stretches in proportion. That is the issue's
+// own opening symptom, back again, on the one shape of deck no test covered.
+describe('the measured total is the table (#46)', () => {
+  it('leaves a deck of numbers at the widths it measured, and ends the row where the last field ends', async () => {
+    const at = await measure(numbersDoc())
+
+    // Nothing in this deck gives or takes, so this really is the case with no sentence to absorb
+    // the slack — and there is a great deal of slack: the table is far inside a 1280 px box.
+    expect(at.columns.map((c) => c.head)).toEqual(['check', 'id', 'cost', 'styrka', 'liv', 'antal', 'remove'])
+    expect(at.table).toBeLessThan(at.scroll - 400)
+    // Every column is a number's width, and the sum of them is the table.
+    for (const col of ['cost', 'styrka', 'liv', 'antal']) expect(at.width[col]!).toBeLessThanOrEqual(96)
+    expect(Object.values(at.width).reduce((a, b) => a + b, 0)).toBe(at.table)
+  }, 60_000)
+
+  it('is a real condition: let the table keep its old floor and every column stretches, numbers and all', async () => {
+    const at = await measure(numbersDoc(), { extra: '.byd-data { min-width: 100% !important; }' })
+
+    // The table fills the box because it was told to, and it pays for it out of the columns the
+    // measurement had just made narrow.
+    expect(at.table).toBe(at.scroll)
+    expect(at.width.cost!).toBeGreaterThan(96)
+  }, 60_000)
+})
+
 // A deck with one sentence in it that no desk width could hold: whatever the slack, `body` ends
 // up on its own floor and the value runs past the edge of the cell.
 const TOO_LONG =
