@@ -996,6 +996,9 @@ TV-läget är orört: där är namnet under kortet och räknarbrickan i hörnet 
 
 Referensprototypen `packages/web/src/prototype/table-ref` togs bort när den hade svarat.
 
+Filtens storlek är sedan 2026-09-13 inte en konstant: den följer antalet platser, och måtten och deras följd för läsbarheten på tre meters håll står i K18.
+Inpassningen och kameran rör sig inte av det — båda mäter filten de får — men bilden blir vidare när fler sitter vid bordet.
+
 ### K10. Telefonvyns utseende: remsan (prototypat 2026-09-06)
 
 Tre prototyper: remsan, ett kort i taget i fullskärm, och minibord med brickor plus handen i rutnät.
@@ -1295,6 +1298,74 @@ Grindarna är invarianter och inte tal, mätta vid 3, 13 och 21 kort och vid 390
 
 Byggt 2026-09-08 (#24, #25). Prototypen `packages/web/src/prototype/band` togs bort när den hade svarat; dess resonemang står här.
 Tre frågor som prototypen väckte och som produktägaren inte svarade på är avgjorda av implementationen och står i avsnitt I.
+
+### K18. Filten växer med sällskapet (2026-09-13, #54)
+
+Filtens storlek följer antalet platser.
+Den var konstant 1200 × 800 mm från två platser till åtta, och det höll inte: `handGeometry` sköt plats fem till åtta 300 mm längs en hand som är 500 mm bred, alltså kortare än handen själv, så paren låg över varandra per konstruktion.
+Mätt som antal överlappande zonpar: två till fyra platser 0, fem 5, sex 10, sju 17, åtta 20 — och bland dem `hand:A` mot `hand:E`, två spelares händer på samma millimetrar.
+Vid sju platser låg dessutom `counters:G` helt utanför filten och `hand:G` och `mine:G` hängde 150 mm utanför kanten.
+Felet satt i receptet och skrevs alltså in i dokumentet av `applyRecipe`, så det stod i sparade setuper och därmed på det spelade bordet, inte bara i editorns förhandsvisning.
+
+Regeln är den fysiskt ärliga: ett riktigt åttamannabord **är** större.
+En plats tar 500 mm längs sin kant — handen är 500 bred, och ytan framför plus räknarna bredvid den går ihop till samma 500 — och 170 mm inåt från kanten.
+Två grannar sitter ett kuvert isär, 600 mm, vilket är vad ett riktigt bord dukar med.
+Varje extra plats på ett kantpar förlänger den axel kanterna löper längs med ett kuvert.
+
+Måtten som faller ut, och som är beslutet:
+
+| Platser | Filt | Hur `edgeOf` fördelar dem (S, N, Ö, V) |
+| --- | --- | --- |
+| 2 | 1200 × 800 mm | 1, 1, 0, 0 |
+| 3 | 1200 × 800 mm | 1, 1, 1, 0 |
+| 4 | 1200 × 800 mm | 1, 1, 1, 1 |
+| 5 | 1800 × 800 mm | 2, 1, 1, 1 |
+| 6 | 1800 × 800 mm | 2, 2, 1, 1 |
+| 7 | 1800 × 1400 mm | 2, 2, 2, 1 |
+| 8 | 1800 × 1400 mm | 2, 2, 2, 2 |
+
+Axeln växer så snart någon av de två motstående kanterna bär ett par: bredden när syd eller nord gör det, höjden när öst eller väst gör det.
+
+Vid fyra platser och färre bär ingen kant två, så filten är den 1200 × 800 mm den alltid har varit — på millimetern, för varje zon.
+Kuvertet är just det mått som bevarar kantmarginalerna: en ensam plats står mitt på sin kant precis som förut, och ett par grenslar mitten.
+Sex platser blir 1800 × 800 mm, vilket är måttet på ett riktigt sexmannabord: två längs varje långsida och en vid var ände.
+
+Handen är 500 mm vid varje platsantal, och det är halva beslutet.
+Det förkastade alternativet — att smalna handen när platserna blir fler — hade stannat inne i `recipe.ts` utan att röra filten, men hade gett en spelare vid ett åttaplatsbord en synligt mindre hand än en vid ett fyraplatsbord: samma spel på olika villkor beroende på vilka som råkar spela.
+Det andra förkastade alternativet, fler än fyra kanter, hade löst både det här och #42, men ändrar `SeatEdge` i `packages/protocol` som #39 nyss införde, plus varje konsument av de fyra väderstrecken.
+
+**Sparade setuper lyfts, och bara de som måste.**
+Eftersom två till fyra platser ger exakt de gamla millimetrarna rör sig inget bord som någonsin har fungerat.
+Det som återstår är setuper sparade med fem till åtta platser på en 1200 × 800 mm filt, och där finns ingen design att bevara: det som står där är två spelares händer på samma plats.
+Så `applyRecipe` lägger ut platserna — och filten med dem — på nytt både när platsantalet ändras och när filten inte rymmer de platser den redan har.
+Ett bord som rymmer sina platser rörs aldrig, och en filt som designern själv har gjort rymligare är hens så länge den räcker till.
+Att byta bordsstorlek under fötterna på en pågående design vore fel om det som byttes bort var ett val; här är det ett fel som annars aldrig läker av sig självt.
+
+**Följd för TV-läget (K9): korten blir mindre vid fler platser, och det är priset.**
+Kameran ramar in det som är i spel, och ytorna framför platserna ligger vid kanten, så en större filt är en vidare bild.
+Kortets kortsida i TV-lägets ram, mätt i Chromium på `TvChrome`s egen `main` med receptets bord:
+
+| Skärm | 2–4 platser | 5–6 | 7–8 |
+| --- | --- | --- | --- |
+| 1280 × 800 | 47 px | 33 px | 27 px |
+| 1920 × 1080 | 70 px | 56 px | 40 px |
+| 3840 × 2160 | 157 px | 124 px | 89 px |
+
+Åtta platser på en 1280 × 800-skärm ger 27 px, och det är i minsta laget på tre meters håll.
+Men TV-läget är till för en TV, och på 1920 och på 4K står åttaplatsbordet på 40 respektive 89 px — mer än vad fyraplatsbordet hade på den skärm som var för liten från början.
+Att läsa ett enskilt kort är dessutom INSPEKTION:s uppgift och inte filtens (K9): det kortet ritas i panelens egen storlek och bryr sig inte om hur stort bordet är.
+Ett åttaplatsbord på en liten skärm är alltså mindre läsbart än ett fyraplatsbord, och det är en följd av att bordet är större och inte av att något är fel.
+
+**Vad den här skivan inte löser.**
+#42 försvinner inte: `edgeOf` ger fortfarande A och E samma kant, så väljaren måste fortfarande sprida paret längs kanten själv.
+En större filt ger dem rum att inte överlappa på bordet; väljarens lilla filt ritas ur platslistans kanter och inte ur bordets zoner, så den ser ingenting av det här.
+
+Ett fynd som skivan gjorde och lämnar kvar: platsens namnkort ligger på handen, mitt på den, och zonnamnet ligger ovanför sin zons överkant vid dess vänstra hörn (K9).
+Med en ensam plats på kanten möts de aldrig, men med två ligger namnkortet mitt över grannzonens namn — mätt i Chromium på ett åttaplatsbord täcker "Spelare 2" bokstaven i "FRAMFÖR B".
+Det är en etikettkrock och inte en zonkrock, och var etiketterna ska ta vägen när en kant bär två platser är K9:s fråga och en egen skiva.
+
+Grinden är ett test och inte ett tal: `packages/server/test/recipe-geometry.test.ts` mäter varje zonpar vid varje platsantal från två till `MAX_PLAYERS`, räknar paren så att en tom lista inte kan gå igenom, och håller dessutom fast att handen är 500 mm överallt och att ett fyraplatsbord ligger på exakt de millimetrar det låg på förut.
+Den gamla täckningen slutade vid fyra platser, och det är därför felet gick att skeppa.
 
 ---
 

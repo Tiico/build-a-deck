@@ -11,9 +11,9 @@ export type WizardState = { name: string; players: number; fields: Field[]; fram
 export const defaultCounters = (t: T): { name: string; start: number }[] => [{ name: t('counter.score'), start: 0 }]
 
 // The wizard's whole output (L6): exactly the document the editor edits — E3's condition.
-// The table is the recipe's (B5): seats around a 1200 × 800 mm table, each with a hand that
-// returns to the draw pile, an area in front of it and its counters; the editor turns the same
-// knobs afterwards.
+// The table is the recipe's (B5): seats around a felt as large as that many people need (K18),
+// each with a hand that returns to the draw pile, an area in front of it and its counters; the
+// editor turns the same knobs afterwards.
 export function buildProject(state: WizardState, t: T = (key, params) => translate('sv', key, params)): ProjectDoc {
   const frame = FRAMES.find((f) => f.id === state.frame) ?? DEFAULT_FRAME
   // The table a new game starts with is named in the designer's language from the first moment.
