@@ -46,7 +46,7 @@ describe('a field arrives in the editor (#32)', () => {
     render(<Editing />)
     expect(column('fält1')).toBeNull()
 
-    await user.click(screen.getByRole('button', { name: '+ Nytt fält' }))
+    await user.click(screen.getByRole('button', { name: 'Nytt fält' }))
     await user.click(screen.getByRole('button', { name: 'Lägg till' }))
 
     expect(column('fält1')).toBeTruthy()
@@ -55,7 +55,7 @@ describe('a field arrives in the editor (#32)', () => {
   it('refuses a name the table already answers to, and says which one it is', async () => {
     const user = userEvent.setup()
     render(<Editing />)
-    await user.click(screen.getByRole('button', { name: '+ Nytt fält' }))
+    await user.click(screen.getByRole('button', { name: 'Nytt fält' }))
     const name = screen.getByLabelText('Namn')
 
     await user.clear(name)
@@ -89,7 +89,7 @@ describe('a field arrives in the editor (#32)', () => {
     const asked: string[] = []
     render(<Editing doc={{ ...projectDoc(), rows: [] }} asked={asked} />)
 
-    await user.click(screen.getByRole('button', { name: '+ Nytt fält' }))
+    await user.click(screen.getByRole('button', { name: 'Nytt fält' }))
     await user.click(screen.getByRole('button', { name: 'Lägg till' }))
 
     expect(screen.getByRole('alert').textContent).toBe('Ett fält är en kolumn på korten. Lägg till ett kort först.')
@@ -132,7 +132,7 @@ describe('a field arrives in the editor (#32)', () => {
   it('counts an empty column as what it is: nothing to lose', async () => {
     const user = userEvent.setup()
     render(<Editing />)
-    await user.click(screen.getByRole('button', { name: '+ Nytt fält' }))
+    await user.click(screen.getByRole('button', { name: 'Nytt fält' }))
     await user.click(screen.getByRole('button', { name: 'Lägg till' }))
 
     await user.click(screen.getByRole('button', { name: 'Ta bort fältet fält1' }))
@@ -146,19 +146,19 @@ describe('a field arrives in the editor (#32)', () => {
     const user = userEvent.setup()
     render(<Editing />)
 
-    await user.click(screen.getByRole('button', { name: '+ Nytt fält' }))
+    await user.click(screen.getByRole('button', { name: 'Nytt fält' }))
     expect(document.activeElement).toBe(screen.getByLabelText('Namn'))
     await user.click(screen.getByRole('button', { name: 'Avbryt' }))
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: '+ Nytt fält' }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Nytt fält' }))
 
     // Saying yes takes the focus away just as saying no does — the button that was pressed
     // unmounts with the form — and it has to come back to the same place. Only the cancel path
     // was ever asserted, so a designer who made a column with the keyboard was left on `<body>`
     // and had to tab in from the top of the page to make a second one.
-    await user.click(screen.getByRole('button', { name: '+ Nytt fält' }))
+    await user.click(screen.getByRole('button', { name: 'Nytt fält' }))
     await user.click(screen.getByRole('button', { name: 'Lägg till' }))
     expect(column('fält1')).toBeTruthy()
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: '+ Nytt fält' }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Nytt fält' }))
 
     await user.click(screen.getByRole('button', { name: 'Ta bort fältet body' }))
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Avbryt' }))
@@ -167,7 +167,7 @@ describe('a field arrives in the editor (#32)', () => {
 
     await user.click(screen.getByRole('button', { name: 'Ta bort fältet body' }))
     await user.click(screen.getByRole('button', { name: 'Ja, ta bort' }))
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: '+ Nytt fält' }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Nytt fält' }))
   })
 
   // The boundary A4 draws, and #27 drew again for exactly this case: what the tool *says* follows
@@ -181,7 +181,7 @@ describe('a field arrives in the editor (#32)', () => {
         <Editing />
       </Language>,
     )
-    await user.click(screen.getByRole('button', { name: '+ New field' }))
+    await user.click(screen.getByRole('button', { name: 'New field' }))
     const form = screen.getByRole('form', { name: 'New field' })
     const name = () => within(form).getByLabelText('Name') as HTMLInputElement
     expect(within(form).getByRole('button', { name: 'Add' })).toBeTruthy()
@@ -195,7 +195,7 @@ describe('a field arrives in the editor (#32)', () => {
     await user.click(within(form).getByRole('button', { name: 'Add' }))
     expect(column('bild1')).toBeTruthy()
     // And a designer who writes her own word gets hers, kind or no kind.
-    await user.click(screen.getByRole('button', { name: '+ New field' }))
+    await user.click(screen.getByRole('button', { name: 'New field' }))
     const second = screen.getByRole('form', { name: 'New field' })
     await user.clear(within(second).getByLabelText('Name'))
     await user.type(within(second).getByLabelText('Name'), 'styrka')

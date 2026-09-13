@@ -17,11 +17,12 @@ describe('DataTable (B as a tab)', () => {
 
     // Every column header is a sort control (#15): its name is the column, the arrow is the state,
     // and a column the designer made carries the × that takes it away again (#32). The first
-    // column carries no name: the selection's checkbox is its own label (#17). Then the button
-    // that makes a column, where the column will stand, and last the pinned column that removes a
-    // card, which says so for a reader who cannot see the ×.
-    const headers = screen.getAllByRole('columnheader').map((h) => h.textContent!.replace(/\s*[↕↑↓]\s*×?$/, ''))
-    expect(headers).toEqual(['', 'id', 'title', 'body', 'antal', '+ Nytt fält', 'Ta bort'])
+    // column carries no name: the selection's checkbox is its own label (#17). Last stands the
+    // pinned column that removes a card, which says so for a reader who cannot see the ×; the
+    // button that makes a column stands in its head rather than bringing a column of its own to
+    // stand in, because that column had nothing under it on any row (#46).
+    const headers = screen.getAllByRole('columnheader').map((h) => (h.getAttribute('aria-label') ?? h.textContent!).replace(/\s*[↕↑↓]\s*×?$/, ''))
+    expect(headers).toEqual(['', 'id', 'title', 'body', 'antal', 'Ta bort'])
     const rows = screen.getAllByRole('row').slice(1)
     expect(rows.map((r) => r.getAttribute('data-card-ref'))).toEqual(['dragon', 'knight', 'wizard'])
     expect(rows[1]!.getAttribute('aria-selected')).toBe('true')

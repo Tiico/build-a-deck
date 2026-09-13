@@ -114,6 +114,10 @@ const shellOf = (html: string, extra: string) =>
 type Measured = {
   // Every column of the head, by the name the table gives it, with the width it was drawn at.
   width: Record<string, number>
+  // The head in document order, and how many of the cards' cells under each heading hold
+  // anything at all — a value, a word, or a control. A column where that is nought is a column
+  // the deck has no use for, and it is the ~200 px of nothing the issue opens with.
+  columns: { head: string; holds: number }[]
   // Where the row stops and where the box it scrolls in stops, so an empty column at the end has
   // somewhere to show up.
   table: number
@@ -137,9 +141,18 @@ async function measure(doc: ProjectDoc, { width = 1280, fit = true, extra = '' }
         const named = (cell: Element): string =>
           cell.getAttribute('data-col') ?? (cell.className.replace('byd-data-', '') || '(blank)')
         const out: Record<string, number> = {}
-        for (const th of table.querySelectorAll('thead > tr > *')) out[named(th)] = Math.round(th.getBoundingClientRect().width)
+        const heads = [...table.querySelectorAll('thead > tr > *')]
+        for (const th of heads) out[named(th)] = Math.round(th.getBoundingClientRect().width)
+        const rows = [...table.querySelectorAll('tbody > tr')]
         return {
           width: out,
+          columns: heads.map((th, i) => ({
+            head: named(th),
+            holds: rows.filter((row) => {
+              const cell = row.children[i]
+              return !!cell && ((cell.textContent ?? '').trim() !== '' || cell.querySelector('input, button, select, textarea, img') !== null)
+            }).length,
+          })),
           table: Math.round(table.getBoundingClientRect().width),
           scroll: Math.round(box.getBoundingClientRect().width),
           page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -179,5 +192,25 @@ describe('a column is as wide as what stands in it (#46)', () => {
     expect(after.width.cost!).toBeLessThanOrEqual(96)
     expect(after.width.body!).toBeGreaterThan(4 * after.width.cost!)
     expect(after.width.body!).toBeGreaterThan(3 * after.width.title!)
+  }, 60_000)
+})
+
+// The third of the issue's three symptoms, and the one that is pure markup: between `antal` and
+// the pinned × stood a column of nothing at all — about 200 px of it — because the button that
+// makes a new column had been given a column of its own to stand in (#32). A cell in the head is
+// a column whether or not any card has anything to put under it.
+describe('the row ends where the last field ends (#46)', () => {
+  it('has something under every heading, and nothing standing between the last field and the pin', async () => {
+    const after = await measure(deckDoc())
+
+    // Named rather than counted: the column that went is named by its absence from this list, so
+    // a rename cannot quietly satisfy a count. `newfield` stood between `antal` and `remove`.
+    expect(after.columns.map((c) => c.head)).toEqual(['check', 'id', 'art', 'title', 'body', 'cost', 'antal', 'remove'])
+
+    // And every one of them has cells: the tick column holds a tick per card, the pinned column
+    // holds a button per card, and each column of the deck holds its values. A column with no
+    // cells is the fault, whatever width it happens to be drawn at.
+    expect(after.columns.filter((c) => c.holds === 0)).toEqual([])
+    expect(after.columns.every((c) => c.holds === CARDS.length)).toBe(true)
   }, 60_000)
 })

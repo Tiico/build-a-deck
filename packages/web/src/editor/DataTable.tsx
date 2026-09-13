@@ -523,7 +523,6 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
             <col key={f} data-col={f} data-kind={widthKind(doc, f)} />
           ))}
           {grouping && <col data-col={GROUP_COL} data-kind="text" />}
-          <col data-kind="key" />
           <col data-kind="tap" />
         </colgroup>
         <thead>
@@ -560,13 +559,20 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
               />
             ))}
             {grouping && <th data-col={GROUP_COL}>{t('table.group')}</th>}
-            {/* Variant A (#32): the head's last named cell is the button, because the column
-                grows in the place it will stand. The form it opens lies *over* the row —
-                absolutely positioned in a cell that is already `sticky`, so the head keeps its
-                height and no heading moves while the designer types. */}
-            <th className="byd-data-newfield">
-              <button type="button" ref={addRef} aria-expanded={adding} onClick={() => setAdding(!adding)}>
-                {t('table.field.add')}
+            {/* The button that makes a column stands at the end of the head, where the column it
+                makes will stand (#32) — but it no longer brings a column of its own to stand in.
+                It had one, and every card's row met it with an empty cell: about 200 px of
+                nothing between the last field and the ×, which is the third thing #46 is about.
+                So it moves into the head of the column that is already there. That cell is
+                `sticky` and therefore already a containing block, which is what the form it opens
+                hangs from; the head keeps its height and no heading moves while the designer
+                types. The word goes with the column — a `+` is all a tap-wide cell can hold — and
+                the name it is heard by is the same word as before.
+                The cell is named for what its own column does, so a screen reader still hears
+                what the × under it is for rather than hearing the button above it twice. */}
+            <th className="byd-data-remove" aria-label={t('table.remove.column')}>
+              <button type="button" ref={addRef} aria-label={t('table.field.new')} aria-expanded={adding} onClick={() => setAdding(!adding)}>
+                +
               </button>
               {adding && (
                 <NewField
@@ -587,9 +593,6 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                   }}
                 />
               )}
-            </th>
-            <th className="byd-data-remove">
-              <span className="byd-offscreen">{t('table.remove.column')}</span>
             </th>
           </tr>
         </thead>
@@ -717,12 +720,10 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                 ),
               )}
               {grouping && <GroupCell doc={doc} column={grouping} cardRef={cardRef} row={row} />}
-              {/* The button that makes a column stands in a column of its own, so every row has
-                  that column too — empty, because nothing about a card belongs under it. A row
-                  one cell short of the head is still a legal table and the browser lays it out
-                  without complaint: what the designer sees is the pinned × under the wrong
-                  heading, at the wrong width, with a phantom column after it. */}
-              <td className="byd-data-newfield" />
+              {/* Every heading has a cell under it and every cell has a heading over it. A row
+                  one short of the head is still a legal table and the browser lays it out without
+                  complaint — what the designer sees is the pinned × under the wrong heading, at
+                  the wrong width, with a phantom column after it (#32). */}
               <td className="byd-data-remove">
                 <button
                   type="button"

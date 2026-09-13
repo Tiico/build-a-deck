@@ -194,7 +194,7 @@ describe('DataTable sorting from the keyboard (#15)', () => {
       'kostnad',
       'Ta bort fältet kostnad',
       'antal',
-      '+ Nytt fält',
+      'Nytt fält',
     ])
     for (const button of buttons) {
       await user.tab()

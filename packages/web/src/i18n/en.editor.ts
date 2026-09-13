@@ -146,7 +146,6 @@ export const enEditor = {
   'table.empty': 'No cards match the filter.',
   'table.addCard': '+ New card',
 
-  'table.field.add': '+ New field',
   'table.field.new': 'New field',
   'table.field.name': 'Name',
   'table.field.kind': 'Kind',

@@ -32,7 +32,7 @@ const openTab = (name: string) => fireEvent.click(screen.getByRole('tab', { name
 const column = (name: string) => screen.queryByRole('button', { name: new RegExp(`^${name}[\\s↕↑↓×]*$`) })
 
 async function makeField(user: ReturnType<typeof userEvent.setup>, name: string): Promise<void> {
-  await user.click(screen.getByRole('button', { name: '+ Nytt fält' }))
+  await user.click(screen.getByRole('button', { name: 'Nytt fält' }))
   const form = screen.getByRole('form', { name: 'Nytt fält' })
   await user.clear(within(form).getByLabelText('Namn'))
   await user.type(within(form).getByLabelText('Namn'), name)

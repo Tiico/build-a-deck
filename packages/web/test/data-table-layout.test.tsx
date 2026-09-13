@@ -53,7 +53,7 @@ async function markup(open: boolean): Promise<string> {
   const user = userEvent.setup()
   const { container, unmount } = render(<Table />)
   if (open) {
-    await user.click(screen.getByRole('button', { name: '+ Nytt fält' }))
+    await user.click(screen.getByRole('button', { name: 'Nytt fält' }))
     await user.type(screen.getByLabelText('Namn'), 'a')
   }
   const html = container.innerHTML
@@ -87,8 +87,11 @@ async function measure(html: string, extra = ''): Promise<Head> {
         const r = el.getBoundingClientRect()
         return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }
       }
+      // A heading that names itself is taken at its word: the pinned column's head says what the
+      // × under it is for, and since #46 it also carries the + that makes a column, so the word
+      // inside it is no longer the name of the column.
       const headings = [...document.querySelectorAll('.byd-data thead th')]
-        .map((th) => ({ name: (th.querySelector('button')?.textContent ?? th.textContent ?? '').trim(), box: box(th)!, ink: box(th.querySelector('button') ?? th)! }))
+        .map((th) => ({ name: (th.getAttribute('aria-label') ?? th.querySelector('button')?.textContent ?? th.textContent ?? '').trim(), box: box(th)!, ink: box(th.querySelector('button') ?? th)! }))
         .filter((h) => h.name !== '')
       // A cell says which column it is by the class the table gives it; a heading with no class
       // of its own is named by the word in it, which is enough to read a mismatch by.
@@ -123,7 +126,7 @@ describe('the form that makes a column (#32)', () => {
     expect(open.form).not.toBeNull()
     expect(open.form!.h).toBeGreaterThan(open.row.h)
     expect(shut.form).toBeNull()
-    expect(shut.headings.map((h) => h.name)).toEqual(['id ↕', 'title ↕', 'body ↕', 'antal ↕', '+ Nytt fält', 'Ta bort'])
+    expect(shut.headings.map((h) => h.name)).toEqual(['id ↕', 'title ↕', 'body ↕', 'antal ↕', 'Ta bort'])
     expect(open.headings.map((h) => h.name)).toEqual(shut.headings.map((h) => h.name))
 
     // The condition itself: the head is exactly as tall as it was, every heading cell stands
@@ -136,7 +139,7 @@ describe('the form that makes a column (#32)', () => {
 
     // It hangs from the cell it was opened from, over what is under it, and inside the box the
     // table scrolls in — it is not a sheet that floats off somewhere else on the page.
-    const cell = open.headings.at(-2)!.box
+    const cell = open.headings.at(-1)!.box
     expect(Math.abs(open.form!.y - (cell.y + cell.h))).toBeLessThanOrEqual(2)
     expect(open.form!.y).toBeLessThan(open.firstRow.y + open.firstRow.h)
     expect(open.form!.x + open.form!.w).toBeLessThanOrEqual(open.scroll.x + open.scroll.w + 1)
@@ -162,17 +165,19 @@ describe('the form that makes a column (#32)', () => {
 // measure the head against itself, and the tests that read the table's markup count headings or
 // find a cell by its label. Nothing compared a heading to the cell standing under it.
 //
-// So every card's row ended one `<td>` short of the head. A table with seven headings and six
-// cells is still a legal table — the browser lays the columns out and the row simply stops early
-// — and what the designer saw was the pinned × sitting under "+ Nytt fält", twice the width it is
-// meant to be, with a phantom empty column after it.
+// So every card's row ended one `<td>` short of the head. A table with more headings than cells is
+// still a legal table — the browser lays the columns out and the row simply stops early — and what
+// the designer saw was the pinned × sitting under the wrong heading, at the wrong width, with a
+// phantom empty column after it. The column it was sitting under has since gone: the button that
+// makes a column moved into the head of the pinned column rather than bringing one of its own,
+// because that one had nothing under it on any row (#46). The pairing is the fact, not the count.
 describe('the head and the rows are the same table (#32)', () => {
   it('puts every card cell under the heading it belongs to, at the same width', async () => {
     const { columns } = await measure(await markup(false))
 
-    // The head really does have the column the issue added, so this is not a guard over a table
-    // without the cell in question.
-    expect(columns.map((c) => c.head)).toEqual(['check', 'id ↕', 'title ↕', 'body ↕', 'antal ↕', 'newfield', 'remove'])
+    // The head is the shape it is meant to be, named rather than counted, so this is not a guard
+    // over a table without the cells in question.
+    expect(columns.map((c) => c.head)).toEqual(['check', 'id ↕', 'title ↕', 'body ↕', 'antal ↕', 'remove'])
 
     // Nothing in the head stands over nothing.
     expect(columns.filter((c) => c.bodyBox === null).map((c) => c.head)).toEqual([])
@@ -188,24 +193,26 @@ describe('the head and the rows are the same table (#32)', () => {
     expect(columns.at(-1)!.bodyBox!.w).toBe(44)
   }, 60_000)
 
-  it('is a condition that can fail: take the new cell back out and the × slides under the wrong heading', async () => {
-    // The same markup with the body's cell hidden is the table exactly as #32 shipped it. If this
-    // passed too, the assertion above would be measuring the browser rather than the markup.
+  it('is a condition that can fail: take one cell out of a row and the × slides under the wrong heading', async () => {
+    // The same markup with one of the row's cells taken out of the layout is the table exactly as
+    // #32 shipped it — a row one `<td>` short of the head. Which cell it is does not matter; what
+    // matters is that everything after it moves up a column. If this passed too, the assertion
+    // above would be measuring the browser rather than the markup.
     const html = await markup(false)
-    const short = await measure(html, '.byd-data tbody .byd-data-newfield { display: none; }')
+    const short = await measure(html, '.byd-data tbody .byd-data-id { display: none; }')
 
-    // A cell taken out of the layout leaves the table exactly as short as one that was never
-    // written: the head keeps its seven columns and the rows lay out six.
-    const drift = short.columns.filter((c) => c.bodyBox!.x !== c.headBox.x || c.bodyBox!.w !== c.headBox.w)
-    expect(drift.map((c) => c.head)).toEqual(['newfield', 'remove'])
+    // Every column from the missing cell on has drifted, and the head still has all of its own.
+    const drift = short.columns.filter((c) => c.bodyBox === null || c.bodyBox.x !== c.headBox.x || c.bodyBox.w !== c.headBox.w)
+    expect(drift.map((c) => c.head)).toEqual(['id ↕', 'title ↕', 'body ↕', 'antal ↕', 'remove'])
 
     // And the drift is the one that shipped: the × has slid a whole heading to the left, onto
-    // "+ Nytt fält", and taken that heading's width instead of a tap target's.
-    const newfield = short.columns.find((c) => c.head === 'newfield')!
+    // `antal`, and taken that heading's width instead of a tap target's.
+    const antal = short.columns.find((c) => c.head === 'antal ↕')!
     const remove = short.columns.find((c) => c.head === 'remove')!
-    expect(remove.bodyBox!.x).toBe(newfield.headBox.x)
-    expect(remove.bodyBox!.w).toBe(newfield.headBox.w)
-    expect(newfield.headBox.w).toBeGreaterThan(44)
+    expect(remove.body).toBe('remove')
+    expect(remove.bodyBox!.x).toBe(antal.headBox.x)
+    expect(remove.bodyBox!.w).toBe(antal.headBox.w)
+    expect(antal.headBox.w).toBeGreaterThan(44)
   }, 60_000)
 })
 

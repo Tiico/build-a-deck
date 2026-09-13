@@ -165,7 +165,9 @@ export const svEditor = {
 
   // Ett nytt fält, från tabellhuvudet eller från mallens bindning (#32). Namnet verktyget
   // föreslår är en nyckel och står därför inte här: den byter inte språk med läsaren (#27).
-  'table.field.add': '+ Nytt fält',
+  // Knappen i tabellhuvudet bär ett `+` och ingenting mer sedan den flyttade in i den pinnade
+  // kolumnens rubrik (#46) — en ruta som är en träffyta bred rymmer inte ett ord — så det här
+  // är namnet den hörs med, och samma ord namnger formuläret den öppnar.
   'table.field.new': 'Nytt fält',
   'table.field.name': 'Namn',
   'table.field.kind': 'Typ',

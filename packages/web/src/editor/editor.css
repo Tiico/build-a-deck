@@ -803,7 +803,6 @@
 /* The column that removes a card is pinned to the right edge of the scrolling box: it is the
    first thing a narrow screen would lose, and it is the one thing that must not be lost. */
 .byd-data .byd-data-remove { position: sticky; right: 0; z-index: 2; width: var(--byd-tap); padding: 0 !important; background: #1b1d23; box-shadow: -8px 0 12px -8px rgb(0 0 0 / 80%); }
-.byd-data thead .byd-data-remove { z-index: 3; }
 /* What says a value is still going (#53). The pin cannot be lifted off the content — the two
    share one clipping rectangle, and the only way out costs the sticky heading — so the cut is
    made legible instead: the last strip in front of the × dissolves into the pin's own ground, and
@@ -875,8 +874,13 @@
 }
 .byd-data th:hover .byd-data-dropfield, .byd-data th:focus-within .byd-data-dropfield { opacity: 1; }
 .byd-data th .byd-data-dropfield:hover, .byd-data th .byd-data-dropfield:focus-visible { color: #e05c5c; }
-.byd-data thead .byd-data-newfield { z-index: 4; overflow: visible; white-space: nowrap; }
-.byd-data thead .byd-data-newfield > button { color: var(--byd-editor-count-ink); }
+/* The button that makes a column now stands in the head of the column that removes a card (#46):
+   the head's last cell either way, but no longer a column of its own with an empty cell under it
+   on every row. A tap-wide cell holds a `+` and nothing more, so that is what it holds; the word
+   is what the button is heard by. The form it opens has to be let out of the cell, which is the
+   one heading that is deliberately not clipped. */
+.byd-data thead .byd-data-remove { z-index: 4; overflow: visible; white-space: nowrap; }
+.byd-data thead .byd-data-remove > button { display: grid; place-items: center; width: var(--byd-tap); padding: 0; color: var(--byd-editor-count-ink); font-size: 18px; line-height: 1; }
 .byd-newfield {
   position: absolute;
   top: 100%;
