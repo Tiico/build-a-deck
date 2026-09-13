@@ -1495,6 +1495,18 @@ Uttoningen hålls borta från markören, vilket är det enda en uttoning tagen u
 Cellen håller därför en remsa vid sin högerkant som värdet aldrig når: uttoningen slutar där textytan slutar, och markören och tecknet framför den ligger alltid utanför den och alltid hela.
 Med markören faktiskt i cellen tas uttoningen bort helt — ingenting som skrivs får dämpas, av något skäl — och det som säger att värdet fortsätter är märket som står i remsan, bredvid skrivandet i stället för över det.
 Märket är den enda delen av gesten som varken kan rulla undan, tona bort eller skrivas igenom, och därför är det just det den fokuserade cellen behåller.
+Bredderna står stilla medan en cell har markören och lägger sig först när den lämnas.
+Överskottet delas i proportion till vad kolumnerna bad om, så när meningen som skrivs växer sju pixlar per tecken lämnar `art` och `title` ifrån sig en pixel eller två var och varje gräns till höger om dem flyttar sig — inklusive högerkanten på just den cell som skrivs i, så markören kryper undan under handen som skriver.
+Fyra svar fanns: lägga sig vid blur, bara växa, fördröja, eller mäta utan den cell markören står i.
+Valet är blur, eftersom tabellen redan svarar på frågan så: en rad håller sin plats medan en cell redigeras och tar sin nya när fältet lämnas (#15), och en bredd är samma löfte om samma ögonblick.
+Bara växa lämnar leken permanent bredare än den är efter att ett värde kortats; en fördröjning flyttar gränsen ett ögonblick efter tangenttrycket, vilket är värre än att flytta den med det; och att utesluta en cell gör bredden till ett faktum om var markören står, vilket är precis vad en bredd inte får vara.
+Om ett värde är kapat hålls däremot inte still — det är ett faktum om en cell och inte om leken, och det är sant eller falskt igen vid varje tecken.
+Ingenting i cellen har någon egen åsikt om kolumnen.
+`min-width: 12ch` på fältet skrevs för layouten mätningen ersatte och är 80 px: i en `cost` på 64 ritades fältet sexton pixlar in i `antal`.
+`min-width: 100%` på tabellen är samma sak en nivå upp: under `table-layout: fixed` breddar den inte bara tabellen utan delar ut skillnaden över varje kolumn, tal som meningar, och en lek helt utan textkolumn har ingenting som suger upp den.
+Båda är borta; mätningens summa är tabellen.
+Mätningen körs när leken ändras och när rummet gör det, aldrig på en scroll: en scroll flyttar lådan, och en låda kan inte tala om för en kolumn hur bred den ska vara.
+Varje värde mäts en gång och känns igen sedan, hållet mot den font och den inre marginal det mättes med.
 
 ### L5. Editor till bord: uttrycklig knapp, förrenderade texturer
 
