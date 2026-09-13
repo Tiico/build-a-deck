@@ -861,11 +861,45 @@
    the caret the input scrolls to the cursor and the mark is gone — so the cheap answer goes silent
    exactly when the designer is reading it. A mask cannot scroll away.
    Only a column of sentences is ever cut, because only a column of sentences gives its room back,
-   and every one of those is drawn as an `<input>`. So this has exactly one place to be. */
+   and every one of those is drawn as an `<input>`. So this has exactly one place to be.
+
+   And the fade is kept off the caret, which is the one thing a fade taken out of the value can get
+   wrong. An input scrolls to the cursor, so in a cut cell the caret stands at the very edge of the
+   text — the first version of this put it about ten pixels in, at something like four tenths of an
+   alpha, and the characters the designer was typing dissolved as she typed them. So the cell keeps
+   a strip at its right that the value never reaches: the fade ends where the text area ends, and
+   the caret and the character in front of it are always outside it and always whole. With the
+   caret actually in the cell the fade comes off altogether — nothing being written may be dimmed
+   for any reason — and what says the value goes on is the mark standing in the strip, which is
+   beside the writing and not over it. The mark is the one part of this that cannot scroll away,
+   fade out, or be typed through, which is why it is what the focused cell is left with. */
+.byd-data { --byd-data-cut: 20px; }
 .byd-data td[data-cut='true'] input {
-  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), rgb(0 0 0 / 0%));
-  mask-image: linear-gradient(to right, #000 calc(100% - 24px), rgb(0 0 0 / 0%));
+  padding-right: calc(10px + var(--byd-data-cut));
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px - 10px - var(--byd-data-cut)), rgb(0 0 0 / 0%) calc(100% - 10px - var(--byd-data-cut)));
+  mask-image: linear-gradient(to right, #000 calc(100% - 24px - 10px - var(--byd-data-cut)), rgb(0 0 0 / 0%) calc(100% - 10px - var(--byd-data-cut)));
 }
+.byd-data td[data-cut='true'] input:focus {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+.byd-data td[data-cut='true']::after {
+  content: '…';
+  position: absolute;
+  right: 7px;
+  top: 0;
+  bottom: 0;
+  display: grid;
+  place-items: center;
+  color: var(--byd-editor-quiet);
+  font-size: 12px;
+  line-height: 1;
+  /* The click still lands in the field: the mark says something, it does not take anything. */
+  pointer-events: none;
+}
+/* The way to an icon (#33) hangs at the right edge of the cell being worked in, which is where the
+   strip now is. It steps aside rather than standing on the mark. */
+.byd-data td[data-cut='true'] .byd-data-icon { right: calc(5px + var(--byd-data-cut)); }
 
 /* A field arrives in the editor (#32, prototype variant A): the head's last named cell is the
    button, so the column grows where it will stand. The form it opens must not make that cell

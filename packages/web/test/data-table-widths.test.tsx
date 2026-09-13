@@ -636,6 +636,10 @@ type Cue = {
   // cell holding the caret.
   atRest: Buffer
   focused: Buffer
+  // The value itself rather than the cue beside it: the stretch of the cell the last characters
+  // stand in, photographed with the caret at the end and one more character just typed. That is
+  // where the cue has no business being, and it is the picture the old one failed.
+  written: Buffer
 }
 
 // The ground at the right-hand edge of the long cell, read the way the felt reads its ellipsis
@@ -659,6 +663,9 @@ async function cue(doc: ProjectDoc, extra = ''): Promise<Cue> {
         return {
           cut: marked.map((cell) => `${cell.closest('tr')?.getAttribute('data-card-ref') ?? '?'}/${cell.getAttribute('data-col')}`),
           clip: { x: seen.right - 40, y: seen.top, width: 40, height: seen.height },
+          // The text's own ground, stopping short of the strip the cue stands in. Nothing the cue
+          // does may show up here.
+          ink: { x: seen.right - 48, y: seen.top, width: 24, height: seen.height },
         }
       },
       { deck: deckValues(doc, sv), decide: String(fitColumns), mark: String(markValues) },
@@ -671,7 +678,12 @@ async function cue(doc: ProjectDoc, extra = ''): Promise<Cue> {
       field.focus()
       field.setSelectionRange(field.value.length, field.value.length)
     })
-    return { cut: facts.cut, atRest, focused: await page.screenshot({ clip: facts.clip }) }
+    const focused = await page.screenshot({ clip: facts.clip })
+    // And one more character written at that caret, which is the moment the question is really
+    // about: an input scrolls to the cursor, so what has just been typed is what stands nearest
+    // the edge of the cell — under whatever the cell has drawn there.
+    await page.keyboard.type('M')
+    return { cut: facts.cut, atRest, focused, written: await page.screenshot({ clip: facts.ink }) }
   } finally {
     await page.close()
   }
@@ -683,7 +695,16 @@ async function cue(doc: ProjectDoc, extra = ''): Promise<Cue> {
 // be beautiful, and there is already a gesture in the tool for it. #53 drew it: a value going
 // under the pinned × fades out rather than stopping mid-word. This is the same fade at the same
 // width over the same ground, at the edge of the cell rather than the edge of the pin.
-const FORCED = { off: '.byd-data td[data-cut="true"] input { mask-image: none !important; -webkit-mask-image: none !important; }' }
+// `off` takes the whole cue back — the fade out of the value and the mark beside it — and nothing
+// else: the room the cue stands in is still reserved, so the value is drawn in exactly the same
+// place with the cue on as with it off. That is what makes "the value is painted identically"
+// a statement about the cue and not about the layout. `erasing` is the cue as it was first
+// written, laid over the value with no room reserved at all.
+const FORCED = {
+  off: '.byd-data td[data-cut="true"] input { mask-image: none !important; -webkit-mask-image: none !important; } .byd-data td[data-cut="true"]::after { content: none !important; }',
+  erasing:
+    '.byd-data td[data-cut="true"]::after { content: none !important; } .byd-data td[data-cut="true"] input, .byd-data td[data-cut="true"] input:focus { padding-right: 10px !important; mask-image: linear-gradient(to right, #000 calc(100% - 24px), rgb(0 0 0 / 0%)) !important; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), rgb(0 0 0 / 0%)) !important; }',
+}
 
 describe('a value that does not fit says so (#46)', () => {
   it('is marked on the cells that really are cut, and on no others', async () => {
@@ -710,6 +731,25 @@ describe('a value that does not fit says so (#46)', () => {
     // And with the caret in that very cell, which is the whole reason the cue is drawn on the
     // cell and not on the input inside it.
     expect(shown.focused.equals(bare.focused)).toBe(false)
+  }, 60_000)
+
+  it('never touches what is being written: a character typed at the end of a cut cell is painted whole', async () => {
+    const [shown, bare] = await Promise.all([cue(cutDoc()), cue(cutDoc(), FORCED.off)])
+
+    // The value, with the caret at its end and a character just added, is painted exactly as it is
+    // with the cue taken away altogether. The cue stands beside the writing; it is not over it.
+    expect(shown.written.equals(bare.written)).toBe(true)
+  }, 60_000)
+
+  it('is a real condition: laid over the value instead, the cue rubs out the character just typed', async () => {
+    // The cue as it was first written — a fade taken out of the value itself, over the last 24 px,
+    // with no room reserved. An input scrolls to the caret, so in a cut cell the cursor sits about
+    // ten pixels from the edge, at something like four tenths of an alpha: what the designer is
+    // typing fades away as she types it. The assertion above would pass for a cue that did nothing
+    // at all, so this is what says it does not.
+    const [erasing, bare] = await Promise.all([cue(cutDoc(), FORCED.erasing), cue(cutDoc(), FORCED.off)])
+
+    expect(erasing.written.equals(bare.written)).toBe(false)
   }, 60_000)
 
   it('is not what an input can say for itself: its own ellipsis goes silent the moment the cell takes the caret', async () => {

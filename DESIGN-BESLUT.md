@@ -1480,7 +1480,11 @@ I en smal rubrik lämnar det sorteringskontrollen liten (10 px vid 64), och det 
 En träffyta som följer målningen är den ärliga; alternativet var en 44 px-knapp vars mitt tillhörde något annat.
 `id` och `antal` bär ett hänglås där de andra bär sitt `×`, med skälet skrivet bredvid: ett hål förklarar ingenting.
 Knappen som gör en kolumn flyttade in i den fastnaglade kolumnens rubrik; den hade en egen kolumn med tomma celler på varje rad, och det var de ~200 tomma pixlarna granskningen såg.
-Ett värde som ändå inte får plats tonar ut i cellens kant — samma gest som den fastnaglade kolumnens uttoning (#53) — och tonar ut också när cellen har markören, vilket `text-overflow` på en input inte gör.
+Ett värde som ändå inte får plats tonar ut i cellens kant — samma gest som den fastnaglade kolumnens uttoning (#53) — och besked om att det fortsätter finns kvar också när cellen har markören, vilket `text-overflow` på en input inte ger.
+Uttoningen hålls borta från markören, vilket är det enda en uttoning tagen ur värdet kan göra fel: en input rullar till markören, så i en kapad cell står markören i värdets yttersta kant, och första versionen la den ungefär tio pixlar in vid omkring 0,4 i alpha — tecknen formgivaren skrev tonade alltså bort medan hon skrev dem.
+Cellen håller därför en remsa vid sin högerkant som värdet aldrig når: uttoningen slutar där textytan slutar, och markören och tecknet framför den ligger alltid utanför den och alltid hela.
+Med markören faktiskt i cellen tas uttoningen bort helt — ingenting som skrivs får dämpas, av något skäl — och det som säger att värdet fortsätter är märket som står i remsan, bredvid skrivandet i stället för över det.
+Märket är den enda delen av gesten som varken kan rulla undan, tona bort eller skrivas igenom, och därför är det just det den fokuserade cellen behåller.
 
 ### L5. Editor till bord: uttrycklig knapp, förrenderade texturer
 
