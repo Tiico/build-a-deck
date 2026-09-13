@@ -640,7 +640,10 @@
   /* What a heading keeps to itself on each side. Named because two rules need the same number:
      this one, and the one that stops the sort control's box running under the × that is laid over
      the heading's right edge (#46). Written twice, they would come apart. */
-  --byd-data-head-pad: 10px; }
+  --byd-data-head-pad: 10px;
+  /* And what a cell keeps on each side of its field. Named for the same reason: the strip a cut
+     cell reserves for its cue is measured from the field's own text area, not from its border. */
+  --byd-data-cell-pad: 10px; }
 .byd-data th { text-align: left; padding: 8px var(--byd-data-head-pad); color: var(--byd-editor-quiet); font-weight: 600; border-bottom: 1px solid #2f333d; position: sticky; top: 0; z-index: 1; background: #1b1d23; }
 .byd-data td { padding: 0; border-bottom: 1px solid #20232b; }
 /* A field takes the width of the column it stands in and no other (#46). It used to claim a floor
@@ -749,7 +752,7 @@
 .byd-data th button[data-active='true'] span { color: #7dd3a0; }
 .byd-data tr[aria-selected='true'] { background: #2f3a55; }
 .byd-data-id { padding: 7px 10px !important; color: var(--byd-editor-quiet); font-family: ui-monospace, monospace; font-size: 12px; }
-.byd-data input { background: transparent; border: 0; color: #ddd; padding: 7px 10px; width: 100%; box-sizing: border-box; font-size: 12px; }
+.byd-data input { background: transparent; border: 0; color: #ddd; padding: 7px var(--byd-data-cell-pad); width: 100%; box-sizing: border-box; font-size: 12px; }
 .byd-data button { background: transparent; border: 0; color: var(--byd-editor-quiet); cursor: pointer; padding: 6px 10px; }
 .byd-data-search { min-height: var(--byd-tap); box-sizing: border-box; }
 .byd-data-add { margin-top: 10px; border: 1px dashed #2f333d; background: transparent; color: #9aa3b8; border-radius: 8px; padding: 8px 14px; cursor: pointer; }
@@ -873,11 +876,11 @@
    for any reason — and what says the value goes on is the mark standing in the strip, which is
    beside the writing and not over it. The mark is the one part of this that cannot scroll away,
    fade out, or be typed through, which is why it is what the focused cell is left with. */
-.byd-data { --byd-data-cut: 20px; }
+.byd-data { --byd-data-cut: 20px; --byd-data-cut-edge: calc(var(--byd-data-cell-pad) + var(--byd-data-cut)); }
 .byd-data td[data-cut='true'] input {
-  padding-right: calc(10px + var(--byd-data-cut));
-  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px - 10px - var(--byd-data-cut)), rgb(0 0 0 / 0%) calc(100% - 10px - var(--byd-data-cut)));
-  mask-image: linear-gradient(to right, #000 calc(100% - 24px - 10px - var(--byd-data-cut)), rgb(0 0 0 / 0%) calc(100% - 10px - var(--byd-data-cut)));
+  padding-right: var(--byd-data-cut-edge);
+  -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px - var(--byd-data-cut-edge)), rgb(0 0 0 / 0%) calc(100% - var(--byd-data-cut-edge)));
+  mask-image: linear-gradient(to right, #000 calc(100% - 24px - var(--byd-data-cut-edge)), rgb(0 0 0 / 0%) calc(100% - var(--byd-data-cut-edge)));
 }
 .byd-data td[data-cut='true'] input:focus {
   -webkit-mask-image: none;
