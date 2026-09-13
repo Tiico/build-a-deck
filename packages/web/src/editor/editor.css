@@ -892,7 +892,11 @@
   width: var(--byd-tap);
   margin: 0;
   padding: 0;
-  background: linear-gradient(to right, rgb(27 29 35 / 0%), #1b1d23 35%);
+  /* A 44 px target whose last 24 px are the head's own ground and whose first 20 px are the ramp
+     down to it — the same 24 px the tool fades a cut value over, so a heading that runs on under
+     the × goes the way a value does. The × itself never stands on anything but solid ground: the
+     contrast of a destructive control is not what is being traded here (#53). */
+  background: linear-gradient(to right, rgb(27 29 35 / 0%), #1b1d23 45%);
   color: var(--byd-editor-quiet);
   font-size: 13px;
   line-height: 1;
