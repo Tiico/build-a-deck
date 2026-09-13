@@ -66,10 +66,13 @@ export function PlaySheet({ view, count, label, onPlay, onClose, refusal, refuse
           {t('play.sheet.verb')} <strong>{count > 1 ? t('play.cards.other', { n: count }) : label}</strong> {t('play.sheet.into')}
         </p>
         <div className="byd-sheet-targets">
-          {targetsOf(view, t).map((target) => (
+          {targetsOf(view, t).map((target, i) => (
             <button
               key={target.id}
               type="button"
+              // The sheet takes focus when it opens, on the target a thumb would land on first:
+              // a modal without focus is one Escape and Tab cannot reach.
+              autoFocus={i === 0}
               onClick={() => onPlay(target.id, target.at)}
               className={refusedZone === target.id ? 'byd-status-refused-control' : undefined}
               {...(refusedZone === target.id && refusal ? refusal.control : {})}
