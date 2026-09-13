@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import { compileCard, elementsFor, type Element } from '@byd/template'
-import { ProjectDoc, setupFromProject } from '../src/projects.js'
+import { ProjectDoc } from '../src/projects.js'
+import { setupFromProject } from '../src/setup.js'
 import { readSpelkort, spelkortDoc, spelkortRows } from '../scripts/spelkort.js'
 
 // The seed game is the export of a game that has been played for real: the cards as its design

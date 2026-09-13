@@ -59,6 +59,16 @@ describe('EditorPage', () => {
     expect((await run.store.loadSession(new URL(link.href).searchParams.get('session')!))?.version).toBe('rev-2')
   }, 20_000)
 
+  it('shows on the Bord tab the deck a started table would get, rows times antal (L4, #85)', async () => {
+    await run.projects.create('p1', projectDoc())
+    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
+    // dragon x2, knight x1, wizard x1 — the four cards the server deals, not a stand-in twenty.
+    await waitFor(() => expect(document.querySelector('.byd-pile[data-zone="draw"] .byd-pile-n')?.textContent).toBe('4'))
+  })
+
   it('imports cards as an unsaved table edit and persists them on save', async () => {
     await run.projects.create('p1', projectDoc())
     history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)

@@ -2,7 +2,8 @@
 // table view has something to show. Usage: pnpm --filter @byd/server seed [http://localhost:8080] [sessionId]
 import type { Intent } from '@byd/protocol'
 import { applyPatch } from '@byd/engine'
-import { deckFromProject, setupFromProject } from '../src/projects.js'
+import { deckFromProject } from '../src/projects.js'
+import { setupFromProject } from '../src/setup.js'
 import { spelkortDoc } from './spelkort.js'
 
 const base = process.argv[2] ?? 'http://localhost:8080'
