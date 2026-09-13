@@ -8,7 +8,8 @@ const swedish: T = (key, params) => translate('sv', key, params)
 
 export type Placement = 'top' | 'bottom'
 // The counter token's type id (engine's TOKEN_COUNTER), which the phone treats as a count, not a card.
-export const COUNTER_TYPE = 'token.counter'
+import { COUNTER_TYPE } from '../table/keyboard.js'
+export { COUNTER_TYPE }
 export type PlaySheetProps = {
   view: Snapshot
   count: number
