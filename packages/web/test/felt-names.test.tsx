@@ -300,7 +300,7 @@ async function facesOn(page: Page, selector = LABELS): Promise<Drawn[]> {
 // coming back, and it costs no CI time (#94, #95).
 const SHIPPED_FACE = 'Roboto Condensed'
 
-describe('the felt is written in the face that ships with it (K19, #95)', () => {
+describe('the felt is written in the face that ships with it (K20, #95)', () => {
   it('draws every name in the shipped face, and would say so if it had fallen back to the machine’s own', async () => {
     const html = markupOf(<TableRenderer view={sceneOf(feltOf(4))} mode="table" size={FRAME} />)
     const drawn = await onPage(html, FRAME, (page) => facesOn(page))
@@ -370,7 +370,7 @@ async function paintingWith(html: string, face: 'in the sheet' | 'a round trip a
   }
 }
 
-describe('the face is on the felt before the first painting (K19, #95)', () => {
+describe('the face is on the felt before the first painting (K20, #95)', () => {
   it('has the face loaded before anything is drawn, which it has not when the face is a round trip away', async () => {
     const html = markupOf(<TableRenderer view={sceneOf(feltOf(MAX_PLAYERS)) } mode="table" size={FRAME} />)
 

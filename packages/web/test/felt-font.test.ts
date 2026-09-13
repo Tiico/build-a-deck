@@ -66,7 +66,7 @@ const blockingSheets = (html: string): string[] =>
     .map((tag) => /href="([^"]+)"/.exec(tag)?.[1] ?? '')
     .filter(Boolean)
 
-describe('the felt’s face is in the document before the first painting (K19, #95)', () => {
+describe('the felt’s face is in the document before the first painting (K20, #95)', () => {
   it('puts it inside the stylesheet the page already blocks on, and not in a round trip of its own', () => {
     const sheets = blockingSheets(index)
     expect(sheets.length).toBeGreaterThan(0)
@@ -95,10 +95,14 @@ describe('the felt’s face is in the document before the first painting (K19, #
       .join('')
     expect(css).toContain('Copyright 2011 Google Inc.')
     expect(css).toContain('SIL OPEN FONT LICENSE Version 1.1')
-    // The condition the choice of family turned on: no Reserved Font Name is declared, so a
-    // subset or a rebuild of this face is not barred from carrying the name.
-    expect(css).toContain('Reserved Font Name')
-    expect(css).not.toMatch(/Reserved Font Name[s]?:/)
+    expect(css).toContain('may be bundled,\n   redistributed and/or sold with any software')
+    // And the condition the choice of family turned on: the copyright statement — the lines before
+    // the licence body, which is where OFL 1.1 says a reserved name is declared — declares none, so
+    // a subset or a rebuild of this face is not barred from carrying the name. Read off the notice
+    // rather than off the whole text, since the licence body names the term either way.
+    const notice = css.slice(css.indexOf('Copyright 2011 Google Inc.'), css.indexOf('This Font Software is licensed'))
+    expect(notice.length).toBeGreaterThan(20)
+    expect(notice).not.toMatch(/reserved font name/i)
   })
 
   it('ships no font file for the browser to fetch, and none of the felt’s own text asks for one', () => {
