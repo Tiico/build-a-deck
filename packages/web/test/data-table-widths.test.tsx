@@ -14,7 +14,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { useState } from 'react'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { render } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { chromium, type Browser } from 'playwright'
 import { applyEdit } from '@byd/server/doc'
 import { DataTable } from '../src/editor/DataTable.js'
@@ -90,8 +90,15 @@ function Table({ doc: initial }: { doc: ProjectDoc }) {
   )
 }
 
-function markupOf(doc: ProjectDoc): string {
+// What the designer has done to the view before the markup is taken: nothing, a question put to
+// the deck in the search box (#16), or a column sorted (#15). Both are views of the project and
+// neither touches `doc.rows` (L4), so neither may move a column.
+type View = 'plain' | 'filtered' | 'sorted'
+
+function markupOf(doc: ProjectDoc, view: View = 'plain'): string {
   const { container, unmount } = render(<Table doc={doc} />)
+  if (view === 'filtered') fireEvent.change(screen.getByLabelText('Sök i alla fält'), { target: { value: 'Gruva' } })
+  if (view === 'sorted') fireEvent.click(screen.getByRole('button', { name: /^title/ }))
   const html = container.innerHTML
   unmount()
   return html
@@ -124,14 +131,18 @@ type Measured = {
   scroll: number
   // What the whole page does — the one thing a measured layout can break that nothing else can.
   page: number
+  // How many cards are on screen, which is how a filter proves it did something.
+  rows: number
+  // The first card on screen, which is how a sort proves it did something.
+  first: string
 }
 
 // The table laid out in a real engine at `width`, with the editor's own measurement run on the
 // page. `fit: false` leaves it unmeasured, which is what every control case below needs.
-async function measure(doc: ProjectDoc, { width = 1280, fit = true, extra = '' } = {}): Promise<Measured> {
+async function measure(doc: ProjectDoc, { width = 1280, fit = true, extra = '', view = 'plain' as View, deck = doc } = {}): Promise<Measured> {
   const page = await browser.newPage({ viewport: { width, height: 800 } })
   try {
-    await page.setContent(shellOf(markupOf(doc), extra), { waitUntil: 'load' })
+    await page.setContent(shellOf(markupOf(doc, view), extra), { waitUntil: 'load' })
     return (await page.evaluate(
       ({ deck, fit, decide }) => {
         const box = document.querySelector('.byd-data-scroll') as HTMLElement
@@ -156,9 +167,11 @@ async function measure(doc: ProjectDoc, { width = 1280, fit = true, extra = '' }
           table: Math.round(table.getBoundingClientRect().width),
           scroll: Math.round(box.getBoundingClientRect().width),
           page: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          rows: rows.length,
+          first: rows[0]?.getAttribute('data-card-ref') ?? '(none)',
         }
       },
-      { deck: deckValues(doc, sv), fit, decide: String(fitColumns) },
+      { deck: deckValues(deck, sv), fit, decide: String(fitColumns) },
     )) as Measured
   } finally {
     await page.close()
@@ -280,6 +293,46 @@ describe('the table is measured against the room it really has (#46)', () => {
     expect(narrow.width.antal).toBe(wide.width.antal)
     expect(narrow.width.body!).toBeLessThan(wide.width.body!)
     expect(narrow.width.cost!).toBeLessThanOrEqual(96)
+  }, 60_000)
+})
+
+// What the filter and the sort may do to a width, which is nothing at all.
+//
+// Sorting and filtering are views of the project and never touch `doc.rows` (L4), and the
+// measurement has to be read the same way or the table comes apart under the designer's hands: a
+// width taken from the rows that happen to be on screen would move on every character typed into
+// the search box, and every column would shuffle as well as every row.
+describe('a width is a fact about the deck, not about the view (#46 on #15, #16)', () => {
+  it('does not move when the filter narrows the deck to one card, or when a column is sorted', async () => {
+    const [plain, filtered, sorted] = await Promise.all([
+      measure(deckDoc()),
+      measure(deckDoc(), { view: 'filtered' }),
+      measure(deckDoc(), { view: 'sorted' }),
+    ])
+
+    // Both views really did something: the filter left one card of six on screen, and the sort
+    // put a different card at the top.
+    expect(plain.rows).toBe(CARDS.length)
+    expect(filtered.rows).toBe(1)
+    expect(sorted.first).not.toBe(plain.first)
+    expect(sorted.rows).toBe(CARDS.length)
+
+    // And neither moved a column by a pixel.
+    expect(filtered.width).toEqual(plain.width)
+    expect(sorted.width).toEqual(plain.width)
+  }, 60_000)
+
+  it('is a real condition: measure the rows on screen instead and the filter drags every column with it', async () => {
+    // The same filtered table, handed the values of the one card still on screen instead of the
+    // deck's. That is the whole fault, and it is what this file would be failing to notice if the
+    // pair above were passing for some other reason.
+    const onScreen: ProjectDoc = { ...deckDoc(), rows: CARDS.filter((card) => card.id === 'k4') }
+    const [plain, fromScreen] = await Promise.all([measure(deckDoc()), measure(deckDoc(), { view: 'filtered', deck: onScreen })])
+
+    expect(fromScreen.width).not.toEqual(plain.width)
+    // Named, not merely different: the one card left on screen says "Ge 2 mynt", so `body` asks
+    // for a fraction of what the deck asks for and the slack lands somewhere else entirely.
+    expect(fromScreen.width.body!).toBeLessThan(plain.width.body!)
   }, 60_000)
 })
 
