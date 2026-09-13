@@ -2,6 +2,7 @@ import type { Intent, Snapshot, VisibleComponentState, ZoneView } from '@byd/pro
 import { translate, type T } from '../i18n/index.js'
 import { isCounter } from '../components.js'
 import { CARD_MM } from './drop.js'
+import { handName } from './handName.js'
 
 // Everything the keyboard says is the tool's own, so it is looked up where the reader is (A4).
 // A call from outside React — a test, a label built before a provider is mounted — gets Swedish,
@@ -152,12 +153,6 @@ export type Place = {
   zone: string
   kind: 'area' | 'pile' | 'hand' | 'card'
   anchor?: VisibleComponentState
-}
-
-const handName = (view: Snapshot, z: ZoneView, t: T): string => {
-  const seat = view.seats.find((s) => s.id === z.owner)
-  // Whoever is sitting there named themselves; only the word "hand" around it is the tool's.
-  return z.owner === view.seat ? t('kbd.hand.my') : t('kbd.hand.other', { name: seat?.name ?? z.owner ?? '' })
 }
 
 export function placesFor(view: Snapshot, moving: ReadonlySet<string>, sourceZone: string | null, t: T = swedish): Place[] {

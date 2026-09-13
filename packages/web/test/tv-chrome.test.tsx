@@ -174,8 +174,10 @@ describe('the seat dock (C)', () => {
     expect(ada.querySelector('[data-avatar]')!.textContent).toBe('A')
     expect(ada.textContent).toMatch(/2 kort på hand/)
     expect(ada.textContent).toMatch(/Ada drog 2 från Draghög/)
-    // A seat nobody has claimed has no last action to show.
-    expect(free.textContent).toMatch(/—/)
+    // A seat that has done nothing says so in words, never with a dash (UX-41, #86): from across
+    // a room "—" reads as a missing value, "Inget ännu" as a state.
+    expect(free.textContent).toMatch(/Inget ännu/)
+    expect(free.textContent).not.toMatch(/—/)
   })
 })
 

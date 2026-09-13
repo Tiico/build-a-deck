@@ -36,6 +36,7 @@ export const enPlay = {
   'tv.seats': 'Seats',
   'tv.seat.hand.one': '{n} card in hand',
   'tv.seat.hand.other': '{n} cards in hand',
+  'tv.seat.none': 'Nothing yet',
   'tv.observers.one': '{names} is watching · sees everything',
   'tv.observers.other': '{names} are watching · see everything',
 
@@ -86,6 +87,8 @@ export const enPlay = {
   'kbd.panel.close': 'Close',
 
   'activity.move': '{who} moved a card to {zone}',
+  'activity.hand.my': 'my hand',
+  'activity.hand.other': '{name}’s hand',
   'activity.rotate': '{who} turned a card',
   'activity.flip': '{who} flipped a card',
   'activity.stack': '{who} put a card on another',

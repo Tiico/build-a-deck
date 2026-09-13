@@ -48,6 +48,8 @@ export const svPlay = {
   'tv.seats': 'Platser',
   'tv.seat.hand.one': '{n} kort på hand',
   'tv.seat.hand.other': '{n} kort på hand',
+  // Platsens tredje rad innan platsen gjort något (UX-41): ett ord, inte ett streck.
+  'tv.seat.none': 'Inget ännu',
   'tv.observers.one': '{names} tittar på · ser allt',
   'tv.observers.other': '{names} tittar på · ser allt',
 
@@ -112,6 +114,9 @@ export const svPlay = {
 
   // En rad ur loggen i ord. Namn och zoner kommer från vyn och översätts inte.
   'activity.move': '{who} flyttade ett kort till {zone}',
+  // En hand namnges av den som sitter där (K19), mitt i meningen: "till Adas hand", "till min hand".
+  'activity.hand.my': 'min hand',
+  'activity.hand.other': '{name}s hand',
   'activity.rotate': '{who} vred ett kort',
   'activity.flip': '{who} vände ett kort',
   'activity.stack': '{who} lade ett kort på ett annat',
