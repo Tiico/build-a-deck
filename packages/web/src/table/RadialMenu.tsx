@@ -1,10 +1,18 @@
-import type { PointerEvent as RPointerEvent } from 'react'
+import { useEffect, type PointerEvent as RPointerEvent } from 'react'
 
 export type RadialItem = { label: string; run: (() => void) | null; kind?: 'no' }
 
 // A ring of verbs around the finger (C). It opens on hold; the finger slides to a verb and
 // releases. A release anywhere else, or a tap on Stäng, closes it. Mouse users may also click.
 export function RadialMenu({ id, x, y, items, onClose }: { id: string; x: number; y: number; items: RadialItem[]; onClose(): void }) {
+  // The keyboard leaves the ring the way it leaves every panel: Escape, choosing nothing.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
   const choose = (e: RPointerEvent | React.MouseEvent, item: RadialItem) => {
     e.stopPropagation()
     if (item.run) item.run()
