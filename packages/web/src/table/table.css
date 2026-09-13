@@ -351,12 +351,15 @@
 
 /* Direct manipulation (K1, K2, C): the frame is the anchor for pointer geometry. */
 .byd-table-frame { position: relative; }
-.byd-table-frame[data-playable] .byd-card, .byd-table-frame[data-playable] .byd-pile-top { touch-action: none; cursor: grab; }
+.byd-table-frame[data-playable] .byd-card, .byd-table-frame[data-playable] .byd-pile-top, .byd-table-frame[data-playable] .byd-token { touch-action: none; cursor: grab; }
 .byd-table-frame[data-playable] .byd-pile-count[data-handle] { cursor: grab; touch-action: none; }
 .byd-table-frame[data-mode='table'][data-playable] .byd-pile-count[data-handle] { padding: 3px 10px; border: 1px solid rgba(255, 255, 255, 0.3); }
 .byd-table-frame[data-mode='tv'][data-playable] .byd-pile-count[data-handle] > * { cursor: grab; touch-action: none; }
-.byd-card[data-dragging], .byd-pile[data-dragging] { z-index: 60; }
+.byd-card[data-dragging], .byd-pile[data-dragging], .byd-token[data-dragging] { z-index: 60; }
 .byd-card[data-dragging] { box-shadow: 0 18px 30px rgba(0, 0, 0, 0.6); scale: 1.06; cursor: grabbing; }
+/* A chip is small and round, and the card's 1.06 would be invisible on it; the shadow it already
+   carries deepens instead, so the eye sees the same thing lifted off the felt. */
+.byd-token[data-dragging] { box-shadow: 0 10px 18px rgba(0, 0, 0, 0.6); cursor: grabbing; }
 .byd-pile[data-count='0'] .byd-pile-top { cursor: default; }
 
 /* The ring of verbs (C). */

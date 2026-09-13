@@ -58,8 +58,12 @@ describe.each<TableMode>(['table', 'tv'])('a counter chip under the pointer, mod
     fireEvent.pointerMove(chipOf(id), client(398, 98))
     const dragged = placeOf(chipOf(id))
     expect(dragged).not.toEqual(home)
+    // Marked as carried while it is in the hand, which is what lifts it over the felt it is being
+    // drawn across — `table-grab.test.ts` measures the lift itself.
+    expect(chipOf(id).getAttribute('data-dragging')).toBe('true')
 
     fireEvent.pointerUp(chipOf(id), client(398, 98))
+    expect(chipOf(id).getAttribute('data-dragging')).toBeNull()
     expect(onAct).toHaveBeenCalledTimes(1)
     expect(onAct.mock.calls[0]?.[0]).toEqual([expect.objectContaining({ v: 'move', component: id })])
     // The drop and the patch are different moments (#29). Nothing has come back yet, so the chip
