@@ -214,3 +214,71 @@ describe('the row ends where the last field ends (#46)', () => {
     expect(after.columns.every((c) => c.holds === CARDS.length)).toBe(true)
   }, 60_000)
 })
+
+// A deck too wide for the room it is in: twelve columns on top of the six the issue is about, so
+// that even with every text column pushed down onto its own heading the table cannot fit at 768.
+function crowdedDoc(): ProjectDoc {
+  const doc = deckDoc()
+  const extra = Object.fromEntries(Array.from({ length: 12 }, (_, i) => [`fält${i + 1}`, `värde ${i + 1} som fortsätter`]))
+  return { ...doc, rows: doc.rows.map((row) => ({ ...row, fields: { ...row.fields, ...extra } })) }
+}
+
+// The one thing a measured layout can break that nothing else in this issue can: it can measure
+// itself. `fitColumns` asks the box how much room there is and then makes the table exactly that
+// wide. If anything above the box takes its own width from what is standing in it, the question
+// comes back as its own answer — the measurement finds precisely the room it asked for, squeezes
+// nothing, and the deck runs off the right of the screen with the page scrolling after it.
+//
+// The prototype hit this and laid it at the door of `.byd-editor`, which is a grid with rows and
+// no column track. The editor was never in danger from that: two boxes on the way down already
+// clip — `.byd-editor > main` and the table's own scrolling box — and a scroll container has a
+// min-content of nought, so nothing under them can push the document sideways however wide it
+// gets. A column track here would be a declaration with no work to do. What is locked instead is
+// the property itself, and it is locked against the two boxes that really carry it.
+//
+// 768 is not a width the editor is designed at (L12); it is the floor at which nothing may break,
+// and a deck that runs off the screen is breaking.
+describe('the table is measured against the room it really has (#46)', () => {
+  it('keeps a deck too wide for 768 inside the window, scrolling the box and never the page', async () => {
+    const [held, loose] = await Promise.all([
+      measure(crowdedDoc(), { width: 768 }),
+      // The two boxes that clip, taken away. Nothing else changes: the same markup, the same
+      // measurement, at the same width. If this did not run away, everything below would be
+      // measuring the browser rather than the stylesheet.
+      measure(crowdedDoc(), { width: 768, extra: '.byd-editor > main, .byd-data-scroll { overflow: visible; }' }),
+    ])
+
+    // The control, and it is the prototype's finding exactly: with nothing clipping, the box is as
+    // wide as the table and the table is as wide as the box, the two settle far outside a 768 px
+    // window, and the page scrolls to reach them.
+    expect(loose.scroll).toBe(loose.table)
+    expect(loose.table).toBeGreaterThan(768)
+    expect(loose.page).toBeGreaterThan(0)
+
+    // And the table as it ships: the box is inside the window, the table is wider than the box —
+    // a deck this wide cannot be made to fit without lying about it — and the box is what
+    // scrolls. The page does not move.
+    expect(held.scroll).toBeLessThanOrEqual(768)
+    expect(held.table).toBeGreaterThan(held.scroll)
+    expect(held.page).toBe(0)
+  }, 60_000)
+
+  it('spends exactly the room it is given, and no more, when the deck does fit', async () => {
+    const [wide, narrow] = await Promise.all([measure(deckDoc()), measure(deckDoc(), { width: 1024 })])
+
+    // Every column added up is the table, and the table is the box: the slack has been handed out
+    // rather than left standing at the end of the row, and nothing has been handed out twice.
+    for (const at of [wide, narrow]) {
+      expect(Object.values(at.width).reduce((a, b) => a + b, 0)).toBe(at.table)
+      expect(at.table).toBe(at.scroll)
+      expect(at.page).toBe(0)
+    }
+
+    // And what a narrower window takes, it takes from the sentences and from nothing else: the
+    // number columns are the same width at 1024 as at 1280 and `body` is not.
+    expect(narrow.width.cost).toBe(wide.width.cost)
+    expect(narrow.width.antal).toBe(wide.width.antal)
+    expect(narrow.width.body!).toBeLessThan(wide.width.body!)
+    expect(narrow.width.cost!).toBeLessThanOrEqual(96)
+  }, 60_000)
+})
