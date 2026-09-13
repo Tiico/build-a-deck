@@ -1464,6 +1464,19 @@ Markeringen mäts mot skärmen — "markera alla synliga" betyder de rader filtr
 Åtgärderna (ta bort med bekräftelse som säger antalet, duplicera, sätt en kolumn, ändra antal) går som en enda ny radlista genom `replaceRows`, alltså en ändring i historiken som sparas och ångras som varje annan.
 Prototypen `packages/web/src/prototype/datatable` togs bort när den hade svarat.
 
+Kolumnbredderna, 2026-09-13 (prototypat i fem varianter, godkänd variant B — innehållet bestämmer, #46):
+Bredden följer vad kolumnen innehåller.
+Varje värde mäts mot den font cellen ritas i, varje kolumn ber om sitt bredaste värde, och överskottet delas mellan textkolumnerna i proportion till vad de bad om — underskottet tas från dem på samma sätt, aldrig under vad deras egen rubrik behöver.
+Bara text ger och tar: ett tal är en siffra brett hur mycket plats som än blir över, och kortets id är en nyckel och ingen prosa.
+Skälet att mäta i JavaScript och inte i CSS är att webbläsaren aldrig ser innehållet: varje cell är en `<input>`, vars egenbredd är dess `size` — tjugo tecken oavsett värdet — så auto-layouten gissade inte fel, den hade ingenting att gissa på, och alla fem kolumnerna blev 193 px vid 1280.
+Typregistrets typ räcker inte heller: `title` och `body` är båda text och skulle få lika mycket, och `body` kapas ändå.
+Mätningen läser `doc.rows` och aldrig raderna på skärmen, eftersom sortering och filter är vyer av projektet — en bredd tagen ur vyn skulle hoppa vid varje tecken i sökfältet.
+Följdkrav:
+`×` på en kolumnrubrik ligger inte i rubrikens flöde utan över dess högerkant och visas när kolumnen pekas på eller har fokus i sig; träffytan är kvar på 44 × 44, men två sådana på rad satte kolumnens golv vid ~114 px och gjorde en smal talkolumn omöjlig.
+`id` och `antal` bär ett hänglås där de andra bär sitt `×`, med skälet skrivet bredvid: ett hål förklarar ingenting.
+Knappen som gör en kolumn flyttade in i den fastnaglade kolumnens rubrik; den hade en egen kolumn med tomma celler på varje rad, och det var de ~200 tomma pixlarna granskningen såg.
+Ett värde som ändå inte får plats tonar ut i cellens kant — samma gest som den fastnaglade kolumnens uttoning (#53) — och tonar ut också när cellen har markören, vilket `text-overflow` på en input inte gör.
+
 ### L5. Editor till bord: uttrycklig knapp, förrenderade texturer
 
 Editorn har en knapp, "Uppdatera bordet", som startar ett bord från projektet eller skickar `version.change` till det bord den startat.
