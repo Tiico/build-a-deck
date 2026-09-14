@@ -87,6 +87,50 @@ describe('a column pulled to a width of its own (#46)', () => {
     expect(set('body')).toBe('320')
   })
 
+  it('draws the table it will keep, on every frame the hand moves', () => {
+    render(<Editing />)
+    const at = grip('body')!
+    fireEvent.pointerDown(at, { pointerId: 1, button: 0, clientX: 0 })
+    fireEvent.pointerMove(at, { pointerId: 1, clientX: 200 })
+
+    // What the hand is asking for is declared where the measurement reads it, and the measurement
+    // is run — so the picture under the hand is the one the release keeps. A width written
+    // straight onto the column instead is a picture nothing else agrees with: the table's own
+    // width still says what the last measurement said, and under a fixed layout a table wider
+    // than its columns hands the difference back out over all of them. The edge then lags the
+    // hand on the way in, races it on the way out, and jumps when the hand lets go.
+    expect(set('body')).toBe('200')
+
+    fireEvent.pointerUp(at, { pointerId: 1, clientX: 200 })
+    expect(set('body')).toBe('200')
+  })
+
+  it('is a width only where the hand really pulled one', () => {
+    render(<Editing project="p1" />)
+    const at = grip('body')!
+
+    // A press and a release in the same place is a click on the edge and not a pull of it. It
+    // used to freeze the column at whatever the measurement had just handed it — and silently,
+    // since a column that has stopped following its deck looks exactly like one that still
+    // does — so an aimed-at heading could stop answering its own values for good.
+    fireEvent.pointerDown(at, { pointerId: 1, button: 0, clientX: 40 })
+    fireEvent.pointerUp(at, { pointerId: 1, clientX: 40 })
+    expect(set('body')).toBeNull()
+    expect(heldWidths('p1')).toEqual({})
+
+    // Nor is a hand that slid two pixels while it was letting go.
+    fireEvent.pointerDown(at, { pointerId: 1, button: 0, clientX: 40 })
+    fireEvent.pointerMove(at, { pointerId: 1, clientX: 42 })
+    fireEvent.pointerUp(at, { pointerId: 1, clientX: 42 })
+    expect(set('body')).toBeNull()
+    expect(heldWidths('p1')).toEqual({})
+
+    // And a pull is a pull from the first pixel past that, at the width the hand asked for and
+    // not at the width it had crossed the threshold with.
+    pull('body', 120)
+    expect(set('body')).toBe('120')
+  })
+
   it('refuses the press the browser would carry the whole column off by', () => {
     render(<Editing />)
     // The edge stands inside a heading that is `draggable`, and starting a drag is the default

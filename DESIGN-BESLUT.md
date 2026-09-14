@@ -2150,6 +2150,17 @@ Varken `id` eller `antal` kan bäras, är en plats att lägga en kolumn på, ell
 Pilen utan Alt är läsarens egen och rörs inte, och en rubrik som kan bäras har inte slutat vara en som kan tryckas för att sortera.
 En flytt sägs i den enda kanal allt på en skärm talar i (#7): ett drag är sitt eget svar för ögat, men en kolumn som flyttat sig under fokus utan att något sagts är en kolumn läsaren har tappat.
 
+Dragningen ritas av mätningen och inte vid sidan av den (2026-09-14, ur ett UX-test av #46):
+Handen deklarerar sin bredd på kolumnens eget `<col>` och mätningen körs — samma två steg som släppet tar, i samma ordning, genom samma dörr — så bilden under handen är den tabellen behåller.
+Skriven rakt på kolumnen i stället, som den var, visste ingenting annat om den: tabellens egen bredd sa fortfarande vad den förra mätningen sa, och under `table-layout: fixed` delar en tabell som är bredare än summan av sina kolumner ut skillnaden över dem allihop.
+Uppmätt i Chromium: en kolumn dragen 300 px smalare ritades 56 px bredare än den bredd den just fått.
+Kanten släpade alltså efter handen på väg in, sprang före den på väg ut, och hoppade när handen släppte — 24 px på en dragning av `title`, 82 px på en av `body`.
+En press som inte rör sig är ingen bredd: kanten står över rubrikens tio högraste pixlar, och en pekare som vilar på en knapp glider en pixel eller två när den släpps, så ett klick satte kolumnen till den bredd den redan hade och lämnade den där.
+Tyst dessutom, eftersom en kolumn som slutat följa sin lek ser precis ut som en som fortfarande gör det, och vägen tillbaka var dörren eller ett andra klick.
+Golvet för att en press ska vara en dragning är tre pixlar; smalare än så är ett grepp som halkade och inte en bredd någon valde, precis som 44 px är det på andra ledden.
+Kvar står att kolumnerna *före* handen fortfarande delar med sig, eftersom en dragen kolumn står utanför utdelningen och alla andra delar på det som blir kvar: en dragning av `body` över 260 px flyttar kanten 178, och dess första 65 px flyttar den inte alls, för `art` ger ifrån sig lika fort som `body` växer.
+Det är utdelningen ovan, nu ärligt ritad medan handen håller i den — ska den ändras är det utdelningen som ändras och inte dragningen.
+
 ### L5. Editor till bord: uttrycklig knapp, förrenderade texturer
 
 Editorn har en knapp, "Uppdatera bordet", som startar ett bord från projektet eller skickar `version.change` till det bord den startat.

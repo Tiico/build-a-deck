@@ -89,6 +89,13 @@ const CELL_SYMBOLS = 'byd-cell-symbols'
 // land on a width, large enough that a column can be crossed without holding the key down.
 const PULL_STEP = 16
 
+// And how far the hand has to move before a press on the edge is a pull at all (#46). A pointer
+// resting on a button slides a pixel or two as it is released, and the edge stands over the
+// right-hand ten pixels of a heading — so without this a click aimed at the heading, or a hand
+// that let go carelessly, set the column to the width it already had and left it there. Three
+// pixels is a slip; a pull is what anybody would call a drag.
+const PULL_SLOP = 3
+
 // The column that removes a card is pinned to the right edge of the scrolling box (#17), and what
 // scrolls under it is covered. No stylesheet can help: the content and the pin share one clipping
 // rectangle, and the only way out — a pin outside the scroller — costs the sticky heading, which
@@ -397,20 +404,42 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             const th = (event.target as HTMLElement).closest('th')
             const col = Array.from(scrollRef.current?.querySelectorAll('colgroup > col') ?? []).find((c) => c.getAttribute('data-col') === field)
             if (!th) return
+            const box = scrollRef.current
             const from = event.clientX
             const was = Math.round(th.getBoundingClientRect().width)
             setPulling(field)
-            // Written straight onto the column while the hand is moving, so the edge follows it
-            // without the whole deck being measured again on every frame; the answer becomes a
-            // width the table holds when the hand lets go.
+            // Declared on the column while the hand is moving, and then measured — the same two
+            // steps the release takes, in the same order, through the same door. What that buys
+            // is that the picture under the hand cannot be a picture of anything else.
+            //
+            // Written straight onto the column instead, as it was, nothing else knew: the table's
+            // own width still said what the last measurement said, and under a fixed layout a
+            // table wider than the sum of its columns hands the difference back out over all of
+            // them. Measured in Chromium, a column pulled 300 px narrower was drawn 56 px wider
+            // than the width it had just been given — so the edge lagged the hand going in, and
+            // jumped to catch up when the hand let go.
+            const asks = (e: PointerEvent): number => Math.max(tap(), Math.round(was + (e.clientX - from)))
+            let pulled = false
             const moved = (e: PointerEvent) => {
-              if (col instanceof HTMLElement) col.style.width = `${Math.max(tap(), was + (e.clientX - from))}px`
+              // Until the hand has really moved, the column is left exactly as the measurement
+              // last had it — so a press that turns out to be a click has nothing to give back.
+              if (!pulled && Math.abs(e.clientX - from) < PULL_SLOP) return
+              pulled = true
+              if (!(col instanceof HTMLElement) || !box) return
+              col.setAttribute('data-width', String(asks(e)))
+              fitColumns(box, deck)
+              markValues(box)
+              markCut(box)
             }
             const let_go = (e: PointerEvent) => {
               removeEventListener('pointermove', moved)
               removeEventListener('pointerup', let_go)
               setPulling(null)
-              setWidth(field, was + (e.clientX - from))
+              // A press that never went anywhere is not a width. It used to be one — the release
+              // set the column to the width it already had — and a column that has stopped
+              // following its deck looks exactly like one that still does, so the table went
+              // quietly deaf on whichever heading a hand had rested on.
+              if (pulled) setWidth(field, was + (e.clientX - from))
             }
             addEventListener('pointermove', moved)
             addEventListener('pointerup', let_go)
