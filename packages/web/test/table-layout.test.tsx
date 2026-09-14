@@ -753,6 +753,7 @@ describe('the address panel beside a table (#1, #2)', () => {
         onClose={() => undefined}
         onRun={() => undefined}
         onLook={() => undefined}
+        onSet={() => undefined}
         intentsFor={(place, moving) => intentsForPlace(view, place, thing, moving)}
         landedKey={(place) => landedKeyFor(view, place, thing)}
       />,

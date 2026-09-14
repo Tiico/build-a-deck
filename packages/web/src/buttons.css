@@ -8,9 +8,14 @@
    Each surface binds the six role tokens below to the accent it already owns; the rules that draw
    the roles are written once, here, and nowhere else. */
 
-/* ── The felt: the account and the seat picker are the same green room (#20, L11). ───────────── */
+/* ── The felt: the account and the seat picker are the same green room (#20, L11) — and so is
+   the table screen itself, which had no room of its own until the first button was laid on the
+   felt (#67): the one that keeps a counter's new value. Without a binding here that button was
+   the browser's own grey, which is no declaration at all. The ring's own buttons in `table.css`
+   speak their dialect still; #90 is the open question of the felt's buttons as a whole. ─────── */
 .byd-account,
-.byd-join {
+.byd-join,
+.byd-table {
   --byd-primary-bg: #7dd3a0;
   --byd-primary-ink: #0b2a18;
   /* No outlined button existed in the tool before this. What looked like one was measured at
@@ -78,14 +83,14 @@
 /* The first action: filled, and the only filled thing in its view. The line is the fill's own
    colour and shows nowhere — it is there so that a filled button and an outlined one beside it
    come out the same height, because an outline is drawn outside the shape it wraps. */
-:is(.byd-account, .byd-join, .byd-wizard, .byd-editor, .byd-player, .byd-online, .byd-observer, .byd-survey) .byd-primary {
+:is(.byd-account, .byd-join, .byd-table, .byd-wizard, .byd-editor, .byd-player, .byd-online, .byd-observer, .byd-survey) .byd-primary {
   border: 1px solid var(--byd-primary-bg);
   background: var(--byd-primary-bg);
   color: var(--byd-primary-ink);
   font-weight: 750;
 }
 
-:is(.byd-account, .byd-join, .byd-wizard, .byd-editor, .byd-player, .byd-online, .byd-observer, .byd-survey) .byd-secondary {
+:is(.byd-account, .byd-join, .byd-table, .byd-wizard, .byd-editor, .byd-player, .byd-online, .byd-observer, .byd-survey) .byd-secondary {
   background: transparent;
   border: 1px solid var(--byd-secondary-line);
   color: var(--byd-secondary-ink);
@@ -98,11 +103,11 @@
    nearly black pill the moment it was pointed at. On paper that reads as a button coming apart
    under the mouse. A room, a role and a state together are three classes, so the line the role
    drew stays the line it drew; the fill is the affordance here and it does not move. */
-:is(.byd-account, .byd-join, .byd-wizard, .byd-editor, .byd-player, .byd-online, .byd-observer, .byd-survey) .byd-primary:hover {
+:is(.byd-account, .byd-join, .byd-table, .byd-wizard, .byd-editor, .byd-player, .byd-online, .byd-observer, .byd-survey) .byd-primary:hover {
   border-color: var(--byd-primary-bg);
 }
 
-:is(.byd-account, .byd-join, .byd-wizard, .byd-editor, .byd-player, .byd-online, .byd-observer, .byd-survey) .byd-secondary:hover {
+:is(.byd-account, .byd-join, .byd-table, .byd-wizard, .byd-editor, .byd-player, .byd-online, .byd-observer, .byd-survey) .byd-secondary:hover {
   border-color: var(--byd-secondary-line);
 }
 
@@ -112,7 +117,7 @@
    green, in the middle of the editor. Never a fill, so a thing that is chosen can never be
    mistaken for the thing to press. `.byd-choice` marks a control that is one of a set; the
    platform's own word for which one says the rest. */
-:is(.byd-account, .byd-join, .byd-wizard, .byd-editor, .byd-player, .byd-online, .byd-observer, .byd-survey) .byd-choice:is([aria-pressed='true'], [aria-selected='true'], [aria-checked='true']) {
+:is(.byd-account, .byd-join, .byd-table, .byd-wizard, .byd-editor, .byd-player, .byd-online, .byd-observer, .byd-survey) .byd-choice:is([aria-pressed='true'], [aria-selected='true'], [aria-checked='true']) {
   background: transparent;
   border-color: transparent;
   /* The bar is an inset shadow, and an inset shadow follows the corner it is drawn inside: left

@@ -60,6 +60,10 @@
 .byd-token { border-radius: 50%; background: #f0b64a; color: #1c1c1c; display: grid; place-items: center; align-content: center; line-height: 1; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); font: 700 11px var(--byd-felt-font, system-ui, sans-serif); }
 .byd-token b { font-size: 12px; }
 .byd-token span { font-size: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+/* The chip's target (#67): invisible in the picture, there for the finger. The renderer sizes and
+   centres it so that it measures the finger's 44 × 44 on the screen, tilt and all; the disc under
+   it keeps its 24 mm. A child laid outside its parent's box still hands the parent the press. */
+.byd-token-hit { position: absolute; display: block; background: transparent; touch-action: none; }
 
 /* Zones that are areas other than the floor get an outline and a label. */
 .byd-zone {
@@ -383,6 +387,20 @@
 }
 .byd-radial button:hover { background: #7dd3a0; color: #0b2a18; }
 .byd-radial button:disabled { opacity: 0.35; cursor: default; }
+/* The hub: what the ring is about, for a thing the felt cannot say for itself (#67). Opaque and
+   not a tint, because the chip itself lies under the ring's centre and a translucent hub let the
+   disc and the zone's label read straight through the number they were being replaced by. Never
+   a control — the finger slides over it on the way to a verb. */
+.byd-radial-hub {
+  position: absolute; left: -46px; top: -46px; width: 92px; height: 92px; box-sizing: border-box; padding: 0 8px;
+  border-radius: 50%; background: #171a23; border: 1px solid rgba(255, 255, 255, 0.15);
+  display: grid; place-content: center; text-align: center; line-height: 1.05; pointer-events: none;
+  font: 700 11px system-ui, sans-serif; color: #fff;
+}
+.byd-radial-hub b { font-size: 24px; color: #f0b64a; }
+.byd-radial-hub span, .byd-radial-hub i { display: block; max-width: 76px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.byd-radial-hub span { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #aab3c5; }
+.byd-radial-hub i { font-style: normal; font-size: 9px; font-weight: 600; color: #9aa3b8; }
 .byd-inspect img { width: 100%; height: 100%; object-fit: cover; border-radius: 12px; position: absolute; inset: 0; }
 .byd-inspect > div { position: relative; overflow: hidden; }
 

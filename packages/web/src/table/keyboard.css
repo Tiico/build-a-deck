@@ -7,7 +7,8 @@
    because the panel is rendered on three routes and only one of them is `.byd-player`. */
 
 .byd-kbd-panel,
-.byd-kbd-look {
+.byd-kbd-look,
+.byd-set-value {
   --byd-kbd-bg: #1b1e27;
   --byd-kbd-control: #242938;
   --byd-kbd-off: #191c24;
@@ -33,7 +34,8 @@
 [data-kbd][data-kbd]:focus-visible,
 [data-hand-card][data-hand-card]:focus-visible,
 .byd-kbd-panel button:focus-visible,
-.byd-kbd-look button:focus-visible {
+.byd-kbd-look button:focus-visible,
+.byd-set-value button:focus-visible {
   outline: 3px solid var(--byd-kbd-ring);
   outline-offset: 2px;
   box-shadow:
@@ -174,4 +176,85 @@
 }
 .byd-strip-card {
   display: block;
+}
+
+/* "Sätt värde…" on a chip (C4, #67): the number written on the tool's own keys, since the table
+   screen has no keyboard to answer a `prompt()` with. It stands in the middle of the felt where
+   the ring was, not at the panel's edge: it is a question about one chip, answered and gone. The
+   panel's own colours, because it is opened from the panel as often as from the ring. */
+.byd-kbd-backdrop.byd-set-value-backdrop {
+  place-items: center;
+}
+.byd-set-value {
+  box-sizing: border-box;
+  width: min(300px, calc(100% - 24px));
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--byd-kbd-bg);
+  border: 1px solid var(--byd-kbd-line);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+  font-family: system-ui, sans-serif;
+  color: var(--byd-kbd-ink);
+}
+.byd-set-value:focus-visible {
+  outline: 3px solid var(--byd-kbd-ring);
+  outline-offset: 2px;
+}
+.byd-set-value h2 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 8px;
+  font-size: 17px;
+}
+.byd-set-value h2 small {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--byd-kbd-ink-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.byd-set-value output {
+  display: block;
+  box-sizing: border-box;
+  min-height: 48px;
+  margin-bottom: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--byd-kbd-off);
+  font: 700 26px system-ui, sans-serif;
+  text-align: right;
+}
+.byd-set-value-keys {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+.byd-set-value-keys button {
+  box-sizing: border-box;
+  min-height: 44px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--byd-kbd-control);
+  color: var(--byd-kbd-ink);
+  font: 700 17px system-ui, sans-serif;
+}
+/* The two ways out are the felt's first and second action (L13): filled to keep the number,
+   outlined to drop it. Their colours are the room's tokens, bound on the table's root. */
+.byd-set-value-foot {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+.byd-set-value-foot button {
+  box-sizing: border-box;
+  flex: 1;
+  min-height: 44px;
+  border-radius: 10px;
+  font: 700 14px system-ui, sans-serif;
+}
+.byd-set-value-foot button:disabled {
+  opacity: 0.5;
 }

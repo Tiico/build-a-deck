@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { TypeRegistry, initialState, project, STANDARD_TYPES } from '@byd/engine'
 import type { Snapshot } from '@byd/protocol'
 import { TableRenderer, type TableMode } from '../src/table/TableRenderer.js'
-import { feltLabels } from '../src/table/keyboard.js'
-import { translate, type Lang, type T } from '../src/i18n/index.js'
+import { feltLabels, thingsOn } from '../src/table/keyboard.js'
+import { ActionPanel } from '../src/table/ActionPanel.js'
+import { Language, translate, type Lang, type T } from '../src/i18n/index.js'
 import { seatSetup } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
@@ -149,5 +150,203 @@ describe.each<[Lang, string, string]>([
     const label = chipOf(id).getAttribute('aria-label')
     expect(label).toBe(saidUnnamed)
     expect(label).not.toMatch(saysCard)
+  })
+})
+
+// A hold on a chip used to wait for nothing: the counter branch got the pointer's handles in #73
+// and the ring stayed a card's and a pile's. What a counter offers when it is held is C4's own
+// answer — a value moved one step either way, or said outright — and every one of them goes over
+// the wire as `setCounter` with an absolute value, because the vocabulary is closed (#67).
+const seated = (v: Snapshot): Snapshot => ({ ...v, seats: v.seats.map((s) => (s.id === 'A' ? { ...s, name: 'Ada' } : s)) })
+const ringButtons = () => [...document.querySelectorAll('[data-radial] button')].map((b) => b.textContent)
+
+describe.each<TableMode>(['table', 'tv'])('a chip held or clicked, mode=%s (K14, C4, #67)', (mode) => {
+  it('a hold opens a ring with the counter’s own verbs, and the hub says what is counted and whose it is', () => {
+    vi.useFakeTimers()
+    const v = seated(table())
+    const id = livId(v)
+    const onAct = vi.fn()
+    render(<TableRenderer view={v} mode={mode} scale={1} onAct={onAct} />)
+    fireEvent.pointerDown(chipOf(id), client(108, 228))
+    expect(document.querySelector('[data-radial]')).toBeNull()
+    act(() => vi.advanceTimersByTime(400))
+    const ring = document.querySelector('[data-radial]')!
+    expect(ring.getAttribute('data-radial')).toBe(id)
+    expect(ringButtons()).toEqual(['−1', '+1', 'Sätt värde…'])
+    // The chip's name is never drawn on the felt at any screen measured (`TOKEN_NAME_PX` 34 against
+    // a chip of 10–34 px), and a chip lifted into a ring loses the one thing that said whose it
+    // was: where it lay. The hub says both, with the value.
+    const hub = ring.querySelector('[data-radial-hub]')!
+    expect(hub.textContent).toContain('Liv')
+    expect(hub.textContent).toContain('20')
+    expect(hub.textContent).toContain('Adas räknare')
+    fireEvent.pointerUp(screen.getByRole('button', { name: '+1' }), client(108, 228))
+    expect(onAct).toHaveBeenLastCalledWith([{ v: 'setCounter', component: id, value: 21 }])
+    expect(document.querySelector('[data-radial]')).toBeNull()
+    vi.useRealTimers()
+  })
+
+  it('a click that never became a drag opens the same ring; −1 sends the value one below', () => {
+    const v = seated(table())
+    const id = livId(v)
+    const onAct = vi.fn()
+    render(<TableRenderer view={v} mode={mode} scale={1} onAct={onAct} />)
+    fireEvent.pointerDown(chipOf(id), client(108, 228))
+    fireEvent.pointerUp(chipOf(id), client(108, 228))
+    expect(document.querySelector('[data-radial]')?.getAttribute('data-radial')).toBe(id)
+    fireEvent.click(screen.getByRole('button', { name: '−1' }))
+    expect(onAct).toHaveBeenLastCalledWith([{ v: 'setCounter', component: id, value: 19 }])
+    expect(document.querySelector('[data-radial]')).toBeNull()
+  })
+
+  // The ring holds verbs and nothing else (K14, revised 2026-09-12): what closes it is anything
+  // that is not a verb, and a chip's ring goes the same way as a card's.
+  it('closes on a press outside the verbs and on Escape, sending nothing', () => {
+    const v = seated(table())
+    const id = livId(v)
+    const onAct = vi.fn()
+    render(<TableRenderer view={v} mode={mode} scale={1} onAct={onAct} />)
+    fireEvent.pointerDown(chipOf(id), client(108, 228))
+    fireEvent.pointerUp(chipOf(id), client(108, 228))
+    fireEvent.pointerUp(document.querySelector('.byd-radial-backdrop')!)
+    expect(document.querySelector('[data-radial]')).toBeNull()
+    fireEvent.pointerDown(chipOf(id), client(108, 228))
+    fireEvent.pointerUp(chipOf(id), client(108, 228))
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(document.querySelector('[data-radial]')).toBeNull()
+    expect(onAct).not.toHaveBeenCalled()
+  })
+})
+
+// A chip that has left its seat's zone — dropped on the floor, which #73 allows — has nobody to
+// be named after, and the hub does not invent one.
+describe('the hub of a chip’s ring', () => {
+  it('leaves the owner out when the chip lies in a zone nobody owns', () => {
+    const v = seated(table())
+    const id = livId(v)
+    const loose = { ...v, components: v.components.map((c) => (c.id === id ? { ...c, zone: 'table', x: 0, y: 0 } : c)) }
+    render(<TableRenderer view={loose} mode="tv" scale={1} onAct={vi.fn()} />)
+    fireEvent.pointerDown(chipOf(id), client(-500, -300))
+    fireEvent.pointerUp(chipOf(id), client(-500, -300))
+    const hub = document.querySelector('[data-radial-hub]')!
+    expect(hub.textContent).toContain('Liv')
+    expect(hub.textContent).not.toContain('räknare')
+  })
+})
+
+// "Sätt värde…" on a screen with no keyboard (#67). The phone's `CountersRow` calls `prompt()`,
+// which a TV touched with a finger cannot answer; the number is written on the tool's own keys
+// instead, and a hand on a physical keyboard types straight into the same sheet. What goes out
+// is `setCounter` with the number said, and nothing until it is said.
+const entryOf = (id: string) => document.querySelector(`[data-set-value="${id}"]`) as HTMLElement | null
+const shown = () => document.querySelector('[data-set-value] output')!.textContent
+
+describe('saying a counter’s value outright (C4, #67)', () => {
+  const opened = (mode: TableMode) => {
+    const v = seated(table())
+    const id = livId(v)
+    const onAct = vi.fn()
+    render(<TableRenderer view={v} mode={mode} scale={1} onAct={onAct} />)
+    fireEvent.pointerDown(chipOf(id), client(108, 228))
+    fireEvent.pointerUp(chipOf(id), client(108, 228))
+    fireEvent.click(screen.getByRole('button', { name: 'Sätt värde…' }))
+    return { id, onAct }
+  }
+
+  it.each<TableMode>(['table', 'tv'])('opens a sheet on the felt from the ring, named for the chip and whose it is, mode=%s', (mode) => {
+    const { id, onAct } = opened(mode)
+    expect(document.querySelector('[data-radial]')).toBeNull()
+    const sheet = entryOf(id)!
+    expect(sheet.getAttribute('role')).toBe('dialog')
+    expect(sheet.getAttribute('aria-label')).toBe('Sätt värde för Liv')
+    expect(sheet.textContent).toContain('Adas räknare')
+    // It opens on the value the chip has, and the first key said replaces it rather than trailing
+    // it: nobody who wants 5 wants 205.
+    expect(shown()).toBe('20')
+    expect(onAct).not.toHaveBeenCalled()
+  })
+
+  it('writes the number on its own keys, and sends it as an absolute value once confirmed', () => {
+    const { id, onAct } = opened('tv')
+    fireEvent.click(screen.getByRole('button', { name: '2' }))
+    fireEvent.click(screen.getByRole('button', { name: '5' }))
+    expect(shown()).toBe('25')
+    fireEvent.click(screen.getByRole('button', { name: 'Byt tecken' }))
+    expect(shown()).toBe('-25')
+    fireEvent.click(screen.getByRole('button', { name: 'Byt tecken' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sudda' }))
+    expect(shown()).toBe('2')
+    fireEvent.click(screen.getByRole('button', { name: '7' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sätt värdet' }))
+    expect(onAct).toHaveBeenCalledTimes(1)
+    expect(onAct).toHaveBeenLastCalledWith([{ v: 'setCounter', component: id, value: 27 }])
+    expect(entryOf(id)).toBeNull()
+  })
+
+  it('takes the digits from a physical keyboard too, confirms on Enter and leaves on Escape', () => {
+    const { id, onAct } = opened('tv')
+    const sheet = entryOf(id)!
+    expect(sheet.contains(document.activeElement)).toBe(true)
+    fireEvent.keyDown(sheet, { key: '4' })
+    fireEvent.keyDown(sheet, { key: '2' })
+    expect(shown()).toBe('42')
+    fireEvent.keyDown(sheet, { key: 'Backspace' })
+    fireEvent.keyDown(sheet, { key: '-' })
+    expect(shown()).toBe('-4')
+    fireEvent.keyDown(sheet, { key: 'Enter' })
+    expect(onAct).toHaveBeenLastCalledWith([{ v: 'setCounter', component: id, value: -4 }])
+    expect(entryOf(id)).toBeNull()
+
+    fireEvent.pointerDown(chipOf(id), client(108, 228))
+    fireEvent.pointerUp(chipOf(id), client(108, 228))
+    fireEvent.click(screen.getByRole('button', { name: 'Sätt värde…' }))
+    fireEvent.keyDown(entryOf(id)!, { key: '9' })
+    fireEvent.keyDown(entryOf(id)!, { key: 'Escape' })
+    expect(entryOf(id)).toBeNull()
+    expect(onAct).toHaveBeenCalledTimes(1)
+  })
+
+  it('cannot confirm nothing: an erased sheet has no number to send', () => {
+    const { id, onAct } = opened('tv')
+    fireEvent.click(screen.getByRole('button', { name: 'Sudda' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sudda' }))
+    expect(shown()).toBe('')
+    expect((screen.getByRole('button', { name: 'Sätt värdet' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Avbryt' }))
+    expect(entryOf(id)).toBeNull()
+    expect(onAct).not.toHaveBeenCalled()
+  })
+})
+
+// The hand and the keyboard offer one and the same list on a chip (L12, #67). Today the panel
+// offered a chip the card's verbs — `Vänd · Vrid 90° · Avslöja · Titta` — because the two lists
+// were two lists. Both are read here, from the rendered ring and the rendered panel, and held to
+// be the same in both languages the tool speaks.
+describe.each<Lang>(['sv', 'en'])('the ring and the keyboard panel read one list, in %s', (lang) => {
+  it('offer a chip the same verbs in the same order', () => {
+    const v = seated(table())
+    const id = livId(v)
+    const t: T = (key, params) => translate(lang, key, params)
+    render(
+      <Language lang={lang}>
+        <TableRenderer view={v} mode="tv" scale={1} onAct={vi.fn()} />
+      </Language>,
+    )
+    fireEvent.pointerDown(chipOf(id), client(108, 228))
+    fireEvent.pointerUp(chipOf(id), client(108, 228))
+    const ring = ringButtons()
+    fireEvent.keyDown(window, { key: 'Escape' })
+
+    const thing = thingsOn(v, t).find((x) => x.key === `counter:${id}`)!
+    render(
+      <Language lang={lang}>
+        <ActionPanel view={v} thing={thing} cards={[]} onClose={vi.fn()} onRun={vi.fn()} onLook={vi.fn()} onSet={vi.fn()} intentsFor={() => []} landedKey={() => ''} />
+      </Language>,
+    )
+    const panel = [...document.querySelectorAll('.byd-kbd-list')[0]!.querySelectorAll('button > span')].map((s) => s.textContent)
+    expect(ring.length).toBe(3)
+    expect(panel).toEqual(ring)
+    // And the panel says whose chip it is, as the ring's hub does.
+    expect(document.querySelector('.byd-kbd-panel h2')!.textContent).toContain(lang === 'sv' ? 'Adas räknare' : 'Ada’s counter')
   })
 })

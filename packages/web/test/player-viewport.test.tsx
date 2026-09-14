@@ -111,6 +111,7 @@ function surfaces(view: Snapshot) {
             onClose={noop}
             onRun={noop}
             onLook={noop}
+            onSet={noop}
             intentsFor={(place, moving) => intentsForPlace(view, place, thing, moving)}
             landedKey={(place) => landedKeyFor(view, place, thing)}
           />

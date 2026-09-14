@@ -276,11 +276,11 @@ describe('the felt a table opens on (#2)', () => {
 
 // The panel that opens on a chip used to be a card's, because the chip's address was a card's
 // (#73). A card's verbs are refused on a counter by the table itself — `token.counter` is
-// `flippable: false` and `stackable: false` — so the panel was offering four things that could
-// not happen, and "Flytta till" sent a flip along with the move and had the whole envelope turned
-// down. What a counter *can* be asked to do is #67's to settle (C4).
-describe('the panel a counter opens (C4, #73)', () => {
-  it('offers a chip no verbs at all, and moves it where it is sent', async () => {
+// `flippable: false` and `stackable: false`. Now it offers what a counter can do (C4, #67): a
+// step either way and a number said outright, every one of them `setCounter` with an absolute
+// value — the same list the pointer's ring reads, held equal in `table-token.test.tsx`.
+describe('the panel a counter opens (C4, #73, #67)', () => {
+  const openOnLiv = async () => {
     const id = await createSession(run, 's1', undefined, seatSetup())
     history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
     render(
@@ -293,14 +293,40 @@ describe('the panel a counter opens (C4, #73)', () => {
     chip.focus()
     await user.keyboard('{Enter}')
     const panel = within(await screen.findByRole('dialog'))
+    return { user, panel }
+  }
 
-    // The panel is answered where it is read, so it takes the focus whether or not it has a verb
-    // to offer first — a panel with no "Gör" row must not leave the focus out on the felt.
-    await waitFor(() => expect(within(screen.getByRole('dialog')).getAllByRole('button')[0]).toBe(document.activeElement))
-
-    expect(panel.queryByRole('heading', { name: 'Gör' })).toBeNull()
+  it('offers a chip the counter’s verbs and not a card’s, and a step goes out as the value it becomes', async () => {
+    const { user, panel } = await openOnLiv()
+    // The panel is answered where it is read: the first verb takes the focus on the way in.
+    await waitFor(() => expect(panel.getAllByRole('button')[0]).toBe(document.activeElement))
+    expect(panel.getByRole('heading', { name: 'Gör' })).toBeTruthy()
     for (const verb of ['Vänd', 'Vrid 90°', 'Avslöja', 'Titta']) expect(panel.queryByRole('button', { name: new RegExp(`^${verb}`) })).toBeNull()
+    expect(panel.getByRole('button', { name: /^−1/ }).textContent).toBe('−1blir 19')
+    expect(panel.getByRole('button', { name: /^\+1/ }).textContent).toBe('+1blir 21')
+    expect(panel.getByRole('button', { name: /^Sätt värde…/ })).toBeTruthy()
 
+    await user.click(panel.getByRole('button', { name: /^\+1/ }))
+    const stepped = await screen.findByRole('button', { name: /^Liv, räknare i Räknare A, värde 21/ })
+    // And the focus comes back to the chip, as it does after a card's verb.
+    await waitFor(() => expect(document.activeElement).toBe(stepped))
+  }, 20_000)
+
+  // "Sätt värde…" opens the same sheet the ring opens, and the number said there is what goes out.
+  it('says a value outright on the sheet, and hands the focus back to the chip', async () => {
+    const { user, panel } = await openOnLiv()
+    await user.click(panel.getByRole('button', { name: /^Sätt värde…/ }))
+    const sheet = await screen.findByRole('dialog', { name: 'Sätt värde för Liv' })
+    await waitFor(() => expect(sheet.contains(document.activeElement)).toBe(true))
+    await user.click(within(sheet).getByRole('button', { name: '7' }))
+    await user.click(within(sheet).getByRole('button', { name: 'Sätt värdet' }))
+    const set = await screen.findByRole('button', { name: /^Liv, räknare i Räknare A, värde 7/ })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    await waitFor(() => expect(document.activeElement).toBe(set))
+  }, 20_000)
+
+  it('moves a chip where it is sent, and the focus goes with it', async () => {
+    const { user, panel } = await openOnLiv()
     // Where it may go is a question the panel can still answer, and the answer must land.
     expect(panel.getByRole('heading', { name: 'Flytta till' })).toBeTruthy()
     await user.click(panel.getByRole('button', { name: /^Bordet/ }))

@@ -4,11 +4,13 @@ import type { Intent, Presence, Snapshot, VisibleComponentState, ZoneView } from
 import type { Peer, Pulse, Recent } from './presence.js'
 import { hue } from './hue.js'
 import { seatColor } from './seatColor.js'
-import { feltScale, fitScale, LEAST_AIR_PX } from './fit.js'
+import { feltScale, fitScale, leaningSquare, woodLayout, LEAST_AIR_PX, TOUCH_PX } from './fit.js'
 import { activeBounds, cameraOf, fitFloor, frameRect, pad, reachOf, same, tween, zoomAround, type Rect, type Size } from './camera.js'
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
 import { CARD_MM, TOKEN_MM, absoluteOf, besidePile, dropIntents, type Drag, type DragTarget } from './drop.js'
 import { isCounter } from '../components.js'
+import { counterActs, ownerOf, type Act } from './keyboard.js'
+import { CounterEntry } from './CounterEntry.js'
 import { DEFAULT_TIMING } from '../status/connection.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
 import { ringCentre } from './ring.js'
@@ -94,9 +96,9 @@ type Live = Drag & { started: boolean }
 // `top` is a card drawn off a pile: it is held by where it was let go of and by how tall the pile
 // was, because a hidden pile hands out no component id to hold it by (K15).
 type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: number; y: number } | null; top: { pile: string; at: Point; count: number } | null; dx: number; dy: number }
-// The ring opens on what the ring has verbs for. A chip is not among them: what a counter offers
-// when it is held is a decision of its own (#67), and a card's verbs are not a counter's.
-type Ring = { target: Exclude<DragTarget, { kind: 'counter' }>; x: number; y: number }
+// The ring opens on what the ring has verbs for: a card, a pile by its top or its label, and a
+// chip — whose verbs are a counter's own and not a card's (C4, #67).
+type Ring = { target: DragTarget; x: number; y: number }
 
 export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], onPresence, camera = false, onInspect, size: fixedSize, glideMs = GLIDE_MS, overlay, seatNames = false, keyboard }, ref) {
   const t = useT()
@@ -143,6 +145,8 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const [drag, setDrag] = useState<Live | null>(null)
   const [settling, setSettling] = useState<Settled | null>(null)
   const [ring, setRing] = useState<Ring | null>(null)
+  // "Sätt värde…" (#67): the chip whose value is being said outright, on this screen's own keys.
+  const [entry, setEntry] = useState<VisibleComponentState | null>(null)
 
   // The camera (C5): what is in play, or where someone zoomed for a moment. It holds still while
   // something is dragged, since the pointer's mapping was fixed when the drag began.
@@ -219,6 +223,21 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const px = (mm: number) => mm * scale
   const left = (mmX: number) => px(mmX - floor.geometry.x)
   const top = (mmY: number) => px(mmY - floor.geometry.y)
+  // A chip's target (#67): the finger's 44 × 44 on the screen, laid invisibly over a disc that
+  // stays its 24 mm (K9). In table mode the felt leans away, so a box set to 44 in its plane is
+  // less than 44 on the screen, and slanted; the target is sized through the same projection the
+  // stylesheet draws, at the chip's own place, since the far edge leans further than the near.
+  // The wood is the felt with its rim, turned as the felt is turned (C5); a frame not yet
+  // measured leans nothing that can be known, and gets the flat answer.
+  const leaning = mode === 'table' && size !== null && size.w > 0 && size.h > 0 ? woodLayout(rotate % 180 === 0 ? { w: floor.geometry.w, h: floor.geometry.h } : { w: floor.geometry.h, h: floor.geometry.w }, size, scale) : null
+  const hitOf = (centre: Point): number => {
+    if (!leaning) return Math.max(px(TOKEN_MM), TOUCH_PX)
+    const dx = px(centre.x - (floor.geometry.x + floor.geometry.w / 2))
+    const dy = px(centre.y - (floor.geometry.y + floor.geometry.h / 2))
+    const a = (rotate * Math.PI) / 180
+    const onWood = { x: dx * Math.cos(a) - dy * Math.sin(a), y: dx * Math.sin(a) + dy * Math.cos(a) }
+    return Math.max(px(TOKEN_MM), leaningSquare(leaning, onWood, TOUCH_PX))
+  }
   const seatIndex = (id: string | undefined) => Math.max(0, view.seats.findIndex((s) => s.id === id))
   const seatName = (id: string | undefined) => view.seats.find((s) => s.id === id)?.name ?? id ?? ''
   const colourOf = (seat: string | null) => (seat === null ? TABLE_GREY : seatColor(seatIndex(seat)))
@@ -264,9 +283,8 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     const el = e.currentTarget as HTMLElement
     if (typeof el.setPointerCapture === 'function') el.setPointerCapture(e.pointerId)
     clearHold()
-    // A whole pile is dragged, never held; and a chip has no ring to wait for yet (#67), so
-    // holding one is simply a drag that has not begun to travel.
-    if (target.kind === 'pile' || target.kind === 'counter') return
+    // A whole pile is dragged, never held.
+    if (target.kind === 'pile') return
     const held = target
     const { clientX, clientY, pointerId } = e
     holdTimer.current = setTimeout(() => {
@@ -305,9 +323,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     if (d?.started && d.target.kind === 'card') onPresence?.({ kind: 'drop' })
     if (!d || !onAct) return
     if (!d.started) {
-      // A tap on a chip asks nothing, because there is nothing yet for it to be answered with:
-      // the counter's own verbs are #67's to settle, and a card's ring would be a lie.
-      if (asked && d.target.kind !== 'counter') openRing(d.target, asked.x, asked.y)
+      if (asked) openRing(d.target, asked.x, asked.y)
       return
     }
     const intents = dropIntents(view, d, mode)
@@ -408,7 +424,9 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
 
   // What the ring would hold, asked for once: a thing that has left the table while the finger
   // was on the way to it has no verbs, and a ring with none opens on nothing (K14).
-  const ringVerbs = ring && onAct ? ringItems(view, ring.target, onAct, setHeld, t) : []
+  const ringVerbs = ring && onAct ? ringItems(view, ring.target, onAct, setHeld, setEntry, t) : []
+  const ringOn = ring?.target
+  const ringChip = ringOn?.kind === 'counter' ? view.components.find((c) => c.id === ringOn.id) : undefined
 
   const areas = view.zones.filter((z) => z.kind === 'area' && z.id !== floor.id)
   const piles = view.zones.filter((z) => z.kind === 'pile')
@@ -528,6 +546,9 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
               // width the word needs, the number stands alone — which is what a counter is for.
               // The name is still on the table's own screen, in the panel and in the zone's label.
               const wide = px(TOKEN_MM) >= TOKEN_NAME_PX
+              // The target is the hand's and only the hand's: a table that is only shown has no
+              // finger to answer, and draws none (K16's rule for the keyboard, applied here).
+              const hit = onAct ? hitOf({ x: a.x + TOKEN_MM / 2, y: a.y + TOKEN_MM / 2 }) : 0
               return (
                 <div
                   key={c.id}
@@ -540,6 +561,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 >
                   <b>{c.counter ?? 0}</b>
                   {wide && <span>{c.cardRef ?? ''}</span>}
+                  {onAct && <i className="byd-token-hit" data-counter-hit={c.id} style={{ width: hit, height: hit, left: (px(TOKEN_MM) - hit) / 2, top: (px(TOKEN_MM) - hit) / 2 }} />}
                 </div>
               )
             }
@@ -623,7 +645,17 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       ) : (
         felt
       )}
-      {ringVerbs.length > 0 && ring && <RadialMenu id={ring.target.kind === 'card' ? ring.target.id : ring.target.pile} x={ring.x} y={ring.y} items={ringVerbs} onClose={() => setRing(null)} />}
+      {ringVerbs.length > 0 && ring && (
+        <RadialMenu
+          id={ring.target.kind === 'card' || ring.target.kind === 'counter' ? ring.target.id : ring.target.pile}
+          x={ring.x}
+          y={ring.y}
+          items={ringVerbs}
+          hub={ringChip ? <CounterHub view={view} c={ringChip} t={t} /> : undefined}
+          onClose={() => setRing(null)}
+        />
+      )}
+      {entry && onAct && <CounterEntry view={view} c={entry} onSet={(value) => onAct([{ v: 'setCounter', component: entry.id, value }])} onClose={() => setEntry(null)} />}
       {held && (
         <div className="byd-inspect" onClick={() => setHeld(null)}>
           <div data-inspect={held.id} data-face={held.cardRef === null ? 'back' : 'front'} style={held.cardRef === null ? undefined : { ['--hue' as string]: hue(held.cardRef) }}>
@@ -666,10 +698,20 @@ function useGlide(target: Rect | null, ms: number): Rect | null {
   return cur
 }
 
-// The verbs a drag cannot say (C): for a card, for a pile.
-function ringItems(view: Snapshot, target: Ring['target'], act: (intents: Intent[]) => void, inspect: (c: VisibleComponentState) => void, t: T): RadialItem[] {
+// The verbs a drag cannot say (C): for a card, for a pile, for a chip.
+function ringItems(view: Snapshot, target: Ring['target'], act: (intents: Intent[]) => void, inspect: (c: VisibleComponentState) => void, enter: (c: VisibleComponentState) => void, t: T): RadialItem[] {
   const flip = (c: VisibleComponentState): RadialItem => ({ label: t('ring.flip'), run: () => act([{ v: 'flip', component: c.id, face: c.face === 'front' ? 'back' : 'front' }]) })
   const look = (c: VisibleComponentState | undefined): RadialItem => ({ label: t('ring.look'), run: c ? () => inspect(c) : null })
+  if (target.kind === 'counter') {
+    // The same list the keyboard's panel reads (`verbsFor`), so the hand and the keyboard cannot
+    // be offered different things on one chip. Every entry is `setCounter` with an absolute value.
+    const c = view.components.find((x) => x.id === target.id)
+    if (!c) return []
+    return counterActs(c, t).map((a: Act): RadialItem => {
+      const intents = a.intents
+      return { label: a.label, run: a.set !== undefined ? () => enter(c) : intents ? () => act(intents) : null }
+    })
+  }
   if (target.kind === 'card') {
     const c = view.components.find((x) => x.id === target.id)
     if (!c) return []
@@ -697,6 +739,20 @@ function ringItems(view: Snapshot, target: Ring['target'], act: (intents: Intent
     { label: t('ring.flipTop'), run: count > 0 ? () => act(flipTop()) : null },
     look(top),
   ]
+}
+
+// What a chip's ring is about, in its hub: the value, the name the designer gave the counter, and
+// whose it is. The felt never draws the name — `TOKEN_NAME_PX` against a chip of 10–34 px — and
+// a chip lifted into a ring has left the zone that said whose it was, so both are said here.
+function CounterHub({ view, c, t }: { view: Snapshot; c: VisibleComponentState; t: T }) {
+  const owner = ownerOf(view, c)
+  return (
+    <>
+      <b>{c.counter ?? 0}</b>
+      <span>{c.cardRef ?? ''}</span>
+      {owner !== null && <i>{t('ring.counter.whose', { name: owner })}</i>}
+    </>
+  )
 }
 
 type Handlers = { onPointerDown(e: RPointerEvent): void; onPointerMove(e: RPointerEvent): void; onPointerUp(e: RPointerEvent): void; onPointerCancel(e: RPointerEvent): void }

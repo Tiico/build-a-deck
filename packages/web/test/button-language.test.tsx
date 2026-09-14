@@ -21,9 +21,10 @@ import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { OnlinePage } from '../src/online/OnlinePage.js'
 import { ObserverPage } from '../src/observer/ObserverPage.js'
 import { PlayerPage } from '../src/player/PlayerPage.js'
+import { TablePage } from '../src/table/TablePage.js'
 import { TableClient } from '../src/client.js'
 import { projectDoc } from './project-doc.js'
-import { admit, asSeat, asTable, createSession, roomOf, startServer, twoSeatSetup, type Running } from './fixture.js'
+import { admit, asSeat, asTable, createSession, roomOf, seatSetup, startServer, twoSeatSetup, type Running } from './fixture.js'
 import { atWidth } from './viewport.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
@@ -410,6 +411,46 @@ describe('the seat that plays on the table screen', () => {
   it('wears the primary fill on nothing but the action that moves the seat on', async () => {
     const measured = await inChromium(ONLINE_CSS, 390, await onlineView(), wearingThePrimary('.byd-online, .byd-survey'))
     expect(measured).toEqual({ 'frågan om att spola tillbaka': ['Godkänn'], 'enkäten på storbilden': ['Nästa'] })
+  }, 90_000)
+})
+
+// The table screen itself (#67). The felt was not one of L13's rooms — nothing that drew a table
+// bound the six tokens — so the first button ever laid on it, the one that keeps a counter's new
+// value, would have fallen back to the browser's own grey: not a quiet button but no declaration
+// at all. The ring's own buttons speak their own dialect in `table.css` and are measured here
+// too, as the control: a room with a ring open and nothing else wears the primary on nothing.
+const TABLE_CSS = ['src/table/table.css', 'src/table/texture.css', 'src/table/keyboard.css', 'src/rules/rules.css', 'src/status/status.css', 'src/a11y.css'].map(read).join('\n')
+
+async function tableViews(): Promise<Record<string, string>> {
+  atWidth(1280)
+  const id = await createSession(run, 'felt', undefined, seatSetup())
+  history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=table&server=${encodeURIComponent(run.url)}`)
+  const { container, unmount } = render(<TablePage />)
+  try {
+    const out: Record<string, string> = {}
+    const chip = await screen.findByRole('button', { name: /^Liv, räknare i Räknare A/ })
+    // The hand's door: a click that never became a drag opens the ring (K14).
+    fireEvent.pointerDown(chip, { clientX: 640, clientY: 400, pointerId: 1, isPrimary: true, button: 0 })
+    fireEvent.pointerUp(chip, { clientX: 640, clientY: 400, pointerId: 1, isPrimary: true, button: 0 })
+    await screen.findByRole('button', { name: 'Sätt värde…' })
+    out['ringen på en bricka'] = container.innerHTML
+    fireEvent.keyDown(window, { key: 'Escape' })
+    // The keyboard's door to the same sheet (K16).
+    chip.focus()
+    fireEvent.keyDown(chip, { key: 'Enter' })
+    fireEvent.click(await screen.findByRole('button', { name: /^Sätt värde…/ }))
+    await screen.findByRole('dialog', { name: 'Sätt värde för Liv' })
+    out['sätt värde'] = container.innerHTML
+    return out
+  } finally {
+    unmount()
+  }
+}
+
+describe('the table screen', () => {
+  it('wears the primary fill on nothing but the action that keeps the value said', async () => {
+    const measured = await inChromium(TABLE_CSS, 1280, await tableViews(), wearingThePrimary('.byd-table'))
+    expect(measured).toEqual({ 'ringen på en bricka': [], 'sätt värde': ['Sätt värdet'] })
   }, 90_000)
 })
 

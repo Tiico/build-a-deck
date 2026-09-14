@@ -48,6 +48,10 @@ export const enPlay = {
   'ring.draw': 'Draw 1',
   'ring.half': 'Split in half',
   'ring.flipTop': 'Flip the top',
+  'ring.counter.minus': '−1',
+  'ring.counter.plus': '+1',
+  'ring.counter.set': 'Set value…',
+  'ring.counter.whose': '{name}’s counter',
 
   'kbd.hidden': 'Hidden card',
   'kbd.card': '{name}, card in {zone}',
@@ -67,6 +71,8 @@ export const enPlay = {
   'kbd.hint.reveal': 'shows the card to everyone',
   'kbd.hint.look': 'only on this screen',
   'kbd.hint.half': 'a new pile beside it',
+  'kbd.hint.counter.becomes': 'becomes {n}',
+  'kbd.hint.counter.set': 'type a number',
   'kbd.hand.my': 'My hand',
   'kbd.hand.other': '{name}’s hand',
   'kbd.place.floor': 'The table',
@@ -85,6 +91,13 @@ export const enPlay = {
   'kbd.panel.free': 'Free placement — a point on the felt',
   'kbd.panel.free.hint': 'needs a pointer; with a keyboard there are only places with names',
   'kbd.panel.close': 'Close',
+
+  'counter.entry.label': 'Set the value of {what}',
+  'counter.entry.value': 'New value',
+  'counter.entry.sign': 'Change sign',
+  'counter.entry.erase': 'Erase',
+  'counter.entry.confirm': 'Set the value',
+  'counter.entry.cancel': 'Cancel',
 
   'activity.move': '{who} moved a card to {zone}',
   'activity.hand.my': 'my hand',

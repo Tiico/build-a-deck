@@ -23,11 +23,14 @@ export type ActionPanelProps = {
   // went through is announced by the activity feed, in `describeActivity`'s own words.
   onRun(intents: Intent[], landedOn?: string): void
   onLook(c: VisibleComponentState): void
+  // "Sätt värde…" on a chip (#67): opens the value entry on this screen; nothing is sent until a
+  // number has been said there.
+  onSet(c: VisibleComponentState): void
   intentsFor(place: Place, moving: readonly string[]): Intent[]
   landedKey(place: Place): string
 }
 
-export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, intentsFor, landedKey }: ActionPanelProps) {
+export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, onSet, intentsFor, landedKey }: ActionPanelProps) {
   const t = useT()
   const moving = cards.length > 0 ? [...cards] : isLoose(thing) ? [thing.id] : []
   const verbs = verbsFor(view, thing, t)
@@ -56,7 +59,11 @@ export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, intent
           onClose()
         }}
       >
-        <h2>{what}</h2>
+        <h2>
+          {what}
+          {/* Whose chip it is (#67): a shared table has to say it, where a phone never does. */}
+          {thing.kind === 'counter' && thing.owner !== null && <small>{t('ring.counter.whose', { name: thing.owner })}</small>}
+        </h2>
         {verbs.length > 0 && <h3>{t('kbd.panel.do')}</h3>}
         <div className="byd-kbd-list">
           {verbs.map((a, i) => (
@@ -69,6 +76,11 @@ export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, intent
                 if (a.look !== undefined) {
                   const c = view.components.find((x) => x.id === a.look)
                   if (c) onLook(c)
+                  return
+                }
+                if (a.set !== undefined) {
+                  const c = view.components.find((x) => x.id === a.set)
+                  if (c) onSet(c)
                   return
                 }
                 if (a.intents) onRun(a.intents)
@@ -86,9 +98,9 @@ export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, intent
               key={p.key}
               type="button"
               // The panel is answered where it is read, so it takes the focus on the way in. That
-              // is the first verb when there is one; a thing with no verbs at all — a chip, until
-              // #67 says what a counter can do — hands it to the first place instead, rather than
-              // opening a panel and leaving the reader standing out on the felt.
+              // is the first verb when there is one; a thing with no verbs at all hands it to the
+              // first place instead, rather than opening a panel and leaving the reader standing
+              // out on the felt.
               ref={verbs.length === 0 && i === 0 ? first : undefined}
               onClick={() => onRun(intentsFor(p, moving), landedKey(p))}
             >

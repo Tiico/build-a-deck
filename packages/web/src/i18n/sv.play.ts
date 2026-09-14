@@ -62,6 +62,13 @@ export const svPlay = {
   'ring.draw': 'Dra 1',
   'ring.half': 'Dela på hälften',
   'ring.flipTop': 'Vänd översta',
+  // En räknares verb (C4, #67): ett steg åt vardera hållet och ett tal sagt rakt ut. Ringen och
+  // tangentbordets panel läser samma lista; varje handling går ut som `setCounter`.
+  'ring.counter.minus': '−1',
+  'ring.counter.plus': '+1',
+  'ring.counter.set': 'Sätt värde…',
+  // Vems räknaren är. Ett delat bord behöver det; telefonen visar bara sin egen plats.
+  'ring.counter.whose': '{name}s räknare',
 
   // Tangentbordet på filten (#1, #2, variant C "adressen"). Zonnamn och kortnamn kommer från
   // spelet och står i meningarna som designern skrev dem; allt runt dem är verktygets.
@@ -93,6 +100,8 @@ export const svPlay = {
   'kbd.hint.reveal': 'visar kortet för alla',
   'kbd.hint.look': 'bara på den här skärmen',
   'kbd.hint.half': 'ny hög bredvid',
+  'kbd.hint.counter.becomes': 'blir {n}',
+  'kbd.hint.counter.set': 'skriv ett tal',
   'kbd.hand.my': 'Min hand',
   'kbd.hand.other': '{name}s hand',
   'kbd.place.floor': 'Bordet',
@@ -111,6 +120,14 @@ export const svPlay = {
   'kbd.panel.free': 'Fri placering — en punkt på filten',
   'kbd.panel.free.hint': 'kräver pekdon; med tangentbord finns bara platser med namn',
   'kbd.panel.close': 'Stäng',
+
+  // "Sätt värde…" på en skärm utan tangentbord (#67): talet skrivs på verktygets egna knappar.
+  'counter.entry.label': 'Sätt värde för {what}',
+  'counter.entry.value': 'Nytt värde',
+  'counter.entry.sign': 'Byt tecken',
+  'counter.entry.erase': 'Sudda',
+  'counter.entry.confirm': 'Sätt värdet',
+  'counter.entry.cancel': 'Avbryt',
 
   // En rad ur loggen i ord. Namn och zoner kommer från vyn och översätts inte.
   'activity.move': '{who} flyttade ett kort till {zone}',

@@ -7,6 +7,7 @@ import { useSay } from '../status/StatusLive.js'
 import { useT } from '../i18n/index.js'
 import { ActionPanel } from './ActionPanel.js'
 import { CardLook } from './CardLook.js'
+import { CounterEntry } from './CounterEntry.js'
 import { feltLabels, intentsForPlace, landedKeyFor, thingsOn, type Thing } from './keyboard.js'
 import type { FeltKeyboard } from './TableRenderer.js'
 
@@ -45,6 +46,8 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
   const t = useT()
   const [open, setOpen] = useState<{ thing: Thing; cards: string[] } | null>(null)
   const [looking, setLooking] = useState<VisibleComponentState | null>(null)
+  // The chip whose value is being said outright (#67), opened from the panel's "Sätt värde…".
+  const [setting, setSetting] = useState<VisibleComponentState | null>(null)
   const returnTo = useRef<HTMLElement | null>(null)
   // Where the focus is heading once the table has answered. The node it names does not exist
   // yet when the move is sent, so it is claimed on the first render that draws it.
@@ -70,15 +73,21 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
   const remember = () => {
     returnTo.current = (document.activeElement as HTMLElement | null) ?? null
   }
+  // Back to whatever opened the panel — the chip, the card — once the panel, or a sheet the
+  // panel opened, has closed. A thing that has left the felt in the meantime hands the focus to
+  // the first stop that is left, never to nothing.
+  const giveBack = (key: string | undefined) => {
+    const el = returnTo.current
+    if (el && document.contains(el)) el.focus()
+    else if (key !== undefined) pending.current = key
+  }
   const close = (landedOn?: string) => {
     setOpen(null)
     if (landedOn !== undefined) {
       pending.current = landedOn
       return
     }
-    const el = returnTo.current
-    if (el && document.contains(el)) el.focus()
-    else if (open) pending.current = open.thing.key
+    giveBack(open?.thing.key)
   }
 
   const keyboard: FeltKeyboard | undefined =
@@ -107,6 +116,10 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
           setLooking(c)
           close()
         }}
+        onSet={(c) => {
+          setSetting(c)
+          setOpen(null)
+        }}
         onRun={(intents, landedOn) => {
           // A refusal is an answer to something someone asked for that did not happen, so it
           // cuts in (D5). Nothing else on this path is worth interrupting a reader for.
@@ -124,6 +137,21 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
     <>
       {sheet}
       {looking && <CardLook card={looking} faces={options.faces} onClose={() => setLooking(null)} />}
+      {view && setting && (
+        <CounterEntry
+          view={view}
+          c={setting}
+          onSet={(value) => {
+            void options.act([{ v: 'setCounter', component: setting.id, value }]).then((result) => {
+              if (!result.ok) say?.('assertive', refusalText(result.reason, t))
+            })
+          }}
+          onClose={() => {
+            setSetting(null)
+            giveBack(`counter:${setting.id}`)
+          }}
+        />
+      )}
     </>
   )
 

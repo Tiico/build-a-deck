@@ -68,6 +68,7 @@ describe('the keyboard on the felt in the reader\'s own language', () => {
           onClose={() => undefined}
           onRun={() => undefined}
           onLook={() => undefined}
+          onSet={() => undefined}
           intentsFor={() => []}
           landedKey={() => ''}
         />

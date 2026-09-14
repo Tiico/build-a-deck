@@ -1,4 +1,4 @@
-import { useEffect, type PointerEvent as RPointerEvent } from 'react'
+import { useEffect, type PointerEvent as RPointerEvent, type ReactNode } from 'react'
 
 export type RadialItem = { label: string; run: (() => void) | null }
 
@@ -7,7 +7,11 @@ export type RadialItem = { label: string; run: (() => void) | null }
 // a release or a click anywhere outside the ring is the way out, and Escape is that way for a
 // hand on a keyboard. The ring holds verbs only — one that meant nothing but "never mind" took a
 // place in the circle where every other place does something.
-export function RadialMenu({ id, x, y, items, onClose }: { id: string; x: number; y: number; items: RadialItem[]; onClose(): void }) {
+//
+// `hub` is what the ring is about, written in its centre: never a control, and only for a thing
+// the felt cannot say for itself — a chip's name is never drawn on the felt at any screen measured,
+// and a chip lifted into a ring has lost the one thing that said whose it was, where it lay (#67).
+export function RadialMenu({ id, x, y, items, hub, onClose }: { id: string; x: number; y: number; items: RadialItem[]; hub?: ReactNode; onClose(): void }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
@@ -26,6 +30,11 @@ export function RadialMenu({ id, x, y, items, onClose }: { id: string; x: number
   return (
     <div className="byd-radial-backdrop" onPointerUp={onClose} onClick={onClose}>
       <div className="byd-radial" data-radial={id} style={{ left: x, top: y }}>
+        {hub !== undefined && (
+          <div className="byd-radial-hub" data-radial-hub>
+            {hub}
+          </div>
+        )}
         {items.map((item, i) => {
           const ang = -Math.PI / 2 + (i * 2 * Math.PI) / items.length
           return (
