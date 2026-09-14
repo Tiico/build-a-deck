@@ -11,6 +11,7 @@ import type { Snapshot } from '@byd/protocol'
 import { contrastRatio, flatten } from '../src/player/contrast.js'
 import { TableClient } from '../src/client.js'
 import { HandStrip } from '../src/player/HandStrip.js'
+import { CountersRow } from '../src/player/SeatExtras.js'
 import { PlaySheet } from '../src/player/PlaySheet.js'
 import { TableSummary } from '../src/player/TableSummary.js'
 import { SessionButtons, SessionOverlays } from '../src/player/SessionOverlays.js'
@@ -20,7 +21,7 @@ import { Survey } from '../src/player/Survey.js'
 import { ActionPanel } from '../src/table/ActionPanel.js'
 import { CardLook } from '../src/table/CardLook.js'
 import { intentsForPlace, landedKeyFor, type Thing } from '../src/table/keyboard.js'
-import { asSeat, createSession, startServer, type Running } from './fixture.js'
+import { asSeat, createSession, seatSetup, startServer, type Running } from './fixture.js'
 
 // The shipped document and the shipped stylesheet, verbatim. (jsdom replaces the global URL,
 // which node:fs will not take, so the paths are joined rather than resolved from import.meta.url.)
@@ -65,6 +66,12 @@ function surfaces(view: Snapshot) {
         <p className="byd-hint">tryck = titta · dra upp = spela · håll = välj flera</p>
       </div>
     ),
+    // The seat's own counters under the head (C4): two pills, as the wizard lays a table out.
+    counters: (
+      <div className="byd-player">
+        <CountersRow view={view} onSet={noop} />
+      </div>
+    ),
     play: (
       <div className="byd-player">
         <PlaySheet view={view} count={1} label="dragon" onPlay={noop} onClose={noop} />
@@ -87,7 +94,8 @@ function surfaces(view: Snapshot) {
     ),
     survey: (
       <div className="byd-player">
-        <Survey who="Ada" version="v1" onSubmit={async () => undefined} />
+        {/* With the way to an account in its foot (G1): the one link a thumb has to land on. */}
+        <Survey who="Ada" version="v1" onSubmit={async () => undefined} saveUrl="http://claim.invalid/claim?token=t" />
       </div>
     ),
     // Enter on a hand card: the verbs and the named places (#1, variant C).
@@ -131,7 +139,8 @@ afterAll(async () => {
 }, 60_000)
 beforeEach(async () => {
   run = await startServer()
-  const id = await createSession(run)
+  // The table as the wizard makes it: an area in front of every seat and two counters each.
+  const id = await createSession(run, 's1', undefined, seatSetup())
   const client = TableClient.connect(await asSeat(run, id, 'A', 'Ada'))
   await client.ready()
   await client.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
@@ -164,8 +173,9 @@ async function eachSurface<T>(width: number, measure: (page: Page) => Promise<T>
 
 describe.each(WIDTHS)('the player view at %ipx', (width) => {
   it('gives every control a 44 by 44 pixel hit area', async () => {
+    // Links count as controls too: the survey's save link is the one a phone shows (UX-36, #81).
     const measured = await eachSurface(width, (page) =>
-      page.$$eval('button, textarea', (els) =>
+      page.$$eval('button, textarea, a[href]', (els) =>
         els
           .map((el) => ({ label: (el.textContent ?? el.tagName).trim().slice(0, 24), box: el.getBoundingClientRect() }))
           .filter(({ box }) => box.width < 44 || box.height < 44)
@@ -173,6 +183,28 @@ describe.each(WIDTHS)('the player view at %ipx', (width) => {
       ),
     )
     expect(measured).toEqual(Object.fromEntries(Object.keys(measured).map((name) => [name, []])))
+  }, 60_000)
+
+  // The row's − and + were 34 px wide (UX-36, #81). Widening them must not push the row onto a
+  // second line: every pill keeps the same top edge and stays inside the screen.
+  it('keeps the counters on one line while every − and + is 44 px wide', async () => {
+    const page = await browser.newPage({ viewport: { width, height: 844 } })
+    try {
+      await page.setContent(document_(surfaces(view).counters), { waitUntil: 'load' })
+      const pills = await page.$$eval('.byd-counter', (els) =>
+        els.map((el) => {
+          const box = el.getBoundingClientRect()
+          const sides = [...el.querySelectorAll('button')].map((b) => Math.round(b.getBoundingClientRect().width))
+          return { top: Math.round(box.top), right: Math.round(box.right), sides }
+        }),
+      )
+      expect(pills).toHaveLength(2)
+      expect(new Set(pills.map((p) => p.top)).size).toBe(1)
+      expect(Math.max(...pills.map((p) => p.right))).toBeLessThanOrEqual(width)
+      expect(pills.flatMap((p) => p.sides).every((w) => w >= 44)).toBe(true)
+    } finally {
+      await page.close()
+    }
   }, 60_000)
 
   it('reads at AA everywhere a player has text in front of them', async () => {

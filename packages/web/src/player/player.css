@@ -64,7 +64,8 @@
 
 /* Counters (C4): a row of pills under the head; tap the sides to count, the number to type. */
 .byd-counters { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; padding: 10px 16px 0; }
-.byd-counter { display: grid; grid-template-columns: 34px 1fr 34px; align-items: center; background: var(--byd-surface); border-radius: 14px; overflow: hidden; }
+/* The sides are a thumb's 44 px (UX-36, #81); at 320 px two pills leave the value 52 px, which a three-digit count fits. */
+.byd-counter { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; background: var(--byd-surface); border-radius: 14px; overflow: hidden; }
 .byd-counter button { min-height: 44px; border: 0; padding: 0; background: var(--byd-control); color: var(--byd-ink-strong); font-size: 18px; font-weight: 800; }
 .byd-counter > div { display: grid; text-align: center; padding: 4px 6px; }
 .byd-counter b { font-size: 18px; color: var(--byd-ink-strong); line-height: 1; }
@@ -168,7 +169,8 @@
 .byd-survey { position: fixed; inset: 0; z-index: 35; background: var(--byd-bg); color: var(--byd-ink); display: grid; grid-template-rows: auto 1fr auto; padding: 22px 20px; box-sizing: border-box; }
 .byd-survey h1 { margin: 0; font-size: 22px; }
 .byd-survey-sub { color: var(--byd-ink-muted); font-size: 13px; margin-top: 4px; }
-.byd-survey-save { display: inline-block; margin-top: 12px; color: #7dd3a0; font-weight: 700; }
+/* A 44 px row rather than a line of text (UX-36, #81); the old 12 px above it is now the box's own upper half. */
+.byd-survey-save { display: inline-flex; align-items: center; min-height: 44px; color: #7dd3a0; font-weight: 700; }
 .byd-survey-q { display: grid; align-content: center; gap: 16px; }
 .byd-survey-q h2 { margin: 0; font-size: 20px; font-weight: 700; }
 .byd-survey-scale { display: flex; gap: 8px; }
