@@ -2158,6 +2158,11 @@ Kanten släpade alltså efter handen på väg in, sprang före den på väg ut, 
 En press som inte rör sig är ingen bredd: kanten står över rubrikens tio högraste pixlar, och en pekare som vilar på en knapp glider en pixel eller två när den släpps, så ett klick satte kolumnen till den bredd den redan hade och lämnade den där.
 Tyst dessutom, eftersom en kolumn som slutat följa sin lek ser precis ut som en som fortfarande gör det, och vägen tillbaka var dörren eller ett andra klick.
 Golvet för att en press ska vara en dragning är tre pixlar; smalare än så är ett grepp som halkade och inte en bredd någon valde, precis som 44 px är det på andra ledden.
+Det som fattas tas bara där det får tabellen att rymmas:
+En dragen kolumn är exakt så bred som formgivaren sa, så en lek kan bli bredare än fönstret — och förbi den punkt där meningarna på sina golv ändå inte täcker glappet köper varje pixel som tas från dem ingenting.
+Lådan rullar i båda fallen; skillnaden är ett värde ingen kan läsa.
+Uppmätt: `body` draget till 1100 px vid 1280 tryckte ner `art` på sin egen rubrik och kapade dess värden i en tabell som var 1668 px bred oavsett, och ett dubbelklick som gav `title` tillbaka till innehållet gav den 64 px där innehållet behövde 70.
+
 En bredd lever bara så länge kolumnen gör det: tas en kolumn bort ur huvudets dörr glöms bredden i samma andetag, och utan ett ord, eftersom det som hänt är att en kolumn är borta och inte att den följer sitt innehåll igen.
 Kvar låg annars ett tal under ett namn ingenting svarar på, och nästa kolumn som gjordes under det namnet — tom och splitterny — ritades i en bredd en hand valt åt någon annans värden.
 Kvar står att kolumnerna *före* handen fortfarande delar med sig, eftersom en dragen kolumn står utanför utdelningen och alla andra delar på det som blir kvar: en dragning av `body` över 260 px flyttar kanten 178, och dess första 65 px flyttar den inte alls, för `art` ger ifrån sig lika fort som `body` växer.
