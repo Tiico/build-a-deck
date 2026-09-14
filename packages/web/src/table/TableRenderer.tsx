@@ -75,6 +75,13 @@ export type TableRendererProps = {
   // that says it already (K9). A TV-mode surface with no dock — the editor's Bord tab — asks for
   // the cards here, so that a hand is named by the renderer like every other zone (K19).
   seatNames?: boolean | undefined
+  // Which of those place cards is the reader's own (C5, #77). A seat's felt used to be turned so
+  // that the reader's edge was the one at the bottom, and that turn was the whole answer to "which
+  // edge is mine"; it is no longer given in a landscape window, so the answer moves onto the
+  // table's own furniture — the place card at that seat's border is marked as yours, the way a
+  // place card at a real table is the one with your name on it. A surface with no reader sitting
+  // anywhere marks none.
+  me?: string | null | undefined
   keyboard?: FeltKeyboard | undefined
 }
 
@@ -139,7 +146,7 @@ type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: n
 // chip — whose verbs are a counter's own and not a card's (C4, #67).
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], onPresence, camera = false, onInspect, size: fixedSize, glideMs = GLIDE_MS, overlay, seatNames = false, keyboard }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], onPresence, camera = false, onInspect, size: fixedSize, glideMs = GLIDE_MS, overlay, seatNames = false, me = null, keyboard }, ref) {
   const t = useT()
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
@@ -671,7 +678,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           {(mode === 'table' || seatNames) &&
             hands.map((z) => (
               // After the cards: a name card lies on the table, on top of what is dealt near it.
-              <SeatName key={`name-${z.id}`} zone={z} floor={floor} name={seatName(z.owner)} color={seatColor(seatIndex(z.owner))} left={left} top={top} />
+              <SeatName key={`name-${z.id}`} zone={z} floor={floor} name={seatName(z.owner)} color={seatColor(seatIndex(z.owner))} mine={me !== null && z.owner === me} left={left} top={top} />
             ))}
           {peers.map((p) => {
             if (!p.drag) return null
@@ -975,7 +982,7 @@ const EDGES: Record<number, 'N' | 'E' | 'S' | 'W'> = { 0: 'S', 180: 'N', [-90]: 
 
 // Who sits at this edge (B): the name lies along the table's own border, turned toward the seat
 // that reads it — as a name card would on a real table. The count stays on the hand.
-function SeatName({ zone, floor, name, color, left, top }: { zone: ZoneView; floor: ZoneView; name: string; color: string; left: (mm: number) => number; top: (mm: number) => number }) {
+function SeatName({ zone, floor, name, color, mine, left, top }: { zone: ZoneView; floor: ZoneView; name: string; color: string; mine?: boolean | undefined; left: (mm: number) => number; top: (mm: number) => number }) {
   if (name === '') return null
   const edge = EDGES[edgeRotation(zone, floor)] ?? 'S'
   const alongX = left(zone.geometry.x + zone.geometry.w / 2)
@@ -983,7 +990,7 @@ function SeatName({ zone, floor, name, color, left, top }: { zone: ZoneView; flo
   const place =
     edge === 'S' ? { left: alongX, bottom: 6 } : edge === 'N' ? { left: alongX, top: 6 } : edge === 'W' ? { top: alongY, left: 6 } : { top: alongY, right: 6 }
   return (
-    <div className="byd-seat-name" data-seat-name={zone.owner} data-edge={edge} style={{ ...place, ['--seat' as string]: color }}>
+    <div className="byd-seat-name" data-seat-name={zone.owner} data-edge={edge} {...(mine ? { 'data-me': 'true' } : {})} style={{ ...place, ['--seat' as string]: color }}>
       {name}
     </div>
   )

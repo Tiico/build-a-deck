@@ -24,9 +24,15 @@ export function fitScale(table: Size, container: Size, margin = 0): number {
 // hidden, clipped or gestured for.
 //
 // The answer is therefore read off the two shapes and never written down per surface: a window
-// whose orientation agrees with the table's is already the right way round. It is the observer's
-// rule (C8) and not every surface's — a seat's own felt is turned by where that seat sits (C5),
-// and the table's own screen is a TV that is landscape by construction (K9).
+// whose orientation agrees with the table's is already the right way round.
+//
+// Revised 2026-09-14 (#77). This was written as the observer's rule alone, on the grounds that a
+// seat's own felt is turned by where that seat sits (C5). That holds on a phone, where the window
+// and the seat ask for the same quarter turn anyway, and it fails in every landscape window: a
+// side seat's quarter turn there stands the table's long side up against the window's short one
+// and drew a card 17 px across at 1280 x 800, against 31 upright. So the rule is the seat's too —
+// `seatTurn` in `online/seat.ts` is where the two are composed, and which one wins is written
+// there. The table's own screen is still outside it: a TV is landscape by construction (K9).
 export function turnToFit(table: Size, frame: Size): Rotation {
   if (table.w <= 0 || table.h <= 0 || frame.w <= 0 || frame.h <= 0) return 0
   return table.w >= table.h === frame.w >= frame.h ? 0 : 90
@@ -36,9 +42,20 @@ export function turnToFit(table: Size, frame: Size): Rotation {
 // pixels. There are two numbers because there are two reasons, and one number for two reasons is
 // how the TV came to spend a quarter of a phone on nothing (#76).
 //
-// In table mode the felt lies on its wood and the wood stands on the dark (K9): the air is the
-// table's share of the room it is in, and 44 px is what that has always been.
-export const WOOD_AIR_PX = 44
+// In table mode the felt lies on its wood and the wood stands on the dark (K9). The wood's own
+// rim is measured by the fit — `feltScale` projects the *wood's* corners, `WOOD_RIM_PX` and all —
+// so nothing of the table's furniture is drawn outside what this air is counted from, and the
+// only thing in it is a hand's count, which the 30 px rim already carries. That leaves the air as
+// the dark the table stands on and nothing else.
+//
+// It was 44 px, which was the number TV mode had before #76 cut it to 20 for the same reason: one
+// number was doing duty for two, and a share of the room was being spent where a margin was all
+// that was needed. #77 measured what it costs at the one window `/online` actually lives at: a
+// card's short side on the seat's own felt goes from 27 px to 31 at 1280 x 800 and from 45 to 50
+// at 1920 x 1080, on the painted box in Chromium, for nothing given up. Twelve is a hair of dark
+// that keeps the wood off the window's edge; below that the shadow under the wood is all that is
+// left to lose, and it is blurred past the edge already.
+export const WOOD_AIR_PX = 12
 // On a TV the wood has no rim at all — `.byd-table-frame[data-mode='tv'] .byd-table-wood` is
 // `padding: 0` — so nothing of the table's own furniture is drawn outside the millimetres the fit
 // measures. One thing is: a hand's count, which hangs past its hand in the frame's pixels rather

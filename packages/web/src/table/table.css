@@ -297,6 +297,10 @@
      give back. Written once, beside the line height it is half of. */
   --card-half: 10.5px;
 }
+/* The reader's own place card (C5, #77): ringed in the felt's own ink, so that a player whose
+   felt is not turned to put their edge at the bottom can still see, on the table itself, which
+   border is theirs. */
+.byd-seat-name[data-me] { box-shadow: 0 0 0 2px var(--byd-seat-ink); }
 .byd-seat-name[data-edge='S'] { transform: translateX(-50%); }
 .byd-seat-name[data-edge='N'] { transform: translateX(-50%) rotate(180deg); }
 /* A place card at a side edge is turned onto its side, and a box turned about its own middle

@@ -432,6 +432,36 @@ Kamerans regel ovan står kvar oförändrad: en delning bredvid en hög vid kant
 
 Grinden är `drop.test.ts`, i båda lägena: ett släpp mitt på varje ramsida och långt förbi träet, i alla fyra hörn, för ett löst kort, en högs topp, en hel hög och en bricka; ett släpp på filten oförändrat; och distansvyns `playedAt`.
 
+Reviderat 2026-09-14 (#77, UX-32, prototypat och godkänt): **platsens kvartsvarv gäller bara där fönstret också ber om ett.**
+
+C5:s ordalydelse är att orienteringen följer platsen, och `/online` har läst det som att den egna kanten alltid läggs nederst.
+På en telefon kostar det ingenting: fönstret är stående, bordet liggande, och platsens kvartsvarv är samma varv som `turnToFit` (C8) ber om ändå.
+I ett liggande fönster ställer samma varv bordets långsida mot fönstrets korta, och då är det inte ett mindre bord utan ett obrukbart: mätt på den målade rutan i Chromium, på wizardens eget fyraplatsbord, var kortets kortsida vid en sidoplats **17 px vid 1280 × 800 och 29 px vid 1920 × 1080**, mot K9:s grind på 45.
+En bottenplats vid samma fönster fick 27 respektive 45 px — alltså ligger felet inte bara i vridningen, men vridningen är det som gör en sidoplats dubbelt så illa som sin granne.
+
+Beslutet: **en sidoplats vrids inte i ett liggande fönster.**
+Regeln är de två halvornas sammansättning och bor på ett enda ställe, `seatTurn` i `packages/web/src/online/seat.ts`, som är den enda ytan som behöver båda: halvvarven (en plats vid den bortre kanten) rör inte bordets form och står alltid kvar, och kvartsvarven behålls bara där `turnToFit` ber om ett kvartsvarv ändå.
+Efter ändringen ritas sidoplatsens kort i **31 px vid 1280 × 800 och 50 px vid 1920 × 1080**, samma som varje annan plats vid samma fönster.
+
+**Vilken kant som är din sägs i stället på bordet självt.**
+K9 ritar redan ett namnkort längs varje plats egen kant, vänt mot den som sitter där; det som saknades var att ett av dem är läsarens eget.
+Läsarens namnkort ringas därför i filtens eget bläck (`data-me` på `.byd-seat-name`, satt av renderarens `me`), som namnkortet med ditt namn på vid ett riktigt bord.
+Det gäller vid varje vridning och inte bara vid den uteblivna, eftersom en markering som bara finns ibland är en markering man inte lär sig läsa.
+
+Priset, uttryckligen accepterat: en spelare vid öst eller väst ser bordet från sidan i ett liggande fönster, och vet var hen sitter av sitt eget namnkort i stället för av att bordet vänts.
+Det är samma byte C8 gjorde åt observatören (#76), gjord åt en plats.
+
+**Den mätta tröskeln byggdes inte, och det är ett beslut.**
+Prototypen prövade en tredje väg — behåll platsens vridning där det vridna bordet ändå ger ett spelbart kort — och rättad för lutningen utlöstes den aldrig: det finns inget mätt fönster där en sidoplats kvartsvarv räcker till K9:s 45 px.
+Den degenererar därför överallt till den regel som nu står, och en regel som kan få ett större fönster att rita ett mindre kort är sämre än båda halvorna var för sig.
+
+**En regel om ett kort ställs till det ritade kortet och aldrig till skalan.**
+`skala × 63 mm` övervärderar med omkring 15 % vid filtens bortre kant, eftersom lutningen äter den; prototypens första svar behöll en vridning på ett "51 px"-kort som Chromium målade som 43.
+Varje mätning ovan, och varje grind i `online-felt.test.tsx`, läses därför av `getBoundingClientRect` på ett kort som ligger på filten.
+
+**13°-lutningen rördes inte.**
+Prissatt för sig kostar den omkring en pixel skala, och `feltScale` är redan lutningsmedveten och nära optimal; att spendera K9:s bord för att köpa pixlar köper inga.
+
 ### C6. Ångra: personlig ångra plus gruppens tillbakaspolning (fråga 18)
 
 Din egen senaste handling ångras direkt och tyst om ingen hunnit röra samma objekt.
@@ -1142,6 +1172,28 @@ Det förkastade alternativet, att wizarden lägger handzonen med det djup fläkt
 Det som står kvar är observatörens TV (C8): en läst fläkt vid en sidoplats sprids tvärs sin zon och ligger kvar som förut, för att skjuta ut den med hela sin bredd hade hängt den en tredjedels meter utanför kanten och krympt hela bordet; hur en sådan fläkt ska ligga är en egen fråga.
 Var ett släpp landar följer sedan 2026-09-14 fläkten som den ritas och inte zonens rektangel; se K2 (#65).
 
+Reviderat 2026-09-14 (#77): **luften kring träet är 12 px i bordsläge, och K9:s 45 px når inte ned till 1280 × 800.**
+
+`WOOD_AIR_PX` var 44 px och sades vara bordets andel av rummet det står i.
+Men `feltScale` projicerar *träets* hörn, träramens 30 px inräknade, så inget av bordets egna möbler ritas utanför de pixlar luften räknas från; det enda som bor där är handens räknarpill, och den bärs redan av ramen.
+Kvar står luften som det mörker bordet står på och ingenting annat — samma sak #76 upptäckte i TV-läge, där talet gick från 44 till 20 av samma skäl.
+Tolv pixlar är en strimma mörker som håller träet från fönsterkanten; under det är skuggan under träet det enda som finns kvar att förlora, och den är utsuddad förbi kanten ändå.
+
+Mätt på wizardens fyraplatsbord, på den målade rutan i Chromium, på `/online` med bandet och listen kvar som rader: kortets kortsida går **från 27 till 31 px vid 1280 × 800 och från 45 till 50 px vid 1920 × 1080**, och filten från 525 × 338 till 615 × 394 respektive från 909 × 581 till 998 × 635.
+Ingenting ges upp för det. Träramen är orörd: en smalare ram köper två pixlar till och rör ett godkänt utseende, och det bytet gjordes inte.
+
+**Det som inte gick att laga, mätt och uppskrivet.**
+`/online` vid 1280 × 800 når 31 px och inte K9:s 45, hur bordet än vänds.
+Räkningen är entydig och står här för att den inte ska behöva göras om: sidan är tre rader (#25) — platsens list 61 px, filtens rad, och handens band 218 px vid K17:s läsbara kortstorlek — och för att ett kort på filten ska nå 45 px vid 1280 × 800 måste filtens rad vara omkring 695 px, alltså får kromet väga omkring 105 px tillsammans.
+Bandet ensamt är 218.
+Även med luften och ramen satta till noll stannar filtens rad på ett kort omkring 41 px.
+Prototypens 48–52 px vid det fönstret köptes genom att lägga bandet **över** filten, där det täckte den närmaste platsens hand och ytan framför den — och det är precis det som inte får skeppas.
+
+Grinden i `online-felt.test.tsx` säger därför två olika saker vid de två fönstren: 45 px vid 1920 × 1080, som är K9:s tal, och 30 px vid 1280 × 800, som är ett golv som inte får ges tillbaka.
+Att K9:s 45 px och K17:s band inte kan hålla samtidigt vid 1280 × 800 är en öppen fråga och står i avsnitt I; #77 stänger den inte.
+
+Samtidigt mäts att ingenting ritas över någonting annat: varken handens band, platsens list eller sessionens knappar rör filten eller en zon på den, vid 1280 × 800 och vid 390 × 844, för en sidoplats och för en bottenplats.
+
 ### K10. Telefonvyns utseende: remsan (prototypat 2026-09-06)
 
 Tre prototyper: remsan, ett kort i taget i fullskärm, och minibord med brickor plus handen i rutnät.
@@ -1476,6 +1528,13 @@ Grindarna är invarianter och inte tal, mätta vid 3, 13 och 21 kort och vid 390
 
 Byggt 2026-09-08 (#24, #25). Prototypen `packages/web/src/prototype/band` togs bort när den hade svarat; dess resonemang står här.
 Tre frågor som prototypen väckte och som produktägaren inte svarade på är avgjorda av implementationen och står i avsnitt I.
+
+Reviderat 2026-09-14 (#77): **antagandet att ett helt bord ryms i 390 px är brutet, för varje plats och inte bara för sidoplatser.**
+K17 lade bandet på en telefon och räknade fram att 358 px rymmer åtta träffytor, men mätte aldrig vad som blir kvar åt filten ovanför det.
+Prototypen till #77 gjorde det: det bästa någon variant når på en telefon är **23 px** över kortets kortsida, vridet eller ej, mot K9:s 45.
+Ett helt fyraplatsbord får alltså inte plats på en telefon vid en spelbar kortstorlek, och ingen vridning och ingen omfördelning av kromet ändrar det.
+Vad man gör åt det — en kamera som TV:ns (C5), eller att uttryckligen säga att ett kort på telefon läses genom INSPEKTION (K8) och inte på filten — är ett eget beslut och står som öppen fråga i avsnitt I.
+Därför finns ingen grind i sviten som påstår 45 px vid 390: ett tal som inte går att hålla är inte en grind utan en lögn som går sönder nästa gång någon mäter.
 
 ### K18. Filten växer med sällskapet (2026-09-13, #54)
 
@@ -2374,6 +2433,18 @@ Om `/online` på en telefon ska vara samma hand som `/play`: valet av A framför
 Skälet är att `/online` är distansvyn med både bord och hand i samma fönster och därför i praktiken lever på en bred skärm, medan `/play` är telefonens egen vy och bara har handen att visa.
 Det är försvarbart men det är inte skrivet någonstans som ett beslut: K9 bör säga varför distansvyn har en egen hand, eller så bör de två slås ihop.
 Anser produktägaren att de ska vara oskiljbara är remsan svaret på båda, och då är K10 det som ska skrivas om och inte K9.
+
+Filtens storlek på små och låga fönster, kvar efter #77 (2026-09-14).
+Två frågor som mätningen öppnade och som #77 uttryckligen inte stänger; båda är produktbeslut och inte kodval.
+
+Hur ett kort ska läsas på en telefon: ett helt fyraplatsbord ritar kortets kortsida i som mest 23 px vid 390 × 844, mot K9:s 45, och det är sant för varje plats och varje vridning.
+Alternativen är en kamera som TV:ns (C5), som slutar rita hela bordet, eller att skriva in i K9 att filten på telefon är en översikt och att det enskilda kortet läses genom INSPEKTION (K8).
+Tills det är avgjort finns ingen grind som påstår 45 px vid 390, se K17.
+
+Om K9:s 45 px eller K17:s band ska ge vika vid 1280 × 800: de kan inte båda hålla där, och räkningen står under K9.
+Kromet får väga omkring 105 px om kortet ska nå 45, och bandet ensamt är 218 vid den läsbara kortstorlek K17 beslutade.
+De vägar som finns är att bandet blir en kolumn vid fönstrets sida i ett liggande fönster i stället för en rad under filten, att handen kallas fram i stället för att alltid ligga där (K17:s avrådda variant C), eller att K9 skriver ned att 45 px är en grind för 1920 och uppåt.
+Att låta bandet ligga över filten är prövat och avvisat: det täcker den närmaste platsens hand och ytan framför den.
 
 Spelupplevelse, kvar efter avsnitt K: inga; de två sista avgjordes 2026-09-07, se K1 och K2.
 

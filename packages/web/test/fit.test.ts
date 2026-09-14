@@ -49,8 +49,16 @@ describe('feltScale — the felt in table mode (K9, reviderat 2026-09-12)', () =
     const scale = feltScale(TABLE, frame)
     // It fits, with the air every felt leaves.
     expect({ what, air: air(TABLE, frame, scale) >= WOOD_AIR_PX - 0.5 }).toEqual({ what, air: true })
-    // And nothing is left over: two percent larger and a corner is outside that air.
-    expect({ what, room: air(TABLE, frame, scale * 1.02) >= WOOD_AIR_PX }).toEqual({ what, room: false })
+    // And nothing is left over: two percent larger and a corner is outside that air — unless life
+    // size is what bound it, which is the rule's other half and not slack in the fit. Since the
+    // air came down to 12 px (#77), 1920 x 1080 holds this table at 1:1 and is bound that way.
+    expect({ what, tight: scale >= 1 || air(TABLE, frame, scale * 1.02) < WOOD_AIR_PX }).toEqual({ what, tight: true })
+  })
+
+  // The guard above is two rules in one, so at least one frame has to be bound by the air rather
+  // than by life size, or it would pass by never testing the fit at all.
+  it('is bound by the air at the frames that cannot hold the table at life size', () => {
+    expect(FRAMES.filter((f) => feltScale(TABLE, f.frame) < 1).map((f) => f.what)).toEqual(['1280\u00d7800', 'a portrait tablet, 820\u00d71180', 'a thumbnail, 640\u00d7384'])
   })
 
   it('never draws the table larger than life, however much screen there is', () => {

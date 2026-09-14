@@ -13,7 +13,7 @@ import { contrastRatio, flatten } from '../src/player/contrast.js'
 import { TableClient } from '../src/client.js'
 import { ObserverPage } from '../src/observer/ObserverPage.js'
 import { admit, asSeat, createSession, startServer, type Running } from './fixture.js'
-import { atWidth } from './viewport.js'
+import { atWindow, feltIsFitted, withFrame, type Size } from './felt-frame.js'
 import { FELT_FONT, READ, defOf, expectClear, feltOf, namesOf, seatNameOf, sheet, type Reading } from './felt-labels.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
@@ -22,68 +22,17 @@ const shell = read('index.html')
 // a reading taken against the machine's fallback is a reading of the machine.
 const SHEETS = [FELT_FONT, 'src/table/table.css', 'src/table/texture.css', 'src/player/player.css', 'src/status/status.css', 'src/a11y.css', 'src/buttons.css']
 
-type Size = { w: number; h: number }
-
 const document_ = (html: string) =>
   shell
     .replace('<script type="module" src="/src/main.tsx"></script>', '')
     .replace('</head>', `<style>${SHEETS.map(sheet).join('\n')}</style></head>`)
     .replace('<div id="root"></div>', `<div id="root">${html}</div>`)
 
-// The window the page is mounted at. The felt's turn is read off the window's shape against the
-// table's (#76), so a mounting that only says how wide the window is decides it on jsdom's own
-// default height and not on the one Chromium is about to draw at.
-function atWindow(size: Size): void {
-  atWidth(size.w)
-  for (const [name, value] of [['innerWidth', size.w], ['innerHeight', size.h]] as const) Object.defineProperty(window, name, { value, configurable: true, writable: true })
-}
-
 // The table the issue is about: the wizard's own, with an area and a counter in front of every
 // seat, two shared piles and something dealt into every hand. Fourteen names on one felt is what
 // #76 measured lying on top of one another.
 const SEATS = 4
 const TABLE = feltOf(SEATS)
-
-// The box the stylesheet gives the renderer at this window. jsdom lays nothing out, so the
-// renderer's own measurement of its frame comes back zero and the felt collapses; the box is read
-// once in Chromium off a page whose felt has been told it has no room at all, so that what is
-// measured is the page's layout and never the felt's own size feeding back into it.
-async function withFrame<T>(box: Size | null, body: () => Promise<T>): Promise<T> {
-  const before = (side: 'Width' | 'Height') => Object.getOwnPropertyDescriptor(HTMLElement.prototype, `client${side}`) ?? ({ get: () => 0, configurable: true } as PropertyDescriptor)
-  const had = { Width: before('Width'), Height: before('Height') }
-  const hadObserver = (globalThis as { ResizeObserver?: unknown }).ResizeObserver
-  if (box) {
-    for (const [side, size] of [['Width', box.w] as const, ['Height', box.h] as const])
-      Object.defineProperty(HTMLElement.prototype, `client${side}`, {
-        configurable: true,
-        get(this: HTMLElement) {
-          return this.classList.contains('byd-table-frame') ? size : 0
-        },
-      })
-    // The renderer asks its frame how big it is and then watches it; jsdom has neither answer,
-    // and without the watcher it never asks.
-    class Stub {
-      observe() {
-        return undefined
-      }
-      disconnect() {
-        return undefined
-      }
-    }
-    ;(globalThis as { ResizeObserver?: unknown }).ResizeObserver = Stub
-  }
-  try {
-    // Held for the whole wait, not only for the first render: the felt does not exist until the
-    // table has arrived over the socket, so a stub taken down when `render` returns is a stub the
-    // renderer never sees.
-    return await body()
-  } finally {
-    Object.defineProperty(HTMLElement.prototype, 'clientWidth', had.Width)
-    Object.defineProperty(HTMLElement.prototype, 'clientHeight', had.Height)
-    if (hadObserver) (globalThis as { ResizeObserver?: unknown }).ResizeObserver = hadObserver
-    else delete (globalThis as { ResizeObserver?: unknown }).ResizeObserver
-  }
-}
 
 // The observer's page as it mounts against a real session, with every seat holding cards.
 async function markup(size: Size, box: Size | null = null): Promise<string> {
@@ -97,7 +46,7 @@ async function markup(size: Size, box: Size | null = null): Promise<string> {
     const { unmount } = render(<ObserverPage />)
     try {
       await screen.findByText(/Du är observatör/)
-      await waitFor(() => expect(document.querySelector('[data-table]')).toBeTruthy())
+      await waitFor(() => expect(feltIsFitted()).toBe(true))
       return document.querySelector('#root, body')!.innerHTML
     } finally {
       unmount()

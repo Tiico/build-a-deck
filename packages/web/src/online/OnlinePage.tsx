@@ -15,8 +15,9 @@ import { claimUrl } from '../account/api.js'
 import { SeatLine } from './SeatLine.js'
 import { HandFan } from './HandFan.js'
 import { HandSpread } from './HandSpread.js'
-import { playedAt, seatRotation, withoutHand } from './seat.js'
+import { playedAt, seatTurn, withoutHand } from './seat.js'
 import { useFeltKeyboard } from '../table/useFeltKeyboard.js'
+import { useRoom } from '../table/useRoom.js'
 import { useActivityLive } from '../table/useActivityLive.js'
 import { DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
 import { useLiveStatus } from '../status/useLiveStatus.js'
@@ -50,6 +51,8 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const live = useLiveStatus(conn, 'table', timing)
   const links = statusLinks({ server: params.get('server'), code: params.get('code') })
   usePageTitle({ state: sessionId && seat ? (refused ? 'forbidden' : live.state) : 'missing', room: params.get('code') ?? sessionId })
+  // The window this seat is playing in: it is half of which way round the felt is drawn (#77).
+  const room = useRoom()
   const presence = usePresence(client, view)
   const recent = useRecent(activity)
   const table = useRef<TableHandle>(null)
@@ -116,7 +119,8 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             ref={table}
             view={shown}
             mode="table"
-            rotate={seatRotation(view, seat)}
+            rotate={seatTurn(view, seat, room)}
+            me={seat}
             faces={http}
             onAct={playable ? onAct : undefined}
             keyboard={kbd.keyboard}

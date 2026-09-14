@@ -4,6 +4,7 @@ import '../table/table.css'
 import '../player/player.css'
 import { TableRenderer } from '../table/TableRenderer.js'
 import { turnToFit } from '../table/fit.js'
+import { useRoom } from '../table/useRoom.js'
 import { TvChrome } from '../table/TvChrome.js'
 import { useTableClient } from '../table/useTableClient.js'
 import { refusedText } from '../player/SessionOverlays.js'
@@ -48,15 +49,8 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
   const flagged = useRefusal('table')
   const [inspecting, setInspecting] = useState<VisibleComponentState | null>(null)
   const [toast, setToast] = useState<string | null>(null)
-  // The window she is holding, watched rather than read once: a phone turned over is a new shape
-  // and the felt is fitted to it again (K9, #75), the same way the renderer refits to its frame.
-  const [room, setRoom] = useState<{ w: number; h: number }>(() => (typeof window === 'undefined' ? { w: 0, h: 0 } : { w: window.innerWidth, h: window.innerHeight }))
-  useEffect(() => {
-    const update = () => setRoom({ w: window.innerWidth, h: window.innerHeight })
-    update()
-    window.addEventListener('resize', update)
-    return () => window.removeEventListener('resize', update)
-  }, [])
+  // The window she is holding, watched rather than read once (K9, #75): `useRoom`.
+  const room = useRoom()
   const [version, setVersion] = useState<string | null>(null)
   useEffect(() => {
     if (!toast) return
