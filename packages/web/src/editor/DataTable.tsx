@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type DragEvent } from 'react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import type { ProjectDoc, ProjectRow } from './types.js'
 import { deckKeepsFields, fieldsOf, fieldLabel, takenNames } from './fields.js'
 import { ANTAL, drawnBy } from '@byd/server/doc'
@@ -12,6 +12,7 @@ import type { Cell } from './ProjectClient.js'
 import { exportCardsCsv, importCardsCsv } from './csv.js'
 import { keepOrder, nextSort, sortRows, type SortState } from './sorting.js'
 import { deckValues, fitColumns, markValues, widthKind, GROUP_COL } from './columns.js'
+import { heldWidths, rememberWidths } from './widths.js'
 import { countLabel, discreteColumns, filterRows, isFiltering, noFilter, toggleValue, type FilterState } from './filtering.js'
 import { duplicateRows, keepRows, markRows, noSelection, removeRows, selectionLabel, setColumn, toggleRow, type Selection } from './selection.js'
 import { groupColumn, groupOfRow, ruleLabel } from './groups.js'
@@ -21,6 +22,12 @@ import { useSay } from '../status/StatusLive.js'
 
 export type DataTableProps = {
   doc: ProjectDoc
+  // The game this table is of, when it was opened from one. It is what a width the designer set
+  // herself is remembered under (#46): a width is a view and not the project (L4), so it lives in
+  // her browser — but it is a view of *these* columns, and a column called `body` in one game says
+  // nothing about a column called `body` in the next. A table with no project behind it still
+  // pulls; it simply has nothing to file the answer under.
+  project?: string | undefined
   selectedRow: string | null
   onSelectRow(cardRef: string): void
   // `gesture` is the visit to the cell this value was written during (#35). The table writes one
@@ -77,6 +84,11 @@ export function fileSafe(name: string) {
 // Only one cell is ever being typed into, so the library at the brace is one list with one name.
 const CELL_SYMBOLS = 'byd-cell-symbols'
 
+// What a keystroke pulls a column by (#46). A drag is as fine as the hand that makes it; the keys
+// are steps, and the step is a character or two of the font a cell is drawn in — small enough to
+// land on a width, large enough that a column can be crossed without holding the key down.
+const PULL_STEP = 16
+
 // The column that removes a card is pinned to the right edge of the scrolling box (#17), and what
 // scrolls under it is covered. No stylesheet can help: the content and the pin share one clipping
 // rectangle, and the only way out — a pin outside the scroller — costs the sticky heading, which
@@ -105,7 +117,7 @@ export function markCut(box: Element): void {
 
 // The table (B as a tab): one row per card, the template's fields as columns, `antal` last (L4).
 // This is where the designer already lives; a change here reaches every copy of the card.
-export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, onAddField, onRemoveField, onMoveField, assetBase, onUpload, onSymbol, compareWith, onStopCompare }: DataTableProps) {
+export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, onAddField, onRemoveField, onMoveField, assetBase, onUpload, onSymbol, compareWith, onStopCompare }: DataTableProps) {
   const t = useT()
   // The one channel everything on a screen speaks in (#7): a column that moved under the focus
   // says so here rather than in a live region this table made for itself.
@@ -215,6 +227,10 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
   // drawn, and where it would land is drawn on every frame of the drag and never read back.
   const carried = useRef<string | null>(null)
   const [overColumn, setOverColumn] = useState<string | null>(null)
+  // The widths the designer set herself (#46), and which column is being pulled right now — a
+  // column being pulled may not also be picked up and carried off by the same grip.
+  const [widths, setWidths] = useState<Record<string, number>>(() => heldWidths(project))
+  const [pulling, setPulling] = useState<string | null>(null)
   const removeRef = useRef<HTMLButtonElement>(null)
   const allRef = useRef<HTMLInputElement>(null)
   // The × of every row on screen, so the question a row asks can hand the focus back to it.
@@ -289,7 +305,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
     // away. Everything else the table keeps in its own state leaves the deck as it was — except
     // the caret arriving in a cell or leaving one, which is what decides whether the widths are
     // being held; leaving one is therefore also when they settle on what was written.
-  }, [deck, editing])
+  }, [deck, editing, widths])
   useEffect(() => {
     if (!refocus) return
     if (typeof refocus === 'object') {
@@ -328,6 +344,70 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
     const at = before === null ? rest.length : rest.indexOf(before)
     say?.('polite', t('table.column.moved', { field, at: at + 1, of: mine.length }))
   }
+  // What the editor declares a target to be, asked of the page rather than written down here —
+  // and it is the floor a column can be pulled to. Narrower than a fingertip is not a width
+  // anybody chose; it is a column thrown away by a hand that slipped, and there is no way back to
+  // it once its own edge is too small to catch.
+  const tap = (): number => {
+    const box = scrollRef.current
+    const said = box ? parseFloat(getComputedStyle(box).getPropertyValue('--byd-tap')) : NaN
+    return Number.isFinite(said) && said > 0 ? said : 44
+  }
+  // A width set, or given back to the measurement. Held in this table and remembered in the
+  // browser, never written into the document: how wide one designer wants to read a column on
+  // her screen is not a fact about the game (L4).
+  const setWidth = (field: string, px: number | null) => {
+    const { [field]: gone, ...rest } = widths
+    void gone
+    const next = px === null ? rest : { ...widths, [field]: Math.max(tap(), Math.round(px)) }
+    setWidths(next)
+    rememberWidths(project, next)
+    const said = next[field]
+    say?.('polite', said === undefined ? t('table.column.width.said.auto', { field }) : t('table.column.width.said', { field, px: said }))
+  }
+  // What a heading needs to be the edge its column is pulled by. The two the table owns have
+  // none: a card's id is a machine key and `antal` is the engine's own count, and neither is
+  // prose anybody reads at a width of her choosing (L4).
+  const pullOf = (field: string): Pull | undefined =>
+    mine.includes(field)
+      ? {
+          onGrab: (event) => {
+            // The edge is inside a heading that can be picked up and carried off (#46), and a
+            // pointer that went down on the edge came down on the heading too. The grab is
+            // therefore taken here and nowhere else, and the heading stops being draggable for
+            // as long as the hand is on its edge.
+            event.preventDefault()
+            event.stopPropagation()
+            const th = (event.target as HTMLElement).closest('th')
+            const col = Array.from(scrollRef.current?.querySelectorAll('colgroup > col') ?? []).find((c) => c.getAttribute('data-col') === field)
+            if (!th) return
+            const from = event.clientX
+            const was = Math.round(th.getBoundingClientRect().width)
+            setPulling(field)
+            // Written straight onto the column while the hand is moving, so the edge follows it
+            // without the whole deck being measured again on every frame; the answer becomes a
+            // width the table holds when the hand lets go.
+            const moved = (e: PointerEvent) => {
+              if (col instanceof HTMLElement) col.style.width = `${Math.max(tap(), was + (e.clientX - from))}px`
+            }
+            const let_go = (e: PointerEvent) => {
+              removeEventListener('pointermove', moved)
+              removeEventListener('pointerup', let_go)
+              setPulling(null)
+              setWidth(field, was + (e.clientX - from))
+            }
+            addEventListener('pointermove', moved)
+            addEventListener('pointerup', let_go)
+          },
+          // Asked twice, the edge gives the column back to the measurement.
+          onAuto: () => setWidth(field, null),
+          onStep: (dir) => {
+            const th = Array.from(scrollRef.current?.querySelectorAll('thead th') ?? []).find((cell) => cell.getAttribute('data-col') === field)
+            const was = widths[field] ?? Math.round(th?.getBoundingClientRect().width ?? 0)
+            setWidth(field, was + dir * PULL_STEP)
+          },
+        }
+      : undefined
   // What a heading needs to be a handle. A heading with none of it is a heading that cannot be
   // carried and is not a place to put one down either.
   const carryOf = (field: string): Carry | undefined =>
@@ -629,8 +709,11 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
         <colgroup>
           <col data-kind="tap" />
           <col data-col="id" data-kind="key" />
+          {/* And what the designer set it to, when she has set it (#46). It travels on the column
+              beside what the column is worth sizing like, so the measurement is told the whole of
+              it by the table and needs to know nothing about what any column is called. */}
           {fields.map((f) => (
-            <col key={f} data-col={f} data-kind={widthKind(doc, f)} />
+            <col key={f} data-col={f} data-kind={widthKind(doc, f)} {...(widths[f] === undefined ? {} : { 'data-width': widths[f] })} />
           ))}
           {/* Which group a card falls into is the canvas's answer read back (#13), not prose the
               designer writes, so it takes the room its longest label needs and no share of the
@@ -658,7 +741,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
             </th>
             <SortableHeader field="id" label="id" sort={sort} onSort={setSort} />
             {fields.map((f) => (
-              <SortableHeader key={f} field={f} label={fieldLabel(f, t)} sort={sort} onSort={setSort} carry={carryOf(f)} />
+              <SortableHeader key={f} field={f} label={fieldLabel(f, t)} sort={sort} onSort={setSort} carry={pulling === null ? carryOf(f) : undefined} pull={pullOf(f)} />
             ))}
             {grouping && <th data-col={GROUP_COL}>{t('table.group')}</th>}
             {/* The button that makes a column stands at the end of the head, where the column it
@@ -686,6 +769,8 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                     else dropRefs.current.delete(field)
                   }}
                   asking={dropping !== null}
+                  widths={widths}
+                  onWidth={setWidth}
                   taken={takenNames(doc)}
                   keeps={deckKeepsFields(doc)}
                   // Yes and no leave by the same door, so they hand the focus back to the same
@@ -903,7 +988,15 @@ type Carry = {
   onStep(dir: -1 | 1): void
 }
 
-function SortableHeader({ field, label, sort, onSort, carry }: { field: string; label: string; sort: SortState | null; onSort(next: SortState | null): void; carry?: Carry | undefined }) {
+// And what it needs to be the edge the column is pulled by (#46). The same columns have both: a
+// heading is either the designer's to move and size or the tool's own, and never half of each.
+type Pull = {
+  onGrab(event: ReactPointerEvent<HTMLElement>): void
+  onAuto(): void
+  onStep(dir: -1 | 1): void
+}
+
+function SortableHeader({ field, label, sort, onSort, carry, pull }: { field: string; label: string; sort: SortState | null; onSort(next: SortState | null): void; carry?: Carry | undefined; pull?: Pull | undefined }) {
   const active = sort?.field === field ? sort.dir : null
   return (
     <th
@@ -925,13 +1018,23 @@ function SortableHeader({ field, label, sort, onSort, carry }: { field: string; 
         // template's layer list moves a layer with (#18), for the same reason: an order that can
         // only be dragged is an order a keyboard has lost.
         onKeyDown={(event) => {
-          if (!carry || !event.altKey || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return
+          if (!event.altKey || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return
+          const dir = event.key === 'ArrowLeft' ? -1 : 1
+          // Alt alone moves the column; Alt and Shift pull its edge. Two things a heading can do
+          // to the column it names, on the same hand and the same two keys.
+          const answer = event.shiftKey ? pull?.onStep : carry?.onStep
+          if (!answer) return
           event.preventDefault()
-          carry.onStep(event.key === 'ArrowLeft' ? -1 : 1)
+          answer(dir)
         }}
       >
         {label} <span aria-hidden="true">{active === 'ascending' ? '↑' : active === 'descending' ? '↓' : '↕'}</span>
       </button>
+      {/* The edge the column is pulled by, and nothing a reader without a pointer has to step
+          over: the keys do the same thing from the heading itself, and what a column was set to
+          is read and given back in the head's own door. So it is out of the tab order and out of
+          the tree a screen reader walks, which is what an affordance for a hand is. */}
+      {pull && <span className="byd-data-pull" aria-hidden="true" onPointerDown={pull.onGrab} onDoubleClick={pull.onAuto} />}
     </th>
   )
 }

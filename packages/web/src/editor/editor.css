@@ -999,6 +999,19 @@
    would be clipped by the rule that keeps a heading inside its column. */
 .byd-data th[draggable='true'] { cursor: grab; }
 .byd-data th[data-over] { box-shadow: inset 2px 0 0 var(--byd-editor-primary-mark); }
+/* The edge a column is pulled by (#46). It lies inside its own heading and not over the boundary:
+   a heading clips its own overflow to stay inside its column, so half a handle laid across the
+   line is a handle whose outer half belongs to the next heading — and a pull in the width would
+   become a drag in the order. The line shows itself when the column is pointed at, because a
+   heading full of edges nobody is reaching for is a heading that has stopped being a word.
+   `position: sticky` already makes the heading a containing block; nothing here sets `position`
+   on the cell, which would unstick the head. */
+.byd-data-pull { position: absolute; top: 0; bottom: 0; right: 0; z-index: 3; width: 10px; cursor: col-resize; }
+.byd-data-pull::after { content: ''; position: absolute; top: 25%; bottom: 25%; right: 4px; width: 1px; background: #4a5163; opacity: 0; }
+.byd-data th:hover .byd-data-pull::after, .byd-data th:focus-within .byd-data-pull::after { opacity: 1; }
+/* And what a column was pulled to, read back in the head's own door: the button gives it back. */
+.byd-columns-width { flex: 0 0 auto; padding: 2px 6px; border: 1px solid #3b414e; border-radius: 6px; background: transparent; color: var(--byd-editor-quiet); font: inherit; font-size: 10px; font-variant-numeric: tabular-nums; cursor: pointer; }
+.byd-columns-width:hover, .byd-columns-width:focus-visible { color: #dce3f2; border-color: #4a5163; }
 /* The button that makes a column now stands in the head of the column that removes a card (#46):
    the head's last cell either way, but no longer a column of its own with an empty cell under it
    on every row. A tap-wide cell holds a `+` and nothing more, so that is what it holds; the word

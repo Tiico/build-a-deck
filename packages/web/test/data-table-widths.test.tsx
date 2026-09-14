@@ -147,10 +147,10 @@ type Measured = {
 
 // The table laid out in a real engine at `width`, with the editor's own measurement run on the
 // page. `fit: false` leaves it unmeasured, which is what every control case below needs.
-async function measure(doc: ProjectDoc, { width = 1280, fit = true, extra = '', view = 'plain' as View, deck = doc } = {}): Promise<Measured> {
+async function measure(doc: ProjectDoc, { width = 1280, fit = true, extra = '', view = 'plain' as View, deck = doc, html = '' } = {}): Promise<Measured> {
   const page = await browser.newPage({ viewport: { width, height: 800 } })
   try {
-    await page.setContent(shellOf(markupOf(doc, view), extra), { waitUntil: 'load' })
+    await page.setContent(shellOf(html || markupOf(doc, view), extra), { waitUntil: 'load' })
     return (await page.evaluate(
       ({ deck, fit, decide }) => {
         const box = document.querySelector('.byd-data-scroll') as HTMLElement
@@ -455,6 +455,68 @@ describe("a heading is the column's name and the way it sorts (#46 on #32)", () 
     // longer paying the nineteen pixels the padlock beside it took.
     expect(width.id!).toBeLessThanOrEqual(80)
     expect(width.antal!).toBeLessThanOrEqual(80)
+  }, 60_000)
+})
+
+// A width the designer set herself (#46).
+//
+// The measurement is the right answer about the deck and it is not an answer about the person
+// reading it: one designer is working on the rules text and wants `body` wide whatever `art`
+// asked for. So a column can be pulled to a width of its own, and the whole of what that means is
+// measured here — the column takes exactly what it was given, it is not in the sharing out at
+// all, and everything else goes on sharing what is left as if that column were not there.
+//
+// The pull itself is a pointer on a heading's edge, made in the document before the markup is
+// taken: what the table declares on the column is what the measurement reads, so the two halves
+// of the feature meet here on the real page rather than in a number this file made up.
+function pulledMarkup(doc: ProjectDoc, field: string, by: number): string {
+  const { container, unmount } = render(<Table doc={doc} />)
+  const grip = container.querySelector(`thead th[data-col="${field}"] .byd-data-pull`) as HTMLElement
+  fireEvent.pointerDown(grip, { pointerId: 1, button: 0, clientX: 0 })
+  fireEvent.pointerMove(grip, { pointerId: 1, clientX: by })
+  fireEvent.pointerUp(grip, { pointerId: 1, clientX: by })
+  const html = container.innerHTML
+  unmount()
+  return html
+}
+
+describe('a column the designer pulled to a width of her own (#46)', () => {
+  it('is drawn at exactly that width, and the rest share what is left as if it were not there', async () => {
+    const [measured, pulled] = await Promise.all([measure(deckDoc()), measure(deckDoc(), { html: pulledMarkup(deckDoc(), 'body', 320) })])
+
+    // The deck really does ask for something else, so this is not a guard over a width that was
+    // going to come out at 320 anyway.
+    expect(measured.width.body).not.toBe(320)
+    // And what she asked for is what she got, to the pixel.
+    expect(pulled.width.body).toBe(320)
+
+    // The columns that share the rest have shared the rest: `art` and `title` are the two other
+    // sentences, and both are wider than they were, because 320 is less than `body` was taking.
+    expect(pulled.width.art!).toBeGreaterThan(measured.width.art!)
+    expect(pulled.width.title!).toBeGreaterThan(measured.width.title!)
+    // A number is a number wide whatever else happens, pulled column or no pulled column.
+    expect(pulled.width.cost).toBe(measured.width.cost)
+    expect(pulled.width.antal).toBe(measured.width.antal)
+
+    // The row still ends where the last field ends, and the page still does not run sideways.
+    expect(Object.values(pulled.width).reduce((a, b) => a + b, 0)).toBe(pulled.table)
+    expect(pulled.table).toBe(pulled.scroll)
+    expect(pulled.page).toBe(0)
+  }, 60_000)
+
+  it('keeps its width when there is less room, where a measured column would give some back', async () => {
+    const [wide, narrow] = await Promise.all([
+      measure(deckDoc(), { html: pulledMarkup(deckDoc(), 'body', 320) }),
+      measure(deckDoc(), { width: 1024, html: pulledMarkup(deckDoc(), 'body', 320) }),
+    ])
+
+    // A narrower window takes its 256 px out of the sentences that are still measuring themselves
+    // — and not out of the one that was told what it is. That is the whole difference between a
+    // width the deck asked for and a width the designer set.
+    expect(narrow.width.body).toBe(320)
+    expect(narrow.width.art!).toBeLessThan(wide.width.art!)
+    expect(narrow.width.title!).toBeLessThan(wide.width.title!)
+    expect(narrow.table).toBe(narrow.scroll)
   }, 60_000)
 })
 

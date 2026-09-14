@@ -171,6 +171,10 @@ export const svEditor = {
   // är namnet den hörs med, och samma ord namnger formuläret den öppnar.
   'table.columns': 'Kolumner',
   'table.column.moved': '{field} är kolumn {at} av {of}',
+  'table.column.width.said': '{field} är {px} px bred',
+  'table.column.width.said.auto': '{field} följer innehållet igen',
+  'table.column.width.auto': 'Låt {field} följa innehållet igen',
+  'table.column.width.px': '{px} px',
   'table.field.new': 'Nytt fält',
   'table.field.name': 'Namn',
   'table.field.kind': 'Typ',

@@ -149,6 +149,10 @@ export const enEditor = {
 
   'table.columns': 'Columns',
   'table.column.moved': '{field} is column {at} of {of}',
+  'table.column.width.said': '{field} is {px} px wide',
+  'table.column.width.said.auto': '{field} follows its content again',
+  'table.column.width.auto': 'Let {field} follow its content again',
+  'table.column.width.px': '{px} px',
   'table.field.new': 'New field',
   'table.field.name': 'Name',
   'table.field.kind': 'Kind',

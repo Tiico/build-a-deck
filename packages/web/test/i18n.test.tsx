@@ -159,11 +159,41 @@ describe('the tool in the reader\'s own language (A4)', () => {
   })
 
   it('carries on where a browser refuses to remember anything', () => {
-    // This environment has no local storage at all, which is what a locked-down browser looks
-    // like: choosing a language must still work, and detection must still answer.
-    expect(() => rememberLang('en')).not.toThrow()
-    expect(chosenLang()).toBeNull()
-    expect(detectLang()).toBe('en')
+    // A locked-down browser is not a browser without a store: it is one whose store is there and
+    // throws on every call, which is what a private window does. So the refusal is made here
+    // rather than taken from whatever the runner happens to leave lying about — this test used to
+    // pass because the test runtime had no working storage at all, and would have gone quiet the
+    // day it grew one.
+    const real = Object.getOwnPropertyDescriptor(globalThis, 'localStorage')
+    const refusing = {
+      get length(): number {
+        throw new Error('denied')
+      },
+      clear: () => {
+        throw new Error('denied')
+      },
+      getItem: () => {
+        throw new Error('denied')
+      },
+      key: () => {
+        throw new Error('denied')
+      },
+      removeItem: () => {
+        throw new Error('denied')
+      },
+      setItem: () => {
+        throw new Error('denied')
+      },
+    } satisfies Storage
+    Object.defineProperty(globalThis, 'localStorage', { value: refusing, configurable: true, writable: true })
+    try {
+      // Choosing a language must still work, and detection must still answer.
+      expect(() => rememberLang('en')).not.toThrow()
+      expect(chosenLang()).toBeNull()
+      expect(detectLang()).toBe('en')
+    } finally {
+      if (real) Object.defineProperty(globalThis, 'localStorage', real)
+    }
   })
 
   it('says which language it is asking in, so what the server writes back comes in that language', async () => {

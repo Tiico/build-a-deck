@@ -310,6 +310,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     table: () => (
       <DataTable
         doc={doc}
+        project={projectId ?? undefined}
         assetBase={http}
         onUpload={(file) => client.uploadAsset(file, t)}
         onSymbol={(symbol) => client.useSymbol(symbol, undefined, t)}

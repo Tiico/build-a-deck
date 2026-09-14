@@ -17,6 +17,12 @@ export type ColumnDoorProps = {
   // the form for making a column is not what the designer is being asked about, and two
   // “Avbryt” in one place is two answers to one question.
   asking: boolean
+  // The widths the designer set herself (#46), by column, and the way to give one back. The door
+  // is the only place that fact can be read at all — a column drawn narrow looks the same whether
+  // the deck asked for it or a hand did — and the only way back to the measurement without a
+  // pointer, since the edge that gives it back is an edge.
+  widths: Record<string, number>
+  onWidth(field: string, px: number | null): void
   // What the form under the list needs, unchanged from when it stood here alone (#32).
   taken: readonly string[]
   keeps: boolean
@@ -38,7 +44,7 @@ export type ColumnDoorProps = {
 // had: the name, whether the column is the designer's, and the reason when it is not, in words
 // rather than as a padlock nobody asked about. What the heading keeps is its name and the way it
 // sorts, which is all a heading that can also be dragged and pulled has room to be.
-export function ColumnDoor({ columns, canRemove, onRemove, removeRef, asking, taken, keeps, onCreate, onCancel }: ColumnDoorProps) {
+export function ColumnDoor({ columns, canRemove, onRemove, removeRef, asking, widths, onWidth, taken, keeps, onCreate, onCancel }: ColumnDoorProps) {
   const t = useT()
   return (
     <div className="byd-columns" role="group" aria-label={t('table.columns')} onKeyDown={(event) => event.key === 'Escape' && onCancel()}>
@@ -46,6 +52,11 @@ export function ColumnDoor({ columns, canRemove, onRemove, removeRef, asking, ta
         {columns.map((field) => (
           <li key={field} data-col={field}>
             <span className="byd-columns-name">{fieldLabel(field, t)}</span>
+            {widths[field] !== undefined && (
+              <button type="button" className="byd-columns-width" aria-label={t('table.column.width.auto', { field })} onClick={() => onWidth(field, null)}>
+                {t('table.column.width.px', { px: widths[field] })}
+              </button>
+            )}
             {canRemove(field) ? (
               <button
                 type="button"
