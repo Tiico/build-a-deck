@@ -87,8 +87,11 @@ describe.skipIf(!url)('PostgresProjectStore', () => {
     // Nine cards, the last one untitled: the list picks four of them and the untitled one
     // answers to its id, exactly as the memory store's listing does.
     const rows = Array.from({ length: 9 }, (_, i) => ({ id: `r${i}`, fields: i === 8 ? {} : { title: `Kort ${i}` } }))
-    await projects.create(id, { name: 'Stora leken', template, rows, icons: {}, setup: { zones, seats, floor, deckZone: 'draw' } }, 'ada')
-    const listed = (await projects.list('ada')).find((p) => p.id === id)
+    // Accounts are numbered here (the API speaks of them as text), so the owner is a real
+    // account's id and not a name: `list` joins it against a bigint column.
+    const ada = await store.auth().ensureAccount(`ada-${Date.now()}@example.com`)
+    await projects.create(id, { name: 'Stora leken', template, rows, icons: {}, setup: { zones, seats, floor, deckZone: 'draw' } }, ada.id)
+    const listed = (await projects.list(ada.id)).find((p) => p.id === id)
     expect(listed?.cards).toEqual([
       { id: 'r0', title: 'Kort 0' },
       { id: 'r3', title: 'Kort 3' },
