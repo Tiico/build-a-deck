@@ -473,7 +473,17 @@ describe('the table screen', () => {
 // is that the felt in TV mode is `#151924`, a dark like any other dark, on which the language's
 // shared `#6f7a90` line measures 4.06:1 and passes; on the green it is 1.60:1 and invisible. A
 // gate measured only on the television therefore waves a wrong binding through.
-const GATE = { text: 4.5, line: 3, bar: 3 } as const
+//
+// `unavailable` is the one gate that is not L13's. A disc that cannot be pressed is exempt from
+// the contrast minimum in WCAG 1.4.3, and that exemption is the licence `opacity: 0.35` was
+// taking. The felt does not take it. A ring is read at three metres (K9) and it is read *as a
+// list*: a player who cannot make out the verb that is greyed cannot tell which verb is the one
+// they are not being offered, and a ring with an unreadable hole in it is worse than one with a
+// weak word in it. So an unavailable disc keeps a gate — 3:1, the number the language already
+// uses for everything that must be *seen* rather than read word by word, rather than the 4.5:1 it
+// would carry if it were available. The distance from 3:1 to the 14:1 the same word reads at when
+// it can be pressed is what says it cannot be.
+const GATE = { text: 4.5, line: 3, bar: 3, unavailable: 3 } as const
 
 // A colour over a ground, as the eye gets it. A ground is three shades and not one — a gradient
 // is not a colour — so what is reported is the weakest of the three: the felt's chalk passes at
@@ -525,14 +535,18 @@ const OVER_IT_ALL = '.byd-radial, .byd-set-value, .byd-inspect, [data-probe]'
 // dark beyond it — and a card's own ring opens, by definition, on a card. No single flat colour
 // holds 3:1 against both the last two: a line pale enough to be seen on a near-black surround
 // disappears on a pale card face, and the other way round.
-const groundsOf = (mode: 'table' | 'tv'): readonly Spot[] => [
+// `face` names which card face is the pale ground. It is the first face-up card by default, and
+// the *other* one where a ring has been opened on a card: the pad at the ring's centre is 92 px
+// across and a card on a table screen is narrower than that, so a ring opened on a card covers
+// the whole of it, and the ground has to be a face nothing is lying on.
+const groundsOf = (mode: 'table' | 'tv', face = ".byd-card:not([data-face='back'])"): readonly Spot[] => [
   { what: 'filten', inside: '[data-table]', avoid: ON_THE_FELT },
   // The rim is the felt's parent minus the felt. On a television there is no rim: the felt is a
   // flat panel and `.byd-table-wood` loses its padding, so the strip would be empty and the
   // sampler would rightly refuse to call nothing a ground.
   ...(mode === 'table' ? [{ what: 'träramen', inside: '.byd-table-wood', outside: '[data-table]', inset: 0, avoid: ON_THE_FELT }] : []),
   { what: 'det mörka omlandet', inside: '.byd-table-frame', outside: '.byd-table-wood', inset: 0, avoid: ON_THE_FELT },
-  { what: 'ett kortansikte', inside: ".byd-card:not([data-face='back'])", avoid: OVER_IT_ALL },
+  { what: 'ett kortansikte', inside: face, avoid: OVER_IT_ALL },
 ]
 
 // The ring's discs. They keep their plate — the prototype drew them as the language's outlined
@@ -548,6 +562,71 @@ const theRingsDiscs = (mode: 'table' | 'tv') => async (page: Page): Promise<stri
     reading(`skivans text på sin egen platta över ${what}`, worstOnPlate(disc.ink, disc.plate, ground), GATE.text),
     reading(`skivans kant mot ${what}`, bestLine(disc.lines, ground), GATE.line),
   ])
+}
+
+// A card's ring, put where a card's ring is. The ring opens where the finger let go, and the
+// finger let go in jsdom, which has no layout — so the coordinates the mounted HTML carries mean
+// nothing in the browser these pixels are read in. The ring is moved onto the card it belongs to
+// (its `data-radial` is the card's own id), and the card is marked so the *other* face-up card is
+// what the pale ground is read from.
+//
+// It also lays out the patch the centre pad covers of that card, as a box for the sampler to read
+// the painted pixels out of: the pad is 92 px across and centred on the ring, so what is measured
+// is the intersection of that circle's box with the card — minus the card's own name, which is
+// written in the very ink this is about to measure, and a letter is not a ground.
+const openTheRingOnACard = (page: Page) =>
+  page.evaluate(() => {
+    const ring = document.querySelector<HTMLElement>('.byd-radial')
+    const id = ring?.getAttribute('data-radial')
+    const card = id ? document.querySelector<HTMLElement>(`.byd-card[data-component="${id}"]`) : null
+    if (!ring || !card) throw new Error('no ring on a card in this view, so nothing here measures one')
+    card.setAttribute('data-ringed', '')
+    const box = card.getBoundingClientRect()
+    const [cx, cy] = [box.left + box.width / 2, box.top + box.height / 2]
+    const was = ring.getBoundingClientRect()
+    ring.style.transform = `translate(${cx - was.left}px, ${cy - was.top}px)`
+    const PAD = 92
+    const name = card.querySelector('span')?.getBoundingClientRect()
+    const patch = {
+      left: Math.max(cx - PAD / 2, box.left + 2),
+      right: Math.min(cx + PAD / 2, box.right - 2),
+      top: Math.max(cy - PAD / 2, box.top + 2, name ? name.bottom + 2 : 0),
+      bottom: Math.min(cy + PAD / 2, box.bottom - 2),
+    }
+    const [w, h] = [patch.right - patch.left, patch.bottom - patch.top]
+    if (w < 16 || h < 16) throw new Error(`the ring's centre covers ${Math.round(w)}×${Math.round(h)} px of the card; that is not a patch`)
+    const probe = document.body.appendChild(document.createElement('i'))
+    probe.setAttribute('data-pad', '')
+    Object.assign(probe.style, { position: 'fixed', background: 'transparent', pointerEvents: 'none', left: `${patch.left}px`, top: `${patch.top}px`, width: `${w}px`, height: `${h}px` })
+    // The probe paints nothing — it is a rectangle to read pixels out of — but it is only that
+    // rectangle if it landed where it was put, and a transformed ancestor is enough to move a
+    // fixed box somewhere else entirely.
+    const got = probe.getBoundingClientRect()
+    if (Math.abs(got.left - patch.left) > 1 || Math.abs(got.top - patch.top) > 1) throw new Error(`the patch was put at ${Math.round(patch.left)},${Math.round(patch.top)} and landed at ${Math.round(got.left)},${Math.round(got.top)}`)
+    return { bredd: Math.round(w), höjd: Math.round(h) }
+  })
+
+// The two things only a card's ring has: a verb that is not available — `Avslöja`, on a card that
+// is already face up — and a centre with no hub under it, lying on the card the ring is about.
+const theCardsRing = (mode: 'table' | 'tv') => async (page: Page): Promise<string[]> => {
+  const patch = await openTheRingOnACard(page)
+  const CENTRE = 'kortet under ringens mitt'
+  const grounds = await painted(page, [
+    ...groundsOf(mode, ".byd-card:not([data-face='back']):not([data-ringed])"),
+    { what: CENTRE, inside: '[data-pad]', inset: 0.05 },
+  ])
+  const drawn = await drawnAs(page, { 'otillgänglig skiva': '.byd-radial button:disabled', kortets: '.byd-card[data-ringed] span' })
+  const off = drawn['otillgänglig skiva']!
+  const centre = grounds[CENTRE]!
+  return [
+    ...Object.entries(grounds)
+      .filter(([what]) => what !== CENTRE)
+      .flatMap(([what, ground]) => [
+        reading(`den otillgängliga skivans text på sin egen platta över ${what}`, worstOnPlate(off.ink, off.plate, ground), GATE.unavailable),
+        reading(`den otillgängliga skivans kant mot ${what}`, bestLine(off.lines, ground), GATE.unavailable),
+      ]),
+    reading(`kortets eget bläck genom ringens mitt (${patch.bredd}×${patch.höjd} px, ${centre.points} punkter)`, worstOn(drawn['kortets']!.ink, centre), GATE.text),
+  ]
 }
 
 const layTheRolesOnTheFelt = (page: Page) =>
@@ -592,10 +671,19 @@ async function rolesOnTheFelt(page: Page): Promise<string[]> {
 // opens *on a card*, by definition, and a face is the palest thing the felt ever carries
 // (`hsl(<hue> 40% 86%)`). Without one on the table the ring would only ever be measured where it
 // is easy.
-function feltSetup(): SetupDef {
+//
+// `cards: 2` lays a second one out at the other end of the felt, for the view where a ring is
+// opened on a card: the ring covers the card it opened on, so the pale ground has to be read off
+// a face nothing is lying on. The two are far enough apart that no disc of the one reaches the
+// other — and if they were not, the sampler would refuse to call what is left a ground.
+function feltSetup(cards: 1 | 2 = 1): SetupDef {
   const base = seatSetup()
-  const [first, ...rest] = base.components
-  return { ...base, components: [{ ...first!, zone: 'table', face: 'front', x: -160, y: -40 }, ...rest] }
+  const [first, second, ...rest] = base.components
+  const onTheFelt = (c: SetupDef['components'][number], x: number, y: number): SetupDef['components'][number] => ({ ...c, zone: 'table', face: 'front', x, y })
+  // The second lies well inside the green, because the ring that opens on it has to open on a
+  // card that is actually on the felt; the first keeps the place it has had since this suite was
+  // written, out past the rim, where it is nothing but a pale face to measure against.
+  return { ...base, components: cards === 1 ? [onTheFelt(first!, -160, -40), second!, ...rest] : [onTheFelt(first!, -160, -40), onTheFelt(second!, 450, 120), ...rest] }
 }
 
 // The felt with a ring open on a chip, in the mode named. `mode=table` is the one the gates are
@@ -610,6 +698,35 @@ async function feltView(mode: 'table' | 'tv', width = 1280): Promise<Record<stri
     fireEvent.pointerDown(chip, { clientX: 640, clientY: 420, pointerId: 1, isPrimary: true, button: 0 })
     fireEvent.pointerUp(chip, { clientX: 640, clientY: 420, pointerId: 1, isPrimary: true, button: 0 })
     await screen.findByRole('button', { name: 'Sätt värde…' })
+    return { [mode === 'table' ? 'bordsläge' : 'tv-läge']: container.innerHTML }
+  } finally {
+    unmount()
+  }
+}
+
+// The felt with a ring open on a card, in the mode named. This is the ring's normal case — a
+// card's ring opens *on a card* — and it is the only view that has the two things a chip's ring
+// hides: a verb that is not available (`Avslöja`, on a card that is already face up, the one
+// entry of the four whose `run` is null) and a centre with no hub in it, lying on the card the
+// player is choosing a verb for.
+async function feltCardView(mode: 'table' | 'tv', width = 1280): Promise<Record<string, string>> {
+  atWidth(width)
+  const id = await createSession(run, `felt-card-${mode}-${width}`, undefined, feltSetup(2))
+  history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=${mode}&server=${encodeURIComponent(run.url)}`)
+  const { container, unmount } = render(<TablePage />)
+  try {
+    const cards = await waitFor(() => {
+      const found = [...container.querySelectorAll<HTMLElement>(".byd-card[data-face='front']")]
+      if (found.length < 2) throw new Error(`${found.length} face-up cards on the felt, so the ring has no card of its own`)
+      return found
+    })
+    const card = cards[1]!
+    fireEvent.pointerDown(card, { clientX: 640, clientY: 420, pointerId: 1, isPrimary: true, button: 0 })
+    fireEvent.pointerUp(card, { clientX: 640, clientY: 420, pointerId: 1, isPrimary: true, button: 0 })
+    const reveal = await screen.findByRole('button', { name: 'Avslöja' })
+    // The disabled disc is the subject, so a view that came back with it live would be measuring
+    // the wrong button and passing.
+    if (!(reveal as HTMLButtonElement).disabled) throw new Error('`Avslöja` is live on a card that is already face up, so this view has no unavailable disc')
     return { [mode === 'table' ? 'bordsläge' : 'tv-läge']: container.innerHTML }
   } finally {
     unmount()
@@ -695,6 +812,31 @@ describe('the felt', () => {
     expect(ring).toHaveLength(2 * groundsOf('table').length)
     expect(ring.filter(failed), ring.join('\n')).toEqual([])
   }, 90_000)
+
+  // A verb that is not available was drawn with `opacity: 0.35`, and opacity fades a whole
+  // element: the plate, the ink and both lines of the edge together. Over a pale card face — and
+  // a card's ring opens on a card — that turns the disc into a muddy smear with no boundary at
+  // all, so the one thing it was supposed to say, that this verb is *there* and not to be had,
+  // is the one thing it stops saying. What is unavailable about it has to be said by dimming the
+  // ink and the fill deliberately, not by rubbing the whole disc out.
+  it('keeps a disc that is not available a disc, on every ground it lands on', async () => {
+    const measured = await inChromium(FELT_CSS, 1280, await feltCardView('table'), theCardsRing('table'))
+    const off = measured['bordsläge']!.filter((line) => line.startsWith('den otillgängliga'))
+    expect(off).toHaveLength(2 * groundsOf('table').length)
+    expect(off.filter(failed), off.join('\n')).toEqual([])
+  }, 90_000)
+
+  // And what the ring has in its middle. A chip's ring puts the hub there, because the felt
+  // cannot say what a chip is (#67) — but a card's ring has no hub, and `.byd-radial::before`
+  // laid a translucent grey disc over the card anyway. The card a ring was opened on is the one
+  // thing that must stay readable while its verbs are being chosen: whatever is drawn at the
+  // ring's centre has to let it through.
+  it('lets the card under a ring read through the middle of it', async () => {
+    const measured = await inChromium(FELT_CSS, 1280, await feltCardView('table'), theCardsRing('table'))
+    const centre = measured['bordsläge']!.filter((line) => line.startsWith('kortets eget bläck'))
+    expect(centre).toHaveLength(1)
+    expect(centre.filter(failed), centre.join('\n')).toEqual([])
+  }, 90_000)
 })
 
 // The whole thing at once: both modes, both screens, every role and every disc against every
@@ -722,16 +864,19 @@ describe('the felt, swept', () => {
       const view = await feltView(mode, width)
       const roles = await inChromium(FELT_CSS, width, view, rolesOnTheFelt)
       const ring = await inChromium(FELT_CSS, width, view, theRingsDiscs(mode))
-      measured[what] = [...Object.values(roles).flat(), ...Object.values(ring).flat()]
+      const onACard = await inChromium(FELT_CSS, width, await feltCardView(mode, width), theCardsRing(mode))
+      measured[what] = [...Object.values(roles).flat(), ...Object.values(ring).flat(), ...Object.values(onACard).flat()]
     }
     // Where the sweep went and how much it read, before what it read. Six readings for the three
-    // roles wherever they stand, and two for a disc on each ground the mode has — and a ground
-    // the sampler could not find would have thrown rather than quietly shortened this list.
+    // roles wherever they stand, two for a disc on each ground the mode has, two more for a disc
+    // that is not available on each of them, and one for the card under the ring's own centre —
+    // and a ground the sampler could not find would have thrown rather than quietly shortened
+    // this list.
     const counted = Object.fromEntries(Object.entries(measured).map(([what, lines]) => [what, lines.length]))
-    expect(counted).toEqual({ 'bordsläge på 1280': 14, 'bordsläge på 1920': 14, 'tv-läge på 1920': 12, 'tv-läge på 3840': 12 })
+    expect(counted).toEqual({ 'bordsläge på 1280': 23, 'bordsläge på 1920': 23, 'tv-läge på 1920': 19, 'tv-läge på 3840': 19 })
     const all = Object.entries(measured).flatMap(([what, lines]) => lines.map((line) => `${what} · ${line}`))
     expect(all.filter(failed), all.join('\n')).toEqual([])
-  }, 180_000)
+  }, 300_000)
 })
 
 const OBSERVER_CSS = ['src/table/table.css', 'src/table/texture.css', 'src/player/player.css', 'src/status/status.css', 'src/a11y.css'].map(read).join('\n')

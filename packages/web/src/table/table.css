@@ -38,6 +38,15 @@
      lines, the one that can be seen where the chalk cannot — on a card face. */
   --byd-felt-plate: #171a23;
   --byd-felt-edge: #0d0f14;
+  /* And the same two things on a disc that is there but cannot be pressed: the plate with a tenth
+     of the chalk stirred into it, which flattens the near-black into slate, and the chalk itself
+     rubbed 60% of the way back into the plate. Written out rather than mixed in the declaration,
+     because a colour a designer cannot read off the stylesheet is a colour nobody can check —
+     and because what a browser reports for a `color-mix()` is a `color(srgb …)` that the tool's
+     own contrast module does not read. The pair measures 4.5:1 against the 14:1 the same word
+     reads at when it is live. */
+  --byd-felt-plate-off: #2d2f35;
+  --byd-felt-chalk-off: #9b968e;
 }
 .byd-table-frame { display: grid; place-items: center; width: 100%; height: 100%; }
 .byd-table-frame[data-mode='table'] {
@@ -407,8 +416,17 @@
 
 /* The ring of verbs (C). */
 .byd-radial-backdrop { position: fixed; inset: 0; z-index: 40; }
+/* Nothing is drawn in the ring's middle, because the middle of a ring is the thing the ring is
+   about (L13, #90). It used to carry a translucent grey disc — `rgba(23, 26, 35, 0.55)` with a
+   pale hairline — and on a card's ring, which has no hub, that lay straight over the card whose
+   verbs were being chosen: the card's own ink read 3.66:1 through it where it reads better than
+   10:1 with nothing on top. Choosing between `Vänd`, `Vrid` and `Titta` is choosing about the
+   card under the finger, and a player has to be able to see it while they choose.
+   The one ring that does want a plate in its middle is a chip's, and it has one: the hub, opaque
+   and for that reason (#67) — the chip lies under the ring's centre and the felt has nowhere else
+   to say whose it is. A plate in the middle is what the ring is about when the felt cannot draw
+   it, never a tint over what the felt has already drawn. */
 .byd-radial { position: fixed; width: 0; height: 0; }
-.byd-radial::before { content: ''; position: absolute; left: -46px; top: -46px; width: 92px; height: 92px; border-radius: 50%; background: rgba(23, 26, 35, 0.55); border: 1px solid rgba(255, 255, 255, 0.15); }
 /* A disc wears the felt's own colours and keeps its plate (L13, K9, #90).
    The plate is the exception the prototype measured out of the decision. The language draws a
    second action as an outline with `background: transparent`, and a disc drawn that way over a
@@ -431,7 +449,28 @@
    colours. It used to take `#7dd3a0` — the account's green, in the middle of the felt — which is
    the same leak across surfaces L13 was written to close. */
 .byd-radial button:hover { background: var(--byd-felt-accent); color: var(--byd-felt-on-accent); }
-.byd-radial button:disabled { opacity: 0.35; cursor: default; }
+/* A disc that is not available is still a disc (L13, K9, #90).
+   It was drawn with `opacity: 0.35`, and opacity fades a whole element at once: the plate, the
+   ink and both lines of the edge together. On a pale card face — where a card's ring opens, by
+   definition — that left a muddy smear with no boundary at all: 1.39:1 for the word and 1.98:1
+   for the edge, so the one thing a verb out of play has to say, that it is *there* and not to be
+   had, is the thing it stopped saying. A control nobody can see is worse than one nobody can use.
+   So it is dimmed deliberately instead. The plate stays opaque and loses its depth — a flat slate
+   instead of the live disc's near-black — the chalk is rubbed a little way back into it, and the
+   two lines of the edge are left exactly as they are, because where a disc ends does not depend
+   on whether it can be pressed. The word reads 4.5:1 on its own plate against the 14:1 it reads
+   when it can be pressed: plainly weaker, and still plainly legible at three metres. And the disc
+   stops standing off the felt — both lines, no lift — which is the second thing that says it is
+   out of play, and it costs no contrast at all.
+   `background` is declared here rather than left to be inherited: `:disabled` and `:hover` are
+   both (0,2,1), and a pointer resting on a dead disc must not repaint it in the first action's
+   amber. */
+.byd-radial button:disabled {
+  cursor: default;
+  background: var(--byd-felt-plate-off);
+  color: var(--byd-felt-chalk-off);
+  box-shadow: 0 0 0 1px var(--byd-felt-edge);
+}
 /* The hub: what the ring is about, for a thing the felt cannot say for itself (#67). Opaque and
    not a tint, because the chip itself lies under the ring's centre and a translucent hub let the
    disc and the zone's label read straight through the number they were being replaced by. Never

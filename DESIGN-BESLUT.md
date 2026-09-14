@@ -2074,6 +2074,16 @@ En kantad skiva som landar på ett kortansikte mäter 1,22:1, och kortets ring �
 Ringens kant var en avvikelse som rättades på vägen: `#3b4358` klarade inte 3:1 mot någon grund alls, 72 fall av 72, mellan 1,01 och 2,72:1.
 Den är nu två linjer, kritfärgen med filtens mörkaste ton `#0d0f14` som ring strax utanför, eftersom ingen enskild färg kan klara 3:1 både mot ett nästan svart omland och mot ett blekt kortansikte.
 
+Två saker på kortets ring rättades när den granskades på ett kortansikte, och båda är ringens egen styrning.
+**En skiva som inte är tillgänglig är fortfarande en skiva.**
+`opacity: 0.35` tonar hela elementet på en gång — plattan, bläcket och båda linjerna i kanten — och på ett blekt kortansikte blev skivan en grumlig fläck utan gräns: 1,39:1 för ordet och 1,98:1 för kanten, alltså slutade den säga just det den skulle säga, att verbet finns men inte går att få.
+Det som är otillgängligt sägs därför medvetet i stället: plattan förblir ogenomskinlig men tappar sitt djup (`#2d2f35`, plattan med en tiondel krita i), kritan gnuggas 60 % in i plattan (`#9b968e`), båda kantlinjerna lämnas orörda — var en skiva slutar beror inte på om den går att trycka på — och skivan slutar stå ovanför filten: två linjer kvar, lyftet borta.
+Ordet mäter 4,5:1 mot samma ords 14:1 när det går att trycka på, och grinden för en otillgänglig kontroll är **3:1**, inte L13:s 4,5:1: WCAG 1.4.3 undantar en inaktiv kontroll helt, och det undantaget var precis den licens `opacity: 0.35` tog, men en ring läses på tre meters håll (K9) och den läses *som en lista* — den som inte kan tyda det gråa verbet vet inte vilket verb hen inte erbjuds, och ett hål i ringen är värre än ett svagt ord i den.
+**Ringens mitt är det ringen handlar om, så där ritas ingenting.**
+`.byd-radial::before` lade en genomskinlig grå skiva, `rgba(23, 26, 35, 0.55)`, mitt i ringen, och kortets ring har ingen nav — så den låg rakt ovanpå kortet vars verb valdes: kortets eget bläck mätte 3,66:1 genom den där det mäter 13,19:1 utan den.
+Den enda ring som vill ha en platta i mitten är brickans, och den har redan en: navet, ogenomskinligt just därför att filten inte kan säga vad en bricka är (#67).
+En platta i mitten är alltså vad ringen handlar om när filten inte kan rita det själv, aldrig en ton över det filten redan har ritat.
+
 De tre förkastade positionerna, med talen:
 **B**, att låna spelarens rum, faller på att språkets delade sekundärlinje `#6f7a90` mäter 1,60:1 på det gröna och 4,06:1 på TV:ns mörka filt — den går alltså igenom just där grunden inte är grön, vilket betyder att en grind som bara mäts i TV-läge godkänner en felaktig bindning.
 Därför mäts filten i **bordsläge**, och det är det kravet som är den egentliga lärdomen.
