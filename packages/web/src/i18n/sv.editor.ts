@@ -182,6 +182,13 @@ export const svEditor = {
   'table.column.width.said.auto': '{field} följer innehållet igen',
   'table.column.width.auto': 'Låt {field} följa innehållet igen',
   'table.column.width.px': '{px} px',
+  // Vilka kolumner som står utanför lådan (#46). Sägs i raden som redan säger vad vyn håller, och
+  // knappen hämtar hem dem: uttoningen vid nålen säger att ett värde är kapat, aldrig att en hel
+  // kolumn ligger där borta.
+  'table.columns.right.one': '{n} kolumn till höger: {fields}',
+  'table.columns.right.other': '{n} kolumner till höger: {fields}',
+  'table.columns.left.one': '{n} kolumn till vänster: {fields}',
+  'table.columns.left.other': '{n} kolumner till vänster: {fields}',
   'table.field.new': 'Nytt fält',
   'table.field.name': 'Namn',
   'table.field.kind': 'Typ',

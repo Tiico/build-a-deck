@@ -2158,6 +2158,21 @@ Kanten släpade alltså efter handen på väg in, sprang före den på väg ut, 
 En press som inte rör sig är ingen bredd: kanten står över rubrikens tio högraste pixlar, och en pekare som vilar på en knapp glider en pixel eller två när den släpps, så ett klick satte kolumnen till den bredd den redan hade och lämnade den där.
 Tyst dessutom, eftersom en kolumn som slutat följa sin lek ser precis ut som en som fortfarande gör det, och vägen tillbaka var dörren eller ett andra klick.
 Golvet för att en press ska vara en dragning är tre pixlar; smalare än så är ett grepp som halkade och inte en bredd någon valde, precis som 44 px är det på andra ledden.
+Vilka kolumner som står utanför lådan säger tabellen i den rad som redan säger vad vyn håller (prototypat 2026-09-15 i fyra varianter, godkänd variant C, ur UX-testet av #46):
+Uttoningen vid nålen (#53) säger att *ett värde* är kapat, aldrig att en hel kolumn ligger där borta — och det som rullar in under nålen efter en dragning är oftast den tomma änden av en mening, som tonar bort utan att någon märker det.
+Så "6 av 6 kort" får sällskap av "2 kolumner till höger: cost, antal", och meningen är en knapp: att veta att de finns är till ingen nytta utan en väg tillbaka till dem.
+Knappen tar ett steg på fyra femtedelar av lådan i stället för ett hopp till slutet, så räkningen bredvid den räknar ned medan handen trycker och läsaren kan stanna vid det hon letade efter.
+En kolumn är utanför när dess rubrik inte alls överlappar den del av lådan som går att läsa — förbi vänsterkanten, eller bakom nålen. Delvis täckt är inte utanför; det är just den kapning uttoningen redan finns till för.
+Glidningen begärs vid anropet och inte i stilmallen: `scroll-behavior` på lådan hade varit ett svar på varje rullning någon någonsin ber den om — inklusive den ett test gör för att se var nålen faller, och webbläsarens egen när den hämtar in en fokuserad cell. Den som bett om mindre rörelse får hoppet i stället; meningen är densamma.
+De tre varianter som inte vann, och varför: samma uttoning i huvudet som raderna har (minsta möjliga ändring, men säger varken hur många eller vilka); en rullningslist som alltid syns (kan inte lånas av webbläsaren — macOS gömmer sin överliggande list och Chromium lägger ingen i layouten alls, uppmätt `clientHeight === offsetHeight`, så den måste ritas för hand); och att låta det stå.
+
+Dörrens lista tar den höjd fönstret lämnar den (prototypat 2026-09-15 i tre varianter, godkänd variant B):
+Listan var 232 px hur högt fönstret än var — fem rader av en lek med tio kolumner, den femte kapad mot blankettens egen linje, och ingenting sa att den fortsatte.
+En längre lista var inte svaret heller: blanketten under den är vägen att göra nästa kolumn, och det var den som föll av nederkanten när dörren växte.
+Så dörren mäter var den själv hänger när den öppnas och tar resten av fönstret; listan tar det som blir över och rullar bara när även det inte räcker; blanketten står kvar under den.
+Bara dörren kan fråga det: den hänger under huvudets sista ruta, och var den rutan står beror på leken ovanför — `100vh` minus en gissning är en gissning.
+Golvet är 240 px, för ett fönster som är lägre än så är ett fönster där listan rullar inuti dörren precis som förut.
+
 Det som fattas tas bara där det får tabellen att rymmas:
 En dragen kolumn är exakt så bred som formgivaren sa, så en lek kan bli bredare än fönstret — och förbi den punkt där meningarna på sina golv ändå inte täcker glappet köper varje pixel som tas från dem ingenting.
 Lådan rullar i båda fallen; skillnaden är ett värde ingen kan läsa.
