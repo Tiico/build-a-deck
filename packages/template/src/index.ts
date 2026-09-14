@@ -1,5 +1,7 @@
 export * from './inline.js'
 export * from './model.js'
+export * from './shapes.js'
+export * from './patterns.js'
 export * from './compile.js'
 export * from './fit.js'
 export * from './dom-fit.js'

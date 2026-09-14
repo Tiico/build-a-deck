@@ -51,10 +51,11 @@ describe('the print export (#14)', () => {
     const jobs = new Map(printed.jobs.map((job) => [job.hash, job]))
     const trap = printed.cards[0]!
     const dragon = printed.cards[1]!
-    expect(jobs.get(trap.faces.front!)?.compiled.css).toContain('#cc3333')
-    expect(jobs.get(trap.faces.back!)?.compiled.css).toContain('#441111')
-    expect(jobs.get(dragon.faces.front!)?.compiled.css).toContain('#eeeeee')
-    expect(jobs.get(dragon.faces.back!)?.compiled.css).toContain('#334477')
+    // A shape's colour is painted on its path, so it is the markup that carries it (L17).
+    expect(jobs.get(trap.faces.front!)?.compiled.html).toContain('#cc3333')
+    expect(jobs.get(trap.faces.back!)?.compiled.html).toContain('#441111')
+    expect(jobs.get(dragon.faces.front!)?.compiled.html).toContain('#eeeeee')
+    expect(jobs.get(dragon.faces.back!)?.compiled.html).toContain('#334477')
   })
 
   it('prints the deck, not the seats\' counters: a token is no card and names no row (C4)', () => {
