@@ -6,6 +6,7 @@ import { OnlinePage, type OnlinePageProps } from '../src/online/OnlinePage.js'
 import { admit, asTable, createSession, roomOf, startServer, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 import { tabStops } from './tabs.js'
+import { atWindow } from './felt-frame.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
@@ -17,7 +18,10 @@ afterEach(async () => {
   await run.stop()
 })
 
+// A landscape window, said outright: it is what decides which shape the seat's own hand takes
+// (#77), and jsdom's own default would otherwise decide it by accident.
 async function open(sessionId: string, seat: string, name: string, props: OnlinePageProps = {}) {
+  atWindow({ w: 1280, h: 800 })
   const address = `/online?session=${sessionId}&seat=${seat}&name=${name}&token=${await admit(run, sessionId, seat, name)}&code=${roomOf(sessionId).code}&server=${encodeURIComponent(run.url)}`
   history.replaceState(null, '', address)
   render(<OnlinePage {...props} />)
@@ -44,7 +48,7 @@ describe('OnlinePage (C2): both roles in one window', () => {
     table.close()
   })
 
-  it('a card dragged out of the fan lands on the table face-up, in one envelope', async () => {
+  it('a card dragged out of the hand lands on the table face-up, in one envelope', async () => {
     const id = await createSession(run)
     const table = TableClient.connect(await asTable(run, id))
     await table.ready()
@@ -54,7 +58,9 @@ describe('OnlinePage (C2): both roles in one window', () => {
     const card = document.querySelector('[data-hand-fan] [data-hand-card]') as HTMLElement
     const cardId = card.getAttribute('data-hand-card')
     // jsdom: the table's box is at (0,0) and the fitted scale is 1, so client px are mm + floor origin.
-    fireEvent.pointerDown(card, { clientX: 100, clientY: 900, pointerId: 1, isPrimary: true, button: 0 })
+    // The hand stands beside the felt in this window, so a card is played by dragging it *across*
+    // toward the table; a drag along the column is the column scrolling and plays nothing (#77).
+    fireEvent.pointerDown(card, { clientX: 900, clientY: 300, pointerId: 1, isPrimary: true, button: 0 })
     fireEvent.pointerMove(card, { clientX: 400, clientY: 300, pointerId: 1 })
     fireEvent.pointerUp(card, { clientX: 400, clientY: 300, pointerId: 1 })
     await waitFor(async () => expect((await run.store.read(id)).slice(-2).map((l) => l.intent.v)).toEqual(['move', 'flip']))
@@ -62,6 +68,29 @@ describe('OnlinePage (C2): both roles in one window', () => {
     expect(log.at(-2)?.intent).toMatchObject({ v: 'move', component: cardId, to: 'table' })
     expect(new Set(log.slice(-2).map((l) => l.batch)).size).toBe(1)
     await waitFor(() => expect(document.querySelectorAll('[data-hand-fan] [data-hand-card]')).toHaveLength(1))
+    table.close()
+  })
+
+  // K17's axis split, traded rather than broken (#77, section I). The band lay under the felt and
+  // a card came up out of it while a sideways drag scrolled; the column stands beside the felt, so
+  // a card comes across out of it and a drag along the column is the column scrolling. It is still
+  // one decision per press, settled on the first movement that is long enough to mean anything.
+  it('plays nothing when the drag runs along the column, because that is the column scrolling', async () => {
+    const id = await createSession(run)
+    const table = TableClient.connect(await asTable(run, id))
+    await table.ready()
+    await table.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 2 })
+    await open(id, 'A', 'Ada')
+    await waitFor(() => expect(document.querySelectorAll('[data-hand-fan] [data-hand-card]')).toHaveLength(2))
+    const before = (await run.store.read(id)).length
+    const card = document.querySelector('[data-hand-fan] [data-hand-card]') as HTMLElement
+    fireEvent.pointerDown(card, { clientX: 900, clientY: 700, pointerId: 1, isPrimary: true, button: 0 })
+    fireEvent.pointerMove(card, { clientX: 900, clientY: 300, pointerId: 1 })
+    fireEvent.pointerUp(card, { clientX: 400, clientY: 300, pointerId: 1 })
+    // Not even the release over the felt revives it: the press stopped being a card at the first
+    // movement, and nothing downstream can bring it back.
+    expect((await run.store.read(id)).length).toBe(before)
+    expect(document.querySelectorAll('[data-hand-fan] [data-hand-card]')).toHaveLength(2)
     table.close()
   })
 

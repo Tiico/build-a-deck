@@ -8,6 +8,7 @@ import { StatusLive } from '../src/status/StatusLive.js'
 import { CARD_STANDARD_63x88, type SetupDef } from '@byd/engine'
 import { admit, asTable, createSession, startServer, twoSeatSetup, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
+import { atWindow, type Size } from './felt-frame.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
@@ -19,9 +20,16 @@ afterEach(async () => {
   await run.stop()
 })
 
-// Ada, playing entirely online: cards in her fan and one lying face-up on the felt.
-async function online(held = 2) {
-  const id = await createSession(run, `s-${held}`, undefined, deckOf(held))
+// The two windows the hand has two shapes in (#77): laid out beside the felt in one, under it in
+// the other. Which one a test mounts in is said outright, because jsdom's own default decides it
+// otherwise and a surface chosen by accident is a surface nobody chose.
+const LANDSCAPE: Size = { w: 1280, h: 800 }
+const PORTRAIT: Size = { w: 390, h: 844 }
+
+// Ada, playing entirely online: cards in her hand and one lying face-up on the felt.
+async function online(held = 2, room: Size = LANDSCAPE) {
+  atWindow(room)
+  const id = await createSession(run, `s-${held}-${room.w}`, undefined, deckOf(held))
   const table = TableClient.connect(await asTable(run, id))
   await table.ready()
   await table.send({ v: 'draw', from: 'draw', to: 'hand:A', count: held })
@@ -83,23 +91,30 @@ function deckOf(held: number): SetupDef {
   return { ...base, components: Array.from({ length: held + 4 }, (_, i) => ({ type: { id: CARD_STANDARD_63x88.id, version: 1 }, cardRef: `Kort ${i}`, zone: 'draw', face: 'back' as const })) }
 }
 
-// A hand big enough that the band cannot hold it at once (#24): it is the twenty-first card, the
-// one furthest from where the tab stop starts, that says whether the whole hand is still one tab
-// stop with the arrows inside it (K16) — in the fan, and in the grid the fan is read in.
+// A hand big enough that neither shape can hold it at once (#24, #77): it is the twenty-first
+// card, the one furthest from where the tab stop starts, that says whether the whole hand is still
+// one tab stop with the arrows inside it (K16) — in the column, in the fan, and in the grid both
+// are read in.
 const HELD = 21
 
 const handCards = () => [...document.querySelectorAll('[data-hand-fan] [data-hand-card]')] as HTMLElement[]
 
 describe('the whole hand stays one tab stop with the arrows inside it, however big it is (K16, #24)', () => {
-  it('walks the arrows from the first card of twenty-one to the last, and opens it', async () => {
-    const { table } = await online(HELD)
+  // The arrows run the way the hand does: down the column a landscape window puts it in, along the
+  // band a portrait one keeps (#77). It is one roving tabindex either way, and it is the editor's.
+  for (const [where, room, key] of [
+    ['down the column', LANDSCAPE, 'ArrowDown'],
+    ['along the band', PORTRAIT, 'ArrowRight'],
+  ] as const)
+  it(`walks the arrows ${where} from the first card of twenty-one to the last, and opens it`, async () => {
+    const { table } = await online(HELD, room)
     const user = userEvent.setup()
     await waitFor(() => expect(handCards()).toHaveLength(HELD))
     // One stop for the hand, not twenty-one: exactly one card is in the tab order.
     expect(handCards().filter((el) => el.getAttribute('tabindex') === '0')).toHaveLength(1)
 
     handCards()[0]!.focus()
-    await user.keyboard('{ArrowRight>20/}')
+    await user.keyboard(`{${key}>20/}`)
 
     const last = handCards()[HELD - 1]!
     expect(document.activeElement).toBe(last)

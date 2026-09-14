@@ -1,75 +1,38 @@
-import { useRef, useState, type PointerEvent as RPointerEvent } from 'react'
+import { useRef } from 'react'
 import type { VisibleComponentState } from '@byd/protocol'
 import { hue } from '../table/hue.js'
 import { Texture } from '../table/Texture.js'
 import { useRoving } from '../editor/roving.js'
 import { handLabel } from '../table/keyboard.js'
 import { useT } from '../i18n/index.js'
-import { fanPlace, fanStyle, FAN_AIM_PX } from './fan.js'
+import { fanPlace, fanStyle } from './fan.js'
+import { HandGhost, useHandDrag, type HandPlay } from './handDrag.js'
 
 export type HandFanProps = {
   cards: readonly VisibleComponentState[]
   faces?: string | undefined
   // A card dragged out of the fan, released at a client point.
-  onPlay(card: VisibleComponentState, clientX: number, clientY: number): void
+  onPlay: HandPlay
   // Enter on a card: the address panel, the same one the felt opens (#2, variant C).
   onOpen(card: VisibleComponentState): void
 }
 
-// The online player's hand (C2, prototype B): a fan in the band under the felt. Hover lifts a
-// card to read it; drag it out onto the table to play it. Every card is also a real control with
-// the projection's name and one tab stop for the whole fan (#2).
+// The online player's hand in a portrait window (C2, prototype B, K17): a fan in the band under
+// the felt. Hover lifts a card to read it; drag it up onto the table to play it. Every card is
+// also a real control with the projection's name and one tab stop for the whole fan (#2).
 //
-// One surface, two gestures (#24). The band scrolls sideways when the hand is wider than it, and
-// dragging a card up onto the felt is how a card is played, so a press has to mean one or the
-// other and cannot mean both. The split is a direction threshold, settled once per press and
-// never revisited: the first movement that is `FAN_AIM_PX` long decides, by which of the two
-// axes it moved further along. Up or down is a play and takes the pointer; sideways is the fan
-// scrolling and the press can no longer play at all, however it ends. A threshold rather than a
-// handle because the whole point of the fan is that a card is grabbed where it lies, and a
-// decision that is made once rather than re-read because a drag that changed its mind halfway is
-// a card played somewhere the hand never aimed. The browser is told the same thing in
-// `touch-action: pan-x`, so a touch that pans is already the scroller's before it reaches us.
+// The band scrolls sideways when the hand is wider than it, and a card is played by dragging it
+// up, so a press has to say which it is; the split lives in `useHandDrag`, and the browser is told
+// the same thing in `touch-action: pan-x`.
+//
+// In a landscape window this is not the shape the hand takes: there the band cost the felt the one
+// axis it was bound by, and the hand stands beside it as `HandColumn` instead (#77).
 export function HandFan({ cards, faces, onPlay, onOpen }: HandFanProps) {
   const t = useT()
-  const [drag, setDrag] = useState<{ id: string; x: number; y: number } | null>(null)
-  // Where the press started and whether it may still become a play; a press that turned out to
-  // be a scroll is forgotten here and nothing downstream can revive it.
-  const aim = useRef<{ id: string; x: number; y: number } | null>(null)
   const scroller = useRef<HTMLDivElement>(null)
   const n = cards.length
   const roving = useRoving({ ids: cards.map((c) => c.id), selected: null, orientation: 'horizontal' })
-  const stop = () => {
-    aim.current = null
-    setDrag(null)
-  }
-  const down = (c: VisibleComponentState, e: RPointerEvent) => {
-    aim.current = { id: c.id, x: e.clientX, y: e.clientY }
-  }
-  const move = (c: VisibleComponentState, e: RPointerEvent) => {
-    if (drag?.id === c.id) {
-      setDrag({ ...drag, x: e.clientX, y: e.clientY })
-      return
-    }
-    const from = aim.current
-    if (!from || from.id !== c.id) return
-    const [dx, dy] = [e.clientX - from.x, e.clientY - from.y]
-    if (Math.max(Math.abs(dx), Math.abs(dy)) < FAN_AIM_PX) return
-    // Sideways: the fan is being scrolled, and this press has stopped being a card.
-    if (Math.abs(dx) >= Math.abs(dy)) {
-      aim.current = null
-      return
-    }
-    const el = e.currentTarget as HTMLElement
-    if (typeof el.setPointerCapture === 'function') el.setPointerCapture(e.pointerId)
-    setDrag({ id: c.id, x: e.clientX, y: e.clientY })
-  }
-  const up = (c: VisibleComponentState, e: RPointerEvent) => {
-    // Only a press that became a drag plays. A tap plays nothing: the band lies under the felt,
-    // so the point a tap releases at is not a place on the table to put a card.
-    if (drag?.id === c.id) onPlay(c, e.clientX, e.clientY)
-    stop()
-  }
+  const { drag, handlers } = useHandDrag('up', onPlay)
   const lifted = drag ? cards.find((c) => c.id === drag.id) : undefined
   return (
     <div className="byd-hand-band" data-hand-fan style={fanStyle(n)}>
@@ -107,10 +70,7 @@ export function HandFan({ cards, faces, onPlay, onOpen }: HandFanProps) {
                     }
                     item.onKeyDown(e)
                   }}
-                  onPointerDown={(e) => down(c, e)}
-                  onPointerMove={(e) => move(c, e)}
-                  onPointerUp={(e) => up(c, e)}
-                  onPointerCancel={() => stop()}
+                  {...handlers(c)}
                 >
                   <Texture faces={faces} c={c} />
                   <span aria-hidden="true">{c.cardRef}</span>
@@ -120,12 +80,7 @@ export function HandFan({ cards, faces, onPlay, onOpen }: HandFanProps) {
           </div>
         </div>
       </div>
-      {drag && lifted && (
-        <div className="byd-fan-ghost" style={{ left: drag.x, top: drag.y, ['--hue' as string]: hue(lifted.cardRef ?? '') }}>
-          <Texture faces={faces} c={lifted} />
-          <span>{lifted.cardRef}</span>
-        </div>
-      )}
+      {drag && lifted && <HandGhost at={drag} card={lifted} faces={faces} />}
     </div>
   )
 }

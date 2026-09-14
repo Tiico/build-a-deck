@@ -1189,10 +1189,37 @@ Bandet ensamt är 218.
 Även med luften och ramen satta till noll stannar filtens rad på ett kort omkring 41 px.
 Prototypens 48–52 px vid det fönstret köptes genom att lägga bandet **över** filten, där det täckte den närmaste platsens hand och ytan framför den — och det är precis det som inte får skeppas.
 
-Grinden i `online-felt.test.tsx` säger därför två olika saker vid de två fönstren: 45 px vid 1920 × 1080, som är K9:s tal, och 30 px vid 1280 × 800, som är ett golv som inte får ges tillbaka.
-Att K9:s 45 px och K17:s band inte kan hålla samtidigt vid 1280 × 800 är en öppen fråga och står i avsnitt I; #77 stänger den inte.
+Grinden i `online-felt.test.tsx` sa därför två olika saker vid de två fönstren: 45 px vid 1920 × 1080, som är K9:s tal, och 30 px vid 1280 × 800, som var ett golv som inte fick ges tillbaka.
+Att K9:s 45 px och K17:s band inte kunde hålla samtidigt vid 1280 × 800 stod som öppen fråga i avsnitt I. Den är stängd av revideringen nedan: bandet gav vika, inte K9.
 
-Samtidigt mäts att ingenting ritas över någonting annat: varken handens band, platsens list eller sessionens knappar rör filten eller en zon på den, vid 1280 × 800 och vid 390 × 844, för en sidoplats och för en bottenplats.
+Samtidigt mäts att ingenting ritas över någonting annat: varken handens band eller kolumn, platsens list eller sessionens knappar rör filten eller en zon på den, vid 1280 × 800, 1920 × 1080 och 390 × 844, för en sidoplats och för en bottenplats.
+
+Reviderat 2026-09-14 (#77, andra halvan): **den egna handens fläkt på filten viks ihop till sin bricka när handen ritas bredvid filten, och därmed är 45 px ett golv vid varje liggande fönster och varje handstorlek.**
+
+Det är inte en kosmetisk fråga om att samma hand ritas två gånger, även om den är det också.
+`feltWithHands` växer den rektangel inpassningen ska föra in i ramen med **varje** plats fläkt, den egna inräknad, och den egna handen är den enda vars storlek läsaren själv ändrar under spelets gång.
+En bottenplats fläkt löper dessutom längs filtens höjd, vilket är den axel ramen binder på i en liggande rad — vilket är varför en bottenplats med tretton kort landade lägre än en sidoplats med samma hand i varje variant prototypen prövade.
+Andra platsers fläktar är orörda: deras fläkt är den enda bild av deras hand som finns.
+
+Mätt på wizardens fyraplatsbord, på den målade rutan i Chromium, med kolumnen (K17) redan på plats — alltså vad enbart hopvikningen köper:
+
+| Fönster | Plats | 7 kort | 13 kort |
+| --- | --- | --- | --- |
+| 1280 × 800 | sidoplats | 46 → 46 px | 46 → 46 px |
+| 1280 × 800 | bottenplats | 45 → 46 px | **43 → 46 px** |
+| 1920 × 1080 | sidoplats | 62 → 62 px | 62 → 62 px |
+| 1920 × 1080 | bottenplats | 62 → 62 px | 60 → 62 px |
+
+Skillnaden mellan 43 och 46 är skillnaden mellan att 45 px nästan är ett golv och att det är det.
+Hela vägen, från bandet till kolumnen med hopvikt fläkt, går kortets kortsida **från 31 → 46 px (sidoplats) och 30 → 46 (bottenplats) vid 1280 × 800**, och **från 49 → 62 respektive 48 → 62 vid 1920 × 1080**, vid sju kort likaväl som vid tretton.
+Efter hopvikningen är talet dessutom detsamma vid varje plats och varje handstorlek, vilket det aldrig har varit förut.
+
+Hopvikningen är ett villkor renderaren får utifrån och inte något den härleder: `foldHand` på `TableRenderer` namnger den plats vars egen hand ritas någon annanstans i samma fönster.
+En hopvikt hand ritar ingen fläkt, mäts inte in i `feltWithHands`, och ställer sin antalsbricka mitt i sin egen zon — alltså i samma luft utanför rimmen som varje annan plats bricka redan hänger i (#84).
+Det gäller bara `/online` i ett liggande fönster; i ett stående ritas den egna fläkten som förut, eftersom bandet där ligger kvar och det stående fönstret är orört (K17).
+
+Kvar står en avvikelse som inte lagas här och som är värd att veta: var ett släpp landar följer fläkten som den ritas (K2, #65), och en hopvikt fläkt ritas inte — men `dropAt` mäter den ändå.
+Följden är ingen i dag, eftersom `playedAt` redan vägrar lägga ett kort i den egna handen, och den blir en följd först den dag den egna handzonen ska kunna ta emot något.
 
 ### K10. Telefonvyns utseende: remsan (prototypat 2026-09-06)
 
@@ -1535,6 +1562,51 @@ Prototypen till #77 gjorde det: det bästa någon variant når på en telefon ä
 Ett helt fyraplatsbord får alltså inte plats på en telefon vid en spelbar kortstorlek, och ingen vridning och ingen omfördelning av kromet ändrar det.
 Vad man gör åt det — en kamera som TV:ns (C5), eller att uttryckligen säga att ett kort på telefon läses genom INSPEKTION (K8) och inte på filten — är ett eget beslut och står som öppen fråga i avsnitt I.
 Därför finns ingen grind i sviten som påstår 45 px vid 390: ett tal som inte går att hålla är inte en grind utan en lögn som går sönder nästa gång någon mäter.
+
+Reviderat 2026-09-14 (#77, andra halvan): **i ett liggande fönster är bandet en kolumn vid fönsterkanten, och handen i den är en lodrät lista.**
+
+Bandet och filten slogs om samma axel.
+Sidan är tre rader (#25), och vid 1280 × 800 vägde bandet ensamt 218 px av de 800 — samtidigt som filtens egen rad hade sexhundra pixlar bredd den inte kunde använda, eftersom det var höjden som band inpassningen.
+Att ställa handen på högkant betalar alltså med slack i stället för med filt: kortets kortsida på filten går **från 31 till 46 px vid 1280 × 800 och från 49 till 62 px vid 1920 × 1080**, och filtens andel av fönstret från 23 % till 52 %.
+Kolumnen är 136 px bred, och bredden är nästan gratis: prototypen mätte en kolumn på 201 px och en på 136 px och fick **identisk** filt, eftersom filten är höjdbunden i den raden vid varje kolumnbredd under ungefär 300 px vid 1280.
+
+**Listan, inte bågen och inte uppslaget.** Tre varianter prototypades på den riktiga rutten (#77).
+**A, den vridna fjädern** — K17:s båge ställd på högkant — behåller bågen men betalar med sitt eget överhäng, som i en kolumn är just höjd: vid tjugoen kort faller steget till 43 px, under fingerspetsens eget golv, och vridna kort sida vid sida i en kolumn spretar i stället för att stråla.
+**C, bläddraren** visar fyra kort av tretton, vilket är exakt det resonemang K17 redan avvisade när den vägrade göra grundläget till något man ber om att få se.
+**B, listan** valdes: korten ligger nedför kanten och överlappar som en hand hållen i en näve, med det understa kortet helt synligt.
+Mätt vid 1280 × 800: steget är 68 px vid tre kort, 47 vid tretton och 44 vid tjugoen, kortet är 112 × 156 px vid varje antal, hela handen syns upp till tretton kort och fjorton av tjugoen innan kolumnen börjar rulla.
+
+**Det som ger vika är fortfarande steget, och det bottnar fortfarande på en fingertopp** — K17:s egen lag, på den andra axeln.
+Skillnaden är vem som räknar: i bandet räknar `fan.ts` steget ur `100vw`, i kolumnen räknar webbläsaren det själv.
+Varje kort utom det sista ligger i en ruta ett steg hög som får krympa, och ingen av dem under `FAN_MIN_PX`; en hand som inte ryms ens då rullar i sin egen box medan sidan aldrig gör det (L10).
+Rummet en kolumn har är en sidrads höjd, och det är inte något en modul kan veta — därför står bara de två ändarna av krympningen i `fan.ts`, som `COLUMN_STYLE`: steget en hand sprider sig till när den har rum, vilket är bandets eget steg så att en hand är en hand åt båda hållen, och fingertoppen den stannar på.
+
+**Vilken sida kolumnen står på är en namngiven regel och inte en uppsättning villkor: handen står vid fönstrets `inline`-slut, vid varje plats.**
+Prototypen föreslog den egna filtkanten — öster ger höger, väster ger vänster, en botten- eller toppplats faller tillbaka på inline-slutet — och det är just den formen av regel det här dokumentet inte vill ha: tre villkor och ett undantag.
+Argumentet som avgjorde står redan i `fan.ts`: den här handen är inte möbler på bordet utan korten spelaren håller **framför skärmen**, i den storlek de läses i, och därför mäts de i pixlar där filtens fläkt mäts i millimeter (#23).
+En hand som hålls framför skärmen följer inte med filten runt bordet.
+Två följder som är värda att veta: kortets storlek på filten blir densamma för alla vid samma fönster, i stället för att bero på vilken plats man råkade få — samma resonemang som K18 använde när den vägrade smalna handen vid fler platser — och regeln överlever att man byter plats, vänder på fönstret eller läser sidan från höger till vänster, eftersom `flex-direction: row` säger "inline-slut" i läsarens egen riktning utan en andra regel (A4).
+
+**Gestdelningen är bytt, inte bruten.**
+Bandet låg under filten, så ett kort kom **uppåt** ur det medan en dragning i sidled rullade fjädern.
+Kolumnen står bredvid filten, så ett kort kommer **på tvären** ur den och en dragning längs kolumnen är kolumnen som rullar; webbläsaren får samma besked i `touch-action: pan-y`.
+Tröskeln är densamma och avgörs fortfarande en gång per tryck, på den första rörelse som är `FAN_AIM_PX` lång, och den bor nu på ett ställe för båda formerna (`online/handDrag.tsx`).
+Ett tryck som inte färdas spelar fortfarande ingenting, av skälet i avsnitt I: handen ligger aldrig över bordet, så punkten ett tryck släpper på är inte en plats att lägga ett kort på.
+Att hålla för att välja flera är ingen gest den här ytan har; det är K4:s remsa på `/play` och den är orörd.
+Roving-tabindexen blir lodrät, och det är fortfarande editorns `roving.ts`.
+
+**Ett kort som täcks underifrån döljer sitt eget namn**, vilket bandet aldrig behövde tänka på: det överlappar i sidled, så ett korts mitt syns.
+Båda de saker som namnger ett kort centrerar det — en `button` centrerar det den håller, och texturens väntetillstånd centrerar namnet mitt på kortet (#10) — så i en kolumn kom nio kort av tretton ut tomma.
+I den här enda formen ligger namnet överst på kortet, i den remsa nästa kort lämnar.
+Med en riktig textur (E2) står titeln oftast där ändå, men ingenting garanterar det, och grinden mäter det som faktiskt ritas.
+
+**Ett stående fönster är orört.**
+Kolumnen är värd att ha för att ett liggande fönster har bredd filten inte kan använda och höjd den binds av; ett stående har ingendera, och där skulle en kolumn ta filtens rum i stället för att hitta det.
+Mätt vid 390 × 844, samma siffror som före kolumnen: en sidoplats 20 px över kortsidan och filten 283 × 408, en bottenplats 16 px och 290 × 189.
+Grinden står i `online-felt.test.tsx` och är skriven som tal just därför att påståendet är "exakt som förut".
+
+Byggt 2026-09-14 (#77). Prototypen `claude/proto-77-column` togs bort när den hade svarat; dess resonemang står här.
+Grindarna är invarianter och inte tal, mätta vid 3, 13 och 21 kort och vid 1280 × 800, 1920 × 1080 och 1024 × 600: inget kort i kolumnen är utan sitt namn, inget steg är under 44 px, kortet är alltid mellan 56 och 112 px, kolumnen tar aldrig mer än en fjärdedel av fönstrets bredd, sidan rullar aldrig i sidled, och ingenting av sidans krom ligger över filten eller en zon på den.
 
 ### K18. Filten växer med sällskapet (2026-09-13, #54)
 
@@ -2435,16 +2507,16 @@ Det är försvarbart men det är inte skrivet någonstans som ett beslut: K9 bö
 Anser produktägaren att de ska vara oskiljbara är remsan svaret på båda, och då är K10 det som ska skrivas om och inte K9.
 
 Filtens storlek på små och låga fönster, kvar efter #77 (2026-09-14).
-Två frågor som mätningen öppnade och som #77 uttryckligen inte stänger; båda är produktbeslut och inte kodval.
+Två frågor som mätningen öppnade. Den andra är stängd av #77:s andra halva; den första står kvar och är ett produktbeslut och inte ett kodval.
 
 Hur ett kort ska läsas på en telefon: ett helt fyraplatsbord ritar kortets kortsida i som mest 23 px vid 390 × 844, mot K9:s 45, och det är sant för varje plats och varje vridning.
 Alternativen är en kamera som TV:ns (C5), som slutar rita hela bordet, eller att skriva in i K9 att filten på telefon är en översikt och att det enskilda kortet läses genom INSPEKTION (K8).
 Tills det är avgjort finns ingen grind som påstår 45 px vid 390, se K17.
 
-Om K9:s 45 px eller K17:s band ska ge vika vid 1280 × 800: de kan inte båda hålla där, och räkningen står under K9.
-Kromet får väga omkring 105 px om kortet ska nå 45, och bandet ensamt är 218 vid den läsbara kortstorlek K17 beslutade.
-De vägar som finns är att bandet blir en kolumn vid fönstrets sida i ett liggande fönster i stället för en rad under filten, att handen kallas fram i stället för att alltid ligga där (K17:s avrådda variant C), eller att K9 skriver ned att 45 px är en grind för 1920 och uppåt.
-Att låta bandet ligga över filten är prövat och avvisat: det täcker den närmaste platsens hand och ytan framför den.
+Om K9:s 45 px eller K17:s band ska ge vika vid 1280 × 800: **löst 2026-09-14, bandet gav vika.**
+Den första av de tre vägar som stod här — att bandet blir en kolumn vid fönstrets sida i ett liggande fönster — är den som togs, tillsammans med att den egna handens fläkt på filten viks ihop till sin bricka när handen redan är ritad bredvid filten.
+Kortets kortsida går därmed från 31 till 46 px vid 1280 × 800, vid varje plats och varje handstorlek, och 45 px är ett golv och inte längre ett tal som gäller från 1920 och uppåt.
+Resonemanget och mätningarna står under K17 och K9; de två avrådda vägarna — att kalla fram handen, och att lägga bandet över filten — är avrådda av samma skäl som förut.
 
 Spelupplevelse, kvar efter avsnitt K: inga; de två sista avgjordes 2026-09-07, se K1 och K2.
 

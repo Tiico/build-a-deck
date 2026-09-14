@@ -82,6 +82,14 @@ export type TableRendererProps = {
   // place card at a real table is the one with your name on it. A surface with no reader sitting
   // anywhere marks none.
   me?: string | null | undefined
+  // The seat whose own hand is folded to its count, drawing no fan at all (#77). A surface that
+  // already draws the reader's hand somewhere else draws it twice otherwise, and the second copy
+  // is not free: `feltWithHands` grows the rectangle the fit has to pass into the frame by *every*
+  // seat's fan, and the reader's own runs along the axis the frame is bound by. On `/online` at
+  // 1280 x 800 a hand of thirteen cost the felt three pixels of card that way, at every seat,
+  // which is the difference between K9's forty-five being a floor and nearly being one. Other
+  // seats' fans are untouched: theirs are the only picture of their hands there is.
+  foldHand?: string | null | undefined
   keyboard?: FeltKeyboard | undefined
 }
 
@@ -146,7 +154,7 @@ type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: n
 // chip — whose verbs are a counter's own and not a card's (C4, #67).
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], onPresence, camera = false, onInspect, size: fixedSize, glideMs = GLIDE_MS, overlay, seatNames = false, me = null, keyboard }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], onPresence, camera = false, onInspect, size: fixedSize, glideMs = GLIDE_MS, overlay, seatNames = false, me = null, foldHand = null, keyboard }, ref) {
   const t = useT()
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
@@ -173,9 +181,12 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // The fan is drawn by one rotation, measured by it and hit-tested by it (`dropAt`): one rule.
   const hands = view.zones.filter((z) => z.kind === 'hand')
   const handRot = (z: ZoneView) => handRotation(z, floor, mode)
+  // A hand this surface draws somewhere else of its own is folded to its count here, and a folded
+  // hand is no fan: it is drawn about its zone's own middle and it reaches past nothing.
+  const folded = (z: ZoneView) => foldHand !== null && z.owner === foldHand
   // What the fit has to pass into the frame is the felt *with its hands on* (#23): a hand is part
   // of the table, so a table fitted to the floor alone would clip one that reaches past the rim.
-  const felted = feltWithHands(floorRect, hands.map((z) => handExtent(z, floor, handRot(z))))
+  const felted = feltWithHands(floorRect, hands.map((z) => (folded(z) ? null : handExtent(z, floor, handRot(z)))))
   // A quarter turn (C5) puts the table's width where its height was, so that is the shape the
   // fit has to pass into the frame — otherwise a seat at a side edge gets a table cut off at the
   // top and bottom of its own screen.
@@ -593,8 +604,11 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           })}
           {hands.map((z) => {
             // Drawn about the point the fan is anchored at in its own zone (#84), which is what
-            // the fit above measured it by, with the count hung off it on the rim's side.
-            const at = handAnchor(z, floor, handRot(z))
+            // the fit above measured it by, with the count hung off it on the rim's side. A folded
+            // hand has no fan to anchor, so it stands in the middle of its own zone and the count
+            // hangs off that, in the same air past the rim every other seat's count hangs in.
+            const fold = folded(z)
+            const at = fold ? { x: z.geometry.x + z.geometry.w / 2, y: z.geometry.y + z.geometry.h / 2 } : handAnchor(z, floor, handRot(z))
             return (
               <Hand
                 key={z.id}
@@ -602,6 +616,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 color={seatColor(seatIndex(z.owner))}
                 rot={handRot(z)}
                 countAt={countSide(z, floor, handRot(z))}
+                folded={fold}
                 left={left(at.x)}
                 top={top(at.y)}
                 px={px}
@@ -999,9 +1014,9 @@ function SeatName({ zone, floor, name, color, mine, left, top }: { zone: ZoneVie
 // Other seats' hands are a fan of backs and a count; the owner reads theirs on the phone. A hand
 // whose order this view may see (the observer, C8) fans the cards themselves. Every measure in
 // the fan is a millimetre on the felt, so it shrinks with the table rather than swamping it (#23).
-function Hand({ zone, color, rot, countAt, left, top, px, cards, faces }: { zone: ZoneView; color: string; rot: number; countAt: 'below' | 'above'; left: number; top: number; px: (mm: number) => number; cards?: VisibleComponentState[] | undefined; faces?: string | undefined }) {
+function Hand({ zone, color, rot, countAt, folded = false, left, top, px, cards, faces }: { zone: ZoneView; color: string; rot: number; countAt: 'below' | 'above'; folded?: boolean; left: number; top: number; px: (mm: number) => number; cards?: VisibleComponentState[] | undefined; faces?: string | undefined }) {
   const count = zone.mode === 'count' ? zone.count : zone.order.length
-  const fan = Math.min(count, FAN_MAX)
+  const fan = folded ? 0 : Math.min(count, FAN_MAX)
   const shown = cards ? Math.min(cards.length, FAN_MAX) : fan
   const box = { left: px(HAND_CARD_BOX.x), top: px(HAND_CARD_BOX.y), width: px(HAND_CARD_BOX.w), height: px(HAND_CARD_BOX.h) }
   const place = (i: number, spread: boolean) => {
@@ -1015,11 +1030,12 @@ function Hand({ zone, color, rot, countAt, left, top, px, cards, faces }: { zone
       data-count={count}
       data-rot={rot}
       data-count-side={countAt}
+      data-folded={folded ? 'true' : undefined}
       style={{ left, top, transform: `rotate(${rot}deg)`, ['--seat' as string]: color, ['--hand-unrot' as string]: `${-rot}deg`, ['--hand-drop' as string]: `${px(HAND_COUNT_MM)}px`, ['--hand-lift' as string]: `${px(HAND_COUNT_ABOVE_MM)}px` }}
     >
       <div className="byd-hand-fan">
-        {cards
-          ? cards.slice(0, FAN_MAX).map((c, i) => (
+        {folded ? null : cards ? (
+          cards.slice(0, FAN_MAX).map((c, i) => (
               <i
                 key={c.id}
                 className="byd-hand-card"
@@ -1030,8 +1046,10 @@ function Hand({ zone, color, rot, countAt, left, top, px, cards, faces }: { zone
                 <Texture faces={faces} c={c} />
                 <span>{c.cardRef ?? ''}</span>
               </i>
-            ))
-          : Array.from({ length: fan }, (_, i) => <i key={i} className="byd-back" style={{ ...box, transform: place(i, false) }} />)}
+          ))
+        ) : (
+          Array.from({ length: fan }, (_, i) => <i key={i} className="byd-back" style={{ ...box, transform: place(i, false) }} />)
+        )}
       </div>
       <b className="byd-hand-count">{count}</b>
     </div>

@@ -31,6 +31,11 @@ export const FAN_AIM_PX = 12
 // its diagonal — so the gutter is that reach at forty-five degrees, rounded up.
 export const FAN_RING_PX = 8
 export const FAN_GUTTER_PX = Math.ceil(FAN_RING_PX * Math.SQRT2)
+// The card, as CSS resolves it against the screen it is on: read at prototype B's size, never
+// larger, and never smaller than a card. Both shapes of the hand draw the same card, so both ask
+// for it here.
+const CARD_CSS = `clamp(${FAN_CARD_MIN_PX}px, ${FAN_CARD_VW}vw, ${FAN_CARD_PX}px)`
+
 // The physical card, as `aspect-ratio: 63 / 88` in the stylesheet says it.
 export const CARD_RATIO = 88 / 63
 // How much of a card each of its neighbours hides — the negative margin the row is laid out with
@@ -119,7 +124,7 @@ function painted(count: number): Extent {
 export function fanStyle(count: number): Record<string, string> {
   const { edge, over, lift, drop } = fanShape(count)
   const room = `(100vw - ${2 * FAN_GUTTER_PX}px)`
-  const card = `clamp(${FAN_CARD_MIN_PX}px, ${FAN_CARD_VW}vw, ${FAN_CARD_PX}px)`
+  const card = CARD_CSS
   const full = `${round(FAN_STEP)} * var(--fan-card)`
   return {
     '--fan-card': card,
@@ -135,3 +140,17 @@ export function fanStyle(count: number): Record<string, string> {
 }
 
 const round = (n: number) => n.toFixed(4)
+
+// The same hand stood on end (#77). In a landscape window the band is a column at the side, and
+// nothing about the drawing depends on how many cards are in it: no card is turned, so there is no
+// overhang to reserve, and the step is worked out by the browser's own shrinking rather than here
+// — the room a column has is the height of a page row, which this module cannot know and does not
+// have to. What it does say is the two ends of that shrinking: the step a hand spreads to when it
+// has room, which is the band's own step so that one hand is one hand at either orientation, and
+// the fingertip it stops at.
+export const COLUMN_STYLE: Record<string, string> = {
+  '--fan-card': CARD_CSS,
+  '--col-step': `calc(${round(FAN_STEP)} * var(--fan-card))`,
+  '--col-min': `${FAN_MIN_PX}px`,
+  '--fan-gutter': `${FAN_GUTTER_PX}px`,
+}

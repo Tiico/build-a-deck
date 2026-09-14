@@ -8,10 +8,10 @@
 // the eye cannot use. Every reading below is therefore `getBoundingClientRect` in Chromium on a
 // card lying on the felt, and never the number the fit was asked for.
 //
-// The gate is not one number at every window, and the reason is written down rather than hidden
-// in a constant: 1920 x 1080 makes K9's forty-five and 1280 x 800 cannot, because the page's own
-// two rows leave the felt too little height for it however the table is turned. See `FLOOR_PX`,
-// and DESIGN-BESLUT's K9 and section I.
+// The gate is one number at every landscape window and at every size of hand. It was not, until
+// the hand moved off the felt's binding axis twice over (#77): out of the row under the felt and
+// into a column beside it, and off the felt itself, where the seat's own fan of backs was the same
+// hand drawn a second time. See DESIGN-BESLUT's K9 and K17.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
@@ -40,18 +40,34 @@ const document_ = (html: string) =>
 // a card is asked of a table that carries the whole recipe's furniture.
 const TABLE = feltOf(4)
 const SCENE = sceneOf(TABLE)
+
+// The same table with this seat dealt a hand of its own size. How many cards *I* hold is half of
+// what #77 is about: my own fan of backs grew the rectangle the fit has to pass into the frame, so
+// a big hand drew a small card. The other seats keep the recipe's four, which is what a table
+// looks like when one player has drawn and the rest have not.
+type Def = ReturnType<typeof defOf>
+const dealing = (seat: string, held: number): Def => {
+  const def = defOf(TABLE)
+  const mine = `hand:${seat}`
+  const one = def.components.find((c) => c.zone === mine)!
+  return { ...def, components: [...def.components.filter((c) => c.zone !== mine), ...Array.from({ length: held }, (_, i) => ({ ...one, cardRef: `Hand ${seat}${i}` }))] }
+}
 // Which of the four seats sits at a side of the felt and which at the bottom, read off the rule
 // rather than guessed from a letter.
 const SIDE = TABLE.seats.find((s) => seatRotation(SCENE, s) % 180 !== 0)!
 const BOTTOM = TABLE.seats.find((s) => seatRotation(SCENE, s) === 0)!
 
+// What a seat holds when nobody has drawn: the recipe's own deal, which every reading that is
+// not about the size of a hand uses.
+const HELD = 4
+
 let sessions = 0
 
 // `/online` as it really mounts: a live seat with cards in its hand, at the window it will be
 // measured at, handed back as the markup the browser gets.
-async function markup(seat: string, size: Size, box: Size | null = null): Promise<string> {
+async function markup(seat: string, size: Size, held: number, box: Size | null = null): Promise<string> {
   atWindow(size)
-  const id = await createSession(run, `felt${++sessions}`, undefined, defOf(TABLE))
+  const id = await createSession(run, `felt${++sessions}`, undefined, dealing(seat, held))
   const host = TableClient.connect(await asTable(run, id))
   await host.ready()
   const token = await admit(run, id, seat, `Spelare ${seat}`)
@@ -82,8 +98,8 @@ async function measure<T>(size: Size, read_: (page: Page) => Promise<T>, html: s
 // The page at the scale it really gives its felt: the frame's box read first off a page whose
 // felt was given none, then the page mounted again with that box in hand.
 const frames = new Map<string, Size>()
-async function feltMarkup(seat: string, size: Size): Promise<string> {
-  const key = `${seat}@${size.w}x${size.h}`
+async function feltMarkup(seat: string, size: Size, held = HELD): Promise<string> {
+  const key = `${seat}@${size.w}x${size.h}+${held}`
   const known = frames.get(key)
   const box =
     known ??
@@ -94,16 +110,16 @@ async function feltMarkup(seat: string, size: Size): Promise<string> {
           const r = document.querySelector('.byd-table-frame')!.getBoundingClientRect()
           return { w: Math.round(r.width), h: Math.round(r.height) }
         }),
-      await markup(seat, size, { w: 1, h: 1 }),
+      await markup(seat, size, held, { w: 1, h: 1 }),
     ))
   frames.set(key, box)
-  return markup(seat, size, box)
+  return markup(seat, size, held, box)
 }
 
 // Every card lying on the felt, as the browser paints it. `getBoundingClientRect` is the painted
 // box and not the millimetres: the tilt is already in it, which is the whole point.
-const cardsOn = (seat: string, size: Size) =>
-  feltMarkup(seat, size).then((html) =>
+const cardsOn = (seat: string, size: Size, held = HELD) =>
+  feltMarkup(seat, size, held).then((html) =>
     measure(
       size,
       (page) =>
@@ -114,7 +130,13 @@ const cardsOn = (seat: string, size: Size) =>
           })
           const felt = document.querySelector('[data-table]')!.getBoundingClientRect()
           const b = (sel: string) => { const e = document.querySelector(sel); if (!e) return null; const r = e.getBoundingClientRect(); return [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)] }
-          return { sides, smallest: Math.min(...sides), felt: { w: Math.round(felt.width), h: Math.round(felt.height) }, rows: { top: b('.byd-online-top'), row: b('.byd-online-felt'), band: b('.byd-hand-under'), wood: b('.byd-table-wood') } }
+          return {
+            sides,
+            smallest: Math.min(...sides),
+            felt: { w: Math.round(felt.width), h: Math.round(felt.height) },
+            hand: document.querySelector('[data-hand-column]') ? 'column' : document.querySelector('[data-hand-fan]') ? 'band' : 'none',
+            rows: { top: b('.byd-online-top'), row: b('.byd-online-felt'), band: b('.byd-hand-under'), wood: b('.byd-table-wood') },
+          }
         }),
       html,
     ),
@@ -141,30 +163,53 @@ const PHONE: Size = { w: 390, h: 844 }
 
 // K9's own gate, asked of the seat's window: a card on the felt is a control — it is dragged,
 // pressed and read — and the smallest thing a control may be is forty-five pixels across its
-// short side.
+// short side. It is one number at every landscape window and at every size of hand, which is what
+// the column bought (#77): the band under the felt spent 218 px of an 800 px window on a row, and
+// the seat's own fan of backs spent the felt's own binding axis on a hand that is already drawn
+// beside it. See DESIGN-BESLUT, K9 and K17's revisions of 2026-09-14.
 const PLAYABLE_PX = 45
 
-// What a window of this shape can actually afford, measured (#77). The felt's frame is the window
-// less the two rows the page's own chrome takes — the seat's line and the hand's band — and less
-// the air the fit leaves, and at 1280 x 800 that is not enough room for K9's forty-five however
-// the table is turned: the band alone would have to come down to about a hundred pixels, against
-// the two hundred and eighteen K17's reading size makes it. So the desk is held to the number the
-// design does reach, as a floor that may not be given back, and the shortfall is written down as
-// an open question rather than asserted away. See DESIGN-BESLUT, K9's revision of 2026-09-14.
-const FLOOR_PX: Record<number, number> = { 800: 30, 1080: PLAYABLE_PX }
+// How many cards the seat holds. Seven is a hand somebody is playing out of and thirteen is a big
+// one; both used to shrink the felt, because the seat's own fan grew what the fit had to hold.
+const HANDS = [7, 13] as const
 
 describe('a card on the seat\u2019s own felt is as big as the window can make it (K9, C5, #77)', () => {
   for (const size of [DESK, WIDE])
+    for (const held of HANDS)
+      for (const [where, seat] of [
+        ['a side seat', SIDE],
+        ['a bottom seat', BOTTOM],
+      ] as const)
+        it(`draws ${where}\u2019s cards at ${PLAYABLE_PX} px or more at ${size.w} \u00d7 ${size.h} with ${held} in hand`, async () => {
+          const { smallest, sides, felt, hand } = await cardsOn(seat, size, held)
+          expect(sides.length).toBeGreaterThan(0)
+          const at = `${where}, ${held} in hand at ${size.w} \u00d7 ${size.h}`
+          expect({ at, smallest, felt, hand, playable: smallest >= PLAYABLE_PX }).toEqual({ at, smallest, felt, hand: 'column', playable: true })
+        }, 90_000)
+})
+
+// A portrait window is not touched by any of it (#77). The column is worth having because a
+// landscape window has width the felt cannot use and height it is bound by; a portrait window has
+// neither, so there the band stays exactly where K17 put it — and "exactly" is a claim about
+// numbers, so the numbers are what is written down. They are the ones the page drew before the
+// column existed, digit for digit.
+const PORTRAIT: Record<string, { smallest: number; felt: Size }> = {
+  'a side seat, 7': { smallest: 20, felt: { w: 283, h: 408 } },
+  'a bottom seat, 7': { smallest: 16, felt: { w: 290, h: 189 } },
+  'a side seat, 13': { smallest: 20, felt: { w: 283, h: 408 } },
+  'a bottom seat, 13': { smallest: 16, felt: { w: 290, h: 189 } },
+}
+
+describe('a phone held upright keeps the band it always had (K17, #77)', () => {
+  for (const held of HANDS)
     for (const [where, seat] of [
       ['a side seat', SIDE],
       ['a bottom seat', BOTTOM],
     ] as const)
-      it(`draws ${where}\u2019s cards at ${FLOOR_PX[size.h]} px or more at ${size.w} \u00d7 ${size.h}`, async () => {
-        const { smallest, sides, felt } = await cardsOn(seat, size)
-        const want = FLOOR_PX[size.h]!
-        expect(sides.length).toBeGreaterThan(0)
-        const at = `${where} at ${size.w} \u00d7 ${size.h}`
-        expect({ at, smallest, felt, playable: smallest >= want }).toEqual({ at, smallest, felt, playable: true })
+      it(`draws ${where}\u2019s hand as the band, and the same felt as before, with ${held} in hand at ${PHONE.w} \u00d7 ${PHONE.h}`, async () => {
+        const { smallest, felt, hand } = await cardsOn(seat, PHONE, held)
+        const at = `${where}, ${held}`
+        expect({ at, smallest, felt, hand }).toEqual({ at, ...PORTRAIT[at]!, hand: 'band' })
       }, 90_000)
 })
 
@@ -290,7 +335,7 @@ const coveredAt = (seat: string, size: Size) =>
   )
 
 describe('the felt gets the room and nothing is drawn over anything else (K17, #25, #77)', () => {
-  for (const size of [DESK, PHONE])
+  for (const size of [DESK, WIDE, PHONE])
     for (const [where, seat] of [
       ['a side seat', SIDE],
       ['a bottom seat', BOTTOM],
