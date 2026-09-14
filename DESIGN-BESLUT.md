@@ -141,6 +141,15 @@ Ordet verktyget lägger till om filen — `kort`, och `spel` när spelets namn i
 En engelsk läsare får alltså `skogens-herrar-cards.csv`, och ett namnlöst spel `game-cards.csv`.
 Det är samma gräns som i de två fallen ovan, sedd från andra hållet: där var det verktyget lämnar ifrån sig formgivarens, här är det verktyget behåller sitt eget.
 
+Genitiv, 2026-09-14 (#89):
+
+En ägandeform är grammatik och inte text, och därför bor den i språklagret.
+Katalogen skrev ändelsen för hand — `{name}s räknare` — vilket är rätt för `Ada` och fel för de två andra fall en plats namn kommer i: en enda bokstav eller en förkortning tar kolon före sitt `s` på svenska (`A:s`), och ett namn som redan slutar på s, x eller z tar ingenting alls (`Lars räknare`).
+En obesatt plats heter just `A`, så det felaktiga fallet var det filten visade oftast.
+Anropsstället kan inte avgöra det: det har ett namn och inget språk.
+Så ett meddelande *ber* om formen med `{name:s}` och språket svarar — svenskan med sina tre fall, engelskan med sina egna (`Ada’s`, `A’s`, `Lars’`).
+Regeln står i `possessive` i `packages/web/src/i18n/index.tsx`, ett svar per språk, och katalogerna skriver aldrig en ändelse själva.
+
 ---
 
 ## B. Domänmodellen
@@ -1487,6 +1496,14 @@ Högen kostar därtill ett tryck till per räknare som inte ligger överst, och 
 Vägen in i högen är ringen (K14): högens ring har en knapp per räknare med namnet och värdet på knappen och antalet i navet, och den knappen öppnar brickans egen ring, som är `counterActs` rakt av — `−1 · +1 · Sätt värde…`, samma verb renderarens ring redan ritar.
 En hög är ett läge och inte ett verb: brickorna ligger på samma punkt, klienten ritar dem som en hög, och loggen hör bara det `move` en bricka alltid har färdats med.
 
+**Siffran i brickan skalas med brickan och med sin egen bredd**, och `CHIP_MM` rörs inte.
+En siffra satt i fasta tolv pixlar ryms i en bricka som ritas i fyrtio och målar rakt ut genom konturen på en som ritas i tretton — vilket är vad åtta platser på 1280 × 800 ritar — så ett tvåsiffrigt värde bröt brickans egen kant på varenda plats.
+Ordningen är: siffran tar en andel av brickans diameter, och den andelen delas med den bredd värdet självt behöver, eftersom `-120` — tre siffror och ett minus, det bredaste en räknare någonsin bär — måste rymmas i samma bricka som `0`.
+En bricka som också bär sitt namn ger siffran mindre, därför att de två staplas.
+Det förkastade alternativet var ett golv i pixlar under brickan: det hade gjort en räknare till en annan storlek än allt annat på filten vid just de platsantal där utrymmet är knappast, och det hade flyttat de träffytor `counter-zone.test.tsx` mäter.
+Priset, uttryckligen accepterat: vid de trängsta borden är brickan en prick och dess siffra en pricks siffra — värdet läses exakt i ringens nav, som ritar det i 24 px, och i räknarpanelen, vilket är samma delning K18 redan gör mellan filten och INSPEKTION.
+Regeln står som `tokenInkPx` i `packages/web/src/table/TableRenderer.tsx` med härledningen bredvid sig, och grinden är `packages/web/test/counter-ink.test.tsx`: varje platsantal 2–`MAX_PLAYERS` gånger båda lägena gånger tre skärmar, med ett tresiffrigt och ett negativt värde bland brickorna, mätt med `getBoundingClientRect()` i Chromium som andelar och aldrig som pixlar.
+
 Sparade bord lyfts på samma sätt som filten lyfts ovan, och bara de som måste: en plats vars räknarzon är kortare än brickorna i den behöver blir utlagd på nytt nästa gång receptet vrids, och `Framför` med den, eftersom de två delar på platsens 500 mm.
 En zon som designern själv har gjort rymligare än brickorna ber om är hens och lämnas i fred, precis som filten.
 Ett bord som redan står på ett bord — en pågående session — rörs inte alls: brickornas platser ligger i loggen och spelas upp som de skrevs, och det är först nästa gång ett bord byggs ur projektet som brickorna ställs mitt i sina rutor.
@@ -2116,6 +2133,7 @@ Ordet mäter 4,5:1 mot samma ords 14:1 när det går att trycka på, och grinden
 `.byd-radial::before` lade en genomskinlig grå skiva, `rgba(23, 26, 35, 0.55)`, mitt i ringen, och kortets ring har ingen nav — så den låg rakt ovanpå kortet vars verb valdes: kortets eget bläck mätte 3,66:1 genom den där det mäter 13,19:1 utan den.
 Den enda ring som vill ha en platta i mitten är brickans, och den har redan en: navet, ogenomskinligt just därför att filten inte kan säga vad en bricka är (#67).
 En platta i mitten är alltså vad ringen handlar om när filten inte kan rita det själv, aldrig en ton över det filten redan har ritat.
+Tillagt 2026-09-14 (#89): navet står ovanför filten som skivorna det håller ihop, med samma två linjer — den nästan svarta ringen som säger var det slutar och skuggan som lyfter det — eftersom en mitt som ligger plattare än allt den ankrar läses som ett hål i filten och inte som ringens mitt; det är allt navet tar från en skiva, för det är ingen kontroll och behåller `pointer-events: none`.
 
 De tre förkastade positionerna, med talen:
 **B**, att låna spelarens rum, faller på att språkets delade sekundärlinje `#6f7a90` mäter 1,60:1 på det gröna och 4,06:1 på TV:ns mörka filt — den går alltså igenom just där grunden inte är grön, vilket betyder att en grind som bara mäts i TV-läge godkänner en felaktig bindning.

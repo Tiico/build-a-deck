@@ -68,7 +68,7 @@ export const svPlay = {
   'ring.counter.plus': '+1',
   'ring.counter.set': 'Sätt värde…',
   // Vems räknaren är. Ett delat bord behöver det; telefonen visar bara sin egen plats.
-  'ring.counter.whose': '{name}s räknare',
+  'ring.counter.whose': '{name:s} räknare',
   // En plats tredje räknare staplas med de andra, så högens ring säger var och en av dem rakt ut
   // och navet säger hur många de är (#89).
   'ring.counter.named': '{name} {n}',
@@ -107,7 +107,7 @@ export const svPlay = {
   'kbd.hint.counter.becomes': 'blir {n}',
   'kbd.hint.counter.set': 'skriv ett tal',
   'kbd.hand.my': 'Min hand',
-  'kbd.hand.other': '{name}s hand',
+  'kbd.hand.other': '{name:s} hand',
   'kbd.place.floor': 'Bordet',
   'kbd.place.floor.hint': 'fri yta',
   'kbd.place.onCard': 'På {name}',
@@ -137,7 +137,7 @@ export const svPlay = {
   'activity.move': '{who} flyttade ett kort till {zone}',
   // En hand namnges av den som sitter där (K19), mitt i meningen: "till Adas hand", "till min hand".
   'activity.hand.my': 'min hand',
-  'activity.hand.other': '{name}s hand',
+  'activity.hand.other': '{name:s} hand',
   'activity.rotate': '{who} vred ett kort',
   'activity.flip': '{who} vände ett kort',
   'activity.stack': '{who} lade ett kort på ett annat',

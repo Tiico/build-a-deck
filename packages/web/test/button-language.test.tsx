@@ -813,6 +813,34 @@ describe('the felt', () => {
     expect(ring.filter(failed), ring.join('\n')).toEqual([])
   }, 90_000)
 
+  // The hub is the middle of the ring, and it was the one part of it that lay flat. Every disc
+  // stands off the felt on the same two lines — the near-black that says where it ends and the
+  // shadow that lifts it — and `.byd-radial-hub` carried neither, so the thing the ring is *about*
+  // read as a hole punched in the felt rather than as its centre. It is not a control and must not
+  // become one: it keeps `pointer-events: none` and takes nothing but the lift and the edge.
+  it('lifts the ring\'s hub the way it lifts the discs around it', async () => {
+    const measured = await inChromium(FELT_CSS, 1280, await feltView('table'), (page) =>
+      page.evaluate(() => {
+        const lift = (selector: string) => {
+          const el = document.querySelector<HTMLElement>(selector)
+          if (!el) throw new Error(`no ${selector} in this view`)
+          const style = getComputedStyle(el)
+          return { shadow: style.boxShadow, presses: style.pointerEvents }
+        }
+        return { skivan: lift('.byd-radial button:not(:disabled)'), navet: lift('.byd-radial-hub') }
+      }),
+    )
+    const ring = measured['bordsläge']!
+    // The same lift, read off the page rather than off a hex written here: whatever a disc is
+    // given, the hub in the middle of them is given too.
+    expect(ring.navet.shadow).toBe(ring.skivan.shadow)
+    // And it is a lift and not nothing: two lines, the second of them blurred off the felt.
+    expect(ring.skivan.shadow.split(/,(?![^(]*\))/)).toHaveLength(2)
+    expect(/[1-9]\d*px\s+[1-9]\d*px/.test(ring.skivan.shadow)).toBe(true)
+    // What it does not take is the affordance: a finger slides over the hub on its way to a verb.
+    expect({ skivan: ring.skivan.presses, navet: ring.navet.presses }).toEqual({ skivan: 'auto', navet: 'none' })
+  }, 90_000)
+
   // A verb that is not available was drawn with `opacity: 0.35`, and opacity fades a whole
   // element: the plate, the ink and both lines of the edge together. Over a pale card face — and
   // a card's ring opens on a card — that turns the disc into a muddy smear with no boundary at
@@ -1124,6 +1152,7 @@ describe('every suite that measures a surface', () => {
   it('finds every suite that lays a surface into a document, by name', () => {
     expect(mounting.map((s) => s.name).sort()).toEqual([
       'account-viewport.test.tsx',
+      'counter-ink.test.tsx',
       'counter-touch.test.tsx',
       'counter-zone.test.tsx',
       'data-table-csv-pair.test.tsx',

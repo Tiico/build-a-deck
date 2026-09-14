@@ -19,7 +19,39 @@ const CATALOGUES: Record<Lang, Messages> = { sv, en }
 export function translate(lang: Lang, key: Key, params?: Record<string, string | number>): string {
   const message = CATALOGUES[lang][key] ?? sv[key]
   if (!params) return message
-  return message.replace(/\{(\w+)\}/g, (whole, name: string) => (name in params ? String(params[name]) : whole))
+  return message.replace(/\{(\w+)(:s)?\}/g, (whole, name: string, owns: string | undefined) =>
+    name in params ? (owns ? possessive(lang, String(params[name])) : String(params[name])) : whole,
+  )
+}
+
+// Whose a thing is, in the reader's own language (A4).
+//
+// A possessive is grammar and not text, so it cannot be written into a message: `{name}s räknare`
+// is right for `Ada` and wrong for both of the other two cases a seat's name comes in. It cannot
+// live at the call site either — the call site has a name and no language. So a message asks for
+// it, `{name:s}`, and the language answers.
+//
+// Swedish: a name takes a plain `s` (`Adas`), a single letter or an abbreviation takes a colon
+// first (`A:s`, `TV:s`) — which is what the felt gets until a seat is claimed — and a name that
+// already ends in the s-sound takes nothing at all (`Lars`, `Max`). The abbreviation is read off
+// the last character rather than off the whole word: a name ends in a small letter and an
+// abbreviation or a number does not, and that one difference decides all three Swedish cases in
+// the order they are asked below.
+//
+// English: `Ada’s`, `A’s`, and `Lars’` — the apostrophe stays and only the s falls away. The
+// letter is no special case there, which is the whole reason this is a rule per language and not
+// one rule with a language-shaped hole in it.
+const POSSESSIVE: Record<Lang, (name: string) => string> = {
+  sv: (name) => {
+    const last = name.slice(-1)
+    if (last !== last.toLowerCase()) return `${name}:s`
+    if (last === last.toUpperCase()) return `${name}:s`
+    return 'sxz'.includes(last) ? name : `${name}s`
+  },
+  en: (name) => (name.slice(-1).toLowerCase() === 's' ? `${name}’` : `${name}’s`),
+}
+export function possessive(lang: Lang, name: string): string {
+  return name === '' ? '' : POSSESSIVE[lang](name)
 }
 
 export type T = (key: Key, params?: Record<string, string | number>) => string

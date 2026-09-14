@@ -96,6 +96,11 @@
 
 /* A counter token (C4): a chip with its value and name. */
 .byd-token { border-radius: 50%; background: #f0b64a; color: #1c1c1c; display: grid; place-items: center; align-content: center; line-height: 1; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); font: 700 11px var(--byd-felt-font, system-ui, sans-serif); }
+/* The number is sized by the renderer and not here (K9, #89): a chip is 24 mm of felt drawn at
+   whatever the screen and the seat count leave it, so a size written once in this sheet is ink
+   outside the outline on a tight table and a speck on a wide one. `tokenInkPx` in
+   `TableRenderer.tsx` is the rule and carries the reasoning; the value below is only what a chip
+   that was drawn without it would fall back to. */
 .byd-token b { font-size: 12px; }
 .byd-token span { font-size: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
 /* The chip's target (#67): invisible in the picture, there for the finger. The renderer sizes and
@@ -474,10 +479,17 @@
 /* The hub: what the ring is about, for a thing the felt cannot say for itself (#67). Opaque and
    not a tint, because the chip itself lies under the ring's centre and a translucent hub let the
    disc and the zone's label read straight through the number they were being replaced by. Never
-   a control — the finger slides over it on the way to a verb. */
+   a control — the finger slides over it on the way to a verb.
+   It takes the discs' own lift, and for the same two reasons they have it (#89): the near-black
+   ring says where the hub ends on a pale ground the way its own pale hairline says it on a dark
+   one, and the shadow puts it on top of the felt instead of in it. Without them the middle of the
+   ring lay flatter than everything it anchors and read as a hole punched in the green. The lift
+   is all it takes from a disc: it is still not a control, so it keeps `pointer-events: none` and
+   gains neither a cursor nor a hover. */
 .byd-radial-hub {
   position: absolute; left: -46px; top: -46px; width: 92px; height: 92px; box-sizing: border-box; padding: 0 8px;
   border-radius: 50%; background: var(--byd-felt-plate); border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 0 1px var(--byd-felt-edge), 0 8px 20px rgba(0, 0, 0, 0.6);
   display: grid; place-content: center; text-align: center; line-height: 1.05; pointer-events: none;
   font: 700 11px system-ui, sans-serif; color: #fff;
 }

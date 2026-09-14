@@ -84,6 +84,37 @@ const DRAG_MM = 4
 const TABLE_GREY = '#8a93a8'
 // The narrowest chip that still has room for the name under the number, in screen pixels.
 const TOKEN_NAME_PX = 34
+// How the number on a chip is sized (K9, #89).
+//
+// The chip is 24 mm of felt and nothing here changes that: `CHIP_MM` is what the whole of #89's
+// layout was derived from. What changes is the ink. A number set in a fixed twelve pixels fits a
+// chip drawn at forty and paints straight out through one drawn at thirteen — which is what eight
+// seats at 1280 × 800 draw — so the value broke its own outline on every seat of the tightest
+// table the product supports.
+//
+// So the number is the chip's, twice over: it takes a share of the chip's diameter, and that
+// share is divided by the width the value itself needs. Three figures and a minus is the widest
+// thing a counter is ever given, and `-120` on a chip must fit the same chip `0` does. The
+// fractions are a chord across a circle rather than a square's side — ink to the disc's edge
+// would leave no amber around it — and a chip that also carries its name (`TOKEN_NAME_PX`) gives
+// the number less, because the two stack.
+//
+// What it does not do is grow the chip when the value is wide. The alternative rule, a floor
+// under the chip in pixels, would have made a counter a different size from every other thing on
+// the felt at exactly the seat counts where room is scarcest, and it would have moved the targets
+// `counter-zone.test.tsx` measures. At the tightest tables the chip is a dot and its number is a
+// dot's number; the value read exactly is read in the ring's hub, which draws it at 24 px, and in
+// the counter panel — the same division K18 already makes between the felt and INSPEKTION.
+const TOKEN_INK_TALL = 0.52
+const TOKEN_INK_WIDE = 0.74
+const TOKEN_NAMED_INK_TALL = 0.42
+const TOKEN_NAMED_INK_WIDE = 0.66
+// What one character of a value costs, as a share of its own size. The felt's own letters (K20)
+// set a figure in about 0.52 em and a minus in less; the number here is deliberately larger, so
+// that a machine that somehow falls back to a wider face still keeps its ink inside the chip.
+const TOKEN_FIGURE_EM = 0.62
+const tokenInkPx = (chipPx: number, value: string, named: boolean): number =>
+  Math.min(chipPx * (named ? TOKEN_NAMED_INK_TALL : TOKEN_INK_TALL), (chipPx * (named ? TOKEN_NAMED_INK_WIDE : TOKEN_INK_WIDE)) / (Math.max(1, value.length) * TOKEN_FIGURE_EM))
 // The camera: room around what is in play, how close it may come, and how long a zoom holds.
 const CAMERA_PAD_MM = 60
 const CAMERA_MIN_MM = 520
@@ -587,7 +618,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                   {...keys(`counter:${c.id}`)}
                   style={{ position: 'absolute', left: left(a.x + (m ? dx : 0)), top: top(a.y + (m ? dy : 0)) + peek, width: px(TOKEN_MM), height: px(TOKEN_MM) }}
                 >
-                  <b>{c.counter ?? 0}</b>
+                  <b style={{ fontSize: tokenInkPx(px(TOKEN_MM), String(c.counter ?? 0), wide) }}>{c.counter ?? 0}</b>
                   {wide && <span>{c.cardRef ?? ''}</span>}
                   {hit > 0 && <i className="byd-token-hit" data-counter-hit={c.id} style={{ width: hit, height: hit, left: (px(TOKEN_MM) - hit) / 2, top: (px(TOKEN_MM) - hit) / 2 }} />}
                 </div>
