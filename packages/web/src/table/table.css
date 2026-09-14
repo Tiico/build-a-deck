@@ -10,6 +10,35 @@
    ink rather than the white it used to, which measured 3.44:1 on the blue seat and worse on three
    of the others. The palette itself is untouched. */
 .byd-table-frame, [data-tv] { --byd-seat-ink: #0d0f14; }
+
+/* ── The felt's own colours (K9, L13, #90) ────────────────────────────────────────────────────
+   The felt is a room in the button language and owns its accent. The green is the *ground*, so
+   the accent can never be the green — which is what #67's borrowed account green was, unsaid. It
+   is the chip's amber instead: already on this felt, already read at three metres, and already
+   carrying `#1c1c1c` as its ink where `.byd-token` draws a counter. */
+.byd-table,
+.byd-table-frame,
+[data-tv] {
+  --byd-felt-accent: #f0b64a;
+  --byd-felt-on-accent: #1c1c1c;
+  /* The chalk the felt already writes its pile counts, its hand counts and its own title in. The
+     language's shared `--byd-secondary-line: #6f7a90` is a line drawn for a dark room and holds
+     there — 3.86:1 on the counter sheet's own dark — but on the green it measures 1.64:1, which
+     is the order of number L13 itself called invisible. So the felt's second action is drawn in
+     the one pale colour already on the green.
+
+     Both values are written twice over: here, and where `.byd-token` and `.byd-pile-count` draw
+     them. That is on purpose. `button-language.test.tsx` asks the page what the chip is painted
+     in and what a pile's count is written in, and requires the three roles to be those and
+     nothing else — and if the furniture read the same token these tokens do, that measurement
+     would be comparing a variable with itself and could never fail. */
+  --byd-felt-chalk: #f3e9d6;
+  /* The ring's resting plate, and the near-black that rings it. The plate is what a disc keeps
+     instead of the language's transparent outline; the edge is the second of the disc's two
+     lines, the one that can be seen where the chalk cannot — on a card face. */
+  --byd-felt-plate: #171a23;
+  --byd-felt-edge: #0d0f14;
+}
 .byd-table-frame { display: grid; place-items: center; width: 100%; height: 100%; }
 .byd-table-frame[data-mode='table'] {
   height: 100%;
@@ -380,12 +409,28 @@
 .byd-radial-backdrop { position: fixed; inset: 0; z-index: 40; }
 .byd-radial { position: fixed; width: 0; height: 0; }
 .byd-radial::before { content: ''; position: absolute; left: -46px; top: -46px; width: 92px; height: 92px; border-radius: 50%; background: rgba(23, 26, 35, 0.55); border: 1px solid rgba(255, 255, 255, 0.15); }
+/* A disc wears the felt's own colours and keeps its plate (L13, K9, #90).
+   The plate is the exception the prototype measured out of the decision. The language draws a
+   second action as an outline with `background: transparent`, and a disc drawn that way over a
+   card face reads 1.22:1 — and a card's ring opens *on a card*, which is the ring's normal case
+   and not an accident. So the plate stays opaque: it is what makes a disc legible wherever on the
+   felt it lands, and the text on it is 14:1 over the green, the rim, the dark and a card face
+   alike. What comes in from the language is the colour, not the form.
+   The edge is two lines, and it has to be. `#3b4358` held 3:1 against no ground at all — 72 cases
+   out of 72, between 1.01 and 2.72:1 — and no single colour could have fixed it: the felt's green
+   and the rim need a pale line, a pale card face needs a dark one, and the two demands do not
+   meet. So the chalk says where the disc ends on everything dark, and the near-black ring just
+   outside it says the same on everything pale. */
 .byd-radial button {
-  position: absolute; transform: translate(-50%, -50%); width: 66px; height: 66px; border-radius: 50%; border: 1px solid #3b4358;
-  background: #171a23; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+  position: absolute; transform: translate(-50%, -50%); width: 66px; height: 66px; border-radius: 50%; border: 1px solid var(--byd-felt-chalk);
+  background: var(--byd-felt-plate); color: var(--byd-felt-chalk); font-size: 12px; font-weight: 700; cursor: pointer;
+  box-shadow: 0 0 0 1px var(--byd-felt-edge), 0 8px 20px rgba(0, 0, 0, 0.6);
   display: grid; place-items: center; line-height: 1.1; text-align: center; touch-action: none;
 }
-.byd-radial button:hover { background: #7dd3a0; color: #0b2a18; }
+/* Pointed at, a disc is the thing about to be pressed, so it takes the felt's first-action
+   colours. It used to take `#7dd3a0` — the account's green, in the middle of the felt — which is
+   the same leak across surfaces L13 was written to close. */
+.byd-radial button:hover { background: var(--byd-felt-accent); color: var(--byd-felt-on-accent); }
 .byd-radial button:disabled { opacity: 0.35; cursor: default; }
 /* The hub: what the ring is about, for a thing the felt cannot say for itself (#67). Opaque and
    not a tint, because the chip itself lies under the ring's centre and a translucent hub let the
@@ -393,11 +438,11 @@
    a control — the finger slides over it on the way to a verb. */
 .byd-radial-hub {
   position: absolute; left: -46px; top: -46px; width: 92px; height: 92px; box-sizing: border-box; padding: 0 8px;
-  border-radius: 50%; background: #171a23; border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 50%; background: var(--byd-felt-plate); border: 1px solid rgba(255, 255, 255, 0.15);
   display: grid; place-content: center; text-align: center; line-height: 1.05; pointer-events: none;
   font: 700 11px system-ui, sans-serif; color: #fff;
 }
-.byd-radial-hub b { font-size: 24px; color: #f0b64a; }
+.byd-radial-hub b { font-size: 24px; color: var(--byd-felt-accent); }
 .byd-radial-hub span, .byd-radial-hub i { display: block; max-width: 76px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .byd-radial-hub span { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #aab3c5; }
 .byd-radial-hub i { font-style: normal; font-size: 9px; font-weight: 600; color: #9aa3b8; }

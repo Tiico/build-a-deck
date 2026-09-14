@@ -23,9 +23,12 @@ import { ObserverPage } from '../src/observer/ObserverPage.js'
 import { PlayerPage } from '../src/player/PlayerPage.js'
 import { TablePage } from '../src/table/TablePage.js'
 import { TableClient } from '../src/client.js'
+import type { SetupDef } from '@byd/engine'
 import { projectDoc } from './project-doc.js'
 import { admit, asSeat, asTable, createSession, roomOf, seatSetup, startServer, twoSeatSetup, type Running } from './fixture.js'
 import { atWidth } from './viewport.js'
+import { drawnAs, painted, type Ground, type Spot } from './painted.js'
+import { contrastRatio, flatten } from '../src/player/contrast.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
@@ -454,6 +457,283 @@ describe('the table screen', () => {
   }, 90_000)
 })
 
+// ── The felt as a room of its own (L13, K9, #90) ──────────────────────────────────────────────
+//
+// Every measurement above asks which element wears which role. These ask the other question, the
+// one the felt is the first surface to make hard: whether the colour a role is drawn in can be
+// SEEN where that role lands. On the four earlier surfaces the ground is a flat token and
+// `button-language-contrast.test.ts` reads it out of the stylesheet. The felt has no such token:
+// the green is a `radial-gradient`, the dark beyond the rim is another, the wooden rim is a
+// `linear-gradient`, a card face is `hsl(var(--hue) 40% 86%)`, and the ring's own plate is a disc
+// laid over whichever of those it happened to open on. A walk up the ancestor chain finds
+// `rgba(0, 0, 0, 0)` at every step and measures a colour nothing is wearing — so these read the
+// ground out of the pixels the browser painted (`painted.ts`).
+//
+// And they measure in TABLE mode, which is the mode that tells the truth. The prototype's finding
+// is that the felt in TV mode is `#151924`, a dark like any other dark, on which the language's
+// shared `#6f7a90` line measures 4.06:1 and passes; on the green it is 1.60:1 and invisible. A
+// gate measured only on the television therefore waves a wrong binding through.
+const GATE = { text: 4.5, line: 3, bar: 3 } as const
+
+// A colour over a ground, as the eye gets it. A ground is three shades and not one — a gradient
+// is not a colour — so what is reported is the weakest of the three: the felt's chalk passes at
+// 5.97:1 in the middle of the green and the prototype caught it at 4.37:1 on the felt's lightest
+// patch, and a reading that only ever looked at the middle would have called that fine.
+const worstOn = (colour: string, ground: Ground) => Math.min(...ground.shades.map((shade) => contrastRatio(flatten([shade, colour]), shade)))
+// A label stands on its button's own plate, and the plate stands on the ground: a translucent
+// plate lets the ground through to the letter, so the two are composited in that order.
+const worstOnPlate = (ink: string, plate: string, ground: Ground) =>
+  Math.min(
+    ...ground.shades.map((shade) => {
+      const over = flatten([shade, plate])
+      return contrastRatio(flatten([over, ink]), over)
+    }),
+  )
+const reading = (what: string, ratio: number, gate: number) => `${what}: ${ratio.toFixed(2)}:1 mot ${gate}:1 ${ratio >= gate ? '✓' : '✗'}`
+const failed = (line: string) => line.endsWith('✗')
+// An edge may be made of more than one line — a pale one with a dark one laid just outside it —
+// and the boundary is legible when the ground can see either. No single colour can hold 3:1
+// against both a near-black surround and a pale card face, and the ring lands on both.
+const bestLine = (lines: string[], ground: Ground) => (lines.length === 0 ? 0 : Math.max(...lines.map((line) => worstOn(line, ground))))
+
+// Nothing in the product paints a button on the green today — the counter sheet's two stand on
+// the sheet's own dark, which is why #67 could bind the felt to the account's green and nobody
+// saw it. #90 is the question of the button that is coming, so the three roles are laid on the
+// felt with a probe: three real buttons carrying nothing but the language's three class names,
+// declaring no colour of their own, so what they wear is whatever the room binds. It is the same
+// trick `wearingThePrimary` uses at the top of this file for the opposite purpose — a probe is
+// how one asks a surface what it has bound.
+//
+// The reset below is an attribute and a type, (0,1,1); a room and a role are two classes, (0,2,0),
+// and win. So a probe that came out drawn in the reset's own transparent would mean the room binds
+// nothing, and every ratio under it would fail rather than quietly pass.
+const PROBE = `
+  [data-probe] { position: fixed; z-index: 8; display: flex; flex-direction: column; gap: 8px; width: 140px; }
+  [data-probe] button { box-sizing: border-box; min-height: 44px; border-radius: 10px; border: 1px solid transparent; background: transparent; color: inherit; font: 700 14px system-ui, sans-serif; }
+`
+const FELT_CSS = `${TABLE_CSS}\n${PROBE}`
+
+// Everything that lies on the felt rather than being it. The ground is the felt where none of
+// these is covering it; without the list the green would be sampled through a card.
+const ON_THE_FELT = '.byd-card, .byd-pile, .byd-token, .byd-hand, .byd-seat-name, .byd-table-plate, .byd-radial, .byd-set-value, .byd-inspect, [data-probe]'
+// And everything laid over the whole screen rather than over the felt: an open ring, an open
+// sheet, a card held up, and this file's own probe.
+const OVER_IT_ALL = '.byd-radial, .byd-set-value, .byd-inspect, [data-probe]'
+
+// Every ground the felt can put under a button, in the mode named. A ring opens where the finger
+// let go, so one disc lands on the felt's green, the next reaches the wooden rim, the next the
+// dark beyond it — and a card's own ring opens, by definition, on a card. No single flat colour
+// holds 3:1 against both the last two: a line pale enough to be seen on a near-black surround
+// disappears on a pale card face, and the other way round.
+const groundsOf = (mode: 'table' | 'tv'): readonly Spot[] => [
+  { what: 'filten', inside: '[data-table]', avoid: ON_THE_FELT },
+  // The rim is the felt's parent minus the felt. On a television there is no rim: the felt is a
+  // flat panel and `.byd-table-wood` loses its padding, so the strip would be empty and the
+  // sampler would rightly refuse to call nothing a ground.
+  ...(mode === 'table' ? [{ what: 'träramen', inside: '.byd-table-wood', outside: '[data-table]', inset: 0, avoid: ON_THE_FELT }] : []),
+  { what: 'det mörka omlandet', inside: '.byd-table-frame', outside: '.byd-table-wood', inset: 0, avoid: ON_THE_FELT },
+  { what: 'ett kortansikte', inside: ".byd-card:not([data-face='back'])", avoid: OVER_IT_ALL },
+]
+
+// The ring's discs. They keep their plate — the prototype drew them as the language's outlined
+// form and measured a disc over a card face at 1.22:1, so an opaque plate is what makes a disc
+// legible anywhere on the felt — and the plate is a flat colour, so the honest reading of it is
+// the declaration composited over the ground it was laid on. What the pixels are needed for is
+// what is UNDER it, and what is beside the edge.
+const theRingsDiscs = (mode: 'table' | 'tv') => async (page: Page): Promise<string[]> => {
+  const grounds = await painted(page, groundsOf(mode))
+  const drawn = await drawnAs(page, { skiva: '.byd-radial button:not(:disabled)' })
+  const disc = drawn['skiva']!
+  return Object.entries(grounds).flatMap(([what, ground]) => [
+    reading(`skivans text på sin egen platta över ${what}`, worstOnPlate(disc.ink, disc.plate, ground), GATE.text),
+    reading(`skivans kant mot ${what}`, bestLine(disc.lines, ground), GATE.line),
+  ])
+}
+
+const layTheRolesOnTheFelt = (page: Page) =>
+  page.evaluate(() => {
+    const felt = document.querySelector('[data-table]')
+    const room = document.querySelector('.byd-table')
+    if (!felt || !room) throw new Error('no felt in this view, so nothing here measures the green')
+    const box = felt.getBoundingClientRect()
+    const probe = document.createElement('div')
+    probe.setAttribute('data-probe', 'roller')
+    probe.style.left = `${box.left + box.width / 2 - 70}px`
+    probe.style.top = `${box.top + box.height / 2 - 70}px`
+    probe.innerHTML = `
+      <button type="button" class="byd-primary">Dela ut</button>
+      <button type="button" class="byd-secondary">Blanda</button>
+      <button type="button" class="byd-choice" aria-pressed="true">Visa värden</button>`
+    room.appendChild(probe)
+  })
+
+// The three roles, read where they land. The first action's label sits on the first action's own
+// fill, so that pair travels with the button; its line is the fill's own colour, which is what
+// says where the button ends and is therefore read against the ground. The other two are drawn on
+// nothing at all, so their ink, their line and their bar are all read against the ground.
+async function rolesOnTheFelt(page: Page): Promise<string[]> {
+  await layTheRolesOnTheFelt(page)
+  const ground = await painted(page, [{ what: 'filten', inside: '[data-table]', avoid: ON_THE_FELT }])
+  const drawn = await drawnAs(page, { primar: '[data-probe] .byd-primary', sekundar: '[data-probe] .byd-secondary', valt: '[data-probe] .byd-choice' })
+  const felt = ground['filten']!
+  const [primar, sekundar, valt] = [drawn['primar']!, drawn['sekundar']!, drawn['valt']!]
+  return [
+    reading('första handlingens bläck på sin egen fyllning', worstOnPlate(primar.ink, primar.plate, felt), GATE.text),
+    reading('första handlingens fyllning och linje mot filten', bestLine([primar.plate, ...primar.lines], felt), GATE.line),
+    reading('andra handlingens bläck mot filten', worstOn(sekundar.ink, felt), GATE.text),
+    reading('andra handlingens linje mot filten', bestLine(sekundar.lines, felt), GATE.line),
+    reading('valt-bläcket mot filten', worstOn(valt.ink, felt), GATE.text),
+    reading('valt-stapeln mot filten', worstOn(valt.bar ?? 'rgba(0, 0, 0, 0)', felt), GATE.bar),
+  ]
+}
+
+// A table with one card lying face up on the felt. Every card in the standard fixture starts in
+// the draw pile with its back showing, and a back is a dark blue stripe — but a card's own ring
+// opens *on a card*, by definition, and a face is the palest thing the felt ever carries
+// (`hsl(<hue> 40% 86%)`). Without one on the table the ring would only ever be measured where it
+// is easy.
+function feltSetup(): SetupDef {
+  const base = seatSetup()
+  const [first, ...rest] = base.components
+  return { ...base, components: [{ ...first!, zone: 'table', face: 'front', x: -160, y: -40 }, ...rest] }
+}
+
+// The felt with a ring open on a chip, in the mode named. `mode=table` is the one the gates are
+// read in; the television is measured beside it because the decision turns on the two disagreeing.
+async function feltView(mode: 'table' | 'tv', width = 1280): Promise<Record<string, string>> {
+  atWidth(width)
+  const id = await createSession(run, `felt-${mode}-${width}`, undefined, feltSetup())
+  history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=${mode}&server=${encodeURIComponent(run.url)}`)
+  const { container, unmount } = render(<TablePage />)
+  try {
+    const chip = await screen.findByRole('button', { name: /^Liv, räknare i Räknare A/ })
+    fireEvent.pointerDown(chip, { clientX: 640, clientY: 420, pointerId: 1, isPrimary: true, button: 0 })
+    fireEvent.pointerUp(chip, { clientX: 640, clientY: 420, pointerId: 1, isPrimary: true, button: 0 })
+    await screen.findByRole('button', { name: 'Sätt värde…' })
+    return { [mode === 'table' ? 'bordsläge' : 'tv-läge']: container.innerHTML }
+  } finally {
+    unmount()
+  }
+}
+
+// Which colours the felt hands its three roles, asked of the felt and not of a hex written down
+// here. Two things on the felt already carry the answer: the chip — a counter's disc, read at
+// three metres (K9) — wears the amber and its ink, and a pile's count is written in the chalk.
+// All four are flat declarations, so a computed style is the honest reading for them; nothing
+// about them is a gradient.
+const whatTheFeltAlreadyCarries = async (page: Page) => {
+  await layTheRolesOnTheFelt(page)
+  const drawn = await drawnAs(page, {
+    bricka: '.byd-token',
+    'högens antal': '.byd-pile-count',
+    primar: '[data-probe] .byd-primary',
+    sekundar: '[data-probe] .byd-secondary',
+    valt: '[data-probe] .byd-choice',
+  })
+  const [bricka, antal, primar, sekundar, valt] = [drawn['bricka']!, drawn['högens antal']!, drawn['primar']!, drawn['sekundar']!, drawn['valt']!]
+  return {
+    brickans: `${bricka.plate} / ${bricka.ink}`,
+    kritan: antal.ink,
+    'första handlingen': `${primar.plate} / ${primar.ink}`,
+    // Everything the three roles are drawn in, once each. The felt is allowed two colours and the
+    // near-black that rides on the amber; a fourth means a role reached outside the room.
+    paletten: [...new Set([primar.plate, primar.ink, ...sekundar.lines, sekundar.ink, valt.ink, valt.bar ?? ''])].sort(),
+  }
+}
+
+describe('the felt', () => {
+  // #67 bound `.byd-table` because it needed one button — the one that keeps a counter's new
+  // value — and bound it to the account's green. Six tokens, byte-identical to the phone's. That
+  // is not an accent the felt owns; it is the room next door's, borrowed by whoever happened to
+  // need it first, which is exactly what #90 was opened to stop. The felt's own accent is the
+  // chip's amber, and this asks the page rather than a stylesheet whether it is.
+  it('draws its first action in the accent the felt already carries', async () => {
+    const measured = await inChromium(FELT_CSS, 1280, await feltView('table'), whatTheFeltAlreadyCarries)
+    const felt = measured['bordsläge']!
+    expect(felt['första handlingen']).toBe(felt.brickans)
+  }, 90_000)
+
+  it('lays its first action on the green in something the green can carry', async () => {
+    const measured = await inChromium(FELT_CSS, 1280, await feltView('table'), rolesOnTheFelt)
+    const first = measured['bordsläge']!.filter((line) => line.startsWith('första handlingen'))
+    expect(first).toHaveLength(2)
+    expect(first.filter(failed), first.join('\n')).toEqual([])
+  }, 90_000)
+
+  // The language's shared `#6f7a90` is a line drawn for a dark room, and it holds there: 3.86:1
+  // on the counter sheet's own dark. On the green it measures 1.64:1 — the same order of number
+  // L13 itself called invisible when it described the editor's `#3b414e` and the wizard's
+  // `#cbcabe`, both 1.48:1. It goes unnoticed today for exactly one reason: the only second
+  // action the felt has, `Avbryt`, stands *inside* the sheet and never on the felt. The first
+  // button drawn on the green gives it away.
+  it('draws a second action on the green in a line the green can show', async () => {
+    const measured = await inChromium(FELT_CSS, 1280, await feltView('table'), rolesOnTheFelt)
+    const second = measured['bordsläge']!.filter((line) => line.startsWith('andra handlingen'))
+    expect(second).toHaveLength(2)
+    expect(second.filter(failed), second.join('\n')).toEqual([])
+  }, 90_000)
+
+  // And the third role with them. `Valt` is never a fill — it is a quiet pill with a 3 px bar
+  // under it — so the only two colours it has to find are the bar and the word above it, and on
+  // this felt both already exist. A room that said its three roles in four colours would be
+  // reaching outside itself for one of them, which is the whole fault #67 fell into.
+  it('says all three roles in the two colours the felt already owns', async () => {
+    const measured = await inChromium(FELT_CSS, 1280, await feltView('table'), whatTheFeltAlreadyCarries)
+    const felt = measured['bordsläge']!
+    const [amber, ink] = felt.brickans.split(' / ')
+    expect(felt.paletten).toEqual([amber!, felt.kritan, ink!].sort())
+  }, 90_000)
+
+  // The deviation the prototype found on the way: `table.css` drew the ring's discs with the edge
+  // `#3b4358`, which across the whole sweep failed 3:1 against every ground it ever landed on —
+  // 72 cases out of 72, between 1.01 and 2.72:1 — so the line that says where a disc ends said
+  // nothing anywhere. The text on the disc was never the problem: white on a near-black plate is
+  // 17:1 wherever it stands, which is exactly why an opaque plate is what the discs keep.
+  it('gives the ring an edge that can be seen on every ground it opens over', async () => {
+    const measured = await inChromium(FELT_CSS, 1280, await feltView('table'), theRingsDiscs('table'))
+    const ring = measured['bordsläge']!
+    expect(ring).toHaveLength(2 * groundsOf('table').length)
+    expect(ring.filter(failed), ring.join('\n')).toEqual([])
+  }, 90_000)
+})
+
+// The whole thing at once: both modes, both screens, every role and every disc against every
+// ground each of them lands on.
+//
+// The two modes are the point of the sweep and not decoration. On a television the felt is
+// `#151924`, a dark like any other dark, and the language's shared `#6f7a90` measures 4.06:1 on
+// it and passes; on the green the same line is 1.60:1. So a binding measured only in TV mode goes
+// through and is still wrong, and this is the shape of gate that would have caught #67's.
+//
+// The screens change how much dark the felt stands in and how much of a television the flat panel
+// fills — the felt itself keeps the size the renderer gave it, which is what makes the two modes
+// comparable at all.
+const SWEEP = [
+  { what: 'bordsläge på 1280', mode: 'table', width: 1280 },
+  { what: 'bordsläge på 1920', mode: 'table', width: 1920 },
+  { what: 'tv-läge på 1920', mode: 'tv', width: 1920 },
+  { what: 'tv-läge på 3840', mode: 'tv', width: 3840 },
+] as const
+
+describe('the felt, swept', () => {
+  it('holds its gates on every ground, in both modes and on both screens', async () => {
+    const measured: Record<string, string[]> = {}
+    for (const { what, mode, width } of SWEEP) {
+      const view = await feltView(mode, width)
+      const roles = await inChromium(FELT_CSS, width, view, rolesOnTheFelt)
+      const ring = await inChromium(FELT_CSS, width, view, theRingsDiscs(mode))
+      measured[what] = [...Object.values(roles).flat(), ...Object.values(ring).flat()]
+    }
+    // Where the sweep went and how much it read, before what it read. Six readings for the three
+    // roles wherever they stand, and two for a disc on each ground the mode has — and a ground
+    // the sampler could not find would have thrown rather than quietly shortened this list.
+    const counted = Object.fromEntries(Object.entries(measured).map(([what, lines]) => [what, lines.length]))
+    expect(counted).toEqual({ 'bordsläge på 1280': 14, 'bordsläge på 1920': 14, 'tv-läge på 1920': 12, 'tv-läge på 3840': 12 })
+    const all = Object.entries(measured).flatMap(([what, lines]) => lines.map((line) => `${what} · ${line}`))
+    expect(all.filter(failed), all.join('\n')).toEqual([])
+  }, 180_000)
+})
+
 const OBSERVER_CSS = ['src/table/table.css', 'src/table/texture.css', 'src/player/player.css', 'src/status/status.css', 'src/a11y.css'].map(read).join('\n')
 
 async function observerView(): Promise<Record<string, string>> {
@@ -672,13 +952,18 @@ describe.each(ROOTS)('a second action inside a form on $what', ({ root, css }) =
 // it goes on measuring a page nobody sees — borders, weights and hit areas the language has since
 // changed.
 //
+// The felt joined the list when it became a room (L13, #90). Until then it was the one surface
+// the language was not spoken on, so a suite could lay the felt into a document without the
+// language under it and be measuring a page nobody sees — which is how the felt's own buttons
+// came to be decided in passing in the first place.
+//
 // What a suite *loads* is a path; how it spells the loading is its own business. This guard used
 // to look for the literal `read('src/<surface>.css')`, which is one of the two ways this directory
 // loads a stylesheet, and so it never saw the four suites that reach the same sheets through
 // `[...].map(read)`. Two of those four are the ones that measure `/online` and `/observe` — the
 // exact routes the language had never reached — so the guard was blindest precisely where it was
 // needed. A path is matched now, on both sides of the question.
-const SURFACES = ['account/account', 'join/join', 'wizard/wizard', 'editor/editor', 'player/player'] as const
+const SURFACES = ['account/account', 'join/join', 'wizard/wizard', 'editor/editor', 'player/player', 'table/table'] as const
 const loads = (source: string, sheet: string) => source.includes(`src/${sheet}.css`)
 const mounting = readdirSync(import.meta.dirname)
   .filter((name) => /\.tsx?$/.test(name) && name !== 'button-language.test.tsx')
@@ -694,11 +979,13 @@ describe('every suite that measures a surface', () => {
   it('finds every suite that lays a surface into a document, by name', () => {
     expect(mounting.map((s) => s.name).sort()).toEqual([
       'account-viewport.test.tsx',
+      'counter-touch.test.tsx',
       'data-table-csv-pair.test.tsx',
       'data-table-layout.test.tsx',
       'data-table-widths.test.tsx',
       'editor-css.test.ts',
       'editor-viewport.test.tsx',
+      'felt-hands.test.tsx',
       'felt-names.test.tsx',
       'join-layout.test.tsx',
       'observer-viewport.test.tsx',
@@ -707,6 +994,8 @@ describe('every suite that measures a surface', () => {
       'player-viewport.test.tsx',
       'reduced-motion.test.ts',
       'status-css.test.ts',
+      'table-grab.test.ts',
+      'table-layout.test.tsx',
       'template-canvas-image.test.tsx',
       'template-canvas-layout.test.tsx',
       'texture-layout.test.tsx',

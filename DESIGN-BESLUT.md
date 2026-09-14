@@ -2059,7 +2059,30 @@ Det är en känd avvikelse och inte ett förbiseende.
 Under skrivbordet har wizardens steg `Korten` två element med primärvikt i samma vy: sidfotens "Skapa spelet och fortsätt i editorn" och stegnavigeringens "Nästa", där den senare bara finns på smal skärm.
 Enligt L12 granskas och mäts wizarden vid skrivbordsbredder, så detta är per beslut och inte ett fynd — men det står här i stället för att vara tyst.
 
+Reviderat 2026-09-14 (#90): filten är ett rum med en egen accent.
+Filten var ingen av L13:s ytor, och #67 band `.byd-table` i förbifarten därför att den behövde en enda knapp — den som behåller en räknares nya värde — och band den till kontots gröna.
+Sex tokens, teckenidentiska med `.byd-player`:s: filten fick alltså ingen accent, den lånade rummet bredvid, och det är precis det den här punkten fanns för att stoppa.
+Prototypen (`the-felt-answers-two-questions` @ `9631732`, fyra positioner, 96 mätpunkter och 1 248 knappar mätta på de målade bildpunkterna) kallade den bindningen position B, fattad utan att sägas, och beställaren har ersatt den med ett val.
+
+Filten binder de tre rollerna till brickans bärnsten `#f0b64a` med `#1c1c1c` som bläck, och till filtens egen kritfärg `#f3e9d6` som linje och som bläck för det kantade och det valda.
+Den gröna kan inte vara accenten, eftersom den gröna är *grunden*.
+Båda de valda färgerna ligger redan på filten — bärnstenen på varje räknarbricka, kritfärgen i varje högs antal — och båda läses redan på tre meters håll (K9), så rummet får en accent det äger utan att någon ny färg uppfinns.
+Priset är att bärnstenen får två betydelser, "en räknare" och "första handlingen", och det är medvetet.
+
+Ringens skivor tas in i rollernas färger men behåller sin platta.
+En kantad skiva som landar på ett kortansikte mäter 1,22:1, och kortets ring öppnas per definition på ett kort, så plattan är det som gör en skiva läsbar var som helst på filten: rollen bestämmer kulören, inte formen.
+Ringens kant var en avvikelse som rättades på vägen: `#3b4358` klarade inte 3:1 mot någon grund alls, 72 fall av 72, mellan 1,01 och 2,72:1.
+Den är nu två linjer, kritfärgen med filtens mörkaste ton `#0d0f14` som ring strax utanför, eftersom ingen enskild färg kan klara 3:1 både mot ett nästan svart omland och mot ett blekt kortansikte.
+
+De tre förkastade positionerna, med talen:
+**B**, att låna spelarens rum, faller på att språkets delade sekundärlinje `#6f7a90` mäter 1,60:1 på det gröna och 4,06:1 på TV:ns mörka filt — den går alltså igenom just där grunden inte är grön, vilket betyder att en grind som bara mäts i TV-läge godkänner en felaktig bindning.
+Därför mäts filten i **bordsläge**, och det är det kravet som är den egentliga lärdomen.
+**C**, att låta filten stå utanför språket som `status.css`, mätte sämst av alla fyra (96 fall): dialektens platta `#171a23` är samma färg som TV-filtens `#151924`, och utan kantad form kan räknarens ark inte rita sina två vägar ut som ett par.
+**N**, nuläget, är själva felet.
+
 `button-language.test.tsx` mäter allt ovanstående i Chromium på varje yta monterad vid sin egen rutt, och `button-language-contrast.test.ts` mäter varje färg språket föreslår mot den yta den landar på.
+Filten mäts inte som de andra fem, eftersom den inte har någon grund att läsa ur en deklaration: det gröna är en `radial-gradient`, träramen en `linear-gradient`, omlandet en tredje, ett kortansikte en `hsl()` ur kortets egen färgton och ringens skivor ligger ovanpå vilken som helst av dem.
+Grunden samplas därför ur de målade bildpunkterna (`packages/web/test/painted.ts`) och en grund redovisas som tre toner — den mörkaste tjugondelen, mitten och den ljusaste — så att en färg måste hålla sin gräns mot hela ytan och inte mot en lyckad bildpunkt.
 
 ---
 

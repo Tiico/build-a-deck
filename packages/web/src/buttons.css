@@ -8,14 +8,26 @@
    Each surface binds the six role tokens below to the accent it already owns; the rules that draw
    the roles are written once, here, and nowhere else. */
 
-/* ── The felt: the account and the seat picker are the same green room (#20, L11) — and so is
-   the table screen itself, which had no room of its own until the first button was laid on the
-   felt (#67): the one that keeps a counter's new value. Without a binding here that button was
-   the browser's own grey, which is no declaration at all. The ring's own buttons in `table.css`
-   speak their dialect still; #90 is the open question of the felt's buttons as a whole. ─────── */
-.byd-account,
-.byd-join,
+/* ── The felt is a room of its own (K9, L13, #90) ─────────────────────────────────────────────
+   #67 bound `.byd-table` here, beside the account and the seat picker, because it needed exactly
+   one button — the one that keeps a counter's new value — and the alternative was the browser's
+   own grey. Those six tokens came out byte-identical to `.byd-player`'s, so the felt was not
+   given an accent at all: it borrowed the room next door's, by copying the account's. That is the
+   thing #90 was opened to stop, and it is now replaced by a choice.
+   The felt owns the chip's amber. Its own colours are declared in `table.css`, the way the phone's
+   are declared in `player.css`. ────────────────────────────────────────────────────────────── */
 .byd-table {
+  --byd-primary-bg: var(--byd-felt-accent);
+  --byd-primary-ink: var(--byd-felt-on-accent);
+  --byd-secondary-line: var(--byd-felt-chalk);
+  --byd-secondary-ink: var(--byd-felt-chalk);
+  --byd-chosen-bar: var(--byd-felt-accent);
+  --byd-chosen-ink: var(--byd-felt-chalk);
+}
+
+/* ── The account and the seat picker are the same green room (#20, L11). ─────────────────────── */
+.byd-account,
+.byd-join {
   --byd-primary-bg: #7dd3a0;
   --byd-primary-ink: #0b2a18;
   /* No outlined button existed in the tool before this. What looked like one was measured at

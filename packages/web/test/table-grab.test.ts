@@ -50,7 +50,9 @@ async function measure(): Promise<Record<string, Grab>> {
   try {
     const shell = read('index.html')
       .replace('<script type="module" src="/src/main.tsx"></script>', '')
-      .replace('</head>', `<style>${read('src/table/table.css')}</style></head>`)
+      // The felt is a room of the button language (L13, #90), so the shared sheet goes over its
+      // own the way it does on the page itself: what is measured here is the cascade that ships.
+      .replace('</head>', `<style>${read('src/table/table.css')}\n${read('src/buttons.css')}</style></head>`)
       .replace('<div id="root"></div>', `<div id="root">${THINGS}</div>`)
     await page.setContent(shell, { waitUntil: 'load' })
     return await page.evaluate((seen) => {
