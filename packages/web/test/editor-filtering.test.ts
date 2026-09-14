@@ -37,6 +37,28 @@ describe('discreteColumns', () => {
   })
 })
 
+describe('discreteColumns with images', () => {
+  // An image column holds `asset:<hash>` — the same image on several cards, so it reads exactly
+  // like a vocabulary and is not one: a hash is a machine key and never a word the designer wrote.
+  const bild = (n: number) => `asset:${String(n).repeat(64)}`
+  const deck: ProjectRow[] = [
+    { id: 'a', fields: { fraktion: 'skogen', art: bild(1) } },
+    { id: 'b', fields: { fraktion: 'berget', art: bild(1) } },
+    { id: 'c', fields: { fraktion: 'skogen', art: bild(2) } },
+    { id: 'd', fields: { fraktion: 'berget', art: bild(2) } },
+  ]
+
+  it('never offers a hash as a chip', () => {
+    expect(discreteColumns(deck, ['art'])).toEqual([])
+    expect(discreteColumns(deck, ['id', 'fraktion', 'art'])).toEqual([{ field: 'fraktion', values: ['berget', 'skogen'] }])
+  })
+
+  it('leaves the column out even when only some of its cards carry an image', () => {
+    const half = [...deck, { id: 'e', fields: { fraktion: 'skogen', art: 'ritas senare' } }]
+    expect(discreteColumns(half, ['art'])).toEqual([])
+  })
+})
+
 describe('filterRows', () => {
   it('lets everything through when nothing is asked', () => {
     expect(ids(filterRows(rows, columns, noFilter))).toEqual(['a', 'b', 'c', 'd', 'e', 'f'])
@@ -61,6 +83,14 @@ describe('filterRows', () => {
     expect(ids(filterRows(rows, columns, filter))).toEqual(['c'])
     expect(isFiltering(filter)).toBe(true)
     expect(ids(rows)).toEqual(['a', 'b', 'c', 'd', 'e', 'f'])
+  })
+
+  it('does not let a hash answer the search', () => {
+    const deck: ProjectRow[] = [
+      { id: 'a', fields: { title: 'Alv', art: `asset:${'abc123'.repeat(10)}abcd` } },
+      { id: 'b', fields: { title: 'Bäver', art: '' } },
+    ]
+    expect(ids(filterRows(deck, ['id', 'title', 'art'], { ...noFilter, query: 'abc' }))).toEqual([])
   })
 
   it('keeps a pinned card whatever is asked, and forgets it once it is not pinned', () => {
