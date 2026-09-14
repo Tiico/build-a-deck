@@ -14,6 +14,8 @@ import { NotFoundPage } from './status/NotFoundPage.js'
 import { DocumentTitle } from './status/DocumentTitle.js'
 import { StatusLive } from './status/StatusLive.js'
 import { Language, detectLang } from './i18n/index.js'
+// PROTOTYP — tas bort med prototypen (kolumnbredd och kolumnordning).
+import { ColumnsPrototype } from './prototype/columns/ColumnsPrototype.js'
 
 // Routing is a path check for now; a router arrives with the first real page.
 // The whole app is under one language (A4): the reader's own choice, then the address, then what
@@ -44,6 +46,8 @@ function route() {
   if (location.pathname === '/observe') return <ObserverPage />
   if (location.pathname === '/online') return <OnlinePage />
   if (location.pathname === '/editor') return <EditorPage />
+  // PROTOTYP — tas bort med prototypen.
+  if (location.pathname === '/prototype/columns') return <ColumnsPrototype />
   if (location.pathname === '/new') return <NewProjectPage />
   if (location.pathname === '/login') return <LoginPage />
   if (location.pathname === '/claim') return <ClaimPage />
