@@ -1,7 +1,7 @@
 import type { ComponentTypeDef } from '@byd/engine'
 import { elementsFor } from './compile.js'
 import { detectScript } from './fit.js'
-import type { Element, FaceTemplate, Row } from './model.js'
+import { paintOf, type Element, type FaceTemplate, type Row } from './model.js'
 
 // Physical validation (E5): the checks that catch what a screen hides. Text that looks fine at
 // arm's length is five points in the hand; two effect colours that differ only in red and green
@@ -46,7 +46,7 @@ export function validateCard({ type, face, row, fonts }: ValidateInput): Issue[]
       if (el.font.sizePt < floor) issues.push({ element: el.id, code: 'text-too-small', severity: 'error', values: { sizePt: el.font.sizePt, floor } })
       else if (el.font.sizePt < floor * SMALL_TEXT_FACTOR) issues.push({ element: el.id, code: 'text-too-small', severity: 'warning', values: { sizePt: el.font.sizePt, floor } })
 
-      const behind = behindOf(box, boxes)
+      const behind = behindOf(box, boxes, row)
       if (behind) {
         const ratio = contrastRatio(el.color, behind)
         if (ratio < CONTRAST_ERROR) issues.push({ element: el.id, code: 'low-contrast', severity: 'error', values: { ratio: ratio.toFixed(1), limit: CONTRAST_ERROR } })
@@ -83,13 +83,21 @@ export function validateCard({ type, face, row, fonts }: ValidateInput): Issue[]
       values: { families: loose.join(', ') },
     })
 
-  issues.push(...colourOnly(boxes))
+  issues.push(...colourOnly(boxes, row))
   return issues
 }
 
 // Colours that carry a difference to most eyes and none to some: the card is told once per pair.
-function colourOnly(boxes: Box[]): Issue[] {
-  const carried = boxes.flatMap((b) => (b.el.kind === 'shape' && b.el.fill ? [{ id: b.id, colour: b.el.fill }] : b.el.kind === 'text' ? [{ id: b.id, colour: b.el.color }] : []))
+// A fill can be a rule on a column (L16), so what is compared is the colour this row actually
+// gets — the card in the hand, not the template in the abstract.
+function colourOnly(boxes: Box[], row: Row): Issue[] {
+  const carried = boxes.flatMap((b) => {
+    if (b.el.kind === 'shape') {
+      const fill = paintOf(b.el.fill, row)
+      return fill ? [{ id: b.id, colour: fill }] : []
+    }
+    return b.el.kind === 'text' ? [{ id: b.id, colour: b.el.color }] : []
+  })
   const issues: Issue[] = []
   for (const [i, a] of carried.entries()) {
     for (const b of carried.slice(i + 1)) {
@@ -127,14 +135,16 @@ function shows(when: { field: string; nonEmpty?: true; equals?: string }, row: R
 // What lies behind a text box: the last filled shape drawn under its middle, where the words
 // are. A box is usually wider than the plate it sits on — a cost in a circle, say — so asking
 // for the whole box to be covered would read the paper behind the plate instead of the plate.
-function behindOf(box: Box, boxes: Box[]): string | null {
+function behindOf(box: Box, boxes: Box[], row: Row): string | null {
   const cx = box.x + box.w / 2
   const cy = box.y + box.h / 2
   let found: string | null = null
   for (const other of boxes) {
     if (other === box) break
-    if (other.el.kind !== 'shape' || !other.el.fill) continue
-    if (other.x <= cx && other.y <= cy && other.x + other.w >= cx && other.y + other.h >= cy) found = other.el.fill
+    if (other.el.kind !== 'shape') continue
+    const fill = paintOf(other.el.fill, row)
+    if (!fill) continue
+    if (other.x <= cx && other.y <= cy && other.x + other.w >= cx && other.y + other.h >= cy) found = fill
   }
   return found
 }

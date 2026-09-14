@@ -77,6 +77,9 @@ Editorn:
 - ✅ Distansvyns nedre band: bågen kapad vid 30°, kortet kvar i läsbar storlek, steget bottnat på 44 px och en hand bredare än bandet som rullar i sidled; hörnen uppe i en topplist och hela handen som rutnät bakom `Visa alla` (K17, C4, #24, #25).
 - ✅ Observatörens filt möter fönstret hon håller: ett landskapsbord i ett porträttfönster vänds ett kvartsvarv så att dess långsida löper nedför skärmen, luften mellan filt och ram är två tal för två skäl i stället för ett, och namnen går fria från högarnas antalsbrickor — noll namnpar på varandra vid 320 och 390, kortets kortsida 12 → 20 px och 15 → 27 px (C8, L12, K19, #76).
 - ✅ Filten mot ramens yta i stället för mot dess kortare sida: två femtedelar av ramen, minst 44 px luft, en enda regel för `/online`, `/table`, TV:n och Bord-flikens miniatyrer (K9, K17, #24).
+- ✅ Ett grepp är ett steg tillbaka: en dragning och ett ord skrivet i en cell är ett Ctrl+Z var, och trafiken på tråden är oförändrad (L14, #35).
+- ✅ Fyllningen kan följa en kolumn: en färg per värde i mallen, lekens värden erbjudna i panelen, och en standardfärg för allt annat (L16).
+- ✅ Lagerpanelen som rutnät: lagret heter det designern kallar det och säger vad det visar, låset ligger i raden, dropplinjen säger var en dragning hamnar, och ett låst lager går varken att dra, storleksändra, nudga eller radera (L15).
 
 Drift:
 - ✅ Compose-stack med minnestak och loggrotation: Postgres, app som serverar webben från samma origin, render-worker, och en väg in som är lådans egen — dess omvända proxy genom ett överlägg, eller tunneln i stacken (DRIFT §1, §2, §6, §8).

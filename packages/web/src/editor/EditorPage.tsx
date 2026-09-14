@@ -279,12 +279,17 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         row={row}
         selectedElement={element}
         onSelectElement={setElement}
-        onPatch={(id, patch) => client.patchElement(face, id, patch, group)}
+        onPatch={(id, patch, gesture) => client.patchElement(face, id, patch, group, gesture)}
         onAdd={(el) => client.addElement(face, el, group)}
         // The symbol's bytes travel before anything is placed (E1), so this is the one tool in the
         // rail that can fail on the way. It says so where the editor says everything else.
         onPlaceIcon={(symbol) => void client.placeIcon(symbol, face, group, t).then(setElement, (err: unknown) => setNotice(err instanceof Error ? err.message : String(err)))}
         onReorder={(id, to) => client.moveElement(face, id, to)}
+        // Locking a layer and naming it are edits to the element (L15), so they go the way every
+        // other change to an element goes — through the base, which is where the layer lives even
+        // when a group is open, exactly as the order does.
+        onLock={(id, locked) => client.patchElement(face, id, { locked: locked ? true : undefined })}
+        onRename={(id, name) => client.patchElement(face, id, { name: name ?? undefined })}
         onRemove={(id) => {
           client.removeElement(face, id, group)
           setElement(null)
@@ -312,7 +317,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         onStopCompare={() => setCompare(null)}
         selectedRow={row}
         onSelectRow={setRow}
-        onCell={(cardRef, field, value) => client.setCell(cardRef, field, value)}
+        onCell={(cardRef, field, value, gesture) => client.setCell(cardRef, field, value, gesture)}
         onAddRow={(cardRef) => client.addRow(cardRef, { title: '', antal: 1 })}
         onRemoveRow={(cardRef) => client.removeRow(cardRef)}
         onReplaceRows={(rows) => client.replaceRows(rows)}

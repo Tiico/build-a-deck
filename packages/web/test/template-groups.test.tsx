@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
-import { userEvent } from '@testing-library/user-event'
+import { userEvent, type UserEvent } from '@testing-library/user-event'
 import type { ProjectDoc } from '@byd/server'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { drag, laidOut, target } from './drag.js'
 import { startServer, type Running } from './fixture.js'
+import { layerRows } from './layers.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -40,7 +41,17 @@ async function openTemplate(doc: ProjectDoc = typed()) {
   return user
 }
 
-const layers = () => within(screen.getByRole('listbox', { name: /lager/i })).getAllByRole('option')
+// The panel is a grid (L15): the rows are the layers, and clicking a layer means pressing the
+// cell that is the layer.
+const layers = () => layerRows()
+const pick = (at: number) => layers()[at]!.querySelector('.byd-layer-pick') as HTMLElement
+// Nudging an element is the card's keyboard, not the panel's: inside the panel the arrows walk
+// the grid (L15), exactly as they do in any other layer panel. So the focus leaves the panel
+// first, which is what happens when a designer picks a layer and then goes back to the card.
+const nudge = async (user: UserEvent, keys: string) => {
+  ;(document.activeElement as HTMLElement | null)?.blur()
+  await user.keyboard(keys)
+}
 const stored = async () => (await run.projects.load('p1'))!.template.faces
 
 describe('the two faces of the template (#13, L7)', () => {
@@ -54,8 +65,8 @@ describe('the two faces of the template (#13, L7)', () => {
     expect(layers().map((l) => l.getAttribute('data-layer'))).toEqual(['bg'])
 
     // An edit on the back lands on the back's base, and the front is left alone.
-    await user.click(layers()[0]!)
-    await user.keyboard('{ArrowRight}')
+    await user.click(pick(0))
+    await nudge(user, '{ArrowRight}')
     await user.click(screen.getByRole('button', { name: /spara/i }))
     await screen.findByText('rev 2')
     expect((await stored())['back']?.base).toMatchObject([{ id: 'bg', x: 0.5 }])
@@ -97,8 +108,8 @@ describe('grouping the deck by a column (#13)', () => {
     await user.click(groupTabs()[2]!)
     expect(screen.getByText('Fallgrop')).toBeTruthy()
 
-    await user.click(layers()[1]!)
-    await user.keyboard('{ArrowRight}')
+    await user.click(pick(1))
+    await nudge(user, '{ArrowRight}')
     await user.click(screen.getByRole('button', { name: /spara/i }))
     await screen.findByText('rev 2')
     const front = (await stored())['front']!
@@ -111,8 +122,8 @@ describe('grouping the deck by a column (#13)', () => {
     await user.selectOptions(screen.getByLabelText(/grupperas av kolumnen/i), 'typ')
     await user.click(groupTabs()[2]!)
     await user.click(screen.getByRole('radio', { name: 'Baksida' }))
-    await user.click(layers()[0]!)
-    await user.keyboard('{Shift>}{ArrowRight}{/Shift}')
+    await user.click(pick(0))
+    await nudge(user, '{Shift>}{ArrowRight}{/Shift}')
     await user.click(screen.getByRole('button', { name: /spara/i }))
     await screen.findByText('rev 2')
     expect((await stored())['back']?.base).toMatchObject([{ id: 'bg', x: 0 }])
@@ -126,21 +137,21 @@ describe('grouping the deck by a column (#13)', () => {
 
     await user.click(groupTabs()[2]!)
     expect(screen.getByText('2 kort med typ = fälla')).toBeTruthy()
-    expect(layers().map((l) => l.textContent)).toEqual(['text body · bas', 'text title · bas', 'shape frame · bas'])
+    expect(layers().map((l) => (l.querySelector('.byd-layer-pick') as HTMLElement).textContent)).toEqual(['body· bas', 'title· bas', 'frame· bas'])
 
-    await user.click(layers()[1]!)
-    await user.keyboard('{ArrowRight}')
-    expect(layers().map((l) => l.textContent)).toEqual(['text body · bas', 'text title · typ = fälla', 'shape frame · bas'])
+    await user.click(pick(1))
+    await nudge(user, '{ArrowRight}')
+    expect(layers().map((l) => (l.querySelector('.byd-layer-pick') as HTMLElement).textContent)).toEqual(['body· bas', 'title· typ = fälla', 'frame· bas'])
   })
 
   it('lets a layer fall back to the base, and only offers that where there is an override', async () => {
     const user = await openTemplate()
     await user.selectOptions(screen.getByLabelText(/grupperas av kolumnen/i), 'typ')
     await user.click(groupTabs()[2]!)
-    await user.click(layers()[1]!)
+    await user.click(pick(1))
     expect(screen.queryByRole('button', { name: /återgå till basen/i })).toBeNull()
 
-    await user.keyboard('{ArrowRight}')
+    await nudge(user, '{ArrowRight}')
     await user.click(screen.getByRole('button', { name: /återgå till basen/i }))
     await user.click(screen.getByRole('button', { name: /spara/i }))
     await screen.findByText('rev 2')
@@ -151,8 +162,8 @@ describe('grouping the deck by a column (#13)', () => {
     const user = await openTemplate()
     await user.selectOptions(screen.getByLabelText(/grupperas av kolumnen/i), 'typ')
     await user.click(groupTabs()[2]!)
-    await user.click(layers()[1]!)
-    await user.keyboard('{ArrowRight}')
+    await user.click(pick(1))
+    await nudge(user, '{ArrowRight}')
 
     const rules = within(screen.getByRole('list', { name: /grupper/i })).getAllByRole('listitem')
     expect(rules.map((r) => r.textContent)).toEqual([
@@ -205,17 +216,17 @@ describe('a layer a group takes away (#13)', () => {
     const user = await openTemplate()
     await user.selectOptions(screen.getByLabelText(/grupperas av kolumnen/i), 'typ')
     await user.click(groupTabs()[2]!)
-    await user.click(layers()[0]!)
+    await user.click(pick(0))
     await user.keyboard('{Delete}')
 
-    expect(layers().map((l) => l.textContent)).toEqual(['text body · borttaget i typ = fälla', 'text title · bas', 'shape frame · bas'])
+    expect(layers().map((l) => (l.querySelector('.byd-layer-pick') as HTMLElement).textContent)).toEqual(['body· borttaget i typ = fälla', 'title· bas', 'frame· bas'])
     expect(layers().map((l) => l.hasAttribute('data-removed'))).toEqual([true, false, false])
     // The card of the group no longer draws it, while the base still does.
     expect(screen.queryByText('Spelas dolt.')).toBeNull()
 
-    await user.click(layers()[0]!)
+    await user.click(pick(0))
     await user.click(screen.getByRole('button', { name: /återgå till basen/i }))
-    expect(layers().map((l) => l.textContent)).toEqual(['text body · bas', 'text title · bas', 'shape frame · bas'])
+    expect(layers().map((l) => (l.querySelector('.byd-layer-pick') as HTMLElement).textContent)).toEqual(['body· bas', 'title· bas', 'frame· bas'])
     expect(screen.getByText('Spelas dolt.')).toBeTruthy()
   })
 })

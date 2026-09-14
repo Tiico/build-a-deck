@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ProjectDoc } from '@byd/server'
-import { cardsInGroup, groupColumn, groupOfRow, groupsOf, overriddenIds, ruleLabel } from '../src/editor/groups.js'
+import { cardsInGroup, groupColumn, groupOfRow, groupsOf, overriddenIds, ruleLabel, valuesIn } from '../src/editor/groups.js'
 import { projectDoc } from './project-doc.js'
 
 // A deck whose cards carry a `typ` column, grouped by it on the front only.
@@ -63,5 +63,21 @@ describe('what a group changes against the base (#13)', () => {
     const doc = grouped()
     doc.template.faces['front']!.variants['fälla']!.remove = ['body']
     expect([...overriddenIds(doc.template.faces['front']!, 'fälla')].sort()).toEqual(['body', 'title'])
+  })
+})
+
+// A fill that follows a column offers the values the deck actually has (L16).
+describe('the values a column carries', () => {
+  it('lists each one once, in the order the cards are in, and counts no empty cell as a value', () => {
+    const doc = projectDoc()
+    doc.rows = [
+      { id: 'a', fields: { typ: 'eld' } },
+      { id: 'b', fields: { typ: 'vatten' } },
+      { id: 'c', fields: { typ: 'eld' } },
+      { id: 'd', fields: {} },
+      { id: 'e', fields: { typ: '' } },
+    ]
+    expect(valuesIn(doc, 'typ')).toEqual(['eld', 'vatten'])
+    expect(valuesIn(doc, 'finns-inte')).toEqual([])
   })
 })

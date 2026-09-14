@@ -22,7 +22,10 @@ export type DataTableProps = {
   doc: ProjectDoc
   selectedRow: string | null
   onSelectRow(cardRef: string): void
-  onCell(cardRef: string, field: string, value: Cell): void
+  // `gesture` is the visit to the cell this value was written during (#35). The table writes one
+  // value per keystroke; a word typed into a cell is one thing the designer did, and the token is
+  // what puts all those keystrokes on a single step back.
+  onCell(cardRef: string, field: string, value: Cell, gesture?: string): void
   onAddRow(cardRef: string): void
   onRemoveRow(cardRef: string): void
   // The whole list of rows at once: a CSV import, and every change the selection makes (#17).
@@ -124,6 +127,11 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
   // else (#33). Which cell it is belongs to React, not to the stylesheet: a handle hidden by CSS
   // is still a stop in the tab order, and there would be one per cell.
   const [here, setHere] = useState<{ cardRef: string; field: string } | null>(null)
+  // Which visit to a cell is the current one: it goes up whenever a cell takes the focus, so
+  // everything typed without leaving is one step back and coming back to the same cell is the
+  // next one. Only one cell holds the focus at a time, so one number is the whole of it.
+  const visit = useRef(0)
+  const cellGesture = () => `cell-${visit.current}`
   // Whether the designer is standing in a cell at all, which is what holds the column widths
   // still (#46). One boolean and not the cell itself: moving from one cell to the next is not a
   // moment to re-measure, it is the same edit going on.
@@ -699,7 +707,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                         const at = input.selectionStart ?? input.value.length
                         const next = `${input.value.slice(0, at)}{${input.value.slice(at)}`
                         typing.current[`${cardRef}:${f}`] = next
-                        onCell(cardRef, f, next)
+                        onCell(cardRef, f, next, cellGesture())
                         input.value = next
                         input.focus()
                         input.setSelectionRange(at + 1, at + 1)
@@ -715,7 +723,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                     value={row[f] === undefined || row[f] === null ? (f === 'antal' ? '1' : '') : String(row[f])}
                     onChange={(e) => {
                       typing.current[`${cardRef}:${f}`] = e.target.value
-                      onCell(cardRef, f, f === 'antal' ? Number(e.target.value) : e.target.value)
+                      onCell(cardRef, f, f === 'antal' ? Number(e.target.value) : e.target.value, cellGesture())
                       if (onSymbol && f !== 'antal') openBrace(cardRef, f, e.target)
                     }}
                     // The same keys the rail's library answers, because it is the same library
@@ -732,6 +740,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                       setChoice(act.active)
                     }}
                     onFocus={() => {
+                      visit.current += 1
                       setHeld(shown.map((r) => r.id))
                       setHere({ cardRef, field: f })
                     }}

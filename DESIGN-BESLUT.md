@@ -2037,7 +2037,7 @@ Ett sparande som krockar med någon annan lämnar inte editorn: konflikten sägs
 Sparat eller osparat står i huvudet som ord och som färg, i en `role="status"`, så att bytet både syns och sägs.
 
 Radering av ett kort från radens × frågar först, med samma ord och i samma remsa som åtgärdsradens massborttagning, och namnger kortet i stället för att räkna det.
-Editorn har ingen ångra-stack; bekräftelsen är därför skyddet, och en ångra-historik över projektet är ett eget beslut.
+Bekräftelsen är skyddet före en radering, och den står kvar även sedan editorn fick en ångra-stack (#35, L14): en fråga som ställs innan kortet försvinner är billigare än ett kort som försvann och ett tangentbord som ska hitta tillbaka.
 
 Varje fråga editorn ställer före något som inte kan tittas på efteråt är en och samma komponent, `Question` (#17, #19, #8): en remsa där handlingen begärdes, som tar fokus, svarar på Escape och lämnar tillbaka fokus, och som aldrig fångar tangentbordet.
 Frågan öppnar alltid på ett svar som inte förlorar något: "Spara och lämna" när det finns ett sådant, annars "Avbryt".
@@ -2241,6 +2241,95 @@ Därför mäts filten i **bordsläge**, och det är det kravet som är den egent
 `button-language.test.tsx` mäter allt ovanstående i Chromium på varje yta monterad vid sin egen rutt, och `button-language-contrast.test.ts` mäter varje färg språket föreslår mot den yta den landar på.
 Filten mäts inte som de andra fem, eftersom den inte har någon grund att läsa ur en deklaration: det gröna är en `radial-gradient`, träramen en `linear-gradient`, omlandet en tredje, ett kortansikte en `hsl()` ur kortets egen färgton och ringens skivor ligger ovanpå vilken som helst av dem.
 Grunden samplas därför ur de målade bildpunkterna (`packages/web/test/painted.ts`) och en grund redovisas som tre toner — den mörkaste tjugondelen, mitten och den ljusaste — så att en färg måste hålla sin gräns mot hela ytan och inte mot en lyckad bildpunkt.
+
+### L14. Ett grepp är ett steg tillbaka (2026-09-14)
+
+En ångring tar tillbaka en sak designern gjorde, inte en bildruta av den.
+En förflyttning på duken är ett grepp om pekaren, och pekaren rapporterar det en gång per bildruta.
+Varje bildruta blev ett eget steg på stacken, så vägen tillbaka från en flyttad rubrik var trettio tryck på Ctrl+Z — och varje tryck flyttade den en tredjedels millimeter, vilket läses som att ingenting händer.
+Ett ord skrivet i en cell hade samma fel: tabellen skriver ett värde per tangenttryck, så bokstäverna kom tillbaka en i taget i ett fält designern redan hade lämnat.
+
+Beslutet: en redigering kan bära en polett som säger vilket grepp den hör till, och redigeringar med samma polett delar ett steg på stacken.
+Poletten görs där greppet börjar — ett nytt nummer vid varje `pointerdown` på duken, ett nytt varje gång en cell tar fokus — så ett andra grepp om samma element är ett andra steg, och att komma tillbaka till samma cell är ett nytt.
+En redigering utan polett är en hel förändring i sig, precis som förut: egenskapspanelen, piltangenterna, verktygsraden, allt som görs med ett tryck.
+Ett steg bakåt eller framåt stänger det grepp som står öppet, så nästa bildruta av en pågående dragning aldrig kan lägga sig på ett steg designern just tagit av stacken.
+
+Motivering:
+Stacken är femtio steg djup, och den siffran är bara sann om ett steg är något designern kan känna igen.
+En enda dragning kunde annars trycka ut hela historien framför sig, så priset var inte bara många tryck utan resten av ångra-historiken.
+Alternativet — att skicka en dragning först när pekaren släpps — skulle ha gjort steget rätt och samtidigt tagit bort det som gör ett delat projekt levande: den som tittar på samma projekt ser kortet röra sig i stället för att hoppa på pekarens släpp.
+
+Följdkrav:
+Trafiken på tråden är oförändrad; varje bildruta går fortfarande som sin egen `patchElement` till aktören.
+Stacken är fortfarande dokumentögonblicksbilder som tas tillbaka med `restore` (B4), och poletten avgör bara när en ny bild läggs på.
+En ny yta som skriver många gånger om samma handling — ett reglage, en färgväljare som drar — ska bära en polett; en som skriver en gång ska inte.
+
+Byggt 2026-09-14 (ingen prototyp: ingenting nytt ritas, ett tryck gör det den som tryckte redan trodde att det gjorde).
+
+### L15. Lagerpanelen säger vad ett lager är, och ett lager går att låsa (prototypat 2026-09-14)
+
+Panelen skrev `text title`: verktygets ord för sorten, och det råa id:t.
+Det säger ingenting om vilket lager som är vilket så snart verktygsraden har lagt till `bild-1` och `shape-2` på kortet.
+Och ingenting skyddade ett färdigt lager: ramen som legat rätt sedan i måndags flyttades av samma dragning som allt annat.
+
+Prototypen `packages/web/src/prototype/layers` ställde tre varianter mot varandra i de 220 px panelen faktiskt har — lås i egen kolumn (A), verktygsrad över listan (B), vald rad som öppnar sig (C) — plus en fjärde (D) där bara den markerade raden bär upp/ned.
+Beställaren valde **A**, och valde bort upp/ned-knappar helt: ordningen ändras med drag och med Alt och en piltangent, och det som gör dragningen lättare är dropplinjen som säger var lagret hamnar, inte en knapp till.
+
+**Raden.** Lås till vänster, glyf för sorten, namnet, vad lagret visar, och ett grepp till höger.
+Namnet är lagrets id, för det är ordet wizarden gjorde av kolumnen och ordet egenskapspanelen redan har i sin rubrik — eller det namn designern själv gett lagret, som byts med dubbelklick eller F2.
+Namnet är en egen egenskap och inte id:t: id:t är det gruppernas `override` och `remove` pekar på (L3), så att byta det vore en migrering och inte en omdöpning.
+Andraraden är vad lagret visar, och står där bara när det inte är namnet en gång till.
+
+**Panelen är ett rutnät, inte en lista med alternativ.**
+En rad bär en egen knapp, och en knapp inne i ett `option` är en knapp en skärmläsare aldrig når — alternativets innehåll plattas ut (UX-37, #82).
+Så panelen är `role="grid"` med en rad per lager och två celler: låset och lagret.
+Rutnätet är ett enda tabbstopp, upp och ner går mellan lagren i den kolumn man står i, höger och vänster mellan låset och lagret, Alt och pil flyttar lagret, F2 döper om.
+Priset är att piltangenterna inte längre nudgar elementet medan fokus står i panelen; det gör de på kortet och i egenskapspanelen, precis som i varje annat ritverktyg.
+
+**Låset.** Ett låst lager går inte att dra, storleksändra, nudga eller radera, och det har inga hörnhandtag.
+Det går fortfarande att markera — pekaren väljer det, egenskaperna öppnas, och låset finns på samma rad — och det går att flytta upp och ner i ordningen: låset är en sak om kortet, inte om listan.
+Egenskapernas fyra mått går att läsa men inte att skriva i; typsnitt, färg och bindning står öppna, för att låsa ett lager är inte att frysa dess formgivning.
+Ett försök som inte leder någonstans säger varför, bredvid kortet som inte rörde sig — annars är ett lås omöjligt att skilja från en trasig editor.
+Låst ritas i guld och som ett stängt hänglås: formen säger det där färgen inte når.
+
+**Två egenskaper som mallen bär men kortet aldrig visar.**
+`name` och `locked` ligger på elementet (L1) och versioneras, diffas och delas som allt annat i mallen, men kompilatorn läser ingen av dem: ett kort ska bli samma kort oavsett om ett lager var låst när det ritades.
+Att ta bort dem är en egen sak på tråden: `undefined` överlever inte JSON, så `patchElement` har ett `clear` som säger vilka egenskaper som ska bort.
+Utan det hade ett upplåst lager sparats som fortfarande låst, och en version som bar en tom nyckel till tryckeriet.
+
+Motivering:
+Ett lås är det billigaste skyddet som finns mot den enda redigering ingen ångrar i tid — den man inte märkte.
+Alternativet, att lita på Ctrl+Z, förutsätter att man ser att något flyttade sig, och en halv millimeter på ett kort är just vad man inte ser.
+
+Byggt 2026-09-14.
+
+### L16. Fyllningen kan följa en kolumn (2026-09-14)
+
+En fyllning är en färg, eller en regel på en kolumn: vilken kolumn som ska läsas, en färg per värde, och en färg för allt annat.
+`fill` är därför antingen en sträng som förut eller `{ field, map, else }`, och `paintOf` är enda vägen från regel till färg — kompilatorn, den fysiska valideringen och editorns förhandsvisning kan aldrig komma fram till olika färger.
+
+Motivering:
+Det gick redan att ge fällorna en röd platta: en variant per värde (L3).
+Men en variant är hela kortets utseende, så tjugo färger blev tjugo flikar med samma design inkopierad i var och en, och en ändring av rubrikens läge blev tjugo ändringar.
+Färgen är inte en egen formgivning; den är en egenskap som varierar.
+
+Alternativet var en färgkolumn i datatabellen som elementet binder till.
+Det avvisades: då bär varje kort sin egen hexkod, att byta nyans blir en redigering per rad i stället för en, och datatabellen — som är designerns lek — fylls med tolkning som hör hemma i mallen.
+Regeln på elementet håller färgerna där all annan stil bor och låter leken säga vilken av dem ett kort får, vilket är exakt L3:s modell tillämpad på en egenskap i stället för på ett helt utseende.
+
+Ett värde utan egen färg får `else`, precis som ett kolumnvärde utan variant får basutseendet — utan varning, för de flesta kort är det vanliga.
+Saknas även `else` är formen omålad, vilket är vad en form utan fyllning alltid har varit.
+
+I editorn är det en växel på fyllningen.
+Den färg designern redan valt blir regelns `else` när växeln slås på, så inget kort byter utseende förrän ett värde fått en egen färg; slås den av bär formen den färgen vidare.
+Värdena som erbjuds är lekens egna, i den ordning korten står, plus de värden regeln målar men vars kort har försvunnit — en färg utan något att visa sig på måste ändå gå att hitta och ta bort.
+Varje värde med egen färg har ett kryss tillbaka till `else`, för "följer standardfärgen" och "är målad i samma nyans som standardfärgen" är två olika saker och skillnaden går bara att uttrycka med en väg tillbaka.
+
+Följdkrav:
+Textens färg och formens linje är fortfarande enfärgade. De kan ta samma `Paint` den dag någon behöver det — modellen är redan skriven för det — men inget i editorn skapar en sådan regel i dag.
+Färgblindhetskontrollen (E5) läser den färg raden faktiskt får, alltså kortet i handen och inte mallen i abstrakt form.
+
+Byggt 2026-09-14 (ingen prototyp: växeln och listan är egenskapspanelens egna former, och regeln ritar ingen ny yta).
 
 ---
 
