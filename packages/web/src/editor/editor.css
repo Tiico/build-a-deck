@@ -880,6 +880,11 @@
 .byd-data-bulk button:disabled { color: var(--byd-editor-bulk-quiet); cursor: default; }
 .byd-data-bulk button[data-kind='danger'] { background: var(--byd-editor-bulk-danger-bg); border-color: var(--byd-editor-bulk-danger-bg); color: var(--byd-editor-bulk-danger-ink); }
 .byd-data-bulk button[data-kind='quiet'] { border-color: transparent; color: var(--byd-editor-bulk-quiet); font-weight: 400; }
+/* The way to a file, standing in the action row instead of in a cell (#17 on E1). `.byd-data-file`
+   carries the table's own ground, which is the right ground under a row and the wrong one here:
+   on the row's lighter panel the same dark box reads as a hole punched through it, while every
+   other control there is drawn as an outline. So it takes the row's ground, like the rest. */
+.byd-data-bulk .byd-data-file { background: transparent; color: var(--byd-editor-bulk-ink); }
 /* The checkbox column (#17): wide enough for a real hit target. The tick itself is the editor's
    one tick box (#45) and is drawn nowhere but there, so "marked" here and "marked" in the recipe
    are the same blue and the same square. */

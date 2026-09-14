@@ -710,6 +710,14 @@ En bild är en innehållsadresserad asset (DRIFT §4): raden bär `asset:<hash>`
 Kompilatorn får en URL där den anropas: i webbläsaren `/assets/<hash>`, på servern en data-URL ur lagret, så den kompilerade sidan bär sina bilder och renderworkern behöver inget annat än sidan.
 Wizarden laddar upp sina valda bilder innan projektet skapas och pekar på dem på samma sätt.
 
+En bild på flera kort på en gång (prototypat och byggt 2026-09-14):
+Tre sätt prövades: en bildruta i handlingsraden för de markerade korten (#17), spelets bilder i brickan som mål, och en låda som öppnas ur raden.
+Valet blev bildrutan i raden: när kolumnen raden skriver är ett bildfält byter värdefältet form och blir en plats att släppa en bild eller välja en fil på, och knappen säger "Sätt bild på N kort".
+Brickan förkastades för att den växer till två rader så snart ett kort är markerat och skjuter hela tabellen nedåt; lådan för att den lägger ett steg och en panel mellan raden och korten den handlar om.
+En vald fil laddas upp en gång oavsett hur många kort den hamnar på, vilket är samma regel cellen redan följer.
+Raden släpper bilden när den är satt: en kvarhållen bild och en ny markering är en bild skriven av misstag.
+Samtidigt stängdes hålet som låg bredvid: ett bildfält går inte längre att skriva ren text i från handlingsraden, som tidigare bjöd en textruta för varje kolumn.
+
 ### E2. En enda renderare: HTML/CSS via headless Chromium (fråga 9)
 
 Mallen är HTML och CSS.
