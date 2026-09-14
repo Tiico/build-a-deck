@@ -216,6 +216,25 @@ describe('a column pulled to a width of its own (#46)', () => {
     expect(heldWidths('p1')).toEqual({})
   })
 
+  it('forgets a width when the column it belonged to is taken away', async () => {
+    const user = userEvent.setup()
+    render(<Editing project="p1" />)
+    pull('body', 260)
+    expect(heldWidths('p1')).toEqual({ body: 260 })
+
+    await user.click(screen.getByRole('button', { name: 'Kolumner' }))
+    await user.click(screen.getByRole('button', { name: 'Ta bort fältet body' }))
+    await user.click(screen.getByRole('button', { name: 'Ja, ta bort' }))
+    // A width is about a column, and there is no column. What was left behind instead was a
+    // number under a name nothing answers to — and the next column made under that name, empty
+    // and brand new, was drawn at a width a hand had chosen for somebody else's values.
+    expect(heldWidths('p1')).toEqual({})
+
+    await user.type(screen.getByLabelText('Namn'), 'body')
+    await user.click(screen.getByRole('button', { name: 'Lägg till' }))
+    expect(set('body')).toBeNull()
+  })
+
   it('does not remember anything for a table that was not opened from a project', () => {
     render(<Editing />)
     pull('body', 260)

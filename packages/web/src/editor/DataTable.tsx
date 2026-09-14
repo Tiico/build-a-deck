@@ -376,15 +376,32 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     const said = box ? parseFloat(getComputedStyle(box).getPropertyValue('--byd-tap')) : NaN
     return Number.isFinite(said) && said > 0 ? said : 44
   }
+  // Every width the table holds, drawn and remembered in one move, because they are one fact:
+  // what is on the screen and what will be on it again next time cannot be allowed to drift.
+  const hold = (next: Record<string, number>) => {
+    setWidths(next)
+    rememberWidths(project, next)
+  }
+  // The same record without one column in it.
+  const without = (field: string): Record<string, number> => {
+    const { [field]: gone, ...rest } = widths
+    void gone
+    return rest
+  }
+  // A width with no column left to be about (#46). It goes without a word: what has happened is
+  // that a column was taken away, which the head has already said, and "body follows its content
+  // again" is a sentence about a column that is still there. Left behind instead it was a number
+  // under a name nothing answers to — and the next column made under that name, empty and brand
+  // new, was drawn at a width a hand had chosen for somebody else's values.
+  const forgetWidth = (field: string) => {
+    if (widths[field] !== undefined) hold(without(field))
+  }
   // A width set, or given back to the measurement. Held in this table and remembered in the
   // browser, never written into the document: how wide one designer wants to read a column on
   // her screen is not a fact about the game (L4).
   const setWidth = (field: string, px: number | null) => {
-    const { [field]: gone, ...rest } = widths
-    void gone
-    const next = px === null ? rest : { ...widths, [field]: Math.max(tap(), Math.round(px)) }
-    setWidths(next)
-    rememberWidths(project, next)
+    const next = px === null ? without(field) : { ...widths, [field]: Math.max(tap(), Math.round(px)) }
+    hold(next)
     const said = next[field]
     say?.('polite', said === undefined ? t('table.column.width.said.auto', { field }) : t('table.column.width.said', { field, px: said }))
   }
@@ -757,6 +774,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           cancel={t('editor.cancel')}
           onConfirm={() => {
             onRemoveField(dropping)
+            forgetWidth(dropping)
             setDropping(null)
             setRefocus('addField')
           }}
