@@ -1162,6 +1162,30 @@ Samma fil sätter långa namn på både öst- och västplatsen på fyra-, fem- o
 Samma fil läser åtta vanliga förnamn bokstav för bokstav ur pillren på ett åttaplatsbord — inget kapas — och håller två-, tre- och fyraplatsbordet mot de mått `origin/main` ritade dem med.
 Prototypen `packages/web/src/prototype/seats` togs bort när den hade svarat; dess resonemang står här, och dess bilder i `docs/issues/42-valjare-*.png`.
 
+Reviderat 2026-09-14 (#80, UX-35, prototypat och godkänt av produktägaren): platsens bokstav står på pillret.
+En ledig plats sa bara "ledig", så på skärmen skildes platserna åt av färg och läge och ingenting annat.
+Bokstaven fanns i den upplästa etiketten ("Plats C, ledig") och i rubriken ("Plats A vald"), men den som ville ha plats C hade inget att sikta på.
+
+Tre former prototypades. Valet blev **C — bokstaven över ordet**: pillret blir två rader, bokstaven överst och ordet under — "ledig" på en ledig plats, namnet på en tagen.
+Bokstaven ritas i båda tillstånden och på samma höjd i vart och ett, så den som sätter sig ändrar vad pillret säger och aldrig vilken form det har.
+Bredden rörs inte, så kapningen från #42 och #52 står exakt där den stod.
+Uppläsningen ändras inte heller: `aria-label` sa bokstaven först redan förut, så bokstaven och ordet på skärmen döljs för läsaren i stället för att läsas upp en andra gång efter den.
+
+Två kostnader kom med formen, och båda ligger i css:en.
+Pillret lägger sina två rader *tvärs* över sig i stället för längs, så namnets `<span>` blir lika brett som sin egen text hur smalt pillret än är: `text-overflow` såg inget att kapa, knappens egen `overflow` klippte i stället, och eftersom pillret centrerar det det bär klippte den i båda ändar — `Bartholomew Longbottom` kom tillbaka som ett annat namn utan något som sa att det var kapat, alltså precis felet #42 skrev sin kommentar emot. `max-width: 100%` håller spannet till pillrets bredd och prickarna hamnar där namnet verkligen tar slut.
+Pillret blev också 52 px högt i stället för 44 — de 44 var aldrig en höjd utan tummens golv — och räcker därmed 26 px in på filten i stället för 18, vilket åt upp 8 px i vart och ett av hörnen och gjorde dagern till en överlappning på just så mycket.
+Aritmetiken ovan vändes därför om i stället för att lappas: pillrets höjd och minsta bredd är egna namn (`--byd-seat-h`, `--byd-seat-w`), steget tvärs över änden är det enda valda talet — det är taket ett vanligt förnamn behöver — steget ned längs sidan följer på skillnaden mellan pillrets bredd och höjd, och filtens höjd skrivs ur dem och ur pillret.
+Den delade filten kommer därmed ut som 260 × 220 px bakom ett 52 px piller, precis som den kom ut som 260 × 200 px bakom ett 44 px piller, utan att någon behöver minnas att räkna om.
+Minsta bredden är ett tal och inte "så brett ordet nu blir", eftersom luften mellan två platser mäts ur den: ett piller lika brett som sitt eget "ledig" är ett mått på en Mac och ett annat på en Linux-körare, där `system-ui` är ett helt annat typsnitt.
+
+Ordet ritas svagare än bokstaven över det, och hur mycket svagare är inte en smaksak: att släppa igenom underlaget är att betala kontrast, och båda raderna är text och bär AA (UX-KONTROLLER).
+Platserna har olika mycket att betala med. `#3c8ce7` är den mörkaste av dem; bläcket står 5,57:1 helt, en femtedel igenom blir 4,45:1 och en tiondel 5,00:1.
+Ett taget piller har ingenting att betala med alls — det ritas redan i den dämpade grå en avstängd kontroll bär, 5,35:1 mot sin egen grå botten — så där ritas ordet helt.
+Det är dessutom rätt väg: ordet på ett ledigt piller är "ledig" och är utfyllnad bredvid bokstaven, medan ordet på ett taget piller är någons namn och är allt det pillret har att säga.
+
+`join-layout.test.tsx` läser bokstaven ur det som verkligen ritas inuti pillret på två-, fyra-, sex- och åttaplatsbord, och mäter att bokstavens rad ligger över ordets och på samma höjd oavsett om platsen är ledig eller tagen.
+Samma fil mäter blandningen varje rad verkligen ritas i — färgen lagd över pillret med sin egen genomskinlighet — mot pillrets botten, och håller båda raderna vid AA på både en ledig och en tagen plats.
+
 ### K13. Ångra och tillbakaspolning: förhandsvisning på bordet, beslut på telefonerna (prototypat 2026-09-06)
 
 C6 gav principen; det här är hur den blir konkret.
