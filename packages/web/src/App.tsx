@@ -14,6 +14,7 @@ import { NotFoundPage } from './status/NotFoundPage.js'
 import { DocumentTitle } from './status/DocumentTitle.js'
 import { StatusLive } from './status/StatusLive.js'
 import { Language, detectLang } from './i18n/index.js'
+import { CounterZonePrototype } from './prototype/counterzone/CounterZonePrototype.js'
 
 // Routing is a path check for now; a router arrives with the first real page.
 // The whole app is under one language (A4): the reader's own choice, then the address, then what
@@ -48,6 +49,8 @@ function route() {
   if (location.pathname === '/login') return <LoginPage />
   if (location.pathname === '/claim') return <ClaimPage />
   if (location.pathname.startsWith('/invites/')) return <InvitePage />
+  // PROTOTYPE — throwaway (#89). Goes out with the prototype it mounts.
+  if (location.pathname === '/prototype/raknarzonen') return <CounterZonePrototype />
   if (location.pathname === '/') return <HomePage />
   // Anything else is a page that does not exist, and says so.
   return <NotFoundPage />

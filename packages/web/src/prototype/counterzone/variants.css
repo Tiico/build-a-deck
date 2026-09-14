@@ -1,0 +1,66 @@
+/* PROTOTYPE — throwaway (#89). `table.css` and `keyboard.css` are unchanged underneath; every
+   rule here hangs off a prototype attribute, so what is judged is the real felt with one thing
+   swapped. The targets N, A and B are measured on are the renderer's own `.byd-token-hit` and are
+   not styled here at all — only made visible by the X-ray. */
+
+.byd-proto-page { min-height: 100vh; background: #0d0f14; display: flex; flex-direction: column; }
+.byd-proto-page > .byd-fit { flex: 1 1 auto; min-height: 0; }
+
+/* The felt is not one of L13's seven rooms (found in #67's prototype and still true): a button
+   laid on it falls back to the browser's grey. The prototype binds the six tokens to the felt's
+   green so the ring's buttons are the ring's buttons and not an accident. */
+.byd-proto-felt-room {
+  --byd-primary-bg: #7dd3a0;
+  --byd-primary-ink: #0b2a18;
+  --byd-secondary-line: #6f7a90;
+  --byd-secondary-ink: #dce3f2;
+  --byd-chosen-bar: #7dd3a0;
+  --byd-chosen-ink: #ffffff;
+}
+:is(.byd-proto-felt-room) .byd-primary { border: 1px solid var(--byd-primary-bg); background: var(--byd-primary-bg); color: var(--byd-primary-ink); }
+:is(.byd-proto-felt-room) .byd-secondary { border: 1px solid var(--byd-secondary-line); background: transparent; color: var(--byd-secondary-ink); }
+
+/* The bar is the prototype's own chrome and is never part of the design being judged. */
+.byd-proto-bar {
+  position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 90;
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center;
+  max-width: calc(100vw - 24px);
+  padding: 8px 12px; border-radius: 999px;
+  background: #fff; color: #111; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+  font: 600 12px system-ui, sans-serif;
+}
+.byd-proto-bar button { border: 1px solid #ccc; background: #f4f4f4; color: #111; border-radius: 8px; padding: 4px 9px; font: inherit; cursor: pointer; }
+.byd-proto-bar button[aria-pressed='true'] { background: #111; color: #fff; border-color: #111; }
+.byd-proto-bar strong { min-width: 210px; text-align: center; }
+.byd-proto-bar em { font-style: normal; color: #555; font-weight: 400; }
+.byd-proto-sep { width: 1px; height: 18px; background: #ddd; }
+
+/* ---------------------------------------------------------------------------------------------
+   C — the pile's own target. One per seat, laid out in the felt's coordinates and sized through
+   the same `leaningSquare` the renderer sizes `.byd-token-hit` with, so the two are comparable
+   and C is not measured on an easier projection.
+   --------------------------------------------------------------------------------------------- */
+.byd-proto-stack {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  padding: 0; margin: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 7;
+  touch-action: none;
+  display: grid; place-items: end center;
+}
+.byd-proto-stack:focus-visible { outline: 3px solid #ffd98a; outline-offset: 2px; }
+/* How many counters the pile holds, because a stack that shows one value hides two. */
+.byd-proto-pile-n {
+  pointer-events: none;
+  min-width: 14px; padding: 0 3px; border-radius: 999px;
+  background: #0d0f14; color: #f0b64a; border: 1px solid rgba(255, 255, 255, 0.25);
+  font: 700 9px system-ui, sans-serif; line-height: 13px; text-align: center;
+}
+
+/* The X-ray: every target made visible, whichever element the variant made it. It is the only way
+   to see the thing the numbers say, and it is off in every shot that is not about the target. */
+.byd-proto-page[data-proto-xray='true'] [data-proto-target] { border: 1px dashed rgba(255, 180, 60, 0.9); background: rgba(255, 180, 60, 0.16); }
