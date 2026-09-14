@@ -637,6 +637,18 @@
   color: var(--byd-editor-locked-ink);
   font-size: 12px;
 }
+/* A fill that follows a column (L16): the column over a row per value, each with its own colour
+   well, and the fallback last. The whole rule takes the panel's width — it is a list that grows
+   with the deck, not a pair of numbers. */
+.byd-props-paint { grid-column: 1 / -1; display: grid; gap: 6px; }
+.byd-props-paint ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+/* Three columns, so the wells stand in one line whether or not a value has a way back to the
+   fallback — a colour is read by comparing it with the one above it, and a row that shifts
+   sideways makes that a hunt. */
+.byd-props-paint li { display: grid; grid-template-columns: minmax(0, 1fr) var(--byd-tap) var(--byd-tap); align-items: center; }
+.byd-props-paint li > label { display: contents; }
+.byd-props-paint li > label > input { width: var(--byd-tap); height: 28px; padding: 2px; }
+.byd-props-paint li > button { min-width: var(--byd-tap); min-height: var(--byd-tap); border: 0; border-radius: 6px; background: transparent; color: var(--byd-editor-quiet); font-size: 15px; cursor: pointer; }
 .byd-props-locked { grid-column: 1 / -1; margin: 0 0 2px; color: var(--byd-editor-locked-ink); font-size: 11px; line-height: 1.4; }
 .byd-props input[readonly] { color: var(--byd-editor-source-ink); cursor: not-allowed; }
 .byd-canvas-stage { display: grid; place-items: center; overflow: auto; background: repeating-conic-gradient(#20232b 0 25%, #1b1d23 0 50%) 0 0 / 24px 24px; }

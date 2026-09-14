@@ -1,7 +1,7 @@
 import type { ComponentTypeDef } from '@byd/engine'
 import { parseInline, type InlineNode } from './inline.js'
 import { detectScript, estimateHeight, fitText, type Measure } from './fit.js'
-import type { Condition, Element, FaceTemplate, Row, Template } from './model.js'
+import { paintOf, type Condition, type Element, type FaceTemplate, type Row, type Template } from './model.js'
 
 export type Warning = { element: string; code: 'unknown-icon' | 'text-too-small' | 'text-overflow' | 'unknown-field'; detail: string }
 export type Compiled = { html: string; css: string; warnings: Warning[] }
@@ -96,7 +96,8 @@ function render(el: Element, dx: number, dy: number, input: CompileInput, html: 
     }
     case 'shape': {
       const parts = [`left:${el.x + dx}mm`, `top:${el.y + dy}mm`, `width:${el.w}mm`, `height:${el.h}mm`]
-      if (el.fill) parts.push(`background:${el.fill}`)
+      const fill = paintOf(el.fill, input.row)
+      if (fill) parts.push(`background:${fill}`)
       if (el.stroke && (el.strokeMm ?? 0) > 0) parts.push(`border:${el.strokeMm}mm solid ${el.stroke}`)
       if (el.shape === 'circle') parts.push('border-radius:50%')
       else if ((el.radiusMm ?? 0) > 0) parts.push(`border-radius:${el.radiusMm}mm`)

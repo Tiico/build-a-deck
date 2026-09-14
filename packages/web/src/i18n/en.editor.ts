@@ -225,6 +225,10 @@ export const enEditor = {
   'canvas.fit.fixed': 'fixed size',
   'canvas.props.keepRatio': 'Keep proportions',
   'canvas.props.fill': 'Fill',
+  'canvas.props.fill.byField': 'Colour by field',
+  'canvas.props.fill.field': 'Fill by the column',
+  'canvas.props.fill.rest': 'Everything else',
+  'canvas.props.fill.clear': 'Remove the colour for {value}',
 
   'fonts.title': 'Fonts in the game',
   'fonts.none': 'No font of your own yet. Without a file the cards are set in whatever the printer’s computer happens to have.',

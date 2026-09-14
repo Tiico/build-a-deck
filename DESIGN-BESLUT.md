@@ -2303,6 +2303,34 @@ Alternativet, att lita på Ctrl+Z, förutsätter att man ser att något flyttade
 
 Byggt 2026-09-14.
 
+### L16. Fyllningen kan följa en kolumn (2026-09-14)
+
+En fyllning är en färg, eller en regel på en kolumn: vilken kolumn som ska läsas, en färg per värde, och en färg för allt annat.
+`fill` är därför antingen en sträng som förut eller `{ field, map, else }`, och `paintOf` är enda vägen från regel till färg — kompilatorn, den fysiska valideringen och editorns förhandsvisning kan aldrig komma fram till olika färger.
+
+Motivering:
+Det gick redan att ge fällorna en röd platta: en variant per värde (L3).
+Men en variant är hela kortets utseende, så tjugo färger blev tjugo flikar med samma design inkopierad i var och en, och en ändring av rubrikens läge blev tjugo ändringar.
+Färgen är inte en egen formgivning; den är en egenskap som varierar.
+
+Alternativet var en färgkolumn i datatabellen som elementet binder till.
+Det avvisades: då bär varje kort sin egen hexkod, att byta nyans blir en redigering per rad i stället för en, och datatabellen — som är designerns lek — fylls med tolkning som hör hemma i mallen.
+Regeln på elementet håller färgerna där all annan stil bor och låter leken säga vilken av dem ett kort får, vilket är exakt L3:s modell tillämpad på en egenskap i stället för på ett helt utseende.
+
+Ett värde utan egen färg får `else`, precis som ett kolumnvärde utan variant får basutseendet — utan varning, för de flesta kort är det vanliga.
+Saknas även `else` är formen omålad, vilket är vad en form utan fyllning alltid har varit.
+
+I editorn är det en växel på fyllningen.
+Den färg designern redan valt blir regelns `else` när växeln slås på, så inget kort byter utseende förrän ett värde fått en egen färg; slås den av bär formen den färgen vidare.
+Värdena som erbjuds är lekens egna, i den ordning korten står, plus de värden regeln målar men vars kort har försvunnit — en färg utan något att visa sig på måste ändå gå att hitta och ta bort.
+Varje värde med egen färg har ett kryss tillbaka till `else`, för "följer standardfärgen" och "är målad i samma nyans som standardfärgen" är två olika saker och skillnaden går bara att uttrycka med en väg tillbaka.
+
+Följdkrav:
+Textens färg och formens linje är fortfarande enfärgade. De kan ta samma `Paint` den dag någon behöver det — modellen är redan skriven för det — men inget i editorn skapar en sådan regel i dag.
+Färgblindhetskontrollen (E5) läser den färg raden faktiskt får, alltså kortet i handen och inte mallen i abstrakt form.
+
+Byggt 2026-09-14 (ingen prototyp: växeln och listan är egenskapspanelens egna former, och regeln ritar ingen ny yta).
+
 ---
 
 ## I. Öppna frågor

@@ -4,6 +4,9 @@ import { z } from 'zod'
 // The template element model (L1): a small, closed set of typed elements with positions in
 // millimetres and styles from a fixed palette. Data, not code — versioned, diffed, migrated.
 
+// A card's data as the compiler sees it: one row of the deck.
+export type Row = Record<string, string | number | boolean | null | undefined>
+
 const Mm = z.number()
 const Bind = z.union([z.object({ field: z.string().min(1) }), z.object({ literal: z.string() })])
 export type Bind = z.infer<typeof Bind>
@@ -53,11 +56,37 @@ export const IconsElement = z.object({
   iconMm: Mm.positive(),
   gapMm: Mm.nonnegative().optional(),
 })
+// A colour, or a rule that reads one off the deck (L16): the column to look in, a colour per
+// value, and what a value the rule does not name gets. The colours stay in the template, where
+// every other style lives — the deck says which of them a card gets, and changing a shade is one
+// edit rather than one per card.
+export const Paint = z.union([
+  z.string().min(1),
+  z.object({
+    field: z.string().min(1),
+    map: z.record(z.string(), z.string().min(1)),
+    // Unnamed on purpose in the document: `else` is what a card gets when its value is not in the
+    // map, including when the cell is empty. Without one such a card is simply unpainted, which
+    // is what a shape with no fill at all has always been.
+    else: z.string().min(1).optional(),
+  }),
+])
+export type Paint = z.infer<typeof Paint>
+
+// The colour a row gets out of a paint. The one place a paint is turned into a colour, so the
+// compiler, the physical checks and the editor's preview can never disagree about it.
+export function paintOf(paint: Paint | undefined, row: Row): string | undefined {
+  if (paint === undefined || typeof paint === 'string') return paint
+  const value = row[paint.field]
+  const named = value === null || value === undefined ? undefined : paint.map[String(value)]
+  return named ?? paint.else
+}
+
 export const ShapeElement = z.object({
   kind: z.literal('shape'),
   ...Box,
   shape: z.enum(['rect', 'circle', 'line']),
-  fill: z.string().optional(),
+  fill: Paint.optional(),
   stroke: z.string().optional(),
   strokeMm: Mm.nonnegative().optional(),
   radiusMm: Mm.nonnegative().optional(),
@@ -108,4 +137,4 @@ export type FaceTemplate = z.infer<typeof FaceTemplate>
 export const Template = z.object({ faces: z.record(z.string(), FaceTemplate) })
 export type Template = z.infer<typeof Template>
 
-export type Row = Record<string, string | number | boolean | null | undefined>
+

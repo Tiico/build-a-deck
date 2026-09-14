@@ -63,6 +63,19 @@ export function idsOnFace(face: FaceTemplate): string[] {
   return [...out]
 }
 
+// Every value a column carries, in the order the cards are in (L16). What a fill that follows a
+// column offers a colour for: the values that are actually in the deck, so a designer picks from
+// her own game rather than typing its words a second time. A card that says nothing is not a
+// value — it falls to the rule's own fallback, exactly as an ungrouped card takes the base (L3).
+export function valuesIn(doc: ProjectDoc, column: string): string[] {
+  const out: string[] = []
+  for (const row of doc.rows) {
+    const value = valueOf(row, column)
+    if (value !== '' && !out.includes(value)) out.push(value)
+  }
+  return out
+}
+
 function valueOf(row: ProjectRow, column: string): string {
   const v = row.fields[column]
   return v === null || v === undefined ? '' : String(v)

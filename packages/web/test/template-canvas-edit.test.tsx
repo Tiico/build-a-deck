@@ -529,3 +529,69 @@ describe('the grid as a layer of its own (#18)', () => {
     expect(onPatch).toHaveBeenLastCalledWith('title', { x: 5.5 }, undefined)
   })
 })
+
+// A fill that follows a column (L16). The colours stay in the template and the deck says which of
+// them a card gets; before this, a red plate for the traps meant a variant per value — a tab per
+// colour, with the whole design copied into each of them.
+describe('a fill that follows a column (L16)', () => {
+  // A deck with a column worth colouring by, and a shape to colour.
+  function coloured(fill: unknown = '#f4ead8') {
+    const doc = projectDoc()
+    doc.rows = [
+      { id: 'dragon', fields: { title: 'Drake', typ: 'eld' } },
+      { id: 'knight', fields: { title: 'Riddare', typ: 'vatten' } },
+      { id: 'wizard', fields: { title: 'Trollkarl', typ: 'eld' } },
+    ]
+    const front = doc.template.faces['front']!
+    front.base = front.base.map((el) => (el.id === 'frame' ? { ...el, fill: fill as string } : el))
+    return canvas({ doc, selectedElement: 'frame' })
+  }
+  const follows = () => screen.getByRole('checkbox', { name: /färg efter fält/i })
+
+  it('turns the colour it had into the rule’s fallback, so nothing on any card changes yet', async () => {
+    const user = userEvent.setup()
+    const { onPatch } = coloured()
+    expect((follows() as HTMLInputElement).checked).toBe(false)
+
+    await user.click(follows())
+    expect(onPatch).toHaveBeenLastCalledWith('frame', { fill: { field: 'title', map: {}, else: '#f4ead8' } }, undefined)
+  })
+
+  it('gives a value of the column its own colour', () => {
+    const { onPatch } = coloured({ field: 'typ', map: {}, else: '#f4ead8' })
+    expect((follows() as HTMLInputElement).checked).toBe(true)
+
+    // The values offered are the deck's own, each once.
+    const field = screen.getByLabelText(/^fyll efter kolumnen/i) as HTMLSelectElement
+    expect(field.value).toBe('typ')
+    fireEvent.change(screen.getByLabelText('eld'), { target: { value: '#c0392b' } })
+    expect(onPatch).toHaveBeenLastCalledWith('frame', { fill: { field: 'typ', map: { eld: '#c0392b' }, else: '#f4ead8' } }, undefined)
+  })
+
+  // The way back is its own thing: a value that follows the fallback is not the same as a value
+  // painted the fallback's colour — one of them changes when the fallback does.
+  it('gives a value back to the fallback', async () => {
+    const user = userEvent.setup()
+    const { onPatch } = coloured({ field: 'typ', map: { eld: '#c0392b' }, else: '#f4ead8' })
+    await user.click(screen.getByRole('button', { name: 'Ta bort färgen för eld' }))
+    expect(onPatch).toHaveBeenLastCalledWith('frame', { fill: { field: 'typ', map: {}, else: '#f4ead8' } }, undefined)
+  })
+
+  it('gives the shape a plain colour again when the rule is turned off, and keeps the fallback as that colour', async () => {
+    const user = userEvent.setup()
+    const { onPatch } = coloured({ field: 'typ', map: { eld: '#c0392b' }, else: '#2f4068' })
+    await user.click(follows())
+    expect(onPatch).toHaveBeenLastCalledWith('frame', { fill: '#2f4068' }, undefined)
+  })
+
+  it('lists each value of the column once, keeps one whose cards have gone, and ends in the fallback', () => {
+    // `jord` is painted by the rule but no card carries it any more: a colour with nothing left to
+    // show it on is still a colour the designer must be able to find and take away (L3).
+    coloured({ field: 'typ', map: { eld: '#c0392b', jord: '#7f8c8d' }, else: '#f4ead8' })
+    expect([...document.querySelectorAll('.byd-props-paint li')].map((li) => li.getAttribute('data-value'))).toEqual(['eld', 'vatten', 'jord', ''])
+    expect(screen.getByText('Övriga')).toBeTruthy()
+    // Only a value with a colour of its own has a way back to the fallback.
+    expect(screen.getByRole('button', { name: 'Ta bort färgen för eld' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Ta bort färgen för vatten' })).toBeNull()
+  })
+})

@@ -252,6 +252,11 @@ export const svEditor = {
   'canvas.fit.fixed': 'fast storlek',
   'canvas.props.keepRatio': 'Behåll proportioner',
   'canvas.props.fill': 'Fyllning',
+  // Fyllning ur ett fältvärde (L16): växeln, kolumnen, och färgen för det som inte har en egen.
+  'canvas.props.fill.byField': 'Färg efter fält',
+  'canvas.props.fill.field': 'Fyll efter kolumnen',
+  'canvas.props.fill.rest': 'Övriga',
+  'canvas.props.fill.clear': 'Ta bort färgen för {value}',
 
   // Typsnitten spelet bär med sig.
   'fonts.title': 'Typsnitt i spelet',

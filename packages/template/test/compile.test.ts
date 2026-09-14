@@ -276,3 +276,41 @@ describe('what an element carries for the designer and not for the card (L15)', 
     expect(marked.warnings).toEqual([])
   })
 })
+
+// A fill that is a rule on a column (L16). The colour lives in the template, where every other
+// style lives; the deck says which of them a card gets. Without this the only way to give the
+// trap cards a red plate was a variant per value — a tab per colour, and the design copied into
+// each of them.
+describe('a fill that follows a column (L16)', () => {
+  const plate = (fill: unknown) => ({ kind: 'shape' as const, id: 'plate', x: 0, y: 0, w: 63, h: 20, shape: 'rect' as const, fill: fill as string })
+  const card = (fill: unknown): FaceTemplate => ({ base: [plate(fill)], variants: {} })
+  const backgroundOf = (out: { css: string }) => /\[data-element="plate"\]\{[^}]*background:([^;}]*)/.exec(out.css)?.[1] ?? null
+  const rule = { field: 'typ', map: { eld: '#c0392b', vatten: '#2980b9' }, else: '#7f8c8d' }
+
+  it('paints what the row’s value names', () => {
+    expect(backgroundOf(compile({ type: CARD_STANDARD_63x88, face: card(rule), row: { typ: 'eld' }, icons }))).toBe('#c0392b')
+    expect(backgroundOf(compile({ type: CARD_STANDARD_63x88, face: card(rule), row: { typ: 'vatten' }, icons }))).toBe('#2980b9')
+  })
+
+  it('falls back for a value the rule does not name, and for a cell nobody filled in', () => {
+    // A value without a colour of its own is the ordinary case, exactly as a value without a
+    // variant is (L3): most cards are the plain one, and that is not a warning.
+    expect(backgroundOf(compile({ type: CARD_STANDARD_63x88, face: card(rule), row: { typ: 'jord' }, icons }))).toBe('#7f8c8d')
+    expect(backgroundOf(compile({ type: CARD_STANDARD_63x88, face: card(rule), row: {}, icons }))).toBe('#7f8c8d')
+  })
+
+  it('leaves the shape unpainted when the rule names no colour and has no fallback', () => {
+    const bare = { field: 'typ', map: { eld: '#c0392b' } }
+    expect(backgroundOf(compile({ type: CARD_STANDARD_63x88, face: card(bare), row: { typ: 'jord' }, icons }))).toBeNull()
+  })
+
+  it('is a colour as it always was when it is written as one', () => {
+    expect(backgroundOf(compile({ type: CARD_STANDARD_63x88, face: card('#123456'), row: {}, icons }))).toBe('#123456')
+  })
+
+  it('is what the schema accepts, in both shapes', () => {
+    expect(Element.parse(plate(rule))).toMatchObject({ fill: rule })
+    expect(Element.parse(plate('#123456'))).toMatchObject({ fill: '#123456' })
+    expect(() => Element.parse(plate({ map: { eld: '#c0392b' } }))).toThrow()
+  })
+})

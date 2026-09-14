@@ -3,12 +3,12 @@ import { CARD_STANDARD_63x88 } from '@byd/engine'
 import type { Element, FaceTemplate, ProjectDoc, Row } from './types.js'
 import { CardPreview } from './CardPreview.js'
 import { arrowMove, fitScale, HANDLES, iconSized, movedTo, newElement, resizedTo, snapped, STAGE_SCALE, TOOLS, type Box, type ElementKind, type Grab, type Guides, type Handle } from './canvas.js'
-import { elementsFor } from '@byd/template'
+import { elementsFor, type Paint } from '@byd/template'
 import { previewIcons } from './assets.js'
 import { fieldsOf, takenNames } from './fields.js'
 import { NewField } from './NewField.js'
 import { isTyping } from './keys.js'
-import { cardsInGroup, groupColumn, groupsOf, idsOnFace, layersOf, overriddenIds, ruleLabel, type Layer } from './groups.js'
+import { cardsInGroup, groupColumn, groupsOf, idsOnFace, layersOf, overriddenIds, ruleLabel, valuesIn, type Layer } from './groups.js'
 import { LayerList, layerName } from './LayerList.js'
 import type { CanvasStage } from './EditorStages.js'
 import { useRoving } from './roving.js'
@@ -219,7 +219,18 @@ export function TemplateCanvas({ stage = null, doc, assetBase, face, onSelectFac
         {/* A panel with nothing in it says why rather than looking broken — and on a small screen
             the layers are another stage away, so it says where to go. */}
         {!layer && <p className="byd-canvas-hint">{t('canvas.props.empty')}</p>}
-        {el && <Properties el={el} fields={fields} taken={takenNames(doc)} fonts={Object.keys(doc.fonts ?? {})} icons={Object.keys(doc.icons)} onPatch={(changed) => patch(el.id, changed)} onAddField={onAddField} />}
+        {el && (
+          <Properties
+            el={el}
+            fields={fields}
+            taken={takenNames(doc)}
+            fonts={Object.keys(doc.fonts ?? {})}
+            icons={Object.keys(doc.icons)}
+            valuesIn={(field) => valuesIn(doc, field)}
+            onPatch={(changed) => patch(el.id, changed)}
+            onAddField={onAddField}
+          />
+        )}
         {layer && group && overridden.has(layer.element.id) && (
           <button type="button" className="byd-canvas-reset" onClick={() => onReset(layer.element.id)}>
             {t('canvas.reset')}
@@ -683,6 +694,80 @@ function useElementKeys(el: Element | undefined, onPatch: TemplateCanvasProps['o
 }
 
 
+// The fill of a shape (L16): one colour, or a rule that reads one off the deck. The switch is
+// the whole of the choice — a colour the designer has already picked becomes the rule's fallback,
+// so turning it on changes no card until a value is given a colour of its own, and turning it off
+// leaves the shape wearing that fallback. A deck with nothing in it is offered no rule: a rule on
+// a column of no values is a form with nothing to fill in.
+function Fill({ fill, fields, valuesIn, onPatch }: { fill: Paint | undefined; fields: string[]; valuesIn(field: string): string[]; onPatch(patch: Partial<Element>): void }) {
+  const t = useT()
+  const rule = typeof fill === 'object' ? fill : null
+  const plain = typeof fill === 'string' ? fill : (rule?.else ?? '#000000')
+  const values = rule ? valuesIn(rule.field) : []
+  // Every value the rule paints, including one whose cards have all gone: a colour with nothing
+  // left to show it on is still a colour the designer must be able to find and take away (L3).
+  const painted = rule ? [...new Set([...values, ...Object.keys(rule.map)])] : []
+  const write = (map: Record<string, string>) => rule && onPatch({ fill: { ...rule, map } })
+  return (
+    <>
+      {fields.length > 0 && (
+        <label className="byd-props-switch">
+          <input
+            type="checkbox"
+            checked={rule !== null}
+            onChange={(e) => onPatch({ fill: e.target.checked ? { field: fields[0] ?? '', map: {}, else: plain } : plain })}
+          />
+          {t('canvas.props.fill.byField')}
+        </label>
+      )}
+      {!rule && (
+        <label>
+          {t('canvas.props.fill')}
+          <input type="color" value={plain} onChange={(e) => onPatch({ fill: e.target.value })} />
+        </label>
+      )}
+      {rule && (
+        <div className="byd-props-paint">
+          <label>
+            {t('canvas.props.fill.field')}
+            <select value={rule.field} onChange={(e) => onPatch({ fill: { ...rule, field: e.target.value } })}>
+              {[...new Set([...fields, rule.field])].map((f) => (
+                <option key={f} value={f}>
+                  {f}
+                </option>
+              ))}
+            </select>
+          </label>
+          <ul>
+            {painted.map((value) => (
+              <li key={value} data-value={value}>
+                <label>
+                  {value}
+                  <input type="color" value={rule.map[value] ?? rule.else ?? '#000000'} onChange={(e) => write({ ...rule.map, [value]: e.target.value })} />
+                </label>
+                {/* A value back to the fallback, which is not the same as a value painted the
+                    fallback's colour: one follows the fallback when it changes and the other does
+                    not, and the difference is only sayable with a way back. */}
+                {rule.map[value] !== undefined && (
+                  <button type="button" aria-label={t('canvas.props.fill.clear', { value })} onClick={() => write(Object.fromEntries(Object.entries(rule.map).filter(([k]) => k !== value)))}>
+                    ×
+                  </button>
+                )}
+              </li>
+            ))}
+            <li data-value="">
+              <label>
+                {t('canvas.props.fill.rest')}
+                <input type="color" value={rule.else ?? '#000000'} onChange={(e) => onPatch({ fill: { ...rule, else: e.target.value } })} />
+              </label>
+            </li>
+          </ul>
+        </div>
+      )}
+    </>
+  )
+}
+
 // The value the field picker carries for its last entry, which is not a field but a door (#32).
 // Every way a column can come into a deck trims the name it is given — the form that makes one
 // does, and a CSV import's headers do — so no key in any document begins with a space, and this
@@ -702,7 +787,7 @@ const LOCKED_NOTE = 'byd-props-locked-note'
 // `fields` are the columns the picker offers; `taken` is every name a new one would collide with,
 // which is those plus the card's own id (#32). `icons` is the game's own set (E4), which is what
 // an icon placed on the card is chosen from and changed to.
-function Properties({ el, fields, taken, fonts, icons, onPatch, onAddField }: { el: Element; fields: string[]; taken: string[]; fonts: string[]; icons: string[]; onPatch(patch: Partial<Element>): void; onAddField(field: string, bindTo: string): void }) {
+function Properties({ el, fields, taken, fonts, icons, valuesIn, onPatch, onAddField }: { el: Element; fields: string[]; taken: string[]; fonts: string[]; icons: string[]; valuesIn(field: string): string[]; onPatch(patch: Partial<Element>): void; onAddField(field: string, bindTo: string): void }) {
   const t = useT()
   // Whether the picker's last entry has been chosen and the form is standing open under it.
   const [making, setMaking] = useState(false)
@@ -866,12 +951,7 @@ function Properties({ el, fields, taken, fonts, icons, onPatch, onAddField }: { 
           {t('canvas.props.keepRatio')}
         </label>
       )}
-      {el.kind === 'shape' && (
-        <label>
-          {t('canvas.props.fill')}
-          <input type="color" value={el.fill ?? '#000000'} onChange={(e) => onPatch({ fill: e.target.value })} />
-        </label>
-      )}
+      {el.kind === 'shape' && <Fill fill={el.fill} fields={fields} valuesIn={valuesIn} onPatch={onPatch} />}
     </div>
   )
 }
