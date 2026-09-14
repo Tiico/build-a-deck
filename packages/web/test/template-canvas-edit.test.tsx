@@ -44,13 +44,13 @@ describe('nudging the selected element with the keyboard (#18)', () => {
 
     // `title` sits at 5, 5 mm.
     await user.keyboard('{ArrowRight}')
-    expect(onPatch).toHaveBeenCalledWith('title', { x: 5.5 })
+    expect(onPatch).toHaveBeenCalledWith('title', { x: 5.5 }, undefined)
     await user.keyboard('{ArrowUp}')
-    expect(onPatch).toHaveBeenCalledWith('title', { y: 4.5 })
+    expect(onPatch).toHaveBeenCalledWith('title', { y: 4.5 }, undefined)
     await user.keyboard('{Shift>}{ArrowDown}{/Shift}')
-    expect(onPatch).toHaveBeenCalledWith('title', { y: 10 })
+    expect(onPatch).toHaveBeenCalledWith('title', { y: 10 }, undefined)
     await user.keyboard('{Shift>}{ArrowLeft}{/Shift}')
-    expect(onPatch).toHaveBeenCalledWith('title', { x: 0 })
+    expect(onPatch).toHaveBeenCalledWith('title', { x: 0 }, undefined)
   })
 })
 
@@ -132,7 +132,7 @@ describe('the properties of an added element (#18)', () => {
     const { onPatch } = canvas({ doc, selectedElement: 'image-1' })
 
     fireEvent.change(screen.getByLabelText(/fält/i), { target: { value: 'body' } })
-    expect(onPatch).toHaveBeenCalledWith('image-1', { bind: { field: 'body' } })
+    expect(onPatch).toHaveBeenCalledWith('image-1', { bind: { field: 'body' } }, undefined)
   })
 })
 
@@ -153,7 +153,7 @@ describe('whether a picture keeps its proportions', () => {
 
     expect(keeps().checked).toBe(true)
     await user.click(keeps())
-    expect(onPatch).toHaveBeenCalledWith('image-1', { fit: 'fill' })
+    expect(onPatch).toHaveBeenCalledWith('image-1', { fit: 'fill' }, undefined)
   })
 
   it('is off for a stretched picture, and turning it on fills the frame rather than fitting inside it', async () => {
@@ -164,7 +164,7 @@ describe('whether a picture keeps its proportions', () => {
     await user.click(keeps())
     // Filling and not fitting: a picture that fits inside the frame is the very margin the frame
     // was meant to stop being, so it is not what the switch comes back to.
-    expect(onPatch).toHaveBeenCalledWith('image-1', { fit: 'cover' })
+    expect(onPatch).toHaveBeenCalledWith('image-1', { fit: 'cover' }, undefined)
   })
 
   it('reads a picture fitted whole inside its frame as keeping its proportions, because it does', () => {
@@ -207,7 +207,7 @@ describe('moving an element with the pointer (#18)', () => {
     // `title` sits at 5, 5 mm; 60 px right and 20 px down is 10 and 3,3 mm.
     drag(target('title')!, [100, 100], [160, 120])
     expect(onSelectElement).toHaveBeenCalledWith('title')
-    expect(onPatch).toHaveBeenLastCalledWith('title', { x: 15, y: 8.3 })
+    expect(onPatch).toHaveBeenLastCalledWith('title', { x: 15, y: 8.3 }, expect.any(String))
   })
 
   it('does not move an element that is only clicked', () => {
@@ -232,15 +232,15 @@ describe('resizing an element with the handles (#18)', () => {
 
     // `title` is 5, 5, 53 × 10 mm. The lower right corner moves the far edges only.
     drag(handle('se'), [100, 100], [112, 130])
-    expect(onPatch).toHaveBeenLastCalledWith('title', { x: 5, y: 5, w: 55, h: 15 })
+    expect(onPatch).toHaveBeenLastCalledWith('title', { x: 5, y: 5, w: 55, h: 15 }, expect.any(String))
 
     // The upper left corner moves the near edges, so the far ones stay where they are.
     drag(handle('nw'), [100, 100], [112, 112])
-    expect(onPatch).toHaveBeenLastCalledWith('title', { x: 7, y: 7, w: 51, h: 8 })
+    expect(onPatch).toHaveBeenLastCalledWith('title', { x: 7, y: 7, w: 51, h: 8 }, expect.any(String))
 
     // A corner never turns the box inside out.
     drag(handle('ne'), [100, 100], [-600, 600])
-    expect(onPatch).toHaveBeenLastCalledWith('title', { x: 5, y: 13, w: 2, h: 2 })
+    expect(onPatch).toHaveBeenLastCalledWith('title', { x: 5, y: 13, w: 2, h: 2 }, expect.any(String))
   })
 })
 
@@ -266,12 +266,12 @@ describe('resizing a single icon (#33)', () => {
     // 5 mm out and 2 mm down from the lower right corner. The square is what the drag encloses on
     // both axes, so the symbol never grows into room the pointer did not sweep.
     drag(handle('se'), [100, 100], [130, 112])
-    expect(onPatch).toHaveBeenLastCalledWith('icon-1', { x: 27.5, y: 40, w: 10, h: 10, iconMm: 10 })
+    expect(onPatch).toHaveBeenLastCalledWith('icon-1', { x: 27.5, y: 40, w: 10, h: 10, iconMm: 10 }, expect.any(String))
 
     // The upper left corner holds the lower right one where it is: 26,5 + 9 is 35,5, which is
     // where the right edge was, and 39 + 9 is 48, which is where the bottom edge was.
     drag(handle('nw'), [100, 100], [88, 94])
-    expect(onPatch).toHaveBeenLastCalledWith('icon-1', { x: 26.5, y: 39, w: 9, h: 9, iconMm: 9 })
+    expect(onPatch).toHaveBeenLastCalledWith('icon-1', { x: 26.5, y: 39, w: 9, h: 9, iconMm: 9 }, expect.any(String))
   })
 
   it('leaves a row of icons alone, because its box is a strip and not a symbol', () => {
@@ -282,7 +282,7 @@ describe('resizing a single icon (#33)', () => {
     // name. A row is as wide and as tall as it is dragged, and how big its symbols are is a
     // separate measure (L1) — so nothing here is squared and `iconMm` is left where it was.
     drag(handle('se'), [100, 100], [130, 112])
-    expect(onPatch).toHaveBeenLastCalledWith('marks', { x: 5, y: 72, w: 45, h: 8 })
+    expect(onPatch).toHaveBeenLastCalledWith('marks', { x: 5, y: 72, w: 45, h: 8 }, expect.any(String))
   })
 })
 
@@ -304,7 +304,7 @@ describe('guide lines while an element is dragged (#18)', () => {
     // millimetre of `body`, whose top edge is at 30, so it takes it.
     fireEvent.pointerDown(target('title')!, { pointerId: 1, button: 0, clientX: 100, clientY: 100 })
     fireEvent.pointerMove(target('title')!, { pointerId: 1, clientX: 100, clientY: 252 })
-    expect(onPatch).toHaveBeenLastCalledWith('title', { x: 5, y: 30 })
+    expect(onPatch).toHaveBeenLastCalledWith('title', { x: 5, y: 30 }, expect.any(String))
     expect(guide('y')!.style.top).toBe('30mm')
     // Its left edge never left `body`'s, so that line is drawn too.
     expect(guide('x')!.style.left).toBe('5mm')
@@ -322,7 +322,7 @@ describe('guide lines while an element is dragged (#18)', () => {
     // a millimetre from the card's own middle at 31,5.
     fireEvent.pointerDown(target('cost')!, { pointerId: 1, button: 0, clientX: 300, clientY: 100 })
     fireEvent.pointerMove(target('cost')!, { pointerId: 1, clientX: 158, clientY: 100 })
-    expect(onPatch).toHaveBeenLastCalledWith('cost', { x: 26.5, y: 4 })
+    expect(onPatch).toHaveBeenLastCalledWith('cost', { x: 26.5, y: 4 }, expect.any(String))
     expect(guide('x')!.style.left).toBe('31.5mm')
   })
 
@@ -332,7 +332,7 @@ describe('guide lines while an element is dragged (#18)', () => {
 
     fireEvent.pointerDown(target('cost')!, { pointerId: 1, button: 0, clientX: 300, clientY: 100 })
     fireEvent.pointerMove(target('cost')!, { pointerId: 1, clientX: 240, clientY: 190 })
-    expect(onPatch).toHaveBeenLastCalledWith('cost', { x: 40, y: 19 })
+    expect(onPatch).toHaveBeenLastCalledWith('cost', { x: 40, y: 19 }, expect.any(String))
     expect(guide('x')).toBeNull()
     expect(guide('y')).toBeNull()
   })
@@ -522,6 +522,6 @@ describe('the grid as a layer of its own (#18)', () => {
     // It draws a millimetre grid; it does not round anything to it. A nudge is still 0,5 mm.
     laidOut()
     await user.keyboard('{ArrowRight}')
-    expect(onPatch).toHaveBeenLastCalledWith('title', { x: 5.5 })
+    expect(onPatch).toHaveBeenLastCalledWith('title', { x: 5.5 }, undefined)
   })
 })

@@ -279,7 +279,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         row={row}
         selectedElement={element}
         onSelectElement={setElement}
-        onPatch={(id, patch) => client.patchElement(face, id, patch, group)}
+        onPatch={(id, patch, gesture) => client.patchElement(face, id, patch, group, gesture)}
         onAdd={(el) => client.addElement(face, el, group)}
         // The symbol's bytes travel before anything is placed (E1), so this is the one tool in the
         // rail that can fail on the way. It says so where the editor says everything else.
@@ -312,7 +312,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         onStopCompare={() => setCompare(null)}
         selectedRow={row}
         onSelectRow={setRow}
-        onCell={(cardRef, field, value) => client.setCell(cardRef, field, value)}
+        onCell={(cardRef, field, value, gesture) => client.setCell(cardRef, field, value, gesture)}
         onAddRow={(cardRef) => client.addRow(cardRef, { title: '', antal: 1 })}
         onRemoveRow={(cardRef) => client.removeRow(cardRef)}
         onReplaceRows={(rows) => client.replaceRows(rows)}

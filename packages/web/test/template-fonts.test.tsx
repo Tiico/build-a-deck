@@ -46,7 +46,7 @@ describe('choosing the type an element is set in (B3)', () => {
     expect([...pick.options].map((o) => o.value)).toEqual(['sans-serif', 'Rubrikserif'])
     expect(pick.value).toBe('sans-serif')
     fireEvent.change(pick, { target: { value: 'Rubrikserif' } })
-    expect(onPatch).toHaveBeenCalledWith('title', { font: { family: 'Rubrikserif', sizePt: 14, weight: 700 } })
+    expect(onPatch).toHaveBeenCalledWith('title', { font: { family: 'Rubrikserif', sizePt: 14, weight: 700 } }, undefined)
   })
 
   it('keeps a family the project no longer names, rather than silently moving the element to another one', () => {

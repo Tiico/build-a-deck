@@ -32,7 +32,11 @@ export type TemplateCanvasProps = {
   row: string | null
   selectedElement: string | null
   onSelectElement(id: string | null): void
-  onPatch(id: string, patch: Partial<Element>): void
+  // `gesture` is the token of the grab a patch belongs to, when it belongs to one. A drag is one
+  // thing the designer did and the pointer reports it once per frame; the token is what lets the
+  // editor put all those frames on one step back (#35). A patch from a property field has none:
+  // it is a whole change on its own.
+  onPatch(id: string, patch: Partial<Element>, gesture?: string): void
   onRemove(id: string): void
   onAdd(element: Element): void
   // An icon placed from the tool row (#33). The symbol has to come into the game before an
@@ -95,7 +99,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, face, onSelectFac
   // One door for every change to an element, so a rule about a kind is applied once instead of at
   // each of the ways to make the change. A single icon is its box (#33): the corner handles and
   // the two numbers in the panel are two ways to the same thing, and both come through here.
-  const patch = (id: string, changed: Partial<Element>) => onPatch(id, iconSized(panel.find((l) => l.element.id === id)?.element, changed))
+  const patch = (id: string, changed: Partial<Element>, gesture?: string) => onPatch(id, iconSized(panel.find((l) => l.element.id === id)?.element, changed), gesture)
   useElementKeys(el, patch, onRemove)
   const stageEl = useRef<HTMLElement | null>(null)
   const scale = useStageFit(stageEl)
@@ -316,7 +320,10 @@ function isBox(el: Element): el is BoxElement {
 // leaves the box keeps moving the element it grabbed.
 function DragLayer({ boxes, grid, selected, onSelect, onPatch }: { boxes: BoxElement[]; grid: boolean; selected: string | null; onSelect(id: string): void; onPatch: TemplateCanvasProps['onPatch'] }) {
   const layer = useRef<HTMLDivElement | null>(null)
-  const grab = useRef<(Grab & { id: string; handle: Handle | null }) | null>(null)
+  const grab = useRef<(Grab & { id: string; handle: Handle | null; gesture: string }) | null>(null)
+  // What makes one grab tell itself apart from the next one on the same element: a number that
+  // only goes up. Two drags of the same title are two things the designer did, and two steps back.
+  const grabs = useRef(0)
   const [guides, setGuides] = useState<Guides>({ x: null, y: null })
 
   const down = (event: ReactPointerEvent<HTMLElement>, box: BoxElement, handle: Handle | null) => {
@@ -325,20 +332,20 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch }: { boxes: BoxEle
     onSelect(box.id)
     const rect = layer.current?.getBoundingClientRect()
     if (!rect?.width) return
-    grab.current = { id: box.id, box, handle, at: { x: event.clientX, y: event.clientY }, mmPerPx: CARD_STANDARD_63x88.physical.widthMm / rect.width }
+    grab.current = { id: box.id, box, handle, gesture: `grab-${(grabs.current += 1)}`, at: { x: event.clientX, y: event.clientY }, mmPerPx: CARD_STANDARD_63x88.physical.widthMm / rect.width }
     event.currentTarget.setPointerCapture?.(event.pointerId)
   }
   const move = (event: ReactPointerEvent<HTMLElement>) => {
     const held = grab.current
     if (!held) return
     const to = { x: event.clientX, y: event.clientY }
-    if (held.handle) return onPatch(held.id, resizedTo(held, to, held.handle))
+    if (held.handle) return onPatch(held.id, resizedTo(held, to, held.handle), held.gesture)
     const others = boxes.filter((b) => b.id !== held.id)
     const placed = snapped(held.box, movedTo(held, to), others, CARD_STANDARD_63x88.physical)
     setGuides(placed.guides)
     // A click is a grab that went nowhere: it selects, and leaves the template alone.
     if (placed.at.x === held.box.x && placed.at.y === held.box.y) return
-    onPatch(held.id, placed.at)
+    onPatch(held.id, placed.at, held.gesture)
   }
   const up = () => {
     grab.current = null

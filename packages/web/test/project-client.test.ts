@@ -167,6 +167,43 @@ describe('editing the template on the canvas (#18)', () => {
     expect(client.canUndo).toBe(false)
   })
 
+  // One thing the designer did, reported many times over (#35): a drag is a patch per frame and a
+  // cell is one per keystroke. The token says which of them belong together, and it is made where
+  // the gesture begins — so the second grab of the same element is the second step back.
+  it('puts every edit of one gesture on a single step back, and a new gesture on its own', async () => {
+    const created = await run.projects.create('p1', projectDoc())
+    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    const title = () => client.doc.template.faces['front']?.base.find((e) => e.id === 'title') as { x: number; y: number } | undefined
+    const y = () => title()?.y
+
+    client.patchElement('front', 'title', { y: 6 }, undefined, 'grab-1')
+    client.patchElement('front', 'title', { y: 7 }, undefined, 'grab-1')
+    client.patchElement('front', 'title', { y: 8 }, undefined, 'grab-1')
+    expect(y()).toBe(8)
+
+    expect(client.undo()).toBe('undo.what.template')
+    expect(y()).toBe(5)
+    expect(client.canUndo).toBe(false)
+    // And the whole of it comes forward again, not the last frame of it.
+    expect(client.redo()).toBe('undo.what.template')
+    expect(y()).toBe(8)
+
+    client.patchElement('front', 'title', { y: 12 }, undefined, 'grab-2')
+    client.patchElement('front', 'title', { y: 16 }, undefined, 'grab-2')
+    expect(client.undo()).toBe('undo.what.template')
+    expect(y()).toBe(8)
+
+    // An edit with no token of its own is a whole change, even between two of the same gesture:
+    // the property panel wrote it, and the gesture that was open is closed by it.
+    client.patchElement('front', 'title', { y: 20 }, undefined, 'grab-3')
+    client.patchElement('front', 'title', { x: 9 })
+    client.patchElement('front', 'title', { y: 24 }, undefined, 'grab-3')
+    expect(client.undo()).toBe('undo.what.template')
+    expect(y()).toBe(20)
+    expect(client.undo()).toBe('undo.what.template')
+    expect(client.doc.template.faces['front']?.base.find((e) => e.id === 'title')).toMatchObject({ x: 5, y: 20 })
+  })
+
   // The step back is half of it; the step forward is the other half. A new edit is a new branch,
   // so it throws away what was waiting to come forward — and a refused edit is not a new edit. It
   // must leave the way forward exactly where it was, or a refusal would quietly cost the designer

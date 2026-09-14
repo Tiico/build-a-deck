@@ -2037,7 +2037,7 @@ Ett sparande som krockar med någon annan lämnar inte editorn: konflikten sägs
 Sparat eller osparat står i huvudet som ord och som färg, i en `role="status"`, så att bytet både syns och sägs.
 
 Radering av ett kort från radens × frågar först, med samma ord och i samma remsa som åtgärdsradens massborttagning, och namnger kortet i stället för att räkna det.
-Editorn har ingen ångra-stack; bekräftelsen är därför skyddet, och en ångra-historik över projektet är ett eget beslut.
+Bekräftelsen är skyddet före en radering, och den står kvar även sedan editorn fick en ångra-stack (#35, L14): en fråga som ställs innan kortet försvinner är billigare än ett kort som försvann och ett tangentbord som ska hitta tillbaka.
 
 Varje fråga editorn ställer före något som inte kan tittas på efteråt är en och samma komponent, `Question` (#17, #19, #8): en remsa där handlingen begärdes, som tar fokus, svarar på Escape och lämnar tillbaka fokus, och som aldrig fångar tangentbordet.
 Frågan öppnar alltid på ett svar som inte förlorar något: "Spara och lämna" när det finns ett sådant, annars "Avbryt".
@@ -2241,6 +2241,30 @@ Därför mäts filten i **bordsläge**, och det är det kravet som är den egent
 `button-language.test.tsx` mäter allt ovanstående i Chromium på varje yta monterad vid sin egen rutt, och `button-language-contrast.test.ts` mäter varje färg språket föreslår mot den yta den landar på.
 Filten mäts inte som de andra fem, eftersom den inte har någon grund att läsa ur en deklaration: det gröna är en `radial-gradient`, träramen en `linear-gradient`, omlandet en tredje, ett kortansikte en `hsl()` ur kortets egen färgton och ringens skivor ligger ovanpå vilken som helst av dem.
 Grunden samplas därför ur de målade bildpunkterna (`packages/web/test/painted.ts`) och en grund redovisas som tre toner — den mörkaste tjugondelen, mitten och den ljusaste — så att en färg måste hålla sin gräns mot hela ytan och inte mot en lyckad bildpunkt.
+
+### L14. Ett grepp är ett steg tillbaka (2026-09-14)
+
+En ångring tar tillbaka en sak designern gjorde, inte en bildruta av den.
+En förflyttning på duken är ett grepp om pekaren, och pekaren rapporterar det en gång per bildruta.
+Varje bildruta blev ett eget steg på stacken, så vägen tillbaka från en flyttad rubrik var trettio tryck på Ctrl+Z — och varje tryck flyttade den en tredjedels millimeter, vilket läses som att ingenting händer.
+Ett ord skrivet i en cell hade samma fel: tabellen skriver ett värde per tangenttryck, så bokstäverna kom tillbaka en i taget i ett fält designern redan hade lämnat.
+
+Beslutet: en redigering kan bära en polett som säger vilket grepp den hör till, och redigeringar med samma polett delar ett steg på stacken.
+Poletten görs där greppet börjar — ett nytt nummer vid varje `pointerdown` på duken, ett nytt varje gång en cell tar fokus — så ett andra grepp om samma element är ett andra steg, och att komma tillbaka till samma cell är ett nytt.
+En redigering utan polett är en hel förändring i sig, precis som förut: egenskapspanelen, piltangenterna, verktygsraden, allt som görs med ett tryck.
+Ett steg bakåt eller framåt stänger det grepp som står öppet, så nästa bildruta av en pågående dragning aldrig kan lägga sig på ett steg designern just tagit av stacken.
+
+Motivering:
+Stacken är femtio steg djup, och den siffran är bara sann om ett steg är något designern kan känna igen.
+En enda dragning kunde annars trycka ut hela historien framför sig, så priset var inte bara många tryck utan resten av ångra-historiken.
+Alternativet — att skicka en dragning först när pekaren släpps — skulle ha gjort steget rätt och samtidigt tagit bort det som gör ett delat projekt levande: den som tittar på samma projekt ser kortet röra sig i stället för att hoppa på pekarens släpp.
+
+Följdkrav:
+Trafiken på tråden är oförändrad; varje bildruta går fortfarande som sin egen `patchElement` till aktören.
+Stacken är fortfarande dokumentögonblicksbilder som tas tillbaka med `restore` (B4), och poletten avgör bara när en ny bild läggs på.
+En ny yta som skriver många gånger om samma handling — ett reglage, en färgväljare som drar — ska bära en polett; en som skriver en gång ska inte.
+
+Byggt 2026-09-14 (ingen prototyp: ingenting nytt ritas, ett tryck gör det den som tryckte redan trodde att det gjorde).
 
 ---
 
