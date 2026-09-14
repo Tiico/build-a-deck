@@ -1005,6 +1005,19 @@ Referensprototypen `packages/web/src/prototype/table-ref` togs bort när den had
 Filtens storlek är sedan 2026-09-13 inte en konstant: den följer antalet platser, och måtten och deras följd för läsbarheten på tre meters håll står i K18.
 Inpassningen och kameran rör sig inte av det — båda mäter filten de får — men bilden blir vidare när fler sitter vid bordet.
 
+Reviderat 2026-09-14 (#84, UX-39): solfjädern ankras i sin egen zon.
+Handzonen är 60 mm djup och kortet i fläkten 75 mm högt, och ytan framför platsen börjar tio millimeter innanför zonen, så en fläkt ritad kring zonens mitt når in i grannen: på TV:n, där ingen fläkt vrids mot sin kant, låg B:s tre kort och brickan "3" i `Framför B`.
+C5 låter kameran skära en hand; inget låter en hand skära en grannzon.
+Regeln är den minsta: fläkten skjuts mot kanten exakt så långt att dess räckvidd tvärs zonen ryms innanför zonens inre kant, och inte en millimeter längre.
+En fläkt som redan ryms — varje vriden hand i bordsläge, sydplatsen i båda lägena — ligger kvar där den alltid legat, och det som hänger utanför kanten håller bordet som förut (#23).
+Vilket håll kanten ligger åt är zonens fråga och inte ritningens: varje fläkt på TV:n vänder sig mot betraktaren och sitter ändå vid sin egen kant.
+Räckvidden tvärs zonen är kortens vridning, inte en läst fläkts steg, som löper längs zonen.
+Brickan är fortfarande en etikett i pixlar som hänger utanför kanten i luften ramen lämnar, men på kantens sida av fläkten: under den som förut, utom när kanten ligger ovanför fläkten som den ritas — TV-lägets nordplats — där den hänger över fläkten i stället.
+Kortets kant i fläkten ritas innanför sin ruta: en baksida växte fyra pixlar utanför de millimeter fläkten mäts i, och på TV:ns skala var det elva millimeter.
+Det förkastade alternativet, att wizarden lägger handzonen med det djup fläkten behöver, hade flyttat varje sparat bord och rört K18:s mått för en ritningsfråga.
+Det som står kvar är observatörens TV (C8): en läst fläkt vid en sidoplats sprids tvärs sin zon och ligger kvar som förut, för att skjuta ut den med hela sin bredd hade hängt den en tredjedels meter utanför kanten och krympt hela bordet; hur en sådan fläkt ska ligga är en egen fråga.
+Var ett släpp landar följer zonens rektangel och inte fläkten, som förut (#65).
+
 ### K10. Telefonvyns utseende: remsan (prototypat 2026-09-06)
 
 Tre prototyper: remsan, ett kort i taget i fullskärm, och minibord med brickor plus handen i rutnät.

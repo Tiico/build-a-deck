@@ -207,9 +207,10 @@
 .byd-hand { position: absolute; width: 0; height: 0; }
 .byd-hand-fan { position: absolute; left: 0; top: 0; }
 /* The box a card in the fan occupies is millimetres of felt and comes from the renderer (#23);
-   only the shape it is drawn with belongs here. */
+   only the shape it is drawn with belongs here. The border is drawn inside that box, or a back
+   would outgrow by pixels the millimetres the fan is measured by (#84). */
 .byd-hand-fan > i {
-  position: absolute;
+  position: absolute; box-sizing: border-box;
   border-radius: 6px; transform-origin: 50% 140%;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
 }
@@ -218,6 +219,9 @@
   padding: 2px 8px; border-radius: 999px; background: rgba(0, 0, 0, 0.55); color: #f3e9d6;
   font-size: 12px; font-weight: 600; white-space: nowrap;
 }
+/* With the rim above the fan as drawn — the TV's north seat — the count hangs off the top of the
+   fan instead, past the cards' near edge, in the air past the rim like every other seat's (#84). */
+.byd-hand[data-count-side='above'] .byd-hand-count { top: auto; bottom: var(--hand-lift, 25px); }
 
 /* The seat's name lies along its own edge of the table, turned toward whoever sits there (B). */
 .byd-seat-name {

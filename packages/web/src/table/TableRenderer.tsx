@@ -12,7 +12,7 @@ import { isCounter } from '../components.js'
 import { DEFAULT_TIMING } from '../status/connection.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
 import { ringCentre } from './ring.js'
-import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_MM, edgeRotation, fanPlace, feltWithHands, handExtent } from './hand.js'
+import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, edgeRotation, fanPlace, feltWithHands, handAnchor, handExtent } from './hand.js'
 import { nameAt } from './labels.js'
 import { useT, type T } from '../i18n/index.js'
 
@@ -129,7 +129,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const handRot = (z: ZoneView) => (mode === 'table' ? edgeRotation(z, floor) : 0)
   // What the fit has to pass into the frame is the felt *with its hands on* (#23): a hand is part
   // of the table, so a table fitted to the floor alone would clip one that reaches past the rim.
-  const felted = feltWithHands(floorRect, hands.map((z) => handExtent(z, handRot(z))))
+  const felted = feltWithHands(floorRect, hands.map((z) => handExtent(z, floor, handRot(z))))
   // A quarter turn (C5) puts the table's width where its height was, so that is the shape the
   // fit has to pass into the frame — otherwise a seat at a side edge gets a table cut off at the
   // top and bottom of its own screen.
@@ -496,19 +496,25 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
               />
             )
           })}
-          {hands.map((z) => (
-            <Hand
-              key={z.id}
-              zone={z}
-              color={seatColor(seatIndex(z.owner))}
-              rot={handRot(z)}
-              left={left(z.geometry.x + z.geometry.w / 2)}
-              top={top(z.geometry.y + z.geometry.h / 2)}
-              px={px}
-              cards={z.mode === 'order' ? z.order.flatMap((id) => byId.get(id) ?? []) : undefined}
-              faces={faces}
-            />
-          ))}
+          {hands.map((z) => {
+            // Drawn about the point the fan is anchored at in its own zone (#84), which is what
+            // the fit above measured it by, with the count hung off it on the rim's side.
+            const at = handAnchor(z, floor, handRot(z))
+            return (
+              <Hand
+                key={z.id}
+                zone={z}
+                color={seatColor(seatIndex(z.owner))}
+                rot={handRot(z)}
+                countAt={countSide(z, floor, handRot(z))}
+                left={left(at.x)}
+                top={top(at.y)}
+                px={px}
+                cards={z.mode === 'order' ? z.order.flatMap((id) => byId.get(id) ?? []) : undefined}
+                faces={faces}
+              />
+            )
+          })}
           {loose.map((c) => {
             const a = absoluteOf(view, c)
             const m = shifted.has(c.id)
@@ -816,7 +822,7 @@ function SeatName({ zone, floor, name, color, left, top }: { zone: ZoneView; flo
 // Other seats' hands are a fan of backs and a count; the owner reads theirs on the phone. A hand
 // whose order this view may see (the observer, C8) fans the cards themselves. Every measure in
 // the fan is a millimetre on the felt, so it shrinks with the table rather than swamping it (#23).
-function Hand({ zone, color, rot, left, top, px, cards, faces }: { zone: ZoneView; color: string; rot: number; left: number; top: number; px: (mm: number) => number; cards?: VisibleComponentState[] | undefined; faces?: string | undefined }) {
+function Hand({ zone, color, rot, countAt, left, top, px, cards, faces }: { zone: ZoneView; color: string; rot: number; countAt: 'below' | 'above'; left: number; top: number; px: (mm: number) => number; cards?: VisibleComponentState[] | undefined; faces?: string | undefined }) {
   const count = zone.mode === 'count' ? zone.count : zone.order.length
   const fan = Math.min(count, FAN_MAX)
   const shown = cards ? Math.min(cards.length, FAN_MAX) : fan
@@ -826,7 +832,14 @@ function Hand({ zone, color, rot, left, top, px, cards, faces }: { zone: ZoneVie
     return `translateX(${px(step)}px) rotate(${tilt}deg)`
   }
   return (
-    <div className="byd-hand" data-zone={zone.id} data-count={count} data-rot={rot} style={{ left, top, transform: `rotate(${rot}deg)`, ['--seat' as string]: color, ['--hand-unrot' as string]: `${-rot}deg`, ['--hand-drop' as string]: `${px(HAND_COUNT_MM)}px` }}>
+    <div
+      className="byd-hand"
+      data-zone={zone.id}
+      data-count={count}
+      data-rot={rot}
+      data-count-side={countAt}
+      style={{ left, top, transform: `rotate(${rot}deg)`, ['--seat' as string]: color, ['--hand-unrot' as string]: `${-rot}deg`, ['--hand-drop' as string]: `${px(HAND_COUNT_MM)}px`, ['--hand-lift' as string]: `${px(HAND_COUNT_ABOVE_MM)}px` }}
+    >
       <div className="byd-hand-fan">
         {cards
           ? cards.slice(0, FAN_MAX).map((c, i) => (

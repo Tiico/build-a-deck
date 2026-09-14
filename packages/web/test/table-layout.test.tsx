@@ -592,7 +592,7 @@ function feltedOf(view: Snapshot, rotate: number): Size {
   if (!floor) throw new Error('no floor')
   const rect_ = { x: floor.geometry.x, y: floor.geometry.y, w: floor.geometry.w, h: floor.geometry.h }
   const hands = view.zones.filter((z) => z.kind === 'hand')
-  const felted = feltWithHands(rect_, hands.map((z) => handExtent(z, edgeRotation(z, floor))))
+  const felted = feltWithHands(rect_, hands.map((z) => handExtent(z, floor, edgeRotation(z, floor))))
   return rotate % 180 === 0 ? felted : { w: felted.h, h: felted.w }
 }
 
