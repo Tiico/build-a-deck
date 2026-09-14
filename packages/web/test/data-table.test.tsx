@@ -18,20 +18,21 @@ describe('DataTable (B as a tab)', () => {
     const onReplaceRows = vi.fn()
     render(<DataTable doc={doc} selectedRow="knight" onSelectRow={() => undefined} onCell={onCell} onAddRow={onAddRow} onRemoveRow={onRemoveRow} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} />)
 
-    // Every column header is a sort control (#15): its name is the column, the arrow is the state,
-    // and a column the designer made carries the × that takes it away again (#32). The first
-    // column carries no name: the selection's checkbox is its own label (#17). Last stands the
-    // pinned column that removes a card, which says so for a reader who cannot see the ×; the
-    // button that makes a column stands in its head rather than bringing a column of its own to
-    // stand in, because that column had nothing under it on any row (#46).
+    // Every column header is a sort control (#15) and nothing else: its name is the column, the
+    // arrow is the state. The first column carries no name: the selection's checkbox is its own
+    // label (#17). Last stands the pinned column that removes a card, which says so for a reader
+    // who cannot see the ×; the door to the table's columns stands in its head rather than
+    // bringing a column of its own to stand in, because that column had nothing under it on any
+    // row (#46).
     const heads = screen.getAllByRole('columnheader')
     const headers = heads.map((h) => (h.getAttribute('aria-label') ?? h.querySelector('button')?.textContent ?? h.textContent ?? '').replace(/\s*[↕↑↓]\s*$/, ''))
     expect(headers).toEqual(['', 'id', 'title', 'body', 'antal', 'Ta bort'])
-    // The two columns nobody made say so where the others keep their × (#46, L4), and a padlock
-    // on its own is a decoration — so the head says it in words as well, for a reader who cannot
-    // see one.
-    expect(heads.filter((h) => h.querySelector('.byd-data-system')).map((h) => h.getAttribute('data-col'))).toEqual(['id', 'antal'])
-    expect(heads.map((h) => h.textContent)).toContain('antal ↕antal är verktygets egen kolumn och kan inte tas bort')
+    // And nothing about which columns are the designer's is said in the head itself any more: the
+    // × that took one away, and the padlock that stood in its place where one could not be taken
+    // away, are both behind the head's own door (#46 on #32), which is where the table already
+    // said something about its columns as columns. A heading is a name and the way it sorts.
+    expect(heads.filter((h) => h.querySelector('.byd-data-system, .byd-data-dropfield'))).toEqual([])
+    expect(heads.map((h) => h.textContent)).toContain('antal ↕')
     const rows = screen.getAllByRole('row').slice(1)
     expect(rows.map((r) => r.getAttribute('data-card-ref'))).toEqual(['dragon', 'knight', 'wizard'])
     expect(rows[1]!.getAttribute('aria-selected')).toBe('true')

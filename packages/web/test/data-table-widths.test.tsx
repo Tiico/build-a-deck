@@ -280,10 +280,12 @@ describe('a cell keeps inside its own column (#46)', () => {
   it("is a real condition: put the twelve-character floor back and the number column runs over its neighbour", async () => {
     const over = await measure(deckDoc(), { extra: ".byd-data td input:not([type='checkbox']) { min-width: 12ch; }" })
 
-    // Named rather than counted, and by how much: the floor is 80 and the column is `cost`.
-    expect([...new Set(over.spill.map((c) => c.col))]).toEqual(['cost'])
-    expect(over.spill.every((c) => c.px === 80 - over.width.cost!)).toBe(true)
-    expect(over.spill.length).toBe(CARDS.length)
+    // Named rather than counted, and by how much: the floor is 80, and both number columns are
+    // under it — `antal` since the padlock beside its word moved to the head's own door and gave
+    // the column its nineteen pixels back (#46 on #32).
+    expect([...new Set(over.spill.map((c) => c.col))]).toEqual(['cost', 'antal'])
+    expect(over.spill.every((c) => c.px === 80 - over.width[c.col]!)).toBe(true)
+    expect(over.spill.length).toBe(CARDS.length * 2)
   }, 60_000)
 })
 
@@ -430,53 +432,54 @@ describe('the table is measured against the room it really has (#46)', () => {
   }, 60_000)
 })
 
-// Which columns are the designer's and which are not (L4). `id` is the card's own key and `antal`
-// is how many copies of the card the deck holds; neither was made by anybody and neither can be
-// taken away. The head said so by leaving the × off those two headings, which is not saying it:
-// the difference between "you may not" and "there is nothing here" was a hole, and a hole reads
-// as an oversight.
-describe('a column nobody can take away says so (#46, L4)', () => {
-  it('puts a mark where the other columns keep their ×, on those two headings and no others', async () => {
+// What a heading holds, and what it costs the column it names (#46 on #32).
+//
+// A heading used to carry two things besides its word: the × that took the column away, and — on
+// the two columns nobody made — a padlock saying why there was none. Both are behind the head's
+// own door now, where the table already said what it had to say about its columns as columns, and
+// a heading is the word and the way it sorts. The arithmetic that made the first of those hard is
+// gone with it: nothing in a heading has to be handed out in turn any more, because there is only
+// one thing there to hand out.
+describe("a heading is the column's name and the way it sorts (#46 on #32)", () => {
+  it('carries no other control, in any column, and no column pays for one', async () => {
     const { heads, width } = await measure(deckDoc())
 
-    // The head really does have both kinds, so this is not a guard over a table of one of them.
+    // The head really has both kinds of column, so this is not a guard that matches nothing.
     expect(heads.map((h) => h.col)).toEqual(['id', 'art', 'title', 'body', 'cost', 'antal'])
-    expect(heads.filter((h) => h.canRemove).map((h) => h.col)).toEqual(['art', 'title', 'body', 'cost'])
+    // And not one of them carries an × or a mark: no control, and no hole where one was.
+    expect(heads.filter((h) => h.canRemove || h.badge > 0 || h.says !== '')).toEqual([])
 
-    // The two that cannot be taken away carry a mark instead of a hole, it is really drawn, and
-    // it says in words what it means — a glyph on its own is a decoration.
-    const system = heads.filter((h) => !h.canRemove)
-    expect(system.map((h) => h.col)).toEqual(['id', 'antal'])
-    expect(system.every((h) => h.badge > 0)).toBe(true)
-    expect(system.map((h) => h.says)).toEqual([sv('table.field.system', { field: 'id' }), sv('table.field.system', { field: 'antal' })])
-    // And nowhere else: a column the designer made has its × and nothing else.
-    expect(heads.filter((h) => h.canRemove && (h.badge > 0 || h.says !== ''))).toEqual([])
-
-    // It costs those two columns something, and what it costs them is affordable: both are still
-    // inside the width a number column has to be able to reach.
-    expect(width.id!).toBeLessThanOrEqual(96)
-    expect(width.antal!).toBeLessThanOrEqual(96)
+    // What that buys is the width, and it is the width the issue was about: the two machine
+    // columns are well inside what a number column has to be able to reach, and `antal` is no
+    // longer paying the nineteen pixels the padlock beside it took.
+    expect(width.id!).toBeLessThanOrEqual(80)
+    expect(width.antal!).toBeLessThanOrEqual(80)
   }, 60_000)
 })
 
-// What a thumb aimed at the middle of a control in the narrowest heading actually lands on.
-// Read with `elementFromPoint` rather than argued about, because that is the question the browser
-// itself answers when the click comes — and it is not the question a stylesheet looks like it is
-// answering. Two states, because the × is only there in one of them: the heading as it sits, and
-// the heading with the pointer really on it.
+// What a thumb aimed at the middle of the narrowest heading lands on. Read with
+// `elementFromPoint` rather than argued about, because that is the question the browser itself
+// answers when the click comes.
+//
+// Two tap targets never did fit side by side in a column a number wide — 44 and 44 do not go into
+// 64 — and the heading used to hand them out in turn: at rest the whole heading sorted, and with
+// the pointer on it the × took its 44 px and left the sort control ten. That was the honest answer
+// to the question as it stood, and the question has since been taken away: the × is behind the
+// head's own door (#46 on #32), so the heading is one control at every width, in every state.
 type Reach = {
   // The column, and how wide it came out.
   width: number
-  // Each control's own box, and what the browser finds at the middle of it — `self` when that is
-  // the control itself, otherwise what is standing in the way.
+  // The sort control's own box, and what the browser finds at the middle of it — `self` when that
+  // is the control itself, otherwise what is standing in the way.
   sort: { w: number; h: number; at: string }
-  drop: { w: number; h: number; at: string }
+  // Anything else in the heading at all, which is the other half of the same answer.
+  others: number
 }
 
-async function reach(doc: ProjectDoc, { hover = false, extra = '' } = {}): Promise<Reach> {
+async function reach(doc: ProjectDoc, { hover = false } = {}): Promise<Reach> {
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
   try {
-    await page.setContent(shellOf(markupOf(doc), extra), { waitUntil: 'load' })
+    await page.setContent(shellOf(markupOf(doc), ''), { waitUntil: 'load' })
     await page.evaluate(
       ({ deck, decide }) => {
         const box = document.querySelector('.byd-data-scroll') as HTMLElement
@@ -493,16 +496,14 @@ async function reach(doc: ProjectDoc, { hover = false, extra = '' } = {}): Promi
     }
     return (await page.evaluate(() => {
       const th = document.querySelector('th[data-col="cost"]') as HTMLElement
-      const look = (el: HTMLElement) => {
-        const seen = el.getBoundingClientRect()
-        const hit = document.elementFromPoint(seen.left + seen.width / 2, seen.top + seen.height / 2)
-        const name = hit === el ? 'self' : `${hit?.tagName ?? '(nothing)'}${(hit as HTMLElement | null)?.className ? `.${(hit as HTMLElement).className}` : ''}`
-        return { w: Math.round(seen.width), h: Math.round(seen.height), at: name }
-      }
+      const el = th.querySelector('button') as HTMLElement
+      const seen = el.getBoundingClientRect()
+      const hit = document.elementFromPoint(seen.left + seen.width / 2, seen.top + seen.height / 2)
+      const name = hit === el ? 'self' : `${hit?.tagName ?? '(nothing)'}${(hit as HTMLElement | null)?.className ? `.${(hit as HTMLElement).className}` : ''}`
       return {
         width: Math.round(th.getBoundingClientRect().width),
-        sort: look(th.querySelector('button:not(.byd-data-dropfield)') as HTMLElement),
-        drop: look(th.querySelector('.byd-data-dropfield') as HTMLElement),
+        sort: { w: Math.round(seen.width), h: Math.round(seen.height), at: name },
+        others: th.querySelectorAll('button, a, input, select').length - 1,
       }
     })) as Reach
   } finally {
@@ -510,47 +511,21 @@ async function reach(doc: ProjectDoc, { hover = false, extra = '' } = {}): Promi
   }
 }
 
-// Two tap targets do not fit side by side in a column a number wide, and that is not a bug in the
-// stylesheet — it is arithmetic: 44 and 44 do not go into 64. The heading therefore hands them out
-// in turn rather than pretending to hand them out at once.
-//
-// At rest the heading is the sort control and nothing else: the × is invisible, and invisible is
-// not the same as absent — `opacity: 0` paints nothing and still takes every click, which is what
-// made the middle of `cost`'s own sort button remove the column instead of sorting it. With the
-// pointer on the heading the × is there and takes the 44 px it is entitled to, and the sort
-// control gives them up rather than being covered by them: its box ends where the ×'s begins, so
-// neither control ever sits on the other's middle at any width a column can come out at.
-describe('what a tap on the narrowest heading lands on (#46)', () => {
-  it('gives the whole heading to the sort control while the × is not showing', async () => {
-    const at = await reach(deckDoc())
+describe('what a tap on the narrowest heading lands on (#46 on #32)', () => {
+  it('gives the whole heading to the one control in it, pointed at or not', async () => {
+    const [atRest, pointed] = await Promise.all([reach(deckDoc()), reach(deckDoc(), { hover: true })])
 
     // The column really is the narrow one the issue exists to make, and narrower than two tap
     // targets — without that this is a guard over a heading with room for both.
-    expect(at.width).toBeLessThan(2 * 44)
-    // The sort control owns its own middle, and the × — which nobody can see — owns nothing.
-    expect(at.sort.at).toBe('self')
-    expect(at.drop.at).not.toBe('self')
-  }, 60_000)
+    expect(atRest.width).toBeLessThan(2 * 44)
+    // One control, and it answers for its own middle.
+    expect(atRest.others).toBe(0)
+    expect(atRest.sort.at).toBe('self')
 
-  it('gives the × its 44 px the moment the column is pointed at, and the sort control the rest', async () => {
-    const at = await reach(deckDoc(), { hover: true })
-
-    // The accepted criterion, unchanged: the target that takes a column away is a tap across.
-    expect(at.drop.w).toBe(44)
-    expect(at.drop.h).toBeGreaterThanOrEqual(44)
-    // And each control answers for its own middle. The sort control is small here — that is what
-    // a 64 px column costs, and it is the part of it the designer can still see.
-    expect(at.drop.at).toBe('self')
-    expect(at.sort.at).toBe('self')
-    expect(at.sort.w).toBeGreaterThan(0)
-  }, 60_000)
-
-  it('is a real condition: let the invisible × keep its clicks and the sort control loses its middle', async () => {
-    const at = await reach(deckDoc(), { extra: '.byd-data th .byd-data-dropfield { pointer-events: auto !important; max-width: none !important; } .byd-data th > button:not(.byd-data-dropfield) { max-width: none !important; }' })
-
-    // This is the table as it stood: a control painted at nought opacity, over the middle of the
-    // one control in that heading anybody uses, taking its clicks.
-    expect(at.sort.at).toBe('BUTTON.byd-data-dropfield')
+    // And the pointer changes nothing. The heading used to be two different shapes depending on
+    // where the hand was resting; it is one shape now.
+    expect(pointed.sort).toEqual(atRest.sort)
+    expect(pointed.others).toBe(0)
   }, 60_000)
 })
 

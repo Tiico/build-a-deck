@@ -114,7 +114,7 @@ describe('what the card table re-measures (#46)', () => {
     await frame()
     const before = measured.mock.calls.length
 
-    fireEvent.click(screen.getByRole('button', { name: 'Nytt fält' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Kolumner' }))
     fireEvent.change(screen.getByLabelText('Namn'), { target: { value: 'kostnad' } })
     fireEvent.submit(screen.getByLabelText('Namn').closest('form')!)
     await frame()

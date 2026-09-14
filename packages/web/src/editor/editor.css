@@ -991,77 +991,6 @@
    and a wrapped heading is the very first thing a narrow column does. The head's own last cell is
    the exception — the form that makes a column hangs out of it on purpose. */
 .byd-data th { overflow: hidden; white-space: nowrap; }
-/* The × that takes a column away has left the heading's flow, and that is what lets a number
-   column be a number wide (#46). A heading carries a sort control *and* a ×, and every button in
-   the editor is at least `--byd-tap` across — so two of them on one line put the floor at about
-   114 px however short the word above them is, and the first attempt at this issue drew `cost` at
-   113 with the heading broken over two rows. No width rule reaches that; the button has to leave
-   the flow. So it lies over the right edge of its own heading, in the head's own ground, and
-   shows itself when the column is pointed at or has the focus somewhere in it. The target stays
-   44 by 44 (L12 does not touch hit areas) and the column pays nothing for it.
-   `position: sticky` already makes the heading a containing block, so nothing here sets
-   `position` on the cell — that would unstick the head. */
-.byd-data th .byd-data-dropfield {
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  z-index: 1;
-  display: grid;
-  place-items: center;
-  width: var(--byd-tap);
-  margin: 0;
-  padding: 0;
-  /* A 44 px target whose last 24 px are the head's own ground and whose first 20 px are the ramp
-     down to it — the same 24 px the tool fades a cut value over, so a heading that runs on under
-     the × goes the way a value does. The × itself never stands on anything but solid ground: the
-     contrast of a destructive control is not what is being traded here (#53). */
-  background: linear-gradient(to right, rgb(27 29 35 / 0%), #1b1d23 45%);
-  color: var(--byd-editor-quiet);
-  font-size: 13px;
-  line-height: 1;
-  opacity: 0;
-  /* Invisible is not the same as absent. `opacity: 0` paints nothing and still takes every click
-     it is under, and this one lies over the right 44 px of its own heading with a `z-index` to
-     win — so in a `cost` column of 64 the middle of the sort button removed the column instead of
-     sorting it, and only the leftmost ten pixels of that button still worked. Nothing anybody can
-     see says so, which is the worst kind of target: the one that answers for a control the reader
-     has no idea is there. So while it is not showing it takes nothing at all, and the heading
-     belongs to the control the designer can see. */
-  pointer-events: none;
-}
-/* Two tap targets do not fit side by side in a column a number wide — 44 and 44 do not go into 64,
-   and that is the arithmetic the whole issue is made of. So the heading hands them out in turn.
-   With the pointer on it or the focus in it the × is there and takes its 44 px, and the sort
-   control gives them up rather than being covered by them: its box ends where the ×'s begins, so
-   neither control ever sits on the other's middle at any width a column can come out at. In a
-   narrow heading that leaves the sort control small — and what it leaves it is exactly the part of
-   itself the reader can still see, since the ×'s own ground is painted over the rest. A hit area
-   that matches the paint is the honest one; the alternative on offer was a 44 px button whose
-   middle belonged to something else. */
-.byd-data th:hover .byd-data-dropfield, .byd-data th:focus-within .byd-data-dropfield { opacity: 1; pointer-events: auto; }
-/* And only in a heading that really has a × to give way to. The rule reached every cell of the
-   head, and the last one is a `th` like the others — the cell the button that makes a column stands
-   in (#32), which is one tap wide and has nothing to hand over: `100% - 44px + 10px` is ten pixels.
-   So the `+` shrank to ten the moment it was pointed at, the pointer was then standing beside the
-   button rather than on it, the hover ended, the button grew back to 44, and it was pointed at
-   again — a flicker as fast as the browser can draw, for as long as the hand rested there, and a
-   control that cannot be pressed on purpose. `:has()` says the condition the rule always meant:
-   a heading gives room to the × it carries, and `id` and `antal`, which carry a padlock in the
-   flow instead, no longer give room to a control that is never coming either. */
-.byd-data th:has(.byd-data-dropfield):hover > button:not(.byd-data-dropfield), .byd-data th:has(.byd-data-dropfield):focus-within > button:not(.byd-data-dropfield) {
-  min-width: 0;
-  max-width: calc(100% - var(--byd-tap) + var(--byd-data-head-pad));
-}
-.byd-data th .byd-data-dropfield:hover, .byd-data th .byd-data-dropfield:focus-visible { color: #e05c5c; }
-/* And where a column cannot be taken away at all, a padlock stands in the ×'s place (#46, L4).
-   This one *is* in the flow, and deliberately: it is not a control, so it has no hover of its own
-   to appear on and nothing would ever reveal it. Thirteen pixels and the gap before it is what
-   `id` and `antal` pay for saying out loud that they are the tool's and not the designer's — and
-   at 1280 that leaves them 83 and 84, well inside what a number column has to be able to reach.
-   A word in its place is not on offer: the shortest true one is 52 px in a column that has to be
-   able to come out at 80. */
-.byd-data th .byd-data-system { display: inline-grid; place-items: center; width: 13px; margin-left: 6px; color: var(--byd-editor-quiet); vertical-align: -2px; cursor: help; }
 /* The button that makes a column now stands in the head of the column that removes a card (#46):
    the head's last cell either way, but no longer a column of its own with an empty cell under it
    on every row. A tap-wide cell holds a `+` and nothing more, so that is what it holds; the word
@@ -1069,6 +998,40 @@
    one heading that is deliberately not clipped. */
 .byd-data thead .byd-data-remove { z-index: 4; overflow: visible; white-space: nowrap; }
 .byd-data thead .byd-data-remove > button { display: grid; place-items: center; width: var(--byd-tap); padding: 0; color: var(--byd-editor-count-ink); font-size: 18px; line-height: 1; }
+/* The head's own door (#46 on #32): the list of the table's columns, and under it the form that
+   makes one. It hangs out of the head's last cell, which is the one heading deliberately not
+   clipped — and it is the same box the form alone used to hang from, so nothing about how the
+   head is laid out changes by the list arriving in it. */
+.byd-columns {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 6;
+  width: 260px;
+  padding: 10px 12px 12px;
+  border: 1px solid #3b4358;
+  border-radius: 10px;
+  background: var(--byd-editor-panel-bg);
+  box-shadow: 0 12px 30px rgb(0 0 0 / 50%);
+  color: #dce3f2;
+  font-weight: 400;
+  white-space: normal;
+  text-align: left;
+}
+/* The form is no longer the box: it stands inside one, so it gives up its own frame and its own
+   place on the page and keeps only its rows. */
+.byd-columns .byd-newfield { position: static; width: auto; padding: 10px 0 0; border: 0; border-top: 1px solid #2f333d; border-radius: 0; background: transparent; box-shadow: none; }
+.byd-columns-list { display: grid; gap: 2px; margin: 0 0 10px; padding: 0; list-style: none; }
+.byd-columns-list li { display: flex; align-items: center; gap: 8px; min-height: 36px; }
+.byd-columns-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+/* The × keeps the 44 px it always had (L12). Here it can have them without taking them from
+   anything: a row of a list is not a column of the table. */
+.byd-columns .byd-data-dropfield { flex: 0 0 auto; display: grid; place-items: center; width: var(--byd-tap); min-height: var(--byd-tap); padding: 0; border: 0; background: transparent; color: var(--byd-editor-quiet); font-size: 13px; line-height: 1; cursor: pointer; }
+.byd-columns .byd-data-dropfield:hover, .byd-columns .byd-data-dropfield:focus-visible { color: #e05c5c; }
+/* And where a column cannot be taken away, the reason stands in the ×'s place — in words, which
+   is what a panel has room for and a heading never had (L4). */
+.byd-columns-system { flex: 0 1 auto; display: flex; align-items: center; gap: 5px; min-width: 0; color: var(--byd-editor-quiet); font-size: 10px; line-height: 1.3; }
+.byd-columns-system svg { flex: 0 0 auto; }
 .byd-newfield {
   position: absolute;
   top: 100%;

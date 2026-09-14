@@ -59,7 +59,7 @@ async function newField(width: number): Promise<Record<string, string>> {
   try {
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Nytt fält' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Kolumner' }))
     await screen.findByRole('form', { name: 'Nytt fält' })
     return { 'Nytt fält': document.querySelector('.byd-editor')!.outerHTML }
   } finally {

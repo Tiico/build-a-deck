@@ -2,7 +2,7 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 're
 import type { ProjectDoc, ProjectRow } from './types.js'
 import { deckKeepsFields, fieldsOf, fieldLabel, takenNames } from './fields.js'
 import { ANTAL, drawnBy } from '@byd/server/doc'
-import { NewField } from './NewField.js'
+import { ColumnDoor } from './ColumnDoor.js'
 import { ASSET_DRAG_TYPE, assetRef, assetUrl, assetsInUse, iconFieldsOf, imageFieldsOf, isAssetRef, ASSET_PREFIX } from './assets.js'
 import { searchSymbols, type GameSymbol } from './symbols.js'
 import { SymbolList, symbolListKey, symbolOptionId } from './SymbolList.js'
@@ -582,21 +582,9 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
               />
               </label>
             </th>
-            <SortableHeader field="id" label="id" sort={sort} onSort={setSort} t={t} />
+            <SortableHeader field="id" label="id" sort={sort} onSort={setSort} />
             {fields.map((f) => (
-              <SortableHeader
-                key={f}
-                field={f}
-                label={fieldLabel(f, t)}
-                sort={sort}
-                onSort={setSort}
-                t={t}
-                onRemove={f === ANTAL ? undefined : () => setDropping(f)}
-                removeRef={(el) => {
-                  if (el) dropRefs.current.set(f, el)
-                  else dropRefs.current.delete(f)
-                }}
-              />
+              <SortableHeader key={f} field={f} label={fieldLabel(f, t)} sort={sort} onSort={setSort} />
             ))}
             {grouping && <th data-col={GROUP_COL}>{t('table.group')}</th>}
             {/* The button that makes a column stands at the end of the head, where the column it
@@ -611,11 +599,19 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                 The cell is named for what its own column does, so a screen reader still hears
                 what the × under it is for rather than hearing the button above it twice. */}
             <th className="byd-data-remove" aria-label={t('table.remove.column')}>
-              <button type="button" ref={addRef} aria-label={t('table.field.new')} aria-expanded={adding} onClick={() => setAdding(!adding)}>
+              <button type="button" ref={addRef} aria-label={t('table.columns')} aria-expanded={adding} onClick={() => setAdding(!adding)}>
                 +
               </button>
               {adding && (
-                <NewField
+                <ColumnDoor
+                  columns={['id', ...fields]}
+                  canRemove={(field) => field !== 'id' && field !== ANTAL}
+                  onRemove={(field) => setDropping(field)}
+                  removeRef={(field, el) => {
+                    if (el) dropRefs.current.set(field, el)
+                    else dropRefs.current.delete(field)
+                  }}
+                  asking={dropping !== null}
                   taken={takenNames(doc)}
                   keeps={deckKeepsFields(doc)}
                   // Yes and no leave by the same door, so they hand the focus back to the same
@@ -815,38 +811,19 @@ function GroupCell({ doc, column, cardRef, row }: { doc: ProjectDoc; column: str
 
 // One header per column (variant A): a real button, so the tab order and Enter/Space come for
 // free, and `aria-sort` on the `th` for the state. The arrow is the same fact for the eye.
-function SortableHeader({ field, label, sort, onSort, onRemove, removeRef, t }: { field: string; label: string; sort: SortState | null; onSort(next: SortState | null): void; onRemove?: (() => void) | undefined; removeRef?: ((el: HTMLButtonElement | null) => void) | undefined; t?: T | undefined }) {
+//
+// The name and the way it sorts, and nothing else. The × that took the column away used to
+// stand here too, out of the flow and over the heading's right-hand 44 px, because two tap
+// targets do not fit in a column a number wide; it has moved to the head's own door, where the
+// table already said something about its columns as columns (#46 on #32). What that buys is not
+// tidiness: it is the room a heading needs to be draggable and pullable at all.
+function SortableHeader({ field, label, sort, onSort }: { field: string; label: string; sort: SortState | null; onSort(next: SortState | null): void }) {
   const active = sort?.field === field ? sort.dir : null
   return (
     <th data-col={field} aria-sort={active ?? 'none'}>
       <button type="button" data-active={active !== null} onClick={() => onSort(nextSort(sort, field))}>
         {label} <span aria-hidden="true">{active === 'ascending' ? '↑' : active === 'descending' ? '↓' : '↕'}</span>
       </button>
-      {/* A column the designer made is a column she can take away again (#32). The two that are
-          not hers — the card's id, and `antal`, which is how many copies of the card the deck
-          holds (L4) — cannot be, and the head used to say so by leaving the × off. That is not
-          saying it: the difference between "you may not" and "there is nothing here" was a hole,
-          and a hole reads as an oversight. So a padlock stands where the other columns keep their
-          ×, with the reason written beside it. A word instead of a glyph is not on offer — the
-          shortest true one is 52 px and these are columns that have to be able to come out at 80
-          — but the padlock is thirteen, and it is the one thing in the heading that is neither a
-          control nor a name, so it is the one thing that is not hidden until the column is
-          pointed at. */}
-      {onRemove && t ? (
-        <button type="button" ref={removeRef} className="byd-data-dropfield" aria-label={t('table.field.remove', { field })} onClick={onRemove}>
-          ×
-        </button>
-      ) : (
-        t && (
-          <span className="byd-data-system" title={t('table.field.system', { field })}>
-            <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false">
-              <path d="M3.4 5V3.6a2.6 2.6 0 0 1 5.2 0V5" fill="none" stroke="currentColor" strokeWidth="1.2" />
-              <rect x="2.2" y="5" width="7.6" height="5.6" rx="1.2" fill="currentColor" />
-            </svg>
-            <span className="byd-offscreen">{t('table.field.system', { field })}</span>
-          </span>
-        )
-      )}
     </th>
   )
 }

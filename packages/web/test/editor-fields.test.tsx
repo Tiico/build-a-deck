@@ -36,7 +36,7 @@ const openTab = (name: string) => fireEvent.click(screen.getByRole('tab', { name
 const column = (name: string) => screen.queryByRole('button', { name: new RegExp(`^${name}[\\s↕↑↓×]*$`) })
 
 async function makeField(user: ReturnType<typeof userEvent.setup>, name: string): Promise<void> {
-  await user.click(screen.getByRole('button', { name: 'Nytt fält' }))
+  await user.click(screen.getByRole('button', { name: 'Kolumner' }))
   const form = screen.getByRole('form', { name: 'Nytt fält' })
   await user.clear(within(form).getByLabelText('Namn'))
   await user.type(within(form).getByLabelText('Namn'), name)
@@ -97,6 +97,7 @@ describe('a field made in the editor is a field the game has (#32, B4)', () => {
     // Taking the column away says what goes with it, and then takes the element that drew it too
     // — a template left binding a column that is not there would draw nothing on every card.
     openTab('Tabell')
+    await user.click(screen.getByRole('button', { name: 'Kolumner' }))
     await user.click(screen.getByRole('button', { name: 'Ta bort fältet styrka' }))
     expect(screen.getByText('Ta bort styrka? Inget kort har ett värde i den. Elementet som visar den tas bort ur mallen.')).toBeTruthy()
     await user.click(screen.getByRole('button', { name: 'Ja, ta bort' }))

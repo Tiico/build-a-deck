@@ -42,7 +42,7 @@ type Box = { x: number; y: number; w: number; h: number }
 // `columns` is every cell of the head paired with the cell under it in the first card's row, in
 // document order — the head's own class on each, so a drift can be named rather than counted.
 type Column = { head: string; body: string | null; headBox: Box; bodyBox: Box | null }
-type Head = { row: Box; headings: { name: string; box: Box; ink: Box }[]; form: Box | null; scroll: Box; firstRow: Box; columns: Column[] }
+type Head = { row: Box; headings: { name: string; box: Box; ink: Box }[]; door: Box | null; scroll: Box; firstRow: Box; columns: Column[] }
 
 const VIEW = { w: 1280, h: 800 }
 
@@ -69,7 +69,7 @@ async function markup(open: boolean): Promise<Table> {
   const user = userEvent.setup()
   const { container, unmount } = render(<Table />)
   if (open) {
-    await user.click(screen.getByRole('button', { name: 'Nytt fält' }))
+    await user.click(screen.getByRole('button', { name: 'Kolumner' }))
     await user.type(screen.getByLabelText('Namn'), 'a')
   }
   const html = container.innerHTML
@@ -118,7 +118,7 @@ async function measure({ html, deck }: Table, extra = ''): Promise<Head> {
       return {
         row: box(document.querySelector('.byd-data thead tr'))!,
         headings,
-        form: box(document.querySelector('.byd-newfield')),
+        door: box(document.querySelector('.byd-columns')),
         scroll: box(document.querySelector('.byd-data-scroll'))!,
         firstRow: box(document.querySelector('.byd-data tbody tr'))!,
         columns: heads.map((th, i) => ({
@@ -134,15 +134,17 @@ async function measure({ html, deck }: Table, extra = ''): Promise<Head> {
   }
 }
 
-describe('the form that makes a column (#32)', () => {
+describe("the head's own door for its columns (#32, #46)", () => {
   it('lies over the rows instead of growing the head, so no heading moves while it is being typed in', async () => {
     const [shut, open] = await Promise.all([measure(await markup(false)), measure(await markup(true))])
 
-    // The guard is worth nothing if it is measuring nothing: the form is really on the page, and
+    // The guard is worth nothing if it is measuring nothing: the door is really on the page, and
     // it is taller than the head it hangs from — which is what would have pushed the row down.
-    expect(open.form).not.toBeNull()
-    expect(open.form!.h).toBeGreaterThan(open.row.h)
-    expect(shut.form).toBeNull()
+    // It is taller still now that the columns are listed in it above the form (#46 on #32), so
+    // the thing this guards against is larger than it was, not smaller.
+    expect(open.door).not.toBeNull()
+    expect(open.door!.h).toBeGreaterThan(open.row.h)
+    expect(shut.door).toBeNull()
     expect(shut.headings.map((h) => h.name)).toEqual(['id ↕', 'title ↕', 'body ↕', 'antal ↕', 'Ta bort'])
     expect(open.headings.map((h) => h.name)).toEqual(shut.headings.map((h) => h.name))
 
@@ -157,17 +159,17 @@ describe('the form that makes a column (#32)', () => {
     // It hangs from the cell it was opened from, over what is under it, and inside the box the
     // table scrolls in — it is not a sheet that floats off somewhere else on the page.
     const cell = open.headings.at(-1)!.box
-    expect(Math.abs(open.form!.y - (cell.y + cell.h))).toBeLessThanOrEqual(2)
-    expect(open.form!.y).toBeLessThan(open.firstRow.y + open.firstRow.h)
-    expect(open.form!.x + open.form!.w).toBeLessThanOrEqual(open.scroll.x + open.scroll.w + 1)
+    expect(Math.abs(open.door!.y - (cell.y + cell.h))).toBeLessThanOrEqual(2)
+    expect(open.door!.y).toBeLessThan(open.firstRow.y + open.firstRow.h)
+    expect(open.door!.x + open.door!.w).toBeLessThanOrEqual(open.scroll.x + open.scroll.w + 1)
   }, 60_000)
 
   it('is a real condition and not a rule that cannot be broken: in the flow, the head does grow', async () => {
-    // The same markup with one property taken back — the form standing in the cell instead of
+    // The same markup with one property taken back — the door standing in the cell instead of
     // over the rows — is the prototype that was rejected. If this passed too, the pair above
     // would be measuring the browser rather than the stylesheet.
     const html = await markup(true)
-    const [held, inFlow] = await Promise.all([measure(html), measure(html, '.byd-newfield { position: static; }')])
+    const [held, inFlow] = await Promise.all([measure(html), measure(html, '.byd-columns { position: static; }')])
 
     expect(inFlow.row.h).toBeGreaterThan(held.row.h)
     // And that is exactly the fault the prototype had: every heading beside it is pushed down,
@@ -277,10 +279,10 @@ type Place = (typeof PLACES)[number]
 // last 40 px in front of the pin — the ground a value has to cross to go under it.
 //
 // That strip runs from the top of the box, so it takes in the head and the rows at once. The head
-// is a different kind of ground from a row: a row holds a value, the head holds the word for a
-// column and the × that takes that column away. So the same 40 px are also taken twice over,
-// banded by row — `headStrip` across the heading row, `bodyStrip` across the first card's row —
-// and `veiled` says which remove-field controls are standing in the 24 px the fade covers, so a
+// is a different kind of ground from a row: a row holds a value, the head holds the word a column
+// is called and the control that sorts by it. So the same 40 px are also taken twice over, banded
+// by row — `headStrip` across the heading row, `bodyStrip` across the first card's row — and
+// `veiled` says which of the head's own controls are standing in the 24 px the fade covers, so a
 // comparison over the head cannot pass by pointing at empty ground.
 type Shot = {
   cut: string | null
@@ -348,11 +350,11 @@ async function pinned({ html, deck }: Table, extra = ''): Promise<Record<Place, 
           // The two rows the same ground is read across, and the controls standing in the fade.
           const headRow = (scroll.querySelector('thead > tr') as HTMLElement).getBoundingClientRect()
           const bodyRow = (scroll.querySelector('tbody > tr') as HTMLElement).getBoundingClientRect()
-          const veiled = [...scroll.querySelectorAll('thead .byd-data-dropfield')]
+          const veiled = [...scroll.querySelectorAll('thead th[data-col] > button')]
             .map((drop) => {
               const seen = drop.getBoundingClientRect()
               return {
-                field: (drop.getAttribute('aria-label') ?? '').trim(),
+                field: (drop.textContent ?? '').trim(),
                 px: Math.round(Math.min(seen.right, over.left) - Math.max(seen.left, over.left - 24)),
               }
             })
@@ -443,8 +445,10 @@ describe('a column running in under the pinned × (#53)', () => {
 // ground in front of the pin is painted twice — once as the stylesheet leaves it, once with the
 // cue's own property forced the other way — and the two pictures are compared. A fade that is
 // really painted shows up as a difference; one the stylesheet only asks for does not.
-// The × that takes a column away, in the state a pointer puts it in (#46).
-const SHOWING = '.byd-data th .byd-data-dropfield { opacity: 1; }'
+// Nothing in the head hides itself any more: the × that took a column away was the one control
+// there that appeared on a pointer, and it has moved to the head's own door (#46 on #32). What
+// stands in the heading stands there always, so there is no state to force it into.
+const SHOWING = ''
 const FORCED = {
   off: '.byd-data .byd-data-remove::before { opacity: 0 !important; }',
   on: '.byd-data .byd-data-remove::before { opacity: 1 !important; }',
@@ -483,22 +487,21 @@ describe('what says a value is still going under the pinned × (#53)', () => {
   // same 40 px are read twice: across the heading row nothing extra may be painted, across the
   // first card's row the fade must still be there.
   //
-  // Since #46 that × is laid over the right edge of its heading and shows itself when the column
-  // is pointed at or has the focus in it, so that a number column can be a number wide. A control
-  // nobody is pointing at paints nothing, and a comparison of two pictures of nothing would agree
-  // for a reason that has nothing to do with the cue. So it is revealed here — the same state a
-  // pointer puts it in — and the contrast question is put to the control as it is actually drawn.
-  it('leaves the head alone: while the cue is on, the remove-field × in front of the pin is painted exactly as it is with the cue taken away', async () => {
+  // What the head holds in front of the pin is now the column's own name and the arrow that says
+  // how it sorts — the × moved to the head's own door (#46 on #32) — and the question is the same
+  // one: the cue may not dim it. A control that is always drawn is easier to ask about than one
+  // that had to be revealed first, which is the one thing this test lost and does not miss.
+  it('leaves the head alone: while the cue is on, the heading in front of the pin is painted exactly as it is with the cue taken away', async () => {
     const [shown, off, over] = await Promise.all([
       pinned(await markupOf(wideDoc()), SHOWING),
       pinned(await markupOf(wideDoc()), `${SHOWING}${FORCED.off}`),
       pinned(await markupOf(wideDoc()), `${SHOWING}${FORCED.head}`),
     ])
 
-    // The head really is the ground being read: at the place worked out for it, a control that
-    // takes a field away is standing inside the 24 px the fade covers, with the cue on. Which
-    // scroll position that is was once assumed to be rest and halfway along; it is on a Mac and
-    // it is not on the Linux runner, because the headings are not the same width there.
+    // The head really is the ground being read: at the place worked out for it, a heading's own
+    // control is standing inside the 24 px the fade covers, with the cue on. Which scroll
+    // position that is was once assumed to be rest and halfway along; it is on a Mac and it is
+    // not on the Linux runner, because the headings are not the same width there.
     expect(shown.veil.veiled.length).toBeGreaterThan(0)
     expect(shown.veil.veiled.every((c) => c.px > 0)).toBe(true)
     expect(shown.veil.cut).toBe('true')
@@ -511,7 +514,7 @@ describe('what says a value is still going under the pinned × (#53)', () => {
     expect(over.veil.headStrip.equals(off.veil.headStrip)).toBe(false)
 
     // The condition: the heading row in front of the pin is the same picture with the cue on as
-    // with it taken back — the × keeps every bit of the contrast it was measured at.
+    // with it taken back — the heading keeps every bit of the contrast it was measured at.
     expect(shown.veil.headStrip.equals(off.veil.headStrip)).toBe(true)
     expect(shown.rest.headStrip.equals(off.rest.headStrip)).toBe(true)
     expect(shown.mid.headStrip.equals(off.mid.headStrip)).toBe(true)

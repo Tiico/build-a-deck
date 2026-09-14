@@ -19,10 +19,10 @@ export function whatOf(intent: EditIntent): Key {
       return 'undo.what.deck'
     // A column is its own kind of change: it reaches every card at once and, when it goes, the
     // template with it, so the step back says a field rather than "a change in the deck" (#32).
+    // Where it stands is the same kind of change and the document's too (#46), so a step back
+    // has to be able to put it back.
     case 'addField':
     case 'removeField':
-    // And moving one is a change to the same part of the game: where a column stands is the
-    // document's (#46), so a step back has to be able to put it back.
     case 'moveField':
       return 'undo.what.field'
     case 'patchElement':

@@ -169,6 +169,7 @@ export const svEditor = {
   // Knappen i tabellhuvudet bär ett `+` och ingenting mer sedan den flyttade in i den pinnade
   // kolumnens rubrik (#46) — en ruta som är en träffyta bred rymmer inte ett ord — så det här
   // är namnet den hörs med, och samma ord namnger formuläret den öppnar.
+  'table.columns': 'Kolumner',
   'table.field.new': 'Nytt fält',
   'table.field.name': 'Namn',
   'table.field.kind': 'Typ',
