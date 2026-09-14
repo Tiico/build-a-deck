@@ -15,6 +15,7 @@ import { DocumentTitle } from './status/DocumentTitle.js'
 import { StatusLive } from './status/StatusLive.js'
 import { Language, detectLang } from './i18n/index.js'
 import { CounterZonePrototype } from './prototype/counterzone/CounterZonePrototype.js'
+import { FeltButtonsPrototype } from './prototype/feltbuttons/FeltButtonsPrototype.js'
 
 // Routing is a path check for now; a router arrives with the first real page.
 // The whole app is under one language (A4): the reader's own choice, then the address, then what
@@ -51,6 +52,8 @@ function route() {
   if (location.pathname.startsWith('/invites/')) return <InvitePage />
   // PROTOTYPE — throwaway (#89). Goes out with the prototype it mounts.
   if (location.pathname === '/prototype/raknarzonen') return <CounterZonePrototype />
+  // PROTOTYPE — throwaway (#90). Goes out with the prototype it mounts.
+  if (location.pathname === '/prototype/filtens-knappar') return <FeltButtonsPrototype />
   if (location.pathname === '/') return <HomePage />
   // Anything else is a page that does not exist, and says so.
   return <NotFoundPage />

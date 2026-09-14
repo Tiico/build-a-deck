@@ -1,0 +1,206 @@
+/* PROTOTYPE — throwaway (#90). `table.css`, `keyboard.css` and `buttons.css` are unchanged
+   underneath; every rule here hangs off a prototype attribute, so what is judged is the real felt
+   with one thing swapped — which colours a button on it is allowed to wear.
+
+   Variant N adds nothing at all: the page root carries `.byd-table`, and `.byd-table` is bound in
+   `buttons.css` since #67 (950fcdd). N is therefore literally main. */
+
+.byd-proto-page { min-height: 100vh; background: #0d0f14; display: flex; flex-direction: column; }
+.byd-proto-page > .byd-fit { flex: 1 1 auto; min-height: 0; }
+
+/* ── A. Filten är ett rum med egen accent ─────────────────────────────────────────────────────
+   The ground is the felt's green (`#2e6b46 … #173a26`, K9), so the accent cannot be that green.
+   It is the chip's own amber instead: `#f0b64a` is already on this felt, is already read at three
+   metres, and already carries `#1c1c1c` as its ink (`.byd-token` in `table.css`). The line and
+   the secondary's ink are the cream the felt already writes its zone names and pile counts in
+   (`#f3e9d6`), because the language's shared `#6f7a90` is a line drawn for a dark room and the
+   felt is not one — see NOTES for the number.
+   The specificity is a class and an attribute, (0,2,0), against `.byd-table`'s (0,1,0). */
+.byd-proto-page[data-proto='A'] {
+  --byd-primary-bg: #f0b64a;
+  --byd-primary-ink: #1c1c1c;
+  --byd-secondary-line: #f3e9d6;
+  --byd-secondary-ink: #f3e9d6;
+  --byd-chosen-bar: #f0b64a;
+  --byd-chosen-ink: #f3e9d6;
+}
+
+/* ── B. Filten lånar spelarens rum ────────────────────────────────────────────────────────────
+   The player's own block from `buttons.css`, written out with the player's own token names so it
+   is visible that this is `.byd-player`'s room and not a new one. The values are the ones
+   `player.css` declares. A verb then looks the same in the hand and on the table. */
+.byd-proto-page[data-proto='B'] {
+  --byd-accent: #7dd3a0;
+  --byd-on-accent: #0b2a18;
+  --byd-ink-strong: #ffffff;
+  --byd-primary-bg: var(--byd-accent);
+  --byd-primary-ink: var(--byd-on-accent);
+  --byd-secondary-line: #6f7a90;
+  --byd-secondary-ink: #dce3f2;
+  --byd-chosen-bar: var(--byd-accent);
+  --byd-chosen-ink: var(--byd-ink-strong);
+}
+
+/* A and B both bring the ring's discs into the language instead of leaving them a dialect: a disc
+   is a second action beside a first one, so it is the outlined form. In the product this would be
+   `className="byd-secondary"` on `RadialMenu`'s buttons; a prototype styles what is painted,
+   because what is painted is what is measured. (0,3,1) beats `table.css`'s (0,1,1) and its
+   `:hover` at (0,1,2). */
+.byd-proto-page[data-proto='A'] .byd-radial button,
+.byd-proto-page[data-proto='B'] .byd-radial button,
+.byd-proto-page[data-proto='A'] .byd-radial button:hover,
+.byd-proto-page[data-proto='B'] .byd-radial button:hover {
+  background: transparent;
+  border: 1px solid var(--byd-secondary-line);
+  color: var(--byd-secondary-ink);
+  font-weight: 600;
+  box-shadow: none;
+}
+
+/* ── C. Filten står utanför språket ───────────────────────────────────────────────────────────
+   Like `status.css`: the felt declares its own controls and binds none of L13's six tokens. The
+   page root does NOT carry `.byd-table` in this variant, so a `.byd-primary` here would resolve
+   to nothing at all — which is exactly why C has to draw every control itself, and why the real
+   change would be to delete the two role classes from `CounterEntry` rather than to restyle them.
+   The values are the ones the felt already has: the ring's resting plate and edge, the ring's own
+   hover green, the sheet's key plate, and the chip's amber as the mark. They gain names and a
+   sentence in L13, and nothing moves. */
+.byd-felt-dialect {
+  --byd-felt-plate: #171a23;
+  --byd-felt-edge: #3b4358;
+  --byd-felt-ink: #ffffff;
+  --byd-felt-keep: #7dd3a0;
+  --byd-felt-keep-ink: #0b2a18;
+  --byd-felt-key: #242938;
+  --byd-felt-mark: #f0b64a;
+}
+/* Structural selectors and not the role classes, because in C the role classes are not there. */
+.byd-felt-dialect .byd-set-value-keys button {
+  background: var(--byd-felt-key);
+  color: var(--byd-felt-ink);
+}
+/* The way out is one of the sheet's own keys, because that is all the dialect has: a dialect with
+   no outlined form cannot draw a second action as one, and the two ways out stop reading as a
+   pair. That is C's price and it is meant to be visible. The ring's plate would be worse still —
+   `#171a23` on the sheet's `#1b1e27` measures 1.04:1, a button with no edges at all. */
+.byd-felt-dialect .byd-set-value-foot button:first-child {
+  background: var(--byd-felt-key);
+  border: 0;
+  color: var(--byd-felt-ink);
+}
+.byd-felt-dialect .byd-set-value-foot button:last-child {
+  background: var(--byd-felt-keep);
+  border: 1px solid var(--byd-felt-keep);
+  color: var(--byd-felt-keep-ink);
+}
+.byd-felt-dialect .byd-proto-choice button[aria-pressed='true'] {
+  background: transparent;
+  border-color: transparent;
+  border-radius: 6px 6px 0 0;
+  box-shadow: inset 0 -3px 0 var(--byd-felt-mark);
+  color: var(--byd-felt-ink);
+  font-weight: 700;
+}
+
+/* ── The probe: the three roles laid on the felt itself ───────────────────────────────────────
+   Nothing in the product draws a button on the felt's green today — the sheet's two are on the
+   sheet's own dark — so without a probe the accent would only ever be measured where it is easy.
+   #90 is the question of the button that is COMING, and this is it. A column and not a row,
+   because the felt's centre is the gap between the draw pile and the discard. */
+.byd-proto-probe {
+  position: fixed;
+  /* Lifted off the felt's exact middle so the third role's bar does not land in the row where the
+     two piles say their counts. */
+  transform: translate(-50%, calc(-50% - 40px));
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 140px;
+}
+.byd-proto-probe button {
+  box-sizing: border-box;
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: inherit;
+  font: 700 14px system-ui, sans-serif;
+  cursor: pointer;
+}
+/* C draws the same three from its own dialect and from an attribute, because in C the role
+   classes are not on the element at all. */
+.byd-felt-dialect .byd-proto-probe button[data-felt-role='primar'] {
+  background: var(--byd-felt-keep);
+  border-color: var(--byd-felt-keep);
+  color: var(--byd-felt-keep-ink);
+}
+.byd-felt-dialect .byd-proto-probe button[data-felt-role='sekundar'] {
+  background: var(--byd-felt-plate);
+  border-color: var(--byd-felt-edge);
+  color: var(--byd-felt-ink);
+}
+.byd-felt-dialect .byd-proto-probe button[data-felt-role='valt'] {
+  background: var(--byd-felt-plate);
+  border-color: var(--byd-felt-edge);
+  color: var(--byd-felt-ink);
+}
+.byd-felt-dialect .byd-proto-probe button[data-felt-role='valt'][aria-pressed='true'] {
+  background: var(--byd-felt-plate);
+  border-color: var(--byd-felt-plate);
+  border-radius: 6px 6px 0 0;
+  box-shadow: inset 0 -3px 0 var(--byd-felt-mark);
+}
+/* N, A and B leave the resting look to the language: the probe declares no colour of its own, so
+   what it wears is whatever the room binds — which is exactly what is being asked. A chosen thing
+   still needs somewhere to stand at rest, and on the felt that is the felt. */
+.byd-table .byd-proto-probe button[data-felt-role='valt'] {
+  color: var(--byd-secondary-ink);
+}
+
+/* ── The invented chosen control ──────────────────────────────────────────────────────────────
+   The felt has no two-way choice yet, so #90 cannot measure the third role on anything real. This
+   pair is a plausible one — whether the keys say the value outright or say how much to change it
+   by — and it exists so that all three of L13's roles stand in one view. It is a prototype's
+   invention and NOTES says so. The resting state is the sheet's own control plate; the pressed
+   state is whatever the variant's language (or dialect) says. */
+.byd-proto-choice { display: flex; gap: 8px; margin-top: 12px; }
+.byd-proto-choice button {
+  box-sizing: border-box;
+  flex: 1;
+  min-height: 44px;
+  border-radius: 10px;
+  /* No line at rest, exactly as the sheet's own keys have none: a decorative border here would
+     be the prototype's own graphic failing the prototype's own gate. What the third role draws
+     is the bar, and the bar is what is measured. */
+  border: 0;
+  background: var(--byd-kbd-control);
+  color: var(--byd-kbd-ink);
+  font: 700 14px system-ui, sans-serif;
+}
+/* The pair is portalled into the real sheet, so it arrives after the foot in the DOM. The sheet
+   becomes a column and the foot is told to come last; nothing else about it moves. */
+.byd-proto-page .byd-set-value { display: flex; flex-direction: column; }
+.byd-proto-page .byd-set-value-foot { order: 1; }
+
+/* Two rings are held open at once so that one shot carries the felt's green, the wooden rim and
+   the dark beyond it. `RadialMenu` covers the screen with a backdrop that closes it, and two of
+   those stacked would swallow the ring underneath, so here the backdrops let the pointer through
+   and the rings stay open. Nothing the product does; the product opens one ring at a time. */
+.byd-proto-page[data-proto-scene='filt'] .byd-radial-backdrop { pointer-events: none; }
+.byd-proto-page[data-proto-scene='filt'] .byd-radial { pointer-events: auto; }
+
+/* The bar is the prototype's own chrome and is never part of the design being judged. */
+.byd-proto-bar {
+  position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 90;
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center;
+  max-width: calc(100vw - 24px);
+  padding: 8px 12px; border-radius: 999px;
+  background: #fff; color: #111; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.55);
+  font: 600 12px system-ui, sans-serif;
+}
+.byd-proto-bar button { border: 1px solid #ccc; background: #f4f4f4; color: #111; border-radius: 8px; padding: 4px 9px; font: inherit; cursor: pointer; }
+.byd-proto-bar button[aria-pressed='true'] { background: #111; color: #fff; border-color: #111; }
+.byd-proto-bar strong { min-width: 230px; text-align: center; }
+.byd-proto-bar em { font-style: normal; color: #555; font-weight: 400; }
+.byd-proto-sep { width: 1px; height: 18px; background: #ddd; }
