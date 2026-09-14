@@ -2,7 +2,7 @@ import type { ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc, Versi
 import type { DocDiff } from '@byd/server/doc'
 import type { Element } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
-import { applyEdit, recipeOf, type EditIntent, type Recipe, type RecipeWords, type ZonePatch } from '@byd/server/doc'
+import { applyEdit, recipeOf, type Clearable, type EditIntent, type Recipe, type RecipeWords, type ZonePatch } from '@byd/server/doc'
 import { ASSET_PREFIX } from './assets.js'
 import { iconElement } from './canvas.js'
 import { idsOnFace } from './groups.js'
@@ -376,7 +376,13 @@ export class ProjectClient {
   // makes a fresh one at every pointerdown, so a drag is one step back and the next drag is the
   // next one.
   patchElement(face: string, id: string, patch: Partial<Element>, group?: string | null, gesture?: string): void {
-    this.edit({ v: 'patchElement', face, id, patch, ...(group !== undefined ? { group } : {}) }, gesture)
+    // A property set to `undefined` is a property taken away, and it is said that way on the
+    // wire: `undefined` does not survive JSON, so an unlock written as `{ locked: undefined }`
+    // would reach the actor as a patch that changes nothing, and the saved project would still
+    // be locked (L15).
+    const clear = Object.entries(patch).flatMap(([key, value]) => (value === undefined ? [key as Clearable] : []))
+    const set = Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined)) as Partial<Element>
+    this.edit({ v: 'patchElement', face, id, patch: set, ...(clear.length ? { clear } : {}), ...(group !== undefined ? { group } : {}) }, gesture)
   }
 
   setGroupColumn(column: string | null): void {

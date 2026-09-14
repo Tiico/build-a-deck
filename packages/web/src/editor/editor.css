@@ -487,6 +487,10 @@
   /* What a layer belongs to, said on the layer itself: quieter than its name, never quieter
      than AA against the panel it is read on. */
   --byd-editor-source-ink: #9aa3b8;
+  /* A locked layer, and the sentence that says a layer is locked (L15). Gold rather than red: a
+     lock is not an error, it is something the designer asked for. Measured against the panel and
+     the strip it is read on in `editor-contrast.test.ts`. */
+  --byd-editor-locked-ink: #e8c06a;
   height: 100%;
   display: grid;
   /* The middle column may be as narrow as the room allows: an `1fr` that refuses to shrink under
@@ -538,7 +542,7 @@
 .byd-layer-source { color: var(--byd-editor-source-ink); }
 /* A layer the open group takes away is still listed — struck through, not dimmed, so it stays
    as readable as everything else beside it. */
-.byd-canvas-layers li[data-removed] > span:not(.byd-layer-source) { text-decoration: line-through; }
+.byd-layers [data-removed] .byd-layer-name, .byd-layers [data-removed] .byd-layer-shows { text-decoration: line-through; }
 .byd-canvas-reset {
   margin-top: 12px;
   border: 1px solid #3b414e;
@@ -581,10 +585,60 @@
 .byd-canvas-hint { color: var(--byd-editor-hint-ink); font-size: 11px; line-height: 1.4; margin: 10px 0 0; }
 .byd-canvas h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--byd-editor-hint-ink); margin: 0 0 8px; }
 .byd-canvas-layers { border-right: 1px solid #2f333d; padding: 12px; overflow: auto; }
-.byd-canvas-layers ul { list-style: none; margin: 0; padding: 0; }
-.byd-canvas-layers li { padding: 6px 8px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
-.byd-canvas-layers li[aria-selected='true'] { background: #2f3a55; }
-.byd-layer-kind { color: var(--byd-editor-quiet); width: 44px; }
+/* The layers as a grid (L15): a row per layer, the lock in a column of its own on the left and
+   the layer itself taking what is left. Both cells are controls, so both are 44 high — which is
+   the row's height, and the tightest a row in this panel can honestly be. */
+.byd-layers { display: grid; }
+.byd-layers [role='row'] { position: relative; display: grid; grid-template-columns: 44px minmax(0, 1fr) 14px; align-items: center; border-radius: 6px; }
+.byd-layers [role='row'][aria-selected='true'] { background: #2f3a55; }
+.byd-layers [role='gridcell'] { display: flex; min-width: 0; }
+/* Where the dragged layer will land, drawn before it lands there: a list that can be dragged and
+   says nothing about the drop is a list you have to try twice. */
+.byd-layers [role='row'][data-over]::before {
+  content: '';
+  position: absolute;
+  inset: -1px 0 auto 0;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--byd-editor-primary-mark);
+}
+.byd-layer-lock, .byd-layer-pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--byd-tap);
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #dce3f2;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.byd-layer-pick { flex: 1; min-width: 0; padding: 0 2px 0 0; }
+.byd-layer-lock { justify-content: center; width: var(--byd-tap); padding: 0; color: #545d70; }
+.byd-layer-lock svg { width: 16px; height: 16px; }
+.byd-layers [role='row']:hover .byd-layer-lock, .byd-layers [role='row'][aria-selected='true'] .byd-layer-lock { color: var(--byd-editor-source-ink); }
+/* Locked is a colour of its own and a shut padlock: the shape says it where the colour cannot. */
+.byd-layer-lock[aria-pressed='true'], .byd-layers [role='row']:hover .byd-layer-lock[aria-pressed='true'] { color: var(--byd-editor-locked-ink); }
+.byd-layer-kind { flex: none; width: 16px; height: 16px; color: var(--byd-editor-source-ink); }
+.byd-layer-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.byd-layer-shows { flex: 0 1 auto; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-style: normal; font-size: 11px; color: var(--byd-editor-source-ink); }
+.byd-layer-grip { color: #454c5c; font-size: 12px; text-align: center; cursor: grab; }
+.byd-layer-rename { width: 100%; min-height: var(--byd-tap); box-sizing: border-box; background: #0f1115; border: 1px solid var(--byd-editor-primary-mark); border-radius: 6px; color: #fff; font: inherit; font-size: 13px; padding: 0 8px; }
+/* Why nothing moved (L15), read beside the card that did not move. */
+.byd-canvas-locked {
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  border: 1px solid #6b5a2c;
+  border-radius: 8px;
+  background: #2a2419;
+  color: var(--byd-editor-locked-ink);
+  font-size: 12px;
+}
+.byd-props-locked { grid-column: 1 / -1; margin: 0 0 2px; color: var(--byd-editor-locked-ink); font-size: 11px; line-height: 1.4; }
+.byd-props input[readonly] { color: var(--byd-editor-source-ink); cursor: not-allowed; }
 .byd-canvas-stage { display: grid; place-items: center; overflow: auto; background: repeating-conic-gradient(#20232b 0 25%, #1b1d23 0 50%) 0 0 / 24px 24px; }
 .byd-canvas-props { border-left: 1px solid #2f333d; padding: 12px; overflow: auto; }
 .byd-props { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }

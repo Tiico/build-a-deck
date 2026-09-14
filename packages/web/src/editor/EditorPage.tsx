@@ -285,6 +285,11 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         // rail that can fail on the way. It says so where the editor says everything else.
         onPlaceIcon={(symbol) => void client.placeIcon(symbol, face, group, t).then(setElement, (err: unknown) => setNotice(err instanceof Error ? err.message : String(err)))}
         onReorder={(id, to) => client.moveElement(face, id, to)}
+        // Locking a layer and naming it are edits to the element (L15), so they go the way every
+        // other change to an element goes — through the base, which is where the layer lives even
+        // when a group is open, exactly as the order does.
+        onLock={(id, locked) => client.patchElement(face, id, { locked: locked ? true : undefined })}
+        onRename={(id, name) => client.patchElement(face, id, { name: name ?? undefined })}
         onRemove={(id) => {
           client.removeElement(face, id, group)
           setElement(null)

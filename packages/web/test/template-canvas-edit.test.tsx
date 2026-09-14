@@ -5,6 +5,7 @@ import { userEvent } from '@testing-library/user-event'
 import { TemplateCanvas, type TemplateCanvasProps } from '../src/editor/TemplateCanvas.js'
 import { projectDoc } from './project-doc.js'
 import { drag, laidOut, target } from './drag.js'
+import { layerPick } from './layers.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -28,6 +29,8 @@ function canvas(over: Partial<TemplateCanvasProps> = {}) {
     onAdd: vi.fn(),
     onPlaceIcon: vi.fn(),
     onReorder: vi.fn(),
+    onLock: vi.fn(),
+    onRename: vi.fn(),
     onFontFile: async () => 'Typsnitt',
     onFontLicence: vi.fn(),
     onRemoveFont: vi.fn(),
@@ -63,9 +66,8 @@ describe('the keyboard when it is not about the card (#18)', () => {
     await user.keyboard('{ArrowRight}{ArrowLeft}')
     expect(onPatch).not.toHaveBeenCalled()
 
-    // The layer list answers its own arrows: they move the focus, not the element (UX-04).
-    const layers = within(screen.getByRole('listbox', { name: /lager/i })).getAllByRole('option')
-    layers[1]!.focus()
+    // The layer panel answers its own arrows: they move the focus, not the element (UX-04).
+    layerPick('title').focus()
     await user.keyboard('{ArrowDown}')
     expect(onPatch).not.toHaveBeenCalled()
   })
@@ -195,7 +197,7 @@ describe('the tool rail by keyboard (#18, UX-04)', () => {
 
     // Out of the rail in one Tab, and the layer list is where the next stop is.
     await user.tab()
-    expect(document.activeElement).toBe(within(screen.getByRole('listbox', { name: /lager/i })).getAllByRole('option')[1])
+    expect(document.activeElement).toBe(layerPick('title'))
   })
 })
 
@@ -339,7 +341,9 @@ describe('guide lines while an element is dragged (#18)', () => {
 })
 
 describe('changing the layer order (#18)', () => {
-  const layer = (id: string) => document.querySelector(`[data-layer="${id}"]`) as HTMLElement
+  // The cell that is the layer (L15): the row is a row, and what takes the focus in a grid is a
+  // cell.
+  const layer = (id: string) => layerPick(id)
 
   it('moves a layer by dragging it onto another, in the drawing order the template holds', () => {
     // The base is drawn back to front: frame, title, body. The list reads the other way.

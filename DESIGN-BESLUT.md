@@ -2266,6 +2266,43 @@ En ny yta som skriver många gånger om samma handling — ett reglage, en färg
 
 Byggt 2026-09-14 (ingen prototyp: ingenting nytt ritas, ett tryck gör det den som tryckte redan trodde att det gjorde).
 
+### L15. Lagerpanelen säger vad ett lager är, och ett lager går att låsa (prototypat 2026-09-14)
+
+Panelen skrev `text title`: verktygets ord för sorten, och det råa id:t.
+Det säger ingenting om vilket lager som är vilket så snart verktygsraden har lagt till `bild-1` och `shape-2` på kortet.
+Och ingenting skyddade ett färdigt lager: ramen som legat rätt sedan i måndags flyttades av samma dragning som allt annat.
+
+Prototypen `packages/web/src/prototype/layers` ställde tre varianter mot varandra i de 220 px panelen faktiskt har — lås i egen kolumn (A), verktygsrad över listan (B), vald rad som öppnar sig (C) — plus en fjärde (D) där bara den markerade raden bär upp/ned.
+Beställaren valde **A**, och valde bort upp/ned-knappar helt: ordningen ändras med drag och med Alt och en piltangent, och det som gör dragningen lättare är dropplinjen som säger var lagret hamnar, inte en knapp till.
+
+**Raden.** Lås till vänster, glyf för sorten, namnet, vad lagret visar, och ett grepp till höger.
+Namnet är lagrets id, för det är ordet wizarden gjorde av kolumnen och ordet egenskapspanelen redan har i sin rubrik — eller det namn designern själv gett lagret, som byts med dubbelklick eller F2.
+Namnet är en egen egenskap och inte id:t: id:t är det gruppernas `override` och `remove` pekar på (L3), så att byta det vore en migrering och inte en omdöpning.
+Andraraden är vad lagret visar, och står där bara när det inte är namnet en gång till.
+
+**Panelen är ett rutnät, inte en lista med alternativ.**
+En rad bär en egen knapp, och en knapp inne i ett `option` är en knapp en skärmläsare aldrig når — alternativets innehåll plattas ut (UX-37, #82).
+Så panelen är `role="grid"` med en rad per lager och två celler: låset och lagret.
+Rutnätet är ett enda tabbstopp, upp och ner går mellan lagren i den kolumn man står i, höger och vänster mellan låset och lagret, Alt och pil flyttar lagret, F2 döper om.
+Priset är att piltangenterna inte längre nudgar elementet medan fokus står i panelen; det gör de på kortet och i egenskapspanelen, precis som i varje annat ritverktyg.
+
+**Låset.** Ett låst lager går inte att dra, storleksändra, nudga eller radera, och det har inga hörnhandtag.
+Det går fortfarande att markera — pekaren väljer det, egenskaperna öppnas, och låset finns på samma rad — och det går att flytta upp och ner i ordningen: låset är en sak om kortet, inte om listan.
+Egenskapernas fyra mått går att läsa men inte att skriva i; typsnitt, färg och bindning står öppna, för att låsa ett lager är inte att frysa dess formgivning.
+Ett försök som inte leder någonstans säger varför, bredvid kortet som inte rörde sig — annars är ett lås omöjligt att skilja från en trasig editor.
+Låst ritas i guld och som ett stängt hänglås: formen säger det där färgen inte når.
+
+**Två egenskaper som mallen bär men kortet aldrig visar.**
+`name` och `locked` ligger på elementet (L1) och versioneras, diffas och delas som allt annat i mallen, men kompilatorn läser ingen av dem: ett kort ska bli samma kort oavsett om ett lager var låst när det ritades.
+Att ta bort dem är en egen sak på tråden: `undefined` överlever inte JSON, så `patchElement` har ett `clear` som säger vilka egenskaper som ska bort.
+Utan det hade ett upplåst lager sparats som fortfarande låst, och en version som bar en tom nyckel till tryckeriet.
+
+Motivering:
+Ett lås är det billigaste skyddet som finns mot den enda redigering ingen ångrar i tid — den man inte märkte.
+Alternativet, att lita på Ctrl+Z, förutsätter att man ser att något flyttade sig, och en halv millimeter på ett kort är just vad man inte ser.
+
+Byggt 2026-09-14.
+
 ---
 
 ## I. Öppna frågor

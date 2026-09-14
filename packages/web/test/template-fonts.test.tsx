@@ -22,6 +22,8 @@ function canvas(over: Partial<React.ComponentProps<typeof TemplateCanvas>> = {})
     onAdd: vi.fn(),
     onPlaceIcon: vi.fn(),
     onReorder: vi.fn(),
+    onLock: vi.fn(),
+    onRename: vi.fn(),
     onSelectFace: vi.fn(),
     group: null,
     onSelectGroup: vi.fn(),

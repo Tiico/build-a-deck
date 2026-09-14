@@ -9,7 +9,7 @@ import { fieldsOf, takenNames } from './fields.js'
 import { NewField } from './NewField.js'
 import { isTyping } from './keys.js'
 import { cardsInGroup, groupColumn, groupsOf, idsOnFace, layersOf, overriddenIds, ruleLabel, type Layer } from './groups.js'
-import { LayerList } from './LayerList.js'
+import { LayerList, layerName } from './LayerList.js'
 import type { CanvasStage } from './EditorStages.js'
 import { useRoving } from './roving.js'
 import { familiesInUse, previewFonts } from './fonts.js'
@@ -47,6 +47,10 @@ export type TemplateCanvasProps = {
   onPlaceIcon(symbol: GameSymbol): void
   // Where a layer ends up in the face's base list, which is the order the card is drawn in.
   onReorder(id: string, to: number): void
+  // Locking a layer, and what the designer calls it (L15). Both are edits to the element like
+  // any other, so they travel the same way everything else on this panel does.
+  onLock(id: string, locked: boolean): void
+  onRename(id: string, name: string | null): void
   // The group whose look is being edited, or nothing for the base every card inherits (#13).
   group: string | null
   onSelectGroup(group: string | null): void
@@ -71,7 +75,7 @@ export type TemplateCanvasProps = {
 // Template mode (A): layers on the left, the card large in the middle with the selected element
 // outlined, and its properties on the right. Every change goes through `onPatch` and lands on
 // every card of the deck — there are no per-card exceptions (L3).
-export function TemplateCanvas({ stage = null, doc, assetBase, face, onSelectFace, row, selectedElement, onSelectElement, onPatch, onRemove, onAdd, onPlaceIcon, onReorder, group, onSelectGroup, onGroupColumn, onAddField, onReset, onFontFile, onFontLicence, onRemoveFont }: TemplateCanvasProps) {
+export function TemplateCanvas({ stage = null, doc, assetBase, face, onSelectFace, row, selectedElement, onSelectElement, onPatch, onRemove, onAdd, onPlaceIcon, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onFontFile, onFontLicence, onRemoveFont }: TemplateCanvasProps) {
   const t = useT()
   const faceTemplate = doc.template.faces[face]
   const column = groupColumn(doc)
@@ -99,8 +103,15 @@ export function TemplateCanvas({ stage = null, doc, assetBase, face, onSelectFac
   // One door for every change to an element, so a rule about a kind is applied once instead of at
   // each of the ways to make the change. A single icon is its box (#33): the corner handles and
   // the two numbers in the panel are two ways to the same thing, and both come through here.
+  // Which layer just refused to move, and why nothing happened (L15). A lock whose whole effect
+  // is that nothing happens is indistinguishable from a broken editor, so it says so where the
+  // card is — beside the thing that did not move, not at the top of the page.
+  const [refused, setRefused] = useState<string | null>(null)
+  // The refusal stands only while the layer it is about is still there and still locked: unlocking
+  // it, or taking it away, is the answer to the message and takes the message with it.
+  const refusedLayer = panel.find((l) => l.element.id === refused && l.element.locked)?.element
   const patch = (id: string, changed: Partial<Element>, gesture?: string) => onPatch(id, iconSized(panel.find((l) => l.element.id === id)?.element, changed), gesture)
-  useElementKeys(el, patch, onRemove)
+  useElementKeys(el, patch, onRemove, setRefused)
   const stageEl = useRef<HTMLElement | null>(null)
   const scale = useStageFit(stageEl)
   // The grid is a layer to see by, not a rule (variant C, kept as an option): it is off until it
@@ -136,6 +147,11 @@ export function TemplateCanvas({ stage = null, doc, assetBase, face, onSelectFac
           // turned around, and that is the only place the two orders meet.
           // The order is the base's, shared by every group, so it is only moved from the base.
           {...(group ? {} : { onReorder: (id: string, to: number) => onReorder(id, faceTemplate.base.length - 1 - to) })}
+          onLock={(id, locked) => {
+            setRefused(null)
+            onLock(id, locked)
+          }}
+          onRename={onRename}
           markOf={(id) => markOf(panel, column, group, id, t)}
           removed={new Set(panel.filter((l) => l.source === 'removed').map((l) => l.element.id))}
           labelledBy="layers-heading"
@@ -186,8 +202,13 @@ export function TemplateCanvas({ stage = null, doc, assetBase, face, onSelectFac
             assetBase={assetBase}
             selectedElement={selectedElement}
             onSelectElement={onSelectElement}
-            overlay={<DragLayer grid={grid} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={patch} />}
+            overlay={<DragLayer grid={grid} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={patch} onRefused={setRefused} />}
           />
+          {refusedLayer && (
+            <p className="byd-canvas-locked" role="alert">
+              {t('canvas.layer.isLocked', { name: layerName(refusedLayer) })}
+            </p>
+          )}
         </main>
       </div>
       )}
@@ -318,7 +339,7 @@ function isBox(el: Element): el is BoxElement {
 // the card's own millimetres. It draws no card content — the compiler behind it is still the one
 // renderer — and it holds the pointer with pointer capture, so a fast drag or a trackpad that
 // leaves the box keeps moving the element it grabbed.
-function DragLayer({ boxes, grid, selected, onSelect, onPatch }: { boxes: BoxElement[]; grid: boolean; selected: string | null; onSelect(id: string): void; onPatch: TemplateCanvasProps['onPatch'] }) {
+function DragLayer({ boxes, grid, selected, onSelect, onPatch, onRefused }: { boxes: BoxElement[]; grid: boolean; selected: string | null; onSelect(id: string): void; onPatch: TemplateCanvasProps['onPatch']; onRefused(id: string): void }) {
   const layer = useRef<HTMLDivElement | null>(null)
   const grab = useRef<(Grab & { id: string; handle: Handle | null; gesture: string }) | null>(null)
   // What makes one grab tell itself apart from the next one on the same element: a number that
@@ -330,6 +351,9 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch }: { boxes: BoxEle
     if (event.button !== 0) return
     event.stopPropagation()
     onSelect(box.id)
+    // A locked layer is still a layer you can point at — pointing selects it, so its properties
+    // can be read and its lock found — but the pointer never takes hold of it (L15).
+    if (box.locked) return onRefused(box.id)
     const rect = layer.current?.getBoundingClientRect()
     if (!rect?.width) return
     grab.current = { id: box.id, box, handle, gesture: `grab-${(grabs.current += 1)}`, at: { x: event.clientX, y: event.clientY }, mmPerPx: CARD_STANDARD_63x88.physical.widthMm / rect.width }
@@ -368,6 +392,7 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch }: { boxes: BoxEle
           onClick={(event) => event.stopPropagation()}
         >
           {box.id === selected &&
+            !box.locked &&
             HANDLES.map((corner) => (
               <i
                 key={corner}
@@ -631,10 +656,16 @@ function ToolRail({ onAdd, onPlaceIcon }: { onAdd(kind: ElementKind): void; onPl
 // away, wherever the focus is — the layer list, the card, the panel around them. Two things are
 // left alone: a key a control has already answered (the layer list's own arrows say so by
 // preventing the default), and any key typed into a field.
-function useElementKeys(el: Element | undefined, onPatch: TemplateCanvasProps['onPatch'], onRemove: TemplateCanvasProps['onRemove']) {
+function useElementKeys(el: Element | undefined, onPatch: TemplateCanvasProps['onPatch'], onRemove: TemplateCanvasProps['onRemove'], onRefused: (id: string) => void) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (!el || event.defaultPrevented || isTyping(event.target)) return
+      // A locked layer answers none of these (L15). The keys are swallowed rather than left to
+      // the page, so a held arrow cannot scroll the canvas away instead of moving the element.
+      if (el.locked && (event.key === 'Delete' || event.key === 'Backspace' || ('x' in el && arrowMove(el, event.key, event.shiftKey)))) {
+        event.preventDefault()
+        return onRefused(el.id)
+      }
       if (event.key === 'Delete' || event.key === 'Backspace') {
         event.preventDefault()
         return onRemove(el.id)
@@ -664,6 +695,10 @@ function useElementKeys(el: Element | undefined, onPatch: TemplateCanvasProps['o
 // out of codebase search at once and nothing said so.
 const NEW_FIELD = ' new'
 
+// What the four numbers point at while the layer is locked, so a reader who lands in the field
+// hears why it will not take what is typed into it.
+const LOCKED_NOTE = 'byd-props-locked-note'
+
 // `fields` are the columns the picker offers; `taken` is every name a new one would collide with,
 // which is those plus the card's own id (#32). `icons` is the game's own set (E4), which is what
 // an icon placed on the card is chosen from and changed to.
@@ -690,11 +725,27 @@ function Properties({ el, fields, taken, fonts, icons, onPatch, onAddField }: { 
     key in el ? (
       <label>
         {t(label)}
-        <input type="number" step={0.5} value={(el as Record<string, unknown>)[key] as number} onChange={(e) => onPatch({ [key]: Number(e.target.value) } as Partial<Element>)} />
+        {/* A locked layer's box can be read but not typed into (L15): the lock is about where the
+            element sits and how big it is, and these four numbers are exactly that. What it is
+            set in, what colour it is and which column it draws stay open — locking a layer is not
+            freezing its design. */}
+        <input
+          type="number"
+          step={0.5}
+          value={(el as Record<string, unknown>)[key] as number}
+          readOnly={el.locked === true}
+          {...(el.locked ? { 'aria-describedby': LOCKED_NOTE } : {})}
+          onChange={(e) => onPatch({ [key]: Number(e.target.value) } as Partial<Element>)}
+        />
       </label>
     ) : null
   return (
     <div className="byd-props">
+      {el.locked && (
+        <p className="byd-props-locked" id={LOCKED_NOTE}>
+          {t('canvas.props.locked')}
+        </p>
+      )}
       {num('canvas.props.x', 'x')}
       {num('canvas.props.y', 'y')}
       {num('canvas.props.w', 'w')}

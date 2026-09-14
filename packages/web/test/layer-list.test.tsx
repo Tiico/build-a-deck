@@ -40,20 +40,23 @@ function MovableLayers({ ids }: { ids: string[] }) {
 }
 
 const layersOf = (ids: string[]) => ids.map((id) => base.find((e) => e.id === id)!)
-const named = () => screen.getAllByRole('option').map((o) => o.textContent)
+// The panel is a grid (L15): a row per layer, and what a layer is called is what its own cell
+// says. The rows are read by that name.
+const named = () => screen.getAllByRole('row').map((r) => (r.querySelector('.byd-layer-pick') as HTMLElement).textContent)
+const pick = (name: string) => screen.getByRole('button', { name: new RegExp(`^${name}$`) })
 
 describe('the layer list when the template changes under the keyboard', () => {
   it('moves focus to the layer that took the removed one’s place', async () => {
     const user = userEvent.setup()
     const { rerender } = render(<Layers ids={['body', 'title', 'frame']} />)
     await user.tab()
-    expect(document.activeElement).toBe(screen.getByRole('option', { name: 'text title' }))
+    expect(document.activeElement).toBe(pick('title'))
 
     rerender(<Layers ids={['body', 'frame']} />)
-    expect(named()).toEqual(['text body', 'shape frame'])
-    const frame = screen.getByRole('option', { name: 'shape frame' })
+    expect(named()).toEqual(['body', 'frame'])
+    const frame = pick('frame')
     expect(document.activeElement).toBe(frame)
-    expect(frame.getAttribute('aria-selected')).toBe('true')
+    expect(frame.closest('[role="row"]')?.getAttribute('aria-selected')).toBe('true')
     expect(frame.getAttribute('tabindex')).toBe('0')
   })
 
@@ -61,25 +64,25 @@ describe('the layer list when the template changes under the keyboard', () => {
     const user = userEvent.setup()
     const { rerender } = render(<Layers ids={['body', 'title', 'frame']} />)
     await user.tab()
-    const title = screen.getByRole('option', { name: 'text title' })
+    const title = pick('title')
 
     rerender(<Layers ids={['title', 'body', 'frame']} />)
-    expect(named()).toEqual(['text title', 'text body', 'shape frame'])
+    expect(named()).toEqual(['title', 'body', 'frame'])
     expect(document.activeElement).toBe(title)
     expect(title.getAttribute('tabindex')).toBe('0')
     await user.keyboard('{ArrowDown}')
-    expect(document.activeElement).toBe(screen.getByRole('option', { name: 'text body' }))
+    expect(document.activeElement).toBe(pick('body'))
   })
 
   it('leaves focus where it is when a layer is added', async () => {
     const user = userEvent.setup()
     const { rerender } = render(<Layers ids={['title', 'frame']} />)
     await user.tab()
-    const title = screen.getByRole('option', { name: 'text title' })
+    const title = pick('title')
 
     rerender(<Layers ids={['body', 'title', 'frame']} />)
     expect(document.activeElement).toBe(title)
-    expect(screen.getByRole('option', { name: 'text body' }).getAttribute('tabindex')).toBe('-1')
+    expect(pick('body').getAttribute('tabindex')).toBe('-1')
   })
 })
 
@@ -88,16 +91,16 @@ describe('moving a layer in the list itself', () => {
     const user = userEvent.setup()
     render(<MovableLayers ids={['body', 'title', 'frame']} />)
     await user.tab()
-    const title = screen.getByRole('option', { name: 'text title' })
+    const title = pick('title')
     expect(document.activeElement).toBe(title)
 
     await user.keyboard('{Alt>}{ArrowUp}{/Alt}')
-    expect(named()).toEqual(['text title', 'text body', 'shape frame'])
+    expect(named()).toEqual(['title', 'body', 'frame'])
     expect(document.activeElement).toBe(title)
 
     // Without Alt the same key is the roving tabindex again, and only the focus moves.
     await user.keyboard('{ArrowDown}')
-    expect(named()).toEqual(['text title', 'text body', 'shape frame'])
-    expect(document.activeElement).toBe(screen.getByRole('option', { name: 'text body' }))
+    expect(named()).toEqual(['title', 'body', 'frame'])
+    expect(document.activeElement).toBe(pick('body'))
   })
 })

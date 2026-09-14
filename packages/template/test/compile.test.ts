@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
-import { compile, type FaceTemplate } from '../src/index.js'
+import { compile, Element, type FaceTemplate } from '../src/index.js'
 
 const text = (id: string, field: string, y: number, sizePt: number) => ({
   kind: 'text' as const,
@@ -249,5 +249,30 @@ describe('the fonts a version is pinned to (B3)', () => {
     const out = compile({ type: CARD_STANDARD_63x88, face: face('Brödtext'), row: {}, icons: {}, fonts: { 'Brödtext': { stack: 'Georgia, serif' } } })
     expect(out.css).not.toContain('@font-face')
     expect(out.css).toContain('font-family:Georgia, serif')
+  })
+})
+
+// The two things an element carries for the person editing it and not for the card: what the
+// designer calls the layer, and whether it is locked (L1-tillägget, L15). They are template data
+// like everything else — versioned, diffed, shared with whoever else has the project open — but
+// the card that is printed must be the same card whether or not a layer was locked while it was
+// drawn.
+describe('what an element carries for the designer and not for the card (L15)', () => {
+  const named: FaceTemplate = { ...face, base: face.base.map((el) => ({ ...el, name: 'Rubriken', locked: true })) }
+
+  it('survives the schema, which is the only thing that decides what a template may hold', () => {
+    const parsed = Element.parse({ ...face.base[0], name: 'Rubriken', locked: true })
+    expect(parsed).toMatchObject({ name: 'Rubriken', locked: true })
+    // And they are optional: every template written before they existed is still a template.
+    expect(Element.parse(face.base[0])).not.toHaveProperty('name')
+  })
+
+  it('is accepted on an element and changes nothing the card is made of', () => {
+    const row = { title: 'Drake', body: 'Gör skada' }
+    const plain = compile({ type: CARD_STANDARD_63x88, face, row, icons })
+    const marked = compile({ type: CARD_STANDARD_63x88, face: named, row, icons })
+    expect(marked.html).toBe(plain.html)
+    expect(marked.css).toBe(plain.css)
+    expect(marked.warnings).toEqual([])
   })
 })

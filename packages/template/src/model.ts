@@ -8,7 +8,14 @@ const Mm = z.number()
 const Bind = z.union([z.object({ field: z.string().min(1) }), z.object({ literal: z.string() })])
 export type Bind = z.infer<typeof Bind>
 
-const Box = { id: z.string().min(1), x: Mm, y: Mm, w: Mm.nonnegative(), h: Mm.nonnegative() }
+// What every element carries for the person editing it rather than for the card (L15): the word
+// the designer calls the layer, and whether the layer is locked. The compiler never reads either
+// — a card is the same card whether or not a layer was locked while it was drawn — but they are
+// template data like everything else, so they are versioned, diffed and shared with whoever else
+// has the project open, exactly as a position is.
+const Designer = { name: z.string().min(1).optional(), locked: z.literal(true).optional() }
+
+const Box = { id: z.string().min(1), x: Mm, y: Mm, w: Mm.nonnegative(), h: Mm.nonnegative(), ...Designer }
 
 export const Font = z.object({
   family: z.string().min(1),
@@ -68,8 +75,8 @@ export type Element =
   | z.infer<typeof ImageElement>
   | z.infer<typeof IconsElement>
   | z.infer<typeof ShapeElement>
-  | { kind: 'group'; id: string; x: number; y: number; children: Element[] }
-  | { kind: 'if'; id: string; when: Condition; children: Element[] }
+  | { kind: 'group'; id: string; x: number; y: number; children: Element[]; name?: string; locked?: true }
+  | { kind: 'if'; id: string; when: Condition; children: Element[]; name?: string; locked?: true }
 
 export const Element: z.ZodType<Element> = z.lazy(() =>
   z.discriminatedUnion('kind', [
@@ -77,8 +84,8 @@ export const Element: z.ZodType<Element> = z.lazy(() =>
     ImageElement,
     IconsElement,
     ShapeElement,
-    z.object({ kind: z.literal('group'), id: z.string().min(1), x: Mm, y: Mm, children: z.array(Element) }),
-    z.object({ kind: z.literal('if'), id: z.string().min(1), when: Condition, children: z.array(Element) }),
+    z.object({ kind: z.literal('group'), id: z.string().min(1), x: Mm, y: Mm, children: z.array(Element), ...Designer }),
+    z.object({ kind: z.literal('if'), id: z.string().min(1), when: Condition, children: z.array(Element), ...Designer }),
   ]),
 ) as z.ZodType<Element>
 
