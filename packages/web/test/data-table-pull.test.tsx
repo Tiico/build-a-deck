@@ -87,6 +87,17 @@ describe('a column pulled to a width of its own (#46)', () => {
     expect(set('body')).toBe('320')
   })
 
+  it('refuses the press the browser would carry the whole column off by', () => {
+    render(<Editing />)
+    // The edge stands inside a heading that is `draggable`, and starting a drag is the default
+    // action of a press: measured in Chromium, a press on the edge of a static heading fires
+    // `dragstart` on the heading. So the press's default is refused here — and it has to be the
+    // mouse's press, because for a mouse the drag does not hang from the pointer event. Without
+    // this, every pull in the width was also a drag in the order.
+    const down = fireEvent.mouseDown(grip('body')!, { button: 0, clientX: 0 })
+    expect(down).toBe(false)
+  })
+
   it('never goes under a fingertip, however far the hand carries on', () => {
     render(<Editing />)
     pull('body', -400)

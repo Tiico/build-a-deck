@@ -1034,7 +1034,21 @@ function SortableHeader({ field, label, sort, onSort, carry, pull }: { field: st
           over: the keys do the same thing from the heading itself, and what a column was set to
           is read and given back in the head's own door. So it is out of the tab order and out of
           the tree a screen reader walks, which is what an affordance for a hand is. */}
-      {pull && <span className="byd-data-pull" aria-hidden="true" onPointerDown={pull.onGrab} onDoubleClick={pull.onAuto} />}
+      {pull && (
+        <span
+          className="byd-data-pull"
+          aria-hidden="true"
+          onPointerDown={pull.onGrab}
+          onDoubleClick={pull.onAuto}
+          // The edge stands inside a heading the browser will carry off if a hand presses and
+          // moves: starting a drag is the default action of a press, and a press on the edge is a
+          // press on the heading. Measured in Chromium, a press on the edge fires `dragstart` on
+          // the heading, so every pull in the width was also a drag in the order. Refusing the
+          // default here is what stops it — and it has to be the mouse's press, because for a
+          // mouse the drag does not hang from the pointer event.
+          onMouseDown={(event) => event.preventDefault()}
+        />
+      )}
     </th>
   )
 }
