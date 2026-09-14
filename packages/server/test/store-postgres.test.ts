@@ -77,6 +77,26 @@ describe.skipIf(!url)('PostgresProjectStore', () => {
     expect(await projects.replace('nope', 1, doc)).toBe('missing')
     await store.close()
   })
+
+  it("lists a game with a few of its own cards, spread over the deck in its order (G1)", async () => {
+    const store = PostgresLogStore.connect(url!, { schema })
+    await store.migrate()
+    const projects = store.projects()
+    const id = `fan-${Date.now()}`
+    const { zones, seats, floor } = twoSeatSetup()
+    // Nine cards, the last one untitled: the list picks four of them and the untitled one
+    // answers to its id, exactly as the memory store's listing does.
+    const rows = Array.from({ length: 9 }, (_, i) => ({ id: `r${i}`, fields: i === 8 ? {} : { title: `Kort ${i}` } }))
+    await projects.create(id, { name: 'Stora leken', template, rows, icons: {}, setup: { zones, seats, floor, deckZone: 'draw' } }, 'ada')
+    const listed = (await projects.list('ada')).find((p) => p.id === id)
+    expect(listed?.cards).toEqual([
+      { id: 'r0', title: 'Kort 0' },
+      { id: 'r3', title: 'Kort 3' },
+      { id: 'r5', title: 'Kort 5' },
+      { id: 'r8', title: 'r8' },
+    ])
+    await store.close()
+  })
 })
 
 describe.skipIf(!url)('project row order survives storage', () => {
