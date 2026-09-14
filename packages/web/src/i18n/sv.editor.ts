@@ -251,6 +251,9 @@ export const svEditor = {
   'canvas.fit.shrink': 'krymp till gräns',
   'canvas.fit.fixed': 'fast storlek',
   'canvas.props.keepRatio': 'Behåll proportioner',
+  // Passa in det som är ritat i filen i stället för filen (E1): bildernas storlek jämnas ut när
+  // källfilerna bär olika mycket tomrum runt motivet.
+  'canvas.props.trim': 'Passa in motivet',
   'canvas.props.fill': 'Fyllning',
   // Fyllning ur ett fältvärde (L16): växeln, kolumnen, och färgen för det som inte har en egen.
   'canvas.props.fill.byField': 'Färg efter fält',

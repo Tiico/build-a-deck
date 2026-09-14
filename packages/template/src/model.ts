@@ -48,6 +48,13 @@ export const ImageElement = z.object({
   // fits the whole picture inside the frame instead, and is the one that can leave the card's
   // paper showing between the picture and its own edges.
   fit: z.enum(['cover', 'contain', 'fill']).optional(),
+  // Fit what is drawn rather than the file it arrived in (E1). A deck's art is one file per
+  // card, and two files holding the same motif rarely hold it at the same size — one carries a
+  // wide transparent border, the next almost none — so fitting files draws the motif a different
+  // size on every card. With this on, the uniform border a file carries is measured once per
+  // asset and left out of the fitting, and the picture is then cropped by the frame as ever.
+  // A file nothing has measured is fitted as a file, so a picture is never lost to this.
+  trim: z.literal(true).optional(),
 })
 export const IconsElement = z.object({
   kind: z.literal('icons'),

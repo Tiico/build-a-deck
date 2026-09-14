@@ -24,7 +24,7 @@ describe('the asset store (E1, DRIFT §4): the project\'s images, once each, by 
   it('resolves a row\'s asset references to data URLs for the compiler, and leaves everything else alone', async () => {
     const store = new MemoryAssetStore()
     const hash = await store.put(PNG, 'image/png')
-    const rows = await resolveAssets([{ id: 'drake', fields: { title: 'Drake', art: `asset:${hash}`, cost: 5 } }, { id: 'torn', fields: { title: 'Torn', art: 'asset:' + '0'.repeat(64) } }], store)
+    const { rows } = await resolveAssets([{ id: 'drake', fields: { title: 'Drake', art: `asset:${hash}`, cost: 5 } }, { id: 'torn', fields: { title: 'Torn', art: 'asset:' + '0'.repeat(64) } }], store)
     expect(rows[0]?.fields).toEqual({ title: 'Drake', art: `data:image/png;base64,${Buffer.from(PNG).toString('base64')}`, cost: 5 })
     // An asset that is gone leaves the field empty rather than a broken reference on the card.
     expect(rows[1]?.fields['art']).toBe('')
@@ -167,5 +167,102 @@ describe('the fonts a version is pinned to (B3)', () => {
     )
     expect(fonts['Rubrik']).toEqual({ stack: '"Rubrik", Georgia, serif', src: `data:font/woff2;base64,${Buffer.from(bytes).toString('base64')}` })
     expect(fonts['Brödtext']).toEqual({ stack: 'Georgia, serif' })
+  })
+})
+
+// What is drawn inside a picture (E1). The air a file carries around its motif is a property of
+// the bytes, so it is measured once per hash and kept beside the type and the size — and the
+// compiler is then handed it keyed by exactly the URL the rows carry, so the two cannot disagree.
+const MOTIF = { w: 100, h: 80, trim: { left: 10, top: 5, right: 20, bottom: 5 } }
+
+describe('the motif inside an asset (E1)', () => {
+  it('keeps one measurement per hash, answers for many at once, and knows nothing of an asset it has not got', async () => {
+    const store = new MemoryAssetStore()
+    const hash = await store.put(PNG, 'image/png')
+
+    expect(await store.motifs([hash])).toEqual({})
+    expect(await store.setMotif(hash, MOTIF)).toBe(true)
+    expect(await store.motifs([hash, '0'.repeat(64)])).toEqual({ [hash]: MOTIF })
+    // The same bytes always hold the same motif, so the first measurement is the measurement:
+    // a second one cannot quietly re-crop a picture ten other decks are already using.
+    expect(await store.setMotif(hash, { w: 1, h: 1, trim: { left: 0, top: 0, right: 0, bottom: 0 } })).toBe(false)
+    expect(await store.motifs([hash])).toEqual({ [hash]: MOTIF })
+    expect(await store.setMotif('0'.repeat(64), MOTIF)).toBe(false)
+  })
+
+  it('hands the compiler the motifs keyed by the very URL the resolved rows carry', async () => {
+    const store = new MemoryAssetStore()
+    const hash = await store.put(PNG, 'image/png')
+    await store.setMotif(hash, MOTIF)
+    const { rows, motifs } = await resolveAssets([{ id: 'drake', fields: { art: `asset:${hash}` } }], store)
+
+    expect(motifs).toEqual({ [rows[0]?.fields['art'] as string]: MOTIF })
+  })
+})
+
+describe('the motif over HTTP (E1)', () => {
+  let run: Running
+  let cookie = ''
+  beforeEach(async () => {
+    run = await start()
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
+    const link = /\/auth\/verify\?token=\S+/.exec(run.mail.sent.at(-1)?.text ?? '')?.[0] ?? ''
+    const res = await fetch(`${run.http}${link}`, { redirect: 'manual' })
+    cookie = (res.headers.get('set-cookie') ?? '').split(';')[0] ?? ''
+  })
+  afterEach(async () => {
+    await run.stop()
+  })
+
+  const put = (hash: string, body: unknown, auth = cookie) =>
+    fetch(`${run.http}/assets/${hash}/motif`, { method: 'PUT', headers: { 'content-type': 'application/json', ...(auth ? { cookie: auth } : {}) }, body: JSON.stringify(body) })
+
+  it('takes a measurement of an asset it has, and hands it back with the others', async () => {
+    const up = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/png', cookie }, body: PNG })
+    const { hash } = (await up.json()) as { hash: string }
+
+    expect((await put(hash, MOTIF, '')).status).toBe(401)
+    expect((await put(hash, MOTIF)).status).toBe(204)
+    expect((await put('0'.repeat(64), MOTIF)).status).toBe(404)
+
+    const got = await fetch(`${run.http}/assets/motifs?of=${hash},${'0'.repeat(64)}`, { headers: { cookie } })
+    expect(got.status).toBe(200)
+    expect(await got.json()).toEqual({ [hash]: MOTIF })
+  })
+
+  it('refuses a measurement that cannot be of a picture, rather than cropping a card by it', async () => {
+    const up = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/png', cookie }, body: PNG })
+    const { hash } = (await up.json()) as { hash: string }
+
+    // A border that eats the whole picture, a negative one, and one that is not a number at all.
+    expect((await put(hash, { w: 10, h: 10, trim: { left: 6, top: 0, right: 6, bottom: 0 } })).status).toBe(400)
+    expect((await put(hash, { w: 10, h: 10, trim: { left: -1, top: 0, right: 0, bottom: 0 } })).status).toBe(400)
+    expect((await put(hash, { w: 0, h: 10, trim: { left: 0, top: 0, right: 0, bottom: 0 } })).status).toBe(400)
+    expect((await put(hash, { w: 'stor', h: 10, trim: { left: 0, top: 0, right: 0, bottom: 0 } })).status).toBe(400)
+    expect(await (await fetch(`${run.http}/assets/motifs?of=${hash}`, { headers: { cookie } })).json()).toEqual({})
+  })
+
+  it('draws a card by the motif when the template asks for it, so the render worker needs nothing but the page', async () => {
+    const up = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/png', cookie }, body: PNG })
+    const { hash } = (await up.json()) as { hash: string }
+    await put(hash, MOTIF)
+    const { zones, seats, floor } = twoSeatSetup()
+    const doc = {
+      name: 'Skogens herrar',
+      template: { faces: { ...template.faces, front: { base: [...template.faces['front']!.base, { kind: 'image', id: 'art', x: 4, y: 4, w: 55, h: 36, bind: { field: 'art' }, fit: 'contain', trim: true }], variants: {} } } },
+      rows: [{ id: 'dragon', fields: { title: 'Drake', art: `asset:${hash}`, antal: 1 } }],
+      icons: {},
+      setup: { zones, seats, floor, deckZone: 'draw' },
+    }
+    expect((await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ id: 'p1', ...doc }) })).status).toBe(201)
+    expect((await fetch(`${run.http}/projects/p1/print`, { method: 'POST', headers: { cookie } })).status).toBe(202)
+    // What was actually put on the render queue, which is the page the worker will draw.
+    const queued: string[] = []
+    for (let job = await run.renders.claim(0); job; job = await run.renders.claim(0)) queued.push(job.compiled.css)
+
+    // 70 × 70 of the file is drawing; fitted whole into a 55 × 36 frame that is 36 × 36 mm, and
+    // the file around it 51.43 × 41.14, hung 4.36 mm in and 2.57 mm above the frame's own corner.
+    // Without the measurement the picture would simply have been the file.
+    expect(queued.join('\n')).toContain('[data-element="art"] .byd-art{left:4.3571mm;top:-2.5714mm;width:51.4286mm;height:41.1429mm;}')
   })
 })

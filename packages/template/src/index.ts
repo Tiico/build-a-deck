@@ -1,5 +1,6 @@
 export * from './inline.js'
 export * from './model.js'
+export * from './motif.js'
 export * from './compile.js'
 export * from './fit.js'
 export * from './dom-fit.js'

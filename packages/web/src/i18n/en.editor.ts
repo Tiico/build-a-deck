@@ -224,6 +224,7 @@ export const enEditor = {
   'canvas.fit.shrink': 'shrink to fit',
   'canvas.fit.fixed': 'fixed size',
   'canvas.props.keepRatio': 'Keep proportions',
+  'canvas.props.trim': 'Fit the motif',
   'canvas.props.fill': 'Fill',
   'canvas.props.fill.byField': 'Colour by field',
   'canvas.props.fill.field': 'Fill by the column',

@@ -2,6 +2,7 @@ import type { ComponentTypeDef } from '@byd/engine'
 import { parseInline, type InlineNode } from './inline.js'
 import { detectScript, estimateHeight, fitText, type Measure } from './fit.js'
 import { paintOf, type Condition, type Element, type FaceTemplate, type Row, type Template } from './model.js'
+import type { Motif } from './motif.js'
 
 export type Warning = { element: string; code: 'unknown-icon' | 'text-too-small' | 'text-overflow' | 'unknown-field'; detail: string }
 export type Compiled = { html: string; css: string; warnings: Warning[] }
@@ -21,6 +22,11 @@ export type CompileInput = {
   measure?: Measure
   // A selector prefix for every rule, so many cards (each fitted differently) can share a page.
   scope?: string
+  // What is drawn inside each picture (E1): the source, exactly as the row carries it, against
+  // the file's pixel size and the uniform border it holds around its motif. Measured once per
+  // asset far from here; an image element told to `trim` fits the motif rather than the file, so
+  // the same motif is the same size on every card however much air its own file happens to have.
+  motifs?: Record<string, Motif>
 }
 
 // Compiles one face of one card to HTML and CSS. The same output feeds the editor preview,
@@ -43,6 +49,9 @@ export function compile(input: CompileInput): Compiled {
     rules.push(`@font-face{font-family:"${attr(name)}";src:url("${attr(font.src)}");font-display:block;}`)
   }
   css.push(`.byd-icon{height:1em;width:auto;vertical-align:-0.15em;}`)
+  // A picture hangs inside its own frame rather than being it, so the element's box stays exactly
+  // what the designer grabs whether the picture fills it, sits inside it or overflows it.
+  css.push(`.byd-art{position:absolute;left:0;top:0;display:block;max-width:none;}`)
   css.push(`.byd-icon-missing{color:#c00;background:#fee;font-weight:700;}`)
   css.push(`.byd-pip{display:inline-block;min-width:1.15em;height:1.15em;line-height:1.15em;border-radius:50%;text-align:center;font-weight:700;font-size:0.85em;border:0.12em solid currentColor;vertical-align:-0.15em;padding:0 0.1em;box-sizing:border-box;}`)
 
@@ -52,6 +61,26 @@ export function compile(input: CompileInput): Compiled {
 }
 
 type Css = { push(rule: string): void }
+
+// A number as millimetres, without the float noise a division leaves behind.
+const mm = (v: number): string => `${Math.round(v * 1e4) / 1e4}mm`
+
+// Where the whole picture has to lie for its motif to meet the frame the way the element asks
+// (E1). The fitting is done on the motif — so `contain` fits what is drawn and `cover` fills the
+// frame with what is drawn — and the file is then laid out around it at the same scale and
+// cropped by the frame, which is what already crops every other picture. A motif with no extent
+// is no motif, and such a file is left to its frame.
+function aroundMotif(el: { w: number; h: number; fit?: 'cover' | 'contain' | 'fill' | undefined }, motif: Motif): string | null {
+  const drawn = { w: motif.w - motif.trim.left - motif.trim.right, h: motif.h - motif.trim.top - motif.trim.bottom }
+  if (drawn.w <= 0 || drawn.h <= 0) return null
+  const by = { w: el.w / drawn.w, h: el.h / drawn.h }
+  const even = (el.fit ?? 'cover') === 'contain' ? Math.min(by.w, by.h) : Math.max(by.w, by.h)
+  const [sx, sy] = (el.fit ?? 'cover') === 'fill' ? [by.w, by.h] : [even, even]
+  // The motif centred in the frame: its own centre, in the file's pixels, laid on the frame's.
+  const left = el.w / 2 - (motif.trim.left + drawn.w / 2) * sx
+  const top = el.h / 2 - (motif.trim.top + drawn.h / 2) * sy
+  return `left:${mm(left)};top:${mm(top)};width:${mm(motif.w * sx)};height:${mm(motif.h * sy)};`
+}
 
 function render(el: Element, dx: number, dy: number, input: CompileInput, html: string[], css: Css, warnings: Warning[]): void {
   switch (el.kind) {
@@ -83,8 +112,10 @@ function render(el: Element, dx: number, dy: number, input: CompileInput, html: 
     }
     case 'image': {
       const src = resolve(el.bind, input.row)
-      css.push(`[data-element="${attr(el.id)}"]{left:${el.x + dx}mm;top:${el.y + dy}mm;width:${el.w}mm;height:${el.h}mm;object-fit:${el.fit ?? 'cover'};}`)
-      html.push(src ? `<img data-element="${attr(el.id)}" src="${attr(src)}" alt="">` : `<div data-element="${attr(el.id)}"></div>`)
+      const motif = el.trim ? input.motifs?.[src] : undefined
+      css.push(`[data-element="${attr(el.id)}"]{left:${el.x + dx}mm;top:${el.y + dy}mm;width:${el.w}mm;height:${el.h}mm;}`)
+      css.push(`[data-element="${attr(el.id)}"] .byd-art{${(motif && aroundMotif(el, motif)) ?? `width:100%;height:100%;object-fit:${el.fit ?? 'cover'};`}}`)
+      html.push(src ? `<div data-element="${attr(el.id)}"><img class="byd-art" src="${attr(src)}" alt=""></div>` : `<div data-element="${attr(el.id)}"></div>`)
       break
     }
     case 'icons': {
@@ -206,7 +237,7 @@ export function compileCard(input: CompileCardInput): Record<string, Compiled> {
   for (const faceId of input.type.faces) {
     const face = input.template.faces[faceId]
     if (!face) throw new Error(`template has no face "${faceId}", which ${input.type.id} requires`)
-    out[faceId] = compile({ type: input.type, row: input.row, icons: input.icons, face, ...(input.fonts ? { fonts: input.fonts } : {}), ...(input.bleed !== undefined ? { bleed: input.bleed } : {}), ...(input.measure ? { measure: input.measure } : {}) })
+    out[faceId] = compile({ type: input.type, row: input.row, icons: input.icons, face, ...(input.fonts ? { fonts: input.fonts } : {}), ...(input.bleed !== undefined ? { bleed: input.bleed } : {}), ...(input.measure ? { measure: input.measure } : {}), ...(input.motifs ? { motifs: input.motifs } : {}) })
   }
   return out
 }

@@ -38,10 +38,13 @@ describe('images on the wall (E1)', () => {
     doc.template.faces['front']!.base.push({ kind: 'image', id: 'art', x: 4, y: 4, w: 55, h: 36, bind: { field: 'art' } })
     doc.rows[0]!.fields['art'] = `asset:${hash}`
     render(<DeckWall doc={doc} face="front" selectedRow={null} onSelectRow={() => undefined} onSelectElement={() => undefined} assetBase="http://api.local" />)
-    const img = document.querySelector('[data-card-ref="dragon"] img[data-element="art"]') as HTMLImageElement
+    // The element is the frame and the picture hangs inside it (E1), so the box a designer
+    // grabs stays the box however the picture is fitted into it.
+    const img = document.querySelector('[data-card-ref="dragon"] [data-element="art"] img') as HTMLImageElement
     expect(img.getAttribute('src')).toBe(`http://api.local/assets/${hash}`)
-    // A card without an image draws the element empty, not with a reference as its address.
-    expect(document.querySelector('[data-card-ref="knight"] img[data-element="art"]')).toBeNull()
+    // A card without an image draws the frame empty, not with a reference as its address.
+    expect(document.querySelector('[data-card-ref="knight"] [data-element="art"]')).not.toBeNull()
+    expect(document.querySelector('[data-card-ref="knight"] [data-element="art"] img')).toBeNull()
   })
 })
 
