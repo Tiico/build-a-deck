@@ -17,36 +17,59 @@ afterEach(async () => {
 })
 
 const open = (id = 'p1') => ProjectClient.open({ http: run.http, id })
-const settle = () => new Promise((r) => setTimeout(r, 80))
-// A socket is open when it says it is, not when a fixed number of milliseconds have gone by. The
-// sleep above is enough for a message to go round on an idle machine and is not always enough to
-// open a connection with five browser suites running beside this one — and a sleep that is
-// usually long enough is a test that usually passes. So anything about whether a socket is up
-// waits for the socket to say so.
-async function until(ready: () => boolean, ms = 5_000): Promise<void> {
+
+// What a thing that travels over a socket is given to arrive in. The same order as the four
+// seconds a `waitFor` gets in `setup.ts`, with room on top for the client's 200-400-800 ms
+// reconnection ladder, and far inside the twenty this suite is budgeted in `budget.ts`.
+const PATIENCE = 5_000
+
+// A thing that arrives over a socket is waited for, not slept for. Eighty milliseconds is enough
+// for a frame to go round on an idle machine and is not always enough with the browser suites
+// running beside this one — and a sleep that is usually long enough is a test that usually
+// passes. This file already knew that about opening a connection; it kept sleeping on everything
+// the connection then carried, which is the same bug one step further in (#92).
+//
+// So the assertion itself is what waits: it is read again until it holds. Nothing is weakened by
+// it. A value that is simply wrong still fails, with the value it actually was, because the last
+// failure is the one that is thrown.
+async function eventually(check: () => void, ms = PATIENCE): Promise<void> {
   const stop = Date.now() + ms
-  while (!ready() && Date.now() < stop) await new Promise((r) => setTimeout(r, 20))
+  for (;;) {
+    try {
+      check()
+      return
+    } catch (err) {
+      if (Date.now() >= stop) throw err
+      await new Promise((r) => setTimeout(r, 10))
+    }
+  }
 }
+
+// The actor has greeted an editor when it has told it who it is. Before that the editor is alone
+// with a document it read over HTTP, and nobody else has been told it is there.
+const greeted = (...editors: ProjectClient[]) => eventually(() => expect(editors.map((e) => e.who)).not.toContain(null))
+
+const here = (editor: ProjectClient) => editor.here.map((p) => p.name)
+const title = (editor: ProjectClient) => editor.doc.rows.find((r) => r.id === 'dragon')?.fields['title']
 
 describe('two editors on the same project (D3)', () => {
   it('sees the other one\'s edit without either of them saving', async () => {
     await run.projects.create('p1', projectDoc())
     const ada = await open()
     const bo = await open()
-    await settle()
+    await greeted(ada, bo)
 
     ada.setCell('dragon', 'title', 'Drakhona')
     // The one who typed it sees it at once.
-    expect(ada.doc.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drakhona')
-    await settle()
-    expect(bo.doc.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drakhona')
-    // Nothing was saved: the version is still the first.
+    expect(title(ada)).toBe('Drakhona')
+    await eventually(() => expect(title(bo)).toBe('Drakhona'))
+    // Nothing was saved: the version is still the first. Asked once the edit is known to have gone
+    // all the way round, so it is a version that stood still and not one that had yet to move.
     expect((await run.projects.load('p1'))?.rev).toBe(1)
 
     // And a save by one is a save for both.
     expect(await bo.save()).toEqual({ ok: true, rev: 2 })
-    await settle()
-    expect(ada.rev).toBe(2)
+    await eventually(() => expect(ada.rev).toBe(2))
     expect(ada.dirty).toBe(false)
     expect((await run.projects.load('p1'))?.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drakhona')
     ada.close()
@@ -55,16 +78,16 @@ describe('two editors on the same project (D3)', () => {
 
   it('says who else has the project open, and stops saying so when they leave', async () => {
     await run.projects.create('p1', projectDoc())
+    // Who is here is something the actor says over the socket, so it is waited for rather than
+    // slept on. Each of the three readings below is a different list, and the one before it has
+    // already held, so waiting for a list cannot pass by standing still.
     const ada = await open()
-    await settle()
-    expect(ada.here.map((p) => p.name)).toEqual(['Någon'])
+    await eventually(() => expect(here(ada)).toEqual(['Någon']))
 
     const bo = await ProjectClient.open({ http: run.http, id: 'p1', name: 'Bo' })
-    await settle()
-    expect(ada.here.map((p) => p.name)).toEqual(['Någon', 'Bo'])
+    await eventually(() => expect(here(ada)).toEqual(['Någon', 'Bo']))
     bo.close()
-    await settle()
-    expect(ada.here.map((p) => p.name)).toEqual(['Någon'])
+    await eventually(() => expect(here(ada)).toEqual(['Någon']))
     ada.close()
   })
 
@@ -72,12 +95,11 @@ describe('two editors on the same project (D3)', () => {
     await run.projects.create('p1', projectDoc())
     const ada = await open()
     const bo = await open()
-    await settle()
+    await greeted(ada, bo)
     // Bo takes a card away; Ada, still holding it, writes to it.
     bo.removeRow('dragon')
-    await settle()
+    await eventually(() => expect(ada.doc.rows.some((r) => r.id === 'dragon')).toBe(false))
     expect(() => ada.setCell('dragon', 'title', 'Drakhona')).toThrow()
-    await settle()
     expect(ada.doc.rows.some((r) => r.id === 'dragon')).toBe(false)
     ada.close()
     bo.close()
@@ -85,8 +107,8 @@ describe('two editors on the same project (D3)', () => {
 
   it('keeps working when the project is only read, so an editor without a socket still opens', async () => {
     await run.projects.create('p1', projectDoc())
+    // Nothing is waited for: the document and its version came back over HTTP, before any socket.
     const ada = await open()
-    await settle()
     expect(ada.doc.name).toBe('Skogens herrar')
     expect(ada.rev).toBe(1)
     ada.close()
@@ -121,23 +143,19 @@ describe('a socket that breaks (D3)', () => {
   it('comes back by itself and picks up what happened while it was gone', async () => {
     await run.projects.create('p1', projectDoc())
     const ada = await open()
-    await until(() => ada.connected)
-    expect(ada.connected).toBe(true)
+    await eventually(() => expect(ada.connected).toBe(true))
 
     // The server goes away and comes back, as a laptop lid does.
     await run.restart()
-    await until(() => !ada.connected)
-    expect(ada.connected).toBe(false)
+    await eventually(() => expect(ada.connected).toBe(false))
 
     // Someone else edits while this editor is away.
     const bo = await open()
-    await settle()
+    await greeted(bo)
     bo.setCell('dragon', 'title', 'Drakhona')
-    await settle()
 
-    await until(() => ada.connected)
-    expect(ada.connected).toBe(true)
-    expect(ada.doc.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drakhona')
+    await eventually(() => expect(ada.connected).toBe(true))
+    await eventually(() => expect(title(ada)).toBe('Drakhona'))
     ada.close()
     bo.close()
   })
@@ -145,19 +163,19 @@ describe('a socket that breaks (D3)', () => {
   it('keeps what was written while it was gone and sends it when it is back', async () => {
     await run.projects.create('p1', projectDoc())
     const ada = await open()
-    await until(() => ada.connected)
+    await eventually(() => expect(ada.connected).toBe(true))
     await run.restart()
-    await until(() => !ada.connected)
+    await eventually(() => expect(ada.connected).toBe(false))
 
     ada.setCell('dragon', 'title', 'Skrivet i mörkret')
-    expect(ada.doc.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Skrivet i mörkret')
+    expect(title(ada)).toBe('Skrivet i mörkret')
 
-    await until(() => ada.connected)
-    await settle()
-    // The actor has it too, so anyone else opening the project sees it.
+    await eventually(() => expect(ada.connected).toBe(true))
+    // The actor has it too, so anyone else opening the project sees it. Bo may open before what
+    // Ada wrote in the dark has reached the actor, and then reads it off the socket rather than
+    // out of the first response — which is the same project either way, a moment later.
     const bo = await open()
-    await settle()
-    expect(bo.doc.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Skrivet i mörkret')
+    await eventually(() => expect(title(bo)).toBe('Skrivet i mörkret'))
     ada.close()
     bo.close()
   })
@@ -165,8 +183,11 @@ describe('a socket that breaks (D3)', () => {
   it('stays gone when the editor itself closed it', async () => {
     await run.projects.create('p1', projectDoc())
     const ada = await open()
-    await until(() => ada.connected)
+    await eventually(() => expect(ada.connected).toBe(true))
     ada.close()
+    // The one wait here that is a sleep on purpose: nothing is expected to arrive, and the only
+    // way to see that nothing does is to give it the time in which it would have. Four hundred
+    // milliseconds is twice the first rung of the client's reconnection ladder.
     await new Promise((r) => setTimeout(r, 400))
     expect(ada.connected).toBe(false)
   })
@@ -181,17 +202,19 @@ describe('an icon placed, through the actor (#33, E4, D3)', () => {
     await run.projects.create('p1', projectDoc())
     const ada = await open()
     const bo = await open()
-    await settle()
+    await greeted(ada, bo)
     const svard = LIBRARY.find((s) => s.id === 'svard')!
 
     const id = await ada.placeIcon(svard, 'front', null)
-    await settle()
 
     // The other editor was told, by the actor, about both halves of the one intent — the symbol in
-    // the game's set and the element that shows it. Neither is worked out from the other.
-    expect(bo.doc.icons['svärd']).toMatch(/^asset:[0-9a-f]{64}$/)
-    expect(bo.doc.credits?.['svärd']?.source).toBe('svard')
-    expect(bo.doc.template.faces['front']?.base.at(-1)).toMatchObject({ id, kind: 'icons', bind: { literal: 'svärd' } })
+    // the game's set and the element that shows it. Neither is worked out from the other, and both
+    // are waited for together, so a half that never lands fails on the half it is.
+    await eventually(() => {
+      expect(bo.doc.icons['svärd']).toMatch(/^asset:[0-9a-f]{64}$/)
+      expect(bo.doc.credits?.['svärd']?.source).toBe('svard')
+      expect(bo.doc.template.faces['front']?.base.at(-1)).toMatchObject({ id, kind: 'icons', bind: { literal: 'svärd' } })
+    })
 
     // And so was the store, once it was saved.
     expect(await bo.save()).toEqual({ ok: true, rev: 2 })
