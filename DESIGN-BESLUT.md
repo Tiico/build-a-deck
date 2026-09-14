@@ -884,6 +884,13 @@ Kortets ansikte öppnar editorn. Menyn bredvid startar ett bord och lämnar rums
 Ett fel i en åtgärd tar aldrig spelen från skärmen; bara en sida som inte gick att läsa alls ersätter dem.
 CORS-svaret tillät inte DELETE, så borttagningen stoppades i webbläsaren utan att servern märkte något. Ett test på preflight-svaret täcker nu varje metod API:et faktiskt betjänar.
 
+Solfjädern på spelkortet 2026-09-14 (prototypat, variant D av sex):
+De fyra korten på spelets kort är spelets egna kort, inte fyra rektanglar färgade ur spelets id.
+Urvalet är jämnt spritt över leken med första och sista kortet med, så en lek på hundra kort visar sin bredd och inte bara det som skrevs först; urvalet följer lekens ordning, så samma spel ser likadant ut varje gång det listas.
+Varje kort bär sin titel och kortets egen färg — samma `hue(cardRef)` som vid bordet — så ett kort man känner igen i spel känns igen i listan. En titel som inte får plats bryts över flera rader, avstavad där sidans språk tillåter det, i stället för att försvinna under nästa kort; ett kort utan titel svarar på sitt id som överallt annars.
+En lek utan kort säger "inga kort än" i solfjäderns ställe och behåller platsen, så rutnätet står jämnt.
+`GET /projects` bär urvalet: `peekCards` väljer i `packages/server/src/names.ts`, och båda lagren — minnets och Postgres — ger samma svar. Postgres hämtar bara id och titel ur dokumentet, aldrig hundra hela rader för att rita fyra kort.
+
 ### G2. Kommunikation: ingen inbyggd röst (fråga 19)
 
 Användarna kör Discord eller motsvarande vid sidan om.

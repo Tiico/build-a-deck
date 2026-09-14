@@ -5,6 +5,7 @@ import { HomePage } from '../src/account/HomePage.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { projectDoc } from './project-doc.js'
+import { hue } from '../src/table/hue.js'
 import { admit, createSession, startServer, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
@@ -183,6 +184,29 @@ describe('a game on the home page (G1)', () => {
     await screen.findByText('Skogens herrar')
   }
   const card = () => document.querySelector('[data-project="p1"]') as HTMLElement
+
+  it("fans out the game's own cards, each with its title and the colour it has at the table", async () => {
+    await home()
+    const fan = card().querySelector('.byd-home-fan')!
+    const cards = [...fan.querySelectorAll('i')]
+    // The fixture's deck is three cards, so the fan is those three and nothing invented.
+    expect(cards.map((c) => c.textContent)).toEqual(['Drake', 'Riddare', 'Trollkarl'])
+    expect(cards.map((c) => c.getAttribute('data-card'))).toEqual(['dragon', 'knight', 'wizard'])
+    // The colour is the card's own, the one it has on the table, not the game's.
+    expect(cards.map((c) => c.getAttribute('style'))).toEqual(['dragon', 'knight', 'wizard'].map((id) => `--hue: ${hue(id)};`))
+  })
+
+  it('says a game has no cards yet instead of fanning out rectangles that stand for nothing', async () => {
+    await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
+    await followMailedLink()
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: 'p0', ...projectDoc(), name: 'Tomt spel', rows: [] }) })
+    history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
+    render(<HomePage />)
+    await screen.findByText('Tomt spel')
+    const fan = document.querySelector('[data-project="p0"] .byd-home-fan')!
+    expect(fan.querySelectorAll('i')).toHaveLength(0)
+    expect(fan.textContent).toBe('inga kort än')
+  })
 
   it('says it has never been played, and afterwards when it last was', async () => {
     await home()

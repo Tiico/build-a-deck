@@ -40,6 +40,7 @@ export const svAccount = {
   // Vad ett spel säger om sig självt innan det öppnas: revision, bord och senaste gången.
   'home.card.line': 'rev {rev} · {played}',
   'home.card.never': 'aldrig spelat',
+  'home.card.nocards': 'inga kort än',
   'home.card.nothing': 'inget spelat än',
   'home.card.last': 'senast {when}',
   'home.card.tables.one': '{n} bord · {at}',

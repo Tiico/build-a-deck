@@ -46,9 +46,9 @@ export async function logout(http: string): Promise<void> {
   await fetch(`${http}/auth/logout`, withCredentials({ method: 'POST' }))
 }
 
-// A game as "Mina spel" lists it (G1): where its history stands, how many tables it has, and
-// when one of them was last played at.
-export type ProjectSummary = { id: string; name: string; rev: number; tables?: number; lastPlayed?: string | null }
+// A game as "Mina spel" lists it (G1): where its history stands, how many tables it has, when one
+// of them was last played at, and the few of its own cards the page fans out on it.
+export type ProjectSummary = { id: string; name: string; rev: number; tables?: number; lastPlayed?: string | null; cards?: { id: string; title: string }[] }
 export async function myProjects(http: string): Promise<ProjectSummary[]> {
   const res = await fetch(`${http}/projects`, withCredentials())
   if (res.status === 401) throw new Unauthorized()
