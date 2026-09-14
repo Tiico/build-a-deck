@@ -331,6 +331,29 @@ describe('DataTable chips for a deck that has no category column (#16)', () => {
   })
 })
 
+// A picture is not a word, and the chip row is a row of words (#16 on E1).
+describe('DataTable chips for a deck with images (#16 on E1)', () => {
+  // The same deck, given a picture column: `art` is drawn by the template, so its cells hold
+  // `asset:<hash>` and two images are shared across the eight cards — which counts exactly like
+  // the type column does.
+  function withArt(): ProjectDoc {
+    const doc = bigDoc()
+    const art = (n: number) => `asset:${String(n).repeat(64)}`
+    // The template is a factory of its own, so pushing the picture onto this front lays nothing
+    // under the next test's feet (#49).
+    doc.template.faces['front']?.base.push({ kind: 'image', id: 'art', x: 5, y: 16, w: 53, h: 12, bind: { field: 'art' } })
+    return { ...doc, rows: doc.rows.map((row, i) => ({ ...row, fields: { ...row.fields, art: art(i % 2) } })) }
+  }
+
+  it('does not offer the hash of a picture as a chip, and keeps the columns that are words', () => {
+    renderTable(withArt())
+
+    expect(screen.queryByRole('group', { name: 'Filtrera på art' })).toBeNull()
+    expect(screen.queryByText(/^asset:/)).toBeNull()
+    expect(screen.getByRole('group', { name: 'Filtrera på typ' })).toBeDefined()
+  })
+})
+
 describe('DataTable for a deck with no cards yet (#16)', () => {
   it('does not blame a filter that is not on', () => {
     renderTable({ ...projectDoc(), rows: [] })

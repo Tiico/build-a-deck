@@ -11,8 +11,11 @@ import { applyRecipe, point, rect, type Geometry, type Recipe, type RecipeWords,
 // Imported by the editor as well as the server, so this module stays free of anything Node.
 export type ZonePatch = { name?: string; geometry?: Geometry; visibility?: Zone['visibility']; shortcut?: { label: string; at: 'top' | 'bottom' } | undefined; owner?: string | undefined }
 
-// The properties a patch may take away again (L15).
-export type Clearable = 'name' | 'locked'
+// The properties a patch may take away again (L15, L17). Each one means something by its own
+// absence, which a patch cannot otherwise say: `undefined` does not survive JSON, so "this layer
+// has no shadow any more" would arrive at the actor as a patch that changes nothing. Every other
+// property of an element either has a value or does not exist for that kind.
+export type Clearable = 'name' | 'locked' | 'shadow' | 'pattern'
 
 export type EditIntent =
   | { v: 'rename'; name: string }
@@ -52,6 +55,11 @@ export type EditIntent =
   | { v: 'addElement'; face: string; element: Element; group?: string | null; icon?: { name: string; url: string; credit?: ProjectCredit } }
   | { v: 'removeElement'; face: string; id: string; group?: string | null }
   | { v: 'moveElement'; face: string; id: string; to: number }
+  // A whole face at once (L17). Choosing one of the ready-made backs is one thing the designer
+  // did, so it is one edit — the same reason `replaceRows` exists rather than a removal and an
+  // addition per card. Sent as a removal and an addition per layer it would be a dozen versions
+  // and a dozen steps back (B4), with a half-built back standing at every one of them.
+  | { v: 'replaceFace'; face: string; base: Element[] }
   | { v: 'resetElement'; face: string; id: string; group: string }
   | { v: 'setGroupColumn'; column: string | null }
   // The table (B5, K2)
@@ -206,6 +214,12 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
     }
     // Reordering the layers (#18): the base list is the drawing order, so a layer moved in the
     // panel is a layer moved here.
+    case 'replaceFace': {
+      // A face the template does not have yet is made rather than refused: an empty back is
+      // exactly the back a gallery is for.
+      const face = doc.template.faces[intent.face] ?? { base: [], variants: {} }
+      return writeFace(doc, intent.face, { ...face, base: intent.base })
+    }
     case 'moveElement': {
       const face = faceOf(doc, intent.face)
       const from = face.base.findIndex((e) => e.id === intent.id)

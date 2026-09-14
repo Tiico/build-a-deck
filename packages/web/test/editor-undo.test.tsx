@@ -110,7 +110,7 @@ describe('a step back in the editor (#35)', () => {
     })
     await userEvent.clear(cell)
     await userEvent.type(cell, 'Drakhona')
-    await screen.findByText('Osparade ändringar')
+    await screen.findByText('Osparat')
 
     // Pressed from inside the field: saving is the editor's wherever it is asked for, and the
     // browser's own "save this page" must not be what happens instead.
@@ -159,7 +159,7 @@ describe('a saving that changes nothing (B4)', () => {
     })
     await userEvent.clear(cell)
     await userEvent.type(cell, what)
-    await screen.findByText('Osparade ändringar')
+    await screen.findByText('Osparat')
   }
 
   it('is not a saving: the chord on an untouched document leaves the history where it was', async () => {
@@ -210,7 +210,7 @@ describe('a move as one step back', () => {
     fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
     await waitFor(() => expect(target('title')!.style.top).toBe('5mm'))
     // And the drag was the only thing on the stack: what is behind it is the document as it loaded.
-    expect(header().queryByText(/Osparade ändringar/)).toBeNull()
+    expect(header().queryByText(/Osparat/)).toBeNull()
   })
 
   it('keeps two drags two steps, and puts each back forward on its own', async () => {

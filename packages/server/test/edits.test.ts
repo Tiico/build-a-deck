@@ -278,3 +278,30 @@ describe('an edit is a thing that happened to the project (D3)', () => {
     expect(() => applyEdit(base(), { v: 'patchElement', face: 'front', id: 'ingen', patch: { x: 1 } })).toThrow(/ingen/)
   })
 })
+
+// Choosing a ready-made back (L17) is one thing the designer did, so it is one edit — the same
+// reason `replaceRows` exists rather than a remove and an add per card. Sent as a removal per
+// layer and an addition per layer it would be a dozen versions and a dozen steps back (B4), and
+// every step between them would be a half-built back nobody asked for.
+describe('a whole face at once (L17)', () => {
+  it('replaces the base of one face and leaves the other, and the variants, alone', () => {
+    const doc = base()
+    const back: Element[] = [
+      { kind: 'shape', id: 'botten', x: -3, y: -3, w: 69, h: 94, shape: 'rect', fill: '#2f4068', pattern: { kind: 'diamonds', color: '#3a4d7a', scaleMm: 7 } },
+      { kind: 'shape', id: 'kant', x: 4, y: 4, w: 55, h: 80, shape: 'rect', radiusMm: 3, stroke: '#8ea2cc', strokeMm: 0.6 },
+    ]
+    const next = applyEdit(doc, { v: 'replaceFace', face: 'back', base: back })
+    expect(next.template.faces['back']?.base.map((e) => e.id)).toEqual(['botten', 'kant'])
+    expect(next.template.faces['front']).toBe(doc.template.faces['front'])
+    expect(next.template.faces['back']?.variants).toEqual(doc.template.faces['back']?.variants)
+    // The document it was given is untouched, as every edit leaves it.
+    expect(doc.template.faces['back']?.base.map((e) => e.id)).not.toEqual(['botten', 'kant'])
+  })
+
+  it('makes the face when the template has none: an empty back is a back that can be started', () => {
+    const doc = base()
+    const bare: ProjectDoc = { ...doc, template: { faces: { front: doc.template.faces['front']! } } }
+    const next = applyEdit(bare, { v: 'replaceFace', face: 'back', base: [] })
+    expect(next.template.faces['back']).toEqual({ base: [], variants: {} })
+  })
+})

@@ -33,6 +33,7 @@ export const enAccount = {
 
   'home.card.line': 'rev {rev} · {played}',
   'home.card.never': 'never played',
+  'home.card.nocards': 'no cards yet',
   'home.card.nothing': 'nothing played yet',
   'home.card.last': 'last {when}',
   'home.card.tables.one': '{n} table · {at}',

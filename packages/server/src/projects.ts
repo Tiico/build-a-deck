@@ -3,6 +3,7 @@ import { Template, type Row } from '@byd/template'
 import type { Deck } from './faces.js'
 import type { AppliedEdit } from './project-actor.js'
 import type { Role } from './roles.js'
+import { peekCards, type CardPeek } from './names.js'
 
 // A project is what the editor edits: the template, the rows keyed by cardRef, the icon set and
 // the table setup without its components — those come from the rows and their `antal` (L4).
@@ -81,8 +82,9 @@ export type ProjectDoc = z.infer<typeof ProjectDoc>
 // `owner` is the account that made it (G1); a project from before accounts has none and stays open.
 export type ProjectRecord = ProjectDoc & { id: string; rev: number; owner?: string }
 // A game as "Mina spel" lists it (G1): what it is called, where its history stands, how many
-// tables have been started from it and when one of them was last played at.
-export type ProjectSummary = { id: string; name: string; rev: number; tables?: number; lastPlayed?: string | null; role?: Role }
+// tables have been started from it and when one of them was last played at. `cards` is the
+// handful of its own cards the list fans out on the game's card.
+export type ProjectSummary = { id: string; name: string; rev: number; tables?: number; lastPlayed?: string | null; role?: Role; cards?: CardPeek[] }
 
 // A version in the history (B4): every save is one, and none of them is ever written again.
 // `label` is the name a designer gave the versions that meant something — a blind test, a print
@@ -151,7 +153,7 @@ export class MemoryProjectStore implements ProjectStore {
     const out: ProjectSummary[] = []
     for (const rec of this.docs.values()) {
       const role = await this.roleOf(rec.id, account)
-      if (role) out.push({ id: rec.id, name: rec.name, rev: rec.rev, role })
+      if (role) out.push({ id: rec.id, name: rec.name, rev: rec.rev, role, cards: peekCards(rec.rows) })
     }
     return out
   }

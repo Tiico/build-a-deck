@@ -3,7 +3,9 @@ import type { DocDiff } from '@byd/server/doc'
 import type { Element } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
 import { applyEdit, recipeOf, type Clearable, type EditIntent, type Recipe, type RecipeWords, type ZonePatch } from '@byd/server/doc'
-import { ASSET_PREFIX } from './assets.js'
+import { ASSET_PREFIX, assetUrl } from './assets.js'
+import { measureAsset } from './motifs.js'
+import type { Motif } from '@byd/template'
 import { iconElement } from './canvas.js'
 import { idsOnFace } from './groups.js'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
@@ -407,6 +409,12 @@ export class ProjectClient {
     this.edit({ v: 'removeElement', face, id, ...(group !== undefined ? { group } : {}) })
   }
 
+  // A whole face at once (L17): the ready-made back the designer chose, laid down as one edit
+  // and therefore one step back.
+  replaceFace(face: string, base: Element[]): void {
+    this.edit({ v: 'replaceFace', face, base })
+  }
+
   moveElement(face: string, id: string, to: number): void {
     this.edit({ v: 'moveElement', face, id, to })
   }
@@ -583,6 +591,30 @@ export class ProjectClient {
     if (res.status === 413) throw new Error(t('upload.tooBig'))
     if (!res.ok) throw new Error(t('upload.failed', { status: res.status }))
     return ((await res.json()) as { hash: string }).hash
+  }
+
+  // What is drawn inside each of the deck's pictures (E1): the file's own size and the uniform
+  // border it carries around its motif, so a template can fit the motif rather than the file.
+  //
+  // The server is asked first, because the measurement is of the bytes and is therefore made once
+  // for everyone. Whatever it does not know is measured here, where the browser has already
+  // decoded the picture in order to show it, and told back — which is what lets a deck made
+  // before there was anything to measure catch up the first time it is opened. A picture that
+  // cannot be measured is left out, and such a card is then drawn by its file as it always was.
+  // `measure` is how a file is measured, as it is for text (E6): the browser's own canvas by
+  // default, and something else where there is no browser to ask.
+  async motifs(hashes: readonly string[], measure: (url: string) => Promise<Motif | null> = measureAsset): Promise<Record<string, Motif>> {
+    if (hashes.length === 0) return {}
+    const res = await fetch(`${this.http}/assets/motifs?of=${hashes.join(',')}`, withCredentials())
+    const known = res.ok ? ((await res.json()) as Record<string, Motif>) : {}
+    for (const hash of hashes) {
+      if (known[hash]) continue
+      const motif = await measure(assetUrl(this.http, hash))
+      if (!motif) continue
+      known[hash] = motif
+      await fetch(`${this.http}/assets/${hash}/motif`, withCredentials({ method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(motif) }))
+    }
+    return known
   }
 
   // Saving makes a version (B4). With a socket the actor makes it, so everyone with the project

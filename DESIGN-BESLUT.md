@@ -710,6 +710,35 @@ En bild är en innehållsadresserad asset (DRIFT §4): raden bär `asset:<hash>`
 Kompilatorn får en URL där den anropas: i webbläsaren `/assets/<hash>`, på servern en data-URL ur lagret, så den kompilerade sidan bär sina bilder och renderworkern behöver inget annat än sidan.
 Wizarden laddar upp sina valda bilder innan projektet skapas och pekar på dem på samma sätt.
 
+En bild på flera kort på en gång (prototypat och byggt 2026-09-14):
+Tre sätt prövades: en bildruta i handlingsraden för de markerade korten (#17), spelets bilder i brickan som mål, och en låda som öppnas ur raden.
+Valet blev bildrutan i raden: när kolumnen raden skriver är ett bildfält byter värdefältet form och blir en plats att släppa en bild eller välja en fil på, och knappen säger "Sätt bild på N kort".
+Brickan förkastades för att den växer till två rader så snart ett kort är markerat och skjuter hela tabellen nedåt; lådan för att den lägger ett steg och en panel mellan raden och korten den handlar om.
+En vald fil laddas upp en gång oavsett hur många kort den hamnar på, vilket är samma regel cellen redan följer.
+Raden släpper bilden när den är satt: en kvarhållen bild och en ny markering är en bild skriven av misstag.
+Samtidigt stängdes hålet som låg bredvid: ett bildfält går inte längre att skriva ren text i från handlingsraden, som tidigare bjöd en textruta för varje kolumn.
+
+Bildernas storlek jämnas ut på motivet, inte på filen (byggt 2026-09-14):
+En leks illustrationer kommer en fil per kort, och två filer som bär samma motiv bär det sällan i samma storlek — den ena har en handsbredd genomskinlig luft runt teckningen, den nästa nästan ingen.
+Passas filen in i ramen ritas därför motivet olika stort på varje kort, och det är inget mallen kan säga något om: den vet bara att där sitter en bild.
+Tre vägar prövades: ett gemensamt mått att passa in efter (alla bilder exakt ramens höjd eller bredd), justering per kort i tabellen, och automatisk beskärning av tomrummet.
+Valet blev beskärningen, därför att den tar orsaken och inte symptomet: ett gemensamt mått jämnar ut filerna men inte det som är ritat i dem, och justering per kort är fyrtio handgrepp som måste göras om när bilderna byts.
+
+Motivets ruta är filens egen pixelstorlek plus den enfärgade eller genomskinliga ram den bär runt det som är ritat.
+Marken är den översta vänstra pixeln och bara om de tre andra hörnen säger samma sak; en bild vars hörn är oense har ingen mark att skala bort och lämnas orörd, liksom en bild som är idel mark.
+Toleransen är åtta steg per kanal, eftersom ett fotografis vita aldrig är ett enda tal.
+
+Mätningen är av bytesen, så den görs en gång per innehållshash och ligger bredvid typen och storleken i `assets` — samma cachning som E4:s screening förutsätter.
+Den görs i webbläsaren, som redan har avkodat filen för att visa den: det kostar en uppritning och lägger ingen bildavkodare i appcontainern, som medvetet är utan Chromium (DRIFT §6).
+Klienten frågar servern först och mäter bara det servern inte vet, och berättar sedan — så en lek gjord innan det fanns något att mäta hinner ifatt första gången den öppnas.
+Den första mätningen är mätningen: en andra skriver inte över, eftersom samma bytes alltid bär samma motiv och en bild kan sitta i tio andras lekar.
+En mätning som inte kan vara av en bild — en ram som äter hela bilden, negativa tal — tas inte emot, för en lagrad mätning beskär varje kort som använder filen.
+
+Valet i mallen är en växel på bildelementet, `trim`, och inte ett läge till i `fit`: de två frågorna är olika — vad som passas in, och hur det möter ramen — och de besvaras oberoende.
+Kompilatorn passar in motivet enligt elementets `fit` och lägger sedan filen runt det i samma skala; ramen beskär som den alltid gjort.
+Därför bär ett bildelement nu en ram i markupen, `<div data-element><img class="byd-art">`, i stället för att vara bilden: `data-element` är ramen designern greppar, vilken inpassning som än gäller.
+En fil som ingen har mätt passas in som en fil, så växeln kan aldrig tappa bort en bild.
+
 ### E2. En enda renderare: HTML/CSS via headless Chromium (fråga 9)
 
 Mallen är HTML och CSS.
@@ -875,6 +904,13 @@ Varje spel säger hur många bord det har och när ett av dem senast spelades vi
 Kortets ansikte öppnar editorn. Menyn bredvid startar ett bord och lämnar rumskoden på plats med en väg till bordets skärm, eller tar bort spelet efter en fråga; hela historien följer med och det går inte att ångra.
 Ett fel i en åtgärd tar aldrig spelen från skärmen; bara en sida som inte gick att läsa alls ersätter dem.
 CORS-svaret tillät inte DELETE, så borttagningen stoppades i webbläsaren utan att servern märkte något. Ett test på preflight-svaret täcker nu varje metod API:et faktiskt betjänar.
+
+Solfjädern på spelkortet 2026-09-14 (prototypat, variant D av sex):
+De fyra korten på spelets kort är spelets egna kort, inte fyra rektanglar färgade ur spelets id.
+Urvalet är jämnt spritt över leken med första och sista kortet med, så en lek på hundra kort visar sin bredd och inte bara det som skrevs först; urvalet följer lekens ordning, så samma spel ser likadant ut varje gång det listas.
+Varje kort bär sin titel och kortets egen färg — samma `hue(cardRef)` som vid bordet — så ett kort man känner igen i spel känns igen i listan. En titel som inte får plats bryts över flera rader, avstavad där sidans språk tillåter det, i stället för att försvinna under nästa kort; ett kort utan titel svarar på sitt id som överallt annars.
+En lek utan kort säger "inga kort än" i solfjäderns ställe och behåller platsen, så rutnätet står jämnt.
+`GET /projects` bär urvalet: `peekCards` väljer i `packages/server/src/names.ts`, och båda lagren — minnets och Postgres — ger samma svar. Postgres hämtar bara id och titel ur dokumentet, aldrig hundra hela rader för att rita fyra kort.
 
 ### G2. Kommunikation: ingen inbyggd röst (fråga 19)
 
@@ -2489,6 +2525,51 @@ Textens färg och formens linje är fortfarande enfärgade. De kan ta samma `Pai
 Färgblindhetskontrollen (E5) läser den färg raden faktiskt får, alltså kortet i handen och inte mallen i abstrakt form.
 
 Byggt 2026-09-14 (ingen prototyp: växeln och listan är egenskapspanelens egna former, och regeln ritar ingen ny yta).
+
+### L17. En form är en väg, och en väg bär mönster och skugga (prototypat 2026-09-14)
+
+Formvokabuläret var `rect`, `circle` och `line`, och av dem nådde bara fyllningen egenskapspanelen: det gick inte ens att välja cirkel i editorn, och en linje ritades som en rektangel.
+Nu ritas varje form som en path i en SVG inuti sitt element.
+En kodväg för rektangeln, sexhörningen och linjen, och konturen betyder samma sak i alla tre.
+
+Vokabuläret är en parametrisk kärna med ett galleri ovanpå, vilket är L14:s mönster igen — en dörr, inte en grind.
+Kärnan är `polygon` (hörnantal, vridning) och `star` (uddar, vridning, uddjup); tillsammans täcker de triangel, romb, kvadrat, femhörning, sexhörning i båda lägena, oktagon och varje stjärna.
+`shield`, `banner` och `arrow` är konturer ett hörnantal inte kan beskriva och står som egna namn.
+En kapsel är ingen egen form utan en rektangel med en radie större än rutan; galleriet skriver ut det i rutans egna mått, så dokumentet säger en siffra och inte ett magiskt ord.
+
+Formen passas in i sin ruta i stället för att skrivas in i en cirkel inuti den.
+Motivering: rutan är det designern drar i, hörnhandtagen hänger på den och hjälplinjerna snäpper mot dess kanter — exakt samma skäl som gav bilden `cover` (L1, 2026-09-12).
+En form som slutar före rutans kanter får hela editorn att peka på kortets papper i stället för på något som syns, och en roterad fyrhörning inskriven i en ellips fyllde inte rutan alls.
+Priset är att en sexhörning i en bred ruta är en bred sexhörning, vilket är vad ett ombrytningsverktyg gör.
+
+Konturen ligger innanför rutan, som den ram den ersätter.
+En `border` i CSS ritas innanför rutan medan en `stroke` i SVG grenslar linjen den ligger på, så vägen dras in med halva linjebredden: linjens yttre kant hamnar exakt på rutan.
+
+Mönstret är ett lager över fyllningen, inte en fyllning i sig.
+Därför fortsätter en fyllning som följer en kolumn (L16) att göra det, och mönstret rider på den färg raden än landar på.
+Fem sorter — ränder, rutnät, prickar, romber, fiskben — med färg, storlek och vinkel; rutnätet vridet 45° är korsskraffering och ränderna vridna 45° är diagonaler, vilket är varför vinkeln förtjänar sin plats och inte två sorter till.
+Brickan namnges efter kortet den hör till: många kort delar en sida i kortväggen och i tryckarket, och två brickor under samma id hade lämnat varje kort med det första kortets mönster — ett fel som bara visar sig när en lek har två av något.
+
+Skuggan är ett filter på elementet och inte på vägen, så den följer den form som faktiskt ritades: en sexhörning kastar en sexhörnings skugga.
+Reglaget är fyra förval — ingen, mjuk, hård, upphöjd — med ett `Anpassa` som fäller ut riktning, avstånd, mjukhet, färg och genomskinlighet.
+Genomskinligheten är ett eget tal och inte en del av färgen, eftersom väljaren som plockar en färg inte kan säga hur genomsiktlig den är, och en skugga som inte är genomsiktlig är en utstansning.
+Skuggan sitter på formen. Modellen är skriven så att den kan flyttas upp till alla element den dag det behövs, men skugga på text är en tryckrisk (E5) som behöver egen validering och inget i editorn skapar en sådan i dag.
+
+Den fysiska kontrollen läser båda färgerna på en mönstrad platta.
+Text som syns mellan ränderna och försvinner på dem är ett kort som faller i handen medan kontrollen kallade det helt, så kontrasten mäts mot den sämsta av fyllningen och mönstrets bläck.
+
+Baksidan erbjuder färdiga ryggar.
+Var och en är en vanlig elementlista — botten med mönster, en inre kant, ibland en medaljong — så den går att ta isär och ändra efteråt; det är en utgångspunkt och inte en låst bild.
+Galleriet står framme i lagerpanelen så snart baksidan är öppen, inte bakom en knapp: den som landar på en tom baksida ska se vägen vidare utan att leta efter den.
+
+Följdkrav:
+Varje ny namngiven form är en modelländring och ett beslut här; den parametriska kärnan finns just för att listan inte ska växa för varje önskemål.
+Galleriets glyfer ritas av samma `pathFor` som kortet, och mönstersvalen av samma `tileMarkup`, så bilden på knappen kan aldrig säga emot vad ett tryck på den ger.
+En glyfruta är bredare än hög: en kapsel i en kvadratisk ruta är en cirkel, och ett galleri där två knappar ritar samma bild går inte att läsa.
+
+Prototypat 2026-09-14: tre paneler — allt staplat, panel med flikar, galleri på duken.
+Valet blev den staplade panelen, som är precis hur panelen redan beter sig för text, med baksidesgalleriet hämtat från flikvarianten.
+Flikarna göms fyllningen medan formen väljs och inför en navigering inuti en panel som inte har någon; galleriet på duken skilde formen från sina egna siffror.
 
 ### L14. Ett spel utan den guidade starten (2026-09-13)
 

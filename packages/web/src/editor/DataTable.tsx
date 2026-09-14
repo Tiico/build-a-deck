@@ -198,6 +198,17 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
       setUploadError(err instanceof Error ? err.message : String(err))
     }
   }
+  // The same upload, for the action row rather than for a cell: the file becomes one asset and the
+  // row holds it until the button is pressed. One file, one upload, however many cards it lands on.
+  const bulkUpload = async (file: File | undefined) => {
+    if (!file || !onUpload) return
+    try {
+      setBulkImage(await onUpload(file))
+      setUploadError(null)
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : String(err))
+    }
+  }
   const [sort, setSort] = useState<SortState | null>(null)
   const [filter, setFilter] = useState<FilterState>(noFilter)
   const [selected, setSelected] = useState<Selection>(noSelection)
@@ -217,6 +228,11 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // is not a change worth pressing by mistake, so the button waits for one.
   const [bulkField, setBulkField] = useState<string | null>(null)
   const [bulkValue, setBulkValue] = useState('')
+  // And what it writes when the column is a bild (E1): the image itself, since a bildfält is not a
+  // sentence anyone can type. The hash is held until the button is pressed, exactly as the typed
+  // value is.
+  const [bulkImage, setBulkImage] = useState<string | null>(null)
+  const [bulkOver, setBulkOver] = useState(false)
   // Whether the head's last cell is showing the form that makes a column, and which column has
   // been asked about taking away (#32).
   const [adding, setAdding] = useState(false)
@@ -464,6 +480,21 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // The column the action row writes: the designer's choice, or the table's first column until
   // one is made.
   const field = bulkField ?? fields[0] ?? 'antal'
+  // What the row would write, and whether there is anything to write at all. One question for
+  // both shapes of value: a bildfält holds an image and every other column holds what has been
+  // typed, but pressing the button is the same action either way, so it is one button and one
+  // reading of what it is about to do. `null` is the empty hand — a change nobody chose is not
+  // worth pressing by mistake.
+  const bulkIsImage = imageFields.includes(field)
+  const bulkWrites: Cell | null = bulkIsImage
+    ? bulkImage === null
+      ? null
+      : assetRef(bulkImage)
+    : bulkValue === ''
+      ? null
+      : field === ANTAL
+        ? Number(bulkValue)
+        : bulkValue
   // A question about cards that are no longer marked is not a question any more: unmarking them,
   // or filtering them away, takes it back. The same holds for the question one row asks (#8): a
   // filter that takes the card off the screen takes its question with it.
@@ -628,22 +659,55 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                 ))}
               </select>
             </label>
-            <input
-              type={field === 'antal' ? 'number' : 'text'}
-              min={field === 'antal' ? 0 : undefined}
-              aria-label={t('table.value')}
-              value={bulkValue}
-              onChange={(event) => setBulkValue(event.target.value)}
-            />
+            {/* A bildfält is written with an image and never with a sentence (E1). The cell
+                already knows that; the action row used to offer a text field for it, which wrote
+                prose into a column the template draws as a picture. So the value takes the shape
+                of the column: a place to drop one of the deck's images, and nothing to type. */}
+            {bulkIsImage && assetBase ? (
+              <div
+                className="byd-data-drop"
+                role="group"
+                aria-label={t('table.bulk.image')}
+                data-over={bulkOver ? 'true' : undefined}
+                onDragOver={(event) => {
+                  event.preventDefault()
+                  setBulkOver(true)
+                }}
+                onDragLeave={() => setBulkOver(false)}
+                onDrop={(event) => {
+                  event.preventDefault()
+                  setBulkOver(false)
+                  const hash = event.dataTransfer.getData(ASSET_DRAG_TYPE)
+                  if (hash) setBulkImage(hash)
+                  else void bulkUpload(event.dataTransfer.files?.[0])
+                }}
+              >
+                {bulkImage ? <img src={assetUrl(assetBase, bulkImage)} alt={t('table.bulk.image')} /> : <span>{t('table.image.drop')}</span>}
+                <label className="byd-data-file">
+                  {bulkImage ? t('table.image.replace') : t('table.image.choose')}
+                  <input type="file" accept="image/*" aria-label={t('table.bulk.image.choose')} onChange={(event) => void bulkUpload(event.target.files?.[0])} />
+                </label>
+              </div>
+            ) : (
+              <input
+                type={field === ANTAL ? 'number' : 'text'}
+                min={field === ANTAL ? 0 : undefined}
+                aria-label={t('table.value')}
+                value={bulkValue}
+                onChange={(event) => setBulkValue(event.target.value)}
+              />
+            )}
             <button
               type="button"
-              disabled={bulkValue === ''}
+              disabled={bulkWrites === null}
               onClick={() => {
-                onReplaceRows(setColumn(doc.rows, chosenIds, field, field === 'antal' ? Number(bulkValue) : bulkValue))
+                if (bulkWrites === null) return
+                onReplaceRows(setColumn(doc.rows, chosenIds, field, bulkWrites))
                 setBulkValue('')
+                setBulkImage(null)
               }}
             >
-              {t('table.bulk.set', { field, n: chosen.length })}
+              {bulkIsImage ? t('table.bulk.setImage', { n: chosen.length }) : t('table.bulk.set', { field, n: chosen.length })}
             </button>
             <button type="button" onClick={() => onReplaceRows(duplicateRows(doc.rows, chosenIds))}>
               {t(chosen.length === 1 ? 'table.bulk.duplicate.one' : 'table.bulk.duplicate.other', { n: chosen.length })}

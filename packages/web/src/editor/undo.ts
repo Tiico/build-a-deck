@@ -29,6 +29,7 @@ export function whatOf(intent: EditIntent): Key {
     case 'addElement':
     case 'removeElement':
     case 'moveElement':
+    case 'replaceFace':
     case 'resetElement':
     case 'setGroupColumn':
       return 'undo.what.template'

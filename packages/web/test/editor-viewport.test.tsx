@@ -15,6 +15,7 @@ import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import { atWidth } from './viewport.js'
+import { layerPick } from './layers.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
@@ -62,6 +63,36 @@ async function newField(width: number): Promise<Record<string, string>> {
     fireEvent.click(screen.getByRole('button', { name: 'Kolumner' }))
     await screen.findByRole('form', { name: 'Nytt fält' })
     return { 'Nytt fält': document.querySelector('.byd-editor')!.outerHTML }
+  } finally {
+    unmount()
+  }
+}
+
+// The property panel with a shape selected (L17), which none of the tabs above can show: the
+// panel is empty until something is picked, so the gallery, the tiles and the shadow's chips —
+// the densest thing the 280 px column ever holds — were measured by nothing at all. The back is
+// captured too, because that is where the ready-made backs stand beside the layers.
+async function shapePanel(width: number): Promise<Record<string, string>> {
+  atWidth(width)
+  history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+  const { unmount } = render(<EditorPage />)
+  try {
+    await screen.findByText('Skogens herrar')
+    const out: Record<string, string> = {}
+    fireEvent.click(screen.getByRole('tab', { name: 'Mall' }))
+    // The fixture's front carries `frame`, a rectangle; picking it fills the property panel.
+    await screen.findByRole('grid', { name: /lager/i })
+    fireEvent.click(layerPick('frame'))
+    // Everything the panel can hold at once: a star has the most numbers, and a pattern and a
+    // shadow opened by hand put the rest of the controls on the screen beside them.
+    fireEvent.click(screen.getByRole('button', { name: 'Stjärna' }))
+    fireEvent.click(screen.getByLabelText('Mönster över fyllningen'))
+    fireEvent.click(screen.getByRole('button', { name: 'Mjuk' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Anpassa' }))
+    out['Mall · form'] = document.querySelector('.byd-editor')!.outerHTML
+    fireEvent.click(screen.getByRole('radio', { name: 'Baksida' }))
+    out['Mall · baksida'] = document.querySelector('.byd-editor')!.outerHTML
+    return out
   } finally {
     unmount()
   }
@@ -185,6 +216,40 @@ describe.each(WIDTHS)('the editor at %ipx', (width) => {
 
   it('never makes the page scroll sideways', async () => {
     const measured = await measure(width, (page) => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth))
+    expect(measured).toEqual(nothing(measured, 0))
+  }, 90_000)
+})
+
+// The property panel with a shape in it (L17), held to the same two rules the tabs are: nothing
+// in it is smaller than a target, and nothing in it pushes the page sideways. It is the densest
+// thing the editor's narrowest column ever holds — seventeen outlines, five tiles, four chips and
+// five sliders — so it is the first place a panel would burst.
+//
+// Only where there is a canvas: below 768 px the editor has none at all (L10), so there is no
+// property panel to measure and nothing this would be saying anything about.
+describe.each([1024, 1280] as const)('the shape panel at %ipx', (width) => {
+  it('gives every control a 44 by 44 pixel hit area', async () => {
+    const measured = await measure(
+      width,
+      (page) =>
+        page.$$eval(TARGETS, (els) =>
+          els
+            .filter((el) => el.checkVisibility())
+            .map((el) => {
+              const target = el.closest('label') ?? el
+              const box = target.getBoundingClientRect()
+              return { what: (el.getAttribute('aria-label') ?? el.textContent ?? el.tagName).trim().slice(0, 24), w: Math.round(box.width), h: Math.round(box.height) }
+            })
+            .filter(({ w, h }) => w < 44 || h < 44)
+            .map(({ what, w, h }) => `${what}: ${w}×${h}`),
+        ),
+      shapePanel,
+    )
+    expect(measured).toEqual(nothing(measured, [] as string[]))
+  }, 90_000)
+
+  it('never makes the page scroll sideways', async () => {
+    const measured = await measure(width, (page) => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), shapePanel)
     expect(measured).toEqual(nothing(measured, 0))
   }, 90_000)
 })

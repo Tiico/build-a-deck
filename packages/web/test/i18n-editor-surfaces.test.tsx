@@ -77,7 +77,7 @@ describe('the editor\'s newer surfaces in the reader\'s own language (A4)', () =
     expect(screen.getByRole('button', { name: 'Leave without saving' })).toBeTruthy()
     // The game's own name is the designer's and stays as she wrote it (A4, B5).
     expect(document.body.textContent).toContain('Skogens herrar')
-    expect(document.body.textContent).not.toMatch(/Osparade|lämna/)
+    expect(document.body.textContent).not.toMatch(/Osparat|lämna/)
   })
 
   it('says what a phone does not offer, and names the stages, in English', async () => {

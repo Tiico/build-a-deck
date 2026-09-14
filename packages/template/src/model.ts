@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { SHAPES } from './shapes.js'
 
 // Optional fields have defaults applied by the compiler, so a template can be authored sparsely.
 // The template element model (L1): a small, closed set of typed elements with positions in
@@ -48,6 +49,13 @@ export const ImageElement = z.object({
   // fits the whole picture inside the frame instead, and is the one that can leave the card's
   // paper showing between the picture and its own edges.
   fit: z.enum(['cover', 'contain', 'fill']).optional(),
+  // Fit what is drawn rather than the file it arrived in (E1). A deck's art is one file per
+  // card, and two files holding the same motif rarely hold it at the same size — one carries a
+  // wide transparent border, the next almost none — so fitting files draws the motif a different
+  // size on every card. With this on, the uniform border a file carries is measured once per
+  // asset and left out of the fitting, and the picture is then cropped by the frame as ever.
+  // A file nothing has measured is fitted as a file, so a picture is never lost to this.
+  trim: z.literal(true).optional(),
 })
 export const IconsElement = z.object({
   kind: z.literal('icons'),
@@ -82,15 +90,66 @@ export function paintOf(paint: Paint | undefined, row: Row): string | undefined 
   return named ?? paint.else
 }
 
+// A shadow (L17): how far the shape is lifted off the paper, how softly, and in what colour.
+// Transparency is its own number rather than part of the colour, because the tool that picks a
+// colour cannot say how see-through it is — and a shadow that is not see-through is a cut-out.
+export const Shadow = z.object({
+  dxMm: Mm,
+  dyMm: Mm,
+  blurMm: Mm.nonnegative(),
+  color: z.string().min(1),
+  opacity: z.number().min(0).max(1).optional(),
+})
+export type Shadow = z.infer<typeof Shadow>
+
+// A pattern (L17): ink repeated over the fill. It is a layer and not a fill of its own, so a
+// fill that follows a column (L16) keeps following it and the pattern rides on whatever colour
+// the row lands on. `weight` is how much of each tile the ink takes, from a hairline to nearly
+// solid; what that means is the pattern's own business, which is why one number covers all five.
+export const Pattern = z.object({
+  kind: z.enum(['stripes', 'grid', 'dots', 'diamonds', 'chevron']),
+  color: z.string().min(1),
+  scaleMm: Mm.positive(),
+  angleDeg: z.number().optional(),
+  weight: z.number().positive().max(1).optional(),
+})
+export type Pattern = z.infer<typeof Pattern>
+
 export const ShapeElement = z.object({
   kind: z.literal('shape'),
   ...Box,
-  shape: z.enum(['rect', 'circle', 'line']),
+  shape: z.enum(SHAPES),
   fill: Paint.optional(),
   stroke: z.string().optional(),
   strokeMm: Mm.nonnegative().optional(),
   radiusMm: Mm.nonnegative().optional(),
+  // The parametric core (L17). `corners` is a polygon's sides and a star's points; `innerRatio`
+  // is how deep a star's valleys cut; `rotationDeg` turns either of them. A shape that does not
+  // read a property ignores it rather than rejecting it, so switching a hexagon to a circle and
+  // back does not lose the six.
+  corners: z.number().int().min(3).max(48).optional(),
+  innerRatio: z.number().min(0.05).max(0.95).optional(),
+  rotationDeg: z.number().optional(),
+  pattern: Pattern.optional(),
+  shadow: Shadow.optional(),
 })
+
+// The one way from a shadow to the colour it is drawn in, for the same reason `paintOf` is the
+// one way from a fill to one: the compiler and the editor's preview can never disagree about it.
+export function shadowCss(shadow: Shadow): string {
+  const colour = shadow.opacity === undefined ? shadow.color : rgba(shadow.color, shadow.opacity)
+  return `drop-shadow(${shadow.dxMm}mm ${shadow.dyMm}mm ${shadow.blurMm}mm ${colour})`
+}
+
+// A colour the reader named, made see-through. A colour this cannot read is carried through as
+// it is: a shadow in a colour the tool never offered is still better than no shadow at all.
+function rgba(colour: string, opacity: number): string {
+  const digits = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(colour.trim())?.[1]
+  if (digits === undefined) return colour
+  const h = digits.length === 3 ? [...digits].map((c) => c + c).join('') : digits
+  const n = Number.parseInt(h, 16)
+  return `rgb(${(n >> 16) & 255} ${(n >> 8) & 255} ${n & 255} / ${opacity})`
+}
 
 // Conditions (L3): show the children only when a field is non-empty or equals a value.
 export const Condition = z.union([

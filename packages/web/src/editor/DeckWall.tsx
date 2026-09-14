@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import type { ProjectDoc } from '@byd/server'
-import type { Warning } from '@byd/template'
+import type { Motif, Warning } from '@byd/template'
 import { CardPreview } from './CardPreview.js'
 import { previewIcons } from './assets.js'
 import { previewFonts } from './fonts.js'
@@ -15,6 +15,8 @@ export type DeckWallProps = {
   onSelectElement(id: string): void
   scale?: number
   assetBase?: string | undefined
+  // What is drawn inside each picture (E1), keyed by the URL a resolved row carries.
+  motifs?: Record<string, Motif> | undefined
 }
 
 // The eyes a card is read with (E5). The simulations are the transforms the check uses, applied
@@ -37,7 +39,7 @@ const ARM_SCALE = 0.34
 // The deck as a wall (C as the home view): every row as a card, copies and faults on each, the
 // whole deck visible at once — a balance change on forty cards is seen as one thing. Beside it
 // the physical checks (E5), gathered by kind, and the eyes to read the deck with.
-export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, scale = 0.6, assetBase }: DeckWallProps) {
+export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, scale = 0.6, assetBase, motifs }: DeckWallProps) {
   const t = useT()
   const faceTemplate = doc.template.faces[face]
   // The fonts the version is pinned to (B3), worked out once per document: a fresh object every
@@ -105,6 +107,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
                 fonts={fonts}
                 scale={arm ? ARM_SCALE : scale}
                 assetBase={assetBase}
+                motifs={motifs}
                 onSelectElement={onSelectElement}
                 onWarnings={(w) => onWarnings(cardRef, w)}
               />
