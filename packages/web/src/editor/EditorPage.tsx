@@ -306,6 +306,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         motifs={deckMotifs}
         face={face}
         onSelectFace={setFace}
+        onReplaceFace={(base) => client.replaceFace(face, base)}
         row={row}
         selectedElement={element}
         onSelectElement={setElement}

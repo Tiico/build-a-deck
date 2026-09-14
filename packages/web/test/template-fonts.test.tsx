@@ -30,6 +30,7 @@ function canvas(over: Partial<React.ComponentProps<typeof TemplateCanvas>> = {})
     onGroupColumn: vi.fn(),
     onAddField: vi.fn(),
     onReset: vi.fn(),
+    onReplaceFace: vi.fn(),
     onFontFile: vi.fn(async () => 'Rubrikserif'),
     onFontLicence: vi.fn(),
     onRemoveFont: vi.fn(),

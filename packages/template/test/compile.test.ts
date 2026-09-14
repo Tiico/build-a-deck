@@ -107,7 +107,11 @@ describe('image, icons and shape elements (L1)', () => {
     expect(out.html.match(/class="byd-icon"/g)).toHaveLength(3)
     expect(out.html).toContain('data-element="cost"')
     expect(out.css).toContain('[data-element="cost"] .byd-icon{height:5mm;width:5mm;margin-right:1mm;}')
-    expect(out.css).toContain('[data-element="frame"]{left:1mm;top:1mm;width:61mm;height:86mm;background:#fff;border:0.5mm solid #000;border-radius:3mm;}')
+    expect(out.css).toContain('[data-element="frame"]{left:1mm;top:1mm;width:61mm;height:86mm;}')
+    // The frame is a rounded path with the line inside the box, not a CSS border (L17).
+    expect(out.html).toContain('<div data-element="frame"><svg')
+    expect(out.html).toContain('fill="#fff"')
+    expect(out.html).toContain('stroke="#000"')
     expect(out.warnings).toEqual([])
   })
 
@@ -286,7 +290,12 @@ describe('what an element carries for the designer and not for the card (L15)', 
 describe('a fill that follows a column (L16)', () => {
   const plate = (fill: unknown) => ({ kind: 'shape' as const, id: 'plate', x: 0, y: 0, w: 63, h: 20, shape: 'rect' as const, fill: fill as string })
   const card = (fill: unknown): FaceTemplate => ({ base: [plate(fill)], variants: {} })
-  const backgroundOf = (out: { css: string }) => /\[data-element="plate"\]\{[^}]*background:([^;}]*)/.exec(out.css)?.[1] ?? null
+  // The colour the plate is actually painted, read off the path the compiler drew (L17).
+  // `none` is how SVG says unpainted, which is what a shape with no colour has always been.
+  const backgroundOf = (out: { html: string }) => {
+    const found = /<div data-element="plate">.*?<path[^>]*fill="([^"]*)"/.exec(out.html)?.[1] ?? null
+    return found === 'none' ? null : found
+  }
   const rule = { field: 'typ', map: { eld: '#c0392b', vatten: '#2980b9' }, else: '#7f8c8d' }
 
   it('paints what the row’s value names', () => {
@@ -387,5 +396,107 @@ describe('compile — a picture fitted by its motif rather than by its file (E1)
 
     expect(out.html).toMatch(/<div data-element="art"><img class="byd-art" src="a\.png" alt=""><\/div>/)
     expect(out.css).toContain('[data-element="art"]{left:5mm;top:4mm;width:40mm;height:30mm;}')
+  })
+})
+
+// The one place a shape becomes ink (L17). Every shape is a path in an SVG inside its element,
+// so a hexagon, a rectangle and a line are drawn by one code path with one set of meanings —
+// and the stroke of each behaves like the border it replaces: inside the box, never over it.
+describe('shapes are drawn as paths (L17)', () => {
+  const shape = (over: Record<string, unknown> = {}) =>
+    ({ kind: 'shape' as const, id: 'frame', x: 1, y: 1, w: 61, h: 86, ...over }) as unknown as Element
+  const faceOf = (el: Element): FaceTemplate => ({ base: [el], variants: {} })
+  const draw = (el: Element, scope?: string) =>
+    compile({ type: CARD_STANDARD_63x88, face: faceOf(el), row: {}, icons, ...(scope ? { scope } : {}) })
+  const pathsIn = (html: string) => [...html.matchAll(/<path\b[^>]*>/g)].map((m) => m[0])
+  const dOf = (html: string, nth = 0) => /d="([^"]*)"/.exec(pathsIn(html)[nth] ?? '')?.[1] ?? ''
+
+  it('positions the element in millimetres and draws the shape in the box own units', () => {
+    const out = draw(shape({ shape: 'rect', fill: '#ffffff' }))
+    expect(out.css).toContain('[data-element="frame"]{left:1mm;top:1mm;width:61mm;height:86mm;}')
+    expect(out.html).toContain('<div data-element="frame">')
+    expect(out.html).toContain('viewBox="0 0 61 86"')
+    expect(pathsIn(out.html)).toHaveLength(1)
+    expect(dOf(out.html)).toBe('M 0 0 L 61 0 L 61 86 L 0 86 Z')
+  })
+
+  // A border in CSS is drawn inside the box; a stroke in SVG straddles the line it is on. So the
+  // path is inset by half the line, which puts the outer edge of the stroke exactly on the box —
+  // the box stays the truth the handles and the guides stand on.
+  it('keeps the stroke inside the box, as the border it replaces was', () => {
+    const out = draw(shape({ shape: 'rect', fill: '#ffffff', stroke: '#000000', strokeMm: 0.5, radiusMm: 3 }))
+    expect(out.html).toContain('stroke="#000000"')
+    expect(out.html).toContain('stroke-width="0.5"')
+    expect(dOf(out.html)).toContain('M 3.25 0.25')
+  })
+
+  it('draws a polygon with the corner count it was given, and a star with twice as many', () => {
+    const corners = (html: string) => (dOf(html).match(/[ML]/g) ?? []).length
+    expect(corners(draw(shape({ shape: 'polygon', corners: 6, fill: '#abcdef' })).html)).toBe(6)
+    expect(corners(draw(shape({ shape: 'polygon', corners: 3, fill: '#abcdef' })).html)).toBe(3)
+    expect(corners(draw(shape({ shape: 'star', corners: 5, innerRatio: 0.4, fill: '#abcdef' })).html)).toBe(10)
+  })
+
+  // A line is the one shape with no inside. Offering it a fill would let the editor paint
+  // something the designer cannot see and cannot click.
+  it('never fills a line, whatever the fill says', () => {
+    const out = draw(shape({ shape: 'line', h: 0, fill: '#ff0000', stroke: '#333333', strokeMm: 0.4 }))
+    expect(out.html).not.toContain('fill="#ff0000"')
+    expect(out.html).toContain('stroke="#333333"')
+  })
+
+  it('lifts a shape off the paper with a shadow, colour and all', () => {
+    const out = draw(shape({ shape: 'rect', fill: '#ffffff', shadow: { dxMm: 0, dyMm: 0.6, blurMm: 1.2, color: '#000000', opacity: 0.35 } }))
+    expect(out.css).toContain('filter:drop-shadow(0mm 0.6mm 1.2mm rgb(0 0 0 / 0.35))')
+  })
+
+  it('carries a shadow colour through untouched when no transparency is asked for', () => {
+    const out = draw(shape({ shape: 'circle', fill: '#ffffff', shadow: { dxMm: 0.5, dyMm: 0.5, blurMm: 0, color: '#334455' } }))
+    expect(out.css).toContain('filter:drop-shadow(0.5mm 0.5mm 0mm #334455)')
+  })
+})
+
+// A pattern is ink repeated over the fill (L17), which is what makes a card back a card back.
+// It is a second layer on the same path, so a fill that follows a column (L16) keeps following
+// it and the pattern rides on top of whatever colour the row lands on.
+describe('patterned fills (L17)', () => {
+  const back = (pattern: Record<string, unknown>, fill: unknown = '#2f4068'): FaceTemplate => ({
+    base: [{ kind: 'shape', id: 'bg', x: 0, y: 0, w: 63, h: 88, shape: 'rect', fill, pattern } as unknown as Element],
+    variants: {},
+  })
+
+  it('defines the tile once and paints a layer of it over the fill', () => {
+    const out = compile({ type: CARD_STANDARD_63x88, face: back({ kind: 'diamonds', color: '#3a4d7a', scaleMm: 6 }), row: {}, icons })
+    expect(out.html).toContain('patternUnits="userSpaceOnUse"')
+    expect(out.html).toContain('width="6" height="6"')
+    expect(out.html).toContain('#3a4d7a')
+    // The fill underneath is still drawn: the pattern is a layer, not a replacement.
+    expect(out.html).toContain('fill="#2f4068"')
+    const id = /<pattern id="([^"]+)"/.exec(out.html)?.[1]
+    expect(id).toBeTruthy()
+    expect(out.html).toContain(`fill="url(#${id})"`)
+  })
+
+  it('turns the tile by the angle it is given', () => {
+    const out = compile({ type: CARD_STANDARD_63x88, face: back({ kind: 'stripes', color: '#fff', scaleMm: 4, angleDeg: 45 }), row: {}, icons })
+    expect(out.html).toContain('patternTransform="rotate(45)"')
+  })
+
+  // Many cards share one page in the deck wall and in the print sheet. Two tiles under the same
+  // id would leave every card wearing the first card's pattern, which is the kind of fault that
+  // only shows up once a deck has two of something.
+  it('names the tile after the card it belongs to, so two cards on a page never share one', () => {
+    const a = compile({ type: CARD_STANDARD_63x88, face: back({ kind: 'dots', color: '#fff', scaleMm: 3 }), row: {}, icons, scope: '#card-a' })
+    const b = compile({ type: CARD_STANDARD_63x88, face: back({ kind: 'dots', color: '#fff', scaleMm: 3 }), row: {}, icons, scope: '#card-b' })
+    const idOf = (html: string) => /<pattern id="([^"]+)"/.exec(html)?.[1]
+    expect(idOf(a.html)).toBeTruthy()
+    expect(idOf(a.html)).not.toBe(idOf(b.html))
+  })
+
+  it('rides on top of a fill that follows a column (L16)', () => {
+    const face = back({ kind: 'grid', color: '#ffffff', scaleMm: 5 }, { field: 'element', map: { eld: '#8b2e2e' }, else: '#333333' })
+    const eld = compile({ type: CARD_STANDARD_63x88, face, row: { element: 'eld' }, icons })
+    expect(eld.html).toContain('fill="#8b2e2e"')
+    expect(eld.html).toContain('<pattern id=')
   })
 })

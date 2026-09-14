@@ -46,9 +46,11 @@ export function validateCard({ type, face, row, fonts }: ValidateInput): Issue[]
       if (el.font.sizePt < floor) issues.push({ element: el.id, code: 'text-too-small', severity: 'error', values: { sizePt: el.font.sizePt, floor } })
       else if (el.font.sizePt < floor * SMALL_TEXT_FACTOR) issues.push({ element: el.id, code: 'text-too-small', severity: 'warning', values: { sizePt: el.font.sizePt, floor } })
 
+      // A plate can be two inks (L17), and the words have to survive both: the worst of them is
+      // what the reader meets somewhere on the card.
       const behind = behindOf(box, boxes, row)
-      if (behind) {
-        const ratio = contrastRatio(el.color, behind)
+      if (behind.length > 0) {
+        const ratio = Math.min(...behind.map((colour) => contrastRatio(el.color, colour)))
         if (ratio < CONTRAST_ERROR) issues.push({ element: el.id, code: 'low-contrast', severity: 'error', values: { ratio: ratio.toFixed(1), limit: CONTRAST_ERROR } })
         else if (ratio < CONTRAST_WARNING) issues.push({ element: el.id, code: 'low-contrast', severity: 'warning', values: { ratio: ratio.toFixed(1), limit: CONTRAST_WARNING } })
       }
@@ -135,16 +137,22 @@ function shows(when: { field: string; nonEmpty?: true; equals?: string }, row: R
 // What lies behind a text box: the last filled shape drawn under its middle, where the words
 // are. A box is usually wider than the plate it sits on — a cost in a circle, say — so asking
 // for the whole box to be covered would read the paper behind the plate instead of the plate.
-function behindOf(box: Box, boxes: Box[], row: Row): string | null {
+//
+// Every colour of it, not one: a patterned plate (L17) is its fill and the ink repeated over it,
+// and text that reads well between the stripes and vanishes on them is a card that fails in the
+// hand while the check called it fine.
+function behindOf(box: Box, boxes: Box[], row: Row): string[] {
   const cx = box.x + box.w / 2
   const cy = box.y + box.h / 2
-  let found: string | null = null
+  let found: string[] = []
   for (const other of boxes) {
     if (other === box) break
     if (other.el.kind !== 'shape') continue
     const fill = paintOf(other.el.fill, row)
     if (!fill) continue
-    if (other.x <= cx && other.y <= cy && other.x + other.w >= cx && other.y + other.h >= cy) found = fill
+    if (other.x <= cx && other.y <= cy && other.x + other.w >= cx && other.y + other.h >= cy) {
+      found = other.el.pattern ? [fill, other.el.pattern.color] : [fill]
+    }
   }
   return found
 }

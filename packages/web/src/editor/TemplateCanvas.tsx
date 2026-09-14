@@ -3,7 +3,9 @@ import { CARD_STANDARD_63x88 } from '@byd/engine'
 import type { Element, FaceTemplate, ProjectDoc, Row } from './types.js'
 import { CardPreview } from './CardPreview.js'
 import { arrowMove, fitScale, HANDLES, iconSized, movedTo, newElement, resizedTo, snapped, STAGE_SCALE, TOOLS, type Box, type ElementKind, type Grab, type Guides, type Handle } from './canvas.js'
-import { elementsFor, type Motif, type Paint } from '@byd/template'
+import { elementsFor, pathFor, shapeTakes, tileMarkup, type Motif, type Paint, type Pattern, type Shadow } from '@byd/template'
+import { galleryIdOf, glyphGeometry, newPattern, PATTERNS, shadowIdOf, shapeChoice, SHADOWS, SHAPE_GALLERY, type Geometry, type Shape } from './shapes.js'
+import { BACKS } from './backs.js'
 import { previewIcons } from './assets.js'
 import { fieldsOf, takenNames } from './fields.js'
 import { NewField } from './NewField.js'
@@ -30,6 +32,9 @@ export type TemplateCanvasProps = {
   // Which face is being edited (#13, L7). The back is a template like the front, and the switch
   // is what issue #14 hangs the default back and the group's own backs on.
   onSelectFace(face: string): void
+  // A whole face laid down at once (L17): one of the ready-made backs. One edit, because it is
+  // one thing the designer did — see `replaceFace` in the edit vocabulary.
+  onReplaceFace(base: Element[]): void
   // The row the preview shows.
   row: string | null
   selectedElement: string | null
@@ -77,7 +82,7 @@ export type TemplateCanvasProps = {
 // Template mode (A): layers on the left, the card large in the middle with the selected element
 // outlined, and its properties on the right. Every change goes through `onPatch` and lands on
 // every card of the deck — there are no per-card exceptions (L3).
-export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, row, selectedElement, onSelectElement, onPatch, onRemove, onAdd, onPlaceIcon, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onFontFile, onFontLicence, onRemoveFont }: TemplateCanvasProps) {
+export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, onReplaceFace, row, selectedElement, onSelectElement, onPatch, onRemove, onAdd, onPlaceIcon, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onFontFile, onFontLicence, onRemoveFont }: TemplateCanvasProps) {
   const t = useT()
   const faceTemplate = doc.template.faces[face]
   const column = groupColumn(doc)
@@ -139,6 +144,12 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
       {shows('tools') && <ToolRail onAdd={add} onPlaceIcon={onPlaceIcon} />}
       {shows('layers') && (
       <aside className="byd-canvas-layers">
+        {/* The ready-made backs (L17) stand in the open while the back is being edited, above the
+            layers that make it up, rather than behind a button: whoever lands on an empty back
+            should see the way on without hunting for it. Not inside a group — a group's back is
+            an override of the base's (#14), and laying a whole face down there would quietly
+            make every layer of it the group's own. */}
+        {face === 'back' && !group && <BackGallery onReplaceFace={onReplaceFace} />}
         <h2 id="layers-heading">{t('canvas.layers', { face: faceName(face, t).toLowerCase() })}</h2>
         <p className="byd-canvas-affects">{affectsLabel(doc, column, group, t)}</p>
         <LayerList
@@ -967,7 +978,209 @@ function Properties({ el, fields, taken, fonts, icons, valuesIn, onPatch, onAddF
           </label>
         </>
       )}
-      {el.kind === 'shape' && <Fill fill={el.fill} fields={fields} valuesIn={valuesIn} onPatch={onPatch} />}
+      {el.kind === 'shape' && <ShapeProps el={el} fields={fields} valuesIn={valuesIn} onPatch={onPatch} />}
+    </div>
+  )
+}
+
+// Everything a shape is (L17): which outline, the numbers that outline reads, what fills it, and
+// what it casts. Stacked in the order a designer works in — the shape first, because every other
+// control here answers to it.
+function ShapeProps({ el, fields, valuesIn, onPatch }: { el: Shape; fields: string[]; valuesIn(field: string): string[]; onPatch(patch: Partial<Element>): void }) {
+  const t = useT()
+  const takes = shapeTakes(el.shape)
+  const chosen = galleryIdOf(el)
+  // A line has no inside (L17), so it is offered no fill and no pattern — only the line itself.
+  const solid = el.shape !== 'line'
+  return (
+    <>
+      <h3 className="byd-props-heading">{t('canvas.props.shape')}</h3>
+      <div className="byd-props-gallery" role="group" aria-label={t('canvas.props.shape')}>
+        {SHAPE_GALLERY.map((entry) => (
+          <button key={entry.id} type="button" aria-label={t(entry.name)} title={t(entry.name)} aria-pressed={chosen === entry.id} onClick={() => onPatch(shapeChoice(entry, el))}>
+            <ShapeGlyph geometry={glyphGeometry(entry, GLYPH)} />
+          </button>
+        ))}
+      </div>
+      {takes.corners && (
+        <label>
+          {t('canvas.props.corners')}
+          <input type="number" min={3} max={24} value={el.corners ?? 6} onChange={(e) => onPatch({ corners: Number(e.target.value) })} />
+        </label>
+      )}
+      {takes.radius && (
+        <label>
+          {t('canvas.props.radius')}
+          <input type="number" min={0} step={0.5} value={el.radiusMm ?? 0} onChange={(e) => onPatch({ radiusMm: Number(e.target.value) })} />
+        </label>
+      )}
+      {takes.rotation && (
+        <label className="byd-props-wide">
+          {t('canvas.props.rotation')}
+          <input type="range" min={0} max={360} value={el.rotationDeg ?? 0} onChange={(e) => onPatch({ rotationDeg: Number(e.target.value) })} />
+        </label>
+      )}
+      {takes.innerRatio && (
+        <label className="byd-props-wide">
+          {t('canvas.props.innerRatio')}
+          <input type="range" min={5} max={95} value={Math.round((el.innerRatio ?? 0.45) * 100)} onChange={(e) => onPatch({ innerRatio: Number(e.target.value) / 100 })} />
+        </label>
+      )}
+      <label>
+        {t('canvas.props.stroke')}
+        <input type="color" value={el.stroke ?? '#111111'} onChange={(e) => onPatch({ stroke: e.target.value, ...((el.strokeMm ?? 0) > 0 ? {} : { strokeMm: 0.5 }) })} />
+      </label>
+      <label>
+        {t('canvas.props.strokeMm')}
+        <input type="number" min={0} step={0.1} value={el.strokeMm ?? 0} onChange={(e) => onPatch({ strokeMm: Number(e.target.value) })} />
+      </label>
+      {solid && <Fill fill={el.fill} fields={fields} valuesIn={valuesIn} onPatch={onPatch} />}
+      {solid && <PatternProps pattern={el.pattern} fill={el.fill} onPatch={onPatch} />}
+      <ShadowProps shadow={el.shadow} onPatch={onPatch} />
+    </>
+  )
+}
+
+// A pattern is a layer over the fill and not a fill of its own (L17), which is what the switch's
+// wording has to carry: turning it on changes nothing about the colour underneath.
+function PatternProps({ pattern, fill, onPatch }: { pattern: Pattern | undefined; fill: Paint | undefined; onPatch(patch: Partial<Element>): void }) {
+  const t = useT()
+  return (
+    <>
+      <label className="byd-props-switch">
+        <input type="checkbox" checked={pattern !== undefined} onChange={(e) => onPatch({ pattern: e.target.checked ? newPattern(fill) : undefined })} />
+        {t('canvas.props.pattern')}
+      </label>
+      {pattern && (
+        <div className="byd-props-paint">
+          {/* Named for what the tiles are and not for the switch above them: two things under
+              one name is a reader hearing the same words twice and learning nothing. */}
+          <div className="byd-props-gallery" role="group" aria-label={t('canvas.props.pattern.kind')}>
+            {PATTERNS.map((kind) => (
+              <button key={kind.kind} type="button" aria-label={t(kind.name)} title={t(kind.name)} aria-pressed={pattern.kind === kind.kind} onClick={() => onPatch({ pattern: { ...pattern, kind: kind.kind } })}>
+                <PatternGlyph kind={kind.kind} />
+              </button>
+            ))}
+          </div>
+          <label>
+            {t('canvas.props.pattern.color')}
+            <input type="color" value={pattern.color} onChange={(e) => onPatch({ pattern: { ...pattern, color: e.target.value } })} />
+          </label>
+          <label>
+            {t('canvas.props.pattern.scale')}
+            <input type="number" min={0.5} step={0.5} value={pattern.scaleMm} onChange={(e) => onPatch({ pattern: { ...pattern, scaleMm: Number(e.target.value) } })} />
+          </label>
+          <label>
+            {t('canvas.props.pattern.angle')}
+            <input type="range" min={0} max={180} value={pattern.angleDeg ?? 0} onChange={(e) => onPatch({ pattern: { ...pattern, angleDeg: Number(e.target.value) } })} />
+          </label>
+        </div>
+      )}
+    </>
+  )
+}
+
+// Four shadows and a way past them (L17). `Ingen` is one of the four rather than the absence of
+// a choice, so the panel can say which one the shape wears; `Anpassa` appears only once there is
+// a shadow, because five sliders for a shadow that does not exist are five sliders about nothing.
+function ShadowProps({ shadow, onPatch }: { shadow: Shadow | undefined; onPatch(patch: Partial<Element>): void }) {
+  const t = useT()
+  const [open, setOpen] = useState(false)
+  const chosen = shadowIdOf(shadow)
+  const at = (next: Partial<Shadow>) => onPatch({ shadow: { ...(shadow ?? SHADOWS[1]?.shadow ?? { dxMm: 0, dyMm: 0.6, blurMm: 1.2, color: '#000000' }), ...next } })
+  return (
+    <>
+      <h3 className="byd-props-heading">{t('canvas.props.shadow')}</h3>
+      <div className="byd-props-chips" role="group" aria-label={t('canvas.props.shadow')}>
+        {SHADOWS.map((preset) => (
+          <button key={preset.id} type="button" aria-pressed={chosen === preset.id} onClick={() => onPatch({ shadow: preset.shadow })}>
+            {t(preset.name)}
+          </button>
+        ))}
+      </div>
+      {shadow && (
+        <button type="button" className="byd-props-disclose" aria-expanded={open} onClick={() => setOpen(!open)}>
+          {/* The triangle is a picture of what `aria-expanded` already says. Drawn with CSS
+              `content` it joined the button's name and the control was read out as "▸ Anpassa",
+              so it is a hidden span: seen by the eye, skipped by the name. */}
+          <span aria-hidden="true">{open ? '▾' : '▸'}</span> {t('canvas.shadow.custom')}
+        </button>
+      )}
+      {shadow && open && (
+        <div className="byd-props-paint">
+          <label>
+            {t('canvas.shadow.dx')}
+            <input type="number" step={0.1} value={shadow.dxMm} onChange={(e) => at({ dxMm: Number(e.target.value) })} />
+          </label>
+          <label>
+            {t('canvas.shadow.dy')}
+            <input type="number" step={0.1} value={shadow.dyMm} onChange={(e) => at({ dyMm: Number(e.target.value) })} />
+          </label>
+          <label>
+            {t('canvas.shadow.blur')}
+            <input type="number" min={0} step={0.1} value={shadow.blurMm} onChange={(e) => at({ blurMm: Number(e.target.value) })} />
+          </label>
+          <label>
+            {t('canvas.shadow.color')}
+            <input type="color" value={shadow.color} onChange={(e) => at({ color: e.target.value })} />
+          </label>
+          <label>
+            {t('canvas.shadow.opacity')}
+            <input type="range" min={0} max={100} value={Math.round((shadow.opacity ?? 1) * 100)} onChange={(e) => at({ opacity: Number(e.target.value) / 100 })} />
+          </label>
+        </div>
+      )}
+    </>
+  )
+}
+
+// A gallery button's picture is drawn by the same path generator the card is drawn by, so what
+// is on the button can never disagree with what pressing it produces. The glyph box is wider
+// than it is tall: a capsule in a square box is a circle, and a gallery where two buttons draw
+// the same picture is a gallery that cannot be read.
+const GLYPH = { w: 20, h: 15 }
+function ShapeGlyph({ geometry }: { geometry: Geometry }) {
+  const inset = 1.2
+  const open = geometry.shape === 'line'
+  const d = pathFor(geometry.shape, { x: inset, y: inset, w: GLYPH.w - 2 * inset, h: GLYPH.h - 2 * inset }, geometry)
+  return (
+    <svg viewBox={`0 0 ${GLYPH.w} ${GLYPH.h}`} width={GLYPH.w} height={GLYPH.h} aria-hidden="true" focusable="false">
+      <path d={d} fill={open ? 'none' : 'currentColor'} stroke="currentColor" strokeWidth={open ? 2 : 0} strokeLinejoin="round" />
+    </svg>
+  )
+}
+
+const TILE = 22
+function PatternGlyph({ kind }: { kind: Pattern['kind'] }) {
+  const id = `byd-tile-${kind}`
+  return (
+    <svg viewBox={`0 0 ${TILE} ${TILE}`} width={TILE} height={TILE} aria-hidden="true" focusable="false">
+      <defs>
+        <pattern id={id} width="7" height="7" patternUnits="userSpaceOnUse" dangerouslySetInnerHTML={{ __html: tileMarkup(kind, 7, 'currentColor') }} />
+      </defs>
+      <rect width={TILE} height={TILE} rx="3" fill={`url(#${id})`} />
+    </svg>
+  )
+}
+
+// The ready-made backs (L17), each drawn by the one renderer at thumbnail size — a picture of a
+// card is a compiled card here as everywhere else (E2), so a back can never look like one thing
+// in the gallery and another once it is laid down.
+function BackGallery({ onReplaceFace }: { onReplaceFace(base: Element[]): void }) {
+  const t = useT()
+  return (
+    <div className="byd-backs" role="group" aria-label={t('canvas.backs')}>
+      <h2>{t('canvas.backs')}</h2>
+      <div className="byd-backs-list">
+        {BACKS.map((back) => (
+          <button key={back.id} type="button" onClick={() => onReplaceFace(back.base(t))}>
+            <span className="byd-backs-card">
+              <CardPreview id={`byd-back-${back.id}`} face={{ base: back.base(t), variants: {} }} row={{}} icons={{}} scale={0.26} />
+            </span>
+            <span>{t(back.name)}</span>
+          </button>
+        ))}
+      </div>
     </div>
   )
 }
