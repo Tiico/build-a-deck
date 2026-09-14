@@ -2,7 +2,7 @@ import type { ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc, Versi
 import type { DocDiff } from '@byd/server/doc'
 import type { Element } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
-import { applyEdit, recipeOf, type Clearable, type EditIntent, type Recipe, type RecipeWords, type ZonePatch } from '@byd/server/doc'
+import { applyEdit, recipeOf, type Clearable, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type ZonePatch } from '@byd/server/doc'
 import { ASSET_PREFIX, assetUrl } from './assets.js'
 import { measureAsset } from './motifs.js'
 import type { Motif } from '@byd/template'
@@ -423,8 +423,8 @@ export class ProjectClient {
     this.edit({ v: 'rename', name })
   }
 
-  // The setup's recipe (B5): the knobs the wizard turned, turned again here. Recipe zones come
-  // and go with it; the designer's own zones stay.
+  // The one knob the recipe still owns (B5, reviderat): who sits at the table, and what each seat
+  // keeps count of. It lays seats in and out and puts nothing back that the designer took away.
   get recipe(): Recipe {
     return recipeOf(this.doc.setup)
   }
@@ -448,6 +448,19 @@ export class ProjectClient {
 
   removeZone(id: string): void {
     this.edit({ v: 'removeZone', id })
+  }
+
+  // The same zone for every seat that has not got one (B5): the area in front of a player, or the
+  // strip its counters lie on. One edit, so it is one step back (B4), and named in the language
+  // the designer is working in (A4) — `{seat}` becomes the seat's letter.
+  addSeatZone(role: SeatRole, t: T = swedish): void {
+    const name = role === 'mine' ? t('zone.mine') : t('zone.counters')
+    this.edit({ v: 'addSeatZone', role, name, ...(role === 'mine' ? { shortcut: { label: t('zone.mine.shortcut'), at: 'top' as const } } : {}) })
+  }
+
+  // Where the deck lies (B5, K10): the role moves to another pile, and the hands return there.
+  setDeck(id: string): void {
+    this.edit({ v: 'setDeck', id })
   }
 
   patchZone(id: string, patch: ZonePatch): void {

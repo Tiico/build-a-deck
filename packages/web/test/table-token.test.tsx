@@ -7,7 +7,7 @@ import { TableRenderer, type TableMode } from '../src/table/TableRenderer.js'
 import { feltLabels, thingsOn } from '../src/table/keyboard.js'
 import { ActionPanel } from '../src/table/ActionPanel.js'
 import { Language, translate, type Lang, type T } from '../src/i18n/index.js'
-import { applyRecipe, emptySetup, setupFromProject } from '@byd/server/doc'
+import { openingSetup, setupFromProject } from '@byd/server/doc'
 import { seatSetup } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
@@ -367,7 +367,7 @@ const stacked = (counters: number): Snapshot => {
     { name: 'Liv', start: 20 },
     { name: 'Rundor', start: 1 },
   ].slice(0, counters)
-  const setup = applyRecipe(emptySetup(), { players: 2, mine: true, discard: true, market: false, counters: named })
+  const setup = openingSetup({ players: 2, counters: named })
   return seated(project(initialState('stack', setupFromProject({ rows: [], setup }), registry), registry, null))
 }
 const chipsIn = (zone: string, v: Snapshot) => v.components.filter((c) => c.zone === zone)

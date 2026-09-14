@@ -1,22 +1,27 @@
 import type { ProjectDoc } from './projects.js'
 
 // Imported by the editor as well as the server, so this module stays free of anything Node.
-// The setup as the editor holds it (B5, K2), and the recipe behind it: what the wizard once laid
-// out, as knobs the editor turns afterwards. The recipe owns a namespace of zones — the floor,
-// the draw pile, the discard pile, the market, and every seat's hand, area in front and counters
-// zone. Everything else on the table is the designer's own and the recipe never touches it.
+// The setup as the editor holds it (B5, K2), and the recipe behind it.
+//
+// Reviderat: the recipe is the wizard's first move and nothing more. `openingSetup` lays the table
+// a new game starts with; after that the table is the designer's, and the only knob left is the one
+// thing the recipe still owns — who sits at the table, and what each seat keeps count of. A zone
+// the designer has taken away never comes back, and the seats knob puts nothing back either.
 export type Setup = ProjectDoc['setup']
 export type Zone = Setup['zones'][number]
 export type Geometry = Zone['geometry']
 export type Counter = { name: string; start: number }
-export type Recipe = { players: number; mine: boolean; discard: boolean; market: boolean; counters: Counter[] }
+export type Recipe = { players: number; counters: Counter[] }
 
 export const SEAT_IDS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] as const
 export const MAX_PLAYERS = SEAT_IDS.length
 export const rect = (x: number, y: number, w: number, h: number): Geometry => ({ x, y, w, h, rot: 0 })
 export const point = (x: number, y: number): Geometry => ({ x, y, w: 0, h: 0, rot: 0 })
 
-// What the recipe's own zones are called. They are the designer's document from the moment they
+// What the zones the recipe lays out are called. The market is not among them any more: it was a
+// knob that put a named rectangle on the table, and with the knobs gone it is an area the designer
+// adds and names, like every other zone they make (B5, reviderat).
+// What they are called. They are the designer's document from the moment they
 // are made, so they are written in the language the designer is building the game in (A4); the
 // tool supplies the words, and Swedish is what it falls back to. `{seat}` is the seat's letter.
 export type RecipeWords = {
@@ -25,8 +30,6 @@ export type RecipeWords = {
   drawShortcut: string
   discard: string
   discardShortcut: string
-  market: string
-  marketShortcut: string
   mine: string
   mineShortcut: string
   counters: string
@@ -38,8 +41,6 @@ export const SWEDISH_WORDS: RecipeWords = {
   drawShortcut: 'Lägg underst',
   discard: 'Kasthög',
   discardShortcut: 'Kasta',
-  market: 'Marknad',
-  marketShortcut: 'Till marknaden',
   mine: 'Framför {seat}',
   mineShortcut: 'Framför mig',
   counters: 'Räknare {seat}',
@@ -60,23 +61,67 @@ export function emptySetup(words: RecipeWords = SWEDISH_WORDS): Setup {
   }
 }
 
-// The knobs as they stand in a setup.
-export function recipeOf(setup: Setup): Recipe {
-  return {
-    players: setup.seats.length,
-    mine: setup.seats.length > 0 && setup.seats.every((s) => setup.zones.some((z) => z.id === `mine:${s}`)),
-    discard: setup.zones.some((z) => z.id === 'discard'),
-    market: setup.zones.some((z) => z.id === 'market'),
-    counters: setup.counters ?? [],
-  }
+// The table a new game starts with, whichever door it came in by (L6, L14): the seats around a
+// felt as large as that many people need (K18), each with a hand that returns to the draw pile, an
+// area in front of it and its counters, and the discard pile beside the deck. From the first save
+// it is the designer's: what they take away here stays away, and what they add is theirs.
+export function openingSetup(recipe: Recipe, words: RecipeWords = SWEDISH_WORDS): Setup {
+  const setup = emptySetup(words)
+  const seats = seatsFor(recipe.players)
+  const felt = floorGeometry(seats.length)
+  const counters = recipe.counters.length
+  const zones: Zone[] = [
+    { id: setup.floor, kind: 'area', name: words.floor, visibility: 'all', geometry: felt },
+    { id: setup.deckZone, kind: 'pile', name: words.draw, visibility: 'none', geometry: point(-140, 0), shortcut: { label: words.drawShortcut, at: 'bottom' } },
+    { id: 'discard', kind: 'pile', name: words.discard, visibility: 'all', geometry: point(140, 0), shortcut: { label: words.discardShortcut, at: 'top' } },
+    ...seats.map((seat, i) => inFrontZone(seat, i, seats.length, counters, words)),
+    ...(counters > 0 ? seats.map((seat, i) => countersZone(seat, i, seats.length, counters, words)) : []),
+    ...seats.map((seat, i) => handZone(seat, i, seats.length, setup.deckZone, words)),
+  ]
+  return { ...setup, seats, zones, counters: recipe.counters }
 }
 
-// Turns the knobs: recipe zones are added, removed or, when the number of players changes, laid
-// out again around the table — the felt among them, since how large it is follows how many sit at
-// it (K18); a recipe zone that stays keeps its name, shortcut and, unless the seats moved, its
-// place. Free zones are carried over untouched.
+const seatsFor = (players: number): string[] => SEAT_IDS.slice(0, Math.max(1, Math.min(MAX_PLAYERS, Math.floor(players))))
+const handZone = (seat: string, i: number, count: number, deck: string, words: RecipeWords): Zone => ({ id: `hand:${seat}`, kind: 'hand', name: words.hand, visibility: 'owner', owner: seat, returnTo: deck, geometry: handGeometry(i, count) })
+
+// The two zones a seat can have besides its hand, and the one place that knows what they are: the
+// area in front of the player, which only they see into, and the strip its counters lie on, which
+// everyone reads (C4, B6). `{seat}` in the name is the seat's letter, so one name covers the table.
+export type SeatRole = 'mine' | 'counters'
+export type Shortcut = { label: string; at: 'top' | 'bottom' }
+export function seatZone(role: SeatRole, seat: string, i: number, count: number, counters: number, name: string, shortcut?: Shortcut): Zone {
+  return role === 'mine'
+    ? { id: `mine:${seat}`, kind: 'area', name: forSeat(name, seat), visibility: 'owner', owner: seat, geometry: inFront(i, count, counters), ...(shortcut ? { shortcut } : {}) }
+    : { id: `counters:${seat}`, kind: 'area', name: forSeat(name, seat), visibility: 'all', owner: seat, geometry: countersAt(i, count, counters) }
+}
+
+// The same zone for every seat that has not got one — what the designer asked for when they gave
+// the seats an area in front again (B5, reviderat). A seat that already has one keeps it, name and
+// place and all, because this adds and never overwrites.
+export function seatZones(setup: Setup, role: SeatRole, name: string, shortcut?: Shortcut): Zone[] {
+  const counters = (setup.counters ?? []).length
+  return setup.seats.flatMap((seat, i) => (setup.zones.some((z) => z.id === `${role}:${seat}`) ? [] : [seatZone(role, seat, i, setup.seats.length, counters, name, shortcut)]))
+}
+
+const inFrontZone = (seat: string, i: number, count: number, counters: number, words: RecipeWords): Zone => seatZone('mine', seat, i, count, counters, words.mine, { label: words.mineShortcut, at: 'top' })
+const countersZone = (seat: string, i: number, count: number, counters: number, words: RecipeWords): Zone => seatZone('counters', seat, i, count, counters, words.counters)
+
+// The knob as it stands in a setup.
+export function recipeOf(setup: Setup): Recipe {
+  return { players: setup.seats.length, counters: setup.counters ?? [] }
+}
+
+// Turns the knob (B5, reviderat). Who sits at the table, and what each seat keeps count of —
+// and nothing else: every zone that stands on the table stands there because the designer left it
+// there, so this function adds nothing back that they took away.
+//
+// A seat that arrives is laid out like the seats already sitting: a hand, which every seat has
+// (C3), and the per-seat zones *all* of them still have. A seat that leaves takes its zones with
+// it — the recipe's and the designer's own alike, because a zone that belongs to a seat that no
+// longer sits at the table belongs to nobody.
 export function applyRecipe(setup: Setup, recipe: Recipe, words: RecipeWords = SWEDISH_WORDS): Setup {
-  const seats = SEAT_IDS.slice(0, Math.max(1, Math.min(MAX_PLAYERS, Math.floor(recipe.players))))
+  const seats = seatsFor(recipe.players)
+  const counters = recipe.counters.length
   // Laying the seats out again also lays out the felt they sit at, because the felt's size is part
   // of the same answer (K18). Besides a changed seat count, a felt too small for the seats it
   // already has is reason enough: that is every setup saved while five to eight seats were laid out
@@ -88,44 +133,38 @@ export function applyRecipe(setup: Setup, recipe: Recipe, words: RecipeWords = S
   const relayout = seats.length !== setup.seats.length || !floorNow || floorNow.w < felt.w || floorNow.h < felt.h
   // The same lift, one scale down: a seat whose counters zone is shorter than the chips in it need
   // is laid out again, and the area in front of it with it, because the two divide one 500 mm
-  // between them (#89). That is every setup saved while a seat's chips lay 32 mm apart in a zone of
-  // 110, and every setup that is now being given a second counter. A zone a designer made roomier
-  // than the chips ask for is theirs and is left alone, exactly as the felt is.
+  // between them (#89). A zone a designer made roomier than the chips ask for is theirs and is left
+  // alone, exactly as the felt is.
   const alongRim = (g: Geometry): number => Math.max(g.w, g.h)
-  const reshaped = recipe.counters.length > 0 && seats.some((seat, i) => {
+  const reshaped = counters > 0 && seats.some((seat, i) => {
     const now = setup.zones.find((z) => z.id === `counters:${seat}`)?.geometry
-    return !now || alongRim(now) < alongRim(countersAt(i, seats.length, recipe.counters.length))
+    return !now || alongRim(now) < alongRim(countersAt(i, seats.length, counters))
   })
-  const wanted: Zone[] = [
-    { id: setup.floor, kind: 'area', name: words.floor, visibility: 'all', geometry: felt },
-    { id: setup.deckZone, kind: 'pile', name: words.draw, visibility: 'none', geometry: point(-140, 0), shortcut: { label: words.drawShortcut, at: 'bottom' } },
-  ]
-  if (recipe.discard) wanted.push({ id: 'discard', kind: 'pile', name: words.discard, visibility: 'all', geometry: point(140, 0), shortcut: { label: words.discardShortcut, at: 'top' } })
-  if (recipe.market) wanted.push({ id: 'market', kind: 'area', name: words.market, visibility: 'all', geometry: rect(-260, -200, 520, 120), shortcut: { label: words.marketShortcut, at: 'top' } })
-  if (recipe.mine) seats.forEach((seat, i) => wanted.push({ id: `mine:${seat}`, kind: 'area', name: forSeat(words.mine, seat), visibility: 'owner', owner: seat, geometry: inFront(i, seats.length, recipe.counters.length), shortcut: { label: words.mineShortcut, at: 'top' } }))
-  if (recipe.counters.length > 0) seats.forEach((seat, i) => wanted.push({ id: `counters:${seat}`, kind: 'area', name: forSeat(words.counters, seat), visibility: 'all', owner: seat, geometry: countersAt(i, seats.length, recipe.counters.length) }))
-  seats.forEach((seat, i) => wanted.push({ id: `hand:${seat}`, kind: 'hand', name: words.hand, visibility: 'owner', owner: seat, returnTo: setup.deckZone, geometry: handGeometry(i, seats.length) }))
+  // What every seat that already sits at the table has, and a seat that arrives therefore gets.
+  const shared = (prefix: string) => setup.seats.length > 0 && setup.seats.every((s) => setup.zones.some((z) => z.id === `${prefix}:${s}`))
+  const wantsInFront = shared('mine')
+  const wantsCounters = shared('counters') && counters > 0
+  const staying = new Set(seats)
 
-  const wantedIds = new Set(wanted.map((z) => z.id))
-  // What a relayout moves: the seats and the felt they sit at. The shared piles and the market
-  // stay where the designer left them.
-  const laidOutWithTheSeats = (id: string) => /^(hand|mine|counters):/.test(id) || id === setup.floor
-  // What a changed number of counters moves: the two zones that share a seat's 500 mm, and nothing
-  // else. The hands, the felt and the shared piles stay where they are.
-  const laidOutWithTheCounters = (id: string) => /^(mine|counters):/.test(id)
-  // What stays: every zone that is not a recipe zone, and every recipe zone still wanted.
-  const kept = setup.zones.filter((z) => !isRecipeZone(z.id, setup) || wantedIds.has(z.id)).map((z) => {
-    const fresh = wanted.find((w) => w.id === z.id)
-    const again = (relayout && laidOutWithTheSeats(z.id)) || (reshaped && laidOutWithTheCounters(z.id))
-    return fresh && again ? { ...z, geometry: fresh.geometry } : z
+  const kept = setup.zones
+    .filter((z) => z.owner === undefined || staying.has(z.owner))
+    .map((z) => {
+      if (z.id === setup.floor) return relayout ? { ...z, geometry: felt } : z
+      const i = z.owner === undefined ? -1 : seats.indexOf(z.owner)
+      if (i < 0) return z
+      if (relayout && z.kind === 'hand') return { ...z, geometry: handGeometry(i, seats.length) }
+      if ((relayout || reshaped) && z.id === `mine:${z.owner}`) return { ...z, geometry: inFront(i, seats.length, counters) }
+      if ((relayout || reshaped) && z.id === `counters:${z.owner}`) return { ...z, geometry: countersAt(i, seats.length, counters) }
+      return z
+    })
+  const there = new Set(kept.map((z) => z.id))
+  const arriving: Zone[] = []
+  seats.forEach((seat, i) => {
+    if (!there.has(`hand:${seat}`)) arriving.push(handZone(seat, i, seats.length, setup.deckZone, words))
+    if (wantsInFront && !there.has(`mine:${seat}`)) arriving.push(inFrontZone(seat, i, seats.length, counters, words))
+    if (wantsCounters && !there.has(`counters:${seat}`)) arriving.push(countersZone(seat, i, seats.length, counters, words))
   })
-  const keptIds = new Set(kept.map((z) => z.id))
-  const zones = [...kept, ...wanted.filter((z) => !keptIds.has(z.id))]
-  return { ...setup, seats, zones, counters: recipe.counters }
-}
-
-export function isRecipeZone(id: string, setup: Pick<Setup, 'floor' | 'deckZone'>): boolean {
-  return id === setup.floor || id === setup.deckZone || id === 'discard' || id === 'market' || /^(hand|mine|counters):/.test(id)
+  return { ...setup, seats, zones: [...kept, ...arriving], counters: recipe.counters }
 }
 
 // Seats go S, N, E, W, then round again, so two players face each other. This lays the hands

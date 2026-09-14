@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
@@ -23,170 +23,153 @@ async function openBord(): Promise<void> {
   fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
 }
 const handle = (id: string) => document.querySelector(`[data-zone-handle="${id}"]`) as HTMLElement
+const row = (id: string) => document.querySelector(`[data-zone-row="${id}"]`) as HTMLElement
+const rows = () => [...document.querySelectorAll('[data-zone-row]')].map((el) => el.getAttribute('data-zone-row'))
 
-describe('the setup editor (B5, K2): the recipe', () => {
-  it('shows the recipe as it stands, lays the seats out again when the player count changes, and the table follows', async () => {
+// Bordet är designerns (B5, reviderat). Listan är vägen in till varje zon — också de som ligger
+// under varandra på filten, där ett handtag bakom ett annat inte ens går att träffa.
+describe('the setup editor (B5, K2): the list of zones', () => {
+  it('lists every zone with its own, and takes one off the table when it is removed', async () => {
     await run.projects.create('p1', projectDoc())
     await openBord()
-    expect(screen.getByRole('button', { name: '2', pressed: true })).toBeTruthy()
-    expect((screen.getByLabelText(/en yta framför sig/) as HTMLInputElement).checked).toBe(false)
-    expect((screen.getByLabelText(/kasthög/) as HTMLInputElement).checked).toBe(true)
-    // A handle on the felt for every zone but the floor, hands included.
-    expect(handle('discard')).toBeTruthy()
-    expect(handle('hand:B')).toBeTruthy()
-    expect(handle('table')).toBeNull()
+    // I dokumentets egen ordning, för den ordningen betyder något: ett släpp landar i den minsta
+    // zonen, och mellan lika stora i den som står först (K2).
+    expect(rows()).toEqual(['draw', 'discard', 'table', 'hand:A', 'hand:B'])
+    expect(row('hand:A').textContent).toMatch(/A/)
 
+    fireEvent.click(screen.getByRole('button', { name: 'Ta bort Kasthög' }))
+    expect(rows()).toEqual(['draw', 'table', 'hand:A', 'hand:B'])
+    expect(handle('discard')).toBeNull()
+    expect(document.querySelector('[data-table] [data-zone="discard"]')).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    await waitFor(async () => expect((await run.projects.load('p1'))?.rev).toBe(2))
+    expect((await run.projects.load('p1'))?.setup.zones.some((z) => z.id === 'discard')).toBe(false)
+  })
+})
+
+// Tre zoner står fast, och var och en av sitt eget skäl (B5, reviderat). Leken är den enda som går
+// att lösa upp: den är en roll en hög bär, inte en zon, så den kan flytta — och då går högen den
+// låg i att ta bort som vilken annan som helst.
+describe('the setup editor (B5, K2): what the table cannot be without', () => {
+  it('says why the felt, a hand and the deck’s pile stay, and lets the deck move so its pile can go', async () => {
+    await run.projects.create('p1', projectDoc())
+    await openBord()
+    expect(screen.queryByRole('button', { name: 'Ta bort Spelyta' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Ta bort Draghög' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Ta bort Hand' })).toBeNull()
+    expect(row('table').textContent).toMatch(/fast/)
+
+    fireEvent.click(within(row('draw')).getByRole('button', { name: /Draghög/ }))
+    expect(screen.getByText(/Lägg leken i en annan hög först/)).toBeTruthy()
+    expect(within(row('hand:A')).getByLabelText(/En plats är en hand/)).toBeTruthy()
+
+    // En egen hög tar rollen; först då går draghögen att ta bort.
+    fireEvent.click(screen.getByRole('button', { name: '＋ Hög' }))
+    fireEvent.change(screen.getByLabelText('Namn för Hög 1'), { target: { value: 'Leken' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Lägg leken i Leken' }))
+    expect(row('hog-1').textContent).toMatch(/leken/)
+    fireEvent.click(screen.getByRole('button', { name: 'Ta bort Draghög' }))
+    expect(handle('draw')).toBeNull()
+    // Och korten ligger i den nya leken: bordet går att bygga, och högen räknar dem.
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(document.querySelector('[data-table] [data-zone="hog-1"]')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    await waitFor(async () => expect((await run.projects.load('p1'))?.rev).toBe(2))
+    const stored = await run.projects.load('p1')
+    expect(stored?.setup.deckZone).toBe('hog-1')
+    expect(stored?.setup.zones.filter((z) => z.kind === 'hand').map((z) => z.returnTo)).toEqual(['hog-1', 'hog-1'])
+  })
+})
+
+// Filten och listan är en och samma markering: det man tar tag i på filten öppnar sin rad, och
+// Delete gäller den — bunden till fönstret, eftersom ett handtag aldrig har fokus (pekaren som
+// markerar det är pekaren som börjar draget).
+describe('the setup editor (B5, K2): the felt, the list and the key', () => {
+  it('opens the row for a zone picked on the felt, takes it away with Delete, and puts it back with Ångra', async () => {
+    await run.projects.create('p1', projectDoc())
+    await openBord()
+    fireEvent.click(handle('discard'))
+    expect(row('discard').getAttribute('data-open')).toBe('true')
+    expect(screen.getByLabelText('Genväg för Kasthög')).toBeTruthy()
+
+    fireEvent.keyDown(document.body, { key: 'Delete' })
+    expect(row('discard')).toBeNull()
+    expect(screen.getByText(/Kasthög är borttagen/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Ångra' }))
+    expect(row('discard')).toBeTruthy()
+    expect(handle('discard')).toBeTruthy()
+
+    // Delete i ett fält är ett tecken och inte en zon.
+    fireEvent.click(handle('discard'))
+    const name = screen.getByLabelText('Namn för Kasthög') as HTMLInputElement
+    name.focus()
+    fireEvent.keyDown(name, { key: 'Delete' })
+    expect(row('discard')).toBeTruthy()
+
+    // Och det som står fast står fast också för tangenten.
+    fireEvent.click(handle('hand:A'))
+    fireEvent.keyDown(document.body, { key: 'Delete' })
+    expect(row('hand:A')).toBeTruthy()
+  })
+})
+
+// Platsratten är det enda receptet har kvar, och den lägger inget tillbaka. Motsatsen till att ta
+// bort en zon per plats är att ge platserna en igen — i ett steg, för det är en sak designern gör.
+describe('the setup editor (B5, K2): the seats knob, and giving the seats a zone again', () => {
+  it('lays a new seat out like the others, keeps what was removed removed, and gives every seat a zone back in one step', async () => {
+    await run.projects.create('p1', projectDoc())
+    await openBord()
+    fireEvent.click(screen.getByRole('button', { name: 'Ta bort Kasthög' }))
     fireEvent.click(screen.getByRole('button', { name: '3' }))
     expect(screen.getByRole('button', { name: '3', pressed: true })).toBeTruthy()
-    expect(handle('hand:C')).toBeTruthy()
-    // The felt shows the new seat's hand too.
+    expect(row('hand:C')).toBeTruthy()
     expect(document.querySelector('[data-table] .byd-hand[data-zone="hand:C"]')).toBeTruthy()
+    // Kasthögen är borta, och den kommer inte tillbaka för att någon vrider på platsantalet.
+    expect(row('discard')).toBeNull()
 
-    fireEvent.click(screen.getByLabelText(/en yta framför sig/))
-    expect(handle('mine:C')).toBeTruthy()
-    fireEvent.click(screen.getByLabelText(/marknad/))
-    expect(handle('market')).toBeTruthy()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
-    await waitFor(async () => expect((await run.projects.load('p1'))?.rev).toBe(2))
-    const stored = await run.projects.load('p1')
-    expect(stored?.setup.seats).toEqual(['A', 'B', 'C'])
-    expect(stored?.setup.zones.map((z) => z.id)).toEqual(expect.arrayContaining(['hand:C', 'mine:A', 'mine:C', 'market']))
-  })
-})
-
-describe('the setup editor (B5, K2): a zone\'s properties', () => {
-  it('selects a zone by its handle, edits name, shortcut and placement, previews the phone\'s sheet, and saves', async () => {
-    await run.projects.create('p1', projectDoc())
-    await openBord()
-    expect(screen.queryByLabelText(/Genväg för/)).toBeNull()
-    fireEvent.click(handle('discard'))
-    expect(handle('discard').getAttribute('aria-pressed')).toBe('true')
-
-    const label = screen.getByLabelText('Genväg för Kasthög') as HTMLInputElement
-    expect(label.value).toBe('Kasta')
-    expect(screen.getByText('Kasta', { selector: '[data-sheet-preview] span' })).toBeTruthy()
-    // Without a shortcut the phone shows the name.
-    fireEvent.change(label, { target: { value: '' } })
-    expect(screen.getByText('Kasthög', { selector: '[data-sheet-preview] span' })).toBeTruthy()
-    fireEvent.change(label, { target: { value: 'Kasta i påsen' } })
-    expect(screen.getByText('Kasta i påsen', { selector: '[data-sheet-preview] span' })).toBeTruthy()
-    fireEvent.change(screen.getByLabelText('Placering för Kasthög'), { target: { value: 'bottom' } })
-    // A recipe zone's owner and visibility are the recipe's, and it cannot be removed here.
-    expect(screen.queryByLabelText('Ägare för Kasthög')).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Ta bort zonen' })).toBeNull()
-
-    fireEvent.click(handle('draw'))
-    fireEvent.change(screen.getByLabelText('Namn för Draghög'), { target: { value: 'Leken' } })
-    expect(screen.getByText(/underst i Leken/)).toBeTruthy()
-    // The hands are handles too, but they have no verb on the phone — and no name of their own
-    // either. A hand is named by whoever sits at it: the felt lays that seat's name card on it
-    // (K9) and the keyboard's list of places offers it under the same name, so a name the
-    // designer typed here would have been a string nothing ever draws. The panel says who names
-    // it rather than leaving a hole where the field was.
-    fireEvent.click(handle('hand:A'))
-    expect(screen.queryByLabelText(/Genväg för Hand/)).toBeNull()
-    expect(screen.queryByLabelText(/Namn för Hand/)).toBeNull()
-    expect(screen.getByText(/Platsen namnger sin hand/)).toBeTruthy()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
-    await waitFor(async () => expect((await run.projects.load('p1'))?.rev).toBe(2))
-    const stored = await run.projects.load('p1')
-    expect(stored?.setup.zones.find((z) => z.id === 'discard')).toMatchObject({ name: 'Kasthög', shortcut: { label: 'Kasta i påsen', at: 'bottom' } })
-    expect(stored?.setup.zones.find((z) => z.id === 'draw')?.name).toBe('Leken')
-  })
-})
-
-describe('the setup editor (B5, K2): the designer\'s own zones', () => {
-  it('adds an area and a pile, drags, resizes and nudges them in millimetres, gives one an owner, and removes one', async () => {
-    await run.projects.create('p1', projectDoc())
-    await openBord()
-    fireEvent.click(screen.getByRole('button', { name: '＋ Yta' }))
-    const area = handle('yta-1')
-    expect(area.getAttribute('aria-pressed')).toBe('true')
-    expect(screen.getByLabelText('Namn för Yta 1')).toBeTruthy()
-    // Under jsdom the felt is unmeasured and drawn 1:1, so a pixel is a millimetre.
-    expect(area.style.left).toBe('350px')
-    expect(area.style.top).toBe('400px')
-
-    fireEvent.pointerDown(area, { button: 0, clientX: 100, clientY: 100, pointerId: 1 })
-    fireEvent.pointerMove(area, { clientX: 162, clientY: 131, pointerId: 1 })
-    fireEvent.pointerUp(area, { pointerId: 1 })
-    expect(screen.getByText('-90, 130 · 300 × 120 mm', { selector: '[data-zone-where]' })).toBeTruthy()
-    const corner = document.querySelector('[data-resize="yta-1"]') as HTMLElement
-    fireEvent.pointerDown(corner, { button: 0, clientX: 0, clientY: 0, pointerId: 1 })
-    fireEvent.pointerMove(corner, { clientX: 50, clientY: 25, pointerId: 1 })
-    fireEvent.pointerUp(corner, { pointerId: 1 })
-    expect(screen.getByText('-90, 130 · 350 × 145 mm', { selector: '[data-zone-where]' })).toBeTruthy()
-    fireEvent.keyDown(handle('yta-1'), { key: 'ArrowLeft' })
-    fireEvent.keyDown(handle('yta-1'), { key: 'ArrowDown', shiftKey: true })
-    expect(screen.getByText('-100, 180 · 350 × 145 mm', { selector: '[data-zone-where]' })).toBeTruthy()
-
-    fireEvent.change(screen.getByLabelText('Namn för Yta 1'), { target: { value: 'Altaret' } })
-    fireEvent.change(screen.getByLabelText('Ägare för Altaret'), { target: { value: 'B' } })
-    fireEvent.change(screen.getByLabelText('Syns för Altaret'), { target: { value: 'owner' } })
-    // The felt says the name and the handle no longer says it a second time (K19, #43); whose the
-    // zone is travels with the handle's own name, which is what the keyboard and the reader get.
-    expect(document.querySelector('.byd-zone[data-area="yta-1"] > span')?.textContent).toBe('Altaret')
-    expect(handle('yta-1').getAttribute('aria-label')).toBe('Zon Altaret · B')
-    expect(handle('yta-1').querySelector('span')).toBeNull()
-
-    fireEvent.click(screen.getByRole('button', { name: '＋ Hög' }))
-    expect(handle('hog-1')).toBeTruthy()
-    expect(screen.getByText('0, 150 mm', { selector: '[data-zone-where]' })).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Ta bort zonen' }))
-    expect(handle('hog-1')).toBeNull()
-    expect(screen.queryByLabelText(/Namn för/)).toBeNull()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
-    await waitFor(async () => expect((await run.projects.load('p1'))?.rev).toBe(2))
-    const stored = await run.projects.load('p1')
-    expect(stored?.setup.zones.find((z) => z.id === 'yta-1')).toMatchObject({ name: 'Altaret', owner: 'B', visibility: 'owner', geometry: { x: -100, y: 180, w: 350, h: 145 } })
-    expect(stored?.setup.zones.some((z) => z.id === 'hog-1')).toBe(false)
-  })
-})
-
-describe('the setup editor (B5, K2): counters and a setup the engine refuses', () => {
-  it('adds, edits and removes counters; their zones follow, and the preview shows each seat\'s tokens', async () => {
-    await run.projects.create('p1', projectDoc())
-    await openBord()
-    expect(handle('counters:A')).toBeNull()
+    // En räknare utan räknarzon lägger inga brickor på bordet, och panelen säger det.
     fireEvent.click(screen.getByRole('button', { name: '＋ Räknare' }))
-    expect((screen.getByLabelText('Namn för räknare 1') as HTMLInputElement).value).toBe('Poäng')
-    expect(handle('counters:A')).toBeTruthy()
-    expect(document.querySelectorAll('[data-table] [data-counter-token]')).toHaveLength(2)
-    fireEvent.click(screen.getByRole('button', { name: '＋ Räknare' }))
-    fireEvent.change(screen.getByLabelText('Namn för räknare 2'), { target: { value: 'Mynt' } })
-    fireEvent.change(screen.getByLabelText('Startvärde för räknare 2'), { target: { value: '5' } })
-    expect(document.querySelectorAll('[data-table] [data-counter-token]')).toHaveLength(4)
-    fireEvent.click(screen.getByRole('button', { name: 'Ta bort räknare 1' }))
-    expect(document.querySelectorAll('[data-table] [data-counter-token]')).toHaveLength(2)
+    expect(screen.getByText(/Ingen plats har någon räknarzon/)).toBeTruthy()
+    expect(document.querySelectorAll('[data-table] [data-counter-token]')).toHaveLength(0)
+
+    fireEvent.click(screen.getByRole('button', { name: '＋ Räknarzon per plats' }))
+    expect(rows()).toEqual(expect.arrayContaining(['counters:A', 'counters:B', 'counters:C']))
+    expect(screen.queryByText(/Ingen plats har någon räknarzon/)).toBeNull()
+    expect(document.querySelectorAll('[data-table] [data-counter-token]')).toHaveLength(3)
+
+    fireEvent.click(screen.getByRole('button', { name: '＋ Yta per plats' }))
+    expect(rows()).toEqual(expect.arrayContaining(['mine:A', 'mine:B', 'mine:C']))
+    // Telefonens ark är en plats (C4): verbet står där en gång, inte en gång per plats.
+    expect(screen.getAllByText('Framför mig', { selector: '[data-sheet-preview] span' })).toHaveLength(1)
 
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
     await waitFor(async () => expect((await run.projects.load('p1'))?.rev).toBe(2))
-    expect((await run.projects.load('p1'))?.setup.counters).toEqual([{ name: 'Mynt', start: 5 }])
+    const stored = await run.projects.load('p1')
+    expect(stored?.setup.zones.map((z) => z.id)).toEqual(expect.arrayContaining(['counters:C', 'mine:C', 'hand:C']))
+    expect(stored?.setup.zones.some((z) => z.id === 'discard')).toBe(false)
+    expect(stored?.setup.zones.find((z) => z.id === 'mine:B')).toMatchObject({ owner: 'B', visibility: 'owner' })
   })
+})
 
-  // A seat's counters change shape when a third is added (C4, K18, #89): two lie side by side
-  // along the rim, three stack into one pile. That is a consequence the designer cannot see coming
-  // from the number alone, so the panel says it where the number is chosen — before the third
-  // counter is added, not after.
-  it('says, where counters are chosen, that a third one stacks the seat’s chips', async () => {
+// Arket bredvid bordet är telefonens, och telefonens ark är en plats (C4): en annan plats egna yta
+// står aldrig på det, och en zon som bara håller räknare är ingen plats att spela ett kort till.
+// Förhandsvisningen räknade upp varje plats "Framför mig" och varje räknarzon, alltså ett ark
+// ingen spelare någonsin får se.
+describe('the setup editor (B5, C4): the phone’s sheet as a preview', () => {
+  it('shows one seat’s sheet, not every seat’s', async () => {
     await run.projects.create('p1', projectDoc())
     await openBord()
-    const said = () => document.querySelector('.byd-setup-counters .byd-setup-note')?.textContent ?? ''
-    expect(said()).toMatch(/tredje/)
-    expect(said()).toMatch(/stapla/i)
-    // And it is there before anyone has added a counter at all, which is when it is worth reading.
-    expect(screen.queryByLabelText('Namn för räknare 1')).toBeNull()
-    expect(said()).not.toBe('')
-  })
+    fireEvent.click(screen.getByRole('button', { name: '3' }))
+    fireEvent.click(screen.getByRole('button', { name: '＋ Räknare' }))
+    fireEvent.click(screen.getByRole('button', { name: '＋ Räknarzon per plats' }))
+    fireEvent.click(screen.getByRole('button', { name: '＋ Yta per plats' }))
 
-  it('says so instead of drawing a table when the setup cannot be built', async () => {
-    const doc = projectDoc()
-    await run.projects.create('p1', { ...doc, setup: { ...doc.setup, zones: doc.setup.zones.map((z) => (z.id === 'hand:A' ? { ...z, returnTo: 'nowhere' } : z)) } })
-    await openBord()
-    expect(screen.getByRole('alert').textContent).toMatch(/går inte att bygga/)
-    expect(document.querySelector('[data-table]')).toBeNull()
+    const sheet = document.querySelector('[data-sheet-preview]') as HTMLElement
+    expect(within(sheet).getAllByText('Framför mig')).toHaveLength(1)
+    expect(within(sheet).queryByText(/Räknare [ABC]/)).toBeNull()
+    expect(within(sheet).getByText('Kasta')).toBeTruthy()
+    expect(within(sheet).getByText('Bordet')).toBeTruthy()
   })
 })
