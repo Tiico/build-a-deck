@@ -44,6 +44,7 @@ function Table({ doc: initial }: { doc: ProjectDoc }) {
       onReplaceRows={(rows) => setDoc((current) => ({ ...current, rows }))}
       onAddField={(field) => setDoc((current) => applyEdit(current, { v: 'addField', field }))}
       onRemoveField={(field) => setDoc((current) => applyEdit(current, { v: 'removeField', field }))}
+      onMoveField={() => undefined}
     />
   )
 }
@@ -114,7 +115,7 @@ describe('what the card table re-measures (#46)', () => {
     await frame()
     const before = measured.mock.calls.length
 
-    fireEvent.click(screen.getByRole('button', { name: 'Nytt fält' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Kolumner' }))
     fireEvent.change(screen.getByLabelText('Namn'), { target: { value: 'kostnad' } })
     fireEvent.submit(screen.getByLabelText('Namn').closest('form')!)
     await frame()

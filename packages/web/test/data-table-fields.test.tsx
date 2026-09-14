@@ -35,6 +35,7 @@ function Editing({ doc: initial = projectDoc(), asked }: { doc?: ProjectDoc; ask
         setDoc((current) => applyEdit(current, { v: 'addField', field }))
       }}
       onRemoveField={(field) => setDoc((current) => applyEdit(current, { v: 'removeField', field }))}
+      onMoveField={() => undefined}
     />
   )
 }
@@ -49,7 +50,7 @@ describe('a field arrives in the editor (#32)', () => {
     render(<Editing />)
     expect(column('fält1')).toBeNull()
 
-    await user.click(screen.getByRole('button', { name: 'Nytt fält' }))
+    await user.click(screen.getByRole('button', { name: 'Kolumner' }))
     await user.click(screen.getByRole('button', { name: 'Lägg till' }))
 
     expect(column('fält1')).toBeTruthy()
@@ -58,7 +59,7 @@ describe('a field arrives in the editor (#32)', () => {
   it('refuses a name the table already answers to, and says which one it is', async () => {
     const user = userEvent.setup()
     render(<Editing />)
-    await user.click(screen.getByRole('button', { name: 'Nytt fält' }))
+    await user.click(screen.getByRole('button', { name: 'Kolumner' }))
     const name = screen.getByLabelText('Namn')
 
     await user.clear(name)
@@ -92,7 +93,7 @@ describe('a field arrives in the editor (#32)', () => {
     const asked: string[] = []
     render(<Editing doc={{ ...projectDoc(), rows: [] }} asked={asked} />)
 
-    await user.click(screen.getByRole('button', { name: 'Nytt fält' }))
+    await user.click(screen.getByRole('button', { name: 'Kolumner' }))
     await user.click(screen.getByRole('button', { name: 'Lägg till' }))
 
     expect(screen.getByRole('alert').textContent).toBe('Ett fält är en kolumn på korten. Lägg till ett kort först.')
@@ -113,7 +114,9 @@ describe('a field arrives in the editor (#32)', () => {
     // The values are what the criterion asks the question to name, and they are named. But the
     // template draws `body` too, and the element that draws it goes with the column — a template
     // binding a column that is not there would draw nothing on every card — so the question says
-    // that as well rather than doing it quietly.
+    // that as well rather than doing it quietly. The × itself is behind the head's own door,
+    // where everything the table says about its columns as columns is said (#46).
+    await user.click(screen.getByRole('button', { name: 'Kolumner' }))
     await user.click(screen.getByRole('button', { name: 'Ta bort fältet body' }))
     expect(screen.getByText('Ta bort body? Värdet försvinner på 3 kort. Elementet som visar den tas bort ur mallen.')).toBeTruthy()
     // The question is a question: saying no leaves the column exactly where it was.
@@ -135,9 +138,10 @@ describe('a field arrives in the editor (#32)', () => {
   it('counts an empty column as what it is: nothing to lose', async () => {
     const user = userEvent.setup()
     render(<Editing />)
-    await user.click(screen.getByRole('button', { name: 'Nytt fält' }))
+    await user.click(screen.getByRole('button', { name: 'Kolumner' }))
     await user.click(screen.getByRole('button', { name: 'Lägg till' }))
 
+    await user.click(screen.getByRole('button', { name: 'Kolumner' }))
     await user.click(screen.getByRole('button', { name: 'Ta bort fältet fält1' }))
     expect(screen.getByText('Ta bort fält1? Inget kort har ett värde i den.')).toBeTruthy()
   })
@@ -149,20 +153,21 @@ describe('a field arrives in the editor (#32)', () => {
     const user = userEvent.setup()
     render(<Editing />)
 
-    await user.click(screen.getByRole('button', { name: 'Nytt fält' }))
+    await user.click(screen.getByRole('button', { name: 'Kolumner' }))
     expect(document.activeElement).toBe(screen.getByLabelText('Namn'))
     await user.click(screen.getByRole('button', { name: 'Avbryt' }))
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Nytt fält' }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Kolumner' }))
 
     // Saying yes takes the focus away just as saying no does — the button that was pressed
     // unmounts with the form — and it has to come back to the same place. Only the cancel path
     // was ever asserted, so a designer who made a column with the keyboard was left on `<body>`
     // and had to tab in from the top of the page to make a second one.
-    await user.click(screen.getByRole('button', { name: 'Nytt fält' }))
+    await user.click(screen.getByRole('button', { name: 'Kolumner' }))
     await user.click(screen.getByRole('button', { name: 'Lägg till' }))
     expect(column('fält1')).toBeTruthy()
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Nytt fält' }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Kolumner' }))
 
+    await user.click(screen.getByRole('button', { name: 'Kolumner' }))
     await user.click(screen.getByRole('button', { name: 'Ta bort fältet body' }))
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Avbryt' }))
     await user.keyboard('{Escape}')
@@ -170,7 +175,7 @@ describe('a field arrives in the editor (#32)', () => {
 
     await user.click(screen.getByRole('button', { name: 'Ta bort fältet body' }))
     await user.click(screen.getByRole('button', { name: 'Ja, ta bort' }))
-    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Nytt fält' }))
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Kolumner' }))
   })
 
   // The boundary A4 draws, and #27 drew again for exactly this case: what the tool *says* follows
@@ -184,7 +189,7 @@ describe('a field arrives in the editor (#32)', () => {
         <Editing />
       </Language>,
     )
-    await user.click(screen.getByRole('button', { name: 'New field' }))
+    await user.click(screen.getByRole('button', { name: 'Columns' }))
     const form = screen.getByRole('form', { name: 'New field' })
     const name = () => within(form).getByLabelText('Name') as HTMLInputElement
     expect(within(form).getByRole('button', { name: 'Add' })).toBeTruthy()
@@ -198,7 +203,7 @@ describe('a field arrives in the editor (#32)', () => {
     await user.click(within(form).getByRole('button', { name: 'Add' }))
     expect(column('bild1')).toBeTruthy()
     // And a designer who writes her own word gets hers, kind or no kind.
-    await user.click(screen.getByRole('button', { name: 'New field' }))
+    await user.click(screen.getByRole('button', { name: 'Columns' }))
     const second = screen.getByRole('form', { name: 'New field' })
     await user.clear(within(second).getByLabelText('Name'))
     await user.type(within(second).getByLabelText('Name'), 'styrka')
@@ -206,5 +211,78 @@ describe('a field arrives in the editor (#32)', () => {
     expect((within(second).getByLabelText('Name') as HTMLInputElement).value).toBe('styrka')
     await user.click(within(second).getByRole('button', { name: 'Add' }))
     expect(column('styrka')).toBeTruthy()
+  })
+})
+// Where a column is taken away (#46 on #32). The × used to stand on the column's own heading, and
+// the heading paid for it: two 44 px targets do not fit in a column a number wide, so the heading
+// handed them out in turn, the × lay over the right 44 px of the sort control in its own ground,
+// and in a `cost` column of 64 the part of the sort control a thumb could still reach was ten
+// pixels. None of that arithmetic is about taking a column away; it is about where the control
+// stood. The head's own door already knows about columns — it is where one is made — so it is
+// where one is taken away, and the heading goes back to being the column's name and the way it
+// sorts, which is all a heading that can also be dragged and pulled has room to be.
+describe('the door the head keeps for its columns (#46 on #32)', () => {
+  const heads = () => Array.from(document.querySelectorAll('thead th[data-col]')) as HTMLElement[]
+
+  it('keeps every column behind one door, and leaves the heading nothing but its name', async () => {
+    const user = userEvent.setup()
+    render(<Editing />)
+
+    // At rest there is no × anywhere in the head, and none of the headings carries a control
+    // besides the one that sorts it.
+    expect(screen.queryByRole('button', { name: 'Ta bort fältet body' })).toBeNull()
+    expect(document.querySelectorAll('thead .byd-data-dropfield')).toHaveLength(0)
+    expect(document.querySelectorAll('thead .byd-data-system')).toHaveLength(0)
+    expect(heads().every((th) => th.querySelectorAll('button').length === 1)).toBe(true)
+
+    // The door names the columns in the order the table shows them, the card's own id included:
+    // it is a column of the table without being a field of a card, and the list is about the
+    // table's columns.
+    await user.click(screen.getByRole('button', { name: 'Kolumner' }))
+    const panel = screen.getByRole('group', { name: 'Kolumner' })
+    expect(within(panel).getAllByRole('listitem').map((li) => li.getAttribute('data-col'))).toEqual(['id', 'title', 'body', 'antal'])
+
+    // The designer's own columns can go from here, and the two that are the tool's cannot — with
+    // the reason written beside them rather than a hole where the × of the others is.
+    expect(within(panel).getByRole('button', { name: 'Ta bort fältet body' })).toBeTruthy()
+    expect(within(panel).queryByRole('button', { name: 'Ta bort fältet antal' })).toBeNull()
+    expect(within(panel).queryByRole('button', { name: 'Ta bort fältet id' })).toBeNull()
+    expect(within(panel).getByText('antal är verktygets egen kolumn och kan inte tas bort')).toBeTruthy()
+    expect(within(panel).getByText('id är verktygets egen kolumn och kan inte tas bort')).toBeTruthy()
+  })
+
+  it('asks the same question it always asked, and takes the column when it is answered', async () => {
+    const user = userEvent.setup()
+    render(<Editing />)
+
+    await user.click(screen.getByRole('button', { name: 'Kolumner' }))
+    await user.click(screen.getByRole('button', { name: 'Ta bort fältet body' }))
+    expect(screen.getByText('Ta bort body? Värdet försvinner på 3 kort. Elementet som visar den tas bort ur mallen.')).toBeTruthy()
+
+    // Saying no leaves the column where it was, and leaves the door open — the question was asked
+    // from inside it, and the × that asked has to be there to take the focus back.
+    await user.click(screen.getByRole('button', { name: 'Avbryt' }))
+    expect(column('body')).toBeTruthy()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Ta bort fältet body' }))
+
+    await user.click(screen.getByRole('button', { name: 'Ta bort fältet body' }))
+    await user.click(screen.getByRole('button', { name: 'Ja, ta bort' }))
+    expect(column('body')).toBeNull()
+    // And what is gone is gone from the list as well as from the table.
+    expect(screen.queryByRole('button', { name: 'Ta bort fältet body' })).toBeNull()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Kolumner' }))
+  })
+
+  it('is the same door a column is made at: the form stands under the list', async () => {
+    const user = userEvent.setup()
+    render(<Editing />)
+
+    await user.click(screen.getByRole('button', { name: 'Kolumner' }))
+    await user.click(screen.getByRole('button', { name: 'Lägg till' }))
+    expect(column('fält1')).toBeTruthy()
+
+    // And the new column is in the list, with the × the designer's own columns have.
+    await user.click(screen.getByRole('button', { name: 'Kolumner' }))
+    expect(screen.getByRole('button', { name: 'Ta bort fältet fält1' })).toBeTruthy()
   })
 })

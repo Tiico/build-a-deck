@@ -36,6 +36,7 @@ function renderTable(doc: ProjectDoc, handlers: Partial<{ onCell: DataTableProps
       onReplaceRows={noop}
       onAddField={() => undefined}
       onRemoveField={() => undefined}
+      onMoveField={() => undefined}
     />,
   )
 }
@@ -57,6 +58,7 @@ function EditedTable({ start }: { start: ProjectDoc }) {
       onReplaceRows={noop}
       onAddField={() => undefined}
       onRemoveField={() => undefined}
+      onMoveField={() => undefined}
     />
   )
 }
@@ -188,17 +190,11 @@ describe('DataTable sorting from the keyboard (#15)', () => {
     expect(document.activeElement).toBe(screen.getByLabelText('Markera alla synliga'))
 
     const buttons = headerButtons()
-    expect(buttons.map(nameOf)).toEqual([
-      'id',
-      'title',
-      'Ta bort fältet title',
-      'body',
-      'Ta bort fältet body',
-      'kostnad',
-      'Ta bort fältet kostnad',
-      'antal',
-      'Nytt fält',
-    ])
+    // One stop per column and one door at the end. Every heading used to carry a second stop —
+    // the × that took the column away — so a designer tabbing to the column she wanted passed
+    // through a control that removes one on the way to each. They are behind the head's own door
+    // now (#46 on #32), which is one stop rather than one per column.
+    expect(buttons.map(nameOf)).toEqual(['id', 'title', 'body', 'kostnad', 'antal', 'Kolumner'])
     for (const button of buttons) {
       await user.tab()
       expect(document.activeElement).toBe(button)

@@ -1,6 +1,7 @@
 // Imported by the editor as well as the server, so this module stays free of anything Node:
 // types only from the project document, and no imports that reach the database or the network.
 import type { ProjectDoc, ProjectRow } from './projects.js'
+import { columnsOf } from './edits.js'
 
 // What changed between two versions of a project (B4). The history is presented as changes in
 // the card table, which is where a designer already lives: cards added, removed and changed,
@@ -18,6 +19,10 @@ export type DocDiff = {
   // The order of the rows is the order of the deck until the first shuffle, so it is a change
   // of its own — and not a change to any card.
   reordered: boolean
+  // And the order of the columns (#46), which is neither of those: it is the document's, so a
+  // version whose only change is a column moved is a version where something happened, and the
+  // history has to be able to say so rather than reading as an empty save.
+  columns: boolean
   template: boolean
   setup: boolean
   icons: boolean
@@ -44,6 +49,10 @@ export function diffProjects(before: ProjectDoc, after: ProjectDoc): DocDiff {
   const diff: DocDiff = {
     rows: rows.sort(byPosition(before, after)),
     reordered: kept.join(' ') !== keptNow.join(' '),
+    // Compared as the table reads them and not as the key is written: `columnsOf` is what lays
+    // the stored order over the derivation, so an order written down that says exactly what the
+    // derivation already said is not a change anybody made.
+    columns: columnsOf(before).join(' ') !== columnsOf(after).join(' '),
     template: !same(before.template, after.template),
     setup: !same(before.setup, after.setup),
     icons: !same(before.icons, after.icons) || !same(before.credits ?? {}, after.credits ?? {}),

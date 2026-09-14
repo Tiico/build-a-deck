@@ -299,7 +299,7 @@ async function editorViews(width: number): Promise<Record<string, string>> {
         // A column is made in a form that only exists while its door is held open, which is how
         // the same walk could reach every checkbox in the editor and still miss the three radios
         // inside this one (L11, #50). The door is held open here for the same reason.
-        fireEvent.click(screen.getByRole('button', { name: 'Nytt fält' }))
+        fireEvent.click(screen.getByRole('button', { name: 'Kolumner' }))
         if (!document.querySelector('.byd-newfield')) throw new Error('the table never opened the form that makes a column')
         out['Tabell, ett nytt fält på väg'] = document.querySelector('.byd-editor')!.outerHTML
         fireEvent.keyDown(document.querySelector('.byd-newfield')!, { key: 'Escape' })

@@ -1,8 +1,8 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import type { ProjectDoc, ProjectRow } from './types.js'
 import { deckKeepsFields, fieldsOf, fieldLabel, takenNames } from './fields.js'
 import { ANTAL, drawnBy } from '@byd/server/doc'
-import { NewField } from './NewField.js'
+import { ColumnDoor } from './ColumnDoor.js'
 import { ASSET_DRAG_TYPE, assetRef, assetUrl, assetsInUse, iconFieldsOf, imageFieldsOf, isAssetRef, ASSET_PREFIX } from './assets.js'
 import { searchSymbols, type GameSymbol } from './symbols.js'
 import { SymbolList, symbolListKey, symbolOptionId } from './SymbolList.js'
@@ -12,14 +12,22 @@ import type { Cell } from './ProjectClient.js'
 import { exportCardsCsv, importCardsCsv } from './csv.js'
 import { keepOrder, nextSort, sortRows, type SortState } from './sorting.js'
 import { deckValues, fitColumns, markValues, widthKind, GROUP_COL } from './columns.js'
+import { heldWidths, rememberWidths } from './widths.js'
 import { countLabel, discreteColumns, filterRows, isFiltering, noFilter, toggleValue, type FilterState } from './filtering.js'
 import { duplicateRows, keepRows, markRows, noSelection, removeRows, selectionLabel, setColumn, toggleRow, type Selection } from './selection.js'
 import { groupColumn, groupOfRow, ruleLabel } from './groups.js'
 import { Question } from './Question.js'
 import { useT, type T } from '../i18n/index.js'
+import { useSay } from '../status/StatusLive.js'
 
 export type DataTableProps = {
   doc: ProjectDoc
+  // The game this table is of, when it was opened from one. It is what a width the designer set
+  // herself is remembered under (#46): a width is a view and not the project (L4), so it lives in
+  // her browser — but it is a view of *these* columns, and a column called `body` in one game says
+  // nothing about a column called `body` in the next. A table with no project behind it still
+  // pulls; it simply has nothing to file the answer under.
+  project?: string | undefined
   selectedRow: string | null
   onSelectRow(cardRef: string): void
   // `gesture` is the visit to the cell this value was written during (#35). The table writes one
@@ -35,6 +43,10 @@ export type DataTableProps = {
   // own heading. Each is one edit, so each is one version and one step back (B4).
   onAddField(field: string): void
   onRemoveField(field: string): void
+  // Where a column stands (#46). `before` is the column it comes to stand in front of, and null
+  // is last of all — the two ways a drag along the head can end. It is an edit like the other
+  // two, because the order is the document's and not this table's view of it.
+  onMoveField(field: string, before: string | null): void
   // The project's images (E1): where they are served from, and how a chosen file becomes one.
   // Without both, image fields are edited as text.
   assetBase?: string | undefined
@@ -72,6 +84,11 @@ export function fileSafe(name: string) {
 // Only one cell is ever being typed into, so the library at the brace is one list with one name.
 const CELL_SYMBOLS = 'byd-cell-symbols'
 
+// What a keystroke pulls a column by (#46). A drag is as fine as the hand that makes it; the keys
+// are steps, and the step is a character or two of the font a cell is drawn in — small enough to
+// land on a width, large enough that a column can be crossed without holding the key down.
+const PULL_STEP = 16
+
 // The column that removes a card is pinned to the right edge of the scrolling box (#17), and what
 // scrolls under it is covered. No stylesheet can help: the content and the pin share one clipping
 // rectangle, and the only way out — a pin outside the scroller — costs the sticky heading, which
@@ -100,8 +117,11 @@ export function markCut(box: Element): void {
 
 // The table (B as a tab): one row per card, the template's fields as columns, `antal` last (L4).
 // This is where the designer already lives; a change here reaches every copy of the card.
-export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, onAddField, onRemoveField, assetBase, onUpload, onSymbol, compareWith, onStopCompare }: DataTableProps) {
+export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, onAddField, onRemoveField, onMoveField, assetBase, onUpload, onSymbol, compareWith, onStopCompare }: DataTableProps) {
   const t = useT()
+  // The one channel everything on a screen speaks in (#7): a column that moved under the focus
+  // says so here rather than in a live region this table made for itself.
+  const say = useSay()
   // What the import warns about is bound to the import control by this, so the warning is read
   // with it and not merely next to it (#36).
   const noteId = useId()
@@ -217,6 +237,16 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
   // been asked about taking away (#32).
   const [adding, setAdding] = useState(false)
   const [dropping, setDropping] = useState<string | null>(null)
+  // Which column is being carried along the head, and which heading it would land in front of
+  // (#46). The carried one is a ref and the heading under the pointer is state, for the reason
+  // the layer list has the same pair: what is being dragged is read inside an event and never
+  // drawn, and where it would land is drawn on every frame of the drag and never read back.
+  const carried = useRef<string | null>(null)
+  const [overColumn, setOverColumn] = useState<string | null>(null)
+  // The widths the designer set herself (#46), and which column is being pulled right now — a
+  // column being pulled may not also be picked up and carried off by the same grip.
+  const [widths, setWidths] = useState<Record<string, number>>(() => heldWidths(project))
+  const [pulling, setPulling] = useState<string | null>(null)
   const removeRef = useRef<HTMLButtonElement>(null)
   const allRef = useRef<HTMLInputElement>(null)
   // The × of every row on screen, so the question a row asks can hand the focus back to it.
@@ -291,7 +321,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
     // away. Everything else the table keeps in its own state leaves the deck as it was — except
     // the caret arriving in a cell or leaving one, which is what decides whether the widths are
     // being held; leaving one is therefore also when they settle on what was written.
-  }, [deck, editing])
+  }, [deck, editing, widths])
   useEffect(() => {
     if (!refocus) return
     if (typeof refocus === 'object') {
@@ -306,6 +336,130 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
   // The order held while a cell is being edited, as the ids that were on screen when it was entered.
   const [held, setHeld] = useState<string[] | null>(null)
   const fields = fieldsOf(doc)
+  // The columns whose place along the head is the designer's (#46). The card's id is not one of
+  // them and never was — it is a column of the table without being a field of a card — and
+  // `antal` stands last wherever the table shows it (L4), so a move of it could not be seen and a
+  // place in front of it is not on offer.
+  const mine = fields.filter((field) => field !== ANTAL)
+  // Where a column comes to stand when it is dropped on a heading. Dropped on one to its left it
+  // stands in front of that heading; dropped on one to its right it stands after it, which is in
+  // front of whatever follows and last of all when nothing does. Said in columns and never in
+  // indexes, because the document answers in columns: the index an order is read at changes the
+  // moment the carried column is lifted out of it.
+  const landing = (held: string, onto: string): string | null => {
+    const at = mine.indexOf(held)
+    const to = mine.indexOf(onto)
+    return at > to ? onto : (mine[to + 1] ?? null)
+  }
+  // One move, wherever it came from, and the head says where the column ended up. A drag is its
+  // own answer to the eye; the keys are not, and a column that moved out from under the focus
+  // with nothing said is a column the reader has lost.
+  const moveColumn = (field: string, before: string | null) => {
+    onMoveField(field, before)
+    const rest = mine.filter((f) => f !== field)
+    const at = before === null ? rest.length : rest.indexOf(before)
+    say?.('polite', t('table.column.moved', { field, at: at + 1, of: mine.length }))
+  }
+  // What the editor declares a target to be, asked of the page rather than written down here —
+  // and it is the floor a column can be pulled to. Narrower than a fingertip is not a width
+  // anybody chose; it is a column thrown away by a hand that slipped, and there is no way back to
+  // it once its own edge is too small to catch.
+  const tap = (): number => {
+    const box = scrollRef.current
+    const said = box ? parseFloat(getComputedStyle(box).getPropertyValue('--byd-tap')) : NaN
+    return Number.isFinite(said) && said > 0 ? said : 44
+  }
+  // A width set, or given back to the measurement. Held in this table and remembered in the
+  // browser, never written into the document: how wide one designer wants to read a column on
+  // her screen is not a fact about the game (L4).
+  const setWidth = (field: string, px: number | null) => {
+    const { [field]: gone, ...rest } = widths
+    void gone
+    const next = px === null ? rest : { ...widths, [field]: Math.max(tap(), Math.round(px)) }
+    setWidths(next)
+    rememberWidths(project, next)
+    const said = next[field]
+    say?.('polite', said === undefined ? t('table.column.width.said.auto', { field }) : t('table.column.width.said', { field, px: said }))
+  }
+  // What a heading needs to be the edge its column is pulled by. The two the table owns have
+  // none: a card's id is a machine key and `antal` is the engine's own count, and neither is
+  // prose anybody reads at a width of her choosing (L4).
+  const pullOf = (field: string): Pull | undefined =>
+    mine.includes(field)
+      ? {
+          onGrab: (event) => {
+            // The edge is inside a heading that can be picked up and carried off (#46), and a
+            // pointer that went down on the edge came down on the heading too. The grab is
+            // therefore taken here and nowhere else, and the heading stops being draggable for
+            // as long as the hand is on its edge.
+            event.preventDefault()
+            event.stopPropagation()
+            const th = (event.target as HTMLElement).closest('th')
+            const col = Array.from(scrollRef.current?.querySelectorAll('colgroup > col') ?? []).find((c) => c.getAttribute('data-col') === field)
+            if (!th) return
+            const from = event.clientX
+            const was = Math.round(th.getBoundingClientRect().width)
+            setPulling(field)
+            // Written straight onto the column while the hand is moving, so the edge follows it
+            // without the whole deck being measured again on every frame; the answer becomes a
+            // width the table holds when the hand lets go.
+            const moved = (e: PointerEvent) => {
+              if (col instanceof HTMLElement) col.style.width = `${Math.max(tap(), was + (e.clientX - from))}px`
+            }
+            const let_go = (e: PointerEvent) => {
+              removeEventListener('pointermove', moved)
+              removeEventListener('pointerup', let_go)
+              setPulling(null)
+              setWidth(field, was + (e.clientX - from))
+            }
+            addEventListener('pointermove', moved)
+            addEventListener('pointerup', let_go)
+          },
+          // Asked twice, the edge gives the column back to the measurement.
+          onAuto: () => setWidth(field, null),
+          onStep: (dir) => {
+            const th = Array.from(scrollRef.current?.querySelectorAll('thead th') ?? []).find((cell) => cell.getAttribute('data-col') === field)
+            const was = widths[field] ?? Math.round(th?.getBoundingClientRect().width ?? 0)
+            setWidth(field, was + dir * PULL_STEP)
+          },
+        }
+      : undefined
+  // What a heading needs to be a handle. A heading with none of it is a heading that cannot be
+  // carried and is not a place to put one down either.
+  const carryOf = (field: string): Carry | undefined =>
+    mine.includes(field)
+      ? {
+          over: overColumn === field,
+          onPickUp: () => {
+            carried.current = field
+          },
+          onOver: (event) => {
+            event.preventDefault()
+            if (carried.current !== null && carried.current !== field) setOverColumn(field)
+          },
+          onDone: () => {
+            carried.current = null
+            setOverColumn(null)
+          },
+          onDrop: () => {
+            const held = carried.current
+            carried.current = null
+            setOverColumn(null)
+            if (held === null || held === field || !mine.includes(held)) return
+            moveColumn(held, landing(held, field))
+          },
+          onStep: (dir) => {
+            const at = mine.indexOf(field)
+            const to = at + dir
+            // One step to the left is standing in front of the neighbour; one to the right is
+            // standing in front of whatever follows the neighbour, and last of all when the
+            // neighbour is the end of the head. The ends are ends: a column does not come round.
+            const before = dir === -1 ? mine[to] : mine[to + 1]
+            if (to < 0 || to >= mine.length) return
+            moveColumn(field, before ?? null)
+          },
+        }
+      : undefined
   // Which group a row falls into (#13, from variant C): read here, decided on the canvas. A deck
   // that is not grouped says nothing at all, rather than a column of the same word on every row.
   const grouping = groupColumn(doc)
@@ -619,8 +773,11 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
         <colgroup>
           <col data-kind="tap" />
           <col data-col="id" data-kind="key" />
+          {/* And what the designer set it to, when she has set it (#46). It travels on the column
+              beside what the column is worth sizing like, so the measurement is told the whole of
+              it by the table and needs to know nothing about what any column is called. */}
           {fields.map((f) => (
-            <col key={f} data-col={f} data-kind={widthKind(doc, f)} />
+            <col key={f} data-col={f} data-kind={widthKind(doc, f)} {...(widths[f] === undefined ? {} : { 'data-width': widths[f] })} />
           ))}
           {/* Which group a card falls into is the canvas's answer read back (#13), not prose the
               designer writes, so it takes the room its longest label needs and no share of the
@@ -646,21 +803,9 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
               />
               </label>
             </th>
-            <SortableHeader field="id" label="id" sort={sort} onSort={setSort} t={t} />
+            <SortableHeader field="id" label="id" sort={sort} onSort={setSort} />
             {fields.map((f) => (
-              <SortableHeader
-                key={f}
-                field={f}
-                label={fieldLabel(f, t)}
-                sort={sort}
-                onSort={setSort}
-                t={t}
-                onRemove={f === ANTAL ? undefined : () => setDropping(f)}
-                removeRef={(el) => {
-                  if (el) dropRefs.current.set(f, el)
-                  else dropRefs.current.delete(f)
-                }}
-              />
+              <SortableHeader key={f} field={f} label={fieldLabel(f, t)} sort={sort} onSort={setSort} carry={pulling === null ? carryOf(f) : undefined} pull={pullOf(f)} />
             ))}
             {grouping && <th data-col={GROUP_COL}>{t('table.group')}</th>}
             {/* The button that makes a column stands at the end of the head, where the column it
@@ -675,11 +820,21 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
                 The cell is named for what its own column does, so a screen reader still hears
                 what the × under it is for rather than hearing the button above it twice. */}
             <th className="byd-data-remove" aria-label={t('table.remove.column')}>
-              <button type="button" ref={addRef} aria-label={t('table.field.new')} aria-expanded={adding} onClick={() => setAdding(!adding)}>
+              <button type="button" ref={addRef} aria-label={t('table.columns')} aria-expanded={adding} onClick={() => setAdding(!adding)}>
                 +
               </button>
               {adding && (
-                <NewField
+                <ColumnDoor
+                  columns={['id', ...fields]}
+                  canRemove={(field) => field !== 'id' && field !== ANTAL}
+                  onRemove={(field) => setDropping(field)}
+                  removeRef={(field, el) => {
+                    if (el) dropRefs.current.set(field, el)
+                    else dropRefs.current.delete(field)
+                  }}
+                  asking={dropping !== null}
+                  widths={widths}
+                  onWidth={setWidth}
                   taken={takenNames(doc)}
                   keeps={deckKeepsFields(doc)}
                   // Yes and no leave by the same door, so they hand the focus back to the same
@@ -879,37 +1034,84 @@ function GroupCell({ doc, column, cardRef, row }: { doc: ProjectDoc; column: str
 
 // One header per column (variant A): a real button, so the tab order and Enter/Space come for
 // free, and `aria-sort` on the `th` for the state. The arrow is the same fact for the eye.
-function SortableHeader({ field, label, sort, onSort, onRemove, removeRef, t }: { field: string; label: string; sort: SortState | null; onSort(next: SortState | null): void; onRemove?: (() => void) | undefined; removeRef?: ((el: HTMLButtonElement | null) => void) | undefined; t?: T | undefined }) {
+//
+// The name and the way it sorts, and nothing else. The × that took the column away used to
+// stand here too, out of the flow and over the heading's right-hand 44 px, because two tap
+// targets do not fit in a column a number wide; it has moved to the head's own door, where the
+// table already said something about its columns as columns (#46 on #32). What that buys is not
+// tidiness: it is the room a heading needs to be draggable and pullable at all.
+// What a heading needs to be the handle its column is moved by (#46). Every one of them is the
+// designer's except the two that are the tool's, and those get none of it: a heading with no
+// `carry` cannot be picked up and is not a place to put a column down either.
+type Carry = {
+  over: boolean
+  onPickUp(): void
+  onOver(event: DragEvent<HTMLElement>): void
+  onDone(): void
+  onDrop(): void
+  onStep(dir: -1 | 1): void
+}
+
+// And what it needs to be the edge the column is pulled by (#46). The same columns have both: a
+// heading is either the designer's to move and size or the tool's own, and never half of each.
+type Pull = {
+  onGrab(event: ReactPointerEvent<HTMLElement>): void
+  onAuto(): void
+  onStep(dir: -1 | 1): void
+}
+
+function SortableHeader({ field, label, sort, onSort, carry, pull }: { field: string; label: string; sort: SortState | null; onSort(next: SortState | null): void; carry?: Carry | undefined; pull?: Pull | undefined }) {
   const active = sort?.field === field ? sort.dir : null
   return (
-    <th data-col={field} aria-sort={active ?? 'none'}>
-      <button type="button" data-active={active !== null} onClick={() => onSort(nextSort(sort, field))}>
+    <th
+      data-col={field}
+      aria-sort={active ?? 'none'}
+      draggable={carry ? true : undefined}
+      onDragStart={carry?.onPickUp}
+      onDragOver={carry?.onOver}
+      onDragEnd={carry?.onDone}
+      onDrop={carry?.onDrop}
+      {...(carry?.over ? { 'data-over': '' } : {})}
+    >
+      <button
+        type="button"
+        data-active={active !== null}
+        onClick={() => onSort(nextSort(sort, field))}
+        // Alt and an arrow move the column; the arrow alone is the reader's own, and a heading
+        // that swallowed it would take the way out of the head away from her. The same pair the
+        // template's layer list moves a layer with (#18), for the same reason: an order that can
+        // only be dragged is an order a keyboard has lost.
+        onKeyDown={(event) => {
+          if (!event.altKey || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return
+          const dir = event.key === 'ArrowLeft' ? -1 : 1
+          // Alt alone moves the column; Alt and Shift pull its edge. Two things a heading can do
+          // to the column it names, on the same hand and the same two keys.
+          const answer = event.shiftKey ? pull?.onStep : carry?.onStep
+          if (!answer) return
+          event.preventDefault()
+          answer(dir)
+        }}
+      >
         {label} <span aria-hidden="true">{active === 'ascending' ? '↑' : active === 'descending' ? '↓' : '↕'}</span>
       </button>
-      {/* A column the designer made is a column she can take away again (#32). The two that are
-          not hers — the card's id, and `antal`, which is how many copies of the card the deck
-          holds (L4) — cannot be, and the head used to say so by leaving the × off. That is not
-          saying it: the difference between "you may not" and "there is nothing here" was a hole,
-          and a hole reads as an oversight. So a padlock stands where the other columns keep their
-          ×, with the reason written beside it. A word instead of a glyph is not on offer — the
-          shortest true one is 52 px and these are columns that have to be able to come out at 80
-          — but the padlock is thirteen, and it is the one thing in the heading that is neither a
-          control nor a name, so it is the one thing that is not hidden until the column is
-          pointed at. */}
-      {onRemove && t ? (
-        <button type="button" ref={removeRef} className="byd-data-dropfield" aria-label={t('table.field.remove', { field })} onClick={onRemove}>
-          ×
-        </button>
-      ) : (
-        t && (
-          <span className="byd-data-system" title={t('table.field.system', { field })}>
-            <svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false">
-              <path d="M3.4 5V3.6a2.6 2.6 0 0 1 5.2 0V5" fill="none" stroke="currentColor" strokeWidth="1.2" />
-              <rect x="2.2" y="5" width="7.6" height="5.6" rx="1.2" fill="currentColor" />
-            </svg>
-            <span className="byd-offscreen">{t('table.field.system', { field })}</span>
-          </span>
-        )
+      {/* The edge the column is pulled by, and nothing a reader without a pointer has to step
+          over: the keys do the same thing from the heading itself, and what a column was set to
+          is read and given back in the head's own door. So it is out of the tab order and out of
+          the tree a screen reader walks, which is what an affordance for a hand is. */}
+      {pull && (
+        <span
+          className="byd-data-pull"
+          aria-hidden="true"
+          onPointerDown={pull.onGrab}
+          onDoubleClick={pull.onAuto}
+          // The edge stands inside a heading the browser will carry off if a hand presses and
+          // moves: starting a drag is the default action of a press, and a press on the edge is a
+          // press on the heading. Measured in Chromium, a press on the edge fires `dragstart` on
+          // the heading, so every pull in the width was also a drag in the order. Refusing the
+          // default here is what stops it — and it has to be the mouse's press, because for a
+          // mouse the drag does not hang from the pointer event.
+          onMouseDown={(event) => event.preventDefault()}
+        />
       )}
     </th>
   )

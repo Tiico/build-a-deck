@@ -163,6 +163,15 @@ export function fitColumns(box: Element, deck: Record<string, readonly string[]>
     if (kind === 'tap') return { col, floor: tap, asked: tap, gives: false, width: tap }
     const under = headNeed(i)
     const name = col.getAttribute('data-col')
+    // A width the designer set herself, if she has (#46). It is read off the column, beside what
+    // the column is worth sizing like, because that is where the table already says everything
+    // this function is allowed to know about a column — and it ends the question rather than
+    // joining it: a column somebody set is exactly that wide, and neither gives a share of what
+    // is over nor is asked for one back. What the deck says it needs is not consulted at all,
+    // which is the whole of what setting a width means. A value that no longer fits says so in
+    // the cell, the way a value that does not fit always has.
+    const own = parseFloat(col.getAttribute('data-width') ?? '')
+    if (Number.isFinite(own) && own > 0) return { col, floor: own, asked: own, gives: false, width: own }
     let widest = kind === 'image' ? imageNeed(i) : 0
     for (const value of (name && deck[name]) || []) widest = Math.max(widest, need(value))
     const asked = Math.max(under, widest)

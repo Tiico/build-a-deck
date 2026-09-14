@@ -39,6 +39,7 @@ function renderTable(doc: ProjectDoc, handlers: Partial<DataTableProps> = {}) {
       onReplaceRows={noop}
       onAddField={() => undefined}
       onRemoveField={() => undefined}
+      onMoveField={() => undefined}
       {...handlers}
     />,
   )
@@ -63,6 +64,7 @@ function BulkTable({ start, onRows = () => undefined }: { start: ProjectDoc; onR
       }}
       onAddField={noop}
       onRemoveField={noop}
+      onMoveField={() => undefined}
     />
   )
 }

@@ -59,3 +59,31 @@ if (typeof document !== 'undefined') {
     return res
   }) as typeof fetch
 }
+
+// A working `localStorage` under jsdom, when the runtime has left one that is not one.
+//
+// Node has grown a `localStorage` global of its own, and from Node 22 it is there without being
+// asked for: an object with no `getItem` and no `setItem`, which needs `--localstorage-file` to
+// become a store and warns that it was not given one. It shadows the window's, so under jsdom on
+// such a runtime `localStorage.setItem` is not a function — and everything the tool remembers in
+// the browser (the reader's language, a column's width) is written through a `try`/`catch` that
+// treats a browser refusing storage as a browser that simply forgets. So nothing throws, nothing
+// is remembered, and no test about remembering can pass.
+//
+// The stand-in is the same shape as the socket's above: the real API where there is one, and an
+// in-memory Storage where the runtime has left something that only looks like it.
+if (typeof document !== 'undefined' && typeof globalThis.localStorage?.setItem !== 'function') {
+  const held = new Map<string, string>()
+  const store: Storage = {
+    get length() {
+      return held.size
+    },
+    clear: () => held.clear(),
+    getItem: (key: string) => held.get(key) ?? null,
+    key: (at: number) => [...held.keys()][at] ?? null,
+    removeItem: (key: string) => void held.delete(key),
+    setItem: (key: string, value: string) => void held.set(key, String(value)),
+  }
+  Object.defineProperty(globalThis, 'localStorage', { value: store, configurable: true, writable: true })
+  Object.defineProperty(window, 'localStorage', { value: store, configurable: true, writable: true })
+}

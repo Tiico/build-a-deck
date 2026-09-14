@@ -176,6 +176,12 @@ export const svEditor = {
   // Knappen i tabellhuvudet bär ett `+` och ingenting mer sedan den flyttade in i den pinnade
   // kolumnens rubrik (#46) — en ruta som är en träffyta bred rymmer inte ett ord — så det här
   // är namnet den hörs med, och samma ord namnger formuläret den öppnar.
+  'table.columns': 'Kolumner',
+  'table.column.moved': '{field} är kolumn {at} av {of}',
+  'table.column.width.said': '{field} är {px} px bred',
+  'table.column.width.said.auto': '{field} följer innehållet igen',
+  'table.column.width.auto': 'Låt {field} följa innehållet igen',
+  'table.column.width.px': '{px} px',
   'table.field.new': 'Nytt fält',
   'table.field.name': 'Namn',
   'table.field.kind': 'Typ',
@@ -499,6 +505,7 @@ export const svEditor = {
   'history.diff.removed': '{n} borttagna',
   'history.diff.changed': '{n} ändrade',
   'history.diff.reordered': 'leken omordnad',
+  'history.diff.columns': 'kolumnerna omordnade',
   'history.diff.template': 'mallen ändrad',
   'history.diff.setup': 'uppställningen ändrad',
   'history.diff.icons': 'symbolerna ändrade',

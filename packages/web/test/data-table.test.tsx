@@ -16,22 +16,23 @@ describe('DataTable (B as a tab)', () => {
     const onAddRow = vi.fn()
     const onRemoveRow = vi.fn()
     const onReplaceRows = vi.fn()
-    render(<DataTable doc={doc} selectedRow="knight" onSelectRow={() => undefined} onCell={onCell} onAddRow={onAddRow} onRemoveRow={onRemoveRow} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} />)
+    render(<DataTable doc={doc} selectedRow="knight" onSelectRow={() => undefined} onCell={onCell} onAddRow={onAddRow} onRemoveRow={onRemoveRow} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} />)
 
-    // Every column header is a sort control (#15): its name is the column, the arrow is the state,
-    // and a column the designer made carries the × that takes it away again (#32). The first
-    // column carries no name: the selection's checkbox is its own label (#17). Last stands the
-    // pinned column that removes a card, which says so for a reader who cannot see the ×; the
-    // button that makes a column stands in its head rather than bringing a column of its own to
-    // stand in, because that column had nothing under it on any row (#46).
+    // Every column header is a sort control (#15) and nothing else: its name is the column, the
+    // arrow is the state. The first column carries no name: the selection's checkbox is its own
+    // label (#17). Last stands the pinned column that removes a card, which says so for a reader
+    // who cannot see the ×; the door to the table's columns stands in its head rather than
+    // bringing a column of its own to stand in, because that column had nothing under it on any
+    // row (#46).
     const heads = screen.getAllByRole('columnheader')
     const headers = heads.map((h) => (h.getAttribute('aria-label') ?? h.querySelector('button')?.textContent ?? h.textContent ?? '').replace(/\s*[↕↑↓]\s*$/, ''))
     expect(headers).toEqual(['', 'id', 'title', 'body', 'antal', 'Ta bort'])
-    // The two columns nobody made say so where the others keep their × (#46, L4), and a padlock
-    // on its own is a decoration — so the head says it in words as well, for a reader who cannot
-    // see one.
-    expect(heads.filter((h) => h.querySelector('.byd-data-system')).map((h) => h.getAttribute('data-col'))).toEqual(['id', 'antal'])
-    expect(heads.map((h) => h.textContent)).toContain('antal ↕antal är verktygets egen kolumn och kan inte tas bort')
+    // And nothing about which columns are the designer's is said in the head itself any more: the
+    // × that took one away, and the padlock that stood in its place where one could not be taken
+    // away, are both behind the head's own door (#46 on #32), which is where the table already
+    // said something about its columns as columns. A heading is a name and the way it sorts.
+    expect(heads.filter((h) => h.querySelector('.byd-data-system, .byd-data-dropfield'))).toEqual([])
+    expect(heads.map((h) => h.textContent)).toContain('antal ↕')
     const rows = screen.getAllByRole('row').slice(1)
     expect(rows.map((r) => r.getAttribute('data-card-ref'))).toEqual(['dragon', 'knight', 'wizard'])
     expect(rows[1]!.getAttribute('aria-selected')).toBe('true')
@@ -56,7 +57,7 @@ describe('DataTable (B as a tab)', () => {
   it('exports the current table and imports a selected CSV file', async () => {
     const doc = projectDoc()
     const onReplaceRows = vi.fn()
-    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} />)
+    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} />)
 
     const download = screen.getByRole('link', { name: 'Ladda ner CSV' }) as HTMLAnchorElement
     expect(download.download).toBe('skogens-herrar-kort.csv')
@@ -86,6 +87,7 @@ describe('DataTable row delete (#8)', () => {
         onReplaceRows={() => undefined}
         onAddField={() => undefined}
         onRemoveField={() => undefined}
+        onMoveField={() => undefined}
       />,
     )
   const rowRemove = (cardRef: string) => within(document.querySelector(`[data-card-ref="${cardRef}"]`) as HTMLElement).getByRole('button', { name: /ta bort/i })
@@ -136,7 +138,7 @@ describe('image cells (E1)', () => {
     const doc = withArt()
     const onCell = vi.fn()
     const onUpload = vi.fn(async () => 'd'.repeat(64))
-    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} assetBase="http://api.local" onUpload={onUpload} />)
+    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} assetBase="http://api.local" onUpload={onUpload} />)
     const rows = screen.getAllByRole('row').slice(1)
     const thumb = within(rows[0]!).getByRole('img', { name: 'dragon art' }) as HTMLImageElement
     expect(thumb.src).toBe(`http://api.local/assets/${HASH}`)
@@ -156,7 +158,7 @@ describe('image cells (E1)', () => {
     const doc = withArt()
     doc.rows[1]!.fields['art'] = `asset:${HASH}`
     const onCell = vi.fn()
-    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} assetBase="http://api.local" onUpload={async () => 'e'.repeat(64)} />)
+    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} assetBase="http://api.local" onUpload={async () => 'e'.repeat(64)} />)
     const strip = screen.getByRole('list', { name: 'Bilder i spelet' })
     const thumbs = within(strip).getAllByRole('img')
     expect(thumbs).toHaveLength(1)
@@ -188,7 +190,7 @@ describe('an image on every marked card (#17, E1)', () => {
   it('drops one of the deck\'s images into the action row and writes it on every marked card, and on no other', () => {
     const doc = withArt()
     const onReplaceRows = vi.fn()
-    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} assetBase="http://api.local" onUpload={async () => OTHER} />)
+    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} assetBase="http://api.local" onUpload={async () => OTHER} />)
     mark('knight')
     mark('wizard')
 
@@ -217,7 +219,7 @@ describe('an image on every marked card (#17, E1)', () => {
     const doc = withArt()
     const onReplaceRows = vi.fn()
     const onUpload = vi.fn(async () => OTHER)
-    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} assetBase="http://api.local" onUpload={onUpload} />)
+    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} assetBase="http://api.local" onUpload={onUpload} />)
     mark('knight')
     mark('wizard')
     fireEvent.change(within(bulk()).getByLabelText('Kolumn'), { target: { value: 'art' } })
@@ -238,7 +240,7 @@ describe('an image on every marked card (#17, E1)', () => {
   it('takes a file dropped straight on the row, and lets the image go once it is set', async () => {
     const doc = withArt()
     const onReplaceRows = vi.fn()
-    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} assetBase="http://api.local" onUpload={async () => OTHER} />)
+    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} assetBase="http://api.local" onUpload={async () => OTHER} />)
     mark('knight')
     fireEvent.change(within(bulk()).getByLabelText('Kolumn'), { target: { value: 'art' } })
 
@@ -260,7 +262,7 @@ describe('an image on every marked card (#17, E1)', () => {
   // image edits every column as text, cells included. The row says the same thing the cells do.
   it('keeps the text field for an image column when the table has no image store', () => {
     const onReplaceRows = vi.fn()
-    render(<DataTable doc={withArt()} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} />)
+    render(<DataTable doc={withArt()} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} />)
     mark('knight')
     fireEvent.change(within(bulk()).getByLabelText('Kolumn'), { target: { value: 'art' } })
 
@@ -278,7 +280,7 @@ describe('the symbol picker at the brace (E4)', () => {
     // The editor answers with the name the symbol has in the designer's own language, which is
     // what lands in the icon set and between the braces (E4, A4).
     const onSymbol = vi.fn(async (s: GameSymbol) => symbolName(s))
-    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onSymbol={onSymbol} />)
+    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} onSymbol={onSymbol} />)
     const cell = within(screen.getAllByRole('row')[1]!).getByLabelText('dragon body') as HTMLInputElement
     return { cell, onCell, onSymbol }
   }
@@ -366,6 +368,7 @@ describe('comparing with an older version in the table (B4)', () => {
         onReplaceRows={() => undefined}
         onAddField={() => undefined}
         onRemoveField={() => undefined}
+        onMoveField={() => undefined}
         compareWith={{ rev: 1, doc: older() }}
       />,
     )
@@ -384,7 +387,7 @@ describe('comparing with an older version in the table (B4)', () => {
   })
 
   it('is not in the way when nothing is being compared', () => {
-    render(<DataTable doc={now()} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} />)
+    render(<DataTable doc={now()} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} />)
     expect(screen.queryByText(/Jämför med/)).toBeNull()
     expect(screen.getAllByRole('row').slice(1).map((r) => r.getAttribute('data-change'))).toEqual([null, null, null])
   })

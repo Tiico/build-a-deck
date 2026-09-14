@@ -36,7 +36,7 @@ const openTab = (name: string) => fireEvent.click(screen.getByRole('tab', { name
 const column = (name: string) => screen.queryByRole('button', { name: new RegExp(`^${name}[\\s↕↑↓×]*$`) })
 
 async function makeField(user: ReturnType<typeof userEvent.setup>, name: string): Promise<void> {
-  await user.click(screen.getByRole('button', { name: 'Nytt fält' }))
+  await user.click(screen.getByRole('button', { name: 'Kolumner' }))
   const form = screen.getByRole('form', { name: 'Nytt fält' })
   await user.clear(within(form).getByLabelText('Namn'))
   await user.type(within(form).getByLabelText('Namn'), name)
@@ -97,6 +97,7 @@ describe('a field made in the editor is a field the game has (#32, B4)', () => {
     // Taking the column away says what goes with it, and then takes the element that drew it too
     // — a template left binding a column that is not there would draw nothing on every card.
     openTab('Tabell')
+    await user.click(screen.getByRole('button', { name: 'Kolumner' }))
     await user.click(screen.getByRole('button', { name: 'Ta bort fältet styrka' }))
     expect(screen.getByText('Ta bort styrka? Inget kort har ett värde i den. Elementet som visar den tas bort ur mallen.')).toBeTruthy()
     await user.click(screen.getByRole('button', { name: 'Ja, ta bort' }))
@@ -146,5 +147,46 @@ describe('a field made in the editor is a field the game has (#32, B4)', () => {
     await waitFor(() => expect((screen.getByLabelText('Fält') as HTMLSelectElement).value).toBe('styrka'))
     openTab('Tabell')
     expect(column('styrka')).toBeTruthy()
+  })
+  // Where a column stands is the document's (#46), so it has to make the same journey a column
+  // itself makes: through the real page, over a real socket, into the actor, out of the store and
+  // back onto a page that was never told. A move that only reordered a component's state would
+  // pass every test in `data-table-order` and be gone by the next reload.
+  it('moves a column all the way down: the order is saved, read back, and taken back by one step', async () => {
+    const user = userEvent.setup()
+    await run.projects.create('p1', projectDoc())
+    await openEditor()
+    openTab('Tabell')
+
+    const order = () => Array.from(document.querySelectorAll('thead th[data-col]')).map((th) => th.getAttribute('data-col'))
+    expect(order()).toEqual(['id', 'title', 'body', 'antal'])
+
+    // Alt and an arrow, which is the same move the drag makes and the one a test can make.
+    const heading = document.querySelector('thead th[data-col="body"] button') as HTMLButtonElement
+    heading.focus()
+    await user.keyboard('{Alt>}{ArrowLeft}{/Alt}')
+    await waitFor(() => expect(order()).toEqual(['id', 'body', 'title', 'antal']))
+
+    // It is an edit like any other: one step back puts the column where it stood, named in the
+    // words the designer reads rather than in the verb's. Asked here and not after the reload,
+    // because the stack lives in the tab and never claimed to survive one — the history is what
+    // survives (B4), and it is a different thing.
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
+    expect(await screen.findAllByText(/Tog tillbaka: ett fält i kortleken/)).not.toHaveLength(0)
+    await waitFor(() => expect(order()).toEqual(['id', 'title', 'body', 'antal']))
+
+    heading.focus()
+    await user.keyboard('{Alt>}{ArrowLeft}{/Alt}')
+    await waitFor(() => expect(order()).toEqual(['id', 'body', 'title', 'antal']))
+    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    await screen.findByText(/rev [23]/)
+    // What the server kept, and in the form the document keeps it in: an order, not a list.
+    expect((await run.projects.load('p1'))?.columns).toEqual(['body', 'title', 'antal'])
+
+    // A fresh editor over the same project, which has never seen the move happen.
+    cleanup()
+    await openEditor()
+    openTab('Tabell')
+    await waitFor(() => expect(order()).toEqual(['id', 'body', 'title', 'antal']))
   })
 })

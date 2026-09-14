@@ -39,6 +39,7 @@ function renderTable(doc: ProjectDoc, handlers: Partial<DataTableProps> = {}) {
       onReplaceRows={noop}
       onAddField={() => undefined}
       onRemoveField={() => undefined}
+      onMoveField={() => undefined}
       {...handlers}
     />,
   )
@@ -146,6 +147,7 @@ function EditedTable({ start }: { start: ProjectDoc }) {
       onReplaceRows={noop}
       onAddField={() => undefined}
       onRemoveField={() => undefined}
+      onMoveField={() => undefined}
     />
   )
 }
@@ -165,6 +167,7 @@ function AddableTable({ start }: { start: ProjectDoc }) {
       onReplaceRows={noop}
       onAddField={() => undefined}
       onRemoveField={() => undefined}
+      onMoveField={() => undefined}
     />
   )
 }
