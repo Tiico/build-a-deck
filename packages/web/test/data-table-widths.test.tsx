@@ -849,3 +849,66 @@ describe('a value that does not fit says so (#46)', () => {
     expect(cheap.focused.equals(bare.focused)).toBe(true)
   }, 60_000)
 })
+
+// What the button that makes a column does when the pointer arrives on it (#46).
+//
+// It stands in the head's last cell (#32), and that cell is a `th` like every other — so the rule
+// that hands a heading's right-hand 44 px to the × reaches this one too, and here there is nothing
+// to hand over: the cell *is* 44 px wide. `max-width: calc(100% - var(--byd-tap) + head-pad)`
+// leaves the `+` ten pixels the moment it is pointed at. The pointer is then standing beside the
+// button rather than on it, the hover it caused ends, the button grows back to 44, the pointer is
+// on it again — and that is the flicker the designer sees, as fast as the browser can draw it, for
+// as long as the hand rests there.
+//
+// Measured from the pointer's side and not the stylesheet's: the button's own box with the mouse
+// really on it, and what `elementFromPoint` finds in its middle.
+type Plus = { w: number; h: number; left: number; at: string }
+
+async function plus(doc: ProjectDoc, { hover = false } = {}): Promise<Plus> {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
+  try {
+    await page.setContent(shellOf(markupOf(doc), ''), { waitUntil: 'load' })
+    await page.evaluate(
+      ({ deck, decide }) => {
+        const box = document.querySelector('.byd-data-scroll') as HTMLElement
+        new Function('box', 'deck', `(${decide})(box, deck)`)(box, deck)
+      },
+      { deck: deckValues(doc, sv), decide: String(fitColumns) },
+    )
+    const button = (await page.$('thead .byd-data-remove > button'))!
+    if (hover) {
+      const seen = (await button.boundingBox())!
+      await page.mouse.move(seen.x + seen.width / 2, seen.y + seen.height / 2)
+    }
+    return (await page.evaluate(() => {
+      const el = document.querySelector('thead .byd-data-remove > button') as HTMLElement
+      const seen = el.getBoundingClientRect()
+      const hit = document.elementFromPoint(seen.left + seen.width / 2, seen.top + seen.height / 2)
+      return {
+        w: Math.round(seen.width),
+        h: Math.round(seen.height),
+        left: Math.round(seen.left),
+        at: hit === el ? 'self' : `${hit?.tagName ?? '(nothing)'}${(hit as HTMLElement | null)?.className ? `.${(hit as HTMLElement).className}` : ''}`,
+      }
+    })) as Plus
+  } finally {
+    await page.close()
+  }
+}
+
+describe('the button that makes a column, with the pointer on it (#46, #32)', () => {
+  it('is the same button pointed at as at rest: same size, same place, and its own middle', async () => {
+    const [atRest, pointed] = await Promise.all([plus(deckDoc()), plus(deckDoc(), { hover: true })])
+
+    // At rest it is what the head's last cell is: a tap across and a tap down.
+    expect(atRest.w).toBe(44)
+    expect(atRest.at).toBe('self')
+
+    // And the pointer changes none of it. A control that shrinks out from under the hand that
+    // reached for it cannot be pressed on purpose.
+    expect(pointed.w).toBe(atRest.w)
+    expect(pointed.h).toBe(atRest.h)
+    expect(pointed.left).toBe(atRest.left)
+    expect(pointed.at).toBe('self')
+  }, 60_000)
+})

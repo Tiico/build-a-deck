@@ -1040,7 +1040,16 @@
    that matches the paint is the honest one; the alternative on offer was a 44 px button whose
    middle belonged to something else. */
 .byd-data th:hover .byd-data-dropfield, .byd-data th:focus-within .byd-data-dropfield { opacity: 1; pointer-events: auto; }
-.byd-data th:hover > button:not(.byd-data-dropfield), .byd-data th:focus-within > button:not(.byd-data-dropfield) {
+/* And only in a heading that really has a × to give way to. The rule reached every cell of the
+   head, and the last one is a `th` like the others — the cell the button that makes a column stands
+   in (#32), which is one tap wide and has nothing to hand over: `100% - 44px + 10px` is ten pixels.
+   So the `+` shrank to ten the moment it was pointed at, the pointer was then standing beside the
+   button rather than on it, the hover ended, the button grew back to 44, and it was pointed at
+   again — a flicker as fast as the browser can draw, for as long as the hand rested there, and a
+   control that cannot be pressed on purpose. `:has()` says the condition the rule always meant:
+   a heading gives room to the × it carries, and `id` and `antal`, which carry a padlock in the
+   flow instead, no longer give room to a control that is never coming either. */
+.byd-data th:has(.byd-data-dropfield):hover > button:not(.byd-data-dropfield), .byd-data th:has(.byd-data-dropfield):focus-within > button:not(.byd-data-dropfield) {
   min-width: 0;
   max-width: calc(100% - var(--byd-tap) + var(--byd-data-head-pad));
 }
