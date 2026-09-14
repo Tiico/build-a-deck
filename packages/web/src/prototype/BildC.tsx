@@ -84,7 +84,7 @@ export function BildC() {
       </section>
 
       <section className="byd-proto-c-list" aria-live="polite">
-        <h2>{objections.length === 0 ? 'Inga invändningar' : `${objections.length} bilder kan inte svara på regeln`}</h2>
+        <h2>{objections.length === 0 ? 'Inga invändningar' : objections.length === 1 ? 'En bild kan inte svara på regeln' : `${objections.length} bilder kan inte svara på regeln`}</h2>
         {objections.length === 0 ? (
           <p className="byd-proto-hint">Alla {DECK.length} filerna ryms i måttet. Det är det här läget listan är till för att nå.</p>
         ) : (

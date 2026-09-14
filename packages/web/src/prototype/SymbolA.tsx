@@ -73,7 +73,9 @@ export function SymbolA() {
               </div>
               {SYMBOLS.map((s, i) => (
                 <button key={s.id} type="button" role="option" aria-selected={i === at} tabIndex={-1} onMouseDown={(e) => e.preventDefault()} onClick={() => write(i, ink)}>
-                  <Sym id={s.id} ink={INKS[ink]?.hex ?? '#1c1c1c'} size="20px" />
+                  <span className="byd-proto-chipswatch">
+                    <Sym id={s.id} ink={INKS[ink]?.hex ?? '#1c1c1c'} size="20px" />
+                  </span>
                   <span>{s.name}</span>
                   <small>{`{${s.id}:${INKS[ink]?.name}}`}</small>
                 </button>

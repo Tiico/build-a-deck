@@ -16,7 +16,7 @@ import { CardFace, Sym } from './symbol-shared.js'
 type Role = { id: string; hex: string }
 const START: Role[] = [
   { id: 'fara', hex: '#8f2d20' },
-  { id: 'kostnad', hex: '#7a5c00' },
+  { id: 'kostnad', hex: '#3b3a86' },
   { id: 'vinst', hex: '#2f6136' },
   { id: 'neutral', hex: '#1c1c1c' },
 ]
@@ -131,7 +131,9 @@ export function SymbolC() {
                     setOpenAt(null)
                   }}
                 >
-                  <Sym id={s.id} ink={roles[role]?.hex ?? '#1c1c1c'} size="20px" />
+                  <span className="byd-proto-chipswatch">
+                    <Sym id={s.id} ink={roles[role]?.hex ?? '#1c1c1c'} size="20px" />
+                  </span>
                   <span>{s.name}</span>
                   <small>{`{${s.id}|${roles[role]?.id}}`}</small>
                 </button>

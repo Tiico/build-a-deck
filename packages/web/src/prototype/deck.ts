@@ -47,11 +47,13 @@ const BAGARE = '<path d="M28 20 h44 l-6 34 a16 16 0 0 1 -32 0 z" fill="#b8860b"/
 // to the edge rather than transparency, which is the case the automatic measurement handles and
 // a person must be able to see it handled.
 export const DECK: Piece[] = [
-  piece('drake', 'Drake', 900, 1200, { x: 140, y: 120, w: 620, h: 700 }, DRAKE),
+  piece('drake', 'Drake', 1400, 1100, { x: 390, y: 180, w: 620, h: 700 }, DRAKE),
+  // The one that cannot answer: delivered cropped to the drawing, with no air left to give. No
+  // rule can put it at the same size as the rest, and a surface that hides that is lying.
   piece('riddare', 'Riddare', 1400, 900, { x: 30, y: 20, w: 1340, h: 860 }, RIDDARE),
-  piece('trollkarl', 'Trollkarl', 1000, 1000, { x: 250, y: 180, w: 500, h: 640 }, TROLLKARL),
-  piece('varg', 'Varg', 800, 1400, { x: 90, y: 470, w: 620, h: 470 }, VARG, '#efe7d6'),
-  piece('torn', 'Torn', 1100, 1100, { x: 380, y: 60, w: 340, h: 980 }, TORN),
+  piece('trollkarl', 'Trollkarl', 1300, 1000, { x: 400, y: 180, w: 500, h: 640 }, TROLLKARL),
+  piece('varg', 'Varg', 900, 1400, { x: 140, y: 470, w: 620, h: 470 }, VARG, '#efe7d6'),
+  piece('torn', 'Torn', 1500, 1100, { x: 510, y: 140, w: 480, h: 820 }, TORN),
   piece('bagare', 'Bägare', 760, 760, { x: 180, y: 170, w: 400, h: 420 }, BAGARE, '#1d2733'),
 ]
 
