@@ -168,6 +168,15 @@ Följ deployen på lådan:
 journalctl -u byd-deploy.service -f
 ```
 
+Och fråga tjänsten själv vad den blev, utifrån eller på lådan (DRIFT §8):
+
+```bash
+curl -s https://<ditt värdnamn>/health
+```
+
+`release` i svaret är den tagg lådan faktiskt rullade till.
+Står den kvar på den gamla har timern ännu inte tickat, eller så väntar den på att CI blir klar med bilderna.
+
 Att rulla tillbaka är att tagga om från en äldre commit — eller, om det brådskar, `git reset --hard <äldre tagg> && ops/deploy.sh --force`, med vetskapen att nästa tick tar lådan tillbaka till den nyaste taggen.
 
 ## 6. Backup och återställning
