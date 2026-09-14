@@ -137,6 +137,12 @@ En gratis extern pulskoll är tio minuters arbete om det behövs senare, och än
 Kompensation som redan finns:
 En buggrapport är ett sessions-id och ett seq-nummer; `replay` till den punkten ger exakt det tillstånd användaren såg.
 
+Byggt 2026-09-14:
+`/health` namnger releasen den kör, ur samma `BYD_TAG` som `ops/deploy.sh` rullade till.
+Utan den frågan var lådan stum om sin egen version, och en deploy gick bara att verifiera genom att fingeravtrycka den JS-bundle den serverar.
+Varje svar bär den, 503:orna med: vilken version som är trasig är det första man frågar tillbaka.
+Utanför lådan är variabeln osatt, och då säger `/health` ingenting om någon release i stället för att hitta på en.
+
 ## 9. Missbruk: Cloudflare rate limiting, korta koder, värdkontroll
 
 Cloudflares rate limiting stoppar brute force mot join-endpointen innan det når huset.

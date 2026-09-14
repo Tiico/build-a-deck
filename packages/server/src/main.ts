@@ -71,8 +71,11 @@ const staticDir = process.env['STATIC_DIR']
 const publicOrigin = process.env['PUBLIC_ORIGIN']
 const appOrigin = process.env['WEB_ORIGIN']
 const authBypass = process.env['AUTH_BYPASS'] === 'true'
+// What deploy.sh rolled to (DRIFT §7). Unset outside the box, and then /health says nothing
+// about a release rather than inventing one.
+const release = process.env['BYD_TAG']
 const mailer = mailerFromEnv(process.env)
-const server = createServer({ host, store, registry, renders, projects, assets, surveys, auth, mailer, authBypass, ...(objects ? { objects } : {}), ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}) })
+const server = createServer({ host, store, registry, renders, projects, assets, surveys, auth, mailer, authBypass, ...(objects ? { objects } : {}), ...(staticDir ? { staticDir } : {}), ...(publicOrigin ? { publicOrigin } : {}), ...(appOrigin ? { appOrigin } : {}), ...(release ? { release } : {}) })
 server.listen(port, () => console.log(JSON.stringify({ msg: 'listening', port })))
 
 const evictor = setInterval(() => {

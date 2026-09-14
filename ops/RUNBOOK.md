@@ -21,8 +21,11 @@ Vad som händer om något av det valfria saknas:
 | Saknas | Konsekvens |
 |---|---|
 | R2 | Texturer och uppladdade bilder ligger kvar i Postgres och går genom lådans uppström; ingen WAL-arkivering, alltså **ingen backup** (DRIFT §4, §5). |
+| Resend | Inloggningslänken skrivs i `app`-containerns logg i stället för att mejlas; bara den som når loggen kan logga in (DRIFT §12). |
+| Tailscale | Administration sker över SSH på det lokala nätet; Postgres lyssnar ändå bara på lådans `127.0.0.1` (DRIFT §10). |
 
-Skapar du bucketarna i en jurisdiktion — den europeiska är rimlig för nordiska användare — svarar de inte på kontots vanliga endpoint utan på sin egen. Sätt `R2_ENDPOINT` därefter; symptomet annars är 403 på nycklar som är helt riktiga.
+Om R2: skapar du bucketarna i en jurisdiktion — den europeiska är rimlig för nordiska användare — svarar de inte på kontots vanliga endpoint utan på sin egen.
+Sätt `R2_ENDPOINT` därefter; symptomet annars är 403 på nycklar som är helt riktiga.
 
 Nycklarna går att prova innan något startas, vilket är värt de tio sekunderna:
 
@@ -36,9 +39,8 @@ docker run --rm \
   ghcr.io/tiico/build-a-deck/postgres:$(git rev-parse HEAD) wal-g backup-list
 ```
 
-`No backups found` betyder att nycklarna når bucketen. `AccessDenied` betyder att de inte gör det.
-| Resend | Inloggningslänken skrivs i `app`-containerns logg i stället för att mejlas; bara den som når loggen kan logga in (DRIFT §12). |
-| Tailscale | Administration sker över SSH på det lokala nätet; Postgres lyssnar ändå bara på lådans `127.0.0.1` (DRIFT §10). |
+`No backups found` betyder att nycklarna når bucketen.
+`AccessDenied` betyder att de inte gör det.
 
 Och en väg in utifrån: antingen en omvänd proxy som redan står på lådan, eller Cloudflare Tunnel. Steg 3 säger hur.
 
@@ -167,6 +169,15 @@ Följ deployen på lådan:
 ```bash
 journalctl -u byd-deploy.service -f
 ```
+
+Och fråga tjänsten själv vad den blev, utifrån eller på lådan (DRIFT §8):
+
+```bash
+curl -s https://<ditt värdnamn>/health
+```
+
+`release` i svaret är den tagg lådan faktiskt rullade till.
+Står den kvar på den gamla har timern ännu inte tickat, eller så väntar den på att CI blir klar med bilderna.
 
 Att rulla tillbaka är att tagga om från en äldre commit — eller, om det brådskar, `git reset --hard <äldre tagg> && ops/deploy.sh --force`, med vetskapen att nästa tick tar lådan tillbaka till den nyaste taggen.
 

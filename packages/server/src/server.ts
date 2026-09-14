@@ -54,6 +54,9 @@ export type ServerOptions = {
   limiter?: LoginLimiter
   // The clock, for tests: what codes and tokens expire against.
   now?: () => Date
+  // The release this process is running, named in /health so the box can be asked what it is
+  // (DRIFT §7, §8): the box is otherwise mute about its own version.
+  release?: string
 }
 const BOOKLET: RenderKind = { kind: 'booklet' }
 const clock = (opts: ServerOptions): Date => (opts.now ?? (() => new Date()))()
@@ -219,19 +222,22 @@ async function route(opts: ServerOptions, req: IncomingMessage, res: ServerRespo
     if (req.method === 'GET' && url.pathname === '/health') {
       // Health means the store answers (DRIFT §2), not just that the process is up.
       const loaded = await opts.host.loaded()
+      // Every answer carries it, the 503s included: which version is broken is the first thing
+      // asked back, and the box has nowhere else to say it (DRIFT §8).
+      const who = { ...(opts.release ? { release: opts.release } : {}), tables: loaded.length }
       try {
         await opts.store.staleSessions(new Date(0))
       } catch (err) {
-        return json(res, 503, { ok: false, tables: loaded.length, store: err instanceof Error ? err.message : String(err) })
+        return json(res, 503, { ok: false, ...who, store: err instanceof Error ? err.message : String(err) })
       }
       if (opts.objects) {
         try {
           await opts.objects.check()
         } catch (err) {
-          return json(res, 503, { ok: false, tables: loaded.length, store: 'ok', assets: err instanceof Error ? err.message : String(err) })
+          return json(res, 503, { ok: false, ...who, store: 'ok', assets: err instanceof Error ? err.message : String(err) })
         }
       }
-      return json(res, 200, { ok: true, tables: loaded.length, store: 'ok', ...(opts.objects ? { assets: 'ok' } : {}) })
+      return json(res, 200, { ok: true, ...who, store: 'ok', ...(opts.objects ? { assets: 'ok' } : {}) })
     }
     if (req.method === 'POST' && url.pathname === '/sessions') {
       const body = CreateSession.parse(JSON.parse(await readBody(req)))
