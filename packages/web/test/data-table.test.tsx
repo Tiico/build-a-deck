@@ -169,6 +169,108 @@ describe('image cells (E1)', () => {
   })
 })
 
+// One image on several cards at once (#17 on E1). A deck is drawn in batches — every event card
+// takes the same back, every forest card the same art — and setting it card by card is the same
+// image chosen twenty times. The action row already writes one column on every marked card; this
+// is that row told what a bild is.
+describe('an image on every marked card (#17, E1)', () => {
+  const HASH = 'c'.repeat(64)
+  const OTHER = 'a'.repeat(64)
+  const withArt = () => {
+    const doc = projectDoc()
+    doc.template.faces['front']!.base.push({ kind: 'image', id: 'art', x: 4, y: 4, w: 55, h: 36, bind: { field: 'art' } })
+    doc.rows[0]!.fields['art'] = `asset:${HASH}`
+    return doc
+  }
+  const mark = (cardRef: string) => fireEvent.click(screen.getByLabelText(`markera ${cardRef}`))
+  const bulk = () => screen.getByRole('toolbar', { name: 'Markerade kort' })
+
+  it('drops one of the deck\'s images into the action row and writes it on every marked card, and on no other', () => {
+    const doc = withArt()
+    const onReplaceRows = vi.fn()
+    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} assetBase="http://api.local" onUpload={async () => OTHER} />)
+    mark('knight')
+    mark('wizard')
+
+    // The column is the image field, so the value is not a sentence to type: it is a place to put
+    // an image. The row says so by having no text field at all for it.
+    fireEvent.change(within(bulk()).getByLabelText('Kolumn'), { target: { value: 'art' } })
+    expect(within(bulk()).queryByLabelText('Värde')).toBeNull()
+    const slot = within(bulk()).getByLabelText('Bild för de markerade korten')
+
+    // Nothing is set until an image is chosen: the button is there and does not work.
+    expect((within(bulk()).getByRole('button', { name: 'Sätt bild på 2 kort' }) as HTMLButtonElement).disabled).toBe(true)
+
+    fireEvent.drop(slot, { dataTransfer: { getData: (type: string) => (type === 'text/x-byd-asset' ? HASH : ''), files: [] } })
+    fireEvent.click(within(bulk()).getByRole('button', { name: 'Sätt bild på 2 kort' }))
+
+    // One change to the project, not two (L4, B4): both marked cards in a single list of rows.
+    expect(onReplaceRows).toHaveBeenCalledTimes(1)
+    expect(onReplaceRows.mock.calls[0]![0].map((r: { id: string; fields: Record<string, unknown> }) => [r.id, r.fields['art']])).toEqual([
+      ['dragon', `asset:${HASH}`],
+      ['knight', `asset:${HASH}`],
+      ['wizard', `asset:${HASH}`],
+    ])
+  })
+
+  it('uploads a chosen file once and puts that one image on every marked card', async () => {
+    const doc = withArt()
+    const onReplaceRows = vi.fn()
+    const onUpload = vi.fn(async () => OTHER)
+    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} assetBase="http://api.local" onUpload={onUpload} />)
+    mark('knight')
+    mark('wizard')
+    fireEvent.change(within(bulk()).getByLabelText('Kolumn'), { target: { value: 'art' } })
+
+    const file = new File(['png'], 'skog.png', { type: 'image/png' })
+    fireEvent.change(within(bulk()).getByLabelText('Välj bild för de markerade korten'), { target: { files: [file] } })
+    // The file becomes one asset, and the row is holding it before anything is written: the
+    // thumbnail is what says which image the button is about.
+    await waitFor(() => expect((within(bulk()).getByRole('img', { name: 'Bild för de markerade korten' }) as HTMLImageElement).src).toBe(`http://api.local/assets/${OTHER}`))
+    fireEvent.click(within(bulk()).getByRole('button', { name: 'Sätt bild på 2 kort' }))
+
+    // Two cards, one upload — the same image on ten cards is one image (E1).
+    expect(onUpload).toHaveBeenCalledTimes(1)
+    expect(onUpload).toHaveBeenCalledWith(file)
+    expect(onReplaceRows.mock.calls[0]![0].map((r: { id: string; fields: Record<string, unknown> }) => r.fields['art'])).toEqual([`asset:${HASH}`, `asset:${OTHER}`, `asset:${OTHER}`])
+  })
+
+  it('takes a file dropped straight on the row, and lets the image go once it is set', async () => {
+    const doc = withArt()
+    const onReplaceRows = vi.fn()
+    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} assetBase="http://api.local" onUpload={async () => OTHER} />)
+    mark('knight')
+    fireEvent.change(within(bulk()).getByLabelText('Kolumn'), { target: { value: 'art' } })
+
+    // A file off the desktop is dropped on the row the same way it is dropped on a cell.
+    const file = new File(['png'], 'berg.png', { type: 'image/png' })
+    fireEvent.drop(within(bulk()).getByLabelText('Bild för de markerade korten'), { dataTransfer: { getData: () => '', files: [file] } })
+    await waitFor(() => expect(within(bulk()).getByRole('img', { name: 'Bild för de markerade korten' })).toBeTruthy())
+
+    fireEvent.click(within(bulk()).getByRole('button', { name: 'Sätt bild på 1 kort' }))
+    expect(onReplaceRows.mock.calls[0]![0][1].fields['art']).toBe(`asset:${OTHER}`)
+
+    // And the row lets it go: what was set is done, and the next press has to say which image it
+    // is about — a held image and a new set of marked cards is a picture written by mistake.
+    expect(within(bulk()).queryByRole('img', { name: 'Bild för de markerade korten' })).toBeNull()
+    expect((within(bulk()).getByRole('button', { name: 'Sätt bild på 1 kort' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  // The one place a bildfält is still a sentence: a table mounted without anywhere to put an
+  // image edits every column as text, cells included. The row says the same thing the cells do.
+  it('keeps the text field for an image column when the table has no image store', () => {
+    const onReplaceRows = vi.fn()
+    render(<DataTable doc={withArt()} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} />)
+    mark('knight')
+    fireEvent.change(within(bulk()).getByLabelText('Kolumn'), { target: { value: 'art' } })
+
+    expect(within(bulk()).queryByLabelText('Bild för de markerade korten')).toBeNull()
+    fireEvent.change(within(bulk()).getByLabelText('Värde'), { target: { value: 'skog.png' } })
+    fireEvent.click(within(bulk()).getByRole('button', { name: 'Sätt art på 1 kort' }))
+    expect(onReplaceRows.mock.calls[0]![0][1].fields['art']).toBe('skog.png')
+  })
+})
+
 describe('the symbol picker at the brace (E4)', () => {
   const setup = () => {
     const doc = projectDoc()
