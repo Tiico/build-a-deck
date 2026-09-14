@@ -2,6 +2,9 @@ import type { ZoneView } from '@byd/protocol'
 import { union, type Rect, type Size } from './camera.js'
 import type { Point } from './drop.js'
 
+// The two ways a table is looked at (C5): a table everyone stands around, or a TV everyone faces.
+export type TableMode = 'table' | 'tv'
+
 // A hand is a fan of cards lying on the felt, so it is measured in the table's own millimetres
 // like everything else on it, and the renderer scales it as it scales the rest (#23). The
 // numbers are the pixels prototype B was drawn in, which is what they mean at life size.
@@ -28,6 +31,13 @@ export function edgeRotation(hand: ZoneView, floor: ZoneView): number {
   const dy = hand.geometry.y + hand.geometry.h / 2 - (floor.geometry.y + floor.geometry.h / 2)
   if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? -90 : 90
   return dy > 0 ? 0 : 180
+}
+
+// How far a hand's fan is turned: toward its own edge in table mode, not at all on a TV, where
+// every fan faces the viewer (C5). The fan is drawn by this, measured by it (`handExtent`) and
+// hit-tested by it (`dropAt`), so it is asked once, here.
+export function handRotation(hand: ZoneView, floor: ZoneView, mode: TableMode): number {
+  return mode === 'table' ? edgeRotation(hand, floor) : 0
 }
 
 // How many cards a hand actually fans, and whether they step sideways as well as turn: a hand

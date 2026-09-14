@@ -1,5 +1,6 @@
 import type { Intent, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
-import { zoneAt } from '../zones.js'
+import { zoneAt, type Drop } from '../zones.js'
+import { handExtent, handRotation, type TableMode } from './hand.js'
 
 // Card size in table millimetres. The type registry knows the real size; until the renderer
 // reads it from there, the standard card is the only type that exists.
@@ -40,11 +41,34 @@ export type Drag = {
 }
 export type Hit = { kind: 'card'; id: string; zone: string } | { kind: 'pile'; id: string }
 
-// What a drop means (K1, K2): onto a loose card → stack; onto a pile → join it on top; inside a
-// zone rectangle → move there; anywhere else → free placement on the floor. The top card of a
-// pile goes the same way, as a split; a whole pile moves as one unit.
-export function dropIntents(view: Snapshot, d: Drag): Intent[] {
+// Where a point on the table lands (K2, #65): on a hand's fan as it is drawn → that hand; else
+// the smallest area or hand strip that holds it; else the floor. A hand's zone is a 60 mm strip
+// along the rim, but what one sees is the fan, which is deeper than the strip and hangs past the
+// rim over the wood — and the picture is the truth. So a hand with cards in it receives on its
+// fan and nowhere else: the strip beside the fan is felt like any other, and a loose card can be
+// laid right up to the fan's edge and not an inch closer. A hand with no cards draws no fan, and
+// there the strip still says where the hand is. The wood is no surface a card can be laid *on*
+// (#66); a hand drawn out over it is still that hand.
+export function dropAt(view: Snapshot, mode: TableMode, p: Point): Drop {
+  const floor = view.zones.find((z) => z.id === view.floor)
+  if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
+  const fanned = new Set<string>()
+  for (const z of view.zones) {
+    if (z.kind !== 'hand') continue
+    const fan = handExtent(z, floor, handRotation(z, floor, mode))
+    if (!fan) continue
+    fanned.add(z.id)
+    if (p.x >= fan.x && p.x <= fan.x + fan.w && p.y >= fan.y && p.y <= fan.y + fan.h) return { zone: z.id, x: p.x - z.geometry.x, y: p.y - z.geometry.y }
+  }
+  return zoneAt(view.zones.filter((z) => !fanned.has(z.id)), view.floor, p.x, p.y)
+}
+
+// What a drop means (K1, K2): onto a loose card → stack; onto a pile → join it on top; on a
+// hand's fan or inside a zone rectangle → move there; anywhere else → free placement on the
+// floor. The top card of a pile goes the same way, as a split; a whole pile moves as one unit.
+export function dropIntents(view: Snapshot, d: Drag, mode: TableMode): Intent[] {
   const zones = new Map(view.zones.map((z) => [z.id, z]))
+  const at = (p: Point): Drop => dropAt(view, mode, p)
   const dx = d.at.x - d.grab.x
   const dy = d.at.y - d.grab.y
   if (d.target.kind === 'pile') {
@@ -52,7 +76,7 @@ export function dropIntents(view: Snapshot, d: Drag): Intent[] {
     if (!z) return []
     const x = z.geometry.x + dx
     const y = z.geometry.y + dy
-    const under = zones.get(zoneAt(view.zones, view.floor, x, y).zone)
+    const under = zones.get(at({ x, y }).zone)
     return [{ v: 'movePile', pile: z.id, to: under?.kind === 'area' ? under.id : view.floor, x, y }]
   }
   // A chip is not a card (C4): it joins no pile and stacks on nothing, so a drop means the one
@@ -60,7 +84,7 @@ export function dropIntents(view: Snapshot, d: Drag): Intent[] {
   // point falls in. The verb is `move`, the same one a card travels by; nothing new is invented.
   if (d.target.kind === 'counter') {
     const o = d.origin[d.target.id] ?? d.grab
-    const dest = zoneAt(view.zones, view.floor, o.x + dx, o.y + dy)
+    const dest = at({ x: o.x + dx, y: o.y + dy })
     return [{ v: 'move', component: d.target.id, to: dest.zone, x: dest.x, y: dest.y }]
   }
   if (d.target.kind === 'pileTop') {
@@ -70,7 +94,7 @@ export function dropIntents(view: Snapshot, d: Drag): Intent[] {
     if (hit?.kind === 'pile') return [{ v: 'split', pile: pile.id, at: 1, to: hit.id }]
     // Onto a loose card: the pile is named as the source (K15), since a hidden pile gives no id.
     if (hit?.kind === 'card') return [{ v: 'stack', component: { top: pile.id }, onto: hit.id }]
-    const dest = zones.get(zoneAt(view.zones, view.floor, d.at.x, d.at.y).zone)
+    const dest = zones.get(at(d.at).zone)
     if (dest?.kind === 'hand') return [{ v: 'split', pile: pile.id, at: 1, to: dest.id }]
     return [{ v: 'split', pile: pile.id, at: 1, x: d.at.x, y: d.at.y }]
   }
@@ -83,7 +107,7 @@ export function dropIntents(view: Snapshot, d: Drag): Intent[] {
   // its height north of what the hand was aiming at, which pulled a drop back into the hand along
   // the south and east rims and pushed it out of the hand along the north and west ones — one
   // answer at a rim and another at the rim opposite, from a point nobody can see (#74).
-  const dest = zoneAt(view.zones, view.floor, d.at.x, d.at.y)
+  const dest = at(d.at)
   return d.ids.map((id): Intent => {
     // Where in that zone the card comes to rest is still where it was dragged to: the pointer's
     // own place in the zone, offset by where in the card it was picked up.

@@ -8,8 +8,6 @@ import { useTableClient } from '../table/useTableClient.js'
 import { usePresence, useRecent } from '../table/usePresence.js'
 import { previewOf } from '../table/rewind.js'
 import { seatColor } from '../table/seatColor.js'
-import { zoneAt } from '../zones.js'
-import { CARD_MM } from '../table/drop.js'
 import { playIntents } from '../player/play.js'
 import { SeatSurvey, SessionButtons, SessionOverlays, useSessionVersion, useToast, refusedText, type Sheet } from '../player/SessionOverlays.js'
 import { useSitDown } from '../player/useSitDown.js'
@@ -17,7 +15,7 @@ import { claimUrl } from '../account/api.js'
 import { SeatLine } from './SeatLine.js'
 import { HandFan } from './HandFan.js'
 import { HandSpread } from './HandSpread.js'
-import { seatRotation, withoutHand } from './seat.js'
+import { playedAt, seatRotation, withoutHand } from './seat.js'
 import { useFeltKeyboard } from '../table/useFeltKeyboard.js'
 import { useActivityLive } from '../table/useActivityLive.js'
 import { DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
@@ -82,12 +80,13 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const playable = !view.rewind && !view.ended
   const up = spread && hand.length > 0
   const onAct = (intents: Intent[]) => void client.send(...intents)
-  // A card out of the fan lands where it is dropped, centred on the pointer (K2, K11).
+  // A card out of the fan lands where it is dropped, centred on the pointer, in what the felt
+  // shows there (K2, K11, #65).
   const play = (card: (typeof hand)[number], clientX: number, clientY: number) => {
     const p = table.current?.toTable(clientX, clientY)
     if (!p || !playable) return
-    const dest = zoneAt(view.zones, view.floor, p.x - CARD_MM.w / 2, p.y - CARD_MM.h / 2)
-    if (dest.zone === `hand:${seat}`) return
+    const dest = playedAt(shown, seat, p)
+    if (!dest) return
     void client.send(...playIntents(view, [card], dest.zone, { x: dest.x, y: dest.y }))
   }
 

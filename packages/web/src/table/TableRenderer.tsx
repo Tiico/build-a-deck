@@ -12,11 +12,11 @@ import { isCounter } from '../components.js'
 import { DEFAULT_TIMING } from '../status/connection.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
 import { ringCentre } from './ring.js'
-import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, edgeRotation, fanPlace, feltWithHands, handAnchor, handExtent } from './hand.js'
+import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, edgeRotation, fanPlace, feltWithHands, handAnchor, handExtent, handRotation, type TableMode } from './hand.js'
 import { nameAt } from './labels.js'
 import { useT, type T } from '../i18n/index.js'
 
-export type TableMode = 'table' | 'tv'
+export type { TableMode } from './hand.js'
 // Without an explicit `scale`, the renderer fits the table to its own frame.
 // `faces` is the HTTP origin that serves /faces/:hash; without it cards are plain colours.
 // With `onAct` the table can be played on (K1, K2, C): drag cards, the top of a pile, or a whole
@@ -123,10 +123,9 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   }, [fixedScale, fixedSize])
   const size = fixedSize ?? measuredSize
   const floorRect: Rect = { x: floor.geometry.x, y: floor.geometry.y, w: floor.geometry.w, h: floor.geometry.h }
-  // A hand is turned toward its own edge in table mode; the fan is drawn by that rotation and
-  // measured by it, so both ask the same question of the same rule.
+  // The fan is drawn by one rotation, measured by it and hit-tested by it (`dropAt`): one rule.
   const hands = view.zones.filter((z) => z.kind === 'hand')
-  const handRot = (z: ZoneView) => (mode === 'table' ? edgeRotation(z, floor) : 0)
+  const handRot = (z: ZoneView) => handRotation(z, floor, mode)
   // What the fit has to pass into the frame is the felt *with its hands on* (#23): a hand is part
   // of the table, so a table fitted to the floor alone would clip one that reaches past the rim.
   const felted = feltWithHands(floorRect, hands.map((z) => handExtent(z, floor, handRot(z))))
@@ -312,7 +311,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       if (asked && d.target.kind !== 'counter') openRing(d.target, asked.x, asked.y)
       return
     }
-    const intents = dropIntents(view, d)
+    const intents = dropIntents(view, d, mode)
     if (intents.length === 0) return
     onAct(intents)
     // The card stays where it was put until the table has moved it. Between here and the patch the

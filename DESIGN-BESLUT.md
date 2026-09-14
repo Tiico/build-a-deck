@@ -849,6 +849,28 @@ Följdkrav:
 Zonrektanglarna är direkt återanvändbara som spelplansunderlag vid tryck.
 En `slots`-zonkind kan läggas till additivt när ett riktigt spel kräver det.
 
+Reviderat 2026-09-14 (#65): den ritade solfjädern tar emot, hela.
+En hand är det enda zonslag som ritas som något annat än sin rektangel: en 60 mm remsa längs kanten (K18) under en fläkt av 75 mm höga kort, som är djupare än remsan och hänger ut förbi filtkanten över träramen (K9, #23, #84).
+Det man ser var alltså bredare än det som tog emot — omkring en tredjedel av varje ritad fläkt lade kortet löst — och det växer med filten i stället för att läka på en större skärm.
+Nu är fläktens utsträckning, `handExtent` i bordets egna millimeter, det som tar emot ett släpp till en hand, på varje kant och i båda lägena, också där fläkten ligger utanför filtkanten.
+Bilden är sanningen: ett släpp var som helst på den fläkt man ser lägger kortet i den handen, och ett släpp utanför fläkten gör det inte.
+Ett löst kort, en högs topp och en bricka frågar samma uppslagning, `dropAt` i `drop.ts`, så samma punkt ger samma svar vilken väg den än kommer in.
+Andra zonslag prövas som förut, mot sin rektangel.
+
+Följden, uttryckligen accepterad: en fri placering kan inte hamna närmare handen än fläktens kant.
+Remsan filt vid sidan av fläkten, som rektangeln förut gjorde till handens, är filt som all annan: ett löst kort släppt där landar löst, ända intill fläkten.
+En hand utan kort ritar ingen fläkt, och där säger remsan fortfarande var handen är, så att det första kortet går att lägga i den.
+
+Två alternativ förkastades.
+Fläkten men bara innanför filten hade lämnat omkring 30 % av den ritade fläkten död, vilket är exakt vad felet består i, bara mindre.
+Att rita om handen så att den håller sig i remsan hade gjort handen visuellt mindre och rört ett godkänt utseende (K9, #23).
+
+Distinktionen mot träramen (#66, väg 2: ramen tar inte emot något) är avsiktlig och ingen motsägelse.
+Ramen är ingen yta man kan lägga ett kort *på*, och ett släpp på den lägger kortet vid närmaste kant på filten; men en hand som ritas ut över ramen är fortfarande den handen, och ett släpp på den delen av fläkten är ett släpp i handen.
+Det som avgör är alltså vad som ritas där man släpper: filt eller fläkt tar emot, trä gör det inte.
+
+Grinden är `drop.test.ts`: fläktens hörn, kanter, mitt och utsprång på alla fyra kanter, i båda lägena, för ett löst kort och för en högs topp; remsan bredvid fläkten som filt; en punkt strax utanför fläktens yttre kant som inte hand; den tomma handens remsa; och distansvyns `playedAt`.
+
 ### K3. Flera kort på en gång: atomisk batch i kuvertet
 
 `Envelope` bär `intents: Intent[]`.
@@ -1016,7 +1038,7 @@ Brickan är fortfarande en etikett i pixlar som hänger utanför kanten i luften
 Kortets kant i fläkten ritas innanför sin ruta: en baksida växte fyra pixlar utanför de millimeter fläkten mäts i, och på TV:ns skala var det elva millimeter.
 Det förkastade alternativet, att wizarden lägger handzonen med det djup fläkten behöver, hade flyttat varje sparat bord och rört K18:s mått för en ritningsfråga.
 Det som står kvar är observatörens TV (C8): en läst fläkt vid en sidoplats sprids tvärs sin zon och ligger kvar som förut, för att skjuta ut den med hela sin bredd hade hängt den en tredjedels meter utanför kanten och krympt hela bordet; hur en sådan fläkt ska ligga är en egen fråga.
-Var ett släpp landar följer zonens rektangel och inte fläkten, som förut (#65).
+Var ett släpp landar följer sedan 2026-09-14 fläkten som den ritas och inte zonens rektangel; se K2 (#65).
 
 ### K10. Telefonvyns utseende: remsan (prototypat 2026-09-06)
 
