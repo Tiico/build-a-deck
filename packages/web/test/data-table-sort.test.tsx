@@ -36,6 +36,7 @@ function renderTable(doc: ProjectDoc, handlers: Partial<{ onCell: DataTableProps
       onReplaceRows={noop}
       onAddField={() => undefined}
       onRemoveField={() => undefined}
+      onMoveField={() => undefined}
     />,
   )
 }
@@ -57,6 +58,7 @@ function EditedTable({ start }: { start: ProjectDoc }) {
       onReplaceRows={noop}
       onAddField={() => undefined}
       onRemoveField={() => undefined}
+      onMoveField={() => undefined}
     />
   )
 }

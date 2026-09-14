@@ -323,6 +323,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         onReplaceRows={(rows) => client.replaceRows(rows)}
         onAddField={(field) => client.addField(field)}
         onRemoveField={(field) => client.removeField(field)}
+        onMoveField={(field, before) => client.moveField(field, before)}
       />
     ),
     symbols: () => <SymbolPanel doc={doc} client={client} assetBase={http} />,

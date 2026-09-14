@@ -148,6 +148,7 @@ export const enEditor = {
   'table.addCard': '+ New card',
 
   'table.columns': 'Columns',
+  'table.column.moved': '{field} is column {at} of {of}',
   'table.field.new': 'New field',
   'table.field.name': 'Name',
   'table.field.kind': 'Kind',

@@ -170,6 +170,7 @@ export const svEditor = {
   // kolumnens rubrik (#46) — en ruta som är en träffyta bred rymmer inte ett ord — så det här
   // är namnet den hörs med, och samma ord namnger formuläret den öppnar.
   'table.columns': 'Kolumner',
+  'table.column.moved': '{field} är kolumn {at} av {of}',
   'table.field.new': 'Nytt fält',
   'table.field.name': 'Namn',
   'table.field.kind': 'Typ',

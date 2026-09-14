@@ -87,6 +87,7 @@ function Table({ doc: initial }: { doc: ProjectDoc }) {
       onReplaceRows={(rows) => setDoc((current) => ({ ...current, rows }))}
       onAddField={(field) => setDoc((current) => applyEdit(current, { v: 'addField', field }))}
       onRemoveField={(field) => setDoc((current) => applyEdit(current, { v: 'removeField', field }))}
+      onMoveField={() => undefined}
     />
   )
 }

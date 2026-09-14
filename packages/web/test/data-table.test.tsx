@@ -16,7 +16,7 @@ describe('DataTable (B as a tab)', () => {
     const onAddRow = vi.fn()
     const onRemoveRow = vi.fn()
     const onReplaceRows = vi.fn()
-    render(<DataTable doc={doc} selectedRow="knight" onSelectRow={() => undefined} onCell={onCell} onAddRow={onAddRow} onRemoveRow={onRemoveRow} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} />)
+    render(<DataTable doc={doc} selectedRow="knight" onSelectRow={() => undefined} onCell={onCell} onAddRow={onAddRow} onRemoveRow={onRemoveRow} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} />)
 
     // Every column header is a sort control (#15) and nothing else: its name is the column, the
     // arrow is the state. The first column carries no name: the selection's checkbox is its own
@@ -57,7 +57,7 @@ describe('DataTable (B as a tab)', () => {
   it('exports the current table and imports a selected CSV file', async () => {
     const doc = projectDoc()
     const onReplaceRows = vi.fn()
-    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} />)
+    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} />)
 
     const download = screen.getByRole('link', { name: 'Ladda ner CSV' }) as HTMLAnchorElement
     expect(download.download).toBe('skogens-herrar-kort.csv')
@@ -87,6 +87,7 @@ describe('DataTable row delete (#8)', () => {
         onReplaceRows={() => undefined}
         onAddField={() => undefined}
         onRemoveField={() => undefined}
+        onMoveField={() => undefined}
       />,
     )
   const rowRemove = (cardRef: string) => within(document.querySelector(`[data-card-ref="${cardRef}"]`) as HTMLElement).getByRole('button', { name: /ta bort/i })
@@ -137,7 +138,7 @@ describe('image cells (E1)', () => {
     const doc = withArt()
     const onCell = vi.fn()
     const onUpload = vi.fn(async () => 'd'.repeat(64))
-    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} assetBase="http://api.local" onUpload={onUpload} />)
+    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} assetBase="http://api.local" onUpload={onUpload} />)
     const rows = screen.getAllByRole('row').slice(1)
     const thumb = within(rows[0]!).getByRole('img', { name: 'dragon art' }) as HTMLImageElement
     expect(thumb.src).toBe(`http://api.local/assets/${HASH}`)
@@ -157,7 +158,7 @@ describe('image cells (E1)', () => {
     const doc = withArt()
     doc.rows[1]!.fields['art'] = `asset:${HASH}`
     const onCell = vi.fn()
-    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} assetBase="http://api.local" onUpload={async () => 'e'.repeat(64)} />)
+    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} assetBase="http://api.local" onUpload={async () => 'e'.repeat(64)} />)
     const strip = screen.getByRole('list', { name: 'Bilder i spelet' })
     const thumbs = within(strip).getAllByRole('img')
     expect(thumbs).toHaveLength(1)
@@ -177,7 +178,7 @@ describe('the symbol picker at the brace (E4)', () => {
     // The editor answers with the name the symbol has in the designer's own language, which is
     // what lands in the icon set and between the braces (E4, A4).
     const onSymbol = vi.fn(async (s: GameSymbol) => symbolName(s))
-    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onSymbol={onSymbol} />)
+    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} onSymbol={onSymbol} />)
     const cell = within(screen.getAllByRole('row')[1]!).getByLabelText('dragon body') as HTMLInputElement
     return { cell, onCell, onSymbol }
   }
@@ -265,6 +266,7 @@ describe('comparing with an older version in the table (B4)', () => {
         onReplaceRows={() => undefined}
         onAddField={() => undefined}
         onRemoveField={() => undefined}
+        onMoveField={() => undefined}
         compareWith={{ rev: 1, doc: older() }}
       />,
     )
@@ -283,7 +285,7 @@ describe('comparing with an older version in the table (B4)', () => {
   })
 
   it('is not in the way when nothing is being compared', () => {
-    render(<DataTable doc={now()} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} />)
+    render(<DataTable doc={now()} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} />)
     expect(screen.queryByText(/Jämför med/)).toBeNull()
     expect(screen.getAllByRole('row').slice(1).map((r) => r.getAttribute('data-change'))).toEqual([null, null, null])
   })

@@ -991,6 +991,14 @@
    and a wrapped heading is the very first thing a narrow column does. The head's own last cell is
    the exception — the form that makes a column hangs out of it on purpose. */
 .byd-data th { overflow: hidden; white-space: nowrap; }
+/* A heading a column can be carried by (#46), and where it would land drawn before it lands
+   there — a head that can be dragged and says nothing about the drop is a head you have to drag
+   twice. The same line the layer list draws, along the leading edge instead of the top one,
+   because a column comes to stand in front of the heading the line is on. `overflow: hidden`
+   above is why it is an inset shadow and not a pseudo-element: a mark outside the cell's own box
+   would be clipped by the rule that keeps a heading inside its column. */
+.byd-data th[draggable='true'] { cursor: grab; }
+.byd-data th[data-over] { box-shadow: inset 2px 0 0 var(--byd-editor-primary-mark); }
 /* The button that makes a column now stands in the head of the column that removes a card (#46):
    the head's last cell either way, but no longer a column of its own with an empty cell under it
    on every row. A tap-wide cell holds a `+` and nothing more, so that is what it holds; the word
@@ -1022,15 +1030,17 @@
    place on the page and keeps only its rows. */
 .byd-columns .byd-newfield { position: static; width: auto; padding: 10px 0 0; border: 0; border-top: 1px solid #2f333d; border-radius: 0; background: transparent; box-shadow: none; }
 .byd-columns-list { display: grid; gap: 2px; margin: 0 0 10px; padding: 0; list-style: none; }
-.byd-columns-list li { display: flex; align-items: center; gap: 8px; min-height: 36px; }
+.byd-columns-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 0 8px; min-height: 36px; }
 .byd-columns-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 /* The × keeps the 44 px it always had (L12). Here it can have them without taking them from
    anything: a row of a list is not a column of the table. */
 .byd-columns .byd-data-dropfield { flex: 0 0 auto; display: grid; place-items: center; width: var(--byd-tap); min-height: var(--byd-tap); padding: 0; border: 0; background: transparent; color: var(--byd-editor-quiet); font-size: 13px; line-height: 1; cursor: pointer; }
 .byd-columns .byd-data-dropfield:hover, .byd-columns .byd-data-dropfield:focus-visible { color: #e05c5c; }
 /* And where a column cannot be taken away, the reason stands in the ×'s place — in words, which
-   is what a panel has room for and a heading never had (L4). */
-.byd-columns-system { flex: 0 1 auto; display: flex; align-items: center; gap: 5px; min-width: 0; color: var(--byd-editor-quiet); font-size: 10px; line-height: 1.3; }
+   is what a panel has room for and a heading never had (L4). It takes a line of its own: a
+   sentence and a name on one row is a row where the sentence wins and the name is cut, and the
+   name is the thing the designer came to the list to read. */
+.byd-columns-system { flex: 1 0 100%; display: flex; align-items: baseline; gap: 5px; padding-bottom: 6px; color: var(--byd-editor-quiet); font-size: 10px; line-height: 1.3; }
 .byd-columns-system svg { flex: 0 0 auto; }
 .byd-newfield {
   position: absolute;

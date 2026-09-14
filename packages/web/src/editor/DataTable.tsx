@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import type { ProjectDoc, ProjectRow } from './types.js'
 import { deckKeepsFields, fieldsOf, fieldLabel, takenNames } from './fields.js'
 import { ANTAL, drawnBy } from '@byd/server/doc'
@@ -17,6 +17,7 @@ import { duplicateRows, keepRows, markRows, noSelection, removeRows, selectionLa
 import { groupColumn, groupOfRow, ruleLabel } from './groups.js'
 import { Question } from './Question.js'
 import { useT, type T } from '../i18n/index.js'
+import { useSay } from '../status/StatusLive.js'
 
 export type DataTableProps = {
   doc: ProjectDoc
@@ -35,6 +36,10 @@ export type DataTableProps = {
   // own heading. Each is one edit, so each is one version and one step back (B4).
   onAddField(field: string): void
   onRemoveField(field: string): void
+  // Where a column stands (#46). `before` is the column it comes to stand in front of, and null
+  // is last of all — the two ways a drag along the head can end. It is an edit like the other
+  // two, because the order is the document's and not this table's view of it.
+  onMoveField(field: string, before: string | null): void
   // The project's images (E1): where they are served from, and how a chosen file becomes one.
   // Without both, image fields are edited as text.
   assetBase?: string | undefined
@@ -100,8 +105,11 @@ export function markCut(box: Element): void {
 
 // The table (B as a tab): one row per card, the template's fields as columns, `antal` last (L4).
 // This is where the designer already lives; a change here reaches every copy of the card.
-export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, onAddField, onRemoveField, assetBase, onUpload, onSymbol, compareWith, onStopCompare }: DataTableProps) {
+export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onRemoveRow, onReplaceRows, onAddField, onRemoveField, onMoveField, assetBase, onUpload, onSymbol, compareWith, onStopCompare }: DataTableProps) {
   const t = useT()
+  // The one channel everything on a screen speaks in (#7): a column that moved under the focus
+  // says so here rather than in a live region this table made for itself.
+  const say = useSay()
   // What the import warns about is bound to the import control by this, so the warning is read
   // with it and not merely next to it (#36).
   const noteId = useId()
@@ -201,6 +209,12 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
   // been asked about taking away (#32).
   const [adding, setAdding] = useState(false)
   const [dropping, setDropping] = useState<string | null>(null)
+  // Which column is being carried along the head, and which heading it would land in front of
+  // (#46). The carried one is a ref and the heading under the pointer is state, for the reason
+  // the layer list has the same pair: what is being dragged is read inside an event and never
+  // drawn, and where it would land is drawn on every frame of the drag and never read back.
+  const carried = useRef<string | null>(null)
+  const [overColumn, setOverColumn] = useState<string | null>(null)
   const removeRef = useRef<HTMLButtonElement>(null)
   const allRef = useRef<HTMLInputElement>(null)
   // The × of every row on screen, so the question a row asks can hand the focus back to it.
@@ -290,6 +304,66 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
   // The order held while a cell is being edited, as the ids that were on screen when it was entered.
   const [held, setHeld] = useState<string[] | null>(null)
   const fields = fieldsOf(doc)
+  // The columns whose place along the head is the designer's (#46). The card's id is not one of
+  // them and never was — it is a column of the table without being a field of a card — and
+  // `antal` stands last wherever the table shows it (L4), so a move of it could not be seen and a
+  // place in front of it is not on offer.
+  const mine = fields.filter((field) => field !== ANTAL)
+  // Where a column comes to stand when it is dropped on a heading. Dropped on one to its left it
+  // stands in front of that heading; dropped on one to its right it stands after it, which is in
+  // front of whatever follows and last of all when nothing does. Said in columns and never in
+  // indexes, because the document answers in columns: the index an order is read at changes the
+  // moment the carried column is lifted out of it.
+  const landing = (held: string, onto: string): string | null => {
+    const at = mine.indexOf(held)
+    const to = mine.indexOf(onto)
+    return at > to ? onto : (mine[to + 1] ?? null)
+  }
+  // One move, wherever it came from, and the head says where the column ended up. A drag is its
+  // own answer to the eye; the keys are not, and a column that moved out from under the focus
+  // with nothing said is a column the reader has lost.
+  const moveColumn = (field: string, before: string | null) => {
+    onMoveField(field, before)
+    const rest = mine.filter((f) => f !== field)
+    const at = before === null ? rest.length : rest.indexOf(before)
+    say?.('polite', t('table.column.moved', { field, at: at + 1, of: mine.length }))
+  }
+  // What a heading needs to be a handle. A heading with none of it is a heading that cannot be
+  // carried and is not a place to put one down either.
+  const carryOf = (field: string): Carry | undefined =>
+    mine.includes(field)
+      ? {
+          over: overColumn === field,
+          onPickUp: () => {
+            carried.current = field
+          },
+          onOver: (event) => {
+            event.preventDefault()
+            if (carried.current !== null && carried.current !== field) setOverColumn(field)
+          },
+          onDone: () => {
+            carried.current = null
+            setOverColumn(null)
+          },
+          onDrop: () => {
+            const held = carried.current
+            carried.current = null
+            setOverColumn(null)
+            if (held === null || held === field || !mine.includes(held)) return
+            moveColumn(held, landing(held, field))
+          },
+          onStep: (dir) => {
+            const at = mine.indexOf(field)
+            const to = at + dir
+            // One step to the left is standing in front of the neighbour; one to the right is
+            // standing in front of whatever follows the neighbour, and last of all when the
+            // neighbour is the end of the head. The ends are ends: a column does not come round.
+            const before = dir === -1 ? mine[to] : mine[to + 1]
+            if (to < 0 || to >= mine.length) return
+            moveColumn(field, before ?? null)
+          },
+        }
+      : undefined
   // Which group a row falls into (#13, from variant C): read here, decided on the canvas. A deck
   // that is not grouped says nothing at all, rather than a column of the same word on every row.
   const grouping = groupColumn(doc)
@@ -584,7 +658,7 @@ export function DataTable({ doc, selectedRow, onSelectRow, onCell, onAddRow, onR
             </th>
             <SortableHeader field="id" label="id" sort={sort} onSort={setSort} />
             {fields.map((f) => (
-              <SortableHeader key={f} field={f} label={fieldLabel(f, t)} sort={sort} onSort={setSort} />
+              <SortableHeader key={f} field={f} label={fieldLabel(f, t)} sort={sort} onSort={setSort} carry={carryOf(f)} />
             ))}
             {grouping && <th data-col={GROUP_COL}>{t('table.group')}</th>}
             {/* The button that makes a column stands at the end of the head, where the column it
@@ -817,11 +891,45 @@ function GroupCell({ doc, column, cardRef, row }: { doc: ProjectDoc; column: str
 // targets do not fit in a column a number wide; it has moved to the head's own door, where the
 // table already said something about its columns as columns (#46 on #32). What that buys is not
 // tidiness: it is the room a heading needs to be draggable and pullable at all.
-function SortableHeader({ field, label, sort, onSort }: { field: string; label: string; sort: SortState | null; onSort(next: SortState | null): void }) {
+// What a heading needs to be the handle its column is moved by (#46). Every one of them is the
+// designer's except the two that are the tool's, and those get none of it: a heading with no
+// `carry` cannot be picked up and is not a place to put a column down either.
+type Carry = {
+  over: boolean
+  onPickUp(): void
+  onOver(event: DragEvent<HTMLElement>): void
+  onDone(): void
+  onDrop(): void
+  onStep(dir: -1 | 1): void
+}
+
+function SortableHeader({ field, label, sort, onSort, carry }: { field: string; label: string; sort: SortState | null; onSort(next: SortState | null): void; carry?: Carry | undefined }) {
   const active = sort?.field === field ? sort.dir : null
   return (
-    <th data-col={field} aria-sort={active ?? 'none'}>
-      <button type="button" data-active={active !== null} onClick={() => onSort(nextSort(sort, field))}>
+    <th
+      data-col={field}
+      aria-sort={active ?? 'none'}
+      draggable={carry ? true : undefined}
+      onDragStart={carry?.onPickUp}
+      onDragOver={carry?.onOver}
+      onDragEnd={carry?.onDone}
+      onDrop={carry?.onDrop}
+      {...(carry?.over ? { 'data-over': '' } : {})}
+    >
+      <button
+        type="button"
+        data-active={active !== null}
+        onClick={() => onSort(nextSort(sort, field))}
+        // Alt and an arrow move the column; the arrow alone is the reader's own, and a heading
+        // that swallowed it would take the way out of the head away from her. The same pair the
+        // template's layer list moves a layer with (#18), for the same reason: an order that can
+        // only be dragged is an order a keyboard has lost.
+        onKeyDown={(event) => {
+          if (!carry || !event.altKey || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return
+          event.preventDefault()
+          carry.onStep(event.key === 'ArrowLeft' ? -1 : 1)
+        }}
+      >
         {label} <span aria-hidden="true">{active === 'ascending' ? '↑' : active === 'descending' ? '↓' : '↕'}</span>
       </button>
     </th>

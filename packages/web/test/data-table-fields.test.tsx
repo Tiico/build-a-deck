@@ -35,6 +35,7 @@ function Editing({ doc: initial = projectDoc(), asked }: { doc?: ProjectDoc; ask
         setDoc((current) => applyEdit(current, { v: 'addField', field }))
       }}
       onRemoveField={(field) => setDoc((current) => applyEdit(current, { v: 'removeField', field }))}
+      onMoveField={() => undefined}
     />
   )
 }

@@ -29,6 +29,7 @@ function tableIn(lang: Lang, doc: ProjectDoc = projectDoc()) {
         onReplaceRows={nothing}
         onAddField={nothing}
         onRemoveField={nothing}
+        onMoveField={() => undefined}
       />
     </Language>,
   )
