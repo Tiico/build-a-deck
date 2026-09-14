@@ -4,7 +4,7 @@ import type { Intent, Presence, Snapshot, VisibleComponentState, ZoneView } from
 import type { Peer, Pulse, Recent } from './presence.js'
 import { hue } from './hue.js'
 import { seatColor } from './seatColor.js'
-import { feltScale, fitScale, leaningSquare, woodLayout, LEAST_AIR_PX, TOUCH_PX } from './fit.js'
+import { feltScale, fitScale, leaningSquare, woodLayout, TOUCH_PX, TV_AIR_PX } from './fit.js'
 import { activeBounds, cameraOf, fitFloor, frameRect, pad, reachOf, same, tween, zoomAround, type Rect, type Size } from './camera.js'
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
 import { CARD_MM, TOKEN_MM, absoluteOf, besidePile, dropIntents, type Drag, type DragTarget } from './drop.js'
@@ -15,7 +15,7 @@ import { DEFAULT_TIMING } from '../status/connection.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
 import { ringCentre } from './ring.js'
 import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, edgeRotation, fanPlace, feltWithHands, handAnchor, handExtent, handRotation, type TableMode } from './hand.js'
-import { nameAt } from './labels.js'
+import { nameAt, type Grow, type Rim } from './labels.js'
 import { useT, type T } from '../i18n/index.js'
 
 export type { TableMode } from './hand.js'
@@ -116,6 +116,14 @@ const TOKEN_FIGURE_EM = 0.62
 const tokenInkPx = (chipPx: number, value: string, named: boolean): number =>
   Math.min(chipPx * (named ? TOKEN_NAMED_INK_TALL : TOKEN_INK_TALL), (chipPx * (named ? TOKEN_NAMED_INK_WIDE : TOKEN_INK_WIDE)) / (Math.max(1, value.length) * TOKEN_FIGURE_EM))
 // The camera: room around what is in play, how close it may come, and how long a zoom holds.
+// The felt's width across the reader's view under which its names no longer fit beside the zones
+// they name (K19, #76). Two seats facing each other across the felt each want about 76 px for a
+// name, and the shared piles and their count badges stand between them; below this the two reaches
+// meet in the middle. It is the same number `table.css` hides the played felt's names at.
+const TIGHT_FELT_PX = 460
+// How far a name above its own zone stands off it, there. One pixel, because the room it is
+// standing in is the room the seat at the next rim has already been given.
+const NAME_RIM_PX = 1
 const CAMERA_PAD_MM = 60
 const CAMERA_MIN_MM = 520
 const CAMERA_RETURN_MS = 6000
@@ -165,11 +173,11 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // fit has to pass into the frame — otherwise a seat at a side edge gets a table cut off at the
   // top and bottom of its own screen.
   const drawn = rotate % 180 === 0 ? felted : { w: felted.h, h: felted.w }
-  // How the felt meets its frame is one rule for every screen that shows a table (K9, K17): the
-  // TV is framed by its own chrome and only needs air inside it, the felt table stands on the
-  // dark and holds back to its share of it. Both leave the same least air, so neither cuts the
-  // wooden rim the frame draws in its own pixels.
-  const fitted = size === null ? null : size.w > 0 && size.h > 0 ? (mode === 'table' ? feltScale(drawn, size) : fitScale(drawn, size, LEAST_AIR_PX)) : 1
+  // How the felt meets its frame is one rule per mode, and each leaves the air its own furniture
+  // needs (K9, K17): the felt table lies on wood that stands on the dark and holds back to its
+  // share of it, the TV has no rim and leaves only what a hand's count hangs out into. They were
+  // one number until #76 measured what that cost a phone.
+  const fitted = size === null ? null : size.w > 0 && size.h > 0 ? (mode === 'table' ? feltScale(drawn, size) : fitScale(drawn, size, TV_AIR_PX)) : 1
 
   // Inspection (K8): "Titta" in the ring, private to this screen, until tapped away.
   const [held, setHeld] = useState<VisibleComponentState | null>(null)
@@ -252,6 +260,13 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     return () => clearTimeout(timer)
   }, [settling])
   const px = (mm: number) => mm * scale
+  // How wide the felt is drawn across the reader's own view (C5). It is the axis a name at a side
+  // rim reaches along, and the one thing the stylesheet cannot ask for itself: the felt's own box
+  // keeps the floor's shape and is then turned, so a container query on it measures the other
+  // side. Under `TIGHT_FELT_PX` the felt is smaller than the names it carries and draws them at
+  // its own tightest (K19, #76) — which in practice is the observer on a phone (C8, L12).
+  const feltWidePx = px(rotate % 180 === 0 ? floor.geometry.w : floor.geometry.h)
+  const tight = mode === 'tv' && measured && feltWidePx > 0 && feltWidePx < TIGHT_FELT_PX
   const left = (mmX: number) => px(mmX - floor.geometry.x)
   const top = (mmY: number) => px(mmY - floor.geometry.y)
   // A chip's target (#67): the finger's 44 × 44 on the screen, laid invisibly over a disc that
@@ -268,6 +283,18 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     const a = (rotate * Math.PI) / 180
     const onWood = { x: dx * Math.cos(a) - dy * Math.sin(a), y: dx * Math.sin(a) + dy * Math.cos(a) }
     return Math.max(px(TOKEN_MM), leaningSquare(leaning, onWood, TOUCH_PX))
+  }
+  // K19 on a felt too small to hold its own names beside the zones they name (#76). At the side
+  // rims a name stands above its zone instead, anchored at the end nearest the rim and growing
+  // inward, so that it keeps to its own half of the felt rather than reaching across it — where
+  // the shared piles and their count badges stand, and the opposite seat's name comes the other
+  // way. It is said through the same two variables the stylesheet's rim rules use, because the
+  // only thing the sheet cannot work out for itself is how large the zone came out in pixels.
+  const overRim = (z: ZoneView, rim: Rim, grow: Grow): Record<string, string> => {
+    if (!tight || (rim !== 'E' && rim !== 'W')) return {}
+    const turnedZone = rotate % 180 === 0 ? { w: z.geometry.w, h: z.geometry.h } : { w: z.geometry.h, h: z.geometry.w }
+    const side = rim === 'E' ? `${px(turnedZone.w)}px - 100% - var(--name-in)` : `var(--name-in) - ${px(turnedZone.w)}px`
+    return { '--name-side': `calc(${side})`, '--name-end': `calc(-100% - ${NAME_RIM_PX}px${grow === 'back' ? ` - ${px(turnedZone.h)}px` : ''})` }
   }
   const seatIndex = (id: string | undefined) => Math.max(0, view.seats.findIndex((s) => s.id === id))
   const seatName = (id: string | undefined) => view.seats.find((s) => s.id === id)?.name ?? id ?? ''
@@ -528,7 +555,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 data-grow={grow}
                 style={{ left: left(z.geometry.x), top: top(z.geometry.y), width: px(z.geometry.w), height: px(z.geometry.h), ['--name-x' as string]: `${anchor.x}%`, ['--name-y' as string]: `${anchor.y}%` }}
               >
-                <span>{z.name}</span>
+                <span style={overRim(z, rim, grow)}>{z.name}</span>
               </div>
             )
           })}
@@ -690,6 +717,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     <div
       className="byd-table-frame"
       data-mode={mode}
+      data-tight={tight ? 'true' : undefined}
       data-camera={placed ? 'follow' : undefined}
       data-playable={onAct ? 'true' : undefined}
       ref={frame}

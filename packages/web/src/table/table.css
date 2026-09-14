@@ -159,39 +159,35 @@
    the wider inset is there to hold a name clear of the felt's corner, where the next rim's seat
    keeps its own names, and a shared zone stands at no rim. */
 .byd-zone[data-rim='none'] > span { --name-in: 8px; }
-.byd-zone[data-grow='back'] > span { --name-row: 0px; transform: translate(calc(-100% - var(--name-in)), calc(-100% - var(--name-off) - var(--name-row))); }
+.byd-zone[data-grow='back'] > span { --name-row: 0px; --name-end: -100%; transform: translate(calc(-100% - var(--name-in)), calc(-100% - var(--name-off) - var(--name-row))); }
 .byd-zone[data-rim='N'] > span { transform: translate(var(--name-in), calc(var(--name-off) + var(--name-row))); }
 .byd-zone[data-rim='N'][data-grow='back'] > span { transform: translate(calc(-100% - var(--name-in)), calc(var(--name-off) + var(--name-row))); }
-.byd-zone[data-rim='E'] > span, .byd-zone[data-rim='W'] > span { --name-off: 3px; }
-.byd-zone[data-rim='E'] > span { transform: translate(calc(-100% - var(--name-off)), 0); }
-.byd-zone[data-rim='E'][data-grow='back'] > span { transform: translate(calc(-100% - var(--name-off)), -100%); }
-.byd-zone[data-rim='W'] > span { transform: translate(var(--name-off), 0); }
-.byd-zone[data-rim='W'][data-grow='back'] > span { transform: translate(var(--name-off), -100%); }
+/* Beside its zone the name is one line high and takes no room along the rim, so the two ends are
+   the same line moved up or down: `--name-side` is which side of the zone it stands on and
+   `--name-end` which of its own two ends is at the zone's, and one transform says both. */
+.byd-zone[data-rim='E'] > span, .byd-zone[data-rim='W'] > span { --name-off: 3px; transform: translate(var(--name-side), var(--name-end, 0)); }
+.byd-zone[data-rim='E'] > span { --name-side: calc(-100% - var(--name-off)); }
+.byd-zone[data-rim='W'] > span { --name-side: var(--name-off); }
 
-/* Cards: a coloured face or a striped back. */
-.byd-card {
+/* Cards, loose or on a pile: a coloured face or a striped back. The two were written out twice
+   over, down to the same stripes; they are one card drawn in two places and are said once.
+   The padding and the border are screen pixels inside millimetres, which is a card's own floor:
+   under about 0.29 px/mm the sixteen of them are wider than the card's own short side, and a
+   pile's top then paints eighteen pixels over a card whose millimetres come to twelve. That is
+   known and not fixed here (#76). */
+.byd-card, .byd-pile .byd-pile-top {
   box-sizing: border-box;
   padding: 7px;
   border-radius: 6px;
-  cursor: grab;
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.45);
   border: 1px solid rgba(0, 0, 0, 0.35);
   background: hsl(var(--hue, 0) 40% 86%);
 }
-.byd-card[data-face='back'], .byd-back {
-  border: 2px solid #1f2b4a;
-  background: repeating-linear-gradient(45deg, #3a4d7a, #3a4d7a 4px, #2f4068 4px, #2f4068 8px);
-}
+.byd-card { cursor: grab; box-shadow: 0 3px 6px rgba(0, 0, 0, 0.45); }
 
 /* Piles: a stack with thickness, a count, a label. */
 .byd-pile { box-sizing: border-box; }
-.byd-pile .byd-pile-top {
-  position: absolute; inset: 0;
-  border-radius: 6px; padding: 7px; box-sizing: border-box;
-  border: 1px solid rgba(0, 0, 0, 0.35);
-  background: hsl(var(--hue, 0) 40% 86%);
-}
-.byd-pile .byd-pile-top[data-face='back'] {
+.byd-pile .byd-pile-top { position: absolute; inset: 0; }
+.byd-card[data-face='back'], .byd-back, .byd-pile .byd-pile-top[data-face='back'] {
   border: 2px solid #1f2b4a;
   background: repeating-linear-gradient(45deg, #3a4d7a, #3a4d7a 4px, #2f4068 4px, #2f4068 8px);
 }
@@ -232,6 +228,28 @@
     display: none;
   }
 }
+
+/* The TV on a felt this narrow is the observer's phone (C8, L12, #76), and a TV's felt is the one
+   that gets there: the played felt above has hidden its names, and the table's own screen is a
+   television. `data-tight` is the renderer's answer, because the felt's own box keeps the floor's
+   shape and is then turned — a container query on it measures the other side of the picture.
+   Two things give, and both are the felt's own measure rather than the screen's.
+
+   The type is set at the felt's tightest: a name at 13 px with 1.5 px of tracking is 76 px of a
+   331 px felt, and its tracking alone is a sixth of that — the same fifth K19 took out of table
+   mode. At 12 px and no tracking it is 62, which is what lets two seats facing each other across
+   a phone both say their names.
+
+   And a name at a side rim stands above its own zone rather than beside it, anchored at the end
+   nearest the rim and growing inward, so that it stays in its own half of the felt. Beside its
+   zone it grows from the zone's inner edge toward the middle, where the shared piles and their
+   count badges stand (K19, extended); on a felt this small that reach crosses the middle and
+   meets both the badge and the name of the seat opposite. Above its own zone it reaches only
+   half as far in, and the two seats facing each other no longer share a line at all. That half
+   of it is drawn through the same two variables the rim rules above use — the renderer says how
+   far, because it is the only one that knows how large the zone came out. */
+.byd-table-frame[data-tight] .byd-zone > span { font-size: 12px; letter-spacing: 0; }
+
 /* A pile that only exists because two cards were stacked (K1) has no name worth saying. */
 .byd-table-frame[data-mode='table'] .byd-pile[data-dynamic='true'] .byd-pile-name { display: none; }
 
@@ -245,7 +263,7 @@
   font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; color: #7d8597; white-space: nowrap;
 }
 .byd-table-frame[data-mode='tv'] .byd-pile-n {
-  position: absolute; right: -14px; top: -14px; pointer-events: auto;
+  position: absolute; left: 50%; top: 0; translate: -50% 0; pointer-events: auto;
   min-width: 30px; height: 30px; padding: 0 6px; box-sizing: border-box; border-radius: 999px;
   background: #e8eaf0; color: #0d0f14; display: grid; place-items: center; font-size: 15px; font-weight: 800;
 }

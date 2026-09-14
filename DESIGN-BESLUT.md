@@ -477,6 +477,46 @@ Observatörens egen vy (`/observe`) är TV-vyn med allas händer utfläktade, en
 Anslutningssidan erbjuder "Bara titta" bredvid "Sätt dig".
 Vem som helst med rumskoden kan observera; det är G1:s öppna fråga om missbruk.
 
+Reviderat 2026-09-14 (#76, prototypat och byggt): **filten vänds ett kvartsvarv när fönstrets form inte är bordets.**
+
+Observatören är en spelaryta och ska hålla vid 390 och 320 (L12), och gjorde det inte.
+Ett landskapsbord som passas in upprätt i ett porträttfönster binds av fönstrets korta sida och lämnar den långa tom: vid 390 × 844 ritades golvet 272 × 182 px, kortets kortsida blev 15 px och fjorton etiketter låg i ett utrymme som rymmer fyra — femton par av dem på varandra.
+#6 gav henne en mobilvy men inte en filt som får plats i den.
+
+Beslutet är variant A, kvartsvarvet: bordet vänds så att dess långsida löper nedför skärmen och filten fyller bredden.
+Regeln läses ur de två formerna och skrivs aldrig ned per yta — ett fönster vars orientering stämmer med bordets ligger redan rätt — och bor i `turnToFit` i `packages/web/src/table/fit.ts`.
+Den är observatörens ensam: en plats egen filt vrids av var platsen sitter (C5), och bordets egen skärm är en TV som är landskap av konstruktion (K9).
+Ingenting döljs, ingenting kapas, och ingen ny gest införs.
+
+Priset, uttryckligen accepterat: observatörens bord läses vridet på en telefon och upprätt vid ett skrivbord.
+
+**Luften mellan filten och ramen var ett tal för två skäl.**
+`LEAST_AIR_PX` var 44 px i båda lägena och sade sig vara till för träramen — men `.byd-table-frame[data-mode='tv'] .byd-table-wood` har `padding: 0`, så i TV-läge finns ingen ram.
+44 px på var sida av ett fönster på 390 är 23 % av det, givet åt ingenting.
+Det som faktiskt bor i den luften på en TV är handräknarnas pill: de hänger förbi sin hand i skärmens pixlar och inte i filtens millimetrar, och mäter ungefär 18 × 22 av dem.
+Talen är därför två: `WOOD_AIR_PX` 44 i bordsläge, där filten ligger på sitt trä och träet står på mörkret och luften är bordets andel av rummet, och `TV_AIR_PX` 20 i TV-läge, som är ett pills bredd och inte mer (8 px kapade dem).
+Det är värt omkring en tiondel till i skala.
+
+Mätt efter hela ändringen, fyra platser med yta och räknare framför varje och två delade högar:
+
+| Fönster | Golvet före | Golvet efter | Kortets kortsida | Namnpar på varandra |
+| --- | --- | --- | --- | --- |
+| 320 × 568 | 210 × 140 | 239 × 358 | 12 → 20 px | 27 → 0 |
+| 390 × 844 | 272 × 182 | 331 × 496 | 15 → 27 px | 15 → 0 |
+| 768 × 1024 | 611 × 408 | 543 × 813 | 34 → 45 px | 0 → 0 |
+| 1280 × 800 | 624 × 417 | 692 × 462 | 35 → 38 px | 0 → 0 |
+
+Vid 768 blir golvets bredd mindre och kortet ändå större: bordet vänt fyller fönstrets långa sida, som är den som fanns.
+Vid 1280 vänds ingenting; de 68 pixlarna där är enbart luften.
+
+Grinden är `packages/web/test/observer-viewport.test.tsx`: vridningen som funktion och på skärmen, varje namn en gång vid varje fönster, ingen etikett under 12 px, varje ord upprätt genom vridningen, och varje hand och varje hög ritad innanför ramen med sitt pill helt inne i den — det sista är vad `TV_AIR_PX` finns för och vad som fäller talet om det skärs igen.
+
+**Kvar, känt och inte lagat här:** ett kort på filten kan inte ritas smalare än omkring 18 px.
+`.byd-pile-top` och `.byd-card` bär `padding: 7px` plus en kant i *skärmens* pixlar under `box-sizing: border-box`, så ett kort vars egna millimetrar är färre än så växer utanför sin egen fot och varje pixel av det är stoppning.
+Vridningen och luften lyfter observatören över den tröskeln på båda telefonerna: kortets kortsida var 12 px vid 320 och 15 vid 390, och är 20 respektive 27.
+Vid 320 är marginalen två pixlar, och det som bär den är skalan och inte regeln — så en filt som krymper igen möter kortens golv innan namnen möter sitt.
+De två deklarationerna i `table.css` står numera som en och säger det om sig själva; att laga det är en annan skivas sak.
+
 ### C9. Livscykel: persistenta bord med uttrycklig avslutning (fråga 25)
 
 Tillståndet överlever att alla kopplar ner, så gruppen kan återuppta med samma ställning och samma platser.
@@ -1664,6 +1704,39 @@ Det trängsta avståndet som beror på hur långt ett namn är, är 3 px (sex pl
 
 De 3 pixlarna ovan är 2,0 % av namnets bredd, och det visade sig vara hela buggen.
 Vad filten skriver med är därför inte längre maskinens fråga: se K20.
+
+Reviderat 2026-09-14 (#76): **ett namn ligger heller aldrig på en högs antalsbricka, och en filt som är mindre än sina egna namn sätter dem på sitt eget sätt.**
+
+Regeln var skriven om namn mot namn.
+En hög har två etiketter och båda undantogs: namnet ligger under högen, fritt från allt, och brickan räknades som namnets andra halva.
+Men brickan är det enda på filten som ritas *utanför sin egen fot i skärmens pixlar* — `right: -14px; top: -14px` och 30 × 30 px, hur liten högen än är.
+På en filt av en telefons storlek är högen 26 × 19 px och brickan sticker ut en fjärdedel av vägen tvärs över bordet, rakt in i den plats en sidokants namn har.
+Så när observatörens filt vändes (C8, #76) återstod två krockar vid 390 och sex vid 320: fyra av de sex var en plats namn på kasthögens bricka, och de två sista var två platser mitt emot varandra som möttes på samma rad i mitten — samma trängsel, sedd från andra hållet.
+
+Utvidgningen har två halvor, båda i regelns egen anda: **det som är högens ritas på högen, och det som är en plats ritas i platsens egen halva.**
+
+**Brickan sitter på sin hög.**
+Den är centrerad över högens överkant i stället för att hänga ut ur dess hörn: den täcker kortet som förut, men står inte längre någonstans där högen inte är.
+Det är samma sak C5 (#66) sade om träramen — en yta som inte är bordet är ingen yta att ligga på — sagd om en etikett i stället för om ett kort.
+
+**En filt som är smalare än sina namn sätter dem tätt.**
+Under 460 px tvärs över läsarens bild — `TIGHT_FELT_PX` i `TableRenderer.tsx` — gäller två ting till.
+Talet är `table.css`:s eget, det som redan döljer den spelade filtens namn, men mätt på läsarens bild i stället för på filtens egen bredd: filtens låda behåller golvets form och vrids efteråt, så en containerfråga på den mäter bildens andra sida.
+Därför är det renderaren som svarar och inte arket.
+Typen sätts i filtens tätaste: 12 px och ingen spärr, i stället för 13 px och 1,5.
+Spärren ensam är en sjättedel av namnets bredd — samma femtedel K19 tog ur bordsläget ovan — och utan den är `Räknare A` 62 px i stället för 76, vilket är vad som gör att två platser mitt emot varandra på en telefon båda får säga sina namn.
+Och vid öst- och västkanten står namnet **ovanför sin egen zon i stället för bredvid den**, förankrat i den ände som vetter mot kanten och växande inåt, så att det stannar i sin egen halva av filten.
+Bredvid zonen växer det från zonens inre kant mot mitten, där de delade högarna står; på en filt så här liten når den räckvidden förbi mitten och möter både brickan och namnet från platsen mitt emot, som kommer andra vägen.
+Ovanför sin egen zon når det bara halva den sträckan, och de två platserna mitt emot varandra delar inte längre rad alls.
+
+Varför just en tröskel och inte en regel för alla filtar: bredvid zonen är rätt överallt annars och mätt så.
+Vid åtta platser i bordsläge ligger platsens namnkort längs kanten (K9), och ett namn som flyttas upp mot kanten landar på det; vid fem och sex platser når ett namn förankrat vid kanten längre in än ett förankrat vid zonen och möter draghögen.
+Tröskeln är alltså inte en smaksak utan gränsen mellan två geometrier: över den är kanten trång och mitten vid, under den tvärtom.
+I praktiken är det bara observatörens telefon som kommer dit — den spelade filten döljer redan sina namn vid samma mått, eftersom det den behöver läsa där är antalet och formen och namnen står en knapptryckning bort i spelarket, och bordets egen skärm är en TV.
+
+Mätt på observatörens filt, fyra platser med yta och räknare framför varje, två delade högar och något i varje hand: 15 par vid 390 och 27 vid 320 före, noll vid båda efter, och noll också när varje namn ritas 15 % bredare.
+De 102 scenerna i `felt-names.test.tsx` — bordsläge vid varje platsantal och varje kvartsvarv, TV:n och Bord-fliken — är oförändrade.
+Minsta etikett är 12 px, som den alltid varit.
 
 ---
 

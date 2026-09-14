@@ -75,6 +75,7 @@ Editorn:
 - ✅ Editorn, wizarden och observatören på små skärmar: namngivna etapper under 1024 px, ingen duk under 768 px och gränssnittet säger det, tre steg i wizarden, bordet först och ingen banner över spelet hos observatören (L10, #4, #5, #6).
 - ✅ Handsolfjädrarna i bordets eget mått: fläkten skalar med filten, inpassningen räknar in händerna och ett kvartsvridet bord passas in i den form det ritas i, mätt i Chromium vid 390, 768 och 1280 i alla fyra konsumenter (K9, C5, #23).
 - ✅ Distansvyns nedre band: bågen kapad vid 30°, kortet kvar i läsbar storlek, steget bottnat på 44 px och en hand bredare än bandet som rullar i sidled; hörnen uppe i en topplist och hela handen som rutnät bakom `Visa alla` (K17, C4, #24, #25).
+- ✅ Observatörens filt möter fönstret hon håller: ett landskapsbord i ett porträttfönster vänds ett kvartsvarv så att dess långsida löper nedför skärmen, luften mellan filt och ram är två tal för två skäl i stället för ett, och namnen går fria från högarnas antalsbrickor — noll namnpar på varandra vid 320 och 390, kortets kortsida 12 → 20 px och 15 → 27 px (C8, L12, K19, #76).
 - ✅ Filten mot ramens yta i stället för mot dess kortare sida: två femtedelar av ramen, minst 44 px luft, en enda regel för `/online`, `/table`, TV:n och Bord-flikens miniatyrer (K9, K17, #24).
 
 Drift:

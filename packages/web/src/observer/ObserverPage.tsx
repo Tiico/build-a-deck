@@ -3,6 +3,7 @@ import type { VisibleComponentState } from '@byd/protocol'
 import '../table/table.css'
 import '../player/player.css'
 import { TableRenderer } from '../table/TableRenderer.js'
+import { turnToFit } from '../table/fit.js'
 import { TvChrome } from '../table/TvChrome.js'
 import { useTableClient } from '../table/useTableClient.js'
 import { refusedText } from '../player/SessionOverlays.js'
@@ -47,6 +48,15 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
   const flagged = useRefusal('table')
   const [inspecting, setInspecting] = useState<VisibleComponentState | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  // The window she is holding, watched rather than read once: a phone turned over is a new shape
+  // and the felt is fitted to it again (K9, #75), the same way the renderer refits to its frame.
+  const [room, setRoom] = useState<{ w: number; h: number }>(() => (typeof window === 'undefined' ? { w: 0, h: 0 } : { w: window.innerWidth, h: window.innerHeight }))
+  useEffect(() => {
+    const update = () => setRoom({ w: window.innerWidth, h: window.innerHeight })
+    update()
+    window.addEventListener('resize', update)
+    return () => window.removeEventListener('resize', update)
+  }, [])
   const [version, setVersion] = useState<string | null>(null)
   useEffect(() => {
     if (!toast) return
@@ -66,6 +76,14 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
   if (refused) return <StatusNotice notice={{ ...noticeFor('forbidden', 'table', t), text: refusedText(refused, t) }} surface="page" links={links} />
   if (!view || !client) return <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
 
+  // A landscape table in a portrait window is turned a quarter so that its long side runs down
+  // the screen and the felt fills the width (C5, C8, #76). The observer sits at no seat, so
+  // nothing else decides which way round her table is; the rule is the window's shape against the
+  // table's and lives in `turnToFit`. Her felt reads turned on a phone and upright on a desk,
+  // which is the trade the alternative — a felt a fifth of a phone, with a 15 px card — loses.
+  const floor = view.zones.find((z) => z.id === view.floor)
+  const turn = floor ? turnToFit({ w: floor.geometry.w, h: floor.geometry.h }, room) : 0
+
   return (
     <>
       {/* An ended table is one more state of D5's kind: the picture behind the survey is not to be
@@ -79,7 +97,7 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
         observers={observers}
         note={<p className="byd-observer-note">{t('observer.banner')}</p>}
       >
-        <TableRenderer view={view} mode="tv" faces={http} onInspect={setInspecting} />
+        <TableRenderer view={view} mode="tv" rotate={turn} faces={http} onInspect={setInspecting} />
       </TvChrome>
       {/* The handle (#6): a row of its own under the table, never a banner over it. What she is
           is always on it; the rest of the sentence, the feed and the seats are one press away and

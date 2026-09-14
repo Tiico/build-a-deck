@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { feltScale, fitScale, LEAST_AIR_PX, WOOD_RIM_PX } from '../src/table/fit.js'
+import { feltScale, fitScale, turnToFit, TV_AIR_PX, WOOD_AIR_PX, WOOD_RIM_PX } from '../src/table/fit.js'
 import { projectTilted } from '../src/table/geometry.js'
 
 describe('fitScale', () => {
@@ -48,9 +48,9 @@ describe('feltScale — the felt in table mode (K9, reviderat 2026-09-12)', () =
     const frame = FRAMES.find((f) => f.what === what)!.frame
     const scale = feltScale(TABLE, frame)
     // It fits, with the air every felt leaves.
-    expect({ what, air: air(TABLE, frame, scale) >= LEAST_AIR_PX - 0.5 }).toEqual({ what, air: true })
+    expect({ what, air: air(TABLE, frame, scale) >= WOOD_AIR_PX - 0.5 }).toEqual({ what, air: true })
     // And nothing is left over: two percent larger and a corner is outside that air.
-    expect({ what, room: air(TABLE, frame, scale * 1.02) >= LEAST_AIR_PX }).toEqual({ what, room: false })
+    expect({ what, room: air(TABLE, frame, scale * 1.02) >= WOOD_AIR_PX }).toEqual({ what, room: false })
   })
 
   it('never draws the table larger than life, however much screen there is', () => {
@@ -65,5 +65,42 @@ describe('feltScale — the felt in table mode (K9, reviderat 2026-09-12)', () =
     const b = drawnBox(TABLE, frame, scale)
     const covered = ((b.right - b.left) * (b.bottom - b.top)) / (frame.w * frame.h)
     expect({ covered: covered > 0.5 }).toEqual({ covered: true })
+  })
+})
+
+// Whether the felt is turned a quarter, decided from the window's shape against the table's
+// (C8, L12, #76). A landscape table in a portrait window fills a fraction of it upright and the
+// width of it turned; a landscape window already holds a landscape table, so nothing turns.
+describe('turnToFit — a landscape table in a portrait window turns (C5, C8, #76)', () => {
+  const TABLE = { w: 1320, h: 860 }
+
+  it('turns a landscape table a quarter in a portrait window', () => {
+    expect(turnToFit(TABLE, { w: 390, h: 844 })).toBe(90)
+    expect(turnToFit(TABLE, { w: 320, h: 568 })).toBe(90)
+  })
+
+  it('leaves a landscape table upright in a landscape window', () => {
+    expect(turnToFit(TABLE, { w: 768, h: 500 })).toBe(0)
+    expect(turnToFit(TABLE, { w: 1280, h: 800 })).toBe(0)
+  })
+
+  it('leaves a portrait table upright in a portrait window, and turns it in a landscape one', () => {
+    const tall = { w: 860, h: 1320 }
+    expect(turnToFit(tall, { w: 390, h: 844 })).toBe(0)
+    expect(turnToFit(tall, { w: 1280, h: 800 })).toBe(90)
+  })
+
+  it('turns nothing it cannot measure', () => {
+    expect(turnToFit(TABLE, { w: 0, h: 0 })).toBe(0)
+    expect(turnToFit({ w: 0, h: 0 }, { w: 390, h: 844 })).toBe(0)
+  })
+
+  // And it is worth what the issue says it is worth: the same table, the same window, more felt.
+  it('buys the felt more of a phone than it has upright', () => {
+    const phone = { w: 390, h: 844 }
+    const upright = fitScale(TABLE, phone, TV_AIR_PX)
+    const turned = fitScale({ w: TABLE.h, h: TABLE.w }, phone, TV_AIR_PX)
+    expect(turnToFit(TABLE, phone)).toBe(90)
+    expect(turned).toBeGreaterThan(upright * 1.5)
   })
 })
