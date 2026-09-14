@@ -2086,6 +2086,34 @@ Båda är borta; mätningens summa är tabellen.
 Mätningen körs när leken ändras och när rummet gör det, aldrig på en scroll: en scroll flyttar lådan, och en låda kan inte tala om för en kolumn hur bred den ska vara.
 Varje värde mäts en gång och känns igen sedan, hållet mot den font och den inre marginal det mättes med.
 
+
+Kolumnernas ordning och bredd, 2026-09-14 (prototypat i tre varianter, godkänd variant A — rubriken är handtaget, #46):
+Ordningen är formgivarens och ändras där den står: en rubrik dras på en annan, och Alt med en pil gör samma sak ett steg i taget — samma par som lagerlistan redan svarar (#18), eftersom en ordning som bara kan dras är en ordning tangentbordet har tappat.
+Ordningen skrivs in i dokumentet och inte i webbläsaren: den syns för alla som har projektet öppet, CSV-exporten skriver den, och ett steg tillbaka ska kunna ta tillbaka den — vilket en vy i en flik inte kan något av.
+Det som skrivs ned är en *ordning* och ingen lista över vilka kolumner som finns: vilka de är härleds fortfarande ur vad mallen ritar och vad korten bär, och `columnsOf` lägger ordningen över den härledningen — namnen den känner, i den ordning den nämner dem, sedan allt den inte nämner där vandringen lade det.
+Därför läser ett dokument skrivet innan någon kunde flytta en kolumn tillbaka exakt som förut, ett namn leken inte längre svarar på stegas över, och en kolumn som gjorts efter flytten står där en ny kolumn står.
+`moveField` säger vart: `before` är kolumnen den kommer att stå framför, och `null` är sist av alla — de två sätt ett drag kan sluta på. Sagt i kolumner och aldrig i index, eftersom det index en ordning läses vid ändras i samma ögonblick som den bärna kolumnen lyfts ur den.
+Historiken har ett ord för det: en version vars enda ändring är en flyttad kolumn läste förut som en tom sparning, eftersom diffen inte hade något att märka den med.
+
+Bredden är däremot en vy av projektet och aldrig projektet (L4), precis som sortering och filter: hur brett én formgivare vill läsa en kolumn på sin skärm är inget faktum om spelet.
+Den minns därför i hennes egen webbläsare, per projekt — en kolumn som heter `body` i ett spel säger ingenting om en som heter `body` i nästa — och en webbläsare som vägrar lagra ritar ändå varje bredd hon drar; den glömmer bara till nästa besök.
+En dragen kolumn tar exakt det den fick: den står helt utanför utdelningen, och allt annat fortsätter dela på det som blir kvar som om den inte fanns. Ett smalare fönster tar sina pixlar ur de kolumner som fortfarande mäter sig själva.
+Bredden reser på kolumnens eget `<col>`, bredvid vad kolumnen är värd att storleksättas som, så `fitColumns` får hela svaret av tabellen och behöver fortfarande inte veta vad någon kolumn heter.
+Kanten ligger innanför sin egen rubrik och inte över gränsen: en rubrik klipper sitt eget spill för att hålla sig inom sin kolumn, så ett handtag lagt tvärs över linjen har en yttre halva som tillhör nästa rubrik — och ett drag i bredden blev då ett drag i ordningen. Uppmätt i prototypen.
+Golvet är 44 px: smalare än en fingertopp är ingen bredd någon valt utan en kolumn som kastas bort av en hand som halkade, och vars egen kant sedan är för liten att få tag i.
+Alt och Skift med en pil gör samma sak från tangentbordet, bredvid Alt ensamt som flyttar kolumnen.
+
+Följdkrav, och vad de ersätter:
+`×` står inte längre på kolumnrubriken alls, utan bakom huvudets egen dörr — den där en kolumn redan görs (#32) — tillsammans med listan över tabellens kolumner och den satta bredden.
+Det upphäver hela räkneuppställningen från 2026-09-13 om två träffytor som delas ut i tur och ordning: den handlade aldrig om att ta bort en kolumn, den handlade om var kontrollen stod.
+En rubrik bär sitt ord och sättet den sorterar på, och ingenting mer — vilket är allt en rubrik som också ska gå att dra och dra i har plats att vara.
+Hänglaset flyttar med: i en panel finns plats för skälet i ord, vilket en rubrik aldrig hade, och `antal` får tillbaka de nitton pixlar det tog.
+Huvudets tabbordning är ett stopp per kolumn och en dörr, där den förr hade en kontroll som tar bort en kolumn mellan varje par av namn.
+Kolumnlistan i dörren rullar och blanketten under den står stilla: en lek med tjugo kolumner hängde annars dörren utanför fönstrets nederkant, och det som föll av var vägen att göra den tjugoförsta.
+Varken `id` eller `antal` kan bäras, är en plats att lägga en kolumn på, eller har en kant att dra i: id är en maskinnyckel och `antal` står sist där tabellen visar det (L4).
+Pilen utan Alt är läsarens egen och rörs inte, och en rubrik som kan bäras har inte slutat vara en som kan tryckas för att sortera.
+En flytt sägs i den enda kanal allt på en skärm talar i (#7): ett drag är sitt eget svar för ögat, men en kolumn som flyttat sig under fokus utan att något sagts är en kolumn läsaren har tappat.
+
 ### L5. Editor till bord: uttrycklig knapp, förrenderade texturer
 
 Editorn har en knapp, "Uppdatera bordet", som startar ett bord från projektet eller skickar `version.change` till det bord den startat.

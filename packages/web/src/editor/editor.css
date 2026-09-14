@@ -1042,7 +1042,10 @@
 /* The form is no longer the box: it stands inside one, so it gives up its own frame and its own
    place on the page and keeps only its rows. */
 .byd-columns .byd-newfield { position: static; width: auto; padding: 10px 0 0; border: 0; border-top: 1px solid #2f333d; border-radius: 0; background: transparent; box-shadow: none; }
-.byd-columns-list { display: grid; gap: 2px; margin: 0 0 10px; padding: 0; list-style: none; }
+/* The list scrolls and the form under it does not move: a deck of twenty columns would otherwise
+   hang the door off the bottom of the window, and the thing that fell off it is the way to make
+   the twenty-first. */
+.byd-columns-list { display: grid; gap: 2px; margin: 0 0 10px; padding: 0; max-height: 232px; overflow-y: auto; list-style: none; scrollbar-width: thin; }
 .byd-columns-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 0 8px; min-height: 36px; }
 .byd-columns-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 /* The × keeps the 44 px it always had (L12). Here it can have them without taking them from
