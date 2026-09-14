@@ -48,7 +48,7 @@ const idle = { send: async () => undefined } as unknown as Parameters<typeof Ses
 function surfaces(view: Snapshot) {
   const overlays = (v: Snapshot) => (
     <div className="byd-player">
-      <SessionOverlays client={idle} view={v} seat="A" name="Ada" http="" sessionId="s1" sheet={null} onSheet={noop} onLeft={noop} toast="Ögonblicket är flaggat" onToast={noop} version="v1" />
+      <SessionOverlays client={idle} view={v} seat="A" sheet={null} onSheet={noop} onLeft={noop} toast="Ögonblicket är flaggat" onToast={noop} version="v1" />
     </div>
   )
   const proposal = { id: 'p1', toSeq: 1, by: 'B', confirmed: [] as string[], waiting: ['A'] }

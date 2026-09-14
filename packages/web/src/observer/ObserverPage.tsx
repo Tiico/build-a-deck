@@ -68,7 +68,9 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
 
   return (
     <>
-      <div data-page="observe" data-drawer={drawer ? 'open' : 'shut'} data-status={status} className={`byd-fit byd-observer${live.stale ? ' byd-status-stale' : ''}`} {...(live.stale ? { inert: true } : {})}>
+      {/* An ended table is one more state of D5's kind: the picture behind the survey is not to be
+          acted on, so it is out of reach the same way a stale one is (UX-38, #83). */}
+      <div data-page="observe" data-drawer={drawer ? 'open' : 'shut'} data-status={status} className={`byd-fit byd-observer${live.stale ? ' byd-status-stale' : ''}`} {...(live.stale || view.ended ? { inert: true } : {})}>
       <TvChrome
         view={view}
         activity={activity}
@@ -111,8 +113,8 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
           }}
         />
       )}
-      {view.ended && <Survey saveUrl={token ? claimUrl(token, params.get('server')) : null} who={name} version={version ?? '…'} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat: null, observer: true, answers })} />}
       </div>
+      {view.ended && <Survey saveUrl={token ? claimUrl(token, params.get('server')) : null} who={name} version={version ?? '…'} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat: null, observer: true, answers })} />}
       <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
     </>
   )

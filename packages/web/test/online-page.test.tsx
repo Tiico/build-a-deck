@@ -5,6 +5,7 @@ import { TableClient } from '../src/client.js'
 import { OnlinePage, type OnlinePageProps } from '../src/online/OnlinePage.js'
 import { admit, asTable, createSession, roomOf, startServer, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
+import { tabStops } from './tabs.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
@@ -94,6 +95,30 @@ describe('OnlinePage (C2): both roles in one window', () => {
     await table.synced(3)
     expect(table.view?.seats.find((s) => s.id === 'A')).toEqual({ id: 'A', name: null, edge: 'S' })
     expect(new URL(went[0] ?? '', 'http://x').pathname).toBe('/join')
+    table.close()
+  })
+})
+
+// The online seat shares the phone's session overlays, so it shares the phone's quiet once the
+// table has ended (UX-38, #83): the felt and the hand are the picture behind the survey.
+describe('the ended table goes quiet behind the survey (C9, D5, G3, #83)', () => {
+  it('takes the felt and the hand out of reach, and leaves the survey the only thing Tab can reach', async () => {
+    const id = await createSession(run)
+    await open(id, 'A', 'Ada')
+    const table = TableClient.connect(await asTable(run, id))
+    await table.ready()
+    await table.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    await waitFor(() => expect(document.querySelectorAll('[data-hand-fan] [data-hand-card]')).toHaveLength(1))
+    expect(document.querySelector('[data-hand-fan]')!.closest('[inert]')).toBeNull()
+
+    await table.send({ v: 'session.end' })
+    await screen.findByText(/Bordet är avslutat/)
+    expect(document.querySelector('[data-hand-fan]')!.closest('[inert]')).not.toBeNull()
+    const survey = document.querySelector('.byd-survey')!
+    expect(survey.closest('[inert]')).toBeNull()
+    const stops = tabStops()
+    expect(stops.length).toBeGreaterThan(1)
+    expect(stops.every((el) => survey.contains(el))).toBe(true)
     table.close()
   })
 })

@@ -8,10 +8,16 @@
    mounts them on `/online` as well; `/observe` mounts the survey by itself. Named on
    `.byd-player` alone, every token below fell back to nothing on two of the three routes, and a
    button whose fill and ink resolve to nothing is drawn by the browser instead — a grey system
-   button on a dark felt. */
+   button on a dark felt.
+
+   The survey is a root of its own as well: once the table has ended it stands beside the room
+   rather than inside it, because the room is `inert` by then and the survey is the one thing that
+   is not (UX-38, #83). A fixed, full-screen layer outside the room inherits none of the room's
+   tokens, so it binds them itself. */
 .byd-player,
 .byd-online,
-.byd-observer {
+.byd-observer,
+.byd-survey {
   --byd-bg: #14161c;
   --byd-surface: #1b1e27;
   --byd-control: #242938;

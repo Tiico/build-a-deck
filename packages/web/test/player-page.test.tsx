@@ -7,6 +7,7 @@ import { PlayerPage, type PlayerPageProps } from '../src/player/PlayerPage.js'
 import { DEFAULT_TIMING } from '../src/status/connection.js'
 import { admit, asSeat, asTable, createSession, roomOf, seatSetup, startServer, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
+import { tabFrom, tabStops } from './tabs.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
@@ -498,6 +499,54 @@ describe('counters and the area in front of you (C4)', () => {
     const targets = screen.getAllByRole('button').map((b) => b.textContent ?? '')
     expect(targets.some((t) => t.startsWith('Framför mig'))).toBe(true)
     expect(targets.some((t) => t.includes('Framför B'))).toBe(false)
+    me.close()
+  })
+})
+
+// The survey lies over a phone that is still listening (UX-38, #83). An ended table is one more
+// state of the kind D5 already names for a dropped line: the picture behind is not to be acted on,
+// so it is taken out of reach the same way — `inert` — with the survey the only living thing.
+describe('the ended table goes quiet behind the survey (C9, D5, G3, #83)', () => {
+  it('takes the counters, the hand and the hint out of reach, and leaves the survey and the way out living', async () => {
+    const id = await createSession(run, 's1', undefined, seatSetup())
+    const token = await open(id, 'A', 'Ada')
+    const me = TableClient.connect({ url: run.url, sessionId: id, seat: 'A', token })
+    await me.ready()
+    await me.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1))
+    expect(screen.getByRole('button', { name: 'Guld plus' }).closest('[inert]')).toBeNull()
+
+    await me.send({ v: 'session.end' })
+    await screen.findByText(/Bordet är avslutat/)
+    // The play view is one inert whole: a screen reader that has finished the survey is not read
+    // the counters, the hand and the hint after it, and the counter's + is not a button to press.
+    expect(screen.getByRole('button', { name: 'Guld plus' }).closest('[inert]')).not.toBeNull()
+    expect(document.querySelector('[data-hand-card]')!.closest('[inert]')).not.toBeNull()
+    expect(document.querySelector('.byd-hint')!.closest('[inert]')).not.toBeNull()
+    expect(screen.getByRole('button', { name: 'Ut… ur bordet' }).closest('[inert]')).not.toBeNull()
+    // The survey, every control in it, and the way out of an ended table are not.
+    expect(screen.getByRole('heading', { name: 'Bordet är avslutat' }).closest('[inert]')).toBeNull()
+    expect(screen.getByRole('button', { name: '4' }).closest('[inert]')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Nästa' }).closest('[inert]')).toBeNull()
+    expect(screen.getByRole('link', { name: /Spara till ditt konto/ }).closest('[inert]')).toBeNull()
+    me.close()
+  })
+
+  it('Tab from the survey\'s last control stays in the survey rather than going down into the play view', async () => {
+    const id = await createSession(run, 's1', undefined, seatSetup())
+    const token = await open(id, 'A', 'Ada')
+    const me = TableClient.connect({ url: run.url, sessionId: id, seat: 'A', token })
+    await me.ready()
+    await me.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 1 }, { v: 'session.end' })
+    await screen.findByText(/Bordet är avslutat/)
+    const survey = document.querySelector('.byd-survey')!
+    const stops = tabStops()
+    expect(stops.length).toBeGreaterThan(1)
+    expect(stops.every((el) => survey.contains(el))).toBe(true)
+    // The last control is the way out (G1); Tab from it wraps to the survey's first control.
+    const last = screen.getByRole('link', { name: /Spara till ditt konto/ })
+    expect(stops.at(-1)).toBe(last)
+    expect(tabFrom(last)).toBe(screen.getByRole('button', { name: '1' }))
     me.close()
   })
 })

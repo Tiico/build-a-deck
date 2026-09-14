@@ -6,7 +6,7 @@ import { HandStrip } from './HandStrip.js'
 import { CountersRow, MineStrip } from './SeatExtras.js'
 import { PlaySheet } from './PlaySheet.js'
 import { TableSummary } from './TableSummary.js'
-import { SessionButtons, SessionOverlays, refusedText, useSessionVersion, useToast, type Sheet } from './SessionOverlays.js'
+import { SeatSurvey, SessionButtons, SessionOverlays, refusedText, useSessionVersion, useToast, type Sheet } from './SessionOverlays.js'
 import { useSitDown } from './useSitDown.js'
 import { RuleDrawer } from '../rules/RuleDrawer.js'
 import { claimUrl } from '../account/api.js'
@@ -98,7 +98,9 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
 
   return (
     <>
-      <div className={`byd-player${live.stale ? ' byd-status-stale' : ''}`} data-page="player" data-status={status} {...(live.stale ? { inert: true } : {})}>
+      {/* An ended table is one more state of D5's kind: the picture behind the survey is not to be
+          acted on, so it is out of reach the same way a stale one is (UX-38, #83). */}
+      <div className={`byd-player${live.stale ? ' byd-status-stale' : ''}`} data-page="player" data-status={status} {...(live.stale || view.ended ? { inert: true } : {})}>
       <header>
         <strong>{me?.name ?? seat}</strong>
         <span>{t(hand.length === 1 ? 'play.cards.one' : 'play.cards.other', { n: hand.length })}</span>
@@ -142,8 +144,9 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
         />
       )}
       {kbd.panel}
-      <SessionOverlays client={client} view={view} seat={seat} name={me?.name ?? seat} http={faces} sessionId={sessionId} sheet={sheet} onSheet={setSheet} onLeft={() => onLeave(wayBack(links))} toast={toast} onToast={setToast} version={version} saveUrl={token ? claimUrl(token, params.get('server')) : null} />
+      <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={() => onLeave(wayBack(links))} toast={toast} onToast={setToast} version={version} />
       </div>
+      <SeatSurvey view={view} seat={seat} name={me?.name ?? seat} http={faces} sessionId={sessionId} version={version} saveUrl={token ? claimUrl(token, params.get('server')) : null} />
       <RouteStatus status={live} over="sheet" links={links} onRetry={conn.retry} />
     </>
   )

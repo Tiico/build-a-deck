@@ -41,19 +41,26 @@ const document_ = (css: string, html: string) =>
 // `var(--byd-primary-bg)` on this very surface. That probe is the control case — if the surface
 // binds no such token the probe comes back transparent and the measurement throws, so this can
 // never quietly pass by matching nothing.
+//
+// A view can hold more than one surface: once the table has ended, the survey stands beside the
+// room rather than inside it (UX-38, #83), so `root` names every root the view is spoken in, and
+// each of them is probed and read on its own. Only the outermost count — a root inside a root is
+// already being read, and reading it again would name its buttons twice.
 const wearingThePrimary = (root: string) => (page: Page) =>
   page.evaluate((selector) => {
-    const surface = document.querySelector(selector)
-    if (!surface) throw new Error(`no ${selector} in this view`)
-    const probe = surface.appendChild(document.createElement('span'))
-    probe.style.backgroundColor = 'var(--byd-primary-bg)'
-    const fill = getComputedStyle(probe).backgroundColor
-    probe.remove()
-    if (fill === 'rgba(0, 0, 0, 0)') throw new Error(`${selector} binds no --byd-primary-bg`)
-    return [...surface.querySelectorAll<HTMLElement>('button, a[href], label, [role="tab"], [role="option"]')]
-      .filter((el) => el.checkVisibility())
-      .filter((el) => getComputedStyle(el).backgroundColor === fill)
-      .map((el) => (el.getAttribute('aria-label') ?? el.textContent ?? el.tagName).trim().slice(0, 40))
+    const surfaces = [...document.querySelectorAll(selector)].filter((el) => el.parentElement?.closest(selector) === null)
+    if (surfaces.length === 0) throw new Error(`no ${selector} in this view`)
+    return surfaces.flatMap((surface) => {
+      const probe = surface.appendChild(document.createElement('span'))
+      probe.style.backgroundColor = 'var(--byd-primary-bg)'
+      const fill = getComputedStyle(probe).backgroundColor
+      probe.remove()
+      if (fill === 'rgba(0, 0, 0, 0)') throw new Error(`${surface.className} binds no --byd-primary-bg`)
+      return [...surface.querySelectorAll<HTMLElement>('button, a[href], label, [role="tab"], [role="option"]')]
+        .filter((el) => el.checkVisibility())
+        .filter((el) => getComputedStyle(el).backgroundColor === fill)
+        .map((el) => (el.getAttribute('aria-label') ?? el.textContent ?? el.tagName).trim().slice(0, 40))
+    })
   }, root)
 
 // What is chosen, drawn as a fill. The tool had five different answers to "this one is on" and one
@@ -323,20 +330,21 @@ async function playerViews(): Promise<Record<string, string>> {
   await host.ready()
   const token = await admit(run, id, 'A', 'Ada')
   history.replaceState(null, '', `/play?session=${id}&seat=A&name=Ada&token=${token}&server=${encodeURIComponent(run.url)}`)
-  const { unmount } = render(<PlayerPage />)
+  const { container, unmount } = render(<PlayerPage />)
   try {
     const out: Record<string, string> = {}
     // The way out is one of the three controls every seat has, and the sheet behind it is what
     // the page looks like while it is being asked (#31).
     fireEvent.click(await screen.findByRole('button', { name: /Ut…/ }))
     await screen.findByRole('button', { name: 'Lämna bordet' })
-    out['vägen ut'] = document.querySelector('.byd-player')!.outerHTML
+    out['vägen ut'] = container.innerHTML
     fireEvent.click(screen.getByRole('button', { name: 'Stanna kvar' }))
 
+    // The survey stands beside the room, not in it (UX-38, #83), so the view is the whole mount.
     await host.send({ v: 'session.end' })
     await screen.findByRole('button', { name: 'Nästa' })
     fireEvent.click(screen.getByRole('button', { name: '4' }))
-    out['enkäten'] = document.querySelector('.byd-player')!.outerHTML
+    out['enkäten'] = container.innerHTML
     return out
   } finally {
     unmount()
@@ -347,7 +355,7 @@ async function playerViews(): Promise<Record<string, string>> {
 describe('the phone', () => {
   it('wears the primary fill on nothing but the action that moves the seat on', async () => {
     const css = `${read('src/player/player.css')}\n${read('src/table/keyboard.css')}\n${read('src/rules/rules.css')}`
-    const measured = await inChromium(css, 390, await playerViews(), wearingThePrimary('.byd-player'))
+    const measured = await inChromium(css, 390, await playerViews(), wearingThePrimary('.byd-player, .byd-survey'))
     // Leaving your seat and ending everyone's table are deliberately not a first action (#31).
     expect(measured).toEqual({ enkäten: ['Nästa'], 'vägen ut': [] })
   }, 90_000)
@@ -369,8 +377,9 @@ async function onlineView(): Promise<Record<string, string>> {
   await host.ready()
   const token = await admit(run, id, 'A', 'Ada')
   history.replaceState(null, '', `/online?session=${id}&seat=A&name=Ada&token=${token}&server=${encodeURIComponent(run.url)}`)
-  const { unmount } = render(<OnlinePage />)
-  const room = () => document.querySelector('.byd-online')!.outerHTML
+  const { container, unmount } = render(<OnlinePage />)
+  // The whole mount: the survey stands beside the room once the table has ended (UX-38, #83).
+  const room = () => container.innerHTML
   try {
     await waitFor(() => expect(document.querySelector('.byd-online')).toBeTruthy())
     const out: Record<string, string> = {}
@@ -399,7 +408,7 @@ async function onlineView(): Promise<Record<string, string>> {
 
 describe('the seat that plays on the table screen', () => {
   it('wears the primary fill on nothing but the action that moves the seat on', async () => {
-    const measured = await inChromium(ONLINE_CSS, 390, await onlineView(), wearingThePrimary('.byd-online'))
+    const measured = await inChromium(ONLINE_CSS, 390, await onlineView(), wearingThePrimary('.byd-online, .byd-survey'))
     expect(measured).toEqual({ 'frågan om att spola tillbaka': ['Godkänn'], 'enkäten på storbilden': ['Nästa'] })
   }, 90_000)
 })
@@ -413,13 +422,14 @@ async function observerView(): Promise<Record<string, string>> {
   await ada.ready()
   await ada.send({ v: 'seat.claim', seat: 'A', name: 'Ada' })
   history.replaceState(null, '', `/observe?session=${id}&name=Eva&token=${await admit(run, id, null, 'Eva')}&server=${encodeURIComponent(run.url)}`)
-  const { unmount } = render(<ObserverPage />)
+  const { container, unmount } = render(<ObserverPage />)
   try {
     await screen.findByText(/Du är observatör/)
     await ada.send({ v: 'session.end' })
     await screen.findByRole('button', { name: 'Nästa' })
     fireEvent.click(screen.getByRole('button', { name: '4' }))
-    return { 'enkäten hos den som tittar på': document.querySelector('.byd-observer')!.outerHTML }
+    // The whole mount: the survey stands beside the room once the table has ended (UX-38, #83).
+    return { 'enkäten hos den som tittar på': container.innerHTML }
   } finally {
     unmount()
     ada.close()
@@ -428,7 +438,7 @@ async function observerView(): Promise<Record<string, string>> {
 
 describe('the one who only watches', () => {
   it('wears the primary fill on nothing but the action that moves her on', async () => {
-    const measured = await inChromium(OBSERVER_CSS, 390, await observerView(), wearingThePrimary('.byd-observer'))
+    const measured = await inChromium(OBSERVER_CSS, 390, await observerView(), wearingThePrimary('.byd-observer, .byd-survey'))
     expect(measured).toEqual({ 'enkäten hos den som tittar på': ['Nästa'] })
   }, 90_000)
 })

@@ -11,7 +11,7 @@ import { seatColor } from '../table/seatColor.js'
 import { zoneAt } from '../zones.js'
 import { CARD_MM } from '../table/drop.js'
 import { playIntents } from '../player/play.js'
-import { SessionButtons, SessionOverlays, useSessionVersion, useToast, refusedText, type Sheet } from '../player/SessionOverlays.js'
+import { SeatSurvey, SessionButtons, SessionOverlays, useSessionVersion, useToast, refusedText, type Sheet } from '../player/SessionOverlays.js'
 import { useSitDown } from '../player/useSitDown.js'
 import { claimUrl } from '../account/api.js'
 import { SeatLine } from './SeatLine.js'
@@ -93,7 +93,9 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
 
   return (
     <>
-      <div data-page="online" data-status={status} className={`byd-fit byd-online${live.stale ? ' byd-status-stale' : ''}`} {...(live.stale ? { inert: true } : {})} style={{ ['--seat' as string]: seatColor(Math.max(0, view.seats.findIndex((s) => s.id === seat))) }}>
+      {/* An ended table is one more state of D5's kind: the picture behind the survey is not to be
+          acted on, so it is out of reach the same way a stale one is (UX-38, #83). */}
+      <div data-page="online" data-status={status} className={`byd-fit byd-online${live.stale ? ' byd-status-stale' : ''}`} {...(live.stale || view.ended ? { inert: true } : {})} style={{ ['--seat' as string]: seatColor(Math.max(0, view.seats.findIndex((s) => s.id === seat))) }}>
       {/* The seat's own line and the session's tools leave the bottom band altogether (#25):
           at 390 the band is 358 px, which holds eight forty-four pixel targets and no more, so
           the hand and the tools cannot both live there. C4's thumb pays for it; see C4's own
@@ -145,8 +147,9 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
         )}
       </div>
       {kbd.panel}
-      <SessionOverlays client={client} view={view} seat={seat} name={me?.name ?? seat} http={http} sessionId={sessionId} sheet={sheet} onSheet={setSheet} onLeft={() => onLeave(wayBack(links))} toast={toast} onToast={setToast} version={version} saveUrl={token ? claimUrl(token, params.get('server')) : null} />
+      <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={() => onLeave(wayBack(links))} toast={toast} onToast={setToast} version={version} />
       </div>
+      <SeatSurvey view={view} seat={seat} name={me?.name ?? seat} http={http} sessionId={sessionId} version={version} saveUrl={token ? claimUrl(token, params.get('server')) : null} />
       <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
     </>
   )
