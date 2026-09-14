@@ -285,3 +285,87 @@ describe('the shortcut to the table from every other tab (#19, variant B)', () =
     expect(rows[0]!.getAttribute('data-table')).toBe(newest)
   })
 })
+
+describe('a rendering that stands still says so (#88, UX-43, L5)', () => {
+  // The fixture runs no render worker, which is exactly the situation the issue describes: the
+  // queue never moves. Seconds of patience become a few hundred milliseconds here.
+  const timing = { renderStalledAfterMs: 300 }
+  async function startFromEditor(): Promise<HTMLElement> {
+    const user = userEvent.setup()
+    await run.projects.create('p1', projectDoc())
+    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage timing={timing} />)
+    await screen.findByText('Skogens herrar')
+    await user.click(screen.getByRole('button', { name: 'Uppdatera bordet' }))
+    return (await screen.findByText(/renderar kort 0\/4/)).closest('[role="status"]') as HTMLElement
+  }
+
+  it('after a while without progress it says the rendering is not moving, that the table shows the fallback text, and offers "Försök igen"', async () => {
+    const line = await startFromEditor()
+    // Nothing has failed, so there is no failure to report; the queue has simply not moved. The
+    // count stays on the line, because it is what will show the rendering moving again.
+    expect(await within(line).findByText(/renderingen står stilla/)).toBeTruthy()
+    expect(line.textContent).toContain('reservtext')
+    expect(within(line).getByRole('button', { name: 'Försök igen' })).toBeTruthy()
+    expect(within(line).getByText(/renderar kort 0\/4/)).toBeTruthy()
+    expect(line.hasAttribute('data-stalled')).toBe(true)
+  })
+
+  it('"Försök igen" asks the server to render once more, with the retry that puts a dead render back in the queue', async () => {
+    const user = userEvent.setup()
+    const line = await startFromEditor()
+    await within(line).findByText(/renderingen står stilla/)
+    const real = globalThis.fetch
+    const seen: string[] = []
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
+      seen.push(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url)
+      return real(input, init)
+    })
+    try {
+      await user.click(within(line).getByRole('button', { name: 'Försök igen' }))
+      await waitFor(() => expect(seen.some((url) => url.endsWith('/prepare?retry=1'))).toBe(true))
+      // Asking again is a fresh wait: the line stops saying "still" and says it again only once the
+      // new patience has run out too.
+      expect(within(line).queryByText(/renderingen står stilla/)).toBeNull()
+      expect(await within(line).findByText(/renderingen står stilla/)).toBeTruthy()
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
+  it('a count that moves takes the message away, and the message comes back only when the count stands still again', async () => {
+    const line = await startFromEditor()
+    await within(line).findByText(/renderingen står stilla/)
+    // One card lands: the count goes on from where it was, and the line has nothing to warn about.
+    expect(await run.completeRenders(1)).toBe(1)
+    expect(await within(line).findByText(/renderar kort 1\/4/)).toBeTruthy()
+    expect(within(line).queryByText(/renderingen står stilla/)).toBeNull()
+    expect(line.hasAttribute('data-stalled')).toBe(false)
+    // Then nothing more comes, and the line says so again.
+    expect(await within(line).findByText(/renderingen står stilla/)).toBeTruthy()
+    expect(within(line).getByText(/renderar kort 1\/4/)).toBeTruthy()
+    // The rest lands: the link opens and the warning is gone for good.
+    expect(await run.completeRenders()).toBe(3)
+    expect(await within(line).findByRole('link', { name: 'öppna bordet' })).toBeTruthy()
+    expect(within(line).queryByText(/renderingen står stilla/)).toBeNull()
+  })
+
+  it('says the same after "Uppdatera bordet" on a running table, whose count comes from the update itself', async () => {
+    const user = userEvent.setup()
+    const line = await startFromEditor()
+    await run.completeRenders()
+    await within(line).findByRole('link', { name: 'öppna bordet' })
+    // A changed card is one more texture to render, and the update waits for it (L5).
+    await user.click(screen.getByRole('tab', { name: 'Tabell' }))
+    await user.clear(screen.getByLabelText('dragon title'))
+    await user.type(screen.getByLabelText('dragon title'), 'Drakhona')
+    await user.click(screen.getByRole('button', { name: 'Uppdatera bordet' }))
+    await screen.findByText(/renderar kort 3\/4/)
+    expect(await screen.findByText(/renderingen står stilla/)).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Försök igen' })).toBeTruthy()
+    // The last one lands: the table switches and the warning goes with the count.
+    expect(await run.completeRenders()).toBe(1)
+    await screen.findByText(/Bordet uppdaterat på rev-2/)
+    expect(screen.queryByText(/renderingen står stilla/)).toBeNull()
+  })
+})

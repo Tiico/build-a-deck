@@ -27,12 +27,24 @@ import { usePageTitle } from '../status/DocumentTitle.js'
 import { useT } from '../i18n/index.js'
 import './editor.css'
 
+// How long the render count may stand still before the line says so (#88, UX-43). A texture is a
+// page in Chromium and takes seconds, not minutes, so thirty seconds without a single card landing
+// is a queue that is not moving — a worker that is down, or none at all — and not a slow one.
+// The count itself is what is watched, not the polling: a poll that answers the same number is
+// no progress.
+export const RENDER_STALLED_AFTER_MS = 30_000
+export type EditorTiming = { renderStalledAfterMs: number }
+export const DEFAULT_EDITOR_TIMING: EditorTiming = { renderStalledAfterMs: RENDER_STALLED_AFTER_MS }
+// A count under watch: which table's, where it stands, and how many times the designer has asked
+// for it to move. A stall is that same triple seen again when the patience ran out.
+type Watched = { table: string; done: number; asked: number }
+
 // /editor?project=…&server=http://…
 // The editor (L, prototype answer): the deck wall as home, the template canvas for the template,
 // the table as a tab. One project, one preview path, and "Uppdatera bordet" starts a table.
-export type EditorPageProps = { onNavigate?(url: string): void }
+export type EditorPageProps = { onNavigate?(url: string): void; timing?: EditorTiming }
 
-export function EditorPage({ onNavigate = (url) => location.assign(url) }: EditorPageProps = {}) {
+export function EditorPage({ onNavigate = (url) => location.assign(url), timing = DEFAULT_EDITOR_TIMING }: EditorPageProps = {}) {
   const t = useT()
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const projectId = params.get('project')
@@ -86,6 +98,22 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
   // How many cards of the pending revision are lost for good. While this is set the table keeps
   // the version it has: a card without a face on the table is worse than a table left alone.
   const [lost, setLost] = useState<number | null>(null)
+  // What the line counts: the update's own poll while one runs, otherwise the table's textures.
+  const progress = preparing ?? textures
+  const rendering = progress !== null && progress.done + progress.failed.length < progress.total
+  // The count has not moved for as long as the timing allows (#88). What is remembered is the
+  // count the stall was seen at, so a count that moves on takes the message with it in the same
+  // render; another table and the designer asking again start the wait over too.
+  const [asked, setAsked] = useState(0)
+  const watching: Watched | null = rendering && table ? { table: table.id, done: progress.done, asked } : null
+  const [stalledAt, setStalledAt] = useState<Watched | null>(null)
+  const stalled = watching !== null && stalledAt !== null && stalledAt.table === watching.table && stalledAt.done === watching.done && stalledAt.asked === watching.asked
+  useEffect(() => {
+    if (!watching) return
+    const seen = watching
+    const timer = setTimeout(() => setStalledAt(seen), timing.renderStalledAfterMs)
+    return () => clearTimeout(timer)
+  }, [watching?.table, watching?.done, watching?.asked, timing.renderStalledAfterMs])
   useEffect(() => {
     if (!client || !table) return
     let stop = false
@@ -211,6 +239,18 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
       setNotice(err instanceof Error ? err.message : String(err))
     } finally {
       setPreparing(null)
+    }
+  }
+  // "Försök igen" on a rendering that stands still (#88): one more `prepare` with the retry, which
+  // is what puts a dead render back in the queue (#10). The polling that is already running
+  // carries the count on from there; nothing else is restarted.
+  const retryRender = async () => {
+    if (!table) return
+    setAsked((n) => n + 1)
+    try {
+      await client.prepareTable(table.id, true)
+    } catch (err) {
+      setNotice(err instanceof Error ? err.message : String(err))
     }
   }
   const panel: Record<Mode, () => ReactNode> = {
@@ -402,7 +442,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
         </Question>
       )}
       {table && (
-        <div className="byd-editor-table-link" role="status" {...(lost !== null ? { 'data-lost': '' } : {})}>
+        <div className="byd-editor-table-link" role="status" {...(lost !== null ? { 'data-lost': '' } : {})} {...(stalled ? { 'data-stalled': '' } : {})}>
           {t(table.kind === 'new' ? 'editor.table.started' : 'editor.table.refreshed', { version: table.version })}{' '}
           {lost !== null ? (
             <>
@@ -419,6 +459,14 @@ export function EditorPage({ onNavigate = (url) => location.assign(url) }: Edito
             </a>
           ) : (
             <span className="byd-editor-rendering">{t('editor.table.rendering', { done: textures?.done ?? 0, total: textures?.total ?? '…' })}</span>
+          )}
+          {stalled && (
+            <>
+              {' '}· <span className="byd-editor-warning">{t('editor.table.stalled')}</span>{' '}
+              <button type="button" onClick={() => void retryRender()}>
+                {t('editor.table.retry')}
+              </button>
+            </>
           )}
           {textures && textures.failed.length > 0 && <span className="byd-editor-warning"> · {t('editor.table.failed', { n: textures.failed.length })}</span>}
           <span className="byd-editor-room">

@@ -140,7 +140,7 @@ async function bind(server: Server, port: number): Promise<void> {
   }
 }
 
-export type Running = { url: string; http: string; store: MemoryLogStore; projects: MemoryProjectStore; mail: MemoryMailer; stop(): Promise<void>; restart(): Promise<void>; completeRenders(): Promise<number>; failRenders(): Promise<number> }
+export type Running = { url: string; http: string; store: MemoryLogStore; projects: MemoryProjectStore; mail: MemoryMailer; stop(): Promise<void>; restart(): Promise<void>; completeRenders(limit?: number): Promise<number>; failRenders(): Promise<number> }
 
 // With `auth`, accounts are on (G1): projects need a login and belong to whoever made them.
 export async function startServer(opts: { auth?: boolean; authBypass?: boolean } = {}): Promise<Running> {
@@ -169,15 +169,17 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean }
     mail,
     stop,
     // Marks every queued texture as rendered, with a stand-in for the PNG: what the render
-    // container would do, without Chromium.
-    completeRenders: async () => {
+    // container would do, without Chromium. A limit renders only that many, which is a worker
+    // that has come along part of the way.
+    completeRenders: async (limit = Infinity) => {
       let n = 0
-      for (;;) {
+      while (n < limit) {
         const job = await renders.claim(Date.now())
-        if (!job) return n
+        if (!job) break
         await renders.complete(job.hash, new Uint8Array([137, 80, 78, 71]))
         n++
       }
+      return n
     },
     // The other ending: every queued texture dies the way a render container that keeps
     // crashing on the same page would leave it — failed for good, not merely late (#10).

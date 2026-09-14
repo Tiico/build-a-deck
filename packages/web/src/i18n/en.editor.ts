@@ -32,6 +32,7 @@ export const enEditor = {
   'editor.table.lost': '{n} cards could not be rendered. The table stays on its old version.',
   'editor.table.retry': 'Try again',
   'editor.table.rendering': 'rendering cards {done}/{total}',
+  'editor.table.stalled': 'the rendering is not moving — the cards on the table show their fallback text until it does',
   'editor.table.open': 'open the table',
   'editor.table.failed': '{n} cards could not be rendered',
   'editor.table.roomCode': 'room code',

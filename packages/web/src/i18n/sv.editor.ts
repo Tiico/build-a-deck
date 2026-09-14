@@ -39,6 +39,7 @@ export const svEditor = {
   'editor.table.lost': '{n} kort kunde inte renderas. Bordet står kvar på sin gamla version.',
   'editor.table.retry': 'Försök igen',
   'editor.table.rendering': 'renderar kort {done}/{total}',
+  'editor.table.stalled': 'renderingen står stilla — korten på bordet visar sin reservtext tills den kommer igång',
   'editor.table.open': 'öppna bordet',
   'editor.table.failed': '{n} kort kunde inte renderas',
   'editor.table.roomCode': 'rumskod',
