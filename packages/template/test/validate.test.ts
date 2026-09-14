@@ -106,3 +106,19 @@ describe('a font the version is not pinned to (B3, E5)', () => {
     expect(named.map((i) => i.code)).toEqual(['unpinned-font'])
   })
 })
+
+// A patterned plate (L17) is two inks, not one. Text read against the fill alone passes on the
+// paper between the stripes and disappears on the stripes themselves — and the check that was
+// meant to catch exactly that would have said the card was fine.
+describe('text over a pattern is read against both of its colours (E5, L17)', () => {
+  const pattern = (over: Record<string, unknown>) => bg({ fill: '#f4ead8', pattern: { kind: 'stripes', color: '#ffffff', scaleMm: 4, ...over } as never })
+
+  it('passes when the text stands clear of the fill and of the ink over it', () => {
+    expect(codes(check([pattern({ color: '#efe4d0' }), text()]))).toEqual([])
+  })
+
+  it('fails on the colour the text disappears into, even when the fill behind it is fine', () => {
+    // Dark ink on a cream plate: the fill reads well and the stripes swallow the words.
+    expect(codes(check([pattern({ color: '#2b2b2b' }), text()]))).toEqual(['low-contrast:error'])
+  })
+})

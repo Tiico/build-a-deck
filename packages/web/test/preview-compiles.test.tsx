@@ -93,6 +93,7 @@ describe('the card on the canvas is not compiled again for nothing', () => {
       <TemplateCanvas
         doc={withIcon()}
         assetBase="http://api.local"
+        onReplaceFace={() => undefined}
         face="front"
         row="dragon"
         selectedElement="title"

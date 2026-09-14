@@ -71,7 +71,7 @@ describe('locking a layer (L15)', () => {
     await openTheTemplate()
     await userEvent.click(screen.getByRole('button', { name: 'Lås title' }))
     // It is an edit like any other: it lands in the document, and is therefore saved and shared.
-    await screen.findByText('Osparade ändringar')
+    await screen.findByText('Osparat')
     fireEvent.keyDown(document, { key: 's', ctrlKey: true })
     await screen.findByText('Sparat')
     expect((await run.projects.load('p1'))?.template.faces['front']?.base.find((e) => e.id === 'title')).toMatchObject({ locked: true })
@@ -144,7 +144,7 @@ describe('what a layer says it is (L15)', () => {
     await userEvent.type(screen.getByRole('textbox', { name: /title/i }), 'Rubriken')
     await userEvent.keyboard('{Escape}')
     expect(within(row('title')).getByRole('button', { name: /^title/ })).toBeTruthy()
-    expect(screen.queryByText('Osparade ändringar')).toBeNull()
+    expect(screen.queryByText('Osparat')).toBeNull()
   })
 })
 

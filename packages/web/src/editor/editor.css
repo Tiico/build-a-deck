@@ -1273,3 +1273,86 @@
    is React's to know, not the stylesheet's — a handle hidden by CSS is still a stop in the tab
    order, and there would be one per cell. */
 .byd-data-icon { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); z-index: 2; border: 1px solid #4a5163; background: #1b1d23; color: #ffd98a; border-radius: 6px; padding: 1px 5px; font: 700 10px ui-monospace, monospace; cursor: pointer; }
+
+
+/* What a shape is (L17). The gallery, the tiles and the shadow's presets are three grids of
+   buttons in a 280 px panel, so they are sized by what fits rather than by a fixed count: the
+   panel is the narrowest thing in the editor and the one that has to hold the most. */
+.byd-props-heading {
+  grid-column: 1 / -1;
+  margin: 8px 0 0;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--byd-editor-hint-ink);
+}
+/* A control that is a single measure across the panel rather than one of a pair: a slider reads
+   from end to end, and half a panel is not enough of it to aim with. */
+.byd-props-wide { grid-column: 1 / -1; }
+.byd-props-gallery { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 4px; }
+.byd-props-gallery button {
+  display: grid;
+  place-items: center;
+  min-height: var(--byd-tap);
+  padding: 4px;
+  border: 1px solid #2a2d36;
+  border-radius: 6px;
+  background: #0f1115;
+  color: #cdd5e6;
+  cursor: pointer;
+}
+.byd-props-gallery button:hover { border-color: var(--byd-editor-primary-mark); }
+/* Chosen is a colour and an edge, not a colour alone: the gallery's pictures are single-colour
+   shapes, so the one thing that cannot carry the state is the picture itself. */
+.byd-props-gallery button[aria-pressed='true'], .byd-props-chips button[aria-pressed='true'] {
+  border-color: var(--byd-editor-primary-mark);
+  background: #2f3a55;
+  color: #ffffff;
+}
+.byd-props-chips { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; }
+.byd-props-chips button {
+  flex: 1 1 auto;
+  min-height: var(--byd-tap);
+  padding: 0 10px;
+  border: 1px solid #2a2d36;
+  border-radius: 999px;
+  background: #0f1115;
+  color: #cdd5e6;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.byd-props-chips button:hover { border-color: var(--byd-editor-primary-mark); }
+.byd-props-disclose {
+  grid-column: 1 / -1;
+  justify-self: start;
+  min-height: var(--byd-tap);
+  border: 0;
+  background: transparent;
+  color: var(--byd-editor-quiet);
+  font: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.byd-props-disclose span { text-decoration: none; }
+
+/* The ready-made backs (L17), over the layers they are made of. Two to a row: the 220 px panel
+   holds two card thumbnails at a size where a lattice is still a lattice. */
+.byd-backs { margin: 0 0 16px; }
+.byd-backs-list { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.byd-backs-list button {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 6px 4px;
+  border: 1px solid #2a2d36;
+  border-radius: 8px;
+  background: #0f1115;
+  color: #cdd5e6;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.byd-backs-list button:hover { border-color: var(--byd-editor-primary-mark); }
+.byd-backs-card { display: block; border-radius: 3px; overflow: hidden; }

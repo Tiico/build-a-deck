@@ -16,6 +16,7 @@ function canvas(over: Partial<TemplateCanvasProps> = {}) {
     doc: projectDoc(),
     face: 'front',
     onSelectFace: vi.fn(),
+    onReplaceFace: vi.fn(),
     group: null,
     onSelectGroup: vi.fn(),
     onGroupColumn: vi.fn(),

@@ -97,7 +97,7 @@ describe('the editor says whether the work is saved (#8)', () => {
     fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
     fireEvent.change(screen.getByLabelText('dragon title'), { target: { value: 'Drakhona' } })
 
-    expect(screen.getByText('Osparade ändringar').closest('[role="status"]')).not.toBeNull()
+    expect(screen.getByText('Osparat').closest('[role="status"]')).not.toBeNull()
     expect(screen.queryByText('Sparat')).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: /spara/i }))
@@ -148,7 +148,7 @@ describe('leaving the editor with unsaved work (#8)', () => {
     expect(document.activeElement).toBe(screen.getByRole('link', { name: 'Mina spel' }))
     // Nothing was lost by asking: the edit is still there, still unsaved.
     expect((screen.getByLabelText('dragon title') as HTMLInputElement).value).toBe('Drakhona')
-    expect(screen.getByText('Osparade ändringar')).toBeDefined()
+    expect(screen.getByText('Osparat')).toBeDefined()
   })
 
   it('saves and then leaves when that is the answer', async () => {
@@ -210,7 +210,7 @@ describe('leaving the editor with unsaved work (#8)', () => {
 
     expect(went).toEqual([])
     expect((await screen.findByRole('alert')).textContent).toMatch(/någon annan har sparat/i)
-    expect(screen.getByText('Osparade ändringar')).toBeDefined()
+    expect(screen.getByText('Osparat')).toBeDefined()
     expect(closingTheTab()).toBe(true)
   })
 

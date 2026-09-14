@@ -401,6 +401,12 @@ export class ProjectClient {
     this.edit({ v: 'removeElement', face, id, ...(group !== undefined ? { group } : {}) })
   }
 
+  // A whole face at once (L17): the ready-made back the designer chose, laid down as one edit
+  // and therefore one step back.
+  replaceFace(face: string, base: Element[]): void {
+    this.edit({ v: 'replaceFace', face, base })
+  }
+
   moveElement(face: string, id: string, to: number): void {
     this.edit({ v: 'moveElement', face, id, to })
   }
