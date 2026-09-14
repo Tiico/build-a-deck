@@ -292,6 +292,7 @@ export const enEditor = {
   'setup.counter.start': 'Starting value for counter {n}',
   'setup.counter.remove': 'Remove counter {n}',
   'setup.counter.add': '＋ Counter',
+  'setup.counter.stacks': 'One or two counters lie side by side in front of a seat. A third stacks the seat’s chips into one pile, which the table opens by name.',
   'setup.shared': 'Shared on the table',
   'setup.draw': 'a face-down draw pile',
   'setup.discard': 'a face-up discard pile',

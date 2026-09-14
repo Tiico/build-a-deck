@@ -334,6 +334,9 @@ En 44 × 44-ruta räcker inte som svar — "Vänd ner" sätts då i 10 px över 
 Priset, uttryckligen accepterat: ett tryck till per verb. Vinsten: 3,9 kort syns vid 390 px i stället för 2,4, och remsans kort kan vara en kontroll utan att hålla en (UX-37, #82).
 Ansiktet är sedan dess en egen ruta i kortet — bilden fyller den, och väntan och förlusten ligger över ansiktet och aldrig över kontrollen.
 
+Reviderat 2026-09-14 (#89): en plats räknare ligger bredvid varandra upp till två och staplas vid tre.
+Regeln, delningen på 125 mm, högens ring och de förkastade alternativen står under K18, eftersom det som avgör dem är platsens egna 500 mm.
+
 Byggt 2026-09-07: en zon kan bära en genväg (`shortcut`) med verbet telefonen visar och var i en hög kortet hamnar, överst eller underst; utan genväg visar telefonen zonens namn.
 Wizarden ger draghögen "Lägg underst" och kasthögen "Kasta". Editorns flik "Bord" redigerar namn och genvägar för varje zon som inte är en hand, med telefonens ark som förhandsvisning; sedan 2026-09-07 är fliken hela setup-editorn (B5).
 
@@ -1457,6 +1460,36 @@ Kortets kortsida i TV-lägets ram, mätt i Chromium på `TvChrome`s egen `main` 
 Men TV-läget är till för en TV, och på 1920 och på 4K står åttaplatsbordet på 40 respektive 89 px — mer än vad fyraplatsbordet hade på den skärm som var för liten från början.
 Att läsa ett enskilt kort är dessutom INSPEKTION:s uppgift och inte filtens (K9): det kortet ritas i panelens egen storlek och bryr sig inte om hur stort bordet är.
 Ett åttaplatsbord på en liten skärm är alltså mindre läsbart än ett fyraplatsbord, och det är en följd av att bordet är större och inte av att något är fel.
+
+Reviderat 2026-09-14 (#89): en plats räknare glesar ut sig till två och staplas vid tre, inom samma 500 mm.
+Frågan var hur två eller tre räknare på samma plats får var sin träffyta på 44 × 44 px, och svaret ändrar inte en millimeter utanför platsen.
+En plats med **en eller två** räknare lägger brickorna längs sin egen kant med en delning på 125 mm: räknarzonen växer längs rimmet och `Framför` krymper lika mycket, 365 mm vid en räknare och 240 vid två.
+En plats med **tre eller fler** staplar dem i en hög: högen är en träffyta, zonen går tillbaka till en delning, och `Framför` är 365 igen.
+
+Delningen är mätt och inte vald.
+En träffyta är 44 × 44 px på den **projicerade** lådan (#67), och vid det trängsta bord produkten stöder — sju eller åtta platser på 1280 × 800 i bordsläge, där filten ritas med 0,443 px per millimeter och den bortre kanten lutar bort därtill — täcker den rutan 107,4 mm filt.
+TV-läget vid samma bredd vill ha 103,6 mm, och varje bredare skärm mindre.
+125 mm är nästa runda tal som klarar den bredaste avläsningen på båda sidor, och lämnar ungefär nio millimeter luft vid vardera kanten av brickans egen ruta.
+Talet står som `COUNTER_PITCH_MM` i `packages/server/src/recipe.ts`, med härledningen bredvid sig.
+
+**Den verkliga rättelsen är att brickan står mitt i sin ruta**, inte att zonen växer.
+Receptet la varje bricka 8 mm från zonens hörn, och eftersom träffytan är fyra gånger så bred som brickan under den låg den 20 mm inne i ytan framför spelaren — vid varje platsantal, vid varje skärm, utan att ett endaste par av ytor överlappade för att säga det.
+Prototypens viktigaste fynd var alltså att issuets egen grind inte räckte: med **en** räknare per plats var antalet överlappande par noll överallt, medan ytan i bordsläge vid 1280 × 800 och åtta platser låg utanför sin egen zon i 8 fall av 8 och inne i en grannzon i 12.
+Grinden räknar därför både par och zonutträden och skriver ut båda talen, och den står i `packages/web/test/counter-zone.test.tsx`: varje platsantal 2–`MAX_PLAYERS` gånger en till fyra räknare gånger båda lägena gånger tre skärmar, mätt på renderarens egen `.byd-token-hit` med `getBoundingClientRect()` och aldrig på den satta storleken.
+
+De förkastade, med sina mätta skäl:
+**A**, att räknarzonen växer och K18:s kuvert betalar, gör platsen 840 mm lång och filten 2480 × 2080 mm vid åtta platser — och eftersom en större filt ritas i mindre skala står 16 överlappande par kvar vid 1280 × 800 med tre räknare, kortets kortsida faller från 27 till 18 px, och den bryter K18:s egen zongrind med ett överlappande zonpar redan vid sin egen delning på 150 mm.
+**B med tre räknare** krymper `Framför` till 115 mm, och ett kort är 63 mm brett, så ett andra spelat kort lägger sig över räknarzonens första bricka; vid en och två räknare är `Framför` 365 respektive 240 mm och det problemet finns inte.
+**Nuläget**, 32 mm delning i en zon på 110 × 100 mm, ger 204 överlappande par över hela svepet och faller som sagt redan med en ensam bricka.
+
+Priset, uttryckligen accepterat: **en plats räknare byter form när en tredje läggs till**, och editorn säger det där antalet väljs.
+Högen kostar därtill ett tryck till per räknare som inte ligger överst, och att två värden av tre inte står på filten förrän ringen öppnas — på ett bord som ska läsas på tre meters håll (K9) är det ett verkligt tapp, och det är därför det betalas först vid tre och inte vid två.
+Vägen in i högen är ringen (K14): högens ring har en knapp per räknare med namnet och värdet på knappen och antalet i navet, och den knappen öppnar brickans egen ring, som är `counterActs` rakt av — `−1 · +1 · Sätt värde…`, samma verb renderarens ring redan ritar.
+En hög är ett läge och inte ett verb: brickorna ligger på samma punkt, klienten ritar dem som en hög, och loggen hör bara det `move` en bricka alltid har färdats med.
+
+Sparade bord lyfts på samma sätt som filten lyfts ovan, och bara de som måste: en plats vars räknarzon är kortare än brickorna i den behöver blir utlagd på nytt nästa gång receptet vrids, och `Framför` med den, eftersom de två delar på platsens 500 mm.
+En zon som designern själv har gjort rymligare än brickorna ber om är hens och lämnas i fred, precis som filten.
+Ett bord som redan står på ett bord — en pågående session — rörs inte alls: brickornas platser ligger i loggen och spelas upp som de skrevs, och det är först nästa gång ett bord byggs ur projektet som brickorna ställs mitt i sina rutor.
 
 **Vad den här skivan inte löser.**
 #42 försvinner inte: `edgeOf` ger fortfarande A och E samma kant, så väljaren måste fortfarande sprida paret längs kanten själv.

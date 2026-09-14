@@ -105,6 +105,13 @@ function RecipePanel({ client }: { client: ProjectClient }) {
           <button type="button" onClick={() => turn({ counters: [...recipe.counters, recipe.counters.length === 0 ? { name: t('counter.score'), start: 0 } : { name: t('counter.life'), start: 20 }] })}>
             {t('setup.counter.add')}
           </button>
+          {/* A seat's counters change shape at the third one (C4, K18, #89): one or two lie side by
+              side along the seat's own rim, where a finger can reach each of them and the table can
+              read both at three metres; a third stacks them into one pile, because three targets of
+              44 px want more room along the rim than a seat has to give without taking it from its
+              neighbour. The designer cannot see that coming from the number, so it is said here,
+              where the number is chosen, and before the third counter has been added. */}
+          <p className="byd-setup-note">{t('setup.counter.stacks')}</p>
         </div>
       </section>
       <section>

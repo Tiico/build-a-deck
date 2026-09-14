@@ -322,6 +322,7 @@ export const svEditor = {
   'setup.counter.start': 'Startvärde för räknare {n}',
   'setup.counter.remove': 'Ta bort räknare {n}',
   'setup.counter.add': '＋ Räknare',
+  'setup.counter.stacks': 'En eller två räknare ligger bredvid varandra framför platsen. En tredje staplar platsens brickor i en hög, som bordet öppnar vid namn.',
   'setup.shared': 'Gemensamt på bordet',
   'setup.draw': 'en dold draghög',
   'setup.discard': 'en öppen kasthög',

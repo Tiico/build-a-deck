@@ -86,24 +86,38 @@ export function applyRecipe(setup: Setup, recipe: Recipe, words: RecipeWords = S
   const felt = floorGeometry(seats.length)
   const floorNow = setup.zones.find((z) => z.id === setup.floor)?.geometry
   const relayout = seats.length !== setup.seats.length || !floorNow || floorNow.w < felt.w || floorNow.h < felt.h
+  // The same lift, one scale down: a seat whose counters zone is shorter than the chips in it need
+  // is laid out again, and the area in front of it with it, because the two divide one 500 mm
+  // between them (#89). That is every setup saved while a seat's chips lay 32 mm apart in a zone of
+  // 110, and every setup that is now being given a second counter. A zone a designer made roomier
+  // than the chips ask for is theirs and is left alone, exactly as the felt is.
+  const alongRim = (g: Geometry): number => Math.max(g.w, g.h)
+  const reshaped = recipe.counters.length > 0 && seats.some((seat, i) => {
+    const now = setup.zones.find((z) => z.id === `counters:${seat}`)?.geometry
+    return !now || alongRim(now) < alongRim(countersAt(i, seats.length, recipe.counters.length))
+  })
   const wanted: Zone[] = [
     { id: setup.floor, kind: 'area', name: words.floor, visibility: 'all', geometry: felt },
     { id: setup.deckZone, kind: 'pile', name: words.draw, visibility: 'none', geometry: point(-140, 0), shortcut: { label: words.drawShortcut, at: 'bottom' } },
   ]
   if (recipe.discard) wanted.push({ id: 'discard', kind: 'pile', name: words.discard, visibility: 'all', geometry: point(140, 0), shortcut: { label: words.discardShortcut, at: 'top' } })
   if (recipe.market) wanted.push({ id: 'market', kind: 'area', name: words.market, visibility: 'all', geometry: rect(-260, -200, 520, 120), shortcut: { label: words.marketShortcut, at: 'top' } })
-  if (recipe.mine) seats.forEach((seat, i) => wanted.push({ id: `mine:${seat}`, kind: 'area', name: forSeat(words.mine, seat), visibility: 'owner', owner: seat, geometry: inFront(i, seats.length), shortcut: { label: words.mineShortcut, at: 'top' } }))
-  if (recipe.counters.length > 0) seats.forEach((seat, i) => wanted.push({ id: `counters:${seat}`, kind: 'area', name: forSeat(words.counters, seat), visibility: 'all', owner: seat, geometry: countersAt(i, seats.length) }))
+  if (recipe.mine) seats.forEach((seat, i) => wanted.push({ id: `mine:${seat}`, kind: 'area', name: forSeat(words.mine, seat), visibility: 'owner', owner: seat, geometry: inFront(i, seats.length, recipe.counters.length), shortcut: { label: words.mineShortcut, at: 'top' } }))
+  if (recipe.counters.length > 0) seats.forEach((seat, i) => wanted.push({ id: `counters:${seat}`, kind: 'area', name: forSeat(words.counters, seat), visibility: 'all', owner: seat, geometry: countersAt(i, seats.length, recipe.counters.length) }))
   seats.forEach((seat, i) => wanted.push({ id: `hand:${seat}`, kind: 'hand', name: words.hand, visibility: 'owner', owner: seat, returnTo: setup.deckZone, geometry: handGeometry(i, seats.length) }))
 
   const wantedIds = new Set(wanted.map((z) => z.id))
   // What a relayout moves: the seats and the felt they sit at. The shared piles and the market
   // stay where the designer left them.
   const laidOutWithTheSeats = (id: string) => /^(hand|mine|counters):/.test(id) || id === setup.floor
+  // What a changed number of counters moves: the two zones that share a seat's 500 mm, and nothing
+  // else. The hands, the felt and the shared piles stay where they are.
+  const laidOutWithTheCounters = (id: string) => /^(mine|counters):/.test(id)
   // What stays: every zone that is not a recipe zone, and every recipe zone still wanted.
   const kept = setup.zones.filter((z) => !isRecipeZone(z.id, setup) || wantedIds.has(z.id)).map((z) => {
     const fresh = wanted.find((w) => w.id === z.id)
-    return fresh && relayout && laidOutWithTheSeats(z.id) ? { ...z, geometry: fresh.geometry } : z
+    const again = (relayout && laidOutWithTheSeats(z.id)) || (reshaped && laidOutWithTheCounters(z.id))
+    return fresh && again ? { ...z, geometry: fresh.geometry } : z
   })
   const keptIds = new Set(kept.map((z) => z.id))
   const zones = [...kept, ...wanted.filter((z) => !keptIds.has(z.id))]
@@ -168,30 +182,87 @@ export function handGeometry(i: number, count: number): Geometry {
       return rect(along, y - 60, SEAT_ALONG, 60)
   }
 }
-// The area in front of a seat lies just inside its hand; its counters sit beside that area.
-export function inFront(i: number, count: number): Geometry {
+// The chip a counter is drawn as, in the felt's own millimetres. The renderer re-exports this as
+// `TOKEN_MM` rather than keeping a second 24 beside it: where a chip lies and how wide a chip is
+// are the same question asked from two rooms (C4).
+export const CHIP_MM = 24
+// The room between the area in front of a seat and the chips beside it.
+const SEAT_GAP = 10
+// How far apart two of a seat's chips lie along its own rim (#89).
+//
+// It is not a taste. A finger's target is 44 × 44 px measured on the *projected* box (#67), and at
+// the tightest table the product supports — seven or eight seats at 1280 × 800 in table mode,
+// where the felt draws at 0.443 px per millimetre and the far rim leans away besides — that square
+// covers 107.4 mm of felt, measured on the renderer's own `.byd-token-hit` by
+// `counter-zone.test.tsx`. TV mode at the same width wants 103.6 mm, and every wider screen wants
+// less. So two chips a hundred millimetres apart still share pixels, and the pitch is the next
+// round number that clears the widest reading on both sides: at 125 mm, a chip centred in its own
+// slot keeps its target some nine millimetres clear of the slot's edges, which is what keeps the
+// target inside the seat's own rectangle instead of in the area in front of the player.
+export const COUNTER_PITCH_MM = 125
+// How many slots along the rim a seat's counters take. One or two lie side by side and are read at
+// a glance; a third stacks them, and a pile is one slot however tall it grows (#89). A seat with no
+// counters keeps the room for one anyway, so that turning counters off does not reshape the felt.
+export const COUNTER_SLOTS = 2
+export const counterSlots = (counters: number): number => (counters > 0 && counters <= COUNTER_SLOTS ? counters : 1)
+// How long a seat's counters zone is along its rim, for that many counters.
+export const countersLength = (counters: number): number => COUNTER_PITCH_MM * counterSlots(counters)
+
+// The area in front of a seat lies just inside its hand; its counters sit beside that area, and
+// the two together are the seat's 500 mm. What a second counter costs is paid here and nowhere
+// else: the counters zone grows along the rim and `Framför` gives up exactly as much, so no
+// millimetre outside the seat moves and K18's envelope is untouched (#89).
+export function inFront(i: number, count: number, counters: number): Geometry {
   const hand = handGeometry(i, count)
+  const long = SEAT_ALONG - SEAT_GAP - countersLength(counters)
   switch (edgeOf(i, count)) {
     case 'N':
-      return rect(hand.x, hand.y + hand.h + 10, 380, 100)
+      return rect(hand.x, hand.y + hand.h + SEAT_GAP, long, 100)
     case 'E':
-      return rect(hand.x - 110, hand.y, 100, 380)
+      return rect(hand.x - 110, hand.y, 100, long)
     case 'W':
-      return rect(hand.x + hand.w + 10, hand.y, 100, 380)
+      return rect(hand.x + hand.w + SEAT_GAP, hand.y, 100, long)
     default:
-      return rect(hand.x, hand.y - 110, 380, 100)
+      return rect(hand.x, hand.y - 110, long, 100)
   }
 }
-export function countersAt(i: number, count: number): Geometry {
+export function countersAt(i: number, count: number, counters: number): Geometry {
   const hand = handGeometry(i, count)
+  const long = countersLength(counters)
+  const from = SEAT_ALONG - long
   switch (edgeOf(i, count)) {
     case 'N':
-      return rect(hand.x + 390, hand.y + hand.h + 10, 110, 100)
+      return rect(hand.x + from, hand.y + hand.h + SEAT_GAP, long, 100)
     case 'E':
-      return rect(hand.x - 110, hand.y + 390, 100, 110)
+      return rect(hand.x - 110, hand.y + from, 100, long)
     case 'W':
-      return rect(hand.x + hand.w + 10, hand.y + 390, 100, 110)
+      return rect(hand.x + hand.w + SEAT_GAP, hand.y + from, 100, long)
     default:
-      return rect(hand.x + 390, hand.y - 110, 110, 100)
+      return rect(hand.x + from, hand.y - 110, long, 100)
   }
+}
+
+// Where a seat's chips lie inside their own zone, in the zone's own millimetres (C4, #89).
+//
+// Each chip stands in the middle of its slot and in the middle of the zone's depth, and that
+// centring is the whole of the fix the issue asked for: the zone is drawn to a 24 mm chip while
+// the target over it is four times as wide, so a chip laid 8 mm from a corner — which is where the
+// recipe laid every chip until now — put its target 20 mm inside the area in front of the player
+// at every seat count, without a single pair of targets overlapping to say so.
+//
+// The slots run along the rim, and the rim is the zone's long side: a seat on the east or west rim
+// has the same rectangle turned a quarter, and reading the axis off the rectangle is what makes
+// one rule true at all four rims. Past the second counter the chips share a slot and are a pile —
+// a matter of where they lie and of what the client draws, and not a verb the log has to learn.
+export function counterSpots(zone: Geometry, counters: number): { x: number; y: number }[] {
+  const slots = counterSlots(counters)
+  const alongX = zone.w >= zone.h
+  const [long, across] = alongX ? [zone.w, zone.h] : [zone.h, zone.w]
+  return Array.from({ length: Math.max(0, counters) }, (_, i) => {
+    const along = ((Math.min(i, slots - 1) + 0.5) * long) / slots - CHIP_MM / 2
+    const deep = across / 2 - CHIP_MM / 2
+    // Whole millimetres in the log, as everything the table is told is.
+    const at = alongX ? { x: along, y: deep } : { x: deep, y: along }
+    return { x: Math.round(at.x), y: Math.round(at.y) }
+  })
 }

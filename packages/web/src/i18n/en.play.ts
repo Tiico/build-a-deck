@@ -52,6 +52,10 @@ export const enPlay = {
   'ring.counter.plus': '+1',
   'ring.counter.set': 'Set value…',
   'ring.counter.whose': '{name}’s counter',
+  // A seat's third counter stacks with the others, so the pile's ring says each of them outright
+  // and the hub says how many are there (#89).
+  'ring.counter.named': '{name} {n}',
+  'ring.counter.pile': 'counters',
 
   'kbd.hidden': 'Hidden card',
   'kbd.card': '{name}, card in {zone}',

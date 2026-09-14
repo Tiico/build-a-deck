@@ -1125,6 +1125,7 @@ describe('every suite that measures a surface', () => {
     expect(mounting.map((s) => s.name).sort()).toEqual([
       'account-viewport.test.tsx',
       'counter-touch.test.tsx',
+      'counter-zone.test.tsx',
       'data-table-csv-pair.test.tsx',
       'data-table-layout.test.tsx',
       'data-table-widths.test.tsx',

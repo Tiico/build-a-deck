@@ -354,6 +354,9 @@
 .byd-setup-counters { margin: 8px 0 0 24px; display: grid; gap: 6px; justify-items: start; }
 .byd-setup-counters > span { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #9aa3b8; }
 .byd-setup-counter { display: flex; gap: 6px; align-items: center; color: #9aa3b8; }
+/* What the panel says about a knob rather than asking with it (#89): the same quiet grey the
+   counters themselves are written in, at the width the column has. */
+.byd-setup-note { margin: 2px 0 0; max-width: 260px; color: #9aa3b8; font-size: 11px; line-height: 1.45; }
 .byd-setup-counter button { border: 0; background: transparent; color: #9aa3b8; font-size: 16px; cursor: pointer; }
 .byd-setup input:not([type='checkbox']), .byd-setup select { padding: 7px 9px; border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; color: #fff; font: inherit; min-width: 0; }
 .byd-setup-counter input:not([type='number']) { width: 110px; }

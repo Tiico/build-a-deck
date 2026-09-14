@@ -1,4 +1,5 @@
 import type { Intent, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
+import { CHIP_MM } from '@byd/server/doc'
 import { zoneAt, type Drop } from '../zones.js'
 import { union, type Rect } from './camera.js'
 import { handExtent, handRotation, type TableMode } from './hand.js'
@@ -6,8 +7,10 @@ import { handExtent, handRotation, type TableMode } from './hand.js'
 // Card size in table millimetres. The type registry knows the real size; until the renderer
 // reads it from there, the standard card is the only type that exists.
 export const CARD_MM = { w: 63, h: 88 }
-// A counter's chip (C4), in the same millimetres: drawn by it and kept on the felt by it.
-export const TOKEN_MM = 24
+// A counter's chip (C4), in the same millimetres: drawn by it and kept on the felt by it. The
+// recipe already has to know how wide a chip is to centre one in its slot (#89), so the number
+// lives there and this is the felt's name for it.
+export const TOKEN_MM = CHIP_MM
 
 export type Point = { x: number; y: number }
 
@@ -32,7 +35,10 @@ export function besidePile(pile: { x: number; y: number; rot: number }, cards: n
   return { x: mm(at.x), y: mm(at.y) }
 }
 
-export type DragTarget = { kind: 'card'; id: string } | { kind: 'counter'; id: string } | { kind: 'pileTop'; pile: string } | { kind: 'pile'; pile: string }
+// A chip pile (#89) is not a new kind of thing on the table, only a set of chips that lie on the
+// same spot: it travels as one and the ring reaches into it, and the log hears nothing but the
+// `move` each chip already travelled by.
+export type DragTarget = { kind: 'card'; id: string } | { kind: 'counter'; id: string } | { kind: 'counterPile'; ids: string[] } | { kind: 'pileTop'; pile: string } | { kind: 'pile'; pile: string }
 export type Drag = {
   target: DragTarget
   // Cards moving together (a card drag); their absolute positions when the drag began.
@@ -97,11 +103,14 @@ export function dropIntents(view: Snapshot, d: Drag, mode: TableMode): Intent[] 
   // A chip is not a card (C4): it joins no pile and stacks on nothing, so a drop means the one
   // thing it can mean — the counter is now at the point it was let go of, in whatever zone that
   // point falls in. The verb is `move`, the same one a card travels by; nothing new is invented.
-  if (d.target.kind === 'counter') {
-    const o = d.origin[d.target.id] ?? d.grab
+  if (d.target.kind === 'counter' || d.target.kind === 'counterPile') {
+    // A pile of chips lies on one spot and travels to one spot, so the whole of it is that one
+    // chip's answer said once for each chip. Nothing here knows the word "pile" (#89).
+    const ids = d.target.kind === 'counter' ? [d.target.id] : d.target.ids
+    const o = d.origin[ids[0] ?? ''] ?? d.grab
     const dest = at({ x: o.x + dx, y: o.y + dy })
     const s = keptOnFelt(view, dest.zone, { x: dest.x, y: dest.y, w: TOKEN_MM, h: TOKEN_MM })
-    return [{ v: 'move', component: d.target.id, to: dest.zone, x: dest.x + s.x, y: dest.y + s.y }]
+    return ids.map((id): Intent => ({ v: 'move', component: id, to: dest.zone, x: dest.x + s.x, y: dest.y + s.y }))
   }
   if (d.target.kind === 'pileTop') {
     const pile = zones.get(d.target.pile)

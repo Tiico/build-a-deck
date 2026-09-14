@@ -69,6 +69,10 @@ export const svPlay = {
   'ring.counter.set': 'Sätt värde…',
   // Vems räknaren är. Ett delat bord behöver det; telefonen visar bara sin egen plats.
   'ring.counter.whose': '{name}s räknare',
+  // En plats tredje räknare staplas med de andra, så högens ring säger var och en av dem rakt ut
+  // och navet säger hur många de är (#89).
+  'ring.counter.named': '{name} {n}',
+  'ring.counter.pile': 'räknare',
 
   // Tangentbordet på filten (#1, #2, variant C "adressen"). Zonnamn och kortnamn kommer från
   // spelet och står i meningarna som designern skrev dem; allt runt dem är verktygets.

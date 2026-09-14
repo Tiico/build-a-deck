@@ -271,7 +271,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     if (!map) return
     toTable.current = map
     const at = map(e.clientX, e.clientY)
-    const ids = target.kind === 'card' || target.kind === 'counter' ? [target.id] : []
+    const ids = target.kind === 'card' || target.kind === 'counter' ? [target.id] : target.kind === 'counterPile' ? target.ids : []
     const origin: Drag['origin'] = {}
     for (const id of ids) {
       const c = byId.get(id)
@@ -424,9 +424,14 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
 
   // What the ring would hold, asked for once: a thing that has left the table while the finger
   // was on the way to it has no verbs, and a ring with none opens on nothing (K14).
-  const ringVerbs = ring && onAct ? ringItems(view, ring.target, onAct, setHeld, setEntry, t) : []
+  // A ring that opens a second ring — a pile of chips offering the counter inside it (#89) — must
+  // survive its own closing: the backdrop closes whatever was open, and what was open by then is
+  // the ring the choice just opened. So the close is told which ring it is closing.
+  const shut = (open: Ring) => () => setRing((r) => (r === open ? null : r))
+  const ringVerbs = ring && onAct ? ringItems(view, ring, setRing, onAct, setHeld, setEntry, t) : []
   const ringOn = ring?.target
   const ringChip = ringOn?.kind === 'counter' ? view.components.find((c) => c.id === ringOn.id) : undefined
+  const ringPile = ringOn?.kind === 'counterPile' ? ringOn.ids.flatMap((id) => view.components.find((c) => c.id === id) ?? []) : undefined
 
   const areas = view.zones.filter((z) => z.kind === 'area' && z.id !== floor.id)
   const piles = view.zones.filter((z) => z.kind === 'pile')
@@ -434,6 +439,15 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // so the renderer works it out and the stylesheet draws it.
   const handOf = (seat: string | undefined) => (seat ? view.zones.find((z) => z.kind === 'hand' && z.owner === seat) : undefined)
   const loose = view.components.filter((c) => zoneById.get(c.zone)?.kind === 'area')
+  // A seat's chips that lie on the same spot are one pile, and a pile is one thing to press (C4,
+  // #89). Past the second counter the recipe gives them a single slot to share, because three
+  // targets of 44 px do not fit in a seat's 500 mm without reaching into the area in front of the
+  // player. What is a pile is read off where the chips lie and never off how many there are, so a
+  // chip dragged out of one is its own again the moment the table says where it went — and the log
+  // hears nothing about piles, only the `move` a chip always travelled by.
+  const spotOf = (c: VisibleComponentState) => `${c.zone}@${Math.round(c.x)},${Math.round(c.y)}`
+  const chipsAt = new Map<string, VisibleComponentState[]>()
+  for (const c of loose) if (isCounter(c)) chipsAt.set(spotOf(c), [...(chipsAt.get(spotOf(c)) ?? []), c])
   const dx = drag?.started ? drag.at.x - drag.grab.x : (settling?.dx ?? 0)
   const dy = drag?.started ? drag.at.y - drag.grab.y : (settling?.dy ?? 0)
   // Held in the hand, and therefore drawn lifted. A card that has been put down is not.
@@ -546,22 +560,36 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
               // width the word needs, the number stands alone — which is what a counter is for.
               // The name is still on the table's own screen, in the panel and in the zone's label.
               const wide = px(TOKEN_MM) >= TOKEN_NAME_PX
+              // The pile this chip is in, and where in it this chip lies. The topmost is the one
+              // the hand meets: it carries the target and the whole pile's handles, and the ones
+              // under it are drawn peeking out beneath it and keep nothing but their own name and
+              // tab stop — a keyboard still reaches every counter by itself (#1, #2), and the hand
+              // reaches them through the ring the top opens (#89).
+              const pile = chipsAt.get(spotOf(c)) ?? [c]
+              const under = pile.length - 1 - pile.findIndex((p) => p.id === c.id)
+              const topmost = under === 0
               // The target is the hand's and only the hand's: a table that is only shown has no
               // finger to answer, and draws none (K16's rule for the keyboard, applied here).
-              const hit = onAct ? hitOf({ x: a.x + TOKEN_MM / 2, y: a.y + TOKEN_MM / 2 }) : 0
+              const hit = onAct && topmost ? hitOf({ x: a.x + TOKEN_MM / 2, y: a.y + TOKEN_MM / 2 }) : 0
+              // How far a chip under the top peeks out from beneath it: a tenth of the disc, which
+              // keeps the pile a pile at every scale the felt is drawn at and never less than the
+              // pixel that is the least a screen can show.
+              const peek = under * Math.max(1, px(TOKEN_MM) / 10)
+              const grip: DragTarget = pile.length > 1 ? { kind: 'counterPile', ids: pile.map((p) => p.id) } : { kind: 'counter', id: c.id }
               return (
                 <div
                   key={c.id}
                   className="byd-token"
                   data-counter-token={c.id}
+                  data-stack={pile.length > 1 ? pile.length : undefined}
                   data-dragging={lifted.has(c.id) ? 'true' : undefined}
-                  {...(onAct ? handlers({ kind: 'counter', id: c.id }) : {})}
+                  {...(onAct && topmost ? handlers(grip) : {})}
                   {...keys(`counter:${c.id}`)}
-                  style={{ position: 'absolute', left: left(a.x + (m ? dx : 0)), top: top(a.y + (m ? dy : 0)), width: px(TOKEN_MM), height: px(TOKEN_MM) }}
+                  style={{ position: 'absolute', left: left(a.x + (m ? dx : 0)), top: top(a.y + (m ? dy : 0)) + peek, width: px(TOKEN_MM), height: px(TOKEN_MM) }}
                 >
                   <b>{c.counter ?? 0}</b>
                   {wide && <span>{c.cardRef ?? ''}</span>}
-                  {onAct && <i className="byd-token-hit" data-counter-hit={c.id} style={{ width: hit, height: hit, left: (px(TOKEN_MM) - hit) / 2, top: (px(TOKEN_MM) - hit) / 2 }} />}
+                  {hit > 0 && <i className="byd-token-hit" data-counter-hit={c.id} style={{ width: hit, height: hit, left: (px(TOKEN_MM) - hit) / 2, top: (px(TOKEN_MM) - hit) / 2 }} />}
                 </div>
               )
             }
@@ -647,12 +675,12 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       )}
       {ringVerbs.length > 0 && ring && (
         <RadialMenu
-          id={ring.target.kind === 'card' || ring.target.kind === 'counter' ? ring.target.id : ring.target.pile}
+          id={ringName(ring.target)}
           x={ring.x}
           y={ring.y}
           items={ringVerbs}
-          hub={ringChip ? <CounterHub view={view} c={ringChip} t={t} /> : undefined}
-          onClose={() => setRing(null)}
+          hub={ringChip ? <CounterHub view={view} c={ringChip} t={t} /> : ringPile ? <PileHub view={view} chips={ringPile} t={t} /> : undefined}
+          onClose={shut(ring)}
         />
       )}
       {entry && onAct && <CounterEntry view={view} c={entry} onSet={(value) => onAct([{ v: 'setCounter', component: entry.id, value }])} onClose={() => setEntry(null)} />}
@@ -698,10 +726,25 @@ function useGlide(target: Rect | null, ms: number): Rect | null {
   return cur
 }
 
-// The verbs a drag cannot say (C): for a card, for a pile, for a chip.
-function ringItems(view: Snapshot, target: Ring['target'], act: (intents: Intent[]) => void, inspect: (c: VisibleComponentState) => void, enter: (c: VisibleComponentState) => void, t: T): RadialItem[] {
+// What a ring is drawn about, for the sake of a test that has to find it again.
+const ringName = (target: Ring['target']): string =>
+  target.kind === 'card' || target.kind === 'counter' ? target.id : target.kind === 'counterPile' ? target.ids.join('+') : target.pile
+
+// The verbs a drag cannot say (C): for a card, for a pile, for a chip, and for a pile of chips.
+function ringItems(view: Snapshot, ring: Ring, open: (r: Ring) => void, act: (intents: Intent[]) => void, inspect: (c: VisibleComponentState) => void, enter: (c: VisibleComponentState) => void, t: T): RadialItem[] {
+  const target = ring.target
   const flip = (c: VisibleComponentState): RadialItem => ({ label: t('ring.flip'), run: () => act([{ v: 'flip', component: c.id, face: c.face === 'front' ? 'back' : 'front' }]) })
   const look = (c: VisibleComponentState | undefined): RadialItem => ({ label: t('ring.look'), run: c ? () => inspect(c) : null })
+  // A pile of chips has no verbs of its own — nothing is done to a pile, only to a counter in it —
+  // so its ring is the counters it holds, each said by its name and its value, and choosing one
+  // opens that chip's own ring, which is `counterActs` and nothing else (C4, K14, #89).
+  if (target.kind === 'counterPile') {
+    return target.ids.flatMap((id) => {
+      const c = view.components.find((x) => x.id === id)
+      if (!c) return []
+      return [{ key: c.id, label: t('ring.counter.named', { name: c.cardRef ?? '', n: c.counter ?? 0 }), run: () => open({ target: { kind: 'counter', id: c.id }, x: ring.x, y: ring.y }) }]
+    })
+  }
   if (target.kind === 'counter') {
     // The same list the keyboard's panel reads (`verbsFor`), so the hand and the keyboard cannot
     // be offered different things on one chip. Every entry is `setCounter` with an absolute value.
@@ -750,6 +793,20 @@ function CounterHub({ view, c, t }: { view: Snapshot; c: VisibleComponentState; 
     <>
       <b>{c.counter ?? 0}</b>
       <span>{c.cardRef ?? ''}</span>
+      {owner !== null && <i>{t('ring.counter.whose', { name: owner })}</i>}
+    </>
+  )
+}
+
+// What a pile of chips is about, in its hub: how many counters are stacked there, and whose they
+// are. What each of them says is on the buttons around it, which is the only place on the felt
+// those values can be read at all — the price C pays, and the reason it is paid only at three.
+function PileHub({ view, chips, t }: { view: Snapshot; chips: VisibleComponentState[]; t: T }) {
+  const owner = chips[0] ? ownerOf(view, chips[0]) : null
+  return (
+    <>
+      <b>{chips.length}</b>
+      <span>{t('ring.counter.pile')}</span>
       {owner !== null && <i>{t('ring.counter.whose', { name: owner })}</i>}
     </>
   )
