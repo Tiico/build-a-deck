@@ -137,7 +137,9 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
       <div
         data-page="table"
         data-status={status}
-        className={`byd-fit${live.stale ? ' byd-status-stale' : ''}`}
+        // The table screen is a room of the button language (L13, #67): the sheet that keeps a
+        // counter's value stands in it, and its two ways out are the room's first and second action.
+        className={`byd-fit byd-table${live.stale ? ' byd-status-stale' : ''}`}
         {...(live.stale ? { inert: true } : {})}
       >
       {mode === 'table' && (

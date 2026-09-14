@@ -5,6 +5,7 @@ import { Language } from '../src/i18n/index.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
+import { layerPick } from './layers.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -104,7 +105,7 @@ describe('the editor in the reader\'s own language (A4)', () => {
     expect(screen.getByText('All 3 cards')).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Fonts in the game' })).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('option', { name: 'text title' }))
+    fireEvent.click(layerPick('title'))
     expect(screen.getByRole('heading', { name: 'Properties · title' })).toBeTruthy()
     expect(screen.getByLabelText('Width (mm)')).toBeTruthy()
     expect(screen.getByLabelText('Size (pt)')).toBeTruthy()

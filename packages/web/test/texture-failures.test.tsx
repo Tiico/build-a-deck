@@ -24,8 +24,8 @@ describe('cards that could not be rendered are announced once for the screen', (
     vi.useFakeTimers()
     const { container } = render(
       <TextureFailures>
-        <Texture faces={FACES} c={faceUp} />
-        <Texture faces={FACES} c={faceDown} />
+        <Texture faces={FACES} c={faceUp} retry />
+        <Texture faces={FACES} c={faceDown} retry />
       </TextureFailures>,
     )
     // The region is in the tree from the start, so a failure changes its text rather than adding

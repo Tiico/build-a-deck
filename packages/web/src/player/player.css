@@ -8,10 +8,16 @@
    mounts them on `/online` as well; `/observe` mounts the survey by itself. Named on
    `.byd-player` alone, every token below fell back to nothing on two of the three routes, and a
    button whose fill and ink resolve to nothing is drawn by the browser instead — a grey system
-   button on a dark felt. */
+   button on a dark felt.
+
+   The survey is a root of its own as well: once the table has ended it stands beside the room
+   rather than inside it, because the room is `inert` by then and the survey is the one thing that
+   is not (UX-38, #83). A fixed, full-screen layer outside the room inherits none of the room's
+   tokens, so it binds them itself. */
 .byd-player,
 .byd-online,
-.byd-observer {
+.byd-observer,
+.byd-survey {
   --byd-bg: #14161c;
   --byd-surface: #1b1e27;
   --byd-control: #242938;
@@ -58,27 +64,45 @@
 
 /* Counters (C4): a row of pills under the head; tap the sides to count, the number to type. */
 .byd-counters { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; padding: 10px 16px 0; }
-.byd-counter { display: grid; grid-template-columns: 34px 1fr 34px; align-items: center; background: var(--byd-surface); border-radius: 14px; overflow: hidden; }
+/* The sides are a thumb's 44 px (UX-36, #81); at 320 px two pills leave the value 52 px, which a three-digit count fits. */
+.byd-counter { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; background: var(--byd-surface); border-radius: 14px; overflow: hidden; }
 .byd-counter button { min-height: 44px; border: 0; padding: 0; background: var(--byd-control); color: var(--byd-ink-strong); font-size: 18px; font-weight: 800; }
 .byd-counter > div { display: grid; text-align: center; padding: 4px 6px; }
 .byd-counter b { font-size: 18px; color: var(--byd-ink-strong); line-height: 1; }
 .byd-counter span { font-size: 11px; color: var(--byd-ink-muted); text-transform: uppercase; letter-spacing: 1px; }
 
-/* The cards in front of you (C4): a smaller strip above the hand, each with its actions. */
+/* The cards in front of you (C4): a smaller strip above the hand. Each card is one control and
+   nothing else — a press holds it up, and the verbs are in the view that holds it up (#78). */
 .byd-mine { padding: 6px 16px 0; }
 .byd-mine h2 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--byd-ink-muted); font-weight: 600; }
 .byd-mine-strip { display: flex; gap: 10px; overflow-x: auto; }
-.byd-mine-card { position: relative; flex: 0 0 150px; border-radius: 10px; padding: 10px; box-sizing: border-box; background: hsl(var(--hue, 0) var(--byd-card-face-s) var(--byd-card-face-l)); color: var(--byd-card-ink); display: grid; gap: 6px; overflow: hidden; }
-.byd-mine-card[data-face='back'] { background: repeating-linear-gradient(45deg, #3a4d7a, #3a4d7a 4px, #2f4068 4px, #2f4068 8px); color: #fff; }
-.byd-mine-card strong { font-size: 14px; position: relative; }
-.byd-mine-actions { display: flex; flex-wrap: wrap; gap: 4px; position: relative; }
-.byd-mine-actions button { min-height: 32px; border: 0; border-radius: 8px; padding: 0 8px; background: rgba(0, 0, 0, 0.55); color: #fff; font-size: 11px; font-weight: 700; }
+.byd-mine-card {
+  position: relative; flex: 0 0 84px; display: grid; gap: 4px; padding: 0; border: 0;
+  background: none; color: var(--byd-ink); font: inherit; text-align: left;
+}
+/* The face is a box of its own inside the control: the image has a size to fill, and the state
+   that lies over it lies over the face rather than over the whole card (#78). */
+.byd-mine-face {
+  display: block; position: relative; overflow: hidden; aspect-ratio: 63 / 88; border-radius: 10px;
+  background: hsl(var(--hue, 0) var(--byd-card-face-s) var(--byd-card-face-l)); color: var(--byd-card-ink);
+}
+.byd-mine-card[data-face='back'] .byd-mine-face { background: repeating-linear-gradient(45deg, #3a4d7a, #3a4d7a 4px, #2f4068 4px, #2f4068 8px); color: #fff; }
+.byd-mine-card strong { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .byd-mine-empty { color: var(--byd-ink-quiet); font-size: 12px; margin: 4px 0; }
 
 .byd-summary { padding: 14px 18px; overflow: auto; font-size: 13px; color: var(--byd-ink-muted); }
 .byd-summary-zones { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
-.byd-summary-zones > div { background: var(--byd-surface); border-radius: 10px; padding: 10px; min-height: 48px; display: grid; align-content: start; gap: 2px; }
+.byd-summary-zones > * { background: var(--byd-surface); border-radius: 10px; padding: 10px; min-height: 48px; display: grid; align-content: start; gap: 2px; }
 .byd-summary-zones strong { color: var(--byd-ink-strong); }
+/* A pile that has a card in it is a control, and the whole tile is that control (#79): the verb
+   is read inside it at the tile's own width, so nothing sits inside it that a finger has to find
+   (UX-37, #82). It is drawn as the sheet's targets are — the phone's pressable surface with a
+   line around it — so that the tiles that act and the tiles that only count are told apart. */
+.byd-summary-zones > button {
+  border: 1px solid var(--byd-line); background: var(--byd-control); color: var(--byd-ink-muted);
+  font: inherit; text-align: left;
+}
+.byd-summary-zones > button em { font-style: normal; font-weight: 600; color: var(--byd-ink-strong); margin-top: 4px; }
 .byd-summary h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; margin: 0 0 6px; font-weight: 600; }
 .byd-summary ol { list-style: none; margin: 0; padding: 0; }
 .byd-summary li { padding: 5px 0; border-bottom: 1px solid var(--byd-rule-soft); }
@@ -109,11 +133,25 @@
 }
 .byd-sheet-targets small { font-size: 12px; color: var(--byd-ink-muted); font-weight: 400; }
 
-.byd-player .byd-inspect { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, 0.7); z-index: 10; }
-.byd-player .byd-inspect > div {
-  width: 86vw; aspect-ratio: 63 / 88; border-radius: 18px; padding: 22px; box-sizing: border-box;
+/* The card held up (K8, K10), and under it the verbs a card lying in front of you carries (#78).
+   The card is the one thing here that gives way: it asks for 86vw, and on a screen too short for
+   that it shrinks out of the verbs' way, keeping its shape as it goes. So the two never have to
+   share a pixel, and what a player is looking at stays in the middle of the screen. */
+.byd-player .byd-inspect {
+  position: fixed; inset: 0; z-index: 10; box-sizing: border-box;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; padding: 16px 16px 24px; background: rgba(0, 0, 0, 0.7);
+}
+.byd-player .byd-inspect > [data-inspect] {
+  position: relative; overflow: hidden;
+  height: min(100%, calc(86vw * 88 / 63)); min-height: 0; aspect-ratio: 63 / 88;
+  border-radius: 18px; padding: 22px; box-sizing: border-box;
   background: hsl(var(--hue, 0) var(--byd-card-face-s) var(--byd-card-face-l)); color: var(--byd-card-ink); font-size: 28px; font-weight: 800;
 }
+/* One verb to a row, the full width of the sheet: a verb is a word, and a word that has to be
+   read at 10 px over two lines is a verb nobody presses (#78, form C). */
+.byd-mine-actions { display: grid; gap: 8px; width: 100%; max-width: 420px; }
+.byd-mine-actions button { min-height: 48px; border: 0; border-radius: 12px; padding: 0 14px; background: var(--byd-control); color: var(--byd-ink-strong); font-size: 15px; font-weight: 700; }
 
 /* Undo and rewind (B, C). */
 .byd-rewind-mine {
@@ -133,9 +171,10 @@
 
 /* Textures (TUNN-SKIVA §5): the rendered face fills the card; the name stays for screen readers. */
 .byd-strip-card { position: relative; overflow: hidden; }
-.byd-strip-card img, .byd-player .byd-inspect img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
-.byd-strip-card img ~ strong, .byd-player .byd-inspect img ~ span:not([data-texture]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-.byd-player .byd-inspect > div { position: relative; overflow: hidden; }
+.byd-strip-card img, .byd-mine-face img, .byd-player .byd-inspect img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+/* The face says the name once it has one, so the line under it is for the ear only. It leaves
+   the flow as it goes, so the strip is the same height whether the render has landed or not. */
+.byd-strip-card img ~ strong, .byd-mine-card:has(img) strong, .byd-player .byd-inspect img ~ span:not([data-texture]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
 /* Flagging, the way out, ending, the survey (G3, C9, #31, prototype A). The way out is a plain
    control like the other two: the row holds no red one any more, because the difference between
@@ -162,7 +201,8 @@
 .byd-survey { position: fixed; inset: 0; z-index: 35; background: var(--byd-bg); color: var(--byd-ink); display: grid; grid-template-rows: auto 1fr auto; padding: 22px 20px; box-sizing: border-box; }
 .byd-survey h1 { margin: 0; font-size: 22px; }
 .byd-survey-sub { color: var(--byd-ink-muted); font-size: 13px; margin-top: 4px; }
-.byd-survey-save { display: inline-block; margin-top: 12px; color: #7dd3a0; font-weight: 700; }
+/* A 44 px row rather than a line of text (UX-36, #81); the old 12 px above it is now the box's own upper half. */
+.byd-survey-save { display: inline-flex; align-items: center; min-height: 44px; color: #7dd3a0; font-weight: 700; }
 .byd-survey-q { display: grid; align-content: center; gap: 16px; }
 .byd-survey-q h2 { margin: 0; font-size: 20px; font-weight: 700; }
 .byd-survey-scale { display: flex; gap: 8px; }

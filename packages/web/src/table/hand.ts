@@ -1,5 +1,9 @@
 import type { ZoneView } from '@byd/protocol'
 import { union, type Rect, type Size } from './camera.js'
+import type { Point } from './drop.js'
+
+// The two ways a table is looked at (C5): a table everyone stands around, or a TV everyone faces.
+export type TableMode = 'table' | 'tv'
 
 // A hand is a fan of cards lying on the felt, so it is measured in the table's own millimetres
 // like everything else on it, and the renderer scales it as it scales the rest (#23). The
@@ -7,9 +11,8 @@ import { union, type Rect, type Size } from './camera.js'
 
 // A card in a hand is drawn a shade smaller than one on the felt: it is held, not played.
 export const HAND_CARD_MM = { w: 54, h: 75 }
-// How far apart two cards of a read fan sit, and how far the count hangs below the hand's centre.
+// How far apart two cards of a read fan sit.
 export const HAND_STEP_MM = 26
-export const HAND_COUNT_MM = 50
 // A fan stops growing here; beyond it the count says the rest.
 export const FAN_MAX = 12
 // Degrees between two cards: a read fan steps sideways as well, a fan of backs only turns.
@@ -30,6 +33,13 @@ export function edgeRotation(hand: ZoneView, floor: ZoneView): number {
   return dy > 0 ? 0 : 180
 }
 
+// How far a hand's fan is turned: toward its own edge in table mode, not at all on a TV, where
+// every fan faces the viewer (C5). The fan is drawn by this, measured by it (`handExtent`) and
+// hit-tested by it (`dropAt`), so it is asked once, here.
+export function handRotation(hand: ZoneView, floor: ZoneView, mode: TableMode): number {
+  return mode === 'table' ? edgeRotation(hand, floor) : 0
+}
+
 // How many cards a hand actually fans, and whether they step sideways as well as turn: a hand
 // this view may read shows the cards themselves, one it may not shows that many backs.
 export function fanned(hand: ZoneView): { count: number; spread: boolean } {
@@ -40,6 +50,19 @@ export function fanned(hand: ZoneView): { count: number; spread: boolean } {
 // The box one card of a fan is drawn in, about the hand's own centre: the same millimetres the
 // renderer writes into the element's style, so what is measured is what is drawn.
 export const HAND_CARD_BOX: Rect = { x: -HAND_CARD_MM.w / 2, y: -HAND_CARD_MM.h / 3, w: HAND_CARD_MM.w, h: HAND_CARD_MM.h }
+// The count is a label in pixels, like a pile's name, and hangs off the fan on the rim's side
+// where the frame leaves air (#23): past the cards' far edge, or past their near edge when the
+// rim lies above the fan as drawn (`countSide`).
+export const HAND_COUNT_MM = HAND_CARD_BOX.y + HAND_CARD_BOX.h
+export const HAND_COUNT_ABOVE_MM = -HAND_CARD_BOX.y
+
+// Which side of the fan its count hangs off. Below it, as prototype B drew it, unless the rim is
+// above the fan as it is drawn — the TV's north seat, whose fan faces the viewer (C5) while its
+// rim is at the top. Hung below there, the count lay in the zone in front of the seat (#84);
+// hung toward the rim it is in the air past it, where every other seat's already is.
+export function countSide(hand: ZoneView, floor: ZoneView, rot: number): 'below' | 'above' {
+  return (((edgeRotation(hand, floor) - rot) % 360) + 360) % 360 === 180 ? 'above' : 'below'
+}
 
 // Where card `i` of a fan of `count` sits: how far it steps sideways, in millimetres, and how far
 // it turns. One rule, asked by the renderer that draws the fan and by the extent that measures it.
@@ -48,24 +71,62 @@ export function fanPlace(i: number, count: number, spread: boolean): { step: num
   return { step: spread ? k * HAND_STEP_MM : 0, tilt: k * (spread ? FAN_TILT : BACK_TILT) }
 }
 
+// The point a hand's fan is drawn about. A hand's zone is a strip along the rim shallower than a
+// card is tall — 60 mm to 75 (K18) — so a fan drawn about the strip's centre reaches out of it,
+// and the area in front of the seat begins ten millimetres past the strip: on the TV, where no
+// fan is turned toward its rim, seat B's cards lay in "Framför B" (#84). C5 lets the camera cut
+// a hand; nothing lets a hand cut its neighbour. So the fan is pushed toward the rim, exactly as
+// far as it needs to lie inside the strip's inner edge and not a millimetre further: a fan that
+// already fits is drawn where it always was, and what then hangs past the rim is the table's to
+// hold (`feltWithHands`), as a turned hand's already does. Which way the rim lies is the zone's
+// own question and not the drawing's — every fan on the TV faces the viewer and still sits at
+// its own edge.
+//
+// How far a fan reaches across its strip is what its cards' turning gives it: a read fan's steps
+// run along the strip, so they are left out of the measure. The one fan whose steps run across
+// its strip — a side seat's read fan on the observer's TV, spread toward the viewer beside a
+// strip that runs up the rim (C8) — is drawn where it always was: how such a fan should lie is
+// its own question, and pushing it out by its whole spread would hang it a third of a metre past
+// the rim and shrink the whole table to hold it.
+export function handAnchor(hand: ZoneView, floor: ZoneView, rot: number): Point {
+  const g = hand.geometry
+  const at = { x: g.x + g.w / 2, y: g.y + g.h / 2 }
+  const { count, spread } = fanned(hand)
+  const reach = fanExtent(count, spread, false)
+  if (!reach) return at
+  const fan = turn(reach, rot)
+  switch (edgeRotation(hand, floor)) {
+    case 0:
+      return { ...at, y: at.y + Math.max(0, g.y - (at.y + fan.y)) }
+    case 180:
+      return { ...at, y: at.y - Math.max(0, at.y + fan.y + fan.h - (g.y + g.h)) }
+    case -90:
+      return { ...at, x: at.x + Math.max(0, g.x - (at.x + fan.x)) }
+    default:
+      return { ...at, x: at.x - Math.max(0, at.x + fan.x + fan.w - (g.x + g.w)) }
+  }
+}
+
 // Where a hand's fan lies on the felt, in table millimetres, once it has been turned toward its
-// own edge. The count under it is a label in pixels, like a pile's name, and rides in the air
-// the frame already leaves around the table.
-export function handExtent(hand: ZoneView, rot: number): Rect | null {
+// own edge and anchored in its zone. The count under it is a label in pixels, like a pile's
+// name, and rides in the air the frame already leaves around the table.
+export function handExtent(hand: ZoneView, floor: ZoneView, rot: number): Rect | null {
   const { count, spread } = fanned(hand)
   const local = fanExtent(count, spread)
   if (!local) return null
-  const turned = turn(local, rot)
-  return { ...turned, x: turned.x + hand.geometry.x + hand.geometry.w / 2, y: turned.y + hand.geometry.y + hand.geometry.h / 2 }
+  const fan = turn(local, rot)
+  const at = handAnchor(hand, floor, rot)
+  return { ...fan, x: fan.x + at.x, y: fan.y + at.y }
 }
 
 // The fan itself, about the hand's own centre and before it is turned: every card where the
-// browser will put it, each one turned about the corner CSS turns it about.
-function fanExtent(count: number, spread: boolean): Rect | null {
+// browser will put it, each one turned about the corner CSS turns it about. Without its steps,
+// it is how far the cards' turning alone reaches, which is a fan's reach across its strip.
+function fanExtent(count: number, spread: boolean, stepped = true): Rect | null {
   const boxes: Rect[] = []
   for (let i = 0; i < count; i++) {
     const { step, tilt } = fanPlace(i, count, spread)
-    const box = { ...HAND_CARD_BOX, x: HAND_CARD_BOX.x + step }
+    const box = { ...HAND_CARD_BOX, x: HAND_CARD_BOX.x + (stepped ? step : 0) }
     boxes.push(spun(box, { x: box.x + FAN_PIVOT.x * box.w, y: box.y + FAN_PIVOT.y * box.h }, tilt))
   }
   return union(boxes)

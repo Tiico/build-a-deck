@@ -38,10 +38,12 @@ describe('DataTable (B as a tab)', () => {
 
     const title = within(rows[0]!).getByDisplayValue('Drake')
     fireEvent.change(title, { target: { value: 'Drakhona' } })
-    expect(onCell).toHaveBeenCalledWith('dragon', 'title', 'Drakhona')
+    // The token says which keystrokes belong to the same visit to the cell, so a word typed into
+    // one is a single step back (#35); which visit it is is the table's own business.
+    expect(onCell).toHaveBeenCalledWith('dragon', 'title', 'Drakhona', expect.any(String))
     const antal = within(rows[0]!).getByDisplayValue('2')
     fireEvent.change(antal, { target: { value: '3' } })
-    expect(onCell).toHaveBeenCalledWith('dragon', 'antal', 3)
+    expect(onCell).toHaveBeenCalledWith('dragon', 'antal', 3, expect.any(String))
 
     fireEvent.click(screen.getByRole('button', { name: /nytt kort/i }))
     expect(onAddRow).toHaveBeenCalledWith(expect.stringMatching(/^kort-\d+$/))

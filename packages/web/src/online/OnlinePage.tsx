@@ -8,17 +8,16 @@ import { useTableClient } from '../table/useTableClient.js'
 import { usePresence, useRecent } from '../table/usePresence.js'
 import { previewOf } from '../table/rewind.js'
 import { seatColor } from '../table/seatColor.js'
-import { zoneAt } from '../zones.js'
-import { CARD_MM } from '../table/drop.js'
 import { playIntents } from '../player/play.js'
-import { SessionButtons, SessionOverlays, useSessionVersion, useToast, refusedText, type Sheet } from '../player/SessionOverlays.js'
+import { SeatSurvey, SessionButtons, SessionOverlays, useSessionVersion, useToast, refusedText, type Sheet } from '../player/SessionOverlays.js'
 import { useSitDown } from '../player/useSitDown.js'
 import { claimUrl } from '../account/api.js'
 import { SeatLine } from './SeatLine.js'
 import { HandFan } from './HandFan.js'
 import { HandSpread } from './HandSpread.js'
-import { seatRotation, withoutHand } from './seat.js'
+import { playedAt, seatTurn, withoutHand } from './seat.js'
 import { useFeltKeyboard } from '../table/useFeltKeyboard.js'
+import { useRoom } from '../table/useRoom.js'
 import { useActivityLive } from '../table/useActivityLive.js'
 import { DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
 import { useLiveStatus } from '../status/useLiveStatus.js'
@@ -52,6 +51,8 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const live = useLiveStatus(conn, 'table', timing)
   const links = statusLinks({ server: params.get('server'), code: params.get('code') })
   usePageTitle({ state: sessionId && seat ? (refused ? 'forbidden' : live.state) : 'missing', room: params.get('code') ?? sessionId })
+  // The window this seat is playing in: it is half of which way round the felt is drawn (#77).
+  const room = useRoom()
   const presence = usePresence(client, view)
   const recent = useRecent(activity)
   const table = useRef<TableHandle>(null)
@@ -82,18 +83,21 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const playable = !view.rewind && !view.ended
   const up = spread && hand.length > 0
   const onAct = (intents: Intent[]) => void client.send(...intents)
-  // A card out of the fan lands where it is dropped, centred on the pointer (K2, K11).
+  // A card out of the fan lands where it is dropped, centred on the pointer, in what the felt
+  // shows there (K2, K11, #65).
   const play = (card: (typeof hand)[number], clientX: number, clientY: number) => {
     const p = table.current?.toTable(clientX, clientY)
     if (!p || !playable) return
-    const dest = zoneAt(view.zones, view.floor, p.x - CARD_MM.w / 2, p.y - CARD_MM.h / 2)
-    if (dest.zone === `hand:${seat}`) return
+    const dest = playedAt(shown, seat, p)
+    if (!dest) return
     void client.send(...playIntents(view, [card], dest.zone, { x: dest.x, y: dest.y }))
   }
 
   return (
     <>
-      <div data-page="online" data-status={status} className={`byd-fit byd-online${live.stale ? ' byd-status-stale' : ''}`} {...(live.stale ? { inert: true } : {})} style={{ ['--seat' as string]: seatColor(Math.max(0, view.seats.findIndex((s) => s.id === seat))) }}>
+      {/* An ended table is one more state of D5's kind: the picture behind the survey is not to be
+          acted on, so it is out of reach the same way a stale one is (UX-38, #83). */}
+      <div data-page="online" data-status={status} className={`byd-fit byd-online${live.stale ? ' byd-status-stale' : ''}`} {...(live.stale || view.ended ? { inert: true } : {})} style={{ ['--seat' as string]: seatColor(Math.max(0, view.seats.findIndex((s) => s.id === seat))) }}>
       {/* The seat's own line and the session's tools leave the bottom band altogether (#25):
           at 390 the band is 358 px, which holds eight forty-four pixel targets and no more, so
           the hand and the tools cannot both live there. C4's thumb pays for it; see C4's own
@@ -115,7 +119,8 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             ref={table}
             view={shown}
             mode="table"
-            rotate={seatRotation(view, seat)}
+            rotate={seatTurn(view, seat, room)}
+            me={seat}
             faces={http}
             onAct={playable ? onAct : undefined}
             keyboard={kbd.keyboard}
@@ -145,8 +150,9 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
         )}
       </div>
       {kbd.panel}
-      <SessionOverlays client={client} view={view} seat={seat} name={me?.name ?? seat} http={http} sessionId={sessionId} sheet={sheet} onSheet={setSheet} onLeft={() => onLeave(wayBack(links))} toast={toast} onToast={setToast} version={version} saveUrl={token ? claimUrl(token, params.get('server')) : null} />
+      <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={() => onLeave(wayBack(links))} toast={toast} onToast={setToast} version={version} />
       </div>
+      <SeatSurvey view={view} seat={seat} name={me?.name ?? seat} http={http} sessionId={sessionId} version={version} saveUrl={token ? claimUrl(token, params.get('server')) : null} />
       <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
     </>
   )

@@ -3,6 +3,8 @@ import type { VisibleComponentState } from '@byd/protocol'
 import '../table/table.css'
 import '../player/player.css'
 import { TableRenderer } from '../table/TableRenderer.js'
+import { turnToFit } from '../table/fit.js'
+import { useRoom } from '../table/useRoom.js'
 import { TvChrome } from '../table/TvChrome.js'
 import { useTableClient } from '../table/useTableClient.js'
 import { refusedText } from '../player/SessionOverlays.js'
@@ -47,6 +49,8 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
   const flagged = useRefusal('table')
   const [inspecting, setInspecting] = useState<VisibleComponentState | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  // The window she is holding, watched rather than read once (K9, #75): `useRoom`.
+  const room = useRoom()
   const [version, setVersion] = useState<string | null>(null)
   useEffect(() => {
     if (!toast) return
@@ -66,9 +70,19 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
   if (refused) return <StatusNotice notice={{ ...noticeFor('forbidden', 'table', t), text: refusedText(refused, t) }} surface="page" links={links} />
   if (!view || !client) return <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
 
+  // A landscape table in a portrait window is turned a quarter so that its long side runs down
+  // the screen and the felt fills the width (C5, C8, #76). The observer sits at no seat, so
+  // nothing else decides which way round her table is; the rule is the window's shape against the
+  // table's and lives in `turnToFit`. Her felt reads turned on a phone and upright on a desk,
+  // which is the trade the alternative — a felt a fifth of a phone, with a 15 px card — loses.
+  const floor = view.zones.find((z) => z.id === view.floor)
+  const turn = floor ? turnToFit({ w: floor.geometry.w, h: floor.geometry.h }, room) : 0
+
   return (
     <>
-      <div data-page="observe" data-drawer={drawer ? 'open' : 'shut'} data-status={status} className={`byd-fit byd-observer${live.stale ? ' byd-status-stale' : ''}`} {...(live.stale ? { inert: true } : {})}>
+      {/* An ended table is one more state of D5's kind: the picture behind the survey is not to be
+          acted on, so it is out of reach the same way a stale one is (UX-38, #83). */}
+      <div data-page="observe" data-drawer={drawer ? 'open' : 'shut'} data-status={status} className={`byd-fit byd-observer${live.stale ? ' byd-status-stale' : ''}`} {...(live.stale || view.ended ? { inert: true } : {})}>
       <TvChrome
         view={view}
         activity={activity}
@@ -77,7 +91,7 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
         observers={observers}
         note={<p className="byd-observer-note">{t('observer.banner')}</p>}
       >
-        <TableRenderer view={view} mode="tv" faces={http} onInspect={setInspecting} />
+        <TableRenderer view={view} mode="tv" rotate={turn} faces={http} onInspect={setInspecting} />
       </TvChrome>
       {/* The handle (#6): a row of its own under the table, never a banner over it. What she is
           is always on it; the rest of the sentence, the feed and the seats are one press away and
@@ -111,8 +125,8 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
           }}
         />
       )}
-      {view.ended && <Survey saveUrl={token ? claimUrl(token, params.get('server')) : null} who={name} version={version ?? '…'} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat: null, observer: true, answers })} />}
       </div>
+      {view.ended && <Survey saveUrl={token ? claimUrl(token, params.get('server')) : null} who={name} version={version ?? '…'} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat: null, observer: true, answers })} />}
       <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
     </>
   )

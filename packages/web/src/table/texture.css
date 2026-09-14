@@ -72,9 +72,10 @@
 }
 .byd-texture-state[data-texture='failed'] > b { color: var(--byd-texture-fail-ink); }
 
-/* The way back, wherever a thumb can land on it (UX-KONTROLLER: 44 by 44). A card smaller than
-   that gets no button rather than an unpressable one; it is read by holding it up, and the big
-   view it opens in carries the retry. */
+/* The way back, where a view holds the card up (`retry` on Texture, #82) and where a thumb can
+   land on it (UX-KONTROLLER: 44 by 44). A card that is itself a control carries none — a control
+   cannot hold a control (UX-37) — and a card smaller than this gets no button rather than an
+   unpressable one; both are read by holding the card up, and the held-up card carries the retry. */
 @container (min-width: 96px) {
   .byd-texture-state > button {
     display: block;

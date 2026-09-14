@@ -6,6 +6,7 @@ import { TableClient } from '../src/client.js'
 import { ObserverPage } from '../src/observer/ObserverPage.js'
 import { admit, asSeat, asTable, createSession, startServer, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
+import { tabFrom, tabStops } from './tabs.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
@@ -118,5 +119,49 @@ describe('the observer has no seat to leave (#31)', () => {
     expect(screen.queryByRole('button', { name: 'Ut…' })).toBeNull()
     expect(screen.queryByText(/Lämna bordet/)).toBeNull()
     expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual([expect.stringMatching(/Senast och platser/), expect.stringMatching(/Flagga/)])
+  })
+})
+
+// The same quiet as the phone's (UX-38, #83): once the table has ended, the felt, the handle and
+// the inspection panel are the picture behind the survey, not things to read or press.
+describe('the ended table goes quiet behind the survey (C9, D5, G3, #83)', () => {
+  it('takes the felt and the handle out of reach, and leaves the survey living', async () => {
+    const id = await createSession(run)
+    const table = TableClient.connect(await asTable(run, id))
+    await table.ready()
+    await table.send({ v: 'draw', from: 'draw', to: 'table', count: 1 })
+    history.replaceState(null, '', `/observe?session=${id}&name=Eva&token=${await admit(run, id, null, 'Eva')}&server=${encodeURIComponent(run.url)}`)
+    render(<ObserverPage />)
+    await screen.findByText(/Du är observatör/)
+    await waitFor(() => expect(document.querySelector('.byd-card')).toBeTruthy())
+    expect(screen.getByRole('button', { name: /Senast och platser/ }).closest('[inert]')).toBeNull()
+
+    await table.send({ v: 'session.end' })
+    await screen.findByText(/Bordet är avslutat/)
+    expect(document.querySelector('.byd-card')!.closest('[inert]')).not.toBeNull()
+    expect(screen.getByRole('button', { name: /Senast och platser/ }).closest('[inert]')).not.toBeNull()
+    expect(screen.getByRole('region', { name: /inspektion/i }).closest('[inert]')).not.toBeNull()
+    expect(screen.getByRole('heading', { name: 'Bordet är avslutat' }).closest('[inert]')).toBeNull()
+    expect(screen.getByRole('button', { name: '4' }).closest('[inert]')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Nästa' }).closest('[inert]')).toBeNull()
+    table.close()
+  })
+
+  it('Tab from the survey\'s last control stays in the survey rather than going down into the felt', async () => {
+    const id = await createSession(run)
+    const table = TableClient.connect(await asTable(run, id))
+    await table.ready()
+    await table.send({ v: 'draw', from: 'draw', to: 'table', count: 1 }, { v: 'session.end' })
+    history.replaceState(null, '', `/observe?session=${id}&name=Eva&token=${await admit(run, id, null, 'Eva')}&server=${encodeURIComponent(run.url)}`)
+    render(<ObserverPage />)
+    await screen.findByText(/Bordet är avslutat/)
+    const survey = document.querySelector('.byd-survey')!
+    const stops = tabStops()
+    expect(stops.length).toBeGreaterThan(1)
+    expect(stops.every((el) => survey.contains(el))).toBe(true)
+    const last = screen.getByRole('link', { name: /Spara till ditt konto/ })
+    expect(stops.at(-1)).toBe(last)
+    expect(tabFrom(last)).toBe(screen.getByRole('button', { name: '1' }))
+    table.close()
   })
 })

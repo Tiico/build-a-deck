@@ -22,7 +22,7 @@ export function CardLook({ card, faces, onClose }: { card: VisibleComponentState
       }}
     >
       <div data-inspect={card.id} data-face={face} style={card.cardRef === null ? undefined : { ['--hue' as string]: hue(card.cardRef) }}>
-        <Texture faces={faces} c={card} />
+        <Texture faces={faces} c={card} retry />
         <span>{card.cardRef ?? ''}</span>
       </div>
       <button type="button" autoFocus onClick={onClose}>

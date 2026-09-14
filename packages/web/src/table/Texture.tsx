@@ -21,15 +21,22 @@ type Phase = 'pending' | 'ready' | 'failed'
 // waiting card may say about itself is decided by `cardRef`, the same field that decides which
 // face is fetched at all. It is null exactly when this seat may not know the card's identity, so
 // a fallback cannot name a card the wire did not name (B6, TUNN-SKIVA §5).
-export function Texture({ faces, c }: { faces: string | undefined; c: VisibleComponentState | undefined }) {
+//
+// A lost face offers a way back only where `retry` says so: a view that holds the card up large.
+// The face is quiet everywhere else, because most cards are controls — the hand card, a felt card
+// the keyboard names — and a control cannot hold another (UX-37, #82); a thumbnail could not
+// press one either. A small lost card is read by holding it up, and the held-up card retries.
+export type TextureProps = { faces: string | undefined; c: VisibleComponentState | undefined; retry?: boolean | undefined }
+
+export function Texture({ faces, c, retry = false }: TextureProps) {
   const src = c && textureUrl(faces, c)
   if (!src || !c) return null
   // Keyed on the face: a card whose texture changes gets a fresh <img> rather than a new `src`
   // on the old one, so the browser has no decoded bitmap left to show for a frame.
-  return <TextureFace key={src} src={src} c={c} />
+  return <TextureFace key={src} src={src} c={c} retry={retry} />
 }
 
-function TextureFace({ src, c }: { src: string; c: VisibleComponentState }) {
+function TextureFace({ src, c, retry }: { src: string; c: VisibleComponentState; retry: boolean }) {
   const t = useT()
   // `attempt` only busts the cache and never goes backwards; `rung` is where on the ladder of
   // growing pauses we are, and a player asking again starts it over.
@@ -78,10 +85,17 @@ function TextureFace({ src, c }: { src: string; c: VisibleComponentState }) {
         <span className="byd-texture-state" data-texture={phase}>
           {name !== null && <b>{name}</b>}
           <i>{phase === 'pending' ? t('texture.pending') : t('texture.failed')}</i>
-          {phase === 'failed' && (
-            // The card is a drag handle everywhere it appears; pressing the button must not
-            // start a drag as well.
-            <button type="button" onPointerDown={(e) => e.stopPropagation()} onClick={again}>
+          {phase === 'failed' && retry && (
+            // The view that holds the card up puts it down on a touch or a click anywhere in
+            // it; a press on the way back is neither, so the button keeps both to itself.
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation()
+                again()
+              }}
+            >
               {t('texture.retry')}
             </button>
           )}

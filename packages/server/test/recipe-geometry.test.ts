@@ -81,8 +81,45 @@ describe('the felt a recipe lays out (K18, B5)', () => {
     expect(at('hand:B')).toEqual({ x: -250, y: -400, w: 500, h: 60, rot: 0 })
     expect(at('hand:C')).toEqual({ x: 540, y: -250, w: 60, h: 500, rot: 0 })
     expect(at('hand:D')).toEqual({ x: -600, y: -250, w: 60, h: 500, rot: 0 })
-    expect(at('mine:A')).toEqual({ x: -250, y: 230, w: 380, h: 100, rot: 0 })
-    expect(at('counters:A')).toEqual({ x: 140, y: 230, w: 110, h: 100, rot: 0 })
+    // The two zones that share a seat's 500 mm are the one pair #89 moved: the chips lie a pitch
+    // apart along the rim so a finger can reach each of them, and `Framför` pays for the room out
+    // of its own length. The seat, the place setting and the felt are the millimetres they were.
+    expect(at('mine:A')).toEqual({ x: -250, y: 230, w: 365, h: 100, rot: 0 })
+    expect(at('counters:A')).toEqual({ x: 125, y: 230, w: 125, h: 100, rot: 0 })
+    expect((at('mine:A')?.w ?? 0) + 10 + (at('counters:A')?.w ?? 0)).toBe(500)
+  })
+
+  // What a second counter costs and what a third one does not (C4, K18, #89). Two chips lie side
+  // by side and the counters zone takes a second pitch out of `Framför`; a third stacks them, so
+  // the seat goes back to the shape it had with one. Nothing outside the seat's 500 mm moves at
+  // any of the three, which is the whole reason B was chosen up to two and C at three.
+  it('lets a seat’s counters spread to two and stack at three, inside the same 500 mm', () => {
+    const named = [
+      { name: 'Poäng', start: 0 },
+      { name: 'Liv', start: 20 },
+      { name: 'Rundor', start: 1 },
+      { name: 'Kort', start: 5 },
+    ]
+    const seatOf = (counters: number) => {
+      const setup = applyRecipe(emptySetup(), { players: 4, mine: true, discard: true, market: true, counters: named.slice(0, counters) })
+      const at = (id: string) => setup.zones.find((z) => z.id === id)!.geometry
+      return { mine: at('mine:A').w, counters: at('counters:A').w, felt: `${at('table').w}x${at('table').h}`, hand: at('hand:A').w }
+    }
+    expect([1, 2, 3, 4].map(seatOf)).toEqual([
+      { mine: 365, counters: 125, felt: '1200x800', hand: 500 },
+      { mine: 240, counters: 250, felt: '1200x800', hand: 500 },
+      { mine: 365, counters: 125, felt: '1200x800', hand: 500 },
+      { mine: 365, counters: 125, felt: '1200x800', hand: 500 },
+    ])
+    // And no zone of the new shapes lies on any other, at any seat count the table admits.
+    for (const counters of [1, 2, 3, 4]) {
+      for (let players = 2; players <= MAX_PLAYERS; players++) {
+        const setup = applyRecipe(emptySetup(), { players, mine: true, discard: true, market: true, counters: named.slice(0, counters) })
+        const zones = setup.zones.filter((z) => z.id !== setup.floor)
+        const overlapping = zones.flatMap((a, i) => zones.slice(i + 1).filter((b) => sharesArea(a.geometry, b.geometry)).map((b) => `${a.id}+${b.id}`))
+        expect({ counters, players, overlapping }).toEqual({ counters, players, overlapping: [] })
+      }
+    }
   })
 
   // The lift. A setup saved while five to eight seats were laid out on a 1200 x 800 mm felt carries

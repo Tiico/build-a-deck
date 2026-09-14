@@ -2,7 +2,7 @@ import type { ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc, Versi
 import type { DocDiff } from '@byd/server/doc'
 import type { Element } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
-import { applyEdit, recipeOf, type EditIntent, type Recipe, type RecipeWords, type ZonePatch } from '@byd/server/doc'
+import { applyEdit, recipeOf, type Clearable, type EditIntent, type Recipe, type RecipeWords, type ZonePatch } from '@byd/server/doc'
 import { ASSET_PREFIX } from './assets.js'
 import { iconElement } from './canvas.js'
 import { idsOnFace } from './groups.js'
@@ -84,6 +84,11 @@ export class ProjectClient {
   // ones taken back and waiting to come forward again (#35).
   private past: { doc: ProjectDoc; what: Key }[] = []
   private future: { doc: ProjectDoc; what: Key }[] = []
+  // The gesture the stack's top step belongs to, or null when the top step is a whole change of
+  // its own. A gesture is one thing the designer did that the pointer reports many times over —
+  // a drag, a resize, a cell typed into — and the token is made where it begins, so a second
+  // grab of the same element is a second token and therefore a second step back (#35).
+  private gesture: string | null = null
   private outbox: string[] = []
   // A save asked for over the socket, waiting for the actor to say what became of it.
   private saving: ((result: SaveResult) => void) | null = null
@@ -274,7 +279,12 @@ export class ProjectClient {
     return this.role === null || canEdit(this.role)
   }
 
-  edit(intent: EditIntent): void {
+  // `gesture` names the one thing the designer is doing, when what she is doing arrives in
+  // pieces: a drag is sixty patches and a cell is one per keystroke. Every edit carrying the
+  // token that is already on top of the stack joins that step instead of making its own, so the
+  // way back from a move is one press and not sixty. Everything else leaves it out and is its own
+  // step, as it always was.
+  edit(intent: EditIntent, gesture?: string): void {
     // It applies before anything is recorded, and that order is the whole of it: an edit the
     // document refuses never happened, so it must cost neither a version nor a step back (#41,
     // B4). `applyEdit` throws from here, with the stack untouched and nothing sent.
@@ -282,8 +292,13 @@ export class ProjectClient {
     // Where the designer was before this: a step back is `restore` with that document, which is
     // already how taking a document back is said (B4), so no new verb is needed (#35). A new edit
     // is a new branch, so what was taken back stops waiting to come forward.
-    this.past.push({ doc: this.doc, what: whatOf(intent) })
-    if (this.past.length > UNDO_STEPS) this.past.shift()
+    // The gesture that is already open keeps the document it began from: that is the whole of
+    // taking a move back in one press, and it is why the token must be new for every new grab.
+    if (gesture === undefined || gesture !== this.gesture) {
+      this.past.push({ doc: this.doc, what: whatOf(intent) })
+      if (this.past.length > UNDO_STEPS) this.past.shift()
+    }
+    this.gesture = gesture ?? null
     this.future = []
     this.send(intent, next)
   }
@@ -311,6 +326,9 @@ export class ProjectClient {
   undo(): Key | null {
     const step = this.past.pop()
     if (!step) return null
+    // A step back closes whatever was open: the next patch of a gesture that is still being made
+    // would otherwise join the step the designer just took off the stack.
+    this.gesture = null
     this.future.push({ doc: this.doc, what: step.what })
     this.send({ v: 'restore', doc: step.doc })
     return step.what
@@ -319,13 +337,17 @@ export class ProjectClient {
   redo(): Key | null {
     const step = this.future.pop()
     if (!step) return null
+    this.gesture = null
     this.past.push({ doc: this.doc, what: step.what })
     this.send({ v: 'restore', doc: step.doc })
     return step.what
   }
 
-  setCell(cardRef: string, field: string, value: Cell): void {
-    this.edit({ v: 'setCell', cardRef, field, value })
+  // Typing into a cell is a gesture too (#35): the table writes a value per keystroke, and a
+  // whole word typed into one cell is one thing the designer did. The token is the cell itself,
+  // so leaving it and coming back is a new step, and so is typing into the one beside it.
+  setCell(cardRef: string, field: string, value: Cell, gesture?: string): void {
+    this.edit({ v: 'setCell', cardRef, field, value }, gesture)
   }
 
   addRow(cardRef: string, fields: Record<string, Cell> = {}): void {
@@ -350,8 +372,17 @@ export class ProjectClient {
     this.edit({ v: 'removeField', field })
   }
 
-  patchElement(face: string, id: string, patch: Partial<Element>, group?: string | null): void {
-    this.edit({ v: 'patchElement', face, id, patch, ...(group !== undefined ? { group } : {}) })
+  // `gesture` is the token of the grab this patch belongs to, when it belongs to one: the canvas
+  // makes a fresh one at every pointerdown, so a drag is one step back and the next drag is the
+  // next one.
+  patchElement(face: string, id: string, patch: Partial<Element>, group?: string | null, gesture?: string): void {
+    // A property set to `undefined` is a property taken away, and it is said that way on the
+    // wire: `undefined` does not survive JSON, so an unlock written as `{ locked: undefined }`
+    // would reach the actor as a patch that changes nothing, and the saved project would still
+    // be locked (L15).
+    const clear = Object.entries(patch).flatMap(([key, value]) => (value === undefined ? [key as Clearable] : []))
+    const set = Object.fromEntries(Object.entries(patch).filter(([, value]) => value !== undefined)) as Partial<Element>
+    this.edit({ v: 'patchElement', face, id, patch: set, ...(clear.length ? { clear } : {}), ...(group !== undefined ? { group } : {}) }, gesture)
   }
 
   setGroupColumn(column: string | null): void {

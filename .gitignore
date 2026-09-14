@@ -3,3 +3,5 @@ dist/
 *.tsbuildinfo
 .DS_Store
 .env
+# A browser test builds the app beside itself and cleans up after; a run cut short must not leave a build to commit.
+packages/web/dist-*/

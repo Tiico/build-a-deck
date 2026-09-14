@@ -102,6 +102,8 @@ describe('the card on the canvas is not compiled again for nothing', () => {
         onAdd={() => undefined}
         onPlaceIcon={() => undefined}
         onReorder={() => undefined}
+        onLock={() => undefined}
+        onRename={() => undefined}
         onSelectFace={() => undefined}
         group={null}
         onSelectGroup={() => undefined}

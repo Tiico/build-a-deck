@@ -5,10 +5,10 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { ReactElement } from 'react'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { render } from '@testing-library/react'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { chromium, type Browser } from 'playwright'
-import type { Snapshot, VisibleComponentState } from '@byd/protocol'
+import type { Intent, Snapshot, VisibleComponentState } from '@byd/protocol'
 import { TableRenderer, type TableMode } from '../src/table/TableRenderer.js'
 import { TvChrome } from '../src/table/TvChrome.js'
 import { ActionPanel } from '../src/table/ActionPanel.js'
@@ -17,9 +17,13 @@ import { RING_AIR, RING_REACH, ringCentre } from '../src/table/ring.js'
 import { feltLabels, intentsForPlace, landedKeyFor, type Thing } from '../src/table/keyboard.js'
 import { edgeRotation, feltWithHands, handExtent } from '../src/table/hand.js'
 import { feltScale } from '../src/table/fit.js'
+import { tableOf } from './scene.js'
+import { recipeSetup } from './fixture.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
-const SHEETS = ['src/table/table.css', 'src/table/texture.css', 'src/table/keyboard.css', 'src/rules/rules.css']
+// The felt is a room of the button language (L13, #90), so the shared sheet goes over the felt's
+// own the way it does on the page itself.
+const SHEETS = ['src/table/table.css', 'src/table/texture.css', 'src/table/keyboard.css', 'src/rules/rules.css', 'src/buttons.css']
 
 const CARD = { id: 'card.standard.63x88', version: 1 }
 const card = (id: string, zone: string, x: number, y: number, cardRef: string | null): VisibleComponentState => ({ id, type: CARD, zone, face: cardRef === null ? 'back' : 'front', x, y, rot: 0, cardRef })
@@ -185,21 +189,88 @@ describe('the ring of verbs (K14)', () => {
 })
 
 describe('a pile says how many it holds (C)', () => {
-  it('puts the count as a badge on the corner of the pile and the name below it, clear of the cards', async () => {
+  it('sits the count on the pile rather than beside it, and puts the name below, clear of the cards', async () => {
     const at = await measure('tv', {
       pile: '[data-zone="draw"]',
       badge: '[data-zone="draw"] .byd-pile-n',
       name: '[data-zone="draw"] .byd-pile-name',
     })
     const [pile, badge, name] = [at('pile'), at('badge'), at('name')]
-    // The badge rides the pile's top-right corner: it overlaps the card, and sticks out of it.
-    expect(badge.x + badge.w).toBeGreaterThan(pile.x + pile.w)
-    expect(badge.y).toBeLessThan(pile.y)
+    // The badge sits on the pile's top edge, centred on it, and reaches to neither side of it
+    // (K19, #76). It used to ride the top-right corner, fourteen pixels out of its own footprint
+    // in the screen's own units — which on a felt a phone's size is a quarter of the way across
+    // the table, onto the name of the seat at the side rim. It overlaps the card, as it always
+    // did; what it no longer does is stand anywhere the pile is not.
+    expect(Math.abs(badge.x + badge.w / 2 - (pile.x + pile.w / 2))).toBeLessThanOrEqual(1)
+    expect(badge.x).toBeGreaterThanOrEqual(pile.x)
+    expect(badge.x + badge.w).toBeLessThanOrEqual(pile.x + pile.w)
+    expect(badge.y).toBeGreaterThanOrEqual(pile.y)
     expect(overlaps(badge, pile)).toBe(true)
     // The name stands under the pile, centred, and never on top of the card.
     expect(name.y).toBeGreaterThanOrEqual(pile.y + pile.h)
     expect(Math.abs(name.x + name.w / 2 - (pile.x + pile.w / 2))).toBeLessThanOrEqual(1)
   }, 60_000)
+})
+
+// The ring's "Dra 1" is a split beside the pile (K14, K15), and where beside is the client's
+// choice, carried in the intent. The pile's name keeps its width in pixels while the felt shrinks
+// with the screen, so the table this has to hold on is the wizard's fullest one on a TV (K18,
+// K19): eight seats, in the room the TV chrome leaves at 1280 × 800. The drawn card is measured
+// as what the engine actually makes of the intent, never a hand-made likeness of it.
+describe('a card drawn off a pile lands clear of the pile\'s own label (K14, K15, #87)', () => {
+  // The room TvChrome leaves the felt at 1280 × 800: an aside of 340 px, a header of 64 and a
+  // feed of 150 (`[data-tv]` in table.css).
+  const TV_ROOM: Size = { w: 1280 - 340, h: 800 - 64 - 150 }
+  const SCREEN: Size = { w: 1280, h: 800 }
+  // The wizard's table for that many — an area in front of every seat, so the camera frames the
+  // whole felt at rest — with its draw pile turned as a designer may turn it.
+  const tableTurned = (seats: number, rot: number) => {
+    const setup = recipeSetup(seats, { mine: true, discard: true })
+    return tableOf({ ...setup, zones: setup.zones.map((z) => (z.id === 'draw' ? { ...z, geometry: { ...z.geometry, rot } } : z)) })
+  }
+  // What the ring sends for "Dra 1" on the draw pile, taken from the real ring on a real mount.
+  function drawOne(view: Snapshot): Intent[] {
+    const onAct = vi.fn<(intents: Intent[]) => void>()
+    const { unmount } = render(<TableRenderer view={view} mode="tv" scale={1} onAct={onAct} />)
+    try {
+      const top = document.querySelector('[data-zone="draw"] .byd-pile-top')!
+      const at = { clientX: 300, clientY: 300, pointerId: 1, isPrimary: true, button: 0 }
+      fireEvent.pointerDown(top, at)
+      fireEvent.pointerUp(top, at)
+      fireEvent.click(screen.getByRole('button', { name: 'Dra 1' }))
+    } finally {
+      unmount()
+    }
+    const sent = onAct.mock.calls.at(-1)?.[0]
+    if (!sent) throw new Error('the ring sent nothing for Dra 1')
+    return sent
+  }
+
+  for (const mode of ['tv', 'table'] as const) {
+    for (const rot of [0, 90] as const) {
+      it(`keeps the drawn card off the pile's name and its count in ${mode} mode, pile turned ${rot}°`, async () => {
+        const { view, viewAfter } = tableTurned(8, rot)
+        const before = new Set(view(null).components.map((c) => c.id))
+        const after = viewAfter(...drawOne(view(null)))
+        // A pile of one is no pile (K1): the split settles into a loose card on the floor.
+        const drawn = after.components.find((c) => c.zone === after.floor && !before.has(c.id))
+        if (!drawn) throw new Error('the split left no card on the floor')
+        const size = mode === 'tv' ? TV_ROOM : SCREEN
+        const html = markupOf(<TableRenderer view={after} mode={mode} size={size} camera={mode === 'tv'} glideMs={0} onAct={() => undefined} />)
+        // On the TV the label is two halves, a name under the pile and a count on its corner; on
+        // the felt it is one pill under the pile, and that pill is the handle the pile is moved
+        // by (K14, #63), so it is the pill that must stay uncovered there.
+        const label = mode === 'tv' ? { name: '[data-zone="draw"] .byd-pile-name', count: '[data-zone="draw"] .byd-pile-n' } : { pill: '[data-zone="draw"] .byd-pile-count' }
+        const at = await measureHtml(html, size, { card: `[data-component="${drawn.id}"]`, pile: '[data-zone="draw"]', ...label }, `${mode} at ${rot}°`)
+        const [card, pile] = [at('card'), at('pile')]
+        const labels = Object.fromEntries(Object.keys(label).map((k) => [k, at(k)]))
+        expect(Object.values(labels).every((b) => b.w > 0 && b.h > 0)).toBe(true)
+        // Beside the pile, and on no part of its label.
+        const covered = Object.entries({ pile, ...labels }).filter(([, b]) => overlaps(card, b)).map(([k]) => k)
+        expect({ card, pile, ...labels, covered }).toEqual({ card, pile, ...labels, covered: [] })
+      }, 60_000)
+    }
+  }
 })
 
 describe('two piles on a phone-sized felt (C5)', () => {
@@ -529,7 +600,7 @@ function feltedOf(view: Snapshot, rotate: number): Size {
   if (!floor) throw new Error('no floor')
   const rect_ = { x: floor.geometry.x, y: floor.geometry.y, w: floor.geometry.w, h: floor.geometry.h }
   const hands = view.zones.filter((z) => z.kind === 'hand')
-  const felted = feltWithHands(rect_, hands.map((z) => handExtent(z, edgeRotation(z, floor))))
+  const felted = feltWithHands(rect_, hands.map((z) => handExtent(z, floor, edgeRotation(z, floor))))
   return rotate % 180 === 0 ? felted : { w: felted.h, h: felted.w }
 }
 
@@ -690,6 +761,7 @@ describe('the address panel beside a table (#1, #2)', () => {
         onClose={() => undefined}
         onRun={() => undefined}
         onLook={() => undefined}
+        onSet={() => undefined}
         intentsFor={(place, moving) => intentsForPlace(view, place, thing, moving)}
         landedKey={(place) => landedKeyFor(view, place, thing)}
       />,

@@ -14,7 +14,9 @@ export function refusedText(reason: string, t: T): string {
 }
 
 // What a seat's screen carries beside the hand, on the phone and online alike (C2): the toast,
-// the flag, exit and end sheets, the rewind proposal, and the survey once the log is locked.
+// the flag, exit and end sheets, and the rewind proposal. The survey once the log is locked is
+// `SeatSurvey`, mounted beside the play view rather than inside it, because the play view is
+// inert by then (UX-38) and the survey is the one thing that is not.
 
 // Which sheet the seat's screen has raised. `exit` is the way out asking which way out (#31); it
 // is the only one that opens another, and the one it opens is `end`, unchanged.
@@ -47,9 +49,6 @@ export type SessionOverlaysProps = {
   client: TableClient
   view: Snapshot
   seat: string
-  name: string
-  http: string
-  sessionId: string
   sheet: Sheet
   onSheet(sheet: Sheet): void
   // Where the way out leads once the seat has been given up (#31): the seat picker, with the
@@ -58,11 +57,9 @@ export type SessionOverlaysProps = {
   toast: string | null
   onToast(msg: string): void
   version: string | null
-  // Where to save the session to an account afterwards (G1); absent without a guest token.
-  saveUrl?: string | null | undefined
 }
 
-export function SessionOverlays({ client, view, seat, name, http, sessionId, sheet, onSheet, onLeft, toast, onToast, version, saveUrl }: SessionOverlaysProps) {
+export function SessionOverlays({ client, view, seat, sheet, onSheet, onLeft, toast, onToast, version }: SessionOverlaysProps) {
   const t = useT()
   const proposal = standingRewind(view)
   // A sheet that sends something can be answered no, and the answer stands beside the button
@@ -125,7 +122,6 @@ export function SessionOverlays({ client, view, seat, name, http, sessionId, she
           }}
         />
       )}
-      {view.ended && <Survey who={name} version={version ?? '…'} saveUrl={saveUrl} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat, answers })} />}
       {proposal && proposal.by === seat && (
         <div className="byd-rewind-mine" data-rewind-mine>
           <span>{t('rewind.mine', { who: whoDecides(view, proposal, t) })}</span>
@@ -146,6 +142,24 @@ export function SessionOverlays({ client, view, seat, name, http, sessionId, she
       )}
     </>
   )
+}
+
+// The survey after the session (G3), for a seat: the phone and the online seat mount it as a
+// sibling of the play view, outside the `inert` an ended table puts on that view (UX-38, #83).
+export type SeatSurveyProps = {
+  view: Snapshot
+  seat: string
+  name: string
+  http: string
+  sessionId: string
+  version: string | null
+  // Where to save the session to an account afterwards (G1); absent without a guest token.
+  saveUrl?: string | null | undefined
+}
+
+export function SeatSurvey({ view, seat, name, http, sessionId, version, saveUrl }: SeatSurveyProps) {
+  if (!view.ended) return null
+  return <Survey who={name} version={version ?? '…'} saveUrl={saveUrl} onSubmit={(answers) => submitSurvey(http, sessionId, { who: name, seat, answers })} />
 }
 
 // The three buttons every seat has, and three is the number (#31): the row is full at 375 px,

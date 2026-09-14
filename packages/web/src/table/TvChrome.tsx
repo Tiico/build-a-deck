@@ -120,7 +120,7 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
                 <div>
                   <span>{s.name ?? s.id}</span>
                   <span>{t(handCount(s.id) === 1 ? 'tv.seat.hand.one' : 'tv.seat.hand.other', { n: handCount(s.id) })}</span>
-                  <small>{last ? describeActivity(last, view, t) : '—'}</small>
+                  <small>{last ? describeActivity(last, view, t) : t('tv.seat.none')}</small>
                 </div>
               </li>
             )

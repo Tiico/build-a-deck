@@ -15,6 +15,7 @@ import { chromium, type Browser } from 'playwright'
 import type { SetupDef } from '@byd/engine'
 import { JoinPage } from '../src/join/JoinPage.js'
 import { TableClient } from '../src/client.js'
+import { contrastRatio, parseColor } from '../src/player/contrast.js'
 import { asTable, createSession, recipeSetup, roomOf, startServer, twoSeatSetup, type Running } from './fixture.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
@@ -139,6 +140,35 @@ async function pill(markup: string, seat: string): Promise<{ w: number; cut: boo
   }
 }
 
+// What a pill really says on the screen, as against what it says in the ear. Every element inside
+// the pill that has a box of its own, is not hidden, and falls inside the pill's own box — so a
+// letter the stylesheet asks for but the pill clips away does not count as shown, and neither does
+// one that is only in the `aria-label`.
+async function shown(markup: string): Promise<Record<string, string>> {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
+  try {
+    await page.setContent(document_(markup), { waitUntil: 'load' })
+    return await page.evaluate(() => {
+      const out: Record<string, string> = {}
+      for (const el of document.querySelectorAll('[data-seat]')) {
+        const pill = el.getBoundingClientRect()
+        let seen = ''
+        for (const node of el.querySelectorAll('*')) {
+          const r = node.getBoundingClientRect()
+          const style = getComputedStyle(node)
+          const drawn = r.width > 0 && r.height > 0 && style.visibility !== 'hidden' && Number(style.opacity) > 0
+          const inside = r.left >= pill.left - 0.05 && r.right <= pill.right + 0.05 && r.top >= pill.top - 0.05 && r.bottom <= pill.bottom + 0.05
+          if (drawn && inside) seen += node.textContent ?? ''
+        }
+        out[(el as HTMLElement).dataset['seat'] ?? '?'] = seen
+      }
+      return out
+    })
+  } finally {
+    await page.close()
+  }
+}
+
 // What the thumb actually lands on: the seat the browser finds at each seat's own centre. Two
 // boxes that fall on the same point are one fault; which of them takes the tap is the other, and
 // only this says so. Answers the seat's own id when the seat can be reached at all.
@@ -155,6 +185,71 @@ async function reachable(markup: string): Promise<Record<string, string | null>>
       }
       return out
     })
+  } finally {
+    await page.close()
+  }
+}
+
+// The two lines a pill is made of, each measured against the pill's own box: where the letter
+// starts and ends down the pill, where the word starts, and how far off the pill's middle each of
+// them is drawn. Measured this way and not in absolute pixels, because how *tall* a letter is, is
+// the typeface's business and differs from one machine to the next; that the letter is above the
+// word and over its middle is the layout's business and does not.
+async function lines(markup: string): Promise<Record<string, { letterTop: number; letterBottom: number; wordTop: number; letterOff: number; wordOff: number }>> {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
+  try {
+    await page.setContent(document_(markup), { waitUntil: 'load' })
+    return await page.evaluate(() => {
+      const out: Record<string, { letterTop: number; letterBottom: number; wordTop: number; letterOff: number; wordOff: number }> = {}
+      for (const el of document.querySelectorAll('[data-seat]')) {
+        const pill = el.getBoundingClientRect()
+        const letter = el.querySelector('b')!.getBoundingClientRect()
+        const word = el.querySelector('span')!.getBoundingClientRect()
+        const mid = (r: DOMRect) => r.left + r.width / 2 - (pill.left + pill.width / 2)
+        out[(el as HTMLElement).dataset['seat'] ?? '?'] = {
+          letterTop: Math.round((letter.top - pill.top) * 10) / 10,
+          letterBottom: Math.round((letter.bottom - pill.top) * 10) / 10,
+          wordTop: Math.round((word.top - pill.top) * 10) / 10,
+          letterOff: Math.round(mid(letter) * 10) / 10,
+          wordOff: Math.round(mid(word) * 10) / 10,
+        }
+      }
+      return out
+    })
+  } finally {
+    await page.close()
+  }
+}
+
+// What the two lines of a pill are really drawn in. A line set at less than full strength is not
+// drawn in the colour the stylesheet names for it — it is drawn in that colour laid over the pill
+// it sits on — and what a reader has to make out is the mixture. So the mixture is what comes
+// back here, already laid down, and what the contrast is then asked about.
+const over = (top: string, under: string, a: number): string => {
+  const [r, g, b] = parseColor(top)
+  const [R, G, B] = parseColor(under)
+  const mix = (x: number, y: number) => Math.round(x * a + y * (1 - a))
+  return `rgb(${mix(r, R)}, ${mix(g, G)}, ${mix(b, B)})`
+}
+async function ink(markup: string): Promise<Record<string, { letter: string; word: string; on: string }>> {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
+  try {
+    await page.setContent(document_(markup), { waitUntil: 'load' })
+    const raw = await page.evaluate(() => {
+      const out: Record<string, { letter: [string, number]; word: [string, number]; on: string }> = {}
+      const line = (el: Element): [string, number] => [getComputedStyle(el).color, Number(getComputedStyle(el).opacity)]
+      for (const el of document.querySelectorAll('[data-seat]')) {
+        out[(el as HTMLElement).dataset['seat'] ?? '?'] = {
+          letter: line(el.querySelector('b')!),
+          word: line(el.querySelector('span')!),
+          on: getComputedStyle(el).backgroundColor,
+        }
+      }
+      return out
+    })
+    return Object.fromEntries(
+      Object.entries(raw).map(([seat, it]) => [seat, { letter: over(it.letter[0], it.on, it.letter[1]), word: over(it.word[0], it.on, it.word[1]), on: it.on }]),
+    )
   } finally {
     await page.close()
   }
@@ -251,6 +346,57 @@ describe('a seat is a thumb-sized target (UX-KONTROLLER: träffytor)', () => {
   }, 60_000)
 })
 
+// A free seat used to say `ledig` and nothing else, so the only things telling one apart from
+// another were its colour and its place on the felt (#80, UX-35). Somebody who wants seat C has
+// nothing to aim at: the letter was in the spoken label and in the heading, and nowhere on the
+// pill. Form C puts it there — the letter above the word, in both states and always in the same
+// place — and the word underneath stays what it was.
+describe('a free seat wears its own letter (#80, UX-35)', () => {
+  it.each([2, 4, 6, 8])('shows the letter of every free seat of a %i-seat table', async (count) => {
+    const seen = await shown(await picker(recipeSetup(count)))
+    const ids = [...'ABCDEFGH'].slice(0, count)
+    expect(Object.keys(seen).sort()).toEqual(ids)
+    for (const id of ids) {
+      // The letter is drawn, not merely asked for; the word it stands over is still the word.
+      expect(seen[id], `seat ${id} shows "${seen[id]}"`).toContain(id)
+      expect(seen[id], `seat ${id} shows "${seen[id]}"`).toContain('ledig')
+    }
+  }, 60_000)
+
+  it('stands that letter above the word, in the same place whether the seat is free or taken', async () => {
+    const seat = await lines(await picker(recipeSetup(4), { A: 'Nina' }))
+    expect(Object.keys(seat).sort()).toEqual(['A', 'B', 'C', 'D'])
+
+    for (const [id, line] of Object.entries(seat)) {
+      // Two rows and not one: the word begins below where the letter ends, never beside it.
+      expect(line.letterBottom, `seat ${id}`).toBeLessThanOrEqual(line.wordTop + 0.05)
+      // Both over the pill's own middle, so the pill reads as a column and not as a lean.
+      expect(line.letterOff, `seat ${id}`).toBeCloseTo(0, 0)
+      expect(line.wordOff, `seat ${id}`).toBeCloseTo(0, 0)
+    }
+
+    // A is taken and B, C and D are free, and the letter is drawn at the same height down the
+    // pill in either state: sitting down must not move the letter of the seat you sat in.
+    for (const id of ['B', 'C', 'D']) expect(seat[id]!.letterTop, `seat ${id}`).toBeCloseTo(seat['A']!.letterTop, 1)
+  }, 60_000)
+})
+
+// Both lines of a pill are text, and text carries AA wherever it is (UX-KONTROLLER). The word is
+// drawn quieter than the letter above it, and "quieter" is the one thing on this page that can be
+// asked for without anybody measuring what it costs: the free pill's dark ink has strength to
+// spare on a seat colour, and the taken pill's ink is already the muted grey a disabled control
+// wears — taking a fifth off *that* is what drops it under the bar.
+describe('the two lines of a pill are read at AA (#80, UX-KONTROLLER)', () => {
+  it('draws the letter and the word alike, on a free seat and on a taken one', async () => {
+    const seats = await ink(await picker(recipeSetup(4), { A: 'Nina' }))
+    expect(Object.keys(seats).sort()).toEqual(['A', 'B', 'C', 'D'])
+    for (const [id, seat] of Object.entries(seats)) {
+      expect(contrastRatio(seat.letter, seat.on), `letter of ${id} on ${seat.on}`).toBeGreaterThanOrEqual(4.5)
+      expect(contrastRatio(seat.word, seat.on), `word of ${id} on ${seat.on}`).toBeGreaterThanOrEqual(4.5)
+    }
+  }, 60_000)
+})
+
 // Past four players the recipe seats two people along the same side of the felt: `edgeOf` runs
 // S, N, E, W and then round again, so on an eight-seat table A shares the south edge with E, B
 // the north with F, and so on. The derivation is right — a table really does have four sides —
@@ -310,10 +456,16 @@ describe('a table whose seats share a side (#42)', () => {
   // It never survived a Linux runner. `system-ui` is a different typeface there: the header above
   // the felt comes out two pixels shorter and a pill is as wide as its own word, and CI failed on
   // a table nobody had touched. What the picker really promises has nothing to do with the
-  // typeface. The felt has not grown — 260 by 200 belongs to the tables that share a side — each
-  // seat hangs off its own edge by the overhang the stylesheet names, each stands in the middle
-  // of that edge, and each is still the 44 px a thumb is owed. How wide a pill is, is its name's
-  // business, and is held to its place in the tests that are about names.
+  // typeface. The felt has not grown — the taller felt belongs to the tables that share a side —
+  // each seat hangs off its own edge by the overhang the stylesheet names, each stands in the
+  // middle of that edge, and each is exactly as tall as a pill is. How wide a pill is, is its
+  // name's business, and is held to its place in the tests that are about names.
+  //
+  // A pill is 52 px tall and not 44 since it began carrying the seat's letter over the word
+  // (#80): two lines need the room, and 44 was never a height but a floor — the thumb's, which
+  // `a seat is a thumb-sized target` keeps. It is written down here because it is the number the
+  // felt's own height is now worked out from, so a pill that changed height without the felt
+  // following would be a picker with its corners fallen in, and this is where that is caught.
   const HANG: Record<string, number> = { N: 26, S: 26, E: 30, W: 30 }
   it.each([2, 3, 4])('leaves a table of %i, where nobody shares a side, standing where it stood', async (count) => {
     const { felt, seats } = await measure(await picker(recipeSetup(count)))
@@ -331,7 +483,7 @@ describe('a table whose seats share a side (#42)', () => {
         expect(seat.y + seat.h / 2).toBeCloseTo(felt.y + felt.h / 2, 1)
         expect(seat.edge === 'W' ? felt.x - seat.x : seat.x + seat.w - (felt.x + felt.w)).toBeCloseTo(hang as number, 1)
       }
-      expect(seat.h).toBe(44)
+      expect(seat.h).toBe(52)
     }
   }, 60_000)
 

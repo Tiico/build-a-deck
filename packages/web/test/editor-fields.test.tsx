@@ -9,6 +9,7 @@ import { EditorPage } from '../src/editor/EditorPage.js'
 import { StatusLive } from '../src/status/StatusLive.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
+import { layerPick } from './layers.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -87,7 +88,7 @@ describe('a field made in the editor is a field the game has (#32, B4)', () => {
 
     // The template can now bind to it: the picker is drawn from the same columns the table is.
     openTab('Mall')
-    await user.click(await screen.findByRole('option', { name: 'text title' }))
+    await user.click(await waitFor(() => layerPick('title')))
     const field = await waitFor(() => screen.getByLabelText('Fält') as HTMLSelectElement)
     expect([...field.options].map((o) => o.value)).toContain('styrka')
     await user.selectOptions(field, 'styrka')
@@ -118,7 +119,7 @@ describe('a field made in the editor is a field the game has (#32, B4)', () => {
     await openEditor()
 
     openTab('Mall')
-    await user.click(await screen.findByRole('option', { name: 'text title' }))
+    await user.click(await waitFor(() => layerPick('title')))
     const field = await waitFor(() => screen.getByLabelText('Fält') as HTMLSelectElement)
     await user.selectOptions(field, within(field).getByRole('option', { name: 'nytt fält…' }))
     const form = screen.getByRole('form', { name: 'Nytt fält' })

@@ -1,12 +1,18 @@
 import type { Activity, Snapshot } from '@byd/protocol'
 import type { T } from '../i18n/index.js'
+import { handName } from './handName.js'
 
 // One line per log line, for the activity feed, in whichever language the reader is given (A4).
 // Names come from the view; zone names too, so "Draghög" rather than "draw" — a zone's name is
-// the designer's word and is never translated.
+// the designer's word and is never translated — except a hand, which is named by whoever sits there.
 export function describeActivity(line: Activity, view: Snapshot, t: T): string {
   const who = line.by === null ? t('play.table') : view.seats.find((s) => s.id === line.by)?.name ?? line.by
-  const zone = (id: string) => view.zones.find((z) => z.id === id)?.name ?? id
+  const zone = (id: string) => {
+    const z = view.zones.find((x) => x.id === id)
+    if (!z) return id
+    // A hand is the one zone the log does not call by the designer's name (K19).
+    return z.kind === 'hand' ? handName(view, z, t, 'inSentence') : z.name
+  }
   const it = line.intent
   switch (it.v) {
     case 'move':

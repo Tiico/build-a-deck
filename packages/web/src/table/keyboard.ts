@@ -1,7 +1,8 @@
 import type { Intent, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
 import { translate, type T } from '../i18n/index.js'
 import { isCounter } from '../components.js'
-import { CARD_MM } from './drop.js'
+import { CARD_MM, besidePile } from './drop.js'
+import { handName } from './handName.js'
 
 // Everything the keyboard says is the tool's own, so it is looked up where the reader is (A4).
 // A call from outside React — a test, a label built before a provider is mounted — gets Swedish,
@@ -22,7 +23,7 @@ const swedish: T = (key, params) => translate('sv', key, params)
 // fields; what it does not share is the word a reader hears and the verbs a card has (C4, A4).
 export type Thing =
   | { key: string; kind: 'card'; id: string; name: string; zone: string }
-  | { key: string; kind: 'counter'; id: string; name: string; zone: string; value: number }
+  | { key: string; kind: 'counter'; id: string; name: string; zone: string; value: number; owner: string | null }
   | { key: string; kind: 'pileTop'; pile: string; name: string }
   | { key: string; kind: 'pile'; pile: string; name: string; count: number }
 
@@ -46,6 +47,16 @@ function absolute(view: Snapshot, c: VisibleComponentState): { x: number; y: num
   return z ? { x: z.geometry.x + c.x, y: z.geometry.y + c.y } : { x: c.x, y: c.y }
 }
 
+// Whose a chip is: the seat that owns the zone it lies in, by whoever sits there (K19). A phone
+// never has to ask — `CountersRow` only ever shows the seat's own — but the table is everybody's,
+// and a chip lifted out of the felt into a ring or a panel loses the one thing that said whose it
+// was: where it lay. A chip in a zone nobody owns has no one to be named after.
+export function ownerOf(view: Snapshot, c: VisibleComponentState): string | null {
+  const z = view.zones.find((x) => x.id === c.zone)
+  if (z?.owner === undefined) return null
+  return view.seats.find((s) => s.id === z.owner)?.name ?? z.owner
+}
+
 export function thingsOn(view: Snapshot, t: T = swedish): Thing[] {
   const areas = new Set(view.zones.filter((z) => z.kind === 'area').map((z) => z.id))
   const placed = view.components
@@ -55,7 +66,7 @@ export function thingsOn(view: Snapshot, t: T = swedish): Thing[] {
       thing: isCounter(c)
         ? // A counter's name is the designer's word and nothing stands in for it: a chip this view
           // may not read has no name, rather than a card's `Dolt kort` (B5, B6).
-          ({ key: `counter:${c.id}`, kind: 'counter', id: c.id, name: c.cardRef ?? '', zone: c.zone, value: c.counter ?? 0 } satisfies Thing)
+          ({ key: `counter:${c.id}`, kind: 'counter', id: c.id, name: c.cardRef ?? '', zone: c.zone, value: c.counter ?? 0, owner: ownerOf(view, c) } satisfies Thing)
         : ({ key: `card:${c.id}`, kind: 'card', id: c.id, name: cardName(c, t), zone: c.zone } satisfies Thing),
     }))
   const piles = view.zones
@@ -105,14 +116,32 @@ export function feltLabels(view: Snapshot, t: T = swedish): Map<string, string> 
 // An action the panel offers. `intents` is null when the table cannot be asked for it right now
 // — an empty pile has nothing to shuffle — and `look` is the one entry that sends nothing and
 // only opens the card on this screen (K8).
-export type Act = { key: string; label: string; hint?: string; intents: Intent[] | null; look?: string }
+export type Act = { key: string; label: string; hint?: string; intents: Intent[] | null; look?: string; set?: string }
+
+// What a counter can be asked to do (C4, #67): one step either way, and a number said outright.
+// The same three things the phone's `CountersRow` offers and nothing more — not a step of five,
+// which is a game's rule and not the tool's (B5); not a reset, since the projection carries no
+// `start` to go back to; not "take the chip away", which K5 says is no verb at all. This is ONE
+// list read by the ring the hand opens and by the panel the keyboard opens, so the two cannot
+// drift apart. `setCounter` takes an absolute value, so "+1" is arithmetic done before speaking.
+// `set` is the one entry that sends nothing and opens the value entry on this screen instead.
+export function counterActs(c: VisibleComponentState, t: T = swedish): Act[] {
+  const now = c.counter ?? 0
+  const to = (value: number): Intent[] => [{ v: 'setCounter', component: c.id, value }]
+  return [
+    { key: 'minus', label: t('ring.counter.minus'), hint: t('kbd.hint.counter.becomes', { n: now - 1 }), intents: to(now - 1) },
+    { key: 'plus', label: t('ring.counter.plus'), hint: t('kbd.hint.counter.becomes', { n: now + 1 }), intents: to(now + 1) },
+    { key: 'set', label: t('ring.counter.set'), hint: t('kbd.hint.counter.set'), intents: [], set: c.id },
+  ]
+}
 
 export function verbsFor(view: Snapshot, thing: Thing, t: T = swedish): Act[] {
-  // A counter has none yet, and a card's are not a counter's: it has no face to turn, no back to
-  // reveal and nothing to look at up close. What a counter can be asked to do is #67's to settle,
-  // and until it does the panel says nothing rather than offering a card's verbs on a chip. Where
-  // the chip can go is a different question, and "Flytta till" still answers it.
-  if (thing.kind === 'counter') return []
+  // A card's verbs are not a counter's: a chip has no face to turn, no back to reveal and nothing
+  // to look at up close. It has a value, and that is what its verbs are about.
+  if (thing.kind === 'counter') {
+    const c = view.components.find((x) => x.id === thing.id)
+    return c ? counterActs(c, t) : []
+  }
   if (thing.kind === 'card') {
     const c = view.components.find((x) => x.id === thing.id)
     if (!c) return []
@@ -137,7 +166,7 @@ export function verbsFor(view: Snapshot, thing: Thing, t: T = swedish): Act[] {
   return [
     { key: 'shuffle', label: t('ring.shuffle'), intents: n > 1 ? [{ v: 'shuffle', pile: z.id }] : null },
     ...(view.seat === null ? [] : [{ key: 'toHand', label: t('kbd.verb.toHand'), intents: n > 0 ? [{ v: 'split' as const, pile: z.id, at: 1, to: `hand:${view.seat}` }] : null }]),
-    { key: 'half', label: t('ring.half'), hint: t('kbd.hint.half'), intents: n > 1 ? [{ v: 'split', pile: z.id, at: Math.ceil(n / 2), x: z.geometry.x + CARD_MM.w + 14, y: z.geometry.y }] : null },
+    { key: 'half', label: t('ring.half'), hint: t('kbd.hint.half'), intents: n > 1 ? [{ v: 'split', pile: z.id, at: Math.ceil(n / 2), ...besidePile(z.geometry, Math.ceil(n / 2)) }] : null },
   ]
 }
 
@@ -152,12 +181,6 @@ export type Place = {
   zone: string
   kind: 'area' | 'pile' | 'hand' | 'card'
   anchor?: VisibleComponentState
-}
-
-const handName = (view: Snapshot, z: ZoneView, t: T): string => {
-  const seat = view.seats.find((s) => s.id === z.owner)
-  // Whoever is sitting there named themselves; only the word "hand" around it is the tool's.
-  return z.owner === view.seat ? t('kbd.hand.my') : t('kbd.hand.other', { name: seat?.name ?? z.owner ?? '' })
 }
 
 export function placesFor(view: Snapshot, moving: ReadonlySet<string>, sourceZone: string | null, t: T = swedish): Place[] {

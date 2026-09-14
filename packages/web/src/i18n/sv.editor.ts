@@ -39,6 +39,7 @@ export const svEditor = {
   'editor.table.lost': '{n} kort kunde inte renderas. Bordet står kvar på sin gamla version.',
   'editor.table.retry': 'Försök igen',
   'editor.table.rendering': 'renderar kort {done}/{total}',
+  'editor.table.stalled': 'renderingen står stilla — korten på bordet visar sin reservtext tills den kommer igång',
   'editor.table.open': 'öppna bordet',
   'editor.table.failed': '{n} kort kunde inte renderas',
   'editor.table.roomCode': 'rumskod',
@@ -193,8 +194,14 @@ export const svEditor = {
   'canvas.face.front': 'Framsida',
   'canvas.face.back': 'Baksida',
   'canvas.layers': 'Lager · {face}',
+  // Lagret i panelen (L15): vad det heter, vad det visar och om det är låst.
+  'canvas.layer.lock': 'Lås {name}',
+  'canvas.layer.unlock': 'Lås upp {name}',
+  'canvas.layer.rename': 'Namn på lagret {name}',
+  'canvas.layer.isLocked': '{name} är låst. Lås upp lagret för att flytta det.',
+  'canvas.props.locked': 'Låst — måtten går att läsa men inte att ändra. Lås upp lagret i lagerlistan.',
   'canvas.grid': 'Rutnät 1 mm',
-  'canvas.hint.base': 'Dra ett lager för att ändra ordningen, eller håll Alt och tryck pil upp eller ner.',
+  'canvas.hint.base': 'Dra ett lager för att ändra ordningen, eller håll Alt och tryck pil upp eller ner. F2 byter namn på lagret.',
   'canvas.hint.group': 'Lagrens ordning är basens och ändras med basfliken vald.',
   'canvas.groupBy': 'Grupperas av kolumnen',
   'canvas.groupBy.none': '— ingen —',
@@ -245,6 +252,11 @@ export const svEditor = {
   'canvas.fit.fixed': 'fast storlek',
   'canvas.props.keepRatio': 'Behåll proportioner',
   'canvas.props.fill': 'Fyllning',
+  // Fyllning ur ett fältvärde (L16): växeln, kolumnen, och färgen för det som inte har en egen.
+  'canvas.props.fill.byField': 'Färg efter fält',
+  'canvas.props.fill.field': 'Fyll efter kolumnen',
+  'canvas.props.fill.rest': 'Övriga',
+  'canvas.props.fill.clear': 'Ta bort färgen för {value}',
 
   // Typsnitten spelet bär med sig.
   'fonts.title': 'Typsnitt i spelet',
@@ -321,6 +333,7 @@ export const svEditor = {
   'setup.counter.start': 'Startvärde för räknare {n}',
   'setup.counter.remove': 'Ta bort räknare {n}',
   'setup.counter.add': '＋ Räknare',
+  'setup.counter.stacks': 'En eller två räknare ligger bredvid varandra framför platsen. En tredje staplar platsens brickor i en hög, som bordet öppnar vid namn.',
   'setup.shared': 'Gemensamt på bordet',
   'setup.draw': 'en dold draghög',
   'setup.discard': 'en öppen kasthög',

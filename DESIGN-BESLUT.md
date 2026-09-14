@@ -141,6 +141,15 @@ Ordet verktyget lägger till om filen — `kort`, och `spel` när spelets namn i
 En engelsk läsare får alltså `skogens-herrar-cards.csv`, och ett namnlöst spel `game-cards.csv`.
 Det är samma gräns som i de två fallen ovan, sedd från andra hållet: där var det verktyget lämnar ifrån sig formgivarens, här är det verktyget behåller sitt eget.
 
+Genitiv, 2026-09-14 (#89):
+
+En ägandeform är grammatik och inte text, och därför bor den i språklagret.
+Katalogen skrev ändelsen för hand — `{name}s räknare` — vilket är rätt för `Ada` och fel för de två andra fall en plats namn kommer i: en enda bokstav eller en förkortning tar kolon före sitt `s` på svenska (`A:s`), och ett namn som redan slutar på s, x eller z tar ingenting alls (`Lars räknare`).
+En obesatt plats heter just `A`, så det felaktiga fallet var det filten visade oftast.
+Anropsstället kan inte avgöra det: det har ett namn och inget språk.
+Så ett meddelande *ber* om formen med `{name:s}` och språket svarar — svenskan med sina tre fall, engelskan med sina egna (`Ada’s`, `A’s`, `Lars’`).
+Regeln står i `possessive` i `packages/web/src/i18n/index.tsx`, ett svar per språk, och katalogerna skriver aldrig en ändelse själva.
+
 ---
 
 ## B. Domänmodellen
@@ -327,6 +336,40 @@ Wizarden ger varje plats en yta "Framför mig" som bara ägaren ser och en räkn
 Tre varianter prövades för telefonen; valet blev staplat: räknarna som piller under huvudet, bordsöversikten som förut, korten framför dig som en mindre remsa ovanför handen med vänd, ta upp och spela. Bordet ritar en räknare som en bricka med värdet.
 Arket och översikten erbjuder aldrig en annan plats privata yta, och aldrig en zon som bara håller räknare.
 
+Reviderat 2026-09-14 (#78, UX-33, prototypat och godkänt av produktägaren): verben ligger inte kvar i remsan utan i uppslaget.
+Remsan står kvar där C4 satte den, men kortet är en enda kontroll: ett tryck håller upp det, precis som ett tryck på ett handkort, och Vänd, Ta upp och Spela läses i uppslaget i full bredd och minst 48 px höjd.
+Måttet är vad som tvingade fram det: den renderade framsidan låg över hela kortet och därmed över dess tre knappar, så `elementFromPoint` mitt på "Ta upp" svarade kortets namn och ingen nådde knapparna alls; knapparna var därtill 32 px höga, och en bild utan storleksregel ritades i sin egen 630 × 880, vilket gjorde kortet 150 × 973.
+En 44 × 44-ruta räcker inte som svar — "Vänd ner" sätts då i 10 px över två rader — så verbet flyttade dit det får vara ett ord.
+Priset, uttryckligen accepterat: ett tryck till per verb. Vinsten: 3,9 kort syns vid 390 px i stället för 2,4, och remsans kort kan vara en kontroll utan att hålla en (UX-37, #82).
+Ansiktet är sedan dess en egen ruta i kortet — bilden fyller den, och väntan och förlusten ligger över ansiktet och aldrig över kontrollen.
+
+Reviderat 2026-09-14 (#89): en plats räknare ligger bredvid varandra upp till två och staplas vid tre.
+Regeln, delningen på 125 mm, högens ring och de förkastade alternativen står under K18, eftersom det som avgör dem är platsens egna 500 mm.
+
+Reviderat 2026-09-14 (#79, UX-34): telefonen får dra.
+Den tomma handen sa "Tom hand. Dra ett kort ur draghögen." medan telefonen inte hade någon väg att göra det: bordsöversiktens hög var ren text med ett antal, adresspanelen (#1) öppnas bara på ett kort som redan ligger i handen, och arket är för ett kort som redan lyfts.
+Skärmen bad alltså om något skärmen inte kunde göra.
+Översiktens hög är nu själva kontrollen: ett tryck lägger högens översta kort i platsens hand.
+Handens ord står kvar oförändrade, eftersom de nu är sanna som de står.
+
+Verbet är inget nytt.
+Det är exakt det filtens ring redan erbjuder på vilken hög som helst (K14) — `split` med `at: 1` och `to: hand:<plats>` — och på exakt samma villkor: en hög som har minst ett kort, och bara för en läsare som håller en plats.
+Att det erbjuds **per hög** och inte bara på draghögen är ett måste och inte en slarvighet: snapshotet säger inte vilken hög som är leken.
+`ZoneView` i `packages/protocol` bär `id`, `kind`, `name`, `shortcut`, `owner`, `geometry`, `dynamic` och ordningen eller antalet — ingen flagga för "det här är leken" — och `deckZone` bor i setupen på servern och reser aldrig med.
+Att vidga vokabuläret vore en protokollmigrering och ett eget beslut, och att gissa leken ur ett zon-id som `draw` vore koden som tyst avviker: en designer får kalla vilken zon som helst för leken.
+Vid wizardens bord blir det draghögen och kasthögen, vilket är precis vad den som står vid bordet redan kan göra med ringen på var och en av dem.
+Det är alltså ingen utvidgning av vad en spelare får göra, bara samma sak sagd på den skärm som frågar efter den.
+
+Brickan är en enda kontroll och inte en bricka med en knapp i sig (UX-37, #82).
+Verbet läses inne i brickan i dess egen bredd, hela brickan är träffytan — 89 × 48 px vid 320 px, långt förbi 44 × 44 — och dess uppläsning bär högens namn, dess antal och verbet utan en påhittad etikett.
+En knapp inuti brickan hade i stället varit drygt 69 px bred med ett brutet ord i sig, och hade brutit mot regeln att en kontroll inte får hålla en kontroll.
+Areor och golvet får inget verb; golvet är ingen bricka alls, som förut.
+Ordet är ringens eget, `kbd.verb.toHand` ("Dra 1 till min hand"): en handling, ett ord (A4).
+`ring.draw` ("Dra 1") återanvändes inte — på filten betyder det något annat, ett kort **bredvid** högen och inte in i en hand — och två ord för samma sak hade blivit två handlingar i läsarens huvud.
+Ett nej från bordet står vid den hög som trycktes, med ett eget svar som aldrig hamnar i arket (#7).
+
+Grinden är `table-summary.test.tsx` för villkoren per hög, `player-page.test.tsx` för att kortet hamnar i handen och loggen säger det, `status-refusal.test.tsx` för att nejet står vid högen, och `player-viewport.test.tsx` för träffytan vid 320 och 390 px.
+
 Byggt 2026-09-07: en zon kan bära en genväg (`shortcut`) med verbet telefonen visar och var i en hög kortet hamnar, överst eller underst; utan genväg visar telefonen zonens namn.
 Wizarden ger draghögen "Lägg underst" och kasthögen "Kasta". Editorns flik "Bord" redigerar namn och genvägar för varje zon som inte är en hand, med telefonens ark som förhandsvisning; sedan 2026-09-07 är fliken hela setup-editorn (B5).
 
@@ -369,6 +412,55 @@ Det senare läses som ett fel, det förra som en bildram, så kameran följer me
 Räckvidden är bordet plus det som är i spel, omarginalerat: marginalen runt spelet är luft och får beskäras vid kanten, så kameran driver aldrig ut i tomrummet bara för att ge plats.
 En zoomning är en vy och inte innehåll, och vidgar därför aldrig räckvidden: att zooma ut stannar vid bordet som förut.
 Följden är den invariant som mäts i renderaren: inget kort som kameran är riktad mot skärs av av ramen.
+
+Reviderat 2026-09-14 (#66): ramen tar inte emot.
+Träramen runt filten ritas i skärmpixlar utanför de millimeter ett släpp mäts i — 30 px vid varje fönsterstorlek — och är ingen yta ett kort kan ligga *på*.
+Ett släpp vars avgörande punkt, pekarens (K2, #74), ligger utanför filtens golv lägger kortet vid närmaste kant på filten: kortets vilorektangel skjuts den kortaste sträcka som får den att ligga hel innanför golvet, på alla fyra sidor och i alla fyra hörn, hur långt förbi träet släppet än sker.
+Inget kort kan hamna på en yta som inte är bordet genom ett släpp.
+Ett släpp på filten är oförändrat; kortet ligger där det släpps.
+Regeln bor i `keptOnFelt` och `ontoFelt` i `packages/web/src/table/drop.ts`, mätt i golvets egna millimeter och inte i skärmens pixlar, och ställs av varje släppväg: ett löst kort, flera kort dragna tillsammans som skjuts som en enhet så de behåller sina inbördes platser, en högs topp, en hel hög som färdas med sin mitt, en bricka (C4) i sin egen storlek, samt distansvyns `playedAt` (K17).
+Det som landar i en annan zon än golvet lämnas som det är: filten är golvets kant och ingen annans.
+
+Två vägar förkastades.
+Väg 1, att låta det vara och räkna träramen som en del av ytan: ommätningen efter #64 visade att ett kort släppt mitt på ramen skrävar över filtkanten — 19 % på filten, 65 % på ramen, 16 % utanför träet — och att ett kort skjutet längre ut hänger 62 % på den mörka omgivningen med 0 % på filten, vilket ser sämre ut i dag än när frågan ställdes.
+Väg 3, att låta filten växa tills ramen är smalare än ett kort, ströks: ramen var smalare än ett kort redan före #64, och eftersom den ritas i pixlar blir den aldrig bredare; var ett kort hamnar avgörs av punkten och inte av om kortet ryms på ramen, så #64 ändrade bara hur felet ser ut.
+Priset, uttryckligen accepterat: en avsiktlig placering strax utanför filten går inte längre genom ett släpp.
+
+Distinktionen mot handen står i K2 (#65) och är avsiktlig: en fläkt som ritas ut över ramen är fortfarande den handen, och ett släpp på den delen av fläkten är ett släpp i handen.
+Det som avgör är vad som ritas där man släpper: filt eller fläkt tar emot, trä gör det inte.
+Kamerans regel ovan står kvar oförändrad: en delning bredvid en hög vid kanten (K1, K15) kan fortfarande lägga ett kort utanför filten, och då följer kameran med ut; genom ett släpp finns inget sådant kort längre.
+
+Grinden är `drop.test.ts`, i båda lägena: ett släpp mitt på varje ramsida och långt förbi träet, i alla fyra hörn, för ett löst kort, en högs topp, en hel hög och en bricka; ett släpp på filten oförändrat; och distansvyns `playedAt`.
+
+Reviderat 2026-09-14 (#77, UX-32, prototypat och godkänt): **platsens kvartsvarv gäller bara där fönstret också ber om ett.**
+
+C5:s ordalydelse är att orienteringen följer platsen, och `/online` har läst det som att den egna kanten alltid läggs nederst.
+På en telefon kostar det ingenting: fönstret är stående, bordet liggande, och platsens kvartsvarv är samma varv som `turnToFit` (C8) ber om ändå.
+I ett liggande fönster ställer samma varv bordets långsida mot fönstrets korta, och då är det inte ett mindre bord utan ett obrukbart: mätt på den målade rutan i Chromium, på wizardens eget fyraplatsbord, var kortets kortsida vid en sidoplats **17 px vid 1280 × 800 och 29 px vid 1920 × 1080**, mot K9:s grind på 45.
+En bottenplats vid samma fönster fick 27 respektive 45 px — alltså ligger felet inte bara i vridningen, men vridningen är det som gör en sidoplats dubbelt så illa som sin granne.
+
+Beslutet: **en sidoplats vrids inte i ett liggande fönster.**
+Regeln är de två halvornas sammansättning och bor på ett enda ställe, `seatTurn` i `packages/web/src/online/seat.ts`, som är den enda ytan som behöver båda: halvvarven (en plats vid den bortre kanten) rör inte bordets form och står alltid kvar, och kvartsvarven behålls bara där `turnToFit` ber om ett kvartsvarv ändå.
+Efter ändringen ritas sidoplatsens kort i **31 px vid 1280 × 800 och 50 px vid 1920 × 1080**, samma som varje annan plats vid samma fönster.
+
+**Vilken kant som är din sägs i stället på bordet självt.**
+K9 ritar redan ett namnkort längs varje plats egen kant, vänt mot den som sitter där; det som saknades var att ett av dem är läsarens eget.
+Läsarens namnkort ringas därför i filtens eget bläck (`data-me` på `.byd-seat-name`, satt av renderarens `me`), som namnkortet med ditt namn på vid ett riktigt bord.
+Det gäller vid varje vridning och inte bara vid den uteblivna, eftersom en markering som bara finns ibland är en markering man inte lär sig läsa.
+
+Priset, uttryckligen accepterat: en spelare vid öst eller väst ser bordet från sidan i ett liggande fönster, och vet var hen sitter av sitt eget namnkort i stället för av att bordet vänts.
+Det är samma byte C8 gjorde åt observatören (#76), gjord åt en plats.
+
+**Den mätta tröskeln byggdes inte, och det är ett beslut.**
+Prototypen prövade en tredje väg — behåll platsens vridning där det vridna bordet ändå ger ett spelbart kort — och rättad för lutningen utlöstes den aldrig: det finns inget mätt fönster där en sidoplats kvartsvarv räcker till K9:s 45 px.
+Den degenererar därför överallt till den regel som nu står, och en regel som kan få ett större fönster att rita ett mindre kort är sämre än båda halvorna var för sig.
+
+**En regel om ett kort ställs till det ritade kortet och aldrig till skalan.**
+`skala × 63 mm` övervärderar med omkring 15 % vid filtens bortre kant, eftersom lutningen äter den; prototypens första svar behöll en vridning på ett "51 px"-kort som Chromium målade som 43.
+Varje mätning ovan, och varje grind i `online-felt.test.tsx`, läses därför av `getBoundingClientRect` på ett kort som ligger på filten.
+
+**13°-lutningen rördes inte.**
+Prissatt för sig kostar den omkring en pixel skala, och `feltScale` är redan lutningsmedveten och nära optimal; att spendera K9:s bord för att köpa pixlar köper inga.
 
 ### C6. Ångra: personlig ångra plus gruppens tillbakaspolning (fråga 18)
 
@@ -414,6 +506,46 @@ Aktören skickar en `roster` till alla vid varje förändring, så bordsskärmen
 Observatörens egen vy (`/observe`) är TV-vyn med allas händer utfläktade, en banderoll om vad hon är, och en enda knapp: Flagga.
 Anslutningssidan erbjuder "Bara titta" bredvid "Sätt dig".
 Vem som helst med rumskoden kan observera; det är G1:s öppna fråga om missbruk.
+
+Reviderat 2026-09-14 (#76, prototypat och byggt): **filten vänds ett kvartsvarv när fönstrets form inte är bordets.**
+
+Observatören är en spelaryta och ska hålla vid 390 och 320 (L12), och gjorde det inte.
+Ett landskapsbord som passas in upprätt i ett porträttfönster binds av fönstrets korta sida och lämnar den långa tom: vid 390 × 844 ritades golvet 272 × 182 px, kortets kortsida blev 15 px och fjorton etiketter låg i ett utrymme som rymmer fyra — femton par av dem på varandra.
+#6 gav henne en mobilvy men inte en filt som får plats i den.
+
+Beslutet är variant A, kvartsvarvet: bordet vänds så att dess långsida löper nedför skärmen och filten fyller bredden.
+Regeln läses ur de två formerna och skrivs aldrig ned per yta — ett fönster vars orientering stämmer med bordets ligger redan rätt — och bor i `turnToFit` i `packages/web/src/table/fit.ts`.
+Den är observatörens ensam: en plats egen filt vrids av var platsen sitter (C5), och bordets egen skärm är en TV som är landskap av konstruktion (K9).
+Ingenting döljs, ingenting kapas, och ingen ny gest införs.
+
+Priset, uttryckligen accepterat: observatörens bord läses vridet på en telefon och upprätt vid ett skrivbord.
+
+**Luften mellan filten och ramen var ett tal för två skäl.**
+`LEAST_AIR_PX` var 44 px i båda lägena och sade sig vara till för träramen — men `.byd-table-frame[data-mode='tv'] .byd-table-wood` har `padding: 0`, så i TV-läge finns ingen ram.
+44 px på var sida av ett fönster på 390 är 23 % av det, givet åt ingenting.
+Det som faktiskt bor i den luften på en TV är handräknarnas pill: de hänger förbi sin hand i skärmens pixlar och inte i filtens millimetrar, och mäter ungefär 18 × 22 av dem.
+Talen är därför två: `WOOD_AIR_PX` 44 i bordsläge, där filten ligger på sitt trä och träet står på mörkret och luften är bordets andel av rummet, och `TV_AIR_PX` 20 i TV-läge, som är ett pills bredd och inte mer (8 px kapade dem).
+Det är värt omkring en tiondel till i skala.
+
+Mätt efter hela ändringen, fyra platser med yta och räknare framför varje och två delade högar:
+
+| Fönster | Golvet före | Golvet efter | Kortets kortsida | Namnpar på varandra |
+| --- | --- | --- | --- | --- |
+| 320 × 568 | 210 × 140 | 239 × 358 | 12 → 20 px | 27 → 0 |
+| 390 × 844 | 272 × 182 | 331 × 496 | 15 → 27 px | 15 → 0 |
+| 768 × 1024 | 611 × 408 | 543 × 813 | 34 → 45 px | 0 → 0 |
+| 1280 × 800 | 624 × 417 | 692 × 462 | 35 → 38 px | 0 → 0 |
+
+Vid 768 blir golvets bredd mindre och kortet ändå större: bordet vänt fyller fönstrets långa sida, som är den som fanns.
+Vid 1280 vänds ingenting; de 68 pixlarna där är enbart luften.
+
+Grinden är `packages/web/test/observer-viewport.test.tsx`: vridningen som funktion och på skärmen, varje namn en gång vid varje fönster, ingen etikett under 12 px, varje ord upprätt genom vridningen, och varje hand och varje hög ritad innanför ramen med sitt pill helt inne i den — det sista är vad `TV_AIR_PX` finns för och vad som fäller talet om det skärs igen.
+
+**Kvar, känt och inte lagat här:** ett kort på filten kan inte ritas smalare än omkring 18 px.
+`.byd-pile-top` och `.byd-card` bär `padding: 7px` plus en kant i *skärmens* pixlar under `box-sizing: border-box`, så ett kort vars egna millimetrar är färre än så växer utanför sin egen fot och varje pixel av det är stoppning.
+Vridningen och luften lyfter observatören över den tröskeln på båda telefonerna: kortets kortsida var 12 px vid 320 och 15 vid 390, och är 20 respektive 27.
+Vid 320 är marginalen två pixlar, och det som bär den är skalan och inte regeln — så en filt som krymper igen möter kortens golv innan namnen möter sitt.
+De två deklarationerna i `table.css` står numera som en och säger det om sig själva; att laga det är en annan skivas sak.
 
 ### C9. Livscykel: persistenta bord med uttrycklig avslutning (fråga 25)
 
@@ -849,6 +981,28 @@ Följdkrav:
 Zonrektanglarna är direkt återanvändbara som spelplansunderlag vid tryck.
 En `slots`-zonkind kan läggas till additivt när ett riktigt spel kräver det.
 
+Reviderat 2026-09-14 (#65): den ritade solfjädern tar emot, hela.
+En hand är det enda zonslag som ritas som något annat än sin rektangel: en 60 mm remsa längs kanten (K18) under en fläkt av 75 mm höga kort, som är djupare än remsan och hänger ut förbi filtkanten över träramen (K9, #23, #84).
+Det man ser var alltså bredare än det som tog emot — omkring en tredjedel av varje ritad fläkt lade kortet löst — och det växer med filten i stället för att läka på en större skärm.
+Nu är fläktens utsträckning, `handExtent` i bordets egna millimeter, det som tar emot ett släpp till en hand, på varje kant och i båda lägena, också där fläkten ligger utanför filtkanten.
+Bilden är sanningen: ett släpp var som helst på den fläkt man ser lägger kortet i den handen, och ett släpp utanför fläkten gör det inte.
+Ett löst kort, en högs topp och en bricka frågar samma uppslagning, `dropAt` i `drop.ts`, så samma punkt ger samma svar vilken väg den än kommer in.
+Andra zonslag prövas som förut, mot sin rektangel.
+
+Följden, uttryckligen accepterad: en fri placering kan inte hamna närmare handen än fläktens kant.
+Remsan filt vid sidan av fläkten, som rektangeln förut gjorde till handens, är filt som all annan: ett löst kort släppt där landar löst, ända intill fläkten.
+En hand utan kort ritar ingen fläkt, och där säger remsan fortfarande var handen är, så att det första kortet går att lägga i den.
+
+Två alternativ förkastades.
+Fläkten men bara innanför filten hade lämnat omkring 30 % av den ritade fläkten död, vilket är exakt vad felet består i, bara mindre.
+Att rita om handen så att den håller sig i remsan hade gjort handen visuellt mindre och rört ett godkänt utseende (K9, #23).
+
+Distinktionen mot träramen (#66, väg 2: ramen tar inte emot något) är avsiktlig och ingen motsägelse; beslutet och dess skäl står under C5.
+Ramen är ingen yta man kan lägga ett kort *på*, och ett släpp på den lägger kortet vid närmaste kant på filten; men en hand som ritas ut över ramen är fortfarande den handen, och ett släpp på den delen av fläkten är ett släpp i handen.
+Det som avgör är alltså vad som ritas där man släpper: filt eller fläkt tar emot, trä gör det inte.
+
+Grinden är `drop.test.ts`: fläktens hörn, kanter, mitt och utsprång på alla fyra kanter, i båda lägena, för ett löst kort och för en högs topp; remsan bredvid fläkten som filt; en punkt strax utanför fläktens yttre kant som inte hand; den tomma handens remsa; och distansvyns `playedAt`.
+
 ### K3. Flera kort på en gång: atomisk batch i kuvertet
 
 `Envelope` bär `intents: Intent[]`.
@@ -1005,6 +1159,41 @@ Referensprototypen `packages/web/src/prototype/table-ref` togs bort när den had
 Filtens storlek är sedan 2026-09-13 inte en konstant: den följer antalet platser, och måtten och deras följd för läsbarheten på tre meters håll står i K18.
 Inpassningen och kameran rör sig inte av det — båda mäter filten de får — men bilden blir vidare när fler sitter vid bordet.
 
+Reviderat 2026-09-14 (#84, UX-39): solfjädern ankras i sin egen zon.
+Handzonen är 60 mm djup och kortet i fläkten 75 mm högt, och ytan framför platsen börjar tio millimeter innanför zonen, så en fläkt ritad kring zonens mitt når in i grannen: på TV:n, där ingen fläkt vrids mot sin kant, låg B:s tre kort och brickan "3" i `Framför B`.
+C5 låter kameran skära en hand; inget låter en hand skära en grannzon.
+Regeln är den minsta: fläkten skjuts mot kanten exakt så långt att dess räckvidd tvärs zonen ryms innanför zonens inre kant, och inte en millimeter längre.
+En fläkt som redan ryms — varje vriden hand i bordsläge, sydplatsen i båda lägena — ligger kvar där den alltid legat, och det som hänger utanför kanten håller bordet som förut (#23).
+Vilket håll kanten ligger åt är zonens fråga och inte ritningens: varje fläkt på TV:n vänder sig mot betraktaren och sitter ändå vid sin egen kant.
+Räckvidden tvärs zonen är kortens vridning, inte en läst fläkts steg, som löper längs zonen.
+Brickan är fortfarande en etikett i pixlar som hänger utanför kanten i luften ramen lämnar, men på kantens sida av fläkten: under den som förut, utom när kanten ligger ovanför fläkten som den ritas — TV-lägets nordplats — där den hänger över fläkten i stället.
+Kortets kant i fläkten ritas innanför sin ruta: en baksida växte fyra pixlar utanför de millimeter fläkten mäts i, och på TV:ns skala var det elva millimeter.
+Det förkastade alternativet, att wizarden lägger handzonen med det djup fläkten behöver, hade flyttat varje sparat bord och rört K18:s mått för en ritningsfråga.
+Det som står kvar är observatörens TV (C8): en läst fläkt vid en sidoplats sprids tvärs sin zon och ligger kvar som förut, för att skjuta ut den med hela sin bredd hade hängt den en tredjedels meter utanför kanten och krympt hela bordet; hur en sådan fläkt ska ligga är en egen fråga.
+Var ett släpp landar följer sedan 2026-09-14 fläkten som den ritas och inte zonens rektangel; se K2 (#65).
+
+Reviderat 2026-09-14 (#77): **luften kring träet är 12 px i bordsläge, och K9:s 45 px når inte ned till 1280 × 800.**
+
+`WOOD_AIR_PX` var 44 px och sades vara bordets andel av rummet det står i.
+Men `feltScale` projicerar *träets* hörn, träramens 30 px inräknade, så inget av bordets egna möbler ritas utanför de pixlar luften räknas från; det enda som bor där är handens räknarpill, och den bärs redan av ramen.
+Kvar står luften som det mörker bordet står på och ingenting annat — samma sak #76 upptäckte i TV-läge, där talet gick från 44 till 20 av samma skäl.
+Tolv pixlar är en strimma mörker som håller träet från fönsterkanten; under det är skuggan under träet det enda som finns kvar att förlora, och den är utsuddad förbi kanten ändå.
+
+Mätt på wizardens fyraplatsbord, på den målade rutan i Chromium, på `/online` med bandet och listen kvar som rader: kortets kortsida går **från 27 till 31 px vid 1280 × 800 och från 45 till 50 px vid 1920 × 1080**, och filten från 525 × 338 till 615 × 394 respektive från 909 × 581 till 998 × 635.
+Ingenting ges upp för det. Träramen är orörd: en smalare ram köper två pixlar till och rör ett godkänt utseende, och det bytet gjordes inte.
+
+**Det som inte gick att laga, mätt och uppskrivet.**
+`/online` vid 1280 × 800 når 31 px och inte K9:s 45, hur bordet än vänds.
+Räkningen är entydig och står här för att den inte ska behöva göras om: sidan är tre rader (#25) — platsens list 61 px, filtens rad, och handens band 218 px vid K17:s läsbara kortstorlek — och för att ett kort på filten ska nå 45 px vid 1280 × 800 måste filtens rad vara omkring 695 px, alltså får kromet väga omkring 105 px tillsammans.
+Bandet ensamt är 218.
+Även med luften och ramen satta till noll stannar filtens rad på ett kort omkring 41 px.
+Prototypens 48–52 px vid det fönstret köptes genom att lägga bandet **över** filten, där det täckte den närmaste platsens hand och ytan framför den — och det är precis det som inte får skeppas.
+
+Grinden i `online-felt.test.tsx` säger därför två olika saker vid de två fönstren: 45 px vid 1920 × 1080, som är K9:s tal, och 30 px vid 1280 × 800, som är ett golv som inte får ges tillbaka.
+Att K9:s 45 px och K17:s band inte kan hålla samtidigt vid 1280 × 800 är en öppen fråga och står i avsnitt I; #77 stänger den inte.
+
+Samtidigt mäts att ingenting ritas över någonting annat: varken handens band, platsens list eller sessionens knappar rör filten eller en zon på den, vid 1280 × 800 och vid 390 × 844, för en sidoplats och för en bottenplats.
+
 ### K10. Telefonvyns utseende: remsan (prototypat 2026-09-06)
 
 Tre prototyper: remsan, ett kort i taget i fullskärm, och minibord med brickor plus handen i rutnät.
@@ -1101,6 +1290,30 @@ Samma fil sätter långa namn på både öst- och västplatsen på fyra-, fem- o
 Samma fil läser åtta vanliga förnamn bokstav för bokstav ur pillren på ett åttaplatsbord — inget kapas — och håller två-, tre- och fyraplatsbordet mot de mått `origin/main` ritade dem med.
 Prototypen `packages/web/src/prototype/seats` togs bort när den hade svarat; dess resonemang står här, och dess bilder i `docs/issues/42-valjare-*.png`.
 
+Reviderat 2026-09-14 (#80, UX-35, prototypat och godkänt av produktägaren): platsens bokstav står på pillret.
+En ledig plats sa bara "ledig", så på skärmen skildes platserna åt av färg och läge och ingenting annat.
+Bokstaven fanns i den upplästa etiketten ("Plats C, ledig") och i rubriken ("Plats A vald"), men den som ville ha plats C hade inget att sikta på.
+
+Tre former prototypades. Valet blev **C — bokstaven över ordet**: pillret blir två rader, bokstaven överst och ordet under — "ledig" på en ledig plats, namnet på en tagen.
+Bokstaven ritas i båda tillstånden och på samma höjd i vart och ett, så den som sätter sig ändrar vad pillret säger och aldrig vilken form det har.
+Bredden rörs inte, så kapningen från #42 och #52 står exakt där den stod.
+Uppläsningen ändras inte heller: `aria-label` sa bokstaven först redan förut, så bokstaven och ordet på skärmen döljs för läsaren i stället för att läsas upp en andra gång efter den.
+
+Två kostnader kom med formen, och båda ligger i css:en.
+Pillret lägger sina två rader *tvärs* över sig i stället för längs, så namnets `<span>` blir lika brett som sin egen text hur smalt pillret än är: `text-overflow` såg inget att kapa, knappens egen `overflow` klippte i stället, och eftersom pillret centrerar det det bär klippte den i båda ändar — `Bartholomew Longbottom` kom tillbaka som ett annat namn utan något som sa att det var kapat, alltså precis felet #42 skrev sin kommentar emot. `max-width: 100%` håller spannet till pillrets bredd och prickarna hamnar där namnet verkligen tar slut.
+Pillret blev också 52 px högt i stället för 44 — de 44 var aldrig en höjd utan tummens golv — och räcker därmed 26 px in på filten i stället för 18, vilket åt upp 8 px i vart och ett av hörnen och gjorde dagern till en överlappning på just så mycket.
+Aritmetiken ovan vändes därför om i stället för att lappas: pillrets höjd och minsta bredd är egna namn (`--byd-seat-h`, `--byd-seat-w`), steget tvärs över änden är det enda valda talet — det är taket ett vanligt förnamn behöver — steget ned längs sidan följer på skillnaden mellan pillrets bredd och höjd, och filtens höjd skrivs ur dem och ur pillret.
+Den delade filten kommer därmed ut som 260 × 220 px bakom ett 52 px piller, precis som den kom ut som 260 × 200 px bakom ett 44 px piller, utan att någon behöver minnas att räkna om.
+Minsta bredden är ett tal och inte "så brett ordet nu blir", eftersom luften mellan två platser mäts ur den: ett piller lika brett som sitt eget "ledig" är ett mått på en Mac och ett annat på en Linux-körare, där `system-ui` är ett helt annat typsnitt.
+
+Ordet ritas svagare än bokstaven över det, och hur mycket svagare är inte en smaksak: att släppa igenom underlaget är att betala kontrast, och båda raderna är text och bär AA (UX-KONTROLLER).
+Platserna har olika mycket att betala med. `#3c8ce7` är den mörkaste av dem; bläcket står 5,57:1 helt, en femtedel igenom blir 4,45:1 och en tiondel 5,00:1.
+Ett taget piller har ingenting att betala med alls — det ritas redan i den dämpade grå en avstängd kontroll bär, 5,35:1 mot sin egen grå botten — så där ritas ordet helt.
+Det är dessutom rätt väg: ordet på ett ledigt piller är "ledig" och är utfyllnad bredvid bokstaven, medan ordet på ett taget piller är någons namn och är allt det pillret har att säga.
+
+`join-layout.test.tsx` läser bokstaven ur det som verkligen ritas inuti pillret på två-, fyra-, sex- och åttaplatsbord, och mäter att bokstavens rad ligger över ordets och på samma höjd oavsett om platsen är ledig eller tagen.
+Samma fil mäter blandningen varje rad verkligen ritas i — färgen lagd över pillret med sin egen genomskinlighet — mot pillrets botten, och håller båda raderna vid AA på både en ledig och en tagen plats.
+
 ### K13. Ångra och tillbakaspolning: förhandsvisning på bordet, beslut på telefonerna (prototypat 2026-09-06)
 
 C6 gav principen; det här är hur den blir konkret.
@@ -1159,6 +1372,10 @@ Hur långt ringen når från sin mitt står som ett tal i `ring.ts` och som en c
 Bordsläget lutar bordet (`rotateX` under perspektiv), så pekaren projiceras exakt tillbaka på bordsplanet; matten ligger i `geometry.ts` med test.
 Att dra översta kortet ur en dold hög och släppa det på ett löst kort, och att vända översta kortet i en dold hög, gick först inte: tråden ger inget id. Löst i K15 genom att högen adresseras i stället för kortet.
 Under ett tillbakaspolningsförslag (K13) är bordet inte spelbart.
+
+Följdkrav (#87): det som Dra 1 och Dela på hälften lägger bredvid högen landar på högens vänstra sida, i högens egen vridning — den enda sida som varken namnet under högen eller antalsbrickan i dess övre högra hörn ligger på.
+Punkten i intentet är den nya högens mitt, men en hög med ett kort är ingen hög (K1) utan ett löst kort med sitt hörn i punkten; ett ensamt kort placeras därför efter sitt hörn och en hög efter sin mitt, i `besidePile` i `drop.ts`.
+Grinden är `table-layout.test.tsx`: wizardens bord för åtta vid TV:ns egen ruta, i båda lägena och med högen vriden, där kortet varken täcker namnet, brickan eller pillret.
 
 Reviderat 2026-09-12: ringen håller verb och inget annat.
 Den bar också en **Stäng**, som beslutet aldrig räknade upp och som tog en plats i cirkeln där varje annan plats gör något.
@@ -1312,6 +1529,13 @@ Grindarna är invarianter och inte tal, mätta vid 3, 13 och 21 kort och vid 390
 Byggt 2026-09-08 (#24, #25). Prototypen `packages/web/src/prototype/band` togs bort när den hade svarat; dess resonemang står här.
 Tre frågor som prototypen väckte och som produktägaren inte svarade på är avgjorda av implementationen och står i avsnitt I.
 
+Reviderat 2026-09-14 (#77): **antagandet att ett helt bord ryms i 390 px är brutet, för varje plats och inte bara för sidoplatser.**
+K17 lade bandet på en telefon och räknade fram att 358 px rymmer åtta träffytor, men mätte aldrig vad som blir kvar åt filten ovanför det.
+Prototypen till #77 gjorde det: det bästa någon variant når på en telefon är **23 px** över kortets kortsida, vridet eller ej, mot K9:s 45.
+Ett helt fyraplatsbord får alltså inte plats på en telefon vid en spelbar kortstorlek, och ingen vridning och ingen omfördelning av kromet ändrar det.
+Vad man gör åt det — en kamera som TV:ns (C5), eller att uttryckligen säga att ett kort på telefon läses genom INSPEKTION (K8) och inte på filten — är ett eget beslut och står som öppen fråga i avsnitt I.
+Därför finns ingen grind i sviten som påstår 45 px vid 390: ett tal som inte går att hålla är inte en grind utan en lögn som går sönder nästa gång någon mäter.
+
 ### K18. Filten växer med sällskapet (2026-09-13, #54)
 
 Filtens storlek följer antalet platser.
@@ -1368,6 +1592,44 @@ Kortets kortsida i TV-lägets ram, mätt i Chromium på `TvChrome`s egen `main` 
 Men TV-läget är till för en TV, och på 1920 och på 4K står åttaplatsbordet på 40 respektive 89 px — mer än vad fyraplatsbordet hade på den skärm som var för liten från början.
 Att läsa ett enskilt kort är dessutom INSPEKTION:s uppgift och inte filtens (K9): det kortet ritas i panelens egen storlek och bryr sig inte om hur stort bordet är.
 Ett åttaplatsbord på en liten skärm är alltså mindre läsbart än ett fyraplatsbord, och det är en följd av att bordet är större och inte av att något är fel.
+
+Reviderat 2026-09-14 (#89): en plats räknare glesar ut sig till två och staplas vid tre, inom samma 500 mm.
+Frågan var hur två eller tre räknare på samma plats får var sin träffyta på 44 × 44 px, och svaret ändrar inte en millimeter utanför platsen.
+En plats med **en eller två** räknare lägger brickorna längs sin egen kant med en delning på 125 mm: räknarzonen växer längs rimmet och `Framför` krymper lika mycket, 365 mm vid en räknare och 240 vid två.
+En plats med **tre eller fler** staplar dem i en hög: högen är en träffyta, zonen går tillbaka till en delning, och `Framför` är 365 igen.
+
+Delningen är mätt och inte vald.
+En träffyta är 44 × 44 px på den **projicerade** lådan (#67), och vid det trängsta bord produkten stöder — sju eller åtta platser på 1280 × 800 i bordsläge, där filten ritas med 0,443 px per millimeter och den bortre kanten lutar bort därtill — täcker den rutan 107,4 mm filt.
+TV-läget vid samma bredd vill ha 103,6 mm, och varje bredare skärm mindre.
+125 mm är nästa runda tal som klarar den bredaste avläsningen på båda sidor, och lämnar ungefär nio millimeter luft vid vardera kanten av brickans egen ruta.
+Talet står som `COUNTER_PITCH_MM` i `packages/server/src/recipe.ts`, med härledningen bredvid sig.
+
+**Den verkliga rättelsen är att brickan står mitt i sin ruta**, inte att zonen växer.
+Receptet la varje bricka 8 mm från zonens hörn, och eftersom träffytan är fyra gånger så bred som brickan under den låg den 20 mm inne i ytan framför spelaren — vid varje platsantal, vid varje skärm, utan att ett endaste par av ytor överlappade för att säga det.
+Prototypens viktigaste fynd var alltså att issuets egen grind inte räckte: med **en** räknare per plats var antalet överlappande par noll överallt, medan ytan i bordsläge vid 1280 × 800 och åtta platser låg utanför sin egen zon i 8 fall av 8 och inne i en grannzon i 12.
+Grinden räknar därför både par och zonutträden och skriver ut båda talen, och den står i `packages/web/test/counter-zone.test.tsx`: varje platsantal 2–`MAX_PLAYERS` gånger en till fyra räknare gånger båda lägena gånger tre skärmar, mätt på renderarens egen `.byd-token-hit` med `getBoundingClientRect()` och aldrig på den satta storleken.
+
+De förkastade, med sina mätta skäl:
+**A**, att räknarzonen växer och K18:s kuvert betalar, gör platsen 840 mm lång och filten 2480 × 2080 mm vid åtta platser — och eftersom en större filt ritas i mindre skala står 16 överlappande par kvar vid 1280 × 800 med tre räknare, kortets kortsida faller från 27 till 18 px, och den bryter K18:s egen zongrind med ett överlappande zonpar redan vid sin egen delning på 150 mm.
+**B med tre räknare** krymper `Framför` till 115 mm, och ett kort är 63 mm brett, så ett andra spelat kort lägger sig över räknarzonens första bricka; vid en och två räknare är `Framför` 365 respektive 240 mm och det problemet finns inte.
+**Nuläget**, 32 mm delning i en zon på 110 × 100 mm, ger 204 överlappande par över hela svepet och faller som sagt redan med en ensam bricka.
+
+Priset, uttryckligen accepterat: **en plats räknare byter form när en tredje läggs till**, och editorn säger det där antalet väljs.
+Högen kostar därtill ett tryck till per räknare som inte ligger överst, och att två värden av tre inte står på filten förrän ringen öppnas — på ett bord som ska läsas på tre meters håll (K9) är det ett verkligt tapp, och det är därför det betalas först vid tre och inte vid två.
+Vägen in i högen är ringen (K14): högens ring har en knapp per räknare med namnet och värdet på knappen och antalet i navet, och den knappen öppnar brickans egen ring, som är `counterActs` rakt av — `−1 · +1 · Sätt värde…`, samma verb renderarens ring redan ritar.
+En hög är ett läge och inte ett verb: brickorna ligger på samma punkt, klienten ritar dem som en hög, och loggen hör bara det `move` en bricka alltid har färdats med.
+
+**Siffran i brickan skalas med brickan och med sin egen bredd**, och `CHIP_MM` rörs inte.
+En siffra satt i fasta tolv pixlar ryms i en bricka som ritas i fyrtio och målar rakt ut genom konturen på en som ritas i tretton — vilket är vad åtta platser på 1280 × 800 ritar — så ett tvåsiffrigt värde bröt brickans egen kant på varenda plats.
+Ordningen är: siffran tar en andel av brickans diameter, och den andelen delas med den bredd värdet självt behöver, eftersom `-120` — tre siffror och ett minus, det bredaste en räknare någonsin bär — måste rymmas i samma bricka som `0`.
+En bricka som också bär sitt namn ger siffran mindre, därför att de två staplas.
+Det förkastade alternativet var ett golv i pixlar under brickan: det hade gjort en räknare till en annan storlek än allt annat på filten vid just de platsantal där utrymmet är knappast, och det hade flyttat de träffytor `counter-zone.test.tsx` mäter.
+Priset, uttryckligen accepterat: vid de trängsta borden är brickan en prick och dess siffra en pricks siffra — värdet läses exakt i ringens nav, som ritar det i 24 px, och i räknarpanelen, vilket är samma delning K18 redan gör mellan filten och INSPEKTION.
+Regeln står som `tokenInkPx` i `packages/web/src/table/TableRenderer.tsx` med härledningen bredvid sig, och grinden är `packages/web/test/counter-ink.test.tsx`: varje platsantal 2–`MAX_PLAYERS` gånger båda lägena gånger tre skärmar, med ett tresiffrigt och ett negativt värde bland brickorna, mätt med `getBoundingClientRect()` i Chromium som andelar och aldrig som pixlar.
+
+Sparade bord lyfts på samma sätt som filten lyfts ovan, och bara de som måste: en plats vars räknarzon är kortare än brickorna i den behöver blir utlagd på nytt nästa gång receptet vrids, och `Framför` med den, eftersom de två delar på platsens 500 mm.
+En zon som designern själv har gjort rymligare än brickorna ber om är hens och lämnas i fred, precis som filten.
+Ett bord som redan står på ett bord — en pågående session — rörs inte alls: brickornas platser ligger i loggen och spelas upp som de skrevs, och det är först nästa gång ett bord byggs ur projektet som brickorna ställs mitt i sina rutor.
 
 **Vad den här skivan inte löser.**
 #42 försvinner inte: `edgeOf` ger fortfarande A och E samma kant, så väljaren måste fortfarande sprida paret längs kanten själv.
@@ -1501,6 +1763,39 @@ Det trängsta avståndet som beror på hur långt ett namn är, är 3 px (sex pl
 
 De 3 pixlarna ovan är 2,0 % av namnets bredd, och det visade sig vara hela buggen.
 Vad filten skriver med är därför inte längre maskinens fråga: se K20.
+
+Reviderat 2026-09-14 (#76): **ett namn ligger heller aldrig på en högs antalsbricka, och en filt som är mindre än sina egna namn sätter dem på sitt eget sätt.**
+
+Regeln var skriven om namn mot namn.
+En hög har två etiketter och båda undantogs: namnet ligger under högen, fritt från allt, och brickan räknades som namnets andra halva.
+Men brickan är det enda på filten som ritas *utanför sin egen fot i skärmens pixlar* — `right: -14px; top: -14px` och 30 × 30 px, hur liten högen än är.
+På en filt av en telefons storlek är högen 26 × 19 px och brickan sticker ut en fjärdedel av vägen tvärs över bordet, rakt in i den plats en sidokants namn har.
+Så när observatörens filt vändes (C8, #76) återstod två krockar vid 390 och sex vid 320: fyra av de sex var en plats namn på kasthögens bricka, och de två sista var två platser mitt emot varandra som möttes på samma rad i mitten — samma trängsel, sedd från andra hållet.
+
+Utvidgningen har två halvor, båda i regelns egen anda: **det som är högens ritas på högen, och det som är en plats ritas i platsens egen halva.**
+
+**Brickan sitter på sin hög.**
+Den är centrerad över högens överkant i stället för att hänga ut ur dess hörn: den täcker kortet som förut, men står inte längre någonstans där högen inte är.
+Det är samma sak C5 (#66) sade om träramen — en yta som inte är bordet är ingen yta att ligga på — sagd om en etikett i stället för om ett kort.
+
+**En filt som är smalare än sina namn sätter dem tätt.**
+Under 460 px tvärs över läsarens bild — `TIGHT_FELT_PX` i `TableRenderer.tsx` — gäller två ting till.
+Talet är `table.css`:s eget, det som redan döljer den spelade filtens namn, men mätt på läsarens bild i stället för på filtens egen bredd: filtens låda behåller golvets form och vrids efteråt, så en containerfråga på den mäter bildens andra sida.
+Därför är det renderaren som svarar och inte arket.
+Typen sätts i filtens tätaste: 12 px och ingen spärr, i stället för 13 px och 1,5.
+Spärren ensam är en sjättedel av namnets bredd — samma femtedel K19 tog ur bordsläget ovan — och utan den är `Räknare A` 62 px i stället för 76, vilket är vad som gör att två platser mitt emot varandra på en telefon båda får säga sina namn.
+Och vid öst- och västkanten står namnet **ovanför sin egen zon i stället för bredvid den**, förankrat i den ände som vetter mot kanten och växande inåt, så att det stannar i sin egen halva av filten.
+Bredvid zonen växer det från zonens inre kant mot mitten, där de delade högarna står; på en filt så här liten når den räckvidden förbi mitten och möter både brickan och namnet från platsen mitt emot, som kommer andra vägen.
+Ovanför sin egen zon når det bara halva den sträckan, och de två platserna mitt emot varandra delar inte längre rad alls.
+
+Varför just en tröskel och inte en regel för alla filtar: bredvid zonen är rätt överallt annars och mätt så.
+Vid åtta platser i bordsläge ligger platsens namnkort längs kanten (K9), och ett namn som flyttas upp mot kanten landar på det; vid fem och sex platser når ett namn förankrat vid kanten längre in än ett förankrat vid zonen och möter draghögen.
+Tröskeln är alltså inte en smaksak utan gränsen mellan två geometrier: över den är kanten trång och mitten vid, under den tvärtom.
+I praktiken är det bara observatörens telefon som kommer dit — den spelade filten döljer redan sina namn vid samma mått, eftersom det den behöver läsa där är antalet och formen och namnen står en knapptryckning bort i spelarket, och bordets egen skärm är en TV.
+
+Mätt på observatörens filt, fyra platser med yta och räknare framför varje, två delade högar och något i varje hand: 15 par vid 390 och 27 vid 320 före, noll vid båda efter, och noll också när varje namn ritas 15 % bredare.
+De 102 scenerna i `felt-names.test.tsx` — bordsläge vid varje platsantal och varje kvartsvarv, TV:n och Bord-fliken — är oförändrade.
+Minsta etikett är 12 px, som den alltid varit.
 
 ---
 
@@ -1801,7 +2096,7 @@ Ett sparande som krockar med någon annan lämnar inte editorn: konflikten sägs
 Sparat eller osparat står i huvudet som ord och som färg, i en `role="status"`, så att bytet både syns och sägs.
 
 Radering av ett kort från radens × frågar först, med samma ord och i samma remsa som åtgärdsradens massborttagning, och namnger kortet i stället för att räkna det.
-Editorn har ingen ångra-stack; bekräftelsen är därför skyddet, och en ångra-historik över projektet är ett eget beslut.
+Bekräftelsen är skyddet före en radering, och den står kvar även sedan editorn fick en ångra-stack (#35, L14): en fråga som ställs innan kortet försvinner är billigare än ett kort som försvann och ett tangentbord som ska hitta tillbaka.
 
 Varje fråga editorn ställer före något som inte kan tittas på efteråt är en och samma komponent, `Question` (#17, #19, #8): en remsa där handlingen begärdes, som tar fokus, svarar på Escape och lämnar tillbaka fokus, och som aldrig fångar tangentbordet.
 Frågan öppnar alltid på ett svar som inte förlorar något: "Spara och lämna" när det finns ett sådant, annars "Avbryt".
@@ -1970,7 +2265,130 @@ Det är en känd avvikelse och inte ett förbiseende.
 Under skrivbordet har wizardens steg `Korten` två element med primärvikt i samma vy: sidfotens "Skapa spelet och fortsätt i editorn" och stegnavigeringens "Nästa", där den senare bara finns på smal skärm.
 Enligt L12 granskas och mäts wizarden vid skrivbordsbredder, så detta är per beslut och inte ett fynd — men det står här i stället för att vara tyst.
 
+Reviderat 2026-09-14 (#90): filten är ett rum med en egen accent.
+Filten var ingen av L13:s ytor, och #67 band `.byd-table` i förbifarten därför att den behövde en enda knapp — den som behåller en räknares nya värde — och band den till kontots gröna.
+Sex tokens, teckenidentiska med `.byd-player`:s: filten fick alltså ingen accent, den lånade rummet bredvid, och det är precis det den här punkten fanns för att stoppa.
+Prototypen (`the-felt-answers-two-questions` @ `9631732`, fyra positioner, 96 mätpunkter och 1 248 knappar mätta på de målade bildpunkterna) kallade den bindningen position B, fattad utan att sägas, och beställaren har ersatt den med ett val.
+
+Filten binder de tre rollerna till brickans bärnsten `#f0b64a` med `#1c1c1c` som bläck, och till filtens egen kritfärg `#f3e9d6` som linje och som bläck för det kantade och det valda.
+Den gröna kan inte vara accenten, eftersom den gröna är *grunden*.
+Båda de valda färgerna ligger redan på filten — bärnstenen på varje räknarbricka, kritfärgen i varje högs antal — och båda läses redan på tre meters håll (K9), så rummet får en accent det äger utan att någon ny färg uppfinns.
+Priset är att bärnstenen får två betydelser, "en räknare" och "första handlingen", och det är medvetet.
+
+Ringens skivor tas in i rollernas färger men behåller sin platta.
+En kantad skiva som landar på ett kortansikte mäter 1,22:1, och kortets ring öppnas per definition på ett kort, så plattan är det som gör en skiva läsbar var som helst på filten: rollen bestämmer kulören, inte formen.
+Ringens kant var en avvikelse som rättades på vägen: `#3b4358` klarade inte 3:1 mot någon grund alls, 72 fall av 72, mellan 1,01 och 2,72:1.
+Den är nu två linjer, kritfärgen med filtens mörkaste ton `#0d0f14` som ring strax utanför, eftersom ingen enskild färg kan klara 3:1 både mot ett nästan svart omland och mot ett blekt kortansikte.
+
+Två saker på kortets ring rättades när den granskades på ett kortansikte, och båda är ringens egen styrning.
+**En skiva som inte är tillgänglig är fortfarande en skiva.**
+`opacity: 0.35` tonar hela elementet på en gång — plattan, bläcket och båda linjerna i kanten — och på ett blekt kortansikte blev skivan en grumlig fläck utan gräns: 1,39:1 för ordet och 1,98:1 för kanten, alltså slutade den säga just det den skulle säga, att verbet finns men inte går att få.
+Det som är otillgängligt sägs därför medvetet i stället: plattan förblir ogenomskinlig men tappar sitt djup (`#2d2f35`, plattan med en tiondel krita i), kritan gnuggas 60 % in i plattan (`#9b968e`), båda kantlinjerna lämnas orörda — var en skiva slutar beror inte på om den går att trycka på — och skivan slutar stå ovanför filten: två linjer kvar, lyftet borta.
+Ordet mäter 4,5:1 mot samma ords 14:1 när det går att trycka på, och grinden för en otillgänglig kontroll är **3:1**, inte L13:s 4,5:1: WCAG 1.4.3 undantar en inaktiv kontroll helt, och det undantaget var precis den licens `opacity: 0.35` tog, men en ring läses på tre meters håll (K9) och den läses *som en lista* — den som inte kan tyda det gråa verbet vet inte vilket verb hen inte erbjuds, och ett hål i ringen är värre än ett svagt ord i den.
+**Ringens mitt är det ringen handlar om, så där ritas ingenting.**
+`.byd-radial::before` lade en genomskinlig grå skiva, `rgba(23, 26, 35, 0.55)`, mitt i ringen, och kortets ring har ingen nav — så den låg rakt ovanpå kortet vars verb valdes: kortets eget bläck mätte 3,66:1 genom den där det mäter 13,19:1 utan den.
+Den enda ring som vill ha en platta i mitten är brickans, och den har redan en: navet, ogenomskinligt just därför att filten inte kan säga vad en bricka är (#67).
+En platta i mitten är alltså vad ringen handlar om när filten inte kan rita det själv, aldrig en ton över det filten redan har ritat.
+Tillagt 2026-09-14 (#89): navet står ovanför filten som skivorna det håller ihop, med samma två linjer — den nästan svarta ringen som säger var det slutar och skuggan som lyfter det — eftersom en mitt som ligger plattare än allt den ankrar läses som ett hål i filten och inte som ringens mitt; det är allt navet tar från en skiva, för det är ingen kontroll och behåller `pointer-events: none`.
+
+De tre förkastade positionerna, med talen:
+**B**, att låna spelarens rum, faller på att språkets delade sekundärlinje `#6f7a90` mäter 1,60:1 på det gröna och 4,06:1 på TV:ns mörka filt — den går alltså igenom just där grunden inte är grön, vilket betyder att en grind som bara mäts i TV-läge godkänner en felaktig bindning.
+Därför mäts filten i **bordsläge**, och det är det kravet som är den egentliga lärdomen.
+**C**, att låta filten stå utanför språket som `status.css`, mätte sämst av alla fyra (96 fall): dialektens platta `#171a23` är samma färg som TV-filtens `#151924`, och utan kantad form kan räknarens ark inte rita sina två vägar ut som ett par.
+**N**, nuläget, är själva felet.
+
 `button-language.test.tsx` mäter allt ovanstående i Chromium på varje yta monterad vid sin egen rutt, och `button-language-contrast.test.ts` mäter varje färg språket föreslår mot den yta den landar på.
+Filten mäts inte som de andra fem, eftersom den inte har någon grund att läsa ur en deklaration: det gröna är en `radial-gradient`, träramen en `linear-gradient`, omlandet en tredje, ett kortansikte en `hsl()` ur kortets egen färgton och ringens skivor ligger ovanpå vilken som helst av dem.
+Grunden samplas därför ur de målade bildpunkterna (`packages/web/test/painted.ts`) och en grund redovisas som tre toner — den mörkaste tjugondelen, mitten och den ljusaste — så att en färg måste hålla sin gräns mot hela ytan och inte mot en lyckad bildpunkt.
+
+### L14. Ett grepp är ett steg tillbaka (2026-09-14)
+
+En ångring tar tillbaka en sak designern gjorde, inte en bildruta av den.
+En förflyttning på duken är ett grepp om pekaren, och pekaren rapporterar det en gång per bildruta.
+Varje bildruta blev ett eget steg på stacken, så vägen tillbaka från en flyttad rubrik var trettio tryck på Ctrl+Z — och varje tryck flyttade den en tredjedels millimeter, vilket läses som att ingenting händer.
+Ett ord skrivet i en cell hade samma fel: tabellen skriver ett värde per tangenttryck, så bokstäverna kom tillbaka en i taget i ett fält designern redan hade lämnat.
+
+Beslutet: en redigering kan bära en polett som säger vilket grepp den hör till, och redigeringar med samma polett delar ett steg på stacken.
+Poletten görs där greppet börjar — ett nytt nummer vid varje `pointerdown` på duken, ett nytt varje gång en cell tar fokus — så ett andra grepp om samma element är ett andra steg, och att komma tillbaka till samma cell är ett nytt.
+En redigering utan polett är en hel förändring i sig, precis som förut: egenskapspanelen, piltangenterna, verktygsraden, allt som görs med ett tryck.
+Ett steg bakåt eller framåt stänger det grepp som står öppet, så nästa bildruta av en pågående dragning aldrig kan lägga sig på ett steg designern just tagit av stacken.
+
+Motivering:
+Stacken är femtio steg djup, och den siffran är bara sann om ett steg är något designern kan känna igen.
+En enda dragning kunde annars trycka ut hela historien framför sig, så priset var inte bara många tryck utan resten av ångra-historiken.
+Alternativet — att skicka en dragning först när pekaren släpps — skulle ha gjort steget rätt och samtidigt tagit bort det som gör ett delat projekt levande: den som tittar på samma projekt ser kortet röra sig i stället för att hoppa på pekarens släpp.
+
+Följdkrav:
+Trafiken på tråden är oförändrad; varje bildruta går fortfarande som sin egen `patchElement` till aktören.
+Stacken är fortfarande dokumentögonblicksbilder som tas tillbaka med `restore` (B4), och poletten avgör bara när en ny bild läggs på.
+En ny yta som skriver många gånger om samma handling — ett reglage, en färgväljare som drar — ska bära en polett; en som skriver en gång ska inte.
+
+Byggt 2026-09-14 (ingen prototyp: ingenting nytt ritas, ett tryck gör det den som tryckte redan trodde att det gjorde).
+
+### L15. Lagerpanelen säger vad ett lager är, och ett lager går att låsa (prototypat 2026-09-14)
+
+Panelen skrev `text title`: verktygets ord för sorten, och det råa id:t.
+Det säger ingenting om vilket lager som är vilket så snart verktygsraden har lagt till `bild-1` och `shape-2` på kortet.
+Och ingenting skyddade ett färdigt lager: ramen som legat rätt sedan i måndags flyttades av samma dragning som allt annat.
+
+Prototypen `packages/web/src/prototype/layers` ställde tre varianter mot varandra i de 220 px panelen faktiskt har — lås i egen kolumn (A), verktygsrad över listan (B), vald rad som öppnar sig (C) — plus en fjärde (D) där bara den markerade raden bär upp/ned.
+Beställaren valde **A**, och valde bort upp/ned-knappar helt: ordningen ändras med drag och med Alt och en piltangent, och det som gör dragningen lättare är dropplinjen som säger var lagret hamnar, inte en knapp till.
+
+**Raden.** Lås till vänster, glyf för sorten, namnet, vad lagret visar, och ett grepp till höger.
+Namnet är lagrets id, för det är ordet wizarden gjorde av kolumnen och ordet egenskapspanelen redan har i sin rubrik — eller det namn designern själv gett lagret, som byts med dubbelklick eller F2.
+Namnet är en egen egenskap och inte id:t: id:t är det gruppernas `override` och `remove` pekar på (L3), så att byta det vore en migrering och inte en omdöpning.
+Andraraden är vad lagret visar, och står där bara när det inte är namnet en gång till.
+
+**Panelen är ett rutnät, inte en lista med alternativ.**
+En rad bär en egen knapp, och en knapp inne i ett `option` är en knapp en skärmläsare aldrig når — alternativets innehåll plattas ut (UX-37, #82).
+Så panelen är `role="grid"` med en rad per lager och två celler: låset och lagret.
+Rutnätet är ett enda tabbstopp, upp och ner går mellan lagren i den kolumn man står i, höger och vänster mellan låset och lagret, Alt och pil flyttar lagret, F2 döper om.
+Priset är att piltangenterna inte längre nudgar elementet medan fokus står i panelen; det gör de på kortet och i egenskapspanelen, precis som i varje annat ritverktyg.
+
+**Låset.** Ett låst lager går inte att dra, storleksändra, nudga eller radera, och det har inga hörnhandtag.
+Det går fortfarande att markera — pekaren väljer det, egenskaperna öppnas, och låset finns på samma rad — och det går att flytta upp och ner i ordningen: låset är en sak om kortet, inte om listan.
+Egenskapernas fyra mått går att läsa men inte att skriva i; typsnitt, färg och bindning står öppna, för att låsa ett lager är inte att frysa dess formgivning.
+Ett försök som inte leder någonstans säger varför, bredvid kortet som inte rörde sig — annars är ett lås omöjligt att skilja från en trasig editor.
+Låst ritas i guld och som ett stängt hänglås: formen säger det där färgen inte når.
+
+**Två egenskaper som mallen bär men kortet aldrig visar.**
+`name` och `locked` ligger på elementet (L1) och versioneras, diffas och delas som allt annat i mallen, men kompilatorn läser ingen av dem: ett kort ska bli samma kort oavsett om ett lager var låst när det ritades.
+Att ta bort dem är en egen sak på tråden: `undefined` överlever inte JSON, så `patchElement` har ett `clear` som säger vilka egenskaper som ska bort.
+Utan det hade ett upplåst lager sparats som fortfarande låst, och en version som bar en tom nyckel till tryckeriet.
+
+Motivering:
+Ett lås är det billigaste skyddet som finns mot den enda redigering ingen ångrar i tid — den man inte märkte.
+Alternativet, att lita på Ctrl+Z, förutsätter att man ser att något flyttade sig, och en halv millimeter på ett kort är just vad man inte ser.
+
+Byggt 2026-09-14.
+
+### L16. Fyllningen kan följa en kolumn (2026-09-14)
+
+En fyllning är en färg, eller en regel på en kolumn: vilken kolumn som ska läsas, en färg per värde, och en färg för allt annat.
+`fill` är därför antingen en sträng som förut eller `{ field, map, else }`, och `paintOf` är enda vägen från regel till färg — kompilatorn, den fysiska valideringen och editorns förhandsvisning kan aldrig komma fram till olika färger.
+
+Motivering:
+Det gick redan att ge fällorna en röd platta: en variant per värde (L3).
+Men en variant är hela kortets utseende, så tjugo färger blev tjugo flikar med samma design inkopierad i var och en, och en ändring av rubrikens läge blev tjugo ändringar.
+Färgen är inte en egen formgivning; den är en egenskap som varierar.
+
+Alternativet var en färgkolumn i datatabellen som elementet binder till.
+Det avvisades: då bär varje kort sin egen hexkod, att byta nyans blir en redigering per rad i stället för en, och datatabellen — som är designerns lek — fylls med tolkning som hör hemma i mallen.
+Regeln på elementet håller färgerna där all annan stil bor och låter leken säga vilken av dem ett kort får, vilket är exakt L3:s modell tillämpad på en egenskap i stället för på ett helt utseende.
+
+Ett värde utan egen färg får `else`, precis som ett kolumnvärde utan variant får basutseendet — utan varning, för de flesta kort är det vanliga.
+Saknas även `else` är formen omålad, vilket är vad en form utan fyllning alltid har varit.
+
+I editorn är det en växel på fyllningen.
+Den färg designern redan valt blir regelns `else` när växeln slås på, så inget kort byter utseende förrän ett värde fått en egen färg; slås den av bär formen den färgen vidare.
+Värdena som erbjuds är lekens egna, i den ordning korten står, plus de värden regeln målar men vars kort har försvunnit — en färg utan något att visa sig på måste ändå gå att hitta och ta bort.
+Varje värde med egen färg har ett kryss tillbaka till `else`, för "följer standardfärgen" och "är målad i samma nyans som standardfärgen" är två olika saker och skillnaden går bara att uttrycka med en väg tillbaka.
+
+Följdkrav:
+Textens färg och formens linje är fortfarande enfärgade. De kan ta samma `Paint` den dag någon behöver det — modellen är redan skriven för det — men inget i editorn skapar en sådan regel i dag.
+Färgblindhetskontrollen (E5) läser den färg raden faktiskt får, alltså kortet i handen och inte mallen i abstrakt form.
+
+Byggt 2026-09-14 (ingen prototyp: växeln och listan är egenskapspanelens egna former, och regeln ritar ingen ny yta).
 
 ### L14. Ett spel utan den guidade starten (2026-09-13)
 
@@ -2034,6 +2452,18 @@ Om `/online` på en telefon ska vara samma hand som `/play`: valet av A framför
 Skälet är att `/online` är distansvyn med både bord och hand i samma fönster och därför i praktiken lever på en bred skärm, medan `/play` är telefonens egen vy och bara har handen att visa.
 Det är försvarbart men det är inte skrivet någonstans som ett beslut: K9 bör säga varför distansvyn har en egen hand, eller så bör de två slås ihop.
 Anser produktägaren att de ska vara oskiljbara är remsan svaret på båda, och då är K10 det som ska skrivas om och inte K9.
+
+Filtens storlek på små och låga fönster, kvar efter #77 (2026-09-14).
+Två frågor som mätningen öppnade och som #77 uttryckligen inte stänger; båda är produktbeslut och inte kodval.
+
+Hur ett kort ska läsas på en telefon: ett helt fyraplatsbord ritar kortets kortsida i som mest 23 px vid 390 × 844, mot K9:s 45, och det är sant för varje plats och varje vridning.
+Alternativen är en kamera som TV:ns (C5), som slutar rita hela bordet, eller att skriva in i K9 att filten på telefon är en översikt och att det enskilda kortet läses genom INSPEKTION (K8).
+Tills det är avgjort finns ingen grind som påstår 45 px vid 390, se K17.
+
+Om K9:s 45 px eller K17:s band ska ge vika vid 1280 × 800: de kan inte båda hålla där, och räkningen står under K9.
+Kromet får väga omkring 105 px om kortet ska nå 45, och bandet ensamt är 218 vid den läsbara kortstorlek K17 beslutade.
+De vägar som finns är att bandet blir en kolumn vid fönstrets sida i ett liggande fönster i stället för en rad under filten, att handen kallas fram i stället för att alltid ligga där (K17:s avrådda variant C), eller att K9 skriver ned att 45 px är en grind för 1920 och uppåt.
+Att låta bandet ligga över filten är prövat och avvisat: det täcker den närmaste platsens hand och ytan framför den.
 
 Spelupplevelse, kvar efter avsnitt K: inga; de två sista avgjordes 2026-09-07, se K1 och K2.
 

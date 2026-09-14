@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { WebSocket as WsClient } from 'ws'
 import { TableClient, useWebSocketImplementation, type WebSocketCtor } from '../src/client.js'
 import { PlayerPage, type PlayerPageProps } from '../src/player/PlayerPage.js'
 import { DEFAULT_TIMING } from '../src/status/connection.js'
 import { admit, asSeat, asTable, createSession, roomOf, seatSetup, startServer, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
+import { tabFrom, tabStops } from './tabs.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
@@ -197,8 +198,11 @@ describe('playing turns the card face-up (K11)', () => {
       fireEvent.pointerMove(el, { clientX: 100, clientY: 430 })
       fireEvent.pointerUp(el, { clientX: 100, clientY: 430 })
     }
+    // The zone's name is on two controls now — the sheet's target and the overview's pile, which
+    // draws from it (#79) — so the sheet is the one asked here.
+    const target = async (name: RegExp) => within(await screen.findByRole('dialog', { name: /Spela till/ })).getByRole('button', { name })
     lift(document.querySelector('[data-hand-card]')!)
-    fireEvent.click(await screen.findByRole('button', { name: /Kasthög/ }))
+    fireEvent.click(await target(/Kasthög/))
     await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1))
     let log = await run.store.read(id)
     let last = log.slice(-2)
@@ -207,7 +211,7 @@ describe('playing turns the card face-up (K11)', () => {
     expect(new Set(last.map((l) => l.batch)).size).toBe(1)
 
     lift(document.querySelector('[data-hand-card]')!)
-    fireEvent.click(await screen.findByRole('button', { name: /Draghög/ }))
+    fireEvent.click(await target(/Draghög/))
     await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(0))
     log = await run.store.read(id)
     last = log.slice(-2)
@@ -476,28 +480,136 @@ describe('counters and the area in front of you (C4)', () => {
     expect(document.querySelector('[data-zone-summary="counters:B"]')).toBeNull()
   })
 
-  it('shows the cards in front of you as a strip with take up, flip and play, and hides the other seat\'s', async () => {
+  // The strip card is one control and the verbs are in the view that holds it up (#78, form C):
+  // a press on the card holds it up, and turn, take up and play are read there, at their own size.
+  it('holds a card in front of you up on a press, and sends every verb from there', async () => {
     const id = await createSession(run, 's1', undefined, seatSetup())
     const token = await open(id, 'A', 'Ada')
     const me = TableClient.connect({ url: run.url, sessionId: id, seat: 'A', token })
     await me.ready()
     await me.send({ v: 'draw', from: 'draw', to: 'mine:A', count: 2 })
     const mine = await waitFor(() => {
-      const cards = document.querySelectorAll('[data-mine-card]')
+      const cards = document.querySelectorAll('button[data-mine-card]')
       expect(cards).toHaveLength(2)
       return cards
     })
     expect(screen.getByText(/Framför dig · 2/)).toBeTruthy()
-    fireEvent.click(mine[0]!.querySelector('button[data-act="flip"]')!)
-    await waitFor(() => expect(document.querySelector('[data-mine-card][data-face="front"]')).toBeTruthy())
-    fireEvent.click(document.querySelector('[data-mine-card] button[data-act="take"]')!)
+    // Nothing to press inside the card: it is the control itself.
+    expect(document.querySelector('[data-mine-card] button')).toBeNull()
+
+    const held = async () => {
+      fireEvent.click(document.querySelector('button[data-mine-card]')!)
+      return await waitFor(() => {
+        const sheet = document.querySelector('.byd-inspect')
+        expect(sheet?.querySelector('[data-mine-actions]')).toBeTruthy()
+        return sheet!
+      })
+    }
+    fireEvent.click(mine[0]!)
+    const sheet = await waitFor(() => document.querySelector('.byd-inspect')!)
+    expect([...sheet.querySelectorAll('[data-mine-actions] button')].map((b) => b.textContent)).toEqual(['Vänd upp', 'Ta upp', 'Spela…'])
+    fireEvent.click(sheet.querySelector('button[data-act="flip"]')!)
+    // The verb is done, so the card is put down again and the strip is what you are looking at.
+    expect(document.querySelector('.byd-inspect')).toBeNull()
+    // The card now lies the other way, and the verb the sheet offers is the one that turns it back.
+    await held()
+    await waitFor(() => expect(document.querySelector('.byd-inspect button[data-act="flip"]')!.textContent).toBe('Vänd ner'))
+    fireEvent.pointerDown(document.querySelector('.byd-inspect')!)
+
+    fireEvent.click((await held()).querySelector('button[data-act="take"]')!)
     await waitFor(() => expect(document.querySelectorAll('[data-mine-card]')).toHaveLength(1))
     expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1)
-    fireEvent.click(document.querySelector('[data-mine-card] button[data-act="play"]')!)
+
+    fireEvent.click((await held()).querySelector('button[data-act="play"]')!)
     expect(await screen.findByRole('dialog', { name: 'Spela till' })).toBeTruthy()
+    expect(document.querySelector('.byd-inspect')).toBeNull()
     const targets = screen.getAllByRole('button').map((b) => b.textContent ?? '')
     expect(targets.some((t) => t.startsWith('Framför mig'))).toBe(true)
     expect(targets.some((t) => t.includes('Framför B'))).toBe(false)
     me.close()
+  })
+
+  it('holds a hand card up to be looked at, and offers no verb there', async () => {
+    const id = await createSession(run, 's1', undefined, seatSetup())
+    const token = await open(id, 'A', 'Ada')
+    const me = TableClient.connect({ url: run.url, sessionId: id, seat: 'A', token })
+    await me.ready()
+    await me.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    const card = await waitFor(() => {
+      const cards = document.querySelectorAll('[data-hand-card]')
+      expect(cards).toHaveLength(1)
+      return cards[0]!
+    })
+    fireEvent.pointerDown(card, { clientX: 10, clientY: 10 })
+    fireEvent.pointerUp(card, { clientX: 10, clientY: 10 })
+    const sheet = await waitFor(() => document.querySelector('.byd-inspect')!)
+    // A card in the hand is not lying in front of you, so there is nothing to turn or take up.
+    expect(sheet.querySelector('[data-mine-actions]')).toBeNull()
+    me.close()
+  })
+})
+
+// The survey lies over a phone that is still listening (UX-38, #83). An ended table is one more
+// state of the kind D5 already names for a dropped line: the picture behind is not to be acted on,
+// so it is taken out of reach the same way — `inert` — with the survey the only living thing.
+describe('the ended table goes quiet behind the survey (C9, D5, G3, #83)', () => {
+  it('takes the counters, the hand and the hint out of reach, and leaves the survey and the way out living', async () => {
+    const id = await createSession(run, 's1', undefined, seatSetup())
+    const token = await open(id, 'A', 'Ada')
+    const me = TableClient.connect({ url: run.url, sessionId: id, seat: 'A', token })
+    await me.ready()
+    await me.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1))
+    expect(screen.getByRole('button', { name: 'Guld plus' }).closest('[inert]')).toBeNull()
+
+    await me.send({ v: 'session.end' })
+    await screen.findByText(/Bordet är avslutat/)
+    // The play view is one inert whole: a screen reader that has finished the survey is not read
+    // the counters, the hand and the hint after it, and the counter's + is not a button to press.
+    expect(screen.getByRole('button', { name: 'Guld plus' }).closest('[inert]')).not.toBeNull()
+    expect(document.querySelector('[data-hand-card]')!.closest('[inert]')).not.toBeNull()
+    expect(document.querySelector('.byd-hint')!.closest('[inert]')).not.toBeNull()
+    expect(screen.getByRole('button', { name: 'Ut… ur bordet' }).closest('[inert]')).not.toBeNull()
+    // The survey, every control in it, and the way out of an ended table are not.
+    expect(screen.getByRole('heading', { name: 'Bordet är avslutat' }).closest('[inert]')).toBeNull()
+    expect(screen.getByRole('button', { name: '4' }).closest('[inert]')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Nästa' }).closest('[inert]')).toBeNull()
+    expect(screen.getByRole('link', { name: /Spara till ditt konto/ }).closest('[inert]')).toBeNull()
+    me.close()
+  })
+
+  it('Tab from the survey\'s last control stays in the survey rather than going down into the play view', async () => {
+    const id = await createSession(run, 's1', undefined, seatSetup())
+    const token = await open(id, 'A', 'Ada')
+    const me = TableClient.connect({ url: run.url, sessionId: id, seat: 'A', token })
+    await me.ready()
+    await me.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 1 }, { v: 'session.end' })
+    await screen.findByText(/Bordet är avslutat/)
+    const survey = document.querySelector('.byd-survey')!
+    const stops = tabStops()
+    expect(stops.length).toBeGreaterThan(1)
+    expect(stops.every((el) => survey.contains(el))).toBe(true)
+    // The last control is the way out (G1); Tab from it wraps to the survey's first control.
+    const last = screen.getByRole('link', { name: /Spara till ditt konto/ })
+    expect(stops.at(-1)).toBe(last)
+    expect(tabFrom(last)).toBe(screen.getByRole('button', { name: '1' }))
+    me.close()
+  })
+})
+
+// The empty hand says "Dra ett kort ur draghögen", and until #79 the phone had no way to do it:
+// the overview's pile was plain text, the address panel only opens on a card already in hand,
+// and the play sheet is for a card already lifted. The screen asked for what the screen could
+// not do. The overview's pile is the same verb the felt's ring already offers on any pile
+// (K14), on the same terms.
+describe('the phone draws from a pile in the overview (C4, K14, #79)', () => {
+  it('puts the top card into the hand, and the log says so', async () => {
+    const id = await createSession(run, 's1', undefined, seatSetup())
+    await open(id, 'A', 'Ada')
+    const tile = await screen.findByRole('button', { name: /Draghög/ })
+    fireEvent.click(tile)
+    await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1))
+    const log = await run.store.read(id)
+    expect(log.at(-1)).toMatchObject({ by: 'A', intent: { v: 'split', pile: 'draw', at: 1, to: 'hand:A' } })
   })
 })

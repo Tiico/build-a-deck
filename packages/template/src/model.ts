@@ -4,11 +4,21 @@ import { z } from 'zod'
 // The template element model (L1): a small, closed set of typed elements with positions in
 // millimetres and styles from a fixed palette. Data, not code — versioned, diffed, migrated.
 
+// A card's data as the compiler sees it: one row of the deck.
+export type Row = Record<string, string | number | boolean | null | undefined>
+
 const Mm = z.number()
 const Bind = z.union([z.object({ field: z.string().min(1) }), z.object({ literal: z.string() })])
 export type Bind = z.infer<typeof Bind>
 
-const Box = { id: z.string().min(1), x: Mm, y: Mm, w: Mm.nonnegative(), h: Mm.nonnegative() }
+// What every element carries for the person editing it rather than for the card (L15): the word
+// the designer calls the layer, and whether the layer is locked. The compiler never reads either
+// — a card is the same card whether or not a layer was locked while it was drawn — but they are
+// template data like everything else, so they are versioned, diffed and shared with whoever else
+// has the project open, exactly as a position is.
+const Designer = { name: z.string().min(1).optional(), locked: z.literal(true).optional() }
+
+const Box = { id: z.string().min(1), x: Mm, y: Mm, w: Mm.nonnegative(), h: Mm.nonnegative(), ...Designer }
 
 export const Font = z.object({
   family: z.string().min(1),
@@ -46,11 +56,37 @@ export const IconsElement = z.object({
   iconMm: Mm.positive(),
   gapMm: Mm.nonnegative().optional(),
 })
+// A colour, or a rule that reads one off the deck (L16): the column to look in, a colour per
+// value, and what a value the rule does not name gets. The colours stay in the template, where
+// every other style lives — the deck says which of them a card gets, and changing a shade is one
+// edit rather than one per card.
+export const Paint = z.union([
+  z.string().min(1),
+  z.object({
+    field: z.string().min(1),
+    map: z.record(z.string(), z.string().min(1)),
+    // Unnamed on purpose in the document: `else` is what a card gets when its value is not in the
+    // map, including when the cell is empty. Without one such a card is simply unpainted, which
+    // is what a shape with no fill at all has always been.
+    else: z.string().min(1).optional(),
+  }),
+])
+export type Paint = z.infer<typeof Paint>
+
+// The colour a row gets out of a paint. The one place a paint is turned into a colour, so the
+// compiler, the physical checks and the editor's preview can never disagree about it.
+export function paintOf(paint: Paint | undefined, row: Row): string | undefined {
+  if (paint === undefined || typeof paint === 'string') return paint
+  const value = row[paint.field]
+  const named = value === null || value === undefined ? undefined : paint.map[String(value)]
+  return named ?? paint.else
+}
+
 export const ShapeElement = z.object({
   kind: z.literal('shape'),
   ...Box,
   shape: z.enum(['rect', 'circle', 'line']),
-  fill: z.string().optional(),
+  fill: Paint.optional(),
   stroke: z.string().optional(),
   strokeMm: Mm.nonnegative().optional(),
   radiusMm: Mm.nonnegative().optional(),
@@ -68,8 +104,8 @@ export type Element =
   | z.infer<typeof ImageElement>
   | z.infer<typeof IconsElement>
   | z.infer<typeof ShapeElement>
-  | { kind: 'group'; id: string; x: number; y: number; children: Element[] }
-  | { kind: 'if'; id: string; when: Condition; children: Element[] }
+  | { kind: 'group'; id: string; x: number; y: number; children: Element[]; name?: string; locked?: true }
+  | { kind: 'if'; id: string; when: Condition; children: Element[]; name?: string; locked?: true }
 
 export const Element: z.ZodType<Element> = z.lazy(() =>
   z.discriminatedUnion('kind', [
@@ -77,8 +113,8 @@ export const Element: z.ZodType<Element> = z.lazy(() =>
     ImageElement,
     IconsElement,
     ShapeElement,
-    z.object({ kind: z.literal('group'), id: z.string().min(1), x: Mm, y: Mm, children: z.array(Element) }),
-    z.object({ kind: z.literal('if'), id: z.string().min(1), when: Condition, children: z.array(Element) }),
+    z.object({ kind: z.literal('group'), id: z.string().min(1), x: Mm, y: Mm, children: z.array(Element), ...Designer }),
+    z.object({ kind: z.literal('if'), id: z.string().min(1), when: Condition, children: z.array(Element), ...Designer }),
   ]),
 ) as z.ZodType<Element>
 
@@ -101,4 +137,4 @@ export type FaceTemplate = z.infer<typeof FaceTemplate>
 export const Template = z.object({ faces: z.record(z.string(), FaceTemplate) })
 export type Template = z.infer<typeof Template>
 
-export type Row = Record<string, string | number | boolean | null | undefined>
+

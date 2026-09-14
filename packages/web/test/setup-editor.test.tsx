@@ -167,6 +167,21 @@ describe('the setup editor (B5, K2): counters and a setup the engine refuses', (
     expect((await run.projects.load('p1'))?.setup.counters).toEqual([{ name: 'Mynt', start: 5 }])
   })
 
+  // A seat's counters change shape when a third is added (C4, K18, #89): two lie side by side
+  // along the rim, three stack into one pile. That is a consequence the designer cannot see coming
+  // from the number alone, so the panel says it where the number is chosen — before the third
+  // counter is added, not after.
+  it('says, where counters are chosen, that a third one stacks the seat’s chips', async () => {
+    await run.projects.create('p1', projectDoc())
+    await openBord()
+    const said = () => document.querySelector('.byd-setup-counters .byd-setup-note')?.textContent ?? ''
+    expect(said()).toMatch(/tredje/)
+    expect(said()).toMatch(/stapla/i)
+    // And it is there before anyone has added a counter at all, which is when it is worth reading.
+    expect(screen.queryByLabelText('Namn för räknare 1')).toBeNull()
+    expect(said()).not.toBe('')
+  })
+
   it('says so instead of drawing a table when the setup cannot be built', async () => {
     const doc = projectDoc()
     await run.projects.create('p1', { ...doc, setup: { ...doc.setup, zones: doc.setup.zones.map((z) => (z.id === 'hand:A' ? { ...z, returnTo: 'nowhere' } : z)) } })

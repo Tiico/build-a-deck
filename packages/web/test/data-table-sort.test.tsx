@@ -146,7 +146,7 @@ describe('DataTable sorting (a view, #15)', () => {
     const first = screen.getAllByRole('row')[1] as HTMLElement
 
     fireEvent.change(within(first).getByLabelText('knight kostnad'), { target: { value: '5' } })
-    expect(onCell).toHaveBeenCalledWith('knight', 'kostnad', '5')
+    expect(onCell).toHaveBeenCalledWith('knight', 'kostnad', '5', expect.any(String))
     fireEvent.click(within(first).getByRole('button', { name: /ta bort/i }))
     fireEvent.click(screen.getByRole('button', { name: 'Ja, ta bort' }))
     expect(onRemoveRow).toHaveBeenCalledWith('knight')
