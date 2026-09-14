@@ -28,7 +28,11 @@ export const svEditor = {
   // alla.
   'editor.here.someone': 'Någon',
   'editor.saved': 'Sparat',
-  'editor.unsaved': 'Osparade ändringar',
+  // Ett ord och inte två (#5): huvudet får inte radbrytas och spelets namn är redan nere på sina
+  // tre tecken, så den längre frasen sköt hela sidan 34 px i sidled vid 1024 — mätt i
+  // `editor-viewport.test.tsx`. `Sparat` och `Osparat` är samma besked i samma register som
+  // resten av raden.
+  'editor.unsaved': 'Osparat',
   'editor.save': 'Spara',
   'editor.saving': 'Sparar…',
   'editor.cancel': 'Avbryt',
@@ -257,6 +261,72 @@ export const svEditor = {
   'canvas.props.fill.field': 'Fyll efter kolumnen',
   'canvas.props.fill.rest': 'Övriga',
   'canvas.props.fill.clear': 'Ta bort färgen för {value}',
+
+  // Formen (L17): galleriet, och de tal den valda formen faktiskt läser. `Hörn` är polygonens
+  // sidor och stjärnans uddar — ett ord, för det är ett tal, och formen säger vad det betyder.
+  'canvas.props.shape': 'Form',
+  'canvas.shape.rect': 'Rektangel',
+  'canvas.shape.rounded': 'Rundad',
+  'canvas.shape.capsule': 'Kapsel',
+  'canvas.shape.circle': 'Cirkel',
+  'canvas.shape.line': 'Linje',
+  'canvas.shape.triangle': 'Triangel',
+  'canvas.shape.diamond': 'Romb',
+  'canvas.shape.square': 'Kvadrat',
+  'canvas.shape.pentagon': 'Femhörning',
+  'canvas.shape.hexagon': 'Sexhörning',
+  'canvas.shape.hexagonFlat': 'Sexhörning, platt',
+  'canvas.shape.octagon': 'Oktagon',
+  'canvas.shape.star': 'Stjärna',
+  'canvas.shape.star6': 'Sexuddig stjärna',
+  'canvas.shape.shield': 'Sköld',
+  'canvas.shape.banner': 'Banderoll',
+  'canvas.shape.arrow': 'Pil',
+  'canvas.props.corners': 'Hörn',
+  'canvas.props.rotation': 'Vridning',
+  'canvas.props.innerRatio': 'Uddjup',
+  'canvas.props.radius': 'Hörnradie (mm)',
+  'canvas.props.stroke': 'Linjefärg',
+  'canvas.props.strokeMm': 'Linjebredd (mm)',
+  // Mönstret (L17) ligger över fyllningen och ersätter den inte, och etiketten säger det.
+  'canvas.props.pattern': 'Mönster över fyllningen',
+  'canvas.pattern.stripes': 'Ränder',
+  'canvas.pattern.grid': 'Rutnät',
+  'canvas.pattern.dots': 'Prickar',
+  'canvas.pattern.diamonds': 'Romber',
+  'canvas.pattern.chevron': 'Fiskben',
+  'canvas.props.pattern.kind': 'Mönstrets sort',
+  'canvas.props.pattern.color': 'Mönstrets färg',
+  'canvas.props.pattern.scale': 'Mönstrets storlek (mm)',
+  'canvas.props.pattern.angle': 'Mönstrets vinkel',
+  // Skuggan (L17): fyra förval, och de fem talen bakom `Anpassa`.
+  'canvas.props.shadow': 'Skugga',
+  'canvas.shadow.none': 'Ingen',
+  'canvas.shadow.soft': 'Mjuk',
+  'canvas.shadow.hard': 'Hård',
+  'canvas.shadow.lift': 'Upphöjd',
+  'canvas.shadow.custom': 'Anpassa',
+  'canvas.shadow.dx': 'Höger/vänster (mm)',
+  'canvas.shadow.dy': 'Upp/ned (mm)',
+  'canvas.shadow.blur': 'Mjukhet (mm)',
+  'canvas.shadow.color': 'Skuggans färg',
+  'canvas.shadow.opacity': 'Genomskinlighet (%)',
+  // Färdiga baksidor (L17). De står framme när baksidan är öppen, inte bakom en knapp: den som
+  // landar på en tom baksida ska se vägen vidare utan att leta efter den.
+  'canvas.backs': 'Färdiga baksidor',
+  'canvas.back.plain': 'Enfärgad',
+  'canvas.back.diamonds': 'Romber',
+  'canvas.back.stripes': 'Diagonala ränder',
+  'canvas.back.grid': 'Rutnät',
+  'canvas.back.dots': 'Prickar',
+  'canvas.back.chevron': 'Fiskben',
+  'canvas.back.medallion': 'Medaljong',
+  // Lagren en färdig baksida lägger ut. Id:t är dokumentets och flyttar sig aldrig; ordet är
+  // verktygets förslag på formgivarens språk och blir hennes att byta (A4).
+  'canvas.back.layer.bottom': 'Botten',
+  'canvas.back.layer.edge': 'Kant',
+  'canvas.back.layer.medallion': 'Medaljong',
+  'canvas.back.layer.star': 'Stjärna',
 
   // Typsnitten spelet bär med sig.
   'fonts.title': 'Typsnitt i spelet',
