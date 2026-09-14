@@ -327,6 +327,13 @@ Wizarden ger varje plats en yta "Framför mig" som bara ägaren ser och en räkn
 Tre varianter prövades för telefonen; valet blev staplat: räknarna som piller under huvudet, bordsöversikten som förut, korten framför dig som en mindre remsa ovanför handen med vänd, ta upp och spela. Bordet ritar en räknare som en bricka med värdet.
 Arket och översikten erbjuder aldrig en annan plats privata yta, och aldrig en zon som bara håller räknare.
 
+Reviderat 2026-09-14 (#78, UX-33, prototypat och godkänt av produktägaren): verben ligger inte kvar i remsan utan i uppslaget.
+Remsan står kvar där C4 satte den, men kortet är en enda kontroll: ett tryck håller upp det, precis som ett tryck på ett handkort, och Vänd, Ta upp och Spela läses i uppslaget i full bredd och minst 48 px höjd.
+Måttet är vad som tvingade fram det: den renderade framsidan låg över hela kortet och därmed över dess tre knappar, så `elementFromPoint` mitt på "Ta upp" svarade kortets namn och ingen nådde knapparna alls; knapparna var därtill 32 px höga, och en bild utan storleksregel ritades i sin egen 630 × 880, vilket gjorde kortet 150 × 973.
+En 44 × 44-ruta räcker inte som svar — "Vänd ner" sätts då i 10 px över två rader — så verbet flyttade dit det får vara ett ord.
+Priset, uttryckligen accepterat: ett tryck till per verb. Vinsten: 3,9 kort syns vid 390 px i stället för 2,4, och remsans kort kan vara en kontroll utan att hålla en (UX-37, #82).
+Ansiktet är sedan dess en egen ruta i kortet — bilden fyller den, och väntan och förlusten ligger över ansiktet och aldrig över kontrollen.
+
 Byggt 2026-09-07: en zon kan bära en genväg (`shortcut`) med verbet telefonen visar och var i en hög kortet hamnar, överst eller underst; utan genväg visar telefonen zonens namn.
 Wizarden ger draghögen "Lägg underst" och kasthögen "Kasta". Editorns flik "Bord" redigerar namn och genvägar för varje zon som inte är en hand, med telefonens ark som förhandsvisning; sedan 2026-09-07 är fliken hela setup-editorn (B5).
 

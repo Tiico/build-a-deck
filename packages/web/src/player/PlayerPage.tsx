@@ -3,7 +3,7 @@ import type { VisibleComponentState } from '@byd/protocol'
 import { useTableClient } from '../table/useTableClient.js'
 import { HeldCard } from './HeldCard.js'
 import { HandStrip } from './HandStrip.js'
-import { CountersRow, MineStrip } from './SeatExtras.js'
+import { CountersRow, MineActions, MineStrip } from './SeatExtras.js'
 import { PlaySheet } from './PlaySheet.js'
 import { TableSummary } from './TableSummary.js'
 import { SeatSurvey, SessionButtons, SessionOverlays, refusedText, useSessionVersion, useToast, type Sheet } from './SessionOverlays.js'
@@ -110,13 +110,9 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
       </header>
       <CountersRow view={view} onSet={(c, value) => void client.send({ v: 'setCounter', component: c.id, value })} />
       <TableSummary view={view} activity={activity} />
-      <MineStrip
-        view={view}
-        faces={faces}
-        onFlip={(c) => void client.send({ v: 'flip', component: c.id, face: c.face === 'front' ? 'back' : 'front' })}
-        onTake={(c) => void client.send({ v: 'move', component: c.id, to: `hand:${seat}` })}
-        onPlay={setLifted}
-      />
+      {/* A card in front of you opens the same inspection a hand card does (#78); the verbs that
+          used to sit under it in the strip are in there, where a word has room to be one. */}
+      <MineStrip view={view} faces={faces} onOpen={setInspect} />
       <HandStrip view={view} selected={selected} faces={faces} onTap={setInspect} onHold={toggle} onLift={setLifted} onOpen={(c) => kbd.openHand(c, [...selected])} />
       {/* The hint names what a finger can do to a card, so it waits for a card to exist (UX-16).
           An empty hand says its own thing in the strip above instead. */}
@@ -127,7 +123,33 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             : t('player.hint')}
         </p>
       )}
-      {inspect && <HeldCard card={inspect} faces={faces} onClose={() => setInspect(null)} />}
+      {/* The card held up. A card that lies in front of you carries its verbs here, and a verb
+          puts the card down as it goes: what it did is read off the strip behind it. */}
+      {inspect && (
+        <HeldCard
+          card={inspect}
+          faces={faces}
+          onClose={() => setInspect(null)}
+          actions={
+            <MineActions
+              view={view}
+              card={inspect}
+              onFlip={(c) => {
+                setInspect(null)
+                void client.send({ v: 'flip', component: c.id, face: c.face === 'front' ? 'back' : 'front' })
+              }}
+              onTake={(c) => {
+                setInspect(null)
+                void client.send({ v: 'move', component: c.id, to: `hand:${seat}` })
+              }}
+              onPlay={(c) => {
+                setInspect(null)
+                setLifted(c)
+              }}
+            />
+          }
+        />
+      )}
       {lifted && (
         <PlaySheet
           view={view}

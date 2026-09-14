@@ -477,28 +477,71 @@ describe('counters and the area in front of you (C4)', () => {
     expect(document.querySelector('[data-zone-summary="counters:B"]')).toBeNull()
   })
 
-  it('shows the cards in front of you as a strip with take up, flip and play, and hides the other seat\'s', async () => {
+  // The strip card is one control and the verbs are in the view that holds it up (#78, form C):
+  // a press on the card holds it up, and turn, take up and play are read there, at their own size.
+  it('holds a card in front of you up on a press, and sends every verb from there', async () => {
     const id = await createSession(run, 's1', undefined, seatSetup())
     const token = await open(id, 'A', 'Ada')
     const me = TableClient.connect({ url: run.url, sessionId: id, seat: 'A', token })
     await me.ready()
     await me.send({ v: 'draw', from: 'draw', to: 'mine:A', count: 2 })
     const mine = await waitFor(() => {
-      const cards = document.querySelectorAll('[data-mine-card]')
+      const cards = document.querySelectorAll('button[data-mine-card]')
       expect(cards).toHaveLength(2)
       return cards
     })
     expect(screen.getByText(/Framför dig · 2/)).toBeTruthy()
-    fireEvent.click(mine[0]!.querySelector('button[data-act="flip"]')!)
-    await waitFor(() => expect(document.querySelector('[data-mine-card][data-face="front"]')).toBeTruthy())
-    fireEvent.click(document.querySelector('[data-mine-card] button[data-act="take"]')!)
+    // Nothing to press inside the card: it is the control itself.
+    expect(document.querySelector('[data-mine-card] button')).toBeNull()
+
+    const held = async () => {
+      fireEvent.click(document.querySelector('button[data-mine-card]')!)
+      return await waitFor(() => {
+        const sheet = document.querySelector('.byd-inspect')
+        expect(sheet?.querySelector('[data-mine-actions]')).toBeTruthy()
+        return sheet!
+      })
+    }
+    fireEvent.click(mine[0]!)
+    const sheet = await waitFor(() => document.querySelector('.byd-inspect')!)
+    expect([...sheet.querySelectorAll('[data-mine-actions] button')].map((b) => b.textContent)).toEqual(['Vänd upp', 'Ta upp', 'Spela…'])
+    fireEvent.click(sheet.querySelector('button[data-act="flip"]')!)
+    // The verb is done, so the card is put down again and the strip is what you are looking at.
+    expect(document.querySelector('.byd-inspect')).toBeNull()
+    // The card now lies the other way, and the verb the sheet offers is the one that turns it back.
+    await held()
+    await waitFor(() => expect(document.querySelector('.byd-inspect button[data-act="flip"]')!.textContent).toBe('Vänd ner'))
+    fireEvent.pointerDown(document.querySelector('.byd-inspect')!)
+
+    fireEvent.click((await held()).querySelector('button[data-act="take"]')!)
     await waitFor(() => expect(document.querySelectorAll('[data-mine-card]')).toHaveLength(1))
     expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1)
-    fireEvent.click(document.querySelector('[data-mine-card] button[data-act="play"]')!)
+
+    fireEvent.click((await held()).querySelector('button[data-act="play"]')!)
     expect(await screen.findByRole('dialog', { name: 'Spela till' })).toBeTruthy()
+    expect(document.querySelector('.byd-inspect')).toBeNull()
     const targets = screen.getAllByRole('button').map((b) => b.textContent ?? '')
     expect(targets.some((t) => t.startsWith('Framför mig'))).toBe(true)
     expect(targets.some((t) => t.includes('Framför B'))).toBe(false)
+    me.close()
+  })
+
+  it('holds a hand card up to be looked at, and offers no verb there', async () => {
+    const id = await createSession(run, 's1', undefined, seatSetup())
+    const token = await open(id, 'A', 'Ada')
+    const me = TableClient.connect({ url: run.url, sessionId: id, seat: 'A', token })
+    await me.ready()
+    await me.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    const card = await waitFor(() => {
+      const cards = document.querySelectorAll('[data-hand-card]')
+      expect(cards).toHaveLength(1)
+      return cards[0]!
+    })
+    fireEvent.pointerDown(card, { clientX: 10, clientY: 10 })
+    fireEvent.pointerUp(card, { clientX: 10, clientY: 10 })
+    const sheet = await waitFor(() => document.querySelector('.byd-inspect')!)
+    // A card in the hand is not lying in front of you, so there is nothing to turn or take up.
+    expect(sheet.querySelector('[data-mine-actions]')).toBeNull()
     me.close()
   })
 })

@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import type { Snapshot } from '@byd/protocol'
 import { HandStrip } from '../src/player/HandStrip.js'
-import { MineStrip } from '../src/player/SeatExtras.js'
+import { MineActions, MineStrip } from '../src/player/SeatExtras.js'
 import { HeldCard } from '../src/player/HeldCard.js'
 import { CardLook } from '../src/table/CardLook.js'
 import { HandFan } from '../src/online/HandFan.js'
@@ -52,17 +52,21 @@ describe('no control sits inside a control, on any player surface (UX-37, #82)',
     // The scene seats nobody in front of an area, so one is laid in front of A and a card put on it.
     const table = snapshot.zones.find((z) => z.id === 'table')!
     const front = { ...snapshot, zones: [...snapshot.zones, { ...table, id: 'mine:A', name: 'Framför A', owner: 'A' }], components: snapshot.components.map((c) => (c.id === hand[0]!.id ? { ...c, zone: 'mine:A' } : c)) }
+    const mine = front.components.find((c) => c.zone === 'mine:A')!
     render(
       <>
         <HandStrip view={snapshot} selected={new Set()} faces={FACES} onTap={noop} onHold={noop} onLift={noop} onOpen={noop} />
-        <MineStrip view={front} faces={FACES} onFlip={noop} onTake={noop} onPlay={noop} />
-        <HeldCard card={hand[1]!} faces={FACES} onClose={noop} />
+        <MineStrip view={front} faces={FACES} onOpen={noop} />
+        {/* A card that lies in front of the seat, held up: its verbs are here, beside the way
+            back the lost face offers, and neither may sit inside the other (#78). */}
+        <HeldCard card={mine} faces={FACES} onClose={noop} actions={<MineActions view={front} card={mine} onFlip={noop} onTake={noop} onPlay={noop} />} />
       </>,
     )
     loseEveryTexture()
     expectNoNestedControl()
-    // The way back is on the held-up card, and on the cards in front of the seat, and nowhere else.
-    expect(screen.getAllByRole('button', { name: 'Försök igen' })).toHaveLength(2)
+    // The card in the strip is a control now, so the way back is on the held-up card alone.
+    expect(screen.getAllByRole('button', { name: 'Försök igen' })).toHaveLength(1)
+    expect(document.querySelectorAll('button[data-mine-card]')).toHaveLength(1)
     vi.useRealTimers()
   })
 
