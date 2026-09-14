@@ -346,6 +346,30 @@ Ansiktet är sedan dess en egen ruta i kortet — bilden fyller den, och väntan
 Reviderat 2026-09-14 (#89): en plats räknare ligger bredvid varandra upp till två och staplas vid tre.
 Regeln, delningen på 125 mm, högens ring och de förkastade alternativen står under K18, eftersom det som avgör dem är platsens egna 500 mm.
 
+Reviderat 2026-09-14 (#79, UX-34): telefonen får dra.
+Den tomma handen sa "Tom hand. Dra ett kort ur draghögen." medan telefonen inte hade någon väg att göra det: bordsöversiktens hög var ren text med ett antal, adresspanelen (#1) öppnas bara på ett kort som redan ligger i handen, och arket är för ett kort som redan lyfts.
+Skärmen bad alltså om något skärmen inte kunde göra.
+Översiktens hög är nu själva kontrollen: ett tryck lägger högens översta kort i platsens hand.
+Handens ord står kvar oförändrade, eftersom de nu är sanna som de står.
+
+Verbet är inget nytt.
+Det är exakt det filtens ring redan erbjuder på vilken hög som helst (K14) — `split` med `at: 1` och `to: hand:<plats>` — och på exakt samma villkor: en hög som har minst ett kort, och bara för en läsare som håller en plats.
+Att det erbjuds **per hög** och inte bara på draghögen är ett måste och inte en slarvighet: snapshotet säger inte vilken hög som är leken.
+`ZoneView` i `packages/protocol` bär `id`, `kind`, `name`, `shortcut`, `owner`, `geometry`, `dynamic` och ordningen eller antalet — ingen flagga för "det här är leken" — och `deckZone` bor i setupen på servern och reser aldrig med.
+Att vidga vokabuläret vore en protokollmigrering och ett eget beslut, och att gissa leken ur ett zon-id som `draw` vore koden som tyst avviker: en designer får kalla vilken zon som helst för leken.
+Vid wizardens bord blir det draghögen och kasthögen, vilket är precis vad den som står vid bordet redan kan göra med ringen på var och en av dem.
+Det är alltså ingen utvidgning av vad en spelare får göra, bara samma sak sagd på den skärm som frågar efter den.
+
+Brickan är en enda kontroll och inte en bricka med en knapp i sig (UX-37, #82).
+Verbet läses inne i brickan i dess egen bredd, hela brickan är träffytan — 89 × 48 px vid 320 px, långt förbi 44 × 44 — och dess uppläsning bär högens namn, dess antal och verbet utan en påhittad etikett.
+En knapp inuti brickan hade i stället varit drygt 69 px bred med ett brutet ord i sig, och hade brutit mot regeln att en kontroll inte får hålla en kontroll.
+Areor och golvet får inget verb; golvet är ingen bricka alls, som förut.
+Ordet är ringens eget, `kbd.verb.toHand` ("Dra 1 till min hand"): en handling, ett ord (A4).
+`ring.draw` ("Dra 1") återanvändes inte — på filten betyder det något annat, ett kort **bredvid** högen och inte in i en hand — och två ord för samma sak hade blivit två handlingar i läsarens huvud.
+Ett nej från bordet står vid den hög som trycktes, med ett eget svar som aldrig hamnar i arket (#7).
+
+Grinden är `table-summary.test.tsx` för villkoren per hög, `player-page.test.tsx` för att kortet hamnar i handen och loggen säger det, `status-refusal.test.tsx` för att nejet står vid högen, och `player-viewport.test.tsx` för träffytan vid 320 och 390 px.
+
 Byggt 2026-09-07: en zon kan bära en genväg (`shortcut`) med verbet telefonen visar och var i en hög kortet hamnar, överst eller underst; utan genväg visar telefonen zonens namn.
 Wizarden ger draghögen "Lägg underst" och kasthögen "Kasta". Editorns flik "Bord" redigerar namn och genvägar för varje zon som inte är en hand, med telefonens ark som förhandsvisning; sedan 2026-09-07 är fliken hela setup-editorn (B5).
 

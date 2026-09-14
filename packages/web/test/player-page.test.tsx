@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { WebSocket as WsClient } from 'ws'
 import { TableClient, useWebSocketImplementation, type WebSocketCtor } from '../src/client.js'
 import { PlayerPage, type PlayerPageProps } from '../src/player/PlayerPage.js'
@@ -198,8 +198,11 @@ describe('playing turns the card face-up (K11)', () => {
       fireEvent.pointerMove(el, { clientX: 100, clientY: 430 })
       fireEvent.pointerUp(el, { clientX: 100, clientY: 430 })
     }
+    // The zone's name is on two controls now — the sheet's target and the overview's pile, which
+    // draws from it (#79) — so the sheet is the one asked here.
+    const target = async (name: RegExp) => within(await screen.findByRole('dialog', { name: /Spela till/ })).getByRole('button', { name })
     lift(document.querySelector('[data-hand-card]')!)
-    fireEvent.click(await screen.findByRole('button', { name: /Kasthög/ }))
+    fireEvent.click(await target(/Kasthög/))
     await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1))
     let log = await run.store.read(id)
     let last = log.slice(-2)
@@ -208,7 +211,7 @@ describe('playing turns the card face-up (K11)', () => {
     expect(new Set(last.map((l) => l.batch)).size).toBe(1)
 
     lift(document.querySelector('[data-hand-card]')!)
-    fireEvent.click(await screen.findByRole('button', { name: /Draghög/ }))
+    fireEvent.click(await target(/Draghög/))
     await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(0))
     log = await run.store.read(id)
     last = log.slice(-2)
@@ -591,5 +594,22 @@ describe('the ended table goes quiet behind the survey (C9, D5, G3, #83)', () =>
     expect(stops.at(-1)).toBe(last)
     expect(tabFrom(last)).toBe(screen.getByRole('button', { name: '1' }))
     me.close()
+  })
+})
+
+// The empty hand says "Dra ett kort ur draghögen", and until #79 the phone had no way to do it:
+// the overview's pile was plain text, the address panel only opens on a card already in hand,
+// and the play sheet is for a card already lifted. The screen asked for what the screen could
+// not do. The overview's pile is the same verb the felt's ring already offers on any pile
+// (K14), on the same terms.
+describe('the phone draws from a pile in the overview (C4, K14, #79)', () => {
+  it('puts the top card into the hand, and the log says so', async () => {
+    const id = await createSession(run, 's1', undefined, seatSetup())
+    await open(id, 'A', 'Ada')
+    const tile = await screen.findByRole('button', { name: /Draghög/ })
+    fireEvent.click(tile)
+    await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1))
+    const log = await run.store.read(id)
+    expect(log.at(-1)).toMatchObject({ by: 'A', intent: { v: 'split', pile: 'draw', at: 1, to: 'hand:A' } })
   })
 })

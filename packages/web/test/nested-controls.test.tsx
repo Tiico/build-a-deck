@@ -8,6 +8,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import type { Snapshot } from '@byd/protocol'
 import { HandStrip } from '../src/player/HandStrip.js'
 import { MineActions, MineStrip } from '../src/player/SeatExtras.js'
+import { TableSummary } from '../src/player/TableSummary.js'
 import { HeldCard } from '../src/player/HeldCard.js'
 import { CardLook } from '../src/table/CardLook.js'
 import { HandFan } from '../src/online/HandFan.js'
@@ -57,6 +58,9 @@ describe('no control sits inside a control, on any player surface (UX-37, #82)',
       <>
         <HandStrip view={snapshot} selected={new Set()} faces={FACES} onTap={noop} onHold={noop} onLift={noop} onOpen={noop} />
         <MineStrip view={front} faces={FACES} onOpen={noop} />
+        {/* The overview's pile is a control since #79, and the verb is read inside it: the whole
+            tile, and never a button within a button. */}
+        <TableSummary view={front} activity={[]} onDraw={noop} />
         {/* A card that lies in front of the seat, held up: its verbs are here, beside the way
             back the lost face offers, and neither may sit inside the other (#78). */}
         <HeldCard card={mine} faces={FACES} onClose={noop} actions={<MineActions view={front} card={mine} onFlip={noop} onTake={noop} onPlay={noop} />} />

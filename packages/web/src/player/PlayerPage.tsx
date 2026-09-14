@@ -52,6 +52,10 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   // Which target the table said no to, and why.
   const refusal = useRefusal('phone')
   const [refusedZone, setRefusedZone] = useState<string | null>(null)
+  // The overview's own answer (#79): a draw the table refuses is said at the pile that was
+  // pressed, and never in the sheet, which is a different press.
+  const drawn = useRefusal('phone')
+  const [refusedPile, setRefusedPile] = useState<string | null>(null)
   const [toast, setToast] = useToast()
   const version = useSessionVersion(faces, sessionId, view?.ended === true)
   // The phone has no felt, so the keyboard here is the hand and the address panel it opens (#1).
@@ -88,6 +92,14 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
       setSelected(new Set())
     })
   }
+  // The top card of a pile into this hand: the felt's ring already offers exactly this on any
+  // pile (K14), and the phone offers it on the same terms.
+  const draw = (zone: string) => {
+    setRefusedPile(zone)
+    void drawn.watch(client.send({ v: 'split', pile: zone, at: 1, to: `hand:${seat}` })).then((result) => {
+      if (result.ok) setRefusedPile(null)
+    })
+  }
   const toggle = (card: VisibleComponentState) =>
     setSelected((s) => {
       const next = new Set(s)
@@ -109,7 +121,7 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
         {sessionId && <RuleDrawer http={faces} sessionId={sessionId} placement="phone" />}
       </header>
       <CountersRow view={view} onSet={(c, value) => void client.send({ v: 'setCounter', component: c.id, value })} />
-      <TableSummary view={view} activity={activity} />
+      <TableSummary view={view} activity={activity} onDraw={draw} refusal={drawn} refusedZone={refusedPile} />
       {/* A card in front of you opens the same inspection a hand card does (#78); the verbs that
           used to sit under it in the strip are in there, where a word has room to be one. */}
       <MineStrip view={view} faces={faces} onOpen={setInspect} />

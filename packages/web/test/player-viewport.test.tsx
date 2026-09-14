@@ -114,7 +114,8 @@ function surfaces(view: Snapshot) {
           <span>{view.components.length} kort</span>
           <SessionButtons client={idle} view={view} sheet={null} onSheet={noop} />
         </header>
-        <TableSummary view={view} activity={[]} />
+        {/* The overview since #79: a pile that has a card is a control that draws it (K14). */}
+        <TableSummary view={view} activity={[]} onDraw={noop} />
         <HandStrip view={view} selected={new Set()} onTap={noop} onHold={noop} onLift={noop} onOpen={noop} />
         <p className="byd-hint">tryck = titta · dra upp = spela · håll = välj flera</p>
       </div>

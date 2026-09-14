@@ -60,11 +60,16 @@ describe('the play surfaces in the reader\'s own language (A4)', () => {
 
   it('says the table summary and the session sheets in English', () => {
     const { view, log } = buildScene()
-    const { unmount } = english(<TableSummary view={view('A')} activity={log.map(projectActivity)} />)
+    const { unmount } = english(<TableSummary view={view('A')} activity={log.map(projectActivity)} onDraw={() => undefined} />)
     expect(screen.getByRole('list', { name: /latest/i })).toBeTruthy()
     // The counts are the tool's, the zone names beside them the designer's.
     expect(screen.getAllByText('3 cards').length).toBe(2)
     expect(screen.getByText('Kasthög')).toBeTruthy()
+    // The draw the overview offers is the felt's own verb (#79), so it is the felt's own word.
+    expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual([
+      expect.stringMatching(/^Kasthög3 cardsDraw 1 to my hand$/),
+      expect.stringMatching(/^Draghög.*Draw 1 to my hand$/),
+    ])
     unmount()
 
     const flag = english(<FlagSheet onFlag={() => undefined} onClose={() => undefined} />)

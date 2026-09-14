@@ -92,8 +92,17 @@
 
 .byd-summary { padding: 14px 18px; overflow: auto; font-size: 13px; color: var(--byd-ink-muted); }
 .byd-summary-zones { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
-.byd-summary-zones > div { background: var(--byd-surface); border-radius: 10px; padding: 10px; min-height: 48px; display: grid; align-content: start; gap: 2px; }
+.byd-summary-zones > * { background: var(--byd-surface); border-radius: 10px; padding: 10px; min-height: 48px; display: grid; align-content: start; gap: 2px; }
 .byd-summary-zones strong { color: var(--byd-ink-strong); }
+/* A pile that has a card in it is a control, and the whole tile is that control (#79): the verb
+   is read inside it at the tile's own width, so nothing sits inside it that a finger has to find
+   (UX-37, #82). It is drawn as the sheet's targets are — the phone's pressable surface with a
+   line around it — so that the tiles that act and the tiles that only count are told apart. */
+.byd-summary-zones > button {
+  border: 1px solid var(--byd-line); background: var(--byd-control); color: var(--byd-ink-muted);
+  font: inherit; text-align: left;
+}
+.byd-summary-zones > button em { font-style: normal; font-weight: 600; color: var(--byd-ink-strong); margin-top: 4px; }
 .byd-summary h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; margin: 0 0 6px; font-weight: 600; }
 .byd-summary ol { list-style: none; margin: 0; padding: 0; }
 .byd-summary li { padding: 5px 0; border-bottom: 1px solid var(--byd-rule-soft); }
