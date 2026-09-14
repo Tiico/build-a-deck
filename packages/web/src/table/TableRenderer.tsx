@@ -7,7 +7,7 @@ import { seatColor } from './seatColor.js'
 import { feltScale, fitScale, LEAST_AIR_PX } from './fit.js'
 import { activeBounds, cameraOf, fitFloor, frameRect, pad, reachOf, same, tween, zoomAround, type Rect, type Size } from './camera.js'
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
-import { CARD_MM, absoluteOf, besidePile, dropIntents, type Drag, type DragTarget } from './drop.js'
+import { CARD_MM, TOKEN_MM, absoluteOf, besidePile, dropIntents, type Drag, type DragTarget } from './drop.js'
 import { isCounter } from '../components.js'
 import { DEFAULT_TIMING } from '../status/connection.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
@@ -80,7 +80,6 @@ const HOLD_MS = 350
 const POINT_MS = 450
 const DRAG_MM = 4
 const TABLE_GREY = '#8a93a8'
-const TOKEN_MM = 24
 // The narrowest chip that still has room for the name under the number, in screen pixels.
 const TOKEN_NAME_PX = 34
 // The camera: room around what is in play, how close it may come, and how long a zoom holds.

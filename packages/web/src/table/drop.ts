@@ -1,10 +1,13 @@
 import type { Intent, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
 import { zoneAt, type Drop } from '../zones.js'
+import { union, type Rect } from './camera.js'
 import { handExtent, handRotation, type TableMode } from './hand.js'
 
 // Card size in table millimetres. The type registry knows the real size; until the renderer
 // reads it from there, the standard card is the only type that exists.
 export const CARD_MM = { w: 63, h: 88 }
+// A counter's chip (C4), in the same millimetres: drawn by it and kept on the felt by it.
+export const TOKEN_MM = 24
 
 export type Point = { x: number; y: number }
 
@@ -50,8 +53,7 @@ export type Hit = { kind: 'card'; id: string; zone: string } | { kind: 'pile'; i
 // there the strip still says where the hand is. The wood is no surface a card can be laid *on*
 // (#66); a hand drawn out over it is still that hand.
 export function dropAt(view: Snapshot, mode: TableMode, p: Point): Drop {
-  const floor = view.zones.find((z) => z.id === view.floor)
-  if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
+  const floor = floorOf(view)
   const fanned = new Set<string>()
   for (const z of view.zones) {
     if (z.kind !== 'hand') continue
@@ -61,6 +63,17 @@ export function dropAt(view: Snapshot, mode: TableMode, p: Point): Drop {
     if (p.x >= fan.x && p.x <= fan.x + fan.w && p.y >= fan.y && p.y <= fan.y + fan.h) return { zone: z.id, x: p.x - z.geometry.x, y: p.y - z.geometry.y }
   }
   return zoneAt(view.zones.filter((z) => !fanned.has(z.id)), view.floor, p.x, p.y)
+}
+
+// How far a box must move to lie on the felt (C5, K2, #66): the frame around the felt is drawn in
+// screen pixels outside the millimetres a drop is measured in, and nothing lies *on* it, so what
+// would come to rest past the floor's edge is drawn back until it lies on the floor, whole. The
+// box is in the floor's own coordinates, where the felt runs from (0, 0) to (w, h), and the
+// answer is the shift that takes it to its nearest place there.
+export function ontoFelt(floor: ZoneView, box: Rect): Point {
+  const g = floor.geometry
+  const clamp = (v: number, hi: number): number => Math.min(Math.max(v, 0), Math.max(hi, 0))
+  return { x: clamp(box.x, g.w - box.w) - box.x, y: clamp(box.y, g.h - box.h) - box.y }
 }
 
 // What a drop means (K1, K2): onto a loose card → stack; onto a pile → join it on top; on a
@@ -74,10 +87,12 @@ export function dropIntents(view: Snapshot, d: Drag, mode: TableMode): Intent[] 
   if (d.target.kind === 'pile') {
     const z = zones.get(d.target.pile)
     if (!z) return []
-    const x = z.geometry.x + dx
-    const y = z.geometry.y + dy
-    const under = zones.get(at({ x, y }).zone)
-    return [{ v: 'movePile', pile: z.id, to: under?.kind === 'area' ? under.id : view.floor, x, y }]
+    const centre = { x: z.geometry.x + dx, y: z.geometry.y + dy }
+    const under = zones.get(at(centre).zone)
+    const to = under?.kind === 'area' ? under : floorOf(view)
+    // A pile travels by its centre, and on the floor it comes to rest on the felt (#66).
+    const s = keptOnFelt(view, to.id, { x: centre.x - CARD_MM.w / 2 - to.geometry.x, y: centre.y - CARD_MM.h / 2 - to.geometry.y, ...CARD_MM })
+    return [{ v: 'movePile', pile: z.id, to: to.id, x: centre.x + s.x, y: centre.y + s.y }]
   }
   // A chip is not a card (C4): it joins no pile and stacks on nothing, so a drop means the one
   // thing it can mean — the counter is now at the point it was let go of, in whatever zone that
@@ -85,7 +100,8 @@ export function dropIntents(view: Snapshot, d: Drag, mode: TableMode): Intent[] 
   if (d.target.kind === 'counter') {
     const o = d.origin[d.target.id] ?? d.grab
     const dest = at({ x: o.x + dx, y: o.y + dy })
-    return [{ v: 'move', component: d.target.id, to: dest.zone, x: dest.x, y: dest.y }]
+    const s = keptOnFelt(view, dest.zone, { x: dest.x, y: dest.y, w: TOKEN_MM, h: TOKEN_MM })
+    return [{ v: 'move', component: d.target.id, to: dest.zone, x: dest.x + s.x, y: dest.y + s.y }]
   }
   if (d.target.kind === 'pileTop') {
     const pile = zones.get(d.target.pile)
@@ -94,9 +110,11 @@ export function dropIntents(view: Snapshot, d: Drag, mode: TableMode): Intent[] 
     if (hit?.kind === 'pile') return [{ v: 'split', pile: pile.id, at: 1, to: hit.id }]
     // Onto a loose card: the pile is named as the source (K15), since a hidden pile gives no id.
     if (hit?.kind === 'card') return [{ v: 'stack', component: { top: pile.id }, onto: hit.id }]
-    const dest = zones.get(at(d.at).zone)
-    if (dest?.kind === 'hand') return [{ v: 'split', pile: pile.id, at: 1, to: dest.id }]
-    return [{ v: 'split', pile: pile.id, at: 1, x: d.at.x, y: d.at.y }]
+    const dest = at(d.at)
+    if (zones.get(dest.zone)?.kind === 'hand') return [{ v: 'split', pile: pile.id, at: 1, to: dest.zone }]
+    // Held by where it was let go of, it settles into a card cornered there (K1) — on the felt (#66).
+    const s = keptOnFelt(view, dest.zone, { x: dest.x, y: dest.y, ...CARD_MM })
+    return [{ v: 'split', pile: pile.id, at: 1, x: d.at.x + s.x, y: d.at.y + s.y }]
   }
   const moving = new Set(d.ids)
   const hit = hitAt(view, d.at, moving, null)
@@ -108,12 +126,30 @@ export function dropIntents(view: Snapshot, d: Drag, mode: TableMode): Intent[] 
   // the south and east rims and pushed it out of the hand along the north and west ones — one
   // answer at a rim and another at the rim opposite, from a point nobody can see (#74).
   const dest = at(d.at)
-  return d.ids.map((id): Intent => {
-    // Where in that zone the card comes to rest is still where it was dragged to: the pointer's
-    // own place in the zone, offset by where in the card it was picked up.
+  // Where in that zone the card comes to rest is still where it was dragged to: the pointer's
+  // own place in the zone, offset by where in the card it was picked up.
+  const rest = d.ids.map((id) => {
     const o = d.origin[id] ?? d.grab
-    return { v: 'move', component: id, to: dest.zone, x: dest.x + o.x - d.grab.x, y: dest.y + o.y - d.grab.y }
+    return { id, x: dest.x + o.x - d.grab.x, y: dest.y + o.y - d.grab.y }
   })
+  // On the felt and not past its edge (#66): what is dragged together is drawn back together, so
+  // the cards keep their places among themselves.
+  const box = union(rest.map((r) => ({ x: r.x, y: r.y, ...CARD_MM })))
+  const s = box ? keptOnFelt(view, dest.zone, box) : { x: 0, y: 0 }
+  return rest.map((r): Intent => ({ v: 'move', component: r.id, to: dest.zone, x: r.x + s.x, y: r.y + s.y }))
+}
+
+// The shift that keeps a box on the felt once it has landed on the floor, and none anywhere else
+// (#66). The box is in the zone's own coordinates, which is how a `move` names a place; a zone
+// that is not the floor keeps what it is given, since the felt is the floor's edge and no other's.
+export function keptOnFelt(view: Snapshot, zone: string, box: Rect): Point {
+  return zone === view.floor ? ontoFelt(floorOf(view), box) : { x: 0, y: 0 }
+}
+
+function floorOf(view: Snapshot): ZoneView {
+  const floor = view.zones.find((z) => z.id === view.floor)
+  if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
+  return floor
 }
 
 // The topmost loose card, else the pile, under a point — ignoring what is being dragged.

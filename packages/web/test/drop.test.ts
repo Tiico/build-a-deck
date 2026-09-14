@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { CARD_STANDARD_63x88, initialState, project } from '@byd/engine'
+import { CARD_STANDARD_63x88, TOKEN_COUNTER, initialState, project } from '@byd/engine'
 import type { Intent, Snapshot } from '@byd/protocol'
-import { BESIDE_MM, CARD_MM, besidePile, dropIntents, type Drag, type Point } from '../src/table/drop.js'
+import { BESIDE_MM, CARD_MM, TOKEN_MM, besidePile, dropIntents, type Drag, type Point } from '../src/table/drop.js'
 import { handExtent, handRotation, type TableMode } from '../src/table/hand.js'
 import { zoneAt } from '../src/zones.js'
 import { playedAt } from '../src/online/seat.js'
@@ -78,7 +78,8 @@ const RIM_MM = 10
 const fourSeatScene = (): Snapshot => {
   const base = recipeSetup(4)
   const loose = { type: { id: CARD_STANDARD_63x88.id, version: 1 }, cardRef: 'dragon', zone: base.floor, face: 'front' as const, x: 500, y: 300 }
-  return project(initialState('rims', { ...base, components: [loose, ...base.components] }, registry), registry, null)
+  const chip = { type: { id: TOKEN_COUNTER.id, version: 1 }, cardRef: 'Liv', zone: base.floor, face: 'front' as const, counter: 3, x: 100, y: 100 }
+  return project(initialState('rims', { ...base, components: [loose, chip, ...base.components] }, registry), registry, null)
 }
 const geometryOf = (view: Snapshot, id: string) => view.zones.find((z) => z.id === id)!.geometry
 const grabbedAtItsMiddle = (view: Snapshot, id: string, at: Point): Drag => {
@@ -293,5 +294,91 @@ describe('a card out of the seat\'s own band lands in what the felt shows (K17, 
 
   it('onto the felt lands there, centred on the pointer', () => {
     expect(playedAt(v, 'A', { x: 0, y: 0 })).toEqual({ zone: v.floor, x: -floor.geometry.x - CARD_MM.w / 2, y: -floor.geometry.y - CARD_MM.h / 2 })
+  })
+})
+
+// The frame is not a place for a card (C5, K2, #66). The wood around the felt is drawn in screen
+// pixels, outside the millimetres a drop is measured in, and nothing lies *on* it: a drop whose
+// deciding point is past the felt's edge lays the card at the nearest place on the felt, the
+// whole card inside the floor. Measured, like everything here, in the renderer's own millimetres
+// on the felt the scene actually laid out; "past the edge" is any distance past it.
+describe.each<TableMode>(['table', 'tv'])('the frame is not a place for a card, mode=%s (C5, K2, #66)', (mode) => {
+  const v = fourSeatScene()
+  const loose = v.components.find((c) => c.zone === v.floor)!.id
+  const felt = geometryOf(v, v.floor)
+  // About the middle of the 30 px frame at 1280 × 800, in table millimetres; and well past it.
+  const OUT_MM = 20
+  const FAR_MM = 500
+  const middle = { x: felt.x + felt.w / 2, y: felt.y + felt.h / 2 }
+  // The card's corner once it lies against the felt's edges, in the floor's own coordinates.
+  const edge = { left: 0, right: felt.w - CARD_MM.w, top: 0, bottom: felt.h - CARD_MM.h }
+  const centred = { x: felt.w / 2 - CARD_MM.w / 2, y: felt.h / 2 - CARD_MM.h / 2 }
+  const looseAt = (at: Point) => dropIntents(v, grabbedAtItsMiddle(v, loose, at), mode)
+
+  it('a loose card let go over the left frame lies on the felt, against its left edge', () => {
+    expect(looseAt({ x: felt.x - OUT_MM, y: middle.y })).toEqual([{ v: 'move', component: loose, to: v.floor, x: edge.left, y: centred.y }])
+  })
+
+  it.each([
+    { side: 'left', out: (d: number) => ({ x: felt.x - d, y: middle.y }), rests: { x: edge.left, y: centred.y } },
+    { side: 'right', out: (d: number) => ({ x: felt.x + felt.w + d, y: middle.y }), rests: { x: edge.right, y: centred.y } },
+    { side: 'top', out: (d: number) => ({ x: middle.x, y: felt.y - d }), rests: { x: centred.x, y: edge.top } },
+    { side: 'bottom', out: (d: number) => ({ x: middle.x, y: felt.y + felt.h + d }), rests: { x: centred.x, y: edge.bottom } },
+    { side: 'top-left corner', out: (d: number) => ({ x: felt.x - d, y: felt.y - d }), rests: { x: edge.left, y: edge.top } },
+    { side: 'top-right corner', out: (d: number) => ({ x: felt.x + felt.w + d, y: felt.y - d }), rests: { x: edge.right, y: edge.top } },
+    { side: 'bottom-left corner', out: (d: number) => ({ x: felt.x - d, y: felt.y + felt.h + d }), rests: { x: edge.left, y: edge.bottom } },
+    { side: 'bottom-right corner', out: (d: number) => ({ x: felt.x + felt.w + d, y: felt.y + felt.h + d }), rests: { x: edge.right, y: edge.bottom } },
+  ])('let go over the $side, mid-frame or far past the wood, a loose card lies whole on the felt at the nearest edge', ({ out, rests }) => {
+    for (const d of [OUT_MM, FAR_MM]) {
+      const p = out(d)
+      expect(zoneAt(v.zones, v.floor, p.x, p.y).zone).toBe(v.floor)
+      expect(looseAt(p)).toEqual([{ v: 'move', component: loose, to: v.floor, x: rests.x, y: rests.y }])
+    }
+  })
+
+  it('let go on the felt, the card lies where it was let go', () => {
+    expect(looseAt(middle)).toEqual([{ v: 'move', component: loose, to: v.floor, x: centred.x, y: centred.y }])
+  })
+
+  // The same for everything else a drop can lay loose on the floor: the top of a pile, which is
+  // held by where it was let go of and splits off to a card cornered there (K1, K15); a whole
+  // pile, which travels by its centre; and a chip, which is not a card (C4) but no more lies on
+  // the wood than one does.
+  const draw = geometryOf(v, 'draw')
+  const chip = v.components.find((c) => c.counter !== undefined && c.zone === v.floor)!.id
+  const topAt = (at: Point) => dropIntents(v, { target: { kind: 'pileTop', pile: 'draw' }, ids: [], grab: { x: draw.x, y: draw.y }, at, origin: {} }, mode)
+  const pileAt = (at: Point) => dropIntents(v, { target: { kind: 'pile', pile: 'draw' }, ids: [], grab: { x: draw.x, y: draw.y }, at, origin: {} }, mode)
+  const chipAt = (at: Point) => {
+    const o = abs(v, chip)
+    return dropIntents(v, { target: { kind: 'counter', id: chip }, ids: [chip], grab: { x: o.x + TOKEN_MM / 2, y: o.y + TOKEN_MM / 2 }, at, origin: { [chip]: o } }, mode)
+  }
+  const outLeft = { x: felt.x - OUT_MM, y: middle.y }
+  const farBottomRight = { x: felt.x + felt.w + FAR_MM, y: felt.y + felt.h + FAR_MM }
+
+  it('the top of a pile let go over the frame splits off to a card lying whole on the felt', () => {
+    expect(topAt(outLeft)).toEqual([{ v: 'split', pile: 'draw', at: 1, x: felt.x, y: middle.y }])
+    expect(topAt(farBottomRight)).toEqual([{ v: 'split', pile: 'draw', at: 1, x: felt.x + felt.w - CARD_MM.w, y: felt.y + felt.h - CARD_MM.h }])
+  })
+
+  it('a whole pile let go over the frame comes to rest whole on the felt', () => {
+    expect(pileAt(outLeft)).toEqual([{ v: 'movePile', pile: 'draw', to: v.floor, x: felt.x + CARD_MM.w / 2, y: middle.y }])
+    expect(pileAt(farBottomRight)).toEqual([{ v: 'movePile', pile: 'draw', to: v.floor, x: felt.x + felt.w - CARD_MM.w / 2, y: felt.y + felt.h - CARD_MM.h / 2 }])
+  })
+
+  it('a chip let go over the frame comes to rest whole on the felt', () => {
+    expect(chipAt(outLeft)).toEqual([{ v: 'move', component: chip, to: v.floor, x: 0, y: felt.h / 2 - TOKEN_MM / 2 }])
+    expect(chipAt(farBottomRight)).toEqual([{ v: 'move', component: chip, to: v.floor, x: felt.w - TOKEN_MM, y: felt.h - TOKEN_MM }])
+  })
+})
+
+// On /online the same rule holds for a card played up out of the seat's own band (K17): the
+// felt is where it lands, and the frame around the felt is not.
+describe('a card played out of the band over the frame lies whole on the felt (K17, #66)', () => {
+  const v = fourSeatScene()
+  const felt = geometryOf(v, v.floor)
+
+  it('let go over the left frame, and far past the bottom-right corner', () => {
+    expect(playedAt(v, 'A', { x: felt.x - 20, y: felt.y + felt.h / 2 })).toEqual({ zone: v.floor, x: 0, y: felt.h / 2 - CARD_MM.h / 2 })
+    expect(playedAt(v, 'A', { x: felt.x + felt.w + 500, y: felt.y + felt.h + 500 })).toEqual({ zone: v.floor, x: felt.w - CARD_MM.w, y: felt.h - CARD_MM.h })
   })
 })

@@ -370,6 +370,25 @@ Räckvidden är bordet plus det som är i spel, omarginalerat: marginalen runt s
 En zoomning är en vy och inte innehåll, och vidgar därför aldrig räckvidden: att zooma ut stannar vid bordet som förut.
 Följden är den invariant som mäts i renderaren: inget kort som kameran är riktad mot skärs av av ramen.
 
+Reviderat 2026-09-14 (#66): ramen tar inte emot.
+Träramen runt filten ritas i skärmpixlar utanför de millimeter ett släpp mäts i — 30 px vid varje fönsterstorlek — och är ingen yta ett kort kan ligga *på*.
+Ett släpp vars avgörande punkt, pekarens (K2, #74), ligger utanför filtens golv lägger kortet vid närmaste kant på filten: kortets vilorektangel skjuts den kortaste sträcka som får den att ligga hel innanför golvet, på alla fyra sidor och i alla fyra hörn, hur långt förbi träet släppet än sker.
+Inget kort kan hamna på en yta som inte är bordet genom ett släpp.
+Ett släpp på filten är oförändrat; kortet ligger där det släpps.
+Regeln bor i `keptOnFelt` och `ontoFelt` i `packages/web/src/table/drop.ts`, mätt i golvets egna millimeter och inte i skärmens pixlar, och ställs av varje släppväg: ett löst kort, flera kort dragna tillsammans som skjuts som en enhet så de behåller sina inbördes platser, en högs topp, en hel hög som färdas med sin mitt, en bricka (C4) i sin egen storlek, samt distansvyns `playedAt` (K17).
+Det som landar i en annan zon än golvet lämnas som det är: filten är golvets kant och ingen annans.
+
+Två vägar förkastades.
+Väg 1, att låta det vara och räkna träramen som en del av ytan: ommätningen efter #64 visade att ett kort släppt mitt på ramen skrävar över filtkanten — 19 % på filten, 65 % på ramen, 16 % utanför träet — och att ett kort skjutet längre ut hänger 62 % på den mörka omgivningen med 0 % på filten, vilket ser sämre ut i dag än när frågan ställdes.
+Väg 3, att låta filten växa tills ramen är smalare än ett kort, ströks: ramen var smalare än ett kort redan före #64, och eftersom den ritas i pixlar blir den aldrig bredare; var ett kort hamnar avgörs av punkten och inte av om kortet ryms på ramen, så #64 ändrade bara hur felet ser ut.
+Priset, uttryckligen accepterat: en avsiktlig placering strax utanför filten går inte längre genom ett släpp.
+
+Distinktionen mot handen står i K2 (#65) och är avsiktlig: en fläkt som ritas ut över ramen är fortfarande den handen, och ett släpp på den delen av fläkten är ett släpp i handen.
+Det som avgör är vad som ritas där man släpper: filt eller fläkt tar emot, trä gör det inte.
+Kamerans regel ovan står kvar oförändrad: en delning bredvid en hög vid kanten (K1, K15) kan fortfarande lägga ett kort utanför filten, och då följer kameran med ut; genom ett släpp finns inget sådant kort längre.
+
+Grinden är `drop.test.ts`, i båda lägena: ett släpp mitt på varje ramsida och långt förbi träet, i alla fyra hörn, för ett löst kort, en högs topp, en hel hög och en bricka; ett släpp på filten oförändrat; och distansvyns `playedAt`.
+
 ### C6. Ångra: personlig ångra plus gruppens tillbakaspolning (fråga 18)
 
 Din egen senaste handling ångras direkt och tyst om ingen hunnit röra samma objekt.
@@ -865,7 +884,7 @@ Två alternativ förkastades.
 Fläkten men bara innanför filten hade lämnat omkring 30 % av den ritade fläkten död, vilket är exakt vad felet består i, bara mindre.
 Att rita om handen så att den håller sig i remsan hade gjort handen visuellt mindre och rört ett godkänt utseende (K9, #23).
 
-Distinktionen mot träramen (#66, väg 2: ramen tar inte emot något) är avsiktlig och ingen motsägelse.
+Distinktionen mot träramen (#66, väg 2: ramen tar inte emot något) är avsiktlig och ingen motsägelse; beslutet och dess skäl står under C5.
 Ramen är ingen yta man kan lägga ett kort *på*, och ett släpp på den lägger kortet vid närmaste kant på filten; men en hand som ritas ut över ramen är fortfarande den handen, och ett släpp på den delen av fläkten är ett släpp i handen.
 Det som avgör är alltså vad som ritas där man släpper: filt eller fläkt tar emot, trä gör det inte.
 

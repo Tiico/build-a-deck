@@ -1,5 +1,5 @@
 import type { Snapshot, ZoneView } from '@byd/protocol'
-import { CARD_MM, dropAt, type Point } from '../table/drop.js'
+import { CARD_MM, dropAt, keptOnFelt, type Point } from '../table/drop.js'
 import type { Rotation } from '../table/geometry.js'
 import type { Drop } from '../zones.js'
 
@@ -30,9 +30,12 @@ export function withoutHand(view: Snapshot, seat: string): Snapshot {
 // on the pointer, in whatever the pointer is over as the felt draws it — another seat's fan
 // included (#65) — and the pointer decides, not the card's corner (#74). Onto the seat's own hand
 // it goes nowhere: that hand is the band the card came out of, and the fan of backs the felt
-// shows in its place is a count, not a place to put a card.
+// shows in its place is a count, not a place to put a card. On the floor it lies on the felt and
+// not past its edge (#66).
 export function playedAt(view: Snapshot, seat: string, p: Point): Drop | null {
   const dest = dropAt(view, 'table', p)
   if (dest.zone === `hand:${seat}`) return null
-  return { zone: dest.zone, x: dest.x - CARD_MM.w / 2, y: dest.y - CARD_MM.h / 2 }
+  const box = { x: dest.x - CARD_MM.w / 2, y: dest.y - CARD_MM.h / 2, ...CARD_MM }
+  const s = keptOnFelt(view, dest.zone, box)
+  return { zone: dest.zone, x: box.x + s.x, y: box.y + s.y }
 }
