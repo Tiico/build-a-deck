@@ -112,3 +112,45 @@ describe('the field is called what it says it is called', () => {
     expect(screen.getByRole('textbox', { name: 'Spelets namn' })).toBeTruthy()
   })
 })
+
+// The guided start is a door, not a gate (L14): whoever would rather build everything in the
+// editor gives the game a name and its seats — the two things every game has — and goes
+// straight there with no cards, no fields and no frame. The same request makes the same kind of
+// document as the guided way, so the editor does not know which door it came in by (E3).
+describe('a game without the guided start (L14)', () => {
+  it('creates the game from the name and the seats alone, and opens the editor', async () => {
+    const gone: string[] = []
+    open((url) => gone.push(url))
+    fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Kråkkriget' } })
+    fireEvent.click(screen.getByRole('button', { name: /^4$/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Skapa ett tomt spel i editorn' }))
+
+    await waitFor(() => expect(gone).toHaveLength(1))
+    const url = new URL(gone[0]!, 'http://x')
+    expect(url.pathname).toBe('/editor')
+    expect(url.searchParams.get('server')).toBe(run.http)
+    const stored = await run.projects.load(url.searchParams.get('project')!)
+    expect(stored?.name).toBe('Kråkkriget')
+    expect(stored?.setup.seats).toEqual(['A', 'B', 'C', 'D'])
+    expect(stored?.rows).toEqual([])
+    expect(stored?.template.faces['front']?.base).toEqual([])
+    expect(stored?.template.faces['back']?.base).toEqual([])
+  })
+
+  it('is closed without a name, like the guided way', () => {
+    open(() => undefined)
+    const blank = screen.getByRole('button', { name: 'Skapa ett tomt spel i editorn' }) as HTMLButtonElement
+    expect(blank.disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'X' } })
+    expect(blank.disabled).toBe(false)
+  })
+
+  it('says what it leaves out, and is the second action beside the guided way (L13)', () => {
+    open(() => undefined)
+    expect(screen.getByText('Utan guidad start')).toBeTruthy()
+    expect(screen.getByText(/utan kort, fält eller mall/i)).toBeTruthy()
+    const blank = screen.getByRole('button', { name: 'Skapa ett tomt spel i editorn' })
+    expect(blank.classList.contains('byd-secondary')).toBe(true)
+    expect(blank.classList.contains('byd-primary')).toBe(false)
+  })
+})

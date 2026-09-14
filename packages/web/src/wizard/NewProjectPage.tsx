@@ -5,7 +5,7 @@ import { useRoom } from '../room.js'
 import { loginUrl, withCredentials } from '../account/api.js'
 import { assetRef, bytesOfDataUrl } from '../editor/assets.js'
 import { suggestFieldKey } from '../editor/fields.js'
-import { buildProject, type WizardState } from './build.js'
+import { buildBlankProject, buildProject, type WizardState } from './build.js'
 import { defaultFields, DEFAULT_FRAME, FRAMES, type Field } from './frames.js'
 import { useT, type Key, type T } from '../i18n/index.js'
 import { MAX_PLAYERS } from '@byd/server/doc'
@@ -20,7 +20,11 @@ export type NewProjectPageProps = { onNavigate?(url: string): void }
 const firstRow = (t: T): Record<string, string> => ({ title: t('wizard.card.n', { n: 1 }), cost: '1', body: '', art: '' })
 const emptyState = (t: T): WizardState => ({ name: '', players: 2, fields: defaultFields(t), frame: 'classic', rows: [firstRow(t)] })
 const PENDING_KEY = 'byd.pending-wizard'
-type PendingWizard = { state: WizardState; server: string | null }
+// `blank` is the door the draft was on its way through (L14), so a login asked for on the way
+// past the guided start resumes past it, not through it.
+type PendingWizard = { state: WizardState; server: string | null; blank?: boolean }
+// The two doors out of the wizard: through its three steps, or past them with a blank game.
+type Via = 'guided' | 'blank'
 
 function pendingWizard(server: string | null): PendingWizard | null {
   try {
@@ -85,10 +89,13 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   const at = STEPS.findIndex(([key]) => key === step)
   const { itemProps } = useRoving({ ids: STEPS.map(([key]) => key), selected: step, orientation: 'horizontal' })
   const [busy, setBusy] = useState(false)
+  // Which door the game is being made through, so the wait and the error stand at that door.
+  const [via, setVia] = useState<Via>('guided')
   const [error, setError] = useState<string | null>(null)
   const resumed = useRef(false)
   const frame = FRAMES.find((candidate) => candidate.id === s.frame) ?? DEFAULT_FRAME
-  const ready = s.name.trim().length > 0 && s.rows.length > 0 && s.fields.length > 0
+  const named = s.name.trim().length > 0
+  const ready = named && s.rows.length > 0 && s.fields.length > 0
   const front = useMemo(() => frame.front(s.fields), [frame, s.fields])
   const row = s.rows[selectedRow] ?? s.rows[0] ?? firstRow(t)
 
@@ -96,24 +103,31 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     if (server) q.set('server', server)
     return q.toString()
   }
-  const toEditor = async () => {
+  const toEditor = async (door: Via = 'guided') => {
     setBusy(true)
+    setVia(door)
     setError(null)
+    // A login asked for here is the same login the project needs; the draft waits for it in
+    // this tab and comes back through the same door.
+    const login = () => {
+      rememberWizard({ state: s, server, blank: door === 'blank' })
+      onNavigate(loginUrl(location.pathname + location.search, server))
+      return new Error(t('wizard.error.login'))
+    }
     try {
-      // The chosen images go up first (E1): the project's rows point at them by hash, not by
-      // carrying the bytes. A login asked for here is the same login the project needs.
-      const uploaded = await uploadImages(t, http, s)
-      if (uploaded === 'login') {
-        rememberWizard({ state: s, server })
-        onNavigate(loginUrl(location.pathname + location.search, server))
-        throw new Error(t('wizard.error.login'))
+      let doc
+      if (door === 'blank') {
+        // Past the guided start (L14) there is nothing to upload: the game has no images yet.
+        doc = buildBlankProject(s, t)
+      } else {
+        // The chosen images go up first (E1): the project's rows point at them by hash, not by
+        // carrying the bytes.
+        const uploaded = await uploadImages(t, http, s)
+        if (uploaded === 'login') throw login()
+        doc = buildProject(uploaded, t)
       }
-      const res = await fetch(`${http}/projects`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(buildProject(uploaded, t)) }))
-      if (res.status === 401) {
-        rememberWizard({ state: s, server })
-        onNavigate(loginUrl(location.pathname + location.search, server))
-        throw new Error(t('wizard.error.login'))
-      }
+      const res = await fetch(`${http}/projects`, withCredentials({ method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(doc) }))
+      if (res.status === 401) throw login()
       if (!res.ok) throw new Error(t('wizard.error.create', { status: res.status }))
       forgetWizard()
       const { id } = (await res.json()) as { id: string }
@@ -126,7 +140,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   useEffect(() => {
     if (!pending || resumed.current) return
     resumed.current = true
-    void toEditor()
+    void toEditor(pending.blank ? 'blank' : 'guided')
   }, [])
 
   const setFields = (fields: Field[]) => setS((current) => ({ ...current, fields }))
@@ -192,6 +206,16 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
           eight, so a game for seven or eight could not be started here at all — the same mismatch
           the editor's own panel had (K18, K19). */}
       <fieldset><legend>{t('wizard.players')}</legend><div className="byd-wizard-players">{Array.from({ length: MAX_PLAYERS }, (_, i) => i + 1).map((n) => <button key={n} type="button" className="byd-choice" aria-pressed={s.players === n} onClick={() => setS({ ...s, players: n })}>{n}</button>)}</div></fieldset>
+      {/* The guided start is a door, not a gate (L14): the name and the seats above are all a
+          game needs in order to exist, and whoever would rather make the cards, the fields and
+          the faces in the editor goes there now, with none of them. It is the second action in
+          the view (L13): the guided way is the first, and this one stands beside it, bordered. */}
+      <div className="byd-wizard-blank">
+        <strong>{t('wizard.blank.title')}</strong>
+        <p>{t('wizard.blank.body')}</p>
+        <button type="button" className="byd-secondary" disabled={!named || busy} onClick={() => void toEditor('blank')}>{t(busy && via === 'blank' ? 'wizard.creating' : 'wizard.blank.create')}</button>
+        {error && via === 'blank' && <span role="alert">{error}</span>}
+      </div>
     </section>
   )
   const falten = (
@@ -219,7 +243,7 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
         <div className="byd-wizard-card-form">{s.fields.map((field) => field.kind === 'image' ? <div key={field.key} className="byd-wizard-image-field is-wide"><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span><div>{row[field.key] ? <img src={row[field.key]} alt={t('wizard.image.preview', { label: field.label })} /> : <i>{t('wizard.image.none')}</i>}<label className="byd-wizard-file-button byd-secondary">{t(row[field.key] ? 'wizard.image.change' : 'wizard.image.choose')}<input type="file" accept="image/*" aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} onChange={(event) => chooseImage(selectedRow, field.key, event.target.files?.[0])} /></label>{row[field.key] && <button type="button" onClick={() => updateRow(selectedRow, field.key, '')}>{t('wizard.image.remove')}</button>}</div></div> : <label key={field.key} className={field.key === 'body' ? 'is-wide' : ''}><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span>{field.key === 'body' ? <textarea rows={4} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} /> : <input type={field.kind === 'number' ? 'number' : 'text'} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} />}</label>)}</div>
       </div>
       <div className="byd-wizard-card-tabs">{s.rows.map((candidate, index) => <button type="button" key={index} className="byd-choice" aria-pressed={selectedRow === index} onClick={() => setSelectedRow(index)}><b>{index + 1}</b>{candidate['title'] || t('wizard.card.untitled')}</button>)}<button type="button" className="is-add" onClick={addRow}>{t('wizard.card.add')}</button><button type="button" disabled={s.rows.length === 1} onClick={() => removeRow(selectedRow)}>{t('wizard.card.remove')}</button></div>
-      <footer><p>{t('wizard.footer')}</p><button type="button" className="byd-wizard-primary byd-primary" disabled={!ready || busy} onClick={() => void toEditor()}>{t(busy ? 'wizard.creating' : 'wizard.create')}</button>{error && <span role="alert">{error}</span>}</footer>
+      <footer><p>{t('wizard.footer')}</p><button type="button" className="byd-wizard-primary byd-primary" disabled={!ready || busy} onClick={() => void toEditor()}>{t(busy && via === 'guided' ? 'wizard.creating' : 'wizard.create')}</button>{error && via === 'guided' && <span role="alert">{error}</span>}</footer>
     </section>
   )
   const handoff = <div className="byd-wizard-handoff"><strong>{t('wizard.handoff.title')}</strong><p>{t('wizard.handoff.body')}</p></div>

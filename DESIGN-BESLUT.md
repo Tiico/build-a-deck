@@ -2462,6 +2462,25 @@ Färgblindhetskontrollen (E5) läser den färg raden faktiskt får, alltså kort
 
 Byggt 2026-09-14 (ingen prototyp: växeln och listan är egenskapspanelens egna former, och regeln ritar ingen ny yta).
 
+### L14. Ett spel utan den guidade starten (2026-09-13)
+
+Den guidade starten (E3, L6) är en dörr, inte en grind.
+Den som hellre bygger allt själv skapar spelet från steg 1 i wizarden med bara namnet och antalet spelare — de två saker varje spel har — och hamnar direkt i editorn med ett tomt spel: inga kort, inga fält, en tom fram- och baksida.
+Bordet är receptets, precis som för ett spel som går den guidade vägen (B5, K18, C4), eftersom ett spel har ett bord vilken dörr det än kom in genom; det vrids efteråt i fliken "Bord".
+
+Motivering:
+Wizarden är en kort grafisk start för den som vill se sina fält på exempelkort innan editorn (E3).
+Den som redan vet vad hen vill ha tvingades igenom tre steg och fick sedan städa bort exempelkort, startram och fyra föreslagna fält som inte var hens.
+Villkoret från E3 gäller oförändrat: samma dokument, samma väg (`POST /projects`), ingen parallell kodväg — editorn kan inte se vilken dörr ett spel kom in genom, och det första elementet och det första kortet görs där med samma redigeringar som varje annat spel får.
+
+Utseende: ett stillsamt block under namnet och spelarantalet i steg 1 — "Utan guidad start", en mening om vad som utelämnas, och knappen "Skapa ett tomt spel i editorn".
+Knappen är *andra handlingen* i vyn (L13): kantad, aldrig fylld, så att den guidade vägen förblir den första.
+Den är stängd utan namn, som den guidade vägen.
+Ett utkast som skickas förbi den guidade starten och möter en inloggning återupptas förbi den, inte genom den (G1).
+
+Startsidans "＋ Nytt spel" leder som förut till `/new`; det är där valet mellan de två dörrarna står, en skärm in.
+Byggt utan prototyprunda, som ett tillägg i wizardens redan beslutade form (L6, L10); en egen granskning ingår i nästa UX-kontroll.
+
 ---
 
 ## I. Öppna frågor

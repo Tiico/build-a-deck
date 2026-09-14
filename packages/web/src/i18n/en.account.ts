@@ -77,6 +77,9 @@ export const enAccount = {
   'wizard.name': 'The name of the game',
   'wizard.name.placeholder': 'Lords of the Forest',
   'wizard.players': 'Players',
+  'wizard.blank.title': 'Without the guided start',
+  'wizard.blank.body': 'Would you rather build everything yourself? The game is made with the name and the seats above, with no cards, fields or template, and opens straight in the editor.',
+  'wizard.blank.create': 'Create an empty game in the editor',
 
   'wizard.fields': 'Fields',
   'wizard.fields.body': 'Every field becomes a control on every example card straight away.',
