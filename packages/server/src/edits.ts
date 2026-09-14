@@ -32,6 +32,11 @@ export type EditIntent =
   // table with the element bound to the field it had before.
   | { v: 'addField'; field: string; bind?: { face: string; id: string; group?: string | null } }
   | { v: 'removeField'; field: string }
+  // Where a column stands in the table (#46). The order is the document's and not the reader's:
+  // everyone with the project open sees it, the CSV export writes it, and a step back takes it
+  // back — which a view in one browser could do none of. `before` is the column it comes to
+  // stand in front of, and `null` is the far end: last of all.
+  | { v: 'moveField'; field: string; before: string | null }
   // The template (L1, #13, #18)
   // `clear` takes properties off the element rather than setting them, which a patch cannot do:
   // `undefined` does not survive JSON, so a patch that means "this layer has no name any more"
@@ -125,11 +130,31 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
           return [id, next]
         }),
       )
+      // The order goes with it as well, or the document would keep an order about a column
+      // nothing answers to any more. `columnsOf` would step over the name either way; what is
+      // avoided is writing it down for ever.
+      const order = doc.columns?.filter((f) => f !== intent.field)
       return {
         ...doc,
         rows: doc.rows.map((r) => ({ ...r, fields: without(r.fields, intent.field) })),
         template: { ...doc.template, faces },
+        ...(order ? { columns: order } : {}),
       }
+    }
+
+    // A column moved to another place in the table (#46). What is written down is the whole
+    // order and not the one move: read back, an order is a list to lay over the derivation, and
+    // half an order would leave every column the designer has not touched to the derivation's
+    // own mind about where it goes.
+    case 'moveField': {
+      if (intent.field === ANTAL) throw new Error(`field ${ANTAL} stands last and is not moved`)
+      const columns = columnsOf(doc)
+      if (!columns.includes(intent.field)) throw new Error(`no field ${intent.field}`)
+      if (intent.before !== null && !columns.includes(intent.before)) throw new Error(`no field ${intent.before}`)
+      if (intent.before === intent.field) throw new Error(`field ${intent.field} cannot stand before itself`)
+      const rest = columns.filter((f) => f !== intent.field)
+      const at = intent.before === null ? rest.length : rest.indexOf(intent.before)
+      return { ...doc, columns: [...rest.slice(0, at), intent.field, ...rest.slice(at)] }
     }
 
     // Replaces fields of one element by id (L1). Without a group that is the face's base, and the
@@ -353,7 +378,18 @@ export function columnsOf(doc: ProjectDoc): string[] {
     for (const v of Object.values(face.variants)) walk(v.override ?? [])
   }
   for (const row of doc.rows) for (const key of Object.keys(row.fields)) add(key)
-  return out
+  // And the order the designer put them in, laid over that (#46). It is read as an order and
+  // never as the list itself: a name in it that the deck no longer answers to is stepped over,
+  // and a column it does not mention — one made since the last move — keeps the place the walk
+  // above gave it. So a project that has never been reordered, and a project whose order is
+  // half a year out of date, both read back as decks with exactly the columns they have.
+  const wanted = doc.columns
+  if (!wanted || wanted.length === 0) return out
+  const has = new Set(out)
+  const order = wanted.filter((f) => has.has(f))
+  const placed = new Set(order)
+  for (const field of out) if (!placed.has(field)) order.push(field)
+  return order
 }
 
 // How many elements of the template would go with a column, counted across every face and every

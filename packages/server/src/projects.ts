@@ -63,6 +63,14 @@ export const ProjectDoc = z.object({
   name: z.string().min(1),
   template: Template,
   rows: z.array(ProjectRow),
+  // The order the table shows the columns in (#46). Deliberately an order and not a list of the
+  // columns there are: which columns a project has is derived from what the template draws and
+  // what the cards carry, and that stays the truth — `columnsOf` reads this over the derivation,
+  // keeping the names it knows in the order it names them and leaving everything else where the
+  // derivation put it. A project nobody has reordered has no key here at all, which is why it is
+  // optional: every document written before the designer could move a column is still this
+  // document, and reads back at exactly the order it always had.
+  columns: z.array(z.string()).optional(),
   icons: z.record(z.string(), z.string()),
   credits: z.record(z.string(), ProjectCredit).optional(),
   rules: RuleDoc.optional(),

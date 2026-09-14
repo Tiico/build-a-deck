@@ -21,6 +21,9 @@ export function whatOf(intent: EditIntent): Key {
     // template with it, so the step back says a field rather than "a change in the deck" (#32).
     case 'addField':
     case 'removeField':
+    // And moving one is a change to the same part of the game: where a column stands is the
+    // document's (#46), so a step back has to be able to put it back.
+    case 'moveField':
       return 'undo.what.field'
     case 'patchElement':
     case 'addElement':

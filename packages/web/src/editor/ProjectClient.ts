@@ -368,6 +368,12 @@ export class ProjectClient {
     this.edit({ v: 'addField', field, ...(bind ? { bind } : {}) })
   }
 
+  // Where a column stands (#46). `before` is the column it comes to stand in front of, and null
+  // is last of all — the same two ways a drag can end.
+  moveField(field: string, before: string | null): void {
+    this.edit({ v: 'moveField', field, before })
+  }
+
   removeField(field: string): void {
     this.edit({ v: 'removeField', field })
   }

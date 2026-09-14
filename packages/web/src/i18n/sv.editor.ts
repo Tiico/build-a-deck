@@ -423,6 +423,7 @@ export const svEditor = {
   'history.diff.removed': '{n} borttagna',
   'history.diff.changed': '{n} ändrade',
   'history.diff.reordered': 'leken omordnad',
+  'history.diff.columns': 'kolumnerna omordnade',
   'history.diff.template': 'mallen ändrad',
   'history.diff.setup': 'uppställningen ändrad',
   'history.diff.icons': 'symbolerna ändrade',

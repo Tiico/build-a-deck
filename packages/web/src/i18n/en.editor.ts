@@ -389,6 +389,7 @@ export const enEditor = {
   'history.diff.removed': '{n} removed',
   'history.diff.changed': '{n} changed',
   'history.diff.reordered': 'deck reordered',
+  'history.diff.columns': 'columns reordered',
   'history.diff.template': 'template changed',
   'history.diff.setup': 'setup changed',
   'history.diff.icons': 'symbols changed',

@@ -20,7 +20,7 @@ const base = (): ProjectDoc => {
 
 describe('what changed between two versions (B4): the diff the card table shows', () => {
   it('says nothing at all when nothing changed', () => {
-    expect(diffProjects(base(), base())).toEqual({ rows: [], template: false, setup: false, icons: false, reordered: false })
+    expect(diffProjects(base(), base())).toEqual({ rows: [], template: false, setup: false, icons: false, reordered: false, columns: false })
   })
 
   it('names the cards added, removed and changed, and which field moved from what to what', () => {
@@ -44,6 +44,22 @@ describe('what changed between two versions (B4): the diff the card table shows'
     const diff = diffProjects(base(), after)
     expect(diff.rows).toEqual([])
     expect(diff.reordered).toBe(true)
+  })
+
+  // And the order of the columns from both of them (#46). It is a change to the document like
+  // any other, so a version whose only change is a column moved must not read as a version where
+  // nothing happened — which is what the history would have said before there was a word for it.
+  it('separates the order of the columns from the order of the deck and from any card', () => {
+    const before = base()
+    const after = { ...base(), columns: ['antal', 'title'] }
+    const diff = diffProjects(before, after)
+    expect(diff.columns).toBe(true)
+    expect(diff.rows).toEqual([])
+    expect(diff.reordered).toBe(false)
+
+    // An order written down that says exactly what the derivation already said is not a change
+    // anybody made: the same columns in the same places.
+    expect(diffProjects(before, { ...base(), columns: ['title', 'cost', 'antal'] }).columns).toBe(false)
   })
 
   it('says when the template, the setup or the symbols moved, without spelling out how', () => {

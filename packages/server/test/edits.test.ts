@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { applyEdit, drawnBy, type EditIntent } from '../src/edits.js'
+import { applyEdit, columnsOf, drawnBy, type EditIntent } from '../src/edits.js'
 import { template } from './deck.js'
 import { twoSeatSetup } from './fixture.js'
 import type { ProjectDoc } from '../src/projects.js'
@@ -143,6 +143,51 @@ describe('an edit is a thing that happened to the project (D3)', () => {
     expect(gone.template.faces['front']?.variantBy).toBeUndefined()
     // The card's copies are the engine's column and cannot be taken away (L4).
     expect(() => applyEdit(base(), { v: 'removeField', field: 'antal' })).toThrow(/antal/)
+  })
+
+  // Where a column stands in the table (#46). Until now the order was purely derived — what the
+  // template draws, in the template's order, then whatever else the cards carry — and nothing a
+  // designer did could change it. A move is therefore a change to the document and not a view of
+  // it: the order is what everyone with the project open sees, what the CSV export writes, and
+  // what a step back has to be able to undo. So it lands in the log like every other edit.
+  //
+  // What is written down is an order and not a list of columns: which columns exist is still
+  // derived, deliberately — a column is either drawn or written in, and both are visible without
+  // being listed. The order is read over that derivation: the columns it names, in the order it
+  // names them, then everything it does not mention where the derivation put it.
+  it("moves a column, and the order it leaves is the document's", () => {
+    const doc = after(base(), { v: 'addField', field: 'styrka' }, { v: 'addField', field: 'kostnad' })
+    expect(columnsOf(doc)).toEqual(['title', 'antal', 'styrka', 'kostnad'])
+
+    // Moved to stand before another column, which is the whole of what a drag says.
+    const moved = applyEdit(doc, { v: 'moveField', field: 'kostnad', before: 'title' })
+    expect(columnsOf(moved)).toEqual(['kostnad', 'title', 'antal', 'styrka'])
+    // And the document it was given is untouched, as every edit leaves it.
+    expect(columnsOf(doc)).toEqual(['title', 'antal', 'styrka', 'kostnad'])
+
+    // Nothing before it is last, which is the far end of the same gesture.
+    expect(columnsOf(applyEdit(moved, { v: 'moveField', field: 'title', before: null }))).toEqual(['kostnad', 'antal', 'styrka', 'title'])
+
+    // A column nobody has moved keeps the place the derivation gave it: an order is not a list of
+    // which columns there are, so a column made after the move stands where a new column stands.
+    const later = applyEdit(moved, { v: 'addField', field: 'sällsynt' })
+    expect(columnsOf(later)).toEqual(['kostnad', 'title', 'antal', 'styrka', 'sällsynt'])
+
+    // And a column that goes takes its place in the order with it, rather than leaving a name
+    // behind that nothing answers to.
+    const gone = applyEdit(later, { v: 'removeField', field: 'kostnad' })
+    expect(columnsOf(gone)).toEqual(['title', 'antal', 'styrka', 'sällsynt'])
+    expect(gone.columns ?? []).not.toContain('kostnad')
+
+    // What it refuses: a column the deck does not have, and standing before one it does not have
+    // either. Both would write an order about something that is not there.
+    expect(() => applyEdit(doc, { v: 'moveField', field: 'ingen', before: 'title' })).toThrow(/ingen/)
+    expect(() => applyEdit(doc, { v: 'moveField', field: 'title', before: 'ingen' })).toThrow(/ingen/)
+    // `antal` is the deck's own count and stands last wherever the table shows it (L4), so moving
+    // it is a move nobody could see happen.
+    expect(() => applyEdit(doc, { v: 'moveField', field: 'antal', before: 'title' })).toThrow(/antal/)
+    // And standing before itself, which is a move that says nothing.
+    expect(() => applyEdit(doc, { v: 'moveField', field: 'title', before: 'title' })).toThrow(/title/)
   })
 
   // The canvas door (#32): a designer goes to say which column an element shows, finds the column

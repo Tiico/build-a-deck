@@ -126,6 +126,7 @@ export function Summary({ diff }: { diff: DocDiff }) {
   if (n('removed')) parts.push(t('history.diff.removed', { n: n('removed') }))
   if (n('changed')) parts.push(t('history.diff.changed', { n: n('changed') }))
   if (diff.reordered) parts.push(t('history.diff.reordered'))
+  if (diff.columns) parts.push(t('history.diff.columns'))
   if (diff.template) parts.push(t('history.diff.template'))
   if (diff.setup) parts.push(t('history.diff.setup'))
   if (diff.icons) parts.push(t('history.diff.icons'))
