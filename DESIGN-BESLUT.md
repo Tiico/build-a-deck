@@ -718,6 +718,27 @@ En vald fil laddas upp en gång oavsett hur många kort den hamnar på, vilket �
 Raden släpper bilden när den är satt: en kvarhållen bild och en ny markering är en bild skriven av misstag.
 Samtidigt stängdes hålet som låg bredvid: ett bildfält går inte längre att skriva ren text i från handlingsraden, som tidigare bjöd en textruta för varje kolumn.
 
+Bildernas storlek jämnas ut på motivet, inte på filen (byggt 2026-09-14):
+En leks illustrationer kommer en fil per kort, och två filer som bär samma motiv bär det sällan i samma storlek — den ena har en handsbredd genomskinlig luft runt teckningen, den nästa nästan ingen.
+Passas filen in i ramen ritas därför motivet olika stort på varje kort, och det är inget mallen kan säga något om: den vet bara att där sitter en bild.
+Tre vägar prövades: ett gemensamt mått att passa in efter (alla bilder exakt ramens höjd eller bredd), justering per kort i tabellen, och automatisk beskärning av tomrummet.
+Valet blev beskärningen, därför att den tar orsaken och inte symptomet: ett gemensamt mått jämnar ut filerna men inte det som är ritat i dem, och justering per kort är fyrtio handgrepp som måste göras om när bilderna byts.
+
+Motivets ruta är filens egen pixelstorlek plus den enfärgade eller genomskinliga ram den bär runt det som är ritat.
+Marken är den översta vänstra pixeln och bara om de tre andra hörnen säger samma sak; en bild vars hörn är oense har ingen mark att skala bort och lämnas orörd, liksom en bild som är idel mark.
+Toleransen är åtta steg per kanal, eftersom ett fotografis vita aldrig är ett enda tal.
+
+Mätningen är av bytesen, så den görs en gång per innehållshash och ligger bredvid typen och storleken i `assets` — samma cachning som E4:s screening förutsätter.
+Den görs i webbläsaren, som redan har avkodat filen för att visa den: det kostar en uppritning och lägger ingen bildavkodare i appcontainern, som medvetet är utan Chromium (DRIFT §6).
+Klienten frågar servern först och mäter bara det servern inte vet, och berättar sedan — så en lek gjord innan det fanns något att mäta hinner ifatt första gången den öppnas.
+Den första mätningen är mätningen: en andra skriver inte över, eftersom samma bytes alltid bär samma motiv och en bild kan sitta i tio andras lekar.
+En mätning som inte kan vara av en bild — en ram som äter hela bilden, negativa tal — tas inte emot, för en lagrad mätning beskär varje kort som använder filen.
+
+Valet i mallen är en växel på bildelementet, `trim`, och inte ett läge till i `fit`: de två frågorna är olika — vad som passas in, och hur det möter ramen — och de besvaras oberoende.
+Kompilatorn passar in motivet enligt elementets `fit` och lägger sedan filen runt det i samma skala; ramen beskär som den alltid gjort.
+Därför bär ett bildelement nu en ram i markupen, `<div data-element><img class="byd-art">`, i stället för att vara bilden: `data-element` är ramen designern greppar, vilken inpassning som än gäller.
+En fil som ingen har mätt passas in som en fil, så växeln kan aldrig tappa bort en bild.
+
 ### E2. En enda renderare: HTML/CSS via headless Chromium (fråga 9)
 
 Mallen är HTML och CSS.

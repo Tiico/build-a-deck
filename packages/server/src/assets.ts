@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto'
+import { z } from 'zod'
+import type { Motif } from '@byd/template'
 import { MemoryObjectStore, type ObjectStore } from '@byd/render'
 import type { Sql } from 'postgres'
 import type { ProjectRow } from './projects.js'
@@ -12,6 +14,13 @@ export type AssetStore = {
   // Stores the bytes and returns their hash; the same bytes give the same hash and cost nothing.
   put(bytes: Uint8Array, contentType: string): Promise<string>
   get(hash: string): Promise<{ bytes: Uint8Array; contentType: string } | null>
+  // What is drawn inside the picture (E1): the file's pixel size and the uniform border it
+  // carries around its motif, so a template can fit the motif rather than the file. It is a
+  // property of the bytes, so it is measured once and kept — and the first measurement is the
+  // measurement, since a second one would silently re-crop a picture other decks already use.
+  // False when there is no such asset, or when it has been measured already.
+  setMotif(hash: string, motif: Motif): Promise<boolean>
+  motifs(hashes: readonly string[]): Promise<Record<string, Motif>>
   // A URL a browser may fetch the asset from directly for `ttlSeconds`; null when the bytes
   // have to come through the server.
   link(hash: string, ttlSeconds: number): Promise<string | null>
@@ -20,11 +29,35 @@ export type AssetStore = {
 export const ASSET_PREFIX = 'asset:'
 export const assetKey = (hash: string): string => `assets/${hash}`
 export const assetHash = (bytes: Uint8Array): string => createHash('sha256').update(bytes).digest('hex')
+// A measurement as it arrives from outside (E1). Nothing here can check it against the bytes
+// without decoding them, so what is checked is that it could be of a picture at all: whole
+// pixels, a picture with extent, and a border that leaves some of the picture. An implausible
+// one is refused rather than stored, because a stored one crops every card that uses the file.
+const Whole = z.number().int().nonnegative()
+export const MotifBody = z
+  .object({ w: z.number().int().positive(), h: z.number().int().positive(), trim: z.object({ left: Whole, top: Whole, right: Whole, bottom: Whole }) })
+  .refine((m) => m.trim.left + m.trim.right < m.w && m.trim.top + m.trim.bottom < m.h, 'the border leaves no picture')
+
 export const isAssetRef = (value: unknown): value is string => typeof value === 'string' && value.startsWith(ASSET_PREFIX) && /^[0-9a-f]{64}$/.test(value.slice(ASSET_PREFIX.length))
 
 export class MemoryAssetStore implements AssetStore {
   private readonly types = new Map<string, string>()
+  private readonly drawn = new Map<string, Motif>()
   constructor(private readonly objects: ObjectStore = new MemoryObjectStore()) {}
+
+  async setMotif(hash: string, motif: Motif): Promise<boolean> {
+    if (!this.types.has(hash) || this.drawn.has(hash)) return false
+    this.drawn.set(hash, motif)
+    return true
+  }
+  async motifs(hashes: readonly string[]): Promise<Record<string, Motif>> {
+    const out: Record<string, Motif> = {}
+    for (const hash of hashes) {
+      const motif = this.drawn.get(hash)
+      if (motif) out[hash] = motif
+    }
+    return out
+  }
 
   async put(bytes: Uint8Array, contentType: string): Promise<string> {
     const hash = assetHash(bytes)
@@ -52,6 +85,18 @@ export class PostgresAssetStore implements AssetStore {
     private readonly sql: Sql,
     private readonly objects?: ObjectStore,
   ) {}
+
+  async setMotif(hash: string, motif: Motif): Promise<boolean> {
+    // "motif is null" is what makes the first measurement the measurement, and makes an asset
+    // nobody has uploaded answer the same way as one measured already: nothing was written.
+    const done = await this.sql`update assets set motif = ${this.sql.json(motif as never)} where hash = ${hash} and motif is null`
+    return done.count > 0
+  }
+  async motifs(hashes: readonly string[]): Promise<Record<string, Motif>> {
+    if (hashes.length === 0) return {}
+    const rows = await this.sql<{ hash: string; motif: Motif }[]>`select hash, motif from assets where hash in ${this.sql(hashes as string[])} and motif is not null`
+    return Object.fromEntries(rows.map((r) => [r.hash, r.motif]))
+  }
 
   async put(bytes: Uint8Array, contentType: string): Promise<string> {
     const hash = assetHash(bytes)
@@ -111,7 +156,11 @@ export async function resolveFonts(fonts: Record<string, { stack: string; asset?
 // The rows as the compiler needs them: every asset reference swapped for a data URL, so the
 // compiled page carries its images and the render worker needs nothing but the page. An asset
 // that is gone leaves the field empty rather than a broken reference on the card.
-export async function resolveAssets(rows: readonly ProjectRow[], assets: AssetStore): Promise<ProjectRow[]> {
+//
+// The motifs come back beside the rows rather than on their own, keyed by the URL the rows now
+// carry (E1). One walk and one keying: nothing downstream can disagree about which measurement
+// belongs to which picture.
+export async function resolveAssets(rows: readonly ProjectRow[], assets: AssetStore): Promise<{ rows: ProjectRow[]; motifs: Record<string, Motif> }> {
   const urls = new Map<string, string>()
   const out: ProjectRow[] = []
   for (const row of rows) {
@@ -127,5 +176,10 @@ export async function resolveAssets(rows: readonly ProjectRow[], assets: AssetSt
     }
     out.push({ id: row.id, fields })
   }
-  return out
+  const motifs: Record<string, Motif> = {}
+  for (const [hash, motif] of Object.entries(await assets.motifs([...urls.keys()]))) {
+    const url = urls.get(hash)
+    if (url) motifs[url] = motif
+  }
+  return { rows: out, motifs }
 }

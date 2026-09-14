@@ -23,7 +23,7 @@ import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountO
 import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
 import { canDelete, canEdit, canRead, canShare, canStartTables, INVITE_TTL_MS, roleWord, ROLES, type Role } from './roles.js'
 import { facesOf, printExportOf } from './faces.js'
-import { resolveAssets, resolveFonts, resolveIcons, type AssetStore } from './assets.js'
+import { MotifBody, resolveAssets, resolveFonts, resolveIcons, type AssetStore } from './assets.js'
 import { TEXTURE_DPI } from './actor.js'
 
 // `staticDir`: the built web app, served from the same origin as the API (README, DRIFT §1).
@@ -604,8 +604,9 @@ async function attach(opts: ServerOptions, req: IncomingMessage, ws: WebSocket, 
 // so the compiled page is complete and the render worker needs nothing but the page.
 async function deckOf(opts: ServerOptions, rec: ProjectRecord): Promise<Deck> {
   if (!opts.assets) return deckFromProject(rec)
-  const doc = deckFromProject({ ...rec, rows: await resolveAssets(rec.rows, opts.assets), icons: await resolveIcons(rec.icons, opts.assets) })
-  return { ...doc, fonts: await resolveFonts(rec.fonts ?? {}, opts.assets) }
+  const { rows, motifs } = await resolveAssets(rec.rows, opts.assets)
+  const doc = deckFromProject({ ...rec, rows, icons: await resolveIcons(rec.icons, opts.assets) })
+  return { ...doc, motifs, fonts: await resolveFonts(rec.fonts ?? {}, opts.assets) }
 }
 
 // Every card of the project through the physical checks (E5), once per face, named by the card
@@ -635,6 +636,9 @@ function creditsOf(rec: ProjectRecord): (ProjectCredit & { name: string })[] {
 // (B3). The font formats are the ones Chromium loads from a `@font-face`, so a file that is
 // taken here is a file the renderer can honour.
 const ASSET_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/svg+xml', 'font/woff2', 'font/woff', 'font/ttf', 'font/otf'])
+// How many pictures one question may ask about. A deck of a few hundred cards asks in one go;
+// past that the question is somebody else's.
+const MOTIFS_AT_ONCE = 500
 const ASSET_MAX_BYTES = 8 * 1024 * 1024
 const ASSET_LINK_TTL_S = 3600
 
@@ -659,6 +663,40 @@ async function routeAssets(opts: ServerOptions, assets: AssetStore, req: Incomin
     }
     const hash = await assets.put(bytes, contentType)
     json(res, 201, { hash })
+    return true
+  }
+  // What is drawn inside a picture (E1). The measurement is of the bytes, so it belongs to the
+  // hash and not to a project: it is taken once, by whoever first uploads or first opens the
+  // file, and every deck that uses those bytes is drawn by it afterwards. Which is also why it
+  // is written once and never again — see `setMotif`.
+  const measured = /^\/assets\/([0-9a-f]{64})\/motif$/.exec(url.pathname)
+  if (measured && req.method === 'PUT') {
+    const account = opts.auth ? await accountOf(opts.auth, req) : null
+    if (opts.auth && !account) {
+      json(res, 401, { error: 'log in first' })
+      return true
+    }
+    const motif = MotifBody.safeParse(JSON.parse(await readBody(req)) as unknown)
+    if (!motif.success) {
+      json(res, 400, { error: 'not a measurement of a picture' })
+      return true
+    }
+    if (!(await assets.get(measured[1] ?? ''))) {
+      json(res, 404, { error: 'unknown asset' })
+      return true
+    }
+    // An asset measured already keeps its measurement, and says so the same way as one that
+    // took this one: the caller asked for the file to be measured, and it is.
+    await assets.setMotif(measured[1] ?? '', motif.data)
+    res.writeHead(204)
+    res.end()
+    return true
+  }
+  // Many at once, because a deck asks about every picture it holds at once. A hash is the
+  // capability here as it is for the bytes: whoever knows one may ask what is drawn in it.
+  if (req.method === 'GET' && url.pathname === '/assets/motifs') {
+    const asked = (url.searchParams.get('of') ?? '').split(',').filter((h) => /^[0-9a-f]{64}$/.test(h))
+    json(res, 200, await assets.motifs(asked.slice(0, MOTIFS_AT_ONCE)))
     return true
   }
   const one = /^\/assets\/([0-9a-f]{64})$/.exec(url.pathname)

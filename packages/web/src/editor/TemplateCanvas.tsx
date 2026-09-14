@@ -3,7 +3,7 @@ import { CARD_STANDARD_63x88 } from '@byd/engine'
 import type { Element, FaceTemplate, ProjectDoc, Row } from './types.js'
 import { CardPreview } from './CardPreview.js'
 import { arrowMove, fitScale, HANDLES, iconSized, movedTo, newElement, resizedTo, snapped, STAGE_SCALE, TOOLS, type Box, type ElementKind, type Grab, type Guides, type Handle } from './canvas.js'
-import { elementsFor, pathFor, shapeTakes, tileMarkup, type Paint, type Pattern, type Shadow } from '@byd/template'
+import { elementsFor, pathFor, shapeTakes, tileMarkup, type Motif, type Paint, type Pattern, type Shadow } from '@byd/template'
 import { galleryIdOf, glyphGeometry, newPattern, PATTERNS, shadowIdOf, shapeChoice, SHADOWS, SHAPE_GALLERY, type Geometry, type Shape } from './shapes.js'
 import { BACKS } from './backs.js'
 import { previewIcons } from './assets.js'
@@ -26,6 +26,8 @@ export type TemplateCanvasProps = {
   stage?: CanvasStage | null
   doc: ProjectDoc
   assetBase?: string | undefined
+  // What is drawn inside each picture (E1), keyed by the URL a resolved row carries.
+  motifs?: Record<string, Motif> | undefined
   face: string
   // Which face is being edited (#13, L7). The back is a template like the front, and the switch
   // is what issue #14 hangs the default back and the group's own backs on.
@@ -80,7 +82,7 @@ export type TemplateCanvasProps = {
 // Template mode (A): layers on the left, the card large in the middle with the selected element
 // outlined, and its properties on the right. Every change goes through `onPatch` and lands on
 // every card of the deck — there are no per-card exceptions (L3).
-export function TemplateCanvas({ stage = null, doc, assetBase, face, onSelectFace, onReplaceFace, row, selectedElement, onSelectElement, onPatch, onRemove, onAdd, onPlaceIcon, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onFontFile, onFontLicence, onRemoveFont }: TemplateCanvasProps) {
+export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, onReplaceFace, row, selectedElement, onSelectElement, onPatch, onRemove, onAdd, onPlaceIcon, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onFontFile, onFontLicence, onRemoveFont }: TemplateCanvasProps) {
   const t = useT()
   const faceTemplate = doc.template.faces[face]
   const column = groupColumn(doc)
@@ -211,6 +213,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, face, onSelectFac
             fonts={fonts}
             scale={scale}
             assetBase={assetBase}
+            motifs={motifs}
             selectedElement={selectedElement}
             onSelectElement={onSelectElement}
             overlay={<DragLayer grid={grid} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={patch} onRefused={setRefused} />}
@@ -957,10 +960,23 @@ function Properties({ el, fields, taken, fonts, icons, valuesIn, onPatch, onAddF
           A picture fitted whole inside its frame keeps its proportions too, so it reads as on;
           turning it off and on again lands on filling, which is the frame the switch is about. */}
       {el.kind === 'image' && (
-        <label className="byd-props-switch">
-          <input type="checkbox" checked={(el.fit ?? 'cover') !== 'fill'} onChange={(e) => onPatch({ fit: e.target.checked ? 'cover' : 'fill' })} />
-          {t('canvas.props.keepRatio')}
-        </label>
+        <>
+          <label className="byd-props-switch">
+            <input type="checkbox" checked={(el.fit ?? 'cover') !== 'fill'} onChange={(e) => onPatch({ fit: e.target.checked ? 'cover' : 'fill' })} />
+            {t('canvas.props.keepRatio')}
+          </label>
+          {/* The other thing a picture can be fitted by (E1): what is drawn in the file rather
+              than the file. A deck's art arrives one file per card, and two files holding the
+              same motif rarely hold it at the same size — one carries a wide transparent border,
+              the next almost none — so fitting files draws the motif a different size on every
+              card. With this on, the air each file carries is measured and left out, and the
+              motif is the same size throughout. A file nothing has measured is fitted as a file,
+              so turning this on can never lose a picture. */}
+          <label className="byd-props-switch">
+            <input type="checkbox" checked={el.trim === true} onChange={(e) => onPatch({ trim: e.target.checked ? true : undefined })} />
+            {t('canvas.props.trim')}
+          </label>
+        </>
       )}
       {el.kind === 'shape' && <ShapeProps el={el} fields={fields} valuesIn={valuesIn} onPatch={onPatch} />}
     </div>

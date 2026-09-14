@@ -101,8 +101,9 @@ describe('image, icons and shape elements (L1)', () => {
       variants: {},
     }
     const out = compile({ type: CARD_STANDARD_63x88, face: f, row: { art: 'https://x/a.png', cost: 'eld eld skog' }, icons: { ...icons, skog: 'data:s' } })
-    expect(out.html).toMatch(/<img data-element="art" src="https:\/\/x\/a\.png" alt="">/)
-    expect(out.css).toContain('[data-element="art"]{left:3mm;top:3mm;width:57mm;height:40mm;object-fit:cover;}')
+    expect(out.html).toMatch(/<div data-element="art"><img class="byd-art" src="https:\/\/x\/a\.png" alt=""><\/div>/)
+    expect(out.css).toContain('[data-element="art"]{left:3mm;top:3mm;width:57mm;height:40mm;}')
+    expect(out.css).toContain('[data-element="art"] .byd-art{width:100%;height:100%;object-fit:cover;}')
     expect(out.html.match(/class="byd-icon"/g)).toHaveLength(3)
     expect(out.html).toContain('data-element="cost"')
     expect(out.css).toContain('[data-element="cost"] .byd-icon{height:5mm;width:5mm;margin-right:1mm;}')
@@ -122,7 +123,8 @@ describe('image, icons and shape elements (L1)', () => {
       const f: FaceTemplate = { base: [{ kind: 'image', id: 'art', x: 3, y: 3, w: 57, h: 40, bind: { field: 'art' }, ...(fit ? { fit } : {}) }], variants: {} }
       return compile({ type: CARD_STANDARD_63x88, face: f, row: { art: 'https://x/a.png' }, icons }).css
     }
-    expect(at('fill')).toContain('[data-element="art"]{left:3mm;top:3mm;width:57mm;height:40mm;object-fit:fill;}')
+    expect(at('fill')).toContain('[data-element="art"]{left:3mm;top:3mm;width:57mm;height:40mm;}')
+    expect(at('fill')).toContain('[data-element="art"] .byd-art{width:100%;height:100%;object-fit:fill;}')
     // Said or unsaid, a picture fills its frame: the default is the frame, not a gap inside it.
     expect(at('cover')).toContain('object-fit:cover;}')
     expect(at(undefined)).toContain('object-fit:cover;}')
@@ -321,6 +323,79 @@ describe('a fill that follows a column (L16)', () => {
     expect(Element.parse(plate(rule))).toMatchObject({ fill: rule })
     expect(Element.parse(plate('#123456'))).toMatchObject({ fill: '#123456' })
     expect(() => Element.parse(plate({ map: { eld: '#c0392b' } }))).toThrow()
+  })
+})
+
+// The whole point of trimming (E1): a deck's art arrives one file per card, and two files that
+// hold the same motif rarely hold it at the same size — one carries a wide transparent border,
+// the next almost none. What is asked here is never the CSS but where the motif lands: the same
+// rectangle of the card, on every card, whatever the file around it measures.
+describe('compile — a picture fitted by its motif rather than by its file (E1)', () => {
+  const frame = { kind: 'image' as const, id: 'art', x: 5, y: 4, w: 40, h: 30, bind: { field: 'art' } }
+
+  // Where the motif is actually drawn inside its frame, in millimetres, read back off what the
+  // compiler emitted rather than out of the numbers that went in.
+  function motifBox(css: string, motif: { w: number; h: number; trim: { left: number; top: number } }) {
+    const rule = /\[data-element="art"\] \.byd-art\{([^}]*)\}/.exec(css)?.[1] ?? ''
+    const said = Object.fromEntries(rule.split(';').filter(Boolean).map((d) => d.split(':')))
+    const mm = (prop: string) => Number(String(said[prop] ?? '').replace('mm', ''))
+    const [left, top, w, h] = [mm('left'), mm('top'), mm('width'), mm('height')]
+    const [sx, sy] = [w / motif.w, h / motif.h]
+    return { x: left + motif.trim.left * sx, y: top + motif.trim.top * sy, sx, sy }
+  }
+
+  const wide = { w: 100, h: 100, trim: { left: 10, top: 10, right: 10, bottom: 10 } }
+  const tight = { w: 200, h: 200, trim: { left: 50, top: 50, right: 50, bottom: 50 } }
+
+  it('draws the motif of two differently padded files in the same place, at the same size', () => {
+    const face: FaceTemplate = { base: [{ ...frame, fit: 'contain', trim: true }], variants: {} }
+    const at = (src: string, motif: typeof wide) => {
+      const css = compile({ type: CARD_STANDARD_63x88, face, row: { art: src }, icons, motifs: { [src]: motif } }).css
+      const box = motifBox(css, motif)
+      return { x: box.x, y: box.y, w: (motif.w - motif.trim.left - motif.trim.right) * box.sx, h: (motif.h - motif.trim.top - motif.trim.bottom) * box.sy }
+    }
+
+    // 80 of 100 pixels against 100 of 200: a fifth of the one file is air and a half of the
+    // other, and the motif is nonetheless 30 × 30 mm in both, flush with the 30 mm frame's top
+    // and bottom and 5 mm in from either side of it.
+    expect(at('a.png', wide)).toEqual({ x: 5, y: 0, w: 30, h: 30 })
+    expect(at('b.png', tight)).toEqual({ x: 5, y: 0, w: 30, h: 30 })
+  })
+
+  it('fills the frame with the motif when the picture is to cover it, so the air is cropped and not shown', () => {
+    const face: FaceTemplate = { base: [{ ...frame, trim: true }], variants: {} }
+    const css = compile({ type: CARD_STANDARD_63x88, face, row: { art: 'a.png' }, icons, motifs: { 'a.png': wide } }).css
+    const box = motifBox(css, wide)
+
+    // A square motif covering a 40 × 30 frame is 40 × 40: as wide as the frame, and taller —
+    // so it fills the frame's width and hangs 5 mm over each of its horizontal edges, cropped.
+    expect([80 * box.sx, 80 * box.sy]).toEqual([40, 40])
+    expect([box.x, box.y]).toEqual([0, -5])
+  })
+
+  it('leaves the picture to its frame when nothing has measured that file yet', () => {
+    const face: FaceTemplate = { base: [{ ...frame, fit: 'contain', trim: true }], variants: {} }
+    const css = compile({ type: CARD_STANDARD_63x88, face, row: { art: 'a.png' }, icons }).css
+
+    expect(css).toContain('[data-element="art"] .byd-art{width:100%;height:100%;object-fit:contain;}')
+  })
+
+  it('leaves a measured picture to its frame when the element does not ask for the motif', () => {
+    const face: FaceTemplate = { base: [{ ...frame, fit: 'contain' }], variants: {} }
+    const css = compile({ type: CARD_STANDARD_63x88, face, row: { art: 'a.png' }, icons, motifs: { 'a.png': wide } }).css
+
+    expect(css).toContain('[data-element="art"] .byd-art{width:100%;height:100%;object-fit:contain;}')
+  })
+
+  // The frame is what the designer grabs — the handles hang on its corners, the outline follows
+  // it and `elementFromPoint` answers with it — so the element's own box stays the frame however
+  // the picture inside it is fitted, and the picture that overflows it is cropped by it.
+  it('keeps the element the frame and hangs the picture inside it', () => {
+    const face: FaceTemplate = { base: [{ ...frame, trim: true }], variants: {} }
+    const out = compile({ type: CARD_STANDARD_63x88, face, row: { art: 'a.png' }, icons, motifs: { 'a.png': wide } })
+
+    expect(out.html).toMatch(/<div data-element="art"><img class="byd-art" src="a\.png" alt=""><\/div>/)
+    expect(out.css).toContain('[data-element="art"]{left:5mm;top:4mm;width:40mm;height:30mm;}')
   })
 })
 

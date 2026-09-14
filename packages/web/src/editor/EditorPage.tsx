@@ -22,6 +22,9 @@ import { StatusNotice } from '../status/StatusNotice.js'
 import { useSay } from '../status/StatusLive.js'
 import { noticeFor } from '../status/notice.js'
 import { chordOf, isTyping } from './keys.js'
+import { assetsInUse } from './assets.js'
+import { previewMotifs } from './motifs.js'
+import type { Motif } from '@byd/template'
 import { statusLinks } from '../status/links.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useT } from '../i18n/index.js'
@@ -162,6 +165,31 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     return () => window.removeEventListener('beforeunload', hold)
   }, [unsaved])
 
+  // What is drawn inside each of the deck's pictures (E1). A picture is measured once, by the
+  // hash of its bytes, and the answer is kept — so the wall can redraw forty cards without
+  // measuring forty files again, and so a picture on ten cards is one measurement. A picture
+  // nothing could measure counts as asked about too: its card is drawn by its file, as every
+  // card was before there was anything to measure, and nothing keeps asking about it.
+  const [motifs, setMotifs] = useState<Record<string, Motif>>({})
+  const measured = useRef(new Set<string>())
+  const pictures = client ? assetsInUse(client.doc).map((a) => a.hash).join(',') : ''
+  useEffect(() => {
+    if (!client) return
+    const missing = pictures.split(',').filter((hash) => hash.length > 0 && !measured.current.has(hash))
+    if (missing.length === 0) return
+    for (const hash of missing) measured.current.add(hash)
+    let live = true
+    void client.motifs(missing).then((found) => {
+      if (live) setMotifs((had) => ({ ...had, ...found }))
+    })
+    return () => {
+      live = false
+    }
+  }, [pictures, client])
+  // Keyed by the URL the resolved rows carry, once per set of measurements: a fresh object every
+  // render is a fresh compile of the whole wall, exactly as it is for the icons and the fonts.
+  const deckMotifs = useMemo(() => previewMotifs(motifs, http), [motifs, http])
+
   if (!projectId) return <StatusNotice notice={noticeFor('missing', 'editor', t)} surface="page" links={links} />
   if (fault === 'unauthorized') {
     // Not logged in (G1): to the login card and back here after.
@@ -258,6 +286,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       <DeckWall
         doc={doc}
         assetBase={http}
+        motifs={deckMotifs}
         face="front"
         selectedRow={row}
         onSelectRow={setRow}
@@ -274,6 +303,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         stage={canvasStage}
         doc={doc}
         assetBase={http}
+        motifs={deckMotifs}
         face={face}
         onSelectFace={setFace}
         onReplaceFace={(base) => client.replaceFace(face, base)}
