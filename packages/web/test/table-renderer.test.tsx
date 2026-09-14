@@ -388,6 +388,40 @@ describe('inspection (K8)', () => {
   })
 })
 
+// The felt card is a control the keyboard names, so it carries no way back of its own (UX-37,
+// #82); the card held up by "Titta" is the big, quiet view that does.
+describe('a lost card held up by "Titta" (#82)', () => {
+  it('carries the way back, and pressing it retries without putting the card down', () => {
+    vi.useFakeTimers()
+    const { view, faceUp } = buildScene()
+    const snapshot = view(null)
+    const withFaces = { ...snapshot, components: snapshot.components.map((c) => (c.id === faceUp ? { ...c, faces: { front: 'a'.repeat(64) } } : c)) }
+    render(<TableRenderer view={withFaces} mode="tv" scale={1} faces="http://faces.test" onAct={() => undefined} />)
+    fireEvent.pointerDown(document.querySelector(`[data-component="${faceUp}"]`)!, client(-390, -240))
+    act(() => vi.advanceTimersByTime(400))
+    fireEvent.pointerUp(screen.getByRole('button', { name: 'Titta' }), client(-390, -300))
+    const img = () => document.querySelector('[data-inspect] img') as HTMLImageElement
+    for (let i = 0; i <= 8; i++) {
+      fireEvent.error(img())
+      act(() => vi.advanceTimersByTime(1500 * (i + 1)))
+    }
+    const button = screen.getByRole('button', { name: 'Försök igen' })
+    expect(document.querySelectorAll('button button, button [role="button"], [role="button"] button')).toHaveLength(0)
+
+    // The held card is put down by a click anywhere; a click on the way back is not that click.
+    act(() => {
+      fireEvent.click(button)
+    })
+    expect(document.querySelector('[data-inspect]')).not.toBeNull()
+    expect(document.querySelector('[data-inspect] [data-texture="pending"]')).not.toBeNull()
+    expect(img().src).toBe(`http://faces.test/faces/${'a'.repeat(64)}?retry=1&t=9`)
+
+    fireEvent.click(document.querySelector('[data-inspect]')!.parentElement!)
+    expect(document.querySelector('[data-inspect]')).toBeNull()
+    vi.useRealTimers()
+  })
+})
+
 describe('textures (TUNN-SKIVA §5)', () => {
   it('shows the face image when its hash is known, the back image when only that is, and a plain back otherwise', () => {
     const { view, faceUp, faceDown } = buildScene()

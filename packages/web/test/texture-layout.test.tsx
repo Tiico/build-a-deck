@@ -25,10 +25,13 @@ const card: VisibleComponentState = {
   faces: { front: 'a'.repeat(64) },
 }
 
-// The markup the component actually produces, in each state, taken from a real mount.
-function markup(): { pending: string; ready: string; failed: string } {
+type State = 'pending' | 'ready' | 'failed'
+
+// The markup the component actually produces, in each state, taken from a real mount: as the
+// quiet face most cards get, or as the face a view that holds the card up asks for (#82).
+function markup(retry: boolean): Record<State, string> {
   vi.useFakeTimers()
-  const { container, unmount } = render(<Texture faces="http://faces.test" c={card} />)
+  const { container, unmount } = render(<Texture faces="http://faces.test" c={card} retry={retry} />)
   const img = () => container.querySelector('img') as HTMLImageElement
   const pending = container.innerHTML
   fireEvent.load(img())
@@ -49,22 +52,34 @@ function markup(): { pending: string; ready: string; failed: string } {
   return { pending, ready, failed }
 }
 
-// Every place the app puts a card face, with the ancestry its stylesheet expects.
-const HOLDERS = {
-  'a loose card on the table': (inner: string) =>
-    `<div class="byd-table-frame"><div class="byd-card" style="position:absolute;left:20px;top:20px;width:90px;height:126px">${inner}<span>wizard</span></div></div>`,
-  'the top of a pile': (inner: string) =>
-    `<div class="byd-pile" style="position:absolute;left:20px;top:20px;width:90px;height:126px"><div class="byd-pile-top">${inner}<span>wizard</span></div></div>`,
+// Every place the app puts a card face, with the ancestry its stylesheet expects, and whether
+// it holds the card up — the one kind of view a lost face offers its way back in (#82).
+type Holder = { up: boolean; wrap(inner: string): string }
+const HOLDERS: Record<string, Holder> = {
+  'a loose card on the table': {
+    up: false,
+    wrap: (inner) => `<div class="byd-table-frame"><div class="byd-card" style="position:absolute;left:20px;top:20px;width:90px;height:126px">${inner}<span>wizard</span></div></div>`,
+  },
+  'the top of a pile': {
+    up: false,
+    wrap: (inner) => `<div class="byd-pile" style="position:absolute;left:20px;top:20px;width:90px;height:126px"><div class="byd-pile-top">${inner}<span>wizard</span></div></div>`,
+  },
   // The fan's box is millimetres of felt written out by the renderer (#23), so the holder says
   // it here the way the renderer would at life size.
-  "a card in another seat's hand": (inner: string) =>
-    `<div class="byd-hand" style="left:200px;top:200px"><div class="byd-hand-fan"><i class="byd-hand-card" style="left:-27px;top:-25px;width:54px;height:75px">${inner}<span>wizard</span></i></div></div>`,
-  'a card in the phone hand': (inner: string) =>
-    `<div class="byd-player"><div class="byd-strip"><div class="byd-strip-card">${inner}<strong>wizard</strong></div></div></div>`,
-  'a card held up on the phone': (inner: string) =>
-    `<div class="byd-player"><div class="byd-inspect"><div>${inner}<span>wizard</span></div></div></div>`,
-  'a card in the online fan': (inner: string) => `<div class="byd-fan"><div class="byd-fan-card">${inner}<span>wizard</span></div></div>`,
-} as const
+  "a card in another seat's hand": {
+    up: false,
+    wrap: (inner) => `<div class="byd-hand" style="left:200px;top:200px"><div class="byd-hand-fan"><i class="byd-hand-card" style="left:-27px;top:-25px;width:54px;height:75px">${inner}<span>wizard</span></i></div></div>`,
+  },
+  'a card in the phone hand': {
+    up: false,
+    wrap: (inner) => `<div class="byd-player"><div class="byd-strip"><div class="byd-strip-card">${inner}<strong>wizard</strong></div></div></div>`,
+  },
+  'a card held up on the phone': {
+    up: true,
+    wrap: (inner) => `<div class="byd-player"><div class="byd-inspect"><div>${inner}<span>wizard</span></div></div></div>`,
+  },
+  'a card in the online fan': { up: false, wrap: (inner) => `<div class="byd-fan"><div class="byd-fan-card">${inner}<span>wizard</span></div></div>` },
+}
 
 type Box = { x: number; y: number; w: number; h: number }
 type Measured = { holder: Box | null; image: Box; fallback: Box | null; imageVisible: boolean; nameVisible: boolean; retry: Box | null; retryVisible: boolean }
@@ -77,11 +92,12 @@ afterAll(async () => {
   await browser.close()
 }, 60_000)
 
-async function measure(inner: string): Promise<Record<string, Measured>> {
+async function measure(state: State): Promise<Record<string, Measured>> {
+  const faces = { quiet: markup(false), held: markup(true) }
   const page = await browser.newPage({ viewport: { width: 420, height: 900 } })
   try {
     const body = Object.entries(HOLDERS)
-      .map(([name, wrap]) => `<section data-case="${name}">${wrap(inner)}</section>`)
+      .map(([name, h]) => `<section data-case="${name}">${h.wrap((h.up ? faces.held : faces.quiet)[state])}</section>`)
       .join('')
     const shell = read('index.html')
       .replace('<script type="module" src="/src/main.tsx"></script>', '')
@@ -129,8 +145,7 @@ async function measure(inner: string): Promise<Record<string, Measured>> {
 
 describe('the waiting card, measured where it is actually drawn', () => {
   it('lays the fallback exactly over the image in every consumer, and never outside its card', async () => {
-    const { pending } = markup()
-    const seen = await measure(pending)
+    const seen = await measure('pending')
     for (const [name, m] of Object.entries(seen)) {
       expect({ [name]: m.fallback }).toEqual({ [name]: m.image })
       expect({ [name]: m.image.w > 0 && m.image.h > 0 }).toEqual({ [name]: true })
@@ -142,9 +157,8 @@ describe('the waiting card, measured where it is actually drawn', () => {
   }, 60_000)
 
   it('leaves the card the same size when the render lands, so nothing on the table moves', async () => {
-    const { pending, ready } = markup()
-    const before = await measure(pending)
-    const after = await measure(ready)
+    const before = await measure('pending')
+    const after = await measure('ready')
     for (const name of Object.keys(HOLDERS)) {
       expect({ [name]: after[name]!.holder }).toEqual({ [name]: before[name]!.holder })
       expect({ [name]: after[name]!.image }).toEqual({ [name]: before[name]!.image })
@@ -153,27 +167,24 @@ describe('the waiting card, measured where it is actually drawn', () => {
   }, 60_000)
 
   it('hides the broken image behind the failure in every consumer', async () => {
-    const { failed } = markup()
-    const seen = await measure(failed)
+    const seen = await measure('failed')
     for (const [name, m] of Object.entries(seen)) {
       expect({ [name]: m.imageVisible }).toEqual({ [name]: false })
       expect({ [name]: m.fallback }).toEqual({ [name]: m.image })
     }
   }, 60_000)
 
-  it('offers a pressable retry on every card with room for one, and none on a card without', async () => {
-    const { failed } = markup()
-    const seen = await measure(failed)
+  it('offers a pressable retry on the card held up, and no control at all on a card that is one', async () => {
+    const seen = await measure('failed')
     for (const [name, m] of Object.entries(seen)) {
-      // A card narrower than this cannot hold a thumb-sized target without swallowing the card,
-      // so it gets none; it is read by holding it up, and the held-up card carries the retry.
-      const room = m.image.w >= 96
-      expect({ [name]: m.retryVisible }).toEqual({ [name]: room })
+      // A card that is a control cannot hold one, and a card narrower than a thumb could not
+      // press one (UX-37, #82); both are read by holding the card up, which carries the retry.
+      const up = HOLDERS[name]!.up
+      expect({ [name]: m.retryVisible }).toEqual({ [name]: up })
       // UX-KONTROLLER: a target you press with a thumb is at least 44 by 44.
-      if (room) expect({ [name]: m.retry!.h >= 44 && m.retry!.w >= 44 }).toEqual({ [name]: true })
+      if (up) expect({ [name]: m.retry!.h >= 44 && m.retry!.w >= 44 }).toEqual({ [name]: true })
     }
     // Whatever the table's scale, the way back is never more than a look away.
     expect(seen['a card held up on the phone']!.retryVisible).toBe(true)
-    expect(seen["a card in another seat's hand"]!.retryVisible).toBe(false)
   }, 60_000)
 })

@@ -22,31 +22,21 @@ describe('a texture the online fan is still waiting for (#10)', () => {
   })
 })
 
-describe('retrying a lost texture in the fan', () => {
-  it('does not play the card the player only meant to reload', () => {
+// The fan card is a control, and a control cannot hold another (UX-37, #82): a lost card in the
+// fan carries no way back of its own. It is opened like any other card, and the look that opens
+// carries the retry.
+describe('a lost texture in the fan (#82)', () => {
+  it('leaves the card one control with nothing nested in it', () => {
     vi.useFakeTimers()
-    const onPlay = vi.fn()
-    render(<HandFan cards={[mine]} faces="http://faces.test" onPlay={onPlay} onOpen={() => undefined} />)
+    render(<HandFan cards={[mine]} faces="http://faces.test" onPlay={() => undefined} onOpen={() => undefined} />)
     const img = () => document.querySelector('img') as HTMLImageElement
     for (let i = 0; i <= 8; i++) {
       fireEvent.error(img())
       act(() => vi.advanceTimersByTime(1500 * (i + 1)))
     }
-
-    const button = screen.getByRole('button', { name: /försök igen/i })
-    // One at a time, as a thumb produces them: a press that reached the fan would arm a drag.
-    act(() => {
-      fireEvent.pointerDown(button, { clientX: 10, clientY: 10 })
-    })
-    act(() => {
-      fireEvent.pointerUp(button, { clientX: 10, clientY: 10 })
-    })
-    act(() => {
-      fireEvent.click(button)
-    })
-
-    expect(onPlay).not.toHaveBeenCalled()
-    expect(document.querySelector('[data-texture="pending"]')).not.toBeNull()
+    expect(document.querySelector('[data-hand-card="c1"] [data-texture="failed"]')).not.toBeNull()
+    expect(document.querySelectorAll('button button, button [role="button"], [role="button"] button')).toHaveLength(0)
+    expect(screen.queryByRole('button', { name: /försök igen/i })).toBeNull()
     vi.useRealTimers()
   })
 })

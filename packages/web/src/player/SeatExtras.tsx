@@ -63,7 +63,9 @@ export function MineStrip({ view, faces, onFlip, onTake, onPlay }: MineStripProp
           const up = c.cardRef !== null
           return (
             <div key={c.id} className="byd-mine-card" data-mine-card={c.id} data-face={up ? 'front' : 'back'} style={up ? { ['--hue' as string]: hue(c.cardRef ?? '') } : undefined}>
-              <Texture faces={faces} c={c} />
+              {/* The card itself is no control here — the verbs sit under it — and it is wide
+                  enough to press, so a lost face keeps its way back (#82). */}
+              <Texture faces={faces} c={c} retry />
               <strong>{c.cardRef ?? ''}</strong>
               <div className="byd-mine-actions">
                 <button type="button" data-act="flip" onClick={() => onFlip(c)}>

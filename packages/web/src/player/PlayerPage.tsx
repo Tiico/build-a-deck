@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { VisibleComponentState } from '@byd/protocol'
 import { useTableClient } from '../table/useTableClient.js'
-import { hue } from '../table/hue.js'
-import { Texture } from '../table/Texture.js'
+import { HeldCard } from './HeldCard.js'
 import { HandStrip } from './HandStrip.js'
 import { CountersRow, MineStrip } from './SeatExtras.js'
 import { PlaySheet } from './PlaySheet.js'
@@ -126,16 +125,7 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             : t('player.hint')}
         </p>
       )}
-      {/* Put down on the next touch, not on click: a tap is a pointerup and then a click, and the
-          click lands on what the pointerup just opened (UX-30). */}
-      {inspect && (
-        <div className="byd-inspect" onPointerDown={() => setInspect(null)}>
-          <div data-inspect={inspect.id} data-face="front" style={{ ['--hue' as string]: hue(inspect.cardRef ?? '') }}>
-            <Texture faces={faces} c={inspect} />
-            <span>{inspect.cardRef}</span>
-          </div>
-        </div>
-      )}
+      {inspect && <HeldCard card={inspect} faces={faces} onClose={() => setInspect(null)} />}
       {lifted && (
         <PlaySheet
           view={view}

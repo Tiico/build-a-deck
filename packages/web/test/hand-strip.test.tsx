@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { HandStrip } from '../src/player/HandStrip.js'
 import { buildScene } from './scene.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
@@ -86,6 +86,39 @@ describe('a texture the phone is still waiting for (#10)', () => {
     const opaque = document.querySelector(`[data-hand-card="${notMine.id}"] [data-texture="pending"]`)!
     expect(opaque.textContent).toMatch(/[Rr]enderas/)
     expect(opaque.textContent).not.toMatch(/knight/)
+  })
+})
+
+// The hand card is a control, and a control cannot hold another (UX-37, #82): a screen reader
+// does not reach a button inside a button, and browsers do not agree on what a press means. So
+// a card in the strip carries no way back of its own; it is read by holding it up, and the
+// held-up card carries the retry.
+describe('a texture the phone has given up on (#82)', () => {
+  it('leaves the card one control and nothing nested in it, and keeps the gestures', () => {
+    vi.useFakeTimers()
+    const { view } = buildScene()
+    const snapshot = view('A')
+    const mine = snapshot.components.find((c) => c.zone === 'hand:A')!
+    const withFaces = { ...snapshot, components: snapshot.components.map((c) => (c.id === mine.id ? { ...c, faces: { front: 'a'.repeat(64) } } : c)) }
+    const onTap = vi.fn()
+    render(<HandStrip view={withFaces} selected={new Set()} faces="http://faces.test" onTap={onTap} onHold={() => undefined} onLift={() => undefined} onOpen={() => undefined} />)
+    const img = () => document.querySelector(`[data-hand-card="${mine.id}"] img`) as HTMLImageElement
+    for (let i = 0; i <= 8; i++) {
+      fireEvent.error(img())
+      act(() => vi.advanceTimersByTime(1500 * (i + 1)))
+    }
+    const card = document.querySelector(`[data-hand-card="${mine.id}"]`)!
+    expect(card.querySelector('[data-texture="failed"]')).not.toBeNull()
+
+    expect(document.querySelectorAll('button button, button [role="button"], [role="button"] button')).toHaveLength(0)
+    expect(screen.queryByRole('button', { name: /försök igen/i })).toBeNull()
+
+    // What the finger does is untouched: a tap on the lost card still holds it up.
+    fireEvent.pointerDown(card, { clientX: 100, clientY: 500 })
+    fireEvent.pointerUp(card, { clientX: 102, clientY: 498 })
+    expect(onTap).toHaveBeenCalledTimes(1)
+    expect(onTap.mock.calls[0]?.[0]).toMatchObject({ id: mine.id })
+    vi.useRealTimers()
   })
 })
 

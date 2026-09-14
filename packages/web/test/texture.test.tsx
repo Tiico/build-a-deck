@@ -91,7 +91,7 @@ describe('a texture that arrives', () => {
 describe('a texture that never arrives', () => {
   it('says so in Swedish, keeps naming a card the seat may see, and retries when asked', () => {
     vi.useFakeTimers()
-    const { container } = render(<Texture faces={FACES} c={faceUp} />)
+    const { container } = render(<Texture faces={FACES} c={faceUp} retry />)
     const img = () => container.querySelector('img') as HTMLImageElement
     exhaust(img)
 
@@ -129,6 +129,25 @@ describe('a texture that never arrives', () => {
     const failed = container.querySelector('[data-texture="failed"]')!
     expect(failed.textContent).toMatch(/kunde inte/i)
     expect(failed.textContent).not.toMatch(/wizard/)
+    vi.useRealTimers()
+  })
+})
+
+// A card is a control on most surfaces, and a control cannot hold a control (UX-37, #82). So
+// the way back is not part of the face; it is asked for, by the one view that holds the card
+// up large enough to press it, and a face that was not asked offers nothing to press.
+describe('the way back from a lost texture', () => {
+  it('is offered only where the view asks for it', () => {
+    vi.useFakeTimers()
+    const quiet = render(<Texture faces={FACES} c={faceUp} />)
+    exhaust(() => quiet.container.querySelector('img') as HTMLImageElement)
+    expect(quiet.container.querySelector('[data-texture="failed"]')).not.toBeNull()
+    expect(quiet.container.querySelector('button')).toBeNull()
+    quiet.unmount()
+
+    const held = render(<Texture faces={FACES} c={faceUp} retry />)
+    exhaust(() => held.container.querySelector('img') as HTMLImageElement)
+    expect(screen.getByRole('button', { name: 'Försök igen' })).toBeTruthy()
     vi.useRealTimers()
   })
 })

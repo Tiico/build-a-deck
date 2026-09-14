@@ -623,7 +623,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       {held && (
         <div className="byd-inspect" onClick={() => setHeld(null)}>
           <div data-inspect={held.id} data-face={held.cardRef === null ? 'back' : 'front'} style={held.cardRef === null ? undefined : { ['--hue' as string]: hue(held.cardRef) }}>
-            <Texture faces={faces} c={held} />
+            <Texture faces={faces} c={held} retry />
             <span>{held.cardRef ?? ''}</span>
           </div>
         </div>
