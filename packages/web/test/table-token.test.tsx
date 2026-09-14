@@ -7,6 +7,7 @@ import { TableRenderer, type TableMode } from '../src/table/TableRenderer.js'
 import { feltLabels, thingsOn } from '../src/table/keyboard.js'
 import { ActionPanel } from '../src/table/ActionPanel.js'
 import { Language, translate, type Lang, type T } from '../src/i18n/index.js'
+import { applyRecipe, emptySetup, setupFromProject } from '@byd/server/doc'
 import { seatSetup } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
@@ -348,5 +349,73 @@ describe.each<Lang>(['sv', 'en'])('the ring and the keyboard panel read one list
     expect(panel).toEqual(ring)
     // And the panel says whose chip it is, as the ring's hub does.
     expect(document.querySelector('.byd-kbd-panel h2')!.textContent).toContain(lang === 'sv' ? 'Adas räknare' : 'Ada’s counter')
+  })
+})
+
+// ── A seat's third counter (C4, K18, #89) ─────────────────────────────────────────────────────
+// Two counters lie side by side along the seat's own rim and each has its own target. A third
+// does not fit: a finger's 44 px is about a hundred millimetres of felt, and three of those want
+// more room along the rim than a seat has to give without taking it from somebody else. So the
+// third stacks the seat's chips, and what the hand meets is the pile — one thing to press, whose
+// ring reaches each counter by name and from there offers `counterActs` and nothing else.
+//
+// The table is laid out by the recipe and dealt by `setupFromProject`, so what is read here is the
+// path a real table takes and not a fixture's arithmetic.
+const stacked = (counters: number): Snapshot => {
+  const named = [
+    { name: 'Poäng', start: 0 },
+    { name: 'Liv', start: 20 },
+    { name: 'Rundor', start: 1 },
+  ].slice(0, counters)
+  const setup = applyRecipe(emptySetup(), { players: 2, mine: true, discard: true, market: false, counters: named })
+  return seated(project(initialState('stack', setupFromProject({ rows: [], setup }), registry), registry, null))
+}
+const chipsIn = (zone: string, v: Snapshot) => v.components.filter((c) => c.zone === zone)
+
+describe('a seat with a third counter (C4, K18, #89)', () => {
+  it('lays two counters in two slots and stacks three into one pile with one target', () => {
+    for (const counters of [1, 2, 3]) {
+      const v = stacked(counters)
+      const chips = chipsIn('counters:A', v)
+      expect(chips).toHaveLength(counters)
+      // One spot per chip up to two, one spot for all of them at three: it is where they lie that
+      // makes a pile, and nothing else.
+      const spots = new Set(chips.map((c) => `${c.x},${c.y}`))
+      expect({ counters, spots: spots.size }).toEqual({ counters, spots: counters <= 2 ? counters : 1 })
+
+      const { unmount } = render(<TableRenderer view={v} mode="tv" scale={1} onAct={vi.fn()} />)
+      // Every counter is still drawn, and every one of them still has the name and the tab stop a
+      // keyboard reaches it by — a pile hides a chip from the finger, never from the reader.
+      expect(document.querySelectorAll('.byd-token')).toHaveLength(counters * 2)
+      expect(chips.every((c) => chipOf(c.id).getAttribute('aria-label') !== '')).toBe(true)
+      // But the targets are one per pile: three chips under one finger are one thing to press.
+      expect(document.querySelectorAll('[data-counter-hit]')).toHaveLength(counters <= 2 ? counters * 2 : 2)
+      unmount()
+    }
+  })
+
+  it('opens the pile’s ring on the counters it holds, and each of them on its own verbs', () => {
+    const v = stacked(3)
+    const chips = chipsIn('counters:A', v)
+    const top = chips[chips.length - 1]!
+    const onAct = vi.fn()
+    render(<TableRenderer view={v} mode="tv" scale={1} onAct={onAct} />)
+
+    fireEvent.pointerDown(chipOf(top.id), client(0, 0))
+    fireEvent.pointerUp(chipOf(top.id), client(0, 0))
+    // The pile has no verbs of its own: its ring is the counters in it, each said by name and
+    // value, and the hub says how many are stacked there and whose they are.
+    expect(ringButtons()).toEqual(['Poäng 0', 'Liv 20', 'Rundor 1'])
+    const hub = document.querySelector('[data-radial-hub]')!
+    expect(hub.textContent).toContain('3')
+    expect(hub.textContent).toContain('Adas räknare')
+
+    // Choosing one opens that counter's own ring, which is `counterActs` and nothing else — the
+    // same three the keyboard's panel offers, so the two lists cannot drift apart (#67).
+    fireEvent.click([...document.querySelectorAll('[data-radial] button')].find((b) => b.textContent === 'Liv 20')!)
+    expect(ringButtons()).toEqual(['−1', '+1', 'Sätt värde…'])
+    const liv = chips.find((c) => c.cardRef === 'Liv')!
+    fireEvent.click([...document.querySelectorAll('[data-radial] button')].find((b) => b.textContent === '+1')!)
+    expect(onAct).toHaveBeenCalledWith([{ v: 'setCounter', component: liv.id, value: 21 }])
   })
 })

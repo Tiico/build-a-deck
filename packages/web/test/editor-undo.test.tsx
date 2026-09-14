@@ -6,6 +6,7 @@ import { EditorPage } from '../src/editor/EditorPage.js'
 import { StatusLive } from '../src/status/StatusLive.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
+import { dragVia, laidOut, target } from './drag.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -109,7 +110,7 @@ describe('a step back in the editor (#35)', () => {
     })
     await userEvent.clear(cell)
     await userEvent.type(cell, 'Drakhona')
-    await screen.findByText('Osparade ändringar')
+    await screen.findByText('Osparat')
 
     // Pressed from inside the field: saving is the editor's wherever it is asked for, and the
     // browser's own "save this page" must not be what happens instead.
@@ -158,7 +159,7 @@ describe('a saving that changes nothing (B4)', () => {
     })
     await userEvent.clear(cell)
     await userEvent.type(cell, what)
-    await screen.findByText('Osparade ändringar')
+    await screen.findByText('Osparat')
   }
 
   it('is not a saving: the chord on an untouched document leaves the history where it was', async () => {
@@ -179,5 +180,95 @@ describe('a saving that changes nothing (B4)', () => {
     fireEvent.keyDown(document, { key: 's', ctrlKey: true })
     await waitFor(async () => expect((await run.projects.load('p1'))?.rev).toBe(3))
     expect(await run.projects.versions('p1')).toHaveLength(3)
+  })
+})
+
+// A move is one thing a designer did, and the pointer reports it as thirty. Every frame was its
+// own turn on the stack, so the way back from having moved a title was thirty presses of Ctrl+Z —
+// and each one moved it a third of a millimetre, which reads as nothing happening at all.
+describe('a move as one step back', () => {
+  async function openTheTemplate() {
+    await openEditor()
+    fireEvent.click(screen.getByRole('tab', { name: 'Mall' }))
+    const box = await waitFor(() => {
+      const el = target('title')
+      if (!el) throw new Error('no drag box yet')
+      return el
+    })
+    laidOut()
+    return box
+  }
+
+  it('takes a whole drag back in one press, however many frames the pointer took', async () => {
+    const box = await openTheTemplate()
+    expect(box.style.top).toBe('5mm')
+
+    // Ten millimetres down, in five frames — a slow hand on a trackpad, which is the ordinary case.
+    dragVia(box, [30, 30], [[30, 42], [30, 54], [30, 66], [30, 78], [30, 90]])
+    await waitFor(() => expect(target('title')!.style.top).toBe('15mm'))
+
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
+    await waitFor(() => expect(target('title')!.style.top).toBe('5mm'))
+    // And the drag was the only thing on the stack: what is behind it is the document as it loaded.
+    expect(header().queryByText(/Osparat/)).toBeNull()
+  })
+
+  it('keeps two drags two steps, and puts each back forward on its own', async () => {
+    const box = await openTheTemplate()
+    dragVia(box, [30, 30], [[30, 36], [30, 42]])
+    await waitFor(() => expect(target('title')!.style.top).toBe('7mm'))
+    dragVia(target('title')!, [30, 42], [[30, 48], [30, 54]])
+    await waitFor(() => expect(target('title')!.style.top).toBe('9mm'))
+
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
+    await waitFor(() => expect(target('title')!.style.top).toBe('7mm'))
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
+    await waitFor(() => expect(target('title')!.style.top).toBe('5mm'))
+
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true, shiftKey: true })
+    await waitFor(() => expect(target('title')!.style.top).toBe('7mm'))
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true, shiftKey: true })
+    await waitFor(() => expect(target('title')!.style.top).toBe('9mm'))
+  })
+})
+
+// The same defect one surface over: the table writes a cell per keystroke, so a word typed into
+// one cell was a letter per press of Ctrl+Z — and the letters came back in a field the designer
+// had already left, which reads as the editor typing by itself.
+describe('a cell typed into as one step back', () => {
+  it('takes the whole word back in one press, and the cell beside it is its own step', async () => {
+    await openEditor()
+    fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
+    const title = (await screen.findByLabelText('dragon title')) as HTMLInputElement
+    await userEvent.clear(title)
+    await userEvent.type(title, 'Drakhona')
+    const body = (await screen.findByLabelText('dragon body')) as HTMLInputElement
+    await userEvent.clear(body)
+    await userEvent.type(body, 'Spyr eld.')
+    ;(document.activeElement as HTMLElement | null)?.blur()
+
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
+    await waitFor(() => expect((screen.getByLabelText('dragon body') as HTMLInputElement).value).toBe('Flygande.'))
+    // The title is untouched by that press: the two cells are two things she did.
+    expect((screen.getByLabelText('dragon title') as HTMLInputElement).value).toBe('Drakhona')
+
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
+    await waitFor(() => expect((screen.getByLabelText('dragon title') as HTMLInputElement).value).toBe('Drake'))
+  })
+
+  it('starts a new step when the same cell is come back to', async () => {
+    await openEditor()
+    fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
+    const title = (await screen.findByLabelText('dragon title')) as HTMLInputElement
+    await userEvent.clear(title)
+    await userEvent.type(title, 'Drakhona')
+    ;(document.activeElement as HTMLElement | null)?.blur()
+
+    await userEvent.click(screen.getByLabelText('dragon title'))
+    await userEvent.type(screen.getByLabelText('dragon title'), 'x')
+    ;(document.activeElement as HTMLElement | null)?.blur()
+
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
+    await waitFor(() => expect((screen.getByLabelText('dragon title') as HTMLInputElement).value).toBe('Drakhona'))
   })
 })

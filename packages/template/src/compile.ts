@@ -1,7 +1,10 @@
 import type { ComponentTypeDef } from '@byd/engine'
 import { parseInline, type InlineNode } from './inline.js'
 import { detectScript, estimateHeight, fitText, type Measure } from './fit.js'
-import type { Condition, Element, FaceTemplate, Row, Template } from './model.js'
+import { paintOf, shadowCss, type Condition, type Element, type FaceTemplate, type Pattern, type Row, type Template } from './model.js'
+import type { Motif } from './motif.js'
+import { coord, isOpen, pathFor } from './shapes.js'
+import { tileMarkup } from './patterns.js'
 
 export type Warning = { element: string; code: 'unknown-icon' | 'text-too-small' | 'text-overflow' | 'unknown-field'; detail: string }
 export type Compiled = { html: string; css: string; warnings: Warning[] }
@@ -21,6 +24,11 @@ export type CompileInput = {
   measure?: Measure
   // A selector prefix for every rule, so many cards (each fitted differently) can share a page.
   scope?: string
+  // What is drawn inside each picture (E1): the source, exactly as the row carries it, against
+  // the file's pixel size and the uniform border it holds around its motif. Measured once per
+  // asset far from here; an image element told to `trim` fits the motif rather than the file, so
+  // the same motif is the same size on every card however much air its own file happens to have.
+  motifs?: Record<string, Motif>
 }
 
 // Compiles one face of one card to HTML and CSS. The same output feeds the editor preview,
@@ -36,6 +44,9 @@ export function compile(input: CompileInput): Compiled {
   css.push(`[data-card]{position:relative;width:${physical.widthMm + 2 * bleed}mm;height:${physical.heightMm + 2 * bleed}mm;overflow:hidden;}`)
   css.push(`[data-element]{position:absolute;box-sizing:border-box;margin:0;overflow:hidden;}`)
   css.push(`[data-element] p{margin:0;}[data-element] p+p{margin-top:0.5em;}`)
+  // Every shape is an SVG filling its element, so one code path draws a rectangle, a hexagon
+  // and a line, and the stroke of each means the same thing (L17).
+  css.push(`[data-element]>svg{display:block;width:100%;height:100%;}`)
   // The faces first, since a rule cannot use a font that has not been declared.
   for (const [name, font] of Object.entries(input.fonts ?? {})) {
     if (!font.src) continue
@@ -43,6 +54,9 @@ export function compile(input: CompileInput): Compiled {
     rules.push(`@font-face{font-family:"${attr(name)}";src:url("${attr(font.src)}");font-display:block;}`)
   }
   css.push(`.byd-icon{height:1em;width:auto;vertical-align:-0.15em;}`)
+  // A picture hangs inside its own frame rather than being it, so the element's box stays exactly
+  // what the designer grabs whether the picture fills it, sits inside it or overflows it.
+  css.push(`.byd-art{position:absolute;left:0;top:0;display:block;max-width:none;}`)
   css.push(`.byd-icon-missing{color:#c00;background:#fee;font-weight:700;}`)
   css.push(`.byd-pip{display:inline-block;min-width:1.15em;height:1.15em;line-height:1.15em;border-radius:50%;text-align:center;font-weight:700;font-size:0.85em;border:0.12em solid currentColor;vertical-align:-0.15em;padding:0 0.1em;box-sizing:border-box;}`)
 
@@ -52,6 +66,26 @@ export function compile(input: CompileInput): Compiled {
 }
 
 type Css = { push(rule: string): void }
+
+// A number as millimetres, without the float noise a division leaves behind.
+const mm = (v: number): string => `${Math.round(v * 1e4) / 1e4}mm`
+
+// Where the whole picture has to lie for its motif to meet the frame the way the element asks
+// (E1). The fitting is done on the motif — so `contain` fits what is drawn and `cover` fills the
+// frame with what is drawn — and the file is then laid out around it at the same scale and
+// cropped by the frame, which is what already crops every other picture. A motif with no extent
+// is no motif, and such a file is left to its frame.
+function aroundMotif(el: { w: number; h: number; fit?: 'cover' | 'contain' | 'fill' | undefined }, motif: Motif): string | null {
+  const drawn = { w: motif.w - motif.trim.left - motif.trim.right, h: motif.h - motif.trim.top - motif.trim.bottom }
+  if (drawn.w <= 0 || drawn.h <= 0) return null
+  const by = { w: el.w / drawn.w, h: el.h / drawn.h }
+  const even = (el.fit ?? 'cover') === 'contain' ? Math.min(by.w, by.h) : Math.max(by.w, by.h)
+  const [sx, sy] = (el.fit ?? 'cover') === 'fill' ? [by.w, by.h] : [even, even]
+  // The motif centred in the frame: its own centre, in the file's pixels, laid on the frame's.
+  const left = el.w / 2 - (motif.trim.left + drawn.w / 2) * sx
+  const top = el.h / 2 - (motif.trim.top + drawn.h / 2) * sy
+  return `left:${mm(left)};top:${mm(top)};width:${mm(motif.w * sx)};height:${mm(motif.h * sy)};`
+}
 
 function render(el: Element, dx: number, dy: number, input: CompileInput, html: string[], css: Css, warnings: Warning[]): void {
   switch (el.kind) {
@@ -83,8 +117,10 @@ function render(el: Element, dx: number, dy: number, input: CompileInput, html: 
     }
     case 'image': {
       const src = resolve(el.bind, input.row)
-      css.push(`[data-element="${attr(el.id)}"]{left:${el.x + dx}mm;top:${el.y + dy}mm;width:${el.w}mm;height:${el.h}mm;object-fit:${el.fit ?? 'cover'};}`)
-      html.push(src ? `<img data-element="${attr(el.id)}" src="${attr(src)}" alt="">` : `<div data-element="${attr(el.id)}"></div>`)
+      const motif = el.trim ? input.motifs?.[src] : undefined
+      css.push(`[data-element="${attr(el.id)}"]{left:${el.x + dx}mm;top:${el.y + dy}mm;width:${el.w}mm;height:${el.h}mm;}`)
+      css.push(`[data-element="${attr(el.id)}"] .byd-art{${(motif && aroundMotif(el, motif)) ?? `width:100%;height:100%;object-fit:${el.fit ?? 'cover'};`}}`)
+      html.push(src ? `<div data-element="${attr(el.id)}"><img class="byd-art" src="${attr(src)}" alt=""></div>` : `<div data-element="${attr(el.id)}"></div>`)
       break
     }
     case 'icons': {
@@ -96,12 +132,11 @@ function render(el: Element, dx: number, dy: number, input: CompileInput, html: 
     }
     case 'shape': {
       const parts = [`left:${el.x + dx}mm`, `top:${el.y + dy}mm`, `width:${el.w}mm`, `height:${el.h}mm`]
-      if (el.fill) parts.push(`background:${el.fill}`)
-      if (el.stroke && (el.strokeMm ?? 0) > 0) parts.push(`border:${el.strokeMm}mm solid ${el.stroke}`)
-      if (el.shape === 'circle') parts.push('border-radius:50%')
-      else if ((el.radiusMm ?? 0) > 0) parts.push(`border-radius:${el.radiusMm}mm`)
+      // The shadow is a filter on the element rather than on the path, so it follows whatever
+      // the path turned out to be — a hexagon casts a hexagon's shadow and a star a star's.
+      if (el.shadow) parts.push(`filter:${shadowCss(el.shadow)}`)
       css.push(`[data-element="${attr(el.id)}"]{${parts.join(';')};}`)
-      html.push(`<div data-element="${attr(el.id)}"></div>`)
+      html.push(`<div data-element="${attr(el.id)}">${shapeSvg(el, input)}</div>`)
       break
     }
     case 'if': {
@@ -115,6 +150,55 @@ function render(el: Element, dx: number, dy: number, input: CompileInput, html: 
     default:
       break
   }
+}
+
+// One shape, drawn as a path in the element's own millimetres (L17). Three layers at most, all
+// on the same path: the fill, the pattern that rides over it, and the stroke. A stroke in SVG
+// straddles the line it is drawn on while a CSS border sat inside the box, so the path is inset
+// by half the stroke — which puts the outer edge of the line exactly on the box, and keeps the
+// box the truth that the corner handles, the outline and the snap guides all stand on.
+function shapeSvg(el: Extract<Element, { kind: 'shape' }>, input: CompileInput): string {
+  const strokeMm = el.stroke && (el.strokeMm ?? 0) > 0 ? (el.strokeMm ?? 0) : 0
+  const inset = Math.min(strokeMm / 2, el.w / 2, el.h / 2)
+  const d = pathFor(el.shape, { x: inset, y: inset, w: Math.max(0, el.w - 2 * inset), h: Math.max(0, el.h - 2 * inset) }, {
+    corners: el.corners,
+    innerRatio: el.innerRatio,
+    rotationDeg: el.rotationDeg,
+    radiusMm: el.radiusMm,
+  })
+  // A line has no inside, so it is never offered a fill: painting one would put colour where
+  // the designer drew nothing and cannot click.
+  const open = isOpen(el.shape)
+  const fill = open ? undefined : paintOf(el.fill, input.row)
+  const pattern = open ? undefined : el.pattern
+  const tile = pattern ? tileId(input.scope, el.id) : ''
+  const layers: string[] = []
+  if (fill) layers.push(`<path d="${d}" fill="${attr(fill)}"/>`)
+  if (pattern) layers.push(`<path d="${d}" fill="url(#${tile})"/>`)
+  if (strokeMm > 0) layers.push(`<path d="${d}" fill="none" stroke="${attr(el.stroke ?? '')}" stroke-width="${strokeMm}" stroke-linejoin="round"/>`)
+  // A shape with neither fill nor stroke is still a shape: it keeps its path so that turning a
+  // colour back on draws the same outline, and so the element is never an empty box.
+  if (layers.length === 0) layers.push(`<path d="${d}" fill="none"/>`)
+  const defs = pattern ? `<defs>${patternDef(tile, pattern)}</defs>` : ''
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${el.w} ${el.h}" preserveAspectRatio="none">${defs}${layers.join('')}</svg>`
+}
+
+function patternDef(id: string, pattern: Pattern): string {
+  const size = coord(pattern.scaleMm)
+  const turn = pattern.angleDeg ? ` patternTransform="rotate(${coord(pattern.angleDeg)})"` : ''
+  return `<pattern id="${id}" width="${size}" height="${size}" patternUnits="userSpaceOnUse"${turn}>${tileMarkup(pattern.kind, pattern.scaleMm, attr(pattern.color), pattern.weight)}</pattern>`
+}
+
+// A tile is referenced by id, and many cards share one page — the deck wall and the print sheet
+// both. Two cards under one id would leave every one of them wearing the first card's pattern,
+// which is the kind of fault that only appears once a deck has two of something. The scope is
+// what already makes a card unique on its page, so the id is built from it.
+function tileId(scope: string | undefined, element: string): string {
+  return ['byd-p', ident(scope ?? ''), ident(element)].filter((part) => part.length > 0).join('-')
+}
+
+function ident(s: string): string {
+  return s.replace(/[^A-Za-z0-9_-]/g, '')
 }
 
 function holds(when: Condition, row: Row): boolean {
@@ -205,7 +289,7 @@ export function compileCard(input: CompileCardInput): Record<string, Compiled> {
   for (const faceId of input.type.faces) {
     const face = input.template.faces[faceId]
     if (!face) throw new Error(`template has no face "${faceId}", which ${input.type.id} requires`)
-    out[faceId] = compile({ type: input.type, row: input.row, icons: input.icons, face, ...(input.fonts ? { fonts: input.fonts } : {}), ...(input.bleed !== undefined ? { bleed: input.bleed } : {}), ...(input.measure ? { measure: input.measure } : {}) })
+    out[faceId] = compile({ type: input.type, row: input.row, icons: input.icons, face, ...(input.fonts ? { fonts: input.fonts } : {}), ...(input.bleed !== undefined ? { bleed: input.bleed } : {}), ...(input.measure ? { measure: input.measure } : {}), ...(input.motifs ? { motifs: input.motifs } : {}) })
   }
   return out
 }

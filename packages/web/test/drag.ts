@@ -19,3 +19,13 @@ export function drag(el: HTMLElement, from: [number, number], to: [number, numbe
   fireEvent.pointerMove(el, { pointerId: 1, clientX: to[0], clientY: to[1] })
   fireEvent.pointerUp(el, { pointerId: 1, clientX: to[0], clientY: to[1] })
 }
+
+// A drag as the pointer really reports one: a grab, a frame for every place it passed through,
+// and a release. `drag` above is the same thing with one frame in it, which is enough for a test
+// about where the element ends up and not enough for one about what the drag cost (#…).
+export function dragVia(el: HTMLElement, from: [number, number], through: [number, number][]): void {
+  fireEvent.pointerDown(el, { pointerId: 1, button: 0, clientX: from[0], clientY: from[1] })
+  for (const [x, y] of through) fireEvent.pointerMove(el, { pointerId: 1, clientX: x, clientY: y })
+  const last = through[through.length - 1] ?? from
+  fireEvent.pointerUp(el, { pointerId: 1, clientX: last[0], clientY: last[1] })
+}

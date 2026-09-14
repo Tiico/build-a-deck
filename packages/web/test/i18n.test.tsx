@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
-import { Language, LanguagePicker, chosenLang, detectLang, rememberLang, translate, useT, type T } from '../src/i18n/index.js'
+import { Language, LanguagePicker, chosenLang, detectLang, possessive, rememberLang, translate, useT, type T } from '../src/i18n/index.js'
 import { en } from '../src/i18n/en.js'
 import { sv } from '../src/i18n/sv.js'
 import { svEditor } from '../src/i18n/sv.editor.js'
@@ -71,6 +71,63 @@ describe('the tool in the reader\'s own language (A4)', () => {
     expect(translate('sv', 'wall.cards.other', { n: 3 })).toContain('3')
     expect(translate('en', 'wall.cards.other', { n: 3 })).toContain('3')
     expect(translate('en', 'wall.cards.one', { n: 1 })).toBe('1 card')
+  })
+
+  // Whose a thing is, said the way the reader's own language says it (A4).
+  //
+  // The felt calls a seat by whatever is written on it, and that is a letter until somebody claims
+  // it: `A`. Swedish glues an `s` on a name — `Adas räknare` — but a single letter or an
+  // abbreviation takes a colon first, so the felt said `As räknare` where it should have said
+  // `A:s räknare`, and a name that already ends in s, x or z takes nothing at all. English has its
+  // own three answers to the same three cases. So the rule cannot live at the call site: the call
+  // site has one name and the reader has one language, and the ending belongs to the language.
+  it('puts a name in the possessive by the rule of the language the reader is in', () => {
+    // A letter, and an abbreviation, which Swedish treats alike and English does not.
+    expect(possessive('sv', 'A')).toBe('A:s')
+    expect(possessive('en', 'A')).toBe('A’s')
+    expect(possessive('sv', 'TV')).toBe('TV:s')
+    // A name, which is the ordinary case in both.
+    expect(possessive('sv', 'Ada')).toBe('Adas')
+    expect(possessive('en', 'Ada')).toBe('Ada’s')
+    expect(possessive('sv', 'Bo')).toBe('Bos')
+    // And a name that ends in the sound the ending is made of: Swedish adds nothing, English
+    // keeps the apostrophe and drops the s.
+    expect(possessive('sv', 'Lars')).toBe('Lars')
+    expect(possessive('sv', 'Max')).toBe('Max')
+    expect(possessive('en', 'Lars')).toBe('Lars’')
+    // Nothing to own is nothing to say.
+    expect(possessive('sv', '')).toBe('')
+    expect(possessive('en', '')).toBe('')
+  })
+
+  // And the catalogue asks for it, rather than every surface remembering to. `{name:s}` is a
+  // name in the possessive; `{name}` is the name itself, and both languages use the first
+  // wherever they used to write the ending out by hand.
+  it('lets a message ask for the possessive of what it is given', () => {
+    expect(translate('sv', 'ring.counter.whose', { name: 'A' })).toBe('A:s räknare')
+    expect(translate('sv', 'ring.counter.whose', { name: 'Ada' })).toBe('Adas räknare')
+    expect(translate('sv', 'ring.counter.whose', { name: 'Lars' })).toBe('Lars räknare')
+    expect(translate('en', 'ring.counter.whose', { name: 'A' })).toBe('A’s counter')
+    expect(translate('en', 'ring.counter.whose', { name: 'Ada' })).toBe('Ada’s counter')
+    expect(translate('en', 'ring.counter.whose', { name: 'Lars' })).toBe('Lars’ counter')
+    // The hand is the felt's other possessive, on the keyboard and in the activity feed.
+    for (const key of ['kbd.hand.other', 'activity.hand.other'] as const) {
+      expect(translate('sv', key, { name: 'A' })).toBe('A:s hand')
+      expect(translate('sv', key, { name: 'Ada' })).toBe('Adas hand')
+      expect(translate('en', key, { name: 'Lars' })).toBe('Lars’ hand')
+    }
+    // Every message that writes a possessive asks the language for it. The ending glued to a
+    // placeholder by hand is what this is here to keep from coming back — in either catalogue.
+    const glued = (catalogue: Record<string, string>) =>
+      Object.entries(catalogue)
+        .filter(([, text]) => /\{name\}(s\b|’s|’\s)/.test(text))
+        .map(([key]) => key)
+        .sort()
+    expect(glued(sv)).toEqual([])
+    expect(glued(en)).toEqual([])
+    // The control: the pattern does catch the ending where it is glued on, in both languages, so
+    // the two empty lists are catalogues without it rather than a pattern that matches nothing.
+    expect(glued({ a: '{name}s räknare', b: '{name}’s counter', keeps: '{name:s} hand' })).toEqual(['a', 'b'])
   })
 
   it('renders in Swedish without being told, and in the language it is given', () => {

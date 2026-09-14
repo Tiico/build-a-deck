@@ -1,5 +1,6 @@
 import type { ProjectRow } from './types.js'
 import { cellOf, columnKind } from './sorting.js'
+import { isAssetRef } from './assets.js'
 import { translate, type T } from '../i18n/index.js'
 
 // Without a catalogue of its own this module speaks Swedish, exactly as a surface mounted
@@ -21,11 +22,20 @@ const MAX_CHIPS = 12
 // at least two different values, and when those values repeat, at most half as many distinct
 // values as filled cells. That last test is what separates a vocabulary from free text: `title`
 // and `body` hold one value per card, and `id` does so by definition.
+//
+// A picture is the exception that no counting can catch (#16 on E1): an image column holds
+// `asset:<hash>`, the same image sits on many cards, and so it counts exactly like a vocabulary
+// and is none — the cell draws a thumbnail and never that string, so a chip of it would be a
+// sixty-four-character machine key offered as a word the designer never wrote. One such value is
+// enough to say what the column is; a column half drawn and half still described in words is on
+// its way to being pictures and is not a vocabulary either.
 export function discreteColumns(rows: readonly ProjectRow[], fields: readonly string[]): DiscreteColumn[] {
   const out: DiscreteColumn[] = []
   for (const field of fields) {
     if (columnKind(rows, field) === 'number') continue
-    const filled = rows.map((row) => String(cellOf(row, field) ?? '').trim()).filter((value) => value !== '')
+    const cells = rows.map((row) => cellOf(row, field))
+    if (cells.some(isAssetRef)) continue
+    const filled = cells.map((cell) => String(cell ?? '').trim()).filter((value) => value !== '')
     const values = [...new Set(filled)].sort((a, b) => a.localeCompare(b, 'sv'))
     if (values.length < 2 || values.length > MAX_CHIPS || values.length * 2 > filled.length) continue
     out.push({ field, values })
@@ -35,7 +45,9 @@ export function discreteColumns(rows: readonly ProjectRow[], fields: readonly st
 
 // Filtering is a view of the project (L4), like sorting: it decides what is on screen and never
 // touches `doc.rows`. The free-text search reads every column of the row, the card's own id
-// included, because the id is a column the designer can see.
+// included, because the id is a column the designer can see — and for the same reason it does not
+// read an image's hash: it is the one value on a row the designer is never shown, so a search for
+// `abc` that answered out of a hash would hand back cards with nothing of `abc` anywhere on them.
 export function filterRows(
   rows: readonly ProjectRow[],
   fields: readonly string[],
@@ -49,7 +61,10 @@ export function filterRows(
     // would make "Nytt kort" look like a button that does nothing, so it is shown regardless
     // until the designer touches the filter again.
     if (row.id === pinned) return true
-    const haystack = fields.map((field) => String(cellOf(row, field) ?? '').toLocaleLowerCase('sv')).join(' ')
+    const haystack = fields
+      .map((field) => cellOf(row, field))
+      .map((cell) => (isAssetRef(cell) ? '' : String(cell ?? '').toLocaleLowerCase('sv')))
+      .join(' ')
     if (!terms.every((term) => haystack.includes(term))) return false
     // Chips of the same column are alternatives, chips of different columns are conditions:
     // "fälla or varelse", "and cheap".

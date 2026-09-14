@@ -1,14 +1,25 @@
 import { z } from 'zod'
+import { SHAPES } from './shapes.js'
 
 // Optional fields have defaults applied by the compiler, so a template can be authored sparsely.
 // The template element model (L1): a small, closed set of typed elements with positions in
 // millimetres and styles from a fixed palette. Data, not code — versioned, diffed, migrated.
 
+// A card's data as the compiler sees it: one row of the deck.
+export type Row = Record<string, string | number | boolean | null | undefined>
+
 const Mm = z.number()
 const Bind = z.union([z.object({ field: z.string().min(1) }), z.object({ literal: z.string() })])
 export type Bind = z.infer<typeof Bind>
 
-const Box = { id: z.string().min(1), x: Mm, y: Mm, w: Mm.nonnegative(), h: Mm.nonnegative() }
+// What every element carries for the person editing it rather than for the card (L15): the word
+// the designer calls the layer, and whether the layer is locked. The compiler never reads either
+// — a card is the same card whether or not a layer was locked while it was drawn — but they are
+// template data like everything else, so they are versioned, diffed and shared with whoever else
+// has the project open, exactly as a position is.
+const Designer = { name: z.string().min(1).optional(), locked: z.literal(true).optional() }
+
+const Box = { id: z.string().min(1), x: Mm, y: Mm, w: Mm.nonnegative(), h: Mm.nonnegative(), ...Designer }
 
 export const Font = z.object({
   family: z.string().min(1),
@@ -38,6 +49,13 @@ export const ImageElement = z.object({
   // fits the whole picture inside the frame instead, and is the one that can leave the card's
   // paper showing between the picture and its own edges.
   fit: z.enum(['cover', 'contain', 'fill']).optional(),
+  // Fit what is drawn rather than the file it arrived in (E1). A deck's art is one file per
+  // card, and two files holding the same motif rarely hold it at the same size — one carries a
+  // wide transparent border, the next almost none — so fitting files draws the motif a different
+  // size on every card. With this on, the uniform border a file carries is measured once per
+  // asset and left out of the fitting, and the picture is then cropped by the frame as ever.
+  // A file nothing has measured is fitted as a file, so a picture is never lost to this.
+  trim: z.literal(true).optional(),
 })
 export const IconsElement = z.object({
   kind: z.literal('icons'),
@@ -46,15 +64,92 @@ export const IconsElement = z.object({
   iconMm: Mm.positive(),
   gapMm: Mm.nonnegative().optional(),
 })
+// A colour, or a rule that reads one off the deck (L16): the column to look in, a colour per
+// value, and what a value the rule does not name gets. The colours stay in the template, where
+// every other style lives — the deck says which of them a card gets, and changing a shade is one
+// edit rather than one per card.
+export const Paint = z.union([
+  z.string().min(1),
+  z.object({
+    field: z.string().min(1),
+    map: z.record(z.string(), z.string().min(1)),
+    // Unnamed on purpose in the document: `else` is what a card gets when its value is not in the
+    // map, including when the cell is empty. Without one such a card is simply unpainted, which
+    // is what a shape with no fill at all has always been.
+    else: z.string().min(1).optional(),
+  }),
+])
+export type Paint = z.infer<typeof Paint>
+
+// The colour a row gets out of a paint. The one place a paint is turned into a colour, so the
+// compiler, the physical checks and the editor's preview can never disagree about it.
+export function paintOf(paint: Paint | undefined, row: Row): string | undefined {
+  if (paint === undefined || typeof paint === 'string') return paint
+  const value = row[paint.field]
+  const named = value === null || value === undefined ? undefined : paint.map[String(value)]
+  return named ?? paint.else
+}
+
+// A shadow (L17): how far the shape is lifted off the paper, how softly, and in what colour.
+// Transparency is its own number rather than part of the colour, because the tool that picks a
+// colour cannot say how see-through it is — and a shadow that is not see-through is a cut-out.
+export const Shadow = z.object({
+  dxMm: Mm,
+  dyMm: Mm,
+  blurMm: Mm.nonnegative(),
+  color: z.string().min(1),
+  opacity: z.number().min(0).max(1).optional(),
+})
+export type Shadow = z.infer<typeof Shadow>
+
+// A pattern (L17): ink repeated over the fill. It is a layer and not a fill of its own, so a
+// fill that follows a column (L16) keeps following it and the pattern rides on whatever colour
+// the row lands on. `weight` is how much of each tile the ink takes, from a hairline to nearly
+// solid; what that means is the pattern's own business, which is why one number covers all five.
+export const Pattern = z.object({
+  kind: z.enum(['stripes', 'grid', 'dots', 'diamonds', 'chevron']),
+  color: z.string().min(1),
+  scaleMm: Mm.positive(),
+  angleDeg: z.number().optional(),
+  weight: z.number().positive().max(1).optional(),
+})
+export type Pattern = z.infer<typeof Pattern>
+
 export const ShapeElement = z.object({
   kind: z.literal('shape'),
   ...Box,
-  shape: z.enum(['rect', 'circle', 'line']),
-  fill: z.string().optional(),
+  shape: z.enum(SHAPES),
+  fill: Paint.optional(),
   stroke: z.string().optional(),
   strokeMm: Mm.nonnegative().optional(),
   radiusMm: Mm.nonnegative().optional(),
+  // The parametric core (L17). `corners` is a polygon's sides and a star's points; `innerRatio`
+  // is how deep a star's valleys cut; `rotationDeg` turns either of them. A shape that does not
+  // read a property ignores it rather than rejecting it, so switching a hexagon to a circle and
+  // back does not lose the six.
+  corners: z.number().int().min(3).max(48).optional(),
+  innerRatio: z.number().min(0.05).max(0.95).optional(),
+  rotationDeg: z.number().optional(),
+  pattern: Pattern.optional(),
+  shadow: Shadow.optional(),
 })
+
+// The one way from a shadow to the colour it is drawn in, for the same reason `paintOf` is the
+// one way from a fill to one: the compiler and the editor's preview can never disagree about it.
+export function shadowCss(shadow: Shadow): string {
+  const colour = shadow.opacity === undefined ? shadow.color : rgba(shadow.color, shadow.opacity)
+  return `drop-shadow(${shadow.dxMm}mm ${shadow.dyMm}mm ${shadow.blurMm}mm ${colour})`
+}
+
+// A colour the reader named, made see-through. A colour this cannot read is carried through as
+// it is: a shadow in a colour the tool never offered is still better than no shadow at all.
+function rgba(colour: string, opacity: number): string {
+  const digits = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(colour.trim())?.[1]
+  if (digits === undefined) return colour
+  const h = digits.length === 3 ? [...digits].map((c) => c + c).join('') : digits
+  const n = Number.parseInt(h, 16)
+  return `rgb(${(n >> 16) & 255} ${(n >> 8) & 255} ${n & 255} / ${opacity})`
+}
 
 // Conditions (L3): show the children only when a field is non-empty or equals a value.
 export const Condition = z.union([
@@ -68,8 +163,8 @@ export type Element =
   | z.infer<typeof ImageElement>
   | z.infer<typeof IconsElement>
   | z.infer<typeof ShapeElement>
-  | { kind: 'group'; id: string; x: number; y: number; children: Element[] }
-  | { kind: 'if'; id: string; when: Condition; children: Element[] }
+  | { kind: 'group'; id: string; x: number; y: number; children: Element[]; name?: string; locked?: true }
+  | { kind: 'if'; id: string; when: Condition; children: Element[]; name?: string; locked?: true }
 
 export const Element: z.ZodType<Element> = z.lazy(() =>
   z.discriminatedUnion('kind', [
@@ -77,8 +172,8 @@ export const Element: z.ZodType<Element> = z.lazy(() =>
     ImageElement,
     IconsElement,
     ShapeElement,
-    z.object({ kind: z.literal('group'), id: z.string().min(1), x: Mm, y: Mm, children: z.array(Element) }),
-    z.object({ kind: z.literal('if'), id: z.string().min(1), when: Condition, children: z.array(Element) }),
+    z.object({ kind: z.literal('group'), id: z.string().min(1), x: Mm, y: Mm, children: z.array(Element), ...Designer }),
+    z.object({ kind: z.literal('if'), id: z.string().min(1), when: Condition, children: z.array(Element), ...Designer }),
   ]),
 ) as z.ZodType<Element>
 
@@ -101,4 +196,4 @@ export type FaceTemplate = z.infer<typeof FaceTemplate>
 export const Template = z.object({ faces: z.record(z.string(), FaceTemplate) })
 export type Template = z.infer<typeof Template>
 
-export type Row = Record<string, string | number | boolean | null | undefined>
+

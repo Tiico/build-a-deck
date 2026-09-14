@@ -1,4 +1,4 @@
-import { projectTilted, type Point, type TiltLayout } from './geometry.js'
+import { projectTilted, type Point, type Rotation, type TiltLayout } from './geometry.js'
 
 export type Size = { w: number; h: number }
 
@@ -14,10 +14,57 @@ export function fitScale(table: Size, container: Size, margin = 0): number {
   return Math.min(1, w / table.w, h / table.h)
 }
 
-// The least air the felt ever leaves between itself and the frame that holds it. The table's
-// wooden rim is drawn in the frame's own pixels, outside the millimetres the fit measures, so a
-// felt that came closer would have its own frame cut; the TV's chrome leaves the same air (K9).
-export const LEAST_AIR_PX = 44
+// Whether the felt is turned a quarter to meet the window it is shown in (C5, C8, #76).
+//
+// A table is drawn in a shape of its own — the wizard's is wider than it is tall — and a window
+// has a shape of its own too. When the two disagree, the felt fitted upright is bounded by the
+// short side of the window and leaves the long one empty: a landscape table in a portrait phone
+// drew 294 x 197 of a 390 x 844 screen and a card's short side came to 15 px. Turned a quarter
+// the table's long side runs down the screen instead, the felt fills the width, and nothing is
+// hidden, clipped or gestured for.
+//
+// The answer is therefore read off the two shapes and never written down per surface: a window
+// whose orientation agrees with the table's is already the right way round.
+//
+// Revised 2026-09-14 (#77). This was written as the observer's rule alone, on the grounds that a
+// seat's own felt is turned by where that seat sits (C5). That holds on a phone, where the window
+// and the seat ask for the same quarter turn anyway, and it fails in every landscape window: a
+// side seat's quarter turn there stands the table's long side up against the window's short one
+// and drew a card 17 px across at 1280 x 800, against 31 upright. So the rule is the seat's too —
+// `seatTurn` in `online/seat.ts` is where the two are composed, and which one wins is written
+// there. The table's own screen is still outside it: a TV is landscape by construction (K9).
+export function turnToFit(table: Size, frame: Size): Rotation {
+  if (table.w <= 0 || table.h <= 0 || frame.w <= 0 || frame.h <= 0) return 0
+  return table.w >= table.h === frame.w >= frame.h ? 0 : 90
+}
+
+// The air the two fits leave between the table and the frame that holds it, in the frame's own
+// pixels. There are two numbers because there are two reasons, and one number for two reasons is
+// how the TV came to spend a quarter of a phone on nothing (#76).
+//
+// In table mode the felt lies on its wood and the wood stands on the dark (K9). The wood's own
+// rim is measured by the fit — `feltScale` projects the *wood's* corners, `WOOD_RIM_PX` and all —
+// so nothing of the table's furniture is drawn outside what this air is counted from, and the
+// only thing in it is a hand's count, which the 30 px rim already carries. That leaves the air as
+// the dark the table stands on and nothing else.
+//
+// It was 44 px, which was the number TV mode had before #76 cut it to 20 for the same reason: one
+// number was doing duty for two, and a share of the room was being spent where a margin was all
+// that was needed. #77 measured what it costs at the one window `/online` actually lives at: a
+// card's short side on the seat's own felt goes from 27 px to 31 at 1280 x 800 and from 45 to 50
+// at 1920 x 1080, on the painted box in Chromium, for nothing given up. Twelve is a hair of dark
+// that keeps the wood off the window's edge; below that the shadow under the wood is all that is
+// left to lose, and it is blurred past the edge already.
+export const WOOD_AIR_PX = 12
+// On a TV the wood has no rim at all — `.byd-table-frame[data-mode='tv'] .byd-table-wood` is
+// `padding: 0` — so nothing of the table's own furniture is drawn outside the millimetres the fit
+// measures. One thing is: a hand's count, which hangs past its hand in the frame's pixels rather
+// than in the felt's millimetres and is about 18 × 22 of them. That is the whole of what this air
+// is for, so it is a pill's width and no more. At 44 it was 23 % of a 390 px window given to
+// nothing, and the observer's felt was a fifth of her phone (C8, L12); 8 px clipped the pills.
+// `observer-viewport.test.tsx` reads the pills back off the drawn page, so the number cannot be
+// cut again without the clipping being seen.
+export const TV_AIR_PX = 20
 
 // The rim the wood draws around the felt, in the frame's own pixels. It is `table.css`'s padding
 // on `.byd-table-wood`, and the fit has to know it because the rim is drawn outside every
@@ -34,7 +81,7 @@ export const WOOD_RIM_PX = 30
 // and a card 38 px across, against the TV's 51.
 //
 // So the felt is simply as large as the frame can hold: the four corners of the wood, projected
-// through the same tilt the stylesheet draws, stand at least `LEAST_AIR_PX` inside the frame, and
+// through the same tilt the stylesheet draws, stand at least `WOOD_AIR_PX` inside the frame, and
 // never larger than life size. The answer is searched for rather than solved, because the
 // projection depends on the wood's own size and so on the scale being looked for.
 export function feltScale(table: Size, container: Size): number {
@@ -50,7 +97,7 @@ export function feltScale(table: Size, container: Size): number {
     ].map((p) => projectTilted(layout, p))
     const xs = corners.map((p) => p.x)
     const ys = corners.map((p) => p.y)
-    return Math.min(...xs) >= LEAST_AIR_PX && Math.max(...xs) <= container.w - LEAST_AIR_PX && Math.min(...ys) >= LEAST_AIR_PX && Math.max(...ys) <= container.h - LEAST_AIR_PX
+    return Math.min(...xs) >= WOOD_AIR_PX && Math.max(...xs) <= container.w - WOOD_AIR_PX && Math.min(...ys) >= WOOD_AIR_PX && Math.max(...ys) <= container.h - WOOD_AIR_PX
   }
   if (fits(1)) return 1
   let lo = 0

@@ -8,103 +8,28 @@
 // own rectangle scores zero and clips twelve names of sixteen. So each reading also says which
 // names it saw, whether any was cut short, and whether any was drawn off the felt.
 import { readFileSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { join } from 'node:path'
 import type { ReactElement } from 'react'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { chromium, type Browser, type Page } from 'playwright'
-import { CARD_STANDARD_63x88, STANDARD_TYPES, TOKEN_COUNTER, TypeRegistry, initialState, project, type SetupDef } from '@byd/engine'
 import type { Snapshot } from '@byd/protocol'
-import { MAX_PLAYERS, SEAT_IDS, SWEDISH_WORDS, applyRecipe, emptySetup, type Setup } from '@byd/server/doc'
+import { MAX_PLAYERS, SEAT_IDS } from '@byd/server/doc'
 import { TableRenderer } from '../src/table/TableRenderer.js'
 import { TvChrome } from '../src/table/TvChrome.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import { atWidth } from './viewport.js'
+import { FACE, FELT_FONT, READ, expectClear, feltOf, namesOf, sceneOf, seatNameOf, sheet, type Reading } from './felt-labels.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
-
-// A sheet as it ships, with the face's own bytes where the build puts them: inline, as a `data:`
-// URL. `assetsInlineLimit` in `vite.config.ts` is what does it there and this is what does it
-// here, and it is the same transformation — a woff2 the sheet points at becomes the sheet's own
-// content. Nothing else is rewritten, so what is measured below is the cascade the app declares
-// and not one this file invented (K19's own lesson, #72).
-const FACE = /url\('(\.\/[^']+\.woff2)'\)/g
-const sheet = (rel: string): string =>
-  read(rel).replace(FACE, (_all, file: string) => `url('data:font/woff2;base64,${readFileSync(join(import.meta.dirname, '..', dirname(rel), file)).toString('base64')}')`)
+const FRAME = { w: 1280, h: 800 }
 
 // The editor's Bord tab is one of the five surfaces, so the shared button language goes over
 // it here as it does on the page itself; the felt's own sheets go under. The face the felt is
 // written in comes first, because it is on the entry in the app too (#95).
-const FELT_FONT = 'src/fonts/felt-font.css'
 const SHEETS = [FELT_FONT, 'src/table/table.css', 'src/table/texture.css', 'src/table/keyboard.css', 'src/editor/editor.css', 'src/buttons.css', 'src/a11y.css']
-
-const registry = new TypeRegistry(STANDARD_TYPES)
-const CARD = { id: CARD_STANDARD_63x88.id, version: 1 }
-const TOKEN = { id: TOKEN_COUNTER.id, version: 1 }
-const COUNTERS = [{ name: 'Poäng', start: 0 }]
-const DECK = 20
-const HELD = 4
-const FRAME = { w: 1280, h: 800 }
-
-// A seat's name is as wide as the name is: the collision #71 reports is a name card lying on a
-// zone's label, and "A" is not what a table says. So the seats are named as people name them.
-const seatNameOf = (seat: string): string => `Spelare ${seat.charCodeAt(0) - 64}`
-
-// The table the recipe lays out for that many seats (K18), which is the table every surface here
-// draws — the editor's preview from the document, the played felt from the log. The seats carry
-// everything a seat can have, since the question is what happens when one edge holds two of them.
-// The market is a knob on the same recipe and a zone nobody owns, 200 mm in from the north rim —
-// the one band a seat's own names were sent into when they were moved off that rim. A scene
-// pinned to one setting of it measures half a table, so every reading below is taken with it both
-// on and off.
-const feltOf = (seats: number, market = false): Setup =>
-  applyRecipe(emptySetup(), { players: seats, mine: true, discard: true, market, counters: COUNTERS }, SWEDISH_WORDS)
-
-// The same table as the engine projects it, with something lying in every hand and in every area
-// in front of a seat: a label is judged against what is dealt near it, not against bare felt.
-// The areas in front are opened to `all` for the same reason — the table's own screen is shown
-// nothing lying in an `owner` zone (B6), and this is a question about names over cards.
-function sceneOf(setup: Setup): Snapshot {
-  const def: SetupDef = {
-    seats: setup.seats,
-    floor: setup.floor,
-    zones: setup.zones.map((z) => ({
-      id: z.id,
-      kind: z.kind,
-      name: z.name,
-      visibility: z.id.startsWith('mine:') ? ('all' as const) : z.visibility,
-      geometry: z.geometry,
-      ...(z.owner ? { owner: z.owner } : {}),
-      ...(z.returnTo ? { returnTo: z.returnTo } : {}),
-      ...(z.shortcut ? { shortcut: z.shortcut } : {}),
-    })),
-    components: [
-      ...Array.from({ length: DECK }, (_, i) => ({ type: CARD, cardRef: `Kort ${i + 1}`, zone: setup.deckZone, face: 'back' as const })),
-      ...setup.seats.flatMap((seat) => {
-        const z = setup.zones.find((w) => w.id === `mine:${seat}`)
-        if (!z) return []
-        const tall = z.geometry.h > z.geometry.w
-        return [0, 1].map((i) => ({ type: CARD, cardRef: `Spelat ${seat}${i}`, zone: `mine:${seat}`, face: 'front' as const, x: tall ? 18 : 10 + i * 70, y: tall ? 10 + i * 100 : 6 }))
-      }),
-      ...setup.seats.flatMap((seat) => Array.from({ length: HELD }, (_, i) => ({ type: CARD, cardRef: `Hand ${seat}${i}`, zone: `hand:${seat}`, face: 'back' as const }))),
-      ...setup.seats.flatMap((seat) =>
-        setup.zones.some((z) => z.id === `counters:${seat}`) ? COUNTERS.map((c, i) => ({ type: TOKEN, cardRef: c.name, zone: `counters:${seat}`, face: 'front' as const, counter: c.start, x: 8 + i * 32, y: 8 })) : [],
-      ),
-    ],
-  }
-  const snap = project(initialState('names', def, registry), registry, null)
-  return { ...snap, seats: snap.seats.map((s) => ({ ...s, name: seatNameOf(s.id) })) }
-}
-
-// Every name the table is meant to say at that seat count. A reading that is missing one of them
-// has not placed the names well; it has lost one.
-function namesOf(setup: Setup): string[] {
-  const areas = setup.zones.filter((z) => z.kind === 'area' && z.id !== setup.floor).map((z) => z.name)
-  const piles = setup.zones.filter((z) => z.kind === 'pile').map((z) => z.name)
-  return [...areas, ...piles, ...setup.seats.map(seatNameOf)]
-}
 
 function markupOf(node: ReactElement): string {
   const { container, unmount } = render(node)
@@ -142,130 +67,7 @@ async function onPage<T>(html: string, size: { w: number; h: number }, look: (pa
   }
 }
 
-type Crowding = { pairs: string[]; clipped: string[]; outside: string[] }
-type Reading = Crowding & { names: string[]; wrapped: string[]; smallest: number; cardPx: number; wider: Crowding }
-
-// How much wider than the shipped face every name has to survive being drawn (#95). "No overlap"
-// is not a machine-independent claim: Linux fontconfig snaps each glyph's advance to a whole
-// pixel and macOS places them on subpixels, which is up to ~1.5 px per name and does not go away
-// because the face ships. A design that clears by two pixels therefore clears on one machine and
-// not on the next — which is exactly what it did, and what CI kept reporting.
-//
-// The number is the felt's own slack said as a proportion, because the scarcity here is relative:
-// the two pixel-shifts before this one bought *absolute* room and bought nothing. Today's tightest
-// scene has 2.0 % and DejaVu Sans draws K19's names 12–14 % wider, so 15 % is the smallest demand
-// that would have caught it. The shipped face leaves 21–22 %.
-const NAME_MARGIN = 1.15
-
-// What the two issues are about, read off the DOM: which names are visible, which pairs of them
-// lie on the same pixels, which were cut short by the box they were given, and which were drawn
-// off the felt altogether — and then all of that again with every name drawn `NAME_MARGIN` wider.
-//
-// Widening is done with `letter-spacing`, which is how a wider face differs from a narrower one
-// as far as this layout is concerned: every name is `nowrap` and anchored at one of its own two
-// ends with `translate(-100% …)`, so the element's own width is what moves it. Adding Δ to an
-// n-character name of width w adds n·Δ to that width, so Δ = (k−1)·w/n scales the drawn text by k
-// while the fixed insets — `--name-in`, the pill's padding — stay fixed, as they would under a
-// wider face.
-const READ = `((margin) => {
-  const sel = ['.byd-zone > span', '.byd-seat-name', '.byd-setup-handle > span', '.byd-pile-name', '.byd-pile-n', '.byd-hand-count'].join(', ')
-  const seen = (el) => {
-    const s = getComputedStyle(el)
-    if (s.display === 'none' || s.visibility === 'hidden' || Number(s.opacity) === 0) return null
-    const r = el.getBoundingClientRect()
-    return r.width > 0 && r.height > 0 ? r : null
-  }
-  // The glyphs' own width, without the pill's padding: a range over the element's text. That is
-  // the quantity a wider face changes.
-  const textWidth = (el) => {
-    const range = document.createRange()
-    range.selectNodeContents(el)
-    return range.getBoundingClientRect().width
-  }
-  const base = [...document.querySelectorAll(sel)]
-    .filter((el) => seen(el))
-    .map((el) => {
-      const ls = getComputedStyle(el).letterSpacing
-      return { el, ls: ls === 'normal' ? 0 : parseFloat(ls) || 0, w: textWidth(el), n: Math.max(1, (el.textContent || '').trim().length) }
-    })
-  const widen = (k) => {
-    for (const b of base) b.el.style.letterSpacing = (b.ls + ((k - 1) * b.w) / b.n) + 'px'
-  }
-  const readAt = () => {
-    const labels = []
-    const clipped = []
-    // A zone's name is laid out in a box as wide as the zone, so beside a narrow zone it breaks
-    // onto two lines and measures half as wide — half of every good number below would then be the
-    // wrap's doing rather than the rule's. The readings used to force one line on from the outside,
-    // which meant the shipped declaration could be deleted without a single test noticing: the
-    // injected rule stood in for it. What is read here is the cascade as it ships.
-    const wrapped = []
-    let smallest = Infinity
-    for (const el of document.querySelectorAll(sel)) {
-      const r = seen(el)
-      if (!r) continue
-      const text = (el.textContent || '').trim()
-      // A pile's name and its count are two halves of one pill ("Draghög · 20") and touch by
-      // construction. One label, not two — and it is the badge, \`.byd-pile-n\`, that is read, since
-      // in TV mode the wrapper around it covers the whole pile while the badge hangs over its top.
-      labels.push({ text, r, pill: el.closest('.byd-pile-count') })
-      if (el.matches('.byd-zone > span') && !/nowrap|pre(?!-)/.test(getComputedStyle(el).whiteSpace)) wrapped.push(text)
-      smallest = Math.min(smallest, parseFloat(getComputedStyle(el).fontSize))
-      if (el.scrollWidth > el.clientWidth + 1) clipped.push(text)
-    }
-    const hits = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom
-    const pairs = []
-    for (let i = 0; i < labels.length; i++)
-      for (let j = i + 1; j < labels.length; j++) {
-        if (labels[i].pill && labels[i].pill === labels[j].pill) continue
-        if (hits(labels[i].r, labels[j].r)) pairs.push(labels[i].text + ' × ' + labels[j].text)
-      }
-    // Off the felt. A hand's count is left out on purpose: it hangs a fixed distance below its own
-    // hand by \`HAND_COUNT_MM\`, which is K9's own rule for the played felt and not a stray name.
-    const felt = document.querySelector('[data-table]')?.getBoundingClientRect() ?? null
-    const outside = []
-    if (felt)
-      for (const el of document.querySelectorAll('.byd-zone > span, .byd-seat-name')) {
-        const r = seen(el)
-        if (!r) continue
-        if (r.left < felt.left - 1 || r.top < felt.top - 1 || r.right > felt.right + 1 || r.bottom > felt.bottom + 1) outside.push((el.textContent || '').trim())
-      }
-    const card = document.querySelector('.byd-pile-top')
-    return {
-      names: labels.map((l) => l.text),
-      pairs,
-      clipped,
-      outside,
-      wrapped,
-      smallest: Number.isFinite(smallest) ? Math.round(smallest * 10) / 10 : 0,
-      cardPx: card ? Math.round(card.getBoundingClientRect().width) : 0,
-    }
-  }
-  const at = readAt()
-  widen(margin)
-  const wide = readAt()
-  widen(1)
-  return { ...at, wider: { pairs: wide.pairs, clipped: wide.clipped, outside: wide.outside } }
-})(${NAME_MARGIN})`
-
 const readNames = (html: string, size: { w: number; h: number }): Promise<Reading> => onPage(html, size, (page) => page.evaluate(READ) as Promise<Reading>)
-
-// Everything the two issues ask of one reading, said once: the names are all there, none of them
-// lies on another, none was cut short, and none was drawn off the felt — and the same is still
-// true when every name is drawn `NAME_MARGIN` wider, which is what makes the answer belong to the
-// design rather than to the machine it was read on (#95).
-function expectClear(reading: Reading, wanted: string[], where: string): void {
-  expect({ where, names: reading.names.length > 0 }).toEqual({ where, names: true })
-  expect({ where, missing: wanted.filter((n) => !reading.names.includes(n)) }).toEqual({ where, missing: [] })
-  expect({ where, pairs: reading.pairs }).toEqual({ where, pairs: [] })
-  expect({ where, clipped: reading.clipped }).toEqual({ where, clipped: [] })
-  expect({ where, outside: reading.outside }).toEqual({ where, outside: [] })
-  expect({ where, wrapped: reading.wrapped }).toEqual({ where, wrapped: [] })
-  const wide = `${where}, every name drawn ${Math.round((NAME_MARGIN - 1) * 100)} % wider`
-  expect({ where: wide, pairs: reading.wider.pairs }).toEqual({ where: wide, pairs: [] })
-  expect({ where: wide, clipped: reading.wider.clipped }).toEqual({ where: wide, clipped: [] })
-  expect({ where: wide, outside: reading.wider.outside }).toEqual({ where: wide, outside: [] })
-}
 
 // Which real face drew the glyphs, asked of the browser rather than of the cascade. A computed
 // `font-family` only says what was *asked for*; a face that failed to arrive leaves the rule
@@ -650,7 +452,7 @@ describe('a name that moved changed no readability number (K9, K18)', () => {
 // exception to it, since half a rule was measured and found worse than none.
 describe('a zone nobody owns keeps the name where it was (K19)', () => {
   it('leaves the shared market’s name above its own top edge, at its left corner', async () => {
-    const setup = applyRecipe(emptySetup(), { players: 4, mine: true, discard: true, market: true, counters: COUNTERS }, SWEDISH_WORDS)
+    const setup = feltOf(4, true)
     const html = markupOf(<TableRenderer view={sceneOf(setup)} mode="table" size={FRAME} />)
     const at = await onPage(html, FRAME, (page) =>
       page.evaluate(() => {

@@ -9,15 +9,15 @@ export type WizardState = { name: string; players: number; fields: Field[]; fram
 // The counter every seat starts with is a word the designer reads and renames, so it is written
 // in the language the game is being built in (A4) — like the field names the wizard suggests.
 export const defaultCounters = (t: T): { name: string; start: number }[] => [{ name: t('counter.score'), start: 0 }]
+// Without a language given, the tool speaks Swedish — the catalogue's own language.
+const swedish: T = (key, params) => translate('sv', key, params)
 
 // The wizard's whole output (L6): exactly the document the editor edits — E3's condition.
 // The table is the recipe's (B5): seats around a felt as large as that many people need (K18),
 // each with a hand that returns to the draw pile, an area in front of it and its counters; the
 // editor turns the same knobs afterwards.
-export function buildProject(state: WizardState, t: T = (key, params) => translate('sv', key, params)): ProjectDoc {
+export function buildProject(state: WizardState, t: T = swedish): ProjectDoc {
   const frame = FRAMES.find((f) => f.id === state.frame) ?? DEFAULT_FRAME
-  // The table a new game starts with is named in the designer's language from the first moment.
-  const words = recipeWords(t)
   const ids = new Set<string>()
   const rows = state.rows.map((row, i) => {
     const base = slug(row['title'] ?? '') || `kort-${i + 1}`
@@ -31,8 +31,32 @@ export function buildProject(state: WizardState, t: T = (key, params) => transla
     template: { faces: { front: frame.front(state.fields), back: frame.back } },
     rows,
     icons: {},
-    setup: applyRecipe(emptySetup(words), { players: state.players, mine: true, discard: true, market: false, counters: state.counters ?? defaultCounters(t) }, words),
+    setup: tableOf(state, t),
   }
+}
+
+// A game made without the guided start (L14): the name and the seats are the whole of what the
+// designer has said, so the document holds those and the table every game has, and nothing the
+// wizard's other steps would have suggested — two empty faces, no fields, no cards. All of that
+// is made in the editor, by the same edits any game gets; the editor cannot tell which door a
+// game came in by (E3).
+export function buildBlankProject(state: Pick<WizardState, 'name' | 'players' | 'counters'>, t: T = swedish): ProjectDoc {
+  return {
+    name: state.name.trim(),
+    template: { faces: { front: { base: [], variants: {} }, back: { base: [], variants: {} } } },
+    rows: [],
+    icons: {},
+    setup: tableOf(state, t),
+  }
+}
+
+// The table a new game starts with, whichever door it came in by: the recipe's seats around a
+// felt as large as that many people need (K18), each with a hand that returns to the draw pile,
+// an area in front of it and its counters (C4); the editor turns the same knobs afterwards (B5).
+// It is named in the designer's language from the first moment (A4).
+function tableOf(state: Pick<WizardState, 'players' | 'counters'>, t: T): ProjectDoc['setup'] {
+  const words = recipeWords(t)
+  return applyRecipe(emptySetup(words), { players: state.players, mine: true, discard: true, market: false, counters: state.counters ?? defaultCounters(t) }, words)
 }
 
 // Numbers become numbers, antal defaults to 1, everything else stays text.

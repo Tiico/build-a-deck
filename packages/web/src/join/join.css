@@ -4,25 +4,50 @@
      palette (#20) is one palette and a seat button here is the same object as a name tag there.
      White on it measured 3.44:1 on the blue seat and down to 2.44:1 on the yellow one. */
   --byd-seat-ink: #0d0f14;
+  /* The pill's own size, named so that everything the felt is built out of can read it. The
+     height is the letter's line over the word's (#80) and comfortably past the 44 px a thumb is
+     owed (UX-KONTROLLER: träffytor). The width is the least a pill takes, and it is a number here
+     rather than "however wide the word comes out" on purpose: the air between two seats is
+     measured from it. A free pill as wide as its own `ledig` is one width on this Mac and a wider
+     one on a Linux runner, where `system-ui` is a different typeface altogether, and the picker's
+     promise — the same air down a side as across an end — would then hold on one machine and not
+     on the other. 76 px clears the word with room to spare in any face this is likely to meet, so
+     a free pill is exactly this wide everywhere. A name wider than it grows the pill, and is
+     capped and cut by the rules further down. */
+  --byd-seat-h: 52px;
+  --byd-seat-w: 76px;
+  /* The daylight wanted in each corner of the felt, where the outermost seat of one edge passes
+     the outermost seat of the next. */
+  --byd-seat-corner: 4px;
   /* The step from one seat to the next along a side of the felt, and the least air between two
      pills that share one (#42). A pill is wider than it is tall, so the two pitches differ: they
      are set to leave the same air down a side as across an end, because the same step both ways
-     reads as two different layouts.
+     reads as two different layouts. More people on a side sit closer together, the way they do at
+     a real table.
 
      These are the steps of a shared edge and of nothing else: a seat alone on its edge takes a
      step of exactly zero, so a table of four or fewer never reads them. They are therefore the
      numbers the wider felt below carries, not the smaller one.
 
-     How far apart the pair may stand is not free: a pill is 44 px tall and hangs 26 px off its
-     edge, so it reaches 18 px back onto the felt, and the outermost seat of one edge would
-     otherwise stand in the corner the outermost seat of the next edge is already in. The
-     east-west step may therefore be the felt's height less 80 px, less the daylight wanted in
-     each of the two corners it passes: on a 200 px felt, 112 px leaves 4 px in all four. The
-     north-south step then follows at 20 px more, which is exactly how much wider than tall a
-     pill is, and the air comes out 67,6 px across an end against 68 px down a side. More people
-     on a side sit closer together, the way they do at a real table. */
+     The step across an end is the one number here that is chosen rather than worked out, and what
+     chooses it is the cap: a shared pill may grow to one pitch less the gap, and 132 px is what
+     that cap needs in order to clear an ordinary Swedish first name. That is #42's whole reason
+     for growing the felt in the first place. The step down a side is then that step less however
+     much wider than tall a pill is, which leaves 56 px of air across an end against 56 px down a
+     side.
+
+     The felt's height follows from these, further down — and not the other way about, which is
+     how the arithmetic quietly broke. It used to read: a pill is 44 px tall and hangs 26 px off
+     its edge, so it reaches 18 px back onto the felt, and the east-west step is the felt's height
+     less 80 px, less the daylight wanted in each of the two corners it passes — on a 200 px felt,
+     112 px left 4 px in all four. Every one of those numbers was true, and all of them were
+     written down rather than derived. Then the pill grew to 52 px to carry its letter (#80): it
+     reaches 26 px back instead of 18, which eats 8 px in each corner, and the daylight became an
+     overlap of exactly that — `A×H 20×8`, `B×D 20×8`, `C×F 20×8`, `E×G 20×8` on an eight-seat
+     table. The felt is written from the pill now, so the pill may grow again and the corners
+     cannot fall in behind its back. */
   --byd-seat-pitch-x: 132px;
-  --byd-seat-pitch-y: 112px;
+  --byd-seat-pitch-y: calc(var(--byd-seat-pitch-x) - (var(--byd-seat-w) - var(--byd-seat-h)));
   --byd-seat-gap: 14px;
   /* How far a pill hangs off the edge it belongs to. The offsets below are written from these
      and nothing else, and so is the room a pill on that edge has to grow in (#52) — the two may
@@ -49,7 +74,22 @@
   /* The felt's own width is a number the pills have to know as well as the felt does (#52), so it
      is kept where both can read it rather than written twice. */
   --byd-felt-w: 220px;
-  position: relative; place-self: center; width: var(--byd-felt-w); height: 150px; border-radius: 16px;
+  /* How much of the felt's height goes on spreading a shared edge: nothing, while every edge
+     carries one seat. The felt below is written from this and from the pill, which is what makes
+     the small felt and the big one the same piece of arithmetic asked twice.
+
+     Down the felt, from the top of the north pill to the bottom of the south one, lie: the north
+     pill's reach back onto the felt, a corner's daylight, the tallest an edge's seats stand
+     (one pill, plus the spread when two share it), a corner's daylight again, and the south
+     pill's reach back. A pill reaches back by its height less its overhang, so that is
+     `spread + 3 × height − 2 × overhang + 2 × daylight`: 112 px with nothing shared, and 220 px
+     once an edge carries a pair. The 150 px the felt has always been for a table of four or fewer
+     is well clear of the first of those, and stays, because what that number is for is how a
+     table looks and not whether its corners hold. */
+  --byd-seat-spread-y: 0px;
+  position: relative; place-self: center; width: var(--byd-felt-w);
+  height: max(150px, calc(var(--byd-seat-spread-y) + 3 * var(--byd-seat-h) - 2 * var(--byd-seat-hang-y) + 2 * var(--byd-seat-corner)));
+  border-radius: 16px;
   background: radial-gradient(ellipse at 50% 40%, #2e6b46, #1f4a30 70%, #173a26);
   box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.45), 0 0 0 10px #4a2f1c;
   /* Seats at an edge are hung off that edge and take no part in this; the row is for the seats
@@ -62,18 +102,46 @@
    first names were drawn as `Kri…`. So the felt grows — but only where the crowd is. The page
    sets `data-shares` on the table for exactly the tables whose own count of the edges found a
    pair, from the same reading that marks the pills, so a table of four or fewer is drawn at
-   220 × 150 exactly as it always was. The phone pays nothing either way: the felt stands in a
-   grid row of its own with room to spare, so the page is the same height, scrolls no more
-   sideways, and leaves "Sätt dig" where it was. */
-.byd-join-table[data-shares] { --byd-felt-w: 260px; height: 200px; }
-/* The picker is met with a thumb and nothing else, so a seat is held to the 44 px every control
-   in the product is held to (UX-KONTROLLER: träffytor). The pill grows around its word rather
-   than the word growing: the label is a seat's name, not a button's size. */
+   220 × 150 exactly as it always was. What the wider felt is *tall* is not said here at all any
+   more: it is the spread of a shared edge asked of the arithmetic above, which is why it came out
+   200 px behind a 44 px pill and comes out 220 px behind the 52 px one. The phone pays nothing
+   either way: the felt stands in a grid row of its own with room to spare, so the page is the
+   same height, scrolls no more sideways, and leaves "Sätt dig" where it was. */
+.byd-join-table[data-shares] { --byd-felt-w: 260px; --byd-seat-spread-y: var(--byd-seat-pitch-y); }
+/* The picker is met with a thumb and nothing else, so a seat is held to at least the 44 px every
+   control in the product is held to (UX-KONTROLLER: träffytor). The pill grows around its word
+   rather than the word growing: the label is a seat's name, not a button's size.
+
+   Two lines, not one (#80, form C): the seat's own letter over the word underneath it — "ledig"
+   while the seat is free, the name once somebody sits down. The letter is drawn in both states
+   and at the same height down the pill in each, so sitting down changes what the pill says and
+   never what shape it is. Nothing here touches how *wide* the pill may grow, which is where #42
+   and #52 do their work; the cut those two hang on the word is untouched by the letter above it. */
 .byd-join-table button {
-  display: inline-flex; align-items: center; justify-content: center;
-  padding: 8px 14px; min-width: 60px; min-height: 44px; border-radius: 999px; white-space: nowrap;
-  border: 3px solid transparent; background: var(--seat); color: var(--byd-seat-ink); font-weight: 700; font-size: 13px;
+  display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 5px 14px; min-width: var(--byd-seat-w); min-height: var(--byd-seat-h); border-radius: 999px; white-space: nowrap;
+  border: 3px solid transparent; background: var(--seat); color: var(--byd-seat-ink); line-height: 1.05;
 }
+/* The letter leads and the word follows, so the two lines are told apart by weight and size and
+   not by a rule between them. The word keeps a little of the seat's colour showing through it,
+   because a letter and a word at full strength in one pill read as two labels rather than one
+   seat.
+
+   How much showing through is not a matter of taste, because both lines are text and text carries
+   AA wherever it is (UX-KONTROLLER). Letting the ground through *is* spending contrast: the ink
+   is mixed with what it lies on, and what the reader has to make out is the mixture. The seats
+   are not all equally able to pay. `#3c8ce7` is the darkest of them, and the ink on it stands at
+   5,57:1 whole; a fifth through and it is 4,45:1, under the bar on the one seat the prototype
+   happened not to be drawn on. A tenth leaves 5,00:1, which it can afford.
+
+   A taken pill affords none of it. It is already drawn in the muted grey a disabled control
+   wears, which is 5,35:1 on its own grey ground — a tenth through takes it to 4,64:1 and a fifth
+   to 4,13:1. So the word on a taken pill is drawn whole, which is the right way round anyway: the
+   word on a free pill is `ledig`, which is filler beside the letter, and the word on a taken pill
+   is somebody's name, which is the whole of what that pill has to say. */
+.byd-join-table button > b { font-size: 14px; font-weight: 800; }
+.byd-join-table button > span { font-size: 12px; font-weight: 600; opacity: 0.9; }
+.byd-join-table button[aria-disabled='true'] > span { opacity: 1; }
 /* A name may not grow the pill into anyone else's place, and a pill has two ways of trying. It
    can reach *along* its own edge into the seat beside it (#42), and it can reach *across* the
    felt into the seat on the edge opposite (#52). So a pill is as wide as the room it has, and
@@ -102,9 +170,19 @@
    cap then clipped in silence, and since the pill centres what it holds it clipped at both ends:
    `Bartholomew Longbottom` came out as `mew Lon`, a different name with nothing on it to say it
    had been cut. A span takes the cut, `min-width: 0` lets it shrink to the pill, and the
-   ellipsis lands where the name really ends. */
+   ellipsis lands where the name really ends.
+
+   `max-width` is the other half of that, and it was not needed until the letter moved the word
+   onto a line of its own (#80). The pill used to lay its one span out along the pill, so the span
+   was handed the pill's width to fit in and had to give way. Stacked, the span is laid out across
+   the pill instead, where nothing is dividing anything up: the span comes out as wide as its own
+   text however narrow the pill is, `text-overflow` sees nothing to ellipsise, and the pill's own
+   `overflow` does the clipping — at both ends again, and in silence again, which is the very
+   fault the paragraph above is written against. `Bartholomew Longbottom` came back as a different
+   name with nothing on it to say so. Held to the pill's own width, the span is too narrow for its
+   text once more and the ellipsis fires where it should. */
 .byd-join-table button { max-width: min(var(--seat-room-along, var(--byd-seat-unbounded)), var(--seat-room-across, var(--byd-seat-unbounded))); overflow: hidden; }
-.byd-join-table button > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.byd-join-table button > span { min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
 .byd-join-table button[data-shares] { --seat-room-along: calc(var(--byd-seat-pitch-x) - var(--byd-seat-gap)); }
 .byd-join-table button[data-edge='E'],
 .byd-join-table button[data-edge='W'] { --seat-room-across: calc((var(--byd-felt-w) + 2 * var(--byd-seat-hang-x) - var(--byd-seat-gap)) / 2); }

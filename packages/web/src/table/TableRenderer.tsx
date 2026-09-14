@@ -4,7 +4,7 @@ import type { Intent, Presence, Snapshot, VisibleComponentState, ZoneView } from
 import type { Peer, Pulse, Recent } from './presence.js'
 import { hue } from './hue.js'
 import { seatColor } from './seatColor.js'
-import { feltScale, fitScale, leaningSquare, woodLayout, LEAST_AIR_PX, TOUCH_PX } from './fit.js'
+import { feltScale, fitScale, leaningSquare, woodLayout, TOUCH_PX, TV_AIR_PX } from './fit.js'
 import { activeBounds, cameraOf, fitFloor, frameRect, pad, reachOf, same, tween, zoomAround, type Rect, type Size } from './camera.js'
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
 import { CARD_MM, TOKEN_MM, absoluteOf, besidePile, dropIntents, type Drag, type DragTarget } from './drop.js'
@@ -15,7 +15,7 @@ import { DEFAULT_TIMING } from '../status/connection.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
 import { ringCentre } from './ring.js'
 import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, edgeRotation, fanPlace, feltWithHands, handAnchor, handExtent, handRotation, type TableMode } from './hand.js'
-import { nameAt } from './labels.js'
+import { nameAt, type Grow, type Rim } from './labels.js'
 import { useT, type T } from '../i18n/index.js'
 
 export type { TableMode } from './hand.js'
@@ -75,6 +75,21 @@ export type TableRendererProps = {
   // that says it already (K9). A TV-mode surface with no dock — the editor's Bord tab — asks for
   // the cards here, so that a hand is named by the renderer like every other zone (K19).
   seatNames?: boolean | undefined
+  // Which of those place cards is the reader's own (C5, #77). A seat's felt used to be turned so
+  // that the reader's edge was the one at the bottom, and that turn was the whole answer to "which
+  // edge is mine"; it is no longer given in a landscape window, so the answer moves onto the
+  // table's own furniture — the place card at that seat's border is marked as yours, the way a
+  // place card at a real table is the one with your name on it. A surface with no reader sitting
+  // anywhere marks none.
+  me?: string | null | undefined
+  // The seat whose own hand is folded to its count, drawing no fan at all (#77). A surface that
+  // already draws the reader's hand somewhere else draws it twice otherwise, and the second copy
+  // is not free: `feltWithHands` grows the rectangle the fit has to pass into the frame by *every*
+  // seat's fan, and the reader's own runs along the axis the frame is bound by. On `/online` at
+  // 1280 x 800 a hand of thirteen cost the felt three pixels of card that way, at every seat,
+  // which is the difference between K9's forty-five being a floor and nearly being one. Other
+  // seats' fans are untouched: theirs are the only picture of their hands there is.
+  foldHand?: string | null | undefined
   keyboard?: FeltKeyboard | undefined
 }
 
@@ -84,7 +99,46 @@ const DRAG_MM = 4
 const TABLE_GREY = '#8a93a8'
 // The narrowest chip that still has room for the name under the number, in screen pixels.
 const TOKEN_NAME_PX = 34
+// How the number on a chip is sized (K9, #89).
+//
+// The chip is 24 mm of felt and nothing here changes that: `CHIP_MM` is what the whole of #89's
+// layout was derived from. What changes is the ink. A number set in a fixed twelve pixels fits a
+// chip drawn at forty and paints straight out through one drawn at thirteen — which is what eight
+// seats at 1280 × 800 draw — so the value broke its own outline on every seat of the tightest
+// table the product supports.
+//
+// So the number is the chip's, twice over: it takes a share of the chip's diameter, and that
+// share is divided by the width the value itself needs. Three figures and a minus is the widest
+// thing a counter is ever given, and `-120` on a chip must fit the same chip `0` does. The
+// fractions are a chord across a circle rather than a square's side — ink to the disc's edge
+// would leave no amber around it — and a chip that also carries its name (`TOKEN_NAME_PX`) gives
+// the number less, because the two stack.
+//
+// What it does not do is grow the chip when the value is wide. The alternative rule, a floor
+// under the chip in pixels, would have made a counter a different size from every other thing on
+// the felt at exactly the seat counts where room is scarcest, and it would have moved the targets
+// `counter-zone.test.tsx` measures. At the tightest tables the chip is a dot and its number is a
+// dot's number; the value read exactly is read in the ring's hub, which draws it at 24 px, and in
+// the counter panel — the same division K18 already makes between the felt and INSPEKTION.
+const TOKEN_INK_TALL = 0.52
+const TOKEN_INK_WIDE = 0.74
+const TOKEN_NAMED_INK_TALL = 0.42
+const TOKEN_NAMED_INK_WIDE = 0.66
+// What one character of a value costs, as a share of its own size. The felt's own letters (K20)
+// set a figure in about 0.52 em and a minus in less; the number here is deliberately larger, so
+// that a machine that somehow falls back to a wider face still keeps its ink inside the chip.
+const TOKEN_FIGURE_EM = 0.62
+const tokenInkPx = (chipPx: number, value: string, named: boolean): number =>
+  Math.min(chipPx * (named ? TOKEN_NAMED_INK_TALL : TOKEN_INK_TALL), (chipPx * (named ? TOKEN_NAMED_INK_WIDE : TOKEN_INK_WIDE)) / (Math.max(1, value.length) * TOKEN_FIGURE_EM))
 // The camera: room around what is in play, how close it may come, and how long a zoom holds.
+// The felt's width across the reader's view under which its names no longer fit beside the zones
+// they name (K19, #76). Two seats facing each other across the felt each want about 76 px for a
+// name, and the shared piles and their count badges stand between them; below this the two reaches
+// meet in the middle. It is the same number `table.css` hides the played felt's names at.
+const TIGHT_FELT_PX = 460
+// How far a name above its own zone stands off it, there. One pixel, because the room it is
+// standing in is the room the seat at the next rim has already been given.
+const NAME_RIM_PX = 1
 const CAMERA_PAD_MM = 60
 const CAMERA_MIN_MM = 520
 const CAMERA_RETURN_MS = 6000
@@ -100,7 +154,7 @@ type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: n
 // chip — whose verbs are a counter's own and not a card's (C4, #67).
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], onPresence, camera = false, onInspect, size: fixedSize, glideMs = GLIDE_MS, overlay, seatNames = false, keyboard }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], onPresence, camera = false, onInspect, size: fixedSize, glideMs = GLIDE_MS, overlay, seatNames = false, me = null, foldHand = null, keyboard }, ref) {
   const t = useT()
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
@@ -127,18 +181,21 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // The fan is drawn by one rotation, measured by it and hit-tested by it (`dropAt`): one rule.
   const hands = view.zones.filter((z) => z.kind === 'hand')
   const handRot = (z: ZoneView) => handRotation(z, floor, mode)
+  // A hand this surface draws somewhere else of its own is folded to its count here, and a folded
+  // hand is no fan: it is drawn about its zone's own middle and it reaches past nothing.
+  const folded = (z: ZoneView) => foldHand !== null && z.owner === foldHand
   // What the fit has to pass into the frame is the felt *with its hands on* (#23): a hand is part
   // of the table, so a table fitted to the floor alone would clip one that reaches past the rim.
-  const felted = feltWithHands(floorRect, hands.map((z) => handExtent(z, floor, handRot(z))))
+  const felted = feltWithHands(floorRect, hands.map((z) => (folded(z) ? null : handExtent(z, floor, handRot(z)))))
   // A quarter turn (C5) puts the table's width where its height was, so that is the shape the
   // fit has to pass into the frame — otherwise a seat at a side edge gets a table cut off at the
   // top and bottom of its own screen.
   const drawn = rotate % 180 === 0 ? felted : { w: felted.h, h: felted.w }
-  // How the felt meets its frame is one rule for every screen that shows a table (K9, K17): the
-  // TV is framed by its own chrome and only needs air inside it, the felt table stands on the
-  // dark and holds back to its share of it. Both leave the same least air, so neither cuts the
-  // wooden rim the frame draws in its own pixels.
-  const fitted = size === null ? null : size.w > 0 && size.h > 0 ? (mode === 'table' ? feltScale(drawn, size) : fitScale(drawn, size, LEAST_AIR_PX)) : 1
+  // How the felt meets its frame is one rule per mode, and each leaves the air its own furniture
+  // needs (K9, K17): the felt table lies on wood that stands on the dark and holds back to its
+  // share of it, the TV has no rim and leaves only what a hand's count hangs out into. They were
+  // one number until #76 measured what that cost a phone.
+  const fitted = size === null ? null : size.w > 0 && size.h > 0 ? (mode === 'table' ? feltScale(drawn, size) : fitScale(drawn, size, TV_AIR_PX)) : 1
 
   // Inspection (K8): "Titta" in the ring, private to this screen, until tapped away.
   const [held, setHeld] = useState<VisibleComponentState | null>(null)
@@ -221,6 +278,13 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     return () => clearTimeout(timer)
   }, [settling])
   const px = (mm: number) => mm * scale
+  // How wide the felt is drawn across the reader's own view (C5). It is the axis a name at a side
+  // rim reaches along, and the one thing the stylesheet cannot ask for itself: the felt's own box
+  // keeps the floor's shape and is then turned, so a container query on it measures the other
+  // side. Under `TIGHT_FELT_PX` the felt is smaller than the names it carries and draws them at
+  // its own tightest (K19, #76) — which in practice is the observer on a phone (C8, L12).
+  const feltWidePx = px(rotate % 180 === 0 ? floor.geometry.w : floor.geometry.h)
+  const tight = mode === 'tv' && measured && feltWidePx > 0 && feltWidePx < TIGHT_FELT_PX
   const left = (mmX: number) => px(mmX - floor.geometry.x)
   const top = (mmY: number) => px(mmY - floor.geometry.y)
   // A chip's target (#67): the finger's 44 × 44 on the screen, laid invisibly over a disc that
@@ -237,6 +301,18 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     const a = (rotate * Math.PI) / 180
     const onWood = { x: dx * Math.cos(a) - dy * Math.sin(a), y: dx * Math.sin(a) + dy * Math.cos(a) }
     return Math.max(px(TOKEN_MM), leaningSquare(leaning, onWood, TOUCH_PX))
+  }
+  // K19 on a felt too small to hold its own names beside the zones they name (#76). At the side
+  // rims a name stands above its zone instead, anchored at the end nearest the rim and growing
+  // inward, so that it keeps to its own half of the felt rather than reaching across it — where
+  // the shared piles and their count badges stand, and the opposite seat's name comes the other
+  // way. It is said through the same two variables the stylesheet's rim rules use, because the
+  // only thing the sheet cannot work out for itself is how large the zone came out in pixels.
+  const overRim = (z: ZoneView, rim: Rim, grow: Grow): Record<string, string> => {
+    if (!tight || (rim !== 'E' && rim !== 'W')) return {}
+    const turnedZone = rotate % 180 === 0 ? { w: z.geometry.w, h: z.geometry.h } : { w: z.geometry.h, h: z.geometry.w }
+    const side = rim === 'E' ? `${px(turnedZone.w)}px - 100% - var(--name-in)` : `var(--name-in) - ${px(turnedZone.w)}px`
+    return { '--name-side': `calc(${side})`, '--name-end': `calc(-100% - ${NAME_RIM_PX}px${grow === 'back' ? ` - ${px(turnedZone.h)}px` : ''})` }
   }
   const seatIndex = (id: string | undefined) => Math.max(0, view.seats.findIndex((s) => s.id === id))
   const seatName = (id: string | undefined) => view.seats.find((s) => s.id === id)?.name ?? id ?? ''
@@ -271,7 +347,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     if (!map) return
     toTable.current = map
     const at = map(e.clientX, e.clientY)
-    const ids = target.kind === 'card' || target.kind === 'counter' ? [target.id] : []
+    const ids = target.kind === 'card' || target.kind === 'counter' ? [target.id] : target.kind === 'counterPile' ? target.ids : []
     const origin: Drag['origin'] = {}
     for (const id of ids) {
       const c = byId.get(id)
@@ -424,9 +500,14 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
 
   // What the ring would hold, asked for once: a thing that has left the table while the finger
   // was on the way to it has no verbs, and a ring with none opens on nothing (K14).
-  const ringVerbs = ring && onAct ? ringItems(view, ring.target, onAct, setHeld, setEntry, t) : []
+  // A ring that opens a second ring — a pile of chips offering the counter inside it (#89) — must
+  // survive its own closing: the backdrop closes whatever was open, and what was open by then is
+  // the ring the choice just opened. So the close is told which ring it is closing.
+  const shut = (open: Ring) => () => setRing((r) => (r === open ? null : r))
+  const ringVerbs = ring && onAct ? ringItems(view, ring, setRing, onAct, setHeld, setEntry, t) : []
   const ringOn = ring?.target
   const ringChip = ringOn?.kind === 'counter' ? view.components.find((c) => c.id === ringOn.id) : undefined
+  const ringPile = ringOn?.kind === 'counterPile' ? ringOn.ids.flatMap((id) => view.components.find((c) => c.id === id) ?? []) : undefined
 
   const areas = view.zones.filter((z) => z.kind === 'area' && z.id !== floor.id)
   const piles = view.zones.filter((z) => z.kind === 'pile')
@@ -434,6 +515,15 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // so the renderer works it out and the stylesheet draws it.
   const handOf = (seat: string | undefined) => (seat ? view.zones.find((z) => z.kind === 'hand' && z.owner === seat) : undefined)
   const loose = view.components.filter((c) => zoneById.get(c.zone)?.kind === 'area')
+  // A seat's chips that lie on the same spot are one pile, and a pile is one thing to press (C4,
+  // #89). Past the second counter the recipe gives them a single slot to share, because three
+  // targets of 44 px do not fit in a seat's 500 mm without reaching into the area in front of the
+  // player. What is a pile is read off where the chips lie and never off how many there are, so a
+  // chip dragged out of one is its own again the moment the table says where it went — and the log
+  // hears nothing about piles, only the `move` a chip always travelled by.
+  const spotOf = (c: VisibleComponentState) => `${c.zone}@${Math.round(c.x)},${Math.round(c.y)}`
+  const chipsAt = new Map<string, VisibleComponentState[]>()
+  for (const c of loose) if (isCounter(c)) chipsAt.set(spotOf(c), [...(chipsAt.get(spotOf(c)) ?? []), c])
   const dx = drag?.started ? drag.at.x - drag.grab.x : (settling?.dx ?? 0)
   const dy = drag?.started ? drag.at.y - drag.grab.y : (settling?.dy ?? 0)
   // Held in the hand, and therefore drawn lifted. A card that has been put down is not.
@@ -483,7 +573,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 data-grow={grow}
                 style={{ left: left(z.geometry.x), top: top(z.geometry.y), width: px(z.geometry.w), height: px(z.geometry.h), ['--name-x' as string]: `${anchor.x}%`, ['--name-y' as string]: `${anchor.y}%` }}
               >
-                <span>{z.name}</span>
+                <span style={overRim(z, rim, grow)}>{z.name}</span>
               </div>
             )
           })}
@@ -514,8 +604,11 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           })}
           {hands.map((z) => {
             // Drawn about the point the fan is anchored at in its own zone (#84), which is what
-            // the fit above measured it by, with the count hung off it on the rim's side.
-            const at = handAnchor(z, floor, handRot(z))
+            // the fit above measured it by, with the count hung off it on the rim's side. A folded
+            // hand has no fan to anchor, so it stands in the middle of its own zone and the count
+            // hangs off that, in the same air past the rim every other seat's count hangs in.
+            const fold = folded(z)
+            const at = fold ? { x: z.geometry.x + z.geometry.w / 2, y: z.geometry.y + z.geometry.h / 2 } : handAnchor(z, floor, handRot(z))
             return (
               <Hand
                 key={z.id}
@@ -523,6 +616,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 color={seatColor(seatIndex(z.owner))}
                 rot={handRot(z)}
                 countAt={countSide(z, floor, handRot(z))}
+                folded={fold}
                 left={left(at.x)}
                 top={top(at.y)}
                 px={px}
@@ -546,22 +640,36 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
               // width the word needs, the number stands alone — which is what a counter is for.
               // The name is still on the table's own screen, in the panel and in the zone's label.
               const wide = px(TOKEN_MM) >= TOKEN_NAME_PX
+              // The pile this chip is in, and where in it this chip lies. The topmost is the one
+              // the hand meets: it carries the target and the whole pile's handles, and the ones
+              // under it are drawn peeking out beneath it and keep nothing but their own name and
+              // tab stop — a keyboard still reaches every counter by itself (#1, #2), and the hand
+              // reaches them through the ring the top opens (#89).
+              const pile = chipsAt.get(spotOf(c)) ?? [c]
+              const under = pile.length - 1 - pile.findIndex((p) => p.id === c.id)
+              const topmost = under === 0
               // The target is the hand's and only the hand's: a table that is only shown has no
               // finger to answer, and draws none (K16's rule for the keyboard, applied here).
-              const hit = onAct ? hitOf({ x: a.x + TOKEN_MM / 2, y: a.y + TOKEN_MM / 2 }) : 0
+              const hit = onAct && topmost ? hitOf({ x: a.x + TOKEN_MM / 2, y: a.y + TOKEN_MM / 2 }) : 0
+              // How far a chip under the top peeks out from beneath it: a tenth of the disc, which
+              // keeps the pile a pile at every scale the felt is drawn at and never less than the
+              // pixel that is the least a screen can show.
+              const peek = under * Math.max(1, px(TOKEN_MM) / 10)
+              const grip: DragTarget = pile.length > 1 ? { kind: 'counterPile', ids: pile.map((p) => p.id) } : { kind: 'counter', id: c.id }
               return (
                 <div
                   key={c.id}
                   className="byd-token"
                   data-counter-token={c.id}
+                  data-stack={pile.length > 1 ? pile.length : undefined}
                   data-dragging={lifted.has(c.id) ? 'true' : undefined}
-                  {...(onAct ? handlers({ kind: 'counter', id: c.id }) : {})}
+                  {...(onAct && topmost ? handlers(grip) : {})}
                   {...keys(`counter:${c.id}`)}
-                  style={{ position: 'absolute', left: left(a.x + (m ? dx : 0)), top: top(a.y + (m ? dy : 0)), width: px(TOKEN_MM), height: px(TOKEN_MM) }}
+                  style={{ position: 'absolute', left: left(a.x + (m ? dx : 0)), top: top(a.y + (m ? dy : 0)) + peek, width: px(TOKEN_MM), height: px(TOKEN_MM) }}
                 >
-                  <b>{c.counter ?? 0}</b>
+                  <b style={{ fontSize: tokenInkPx(px(TOKEN_MM), String(c.counter ?? 0), wide) }}>{c.counter ?? 0}</b>
                   {wide && <span>{c.cardRef ?? ''}</span>}
-                  {onAct && <i className="byd-token-hit" data-counter-hit={c.id} style={{ width: hit, height: hit, left: (px(TOKEN_MM) - hit) / 2, top: (px(TOKEN_MM) - hit) / 2 }} />}
+                  {hit > 0 && <i className="byd-token-hit" data-counter-hit={c.id} style={{ width: hit, height: hit, left: (px(TOKEN_MM) - hit) / 2, top: (px(TOKEN_MM) - hit) / 2 }} />}
                 </div>
               )
             }
@@ -585,7 +693,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           {(mode === 'table' || seatNames) &&
             hands.map((z) => (
               // After the cards: a name card lies on the table, on top of what is dealt near it.
-              <SeatName key={`name-${z.id}`} zone={z} floor={floor} name={seatName(z.owner)} color={seatColor(seatIndex(z.owner))} left={left} top={top} />
+              <SeatName key={`name-${z.id}`} zone={z} floor={floor} name={seatName(z.owner)} color={seatColor(seatIndex(z.owner))} mine={me !== null && z.owner === me} left={left} top={top} />
             ))}
           {peers.map((p) => {
             if (!p.drag) return null
@@ -631,6 +739,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     <div
       className="byd-table-frame"
       data-mode={mode}
+      data-tight={tight ? 'true' : undefined}
       data-camera={placed ? 'follow' : undefined}
       data-playable={onAct ? 'true' : undefined}
       ref={frame}
@@ -647,12 +756,12 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       )}
       {ringVerbs.length > 0 && ring && (
         <RadialMenu
-          id={ring.target.kind === 'card' || ring.target.kind === 'counter' ? ring.target.id : ring.target.pile}
+          id={ringName(ring.target)}
           x={ring.x}
           y={ring.y}
           items={ringVerbs}
-          hub={ringChip ? <CounterHub view={view} c={ringChip} t={t} /> : undefined}
-          onClose={() => setRing(null)}
+          hub={ringChip ? <CounterHub view={view} c={ringChip} t={t} /> : ringPile ? <PileHub view={view} chips={ringPile} t={t} /> : undefined}
+          onClose={shut(ring)}
         />
       )}
       {entry && onAct && <CounterEntry view={view} c={entry} onSet={(value) => onAct([{ v: 'setCounter', component: entry.id, value }])} onClose={() => setEntry(null)} />}
@@ -698,10 +807,25 @@ function useGlide(target: Rect | null, ms: number): Rect | null {
   return cur
 }
 
-// The verbs a drag cannot say (C): for a card, for a pile, for a chip.
-function ringItems(view: Snapshot, target: Ring['target'], act: (intents: Intent[]) => void, inspect: (c: VisibleComponentState) => void, enter: (c: VisibleComponentState) => void, t: T): RadialItem[] {
+// What a ring is drawn about, for the sake of a test that has to find it again.
+const ringName = (target: Ring['target']): string =>
+  target.kind === 'card' || target.kind === 'counter' ? target.id : target.kind === 'counterPile' ? target.ids.join('+') : target.pile
+
+// The verbs a drag cannot say (C): for a card, for a pile, for a chip, and for a pile of chips.
+function ringItems(view: Snapshot, ring: Ring, open: (r: Ring) => void, act: (intents: Intent[]) => void, inspect: (c: VisibleComponentState) => void, enter: (c: VisibleComponentState) => void, t: T): RadialItem[] {
+  const target = ring.target
   const flip = (c: VisibleComponentState): RadialItem => ({ label: t('ring.flip'), run: () => act([{ v: 'flip', component: c.id, face: c.face === 'front' ? 'back' : 'front' }]) })
   const look = (c: VisibleComponentState | undefined): RadialItem => ({ label: t('ring.look'), run: c ? () => inspect(c) : null })
+  // A pile of chips has no verbs of its own — nothing is done to a pile, only to a counter in it —
+  // so its ring is the counters it holds, each said by its name and its value, and choosing one
+  // opens that chip's own ring, which is `counterActs` and nothing else (C4, K14, #89).
+  if (target.kind === 'counterPile') {
+    return target.ids.flatMap((id) => {
+      const c = view.components.find((x) => x.id === id)
+      if (!c) return []
+      return [{ key: c.id, label: t('ring.counter.named', { name: c.cardRef ?? '', n: c.counter ?? 0 }), run: () => open({ target: { kind: 'counter', id: c.id }, x: ring.x, y: ring.y }) }]
+    })
+  }
   if (target.kind === 'counter') {
     // The same list the keyboard's panel reads (`verbsFor`), so the hand and the keyboard cannot
     // be offered different things on one chip. Every entry is `setCounter` with an absolute value.
@@ -750,6 +874,20 @@ function CounterHub({ view, c, t }: { view: Snapshot; c: VisibleComponentState; 
     <>
       <b>{c.counter ?? 0}</b>
       <span>{c.cardRef ?? ''}</span>
+      {owner !== null && <i>{t('ring.counter.whose', { name: owner })}</i>}
+    </>
+  )
+}
+
+// What a pile of chips is about, in its hub: how many counters are stacked there, and whose they
+// are. What each of them says is on the buttons around it, which is the only place on the felt
+// those values can be read at all — the price C pays, and the reason it is paid only at three.
+function PileHub({ view, chips, t }: { view: Snapshot; chips: VisibleComponentState[]; t: T }) {
+  const owner = chips[0] ? ownerOf(view, chips[0]) : null
+  return (
+    <>
+      <b>{chips.length}</b>
+      <span>{t('ring.counter.pile')}</span>
       {owner !== null && <i>{t('ring.counter.whose', { name: owner })}</i>}
     </>
   )
@@ -859,7 +997,7 @@ const EDGES: Record<number, 'N' | 'E' | 'S' | 'W'> = { 0: 'S', 180: 'N', [-90]: 
 
 // Who sits at this edge (B): the name lies along the table's own border, turned toward the seat
 // that reads it — as a name card would on a real table. The count stays on the hand.
-function SeatName({ zone, floor, name, color, left, top }: { zone: ZoneView; floor: ZoneView; name: string; color: string; left: (mm: number) => number; top: (mm: number) => number }) {
+function SeatName({ zone, floor, name, color, mine, left, top }: { zone: ZoneView; floor: ZoneView; name: string; color: string; mine?: boolean | undefined; left: (mm: number) => number; top: (mm: number) => number }) {
   if (name === '') return null
   const edge = EDGES[edgeRotation(zone, floor)] ?? 'S'
   const alongX = left(zone.geometry.x + zone.geometry.w / 2)
@@ -867,7 +1005,7 @@ function SeatName({ zone, floor, name, color, left, top }: { zone: ZoneView; flo
   const place =
     edge === 'S' ? { left: alongX, bottom: 6 } : edge === 'N' ? { left: alongX, top: 6 } : edge === 'W' ? { top: alongY, left: 6 } : { top: alongY, right: 6 }
   return (
-    <div className="byd-seat-name" data-seat-name={zone.owner} data-edge={edge} style={{ ...place, ['--seat' as string]: color }}>
+    <div className="byd-seat-name" data-seat-name={zone.owner} data-edge={edge} {...(mine ? { 'data-me': 'true' } : {})} style={{ ...place, ['--seat' as string]: color }}>
       {name}
     </div>
   )
@@ -876,9 +1014,9 @@ function SeatName({ zone, floor, name, color, left, top }: { zone: ZoneView; flo
 // Other seats' hands are a fan of backs and a count; the owner reads theirs on the phone. A hand
 // whose order this view may see (the observer, C8) fans the cards themselves. Every measure in
 // the fan is a millimetre on the felt, so it shrinks with the table rather than swamping it (#23).
-function Hand({ zone, color, rot, countAt, left, top, px, cards, faces }: { zone: ZoneView; color: string; rot: number; countAt: 'below' | 'above'; left: number; top: number; px: (mm: number) => number; cards?: VisibleComponentState[] | undefined; faces?: string | undefined }) {
+function Hand({ zone, color, rot, countAt, folded = false, left, top, px, cards, faces }: { zone: ZoneView; color: string; rot: number; countAt: 'below' | 'above'; folded?: boolean; left: number; top: number; px: (mm: number) => number; cards?: VisibleComponentState[] | undefined; faces?: string | undefined }) {
   const count = zone.mode === 'count' ? zone.count : zone.order.length
-  const fan = Math.min(count, FAN_MAX)
+  const fan = folded ? 0 : Math.min(count, FAN_MAX)
   const shown = cards ? Math.min(cards.length, FAN_MAX) : fan
   const box = { left: px(HAND_CARD_BOX.x), top: px(HAND_CARD_BOX.y), width: px(HAND_CARD_BOX.w), height: px(HAND_CARD_BOX.h) }
   const place = (i: number, spread: boolean) => {
@@ -892,11 +1030,12 @@ function Hand({ zone, color, rot, countAt, left, top, px, cards, faces }: { zone
       data-count={count}
       data-rot={rot}
       data-count-side={countAt}
+      data-folded={folded ? 'true' : undefined}
       style={{ left, top, transform: `rotate(${rot}deg)`, ['--seat' as string]: color, ['--hand-unrot' as string]: `${-rot}deg`, ['--hand-drop' as string]: `${px(HAND_COUNT_MM)}px`, ['--hand-lift' as string]: `${px(HAND_COUNT_ABOVE_MM)}px` }}
     >
       <div className="byd-hand-fan">
-        {cards
-          ? cards.slice(0, FAN_MAX).map((c, i) => (
+        {folded ? null : cards ? (
+          cards.slice(0, FAN_MAX).map((c, i) => (
               <i
                 key={c.id}
                 className="byd-hand-card"
@@ -907,8 +1046,10 @@ function Hand({ zone, color, rot, countAt, left, top, px, cards, faces }: { zone
                 <Texture faces={faces} c={c} />
                 <span>{c.cardRef ?? ''}</span>
               </i>
-            ))
-          : Array.from({ length: fan }, (_, i) => <i key={i} className="byd-back" style={{ ...box, transform: place(i, false) }} />)}
+          ))
+        ) : (
+          Array.from({ length: fan }, (_, i) => <i key={i} className="byd-back" style={{ ...box, transform: place(i, false) }} />)
+        )}
       </div>
       <b className="byd-hand-count">{count}</b>
     </div>

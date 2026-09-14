@@ -5,6 +5,7 @@ import { userEvent } from '@testing-library/user-event'
 import { TemplateCanvas, type TemplateCanvasProps } from '../src/editor/TemplateCanvas.js'
 import { projectDoc } from './project-doc.js'
 import { drag, laidOut, target } from './drag.js'
+import { layerPick } from './layers.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -15,6 +16,7 @@ function canvas(over: Partial<TemplateCanvasProps> = {}) {
     doc: projectDoc(),
     face: 'front',
     onSelectFace: vi.fn(),
+    onReplaceFace: vi.fn(),
     group: null,
     onSelectGroup: vi.fn(),
     onGroupColumn: vi.fn(),
@@ -28,6 +30,8 @@ function canvas(over: Partial<TemplateCanvasProps> = {}) {
     onAdd: vi.fn(),
     onPlaceIcon: vi.fn(),
     onReorder: vi.fn(),
+    onLock: vi.fn(),
+    onRename: vi.fn(),
     onFontFile: async () => 'Typsnitt',
     onFontLicence: vi.fn(),
     onRemoveFont: vi.fn(),
@@ -44,13 +48,13 @@ describe('nudging the selected element with the keyboard (#18)', () => {
 
     // `title` sits at 5, 5 mm.
     await user.keyboard('{ArrowRight}')
-    expect(onPatch).toHaveBeenCalledWith('title', { x: 5.5 })
+    expect(onPatch).toHaveBeenCalledWith('title', { x: 5.5 }, undefined)
     await user.keyboard('{ArrowUp}')
-    expect(onPatch).toHaveBeenCalledWith('title', { y: 4.5 })
+    expect(onPatch).toHaveBeenCalledWith('title', { y: 4.5 }, undefined)
     await user.keyboard('{Shift>}{ArrowDown}{/Shift}')
-    expect(onPatch).toHaveBeenCalledWith('title', { y: 10 })
+    expect(onPatch).toHaveBeenCalledWith('title', { y: 10 }, undefined)
     await user.keyboard('{Shift>}{ArrowLeft}{/Shift}')
-    expect(onPatch).toHaveBeenCalledWith('title', { x: 0 })
+    expect(onPatch).toHaveBeenCalledWith('title', { x: 0 }, undefined)
   })
 })
 
@@ -63,9 +67,8 @@ describe('the keyboard when it is not about the card (#18)', () => {
     await user.keyboard('{ArrowRight}{ArrowLeft}')
     expect(onPatch).not.toHaveBeenCalled()
 
-    // The layer list answers its own arrows: they move the focus, not the element (UX-04).
-    const layers = within(screen.getByRole('listbox', { name: /lager/i })).getAllByRole('option')
-    layers[1]!.focus()
+    // The layer panel answers its own arrows: they move the focus, not the element (UX-04).
+    layerPick('title').focus()
     await user.keyboard('{ArrowDown}')
     expect(onPatch).not.toHaveBeenCalled()
   })
@@ -132,7 +135,7 @@ describe('the properties of an added element (#18)', () => {
     const { onPatch } = canvas({ doc, selectedElement: 'image-1' })
 
     fireEvent.change(screen.getByLabelText(/fält/i), { target: { value: 'body' } })
-    expect(onPatch).toHaveBeenCalledWith('image-1', { bind: { field: 'body' } })
+    expect(onPatch).toHaveBeenCalledWith('image-1', { bind: { field: 'body' } }, undefined)
   })
 })
 
@@ -153,7 +156,7 @@ describe('whether a picture keeps its proportions', () => {
 
     expect(keeps().checked).toBe(true)
     await user.click(keeps())
-    expect(onPatch).toHaveBeenCalledWith('image-1', { fit: 'fill' })
+    expect(onPatch).toHaveBeenCalledWith('image-1', { fit: 'fill' }, undefined)
   })
 
   it('is off for a stretched picture, and turning it on fills the frame rather than fitting inside it', async () => {
@@ -164,7 +167,7 @@ describe('whether a picture keeps its proportions', () => {
     await user.click(keeps())
     // Filling and not fitting: a picture that fits inside the frame is the very margin the frame
     // was meant to stop being, so it is not what the switch comes back to.
-    expect(onPatch).toHaveBeenCalledWith('image-1', { fit: 'cover' })
+    expect(onPatch).toHaveBeenCalledWith('image-1', { fit: 'cover' }, undefined)
   })
 
   it('reads a picture fitted whole inside its frame as keeping its proportions, because it does', () => {
@@ -195,7 +198,7 @@ describe('the tool rail by keyboard (#18, UX-04)', () => {
 
     // Out of the rail in one Tab, and the layer list is where the next stop is.
     await user.tab()
-    expect(document.activeElement).toBe(within(screen.getByRole('listbox', { name: /lager/i })).getAllByRole('option')[1])
+    expect(document.activeElement).toBe(layerPick('title'))
   })
 })
 
@@ -207,7 +210,7 @@ describe('moving an element with the pointer (#18)', () => {
     // `title` sits at 5, 5 mm; 60 px right and 20 px down is 10 and 3,3 mm.
     drag(target('title')!, [100, 100], [160, 120])
     expect(onSelectElement).toHaveBeenCalledWith('title')
-    expect(onPatch).toHaveBeenLastCalledWith('title', { x: 15, y: 8.3 })
+    expect(onPatch).toHaveBeenLastCalledWith('title', { x: 15, y: 8.3 }, expect.any(String))
   })
 
   it('does not move an element that is only clicked', () => {
@@ -232,15 +235,15 @@ describe('resizing an element with the handles (#18)', () => {
 
     // `title` is 5, 5, 53 × 10 mm. The lower right corner moves the far edges only.
     drag(handle('se'), [100, 100], [112, 130])
-    expect(onPatch).toHaveBeenLastCalledWith('title', { x: 5, y: 5, w: 55, h: 15 })
+    expect(onPatch).toHaveBeenLastCalledWith('title', { x: 5, y: 5, w: 55, h: 15 }, expect.any(String))
 
     // The upper left corner moves the near edges, so the far ones stay where they are.
     drag(handle('nw'), [100, 100], [112, 112])
-    expect(onPatch).toHaveBeenLastCalledWith('title', { x: 7, y: 7, w: 51, h: 8 })
+    expect(onPatch).toHaveBeenLastCalledWith('title', { x: 7, y: 7, w: 51, h: 8 }, expect.any(String))
 
     // A corner never turns the box inside out.
     drag(handle('ne'), [100, 100], [-600, 600])
-    expect(onPatch).toHaveBeenLastCalledWith('title', { x: 5, y: 13, w: 2, h: 2 })
+    expect(onPatch).toHaveBeenLastCalledWith('title', { x: 5, y: 13, w: 2, h: 2 }, expect.any(String))
   })
 })
 
@@ -266,12 +269,12 @@ describe('resizing a single icon (#33)', () => {
     // 5 mm out and 2 mm down from the lower right corner. The square is what the drag encloses on
     // both axes, so the symbol never grows into room the pointer did not sweep.
     drag(handle('se'), [100, 100], [130, 112])
-    expect(onPatch).toHaveBeenLastCalledWith('icon-1', { x: 27.5, y: 40, w: 10, h: 10, iconMm: 10 })
+    expect(onPatch).toHaveBeenLastCalledWith('icon-1', { x: 27.5, y: 40, w: 10, h: 10, iconMm: 10 }, expect.any(String))
 
     // The upper left corner holds the lower right one where it is: 26,5 + 9 is 35,5, which is
     // where the right edge was, and 39 + 9 is 48, which is where the bottom edge was.
     drag(handle('nw'), [100, 100], [88, 94])
-    expect(onPatch).toHaveBeenLastCalledWith('icon-1', { x: 26.5, y: 39, w: 9, h: 9, iconMm: 9 })
+    expect(onPatch).toHaveBeenLastCalledWith('icon-1', { x: 26.5, y: 39, w: 9, h: 9, iconMm: 9 }, expect.any(String))
   })
 
   it('leaves a row of icons alone, because its box is a strip and not a symbol', () => {
@@ -282,7 +285,7 @@ describe('resizing a single icon (#33)', () => {
     // name. A row is as wide and as tall as it is dragged, and how big its symbols are is a
     // separate measure (L1) — so nothing here is squared and `iconMm` is left where it was.
     drag(handle('se'), [100, 100], [130, 112])
-    expect(onPatch).toHaveBeenLastCalledWith('marks', { x: 5, y: 72, w: 45, h: 8 })
+    expect(onPatch).toHaveBeenLastCalledWith('marks', { x: 5, y: 72, w: 45, h: 8 }, expect.any(String))
   })
 })
 
@@ -304,7 +307,7 @@ describe('guide lines while an element is dragged (#18)', () => {
     // millimetre of `body`, whose top edge is at 30, so it takes it.
     fireEvent.pointerDown(target('title')!, { pointerId: 1, button: 0, clientX: 100, clientY: 100 })
     fireEvent.pointerMove(target('title')!, { pointerId: 1, clientX: 100, clientY: 252 })
-    expect(onPatch).toHaveBeenLastCalledWith('title', { x: 5, y: 30 })
+    expect(onPatch).toHaveBeenLastCalledWith('title', { x: 5, y: 30 }, expect.any(String))
     expect(guide('y')!.style.top).toBe('30mm')
     // Its left edge never left `body`'s, so that line is drawn too.
     expect(guide('x')!.style.left).toBe('5mm')
@@ -322,7 +325,7 @@ describe('guide lines while an element is dragged (#18)', () => {
     // a millimetre from the card's own middle at 31,5.
     fireEvent.pointerDown(target('cost')!, { pointerId: 1, button: 0, clientX: 300, clientY: 100 })
     fireEvent.pointerMove(target('cost')!, { pointerId: 1, clientX: 158, clientY: 100 })
-    expect(onPatch).toHaveBeenLastCalledWith('cost', { x: 26.5, y: 4 })
+    expect(onPatch).toHaveBeenLastCalledWith('cost', { x: 26.5, y: 4 }, expect.any(String))
     expect(guide('x')!.style.left).toBe('31.5mm')
   })
 
@@ -332,14 +335,16 @@ describe('guide lines while an element is dragged (#18)', () => {
 
     fireEvent.pointerDown(target('cost')!, { pointerId: 1, button: 0, clientX: 300, clientY: 100 })
     fireEvent.pointerMove(target('cost')!, { pointerId: 1, clientX: 240, clientY: 190 })
-    expect(onPatch).toHaveBeenLastCalledWith('cost', { x: 40, y: 19 })
+    expect(onPatch).toHaveBeenLastCalledWith('cost', { x: 40, y: 19 }, expect.any(String))
     expect(guide('x')).toBeNull()
     expect(guide('y')).toBeNull()
   })
 })
 
 describe('changing the layer order (#18)', () => {
-  const layer = (id: string) => document.querySelector(`[data-layer="${id}"]`) as HTMLElement
+  // The cell that is the layer (L15): the row is a row, and what takes the focus in a grid is a
+  // cell.
+  const layer = (id: string) => layerPick(id)
 
   it('moves a layer by dragging it onto another, in the drawing order the template holds', () => {
     // The base is drawn back to front: frame, title, body. The list reads the other way.
@@ -522,6 +527,72 @@ describe('the grid as a layer of its own (#18)', () => {
     // It draws a millimetre grid; it does not round anything to it. A nudge is still 0,5 mm.
     laidOut()
     await user.keyboard('{ArrowRight}')
-    expect(onPatch).toHaveBeenLastCalledWith('title', { x: 5.5 })
+    expect(onPatch).toHaveBeenLastCalledWith('title', { x: 5.5 }, undefined)
+  })
+})
+
+// A fill that follows a column (L16). The colours stay in the template and the deck says which of
+// them a card gets; before this, a red plate for the traps meant a variant per value — a tab per
+// colour, with the whole design copied into each of them.
+describe('a fill that follows a column (L16)', () => {
+  // A deck with a column worth colouring by, and a shape to colour.
+  function coloured(fill: unknown = '#f4ead8') {
+    const doc = projectDoc()
+    doc.rows = [
+      { id: 'dragon', fields: { title: 'Drake', typ: 'eld' } },
+      { id: 'knight', fields: { title: 'Riddare', typ: 'vatten' } },
+      { id: 'wizard', fields: { title: 'Trollkarl', typ: 'eld' } },
+    ]
+    const front = doc.template.faces['front']!
+    front.base = front.base.map((el) => (el.id === 'frame' ? { ...el, fill: fill as string } : el))
+    return canvas({ doc, selectedElement: 'frame' })
+  }
+  const follows = () => screen.getByRole('checkbox', { name: /färg efter fält/i })
+
+  it('turns the colour it had into the rule’s fallback, so nothing on any card changes yet', async () => {
+    const user = userEvent.setup()
+    const { onPatch } = coloured()
+    expect((follows() as HTMLInputElement).checked).toBe(false)
+
+    await user.click(follows())
+    expect(onPatch).toHaveBeenLastCalledWith('frame', { fill: { field: 'title', map: {}, else: '#f4ead8' } }, undefined)
+  })
+
+  it('gives a value of the column its own colour', () => {
+    const { onPatch } = coloured({ field: 'typ', map: {}, else: '#f4ead8' })
+    expect((follows() as HTMLInputElement).checked).toBe(true)
+
+    // The values offered are the deck's own, each once.
+    const field = screen.getByLabelText(/^fyll efter kolumnen/i) as HTMLSelectElement
+    expect(field.value).toBe('typ')
+    fireEvent.change(screen.getByLabelText('eld'), { target: { value: '#c0392b' } })
+    expect(onPatch).toHaveBeenLastCalledWith('frame', { fill: { field: 'typ', map: { eld: '#c0392b' }, else: '#f4ead8' } }, undefined)
+  })
+
+  // The way back is its own thing: a value that follows the fallback is not the same as a value
+  // painted the fallback's colour — one of them changes when the fallback does.
+  it('gives a value back to the fallback', async () => {
+    const user = userEvent.setup()
+    const { onPatch } = coloured({ field: 'typ', map: { eld: '#c0392b' }, else: '#f4ead8' })
+    await user.click(screen.getByRole('button', { name: 'Ta bort färgen för eld' }))
+    expect(onPatch).toHaveBeenLastCalledWith('frame', { fill: { field: 'typ', map: {}, else: '#f4ead8' } }, undefined)
+  })
+
+  it('gives the shape a plain colour again when the rule is turned off, and keeps the fallback as that colour', async () => {
+    const user = userEvent.setup()
+    const { onPatch } = coloured({ field: 'typ', map: { eld: '#c0392b' }, else: '#2f4068' })
+    await user.click(follows())
+    expect(onPatch).toHaveBeenLastCalledWith('frame', { fill: '#2f4068' }, undefined)
+  })
+
+  it('lists each value of the column once, keeps one whose cards have gone, and ends in the fallback', () => {
+    // `jord` is painted by the rule but no card carries it any more: a colour with nothing left to
+    // show it on is still a colour the designer must be able to find and take away (L3).
+    coloured({ field: 'typ', map: { eld: '#c0392b', jord: '#7f8c8d' }, else: '#f4ead8' })
+    expect([...document.querySelectorAll('.byd-props-paint li')].map((li) => li.getAttribute('data-value'))).toEqual(['eld', 'vatten', 'jord', ''])
+    expect(screen.getByText('Övriga')).toBeTruthy()
+    // Only a value with a colour of its own has a way back to the fallback.
+    expect(screen.getByRole('button', { name: 'Ta bort färgen för eld' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Ta bort färgen för vatten' })).toBeNull()
   })
 })

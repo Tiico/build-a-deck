@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parseCsv } from '../src/editor/csv.js'
-import { buildProject, type WizardState } from '../src/wizard/build.js'
+import { buildBlankProject, buildProject, type WizardState } from '../src/wizard/build.js'
 import { translate } from '../src/i18n/index.js'
 
 describe('parseCsv', () => {
@@ -72,5 +72,35 @@ describe('buildProject', () => {
     const ids = doc.template.faces['front']!.base.map((e) => e.id)
     expect(ids).not.toContain('cost')
     expect(ids).toContain('title')
+  })
+})
+
+// A game made without the guided start (L14): the name and the seats are all the designer has
+// said, so that is all the document holds. The table is the same recipe the wizard lays, because
+// a game has a table whichever door it came in by; the cards, the fields and the faces are the
+// designer's to make in the editor, so there are none of them yet.
+describe('buildBlankProject', () => {
+  const state: WizardState = { name: '  Kråkkriget ', players: 4, fields: [{ key: 'title', label: 'Titel', kind: 'text' }], frame: 'dark', rows: [{ title: 'Kort 1' }] }
+
+  it('keeps the name and the seats, and nothing the guided start would have suggested', () => {
+    const doc = buildBlankProject(state)
+    expect(doc.name).toBe('Kråkkriget')
+    expect(doc.setup.seats).toEqual(['A', 'B', 'C', 'D'])
+    expect(doc.setup.deckZone).toBe('draw')
+    expect(doc.setup.zones.find((z) => z.id === 'mine:D')).toMatchObject({ kind: 'area', owner: 'D', visibility: 'owner' })
+    expect(doc.setup.counters).toEqual([{ name: 'Poäng', start: 0 }])
+    expect(doc.rows).toEqual([])
+    expect(doc.icons).toEqual({})
+    // Both faces exist, so the editor has a front and a back to draw on, and both are empty:
+    // whatever frame or fields the wizard's other steps held are not this game's.
+    expect(Object.keys(doc.template.faces).sort()).toEqual(['back', 'front'])
+    expect(doc.template.faces['front']).toEqual({ base: [], variants: {} })
+    expect(doc.template.faces['back']).toEqual({ base: [], variants: {} })
+  })
+
+  it('lays the table out in the language the game is being built in (A4)', () => {
+    const english = buildBlankProject(state, (key, params) => translate('en', key, params))
+    expect(english.setup.zones.map((z) => z.name)).toContain('Draw pile')
+    expect(english.setup.counters).toEqual([{ name: 'Score', start: 0 }])
   })
 })

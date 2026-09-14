@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { TableClient } from '../src/client.js'
 import { projectDoc } from './project-doc.js'
+import { buildBlankProject } from '../src/wizard/build.js'
 import { asSeat, registerRoom, startServer, type Running } from './fixture.js'
+import { layerNames, layerPick, layerRow, layerRows } from './layers.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -264,15 +266,15 @@ describe('the layers of the template by keyboard (UX-04)', () => {
     await user.tab()
     await user.tab()
     await user.keyboard('{ArrowRight}{Enter}')
-    const layers = within(screen.getByRole('listbox', { name: /lager/i })).getAllByRole('option')
-    expect(layers.map((l) => l.textContent)).toEqual(['text body', 'text title', 'shape frame'])
-    for (let i = 0; i < 6 && !layers.includes(document.activeElement as HTMLElement); i++) await user.tab()
-    expect(document.activeElement).toBe(layers[0])
+    expect(layerNames()).toEqual(['body', 'title', 'frame'])
+    const cells = layerRows().map((r) => r.querySelector('.byd-layer-pick') as HTMLElement)
+    for (let i = 0; i < 6 && !cells.includes(document.activeElement as HTMLElement); i++) await user.tab()
+    expect(document.activeElement).toBe(layerPick('body'))
     expect(screen.getByRole('heading', { name: /egenskaper · body/i })).toBeTruthy()
 
     await user.keyboard('{End}')
-    expect(document.activeElement).toBe(layers[2])
-    expect(layers[2]!.getAttribute('aria-selected')).toBe('true')
+    expect(document.activeElement).toBe(layerPick('frame'))
+    expect(layerRow('frame').getAttribute('aria-selected')).toBe('true')
     expect(screen.getByRole('heading', { name: /egenskaper · frame/i })).toBeTruthy()
     // Past the grid, which is a layer of its own (#18), and past the strip over the card — the
     // grouping column and the face switch, one tab stop each (#13) — the property panel is the
@@ -302,9 +304,9 @@ describe('editing the template on the canvas (#18)', () => {
 
     // The new element is on the card, on top, selected, and its properties are open.
     await user.click(screen.getByRole('button', { name: 'Text' }))
-    const layers = () => screen.getAllByRole('option', { name: /^(text|shape|image|icons) / }).map((l) => l.textContent)
-    expect(layers()).toEqual(['text text-1', 'text body', 'text title', 'shape frame'])
-    expect(document.querySelector('[data-layer="text-1"]')!.getAttribute('aria-selected')).toBe('true')
+    const layers = () => layerNames()
+    expect(layers()).toEqual(['text-1', 'body', 'title', 'frame'])
+    expect(layerRow('text-1').getAttribute('aria-selected')).toBe('true')
     expect(screen.getByRole('heading', { name: /egenskaper · text-1/i })).toBeTruthy()
     expect(document.querySelector('[data-element="text-1"]')).toBeTruthy()
 
@@ -316,7 +318,7 @@ describe('editing the template on the canvas (#18)', () => {
 
     // Delete takes the selected element away, and the layer list follows.
     await user.keyboard('{Delete}')
-    expect(layers()).toEqual(['text body', 'text title', 'shape frame'])
+    expect(layers()).toEqual(['body', 'title', 'frame'])
     expect(document.querySelector('[data-element="text-1"]')).toBeNull()
   }, 20_000)
 })
@@ -333,7 +335,7 @@ describe('the order of the layers (#18)', () => {
     expect(drawn()).toEqual(['frame', 'title', 'body'])
 
     // Up the layer list is towards the front of the card, so `title` is drawn last.
-    const title = document.querySelector('[data-layer="title"]') as HTMLElement
+    const title = layerPick('title')
     title.focus()
     await user.keyboard('{Alt>}{ArrowUp}{/Alt}')
     expect([...document.querySelectorAll('[data-layer]')].map((l) => l.getAttribute('data-layer'))).toEqual(['title', 'body', 'frame'])
@@ -369,4 +371,32 @@ describe('the host\'s controls (DRIFT §9)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ny kod' }))
     await waitFor(() => expect(screen.getByText(/^[A-Z2-9]{6}$/, { selector: '[data-room-code]' }).textContent).not.toBe(first))
   })
+})
+
+// A game made without the guided start (L14) arrives here with nothing but its name and its
+// table: no cards, no fields, two empty faces. The editor has to be a place such a game can be
+// built in, or the door past the wizard leads nowhere — so the first element and the first card
+// are made here, the way every other change is, and saved like any other.
+describe('a game made without the guided start (L14)', () => {
+  it('opens empty, and the first element and the first card are made in the editor', async () => {
+    const user = userEvent.setup()
+    await run.projects.create('p1', buildBlankProject({ name: 'Kråkkriget', players: 3 }))
+    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Kråkkriget')
+    expect(document.querySelectorAll('[data-card-ref]')).toHaveLength(0)
+
+    fireEvent.click(screen.getByRole('tab', { name: /mall/i }))
+    await user.click(screen.getByRole('button', { name: 'Text' }))
+    expect(document.querySelector('[data-element="text-1"]')).toBeTruthy()
+
+    fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
+    fireEvent.click(screen.getByRole('button', { name: '+ Nytt kort' }))
+
+    fireEvent.click(screen.getByRole('button', { name: /spara/i }))
+    await screen.findByText('rev 2')
+    const stored = await run.projects.load('p1')
+    expect(stored?.template.faces['front']?.base.map((e) => e.id)).toEqual(['text-1'])
+    expect(stored?.rows).toHaveLength(1)
+  }, 20_000)
 })

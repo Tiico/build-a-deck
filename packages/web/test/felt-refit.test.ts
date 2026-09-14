@@ -1,7 +1,7 @@
 // The felt follows the window (K9, #75).
 //
 // #64 made the fit a measured rule: the felt is as large as the frame holds, its wood standing at
-// least `LEAST_AIR_PX` inside the frame once the tilt is taken out. A rule that is only applied
+// least `WOOD_AIR_PX` inside the frame once the tilt is taken out. A rule that is only applied
 // the moment the page loads is not that rule: a laptop docked to a screen, a window dragged
 // sideways, a tablet turned over would all keep the scale they loaded with, and the felt would be
 // either needlessly small or past its own frame.
@@ -21,7 +21,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { build } from 'vite'
 import { chromium, type Browser, type Page } from 'playwright'
 import { CARD_STANDARD_63x88, type SetupDef } from '@byd/engine'
-import { LEAST_AIR_PX } from '../src/table/fit.js'
+import { TV_AIR_PX, WOOD_AIR_PX } from '../src/table/fit.js'
 import { admit, createSession, roomOf, startServer, type Running } from './fixture.js'
 
 const WEB = join(import.meta.dirname, '..')
@@ -161,13 +161,17 @@ async function resized(page: Page, size: Size): Promise<Reading> {
   return settled(page)
 }
 
+// Each mode leaves the air its own furniture needs (#76): the wood on the dark takes its share
+// of the room, the TV leaves only what a hand's count hangs out into.
+const airOf = (surface: Surface) => (surface === '/observe' ? TV_AIR_PX : WOOD_AIR_PX)
+
 describe.each(SURFACES)('the felt on %s follows the window (K9, #75)', (surface) => {
   it('refits when the window grows — to what a fresh load at that size gets, air and all', async () => {
     const loaded = await fresh(surface, SCREEN)
     const page = await open(surface, LAPTOP)
     try {
       const before = await read(page)
-      expect(before.air).toBeGreaterThanOrEqual(LEAST_AIR_PX - 0.5)
+      expect(before.air).toBeGreaterThanOrEqual(airOf(surface) - 0.5)
       // The reading is not vacuous: a bigger window is a bigger table…
       expect(loaded.scale).toBeGreaterThan(before.scale)
       // …and it is the same rule as on load, not a rule of its own.
@@ -183,7 +187,7 @@ describe.each(SURFACES)('the felt on %s follows the window (K9, #75)', (surface)
       const before = await read(page)
       const after = await resized(page, SMALL)
       expect(after.scale).toBeLessThan(before.scale)
-      expect(after.air).toBeGreaterThanOrEqual(LEAST_AIR_PX - 0.5)
+      expect(after.air).toBeGreaterThanOrEqual(airOf(surface) - 0.5)
     } finally {
       await page.close()
     }

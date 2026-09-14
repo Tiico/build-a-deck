@@ -55,6 +55,29 @@ describe('"Mina spel" over HTTP (G1)', () => {
     expect(after.find((p) => p.id === 'p2')).toMatchObject({ tables: 0, lastPlayed: null })
   })
 
+  it("fans out a selection of the game's own cards, spread over the deck (G1)", async () => {
+    const many = { ...doc('Stora leken'), rows: Array.from({ length: 9 }, (_, i) => ({ id: `r${i}`, fields: { title: `Kort ${i}`, antal: 1 } })) }
+    await send('POST', '/projects', { id: 'p1', ...doc() })
+    await send('POST', '/projects', { id: 'p3', ...many })
+    const list = (await (await send('GET', '/projects')).json()) as { id: string; cards: { id: string; title: string }[] }[]
+    // A deck of nine shows its first and its last with two between them, so a big game shows its
+    // breadth rather than the four cards that happen to have been written first.
+    expect(list.find((p) => p.id === 'p3')!.cards).toEqual([
+      { id: 'r0', title: 'Kort 0' },
+      { id: 'r3', title: 'Kort 3' },
+      { id: 'r5', title: 'Kort 5' },
+      { id: 'r8', title: 'Kort 8' },
+    ])
+    // A deck smaller than the fan shows the cards it has, and nothing invented.
+    expect(list.find((p) => p.id === 'p1')!.cards).toEqual([{ id: 'dragon', title: 'Drake' }])
+    // A card nobody has titled yet is still a card, and answers to its id.
+    await send('POST', '/projects', { id: 'p4', ...doc('Namnlösa'), rows: [{ id: 'namnlöst', fields: {} }] })
+    await send('POST', '/projects', { id: 'p0', ...doc('Tomt'), rows: [] })
+    const again = (await (await send('GET', '/projects')).json()) as { id: string; cards: { id: string; title: string }[] }[]
+    expect(again.find((p) => p.id === 'p4')!.cards).toEqual([{ id: 'namnlöst', title: 'namnlöst' }])
+    expect(again.find((p) => p.id === 'p0')!.cards).toEqual([])
+  })
+
   it('takes a game away when its owner asks, and refuses everyone else', async () => {
     await send('POST', '/projects', { id: 'p1', ...doc() })
     expect((await fetch(`${run.http}/projects/p1`, { method: 'DELETE' })).status).toBe(401)

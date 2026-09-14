@@ -1,5 +1,6 @@
 import type { Snapshot, ZoneView } from '@byd/protocol'
 import { CARD_MM, dropAt, keptOnFelt, type Point } from '../table/drop.js'
+import { turnToFit, type Size } from '../table/fit.js'
 import type { Rotation } from '../table/geometry.js'
 import type { Drop } from '../zones.js'
 
@@ -14,6 +15,40 @@ export function seatRotation(view: Snapshot, seat: string): Rotation {
   const dy = hand.geometry.y + hand.geometry.h / 2 - (floor.geometry.y + floor.geometry.h / 2)
   if (Math.abs(dx) > Math.abs(dy)) return dx > 0 ? 90 : 270
   return dy > 0 ? 0 : 180
+}
+
+// Which way round the seat's own felt is drawn, once both rules that have an opinion have had
+// their say (C5, C8, K9, #76, #77). This is the one place the two are composed, and `/online` is
+// the only surface that needs both.
+//
+// `seatRotation` says which edge is yours and puts it at the bottom (C5). `turnToFit` says a
+// table whose shape disagrees with the window's is turned a quarter, so the long side runs the
+// long way and the felt fills the width (C8). On a phone they agree — a portrait window and a
+// side seat both ask for the quarter turn — and in every landscape window they contradict each
+// other, because there the seat's quarter turn stands the table's long side up against the
+// window's short one.
+//
+// **The window wins, and only over the quarter turns.** A seat at the far edge is turned half a
+// circle, which leaves the table's shape exactly as it was, so the window has no opinion about it
+// and it always stands. A side seat's quarter turn is kept only where `turnToFit` asks for a
+// quarter turn anyway.
+//
+// The window wins on a measurement rather than on a principle: at 1280 x 800 a side seat's
+// quarter turn drew a card 17 px across its short side, and no turn drew it 52 (#77, measured on
+// the painted box in Chromium). K9's floor for a thing that is dragged and pressed is 45, so the
+// turned table is not a smaller table but an unusable one. C5's "your own edge at the bottom" is
+// a way of saying which edge is yours, and the felt's marked rim says the same thing for nothing.
+//
+// Deliberately not a measured threshold that keeps the turn where it "fits": corrected for the
+// tilt it never fired at any window in the sample, and a rule that makes a larger window draw a
+// smaller card is worse than either half of it alone (#77).
+export function seatTurn(view: Snapshot, seat: string, room: Size): Rotation {
+  const turn = seatRotation(view, seat)
+  const floor = view.zones.find((z) => z.id === view.floor)
+  // No window to ask — before the first measurement, and off a browser altogether — leaves C5's
+  // own answer standing: there is no evidence to overturn it with.
+  if (turn % 180 === 0 || !floor || room.w <= 0 || room.h <= 0) return turn
+  return turnToFit({ w: floor.geometry.w, h: floor.geometry.h }, room) === 90 ? turn : 0
 }
 
 export function withoutHand(view: Snapshot, seat: string): Snapshot {

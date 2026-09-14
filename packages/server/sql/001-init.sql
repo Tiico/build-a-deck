@@ -108,6 +108,9 @@ create table if not exists assets (
   bytes         bytea,
   created_at    timestamptz not null default now()
 );
+-- What is drawn inside the picture (E1): the file's pixel size and the uniform border it carries
+-- around its motif. A property of the bytes, so it is measured once per hash and never again.
+alter table assets add column if not exists motif jsonb;
 
 -- The project's history (B4): one row per save, never written again. A named version is a
 -- milestone the designer cared about; the rest are simply what happened.

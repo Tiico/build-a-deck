@@ -170,11 +170,23 @@ export function JoinPage({ onSit = (url) => location.assign(url), timing = DEFAU
               onClick={() => !taken && setPick(s.id)}
               style={{ ['--seat' as string]: seatColor(i), ...(place ? { ['--seat-at' as string]: String(place.at), ['--seat-of' as string]: String(place.of) } : {}) }}
             >
-              {/* The name in an element of its own, because the cut that keeps a long one out of
+              {/* The seat's own letter over the word (#80, form C). Without it a free seat said
+                  only "ledig", so on the screen one was told from another by colour and place
+                  alone and somebody who wanted seat C had nothing to aim at — while the letter
+                  was in the spoken label and in the heading all along. It stands in both states
+                  and in the same place in each, so the pill does not change shape when somebody
+                  sits down.
+
+                  The name in an element of its own, because the cut that keeps a long one out of
                   the seat beside it (#42) has to have something to take hold of: the pill is a
                   flex container, and a flex container's own text can be neither ellipsised nor
-                  shrunk. What is spoken is still the button's label, so this cuts nothing. */}
-              <span>{s.name ?? t('join.seat.free')}</span>
+                  shrunk.
+
+                  Both are hidden from the reader, because the button's label already says the
+                  whole of it — "Plats C, ledig" — and the pair would otherwise be read a second
+                  time after it. The same bargain the card in front of you strikes. */}
+              <b aria-hidden="true">{s.id}</b>
+              <span aria-hidden="true">{s.name ?? t('join.seat.free')}</span>
             </button>
           )
         })}

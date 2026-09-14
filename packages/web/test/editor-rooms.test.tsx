@@ -9,6 +9,7 @@ import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import { atWidth } from './viewport.js'
+import { layerPick } from './layers.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -65,14 +66,14 @@ describe('the editor on a tablet (L10)', () => {
     expect(document.querySelector('.byd-canvas-props')).toBeNull()
 
     await userEvent.click(screen.getByRole('tab', { name: 'Lager' }))
-    expect(screen.getByRole('listbox', { name: /Lager/ })).toBeTruthy()
+    expect(screen.getByRole('grid', { name: /Lager/ })).toBeTruthy()
     expect(document.querySelector('.byd-canvas-stage')).toBeNull()
 
     await userEvent.click(screen.getByRole('tab', { name: 'Egenskaper' }))
     // Nothing chosen yet, so the panel says where the choosing happens rather than standing empty.
     expect(screen.getByText(/Välj ett lager i lagerlistan/)).toBeTruthy()
     await userEvent.click(screen.getByRole('tab', { name: 'Lager' }))
-    await userEvent.click(screen.getByRole('option', { name: /title/ }))
+    await userEvent.click(layerPick('title'))
     await userEvent.click(screen.getByRole('tab', { name: 'Egenskaper' }))
     expect(screen.getByLabelText(/X \(mm\)/)).toBeTruthy()
   })

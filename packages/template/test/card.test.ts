@@ -57,15 +57,15 @@ describe('a group rules both faces (#13, L3 + L7)', () => {
     const trap = compileCard({ template: grouped, type: CARD_STANDARD_63x88, row: { typ: 'fälla', title: 'Fallgrop' }, icons: {} })
     const creature = compileCard({ template: grouped, type: CARD_STANDARD_63x88, row: { typ: 'varelse', title: 'Drake' }, icons: {} })
     expect(trap.front?.css).toContain('#e74c3c')
-    expect(trap.back?.css).toContain('#3a1c1c')
+    expect(trap.back?.html).toContain('#3a1c1c')
     expect(creature.front?.css).toContain('#111')
-    expect(creature.back?.css).toContain('#2f4068')
+    expect(creature.back?.html).toContain('#2f4068')
   })
 
   it('is a rule, not a list: a row nobody has heard of matches on its column value alone', () => {
     const fresh = compileCard({ template: grouped, type: CARD_STANDARD_63x88, row: { typ: 'fälla', title: 'Snara' }, icons: {} })
     expect(fresh.front?.css).toContain('#e74c3c')
-    expect(fresh.back?.css).toContain('#3a1c1c')
+    expect(fresh.back?.html).toContain('#3a1c1c')
   })
 
   it('lets one face be grouped while the other is the same for every card', () => {

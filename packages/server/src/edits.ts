@@ -11,6 +11,12 @@ import { applyRecipe, point, rect, type Geometry, type Recipe, type RecipeWords,
 // Imported by the editor as well as the server, so this module stays free of anything Node.
 export type ZonePatch = { name?: string; geometry?: Geometry; visibility?: Zone['visibility']; shortcut?: { label: string; at: 'top' | 'bottom' } | undefined; owner?: string | undefined }
 
+// The properties a patch may take away again (L15, L17). Each one means something by its own
+// absence, which a patch cannot otherwise say: `undefined` does not survive JSON, so "this layer
+// has no shadow any more" would arrive at the actor as a patch that changes nothing. Every other
+// property of an element either has a value or does not exist for that kind.
+export type Clearable = 'name' | 'locked' | 'shadow' | 'pattern'
+
 export type EditIntent =
   | { v: 'rename'; name: string }
   // The deck (L4)
@@ -30,7 +36,12 @@ export type EditIntent =
   | { v: 'addField'; field: string; bind?: { face: string; id: string; group?: string | null } }
   | { v: 'removeField'; field: string }
   // The template (L1, #13, #18)
-  | { v: 'patchElement'; face: string; id: string; patch: Partial<Element>; group?: string | null }
+  // `clear` takes properties off the element rather than setting them, which a patch cannot do:
+  // `undefined` does not survive JSON, so a patch that means "this layer has no name any more"
+  // arrives at the actor as a patch that says nothing at all. The list is closed to the two
+  // properties whose absence is their meaning (L15) — every other property of an element either
+  // has a value or does not exist for that kind.
+  | { v: 'patchElement'; face: string; id: string; patch: Partial<Element>; clear?: Clearable[]; group?: string | null }
   // `icon` is the canvas's other door (#33), and it is the field door's twin: the designer asked
   // for an icon on the card, and an icon on the card is two things at once — a symbol the game did
   // not have, and an element that shows it. She did one thing, so it is one edit. Sent separately
@@ -39,6 +50,11 @@ export type EditIntent =
   | { v: 'addElement'; face: string; element: Element; group?: string | null; icon?: { name: string; url: string; credit?: ProjectCredit } }
   | { v: 'removeElement'; face: string; id: string; group?: string | null }
   | { v: 'moveElement'; face: string; id: string; to: number }
+  // A whole face at once (L17). Choosing one of the ready-made backs is one thing the designer
+  // did, so it is one edit — the same reason `replaceRows` exists rather than a removal and an
+  // addition per card. Sent as a removal and an addition per layer it would be a dozen versions
+  // and a dozen steps back (B4), with a half-built back standing at every one of them.
+  | { v: 'replaceFace'; face: string; base: Element[] }
   | { v: 'resetElement'; face: string; id: string; group: string }
   | { v: 'setGroupColumn'; column: string | null }
   // The table (B5, K2)
@@ -135,11 +151,11 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
         // and a step back — the designer saw nothing happen and had spent a Ctrl+Z on it (#41, B4).
         const from = face.base.find((e) => e.id === intent.id)
         if (!from) throw new Error(`face ${intent.face} has no element ${intent.id}`)
-        return writeFace(doc, intent.face, { ...face, base: replaceById(face.base, { ...from, ...intent.patch } as Element) })
+        return writeFace(doc, intent.face, { ...face, base: replaceById(face.base, patched(from, intent.patch, intent.clear)) })
       }
       const from = inGroup(face, intent.id, intent.group)
       if (!from) throw new Error(`face ${intent.face} has no element ${intent.id}`)
-      return writeVariant(doc, intent.face, face, intent.group, (v) => ({ ...v, override: replaceById(v.override ?? [], { ...from, ...intent.patch } as Element) }))
+      return writeVariant(doc, intent.face, face, intent.group, (v) => ({ ...v, override: replaceById(v.override ?? [], patched(from, intent.patch, intent.clear)) }))
     }
     // Adding an element from the canvas (#18): it goes last in the base list, which is the
     // drawing order, so a new element is on top of what is already there.
@@ -173,6 +189,12 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
     }
     // Reordering the layers (#18): the base list is the drawing order, so a layer moved in the
     // panel is a layer moved here.
+    case 'replaceFace': {
+      // A face the template does not have yet is made rather than refused: an empty back is
+      // exactly the back a gallery is for.
+      const face = doc.template.faces[intent.face] ?? { base: [], variants: {} }
+      return writeFace(doc, intent.face, { ...face, base: intent.base })
+    }
     case 'moveElement': {
       const face = faceOf(doc, intent.face)
       const from = face.base.findIndex((e) => e.id === intent.id)
@@ -292,6 +314,15 @@ function writeVariant(doc: ProjectDoc, faceId: string, face: FaceTemplate, group
 function inGroup(face: FaceTemplate, id: string, group: string): Element | undefined {
   return (face.variants[group]?.override ?? []).find((e) => e.id === id) ?? face.base.find((e) => e.id === id)
 }
+// An element with a patch written over it, and the properties it was told to take away taken
+// away. Unlocking a layer, or giving it its id back for a name (L15), must leave exactly the
+// element a layer that was never locked and never renamed has — or the diff between two versions
+// would report a change nobody made (B4), and an empty key would travel to the printer.
+function patched(from: Element, patch: Partial<Element>, clear: Clearable[] = []): Element {
+  const gone = new Set<string>([...clear, ...Object.entries(patch).flatMap(([key, value]) => (value === undefined ? [key] : []))])
+  return Object.fromEntries(Object.entries({ ...from, ...patch }).filter(([key]) => !gone.has(key))) as Element
+}
+
 function replaceById(list: Element[], element: Element): Element[] {
   const at = list.findIndex((e) => e.id === element.id)
   if (at < 0) return [...list, element]

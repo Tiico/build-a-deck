@@ -1,6 +1,8 @@
 import { useEffect, type PointerEvent as RPointerEvent, type ReactNode } from 'react'
 
-export type RadialItem = { label: string; run: (() => void) | null }
+// `key` is only for telling two entries apart when their words are the same — a pile of chips can
+// hold two counters a designer gave the same name and the same value (#89).
+export type RadialItem = { key?: string; label: string; run: (() => void) | null }
 
 // A ring of verbs around the finger (C). It opens on a hold or a click; the finger slides to a
 // verb and releases. Everything that is not a verb closes it: the backdrop covers the screen, so
@@ -39,7 +41,7 @@ export function RadialMenu({ id, x, y, items, hub, onClose }: { id: string; x: n
           const ang = -Math.PI / 2 + (i * 2 * Math.PI) / items.length
           return (
             <button
-              key={item.label}
+              key={item.key ?? item.label}
               type="button"
               disabled={item.run === null}
               style={{ left: Math.cos(ang) * radius, top: Math.sin(ang) * radius }}

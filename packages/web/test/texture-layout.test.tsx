@@ -3,6 +3,7 @@
 // none. So the real component's markup, in each of its three states, is measured in a real engine
 // inside each container the app puts a card in.
 import { readFileSync } from 'node:fs'
+import { deflateSync } from 'node:zlib'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render } from '@testing-library/react'
@@ -12,6 +13,37 @@ import { Texture } from '../src/table/Texture.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const SHEETS = ['src/table/table.css', 'src/table/texture.css', 'src/online/online.css', 'src/player/player.css', 'src/buttons.css']
+
+// A rendered face, written out here rather than fetched, so the browser has real pixels with a
+// real natural size to lay out. A card that gives its face no size of its own is drawn at this
+// size instead, which is the whole of the bug in #78 — so the picture has to be this big.
+const PNG_630x880 = pngOf(630, 880)
+function pngOf(w: number, h: number): Buffer {
+  const chunk = (type: string, body: Buffer) => {
+    const out = Buffer.concat([Buffer.from(type, 'ascii'), body])
+    const head = Buffer.alloc(4)
+    head.writeUInt32BE(body.length)
+    const tail = Buffer.alloc(4)
+    tail.writeUInt32BE(crc32(out))
+    return Buffer.concat([head, out, tail])
+  }
+  const ihdr = Buffer.alloc(13)
+  ihdr.writeUInt32BE(w, 0)
+  ihdr.writeUInt32BE(h, 4)
+  ihdr[8] = 8 // one byte a channel
+  ihdr[9] = 0 // greyscale
+  // Each row is a filter byte and then one grey byte a pixel; one flat colour compresses to nothing.
+  const raw = Buffer.concat(Array.from({ length: h }, () => Buffer.concat([Buffer.from([0]), Buffer.alloc(w, 0x88)])))
+  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))])
+}
+function crc32(buf: Buffer): number {
+  let c = 0xffffffff
+  for (const byte of buf) {
+    c ^= byte
+    for (let k = 0; k < 8; k++) c = c & 1 ? (c >>> 1) ^ 0xedb88320 : c >>> 1
+  }
+  return (c ^ 0xffffffff) >>> 0
+}
 
 const card: VisibleComponentState = {
   id: 'c1',
@@ -74,6 +106,13 @@ const HOLDERS: Record<string, Holder> = {
     up: false,
     wrap: (inner) => `<div class="byd-player"><div class="byd-strip"><div class="byd-strip-card">${inner}<strong>wizard</strong></div></div></div>`,
   },
+  // The cards in front of the seat (C4): the face is a box of its own inside the control, so the
+  // image has a size to fill and the state has a card to lie on rather than the whole card (#78).
+  'a card in front of the seat on the phone': {
+    up: false,
+    wrap: (inner) =>
+      `<div class="byd-player"><section class="byd-mine"><div class="byd-mine-strip"><button class="byd-mine-card" data-face="front"><i class="byd-mine-face">${inner}</i><strong>wizard</strong></button></div></section></div>`,
+  },
   'a card held up on the phone': {
     up: true,
     wrap: (inner) => `<div class="byd-player"><div class="byd-inspect"><div>${inner}<span>wizard</span></div></div></div>`,
@@ -96,6 +135,10 @@ async function measure(state: State): Promise<Record<string, Measured>> {
   const faces = { quiet: markup(false), held: markup(true) }
   const page = await browser.newPage({ viewport: { width: 420, height: 900 } })
   try {
+    // A face that answers, at the size the renderer actually makes one (63 × 88 mm at 300 dpi).
+    // Without it every image here is broken and collapses to nothing, and a card with no rule
+    // for the size of its face measures the same as one that has it (#78).
+    await page.route('**/faces/**', (route) => route.fulfill({ contentType: 'image/png', body: PNG_630x880 }))
     const body = Object.entries(HOLDERS)
       .map(([name, h]) => `<section data-case="${name}">${h.wrap((h.up ? faces.held : faces.quiet)[state])}</section>`)
       .join('')
@@ -131,8 +174,10 @@ async function measure(state: State): Promise<Record<string, Measured>> {
               fallback: box(root.querySelector('[data-texture]')),
               imageVisible: shown(img),
               nameVisible: shown(root.querySelector('span:not([data-texture]), strong')),
-              retry: box(root.querySelector('button')),
-              retryVisible: shown(root.querySelector('button')),
+              // The way back belongs to the state box; a card that is itself a control must not
+              // be mistaken for one (UX-37, #82).
+              retry: box(root.querySelector('[data-texture] button')),
+              retryVisible: shown(root.querySelector('[data-texture] button')),
             },
           ]
         }),
@@ -151,6 +196,9 @@ describe('the waiting card, measured where it is actually drawn', () => {
       expect({ [name]: m.image.w > 0 && m.image.h > 0 }).toEqual({ [name]: true })
       // The image box is the card's own box, so the fallback can never spill onto the felt.
       expect({ [name]: m.image.w <= m.holder!.w && m.image.h <= m.holder!.h }).toEqual({ [name]: true })
+      // And the card is the size the view gives it, not the size the renderer made the picture:
+      // a face with no rule for its size draws at 630 × 880 and takes the screen with it (#78).
+      expect({ [name]: m.holder!.w <= 420 && m.holder!.h <= 900 }).toEqual({ [name]: true })
       // The name is said once — by the fallback, not by the markup underneath it.
       expect({ [name]: m.nameVisible }).toEqual({ [name]: false })
     }

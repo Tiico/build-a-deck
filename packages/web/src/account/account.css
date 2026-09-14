@@ -32,8 +32,14 @@
 .byd-home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
 .byd-home-game { background: var(--byd-account-card-bg); border: 1px solid #262a35; border-radius: 16px; padding: 16px; display: grid; gap: 8px; text-align: left; color: #fff; text-decoration: none; cursor: pointer; }
 .byd-home-game strong { font-size: 17px; }
-.byd-home-fan { display: flex; height: 70px; align-items: flex-end; }
-.byd-home-fan i { width: 40px; height: 56px; border-radius: 5px; margin-right: -14px; background: hsl(var(--hue, 0) 40% 86%); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); }
+/* The game's own cards (G1, prototype D): four of them side by side rather than a fan that hides
+   three titles under the fourth. Each is a card's colour from the table and its own title, and a
+   title too long for the card wraps — hyphenated where the page's language allows it — instead
+   of disappearing under the next card. */
+.byd-home-fan { display: flex; gap: 6px; height: 70px; align-items: flex-end; }
+.byd-home-fan i { box-sizing: border-box; width: 40px; height: 56px; border-radius: 5px; padding: 5px 4px; background: hsl(var(--hue, 0) 40% 86%); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); font-style: normal; font-size: 8px; font-weight: 700; line-height: 1.2; color: #1b1f2a; overflow: hidden; overflow-wrap: anywhere; hyphens: auto; }
+/* A game with no cards yet: the place stays, and says what is missing. */
+.byd-home-fan[data-empty] { width: fit-content; height: 56px; padding: 0 14px; border: 1px dashed #2c3242; border-radius: 8px; display: grid; place-items: center; color: #9aa3b8; font-size: 12px; }
 .byd-home-game[data-new] { border-style: dashed; place-items: center; color: #9aa3b8; min-height: 150px; }
 
 /* The tables the account sat at (G1, prototype A): a second grid, and the word after a claim. */

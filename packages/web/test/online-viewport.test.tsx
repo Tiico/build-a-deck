@@ -1,8 +1,15 @@
 // @vitest-environment jsdom
-// The distance view's own hand (C2, K9) is a fan of turned cards drawn over the table, and a
-// turned card is painted well outside the box a flex row lays it in. Where it actually lands is a
-// layout question jsdom answers with zeroes, so `/online` is mounted against a real session and
-// measured in a real engine at the widths the audit checks (#6).
+// The distance view's own hand in a portrait window (C2, K9, K17) is a fan of turned cards in the
+// band under the table, and a turned card is painted well outside the box a flex row lays it in.
+// Where it actually lands is a layout question jsdom answers with zeroes, so `/online` is mounted
+// against a real session and measured in a real engine (#6).
+//
+// The windows are all portrait, and that is the whole of what #77 changed here. In a landscape
+// window the hand is no longer this shape at all — it stands in a column beside the felt, and its
+// own gates are in `online-column.test.tsx`. The readings below used to be taken at 1280 and 1440
+// with jsdom's default height standing in for a window nobody chose; they are taken at the two
+// upright tablets instead, which draw the same card at the same reading size and are a window the
+// band is actually in.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
@@ -13,7 +20,7 @@ import { CARD_STANDARD_63x88, type SetupDef } from '@byd/engine'
 import { TableClient } from '../src/client.js'
 import { OnlinePage } from '../src/online/OnlinePage.js'
 import { admit, asTable, createSession, startServer, type Running } from './fixture.js'
-import { atWidth } from './viewport.js'
+import { atWindow, type Size } from './felt-frame.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
@@ -50,10 +57,10 @@ function fourSeatSetup(): SetupDef {
 }
 
 // The page as it really mounts: a live seat that has been dealt `held` cards, rendered at the
-// width it will be measured at, and handed back as the markup the browser gets.
-async function markup(held: number, width: number, raise = false): Promise<string> {
-  atWidth(width)
-  const id = await createSession(run, `s-${held}-${width}`, undefined, fourSeatSetup())
+// window it will be measured at, and handed back as the markup the browser gets.
+async function markup(held: number, size: Size, raise = false): Promise<string> {
+  atWindow(size)
+  const id = await createSession(run, `s-${held}-${size.w}x${size.h}`, undefined, fourSeatSetup())
   const host = TableClient.connect(await asTable(run, id))
   await host.ready()
   await host.send({ v: 'draw', from: 'draw', to: 'hand:A', count: held })
@@ -78,8 +85,8 @@ async function markup(held: number, width: number, raise = false): Promise<strin
 type Box = { what: string; x: number; y: number; w: number; h: number }
 
 // The page, mounted for a hand of `held` and laid out at `size`, for whatever the caller reads.
-async function onFan<T>(held: number, size: { w: number; h: number }, read_: (page: Page) => Promise<T>, raise = false): Promise<T> {
-  const html = await markup(held, size.w, raise)
+async function onFan<T>(held: number, size: Size, read_: (page: Page) => Promise<T>, raise = false): Promise<T> {
+  const html = await markup(held, size, raise)
   const page: Page = await browser.newPage({ viewport: { width: size.w, height: size.h } })
   try {
     await page.setContent(document_(html), { waitUntil: 'load' })
@@ -90,7 +97,7 @@ async function onFan<T>(held: number, size: { w: number; h: number }, read_: (pa
 }
 
 // Every card of the seat's own fan, plus what the page as a whole does about its width.
-const fanAt = (held: number, size: { w: number; h: number }): Promise<{ cards: Box[]; sideways: number }> =>
+const fanAt = (held: number, size: Size): Promise<{ cards: Box[]; sideways: number }> =>
   onFan(held, size, (page) =>
     page.evaluate(() => ({
       cards: [...document.querySelectorAll('[data-hand-fan] [data-hand-card]')].map((el) => {
@@ -104,7 +111,7 @@ const fanAt = (held: number, size: { w: number; h: number }): Promise<{ cards: B
 // The same cards, each one measured after the band has been asked to bring it into view. A hand
 // wider than the band is the decided answer (#24), so "on the screen" cannot mean "all at once"
 // any more — it means every card of it can be got to and is whole when it is got to.
-const eachBrought = (held: number, size: { w: number; h: number }): Promise<Box[]> =>
+const eachBrought = (held: number, size: Size): Promise<Box[]> =>
   onFan(held, size, (page) =>
     page.evaluate(() => {
       const out = []
@@ -119,11 +126,12 @@ const eachBrought = (held: number, size: { w: number; h: number }): Promise<Box[
 
 const COUNTS = [3, 13, 21] as const
 
-const SIZES = [
-  { w: 1280, h: 800 },
-  { w: 1440, h: 900 },
+// Three upright windows: a phone, and the two tablets that draw the card at its full reading size.
+const SIZES: readonly Size[] = [
   { w: 390, h: 844 },
-] as const
+  { w: 768, h: 1024 },
+  { w: 820, h: 1180 },
+]
 
 let run: Running
 let browser: Browser
@@ -192,7 +200,7 @@ describe('the fan keeps the page’s own promises (#4, #5, #6)', () => {
 
 // The hand's own arc, in degrees, from the leftmost card's turn to the rightmost (#24). Read off
 // the matrix the browser actually painted, not off the numbers that asked for it.
-const arcAt = (held: number, size: { w: number; h: number }): Promise<number> =>
+const arcAt = (held: number, size: Size): Promise<number> =>
   onFan(held, size, (page) =>
     page.evaluate(() => {
       const turns = [...document.querySelectorAll('[data-hand-fan] [data-hand-card]')].map((el) => {
@@ -215,7 +223,7 @@ describe('a hand of many cards still looks like a hand (#24)', () => {
 // What a fingertip actually has to land on. A card in a fan is covered by the ones drawn after
 // it, so what is offered is not the card but the step to its neighbour — `offsetLeft` is that
 // step, before any turning moves the paint around.
-const stepAt = (held: number, size: { w: number; h: number }): Promise<{ step: number; card: number }> =>
+const stepAt = (held: number, size: Size): Promise<{ step: number; card: number }> =>
   onFan(held, size, (page) =>
     page.evaluate(() => {
       const cards = [...document.querySelectorAll('[data-hand-fan] [data-hand-card]')] as HTMLElement[]

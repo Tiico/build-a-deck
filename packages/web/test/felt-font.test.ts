@@ -123,8 +123,14 @@ describe('the felt’s face is in the document before the first painting (K20, #
       .flatMap((href) => [...readFileSync(join(OUT, href.replace(/^\//, '')), 'utf8').matchAll(/src:url\(data:font\/woff2;base64,([^)]*)\)/g)])
       .reduce((sum, m) => sum + m[1]!.length, 0)
     expect({ kB: Math.round(inlined / 1000) }).toEqual({ kB: 114 })
-    // And nothing else in the build grew a face of its own: the felt's is the only one.
-    expect(statSync(join(OUT, blockingSheets(index)[0]!.replace(/^\//, ''))).size).toBeLessThan(inlined + 120_000)
+    // And nothing else in the build grew a face of its own: the felt's is the only one. The slack
+    // is everything in the sheet that is not the two subsets — every stylesheet the app ships,
+    // minified — and it is far below what a second face would cost, which is what this catches.
+    // Raised from 120 kB to 125 kB on 2026-09-14: the editor's layer grid and the fill rule (L15,
+    // L16) are two new panels of real CSS. Raised again to 130 kB the same day for the shape
+    // gallery, the pattern tiles, the shadow's chips and the ready-made backs (L17) — four more
+    // grids of buttons in the property panel, and one beside the layers.
+    expect(statSync(join(OUT, blockingSheets(index)[0]!.replace(/^\//, ''))).size).toBeLessThan(inlined + 130_000)
   })
 
   // And the same thing said by a browser rather than by a reader of files: the built app served

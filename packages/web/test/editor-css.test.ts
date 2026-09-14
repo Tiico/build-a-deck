@@ -17,7 +17,7 @@ const SHELL = `
     <a class="byd-editor-home" href="#" data-stop="the way out of the editor">Mina spel</a>
     <strong>Skogens herrar</strong>
     <span class="byd-editor-rev">rev 12</span>
-    <span class="byd-editor-saved" data-unsaved="true">Osparade ändringar</span>
+    <span class="byd-editor-saved" data-unsaved="true">Osparat</span>
     <nav role="tablist" aria-label="Editorlägen">
       <button role="tab" aria-selected="true" data-stop="the open tab">Kortvägg</button>
       <button role="tab" aria-selected="false" tabindex="-1">Mall</button>

@@ -25,6 +25,37 @@
    need. The fallbacks are prototype B's own numbers, so the sheet still draws a fan on its own. */
 .byd-online-play { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 .byd-hand-under { flex: 0 0 auto; }
+
+/* K17 as a column, in a landscape window (#77). The band cost the felt the one axis its fit was
+   bound by — 218 px of an 800 px window — while the felt's own row had six hundred pixels of
+   width it could not use; stood on end the hand spends that slack instead, and a card on the felt
+   goes from 31 px to 46 at 1280 x 800.
+
+   Which side it stands on is one named rule and not a set of conditions: the hand is held in
+   front of the screen and is not furniture on the table (`fan.ts`), so it does not follow the
+   seat's own edge round the felt — it stands at the **inline end** of the window, at every seat.
+   `flex-direction: row` says that in the reader's own direction, so a right-to-left page puts it
+   on the left without a second rule (A4).
+
+   The step is the browser's own shrinking: every card but the last sits in a box one step tall
+   that may give way, and none of them below a fingertip. Past that the hand scrolls in its own
+   box and the page never does (L10). Safe centring, as the band has: a hand that fits sits in the
+   middle of the column, a hand that does not starts at its own first card — plain centring would
+   push the first card out of the top of the scroller, where no amount of scrolling brings it
+   back. */
+.byd-online-play[data-hand='column'] { flex-direction: row; }
+.byd-online-play[data-hand='column'] > .byd-hand-under { display: flex; min-height: 0; }
+.byd-hand-col { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: safe center; min-height: 0; padding: var(--fan-gutter, 12px); overflow: hidden auto; overscroll-behavior-y: contain; scrollbar-gutter: stable; }
+.byd-col-slot { position: relative; flex: 0 1 var(--col-step, 68px); min-height: var(--col-min, 44px); width: var(--fan-card, 112px); }
+.byd-col-slot:last-child { flex: 0 0 calc(var(--fan-card, 112px) * 88 / 63); }
+/* A card overlapped from below hides its own middle, which the band never had to think about: it
+   overlaps sideways, so a card's centre stays visible. Both things that name a card centre it
+   there — a button centres what it holds, and the face's own waiting state centres the name in
+   the middle of the card (#10) — so in a column nine cards of thirteen came out blank. In this one
+   shape the name lives at the top of the card, in the strip the next card leaves. */
+.byd-col-card { position: absolute; inset: 0 auto auto 0; display: flex; align-items: flex-start; justify-content: center; touch-action: pan-y; }
+.byd-col-card .byd-texture-state { justify-content: flex-start; }
+.byd-col-card:hover, .byd-col-card:focus-visible, .byd-col-card[data-lifted] { z-index: 2; }
 .byd-hand-band { position: relative; }
 /* Safe centring: the fan sits in the middle of the band while it fits, and starts at its own
    first card when it does not — plain centring would push a hand wider than the band half out

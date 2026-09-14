@@ -159,8 +159,16 @@ describe('the seats a reader hears', () => {
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Plats A, Ada' })).toBeTruthy())
     expect(screen.getByRole('button', { name: 'Plats B, ledig' })).toBeTruthy()
-    // What the eye reads is still the short word; the name only puts the seat in front of it.
-    expect(document.querySelector('[data-seat="B"]')!.textContent).toBe('ledig')
+    // What the eye reads is the seat's own letter over the word (#80): "ledig" said alone told
+    // one free seat from another by colour and place and nothing else. The spoken name is
+    // untouched by that — it said the letter first all along — so the pair on the screen is
+    // hidden from the reader rather than read out after it.
+    const b = document.querySelector('[data-seat="B"]')!
+    expect(b.textContent).toBe('Bledig')
+    expect([...b.children].map((el) => [el.tagName, el.textContent, el.getAttribute('aria-hidden')])).toEqual([
+      ['B', 'B', 'true'],
+      ['SPAN', 'ledig', 'true'],
+    ])
     table.close()
   })
 })

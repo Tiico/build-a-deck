@@ -40,6 +40,7 @@ export const svAccount = {
   // Vad ett spel säger om sig självt innan det öppnas: revision, bord och senaste gången.
   'home.card.line': 'rev {rev} · {played}',
   'home.card.never': 'aldrig spelat',
+  'home.card.nocards': 'inga kort än',
   'home.card.nothing': 'inget spelat än',
   'home.card.last': 'senast {when}',
   'home.card.tables.one': '{n} bord · {at}',
@@ -88,6 +89,10 @@ export const svAccount = {
   'wizard.name': 'Spelets namn',
   'wizard.name.placeholder': 'Skogens herrar',
   'wizard.players': 'Spelare',
+  // Vägen förbi den guidade starten (L14): namnet och platserna räcker, resten görs i editorn.
+  'wizard.blank.title': 'Utan guidad start',
+  'wizard.blank.body': 'Vill du hellre bygga allt själv? Spelet skapas med namnet och platserna ovanför, utan kort, fält eller mall, och öppnas direkt i editorn.',
+  'wizard.blank.create': 'Skapa ett tomt spel i editorn',
 
   // Fälten: vad varje kort har, och vad startramen redan visar.
   'wizard.fields': 'Fält',

@@ -14,9 +14,11 @@ import { useSitDown } from '../player/useSitDown.js'
 import { claimUrl } from '../account/api.js'
 import { SeatLine } from './SeatLine.js'
 import { HandFan } from './HandFan.js'
+import { HandColumn } from './HandColumn.js'
 import { HandSpread } from './HandSpread.js'
-import { playedAt, seatRotation, withoutHand } from './seat.js'
+import { playedAt, seatTurn, withoutHand } from './seat.js'
 import { useFeltKeyboard } from '../table/useFeltKeyboard.js'
+import { useRoom } from '../table/useRoom.js'
 import { useActivityLive } from '../table/useActivityLive.js'
 import { DEFAULT_TIMING, type StatusTiming } from '../status/connection.js'
 import { useLiveStatus } from '../status/useLiveStatus.js'
@@ -28,9 +30,14 @@ import { usePageTitle } from '../status/DocumentTitle.js'
 import { useT } from '../i18n/index.js'
 
 // /online?session=…&seat=A&name=Ada&server=ws://…
-// Fully online (C2): both roles in one window. The table, turned so this seat's edge is at the
-// bottom, playable as the table screen is; the seat's hand as a fan on the felt (prototype B);
-// the phone's controls in the corner.
+// Fully online (C2): both roles in one window. The table, the way round the window and the seat
+// agree on (#76, #77), playable as the table screen is; the seat's own hand beside it or under it,
+// depending on which way the window is; the phone's controls in the corner.
+//
+// The hand is drawn once and once only. Where the window is landscape it stands in a column at the
+// window's inline end, and the felt folds this seat's own fan of backs to its count — the same
+// hand drawn twice in one window is not a picture, it is a second thing for the fit to make room
+// for on the axis that binds it (K9, K17, #77).
 // `onLeave` is where the way out (#31) sends the browser; a test hands it somewhere it can read.
 export type OnlinePageProps = { timing?: StatusTiming; onLeave?(url: string): void }
 
@@ -50,6 +57,8 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const live = useLiveStatus(conn, 'table', timing)
   const links = statusLinks({ server: params.get('server'), code: params.get('code') })
   usePageTitle({ state: sessionId && seat ? (refused ? 'forbidden' : live.state) : 'missing', room: params.get('code') ?? sessionId })
+  // The window this seat is playing in: it is half of which way round the felt is drawn (#77).
+  const room = useRoom()
   const presence = usePresence(client, view)
   const recent = useRecent(activity)
   const table = useRef<TableHandle>(null)
@@ -75,6 +84,11 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   if (!view || !client) return <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
 
   const me = view.seats.find((s) => s.id === seat)
+  // Which shape the hand takes (K17's revision of 2026-09-14, #77). In a landscape window it is a
+  // column at the window's inline end and the felt keeps the height; in a portrait one the band
+  // under the felt stands exactly as it was — there the window's short side is the width, the
+  // felt's fit is bound by it, and a column would take the felt's room rather than find it.
+  const column = room.w > 0 && room.h > 0 && room.w > room.h
   const hand = view.components.filter((c) => c.zone === `hand:${seat}`)
   const shown = withoutHand(previewOf(view), seat)
   const playable = !view.rewind && !view.ended
@@ -110,13 +124,15 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
           <SessionButtons client={client} view={view} sheet={sheet} onSheet={setSheet} />
         </div>
       </div>
-      <div className="byd-online-play">
+      <div className="byd-online-play" data-hand={column ? 'column' : 'band'}>
         <div className="byd-online-felt">
           <TableRenderer
             ref={table}
             view={shown}
             mode="table"
-            rotate={seatRotation(view, seat)}
+            rotate={seatTurn(view, seat, room)}
+            me={seat}
+            foldHand={column ? seat : null}
             faces={http}
             onAct={playable ? onAct : undefined}
             keyboard={kbd.keyboard}
@@ -131,7 +147,11 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
             the page behind any raised surface is. Two live copies of the same twenty-one
             controls would be two of every card to a screen reader (L10). */}
         <div className="byd-hand-under" {...(up ? { inert: true, 'aria-hidden': true } : {})}>
-          <HandFan cards={hand} faces={http} onPlay={play} onOpen={(c) => kbd.openHand(c, [])} />
+          {column ? (
+            <HandColumn cards={hand} faces={http} onPlay={play} onOpen={(c) => kbd.openHand(c, [])} />
+          ) : (
+            <HandFan cards={hand} faces={http} onPlay={play} onOpen={(c) => kbd.openHand(c, [])} />
+          )}
         </div>
         {up && (
           <HandSpread

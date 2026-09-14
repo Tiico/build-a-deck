@@ -21,7 +21,9 @@ import { tableOf } from './scene.js'
 import { recipeSetup } from './fixture.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
-const SHEETS = ['src/table/table.css', 'src/table/texture.css', 'src/table/keyboard.css', 'src/rules/rules.css']
+// The felt is a room of the button language (L13, #90), so the shared sheet goes over the felt's
+// own the way it does on the page itself.
+const SHEETS = ['src/table/table.css', 'src/table/texture.css', 'src/table/keyboard.css', 'src/rules/rules.css', 'src/buttons.css']
 
 const CARD = { id: 'card.standard.63x88', version: 1 }
 const card = (id: string, zone: string, x: number, y: number, cardRef: string | null): VisibleComponentState => ({ id, type: CARD, zone, face: cardRef === null ? 'back' : 'front', x, y, rot: 0, cardRef })
@@ -187,16 +189,22 @@ describe('the ring of verbs (K14)', () => {
 })
 
 describe('a pile says how many it holds (C)', () => {
-  it('puts the count as a badge on the corner of the pile and the name below it, clear of the cards', async () => {
+  it('sits the count on the pile rather than beside it, and puts the name below, clear of the cards', async () => {
     const at = await measure('tv', {
       pile: '[data-zone="draw"]',
       badge: '[data-zone="draw"] .byd-pile-n',
       name: '[data-zone="draw"] .byd-pile-name',
     })
     const [pile, badge, name] = [at('pile'), at('badge'), at('name')]
-    // The badge rides the pile's top-right corner: it overlaps the card, and sticks out of it.
-    expect(badge.x + badge.w).toBeGreaterThan(pile.x + pile.w)
-    expect(badge.y).toBeLessThan(pile.y)
+    // The badge sits on the pile's top edge, centred on it, and reaches to neither side of it
+    // (K19, #76). It used to ride the top-right corner, fourteen pixels out of its own footprint
+    // in the screen's own units — which on a felt a phone's size is a quarter of the way across
+    // the table, onto the name of the seat at the side rim. It overlaps the card, as it always
+    // did; what it no longer does is stand anywhere the pile is not.
+    expect(Math.abs(badge.x + badge.w / 2 - (pile.x + pile.w / 2))).toBeLessThanOrEqual(1)
+    expect(badge.x).toBeGreaterThanOrEqual(pile.x)
+    expect(badge.x + badge.w).toBeLessThanOrEqual(pile.x + pile.w)
+    expect(badge.y).toBeGreaterThanOrEqual(pile.y)
     expect(overlaps(badge, pile)).toBe(true)
     // The name stands under the pile, centred, and never on top of the card.
     expect(name.y).toBeGreaterThanOrEqual(pile.y + pile.h)

@@ -51,7 +51,11 @@ export const enPlay = {
   'ring.counter.minus': '−1',
   'ring.counter.plus': '+1',
   'ring.counter.set': 'Set value…',
-  'ring.counter.whose': '{name}’s counter',
+  'ring.counter.whose': '{name:s} counter',
+  // A seat's third counter stacks with the others, so the pile's ring says each of them outright
+  // and the hub says how many are there (#89).
+  'ring.counter.named': '{name} {n}',
+  'ring.counter.pile': 'counters',
 
   'kbd.hidden': 'Hidden card',
   'kbd.card': '{name}, card in {zone}',
@@ -74,7 +78,7 @@ export const enPlay = {
   'kbd.hint.counter.becomes': 'becomes {n}',
   'kbd.hint.counter.set': 'type a number',
   'kbd.hand.my': 'My hand',
-  'kbd.hand.other': '{name}’s hand',
+  'kbd.hand.other': '{name:s} hand',
   'kbd.place.floor': 'The table',
   'kbd.place.floor.hint': 'free area',
   'kbd.place.onCard': 'On {name}',
@@ -101,7 +105,7 @@ export const enPlay = {
 
   'activity.move': '{who} moved a card to {zone}',
   'activity.hand.my': 'my hand',
-  'activity.hand.other': '{name}’s hand',
+  'activity.hand.other': '{name:s} hand',
   'activity.rotate': '{who} turned a card',
   'activity.flip': '{who} flipped a card',
   'activity.stack': '{who} put a card on another',

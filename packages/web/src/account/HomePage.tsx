@@ -142,11 +142,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                   onNavigate(`/editor?${suffix(new URLSearchParams({ project: p.id }))}`)
                 }}
               >
-                <div className="byd-home-fan">
-                  {[0, 1, 2, 3].map((i) => (
-                    <i key={i} style={{ ['--hue' as string]: (hue(p.id) + i * 55) % 360 }} />
-                  ))}
-                </div>
+                <Fan cards={p.cards ?? []} t={t} />
                 <strong>{p.name}</strong>
                 <span className="byd-muted">{t('home.card.line', { rev: p.rev, played: playedLine(t, lang, p) })}</span>
               </a>
@@ -226,6 +222,28 @@ function marked(message: string, parts: Record<string, ReactNode>): ReactNode[] 
     const name = /^\{(\w+)\}$/.exec(piece)?.[1]
     return name && name in parts ? <Fragment key={i}>{parts[name]}</Fragment> : piece
   })
+}
+
+// The cards on a game's card (G1): the game's own, each in the colour it has at the table and
+// under its own title, so the shelf shows what is in the box. A game with nothing in it yet says
+// so rather than fanning out rectangles that stand for nothing, and keeps the room it takes so
+// the grid stands even.
+function Fan({ cards, t }: { cards: { id: string; title: string }[]; t: T }) {
+  if (cards.length === 0)
+    return (
+      <div className="byd-home-fan" data-empty>
+        {t('home.card.nocards')}
+      </div>
+    )
+  return (
+    <div className="byd-home-fan">
+      {cards.map((c) => (
+        <i key={c.id} data-card={c.id} title={c.title} style={{ ['--hue' as string]: hue(c.id) }}>
+          {c.title}
+        </i>
+      ))}
+    </div>
+  )
 }
 
 // What a game says about itself before it is opened (G1): how many tables it has, and when one

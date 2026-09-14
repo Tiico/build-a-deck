@@ -114,6 +114,28 @@ describe('an action the table refuses', () => {
     table.close()
   })
 
+  // The overview's pile is a control of its own since #79, and it is not the play sheet: the
+  // answer to a draw stands at the pile that was pressed.
+  it('says so at the pile in the overview that was pressed to draw', async () => {
+    const id = await createSession(run)
+    const table = TableClient.connect(await asTable(run, id))
+    await table.ready()
+    await seated(id)
+    // Two piles with cards in them, so that both carry the verb and only one of them is asked.
+    await table.send({ v: 'draw', from: 'draw', to: 'discard', count: 2 })
+    await table.send({ v: 'session.end' })
+
+    const pile = await screen.findByRole('button', { name: /Draghög/ })
+    fireEvent.click(pile)
+
+    const said = await screen.findByTestId('refusal')
+    expect(said.textContent).toMatch(/avslutat/i)
+    await waitFor(() => expect(pile.getAttribute('aria-describedby')).toBe(said.id))
+    // The other pile was not the one that was asked, so it carries no answer.
+    expect(screen.getByRole('button', { name: /Kasthög/ }).getAttribute('aria-describedby')).toBeNull()
+    table.close()
+  })
+
   it('takes the message back when the same control is asked again', async () => {
     const id = await createSession(run)
     const table = TableClient.connect(await asTable(run, id))

@@ -10,6 +10,44 @@
    ink rather than the white it used to, which measured 3.44:1 on the blue seat and worse on three
    of the others. The palette itself is untouched. */
 .byd-table-frame, [data-tv] { --byd-seat-ink: #0d0f14; }
+
+/* ── The felt's own colours (K9, L13, #90) ────────────────────────────────────────────────────
+   The felt is a room in the button language and owns its accent. The green is the *ground*, so
+   the accent can never be the green — which is what #67's borrowed account green was, unsaid. It
+   is the chip's amber instead: already on this felt, already read at three metres, and already
+   carrying `#1c1c1c` as its ink where `.byd-token` draws a counter. */
+.byd-table,
+.byd-table-frame,
+[data-tv] {
+  --byd-felt-accent: #f0b64a;
+  --byd-felt-on-accent: #1c1c1c;
+  /* The chalk the felt already writes its pile counts, its hand counts and its own title in. The
+     language's shared `--byd-secondary-line: #6f7a90` is a line drawn for a dark room and holds
+     there — 3.86:1 on the counter sheet's own dark — but on the green it measures 1.64:1, which
+     is the order of number L13 itself called invisible. So the felt's second action is drawn in
+     the one pale colour already on the green.
+
+     Both values are written twice over: here, and where `.byd-token` and `.byd-pile-count` draw
+     them. That is on purpose. `button-language.test.tsx` asks the page what the chip is painted
+     in and what a pile's count is written in, and requires the three roles to be those and
+     nothing else — and if the furniture read the same token these tokens do, that measurement
+     would be comparing a variable with itself and could never fail. */
+  --byd-felt-chalk: #f3e9d6;
+  /* The ring's resting plate, and the near-black that rings it. The plate is what a disc keeps
+     instead of the language's transparent outline; the edge is the second of the disc's two
+     lines, the one that can be seen where the chalk cannot — on a card face. */
+  --byd-felt-plate: #171a23;
+  --byd-felt-edge: #0d0f14;
+  /* And the same two things on a disc that is there but cannot be pressed: the plate with a tenth
+     of the chalk stirred into it, which flattens the near-black into slate, and the chalk itself
+     rubbed 60% of the way back into the plate. Written out rather than mixed in the declaration,
+     because a colour a designer cannot read off the stylesheet is a colour nobody can check —
+     and because what a browser reports for a `color-mix()` is a `color(srgb …)` that the tool's
+     own contrast module does not read. The pair measures 4.5:1 against the 14:1 the same word
+     reads at when it is live. */
+  --byd-felt-plate-off: #2d2f35;
+  --byd-felt-chalk-off: #9b968e;
+}
 .byd-table-frame { display: grid; place-items: center; width: 100%; height: 100%; }
 .byd-table-frame[data-mode='table'] {
   height: 100%;
@@ -58,6 +96,11 @@
 
 /* A counter token (C4): a chip with its value and name. */
 .byd-token { border-radius: 50%; background: #f0b64a; color: #1c1c1c; display: grid; place-items: center; align-content: center; line-height: 1; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); font: 700 11px var(--byd-felt-font, system-ui, sans-serif); }
+/* The number is sized by the renderer and not here (K9, #89): a chip is 24 mm of felt drawn at
+   whatever the screen and the seat count leave it, so a size written once in this sheet is ink
+   outside the outline on a tight table and a speck on a wide one. `tokenInkPx` in
+   `TableRenderer.tsx` is the rule and carries the reasoning; the value below is only what a chip
+   that was drawn without it would fall back to. */
 .byd-token b { font-size: 12px; }
 .byd-token span { font-size: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
 /* The chip's target (#67): invisible in the picture, there for the finger. The renderer sizes and
@@ -116,39 +159,35 @@
    the wider inset is there to hold a name clear of the felt's corner, where the next rim's seat
    keeps its own names, and a shared zone stands at no rim. */
 .byd-zone[data-rim='none'] > span { --name-in: 8px; }
-.byd-zone[data-grow='back'] > span { --name-row: 0px; transform: translate(calc(-100% - var(--name-in)), calc(-100% - var(--name-off) - var(--name-row))); }
+.byd-zone[data-grow='back'] > span { --name-row: 0px; --name-end: -100%; transform: translate(calc(-100% - var(--name-in)), calc(-100% - var(--name-off) - var(--name-row))); }
 .byd-zone[data-rim='N'] > span { transform: translate(var(--name-in), calc(var(--name-off) + var(--name-row))); }
 .byd-zone[data-rim='N'][data-grow='back'] > span { transform: translate(calc(-100% - var(--name-in)), calc(var(--name-off) + var(--name-row))); }
-.byd-zone[data-rim='E'] > span, .byd-zone[data-rim='W'] > span { --name-off: 3px; }
-.byd-zone[data-rim='E'] > span { transform: translate(calc(-100% - var(--name-off)), 0); }
-.byd-zone[data-rim='E'][data-grow='back'] > span { transform: translate(calc(-100% - var(--name-off)), -100%); }
-.byd-zone[data-rim='W'] > span { transform: translate(var(--name-off), 0); }
-.byd-zone[data-rim='W'][data-grow='back'] > span { transform: translate(var(--name-off), -100%); }
+/* Beside its zone the name is one line high and takes no room along the rim, so the two ends are
+   the same line moved up or down: `--name-side` is which side of the zone it stands on and
+   `--name-end` which of its own two ends is at the zone's, and one transform says both. */
+.byd-zone[data-rim='E'] > span, .byd-zone[data-rim='W'] > span { --name-off: 3px; transform: translate(var(--name-side), var(--name-end, 0)); }
+.byd-zone[data-rim='E'] > span { --name-side: calc(-100% - var(--name-off)); }
+.byd-zone[data-rim='W'] > span { --name-side: var(--name-off); }
 
-/* Cards: a coloured face or a striped back. */
-.byd-card {
+/* Cards, loose or on a pile: a coloured face or a striped back. The two were written out twice
+   over, down to the same stripes; they are one card drawn in two places and are said once.
+   The padding and the border are screen pixels inside millimetres, which is a card's own floor:
+   under about 0.29 px/mm the sixteen of them are wider than the card's own short side, and a
+   pile's top then paints eighteen pixels over a card whose millimetres come to twelve. That is
+   known and not fixed here (#76). */
+.byd-card, .byd-pile .byd-pile-top {
   box-sizing: border-box;
   padding: 7px;
   border-radius: 6px;
-  cursor: grab;
-  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.45);
   border: 1px solid rgba(0, 0, 0, 0.35);
   background: hsl(var(--hue, 0) 40% 86%);
 }
-.byd-card[data-face='back'], .byd-back {
-  border: 2px solid #1f2b4a;
-  background: repeating-linear-gradient(45deg, #3a4d7a, #3a4d7a 4px, #2f4068 4px, #2f4068 8px);
-}
+.byd-card { cursor: grab; box-shadow: 0 3px 6px rgba(0, 0, 0, 0.45); }
 
 /* Piles: a stack with thickness, a count, a label. */
 .byd-pile { box-sizing: border-box; }
-.byd-pile .byd-pile-top {
-  position: absolute; inset: 0;
-  border-radius: 6px; padding: 7px; box-sizing: border-box;
-  border: 1px solid rgba(0, 0, 0, 0.35);
-  background: hsl(var(--hue, 0) 40% 86%);
-}
-.byd-pile .byd-pile-top[data-face='back'] {
+.byd-pile .byd-pile-top { position: absolute; inset: 0; }
+.byd-card[data-face='back'], .byd-back, .byd-pile .byd-pile-top[data-face='back'] {
   border: 2px solid #1f2b4a;
   background: repeating-linear-gradient(45deg, #3a4d7a, #3a4d7a 4px, #2f4068 4px, #2f4068 8px);
 }
@@ -189,6 +228,28 @@
     display: none;
   }
 }
+
+/* The TV on a felt this narrow is the observer's phone (C8, L12, #76), and a TV's felt is the one
+   that gets there: the played felt above has hidden its names, and the table's own screen is a
+   television. `data-tight` is the renderer's answer, because the felt's own box keeps the floor's
+   shape and is then turned — a container query on it measures the other side of the picture.
+   Two things give, and both are the felt's own measure rather than the screen's.
+
+   The type is set at the felt's tightest: a name at 13 px with 1.5 px of tracking is 76 px of a
+   331 px felt, and its tracking alone is a sixth of that — the same fifth K19 took out of table
+   mode. At 12 px and no tracking it is 62, which is what lets two seats facing each other across
+   a phone both say their names.
+
+   And a name at a side rim stands above its own zone rather than beside it, anchored at the end
+   nearest the rim and growing inward, so that it stays in its own half of the felt. Beside its
+   zone it grows from the zone's inner edge toward the middle, where the shared piles and their
+   count badges stand (K19, extended); on a felt this small that reach crosses the middle and
+   meets both the badge and the name of the seat opposite. Above its own zone it reaches only
+   half as far in, and the two seats facing each other no longer share a line at all. That half
+   of it is drawn through the same two variables the rim rules above use — the renderer says how
+   far, because it is the only one that knows how large the zone came out. */
+.byd-table-frame[data-tight] .byd-zone > span { font-size: 12px; letter-spacing: 0; }
+
 /* A pile that only exists because two cards were stacked (K1) has no name worth saying. */
 .byd-table-frame[data-mode='table'] .byd-pile[data-dynamic='true'] .byd-pile-name { display: none; }
 
@@ -202,7 +263,7 @@
   font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; color: #7d8597; white-space: nowrap;
 }
 .byd-table-frame[data-mode='tv'] .byd-pile-n {
-  position: absolute; right: -14px; top: -14px; pointer-events: auto;
+  position: absolute; left: 50%; top: 0; translate: -50% 0; pointer-events: auto;
   min-width: 30px; height: 30px; padding: 0 6px; box-sizing: border-box; border-radius: 999px;
   background: #e8eaf0; color: #0d0f14; display: grid; place-items: center; font-size: 15px; font-weight: 800;
 }
@@ -236,6 +297,10 @@
      give back. Written once, beside the line height it is half of. */
   --card-half: 10.5px;
 }
+/* The reader's own place card (C5, #77): ringed in the felt's own ink, so that a player whose
+   felt is not turned to put their edge at the bottom can still see, on the table itself, which
+   border is theirs. */
+.byd-seat-name[data-me] { box-shadow: 0 0 0 2px var(--byd-seat-ink); }
 .byd-seat-name[data-edge='S'] { transform: translateX(-50%); }
 .byd-seat-name[data-edge='N'] { transform: translateX(-50%) rotate(180deg); }
 /* A place card at a side edge is turned onto its side, and a box turned about its own middle
@@ -378,26 +443,79 @@
 
 /* The ring of verbs (C). */
 .byd-radial-backdrop { position: fixed; inset: 0; z-index: 40; }
+/* Nothing is drawn in the ring's middle, because the middle of a ring is the thing the ring is
+   about (L13, #90). It used to carry a translucent grey disc — `rgba(23, 26, 35, 0.55)` with a
+   pale hairline — and on a card's ring, which has no hub, that lay straight over the card whose
+   verbs were being chosen: the card's own ink read 3.66:1 through it where it reads better than
+   10:1 with nothing on top. Choosing between `Vänd`, `Vrid` and `Titta` is choosing about the
+   card under the finger, and a player has to be able to see it while they choose.
+   The one ring that does want a plate in its middle is a chip's, and it has one: the hub, opaque
+   and for that reason (#67) — the chip lies under the ring's centre and the felt has nowhere else
+   to say whose it is. A plate in the middle is what the ring is about when the felt cannot draw
+   it, never a tint over what the felt has already drawn. */
 .byd-radial { position: fixed; width: 0; height: 0; }
-.byd-radial::before { content: ''; position: absolute; left: -46px; top: -46px; width: 92px; height: 92px; border-radius: 50%; background: rgba(23, 26, 35, 0.55); border: 1px solid rgba(255, 255, 255, 0.15); }
+/* A disc wears the felt's own colours and keeps its plate (L13, K9, #90).
+   The plate is the exception the prototype measured out of the decision. The language draws a
+   second action as an outline with `background: transparent`, and a disc drawn that way over a
+   card face reads 1.22:1 — and a card's ring opens *on a card*, which is the ring's normal case
+   and not an accident. So the plate stays opaque: it is what makes a disc legible wherever on the
+   felt it lands, and the text on it is 14:1 over the green, the rim, the dark and a card face
+   alike. What comes in from the language is the colour, not the form.
+   The edge is two lines, and it has to be. `#3b4358` held 3:1 against no ground at all — 72 cases
+   out of 72, between 1.01 and 2.72:1 — and no single colour could have fixed it: the felt's green
+   and the rim need a pale line, a pale card face needs a dark one, and the two demands do not
+   meet. So the chalk says where the disc ends on everything dark, and the near-black ring just
+   outside it says the same on everything pale. */
 .byd-radial button {
-  position: absolute; transform: translate(-50%, -50%); width: 66px; height: 66px; border-radius: 50%; border: 1px solid #3b4358;
-  background: #171a23; color: #fff; font-size: 12px; font-weight: 700; cursor: pointer; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6);
+  position: absolute; transform: translate(-50%, -50%); width: 66px; height: 66px; border-radius: 50%; border: 1px solid var(--byd-felt-chalk);
+  background: var(--byd-felt-plate); color: var(--byd-felt-chalk); font-size: 12px; font-weight: 700; cursor: pointer;
+  box-shadow: 0 0 0 1px var(--byd-felt-edge), 0 8px 20px rgba(0, 0, 0, 0.6);
   display: grid; place-items: center; line-height: 1.1; text-align: center; touch-action: none;
 }
-.byd-radial button:hover { background: #7dd3a0; color: #0b2a18; }
-.byd-radial button:disabled { opacity: 0.35; cursor: default; }
+/* Pointed at, a disc is the thing about to be pressed, so it takes the felt's first-action
+   colours. It used to take `#7dd3a0` — the account's green, in the middle of the felt — which is
+   the same leak across surfaces L13 was written to close. */
+.byd-radial button:hover { background: var(--byd-felt-accent); color: var(--byd-felt-on-accent); }
+/* A disc that is not available is still a disc (L13, K9, #90).
+   It was drawn with `opacity: 0.35`, and opacity fades a whole element at once: the plate, the
+   ink and both lines of the edge together. On a pale card face — where a card's ring opens, by
+   definition — that left a muddy smear with no boundary at all: 1.39:1 for the word and 1.98:1
+   for the edge, so the one thing a verb out of play has to say, that it is *there* and not to be
+   had, is the thing it stopped saying. A control nobody can see is worse than one nobody can use.
+   So it is dimmed deliberately instead. The plate stays opaque and loses its depth — a flat slate
+   instead of the live disc's near-black — the chalk is rubbed a little way back into it, and the
+   two lines of the edge are left exactly as they are, because where a disc ends does not depend
+   on whether it can be pressed. The word reads 4.5:1 on its own plate against the 14:1 it reads
+   when it can be pressed: plainly weaker, and still plainly legible at three metres. And the disc
+   stops standing off the felt — both lines, no lift — which is the second thing that says it is
+   out of play, and it costs no contrast at all.
+   `background` is declared here rather than left to be inherited: `:disabled` and `:hover` are
+   both (0,2,1), and a pointer resting on a dead disc must not repaint it in the first action's
+   amber. */
+.byd-radial button:disabled {
+  cursor: default;
+  background: var(--byd-felt-plate-off);
+  color: var(--byd-felt-chalk-off);
+  box-shadow: 0 0 0 1px var(--byd-felt-edge);
+}
 /* The hub: what the ring is about, for a thing the felt cannot say for itself (#67). Opaque and
    not a tint, because the chip itself lies under the ring's centre and a translucent hub let the
    disc and the zone's label read straight through the number they were being replaced by. Never
-   a control — the finger slides over it on the way to a verb. */
+   a control — the finger slides over it on the way to a verb.
+   It takes the discs' own lift, and for the same two reasons they have it (#89): the near-black
+   ring says where the hub ends on a pale ground the way its own pale hairline says it on a dark
+   one, and the shadow puts it on top of the felt instead of in it. Without them the middle of the
+   ring lay flatter than everything it anchors and read as a hole punched in the green. The lift
+   is all it takes from a disc: it is still not a control, so it keeps `pointer-events: none` and
+   gains neither a cursor nor a hover. */
 .byd-radial-hub {
   position: absolute; left: -46px; top: -46px; width: 92px; height: 92px; box-sizing: border-box; padding: 0 8px;
-  border-radius: 50%; background: #171a23; border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 50%; background: var(--byd-felt-plate); border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 0 0 1px var(--byd-felt-edge), 0 8px 20px rgba(0, 0, 0, 0.6);
   display: grid; place-content: center; text-align: center; line-height: 1.05; pointer-events: none;
   font: 700 11px system-ui, sans-serif; color: #fff;
 }
-.byd-radial-hub b { font-size: 24px; color: #f0b64a; }
+.byd-radial-hub b { font-size: 24px; color: var(--byd-felt-accent); }
 .byd-radial-hub span, .byd-radial-hub i { display: block; max-width: 76px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .byd-radial-hub span { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #aab3c5; }
 .byd-radial-hub i { font-style: normal; font-size: 9px; font-weight: 600; color: #9aa3b8; }
