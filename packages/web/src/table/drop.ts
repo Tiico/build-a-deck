@@ -6,6 +6,28 @@ import { zoneAt } from '../zones.js'
 export const CARD_MM = { w: 63, h: 88 }
 
 export type Point = { x: number; y: number }
+
+// The room between a pile and what is split off it, in table millimetres.
+export const BESIDE_MM = 12
+
+// Where a split off a pile lands (K14): beside the pile, on the side its label is not on. The
+// pile's name stands under it and its count rides its top-right corner, in the pile's own frame,
+// so the side free of both is the pile's left — turned with the pile, since its label turns too.
+// The point travels in the intent, and the engine centres a new pile on it; but a pile of one is
+// no pile (K1) and settles into a loose card whose *corner* is that point. So a single card is
+// placed by its corner and a pile by its centre, which is the one way both stand a card's width
+// beside the pile. Placing the card by the pile's rule put it half a card lower and further
+// along, straight onto the name (#87).
+export function besidePile(pile: { x: number; y: number; rot: number }, cards: number): Point {
+  const rad = (pile.rot * Math.PI) / 180
+  const d = CARD_MM.w + BESIDE_MM
+  const centre = { x: pile.x - d * Math.cos(rad), y: pile.y - d * Math.sin(rad) }
+  const at = cards === 1 ? { x: centre.x - CARD_MM.w / 2, y: centre.y - CARD_MM.h / 2 } : centre
+  // Whole millimetres in the log, and never the -0 a turned pile's sine leaves behind.
+  const mm = (v: number): number => Math.round(v) + 0
+  return { x: mm(at.x), y: mm(at.y) }
+}
+
 export type DragTarget = { kind: 'card'; id: string } | { kind: 'counter'; id: string } | { kind: 'pileTop'; pile: string } | { kind: 'pile'; pile: string }
 export type Drag = {
   target: DragTarget

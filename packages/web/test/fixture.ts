@@ -1,7 +1,7 @@
 import type { Server } from 'node:http'
 import { CARD_STANDARD_63x88, TOKEN_COUNTER, TypeRegistry, type SetupDef, STANDARD_TYPES } from '@byd/engine'
 import { TableHost, createServer, MemoryLogStore, MemoryProjectStore, MemorySurveyStore, MemoryAuthStore, MemoryMailer, MemoryAssetStore } from '@byd/server'
-import { applyRecipe, emptySetup } from '@byd/server/doc'
+import { applyRecipe, emptySetup, type Recipe } from '@byd/server/doc'
 import { MemoryRenderStore } from '@byd/render/queue'
 
 // A real server in-process. Client tests talk to it over a real socket — no mocks.
@@ -30,9 +30,10 @@ export function twoSeatSetup(): SetupDef {
 
 // A table laid out the way the wizard lays one out, for any number of seats the recipe allows.
 // Past four players the recipe seats two people along the same side of the felt, so this is the
-// only way to get a table whose seats share an edge (#42).
-export function recipeSetup(players: number): SetupDef {
-  const setup = applyRecipe(emptySetup(), { players, mine: false, discard: false, market: false, counters: [] })
+// only way to get a table whose seats share an edge (#42). Bare by default; the wizard's own
+// table has an area in front of every seat and a discard pile, which is asked for by name.
+export function recipeSetup(players: number, recipe: Partial<Omit<Recipe, 'players'>> = {}): SetupDef {
+  const setup = applyRecipe(emptySetup(), { mine: false, discard: false, market: false, counters: [], ...recipe, players })
   return {
     seats: setup.seats,
     floor: setup.floor,

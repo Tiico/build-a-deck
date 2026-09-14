@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CARD_STANDARD_63x88, initialState, project } from '@byd/engine'
 import type { Intent, Snapshot } from '@byd/protocol'
-import { CARD_MM, dropIntents, type Drag, type Point } from '../src/table/drop.js'
+import { BESIDE_MM, CARD_MM, besidePile, dropIntents, type Drag, type Point } from '../src/table/drop.js'
 import { zoneAt } from '../src/zones.js'
 import { recipeSetup, registry } from './fixture.js'
 import { buildScene } from './scene.js'
@@ -131,5 +131,28 @@ describe('the pointer decides where a drop lands (K2, K14)', () => {
     const draw = geometryOf(v, 'draw')
     const fromDraw = (at: Point): Drag => ({ target: { kind: 'pileTop', pile: 'draw' }, ids: [], grab: { x: draw.x, y: draw.y }, at, origin: {} })
     expect(rims.map((r) => landedIn(dropIntents(v, fromDraw(r.at))))).toEqual([['hand:A'], ['hand:B'], ['hand:C'], ['hand:D']])
+  })
+})
+
+// Where a split lands is the client's choice and travels in the intent (K14); the engine centres
+// a new pile on the point and lets a pile of one settle into a card cornered there (K1). The
+// pile's label is under it and on its top-right corner, so what is split off goes to its left,
+// turned with the pile (#87).
+describe('what is split off a pile lands beside it, clear of its label (#87)', () => {
+  const pile = { x: -140, y: 0, rot: 0 }
+  const across = CARD_MM.w + BESIDE_MM
+
+  it('places a single card by its corner, so that it stands a card\'s width to the pile\'s left', () => {
+    expect(besidePile(pile, 1)).toEqual({ x: Math.round(pile.x - across - CARD_MM.w / 2), y: Math.round(pile.y - CARD_MM.h / 2) })
+  })
+
+  it('places a pile by its centre, on the same line as the pile it came off', () => {
+    expect(besidePile(pile, 2)).toEqual({ x: pile.x - across, y: pile.y })
+  })
+
+  it('turns with the pile: a pile turned a quarter has its left above it', () => {
+    expect(besidePile({ ...pile, rot: 90 }, 2)).toEqual({ x: pile.x, y: pile.y - across })
+    expect(besidePile({ ...pile, rot: 180 }, 2)).toEqual({ x: pile.x + across, y: pile.y })
+    expect(besidePile({ ...pile, rot: -90 }, 1)).toEqual({ x: Math.round(pile.x - CARD_MM.w / 2), y: Math.round(pile.y + across - CARD_MM.h / 2) })
   })
 })

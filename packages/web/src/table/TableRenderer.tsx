@@ -7,7 +7,7 @@ import { seatColor } from './seatColor.js'
 import { feltScale, fitScale, LEAST_AIR_PX } from './fit.js'
 import { activeBounds, cameraOf, fitFloor, frameRect, pad, reachOf, same, tween, zoomAround, type Rect, type Size } from './camera.js'
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
-import { CARD_MM, absoluteOf, dropIntents, type Drag, type DragTarget } from './drop.js'
+import { CARD_MM, absoluteOf, besidePile, dropIntents, type Drag, type DragTarget } from './drop.js'
 import { isCounter } from '../components.js'
 import { DEFAULT_TIMING } from '../status/connection.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
@@ -680,14 +680,16 @@ function ringItems(view: Snapshot, target: Ring['target'], act: (intents: Intent
   if (!z) return []
   const count = z.mode === 'count' ? z.count : z.order.length
   const top = view.components.find((c) => c.id === topIdOf(z))
-  const beside = { x: z.geometry.x + CARD_MM.w + 12, y: z.geometry.y }
+  // What is split off lands beside the pile, clear of its label (#87); where that is depends on
+  // whether one card or a pile is what lands.
+  const split = (cards: number): Intent => ({ v: 'split', pile: z.id, at: cards, ...besidePile(z.geometry, cards) })
   // The top is flipped by naming the pile (K15): a hidden pile gives no id, and an unseen top
   // is by definition not face-up.
   const flipTop = (): Intent[] => [{ v: 'flip', component: { top: z.id }, face: top?.face === 'front' ? 'back' : 'front' }]
   return [
     { label: t('ring.shuffle'), run: count > 1 ? () => act([{ v: 'shuffle', pile: z.id }]) : null },
-    { label: t('ring.draw'), run: count > 0 ? () => act([{ v: 'split', pile: z.id, at: 1, ...beside }]) : null },
-    { label: t('ring.half'), run: count > 1 ? () => act([{ v: 'split', pile: z.id, at: Math.ceil(count / 2), ...beside }]) : null },
+    { label: t('ring.draw'), run: count > 0 ? () => act([split(1)]) : null },
+    { label: t('ring.half'), run: count > 1 ? () => act([split(Math.ceil(count / 2))]) : null },
     { label: t('ring.flipTop'), run: count > 0 ? () => act(flipTop()) : null },
     look(top),
   ]

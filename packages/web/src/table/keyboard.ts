@@ -1,7 +1,7 @@
 import type { Intent, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
 import { translate, type T } from '../i18n/index.js'
 import { isCounter } from '../components.js'
-import { CARD_MM } from './drop.js'
+import { CARD_MM, besidePile } from './drop.js'
 import { handName } from './handName.js'
 
 // Everything the keyboard says is the tool's own, so it is looked up where the reader is (A4).
@@ -138,7 +138,7 @@ export function verbsFor(view: Snapshot, thing: Thing, t: T = swedish): Act[] {
   return [
     { key: 'shuffle', label: t('ring.shuffle'), intents: n > 1 ? [{ v: 'shuffle', pile: z.id }] : null },
     ...(view.seat === null ? [] : [{ key: 'toHand', label: t('kbd.verb.toHand'), intents: n > 0 ? [{ v: 'split' as const, pile: z.id, at: 1, to: `hand:${view.seat}` }] : null }]),
-    { key: 'half', label: t('ring.half'), hint: t('kbd.hint.half'), intents: n > 1 ? [{ v: 'split', pile: z.id, at: Math.ceil(n / 2), x: z.geometry.x + CARD_MM.w + 14, y: z.geometry.y }] : null },
+    { key: 'half', label: t('ring.half'), hint: t('kbd.hint.half'), intents: n > 1 ? [{ v: 'split', pile: z.id, at: Math.ceil(n / 2), ...besidePile(z.geometry, Math.ceil(n / 2)) }] : null },
   ]
 }
 
