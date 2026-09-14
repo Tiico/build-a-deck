@@ -11,6 +11,8 @@ import { ClaimPage } from './account/ClaimPage.js'
 import { InvitePage } from './account/InvitePage.js'
 import { TextureFailures } from './table/TextureFailures.js'
 import { NotFoundPage } from './status/NotFoundPage.js'
+// PROTOTYPE — THROWAWAY route (#former). Remove with ShapesPrototype.tsx.
+import { ShapesPrototypePage } from './editor/ShapesPrototype.js'
 import { DocumentTitle } from './status/DocumentTitle.js'
 import { StatusLive } from './status/StatusLive.js'
 import { Language, detectLang } from './i18n/index.js'
@@ -45,6 +47,7 @@ function route() {
   if (location.pathname === '/online') return <OnlinePage />
   if (location.pathname === '/editor') return <EditorPage />
   if (location.pathname === '/new') return <NewProjectPage />
+  if (location.pathname === '/prototype/former') return <ShapesPrototypePage />
   if (location.pathname === '/login') return <LoginPage />
   if (location.pathname === '/claim') return <ClaimPage />
   if (location.pathname.startsWith('/invites/')) return <InvitePage />

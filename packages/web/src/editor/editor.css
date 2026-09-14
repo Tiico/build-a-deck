@@ -1268,3 +1268,32 @@
    is React's to know, not the stylesheet's — a handle hidden by CSS is still a stop in the tab
    order, and there would be one per cell. */
 .byd-data-icon { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); z-index: 2; border: 1px solid #4a5163; background: #1b1d23; color: #ffd98a; border-radius: 6px; padding: 1px 5px; font: 700 10px ui-monospace, monospace; cursor: pointer; }
+
+/* PROTOTYPE — THROWAWAY (ShapesPrototype.tsx). Delete with the prototype. */
+.proto-root { height: 100vh; background: var(--byd-editor-tool-bg, #1b1d23); }
+.proto-root > .byd-canvas { height: 100vh; background: #1b1d23; color: #dce3f2; }
+.proto-h3 { grid-column: 1 / -1; margin: 6px 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--byd-editor-hint-ink); }
+.proto-gallery { grid-column: 1 / -1; display: grid; gap: 4px; }
+.proto-gallery button { display: grid; place-items: center; min-height: 34px; padding: 4px; border: 1px solid #2a2d36; border-radius: 6px; background: #0f1115; color: #cdd5e6; cursor: pointer; }
+.proto-gallery button[aria-pressed='true'] { border-color: var(--byd-editor-primary-mark); background: #2f3a55; color: #fff; }
+.proto-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.proto-chips button { flex: 1 1 auto; min-height: 30px; padding: 0 8px; border: 1px solid #2a2d36; border-radius: 999px; background: #0f1115; color: #cdd5e6; font-size: 12px; cursor: pointer; }
+.proto-chips button[aria-pressed='true'] { border-color: var(--byd-editor-primary-mark); background: #2f3a55; color: #fff; }
+.proto-disclose { justify-self: start; border: 0; background: transparent; color: var(--byd-editor-hint-ink); font: inherit; font-size: 12px; padding: 4px 0; cursor: pointer; }
+.proto-tabs { display: flex; gap: 4px; margin-bottom: 10px; }
+.proto-tabs button { flex: 1; min-height: 30px; border: 1px solid #2a2d36; border-bottom-width: 2px; border-radius: 6px 6px 0 0; background: #0f1115; color: #cdd5e6; font-size: 12px; cursor: pointer; }
+.proto-tabs button[aria-selected='true'] { border-bottom-color: var(--byd-editor-primary-mark); background: #2f3a55; color: #fff; }
+.proto-backs { display: grid; gap: 6px; }
+.proto-backs button { display: grid; justify-items: center; gap: 4px; padding: 6px 4px; border: 1px solid #2a2d36; border-radius: 8px; background: #0f1115; color: #cdd5e6; font-size: 11px; cursor: pointer; }
+.proto-backs button[aria-pressed='true'] { border-color: var(--byd-editor-primary-mark); background: #2f3a55; color: #fff; }
+/* CardPreview already zooms; scaling the wrapper too shrank every thumbnail twice. */
+.proto-back-glyph { display: block; border-radius: 3px; overflow: hidden; }
+.proto-overlay { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(10, 12, 16, 0.78); }
+.proto-sheet { width: min(620px, 92%); padding: 16px; border: 1px solid #2f333d; border-radius: 12px; background: #1b1d23; }
+.proto-sheet h2 { margin: 0 0 10px; }
+.proto-close { margin-top: 12px; min-height: 36px; padding: 0 14px; border: 0; border-radius: 8px; background: var(--byd-editor-primary-mark); color: #0b0d12; font: inherit; cursor: pointer; }
+.proto-badge { position: absolute; left: 12px; bottom: 12px; }
+.proto-badge > button { display: flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px; border: 1px solid #2f333d; border-radius: 999px; background: #1b1d23; color: #dce3f2; font: inherit; font-size: 12px; cursor: pointer; }
+.proto-popover { position: absolute; left: 0; bottom: calc(100% + 6px); width: 260px; padding: 8px; border: 1px solid #2f333d; border-radius: 10px; background: #1b1d23; }
+.proto-switcher { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-radius: 999px; background: #ff2ec4; color: #16000f; font-size: 13px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5); z-index: 50; }
+.proto-switcher button { border: 0; background: rgba(0, 0, 0, 0.18); color: inherit; border-radius: 999px; width: 28px; height: 28px; font-size: 15px; cursor: pointer; }
