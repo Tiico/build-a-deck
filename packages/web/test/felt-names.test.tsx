@@ -440,16 +440,48 @@ describe('the Bord tab gives the felt the room its names need (#43)', () => {
 // down, because three metres away that is the whole of whether the table can be read. Moving a
 // name touches none of it — not the felt's size, not the fit, not the camera — and this is what
 // says so rather than anyone's word for it.
+//
+// Raised 2026-09-15 from 27, 40 and 89 (K9): the TV's chrome gave up its header and its seat dock
+// and moved both into the column beside the felt, and the felt is bound by its height, so every
+// pixel those two rows held came back as card. Nothing about a name moved with them, which is
+// what the second half of the reading — the smallest name, still 12 px — goes on saying.
 describe('a name that moved changed no readability number (K9, K18)', () => {
   it.each([
-    [1280, 800, 27],
-    [1920, 1080, 40],
-    [3840, 2160, 89],
+    [1280, 800, 33],
+    [1920, 1080, 49],
+    [3840, 2160, 99],
   ])('draws the card %i × %i px wide at eight seats', async (w, h, cardPx) => {
     const size = { w, h }
     const reading = await readNames(await tvFelt(sceneOf(feltOf(MAX_PLAYERS)), size), size)
     // And the smallest name is the 12 px it has always been: nothing shrank to make room.
     expect({ card: reading.cardPx, smallest: reading.smallest }).toEqual({ card: cardPx, smallest: 12 })
+  }, 60_000)
+
+  // The numbers above are a pin: they say a reading did not move. This is the floor under them,
+  // and it is the whole of why the chrome was rearranged (K8, K9).
+  //
+  // The TV's inspection panel holds one card up large for the room, and pointing at a card is what
+  // fills it. That is a good way in and a bad requirement: nobody wants to keep a pointer moving
+  // across a screen everyone else is watching, so the felt has to carry a card that can be told
+  // apart on its own. It could not: the chrome laid itself out in three grid rows — 64 px of
+  // header, the felt, a 150 px seat dock — and a card on the wizard's four-seat table at
+  // 1920 x 1080 measured 68 px across.
+  //
+  // Sharpness was never what was missing. The face is rendered at 150 dpi (`TEXTURE_DPI`) and is
+  // 372 x 520 px, five and a half times the detail the screen shows, and a texture rendered at the
+  // size it is drawn came out measurably worse than the browser's own reduction of the large one.
+  // What was missing was room, and the room was going to those two rows: the felt is bound by its
+  // height and never by its width, so the column beside it is free and a row above or below it is
+  // not. With both rows moved into the column the same card is 82 px.
+  //
+  // Eighty is the gate. It is under what the layout gives, so a card that has lost its room says
+  // so, and it is well over anything the three-row chrome could have given. The reading is
+  // geometry and not type — a card's width is `63 mm x scale` — so it does not turn on which face
+  // the machine running it happens to have.
+  it('gives a card on a four-seat table room to be told apart without anyone pointing at it', async () => {
+    const size = { w: 1920, h: 1080 }
+    const reading = await readNames(await tvFelt(sceneOf(feltOf(4)), size), size)
+    expect({ card: reading.cardPx >= 80, px: reading.cardPx }).toEqual({ card: true, px: reading.cardPx })
   }, 60_000)
 })
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { Activity, Snapshot } from '@byd/protocol'
 import type { TableClient } from '../client.js'
-import { RECENT_MS, emptyPresence, prunePresence, reducePresence, type PresenceState, type Recent } from './presence.js'
+import { RECENT_MS, componentOf, emptyPresence, prunePresence, reducePresence, type PresenceState, type Recent } from './presence.js'
 import { useT } from '../i18n/index.js'
 
 // Presence (K6) for a screen that shows the table: the others' cursors and carried cards, pruned
@@ -32,10 +32,8 @@ export function useRecent(activity: readonly Activity[]): Recent[] {
     seenLines.current = activity.length
     const now = Date.now()
     const moved = fresh.flatMap((l): Recent[] => {
-      const it = l.intent
-      const component = it.v === 'move' || it.v === 'rotate' || it.v === 'flip' || it.v === 'stack' ? it.component : null
-      // A pile named as the source (K15) points at no card this view can highlight.
-      return typeof component === 'string' ? [{ component, seat: l.by, at: now }] : []
+      const component = componentOf(l)
+      return component === null ? [] : [{ component, seat: l.by, at: now }]
     })
     if (moved.length === 0) return
     setRecent((r) => [...r.filter((x) => now - x.at < RECENT_MS), ...moved])

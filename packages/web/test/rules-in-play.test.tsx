@@ -47,8 +47,9 @@ describe('the rules where the game is played (B7)', () => {
   })
 
   // Two things wanted the TV's top right corner: the way a phone gets in, and the rulebook. The
-  // header lays both out now; the felt's own screen keeps the drawer over the felt (#30).
-  it('stands in the TV header beside the way in, and over the felt in table mode', async () => {
+  // head of the column beside the felt lays both out now; the felt's own screen keeps the drawer
+  // over the felt (#30).
+  it('stands in the TV head beside the way in, and over the felt in table mode', async () => {
     const id = await tableWithRules()
     const { host } = await asTable(run, id)
     const open = (mode: string) => {
@@ -58,7 +59,7 @@ describe('the rules where the game is played (B7)', () => {
 
     const tv = open('tv')
     const inHeader = await screen.findByRole('button', { name: 'Regler' })
-    expect(inHeader.closest('[data-tv] > header')).toBeTruthy()
+    expect(inHeader.closest('[data-tv] .byd-tv-head')).toBeTruthy()
     expect(inHeader.closest('.byd-rules-drawer')?.getAttribute('data-placement')).toBe('tv')
     tv.unmount()
 

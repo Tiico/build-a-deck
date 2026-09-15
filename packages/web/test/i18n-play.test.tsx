@@ -30,9 +30,19 @@ describe('the play surfaces in the reader\'s own language (A4)', () => {
     )
     expect(screen.getByText(/join with your phone/i)).toBeTruthy()
     expect(screen.getByRole('region', { name: /inspection/i })).toBeTruthy()
-    expect(screen.getByText(/point at a card/i)).toBeTruthy()
 
-    const dock = screen.getByRole('list', { name: /seats/i })
+    // The panel holds the card the last line was about (K8), so its waiting words are read where
+    // there is nothing to hold: a table nobody has touched.
+    render(
+      <Language lang="en">
+        <TvChrome view={view(null)} activity={[]} roomCode="KX7P">
+          <div />
+        </TvChrome>
+      </Language>,
+    )
+    expect(screen.getAllByText(/point at a card/i).length).toBeGreaterThan(0)
+
+    const dock = screen.getAllByRole('list', { name: /seats/i })[0]!
     expect(within(dock).getAllByRole('listitem').map((s) => s.textContent)).toEqual([
       expect.stringMatching(/Ada.*2 cards in hand/),
       expect.stringMatching(/B.*0 cards in hand/),

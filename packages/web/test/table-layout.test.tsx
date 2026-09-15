@@ -395,8 +395,10 @@ describe('the tilted table stands in its own dark (K9, reviderat 2026-09-12)', (
 
 // The room code and the QR are how a phone gets in (K12); the rulebook is one press away on the
 // same screen (B7). Both wanted the top right corner, and the drawer took it by lying over the
-// header. The header has to lay all three out instead (#30).
-describe('the rules button and the way in share the TV header (#30)', () => {
+// header. The chrome has to lay all three out instead (#30). Since the felt was given the whole
+// window height, that head is the top of the column beside the table rather than a row above it —
+// which changes where the three stand, and not that all three are laid out.
+describe('the rules button and the way in share the TV head (#30)', () => {
   const withRules = () =>
     markupOf(
       <TvChrome view={scene()} activity={[]} roomCode="KX7P" joinUrl="https://byd.example/join?code=KX7P" rules={<button type="button" className="byd-rules-open">Regler</button>}>
@@ -405,24 +407,25 @@ describe('the rules button and the way in share the TV header (#30)', () => {
     )
 
   it('lays the rules button out beside the room code and the QR, never over them', async () => {
-    const at = await measureHtml(withRules(), FRAME, { rules: '.byd-rules-open', code: '[data-tv] > header strong', qr: '[data-tv] .byd-qr' }, 'tv chrome')
+    const at = await measureHtml(withRules(), FRAME, { rules: '.byd-rules-open', code: '[data-tv] .byd-tv-join strong', qr: '[data-tv] .byd-qr' }, 'tv chrome')
     const [rules, code, qr] = [at('rules'), at('code'), at('qr')]
     const overlaps = (a: Box, b: Box) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h
     expect({ overCode: overlaps(rules, code), overQr: overlaps(rules, qr) }).toEqual({ overCode: false, overQr: false })
-    // And it is inside the header, so no future placement can drift back over them.
-    expect(withRules()).toMatch(/<header[\s\S]*byd-rules-open[\s\S]*<\/header>/)
+    // And it is inside the head, beside the game's own name, so no future placement can drift
+    // back over them.
+    expect(withRules()).toMatch(/byd-tv-head[\s\S]*byd-rules-open[\s\S]*<\/div>/)
   }, 60_000)
 
   // The way in is not on every screen that uses this chrome — the observer's has none — so the
   // rules cannot hang off the join block.
-  it('holds the rules in the header even when there is no way in to show', () => {
+  it('holds the rules in the head even when there is no way in to show', () => {
     const html = markupOf(
       <TvChrome view={scene()} activity={[]} rules={<button type="button" className="byd-rules-open">Regler</button>}>
         <div />
       </TvChrome>,
     )
     expect(html).not.toContain('byd-tv-join')
-    expect(html).toMatch(/<header[\s\S]*byd-rules-open[\s\S]*<\/header>/)
+    expect(html).toMatch(/byd-tv-head[\s\S]*byd-rules-open[\s\S]*<\/div>/)
   })
 })
 

@@ -1128,6 +1128,14 @@ Tryck-och-håll på ett kort visar det i full upplösning ovanpå bordet, bara f
 Ett dolt kort förstoras som baksida — samma ansiktsanrop som texturen, ingen ny synlighetsregel.
 Förstoringen är privat; "titta på det här" är peka-gesten i K6.
 
+Reviderat 2026-09-15: TV:ns inspektionspanel fyller sig själv.
+Panelen visade kortet pekaren vilade på och bad om "peka på ett kort" när ingen pekade.
+Att peka är en bra väg in och ett dåligt villkor: en TV tittar ett helt rum på och ingen håller i den, så en panel som bara fylls av en pekare står tom under nästan hela ett spel.
+Vilotillståndet är därför kortet den senaste raden handlade om, så länge den är den senaste, och en pekare skriver över det.
+Panelen ber om att bli pekad på bara när ingenting som hänt handlade om ett kort — ett bord ingen rört, eller en logg med bara sittningar, blandningar och givar i sig.
+Kortet slås upp i samma ögonblicksbild som ritas, så en rad om ett kort skärmen inte längre ser lämnar panelen där den stod i stället för att namnge något som inte finns.
+Regeln för vilket kort en rad handlar om sägs på ett ställe — `componentOf` i `packages/web/src/table/presence.ts` — och läses av både filten, som färgar ett kort som just flyttats (K6), och panelen.
+
 ### K9. Bordsvyns utseende: filtbord som renderare, sändningslayout som TV-omgivning (prototypat 2026-09-06)
 
 Tre prototyper byggdes och jämfördes: planritning, filtbord med perspektiv, och en mörk sändningslayout.
@@ -1292,6 +1300,32 @@ Det gäller bara `/online` i ett liggande fönster; i ett stående ritas den egn
 
 Kvar står en avvikelse som inte lagas här och som är värd att veta: var ett släpp landar följer fläkten som den ritas (K2, #65), och en hopvikt fläkt ritas inte — men `dropAt` mäter den ändå.
 Följden är ingen i dag, eftersom `playedAt` redan vägrar lägga ett kort i den egna handen, och den blir en följd först den dag den egna handzonen ska kunna ta emot något.
+
+Reviderat 2026-09-15: TV:ns krom står i en kolumn, aldrig i en rad över eller under filten.
+Kromet låg i tre rader — 64 px rubrik, filten, 150 px platsdock — plus en kolumn på 340 px, och ett kort på ett fyrasitsigt bord mätte då 68 × 95 px på en skärm på 1920 × 1080.
+Det talet är vad som tvingade fram hovrandet: kortets textur renderas i 150 dpi och är 372 × 520 px, alltså fem och en halv gång mer detalj än skärmen visar, så skärpan var aldrig det som fattades.
+En textur renderad i den storlek kortet faktiskt ritas blev dessutom mätbart sämre än webbläsarens egen nedskalning av den stora — nedskalningen är rätt väg och var redan vald.
+Det som fattades var rum, och rummet togs ovanför och under filten: filten binds av sin höjd och aldrig av sin bredd, eftersom 800 mm filt i den ram en TV lämnar är det som sätter skalan.
+Alltså kostar kolumnen bredvid filten ingenting alls, medan varje rad över eller under den kostar allt den tar.
+Rubriken, vägen in, inspektionen, platserna och flödet står därför i en och samma kolumn, och samma kort mäter 82 px.
+Platsdocken är kvar som dock — varje plats sitt eget kort med platsens färg längs vänsterkanten — men staplad nedåt i stället för längs skärmens underkant; det är axeln som vände, inte vad en läsare lärt sig hitta.
+Bordet beskärs inte: kameran är orörd, hela filten med alla fyra händer syns som förut, och hela vinsten kommer ur möbleringen.
+Kolumnen är filtens granne och aldrig dess hyresvärd: den ger upp inifrån sig själv vad den inte rymmer, så åtta platser och ett långt flöde kan aldrig skjuta raden den delar med filten förbi fönstret.
+Ordningen för vad som ger först är sagd och inte slumpad: kortet i inspektionen ger först — det är en bild och läses i vilken storlek som helst, och behåller 63 × 88 hela vägen ner, så det som krymper är ett kort och aldrig ett hoptryckt kort.
+Flödet har botten på två rader och sin rubrik, eftersom ett flöde kapat till ingenting är ett flöde som tagits bort.
+Och på en låg skärm ställer sig docken två i bredd i stället för att skrollas till en halvritad plats: en lista som slutar mitt i en rad läses som en trasig rad och inte som mer nedanför, och docken är det enda på skärmen som alltid ska vara hel.
+Den tar då bredden den har i stället för höjden den inte har — vilket är formen den hade längs skärmens underkant ändå — och lämnar raden om vad platsen senast gjorde till flödet, som redan säger den i samma platsfärger.
+
+Grinden står i `packages/web/test/felt-names.test.tsx`, bland K18:s lästal och i samma mätning: kortets bredd läses i Chromium på ett fyrasitsigt bord i TV:ns eget krom, och allt under 80 px fälls.
+Den bor där och inte i en egen svit med en egen appbyggnad och en egen webbläsare, eftersom det är samma mätning på samma filt — och en webbläsare till i körningen är en körning till som faller på tid under last.
+Måttet är geometri och inte typografi — ett korts bredd är `63 mm × skalan` — så det beror inte på vilket typsnitt maskinen som kör det råkar ha.
+Med det gamla kromet läser den 70 px och fäller; med det nya 83.
+
+Prövat och förkastat i samma vända (prototyperna A, B och C, 2026-09-15):
+Att låta filten fylla skärmen kant till kant och lägga kromet ovanpå den gav exakt samma 82 px, eftersom kolumnen aldrig var det som kostade — och flödet krympte till en rad.
+Att låta kameran rama bara det som verkligen är i spel — tomma rutor framför platserna och guldmarker slutar hålla ramen öppen — gav 116 px, men beskär då bort handfläktarna och rutorna framför platserna helt.
+Att aldrig beskära en hand är vid fyra platser ordagrant detsamma som att visa hela filten, eftersom händerna ligger vid alla fyra kanterna: det villkoret och de 116 px:en går inte att ha samtidigt.
+Valet blev hela bordet och 82 px, tillsammans med panelen som fyller sig själv (K8) — två små grepp i stället för ett som gör TV:n till ett utsnitt av bordet i stället för ett bord.
 
 ### K10. Telefonvyns utseende: remsan (prototypat 2026-09-06)
 
