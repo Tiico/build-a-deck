@@ -1,0 +1,50 @@
+import { APART, BLINDNESS, TOGETHER, contrastRatio, distance, simulate, type Blindness } from '@byd/template'
+import type { Row } from './types.js'
+
+// The game's meanings and what they are painted in (E4), judged all at once.
+//
+// A colour per use would be forty chances to write an unreadable card and forty chances to say
+// the same thing in two different reds. A meaning is one place instead — so this is the one place
+// a deck can be told that a colour will not be read on the card it sits on, or that two of its
+// meanings become the same colour for a colour-blind reader. Both judgements are the card check's
+// own (E5), reused rather than rewritten, so the palette cannot pass what a card would fail.
+
+// A symbol is a graphic and not a sentence: it wants 3:1 against its ground, not 4.5:1.
+export const ROLE_MIN_CONTRAST = 3
+
+export type PaletteIssue =
+  | { role: string; code: 'too-faint'; against: string }
+  | { role: string; code: 'colour-only'; with: string; blindness: Blindness }
+
+export function paletteIssues(palette: Record<string, string>, ground: string): PaletteIssue[] {
+  const roles = Object.entries(palette)
+  const issues: PaletteIssue[] = []
+  for (const [role, colour] of roles) {
+    if (contrastRatio(colour, ground) < ROLE_MIN_CONTRAST) issues.push({ role, code: 'too-faint', against: ground })
+  }
+  for (const [i, [aRole, a]] of roles.entries()) {
+    for (const [bRole, b] of roles.slice(i + 1)) {
+      // Two colours that already look alike to everyone are the deck's own choice and not a
+      // finding: what is caught here is a pair that parts company only for some readers.
+      if (distance(a, b) < APART) continue
+      const lost = BLINDNESS.find((kind) => distance(simulate(a, kind), simulate(b, kind)) < TOGETHER)
+      if (lost) issues.push({ role: bRole, code: 'colour-only', with: aRole, blindness: lost })
+    }
+  }
+  return issues
+}
+
+// How often each meaning is actually written, so the palette can show what the deck uses and what
+// it has stopped using. A meaning is written the same way in card text and in an icon row — after
+// a bar — because the row and the sentence are the same symbols (L1, L2, E4).
+export function rolesUsed(rows: readonly { fields: Row }[]): Record<string, number> {
+  const out: Record<string, number> = {}
+  const written = /\{?[\p{L}\p{N}_-]+\|([\p{L}\p{N}_-]+)\}?/gu
+  for (const { fields } of rows) {
+    for (const value of Object.values(fields)) {
+      if (typeof value !== 'string') continue
+      for (const [, role] of value.matchAll(written)) if (role) out[role] = (out[role] ?? 0) + 1
+    }
+  }
+  return out
+}

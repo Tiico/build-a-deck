@@ -102,6 +102,7 @@ export const svEditor = {
   'undo.what.template': 'en ändring i mallen',
   'undo.what.table': 'en ändring på bordet',
   'undo.what.symbols': 'en ändring bland symbolerna',
+  'undo.what.picture': 'hur en bild är inramad',
   'undo.what.rules': 'en ändring i reglerna',
   'undo.what.font': 'en ändring bland typsnitten',
   'undo.what.version': 'en tillbakatagen version',

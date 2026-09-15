@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CATEGORIES, LIBRARY, freeIconName, searchSymbols, svgBytes, symbolName } from '../src/editor/symbols.js'
+import { CATEGORIES, INK, LIBRARY, freeIconName, searchSymbols, svgBytes, symbolName } from '../src/editor/symbols.js'
 import { translate, type T } from '../src/i18n/index.js'
 
 const english: T = (key, params) => translate('en', key, params)
@@ -49,5 +49,34 @@ describe('the symbol library (E4): curated, freely licensed, searchable', () => 
     const bytes = svgBytes(LIBRARY[0]!)
     expect(bytes.type).toBe('image/svg+xml')
     expect(new TextDecoder().decode(bytes.bytes)).toBe(LIBRARY[0]!.svg)
+  })
+})
+
+// A symbol that can take a colour (E4). The colour reaches the card as paint behind the symbol's
+// own shape, which only works if the shape is the whole of it: a hole punched in white is a hole
+// only against a white chip, and it turns into white paint the moment the symbol is coloured or
+// the card behind it is dark.
+describe('the library is drawn so it can be painted', () => {
+  it('carries no second colour: one shape, one fill, holes cut rather than covered', () => {
+    for (const s of LIBRARY) {
+      // A placeholder block is a block of colour and is the one thing here that is its colour.
+      if (s.category === 'symbols.cat.placeholder') continue
+      const colours = [...s.svg.matchAll(/(?:fill|stroke)="([^"]+)"/g)].map((m) => m[1]).filter((c) => c !== 'none')
+      expect(new Set(colours), s.id).toEqual(new Set([INK]))
+    }
+  })
+
+  it('cuts its holes with the winding rule, so the card shows through them', () => {
+    // The three that had white middles: the coin, the die and the card being drawn.
+    for (const id of ['mynt', 'tarning', 'dra']) {
+      const found = LIBRARY.find((s) => s.id === id)
+      expect(found?.svg, id).toContain('fill-rule="evenodd"')
+    }
+  })
+
+  it('is one file per symbol however many colours a deck writes, since the colour is never in it', () => {
+    // The same bytes serve red and blue: what a deck uploads does not grow with its palette.
+    for (const s of LIBRARY) expect(svgBytes(s).type).toBe('image/svg+xml')
+    expect(new Set(LIBRARY.map((s) => s.svg)).size).toBe(LIBRARY.length)
   })
 })

@@ -89,6 +89,7 @@ export const enEditor = {
   'undo.what.template': 'a change to the template',
   'undo.what.table': 'a change to the table',
   'undo.what.symbols': 'a change among the symbols',
+  'undo.what.picture': 'how a picture is framed',
   'undo.what.rules': 'a change to the rules',
   'undo.what.font': 'a change among the typefaces',
   'undo.what.version': 'a version taken back',
