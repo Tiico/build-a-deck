@@ -1,6 +1,10 @@
-import { describe, expect, it } from 'vitest'
-import { twoSeatSetup } from './fixture.js'
+import { describe, expect, it, vi } from 'vitest'
+import { startServer, twoSeatSetup } from './fixture.js'
 import { projectDoc } from './project-doc.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+// This file stands servers up now, so it is in the class the measured budget is for.
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // A fixture that carries traces of the test before it does not go red — it goes confusing.
 // The suite passes one file at a time and fails in a full run, or the other way round, and
@@ -43,5 +47,33 @@ describe('the fixtures the editor tests build on (#49)', () => {
     const theirs = twoSeatSetup()
     expect(theirs.components.map((c) => c.type.version)).toEqual(theirs.components.map(() => 1))
     expect(theirs.zones[0]!.name).toBe('Draghög')
+  })
+})
+
+// A fixture does not listen where a recent one listened (#109).
+//
+// A project id is the caller's word and not a unique one: nearly every file here asks for
+// `run.projects.create('p1', …)`, so two fixtures hold two different projects under one name.
+// That is harmless until they share a port. A client that outlived its own server knocks on the
+// recycled port, asks for `p1`, is let in because that server has a `p1` too, and lays its own
+// edits on a project it was never opened on. It has been seen twice: a font losing the licence
+// just set on it, and a table started at `rev-2` when both of a pair should have read `rev-1`.
+//
+// The distance between two fixtures on one port is therefore a safety margin, and this is what
+// holds it. At eight it was reachable by any file with nine tests in it — `project-client` has
+// twenty-five. This asks for more servers than the old slice held and reads the ports back.
+//
+// It is a margin and not a proof: two projects answering to one name is the real fault, and it is
+// a rename across twenty-six files. Written down in the issue rather than done here.
+describe('the ground a fixture stands on (#109)', () => {
+  it('gives a worker more ports in a row than any one file asks for servers', async () => {
+    const running = []
+    try {
+      for (let i = 0; i < 9; i++) running.push(await startServer())
+      const ports = running.map((r) => new URL(r.http).port)
+      expect({ asked: ports.length, distinct: new Set(ports).size }).toEqual({ asked: 9, distinct: 9 })
+    } finally {
+      for (const run of running) await run.stop()
+    }
   })
 })
