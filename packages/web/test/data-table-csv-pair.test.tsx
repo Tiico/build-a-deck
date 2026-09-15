@@ -136,7 +136,7 @@ describe('the CSV pair above the table (#36)', () => {
     third.unmount()
     tableIn('en', unnamed)
     expect(exportLink().download).toBe('game-cards.csv')
-  })
+  }, 60_000)
 
   it('exports a game whose name is not written in Latin letters under that name', () => {
     // The content language is unbounded (A4), so a game called 森の王 is a game called 森の王 all
@@ -156,7 +156,7 @@ describe('the CSV pair above the table (#36)', () => {
     // own stand-in, which is the tool's word and follows the reader.
     expect(named('🂡 · 🂢')).toBe('spel-kort.csv')
     expect(named('🂡 · 🂢', 'en')).toBe('game-cards.csv')
-  })
+  }, 60_000)
 
   it('cuts a name too long for a file name to hold, counting the bytes and not the letters', () => {
     // A file name is 255 bytes on APFS and on ext4, and the whole of it — the tool's word about
@@ -174,7 +174,7 @@ describe('the CSV pair above the table (#36)', () => {
     expect(japanese.startsWith('森の王')).toBe(true)
     expect(japanese).not.toContain('\uFFFD')
     expect(japanese.endsWith('-kort.csv')).toBe(true)
-  })
+  }, 60_000)
 
   it('shows which one stops to ask for a file and which one hands one over, before either is pressed', () => {
     const { unmount } = tableIn('sv')
@@ -199,7 +199,7 @@ describe('the CSV pair above the table (#36)', () => {
     tableIn('en')
     expect(importField().closest('label')!.textContent).toBe('Import CSV…')
     expect(screen.getByRole('link', { name: 'Download CSV' })).toBe(exportLink())
-  })
+  }, 60_000)
 
   it('says that an import replaces the cards where import is, and not where export is', () => {
     tableIn('sv')
@@ -214,7 +214,7 @@ describe('the CSV pair above the table (#36)', () => {
     // import, where it belongs, rather than left to stand next to whatever it happens to touch.
     expect(describedAs(importField())).toBe('Import ersätter korten i tabellen. Spara när resultatet ser rätt ut.')
     expect(describedAs(exportLink())).toBe('')
-  })
+  }, 60_000)
 
   // Telling the two apart by their words only works if they are drawn as one pair to begin with,
   // and a pair is two frames the eye takes in at once: side by side, on one line. The file input

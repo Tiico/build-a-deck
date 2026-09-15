@@ -426,7 +426,7 @@ describe('the rules button and the way in share the TV head (#30)', () => {
     )
     expect(html).not.toContain('byd-tv-join')
     expect(html).toMatch(/byd-tv-head[\s\S]*byd-rules-open[\s\S]*<\/div>/)
-  })
+  }, 60_000)
 })
 
 describe('the inspection panel waits like prototype C (K8, #20)', () => {

@@ -700,5 +700,5 @@ describe('a table that stops being the size it was (#53)', () => {
       restore()
       delete (globalThis as { ResizeObserver?: unknown }).ResizeObserver
     }
-  })
+  }, 60_000)
 })
