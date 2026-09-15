@@ -18,6 +18,7 @@ import { duplicateRows, keepRows, markRows, noSelection, removeRows, selectionLa
 import { groupColumn, groupOfRow, ruleLabel } from './groups.js'
 import { Question } from './Question.js'
 import { useT, type T } from '../i18n/index.js'
+import { useGesture } from './gesture.js'
 import { useSay } from '../status/StatusLive.js'
 
 export type DataTableProps = {
@@ -190,11 +191,11 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // else (#33). Which cell it is belongs to React, not to the stylesheet: a handle hidden by CSS
   // is still a stop in the tab order, and there would be one per cell.
   const [here, setHere] = useState<{ cardRef: string; field: string } | null>(null)
-  // Which visit to a cell is the current one: it goes up whenever a cell takes the focus, so
-  // everything typed without leaving is one step back and coming back to the same cell is the
-  // next one. Only one cell holds the focus at a time, so one number is the whole of it.
-  const visit = useRef(0)
-  const cellGesture = () => `cell-${visit.current}`
+  // Which visit to a cell is the current one (L14): it goes up whenever a cell takes the focus,
+  // so everything typed without leaving is one step back and coming back to the same cell is the
+  // next one. Only one cell holds the focus at a time, so one count is the whole of it.
+  const visits = useGesture('cell')
+  const cellGesture = () => visits.token()
   // Whether the designer is standing in a cell at all, which is what holds the column widths
   // still (#46). One boolean and not the cell itself: moving from one cell to the next is not a
   // moment to re-measure, it is the same edit going on.
@@ -1083,7 +1084,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       setChoice(act.active)
                     }}
                     onFocus={() => {
-                      visit.current += 1
+                      visits.visit.onFocus()
                       setHeld(shown.map((r) => r.id))
                       setHere({ cardRef, field: f })
                     }}

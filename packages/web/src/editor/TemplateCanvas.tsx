@@ -3,6 +3,7 @@ import { CARD_STANDARD_63x88 } from '@byd/engine'
 import type { Element, FaceTemplate, ProjectDoc, Row } from './types.js'
 import { CardPreview } from './CardPreview.js'
 import { arrowMove, fitScale, HANDLES, iconSized, movedTo, newElement, resizedTo, snapped, STAGE_SCALE, TOOLS, type Box, type ElementKind, type Grab, type Guides, type Handle } from './canvas.js'
+import { useGesture } from './gesture.js'
 import { elementsFor, pathFor, shapeTakes, tileMarkup, type Motif, type Paint, type Pattern, type Shadow } from '@byd/template'
 import { galleryIdOf, glyphGeometry, newPattern, PATTERNS, shadowIdOf, shapeChoice, SHADOWS, SHAPE_GALLERY, type Geometry, type Shape } from './shapes.js'
 import { BACKS } from './backs.js'
@@ -241,7 +242,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             fonts={Object.keys(doc.fonts ?? {})}
             icons={Object.keys(doc.icons)}
             valuesIn={(field) => valuesIn(doc, field)}
-            onPatch={(changed) => patch(el.id, changed)}
+            onPatch={(changed, gesture) => patch(el.id, changed, gesture)}
             onAddField={onAddField}
           />
         )}
@@ -367,9 +368,9 @@ function isBox(el: Element): el is BoxElement {
 function DragLayer({ boxes, grid, selected, onSelect, onPatch, onRefused }: { boxes: BoxElement[]; grid: boolean; selected: string | null; onSelect(id: string): void; onPatch: TemplateCanvasProps['onPatch']; onRefused(id: string): void }) {
   const layer = useRef<HTMLDivElement | null>(null)
   const grab = useRef<(Grab & { id: string; handle: Handle | null; gesture: string }) | null>(null)
-  // What makes one grab tell itself apart from the next one on the same element: a number that
-  // only goes up. Two drags of the same title are two things the designer did, and two steps back.
-  const grabs = useRef(0)
+  // What makes one grab tell itself apart from the next one on the same element (L14). Two drags
+  // of the same title are two things the designer did, and two steps back.
+  const grabs = useGesture('grab')
   const [guides, setGuides] = useState<Guides>({ x: null, y: null })
 
   const down = (event: ReactPointerEvent<HTMLElement>, box: BoxElement, handle: Handle | null) => {
@@ -381,7 +382,7 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onRefused }: { bo
     if (box.locked) return onRefused(box.id)
     const rect = layer.current?.getBoundingClientRect()
     if (!rect?.width) return
-    grab.current = { id: box.id, box, handle, gesture: `grab-${(grabs.current += 1)}`, at: { x: event.clientX, y: event.clientY }, mmPerPx: CARD_STANDARD_63x88.physical.widthMm / rect.width }
+    grab.current = { id: box.id, box, handle, gesture: grabs.begin(), at: { x: event.clientX, y: event.clientY }, mmPerPx: CARD_STANDARD_63x88.physical.widthMm / rect.width }
     event.currentTarget.setPointerCapture?.(event.pointerId)
   }
   const move = (event: ReactPointerEvent<HTMLElement>) => {
@@ -713,15 +714,17 @@ function useElementKeys(el: Element | undefined, onPatch: TemplateCanvasProps['o
 // so turning it on changes no card until a value is given a colour of its own, and turning it off
 // leaves the shape wearing that fallback. A deck with nothing in it is offered no rule: a rule on
 // a column of no values is a form with nothing to fill in.
-function Fill({ fill, fields, valuesIn, onPatch }: { fill: Paint | undefined; fields: string[]; valuesIn(field: string): string[]; onPatch(patch: Partial<Element>): void }) {
+function Fill({ fill, fields, valuesIn, onPatch }: { fill: Paint | undefined; fields: string[]; valuesIn(field: string): string[]; onPatch(patch: Partial<Element>, gesture?: string): void }) {
   const t = useT()
+  // A colour picker writes all the way through a drag of it (L14).
+  const picking = useGesture('fill')
   const rule = typeof fill === 'object' ? fill : null
   const plain = typeof fill === 'string' ? fill : (rule?.else ?? '#000000')
   const values = rule ? valuesIn(rule.field) : []
   // Every value the rule paints, including one whose cards have all gone: a colour with nothing
   // left to show it on is still a colour the designer must be able to find and take away (L3).
   const painted = rule ? [...new Set([...values, ...Object.keys(rule.map)])] : []
-  const write = (map: Record<string, string>) => rule && onPatch({ fill: { ...rule, map } })
+  const write = (map: Record<string, string>, gesture?: string) => rule && onPatch({ fill: { ...rule, map } }, gesture)
   return (
     <>
       {fields.length > 0 && (
@@ -737,7 +740,7 @@ function Fill({ fill, fields, valuesIn, onPatch }: { fill: Paint | undefined; fi
       {!rule && (
         <label>
           {t('canvas.props.fill')}
-          <input type="color" value={plain} onChange={(e) => onPatch({ fill: e.target.value })} />
+          <input type="color" value={plain} {...picking.visit} onChange={(e) => onPatch({ fill: e.target.value }, picking.token())} />
         </label>
       )}
       {rule && (
@@ -757,7 +760,7 @@ function Fill({ fill, fields, valuesIn, onPatch }: { fill: Paint | undefined; fi
               <li key={value} data-value={value}>
                 <label>
                   {value}
-                  <input type="color" value={rule.map[value] ?? rule.else ?? '#000000'} onChange={(e) => write({ ...rule.map, [value]: e.target.value })} />
+                  <input type="color" value={rule.map[value] ?? rule.else ?? '#000000'} {...picking.visit} onChange={(e) => write({ ...rule.map, [value]: e.target.value }, picking.token())} />
                 </label>
                 {/* A value back to the fallback, which is not the same as a value painted the
                     fallback's colour: one follows the fallback when it changes and the other does
@@ -772,7 +775,7 @@ function Fill({ fill, fields, valuesIn, onPatch }: { fill: Paint | undefined; fi
             <li data-value="">
               <label>
                 {t('canvas.props.fill.rest')}
-                <input type="color" value={rule.else ?? '#000000'} onChange={(e) => onPatch({ fill: { ...rule, else: e.target.value } })} />
+                <input type="color" value={rule.else ?? '#000000'} {...picking.visit} onChange={(e) => onPatch({ fill: { ...rule, else: e.target.value } }, picking.token())} />
               </label>
             </li>
           </ul>
@@ -801,8 +804,12 @@ const LOCKED_NOTE = 'byd-props-locked-note'
 // `fields` are the columns the picker offers; `taken` is every name a new one would collide with,
 // which is those plus the card's own id (#32). `icons` is the game's own set (E4), which is what
 // an icon placed on the card is chosen from and changed to.
-function Properties({ el, fields, taken, fonts, icons, valuesIn, onPatch, onAddField }: { el: Element; fields: string[]; taken: string[]; fonts: string[]; icons: string[]; valuesIn(field: string): string[]; onPatch(patch: Partial<Element>): void; onAddField(field: string, bindTo: string): void }) {
+function Properties({ el, fields, taken, fonts, icons, valuesIn, onPatch, onAddField }: { el: Element; fields: string[]; taken: string[]; fonts: string[]; icons: string[]; valuesIn(field: string): string[]; onPatch(patch: Partial<Element>, gesture?: string): void; onAddField(field: string, bindTo: string): void }) {
   const t = useT()
+  // The controls here that write many times over for one thing the designer did: a measurement is
+  // a patch per digit typed, a colour is one per step of the picker's dragging (L14). What is
+  // chosen from a list or ticked writes once and stays a step of its own.
+  const typing = useGesture('props')
   // Whether the picker's last entry has been chosen and the form is standing open under it.
   const [making, setMaking] = useState(false)
   // A form that took the focus gives it back (#8). Back is the picker the door was opened from,
@@ -834,7 +841,8 @@ function Properties({ el, fields, taken, fonts, icons, valuesIn, onPatch, onAddF
           value={(el as Record<string, unknown>)[key] as number}
           readOnly={el.locked === true}
           {...(el.locked ? { 'aria-describedby': LOCKED_NOTE } : {})}
-          onChange={(e) => onPatch({ [key]: Number(e.target.value) } as Partial<Element>)}
+          {...typing.visit}
+          onChange={(e) => onPatch({ [key]: Number(e.target.value) } as Partial<Element>, typing.token())}
         />
       </label>
     ) : null
@@ -928,7 +936,7 @@ function Properties({ el, fields, taken, fonts, icons, valuesIn, onPatch, onAddF
           </label>
           <label>
             {t('canvas.props.size')}
-            <input type="number" step={0.5} value={el.font.sizePt} onChange={(e) => onPatch({ font: { ...el.font, sizePt: Number(e.target.value) } })} />
+            <input type="number" step={0.5} value={el.font.sizePt} {...typing.visit} onChange={(e) => onPatch({ font: { ...el.font, sizePt: Number(e.target.value) } }, typing.token())} />
           </label>
           <label>
             {t('canvas.props.weight')}
@@ -942,7 +950,7 @@ function Properties({ el, fields, taken, fonts, icons, valuesIn, onPatch, onAddF
           </label>
           <label>
             {t('canvas.props.color')}
-            <input type="color" value={el.color} onChange={(e) => onPatch({ color: e.target.value })} />
+            <input type="color" value={el.color} {...typing.visit} onChange={(e) => onPatch({ color: e.target.value }, typing.token())} />
           </label>
           <label>
             {t('canvas.props.fit')}
@@ -986,8 +994,11 @@ function Properties({ el, fields, taken, fonts, icons, valuesIn, onPatch, onAddF
 // Everything a shape is (L17): which outline, the numbers that outline reads, what fills it, and
 // what it casts. Stacked in the order a designer works in — the shape first, because every other
 // control here answers to it.
-function ShapeProps({ el, fields, valuesIn, onPatch }: { el: Shape; fields: string[]; valuesIn(field: string): string[]; onPatch(patch: Partial<Element>): void }) {
+function ShapeProps({ el, fields, valuesIn, onPatch }: { el: Shape; fields: string[]; valuesIn(field: string): string[]; onPatch(patch: Partial<Element>, gesture?: string): void }) {
   const t = useT()
+  // The numbers, the two sliders and the line's colour: every one of them writes all the way
+  // through being pushed or typed into (L14). The gallery above them chooses once.
+  const pushing = useGesture('shape')
   const takes = shapeTakes(el.shape)
   const chosen = galleryIdOf(el)
   // A line has no inside (L17), so it is offered no fill and no pattern — only the line itself.
@@ -1005,34 +1016,34 @@ function ShapeProps({ el, fields, valuesIn, onPatch }: { el: Shape; fields: stri
       {takes.corners && (
         <label>
           {t('canvas.props.corners')}
-          <input type="number" min={3} max={24} value={el.corners ?? 6} onChange={(e) => onPatch({ corners: Number(e.target.value) })} />
+          <input type="number" min={3} max={24} value={el.corners ?? 6} {...pushing.visit} onChange={(e) => onPatch({ corners: Number(e.target.value) }, pushing.token())} />
         </label>
       )}
       {takes.radius && (
         <label>
           {t('canvas.props.radius')}
-          <input type="number" min={0} step={0.5} value={el.radiusMm ?? 0} onChange={(e) => onPatch({ radiusMm: Number(e.target.value) })} />
+          <input type="number" min={0} step={0.5} value={el.radiusMm ?? 0} {...pushing.visit} onChange={(e) => onPatch({ radiusMm: Number(e.target.value) }, pushing.token())} />
         </label>
       )}
       {takes.rotation && (
         <label className="byd-props-wide">
           {t('canvas.props.rotation')}
-          <input type="range" min={0} max={360} value={el.rotationDeg ?? 0} onChange={(e) => onPatch({ rotationDeg: Number(e.target.value) })} />
+          <input type="range" min={0} max={360} value={el.rotationDeg ?? 0} {...pushing.visit} onChange={(e) => onPatch({ rotationDeg: Number(e.target.value) }, pushing.token())} />
         </label>
       )}
       {takes.innerRatio && (
         <label className="byd-props-wide">
           {t('canvas.props.innerRatio')}
-          <input type="range" min={5} max={95} value={Math.round((el.innerRatio ?? 0.45) * 100)} onChange={(e) => onPatch({ innerRatio: Number(e.target.value) / 100 })} />
+          <input type="range" min={5} max={95} value={Math.round((el.innerRatio ?? 0.45) * 100)} {...pushing.visit} onChange={(e) => onPatch({ innerRatio: Number(e.target.value) / 100 }, pushing.token())} />
         </label>
       )}
       <label>
         {t('canvas.props.stroke')}
-        <input type="color" value={el.stroke ?? '#111111'} onChange={(e) => onPatch({ stroke: e.target.value, ...((el.strokeMm ?? 0) > 0 ? {} : { strokeMm: 0.5 }) })} />
+        <input type="color" value={el.stroke ?? '#111111'} {...pushing.visit} onChange={(e) => onPatch({ stroke: e.target.value, ...((el.strokeMm ?? 0) > 0 ? {} : { strokeMm: 0.5 }) }, pushing.token())} />
       </label>
       <label>
         {t('canvas.props.strokeMm')}
-        <input type="number" min={0} step={0.1} value={el.strokeMm ?? 0} onChange={(e) => onPatch({ strokeMm: Number(e.target.value) })} />
+        <input type="number" min={0} step={0.1} value={el.strokeMm ?? 0} {...pushing.visit} onChange={(e) => onPatch({ strokeMm: Number(e.target.value) }, pushing.token())} />
       </label>
       {solid && <Fill fill={el.fill} fields={fields} valuesIn={valuesIn} onPatch={onPatch} />}
       {solid && <PatternProps pattern={el.pattern} fill={el.fill} onPatch={onPatch} />}
@@ -1043,8 +1054,9 @@ function ShapeProps({ el, fields, valuesIn, onPatch }: { el: Shape; fields: stri
 
 // A pattern is a layer over the fill and not a fill of its own (L17), which is what the switch's
 // wording has to carry: turning it on changes nothing about the colour underneath.
-function PatternProps({ pattern, fill, onPatch }: { pattern: Pattern | undefined; fill: Paint | undefined; onPatch(patch: Partial<Element>): void }) {
+function PatternProps({ pattern, fill, onPatch }: { pattern: Pattern | undefined; fill: Paint | undefined; onPatch(patch: Partial<Element>, gesture?: string): void }) {
   const t = useT()
+  const pushing = useGesture('pattern')
   return (
     <>
       <label className="byd-props-switch">
@@ -1064,15 +1076,15 @@ function PatternProps({ pattern, fill, onPatch }: { pattern: Pattern | undefined
           </div>
           <label>
             {t('canvas.props.pattern.color')}
-            <input type="color" value={pattern.color} onChange={(e) => onPatch({ pattern: { ...pattern, color: e.target.value } })} />
+            <input type="color" value={pattern.color} {...pushing.visit} onChange={(e) => onPatch({ pattern: { ...pattern, color: e.target.value } }, pushing.token())} />
           </label>
           <label>
             {t('canvas.props.pattern.scale')}
-            <input type="number" min={0.5} step={0.5} value={pattern.scaleMm} onChange={(e) => onPatch({ pattern: { ...pattern, scaleMm: Number(e.target.value) } })} />
+            <input type="number" min={0.5} step={0.5} value={pattern.scaleMm} {...pushing.visit} onChange={(e) => onPatch({ pattern: { ...pattern, scaleMm: Number(e.target.value) } }, pushing.token())} />
           </label>
           <label>
             {t('canvas.props.pattern.angle')}
-            <input type="range" min={0} max={180} value={pattern.angleDeg ?? 0} onChange={(e) => onPatch({ pattern: { ...pattern, angleDeg: Number(e.target.value) } })} />
+            <input type="range" min={0} max={180} value={pattern.angleDeg ?? 0} {...pushing.visit} onChange={(e) => onPatch({ pattern: { ...pattern, angleDeg: Number(e.target.value) } }, pushing.token())} />
           </label>
         </div>
       )}
@@ -1083,11 +1095,12 @@ function PatternProps({ pattern, fill, onPatch }: { pattern: Pattern | undefined
 // Four shadows and a way past them (L17). `Ingen` is one of the four rather than the absence of
 // a choice, so the panel can say which one the shape wears; `Anpassa` appears only once there is
 // a shadow, because five sliders for a shadow that does not exist are five sliders about nothing.
-function ShadowProps({ shadow, onPatch }: { shadow: Shadow | undefined; onPatch(patch: Partial<Element>): void }) {
+function ShadowProps({ shadow, onPatch }: { shadow: Shadow | undefined; onPatch(patch: Partial<Element>, gesture?: string): void }) {
   const t = useT()
   const [open, setOpen] = useState(false)
   const chosen = shadowIdOf(shadow)
-  const at = (next: Partial<Shadow>) => onPatch({ shadow: { ...(shadow ?? SHADOWS[1]?.shadow ?? { dxMm: 0, dyMm: 0.6, blurMm: 1.2, color: '#000000' }), ...next } })
+  const pushing = useGesture('shadow')
+  const at = (next: Partial<Shadow>, gesture?: string) => onPatch({ shadow: { ...(shadow ?? SHADOWS[1]?.shadow ?? { dxMm: 0, dyMm: 0.6, blurMm: 1.2, color: '#000000' }), ...next } }, gesture)
   return (
     <>
       <h3 className="byd-props-heading">{t('canvas.props.shadow')}</h3>
@@ -1110,23 +1123,23 @@ function ShadowProps({ shadow, onPatch }: { shadow: Shadow | undefined; onPatch(
         <div className="byd-props-paint">
           <label>
             {t('canvas.shadow.dx')}
-            <input type="number" step={0.1} value={shadow.dxMm} onChange={(e) => at({ dxMm: Number(e.target.value) })} />
+            <input type="number" step={0.1} value={shadow.dxMm} {...pushing.visit} onChange={(e) => at({ dxMm: Number(e.target.value) }, pushing.token())} />
           </label>
           <label>
             {t('canvas.shadow.dy')}
-            <input type="number" step={0.1} value={shadow.dyMm} onChange={(e) => at({ dyMm: Number(e.target.value) })} />
+            <input type="number" step={0.1} value={shadow.dyMm} {...pushing.visit} onChange={(e) => at({ dyMm: Number(e.target.value) }, pushing.token())} />
           </label>
           <label>
             {t('canvas.shadow.blur')}
-            <input type="number" min={0} step={0.1} value={shadow.blurMm} onChange={(e) => at({ blurMm: Number(e.target.value) })} />
+            <input type="number" min={0} step={0.1} value={shadow.blurMm} {...pushing.visit} onChange={(e) => at({ blurMm: Number(e.target.value) }, pushing.token())} />
           </label>
           <label>
             {t('canvas.shadow.color')}
-            <input type="color" value={shadow.color} onChange={(e) => at({ color: e.target.value })} />
+            <input type="color" value={shadow.color} {...pushing.visit} onChange={(e) => at({ color: e.target.value }, pushing.token())} />
           </label>
           <label>
             {t('canvas.shadow.opacity')}
-            <input type="range" min={0} max={100} value={Math.round((shadow.opacity ?? 1) * 100)} onChange={(e) => at({ opacity: Number(e.target.value) / 100 })} />
+            <input type="range" min={0} max={100} value={Math.round((shadow.opacity ?? 1) * 100)} {...pushing.visit} onChange={(e) => at({ opacity: Number(e.target.value) / 100 }, pushing.token())} />
           </label>
         </div>
       )}
