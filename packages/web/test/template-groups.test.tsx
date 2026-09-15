@@ -33,8 +33,8 @@ function typed(): ProjectDoc {
 
 async function openTemplate(doc: ProjectDoc = typed()) {
   const user = userEvent.setup()
-  await run.projects.create('p1', doc)
-  history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+  await run.projects.create(run.projectId, doc)
+  history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   render(<EditorPage />)
   await screen.findByText('Skogens herrar')
   await user.click(screen.getByRole('tab', { name: /mall/i }))
@@ -52,7 +52,7 @@ const nudge = async (user: UserEvent, keys: string) => {
   ;(document.activeElement as HTMLElement | null)?.blur()
   await user.keyboard(keys)
 }
-const stored = async () => (await run.projects.load('p1'))!.template.faces
+const stored = async () => (await run.projects.load(run.projectId))!.template.faces
 
 describe('the two faces of the template (#13, L7)', () => {
   it('starts on the front and switches to the back, which is edited the same way', async () => {

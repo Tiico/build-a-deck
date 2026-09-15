@@ -40,7 +40,7 @@ afterEach(async () => {
 
 describe('ProjectClient', () => {
   it('loads a project, edits rows and template locally, saves with its revision, and surfaces a stale save as a conflict', async () => {
-    const created = await run.projects.create('p1', projectDoc())
+    const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)
     expect(client.doc.name).toBe('Skogens herrar')
     expect(client.rev).toBe(1)
@@ -53,12 +53,12 @@ describe('ProjectClient', () => {
 
     expect(await client.save()).toEqual({ ok: true, rev: 2 })
     expect(client.dirty).toBe(false)
-    const stored = await run.projects.load('p1')
+    const stored = await run.projects.load(run.projectId)
     expect(stored?.rev).toBe(2)
     expect(stored?.template.faces['front']?.base.find((e) => e.id === 'title')).toMatchObject({ font: { sizePt: 16 } })
 
     // Someone else saved in the meantime.
-    await run.projects.replace('p1', 2, { ...projectDoc(), name: 'Ändrad av annan' })
+    await run.projects.replace(run.projectId, 2, { ...projectDoc(), name: 'Ändrad av annan' })
     client.setCell('knight', 'antal', '3')
     expect(await client.save()).toEqual({ ok: false, reason: 'conflict' })
     expect(client.dirty).toBe(true)
@@ -68,7 +68,7 @@ describe('ProjectClient', () => {
   // this is the step the designer just took. It travels as a `restore` edit, which is already how
   // taking a document back is said, so no new verb enters the vocabulary (#35).
   it('takes the last edit back, puts it forward again, and says what each step was', async () => {
-    const created = await run.projects.create('p1', projectDoc())
+    const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)
     expect(client.canUndo).toBe(false)
     expect(client.undo()).toBeNull()
@@ -98,7 +98,7 @@ describe('ProjectClient', () => {
   })
 
   it('starts a table from the saved project and returns the session id', async () => {
-    const created = await run.projects.create('p1', projectDoc())
+    const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)
     const session = await client.startTable()
     expect(session.id).toMatch(/[0-9a-f-]{36}/)
@@ -109,7 +109,7 @@ describe('ProjectClient', () => {
 
 describe('refreshing a running table (C7, L5)', () => {
   it('saves unsaved edits, then pushes the current rev to the table as version.change', async () => {
-    const created = await run.projects.create('p1', projectDoc())
+    const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)
     const session = await client.startTable()
     client.setCell('dragon', 'antal', 5)
@@ -126,7 +126,7 @@ describe('editing the template on the canvas (#18)', () => {
   const added = { kind: 'shape', id: 'shape-1', x: 1, y: 1, w: 5, h: 5, shape: 'rect' } as const
 
   it('adds an element on top, takes one away, and moves one in the stack — all through the one write path', async () => {
-    const created = await run.projects.create('p1', projectDoc())
+    const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)
     expect(ids(client)).toEqual(['frame', 'title', 'body'])
 
@@ -146,11 +146,11 @@ describe('editing the template on the canvas (#18)', () => {
 
     // The change is the project's, so it saves and reloads like any other.
     expect(await client.save()).toEqual({ ok: true, rev: 2 })
-    expect((await run.projects.load('p1'))?.template.faces['front']?.base.map((e) => e.id)).toEqual(['shape-1', 'body', 'frame'])
+    expect((await run.projects.load(run.projectId))?.template.faces['front']?.base.map((e) => e.id)).toEqual(['shape-1', 'body', 'frame'])
   })
 
   it('refuses an element whose id is already on the face, and a face that does not exist', async () => {
-    const created = await run.projects.create('p1', projectDoc())
+    const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)
 
     // Something real is edited and saved first, so what follows is measured against a client that
@@ -174,7 +174,7 @@ describe('editing the template on the canvas (#18)', () => {
   // B4). A patch to an id the face does not have used to hand back the same document without
   // saying anything: the designer saw nothing move and had spent a step back on it anyway.
   it('refuses a patch to an element the face does not have, and charges no step back for it', async () => {
-    const created = await run.projects.create('p1', projectDoc())
+    const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)
 
     expect(() => client.patchElement('front', 'ingen', { x: 9 })).toThrow(/ingen/)
@@ -194,7 +194,7 @@ describe('editing the template on the canvas (#18)', () => {
   // cell is one per keystroke. The token says which of them belong together, and it is made where
   // the gesture begins — so the second grab of the same element is the second step back.
   it('puts every edit of one gesture on a single step back, and a new gesture on its own', async () => {
-    const created = await run.projects.create('p1', projectDoc())
+    const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)
     const title = () => client.doc.template.faces['front']?.base.find((e) => e.id === 'title') as { x: number; y: number } | undefined
     const y = () => title()?.y
@@ -232,7 +232,7 @@ describe('editing the template on the canvas (#18)', () => {
   // must leave the way forward exactly where it was, or a refusal would quietly cost the designer
   // the redo as well as nothing else (#41, B4).
   it('leaves the step forward alone when an edit is refused', async () => {
-    const created = await run.projects.create('p1', projectDoc())
+    const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)
 
     client.patchElement('front', 'title', { x: 9 })
@@ -250,7 +250,7 @@ describe('editing the template on the canvas (#18)', () => {
 
 describe('the tables a project has (#19)', () => {
   it('lists them newest first, with the version each runs and whether it has ended', async () => {
-    const created = await run.projects.create('p1', projectDoc())
+    const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)
     expect(await client.tables()).toEqual([])
 
@@ -270,7 +270,7 @@ describe('grouping cards and letting the group rule a face (#13)', () => {
   const front = (client: ProjectClient) => client.doc.template.faces['front']!
   const back = (client: ProjectClient) => client.doc.template.faces['back']!
   const open = async () => {
-    const created = await run.projects.create('p1', projectDoc())
+    const created = await run.projects.create(run.projectId, projectDoc())
     return openClient(created.id)
   }
 
@@ -343,7 +343,7 @@ describe('grouping cards and letting the group rule a face (#13)', () => {
     client.setGroupColumn('typ')
     client.patchElement('front', 'title', { color: '#e74c3c' }, 'fälla')
     expect(await client.save()).toEqual({ ok: true, rev: 2 })
-    const stored = await run.projects.load('p1')
+    const stored = await run.projects.load(run.projectId)
     expect(stored?.template.faces['front']?.variantBy).toBe('typ')
     expect(stored?.template.faces['front']?.variants['fälla']?.override).toMatchObject([{ id: 'title', color: '#e74c3c' }])
   })
@@ -353,7 +353,7 @@ describe('grouping cards and letting the group rule a face (#13)', () => {
 // was typed (#8): a guard that fires over a deck nobody changed is worse than no guard at all.
 describe('what counts as unsaved (#8)', () => {
   it('stays saved when an edit writes the value that was already there, and goes back to saved when an edit is taken back by hand', async () => {
-    const created = await run.projects.create('p1', projectDoc())
+    const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)
 
     client.setCell('dragon', 'title', 'Drake')
@@ -367,7 +367,7 @@ describe('what counts as unsaved (#8)', () => {
   })
 
   it('says nothing changed when a template edit lands on the values the element already had', async () => {
-    const created = await run.projects.create('p1', projectDoc())
+    const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)
 
     client.patchElement('front', 'title', { x: 5, y: 5 })
@@ -384,7 +384,7 @@ describe('what counts as unsaved (#8)', () => {
 
 describe('the setup in the editor (B5, K2)', () => {
   it('turns the recipe, adds and removes free zones, moves and reshapes a zone, and saves it all', async () => {
-    const created = await run.projects.create('p1', projectDoc())
+    const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)
     expect(client.recipe).toEqual({ players: 2, counters: [] })
 
@@ -420,7 +420,7 @@ describe('the setup in the editor (B5, K2)', () => {
     expect(client.doc.setup.zones.filter((z) => z.kind === 'hand').every((z) => z.returnTo === deck)).toBe(true)
 
     expect(await client.save()).toEqual({ ok: true, rev: 2 })
-    const stored = await run.projects.load('p1')
+    const stored = await run.projects.load(run.projectId)
     expect(stored?.setup.seats).toEqual(['A', 'B', 'C'])
     expect(stored?.setup.zones.find((z) => z.id === altar)?.name).toBe('Altaret')
     expect(stored?.setup.counters).toEqual([{ name: 'Poäng', start: 0 }])
@@ -429,7 +429,7 @@ describe('the setup in the editor (B5, K2)', () => {
 
 describe('images (E1)', () => {
   it('uploads an image once and gets its hash back, the same hash for the same bytes', async () => {
-    const created = await run.projects.create('p1', projectDoc())
+    const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)
     const file = new File([new Uint8Array([137, 80, 78, 71])], 'drake.png', { type: 'image/png' })
     const hash = await client.uploadAsset(file)
@@ -444,7 +444,7 @@ describe('images (E1)', () => {
 
 describe('symbols (E4)', () => {
   it('takes a symbol into the project: the bytes become an asset, the set gets the name, and the licence is kept beside it', async () => {
-    const created = await run.projects.create('p1', projectDoc())
+    const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)
     const skold = LIBRARY.find((s) => s.id === 'skold')!
 
@@ -472,7 +472,7 @@ describe('symbols (E4)', () => {
     expect(client.doc.credits?.['anfall']).toBeUndefined()
 
     expect(await client.save()).toEqual({ ok: true, rev: 2 })
-    const stored = await run.projects.load('p1')
+    const stored = await run.projects.load(run.projectId)
     expect(stored?.icons['sköld']).toBe(client.doc.icons['sköld'])
     expect(stored?.credits).toEqual({ 'sköld': { licence: 'CC0-1.0', by: 'build-your-deck', source: 'skold' } })
   })
@@ -483,7 +483,7 @@ describe('symbols (E4)', () => {
 // travels with it exactly as it does when a symbol is taken in from the Symboler tab (E4).
 describe('an icon placed on the card (#33, E4)', () => {
   it('takes the symbol in and places the element as one edit, and a second placing is a second element and not a second symbol', async () => {
-    const created = await run.projects.create('p1', projectDoc())
+    const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)
     const svard = LIBRARY.find((s) => s.id === 'svard')!
 
@@ -513,7 +513,7 @@ describe('an icon placed on the card (#33, E4)', () => {
   // it records, the whole placement is thrown away and the designer is told an error instead of
   // being handed the icon she asked for.
   it('gives each of two placements that overlap an element of its own', async () => {
-    const created = await run.projects.create('p1', projectDoc())
+    const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)
     const svard = LIBRARY.find((s) => s.id === 'svard')!
     const skold = LIBRARY.find((s) => s.id === 'skold')!
@@ -533,7 +533,7 @@ describe('an icon placed on the card (#33, E4)', () => {
 
 describe('the type the game is set in (B3)', () => {
   it('takes a font file into the project, names the family from the file, and keeps the licence the designer states', async () => {
-    const created = await run.projects.create('p1', projectDoc())
+    const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)
     const file = new File([new Uint8Array([119, 79, 70, 50, 0, 1, 0, 0])], 'Rubrikserif.woff2', { type: 'font/woff2' })
 
@@ -553,7 +553,7 @@ describe('the type the game is set in (B3)', () => {
     expect(Object.keys(client.doc.fonts ?? {})).toEqual(['sans-serif', 'system-ui', 'Rubrikserif'])
 
     expect(await client.save()).toEqual({ ok: true, rev: 2 })
-    const stored = await run.projects.load('p1')
+    const stored = await run.projects.load(run.projectId)
     expect(stored?.fonts?.['Rubrikserif']?.licence?.by).toBe('Typverket')
 
     client.removeFont(family)
@@ -563,7 +563,7 @@ describe('the type the game is set in (B3)', () => {
 
 describe('the history (B4)', () => {
   it('lists the versions, opens an older one, names it, and brings it back as a new version', async () => {
-    const created = await run.projects.create('p1', projectDoc())
+    const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)
     client.setCell('dragon', 'title', 'Drakhona')
     expect(await client.save()).toEqual({ ok: true, rev: 2 })

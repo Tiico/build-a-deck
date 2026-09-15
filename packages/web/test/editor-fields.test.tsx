@@ -23,7 +23,7 @@ afterEach(async () => {
 })
 
 async function openEditor(): Promise<void> {
-  history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+  history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   render(
     <StatusLive>
       <EditorPage />
@@ -46,7 +46,7 @@ async function makeField(user: ReturnType<typeof userEvent.setup>, name: string)
 describe('a field made in the editor is a field the game has (#32, B4)', () => {
   it('is still there after a save and a reload, and is a version that can be taken back', async () => {
     const user = userEvent.setup()
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     await openEditor()
     openTab('Tabell')
 
@@ -59,7 +59,7 @@ describe('a field made in the editor is a field the game has (#32, B4)', () => {
     await screen.findByText('rev 2')
 
     // What the server kept, not what the page remembers.
-    const saved = await run.projects.load('p1')
+    const saved = await run.projects.load(run.projectId)
     expect(saved?.rows.map((r) => r.fields['styrka'])).toEqual(['7', '', ''])
 
     // A fresh editor over the same project: the column is drawn from what was stored.
@@ -81,7 +81,7 @@ describe('a field made in the editor is a field the game has (#32, B4)', () => {
 
   it('can be chosen in the template\'s binding, and takes the element with it when it goes', async () => {
     const user = userEvent.setup()
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     await openEditor()
     openTab('Tabell')
     await makeField(user, 'styrka')
@@ -105,7 +105,7 @@ describe('a field made in the editor is a field the game has (#32, B4)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
     await screen.findByText('rev 2')
-    const saved = await run.projects.load('p1')
+    const saved = await run.projects.load(run.projectId)
     expect(saved?.rows.every((r) => !('styrka' in r.fields))).toBe(true)
     expect(saved?.template.faces['front']?.base.map((e) => e.id)).toEqual(['frame', 'body'])
   })
@@ -116,7 +116,7 @@ describe('a field made in the editor is a field the game has (#32, B4)', () => {
   // with the element bound to the field it had before. So it goes as one edit (B4).
   it('makes the column and binds the element in one edit, and one step back takes both', async () => {
     const user = userEvent.setup()
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     await openEditor()
 
     openTab('Mall')
@@ -154,7 +154,7 @@ describe('a field made in the editor is a field the game has (#32, B4)', () => {
   // pass every test in `data-table-order` and be gone by the next reload.
   it('moves a column all the way down: the order is saved, read back, and taken back by one step', async () => {
     const user = userEvent.setup()
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     await openEditor()
     openTab('Tabell')
 
@@ -181,7 +181,7 @@ describe('a field made in the editor is a field the game has (#32, B4)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
     await screen.findByText(/rev [23]/)
     // What the server kept, and in the form the document keeps it in: an order, not a list.
-    expect((await run.projects.load('p1'))?.columns).toEqual(['body', 'title', 'antal'])
+    expect((await run.projects.load(run.projectId))?.columns).toEqual(['body', 'title', 'antal'])
 
     // A fresh editor over the same project, which has never seen the move happen.
     cleanup()

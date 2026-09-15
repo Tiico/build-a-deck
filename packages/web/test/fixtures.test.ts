@@ -1,3 +1,5 @@
+import { readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { startServer, twoSeatSetup } from './fixture.js'
 import { projectDoc } from './project-doc.js'
@@ -53,7 +55,7 @@ describe('the fixtures the editor tests build on (#49)', () => {
 // A fixture does not listen where a recent one listened (#109).
 //
 // A project id is the caller's word and not a unique one: nearly every file here asks for
-// `run.projects.create('p1', …)`, so two fixtures hold two different projects under one name.
+// `run.projects.create(run.projectId, …)`, so two fixtures hold two different projects under one name.
 // That is harmless until they share a port. A client that outlived its own server knocks on the
 // recycled port, asks for `p1`, is let in because that server has a `p1` too, and lays its own
 // edits on a project it was never opened on. It has been seen twice: a font losing the licence
@@ -66,6 +68,49 @@ describe('the fixtures the editor tests build on (#49)', () => {
 // It is a margin and not a proof: two projects answering to one name is the real fault, and it is
 // a rename across twenty-six files. Written down in the issue rather than done here.
 describe('the ground a fixture stands on (#109)', () => {
+  it('never lets two of them hand out one project id, however alike the names asked for', async () => {
+    const first = await startServer()
+    const mine = await first.projects.create(first.projectId, projectDoc())
+    await first.stop()
+
+    const second = await startServer()
+    const theirs = await second.projects.create(second.projectId, projectDoc())
+    await second.stop()
+
+    // The names are what a stray client asks by, so it is the names that must differ — and the
+    // record has to answer to the one it was made under, or a test cannot read back what it wrote.
+    expect(mine.id).not.toEqual(theirs.id)
+    expect({ mine: mine.id, theirs: theirs.id }).toEqual({ mine: first.projectId, theirs: second.projectId })
+  })
+
+  it('leaves no test addressing a project by a name of its own', () => {
+    // The whole of the fix is that a project id comes from the fixture. A file that writes one out
+    // by hand has put the collision back, and it is cheaper to say so here than to find it in a
+    // full run six weeks from now.
+    const dir = import.meta.dirname
+    const offenders = readdirSync(dir)
+      .filter((name) => /\.tsx?$/.test(name) && name !== 'fixture.ts' && name !== 'fixtures.test.ts')
+      .map((name) => ({ name, lines: readFileSync(join(dir, name), 'utf8').split('\n') }))
+      .flatMap(({ name, lines }) =>
+        lines
+          .map((line, i) => ({ line, at: `${name}:${i + 1}` }))
+          // A project is addressed in five places, and only these: the store, the editor's URL,
+          // an HTTP path, the body that makes one, and the card the home page draws for it. Anywhere else `p1` belongs to something
+          // else entirely — a peer, a rewind proposal, a column's remembered width, a server that
+          // is a string and not a fixture — and those are left alone on purpose.
+          .filter(({ line }) =>
+            /\.projects\.\w+\('p\d'/.test(line) ||
+            (/project=p\d\b/.test(line) && /\w+\.http\b/.test(line)) ||
+            /\$\{\w+\.http\}\/projects\/p\d\b/.test(line) ||
+            /JSON\.stringify\(\{ id: 'p\d'/.test(line) ||
+            /http: \w+\.http[^)]*id: 'p\d'/.test(line) ||
+            /data-project="p\d"/.test(line),
+          )
+          .map(({ at }) => at),
+      )
+    expect(offenders).toEqual([])
+  })
+
   it('gives a worker more ports in a row than any one file asks for servers', async () => {
     const running = []
     try {

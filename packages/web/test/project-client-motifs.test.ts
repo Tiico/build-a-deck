@@ -39,8 +39,8 @@ const measures = (answer: typeof MOTIF | null) => {
 
 describe('the motifs of a deck (E1)', () => {
   it('measures a picture nobody has measured, tells the server, and asks rather than measures the next time', async () => {
-    await run.projects.create('p1', projectDoc())
-    const client = await ProjectClient.open({ http: run.http, id: 'p1' })
+    await run.projects.create(run.projectId, projectDoc())
+    const client = await ProjectClient.open({ http: run.http, id: run.projectId })
     const hash = await client.uploadAsset(new Blob([PNG], { type: 'image/png' }))
     const first = measures(MOTIF)
 
@@ -49,15 +49,15 @@ describe('the motifs of a deck (E1)', () => {
     // Told back, so the render worker and the print draw the card the same way the editor does.
     expect(await (await fetch(`${run.http}/assets/motifs?of=${hash}`)).json()).toEqual({ [hash]: MOTIF })
 
-    const again = await ProjectClient.open({ http: run.http, id: 'p1' })
+    const again = await ProjectClient.open({ http: run.http, id: run.projectId })
     const second = measures(MOTIF)
     expect(await again.motifs([hash], second.measure)).toEqual({ [hash]: MOTIF })
     expect(second.asked).toEqual([])
   })
 
   it('leaves out a picture it cannot measure, so such a card is drawn by its file rather than not at all', async () => {
-    await run.projects.create('p1', projectDoc())
-    const client = await ProjectClient.open({ http: run.http, id: 'p1' })
+    await run.projects.create(run.projectId, projectDoc())
+    const client = await ProjectClient.open({ http: run.http, id: run.projectId })
     const hash = await client.uploadAsset(new Blob([PNG], { type: 'image/png' }))
 
     expect(await client.motifs([hash], measures(null).measure)).toEqual({})
@@ -65,8 +65,8 @@ describe('the motifs of a deck (E1)', () => {
   })
 
   it('asks nothing at all when the deck holds no pictures', async () => {
-    await run.projects.create('p1', projectDoc())
-    const client = await ProjectClient.open({ http: run.http, id: 'p1' })
+    await run.projects.create(run.projectId, projectDoc())
+    const client = await ProjectClient.open({ http: run.http, id: run.projectId })
     const none = measures(MOTIF)
 
     expect(await client.motifs([], none.measure)).toEqual({})

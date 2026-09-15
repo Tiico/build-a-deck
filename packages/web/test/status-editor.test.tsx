@@ -61,10 +61,10 @@ describe('a project that belongs to someone else', () => {
   it('says it is shut rather than broken, and offers both a login and a way home', async () => {
     const owned = await startServer({ auth: true, authBypass: true })
     try {
-      await owned.projects.create('p1', projectDoc(), 'någon-annan')
+      await owned.projects.create(owned.projectId, projectDoc(), 'någon-annan')
       // Logged in, but as someone the project does not belong to: shut, not broken.
       await requestLink(owned.http, 'ada@example.test', '/')
-      open(`project=p1&server=${encodeURIComponent(owned.http)}`)
+      open(`project=${owned.projectId}&server=${encodeURIComponent(owned.http)}`)
       await waitFor(() => expect(noticeState()).toBe('forbidden'))
       const panel = notice() as HTMLElement
       expect(panel.textContent).toMatch(/någon annan|inte tillgång/i)
@@ -88,11 +88,11 @@ describe('a server the editor cannot reach', () => {
   })
 
   it('asks the server again in place when a person presses, and opens the game when it answers', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     // The server is down when the editor opens and up again when the button is pressed. Nothing
     // is reloaded: the same request is made a second time, on the same page.
     await run.stop()
-    open(`project=p1&server=${encodeURIComponent(run.http)}`)
+    open(`project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     await waitFor(() => expect(noticeState()).toBe('offline'), { timeout: 4000 })
     await run.restart()
     await userEvent.click(screen.getByRole('button', { name: /försök igen/i }))
@@ -102,16 +102,16 @@ describe('a server the editor cannot reach', () => {
 
 describe('a project on its way in', () => {
   it('says it is loading, in the editor s own words', async () => {
-    await run.projects.create('p1', projectDoc())
-    open(`project=p1&server=${encodeURIComponent(run.http)}`)
+    await run.projects.create(run.projectId, projectDoc())
+    open(`project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     expect(noticeState()).toBe('loading')
     expect(notice()!.textContent).toMatch(/öppnar spelet/i)
     await screen.findByText('Skogens herrar')
   })
 
   it('names the game in the tab once it is open', async () => {
-    await run.projects.create('p1', projectDoc())
-    open(`project=p1&server=${encodeURIComponent(run.http)}`)
+    await run.projects.create(run.projectId, projectDoc())
+    open(`project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     await screen.findByText('Skogens herrar')
     await waitFor(() => expect(document.title).toBe('Skogens herrar · Editor · build-your-deck'))
   })

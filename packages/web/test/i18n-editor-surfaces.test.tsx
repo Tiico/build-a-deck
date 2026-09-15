@@ -25,8 +25,8 @@ afterEach(async () => {
 
 async function openEditor(width: number) {
   atWidth(width)
-  await run.projects.create('p1', projectDoc())
-  history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+  await run.projects.create(run.projectId, projectDoc())
+  history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   render(
     <Language lang="en">
       <EditorPage />

@@ -19,17 +19,17 @@ afterEach(async () => {
 // A project with a history: three saves, the middle one worth naming.
 async function withHistory(): Promise<void> {
   const doc = projectDoc()
-  await run.projects.create('p1', doc)
+  await run.projects.create(run.projectId, doc)
   const second = structuredClone(doc)
   second.rows[0]!.fields['title'] = 'Drakhona'
-  await run.projects.replace('p1', 1, second)
+  await run.projects.replace(run.projectId, 1, second)
   const third = structuredClone(second)
   third.rows.push({ id: 'troll', fields: { title: 'Troll', antal: 1 } })
-  await run.projects.replace('p1', 2, third)
+  await run.projects.replace(run.projectId, 2, third)
 }
 
 async function openEditor(): Promise<void> {
-  history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+  history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   render(<EditorPage />)
   await screen.findByText('Skogens herrar')
 }
@@ -76,10 +76,10 @@ describe('the project\'s history in the editor (B4)', () => {
     const field = await within(panel).findByLabelText('Namn på version 2')
     fireEvent.change(field, { target: { value: 'Första blindtestet' } })
     fireEvent.blur(field)
-    await waitFor(async () => expect((await run.projects.versions('p1')).find((v) => v.rev === 2)?.label).toBe('Första blindtestet'))
+    await waitFor(async () => expect((await run.projects.versions(run.projectId)).find((v) => v.rev === 2)?.label).toBe('Första blindtestet'))
     expect(await within(panel).findByText('Första blindtestet')).toBeTruthy()
     // The document did not move: naming is not an edit.
-    expect((await run.projects.load('p1'))?.rev).toBe(3)
+    expect((await run.projects.load(run.projectId))?.rev).toBe(3)
   })
 
   it('brings an older version back as an edit, which becomes the next version when saved', async () => {
@@ -94,11 +94,11 @@ describe('the project\'s history in the editor (B4)', () => {
     // The card is as it was in version 1, and the change is unsaved.
     expect(await screen.findByText('Drake')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
-    await waitFor(async () => expect((await run.projects.load('p1'))?.rev).toBe(4))
-    const stored = await run.projects.load('p1')
+    await waitFor(async () => expect((await run.projects.load(run.projectId))?.rev).toBe(4))
+    const stored = await run.projects.load(run.projectId)
     expect(stored?.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drake')
     // Nothing that came before was rewritten.
-    expect((await run.projects.at('p1', 3))?.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drakhona')
+    expect((await run.projects.at(run.projectId, 3))?.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drakhona')
   })
 })
 

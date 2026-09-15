@@ -23,8 +23,8 @@ afterEach(async () => {
 // `live` puts the editor under the app's two live regions, which is where it stands in `App`.
 // Without them a test can read what is on the screen but not what is said out loud.
 async function openEditor(opts: { live?: boolean } = {}) {
-  await run.projects.create('p1', projectDoc())
-  history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+  await run.projects.create(run.projectId, projectDoc())
+  history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   render(opts.live ? <StatusLive><EditorPage /></StatusLive> : <EditorPage />)
   await screen.findByText('Skogens herrar')
 }
@@ -117,7 +117,7 @@ describe('a step back in the editor (#35)', () => {
     const event = new KeyboardEvent('keydown', { key: 's', ctrlKey: true, cancelable: true, bubbles: true })
     cell.dispatchEvent(event)
     expect(event.defaultPrevented).toBe(true)
-    await waitFor(async () => expect((await run.projects.load('p1'))?.rev).toBe(2))
+    await waitFor(async () => expect((await run.projects.load(run.projectId))?.rev).toBe(2))
   })
 })
 
@@ -169,7 +169,7 @@ describe('a saving that changes nothing (B4)', () => {
     await typeInTheDeck('Drakhona')
     fireEvent.keyDown(document, { key: 's', ctrlKey: true })
     await screen.findByText('Sparat')
-    expect((await run.projects.load('p1'))?.rev).toBe(2)
+    expect((await run.projects.load(run.projectId))?.rev).toBe(2)
 
     // Nothing has been typed since. However often it is asked for, there is nothing to keep.
     fireEvent.keyDown(document, { key: 's', ctrlKey: true })
@@ -178,8 +178,8 @@ describe('a saving that changes nothing (B4)', () => {
     // The next real change is version three: proof that the presses in between never counted.
     await typeInTheDeck('Drakhöna')
     fireEvent.keyDown(document, { key: 's', ctrlKey: true })
-    await waitFor(async () => expect((await run.projects.load('p1'))?.rev).toBe(3))
-    expect(await run.projects.versions('p1')).toHaveLength(3)
+    await waitFor(async () => expect((await run.projects.load(run.projectId))?.rev).toBe(3))
+    expect(await run.projects.versions(run.projectId)).toHaveLength(3)
   })
 })
 

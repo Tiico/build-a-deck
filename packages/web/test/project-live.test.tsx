@@ -16,7 +16,7 @@ afterEach(async () => {
   await run.stop()
 })
 
-const open = (id = 'p1') => ProjectClient.open({ http: run.http, id })
+const open = (id = run.projectId) => ProjectClient.open({ http: run.http, id })
 
 // What a thing that travels over a socket is given to arrive in. The same order as the four
 // seconds a `waitFor` gets in `setup.ts`, with room on top for the client's 200-400-800 ms
@@ -58,7 +58,7 @@ const title = (editor: ProjectClient) => editor.doc.rows.find((r) => r.id === 'd
 // which is a page that jumps for reasons nobody is told.
 describe('the line to the actor going and coming back', () => {
   it('says nothing at all about a break the client mends by itself', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     const ada = await open()
     try {
       await greeted(ada)
@@ -80,8 +80,8 @@ describe('the line to the actor going and coming back', () => {
   })
 
   it('says the line is gone once it has been gone longer than a mending would take', async () => {
-    await run.projects.create('p1', projectDoc())
-    const ada = await ProjectClient.open({ http: run.http, id: 'p1', dropAfterMs: 150 })
+    await run.projects.create(run.projectId, projectDoc())
+    const ada = await ProjectClient.open({ http: run.http, id: run.projectId, dropAfterMs: 150 })
     try {
       await greeted(ada)
       await run.stop()
@@ -94,7 +94,7 @@ describe('the line to the actor going and coming back', () => {
 
 describe('two editors on the same project (D3)', () => {
   it('sees the other one\'s edit without either of them saving', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     const ada = await open()
     const bo = await open()
     await greeted(ada, bo)
@@ -105,26 +105,26 @@ describe('two editors on the same project (D3)', () => {
     await eventually(() => expect(title(bo)).toBe('Drakhona'))
     // Nothing was saved: the version is still the first. Asked once the edit is known to have gone
     // all the way round, so it is a version that stood still and not one that had yet to move.
-    expect((await run.projects.load('p1'))?.rev).toBe(1)
+    expect((await run.projects.load(run.projectId))?.rev).toBe(1)
 
     // And a save by one is a save for both.
     expect(await bo.save()).toEqual({ ok: true, rev: 2 })
     await eventually(() => expect(ada.rev).toBe(2))
     expect(ada.dirty).toBe(false)
-    expect((await run.projects.load('p1'))?.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drakhona')
+    expect((await run.projects.load(run.projectId))?.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drakhona')
     ada.close()
     bo.close()
   })
 
   it('says who else has the project open, and stops saying so when they leave', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     // Who is here is something the actor says over the socket, so it is waited for rather than
     // slept on. Each of the three readings below is a different list, and the one before it has
     // already held, so waiting for a list cannot pass by standing still.
     const ada = await open()
     await eventually(() => expect(here(ada)).toEqual(['Någon']))
 
-    const bo = await ProjectClient.open({ http: run.http, id: 'p1', name: 'Bo' })
+    const bo = await ProjectClient.open({ http: run.http, id: run.projectId, name: 'Bo' })
     await eventually(() => expect(here(ada)).toEqual(['Någon', 'Bo']))
     bo.close()
     await eventually(() => expect(here(ada)).toEqual(['Någon']))
@@ -132,7 +132,7 @@ describe('two editors on the same project (D3)', () => {
   })
 
   it('puts an editor back on the document the actor holds when its edit is refused', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     const ada = await open()
     const bo = await open()
     await greeted(ada, bo)
@@ -146,7 +146,7 @@ describe('two editors on the same project (D3)', () => {
   })
 
   it('keeps working when the project is only read, so an editor without a socket still opens', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     // Nothing is waited for: the document and its version came back over HTTP, before any socket.
     const ada = await open()
     expect(ada.doc.name).toBe('Skogens herrar')
@@ -161,8 +161,8 @@ describe('who else is in the editor (D3)', () => {
   it('is the door to who has the game, and says how many are in when more than one is', async () => {
     const { render, screen, waitFor } = await import('@testing-library/react')
     const { EditorPage } = await import('../src/editor/EditorPage.js')
-    await run.projects.create('p1', projectDoc())
-    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
 
@@ -171,7 +171,7 @@ describe('who else is in the editor (D3)', () => {
     await waitFor(() => expect(door.querySelectorAll('i')).toHaveLength(1))
     expect(door.textContent).not.toMatch(/inne/)
 
-    const bo = await ProjectClient.open({ http: run.http, id: 'p1', name: 'Bo' })
+    const bo = await ProjectClient.open({ http: run.http, id: run.projectId, name: 'Bo' })
     await waitFor(() => expect(door.querySelectorAll('i')).toHaveLength(2))
     expect(door.textContent).toContain('2 inne')
     bo.close()
@@ -181,7 +181,7 @@ describe('who else is in the editor (D3)', () => {
 
 describe('a socket that breaks (D3)', () => {
   it('comes back by itself and picks up what happened while it was gone', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     const ada = await open()
     await eventually(() => expect(ada.connected).toBe(true))
 
@@ -201,7 +201,7 @@ describe('a socket that breaks (D3)', () => {
   })
 
   it('keeps what was written while it was gone and sends it when it is back', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     const ada = await open()
     await eventually(() => expect(ada.connected).toBe(true))
     await run.restart()
@@ -221,7 +221,7 @@ describe('a socket that breaks (D3)', () => {
   })
 
   it('stays gone when the editor itself closed it', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     const ada = await open()
     await eventually(() => expect(ada.connected).toBe(true))
     ada.close()
@@ -239,7 +239,7 @@ describe('a socket that breaks (D3)', () => {
 // until the next reload told the designer so.
 describe('an icon placed, through the actor (#33, E4, D3)', () => {
   it('reaches the other editor and the store with both halves', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     const ada = await open()
     const bo = await open()
     await greeted(ada, bo)
@@ -258,7 +258,7 @@ describe('an icon placed, through the actor (#33, E4, D3)', () => {
 
     // And so was the store, once it was saved.
     expect(await bo.save()).toEqual({ ok: true, rev: 2 })
-    const stored = await run.projects.load('p1')
+    const stored = await run.projects.load(run.projectId)
     expect(stored?.icons['svärd']).toBe(bo.doc.icons['svärd'])
     expect(stored?.template.faces['front']?.base.some((e) => e.id === id)).toBe(true)
     ada.close()
@@ -275,8 +275,8 @@ describe('the editor when the line is gone (D3)', () => {
   const editor = async (dropAfterMs: number) => {
     const { render, screen } = await import('@testing-library/react')
     const { EditorPage, DEFAULT_EDITOR_TIMING } = await import('../src/editor/EditorPage.js')
-    await run.projects.create('p1', projectDoc())
-    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage timing={{ ...DEFAULT_EDITOR_TIMING, dropAfterMs }} />)
     await screen.findByText('Skogens herrar')
     await eventually(() => expect(document.querySelector('[data-offline]')).toBeNull())

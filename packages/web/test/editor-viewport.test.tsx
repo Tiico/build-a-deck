@@ -31,7 +31,7 @@ const document_ = (html: string) =>
 // mounts — the modes in the header on a desk, the stages in the bar on a smaller screen.
 async function surfaces(width: number): Promise<Record<string, string>> {
   atWidth(width)
-  history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+  history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   const { unmount } = render(<EditorPage />)
   try {
     await screen.findByText('Skogens herrar')
@@ -55,7 +55,7 @@ async function surfaces(width: number): Promise<Record<string, string>> {
 // the platform — nothing measured them. This holds the table's door open so something does.
 async function newField(width: number): Promise<Record<string, string>> {
   atWidth(width)
-  history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+  history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   const { unmount } = render(<EditorPage />)
   try {
     await screen.findByText('Skogens herrar')
@@ -74,7 +74,7 @@ async function newField(width: number): Promise<Record<string, string>> {
 // captured too, because that is where the ready-made backs stand beside the layers.
 async function shapePanel(width: number): Promise<Record<string, string>> {
   atWidth(width)
-  history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+  history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   const { unmount } = render(<EditorPage />)
   try {
     await screen.findByText('Skogens herrar')
@@ -126,7 +126,7 @@ afterAll(async () => {
 }, 60_000)
 beforeEach(async () => {
   run = await startServer()
-  await run.projects.create('p1', projectDoc())
+  await run.projects.create(run.projectId, projectDoc())
 })
 afterEach(async () => {
   await run.stop()

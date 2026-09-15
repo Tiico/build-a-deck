@@ -222,7 +222,7 @@ async function accountViews(): Promise<Record<string, string>> {
   card.unmount()
 
   await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com', next: '/' }) })
-  await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: 'p1', ...projectDoc() }) })
+  await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
   const games = render(<HomePage />)
   await screen.findByText('Mina spel')
   await screen.findByRole('button', { name: /^Fler val/ })
@@ -276,7 +276,7 @@ const EDITOR_VIEWS = ['Bord', 'Kortvägg', 'Mall', 'Mall, ikonbiblioteket öppet
 // in the room.
 async function editorViews(width: number): Promise<Record<string, string>> {
   atWidth(width)
-  history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+  history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   const { unmount } = render(<EditorPage />)
   try {
     await screen.findByText('Skogens herrar')
@@ -945,7 +945,7 @@ describe('the editor', () => {
   // layout. Spara and Uppdatera bordet stand side by side in the header at one size, so they are
   // the pair where that can be read off the page rather than argued about.
   it('costs an outline nothing in height beside the filled action', async () => {
-    await run.projects.create('p1', worthFiltering())
+    await run.projects.create(run.projectId, worthFiltering())
     const views = await editorViews(1280)
     const measured = await inChromium(read('src/editor/editor.css'), 1280, { Mall: views['Mall']! }, (page) =>
       page.$$eval('.byd-editor > header > .byd-secondary, .byd-editor > header > .byd-primary', (els) => els.map((el) => `${el.textContent?.trim().slice(0, 10)}: ${el.getBoundingClientRect().height}`)),
@@ -957,7 +957,7 @@ describe('the editor', () => {
   }, 120_000)
 
   it('wears the primary fill on nothing but the action that puts the work on the table', async () => {
-    await run.projects.create('p1', worthFiltering())
+    await run.projects.create(run.projectId, worthFiltering())
     const views = await editorViews(1280)
     // What the walk is expected to have walked. The expectation used to be built out of the
     // measurement — `Object.fromEntries(Object.keys(views)...)` — and `{}` equals `{}`, so an
@@ -978,7 +978,7 @@ describe('the editor', () => {
 // the fact stays true when the line the language draws with changes.
 describe('the buttons that stand beside the card in the template', () => {
   it('draws the way to a typeface as an outline and not as a second first action', async () => {
-    await run.projects.create('p1', worthFiltering())
+    await run.projects.create(run.projectId, worthFiltering())
     const views = await editorViews(1280)
     const measured = await inChromium(read('src/editor/editor.css'), 1280, { Mall: views['Mall']! }, (page) =>
       page.evaluate(() => {
@@ -1003,7 +1003,7 @@ describe('the buttons that stand beside the card in the template', () => {
 // is its identity and not a role (L11, K9, #20), and that palette is not this issue's to move.
 describe('what the whole tool draws as chosen', () => {
   it('paints none of it in a fill of its own, bar the seats that are a palette', async () => {
-    await run.projects.create('p1', worthFiltering())
+    await run.projects.create(run.projectId, worthFiltering())
     const walked = {
       'inloggningskortet, mina spel': [read('src/account/account.css'), 390, '.byd-account', await accountViews()],
       'sätt dig vid bordet': [read('src/join/join.css'), 390, '.byd-join', await joinViews()],

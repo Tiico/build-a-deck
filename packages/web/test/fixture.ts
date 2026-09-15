@@ -83,8 +83,8 @@ const PORT_CEILING = 30_000
 // client that outlived its own server and a later fixture's door.
 //
 // It matters because a project id is the caller's word and not a unique one: nearly every file
-// here asks for `run.projects.create('p1', …)`, so two fixtures a slice apart hold two different
-// projects under one name. A stray client knocking on the recycled port asks for `p1`, is let in
+// here used to ask for `run.projects.create('p1', …)`, so two fixtures a slice apart held two
+// different projects under one name (#119 took the name off the caller; this is why). A stray client knocking on the recycled port asks for `p1`, is let in
 // because that server has a `p1` too, and lays its own edits on a project it was never opened on.
 // It has been seen twice: a font losing the licence just set on it (#109), and a table started at
 // `rev-2` when both of a pair should have read `rev-1`, a stray save having come between them.
@@ -156,7 +156,35 @@ async function bind(server: Server, port: number): Promise<void> {
   }
 }
 
-export type Running = { url: string; http: string; store: MemoryLogStore; projects: MemoryProjectStore; mail: MemoryMailer; stop(): Promise<void>; restart(): Promise<void>; completeRenders(limit?: number): Promise<number>; failRenders(): Promise<number> }
+export type Running = {
+  url: string
+  http: string
+  store: MemoryLogStore
+  projects: MemoryProjectStore
+  mail: MemoryMailer
+  /**
+   * This fixture's project id, and no other fixture's (#109, #119).
+   *
+   * A project id used to be the caller's word — every file wrote `create('p1', …)` — so two
+   * fixtures held two different projects under one name. That is harmless until they share a
+   * port, and the ports go round: a client that outlived its own server then knocks on a later
+   * fixture's door, asks for `p1`, is let in because that server has a `p1` too, and lays its own
+   * edits on a project it was never opened on. It was seen as a font losing the licence just set
+   * on it, and as a table started at `rev-2` when both of a pair should have read `rev-1`.
+   *
+   * So the name is the fixture's to give and never the caller's. Use it wherever a project is
+   * addressed — in the store, in a URL, in a body — so that the two always agree.
+   */
+  projectId: string
+  /** A second project for the one test that needs two at once. Its own name, on the same ground. */
+  otherProjectId: string
+  stop(): Promise<void>
+  restart(): Promise<void>
+  completeRenders(limit?: number): Promise<number>
+  failRenders(): Promise<number>
+}
+// Enough to tell two fixtures apart within a worker, which is as far as a port ever travels.
+let fixtures = 0
 
 // With `auth`, accounts are on (G1): projects need a login and belong to whoever made them.
 export async function startServer(opts: { auth?: boolean; authBypass?: boolean } = {}): Promise<Running> {
@@ -177,12 +205,15 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean }
       server.closeAllConnections()
       server.close(() => resolve())
     })
+  const nth = (fixtures += 1)
   return {
     url: `ws://127.0.0.1:${port}`,
     http: `http://127.0.0.1:${port}`,
     store,
     projects,
     mail,
+    projectId: `p1-f${nth}`,
+    otherProjectId: `p2-f${nth}`,
     stop,
     // Marks every queued texture as rendered, with a stand-in for the PNG: what the render
     // container would do, without Chromium. A limit renders only that many, which is a worker

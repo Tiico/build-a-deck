@@ -17,7 +17,7 @@ afterEach(async () => {
 })
 
 async function openBord(): Promise<void> {
-  history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+  history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   render(<EditorPage />)
   await screen.findByText('Skogens herrar')
   fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
@@ -30,7 +30,7 @@ const rows = () => [...document.querySelectorAll('[data-zone-row]')].map((el) =>
 // under varandra på filten, där ett handtag bakom ett annat inte ens går att träffa.
 describe('the setup editor (B5, K2): the list of zones', () => {
   it('lists every zone with its own, and takes one off the table when it is removed', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     await openBord()
     // I dokumentets egen ordning, för den ordningen betyder något: ett släpp landar i den minsta
     // zonen, och mellan lika stora i den som står först (K2).
@@ -43,8 +43,8 @@ describe('the setup editor (B5, K2): the list of zones', () => {
     expect(document.querySelector('[data-table] [data-zone="discard"]')).toBeNull()
 
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
-    await waitFor(async () => expect((await run.projects.load('p1'))?.rev).toBe(2))
-    expect((await run.projects.load('p1'))?.setup.zones.some((z) => z.id === 'discard')).toBe(false)
+    await waitFor(async () => expect((await run.projects.load(run.projectId))?.rev).toBe(2))
+    expect((await run.projects.load(run.projectId))?.setup.zones.some((z) => z.id === 'discard')).toBe(false)
   })
 })
 
@@ -53,7 +53,7 @@ describe('the setup editor (B5, K2): the list of zones', () => {
 // låg i att ta bort som vilken annan som helst.
 describe('the setup editor (B5, K2): what the table cannot be without', () => {
   it('says why the felt, a hand and the deck’s pile stay, and lets the deck move so its pile can go', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     await openBord()
     expect(screen.queryByRole('button', { name: 'Ta bort Spelyta' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Ta bort Draghög' })).toBeNull()
@@ -76,8 +76,8 @@ describe('the setup editor (B5, K2): what the table cannot be without', () => {
     expect(document.querySelector('[data-table] [data-zone="hog-1"]')).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
-    await waitFor(async () => expect((await run.projects.load('p1'))?.rev).toBe(2))
-    const stored = await run.projects.load('p1')
+    await waitFor(async () => expect((await run.projects.load(run.projectId))?.rev).toBe(2))
+    const stored = await run.projects.load(run.projectId)
     expect(stored?.setup.deckZone).toBe('hog-1')
     expect(stored?.setup.zones.filter((z) => z.kind === 'hand').map((z) => z.returnTo)).toEqual(['hog-1', 'hog-1'])
   })
@@ -88,7 +88,7 @@ describe('the setup editor (B5, K2): what the table cannot be without', () => {
 // markerar det är pekaren som börjar draget).
 describe('the setup editor (B5, K2): the felt, the list and the key', () => {
   it('opens the row for a zone picked on the felt, takes it away with Delete, and puts it back with Ångra', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     await openBord()
     fireEvent.click(handle('discard'))
     expect(row('discard').getAttribute('data-open')).toBe('true')
@@ -119,7 +119,7 @@ describe('the setup editor (B5, K2): the felt, the list and the key', () => {
 // bort en zon per plats är att ge platserna en igen — i ett steg, för det är en sak designern gör.
 describe('the setup editor (B5, K2): the seats knob, and giving the seats a zone again', () => {
   it('lays a new seat out like the others, keeps what was removed removed, and gives every seat a zone back in one step', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     await openBord()
     fireEvent.click(screen.getByRole('button', { name: 'Ta bort Kasthög' }))
     fireEvent.click(screen.getByRole('button', { name: '3' }))
@@ -145,8 +145,8 @@ describe('the setup editor (B5, K2): the seats knob, and giving the seats a zone
     expect(screen.getAllByText('Framför mig', { selector: '[data-sheet-preview] span' })).toHaveLength(1)
 
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
-    await waitFor(async () => expect((await run.projects.load('p1'))?.rev).toBe(2))
-    const stored = await run.projects.load('p1')
+    await waitFor(async () => expect((await run.projects.load(run.projectId))?.rev).toBe(2))
+    const stored = await run.projects.load(run.projectId)
     expect(stored?.setup.zones.map((z) => z.id)).toEqual(expect.arrayContaining(['counters:C', 'mine:C', 'hand:C']))
     expect(stored?.setup.zones.some((z) => z.id === 'discard')).toBe(false)
     expect(stored?.setup.zones.find((z) => z.id === 'mine:B')).toMatchObject({ owner: 'B', visibility: 'owner' })
@@ -159,7 +159,7 @@ describe('the setup editor (B5, K2): the seats knob, and giving the seats a zone
 // ingen spelare någonsin får se.
 describe('the setup editor (B5, C4): the phone’s sheet as a preview', () => {
   it('shows one seat’s sheet, not every seat’s', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     await openBord()
     fireEvent.click(screen.getByRole('button', { name: '3' }))
     fireEvent.click(screen.getByRole('button', { name: '＋ Räknare' }))
@@ -183,7 +183,7 @@ describe('the setup editor (B5, L17): the deck\'s own back', () => {
   const elementsOn = (zone: string) => [...document.querySelectorAll(`[data-zone="${zone}"] .byd-pile-top [data-element]`)].map((e) => e.getAttribute('data-element'))
 
   it('draws the template\'s back on a face-down pile, and follows the back when it is changed', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     await openBord()
     // The fixture's back is a single shape called `bg`; the pile wears it.
     expect(backOn('draw')).toBeTruthy()
@@ -198,7 +198,7 @@ describe('the setup editor (B5, L17): the deck\'s own back', () => {
   })
 
   it('leaves a face-up pile and an empty one alone', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     await openBord()
     // The discard pile starts empty and lies face up: there is no back to show on it.
     expect(backOn('discard')).toBeNull()
@@ -209,7 +209,7 @@ describe('the setup editor (B5, L17): the deck\'s own back', () => {
   // something on it the pile keeps the tool's own stand-in.
   it('keeps the stand-in while the back is still empty', async () => {
     const doc = projectDoc()
-    await run.projects.create('p1', { ...doc, template: { ...doc.template, faces: { ...doc.template.faces, back: { base: [], variants: {} } } } })
+    await run.projects.create(run.projectId, { ...doc, template: { ...doc.template, faces: { ...doc.template.faces, back: { base: [], variants: {} } } } })
     await openBord()
     expect(backOn('draw')).toBeNull()
     expect(document.querySelector('[data-zone="draw"] .byd-pile-top')?.getAttribute('data-face')).toBe('back')
