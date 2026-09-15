@@ -133,7 +133,12 @@ describe('the felt’s face is in the document before the first painting (K20, #
     // 2026-09-15 for the deck's measure (E1) and the game's colours (E4): a panel beside the wall
     // with a rule, a list of the files that cannot answer it and a drawer that opens one of them,
     // and a row per meaning in the symbol panel with the inks to paint it in.
-    expect(statSync(join(OUT, blockingSheets(index)[0]!.replace(/^\//, ''))).size).toBeLessThan(inlined + 136_000)
+    // Raised to 139 kB on 2026-09-15 for what a pile can be asked for (B5, K14): the sheet the
+    // felt hangs under the ring, and the sentence panel in the Bord tab — a slot inside running
+    // text, its popover, and the chip rows a question is written with. Two real surfaces, one on
+    // the felt and one in the editor, and the headroom left over is deliberate: the sheet is the
+    // first thing on the felt that is a list rather than a disc, and it will grow.
+    expect(statSync(join(OUT, blockingSheets(index)[0]!.replace(/^\//, ''))).size).toBeLessThan(inlined + 139_000)
   })
 
   // And the same thing said by a browser rather than by a reader of files: the built app served

@@ -10,6 +10,7 @@ import type {
   TypeRef,
   ZoneId,
   ZoneKind,
+  ZoneAction,
   ZoneShortcut,
 } from '@byd/protocol'
 
@@ -29,6 +30,9 @@ export type ZoneDef = {
   returnTo?: ZoneId
   // The verb the phone shows for playing here (C4), and where in a pile the card goes.
   shortcut?: ZoneShortcut
+  // What a player may ask this zone for when they click it (K14, B5). The designer's own, so
+  // they travel to every view as they stand.
+  actions?: ZoneAction[]
 }
 
 // `order[0]` is the top of a pile, the leftmost card of a hand, the topmost object of an area.
@@ -67,6 +71,12 @@ export type SetupDef = {
   floor: ZoneId
   // Listed order within a zone is the initial order in that zone.
   components: ComponentSpec[]
+  // What each card row says in its own columns, by the names the designer gave them. Kept once
+  // per row and not once per copy, because identity is the `cardRef` and a question is asked of
+  // the identity. It is as secret as `cardRef` is: nothing projects it, so it never reaches a
+  // view (B6). A setup without it answers no question, which is what every table built before
+  // this field did.
+  cards?: Record<string, Record<string, string>>
 }
 
 export type TableState = {

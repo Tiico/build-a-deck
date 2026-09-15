@@ -87,6 +87,7 @@ function zoneBase(z: Zone) {
     dynamic: z.dynamic,
     ...(z.owner !== undefined ? { owner: z.owner } : {}),
     ...(z.shortcut !== undefined ? { shortcut: { ...z.shortcut } } : {}),
+    ...(z.actions !== undefined && z.actions.length > 0 ? { actions: z.actions } : {}),
   }
 }
 

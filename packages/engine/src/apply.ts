@@ -1,4 +1,6 @@
 import type { Applied, ComponentId, ComponentSpec, Outcome, SeatId, ZoneId } from '@byd/protocol'
+import type { CardQuery } from '@byd/protocol'
+import { reach } from './reach.js'
 import { restoredTable } from './restore.js'
 import { handsReturnedBy } from './hands.js'
 import { materialise } from './setup.js'
@@ -61,8 +63,9 @@ export function apply(prev: TableState, _registry: TypeRegistry, applied: Applie
       break
     }
     case 'split': {
+      const taken = reached(state, it.pile, it.which, it.at)
       if (it.to !== undefined) {
-        takeTop(state, it.pile, it.to, it.at)
+        take(state, taken, it.to)
       } else {
         const source = zoneOf(state, it.pile)
         const parent = zoneOf(state, source.parent ?? state.setup.floor)
@@ -71,21 +74,28 @@ export function apply(prev: TableState, _registry: TypeRegistry, applied: Applie
           y: must(it.y, 'split needs y'),
           rot: source.geometry.rot,
         })
-        takeTop(state, it.pile, pile.id, it.at)
+        take(state, taken, pile.id)
       }
+      turn(state, taken, it.face)
       break
     }
     case 'shuffle':
       applyShuffle(state, it.pile, must(applied.outcome, 'shuffle requires an outcome'))
       break
-    case 'draw':
-      takeTop(state, it.from, it.to, it.count)
+    case 'draw': {
+      const drawn = reached(state, it.from, it.which, it.count)
+      take(state, drawn, it.to)
+      turn(state, drawn, it.face)
       break
-    case 'deal':
+    }
+    case 'deal': {
+      const dealt = zoneOf(state, it.from).order.slice(0, it.each * it.to.length)
       for (let round = 0; round < it.each; round++) {
         for (const target of it.to) takeTop(state, it.from, target, 1)
       }
+      turn(state, dealt, it.face)
       break
+    }
     case 'roll': {
       const o = must(applied.outcome, 'roll requires an outcome')
       if (o.kind !== 'roll') throw new Error('roll outcome has wrong kind')
@@ -146,7 +156,7 @@ export function apply(prev: TableState, _registry: TypeRegistry, applied: Applie
       // A flagged moment (G3) is a mark in the log; the table is untouched.
       break
     case 'version.change':
-      changeVersion(state, it.to, it.components)
+      changeVersion(state, it.to, it.components, it.cards)
       break
     case 'rewind.propose':
       state.rewind = { id: applied.batch, toSeq: it.toSeq, by: applied.by }
@@ -216,9 +226,31 @@ function relocate(
 }
 
 // Moves the top `count` components of `from` onto the top of `to`, preserving their order.
+// Which side the cards that were just moved end up lying on (`face` on split, draw and deal).
+// Said nothing, they keep the side they had, which is what every line written before the field
+// existed means; the cards are named by the ids they had *before* the move, because that is the
+// only moment the top of the source pile is knowable.
+// What the line reaches for, by the one rule `decide` used to let it through. A refusal here
+// would mean the two disagreed, which is a broken log and not a rejected move.
+function reached(state: TableState, pile: ZoneId, which: CardQuery | undefined, count: number): ComponentId[] {
+  const found = reach(state, pile, which, count)
+  if (typeof found === 'string') throw new Error(found)
+  return found
+}
+
+function turn(state: TableState, moved: readonly ComponentId[], face: string | undefined): void {
+  if (face === undefined) return
+  for (const id of moved) componentOf(state, id).face = face
+}
+
 function takeTop(state: TableState, from: ZoneId, to: ZoneId, count: number): void {
-  const taken = zoneOf(state, from).order.slice(0, count)
-  for (const id of taken.toReversed()) {
+  take(state, zoneOf(state, from).order.slice(0, count), to)
+}
+
+// Moving named cards into a zone, keeping the order they were named in. `takeTop` is this with
+// the top so many named; a question (`which`) names cards that need not lie together.
+function take(state: TableState, ids: readonly ComponentId[], to: ZoneId): void {
+  for (const id of [...ids].reverse()) {
     detach(state, id)
     attach(state, id, to, 0)
   }
@@ -245,7 +277,10 @@ function createPile(state: TableState, id: ZoneId, parent: Zone, at: { x: number
 // The deck follows the project (C7): per cardRef, missing copies are added face down at the
 // bottom of the zone the spec names, surplus copies are removed — from that zone first, then
 // from wherever they lie — and everything else stays exactly where it is.
-function changeVersion(state: TableState, to: string, components: readonly ComponentSpec[]): void {
+function changeVersion(state: TableState, to: string, components: readonly ComponentSpec[], cards: Record<string, Record<string, string>> | undefined): void {
+  // What the rows say now. A line written before this field existed carries none, and leaves the
+  // index it found — which is what such a line meant, since no question could be asked then.
+  if (cards !== undefined) state.setup = { ...state.setup, cards }
   const wanted = new Map<string, ComponentSpec[]>()
   for (const spec of components) wanted.set(spec.cardRef, [...(wanted.get(spec.cardRef) ?? []), spec])
   const have = new Map<string, ComponentInstance[]>()

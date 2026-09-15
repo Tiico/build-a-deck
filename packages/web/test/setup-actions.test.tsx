@@ -1,0 +1,76 @@
+// @vitest-environment jsdom
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { EditorPage } from '../src/editor/EditorPage.js'
+import { projectDoc } from './project-doc.js'
+import { startServer, type Running } from './fixture.js'
+import { JSDOM_TEST_BUDGET } from './budget.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
+
+let run: Running
+beforeEach(async () => {
+  run = await startServer()
+})
+afterEach(async () => {
+  await run.stop()
+})
+
+async function openZone(id: string): Promise<void> {
+  history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+  render(<EditorPage />)
+  await screen.findByText('Skogens herrar')
+  fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
+  fireEvent.click(within(document.querySelector(`[data-zone-row="${id}"]`) as HTMLElement).getByRole('button', { name: /Draghög|Kasthög|Spelyta/ }))
+}
+
+const panel = () => document.querySelector('[data-zone-actions]') as HTMLElement
+
+// Författandet är meningar och inte en blankett (prototypen 2026-09-15): det designern läser är
+// det som kommer att hända, och rattarna sitter inne i texten.
+describe('vad en zon frågar efter, skrivet som en mening', () => {
+  it('säger att inga kort börjar i högen, och tar frågan när en kolumns värde väljs', async () => {
+    await run.projects.create('p1', projectDoc())
+    await openZone('draw')
+
+    expect(panel().textContent).toMatch(/börjar/)
+    fireEvent.click(within(panel()).getByRole('button', { name: /inga kort/ }))
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Drake' }))
+    expect(panel().textContent).toMatch(/korten där title är Drake/)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    await waitFor(async () => expect((await run.projects.load('p1'))?.rev).toBe(2))
+    expect((await run.projects.load('p1'))?.setup.zones.find((z) => z.id === 'draw')?.fill).toEqual([{ field: 'title', is: ['Drake'] }])
+  })
+})
+
+describe('en egen åtgärd på en hög, skriven som meningar', () => {
+  it('får ett namn och ett steg, och steget läses som den mening det är', async () => {
+    await run.projects.create('p1', projectDoc())
+    await openZone('draw')
+
+    // En ny åtgärd har ett steg från början: en åtgärd utan steg är ingen åtgärd.
+    fireEvent.click(within(panel()).getByRole('button', { name: '＋ Åtgärd' }))
+    fireEvent.change(within(panel()).getByLabelText(/Namn för/), { target: { value: 'Vänd upp ett per spelare' } })
+    expect(panel().textContent).toMatch(/Ta 1 från högen och lägg dem som de ligger bredvid högen/)
+
+    // Antalet är en källa och inte ett tal: "ett per spelare" väljs inne i meningen.
+    const step = panel().querySelector('ol li') as HTMLElement
+    fireEvent.click(within(step).getByRole('button', { name: '1' }))
+    fireEvent.click(within(step).getByRole('button', { name: 'ett per spelare' }))
+    expect(panel().textContent).toMatch(/Ta ett per spelare från högen/)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    await waitFor(async () => expect((await run.projects.load('p1'))?.rev).toBe(2))
+    const zone = (await run.projects.load('p1'))?.setup.zones.find((z) => z.id === 'draw')
+    expect(zone?.actions).toEqual([
+      { id: expect.any(String), label: 'Vänd upp ett per spelare', steps: [{ v: 'split', count: { of: 'seats' }, to: { at: 'beside' }, face: 'keep' }] },
+    ])
+  })
+
+  it('erbjuds bara på högar — en yta och en hand har ingen ring att hänga dem i', async () => {
+    await run.projects.create('p1', projectDoc())
+    await openZone('table')
+    expect(document.querySelector('[data-zone-actions]')).toBeNull()
+  })
+})
