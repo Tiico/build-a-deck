@@ -431,6 +431,8 @@ export const enEditor = {
   'setup.counter.stacks': 'One or two counters lie side by side in front of a seat. A third stacks the seat’s chips into one pile, which the table opens by name.',
   'setup.addSeatArea': '＋ Area per seat',
   'setup.addSeatCounters': '＋ Counters zone per seat',
+  'zone.copy': 'Copy of {name}',
+  'setup.copied': '{name} copied',
   // What a zone asks for and what it can do (B5, K14), written as sentences: the knobs sit inside
   // the text, and the holes are named so another language may put them in another order (A4).
   'setup.fill.sentence': 'In {zone} {what} start.',

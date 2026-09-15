@@ -2,7 +2,7 @@ import type { ProjectCredit, ProjectDoc, ProjectFont, ProjectFraming, ProjectRow
 import type { DocDiff } from '@byd/server/doc'
 import type { Element } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
-import { applyEdit, recipeOf, type Clearable, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type ZonePatch } from '@byd/server/doc'
+import { applyEdit, recipeOf, type Clearable, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
 import { ASSET_PREFIX, assetUrl } from './assets.js'
 import { measureAsset } from './motifs.js'
 import type { Motif } from '@byd/template'
@@ -464,6 +464,18 @@ export class ProjectClient {
     while (taken.has(`${base}-${n}`)) n++
     const id = `${base}-${n}`
     this.edit({ v: 'addZone', id, kind, name: kind === 'pile' ? t('zone.new.pile', { n }) : t('zone.new.area', { n }) })
+    return id
+  }
+
+  // A zone laid down as it stands (a paste): everything it carried comes with it, under an id
+  // nothing else has. One edit, so it is one step back (B4).
+  insertZone(zone: Zone): string {
+    const taken = new Set(this.doc.setup.zones.map((z) => z.id))
+    const base = zone.id.replace(/-\d+$/, '')
+    let n = 2
+    while (taken.has(`${base}-${n}`)) n++
+    const id = `${base}-${n}`
+    this.edit({ v: 'insertZone', zone: { ...zone, id } })
     return id
   }
 

@@ -107,6 +107,11 @@ export type EditIntent =
   // `name` may carry `{seat}`, which becomes the seat's letter, and it is written in the language
   // the designer is building the game in (A4), like every other word the tool suggests.
   | { v: 'addSeatZone'; role: SeatRole; name: string; shortcut?: Shortcut }
+  // A whole zone laid down as it stands: what a paste is. `addZone` makes a blank one, which a
+  // copy is not — the copy carries the question it asks, what it can be asked for, its shortcut,
+  // its owner and its size, and those are the whole reason to copy a zone rather than build a
+  // second one by hand.
+  | { v: 'insertZone'; zone: Zone }
   // Where the deck lies (B5, K10). The deck is a role a pile carries and not a zone of its own:
   // a designer may call any pile the deck, and moving the role is what lets the pile the wizard
   // laid out be taken away like any other.
@@ -349,6 +354,15 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
 
     // A zone's name, its shortcut (C4), where it lies and how big it is (K2), who owns it and who
     // sees into it. An undefined shortcut or owner removes it.
+    // Laying down a whole zone (a paste). A hand is never one: a seat *is* a hand (C3), so a
+    // second hand for a seat is a table nobody asked for. An id already on the table is a
+    // mistake in the caller and not something to paper over by renaming.
+    case 'insertZone': {
+      if (doc.setup.zones.some((z) => z.id === intent.zone.id)) throw new Error(`zone ${intent.zone.id} already exists`)
+      if (intent.zone.kind === 'hand') throw new Error('a hand belongs to its seat and cannot be laid down on its own')
+      return { ...doc, setup: { ...doc.setup, zones: [...doc.setup.zones, intent.zone] } }
+    }
+
     case 'patchZone': {
       if (!doc.setup.zones.some((z) => z.id === intent.id)) throw new Error(`no zone ${intent.id}`)
       const zones = doc.setup.zones.map((z) => {

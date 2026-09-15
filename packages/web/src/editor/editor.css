@@ -1488,3 +1488,6 @@
 .byd-slot-chips > span { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .byd-slot-chips i { flex-basis: 100%; font-style: normal; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #9aa3b8; }
 .byd-slot-chips button[data-on='true'] { background: #1d3a5c; border-color: #3f7fbf; color: #cfe6ff; }
+/* Vad en tangent sa, när den inte tog bort något: en kopia tagen, eller ett nej med sitt skäl.
+   Det står där borttagningens eget ord står, för det är samma sorts besked. */
+.byd-setup-said-word { color: #cfe6ff; }

@@ -40,6 +40,21 @@ const PILE_MM = { w: 63, h: 88 }
 // the card it lies on is the felt's own millimetre divided by this one.
 const CSS_MM_PX = 96 / 25.4
 const SNAP_MM = 5
+// How far a pasted copy lands from the zone it was copied from, in table millimetres. A copy that
+// lay exactly on the original could not be pointed at, and the list would show two rows that
+// looked the same for two things in the same place.
+const BESIDE_MM = 10
+
+// Whether a key press belongs to something being written in rather than to the table. Read off
+// the event as well as off the focus: the focus is what a browser moves when a field is typed
+// in, and the event's own target is what the press actually landed on — a press dispatched at a
+// field that has not taken focus yet is still that field's.
+// One rule, read by Delete and by cut/copy/paste, so the two cannot disagree about what a key
+// press is for.
+function inAField(e: KeyboardEvent): boolean {
+  const on = [e.target, document.activeElement].filter((n): n is HTMLElement => n instanceof HTMLElement)
+  return on.some((el) => el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
+}
 const NUDGE_MM = 10
 const MIN_MM = 40
 
@@ -50,17 +65,74 @@ export function SetupEditor({ doc, client, assetBase, motifs }: SetupEditorProps
   // What the last step back would take back, said where the removal happened rather than only in
   // the header: a zone that went by mistake is one press from standing again.
   const [undoable, setUndoable] = useState<string | null>(null)
+  // What the last key press said, when it was not a removal: a copy taken, or a refusal with its
+  // reason. It stands where the removal's own word stands, because it is the same kind of news.
+  const [said, setSaid] = useState<string | null>(null)
+  // The editor's own clipboard, and what the key handler needs to read without being rebuilt on
+  // every keystroke the panel beside it takes.
+  const clipboard = useRef<Zone | null>(null)
   const view = previewOf(doc)
   const selectedZone = setup.zones.find((z) => z.id === selected)
   const remove = (zone: Zone) => {
     client.removeZone(zone.id)
     setUndoable(zone.name)
+    setSaid(null)
     if (selected === zone.id) setSelected(null)
   }
+  const keys = useRef({ selected, setup, client, remove, t })
+  keys.current = { selected, setup, client, remove, t }
   const add = (kind: 'area' | 'pile') => {
     setSelected(client.addZone(kind, t))
     setUndoable(null)
   }
+  // Cut, copy and paste, bound to the window for the reason Delete already is: a handle on the
+  // felt never has the focus, because the pointer that selects it is the pointer that starts a
+  // drag. The clipboard is the editor's own and not the machine's — what is copied is a zone with
+  // everything it carries, which is not a thing another program could be handed anyway.
+  //
+  // Copying a zone is the cheap half of an action: the expensive half is writing what the pile
+  // can be asked for, and a copy carries that with it, because a step addresses *this pile* and
+  // never a zone by name.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return
+      const key = e.key.toLowerCase()
+      if (key !== 'c' && key !== 'x' && key !== 'v') return
+      if (inAField(e)) return
+      const now = keys.current
+      if (key === 'v') {
+        const held = clipboard.current
+        if (!held) return
+        e.preventDefault()
+        const geometry = { ...held.geometry, x: held.geometry.x + held.geometry.w + BESIDE_MM }
+        setSelected(now.client.insertZone({ ...held, name: now.t('zone.copy', { name: held.name }), geometry }))
+        setSaid(null)
+        return
+      }
+      const zone = now.setup.zones.find((z) => z.id === now.selected)
+      if (!zone) return
+      e.preventDefault()
+      // A hand is its seat's (C3), so it is never something to lay down a second copy of.
+      if (zone.kind === 'hand') {
+        setSaid(now.t('setup.fixed.hand'))
+        return
+      }
+      if (key === 'x') {
+        const why = fixed(now.setup, zone, now.t)
+        if (why !== null) {
+          setSaid(why)
+          return
+        }
+        clipboard.current = zone
+        now.remove(zone)
+        return
+      }
+      clipboard.current = zone
+      setSaid(now.t('setup.copied', { name: zone.name }))
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
   return (
     <div className="byd-setup" data-setup-editor>
       <div className="byd-setup-side">
@@ -87,6 +159,11 @@ export function SetupEditor({ doc, client, assetBase, motifs }: SetupEditorProps
               >
                 {t('setup.undo')}
               </button>
+            </span>
+          )}
+          {said && (
+            <span className="byd-setup-said-word" role="status">
+              {said}
             </span>
           )}
           <span>{t('setup.hint')}</span>
@@ -344,8 +421,7 @@ function Felt({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Delete' && e.key !== 'Backspace') return
-      const el = document.activeElement as HTMLElement | null
-      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return
+      if (inAField(e)) return
       const now = state.current
       const zone = now.setup.zones.find((z) => z.id === now.selected)
       if (!zone || fixed(now.setup, zone, t) !== null) return

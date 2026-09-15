@@ -468,6 +468,8 @@ export const svEditor = {
   'setup.counter.stacks': 'En eller två räknare ligger bredvid varandra framför platsen. En tredje staplar platsens brickor i en hög, som bordet öppnar vid namn.',
   'setup.addSeatArea': '＋ Yta per plats',
   'setup.addSeatCounters': '＋ Räknarzon per plats',
+  'zone.copy': 'Kopia av {name}',
+  'setup.copied': '{name} kopierad',
   // Vad en zon frågar efter och vad den kan (B5, K14), skrivet som meningar: rattarna sitter inne
   // i texten, och hålen är namngivna så att ett annat språk får lägga dem i en annan ordning (A4).
   'setup.fill.sentence': 'I {zone} börjar {what}.',
