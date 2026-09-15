@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { ZoneAction } from './actions.js'
 import { ComponentId, FaceId, SeatId, TypeRef, ZoneId } from './ids.js'
 
 // What one seat is allowed to know about one component.
@@ -45,6 +46,9 @@ const zoneBase = {
   kind: ZoneKind,
   name: z.string(),
   shortcut: ZoneShortcut.optional(),
+  // What this zone can be asked for (K14, B5): the designer's own named actions. No secret —
+  // they are in the rulebook — so every view gets them as they stand.
+  actions: z.array(ZoneAction).optional(),
   owner: SeatId.optional(),
   geometry: Geometry,
   // Created during play by stacking (K1); dissolves when one component remains.

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { CardQuery, ZoneAction } from '@byd/protocol'
 import { Template, type Row } from '@byd/template'
 import type { Deck } from './faces.js'
 import type { AppliedEdit } from './project-actor.js'
@@ -20,6 +21,11 @@ const ZoneDef = z.object({
   returnTo: z.string().optional(),
   // The verb the phone shows for playing here (C4), and where in a pile the card goes.
   shortcut: z.object({ label: z.string().min(1).max(40), at: z.enum(['top', 'bottom']) }).optional(),
+  // Which cards start here, as a question about the deck's own columns. A zone without one takes
+  // no cards, and what no zone asks for lies in the deck's pile as it always has.
+  fill: CardQuery.optional(),
+  // What a player may ask this zone for when they click it (K14). The tool ships none.
+  actions: z.array(ZoneAction).optional(),
 })
 export const ProjectSetup = z.object({
   zones: z.array(ZoneDef),

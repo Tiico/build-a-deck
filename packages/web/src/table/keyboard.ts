@@ -3,6 +3,7 @@ import { translate, type T } from '../i18n/index.js'
 import { isCounter } from '../components.js'
 import { CARD_MM, besidePile } from './drop.js'
 import { handName } from './handName.js'
+import { compileAction } from './actions.js'
 
 // Everything the keyboard says is the tool's own, so it is looked up where the reader is (A4).
 // A call from outside React — a test, a label built before a provider is mounted — gets Swedish,
@@ -167,6 +168,15 @@ export function verbsFor(view: Snapshot, thing: Thing, t: T = swedish): Act[] {
     { key: 'shuffle', label: t('ring.shuffle'), intents: n > 1 ? [{ v: 'shuffle', pile: z.id }] : null },
     ...(view.seat === null ? [] : [{ key: 'toHand', label: t('kbd.verb.toHand'), intents: n > 0 ? [{ v: 'split' as const, pile: z.id, at: 1, to: `hand:${view.seat}` }] : null }]),
     { key: 'half', label: t('ring.half'), hint: t('kbd.hint.half'), intents: n > 1 ? [{ v: 'split', pile: z.id, at: Math.ceil(n / 2), ...besidePile(z.geometry, Math.ceil(n / 2)) }] : null },
+    // And what the game itself hangs on this pile (K14, extended), after the tool's own verbs and
+    // in the designer's own words. The panel reads the same list the sheet under the ring reads
+    // and compiles it the same way, so the hand and the keyboard cannot be offered different
+    // things about one pile (K16). An action that needs a number typed is not offered here yet —
+    // it is offered switched off, with the reason said.
+    ...(z.actions ?? []).map((a): Act => {
+      const made = compileAction(view, z.id, a)
+      return { key: `action:${a.id}`, label: a.label, intents: made.ok ? made.intents : null, ...('asks' in made ? { hint: t('kbd.hint.action.asks') } : {}) }
+    }),
   ]
 }
 

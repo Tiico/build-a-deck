@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { ComponentId, FaceId, GameVersionId, SeatId, TypeRef, ZoneId } from './ids.js'
+import { CardQuery } from './query.js'
 
 // A component as a setup lists it. `version.change` carries the whole new list so that the
 // line replays without the project it came from (C7).
@@ -45,6 +46,18 @@ export const PhysicalIntent = z.discriminatedUnion('v', [
   // Onto a card lying loose in an area: the two form a new pile there (K1).
   // Onto a card in a pile or hand: joins that zone directly above it.
   z.object({ v: z.literal('stack'), component: ComponentRef, onto: ComponentId }),
+  // `which` on the two verbs that take cards out of a pile: *which* cards, instead of the top so
+  // many. It is the same reach of the hand — fanning a deck and pulling the cards you want — and
+  // it has to be a parameter for the same reason `face` does: the cards are inside a pile whose
+  // ids never reach the wire (B6), so only the engine can say which ones they are. `at` and
+  // `count` then say nothing about how many come out; the question does.
+  //
+  // `face` on the three verbs that move cards in bulk: which side they lie on where they land.
+  // It is a parameter and not a verb, because laying cards out face-up is one motion of the hand
+  // and not two. It has to be said here rather than by a `flip` afterwards, for the reason K15
+  // gives about the address: a card still inside a hidden pile has no id on the wire to flip, so
+  // only the verb that takes it out can say which way up it comes out. Left unsaid, the cards
+  // keep the side they already lay on, which is what every line written before this said.
   // Without `to`, the top `at` components become a new pile at (x, y) in the source pile's area.
   // Without `to`, the top `at` components become a new pile at (x, y) in table coordinates,
   // like movePile and zone geometry; a component's own x/y are relative to its zone.
@@ -55,10 +68,12 @@ export const PhysicalIntent = z.discriminatedUnion('v', [
     to: ZoneId.optional(),
     x: z.number().optional(),
     y: z.number().optional(),
+    face: FaceId.optional(),
+    which: CardQuery.optional(),
   }),
   z.object({ v: z.literal('shuffle'), pile: ZoneId }),
-  z.object({ v: z.literal('draw'), from: ZoneId, to: ZoneId, count: z.number().int().positive() }),
-  z.object({ v: z.literal('deal'), from: ZoneId, to: z.array(ZoneId).min(1), each: z.number().int().positive() }),
+  z.object({ v: z.literal('draw'), from: ZoneId, to: ZoneId, count: z.number().int().positive(), face: FaceId.optional(), which: CardQuery.optional() }),
+  z.object({ v: z.literal('deal'), from: ZoneId, to: z.array(ZoneId).min(1), each: z.number().int().positive(), face: FaceId.optional() }),
   z.object({ v: z.literal('roll'), component: ComponentId }),
   z.object({ v: z.literal('setCounter'), component: ComponentId, value: z.number().int() }),
   z.object({ v: z.literal('peek'), components: z.array(ComponentId).min(1) }),
@@ -84,7 +99,10 @@ export const SessionIntent = z.discriminatedUnion('v', [
   z.object({ v: z.literal('rewind.propose'), toSeq: z.number().int().nonnegative() }),
   z.object({ v: z.literal('rewind.confirm'), proposal: z.string().min(1) }),
   z.object({ v: z.literal('rewind.reject'), proposal: z.string().min(1) }),
-  z.object({ v: z.literal('version.change'), to: GameVersionId, components: z.array(ComponentSpec) }),
+  // The deck follows the project mid-session (C7). `cards` is what each row says in its own
+  // columns, which has to travel with the components for the same reason they do: a question
+  // asked after the change must be asked of the deck being played, not of the one that was.
+  z.object({ v: z.literal('version.change'), to: GameVersionId, components: z.array(ComponentSpec), cards: z.record(z.string(), z.record(z.string(), z.string())).optional() }),
   // A flagged moment (G3): a line in the log, with an optional note. `observer` names a
   // watcher (C8), whose flags weigh differently than a player's; the server stamps it.
   z.object({ v: z.literal('flag'), note: z.string().max(280).optional(), observer: z.string().min(1).max(64).optional() }),

@@ -1,3 +1,4 @@
+import type { CardQuery, ZoneAction } from '@byd/protocol'
 import type { Element, FaceTemplate, Variant } from '@byd/template'
 import { ProjectFraming } from './projects.js'
 import type { Cell, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc } from './projects.js'
@@ -29,7 +30,19 @@ function renamedRole(fields: Record<string, Cell>, from: string, to: string): Re
   return out
 }
 
-export type ZonePatch = { name?: string; geometry?: Geometry; visibility?: Zone['visibility']; shortcut?: { label: string; at: 'top' | 'bottom' } | undefined; owner?: string | undefined }
+export type ZonePatch = {
+  name?: string
+  geometry?: Geometry
+  visibility?: Zone['visibility']
+  shortcut?: { label: string; at: 'top' | 'bottom' } | undefined
+  owner?: string | undefined
+  // Which cards start here, and what the zone can be asked for (B5, K14). Both are lists that
+  // change as a whole rather than item by item: what the designer edits is the question and the
+  // action, and a patch that could only add or remove one clause would need an edit per shape.
+  // An empty list means none, and is stored as no property at all.
+  fill?: CardQuery | undefined
+  actions?: ZoneAction[] | undefined
+}
 
 // The properties a patch may take away again (L15, L17). Each one means something by its own
 // absence, which a patch cannot otherwise say: `undefined` does not survive JSON, so "this layer
@@ -94,6 +107,11 @@ export type EditIntent =
   // `name` may carry `{seat}`, which becomes the seat's letter, and it is written in the language
   // the designer is building the game in (A4), like every other word the tool suggests.
   | { v: 'addSeatZone'; role: SeatRole; name: string; shortcut?: Shortcut }
+  // A whole zone laid down as it stands: what a paste is. `addZone` makes a blank one, which a
+  // copy is not — the copy carries the question it asks, what it can be asked for, its shortcut,
+  // its owner and its size, and those are the whole reason to copy a zone rather than build a
+  // second one by hand.
+  | { v: 'insertZone'; zone: Zone }
   // Where the deck lies (B5, K10). The deck is a role a pile carries and not a zone of its own:
   // a designer may call any pile the deck, and moving the role is what lets the pile the wizard
   // laid out be taken away like any other.
@@ -336,6 +354,15 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
 
     // A zone's name, its shortcut (C4), where it lies and how big it is (K2), who owns it and who
     // sees into it. An undefined shortcut or owner removes it.
+    // Laying down a whole zone (a paste). A hand is never one: a seat *is* a hand (C3), so a
+    // second hand for a seat is a table nobody asked for. An id already on the table is a
+    // mistake in the caller and not something to paper over by renaming.
+    case 'insertZone': {
+      if (doc.setup.zones.some((z) => z.id === intent.zone.id)) throw new Error(`zone ${intent.zone.id} already exists`)
+      if (intent.zone.kind === 'hand') throw new Error('a hand belongs to its seat and cannot be laid down on its own')
+      return { ...doc, setup: { ...doc.setup, zones: [...doc.setup.zones, intent.zone] } }
+    }
+
     case 'patchZone': {
       if (!doc.setup.zones.some((z) => z.id === intent.id)) throw new Error(`no zone ${intent.id}`)
       const zones = doc.setup.zones.map((z) => {
@@ -351,6 +378,16 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
         if ('owner' in intent.patch) {
           if (intent.patch.owner) next.owner = intent.patch.owner
           else delete next.owner
+        }
+        if ('fill' in intent.patch) {
+          const fill = intent.patch.fill
+          if (fill && fill.length > 0) next.fill = fill
+          else delete next.fill
+        }
+        if ('actions' in intent.patch) {
+          const actions = intent.patch.actions
+          if (actions && actions.length > 0) next.actions = actions
+          else delete next.actions
         }
         return next
       })

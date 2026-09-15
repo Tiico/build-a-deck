@@ -48,6 +48,16 @@ export const enPlay = {
   'ring.draw': 'Draw 1',
   'ring.half': 'Split in half',
   'ring.flipTop': 'Flip the top',
+  // The game's own actions under the ring (K14, extended). The names in the list are the
+  // designer's and are never translated; this is only what the tool says around them.
+  'ring.action.howMany': 'How many — {name}?',
+  'ring.action.go': 'Go',
+  'ring.action.why.nowhere': 'nobody is sitting at the table yet',
+  'ring.action.why.none': 'that comes out at no cards right now',
+  'ring.action.why.nothing': 'the action has no steps',
+  'ring.action.why.gone': 'the pile is no longer here',
+  'kbd.hint.action.asks': 'needs a number; type it in the list by the pile',
+  'ring.action.list': 'What {zone} can do',
   'ring.counter.minus': '−1',
   'ring.counter.plus': '+1',
   'ring.counter.set': 'Set value…',
