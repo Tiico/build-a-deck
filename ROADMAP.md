@@ -106,6 +106,8 @@ Målet är att en grupp kan spela vilket kortspel som helst utan att sakna någo
 - ✅ En hög kvadrerar sina kort, och zoner får överlappa med minsta zonen som vinnare, lika stora efter setupens ordning (K1, K2).
 - ✅ Rumskoder: sex tecken utan förväxlingsbara, går ut tre timmar efter senaste anslutning, köper tokens för plats och observatör; bordet öppnas med värdnyckel; värden roterar koden och sparkar från editorn (DRIFT §9, G1 följdkrav).
 - ✅ Zongenvägar per spel: varje zon kan bära ett verb för telefonen ("Kasta", "Lägg underst") skilt från bordets namn, med placering överst eller underst; editorns flik "Bord" redigerar namn och genvägar med telefonens ark som förhandsvisning (C4 följdkrav).
+- ✅ En hög kan ha egna åtgärder, och en zon kan säga vilka kort som börjar i den (K21): frågespråket är tabellens filter lyft till ett dokumentvärde, ett steg är ett verb ur det slutna vokabuläret med parametrarna ifyllda, antalet är en källa och aldrig en formel, och `split`/`draw`/`deal` fick `face` och `which` — två parametrar och inget nytt verb. Ringen står orörd och spelets egna hänger under den som en lista; tangentbordets panel läser samma lista. Författandet i fliken Bord är meningar med rattarna inne i texten (B5, K14, K16, L4).
+- ✅ En zon går att klippa, kopiera och klistra i fliken Bord (K22): kopian bär frågan, åtgärderna, genvägen, ägaren, synligheten och storleken, och landar bredvid originalet. En hand kopieras aldrig (C3).
 - ❓ Fler komponenttyper än standardkortet — tärning, bricka, meeple, bräde (B1, B2, B3).
   Registryt och tryckprofilerna är byggda för det, men bara ett kort finns.
   Frågan är om release är "kortspel" eller "kort- och brädspel"; A1 talar för kort först.

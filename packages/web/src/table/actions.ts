@@ -80,7 +80,14 @@ function compileStep(view: Snapshot, geometry: { x: number; y: number; w: number
     if (step.to.at !== 'beside' && to === undefined) return { why: 'nowhere' }
     // Searching a pile is a split that names which cards instead of how many; `at` is then only
     // the fallback a line written before the question existed would have used.
-    return { intents: [{ v: 'split', pile, at: 1, which: step.which, ...(to ? { to } : besidePile(geometry, 1)), ...face(step.face) }] }
+    //
+    // Where it lands is placed by a pile's rule and not a single card's (#87), and it has to be:
+    // how many cards answer a question inside a hidden pile is the one thing this side cannot
+    // know (B6). A pile is placed by its middle and a lone card by its corner, so a search that
+    // turns up exactly one card lands half a card off — which is a card lying somewhere slightly
+    // else, and can be dragged. Guessing "one" would put a pile of six half a card *over* the
+    // pile it came out of, which cannot.
+    return { intents: [{ v: 'split', pile, at: 1, which: step.which, ...(to ? { to } : besidePile(geometry, 2)), ...face(step.face) }] }
   }
   const n = amountOf(view, step.v === 'deal' ? step.each : step.count, asked, key)
   if (typeof n === 'object') return n

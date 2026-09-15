@@ -2081,6 +2081,74 @@ K19:s regel om var ett namn ligger är orörd; det här beslutet rör vad namnet
 `table.css` läser variabeln på ett ställe — `[data-table]`, som allt filten ritar ärver från — plus de två som sätter en egen `font:`-kortform, platskortet och räknarbrickan.
 Grinden är `packages/web/test/felt-names.test.tsx` (marginalen, det skeppade ansiktet, och att ansiktet finns före målningen) och `packages/web/test/felt-font.test.ts` (bygget: arket blockerar, bytesen ligger i det, ingen fontfil att hämta, licensen kvar).
 
+### K21. En hög kan ha egna åtgärder, och en zon kan säga vilka kort som börjar i den (prototypat och byggt 2026-09-15)
+
+Två saker som ser ut som två frågor och är en: **vad som är designerns att bestämma om en zon, utöver var den ligger och vad den heter.**
+
+Före det här var svaret "ingenting".
+Ringen på en hög hade fem verb, och de fem var verktygets: Blanda, Dra 1, Dela på hälften, Vänd översta, Titta.
+Ett spel där varje runda börjar med att fyra kort vänds upp bredvid draghögen hade ingen väg att säga det — fyra klick, varje runda, av en människa som redan visste vad hon skulle göra.
+Och varje kort i leken började i draghögen, alltid, för att `setupFromProject` la dem där.
+Ett spel med en marknadslek vid sidan av, eller en händelselek, eller en uppsättning startkort per plats, fick lägga ut dem för hand vid varje bord.
+
+Det gäller nu:
+
+- **En fråga är ett värde.** Tabellens filter hade redan semantiken beslutad (L4): värden i samma kolumn är alternativ, kolumner är villkor. Den lyfts från webbläsarens vy till något dokumentet och loggen kan bära: `[{ fält, värden[] }]`, jämfört mot cellen som designern läser den. Inga intervall, ingen negation, ingen fritext. En fråga som inte går att säga med chippar är ingen fråga det här verktyget ställer (B5).
+- **En zon bär en fråga om vad som börjar i den.** Den första zonen vars fråga en rad svarar på tar raden, i dokumentets egen ordning; det ingen frågar efter ligger i lekens hög som förut. En zon utan fråga tar inga kort.
+- **En hög bär egna åtgärder.** En åtgärd är ett namn och en ordnad lista av steg, och ett steg är ett verb ur det slutna vokabuläret med parametrarna ifyllda. Verktyget skeppar inga åtgärder och känner inga: det finns ingen "dela ut starthänder", bara `blanda` följt av `dela ut N till varje hand`, skrivet av den som vill ha det.
+- **Antalet är en källa och aldrig en formel.** Ett tal, antalet tagna platser, antalet kort i en zon, eller ett tal som frågas vid bordet. Verktyget räknar inte åt designern; det läser något bordet redan vet.
+- **Högen adresseras relativt.** Ett steg säger "denna hög" och aldrig en zon vid namn. Det är vad som gör att en kopierad zon bär sina åtgärder med sig, och vad som hindrar en åtgärd från att peka på en zon som inte finns längre.
+
+**Protokollet fick två parametrar och inget nytt verb.**
+`split`, `draw` och `deal` fick `face`: vilken sida korten ligger på där de landar.
+`split` och `draw` fick `which`: en fråga i stället för "de översta så många".
+Båda måste vara parametrar och inte egna verb, av K15:s skäl om adressen: korten ligger i en hög vars id:n aldrig når tråden (B6), så bara det verb som tar ut dem kan säga något om dem.
+Att lägga ut kort uppvända är dessutom en rörelse av handen och inte två, och att fläkta en lek och dra ut korten man vill ha är en handling och inte en regel.
+Frågan reses av motorn: `packages/engine/src/reach.ts` är en funktion som både `decide` och `apply` läser, av samma skäl som allt annat i motorn är byggt så — den rad som committas och den rad som spelas upp måste nå samma kort, annars slutar loggen spela upp identiskt (D4).
+Motorn känner kortens kolumner genom `cards` på setupen: en gång per kortrad och inte en gång per kopia, eftersom identiteten är `cardRef` och frågan ställs till identiteten. Ingenting projicerar den.
+
+**Vid bordet: ringen plus listan.**
+Tre former prototypades. **A, ringen är designerns** — verktygets fem är bara öppningsringen, som receptet bara lägger öppningsbordet (B5). **B, två ringar** — verben innerst, spelets egna i en yttre krans. **C, ringen plus listan** — ringen står orörd och spelets egna hänger under den.
+
+**Valet blev C.**
+A tappar sitt eget grepp på två sätt: den som lägger till en åtgärd tappar Blanda och Titta tills hon lagt tillbaka dem, och en handskriven mening radbryts till en klump i en cirkel — en ring av meningar är ingen ring.
+B kolliderade redan vid tre åtgärder, mätt i prototypen: den yttre kransen lade sig över Marknadens och Kasthögens etiketter. Två koncentriska träffytor på en TV på armlängds avstånd är dessutom ett precisionsproblem och inte ett layoutproblem.
+C bär hela meningen, växer obegränsat, och får K16:s paritet nästan gratis — tangentbordets panel är redan en lista, så den läser samma åtgärder och kompilerar dem likadant.
+
+En hög utan egna åtgärder öppnar inget ark alls.
+K14 säger redan att en ring utan verb inte öppnas; ett tomt ark är samma fel i en annan form.
+
+**I editorn: meningar.**
+Samma tre-mot-tre. **A, raden växer** kvävdes i 320 px — en enda kolumns chippar radbröts på tre rader. **B, panelen som blankett** rullade i sidled vid tre åtgärder och gjorde varje steg till fyra rullgardiner som bröt rad. **C, meningar** vann: rattarna sitter inne i texten, och "Leta fram varje kort där rarity är Diamant och lägg dem uppvända bredvid högen" är specifikationen ordagrant — det finns ingenting annat att stämma av den mot.
+Meningen är en katalogsträng med namngivna hål och sätts ihop av noder och inte av textbitar, så ett annat språk får lägga hålen i en annan ordning (A4).
+Panelen erbjuds bara på högar: en yta och en hand har ingen ring att hänga en åtgärd i.
+
+**Klienten kompilerar**, precis som den redan räknar ut en koordinat åt tangentbordet (K16): protokollet vill ha ett tal, och "ett per spelare" är inget tal förrän någon sitter ner.
+Det som inte går att räkna ut sägs i stället för att gissas: en åtgärd som frågar efter ett tal frågar läsaren, och en vars mål inte finns på det här bordet erbjuds avstängd.
+
+Följdkrav som är införda:
+`patchZone` bär frågan och åtgärdslistan som helheter, så ett grepp är ett steg tillbaka (L14) och inte en ny mekanism.
+Ett framletat kortknippe placeras efter en högs regel och inte ett ensamt korts (#87), eftersom hur många kort som svarar på en fråga inne i en dold hög är det enda den här sidan inte kan veta.
+Arkets CSS-budget är höjd till 139 kB med skälet skrivet i `felt-font.test.ts`.
+Grindarna: `packages/engine/test/reach-by-query.test.ts` och `dealt-face.test.ts` (motorn och projektionen), `packages/server/test/setup-fill.test.ts` (startinnehållet och kolumnerna som följer med), `packages/web/test/zone-actions.test.ts` (kompilatorn och tangentbordets paritet), `pile-actions-at-the-table.test.tsx` (arket) och `setup-actions.test.tsx` (meningarna).
+
+### K22. En zon går att klippa, kopiera och klistra i fliken Bord (byggt 2026-09-15)
+
+Tangenterna är bundna till fönstret och inte till ett handtag, av samma skäl som Delete redan är: ett handtag på filten har aldrig fokus, eftersom pekaren som markerar det är pekaren som börjar draget, och draget tar standardhandlingen.
+Vakten mot fält som skrivs i läser både händelsens eget mål och fokus, och är **en** regel som Delete och urklippet delar — den gamla läste bara fokus, vilket är rätt i en webbläsare och osant om en tangent som landar på ett fält innan det hunnit ta fokus.
+
+Kopian bär allt zonen bar: frågan, åtgärderna, genvägen, ägaren, synligheten och storleken.
+Det är hela skälet att kopiera en zon i stället för att bygga en andra för hand — den billiga halvan av en hög är var den ligger, den dyra är vad den kan, och K21 gjorde den dyra halvan värd att bära med sig.
+Den landar bredvid originalet och inte under det: två zoner på exakt samma punkt går inte att peka isär, och listan skulle visa två rader som såg likadana ut.
+Namnet den får är verktygets förslag i designerns eget språk och blir hennes (A4).
+
+En hand kopieras aldrig: en plats **är** en hand (C3), så en andra hand åt en plats är ett bord ingen bett om.
+Att klippa en zon bordet inte kan vara utan vägras med samma mening som listan redan säger — `fixed` är fortfarande en regel läst av listan, av Delete och nu av urklippet.
+
+Urklippet är editorns eget och inte maskinens: det som kopieras är en zon med allt den bär, vilket inte är något ett annat program ändå kunde ta emot.
+
+Grinden är `packages/web/test/setup-clipboard.test.tsx`.
+
 ---
 
 ## L. Editorn (grillad 2026-09-06)
