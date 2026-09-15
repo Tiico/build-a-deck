@@ -1,0 +1,32 @@
+.ux-phone-shell { max-width:760px; margin:auto; padding:0 16px; }
+.ux-phone-head { padding:18px 0; display:flex; flex-wrap:wrap; gap:14px; justify-content:space-between; align-items:center; border-bottom:1px solid var(--ux-line); }
+.ux-phone-head h1 { font-size:22px; }.ux-phone-head h1 span { font-size:14px; color:var(--ux-muted); font-weight:450; }
+.ux-phone-head small { font-size:10px; letter-spacing:.15em; }.ux-phone-head button { padding:8px 11px; }
+.ux-phone-summary { margin:16px 0; }
+.ux-score { display:flex; align-items:center; border:1px solid var(--ux-line); border-radius:11px; padding:4px; gap:10px; }
+.ux-score span { display:grid; min-width:45px; text-align:center; line-height:1.25; }.ux-score strong { font-size:22px; }.ux-score small { font-size:9px; letter-spacing:.08em; }
+.ux-score button { min-width:44px; font-size:20px; padding:5px; border:0; }
+.ux-phone main { padding:15px 0; }.ux-phone h2 { font-size:21px; }
+.ux-phone-cards { display:flex; gap:12px; overflow-x:auto; padding:16px 3px; scroll-snap-type:x proximity; align-items:flex-start; }
+.ux-phone-cards > button,.ux-phone-cards > div:not(.ux-empty) { flex:0 0 154px; padding:4px; scroll-snap-align:center; }
+.ux-phone-cards > div > button { width:100%; margin-top:8px; }
+.ux-phone-cards > button[aria-pressed=true] { background:#56633e; }
+.ux-playing-face { position:relative; aspect-ratio:63/88; overflow:hidden; border-radius:8px; background:#202b38; width:100%; }
+.ux-playing-face img { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; }
+.ux-phone .ux-card-name { display:block; padding:5px; font-size:12px; color:var(--ux-ink); text-align:center; overflow-wrap:anywhere; }
+.ux-phone-actions { padding:10px 0 16px; border-bottom:1px solid var(--ux-line); }.ux-phone-actions p { margin-bottom:9px; font-size:13px; color:var(--ux-muted); }.ux-phone-actions .ux-row { flex-wrap:nowrap; }.ux-phone-actions button:first-child { flex:1; }
+.ux-personal { margin:14px 0; }.ux-personal summary,.ux-phone-log summary { min-height:44px; padding:10px 0; cursor:pointer; color:var(--ux-muted); }
+.ux-phone-recent { padding:12px; font-size:13px; background:#273127; border-radius:8px; margin-top:15px; }
+.ux-phone-log { font-size:12px; border-bottom:1px solid var(--ux-line); }.ux-phone-log ol { padding-left:20px; }
+.ux-phone .ux-state { margin:16px 0; }.ux-phone .ux-state pre { max-height:150px; overflow:auto; }
+.ux-empty { padding:22px 10px; }.ux-empty p { color:var(--ux-muted); }
+.ux-phone-b .ux-phone-shell { max-width:580px; }.ux-phone-browse { display:flex; align-items:center; justify-content:space-between; margin:15px 0 0; }.ux-phone-browse button { min-width:44px; }
+.ux-single-card { max-width:280px; margin:auto; }.ux-single-card .ux-playing-face { max-height:43vh; width:auto; }
+.ux-single-tray { display:flex; gap:10px; justify-content:space-between; align-items:center; margin-top:16px; }.ux-single-tray > button:first-child { flex:1; }
+.ux-phone-tabs { display:flex; gap:6px; margin-top:18px; }.ux-phone-tabs button { flex:1; padding:8px; font-size:13px; }
+.ux-place-list { display:grid; gap:12px; margin:22px 0; }.ux-place-list button { display:flex; justify-content:space-between; align-items:center; gap:12px; min-height:74px; text-align:left; }.ux-place-list span { font-size:12px; }
+.ux-room-seats { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin:22px 0; }.ux-room-seats span { display:grid; background:var(--ux-panel); padding:10px; border-radius:8px; }.ux-room-seats small { font-size:11px; }
+.ux-proto-overlay { position:fixed; inset:0; z-index:500; background:#000b; padding:20px; display:grid; align-items:center; justify-content:center; }
+.ux-proto-overlay section { max-width:480px; max-height:calc(100dvh - 150px); overflow:auto; background:var(--ux-panel); border:1px solid var(--ux-line); border-radius:15px; padding:22px; display:grid; gap:20px; }
+@media(min-width:700px) {.ux-phone-cards > button,.ux-phone-cards > div:not(.ux-empty) { flex-basis:185px; }.ux-phone-shell { padding:0 30px; }.ux-phone-summary { margin:22px 0; }}
+@media(max-width:350px) {.ux-phone-shell { padding:0 12px; }.ux-phone-head { gap:10px; }.ux-single-tray { flex-wrap:wrap; }.ux-phone-actions button { padding:8px 10px; font-size:13px; }}
