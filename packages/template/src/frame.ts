@@ -23,7 +23,7 @@ export type Frame = {
 
 // One card's departure from the measure, as shares of the window — so the same nudge means the
 // same thing however far in the picture is zoomed. Zero, and a zoom of one, is "the measure".
-export type Nudge = { zoom?: number; dx?: number; dy?: number }
+export type Nudge = { zoom?: number | undefined; dx?: number | undefined; dy?: number | undefined }
 
 // The window, in the file's own pixels, and whether the file could hold it. `short` is not a
 // detail: a file with no air to give is handed a window larger than itself, and unless that is
