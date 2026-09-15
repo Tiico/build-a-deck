@@ -690,6 +690,16 @@ När ett läge tar hela vyn flyttas fokus till rubriken, annars står tangentbor
 Transporten försöker själv med synlig nedräkning och ger sedan upp och väntar på en människa; allt en människa måste besluta får en knapp eller en länk från första stund, för ett 404 som görs om är fortfarande ett 404.
 Den initiala anslutningen har en tidsgräns, vilket den inte hade förut: `ansluter` blir `laddar länge` och sedan `nät-/serverfel` med förklaring, återförsök och hemväg.
 Gammal data tonas och tas ur tabbordningen med `inert` så länge den inte går att lita på, och beskedet säger vilken tidpunkt bilden är från — annars ser ett fruset bord ut som ett bord som står stilla.
+
+Ett tapp sägs först när det har överlevt den tystnad en väntan redan har rätt till.
+Ett snabbt första försök räckte inte i sig: beskedet gick upp i samma ögonblick som uttaget stängdes, så en blink som läkte på ett par hundra millisekunder hann ändå säga "Anslutningen bröts" och ta tillbaka det.
+Fristen är `dropAfterMs`, samma fyra sekunder som `slowAfterMs`, och den gäller bara ett tapp transporten fortfarande försöker laga: en plan som är slut och ett rum som är avvisat sägs i samma ögonblick de är kända, för de väntar inte på något.
+Ett tapp som läker inom fristen sägs aldrig — och därmed sägs inte heller "uppkopplad igen" om det, eftersom den som aldrig fick veta att linan gick inte behöver få veta att den kom tillbaka.
+Klockan fristen mäts på är samma klocka som "Det du ser är från …" läses av, så bildens ålder är brottets ålder och inte beskedets.
+
+Skälet är formen lika mycket som orden.
+På bordet och på telefonen ligger beskedet ovanpå vyn och tar ingen plats ifrån den, men i editorns chrome är det en remsa i flödet ovanför arbetet: att säga det flyttar hela sidan nedåt, och att ta tillbaka det flyttar den upp igen.
+Ett besked som kommer och går på en tredjedels sekund är därför inte bara oläsbart, det är en sida som hoppar till av skäl ingen får veta.
 Serverns egna meningar når aldrig skärmen: en avvisad `SendResult` översätts till en svensk mening, med en egen mening som reserv för ett skäl översättningen inte känner igen.
 
 Dokumenttiteln sätts på ett ställe, av routen, med lägets överskrivning: `Bordet · Rum 4KJ2 · build-your-deck` när allt är uppe, `Frånkopplad · build-your-deck` när linan är nere.
@@ -707,6 +717,7 @@ Priset är fler formuleringar att hålla i sär: rutterna kan glida isär i ton 
 
 Byggt 2026-09-07 (prototypat i tre varianter, godkänd variant C — #12 och #7).
 Planen 2, 4, 8 sekunder fick ett snabbt första försök på 500 ms före sig, så att en blink läker innan någon hinner läsa ett besked om den.
+Fristen som gör det där till mer än en avsikt byggdes 2026-09-15: den ligger i `connectionState` för de fem live-rutterna och i `ProjectClient` för editorns egen lina, med samma tal från `DEFAULT_TIMING`.
 Fem frågor från prototypen är fortfarande obesvarade och står kvar i avsnitt I.
 
 ---

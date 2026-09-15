@@ -52,6 +52,46 @@ const greeted = (...editors: ProjectClient[]) => eventually(() => expect(editors
 const here = (editor: ProjectClient) => editor.here.map((p) => p.name)
 const title = (editor: ProjectClient) => editor.doc.rows.find((r) => r.id === 'dragon')?.fields['title']
 
+// The bar in the editor's chrome that says the line is gone (D3). It stands in the flow above
+// the work, so saying it moves everything under it down — and unsaying it moves it all back up.
+// A break the client mends on its own first attempt would do both inside a third of a second,
+// which is a page that jumps for reasons nobody is told.
+describe('the line to the actor going and coming back', () => {
+  it('says nothing at all about a break the client mends by itself', async () => {
+    await run.projects.create('p1', projectDoc())
+    const ada = await open()
+    try {
+      await greeted(ada)
+      const said: boolean[] = []
+      const watch = setInterval(() => said.push(ada.lineDown), 10)
+      try {
+        await run.restart()
+        // Round the loop and back: the actor has greeted this editor a second time.
+        ada.who = null
+        await greeted(ada)
+        await new Promise((r) => setTimeout(r, 200))
+      } finally {
+        clearInterval(watch)
+      }
+      expect([...new Set(said)]).toEqual([false])
+    } finally {
+      ada.close()
+    }
+  })
+
+  it('says the line is gone once it has been gone longer than a mending would take', async () => {
+    await run.projects.create('p1', projectDoc())
+    const ada = await ProjectClient.open({ http: run.http, id: 'p1', dropAfterMs: 150 })
+    try {
+      await greeted(ada)
+      await run.stop()
+      await eventually(() => expect(ada.lineDown).toBe(true))
+    } finally {
+      ada.close()
+    }
+  })
+})
+
 describe('two editors on the same project (D3)', () => {
   it('sees the other one\'s edit without either of them saving', async () => {
     await run.projects.create('p1', projectDoc())
@@ -227,17 +267,39 @@ describe('an icon placed, through the actor (#33, E4, D3)', () => {
 })
 
 describe('the editor when the line is gone (D3)', () => {
-  it('says so while it is away, and stops saying it when it is back', async () => {
-    const { render, screen, waitFor } = await import('@testing-library/react')
-    const { EditorPage } = await import('../src/editor/EditorPage.js')
+  // The bar stands above the work, so putting it up moves everything under it down and taking it
+  // away moves it all back. For a break the client mends on its own first attempt that is a page
+  // that jumps twice inside a third of a second, about something already over — which is what a
+  // designer was actually seeing. So the bar waits out a mending, and only a break that outlasts
+  // one is ever put on the screen.
+  const editor = async (dropAfterMs: number) => {
+    const { render, screen } = await import('@testing-library/react')
+    const { EditorPage, DEFAULT_EDITOR_TIMING } = await import('../src/editor/EditorPage.js')
     await run.projects.create('p1', projectDoc())
     history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
-    render(<EditorPage />)
+    render(<EditorPage timing={{ ...DEFAULT_EDITOR_TIMING, dropAfterMs }} />)
     await screen.findByText('Skogens herrar')
-    await waitFor(() => expect(document.querySelector('[data-offline]')).toBeNull())
+    await eventually(() => expect(document.querySelector('[data-offline]')).toBeNull())
+  }
 
+  it('never puts the bar up for a break the client mends by itself', async () => {
+    await editor(2_000)
+    const said: boolean[] = []
+    const watch = setInterval(() => said.push(document.querySelector('[data-offline]') !== null), 10)
+    try {
+      await run.restart()
+      await new Promise((r) => setTimeout(r, 400))
+    } finally {
+      clearInterval(watch)
+    }
+    expect([...new Set(said)]).toEqual([false])
+  })
+
+  it('says so once the line has been gone longer than a mending takes, and stops saying it when it is back', async () => {
+    const { screen } = await import('@testing-library/react')
+    await editor(60)
     await run.restart()
-    await waitFor(() => expect(document.querySelector('[data-offline]')).toBeTruthy())
-    await waitFor(() => expect(screen.queryByText(/Ingen förbindelse/)).toBeNull(), { timeout: 4000 })
+    await eventually(() => expect(document.querySelector('[data-offline]')).toBeTruthy())
+    await eventually(() => expect(screen.queryByText(/Ingen förbindelse/)).toBeNull())
   })
 })
