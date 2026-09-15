@@ -22,7 +22,7 @@ export function resolveAssetRow(row: Row, base: string): Row {
 // understands and a browser does not. The renderer is handed resolved icons on the server side
 // too; this is the same resolution on the editor's side, so the card the designer looks at draws
 // the symbols rather than three broken images.
-export function previewIcons(doc: ProjectDoc, assetBase: string | undefined): Record<string, string> {
+export function previewIcons(doc: Pick<ProjectDoc, 'icons'>, assetBase: string | undefined): Record<string, string> {
   if (!assetBase) return doc.icons
   const out: Record<string, string> = {}
   for (const [name, url] of Object.entries(doc.icons)) out[name] = isAssetRef(url) ? assetUrl(assetBase, url.slice(ASSET_PREFIX.length)) : url
