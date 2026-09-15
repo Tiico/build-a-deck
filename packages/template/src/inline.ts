@@ -8,7 +8,9 @@
 
 export type InlineNode =
   | { type: 'text'; text: string }
-  | { type: 'icon'; name: string }
+  // A symbol, and — when the deck has given it one — the meaning it is written in (E4). The
+  // role is written and not the colour, so the palette is one place rather than forty cells.
+  | { type: 'icon'; name: string; role?: string }
   | { type: 'bold'; children: InlineNode[] }
   | { type: 'italic'; children: InlineNode[] }
   | { type: 'ref'; of: 'zone' | 'card'; id: string }
@@ -64,10 +66,14 @@ function parseSpan(s: string, options: InlineOptions = {}): InlineNode[] {
     }
     if (s[i] === '{') {
       const end = s.indexOf('}', i + 1)
-      const name = end > i + 1 ? s.slice(i + 1, end).trim() : ''
-      if (name && /^[\p{L}\p{N}_-]+$/u.test(name)) {
+      const inside = end > i + 1 ? s.slice(i + 1, end).trim() : ''
+      // `{namn}` and `{namn|roll}`. A bar with nothing usable after it makes the whole thing
+      // text rather than a symbol wearing a strange role — the same answer a bad name gets.
+      const bar = inside.indexOf('|')
+      const [name, role] = bar < 0 ? [inside, ''] : [inside.slice(0, bar).trim(), inside.slice(bar + 1).trim()]
+      if (name && NAME.test(name) && (bar < 0 || NAME.test(role))) {
         flush()
-        out.push({ type: 'icon', name })
+        out.push(role ? { type: 'icon', name, role } : { type: 'icon', name })
         i = end + 1
         continue
       }
@@ -78,6 +84,9 @@ function parseSpan(s: string, options: InlineOptions = {}): InlineNode[] {
   flush()
   return out
 }
+
+// What a symbol and a role may be called: the letters a name is made of, and nothing else.
+const NAME = /^[\p{L}\p{N}_-]+$/u
 
 // A reference names one of two kinds of thing, by the id it has in the project.
 const REF = /^(zon|kort):([\p{L}\p{N}_:-]+)$/u

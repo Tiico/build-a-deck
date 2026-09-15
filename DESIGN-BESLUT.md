@@ -739,6 +739,23 @@ Kompilatorn passar in motivet enligt elementets `fit` och lägger sedan filen ru
 Därför bär ett bildelement nu en ram i markupen, `<div data-element><img class="byd-art">`, i stället för att vara bilden: `data-element` är ramen designern greppar, vilken inpassning som än gäller.
 En fil som ingen har mätt passas in som en fil, så växeln kan aldrig tappa bort en bild.
 
+Bildens källa går att öppna och ramas in mot ett mått (prototypat och byggt 2026-09-15):
+Den automatiska beskärningen ovan tar bort luften, men den svarar inte på hur stort motivet ska ritas eller var i ramen det ska stå, och den kan inte göra något åt en fil som levererats hårt beskuren.
+Tre ytor prövades: en ramverkstad med en bild i taget och leken som facit under, ett rutnät där hela leken är redigeringsytan och motivet dras direkt i sin ram, och ett mått — en regel för leken plus en lista över de filer som inte kan svara på den.
+Valet blev måttet, därför att inramning inte är ett beslut per kort: ingen ramar fyrtio bilder för hand, och det en designer faktiskt gör är att säga hur leken ska se ut och sedan ta hand om de få filer som inte går att få dit.
+Rutnätet förkastades för att det växer till en skärmfull per tjugo kort och inte har någon plats att säga "den här filen vägrar" på; ramverkstaden för att den utan regeln är fyrtio handgrepp som måste göras om när bilderna byts.
+Källan öppnas som en låda under leken och inte som en egen sida, eftersom rättelsen nästan alltid gäller regeln och inte den enda filen.
+
+Regeln är två tal: hur stor andel av ramen motivet fyller, och om motivet står centrerat eller på en gemensam marklinje.
+Den bor på bildelementet i mallen, bredvid `fit` och `trim`, eftersom ramens form redan kommer därifrån och en mall med både en illustrationsyta och en liten porträttruta ska kunna rama dem olika.
+Fönstret passar in motivet i den sida som binder och inte i höjden: en bred teckning i en liggande ram rinner annars ut genom sidorna.
+Redigeringen är ett recept och aldrig nya bytes: filen är innehållsadresserad och kan sitta i tio andras lekar, så en beskärning som skrev om den skulle beskära deras kort.
+Det enskilda kortets avvikelse — zoom och förskjutning — hör till leken och inte till filen, och ligger därför i dokumentet vid sidan av raden. Byts bilden i cellen faller avvikelsen, eftersom en kvarhållen justering av en annan bild är en beskärning skriven av misstag.
+
+Fönstret kläms mot filen innan det ritas, och det är inte en detalj.
+Utan klämningen får en fil som saknar luft ett fönster större än sig själv och räknas ändå som ritad i rätt storlek, medan kortet visar något helt annat; med den syns avvikelsen på kortet och räkningen säger sanningen.
+En fil som inte kan svara på regeln hur den än ställs är ett av de tre fynden prototypen gav, och listan över invändningar finns för att den ska kunna sägas rakt ut i stället för att tigas ihjäl.
+
 ### E2. En enda renderare: HTML/CSS via headless Chromium (fråga 9)
 
 Mallen är HTML och CSS.
@@ -787,6 +804,19 @@ Spelets egen uppsättning står bredvid biblioteket med vad man skriver, vilken 
 En symbol som tas in blir ett av projektets assets (E1): bytesen laddas upp och uppsättningen pekar på `asset:<hash>`, så kortens utseende inte hänger på att biblioteket står stilla.
 Licensen lagras i dokumentets `credits` bredvid uppsättningen, så kompilatorns `icons` förblir namn → URL, och `POST /projects/:id/print` svarar med licenserna tillsammans med korten — det är följdkravet att licensmetadata når tryckunderlaget.
 Biblioteket är ritat för projektet och släppt som CC0; strukturen bär licens och upphovsman per symbol, så kurerat CC-BY-material kan läggas till utan ändring.
+
+Symbolerna bär färg, och färgen hör till bruket (prototypat och byggt 2026-09-15):
+Beslutet ovan att en symbol ritas mörk och når kortet som en bild faller här: en symbol som inte kan färgas kan inte skilja kostnad från vinst, och det är vad ett effektspråk på ett kort behöver göra.
+Tre former prövades: färgen vald i samma grepp som symbolen vid klammern, det skrivna ritat som ett chip i cellen som klickas och målas, och en rollpalett där spelet namnger sina betydelser och bruket väljer en av dem.
+Valet blev rollpaletten. Spelet har fyra betydelser med var sin färg, och i texten skrivs `{namn|roll}`.
+Chippet förkastades för att färgen då bor utanför texten och tappar sin bindning så fort cellen redigeras; den fria färgen vid klammern för att den är fyrtio chanser att säga samma sak i två olika röda och fyrtio chanser att skriva ett oläsligt kort.
+Med en roll finns ett enda ställe att mäta kontrast mot kortets botten på, ett enda ställe att upptäcka att två betydelser blir samma färg för en grönblind läsare, och ett enda ställe att måla om hela leken från (E5).
+
+En färgbar symbol är en omritning av biblioteket och inte en inställning.
+Dagens symboler stansar hål med vitt — myntets mitt, tärningens ögon, kortet bakom kortet — och vitt är ett hål bara mot en vit bricka; färgat, eller på ett mörkt kort, blir det vit färg.
+En färgbar symbol är därför en form i en färg med hålen skurna av `fill-rule: evenodd`, och den når kortet som en mask med färgen bakom i stället för som en bild. Det är samma enda renderare (E2): masken är CSS som kompilatorn skriver, inte en andra kodväg.
+Därmed räcker en uppladdning per symbol oavsett hur många färger leken skriver, vilket är vad som gör en färg per bruk möjlig utan ett asset per färg.
+Prototypen gav också att en mörk symbol behöver en ljus bricka under sig i editorns mörka krom: med bläck vald försvann varje symbol i listan mot panelen.
 
 ### E5. Fysisk validering med varningar (fråga 30)
 
