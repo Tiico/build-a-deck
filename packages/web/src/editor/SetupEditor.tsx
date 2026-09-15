@@ -8,6 +8,7 @@ import type { ProjectClient } from './ProjectClient.js'
 import type { ZonePatch } from '@byd/server/doc'
 import { useT } from '../i18n/index.js'
 import { recipeWords } from './fields.js'
+import { useGesture } from './gesture.js'
 
 // The setup editor (B5, K2), from the prototype: the recipe's knobs on the left lay the table
 // out; the table itself is the workspace, where every zone is a handle to drag, resize and name;
@@ -40,7 +41,7 @@ export function SetupEditor({ doc, client }: SetupEditorProps) {
           <span>{t('setup.hint')}</span>
         </div>
         {view ? (
-          <Felt view={view} zones={setup.zones} floor={setup.floor} selected={selected} onSelect={setSelected} onGeometry={(id, geometry) => client.patchZone(id, { geometry })} />
+          <Felt view={view} zones={setup.zones} floor={setup.floor} selected={selected} onSelect={setSelected} onGeometry={(id, geometry, gesture) => client.patchZone(id, { geometry }, gesture)} />
         ) : (
           <p role="alert" className="byd-setup-invalid">{t('setup.invalid')}</p>
         )}
@@ -48,7 +49,7 @@ export function SetupEditor({ doc, client }: SetupEditorProps) {
           <ZoneProps
             zone={sel}
             setup={setup}
-            onPatch={(patch) => client.patchZone(sel.id, patch)}
+            onPatch={(patch, gesture) => client.patchZone(sel.id, patch, gesture)}
             onRemove={() => {
               client.removeZone(sel.id)
               setSelected(null)
@@ -65,8 +66,11 @@ export function SetupEditor({ doc, client }: SetupEditorProps) {
 function RecipePanel({ client }: { client: ProjectClient }) {
   const t = useT()
   const recipe = client.recipe
-  const turn = (patch: Partial<typeof recipe>) => client.setRecipe({ ...recipe, ...patch }, recipeWords(t))
-  const setCounter = (i: number, patch: Partial<Counter>) => turn({ counters: recipe.counters.map((c, j) => (j === i ? { ...c, ...patch } : c)) })
+  // The counters are the only knobs written into a letter at a time; the rest are turned once and
+  // are a step back each, as they always were (L14).
+  const typing = useGesture('counter-field')
+  const turn = (patch: Partial<typeof recipe>, gesture?: string) => client.setRecipe({ ...recipe, ...patch }, recipeWords(t), gesture)
+  const setCounter = (i: number, patch: Partial<Counter>) => turn({ counters: recipe.counters.map((c, j) => (j === i ? { ...c, ...patch } : c)) }, typing.token())
   return (
     <aside className="byd-setup-recipe">
       <section>
@@ -94,9 +98,9 @@ function RecipePanel({ client }: { client: ProjectClient }) {
           <span>{t('setup.counters')}</span>
           {recipe.counters.map((c, i) => (
             <div key={i} className="byd-setup-counter">
-              <input aria-label={t('setup.counter.name', { n: i + 1 })} value={c.name} onChange={(e) => setCounter(i, { name: e.target.value })} />
+              <input aria-label={t('setup.counter.name', { n: i + 1 })} value={c.name} {...typing.visit} onChange={(e) => setCounter(i, { name: e.target.value })} />
               <span>{t('setup.counter.from')}</span>
-              <input aria-label={t('setup.counter.start', { n: i + 1 })} type="number" value={c.start} onChange={(e) => setCounter(i, { start: Math.trunc(Number(e.target.value) || 0) })} />
+              <input aria-label={t('setup.counter.start', { n: i + 1 })} type="number" value={c.start} {...typing.visit} onChange={(e) => setCounter(i, { start: Math.trunc(Number(e.target.value) || 0) })} />
               <button type="button" aria-label={t('setup.counter.remove', { n: i + 1 })} onClick={() => turn({ counters: recipe.counters.filter((_, j) => j !== i) })}>
                 ×
               </button>
@@ -133,11 +137,15 @@ function RecipePanel({ client }: { client: ProjectClient }) {
 
 // B: the felt with a handle on every zone but the floor. Dragging moves, the corner resizes,
 // both in whole millimetres snapped to a small grid; the arrow keys nudge the focused one.
-type Drag = { id: string; mode: 'move' | 'resize'; start: { x: number; y: number }; geometry: Geometry }
-function Felt({ view, zones, floor, selected, onSelect, onGeometry }: { view: NonNullable<ReturnType<typeof previewOf>>; zones: readonly Zone[]; floor: string; selected: string | null; onSelect(id: string | null): void; onGeometry(id: string, geometry: Geometry): void }) {
+// A drag carries the token of the grab it belongs to (L14): the pointer reports one pull as a
+// patch per frame, and all of those frames are one step back. The token is made where the grab
+// begins, so the next grab of the same zone is the next step.
+type Drag = { id: string; mode: 'move' | 'resize'; start: { x: number; y: number }; geometry: Geometry; gesture: string }
+function Felt({ view, zones, floor, selected, onSelect, onGeometry }: { view: NonNullable<ReturnType<typeof previewOf>>; zones: readonly Zone[]; floor: string; selected: string | null; onSelect(id: string | null): void; onGeometry(id: string, geometry: Geometry, gesture?: string): void }) {
   const t = useT()
   const table = useRef<TableHandle | null>(null)
   const drag = useRef<Drag | null>(null)
+  const grabs = useGesture('zone')
   const toMm = (e: RPointerEvent) => table.current?.toTable(e.clientX, e.clientY) ?? { x: 0, y: 0 }
   const down = (e: RPointerEvent, z: Zone, mode: Drag['mode']) => {
     if (e.button !== 0) return
@@ -145,7 +153,7 @@ function Felt({ view, zones, floor, selected, onSelect, onGeometry }: { view: No
     e.preventDefault()
     const el = e.currentTarget as HTMLElement
     if (typeof el.setPointerCapture === 'function') el.setPointerCapture(e.pointerId)
-    drag.current = { id: z.id, mode, start: toMm(e), geometry: { ...z.geometry } }
+    drag.current = { id: z.id, mode, start: toMm(e), geometry: { ...z.geometry }, gesture: grabs.begin() }
     onSelect(z.id)
   }
   const move = (e: RPointerEvent) => {
@@ -155,7 +163,7 @@ function Felt({ view, zones, floor, selected, onSelect, onGeometry }: { view: No
     const dx = snap(p.x - d.start.x)
     const dy = snap(p.y - d.start.y)
     const g = d.geometry
-    onGeometry(d.id, d.mode === 'move' ? { ...g, x: g.x + dx, y: g.y + dy } : { ...g, w: Math.max(MIN_MM, g.w + dx), h: Math.max(MIN_MM, g.h + dy) })
+    onGeometry(d.id, d.mode === 'move' ? { ...g, x: g.x + dx, y: g.y + dy } : { ...g, w: Math.max(MIN_MM, g.w + dx), h: Math.max(MIN_MM, g.h + dy) }, d.gesture)
   }
   const up = () => {
     drag.current = null
@@ -221,8 +229,12 @@ const snap = (mm: number) => Math.round(mm / SNAP_MM) * SNAP_MM
 
 // The selected zone's properties. Recipe zones keep their owner and visibility — the recipe
 // decides those — and only the designer's own zones can go.
-function ZoneProps({ zone, setup, onPatch, onRemove }: { zone: Zone; setup: ProjectDoc['setup']; onPatch(patch: ZonePatch): void; onRemove(): void }) {
+function ZoneProps({ zone, setup, onPatch, onRemove }: { zone: Zone; setup: ProjectDoc['setup']; onPatch(patch: ZonePatch, gesture?: string): void; onRemove(): void }) {
   const t = useT()
+  // The two fields that are written into a letter at a time. What is chosen rather than typed —
+  // where a pile is entered, whose the zone is, who may see it — is written once and is its own
+  // step back, as it always was (L14).
+  const typing = useGesture('zone-field')
   const own = !isRecipeZone(zone.id, setup)
   const floor = zone.id === setup.floor
   const kind = t(floor ? 'setup.kind.floor' : zone.kind === 'pile' ? 'setup.kind.pile' : zone.kind === 'hand' ? 'setup.kind.hand' : 'setup.kind.area')
@@ -240,13 +252,13 @@ function ZoneProps({ zone, setup, onPatch, onRemove }: { zone: Zone; setup: Proj
       ) : (
         <label>
           {t('setup.name')}
-          <input aria-label={t('setup.name.of', { name: zone.name })} value={zone.name} onChange={(e) => onPatch({ name: e.target.value })} />
+          <input aria-label={t('setup.name.of', { name: zone.name })} value={zone.name} {...typing.visit} onChange={(e) => onPatch({ name: e.target.value }, typing.token())} />
         </label>
       )}
       {!floor && zone.kind !== 'hand' && (
         <label>
           {t('setup.shortcut')}
-          <input aria-label={t('setup.shortcut.of', { name: zone.name })} placeholder={zone.name} value={zone.shortcut?.label ?? ''} onChange={(e) => onPatch({ shortcut: e.target.value ? { label: e.target.value, at: zone.shortcut?.at ?? 'top' } : undefined })} />
+          <input aria-label={t('setup.shortcut.of', { name: zone.name })} placeholder={zone.name} value={zone.shortcut?.label ?? ''} {...typing.visit} onChange={(e) => onPatch({ shortcut: e.target.value ? { label: e.target.value, at: zone.shortcut?.at ?? 'top' } : undefined }, typing.token())} />
         </label>
       )}
       {zone.kind === 'pile' && (
