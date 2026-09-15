@@ -314,9 +314,15 @@ async function bordTab(seats: number, felt: { w: number; h: number } | null, des
     // of it and a counter beside that, which is the recipe that puts two names in one seat's own
     // place setting.
     fireEvent.click(screen.getByRole('button', { name: String(seats) }))
-    fireEvent.click(screen.getByLabelText(/en yta framför sig/))
     fireEvent.click(screen.getByRole('button', { name: /Räknare$/ }))
-    if (market) fireEvent.click(screen.getByLabelText(/en marknad/))
+    fireEvent.click(screen.getByRole('button', { name: '＋ Yta per plats' }))
+    fireEvent.click(screen.getByRole('button', { name: '＋ Räknarzon per plats' }))
+    // Marknaden är en yta som vilken annan sedan B5 reviderades: den läggs och namnges, och det
+    // är namnet som är hela poängen här — det är det som ska mätas mot grannarnas.
+    if (market) {
+      fireEvent.click(screen.getByRole('button', { name: '＋ Yta' }))
+      fireEvent.change(screen.getByLabelText('Namn för Yta 1'), { target: { value: 'Marknad' } })
+    }
     // One zone picked up, because picking one up is when the editor has always drawn a second
     // name on it: the handle says what it is while the felt underneath is already saying so.
     fireEvent.click(await handleFor(picked))

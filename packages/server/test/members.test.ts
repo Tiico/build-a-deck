@@ -197,29 +197,41 @@ describe('what a role may do while the project is open (D3)', () => {
     const editor = await shareWith(ada, 'bo@example.com', 'editor')
     const viewer = await shareWith(ada, 'cilla@example.com', 'viewer')
 
+    // Waited for rather than slept through. Every wait here used to be a number of milliseconds
+    // — sixty after the socket opened, a hundred and twenty after each message was sent — and a
+    // number is only ever right on the machine it was written on: under the rest of the suite the
+    // round trip took longer than the sleep, the answer had not arrived when it was read, and the
+    // test failed in branches that had not touched the server. What it is really waiting for is
+    // the answer, so that is what it waits for.
+    const until = async (there: () => boolean) => {
+      for (let waited = 0; waited < 2000 && !there(); waited += 10) await new Promise((r) => setTimeout(r, 10))
+      return there()
+    }
     const open = async (cookie: string) => {
       const { WebSocket } = await import('ws')
       const ws = new WebSocket(`${run.base}/projects/p1/edit?name=x`, { headers: { cookie } })
       const seen: { v: string; why?: string }[] = []
       ws.on('message', (d) => seen.push(JSON.parse(d.toString()) as { v: string }))
       await new Promise<void>((resolve, reject) => {
-        ws.on('open', () => setTimeout(resolve, 60))
+        ws.on('open', () => resolve())
         ws.on('close', (code) => reject(new Error(`closed ${code}`)))
       })
+      // A socket that is open has not said anything yet, and what the wire opens with is the
+      // project itself — which is the first thing both halves of this test read.
+      await until(() => seen.length > 0)
       return { ws, seen }
     }
 
     const asEditor = await open(editor)
     asEditor.ws.send(JSON.stringify({ t: 'edit', intent: { v: 'rename', name: 'Av medredigeraren' } }))
-    await new Promise((r) => setTimeout(r, 120))
-    expect(asEditor.seen.some((m) => m.v === 'edits')).toBe(true)
+    expect(await until(() => asEditor.seen.some((m) => m.v === 'edits'))).toBe(true)
     asEditor.ws.close()
 
     // A viewer may watch the project change and may not change it.
     const asViewer = await open(viewer)
     expect(asViewer.seen[0]?.v).toBe('project')
     asViewer.ws.send(JSON.stringify({ t: 'edit', intent: { v: 'rename', name: 'Av betraktaren' } }))
-    await new Promise((r) => setTimeout(r, 120))
+    expect(await until(() => asViewer.seen.some((m) => m.v === 'refused'))).toBe(true)
     expect(asViewer.seen.find((m) => m.v === 'refused')?.why).toMatch(/betraktare|viewer/)
     expect((await run.projects.load('p1'))?.name).toBe('Skogens herrar')
     asViewer.ws.close()

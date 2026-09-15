@@ -225,7 +225,7 @@ describe('a card drawn off a pile lands clear of the pile\'s own label (K14, K15
   // The wizard's table for that many — an area in front of every seat, so the camera frames the
   // whole felt at rest — with its draw pile turned as a designer may turn it.
   const tableTurned = (seats: number, rot: number) => {
-    const setup = recipeSetup(seats, { mine: true, discard: true })
+    const setup = recipeSetup(seats)
     return tableOf({ ...setup, zones: setup.zones.map((z) => (z.id === 'draw' ? { ...z, geometry: { ...z.geometry, rot } } : z)) })
   }
   // What the ring sends for "Dra 1" on the draw pile, taken from the real ring on a real mount.

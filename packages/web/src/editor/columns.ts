@@ -188,6 +188,14 @@ export function fitColumns(box: Element, deck: Record<string, readonly string[]>
   // answer and the case the pinned × was drawn for (#53).
   const gives = tracks.filter((track) => track.gives)
   let left = room - tracks.reduce((sum, track) => sum + track.asked, 0)
+  // What is missing is only worth taking where taking it makes the table fit. A column the
+  // designer set is exactly as wide as she said, so a deck can be told to be wider than the
+  // window — and past the point where the sentences on their floors would still not close the
+  // gap, every pixel taken off one of them buys nothing. The box scrolls either way; the only
+  // difference is a value nobody can read. Measured: `body` pulled to 1100 px at 1280 pushed
+  // `art` down onto its own heading and cut its values inside a table 1668 px wide regardless.
+  const spare = gives.reduce((sum, track) => sum + (track.asked - track.floor), 0)
+  if (left < 0 && -left > spare) left = 0
   let pool = gives.reduce((sum, track) => sum + track.asked, 0)
   if (pool > 0 && left !== 0) {
     for (const track of [...gives].sort((a, b) => a.asked - b.asked)) {

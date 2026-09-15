@@ -116,6 +116,7 @@ Målet är att designern aldrig behöver ett annat verktyg för att göra leken.
 Klar 2026-09-08: varje punkt nedan är byggd, och besluten bakom dem står i DESIGN-BESLUT.
 
 - ✅ Setup-editor: recept som start, bordet som finjustering — zoner, platser, händer, högar, räknare och egna zoner i editorns flik "Bord" (B5, K2).
+- ✅ Bordet är designerns (2026-09-15): receptet lägger bara öppningsbordet, varje zon och hög går att ta bort och stannar borta, leken är en roll en hög bär, och fliken "Bord" är listan över bordets alla zoner med filten bredvid (B5 reviderat).
 - ✅ Bilder: bildceller i editorns tabell, spelets bilder en gång var, innehållsadresserad lagring i R2 via `/assets` (E1, DRIFT §4).
 - ✅ Symbolbibliotek: fliken "Symboler" med sök och kategorier, väljare vid klammern i tabellen, symboler som projektets assets och licenser hela vägen till trycket (E4).
 - ✅ Fysisk validering: minsta textstorlek, kontrast, färgblindhet, utfall och linjetjocklek, som rapport på kortväggen och blockerande fel vid order (E5, E6).

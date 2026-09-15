@@ -58,8 +58,6 @@ export const recipeWords = (t: T): RecipeWords => ({
   drawShortcut: t('zone.draw.shortcut'),
   discard: t('zone.discard'),
   discardShortcut: t('zone.discard.shortcut'),
-  market: t('zone.market'),
-  marketShortcut: t('zone.market.shortcut'),
   mine: t('zone.mine'),
   mineShortcut: t('zone.mine.shortcut'),
   counters: t('zone.counters'),

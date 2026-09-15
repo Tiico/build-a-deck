@@ -342,17 +342,18 @@
 }
 .byd-editor-stagebar-actions button:disabled { color: #5b6478; cursor: default; }
 
-/* The setup editor (B5, K2): the recipe's knobs, the felt as the workspace, the phone's sheet. */
-.byd-setup { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px; padding: 20px; align-items: start; }
-.byd-setup-side { display: grid; gap: 20px; }
+/* The setup editor (B5, K2): the seats knob and the list of zones on the left, the felt as the
+   workspace, the phone's sheet under it. The column scrolls on its own, since a table of eight
+   seats carries some thirty zones and the felt must not be pushed off the screen by the list. */
+.byd-setup { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 20px; padding: 20px; align-items: start; }
+.byd-setup-side { display: grid; gap: 16px; align-content: start; max-height: calc(100vh - 116px); overflow: auto; padding-right: 6px; }
 .byd-setup h2 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-setup-recipe { display: grid; gap: 18px; }
 .byd-setup-recipe label { display: flex; gap: 8px; align-items: center; margin: 6px 0; color: #e6ecfa; }
 /* Eight of them, which is one more than the 300 mm column fits in a line. */
 .byd-setup-players { display: flex; flex-wrap: wrap; gap: 6px; }
 .byd-setup-players button, .byd-setup-tools button, .byd-setup-counters > button, .byd-setup-props button { border: 1px solid #2f333d; border-radius: 8px; padding: 7px 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
-.byd-setup-counters { margin: 8px 0 0 24px; display: grid; gap: 6px; justify-items: start; }
-.byd-setup-counters > span { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #9aa3b8; }
+.byd-setup-counters { display: grid; gap: 6px; justify-items: start; }
 .byd-setup-counter { display: flex; gap: 6px; align-items: center; color: #9aa3b8; }
 /* What the panel says about a knob rather than asking with it (#89): the same quiet grey the
    counters themselves are written in, at the width the column has. */
@@ -363,9 +364,36 @@
 .byd-setup input[type='number'] { width: 64px; }
 .byd-setup-hint { margin: 0; color: var(--byd-editor-quiet); font-size: 12px; line-height: 1.5; }
 .byd-setup-canvas { position: relative; display: grid; gap: 10px; min-width: 0; }
-.byd-setup-tools { display: flex; gap: 8px; align-items: center; color: #9aa3b8; font-size: 12px; }
+.byd-setup-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: #9aa3b8; font-size: 12px; }
+/* What the surface says back: the hint, and after a removal the zone's name with the way back.
+   The step back is the editor's own (B4), said here because here is where the zone went. */
+.byd-setup-said { display: flex; gap: 12px; align-items: center; min-height: 30px; color: #9aa3b8; font-size: 12px; }
+.byd-setup-said > span:last-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.byd-setup-undo { display: flex; gap: 8px; align-items: center; color: #ffd98a; }
+.byd-setup-undo button { border: 1px solid #5c4a1f; border-radius: 8px; padding: 4px 10px; background: #241f13; color: #ffd98a; font-weight: 700; cursor: pointer; }
+/* The list of zones: every one the table has, in two groups, and the row is the way into it —
+   the only way to one that lies under another on the felt. */
+.byd-setup-zones { display: grid; gap: 14px; }
+.byd-setup-zones ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.byd-setup-zones li[data-open='true'] { background: #171a23; border-radius: 10px; }
+.byd-setup-row { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.byd-setup-name { flex: 1; min-width: 0; display: flex; gap: 8px; align-items: center; border: 0; background: transparent; color: #e6ecfa; text-align: left; padding: 7px 8px; border-radius: 8px; cursor: pointer; font: inherit; }
+.byd-setup-name:hover { background: #1b1d23; }
+.byd-setup-name > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* What kind of zone it is, drawn rather than named: a pile is a card's outline, an area a wide
+   rectangle, a hand the same rectangle laid along a rim. */
+.byd-setup-name i { flex: none; width: 11px; height: 14px; border: 1px solid #9aa3b8; border-radius: 2px; box-shadow: 2px -2px 0 -1px #6d7486; }
+.byd-setup-name i[data-kind='area'] { width: 16px; height: 11px; border-style: dashed; box-shadow: none; }
+.byd-setup-name i[data-kind='hand'] { width: 16px; height: 7px; box-shadow: none; }
+.byd-setup-name em { flex: none; font-style: normal; color: #9aa3b8; font-size: 11px; border: 1px solid #2f333d; border-radius: 999px; padding: 1px 7px; }
+.byd-setup-name strong { flex: none; color: #8ad0ff; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+.byd-setup-x { flex: none; border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; color: #c7cede; font-size: 15px; line-height: 1; padding: 6px 10px; cursor: pointer; }
+.byd-setup-x:hover { background: #2a1b1b; border-color: #6b2b2b; color: #ff9a9a; }
+/* A zone the table cannot be without says so where its × would have been, and why when it opens. */
+.byd-setup-fast { flex: none; color: #7c8496; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid #2f333d; border-radius: 999px; padding: 3px 8px; }
+.byd-setup-why { margin: 0; color: #9aa3b8; font-size: 11px; line-height: 1.45; }
 /* The felt takes the room it gets: the frame must not size itself after the table it holds. */
-.byd-setup-felt { position: relative; height: min(78vh, 720px); background: #0d0f14; border-radius: 16px; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); user-select: none; touch-action: none; }
+.byd-setup-felt { position: relative; height: min(64vh, 620px); background: #0d0f14; border-radius: 16px; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); user-select: none; touch-action: none; }
 .byd-setup-felt .byd-table-frame { width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; }
 /* On the played felt a zone's name is furniture and stays quiet. Here it is the work: this is the
    surface a designer checks the names on (B5), and since the handles no longer carry one (K19) it
@@ -384,13 +412,17 @@
    is how `Räknare B` came to lie under `Hand · B` (#43). The name is still on the handle for
    anyone reading by keyboard or screen reader: it is the `aria-label`. */
 .byd-setup-corner { position: absolute; right: -6px; bottom: -6px; width: 12px; height: 12px; border-radius: 3px; background: #ffd98a; cursor: nwse-resize; }
-.byd-setup-props { position: absolute; right: 12px; top: 52px; width: 220px; display: grid; gap: 8px; padding: 14px; border-radius: 14px; background: rgba(23, 26, 35, 0.97); border: 1px solid #3b4358; box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45); }
+/* What a zone is, opened inside its own row rather than floating over the felt: the panel used to
+   cover the right third of the table, which is where a designer puts the zones they are working
+   on. */
+.byd-setup-props { display: grid; gap: 8px; padding: 2px 10px 12px; }
 .byd-setup-props label { display: grid; gap: 4px; font-size: 11px; color: #9aa3b8; }
-.byd-setup-props strong { color: #fff; }
+.byd-setup-props input, .byd-setup-props select { width: 100%; box-sizing: border-box; }
+.byd-setup-props button { justify-self: start; }
 .byd-setup-where { font: 12px ui-monospace, monospace; color: var(--byd-editor-quiet); }
-.byd-zones-preview { align-self: start; padding: 16px; border-radius: 16px; background: #14161c; border: 1px solid #2f333d; }
-.byd-zones-preview .byd-sheet-targets { display: grid; gap: 8px; }
-.byd-zones-preview .byd-sheet-targets > div { display: grid; padding: 10px 12px; border-radius: 10px; background: #242938; }
+.byd-zones-preview { align-self: start; padding: 12px 16px; border-radius: 16px; background: #14161c; border: 1px solid #2f333d; }
+.byd-zones-preview .byd-sheet-targets { display: flex; flex-wrap: wrap; gap: 8px; }
+.byd-zones-preview .byd-sheet-targets > div { display: grid; padding: 8px 12px; border-radius: 10px; background: #242938; }
 .byd-zones-preview .byd-sheet-targets span { font-weight: 700; color: #fff; }
 .byd-zones-preview .byd-sheet-targets small { color: #9aa3b8; }
 
@@ -808,6 +840,11 @@
   cursor: pointer;
 }
 .byd-data-count { margin: 0; color: var(--byd-editor-count-ink); font-variant-numeric: tabular-nums; }
+/* Which columns have gone out past the edge of the box, said in the line that already says what
+   the view holds — and it is a button, because knowing they are there is no use without a way
+   back to them (#46). */
+.byd-data-outside { margin-left: 10px; padding: 6px 12px; border: 1px solid #3b414e; border-radius: 999px; background: var(--byd-editor-filter-bg); color: var(--byd-editor-filter-ink); font: inherit; cursor: pointer; }
+.byd-data-outside:hover, .byd-data-outside:focus-visible { border-color: #4a5163; }
 .byd-data-pinned { color: var(--byd-editor-filter-quiet); }
 .byd-data-clear { border: 1px solid #3b414e; border-radius: 8px; padding: 6px 12px; background: transparent; color: var(--byd-editor-filter-quiet); font: inherit; cursor: pointer; }
 .byd-data-clear:hover { color: var(--byd-editor-filter-ink); }
@@ -1043,14 +1080,22 @@
   font-weight: 400;
   white-space: normal;
   text-align: left;
+  /* A column of two: the list, which gives way, and the form, which never does — it is the way to
+     make the next column, and it is what fell off the bottom when the door grew. */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 /* The form is no longer the box: it stands inside one, so it gives up its own frame and its own
    place on the page and keeps only its rows. */
-.byd-columns .byd-newfield { position: static; width: auto; padding: 10px 0 0; border: 0; border-top: 1px solid #2f333d; border-radius: 0; background: transparent; box-shadow: none; }
+.byd-columns .byd-newfield { flex: 0 0 auto; position: static; width: auto; padding: 10px 0 0; border: 0; border-top: 1px solid #2f333d; border-radius: 0; background: transparent; box-shadow: none; }
 /* The list scrolls and the form under it does not move: a deck of twenty columns would otherwise
    hang the door off the bottom of the window, and the thing that fell off it is the way to make
    the twenty-first. */
-.byd-columns-list { display: grid; gap: 2px; margin: 0 0 10px; padding: 0; max-height: 232px; overflow-y: auto; list-style: none; scrollbar-width: thin; }
+/* The list takes what the door has left after the form, and scrolls only when even that is not
+   enough. It used to be 232 px however tall the window was: five rows of a deck of ten, the fifth
+   cut in half against the form's own line. */
+.byd-columns-list { flex: 1 1 auto; min-height: 0; display: grid; align-content: start; gap: 2px; margin: 0 0 10px; padding: 0; overflow-y: auto; list-style: none; scrollbar-width: thin; }
 .byd-columns-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 0 8px; min-height: 36px; }
 .byd-columns-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 /* The × keeps the 44 px it always had (L12). Here it can have them without taking them from

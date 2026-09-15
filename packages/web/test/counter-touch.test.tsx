@@ -16,7 +16,7 @@ import { render } from '@testing-library/react'
 import { chromium, type Browser, type Page } from 'playwright'
 import { CARD_STANDARD_63x88, STANDARD_TYPES, TOKEN_COUNTER, TypeRegistry, initialState, project, type SetupDef } from '@byd/engine'
 import type { Snapshot } from '@byd/protocol'
-import { MAX_PLAYERS, SWEDISH_WORDS, applyRecipe, emptySetup, type Setup } from '@byd/server/doc'
+import { MAX_PLAYERS, SWEDISH_WORDS, openingSetup, type Setup } from '@byd/server/doc'
 import { TableRenderer } from '../src/table/TableRenderer.js'
 import { TvChrome } from '../src/table/TvChrome.js'
 import { TOUCH_PX } from '../src/table/fit.js'
@@ -47,7 +47,7 @@ const MODES = ['tv', 'table'] as const
 // Two seats, and the fullest table the recipe lays: at eight the chip is smallest (K18).
 const SEATS = [2, MAX_PLAYERS] as const
 
-const feltOf = (seats: number): Setup => applyRecipe(emptySetup(), { players: seats, mine: true, discard: true, market: false, counters: COUNTERS }, SWEDISH_WORDS)
+const feltOf = (seats: number): Setup => openingSetup({ players: seats, counters: COUNTERS }, SWEDISH_WORDS)
 
 function sceneOf(setup: Setup): Snapshot {
   const def: SetupDef = {

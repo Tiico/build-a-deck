@@ -61,7 +61,7 @@ export function TablesTab({ client, server }: TablesTabProps) {
       {tables.length === 0 ? (
         <p className="byd-tables-empty">{t('tables.none')}</p>
       ) : (
-        <ul>
+        <ul aria-label={t('tables.title')}>
           {tables.map((table) => (
             <TableRow key={table.id} table={table} server={server} rev={client.rev} />
           ))}
