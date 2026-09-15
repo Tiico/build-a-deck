@@ -156,7 +156,7 @@ export function apply(prev: TableState, _registry: TypeRegistry, applied: Applie
       // A flagged moment (G3) is a mark in the log; the table is untouched.
       break
     case 'version.change':
-      changeVersion(state, it.to, it.components)
+      changeVersion(state, it.to, it.components, it.cards)
       break
     case 'rewind.propose':
       state.rewind = { id: applied.batch, toSeq: it.toSeq, by: applied.by }
@@ -277,7 +277,10 @@ function createPile(state: TableState, id: ZoneId, parent: Zone, at: { x: number
 // The deck follows the project (C7): per cardRef, missing copies are added face down at the
 // bottom of the zone the spec names, surplus copies are removed — from that zone first, then
 // from wherever they lie — and everything else stays exactly where it is.
-function changeVersion(state: TableState, to: string, components: readonly ComponentSpec[]): void {
+function changeVersion(state: TableState, to: string, components: readonly ComponentSpec[], cards: Record<string, Record<string, string>> | undefined): void {
+  // What the rows say now. A line written before this field existed carries none, and leaves the
+  // index it found — which is what such a line meant, since no question could be asked then.
+  if (cards !== undefined) state.setup = { ...state.setup, cards }
   const wanted = new Map<string, ComponentSpec[]>()
   for (const spec of components) wanted.set(spec.cardRef, [...(wanted.get(spec.cardRef) ?? []), spec])
   const have = new Map<string, ComponentInstance[]>()

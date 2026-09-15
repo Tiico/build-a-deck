@@ -2130,6 +2130,7 @@ Följdkrav som är införda:
 `patchZone` bär frågan och åtgärdslistan som helheter, så ett grepp är ett steg tillbaka (L14) och inte en ny mekanism.
 Ett framletat kortknippe placeras efter en högs regel och inte ett ensamt korts (#87), eftersom hur många kort som svarar på en fråga inne i en dold hög är det enda den här sidan inte kan veta.
 Arkets CSS-budget är höjd till 139 kB med skälet skrivet i `felt-font.test.ts`.
+`version.change` bär kolumnindexet bredvid komponenterna (C7): en fråga som ställs efter ett versionsbyte måste ställas till den lek som spelas, och inte till den som spelades — utan det svarar den fel utan att säga något.
 Grindarna: `packages/engine/test/reach-by-query.test.ts` och `dealt-face.test.ts` (motorn och projektionen), `packages/server/test/setup-fill.test.ts` (startinnehållet och kolumnerna som följer med), `packages/web/test/zone-actions.test.ts` (kompilatorn och tangentbordets paritet), `pile-actions-at-the-table.test.tsx` (arket) och `setup-actions.test.tsx` (meningarna).
 
 ### K22. En zon går att klippa, kopiera och klistra i fliken Bord (byggt 2026-09-15)

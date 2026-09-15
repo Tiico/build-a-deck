@@ -1213,7 +1213,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     const setup = setupFromProject(rec)
     await actor.refreshDeck(await deckOf(opts, rec), setup)
     const version = `rev-${rec.rev}`
-    const decision = await actor.submit({ id: randomUUID(), seat: null, intents: [{ v: 'version.change', to: version, components: setup.components }] })
+    const decision = await actor.submit({ id: randomUUID(), seat: null, intents: [{ v: 'version.change', to: version, components: setup.components, ...(setup.cards ? { cards: setup.cards } : {}) }] })
     if (!decision.ok) json(res, 409, { error: decision.reason })
     else json(res, 200, { version, seqs: decision.applied.map((l) => l.seq) })
     return true

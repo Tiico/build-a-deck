@@ -99,7 +99,10 @@ export const SessionIntent = z.discriminatedUnion('v', [
   z.object({ v: z.literal('rewind.propose'), toSeq: z.number().int().nonnegative() }),
   z.object({ v: z.literal('rewind.confirm'), proposal: z.string().min(1) }),
   z.object({ v: z.literal('rewind.reject'), proposal: z.string().min(1) }),
-  z.object({ v: z.literal('version.change'), to: GameVersionId, components: z.array(ComponentSpec) }),
+  // The deck follows the project mid-session (C7). `cards` is what each row says in its own
+  // columns, which has to travel with the components for the same reason they do: a question
+  // asked after the change must be asked of the deck being played, not of the one that was.
+  z.object({ v: z.literal('version.change'), to: GameVersionId, components: z.array(ComponentSpec), cards: z.record(z.string(), z.record(z.string(), z.string())).optional() }),
   // A flagged moment (G3): a line in the log, with an optional note. `observer` names a
   // watcher (C8), whose flags weigh differently than a player's; the server stamps it.
   z.object({ v: z.literal('flag'), note: z.string().max(280).optional(), observer: z.string().min(1).max(64).optional() }),

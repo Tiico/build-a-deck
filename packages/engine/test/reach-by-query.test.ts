@@ -59,3 +59,22 @@ describe('en zons egna åtgärder i projektionen', () => {
     }
   })
 })
+
+// Leken följer projektet mitt i en session (C7). Kolumnindexet måste följa med, annars reses en
+// fråga mot den lek som inte spelas längre — och det syns inte, det svarar bara fel.
+describe('en fråga efter ett versionsbyte (C7)', () => {
+  it('reses mot den nya lekens kolumner och inte mot den gamlas', () => {
+    const h = new Harness(1, deck())
+    // I v1 är Riddare guld. I v2 har designern gjort om den till en diamant.
+    h.do(null, {
+      v: 'version.change',
+      to: 'v2',
+      components: ['dragon', 'knight', 'wizard', 'rogue'].map((cardRef) => ({ type: CARD, cardRef, zone: 'draw', face: 'back' as const })),
+      cards: { dragon: { rarity: 'Diamant' }, knight: { rarity: 'Diamant' }, wizard: { rarity: 'Guld' }, rogue: { rarity: 'Brons' } },
+    })
+    h.do(null, { v: 'draw', from: 'draw', to: 'table', count: 1, which: [{ field: 'rarity', is: ['Diamant'] }], face: 'front' })
+
+    const view = project(h.state, registry, null)
+    expect(view.components.filter((c) => c.zone === 'table').map((c) => c.cardRef).sort()).toEqual(['dragon', 'knight'])
+  })
+})
