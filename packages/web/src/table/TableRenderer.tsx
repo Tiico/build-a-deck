@@ -13,7 +13,8 @@ import { counterActs, ownerOf, type Act } from './keyboard.js'
 import { CounterEntry } from './CounterEntry.js'
 import { DEFAULT_TIMING } from '../status/connection.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
-import { ringCentre } from './ring.js'
+import { ActionSheet } from './ActionSheet.js'
+import { RING_AIR, RING_REACH, ringCentre } from './ring.js'
 import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, edgeRotation, fanPlace, feltWithHands, handAnchor, handExtent, handRotation, type TableMode } from './hand.js'
 import { nameAt, type Grow, type Rim } from './labels.js'
 import { useT, type T } from '../i18n/index.js'
@@ -520,6 +521,11 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const ringVerbs = ring && onAct ? ringItems(view, ring, setRing, onAct, setHeld, setEntry, t) : []
   const ringOn = ring?.target
   const ringChip = ringOn?.kind === 'counter' ? view.components.find((c) => c.id === ringOn.id) : undefined
+  // The game's own actions for the pile the ring is about (K14, extended). They hang under the
+  // ring as a list, because a designer's sentence does not fit in a circle's button; a pile with
+  // none opens no sheet, for the same reason a ring with no verbs does not open.
+  const ringZone = ringOn && (ringOn.kind === 'pile' || ringOn.kind === 'pileTop') ? view.zones.find((z) => z.id === ringOn.pile) : undefined
+  const ringActions = ringZone?.actions ?? []
   const ringPile = ringOn?.kind === 'counterPile' ? ringOn.ids.flatMap((id) => view.components.find((c) => c.id === id) ?? []) : undefined
 
   const areas = view.zones.filter((z) => z.kind === 'area' && z.id !== floor.id)
@@ -778,6 +784,18 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           y={ring.y}
           items={ringVerbs}
           hub={ringChip ? <CounterHub view={view} c={ringChip} t={t} /> : ringPile ? <PileHub view={view} chips={ringPile} t={t} /> : undefined}
+          onClose={shut(ring)}
+        />
+      )}
+      {ring && onAct && ringZone && ringActions.length > 0 && (
+        <ActionSheet
+          view={view}
+          pile={ringZone.id}
+          name={ringZone.name}
+          actions={ringActions}
+          x={ring.x}
+          y={ring.y + RING_REACH + RING_AIR * 2}
+          onAct={onAct}
           onClose={shut(ring)}
         />
       )}

@@ -50,3 +50,23 @@ describe('att kompilera en åtgärd till intents', () => {
     })
   })
 })
+
+// K16: handen och tangentbordet får aldrig erbjudas olika saker om samma hög. Panelens lista
+// läser samma åtgärder som arket under ringen, och kompilerar dem likadant.
+describe('samma lista för tangentbordet', () => {
+  it('lägger spelets egna åtgärder efter de fysiska verben, med deras egna namn', async () => {
+    const { verbsFor } = await import('../src/table/keyboard.js')
+    const { view } = buildScene()
+    const snapshot = view(null)
+    const withAction: Snapshot = {
+      ...snapshot,
+      zones: snapshot.zones.map((z) => (z.id === 'draw' ? { ...z, actions: [act([{ v: 'shuffle' }, { v: 'deal', each: { of: 'number', n: 2 }, to: { at: 'hands' }, face: 'keep' }])] } : z)),
+    }
+    const acts = verbsFor(withAction, { key: 'pile:draw', kind: 'pile', pile: 'draw', name: 'Draghög', count: 3 })
+    expect(acts.map((a) => a.label)).toEqual(['Blanda', 'Dela på hälften', 'Åtgärd'])
+    expect(acts.at(-1)!.intents).toEqual([
+      { v: 'shuffle', pile: 'draw' },
+      { v: 'deal', from: 'draw', to: ['hand:A'], each: 2 },
+    ])
+  })
+})

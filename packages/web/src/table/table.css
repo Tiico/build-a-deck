@@ -684,3 +684,37 @@
 [data-table] .byd-pile-count, [data-table] .byd-zone > span, [data-table] .byd-peer-cursor span, [data-table] .byd-peer-tag, [data-table] .byd-peer-pulse span { rotate: var(--unrotate, 0deg); }
 /* A seat's own name and its hand count are not interface but furniture: they lie on the table
    turned toward that seat (B), so they turn with it rather than against it. */
+
+/* The game's own actions for a pile, under the ring (K14, extended).
+   The ring holds the tool's four verbs and keeps its discs; what a designer hangs on a zone is a
+   whole sentence in their own words, and a sentence does not fit in a 66-pixel circle. So the
+   list is rows, wide enough to read at three metres, drawn in the same plate, chalk and two-line
+   edge a disc wears — the form differs because what it carries differs, the colours do not,
+   which is L13's rule applied to a second shape rather than a second palette.
+   It is pulled inside the window the way the ring is: the sheet hangs under a centre that has
+   already been pulled in, so the only edge left to meet is the bottom one, and `max-height` with
+   its own scroll is what a list of twelve actions needs there. */
+.byd-action-sheet {
+  position: fixed; transform: translateX(-50%); z-index: 41;
+  min-width: 232px; max-width: 320px; max-height: 42vh; overflow-y: auto;
+  display: grid; gap: 4px; padding: 10px;
+  border-radius: 14px; background: var(--byd-felt-plate); border: 1px solid var(--byd-felt-chalk);
+  box-shadow: 0 0 0 1px var(--byd-felt-edge), 0 14px 34px rgba(0, 0, 0, 0.6);
+}
+.byd-action-sheet h3 {
+  margin: 0 0 2px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px;
+  color: var(--byd-felt-chalk-off);
+}
+.byd-action-sheet button {
+  text-align: left; border: 1px solid var(--byd-felt-edge); border-radius: 10px; padding: 11px 12px;
+  background: transparent; color: var(--byd-felt-chalk); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer;
+  min-height: 44px;
+}
+.byd-action-sheet button:hover { background: var(--byd-felt-accent); color: var(--byd-felt-on-accent); }
+.byd-action-sheet button:disabled { cursor: default; background: var(--byd-felt-plate-off); color: var(--byd-felt-chalk-off); }
+.byd-action-sheet form { display: grid; gap: 8px; }
+.byd-action-sheet label { display: grid; gap: 4px; font-size: 12px; color: var(--byd-felt-chalk); }
+.byd-action-sheet input {
+  padding: 9px 10px; border: 1px solid var(--byd-felt-chalk); border-radius: 10px;
+  background: var(--byd-felt-plate-off); color: var(--byd-felt-chalk); font: inherit;
+}
