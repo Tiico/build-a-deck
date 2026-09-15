@@ -46,17 +46,24 @@
      it, and a row in the card table stays the height it was. */
   --byd-tick: 18px;
   height: 100vh;
-  display: grid;
-  /* Header, what the room cannot hold (L10), the question asked on the way out (#8), the running
-     table's row (L5), the open mode, and — below the desk — the stage strip. Every middle row is
-     empty most of the time and takes no height then; when several are there they stack, because
-     one of them alone must never push another off the screen. */
-  grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
+  /* Header, the strips that say things — what the room cannot hold (L10), the question asked on
+     the way out (#8), the running table's row (L5), a line that has gone, a role that may not
+     edit — then the open mode, and below the desk the stage strip. Each strip is absent most of
+     the time and takes no height then; when several are up they stack in the order they are
+     written, because one of them alone must never push another off the screen.
+
+     A column and not a numbered grid: the rows had to be handed out by hand, there were more
+     strips than numbers, and the two that were given none fell through the work to the bottom of
+     the window whenever their neighbours were up. Here the document's own order is the order on
+     the screen, so a strip added later cannot land anywhere but after the one before it. Only the
+     work gives way; every strip keeps the height it asks for. */
+  display: flex;
+  flex-direction: column;
   background: var(--byd-editor-chrome-bg);
   color: #ddd;
   font: 13px system-ui, sans-serif;
 }
-.byd-editor > header { grid-row: 1; min-height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #2f333d; }
+.byd-editor > header { flex: none; min-height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid #2f333d; }
 /* Below the desk the modes and the two actions have left the header for the stage strip, so what
    is left is who and what: the way out, the game, the revision and whether the work is safe. A
    save that failed is spoken here too, and it is the one thing long enough to need a second row. */
@@ -76,7 +83,7 @@
 }
 /* What a phone does not get, said where the tools would have been (L10). */
 .byd-editor-narrow {
-  grid-row: 2;
+  flex: none;
   margin: 0;
   padding: 10px 12px;
   background: var(--byd-editor-narrow-bg);
@@ -124,10 +131,13 @@
 .byd-editor [role='tablist'] { display: flex; background: #1b1d23; border-radius: 8px; padding: 3px; margin-left: 12px; }
 .byd-editor [role='tab'] { min-height: var(--byd-tap); border: 0; border-radius: 6px; padding: 0 14px; background: transparent; color: #9aa3b8; font-weight: 600; cursor: pointer; }
 .byd-editor-spacer { flex: 1; }
-/* A line that is gone says so, and what is written meanwhile is kept until it is back (D3). */
-.byd-editor-offline { margin: 0; padding: 8px 16px; background: #2a1f18; color: #ffd8b0; font-size: 12px; }
+/* A line that is gone says so, and what is written meanwhile is kept until it is back (D3). It
+   is the one strip that comes and goes while a designer is looking at the page, so where it lands
+   is never a matter of which of its neighbours happen to be up: it is the strip immediately above
+   the work it is about, every time. */
+.byd-editor-offline { flex: none; margin: 0; padding: 8px 16px; background: #2a1f18; color: #ffd8b0; font-size: 12px; }
 /* A role that may not edit says so once, rather than letting every change be refused (D3). */
-.byd-editor-readonly { margin: 0; padding: 8px 16px; background: #2a2418; color: #ffe4b0; font-size: 12px; }
+.byd-editor-readonly { flex: none; margin: 0; padding: 8px 16px; background: #2a2418; color: #ffe4b0; font-size: 12px; }
 /* The people in the header (D3): who is here, and the door to who has the game at all. How many
    are here must not change how wide the header is — someone arriving would otherwise push the
    row, and at 1024 there is nothing to push into. So the faces overlap and the button is capped:
@@ -172,9 +182,7 @@
 .byd-editor > header > button { min-height: var(--byd-tap); min-width: var(--byd-tap); border: 1px solid #2f333d; border-radius: 8px; padding: 0 14px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
 .byd-editor > header > button:disabled { color: #5b6478; cursor: default; }
 .byd-editor-table-link {
-  /* Fourth row, whether or not the question above it is standing: neither strip may push the
-     other off the screen, and neither may take the mode's row. */
-  grid-row: 4;
+  flex: none;
   --byd-editor-table-bg: #1f2a1f;
   /* A card that could not be rendered wears the same colours here as it does on the table
      (texture.css), so one fact has one look wherever it is met. */
@@ -203,16 +211,15 @@
   font-weight: 700;
   cursor: pointer;
 }
-/* The middle rows belong to the question on the way out and to the table link, and both are
-   usually absent; the open mode always takes the last row, so the canvas reaches the bottom of
-   the window however many of them are there. */
-.byd-editor > main { grid-row: 5; min-height: 0; overflow: auto; }
+/* The strips above are usually absent; the open mode is the one thing that gives way, so the
+   canvas reaches the bottom of the window however many of them are there. */
+.byd-editor > main { flex: 1 1 auto; min-height: 0; overflow: auto; }
 /* The question asked before the editor is left with unsaved work (#8), in the same shape as the
    other questions the editor asks first: one strip, across the way out, with the answer that
    loses nothing under the focus. Amber, because it is about unsaved work and not about a
    deletion; the one answer that does throw work away is the red one. */
 .byd-editor-leave {
-  grid-row: 3;
+  flex: none;
   --byd-editor-leave-bg: #3b3222;
   --byd-editor-leave-ink: #ffeccc;
   --byd-editor-leave-save-bg: #1f5fa8;
@@ -306,7 +313,7 @@
    do not fit; the page never does, and the two actions that must not be scrolled away are pinned
    to its end. */
 .byd-editor-stagebar {
-  grid-row: 6;
+  flex: none;
   display: flex;
   align-items: center;
   gap: 8px;

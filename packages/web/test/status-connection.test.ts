@@ -6,8 +6,10 @@ const facts = (over: Partial<ConnectionFacts> = {}): ConnectionFacts => ({
   hasView: false,
   trouble: null,
   waitedMs: 0,
+  downMs: 0,
   resumed: false,
   slowAfterMs: DEFAULT_TIMING.slowAfterMs,
+  dropAfterMs: DEFAULT_TIMING.dropAfterMs,
   ...over,
 })
 
@@ -33,8 +35,25 @@ describe('the state a live connection is in', () => {
   })
 
   it('is dropped only while there is something on the screen that has stopped being true', () => {
-    expect(connectionState(facts({ status: 'reconnecting', hasView: true }))).toBe('dropped')
-    expect(connectionState(facts({ status: 'reconnecting', hasView: false }))).toBe('connecting')
+    const down = DEFAULT_TIMING.dropAfterMs + 1
+    expect(connectionState(facts({ status: 'reconnecting', hasView: true, downMs: down }))).toBe('dropped')
+    expect(connectionState(facts({ status: 'reconnecting', hasView: false, downMs: down }))).toBe('connecting')
+  })
+
+  // A line that breaks and is picked up again on the first attempt is not news: the transport's
+  // own ladder starts at half a second, so saying it at once puts a message on the screen that is
+  // gone before it can be read — and, where the message is a bar in the chrome, moves everything
+  // under it down and back up again. So a drop is only a drop once it has outlasted the silence
+  // a wait is allowed.
+  it('says nothing about a drop that is picked up again before anyone could read about it', () => {
+    expect(connectionState(facts({ status: 'reconnecting', hasView: true, downMs: 200 }))).toBeNull()
+    expect(connectionState(facts({ status: 'reconnecting', hasView: true, downMs: DEFAULT_TIMING.dropAfterMs + 1 }))).toBe('dropped')
+  })
+
+  // Waiting is for a line that is still being tried. One that has given up, or been refused, has
+  // nothing left to come back from, so it is said the moment it is known.
+  it('never waits to say a line the transport has given up on', () => {
+    expect(connectionState(facts({ status: 'reconnecting', hasView: true, trouble: 'exhausted', downMs: 0 }))).toBe('dropped')
   })
 
   it('keeps saying dropped, not offline, when the automatic attempts run out mid-game', () => {

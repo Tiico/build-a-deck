@@ -14,6 +14,7 @@ import type { EditorMessage, Presence } from '@byd/server'
 import { canEdit, type Role } from '@byd/server/doc'
 import { translate, type Key, type T } from '../i18n/index.js'
 import { UNDO_STEPS, whatOf } from './undo.js'
+import { DEFAULT_TIMING } from '../status/connection.js'
 
 // Without a catalogue of its own this module speaks Swedish, exactly as a surface mounted
 // without a language provider does: the surface that opened the project hands over its own
@@ -70,8 +71,13 @@ export class ProjectClient {
   public connected = false
   // Whether the line is known to be gone, which is not the same as not being up yet. A socket
   // takes a moment to open on every load, and a banner that says "no connection" for that moment
-  // — and then takes itself away — is a false alarm on every single open.
+  // — and then takes itself away — is a false alarm on every single open. The same is true of a
+  // break the client mends by itself: the ladder below starts at 200 ms, so a line that comes
+  // back on its first attempt would put the bar in the chrome up and take it down again inside a
+  // third of a second, moving the whole page down and back up with it. So the line is not gone
+  // until it has been gone longer than a mending takes.
   public lineDown = false
+  private falling: ReturnType<typeof setTimeout> | null = null
   // What the others are told this editor is called (D3). It is set by `connect` on the first
   // socket and kept across every reconnection, so nobody's name changes under them mid-session.
   private name = ''
@@ -113,6 +119,9 @@ export class ProjectClient {
     readonly id: string,
     public doc: ProjectDoc,
     public rev: number,
+    // How long the line may be gone before that is worth saying. The number is the product's,
+    // not this client's: it is the same silence a wait is allowed anywhere else (#7).
+    private readonly dropAfterMs: number,
   ) {
     this.saved = stamp(doc)
   }
@@ -125,7 +134,7 @@ export class ProjectClient {
   // `name` is what the others see. Without an account it is the tool's word for somebody, and
   // that word is settled here rather than inside the client: a name belongs to whoever it names
   // (A4), so it is written in the language of the person arriving and then travels with them.
-  static async open(opts: { http: string; id: string; name?: string; t?: T }): Promise<ProjectClient> {
+  static async open(opts: { http: string; id: string; name?: string; t?: T; dropAfterMs?: number }): Promise<ProjectClient> {
     const res = await fetch(`${opts.http}/projects/${encodeURIComponent(opts.id)}`, withCredentials())
     if (res.status === 401) throw new Unauthorized()
     if (res.status === 403) throw new ProjectUnavailable('forbidden')
@@ -135,7 +144,7 @@ export class ProjectClient {
     // Everything the document has is the document; only what the record adds around it is left
     // behind. Picking fields by name here is how a project quietly loses one it gained later.
     const { id, rev, ...doc } = rec
-    const client = new ProjectClient(opts.http, opts.id, doc, rev)
+    const client = new ProjectClient(opts.http, opts.id, doc, rev, opts.dropAfterMs ?? DEFAULT_TIMING.dropAfterMs)
     client.connect(opts.name ?? (opts.t ?? swedish)('editor.here.someone'))
     return client
   }
@@ -149,6 +158,8 @@ export class ProjectClient {
     this.socket = socket
     socket.onopen = () => {
       this.connected = true
+      if (this.falling) clearTimeout(this.falling)
+      this.falling = null
       this.lineDown = false
       this.attempt = 0
       for (const message of this.outbox) socket.send(message)
@@ -166,7 +177,13 @@ export class ProjectClient {
       if (this.socket !== socket) return
       this.socket = null
       this.connected = false
-      this.lineDown = true
+      if (!this.lineDown && this.falling === null) {
+        this.falling = setTimeout(() => {
+          this.falling = null
+          this.lineDown = true
+          this.notify()
+        }, this.dropAfterMs)
+      }
       this.notify()
       this.reconnect()
     }
@@ -263,6 +280,8 @@ export class ProjectClient {
     this.left = true
     if (this.retry) clearTimeout(this.retry)
     this.retry = null
+    if (this.falling) clearTimeout(this.falling)
+    this.falling = null
     this.socket?.close()
     this.socket = null
     this.connected = false

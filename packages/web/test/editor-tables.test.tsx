@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
-import { EditorPage } from '../src/editor/EditorPage.js'
+import { DEFAULT_EDITOR_TIMING, EditorPage } from '../src/editor/EditorPage.js'
 import { TableClient } from '../src/client.js'
 import { projectDoc } from './project-doc.js'
 import { asObserver, asSeat, asTable, registerRoom, roomOf, startServer, type Running } from './fixture.js'
@@ -295,7 +295,7 @@ describe('the shortcut to the table from every other tab (#19, variant B)', () =
 describe('a rendering that stands still says so (#88, UX-43, L5)', () => {
   // The fixture runs no render worker, which is exactly the situation the issue describes: the
   // queue never moves. Seconds of patience become a few hundred milliseconds here.
-  const timing = { renderStalledAfterMs: 300 }
+  const timing = { ...DEFAULT_EDITOR_TIMING, renderStalledAfterMs: 300 }
   async function startFromEditor(): Promise<HTMLElement> {
     const user = userEvent.setup()
     await run.projects.create('p1', projectDoc())

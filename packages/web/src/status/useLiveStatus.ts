@@ -41,28 +41,59 @@ export function useLiveStatus(conn: TableConnection, voice: Voice, timing: Statu
     wasTrying.current = status === 'connecting'
   }, [status])
 
-  // A connection that comes back says so once. Without the reader being told, a table that went
-  // grey and came back again is just a screen that flickered.
-  const dropped = status === 'reconnecting' || trouble !== null
-  const [resumedAt, setResumedAt] = useState<number | null>(null)
-  const wasDropped = useRef(false)
+  // When the line went. One clock answers everything that is about the break rather than about
+  // the message: how long the line has been gone, how old the picture standing on the screen is,
+  // and — on the other side of it — whether the break was ever long enough to have been said.
+  // It is kept past the mending for that last question and cleared once it is answered.
+  const went = useRef<number | null>(null)
+  const lineDown = trouble !== null || (status === 'reconnecting' && hasView)
+  if (lineDown) went.current ??= Date.now()
+  const downSince = lineDown ? went.current : null
+
+  // The grace has to end even when nothing else changes, or a line that stays down would be
+  // announced only by the next thing that happened to re-render the route.
   useEffect(() => {
-    if (wasDropped.current && !dropped && hasView) setResumedAt(Date.now())
-    wasDropped.current = dropped && hasView
-  }, [dropped, hasView])
+    if (downSince === null) return
+    const timer = setTimeout(() => tick((n) => n + 1), Math.max(0, timing.dropAfterMs - (Date.now() - downSince) + 50))
+    return () => clearTimeout(timer)
+  }, [downSince, timing.dropAfterMs])
+
+  // A connection that comes back says so once. Without the reader being told, a table that went
+  // grey and came back again is just a screen that flickered — but only a reader who was told it
+  // went needs telling it is back. A break that healed inside the grace was never said, and
+  // "uppkopplad igen" about something nobody saw happen is the same flicker one step further on.
+  const [resumedAt, setResumedAt] = useState<number | null>(null)
+  useEffect(() => {
+    if (lineDown) return
+    const broke = went.current
+    went.current = null
+    // Read off the clock and not off what was rendered: whether the reader was told is a fact
+    // about how long the line was gone, so a timer that fires late cannot turn a break that was
+    // announced into one that silently was not.
+    if (broke !== null && hasView && Date.now() - broke > timing.dropAfterMs) setResumedAt(Date.now())
+  }, [lineDown, hasView, timing.dropAfterMs])
   useEffect(() => {
     if (resumedAt === null) return
     const timer = setTimeout(() => setResumedAt(null), RESUMED_MS)
     return () => clearTimeout(timer)
   }, [resumedAt])
 
-  const state = connectionState({ status, hasView, trouble, waitedMs: Date.now() - since, slowAfterMs: timing.slowAfterMs, resumed: resumedAt !== null })
+  const state = connectionState({
+    status,
+    hasView,
+    trouble,
+    waitedMs: Date.now() - since,
+    slowAfterMs: timing.slowAfterMs,
+    downMs: downSince === null ? 0 : Date.now() - downSince,
+    dropAfterMs: timing.dropAfterMs,
+    resumed: resumedAt !== null,
+  })
 
-  // When the picture was last true. Read at the moment it stops being true, so it is the age of
-  // the data and not the age of the message.
+  // When the picture was last true. Read from the break itself, so it is the age of the data and
+  // not the age of the message — the two are a whole grace apart.
   const stamp = useRef<string | null>(null)
   if (state !== 'dropped') stamp.current = null
-  else stamp.current ??= asOf(new Date())
+  else stamp.current ??= asOf(new Date(downSince ?? Date.now()))
 
   // The countdown re-reads the clock every second while an attempt is pending, so the number
   // changes rather than something moving — which is what makes it survive reduced motion.

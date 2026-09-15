@@ -2,11 +2,11 @@ import type { ClientStatus, ClientTrouble } from '../client.js'
 import type { StatusKey } from './notice.js'
 import type { Countdown } from './StatusNotice.js'
 
-// How long a wait may go unremarked, and how long the first connection may take at all. The
-// first is a matter of words; the second is the deadline that #7 was missing, and it belongs to
-// the client.
-export type StatusTiming = { slowAfterMs: number; connectTimeoutMs: number; retryPlanMs: readonly number[] }
-export const DEFAULT_TIMING: StatusTiming = { slowAfterMs: 4_000, connectTimeoutMs: 10_000, retryPlanMs: [500, 2_000, 4_000, 8_000] }
+// How long a wait may go unremarked, how long a line that broke may be gone before that is worth
+// saying, and how long the first connection may take at all. The first two are matters of words;
+// the third is the deadline that #7 was missing, and it belongs to the client.
+export type StatusTiming = { slowAfterMs: number; dropAfterMs: number; connectTimeoutMs: number; retryPlanMs: readonly number[] }
+export const DEFAULT_TIMING: StatusTiming = { slowAfterMs: 4_000, dropAfterMs: 4_000, connectTimeoutMs: 10_000, retryPlanMs: [500, 2_000, 4_000, 8_000] }
 
 // Everything a route needs to know about its connection, and nothing about the route itself.
 export type ConnectionFacts = {
@@ -16,6 +16,9 @@ export type ConnectionFacts = {
   // How long the connection has been trying without ever having shown anything.
   waitedMs: number
   slowAfterMs: number
+  // How long the line has been gone, counted from the break and not from the message.
+  downMs: number
+  dropAfterMs: number
   // The connection has just come back, and the reader has not been told yet.
   resumed: boolean
 }
@@ -32,8 +35,13 @@ export function connectionState(f: ConnectionFacts): StatusKey | null {
   if (f.trouble !== null) return f.hasView ? 'dropped' : 'offline'
   if (f.status === 'open' && f.hasView) return f.resumed ? 'resumed' : null
   // Only a view that is already on the screen can go stale; before that there is nothing to
-  // protect and the reader is simply still waiting.
-  if (f.status === 'reconnecting' && f.hasView) return 'dropped'
+  // protect and the reader is simply still waiting. And a line the transport picks up again on
+  // its first attempt is not news either: the ladder starts at half a second, so saying it at
+  // once puts a message on the screen that is gone before it can be read — and a message that
+  // comes and goes takes the layout under it with it, which is a page that jumps for reasons
+  // nobody is told. So a drop is a drop once it has outlasted the silence a wait is allowed.
+  // A line that has given up is not waiting for anything and is said at once, above.
+  if (f.status === 'reconnecting' && f.hasView) return f.downMs > f.dropAfterMs ? 'dropped' : null
   return f.waitedMs > f.slowAfterMs ? 'slow' : 'connecting'
 }
 

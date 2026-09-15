@@ -28,10 +28,12 @@ afterEach(async () => {
 
 // Short enough that a test can watch a whole plan run out, and wide enough that each state it
 // passes through stands still long enough to be seen. The shape is the real one.
-const FAST: StatusTiming = { slowAfterMs: 80, connectTimeoutMs: 1_200, retryPlanMs: [30, 30] }
+const FAST: StatusTiming = { slowAfterMs: 80, dropAfterMs: 80, connectTimeoutMs: 1_200, retryPlanMs: [30, 30] }
 // For the round trip out and back: the first attempt is far enough away that "frånkopplad" is a
-// state a reader could actually read, rather than one the test has to catch between polls.
-const SLOWER: StatusTiming = { ...FAST, retryPlanMs: [250, 250, 250] }
+// state a reader could actually read, rather than one the test has to catch between polls. It has
+// to clear the grace a break is given before it is said at all, with room left over — the gap was
+// 170 ms once the grace arrived, and a loaded machine closed it.
+const SLOWER: StatusTiming = { ...FAST, retryPlanMs: [600, 600, 600] }
 
 // A socket that accepts the connection and then says nothing: a service that has stopped
 // answering, which before #7 left `Ansluter…` standing for ever.
@@ -191,6 +193,35 @@ describe('the wait for the next automatic attempt', () => {
     // pretends to still be trying.
     await waitFor(() => expect(notice()!.textContent).not.toMatch(/Nytt försök/), { timeout: 4000 })
     expect(within(notice() as HTMLElement).getByRole('button', { name: /försök nu/i })).toBeTruthy()
+  })
+})
+
+// The commonest thing that happens to a live line is that it breaks and is picked up again on
+// the first attempt. Said at once, that is a message on the screen for half a second — a card
+// mid-felt on the table, a bar in the editor's chrome that moves the whole page down and back up
+// again — about something that is already over. Nothing that heals inside the grace is said at
+// all, and that includes the good news: a reader who was never told the line went does not need
+// telling it came back.
+describe.each(LIVE)('$path when the line comes straight back', (live) => {
+  const QUICK: StatusTiming = { ...FAST, dropAfterMs: 2_000, retryPlanMs: [30, 30, 30, 30, 30, 30] }
+
+  it('says nothing at all about a break that was over before anyone could read about it', async () => {
+    const id = await createSession(run)
+    await open(live, { session: id, timing: QUICK, real: true })
+    await waitFor(() => expect(noticeState()).toBeNull())
+
+    const said: (string | null)[] = []
+    const watch = setInterval(() => said.push(noticeState()), 10)
+    try {
+      await run.restart()
+      // The picture is whole again: the client has been round the loop and is serving a snapshot.
+      await waitFor(() => expect(document.querySelector('[data-page]')).toBeTruthy())
+      await new Promise((r) => setTimeout(r, 300))
+    } finally {
+      clearInterval(watch)
+    }
+    expect([...new Set(said)]).toEqual([null])
+    expect(document.title).not.toMatch(/Frånkopplad/)
   })
 })
 
