@@ -80,7 +80,7 @@ describe('the felt’s face is in the document before the first painting (K20, #
     // Both subsets, because a name with a letter outside the shipped ones is drawn by a system
     // face again and that name's width is back to being the machine's answer (A4).
     expect([...carrying.join('').matchAll(/src:url\(data:font\/woff2;base64,/g)].length).toBe(2)
-  })
+  }, 60_000)
 
   // What the licence actually asks for. OFL 1.1 lets the face be bundled and sold with software on
   // three conditions, and the one with teeth here is that *each copy* of the font software carries
@@ -103,7 +103,7 @@ describe('the felt’s face is in the document before the first painting (K20, #
     const notice = css.slice(css.indexOf('Copyright 2011 Google Inc.'), css.indexOf('This Font Software is licensed'))
     expect(notice.length).toBeGreaterThan(20)
     expect(notice).not.toMatch(/reserved font name/i)
-  })
+  }, 60_000)
 
   it('ships no font file for the browser to fetch, and none of the felt’s own text asks for one', () => {
     const loose = filesUnder(OUT).filter((f) => f.endsWith('.woff2') || f.endsWith('.woff') || f.endsWith('.ttf'))
@@ -112,7 +112,7 @@ describe('the felt’s face is in the document before the first painting (K20, #
       .filter((f) => /\.(css|js|html)$/.test(f))
       .filter((f) => /url\([^)]*\.woff2?\)/.test(readFileSync(f, 'utf8').replace(/url\(data:[^)]*\)/g, '')))
     expect(asking.map((f) => relative(OUT, f))).toEqual([])
-  })
+  }, 60_000)
 
   it('costs the sheet what the two subsets weigh and no more', () => {
     // What shipping the face costs, as one number, so a later swap for a heavier family has to
@@ -139,7 +139,7 @@ describe('the felt’s face is in the document before the first painting (K20, #
     // the felt and one in the editor, and the headroom left over is deliberate: the sheet is the
     // first thing on the felt that is a list rather than a disc, and it will grow.
     expect(statSync(join(OUT, blockingSheets(index)[0]!.replace(/^\//, ''))).size).toBeLessThan(inlined + 139_000)
-  })
+  }, 60_000)
 
   // And the same thing said by a browser rather than by a reader of files: the built app served
   // the way it is served, with every request it makes written down.

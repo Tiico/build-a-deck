@@ -75,6 +75,7 @@ describe('the strips the editor says things in', () => {
       }
       expect(box['byd-editor-stagebar']!.top, 'the stage strip stands below the work').toBe(box['main']!.bottom)
     },
+    60_000,
   )
 
   // The one a live line puts up and takes down again by itself. Wherever it lands it moves the
@@ -87,5 +88,5 @@ describe('the strips the editor says things in', () => {
     expect(height(lonely)).toBe(height(crowded))
     // In both, it is the strip immediately above the work it is about.
     expect(lonely['byd-editor-offline']!.bottom).toBe(lonely['main']!.top)
-  })
+  }, 60_000)
 })

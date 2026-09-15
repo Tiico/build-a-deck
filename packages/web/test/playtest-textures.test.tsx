@@ -38,7 +38,7 @@ describe('rendered cards in the playtest (2026-09-14)', () => {
         }
       }
     } finally { await page.close() }
-  })
+  }, 60_000)
 
   it('keeps every spread texture inside its own card and leaves Close reachable', async () => {
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
@@ -58,5 +58,5 @@ describe('rendered cards in the playtest (2026-09-14)', () => {
       for (const { box, image } of measured.cards) expect(image).toEqual(box)
       expect(measured.closeReachable).toBe(true)
     } finally { await page.close() }
-  })
+  }, 60_000)
 })

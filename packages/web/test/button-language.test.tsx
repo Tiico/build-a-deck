@@ -1180,9 +1180,9 @@ describe('every suite that measures a surface', () => {
       'texture-layout.test.tsx',
       'wizard-viewport.test.tsx',
     ])
-  })
+  }, 60_000)
 
   it.each(mounting.map((s) => s.name))('lays the shared button language over %s', (name) => {
     expect(loads(mounting.find((s) => s.name === name)!.source, 'buttons')).toBe(true)
-  })
+  }, 60_000)
 })

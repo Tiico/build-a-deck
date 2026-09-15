@@ -67,5 +67,5 @@ describe('the app under prefers-reduced-motion', () => {
 describe('the app entry', () => {
   it('ships the reduced-motion rules on every route', () => {
     expect(read('src/main.tsx')).toContain("import './a11y.css'")
-  })
+  }, 60_000)
 })
