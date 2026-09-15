@@ -478,9 +478,11 @@ async function admit(opts: ServerOptions, req: IncomingMessage, session: Session
 // socket's own buffer, and it is delivered in the order it was sent — which is the order
 // everything downstream already stands on.
 //
-// Letting go is idempotent, because a door that turns someone away has to let go too: a paused
-// socket never reads the other end's reply to the close frame, and the connection would then sit
-// there until the close timeout rather than hanging up.
+// Letting go is idempotent, and it is done in a `finally` so that it happens on every way out —
+// let in, turned away, or a question that threw. A door that turns someone away has to let go
+// too: a paused socket never reads the other end's reply to the close frame, and the connection
+// would sit there until the close timeout rather than hanging up. A socket left paused for good
+// is worse still: a connection that never speaks again and never says why.
 function holdFrames(ws: WebSocket): () => void {
   ws.pause()
   let delivered = false
@@ -493,6 +495,16 @@ function holdFrames(ws: WebSocket): () => void {
 
 async function attachEditor(opts: ServerOptions, req: IncomingMessage, ws: WebSocket, projectId: string, name: string): Promise<void> {
   const deliver = holdFrames(ws)
+  try {
+    await openEditorDoor(opts, req, ws, projectId, name)
+  } finally {
+    // Whatever happened — let in, turned away, or a question that threw — the socket is let go.
+    // A socket left paused is a connection that never speaks again and never says why.
+    deliver()
+  }
+}
+
+async function openEditorDoor(opts: ServerOptions, req: IncomingMessage, ws: WebSocket, projectId: string, name: string): Promise<void> {
   const send = (message: EditorMessage) => {
     if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(message))
   }
@@ -500,19 +512,16 @@ async function attachEditor(opts: ServerOptions, req: IncomingMessage, ws: WebSo
   const account = opts.auth ? await accountOf(opts.auth, req) : null
   const rec = projects ? await projects.load(projectId) : null
   if (!projects || !rec) {
-    deliver()
     ws.close(4004, 'unknown project')
     return
   }
   const role = rec.owner === undefined ? 'owner' : account ? await projects.roleOf(projectId, account.id) : null
   if (!role) {
-    deliver()
     ws.close(4003, 'not your project')
     return
   }
   const actor = await editors(opts, projects).get(projectId)
   if (!actor) {
-    deliver()
     ws.close(4004, 'unknown project')
     return
   }
@@ -541,7 +550,6 @@ async function attachEditor(opts: ServerOptions, req: IncomingMessage, ws: WebSo
       }
     })()
   })
-  deliver()
 }
 
 // The editing actors of this server, made on first use so a server without projects has none.
@@ -559,20 +567,27 @@ const EditorRequest = z.union([z.object({ t: z.literal('edit'), intent: z.record
 
 async function attach(opts: ServerOptions, req: IncomingMessage, ws: WebSocket, sessionId: string, ask: Admission): Promise<void> {
   const deliver = holdFrames(ws)
+  try {
+    await openTableDoor(opts, req, ws, sessionId, ask)
+  } finally {
+    // As at the editor's door: let in, turned away or thrown out of, the socket is let go.
+    deliver()
+  }
+}
+
+async function openTableDoor(opts: ServerOptions, req: IncomingMessage, ws: WebSocket, sessionId: string, ask: Admission): Promise<void> {
   const send = (message: ServerMessage) => {
     if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(message))
   }
   const session = await opts.store.loadSession(sessionId)
   const actor = session ? await opts.host.get(sessionId) : null
   if (!session || !actor) {
-    deliver()
     send({ t: 'error', id: null, message: `unknown session ${sessionId}` })
     ws.close(4004, 'unknown session')
     return
   }
   const who = await admit(opts, req, session, ask)
   if ('refused' in who) {
-    deliver()
     send({ t: 'refused', reason: who.refused })
     ws.close(4003, who.refused)
     return
@@ -641,7 +656,6 @@ async function attach(opts: ServerOptions, req: IncomingMessage, ws: WebSocket, 
       send({ t: 'error', id, message: err instanceof Error ? err.message : String(err) })
     }
   })
-  deliver()
 }
 
 // Projects (L4, L5): a revisioned document, and "start a table" which expands the rows into a
