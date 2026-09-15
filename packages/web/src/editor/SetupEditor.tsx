@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent } from 'react'
 import type { ProjectDoc } from '@byd/server'
+import type { Motif } from '@byd/template'
 import { targetsOf } from '../player/PlaySheet.js'
 import { TableRenderer, type FeltFit, type TableHandle } from '../table/TableRenderer.js'
 import { previewOf } from '../setup/preview.js'
@@ -8,6 +9,9 @@ import type { ProjectClient } from './ProjectClient.js'
 import type { ZonePatch } from '@byd/server/doc'
 import { useT, type T } from '../i18n/index.js'
 import { recipeWords } from './fields.js'
+import { CardPreview } from './CardPreview.js'
+import { previewIcons } from './assets.js'
+import { previewFonts } from './fonts.js'
 
 // The setup editor (B5, K2). The table is the designer's: the recipe laid the first one out and
 // then let go, so what stands here stands here because they left it standing. The list on the left
@@ -18,14 +22,26 @@ import { recipeWords } from './fields.js'
 // What cannot go, and why each one: the felt is the table itself, a seat *is* a hand (C3), and the
 // deck has to lie in some pile — which is why the deck is a role a pile carries and not a zone, and
 // why moving the role is the way to be rid of the pile the wizard laid out.
-export type SetupEditorProps = { doc: ProjectDoc; client: ProjectClient }
+export type SetupEditorProps = {
+  doc: ProjectDoc
+  client: ProjectClient
+  // Where the project's images are served from (E1), and what is drawn inside each picture — the
+  // same two the wall and the canvas compile a card with. The felt compiles the deck's back, so
+  // a back made of a picture is a picture here too and not an empty box.
+  assetBase?: string | undefined
+  motifs?: Record<string, Motif> | undefined
+}
 
 const PILE_MM = { w: 63, h: 88 }
+// What one CSS millimetre is worth in pixels. A compiled card is laid out in millimetres, the
+// felt in pixels, and this is the rate between them — so the zoom that makes the back the size of
+// the card it lies on is the felt's own millimetre divided by this one.
+const CSS_MM_PX = 96 / 25.4
 const SNAP_MM = 5
 const NUDGE_MM = 10
 const MIN_MM = 40
 
-export function SetupEditor({ doc, client }: SetupEditorProps) {
+export function SetupEditor({ doc, client, assetBase, motifs }: SetupEditorProps) {
   const t = useT()
   const setup = doc.setup
   const [selected, setSelected] = useState<string | null>(null)
@@ -75,6 +91,9 @@ export function SetupEditor({ doc, client }: SetupEditorProps) {
         {view ? (
           <Felt
             view={view}
+            doc={doc}
+            assetBase={assetBase}
+            motifs={motifs}
             setup={setup}
             selected={selected}
             onSelect={(id) => {
@@ -231,6 +250,9 @@ function ZoneList({
 type Drag = { id: string; mode: 'move' | 'resize'; start: { x: number; y: number }; geometry: Geometry }
 function Felt({
   view,
+  doc,
+  assetBase,
+  motifs,
   setup,
   selected,
   onSelect,
@@ -238,6 +260,9 @@ function Felt({
   onRemove,
 }: {
   view: NonNullable<ReturnType<typeof previewOf>>
+  doc: ProjectDoc
+  assetBase?: string | undefined
+  motifs?: Record<string, Motif> | undefined
   setup: Setup
   selected: string | null
   onSelect(id: string | null): void
@@ -245,6 +270,24 @@ function Felt({
   onRemove(zone: Zone): void
 }) {
   const t = useT()
+  // What the back is compiled from, held by identity and by the parts of the document it is
+  // actually made of. The wall can key these on the whole document because nothing redraws the
+  // wall but the deck; the felt is dragged, and a zone moved a millimetre is a new document with
+  // the same deck in it. Keyed on `doc` the back would be compiled again on every pointer move,
+  // under the pile the designer is placing.
+  const fonts = useMemo(() => previewFonts({ template: doc.template, fonts: doc.fonts }, assetBase), [doc.template, doc.fonts, assetBase])
+  const icons = useMemo(() => previewIcons({ icons: doc.icons }, assetBase), [doc.icons, assetBase])
+  // A back that draws nothing is not a back: a game made without the guided start has an empty
+  // one, and compiling it would lay a blank white card on the pile — which reads as a fault and
+  // not as "no back yet". Until there is something on it the pile keeps the tool's own stand-in.
+  const drawn = doc.template.faces['back']
+  const backFace = drawn && (drawn.base.length > 0 || Object.keys(drawn.variants).length > 0) ? drawn : null
+  // The base back and not any one card's: a pile is shuffled and does not know what is on top, and
+  // the base is the back every card of the deck inherits. A deck whose groups each have a back of
+  // their own (#14) shows on the felt the one they are all variations of. The row is still handed
+  // in, because a back may bind a field — a deck number, an expansion mark — and the first row is
+  // what the canvas shows such a back with when the designer has picked no card.
+  const row = useMemo(() => doc.rows[0]?.fields ?? {}, [doc.rows])
   const table = useRef<TableHandle | null>(null)
   const drag = useRef<Drag | null>(null)
   const toMm = (e: RPointerEvent) => table.current?.toTable(e.clientX, e.clientY) ?? { x: 0, y: 0 }
@@ -337,7 +380,34 @@ function Felt({
           otherwise be missing — whose hand is whose, which the played TV gets from its dock. The
           handle keeps the name in its `aria-label`, so the keyboard and the screen reader lose
           nothing by the name no longer being drawn twice. */}
-      <TableRenderer ref={table} view={view} mode="tv" overlay={overlay} seatNames />
+      <TableRenderer
+        ref={table}
+        view={view}
+        mode="tv"
+        overlay={overlay}
+        // The deck's own back on every face-down card (L17, #106). It goes through `compile`, the
+        // one renderer there is for card templates (K9) — the same code the canvas and the wall
+        // draw with — at the scale the felt is drawn in. This surface has no render farm behind
+        // it and no saved version to render, so without this the pile wore a weave that belonged
+        // to no game and a designer's back reached the table only after it was published.
+        back={
+          backFace
+            ? (fit, at) => (
+                <CardPreview
+                  face={backFace}
+                  row={row}
+                  icons={icons}
+                  fonts={fonts}
+                  id={`byd-setup-back-${at}`}
+                  scale={fit.px(1) / CSS_MM_PX}
+                  assetBase={assetBase}
+                  motifs={motifs}
+                />
+              )
+            : undefined
+        }
+        seatNames
+      />
     </div>
   )
 }
