@@ -5,7 +5,7 @@ import { ANTAL, drawnBy } from '@byd/server/doc'
 import { ColumnDoor } from './ColumnDoor.js'
 import { ASSET_DRAG_TYPE, assetRef, assetUrl, assetsInUse, iconFieldsOf, imageFieldsOf, isAssetRef, ASSET_PREFIX } from './assets.js'
 import { searchSymbols, type GameSymbol } from './symbols.js'
-import { SymbolList, symbolListKey, symbolOptionId } from './SymbolList.js'
+import { RoleList, SymbolList, roleOptionId, symbolListKey, symbolOptionId } from './SymbolList.js'
 import { diffProjects, type RowChange } from '@byd/server/doc'
 import { Summary } from './HistoryPanel.js'
 import type { Cell } from './ProjectClient.js'
@@ -83,6 +83,7 @@ export function fileSafe(name: string) {
 
 // Only one cell is ever being typed into, so the library at the brace is one list with one name.
 const CELL_SYMBOLS = 'byd-cell-symbols'
+const CELL_ROLES = 'byd-cell-roles'
 
 // What a keystroke pulls a column by (#46). A drag is as fine as the hand that makes it; the keys
 // are steps, and the step is a character or two of the font a cell is drawn in — small enough to
@@ -131,11 +132,24 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   const [over, setOver] = useState<string | null>(null)
   // The symbol picker (E4): which cell has an open brace before the cursor, what has been typed
   // since it, and which symbol is under the arrow keys.
-  const [brace, setBrace] = useState<{ cardRef: string; field: string; at: number; query: string } | null>(null)
+  // `role` is what stands after the bar, or null when no bar has been typed: the syntax itself
+  // is what says whether the designer is naming a symbol or the meaning to draw it in (E4).
+  const [brace, setBrace] = useState<{ cardRef: string; field: string; at: number; query: string; role: string | null } | null>(null)
   const [choice, setChoice] = useState(0)
-  const matches = brace ? searchSymbols(brace.query, null, t).slice(0, 8) : []
+  const matches = brace && brace.role === null ? searchSymbols(brace.query, null, t).slice(0, 8) : []
+  // The meanings the deck has named, narrowed by what has been typed after the bar. A deck that
+  // has named none offers nothing rather than an empty list — there is nothing to pick.
+  const namingRole = brace?.role ?? null
+  const roleMatches =
+    namingRole === null
+      ? []
+      : Object.entries(doc.palette ?? {})
+          .filter(([role]) => role.toLowerCase().startsWith(namingRole.toLowerCase()))
+          .map(([role, colour]) => ({ role, colour }))
+          .slice(0, 8)
   // The one the keys are on, which is what Enter takes and what the cell points at.
   const active = matches[choice]
+  const activeRole = roleMatches[choice]
   const closeBrace = () => {
     setBrace(null)
     setChoice(0)
@@ -162,7 +176,11 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     const word = at >= 0 ? upto.slice(at + 1) : ''
     // A closed brace is written, and a bare number in braces is a pip (L2): neither is a lookup.
     if (at < 0 || word.includes('}') || /^\d+$/.test(word)) return closeBrace()
-    setBrace({ cardRef, field, at, query: word })
+    // The bar is the whole of the switch: before it the designer is naming a symbol, after it the
+    // meaning to draw it in. Nothing has to be learned and no key is taken from moving around the
+    // table, which Tab and the arrows already own.
+    const bar = word.indexOf('|')
+    setBrace(bar < 0 ? { cardRef, field, at, query: word, role: null } : { cardRef, field, at, query: word.slice(0, bar), role: word.slice(bar + 1) })
     setChoice(0)
   }
   const takeSymbol = (symbol: GameSymbol) => {
@@ -181,6 +199,22 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
       onCell(open.cardRef, open.field, written)
     })
   }
+  // The meaning written onto the symbol already named. What stands before the bar is left exactly
+  // as the designer typed it: they have already chosen the symbol, and this only says how it is
+  // to be read (E4).
+  const takeRole = (role: string) => {
+    const open = brace
+    if (!open || open.role === null) return
+    const key = `${open.cardRef}:${open.field}`
+    const current = typing.current[key] ?? String(doc.rows.find((r) => r.id === open.cardRef)?.fields[open.field] ?? '')
+    closeBrace()
+    const bare = iconFieldsOf(doc).includes(open.field)
+    const before = current.slice(0, open.at)
+    const after = current.slice(open.at + 1 + open.query.length + 1 + open.role.length)
+    const written = bare ? `${before.replace(/\{$/, '')}${open.query}|${role}${after}`.trim() : `${before}{${open.query}|${role}}${after}`
+    onCell(open.cardRef, open.field, written)
+  }
+
   // What moved since the version being compared with (B4), and the cards that are no longer
   // there — shown after the deck, since they have no place in it any more.
   const diff = compareWith ? diffProjects(compareWith.doc, doc) : null
@@ -951,11 +985,12 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                     // same reason, and both ask `symbolListKey` what the key meant.
                     onKeyDown={(e) => {
                       if (!brace || brace.cardRef !== cardRef || brace.field !== f) return
-                      const act = symbolListKey(e.key, matches.length, choice)
+                      const picking = brace.role === null ? matches.length : roleMatches.length
+                      const act = symbolListKey(e.key, picking, choice)
                       if (!act) return
                       e.preventDefault()
                       if (act === 'close') return closeBrace()
-                      if (act === 'pick') return void (active && takeSymbol(active))
+                      if (act === 'pick') return void (brace.role === null ? active && takeSymbol(active) : activeRole && takeRole(activeRole.role))
                       setChoice(act.active)
                     }}
                     onFocus={() => {
@@ -969,7 +1004,12 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                     }}
                     aria-label={`${cardRef} ${f}`}
                     {...(brace?.cardRef === cardRef && brace.field === f && active ? { 'aria-controls': CELL_SYMBOLS, 'aria-activedescendant': symbolOptionId(CELL_SYMBOLS, active) } : {})}
+                    {...(brace?.cardRef === cardRef && brace.field === f && activeRole ? { 'aria-controls': CELL_ROLES, 'aria-activedescendant': roleOptionId(CELL_ROLES, activeRole.role) } : {})}
                   />
+                  {brace?.cardRef === cardRef && brace.field === f && roleMatches.length > 0 && (
+                    // The deck's meanings, where the bar was just typed.
+                    <RoleList id={CELL_ROLES} className="byd-data-symbols" roles={roleMatches} active={choice} label={t('table.roles')} onPick={takeRole} />
+                  )}
                   {brace?.cardRef === cardRef && brace.field === f && matches.length > 0 && (
                     // The library where the cursor stands (E4): the same set the Symboler tab
                     // fills and the rail's Ikon tool opens, reached without leaving the sentence

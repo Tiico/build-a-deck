@@ -1,5 +1,5 @@
 import { APART, BLINDNESS, TOGETHER, contrastRatio, distance, simulate, type Blindness } from '@byd/template'
-import type { Row } from './types.js'
+import type { ProjectDoc, Row } from './types.js'
 
 // The game's meanings and what they are painted in (E4), judged all at once.
 //
@@ -47,4 +47,15 @@ export function rolesUsed(rows: readonly { fields: Row }[]): Record<string, numb
     }
   }
   return out
+}
+
+// What a symbol will sit on, so the palette is judged against the card and not against a guess:
+// the lowest thing the template paints across the whole card. A background the deck chooses per
+// card is no one colour and is left to the card check, which can see one card at a time (E5).
+const PAPER = '#ffffff'
+
+export function groundOf(doc: ProjectDoc, face: string): string {
+  const base = doc.template.faces[face]?.base ?? []
+  const covering = base.find((el) => el.kind === 'shape' && typeof el.fill === 'string' && el.x <= 0 && el.y <= 0 && el.w >= 63 && el.h >= 88)
+  return covering && covering.kind === 'shape' && typeof covering.fill === 'string' ? covering.fill : PAPER
 }

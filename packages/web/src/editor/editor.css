@@ -1224,6 +1224,22 @@
 .byd-symbols-set input { width: 96px; padding: 5px 8px; }
 .byd-symbols-set small { color: var(--byd-editor-quiet); font-size: 11px; }
 .byd-symbols-set button { padding: 2px 8px; font-size: 15px; color: #9aa3b8; }
+/* The game's own colours (E4). A meaning reads as a row and not as a swatch grid: what a designer
+   changes here is a word and a colour together, and the two must stay one thing on screen. */
+.byd-symbols-colours ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.byd-symbols-colours li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 10px; border-radius: 10px; background: var(--byd-editor-panel-bg); border: 1px solid #2f333d; }
+.byd-symbols-colours li[data-faint='true'] { border-color: #6b3242; }
+.byd-symbols-colours input { width: 120px; padding: 5px 8px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; font: inherit; }
+.byd-symbols-colours small { color: var(--byd-editor-quiet); font-size: 11px; }
+.byd-symbols-colours li > button:last-child { padding: 2px 8px; font-size: 15px; color: #9aa3b8; }
+.byd-symbols-swatch, .byd-role-swatch { width: 16px; height: 16px; border-radius: 4px; box-shadow: inset 0 0 0 1px #ffffff40; }
+.byd-symbols-inks { display: flex; gap: 3px; }
+.byd-symbols-inks button { min-width: 24px; min-height: 24px; padding: 0; display: grid; place-items: center; border-radius: 6px; }
+.byd-symbols-inks button[aria-pressed='true'] { outline: 2px solid var(--byd-editor-primary-mark); outline-offset: 1px; }
+.byd-symbols-inks span { width: 14px; height: 14px; border-radius: 3px; box-shadow: inset 0 0 0 1px #ffffff40; }
+.byd-symbols-issue { margin: 8px 0 0; padding: 6px 10px; border-radius: 8px; background: var(--byd-editor-lost-bg); color: #ffc9d6; font-size: 12px; }
+.byd-symbols-add { margin-top: 10px; }
+.byd-role-list > button { display: grid; grid-template-columns: 16px 1fr; align-items: center; gap: 10px; }
 .byd-symbols [role='alert'] { color: #f0b64a; }
 
 /* The rulebook (B7): the page itself is the editor, so it is paper, not a dark surface. */

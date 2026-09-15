@@ -392,3 +392,46 @@ describe('comparing with an older version in the table (B4)', () => {
     expect(screen.getAllByRole('row').slice(1).map((r) => r.getAttribute('data-change'))).toEqual([null, null, null])
   })
 })
+
+// The meaning a symbol is written in (E4). The syntax teaches itself: typing the bar after a
+// symbol's name turns the very same picker into the deck's meanings, so the designer never has to
+// learn a key that does not collide with moving around a table.
+describe('the meaning picker after the bar (E4)', () => {
+  const setup = (palette: Record<string, string> = { fara: '#8f2d20', kostnad: '#7a5c00', vinst: '#2f6136' }) => {
+    const doc = { ...projectDoc(), palette }
+    const onCell = vi.fn()
+    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} onSymbol={vi.fn(async (s: GameSymbol) => symbolName(s))} />)
+    const cell = within(screen.getAllByRole('row')[1]!).getByLabelText('dragon body') as HTMLInputElement
+    return { cell, onCell }
+  }
+  const type = (cell: HTMLInputElement, value: string) => {
+    fireEvent.change(cell, { target: { value, selectionStart: value.length } })
+  }
+
+  it('offers the deck’s meanings once the bar is typed, and narrows as one is named', () => {
+    const { cell } = setup()
+    type(cell, 'Skada {sköld|')
+    const list = screen.getByRole('listbox', { name: 'Betydelser' })
+    expect(within(list).getAllByRole('option').map((o) => o.textContent)).toEqual([expect.stringContaining('fara'), expect.stringContaining('kostnad'), expect.stringContaining('vinst')])
+
+    type(cell, 'Skada {sköld|k')
+    expect(within(list).getAllByRole('option').map((o) => o.textContent)).toEqual([expect.stringContaining('kostnad')])
+  })
+
+  it('writes the symbol and its meaning together, leaving the rest of the sentence alone', () => {
+    const { cell, onCell } = setup()
+    // The cursor stands right after the "f", as it does while a word is being typed: what comes
+    // after it is the rest of the sentence and is not part of what is being named.
+    fireEvent.change(cell, { target: { value: 'Skada {sköld|f 2.', selectionStart: 14 } })
+    fireEvent.keyDown(cell, { key: 'Enter' })
+
+    expect(onCell).toHaveBeenCalledWith('dragon', 'body', 'Skada {sköld|fara} 2.')
+  })
+
+  it('says nothing when the deck has named no meanings yet, rather than offering an empty list', () => {
+    const { cell } = setup({})
+    type(cell, 'Skada {sköld|')
+
+    expect(screen.queryByRole('listbox')).toBeNull()
+  })
+})

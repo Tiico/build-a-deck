@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { paletteIssues, rolesUsed, ROLE_MIN_CONTRAST } from '../src/editor/palette.js'
+import { groundOf, paletteIssues, rolesUsed, ROLE_MIN_CONTRAST } from '../src/editor/palette.js'
 
 // The palette is where a deck's colours can be judged all at once (E4, E5). A colour per use is
 // forty chances to write an unreadable card and forty chances to say the same thing twice; a
@@ -47,5 +47,34 @@ describe('the meanings the deck writes', () => {
 
   it('counts nothing for a deck that names no meanings', () => {
     expect(rolesUsed([{ fields: { body: 'Skada {svard} 2.' } }])).toEqual({})
+  })
+})
+
+// What a symbol will actually sit on, so the palette can be judged against the card and not
+// against a guess. The same question the card check asks when it measures contrast (E5).
+describe('the card’s own ground', () => {
+  const face = (base: unknown[]) => ({ template: { faces: { front: { base, variants: {} } } } }) as never
+
+  it('is the last thing painted under everything, which is what a symbol lands on', () => {
+    expect(
+      groundOf(
+        face([
+          { kind: 'shape', id: 'paper', x: 0, y: 0, w: 63, h: 88, shape: 'rect', fill: '#f4ead8' },
+          { kind: 'shape', id: 'band', x: 0, y: 0, w: 63, h: 20, shape: 'rect', fill: '#2f4068' },
+        ]),
+        'front',
+      ),
+    ).toBe('#f4ead8')
+  })
+
+  it('is paper white when the template paints nothing under the card', () => {
+    expect(groundOf(face([{ kind: 'shape', id: 'band', x: 4, y: 4, w: 20, h: 20, shape: 'rect', fill: '#2f4068' }]), 'front')).toBe('#ffffff')
+    expect(groundOf(face([]), 'nowhere')).toBe('#ffffff')
+  })
+
+  it('ignores a background the deck chooses per card, which is no one colour to judge against', () => {
+    // A fill read off a column is a different colour on every card; the palette is one thing and
+    // cannot be judged against forty grounds, so the card check keeps that case (E5).
+    expect(groundOf(face([{ kind: 'shape', id: 'paper', x: 0, y: 0, w: 63, h: 88, shape: 'rect', fill: { field: 'sort', map: { eld: '#c0392b' } } }]), 'front')).toBe('#ffffff')
   })
 })
