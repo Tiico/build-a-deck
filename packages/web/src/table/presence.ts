@@ -1,4 +1,4 @@
-import type { Presence, PresenceFrom, SeatId } from '@byd/protocol'
+import type { Activity, Presence, PresenceFrom, SeatId } from '@byd/protocol'
 
 // Presence (K6) as a view sees it: the others at the table, what they carry, where they point.
 export type Point = { x: number; y: number }
@@ -6,6 +6,16 @@ export type Peer = { id: string; seat: SeatId | null; name: string; cursor: Poin
 export type Pulse = { id: string; seat: SeatId | null; name: string; x: number; y: number; at: number }
 // A card that just moved, and who moved it: the colour it carries for a moment.
 export type Recent = { component: string; seat: SeatId | null; at: number }
+
+// Which card a log line is about, when it is about one. Two rooms ask it — the felt, which
+// colours a card that just moved (K6), and the TV's inspection panel, which holds up the card the
+// last line was about (K8) — so it is answered once. A pile named as the source (K15) hands out
+// no component id, and a line about the table rather than about a card names none at all.
+export function componentOf(line: Activity): string | null {
+  const it = line.intent
+  const component = it.v === 'move' || it.v === 'rotate' || it.v === 'flip' || it.v === 'stack' ? it.component : null
+  return typeof component === 'string' ? component : null
+}
 
 export const CURSOR_IDLE_MS = 2500
 export const PULSE_MS = 1200

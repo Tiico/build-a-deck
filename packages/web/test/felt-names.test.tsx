@@ -434,11 +434,16 @@ describe('the Bord tab gives the felt the room its names need (#43)', () => {
 // down, because three metres away that is the whole of whether the table can be read. Moving a
 // name touches none of it — not the felt's size, not the fit, not the camera — and this is what
 // says so rather than anyone's word for it.
+//
+// Raised 2026-09-15 from 27, 40 and 89 (K9): the TV's chrome gave up its header and its seat dock
+// and moved both into the column beside the felt, and the felt is bound by its height, so every
+// pixel those two rows held came back as card. Nothing about a name moved with them, which is
+// what the second half of the reading — the smallest name, still 12 px — goes on saying.
 describe('a name that moved changed no readability number (K9, K18)', () => {
   it.each([
-    [1280, 800, 27],
-    [1920, 1080, 40],
-    [3840, 2160, 89],
+    [1280, 800, 33],
+    [1920, 1080, 49],
+    [3840, 2160, 99],
   ])('draws the card %i × %i px wide at eight seats', async (w, h, cardPx) => {
     const size = { w, h }
     const reading = await readNames(await tvFelt(sceneOf(feltOf(MAX_PLAYERS)), size), size)

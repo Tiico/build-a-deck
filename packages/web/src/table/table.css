@@ -331,34 +331,59 @@
 }
 .byd-inspect > div[data-face='back'] { background: #33405a; color: #ddd; text-align: center; }
 
-/* TV chrome — prototype C. */
+/* TV chrome — prototype C, with everything but the felt in one column (K8, K9).
+   The felt is bound by its height: the column beside it is free, and a row above or below it is
+   not. So there are two columns and one row, and what used to stand in a header and a dock
+   stands in the column. `TvChrome.tsx` carries the measurement. */
 [data-tv] {
-  min-height: 100vh; background: #0d0f14; color: #e8eaf0; font-size: 16px;
-  display: grid; grid-template-columns: 1fr 340px; grid-template-rows: 64px 1fr 150px;
+  /* As tall as what holds it, and never taller. With everything in one column the chrome has a
+     column that can be longer than the screen — eight seats and a long feed — and a grid whose
+     own height is left to its content would then hand the felt a row taller than the window and
+     draw the far rim's chips off the bottom of it. The column gives up what it cannot hold
+     inside itself instead. */
+  height: 100%; min-height: 100vh; background: #0d0f14; color: #e8eaf0; font-size: 16px;
+  display: grid; grid-template-columns: 1fr 360px; grid-template-rows: minmax(0, 1fr);
 }
-[data-tv] > header {
-  grid-column: 1 / 3; display: flex; align-items: center; justify-content: space-between;
-  padding: 0 28px; border-bottom: 1px solid #232733;
-}
-[data-tv] > header h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
-[data-tv] > header h1 em { color: #7d8597; font-weight: 400; font-style: normal; }
-/* The header's right-hand side: the way in and the rulebook side by side, so neither has to lie
-   over the other to be reached (#30). */
-[data-tv] .byd-tv-head-right { display: flex; align-items: center; gap: 20px; }
-[data-tv] .byd-tv-join { display: flex; align-items: center; gap: 24px; }
-[data-tv] .byd-tv-join > span { color: #7d8597; }
+/* The game's own name, and the rulebook beside it rather than over the felt (#30). */
+[data-tv] .byd-tv-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+[data-tv] .byd-tv-head h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
+[data-tv] .byd-tv-head h1 em { color: #7d8597; font-weight: 400; font-style: normal; }
+/* The way in: the label above, the code and the QR on one line under it. A 360 px column is not
+   a 1920 px header, and a label that wraps between two words reads as a mistake. */
+[data-tv] .byd-tv-join { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+[data-tv] .byd-tv-join > span { color: #7d8597; font-size: 14px; flex: 1 0 100%; }
 [data-tv] .byd-qr { border-radius: 6px; background: #fff; }
-[data-tv] > header strong {
+[data-tv] .byd-tv-join strong {
   font-family: ui-monospace, monospace; font-size: 26px; letter-spacing: 6px;
   background: #1a1e29; padding: 4px 14px; border-radius: 8px;
 }
-[data-tv] > main { display: grid; place-items: center; padding: 16px; }
-[data-tv] > aside { border-left: 1px solid #232733; display: grid; grid-template-rows: auto 1fr; min-height: 0; }
+[data-tv] > main { display: grid; place-items: center; padding: 16px; min-width: 0; min-height: 0; overflow: hidden; }
+[data-tv] > aside {
+  border-left: 1px solid #232733; min-height: 0; overflow: hidden;
+  display: flex; flex-direction: column; gap: 18px; padding: 18px 20px;
+}
+/* The column is the felt's neighbour and never its landlord: whatever it cannot hold it gives up
+   inside itself, so a table with eight seats and a long feed can never push the row it shares
+   with the felt past the window. The head, the way in and the card keep their room; the two lists
+   share what is left and scroll within it. */
+[data-tv] > aside > * { flex: 0 0 auto; }
+/* What gives first, when the window is short and the column wants more than it has. The card is
+   the most elastic thing in it — it is a picture and reads at any size — so it gives first, down
+   to a card that is still a card. The seats give next, and last: who is playing and how much they
+   hold is the dock, and a dock is what a TV is for. The feed takes whatever is left and scrolls
+   inside it, because it is the one thing here that is endless by nature. */
+[data-tv] .byd-tv-inspect { min-height: 0; flex: 0 20 auto; display: flex; flex-direction: column; }
+[data-tv] .byd-tv-seats { min-height: 0; overflow: auto; flex: 0 1 auto; }
+/* Two lines and its own heading, always: a feed cut to nothing is a feed that has been removed,
+   and what just happened is half of what a TV is watched for. */
+[data-tv] .byd-tv-feed { min-height: 84px; overflow: auto; flex: 1 1 0; }
 /* Inspection on a TV (K8, C): the card everyone in the room looks at, beside the table. */
-[data-tv] .byd-tv-inspect { padding: 20px; border-bottom: 1px solid #232733; }
 [data-tv] .byd-tv-inspect > div {
   position: relative; overflow: hidden;
-  width: 210px; height: 294px; border-radius: 12px; padding: 16px; box-sizing: border-box;
+  /* A card's own shape, at the size the column can spare: it keeps 63 × 88 at every height, so
+     what shrinks is a card and never a card squashed. */
+  height: 266px; min-height: 110px; flex: 0 1 auto; aspect-ratio: 63 / 88; width: auto; align-self: flex-start;
+  border-radius: 12px; padding: 16px; box-sizing: border-box;
   font-size: 22px; font-weight: 700; color: #1c1c1c;
   background: hsl(var(--hue, 0) 40% 86%);
 }
@@ -372,7 +397,7 @@
 }
 [data-tv] .byd-tv-inspect img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 [data-tv] .byd-tv-inspect > div > img ~ span:not([data-texture]) { visibility: hidden; }
-[data-tv] .byd-tv-feed { padding: 20px; overflow: auto; min-height: 0; }
+
 /* Nothing has happened yet (UX-16): the same quiet voice the waiting inspection panel speaks in. */
 [data-tv] .byd-tv-feed > p[data-empty] { margin: 0; color: #7d8597; font-size: 14px; line-height: 1.5; }
 [data-tv] h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; margin: 0 0 10px; }
@@ -380,24 +405,36 @@
 [data-tv] ol li { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid #1a1e29; font-size: 14px; }
 [data-tv] ol li b { flex: 0 0 30px; font-family: ui-monospace, monospace; font-weight: 400; color: #4c5468; }
 [data-tv] ol li span { color: var(--seat, #9aa3b8); }
-[data-tv] > footer {
-  grid-column: 1 / 3; padding: 14px 28px; border-top: 1px solid #232733;
-}
-[data-tv] > footer h2 { display: none; }
-[data-tv] > footer ul { list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 14px; }
-[data-tv] > footer li {
-  display: grid; grid-template-columns: 56px 1fr; gap: 14px; align-items: center; min-width: 0;
-  background: #151924; border-radius: 14px; padding: 14px;
+/* The seats, stacked down the column rather than laid along the bottom of the screen. A seat is
+   still a card of its own with the seat's colour down its left edge, so what a reader learned to
+   find in the dock is where it was; it is the axis that turned. */
+[data-tv] .byd-tv-seats ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+[data-tv] .byd-tv-seats li {
+  display: grid; grid-template-columns: 40px 1fr; gap: 12px; align-items: center; min-width: 0;
+  background: #151924; border-radius: 12px; padding: 9px 12px;
   border-left: 6px solid var(--seat, #7d8597);
 }
-[data-tv] > footer li [data-avatar] {
-  width: 56px; height: 56px; border-radius: 50%; background: var(--seat, #7d8597);
-  display: grid; place-items: center; font: 800 24px/1 system-ui, sans-serif; font-style: normal; color: var(--byd-seat-ink);
+[data-tv] .byd-tv-seats li [data-avatar] {
+  width: 40px; height: 40px; border-radius: 50%; background: var(--seat, #7d8597);
+  display: grid; place-items: center; font: 800 18px/1 system-ui, sans-serif; font-style: normal; color: var(--byd-seat-ink);
 }
-[data-tv] > footer li > div { min-width: 0; }
-[data-tv] > footer li span { display: block; font-size: 20px; font-weight: 700; }
-[data-tv] > footer li span + span { color: #9aa3b8; font-size: 14px; font-weight: 400; }
-[data-tv] > footer li small { display: block; margin-top: 2px; color: #7d8597; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+[data-tv] .byd-tv-seats li > div { min-width: 0; }
+[data-tv] .byd-tv-seats li span { display: block; font-size: 17px; font-weight: 700; }
+[data-tv] .byd-tv-seats li span + span { color: #9aa3b8; font-size: 13px; font-weight: 400; }
+[data-tv] .byd-tv-seats li small { display: block; margin-top: 1px; color: #7d8597; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* On a short screen the dock stands two abreast and drops what a seat last did. A list scrolled to
+   a half-drawn seat reads as a broken row rather than as more below, and a dock is the one thing
+   on this screen that should always be whole — so it takes the width it has instead of the height
+   it has not, which is the shape it had along the bottom of the screen anyway. The line that goes
+   is the one the feed underneath is already saying, in the same seat colours. */
+@media (max-height: 900px) {
+  [data-tv] .byd-tv-seats ul { grid-template-columns: 1fr 1fr; }
+  [data-tv] .byd-tv-seats li small { display: none; }
+  [data-tv] .byd-tv-seats li { grid-template-columns: 30px 1fr; gap: 8px; padding: 6px 8px; }
+  [data-tv] .byd-tv-seats li [data-avatar] { width: 30px; height: 30px; font-size: 15px; }
+  [data-tv] .byd-tv-seats li span { font-size: 15px; }
+  [data-tv] .byd-tv-seats li span + span { font-size: 12px; }
+}
 
 /* Textures: the image fills the card; the name stays underneath for cards without one. */
 .byd-card { position: relative; overflow: hidden; }
@@ -550,7 +587,7 @@
 /* The observer is never invisible (C8). */
 .byd-tv-observers { display: inline-flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 999px; background: #2a2417; color: #ffd98a; font-size: 15px; font-weight: 700; margin-bottom: 10px; }
 .byd-tv-observers i { width: 10px; height: 10px; border-radius: 50%; background: #ffd98a; box-shadow: 0 0 0 4px rgba(255, 217, 138, 0.3); }
-[data-tv] > footer h2 + ul { margin-top: 0; }
+[data-tv] .byd-tv-observers { margin-bottom: 0; }
 
 /* The end of a session (C9). */
 .byd-ended { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; background: rgba(5, 7, 12, 0.8); color: #eee; text-align: center; }
@@ -595,34 +632,30 @@
 .byd-observer-more::after { content: ' ▲'; }
 [data-drawer='open'] .byd-observer-more::after { content: ' ▼'; }
 /* Her own sentence stands at the top of the column the table talks in. */
-.byd-observer-note { margin: 0; padding: 12px 20px; background: #2a2417; color: #ffd98a; font-weight: 650; line-height: 1.4; border-bottom: 1px solid #3a3220; }
-[data-tv] > aside:has(.byd-observer-note) { grid-template-rows: auto auto minmax(0, 1fr); }
+.byd-observer-note { margin: 0; padding: 12px 16px; border-radius: 12px; background: #2a2417; color: #ffd98a; font-weight: 650; line-height: 1.4; border: 1px solid #3a3220; }
 /* Below the desk the table is the whole screen and the column is a drawer under it — under, never
    over: it takes room from the table instead of covering it. The TV's own screen is a big screen
    and is left exactly as it was. */
 @media (max-width: 1023px) {
   .byd-observer [data-tv] { grid-template-columns: minmax(0, 1fr); }
-  .byd-observer [data-tv] > header { grid-column: 1; padding: 0 14px; }
-  .byd-observer [data-tv] > header h1 { font-size: 17px; }
-  .byd-observer [data-tv] > footer { grid-column: 1; padding: 10px 14px; min-height: 0; overflow: auto; }
-  .byd-observer [data-tv] > footer ul { grid-auto-flow: row; gap: 8px; }
-  .byd-observer [data-tv] > aside { border-left: 0; border-top: 1px solid #232733; min-height: 0; overflow: auto; }
+  .byd-observer [data-tv] > aside {
+    border-left: 0; border-top: 1px solid #232733; min-height: 0; overflow: auto;
+    padding: 12px 14px; gap: 12px;
+  }
+  .byd-observer [data-tv] > aside > * { flex: 0 0 auto; }
+  .byd-observer [data-tv] .byd-tv-head h1 { font-size: 17px; }
+  .byd-observer [data-tv] .byd-tv-seats li { grid-template-columns: 34px 1fr; }
   /* The card the eye is on is a pointing device's answer; on a small screen it gives its room —
      and its place in the reading order — back to what the handle promised: what just happened,
      and who is sitting. */
-  /* One scroll rather than three fixed rows: on a small screen the column is a drawer, and a
-     drawer is read top to bottom. */
-  .byd-observer [data-tv] > aside { display: flex; flex-direction: column; }
-  .byd-observer [data-tv] > aside > * { flex: 0 0 auto; }
-  .byd-observer [data-tv] .byd-tv-feed { order: 2; border-bottom: 1px solid #232733; }
-  .byd-observer [data-tv] .byd-tv-inspect { order: 3; border-bottom: 0; padding: 12px 14px; }
+  .byd-observer [data-tv] .byd-tv-feed { order: 2; flex: 0 0 auto; }
+  .byd-observer [data-tv] .byd-tv-inspect { order: 3; }
   .byd-observer [data-tv] .byd-tv-inspect > div { width: 120px; height: 168px; padding: 10px; font-size: 15px; }
   /* Shut, the table is the screen. Open, the drawer takes its room from the table in shares of
      what there is — so the table is smaller, never gone, and never underneath anything. */
-  .byd-observer[data-drawer='shut'] [data-tv] { grid-template-rows: auto minmax(0, 1fr); }
-  .byd-observer[data-drawer='shut'] [data-tv] > aside,
-  .byd-observer[data-drawer='shut'] [data-tv] > footer { display: none; }
-  .byd-observer[data-drawer='open'] [data-tv] { grid-template-rows: auto minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 0.7fr); }
+  .byd-observer[data-drawer='shut'] [data-tv] { grid-template-rows: minmax(0, 1fr); }
+  .byd-observer[data-drawer='shut'] [data-tv] > aside { display: none; }
+  .byd-observer[data-drawer='open'] [data-tv] { grid-template-rows: minmax(0, 1.3fr) minmax(0, 1.7fr); }
 }
 /* On the narrowest screens the handle is two rows: who she is, and the two things she can do.
    A right-aligned button alone on a second row reads as something that fell off the first. */

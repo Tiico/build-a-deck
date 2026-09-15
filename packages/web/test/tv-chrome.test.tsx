@@ -87,8 +87,11 @@ describe('the inspection panel (C)', () => {
   it('asks to be pointed at until a card is, and then shows that card', () => {
     const { view, log, faceUp } = buildScene()
     const snapshot = view(null)
+    // A table nothing has been done to yet: the panel has no card of its own to hold, so the
+    // only way to fill it is to point. What it holds once something has happened is its own
+    // rule, and is measured below.
     const { rerender } = render(
-      <TvChrome view={snapshot} activity={log.map(projectActivity)} roomCode="KX7P">
+      <TvChrome view={snapshot} activity={[]} roomCode="KX7P">
         <div />
       </TvChrome>,
     )
@@ -112,6 +115,50 @@ describe('the inspection panel (C)', () => {
       </TvChrome>,
     )
     expect(panel().textContent).toMatch(/dolt kort/)
+  })
+})
+
+describe('the inspection panel fills itself (K8, C)', () => {
+  // Pointing is a good way in and a bad requirement: on a screen a whole room is watching, nobody
+  // wants to keep a pointer moving to find out what was just played. So the panel's resting state
+  // is the card the last line is about, and the pointer only overrides it.
+  it('holds the card the latest line is about until somebody points at another', () => {
+    const { view, log, faceUp } = buildScene()
+    const snapshot = view(null)
+    const lines = log.map(projectActivity)
+    const panel = () => screen.getByRole('region', { name: /inspektion/i })
+
+    const { rerender } = render(
+      <TvChrome view={snapshot} activity={lines} roomCode="KX7P">
+        <div />
+      </TvChrome>,
+    )
+    // The scene ends by turning the discard's cards face up, so the last line is about one card.
+    const last = lines.at(-1)!.intent as { component: string }
+    expect(panel().querySelector(`[data-inspect="${last.component}"]`)).toBeTruthy()
+    expect(panel().textContent).not.toMatch(/peka på ett kort/)
+
+    // A pointer beats it, and nothing about the pointer's card is guessed from the feed.
+    const pointed = snapshot.components.find((c) => c.id === faceUp)!
+    rerender(
+      <TvChrome view={snapshot} activity={lines} roomCode="KX7P" inspecting={pointed}>
+        <div />
+      </TvChrome>,
+    )
+    expect(panel().querySelector(`[data-inspect="${pointed.id}"]`)).toBeTruthy()
+  })
+
+  it('still asks to be pointed at when nothing that happened was about a card', () => {
+    const { view, log } = buildScene()
+    // Sitting down, shuffling, dealing: lines that name no card this screen could hold up.
+    const lines = log.map(projectActivity).filter((l) => ['seat.claim', 'shuffle', 'deal'].includes(l.intent.v))
+    expect(lines.length).toBeGreaterThan(0)
+    render(
+      <TvChrome view={view(null)} activity={lines} roomCode="KX7P">
+        <div />
+      </TvChrome>,
+    )
+    expect(screen.getByRole('region', { name: /inspektion/i }).textContent).toMatch(/peka på ett kort/)
   })
 })
 
