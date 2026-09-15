@@ -59,3 +59,31 @@ export function groundOf(doc: ProjectDoc, face: string): string {
   const covering = base.find((el) => el.kind === 'shape' && typeof el.fill === 'string' && el.x <= 0 && el.y <= 0 && el.w >= 63 && el.h >= 88)
   return covering && covering.kind === 'shape' && typeof covering.fill === 'string' ? covering.fill : PAPER
 }
+
+// How often each symbol is written (E4). It has to count a symbol that wears a meaning too: the
+// panel used to look for `{namn}` exactly, and a deck that had painted all of its symbols was
+// told, on every row, that it used none of them.
+//
+// Which columns are icon rows has to be handed in, because nothing about a cell's contents can
+// tell a row of names from a sentence — `bare` is the caller's `iconFieldsOf`. In a sentence a
+// symbol wears braces; in a row it stands bare among others. Either may carry a meaning after a
+// bar, and the name is what is counted, never the meaning.
+export function iconsUsed(rows: readonly { fields: Row }[], bare: readonly string[] = []): Record<string, number> {
+  const out: Record<string, number> = {}
+  const count = (name: string | undefined) => {
+    if (name) out[name] = (out[name] ?? 0) + 1
+  }
+  const braced = /\{([\p{L}\p{N}_-]+)(?:\|[\p{L}\p{N}_-]+)?\}/gu
+  const NAME = /^([\p{L}\p{N}_-]+)(?:\|[\p{L}\p{N}_-]+)?$/u
+  for (const { fields } of rows) {
+    for (const [field, value] of Object.entries(fields)) {
+      if (typeof value !== 'string') continue
+      if (bare.includes(field)) {
+        for (const word of value.split(/[\s,]+/)) count(NAME.exec(word)?.[1])
+        continue
+      }
+      for (const m of value.matchAll(braced)) count(m[1])
+    }
+  }
+  return out
+}

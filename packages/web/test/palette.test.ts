@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groundOf, paletteIssues, rolesUsed, ROLE_MIN_CONTRAST } from '../src/editor/palette.js'
+import { groundOf, iconsUsed, paletteIssues, rolesUsed, ROLE_MIN_CONTRAST } from '../src/editor/palette.js'
 
 // The palette is where a deck's colours can be judged all at once (E4, E5). A colour per use is
 // forty chances to write an unreadable card and forty chances to say the same thing twice; a
@@ -76,5 +76,25 @@ describe('the card’s own ground', () => {
     // A fill read off a column is a different colour on every card; the palette is one thing and
     // cannot be judged against forty grounds, so the card check keeps that case (E5).
     expect(groundOf(face([{ kind: 'shape', id: 'paper', x: 0, y: 0, w: 63, h: 88, shape: 'rect', fill: { field: 'sort', map: { eld: '#c0392b' } } }]), 'front')).toBe('#ffffff')
+  })
+})
+
+// How often the deck writes a symbol (E4). It was counted by looking for `{namn}` exactly, which
+// stopped being the whole truth the moment a symbol could be written in a meaning: a deck that had
+// painted every one of its symbols was told it used none of them.
+describe('the symbols the deck writes', () => {
+  const rows = [
+    { fields: { body: 'Skada {svärd|fara} 2 och {mynt}.', marks: 'sköld|vinst' } },
+    { fields: { body: 'Betala {mynt|kostnad}.', marks: 'svärd' } },
+  ]
+
+  it('counts a symbol whether or not it is written in a meaning', () => {
+    expect(iconsUsed(rows, ['marks'])).toEqual({ svärd: 2, mynt: 2, sköld: 1 })
+  })
+
+  it('does not mistake one name for another that begins the same way', () => {
+    expect(iconsUsed([{ fields: { body: '{svärd} {svärdsman|fara}' } }])).toEqual({ svärd: 1, svärdsman: 1 })
+    // And a sentence is never read as a row of names, however much it looks like one.
+    expect(iconsUsed([{ fields: { body: 'Skada 2 mot allt i zonen.' } }])).toEqual({})
   })
 })

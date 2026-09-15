@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen, within, fireEvent } from '@testing-library/react'
+import { JSDOM_TEST_BUDGET } from './budget.js'
 import { SymbolPanel } from '../src/editor/SymbolPanel.js'
 import { projectDoc } from './project-doc.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 import type { ProjectClient } from '../src/editor/ProjectClient.js'
 
 // The game's own colours (E4). A card writes the meaning and never the colour, so this is the one
@@ -68,5 +71,23 @@ describe('the game’s colours', () => {
     const said = screen.getByRole('alert').textContent ?? ''
     expect(said).toContain('kostnad')
     expect(said).toContain('vinst')
+  })
+})
+
+// The symbol set's own count (E4). It looked for `{namn}` exactly, so a deck that had painted all
+// of its symbols was told, on every row, that it used none of them.
+describe('how often the game says a symbol', () => {
+  it('counts a symbol that wears a meaning as a symbol the deck uses', () => {
+    const base = projectDoc()
+    mount({ fara: '#8f2d20' }, {
+      icons: { svärd: 'svard.svg' },
+      rows: [
+        { id: 'dragon', fields: { title: 'Drake', body: 'Skada {svärd|fara} 2.', antal: 1 } },
+        { id: 'knight', fields: { title: 'Riddare', body: 'Skada {svärd} 1.', antal: 1 } },
+      ],
+      template: base.template,
+    })
+
+    expect(screen.getByRole('list', { name: 'Symboler i spelet' }).textContent).toContain('2 kort')
   })
 })

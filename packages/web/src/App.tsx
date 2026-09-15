@@ -13,11 +13,7 @@ import { TextureFailures } from './table/TextureFailures.js'
 import { NotFoundPage } from './status/NotFoundPage.js'
 import { DocumentTitle } from './status/DocumentTitle.js'
 import { StatusLive } from './status/StatusLive.js'
-import { lazy, Suspense } from 'react'
 import { Language, detectLang } from './i18n/index.js'
-
-// PROTOTYPE — throwaway, split out of the main bundle on purpose.
-const PrototypePage = lazy(() => import('./prototype/PrototypePage.js').then((m) => ({ default: m.PrototypePage })))
 
 // Routing is a path check for now; a router arrives with the first real page.
 // The whole app is under one language (A4): the reader's own choice, then the address, then what
@@ -52,15 +48,6 @@ function route() {
   if (location.pathname === '/login') return <LoginPage />
   if (location.pathname === '/claim') return <ClaimPage />
   if (location.pathname.startsWith('/invites/')) return <InvitePage />
-  // PROTOTYPE — throwaway route, goes when the question is answered. It is loaded on demand so
-  // that neither its code nor its stylesheet lands in the sheet the app blocks on: a throwaway
-  // must not be able to spend the shipped app's CSS budget (`felt-font.test.ts`).
-  if (location.pathname === '/prototyp')
-    return (
-      <Suspense fallback={null}>
-        <PrototypePage />
-      </Suspense>
-    )
   if (location.pathname === '/') return <HomePage />
   // Anything else is a page that does not exist, and says so.
   return <NotFoundPage />

@@ -1,10 +1,13 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen, within, fireEvent } from '@testing-library/react'
+import { JSDOM_TEST_BUDGET } from './budget.js'
 import type { ProjectDoc } from '@byd/server'
 import type { Motif } from '@byd/template'
 import { DeckWall } from '../src/editor/DeckWall.js'
 import { projectDoc } from './project-doc.js'
+
+vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 // The deck's measure on the wall (E1, variant C): the measure itself, the deck as it becomes, and
 // the list of files that cannot answer. The wall is where the whole deck is visible at once, so it

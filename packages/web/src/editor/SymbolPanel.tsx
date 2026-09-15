@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
 import type { ProjectDoc } from './types.js'
 import { CardPreview } from './CardPreview.js'
-import { previewIcons } from './assets.js'
+import { iconFieldsOf, previewIcons } from './assets.js'
 import { previewFonts } from './fonts.js'
 import { CATEGORIES, INK, LIBRARY, searchSymbols, symbolName, symbolPreview, type GameSymbol } from './symbols.js'
-import { ROLE_MIN_CONTRAST, groundOf, paletteIssues, rolesUsed } from './palette.js'
+import { ROLE_MIN_CONTRAST, groundOf, iconsUsed, paletteIssues, rolesUsed } from './palette.js'
 import { contrastRatio } from '@byd/template'
 import type { ProjectClient } from './ProjectClient.js'
 import { useT, type Key } from '../i18n/index.js'
@@ -82,7 +82,10 @@ function ProjectSet({ doc, client, assetBase }: SymbolPanelProps) {
   const t = useT()
   const [error, setError] = useState<string | null>(null)
   const names = Object.keys(doc.icons)
-  const usedBy = (name: string) => doc.rows.filter((r) => Object.values(r.fields).some((v) => typeof v === 'string' && v.includes(`{${name}}`))).length
+  // Counted by the same walk the palette uses, so a symbol written in a meaning still counts. The
+  // old check looked for `{namn}` exactly and told a deck that had painted every one of its
+  // symbols that it used none of them.
+  const used = iconsUsed(doc.rows, iconFieldsOf(doc))
   if (names.length === 0) return <p className="byd-symbols-empty">{t('symbols.set.none')}</p>
   return (
     <section className="byd-symbols-set">
@@ -90,7 +93,7 @@ function ProjectSet({ doc, client, assetBase }: SymbolPanelProps) {
       <ul aria-label={t('symbols.inGame')}>
         {names.map((name) => {
           const credit = doc.credits?.[name]
-          const used = usedBy(name)
+          const n = used[name] ?? 0
           return (
             <li key={name} data-icon={name}>
               <img src={iconSrc(doc.icons[name] ?? '', assetBase)} alt="" />
@@ -111,7 +114,7 @@ function ProjectSet({ doc, client, assetBase }: SymbolPanelProps) {
                 }}
               />
               <small>{credit ? `${credit.licence} · ${credit.by}` : t('symbols.own')}</small>
-              <small>{t(used === 1 ? 'wall.cards.one' : 'wall.cards.other', { n: used })}</small>
+              <small>{t(n === 1 ? 'wall.cards.one' : 'wall.cards.other', { n })}</small>
               <button type="button" aria-label={t('symbols.remove', { name })} onClick={() => client.removeIcon(name)}>
                 ×
               </button>
