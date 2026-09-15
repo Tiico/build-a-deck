@@ -2459,6 +2459,12 @@ Trafiken på tråden är oförändrad; varje bildruta går fortfarande som sin e
 Stacken är fortfarande dokumentögonblicksbilder som tas tillbaka med `restore` (B4), och poletten avgör bara när en ny bild läggs på.
 En ny yta som skriver många gånger om samma handling — ett reglage, en färgväljare som drar — ska bära en polett; en som skriver en gång ska inte.
 
+Kravet gällde lika för de ytor som redan fanns, och tre av dem bar ingen polett.
+Filten i Bord (en zon dras och ändrar storlek, dess namn och genväg skrivs i, och räknarna namnges) skrev en hel receptändring per tangenttryck och en zonpatch per bildruta.
+Mallens egenskapspanel skrev ett steg per siffra i måtten och ett per grad i reglagen, alltså just det reglage och den färgväljare följdkravet namnger.
+Regelboken skrev hela boken per bokstav, i ett stycke som dessutom stänger sig när designern lämnar det.
+Poletten görs nu på ett ställe för hela verktyget, `packages/web/src/editor/gesture.ts`, och varje yta som delar ut poletter tar först ett eget nummer: två paneler som räknar var för sig kan aldrig säga samma ord, inte heller när panelen byts ut mot en annan på samma plats i trädet.
+
 Byggt 2026-09-14 (ingen prototyp: ingenting nytt ritas, ett tryck gör det den som tryckte redan trodde att det gjorde).
 
 ### L15. Lagerpanelen säger vad ett lager är, och ett lager går att låsa (prototypat 2026-09-14)

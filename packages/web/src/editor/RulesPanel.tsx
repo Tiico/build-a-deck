@@ -4,6 +4,7 @@ import type { ProjectDoc, RuleBlock, RuleDoc } from '@byd/server'
 import { renderRules, type Names, type RenderedBlock, type RenderedNode } from '@byd/template'
 import type { ProjectClient } from './ProjectClient.js'
 import { useT, type T } from '../i18n/index.js'
+import { useGesture } from './gesture.js'
 
 // The rulebook (B7), from the prototype: the page itself is the editor. A block opens where it
 // stands and closes when it is left, so what is being written is always what the reader will
@@ -28,8 +29,8 @@ export function RulesPanel({ doc, client }: RulesPanelProps) {
     )
   }
   const out = renderRules(rules, names)
-  const patch = (id: string, next: Partial<RuleBlock>) =>
-    client.setRules({ ...rules, blocks: rules.blocks.map((b) => (b.id === id ? ({ ...b, ...next } as RuleBlock) : b)) })
+  const patch = (id: string, next: Partial<RuleBlock>, gesture?: string) =>
+    client.setRules({ ...rules, blocks: rules.blocks.map((b) => (b.id === id ? ({ ...b, ...next } as RuleBlock) : b)) }, gesture)
   const addAfter = (id: string) => {
     const at = rules.blocks.findIndex((b) => b.id === id)
     const fresh: RuleBlock = { kind: 'text', id: freeId(rules), text: t('rules.newText') }
@@ -59,7 +60,7 @@ export function RulesPanel({ doc, client }: RulesPanelProps) {
           return (
             <div key={b.id} className="byd-rules-block" data-block={b.id} data-open={editing === b.id ? 'true' : undefined}>
               {editing === b.id && source ? (
-                <Editing block={source} names={names} onPatch={(next) => patch(b.id, next)} onClose={() => setEditing(null)} onRemove={() => remove(b.id)} />
+                <Editing block={source} names={names} onPatch={(next, gesture) => patch(b.id, next, gesture)} onClose={() => setEditing(null)} onRemove={() => remove(b.id)} />
               ) : (
                 <div role="button" tabIndex={0} onClick={() => setEditing(b.id)} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setEditing(b.id)}>
                   <Block block={b} names={names} />
@@ -113,18 +114,22 @@ function Booklet({ client }: { client: ProjectClient }) {
 }
 
 // One block open for writing, with the things the game has to hand.
-function Editing({ block, names, onPatch, onClose, onRemove }: { block: RuleBlock; names: Names; onPatch(next: Partial<RuleBlock>): void; onClose(): void; onRemove(): void }) {
+function Editing({ block, names, onPatch, onClose, onRemove }: { block: RuleBlock; names: Names; onPatch(next: Partial<RuleBlock>, gesture?: string): void; onClose(): void; onRemove(): void }) {
   const t = useT()
+  // Prose is written a letter at a time and the whole book is rewritten for each of them, so a
+  // sentence is one step back and the paragraph before it is another (L14). A reference put in
+  // from the row of buttons is one press and stays a step of its own.
+  const typing = useGesture('rule-field')
   const insert = (ref: string) => {
     if (block.kind === 'text' || block.kind === 'heading') onPatch({ text: `${block.text} ${ref}` })
     else if (block.kind === 'list') onPatch({ items: [...block.items.slice(0, -1), `${block.items[block.items.length - 1] ?? ''} ${ref}`] })
   }
   return (
     <div className="byd-rules-edit">
-      {block.kind === 'text' && <textarea autoFocus rows={4} aria-label={t('rules.block.text', { id: block.id })} value={block.text} onChange={(e) => onPatch({ text: e.target.value })} onBlur={onClose} />}
+      {block.kind === 'text' && <textarea autoFocus rows={4} aria-label={t('rules.block.text', { id: block.id })} value={block.text} {...typing.visit} onChange={(e) => onPatch({ text: e.target.value }, typing.token())} onBlur={onClose} />}
       {block.kind === 'heading' && (
         <div className="byd-rules-row">
-          <input autoFocus aria-label={t('rules.block.heading', { id: block.id })} value={block.text} onChange={(e) => onPatch({ text: e.target.value })} onBlur={onClose} />
+          <input autoFocus aria-label={t('rules.block.heading', { id: block.id })} value={block.text} {...typing.visit} onChange={(e) => onPatch({ text: e.target.value }, typing.token())} onBlur={onClose} />
           <select aria-label={t('rules.block.level', { id: block.id })} value={block.level} onChange={(e) => onPatch({ level: e.target.value === '1' ? 1 : 2 })}>
             <option value="1">{t('rules.level.1')}</option>
             <option value="2">{t('rules.level.2')}</option>
@@ -139,7 +144,8 @@ function Editing({ block, names, onPatch, onClose, onRemove }: { block: RuleBloc
               {...(i === 0 ? { autoFocus: true } : {})}
               aria-label={t('rules.block.item', { n: i + 1, id: block.id })}
               value={item}
-              onChange={(e) => onPatch({ items: block.items.map((x, j) => (j === i ? e.target.value : x)) })}
+              {...typing.visit}
+              onChange={(e) => onPatch({ items: block.items.map((x, j) => (j === i ? e.target.value : x)) }, typing.token())}
             />
           ))}
           <button type="button" onClick={() => onPatch({ items: [...block.items, ''] })}>
@@ -147,7 +153,7 @@ function Editing({ block, names, onPatch, onClose, onRemove }: { block: RuleBloc
           </button>
         </>
       )}
-      {block.kind === 'setup' && <input autoFocus aria-label={t('rules.block.caption', { id: block.id })} placeholder={t('rules.caption.placeholder')} value={block.caption ?? ''} onChange={(e) => onPatch({ caption: e.target.value })} onBlur={onClose} />}
+      {block.kind === 'setup' && <input autoFocus aria-label={t('rules.block.caption', { id: block.id })} placeholder={t('rules.caption.placeholder')} value={block.caption ?? ''} {...typing.visit} onChange={(e) => onPatch({ caption: e.target.value }, typing.token())} onBlur={onClose} />}
       <div className="byd-rules-picker">
         <span>{t('rules.insert')}</span>
         {referables(names).map((r) => (
