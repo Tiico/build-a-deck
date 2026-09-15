@@ -1459,14 +1459,20 @@
 .byd-sentence { margin: 0; line-height: 2.1; color: #e6ecfa; }
 .byd-sentence b { color: #fff; }
 .byd-zone-action { display: grid; gap: 6px; justify-items: start; border-left: 2px solid #2f333d; padding: 2px 0 8px 12px; }
-.byd-zone-action > input { min-width: 260px; }
+.byd-zone-action > input { min-width: 260px; padding: 7px 9px; border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; color: #fff; font: inherit; }
 .byd-zone-action ol { list-style: none; margin: 2px 0; padding: 0; display: grid; gap: 2px; justify-items: start; }
 .byd-zone-action li { display: flex; gap: 8px; align-items: baseline; }
 .byd-zone-action-x { border: 0; background: transparent; color: #9aa3b8; font-size: 15px; line-height: 1; cursor: pointer; padding: 4px 6px; }
 .byd-zone-action-x:hover { color: #ff9a9a; }
 .byd-zone-step-add { display: flex; gap: 6px; align-items: center; }
 .byd-zone-step-add > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-.byd-zone-action-new { justify-self: start; }
+/* En andrahandsknapp och inte sidans huvudhandling (L13): den ljusa fyllningen hör till
+   "Uppdatera bordet", och en "＋ Åtgärd" som bär den slåss med den om blicken. */
+.byd-zone-action-new {
+  justify-self: start; border: 1px solid #2f333d; border-radius: 8px; padding: 7px 12px;
+  background: #1b1d23; color: #fff; font: inherit; font-weight: 700; cursor: pointer;
+}
+.byd-zone-action-new:hover { background: #24507f; }
 
 /* En ratt i texten. Den ser ut som ett ord med en streckad understrykning — ett ord man kan byta
    — och inte som en knapp, eftersom meningen är det som ska läsas och knapparna är dess ord. */

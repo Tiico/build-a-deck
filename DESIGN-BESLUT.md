@@ -2125,6 +2125,7 @@ Panelen erbjuds bara på högar: en yta och en hand har ingen ring att hänga en
 
 **Klienten kompilerar**, precis som den redan räknar ut en koordinat åt tangentbordet (K16): protokollet vill ha ett tal, och "ett per spelare" är inget tal förrän någon sitter ner.
 Det som inte går att räkna ut sägs i stället för att gissas: en åtgärd som frågar efter ett tal frågar läsaren, och en vars mål inte finns på det här bordet erbjuds avstängd.
+Den avstängda raden säger **varför**, i ord: en avstängd skiva i ringen säger ingenting och behöver inte göra det — "Blanda" på en hög med ett kort förklarar sig själv — men "Ge alla en starthand" grå vid ett bord ingen satt sig vid ser trasig ut tills skälet sägs högt.
 
 Följdkrav som är införda:
 `patchZone` bär frågan och åtgärdslistan som helheter, så ett grepp är ett steg tillbaka (L14) och inte en ny mekanism.

@@ -435,7 +435,7 @@ export const enEditor = {
   'setup.copied': '{name} copied',
   // What a zone asks for and what it can do (B5, K14), written as sentences: the knobs sit inside
   // the text, and the holes are named so another language may put them in another order (A4).
-  'setup.fill.sentence': 'In {zone} {what} start.',
+  'setup.fill.sentence': '{zone} starts with {what}.',
   'setup.fill.none': 'no cards',
   'setup.fill.some': 'the cards where {what}',
   'setup.query.clause': '{field} is {values}',

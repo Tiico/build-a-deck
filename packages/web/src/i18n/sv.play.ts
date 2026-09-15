@@ -66,6 +66,10 @@ export const svPlay = {
   // översätts aldrig; det här är bara det verktyget säger runt dem.
   'ring.action.howMany': 'Hur många — {name}?',
   'ring.action.go': 'Kör',
+  'ring.action.why.nowhere': 'ingen sitter vid bordet än',
+  'ring.action.why.none': 'det blir inga kort just nu',
+  'ring.action.why.nothing': 'åtgärden har inga steg',
+  'ring.action.why.gone': 'högen är inte kvar',
   'kbd.hint.action.asks': 'kräver ett tal; skriv det i listan vid högen',
   'ring.action.list': 'Vad {zone} kan',
   // En räknares verb (C4, #67): ett steg åt vardera hållet och ett tal sagt rakt ut. Ringen och

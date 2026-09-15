@@ -718,3 +718,7 @@
   padding: 9px 10px; border: 1px solid var(--byd-felt-chalk); border-radius: 10px;
   background: var(--byd-felt-plate-off); color: var(--byd-felt-chalk); font: inherit;
 }
+/* Varför en rad inte går att be om, sagd i ord. En avstängd skiva i ringen säger ingenting och
+   behöver inte göra det — "Blanda" på en hög med ett kort förklarar sig själv. En designers egen
+   mening gör det inte. */
+.byd-action-sheet button i { display: block; margin-top: 3px; font-style: normal; font-size: 11px; font-weight: 400; color: var(--byd-felt-chalk-off); }

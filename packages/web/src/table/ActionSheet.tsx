@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from 'react'
 import type { Intent, Snapshot, ZoneAction } from '@byd/protocol'
 import { compileAction, type Asked } from './actions.js'
-import { useT } from '../i18n/index.js'
+import { useT, type Key, type T } from '../i18n/index.js'
 
 // The game's own actions for a pile, hanging under the ring (K14, extended).
 //
@@ -65,9 +65,7 @@ export function ActionSheet({ view, pile, name, actions, x, y, onAct, onClose }:
         </form>
       ) : (
         actions.map((a) => (
-          <button key={a.id} type="button" disabled={reasonToRefuse(view, pile, a) !== null} title={reasonToRefuse(view, pile, a) ?? undefined} onClick={() => run(a)} onPointerUp={() => run(a)}>
-            {a.label}
-          </button>
+          <Row key={a.id} view={view} pile={pile} action={a} t={t} onRun={() => run(a)} />
         ))
       )}
     </div>
@@ -77,7 +75,18 @@ export function ActionSheet({ view, pile, name, actions, x, y, onAct, onClose }:
 // Whether the table can be asked for this at all right now, which is the same question the ring
 // asks of a verb before it offers it: an action whose target has left the table, or whose count
 // comes out at nothing, is offered switched off rather than silently doing nothing.
-function reasonToRefuse(view: Snapshot, pile: string, action: ZoneAction): string | null {
+//
+// And it says why, in words. A disc in the ring says nothing when it is out of play, and it does
+// not need to — "Blanda" on a pile of one explains itself. A designer's own sentence does not:
+// "Ge alla en starthand" greyed out at a table nobody has sat down at looks broken until the
+// reason is said out loud.
+function Row({ view, pile, action, t, onRun }: { view: Snapshot; pile: string; action: ZoneAction; t: T; onRun(): void }) {
   const made = compileAction(view, pile, action, {})
-  return made.ok || 'asks' in made ? null : made.why
+  const why = made.ok || 'asks' in made ? null : t(`ring.action.why.${made.why}` as Key)
+  return (
+    <button type="button" disabled={why !== null} onClick={why === null ? onRun : undefined} onPointerUp={why === null ? onRun : undefined}>
+      {action.label}
+      {why !== null && <i>{why}</i>}
+    </button>
+  )
 }
