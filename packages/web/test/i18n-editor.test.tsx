@@ -22,8 +22,8 @@ afterEach(async () => {
 // the page, a real project behind it. What a designer wrote — the game's name, its card titles,
 // its zone names — is never touched by the switch, and each test says so.
 async function openEditor(doc = projectDoc()): Promise<void> {
-  await run.projects.create('p1', doc)
-  history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+  await run.projects.create(run.projectId, doc)
+  history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   render(
     <Language lang="en">
       <EditorPage />

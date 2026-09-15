@@ -22,7 +22,7 @@ const select = (id: string) => fireEvent.click(within(row(id)).getAllByRole('but
 const press = (key: string) => fireEvent.keyDown(window, { key, ctrlKey: true })
 
 async function openBord(): Promise<void> {
-  history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+  history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   render(<EditorPage />)
   await screen.findByText('Skogens herrar')
   fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
@@ -37,7 +37,7 @@ describe('att kopiera en zon i fliken Bord', () => {
     doc.setup.zones = doc.setup.zones.map((z) =>
       z.id === 'draw' ? { ...z, fill: [{ field: 'title', is: ['Drake'] }], actions: [{ id: 'a1', label: 'Blanda om', steps: [{ v: 'shuffle' as const }] }] } : z,
     )
-    await run.projects.create('p1', doc)
+    await run.projects.create(run.projectId, doc)
     await openBord()
 
     select('draw')
@@ -48,8 +48,8 @@ describe('att kopiera en zon i fliken Bord', () => {
     expect(within(row(made)).getAllByText(/Kopia av Draghög/).length).toBeGreaterThan(0)
 
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
-    await waitFor(async () => expect((await run.projects.load('p1'))?.rev).toBe(2))
-    const zones = (await run.projects.load('p1'))!.setup.zones
+    await waitFor(async () => expect((await run.projects.load(run.projectId))?.rev).toBe(2))
+    const zones = (await run.projects.load(run.projectId))!.setup.zones
     const copy = zones.find((z) => z.id === made)!
     const original = zones.find((z) => z.id === 'draw')!
     expect(copy).toMatchObject({ kind: 'pile', visibility: 'none', fill: original.fill, actions: original.actions })
@@ -58,7 +58,7 @@ describe('att kopiera en zon i fliken Bord', () => {
   })
 
   it('klipper ut: zonen försvinner och står kvar i urklippet tills den klistras in', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     await openBord()
 
     select('discard')
@@ -71,7 +71,7 @@ describe('att kopiera en zon i fliken Bord', () => {
   })
 
   it('vägrar klippa en zon bordet inte kan vara utan, och säger varför', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     await openBord()
 
     select('table')
@@ -81,7 +81,7 @@ describe('att kopiera en zon i fliken Bord', () => {
   })
 
   it('lämnar tangenterna i fred medan någon skriver i ett fält', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     await openBord()
 
     select('draw')

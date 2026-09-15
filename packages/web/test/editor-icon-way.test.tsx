@@ -34,8 +34,8 @@ function withIconRow() {
 }
 
 async function openTable(doc = projectDoc()) {
-  await run.projects.create('p1', doc)
-  history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+  await run.projects.create(run.projectId, doc)
+  history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   render(<EditorPage />)
   await screen.findByText('Skogens herrar')
   fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
@@ -94,8 +94,8 @@ describe('the way to an icon (#33)', () => {
 })
 
 async function openTemplate(doc = projectDoc()) {
-  await run.projects.create('p1', doc)
-  history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+  await run.projects.create(run.projectId, doc)
+  history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   render(<EditorPage />)
   await screen.findByText('Skogens herrar')
   fireEvent.click(screen.getByRole('tab', { name: 'Mall' }))

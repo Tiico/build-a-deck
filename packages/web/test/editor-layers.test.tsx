@@ -24,8 +24,8 @@ afterEach(async () => {
 })
 
 async function openTheTemplate(doc = projectDoc()) {
-  await run.projects.create('p1', doc)
-  history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+  await run.projects.create(run.projectId, doc)
+  history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   render(<EditorPage />)
   await screen.findByText('Skogens herrar')
   fireEvent.click(screen.getByRole('tab', { name: 'Mall' }))
@@ -74,7 +74,7 @@ describe('locking a layer (L15)', () => {
     await screen.findByText('Osparat')
     fireEvent.keyDown(document, { key: 's', ctrlKey: true })
     await screen.findByText('Sparat')
-    expect((await run.projects.load('p1'))?.template.faces['front']?.base.find((e) => e.id === 'title')).toMatchObject({ locked: true })
+    expect((await run.projects.load(run.projectId))?.template.faces['front']?.base.find((e) => e.id === 'title')).toMatchObject({ locked: true })
 
     await userEvent.click(screen.getByRole('button', { name: 'Lås upp title' }))
     dragVia(target('title')!, [30, 30], [[30, 48], [30, 66], [30, 90]])
@@ -126,7 +126,7 @@ describe('what a layer says it is (L15)', () => {
 
     fireEvent.keyDown(document, { key: 's', ctrlKey: true })
     await screen.findByText('Sparat')
-    expect((await run.projects.load('p1'))?.template.faces['front']?.base.find((e) => e.id === 'title')).toMatchObject({ name: 'Rubriken' })
+    expect((await run.projects.load(run.projectId))?.template.faces['front']?.base.find((e) => e.id === 'title')).toMatchObject({ name: 'Rubriken' })
 
     // Emptying the box is not naming a layer the empty string: it is having no name of its own.
     await userEvent.keyboard('{F2}')
@@ -134,7 +134,7 @@ describe('what a layer says it is (L15)', () => {
     await userEvent.keyboard('{Enter}')
     expect(within(row('title')).getByRole('button', { name: /^title/ })).toBeTruthy()
     fireEvent.keyDown(document, { key: 's', ctrlKey: true })
-    await waitFor(async () => expect((await run.projects.load('p1'))?.template.faces['front']?.base.find((e) => e.id === 'title')).not.toHaveProperty('name'))
+    await waitFor(async () => expect((await run.projects.load(run.projectId))?.template.faces['front']?.base.find((e) => e.id === 'title')).not.toHaveProperty('name'))
   })
 
   it('leaves the name alone when the rename is escaped', async () => {

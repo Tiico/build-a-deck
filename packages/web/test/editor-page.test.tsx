@@ -22,8 +22,8 @@ afterEach(async () => {
 
 describe('EditorPage', () => {
   it('opens the project on the wall, moves between modes, saves, and starts a table', async () => {
-    await run.projects.create('p1', projectDoc())
-    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
     expect(await screen.findByText('Skogens herrar')).toBeTruthy()
     expect(document.querySelectorAll('[data-card-ref]')).toHaveLength(3)
@@ -44,7 +44,7 @@ describe('EditorPage', () => {
     fireEvent.click(save)
     await screen.findByText('rev 2')
     expect((screen.getByRole('button', { name: /spara/i }) as HTMLButtonElement).disabled).toBe(true)
-    const stored = await run.projects.load('p1')
+    const stored = await run.projects.load(run.projectId)
     expect(stored?.rev).toBe(2)
     expect(stored?.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drakhona')
     expect(stored?.template.faces['front']?.base.find((e) => e.id === 'title')).toMatchObject({ font: { sizePt: 18 } })
@@ -61,8 +61,8 @@ describe('EditorPage', () => {
   }, 20_000)
 
   it('shows on the Bord tab the deck a started table would get, rows times antal (L4, #85)', async () => {
-    await run.projects.create('p1', projectDoc())
-    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
@@ -71,8 +71,8 @@ describe('EditorPage', () => {
   })
 
   it('imports cards as an unsaved table edit and persists them on save', async () => {
-    await run.projects.create('p1', projectDoc())
-    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
@@ -86,15 +86,15 @@ describe('EditorPage', () => {
 
     fireEvent.click(save)
     await screen.findByText('rev 2')
-    expect((await run.projects.load('p1'))?.rows).toEqual([
+    expect((await run.projects.load(run.projectId))?.rows).toEqual([
       { id: 'phoenix', fields: { title: 'Fenix', body: 'Återföds', antal: 3 } },
     ])
   })
 
   it('makes a bulk change on the table one unsaved change to the project, saved like any other (#17)', async () => {
     const user = userEvent.setup()
-    await run.projects.create('p1', projectDoc())
-    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
@@ -113,7 +113,7 @@ describe('EditorPage', () => {
     expect(save.disabled).toBe(false)
     fireEvent.click(save)
     await screen.findByText('rev 2')
-    expect((await run.projects.load('p1'))?.rows).toEqual([
+    expect((await run.projects.load(run.projectId))?.rows).toEqual([
       { id: 'dragon', fields: { title: 'Drake', body: 'Flygande.', antal: 4 } },
       { id: 'knight', fields: { title: 'Riddare', body: 'Sköld 1.', antal: 4 } },
     ])
@@ -122,8 +122,8 @@ describe('EditorPage', () => {
 
 describe('the table follows the editor (C7, L5)', () => {
   it('after a table is started, "Uppdatera bordet" refreshes it instead of starting another; "Nytt bord" starts one', async () => {
-    await run.projects.create('p1', projectDoc())
-    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('button', { name: /uppdatera bordet/i }))
@@ -148,8 +148,8 @@ describe('the table follows the editor (C7, L5)', () => {
 
 describe('a table opens only once its cards can be seen (L5)', () => {
   it('shows how the rendering comes along and withholds the link until every texture is done', async () => {
-    await run.projects.create('p1', projectDoc())
-    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('button', { name: /uppdatera bordet/i }))
@@ -163,8 +163,8 @@ describe('a table opens only once its cards can be seen (L5)', () => {
 
 describe('"Uppdatera bordet" switches the table only when the new cards can be seen (L5)', () => {
   it('renders first, then sends the version change; the table never sees a card without its texture', async () => {
-    await run.projects.create('p1', projectDoc())
-    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('button', { name: /uppdatera bordet/i }))
@@ -188,8 +188,8 @@ describe('"Uppdatera bordet" switches the table only when the new cards can be s
   // without a face. A render that failed for good is exactly that case, so it has to stop the
   // switch rather than count as "done" (#10).
   it('leaves the table on its old version when a card is lost for good, and switches only after a retry succeeds', async () => {
-    await run.projects.create('p1', projectDoc())
-    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('button', { name: /uppdatera bordet/i }))
@@ -221,8 +221,8 @@ describe('"Uppdatera bordet" switches the table only when the new cards can be s
 describe('the editor by keyboard alone (UX-04)', () => {
   it('switches mode from the tablist, and every tab names the panel it controls', async () => {
     const user = userEvent.setup()
-    await run.projects.create('p1', projectDoc())
-    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
 
@@ -258,8 +258,8 @@ describe('the editor by keyboard alone (UX-04)', () => {
 describe('the layers of the template by keyboard (UX-04)', () => {
   it('reaches the layer list from the tablist and picks a layer, and the property panel follows', async () => {
     const user = userEvent.setup()
-    await run.projects.create('p1', projectDoc())
-    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     await user.tab()
@@ -296,8 +296,8 @@ describe('the layers of the template by keyboard (UX-04)', () => {
 describe('editing the template on the canvas (#18)', () => {
   it('adds an element from the tool rail and takes it away again, as unsaved changes to the project', async () => {
     const user = userEvent.setup()
-    await run.projects.create('p1', projectDoc())
-    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('tab', { name: /mall/i }))
@@ -313,7 +313,7 @@ describe('editing the template on the canvas (#18)', () => {
     // It lands in the saved project through the same path every other editor change takes.
     fireEvent.click(screen.getByRole('button', { name: /spara/i }))
     await screen.findByText('rev 2')
-    const stored = await run.projects.load('p1')
+    const stored = await run.projects.load(run.projectId)
     expect(stored?.template.faces['front']?.base.map((e) => e.id)).toEqual(['frame', 'title', 'body', 'text-1'])
 
     // Delete takes the selected element away, and the layer list follows.
@@ -326,8 +326,8 @@ describe('editing the template on the canvas (#18)', () => {
 describe('the order of the layers (#18)', () => {
   it('moves a layer with Alt and an arrow, and the card is drawn in the new order', async () => {
     const user = userEvent.setup()
-    await run.projects.create('p1', projectDoc())
-    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('tab', { name: /mall/i }))
@@ -343,14 +343,14 @@ describe('the order of the layers (#18)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /spara/i }))
     await screen.findByText('rev 2')
-    expect((await run.projects.load('p1'))?.template.faces['front']?.base.map((e) => e.id)).toEqual(['frame', 'body', 'title'])
+    expect((await run.projects.load(run.projectId))?.template.faces['front']?.base.map((e) => e.id)).toEqual(['frame', 'body', 'title'])
   }, 20_000)
 })
 
 describe('the host\'s controls (DRIFT §9)', () => {
   it('shows the room code with "Ny kod", and each seated guest with a kick that frees the seat', async () => {
-    await run.projects.create('p1', projectDoc())
-    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('button', { name: /uppdatera bordet/i }))
@@ -380,8 +380,8 @@ describe('the host\'s controls (DRIFT §9)', () => {
 describe('a game made without the guided start (L14)', () => {
   it('opens empty, and the first element and the first card are made in the editor', async () => {
     const user = userEvent.setup()
-    await run.projects.create('p1', buildBlankProject({ name: 'Kråkkriget', players: 3 }))
-    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    await run.projects.create(run.projectId, buildBlankProject({ name: 'Kråkkriget', players: 3 }))
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
     await screen.findByText('Kråkkriget')
     expect(document.querySelectorAll('[data-card-ref]')).toHaveLength(0)
@@ -395,7 +395,7 @@ describe('a game made without the guided start (L14)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /spara/i }))
     await screen.findByText('rev 2')
-    const stored = await run.projects.load('p1')
+    const stored = await run.projects.load(run.projectId)
     expect(stored?.template.faces['front']?.base.map((e) => e.id)).toEqual(['text-1'])
     expect(stored?.rows).toHaveLength(1)
   }, 20_000)

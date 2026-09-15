@@ -26,7 +26,7 @@ async function signIn(email: string): Promise<void> {
 const inviteLink = (): string => /\/invites\/([A-Za-z0-9_-]+)/.exec(run.mail.sent.at(-1)?.text ?? '')?.[1] ?? ''
 
 async function openEditor(): Promise<void> {
-  history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+  history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   render(<EditorPage />)
   await screen.findByText('Skogens herrar')
 }
@@ -34,7 +34,7 @@ async function openEditor(): Promise<void> {
 describe('who has the game, from the editor (D3)', () => {
   it('opens from the people in the header, lists them with what each may do, and invites one more', async () => {
     await signIn('ada@example.com')
-    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: 'p1', ...projectDoc() }) })
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
     await openEditor()
 
     // Alone, the door is still there: it is how one shares the game.
@@ -54,8 +54,8 @@ describe('who has the game, from the editor (D3)', () => {
 
   it('shows what a shared game already is, and lets the owner take it back', async () => {
     await signIn('ada@example.com')
-    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: 'p1', ...projectDoc() }) })
-    await fetch(`${run.http}/projects/p1/invites`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com', role: 'editor' }) })
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
+    await fetch(`${run.http}/projects/${run.projectId}/invites`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com', role: 'editor' }) })
     const token = inviteLink()
     // Bo follows the invitation, then Ada looks at the list again.
     await signIn('bo@example.com')
@@ -79,16 +79,16 @@ describe('who has the game, from the editor (D3)', () => {
 describe('following an invitation (D3)', () => {
   it('joins the game and opens it', async () => {
     await signIn('ada@example.com')
-    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: 'p1', ...projectDoc() }) })
-    await fetch(`${run.http}/projects/p1/invites`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com', role: 'editor' }) })
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
+    await fetch(`${run.http}/projects/${run.projectId}/invites`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com', role: 'editor' }) })
     const token = inviteLink()
     await signIn('bo@example.com')
 
     const gone: string[] = []
     history.replaceState(null, '', `/invites/${token}?server=${encodeURIComponent(run.http)}`)
     render(<InvitePage onNavigate={(u) => gone.push(u)} />)
-    await waitFor(() => expect(gone.at(-1)).toMatch(/^\/editor\?project=p1/))
-    expect((await fetch(`${run.http}/projects/p1`)).status).toBe(200)
+    await waitFor(() => expect(gone.at(-1)).toMatch(new RegExp(`^/editor\\?project=${run.projectId}`)))
+    expect((await fetch(`${run.http}/projects/${run.projectId}`)).status).toBe(200)
   })
 
   it('says so when the invitation has already been used', async () => {
@@ -102,8 +102,8 @@ describe('following an invitation (D3)', () => {
 describe('a role that may not edit (D3)', () => {
   it('says so once instead of letting every change be refused', async () => {
     await signIn('ada@example.com')
-    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: 'p1', ...projectDoc() }) })
-    await fetch(`${run.http}/projects/p1/invites`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com', role: 'tester' }) })
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
+    await fetch(`${run.http}/projects/${run.projectId}/invites`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'bo@example.com', role: 'tester' }) })
     const token = inviteLink()
     await signIn('bo@example.com')
     await fetch(`${run.http}/invites/${token}`, { method: 'POST' })
@@ -117,7 +117,7 @@ describe('a role that may not edit (D3)', () => {
 
   it('says nothing of the kind to the owner', async () => {
     await signIn('ada@example.com')
-    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: 'p1', ...projectDoc() }) })
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
     await openEditor()
     await screen.findByRole('button', { name: 'Vilka som har spelet' })
     await waitFor(() => expect(document.querySelector('[data-role-note]')).toBeNull())

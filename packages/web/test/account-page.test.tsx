@@ -61,18 +61,18 @@ describe('HomePage and the login card', () => {
     expect(run.mail.sent.at(-1)?.to).toBe('ada@example.com')
 
     await followMailedLink()
-    const created = await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: 'p1', ...projectDoc() }) })
+    const created = await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
     expect(created.status).toBe(201)
 
     cleanup()
     render(<HomePage onNavigate={(u) => gone.push(u)} />)
     expect(await screen.findByText('Mina spel')).toBeTruthy()
     expect(screen.getByText('ada@example.com', { exact: false })).toBeTruthy()
-    await waitFor(() => expect(document.querySelector('[data-project="p1"]')).toBeTruthy())
-    expect(document.querySelector('[data-project="p1"]')!.textContent).toContain('Skogens herrar')
+    await waitFor(() => expect(document.querySelector(`[data-project="${run.projectId}"]`)).toBeTruthy())
+    expect(document.querySelector(`[data-project="${run.projectId}"]`)!.textContent).toContain('Skogens herrar')
     // The card's face is the way into the editor; the menu beside it is not (G1).
-    fireEvent.click(document.querySelector('[data-project="p1"] .byd-home-open')!)
-    expect(gone.at(-1)).toMatch(/^\/editor\?project=p1/)
+    fireEvent.click(document.querySelector(`[data-project="${run.projectId}"] .byd-home-open`)!)
+    expect(gone.at(-1)).toMatch(new RegExp(`^/editor\\?project=${run.projectId}`))
     fireEvent.click(screen.getByText(/Nytt spel/))
     expect(gone.at(-1)).toMatch(/^\/new\?/)
     fireEvent.click(screen.getByText('logga ut'))
@@ -94,10 +94,10 @@ describe('the first thing a new account sees (UX-16)', () => {
     expect(empty.textContent).toBe('Inget spel ännu. Ett spel är en kortlek med sin mall, sina regler och sitt bord. "+ Nytt spel" frågar efter namn och kortstorlek, och öppnar editorn.')
 
     // The moment there is a game, the sentence has nothing left to explain and goes.
-    expect((await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: 'p1', ...projectDoc() }) })).status).toBe(201)
+    expect((await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })).status).toBe(201)
     cleanup()
     render(<HomePage onNavigate={() => undefined} />)
-    await waitFor(() => expect(document.querySelector('[data-project="p1"]')).toBeTruthy())
+    await waitFor(() => expect(document.querySelector(`[data-project="${run.projectId}"]`)).toBeTruthy())
     expect(screen.queryByText(/Inget spel ännu/)).toBeNull()
   })
 })
@@ -178,12 +178,12 @@ describe('a game on the home page (G1)', () => {
   async function home(): Promise<void> {
     await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
     await followMailedLink()
-    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: 'p1', ...projectDoc() }) })
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
     history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
     render(<HomePage />)
     await screen.findByText('Skogens herrar')
   }
-  const card = () => document.querySelector('[data-project="p1"]') as HTMLElement
+  const card = () => document.querySelector(`[data-project="${run.projectId}"]`) as HTMLElement
 
   it("fans out the game's own cards, each with its title and the colour it has at the table", async () => {
     await home()
@@ -199,11 +199,11 @@ describe('a game on the home page (G1)', () => {
   it('says a game has no cards yet instead of fanning out rectangles that stand for nothing', async () => {
     await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
     await followMailedLink()
-    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: 'p0', ...projectDoc(), name: 'Tomt spel', rows: [] }) })
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.otherProjectId, ...projectDoc(), name: 'Tomt spel', rows: [] }) })
     history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
     render(<HomePage />)
     await screen.findByText('Tomt spel')
-    const fan = document.querySelector('[data-project="p0"] .byd-home-fan')!
+    const fan = document.querySelector(`[data-project="${run.otherProjectId}"] .byd-home-fan`)!
     expect(fan.querySelectorAll('i')).toHaveLength(0)
     expect(fan.textContent).toBe('inga kort än')
   })
@@ -212,7 +212,7 @@ describe('a game on the home page (G1)', () => {
     await home()
     expect(card().textContent).toContain('aldrig spelat')
 
-    await fetch(`${run.http}/projects/p1/sessions`, { method: 'POST' })
+    await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST' })
     cleanup()
     render(<HomePage />)
     await screen.findByText('Skogens herrar')
@@ -226,7 +226,7 @@ describe('a game on the home page (G1)', () => {
     const said = await screen.findByRole('status')
     expect(said.textContent).toMatch(/[A-Z2-9]{6}/)
     // The table is the server's, not something the page made up.
-    const tables = (await (await fetch(`${run.http}/projects/p1/sessions`)).json()) as unknown[]
+    const tables = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`)).json()) as unknown[]
     expect(tables).toHaveLength(1)
   })
 
@@ -242,8 +242,8 @@ describe('a game on the home page (G1)', () => {
     fireEvent.click(within(card()).getByRole('button', { name: 'Fler val för Skogens herrar' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Ta bort spelet' }))
     fireEvent.click(screen.getByRole('button', { name: 'Ta bort' }))
-    await waitFor(() => expect(document.querySelector('[data-project="p1"]')).toBeNull())
-    expect((await (await fetch(`${run.http}/projects/p1`)).status)).toBe(404)
+    await waitFor(() => expect(document.querySelector(`[data-project="${run.projectId}"]`)).toBeNull())
+    expect((await (await fetch(`${run.http}/projects/${run.projectId}`)).status)).toBe(404)
   })
 })
 
@@ -251,19 +251,19 @@ describe('when something goes wrong on the home page (G1)', () => {
   it('says so without taking the games off the screen', async () => {
     await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
     await followMailedLink()
-    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: 'p1', ...projectDoc() }) })
+    await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
     history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
     render(<HomePage />)
     await screen.findByText('Skogens herrar')
 
     // The game is taken away behind the page's back; the page's own attempt then fails.
-    await fetch(`${run.http}/projects/p1`, { method: 'DELETE' })
-    fireEvent.click(within(document.querySelector('[data-project="p1"]') as HTMLElement).getByRole('button', { name: 'Fler val för Skogens herrar' }))
+    await fetch(`${run.http}/projects/${run.projectId}`, { method: 'DELETE' })
+    fireEvent.click(within(document.querySelector(`[data-project="${run.projectId}"]`) as HTMLElement).getByRole('button', { name: 'Fler val för Skogens herrar' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Ta bort spelet' }))
     fireEvent.click(screen.getByRole('button', { name: 'Ta bort' }))
 
     expect(await screen.findByRole('alert')).toBeTruthy()
     expect(screen.getByText('Mina spel')).toBeTruthy()
-    expect(document.querySelector('[data-project="p1"]')).toBeTruthy()
+    expect(document.querySelector(`[data-project="${run.projectId}"]`)).toBeTruthy()
   })
 })

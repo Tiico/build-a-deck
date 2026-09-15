@@ -27,8 +27,8 @@ const rules: RuleDoc = {
 }
 
 async function tableWithRules(withRules = true): Promise<string> {
-  await run.projects.create('p1', withRules ? { ...projectDoc(), rules } : projectDoc())
-  const res = await fetch(`${run.http}/projects/p1/sessions`, { method: 'POST' })
+  await run.projects.create(run.projectId, withRules ? { ...projectDoc(), rules } : projectDoc())
+  const res = await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST' })
   const made = (await res.json()) as { id: string; code: string; hostKey: string }
   registerRoom(made.id, made)
   return made.id

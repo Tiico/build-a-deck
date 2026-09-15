@@ -17,7 +17,7 @@ vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 let run: Running
 beforeEach(async () => {
   run = await startServer()
-  await run.projects.create('p1', projectDoc())
+  await run.projects.create(run.projectId, projectDoc())
 })
 afterEach(async () => {
   await run.stop()
@@ -25,7 +25,7 @@ afterEach(async () => {
 
 async function editorAt(width: number) {
   atWidth(width)
-  history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+  history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   render(<EditorPage />)
   await screen.findByText('Skogens herrar')
 }

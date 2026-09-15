@@ -17,7 +17,7 @@ afterEach(async () => {
 })
 
 async function openSymbols(): Promise<void> {
-  history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+  history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   render(<EditorPage />)
   await screen.findByText('Skogens herrar')
   fireEvent.click(screen.getByRole('tab', { name: 'Symboler' }))
@@ -26,7 +26,7 @@ const tile = (name: string) => screen.getByRole('button', { name: `Ta in ${name}
 
 describe('the symbol library in the editor (E4)', () => {
   it('searches the library, narrows to a category, and says what a symbol is licensed under', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     await openSymbols()
     expect(tile('sköld')).toBeTruthy()
     expect(tile('sköld').textContent).toContain('CC0-1.0')
@@ -42,7 +42,7 @@ describe('the symbol library in the editor (E4)', () => {
   })
 
   it('takes a symbol into the game, shows it in the set with what to write, renames and removes it, and saves the licence with the project', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     await openSymbols()
     expect(screen.getByText(/Inga symboler ännu/)).toBeTruthy()
 
@@ -57,8 +57,8 @@ describe('the symbol library in the editor (E4)', () => {
     await waitFor(() => expect(within(set).getByText('{försvar}')).toBeTruthy())
 
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
-    await waitFor(async () => expect((await run.projects.load('p1'))?.rev).toBe(2))
-    const stored = await run.projects.load('p1')
+    await waitFor(async () => expect((await run.projects.load(run.projectId))?.rev).toBe(2))
+    const stored = await run.projects.load(run.projectId)
     expect(stored?.icons['försvar']).toMatch(/^asset:[0-9a-f]{64}$/)
     expect(stored?.credits?.['försvar']).toMatchObject({ licence: 'CC0-1.0', source: 'skold' })
 
@@ -69,7 +69,7 @@ describe('the symbol library in the editor (E4)', () => {
   it('draws a symbol on the cards it is written into, and says which cards use it', async () => {
     const doc = projectDoc()
     doc.rows[0]!.fields['body'] = 'Flygande. {sköld}'
-    await run.projects.create('p1', doc)
+    await run.projects.create(run.projectId, doc)
     await openSymbols()
     // Before the symbol is taken in, the card says the name is unknown rather than nothing (L2).
     expect(document.querySelector('[data-card-ref="dragon"] .byd-icon-missing')).toBeTruthy()

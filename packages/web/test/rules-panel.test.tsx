@@ -28,8 +28,8 @@ const rules: RuleDoc = {
 }
 
 async function openRules(withRules = true): Promise<void> {
-  await run.projects.create('p1', withRules ? { ...projectDoc(), rules } : projectDoc())
-  history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+  await run.projects.create(run.projectId, withRules ? { ...projectDoc(), rules } : projectDoc())
+  history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   render(<EditorPage />)
   await screen.findByText('Skogens herrar')
   fireEvent.click(screen.getByRole('tab', { name: 'Regler' }))
@@ -58,11 +58,11 @@ describe('the rulebook in the editor (B7)', () => {
     await waitFor(() => expect(book().querySelector('textarea')).toBeNull())
 
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
-    await waitFor(async () => expect((await run.projects.load('p1'))?.rev).toBe(2))
-    const stored = await run.projects.load('p1')
+    await waitFor(async () => expect((await run.projects.load(run.projectId))?.rev).toBe(2))
+    const stored = await run.projects.load(run.projectId)
     expect(stored?.rules?.blocks[1]).toMatchObject({ kind: 'text', text: 'Dra två kort ur [[zon:draw]].' })
     // The rules were versioned with everything else (B4).
-    expect((await run.projects.at('p1', 1))?.rules?.blocks[1]).toMatchObject({ text: 'Dra ett kort ur [[zon:draw]] och lägg det i [[zon:discard]].' })
+    expect((await run.projects.at(run.projectId, 1))?.rules?.blocks[1]).toMatchObject({ text: 'Dra ett kort ur [[zon:draw]] och lägg det i [[zon:discard]].' })
   })
 
   it('puts a reference in from a list of what the game has, so a rule never holds a name', async () => {
@@ -84,8 +84,8 @@ describe('the rulebook in the editor (B7)', () => {
   })
 
   it('marks a rule that names something the game no longer has, rather than showing nothing', async () => {
-    await run.projects.create('p2', { ...projectDoc(), rules: { title: 'X', blocks: [{ kind: 'text', id: 't1', text: 'Lägg i [[zon:soptunna]].' }] } })
-    history.replaceState(null, '', `/editor?project=p2&server=${encodeURIComponent(run.http)}`)
+    await run.projects.create(run.otherProjectId, { ...projectDoc(), rules: { title: 'X', blocks: [{ kind: 'text', id: 't1', text: 'Lägg i [[zon:soptunna]].' }] } })
+    history.replaceState(null, '', `/editor?project=${run.otherProjectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('tab', { name: 'Regler' }))
@@ -100,7 +100,7 @@ describe('the rulebook in the editor (B7)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Börja skriva reglerna' }))
     expect(await within(book()).findByRole('heading', { name: 'Skogens herrar' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
-    await waitFor(async () => expect((await run.projects.load('p1'))?.rules?.blocks.length).toBeGreaterThan(0))
+    await waitFor(async () => expect((await run.projects.load(run.projectId))?.rules?.blocks.length).toBeGreaterThan(0))
   })
 })
 

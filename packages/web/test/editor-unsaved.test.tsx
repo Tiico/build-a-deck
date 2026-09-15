@@ -41,8 +41,8 @@ const RefusesToSave = class implements WebSocketLike {
 } as unknown as EditSocketCtor
 
 async function openEditor() {
-  await run.projects.create('p1', projectDoc())
-  history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+  await run.projects.create(run.projectId, projectDoc())
+  history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   render(<EditorPage />)
   await screen.findByText('Skogens herrar')
 }
@@ -83,7 +83,7 @@ describe('closing the tab with unsaved work (#8)', () => {
     fireEvent.change(screen.getByLabelText('dragon title'), { target: { value: 'Drake' } })
 
     expect(closingTheTab()).toBe(false)
-    expect((await run.projects.load('p1'))?.rev).toBe(1)
+    expect((await run.projects.load(run.projectId))?.rev).toBe(1)
   })
 })
 
@@ -111,8 +111,8 @@ describe('the editor says whether the work is saved (#8)', () => {
 describe('leaving the editor with unsaved work (#8)', () => {
   it('leaves without a word when the project is as it was saved', async () => {
     const went: string[] = []
-    await run.projects.create('p1', projectDoc())
-    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage onNavigate={(url) => went.push(url)} />)
     await screen.findByText('Skogens herrar')
 
@@ -126,8 +126,8 @@ describe('leaving the editor with unsaved work (#8)', () => {
   it('asks first when something is unsaved, and stays exactly where it was when the answer is no', async () => {
     const user = userEvent.setup()
     const went: string[] = []
-    await run.projects.create('p1', projectDoc())
-    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage onNavigate={(url) => went.push(url)} />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
@@ -154,8 +154,8 @@ describe('leaving the editor with unsaved work (#8)', () => {
   it('saves and then leaves when that is the answer', async () => {
     const user = userEvent.setup()
     const went: string[] = []
-    await run.projects.create('p1', projectDoc())
-    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage onNavigate={(url) => went.push(url)} />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
@@ -166,7 +166,7 @@ describe('leaving the editor with unsaved work (#8)', () => {
 
     // The save is a round trip; leaving waits for it to have landed.
     await waitFor(() => expect(went).toHaveLength(1))
-    const stored = await run.projects.load('p1')
+    const stored = await run.projects.load(run.projectId)
     expect(stored?.rev).toBe(2)
     expect(stored?.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drakhona')
   })
@@ -174,8 +174,8 @@ describe('leaving the editor with unsaved work (#8)', () => {
   it('leaves the work behind when that is the answer, and the server keeps the version it had', async () => {
     const user = userEvent.setup()
     const went: string[] = []
-    await run.projects.create('p1', projectDoc())
-    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage onNavigate={(url) => went.push(url)} />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
@@ -185,7 +185,7 @@ describe('leaving the editor with unsaved work (#8)', () => {
     await user.click(screen.getByRole('button', { name: 'Lämna utan att spara' }))
 
     expect(went).toHaveLength(1)
-    const stored = await run.projects.load('p1')
+    const stored = await run.projects.load(run.projectId)
     expect(stored?.rev).toBe(1)
     expect(stored?.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drake')
   })
@@ -198,8 +198,8 @@ describe('leaving the editor with unsaved work (#8)', () => {
     useEditSocketImplementation(RefusesToSave)
     const user = userEvent.setup()
     const went: string[] = []
-    await run.projects.create('p1', projectDoc())
-    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage onNavigate={(url) => went.push(url)} />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
@@ -220,8 +220,8 @@ describe('leaving the editor with unsaved work (#8)', () => {
   it('keeps the news that a save failed when the designer takes a step back', async () => {
     useEditSocketImplementation(RefusesToSave)
     const user = userEvent.setup()
-    await run.projects.create('p1', projectDoc())
-    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
@@ -244,8 +244,8 @@ describe('the browser does not ask again after the designer has answered (#8)', 
   it('lets the tab go once "Lämna utan att spara" has been chosen, though the work is still unsaved', async () => {
     const user = userEvent.setup()
     const went: string[] = []
-    await run.projects.create('p1', projectDoc())
-    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage onNavigate={(url) => went.push(url)} />)
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))

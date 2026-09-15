@@ -49,7 +49,7 @@ async function surfaces(): Promise<Record<string, string>> {
 
   await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com', next: '/' }) })
   // With a game on it, so the card and its own menu are measured too and not only the empty grid.
-  await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: 'p1', ...projectDoc() }) })
+  await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.projectId, ...projectDoc() }) })
   const games = render(<HomePage />)
   await screen.findByText('Mina spel')
   await screen.findByRole('button', { name: /^Fler val/ })

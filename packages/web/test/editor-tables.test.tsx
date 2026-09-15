@@ -19,7 +19,7 @@ afterEach(async () => {
 })
 
 // A table of this game, started the way the editor starts one.
-async function startTable(project = 'p1'): Promise<string> {
+async function startTable(project = run.projectId): Promise<string> {
   const res = await fetch(`${run.http}/projects/${project}/sessions`, { method: 'POST' })
   if (!res.ok) throw new Error(`could not start a table: ${res.status}`)
   const made = (await res.json()) as { id: string; code: string; hostKey: string }
@@ -34,7 +34,7 @@ const tables = async () => within(await screen.findByRole('list', { name: 'Spele
 
 async function openTables(): Promise<void> {
   const user = userEvent.setup()
-  history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+  history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   render(<EditorPage />)
   await screen.findByText('Skogens herrar')
   await user.click(screen.getByRole('tab', { name: 'Bord' }))
@@ -42,7 +42,7 @@ async function openTables(): Promise<void> {
 
 describe('when the tables cannot be listed', () => {
   it('says so, rather than saying "loading" for ever', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     // The list is the server's; a server that cannot answer must not leave the tab pretending
     // to be busy, because nothing will ever arrive to end it.
     const { TablesTab } = await import('../src/editor/TablesTab.js')
@@ -55,7 +55,7 @@ describe('when the tables cannot be listed', () => {
 
 describe('the Bord tab (#19)', () => {
   it('lists the tables this game has, with the version each runs and that nothing has happened yet', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     const id = await startTable()
     await openTables()
 
@@ -66,7 +66,7 @@ describe('the Bord tab (#19)', () => {
   })
 
   it('says so when the game has no table at all', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     await openTables()
     expect(await screen.findByText(/Inget bord ännu/)).toBeTruthy()
     // Utan bord finns ingen lista alls, bara meningen om att det inte finns något.
@@ -76,7 +76,7 @@ describe('the Bord tab (#19)', () => {
 
 describe('the ways into a table (#19)', () => {
   it('reaches the TV view, the table mode, playing from here and watching, each in a new tab and saying so', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     const id = await startTable()
     await openTables()
     const row = await (await tables()).findByRole('listitem')
@@ -105,7 +105,7 @@ describe('the ways into a table (#19)', () => {
 
 describe('what the Bord tab says about a running table (#19, C7)', () => {
   it('names who is seated and who is watching, and marks a table the project has left behind', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     const id = await startTable()
     const ada = TableClient.connect(await asSeat(run, id, 'A', 'Ada'))
     await ada.ready()
@@ -115,7 +115,7 @@ describe('what the Bord tab says about a running table (#19, C7)', () => {
     // The designer keeps working: the project is on rev 2, the table still plays rev-1 (C7). She
     // has to have actually changed something — a saving that changes nothing is not one (B4).
     const worked = projectDoc()
-    await run.projects.replace('p1', 1, { ...worked, rows: [...worked.rows, { id: 'älva', fields: { title: 'Älva', body: 'Flyger tyst.', antal: 1 } }] })
+    await run.projects.replace(run.projectId, 1, { ...worked, rows: [...worked.rows, { id: 'älva', fields: { title: 'Älva', body: 'Flyger tyst.', antal: 1 } }] })
 
     await openTables()
     const row = await (await tables()).findByRole('listitem')
@@ -132,9 +132,9 @@ describe('what the Bord tab says about a running table (#19, C7)', () => {
   })
 
   it('says nothing about lagging behind once the log is locked: an ended table can never be updated', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     const id = await startTable()
-    await run.projects.replace('p1', 1, { ...projectDoc(), name: 'Skogens herrar' })
+    await run.projects.replace(run.projectId, 1, { ...projectDoc(), name: 'Skogens herrar' })
     const table = TableClient.connect(await asTable(run, id))
     await table.ready()
     await table.send({ v: 'session.end' })
@@ -148,7 +148,7 @@ describe('what the Bord tab says about a running table (#19, C7)', () => {
   })
 
   it('says that nobody is seated yet, and marks nothing stale while the table runs the rev the project is on', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     await startTable()
     await openTables()
     const row = await (await tables()).findByRole('listitem')
@@ -160,7 +160,7 @@ describe('what the Bord tab says about a running table (#19, C7)', () => {
 
 describe('the thumbnail of a table (#19, K9)', () => {
   it('draws the table from the same snapshot the TV reads, and follows it while someone plays', async () => {
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     const id = await startTable()
     await openTables()
     const row = await (await tables()).findByRole('listitem')
@@ -181,7 +181,7 @@ describe('the thumbnail of a table (#19, K9)', () => {
 describe('ending a table from the editor (#19, C9)', () => {
   it('asks first and names the table, gives the focus back on Escape, and locks the log on yes', async () => {
     const user = userEvent.setup()
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     const id = await startTable()
     await openTables()
     const row = await (await tables()).findByRole('listitem')
@@ -216,7 +216,7 @@ describe('ending a table from the editor (#19, C9)', () => {
 describe('the QR for the phones (#19, K12)', () => {
   it('shows the code the phones scan — the same address the TV puts on the wall — and takes it away again', async () => {
     const user = userEvent.setup()
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     const id = await startTable()
     await openTables()
     const row = await (await tables()).findByRole('listitem')
@@ -240,13 +240,13 @@ describe('the QR for the phones (#19, K12)', () => {
 describe('starting a table from the Bord tab (#19, L5)', () => {
   it('starts one from the saved version and shows it in the list at once', async () => {
     const user = userEvent.setup()
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     await openTables()
     await screen.findByText(/Inget bord ännu/)
 
     await user.click(screen.getByRole('button', { name: 'Nytt bord från rev 1' }))
     const row = await (await tables()).findByRole('listitem')
-    const started = (await (await fetch(`${run.http}/projects/p1/sessions`, { method: 'GET' })).json()) as { id: string }[]
+    const started = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'GET' })).json()) as { id: string }[]
     expect(started.map((t) => t.id)).toEqual([row.getAttribute('data-table')])
     expect(row.textContent).toContain('rev-1')
   })
@@ -255,10 +255,10 @@ describe('starting a table from the Bord tab (#19, L5)', () => {
 describe('the shortcut to the table from every other tab (#19, variant B)', () => {
   it('opens the newest table beside "Uppdatera bordet", takes you to the Bord tab, and closes on Escape', async () => {
     const user = userEvent.setup()
-    await run.projects.create('p1', projectDoc())
+    await run.projects.create(run.projectId, projectDoc())
     await startTable()
     const newest = await startTable()
-    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     expect(document.querySelector('[data-mode]')!.getAttribute('data-mode')).toBe('wall')
@@ -298,8 +298,8 @@ describe('a rendering that stands still says so (#88, UX-43, L5)', () => {
   const timing = { ...DEFAULT_EDITOR_TIMING, renderStalledAfterMs: 300 }
   async function startFromEditor(): Promise<HTMLElement> {
     const user = userEvent.setup()
-    await run.projects.create('p1', projectDoc())
-    history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage timing={timing} />)
     await screen.findByText('Skogens herrar')
     await user.click(screen.getByRole('button', { name: 'Uppdatera bordet' }))
