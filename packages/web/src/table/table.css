@@ -159,6 +159,23 @@
    the wider inset is there to hold a name clear of the felt's corner, where the next rim's seat
    keeps its own names, and a shared zone stands at no rim. */
 .byd-zone[data-rim='none'] > span { --name-in: 8px; }
+/* A name at no rim that shares a strip of felt with the name above it stands in the middle of its
+   own zone rather than at its left corner (#43, K19).
+   The two are aimed into the same strip — this one up from below it, the one over it down from
+   above — and each stands a fixed number of screen pixels off its own edge while the strip between
+   them is millimetres and grows with the scale. Along one axis they therefore travel towards each
+   other and pass through each other at about two pixels per millimetre, which is where a 4K screen
+   and every double tap put the felt. They cannot be kept apart along that axis without either
+   holding one of them against a zone it does not name or jumping it past the other.
+   Along the other axis there is room and it costs nothing: the seat's own name keeps to its left
+   corner and its counters' to their right, and the middle of a shared zone is between the two at
+   every seat count. So the name moves sideways instead of up, once and for the whole of that
+   zone's life — the question is the felt's geometry and not the scale, so nothing moves when the
+   camera does. `data-mid` is the renderer's half of the answer (`gapAbove`). */
+.byd-zone[data-rim='none'][data-mid] > span {
+  left: 50%;
+  transform: translate(-50%, calc(-100% - var(--name-off) - var(--name-row)));
+}
 .byd-zone[data-grow='back'] > span { --name-row: 0px; --name-end: -100%; transform: translate(calc(-100% - var(--name-in)), calc(-100% - var(--name-off) - var(--name-row))); }
 .byd-zone[data-rim='N'] > span { transform: translate(var(--name-in), calc(var(--name-off) + var(--name-row))); }
 .byd-zone[data-rim='N'][data-grow='back'] > span { transform: translate(calc(-100% - var(--name-in)), calc(var(--name-off) + var(--name-row))); }

@@ -243,6 +243,26 @@ describe('the played felt says every name once, in TV mode (K9, #43)', () => {
     const wanted = namesOf(setup).filter((n) => !setup.seats.map(seatNameOf).includes(n))
     expectClear(await readNames(await tvFelt(sceneOf(setup), FRAME), FRAME), wanted, `TV mode, ${seats} seats, market ${market}`)
   }, 60_000)
+
+  // And at the scales the felt is actually drawn at, which is not one scale (#43, K19).
+  //
+  // Every reading above is taken at 1280 x 800, where the felt draws at about one pixel per
+  // millimetre. The rule that places a name is not written in those millimetres, though: a name
+  // stands a fixed number of SCREEN pixels off its own edge — `--name-off` and `--name-row` in
+  // `table.css` — while the room between two zones is millimetres on the felt and grows with the
+  // scale. Two names placed from the facing edges of one gap therefore need a constant number of
+  // pixels between them however little felt there is, and below that they cross.
+  //
+  // The felt of a four-seat table draws at 2.7 px/mm on a 4K screen, and a double tap zooms the
+  // camera 2.6× from wherever it stands (C5), so both are ordinary. `Marknad` and `Framför B` are
+  // 30 mm apart and want 60 px: they pass through each other at 2.0 px/mm and are drawn on top of
+  // one another beyond it.
+  const big = { w: 3840, h: 2160 }
+  it.each(counted)('lays no name over another on a big screen either, at %i seats, market %s', async (seats, market) => {
+    const setup = feltOf(seats, market)
+    const wanted = namesOf(setup).filter((n) => !setup.seats.map(seatNameOf).includes(n))
+    expectClear(await readNames(await tvFelt(sceneOf(setup), big), big), wanted, `TV mode at ${big.w} × ${big.h}, ${seats} seats, market ${market}`)
+  }, 60_000)
 })
 
 // The editor's Bord tab is the same renderer with the designer's handles laid over it, so it is
