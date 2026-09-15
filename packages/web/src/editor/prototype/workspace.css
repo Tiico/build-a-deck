@@ -1,0 +1,36 @@
+.ux-work-head { padding:28px 32px; border-bottom:1px solid var(--ux-line); display:flex; justify-content:space-between; align-items:center; gap:24px; }
+.ux-work-head h1 { margin-top:8px; font-size:28px; }
+.ux-work-shell { display:grid; grid-template-columns:205px minmax(350px,1fr) 245px; max-width:1600px; margin:auto; }
+.ux-work-shell main { padding:32px; }
+.ux-work-sidebar,.ux-context { padding:24px; border-right:1px solid var(--ux-line); }
+.ux-context { border-right:0; border-left:1px solid var(--ux-line); display:flex; flex-direction:column; gap:15px; }
+.ux-context hr { width:100%; border:0; border-top:1px solid var(--ux-line); }
+.ux-work-sidebar .ux-panel { margin-top:32px; padding:15px; font-size:13px; }
+.ux-work-nav { display:grid; gap:8px; }
+.ux-work-nav button { text-align:left; }
+.ux-card-list { display:grid; gap:6px; padding-top:16px; max-height:55vh; overflow:auto; }
+.ux-card-list button { display:flex; justify-content:space-between; align-items:center; gap:10px; text-align:left; }
+.ux-card-preview { display:flex; justify-content:center; padding:12px; background:#15191f; border:1px solid var(--ux-line); border-radius:10px; overflow:hidden; }
+.ux-card-preview > div { flex:none; }
+.ux-work-cards { display:grid; grid-template-columns:190px 1fr; gap:25px; }
+.ux-card-edit { max-width:550px; }
+.ux-workbench { display:grid; grid-template-columns:225px minmax(300px,1fr) minmax(310px,.85fr); min-height:70vh; }
+.ux-workbench > * { padding:24px; border-right:1px solid var(--ux-line); }
+.ux-workbench-cards > label { margin-top:18px; }
+.ux-workbench-test > .ux-row { margin-bottom:25px; }
+.ux-test-facts { display:flex; border:1px solid var(--ux-line); border-radius:12px; }
+.ux-test-facts > div { flex:1; padding:15px; display:grid; text-align:center; border-right:1px solid var(--ux-line); }
+.ux-test-facts > div:last-child { border:0; }
+.ux-test-facts strong { font-size:29px; }
+.ux-test-first { max-width:1400px; margin:auto; padding:30px; }
+.ux-test-hero { display:flex; align-items:center; justify-content:space-between; gap:40px; background:#29372d; border:1px solid #566b4b; border-radius:16px; padding:35px; margin-bottom:30px; }
+.ux-test-hero h2 { font-size:31px; line-height:1.25; margin:10px 0; max-width:730px; }
+.ux-test-hero button { flex-shrink:0; }
+.ux-test-columns { display:grid; grid-template-columns:1fr 1.1fr; gap:40px; }
+.ux-contact-sheet { display:grid; grid-template-columns:repeat(3,minmax(110px,1fr)); gap:14px; }
+.ux-contact-sheet button { display:grid; justify-items:center; gap:10px; overflow:hidden; font-size:12px; }
+.ux-sample { padding:20px; border:1px dashed #6c7365; border-radius:10px; }
+.ux-sample small { font-size:10px; }.ux-sample h3 { margin:10px 0; }
+.ux-work-toast { margin:20px 30px!important; padding:12px 18px; background:#29372d; border-left:3px solid var(--ux-accent); }
+@media(max-width:1100px) { .ux-work-shell { grid-template-columns:170px 1fr; } .ux-context { grid-column:1/-1; border-top:1px solid var(--ux-line); } .ux-workbench { grid-template-columns:190px 1fr; } .ux-workbench-test { grid-column:1/-1; border-top:1px solid var(--ux-line); } .ux-test-hero { flex-wrap:wrap; } }
+@media(max-width:780px) { .ux-work-head { padding:20px; flex-wrap:wrap; } .ux-work-shell,.ux-workbench,.ux-test-columns,.ux-work-cards { display:block; } .ux-work-sidebar { border:0; } .ux-work-nav { display:flex; flex-wrap:wrap; } .ux-work-sidebar .ux-panel { display:none; } .ux-workbench-cards .ux-card-list { max-height:170px; } .ux-work-shell main { padding:20px; } .ux-test-hero { padding:24px; } .ux-test-hero h2 { font-size:25px; } .ux-test-columns > aside { margin-top:30px; } }

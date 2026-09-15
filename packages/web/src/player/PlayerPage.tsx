@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import type { VisibleComponentState } from '@byd/protocol'
 import { useTableClient } from '../table/useTableClient.js'
 import { HeldCard } from './HeldCard.js'
@@ -23,6 +23,8 @@ import { usePageTitle } from '../status/DocumentTitle.js'
 import { useRefusal } from '../status/Refusal.js'
 import { useFeltKeyboard } from '../table/useFeltKeyboard.js'
 import { useActivityLive } from '../table/useActivityLive.js'
+
+const PlaytestPrototype = import.meta.env.DEV ? lazy(() => import('./prototype/PlayerPrototype.js')) : null
 
 // /play?session=…&seat=A&name=Ada&token=…&server=ws://…
 // The `player` role: one seat, its hand and private zones, and the zone shortcuts to play to.
@@ -77,6 +79,7 @@ export function PlayerPage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   if (!view || !client) return <RouteStatus status={live} over="sheet" links={links} onRetry={conn.retry} />
 
   const me = view.seats.find((s) => s.id === seat)
+  if (PlaytestPrototype && params.has('variant')) return <Suspense fallback={<p>Laddar prototyp…</p>}><PlaytestPrototype view={view} faces={faces} seat={seat} /></Suspense>
   const hand = view.components.filter((c) => c.zone === `hand:${seat}`)
   // A lifted card is played alone unless it is one of the selected hand cards (K3).
   const toPlay = lifted ? (selected.has(lifted.id) ? hand.filter((c) => selected.has(c.id)) : [lifted]) : []

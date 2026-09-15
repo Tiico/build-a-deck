@@ -1,0 +1,33 @@
+/* Throwaway UI, intentionally scoped away from the real service. */
+.ux-proto { --ux-bg:#15191f; --ux-panel:#20262e; --ux-line:#35404b; --ux-ink:#edf1f5; --ux-muted:#aab7c4; --ux-accent:#d5efa1; min-height:100dvh; background:var(--ux-bg); color:var(--ux-ink); font:15px/1.5 system-ui,sans-serif; padding-bottom:110px; box-sizing:border-box; }
+.ux-proto *, .ux-switch * { box-sizing:border-box; }
+.ux-proto button,.ux-proto input,.ux-proto textarea,.ux-proto select { font:inherit; }
+.ux-proto button,.ux-proto .ux-link { min-height:44px; border:1px solid var(--ux-line); border-radius:9px; padding:9px 15px; background:var(--ux-panel); color:var(--ux-ink); cursor:pointer; text-decoration:none; }
+.ux-proto button:disabled { opacity:.4; cursor:default; }
+.ux-proto button.ux-primary { background:var(--ux-accent); border-color:var(--ux-accent); color:#1d2a12; font-weight:750; }
+.ux-proto button[aria-pressed=true],.ux-proto button[aria-selected=true] { border-color:var(--ux-accent); box-shadow:inset 0 0 0 1px var(--ux-accent); }
+.ux-proto :focus-visible,.ux-switch :focus-visible { outline:3px solid #9bc6ff; outline-offset:3px; }
+.ux-proto h1,.ux-proto h2,.ux-proto h3,.ux-proto p { margin:0; }
+.ux-proto h1 { font-size:clamp(24px,3vw,38px); line-height:1.15; letter-spacing:-.035em; }
+.ux-proto h2 { font-size:22px; letter-spacing:-.02em; }
+.ux-proto h3 { font-size:16px; }
+.ux-proto small,.ux-proto .ux-muted { color:var(--ux-muted); }
+.ux-proto input,.ux-proto textarea,.ux-proto select { background:#131920; border:1px solid var(--ux-line); border-radius:8px; color:var(--ux-ink); padding:10px 12px; min-height:44px; width:100%; }
+.ux-proto label { display:grid; gap:7px; }
+.ux-proto textarea { min-height:100px; resize:vertical; }
+.ux-proto .ux-eyebrow { color:var(--ux-accent); text-transform:uppercase; font-size:11px; font-weight:750; letter-spacing:.15em; }
+.ux-proto .ux-row { display:flex; align-items:center; flex-wrap:wrap; gap:10px; }
+.ux-proto .ux-between { justify-content:space-between; }
+.ux-proto .ux-stack { display:grid; gap:18px; }
+.ux-proto .ux-panel { border:1px solid var(--ux-line); border-radius:14px; background:var(--ux-panel); padding:22px; }
+.ux-proto .ux-pill { display:inline-flex; gap:7px; align-items:center; border:1px solid var(--ux-line); border-radius:99px; padding:4px 10px; font-size:12px; color:var(--ux-muted); }
+.ux-proto .ux-notice { border-left:3px solid var(--ux-accent); padding:10px 15px; background:#28332a; }
+.ux-proto .ux-state { margin:24px; border-top:1px solid var(--ux-line); padding-top:12px; color:var(--ux-muted); font-size:12px; }
+.ux-proto .ux-state summary { cursor:pointer; min-height:32px; }
+.ux-proto .ux-state pre { white-space:pre-wrap; overflow-wrap:anywhere; }
+.ux-switch { position:fixed; z-index:1000; bottom:15px; left:50%; transform:translateX(-50%); display:flex; align-items:center; gap:8px; max-width:calc(100vw - 20px); padding:8px; border:1px solid #5b6470; border-radius:15px; background:#eef2f5; color:#16202b; box-shadow:0 10px 35px #0008; font:13px/1.4 system-ui,sans-serif; }
+.ux-switch span { min-width:165px; display:grid; padding:0 4px; }
+.ux-switch small { font-size:9px; color:#556170; }
+.ux-switch button,.ux-switch a { min-height:44px; min-width:44px; border:0; border-radius:8px; background:#dce2e8; padding:8px; color:#182430; cursor:pointer; text-decoration:none; display:grid; place-items:center; }
+.ux-switch button:hover,.ux-switch a:hover { background:#c6d3df; }
+@media(max-width:560px) { .ux-switch { gap:4px; padding:5px; flex-wrap:wrap; justify-content:center; width:max-content; } .ux-switch span { min-width:160px; } .ux-switch button:nth-last-child(2),.ux-switch a { min-height:30px; font-size:11px; } .ux-proto { padding-bottom:125px; } }

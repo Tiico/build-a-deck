@@ -144,6 +144,8 @@
 }
 .byd-player .byd-inspect > [data-inspect] {
   position: relative; overflow: hidden;
+  /* Release the table inspection's fixed width so the phone's height preserves the card. */
+  width: auto;
   height: min(100%, calc(86vw * 88 / 63)); min-height: 0; aspect-ratio: 63 / 88;
   border-radius: 18px; padding: 22px; box-sizing: border-box;
   background: hsl(var(--hue, 0) var(--byd-card-face-s) var(--byd-card-face-l)); color: var(--byd-card-ink); font-size: 28px; font-weight: 800;
