@@ -428,8 +428,10 @@ export class ProjectClient {
   get recipe(): Recipe {
     return recipeOf(this.doc.setup)
   }
-  setRecipe(recipe: Recipe, words?: RecipeWords): void {
-    this.edit({ v: 'setRecipe', recipe, ...(words ? { words } : {}) })
+  // A knob turned is one edit, but a counter's name is a whole recipe written out per keystroke,
+  // so the token belongs here too (L14).
+  setRecipe(recipe: Recipe, words?: RecipeWords, gesture?: string): void {
+    this.edit({ v: 'setRecipe', recipe, ...(words ? { words } : {}) }, gesture)
   }
 
   // A zone of the designer's own (K2): an area of a card's rows or a pile at a point, in the
@@ -463,13 +465,18 @@ export class ProjectClient {
     this.edit({ v: 'setDeck', id })
   }
 
-  patchZone(id: string, patch: ZonePatch): void {
-    this.edit({ v: 'patchZone', id, patch })
+  // `gesture` is the token of the one thing the designer is doing, when what she is doing arrives
+  // in pieces (L14): a zone dragged across the felt is a patch per frame of the pointer, and a
+  // name typed into the panel beside it is one per keystroke.
+  patchZone(id: string, patch: ZonePatch, gesture?: string): void {
+    this.edit({ v: 'patchZone', id, patch }, gesture)
   }
 
   // The rulebook (B7): part of the document, so it is saved and versioned with the cards.
-  setRules(rules: RuleDoc): void {
-    this.edit({ v: 'setRules', rules })
+  // The whole rulebook is written out on every keystroke, so a sentence typed into a paragraph
+  // carries the token of that visit to it (L14).
+  setRules(rules: RuleDoc, gesture?: string): void {
+    this.edit({ v: 'setRules', rules }, gesture)
   }
 
   // The project's history (B4): every save is a version, kept whole and never rewritten. The

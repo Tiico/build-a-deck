@@ -566,7 +566,9 @@ describe('a fill that follows a column (L16)', () => {
     const field = screen.getByLabelText(/^fyll efter kolumnen/i) as HTMLSelectElement
     expect(field.value).toBe('typ')
     fireEvent.change(screen.getByLabelText('eld'), { target: { value: '#c0392b' } })
-    expect(onPatch).toHaveBeenLastCalledWith('frame', { fill: { field: 'typ', map: { eld: '#c0392b' }, else: '#f4ead8' } }, undefined)
+    // The picker is dragged, so every colour it passes through carries the token of that visit to
+    // it and the whole drag is one step back (L14).
+    expect(onPatch).toHaveBeenLastCalledWith('frame', { fill: { field: 'typ', map: { eld: '#c0392b' }, else: '#f4ead8' } }, expect.any(String))
   })
 
   // The way back is its own thing: a value that follows the fallback is not the same as a value

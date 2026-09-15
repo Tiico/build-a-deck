@@ -272,3 +272,170 @@ describe('a cell typed into as one step back', () => {
     await waitFor(() => expect((screen.getByLabelText('dragon title') as HTMLInputElement).value).toBe('Drakhona'))
   })
 })
+
+// The felt in Bord is nothing but dragging, so the defect cost most there: a zone pulled across
+// the table was a step back per frame of the pointer, and every press moved it five millimetres,
+// which reads as a zone that will not go back where it was (L14).
+describe('a zone on the felt as one step back', () => {
+  async function openTheFelt() {
+    await openEditor()
+    fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
+    fireEvent.click(await screen.findByRole('button', { name: '＋ Yta' }))
+    return document.querySelector('[data-zone-handle="yta-1"]') as HTMLElement
+  }
+  const where = () => document.querySelector('[data-zone-where]')?.textContent ?? ''
+
+  it('takes a whole drag back in one press, however many frames the pointer took', async () => {
+    const area = await openTheFelt()
+    const laid = where()
+
+    // Twenty-five millimetres to the right, in five frames — a slow hand, which is the ordinary one.
+    fireEvent.pointerDown(area, { button: 0, clientX: 100, clientY: 100, pointerId: 1 })
+    for (const x of [105, 110, 115, 120, 125]) fireEvent.pointerMove(area, { clientX: x, clientY: 100, pointerId: 1 })
+    fireEvent.pointerUp(area, { pointerId: 1 })
+    expect(where()).not.toBe(laid)
+
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
+    await waitFor(() => expect(where()).toBe(laid))
+    // And the zone is still there: what lies behind the drag is the zone being added, not the
+    // felt as it was before it existed.
+    expect(document.querySelector('[data-zone-handle="yta-1"]')).toBeTruthy()
+  })
+})
+
+// The panel beside the felt writes a zone's name per keystroke, exactly as the deck's cells do:
+// the name came back a letter at a time, in a field the designer had already left (L14).
+describe('a zone\'s name typed into as one step back', () => {
+  const fields = () => [...document.querySelectorAll('[data-zone-props] input')] as HTMLInputElement[]
+  const named = () => fields()[0]!
+  const shortcut = () => fields()[1]!
+
+  it('takes the whole name back in one press, and the field beside it is its own step', async () => {
+    await openEditor()
+    fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
+    fireEvent.click(await waitFor(() => document.querySelector('[data-zone-handle="discard"]') as HTMLElement))
+
+    await userEvent.clear(named())
+    await userEvent.type(named(), 'Slasken')
+    await userEvent.clear(shortcut())
+    await userEvent.type(shortcut(), 'Släng')
+    ;(document.activeElement as HTMLElement | null)?.blur()
+    await waitFor(() => expect(shortcut().value).toBe('Släng'))
+
+    // The shortcut is the last thing she did, and the name she typed before it is untouched by
+    // the press that takes it back: two fields are two things.
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
+    await waitFor(() => expect(shortcut().value).toBe('Kasta'))
+    expect(named().value).toBe('Slasken')
+
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
+    await waitFor(() => expect(named().value).toBe('Kasthög'))
+  })
+})
+
+// The recipe's counters are typed into too, and the whole recipe is written out on every
+// keystroke: naming a counter cost one step back per letter, and the letters came back into a
+// field the designer had left (L14).
+describe('a counter named as one step back', () => {
+  const counter = () => screen.getByLabelText('Namn för räknare 1') as HTMLInputElement
+
+  it('takes the whole name back in one press, and leaves the counter standing', async () => {
+    await openEditor()
+    fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
+    fireEvent.click(await screen.findByRole('button', { name: '＋ Räknare' }))
+    expect(counter().value).toBe('Poäng')
+
+    await userEvent.clear(counter())
+    await userEvent.type(counter(), 'Mynt')
+    ;(document.activeElement as HTMLElement | null)?.blur()
+    await waitFor(() => expect(counter().value).toBe('Mynt'))
+
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
+    await waitFor(() => expect(counter().value).toBe('Poäng'))
+  })
+})
+
+// The panel beside the card writes on every keystroke and on every step of a slider, so a
+// measurement typed into it cost a step back per digit and a rotation pushed home cost one per
+// degree (L14): the same defect as the drag, on the controls the drag was meant to be exact
+// about.
+describe('the template panel as one step back', () => {
+  async function pickTheTitle() {
+    await openEditor()
+    fireEvent.click(screen.getByRole('tab', { name: 'Mall' }))
+    const box = await waitFor(() => {
+      const el = target('title')
+      if (!el) throw new Error('no drag box yet')
+      return el
+    })
+    laidOut()
+    fireEvent.pointerDown(box, { pointerId: 1, button: 0, clientX: 30, clientY: 30 })
+    fireEvent.pointerUp(box, { pointerId: 1, clientX: 30, clientY: 30 })
+  }
+
+  // A slider is the plainest case of one thing said many times: pushing it home writes a patch per
+  // degree, so the way back from a turned triangle was a press per degree — and each press turned
+  // it back by one, which reads as a slider that will not let go.
+  it('takes a slider pushed home back in one press, and the next push of it is its own step', async () => {
+    await openEditor()
+    fireEvent.click(screen.getByRole('tab', { name: 'Mall' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Form' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Triangel' }))
+    const turn = () => screen.getByLabelText('Vridning') as HTMLInputElement
+    expect(turn().value).toBe('0')
+
+    turn().focus()
+    for (const deg of ['30', '60', '90']) fireEvent.change(turn(), { target: { value: deg } })
+    await waitFor(() => expect(turn().value).toBe('90'))
+    // Let go and take hold again: the second push is the second thing she did.
+    turn().blur()
+    turn().focus()
+    fireEvent.change(turn(), { target: { value: '180' } })
+    await waitFor(() => expect(turn().value).toBe('180'))
+    ;(document.activeElement as HTMLElement | null)?.blur()
+
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
+    await waitFor(() => expect(turn().value).toBe('90'))
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
+    await waitFor(() => expect(turn().value).toBe('0'))
+  })
+
+  it('takes a measurement typed into it back in one press, digits and all', async () => {
+    await pickTheTitle()
+    const x = screen.getByLabelText('X (mm)') as HTMLInputElement
+    expect(x.value).toBe('5')
+
+    await userEvent.clear(x)
+    await userEvent.type(x, '12.5')
+    ;(document.activeElement as HTMLElement | null)?.blur()
+    await waitFor(() => expect(target('title')!.style.left).toBe('12.5mm'))
+
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
+    await waitFor(() => expect(target('title')!.style.left).toBe('5mm'))
+  })
+})
+
+// The rulebook is written into like any page of prose, and every keystroke wrote the whole
+// rulebook out: a sentence typed into a paragraph was a press of Ctrl+Z per letter, into a block
+// that had closed itself the moment the designer left it (L14).
+describe('a rule written as one step back', () => {
+  const book = () => document.querySelector('[data-rulebook]') as HTMLElement
+
+  it('takes the whole sentence back in one press, and the paragraph before it is its own step', async () => {
+    await openEditor()
+    fireEvent.click(screen.getByRole('tab', { name: 'Regler' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Börja skriva reglerna' }))
+
+    fireEvent.click(await within(book()).findByText('Skriv här hur spelet går till.'))
+    const field = await within(book()).findByLabelText('Text b2')
+    await userEvent.clear(field)
+    await userEvent.type(field, 'Vinner gör den som först är av med sina kort.')
+    fireEvent.blur(field)
+    await waitFor(() => expect(within(book()).getByText(/Vinner gör den/)).toBeTruthy())
+
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
+    await waitFor(() => expect(within(book()).getByText('Skriv här hur spelet går till.')).toBeTruthy())
+    // The rulebook itself is still there: what lies behind the sentence is the book being begun.
+    expect(within(book()).getByRole('heading', { name: 'Så spelar ni' })).toBeTruthy()
+  })
+})
