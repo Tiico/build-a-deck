@@ -3,6 +3,7 @@ import { apply } from './apply.js'
 import { handsReturnedBy } from './hands.js'
 import type { IdSource, Rng } from './rng.js'
 import { permutation } from './rng.js'
+import { reach } from './reach.js'
 import { componentOf, must, resolveRef, zoneOf, type Table, type TableState } from './state.js'
 import type { TypeRegistry } from './typedef.js'
 
@@ -58,6 +59,13 @@ function validate(state: TableState, registry: TypeRegistry, seat: string | null
     if (zoneOf(state, r.top).kind !== 'pile') return `zone ${r.top} is not a pile`
     return zoneOf(state, r.top).order.length > 0 ? null : `pile ${r.top} is empty`
   }
+  // The side cards land on when they are moved in bulk. The same gate `flip` keeps, asked of
+  // every card that is about to move: a side the type does not have is not a side to lie on.
+  const landsOn = (moving: readonly ComponentId[], face: string | undefined): string | null => {
+    if (face === undefined) return null
+    const without = moving.find((id) => !def(id).faces.includes(face))
+    return without === undefined ? null : `${def(without).id} has no face ${face}`
+  }
 
   switch (it.v) {
     case 'move':
@@ -92,8 +100,9 @@ function validate(state: TableState, registry: TypeRegistry, seat: string | null
       } else if (it.x === undefined || it.y === undefined) {
         return 'split without a target needs x and y for the new pile'
       }
-      if (it.at > zoneOf(state, it.pile).order.length) return `pile ${it.pile} has fewer than ${it.at} components`
-      return null
+      const taken = reach(state, it.pile, it.which, it.at)
+      if (typeof taken === 'string') return taken
+      return landsOn(taken, it.face)
     }
     case 'shuffle': {
       const z = zone(it.pile)
@@ -105,8 +114,9 @@ function validate(state: TableState, registry: TypeRegistry, seat: string | null
       const z = all([zone(it.from), zone(it.to)])
       if (z) return z
       if (it.from === it.to) return 'cannot draw from a zone into itself'
-      if (it.count > zoneOf(state, it.from).order.length) return `zone ${it.from} has fewer than ${it.count} components`
-      return null
+      const taken = reach(state, it.from, it.which, it.count)
+      if (typeof taken === 'string') return taken
+      return landsOn(taken, it.face)
     }
     case 'deal': {
       const z = all([zone(it.from), ...it.to.map(zone)])
@@ -114,7 +124,7 @@ function validate(state: TableState, registry: TypeRegistry, seat: string | null
       if (it.to.includes(it.from)) return 'cannot deal from a zone into itself'
       const needed = it.each * it.to.length
       if (needed > zoneOf(state, it.from).order.length) return `zone ${it.from} has fewer than ${needed} components`
-      return null
+      return landsOn(zoneOf(state, it.from).order.slice(0, needed), it.face)
     }
     case 'roll': {
       const c = comp(it.component)

@@ -67,6 +67,12 @@ export type SetupDef = {
   floor: ZoneId
   // Listed order within a zone is the initial order in that zone.
   components: ComponentSpec[]
+  // What each card row says in its own columns, by the names the designer gave them. Kept once
+  // per row and not once per copy, because identity is the `cardRef` and a question is asked of
+  // the identity. It is as secret as `cardRef` is: nothing projects it, so it never reaches a
+  // view (B6). A setup without it answers no question, which is what every table built before
+  // this field did.
+  cards?: Record<string, Record<string, string>>
 }
 
 export type TableState = {

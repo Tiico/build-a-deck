@@ -1,4 +1,5 @@
 export * from './ids.js'
+export * from './query.js'
 export * from './intents.js'
 export * from './events.js'
 export * from './patch.js'
