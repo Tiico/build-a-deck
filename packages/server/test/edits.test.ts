@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { applyEdit, columnsOf, drawnBy, type EditIntent } from '../src/edits.js'
+import { openingSetup } from '../src/recipe.js'
 import { template } from './deck.js'
 import { twoSeatSetup } from './fixture.js'
 import type { ProjectDoc } from '../src/projects.js'
@@ -71,21 +72,21 @@ describe('an edit is a thing that happened to the project (D3)', () => {
   })
 
   it('writes the table: the recipe, a zone of one\'s own, and what a zone is called', () => {
-    const three = applyEdit(base(), { v: 'setRecipe', recipe: { players: 3, mine: true, discard: true, market: false, counters: [] } })
+    const three = applyEdit(base(), { v: 'setRecipe', recipe: { players: 3, counters: [] } })
     expect(three.setup.seats).toEqual(['A', 'B', 'C'])
     expect(three.setup.zones.find((z) => z.id === 'discard')?.name).toBe('Kasthög')
-    // A zone the recipe makes is named in the language the designer is building the game in
-    // (A4): the words come with the edit, so the actor writes exactly what the editor showed.
-    const english = applyEdit(base(), {
-      v: 'setRecipe',
-      recipe: { players: 2, mine: true, discard: true, market: true, counters: [{ name: 'Score', start: 0 }] },
-      words: { floor: 'Table', draw: 'Draw pile', drawShortcut: 'Put underneath', discard: 'Discard pile', discardShortcut: 'Discard', market: 'Market', marketShortcut: 'To the market', mine: 'In front of {seat}', mineShortcut: 'In front of me', counters: 'Counters {seat}', hand: 'Hand' },
-    })
-    expect(english.setup.zones.find((z) => z.id === 'market')?.name).toBe('Market')
-    expect(english.setup.zones.find((z) => z.id === 'market')?.shortcut?.label).toBe('To the market')
-    expect(english.setup.zones.find((z) => z.id === 'counters:A')?.name).toBe('Counters A')
-    // A zone that was already there keeps the name it was given: renaming is the designer's.
-    expect(english.setup.zones.find((z) => z.id === 'discard')?.name).toBe('Kasthög')
+    // A seat that arrives brings zones, and they are named in the language the designer is
+    // building the game in (A4): the words come with the edit, so the actor writes exactly what
+    // the editor showed.
+    const english = { floor: 'Table', draw: 'Draw pile', drawShortcut: 'Put underneath', discard: 'Discard pile', discardShortcut: 'Discard', mine: 'In front of {seat}', mineShortcut: 'In front of me', counters: 'Counters {seat}', hand: 'Hand' }
+    const counters = [{ name: 'Score', start: 0 }]
+    const opened = { ...base(), setup: openingSetup({ players: 2, counters }, english) }
+    const third = applyEdit(opened, { v: 'setRecipe', recipe: { players: 3, counters }, words: english })
+    expect(third.setup.zones.find((z) => z.id === 'mine:C')?.name).toBe('In front of C')
+    expect(third.setup.zones.find((z) => z.id === 'mine:C')?.shortcut?.label).toBe('In front of me')
+    expect(third.setup.zones.find((z) => z.id === 'counters:C')?.name).toBe('Counters C')
+    // Och zonerna som redan stod där behåller sina namn: att döpa om är designerns.
+    expect(third.setup.zones.find((z) => z.id === 'mine:A')?.name).toBe('In front of A')
 
     const withZone = applyEdit(three, { v: 'addZone', id: 'altar', kind: 'area', name: 'Altaret' })
     expect(withZone.setup.zones.at(-1)).toMatchObject({ id: 'altar', kind: 'area', name: 'Altaret', visibility: 'all' })
@@ -94,6 +95,53 @@ describe('an edit is a thing that happened to the project (D3)', () => {
     expect(applyEdit(named, { v: 'removeZone', id: 'altar' }).setup.zones.some((z) => z.id === 'altar')).toBe(false)
     // The floor and the deck pile are not the designer's to remove.
     expect(() => applyEdit(named, { v: 'removeZone', id: 'table' })).toThrow()
+  })
+
+  // Bordet är designerns (B5, reviderat): varje zon och hög går att ta bort, receptets egna
+  // inräknade. Kvar står de tre bordet inte kan vara utan — filten, platsernas händer och den
+  // hög leken ligger i.
+  it('lets the designer take away the recipe\'s own zones, and keeps the three the table cannot be without', () => {
+    const doc = { ...base(), setup: openingSetup({ players: 2, counters: [{ name: 'Poäng', start: 0 }] }) }
+    const without = after(doc, { v: 'removeZone', id: 'discard' }, { v: 'removeZone', id: 'mine:A' }, { v: 'removeZone', id: 'counters:B' })
+    expect(without.setup.zones.map((z) => z.id)).toEqual(['table', 'draw', 'mine:B', 'counters:A', 'hand:A', 'hand:B'])
+    expect(() => applyEdit(without, { v: 'removeZone', id: 'table' })).toThrow(/table/)
+    // En plats är en hand (C3): handen går med platsen och inte för sig.
+    expect(() => applyEdit(without, { v: 'removeZone', id: 'hand:A' })).toThrow(/hand:A/)
+    expect(() => applyEdit(without, { v: 'removeZone', id: 'draw' })).toThrow(/draw/)
+  })
+
+  // Leken är en roll och inte en zon (B5, reviderat): den ligger i en hög, vilken som helst, och
+  // att flytta rollen är vägen till att bli av med draghögen.
+  // Borttagningens motsats (B5, reviderat): en zon per plats är en sak designern gjorde, så den
+  // är en enda edit och ett enda steg tillbaka (B4) — inte åtta.
+  it('gives every seat an area in front, or a counters zone, again in one edit', () => {
+    const doc = { ...base(), setup: openingSetup({ players: 2, counters: [{ name: 'Poäng', start: 0 }] }) }
+    const stripped = after(doc, { v: 'removeZone', id: 'mine:A' }, { v: 'removeZone', id: 'mine:B' })
+    const back = applyEdit(stripped, { v: 'addSeatZone', role: 'mine', name: 'Inför {seat}', shortcut: { label: 'Framför mig', at: 'top' } })
+    expect(back.setup.zones.filter((z) => z.id.startsWith('mine:')).map((z) => [z.id, z.name, z.owner, z.visibility])).toEqual([
+      ['mine:A', 'Inför A', 'A', 'owner'],
+      ['mine:B', 'Inför B', 'B', 'owner'],
+    ])
+    expect(back.setup.zones.find((z) => z.id === 'mine:A')?.geometry).toEqual(back.setup.zones.find((z) => z.id === 'mine:A')?.geometry)
+    // En plats som redan har sin behåller den, namn och allt.
+    const again = applyEdit(back, { v: 'addSeatZone', role: 'mine', name: 'Nytt {seat}' })
+    expect(again.setup.zones.find((z) => z.id === 'mine:A')?.name).toBe('Inför A')
+    const counted = applyEdit(after(stripped, { v: 'removeZone', id: 'counters:A' }, { v: 'removeZone', id: 'counters:B' }), { v: 'addSeatZone', role: 'counters', name: 'Räknare {seat}' })
+    expect(counted.setup.zones.filter((z) => z.id.startsWith('counters:')).map((z) => [z.id, z.visibility, z.owner])).toEqual([
+      ['counters:A', 'all', 'A'],
+      ['counters:B', 'all', 'B'],
+    ])
+  })
+
+  it('moves the deck to another pile, and the hands return there instead', () => {
+    const doc = after(base(), { v: 'addZone', id: 'hog-1', kind: 'pile', name: 'Leken' }, { v: 'setDeck', id: 'hog-1' })
+    expect(doc.setup.deckZone).toBe('hog-1')
+    expect(doc.setup.zones.filter((z) => z.kind === 'hand').map((z) => z.returnTo)).toEqual(['hog-1', 'hog-1'])
+    // Och nu går den gamla draghögen att ta bort.
+    expect(applyEdit(doc, { v: 'removeZone', id: 'draw' }).setup.zones.some((z) => z.id === 'draw')).toBe(false)
+    // Leken ligger i en hög. En yta är ingen hög, och en zon som inte finns är ingenting.
+    expect(() => applyEdit(doc, { v: 'setDeck', id: 'table' })).toThrow(/table/)
+    expect(() => applyEdit(doc, { v: 'setDeck', id: 'ingen' })).toThrow(/ingen/)
   })
 
   it('writes the symbols and the rules, which travel with the document', () => {

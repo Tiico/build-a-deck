@@ -3,9 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { DeckWall } from '../src/editor/DeckWall.js'
 import { SymbolPanel } from '../src/editor/SymbolPanel.js'
+import { SetupEditor } from '../src/editor/SetupEditor.js'
 import { TemplateCanvas } from '../src/editor/TemplateCanvas.js'
 import type { ProjectClient } from '../src/editor/ProjectClient.js'
-import { projectDoc } from './project-doc.js'
+import { projectDoc, template } from './project-doc.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -122,5 +123,34 @@ describe('the card on the canvas is not compiled again for nothing', () => {
     spy.compiles = 0
     fireEvent.click(screen.getByLabelText(/rutnät/i))
     expect(spy.compiles).toBe(0)
+  })
+})
+
+// The felt in the Bord tab draws the deck's back on every face-down pile, and the felt is the
+// one surface in the editor that re-renders continuously: a zone is moved by dragging it, and
+// every pointer move is a new document. A back recompiled under the pointer is a pile that
+// flickers while the zone beside it is being placed.
+describe('the deck’s back on the felt is not compiled again for nothing', () => {
+  it('leaves it alone while a zone is dragged, and compiles it when the back changes', () => {
+    const doc = withIcon()
+    const client = { recipe: { players: 2, mine: false, discard: true, market: false, counters: [] } } as unknown as ProjectClient
+    const { rerender } = render(<SetupEditor doc={doc} client={client} assetBase="http://api.local" />)
+    // The control: the draw pile lies face down, so the back was compiled once to draw it.
+    expect(spy.compiles).toBe(1)
+
+    // A zone moved is a new document with the same deck in it: nothing the back is compiled from
+    // has changed.
+    spy.compiles = 0
+    const moved = { ...doc, setup: { ...doc.setup, zones: doc.setup.zones.map((z) => (z.id === 'draw' ? { ...z, geometry: { ...z.geometry, x: z.geometry.x + 5 } } : z)) } }
+    rerender(<SetupEditor doc={moved} client={client} assetBase="http://api.local" />)
+    expect(spy.compiles).toBe(0)
+
+    // And the other half of the same fact: a back that changes is drawn again.
+    // From the fixture's own factory: `withIcon` rebuilds the front, which narrows the type of
+    // what it hands back to the one face it wrote.
+    const back = template().faces['back']!
+    const repainted = { ...moved, template: { ...moved.template, faces: { ...moved.template.faces, back: { ...back, base: [{ ...back.base[0]!, fill: '#6d2230' }] } } } }
+    rerender(<SetupEditor doc={repainted} client={client} assetBase="http://api.local" />)
+    expect(spy.compiles).toBe(1)
   })
 })

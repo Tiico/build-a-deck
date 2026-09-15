@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ProjectClient, ProjectUnavailable, type ProjectFault } from './ProjectClient.js'
 import { Unauthorized, whoAmI } from '../account/api.js'
 import { useT } from '../i18n/index.js'
+import { DEFAULT_TIMING } from '../status/connection.js'
 
 // Which of the shared states (#12) the project is in, plus the one that is not a message but a
 // redirect: not logged in sends the designer to the login card and back.
@@ -13,7 +14,7 @@ export type ProjectState = { client: ProjectClient | null; fault: ProjectTrouble
 // one's own does. Leaving the page closes it, and the others stop being told this editor is here.
 // A retry asks the server the same question again, on this page: never a reload, which would
 // throw away the very work the designer is trying to keep.
-export function useProjectClient(http: string | null, id: string | null): ProjectState {
+export function useProjectClient(http: string | null, id: string | null, dropAfterMs: number = DEFAULT_TIMING.dropAfterMs): ProjectState {
   const [state, setState] = useState<{ client: ProjectClient | null; fault: ProjectTrouble | null; tick: number }>({ client: null, fault: null, tick: 0 })
   const [attempt, setAttempt] = useState(0)
   // Read through a ref, not a dependency: the word for somebody is settled once, when this
@@ -33,7 +34,7 @@ export function useProjectClient(http: string | null, id: string | null): Projec
       // where she arrives and frozen there — see A4's boundary and the note on `open`.
       const email = await whoAmI(http).catch(() => null)
       if (!live) return
-      const client = await ProjectClient.open({ http, id, t: reader.current, ...(email ? { name: email } : {}) })
+      const client = await ProjectClient.open({ http, id, dropAfterMs, t: reader.current, ...(email ? { name: email } : {}) })
       if (!live) {
         client.close()
         return
@@ -54,6 +55,6 @@ export function useProjectClient(http: string | null, id: string | null): Projec
       unsubscribe()
       opened?.close()
     }
-  }, [http, id, attempt])
+  }, [http, id, attempt, dropAfterMs])
   return { ...state, retry: useCallback(() => setAttempt((n) => n + 1), []) }
 }

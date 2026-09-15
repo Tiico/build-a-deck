@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from 'react'
 import { NewField } from './NewField.js'
 import { fieldLabel } from './fields.js'
 import { useT } from '../i18n/index.js'
@@ -44,10 +45,39 @@ export type ColumnDoorProps = {
 // had: the name, whether the column is the designer's, and the reason when it is not, in words
 // rather than as a padlock nobody asked about. What the heading keeps is its name and the way it
 // sorts, which is all a heading that can also be dragged and pulled has room to be.
+
+// What the door leaves below itself, and the least it will ever be. The air is the shadow's own
+// room plus the panel's padding, which is outside a content-box height; the floor is what holds a
+// door open as a door — a window shorter than that is one the list scrolls inside, as it always
+// did.
+const DOOR_AIR = 24
+const DOOR_FLOOR = 240
+
 export function ColumnDoor({ columns, canRemove, onRemove, removeRef, asking, widths, onWidth, taken, keeps, onCreate, onCancel }: ColumnDoorProps) {
   const t = useT()
+  const panel = useRef<HTMLDivElement>(null)
+  // The height the window really leaves the door (#46). The list was 232 px whatever room there
+  // was — five rows, the fifth cut against the form's own line, with nothing to say the list went
+  // on — and a taller list was not the answer either: the form under it is the way to make the
+  // next column, and a form off the bottom of the window is the thing that falls away.
+  //
+  // Only the door can ask this. It hangs under the head's last cell, and where that cell stands
+  // depends on the deck above it, so no stylesheet knows the number: `100vh` minus a guess is a
+  // guess. A layout effect, because a door painted at its natural height and corrected afterwards
+  // is a door that jumps.
+  useLayoutEffect(() => {
+    const el = panel.current
+    if (!el) return
+    const fit = () => {
+      el.style.maxHeight = `${Math.max(DOOR_FLOOR, window.innerHeight - el.getBoundingClientRect().top - DOOR_AIR)}px`
+    }
+    fit()
+    window.addEventListener('resize', fit)
+    return () => window.removeEventListener('resize', fit)
+    // A column made or taken away moves the head, and the door hangs from it.
+  }, [columns.length])
   return (
-    <div className="byd-columns" role="group" aria-label={t('table.columns')} onKeyDown={(event) => event.key === 'Escape' && onCancel()}>
+    <div ref={panel} className="byd-columns" role="group" aria-label={t('table.columns')} onKeyDown={(event) => event.key === 'Escape' && onCancel()}>
       <ul className="byd-columns-list">
         {columns.map((field) => (
           <li key={field} data-col={field}>

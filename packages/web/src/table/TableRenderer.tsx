@@ -71,6 +71,16 @@ export type TableRendererProps = {
   glideMs?: number | undefined
   // What the editor lays over the felt (B5): zone handles, drawn last with the felt's mapping.
   overlay?: ((fit: FeltFit) => ReactNode) | undefined
+  // What a face-down card wears where nothing serves textures (L17, K9). A played table gets its
+  // backs from the render farm through `faces`; the editor's Bord tab has no farm behind it and
+  // no version to render, so it compiles the deck's own back in the browser and hands it here.
+  // It is a function of the fit for the same reason `overlay` is: a card is drawn in the felt's
+  // millimetres, and only the felt knows what one of them is worth in pixels. `at` names the card
+  // asking, so a supplier whose picture carries ids of its own can keep them apart — the
+  // compiler scopes a card's CSS to the node it is drawn in. Without a back, a face-down card is
+  // the stand-in weave `table.css` draws, which is what every surface showed before: a back that
+  // belonged to no game (L17).
+  back?: ((fit: FeltFit, at: string) => ReactNode) | undefined
   // Whose hand is whose. Table mode always says so on the felt; TV mode leaves it to the dock
   // that says it already (K9). A TV-mode surface with no dock — the editor's Bord tab — asks for
   // the cards here, so that a hand is named by the renderer like every other zone (K19).
@@ -154,7 +164,7 @@ type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: n
 // chip — whose verbs are a counter's own and not a card's (C4, #67).
 type Ring = { target: DragTarget; x: number; y: number }
 
-export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], onPresence, camera = false, onInspect, size: fixedSize, glideMs = GLIDE_MS, overlay, seatNames = false, me = null, foldHand = null, keyboard }, ref) {
+export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(function TableRenderer({ view, mode, scale: fixedScale, rotate = 0, faces, onAct, peers = [], pulses = [], recent = [], onPresence, camera = false, onInspect, size: fixedSize, glideMs = GLIDE_MS, overlay, back, seatNames = false, me = null, foldHand = null, keyboard }, ref) {
   const t = useT()
   const floor = view.zones.find((z) => z.id === view.floor)
   if (!floor) throw new Error(`floor ${view.floor} is not among the zones`)
@@ -287,6 +297,9 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const tight = mode === 'tv' && measured && feltWidePx > 0 && feltWidePx < TIGHT_FELT_PX
   const left = (mmX: number) => px(mmX - floor.geometry.x)
   const top = (mmY: number) => px(mmY - floor.geometry.y)
+  // The box a back is drawn in: the card's own, so the supplier only has to draw a card. A
+  // surface that supplies none keeps the stand-in weave `table.css` draws.
+  const backAt = (at: string): ReactNode => back && <span className="byd-card-back">{back({ px, left, top, scale }, at)}</span>
   // A chip's target (#67): the finger's 44 × 44 on the screen, laid invisibly over a disc that
   // stays its 24 mm (K9). In table mode the felt leans away, so a box set to 44 in its plane is
   // less than 44 on the screen, and slanted; the target is sized through the same projection the
@@ -590,6 +603,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 count={lifting ? count - 1 : count}
                 topCard={lifting ? topOf(z, 1) : topOf(z)}
                 faces={faces}
+                back={backAt(`pile-${z.id}`)}
                 left={left(z.geometry.x + (whole || settled ? dx : 0))}
                 top={top(z.geometry.y + (whole || settled ? dy : 0))}
                 px={px}
@@ -684,6 +698,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 carried={carried.has(c.id)}
                 by={movedBy.has(c.id) ? { seat: movedBy.get(c.id) ?? null, colour: colourOf(movedBy.get(c.id) ?? null) } : undefined}
                 faces={faces}
+                back={backAt(`card-${c.id}`)}
                 handlers={onAct ? handlers({ kind: 'card', id: c.id }) : undefined}
                 inspects={inspects(c)}
                 keys={keys(`card:${c.id}`)}
@@ -705,8 +720,10 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 data-ghost-of={p.id}
                 data-component={p.drag.component}
                 data-face={c?.cardRef ? 'front' : 'back'}
+                data-back={!c?.cardRef && back ? 'own' : undefined}
                 style={{ position: 'absolute', left: left(p.drag.x), top: top(p.drag.y), width: px(CARD_MM.w), height: px(CARD_MM.h), transform: `rotate(${c?.rot ?? 0}deg)`, ['--peer' as string]: colourOf(p.seat), ...(c?.cardRef ? { ['--hue' as string]: hue(c.cardRef) } : {}) }}
               >
+                {!c?.cardRef && backAt(`peer-${p.id}`)}
                 <Texture faces={faces} c={c} />
                 <span>{c?.cardRef ?? ''}</span>
                 <b className="byd-peer-tag">{p.name}</b>
@@ -729,7 +746,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
             </div>
           ))}
           {offTop && (
-            <Ghost card={topOf(zoneById.get(offTop.pile) ?? floor)} faces={faces} left={left(offTop.at.x) - px(CARD_MM.w / 2)} top={top(offTop.at.y) - px(CARD_MM.h / 2)} px={px} />
+            <Ghost card={topOf(zoneById.get(offTop.pile) ?? floor)} faces={faces} back={backAt('ghost')} left={left(offTop.at.x) - px(CARD_MM.w / 2)} top={top(offTop.at.y) - px(CARD_MM.h / 2)} px={px} />
           )}
           {overlay?.({ px, left, top, scale })}
         </div>
@@ -907,13 +924,17 @@ type FeltNodeProps = {
 }
 type Pointing = { onPointerEnter(): void; onPointerLeave(): void }
 
-function Card({ c, left, top, px, dragging, carried, by, faces, handlers, inspects, keys }: { c: VisibleComponentState; left: number; top: number; px: (mm: number) => number; dragging: boolean; carried?: boolean; by?: { seat: string | null; colour: string } | undefined; faces?: string | undefined; handlers?: Handlers | undefined; inspects?: Pointing | undefined; keys?: FeltNodeProps | undefined }) {
+function Card({ c, left, top, px, dragging, carried, by, faces, back, handlers, inspects, keys }: { c: VisibleComponentState; left: number; top: number; px: (mm: number) => number; dragging: boolean; carried?: boolean; by?: { seat: string | null; colour: string } | undefined; faces?: string | undefined; back?: ReactNode | undefined; handlers?: Handlers | undefined; inspects?: Pointing | undefined; keys?: FeltNodeProps | undefined }) {
   const face = c.cardRef === null ? 'back' : 'front'
+  // The deck's own back, when this card lies face down and a back was handed in. It is both what
+  // is drawn and what tells the stylesheet to draw no stand-in under it.
+  const own = c.cardRef === null ? back : null
   return (
     <div
       className="byd-card"
       data-component={c.id}
       data-face={face}
+      data-back={own ? 'own' : undefined}
       data-dragging={dragging ? 'true' : undefined}
       data-carried={carried ? 'true' : undefined}
       data-by={by ? by.seat ?? 'table' : undefined}
@@ -931,6 +952,7 @@ function Card({ c, left, top, px, dragging, carried, by, faces, handlers, inspec
         ...(by ? { ['--peer' as string]: by.colour } : {}),
       }}
     >
+      {own}
       <Texture faces={faces} c={c} />
       <span>{c.cardRef ?? ''}</span>
     </div>
@@ -938,9 +960,11 @@ function Card({ c, left, top, px, dragging, carried, by, faces, handlers, inspec
 }
 
 // The top card of a pile while it is being dragged off.
-function Ghost({ card, faces, left, top, px }: { card: VisibleComponentState | undefined; faces: string | undefined; left: number; top: number; px: (mm: number) => number }) {
+function Ghost({ card, faces, back, left, top, px }: { card: VisibleComponentState | undefined; faces: string | undefined; back?: ReactNode | undefined; left: number; top: number; px: (mm: number) => number }) {
+  const own = card?.cardRef ? null : back
   return (
-    <div className="byd-card" data-ghost data-dragging="true" data-face={card?.cardRef ? 'front' : 'back'} style={{ position: 'absolute', left, top, width: px(CARD_MM.w), height: px(CARD_MM.h), pointerEvents: 'none', ...(card?.cardRef ? { ['--hue' as string]: hue(card.cardRef) } : {}) }}>
+    <div className="byd-card" data-ghost data-dragging="true" data-face={card?.cardRef ? 'front' : 'back'} data-back={own ? 'own' : undefined} style={{ position: 'absolute', left, top, width: px(CARD_MM.w), height: px(CARD_MM.h), pointerEvents: 'none', ...(card?.cardRef ? { ['--hue' as string]: hue(card.cardRef) } : {}) }}>
+      {own}
       <Texture faces={faces} c={card} />
       <span>{card?.cardRef ?? ''}</span>
     </div>
@@ -961,8 +985,11 @@ function topIdOf(z: ZoneView, skip = 0): string | undefined {
 
 // A pile is a point; the stack is centred on it. A hidden pile has a count and nothing else,
 // unless its top lies face-up.
-function Pile({ zone, count, topCard, faces, left, top, px, lifted, topHandlers, topInspects, labelHandlers, topKeys, labelKeys }: { zone: ZoneView; count: number; topCard: VisibleComponentState | undefined; faces: string | undefined; left: number; top: number; px: (mm: number) => number; lifted: boolean; topHandlers?: Handlers | undefined; topInspects?: Pointing | undefined; labelHandlers?: Handlers | undefined; topKeys?: FeltNodeProps | undefined; labelKeys?: FeltNodeProps | undefined }) {
+function Pile({ zone, count, topCard, faces, back, left, top, px, lifted, topHandlers, topInspects, labelHandlers, topKeys, labelKeys }: { zone: ZoneView; count: number; topCard: VisibleComponentState | undefined; faces: string | undefined; back?: ReactNode | undefined; left: number; top: number; px: (mm: number) => number; lifted: boolean; topHandlers?: Handlers | undefined; topInspects?: Pointing | undefined; labelHandlers?: Handlers | undefined; topKeys?: FeltNodeProps | undefined; labelKeys?: FeltNodeProps | undefined }) {
   const t = useT()
+  // The deck lying face down wears the deck's own back. An empty pile wears nothing but the
+  // dashed outline `table.css` draws on it, which is how a pile says it is empty.
+  const own = count > 0 && !topCard?.cardRef ? back : null
   const layers = Math.min(Math.max(count, 0), 12)
   const thickness = Array.from({ length: layers }, (_, i) => `0 ${-i * 1.2}px 0 #1f2b4a`).join(', ')
   return (
@@ -977,11 +1004,13 @@ function Pile({ zone, count, topCard, faces, left, top, px, lifted, topHandlers,
       <div
         className="byd-pile-top"
         data-face={topCard?.cardRef ? 'front' : 'back'}
+        data-back={own ? 'own' : undefined}
         {...topInspects}
         {...topHandlers}
         {...topKeys}
         style={{ boxShadow: thickness, transform: `translateY(${-(layers - 1) * 1.2}px)`, ...(topCard?.cardRef ? { ['--hue' as string]: hue(topCard.cardRef) } : {}) }}
       >
+        {own}
         <Texture faces={faces} c={topCard} />
         <span>{count > 0 ? topCard?.cardRef ?? '' : ''}</span>
       </div>

@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs'
 import type { Element, FaceTemplate, Template } from '@byd/template'
 import type { ProjectDoc, ProjectRow } from '../src/projects.js'
-import { applyRecipe, emptySetup, SWEDISH_WORDS } from '../src/recipe.js'
+import { openingSetup, SWEDISH_WORDS, type Zone } from '../src/recipe.js'
 
 export const SPELKORT_CSV = new URL('./spelkort.csv', import.meta.url)
 // One line of the sheet, keyed by its header: `card title`, `description`, `cardtype`, `rarity`,
@@ -190,7 +190,10 @@ export function spelkortTemplate(cards: readonly SheetCard[]): Template {
 // traps and characters, and gold to count (C4).
 export function spelkortDoc(players = 4): ProjectDoc {
   const cards = readSpelkort()
-  const words = { ...SWEDISH_WORDS, draw: 'Kortlek', market: "Sal's Saloon", marketShortcut: 'Till saloonen' }
-  const setup = applyRecipe(emptySetup(words), { players, mine: true, discard: true, market: true, counters: [{ name: 'Guld', start: 0 }] }, words)
+  const words = { ...SWEDISH_WORDS, draw: 'Kortlek' }
+  const opened = openingSetup({ players, counters: [{ name: 'Guld', start: 0 }] }, words)
+  // The saloon is a zone of the game's own, laid where the market knob used to lay one (B5).
+  const saloon: Zone = { id: 'market', kind: 'area', name: "Sal's Saloon", visibility: 'all', geometry: { x: -260, y: -200, w: 520, h: 120, rot: 0 }, shortcut: { label: 'Till saloonen', at: 'top' } }
+  const setup = { ...opened, zones: [...opened.zones, saloon] }
   return { name: "Sal's Saloon", template: spelkortTemplate(cards), rows: rowsOfSheet(cards), icons: {}, setup }
 }

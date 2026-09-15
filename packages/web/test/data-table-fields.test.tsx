@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { applyEdit } from '@byd/server/doc'
 import { Language } from '../src/i18n/index.js'
@@ -249,6 +249,32 @@ describe('the door the head keeps for its columns (#46 on #32)', () => {
     expect(within(panel).queryByRole('button', { name: 'Ta bort fältet id' })).toBeNull()
     expect(within(panel).getByText('antal är verktygets egen kolumn och kan inte tas bort')).toBeTruthy()
     expect(within(panel).getByText('id är verktygets egen kolumn och kan inte tas bort')).toBeTruthy()
+  })
+
+  it('takes the height the window leaves it, so the form under the list is never off the bottom', async () => {
+    const user = userEvent.setup()
+    render(<Editing />)
+    await user.click(screen.getByRole('button', { name: 'Kolumner' }))
+    const panel = screen.getByRole('group', { name: 'Kolumner' })
+
+    // The list used to be 232 px whatever room there was, which is five rows: a deck of ten
+    // columns showed half of them, the fifth was cut against the form's own line, and nothing
+    // said the list went on. The door is the only thing that knows where it hangs — it is pinned
+    // under the head's last cell, and where that cell is depends on the deck above it — so it is
+    // the door that asks the window how much is left.
+    expect(panel.style.maxHeight).toBe('744px')
+
+    // And it asks again when the window changes, because a door sized to a window that is gone is
+    // a door hanging off the bottom of this one.
+    Object.defineProperty(window, 'innerHeight', { value: 500, configurable: true })
+    fireEvent(window, new Event('resize'))
+    expect(panel.style.maxHeight).toBe('476px')
+
+    // Never so small that the door is not a door: the window can be shorter than the list is long,
+    // and then the list scrolls inside it as it always did.
+    Object.defineProperty(window, 'innerHeight', { value: 120, configurable: true })
+    fireEvent(window, new Event('resize'))
+    expect(panel.style.maxHeight).toBe('240px')
   })
 
   it('asks the same question it always asked, and takes the column when it is answered', async () => {

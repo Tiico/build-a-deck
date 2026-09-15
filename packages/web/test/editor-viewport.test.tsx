@@ -132,6 +132,13 @@ afterEach(async () => {
   await run.stop()
 })
 
+// A probe reads a number back out of the stylesheet, so it has to be hung inside the editor to
+// inherit the editor's own tokens — and then must not be laid out by it. Standing in the flow it
+// is a child like any other, and the editor's chrome is a column that lets its last child give
+// way: a probe declaring 18 px was measured at 13, and the test then held every tick box in the
+// editor to a number the editor never said. So every probe below is taken out of the flow first;
+// the words are written out at each one because the page they run in cannot see this file.
+
 const WIDTHS = [768, 1024, 1280] as const
 
 // Everything a pointer or a thumb is meant to hit. A control inside a label is hit through the
@@ -166,7 +173,7 @@ describe.each(WIDTHS)('the editor at %ipx', (width) => {
     const measured = await measure(width, (page) =>
       page.$$eval("input[type='checkbox']", (els) => {
         const probe = document.querySelector('.byd-editor')!.appendChild(document.createElement('span'))
-        probe.style.cssText = 'display: block; width: var(--byd-tick); height: var(--byd-tick); color: var(--byd-editor-primary-mark)'
+        probe.style.cssText = 'position: absolute; top: 0; left: 0; display: block; width: var(--byd-tick); height: var(--byd-tick); color: var(--byd-editor-primary-mark)'
         const want = `${probe.offsetWidth}×${probe.offsetHeight} ${getComputedStyle(probe).color} on dark`
         probe.remove()
         return els
@@ -194,7 +201,7 @@ describe.each(WIDTHS)('the editor at %ipx', (width) => {
       page.$$eval('.byd-data tbody tr', (els) => {
         const editor = document.querySelector('.byd-editor')!
         const probe = editor.appendChild(document.createElement('span'))
-        probe.style.cssText = 'display: block; height: var(--byd-tap)'
+        probe.style.cssText = 'position: absolute; top: 0; left: 0; display: block; height: var(--byd-tap)'
         const tap = probe.offsetHeight
         probe.remove()
         return els
@@ -266,7 +273,7 @@ describe.each(WIDTHS)('the form that makes a column, at %ipx', (width) => {
       (page) =>
         page.$$eval(".byd-newfield input[type='radio']", (els) => {
           const probe = document.querySelector('.byd-editor')!.appendChild(document.createElement('span'))
-          probe.style.cssText = 'display: block; width: var(--byd-tick); height: var(--byd-tick); color: var(--byd-editor-primary-mark)'
+          probe.style.cssText = 'position: absolute; top: 0; left: 0; display: block; width: var(--byd-tick); height: var(--byd-tick); color: var(--byd-editor-primary-mark)'
           const want = `${probe.offsetWidth}×${probe.offsetHeight} ${getComputedStyle(probe).color} on dark`
           probe.remove()
           const seen = els.filter((el) => el.checkVisibility())

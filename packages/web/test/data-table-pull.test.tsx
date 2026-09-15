@@ -87,6 +87,50 @@ describe('a column pulled to a width of its own (#46)', () => {
     expect(set('body')).toBe('320')
   })
 
+  it('draws the table it will keep, on every frame the hand moves', () => {
+    render(<Editing />)
+    const at = grip('body')!
+    fireEvent.pointerDown(at, { pointerId: 1, button: 0, clientX: 0 })
+    fireEvent.pointerMove(at, { pointerId: 1, clientX: 200 })
+
+    // What the hand is asking for is declared where the measurement reads it, and the measurement
+    // is run — so the picture under the hand is the one the release keeps. A width written
+    // straight onto the column instead is a picture nothing else agrees with: the table's own
+    // width still says what the last measurement said, and under a fixed layout a table wider
+    // than its columns hands the difference back out over all of them. The edge then lags the
+    // hand on the way in, races it on the way out, and jumps when the hand lets go.
+    expect(set('body')).toBe('200')
+
+    fireEvent.pointerUp(at, { pointerId: 1, clientX: 200 })
+    expect(set('body')).toBe('200')
+  })
+
+  it('is a width only where the hand really pulled one', () => {
+    render(<Editing project="p1" />)
+    const at = grip('body')!
+
+    // A press and a release in the same place is a click on the edge and not a pull of it. It
+    // used to freeze the column at whatever the measurement had just handed it — and silently,
+    // since a column that has stopped following its deck looks exactly like one that still
+    // does — so an aimed-at heading could stop answering its own values for good.
+    fireEvent.pointerDown(at, { pointerId: 1, button: 0, clientX: 40 })
+    fireEvent.pointerUp(at, { pointerId: 1, clientX: 40 })
+    expect(set('body')).toBeNull()
+    expect(heldWidths('p1')).toEqual({})
+
+    // Nor is a hand that slid two pixels while it was letting go.
+    fireEvent.pointerDown(at, { pointerId: 1, button: 0, clientX: 40 })
+    fireEvent.pointerMove(at, { pointerId: 1, clientX: 42 })
+    fireEvent.pointerUp(at, { pointerId: 1, clientX: 42 })
+    expect(set('body')).toBeNull()
+    expect(heldWidths('p1')).toEqual({})
+
+    // And a pull is a pull from the first pixel past that, at the width the hand asked for and
+    // not at the width it had crossed the threshold with.
+    pull('body', 120)
+    expect(set('body')).toBe('120')
+  })
+
   it('refuses the press the browser would carry the whole column off by', () => {
     render(<Editing />)
     // The edge stands inside a heading that is `draggable`, and starting a drag is the default
@@ -170,6 +214,67 @@ describe('a column pulled to a width of its own (#46)', () => {
 
     fireEvent.doubleClick(grip('body')!)
     expect(heldWidths('p1')).toEqual({})
+  })
+
+  it('forgets a width when the column it belonged to is taken away', async () => {
+    const user = userEvent.setup()
+    render(<Editing project="p1" />)
+    pull('body', 260)
+    expect(heldWidths('p1')).toEqual({ body: 260 })
+
+    await user.click(screen.getByRole('button', { name: 'Kolumner' }))
+    await user.click(screen.getByRole('button', { name: 'Ta bort fältet body' }))
+    await user.click(screen.getByRole('button', { name: 'Ja, ta bort' }))
+    // A width is about a column, and there is no column. What was left behind instead was a
+    // number under a name nothing answers to — and the next column made under that name, empty
+    // and brand new, was drawn at a width a hand had chosen for somebody else's values.
+    expect(heldWidths('p1')).toEqual({})
+
+    await user.type(screen.getByLabelText('Namn'), 'body')
+    await user.click(screen.getByRole('button', { name: 'Lägg till' }))
+    expect(set('body')).toBeNull()
+  })
+
+  // What a pull can do that nothing else in the table can: make the table wider than its box, so
+  // that a column leaves the screen. jsdom lays nothing out — every rectangle is nought wide — so
+  // the geometry is handed to the table here, and nothing else in this file depends on it.
+  const laidOut = (container: HTMLElement): HTMLElement => {
+    const rect = (left: number, right: number) => () => ({ left, right, width: right - left, top: 0, bottom: 40, x: left, y: 0, height: 40, toJSON: () => undefined }) as unknown as DOMRect
+    const box = container.querySelector('.byd-data-scroll') as HTMLElement
+    Object.defineProperty(box, 'clientWidth', { value: 600, configurable: true })
+    Object.defineProperty(box, 'scrollWidth', { value: 900, configurable: true })
+    box.getBoundingClientRect = rect(0, 600)
+    // The pin covers the right-hand 44 px of the box, as it really does (#17).
+    ;(box.querySelector('thead .byd-data-remove') as HTMLElement).getBoundingClientRect = rect(556, 600)
+    // The head laid end to end: `id`, `title` and `body` inside the box, `antal` past the pin.
+    const heads = [...box.querySelectorAll('thead th[data-col]')] as HTMLElement[]
+    const at = [
+      [44, 108],
+      [108, 300],
+      [300, 556],
+      [600, 665],
+    ]
+    heads.forEach((th, i) => (th.getBoundingClientRect = rect(...((at[i] ?? [900, 960]) as [number, number]))))
+    return box
+  }
+
+  it('says which columns have gone out past the edge, and brings them back', async () => {
+    const user = userEvent.setup()
+    const { container } = render(<Editing project="p1" />)
+    const box = laidOut(container)
+    const asked = vi.fn()
+    box.scrollBy = asked
+
+    // The fade over the pin says a value is cut; it cannot say that a whole column is over there,
+    // and after a pull what scrolls under the pin is usually the empty end of a sentence, which
+    // fades to nothing anybody notices. So the table says it in the line that already says what
+    // the view holds.
+    fireEvent.scroll(box)
+    const fetch = await screen.findByRole('button', { name: '1 kolumn till höger: antal' })
+
+    await user.click(fetch)
+    expect(asked).toHaveBeenCalled()
+    expect((asked.mock.calls[0]?.[0] as { left: number }).left).toBeGreaterThan(0)
   })
 
   it('does not remember anything for a table that was not opened from a project', () => {

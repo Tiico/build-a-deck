@@ -1,6 +1,6 @@
 import type { ProjectDoc } from '@byd/server'
 import { DEFAULT_FRAME, FRAMES, type Field } from './frames.js'
-import { applyRecipe, emptySetup } from '@byd/server/doc'
+import { openingSetup } from '@byd/server/doc'
 import { translate, type T } from '../i18n/index.js'
 import { recipeWords } from '../editor/fields.js'
 
@@ -56,7 +56,7 @@ export function buildBlankProject(state: Pick<WizardState, 'name' | 'players' | 
 // It is named in the designer's language from the first moment (A4).
 function tableOf(state: Pick<WizardState, 'players' | 'counters'>, t: T): ProjectDoc['setup'] {
   const words = recipeWords(t)
-  return applyRecipe(emptySetup(words), { players: state.players, mine: true, discard: true, market: false, counters: state.counters ?? defaultCounters(t) }, words)
+  return openingSetup({ players: state.players, counters: state.counters ?? defaultCounters(t) }, words)
 }
 
 // Numbers become numbers, antal defaults to 1, everything else stays text.

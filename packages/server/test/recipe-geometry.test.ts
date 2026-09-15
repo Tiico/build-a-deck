@@ -1,12 +1,22 @@
 import { describe, expect, it } from 'vitest'
-import { applyRecipe, emptySetup, MAX_PLAYERS, type Geometry, type Setup } from '../src/recipe.js'
+import { applyRecipe, MAX_PLAYERS, openingSetup, type Geometry, type Setup } from '../src/recipe.js'
 
 // The recipe's own zones, measured against each other at every seat count the table admits (K18).
 // K2 lets a designer overlap zones deliberately; nothing the recipe lays out is deliberate in that
 // way, so two recipe zones sharing a millimetre is always a defect — two players' hands on the same
 // spot most of all. The floor is every other zone's container and is therefore not one of the pairs.
-const fullTable = (players: number): Setup =>
-  applyRecipe(emptySetup(), { players, mine: true, discard: true, market: true, counters: [{ name: 'Poäng', start: 0 }] })
+// Ett bord med allt receptet lägger ut, och därtill en yta där marknadsratten en gång la en:
+// zonen är designerns numera (B5, reviderat), men måtten den lades med är kvar i det här provet,
+// eftersom det är de måtten grannarna har prövats mot sedan K18.
+const fullTable = (players: number): Setup => {
+  const setup = openingSetup({ players, counters: [{ name: 'Poäng', start: 0 }] })
+  return { ...setup, zones: [...setup.zones, { id: 'market', kind: 'area', name: 'Marknad', visibility: 'all', geometry: { x: -260, y: -200, w: 520, h: 120, rot: 0 } }] }
+}
+
+const fullTableWith = (players: number, counters: { name: string; start: number }[]): Setup => {
+  const setup = openingSetup({ players, counters })
+  return { ...setup, zones: [...setup.zones, { id: 'market', kind: 'area', name: 'Marknad', visibility: 'all', geometry: { x: -260, y: -200, w: 520, h: 120, rot: 0 } }] }
+}
 
 const sharesArea = (a: Geometry, b: Geometry): boolean =>
   Math.min(a.x + a.w, b.x + b.w) > Math.max(a.x, b.x) && Math.min(a.y + a.h, b.y + b.h) > Math.max(a.y, b.y)
@@ -101,7 +111,7 @@ describe('the felt a recipe lays out (K18, B5)', () => {
       { name: 'Kort', start: 5 },
     ]
     const seatOf = (counters: number) => {
-      const setup = applyRecipe(emptySetup(), { players: 4, mine: true, discard: true, market: true, counters: named.slice(0, counters) })
+      const setup = openingSetup({ players: 4, counters: named.slice(0, counters) })
       const at = (id: string) => setup.zones.find((z) => z.id === id)!.geometry
       return { mine: at('mine:A').w, counters: at('counters:A').w, felt: `${at('table').w}x${at('table').h}`, hand: at('hand:A').w }
     }
@@ -114,7 +124,7 @@ describe('the felt a recipe lays out (K18, B5)', () => {
     // And no zone of the new shapes lies on any other, at any seat count the table admits.
     for (const counters of [1, 2, 3, 4]) {
       for (let players = 2; players <= MAX_PLAYERS; players++) {
-        const setup = applyRecipe(emptySetup(), { players, mine: true, discard: true, market: true, counters: named.slice(0, counters) })
+        const setup = fullTableWith(players, named.slice(0, counters))
         const zones = setup.zones.filter((z) => z.id !== setup.floor)
         const overlapping = zones.flatMap((a, i) => zones.slice(i + 1).filter((b) => sharesArea(a.geometry, b.geometry)).map((b) => `${a.id}+${b.id}`))
         expect({ counters, players, overlapping }).toEqual({ counters, players, overlapping: [] })
@@ -143,9 +153,9 @@ describe('the felt a recipe lays out (K18, B5)', () => {
     }
     expect(sharesArea(asItWasSaved.zones.find((z) => z.id === 'hand:A')!.geometry, asItWasSaved.zones.find((z) => z.id === 'hand:E')!.geometry)).toBe(true)
 
-    // Opening it and turning any knob at all — here the market, not the seat count — lays it out
+    // Opening it and turning the knob at all — here the counters, not the seat count — lays it out
     // again, because the felt it carries cannot hold the seats it carries.
-    const opened = applyRecipe(asItWasSaved, { players: 6, mine: true, discard: true, market: false, counters: [{ name: 'Poäng', start: 0 }] })
+    const opened = applyRecipe(asItWasSaved, { players: 6, counters: [{ name: 'Poäng', start: 0 }] })
     expect(opened.zones.find((z) => z.id === 'table')?.geometry).toEqual({ x: -900, y: -400, w: 1800, h: 800, rot: 0 })
     expect(opened.zones.find((z) => z.id === 'hand:A')?.geometry).toEqual({ x: -550, y: 340, w: 500, h: 60, rot: 0 })
     expect(opened.zones.find((z) => z.id === 'hand:E')?.geometry).toEqual({ x: 50, y: 340, w: 500, h: 60, rot: 0 })
@@ -160,7 +170,7 @@ describe('the felt a recipe lays out (K18, B5)', () => {
       ...four,
       zones: four.zones.map((z) => (z.id === 'table' ? { ...z, geometry: { x: -800, y: -500, w: 1600, h: 1000, rot: 0 } } : z)),
     }
-    const again = applyRecipe(roomier, { players: 4, mine: true, discard: true, market: false, counters: [{ name: 'Poäng', start: 0 }] })
+    const again = applyRecipe(roomier, { players: 4, counters: [{ name: 'Poäng', start: 0 }] })
     expect(again.zones.find((z) => z.id === 'table')?.geometry).toEqual({ x: -800, y: -500, w: 1600, h: 1000, rot: 0 })
     expect(again.zones.find((z) => z.id === 'hand:A')?.geometry).toEqual({ x: -250, y: 340, w: 500, h: 60, rot: 0 })
   })

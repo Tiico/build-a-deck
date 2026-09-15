@@ -35,8 +35,10 @@ export function whatOf(intent: EditIntent): Key {
       return 'undo.what.template'
     case 'setRecipe':
     case 'addZone':
+    case 'addSeatZone':
     case 'removeZone':
     case 'patchZone':
+    case 'setDeck':
       return 'undo.what.table'
     // What the game's meanings are painted in is part of its symbols (E4): a card writes the
     // meaning, and a step back over a repaint is a step back among the symbols.

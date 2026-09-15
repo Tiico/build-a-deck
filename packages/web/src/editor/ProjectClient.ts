@@ -2,7 +2,7 @@ import type { ProjectCredit, ProjectDoc, ProjectFont, ProjectFraming, ProjectRow
 import type { DocDiff } from '@byd/server/doc'
 import type { Element } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
-import { applyEdit, recipeOf, type Clearable, type EditIntent, type Recipe, type RecipeWords, type ZonePatch } from '@byd/server/doc'
+import { applyEdit, recipeOf, type Clearable, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type ZonePatch } from '@byd/server/doc'
 import { ASSET_PREFIX, assetUrl } from './assets.js'
 import { measureAsset } from './motifs.js'
 import type { Motif } from '@byd/template'
@@ -14,6 +14,7 @@ import type { EditorMessage, Presence } from '@byd/server'
 import { canEdit, type Role } from '@byd/server/doc'
 import { translate, type Key, type T } from '../i18n/index.js'
 import { UNDO_STEPS, whatOf } from './undo.js'
+import { DEFAULT_TIMING } from '../status/connection.js'
 
 // Without a catalogue of its own this module speaks Swedish, exactly as a surface mounted
 // without a language provider does: the surface that opened the project hands over its own
@@ -70,8 +71,13 @@ export class ProjectClient {
   public connected = false
   // Whether the line is known to be gone, which is not the same as not being up yet. A socket
   // takes a moment to open on every load, and a banner that says "no connection" for that moment
-  // — and then takes itself away — is a false alarm on every single open.
+  // — and then takes itself away — is a false alarm on every single open. The same is true of a
+  // break the client mends by itself: the ladder below starts at 200 ms, so a line that comes
+  // back on its first attempt would put the bar in the chrome up and take it down again inside a
+  // third of a second, moving the whole page down and back up with it. So the line is not gone
+  // until it has been gone longer than a mending takes.
   public lineDown = false
+  private falling: ReturnType<typeof setTimeout> | null = null
   // What the others are told this editor is called (D3). It is set by `connect` on the first
   // socket and kept across every reconnection, so nobody's name changes under them mid-session.
   private name = ''
@@ -113,6 +119,9 @@ export class ProjectClient {
     readonly id: string,
     public doc: ProjectDoc,
     public rev: number,
+    // How long the line may be gone before that is worth saying. The number is the product's,
+    // not this client's: it is the same silence a wait is allowed anywhere else (#7).
+    private readonly dropAfterMs: number,
   ) {
     this.saved = stamp(doc)
   }
@@ -125,7 +134,7 @@ export class ProjectClient {
   // `name` is what the others see. Without an account it is the tool's word for somebody, and
   // that word is settled here rather than inside the client: a name belongs to whoever it names
   // (A4), so it is written in the language of the person arriving and then travels with them.
-  static async open(opts: { http: string; id: string; name?: string; t?: T }): Promise<ProjectClient> {
+  static async open(opts: { http: string; id: string; name?: string; t?: T; dropAfterMs?: number }): Promise<ProjectClient> {
     const res = await fetch(`${opts.http}/projects/${encodeURIComponent(opts.id)}`, withCredentials())
     if (res.status === 401) throw new Unauthorized()
     if (res.status === 403) throw new ProjectUnavailable('forbidden')
@@ -135,7 +144,7 @@ export class ProjectClient {
     // Everything the document has is the document; only what the record adds around it is left
     // behind. Picking fields by name here is how a project quietly loses one it gained later.
     const { id, rev, ...doc } = rec
-    const client = new ProjectClient(opts.http, opts.id, doc, rev)
+    const client = new ProjectClient(opts.http, opts.id, doc, rev, opts.dropAfterMs ?? DEFAULT_TIMING.dropAfterMs)
     client.connect(opts.name ?? (opts.t ?? swedish)('editor.here.someone'))
     return client
   }
@@ -149,6 +158,8 @@ export class ProjectClient {
     this.socket = socket
     socket.onopen = () => {
       this.connected = true
+      if (this.falling) clearTimeout(this.falling)
+      this.falling = null
       this.lineDown = false
       this.attempt = 0
       for (const message of this.outbox) socket.send(message)
@@ -166,7 +177,13 @@ export class ProjectClient {
       if (this.socket !== socket) return
       this.socket = null
       this.connected = false
-      this.lineDown = true
+      if (!this.lineDown && this.falling === null) {
+        this.falling = setTimeout(() => {
+          this.falling = null
+          this.lineDown = true
+          this.notify()
+        }, this.dropAfterMs)
+      }
       this.notify()
       this.reconnect()
     }
@@ -263,6 +280,8 @@ export class ProjectClient {
     this.left = true
     if (this.retry) clearTimeout(this.retry)
     this.retry = null
+    if (this.falling) clearTimeout(this.falling)
+    this.falling = null
     this.socket?.close()
     this.socket = null
     this.connected = false
@@ -423,13 +442,15 @@ export class ProjectClient {
     this.edit({ v: 'rename', name })
   }
 
-  // The setup's recipe (B5): the knobs the wizard turned, turned again here. Recipe zones come
-  // and go with it; the designer's own zones stay.
+  // The one knob the recipe still owns (B5, reviderat): who sits at the table, and what each seat
+  // keeps count of. It lays seats in and out and puts nothing back that the designer took away.
   get recipe(): Recipe {
     return recipeOf(this.doc.setup)
   }
-  setRecipe(recipe: Recipe, words?: RecipeWords): void {
-    this.edit({ v: 'setRecipe', recipe, ...(words ? { words } : {}) })
+  // A knob turned is one edit, but a counter's name is a whole recipe written out per keystroke,
+  // so the token belongs here too (L14).
+  setRecipe(recipe: Recipe, words?: RecipeWords, gesture?: string): void {
+    this.edit({ v: 'setRecipe', recipe, ...(words ? { words } : {}) }, gesture)
   }
 
   // A zone of the designer's own (K2): an area of a card's rows or a pile at a point, in the
@@ -450,13 +471,31 @@ export class ProjectClient {
     this.edit({ v: 'removeZone', id })
   }
 
-  patchZone(id: string, patch: ZonePatch): void {
-    this.edit({ v: 'patchZone', id, patch })
+  // The same zone for every seat that has not got one (B5): the area in front of a player, or the
+  // strip its counters lie on. One edit, so it is one step back (B4), and named in the language
+  // the designer is working in (A4) — `{seat}` becomes the seat's letter.
+  addSeatZone(role: SeatRole, t: T = swedish): void {
+    const name = role === 'mine' ? t('zone.mine') : t('zone.counters')
+    this.edit({ v: 'addSeatZone', role, name, ...(role === 'mine' ? { shortcut: { label: t('zone.mine.shortcut'), at: 'top' as const } } : {}) })
+  }
+
+  // Where the deck lies (B5, K10): the role moves to another pile, and the hands return there.
+  setDeck(id: string): void {
+    this.edit({ v: 'setDeck', id })
+  }
+
+  // `gesture` is the token of the one thing the designer is doing, when what she is doing arrives
+  // in pieces (L14): a zone dragged across the felt is a patch per frame of the pointer, and a
+  // name typed into the panel beside it is one per keystroke.
+  patchZone(id: string, patch: ZonePatch, gesture?: string): void {
+    this.edit({ v: 'patchZone', id, patch }, gesture)
   }
 
   // The rulebook (B7): part of the document, so it is saved and versioned with the cards.
-  setRules(rules: RuleDoc): void {
-    this.edit({ v: 'setRules', rules })
+  // The whole rulebook is written out on every keystroke, so a sentence typed into a paragraph
+  // carries the token of that visit to it (L14).
+  setRules(rules: RuleDoc, gesture?: string): void {
+    this.edit({ v: 'setRules', rules }, gesture)
   }
 
   // The project's history (B4): every save is a version, kept whole and never rewritten. The

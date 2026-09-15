@@ -26,6 +26,7 @@ import { assetsInUse } from './assets.js'
 import { previewMotifs } from './motifs.js'
 import type { Motif } from '@byd/template'
 import { statusLinks } from '../status/links.js'
+import { DEFAULT_TIMING } from '../status/connection.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useT } from '../i18n/index.js'
 import './editor.css'
@@ -36,8 +37,8 @@ import './editor.css'
 // The count itself is what is watched, not the polling: a poll that answers the same number is
 // no progress.
 export const RENDER_STALLED_AFTER_MS = 30_000
-export type EditorTiming = { renderStalledAfterMs: number }
-export const DEFAULT_EDITOR_TIMING: EditorTiming = { renderStalledAfterMs: RENDER_STALLED_AFTER_MS }
+export type EditorTiming = { renderStalledAfterMs: number; dropAfterMs: number }
+export const DEFAULT_EDITOR_TIMING: EditorTiming = { renderStalledAfterMs: RENDER_STALLED_AFTER_MS, dropAfterMs: DEFAULT_TIMING.dropAfterMs }
 // A count under watch: which table's, where it stands, and how many times the designer has asked
 // for it to move. A stall is that same triple seen again when the patience ran out.
 type Watched = { table: string; done: number; asked: number }
@@ -52,7 +53,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const params = useMemo(() => new URLSearchParams(location.search), [])
   const projectId = params.get('project')
   const http = params.get('server') ?? location.origin
-  const { client, fault, retry } = useProjectClient(http, projectId)
+  const { client, fault, retry } = useProjectClient(http, projectId, timing.dropAfterMs)
   // How much room there is (L10), and where the designer is standing. One state answers both:
   // the desk shows a mode, a smaller screen shows the stage that mode is made of.
   const room = useRoom()
@@ -368,7 +369,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     // Bord is the home for both the game's board vocabulary and its running tables (#19, C4).
     tables: () => (
       <>
-        <SetupEditor doc={doc} client={client} />
+        <SetupEditor doc={doc} client={client} assetBase={http} motifs={deckMotifs} />
         <TablesTab client={client} server={params.get('server')} />
       </>
     ),

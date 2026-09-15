@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { WireClient } from './client.js'
 import { createSession, registerRoom, start, twoSeatSetup, type Running } from './fixture.js'
+import { MemoryLogStore } from '../src/index.js'
 import { deck } from './deck.js'
 import { MemoryObjectStore } from '@byd/render'
 import type { ObjectStore } from '@byd/render/queue'
@@ -477,5 +478,37 @@ describe('the observer (C8): sees everything, is seen by everyone, touches nothi
 
     await eva.close()
     expect(await table.waitFor((m) => m.t === 'roster' && m.observers.length === 0)).toBeTruthy()
+  })
+})
+
+// A seat that taps as the table comes up (#109). The socket is open before the door has finished
+// asking the store which session this is and whether this token buys a seat at it, and a frame
+// that arrives in that window had no `message` listener to be delivered to: it was emitted to
+// nobody and lost without an ack, a reject or an error. The player saw a card that did not move
+// and nothing anywhere said why.
+//
+// The store is slow here for the same reason it is slow in life: the real one is a database on
+// the other side of a socket, and this is what the door does while it waits for it.
+class SlowLog extends MemoryLogStore {
+  override async loadSession(id: string): Promise<Awaited<ReturnType<MemoryLogStore['loadSession']>>> {
+    await new Promise((r) => setTimeout(r, 20))
+    return super.loadSession(id)
+  }
+}
+
+describe('an intent sent the moment the socket opens', () => {
+  it('waits for the door to finish opening instead of being dropped', async () => {
+    await run.stop()
+    run = await start({ store: new SlowLog() })
+    const id = await createSession(run.http)
+    const token = await run.admit(id, 'A')
+    // Not the fixture's `connect`, which waits for the snapshot first: this is the seat that
+    // does not wait, because the finger was already on its way down.
+    const c = await WireClient.opened(run.base, id, 'A', undefined, { token })
+    clients.push(c)
+    c.sendRaw(JSON.stringify({ t: 'envelope', envelope: { id: 'e1', seat: 'A', intents: [{ v: 'draw', from: 'draw', to: 'hand:A', count: 1 }] } }))
+    // Whatever the answer is, there has to be one: the frame must not be met with silence.
+    const answer = await c.waitFor((m) => (m.t === 'ack' || m.t === 'reject' || m.t === 'error') && m.id === 'e1')
+    expect(answer.t).toBe('ack')
   })
 })

@@ -1,7 +1,7 @@
 import type { Element, FaceTemplate, Variant } from '@byd/template'
 import { ProjectFraming } from './projects.js'
 import type { Cell, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc } from './projects.js'
-import { applyRecipe, point, rect, type Geometry, type Recipe, type RecipeWords, type Zone } from './recipe.js'
+import { applyRecipe, point, rect, seatZones, type Geometry, type Recipe, type RecipeWords, type SeatRole, type Shortcut, type Zone } from './recipe.js'
 
 // An edit is a thing that happened to a project (D3). A project is structurally the same as a
 // table — shared state several people change at once, which belongs in the history — so it gets
@@ -88,6 +88,16 @@ export type EditIntent =
   | { v: 'setRecipe'; recipe: Recipe; words?: RecipeWords }
   | { v: 'addZone'; id: string; kind: 'area' | 'pile'; name: string }
   | { v: 'removeZone'; id: string }
+  // The same zone for every seat (B5, reviderat): an area in front of each player, or the strip
+  // its counters lie on. One thing the designer did, so one edit and one step back (B4) — eight
+  // separate additions would be eight versions, with a half-laid table at every one of them.
+  // `name` may carry `{seat}`, which becomes the seat's letter, and it is written in the language
+  // the designer is building the game in (A4), like every other word the tool suggests.
+  | { v: 'addSeatZone'; role: SeatRole; name: string; shortcut?: Shortcut }
+  // Where the deck lies (B5, K10). The deck is a role a pile carries and not a zone of its own:
+  // a designer may call any pile the deck, and moving the role is what lets the pile the wizard
+  // laid out be taken away like any other.
+  | { v: 'setDeck'; id: string }
   | { v: 'patchZone'; id: string; patch: ZonePatch }
   // The symbols (E4) and the rulebook (B7)
   | { v: 'setIcon'; name: string; url: string; credit?: ProjectCredit }
@@ -296,11 +306,34 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
           : { id: intent.id, kind: 'area', name: intent.name, visibility: 'all', geometry: rect(-150, 100, 300, 120) }
       return { ...doc, setup: { ...doc.setup, zones: [...doc.setup.zones, zone] } }
     }
+    // The table is the designer's (B5): every zone and every pile is theirs to take away, the
+    // recipe's own among them. Three are not, and each for a reason of its own — the floor is the
+    // table itself, a seat *is* a hand (C3), and the deck has to lie somewhere, which is why the
+    // way to be rid of the draw pile is to point the deck at another pile first (`setDeck`).
     case 'removeZone': {
-      if (intent.id === doc.setup.floor || intent.id === doc.setup.deckZone) throw new Error(`zone ${intent.id} cannot be removed`)
-      if (!doc.setup.zones.some((z) => z.id === intent.id)) throw new Error(`no zone ${intent.id}`)
+      const gone = doc.setup.zones.find((z) => z.id === intent.id)
+      if (!gone) throw new Error(`no zone ${intent.id}`)
+      if (intent.id === doc.setup.floor) throw new Error(`zone ${intent.id} is the felt itself`)
+      if (gone.kind === 'hand') throw new Error(`zone ${intent.id} is a seat's hand and goes with the seat`)
+      if (intent.id === doc.setup.deckZone) throw new Error(`zone ${intent.id} holds the deck; point the deck at another pile first`)
       return { ...doc, setup: { ...doc.setup, zones: doc.setup.zones.filter((z) => z.id !== intent.id) } }
     }
+    case 'addSeatZone': {
+      const made = seatZones(doc.setup, intent.role, intent.name, intent.shortcut)
+      if (made.length === 0) return doc
+      return { ...doc, setup: { ...doc.setup, zones: [...doc.setup.zones, ...made] } }
+    }
+
+    // The deck moves to another pile, and the hands with it: a hand returns its cards to the deck,
+    // so what `returnTo` names is the role and not the pile the recipe once laid out.
+    case 'setDeck': {
+      const pile = doc.setup.zones.find((z) => z.id === intent.id)
+      if (!pile) throw new Error(`no zone ${intent.id}`)
+      if (pile.kind !== 'pile') throw new Error(`zone ${intent.id} is not a pile; the deck lies in a pile`)
+      const zones = doc.setup.zones.map((z) => (z.kind === 'hand' ? { ...z, returnTo: intent.id } : z))
+      return { ...doc, setup: { ...doc.setup, deckZone: intent.id, zones } }
+    }
+
     // A zone's name, its shortcut (C4), where it lies and how big it is (K2), who owns it and who
     // sees into it. An undefined shortcut or owner removes it.
     case 'patchZone': {

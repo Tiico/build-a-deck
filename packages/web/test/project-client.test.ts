@@ -8,17 +8,40 @@ import { JSDOM_TEST_BUDGET } from './budget.js'
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
 let run: Running
+// Every client this file opens, shut when its test ends.
+//
+// A ProjectClient that is left open keeps trying to reconnect for as long as the process lives,
+// which is exactly what an editor in a browser should do. The fixture hands out eight ports per
+// worker before it comes round to the first one again (see `claim`), so the ninth test binds the
+// port the first test's client is still knocking on. It gets in, is handed *that* test's
+// project, and lays its own pending edits on top — including `restore`, which is a whole
+// document.
+//
+// That is this file's own earlier tests rewriting a later one's project underneath it. It showed
+// as the font test losing the licence it had just set: the document was restored under the
+// client, `useFont` no longer recognised the family, and the font was made a second time without
+// the licence on it. Roughly one run in three with six copies of this file running at once, and
+// never once on an idle machine (#109).
+let opened: ProjectClient[] = []
+const openClient = async (id: string): Promise<ProjectClient> => {
+  const client = await ProjectClient.open({ http: run.http, id })
+  opened.push(client)
+  return client
+}
 beforeEach(async () => {
   run = await startServer()
 })
 afterEach(async () => {
+  // Before the server goes: a client shut afterwards would only start reconnecting.
+  for (const client of opened) client.close()
+  opened = []
   await run.stop()
 })
 
 describe('ProjectClient', () => {
   it('loads a project, edits rows and template locally, saves with its revision, and surfaces a stale save as a conflict', async () => {
     const created = await run.projects.create('p1', projectDoc())
-    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    const client = await openClient(created.id)
     expect(client.doc.name).toBe('Skogens herrar')
     expect(client.rev).toBe(1)
     expect(client.dirty).toBe(false)
@@ -46,7 +69,7 @@ describe('ProjectClient', () => {
   // taking a document back is said, so no new verb enters the vocabulary (#35).
   it('takes the last edit back, puts it forward again, and says what each step was', async () => {
     const created = await run.projects.create('p1', projectDoc())
-    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    const client = await openClient(created.id)
     expect(client.canUndo).toBe(false)
     expect(client.undo()).toBeNull()
 
@@ -76,7 +99,7 @@ describe('ProjectClient', () => {
 
   it('starts a table from the saved project and returns the session id', async () => {
     const created = await run.projects.create('p1', projectDoc())
-    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    const client = await openClient(created.id)
     const session = await client.startTable()
     expect(session.id).toMatch(/[0-9a-f-]{36}/)
     expect(session.version).toBe('rev-1')
@@ -87,7 +110,7 @@ describe('ProjectClient', () => {
 describe('refreshing a running table (C7, L5)', () => {
   it('saves unsaved edits, then pushes the current rev to the table as version.change', async () => {
     const created = await run.projects.create('p1', projectDoc())
-    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    const client = await openClient(created.id)
     const session = await client.startTable()
     client.setCell('dragon', 'antal', 5)
     const result = await client.refreshTable(session.id)
@@ -104,7 +127,7 @@ describe('editing the template on the canvas (#18)', () => {
 
   it('adds an element on top, takes one away, and moves one in the stack — all through the one write path', async () => {
     const created = await run.projects.create('p1', projectDoc())
-    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    const client = await openClient(created.id)
     expect(ids(client)).toEqual(['frame', 'title', 'body'])
 
     // A new element is drawn over the ones already there.
@@ -128,7 +151,7 @@ describe('editing the template on the canvas (#18)', () => {
 
   it('refuses an element whose id is already on the face, and a face that does not exist', async () => {
     const created = await run.projects.create('p1', projectDoc())
-    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    const client = await openClient(created.id)
 
     // Something real is edited and saved first, so what follows is measured against a client that
     // has done work rather than against a fresh one, where "nothing was touched" is where it began.
@@ -152,7 +175,7 @@ describe('editing the template on the canvas (#18)', () => {
   // saying anything: the designer saw nothing move and had spent a step back on it anyway.
   it('refuses a patch to an element the face does not have, and charges no step back for it', async () => {
     const created = await run.projects.create('p1', projectDoc())
-    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    const client = await openClient(created.id)
 
     expect(() => client.patchElement('front', 'ingen', { x: 9 })).toThrow(/ingen/)
     expect(client.dirty).toBe(false)
@@ -172,7 +195,7 @@ describe('editing the template on the canvas (#18)', () => {
   // the gesture begins — so the second grab of the same element is the second step back.
   it('puts every edit of one gesture on a single step back, and a new gesture on its own', async () => {
     const created = await run.projects.create('p1', projectDoc())
-    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    const client = await openClient(created.id)
     const title = () => client.doc.template.faces['front']?.base.find((e) => e.id === 'title') as { x: number; y: number } | undefined
     const y = () => title()?.y
 
@@ -210,7 +233,7 @@ describe('editing the template on the canvas (#18)', () => {
   // the redo as well as nothing else (#41, B4).
   it('leaves the step forward alone when an edit is refused', async () => {
     const created = await run.projects.create('p1', projectDoc())
-    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    const client = await openClient(created.id)
 
     client.patchElement('front', 'title', { x: 9 })
     expect(client.undo()).toBe('undo.what.template')
@@ -228,7 +251,7 @@ describe('editing the template on the canvas (#18)', () => {
 describe('the tables a project has (#19)', () => {
   it('lists them newest first, with the version each runs and whether it has ended', async () => {
     const created = await run.projects.create('p1', projectDoc())
-    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    const client = await openClient(created.id)
     expect(await client.tables()).toEqual([])
 
     const older = await client.startTable()
@@ -248,7 +271,7 @@ describe('grouping cards and letting the group rule a face (#13)', () => {
   const back = (client: ProjectClient) => client.doc.template.faces['back']!
   const open = async () => {
     const created = await run.projects.create('p1', projectDoc())
-    return ProjectClient.open({ http: run.http, id: created.id })
+    return openClient(created.id)
   }
 
   it('groups the whole deck by one column, on every face, and ungroups it again', async () => {
@@ -331,7 +354,7 @@ describe('grouping cards and letting the group rule a face (#13)', () => {
 describe('what counts as unsaved (#8)', () => {
   it('stays saved when an edit writes the value that was already there, and goes back to saved when an edit is taken back by hand', async () => {
     const created = await run.projects.create('p1', projectDoc())
-    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    const client = await openClient(created.id)
 
     client.setCell('dragon', 'title', 'Drake')
     expect(client.dirty).toBe(false)
@@ -345,7 +368,7 @@ describe('what counts as unsaved (#8)', () => {
 
   it('says nothing changed when a template edit lands on the values the element already had', async () => {
     const created = await run.projects.create('p1', projectDoc())
-    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    const client = await openClient(created.id)
 
     client.patchElement('front', 'title', { x: 5, y: 5 })
     expect(client.dirty).toBe(false)
@@ -362,14 +385,16 @@ describe('what counts as unsaved (#8)', () => {
 describe('the setup in the editor (B5, K2)', () => {
   it('turns the recipe, adds and removes free zones, moves and reshapes a zone, and saves it all', async () => {
     const created = await run.projects.create('p1', projectDoc())
-    const client = await ProjectClient.open({ http: run.http, id: created.id })
-    expect(client.recipe).toEqual({ players: 2, mine: false, discard: true, market: false, counters: [] })
+    const client = await openClient(created.id)
+    expect(client.recipe).toEqual({ players: 2, counters: [] })
 
-    client.setRecipe({ ...client.recipe, players: 3, market: true, counters: [{ name: 'Poäng', start: 0 }] })
+    client.setRecipe({ ...client.recipe, players: 3, counters: [{ name: 'Poäng', start: 0 }] })
     expect(client.doc.setup.seats).toEqual(['A', 'B', 'C'])
-    expect(client.doc.setup.zones.find((z) => z.id === 'market')?.kind).toBe('area')
-    expect(client.doc.setup.zones.find((z) => z.id === 'counters:C')?.owner).toBe('C')
+    expect(client.doc.setup.zones.find((z) => z.id === 'hand:C')?.owner).toBe('C')
     expect(client.recipe.players).toBe(3)
+    // Räknarna behöver en zon per plats, och den ger designern dem — i en edit (B5).
+    client.addSeatZone('counters')
+    expect(client.doc.setup.zones.filter((z) => z.id.startsWith('counters:')).map((z) => z.owner)).toEqual(['A', 'B', 'C'])
 
     const altar = client.addZone('area')
     const bag = client.addZone('pile')
@@ -383,9 +408,16 @@ describe('the setup in the editor (B5, K2)', () => {
     expect(client.doc.setup.zones.find((z) => z.id === altar)?.owner).toBeUndefined()
     client.removeZone(bag)
     expect(client.doc.setup.zones.some((z) => z.id === bag)).toBe(false)
-    // The floor and the deck zone cannot go.
+    // Filten, händerna och lekens hög står fast; leken flyttar, och då går draghögen att ta bort.
     expect(() => client.removeZone('table')).toThrow()
+    expect(() => client.removeZone('hand:A')).toThrow()
     expect(() => client.removeZone('draw')).toThrow()
+    const deck = client.addZone('pile')
+    client.setDeck(deck)
+    client.removeZone('draw')
+    expect(client.doc.setup.deckZone).toBe(deck)
+    expect(client.doc.setup.zones.some((z) => z.id === 'draw')).toBe(false)
+    expect(client.doc.setup.zones.filter((z) => z.kind === 'hand').every((z) => z.returnTo === deck)).toBe(true)
 
     expect(await client.save()).toEqual({ ok: true, rev: 2 })
     const stored = await run.projects.load('p1')
@@ -398,7 +430,7 @@ describe('the setup in the editor (B5, K2)', () => {
 describe('images (E1)', () => {
   it('uploads an image once and gets its hash back, the same hash for the same bytes', async () => {
     const created = await run.projects.create('p1', projectDoc())
-    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    const client = await openClient(created.id)
     const file = new File([new Uint8Array([137, 80, 78, 71])], 'drake.png', { type: 'image/png' })
     const hash = await client.uploadAsset(file)
     expect(hash).toMatch(/^[0-9a-f]{64}$/)
@@ -413,7 +445,7 @@ describe('images (E1)', () => {
 describe('symbols (E4)', () => {
   it('takes a symbol into the project: the bytes become an asset, the set gets the name, and the licence is kept beside it', async () => {
     const created = await run.projects.create('p1', projectDoc())
-    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    const client = await openClient(created.id)
     const skold = LIBRARY.find((s) => s.id === 'skold')!
 
     const name = await client.useSymbol(skold)
@@ -452,7 +484,7 @@ describe('symbols (E4)', () => {
 describe('an icon placed on the card (#33, E4)', () => {
   it('takes the symbol in and places the element as one edit, and a second placing is a second element and not a second symbol', async () => {
     const created = await run.projects.create('p1', projectDoc())
-    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    const client = await openClient(created.id)
     const svard = LIBRARY.find((s) => s.id === 'svard')!
 
     expect(await client.placeIcon(svard, 'front', null)).toBe('icon-1')
@@ -482,7 +514,7 @@ describe('an icon placed on the card (#33, E4)', () => {
   // being handed the icon she asked for.
   it('gives each of two placements that overlap an element of its own', async () => {
     const created = await run.projects.create('p1', projectDoc())
-    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    const client = await openClient(created.id)
     const svard = LIBRARY.find((s) => s.id === 'svard')!
     const skold = LIBRARY.find((s) => s.id === 'skold')!
 
@@ -502,7 +534,7 @@ describe('an icon placed on the card (#33, E4)', () => {
 describe('the type the game is set in (B3)', () => {
   it('takes a font file into the project, names the family from the file, and keeps the licence the designer states', async () => {
     const created = await run.projects.create('p1', projectDoc())
-    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    const client = await openClient(created.id)
     const file = new File([new Uint8Array([119, 79, 70, 50, 0, 1, 0, 0])], 'Rubrikserif.woff2', { type: 'font/woff2' })
 
     const family = await client.useFont(file)
@@ -532,7 +564,7 @@ describe('the type the game is set in (B3)', () => {
 describe('the history (B4)', () => {
   it('lists the versions, opens an older one, names it, and brings it back as a new version', async () => {
     const created = await run.projects.create('p1', projectDoc())
-    const client = await ProjectClient.open({ http: run.http, id: created.id })
+    const client = await openClient(created.id)
     client.setCell('dragon', 'title', 'Drakhona')
     expect(await client.save()).toEqual({ ok: true, rev: 2 })
 

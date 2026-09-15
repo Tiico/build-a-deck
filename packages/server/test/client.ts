@@ -32,6 +32,15 @@ export class WireClient {
   }
 
   static async connect(base: string, sessionId: string, seat: string | null, as?: { role: 'observer'; name: string } | { role: 'lobby' }, auth?: { host?: string; token?: string }): Promise<WireClient> {
+    const c = await WireClient.opened(base, sessionId, seat, as, auth)
+    await c.waitFor((m) => m.t === 'snapshot' || m.t === 'error' || m.t === 'refused')
+    return c
+  }
+
+  // The line up, and nothing waited for beyond that. `connect` waits for the door's own answer
+  // before handing the client over, which is what a test almost always wants; this is for the
+  // one that is about what happens to what is sent before that answer comes (#109).
+  static async opened(base: string, sessionId: string, seat: string | null, as?: { role: 'observer'; name: string } | { role: 'lobby' }, auth?: { host?: string; token?: string }): Promise<WireClient> {
     const q = new URLSearchParams()
     if (seat !== null) q.set('seat', seat)
     if (as) {
@@ -46,7 +55,6 @@ export class WireClient {
       c.ws.addEventListener('open', () => resolve(), { once: true })
       c.ws.addEventListener('error', () => reject(new Error('ws error')), { once: true })
     })
-    await c.waitFor((m) => m.t === 'snapshot' || m.t === 'error' || m.t === 'refused')
     return c
   }
 

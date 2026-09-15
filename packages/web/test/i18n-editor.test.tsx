@@ -137,9 +137,14 @@ describe('the editor in the reader\'s own language (A4)', () => {
     await openEditor()
     openTab('Tables')
     expect(screen.getByRole('heading', { name: 'Players' })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'Every player has' })).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'Shared on the table' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Counters' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'On the table' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'At the seats' })).toBeTruthy()
     expect(screen.getByRole('button', { name: '＋ Area' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: '＋ Area per seat' })).toBeTruthy()
+    // What the table cannot be without says so in the reader's language too.
+    expect(screen.getByRole('button', { name: 'Remove Kasthög' })).toBeTruthy()
+    expect(screen.getByLabelText('The felt is the table itself and cannot be removed.')).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'What the player sees' })).toBeTruthy()
     // The list itself is a round trip to the server; what the tab says while it waits is the
     // tool's own word, and it is there the moment the tab opens.
@@ -152,8 +157,8 @@ describe('the editor in the reader\'s own language (A4)', () => {
     await openEditor()
     openTab('Tables')
     fireEvent.click(screen.getByRole('button', { name: 'Zone Kasthög' }))
-    expect(screen.getByText('Pile')).toBeTruthy()
     expect(screen.getByLabelText('Name for Kasthög')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Put the deck in Kasthög' })).toBeTruthy()
     expect(screen.getByLabelText('Shortcut for Kasthög')).toBeTruthy()
     expect(screen.getByLabelText('Placement for Kasthög')).toBeTruthy()
   })
