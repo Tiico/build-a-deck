@@ -41,6 +41,15 @@ export function setupFromProject(doc: Pick<ProjectDoc, 'rows' | 'setup'>): Setup
     ...(z.owner !== undefined ? { owner: z.owner } : {}),
     ...(z.returnTo !== undefined ? { returnTo: z.returnTo } : {}),
     ...(z.shortcut !== undefined ? { shortcut: z.shortcut } : {}),
+    ...(z.actions !== undefined && z.actions.length > 0 ? { actions: z.actions } : {}),
   }))
-  return { zones, seats: doc.setup.seats, floor: doc.setup.floor, components }
+  // What each row says in its own columns, so a question can be asked of the deck at the table
+  // and not only when it is laid out (B5). Written as the designer reads a cell — the same
+  // reading the table's own chips do — because that is what a question is written against. It is
+  // as secret as the row's identity: nothing projects it (B6).
+  const cards: NonNullable<SetupDef['cards']> = {}
+  for (const { id, fields } of doc.rows) {
+    cards[id] = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v === null || v === undefined ? '' : String(v).trim()]))
+  }
+  return { zones, seats: doc.setup.seats, floor: doc.setup.floor, components, cards }
 }

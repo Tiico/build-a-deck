@@ -45,3 +45,17 @@ describe('att leta fram kort med en fråga (B5, B6)', () => {
     expect(h.zone(pile!).map((id) => h.state.components[id]!.cardRef)).toEqual(['dragon', 'knight', 'wizard'])
   })
 })
+
+// Åtgärderna är designerns och inga hemligheter: de står i regelboken och på bordet. De följer
+// därför med zonvyn, till varje plats och till skärmen som sitter ingenstans.
+describe('en zons egna åtgärder i projektionen', () => {
+  it('når varje vy oförändrade, också för en hög ingen får se in i', () => {
+    const base = deck()
+    const actions = [{ id: 'a1', label: 'Vänd upp ett per spelare', steps: [{ v: 'split' as const, count: { of: 'seats' as const }, to: { at: 'beside' as const }, face: 'front' }] }]
+    const h = new Harness(1, { ...base, zones: base.zones.map((z) => (z.id === 'draw' ? { ...z, actions } : z)) })
+    for (const seat of ['A', 'B', null]) {
+      const view = project(h.state, registry, seat)
+      expect(view.zones.find((z) => z.id === 'draw')).toMatchObject({ mode: 'count', actions })
+    }
+  })
+})

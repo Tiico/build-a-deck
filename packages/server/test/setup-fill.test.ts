@@ -37,3 +37,16 @@ describe('en zons fråga om vilka kort som börjar där', () => {
     expect(where(setup, 'riddare')).toEqual(['draw'])
   })
 })
+
+// Frågan ställs vid bordet också, och då måste motorn veta vad korten heter i sina egna
+// kolumner. Den vetskapen byggs här, en gång per kortrad, av samma funktion som lägger ut leken.
+describe('vad bordet får veta om kortens kolumner', () => {
+  it('bär med sig varje rads fält, så att en fråga går att resa mitt i ett spel', () => {
+    const setup = setupFromProject(doc(base))
+    expect(setup.cards).toEqual({
+      drake: { antal: '1', rarity: 'Diamant', typ: 'Varelse' },
+      riddare: { antal: '1', rarity: 'Guld', typ: 'Varelse' },
+      fälla: { antal: '2', rarity: 'Diamant', typ: 'Fälla' },
+    })
+  })
+})

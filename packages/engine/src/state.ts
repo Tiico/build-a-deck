@@ -10,6 +10,7 @@ import type {
   TypeRef,
   ZoneId,
   ZoneKind,
+  ZoneAction,
   ZoneShortcut,
 } from '@byd/protocol'
 
@@ -29,6 +30,9 @@ export type ZoneDef = {
   returnTo?: ZoneId
   // The verb the phone shows for playing here (C4), and where in a pile the card goes.
   shortcut?: ZoneShortcut
+  // What a player may ask this zone for when they click it (K14, B5). The designer's own, so
+  // they travel to every view as they stand.
+  actions?: ZoneAction[]
 }
 
 // `order[0]` is the top of a pile, the leftmost card of a hand, the topmost object of an area.
