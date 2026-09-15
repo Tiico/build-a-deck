@@ -33,9 +33,16 @@ function zonesOf(view: Snapshot, target: ActionTarget): string[] {
   return []
 }
 
-function amountOf(view: Snapshot, amount: ActionAmount, asked: Asked, key: string): number | { asks: string } {
+function amountOf(view: Snapshot, amount: ActionAmount, asked: Asked, key: string): number | { asks: string } | { why: string } {
   if (amount.of === 'number') return amount.n
-  if (amount.of === 'seats') return seated(view).length
+  // "One per player" at a table nobody has sat down at is not a pile that came out empty — it is
+  // nobody to count, which is the same reason a step with nowhere to deal to gives. Said as "no
+  // cards right now" it reads as if the pile were empty, and the designer goes looking at the
+  // deck for a fault that is a seat away.
+  if (amount.of === 'seats') {
+    const n = seated(view).length
+    return n > 0 ? n : { why: 'nowhere' }
+  }
   if (amount.of === 'zone') return countOf(view, amount.zone)
   const given = asked[key]
   return given === undefined ? { asks: key } : given

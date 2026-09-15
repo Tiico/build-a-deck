@@ -1,5 +1,5 @@
 import type { Intent, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
-import { translate, type T } from '../i18n/index.js'
+import { translate, type Key, type T } from '../i18n/index.js'
 import { isCounter } from '../components.js'
 import { CARD_MM, besidePile } from './drop.js'
 import { handName } from './handName.js'
@@ -171,11 +171,13 @@ export function verbsFor(view: Snapshot, thing: Thing, t: T = swedish): Act[] {
     // And what the game itself hangs on this pile (K14, extended), after the tool's own verbs and
     // in the designer's own words. The panel reads the same list the sheet under the ring reads
     // and compiles it the same way, so the hand and the keyboard cannot be offered different
-    // things about one pile (K16). An action that needs a number typed is not offered here yet —
-    // it is offered switched off, with the reason said.
+    // things about one pile (K16) — the reason an action cannot be asked for included, in the same
+    // words. An action that needs a number typed is not offered here yet; it is offered switched
+    // off, saying that it wants one.
     ...(z.actions ?? []).map((a): Act => {
       const made = compileAction(view, z.id, a)
-      return { key: `action:${a.id}`, label: a.label, intents: made.ok ? made.intents : null, ...('asks' in made ? { hint: t('kbd.hint.action.asks') } : {}) }
+      const hint = made.ok ? undefined : 'asks' in made ? t('kbd.hint.action.asks') : t(`ring.action.why.${made.why}` as Key)
+      return { key: `action:${a.id}`, label: a.label, intents: made.ok ? made.intents : null, ...(hint === undefined ? {} : { hint }) }
     }),
   ]
 }
