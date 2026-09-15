@@ -117,7 +117,11 @@ describe('ordering the booklet (B7)', () => {
     await run.renderAll()
     const got = await fetch(`${run.http}/faces/${hash}`)
     expect(got.status).toBe(200)
-  })
+    // Sixty seconds because the line above launches Chromium, loads the booklet, waits for its
+    // fonts and prints it. Vitest's five were enough on an idle machine and not on one running
+    // the rest of the suite beside it, which is why this failed in other people's branches and
+    // nowhere else (#92, and `render-budget.test.ts` next door now says so at once).
+  }, 60_000)
 
   it('refuses when the game has no rulebook, rather than printing an empty one', async () => {
     await send('POST', '/projects', { id: 'p2', ...project() })
