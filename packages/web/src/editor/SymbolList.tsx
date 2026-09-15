@@ -70,3 +70,42 @@ export function SymbolList({ id, symbols, active, label, className, onPick }: Sy
     </div>
   )
 }
+
+// The deck's meanings, offered where a symbol has just been named (E4). It is a second list and
+// not the symbol list wearing a hat: the two hold different things and are chosen between by
+// something the designer typed. What they share is how they are driven — `symbolListKey`, no
+// stops in the tab order, and the driver pointing at the option with `aria-activedescendant` —
+// because the focus is in the sentence being written in both cases.
+export type RoleListProps = {
+  id: string
+  roles: readonly { role: string; colour: string }[]
+  active: number
+  label: string
+  className: string
+  onPick(role: string): void
+}
+
+export function RoleList({ id, roles, active, label, className, onPick }: RoleListProps) {
+  return (
+    <div id={id} className={`byd-symbol-list byd-role-list ${className}`} role="listbox" aria-label={label}>
+      {roles.map(({ role, colour }, i) => (
+        <button
+          key={role}
+          id={`${id}-${role}`}
+          type="button"
+          role="option"
+          tabIndex={-1}
+          data-role={role}
+          aria-selected={i === active}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => onPick(role)}
+        >
+          <span className="byd-role-swatch" style={{ background: colour }} />
+          <span>{role}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+export const roleOptionId = (list: string, role: string): string => `${list}-${role}`

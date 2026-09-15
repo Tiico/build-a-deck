@@ -1,6 +1,7 @@
 export * from './inline.js'
 export * from './model.js'
 export * from './motif.js'
+export * from './frame.js'
 export * from './shapes.js'
 export * from './patterns.js'
 export * from './compile.js'

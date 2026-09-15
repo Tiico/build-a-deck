@@ -40,10 +40,18 @@ export function whatOf(intent: EditIntent): Key {
     case 'patchZone':
     case 'setDeck':
       return 'undo.what.table'
+    // What the game's meanings are painted in is part of its symbols (E4): a card writes the
+    // meaning, and a step back over a repaint is a step back among the symbols.
     case 'setIcon':
     case 'renameIcon':
     case 'removeIcon':
+    case 'setRole':
+    case 'renameRole':
+    case 'removeRole':
       return 'undo.what.symbols'
+    // How one card's picture is framed (E1).
+    case 'setFraming':
+      return 'undo.what.picture'
     case 'setRules':
       return 'undo.what.rules'
     case 'setFont':

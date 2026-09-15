@@ -500,3 +500,138 @@ describe('patterned fills (L17)', () => {
     expect(eld.html).toContain('<pattern id=')
   })
 })
+
+// The deck's measure (E1): `trim` takes the air off, but it does not say how large the drawing
+// should be drawn or where in the frame it should stand — so two files that carry different
+// amounts of air still draw their motifs at different sizes as soon as their proportions differ.
+// The measure is what makes them agree, and what is asked here is always where the drawing lands
+// in millimetres, never the CSS that put it there.
+describe('compile — a picture framed by the deck’s measure (E1)', () => {
+  const frame = { kind: 'image' as const, id: 'art', x: 5, y: 4, w: 40, h: 30, bind: { field: 'art' } }
+  const measure = { fill: 0.8, anchor: 'centre' as const }
+
+  // Where the drawing is drawn on the card, in millimetres of the card, read back off what the
+  // compiler emitted. The element sits at 5,4 mm, so the numbers are relative to its own corner.
+  function drawnBox(css: string, motif: { w: number; h: number; trim: { left: number; top: number; right: number; bottom: number } }) {
+    const rule = /\[data-element="art"\] \.byd-art\{([^}]*)\}/.exec(css)?.[1] ?? ''
+    const said = Object.fromEntries(rule.split(';').filter(Boolean).map((d) => d.split(':')))
+    const mm = (prop: string) => Number(String(said[prop] ?? '').replace('mm', ''))
+    const s = mm('width') / motif.w
+    const round = (v: number) => Math.round(v * 1e3) / 1e3
+    return {
+      x: round(mm('left') + motif.trim.left * s),
+      y: round(mm('top') + motif.trim.top * s),
+      w: round((motif.w - motif.trim.left - motif.trim.right) * s),
+      h: round((motif.h - motif.trim.top - motif.trim.bottom) * s),
+    }
+  }
+
+  // The same drawing in three files: the second is the first at twice the resolution, the third
+  // carries half again as much air around it. Nothing about the three may reach the card.
+  const plain = { w: 200, h: 100, trim: { left: 60, top: 10, right: 60, bottom: 10 } }
+  const doubled = { w: 400, h: 200, trim: { left: 120, top: 20, right: 120, bottom: 20 } }
+  const airy = { w: 300, h: 150, trim: { left: 110, top: 35, right: 110, bottom: 35 } }
+
+  const at = (motif: typeof plain, src: string, face: FaceTemplate, framing?: Record<string, { zoom?: number; dx?: number; dy?: number }>) =>
+    drawnBox(compile({ type: CARD_STANDARD_63x88, face, row: { art: src }, icons, motifs: { [src]: motif }, ...(framing ? { framing } : {}) }).css, motif)
+
+  it('draws the motif of three unlike files at the same size in the same place', () => {
+    const face: FaceTemplate = { base: [{ ...frame, frame: measure }], variants: {} }
+
+    // Four fifths of the 30 mm frame is 24 mm, centred in it whatever the file measured.
+    expect(at(plain, 'a.png', face)).toEqual({ x: 8, y: 3, w: 24, h: 24 })
+    expect(at(doubled, 'b.png', face)).toEqual({ x: 8, y: 3, w: 24, h: 24 })
+    expect(at(airy, 'c.png', face)).toEqual({ x: 8, y: 3, w: 24, h: 24 })
+  })
+
+  it('stands the drawings on one line when the measure asks for a foot', () => {
+    const face: FaceTemplate = { base: [{ ...frame, frame: { fill: 0.8, anchor: 'foot' } }], variants: {} }
+    const low = { w: 200, h: 140, trim: { left: 60, top: 50, right: 60, bottom: 10 } }
+
+    const [a, b] = [at(plain, 'a.png', face), at(low, 'd.png', face)]
+
+    // Both drawings end at the same millimetre, which is what a deck of creatures needs.
+    expect(a.y + a.h).toEqual(b.y + b.h)
+    expect(a.y + a.h).toEqual(27)
+  })
+
+  it('takes one card’s own departure from the measure, and only that card’s', () => {
+    const face: FaceTemplate = { base: [{ ...frame, frame: measure }], variants: {} }
+
+    // Twice as close: the drawing is 48 mm across in a 40 × 30 mm frame, so it is cropped by the
+    // frame on all four sides and still centred in it. The card beside it is untouched.
+    expect(at(plain, 'a.png', face, { art: { zoom: 2 } })).toEqual({ x: -4, y: -9, w: 48, h: 48 })
+    expect(at(plain, 'a.png', face)).toEqual({ x: 8, y: 3, w: 24, h: 24 })
+  })
+
+  it('draws the whole drawing when the file has no air to give, rather than sampling what was never drawn', () => {
+    const face: FaceTemplate = { base: [{ ...frame, frame: measure }], variants: {} }
+    const cropped = { w: 160, h: 120, trim: { left: 0, top: 0, right: 0, bottom: 0 } }
+
+    // The measure wants a window wider than the file, so the window is what the file is: the
+    // drawing then fills the frame instead of four fifths of it, and the card shows the truth.
+    expect(at(cropped, 'e.png', face)).toEqual({ x: 0, y: 0, w: 40, h: 30 })
+  })
+
+  it('leaves the picture to its frame when nothing has measured that file yet', () => {
+    const face: FaceTemplate = { base: [{ ...frame, fit: 'contain', frame: measure }], variants: {} }
+    const css = compile({ type: CARD_STANDARD_63x88, face, row: { art: 'a.png' }, icons }).css
+
+    expect(css).toContain('[data-element="art"] .byd-art{width:100%;height:100%;object-fit:contain;}')
+  })
+
+  it('keeps the element the frame, as every other fitting does', () => {
+    const face: FaceTemplate = { base: [{ ...frame, frame: measure }], variants: {} }
+    const out = compile({ type: CARD_STANDARD_63x88, face, row: { art: 'a.png' }, icons, motifs: { 'a.png': plain } })
+
+    expect(out.html).toMatch(/<div data-element="art"><img class="byd-art" src="a\.png" alt=""><\/div>/)
+    expect(out.css).toContain('[data-element="art"]{left:5mm;top:4mm;width:40mm;height:30mm;}')
+  })
+})
+
+// A symbol carries a meaning, and the meaning carries a colour (E4). The colour reaches the card
+// as paint behind the symbol's own shape rather than as a second file: one upload serves every
+// colour the deck writes, which is what makes a colour per use possible at all.
+describe('compile — a symbol in the colour of its role (E4)', () => {
+  const face: FaceTemplate = {
+    base: [{ kind: 'text', id: 'body', x: 2, y: 2, w: 50, h: 20, bind: { field: 'body' }, font: { family: 'sans-serif', sizePt: 9 }, color: '#111' }],
+    variants: {},
+  }
+  const set = { svard: 'svard.svg', mynt: 'mynt.svg' }
+  const palette = { fara: '#8f2d20', kostnad: '#3b3a86' }
+  const ink = (body: string) => compile({ type: CARD_STANDARD_63x88, face, row: { body }, icons: set, palette })
+
+  it('paints the symbol in its role’s colour, through its own shape', () => {
+    const out = ink('Skada {svard|fara} 2.')
+
+    // The shape is the mask and the colour is behind it, so the file is never asked to be red.
+    expect(out.html).toContain('<span class="byd-icon byd-ink" role="img" aria-label="svard" style="background:#8f2d20;-webkit-mask-image:url(&quot;svard.svg&quot;);mask-image:url(&quot;svard.svg&quot;)"></span>')
+    expect(out.warnings).toEqual([])
+  })
+
+  it('leaves a symbol without a role the picture it has always been', () => {
+    expect(ink('Betala {mynt}.').html).toContain('<img class="byd-icon" src="mynt.svg" alt="mynt">')
+  })
+
+  it('draws a symbol whose role the deck does not name, and says which role that was', () => {
+    const out = ink('Skada {svard|glomd} 2.')
+
+    // The card keeps its symbol — losing a word is worse than losing a colour — and the deck is
+    // told, so the palette can be given the meaning the text already uses.
+    expect(out.html).toContain('<img class="byd-icon" src="svard.svg" alt="svard">')
+    expect(out.warnings).toEqual([{ element: 'body', code: 'unknown-role', detail: 'glomd' }])
+  })
+
+  it('sizes a painted symbol like every other symbol, in text and in an icon row', () => {
+    const row: FaceTemplate = {
+      base: [{ kind: 'icons', id: 'row', x: 2, y: 2, w: 50, h: 8, bind: { field: 'marks' }, iconMm: 4 }],
+      variants: {},
+    }
+    const out = compile({ type: CARD_STANDARD_63x88, face: row, row: { marks: 'svard|fara mynt' }, icons: set, palette })
+
+    expect(out.css).toContain('.byd-ink{display:inline-block;width:1em;background:currentColor;')
+    expect(out.css).toContain('[data-element="row"] .byd-icon{height:4mm;width:4mm;')
+    expect(out.html).toContain('style="background:#8f2d20;')
+    expect(out.html).toContain('<img class="byd-icon" src="mynt.svg" alt="mynt">')
+  })
+})

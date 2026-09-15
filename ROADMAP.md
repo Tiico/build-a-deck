@@ -119,6 +119,8 @@ Klar 2026-09-08: varje punkt nedan är byggd, och besluten bakom dem står i DES
 - ✅ Bordet är designerns (2026-09-15): receptet lägger bara öppningsbordet, varje zon och hög går att ta bort och stannar borta, leken är en roll en hög bär, och fliken "Bord" är listan över bordets alla zoner med filten bredvid (B5 reviderat).
 - ✅ Bilder: bildceller i editorns tabell, spelets bilder en gång var, innehållsadresserad lagring i R2 via `/assets` (E1, DRIFT §4).
 - ✅ Symbolbibliotek: fliken "Symboler" med sök och kategorier, väljare vid klammern i tabellen, symboler som projektets assets och licenser hela vägen till trycket (E4).
+- ✅ Symbolerna bär färg: spelet namnger sina betydelser med var sin färg, `{namn|roll}` i korttext och i ikonraden, biblioteket omritat som en form i en färg med hålen skurna så masken kan målas, och paletten dömd med kortkontrollens egna mått för kontrast och färgblindhet (E4, E5).
+- ✅ Bildens källa går att öppna och ramas mot ett mått: bildelementet bär hur stor andel av ramen motivet fyller och var det står, kortväggen bär måttet, listan över de filer som inte kan svara och lådan som öppnar en källa, och kortets egen avvikelse är ett recept bredvid raden — filen skrivs aldrig om (E1).
 - ✅ Fysisk validering: minsta textstorlek, kontrast, färgblindhet, utfall och linjetjocklek, som rapport på kortväggen och blockerande fel vid order (E5, E6).
 - ✅ Versionering: oföränderlig historik, namngivna milstolpar, diff i korttabellen och att ta tillbaka en äldre version (B4).
 - ✅ Regelboken: versionerat dokument med referenser till zoner och kort, skrivet i fliken "Regler", läst vid bordet och på telefonen, och tryckt som häfte i A5 genom samma renderare som korten (B7).

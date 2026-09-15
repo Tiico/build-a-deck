@@ -353,3 +353,75 @@ describe('a whole face at once (L17)', () => {
     expect(next.template.faces['back']).toEqual({ base: [], variants: {} })
   })
 })
+
+// The game's meanings and their colours (E4), and what each card asks of its template's measure
+// (E1). Both are edits like every other, so both are one version and one step back (B4).
+describe('the palette and the framing', () => {
+  const withArt = (): ProjectDoc => ({
+    ...base(),
+    rows: [
+      { id: 'dragon', fields: { title: 'Drake', art: 'asset:a', antal: 2 } },
+      { id: 'knight', fields: { title: 'Riddare', art: 'asset:b', antal: 1 } },
+    ],
+  })
+
+  it('names a meaning, repaints it, and takes it away again', () => {
+    const named = after(base(), { v: 'setRole', role: 'fara', colour: '#8f2d20' }, { v: 'setRole', role: 'vinst', colour: '#2f6136' })
+    expect(named.palette).toEqual({ fara: '#8f2d20', vinst: '#2f6136' })
+
+    expect(after(named, { v: 'setRole', role: 'fara', colour: '#a8410c' }).palette).toEqual({ fara: '#a8410c', vinst: '#2f6136' })
+    expect(after(named, { v: 'removeRole', role: 'fara' }).palette).toEqual({ vinst: '#2f6136' })
+  })
+
+  it('renames a meaning on every card that says it, since the cards write the name and not the colour', () => {
+    const doc = after(
+      { ...base(), rows: [{ id: 'dragon', fields: { title: 'Drake', body: 'Skada {svard|fara} 2 och {mynt|fara}.', antal: 1 } }] },
+      { v: 'setRole', role: 'fara', colour: '#8f2d20' },
+      { v: 'renameRole', from: 'fara', to: 'hot' },
+    )
+
+    expect(doc.palette).toEqual({ hot: '#8f2d20' })
+    expect(doc.rows[0]?.fields['body']).toBe('Skada {svard|hot} 2 och {mynt|hot}.')
+  })
+
+  it('keeps one card’s departure from the measure under the card and column it belongs to', () => {
+    const doc = after(withArt(), { v: 'setFraming', cardRef: 'dragon', field: 'art', framing: { zoom: 1.5 } })
+
+    expect(doc.framing).toEqual({ 'dragon/art': { zoom: 1.5 } })
+    expect(after(doc, { v: 'setFraming', cardRef: 'dragon', field: 'art', framing: null }).framing).toEqual({})
+  })
+
+  it('drops a departure when the picture it was made for leaves the cell', () => {
+    // A kept adjustment of a picture that is no longer there is a crop written by mistake: it
+    // would frame a stranger's art by numbers chosen for someone else's.
+    const framed = after(withArt(), { v: 'setFraming', cardRef: 'dragon', field: 'art', framing: { zoom: 1.5 } })
+
+    expect(after(framed, { v: 'setCell', cardRef: 'dragon', field: 'art', value: 'asset:c' }).framing).toEqual({})
+    // Another column on the same card is not that picture and leaves it alone.
+    expect(after(framed, { v: 'setCell', cardRef: 'dragon', field: 'title', value: 'Drakhona' }).framing).toEqual({ 'dragon/art': { zoom: 1.5 } })
+  })
+
+  it('drops a departure when the card itself goes', () => {
+    const framed = after(withArt(), { v: 'setFraming', cardRef: 'dragon', field: 'art', framing: { zoom: 1.5 } })
+
+    expect(after(framed, { v: 'removeRow', cardRef: 'dragon' }).framing).toEqual({})
+    expect(after(framed, { v: 'removeRow', cardRef: 'knight' }).framing).toEqual({ 'dragon/art': { zoom: 1.5 } })
+  })
+})
+
+// The guard sits where the value enters and not only where the document is written: an intent
+// comes from a browser and nothing between the two reads the schema.
+describe('a departure that cannot be one', () => {
+  it('is refused rather than stored, because a stored one crops that card on every render', () => {
+    const doc: ProjectDoc = { ...base(), rows: [{ id: 'dragon', fields: { title: 'Drake', art: 'asset:a', antal: 1 } }] }
+    const set = (framing: unknown) => () => applyEdit(doc, { v: 'setFraming', cardRef: 'dragon', field: 'art', framing } as EditIntent)
+
+    expect(set({ zoom: 0 })).toThrow()
+    expect(set({ dx: 3 })).toThrow()
+    expect(set({ zoom: 1.5 })).not.toThrow()
+  })
+
+  it('is refused for a card the deck does not have', () => {
+    expect(() => applyEdit(base(), { v: 'setFraming', cardRef: 'nobody', field: 'art', framing: { zoom: 2 } })).toThrow()
+  })
+})

@@ -21,5 +21,8 @@ export default defineConfig({
     // in the built files.
     assetsInlineLimit: (file) => (file.endsWith('.woff2') ? true : undefined),
   },
-  test: { setupFiles: ['./test/setup.ts'] },
+  // One test run at a time on this machine, whoever started it (#92 and its sequel). The
+  // budgets say how long a test may take; this says how much the machine may be asked to do at
+  // once, which is what makes those numbers mean anything. See the file for what was measured.
+  test: { setupFiles: ['./test/setup.ts'], globalSetup: ['../../test-support/one-suite-at-a-time.ts'] },
 })

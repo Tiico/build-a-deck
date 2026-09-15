@@ -26,9 +26,13 @@ const CONTRAST_WARNING = 4.5
 const HAIRLINE_ERROR_MM = 0.25
 const HAIRLINE_WARNING_MM = 0.4
 // Two colours are a difference to the eye above this distance, and one colour below it (CIE76).
-const APART = 22
-const TOGETHER = 11
-const BLINDNESS = ['protanopia', 'deuteranopia', 'tritanopia'] as const
+// Two colours a reader can tell apart, and two a colour-blind reader cannot. They are exported
+// because the palette (E4) has to pass the very same judgement the card check passes: a deck
+// should learn that two of its meanings collapse into one while it is naming them, not forty
+// cards later.
+export const APART = 22
+export const TOGETHER = 11
+export const BLINDNESS = ['protanopia', 'deuteranopia', 'tritanopia'] as const
 export type Blindness = (typeof BLINDNESS)[number]
 type Box = { id: string; x: number; y: number; w: number; h: number; el: Element }
 
