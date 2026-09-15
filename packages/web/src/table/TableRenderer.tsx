@@ -16,7 +16,7 @@ import { RadialMenu, type RadialItem } from './RadialMenu.js'
 import { ActionSheet } from './ActionSheet.js'
 import { RING_AIR, RING_REACH, ringCentre } from './ring.js'
 import { FAN_MAX, HAND_CARD_BOX, HAND_COUNT_ABOVE_MM, HAND_COUNT_MM, countSide, edgeRotation, fanPlace, feltWithHands, handAnchor, handExtent, handRotation, type TableMode } from './hand.js'
-import { nameAt, type Grow, type Rim } from './labels.js'
+import { gapAbove, nameAt, type Grow, type Rim } from './labels.js'
 import { useT, type T } from '../i18n/index.js'
 
 export type { TableMode } from './hand.js'
@@ -583,6 +583,9 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
         >
           {areas.map((z) => {
             const { rim, grow, anchor } = nameAt(z, floor, handOf(z.owner), rotate)
+            // Whether the name above is near enough to share this one's strip of felt (#43).
+            // The stylesheet moves it to the middle of its own zone when it is; see `gapAbove`.
+            const crowded = rim === 'none' && gapAbove(z, areas, handOf, floor, rotate) !== null
             return (
               <div
                 key={z.id}
@@ -590,6 +593,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 data-area={z.id}
                 data-rim={rim}
                 data-grow={grow}
+                {...(crowded ? { 'data-mid': '' } : {})}
                 style={{ left: left(z.geometry.x), top: top(z.geometry.y), width: px(z.geometry.w), height: px(z.geometry.h), ['--name-x' as string]: `${anchor.x}%`, ['--name-y' as string]: `${anchor.y}%` }}
               >
                 <span style={overRim(z, rim, grow)}>{z.name}</span>

@@ -2005,6 +2005,26 @@ Mätt på observatörens filt, fyra platser med yta och räknare framför varje,
 De 102 scenerna i `felt-names.test.tsx` — bordsläge vid varje platsantal och varje kvartsvarv, TV:n och Bord-fliken — är oförändrade.
 Minsta etikett är 12 px, som den alltid varit.
 
+**En delad zon under en plats ruta skriver sitt namn mitt över sig själv.**
+Utvidgat 2026-09-15 (#43), och det är det första i regeln som handlar om två namn som hör till olika zoner.
+
+En zon utan kant lägger sitt namn ovanför sin egen överkant; en zon vid norra kanten lägger sitt under sin egen underkant, eftersom ovanför den ligger handen.
+Där de två står över varandra — marknaden som en plats egen ruta hänger över — siktar båda namnen in i samma remsa filt.
+Var och en står ett fast antal skärmpixlar från sin egen kant medan remsan mellan dem är millimeter och växer med skalan, så de två vandrar mot varandra när filten ritas större och går igenom varandra vid ungefär två pixlar per millimeter.
+En fyrasitsig filt på en 4K-skärm ritas i 2,7 och en dubbeltryckning zoomar kameran 2,6× från där den står (C5): det är mitten av intervallet och inte ett hörn.
+Mätt: `Marknad` och `Framför B` ligger 30 mm isär, och vid fem platser på 3840 × 2160 ritas de på varandra.
+
+Lodrätt går de inte att hålla isär utan att något går sönder.
+Att hålla det ena kvar ovanför det andra vid varje skala prövades och förkastades på bilden: `Marknad` fastnar då på grannrutans egen kantlinje och läsordningen blir `Marknad`, `Framför B`, marknadsrutan — namnet ser ut att höra till rutan ovanför.
+Att låta dem passera och knuffas isär bara i passagen prövades också, och kräver att renderaren känner till hur hög en rad text är, alltså ett tal ur arket speglat i kod.
+
+Vågrätt finns rummet, och det kostar ingenting: platsens eget namn håller sig till sitt vänstra hörn och räknarnas till sitt högra, och mitten av en delad zon ligger mellan de två vid varje platsantal.
+Så namnet flyttar i sidled i stället för i höjdled, en gång och för den zonens hela liv — frågan är filtens geometri och inte skalan, så ingenting rör sig när kameran gör det.
+`gapAbove` i `labels.ts` svarar på om någon står nära nog ovanför; `CROWD_MM` är 120, fyra gånger de 30 mm receptet självt lämnar, och långt under de 310 mm som skiljer zonerna på en halvvänd filt — ett första utkast utan den gränsen höll upp `Marknad` mot en granne den aldrig skulle ha mött.
+
+Grinden är samma läsning som resten av K19, körd vid ett fönster till: `felt-names.test.tsx` läser nu varje namns målade låda på 3840 × 2160 också, vid varje platsantal och med marknaden både där och borta.
+Utan regeln är den röd vid fem platser; med den är alla 117 scenerna gröna, också när varje namn ritas 15 % bredare.
+
 ---
 
 ### K20. Filten skriver i ett eget typsnitt: Roboto Condensed, skeppat med appen (prototypat och byggt 2026-09-13, #95, #94)
