@@ -56,6 +56,10 @@ services:
       PORT: "8080"
       IDLE_EVICT_MS: ${IDLE_EVICT_MS:-1800000}
       IDLE_END_MS: ${IDLE_END_MS:-86400000}
+      # The release deploy.sh rolled to, so /health can be asked what the box runs (DRIFT §7).
+      # deploy.sh exports it in the same breath as it picks the images, so what the app says it
+      # is and what was pulled come from one variable. Unset by hand, and /health says nothing.
+      BYD_TAG: ${BYD_TAG:-}
       # Accounts (DRIFT §11): where login links point — and whether the cookie gets `Secure` —
       # and the mail that carries them. Without a key the link goes to this container's log,
       # which is development, not the box. AUTH_BYPASS is deliberately not passed: the box must

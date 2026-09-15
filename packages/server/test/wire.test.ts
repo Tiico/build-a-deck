@@ -3,6 +3,7 @@ import { WireClient } from './client.js'
 import { createSession, registerRoom, start, twoSeatSetup, type Running } from './fixture.js'
 import { deck } from './deck.js'
 import { MemoryObjectStore } from '@byd/render'
+import type { ObjectStore } from '@byd/render/queue'
 
 let run: Running
 let clients: WireClient[] = []
@@ -199,6 +200,35 @@ describe('connections', () => {
     await connect(id, null)
     const res = await fetch(`${run.http}/health`)
     expect(await res.json()).toEqual({ ok: true, tables: 1, store: 'ok' })
+  })
+
+  // What the box runs is not written anywhere it can be read from outside (DRIFT §8 leaves it
+  // with docker logs alone), so a deploy could only be verified by fingerprinting the bundle it
+  // serves. The release the box was started with is the one thing it knows about itself.
+  it('health names the release the box was told it is running', async () => {
+    await run.stop()
+    run = await start({ release: 'v0.8.0' })
+    const res = await fetch(`${run.http}/health`)
+    expect(await res.json()).toEqual({ ok: true, release: 'v0.8.0', tables: 0, store: 'ok' })
+  })
+
+  // A 503 is when the question is asked in earnest, and "which version is broken" is the first
+  // thing asked back. A marker that only the healthy answer carries is missing where it counts.
+  it('names it in the answer that says something is wrong, too', async () => {
+    await run.stop()
+    const objects = new MemoryObjectStore()
+    const unreachable: ObjectStore = {
+      put: objects.put.bind(objects),
+      get: objects.get.bind(objects),
+      link: async (key: string, ttl: number) => `https://r2.test/byd-assets/${key}?X-Amz-Expires=${ttl}`,
+      check: async () => {
+        throw new Error('bucket byd-assets: 503')
+      },
+    }
+    run = await start({ release: 'v0.8.0', objects: unreachable })
+    const sick = await fetch(`${run.http}/health`)
+    expect(sick.status).toBe(503)
+    expect(await sick.json()).toMatchObject({ ok: false, release: 'v0.8.0', assets: 'bucket byd-assets: 503' })
   })
 })
 
