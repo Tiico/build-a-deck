@@ -1,6 +1,7 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { reporting } from '../../test-support/report.js'
 
 export default defineConfig({
   plugins: [react()],
@@ -24,5 +25,9 @@ export default defineConfig({
   // One test run at a time on this machine, whoever started it (#92 and its sequel). The
   // budgets say how long a test may take; this says how much the machine may be asked to do at
   // once, which is what makes those numbers mean anything. See the file for what was measured.
-  test: { setupFiles: ['./test/setup.ts'], globalSetup: ['../../test-support/one-suite-at-a-time.ts'] },
+  //
+  // And the run leaves its own account on disk beside the one it prints, so a failure survives
+  // whatever anyone pipes the output through (#111): that is the whole of what that issue is
+  // about, and it has now happened twice.
+  test: { setupFiles: ['./test/setup.ts'], globalSetup: ['../../test-support/one-suite-at-a-time.ts'], ...reporting() },
 })

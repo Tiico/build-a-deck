@@ -5,3 +5,6 @@ dist/
 .env
 # A browser test builds the app beside itself and cleans up after; a run cut short must not leave a build to commit.
 packages/web/dist-*/
+
+# Varje körning lämnar sitt eget protokoll bredvid paketet (#111); det är en artefakt och inte källkod.
+packages/*/.vitest-report.json
