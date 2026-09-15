@@ -78,7 +78,23 @@ const PORT_CEILING = 30_000
 // The band is cut so that no two fixtures alive at the same time ever want the same number: a
 // slice per test worker, a counter walking that slice, and the whole run moved aside by the pid
 // of the process the workers hang off, so a second suite on the same box sits somewhere else.
-const PORTS_PER_WORKER = 8
+// Sixty-four and not eight (#109). The number is how far apart in time two fixtures in one worker
+// have to be before they are given the same port, and that distance is what stands between a
+// client that outlived its own server and a later fixture's door.
+//
+// It matters because a project id is the caller's word and not a unique one: nearly every file
+// here asks for `run.projects.create('p1', …)`, so two fixtures a slice apart hold two different
+// projects under one name. A stray client knocking on the recycled port asks for `p1`, is let in
+// because that server has a `p1` too, and lays its own edits on a project it was never opened on.
+// It has been seen twice: a font losing the licence just set on it (#109), and a table started at
+// `rev-2` when both of a pair should have read `rev-1`, a stray save having come between them.
+//
+// Eight is the distance at which that is reachable — `project-client.test.ts` alone starts
+// twenty-five fixtures, so its ninth test listens where its first one did. Sixty-four puts every
+// file in this suite past its own end. It is a mitigation and not a proof: the honest fix is for
+// two projects never to answer to one name, which is a rename across twenty-six files and is
+// written down rather than done here.
+const PORTS_PER_WORKER = 64
 const WORKERS_PER_RUN = 32
 const PORTS_PER_RUN = PORTS_PER_WORKER * WORKERS_PER_RUN
 const WORKER_SLOT = ((Number(process.env['VITEST_POOL_ID']) || 1) - 1) % WORKERS_PER_RUN
