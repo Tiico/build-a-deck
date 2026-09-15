@@ -113,4 +113,5 @@
   justify-content: center; align-content: start; align-items: start; gap: 10px;
   min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; padding: 4px;
 }
-.byd-spread-card { cursor: pointer; }
+/* The texture is absolute; its containing block must be this card, not the whole spread. */
+.byd-spread-card { position: relative; cursor: pointer; }
