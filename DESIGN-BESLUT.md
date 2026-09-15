@@ -1305,8 +1305,10 @@ Flödet har botten på två rader och sin rubrik, eftersom ett flöde kapat till
 Och på en låg skärm ställer sig docken två i bredd i stället för att skrollas till en halvritad plats: en lista som slutar mitt i en rad läses som en trasig rad och inte som mer nedanför, och docken är det enda på skärmen som alltid ska vara hel.
 Den tar då bredden den har i stället för höjden den inte har — vilket är formen den hade längs skärmens underkant ändå — och lämnar raden om vad platsen senast gjorde till flödet, som redan säger den i samma platsfärger.
 
-Grinden är `packages/web/test/tv-card-size.test.ts`, som mäter kortets bredd på den byggda appen i Chromium mot ett riktigt fyrasitsigt bord och fäller allt under 80 px.
+Grinden står i `packages/web/test/felt-names.test.tsx`, bland K18:s lästal och i samma mätning: kortets bredd läses i Chromium på ett fyrasitsigt bord i TV:ns eget krom, och allt under 80 px fälls.
+Den bor där och inte i en egen svit med en egen appbyggnad och en egen webbläsare, eftersom det är samma mätning på samma filt — och en webbläsare till i körningen är en körning till som faller på tid under last.
 Måttet är geometri och inte typografi — ett korts bredd är `63 mm × skalan` — så det beror inte på vilket typsnitt maskinen som kör det råkar ha.
+Med det gamla kromet läser den 70 px och fäller; med det nya 83.
 
 Prövat och förkastat i samma vända (prototyperna A, B och C, 2026-09-15):
 Att låta filten fylla skärmen kant till kant och lägga kromet ovanpå den gav exakt samma 82 px, eftersom kolumnen aldrig var det som kostade — och flödet krympte till en rad.
