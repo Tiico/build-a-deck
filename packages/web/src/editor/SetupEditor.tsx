@@ -11,6 +11,7 @@ import { useT, type T } from '../i18n/index.js'
 import { recipeWords } from './fields.js'
 import { useGesture } from './gesture.js'
 import { CardPreview } from './CardPreview.js'
+import { ZoneActions } from './ZoneActions.js'
 import { previewIcons } from './assets.js'
 import { previewFonts } from './fonts.js'
 
@@ -50,6 +51,7 @@ export function SetupEditor({ doc, client, assetBase, motifs }: SetupEditorProps
   // the header: a zone that went by mistake is one press from standing again.
   const [undoable, setUndoable] = useState<string | null>(null)
   const view = previewOf(doc)
+  const selectedZone = setup.zones.find((z) => z.id === selected)
   const remove = (zone: Zone) => {
     client.removeZone(zone.id)
     setUndoable(zone.name)
@@ -106,6 +108,12 @@ export function SetupEditor({ doc, client, assetBase, motifs }: SetupEditorProps
           />
         ) : (
           <p role="alert" className="byd-setup-invalid">{t('setup.invalid')}</p>
+        )}
+        {/* What the selected pile starts with and what it can be asked for (B5, K14), written as
+            sentences. Only a pile: an area and a hand have no ring to hang an action in, and a
+            hand's contents are the seat's and not the designer's (C3). */}
+        {selectedZone?.kind === 'pile' && (
+          <ZoneActions doc={doc} zone={selectedZone} onPatch={(patch, gesture) => client.patchZone(selectedZone.id, patch, gesture)} />
         )}
         {view && <SheetPreview view={view} seat={setup.seats[0] ?? null} />}
       </div>

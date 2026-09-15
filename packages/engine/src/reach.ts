@@ -18,6 +18,9 @@ export function reach(state: TableState, pile: ZoneId, which: CardQuery | undefi
     return count > order.length ? `zone ${pile} has fewer than ${count} components` : order.slice(0, count)
   }
   const cards = state.setup.cards ?? {}
-  const found = order.filter((id) => matches(which, cards[state.components[id]!.cardRef] ?? {}))
+  const found = order.filter((id) => {
+    const cardRef = state.components[id]?.cardRef
+    return cardRef !== undefined && matches(which, cards[cardRef] ?? {})
+  })
   return found.length > 0 ? found : `zone ${pile} has no components answering the question`
 }
