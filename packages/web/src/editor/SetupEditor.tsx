@@ -1,23 +1,28 @@
-import { useMemo, useRef, useState, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent } from 'react'
 import type { ProjectDoc } from '@byd/server'
 import type { Motif } from '@byd/template'
-import { shortcutsOf } from '../player/PlaySheet.js'
+import { targetsOf } from '../player/PlaySheet.js'
 import { TableRenderer, type FeltFit, type TableHandle } from '../table/TableRenderer.js'
 import { previewOf } from '../setup/preview.js'
-import { isRecipeZone, MAX_PLAYERS, type Counter, type Geometry, type Zone } from '@byd/server/doc'
+import { MAX_PLAYERS, type Counter, type Geometry, type Setup, type Zone } from '@byd/server/doc'
 import type { ProjectClient } from './ProjectClient.js'
 import type { ZonePatch } from '@byd/server/doc'
-import { useT } from '../i18n/index.js'
+import { useT, type T } from '../i18n/index.js'
 import { recipeWords } from './fields.js'
 import { useGesture } from './gesture.js'
 import { CardPreview } from './CardPreview.js'
 import { previewIcons } from './assets.js'
 import { previewFonts } from './fonts.js'
 
-// The setup editor (B5, K2), from the prototype: the recipe's knobs on the left lay the table
-// out; the table itself is the workspace, where every zone is a handle to drag, resize and name;
-// and the phone's sheet beside it shows what a player gets. The table is the real renderer fed
-// by the setup, so what the designer sees is what the screen will show.
+// The setup editor (B5, K2). The table is the designer's: the recipe laid the first one out and
+// then let go, so what stands here stands here because they left it standing. The list on the left
+// is every zone the table has, which is the only way to reach one that lies under another; the
+// felt beside it is the real renderer fed by the setup, so what the designer sees is what the
+// screen will show; and the phone's sheet under it shows what a player gets.
+//
+// What cannot go, and why each one: the felt is the table itself, a seat *is* a hand (C3), and the
+// deck has to lie in some pile — which is why the deck is a role a pile carries and not a zone, and
+// why moving the role is the way to be rid of the pile the wizard laid out.
 export type SetupEditorProps = {
   doc: ProjectDoc
   client: ProjectClient
@@ -41,45 +46,85 @@ export function SetupEditor({ doc, client, assetBase, motifs }: SetupEditorProps
   const t = useT()
   const setup = doc.setup
   const [selected, setSelected] = useState<string | null>(null)
+  // What the last step back would take back, said where the removal happened rather than only in
+  // the header: a zone that went by mistake is one press from standing again.
+  const [undoable, setUndoable] = useState<string | null>(null)
   const view = previewOf(doc)
-  const sel = setup.zones.find((z) => z.id === selected) ?? null
-  const add = (kind: 'area' | 'pile') => setSelected(client.addZone(kind, t))
+  const remove = (zone: Zone) => {
+    client.removeZone(zone.id)
+    setUndoable(zone.name)
+    if (selected === zone.id) setSelected(null)
+  }
+  const add = (kind: 'area' | 'pile') => {
+    setSelected(client.addZone(kind, t))
+    setUndoable(null)
+  }
   return (
     <div className="byd-setup" data-setup-editor>
       <div className="byd-setup-side">
-        <RecipePanel client={client} />
-        <SheetPreview zones={setup.zones} floor={setup.floor} />
-      </div>
-      <div className="byd-setup-canvas">
+        <SeatsPanel client={client} setup={setup} />
+        <ZoneList setup={setup} selected={selected} onSelect={setSelected} onRemove={remove} onPatch={(id, patch, gesture) => client.patchZone(id, patch, gesture)} onDeck={(id) => client.setDeck(id)} />
         <div className="byd-setup-tools">
           <button type="button" onClick={() => add('area')}>{t('setup.addArea')}</button>
           <button type="button" onClick={() => add('pile')}>{t('setup.addPile')}</button>
+          <button type="button" onClick={() => client.addSeatZone('mine', t)}>{t('setup.addSeatArea')}</button>
+          <button type="button" onClick={() => client.addSeatZone('counters', t)}>{t('setup.addSeatCounters')}</button>
+        </div>
+      </div>
+      <div className="byd-setup-canvas">
+        <div className="byd-setup-said" data-setup-said>
+          {undoable && (
+            <span className="byd-setup-undo" role="status">
+              {t('setup.removed', { name: undoable })}
+              <button
+                type="button"
+                onClick={() => {
+                  client.undo()
+                  setUndoable(null)
+                }}
+              >
+                {t('setup.undo')}
+              </button>
+            </span>
+          )}
           <span>{t('setup.hint')}</span>
         </div>
         {view ? (
-          <Felt view={view} doc={doc} assetBase={assetBase} motifs={motifs} zones={setup.zones} floor={setup.floor} selected={selected} onSelect={setSelected} onGeometry={(id, geometry, gesture) => client.patchZone(id, { geometry }, gesture)} />
+          <Felt
+            view={view}
+            doc={doc}
+            assetBase={assetBase}
+            motifs={motifs}
+            setup={setup}
+            selected={selected}
+            onSelect={(id) => {
+              setSelected(id)
+              setUndoable(null)
+            }}
+            onGeometry={(id, geometry, gesture) => client.patchZone(id, { geometry }, gesture)}
+            onRemove={remove}
+          />
         ) : (
           <p role="alert" className="byd-setup-invalid">{t('setup.invalid')}</p>
         )}
-        {sel && (
-          <ZoneProps
-            zone={sel}
-            setup={setup}
-            onPatch={(patch, gesture) => client.patchZone(sel.id, patch, gesture)}
-            onRemove={() => {
-              client.removeZone(sel.id)
-              setSelected(null)
-            }}
-          />
-        )}
+        {view && <SheetPreview view={view} seat={setup.seats[0] ?? null} />}
       </div>
     </div>
   )
 }
 
-// C: the knobs. The hand and the draw pile every game has; the rest is on or off, and the
-// counters are a list.
-function RecipePanel({ client }: { client: ProjectClient }) {
+// Why a zone cannot be taken away, in the words that say what to do instead — or nothing at all,
+// which means it can go. One rule, read by the list, by the felt's Delete and by the actor, so the
+// three never disagree about what the table cannot be without.
+function fixed(setup: Setup, zone: Zone, t: T): string | null {
+  if (zone.id === setup.floor) return t('setup.fixed.floor')
+  if (zone.kind === 'hand') return t('setup.fixed.hand')
+  if (zone.id === setup.deckZone) return t('setup.fixed.deck')
+  return null
+}
+
+// The knob the recipe still owns: who sits at the table, and what each seat keeps count of.
+function SeatsPanel({ client, setup }: { client: ProjectClient; setup: Setup }) {
   const t = useT()
   const recipe = client.recipe
   // The counters are the only knobs written into a letter at a time; the rest are turned once and
@@ -87,6 +132,10 @@ function RecipePanel({ client }: { client: ProjectClient }) {
   const typing = useGesture('counter-field')
   const turn = (patch: Partial<typeof recipe>, gesture?: string) => client.setRecipe({ ...recipe, ...patch }, recipeWords(t), gesture)
   const setCounter = (i: number, patch: Partial<Counter>) => turn({ counters: recipe.counters.map((c, j) => (j === i ? { ...c, ...patch } : c)) }, typing.token())
+  // Counters lie in the seats' counters zones (C4). A game whose seats have none draws no chips,
+  // however long the list is, so the panel says so where the list is rather than leaving the
+  // designer to wonder why the table looks the same.
+  const homeless = recipe.counters.length > 0 && !setup.seats.some((s) => setup.zones.some((z) => z.id === `counters:${s}`))
   return (
     <aside className="byd-setup-recipe">
       <section>
@@ -101,17 +150,11 @@ function RecipePanel({ client }: { client: ProjectClient }) {
             </button>
           ))}
         </div>
+        <p className="byd-setup-hint">{t('setup.seats.hint')}</p>
       </section>
       <section>
-        <h2>{t('setup.each')}</h2>
-        <label>
-          <input type="checkbox" checked readOnly disabled /> {t('setup.hand')}
-        </label>
-        <label>
-          <input type="checkbox" checked={recipe.mine} onChange={(e) => turn({ mine: e.target.checked })} /> {t('setup.mine')}
-        </label>
         <div className="byd-setup-counters">
-          <span>{t('setup.counters')}</span>
+          <h2>{t('setup.counters')}</h2>
           {recipe.counters.map((c, i) => (
             <div key={i} className="byd-setup-counter">
               <input aria-label={t('setup.counter.name', { n: i + 1 })} value={c.name} {...typing.visit} onChange={(e) => setCounter(i, { name: e.target.value })} />
@@ -125,6 +168,7 @@ function RecipePanel({ client }: { client: ProjectClient }) {
           <button type="button" onClick={() => turn({ counters: [...recipe.counters, recipe.counters.length === 0 ? { name: t('counter.score'), start: 0 } : { name: t('counter.life'), start: 20 }] })}>
             {t('setup.counter.add')}
           </button>
+          {homeless && <p className="byd-setup-note" role="status">{t('setup.counters.homeless')}</p>}
           {/* A seat's counters change shape at the third one (C4, K18, #89): one or two lie side by
               side along the seat's own rim, where a finger can reach each of them and the table can
               read both at three metres; a third stacks them into one pile, because three targets of
@@ -134,30 +178,104 @@ function RecipePanel({ client }: { client: ProjectClient }) {
           <p className="byd-setup-note">{t('setup.counter.stacks')}</p>
         </div>
       </section>
-      <section>
-        <h2>{t('setup.shared')}</h2>
-        <label>
-          <input type="checkbox" checked readOnly disabled /> {t('setup.draw')}
-        </label>
-        <label>
-          <input type="checkbox" checked={recipe.discard} onChange={(e) => turn({ discard: e.target.checked })} /> {t('setup.discard')}
-        </label>
-        <label>
-          <input type="checkbox" checked={recipe.market} onChange={(e) => turn({ market: e.target.checked })} /> {t('setup.market')}
-        </label>
-      </section>
-      <p className="byd-setup-hint">{t('setup.recipe.hint')}</p>
     </aside>
   )
 }
 
+// Every zone the table has, in two groups: what stands on the table, and what belongs to a seat.
+// The row is the handle a keyboard can reach and the only way to a zone that lies under another;
+// opening one shows what the zone is, and the × takes it away — or says, where the × would be, why
+// this one stays.
+function ZoneList({
+  setup,
+  selected,
+  onSelect,
+  onRemove,
+  onPatch,
+  onDeck,
+}: {
+  setup: Setup
+  selected: string | null
+  onSelect(id: string | null): void
+  onRemove(zone: Zone): void
+  onPatch(id: string, patch: ZonePatch, gesture?: string): void
+  onDeck(id: string): void
+}) {
+  const t = useT()
+  const groups: [string, Zone[]][] = [
+    [t('setup.group.table'), setup.zones.filter((z) => z.owner === undefined)],
+    [t('setup.group.seats'), setup.zones.filter((z) => z.owner !== undefined)],
+  ]
+  return (
+    <div className="byd-setup-zones" data-zone-list>
+      {groups.map(([title, zones]) =>
+        zones.length === 0 ? null : (
+          <section key={title}>
+            <h2>{title}</h2>
+            <ul aria-label={title}>
+              {zones.map((zone) => {
+                const why = fixed(setup, zone, t)
+                const open = selected === zone.id
+                const deck = setup.deckZone === zone.id
+                return (
+                  <li key={zone.id} data-zone-row={zone.id} data-open={open ? 'true' : undefined}>
+                    <div className="byd-setup-row">
+                      <button type="button" className="byd-setup-name" aria-expanded={open} onClick={() => onSelect(open ? null : zone.id)}>
+                        <i aria-hidden="true" data-kind={zone.kind} />
+                        <span>{zone.name}</span>
+                        {zone.owner !== undefined && <em>{zone.owner}</em>}
+                        {deck && <strong>{t('setup.deck.mark')}</strong>}
+                      </button>
+                      {why === null ? (
+                        <button type="button" className="byd-setup-x" aria-label={t('setup.remove.of', { name: zone.name })} onClick={() => onRemove(zone)}>
+                          ×
+                        </button>
+                      ) : (
+                        <span className="byd-setup-fast" title={why} aria-label={why}>
+                          {t('setup.fixed')}
+                        </span>
+                      )}
+                    </div>
+                    {open && <ZoneProps zone={zone} setup={setup} why={why} onPatch={(patch, gesture) => onPatch(zone.id, patch, gesture)} onDeck={() => onDeck(zone.id)} />}
+                  </li>
+                )
+              })}
+            </ul>
+          </section>
+        ),
+      )}
+    </div>
+  )
+}
+
 // B: the felt with a handle on every zone but the floor. Dragging moves, the corner resizes,
-// both in whole millimetres snapped to a small grid; the arrow keys nudge the focused one.
+// both in whole millimetres snapped to a small grid; the arrow keys nudge the focused one, and
+// Delete takes the selected one away.
 // A drag carries the token of the grab it belongs to (L14): the pointer reports one pull as a
 // patch per frame, and all of those frames are one step back. The token is made where the grab
 // begins, so the next grab of the same zone is the next step.
 type Drag = { id: string; mode: 'move' | 'resize'; start: { x: number; y: number }; geometry: Geometry; gesture: string }
-function Felt({ view, doc, assetBase, motifs, zones, floor, selected, onSelect, onGeometry }: { view: NonNullable<ReturnType<typeof previewOf>>; doc: ProjectDoc; assetBase?: string | undefined; motifs?: Record<string, Motif> | undefined; zones: readonly Zone[]; floor: string; selected: string | null; onSelect(id: string | null): void; onGeometry(id: string, geometry: Geometry, gesture?: string): void }) {
+function Felt({
+  view,
+  doc,
+  assetBase,
+  motifs,
+  setup,
+  selected,
+  onSelect,
+  onGeometry,
+  onRemove,
+}: {
+  view: NonNullable<ReturnType<typeof previewOf>>
+  doc: ProjectDoc
+  assetBase?: string | undefined
+  motifs?: Record<string, Motif> | undefined
+  setup: Setup
+  selected: string | null
+  onSelect(id: string | null): void
+  onGeometry(id: string, geometry: Geometry, gesture?: string): void
+  onRemove(zone: Zone): void
+}) {
   const t = useT()
   // What the back is compiled from, held by identity and by the parts of the document it is
   // actually made of. The wall can key these on the whole document because nothing redraws the
@@ -209,9 +327,29 @@ function Felt({ view, doc, assetBase, motifs, zones, floor, selected, onSelect, 
     e.preventDefault()
     onGeometry(z.id, { ...z.geometry, x: z.geometry.x + d.x, y: z.geometry.y + d.y })
   }
+  // Delete is bound to the window and not to the handle, because a handle never has the focus: the
+  // pointer that selects it is the pointer that starts a drag, and the drag takes the default
+  // action — focus among it — away. Bound where the focus actually is, a field being typed in is
+  // the one place the key means something else.
+  const state = useRef({ selected, setup, onRemove })
+  state.current = { selected, setup, onRemove }
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return
+      const el = document.activeElement as HTMLElement | null
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return
+      const now = state.current
+      const zone = now.setup.zones.find((z) => z.id === now.selected)
+      if (!zone || fixed(now.setup, zone, t) !== null) return
+      e.preventDefault()
+      now.onRemove(zone)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [t])
   const overlay = (fit: FeltFit) =>
-    zones
-      .filter((z) => z.id !== floor)
+    setup.zones
+      .filter((z) => z.id !== setup.floor)
       .map((z) => {
         const box = boxOf(z)
         return (
@@ -229,6 +367,7 @@ function Felt({ view, doc, assetBase, motifs, zones, floor, selected, onSelect, 
             aria-pressed={selected === z.id}
             data-zone-handle={z.id}
             data-kind={z.kind}
+            data-deck={z.id === setup.deckZone ? 'true' : undefined}
             style={{ left: fit.left(box.x), top: fit.top(box.y), width: fit.px(box.w), height: fit.px(box.h) }}
             onPointerDown={(e) => down(e, z, 'move')}
             onPointerMove={move}
@@ -288,27 +427,26 @@ function boxOf(z: Zone): { x: number; y: number; w: number; h: number } {
 }
 const snap = (mm: number) => Math.round(mm / SNAP_MM) * SNAP_MM
 
-// The selected zone's properties. Recipe zones keep their owner and visibility — the recipe
-// decides those — and only the designer's own zones can go.
-function ZoneProps({ zone, setup, onPatch, onRemove }: { zone: Zone; setup: ProjectDoc['setup']; onPatch(patch: ZonePatch, gesture?: string): void; onRemove(): void }) {
+// What a zone is, opened inside its row. Everything about it is the designer's — its name, its
+// verb on the phone, whose it is and who sees into it — because the table is theirs; a hand is the
+// exception, and the seat that owns it is the reason.
+function ZoneProps({ zone, setup, why, onPatch, onDeck }: { zone: Zone; setup: Setup; why: string | null; onPatch(patch: ZonePatch, gesture?: string): void; onDeck(): void }) {
   const t = useT()
   // The two fields that are written into a letter at a time. What is chosen rather than typed —
   // where a pile is entered, whose the zone is, who may see it — is written once and is its own
   // step back, as it always was (L14).
   const typing = useGesture('zone-field')
-  const own = !isRecipeZone(zone.id, setup)
   const floor = zone.id === setup.floor
-  const kind = t(floor ? 'setup.kind.floor' : zone.kind === 'pile' ? 'setup.kind.pile' : zone.kind === 'hand' ? 'setup.kind.hand' : 'setup.kind.area')
+  const hand = zone.kind === 'hand'
   const g = zone.geometry
   return (
     <div className="byd-setup-props" data-zone-props={zone.id}>
-      <strong>{kind}</strong>
       {/* A hand has no name of its own to give. Whoever sits at it names it: the felt lays that
           seat's name card on the hand (K9, K19) and the keyboard's list of places offers it under
           the same name, so a name typed here was a string no surface ever drew — it lived in this
           field and in an `aria-label`, and nowhere else. The field is gone and the reason stands
           in its place, because a hole explains nothing (L4). */}
-      {zone.kind === 'hand' ? (
+      {hand ? (
         <p className="byd-setup-hint">{t('setup.name.seat')}</p>
       ) : (
         <label>
@@ -316,22 +454,34 @@ function ZoneProps({ zone, setup, onPatch, onRemove }: { zone: Zone; setup: Proj
           <input aria-label={t('setup.name.of', { name: zone.name })} value={zone.name} {...typing.visit} onChange={(e) => onPatch({ name: e.target.value }, typing.token())} />
         </label>
       )}
-      {!floor && zone.kind !== 'hand' && (
+      {!floor && !hand && (
         <label>
           {t('setup.shortcut')}
           <input aria-label={t('setup.shortcut.of', { name: zone.name })} placeholder={zone.name} value={zone.shortcut?.label ?? ''} {...typing.visit} onChange={(e) => onPatch({ shortcut: e.target.value ? { label: e.target.value, at: zone.shortcut?.at ?? 'top' } : undefined }, typing.token())} />
         </label>
       )}
       {zone.kind === 'pile' && (
-        <label>
-          {t('setup.at')}
-          <select aria-label={t('setup.at.of', { name: zone.name })} value={zone.shortcut?.at ?? 'top'} onChange={(e) => onPatch({ shortcut: { label: zone.shortcut?.label ?? zone.name, at: e.target.value === 'bottom' ? 'bottom' : 'top' } })}>
-            <option value="top">{t('setup.at.top')}</option>
-            <option value="bottom">{t('setup.at.bottom')}</option>
-          </select>
-        </label>
+        <>
+          <label>
+            {t('setup.at')}
+            <select aria-label={t('setup.at.of', { name: zone.name })} value={zone.shortcut?.at ?? 'top'} onChange={(e) => onPatch({ shortcut: { label: zone.shortcut?.label ?? zone.name, at: e.target.value === 'bottom' ? 'bottom' : 'top' } })}>
+              <option value="top">{t('setup.at.top')}</option>
+              <option value="bottom">{t('setup.at.bottom')}</option>
+            </select>
+          </label>
+          {/* The deck is a role a pile carries (B5, K10): a designer may call any pile the deck,
+              and the cards are dealt from wherever the role is. Moving it is also the only way to
+              be rid of the pile it lies in. */}
+          {setup.deckZone === zone.id ? (
+            <p className="byd-setup-hint">{t('setup.deck.here')}</p>
+          ) : (
+            <button type="button" onClick={onDeck}>
+              {t('setup.deck.move', { name: zone.name })}
+            </button>
+          )}
+        </>
       )}
-      {own && (
+      {!hand && (
         <>
           <label>
             {t('setup.owner')}
@@ -358,19 +508,19 @@ function ZoneProps({ zone, setup, onPatch, onRemove }: { zone: Zone; setup: Proj
         {Math.round(g.x)}, {Math.round(g.y)}
         {zone.kind !== 'pile' ? ` · ${Math.round(g.w)} × ${Math.round(g.h)} mm` : ' mm'}
       </span>
-      {own && (
-        <button type="button" onClick={onRemove}>
-          {t('setup.removeZone')}
-        </button>
-      )}
+      {why !== null && <p className="byd-setup-why">{why}</p>}
     </div>
   )
 }
 
-// What the phone shows (C4): every target with its verb, the floor last.
-function SheetPreview({ zones, floor }: { zones: readonly Zone[]; floor: string }) {
+// What the phone shows (C4), as one seat sees it: every target with its verb, the floor last.
+// A sheet belongs to a seat, so the preview is taken for the first one — another seat's own area
+// is not a place this player can play to, and a zone that only holds counters is no place for a
+// card at all (B6, C4). Asked for the table as a whole it listed every seat's "Framför mig" and
+// every counters zone, which is a sheet no phone ever draws.
+function SheetPreview({ view, seat }: { view: NonNullable<ReturnType<typeof previewOf>>; seat: string | null }) {
   const t = useT()
-  const preview = shortcutsOf(zones, floor)
+  const preview = targetsOf({ ...view, seat }, t)
   return (
     <div className="byd-zones-preview" data-sheet-preview>
       <h2>{t('setup.sheet.title')}</h2>
@@ -382,10 +532,6 @@ function SheetPreview({ zones, floor }: { zones: readonly Zone[]; floor: string 
             <small>{target.kind === 'pile' ? t(target.at === 'bottom' ? 'setup.sheet.bottomIn' : 'setup.sheet.topIn', { name: target.name }) : t('setup.sheet.free')}</small>
           </div>
         ))}
-        <div role="presentation">
-          <span>{t('setup.sheet.table')}</span>
-          <small>{t('setup.sheet.free')}</small>
-        </div>
       </div>
     </div>
   )

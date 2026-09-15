@@ -27,6 +27,11 @@ async function startTable(project = 'p1'): Promise<string> {
   return made.id
 }
 
+// Fliken "Bord" bär två listor sedan zonlistan kom (B5 reviderat): bordets zoner och spelets
+// bord. Frågorna här gäller den andra, så de ställs inuti den, och den har ett namn att fråga
+// efter — vilket en skärmläsare behöver av samma skäl.
+const tables = async () => within(await screen.findByRole('list', { name: 'Spelets bord' }))
+
 async function openTables(): Promise<void> {
   const user = userEvent.setup()
   history.replaceState(null, '', `/editor?project=p1&server=${encodeURIComponent(run.http)}`)
@@ -54,7 +59,7 @@ describe('the Bord tab (#19)', () => {
     const id = await startTable()
     await openTables()
 
-    const table = await screen.findByRole('listitem')
+    const table = await (await tables()).findByRole('listitem')
     expect(table.getAttribute('data-table')).toBe(id)
     expect(table.textContent).toContain('rev-1')
     expect(table.textContent).toContain('inga drag än')
@@ -64,7 +69,8 @@ describe('the Bord tab (#19)', () => {
     await run.projects.create('p1', projectDoc())
     await openTables()
     expect(await screen.findByText(/Inget bord ännu/)).toBeTruthy()
-    expect(screen.queryAllByRole('listitem')).toHaveLength(0)
+    // Utan bord finns ingen lista alls, bara meningen om att det inte finns något.
+    expect(screen.queryByRole('list', { name: 'Spelets bord' })).toBeNull()
   })
 })
 
@@ -73,7 +79,7 @@ describe('the ways into a table (#19)', () => {
     await run.projects.create('p1', projectDoc())
     const id = await startTable()
     await openTables()
-    const row = await screen.findByRole('listitem')
+    const row = await (await tables()).findByRole('listitem')
     const ws = run.http.replace(/^http/, 'ws')
     const name = id.slice(0, 8)
 
@@ -112,7 +118,7 @@ describe('what the Bord tab says about a running table (#19, C7)', () => {
     await run.projects.replace('p1', 1, { ...worked, rows: [...worked.rows, { id: 'älva', fields: { title: 'Älva', body: 'Flyger tyst.', antal: 1 } }] })
 
     await openTables()
-    const row = await screen.findByRole('listitem')
+    const row = await (await tables()).findByRole('listitem')
     // Who sits comes in the snapshot and who watches in the roster — two frames, so two renders
     // are possible; both are waited for rather than read off whichever arrived first.
     expect(await within(row).findByText(/Ada spelar/)).toBeTruthy()
@@ -135,7 +141,7 @@ describe('what the Bord tab says about a running table (#19, C7)', () => {
     table.close()
 
     await openTables()
-    const row = await screen.findByRole('listitem')
+    const row = await (await tables()).findByRole('listitem')
     expect(await within(row).findByText(/avslutat/)).toBeTruthy()
     expect(row.textContent).not.toContain('ligger efter')
     expect(row.getAttribute('data-stale')).toBe('false')
@@ -145,7 +151,7 @@ describe('what the Bord tab says about a running table (#19, C7)', () => {
     await run.projects.create('p1', projectDoc())
     await startTable()
     await openTables()
-    const row = await screen.findByRole('listitem')
+    const row = await (await tables()).findByRole('listitem')
     expect(await within(row).findByText(/ingen sitter än/)).toBeTruthy()
     expect(row.textContent).not.toContain('ligger efter')
     expect(row.getAttribute('data-stale')).toBe('false')
@@ -157,7 +163,7 @@ describe('the thumbnail of a table (#19, K9)', () => {
     await run.projects.create('p1', projectDoc())
     const id = await startTable()
     await openTables()
-    const row = await screen.findByRole('listitem')
+    const row = await (await tables()).findByRole('listitem')
 
     // Four cards in the deck: the dragon twice, the knight, the wizard.
     const draw = () => row.querySelector('[data-zone="draw"]')?.getAttribute('data-count')
@@ -178,7 +184,7 @@ describe('ending a table from the editor (#19, C9)', () => {
     await run.projects.create('p1', projectDoc())
     const id = await startTable()
     await openTables()
-    const row = await screen.findByRole('listitem')
+    const row = await (await tables()).findByRole('listitem')
     const name = id.slice(0, 8)
     const ask = within(row).getByRole('button', { name: `Avsluta bordet ${name}` })
 
@@ -213,7 +219,7 @@ describe('the QR for the phones (#19, K12)', () => {
     await run.projects.create('p1', projectDoc())
     const id = await startTable()
     await openTables()
-    const row = await screen.findByRole('listitem')
+    const row = await (await tables()).findByRole('listitem')
     const ws = run.http.replace(/^http/, 'ws')
     const join = `${location.origin}/join?code=${roomOf(id).code}&server=${encodeURIComponent(ws)}`
 
@@ -239,7 +245,7 @@ describe('starting a table from the Bord tab (#19, L5)', () => {
     await screen.findByText(/Inget bord ännu/)
 
     await user.click(screen.getByRole('button', { name: 'Nytt bord från rev 1' }))
-    const row = await screen.findByRole('listitem')
+    const row = await (await tables()).findByRole('listitem')
     const started = (await (await fetch(`${run.http}/projects/p1/sessions`, { method: 'GET' })).json()) as { id: string }[]
     expect(started.map((t) => t.id)).toEqual([row.getAttribute('data-table')])
     expect(row.textContent).toContain('rev-1')
@@ -280,7 +286,7 @@ describe('the shortcut to the table from every other tab (#19, variant B)', () =
     expect(screen.getByRole('tab', { name: 'Bord' }).getAttribute('aria-selected')).toBe('true')
     // Two tables in the tab, newest first; the shortcut closed behind itself.
     expect(screen.queryByRole('group', { name: 'Bordet' })).toBeNull()
-    const rows = await screen.findAllByRole('listitem')
+    const rows = (await tables()).getAllByRole('listitem')
     expect(rows).toHaveLength(2)
     expect(rows[0]!.getAttribute('data-table')).toBe(newest)
   })

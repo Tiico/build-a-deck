@@ -7,7 +7,7 @@ import { dirname, join } from 'node:path'
 import { expect } from 'vitest'
 import { CARD_STANDARD_63x88, STANDARD_TYPES, TOKEN_COUNTER, TypeRegistry, initialState, project, type SetupDef } from '@byd/engine'
 import type { Snapshot } from '@byd/protocol'
-import { SWEDISH_WORDS, applyRecipe, emptySetup, type Setup } from '@byd/server/doc'
+import { SWEDISH_WORDS, openingSetup, type Setup } from '@byd/server/doc'
 
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
@@ -156,12 +156,16 @@ export const seatNameOf = (seat: string): string => `Spelare ${seat.charCodeAt(0
 // The table the recipe lays out for that many seats (K18), which is the table every surface here
 // draws — the editor's preview from the document, the played felt from the log. The seats carry
 // everything a seat can have, since the question is what happens when one edge holds two of them.
-// The market is a knob on the same recipe and a zone nobody owns, 200 mm in from the north rim —
-// the one band a seat's own names were sent into when they were moved off that rim. A scene
-// pinned to one setting of it measures half a table, so every reading below is taken with it both
-// on and off.
-export const feltOf = (seats: number, market = false): Setup =>
-  applyRecipe(emptySetup(), { players: seats, mine: true, discard: true, market, counters: COUNTERS }, SWEDISH_WORDS)
+// The market is a zone nobody owns, 200 mm in from the north rim — the one band a seat's own names
+// were sent into when they were moved off that rim. A scene pinned to one setting of it measures
+// half a table, so every reading below is taken with it both there and gone. It is laid out here
+// rather than by a knob, because the table is the designer's and the market is a zone like any
+// other since B5 was revised.
+export const feltOf = (seats: number, market = false): Setup => {
+  const setup = openingSetup({ players: seats, counters: COUNTERS }, SWEDISH_WORDS)
+  if (!market) return setup
+  return { ...setup, zones: [...setup.zones, { id: 'market', kind: 'area', name: 'Marknad', visibility: 'all', geometry: { x: -260, y: -200, w: 520, h: 120, rot: 0 }, shortcut: { label: 'Till marknaden', at: 'top' } }] }
+}
 
 // The same table as the engine projects it, with something lying in every hand and in every area
 // in front of a seat: a label is judged against what is dealt near it, not against bare felt.

@@ -363,13 +363,15 @@ describe('the setup in the editor (B5, K2)', () => {
   it('turns the recipe, adds and removes free zones, moves and reshapes a zone, and saves it all', async () => {
     const created = await run.projects.create('p1', projectDoc())
     const client = await ProjectClient.open({ http: run.http, id: created.id })
-    expect(client.recipe).toEqual({ players: 2, mine: false, discard: true, market: false, counters: [] })
+    expect(client.recipe).toEqual({ players: 2, counters: [] })
 
-    client.setRecipe({ ...client.recipe, players: 3, market: true, counters: [{ name: 'Poäng', start: 0 }] })
+    client.setRecipe({ ...client.recipe, players: 3, counters: [{ name: 'Poäng', start: 0 }] })
     expect(client.doc.setup.seats).toEqual(['A', 'B', 'C'])
-    expect(client.doc.setup.zones.find((z) => z.id === 'market')?.kind).toBe('area')
-    expect(client.doc.setup.zones.find((z) => z.id === 'counters:C')?.owner).toBe('C')
+    expect(client.doc.setup.zones.find((z) => z.id === 'hand:C')?.owner).toBe('C')
     expect(client.recipe.players).toBe(3)
+    // Räknarna behöver en zon per plats, och den ger designern dem — i en edit (B5).
+    client.addSeatZone('counters')
+    expect(client.doc.setup.zones.filter((z) => z.id.startsWith('counters:')).map((z) => z.owner)).toEqual(['A', 'B', 'C'])
 
     const altar = client.addZone('area')
     const bag = client.addZone('pile')
@@ -383,9 +385,16 @@ describe('the setup in the editor (B5, K2)', () => {
     expect(client.doc.setup.zones.find((z) => z.id === altar)?.owner).toBeUndefined()
     client.removeZone(bag)
     expect(client.doc.setup.zones.some((z) => z.id === bag)).toBe(false)
-    // The floor and the deck zone cannot go.
+    // Filten, händerna och lekens hög står fast; leken flyttar, och då går draghögen att ta bort.
     expect(() => client.removeZone('table')).toThrow()
+    expect(() => client.removeZone('hand:A')).toThrow()
     expect(() => client.removeZone('draw')).toThrow()
+    const deck = client.addZone('pile')
+    client.setDeck(deck)
+    client.removeZone('draw')
+    expect(client.doc.setup.deckZone).toBe(deck)
+    expect(client.doc.setup.zones.some((z) => z.id === 'draw')).toBe(false)
+    expect(client.doc.setup.zones.filter((z) => z.kind === 'hand').every((z) => z.returnTo === deck)).toBe(true)
 
     expect(await client.save()).toEqual({ ok: true, rev: 2 })
     const stored = await run.projects.load('p1')

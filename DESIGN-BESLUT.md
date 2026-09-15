@@ -233,6 +233,31 @@ Egna zoner läggs till som yta eller hög, får namn, genväg, ägare och synlig
 Setupen valideras av motorn i webbläsaren: går bordet inte att bygga säger editorn det i stället för att rita.
 Telefonens ark står bredvid som förhandsvisning av spelarens verb.
 
+Reviderat 2026-09-15: **bordet är designerns, och receptet är bara wizardens första drag.**
+
+Receptet ägde en namnrymd av zoner och la tillbaka dem.
+Följden var ett bord ingen bestämde över: kasthögen, marknaden, ytan framför platsen och räknarzonen gick bara att stänga av med ett kryss i panelen, och krysset la tillbaka zonen nästa gång någon rörde det.
+Draghögen och händerna gick inte att röra alls, och receptets zoner fick inte ens en ägare eller en synlighet av designern.
+
+Det som gäller nu:
+
+- Receptet lägger öppningsbordet (`openingSetup`) och släpper det sedan: platser kring en filt som rymmer dem (K18), var sin hand, yta framför sig och räknarzon, plus drag- och kasthög.
+- Varje zon och hög går att ta bort, och det borttagna kommer aldrig tillbaka — inte heller när platsantalet vrids.
+- Tre zoner står fast, var och en av sitt eget skäl: filten är bordet självt, en plats **är** en hand (C3), och leken måste ligga i någon hög.
+- Leken är en roll en hög bär, inte en zon: `deckZone` pekas om till vilken hög som helst, händernas `returnTo` följer med, och därför går också draghögen att ta bort — efter att rollen flyttat.
+- Namn, genväg, ägare och synlighet är designerns på varje zon. Undantaget är handen, som platsen namnger (K9, K19), och som ägs av sin plats.
+- Kvar av receptet är platsantalet och räknarlistan, för det är platsernas fråga. En plats som tillkommer läggs ut som de som redan sitter: en hand, och de per-plats-zoner *alla* har. En plats som lämnar bordet tar sina zoner med sig — receptets och designerns egna, för en zon som hör till en plats som inte sitter vid bordet hör till ingen.
+- Motsatsen till att ta bort en zon per plats är `addSeatZone`: varje plats får en yta framför sig eller en räknarzon igen, i en enda edit och därmed ett enda steg tillbaka (B4).
+- Marknaden var en ratt som la en namngiven rektangel på bordet. Den är nu en yta som vilken annan, med den skillnaden att designern skriver namnet själv.
+
+Editorns flik "Bord" är därefter listan över varje zon bordet har, grupperad i det som står på bordet och det som är platsernas, med filten bredvid: raden är vägen in till en zon som ligger under en annan, vilket inget handtag på filten är.
+Raden bär slag, ägare, lek-märke och ett kryss — eller ordet "fast" och skälet, för den som inte kan gå.
+Delete tar bort den markerade zonen och är bunden till fönstret, eftersom ett handtag på filten aldrig har fokus: pekaren som markerar det är pekaren som börjar draget, och draget tar standardhandlingen.
+Efter en borttagning står zonens namn och "Ångra" vid filten; ångra är editorns eget steg tillbaka (B4) och inte en andra mekanism.
+
+Följden för en logg som redan skrivits: en `setRecipe` i svansen av ett osparat projekt bär fält som inte längre betyder något, och de läses förbi (som `project-actor.load` redan gör för varje intent vars mening ändrats).
+En sådan rad lägger inte längre tillbaka en kasthög och tar inte bort en marknad; den sätter platser och räknare, vilket är vad verbet betyder nu.
+
 ### B6. Synlighet: zonhärledd standard med undantag per komponent (fråga 35)
 
 Synlighet är i grunden en egenskap hos zonen: hand är bara ägaren, bord är alla, draghög är ingen.

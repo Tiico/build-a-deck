@@ -20,7 +20,7 @@ import { render } from '@testing-library/react'
 import { chromium, type Browser, type Page } from 'playwright'
 import { STANDARD_TYPES, TypeRegistry, initialState, project } from '@byd/engine'
 import type { Snapshot } from '@byd/protocol'
-import { MAX_PLAYERS, SWEDISH_WORDS, applyRecipe, emptySetup, setupFromProject, type Setup } from '@byd/server/doc'
+import { MAX_PLAYERS, SWEDISH_WORDS, openingSetup, setupFromProject, type Setup } from '@byd/server/doc'
 import { TableRenderer } from '../src/table/TableRenderer.js'
 import { TvChrome } from '../src/table/TvChrome.js'
 
@@ -51,7 +51,7 @@ const MODES = ['tv', 'table'] as const
 const SEATS = Array.from({ length: MAX_PLAYERS - 1 }, (_, i) => i + 2)
 
 const feltOf = (seats: number): Setup =>
-  applyRecipe(emptySetup(), { players: seats, mine: true, discard: true, market: false, counters: NAMED }, SWEDISH_WORDS)
+  openingSetup({ players: seats, counters: NAMED }, SWEDISH_WORDS)
 
 function sceneOf(setup: Setup): Snapshot {
   const rows = Array.from({ length: 20 }, (_, i) => ({ id: `Kort ${i + 1}`, fields: {} }))

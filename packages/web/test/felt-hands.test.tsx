@@ -14,7 +14,7 @@ import { render } from '@testing-library/react'
 import { chromium, type Browser, type Page } from 'playwright'
 import { CARD_STANDARD_63x88, STANDARD_TYPES, TOKEN_COUNTER, TypeRegistry, initialState, project, type SetupDef } from '@byd/engine'
 import type { Snapshot } from '@byd/protocol'
-import { MAX_PLAYERS, SWEDISH_WORDS, applyRecipe, emptySetup, type Setup } from '@byd/server/doc'
+import { MAX_PLAYERS, SWEDISH_WORDS, openingSetup, type Setup } from '@byd/server/doc'
 import { TableRenderer } from '../src/table/TableRenderer.js'
 import { TvChrome } from '../src/table/TvChrome.js'
 import { FAN_MAX } from '../src/table/hand.js'
@@ -37,7 +37,7 @@ const FRAME = { w: 1280, h: 800 }
 
 // The table the wizard lays out for that many seats (K18): every seat with a hand, an area in
 // front and a counter beside it, which is the recipe that puts a zone right next to every hand.
-const feltOf = (seats: number): Setup => applyRecipe(emptySetup(), { players: seats, mine: true, discard: true, market: false, counters: COUNTERS }, SWEDISH_WORDS)
+const feltOf = (seats: number): Setup => openingSetup({ players: seats, counters: COUNTERS }, SWEDISH_WORDS)
 
 // The same table as the engine projects it, with `held` cards in every hand: a fan is measured
 // with something in it, since an empty hand draws no fan.
