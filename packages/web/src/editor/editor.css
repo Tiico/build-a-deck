@@ -413,7 +413,7 @@
 /* At arm's length the cards are small; the wall packs them closer instead of leaving holes. */
 .byd-wall[data-arm] { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
 .byd-wall-card[data-marked] { outline: 3px solid #f0b64a; outline-offset: 3px; }
-.byd-wall-checks { align-self: start; padding: 16px; border-radius: 16px; background: var(--byd-editor-panel-bg); border: 1px solid #2f333d; }
+.byd-wall-checks { grid-column: 2; align-self: start; padding: 16px; border-radius: 16px; background: var(--byd-editor-panel-bg); border: 1px solid #2f333d; }
 .byd-wall-checks h2 { margin: 0 0 10px; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-wall-ok { margin: 0; color: #7dd3a0; line-height: 1.5; }
 .byd-wall-lead { margin: 0 0 10px; color: #9aa3b8; font-size: 12px; line-height: 1.5; }
@@ -428,7 +428,7 @@
 .byd-wall-check-detail p { margin: 0; color: #cfd5e3; font-size: 12px; line-height: 1.5; }
 .byd-wall-check-detail span { color: var(--byd-editor-quiet); font: 11px ui-monospace, monospace; }
 
-.byd-wall { padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; align-content: start; }
+.byd-wall { grid-column: 1; grid-row: 2 / -1; padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; align-content: start; }
 .byd-wall-card { position: relative; border-radius: 8px; cursor: pointer; }
 .byd-wall-card[aria-selected='true'] { outline: 3px solid var(--byd-editor-primary-mark); outline-offset: 3px; }
 .byd-wall-copies, .byd-wall-warnings { position: absolute; border-radius: 999px; font-size: 11px; font-weight: 700; padding: 1px 6px; }
@@ -1240,6 +1240,33 @@
 .byd-symbols-issue { margin: 8px 0 0; padding: 6px 10px; border-radius: 8px; background: var(--byd-editor-lost-bg); color: #ffc9d6; font-size: 12px; }
 .byd-symbols-add { margin-top: 10px; }
 .byd-role-list > button { display: grid; grid-template-columns: 16px 1fr; align-items: center; gap: 10px; }
+/* The deck's measure, beside the wall where the whole deck can be seen at once (E1). */
+.byd-wall-measure { grid-column: 2; align-self: start; margin-bottom: 16px; padding: 14px; border-radius: 12px; background: var(--byd-editor-panel-bg); border: 1px solid #2f333d; }
+.byd-wall-measure h2 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
+.byd-wall-measure-spot { margin: 12px 0; padding-top: 12px; border-top: 1px solid #23262e; }
+.byd-wall-measure-spot b { color: #dfe4ef; font-size: 12px; }
+.byd-wall-measure label { display: block; margin: 8px 0 4px; color: var(--byd-editor-quiet); font-size: 12px; }
+.byd-wall-measure input[type='range'] { display: block; width: 100%; accent-color: var(--byd-editor-primary-mark); }
+.byd-wall-measure [role='group'] { display: flex; gap: 6px; flex-wrap: wrap; }
+.byd-wall-measure ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+.byd-wall-measure li { display: grid; gap: 4px; padding: 8px 10px; border-radius: 10px; background: #1b1d23; border: 1px solid var(--byd-editor-lost-bg); }
+.byd-wall-measure li b { color: #fff; }
+.byd-wall-measure li span { color: var(--byd-editor-quiet); font-size: 12px; }
+.byd-wall-measure li button, .byd-wall-measure-start { justify-self: start; min-height: 32px; border: 1px solid var(--byd-editor-primary-bg); border-radius: 8px; padding: 0 12px; background: var(--byd-editor-primary-bg); color: var(--byd-editor-primary-ink); font: 700 12px system-ui; cursor: pointer; }
+.byd-wall-measure-drop { min-height: 28px; border: 1px solid #3b4358; border-radius: 8px; padding: 0 10px; background: #1b1d23; color: #dfe4ef; font: 600 11px system-ui; cursor: pointer; }
+.byd-wall-measure-open { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+.byd-wall-measure-open button { min-height: 28px; border: 1px solid #3b4358; border-radius: 8px; padding: 0 10px; background: #1b1d23; color: #dfe4ef; font: 600 11px system-ui; cursor: pointer; }
+.byd-wall-measure-open button[aria-pressed='true'] { border-color: var(--byd-editor-primary-mark); color: #fff; }
+/* The source, opened as a drawer under the deck: the measure it is judged against stays above. */
+.byd-wall-source { grid-column: 1 / -1; display: flex; gap: 18px; margin-top: 12px; padding: 14px; border-radius: 12px; background: var(--byd-editor-panel-bg); border: 1px solid #2f333d; }
+.byd-wall-source-file { position: relative; flex: none; border-radius: 8px; overflow: hidden; background: repeating-conic-gradient(#20242c 0 25%, #191c22 0 50%) 50% / 16px 16px; }
+.byd-wall-source-file img { display: block; max-width: none; }
+.byd-wall-source-window { position: absolute; outline: 2px solid var(--byd-editor-primary-mark); box-shadow: 0 0 0 9999px rgba(10, 12, 16, 0.62); }
+.byd-wall-source-tools { flex: 1; min-width: 0; max-width: 320px; }
+.byd-wall-source-tools b { color: #fff; }
+.byd-wall-source-tools label { display: block; margin: 10px 0 4px; color: var(--byd-editor-quiet); font-size: 12px; }
+.byd-wall-source-tools input[type='range'] { display: block; width: 100%; accent-color: var(--byd-editor-primary-mark); }
+.byd-wall-source-tools button { min-height: 32px; margin: 8px 8px 0 0; border: 1px solid #3b4358; border-radius: 8px; padding: 0 12px; background: #1b1d23; color: #dfe4ef; font: 600 12px system-ui; cursor: pointer; }
 .byd-symbols [role='alert'] { color: #f0b64a; }
 
 /* The rulebook (B7): the page itself is the editor, so it is paper, not a dark surface. */

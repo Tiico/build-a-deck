@@ -68,7 +68,7 @@ export function SymbolPanel({ doc, client, assetBase }: SymbolPanelProps) {
           {front &&
             doc.rows.map((r) => (
               <div key={r.id} role="listitem" className="byd-wall-card" data-card-ref={r.id}>
-                <CardPreview id={`sym-${r.id}`} face={front} row={r.fields} icons={icons} fonts={fonts} assetBase={assetBase} scale={0.55} />
+                <CardPreview id={`sym-${r.id}`} face={front} row={r.fields} icons={icons} fonts={fonts} assetBase={assetBase} palette={doc.palette} scale={0.55} />
               </div>
             ))}
         </div>

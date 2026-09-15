@@ -57,14 +57,17 @@ export function zoomThatFits(motif: Motif, frame: Frame, ratio: number, nudge: N
 // Every card whose file cannot answer the measure, in deck order. A card already put right is not
 // an objection: the list exists to be emptied, and a fix that stayed on the list would be a
 // surface that cannot tell work done from work outstanding.
-export function objections(doc: ProjectDoc, motifs: Record<string, Motif>): Objection[] {
+// The measurement is asked for by what the cell holds, through a function rather than a map: the
+// wall keys its motifs by the URL a resolved row carries and the document keys its cells by
+// `asset:<hash>`, and only the caller knows how to get from one to the other.
+export function objections(doc: ProjectDoc, motifFor: (value: string) => Motif | undefined): Objection[] {
   const out: Objection[] = []
   for (const spot of measuredSpots(doc)) {
     const frame = spot.frame
     if (!frame) continue
     for (const row of doc.rows) {
       const value = row.fields[spot.field]
-      const motif = typeof value === 'string' ? motifs[value] : undefined
+      const motif = typeof value === 'string' ? motifFor(value) : undefined
       // A file nobody has measured is fitted as a file, so it is not failing a measure it was
       // never given.
       if (!motif) continue
@@ -73,6 +76,17 @@ export function objections(doc: ProjectDoc, motifs: Record<string, Motif>): Obje
       if (!win.short) continue
       out.push({ cardRef: row.id, field: spot.field, code: 'short', drawnAt: drawnAt(motif, win), to: { zoom: zoomThatFits(motif, frame, spot.ratio, nudge) } })
     }
+  }
+  return out
+}
+
+// One card's departures, by the column each picture sits in — the same inversion the server makes
+// when it compiles a deck, made here for a preview.
+export function framingOf(doc: ProjectDoc, cardRef: string): Record<string, Nudge> {
+  const out: Record<string, Nudge> = {}
+  for (const [key, nudge] of Object.entries(doc.framing ?? {})) {
+    const cut = key.indexOf('/')
+    if (key.slice(0, cut) === cardRef) out[key.slice(cut + 1)] = nudge
   }
   return out
 }

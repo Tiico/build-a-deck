@@ -42,7 +42,8 @@ describe('the pictures the measure governs', () => {
 
 describe('the files that cannot answer the measure', () => {
   const doc = withArt({ fill: 0.8, anchor: 'centre' })
-  const motifs = (of: Record<string, Motif>) => of
+  // The wall hands the measurement over by what the cell holds; here that is the file's name.
+  const motifs = (of: Record<string, Motif>) => (value: string) => of[value]
 
   it('says nothing while every file has air to give', () => {
     expect(objections(doc, motifs({ 'dragon.png': roomy, 'knight.png': roomy, 'wizard.png': roomy }))).toEqual([])
