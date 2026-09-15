@@ -1,12 +1,13 @@
 import type { ComponentTypeDef } from '@byd/engine'
 import { parseInline, type InlineNode } from './inline.js'
 import { detectScript, estimateHeight, fitText, type Measure } from './fit.js'
-import { paintOf, shadowCss, type Condition, type Element, type FaceTemplate, type Pattern, type Row, type Template } from './model.js'
+import { paintOf, shadowCss, type Bind, type Condition, type Element, type FaceTemplate, type Pattern, type Row, type Template } from './model.js'
 import type { Motif } from './motif.js'
+import { frameWindow, type Frame, type Nudge } from './frame.js'
 import { coord, isOpen, pathFor } from './shapes.js'
 import { tileMarkup } from './patterns.js'
 
-export type Warning = { element: string; code: 'unknown-icon' | 'text-too-small' | 'text-overflow' | 'unknown-field'; detail: string }
+export type Warning = { element: string; code: 'unknown-icon' | 'unknown-role' | 'text-too-small' | 'text-overflow' | 'unknown-field'; detail: string }
 export type Compiled = { html: string; css: string; warnings: Warning[] }
 export type CompileInput = {
   type: ComponentTypeDef
@@ -14,6 +15,10 @@ export type CompileInput = {
   row: Row
   // Project icon set (L2): name → URL. Unknown names render as a visible warning.
   icons: Record<string, string>
+  // What the game's meanings are painted in (E4): role → colour. A symbol written `{namn|roll}`
+  // reaches the card as its own shape with this colour behind it, so one upload serves every
+  // colour the deck writes and a meaning is repainted in one place rather than in forty cells.
+  palette?: Record<string, string>
   // The fonts this version is pinned to (B3): a family the project names is written as a face
   // of its own when it carries a file, so what renders is the file and not whatever the machine
   // happens to have. A family the project does not name is used as the CSS stack it already is.
@@ -29,6 +34,11 @@ export type CompileInput = {
   // asset far from here; an image element told to `trim` fits the motif rather than the file, so
   // the same motif is the same size on every card however much air its own file happens to have.
   motifs?: Record<string, Motif>
+  // What this card asks of the deck's measure that the measure did not give it (E1): zoom and
+  // offset, by the column the picture sits in. It belongs to the deck and not to the file — the
+  // same bytes may sit in ten other people's decks — so it arrives per card rather than beside
+  // the measurement, which is of the bytes and shared by everyone.
+  framing?: Record<string, Nudge>
 }
 
 // Compiles one face of one card to HTML and CSS. The same output feeds the editor preview,
@@ -57,6 +67,13 @@ export function compile(input: CompileInput): Compiled {
   // A picture hangs inside its own frame rather than being it, so the element's box stays exactly
   // what the designer grabs whether the picture fills it, sits inside it or overflows it.
   css.push(`.byd-art{position:absolute;left:0;top:0;display:block;max-width:none;}`)
+  // A painted symbol is its own shape cut out of a block of colour (E4). The width is stated
+  // here rather than left auto because there is no picture to take a width from; an icon row
+  // still overrides both, being the more specific rule.
+  css.push(
+    `.byd-ink{display:inline-block;width:1em;background:currentColor;-webkit-mask-size:contain;mask-size:contain;` +
+      `-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center;}`,
+  )
   css.push(`.byd-icon-missing{color:#c00;background:#fee;font-weight:700;}`)
   css.push(`.byd-pip{display:inline-block;min-width:1.15em;height:1.15em;line-height:1.15em;border-radius:50%;text-align:center;font-weight:700;font-size:0.85em;border:0.12em solid currentColor;vertical-align:-0.15em;padding:0 0.1em;box-sizing:border-box;}`)
 
@@ -87,6 +104,39 @@ function aroundMotif(el: { w: number; h: number; fit?: 'cover' | 'contain' | 'fi
   return `left:${mm(left)};top:${mm(top)};width:${mm(motif.w * sx)};height:${mm(motif.h * sy)};`
 }
 
+// Where the whole picture has to lie for the deck's measure to be met (E1). The window is worked
+// out by `frameWindow` — the one function the editor calls too, so a card can never be framed one
+// way on screen and another in print — and the file is then laid out so that exactly the window
+// fills the element. The frame crops the rest, as it crops every other picture.
+function throughWindow(el: { w: number; h: number }, measure: Frame, motif: Motif, nudge: Nudge): string | null {
+  if (motif.w <= 0 || motif.h <= 0) return null
+  const win = frameWindow(motif, measure, el.w / el.h, nudge)
+  if (win.w <= 0) return null
+  // Millimetres per file pixel. The window is the frame's shape, so its height lands on the
+  // element's height by the same scale that puts its width on the element's width.
+  const by = el.w / win.w
+  return `left:${mm(-win.x * by)};top:${mm(-win.y * by)};width:${mm(motif.w * by)};height:${mm(motif.h * by)};`
+}
+
+// This card's own departure from the measure, if it has one. It is keyed by the column the
+// picture came from, because that is where the designer put the picture — an element bound to a
+// literal is the template's own picture and is never one card's to nudge.
+function nudgeFor(el: { bind: Bind }, input: CompileInput): Nudge {
+  return ('field' in el.bind && input.framing?.[el.bind.field]) || {}
+}
+
+const symbolsOf = (input: CompileInput): Symbols => ({ icons: input.icons, palette: input.palette })
+
+// One name out of an icon row's cell. A row is a list of names and not card text, so a symbol
+// there wears no braces — but it may name a meaning the same way, `svard|fara`, because the row
+// and the sentence are the same symbols and must be able to say the same thing (L1, E4).
+function iconNode(written: string): InlineNode {
+  const bar = written.indexOf('|')
+  if (bar < 0) return { type: 'icon', name: written }
+  const [name, role] = [written.slice(0, bar), written.slice(bar + 1)]
+  return role ? { type: 'icon', name, role } : { type: 'icon', name }
+}
+
 function render(el: Element, dx: number, dy: number, input: CompileInput, html: string[], css: Css, warnings: Warning[]): void {
   switch (el.kind) {
     case 'text': {
@@ -111,15 +161,18 @@ function render(el: Element, dx: number, dy: number, input: CompileInput, html: 
       )
       html.push(
         `<div data-element="${attr(el.id)}" data-fit="${el.fit ?? 'shrink'}" data-size-pt="${f.sizePt}" data-min-pt="${minPt}">` +
-          `${renderParagraphs(value, el.id, input.icons, warnings)}</div>`,
+          `${renderParagraphs(value, el.id, symbolsOf(input), warnings)}</div>`,
       )
       break
     }
     case 'image': {
       const src = resolve(el.bind, input.row)
-      const motif = el.trim ? input.motifs?.[src] : undefined
+      // The measure supersedes the plain trim: it already leaves the air out, and it answers the
+      // two questions trim cannot. Either way an unmeasured file is fitted as a file.
+      const motif = el.frame || el.trim ? input.motifs?.[src] : undefined
+      const laid = motif && (el.frame ? throughWindow(el, el.frame, motif, nudgeFor(el, input)) : aroundMotif(el, motif))
       css.push(`[data-element="${attr(el.id)}"]{left:${el.x + dx}mm;top:${el.y + dy}mm;width:${el.w}mm;height:${el.h}mm;}`)
-      css.push(`[data-element="${attr(el.id)}"] .byd-art{${(motif && aroundMotif(el, motif)) ?? `width:100%;height:100%;object-fit:${el.fit ?? 'cover'};`}}`)
+      css.push(`[data-element="${attr(el.id)}"] .byd-art{${laid ?? `width:100%;height:100%;object-fit:${el.fit ?? 'cover'};`}}`)
       html.push(src ? `<div data-element="${attr(el.id)}"><img class="byd-art" src="${attr(src)}" alt=""></div>` : `<div data-element="${attr(el.id)}"></div>`)
       break
     }
@@ -127,7 +180,7 @@ function render(el: Element, dx: number, dy: number, input: CompileInput, html: 
       const names = resolve(el.bind, input.row).split(/[\s,]+/).filter((n) => n.length > 0)
       css.push(`[data-element="${attr(el.id)}"]{left:${el.x + dx}mm;top:${el.y + dy}mm;width:${el.w}mm;height:${el.h}mm;display:flex;align-items:center;}`)
       css.push(`[data-element="${attr(el.id)}"] .byd-icon{height:${el.iconMm}mm;width:${el.iconMm}mm;margin-right:${el.gapMm ?? 1}mm;}`)
-      html.push(`<div data-element="${attr(el.id)}">${names.map((n) => renderNode({ type: 'icon', name: n }, el.id, input.icons, warnings)).join('')}</div>`)
+      html.push(`<div data-element="${attr(el.id)}">${names.map((n) => renderNode(iconNode(n), el.id, symbolsOf(input), warnings)).join('')}</div>`)
       break
     }
     case 'shape': {
@@ -241,13 +294,17 @@ function resolve(bind: { field: string } | { literal: string }, row: Row): strin
   return v === null || v === undefined ? '' : String(v)
 }
 
-function renderParagraphs(text: string, element: string, icons: Record<string, string>, warnings: Warning[]): string {
+// What a symbol is looked up in: the names the project knows, and what its meanings are painted
+// in. The two travel together because every symbol asks both questions at once.
+type Symbols = { icons: Record<string, string>; palette?: Record<string, string> | undefined }
+
+function renderParagraphs(text: string, element: string, icons: Symbols, warnings: Warning[]): string {
   return parseInline(text)
     .map((p) => `<p>${p.children.map((n) => renderNode(n, element, icons, warnings)).join('')}</p>`)
     .join('')
 }
 
-function renderNode(n: InlineNode, element: string, icons: Record<string, string>, warnings: Warning[]): string {
+function renderNode(n: InlineNode, element: string, icons: Symbols, warnings: Warning[]): string {
   switch (n.type) {
     case 'text':
       return escape(n.text)
@@ -260,14 +317,22 @@ function renderNode(n: InlineNode, element: string, icons: Record<string, string
     case 'ref':
       return escape(`[[${n.of === 'zone' ? 'zon' : 'kort'}:${n.id}]]`)
     case 'icon': {
-      const src = icons[n.name]
+      const src = icons.icons[n.name]
       // A bare number is a pip (L2 addendum) unless the icon set names it.
       if (src === undefined && /^\d+$/.test(n.name)) return `<span class="byd-pip">${escape(n.name)}</span>`
       if (src === undefined) {
         warnings.push({ element, code: 'unknown-icon', detail: n.name })
         return `<span class="byd-icon-missing">{${escape(n.name)}}</span>`
       }
-      return `<img class="byd-icon" src="${attr(src)}" alt="${attr(n.name)}">`
+      const ink = n.role === undefined ? undefined : icons.palette?.[n.role]
+      // A meaning the deck has not named loses its colour and keeps its symbol: a card missing a
+      // word is worse than a card missing a shade, and the deck is told which meaning it was.
+      if (n.role !== undefined && ink === undefined) warnings.push({ element, code: 'unknown-role', detail: n.role })
+      if (ink === undefined) return `<img class="byd-icon" src="${attr(src)}" alt="${attr(n.name)}">`
+      // The shape is the mask and the colour is paint behind it. The file is therefore never
+      // asked to be red, which is what lets one upload serve every colour on every card.
+      const mask = `url(${attr(`"${src}"`)})`
+      return `<span class="byd-icon byd-ink" role="img" aria-label="${attr(n.name)}" style="background:${attr(ink)};-webkit-mask-image:${mask};mask-image:${mask}"></span>`
     }
   }
 }
@@ -285,11 +350,15 @@ export type CompileCardInput = Omit<CompileInput, 'face'> & { template: Template
 // One card, every face the type declares (L7). A face the template lacks is an error: a card
 // without a back cannot be printed, and a texture without one cannot lie face-down.
 export function compileCard(input: CompileCardInput): Record<string, Compiled> {
+  const { template, ...rest } = input
   const out: Record<string, Compiled> = {}
   for (const faceId of input.type.faces) {
-    const face = input.template.faces[faceId]
+    const face = template.faces[faceId]
     if (!face) throw new Error(`template has no face "${faceId}", which ${input.type.id} requires`)
-    out[faceId] = compile({ type: input.type, row: input.row, icons: input.icons, face, ...(input.fonts ? { fonts: input.fonts } : {}), ...(input.bleed !== undefined ? { bleed: input.bleed } : {}), ...(input.measure ? { measure: input.measure } : {}), ...(input.motifs ? { motifs: input.motifs } : {}) })
+    // Everything the caller handed over, minus the template, plus the face it names. Written as
+    // a spread and not as a list of fields: the list was copied by hand and silently dropped the
+    // two newest ones — the palette and this card's framing — from every card the server renders.
+    out[faceId] = compile({ ...rest, face })
   }
   return out
 }

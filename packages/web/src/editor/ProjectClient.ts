@@ -1,4 +1,4 @@
-import type { ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc, VersionSummary } from '@byd/server'
+import type { ProjectCredit, ProjectDoc, ProjectFont, ProjectFraming, ProjectRow, RuleDoc, VersionSummary } from '@byd/server'
 import type { DocDiff } from '@byd/server/doc'
 import type { Element } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
@@ -595,6 +595,27 @@ export class ProjectClient {
 
   removeIcon(name: string): void {
     this.edit({ v: 'removeIcon', name })
+  }
+
+  // The game's own meanings and what they are painted in (E4). A card writes the meaning and
+  // never the colour, so repainting a deck is one edit and renaming a meaning rewrites every
+  // card that says it — the same bargain the icon set already makes with its names.
+  setRole(role: string, colour: string): void {
+    this.edit({ v: 'setRole', role, colour })
+  }
+
+  renameRole(from: string, to: string): void {
+    this.edit({ v: 'renameRole', from, to })
+  }
+
+  removeRole(role: string): void {
+    this.edit({ v: 'removeRole', role })
+  }
+
+  // What one card asks of its template's measure (E1). `null` puts the card back on the measure
+  // the deck gave it, which is the only way back that does not require remembering a number.
+  setFraming(cardRef: string, field: string, framing: ProjectFraming | null): void {
+    this.edit({ v: 'setFraming', cardRef, field, framing })
   }
 
   // A typeface the game is set in (B3): the file becomes one of the project's assets, and the

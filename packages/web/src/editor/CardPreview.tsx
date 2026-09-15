@@ -1,6 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
-import { compile, fitInDocument, type FaceTemplate, type Motif, type Row, type Warning } from '@byd/template'
+import { compile, fitInDocument, type FaceTemplate, type Motif, type Nudge, type Row, type Warning } from '@byd/template'
 import { resolveAssetRow } from './assets.js'
 
 export type CardPreviewProps = {
@@ -24,14 +24,30 @@ export type CardPreviewProps = {
   // element told to trim fits the motif rather than the file; one whose file nothing has measured
   // is fitted as a file, as every picture was before there was anything to measure.
   motifs?: Record<string, Motif> | undefined
+  // What the game's meanings are painted in (E4): a symbol written `{namn|roll}` reaches the card
+  // as its own shape with this colour behind it.
+  palette?: Record<string, string> | undefined
+  // What this card asks of its template's measure (E1), by the column the picture sits in.
+  framing?: Record<string, Nudge> | undefined
 }
 
 // One card through the real compiler and the real DOM fitting — the same code the renderer runs,
 // so what the editor shows is what the table and the print get (E2).
-export function CardPreview({ face, row, icons, fonts, id, scale = 1, selectedElement, onSelectElement, onWarnings, overlay, assetBase, motifs }: CardPreviewProps) {
+export function CardPreview({ face, row, icons, fonts, id, scale = 1, selectedElement, onSelectElement, onWarnings, overlay, assetBase, motifs, palette, framing }: CardPreviewProps) {
   const out = useMemo(
-    () => compile({ type: CARD_STANDARD_63x88, face, row: assetBase ? resolveAssetRow(row, assetBase) : row, icons, scope: `#${id}`, ...(fonts ? { fonts } : {}), ...(motifs ? { motifs } : {}) }),
-    [face, row, icons, fonts, id, assetBase, motifs],
+    () =>
+      compile({
+        type: CARD_STANDARD_63x88,
+        face,
+        row: assetBase ? resolveAssetRow(row, assetBase) : row,
+        icons,
+        scope: `#${id}`,
+        ...(fonts ? { fonts } : {}),
+        ...(motifs ? { motifs } : {}),
+        ...(palette ? { palette } : {}),
+        ...(framing ? { framing } : {}),
+      }),
+    [face, row, icons, fonts, id, assetBase, motifs, palette, framing],
   )
   const ref = useRef<HTMLDivElement | null>(null)
   // Held by identity, not just by value: React writes `innerHTML` again whenever this object is a

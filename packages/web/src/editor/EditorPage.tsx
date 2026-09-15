@@ -297,6 +297,11 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           // wider screen goes on to the card it belongs to.
           if (room !== 'phone') setStage('canvas')
         }}
+        // The measure belongs to the template's image element and one card's departure to the
+        // deck (E1), so the wall changes two different things — but they are judged in one place,
+        // because the wall is where the whole deck is visible at once.
+        onMeasure={(f, id, frame) => client?.patchElement(f, id, { frame })}
+        onFraming={(cardRef, field, framing) => client?.setFraming(cardRef, field, framing)}
       />
     ),
     template: () => (

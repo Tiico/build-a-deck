@@ -1,4 +1,5 @@
 import type { Element, FaceTemplate, Variant } from '@byd/template'
+import { ProjectFraming } from './projects.js'
 import type { Cell, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc } from './projects.js'
 import { applyRecipe, point, rect, seatZones, type Geometry, type Recipe, type RecipeWords, type SeatRole, type Shortcut, type Zone } from './recipe.js'
 
@@ -9,6 +10,25 @@ import { applyRecipe, point, rect, seatZones, type Geometry, type Recipe, type R
 // document out. Nothing here touches the network or the database.
 //
 // Imported by the editor as well as the server, so this module stays free of anything Node.
+// A departure is filed under the card and the column the picture sits in, and that spelling is
+// written in exactly one place so nothing can disagree about it.
+export const framingKey = (cardRef: string, field: string): string => `${cardRef}/${field}`
+const framingWithout = (doc: ProjectDoc, key: string) => (doc.framing?.[key] === undefined ? {} : { framing: without(doc.framing, key) })
+const framingOfCards = (doc: ProjectDoc, keep: (cardRef: string) => boolean) => {
+  if (!doc.framing) return {}
+  const left = Object.fromEntries(Object.entries(doc.framing).filter(([key]) => keep(key.slice(0, key.indexOf('/')))))
+  return Object.keys(left).length === Object.keys(doc.framing).length ? {} : { framing: left }
+}
+
+// Every `{namn|roll}` in a card's text that named the old meaning, named as the new one. The
+// symbol's own name is left alone: only what stands after the bar is the meaning.
+function renamedRole(fields: Record<string, Cell>, from: string, to: string): Record<string, Cell> {
+  const out: Record<string, Cell> = {}
+  const wanted = new RegExp(`\\{([\\p{L}\\p{N}_-]+)\\|${from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\}`, 'gu')
+  for (const [key, value] of Object.entries(fields)) out[key] = typeof value === 'string' ? value.replace(wanted, `{$1|${to}}`) : value
+  return out
+}
+
 export type ZonePatch = { name?: string; geometry?: Geometry; visibility?: Zone['visibility']; shortcut?: { label: string; at: 'top' | 'bottom' } | undefined; owner?: string | undefined }
 
 // The properties a patch may take away again (L15, L17). Each one means something by its own
@@ -84,6 +104,15 @@ export type EditIntent =
   | { v: 'renameIcon'; from: string; to: string }
   | { v: 'removeIcon'; name: string }
   | { v: 'setRules'; rules: RuleDoc }
+  // The game's meanings and what they are painted in (E4). The cards write the meaning and never
+  // the colour, so repainting a deck is one edit here and renaming one rewrites every card that
+  // says it — which is exactly what `renameIcon` already does for a symbol's name.
+  | { v: 'setRole'; role: string; colour: string }
+  | { v: 'renameRole'; from: string; to: string }
+  | { v: 'removeRole'; role: string }
+  // What one card asks of its template's measure (E1), under the card and the column the picture
+  // sits in. `null` is the card going back to the measure the deck gave it.
+  | { v: 'setFraming'; cardRef: string; field: string; framing: ProjectFraming | null }
   // The type the game is set in (B3). A family the project names carries the file it is drawn
   // from, so a version prints as it was designed rather than as the printer's machine guesses.
   | { v: 'setFont'; family: string; font: ProjectFont }
@@ -99,7 +128,11 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
 
     case 'setCell': {
       if (!doc.rows.some((r) => r.id === intent.cardRef)) throw new Error(`no row ${intent.cardRef}`)
-      return { ...doc, rows: doc.rows.map((r) => (r.id === intent.cardRef ? { ...r, fields: { ...r.fields, [intent.field]: intent.value } } : r)) }
+      const rows = doc.rows.map((r) => (r.id === intent.cardRef ? { ...r, fields: { ...r.fields, [intent.field]: intent.value } } : r))
+      // A departure from the measure was chosen while looking at one picture (E1). Kept across a
+      // change of picture it is a crop written by mistake — numbers picked for someone else's art
+      // framing this one — so the cell taking a new value drops it.
+      return { ...doc, rows, ...framingWithout(doc, framingKey(intent.cardRef, intent.field)) }
     }
     // New cards go to the end of the deck, which is the order it is dealt in.
     case 'addRow': {
@@ -107,9 +140,11 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       return { ...doc, rows: [...doc.rows, { id: intent.cardRef, fields: intent.fields }] }
     }
     case 'removeRow':
-      return { ...doc, rows: doc.rows.filter((r) => r.id !== intent.cardRef) }
-    case 'replaceRows':
-      return { ...doc, rows: intent.rows }
+      return { ...doc, rows: doc.rows.filter((r) => r.id !== intent.cardRef), ...framingOfCards(doc, (id) => id !== intent.cardRef) }
+    case 'replaceRows': {
+      const kept = new Set(intent.rows.map((r) => r.id))
+      return { ...doc, rows: intent.rows, ...framingOfCards(doc, (id) => kept.has(id)) }
+    }
 
     // A column exists because the cards carry the key or because the template draws it, so a new
     // one is written onto every card, empty, and a name either of those already answers to is a
@@ -344,6 +379,33 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       return { ...doc, icons: without(doc.icons, intent.name), credits: without(doc.credits ?? {}, intent.name) }
     case 'setRules':
       return { ...doc, rules: intent.rules }
+    case 'setRole': {
+      if (!intent.role.trim() || !intent.colour.trim()) throw new Error('a meaning needs a name and a colour')
+      return { ...doc, palette: { ...(doc.palette ?? {}), [intent.role]: intent.colour } }
+    }
+    // Renaming a meaning rewrites every card that says it, for the same reason renaming a symbol
+    // does: what is written on a card is the name, and a name nothing answers to is a lost word.
+    case 'renameRole': {
+      const colour = doc.palette?.[intent.from]
+      if (colour === undefined) throw new Error(`no role ${intent.from}`)
+      if (doc.palette?.[intent.to] !== undefined) throw new Error(`role ${intent.to} already exists`)
+      return {
+        ...doc,
+        palette: { ...without(doc.palette ?? {}, intent.from), [intent.to]: colour },
+        rows: doc.rows.map((r) => ({ ...r, fields: renamedRole(r.fields, intent.from, intent.to) })),
+      }
+    }
+    case 'removeRole':
+      return { ...doc, palette: without(doc.palette ?? {}, intent.role) }
+    case 'setFraming': {
+      const key = framingKey(intent.cardRef, intent.field)
+      if (!doc.rows.some((r) => r.id === intent.cardRef)) throw new Error(`no row ${intent.cardRef}`)
+      if (intent.framing === null) return { ...doc, ...framingWithout(doc, key) }
+      // Checked here, where the value enters, and not only where the document is written: an
+      // intent arrives from a browser and nothing between the two reads the schema. A departure
+      // that cannot be one would otherwise crop that card on every render from now on (E1).
+      return { ...doc, framing: { ...(doc.framing ?? {}), [key]: ProjectFraming.parse(intent.framing) } }
+    }
     // Naming a family again replaces it, so swapping the file for a better cut is one entry.
     case 'setFont':
       return { ...doc, fonts: { ...(doc.fonts ?? {}), [intent.family]: intent.font } }

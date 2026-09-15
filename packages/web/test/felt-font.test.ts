@@ -129,8 +129,11 @@ describe('the felt’s face is in the document before the first painting (K20, #
     // Raised from 120 kB to 125 kB on 2026-09-14: the editor's layer grid and the fill rule (L15,
     // L16) are two new panels of real CSS. Raised again to 130 kB the same day for the shape
     // gallery, the pattern tiles, the shadow's chips and the ready-made backs (L17) — four more
-    // grids of buttons in the property panel, and one beside the layers.
-    expect(statSync(join(OUT, blockingSheets(index)[0]!.replace(/^\//, ''))).size).toBeLessThan(inlined + 130_000)
+    // grids of buttons in the property panel, and one beside the layers. Raised to 136 kB on
+    // 2026-09-15 for the deck's measure (E1) and the game's colours (E4): a panel beside the wall
+    // with a rule, a list of the files that cannot answer it and a drawer that opens one of them,
+    // and a row per meaning in the symbol panel with the inks to paint it in.
+    expect(statSync(join(OUT, blockingSheets(index)[0]!.replace(/^\//, ''))).size).toBeLessThan(inlined + 136_000)
   })
 
   // And the same thing said by a browser rather than by a reader of files: the built app served
