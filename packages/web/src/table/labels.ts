@@ -115,3 +115,49 @@ export function nameAt(zone: ZoneView, floor: ZoneView, hand: ZoneView | undefin
   const rim = edgeOf(turn(zone.geometry, rotate), turn(floor.geometry, rotate))
   return rim === 'none' ? place(rim, 'fwd') : place(rim, growFor(turn(zone.geometry, rotate), rim, turn(hand.geometry, rotate)))
 }
+
+// How near a zone above has to be before its name is in this one's way at all. Beyond it the two
+// names are drawn a whole zone apart at every scale the felt is ever given, and a rule that
+// reached that far would hold a name up against a neighbour it was never going to meet — which is
+// how the first draft of this sent `Marknad` onto `Räknare A` on a felt turned half a turn, where
+// the two are 310 mm apart. The recipe's own crowding is the 30 mm a seat's area leaves over a
+// shared zone (K18); this is four times that and still nowhere near the next thing on the felt.
+const CROWD_MM = 120
+
+// The felt between a zone at no rim and the zone above it, when the one above aims its own name
+// down into that felt — in the felt's own millimetres, or null when there is nobody near enough
+// above to be in the way.
+//
+// This is the one question the rule above cannot answer on its own, and the one the stylesheet
+// cannot answer at all, because it is about two names that belong to two different zones (#43).
+//
+// A zone at no rim puts its name above its own top edge, and a zone at the north rim puts its
+// name below its own bottom edge, since above it is the hand. Where the two stand over one
+// another — the market a seat's own area hangs over — both names are aimed into the same strip of
+// felt. Each is placed a fixed number of screen pixels off its own edge while the strip between
+// them is millimetres and grows with the scale, so the two travel towards each other as the felt
+// is drawn larger and pass through each other at about two pixels per millimetre. A four-seat
+// felt on a 4K screen draws at 2.7, and a double tap zooms the camera 2.6× from wherever it
+// stands (C5), so it is not a corner: it is the middle of the range.
+//
+// What comes back is the strip's width. The one who stands off no rim is held above the other's
+// name by it — the stylesheet does the holding, since only it knows how tall a name is.
+export function gapAbove(zone: ZoneView, zones: readonly ZoneView[], handOf: (owner: string | undefined) => ZoneView | undefined, floor: ZoneView, rotate: Rotation = 0): number | null {
+  const me = turn(zone.geometry, rotate)
+  let nearest: number | null = null
+  for (const other of zones) {
+    if (other.id === zone.id || other.id === floor.id) continue
+    const hand = handOf(other.owner)
+    if (!hand) continue
+    const box = turn(other.geometry, rotate)
+    // Only a name aimed down into the strip crowds this one; a name that stands beside its own
+    // zone, or above it, is not in the way.
+    if (edgeOf(box, turn(floor.geometry, rotate)) !== 'N') continue
+    // Above it, and over the same stretch of felt: two names side by side never meet.
+    if (box.y + box.h > me.y || box.x + box.w <= me.x || me.x + me.w <= box.x) continue
+    const gap = me.y - (box.y + box.h)
+    if (gap > CROWD_MM) continue
+    if (nearest === null || gap < nearest) nearest = gap
+  }
+  return nearest
+}
