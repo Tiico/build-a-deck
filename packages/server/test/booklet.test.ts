@@ -117,7 +117,10 @@ describe('ordering the booklet (B7)', () => {
     await run.renderAll()
     const got = await fetch(`${run.http}/faces/${hash}`)
     expect(got.status).toBe(200)
-  })
+    // A body that opens Chromium is given the minute every other such body here is given. This
+    // one was not, and failed at vitest's five seconds under a loaded machine while passing at
+    // two on an idle one — a flake that says nothing about the code (#92).
+  }, 60_000)
 
   it('refuses when the game has no rulebook, rather than printing an empty one', async () => {
     await send('POST', '/projects', { id: 'p2', ...project() })

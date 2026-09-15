@@ -60,6 +60,15 @@ export type RuleBlock = RuleDoc['blocks'][number]
 export const ProjectFont = z.object({ stack: z.string().min(1), asset: z.string().optional(), licence: ProjectCredit.optional() })
 export type ProjectFont = z.infer<typeof ProjectFont>
 
+// What one card asks of the template's measure that the measure did not give it (E1): how much
+// closer in, and how far off centre, as shares of the window. It is checked here rather than
+// trusted, because a stored departure crops that card on every render from now on: a zoom of
+// nothing is no picture, and an offset of more than half a window pushes the drawing clean out
+// of its own frame. Nothing here rewrites the file, which may sit in ten other people's decks.
+const Share = z.number().gte(-0.5).lte(0.5)
+export const ProjectFraming = z.object({ zoom: z.number().gt(0).lte(8).optional(), dx: Share.optional(), dy: Share.optional() })
+export type ProjectFraming = z.infer<typeof ProjectFraming>
+
 export const ProjectDoc = z.object({
   name: z.string().min(1),
   template: Template,
@@ -74,6 +83,16 @@ export const ProjectDoc = z.object({
   columns: z.array(z.string()).optional(),
   icons: z.record(z.string(), z.string()),
   credits: z.record(z.string(), ProjectCredit).optional(),
+  // What the game's meanings are painted in (E4): the name a card writes after the bar, and the
+  // colour it stands for. The role is written on the cards and the colour only here, so a deck
+  // repaints every card that says a meaning by changing one line — and there is one place to
+  // check the colour against the card it will sit on, and one place to find two meanings that
+  // become one for a colour-blind reader (E5).
+  palette: z.record(z.string(), z.string().min(1)).optional(),
+  // Each card's own departure from its template's measure (E1), keyed `<kort>/<kolumn>`: the
+  // picture belongs to a cell, so the departure does too. It is the deck's and not the file's,
+  // because a file is content-addressed and the same bytes may be someone else's art.
+  framing: z.record(z.string().regex(/^[^/]+\/[^/]+$/, 'a framing key names a card and a column'), ProjectFraming).optional(),
   rules: RuleDoc.optional(),
   fonts: z.record(z.string(), ProjectFont).optional(),
   setup: ProjectSetup,
@@ -259,5 +278,21 @@ export function stamp(value: unknown): string {
 export function deckFromProject(doc: ProjectDoc): Deck {
   const rows: Record<string, Row> = {}
   for (const { id, fields } of doc.rows) rows[id] = fields
-  return { template: doc.template, rows, icons: doc.icons, ...(doc.fonts ? { fonts: doc.fonts } : {}) }
+  // The flat `<kort>/<kolumn>` keys the document stores are turned inside out here, once, into
+  // the shape a card is compiled with: every compile is per card, and nothing downstream should
+  // have to know how the key was spelled.
+  const framing: Record<string, Record<string, ProjectFraming>> = {}
+  for (const [key, nudge] of Object.entries(doc.framing ?? {})) {
+    const cut = key.indexOf('/')
+    const [cardRef, field] = [key.slice(0, cut), key.slice(cut + 1)]
+    framing[cardRef] = { ...framing[cardRef], [field]: nudge }
+  }
+  return {
+    template: doc.template,
+    rows,
+    icons: doc.icons,
+    ...(doc.palette ? { palette: doc.palette } : {}),
+    ...(Object.keys(framing).length > 0 ? { framing } : {}),
+    ...(doc.fonts ? { fonts: doc.fonts } : {}),
+  }
 }

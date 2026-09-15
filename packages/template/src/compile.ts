@@ -350,11 +350,15 @@ export type CompileCardInput = Omit<CompileInput, 'face'> & { template: Template
 // One card, every face the type declares (L7). A face the template lacks is an error: a card
 // without a back cannot be printed, and a texture without one cannot lie face-down.
 export function compileCard(input: CompileCardInput): Record<string, Compiled> {
+  const { template, ...rest } = input
   const out: Record<string, Compiled> = {}
   for (const faceId of input.type.faces) {
-    const face = input.template.faces[faceId]
+    const face = template.faces[faceId]
     if (!face) throw new Error(`template has no face "${faceId}", which ${input.type.id} requires`)
-    out[faceId] = compile({ type: input.type, row: input.row, icons: input.icons, face, ...(input.fonts ? { fonts: input.fonts } : {}), ...(input.bleed !== undefined ? { bleed: input.bleed } : {}), ...(input.measure ? { measure: input.measure } : {}), ...(input.motifs ? { motifs: input.motifs } : {}) })
+    // Everything the caller handed over, minus the template, plus the face it names. Written as
+    // a spread and not as a list of fields: the list was copied by hand and silently dropped the
+    // two newest ones — the palette and this card's framing — from every card the server renders.
+    out[faceId] = compile({ ...rest, face })
   }
   return out
 }

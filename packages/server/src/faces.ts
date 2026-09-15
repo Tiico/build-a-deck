@@ -1,13 +1,30 @@
 import type { SetupDef, TypeRegistry } from '@byd/engine'
 import type { FaceHashes } from '@byd/engine'
-import { compileCard, type Motif, type Row, type Template } from '@byd/template'
+import { compileCard, type Motif, type Nudge, type Row, type Template } from '@byd/template'
 import { contentHash, type RenderRequest } from '@byd/render/queue'
 
 // `fonts` is what the version is pinned to (B3), already resolved to something a page can load.
 // "motifs" is what is drawn inside each picture (E1), keyed by the URL the rows carry: an image
 // element told to trim fits the motif rather than the file, so the same motif is the same size on
 // every card however much air its own file happens to have.
-export type Deck = { template: Template; rows: Record<string, Row>; icons: Record<string, string>; fonts?: Record<string, { stack: string; src?: string }>; motifs?: Record<string, Motif> }
+// "palette" is what the game's meanings are painted in (E4) and "framing" is what each card asks
+// of its template's measure (E1), keyed by card and then by the column the picture sits in.
+export type Deck = {
+  template: Template
+  rows: Record<string, Row>
+  icons: Record<string, string>
+  palette?: Record<string, string>
+  framing?: Record<string, Record<string, Nudge>>
+  fonts?: Record<string, { stack: string; src?: string }>
+  motifs?: Record<string, Motif>
+}
+// What this one card adds to the compile: the palette is the whole deck's, the departure is its
+// own. One place builds it, so the texture and the print cannot disagree about either (E2).
+const forCard = (deck: Deck, cardRef: string) => ({
+  ...(deck.palette ? { palette: deck.palette } : {}),
+  ...(deck.framing?.[cardRef] ? { framing: deck.framing[cardRef] } : {}),
+})
+
 export type PrintCard = { cardRef: string; faces: Record<string, string> }
 export type PrintExport = { cards: PrintCard[]; jobs: RenderRequest[] }
 
@@ -21,7 +38,7 @@ export function facesOf(deck: Deck, setup: SetupDef, registry: TypeRegistry, dpi
     if (faces[spec.cardRef]) continue
     const row = deck.rows[spec.cardRef]
     if (!row) continue
-    const compiled = compileCard({ template: deck.template, type: registry.get(spec.type), row, icons: deck.icons, ...(deck.fonts ? { fonts: deck.fonts } : {}), ...(deck.motifs ? { motifs: deck.motifs } : {}) })
+    const compiled = compileCard({ template: deck.template, type: registry.get(spec.type), row, icons: deck.icons, ...forCard(deck, spec.cardRef), ...(deck.fonts ? { fonts: deck.fonts } : {}), ...(deck.motifs ? { motifs: deck.motifs } : {}) })
     const perFace: Record<string, string> = {}
     for (const [face, out] of Object.entries(compiled)) {
       const hash = contentHash(out, { kind: 'png', dpi })
@@ -47,7 +64,7 @@ export function printExportOf(deck: Deck, setup: SetupDef, registry: TypeRegistr
     if (spec.counter !== undefined) continue
     const row = deck.rows[spec.cardRef]
     if (!row) throw new Error(`deck has no row "${spec.cardRef}" for print`)
-    const compiled = compileCard({ template: deck.template, type: registry.get(spec.type), row, icons: deck.icons, bleed: true, ...(deck.fonts ? { fonts: deck.fonts } : {}), ...(deck.motifs ? { motifs: deck.motifs } : {}) })
+    const compiled = compileCard({ template: deck.template, type: registry.get(spec.type), row, icons: deck.icons, bleed: true, ...forCard(deck, spec.cardRef), ...(deck.fonts ? { fonts: deck.fonts } : {}), ...(deck.motifs ? { motifs: deck.motifs } : {}) })
     const faces: Record<string, string> = {}
     for (const [face, out] of Object.entries(compiled)) {
       const hash = contentHash(out, { kind: 'pdf' })
