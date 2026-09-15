@@ -49,10 +49,11 @@ export type Running = {
 // The admission of every session made through the fixture, by session id.
 const rooms = new Map<string, { code: string; hostKey: string }>()
 
-export async function start(opts: { appOrigin?: string; authBypass?: boolean; objects?: ObjectStore; now?: () => Date; release?: string } = {}): Promise<Running> {
-  const store = new MemoryLogStore()
+export async function start(opts: { appOrigin?: string; authBypass?: boolean; objects?: ObjectStore; now?: () => Date; release?: string; projects?: MemoryProjectStore; store?: MemoryLogStore } = {}): Promise<Running> {
+  const store = opts.store ?? new MemoryLogStore()
   const renders = new MemoryRenderStore(opts.objects)
-  const projects = new MemoryProjectStore()
+  // A store of the test's own, for a test about what the server does while the store is answering.
+  const projects = opts.projects ?? new MemoryProjectStore()
   const host = new TableHost(registry, store, undefined, renders)
   const mail = new MemoryMailer()
   const authBypass = opts.authBypass ? { authBypass: true } : {}

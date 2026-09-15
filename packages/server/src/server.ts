@@ -460,7 +460,39 @@ async function admit(opts: ServerOptions, req: IncomingMessage, session: Session
 
 // One editor on one project (D3). Only the account that owns the project may edit it; roles for
 // co-editors and testers are a model of their own and come later.
+
+// A door holds the socket still while it asks its questions (#109).
+//
+// The socket is open from the moment the upgrade finishes, and whoever is at the other end may
+// write straight away: a browser that was already being typed into sends its first edit on
+// `onopen`, and a seat taps the table as it comes up. But a door has to ask the store who is
+// knocking and what they are knocking on before it has anywhere to put a message, and a
+// WebSocket with no `message` listener does not keep what it receives — it emits it to nobody,
+// and the frame is gone without a word. No refusal, no error, nothing to notice: an editor lost
+// the edit and the `save` that followed then made a version without it, and the designer had
+// been told the save succeeded.
+//
+// The window is as wide as the store is slow, which on a real database is a network away and
+// under load is wider still. So the socket is paused before the first question is asked and let
+// go the moment there is something to receive with. What arrived meanwhile waited in the
+// socket's own buffer, and it is delivered in the order it was sent — which is the order
+// everything downstream already stands on.
+//
+// Letting go is idempotent, because a door that turns someone away has to let go too: a paused
+// socket never reads the other end's reply to the close frame, and the connection would then sit
+// there until the close timeout rather than hanging up.
+function holdFrames(ws: WebSocket): () => void {
+  ws.pause()
+  let delivered = false
+  return () => {
+    if (delivered) return
+    delivered = true
+    ws.resume()
+  }
+}
+
 async function attachEditor(opts: ServerOptions, req: IncomingMessage, ws: WebSocket, projectId: string, name: string): Promise<void> {
+  const deliver = holdFrames(ws)
   const send = (message: EditorMessage) => {
     if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(message))
   }
@@ -468,16 +500,19 @@ async function attachEditor(opts: ServerOptions, req: IncomingMessage, ws: WebSo
   const account = opts.auth ? await accountOf(opts.auth, req) : null
   const rec = projects ? await projects.load(projectId) : null
   if (!projects || !rec) {
+    deliver()
     ws.close(4004, 'unknown project')
     return
   }
   const role = rec.owner === undefined ? 'owner' : account ? await projects.roleOf(projectId, account.id) : null
   if (!role) {
+    deliver()
     ws.close(4003, 'not your project')
     return
   }
   const actor = await editors(opts, projects).get(projectId)
   if (!actor) {
+    deliver()
     ws.close(4004, 'unknown project')
     return
   }
@@ -506,6 +541,7 @@ async function attachEditor(opts: ServerOptions, req: IncomingMessage, ws: WebSo
       }
     })()
   })
+  deliver()
 }
 
 // The editing actors of this server, made on first use so a server without projects has none.
@@ -522,18 +558,21 @@ function editors(opts: ServerOptions, projects: ProjectStore): ProjectHost {
 const EditorRequest = z.union([z.object({ t: z.literal('edit'), intent: z.record(z.string(), z.unknown()) }), z.object({ t: z.literal('save') })])
 
 async function attach(opts: ServerOptions, req: IncomingMessage, ws: WebSocket, sessionId: string, ask: Admission): Promise<void> {
+  const deliver = holdFrames(ws)
   const send = (message: ServerMessage) => {
     if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(message))
   }
   const session = await opts.store.loadSession(sessionId)
   const actor = session ? await opts.host.get(sessionId) : null
   if (!session || !actor) {
+    deliver()
     send({ t: 'error', id: null, message: `unknown session ${sessionId}` })
     ws.close(4004, 'unknown session')
     return
   }
   const who = await admit(opts, req, session, ask)
   if ('refused' in who) {
+    deliver()
     send({ t: 'refused', reason: who.refused })
     ws.close(4003, who.refused)
     return
@@ -602,6 +641,7 @@ async function attach(opts: ServerOptions, req: IncomingMessage, ws: WebSocket, 
       send({ t: 'error', id, message: err instanceof Error ? err.message : String(err) })
     }
   })
+  deliver()
 }
 
 // Projects (L4, L5): a revisioned document, and "start a table" which expands the rows into a

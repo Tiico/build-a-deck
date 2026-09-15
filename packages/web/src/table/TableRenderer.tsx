@@ -79,7 +79,7 @@ export type TableRendererProps = {
   // asking, so a supplier whose picture carries ids of its own can keep them apart — the
   // compiler scopes a card's CSS to the node it is drawn in. Without a back, a face-down card is
   // the stand-in weave `table.css` draws, which is what every surface showed before: a back that
-  // belonged to no game (#106).
+  // belonged to no game (L17).
   back?: ((fit: FeltFit, at: string) => ReactNode) | undefined
   // Whose hand is whose. Table mode always says so on the felt; TV mode leaves it to the dock
   // that says it already (K9). A TV-mode surface with no dock — the editor's Bord tab — asks for

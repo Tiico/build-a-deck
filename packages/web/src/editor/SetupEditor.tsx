@@ -393,7 +393,7 @@ function Felt({
         view={view}
         mode="tv"
         overlay={overlay}
-        // The deck's own back on every face-down card (L17, #106). It goes through `compile`, the
+        // The deck's own back on every face-down card (L17). It goes through `compile`, the
         // one renderer there is for card templates (K9) — the same code the canvas and the wall
         // draw with — at the scale the felt is drawn in. This surface has no render farm behind
         // it and no saved version to render, so without this the pile wore a weave that belonged
