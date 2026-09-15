@@ -90,6 +90,49 @@ const CELL_SYMBOLS = 'byd-cell-symbols'
 // land on a width, large enough that a column can be crossed without holding the key down.
 const PULL_STEP = 16
 
+// And how far the hand has to move before a press on the edge is a pull at all (#46). A pointer
+// resting on a button slides a pixel or two as it is released, and the edge stands over the
+// right-hand ten pixels of a heading — so without this a click aimed at the heading, or a hand
+// that let go carelessly, set the column to the width it already had and left it there. Three
+// pixels is a slip; a pull is what anybody would call a drag.
+const PULL_SLOP = 3
+
+// Which of the table's columns are standing outside the box altogether (#46).
+//
+// A different question from the pin's below, and one the table had no answer to at all. The pin's
+// is about a value crossing under a control on its way past; this is about a column a reader
+// cannot see — the thing that happens the moment a width is pulled wider than the room, when the
+// table quietly becomes wider than its box and two columns leave the screen. The fade says "this
+// value is cut"; it cannot say "`cost` and `antal` are over there", and what scrolls under the
+// pin after a pull is usually the empty end of a sentence, which fades to nothing anybody notices.
+//
+// A column is outside when its heading does not overlap the part of the box a reader can read:
+// past the left edge, or behind the pin, which covers the right. Partly covered is not outside —
+// that is the cut the fade is already for.
+//
+// Deliberately one self-contained function with no imports, as `markCut` and `fitColumns` are:
+// the browser test runs this very function inside the page, so what is measured there is what
+// ships.
+export function columnsOutside(box: Element): { left: string[]; right: string[] } {
+  const left: string[] = []
+  const right: string[] = []
+  const scroller = box as HTMLElement
+  // A table that fits has nothing outside it, and this is also what keeps the question honest
+  // where nothing is laid out at all: every rectangle is then nought wide, and every column would
+  // otherwise read as having gone out to the left.
+  if (scroller.scrollWidth <= scroller.clientWidth + 1) return { left, right }
+  const seen = scroller.getBoundingClientRect()
+  const pin = box.querySelector('thead .byd-data-remove')?.getBoundingClientRect()
+  const ends = pin ? Math.min(pin.left, seen.right) : seen.right
+  for (const th of box.querySelectorAll('thead th[data-col]')) {
+    const at = th.getBoundingClientRect()
+    const name = th.getAttribute('data-col') ?? ''
+    if (at.right <= seen.left + 0.5) left.push(name)
+    else if (at.left >= ends - 0.5) right.push(name)
+  }
+  return { left, right }
+}
+
 // The column that removes a card is pinned to the right edge of the scrolling box (#17), and what
 // scrolls under it is covered. No stylesheet can help: the content and the pin share one clipping
 // rectangle, and the only way out — a pin outside the scroller — costs the sticky heading, which
@@ -248,6 +291,11 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // column being pulled may not also be picked up and carried off by the same grip.
   const [widths, setWidths] = useState<Record<string, number>>(() => heldWidths(project))
   const [pulling, setPulling] = useState<string | null>(null)
+  // Which columns are standing outside the box, and the answer they were last drawn from (#46).
+  // The set is held as state because it is words on the screen; the key beside it is what keeps a
+  // scroll from setting state on every frame it does not change anything.
+  const [outside, setOutside] = useState<{ left: string[]; right: string[] }>({ left: [], right: [] })
+  const outsideNow = useRef('')
   const removeRef = useRef<HTMLButtonElement>(null)
   const allRef = useRef<HTMLInputElement>(null)
   // The × of every row on screen, so the question a row asks can hand the focus back to it.
@@ -279,6 +327,13 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     const pin = () => {
       frame = 0
       markCut(box)
+      // And which columns have left the box altogether, which is the same size of question asked
+      // of the same rectangles.
+      const gone = columnsOutside(box)
+      const key = `${gone.left.join(',')}|${gone.right.join(',')}`
+      if (key === outsideNow.current) return
+      outsideNow.current = key
+      setOutside(gone)
     }
     const soon = () => {
       if (frame === 0) frame = requestAnimationFrame(pin)
@@ -297,7 +352,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     const fit = () => {
       if (!editing) fitColumns(box, deck)
       markValues(box)
-      markCut(box)
+      pin()
     }
     fit()
     // A scroll moves the box and nothing else. No column can have changed width during one, and
@@ -370,17 +425,49 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     const said = box ? parseFloat(getComputedStyle(box).getPropertyValue('--byd-tap')) : NaN
     return Number.isFinite(said) && said > 0 ? said : 44
   }
+  // Every width the table holds, drawn and remembered in one move, because they are one fact:
+  // what is on the screen and what will be on it again next time cannot be allowed to drift.
+  const hold = (next: Record<string, number>) => {
+    setWidths(next)
+    rememberWidths(project, next)
+  }
+  // The same record without one column in it.
+  const without = (field: string): Record<string, number> => {
+    const { [field]: gone, ...rest } = widths
+    void gone
+    return rest
+  }
+  // A width with no column left to be about (#46). It goes without a word: what has happened is
+  // that a column was taken away, which the head has already said, and "body follows its content
+  // again" is a sentence about a column that is still there. Left behind instead it was a number
+  // under a name nothing answers to — and the next column made under that name, empty and brand
+  // new, was drawn at a width a hand had chosen for somebody else's values.
+  const forgetWidth = (field: string) => {
+    if (widths[field] !== undefined) hold(without(field))
+  }
   // A width set, or given back to the measurement. Held in this table and remembered in the
   // browser, never written into the document: how wide one designer wants to read a column on
   // her screen is not a fact about the game (L4).
   const setWidth = (field: string, px: number | null) => {
-    const { [field]: gone, ...rest } = widths
-    void gone
-    const next = px === null ? rest : { ...widths, [field]: Math.max(tap(), Math.round(px)) }
-    setWidths(next)
-    rememberWidths(project, next)
+    const next = px === null ? without(field) : { ...widths, [field]: Math.max(tap(), Math.round(px)) }
+    hold(next)
     const said = next[field]
     say?.('polite', said === undefined ? t('table.column.width.said.auto', { field }) : t('table.column.width.said', { field, px: said }))
+  }
+  // Fetching a column that has gone out of the box back into it (#46). A step of most of the box
+  // rather than a jump to the end, so the sentence beside it counts down as the hand presses and
+  // the reader can stop at what she was looking for.
+  //
+  // The gliding is asked for here and not in the stylesheet, because `scroll-behavior` on the box
+  // would be an answer to every scroll anything ever asks it for — including the one a test makes
+  // to see where the pin falls, and including the browser's own when it brings a focused cell into
+  // view. A reader who has asked for less motion is handed the jump instead; it is the same
+  // sentence either way, and nothing else moves.
+  const bring = (dir: -1 | 1) => {
+    const box = scrollRef.current
+    if (!box) return
+    const still = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches
+    box.scrollBy({ left: dir * Math.round(box.clientWidth * 0.8), behavior: still ? 'auto' : 'smooth' })
   }
   // What a heading needs to be the edge its column is pulled by. The two the table owns have
   // none: a card's id is a machine key and `antal` is the engine's own count, and neither is
@@ -398,20 +485,42 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             const th = (event.target as HTMLElement).closest('th')
             const col = Array.from(scrollRef.current?.querySelectorAll('colgroup > col') ?? []).find((c) => c.getAttribute('data-col') === field)
             if (!th) return
+            const box = scrollRef.current
             const from = event.clientX
             const was = Math.round(th.getBoundingClientRect().width)
             setPulling(field)
-            // Written straight onto the column while the hand is moving, so the edge follows it
-            // without the whole deck being measured again on every frame; the answer becomes a
-            // width the table holds when the hand lets go.
+            // Declared on the column while the hand is moving, and then measured — the same two
+            // steps the release takes, in the same order, through the same door. What that buys
+            // is that the picture under the hand cannot be a picture of anything else.
+            //
+            // Written straight onto the column instead, as it was, nothing else knew: the table's
+            // own width still said what the last measurement said, and under a fixed layout a
+            // table wider than the sum of its columns hands the difference back out over all of
+            // them. Measured in Chromium, a column pulled 300 px narrower was drawn 56 px wider
+            // than the width it had just been given — so the edge lagged the hand going in, and
+            // jumped to catch up when the hand let go.
+            const asks = (e: PointerEvent): number => Math.max(tap(), Math.round(was + (e.clientX - from)))
+            let pulled = false
             const moved = (e: PointerEvent) => {
-              if (col instanceof HTMLElement) col.style.width = `${Math.max(tap(), was + (e.clientX - from))}px`
+              // Until the hand has really moved, the column is left exactly as the measurement
+              // last had it — so a press that turns out to be a click has nothing to give back.
+              if (!pulled && Math.abs(e.clientX - from) < PULL_SLOP) return
+              pulled = true
+              if (!(col instanceof HTMLElement) || !box) return
+              col.setAttribute('data-width', String(asks(e)))
+              fitColumns(box, deck)
+              markValues(box)
+              markCut(box)
             }
             const let_go = (e: PointerEvent) => {
               removeEventListener('pointermove', moved)
               removeEventListener('pointerup', let_go)
               setPulling(null)
-              setWidth(field, was + (e.clientX - from))
+              // A press that never went anywhere is not a width. It used to be one — the release
+              // set the column to the width it already had — and a column that has stopped
+              // following its deck looks exactly like one that still does, so the table went
+              // quietly deaf on whichever heading a hand had rested on.
+              if (pulled) setWidth(field, was + (e.clientX - from))
             }
             addEventListener('pointermove', moved)
             addEventListener('pointerup', let_go)
@@ -614,6 +723,20 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
               <span className="byd-data-chosen">{selectionLabel(chosen.length, t)}</span>
             </>
           )}
+          {(['left', 'right'] as const).map((side) =>
+            outside[side].length === 0 ? null : (
+              <span key={side}>
+                <button type="button" className="byd-data-outside" onClick={() => bring(side === 'left' ? -1 : 1)}>
+                  {side === 'left' && <span aria-hidden="true">← </span>}
+                  {t(outside[side].length === 1 ? `table.columns.${side}.one` : `table.columns.${side}.other`, {
+                    n: outside[side].length,
+                    fields: outside[side].map((field) => (field === GROUP_COL ? t('table.group') : fieldLabel(field, t))).join(', '),
+                  })}
+                  {side === 'right' && <span aria-hidden="true"> →</span>}
+                </button>
+              </span>
+            ),
+          )}
           {pinned !== null && (
             <>
               <span aria-hidden="true"> · </span>
@@ -729,6 +852,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           cancel={t('editor.cancel')}
           onConfirm={() => {
             onRemoveField(dropping)
+            forgetWidth(dropping)
             setDropping(null)
             setRefocus('addField')
           }}

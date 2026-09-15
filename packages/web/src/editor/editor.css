@@ -808,6 +808,11 @@
   cursor: pointer;
 }
 .byd-data-count { margin: 0; color: var(--byd-editor-count-ink); font-variant-numeric: tabular-nums; }
+/* Which columns have gone out past the edge of the box, said in the line that already says what
+   the view holds — and it is a button, because knowing they are there is no use without a way
+   back to them (#46). */
+.byd-data-outside { margin-left: 10px; padding: 6px 12px; border: 1px solid #3b414e; border-radius: 999px; background: var(--byd-editor-filter-bg); color: var(--byd-editor-filter-ink); font: inherit; cursor: pointer; }
+.byd-data-outside:hover, .byd-data-outside:focus-visible { border-color: #4a5163; }
 .byd-data-pinned { color: var(--byd-editor-filter-quiet); }
 .byd-data-clear { border: 1px solid #3b414e; border-radius: 8px; padding: 6px 12px; background: transparent; color: var(--byd-editor-filter-quiet); font: inherit; cursor: pointer; }
 .byd-data-clear:hover { color: var(--byd-editor-filter-ink); }
@@ -1043,14 +1048,22 @@
   font-weight: 400;
   white-space: normal;
   text-align: left;
+  /* A column of two: the list, which gives way, and the form, which never does — it is the way to
+     make the next column, and it is what fell off the bottom when the door grew. */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 /* The form is no longer the box: it stands inside one, so it gives up its own frame and its own
    place on the page and keeps only its rows. */
-.byd-columns .byd-newfield { position: static; width: auto; padding: 10px 0 0; border: 0; border-top: 1px solid #2f333d; border-radius: 0; background: transparent; box-shadow: none; }
+.byd-columns .byd-newfield { flex: 0 0 auto; position: static; width: auto; padding: 10px 0 0; border: 0; border-top: 1px solid #2f333d; border-radius: 0; background: transparent; box-shadow: none; }
 /* The list scrolls and the form under it does not move: a deck of twenty columns would otherwise
    hang the door off the bottom of the window, and the thing that fell off it is the way to make
    the twenty-first. */
-.byd-columns-list { display: grid; gap: 2px; margin: 0 0 10px; padding: 0; max-height: 232px; overflow-y: auto; list-style: none; scrollbar-width: thin; }
+/* The list takes what the door has left after the form, and scrolls only when even that is not
+   enough. It used to be 232 px however tall the window was: five rows of a deck of ten, the fifth
+   cut in half against the form's own line. */
+.byd-columns-list { flex: 1 1 auto; min-height: 0; display: grid; align-content: start; gap: 2px; margin: 0 0 10px; padding: 0; overflow-y: auto; list-style: none; scrollbar-width: thin; }
 .byd-columns-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 0 8px; min-height: 36px; }
 .byd-columns-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 /* The × keeps the 44 px it always had (L12). Here it can have them without taking them from
