@@ -402,6 +402,16 @@
 /* Textures: the image fills the card; the name stays underneath for cards without one. */
 .byd-card { position: relative; overflow: hidden; }
 .byd-card > img, .byd-pile-top > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+/* The deck's own back on a face-down card (L17), drawn by whoever hands the renderer one. It
+   fills the card the way a texture does, and it is the card's own box that clips it: a back
+   bleeds 3 mm past the trim on every side, and on the felt the trim is the card's edge. The
+   ground under it is the card stock, because that is what an unprinted part of a card is — the
+   compiler gives a card no ground of its own, and the felt is where that question is answered. */
+.byd-card-back { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; pointer-events: none; background: #fff; }
+/* A card wearing the deck's own back draws no stand-in under it. The weave's 2 px border is not
+   part of any card: with it the back is laid out two pixels inside the card it is the back of,
+   and the two on the other side are cut off. */
+.byd-card[data-back='own'], .byd-pile .byd-pile-top[data-back='own'] { border: 0; background: none; }
 .byd-card > img ~ span:not([data-texture]), .byd-pile-top > img ~ span:not([data-texture]) { visibility: hidden; }
 .byd-pile-top { overflow: hidden; }
 

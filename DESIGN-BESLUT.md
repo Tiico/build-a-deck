@@ -2568,6 +2568,13 @@ Baksidan erbjuder färdiga ryggar.
 Var och en är en vanlig elementlista — botten med mönster, en inre kant, ibland en medaljong — så den går att ta isär och ändra efteråt; det är en utgångspunkt och inte en låst bild.
 Galleriet står framme i lagerpanelen så snart baksidan är öppen, inte bakom en knapp: den som landar på en tom baksida ska se vägen vidare utan att leta efter den.
 
+Bordet i fliken "Bord" visar lekens egen rygg (reviderat 2026-09-15).
+Filten ritade varje kort som låg med baksidan upp som en och samma blå väv ur `table.css`, vilken rygg leken än hade: den enda yta där designern ser leken som en lek visade en rygg som inte hörde till något spel, och en vald rygg nådde bordet först när spelet hade publicerats.
+Ryggen kompileras i webbläsaren av `compile` — samma renderare som duken och kortväggen, alltså ingen andra kodväg (K9) — eftersom den här ytan varken har en renderfarm bakom sig eller en sparad version att rendera.
+Renderaren tar emot ryggen som en funktion av filtens skala, på samma sätt som den redan tar emot editorns zonhandtag, och ritar den på varje kort som ligger med baksidan upp; en yta som inte lämnar någon rygg behåller vävens platshållare.
+Det är basryggen och inte något korts egen: en blandad hög vet inte vad som ligger överst, och basen är den varje kort i leken ärver.
+En rygg utan element ritas inte alls — ett tomt spel (L14) har en sådan, och ett blankt vitt kort på högen läses som ett fel och inte som "ingen rygg än".
+
 Följdkrav:
 Varje ny namngiven form är en modelländring och ett beslut här; den parametriska kärnan finns just för att listan inte ska växa för varje önskemål.
 Galleriets glyfer ritas av samma `pathFor` som kortet, och mönstersvalen av samma `tileMarkup`, så bilden på knappen kan aldrig säga emot vad ett tryck på den ger.

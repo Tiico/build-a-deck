@@ -363,7 +363,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     // Bord is the home for both the game's board vocabulary and its running tables (#19, C4).
     tables: () => (
       <>
-        <SetupEditor doc={doc} client={client} />
+        <SetupEditor doc={doc} client={client} assetBase={http} motifs={deckMotifs} />
         <TablesTab client={client} server={params.get('server')} />
       </>
     ),

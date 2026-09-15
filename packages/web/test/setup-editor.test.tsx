@@ -190,3 +190,45 @@ describe('the setup editor (B5, K2): counters and a setup the engine refuses', (
     expect(document.querySelector('[data-table]')).toBeNull()
   })
 })
+
+// The felt drew every face-down card as one stand-in — a blue diagonal weave in `table.css` —
+// whatever back the deck had. So the one surface where a designer sees the deck as a deck showed
+// a back that belonged to no game, and picking a ready-made back changed the canvas and nothing
+// else. The pile is the deck lying face down: it wears the deck's own back.
+describe('the setup editor (B5, L17): the deck\'s own back', () => {
+  const backOn = (zone: string) => document.querySelector(`[data-zone="${zone}"] .byd-pile-top .byd-preview`)
+  const elementsOn = (zone: string) => [...document.querySelectorAll(`[data-zone="${zone}"] .byd-pile-top [data-element]`)].map((e) => e.getAttribute('data-element'))
+
+  it('draws the template\'s back on a face-down pile, and follows the back when it is changed', async () => {
+    await run.projects.create('p1', projectDoc())
+    await openBord()
+    // The fixture's back is a single shape called `bg`; the pile wears it.
+    expect(backOn('draw')).toBeTruthy()
+    expect(elementsOn('draw')).toEqual(['bg'])
+
+    // Pick a ready-made back on the canvas, and come back to the table.
+    fireEvent.click(screen.getByRole('tab', { name: 'Mall' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Baksida' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Medaljong' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
+    expect(elementsOn('draw')).toEqual(['bottom', 'edge', 'medallion', 'star'])
+  })
+
+  it('leaves a face-up pile and an empty one alone', async () => {
+    await run.projects.create('p1', projectDoc())
+    await openBord()
+    // The discard pile starts empty and lies face up: there is no back to show on it.
+    expect(backOn('discard')).toBeNull()
+  })
+
+  // A game made without the guided start has no back at all. A blank white card on the pile
+  // would read as a fault rather than as "nothing drawn here yet", so until the back has
+  // something on it the pile keeps the tool's own stand-in.
+  it('keeps the stand-in while the back is still empty', async () => {
+    const doc = projectDoc()
+    await run.projects.create('p1', { ...doc, template: { ...doc.template, faces: { ...doc.template.faces, back: { base: [], variants: {} } } } })
+    await openBord()
+    expect(backOn('draw')).toBeNull()
+    expect(document.querySelector('[data-zone="draw"] .byd-pile-top')?.getAttribute('data-face')).toBe('back')
+  })
+})
