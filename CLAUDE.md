@@ -20,8 +20,16 @@ Beställaren tar de viktiga designbesluten och hjälper till när agenten är os
 två rimliga produktvägar, ett beslut som hör hemma i `DESIGN-BESLUT.md`. Allt annat är agentens att
 avgöra och genomföra.
 
-Två saker står kvar oavsett mandatet: ett fynd som kräver ett designbeslut prototypas och godkänns
-före implementation, och ett överordnat issue ändras eller stängs inte automatiskt.
+Tre saker står kvar oavsett mandatet.
+
+**Läs issuet innan du bygger det.** Ett beslut kan redan vara fattat i en kommentar, med prototyper
+och mätningar, av någon som arbetat parallellt. Det som står i issuet väger tyngre än det som står i
+en rapport som gav upphov till issuet — även när rapporten är din egen. Att bygga förbi ett fattat
+beslut kostar mer än att bygga långsamt: den avvisade designen måste tas bort igen, och nästa
+implementation blir en omskrivning i stället för ett bygge.
+
+Ett fynd som kräver ett designbeslut prototypas och godkänns före implementation. Och ett överordnat
+issue ändras eller stängs inte automatiskt.
 
 Allt visuellt — vyer, layouter, interaktionsmönster, bordets och telefonens utseende — prototypas först med `/prototype`-skillen.
 Presentera prototyperna och få dem godkända innan den riktiga implementationen påbörjas.
