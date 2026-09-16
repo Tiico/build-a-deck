@@ -20,6 +20,8 @@ import { LIBRARY, type GameSymbol } from './symbols.js'
 import { SymbolList, symbolListKey, symbolOptionId } from './SymbolList.js'
 import type { ProjectCredit } from '@byd/server'
 import { useT, type Key, type T } from '../i18n/index.js'
+import { useSay } from '../status/StatusLive.js'
+import { DragDoor } from './DragDoor.js'
 
 export type TemplateCanvasProps = {
   // Which of the four panels to draw, or nothing at all for the desk's four columns (L10). Below
@@ -45,6 +47,11 @@ export type TemplateCanvasProps = {
   // editor put all those frames on one step back (#35). A patch from a property field has none:
   // it is a whole change on its own.
   onPatch(id: string, patch: Partial<Element>, gesture?: string): void
+  // The grab called off rather than let go of (#142): Escape with the hand still down, or a
+  // gesture the browser took away from the page. Putting the element back where the grab began
+  // and leaving no step behind are both the document's business and not the canvas's, so the
+  // canvas says which grab it was and the client takes the whole of it back at once.
+  onCallOff(gesture: string): void
   onRemove(id: string): void
   onAdd(element: Element): void
   // An icon placed from the tool row (#33). The symbol has to come into the game before an
@@ -83,7 +90,7 @@ export type TemplateCanvasProps = {
 // Template mode (A): layers on the left, the card large in the middle with the selected element
 // outlined, and its properties on the right. Every change goes through `onPatch` and lands on
 // every card of the deck — there are no per-card exceptions (L3).
-export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, onReplaceFace, row, selectedElement, onSelectElement, onPatch, onRemove, onAdd, onPlaceIcon, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onFontFile, onFontLicence, onRemoveFont }: TemplateCanvasProps) {
+export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, onReplaceFace, row, selectedElement, onSelectElement, onPatch, onCallOff, onRemove, onAdd, onPlaceIcon, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onFontFile, onFontLicence, onRemoveFont }: TemplateCanvasProps) {
   const t = useT()
   const faceTemplate = doc.template.faces[face]
   const column = groupColumn(doc)
@@ -217,7 +224,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             motifs={motifs}
             selectedElement={selectedElement}
             onSelectElement={onSelectElement}
-            overlay={<DragLayer grid={grid} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={patch} onRefused={setRefused} />}
+            overlay={<DragLayer grid={grid} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={patch} onCallOff={onCallOff} onRefused={setRefused} />}
           />
           {refusedLayer && (
             <p className="byd-canvas-locked" role="alert">
@@ -365,13 +372,20 @@ function isBox(el: Element): el is BoxElement {
 // the card's own millimetres. It draws no card content — the compiler behind it is still the one
 // renderer — and it holds the pointer with pointer capture, so a fast drag or a trackpad that
 // leaves the box keeps moving the element it grabbed.
-function DragLayer({ boxes, grid, selected, onSelect, onPatch, onRefused }: { boxes: BoxElement[]; grid: boolean; selected: string | null; onSelect(id: string): void; onPatch: TemplateCanvasProps['onPatch']; onRefused(id: string): void }) {
+function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefused }: { boxes: BoxElement[]; grid: boolean; selected: string | null; onSelect(id: string): void; onPatch: TemplateCanvasProps['onPatch']; onCallOff: TemplateCanvasProps['onCallOff']; onRefused(id: string): void }) {
+  const t = useT()
+  const say = useSay()
   const layer = useRef<HTMLDivElement | null>(null)
-  const grab = useRef<(Grab & { id: string; handle: Handle | null; gesture: string }) | null>(null)
+  const grab = useRef<(Grab & { id: string; handle: Handle | null; gesture: string; moved: boolean }) | null>(null)
   // What makes one grab tell itself apart from the next one on the same element (L14). Two drags
   // of the same title are two things the designer did, and two steps back.
   const grabs = useGesture('grab')
   const [guides, setGuides] = useState<Guides>({ x: null, y: null })
+  // Whether a grab is running at all, which is the one thing about it that has to be drawn: the
+  // way out of the drag is a door in the tree, and a door can only stand there while there is a
+  // drag to leave. Everything else about the grab stays in the ref above, where it is read inside
+  // an event and never drawn.
+  const [holding, setHolding] = useState(false)
 
   const down = (event: ReactPointerEvent<HTMLElement>, box: BoxElement, handle: Handle | null) => {
     if (event.button !== 0) return
@@ -382,28 +396,49 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onRefused }: { bo
     if (box.locked) return onRefused(box.id)
     const rect = layer.current?.getBoundingClientRect()
     if (!rect?.width) return
-    grab.current = { id: box.id, box, handle, gesture: grabs.begin(), at: { x: event.clientX, y: event.clientY }, mmPerPx: CARD_STANDARD_63x88.physical.widthMm / rect.width }
+    grab.current = { id: box.id, box, handle, gesture: grabs.begin(), moved: false, at: { x: event.clientX, y: event.clientY }, mmPerPx: CARD_STANDARD_63x88.physical.widthMm / rect.width }
+    setHolding(true)
     event.currentTarget.setPointerCapture?.(event.pointerId)
   }
   const move = (event: ReactPointerEvent<HTMLElement>) => {
     const held = grab.current
     if (!held) return
     const to = { x: event.clientX, y: event.clientY }
-    if (held.handle) return onPatch(held.id, resizedTo(held, to, held.handle), held.gesture)
+    if (held.handle) {
+      held.moved = true
+      return onPatch(held.id, resizedTo(held, to, held.handle), held.gesture)
+    }
     const others = boxes.filter((b) => b.id !== held.id)
     const placed = snapped(held.box, movedTo(held, to), others, CARD_STANDARD_63x88.physical)
     setGuides(placed.guides)
     // A click is a grab that went nowhere: it selects, and leaves the template alone.
     if (placed.at.x === held.box.x && placed.at.y === held.box.y) return
+    held.moved = true
     onPatch(held.id, placed.at, held.gesture)
   }
   const up = () => {
     grab.current = null
+    setHolding(false)
     setGuides({ x: null, y: null })
+  }
+  // The drag taken back rather than let go of (#142): Escape with the hand still down, and a
+  // gesture the browser took away from the page, which are the same thing happening. A grab that
+  // moved nothing has nothing to take back and says nothing either — that is the click the move
+  // above already leaves the template alone for.
+  const callOff = () => {
+    const held = grab.current
+    up()
+    if (!held?.moved) return
+    onCallOff(held.gesture)
+    say?.('polite', t('editor.drag.cancelled'))
   }
 
   return (
     <div className="byd-drag-layer" data-drag-layer ref={layer} aria-hidden="true">
+      {/* The way out of the drag, for the hand that changed its mind before it let go (#142). The
+          same door the table's head hangs over its own pull, and it stands only while there is a
+          drag to leave. */}
+      {holding && <DragDoor onCancel={callOff} />}
       {grid && <div className="byd-drag-grid" data-grid />}
       {boxes.map((box) => (
         <div
@@ -414,7 +449,7 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onRefused }: { bo
           onPointerDown={(event) => down(event, box, null)}
           onPointerMove={move}
           onPointerUp={up}
-          onPointerCancel={up}
+          onPointerCancel={callOff}
           onClick={(event) => event.stopPropagation()}
         >
           {box.id === selected &&
@@ -427,7 +462,7 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onRefused }: { bo
                 onPointerDown={(event) => down(event, box, corner)}
                 onPointerMove={move}
                 onPointerUp={up}
-                onPointerCancel={up}
+                onPointerCancel={callOff}
               />
             ))}
         </div>

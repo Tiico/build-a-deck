@@ -178,6 +178,8 @@ export const enEditor = {
   'table.empty': 'No cards match the filter.',
   'table.addCard': '+ New card',
 
+  'editor.drag.cancelled': 'The drag was cancelled',
+
   'table.columns': 'Columns',
   'table.column.moved': '{field} is column {at} of {of}',
   'table.column.width.said': '{field} is {px} px wide',

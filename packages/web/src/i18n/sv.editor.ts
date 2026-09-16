@@ -201,6 +201,12 @@ export const svEditor = {
   // Knappen i tabellhuvudet bär ett `+` och ingenting mer sedan den flyttade in i den pinnade
   // kolumnens rubrik (#46) — en ruta som är en träffyta bred rymmer inte ett ord — så det här
   // är namnet den hörs med, och samma ord namnger formuläret den öppnar.
+  // Ett drag som togs tillbaka innan handen släppte (#142). Sägs i samma artiga region som en
+  // satt bredd sägs i, och gäller båda dragen editorn har: kolumnkanten i Tabell och elementet på
+  // Malls duk. Ett återtaget drag är ingenting som hänt, så det finns ingen bredd och ingen plats
+  // att säga — bara att det inte blev av.
+  'editor.drag.cancelled': 'Draget avbröts',
+
   'table.columns': 'Kolumner',
   'table.column.moved': '{field} är kolumn {at} av {of}',
   'table.column.width.said': '{field} är {px} px bred',

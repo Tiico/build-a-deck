@@ -26,6 +26,7 @@ function canvas(over: Partial<TemplateCanvasProps> = {}) {
     selectedElement: 'title',
     onSelectElement: vi.fn(),
     onPatch: vi.fn(),
+    onCallOff: vi.fn(),
     onRemove: vi.fn(),
     onAdd: vi.fn(),
     onPlaceIcon: vi.fn(),
