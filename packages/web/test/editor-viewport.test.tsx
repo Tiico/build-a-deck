@@ -98,6 +98,30 @@ async function shapePanel(width: number): Promise<Record<string, string>> {
   }
 }
 
+// The Bord tab with a table on it (#19), which `surfaces` above can never show: the list is the
+// server's answer, and a game with no table at all draws one sentence and a button. Everything
+// that tab is really made of — the four ways into a table, the QR and the ending — hangs off a row
+// that only exists once a table has been started, so nothing here was ever measured. That is how
+// `.byd-tables-ways` could ship targets 32 px high while every describe above went green.
+async function tablesTab(width: number): Promise<Record<string, string>> {
+  const started = await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST' })
+  if (!started.ok) throw new Error(`could not start a table: ${started.status}`)
+  atWidth(width)
+  history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+  const { unmount } = render(<EditorPage />)
+  try {
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
+    // Waited for by the one way that is not there until the table itself has answered: sitting
+    // down needs a free seat, and a free seat is something only the table's own snapshot knows.
+    // Waiting for it is what puts every way into the markup rather than most of them.
+    await screen.findByRole('link', { name: /Spela härifrån/ })
+    return { Bord: document.querySelector('.byd-editor')!.outerHTML }
+  } finally {
+    unmount()
+  }
+}
+
 // The same surfaces, in a real engine at that width, measured by `read_`.
 async function measure<T>(width: number, read_: (page: Page) => Promise<T>, of: (width: number) => Promise<Record<string, string>> = surfaces): Promise<Record<string, T>> {
   const marked = await of(width)
@@ -319,5 +343,42 @@ describe.each(WIDTHS)('the form that makes a column, at %ipx', (width) => {
     )
     // The name, the three kinds, and the two answers.
     expect(measured).toEqual({ 'Nytt fält': { controls: 6, small: [] } })
+  }, 90_000)
+})
+
+// The Bord tab with a table in it (#19), held to the rule the editor writes down for itself:
+// `--byd-tap` is 44 px, and every target in the editor is at least that at every width the audit
+// checks. The ways into a table were the one place that was not — two buttons measured 88 × 32 and
+// 81 × 32 at 1440 × 900 — and they were the only controls in the whole editor under 44 px that
+// were not a `--byd-tick` box with a 44 px label around it.
+describe.each(WIDTHS)('the Bord tab with a table, at %ipx', (width) => {
+  it('gives every control in it a 44 by 44 pixel hit area', async () => {
+    const measured = await measure(
+      width,
+      (page) =>
+        page.$$eval(`.byd-tables :is(${TARGETS})`, (els) => {
+          const seen = els.filter((el) => el.checkVisibility())
+          return {
+            // Counted as well as measured: a row that never rendered would otherwise report a
+            // clean tab, which is the shape of guard this repo keeps finding.
+            controls: seen.length,
+            small: seen
+              .map((el) => {
+                const box = (el.closest('label') ?? el).getBoundingClientRect()
+                return { what: (el.getAttribute('aria-label') ?? el.textContent ?? el.tagName).trim().slice(0, 24), w: Math.round(box.width), h: Math.round(box.height) }
+              })
+              .filter(({ w, h }) => w < 44 || h < 44)
+              .map(({ what, w, h }) => `${what}: ${w}×${h}`),
+          }
+        }),
+      tablesTab,
+    )
+    // The four ways in, the QR, the ending, and the button that starts another table.
+    expect(measured).toEqual({ Bord: { controls: 7, small: [] } })
+  }, 90_000)
+
+  it('never makes the page scroll sideways', async () => {
+    const measured = await measure(width, (page) => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), tablesTab)
+    expect(measured).toEqual(nothing(measured, 0))
   }, 90_000)
 })

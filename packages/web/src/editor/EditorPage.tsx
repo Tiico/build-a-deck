@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { DeckWall } from './DeckWall.js'
 import { EditorTabs, MODES, panelId, tabId, type Mode } from './EditorTabs.js'
 import { EditorStages, isCanvasStage, modeOf, STAGES, type Stage } from './EditorStages.js'
@@ -90,9 +90,16 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   const links = statusLinks({ server: params.get('server') })
   // The tab says which game is open, and what is wrong with it while something is (#12).
   usePageTitle({ state: projectId ? (fault === 'unauthorized' ? null : fault ?? (client ? null : 'loading')) : 'missing', game: client?.doc.name ?? null })
-  // The history (B4) opens from the revision, which is where the version is already named.
-  const [historyOpen, setHistoryOpen] = useState(false)
-  const [shareOpen, setShareOpen] = useState(false)
+  // What the header has standing over the work: the history (B4), which opens from the revision
+  // where the version is already named, or who has the game (D3), which opens from the faces. One
+  // state rather than two, because two panels over each other cover the work and each other — on
+  // the template tab the history lands over the layer list and the group strip — so opening one
+  // closes the other.
+  const [over, setOver] = useState<'history' | 'share' | null>(null)
+  const historyOpen = over === 'history'
+  const shareOpen = over === 'share'
+  const revRef = useRef<HTMLButtonElement>(null)
+  const hereRef = useRef<HTMLButtonElement>(null)
   // An older version the table is held against (B4), fetched once when the comparison starts.
   const [compare, setCompare] = useState<{ rev: number; label?: string | undefined; doc: ProjectDoc } | null>(null)
   // A running table (L5) with what admits people to it (DRIFT §9): the code and the host key.
@@ -418,7 +425,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         </a>
         <strong>{doc.name}</strong>
         {/* The revision is also the way into the history (B4): the version is already named here. */}
-        <button type="button" className="byd-editor-rev" aria-expanded={historyOpen} onClick={() => setHistoryOpen((on) => !on)}>
+        <button ref={revRef} type="button" className="byd-editor-rev" aria-expanded={historyOpen} onClick={() => setOver((on) => (on === 'history' ? null : 'history'))}>
           {t('editor.rev', { n: client.rev })}
         </button>
         {/* Whether the work is safe, in words and in colour (#8). It is a live region, so the
@@ -432,7 +439,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         {room === 'desk' && <EditorTabs mode={mode} onSelect={(m) => setStage(m === 'template' ? 'canvas' : m)} />}
         {/* The people in the header are the door to who has the game at all (D3): who is here
             now and who may be here is one question. */}
-        <button type="button" className="byd-editor-here" data-here aria-label={t('share.title')} aria-expanded={shareOpen} onClick={() => setShareOpen((on) => !on)}>
+        <button ref={hereRef} type="button" className="byd-editor-here" data-here aria-label={t('share.title')} aria-expanded={shareOpen} onClick={() => setOver((on) => (on === 'share' ? null : 'share'))}>
           {client.here.map((p) => (
             <i key={p.id} title={p.name} style={{ ['--who' as string]: colourOf(p.name) }}>
               {p.name.slice(0, 1).toUpperCase()}
@@ -533,17 +540,18 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           {t(client.role === 'tester' ? 'editor.role.tester' : 'editor.role.viewer')}
         </p>
       )}
-      {shareOpen && projectId && <SharePanel http={http} project={projectId} here={client.here} onClose={() => setShareOpen(false)} />}
+      {over && <PanelDoor opener={over === 'history' ? revRef : hereRef} onClose={() => setOver(null)} />}
+      {shareOpen && projectId && <SharePanel http={http} project={projectId} here={client.here} onClose={() => setOver(null)} />}
       {historyOpen && (
         <HistoryPanel
           client={client}
-          onClose={() => setHistoryOpen(false)}
-          onRestored={() => setHistoryOpen(false)}
+          onClose={() => setOver(null)}
+          onRestored={() => setOver(null)}
           onCompare={(rev, label) => {
             void client.at(rev).then((old) => {
               if (!old) return
               setCompare({ rev, doc: old, ...(label !== undefined ? { label } : {}) })
-              setHistoryOpen(false)
+              setOver(null)
               setStage('table')
             })
           }}
@@ -566,6 +574,41 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       )}
     </div>
   )
+}
+
+// The way out of a panel that stands over the work, for everyone who did not come back to the
+// button that opened it. The panel is not modal — the work under it is what it is about — so this
+// listens on the document rather than trapping anything: Escape closes the panel and hands the
+// focus back to the button it came from, which is where the keyboard was standing when it opened.
+function PanelDoor({ opener, onClose }: { opener: RefObject<HTMLElement | null>; onClose(): void }) {
+  const latest = useRef({ opener, onClose })
+  latest.current = { opener, onClose }
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) return
+      const now = latest.current
+      now.onClose()
+      now.opener.current?.focus()
+    }
+    // A click back in the work is the other way out, and the one a mouse reaches for. The focus
+    // goes where the click went, so nothing is handed back here. The button that opened the panel
+    // is left alone: it already closes it, and closing on the way down would only let the click
+    // that follows open it again.
+    const onPointerDown = (event: Event) => {
+      const now = latest.current
+      const target = event.target
+      if (!(target instanceof Element)) return
+      if (now.opener.current?.contains(target) || target.closest('[role="dialog"]')) return
+      now.onClose()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener('pointerdown', onPointerDown)
+    }
+  }, [])
+  return null
 }
 
 // How long a confirmation stands before it takes itself back. Long enough to be read after the
