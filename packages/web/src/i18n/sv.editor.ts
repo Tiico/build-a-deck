@@ -274,7 +274,11 @@ export const svEditor = {
   'canvas.layer.removed': '{name} är borttaget från {face}.',
   'canvas.props.locked': 'Låst — måtten går att läsa men inte att ändra. Lås upp lagret i lagerlistan.',
   'canvas.grid': 'Rutnät 1 mm',
-  'canvas.hint.base': 'Dra ett lager för att ändra ordningen, eller håll Alt och tryck pil upp eller ner. F2 byter namn på lagret.',
+  // Vad som går, och inte bara vad som gick (#144). Meningen var sann bara så länge elementet inte
+  // gick att flytta från tangentbordet: den namngav ordningen och omdöpningen och teg om själva
+  // flytten, vilket var precis den som saknades.
+  'canvas.hint.base':
+    'Dra ett lager för att ändra ordningen, eller håll Alt och tryck pil upp eller ner. F2 byter namn på lagret. Elementet flyttas från duken: Enter går in i flyttläge, pilarna nudgar.',
   'canvas.hint.group': 'Lagrens ordning är basens och ändras med basfliken vald.',
   'canvas.groupBy': 'Grupperas av kolumnen',
   'canvas.groupBy.none': '— ingen —',
@@ -303,6 +307,22 @@ export const svEditor = {
   'canvas.tool.icon': 'Ikon',
   'canvas.tool.icons': 'Ikonrad',
   'canvas.tool.shape': 'Form',
+  // Elementet på kortet som ett eget tangentbordsstopp (#144). Namnet säger vad det är och var
+  // det ligger, för det är precis de två sakerna ögat läser av duken utan att fråga någon.
+  'canvas.element': '{name}, {kind}, x {x} mm, y {y} mm',
+  'canvas.element.moving': '{name}, {kind}, x {x} mm, y {y} mm, flyttläge',
+  // Varje nudge sägs som millimetrar (#144). Halva millimetrar syns inte på en skärm, så platsen
+  // måste gå att höra — annars är en pil i flyttläge bara ett ljud utan besked.
+  'canvas.element.at': '{name} · x {x} mm, y {y} mm',
+  // Vägen ut ur en flyttning som redan är igång (#142). Den säger både att den avbröts och var
+  // elementet ligger nu, för den som inte ser kortet vet annars bara att någonting hände.
+  'canvas.element.back': 'Flyttningen avbröts. {name} ligger på x {x} mm, y {y} mm.',
+  'canvas.kind.text': 'text',
+  'canvas.kind.image': 'bild',
+  'canvas.kind.icons': 'ikonrad',
+  'canvas.kind.shape': 'form',
+  'canvas.kind.group': 'grupp',
+  'canvas.kind.if': 'villkor',
   'canvas.props': 'Egenskaper',
   // Att fälla ihop egenskaperna, och att be om dem igen (#129). Knappen säger vilket av de två
   // trycket gör den till, för det är det formgivaren står och bestämmer när hon läser den.

@@ -615,6 +615,13 @@
    makes a trackpad and a touch screen drag the element instead of scrolling the stage. */
 .byd-drag-layer { position: absolute; inset: 0; touch-action: none; }
 .byd-drag-box { position: absolute; touch-action: none; cursor: move; }
+/* The element as a keyboard stop, and the move mode it can be put into (#144). The card under the
+   ring is the designer's and may be any colour she likes, so the ring is two: a dark one at the
+   box's own edge and a bright one outside it. Whatever the card is painted, one of them is legible
+   on it. The mode is the same shape in amber — the colour the wall already marks a card with —
+   because "I am here" and "what I press now moves this" are two different things to see. */
+.byd-drag-box:focus-visible { box-shadow: 0 0 0 2px #1c1c1c; }
+.byd-drag-box[data-moving] { outline: 3px solid #f0b64a; outline-offset: 2px; box-shadow: 0 0 0 2px #1c1c1c; }
 /* The optional grid: a millimetre rule to see by, with every tenth line darker so a centimetre
    can be counted. It takes no pointer — it is under the boxes and is not one of them. */
 .byd-drag-grid {

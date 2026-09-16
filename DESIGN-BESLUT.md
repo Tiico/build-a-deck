@@ -2865,6 +2865,47 @@ Prototypat 2026-09-14: tre paneler — allt staplat, panel med flikar, galleri p
 Valet blev den staplade panelen, som är precis hur panelen redan beter sig för text, med baksidesgalleriet hämtat från flikvarianten.
 Flikarna göms fyllningen medan formen väljs och inför en navigering inuti en panel som inte har någon; galleriet på duken skilde formen från sina egna siffror.
 
+### L18. Elementet på kortet är ett tabbstopp med ett flyttläge (prototypat 2026-09-16, #144)
+
+Fyrtio tabbstopp genom editorn nådde aldrig ett element på kortet.
+`.byd-drag-box` hade varken `tabindex`, `role` eller namn, hela draglagret var `aria-hidden`, och handtagen var namnlösa `div`-ar.
+Den enda plats ett tangentbord kunde välja ett lager från — lagerlistan — var samtidigt den enda varifrån elementet inte gick att flytta, eftersom rutnätets egna pilar redan är fokusflytt (L15).
+Uppmätt i Chromium vid 1440 × 900: `→` med ett lager valt i listan gav x 617 → 617; med fokus parkerat på verktygsraden gav samma tryck 617 → 621.
+Alltså gick det att nudga bara genom att först lämna det man arbetade på.
+
+Beslutet (beställaren 2026-09-16, efter prototyp `04-tangentbordet-pa-duken`):
+
+- **Elementet på kortet är ett eget tabbstopp** med roll, namn och läge: *"title, text, x 5 mm, y 5 mm"*.
+  Tabbordningen är lagerlistans — översta lagret först — medan ritordningen blir kvar i `z-index`, så att pekaren fortfarande tar den översta rutan i högen.
+  Markeringen följer fokus, precis som i lagerlistan.
+- **`Enter` eller mellanslag går in i och ur flyttläget**, märkt både för ögat (gul ram) och för skärmläsaren (`aria-pressed` och ett namn som slutar på `flyttläge`).
+  Båda, eftersom rutan bär rollen `button` och en knapp besvaras med endera tangenten; ett obesvarat mellanslag på en `div` scrollar i stället sidan, så även låsningens nekande tar tangenten.
+- **I flyttläge nudgar pilarna 0,5 mm och `Skift`+pil 5 mm**, och varje flytt sägs som millimetrar i appens artiga liveregion.
+  En halv millimeter är just det avstånd en skärm inte visar, så en nudge som bara ritas är en nudge ingen kan kontrollera.
+- **`Escape` lämnar flyttläget och lägger tillbaka elementet där det låg.**
+  Det är #142:s väg ut ur ett grepp, inte en ny: hela hållningen bär en polett, och `callOff` tar tillbaka både dokumentet och steget.
+- **Handtagen är `aria-hidden`.**
+  Fyra namngivna handtag per element är tjugo extra tabbstopp på ett kort med fem element, för ett värde som redan går att skriva exakt i egenskapspanelens millimeterfält.
+
+Alternativet — att pilarna flyttar direkt så snart elementet har fokus — valdes bort: det tar bort pilen som ett sätt att läsa sig fram över duken, och gör en skumläsning till en ändring av kortet.
+Ett läge som syns är att föredra framför en tangent som gör olika saker beroende på var man råkar stå; det är samma princip som redan gäller i lagerlistan.
+Att dela upp i två steg — först roll, namn och tabbstopp, sedan flytten — valdes också bort, eftersom halva ändringen lämnar kvar just det som gör läget motsägelsefullt.
+
+**Vad som ändras i tidigare beslut.**
+L14 räknade upp piltangenterna bland de redigeringar som saknar polett, och L15 sa att pilarna nudgar "på kortet och i egenskapspanelen".
+Båda meningarna var sanna om en pil som alltid flyttade, från var som helst utom lagerlistan och ett fält.
+Nu flyttar en pil ingenting utanför flyttläget — varken från verktygsraden, från kronan eller från elementet självt — och ett oavsiktligt tryck når därmed aldrig kortets innehåll.
+Hela hållningen är ett steg tillbaka, som varje annat grepp (L14): tangentbordets flytt *är* ett grepp, det är bara handen som saknar pekare.
+Lagerlistans pilnavigering och `Alt`+pil är oförändrade; ingen tangent betyder två saker.
+`Delete` och `Backspace` hörs fortfarande på dokumentet och öppnar frågan före en borttagning (#143), oförändrat.
+Hjälptexten under lagerlistan säger numera hur elementet flyttas, eftersom den annars är sann bara så länge det inte går.
+
+Motivering:
+Tillgängligheten gäller editorn fullt ut (L12): en formgivare som arbetar på tangentbord är en skrivbordsanvändare, inte ett undantag.
+Ett kort ritas i millimeter, och det enda verktyget som kunde ange en halv millimeter exakt var det som inte gick att nå.
+
+Byggt 2026-09-16.
+
 ### L14. Ett spel utan den guidade starten (2026-09-13)
 
 Den guidade starten (E3, L6) är en dörr, inte en grind.

@@ -63,6 +63,12 @@ const SHELL = `
           <label class="byd-canvas-grid-toggle"><input type="checkbox" data-stop="the grid toggle" />Rutnät 1 mm</label>
           <p class="byd-canvas-hint">Dra ett lager för att ändra ordningen, eller håll Alt och tryck pil upp eller ner.</p>
         </aside>
+        <main class="byd-canvas-stage">
+          <div class="byd-preview"><div class="byd-drag-layer">
+            <div class="byd-drag-box" role="button" tabindex="0" data-stop="an element on the card"><i class="byd-drag-handle" data-handle="nw" aria-hidden="true"></i></div>
+            <div class="byd-drag-box" role="button" tabindex="0" data-moving data-stop="an element in move mode"></div>
+          </div></div>
+        </main>
         <aside class="byd-canvas-props">
           <div class="byd-props">
             <label>X (mm)<input type="number" data-stop="a property field" /></label>
@@ -212,6 +218,8 @@ describe('the editor under a keyboard', () => {
       'a tool',
       'the selected layer',
       'the grid toggle',
+      'an element on the card',
+      'an element in move mode',
       'a property field',
       'a property choice',
       'the table panel',
@@ -259,6 +267,58 @@ describe('the editor under a keyboard', () => {
     expect(unmarked.map((s) => s.what)).toEqual([])
     const ringed = fields.filter((s) => s.style !== 'none')
     expect(ringed.map((s) => s.what)).toEqual([])
+  }, 60_000)
+})
+
+// The element on the card is a keyboard stop of its own (#144), and the card under it is the
+// designer's: it can be cream, it can be midnight blue, and the ring has to be seen on either. So
+// the ring is two rings — one dark at the box's own edge, one light outside it — and the move mode
+// wears the same shape in amber, which is a different thing to see than "the keyboard is here".
+const ON_THE_CARD = `
+<div class="byd-editor" data-page="editor" data-mode="template">
+  <main><div role="tabpanel"><div class="byd-canvas"><main class="byd-canvas-stage"><div class="byd-preview">
+    <div class="byd-drag-layer">
+      <div id="plain" class="byd-drag-box" role="button" tabindex="0"></div>
+      <div id="moving" class="byd-drag-box" role="button" tabindex="0" data-moving></div>
+    </div>
+  </div></main></div></div></main>
+</div>`
+
+// Every colour a ring is drawn in, outline and box-shadow together.
+const RING = /(rgba?\([^)]*\)|#[0-9a-f]{3,8})/gi
+
+describe('an element on the card under a keyboard (#144)', () => {
+  it('rings it whatever the card is painted, and shows the move mode as something else again', async () => {
+    const page = await browser.newPage()
+    try {
+      await page.setContent(`<!doctype html><html><head><style>body{margin:0}${css}</style></head><body>${ON_THE_CARD}</body></html>`, { waitUntil: 'load' })
+      await page.focus('#plain')
+      const rings = await page.evaluate(() =>
+        ['plain', 'moving'].map((id) => {
+          const style = getComputedStyle(document.getElementById(id)!)
+          return { outline: style.outlineColor, width: parseFloat(style.outlineWidth), style: style.outlineStyle, shadow: style.boxShadow }
+        }),
+      )
+      const [plain, moving] = rings as [{ outline: string; width: number; style: string; shadow: string }, { outline: string; width: number; style: string; shadow: string }]
+
+      // Both are drawn, and the mode is not the same drawing as the focus it always has.
+      expect([plain.style, moving.style]).toEqual(['solid', 'solid'])
+      expect([plain.width >= 2, moving.width >= 2]).toEqual([true, true])
+      expect(moving.outline).not.toBe(plain.outline)
+
+      // And on a card of any colour at all, one of the rings is legible against it.
+      const cards = ['#f4ead8', '#2f4068']
+      const seen = rings.map((ring) => {
+        const colours = [ring.outline, ...(ring.shadow.match(RING) ?? [])]
+        return cards.map((card) => Math.max(...colours.map((c) => contrastRatio(c, card))) >= 3)
+      })
+      expect(seen).toEqual([
+        [true, true],
+        [true, true],
+      ])
+    } finally {
+      await page.close()
+    }
   }, 60_000)
 })
 

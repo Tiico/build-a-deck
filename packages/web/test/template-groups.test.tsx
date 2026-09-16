@@ -46,11 +46,15 @@ async function openTemplate(doc: ProjectDoc = typed()) {
 const layers = () => layerRows()
 const pick = (at: number) => layers()[at]!.querySelector('.byd-layer-pick') as HTMLElement
 // Nudging an element is the card's keyboard, not the panel's: inside the panel the arrows walk
-// the grid (L15), exactly as they do in any other layer panel. So the focus leaves the panel
-// first, which is what happens when a designer picks a layer and then goes back to the card.
+// the grid (L15), exactly as they do in any other layer panel. Since #144 the card's own element
+// is the stop the move is made from — Enter goes into the move mode, the arrows nudge, and Enter
+// leaves it again — which is what a designer does after she has picked the layer she wants.
 const nudge = async (user: UserEvent, keys: string) => {
-  ;(document.activeElement as HTMLElement | null)?.blur()
-  await user.keyboard(keys)
+  const open = document.querySelector('[data-layer][aria-selected="true"]')?.getAttribute('data-layer')
+  const box = document.querySelector(`[data-drag="${open}"]`) as HTMLElement | null
+  if (!box) throw new Error(`no element on the card for the layer ${open}`)
+  box.focus()
+  await user.keyboard(`{Enter}${keys}{Enter}`)
 }
 const stored = async () => (await run.projects.load(run.projectId))!.template.faces
 // The groups stand behind one button in the crown since #129: it carries the open group and how

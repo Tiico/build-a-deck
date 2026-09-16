@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import type { Element, FaceTemplate, ProjectDoc, Row } from './types.js'
 import { CardPreview } from './CardPreview.js'
@@ -151,9 +151,9 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
     setAsking(null)
     to?.focus()
   }
-  // The keys are the card's again only once the question is answered: while it stands, the focus
-  // is on one of its answers, and an arrow there would nudge the very element being asked about.
-  useElementKeys(asking === null ? el : undefined, patch, ask, setRefused)
+  // The key is the card's again only once the question is answered: while it stands, the focus is
+  // on one of its answers, and a second Delete there would ask about the same element twice.
+  useElementKeys(asking === null ? el : undefined, ask, setRefused)
   // What a deletion is said in when it has happened. The editor has two live regions and no
   // surface makes a third (StatusLive), so the canvas asks for the polite one by name.
   const say = useSay()
@@ -448,6 +448,17 @@ function isBox(el: Element): el is BoxElement {
   return 'w' in el && 'h' in el
 }
 
+// What kind of element it is, in the word a reader hears rather than the word the model holds
+// (#144, A4). The layer list draws the same fact as a glyph; a name read aloud has to say it.
+const KIND_WORDS: Record<Element['kind'], Key> = {
+  text: 'canvas.kind.text',
+  image: 'canvas.kind.image',
+  icons: 'canvas.kind.icons',
+  shape: 'canvas.kind.shape',
+  group: 'canvas.kind.group',
+  if: 'canvas.kind.if',
+}
+
 // The layer that takes the pointer (#18, variant A): one transparent box over each element, in
 // the card's own millimetres. It draws no card content — the compiler behind it is still the one
 // renderer — and it holds the pointer with pointer capture, so a fast drag or a trackpad that
@@ -466,6 +477,12 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
   // drag to leave. Everything else about the grab stays in the ref above, where it is read inside
   // an event and never drawn.
   const [holding, setHolding] = useState(false)
+  // The element the keyboard has taken hold of, and the token every nudge of that holding carries
+  // (#144). A mode to go into was chosen over the arrows always moving: an arrow over the card
+  // then means walking about until the designer says otherwise, and no stray press ever moves the
+  // card's contents. The token is what makes the whole holding one step back (L14) and what
+  // Escape gives back through (#142) — the keyboard's holding is a grab like the pointer's.
+  const [moving, setMoving] = useState<{ id: string; gesture: string; from: { x: number; y: number } } | null>(null)
 
   const down = (event: ReactPointerEvent<HTMLElement>, box: BoxElement, handle: Handle | null) => {
     if (event.button !== 0) return
@@ -513,19 +530,94 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
     say?.('polite', t('editor.drag.cancelled'))
   }
 
+  // The move taken back rather than ended (#142, #144), which is the pointer's own way out heard
+  // from a hand that has no pointer: the element goes back where the holding began, and the
+  // holding leaves no step behind. A mode entered and left again without a nudge in it moved
+  // nothing, so there is nothing to take back and nothing to say.
+  const callOffMove = () => {
+    const held = moving
+    setMoving(null)
+    const box = held && boxes.find((b) => b.id === held.id)
+    if (!held || !box || (box.x === held.from.x && box.y === held.from.y)) return
+    onCallOff(held.gesture)
+    say?.('polite', t('canvas.element.back', { name: layerName(box), x: held.from.x, y: held.from.y }))
+  }
+
+  // The keyboard on an element of the card (#144). Enter and Space are both the way in and the
+  // way out of the move mode; the arrows belong to the mode and to nothing else.
+  //
+  // Both, because the box wears the button role and a button is answered with either key — and
+  // because a box is a `div`, where the browser does nothing of its own with Enter and scrolls the
+  // page with Space. A Space the mode did not take is the card sliding out from under the hand
+  // that pressed it, which is worse than a key that does nothing, so every way out of this branch
+  // is behind the same `preventDefault` — the refusal a locked layer gets included (L15).
+  //
+  // A Space that arrives in the middle of a nudging session therefore lets go, exactly as Enter
+  // does: one meaning per key, and letting go keeps what was moved. Taking the move back is
+  // Escape's, and stays Escape's alone (#142).
+  const keys = (event: ReactKeyboardEvent<HTMLElement>, box: BoxElement) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
+      if (moving?.id === box.id) return setMoving(null)
+      // A locked layer is one the keyboard can stand on and read, and never one it takes hold of
+      // (L15) — the same answer the pointer already gets, said in the same place.
+      if (box.locked) return onRefused(box.id)
+      return setMoving({ id: box.id, gesture: grabs.begin(), from: { x: box.x, y: box.y } })
+    }
+    // The two steps the pointer already has, in the hand that has no pointer: half a millimetre,
+    // and five with shift. Every nudge of one holding carries its token, so the whole of it is
+    // one step back and Escape can give the element back to where the holding began.
+    if (moving?.id !== box.id) return
+    const nudged = arrowMove(box, event.key, event.shiftKey)
+    if (!nudged) return
+    event.preventDefault()
+    onPatch(box.id, nudged, moving.gesture)
+    // Where it now lies, said out loud. Half a millimetre is exactly the distance a screen cannot
+    // show, so a nudge that is only drawn is a nudge nobody can check.
+    say?.('polite', t('canvas.element.at', { name: layerName(box), x: box.x, y: box.y, ...nudged }))
+  }
+
   return (
-    <div className="byd-drag-layer" data-drag-layer ref={layer} aria-hidden="true">
+    <div className="byd-drag-layer" data-drag-layer ref={layer}>
       {/* The way out of the drag, for the hand that changed its mind before it let go (#142). The
           same door the table's head hangs over its own pull, and it stands only while there is a
           drag to leave. */}
       {holding && <DragDoor onCancel={callOff} />}
-      {grid && <div className="byd-drag-grid" data-grid />}
-      {boxes.map((box) => (
+      {/* And the same door for the move the keyboard is holding (#144). It is `held` like the
+          pointer's, because it is the same thing: something under the hand at this moment, and a
+          press that arrives while it is down is about that and not about a panel over the work. */}
+      {moving && <DragDoor onCancel={callOffMove} />}
+      {grid && <div className="byd-drag-grid" data-grid aria-hidden="true" />}
+      {/* Read backwards, and stacked forwards. The keyboard meets the elements in the order the
+          layer list reads them — top-most first, which is the order the designer already has in
+          front of her (#144) — while the pointer must still find the top-most box on top of the
+          pile, which is the order the card is drawn in. The two orders are each other turned
+          around, so the tree carries one and `z-index` carries the other. */}
+      {[...boxes].reverse().map((box, fromTop) => (
         <div
           key={box.id}
           className="byd-drag-box"
           data-drag={box.id}
-          style={{ left: `${box.x}mm`, top: `${box.y}mm`, width: `${box.w}mm`, height: `${box.h}mm` }}
+          // The element is a control of its own (#144): a toggle, because pressing it is what
+          // opens and closes the move mode, and a name that says what it is and where it lies.
+          role="button"
+          tabIndex={0}
+          aria-label={t(moving?.id === box.id ? 'canvas.element.moving' : 'canvas.element', { name: layerName(box), kind: t(KIND_WORDS[box.kind]), x: box.x, y: box.y })}
+          aria-pressed={moving?.id === box.id}
+          {...(moving?.id === box.id ? { 'data-moving': '' } : {})}
+          onKeyDown={(event) => keys(event, box)}
+          style={{ left: `${box.x}mm`, top: `${box.y}mm`, width: `${box.w}mm`, height: `${box.h}mm`, zIndex: boxes.length - 1 - fromTop }}
+          // The selection follows the focus here for the same reason it does in the layer list
+          // (L15): arriving on an element is the whole of choosing it, and the properties beside
+          // the card — where a size is typed in millimetres — must be about what the keyboard
+          // stands on.
+          onFocus={() => onSelect(box.id)}
+          // The keyboard leaving the element is letting go of it, the way lifting a finger ends a
+          // drag: what was moved stays moved, and nothing goes on wearing a frame that promises
+          // the next arrow will move it.
+          onBlur={() => {
+            if (moving?.id === box.id) setMoving(null)
+          }}
           onPointerDown={(event) => down(event, box, null)}
           onPointerMove={move}
           onPointerUp={up}
@@ -539,6 +631,10 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
                 key={corner}
                 className="byd-drag-handle"
                 data-handle={corner}
+                // Hidden from the reader rather than named (#144, as decided): four handles on
+                // each of five elements would be twenty more tab stops for a size the property
+                // panel's millimetre fields already take exactly.
+                aria-hidden="true"
                 onPointerDown={(event) => down(event, box, corner)}
                 onPointerMove={move}
                 onPointerUp={up}
@@ -547,8 +643,8 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
             ))}
         </div>
       ))}
-      {guides.x !== null && <div className="byd-drag-guide" data-guide="x" style={{ left: `${guides.x}mm` }} />}
-      {guides.y !== null && <div className="byd-drag-guide" data-guide="y" style={{ top: `${guides.y}mm` }} />}
+      {guides.x !== null && <div className="byd-drag-guide" data-guide="x" aria-hidden="true" style={{ left: `${guides.x}mm` }} />}
+      {guides.y !== null && <div className="byd-drag-guide" data-guide="y" aria-hidden="true" style={{ top: `${guides.y}mm` }} />}
     </div>
   )
 }
@@ -883,35 +979,28 @@ function ToolRail({ onAdd, onPlaceIcon }: { onAdd(kind: ElementKind): void; onPl
   )
 }
 
-// The keyboard over the card (#18): the arrows nudge the selected element and Delete asks whether
-// to take it away, wherever the focus is — the layer list, the card, the panel around them. Two
-// things are left alone: a key a control has already answered (the layer list's own arrows say so
-// by preventing the default), and any key typed into a field.
+// Taking the selected element away with a key (#143), wherever the focus is — the layer list, the
+// card, the panel around them. Two things are left alone: a key a control has already answered
+// (the layer list's own arrows say so by preventing the default), and any key typed into a field.
 //
 // Backspace is heard here as well as Delete, and that is why the asking is the whole of what it
 // does (#143). Listening wherever the focus is was the right decision and is kept; what was wrong
 // was that the key nobody presses on purpose — back in every browser, one character in every
 // field — reached all the way to the removal with nothing in between.
-function useElementKeys(el: Element | undefined, onPatch: TemplateCanvasProps['onPatch'], onAsk: (id: string) => void, onRefused: (id: string) => void) {
+//
+// The arrows used to be answered here too, from wherever the keyboard happened to stand (#18).
+// They are not any more (#144): a move is made from the element itself, inside a mode the designer
+// goes into on purpose, so that an arrow pressed somewhere unrelated never moves the card's
+// contents and the same key never means two things.
+function useElementKeys(el: Element | undefined, onAsk: (id: string) => void, onRefused: (id: string) => void) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (!el || event.defaultPrevented || isTyping(event.target)) return
-      // A locked layer answers none of these (L15). The keys are swallowed rather than left to
-      // the page, so a held arrow cannot scroll the canvas away instead of moving the element.
-      if (el.locked && (event.key === 'Delete' || event.key === 'Backspace' || ('x' in el && arrowMove(el, event.key, event.shiftKey)))) {
-        event.preventDefault()
-        return onRefused(el.id)
-      }
-      if (event.key === 'Delete' || event.key === 'Backspace') {
-        event.preventDefault()
-        return onAsk(el.id)
-      }
-      // An element without a box of its own — a condition around others — has nothing to move.
-      if (!('x' in el)) return
-      const moved = arrowMove(el, event.key, event.shiftKey)
-      if (!moved) return
+      if (event.key !== 'Delete' && event.key !== 'Backspace') return
       event.preventDefault()
-      onPatch(el.id, moved)
+      // A locked layer does not go either (L15), and says so beside the card that did not change.
+      if (el.locked) return onRefused(el.id)
+      onAsk(el.id)
     }
     document.addEventListener('keydown', onKeyDown)
     return () => document.removeEventListener('keydown', onKeyDown)

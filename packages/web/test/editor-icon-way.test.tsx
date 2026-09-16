@@ -198,9 +198,14 @@ describe('the icon as a tool on the canvas (#33)', () => {
     expect(field.value).toBe('')
     expect(within(field).getByRole('option', { name: 'inget fält' }).getAttribute('value')).toBe('')
 
-    // Nudged and taken away by the same keys as everything else on the canvas.
-    await press({ key: 'ArrowRight' })
+    // Nudged and taken away by the same keys as everything else on the canvas: the move is made
+    // from the element's own stop, inside the mode Enter opens (#144).
+    const box = document.querySelector('[data-drag="icon-1"]') as HTMLElement
+    box.focus()
+    fireEvent.keyDown(box, { key: 'Enter' })
+    fireEvent.keyDown(box, { key: 'ArrowRight' })
     await waitFor(() => expect((screen.getByLabelText(/^x/i) as HTMLInputElement).value).toBe('28'))
+    fireEvent.keyDown(box, { key: 'Enter' })
     await press({ key: 'Delete' })
     // An element is not taken on the key alone, whichever tool placed it (#143, L9): the key
     // opens the question and the answer is what removes it.

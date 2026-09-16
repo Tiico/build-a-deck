@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen, within } from '@testing-library/react'
-import { userEvent } from '@testing-library/user-event'
+import { userEvent, type UserEvent } from '@testing-library/user-event'
 import { TemplateCanvas, type TemplateCanvasProps } from '../src/editor/TemplateCanvas.js'
 import { projectDoc } from './project-doc.js'
 import { drag, laidOut, target } from './drag.js'
@@ -42,20 +42,32 @@ function canvas(over: Partial<TemplateCanvasProps> = {}) {
   return props
 }
 
-describe('nudging the selected element with the keyboard (#18)', () => {
+// The move is made from the element itself since #144: the box over it on the card is a stop of
+// its own, Enter goes into the move mode, and the arrows belong to that mode. Every nudge of one
+// holding carries the same token, so the whole of it is one step back (L14).
+async function moving(user: UserEvent, id: string): Promise<void> {
+  target(id)!.focus()
+  await user.keyboard('{Enter}')
+}
+
+describe('nudging the element with the keyboard (#18, #144)', () => {
   it('moves it 0,5 mm with an arrow key and 5 mm with shift', async () => {
     const user = userEvent.setup()
     const { onPatch } = canvas()
+    await moving(user, 'title')
 
     // `title` sits at 5, 5 mm.
     await user.keyboard('{ArrowRight}')
-    expect(onPatch).toHaveBeenCalledWith('title', { x: 5.5 }, undefined)
+    expect(onPatch).toHaveBeenCalledWith('title', { x: 5.5 }, expect.any(String))
     await user.keyboard('{ArrowUp}')
-    expect(onPatch).toHaveBeenCalledWith('title', { y: 4.5 }, undefined)
+    expect(onPatch).toHaveBeenCalledWith('title', { y: 4.5 }, expect.any(String))
     await user.keyboard('{Shift>}{ArrowDown}{/Shift}')
-    expect(onPatch).toHaveBeenCalledWith('title', { y: 10 }, undefined)
+    expect(onPatch).toHaveBeenCalledWith('title', { y: 10 }, expect.any(String))
     await user.keyboard('{Shift>}{ArrowLeft}{/Shift}')
-    expect(onPatch).toHaveBeenCalledWith('title', { x: 0 }, undefined)
+    expect(onPatch).toHaveBeenCalledWith('title', { x: 0 }, expect.any(String))
+
+    // One holding, one token: the whole walk is one thing the designer did.
+    expect(new Set(vi.mocked(onPatch).mock.calls.map((call) => call[2])).size).toBe(1)
   })
 })
 
@@ -536,8 +548,9 @@ describe('the grid as a layer of its own (#18)', () => {
 
     // It draws a millimetre grid; it does not round anything to it. A nudge is still 0,5 mm.
     laidOut()
-    await user.keyboard('{ArrowRight}')
-    expect(onPatch).toHaveBeenLastCalledWith('title', { x: 5.5 }, undefined)
+    target('title')!.focus()
+    await user.keyboard('{Enter}{ArrowRight}')
+    expect(onPatch).toHaveBeenLastCalledWith('title', { x: 5.5 }, expect.any(String))
   })
 })
 
