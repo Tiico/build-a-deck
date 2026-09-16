@@ -3,6 +3,7 @@ import { DeckWall } from './DeckWall.js'
 import { EditorTabs, MODES, panelId, tabId, type Mode } from './EditorTabs.js'
 import { EditorStages, isCanvasStage, modeOf, STAGES, type Stage } from './EditorStages.js'
 import { useRoom } from '../room.js'
+import { useDoor } from '../doors.js'
 import { TemplateCanvas } from './TemplateCanvas.js'
 import { DataTable } from './DataTable.js'
 import { TableMenu, TablesTab } from './TablesTab.js'
@@ -576,18 +577,21 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
 
 // The way out of a panel that stands over the work, for everyone who did not come back to the
 // button that opened it. The panel is not modal — the work under it is what it is about — so this
-// listens on the document rather than trapping anything: Escape closes the panel and hands the
-// focus back to the button it came from, which is where the keyboard was standing when it opened.
+// traps nothing: Escape closes the panel and hands the focus back to the button it came from,
+// which is where the keyboard was standing when it opened.
+//
+// It is `standing`, and that is all it says about itself. A panel is opened and then left there
+// while the work under it goes on, so a press that arrives while a hand is in the middle of a drag
+// is not the panel's — and which of them it is belongs to `doors.ts` rather than to whichever of
+// the two happened to open first (#152).
 function PanelDoor({ opener, onClose }: { opener: RefObject<HTMLElement | null>; onClose(): void }) {
   const latest = useRef({ opener, onClose })
   latest.current = { opener, onClose }
+  useDoor('standing', () => {
+    onClose()
+    opener.current?.focus()
+  })
   useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || event.defaultPrevented) return
-      const now = latest.current
-      now.onClose()
-      now.opener.current?.focus()
-    }
     // A click back in the work is the other way out, and the one a mouse reaches for. The focus
     // goes where the click went, so nothing is handed back here. The button that opened the panel
     // is left alone: it already closes it, and closing on the way down would only let the click
@@ -599,12 +603,8 @@ function PanelDoor({ opener, onClose }: { opener: RefObject<HTMLElement | null>;
       if (now.opener.current?.contains(target) || target.closest('[role="dialog"]')) return
       now.onClose()
     }
-    document.addEventListener('keydown', onKeyDown)
     document.addEventListener('pointerdown', onPointerDown)
-    return () => {
-      document.removeEventListener('keydown', onKeyDown)
-      document.removeEventListener('pointerdown', onPointerDown)
-    }
+    return () => document.removeEventListener('pointerdown', onPointerDown)
   }, [])
   return null
 }
