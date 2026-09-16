@@ -13,11 +13,12 @@ export function usePrototypeVariant() {
   return [variant, choose] as const
 }
 export function PrototypeSwitcher({ variant, names, choose, reset }: { variant: string; names: string[]; choose(value: string): void; reset(): void }) {
-  const keys = ['A', 'B', 'C']
+  const keys = names.map((_, index) => String.fromCharCode(65 + index))
   const index = Math.max(0, keys.indexOf(variant))
   const cycle = (delta: number) => choose(keys[(index + delta + keys.length) % keys.length]!)
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
+      if (keys.length < 2) return
       const target = event.target as HTMLElement | null
       if (target?.closest('input, textarea, select, [contenteditable], [role="slider"], [role="tablist"], [role="dialog"]')) return
       if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return
@@ -26,14 +27,14 @@ export function PrototypeSwitcher({ variant, names, choose, reset }: { variant: 
     }
     window.addEventListener('keydown', key)
     return () => window.removeEventListener('keydown', key)
-  }, [variant])
+  }, [variant, names.length])
   if (!import.meta.env.DEV) return null
   const original = new URL(location.href)
   original.searchParams.delete('variant')
   return <nav className="ux-switch" aria-label="Prototypvarianter">
-    <button aria-label="Föregående variant" onClick={() => cycle(-1)}>←</button>
+    {keys.length > 1 && <button aria-label="Föregående variant" onClick={() => cycle(-1)}>←</button>}
     <span><small>PROTOTYP · SPARAR INGENTING</small><strong>{keys[index]} — {names[index]}</strong></span>
-    <button aria-label="Nästa variant" onClick={() => cycle(1)}>→</button>
+    {keys.length > 1 && <button aria-label="Nästa variant" onClick={() => cycle(1)}>→</button>}
     <button onClick={reset}>Återställ</button><a href={original.href}>Original</a>
   </nav>
 }

@@ -20,13 +20,20 @@
 .ux-phone-log { font-size:12px; border-bottom:1px solid var(--ux-line); }.ux-phone-log ol { padding-left:20px; }
 .ux-phone .ux-state { margin:16px 0; }.ux-phone .ux-state pre { max-height:150px; overflow:auto; }
 .ux-empty { padding:22px 10px; }.ux-empty p { color:var(--ux-muted); }
-.ux-phone-b .ux-phone-shell { max-width:580px; }.ux-phone-browse { display:flex; align-items:center; justify-content:space-between; margin:15px 0 0; }.ux-phone-browse button { min-width:44px; }
-.ux-single-card { max-width:280px; margin:auto; }.ux-single-card .ux-playing-face { max-height:43vh; width:auto; }
-.ux-single-tray { display:flex; gap:10px; justify-content:space-between; align-items:center; margin-top:16px; }.ux-single-tray > button:first-child { flex:1; }
-.ux-phone-tabs { display:flex; gap:6px; margin-top:18px; }.ux-phone-tabs button { flex:1; padding:8px; font-size:13px; }
-.ux-place-list { display:grid; gap:12px; margin:22px 0; }.ux-place-list button { display:flex; justify-content:space-between; align-items:center; gap:12px; min-height:74px; text-align:left; }.ux-place-list span { font-size:12px; }
-.ux-room-seats { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin:22px 0; }.ux-room-seats span { display:grid; background:var(--ux-panel); padding:10px; border-radius:8px; }.ux-room-seats small { font-size:11px; }
 .ux-proto-overlay { position:fixed; inset:0; z-index:500; background:#000b; padding:20px; display:grid; align-items:center; justify-content:center; }
 .ux-proto-overlay section { max-width:480px; max-height:calc(100dvh - 150px); overflow:auto; background:var(--ux-panel); border:1px solid var(--ux-line); border-radius:15px; padding:22px; display:grid; gap:20px; }
 @media(min-width:700px) {.ux-phone-cards > button,.ux-phone-cards > div:not(.ux-empty) { flex-basis:185px; }.ux-phone-shell { padding:0 30px; }.ux-phone-summary { margin:22px 0; }}
-@media(max-width:350px) {.ux-phone-shell { padding:0 12px; }.ux-phone-head { gap:10px; }.ux-single-tray { flex-wrap:wrap; }.ux-phone-actions button { padding:8px 10px; font-size:13px; }}
+@media(max-width:350px) {.ux-phone-shell { padding:0 12px; }.ux-phone-head { gap:10px; }.ux-phone-actions button { padding:8px 10px; font-size:13px; }}
+
+.ux-role-return { display:grid; gap:7px; padding-top:16px; }
+.ux-role-return small { font-size:11px; text-align:center; }
+.ux-phone-hint { padding:16px 0 0; font-size:13px; color:var(--ux-muted); }
+.ux-phone-actions .ux-read-card { margin-bottom:12px; min-height:44px; padding:6px 12px; }
+.ux-phone-finish { padding:20px 0; }
+.ux-phone-finish button { width:100%; }
+.ux-feedback { padding:28px 0!important; }
+.ux-feedback fieldset { border:0; padding:0; margin:0; min-width:0; }
+.ux-feedback legend { margin-bottom:12px; }
+.ux-feedback-ratings { display:flex; gap:7px; margin-bottom:8px; }
+.ux-feedback-ratings button { flex:1; min-width:0; padding:8px; }
+.ux-proto-overlay .ux-playing-face { width:220px; max-width:100%; margin:auto; }
