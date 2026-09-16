@@ -161,56 +161,36 @@ export function fitColumns(box: Element, deck: Record<string, readonly string[]>
     return Math.ceil(flow + gaps + parseFloat(own.paddingLeft) + parseFloat(own.paddingRight) + 24)
   }
 
-  // One record per column of the table, in the order the head stands in. Every column is paid
-  // what it asks for; only a column of sentences can be paid more or less than that.
-  type Track = { col: HTMLTableColElement; floor: number; asked: number; gives: boolean; width: number }
+  // One record per column of the table, in the order the head stands in. Every column is exactly
+  // what it asks for, and nothing is handed round between them (#141).
+  //
+  // It used to be a pool: the sentences shared out whatever was over and gave back whatever was
+  // missing, so the table always ended exactly where its box did. That bought a tidy right edge
+  // with a drag that meant four things — pulling `typ` 150 px wider took 20 px off `id`, 18 off
+  // `title`, 92 off `body` and 20 off `grupp`, none of which the hand had touched, and `title`
+  // was already too narrow for its values before it lost any. L4 and #46 say the width is the
+  // designer's, and a width that moves behind the back of the person who dragged is not hers.
+  //
+  // So the table is now as wide as its columns add up to, which may be wider than the box or
+  // narrower. Wider is the case the pinned × was drawn for (#53); narrower simply ends where the
+  // last column ends.
+  type Track = { col: HTMLTableColElement; width: number }
   const tracks: Track[] = cols.map((col, i) => {
     const kind = col.getAttribute('data-kind') ?? 'text'
-    if (kind === 'tap') return { col, floor: tap, asked: tap, gives: false, width: tap }
-    const under = headNeed(i)
+    if (kind === 'tap') return { col, width: tap }
     const name = col.getAttribute('data-col')
     // A width the designer set herself, if she has (#46). It is read off the column, beside what
     // the column is worth sizing like, because that is where the table already says everything
-    // this function is allowed to know about a column — and it ends the question rather than
-    // joining it: a column somebody set is exactly that wide, and neither gives a share of what
-    // is over nor is asked for one back. What the deck says it needs is not consulted at all,
-    // which is the whole of what setting a width means. A value that no longer fits says so in
-    // the cell, the way a value that does not fit always has.
+    // this function is allowed to know about a column. What the deck says it needs is not
+    // consulted at all, which is the whole of what setting a width means. A value that no longer
+    // fits says so in the cell, the way a value that does not fit always has.
     const own = parseFloat(col.getAttribute('data-width') ?? '')
-    if (Number.isFinite(own) && own > 0) return { col, floor: own, asked: own, gives: false, width: own }
+    if (Number.isFinite(own) && own > 0) return { col, width: own }
     let widest = kind === 'image' ? imageNeed(i) : 0
     for (const value of (name && deck[name]) || []) widest = Math.max(widest, need(value))
     // The heading has no lane under it, so only the value's side of the question pays for one.
-    const asked = Math.max(under, widest + (hasLane(i) ? lane : 0))
-    // Only a column of sentences gives and takes. A number is as wide as a number however much
-    // room is going spare, and a card's id is a machine key and not prose.
-    return { col, floor: under, asked, gives: kind === 'text', width: asked }
+    return { col, width: Math.max(headNeed(i), widest + (hasLane(i) ? lane : 0)) }
   })
-
-  // Handing out what is over, or taking back what is missing, in proportion to what was asked
-  // for. The narrowest goes first, so a column pushed down onto its own floor leaves the ones
-  // behind it a true share of what is still left rather than a promise already spent. Nothing
-  // falls below what its own heading needs; when every one of them is on its floor and the room
-  // has still run out, the table is wider than the box and the box scrolls, which is the honest
-  // answer and the case the pinned × was drawn for (#53).
-  const gives = tracks.filter((track) => track.gives)
-  let left = room - tracks.reduce((sum, track) => sum + track.asked, 0)
-  // What is missing is only worth taking where taking it makes the table fit. A column the
-  // designer set is exactly as wide as she said, so a deck can be told to be wider than the
-  // window — and past the point where the sentences on their floors would still not close the
-  // gap, every pixel taken off one of them buys nothing. The box scrolls either way; the only
-  // difference is a value nobody can read. Measured: `body` pulled to 1100 px at 1280 pushed
-  // `art` down onto its own heading and cut its values inside a table 1668 px wide regardless.
-  const spare = gives.reduce((sum, track) => sum + (track.asked - track.floor), 0)
-  if (left < 0 && -left > spare) left = 0
-  let pool = gives.reduce((sum, track) => sum + track.asked, 0)
-  if (pool > 0 && left !== 0) {
-    for (const track of [...gives].sort((a, b) => a.asked - b.asked)) {
-      track.width = Math.max(track.floor, track.asked + Math.round((left * track.asked) / pool))
-      left -= track.width - track.asked
-      pool -= track.asked
-    }
-  }
 
   // Said to the table, because saying it to the cells would be saying it to an `<input>` again.
   // A fixed layout is what makes a `<col>` width binding at all, and the table's own width is the
@@ -260,4 +240,43 @@ export function markValues(box: Element): void {
     if (runs) cell.setAttribute('data-cut', 'true')
     else cell.removeAttribute('data-cut')
   }
+}
+
+// How far the scrolling box should move under a drag that has reached its edge (#141).
+//
+// A column can be dragged wider than the window now, and without this it cannot: the pointer runs
+// out where the window does, so the hand has to let go, scroll the box and catch the edge again —
+// which is the one thing the drag was changed to make possible.
+//
+// Near the edge and not at it: a hand that has pushed a column out past the right-hand side is
+// already at the last pixel it has, so the band has to start before that. Forty pixels is about a
+// finger's width and is the number the issue names. Inside the band the step grows with how far in
+// the hand is, so easing off slows the scroll rather than stopping it dead.
+//
+// It answers nought wherever there is nothing to scroll to, which is both edges of a table that
+// fits its box and the far end of one that does not — otherwise a drag would keep asking for a
+// scroll the box has already run out of, and the column would grow for nothing.
+//
+// Deliberately one self-contained function with no imports, as `fitColumns`, `markCut` and
+// `columnsOutside` are: the browser test runs this very function inside the page, so what is
+// measured there is what ships.
+export function dragScroll(box: Element, clientX: number): number {
+  const scroller = box as HTMLElement
+  const room = scroller.scrollWidth - scroller.clientWidth
+  if (room <= 0) return 0
+  const at = scroller.getBoundingClientRect()
+  const edge = 40
+  const step = 24
+  const past = clientX - (at.right - edge)
+  if (past > 0) {
+    // Nothing to ask for once the box is already at the end of what it has.
+    const left = room - scroller.scrollLeft
+    return left <= 0 ? 0 : Math.min(left, Math.ceil((Math.min(past, edge) / edge) * step))
+  }
+  const before = at.left + edge - clientX
+  if (before > 0) {
+    const left = scroller.scrollLeft
+    return left <= 0 ? 0 : -Math.min(left, Math.ceil((Math.min(before, edge) / edge) * step))
+  }
+  return 0
 }

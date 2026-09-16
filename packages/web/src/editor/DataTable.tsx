@@ -13,7 +13,7 @@ import { Summary } from './HistoryPanel.js'
 import type { Cell } from './ProjectClient.js'
 import { exportCardsCsv, importCardsCsv } from './csv.js'
 import { keepOrder, nextSort, sortRows, type SortState } from './sorting.js'
-import { deckValues, fitColumns, markValues, widthKind, GROUP_COL } from './columns.js'
+import { deckValues, dragScroll, fitColumns, markValues, widthKind, GROUP_COL } from './columns.js'
 import { heldWidths, rememberWidths } from './widths.js'
 import { countLabel, discreteColumns, filterRows, isFiltering, noFilter, toggleValue, type FilterState } from './filtering.js'
 import { duplicateRows, keepRows, markRows, noSelection, removeRows, selectionLabel, setColumn, toggleRow, type Selection } from './selection.js'
@@ -335,7 +335,11 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // column had then, and whether it has gone anywhere yet. A ref beside that state for the same
   // reason `carried` is one — it is read inside an event and never drawn, while `pulling` is
   // drawn on every frame and never read back.
-  const gripped = useRef<{ field: string; from: number; was: number; pulled: boolean } | null>(null)
+  // `at` is where the pointer was last seen and `scrolled` how far the box has moved under it
+  // since the hand came down (#141): a column dragged past the window's edge keeps growing while
+  // the box travels, so the width it is drawn at is the hand's distance plus the box's.
+  const gripped = useRef<{ field: string; from: number; was: number; pulled: boolean; at: number; scrolled: number } | null>(null)
+  const travelling = useRef<number | null>(null)
   // Which columns are standing outside the box, and the answer they were last drawn from (#46).
   // The set is held as state because it is words on the screen; the key beside it is what keeps a
   // scroll from setting state on every frame it does not change anything.
@@ -519,6 +523,34 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     markValues(box)
     markCut(box)
   }
+  // What the column is worth right now: how far the hand has moved, plus how far the box has
+  // travelled under it (#141), and never less than a target.
+  const widthUnderTheHand = (held: { from: number; was: number; at: number; scrolled: number }): number =>
+    Math.max(tap(), Math.round(held.was + (held.at - held.from) + held.scrolled))
+  const stopTravelling = () => {
+    if (travelling.current !== null) cancelAnimationFrame(travelling.current)
+    travelling.current = null
+  }
+  // The box moving under a drag that has reached its edge. It asks `dragScroll` what the pointer's
+  // place is worth on every frame and stops the moment that is nought — which is both edges of a
+  // table that fits, and the far end of one that does not.
+  const travel = () => {
+    if (travelling.current !== null) return
+    const step = () => {
+      travelling.current = null
+      const held = gripped.current
+      const box = scrollRef.current
+      if (!held?.pulled || !box) return
+      const by = dragScroll(box, held.at)
+      if (by === 0) return
+      box.scrollLeft += by
+      held.scrolled += by
+      drawWidth(held.field, widthUnderTheHand(held))
+      travelling.current = requestAnimationFrame(step)
+    }
+    travelling.current = requestAnimationFrame(step)
+  }
+
   // Fetching a column that has gone out of the box back into it (#46). A step of most of the box
   // rather than a jump to the end, so the sentence beside it counts down as the hand presses and
   // the reader can stop at what she was looking for.
@@ -549,7 +581,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             event.stopPropagation()
             const th = (event.target as HTMLElement).closest('th')
             if (!th) return
-            gripped.current = { field, from: event.clientX, was: Math.round(th.getBoundingClientRect().width), pulled: false }
+            gripped.current = { field, from: event.clientX, was: Math.round(th.getBoundingClientRect().width), pulled: false, at: event.clientX, scrolled: 0 }
             setPulling(field)
             // The edge holds the pointer it took hold of, exactly as the canvas's own drag layer
             // does (#18), and for the second of the two reasons that one gives: a fast hand keeps
@@ -567,7 +599,12 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             // had it — so a press that turns out to be a click has nothing to give back.
             if (!held.pulled && Math.abs(event.clientX - held.from) < PULL_SLOP) return
             held.pulled = true
-            drawWidth(field, Math.max(tap(), Math.round(held.was + (event.clientX - held.from))))
+            held.at = event.clientX
+            drawWidth(field, widthUnderTheHand(held))
+            // A hand that has reached the box's edge is out of pointer, not out of intent. The
+            // box travels under it for as long as it stays there — a pointer held still sends no
+            // more moves, so the travelling is its own loop rather than a step per event.
+            travel()
           },
           onLetGo: (event) => {
             const held = gripped.current
@@ -578,13 +615,15 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             // set the column to the width it already had — and a column that has stopped
             // following its deck looks exactly like one that still does, so the table went
             // quietly deaf on whichever heading a hand had rested on.
-            if (held.pulled) setWidth(field, held.was + (event.clientX - held.from))
+            stopTravelling()
+            if (held.pulled) setWidth(field, widthUnderTheHand({ ...held, at: event.clientX }))
           },
           onCallOff: () => {
             const held = gripped.current
             if (held?.field !== field) return
             gripped.current = null
             setPulling(null)
+            stopTravelling()
             if (!held.pulled) return
             // Back to the width the column had when the hand came down on its edge: a number when
             // the designer had set one, and no number at all when it was still following its deck.
