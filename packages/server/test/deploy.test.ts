@@ -138,3 +138,36 @@ describe('mailerFromEnv', () => {
     expect((mailer as ResendMailer).from).toMatch(/@/)
   })
 })
+
+// What the app image can actually build (DRIFT §7). CI runs lint, typecheck and the suite on every
+// pull request, but it only builds the images when a `v*` tag is pushed — so a Dockerfile that
+// cannot build the web app is invisible on the trunk and surfaces as a failed release, which is
+// the worst place to find it. `vite build` loads `vite.config.ts` before it builds anything, and a
+// static import in that file is a file the build context has to carry. It did not: the config
+// imports the run's own reporter from `test-support/` (#111) and the Dockerfile copied only
+// `packages/`, so every image build from that commit on failed on `Could not resolve`.
+describe('the app image carries everything the web build reads', () => {
+  const dockerfile = readFileSync(new URL('../../../Dockerfile', import.meta.url), 'utf8')
+  const viteConfig = readFileSync(new URL('../../web/vite.config.ts', import.meta.url), 'utf8')
+
+  // Where the build stage copies from, as repo-relative paths. `COPY --from=` copies out of an
+  // earlier stage rather than out of the context, so it carries nothing in and is not one of these.
+  const copied = dockerfile
+    .split('\n')
+    .filter((line) => /^COPY /.test(line) && !line.includes('--from='))
+    .flatMap((line) => line.replace(/^COPY /, '').trim().split(/\s+/).slice(0, -1))
+
+  // The relative imports in the config that leave the package they sit in — the ones whose file
+  // has to be copied in by a line of its own, because `COPY packages` does not reach them.
+  const escaping = [...viteConfig.matchAll(/^import .* from '(\.\.[^']*)'/gm)]
+    .map((match) => match[1] as string)
+    .filter((specifier) => specifier.startsWith('../../'))
+    .map((specifier) => specifier.replace(/^\.\.\/\.\.\//, '').replace(/\.js$/, ''))
+
+  it('copies in every file outside the package that vite.config.ts imports', () => {
+    expect(escaping.length).toBeGreaterThan(0)
+    for (const path of escaping) {
+      expect(copied.some((source) => path === source || path.startsWith(`${source}/`)), `${path} is imported by packages/web/vite.config.ts but no COPY in the Dockerfile brings it into the build context`).toBe(true)
+    }
+  })
+})
