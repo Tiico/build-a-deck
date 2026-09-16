@@ -80,6 +80,11 @@ describe('the palette the template canvas is drawn in', () => {
     { what: 'the name under a tool', ink: '--byd-editor-tool-ink', on: '--byd-editor-tool-bg' },
     { what: 'the note on how the layers are ordered', ink: '--byd-editor-hint-ink', on: '--byd-editor-canvas-bg' },
     { what: 'the heading over each panel', ink: '--byd-editor-hint-ink', on: '--byd-editor-canvas-bg' },
+    // The question a layer is given before it goes (#143). It is the third thing in the editor
+    // that asks before something cannot be looked at afterwards, and the third is held to the
+    // bar the other two are.
+    { what: 'the question a layer is asked', ink: '--byd-editor-ask-ink', on: '--byd-editor-ask-bg' },
+    { what: 'the answer that takes the layer', ink: '--byd-editor-ask-ink', on: '--byd-editor-ask-danger-bg' },
   ])('gives $what AA contrast', ({ ink, on }) => {
     expect(contrastRatio(token(ink), token(on))).toBeGreaterThanOrEqual(4.5)
   })

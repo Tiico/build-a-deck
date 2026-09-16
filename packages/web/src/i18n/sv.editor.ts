@@ -244,6 +244,14 @@ export const svEditor = {
   'canvas.layer.unlock': 'Lås upp {name}',
   'canvas.layer.rename': 'Namn på lagret {name}',
   'canvas.layer.isLocked': '{name} är låst. Lås upp lagret för att flytta det.',
+  // Frågan innan ett lager tas bort (#143, L9). Den säger de tre sakerna som gör elementet till
+  // den största av editorns borttagningar: vad designern kallar det, vilken sida det ritas på
+  // och hur många kort som ärver det. Samma mening namnger frågan och står i den, så att höra
+  // den och läsa den är samma mening två gånger.
+  'canvas.layer.remove.one': 'Ta bort {name} från {face}? Det ritas på {n} kort.',
+  'canvas.layer.remove.other': 'Ta bort {name} från {face}? Det ritas på {n} kort.',
+  'canvas.layer.remove.yes': 'Ja, ta bort',
+  'canvas.layer.removed': '{name} är borttaget från {face}.',
   'canvas.props.locked': 'Låst — måtten går att läsa men inte att ändra. Lås upp lagret i lagerlistan.',
   'canvas.grid': 'Rutnät 1 mm',
   'canvas.hint.base': 'Dra ett lager för att ändra ordningen, eller håll Alt och tryck pil upp eller ner. F2 byter namn på lagret.',

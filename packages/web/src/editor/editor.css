@@ -667,6 +667,37 @@
 .byd-layer-grip { color: #454c5c; font-size: 12px; text-align: center; cursor: grab; }
 .byd-layer-rename { width: 100%; min-height: var(--byd-tap); box-sizing: border-box; background: #0f1115; border: 1px solid var(--byd-editor-primary-mark); border-radius: 6px; color: #fff; font: inherit; font-size: 13px; padding: 0 8px; }
 /* Why nothing moved (L15), read beside the card that did not move. */
+/* The question a layer is given before it goes (#143, L9), under the card it draws on. Red and
+   not amber: leaving work unsaved is one thing and a deletion another, and this is the second —
+   so it is the palette the table's own delete question is asked in, held to the same bar. It is
+   the third row of a column laid out as `auto 1fr`, and therefore takes only the height it needs
+   while the card goes on filling what is left. */
+.byd-canvas-question {
+  --byd-editor-ask-bg: #3d2632;
+  --byd-editor-ask-ink: #ffe4ea;
+  --byd-editor-ask-danger-bg: #7a3243;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border-top: 1px solid var(--byd-editor-ask-danger-bg);
+  background: var(--byd-editor-ask-bg);
+  color: var(--byd-editor-ask-ink);
+  font-size: 12px;
+}
+.byd-canvas-question p { margin: 0; font-weight: 700; }
+.byd-canvas-question button {
+  padding: 6px 12px;
+  border: 1px solid var(--byd-editor-ask-danger-bg);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--byd-editor-ask-ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.byd-canvas-question button[data-kind='danger'] { background: var(--byd-editor-ask-danger-bg); }
 .byd-canvas-locked {
   margin: 10px 0 0;
   padding: 8px 12px;
