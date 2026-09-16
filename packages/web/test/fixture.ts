@@ -99,17 +99,20 @@ const PORT_CEILING = 30_000
 // file in this suite past its own end. It is a mitigation and not a proof: the honest fix is for
 // two projects never to answer to one name, which is a rename across twenty-six files and is
 // written down rather than done here.
-// The band, for anything that has to hold it to a rule: what is in it is what a fixture can be
-// given, and every one of those has to be an address a test can then fetch.
-export function portBand(): { floor: number; ceiling: number } {
-  return { floor: PORT_FLOOR, ceiling: PORT_CEILING }
-}
-
 const PORTS_PER_WORKER = 64
 const WORKERS_PER_RUN = 32
 const PORTS_PER_RUN = PORTS_PER_WORKER * WORKERS_PER_RUN
+
+// The band, for anything that has to hold it to a rule: what is in it is what a fixture can be
+// given, and every one of those has to be an address a test can then fetch. `slices` is counted
+// here rather than by the caller, so that a guard on how many runs the band still holds cannot
+// drift away from the numbers it is guarding.
+export function portBand(): { floor: number; ceiling: number; slices: number } {
+  return { floor: PORT_FLOOR, ceiling: PORT_CEILING, slices: Math.floor((PORT_CEILING - PORT_FLOOR) / PORTS_PER_RUN) }
+}
+
 const WORKER_SLOT = ((Number(process.env['VITEST_POOL_ID']) || 1) - 1) % WORKERS_PER_RUN
-const RUN_SLOT = (process.ppid || process.pid) % Math.floor((PORT_CEILING - PORT_FLOOR) / PORTS_PER_RUN)
+const RUN_SLOT = (process.ppid || process.pid) % portBand().slices
 const SLICE = PORT_FLOOR + RUN_SLOT * PORTS_PER_RUN + WORKER_SLOT * PORTS_PER_WORKER
 let nth = 0
 

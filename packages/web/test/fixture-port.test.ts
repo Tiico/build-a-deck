@@ -64,12 +64,19 @@ const SPEC_BAD_PORTS = [
   1, 7, 9, 11, 13, 15, 17, 19, 20, 21, 22, 23, 25, 37, 42, 43, 53, 69, 77, 79, 87, 95, 101, 102, 103, 104, 109, 110, 111, 113, 115, 117, 119, 123, 135, 137, 139, 143, 161, 179, 389, 427, 465, 512, 513, 514, 515, 526, 530, 531, 532, 540, 548, 554, 556, 563, 587, 601, 636, 989, 990, 993, 995, 1719, 1720, 1723, 2049, 3659, 4045, 4190, 5060, 5061, 6000, 6566, 6665, 6666, 6667, 6668, 6669, 6679, 6697, 10_080,
 ]
 
-// Whether this `fetch` turns the port away before it ever opens a socket. Nothing listens on any
-// of these, so a port it is willing to speak to answers with a refused connection, and one it is
-// not answers `bad port` — the two are told apart by the cause, not by a port number.
+// Whether this `fetch` turns the port away before it ever opens a socket. Nothing on this machine
+// is expected to listen on any of these, so a port it is willing to speak to answers with a
+// refused connection, and one it is not answers `bad port` — the two are told apart by the cause,
+// and never by a port number.
+//
+// The signal is not decoration. The list holds 22 and 25 and 143, and the only reason asking about
+// them is safe is that `fetch` refuses them before it opens anything. The day a runtime stops
+// refusing one, this would be a real request to whatever answers there — a local sshd, a mail
+// daemon — and it would hang rather than fail. A second is far longer than a refusal on loopback
+// ever takes and far shorter than the suite's patience, so that day this says so instead.
 async function turnedAway(port: number): Promise<boolean> {
   try {
-    await fetch(`http://127.0.0.1:${port}/`)
+    await fetch(`http://127.0.0.1:${port}/`, { signal: AbortSignal.timeout(1000) })
     return false
   } catch (err) {
     return (err as { cause?: { message?: string } }).cause?.message === 'bad port'
@@ -97,7 +104,6 @@ describe('the band a test server takes its port from', () => {
   // bug: the band is cut into a slice per run so that two suites on one box never want the same
   // number, and a band with fewer slices in it is a band where they collide again (#109).
   it('is still wide enough for the nine runs it was cut for', () => {
-    const { floor, ceiling } = portBand()
-    expect(Math.floor((ceiling - floor) / (64 * 32))).toBeGreaterThanOrEqual(9)
+    expect(portBand().slices).toBeGreaterThanOrEqual(9)
   })
 })
