@@ -73,7 +73,12 @@ export function seatSetup(): SetupDef {
 // over an EADDRINUSE inside whatever test happened to be running. Ports below 30000 are outside
 // the ephemeral range everywhere the suite runs — it starts at 32768 on Linux and 49152 on macOS
 // and Windows — so nothing the kernel hands out on its own can land on one.
-const PORT_FLOOR = 10_000
+// The floor is above 10080 and not at 10000 for a second reason, which cost a green suite to
+// find (#136): 10080 is the highest port on WHATWG Fetch's list of ports `fetch` will not speak
+// to at all. `listen` knows nothing of that list, so a fixture given 10080 starts perfectly well
+// and then every request to the address it hands out fails — as `TypeError: fetch failed, Caused
+// by: bad port`, inside whatever test was using it, about a port nothing in that test named.
+const PORT_FLOOR = 11_000
 const PORT_CEILING = 30_000
 // The band is cut so that no two fixtures alive at the same time ever want the same number: a
 // slice per test worker, a counter walking that slice, and the whole run moved aside by the pid
@@ -94,6 +99,12 @@ const PORT_CEILING = 30_000
 // file in this suite past its own end. It is a mitigation and not a proof: the honest fix is for
 // two projects never to answer to one name, which is a rename across twenty-six files and is
 // written down rather than done here.
+// The band, for anything that has to hold it to a rule: what is in it is what a fixture can be
+// given, and every one of those has to be an address a test can then fetch.
+export function portBand(): { floor: number; ceiling: number } {
+  return { floor: PORT_FLOOR, ceiling: PORT_CEILING }
+}
+
 const PORTS_PER_WORKER = 64
 const WORKERS_PER_RUN = 32
 const PORTS_PER_RUN = PORTS_PER_WORKER * WORKERS_PER_RUN
