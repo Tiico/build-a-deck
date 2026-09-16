@@ -373,9 +373,19 @@
 .byd-setup-canvas { position: relative; display: grid; gap: 10px; min-width: 0; }
 .byd-setup-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: #9aa3b8; font-size: 12px; }
 /* What the surface says back: the hint, and after a removal the zone's name with the way back.
-   The step back is the editor's own (B4), said here because here is where the zone went. */
+   The step back is the editor's own (B4), said here because here is where the zone went.
+
+   The sentence wraps, and that is the whole of what holds the tab inside the window (#127). A line
+   that does not wrap declares its own length as its smallest size, and this row is a grid child:
+   the track it stands in could not go under that length, however narrow the column it was given
+   was. Everything sharing the track went with it — the felt, and the phone's sheet under it — so
+   at 1024 all three stood 201 px past the window, `main` grew a sideways scrollbar, and scrolling
+   to the sentence took the zone list off the other edge. The row was ellipsising nothing while it
+   did this: what cut the sentence was the window, not its own box. Wrapping costs a second line in
+   the narrow window and nothing in the wide one, and `min-height` is what keeps the row from
+   jumping as it fills. */
 .byd-setup-said { display: flex; gap: 12px; align-items: center; min-height: 30px; color: #9aa3b8; font-size: 12px; }
-.byd-setup-said > span:last-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.byd-setup-said > span:last-child { flex: 1; min-width: 0; }
 .byd-setup-undo { display: flex; gap: 8px; align-items: center; color: #ffd98a; }
 .byd-setup-undo button { border: 1px solid #5c4a1f; border-radius: 8px; padding: 4px 10px; background: #241f13; color: #ffd98a; font-weight: 700; cursor: pointer; }
 /* The list of zones: every one the table has, in two groups, and the row is the way into it —
