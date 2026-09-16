@@ -1330,8 +1330,9 @@
 .byd-tables-head strong { color: var(--byd-tables-ink); font-family: ui-monospace, monospace; }
 .byd-tables-stale { color: var(--byd-tables-stale-ink); font-style: normal; font-weight: 600; }
 .byd-tables-ways { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+/* No size of its own: the editor already says what a target is worth, and 32 px here was the one
+   place in it that said otherwise (`--byd-tap`, #133). */
 .byd-tables-ways a, .byd-tables-ways button {
-  min-height: 32px;
   display: inline-flex;
   align-items: center;
   padding: 4px 12px;
