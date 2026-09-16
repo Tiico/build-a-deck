@@ -14,6 +14,9 @@ COPY packages/server/package.json packages/server/
 COPY packages/web/package.json packages/web/
 RUN pnpm install --frozen-lockfile
 COPY packages ./packages
+# `vite build` loads `vite.config.ts` first, and that config imports the run's own reporter from
+# here (#111). The build context has to carry it or the image fails before it compiles a line.
+COPY test-support ./test-support
 RUN pnpm --filter @byd/web build
 
 FROM node:26-alpine

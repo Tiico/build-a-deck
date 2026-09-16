@@ -111,7 +111,9 @@ En reaper återställer jobb vars `started_at` är äldre än en gräns, efterso
 
 ## 7. Deploy: CI bygger, lådan hämtar
 
-GitHub Actions kör lint, typecheck, tester och replay-korpusen på varje pull request.
+GitHub Actions kör lint, typecheck, tester och replay-korpusen på varje pull request, och bygger de tre bilderna utan att publicera dem.
+Reviderat 2026-09-16: bildbygget låg tidigare bara på taggen, och en `Dockerfile` som inte kunde bygga webben stod på trunken i nitton commits utan att någon körning rörde den — det första som märkte det var releasen.
+En grön pull request betyder nu att det finns en bild att släppa.
 `main` är trunk och kör ingen workflow alls; grinden framför trunken är `.githooks/pre-push`, som kör samma kontroller lokalt och vägrar en push som är smutsig eller ogrön.
 En pushad `v*`-tagg bygger images till GHCR taggade med git-SHA och med releasenamnet.
 På lådan pollar en liten tjänst registret, kör schemamigrering och `compose up`.
