@@ -783,12 +783,42 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             ))}
           </div>
         ))}
+        <p className="byd-data-count" aria-live="polite">
+          <span>{countLabel(shown.length, doc.rows.length, t)}</span>
+          {chosen.length > 0 && (
+            <>
+              <span aria-hidden="true"> · </span>
+              <span className="byd-data-chosen">{selectionLabel(chosen.length, t)}</span>
+            </>
+          )}
+          {(['left', 'right'] as const).map((side) =>
+            outside[side].length === 0 ? null : (
+              <span key={side}>
+                <button type="button" className="byd-data-outside" onClick={() => bring(side === 'left' ? -1 : 1)}>
+                  {side === 'left' && <span aria-hidden="true">← </span>}
+                  {t(outside[side].length === 1 ? `table.columns.${side}.one` : `table.columns.${side}.other`, {
+                    n: outside[side].length,
+                    fields: outside[side].map((field) => (field === GROUP_COL ? t('table.group') : fieldLabel(field, t))).join(', '),
+                  })}
+                  {side === 'right' && <span aria-hidden="true"> →</span>}
+                </button>
+              </span>
+            ),
+          )}
+          {pinned !== null && (
+            <>
+              <span aria-hidden="true"> · </span>
+              <span className="byd-data-pinned">{t('table.pinned')}</span>
+            </>
+          )}
+        </p>
         {isFiltering(filter) && (
           <button type="button" className="byd-data-clear" onClick={() => changeFilter(noFilter)}>
             {t('table.filter.clear')}
           </button>
         )}
       </div>
+      <p className="byd-data-sort" role="status">{sortLabel(sort, t)}</p>
       {chosen.length > 0 &&
         (confirming ? (
           <Question
@@ -1175,43 +1205,6 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           ))}
         </tbody>
       </table>
-      </div>
-      {/* What the rows add up to, and how they are sorted, under the rows rather than over
-          them (#130). Four bands used to stack above the table — the import row, the filter,
-          the count and the sort — and the first card started 218 px down the panel at 1280.
-          Both are still live regions, and both still say the same words; they are read where
-          what they are about actually is. */}
-      <div className="byd-data-foot">
-        <p className="byd-data-count" aria-live="polite">
-          <span>{countLabel(shown.length, doc.rows.length, t)}</span>
-          {chosen.length > 0 && (
-            <>
-              <span aria-hidden="true"> · </span>
-              <span className="byd-data-chosen">{selectionLabel(chosen.length, t)}</span>
-            </>
-          )}
-          {(['left', 'right'] as const).map((side) =>
-            outside[side].length === 0 ? null : (
-              <span key={side}>
-                <button type="button" className="byd-data-outside" onClick={() => bring(side === 'left' ? -1 : 1)}>
-                  {side === 'left' && <span aria-hidden="true">← </span>}
-                  {t(outside[side].length === 1 ? `table.columns.${side}.one` : `table.columns.${side}.other`, {
-                    n: outside[side].length,
-                    fields: outside[side].map((field) => (field === GROUP_COL ? t('table.group') : fieldLabel(field, t))).join(', '),
-                  })}
-                  {side === 'right' && <span aria-hidden="true"> →</span>}
-                </button>
-              </span>
-            ),
-          )}
-          {pinned !== null && (
-            <>
-              <span aria-hidden="true"> · </span>
-              <span className="byd-data-pinned">{t('table.pinned')}</span>
-            </>
-          )}
-        </p>
-        <p className="byd-data-sort" role="status">{sortLabel(sort, t)}</p>
       </div>
       {/* A deck with no cards at all is not a filter's doing: then the button below is the answer. */}
       {shown.length === 0 && isFiltering(filter) && <p className="byd-data-empty">{t('table.empty')}</p>}

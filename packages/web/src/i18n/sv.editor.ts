@@ -74,10 +74,6 @@ export const svEditor = {
   'wall.eye.gray': 'Gråskala',
   'wall.trim': 'snitt och skyddsmarginal',
   'wall.arm': 'på armlängds avstånd',
-  'wall.size': 'Kortstorlek',
-  'wall.size.smaller': 'Mindre kort',
-  'wall.size.bigger': 'Större kort',
-  'wall.size.value': '{n} px',
   'wall.measure': 'Bildernas mått',
   'wall.measure.lead': 'En regel för leken: hur stor andel av ramen motivet fyller och var det står. Filerna rörs aldrig — det här är ett recept som ligger bredvid dem.',
   'wall.measure.fill': 'Motivets höjd {percent} %',
@@ -440,7 +436,6 @@ export const svEditor = {
 
   // Regelboken: sidan som är sin egen editor, och häftet för tryck.
   'rules.title': 'Regelboken',
-  'rules.empty.title': 'Reglerna hör till spelet',
   'rules.empty': 'Inga regler ännu. Reglerna bor i spelet och versioneras med korten; en regel som nämner en zon eller ett kort följer med när det byter namn.',
   'rules.start': 'Börja skriva reglerna',
   'rules.hint': 'Klicka i sidan för att skriva. En regel som nämner en zon eller ett kort följer med när det byter namn.',

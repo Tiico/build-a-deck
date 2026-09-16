@@ -63,10 +63,6 @@ export const enEditor = {
   'wall.eye.gray': 'Greyscale',
   'wall.trim': 'trim and safe margin',
   'wall.arm': 'at arm’s length',
-  'wall.size': 'Card size',
-  'wall.size.smaller': 'Smaller cards',
-  'wall.size.bigger': 'Bigger cards',
-  'wall.size.value': '{n} px',
   'wall.measure': 'The pictures’ measure',
   'wall.measure.lead': 'One rule for the deck: how much of the frame the drawing fills and where it stands. The files are never touched — this is a recipe kept beside them.',
   'wall.measure.fill': 'Height of the drawing {percent} %',
@@ -396,7 +392,6 @@ export const enEditor = {
   'symbols.remove': 'Remove {name}',
 
   'rules.title': 'The rulebook',
-  'rules.empty.title': 'The rules belong to the game',
   'rules.empty': 'No rules yet. The rules live in the game and are versioned with the cards; a rule that names a zone or a card follows it when it is renamed.',
   'rules.start': 'Start writing the rules',
   'rules.hint': 'Click in the page to write. A rule that names a zone or a card follows it when it is renamed.',

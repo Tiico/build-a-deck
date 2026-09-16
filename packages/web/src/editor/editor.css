@@ -230,13 +230,8 @@
   cursor: pointer;
 }
 /* The strips above are usually absent; the open mode is the one thing that gives way, so the
-   canvas reaches the bottom of the window however many of them are there.
-
-   And it gives way *exactly*: `hidden`, not `auto`. A panel taller than this box scrolled `main`
-   itself, which carried the panel's own crown away with the work — the wall's colour filters and
-   its physical check, the symbol library (#128). The work scrolls; the frame around it does not,
-   so every panel below owns a scroll region of its own. */
-.byd-editor > main { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+   canvas reaches the bottom of the window however many of them are there. */
+.byd-editor > main { flex: 1 1 auto; min-height: 0; overflow: auto; }
 /* The question asked before the editor is left with unsaved work (#8), in the same shape as the
    other questions the editor asks first: one strip, across the way out, with the answer that
    loses nothing under the focus. Amber, because it is about unsaved work and not about a
@@ -510,21 +505,9 @@
 .byd-zones-preview .byd-sheet-targets small { color: #9aa3b8; }
 
 /* Wall */
-/* The wall is a crown and a work area inside the tab's frame. The crown — the eyes, the two
-   guides, how many cards there are and how big they are drawn — does not move; the wall under it
-   is the one thing that scrolls, and the physical check keeps its own column beside it rather than
-   being a note that scrolls off the top with the cards (#128). */
-.byd-wall-view { height: 100%; min-height: 0; box-sizing: border-box; display: grid; grid-template-columns: minmax(0, 1fr) 320px; grid-template-rows: auto minmax(0, 1fr); gap: 0 24px; padding: var(--byd-gutter); }
+.byd-wall-view { display: grid; grid-template-columns: minmax(0, 1fr) 320px; grid-template-rows: auto 1fr; gap: 0 24px; padding: var(--byd-gutter); align-items: start; }
 .byd-eye-filters { position: absolute; width: 0; height: 0; }
-.byd-wall-tools { grid-column: 1 / -1; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; padding: 0 4px 8px; border-bottom: 1px solid #2f333d; }
-/* How big a card is drawn (#128). The wall used to hand a wider screen more columns and never a
-   bigger card: 156 px at 1920 exactly as at 1440, so a deck of seventy-seven was four screens
-   whatever the monitor. The size is one number the whole grid is laid out from, and the two
-   buttons move it a step at a time. At arm's length the wall sets it small on its own. */
-.byd-wall-size { display: flex; align-items: center; gap: 4px; margin-left: auto; }
-.byd-wall-size output { min-width: 6ch; text-align: center; color: var(--byd-editor-quiet); font-variant-numeric: tabular-nums; font-size: 12px; }
-.byd-wall-size button:disabled { color: #5b6478; cursor: default; }
-.byd-wall-count { color: var(--byd-editor-quiet); font-size: 12px; white-space: nowrap; }
+.byd-wall-tools { grid-column: 1 / -1; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; padding: 0 4px 8px; }
 .byd-wall-tools > div { display: flex; gap: 6px; }
 .byd-wall-tools button { border: 1px solid #2f333d; border-radius: 8px; padding: 4px 12px; background: #1b1d23; color: #fff; font-weight: 700; font-size: 12px; cursor: pointer; }
 .byd-wall-tools label { display: flex; gap: 6px; align-items: center; color: #cfd5e3; font-size: 12px; }
@@ -538,10 +521,9 @@
 .byd-wall[data-trim] .byd-wall-card [data-card] { outline: 0.3mm dashed rgba(224, 92, 92, 0.9); outline-offset: -0.15mm; }
 .byd-wall[data-trim] .byd-wall-card [data-card]::after { content: ''; position: absolute; inset: 3mm; border: 0.3mm dashed rgba(125, 211, 160, 0.85); pointer-events: none; }
 /* At arm's length the cards are small; the wall packs them closer instead of leaving holes. */
-/* At arm's length the wall packs them closer, whatever step the size control is on. */
-.byd-wall[data-arm] { --byd-wall-card: 90px; }
+.byd-wall[data-arm] { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); }
 .byd-wall-card[data-marked] { outline: 3px solid #f0b64a; outline-offset: 3px; }
-.byd-wall-checks { grid-column: 2; grid-row: 2; min-height: 0; overflow: auto; scrollbar-width: thin; margin: 16px 0 0; padding: 16px; border-radius: 16px; background: var(--byd-editor-panel-bg); border: 1px solid #2f333d; }
+.byd-wall-checks { grid-column: 2; align-self: start; padding: 16px; border-radius: 16px; background: var(--byd-editor-panel-bg); border: 1px solid #2f333d; }
 .byd-wall-checks h2 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-wall-ok { margin: 0; color: #7dd3a0; line-height: 1.5; }
 .byd-wall-lead { margin: 0 0 8px; color: #9aa3b8; font-size: 12px; line-height: 1.5; }
@@ -556,12 +538,7 @@
 .byd-wall-check-detail p { margin: 0; color: #cfd5e3; font-size: 12px; line-height: 1.5; }
 .byd-wall-check-detail span { color: var(--byd-editor-quiet); font: 11px ui-monospace, monospace; }
 
-.byd-wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--byd-wall-card, 150px), 1fr)); gap: 14px; align-content: start; }
-/* Where it stands in the wall tab: the second row of the view, and the one thing there that
-   scrolls. The placement is written against the view and not against the wall itself, because the
-   symbol panel draws the same deck in a column of its own — where `grid-row: 2` put it in the same
-   row as the game's colours, one drawn on top of the other. */
-.byd-wall-view > .byd-wall { grid-column: 1; grid-row: 2; min-height: 0; overflow: auto; scrollbar-width: thin; padding: 16px 0 0; }
+.byd-wall { grid-column: 1; grid-row: 2 / -1; padding: 16px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; align-content: start; }
 .byd-wall-card { position: relative; border-radius: 8px; cursor: pointer; }
 .byd-wall-card[aria-selected='true'] { outline: 3px solid var(--byd-editor-primary-mark); outline-offset: 3px; }
 .byd-wall-copies, .byd-wall-warnings { position: absolute; border-radius: 999px; font-size: 11px; font-weight: 700; padding: 0 4px; }
@@ -655,11 +632,7 @@
 .byd-canvas-group-column { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 11px; color: var(--byd-editor-hint-ink); }
 .byd-canvas-group-column select { min-width: 0; background: #0f1115; border: 1px solid #2a2d36; color: #dce3f2; border-radius: 6px; padding: 4px; font-size: 12px; }
 .byd-canvas-groups, .byd-canvas-faces { display: flex; gap: 4px; }
-/* The groups wrap rather than hiding themselves in a side scroller with nothing to say it is
-   there (#129). As one scrolling row, 240 px of 1076 were out of sight at 1440, 400 at 1280 and
-   656 at 1024 — 61 % of them — with the last one visible cut through the middle of its own word
-   and no arrow, no fade and no keyboard way to the rest. */
-.byd-canvas-groups { grid-column: 1 / -1; grid-row: 2; flex-wrap: wrap; padding: 0; }
+.byd-canvas-groups { grid-column: 1 / -1; grid-row: 2; overflow-x: auto; scrollbar-width: thin; padding: 0; }
 .byd-canvas-groups button { flex: 0 0 auto; white-space: nowrap; }
 .byd-canvas-faces { justify-self: end; flex: 0 0 auto; }
 .byd-canvas-groups button, .byd-canvas-faces button {
@@ -860,18 +833,7 @@
 /* The tab is a column: the tools, the filter and what is marked stay put, and only the rows
    scroll — sideways in their own box, never with the page. */
 .byd-table-wrap { padding: var(--byd-gutter); height: 100%; box-sizing: border-box; display: flex; flex-direction: column; min-height: 0; }
-/* The rows run to the frame's own edges and are not inset again: the table scrolls sideways inside
-   this box and the × that removes a card is pinned to its right edge, so an inset here is an inset
-   between the pin and the edge it is pinned to (#17, #53). */
 .byd-data-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; }
-/* A tail under the last row, so the bottom row is not cut through the middle by the edge of the
-   scroller the way it was before the audit of 2026-09-16 (#130). */
-.byd-data-scroll::after { content: ''; display: block; height: 24px; }
-/* What the rows add up to, and how they are sorted, under the rows rather than over them (#130).
-   Four bands used to stack above the table — the import row, the filter, the count and the sort —
-   and the first card row started 218 px down the panel at 1280. */
-.byd-data-foot { flex: none; display: flex; align-items: center; gap: 8px; margin: 8px 0 0; color: var(--byd-editor-quiet); }
-.byd-data-foot span { white-space: nowrap; }
 .byd-data-tools { margin-bottom: 12px; display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
 .byd-data-tools label, .byd-data-tools a { border: 1px solid #3b414e; border-radius: 8px; padding: 8px 12px; background: #1b1d23; color: #dce3f2; font-weight: 700; text-decoration: none; cursor: pointer; }
 /* The import is a label with an invisible file input lying across it, and the tap rule stretches
@@ -1393,37 +1355,29 @@
 .byd-editor-ways > ul { list-style: none; margin: 0; padding: 0; }
 .byd-editor-ways > button { justify-self: start; border: 1px solid #3b414e; border-radius: 8px; padding: 8px 12px; background: transparent; color: var(--byd-tables-ink); font: inherit; font-weight: 700; cursor: pointer; }
 /* Said only to a screen reader: which table a repeated word is about. */
-/* The line only a screen reader reads. It is pinned to the editor's own top-left, and that is not
+/* The line only a screen reader reads, pinned to the editor's own top-left. That is not
    decoration: absolute without `top`/`left` keeps the box's *static* position, which is wherever
-   the flow would have put it — the very end of the open tab. On Bord, where the tab was two
-   screens tall, that put a 1 px box at y = 1036 and the window scrolled 137 px to a blank page
-   below the app, with the header gone (#126). The tab is one screen now and the same box still
-   stood 7 px past a 768 px window. A box nobody can see must not be able to move the page. */
+   the flow would have put it — the very end of the open tab. On Bord, before #126 made the tab one
+   screen, that put a 1 px box at y = 1036 and the window scrolled 137 px to a blank page below the
+   app with the header gone. One screen later it still stood 7 px past a 768 px window. A box
+   nobody can see must not be able to move the page. */
 .byd-offscreen { position: absolute; top: 0; left: 0; width: 1px; height: 1px; margin: -1px; /* undantag: inte ett avstånd — den negativa marginalen tar tillbaka rutan som håller raden, och 1 px är rutans mått */ padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 
 /* The symbol library (E4): the library on the left, the game's own set and the cards on the right. */
-/* Two columns that each scroll on their own, so the library stays a tool while the deck beside it
-   is read (#128). It was one tall page inside a scrolling `main`, with a second scroller on the
-   symbol grid inside that — two bars for one gesture. */
-.byd-symbols { height: 100%; min-height: 0; box-sizing: border-box; display: grid; grid-template-columns: 320px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 24px; padding: var(--byd-gutter); }
-.byd-symbols > * { min-width: 0; min-height: 0; overflow: auto; scrollbar-width: thin; }
+.byd-symbols { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 24px; padding: var(--byd-gutter); align-items: start; }
 .byd-symbols h2 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-symbols p { margin: 0 0 12px; color: #9aa3b8; line-height: 1.5; }
 .byd-symbols-library { padding: 16px; border-radius: 16px; background: var(--byd-editor-panel-bg); border: 1px solid #2f333d; }
 .byd-symbols input[type='search'], .byd-symbols-set input { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; font: inherit; }
 .byd-symbols-cats { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
 .byd-symbols button { border: 1px solid #2f333d; border-radius: 8px; padding: 4px 12px; background: #1b1d23; color: #fff; font-weight: 700; font-size: 12px; cursor: pointer; }
-/* No scroller of its own: the library column around it is the one that scrolls (#128). */
-.byd-symbols-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; }
+.byd-symbols-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px; max-height: 58vh; overflow: auto; }
 .byd-symbols-tile { display: grid; justify-items: center; gap: 3px; padding: 8px 4px; font-weight: 400; font-size: 10px; color: #9aa3b8; }
 .byd-symbols-tile small { color: var(--byd-editor-quiet); font-size: 9px; }
 /* A symbol reaches the card as an image, so it cannot take the colour of the text around it:
    it is drawn dark, and needs a light chip to be seen against the editor's dark surfaces. */
 .byd-symbols img { width: 22px; height: 22px; padding: 4px; border-radius: 6px; background: #e8e2d4; }
-/* `align-content: start` is what keeps the rows their own height: as a grid with a fixed height
-   and no word on the matter, the rows shared it between them and the wall was squeezed from its
-   natural height, which cut the last row of cards through the middle. */
-.byd-symbols-main { display: grid; gap: 16px; align-content: start; }
+.byd-symbols-main { display: grid; gap: 16px; }
 .byd-symbols-empty { color: #9aa3b8; }
 .byd-symbols-set ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
 .byd-symbols-set li { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-radius: 10px; background: var(--byd-editor-panel-bg); border: 1px solid #2f333d; }
@@ -1477,7 +1431,7 @@
 .byd-symbols [role='alert'] { color: #f0b64a; }
 
 /* The rulebook (B7): the page itself is the editor, so it is paper, not a dark surface. */
-.byd-rules { height: 100%; min-height: 0; box-sizing: border-box; overflow: auto; scrollbar-width: thin; display: grid; gap: 16px; padding: var(--byd-gutter); align-content: start; }
+.byd-rules { display: grid; gap: 16px; padding: var(--byd-gutter); align-content: start; }
 .byd-rules-bar { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
 .byd-rules-bar h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-rules-bar span { color: #9aa3b8; font-size: 12px; }
@@ -1516,20 +1470,10 @@
 .byd-rules-remove { margin-left: auto; color: #ff9a9a !important; }
 .byd-rules-add { position: absolute; right: -34px; top: 2px; width: 24px; height: 24px; padding: 0; border: 1px solid #cbbfa8; border-radius: 7px; background: #ece5d8; color: #6b6255; cursor: pointer; opacity: 0; }
 .byd-rules-block:hover .byd-rules-add, .byd-rules-add:focus-visible { opacity: 1; }
-/* Nothing written yet (#131): the panel says what a rulebook is for, in the middle of the room it
-   has, at a width that can be read — not an eyebrow and two lines in the top-left corner of an
-   otherwise empty 1440 by 900, which is about six per cent of the panel and emptier the bigger the
-   screen gets. */
-.byd-rules-empty { height: 100%; min-height: 0; box-sizing: border-box; overflow: auto; display: grid; place-content: center; justify-items: center; gap: 12px; padding: var(--byd-gutter); text-align: center; }
-.byd-rules-empty h2 { margin: 0; font-size: 22px; font-weight: 700; color: #fff; letter-spacing: 0; text-transform: none; }
-.byd-rules-empty p { margin: 0; max-width: 56ch; color: #9aa3b8; line-height: 1.6; }
-.byd-rules-empty button { margin: 8px 0 0; border-radius: 10px; padding: 8px 16px; cursor: pointer; }
-/* A page with nothing on it yet, drawn rather than pictured: four rules of a paragraph that has
-   not been written. */
-.byd-rules-mark { display: grid; align-content: center; gap: 4px; width: 72px; height: 88px; padding: 0 12px; box-sizing: border-box; border: 2px dashed #3b4358; border-radius: 8px; }
-.byd-rules-mark i { height: 4px; border-radius: 2px; background: #3b4358; }
-.byd-rules-mark i:nth-child(2) { width: 70%; }
-.byd-rules-mark i:nth-child(4) { width: 55%; }
+.byd-rules-empty { display: grid; gap: 12px; justify-items: start; max-width: 520px; padding: var(--byd-gutter); }
+.byd-rules-empty h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
+.byd-rules-empty p { margin: 0; color: #9aa3b8; line-height: 1.6; }
+.byd-rules-empty button { border-radius: 8px; padding: 8px 12px; cursor: pointer; }
 
 /* The way to an icon (#33): the brace made visible in the cell being worked in. Which cell that is
    is React's to know, not the stylesheet's — a handle hidden by CSS is still a stop in the tab

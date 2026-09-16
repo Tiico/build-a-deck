@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { ProjectDoc } from '@byd/server'
 import type { Frame, Motif, Nudge, Warning } from '@byd/template'
 import { CardPreview } from './CardPreview.js'
@@ -43,15 +43,6 @@ const MATRICES: Record<string, string> = {
 }
 // A card at arm's length is the cheapest check of all, and needs no validation at all.
 const ARM_SCALE = 0.34
-// How wide a card is drawn on the wall, in CSS pixels (#128). The default is the width the wall
-// always had; the range is one card readable at a glance at the bottom and one whose body text can
-// actually be read at the top. At arm's length the wall draws them small whatever the step says,
-// which is the whole point of that view, so the two buttons are off while it is on.
-const DEFAULT_CARD_PX = 150
-const MIN_CARD_PX = 96
-const MAX_CARD_PX = 280
-const CARD_PX_STEP = 26
-const ARM_CARD_PX = 90
 
 // The deck as a wall (C as the home view): every row as a card, copies and faults on each, the
 // whole deck visible at once — a balance change on forty cards is seen as one thing. Beside it
@@ -70,11 +61,6 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   const [eye, setEye] = useState<string>('normal')
   const [trim, setTrim] = useState(false)
   const [arm, setArm] = useState(false)
-  // How wide a card is drawn (#128). The wall used to hand a wider screen more columns and never a
-  // bigger card, so a deck was the same number of screens on a 1920 monitor as on a 1280 laptop.
-  // The step is the size the whole grid is laid out from; at arm's length the wall sets its own.
-  const [size, setSize] = useState(DEFAULT_CARD_PX)
-  const step = (by: number) => setSize((px) => Math.max(MIN_CARD_PX, Math.min(MAX_CARD_PX, px + by)))
   const [openGroup, setOpenGroup] = useState<string | null>(null)
   const onWarnings = useCallback((cardRef: string, w: Warning[]) => {
     setWarnings((m) => (m[cardRef] === w.length ? m : { ...m, [cardRef]: w.length }))
@@ -103,26 +89,8 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
         <label>
           <input type="checkbox" checked={arm} onChange={(e) => setArm(e.target.checked)} /> {t('wall.arm')}
         </label>
-        <span className="byd-wall-count">{t(doc.rows.length === 1 ? 'wall.cards.one' : 'wall.cards.other', { n: doc.rows.length })}</span>
-        <div className="byd-wall-size" role="group" aria-label={t('wall.size')}>
-          <button type="button" aria-label={t('wall.size.smaller')} disabled={arm || size <= MIN_CARD_PX} onClick={() => step(-CARD_PX_STEP)}>
-            −
-          </button>
-          <output>{t('wall.size.value', { n: arm ? ARM_CARD_PX : size })}</output>
-          <button type="button" aria-label={t('wall.size.bigger')} disabled={arm || size >= MAX_CARD_PX} onClick={() => step(CARD_PX_STEP)}>
-            +
-          </button>
-        </div>
       </div>
-      <div
-        className="byd-wall"
-        role="list"
-        data-wall
-        data-eye={eye}
-        style={{ '--byd-wall-card': `${arm ? ARM_CARD_PX : size}px` } as CSSProperties}
-        {...(trim ? { 'data-trim': 'true' } : {})}
-        {...(arm ? { 'data-arm': 'true' } : {})}
-      >
+      <div className="byd-wall" role="list" data-wall data-eye={eye} {...(trim ? { 'data-trim': 'true' } : {})} {...(arm ? { 'data-arm': 'true' } : {})}>
         {doc.rows.map(({ id: cardRef, fields: row }) => {
           const copies = Number(row['antal'] ?? 1)
           // The badge stays this card's own trouble — an unknown icon, text that will not fit.
