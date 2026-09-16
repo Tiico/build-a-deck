@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { useDoor } from '../doors.js'
 import { useT } from '../i18n/index.js'
 
@@ -9,60 +9,60 @@ import { useT } from '../i18n/index.js'
 // The row is exactly one row at every width. What does not fit does not wrap and does not vanish:
 // it falls into a named box that opens over the work. A crown that wraps was measured at 113 px on
 // the card table at every width — thirteen filter chips do not fit on a line even at 1440 — which
-// is over the 80 px that tab's own acceptance asks for. This holds 61–65 px at 1024, 1280 and 1440.
+// is over the 80 px that tab's own acceptance asks for. This holds one target plus its air.
 //
 // The price of a box is that a setting can be on without being seen, and it is paid in the label:
 // **a box says its state, never only its name.** `Ögon: Deuteranopi`, `Guider (1)` — never `Ögon`.
 // A colour-blindness filter left on without saying so is worse than no filter at all (E5), and a
 // box whose label does not say what is chosen inside it is the same fault in miniature.
+
+// The row itself. It never becomes two: `nowrap`, and what is too wide either scrolls inside a
+// rail or stands in a box.
 export function Crown({ children }: { children: ReactNode }) {
   return <div className="byd-crown">{children}</div>
 }
 
-// A box in the crown, and the drawer it opens under it. Only one is open at a time — two drawers
-// over the work is the thing the crown exists to avoid — so the open one is held by the surface
-// and handed back here.
+// A box in the crown: a button that carries its state, and nothing else. What it opens is drawn by
+// the surface, under the row rather than inside it — a drawer among the boxes would make the row
+// two rows, which is the one thing the crown may not be.
 export type CrownBoxProps = {
-  // What the box is, and what is chosen inside it right now. `state` is the whole point: it is
-  // rendered after the name and it is not optional for a box that holds a setting.
+  // What the box is, and what is chosen inside it right now. The state is the whole point of B: it
+  // is rendered after the name, and a box that holds a setting does not leave it out. A box says it
+  // one of two ways — `Ögon: Deuteranopi` for a chosen value, `Guider (1)` for a number of things
+  // that are on — and the two never mix, because the reader learns the shapes and not the wording.
   name: string
   state?: string | undefined
+  count?: number | undefined
   open: boolean
   onToggle(): void
-  onClose(): void
-  children: ReactNode
+  boxRef?: RefObject<HTMLButtonElement | null> | undefined
+  // The one box that stands at the far end of the row. The report on a surface is not a tool of
+  // the same kind as the rest and is not read in the same sweep, so it is not queued with them.
+  end?: boolean | undefined
 }
 
-export function CrownBox({ name, state, open, onToggle, onClose, children }: CrownBoxProps) {
+export function CrownBox({ name, state, count, open, onToggle, boxRef, end }: CrownBoxProps) {
   const t = useT()
-  const button = useRef<HTMLButtonElement>(null)
+  const said = state !== undefined ? t('crown.box.state', { name, state }) : count !== undefined ? t('crown.box.count', { name, n: count }) : name
   return (
-    <>
-      <button
-        ref={button}
-        type="button"
-        className="byd-crown-box"
-        aria-expanded={open}
-        aria-pressed={open}
-        onClick={onToggle}
-      >
-        {state === undefined ? name : t('crown.box.state', { name, state })}
-        <span aria-hidden="true">▾</span>
-      </button>
-      {open && (
-        <CrownDrawer label={name} opener={button} onClose={onClose}>
-          {children}
-        </CrownDrawer>
-      )}
-    </>
+    <button
+      ref={boxRef}
+      type="button"
+      className={end ? 'byd-crown-box byd-crown-end' : 'byd-crown-box'}
+      aria-expanded={open}
+      onClick={onToggle}
+    >
+      {said}
+      <span aria-hidden="true">▾</span>
+    </button>
   )
 }
 
-// The drawer itself is drawn by the crown's own row below it, so it is rendered out of the box's
-// place in the flow and into the panel. It closes the way every panel over the work closes (#133):
-// Escape hands the focus back to the box it came from, a press in the work leaves the focus where
-// the pointer put it.
-function CrownDrawer({ label, opener, onClose, children }: { label: string; opener: React.RefObject<HTMLButtonElement | null>; onClose(): void; children: ReactNode }) {
+// What a box opened, standing over the work until it is closed. It closes the way every panel over
+// the work closes (#133): Escape hands the focus back to the box it came from, a press in the work
+// leaves the focus where the pointer put it. The order against a drag that is still held is
+// `doors.ts`'s and not this component's (#152).
+export function CrownDrawer({ label, opener, onClose, children }: { label: string; opener: RefObject<HTMLButtonElement | null>; onClose(): void; children: ReactNode }) {
   const latest = useRef({ opener, onClose })
   latest.current = { opener, onClose }
   useDoor('standing', () => {
@@ -74,6 +74,8 @@ function CrownDrawer({ label, opener, onClose, children }: { label: string; open
       const now = latest.current
       const target = event.target
       if (!(target instanceof Element)) return
+      // The box that opened it is left alone: it already closes the drawer, and closing on the way
+      // down would only let the click that follows open it again.
       if (now.opener.current?.contains(target) || target.closest('[data-crown-drawer]')) return
       now.onClose()
     }
@@ -88,27 +90,30 @@ function CrownDrawer({ label, opener, onClose, children }: { label: string; open
 }
 
 // The filters do not leave the row. They keep their place in it and get a side scroll of their own
-// with a fade and a button to the rest — hiding thirteen chips behind `Filter (13) ▾` would be
-// hiding the one thing on this surface that is a state and not an action (#130).
+// with a fade and a button to the rest — putting thirteen chips behind `Filter (13) ▾` would be
+// hiding the one thing on that surface that is a state rather than an action (#130). What falls
+// into a box there is the import and the export, which are done once and are not a state at all.
 export function CrownRail({ label, children }: { label: string; children: ReactNode }) {
+  const t = useT()
   const scroll = useRef<HTMLDivElement>(null)
   const [more, setMore] = useState(false)
   useEffect(() => {
     const el = scroll.current
     if (!el) return
+    // Whether there is anything to the right is measured and not assumed: the arrow is a promise
+    // that something is there, and an arrow that points at nothing is worse than none.
     const look = () => setMore(el.scrollWidth - el.clientWidth - el.scrollLeft > 1)
     look()
     el.addEventListener('scroll', look)
-    const watch = new ResizeObserver(look)
-    watch.observe(el)
+    const watch = typeof ResizeObserver === 'function' ? new ResizeObserver(look) : null
+    watch?.observe(el)
     return () => {
       el.removeEventListener('scroll', look)
-      watch.disconnect()
+      watch?.disconnect()
     }
-  }, [children])
-  const t = useT()
+  })
   return (
-    <div className="byd-crown-rail" data-more={more ? 'true' : undefined}>
+    <div className="byd-crown-rail" {...(more ? { 'data-more': 'true' } : {})}>
       <div className="byd-crown-rail-scroll" ref={scroll} role="group" aria-label={label}>
         {children}
       </div>
@@ -117,7 +122,7 @@ export function CrownRail({ label, children }: { label: string; children: ReactN
           type="button"
           className="byd-crown-more"
           aria-label={t('crown.rail.more')}
-          onClick={() => scroll.current?.scrollBy({ left: scroll.current.clientWidth * 0.8, behavior: 'smooth' })}
+          onClick={() => scroll.current?.scrollBy({ left: Math.round(scroll.current.clientWidth * 0.8), behavior: 'smooth' })}
         >
           <span aria-hidden="true">›</span>
         </button>
@@ -127,7 +132,7 @@ export function CrownRail({ label, children }: { label: string; children: ReactN
 }
 
 // What the work adds up to, read under it rather than over it. The counts and the sort used to
-// stack above the table and cost it 189–218 px of its own height (#130).
+// stack above the card table and cost it 189–218 px of its own height (#130).
 export function CrownFoot({ children }: { children: ReactNode }) {
   return <div className="byd-crown-foot">{children}</div>
 }

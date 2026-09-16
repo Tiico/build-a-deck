@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import type { ProjectDoc } from './types.js'
 import { CardPreview } from './CardPreview.js'
+import { Crown, CrownBox, CrownDrawer, CrownFoot } from './Crown.js'
 import { iconFieldsOf, previewIcons } from './assets.js'
 import { previewFonts } from './fonts.js'
 import { CATEGORIES, INK, LIBRARY, searchSymbols, symbolName, symbolPreview, type GameSymbol } from './symbols.js'
@@ -19,7 +20,9 @@ export function SymbolPanel({ doc, client, assetBase }: SymbolPanelProps) {
   const t = useT()
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<string | null>(null)
+  const [open, setOpen] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
+  const categoryBox = useRef<HTMLButtonElement>(null)
   const found = searchSymbols(query, category, t)
   const front = doc.template.faces['front']
   // What the deck below is compiled from, worked out once per document. Both of these build a
@@ -32,11 +35,30 @@ export function SymbolPanel({ doc, client, assetBase }: SymbolPanelProps) {
   }
   return (
     <div className="byd-symbols" data-symbol-panel>
-      <aside className="byd-symbols-library">
-        <h2>{t('symbols.library')}</h2>
-        <p>{t('symbols.lead')}</p>
-        <input type="search" aria-label={t('symbols.search')} placeholder={t('symbols.search.placeholder')} value={query} onChange={(e) => setQuery(e.target.value)} />
-        <div className="byd-symbols-cats" role="group" aria-label={t('symbols.categories')}>
+      {/* The crown (#128, variant B). The search and the categories used to stand inside the
+          library column, which is why that column grew a scroll bar of its own inside a panel that
+          was already scrolling — two bars for one gesture. They belong to the panel, so they are
+          the panel's crown, and the library below is free to be part of the one thing that
+          scrolls here. */}
+      <Crown>
+        <input
+          className="byd-crown-search"
+          type="search"
+          aria-label={t('symbols.search')}
+          placeholder={t('symbols.search.placeholder')}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        <CrownBox
+          name={t('symbols.category')}
+          state={category === null ? t('symbols.all') : t(category as Key)}
+          open={open}
+          onToggle={() => setOpen((now) => !now)}
+          boxRef={categoryBox}
+        />
+      </Crown>
+      {open && (
+        <CrownDrawer label={t('symbols.categories')} opener={categoryBox} onClose={() => setOpen(false)}>
           <button type="button" className="byd-choice" aria-pressed={category === null} onClick={() => setCategory(null)}>
             {t('symbols.all')}
           </button>
@@ -45,34 +67,43 @@ export function SymbolPanel({ doc, client, assetBase }: SymbolPanelProps) {
               {t(c)}
             </button>
           ))}
-        </div>
-        {found.length === 0 ? (
-          <p className="byd-symbols-empty">{t('symbols.none')}</p>
-        ) : (
-          <div className="byd-symbols-grid">
-            {found.map((s) => (
-              <button key={s.id} type="button" className="byd-symbols-tile" aria-label={t('symbols.take', { name: symbolName(s, t) })} onClick={() => take(s)}>
-                <img src={symbolPreview(s)} alt="" />
-                <span>{symbolName(s, t)}</span>
-                <small>{s.licence}</small>
-              </button>
-            ))}
+        </CrownDrawer>
+      )}
+      <div className="byd-symbols-work">
+        <aside className="byd-symbols-library">
+          <h2>{t('symbols.library')}</h2>
+          <p>{t('symbols.lead')}</p>
+          {found.length === 0 ? (
+            <p className="byd-symbols-empty">{t('symbols.none')}</p>
+          ) : (
+            <div className="byd-symbols-grid">
+              {found.map((s) => (
+                <button key={s.id} type="button" className="byd-symbols-tile" aria-label={t('symbols.take', { name: symbolName(s, t) })} onClick={() => take(s)}>
+                  <img src={symbolPreview(s)} alt="" />
+                  <span>{symbolName(s, t)}</span>
+                  <small>{s.licence}</small>
+                </button>
+              ))}
+            </div>
+          )}
+          {notice && <p role="alert">{notice}</p>}
+        </aside>
+        <div className="byd-symbols-main">
+          <ProjectSet doc={doc} client={client} assetBase={assetBase} />
+          <GameColours doc={doc} client={client} />
+          <div className="byd-wall" role="list">
+            {front &&
+              doc.rows.map((r) => (
+                <div key={r.id} role="listitem" className="byd-wall-card" data-card-ref={r.id}>
+                  <CardPreview id={`sym-${r.id}`} face={front} row={r.fields} icons={icons} fonts={fonts} assetBase={assetBase} palette={doc.palette} scale={0.55} />
+                </div>
+              ))}
           </div>
-        )}
-        {notice && <p role="alert">{notice}</p>}
-      </aside>
-      <div className="byd-symbols-main">
-        <ProjectSet doc={doc} client={client} assetBase={assetBase} />
-        <GameColours doc={doc} client={client} />
-        <div className="byd-wall" role="list">
-          {front &&
-            doc.rows.map((r) => (
-              <div key={r.id} role="listitem" className="byd-wall-card" data-card-ref={r.id}>
-                <CardPreview id={`sym-${r.id}`} face={front} row={r.fields} icons={icons} fonts={fonts} assetBase={assetBase} palette={doc.palette} scale={0.55} />
-              </div>
-            ))}
         </div>
       </div>
+      <CrownFoot>
+        <span>{t('symbols.foot', { n: found.length, of: SYMBOL_COUNT, m: Object.keys(doc.icons).length })}</span>
+      </CrownFoot>
     </div>
   )
 }

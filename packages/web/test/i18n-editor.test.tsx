@@ -40,10 +40,16 @@ describe('the editor in the reader\'s own language (A4)', () => {
     expect(screen.getByRole('button', { name: 'Save' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Update the table' })).toBeTruthy()
 
-    expect(screen.getByRole('heading', { name: 'Physical check' })).toBeTruthy()
+    // The wall's crown (#128): a box says its name and what is chosen inside it, in the reader's
+    // language, and what it opens is in that language too.
+    expect(screen.getByRole('button', { name: 'Eyes: As you see it' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Guides (0)' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Physical check/ })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /^Eyes:/ }))
     expect(screen.getByRole('group', { name: 'Eyes' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'As you see it' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Greyscale' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /^Guides/ }))
     expect(screen.getByLabelText(/trim and safe margin/i)).toBeTruthy()
     expect(screen.getByLabelText(/at arm’s length/i)).toBeTruthy()
     // The deck itself is the designer's: a card keeps its title in either language.
@@ -52,6 +58,7 @@ describe('the editor in the reader\'s own language (A4)', () => {
 
   it('names the physical faults in English, in the words a printer uses', async () => {
     await openEditor()
+    fireEvent.click(screen.getByRole('button', { name: /^Physical check/ }))
     const checks = screen.getByRole('list', { name: 'Physical check' })
     // The fixture's frame stops short of the bleed on every card, which is the fault the wall
     // gathers: named by kind, counted in cards, and marked as what stops an order.
@@ -65,9 +72,11 @@ describe('the editor in the reader\'s own language (A4)', () => {
   it('says the data table in English and keeps the designer\'s own column names', async () => {
     await openEditor()
     openTab('Data')
+    expect(screen.getByPlaceholderText('Search every field…')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Import' }))
     expect(screen.getByLabelText('Import CSV…')).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Download CSV' })).toBeTruthy()
-    expect(screen.getByPlaceholderText('Search every field…')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Import' }))
     expect(screen.getByText('3 of 3 cards')).toBeTruthy()
     expect(screen.getByText('Unsorted: the cards’ order in the game.')).toBeTruthy()
     expect(screen.getByRole('button', { name: '+ New card' })).toBeTruthy()
@@ -117,8 +126,10 @@ describe('the editor in the reader\'s own language (A4)', () => {
     openTab('Symbols')
     expect(screen.getByRole('heading', { name: 'Symbol library' })).toBeTruthy()
     expect(screen.getByPlaceholderText('Search for a symbol…')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'All' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Category: All' })).toBeTruthy()
     expect(screen.getByText(/No symbols yet/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: /^Category:/ }))
+    expect(screen.getByRole('button', { name: 'All' })).toBeTruthy()
     // The library is the tool's own, so its symbols are named in the reader's language — and a
     // symbol taken from here is called that in the game from then on.
     expect(screen.getByRole('button', { name: 'Take in sword' })).toBeTruthy()

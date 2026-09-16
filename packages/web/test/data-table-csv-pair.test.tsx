@@ -7,7 +7,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { chromium, type Browser } from 'playwright'
 import type { ProjectDoc } from '@byd/server'
 import { Language, type Lang } from '../src/i18n/index.js'
@@ -16,7 +16,16 @@ import { projectDoc } from './project-doc.js'
 
 const nothing = () => undefined
 
+// The pair is what falls into a box in the table's crown (#130): an import and an export are done
+// once and are not a state to stand in, so they are the one thing on that surface worth a door.
+// Everything below is about the pair itself, so every mounting opens that door first.
 function tableIn(lang: Lang, doc: ProjectDoc = projectDoc()) {
+  const view = mount(lang, doc)
+  fireEvent.click(view.container.querySelector<HTMLButtonElement>('.byd-crown-box')!)
+  return view
+}
+
+function mount(lang: Lang, doc: ProjectDoc = projectDoc()) {
   return render(
     <Language lang={lang}>
       <DataTable

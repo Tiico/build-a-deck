@@ -58,6 +58,9 @@ describe('a card is not compiled again for nothing', () => {
 
     // Nothing a card is compiled from has changed — the eye is a filter over the whole wall — so
     // nothing should be compiled again. A card recompiled under the pointer cannot be clicked.
+    // The eyes moved into a named box in the wall's crown (#128), so the box is opened first —
+    // and opening it must not compile anything either.
+    fireEvent.click(screen.getByRole('button', { name: /^Ögon/ }))
     spy.compiles = 0
     fireEvent.click(screen.getByRole('button', { name: 'Deuteranopi' }))
     expect(spy.compiles).toBe(0)

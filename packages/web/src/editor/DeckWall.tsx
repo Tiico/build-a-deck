@@ -1,7 +1,10 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import type { ProjectDoc } from '@byd/server'
 import type { Frame, Motif, Nudge, Warning } from '@byd/template'
+import { CARD_STANDARD_63x88 } from '@byd/engine'
 import { CardPreview } from './CardPreview.js'
+import { Crown, CrownBox, CrownDrawer, CrownFoot } from './Crown.js'
+import { DENSITY, DENSITY_DEFAULT, heldDensity, rememberDensity } from './density.js'
 import { previewIcons } from './assets.js'
 import { previewFonts } from './fonts.js'
 import { deckIssues, groupIssues, issueDetail, issueWords } from './checks.js'
@@ -16,7 +19,6 @@ export type DeckWallProps = {
   selectedRow: string | null
   onSelectRow(cardRef: string): void
   onSelectElement(id: string): void
-  scale?: number
   assetBase?: string | undefined
   // What is drawn inside each picture (E1), keyed by the URL a resolved row carries.
   motifs?: Record<string, Motif> | undefined
@@ -41,13 +43,22 @@ const MATRICES: Record<string, string> = {
   deuteranopia: '0.29275 0.70725 0 0 0  0.29275 0.70725 0 0 0  -0.02234 0.02234 1 0 0  0 0 0 1 0',
   tritanopia: '1 0.14461 -0.14461 0 0  0 0.85924 0.14076 0 0  0 0.85924 0.14076 0 0  0 0 0 1 0',
 }
-// A card at arm's length is the cheapest check of all, and needs no validation at all.
-const ARM_SCALE = 0.34
+// A card at arm's length is the cheapest check of all, and needs no validation at all. It is a
+// guide and not a density: it says what the deck looks like across a table, so it names one width
+// rather than stepping through the ladder.
+const ARM_PX = 90
+// The card at full size, in CSS pixels, so a width in pixels can be asked of the preview as the
+// zoom it actually takes. Read off the type rather than written down: 63 mm is the card's fact and
+// not this file's.
+const CARD_PX = (CARD_STANDARD_63x88.physical.widthMm / 25.4) * 96
+
+// What the crown's boxes are, so that only one of them is ever open.
+type Box = 'eyes' | 'guides' | 'checks'
 
 // The deck as a wall (C as the home view): every row as a card, copies and faults on each, the
 // whole deck visible at once — a balance change on forty cards is seen as one thing. Beside it
 // the physical checks (E5), gathered by kind, and the eyes to read the deck with.
-export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, scale = 0.6, assetBase, motifs, onMeasure, onFraming }: DeckWallProps) {
+export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onMeasure, onFraming }: DeckWallProps) {
   const t = useT()
   const faceTemplate = doc.template.faces[face]
   // The fonts the version is pinned to (B3), worked out once per document: a fresh object every
@@ -61,7 +72,16 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   const [eye, setEye] = useState<string>('normal')
   const [trim, setTrim] = useState(false)
   const [arm, setArm] = useState(false)
+  // How close the deck is packed is this browser's and not this project's (#128), so it is read
+  // from where it was left rather than started afresh on every mount.
+  const [step, setStep] = useState(heldDensity)
+  const [box, setBox] = useState<Box | null>(null)
   const [openGroup, setOpenGroup] = useState<string | null>(null)
+  // A drawer hands the focus back to the box it came from when it closes (#133), so each box has
+  // to be findable from the drawer it opened.
+  const eyesBox = useRef<HTMLButtonElement>(null)
+  const guidesBox = useRef<HTMLButtonElement>(null)
+  const checksBox = useRef<HTMLButtonElement>(null)
   const onWarnings = useCallback((cardRef: string, w: Warning[]) => {
     setWarnings((m) => (m[cardRef] === w.length ? m : { ...m, [cardRef]: w.length }))
   }, [])
@@ -71,99 +91,185 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   const open = groups.find((g) => g.code === openGroup)
   const marked = new Set(open?.cards ?? [])
   const words = issueWords(t)
+  const toggle = (which: Box) => setBox((now) => (now === which ? null : which))
+  const close = () => setBox(null)
+  const denser = (by: number) =>
+    setStep((now) => {
+      const next = Math.min(DENSITY.length - 1, Math.max(0, now + by))
+      rememberDensity(next)
+      return next
+    })
+  const px = arm ? ARM_PX : (DENSITY[step] ?? DENSITY[DENSITY_DEFAULT] ?? 150)
+  const eyeNow = EYES.find((e) => e.key === eye) ?? { key: 'normal', name: 'wall.eye.normal' as const }
   if (!faceTemplate) return <p>{t('template.faceMissing', { face })}</p>
   return (
     <div className="byd-wall-view">
       <EyeFilters />
-      <div className="byd-wall-tools">
-        <div role="group" aria-label={t('wall.eyes')}>
+      {/* The crown (#128, variant B): one row, and every box says what is chosen inside it. The
+          eye the deck is read with is the reason that rule exists — a simulation left on without
+          saying so is worse than no simulation at all (E5). */}
+      <Crown>
+        <CrownBox name={t('wall.eyes')} state={t(eyeNow.name)} open={box === 'eyes'} onToggle={() => toggle('eyes')} boxRef={eyesBox} />
+        <CrownBox
+          name={t('wall.guides')}
+          count={(trim ? 1 : 0) + (arm ? 1 : 0)}
+          open={box === 'guides'}
+          onToggle={() => toggle('guides')}
+          boxRef={guidesBox}
+        />
+        {/* Density is two presses and no box: it is the one control on this surface that is used
+            over and over while looking at something else, and a box would put a door in front of
+            every step. What it is set to is read off the wall itself, and said in the foot. */}
+        <div className="byd-crown-step" role="group" aria-label={t('wall.density')}>
+          <button type="button" onClick={() => denser(-1)} aria-label={t('wall.density.more')}>
+            <span aria-hidden="true">&#x2212;</span>
+          </button>
+          <button type="button" onClick={() => denser(1)} aria-label={t('wall.density.less')}>
+            <span aria-hidden="true">+</span>
+          </button>
+        </div>
+        <CrownBox name={t('wall.checks.title')} count={groups.length} open={box === 'checks'} onToggle={() => toggle('checks')} boxRef={checksBox} end />
+      </Crown>
+      {box === 'eyes' && (
+        <CrownDrawer label={t('wall.eyes')} opener={eyesBox} onClose={close}>
           {EYES.map((e) => (
             <button key={e.key} type="button" className="byd-choice" aria-pressed={eye === e.key} onClick={() => setEye(e.key)}>
               {t(e.name)}
             </button>
           ))}
+        </CrownDrawer>
+      )}
+      {box === 'guides' && (
+        <CrownDrawer label={t('wall.guides')} opener={guidesBox} onClose={close}>
+          <label className="byd-crown-tick">
+            <input type="checkbox" checked={trim} onChange={(e) => setTrim(e.target.checked)} /> {t('wall.trim')}
+          </label>
+          <label className="byd-crown-tick">
+            <input type="checkbox" checked={arm} onChange={(e) => setArm(e.target.checked)} /> {t('wall.arm')}
+          </label>
+        </CrownDrawer>
+      )}
+      {box === 'checks' && (
+        <CrownDrawer label={t('wall.checks.title')} opener={checksBox} onClose={close}>
+          <Checks groups={groups} errors={errors.length} words={words} openGroup={openGroup} onOpenGroup={setOpenGroup} t={t} />
+        </CrownDrawer>
+      )}
+      {/* The wall is the only thing on this surface that scrolls. */}
+      <div className="byd-wall-work">
+        <div
+          className="byd-wall"
+          role="list"
+          data-wall
+          data-eye={eye}
+          style={{ ['--byd-wall-card' as string]: `${px}px` }}
+          {...(trim ? { 'data-trim': 'true' } : {})}
+          {...(arm ? { 'data-arm': 'true' } : {})}
+        >
+          {doc.rows.map(({ id: cardRef, fields: row }) => {
+            const copies = Number(row['antal'] ?? 1)
+            // The badge stays this card's own trouble — an unknown icon, text that will not fit.
+            // A physical fault is nearly always the template's, and saying it on every card would
+            // be forty red badges for one mistake; the report in the crown says it once.
+            const count = warnings[cardRef] ?? 0
+            return (
+              <div
+                key={cardRef}
+                role="listitem"
+                className="byd-wall-card"
+                data-card-ref={cardRef}
+                aria-selected={selectedRow === cardRef ? 'true' : 'false'}
+                {...(marked.has(cardRef) ? { 'data-marked': 'true' } : {})}
+                onClick={() => onSelectRow(cardRef)}
+              >
+                <CardPreview
+                  id={`wall-${cardRef}`}
+                  face={faceTemplate}
+                  row={row}
+                  icons={icons}
+                  fonts={fonts}
+                  scale={px / CARD_PX}
+                  assetBase={assetBase}
+                  motifs={motifs}
+                  palette={doc.palette}
+                  framing={doc.framing ? framingOf(doc, cardRef) : undefined}
+                  onSelectElement={onSelectElement}
+                  onWarnings={(w) => onWarnings(cardRef, w)}
+                />
+                {copies > 1 && <span className="byd-wall-copies" data-copies>×{copies}</span>}
+                {count > 0 && (
+                  <span className="byd-wall-warnings" data-warnings>
+                    {count}
+                  </span>
+                )}
+              </div>
+            )
+          })}
         </div>
-        <label>
-          <input type="checkbox" checked={trim} onChange={(e) => setTrim(e.target.checked)} /> {t('wall.trim')}
-        </label>
-        <label>
-          <input type="checkbox" checked={arm} onChange={(e) => setArm(e.target.checked)} /> {t('wall.arm')}
-        </label>
+        {onMeasure && onFraming && <Measure doc={doc} assetBase={assetBase} motifs={motifs} onMeasure={onMeasure} onFraming={onFraming} />}
       </div>
-      <div className="byd-wall" role="list" data-wall data-eye={eye} {...(trim ? { 'data-trim': 'true' } : {})} {...(arm ? { 'data-arm': 'true' } : {})}>
-        {doc.rows.map(({ id: cardRef, fields: row }) => {
-          const copies = Number(row['antal'] ?? 1)
-          // The badge stays this card's own trouble — an unknown icon, text that will not fit.
-          // A physical fault is nearly always the template's, and saying it on every card would
-          // be forty red badges for one mistake; the report beside says it once.
-          const count = warnings[cardRef] ?? 0
-          return (
-            <div
-              key={cardRef}
-              role="listitem"
-              className="byd-wall-card"
-              data-card-ref={cardRef}
-              aria-selected={selectedRow === cardRef ? 'true' : 'false'}
-              {...(marked.has(cardRef) ? { 'data-marked': 'true' } : {})}
-              onClick={() => onSelectRow(cardRef)}
-            >
-              <CardPreview
-                id={`wall-${cardRef}`}
-                face={faceTemplate}
-                row={row}
-                icons={icons}
-                fonts={fonts}
-                scale={arm ? ARM_SCALE : scale}
-                assetBase={assetBase}
-                motifs={motifs}
-                palette={doc.palette}
-                framing={doc.framing ? framingOf(doc, cardRef) : undefined}
-                onSelectElement={onSelectElement}
-                onWarnings={(w) => onWarnings(cardRef, w)}
-              />
-              {copies > 1 && <span className="byd-wall-copies" data-copies>×{copies}</span>}
-              {count > 0 && (
-                <span className="byd-wall-warnings" data-warnings>
-                  {count}
-                </span>
-              )}
-            </div>
-          )
-        })}
-      </div>
-      {onMeasure && onFraming && <Measure doc={doc} assetBase={assetBase} motifs={motifs} onMeasure={onMeasure} onFraming={onFraming} />}
-      <aside className="byd-wall-checks">
-        <h2>{t('wall.checks.title')}</h2>
-        {groups.length === 0 ? (
-          <p className="byd-wall-ok">{t('wall.checks.ok')}</p>
-        ) : (
-          <>
-            <p className="byd-wall-lead">
-              {errors.length > 0 ? t(errors.length === 1 ? 'wall.checks.errors.one' : 'wall.checks.errors.other', { n: errors.length }) : t('wall.checks.warningsOnly')}
-            </p>
-            <ul aria-label={t('wall.checks.title')}>
-              {groups.map((g) => (
-                <li key={g.code} data-severity={g.severity} data-check={g.code}>
-                  <button type="button" aria-expanded={openGroup === g.code} onClick={() => setOpenGroup(openGroup === g.code ? null : g.code)}>
-                    <b>{words[g.code]}</b>
-                    <span>{t(g.cards.length === 1 ? 'wall.cards.one' : 'wall.cards.other', { n: g.cards.length })}</span>
-                    <small>{t(g.severity === 'error' ? 'wall.severity.error' : 'wall.severity.warning')}</small>
-                  </button>
-                  {openGroup === g.code && (
-                    <div className="byd-wall-check-detail">
-                      <p>{issueDetail(g, t)}</p>
-                      <span>
-                        {g.elements.join(', ')} · {g.faces.join(', ')}
-                      </span>
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-            <p className="byd-wall-lead">{t('wall.checks.note')}</p>
-          </>
-        )}
-      </aside>
+      {/* What the wall adds up to, under it rather than over it (#130): the size it is drawn at,
+          which nothing else on the surface says now that density is two bare presses. */}
+      <CrownFoot>
+        <span>{t('wall.foot.cards', { n: doc.rows.length, px })}</span>
+        <span>
+          {groups.length === 0
+            ? t('wall.foot.checked')
+            : t(groups.length === 1 ? 'wall.foot.remarks.one' : 'wall.foot.remarks.other', { n: groups.length })}
+        </span>
+      </CrownFoot>
+    </div>
+  )
+}
+
+// The deck's faults, gathered by kind (E5). It used to stand as a dock beside the wall and took
+// 320 px of the widest surface in the editor for something read once a session; it is now what the
+// crown's last box opens.
+function Checks({
+  groups,
+  errors,
+  words,
+  openGroup,
+  onOpenGroup,
+  t,
+}: {
+  groups: ReturnType<typeof groupIssues>
+  errors: number
+  words: Record<string, string>
+  openGroup: string | null
+  onOpenGroup(code: string | null): void
+  t: ReturnType<typeof useT>
+}) {
+  return (
+    <div className="byd-wall-checks">
+      {groups.length === 0 ? (
+        <p className="byd-wall-ok">{t('wall.checks.ok')}</p>
+      ) : (
+        <>
+          <p className="byd-wall-lead">
+            {errors > 0 ? t(errors === 1 ? 'wall.checks.errors.one' : 'wall.checks.errors.other', { n: errors }) : t('wall.checks.warningsOnly')}
+          </p>
+          <ul aria-label={t('wall.checks.title')}>
+            {groups.map((g) => (
+              <li key={g.code} data-severity={g.severity} data-check={g.code}>
+                <button type="button" aria-expanded={openGroup === g.code} onClick={() => onOpenGroup(openGroup === g.code ? null : g.code)}>
+                  <b>{words[g.code]}</b>
+                  <span>{t(g.cards.length === 1 ? 'wall.cards.one' : 'wall.cards.other', { n: g.cards.length })}</span>
+                  <small>{t(g.severity === 'error' ? 'wall.severity.error' : 'wall.severity.warning')}</small>
+                </button>
+                {openGroup === g.code && (
+                  <div className="byd-wall-check-detail">
+                    <p>{issueDetail(g, t)}</p>
+                    <span>
+                      {g.elements.join(', ')} · {g.faces.join(', ')}
+                    </span>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+          <p className="byd-wall-lead">{t('wall.checks.note')}</p>
+        </>
+      )}
     </div>
   )
 }

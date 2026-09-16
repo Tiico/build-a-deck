@@ -34,7 +34,12 @@ describe('the symbol library in the editor (E4)', () => {
     fireEvent.change(screen.getByLabelText('Sök symbol'), { target: { value: 'försvar' } })
     expect(screen.getAllByRole('button', { name: /^Ta in / })).toHaveLength(1)
     fireEvent.change(screen.getByLabelText('Sök symbol'), { target: { value: '' } })
+    // Since #128 the categories live in a named box in the panel's crown, which says which one is
+    // chosen before it is opened.
+    expect(screen.getByRole('button', { name: /^Kategori/ }).textContent).toContain('Alla')
+    fireEvent.click(screen.getByRole('button', { name: /^Kategori/ }))
     fireEvent.click(screen.getByRole('button', { name: 'Platshållare' }))
+    expect(screen.getByRole('button', { name: /^Kategori/ }).textContent).toContain('Platshållare')
     expect(screen.queryByRole('button', { name: 'Ta in sköld' })).toBeNull()
     expect(screen.getByRole('button', { name: /Ta in ram-tunn/ })).toBeTruthy()
     fireEvent.change(screen.getByLabelText('Sök symbol'), { target: { value: 'ingenting alls' } })

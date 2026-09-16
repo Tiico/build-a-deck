@@ -59,6 +59,8 @@ describe('DataTable (B as a tab)', () => {
     const onReplaceRows = vi.fn()
     render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={() => undefined} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={onReplaceRows} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} />)
 
+    // The CSV pair is what falls into a box in the crown (#130): done once, and not a state.
+    fireEvent.click(screen.getByRole('button', { name: 'Importera' }))
     const download = screen.getByRole('link', { name: 'Ladda ner CSV' }) as HTMLAnchorElement
     expect(download.download).toBe('skogens-herrar-kort.csv')
     expect(decodeURIComponent(download.href.split(',')[1] ?? '')).toContain('id,title,body,antal')
