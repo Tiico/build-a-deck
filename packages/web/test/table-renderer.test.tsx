@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { createRef } from 'react'
+import type { Intent } from '@byd/protocol'
 import { TableRenderer, type TableHandle } from '../src/table/TableRenderer.js'
 import { buildScene } from './scene.js'
 import { activeBounds, cameraOf, frameRect, pad } from '../src/table/camera.js'
@@ -292,6 +293,26 @@ describe('direct manipulation (K1, K2, C)', () => {
     expect([...ring.querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Blanda', 'Dra 1', 'Dela på hälften', 'Vänd översta', 'Titta'])
     fireEvent.pointerUp(document.querySelector('.byd-radial-backdrop')!)
     expect(document.querySelector('[data-radial]')).toBeNull()
+  })
+
+  // Vilken sida av högen som är "bredvid den" är högens egen sak (K21): den som lägger leken vid
+  // filtens vänsterkant vill inte ha sina kort utanför bordet. Ringens verb läser samma sida som
+  // designerns åtgärder, för det är ett kort som läggs bredvid en hög i båda fallen.
+  it('lägger det som delas av åt det håll högen säger, inte alltid åt vänster', () => {
+    const { view } = buildScene()
+    const snapshot = view(null)
+    const rightwards = { ...snapshot, zones: snapshot.zones.map((z) => (z.id === 'discard' ? { ...z, beside: 'right' as const } : z)) }
+    const sent: Intent[][] = []
+    render(<TableRenderer view={rightwards} mode="tv" scale={1} onAct={(i) => sent.push(i)} />)
+    const label = document.querySelector('[data-zone="discard"] .byd-pile-count')!
+    fireEvent.pointerDown(label, client(100, 100))
+    fireEvent.pointerUp(label, client(100, 100))
+    fireEvent.click(screen.getByRole('button', { name: 'Dela på hälften' }))
+
+    const split = sent.flat()[0] as { v: string; x: number }
+    const discard = snapshot.zones.find((z) => z.id === 'discard')!
+    expect(split.v).toBe('split')
+    expect(split.x).toBeGreaterThan(discard.geometry.x)
   })
 
   // Without the Stäng button the ring is a pointer surface with no way out for a hand on a

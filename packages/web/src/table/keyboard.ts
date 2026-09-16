@@ -167,7 +167,7 @@ export function verbsFor(view: Snapshot, thing: Thing, t: T = swedish): Act[] {
   return [
     { key: 'shuffle', label: t('ring.shuffle'), intents: n > 1 ? [{ v: 'shuffle', pile: z.id }] : null },
     ...(view.seat === null ? [] : [{ key: 'toHand', label: t('kbd.verb.toHand'), intents: n > 0 ? [{ v: 'split' as const, pile: z.id, at: 1, to: `hand:${view.seat}` }] : null }]),
-    { key: 'half', label: t('ring.half'), hint: t('kbd.hint.half'), intents: n > 1 ? [{ v: 'split', pile: z.id, at: Math.ceil(n / 2), ...besidePile(z.geometry, Math.ceil(n / 2)) }] : null },
+    { key: 'half', label: t('ring.half'), hint: t('kbd.hint.half'), intents: n > 1 ? [{ v: 'split', pile: z.id, at: Math.ceil(n / 2), ...besidePile(z.geometry, Math.ceil(n / 2), z.beside) }] : null },
     // And what the game itself hangs on this pile (K14, extended), after the tool's own verbs and
     // in the designer's own words. The panel reads the same list the sheet under the ring reads
     // and compiles it the same way, so the hand and the keyboard cannot be offered different

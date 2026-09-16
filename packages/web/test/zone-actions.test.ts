@@ -51,6 +51,23 @@ describe('att kompilera en åtgärd till intents', () => {
     expect(compile(empty, [{ v: 'split', count: { of: 'zone', zone: 'discard' }, to: { at: 'beside' }, face: 'keep' }])).toEqual({ ok: false, why: 'none' })
   })
 
+  it('lägger "bredvid högen" på den sida högen säger (K21)', () => {
+    const { view } = buildScene()
+    const snapshot = view(null)
+    const draw = snapshot.zones.find((z) => z.id === 'draw')!
+    const rightwards: Snapshot = { ...snapshot, zones: snapshot.zones.map((z) => (z.id === 'draw' ? { ...z, beside: 'right' as const } : z)) }
+    const landsAt = (steps: ZoneAction['steps']): number => {
+      const made = compile(rightwards, steps)
+      if (!made.ok) throw new Error(`väntade intents, fick ${JSON.stringify(made)}`)
+      const [intent] = made.intents
+      if (intent === undefined || !('x' in intent) || typeof intent.x !== 'number') throw new Error('steget bar ingen punkt')
+      return intent.x
+    }
+    expect(landsAt([{ v: 'split', count: { of: 'number', n: 2 }, to: { at: 'beside' }, face: 'front' }])).toBeGreaterThan(draw.geometry.x)
+    // Och ett framletat knippe går samma väg, för det landar på samma ställe.
+    expect(landsAt([{ v: 'take', which: [{ field: 'rarity', is: ['Diamant'] }], to: { at: 'beside' }, face: 'front' }])).toBeGreaterThan(draw.geometry.x)
+  })
+
   it('bär frågan vidare orörd när steget letar fram kort', () => {
     const { view } = buildScene()
     expect(compile(view(null), [{ v: 'take', which: [{ field: 'rarity', is: ['Diamant'] }], to: { at: 'beside' }, face: 'front' }])).toMatchObject({

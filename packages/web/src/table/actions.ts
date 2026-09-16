@@ -1,5 +1,5 @@
-import type { Intent, Snapshot, ZoneAction, ActionAmount, ActionStep, ActionTarget } from '@byd/protocol'
-import { besidePile } from './drop.js'
+import type { Intent, Snapshot, ZoneAction, ZoneView, ActionAmount, ActionStep, ActionTarget } from '@byd/protocol'
+import { besidePile, type Point } from './drop.js'
 
 // Turning a designer's action into the intents it means (B5, K14).
 //
@@ -55,7 +55,7 @@ export function compileAction(view: Snapshot, pile: string, action: ZoneAction, 
   if (zone === undefined) return { ok: false, why: 'gone' }
   const intents: Intent[] = []
   for (const [i, step] of action.steps.entries()) {
-    const made = compileStep(view, zone.geometry, pile, step, asked, askKey(i))
+    const made = compileStep(view, zone, pile, step, asked, askKey(i))
     if ('asks' in made) return { ok: false, asks: made.asks }
     if ('why' in made) return { ok: false, why: made.why }
     intents.push(...made.intents)
@@ -65,7 +65,10 @@ export function compileAction(view: Snapshot, pile: string, action: ZoneAction, 
 
 type Made = { intents: Intent[] } | { asks: string } | { why: string }
 
-function compileStep(view: Snapshot, geometry: { x: number; y: number; w: number; h: number; rot: number }, pile: string, step: ActionStep, asked: Asked, key: string): Made {
+// `beside` is the pile's own side and not the step's (K21): a pile that lies at the felt's left
+// edge lays its cards to the right, whoever asked for them and whichever verb did it.
+function compileStep(view: Snapshot, zone: ZoneView, pile: string, step: ActionStep, asked: Asked, key: string): Made {
+  const beside = (cards: number): Point => besidePile(zone.geometry, cards, zone.beside)
   if (step.v === 'shuffle') return { intents: [{ v: 'shuffle', pile }] }
   if (step.v === 'flipTop') {
     const z = view.zones.find((x) => x.id === pile)
@@ -94,7 +97,7 @@ function compileStep(view: Snapshot, geometry: { x: number; y: number; w: number
     // turns up exactly one card lands half a card off — which is a card lying somewhere slightly
     // else, and can be dragged. Guessing "one" would put a pile of six half a card *over* the
     // pile it came out of, which cannot.
-    return { intents: [{ v: 'split', pile, at: 1, which: step.which, ...(to ? { to } : besidePile(geometry, 2)), ...face(step.face) }] }
+    return { intents: [{ v: 'split', pile, at: 1, which: step.which, ...(to ? { to } : beside(2)), ...face(step.face) }] }
   }
   const n = amountOf(view, step.v === 'deal' ? step.each : step.count, asked, key)
   if (typeof n === 'object') return n
@@ -105,5 +108,5 @@ function compileStep(view: Snapshot, geometry: { x: number; y: number; w: number
   }
   const to = step.to.at === 'beside' ? undefined : targets[0]
   if (step.to.at !== 'beside' && to === undefined) return { why: 'nowhere' }
-  return { intents: [{ v: 'split', pile, at: n, ...(to ? { to } : besidePile(geometry, n)), ...face(step.face) }] }
+  return { intents: [{ v: 'split', pile, at: n, ...(to ? { to } : beside(n)), ...face(step.face) }] }
 }
