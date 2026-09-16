@@ -641,14 +641,16 @@
 }
 .ux16-book {
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
+  /* Boken har en läsbredd och bärs mitt i ytan; innehållsförteckningen hänger på den, så paret
+     flyttar tillsammans i stället för att lämna en tom halva till höger. */
+  grid-template-columns: 200px min(68ch, 100%);
   gap: var(--byd-s5);
   padding: var(--byd-s5) var(--byd-gutter);
   justify-content: center;
   align-content: start;
 }
 .ux16-book[data-toc='false'] {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: min(68ch, 100%);
 }
 .ux16-toc {
   position: sticky;
@@ -830,14 +832,18 @@
   color: #fff;
   border-color: #16202b;
 }
-.ux16bar[data-shot='true'] {
-  padding: 3px 7px;
-  background: #16202b;
-  color: #eef2f5;
-  border-color: #3b414e;
+/* I skärmbildsläge är växlaren borta och etiketten står först i mätarraden. */
+.ux16bar[hidden] {
+  display: none !important;
 }
-.ux16bar[data-shot='true'] button,
-.ux16bar[data-shot='true'] a,
-.ux16bar[data-shot='true'] small {
+.ux16-etikett {
   display: none;
+}
+.ux16[data-shot='true'] .ux16-etikett {
+  display: inline;
+  color: #eef2f5;
+  font-weight: 700;
+}
+.ux16[data-shot='true'] .ux16-etikett::before {
+  content: var(--ux16-etikett, '');
 }

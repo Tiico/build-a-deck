@@ -1,0 +1,314 @@
+[
+  {
+    "bild": "skala-A-1440",
+    "matt": "bredd 1440 krönhöjd 0 px skrollytor 1 nästlade 0 fönsterskroll 0 px ytterkant 16 px (beslutad) · 5 tal i skalan"
+  },
+  {
+    "bild": "krona-vagg-A-1440",
+    "matt": "bredd 1440 krönhöjd 61 px skrollytor 2 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "krona-symboler-A-1440",
+    "matt": "bredd 1440 krönhöjd 61 px skrollytor 1 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "krona-data-A-1440",
+    "matt": "bredd 1440 krönhöjd 113 px skrollytor 1 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "grupper-A-1440",
+    "matt": "bredd 1440 krönhöjd 162 px skrollytor 2 nästlade 0 fönsterskroll 0 px duk 872 px · dold remsa 0 px"
+  },
+  {
+    "bild": "regler-tomt-A-1440",
+    "matt": "bredd 1440 krönhöjd 61 px skrollytor 1 nästlade 0 fönsterskroll 0 px tomläge"
+  },
+  {
+    "bild": "regler-skriven-A-1440",
+    "matt": "bredd 1440 krönhöjd 61 px skrollytor 1 nästlade 0 fönsterskroll 0 px skriven bok"
+  },
+  {
+    "bild": "skala-B-1440",
+    "matt": "bredd 1440 krönhöjd 0 px skrollytor 1 nästlade 0 fönsterskroll 0 px ytterkant 16 px (beslutad) · 5 tal i skalan"
+  },
+  {
+    "bild": "krona-vagg-B-1440",
+    "matt": "bredd 1440 krönhöjd 61 px skrollytor 1 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "krona-symboler-B-1440",
+    "matt": "bredd 1440 krönhöjd 61 px skrollytor 1 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "krona-data-B-1440",
+    "matt": "bredd 1440 krönhöjd 65 px skrollytor 1 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "grupper-B-1440",
+    "matt": "bredd 1440 krönhöjd 118 px skrollytor 1 nästlade 0 fönsterskroll 0 px duk 1152 px · dold remsa 216 px"
+  },
+  {
+    "bild": "regler-tomt-B-1440",
+    "matt": "bredd 1440 krönhöjd 61 px skrollytor 1 nästlade 0 fönsterskroll 0 px tomläge"
+  },
+  {
+    "bild": "regler-skriven-B-1440",
+    "matt": "bredd 1440 krönhöjd 61 px skrollytor 1 nästlade 0 fönsterskroll 0 px skriven bok"
+  },
+  {
+    "bild": "skala-C-1440",
+    "matt": "bredd 1440 krönhöjd 0 px skrollytor 1 nästlade 0 fönsterskroll 0 px ytterkant 16 px (beslutad) · 2 tal i skalan"
+  },
+  {
+    "bild": "krona-vagg-C-1440",
+    "matt": "bredd 1440 krönhöjd 0 px skrollytor 2 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "krona-symboler-C-1440",
+    "matt": "bredd 1440 krönhöjd 0 px skrollytor 1 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "krona-data-C-1440",
+    "matt": "bredd 1440 krönhöjd 0 px skrollytor 1 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "grupper-C-1440",
+    "matt": "bredd 1440 krönhöjd 61 px skrollytor 2 nästlade 0 fönsterskroll 0 px duk 1152 px · dold remsa 0 px"
+  },
+  {
+    "bild": "regler-tomt-C-1440",
+    "matt": "bredd 1440 krönhöjd 61 px skrollytor 1 nästlade 0 fönsterskroll 0 px tomläge"
+  },
+  {
+    "bild": "regler-skriven-C-1440",
+    "matt": "bredd 1440 krönhöjd 61 px skrollytor 1 nästlade 0 fönsterskroll 0 px skriven bok"
+  },
+  {
+    "bild": "krona-vagg-B-lada-oppen-1440",
+    "matt": "bredd 1440 krönhöjd 122 px skrollytor 1 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "krona-data-B-lada-oppen-1440",
+    "matt": "bredd 1440 krönhöjd 126 px skrollytor 1 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "krona-data-C-flyout-1440",
+    "matt": "bredd 1440 krönhöjd 61 px skrollytor 1 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "grupper-B-overflod-1440",
+    "matt": "bredd 1440 krönhöjd 231 px skrollytor 1 nästlade 0 fönsterskroll 0 px duk 1152 px · dold remsa 216 px"
+  },
+  {
+    "bild": "grupper-A-egenskaper-fallda-1440",
+    "matt": "bredd 1440 krönhöjd 162 px skrollytor 1 nästlade 0 fönsterskroll 0 px duk 1152 px · dold remsa 0 px"
+  },
+  {
+    "bild": "skala-A-1280",
+    "matt": "bredd 1280 krönhöjd 0 px skrollytor 1 nästlade 0 fönsterskroll 0 px ytterkant 16 px (beslutad) · 5 tal i skalan"
+  },
+  {
+    "bild": "krona-vagg-A-1280",
+    "matt": "bredd 1280 krönhöjd 61 px skrollytor 2 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "krona-symboler-A-1280",
+    "matt": "bredd 1280 krönhöjd 61 px skrollytor 1 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "krona-data-A-1280",
+    "matt": "bredd 1280 krönhöjd 113 px skrollytor 1 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "grupper-A-1280",
+    "matt": "bredd 1280 krönhöjd 162 px skrollytor 2 nästlade 0 fönsterskroll 0 px duk 712 px · dold remsa 0 px"
+  },
+  {
+    "bild": "regler-tomt-A-1280",
+    "matt": "bredd 1280 krönhöjd 61 px skrollytor 1 nästlade 0 fönsterskroll 0 px tomläge"
+  },
+  {
+    "bild": "regler-skriven-A-1280",
+    "matt": "bredd 1280 krönhöjd 61 px skrollytor 1 nästlade 0 fönsterskroll 0 px skriven bok"
+  },
+  {
+    "bild": "skala-B-1280",
+    "matt": "bredd 1280 krönhöjd 0 px skrollytor 1 nästlade 0 fönsterskroll 0 px ytterkant 16 px (beslutad) · 5 tal i skalan"
+  },
+  {
+    "bild": "krona-vagg-B-1280",
+    "matt": "bredd 1280 krönhöjd 61 px skrollytor 1 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "krona-symboler-B-1280",
+    "matt": "bredd 1280 krönhöjd 61 px skrollytor 1 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "krona-data-B-1280",
+    "matt": "bredd 1280 krönhöjd 65 px skrollytor 1 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "grupper-B-1280",
+    "matt": "bredd 1280 krönhöjd 118 px skrollytor 1 nästlade 0 fönsterskroll 0 px duk 992 px · dold remsa 376 px"
+  },
+  {
+    "bild": "regler-tomt-B-1280",
+    "matt": "bredd 1280 krönhöjd 61 px skrollytor 1 nästlade 0 fönsterskroll 0 px tomläge"
+  },
+  {
+    "bild": "regler-skriven-B-1280",
+    "matt": "bredd 1280 krönhöjd 61 px skrollytor 1 nästlade 0 fönsterskroll 0 px skriven bok"
+  },
+  {
+    "bild": "skala-C-1280",
+    "matt": "bredd 1280 krönhöjd 0 px skrollytor 1 nästlade 0 fönsterskroll 0 px ytterkant 16 px (beslutad) · 2 tal i skalan"
+  },
+  {
+    "bild": "krona-vagg-C-1280",
+    "matt": "bredd 1280 krönhöjd 0 px skrollytor 2 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "krona-symboler-C-1280",
+    "matt": "bredd 1280 krönhöjd 0 px skrollytor 1 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "krona-data-C-1280",
+    "matt": "bredd 1280 krönhöjd 0 px skrollytor 1 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "grupper-C-1280",
+    "matt": "bredd 1280 krönhöjd 61 px skrollytor 2 nästlade 0 fönsterskroll 0 px duk 992 px · dold remsa 0 px"
+  },
+  {
+    "bild": "regler-tomt-C-1280",
+    "matt": "bredd 1280 krönhöjd 61 px skrollytor 1 nästlade 0 fönsterskroll 0 px tomläge"
+  },
+  {
+    "bild": "regler-skriven-C-1280",
+    "matt": "bredd 1280 krönhöjd 61 px skrollytor 1 nästlade 0 fönsterskroll 0 px skriven bok"
+  },
+  {
+    "bild": "krona-vagg-B-lada-oppen-1280",
+    "matt": "bredd 1280 krönhöjd 122 px skrollytor 1 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "krona-data-B-lada-oppen-1280",
+    "matt": "bredd 1280 krönhöjd 126 px skrollytor 1 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "krona-data-C-flyout-1280",
+    "matt": "bredd 1280 krönhöjd 61 px skrollytor 1 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "grupper-B-overflod-1280",
+    "matt": "bredd 1280 krönhöjd 231 px skrollytor 1 nästlade 0 fönsterskroll 0 px duk 992 px · dold remsa 376 px"
+  },
+  {
+    "bild": "grupper-A-egenskaper-fallda-1280",
+    "matt": "bredd 1280 krönhöjd 162 px skrollytor 1 nästlade 0 fönsterskroll 0 px duk 992 px · dold remsa 0 px"
+  },
+  {
+    "bild": "skala-A-1024",
+    "matt": "bredd 1024 krönhöjd 0 px skrollytor 1 nästlade 0 fönsterskroll 0 px ytterkant 16 px (beslutad) · 5 tal i skalan"
+  },
+  {
+    "bild": "krona-vagg-A-1024",
+    "matt": "bredd 1024 krönhöjd 113 px skrollytor 2 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "krona-symboler-A-1024",
+    "matt": "bredd 1024 krönhöjd 61 px skrollytor 1 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "krona-data-A-1024",
+    "matt": "bredd 1024 krönhöjd 113 px skrollytor 1 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "grupper-A-1024",
+    "matt": "bredd 1024 krönhöjd 162 px skrollytor 2 nästlade 0 fönsterskroll 0 px duk 456 px · dold remsa 0 px"
+  },
+  {
+    "bild": "regler-tomt-A-1024",
+    "matt": "bredd 1024 krönhöjd 61 px skrollytor 1 nästlade 0 fönsterskroll 0 px tomläge"
+  },
+  {
+    "bild": "regler-skriven-A-1024",
+    "matt": "bredd 1024 krönhöjd 61 px skrollytor 1 nästlade 0 fönsterskroll 0 px skriven bok"
+  },
+  {
+    "bild": "skala-B-1024",
+    "matt": "bredd 1024 krönhöjd 0 px skrollytor 1 nästlade 0 fönsterskroll 0 px ytterkant 16 px (beslutad) · 5 tal i skalan"
+  },
+  {
+    "bild": "krona-vagg-B-1024",
+    "matt": "bredd 1024 krönhöjd 61 px skrollytor 1 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "krona-symboler-B-1024",
+    "matt": "bredd 1024 krönhöjd 61 px skrollytor 1 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "krona-data-B-1024",
+    "matt": "bredd 1024 krönhöjd 65 px skrollytor 1 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "grupper-B-1024",
+    "matt": "bredd 1024 krönhöjd 118 px skrollytor 1 nästlade 0 fönsterskroll 0 px duk 736 px · dold remsa 632 px"
+  },
+  {
+    "bild": "regler-tomt-B-1024",
+    "matt": "bredd 1024 krönhöjd 61 px skrollytor 1 nästlade 0 fönsterskroll 0 px tomläge"
+  },
+  {
+    "bild": "regler-skriven-B-1024",
+    "matt": "bredd 1024 krönhöjd 61 px skrollytor 1 nästlade 0 fönsterskroll 0 px skriven bok"
+  },
+  {
+    "bild": "skala-C-1024",
+    "matt": "bredd 1024 krönhöjd 0 px skrollytor 1 nästlade 0 fönsterskroll 0 px ytterkant 16 px (beslutad) · 2 tal i skalan"
+  },
+  {
+    "bild": "krona-vagg-C-1024",
+    "matt": "bredd 1024 krönhöjd 0 px skrollytor 2 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "krona-symboler-C-1024",
+    "matt": "bredd 1024 krönhöjd 0 px skrollytor 1 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "krona-data-C-1024",
+    "matt": "bredd 1024 krönhöjd 0 px skrollytor 1 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "grupper-C-1024",
+    "matt": "bredd 1024 krönhöjd 61 px skrollytor 2 nästlade 0 fönsterskroll 0 px duk 736 px · dold remsa 0 px"
+  },
+  {
+    "bild": "regler-tomt-C-1024",
+    "matt": "bredd 1024 krönhöjd 61 px skrollytor 1 nästlade 0 fönsterskroll 0 px tomläge"
+  },
+  {
+    "bild": "regler-skriven-C-1024",
+    "matt": "bredd 1024 krönhöjd 61 px skrollytor 1 nästlade 0 fönsterskroll 0 px skriven bok"
+  },
+  {
+    "bild": "krona-vagg-B-lada-oppen-1024",
+    "matt": "bredd 1024 krönhöjd 122 px skrollytor 1 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "krona-data-B-lada-oppen-1024",
+    "matt": "bredd 1024 krönhöjd 126 px skrollytor 1 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "krona-data-C-flyout-1024",
+    "matt": "bredd 1024 krönhöjd 113 px skrollytor 1 nästlade 0 fönsterskroll 0 px samma mekanism på tre ytor: Kortvägg (#128) Symboler (#128) Data (#130)"
+  },
+  {
+    "bild": "grupper-B-overflod-1024",
+    "matt": "bredd 1024 krönhöjd 231 px skrollytor 1 nästlade 0 fönsterskroll 0 px duk 736 px · dold remsa 632 px"
+  },
+  {
+    "bild": "grupper-A-egenskaper-fallda-1024",
+    "matt": "bredd 1024 krönhöjd 162 px skrollytor 1 nästlade 0 fönsterskroll 0 px duk 736 px · dold remsa 0 px"
+  }
+]

@@ -66,6 +66,7 @@ export function useMatt(deps: unknown[]) {
 export function Matare({ matt, extra, children }: { matt: ReturnType<typeof useMatt>; extra?: string; children?: ReactNode }) {
   return (
     <div className="ux16-meter">
+      <span className="ux16-etikett" />
       <span>
         bredd <b>{matt.bredd}</b>
       </span>
@@ -139,15 +140,17 @@ export function Ux16Page() {
     return () => window.removeEventListener('keydown', key)
   }, [variant])
 
+  // I skärmbildsläge flyttar etiketten in i mätarraden i stället för att ligga över arbetet.
+  const etikett = `#${valt.issue} ${valt.name} · ${variant} — ${valt.variants[['A', 'B', 'C'].indexOf(variant)]}`
   return (
-    <div className="ux16" data-skala={fynd === 'skala' ? variant : 'A'}>
+    <div className="ux16" data-skala={fynd === 'skala' ? variant : 'A'} data-shot={shot ? 'true' : undefined} style={{ ['--ux16-etikett' as string]: JSON.stringify(etikett) }}>
       {fynd === 'skala' ? <Skala variant={variant} /> : null}
       {fynd === 'krona' ? <Krona variant={variant} yta={yta} valjYta={valjYta} /> : null}
       {fynd === 'grupper' ? <Grupper variant={variant} /> : null}
       {fynd === 'regler' ? <Regler variant={variant} /> : null}
-      <nav className="ux16bar" data-shot={shot ? 'true' : undefined} aria-label="Prototypväxlare">
+      <nav className="ux16bar" hidden={shot} aria-label="Prototypväxlare">
         <strong>
-          <small>PROTOTYP · SPARAR INGENTING</small>#{valt.issue} {valt.name} · {variant} — {valt.variants[['A', 'B', 'C'].indexOf(variant)]}
+          <small>PROTOTYP · SPARAR INGENTING</small>{etikett}
         </strong>
         {FYND.map((f) => (
           <button key={f.id} aria-pressed={f.id === fynd} onClick={() => valj(f.id)}>
