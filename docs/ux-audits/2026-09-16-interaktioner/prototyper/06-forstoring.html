@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="sv">
+<meta charset="utf-8">
+<title>Förstoring på duken</title>
+<link rel="stylesheet" href="_stil.css">
+<style>
+  .scen { position: relative; border: 1px solid var(--line); border-radius: 10px; background: repeating-conic-gradient(#181b21 0% 25%, #15171d 0% 50%) 50%/16px 16px; height: 560px; overflow: auto; display: grid; place-items: center; }
+  .scen.trang { place-items: start; }
+  .kort { position: relative; background: #f6efdf; border: 2px solid #1b1208; border-radius: 3mm; flex: none; }
+  .el { position: absolute; }
+  .band { background: #6b4a2a; border-radius: 2mm; }
+  .txt { color: #1b1208; font-family: Georgia, serif; display: flex; align-items: center; padding: 0 1mm; overflow: hidden; }
+  .pill { background: #7fb2f0; border-radius: 999px; color: #0d1b2c; font: 700 3mm/1 system-ui; display: grid; place-items: center; }
+  .reglage { display: flex; gap: 8px; align-items: center; }
+  .reglage input[type=range] { width: 180px; }
+  .knapp { min-height: 36px; border: 1px solid var(--line); border-radius: 8px; background: var(--cell); color: var(--ink); padding: 0 12px; cursor: pointer; font: inherit; }
+  .knapp[disabled] { color: #5b6478; cursor: default; }
+  .linjal { position: absolute; left: 0; right: 0; bottom: -26px; display: flex; align-items: center; gap: 6px; color: var(--byd-editor-quiet); font-size: 11px; }
+  .linjal i { display: block; height: 8px; border-left: 1px solid var(--byd-editor-quiet); border-right: 1px solid var(--byd-editor-quiet); border-bottom: 1px solid var(--byd-editor-quiet); }
+  .fot { margin: 28px 0 0; padding: 12px 14px; border-top: 1px solid var(--line); color: var(--byd-editor-quiet); font-size: 12px; max-width: 820px; }
+  .fot code { color: #9fb4d8; font-family: ui-monospace, monospace; }
+</style>
+<header class="krona">
+  <h1>Förstoring på duken</h1>
+  <div class="val" role="group" aria-label="Läge">
+    <button type="button" data-lage="nu" aria-pressed="true">Nu · bara fönstrets höjd</button>
+    <button type="button" data-lage="ny" aria-pressed="false">Förslag · förstoring</button>
+  </div>
+  <div class="reglage" id="reglage" hidden>
+    <button type="button" class="knapp" id="ut" aria-label="Förstora mindre">−</button>
+    <input type="range" id="skala" min="50" max="400" step="5" value="100" aria-label="Förstoring i procent">
+    <button type="button" class="knapp" id="in" aria-label="Förstora mer">+</button>
+    <button type="button" class="knapp" id="passa">Passa in</button>
+    <button type="button" class="knapp" id="hundra">100 %</button>
+  </div>
+</header>
+<main>
+  <p class="sag" id="text"></p>
+  <div class="scen" id="scen"><div class="kort" id="kort"></div></div>
+  <ul class="tal">
+    <li>Förstoring <b id="p">100 %</b></li>
+    <li>En millimeter är <b id="mm">—</b></li>
+    <li>Minsta nudge (0,5 mm) är <b id="nudge">—</b></li>
+    <li>Raritetsbrickan (24 × 6 mm) är <b id="bricka">—</b></li>
+  </ul>
+  <footer class="fot">Uppmätt i Chromium 2026-09-16: kortet passas in i scenens höjd. 1024 × 768 ger 7,07 px/mm, 1280 × 800 och 1440 × 900 ger 8,71, och 1920 × 1080 ger 10,95. Ingen förstoring finns i gränssnittet — inget reglage, ingen procentsats, ingen <kbd>Ctrl</kbd>-rulle.</footer>
+</main>
+<script>
+const MM_W = 63, MM_H = 88
+let lage = 'nu', p = 100
+// Vad editorn gör i dag: kortet passas in i scenens höjd och ingenting annat styr skalan.
+function passaIn() {
+  const scen = document.getElementById('scen')
+  const h = scen.clientHeight - 40
+  return (h / MM_H) / (document.getElementById('kort').dataset.bas || 1)
+}
+function pxPerMm() {
+  const scen = document.getElementById('scen')
+  const passar = (scen.clientHeight - 40) / MM_H
+  return lage === 'nu' ? passar : passar * (p / 100)
+}
+function rita() {
+  const s = pxPerMm()
+  const kort = document.getElementById('kort')
+  kort.style.width = MM_W * s + 'px'
+  kort.style.height = MM_H * s + 'px'
+  kort.style.fontSize = s + 'px' /* 1em = 1 mm inne i kortet */
+  kort.innerHTML = `
+    <div class="el band" style="left:${4 * s}px;top:${4 * s}px;width:${55 * s}px;height:${16 * s}px"></div>
+    <div class="el txt" style="left:${6 * s}px;top:${6 * s}px;width:${51 * s}px;height:${7 * s}px;font:700 ${5 * s}px Georgia,serif">Juice em' up!</div>
+    <div class="el txt" style="left:${6 * s}px;top:${13.5 * s}px;width:${40 * s}px;height:${5 * s}px;font:600 ${3.4 * s}px system-ui">Playcard</div>
+    <div class="el txt" style="left:${6 * s}px;top:${24 * s}px;width:${51 * s}px;height:${40 * s}px;font:${3.6 * s}px system-ui">Välj två andra spelare. De blandar en shot till varann</div>
+    <div class="el pill" style="left:${6 * s}px;top:${76 * s}px;width:${24 * s}px;height:${6 * s}px;font:700 ${3.2 * s}px system-ui">Diamant</div>`
+  document.getElementById('p').textContent = lage === 'nu' ? '—' : p + ' %'
+  document.getElementById('mm').textContent = Math.round(s * 100) / 100 + ' px'
+  document.getElementById('nudge').textContent = Math.round(s * 0.5 * 100) / 100 + ' px'
+  document.getElementById('bricka').textContent = Math.round(24 * s) + ' × ' + Math.round(6 * s) + ' px'
+  document.getElementById('scen').classList.toggle('trang', MM_H * s > document.getElementById('scen').clientHeight - 40)
+  document.getElementById('reglage').hidden = lage === 'nu'
+  document.getElementById('text').innerHTML = lage === 'nu'
+    ? 'Så här är det i dag: kortet passas in i scenens höjd och det finns ingen förstoring alls. Vid 1440 × 900 är en millimeter <b>8,71 px</b> och vid 1024 × 768 är den <b>7,07 px</b> — enda sättet att se ett detaljmått större är att göra webbläsarfönstret högre. Raritetsbrickan ritas 207 × 43 px, och de fyra handtagen som ändrar den är 19 px var.'
+    : 'Förstoringen är sin egen sak: reglaget, <kbd>+</kbd>/<kbd>−</kbd>, <b>Passa in</b> och <b>100 %</b> — och <kbd>Ctrl</kbd> med rullhjulet över duken. Vid 200 % är en millimeter 17 px och den minsta nudgen syns. Passa in är kvar som det den är i dag, men som ett val och inte som det enda läget.'
+}
+document.getElementById('skala').addEventListener('input', (e) => { p = Number(e.target.value); rita() })
+document.getElementById('in').addEventListener('click', () => { p = Math.min(400, p + 25); document.getElementById('skala').value = p; rita() })
+document.getElementById('ut').addEventListener('click', () => { p = Math.max(50, p - 25); document.getElementById('skala').value = p; rita() })
+document.getElementById('passa').addEventListener('click', () => { p = 100; document.getElementById('skala').value = p; rita() })
+document.getElementById('hundra').addEventListener('click', () => { p = 100; document.getElementById('skala').value = p; rita() })
+document.getElementById('scen').addEventListener('wheel', (e) => {
+  if (lage !== 'ny' || !e.ctrlKey) return
+  e.preventDefault()
+  p = Math.max(50, Math.min(400, p - Math.sign(e.deltaY) * 10))
+  document.getElementById('skala').value = p
+  rita()
+}, { passive: false })
+for (const b of document.querySelectorAll('.val button')) b.addEventListener('click', () => {
+  lage = b.dataset.lage
+  for (const o of document.querySelectorAll('.val button')) o.setAttribute('aria-pressed', String(o === b))
+  rita()
+})
+addEventListener('resize', rita)
+rita()
+</script>
+</html>
