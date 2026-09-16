@@ -55,6 +55,9 @@ export const enEditor = {
 
   'wall.cards.one': '{n} card',
   'wall.cards.other': '{n} cards',
+  /* The crown (#128, #130): a box says its state, never only its name. */
+  'crown.box.state': '{name}: {state}',
+  'crown.rail.more': 'More filters',
   'wall.eyes': 'Eyes',
   'wall.eye.normal': 'As you see it',
   'wall.eye.deuteranopia': 'Deuteranopia',

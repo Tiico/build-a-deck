@@ -66,6 +66,9 @@ export const svEditor = {
   // Kortväggen: ögonen att läsa leken med och den fysiska kontrollen bredvid.
   'wall.cards.one': '{n} kort',
   'wall.cards.other': '{n} kort',
+  /* Kronan (#128, #130): en låda säger sitt tillstånd, aldrig bara sitt namn. */
+  'crown.box.state': '{name}: {state}',
+  'crown.rail.more': 'Fler filter',
   'wall.eyes': 'Ögon',
   'wall.eye.normal': 'Som du ser det',
   'wall.eye.deuteranopia': 'Deuteranopi',
