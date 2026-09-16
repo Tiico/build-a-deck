@@ -21,7 +21,7 @@ export function Krona({ variant, yta, valjYta }: { variant: Variant; yta: Yta; v
   const [snitt, setSnitt] = useState(true)
   const [arm, setArm] = useState(false)
   const [steg, setSteg] = useState(2)
-  const [lada, setLada] = useState<string | null>(null)
+  const [lada, setLada] = useState<string | null>(() => new URLSearchParams(location.search).get('lada'))
   const [kat, setKat] = useState(0)
   const [valda, setValda] = useState<string[]>(['Playcard'])
   const matt = useMatt([variant, yta, steg, lada, arm])
@@ -184,9 +184,10 @@ export function Krona({ variant, yta, valjYta }: { variant: Variant; yta: Yta; v
   return (
     <>
       <Chrome tab={flik} />
-      <Matare matt={matt} extra={`yta ${flik}`} />
-      <YtaVal yta={yta} valjYta={valjYta} />
-      <div className="ux16-panel">
+      <Matare matt={matt}>
+        <YtaVal yta={yta} valjYta={valjYta} />
+      </Matare>
+      <div className="ux16-panel" data-ux16-panel>
         {/* A — full krona: allt står kvar, och kronan radbryter när rummet tar slut. */}
         {variant === 'A' ? (
           <div className="ux16-crown">
@@ -254,10 +255,26 @@ export function Krona({ variant, yta, valjYta }: { variant: Variant; yta: Yta; v
                 {KATEGORIER[kat]} ▾
               </button>
             ) : null}
+            {/* Filtren lämnar inte raden: de får en egen sidoskroll med toning och pilar, så att
+                raden håller sin höjd utan att gömma något bakom en knapp. */}
             {yta === 'data' ? (
-              <button className="ux16-btn" aria-pressed={lada === 'filter'} onClick={() => oppna('filter')}>
-                Filter ({valda.length}) ▾
-              </button>
+              <div className="ux16-rail">
+                <div className="ux16-rail-scroll">
+                  {FILTER.map((f) => (
+                    <button
+                      key={f}
+                      className="ux16-chip"
+                      aria-pressed={valda.includes(f)}
+                      onClick={() => setValda((v) => (v.includes(f) ? v.filter((x) => x !== f) : [...v, f]))}
+                    >
+                      {f}
+                    </button>
+                  ))}
+                </div>
+                <button className="ux16-btn" data-quiet="true" aria-label="Fler filter">
+                  ›
+                </button>
+              </div>
             ) : null}
             {yta === 'data' ? (
               <button className="ux16-btn" aria-pressed={lada === 'import'} onClick={() => oppna('import')}>
@@ -415,7 +432,7 @@ export function Krona({ variant, yta, valjYta }: { variant: Variant; yta: Yta; v
 
 function YtaVal({ yta, valjYta }: { yta: Yta; valjYta(y: Yta): void }) {
   return (
-    <div className="ux16-meter" style={{ borderBottom: '1px solid var(--ux16-line)' }}>
+    <>
       <span>samma mekanism på tre ytor:</span>
       {(
         [
@@ -441,6 +458,6 @@ function YtaVal({ yta, valjYta }: { yta: Yta; valjYta(y: Yta): void }) {
           {namn}
         </button>
       ))}
-    </div>
+    </>
   )
 }

@@ -16,7 +16,7 @@ import { GRUPPER, LAGER } from './data.js'
 export function Grupper({ variant }: { variant: Variant }) {
   const [grupp, setGrupp] = useState(1)
   const [valt, setValt] = useState<number | null>(variant === 'B' ? null : 0)
-  const [oppen, setOppen] = useState(true)
+  const [oppen, setOppen] = useState(() => new URLSearchParams(location.search).get('props') !== '0')
   const [meny, setMeny] = useState(false)
   const [overflod, setOverflod] = useState(false)
   const remsa = useRef<HTMLDivElement>(null)
@@ -34,14 +34,15 @@ export function Grupper({ variant }: { variant: Variant }) {
     setDukBredd(duk.current ? Math.round(duk.current.getBoundingClientRect().width) : 0)
   }, [variant, propsVisas, overflod, matt.bredd])
 
-  const synliga = variant === 'B' && !overflod ? GRUPPER.slice(0, 5) : GRUPPER
-  const resten = GRUPPER.length - 5
+  // B visar alla grupper i en skena som skrollar; det som skiljer den från i dag är att skenan
+  // säger att den skrollar — toning, pilar — och att `+N till` listar resten för tangentbordet.
+  const resten = GRUPPER.length
 
   return (
     <>
       <Chrome tab="Mall" />
       <Matare matt={matt} extra={`duk ${dukBredd} px · dold remsa ${dolt} px`} />
-      <div className="ux16-panel">
+      <div className="ux16-panel" data-ux16-panel>
         {/* Krönet: fram/baksida, och i C även grupperna. */}
         <div className="ux16-crown">
           <div className="ux16-seg" role="group" aria-label="Sida">
@@ -85,7 +86,7 @@ export function Grupper({ variant }: { variant: Variant }) {
             ) : null}
             <div className={variant === 'B' ? 'ux16-rail' : ''} style={variant === 'B' ? undefined : { display: 'contents' }}>
               <div ref={remsa} className={variant === 'B' ? 'ux16-rail-scroll' : ''} style={variant === 'B' ? undefined : { display: 'contents' }}>
-                {synliga.map((g, i) => (
+                {GRUPPER.map((g, i) => (
                   <button key={g.namn} className="ux16-chip" aria-pressed={i === grupp} onClick={() => setGrupp(i)}>
                     {g.namn} <b>{g.antal}</b>
                   </button>
@@ -98,13 +99,23 @@ export function Grupper({ variant }: { variant: Variant }) {
                   ›
                 </button>
                 <button className="ux16-btn" aria-expanded={overflod} onClick={() => setOverflod((o) => !o)}>
-                  +{resten} till ▾
+                  Alla {resten} ▾
                 </button>
               </>
             ) : null}
             <button className="ux16-btn" data-quiet="true">
               + Ny grupp
             </button>
+          </div>
+        ) : null}
+
+        {variant === 'B' && overflod ? (
+          <div className="ux16-crown" style={{ background: 'var(--ux16-panel)' }}>
+            {GRUPPER.map((g, i) => (
+              <button key={g.namn} className="ux16-chip" aria-pressed={i === grupp} onClick={() => (setGrupp(i), setOverflod(false))}>
+                {g.namn} <b>{g.antal}</b>
+              </button>
+            ))}
           </div>
         ) : null}
 

@@ -48,7 +48,7 @@ export function Skala({ variant }: { variant: Variant }) {
     <>
       <Chrome tab="Mall" />
       <Matare matt={matt} extra={`ytterkant 16 px (beslutad) · ${steg.length} tal i skalan`} />
-      <div className="ux16-scale" data-ux16-work data-ux16-scroll>
+      <div className="ux16-scale" data-ux16-panel data-ux16-work data-ux16-scroll>
         <p className="ux16-note">
           <b>Ytterkanten är inte öppen längre.</b> Beställaren har svarat i issuen: <code>--byd-gutter</code> blir 16 px, skalan gäller
           editorn och inte spelarens ytor, och #132 görs före de övriga så att de bygger på tokens från början. Det som varieras här är

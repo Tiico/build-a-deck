@@ -12,14 +12,14 @@ import { Chrome, Matare, useMatt, type Variant } from './Ux16Page.js'
 const AVSNITT = ['Översikt', 'Uppställning', 'Turordning', 'Handlingar', 'Vinstvillkor']
 
 export function Regler({ variant }: { variant: Variant }) {
-  const [skriven, setSkriven] = useState(false)
+  const [skriven, setSkriven] = useState(() => new URLSearchParams(location.search).get('skriven') === '1')
   const matt = useMatt([variant, skriven])
 
   return (
     <>
       <Chrome tab="Regler" />
       <Matare matt={matt} extra={skriven ? 'skriven bok' : 'tomläge'} />
-      <div className="ux16-panel">
+      <div className="ux16-panel" data-ux16-panel>
         <div className="ux16-crown">
           <h2>Regler</h2>
           {skriven && variant === 'B' ? <input className="ux16-search" type="search" placeholder="Fråga boken: vad händer när högen tar slut?" style={{ width: 340 }} /> : null}

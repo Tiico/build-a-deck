@@ -4,7 +4,7 @@
 //   /ux16?fynd=skala|krona|grupper|regler&variant=A|B|C&yta=vagg|symboler|data&shot=1
 //
 // `shot=1` krymper växlaren till en etikett, så skärmbilder visar layouten och inte verktyget.
-import { useEffect, useLayoutEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useState, type ReactNode } from 'react'
 import './ux16.css'
 import { Skala } from './skala.js'
 import { Krona } from './krona.js'
@@ -36,16 +36,21 @@ function put(name: string, value: string) {
 export function useMatt(deps: unknown[]) {
   const [matt, setMatt] = useState({ krona: 0, skroll: 0, nastlade: 0, fonster: 0, bredd: 0 })
   const read = () => {
-    const chrome = document.querySelector('[data-ux16-chrome]')
+    // Krönhöjden mäts från flikpanelens överkant, inte från prototypens egen mätarrad: i den
+    // riktiga editorn börjar panelen exakt där chromet slutar.
+    const chrome = document.querySelector('[data-ux16-panel]')
     const work = document.querySelector('[data-ux16-work]')
     const doc = document.scrollingElement ?? document.documentElement
     const skrollytor = [...document.querySelectorAll('[data-ux16-scroll]')]
     setMatt({
-      krona: chrome && work ? Math.round(work.getBoundingClientRect().top - chrome.getBoundingClientRect().bottom) : 0,
+      krona: chrome && work ? Math.round(work.getBoundingClientRect().top - chrome.getBoundingClientRect().top) : 0,
       skroll: skrollytor.length,
       // Det #128 faktiskt förbjuder: en skrollyta inuti en annan, som symbolernas rutnät i dag.
       nastlade: skrollytor.filter((el) => el.parentElement?.closest('[data-ux16-scroll]')).length,
-      fonster: Math.max(0, doc.scrollHeight - doc.clientHeight),
+      // Appens egna live-regioner (`.byd-status-live`) är 1 px höga och absolut placerade, och ger
+      // 1 px fönsterskroll på varje rutt i dag — även i den riktiga editorn. Den pixeln är inte
+      // flikens, så den räknas bort här och rapporteras separat.
+      fonster: Math.max(0, doc.scrollHeight - doc.clientHeight - 1),
       bredd: Math.round(window.innerWidth),
     })
   }
@@ -58,7 +63,7 @@ export function useMatt(deps: unknown[]) {
   return matt
 }
 
-export function Matare({ matt, extra }: { matt: ReturnType<typeof useMatt>; extra?: string }) {
+export function Matare({ matt, extra, children }: { matt: ReturnType<typeof useMatt>; extra?: string; children?: ReactNode }) {
   return (
     <div className="ux16-meter">
       <span>
@@ -78,6 +83,7 @@ export function Matare({ matt, extra }: { matt: ReturnType<typeof useMatt>; extr
         fönsterskroll <b data-bad={matt.fonster > 0 ? 'true' : undefined}>{matt.fonster} px</b>
       </span>
       {extra ? <span>{extra}</span> : null}
+      {children}
     </div>
   )
 }
