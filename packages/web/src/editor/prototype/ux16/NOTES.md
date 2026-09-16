@@ -49,3 +49,22 @@ Talen är det som gör mätningarna ärliga; texterna är påhittade.
 
 Skriv in valet i `DESIGN-BESLUT.md`, implementera med TDD på en gren ur `origin/main`, och ta
 sedan bort den här mappen och `/ux16`-grenen i `App.tsx`.
+
+## Rekommendationer, postade på issuerna 2026-09-16
+
+| Issue | Byggda varianter | Rekommendation |
+| --- | --- | --- |
+| #128 / #130 | A full krona · B en rad med lådor · C verktygsskena till vänster | **B** — enda mekanismen vars krönhöjd (61–65 px) inte växer med bredd eller antal verktyg. Villkor: varje låda bär sitt tillstånd i etiketten. |
+| #129 | A remsan radbryter · B en rad med pilar och överflöd · C grupperna i en meny | **C för remsan, A för egenskapskolumnen.** De två halvorna är separata och ska blandas. |
+| #131 | A komponerad ruta · B sidan själv · C disposition med tomma avsnitt | **C, med A:s text inlånad** som en mening över dispositionen. |
+| #132 | A halvstegsladder · B strikt 4× · C två tal | **A**, med en kommentar på `--byd-s3` som säger var halvsteget får användas. Ytterkanten 16 px var redan avgjord. |
+
+Beställarens val: **ännu inte gjort.**
+
+## Två saker prototypen fällde ut på vägen
+
+- Appens live-regioner (`.byd-status-live`) är 1 px höga och absolut placerade och ger **1 px
+  fönsterskroll på varje rutt**, även i den riktiga editorn. Ett test som kräver
+  `scrollHeight === clientHeight` blir rött av det skälet och inte av flikens.
+- `#130`:s acceptanskriterium om högst 80 px krön går inte att hålla med en radbrytande krona:
+  tretton filterchips ryms inte på en rad vid 1440. Kriteriet väljer alltså mekanism åt oss.
