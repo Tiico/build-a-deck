@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
-import { startServer, twoSeatSetup } from './fixture.js'
+import { ANSWERS_WITHIN, startServer, twoSeatSetup } from './fixture.js'
 import { projectDoc } from './project-doc.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
@@ -120,5 +120,76 @@ describe('the ground a fixture stands on (#109)', () => {
     } finally {
       for (const run of running) await run.stop()
     }
+  })
+})
+
+// A fixture that says when it answers (#149).
+//
+// A surface built against the fixture used to learn that the server was up by finding a word on
+// the screen — `Skogens herrar`, the name in the fixture's own project. That is content, not a
+// statement about the server, and the difference is what made `editor-viewport.test.tsx` fall at
+// random under a full run: the editor opens a project with one `fetch` and no second attempt, so
+// a request that does not come back leaves the disconnected screen standing for good, and the
+// word is then waited for by a `waitFor` whose four seconds cannot help. The fixture knows the
+// answer to the question actually being asked, and this is it saying so.
+describe('the fixture saying when it answers (#149)', () => {
+  it('says it from its own address and not from anything drawn on a screen', async () => {
+    const run = await startServer()
+    try {
+      // No project, no name, nothing rendered anywhere: the fact is about the server alone.
+      await expect(run.answering()).resolves.toBeUndefined()
+    } finally {
+      await run.stop()
+    }
+  })
+
+  it('fells the run on a server that never comes, and names the address it waited on', async () => {
+    const run = await startServer()
+    await run.stop()
+    const began = Date.now()
+    await expect(run.answering()).rejects.toThrow(new URL(run.http).port)
+    // Promptly: inside its own patience, and that patience inside the budget the suite has, so a
+    // server that never comes is a red test and never a run that sits there.
+    expect(Date.now() - began).toBeLessThan(ANSWERS_WITHIN + 2_000)
+    expect(ANSWERS_WITHIN).toBeLessThan(JSDOM_TEST_BUDGET)
+  })
+})
+
+// The pattern the decision on #149 is about, held in place.
+//
+// It is a pattern and not a line: `editor-viewport.test.tsx` builds five surfaces, each of them
+// by standing the editor up against the fixture, and every one of them used to take a word drawn
+// on the screen as its proof that the server was there. One of them was mended and the other four
+// would have gone on falling, so what is asked here is of all five at once — and of the sixth,
+// the day somebody writes it.
+//
+// Only that file. The same wait is on the fixture and is every file's to use, and thirty other
+// suites still learn that the server is up the old way; converting them is its own change and its
+// own risk, and none of them has been seen to fall. What must not happen is a new surface in the
+// file the decision was written about going back to waiting for a word.
+describe('the surfaces `editor-viewport.test.tsx` builds (#149)', () => {
+  const lines = readFileSync(join(import.meta.dirname, 'editor-viewport.test.tsx'), 'utf8').split('\n')
+  const built = lines.flatMap((line, i) => (/render\(<EditorPage \/>\)/.test(line) ? [i] : []))
+
+  it('is read at all, so this guard cannot pass by matching nothing', () => {
+    // Counted, because a guard that has stopped recognising the thing it guards and a file that is
+    // wholly in order say the same thing from the outside.
+    expect(built.length).toBe(5)
+  })
+
+  it('asks the fixture whether the server answers before it waits for anything on a screen', () => {
+    const unasked = built.filter((at) => !lines.slice(Math.max(0, at - 6), at).some((line) => /await run\.answering\(/.test(line)))
+    expect(unasked.map((at) => `editor-viewport.test.tsx:${at + 1}`)).toEqual([])
+  })
+
+  // The Bord tab waits on something standing behind the server and not on the server itself: the
+  // `Spela härifrån` link is drawn from a free seat, and a free seat is known only to the table's
+  // own snapshot, which arrives over the row's own socket. Asking `/health` says the server is
+  // there; it says nothing about whether the actor behind that table is. Both fell — the server
+  // once, the table once — so both are asked.
+  it('asks the table’s own door where a surface waits on the table’s answer', () => {
+    const at = lines.findIndex((line) => /findByRole\('link', \{ name: \/Spela härifrån\//.test(line))
+    expect(at).toBeGreaterThan(0)
+    expect(lines.slice(0, at).filter((line) => /await run\.answering\(`\/sessions\//.test(line)).length).toBe(1)
   })
 })
