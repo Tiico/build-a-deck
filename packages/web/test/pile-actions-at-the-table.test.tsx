@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import type { Intent, Snapshot, ZoneAction } from '@byd/protocol'
 import { TableRenderer } from '../src/table/TableRenderer.js'
-import { buildScene } from './scene.js'
+import { buildScene, tableOf } from './scene.js'
+import { twoSeatSetup } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -47,6 +48,18 @@ describe('en högs egna åtgärder vid bordet', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ge alla en starthand' }))
 
     expect(sent).toEqual([[{ v: 'shuffle', pile: 'draw' }, { v: 'deal', from: 'draw', to: ['hand:A'], each: 2 }]])
+  })
+
+  // En åtgärd som räknar "ett per spelare" vid ett bord ingen satt sig vid blir noll kort — men
+  // noll kort är inte skälet, det är följden. Skälet är att ingen sitter där, och det är vad
+  // listan ska säga (K14): "det blir inga kort just nu" läser som att leken är tom.
+  it('säger att ingen sitter vid bordet när "ett per spelare" är det som blir noll', () => {
+    const empty = tableOf(twoSeatSetup())
+    const perPlayer: ZoneAction[] = [{ id: 'a3', label: 'Vänd upp ett per spelare', steps: [{ v: 'split', count: { of: 'seats' }, to: { at: 'beside' }, face: 'front' }] }]
+    render(<TableRenderer view={withActions(empty.view(null), perPlayer)} mode="tv" scale={1} onAct={() => undefined} />)
+    clickPile()
+
+    expect(screen.getByRole('button', { name: /Vänd upp ett per spelare/ }).textContent).toContain('ingen sitter vid bordet än')
   })
 
   it('öppnar inget ark alls för en hög utan egna åtgärder — en tom lista är samma fel som en tom ring', () => {

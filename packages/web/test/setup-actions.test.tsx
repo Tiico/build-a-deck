@@ -26,6 +26,28 @@ async function openZone(id: string): Promise<void> {
 
 const panel = () => document.querySelector('[data-zone-actions]') as HTMLElement
 
+// Vilken sida av högen som är "bredvid den" är högens egen sak (K21, reviderar #87): den som
+// lägger leken vid filtens vänsterkant vill inte ha sina kort utanför bordet. Valet sitter på
+// zonen och inte i steget, för ringens Dra 1 och designerns egna åtgärder lägger samma kort.
+describe('vilken sida av högen som är bredvid den', () => {
+  it('väljs på högen, sparas med den, och står i meningen designern läser', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+
+    const side = screen.getByLabelText('Bredvid högen för Draghög') as HTMLSelectElement
+    expect(side.value).toBe('left')
+    fireEvent.click(within(panel()).getByRole('button', { name: '＋ Åtgärd' }))
+    expect(panel().textContent).toMatch(/till vänster om högen/)
+
+    fireEvent.change(side, { target: { value: 'right' } })
+    expect(panel().textContent).toMatch(/till höger om högen/)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    await waitFor(async () => expect((await run.projects.load(run.projectId))?.rev).toBe(2))
+    expect((await run.projects.load(run.projectId))?.setup.zones.find((z) => z.id === 'draw')?.beside).toBe('right')
+  })
+})
+
 // Författandet är meningar och inte en blankett (prototypen 2026-09-15): det designern läser är
 // det som kommer att hända, och rattarna sitter inne i texten.
 describe('vad en zon frågar efter, skrivet som en mening', () => {
@@ -52,7 +74,8 @@ describe('en egen åtgärd på en hög, skriven som meningar', () => {
     // En ny åtgärd har ett steg från början: en åtgärd utan steg är ingen åtgärd.
     fireEvent.click(within(panel()).getByRole('button', { name: '＋ Åtgärd' }))
     fireEvent.change(within(panel()).getByLabelText(/Namn för/), { target: { value: 'Vänd upp ett per spelare' } })
-    expect(panel().textContent).toMatch(/Ta 1 från högen och lägg dem som de ligger bredvid högen/)
+    // Sidan står utskriven och inte som ordet "bredvid": meningen säger vad som kommer att hända (K21).
+    expect(panel().textContent).toMatch(/Ta 1 från högen och lägg dem som de ligger till vänster om högen/)
 
     // Antalet är en källa och inte ett tal: "ett per spelare" väljs inne i meningen.
     const step = panel().querySelector('ol li') as HTMLElement

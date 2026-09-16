@@ -1,4 +1,4 @@
-import type { CardQuery, ZoneAction } from '@byd/protocol'
+import type { CardQuery, ZoneAction, ZoneBeside } from '@byd/protocol'
 import type { Element, FaceTemplate, Variant } from '@byd/template'
 import { ProjectFraming } from './projects.js'
 import type { Cell, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc } from './projects.js'
@@ -36,6 +36,8 @@ export type ZonePatch = {
   visibility?: Zone['visibility']
   shortcut?: { label: string; at: 'top' | 'bottom' } | undefined
   owner?: string | undefined
+  // Which side of the pile is "beside it" (K21). Away again means the left the pile always had.
+  beside?: ZoneBeside | undefined
   // Which cards start here, and what the zone can be asked for (B5, K14). Both are lists that
   // change as a whole rather than item by item: what the designer edits is the question and the
   // action, and a patch that could only add or remove one clause would need an edit per shape.
@@ -378,6 +380,10 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
         if ('owner' in intent.patch) {
           if (intent.patch.owner) next.owner = intent.patch.owner
           else delete next.owner
+        }
+        if ('beside' in intent.patch) {
+          if (intent.patch.beside) next.beside = intent.patch.beside
+          else delete next.beside
         }
         if ('fill' in intent.patch) {
           const fill = intent.patch.fill

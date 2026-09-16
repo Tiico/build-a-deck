@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="sv">
+<meta charset="utf-8">
+<title>Tangentbordet på duken</title>
+<link rel="stylesheet" href="_stil.css">
+<style>
+  .rad { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 16px; align-items: start; max-width: 1100px; }
+  .lager { border: 1px solid var(--line); border-radius: 10px; background: var(--byd-editor-panel-bg); padding: 8px; }
+  .lager h2 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--byd-editor-quiet); margin: 4px 6px 8px; }
+  .lager [role=row] { display: grid; grid-template-columns: 30px minmax(0,1fr); align-items: center; border-radius: 6px; min-height: 36px; }
+  .lager [role=row][aria-selected=true] { background: #2f3a55; }
+  .lager button { border: 0; background: transparent; color: var(--ink); font: inherit; text-align: left; padding: 6px 8px; cursor: pointer; border-radius: 6px; }
+  .lager .las { color: #454c5c; }
+  .scen { position: relative; border: 1px solid var(--line); border-radius: 10px; background: repeating-conic-gradient(#181b21 0% 25%, #15171d 0% 50%) 50%/16px 16px; height: 480px; display: grid; place-items: center; }
+  .kort { position: relative; width: 290px; height: 405px; background: #f6efdf; border-radius: 12px; border: 2px solid #1b1208; }
+  .el { position: absolute; border: 1px dashed rgba(60,140,231,0); }
+  .el[data-vald=true] { border-color: var(--byd-editor-primary-mark); }
+  .el:focus-visible { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+  .el[data-flytt=true] { outline: 3px solid var(--amber); outline-offset: 2px; }
+  .handtag { position: absolute; width: 11px; height: 11px; background: #fff; border: 2px solid var(--byd-editor-primary-mark); box-sizing: border-box; }
+  .band { background: #6b4a2a; border-radius: 8px; }
+  .txt { color: #1b1208; font-family: Georgia, serif; display: flex; align-items: center; padding: 0 8px; }
+  .status { margin-top: 12px; border-left: 3px solid var(--byd-editor-primary-mark); padding: 8px 12px; background: var(--byd-editor-panel-bg); border-radius: 0 8px 8px 0; max-width: 700px; min-height: 3.2em; }
+  kbd { border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 1px 5px; background: var(--cell); font: 600 11px ui-monospace, monospace; color: var(--ink); }
+  .fot { margin: 28px 0 0; padding: 12px 14px; border-top: 1px solid var(--line); color: var(--byd-editor-quiet); font-size: 12px; max-width: 820px; }
+  .fot code { color: #9fb4d8; font-family: ui-monospace, monospace; }
+</style>
+<header class="krona">
+  <h1>Tangentbordet på duken</h1>
+  <div class="val" role="group" aria-label="Läge">
+    <button type="button" data-lage="nu" aria-pressed="true">Nu</button>
+    <button type="button" data-lage="ny" aria-pressed="false">Förslag · elementet är ett tabbstopp</button>
+  </div>
+</header>
+<main>
+  <p class="sag" id="text"></p>
+  <div class="rad">
+    <div class="lager">
+      <h2>Lager · framsida</h2>
+      <div role="grid" aria-label="Lager" id="lista"></div>
+    </div>
+    <div class="scen"><div class="kort" id="kort"></div></div>
+  </div>
+  <p class="status" id="status" role="status"></p>
+  <footer class="fot">Uppmätt i Chromium 2026-09-16 vid 1440 × 900: fyrtio tabbstopp genom editorn når aldrig ett element på kortet. Ett lager valt i lagerlistan flyttades inte av <kbd>→</kbd> (x 617 → 617); med fokus parkerat på verktygsraden flyttades det 4 px (0,5 mm). <kbd>Backspace</kbd> därifrån tog bort lagret utan fråga.</footer>
+</main>
+<script>
+const EL = [
+  { id: 'band', namn: 'band', slag: 'Form', x: 4, y: 4, w: 82, h: 18, klass: 'band' },
+  { id: 'title', namn: 'title', slag: 'Text', x: 8, y: 7, w: 74, h: 8, txt: "Juice em' up!", st: 19 },
+  { id: 'typ', namn: 'typ', slag: 'Text', x: 8, y: 16, w: 52, h: 5, txt: 'Playcard', st: 12 },
+  { id: 'body', namn: 'body', slag: 'Text', x: 8, y: 28, w: 74, h: 40, txt: 'Välj två andra spelare.', st: 12 },
+]
+let lage = 'nu'
+let vald = 'typ'
+let flytt = null // förslaget: elementet är i flyttläge
+
+const el = (id) => EL.find((e) => e.id === id)
+function sag(s) { document.getElementById('status').innerHTML = s }
+
+function ritaLista() {
+  document.getElementById('lista').innerHTML = EL.map((e, i) => `
+    <div role="row" data-id="${e.id}" aria-selected="${vald === e.id}">
+      <span role="gridcell"><button type="button" class="las" tabindex="-1" aria-label="Lås ${e.namn}">🔓</button></span>
+      <span role="gridcell"><button type="button" class="valj" data-id="${e.id}" tabindex="${vald === e.id ? 0 : -1}">${e.slag === 'Text' ? 'T' : '◻'} ${e.namn}</button></span>
+    </div>`).reverse().join('')
+}
+function ritaKort() {
+  document.getElementById('kort').innerHTML = EL.map((e) => {
+    const stil = `left:${e.x}%;top:${e.y}%;width:${e.w}%;height:${e.h}%`
+    const tabb = lage === 'ny' ? ` tabindex="0" role="button" aria-label="${e.namn}, ${e.slag.toLowerCase()}, x ${e.x} mm, y ${e.y} mm${flytt === e.id ? ', flyttläge' : ''}" aria-pressed="${flytt === e.id}"` : ''
+    const handtag = vald === e.id ? ['nw','ne','sw','se'].map((h) => `<span class="handtag" style="${h[0] === 'n' ? 'top:-6px' : 'bottom:-6px'};${h[1] === 'w' ? 'left:-6px' : 'right:-6px'}"></span>`).join('') : ''
+    return `<div class="el ${e.klass ?? ''} ${e.txt ? 'txt' : ''}" data-id="${e.id}" data-vald="${vald === e.id}" data-flytt="${flytt === e.id}" style="${stil}${e.st ? `;font-size:${e.st}px` : ''}"${tabb}>${e.txt ?? ''}${handtag}</div>`
+  }).join('')
+}
+function rita() {
+  ritaLista(); ritaKort()
+  document.getElementById('text').innerHTML = lage === 'nu'
+    ? 'Välj ett lager i listan och tryck <kbd>→</kbd>. Ingenting händer med elementet: lagerlistan är ett rutnät, och dess egna pilar flyttar fokus mellan cellerna i stället. Elementen på kortet har varken roll, namn eller tabbstopp, så det finns ingen annan plats att stå på när man vill nudga — och <kbd>Backspace</kbd> tar samtidigt bort lagret varifrån som helst.'
+    : 'Elementet på kortet är ett eget tabbstopp med namn och läge: <b>”typ, text, x 8 mm, y 16 mm”</b>. <kbd>Tab</kbd> går genom elementen, <kbd>Enter</kbd> går in i flyttläge, pilarna nudgar 0,5 mm och <kbd>Skift</kbd>+pil 5 mm. <kbd>Escape</kbd> lämnar flyttläget och lägger tillbaka elementet där det låg. I lagerlistan flyttar pilarna fortfarande fokus, och <kbd>Alt</kbd>+pil ordningen — ingen tangent betyder två saker.'
+}
+document.addEventListener('click', (e) => {
+  const v = e.target.closest('.valj')
+  if (v) { vald = v.dataset.id; flytt = null; rita(); document.querySelector(`.valj[data-id="${vald}"]`)?.focus(); sag(`<b>${vald}</b> är valt i lagerlistan.`) }
+})
+document.addEventListener('focusin', (e) => {
+  const b = e.target.closest('.el[tabindex]')
+  if (b) { vald = b.dataset.id; ritaKort(); ritaLista(); sag(`Fokus på <b>${vald}</b> · <kbd>Enter</kbd> för flyttläge.`) }
+})
+document.addEventListener('keydown', (e) => {
+  const iLista = e.target.closest('[role=grid]')
+  const paKort = e.target.closest('.el')
+  const pil = { ArrowLeft: ['x', -1], ArrowRight: ['x', 1], ArrowUp: ['y', -1], ArrowDown: ['y', 1] }[e.key]
+  if (lage === 'nu') {
+    if (iLista && pil) { e.preventDefault(); sag('Lagerlistans rutnät tog pilen. Elementet står kvar.'); return }
+    if (e.key === 'Backspace') { e.preventDefault(); sag('<b style="color:var(--amber)">Lagret ' + vald + ' togs bort.</b> Ingen fråga, inget meddelande.'); return }
+    return
+  }
+  if (paKort && e.key === 'Enter') {
+    e.preventDefault()
+    const e0 = el(paKort.dataset.id)
+    flytt = flytt === e0.id ? null : e0.id
+    if (flytt) { flytt = e0.id; el(e0.id).fran = { x: e0.x, y: e0.y } }
+    ritaKort()
+    document.querySelector(`.el[data-id="${paKort.dataset.id}"]`)?.focus()
+    sag(flytt ? `<b>Flyttläge</b> på ${flytt}. Pilarna nudgar 0,5 mm, <kbd>Skift</kbd>+pil 5 mm, <kbd>Escape</kbd> lägger tillbaka.` : `Flyttläget lämnat. ${e0.namn} ligger på x ${e0.x} mm, y ${e0.y} mm.`)
+    return
+  }
+  if (flytt && pil) {
+    e.preventDefault()
+    const o = el(flytt)
+    const steg = e.shiftKey ? 5 : 0.5
+    o[pil[0]] = Math.round((o[pil[0]] + pil[1] * steg) * 10) / 10
+    ritaKort()
+    document.querySelector(`.el[data-id="${flytt}"]`)?.focus()
+    sag(`${o.namn} · x ${o.x} mm, y ${o.y} mm`)
+    return
+  }
+  if (flytt && e.key === 'Escape') {
+    e.preventDefault()
+    const o = el(flytt)
+    if (o.fran) { o.x = o.fran.x; o.y = o.fran.y }
+    const id = flytt; flytt = null
+    ritaKort(); document.querySelector(`.el[data-id="${id}"]`)?.focus()
+    sag(`Lades tillbaka på x ${o.x} mm, y ${o.y} mm.`)
+    return
+  }
+  if (iLista && pil && !e.altKey) { sag('Pilen flyttar fokus i lagerlistan, som i vilket rutnät som helst.') }
+  if (e.key === 'Backspace' && !flytt) { e.preventDefault(); sag('<b>Ta bort lagret ' + vald + '?</b> Det ritar ett fält på 77 kort. <kbd>Enter</kbd> tar bort · <kbd>Escape</kbd> låter det stå.') }
+})
+for (const b of document.querySelectorAll('.val button')) b.addEventListener('click', () => {
+  lage = b.dataset.lage; flytt = null
+  for (const o of document.querySelectorAll('.val button')) o.setAttribute('aria-pressed', String(o === b))
+  rita(); sag('')
+})
+rita()
+</script>
+</html>

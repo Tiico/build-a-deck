@@ -201,6 +201,12 @@ export const svEditor = {
   // Knappen i tabellhuvudet bär ett `+` och ingenting mer sedan den flyttade in i den pinnade
   // kolumnens rubrik (#46) — en ruta som är en träffyta bred rymmer inte ett ord — så det här
   // är namnet den hörs med, och samma ord namnger formuläret den öppnar.
+  // Ett drag som togs tillbaka innan handen släppte (#142). Sägs i samma artiga region som en
+  // satt bredd sägs i, och gäller båda dragen editorn har: kolumnkanten i Tabell och elementet på
+  // Malls duk. Ett återtaget drag är ingenting som hänt, så det finns ingen bredd och ingen plats
+  // att säga — bara att det inte blev av.
+  'editor.drag.cancelled': 'Draget avbröts',
+
   'table.columns': 'Kolumner',
   'table.column.moved': '{field} är kolumn {at} av {of}',
   'table.column.width.said': '{field} är {px} px bred',
@@ -244,6 +250,14 @@ export const svEditor = {
   'canvas.layer.unlock': 'Lås upp {name}',
   'canvas.layer.rename': 'Namn på lagret {name}',
   'canvas.layer.isLocked': '{name} är låst. Lås upp lagret för att flytta det.',
+  // Frågan innan ett lager tas bort (#143, L9). Den säger de tre sakerna som gör elementet till
+  // den största av editorns borttagningar: vad designern kallar det, vilken sida det ritas på
+  // och hur många kort som ärver det. Samma mening namnger frågan och står i den, så att höra
+  // den och läsa den är samma mening två gånger.
+  'canvas.layer.remove.one': 'Ta bort {name} från {face}? Det ritas på {n} kort.',
+  'canvas.layer.remove.other': 'Ta bort {name} från {face}? Det ritas på {n} kort.',
+  'canvas.layer.remove.yes': 'Ja, ta bort',
+  'canvas.layer.removed': '{name} är borttaget från {face}.',
   'canvas.props.locked': 'Låst — måtten går att läsa men inte att ändra. Lås upp lagret i lagerlistan.',
   'canvas.grid': 'Rutnät 1 mm',
   'canvas.hint.base': 'Dra ett lager för att ändra ordningen, eller håll Alt och tryck pil upp eller ner. F2 byter namn på lagret.',
@@ -507,7 +521,10 @@ export const svEditor = {
   'setup.face.front': 'uppvända',
   'setup.face.back': 'nedvända',
   'setup.face.toggle': 'åt andra hållet',
-  'setup.place.beside': 'bredvid högen',
+  'setup.place.beside.left': 'till vänster om högen',
+  'setup.place.beside.right': 'till höger om högen',
+  'setup.place.beside.above': 'ovanför högen',
+  'setup.place.beside.below': 'under högen',
   'setup.place.hands': 'i varje hand',
   'setup.place.mine': 'i min hand',
   'setup.place.zone': 'i {zone}',
@@ -539,6 +556,14 @@ export const svEditor = {
   'setup.at.of': 'Placering för {name}',
   'setup.at.top': 'överst',
   'setup.at.bottom': 'underst',
+  // Vilken sida av högen som är "bredvid den" (K21). Orden är sidorna i högens egen vridning, så
+  // en vriden hög vid en sidoplats får dem med sig.
+  'setup.beside': 'Bredvid högen',
+  'setup.beside.of': 'Bredvid högen för {name}',
+  'setup.beside.left': 'till vänster',
+  'setup.beside.right': 'till höger',
+  'setup.beside.above': 'ovanför',
+  'setup.beside.below': 'under',
   'setup.owner': 'Ägare',
   'setup.owner.of': 'Ägare för {name}',
   'setup.owner.none': 'ingen',

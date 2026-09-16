@@ -1,0 +1,28 @@
+/* Gemensam stil för granskningens prototyper. Editorns egna tokens, inget ramverk. */
+:root {
+  --byd-editor-chrome-bg: #23262e;
+  --byd-editor-quiet: #868ea3;
+  --byd-editor-primary-bg: #1f6fd0;
+  --byd-editor-primary-mark: #3c8ce7;
+  --byd-editor-panel-bg: #171a23;
+  --byd-tap: 44px;
+  --ink: #e6ecfa;
+  --line: #2f333d;
+  --bg: #12141a;
+  --cell: #1b1d23;
+  --amber: #ffd98a;
+  --good: #7dd3a0;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 13px/1.5 system-ui, sans-serif; }
+header.krona { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 12px 20px; background: var(--byd-editor-chrome-bg); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 10; }
+header.krona h1 { font-size: 14px; margin: 0 12px 0 0; font-weight: 700; }
+.val { display: flex; gap: 4px; background: var(--cell); border: 1px solid var(--line); border-radius: 8px; padding: 3px; }
+.val button { min-height: 36px; border: 0; border-radius: 6px; padding: 0 14px; background: transparent; color: var(--byd-editor-quiet); font: inherit; font-weight: 600; cursor: pointer; }
+.val button[aria-pressed='true'] { background: var(--byd-editor-primary-bg); color: #fff; }
+.val button:focus-visible, button:focus-visible, [tabindex]:focus-visible { outline: 3px solid #9cc6ff; outline-offset: 1px; }
+main { padding: 20px; }
+.tal { display: flex; gap: 20px; flex-wrap: wrap; margin: 14px 0 0; padding: 0; list-style: none; color: var(--byd-editor-quiet); font-size: 12px; }
+.tal b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.sag { margin: 0 0 14px; color: var(--byd-editor-quiet); max-width: 74ch; }
+.sag b { color: var(--amber); font-weight: 600; }

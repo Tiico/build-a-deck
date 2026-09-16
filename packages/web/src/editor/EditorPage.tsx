@@ -320,6 +320,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         selectedElement={element}
         onSelectElement={setElement}
         onPatch={(id, patch, gesture) => client.patchElement(face, id, patch, group, gesture)}
+        onCallOff={(gesture) => client.callOff(gesture)}
         onAdd={(el) => client.addElement(face, el, group)}
         // The symbol's bytes travel before anything is placed (E1), so this is the one tool in the
         // rail that can fail on the way. It says so where the editor says everything else.

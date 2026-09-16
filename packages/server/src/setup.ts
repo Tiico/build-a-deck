@@ -41,6 +41,7 @@ export function setupFromProject(doc: Pick<ProjectDoc, 'rows' | 'setup'>): Setup
     ...(z.owner !== undefined ? { owner: z.owner } : {}),
     ...(z.returnTo !== undefined ? { returnTo: z.returnTo } : {}),
     ...(z.shortcut !== undefined ? { shortcut: z.shortcut } : {}),
+    ...(z.beside !== undefined ? { beside: z.beside } : {}),
     ...(z.actions !== undefined && z.actions.length > 0 ? { actions: z.actions } : {}),
   }))
   // What each row says in its own columns, so a question can be asked of the deck at the table

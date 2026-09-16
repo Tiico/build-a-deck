@@ -1,5 +1,5 @@
 import { useId, useState, type ReactNode } from 'react'
-import type { ActionAmount, ActionStep, ActionTarget, CardQuery, ZoneAction } from '@byd/protocol'
+import type { ActionAmount, ActionStep, ActionTarget, CardQuery, ZoneAction, ZoneBeside } from '@byd/protocol'
 import type { ProjectDoc } from '@byd/server'
 import type { Zone } from '@byd/server/doc'
 import { queryColumns } from './queries.js'
@@ -81,7 +81,7 @@ export function ZoneActions({ doc, zone, onPatch }: ZoneActionsProps) {
             {a.steps.map((step, i) => (
               <li key={i}>
                 <span className="byd-sentence">
-                  <Step step={step} columns={columns} zones={others} t={t} onChange={(next) => setAction(a.id, { ...a, steps: a.steps.map((s, j) => (j === i ? next : s)) })} />
+                  <Step step={step} columns={columns} zones={others} beside={zone.beside ?? 'left'} t={t} onChange={(next) => setAction(a.id, { ...a, steps: a.steps.map((s, j) => (j === i ? next : s)) })} />
                 </span>
                 <button
                   type="button"
@@ -125,9 +125,9 @@ export function ZoneActions({ doc, zone, onPatch }: ZoneActionsProps) {
 
 // ── The sentence for one step ─────────────────────────────────────────────────────────────────
 
-function Step({ step, columns, zones, t, onChange }: { step: ActionStep; columns: ReturnType<typeof queryColumns>; zones: readonly Zone[]; t: T; onChange(next: ActionStep): void }) {
+function Step({ step, columns, zones, beside, t, onChange }: { step: ActionStep; columns: ReturnType<typeof queryColumns>; zones: readonly Zone[]; beside: ZoneBeside; t: T; onChange(next: ActionStep): void }) {
   const amount = (a: ActionAmount, set: (next: ActionAmount) => void) => <AmountSlot key="n" amount={a} zones={zones} t={t} onChange={set} />
-  const place = (to: ActionTarget, set: (next: ActionTarget) => void) => <TargetSlot key="p" target={to} zones={zones} t={t} onChange={set} />
+  const place = (to: ActionTarget, set: (next: ActionTarget) => void) => <TargetSlot key="p" target={to} zones={zones} beside={beside} t={t} onChange={set} />
   const side = (f: string, opts: readonly string[], set: (next: string) => void) => (
     <Slot key="f" label={t(`setup.face.${f}` as Key)}>
       {(close) =>
@@ -231,14 +231,14 @@ function AmountSlot({ amount, zones, t, onChange }: { amount: ActionAmount; zone
   )
 }
 
-function TargetSlot({ target, zones, t, onChange }: { target: ActionTarget; zones: readonly Zone[]; t: T; onChange(next: ActionTarget): void }) {
+function TargetSlot({ target, zones, beside, t, onChange }: { target: ActionTarget; zones: readonly Zone[]; beside: ZoneBeside; t: T; onChange(next: ActionTarget): void }) {
   return (
-    <Slot label={targetWords(target, zones, t)}>
+    <Slot label={targetWords(target, zones, t, beside)}>
       {(close) => (
         <>
           {(['beside', 'hands', 'mine'] as const).map((at) => (
             <button key={at} type="button" onClick={() => { onChange({ at }); close() }}>
-              {t(`setup.place.${at}` as Key)}
+              {targetWords({ at }, zones, t, beside)}
             </button>
           ))}
           {zones.map((z) => (
@@ -289,8 +289,12 @@ export const queryWords = (q: CardQuery, t: T): string =>
 const amountWords = (a: ActionAmount, zones: readonly Zone[], t: T): string =>
   a.of === 'number' ? String(a.n) : a.of === 'seats' ? t('setup.amount.seats') : a.of === 'ask' ? t('setup.amount.ask') : t('setup.amount.zone', { zone: zones.find((z) => z.id === a.zone)?.name ?? a.zone })
 
-const targetWords = (target: ActionTarget, zones: readonly Zone[], t: T): string =>
-  target.at === 'zone' ? t('setup.place.zone', { zone: zones.find((z) => z.id === target.zone)?.name ?? target.zone }) : t(`setup.place.${target.at}` as Key)
+// "Bredvid högen" är inte en riktning förrän högen sagt vilken (K21), och meningen ska säga vad
+// som kommer att hända: den skriver ut sidan högen bär, inte ordet den bär den under.
+const targetWords = (target: ActionTarget, zones: readonly Zone[], t: T, beside: ZoneBeside): string =>
+  target.at === 'zone'
+    ? t('setup.place.zone', { zone: zones.find((z) => z.id === target.zone)?.name ?? target.zone })
+    : t((target.at === 'beside' ? `setup.place.beside.${beside}` : `setup.place.${target.at}`) as Key)
 
 // A catalogue sentence with named holes, filled with things rather than with text. The holes are
 // written `{name}`; the order they come in is the language's business and not this file's (A4).

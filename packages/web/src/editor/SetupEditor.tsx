@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent, type ReactNode } from 'react'
 import type { ProjectDoc } from '@byd/server'
 import type { Motif } from '@byd/template'
+import type { ZoneBeside } from '@byd/protocol'
 import { targetsOf } from '../player/PlaySheet.js'
 import { TableRenderer, type FeltFit, type TableHandle } from '../table/TableRenderer.js'
 import { previewOf } from '../setup/preview.js'
 import { MAX_PLAYERS, type Counter, type Geometry, type Setup, type Zone } from '@byd/server/doc'
 import type { ProjectClient } from './ProjectClient.js'
 import type { ZonePatch } from '@byd/server/doc'
-import { useT, type T } from '../i18n/index.js'
+import { useT, type Key, type T } from '../i18n/index.js'
 import { recipeWords } from './fields.js'
 import { useGesture } from './gesture.js'
 import { CardPreview } from './CardPreview.js'
@@ -561,6 +562,20 @@ function ZoneProps({ zone, setup, why, onPatch, onDeck }: { zone: Zone; setup: S
             <select aria-label={t('setup.at.of', { name: zone.name })} value={zone.shortcut?.at ?? 'top'} onChange={(e) => onPatch({ shortcut: { label: zone.shortcut?.label ?? zone.name, at: e.target.value === 'bottom' ? 'bottom' : 'top' } })}>
               <option value="top">{t('setup.at.top')}</option>
               <option value="bottom">{t('setup.at.bottom')}</option>
+            </select>
+          </label>
+          {/* Which side of this pile is "beside it" (K21): where Dra 1, Dela på hälften and every
+              action that lays cards beside the pile put them, in the pile's own rotation. Left is
+              what a pile that says nothing has always meant (#87), so it is the value the list
+              opens on rather than a blank. */}
+          <label>
+            {t('setup.beside')}
+            <select aria-label={t('setup.beside.of', { name: zone.name })} value={zone.beside ?? 'left'} onChange={(e) => onPatch({ beside: e.target.value === 'left' ? undefined : (e.target.value as ZoneBeside) })}>
+              {(['left', 'right', 'above', 'below'] as const).map((side) => (
+                <option key={side} value={side}>
+                  {t(`setup.beside.${side}` as Key)}
+                </option>
+              ))}
             </select>
           </label>
           {/* The deck is a role a pile carries (B5, K10): a designer may call any pile the deck,

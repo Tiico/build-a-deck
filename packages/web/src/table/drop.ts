@@ -1,4 +1,4 @@
-import type { Intent, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
+import type { Intent, Snapshot, VisibleComponentState, ZoneBeside, ZoneView } from '@byd/protocol'
 import { CHIP_MM } from '@byd/server/doc'
 import { zoneAt, type Drop } from '../zones.js'
 import { union, type Rect } from './camera.js'
@@ -17,18 +17,22 @@ export type Point = { x: number; y: number }
 // The room between a pile and what is split off it, in table millimetres.
 export const BESIDE_MM = 12
 
-// Where a split off a pile lands (K14): beside the pile, on the side its label is not on. The
+// Where a split off a pile lands (K14): beside the pile, on the side the pile says (K21). The
 // pile's name stands under it and its count rides its top-right corner, in the pile's own frame,
-// so the side free of both is the pile's left — turned with the pile, since its label turns too.
+// so the side free of both is the pile's left, and that is what a pile that says nothing means —
+// turned with the pile, since its label turns too.
 // The point travels in the intent, and the engine centres a new pile on it; but a pile of one is
 // no pile (K1) and settles into a loose card whose *corner* is that point. So a single card is
 // placed by its corner and a pile by its centre, which is the one way both stand a card's width
 // beside the pile. Placing the card by the pile's rule put it half a card lower and further
 // along, straight onto the name (#87).
-export function besidePile(pile: { x: number; y: number; rot: number }, cards: number): Point {
-  const rad = (pile.rot * Math.PI) / 180
-  const d = CARD_MM.w + BESIDE_MM
-  const centre = { x: pile.x - d * Math.cos(rad), y: pile.y - d * Math.sin(rad) }
+// Above and below are measured in the card's height and not its width: a pile laid over another
+// has to clear the long side, and a card's width above a pile is a card lying on its name.
+const SIDES: Record<ZoneBeside, number> = { left: 180, right: 0, above: -90, below: 90 }
+export function besidePile(pile: { x: number; y: number; rot: number }, cards: number, side: ZoneBeside = 'left'): Point {
+  const rad = ((pile.rot + SIDES[side]) * Math.PI) / 180
+  const d = (side === 'left' || side === 'right' ? CARD_MM.w : CARD_MM.h) + BESIDE_MM
+  const centre = { x: pile.x + d * Math.cos(rad), y: pile.y + d * Math.sin(rad) }
   const at = cards === 1 ? { x: centre.x - CARD_MM.w / 2, y: centre.y - CARD_MM.h / 2 } : centre
   // Whole millimetres in the log, and never the -0 a turned pile's sine leaves behind.
   const mm = (v: number): number => Math.round(v) + 0

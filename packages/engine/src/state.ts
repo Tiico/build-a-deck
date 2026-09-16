@@ -12,6 +12,7 @@ import type {
   ZoneKind,
   ZoneAction,
   ZoneShortcut,
+  ZoneBeside,
 } from '@byd/protocol'
 
 // Who may see the faces of components in this zone by default (B6).
@@ -30,6 +31,9 @@ export type ZoneDef = {
   returnTo?: ZoneId
   // The verb the phone shows for playing here (C4), and where in a pile the card goes.
   shortcut?: ZoneShortcut
+  // Which side of a pile is "beside it" (K21): where what is split off it lands. Left when the
+  // pile says nothing, which is what every pile meant before (#87).
+  beside?: ZoneBeside
   // What a player may ask this zone for when they click it (K14, B5). The designer's own, so
   // they travel to every view as they stand.
   actions?: ZoneAction[]

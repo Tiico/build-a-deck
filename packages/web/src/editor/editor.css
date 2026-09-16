@@ -408,9 +408,22 @@
 .byd-setup-canvas { position: relative; display: flex; flex-direction: column; gap: 8px; overflow: auto; }
 .byd-setup-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: #9aa3b8; font-size: 12px; }
 /* What the surface says back: the hint, and after a removal the zone's name with the way back.
-   The step back is the editor's own (B4), said here because here is where the zone went. */
+   The step back is the editor's own (B4), said here because here is where the zone went.
+
+   The sentence wraps, and that is the whole of what holds the tab inside the window (#127). A line
+   that does not wrap declares its own length as its smallest size, and this row is a grid child:
+   the track it stands in could not go under that length, however narrow the column it was given
+   was. Everything sharing the track went with it — the felt, and the phone's sheet under it — so
+   at 1024 all three stood 201 px past the window, `main` grew a sideways scrollbar, and scrolling
+   to the sentence took the zone list off the other edge. The row was ellipsising nothing while it
+   did this: what cut the sentence was the window, not its own box. Wrapping costs a second line in
+   the narrow window and nothing in the wide one, and `min-height` is what keeps the row from
+   jumping as it fills.
+
+   `flex: none` is #126's: the middle column is a flex column now, and a row that may shrink is a
+   row that gives its words away to the felt under it. */
 .byd-setup-said { flex: none; display: flex; gap: 12px; align-items: center; min-height: 30px; color: #9aa3b8; font-size: 12px; }
-.byd-setup-said > span:last-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.byd-setup-said > span:last-child { flex: 1; min-width: 0; }
 .byd-setup-undo { display: flex; gap: 8px; align-items: center; color: #ffd98a; }
 .byd-setup-undo button { border: 1px solid #5c4a1f; border-radius: 8px; padding: 4px 8px; background: #241f13; color: #ffd98a; font-weight: 700; cursor: pointer; }
 /* The list of zones: every one the table has, in two groups, and the row is the way into it —
@@ -721,6 +734,37 @@
 .byd-layer-grip { color: #454c5c; font-size: 12px; text-align: center; cursor: grab; }
 .byd-layer-rename { width: 100%; min-height: var(--byd-tap); box-sizing: border-box; background: #0f1115; border: 1px solid var(--byd-editor-primary-mark); border-radius: 6px; color: #fff; font: inherit; font-size: 13px; padding: 0 8px; }
 /* Why nothing moved (L15), read beside the card that did not move. */
+/* The question a layer is given before it goes (#143, L9), under the card it draws on. Red and
+   not amber: leaving work unsaved is one thing and a deletion another, and this is the second —
+   so it is the palette the table's own delete question is asked in, held to the same bar. It is
+   the third row of a column laid out as `auto 1fr`, and therefore takes only the height it needs
+   while the card goes on filling what is left. */
+.byd-canvas-question {
+  --byd-editor-ask-bg: #3d2632;
+  --byd-editor-ask-ink: #ffe4ea;
+  --byd-editor-ask-danger-bg: #7a3243;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border-top: 1px solid var(--byd-editor-ask-danger-bg);
+  background: var(--byd-editor-ask-bg);
+  color: var(--byd-editor-ask-ink);
+  font-size: 12px;
+}
+.byd-canvas-question p { margin: 0; font-weight: 700; }
+.byd-canvas-question button {
+  padding: 6px 12px;
+  border: 1px solid var(--byd-editor-ask-danger-bg);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--byd-editor-ask-ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.byd-canvas-question button[data-kind='danger'] { background: var(--byd-editor-ask-danger-bg); }
 .byd-canvas-locked {
   margin: 8px 0 0;
   padding: 8px 12px;

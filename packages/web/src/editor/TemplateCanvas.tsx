@@ -13,6 +13,7 @@ import { NewField } from './NewField.js'
 import { isTyping } from './keys.js'
 import { cardsInGroup, groupColumn, groupsOf, idsOnFace, layersOf, overriddenIds, ruleLabel, valuesIn, type Layer } from './groups.js'
 import { LayerList, layerName } from './LayerList.js'
+import { Question } from './Question.js'
 import type { CanvasStage } from './EditorStages.js'
 import { useRoving } from './roving.js'
 import { familiesInUse, previewFonts } from './fonts.js'
@@ -20,6 +21,8 @@ import { LIBRARY, type GameSymbol } from './symbols.js'
 import { SymbolList, symbolListKey, symbolOptionId } from './SymbolList.js'
 import type { ProjectCredit } from '@byd/server'
 import { useT, type Key, type T } from '../i18n/index.js'
+import { useSay } from '../status/StatusLive.js'
+import { DragDoor } from './DragDoor.js'
 
 export type TemplateCanvasProps = {
   // Which of the four panels to draw, or nothing at all for the desk's four columns (L10). Below
@@ -45,6 +48,11 @@ export type TemplateCanvasProps = {
   // editor put all those frames on one step back (#35). A patch from a property field has none:
   // it is a whole change on its own.
   onPatch(id: string, patch: Partial<Element>, gesture?: string): void
+  // The grab called off rather than let go of (#142): Escape with the hand still down, or a
+  // gesture the browser took away from the page. Putting the element back where the grab began
+  // and leaving no step behind are both the document's business and not the canvas's, so the
+  // canvas says which grab it was and the client takes the whole of it back at once.
+  onCallOff(gesture: string): void
   onRemove(id: string): void
   onAdd(element: Element): void
   // An icon placed from the tool row (#33). The symbol has to come into the game before an
@@ -83,7 +91,7 @@ export type TemplateCanvasProps = {
 // Template mode (A): layers on the left, the card large in the middle with the selected element
 // outlined, and its properties on the right. Every change goes through `onPatch` and lands on
 // every card of the deck — there are no per-card exceptions (L3).
-export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, onReplaceFace, row, selectedElement, onSelectElement, onPatch, onRemove, onAdd, onPlaceIcon, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onFontFile, onFontLicence, onRemoveFont }: TemplateCanvasProps) {
+export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, onReplaceFace, row, selectedElement, onSelectElement, onPatch, onCallOff, onRemove, onAdd, onPlaceIcon, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onFontFile, onFontLicence, onRemoveFont }: TemplateCanvasProps) {
   const t = useT()
   const faceTemplate = doc.template.faces[face]
   const column = groupColumn(doc)
@@ -119,7 +127,35 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // it, or taking it away, is the answer to the message and takes the message with it.
   const refusedLayer = panel.find((l) => l.element.id === refused && l.element.locked)?.element
   const patch = (id: string, changed: Partial<Element>, gesture?: string) => onPatch(id, iconSized(panel.find((l) => l.element.id === id)?.element, changed), gesture)
-  useElementKeys(el, patch, onRemove, setRefused)
+  // Which layer is being asked about before it goes (#143, L9). A card asks before it is removed
+  // and a column asks and says what it takes with it; an element is the largest of the three —
+  // it draws on every card that inherits it — and was the only one that went without a word, from
+  // the key that in every browser means back. So it asks the question the other two ask, through
+  // the same component, and the id is what it is about: the layer itself is looked up again each
+  // render, so a step back or an edit from another screen takes the question with the layer.
+  const [asking, setAsking] = useState<string | null>(null)
+  const goes = panel.find((l) => l.element.id === asking && l.source !== 'removed')?.element
+  // Where the keyboard stood when the question was opened. The key is heard on the document, so
+  // the press comes from wherever the focus happened to be — a tool, a tab, a group strip — and
+  // whichever answer is given the focus goes back there rather than to the top of the page, the
+  // way a panel over the work hands it back to the button that opened it (#133).
+  const asked = useRef<HTMLElement | null>(null)
+  const ask = (id: string) => {
+    asked.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    setAsking(id)
+  }
+  const handBack = () => {
+    const to = asked.current
+    asked.current = null
+    setAsking(null)
+    to?.focus()
+  }
+  // The keys are the card's again only once the question is answered: while it stands, the focus
+  // is on one of its answers, and an arrow there would nudge the very element being asked about.
+  useElementKeys(asking === null ? el : undefined, patch, ask, setRefused)
+  // What a deletion is said in when it has happened. The editor has two live regions and no
+  // surface makes a third (StatusLive), so the canvas asks for the polite one by name.
+  const say = useSay()
   const stageEl = useRef<HTMLElement | null>(null)
   const scale = useStageFit(stageEl)
   // The grid is a layer to see by, not a rule (variant C, kept as an option): it is off until it
@@ -129,6 +165,10 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   if (!faceTemplate) return <p>{t('template.faceMissing', { face })}</p>
   const overridden = group ? overriddenIds(faceTemplate, group) : new Set<string>()
   const fields = fieldsOf(doc)
+  // How many cards a deletion here reaches, counted the way the line over the layer list already
+  // counts them: the whole deck from the base, the rule's own cards from a group — which is also
+  // exactly as far as `onRemove` goes.
+  const drawnOn = column && group ? cardsInGroup(doc, group).length : doc.rows.length
   // A new element is added where it can be seen and is selected at once, so the next thing the
   // designer does — drag it, nudge it, bind it — is about the element they just asked for.
   const add = (kind: ElementKind) => {
@@ -217,7 +257,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             motifs={motifs}
             selectedElement={selectedElement}
             onSelectElement={onSelectElement}
-            overlay={<DragLayer grid={grid} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={patch} onRefused={setRefused} />}
+            overlay={<DragLayer grid={grid} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={patch} onCallOff={onCallOff} onRefused={setRefused} />}
           />
           {refusedLayer && (
             <p className="byd-canvas-locked" role="alert">
@@ -225,6 +265,28 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             </p>
           )}
         </main>
+        {/* Under the card and not on it. The stage deselects on a click anywhere in itself, so a
+            question standing inside it would lose the layer the moment the answer that keeps it
+            was pressed — which is the one answer that must cost nothing. It is otherwise the same
+            strip the table asks its own two questions in, in the colours a deletion is asked in
+            there, and in the column where the card it draws on is. */}
+        {goes && (
+          <Question
+            className="byd-canvas-question"
+            label={removeLayerLabel(goes, face, drawnOn, t)}
+            confirm={t('canvas.layer.remove.yes')}
+            onConfirm={() => {
+              onRemove(goes.id)
+              // Said only once it has happened, and in the polite region: the layer is gone from
+              // under a keyboard that may be nowhere near the panel it was listed in.
+              say?.('polite', t('canvas.layer.removed', { name: layerName(goes), face: faceName(face, t).toLowerCase() }))
+              handBack()
+            }}
+            onCancel={handBack}
+          >
+            {removeLayerLabel(goes, face, drawnOn, t)}
+          </Question>
+        )}
       </div>
       )}
       {shows('props') && (
@@ -365,13 +427,20 @@ function isBox(el: Element): el is BoxElement {
 // the card's own millimetres. It draws no card content — the compiler behind it is still the one
 // renderer — and it holds the pointer with pointer capture, so a fast drag or a trackpad that
 // leaves the box keeps moving the element it grabbed.
-function DragLayer({ boxes, grid, selected, onSelect, onPatch, onRefused }: { boxes: BoxElement[]; grid: boolean; selected: string | null; onSelect(id: string): void; onPatch: TemplateCanvasProps['onPatch']; onRefused(id: string): void }) {
+function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefused }: { boxes: BoxElement[]; grid: boolean; selected: string | null; onSelect(id: string): void; onPatch: TemplateCanvasProps['onPatch']; onCallOff: TemplateCanvasProps['onCallOff']; onRefused(id: string): void }) {
+  const t = useT()
+  const say = useSay()
   const layer = useRef<HTMLDivElement | null>(null)
-  const grab = useRef<(Grab & { id: string; handle: Handle | null; gesture: string }) | null>(null)
+  const grab = useRef<(Grab & { id: string; handle: Handle | null; gesture: string; moved: boolean }) | null>(null)
   // What makes one grab tell itself apart from the next one on the same element (L14). Two drags
   // of the same title are two things the designer did, and two steps back.
   const grabs = useGesture('grab')
   const [guides, setGuides] = useState<Guides>({ x: null, y: null })
+  // Whether a grab is running at all, which is the one thing about it that has to be drawn: the
+  // way out of the drag is a door in the tree, and a door can only stand there while there is a
+  // drag to leave. Everything else about the grab stays in the ref above, where it is read inside
+  // an event and never drawn.
+  const [holding, setHolding] = useState(false)
 
   const down = (event: ReactPointerEvent<HTMLElement>, box: BoxElement, handle: Handle | null) => {
     if (event.button !== 0) return
@@ -382,28 +451,49 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onRefused }: { bo
     if (box.locked) return onRefused(box.id)
     const rect = layer.current?.getBoundingClientRect()
     if (!rect?.width) return
-    grab.current = { id: box.id, box, handle, gesture: grabs.begin(), at: { x: event.clientX, y: event.clientY }, mmPerPx: CARD_STANDARD_63x88.physical.widthMm / rect.width }
+    grab.current = { id: box.id, box, handle, gesture: grabs.begin(), moved: false, at: { x: event.clientX, y: event.clientY }, mmPerPx: CARD_STANDARD_63x88.physical.widthMm / rect.width }
+    setHolding(true)
     event.currentTarget.setPointerCapture?.(event.pointerId)
   }
   const move = (event: ReactPointerEvent<HTMLElement>) => {
     const held = grab.current
     if (!held) return
     const to = { x: event.clientX, y: event.clientY }
-    if (held.handle) return onPatch(held.id, resizedTo(held, to, held.handle), held.gesture)
+    if (held.handle) {
+      held.moved = true
+      return onPatch(held.id, resizedTo(held, to, held.handle), held.gesture)
+    }
     const others = boxes.filter((b) => b.id !== held.id)
     const placed = snapped(held.box, movedTo(held, to), others, CARD_STANDARD_63x88.physical)
     setGuides(placed.guides)
     // A click is a grab that went nowhere: it selects, and leaves the template alone.
     if (placed.at.x === held.box.x && placed.at.y === held.box.y) return
+    held.moved = true
     onPatch(held.id, placed.at, held.gesture)
   }
   const up = () => {
     grab.current = null
+    setHolding(false)
     setGuides({ x: null, y: null })
+  }
+  // The drag taken back rather than let go of (#142): Escape with the hand still down, and a
+  // gesture the browser took away from the page, which are the same thing happening. A grab that
+  // moved nothing has nothing to take back and says nothing either — that is the click the move
+  // above already leaves the template alone for.
+  const callOff = () => {
+    const held = grab.current
+    up()
+    if (!held?.moved) return
+    onCallOff(held.gesture)
+    say?.('polite', t('editor.drag.cancelled'))
   }
 
   return (
     <div className="byd-drag-layer" data-drag-layer ref={layer} aria-hidden="true">
+      {/* The way out of the drag, for the hand that changed its mind before it let go (#142). The
+          same door the table's head hangs over its own pull, and it stands only while there is a
+          drag to leave. */}
+      {holding && <DragDoor onCancel={callOff} />}
       {grid && <div className="byd-drag-grid" data-grid />}
       {boxes.map((box) => (
         <div
@@ -414,7 +504,7 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onRefused }: { bo
           onPointerDown={(event) => down(event, box, null)}
           onPointerMove={move}
           onPointerUp={up}
-          onPointerCancel={up}
+          onPointerCancel={callOff}
           onClick={(event) => event.stopPropagation()}
         >
           {box.id === selected &&
@@ -427,7 +517,7 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onRefused }: { bo
                 onPointerDown={(event) => down(event, box, corner)}
                 onPointerMove={move}
                 onPointerUp={up}
-                onPointerCancel={up}
+                onPointerCancel={callOff}
               />
             ))}
         </div>
@@ -517,6 +607,16 @@ function affectsLabel(doc: ProjectDoc, column: string | null, group: string | nu
 
 function cardsLabel(count: number, t: T): string {
   return t(count === 1 ? 'wall.cards.one' : 'wall.cards.other', { n: count })
+}
+
+// What a template element takes with it, in the three things that make it the largest of the
+// editor's three deletions: what the designer named it, which side of the card it is drawn on,
+// and how many cards inherit it. A column says the same kind of sentence before it goes (#32) —
+// what is lost, counted in the deck rather than in the template — and this is that sentence for
+// an element. It is the question's own name as well as its words, so hearing it and reading it
+// are the same sentence twice.
+function removeLayerLabel(el: Element, face: string, cards: number, t: T): string {
+  return t(cards === 1 ? 'canvas.layer.remove.one' : 'canvas.layer.remove.other', { name: layerName(el), face: faceName(face, t).toLowerCase(), n: cards })
 }
 
 // A face the template does not have: the canvas says so instead, and this is what it says it of.
@@ -678,11 +778,16 @@ function ToolRail({ onAdd, onPlaceIcon }: { onAdd(kind: ElementKind): void; onPl
   )
 }
 
-// The keyboard over the card (#18): the arrows nudge the selected element and Delete takes it
-// away, wherever the focus is — the layer list, the card, the panel around them. Two things are
-// left alone: a key a control has already answered (the layer list's own arrows say so by
-// preventing the default), and any key typed into a field.
-function useElementKeys(el: Element | undefined, onPatch: TemplateCanvasProps['onPatch'], onRemove: TemplateCanvasProps['onRemove'], onRefused: (id: string) => void) {
+// The keyboard over the card (#18): the arrows nudge the selected element and Delete asks whether
+// to take it away, wherever the focus is — the layer list, the card, the panel around them. Two
+// things are left alone: a key a control has already answered (the layer list's own arrows say so
+// by preventing the default), and any key typed into a field.
+//
+// Backspace is heard here as well as Delete, and that is why the asking is the whole of what it
+// does (#143). Listening wherever the focus is was the right decision and is kept; what was wrong
+// was that the key nobody presses on purpose — back in every browser, one character in every
+// field — reached all the way to the removal with nothing in between.
+function useElementKeys(el: Element | undefined, onPatch: TemplateCanvasProps['onPatch'], onAsk: (id: string) => void, onRefused: (id: string) => void) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (!el || event.defaultPrevented || isTyping(event.target)) return
@@ -694,7 +799,7 @@ function useElementKeys(el: Element | undefined, onPatch: TemplateCanvasProps['o
       }
       if (event.key === 'Delete' || event.key === 'Backspace') {
         event.preventDefault()
-        return onRemove(el.id)
+        return onAsk(el.id)
       }
       // An element without a box of its own — a condition around others — has nothing to move.
       if (!('x' in el)) return
