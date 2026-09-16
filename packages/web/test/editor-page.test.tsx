@@ -284,6 +284,12 @@ describe('the layers of the template by keyboard (UX-04)', () => {
     // field is controlled by the document, so a new value there is a patch that landed on frame.
     await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('checkbox', { name: /rutnät/i }))
+    // Then the card itself: every element on it is a stop of its own since #144, met in the order
+    // the layer list reads them, and the last of the three is the layer this test has open.
+    for (const id of ['body', 'title', 'frame']) {
+      await user.tab()
+      expect(document.activeElement).toBe(document.querySelector(`[data-drag="${id}"]`))
+    }
     await user.tab()
     await user.keyboard('9')
     expect((screen.getByLabelText(/^x/i) as HTMLInputElement).value).toBe('9')

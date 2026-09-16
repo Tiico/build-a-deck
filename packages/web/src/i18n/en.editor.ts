@@ -236,7 +236,8 @@ export const enEditor = {
   'canvas.layer.removed': '{name} is gone from the {face}.',
   'canvas.props.locked': 'Locked — the measurements can be read but not changed. Unlock the layer in the layer list.',
   'canvas.grid': 'Grid 1 mm',
-  'canvas.hint.base': 'Drag a layer to change the order, or hold Alt and press arrow up or down. F2 renames the layer.',
+  'canvas.hint.base':
+    'Drag a layer to change the order, or hold Alt and press arrow up or down. F2 renames the layer. The element itself is moved from the canvas: Enter goes into move mode, the arrows nudge.',
   'canvas.hint.group': 'The layer order is the base’s, and changes with the base tab selected.',
   'canvas.groupBy': 'Grouped by the column',
   'canvas.groupBy.none': '— none —',
@@ -265,6 +266,23 @@ export const enEditor = {
   'canvas.tool.icon': 'Icon',
   'canvas.tool.icons': 'Icon row',
   'canvas.tool.shape': 'Shape',
+  // The element on the card as a keyboard stop of its own (#144). The name says what it is and
+  // where it lies, which is exactly what an eye reads off the canvas without asking anyone.
+  'canvas.element': '{name}, {kind}, x {x} mm, y {y} mm',
+  'canvas.element.moving': '{name}, {kind}, x {x} mm, y {y} mm, move mode',
+  // Every nudge is said in millimetres (#144). Half a millimetre cannot be seen on a screen, so
+  // where the element now lies has to be audible — or an arrow in move mode is a sound and no news.
+  'canvas.element.at': '{name} · x {x} mm, y {y} mm',
+  // The way out of a move already under way (#142). It says both that it was called off and where
+  // the element now lies, since a reader who cannot see the card would otherwise only know that
+  // something happened.
+  'canvas.element.back': 'The move was called off. {name} lies at x {x} mm, y {y} mm.',
+  'canvas.kind.text': 'text',
+  'canvas.kind.image': 'picture',
+  'canvas.kind.icons': 'icon row',
+  'canvas.kind.shape': 'shape',
+  'canvas.kind.group': 'group',
+  'canvas.kind.if': 'condition',
   'canvas.props': 'Properties',
   // Folding the properties away, and asking for them back (#129). The button says which of the two
   // the press will make it, because that is what a designer is deciding when she reads it.
