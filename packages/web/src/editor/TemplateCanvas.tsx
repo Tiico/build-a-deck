@@ -13,6 +13,8 @@ import { NewField } from './NewField.js'
 import { isTyping } from './keys.js'
 import { cardsInGroup, groupColumn, groupsOf, idsOnFace, layersOf, overriddenIds, ruleLabel, valuesIn, type Layer } from './groups.js'
 import { LayerList, layerName } from './LayerList.js'
+import { Question } from './Question.js'
+import { useSay } from '../status/StatusLive.js'
 import type { CanvasStage } from './EditorStages.js'
 import { useRoving } from './roving.js'
 import { familiesInUse, previewFonts } from './fonts.js'
@@ -126,7 +128,35 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // it, or taking it away, is the answer to the message and takes the message with it.
   const refusedLayer = panel.find((l) => l.element.id === refused && l.element.locked)?.element
   const patch = (id: string, changed: Partial<Element>, gesture?: string) => onPatch(id, iconSized(panel.find((l) => l.element.id === id)?.element, changed), gesture)
-  useElementKeys(el, patch, onRemove, setRefused)
+  // Which layer is being asked about before it goes (#143, L9). A card asks before it is removed
+  // and a column asks and says what it takes with it; an element is the largest of the three —
+  // it draws on every card that inherits it — and was the only one that went without a word, from
+  // the key that in every browser means back. So it asks the question the other two ask, through
+  // the same component, and the id is what it is about: the layer itself is looked up again each
+  // render, so a step back or an edit from another screen takes the question with the layer.
+  const [asking, setAsking] = useState<string | null>(null)
+  const goes = panel.find((l) => l.element.id === asking && l.source !== 'removed')?.element
+  // Where the keyboard stood when the question was opened. The key is heard on the document, so
+  // the press comes from wherever the focus happened to be — a tool, a tab, a group strip — and
+  // whichever answer is given the focus goes back there rather than to the top of the page, the
+  // way a panel over the work hands it back to the button that opened it (#133).
+  const asked = useRef<HTMLElement | null>(null)
+  const ask = (id: string) => {
+    asked.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    setAsking(id)
+  }
+  const handBack = () => {
+    const to = asked.current
+    asked.current = null
+    setAsking(null)
+    to?.focus()
+  }
+  // The keys are the card's again only once the question is answered: while it stands, the focus
+  // is on one of its answers, and an arrow there would nudge the very element being asked about.
+  useElementKeys(asking === null ? el : undefined, patch, ask, setRefused)
+  // What a deletion is said in when it has happened. The editor has two live regions and no
+  // surface makes a third (StatusLive), so the canvas asks for the polite one by name.
+  const say = useSay()
   const stageEl = useRef<HTMLElement | null>(null)
   const scale = useStageFit(stageEl)
   // The grid is a layer to see by, not a rule (variant C, kept as an option): it is off until it
@@ -136,6 +166,10 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   if (!faceTemplate) return <p>{t('template.faceMissing', { face })}</p>
   const overridden = group ? overriddenIds(faceTemplate, group) : new Set<string>()
   const fields = fieldsOf(doc)
+  // How many cards a deletion here reaches, counted the way the line over the layer list already
+  // counts them: the whole deck from the base, the rule's own cards from a group — which is also
+  // exactly as far as `onRemove` goes.
+  const drawnOn = column && group ? cardsInGroup(doc, group).length : doc.rows.length
   // A new element is added where it can be seen and is selected at once, so the next thing the
   // designer does — drag it, nudge it, bind it — is about the element they just asked for.
   const add = (kind: ElementKind) => {
@@ -232,6 +266,28 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             </p>
           )}
         </main>
+        {/* Under the card and not on it. The stage deselects on a click anywhere in itself, so a
+            question standing inside it would lose the layer the moment the answer that keeps it
+            was pressed — which is the one answer that must cost nothing. It is otherwise the same
+            strip the table asks its own two questions in, in the colours a deletion is asked in
+            there, and in the column where the card it draws on is. */}
+        {goes && (
+          <Question
+            className="byd-canvas-question"
+            label={removeLayerLabel(goes, face, drawnOn, t)}
+            confirm={t('canvas.layer.remove.yes')}
+            onConfirm={() => {
+              onRemove(goes.id)
+              // Said only once it has happened, and in the polite region: the layer is gone from
+              // under a keyboard that may be nowhere near the panel it was listed in.
+              say?.('polite', t('canvas.layer.removed', { name: layerName(goes), face: faceName(face, t).toLowerCase() }))
+              handBack()
+            }}
+            onCancel={handBack}
+          >
+            {removeLayerLabel(goes, face, drawnOn, t)}
+          </Question>
+        )}
       </div>
       )}
       {shows('props') && (
@@ -554,6 +610,16 @@ function cardsLabel(count: number, t: T): string {
   return t(count === 1 ? 'wall.cards.one' : 'wall.cards.other', { n: count })
 }
 
+// What a template element takes with it, in the three things that make it the largest of the
+// editor's three deletions: what the designer named it, which side of the card it is drawn on,
+// and how many cards inherit it. A column says the same kind of sentence before it goes (#32) —
+// what is lost, counted in the deck rather than in the template — and this is that sentence for
+// an element. It is the question's own name as well as its words, so hearing it and reading it
+// are the same sentence twice.
+function removeLayerLabel(el: Element, face: string, cards: number, t: T): string {
+  return t(cards === 1 ? 'canvas.layer.remove.one' : 'canvas.layer.remove.other', { name: layerName(el), face: faceName(face, t).toLowerCase(), n: cards })
+}
+
 // A face the template does not have: the canvas says so instead, and this is what it says it of.
 const NO_FACE: FaceTemplate = { base: [], variants: {} }
 
@@ -713,11 +779,16 @@ function ToolRail({ onAdd, onPlaceIcon }: { onAdd(kind: ElementKind): void; onPl
   )
 }
 
-// The keyboard over the card (#18): the arrows nudge the selected element and Delete takes it
-// away, wherever the focus is — the layer list, the card, the panel around them. Two things are
-// left alone: a key a control has already answered (the layer list's own arrows say so by
-// preventing the default), and any key typed into a field.
-function useElementKeys(el: Element | undefined, onPatch: TemplateCanvasProps['onPatch'], onRemove: TemplateCanvasProps['onRemove'], onRefused: (id: string) => void) {
+// The keyboard over the card (#18): the arrows nudge the selected element and Delete asks whether
+// to take it away, wherever the focus is — the layer list, the card, the panel around them. Two
+// things are left alone: a key a control has already answered (the layer list's own arrows say so
+// by preventing the default), and any key typed into a field.
+//
+// Backspace is heard here as well as Delete, and that is why the asking is the whole of what it
+// does (#143). Listening wherever the focus is was the right decision and is kept; what was wrong
+// was that the key nobody presses on purpose — back in every browser, one character in every
+// field — reached all the way to the removal with nothing in between.
+function useElementKeys(el: Element | undefined, onPatch: TemplateCanvasProps['onPatch'], onAsk: (id: string) => void, onRefused: (id: string) => void) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (!el || event.defaultPrevented || isTyping(event.target)) return
@@ -729,7 +800,7 @@ function useElementKeys(el: Element | undefined, onPatch: TemplateCanvasProps['o
       }
       if (event.key === 'Delete' || event.key === 'Backspace') {
         event.preventDefault()
-        return onRemove(el.id)
+        return onAsk(el.id)
       }
       // An element without a box of its own — a condition around others — has nothing to move.
       if (!('x' in el)) return
