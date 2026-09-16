@@ -755,7 +755,7 @@
 }
 .byd-canvas-question p { margin: 0; font-weight: 700; }
 .byd-canvas-question button {
-  padding: 6px 12px;
+  padding: 8px 12px;
   border: 1px solid var(--byd-editor-ask-danger-bg);
   border-radius: 8px;
   background: transparent;
