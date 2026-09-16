@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 7 — Regelboken: mallens innehåll och importens format</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* Beslutet på #131 (2026-09-16) tog tomläget med tre vägar in och gav den skrivna boken
+     en innehållsförteckning. Två frågor lämnades öppna och ska vara besvarade före bygget:
+     vad mallen innehåller, och vad en import gör med det som inte är rubriker och stycken.
+     Den här prototypen svarar på bara dem. Tomläget och den skrivna boken står i 05. */
+  .rules { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+  .crown { flex: none; display: flex; align-items: center; gap: var(--s2); padding: var(--gutter) var(--gutter) var(--s2); border-bottom: 1px solid var(--line); }
+  .crown h1 { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); font-weight: 700; }
+  .crown .spacer { flex: 1; }
+  .crown button { min-height: var(--tap); border: 1px solid var(--line); border-radius: 8px; padding: 0 14px; background: var(--sunk); color: var(--quiet-2); font: inherit; font-weight: 700; font-size: 12px; cursor: pointer; }
+  .crown button[aria-pressed='true'] { border-color: var(--primary-mark); color: #fff; }
+  .body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--s5) var(--gutter); }
+
+  /* Två spalter: boken i sin läsbredd, och vad som ska sägas om den bredvid. */
+  .pair { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: var(--s5); align-items: start; max-width: 1180px; margin: 0 auto; }
+  .why { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: var(--s4); }
+  .why h3 { margin: 0 0 var(--s2); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .why p { margin: 0 0 var(--s3); color: var(--quiet-2); line-height: 1.6; }
+  .why p:last-child { margin-bottom: 0; }
+  .why b { color: #fff; }
+
+  /* Boken som den ser ut, i editorns egna mått: 68 teckens läsbredd, spalt med innehåll. */
+  .book { display: grid; grid-template-columns: 220px minmax(0, 1fr); border: 1px solid var(--line); border-radius: 12px; background: var(--panel); overflow: hidden; }
+  .toc { border-right: 1px solid var(--line); padding: var(--s4) var(--s3); }
+  .toc h3 { margin: 0 0 var(--s2); padding: 0 var(--s3); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .toc a { display: flex; align-items: center; min-height: 36px; padding: 0 var(--s3); border-radius: 8px; color: var(--quiet-2); text-decoration: none; font-size: 12px; }
+  .toc a[aria-current='true'] { background: var(--card); color: #fff; }
+  .toc a.sub { padding-left: var(--s5); color: var(--quiet); }
+  .sheet { padding: var(--s5); max-width: 68ch; }
+  .sheet h2 { margin: 0 0 var(--s4); color: #fff; font-size: 20px; }
+  .sheet h3 { margin: var(--s5) 0 var(--s2); color: #fff; font-size: 15px; }
+  .sheet h3:first-of-type { margin-top: 0; }
+  .sheet p { margin: 0 0 var(--s3); color: #cfd5e3; line-height: 1.7; }
+  .sheet ol, .sheet ul { margin: 0 0 var(--s3); padding-left: 1.4em; color: #cfd5e3; line-height: 1.7; }
+  /* Mallens platshållare är frågor, inte rubriker att stirra på. De är citattecknade
+     i editorn på samma sätt som "Ny text." är i dag: grå, och borta vid första tecknet. */
+  .ask { color: var(--quiet); font-style: italic; }
+  .setup { margin: 0 0 var(--s3); border: 1px dashed #3b4358; border-radius: 10px; padding: var(--s3); display: flex; gap: var(--s2); flex-wrap: wrap; }
+  .setup i { display: block; border: 1px solid #3b4358; border-radius: 6px; padding: 6px 10px; color: var(--quiet-2); font-style: normal; font-size: 11px; }
+  .setup + .cap { margin-top: calc(var(--s3) * -1 + 0px); color: var(--quiet); font-size: 12px; }
+
+  /* Vägarna in, sida vid sida: vad var och en faktiskt lämnar efter sig. */
+  .ways { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s4); max-width: 1180px; margin: 0 auto; }
+  .way { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); display: flex; flex-direction: column; overflow: hidden; }
+  .way > header { padding: var(--s4); border-bottom: 1px solid var(--line); }
+  .way > header b { display: block; color: #fff; font-size: 14px; margin-bottom: 4px; }
+  .way > header span { color: var(--quiet); font-size: 12px; line-height: 1.6; display: block; }
+  .way .mini { padding: var(--s4); flex: 1; }
+  .way .mini h4 { margin: 0 0 6px; color: #fff; font-size: 12px; }
+  .way .mini h4 + h4 { margin-top: var(--s3); }
+  .way .mini p { margin: 0; color: var(--quiet-2); font-size: 11px; line-height: 1.6; }
+  .way .mini p.ask { color: var(--quiet); }
+  .way .mini hr { border: 0; border-top: 1px dashed var(--line-soft); margin: var(--s3) 0; }
+
+  /* Importen: filen, rapporten om vad som hände med den, och boken den blir. */
+  .imp { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s5); max-width: 1180px; margin: 0 auto; align-items: start; }
+  .src { border: 1px solid var(--line); border-radius: 12px; background: #14161c; padding: var(--s4); font: 12px/1.7 ui-monospace, monospace; color: #cfd5e3; white-space: pre-wrap; }
+  .map { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .map th, .map td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  .map th { color: var(--quiet); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; font-size: 10px; }
+  .map td:first-child { color: #ffd98a; font-family: ui-monospace, monospace; white-space: nowrap; }
+  .map td:last-child { color: var(--quiet-2); line-height: 1.6; }
+  .report { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: var(--s4); margin-bottom: var(--s4); }
+  .report h3 { margin: 0 0 var(--s2); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .report ul { list-style: none; margin: 0 0 var(--s4); padding: 0; display: grid; gap: 6px; }
+  .report li { display: flex; gap: var(--s2); align-items: baseline; color: #cfd5e3; font-size: 12px; line-height: 1.6; }
+  .report li b { color: #fff; font-variant-numeric: tabular-nums; min-width: 1.6em; text-align: right; }
+  .report li[data-kind='drop'] b { color: var(--warn); }
+  .report .row { display: flex; gap: var(--s2); }
+  .report .row .btn { font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <a class="home" href="#">Mina spel</a><strong>Sal's Saloon</strong>
+    <button class="rev">rev 1</button><span class="saved">Sparat</span>
+    <nav class="tabs">
+      <button>Kortvägg</button><button>Mall</button><button>Data</button>
+      <button>Symboler</button><button aria-selected="true">Regler</button><button>Bord</button>
+    </nav>
+    <span class="spacer"></span>
+    <button class="btn">Spara</button><button class="btn primary">Uppdatera bordet</button>
+  </header>
+
+  <div class="rules">
+    <div class="crown">
+      <h1>Prototyp 7 · de två frågor som är kvar på #131</h1>
+      <span class="spacer"></span>
+      <button data-view="vagar" aria-pressed="true">Vägarna in</button>
+      <button data-view="mall" aria-pressed="false">Mallen</button>
+      <button data-view="import" aria-pressed="false">Importen</button>
+    </div>
+
+    <!-- 1 · VÄGARNA IN ---------------------------------------------------- -->
+    <div class="body" data-pane="vagar">
+      <div class="ways">
+        <div class="way">
+          <header>
+            <b>Börja skriva reglerna</b>
+            <span>En sida med ett avsnitt. Boken har en rubrik från första sekunden, för
+              innehållsförteckningen och för B7:s krav att boken har avsnitt — men ingen
+              disposition är pålagd.</span>
+          </header>
+          <div class="mini">
+            <h4>Sal's Saloon</h4>
+            <hr>
+            <h4>Översikt</h4>
+            <p class="ask">Vad handlar spelet om, i två meningar?</p>
+          </div>
+        </div>
+        <div class="way">
+          <header>
+            <b>Börja från en mall</b>
+            <span>Fem avsnitt, var och ett med en fråga i stället för en tom rad.
+              Uppställningen kommer med spelets egna zoner redan i sig (B5).</span>
+          </header>
+          <div class="mini">
+            <h4>Sal's Saloon</h4>
+            <hr>
+            <h4>Översikt</h4>
+            <p class="ask">Vad handlar spelet om, i två meningar?</p>
+            <h4>Uppställning</h4>
+            <p class="ask">Vad ligger var när ni börjar?</p>
+            <h4>En tur</h4>
+            <p class="ask">Vad gör man först? Och sedan?</p>
+            <h4>Handlingar</h4>
+            <p class="ask">Vad får man göra, och vad kostar det?</p>
+            <h4>Spelet tar slut</h4>
+            <p class="ask">När tar det slut, och vem har vunnit?</p>
+          </div>
+        </div>
+        <div class="way">
+          <header>
+            <b>Importera från fil</b>
+            <span>En Markdown-fil blir boken. Vad filen innehöll som boken inte kan bära
+              sägs innan importen görs, aldrig efteråt.</span>
+          </header>
+          <div class="mini">
+            <h4>regler-v3.md</h4>
+            <p>12 kB · Markdown</p>
+            <hr>
+            <p><b style="color:#fff">14 block</b> blir boken:<br>
+              5 rubriker, 6 stycken, 2 listor, 1 tabell som text.</p>
+            <p style="color:var(--warn);margin-top:8px">2 bilder ströks. 4 länkar blev sin egen text.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="pair" style="margin-top:24px">
+        <div class="why">
+          <h3>Vad de tre har gemensamt</h3>
+          <p>Ingen av dem lämnar en tom sida. Var och en producerar en bok med minst ett
+            avsnitt, så innehållsförteckningen finns från första sekunden och tomt och skrivet
+            läge är samma yta.</p>
+          <p>Alla tre är ett steg tillbaka (B4, L14): den som valde fel mall eller fel fil
+            trycker Ctrl+Z och står i tomläget igen.</p>
+        </div>
+        <div class="why">
+          <h3>Frågan att svara på</h3>
+          <p><b>Ska importen också gå att nå när boken är skriven?</b></p>
+          <p>Mitt förslag är <b>nej</b>: de tre vägarna står på tomläget och ingen annanstans.
+            En import över en skriven bok måste antingen slå ihop eller skriva över, och att
+            skriva över en färdig regelbok bakom en knapp är inte något ett steg tillbaka ska
+            behöva rädda. Den som vill importera över en bok tar bort boken först och gör det
+            till en sak hon gjorde med avsikt.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2 · MALLEN -------------------------------------------------------- -->
+    <div class="body" data-pane="mall" hidden>
+      <div class="pair">
+        <div class="book">
+          <div class="toc">
+            <h3>Innehåll</h3>
+            <a href="#" aria-current="true">Översikt</a>
+            <a href="#">Uppställning</a>
+            <a href="#">En tur</a>
+            <a href="#">Handlingar</a>
+            <a href="#">Spelet tar slut</a>
+          </div>
+          <div class="sheet">
+            <h2>Sal's Saloon</h2>
+
+            <h3>Översikt</h3>
+            <p class="ask">Vad handlar spelet om, i två meningar? Hur många spelar, och hur länge?</p>
+
+            <h3>Uppställning</h3>
+            <div class="setup">
+              <i>Draghög</i><i>Kasthög</i><i>Bordet</i><i>Hand · Ada</i><i>Hand · Bo</i><i>Guld</i>
+            </div>
+            <p class="cap ask">Så ställs bordet upp.</p>
+            <p class="ask">Vad ligger var när ni börjar, och vad får var och en på hand?</p>
+
+            <h3>En tur</h3>
+            <ol>
+              <li class="ask">Vad gör man först?</li>
+              <li class="ask">Och sedan?</li>
+            </ol>
+
+            <h3>Handlingar</h3>
+            <p class="ask">Vad får man göra på sin tur, och vad kostar det?</p>
+
+            <h3>Spelet tar slut</h3>
+            <p class="ask">När tar spelet slut, och vem har vunnit?</p>
+          </div>
+        </div>
+
+        <div>
+          <div class="why" style="margin-bottom:16px">
+            <h3>Fem avsnitt, och varför just de</h3>
+            <p>De svarar på de fem frågor en spelare ställer, i den ordningen hon ställer dem:
+              <b>vad är det här &middot; hur börjar vi &middot; vad gör jag nu &middot; vad får jag
+              göra &middot; när är vi klara</b>. En regelbok som inte svarar på alla fem är inte
+              spelbar utan designern i rummet, vilket är hela skälet till att boken finns (B7).</p>
+            <p>Varje avsnitt har en <b>fråga</b> i stället för en tom rad. En fråga är lättare att
+              svara på än en rubrik att stirra på, och den försvinner vid första tecknet precis som
+              ”Ny text.” gör i dag.</p>
+            <p><b>Uppställningen kommer med bilden i sig.</b> Den är spelets egna zoner (B5) och inte
+              en teckning bredvid dem, så den är rätt från början och behöver aldrig ritas.</p>
+          </div>
+          <div class="why">
+            <h3>Två namn skiljer sig från variant C</h3>
+            <p><b>”En tur” i stället för ”Turordning”.</b> Avsnittet svarar på vad en tur innehåller,
+              inte i vilken ordning spelarna går — turordningen är en mening inuti det avsnittet.
+              Det är också namnet dagens <code>startingRules</code> redan använder.</p>
+            <p><b>”Spelet tar slut” i stället för ”Vinstvillkor”.</b> Ett spel kan ta slut utan att
+              någon vinner, och rubriken ska kunna bära det. Den är dessutom läsarens fråga och inte
+              speldesignerns term — resten av rubrikerna är det också.</p>
+            <p>Ett avsnitt går att ta bort utan att först skriva i det, och plusknappen lägger till
+              ett eget. Mallen är ett förslag och inte en form.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3 · IMPORTEN ------------------------------------------------------ -->
+    <div class="body" data-pane="import" hidden>
+      <div class="imp">
+        <div>
+          <div class="why" style="margin-bottom:16px">
+            <h3>regler-v3.md, som den ser ut</h3>
+          </div>
+          <div class="src"># Sal's Saloon
+
+Ett spel om att bluffa vid ett bord där alla ser lika mycket.
+2–5 spelare, ungefär 30 minuter.
+
+## Uppställning
+
+Blanda leken och lägg den i [[zon:draw]].
+
+| Spelare | Startguld |
+| ------- | --------- |
+| 2       | 7         |
+| 3–5     | 5         |
+
+![Bordet från ovan](bordet.png)
+
+## En tur
+
+1. Dra ett kort ur **draghögen**.
+2. Spela ett kort, eller passa.
+
+Se [reglerna på webben](https://example.com/regler) för varianter.
+
+### Att passa
+
+Den som passar tar ett guld.
+
+```
+draghög tom -> blanda kasthögen
+```
+</div>
+        </div>
+
+        <div>
+          <div class="report">
+            <h3>Vad importen gör med filen</h3>
+            <ul>
+              <li><b>5</b> rubriker blir avsnitt</li>
+              <li><b>6</b> stycken blir text</li>
+              <li><b>2</b> listor blir listor</li>
+              <li data-kind="drop"><b>1</b> tabell blir text, en rad per rad</li>
+              <li data-kind="drop"><b>1</b> kodblock blir text, ordagrant</li>
+              <li data-kind="drop"><b>1</b> länk blir sin egen text; adressen stryks</li>
+              <li data-kind="drop"><b>1</b> bild stryks — boken har bara en bild, och det är uppställningen</li>
+              <li data-kind="drop"><b>1</b> rubriknivå djupare än två viks upp till underrubrik</li>
+            </ul>
+            <p style="margin:0 0 16px;color:var(--quiet-2);line-height:1.6;font-size:12px">
+              <b style="color:#fff">[[zon:draw]]</b> känns igen och pekar på Draghögen.
+              En referens till något spelet inte har visas som det som skrevs, markerad — precis
+              som den redan gör i en bok man skrivit själv.</p>
+            <div class="row">
+              <button class="btn primary">Gör boken</button>
+              <button class="btn quiet">Avbryt</button>
+            </div>
+          </div>
+
+          <div class="why">
+            <h3>Hela kartan</h3>
+            <table class="map">
+              <thead><tr><th>I filen</th><th>I boken</th></tr></thead>
+              <tbody>
+                <tr><td># Rubrik</td><td>rubrik, nivå 1</td></tr>
+                <tr><td>## Rubrik</td><td>rubrik, nivå 2</td></tr>
+                <tr><td>### och djupare</td><td>rubrik, nivå 2 — boken har två nivåer, och att vika ihop sägs i rapporten</td></tr>
+                <tr><td>stycke</td><td>text, med <b>fet</b> och <i>kursiv</i> kvar</td></tr>
+                <tr><td>- · *</td><td>lista</td></tr>
+                <tr><td>1.</td><td>numrerad lista</td></tr>
+                <tr><td>&gt; citat</td><td>text; markören stryks</td></tr>
+                <tr><td>| tabell |</td><td>text, en rad per rad</td></tr>
+                <tr><td>``` kod ```</td><td>text, ordagrant</td></tr>
+                <tr><td>[text](adress)</td><td>text; adressen stryks</td></tr>
+                <tr><td>![bild](fil)</td><td>stryks</td></tr>
+                <tr><td>---</td><td>stryks</td></tr>
+                <tr><td>[[zon:x]] [[kort:y]]</td><td>referens, som i en bok man skrivit själv</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="pair" style="margin-top:24px">
+        <div class="why">
+          <h3>Regeln bakom kartan</h3>
+          <p><b>Ingenting försvinner tyst.</b> Det som inte kan bli ett block blir vanlig text, och
+            det som verkligen stryks räknas upp innan importen görs — inte efteråt, och inte i en
+            logg. Rapporten är det sista man ser före boken.</p>
+          <p><b>Ingenting en fil innehåller når renderaren som markup.</b> Häftet escapar redan varje
+            sträng en designer skrivit (B7); en importerad fil är samma sak och inget mer.</p>
+          <p>Filen läses som UTF-8. Innehållsspråket är obundet (A4), så en bok på japanska
+            importeras som en bok på japanska.</p>
+        </div>
+        <div class="why">
+          <h3>Varför bilder stryks och länkar tappar adressen</h3>
+          <p>Boken har fyra sorters block, och en bild är inget av dem. Den enda bild boken ritar är
+            uppställningen, och den är spelets egna zoner (B5) — inte en fil. Att ta in en bild vore
+            att lägga till ett blockslag i protokollet, vilket är ett eget beslut och inte något en
+            import får smyga in.</p>
+          <p>Adressen stryks för att boken läses på tre ställen där den inte går att trycka på: vid
+            bordet, på telefonen och i det tryckta häftet i A5. En understruken adress ingen kan
+            följa är buller i alla tre.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const panes = [...document.querySelectorAll('[data-pane]')]
+  for (const button of document.querySelectorAll('.crown button')) {
+    button.addEventListener('click', () => {
+      for (const other of document.querySelectorAll('.crown button')) other.setAttribute('aria-pressed', String(other === button))
+      for (const pane of panes) pane.hidden = pane.dataset.pane !== button.dataset.view
+    })
+  }
+</script>
+</body>
+</html>
