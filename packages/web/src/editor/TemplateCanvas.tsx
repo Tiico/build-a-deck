@@ -13,6 +13,7 @@ import { NewField } from './NewField.js'
 import { isTyping } from './keys.js'
 import { cardsInGroup, groupColumn, groupsOf, idsOnFace, layersOf, overriddenIds, ruleLabel, valuesIn, type Layer } from './groups.js'
 import { LayerList, layerName } from './LayerList.js'
+import { foldedProps, rememberFoldedProps } from './panes.js'
 import { Question } from './Question.js'
 import type { CanvasStage } from './EditorStages.js'
 import { useRoving } from './roving.js'
@@ -162,6 +163,15 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // is asked for, and it never rounds an element to itself — the guides and the arrow keys are
   // what place things, and a 1 mm grid would take the half millimetre away.
   const [grid, setGrid] = useState(false)
+  // Whether the properties are folded away (#129). By hand and only by hand: a column that folds
+  // itself when nothing is selected changes the card's width every time the designer clicks beside
+  // an element, and the card moves under the pointer that is working on it. It is a view of this
+  // desk and not of the game, so it is remembered in the browser and never in the document.
+  const [folded, setFolded] = useState(foldedProps)
+  const fold = (away: boolean) => {
+    setFolded(away)
+    rememberFoldedProps(away)
+  }
   if (!faceTemplate) return <p>{t('template.faceMissing', { face })}</p>
   const overridden = group ? overriddenIds(faceTemplate, group) : new Set<string>()
   const fields = fieldsOf(doc)
@@ -181,47 +191,14 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // twice and nothing a tab does not point at is left in the tab order.
   const shows = (which: CanvasStage) => stage === null || stage === which
   return (
-    <div className="byd-canvas" {...(stage ? { 'data-stage': stage } : {})}>
-      {shows('tools') && <ToolRail onAdd={add} onPlaceIcon={onPlaceIcon} />}
-      {shows('layers') && (
-      <aside className="byd-canvas-layers">
-        {/* The ready-made backs (L17) stand in the open while the back is being edited, above the
-            layers that make it up, rather than behind a button: whoever lands on an empty back
-            should see the way on without hunting for it. Not inside a group — a group's back is
-            an override of the base's (#14), and laying a whole face down there would quietly
-            make every layer of it the group's own. */}
-        {face === 'back' && !group && <BackGallery onReplaceFace={onReplaceFace} />}
-        <h2 id="layers-heading">{t('canvas.layers', { face: faceName(face, t).toLowerCase() })}</h2>
-        <p className="byd-canvas-affects">{affectsLabel(doc, column, group, t)}</p>
-        <LayerList
-          layers={[...panel].reverse().map((l) => l.element)}
-          selected={selectedElement}
-          onSelect={onSelectElement}
-          // The list reads top-most first; the base list is drawn back to front. One is the other
-          // turned around, and that is the only place the two orders meet.
-          // The order is the base's, shared by every group, so it is only moved from the base.
-          {...(group ? {} : { onReorder: (id: string, to: number) => onReorder(id, faceTemplate.base.length - 1 - to) })}
-          onLock={(id, locked) => {
-            setRefused(null)
-            onLock(id, locked)
-          }}
-          onRename={onRename}
-          markOf={(id) => markOf(panel, column, group, id, t)}
-          removed={new Set(panel.filter((l) => l.source === 'removed').map((l) => l.element.id))}
-          labelledBy="layers-heading"
-        />
-        <label className="byd-canvas-grid-toggle">
-          <input type="checkbox" checked={grid} onChange={(event) => setGrid(event.target.checked)} />
-          {t('canvas.grid')}
-        </label>
-        <p className="byd-canvas-hint">
-          {t(group ? 'canvas.hint.group' : 'canvas.hint.base')}
-        </p>
-        {column && <GroupRules doc={doc} column={column} groups={groups} />}
-      </aside>
-      )}
+    <div className="byd-canvas" {...(stage ? { 'data-stage': stage } : folded ? { 'data-folded': 'props' } : {})}>
+      {/* The crown over the whole desk and not over the card alone (#129): which column makes the
+          groups, which group is open, whether the properties are folded away, and which face is
+          being edited. It spans the four columns because that is the only place its four controls
+          fit on one line at 1024 — and one line is the point, since every row the crown takes is a
+          row the card never gets back. Below the desk it belongs to the canvas stage, which is the
+          only stage any of it is about. */}
       {shows('canvas') && (
-      <div className="byd-canvas-main">
         <div className="byd-canvas-strip">
           <label className="byd-canvas-group-column">
             {t('canvas.groupBy')}
@@ -234,17 +211,65 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
               ))}
             </select>
           </label>
-          {column && <GroupTabs column={column} groups={groups} group={group} onSelect={onSelectGroup} />}
-          {/* The strip is two rows at every width: the group tabs are the one thing in it that
-              can run out of room, and they scroll, so the front/back switch keeps its own right
-              edge instead of being pushed past it (#13). */}
+          {column && <GroupMenu doc={doc} column={column} groups={groups} group={group} onSelect={onSelectGroup} />}
+          {stage === null && <FoldProps folded={folded} onFold={fold} />}
           <FaceSwitch faces={Object.keys(doc.template.faces)} face={face} onSelect={onSelectFace} />
         </div>
+      )}
+      {shows('tools') && <ToolRail onAdd={add} onPlaceIcon={onPlaceIcon} />}
+      {shows('layers') && (
+      <aside className="byd-canvas-layers">
+        {/* The column is a frame and not a scroller (#129): a crown that says which face is being
+            listed and how many cards the panel is about, the list itself, and a foot with the line
+            about dragging. All three used to scroll together — at 1024 the list ran 751 px past the
+            bottom of the column and took its own heading with it, so the panel a designer was
+            reading the end of had nothing left on it saying what she was reading. */}
+        <div className="byd-canvas-crown">
+          <h2 id="layers-heading">{t('canvas.layers', { face: faceName(face, t).toLowerCase() })}</h2>
+          <p className="byd-canvas-affects">{affectsLabel(doc, column, group, t)}</p>
+        </div>
+        <div className="byd-canvas-scroll">
+          {/* The ready-made backs (L17) stand in the open while the back is being edited, above the
+              layers that make it up, rather than behind a button: whoever lands on an empty back
+              should see the way on without hunting for it. Not inside a group — a group's back is
+              an override of the base's (#14), and laying a whole face down there would quietly
+              make every layer of it the group's own. */}
+          {face === 'back' && !group && <BackGallery onReplaceFace={onReplaceFace} />}
+          <LayerList
+            layers={[...panel].reverse().map((l) => l.element)}
+            selected={selectedElement}
+            onSelect={onSelectElement}
+            // The list reads top-most first; the base list is drawn back to front. One is the other
+            // turned around, and that is the only place the two orders meet.
+            // The order is the base's, shared by every group, so it is only moved from the base.
+            {...(group ? {} : { onReorder: (id: string, to: number) => onReorder(id, faceTemplate.base.length - 1 - to) })}
+            onLock={(id, locked) => {
+              setRefused(null)
+              onLock(id, locked)
+            }}
+            onRename={onRename}
+            markOf={(id) => markOf(panel, column, group, id, t)}
+            removed={new Set(panel.filter((l) => l.source === 'removed').map((l) => l.element.id))}
+            labelledBy="layers-heading"
+          />
+          <label className="byd-canvas-grid-toggle">
+            <input type="checkbox" checked={grid} onChange={(event) => setGrid(event.target.checked)} />
+            {t('canvas.grid')}
+          </label>
+          {column && <GroupRules doc={doc} column={column} groups={groups} />}
+        </div>
+        <p className="byd-canvas-hint">
+          {t(group ? 'canvas.hint.group' : 'canvas.hint.base')}
+        </p>
+      </aside>
+      )}
+      {shows('canvas') && (
+      <div className="byd-canvas-main">
         <main
           className="byd-canvas-stage"
           ref={stageEl}
           onClick={() => onSelectElement(null)}
-          {...(column ? { role: 'tabpanel', id: GROUP_PANEL, 'aria-labelledby': groupTabId(group) } : {})}
+          {...(column ? { id: GROUP_PANEL, 'aria-labelledby': GROUP_BUTTON } : {})}
         >
           <CardPreview
             id="canvas"
@@ -289,8 +314,8 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
         )}
       </div>
       )}
-      {shows('props') && (
-      <aside className="byd-canvas-props">
+      {shows('props') && !(stage === null && folded) && (
+      <aside className="byd-canvas-props" id={PROPS_COLUMN}>
         <h2>{layer ? t('canvas.props.of', { id: layer.element.id }) : t('canvas.props')}</h2>
         {layer?.source === 'removed' && <p className="byd-canvas-affects">{t('canvas.removedIn', { rule: ruleLabel(column ?? '', group ?? '') })}</p>}
         {/* A panel with nothing in it says why rather than looking broken — and on a small screen
@@ -528,40 +553,118 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
   )
 }
 
-// The groups on the canvas (#13, variant A): the base every card inherits, then one tab per
-// value the grouping column carries. A tab is a rule, never a bag of cards — which is why the
-// tab says `typ = fälla` and not "fällorna".
+// The groups on the canvas (#13, #129): the base every card inherits, then one entry per value the
+// grouping column carries. An entry is a rule, never a bag of cards — which is why it says
+// `typ = fälla` and not "fällorna" — and it carries the count of cards that rule is about.
+//
+// A menu in the crown rather than a row of tabs (variant C, as decided). The row was 1076 px of
+// tabs in a 420 px strip at 1024: 61 % of the groups were behind a side scroll nothing pointed at.
+// Wrapping the row showed all of them and charged the card three rows of height for eleven buttons
+// that are pressed once an hour, and the charge grew with the deck — a designer with twenty groups
+// paid the most. The button is one row whatever the deck is, and it is the only shape that says
+// which group is open *and* how many cards that is without opening anything.
 const GROUP_PANEL = 'byd-canvas-group-panel'
-const groupTabId = (group: string | null) => `byd-group-tab-${group ?? 'bas'}`
+const GROUP_BUTTON = 'byd-canvas-group-button'
+const GROUP_MENU = 'byd-canvas-group-menu'
+const groupItemId = (group: string | null) => `byd-group-item-${group ?? 'bas'}`
 
-function GroupTabs({ column, groups, group, onSelect }: { column: string; groups: string[]; group: string | null; onSelect(group: string | null): void }) {
+function GroupMenu({ doc, column, groups, group, onSelect }: { doc: ProjectDoc; column: string; groups: string[]; group: string | null; onSelect(group: string | null): void }) {
   const t = useT()
+  const [open, setOpen] = useState(false)
+  const button = useRef<HTMLButtonElement | null>(null)
+  // The base is one of the choices and is not one of the groups, so it travels as the empty string
+  // — the same stand-in the tabs used, and the same one `onSelect` turns back into nothing.
   const ids = ['', ...groups]
-  const { itemProps } = useRoving({ ids, selected: group ?? '', orientation: 'horizontal' })
+  const { itemProps, focus } = useRoving({ ids, selected: group ?? '', orientation: 'vertical' })
+  // The keys land on the group that is open the moment the menu is, so the first arrow moves from
+  // where the designer already is rather than from the top of a list of eleven. On opening and not
+  // on every render: the menu must not take the focus back from what the designer does inside it.
+  useEffect(() => {
+    if (open) focus(group ?? '')
+  }, [open])
+  // The way out, and back to the button the menu was opened from: closing unmounts whatever had
+  // the focus, so without this a keyboard that opened the menu is dropped on `<body>`.
+  const close = () => {
+    setOpen(false)
+    button.current?.focus()
+  }
+  const pick = (g: string) => {
+    setOpen(false)
+    button.current?.focus()
+    onSelect(g === '' ? null : g)
+  }
+  const label = (g: string) => (g === '' ? t('canvas.group.base') : ruleLabel(column, g))
+  const cards = (g: string) => (g === '' ? doc.rows.length : cardsInGroup(doc, g).length)
+  // What the button says: the open group and how many cards it is about, which is the whole of
+  // what the row of tabs used to say and could not fit.
+  const says = `${label(group ?? '')} · ${cardsLabel(cards(group ?? ''), t)}`
   return (
-    <div className="byd-canvas-groups" role="tablist" aria-label={t('canvas.groups')}>
-      {ids.map((g) => (
-        <button
-          key={g}
-          id={groupTabId(g === '' ? null : g)}
-          className="byd-choice"
-          role="tab"
-          type="button"
-          aria-selected={(group ?? '') === g ? 'true' : 'false'}
-          aria-controls={GROUP_PANEL}
-          onClick={() => onSelect(g === '' ? null : g)}
-          {...itemProps(g)}
+    <div
+      className="byd-canvas-group"
+      // The focus gone out of the crown takes the menu with it: a list of groups hanging over the
+      // card nobody is on is a list about nothing.
+      onBlur={(event) => {
+        if (open && !event.currentTarget.contains(event.relatedTarget)) setOpen(false)
+      }}
+    >
+      <button
+        id={GROUP_BUTTON}
+        ref={button}
+        className="byd-canvas-group-open"
+        type="button"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        {...(open ? { 'aria-controls': GROUP_MENU } : {})}
+        // The name says what the button is for as well as what it stands on: "Kortgrupper" and
+        // then the open group, so a reader who arrives on it hears the question and the answer.
+        aria-label={t('canvas.group.menu', { group: says })}
+        onClick={() => setOpen((was) => !was)}
+      >
+        {says}
+        <span aria-hidden="true">▾</span>
+      </button>
+      {open && (
+        <div
+          id={GROUP_MENU}
+          className="byd-canvas-groups"
+          role="menu"
+          aria-label={t('canvas.groups')}
+          onKeyDown={(event) => {
+            if (event.key !== 'Escape' || event.defaultPrevented) return
+            event.preventDefault()
+            close()
+          }}
         >
-          {g === '' ? t('canvas.group.base') : ruleLabel(column, g)}
-        </button>
-      ))}
+          {ids.map((g) => (
+            <button key={g} id={groupItemId(g === '' ? null : g)} className="byd-choice" role="menuitemradio" type="button" aria-checked={(group ?? '') === g ? 'true' : 'false'} onClick={() => pick(g)} {...itemProps(g)}>
+              {label(g)}
+              <small>{cardsLabel(cards(g), t)}</small>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
+  )
+}
+
+// The properties folded away, and back (#129, variant A). At 1024 the column held its 280 px
+// whether or not anything was selected, and the card was left 456 px of a 1024 px desk; folded it
+// is 736. A disclosure and not a toggle: what the button governs is a column that is there or is
+// not, and it says which of the two the press will make it.
+const PROPS_COLUMN = 'byd-canvas-props-column'
+
+function FoldProps({ folded, onFold }: { folded: boolean; onFold(away: boolean): void }) {
+  const t = useT()
+  return (
+    <button className="byd-canvas-fold" type="button" aria-expanded={!folded} aria-controls={PROPS_COLUMN} onClick={() => onFold(!folded)}>
+      {t(folded ? 'canvas.props.show' : 'canvas.props.fold')}
+    </button>
   )
 }
 
 // Variant B's rule list, kept as the summary beside the canvas: every group as its rule, how many
 // cards it is about, and what it changes against the base on each face. Reading, not editing —
-// the editing is the tabs and the card.
+// the editing is the crown's menu and the card.
 function GroupRules({ doc, column, groups }: { doc: ProjectDoc; column: string; groups: string[] }) {
   const t = useT()
   return (

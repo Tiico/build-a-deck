@@ -197,7 +197,9 @@ describe('the tool rail by keyboard (#18, UX-04)', () => {
     expect(tools.map((t) => t.textContent)).toEqual(['TText', '▣Bild', '●Ikon', '●●Ikonrad', '◻Form'])
     expect(tools.map((t) => t.getAttribute('tabindex'))).toEqual(['0', '-1', '-1', '-1', '-1'])
 
-    await user.tab()
+    // Past the crown, which is three stops since #129 — the column that makes the groups, the fold
+    // over the properties and the face switch — and then the rail.
+    for (let i = 0; i < 4; i++) await user.tab()
     expect(document.activeElement).toBe(tools[0])
     await user.keyboard('{ArrowDown}')
     expect(document.activeElement).toBe(tools[1])

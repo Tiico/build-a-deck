@@ -606,36 +606,99 @@
   /* The middle column may be as narrow as the room allows: an `1fr` that refuses to shrink under
      its own content is what made the whole editor 893 px wide whatever the window was (#5). */
   grid-template-columns: 68px 220px minmax(0, 1fr) 280px;
+  /* The crown across the top, then the four columns under it (#129). Both rows are named here and
+     every child is placed by hand, because a stage below the desk brings only one of them: an
+     implicit row would give that single panel the crown's `auto` height and fold the tab shut. */
+  grid-template-rows: auto minmax(0, 1fr);
 }
+.byd-canvas > .byd-canvas-tools, .byd-canvas > .byd-canvas-layers, .byd-canvas > .byd-canvas-main, .byd-canvas > .byd-canvas-props { grid-row: 2; }
+/* The properties folded away (#129): the column is not drawn, so its 280 px are the card's. At
+   1024 that is the difference between 456 px of desk and 736. */
+.byd-canvas[data-folded='props'] { grid-template-columns: 68px 220px minmax(0, 1fr); }
 /* Below the desk the four panels are four stages, one at a time (L10): the open one takes the
    whole width, and the borders that divided the columns have nothing left to divide. */
 .byd-canvas[data-stage] { grid-template-columns: minmax(0, 1fr); }
 .byd-canvas[data-stage] > .byd-canvas-tools { flex-direction: row; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid #2f333d; }
 .byd-canvas[data-stage] > .byd-canvas-layers { border-right: 0; }
 .byd-canvas[data-stage] > .byd-canvas-props { border-left: 0; }
-/* The card and the strip that says what is on it share a column: the strip is a fixed row over a
-   stage that takes what is left. */
-.byd-canvas-main { display: grid; grid-template-rows: auto 1fr; min-height: 0; }
-/* The strip over the card (#13): two rows at every width. What is being edited and which side of
-   it is being edited share the first row, and the group tabs — the one thing here that can run
-   out of room — take the second and scroll inside it. That way the front/back switch keeps its
-   own right edge instead of being pushed past the screen. */
+/* The card and the question asked under it share a column: the stage takes what is left, and the
+   question — which is not up most of the time — takes only the height its words need. */
+.byd-canvas-main { display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; }
+/* The crown over the desk (#13, #129): one row, at every width and on every deck. Which column
+   makes the groups, which group is open, whether the properties are folded away, and which face is
+   being edited — four controls, and the last of them keeps its own right edge. It is a row and not
+   a grid of rows because height here is height the card does not get: the groups as a wrapping
+   strip charged it 265 px at 1024 on a deck with eleven of them, and would have charged more for
+   the twelfth. */
 .byd-canvas-strip {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-column: 1 / -1;
+  grid-row: 1;
+  display: flex;
   align-items: center;
-  gap: 8px 10px;
-  padding: 8px 12px;
+  gap: var(--byd-s2);
+  padding: var(--byd-s2) var(--byd-s3);
   background: var(--byd-editor-strip-bg);
   border-bottom: 1px solid #2f333d;
 }
 .byd-canvas-group-column { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 11px; color: var(--byd-editor-hint-ink); }
 .byd-canvas-group-column select { min-width: 0; background: #0f1115; border: 1px solid #2a2d36; color: #dce3f2; border-radius: 6px; padding: 4px; font-size: 12px; }
-.byd-canvas-groups, .byd-canvas-faces { display: flex; gap: 4px; }
-.byd-canvas-groups { grid-column: 1 / -1; grid-row: 2; overflow-x: auto; scrollbar-width: thin; padding: 0; }
-.byd-canvas-groups button { flex: 0 0 auto; white-space: nowrap; }
-.byd-canvas-faces { justify-self: end; flex: 0 0 auto; }
+/* The groups as a menu in the crown, and the button that opens it. The button carries the open
+   group and its count — the two things the old row of tabs said only by being long enough to hide
+   61 % of itself — and the list behind it carries every group at once, so nothing is out of sight
+   and nothing is cut through its own word. */
+.byd-canvas-group { position: relative; display: flex; min-width: 0; }
+.byd-canvas-group-open, .byd-canvas-fold {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--byd-tap);
+  border: 1px solid #2f333d;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--byd-editor-strip-ink);
+  font: inherit;
+  font-size: 12px;
+  padding: 0 var(--byd-s3);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.byd-canvas-group-open { font-weight: 700; color: #e6ecfa; }
+.byd-canvas-group-open:hover, .byd-canvas-fold:hover { border-color: var(--byd-editor-primary-mark); }
+/* The fold sits where the column it folds is: at the right of the crown, over the properties. */
+.byd-canvas-fold { margin-left: auto; }
+.byd-canvas-groups {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 4px);
+  left: 0;
+  /* Shrink-to-fit would be the button's own width — an absolute box is measured against the box it
+     hangs off — and eleven rules one under another is a column of a list that has room to be three
+     across. It asks for what it needs and is held to 520, which is narrower than the narrowest
+     desk's card column. */
+  width: max-content;
+  min-width: 100%;
+  max-width: 520px;
+  max-height: 50vh;
+  overflow: auto;
+  scrollbar-width: thin;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: var(--byd-s2);
+  border-radius: 10px;
+  background: var(--byd-editor-panel-bg);
+  border: 1px solid #3b4358;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+.byd-canvas-groups button { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; min-height: var(--byd-tap); white-space: nowrap; }
+/* How many cards the rule is about, said on the rule itself and quieter than it. */
+.byd-canvas-groups small { color: var(--byd-editor-hint-ink); font-size: 11px; }
+.byd-canvas-faces { display: flex; gap: 4px; flex: 0 0 auto; }
 .byd-canvas-groups button, .byd-canvas-faces button {
+  /* A target in the crown is a target like any other (UX-KONTROLLER: träffytor). The face switch
+     was 26 px high because a 12 px word is 26 px high, which is what a control is when nobody has
+     said what it should be — and it is the row's own height that is at stake here, so it is said. */
+  min-height: var(--byd-tap);
   border: 1px solid #2f333d;
   border-radius: 999px;
   background: transparent;
@@ -694,7 +757,16 @@
 .byd-canvas-grid-toggle { display: flex; align-items: center; gap: 7px; color: var(--byd-editor-hint-ink); font-size: 12px; margin-top: 12px; cursor: pointer; }
 .byd-canvas-hint { color: var(--byd-editor-hint-ink); font-size: 11px; line-height: 1.4; margin: 8px 0 0; }
 .byd-canvas h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--byd-editor-hint-ink); margin: 0 0 8px; }
-.byd-canvas-layers { border-right: 1px solid #2f333d; padding: var(--byd-s3); overflow: auto; }
+/* The layer column as a frame (#129): a crown, the list, a foot. Only the list moves — the panel's
+   own heading, the count of cards it is about and the line about dragging are what a designer needs
+   most at the end of a long list, and that is exactly where they used to have scrolled away to. */
+.byd-canvas-layers { border-right: 1px solid #2f333d; padding: var(--byd-s3); overflow: hidden; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-height: 0; }
+.byd-canvas-scroll { min-height: 0; overflow: auto; scrollbar-width: thin; }
+/* The crown and the foot are the frame, and each is told from the list by a line of its own — the
+   same line the four columns are divided by, so the panel is divided the way the desk is. */
+.byd-canvas-crown { border-bottom: 1px solid #2f333d; padding-bottom: var(--byd-s2); }
+.byd-canvas-crown > :last-child { margin-bottom: 0; }
+.byd-canvas-layers > .byd-canvas-hint { border-top: 1px solid #2f333d; padding-top: var(--byd-s2); }
 /* The layers as a grid (L15): a row per layer, the lock in a column of its own on the left and
    the layer itself taking what is left. Both cells are controls, so both are 44 high — which is
    the row's height, and the tightest a row in this panel can honestly be. */

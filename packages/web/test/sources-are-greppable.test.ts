@@ -25,7 +25,12 @@ const isControl = (code: number) => (code < 0x20 || code === 0x7f) && !ALLOWED.h
 function sourcesUnder(dir: string): string[] {
   const out: string[] = []
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    if (entry.name === 'node_modules' || entry.name === 'dist' || entry.name.startsWith('.')) continue
+    // Nothing built, and nothing hidden. `dist` is the one every package writes; `dist-felt-font-test`
+    // is the one `felt-font.test.ts` compiles the live sources into while this very run is going on,
+    // and it empties it again when it is done — so a walk that goes in there is reading files that
+    // are being deleted under it, and this guard failed with an ENOENT on a stylesheet Vite had
+    // just written. A build output is not a source and nobody greps one.
+    if (entry.name === 'node_modules' || entry.name === 'dist' || entry.name.startsWith('dist-') || entry.name.startsWith('.')) continue
     const path = join(dir, entry.name)
     if (entry.isDirectory()) out.push(...sourcesUnder(path))
     else if (SOURCE.test(entry.name)) out.push(path)

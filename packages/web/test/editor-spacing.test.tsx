@@ -149,8 +149,19 @@ describe(`the edge the editor frames a tab panel with, at ${WIDTH}px`, () => {
               probe.remove()
               const root = document.querySelector<HTMLElement>(`#${panel} > *`)!
               // A column of the splitter is one that scrolls its own work: the two panels beside
-              // the card. The rail of tools and the card itself are not panels and carry no edge.
-              const columns = [...root.children].filter((el): el is HTMLElement => getComputedStyle(el).overflow === 'auto')
+              // the card. The rail of tools, the crown over the desk and the card itself are not
+              // panels and carry no edge.
+              //
+              // One of the two scrolls in its own box. The other is a frame since #129 — a crown
+              // saying which face is listed and how many cards the panel is about, the list, and a
+              // foot — so it keeps its own box shut and scrolls one step inside it. The column that
+              // holds the card does neither: it lets its stage scroll while staying `visible`
+              // itself, which is what tells the two apart.
+              const column = (el: Element) => {
+                const own = getComputedStyle(el).overflow
+                return own === 'auto' || (own === 'hidden' && [...el.children].some((inner) => getComputedStyle(inner).overflow === 'auto'))
+              }
+              const columns = [...root.children].filter((el): el is HTMLElement => column(el))
               return {
                 root: getComputedStyle(root).padding,
                 columns: columns.length,

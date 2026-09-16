@@ -227,6 +227,10 @@ export const enEditor = {
   'canvas.groupBy': 'Grouped by the column',
   'canvas.groupBy.none': '— none —',
   'canvas.groups': 'Card groups',
+  // The crown's own button (#129): what it is for, then the group standing on it and how many
+  // cards that is. What it says out loud, so that a reader arriving on it hears the question as
+  // well as the answer.
+  'canvas.group.menu': 'Card groups: {group}',
   'canvas.group.base': 'Base (all)',
   'canvas.rules': 'Groups',
   'canvas.group.inherits': 'inherits the base entirely',
@@ -248,6 +252,10 @@ export const enEditor = {
   'canvas.tool.icons': 'Icon row',
   'canvas.tool.shape': 'Shape',
   'canvas.props': 'Properties',
+  // Folding the properties away, and asking for them back (#129). The button says which of the two
+  // the press will make it, because that is what a designer is deciding when she reads it.
+  'canvas.props.fold': 'Fold the properties away',
+  'canvas.props.show': 'Show the properties',
   'canvas.props.of': 'Properties · {id}',
   'canvas.props.x': 'X (mm)',
   'canvas.props.y': 'Y (mm)',
