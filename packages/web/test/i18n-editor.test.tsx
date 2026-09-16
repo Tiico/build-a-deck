@@ -128,7 +128,7 @@ describe('the editor in the reader\'s own language (A4)', () => {
   it('says the rulebook in English before there is a rulebook', async () => {
     await openEditor()
     openTab('Rules')
-    expect(screen.getByRole('heading', { name: 'The rules belong to the game' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'The rulebook' })).toBeTruthy()
     expect(screen.getByText(/No rules yet/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Start writing the rules' })).toBeTruthy()
   })
