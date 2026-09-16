@@ -1159,6 +1159,7 @@ describe('every suite that measures a surface', () => {
       'data-table-csv-pair.test.tsx',
       'data-table-drag.test.tsx',
       'data-table-layout.test.tsx',
+      'data-table-sideways.test.tsx',
       'data-table-widths.test.tsx',
       'editor-chrome-order.test.ts',
       'editor-crown.test.tsx',
