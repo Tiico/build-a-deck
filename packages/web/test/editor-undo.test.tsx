@@ -245,6 +245,36 @@ describe('a move as one step back', () => {
     expect(saidIn('polite')).toBe('Draget avbröts')
   })
 
+  // What was waiting to come forward is waiting on the same principle (#142). The first patch of
+  // a drag empties the way forward, because a new branch is a new branch — right for a drag that
+  // is made, wrong for one that is taken back. So the designer took a change back, laid a hand on
+  // an element, changed her mind before she had moved it anywhere worth keeping, and Shift+Ctrl+Z
+  // had gone with the drag that never happened. A drag taken back is nothing that happened, and
+  // an emptied way forward is something that happened.
+  it('leaves what was waiting to come forward waiting, when the drag that emptied it is taken back', async () => {
+    const box = await openTheTemplate()
+    dragVia(box, [30, 30], [[30, 36], [30, 42]])
+    await waitFor(() => expect(target('title')!.style.top).toBe('7mm'))
+
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
+    await waitFor(() => expect(target('title')!.style.top).toBe('5mm'))
+
+    // A grab begun and taken back. Its first patch is what empties the way forward.
+    const again = target('title')!
+    fireEvent.pointerDown(again, { pointerId: 1, button: 0, clientX: 30, clientY: 30 })
+    fireEvent.pointerMove(again, { pointerId: 1, clientX: 30, clientY: 54 })
+    await waitFor(() => expect(target('title')!.style.top).toBe('9mm'))
+    fireEvent.keyDown(document, { key: 'Escape' })
+    await waitFor(() => expect(target('title')!.style.top).toBe('5mm'))
+    fireEvent.pointerUp(again, { pointerId: 1, clientX: 30, clientY: 54 })
+
+    // And the step that was taken back is still there to be put forward, and puts forward the
+    // very thing it always would have.
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true, shiftKey: true })
+    expect(await screen.findByText(/Gjorde om: en ändring i mallen/)).toBeTruthy()
+    await waitFor(() => expect(target('title')!.style.top).toBe('7mm'))
+  })
+
   it('keeps two drags two steps, and puts each back forward on its own', async () => {
     const box = await openTheTemplate()
     dragVia(box, [30, 30], [[30, 36], [30, 42]])
