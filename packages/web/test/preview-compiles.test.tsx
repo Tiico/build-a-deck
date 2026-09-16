@@ -99,7 +99,7 @@ describe('the card on the canvas is not compiled again for nothing', () => {
         row="dragon"
         selectedElement="title"
         onSelectElement={() => undefined}
-        onPatch={() => undefined}
+        onPatch={() => undefined} onCallOff={() => undefined}
         onRemove={() => undefined}
         onAdd={() => undefined}
         onPlaceIcon={() => undefined}

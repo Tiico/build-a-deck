@@ -316,8 +316,11 @@ describe('editing the template on the canvas (#18)', () => {
     const stored = await run.projects.load(run.projectId)
     expect(stored?.template.faces['front']?.base.map((e) => e.id)).toEqual(['frame', 'title', 'body', 'text-1'])
 
-    // Delete takes the selected element away, and the layer list follows.
+    // Delete asks first (#143, L9), and the answer takes the selected element away with the
+    // layer list following it.
     await user.keyboard('{Delete}')
+    expect(layers()).toEqual(['text-1', 'body', 'title', 'frame'])
+    await user.click(screen.getByRole('button', { name: 'Ja, ta bort' }))
     expect(layers()).toEqual(['body', 'title', 'frame'])
     expect(document.querySelector('[data-element="text-1"]')).toBeNull()
   }, 20_000)

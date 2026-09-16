@@ -187,8 +187,8 @@ describe('a saving that changes nothing (B4)', () => {
 // own turn on the stack, so the way back from having moved a title was thirty presses of Ctrl+Z —
 // and each one moved it a third of a millimetre, which reads as nothing happening at all.
 describe('a move as one step back', () => {
-  async function openTheTemplate() {
-    await openEditor()
+  async function openTheTemplate(opts: { live?: boolean } = {}) {
+    await openEditor(opts)
     fireEvent.click(screen.getByRole('tab', { name: 'Mall' }))
     const box = await waitFor(() => {
       const el = target('title')
@@ -211,6 +211,68 @@ describe('a move as one step back', () => {
     await waitFor(() => expect(target('title')!.style.top).toBe('5mm'))
     // And the drag was the only thing on the stack: what is behind it is the document as it loaded.
     expect(header().queryByText(/Osparat/)).toBeNull()
+  })
+
+  // A drag with a way out of it (#142). Escape is what a hand that has changed its mind reaches
+  // for in every application there is, and the canvas answered it with nothing: the element stood
+  // where the hand had dragged it, and the drag was a row in the history like any other. Measured
+  // in Chromium at 1440 x 900, an element at x 513 dragged 60 px stood at 573 when Escape was
+  // pressed and at 573 after the release.
+  it('puts the element back where the grab began when the drag is taken back with Escape', async () => {
+    const box = await openTheTemplate({ live: true })
+    expect(box.style.top).toBe('5mm')
+
+    // The hand is still down: a frame of the drag, and no release.
+    fireEvent.pointerDown(box, { pointerId: 1, button: 0, clientX: 30, clientY: 30 })
+    fireEvent.pointerMove(box, { pointerId: 1, clientX: 30, clientY: 54 })
+    await waitFor(() => expect(target('title')!.style.top).toBe('9mm'))
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+    await waitFor(() => expect(target('title')!.style.top).toBe('5mm'))
+    // And the release that follows is a release of nothing: the hand let go of a drag that was
+    // already over.
+    fireEvent.pointerUp(box, { pointerId: 1, clientX: 30, clientY: 54 })
+    expect(target('title')!.style.top).toBe('5mm')
+
+    // Nothing happened, so there is nothing to save and nothing to take back. That second half is
+    // the whole difference between this and the Ctrl+Z the editor already had: an undone drag is
+    // a row in the history, and a drag the hand took back is not one.
+    expect(header().queryByText(/Osparat/)).toBeNull()
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
+    expect(screen.queryByText(/Tog tillbaka/)).toBeNull()
+    expect(target('title')!.style.top).toBe('5mm')
+    // And it is said where the table says the same thing about a pull of its own.
+    expect(saidIn('polite')).toBe('Draget avbröts')
+  })
+
+  // What was waiting to come forward is waiting on the same principle (#142). The first patch of
+  // a drag empties the way forward, because a new branch is a new branch — right for a drag that
+  // is made, wrong for one that is taken back. So the designer took a change back, laid a hand on
+  // an element, changed her mind before she had moved it anywhere worth keeping, and Shift+Ctrl+Z
+  // had gone with the drag that never happened. A drag taken back is nothing that happened, and
+  // an emptied way forward is something that happened.
+  it('leaves what was waiting to come forward waiting, when the drag that emptied it is taken back', async () => {
+    const box = await openTheTemplate()
+    dragVia(box, [30, 30], [[30, 36], [30, 42]])
+    await waitFor(() => expect(target('title')!.style.top).toBe('7mm'))
+
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
+    await waitFor(() => expect(target('title')!.style.top).toBe('5mm'))
+
+    // A grab begun and taken back. Its first patch is what empties the way forward.
+    const again = target('title')!
+    fireEvent.pointerDown(again, { pointerId: 1, button: 0, clientX: 30, clientY: 30 })
+    fireEvent.pointerMove(again, { pointerId: 1, clientX: 30, clientY: 54 })
+    await waitFor(() => expect(target('title')!.style.top).toBe('9mm'))
+    fireEvent.keyDown(document, { key: 'Escape' })
+    await waitFor(() => expect(target('title')!.style.top).toBe('5mm'))
+    fireEvent.pointerUp(again, { pointerId: 1, clientX: 30, clientY: 54 })
+
+    // And the step that was taken back is still there to be put forward, and puts forward the
+    // very thing it always would have.
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true, shiftKey: true })
+    expect(await screen.findByText(/Gjorde om: en ändring i mallen/)).toBeTruthy()
+    await waitFor(() => expect(target('title')!.style.top).toBe('7mm'))
   })
 
   it('keeps two drags two steps, and puts each back forward on its own', async () => {

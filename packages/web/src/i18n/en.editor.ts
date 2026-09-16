@@ -178,6 +178,8 @@ export const enEditor = {
   'table.empty': 'No cards match the filter.',
   'table.addCard': '+ New card',
 
+  'editor.drag.cancelled': 'The drag was cancelled',
+
   'table.columns': 'Columns',
   'table.column.moved': '{field} is column {at} of {of}',
   'table.column.width.said': '{field} is {px} px wide',
@@ -214,6 +216,10 @@ export const enEditor = {
   'canvas.layer.unlock': 'Unlock {name}',
   'canvas.layer.rename': 'Name of the layer {name}',
   'canvas.layer.isLocked': '{name} is locked. Unlock the layer to move it.',
+  'canvas.layer.remove.one': 'Remove {name} from the {face}? It draws on {n} card.',
+  'canvas.layer.remove.other': 'Remove {name} from the {face}? It draws on {n} cards.',
+  'canvas.layer.remove.yes': 'Yes, remove',
+  'canvas.layer.removed': '{name} is gone from the {face}.',
   'canvas.props.locked': 'Locked — the measurements can be read but not changed. Unlock the layer in the layer list.',
   'canvas.grid': 'Grid 1 mm',
   'canvas.hint.base': 'Drag a layer to change the order, or hold Alt and press arrow up or down. F2 renames the layer.',

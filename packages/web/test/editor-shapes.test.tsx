@@ -25,7 +25,7 @@ function open(over: Partial<Shape> = {}, opts: { face?: string } = {}) {
       row="dragon"
       selectedElement="frame"
       onSelectElement={vi.fn()}
-      onPatch={onPatch}
+      onPatch={onPatch} onCallOff={vi.fn()}
       onReplaceFace={onReplaceFace}
       onRemove={vi.fn()}
       onAdd={vi.fn()}
@@ -249,7 +249,7 @@ describe('what the ready-made backs are called (A4, L17)', () => {
         row="dragon"
         selectedElement={null}
         onSelectElement={vi.fn()}
-        onPatch={vi.fn()}
+        onPatch={vi.fn()} onCallOff={vi.fn()}
         onReplaceFace={vi.fn()}
         onRemove={vi.fn()}
         onAdd={vi.fn()}

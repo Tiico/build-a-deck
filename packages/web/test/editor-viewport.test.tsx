@@ -382,3 +382,83 @@ describe.each(WIDTHS)('the Bord tab with a table, at %ipx', (width) => {
     expect(measured).toEqual(nothing(measured, 0))
   }, 90_000)
 })
+
+// The Bord tab (B5, K2, #127): the zone list on the left, the felt beside it, and above the felt
+// the row that says what the surface just did and how to work it. `surfaces` reaches it too, and
+// it is built on its own here all the same: what is asked of it below can only be asked of a tab
+// that has a felt on it, and asking it of the other five would open a browser to say nothing.
+async function bord(width: number): Promise<Record<string, string>> {
+  atWidth(width)
+  history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+  const { unmount } = render(<EditorPage />)
+  try {
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
+    // The draw pile is named twice over — once in the list and once on the felt — so asking for
+    // it in the plural is waiting for both halves of the tab to be standing.
+    await screen.findAllByText('Draghög')
+    return { Bord: document.querySelector('.byd-editor')!.outerHTML }
+  } finally {
+    unmount()
+  }
+}
+
+// The two widths the editor is held to (UX-KONTROLLER, L12). Both are asked, and the narrow one is
+// where the answer was no: a surface as wide as its own longest sentence looks perfectly well
+// behaved right up until the window stops being wider than the sentence (#127).
+describe.each([1024, 1280] as const)('the Bord tab at %ipx', (width) => {
+  // The felt's column is `minmax(0, 1fr)` and is told to take what is left. What it actually took
+  // was the width of the instruction above it: that row is a flex line whose sentence does not
+  // wrap, so its min-content contribution is the whole sentence, and an `auto` track cannot go
+  // under what its widest item declares. Everything sharing the track went with it — the felt, the
+  // phone's sheet — and at 1024 the row stood 201 px past the window with the zone list scrolled
+  // off the other edge. The felt is measured here as a box and not as a picture: it clips its own
+  // content and fits the table to whatever frame it is handed, which is `felt-refit`'s business.
+  it('keeps every box the setup lays out inside the window', async () => {
+    const measured = await measure(
+      width,
+      (page) =>
+        page.evaluate(() => {
+          const setup = document.querySelector('.byd-setup')!
+          const boxes = [setup, ...setup.querySelectorAll('*')].filter((el) => el.parentElement === null || el.parentElement.closest('.byd-setup-felt') === null)
+          return {
+            // The reading is not vacuous: the tab is the table's, so the table has to be on it.
+            zones: setup.querySelectorAll('[data-zone-row]').length,
+            past: boxes
+              .map((el) => ({ what: `${el.tagName.toLowerCase()}.${[...el.classList].join('.') || '—'}`, over: Math.round(el.getBoundingClientRect().right - window.innerWidth) }))
+              .filter(({ over }) => over > 0)
+              .map(({ what, over }) => `${what}: ${over} past the edge`),
+            // The document and the panel the tab is drawn in, because the sideways scrollbar that
+            // hides the list appears on whichever of the two is the one that scrolls.
+            sideways: [document.documentElement, setup.closest('main')!].map((el) => el.scrollWidth - el.clientWidth),
+          }
+        }),
+      bord,
+    )
+    expect(measured).toEqual({ Bord: { zones: 5, past: [], sideways: [0, 0] } })
+  }, 90_000)
+
+  // And the sentence itself is there to be read. Held off the window's edge it would still be a
+  // sentence cut in half if the row kept it on one line and hid the rest, so what is asked is that
+  // nothing of it is outside its own box either. No width is written down: the sentence is drawn
+  // in whatever `system-ui` the machine has, and the question is whether it fits, not how wide it
+  // came out (#95).
+  it('says the whole of the instruction above the felt', async () => {
+    const measured = await measure(
+      width,
+      (page) =>
+        page.evaluate(() => {
+          const said = document.querySelector('[data-setup-said]')!
+          return {
+            words: said.children.length,
+            cut: [...said.children]
+              .filter((el) => el.scrollWidth > el.clientWidth || el.getBoundingClientRect().right > window.innerWidth)
+              .map((el) => (el.textContent ?? '').trim().slice(0, 24)),
+          }
+        }),
+      bord,
+    )
+    // Nothing has been removed and nothing copied, so the row holds the instruction and nothing else.
+    expect(measured).toEqual({ Bord: { words: 1, cut: [] } })
+  }, 90_000)
+})

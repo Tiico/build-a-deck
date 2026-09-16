@@ -218,6 +218,11 @@ describe('a layer a group takes away (#13)', () => {
     await user.click(groupTabs()[2]!)
     await user.click(pick(0))
     await user.keyboard('{Delete}')
+    // The question the key opens says how far this removal reaches, which with a group open is
+    // the group's own cards and not the deck (#143, L9).
+    // Two of the deck's three cards are `typ = fälla`, and the question counts those and not the deck.
+    expect(screen.getByRole('alertdialog').textContent).toMatch(/2 kort/)
+    await user.click(screen.getByRole('button', { name: 'Ja, ta bort' }))
 
     expect(layers().map((l) => (l.querySelector('.byd-layer-pick') as HTMLElement).textContent)).toEqual(['body· borttaget i typ = fälla', 'title· bas', 'frame· bas'])
     expect(layers().map((l) => l.hasAttribute('data-removed'))).toEqual([true, false, false])

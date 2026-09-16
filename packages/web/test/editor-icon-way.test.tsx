@@ -202,6 +202,9 @@ describe('the icon as a tool on the canvas (#33)', () => {
     await press({ key: 'ArrowRight' })
     await waitFor(() => expect((screen.getByLabelText(/^x/i) as HTMLInputElement).value).toBe('28'))
     await press({ key: 'Delete' })
+    // An element is not taken on the key alone, whichever tool placed it (#143, L9): the key
+    // opens the question and the answer is what removes it.
+    fireEvent.click(screen.getByRole('button', { name: 'Ja, ta bort' }))
     await waitFor(() => expect(document.querySelector('#canvas img.byd-icon')).toBeNull())
   })
 

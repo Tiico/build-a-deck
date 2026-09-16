@@ -26,6 +26,7 @@ function canvas(over: Partial<TemplateCanvasProps> = {}) {
     selectedElement: 'title',
     onSelectElement: vi.fn(),
     onPatch: vi.fn(),
+    onCallOff: vi.fn(),
     onRemove: vi.fn(),
     onAdd: vi.fn(),
     onPlaceIcon: vi.fn(),
@@ -73,18 +74,25 @@ describe('the keyboard when it is not about the card (#18)', () => {
     expect(onPatch).not.toHaveBeenCalled()
   })
 
-  it('takes the element away with Delete and with Backspace, but never from inside a field', async () => {
+  it('asks with Delete and with Backspace before the element goes, and never from inside a field', async () => {
     const user = userEvent.setup()
     const { onRemove } = canvas()
 
+    // The key opens the question and nothing more (#143, L9): what an element draws on is every
+    // card that inherits it, so the removal waits for an answer. The question itself is a suite
+    // of its own, mounted in the whole editor, where the press can come from anywhere.
     await user.keyboard('{Delete}')
+    expect(onRemove).not.toHaveBeenCalled()
+    expect(screen.getByRole('alertdialog').textContent).toMatch(/title/)
+
+    await user.click(screen.getByRole('button', { name: 'Ja, ta bort' }))
     expect(onRemove).toHaveBeenCalledWith('title')
-    await user.keyboard('{Backspace}')
-    expect(onRemove).toHaveBeenCalledTimes(2)
+    expect(screen.queryByRole('alertdialog')).toBeNull()
 
     await user.click(screen.getByLabelText(/^x/i))
     await user.keyboard('{Backspace}{Delete}')
-    expect(onRemove).toHaveBeenCalledTimes(2)
+    expect(screen.queryByRole('alertdialog')).toBeNull()
+    expect(onRemove).toHaveBeenCalledTimes(1)
   })
 })
 
