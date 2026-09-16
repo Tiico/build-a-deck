@@ -270,6 +270,19 @@ export const svEditor = {
   'canvas.layer.removed': '{name} är borttaget från {face}.',
   'canvas.props.locked': 'Låst — måtten går att läsa men inte att ändra. Lås upp lagret i lagerlistan.',
   'canvas.grid': 'Rutnät 1 mm',
+  // Förstoringen som sin egen sak, i dukens eget hörn (#146). Duken passade förr in kortet i
+  // scenens höjd och ingenting annat bestämde skalan, så ordet förstoring fanns inte i
+  // gränssnittet alls: inget reglage, ingen procentsats, ingen Ctrl-rulle.
+  'canvas.stage': 'Duken',
+  'canvas.zoom': 'Förstoring',
+  'canvas.zoom.level': 'Förstoring i procent',
+  'canvas.zoom.percent': '{n} %',
+  'canvas.zoom.in': 'Förstora mer',
+  'canvas.zoom.out': 'Förstora mindre',
+  'canvas.zoom.fit': 'Passa in',
+  // Kortets eget mått, som det trycks. Knappen heter det den gör: 100 % är en millimeter ritad
+  // som en millimeter, och det betyder samma sak i varje fönster — vilket Passa in aldrig gör.
+  'canvas.zoom.actual': '100 %',
   // Vad som går, och inte bara vad som gick (#144). Meningen var sann bara så länge elementet inte
   // gick att flytta från tangentbordet: den namngav ordningen och omdöpningen och teg om själva
   // flytten, vilket var precis den som saknades.

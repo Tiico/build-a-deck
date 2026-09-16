@@ -2906,6 +2906,63 @@ Ett kort ritas i millimeter, och det enda verktyget som kunde ange en halv milli
 
 Byggt 2026-09-16.
 
+### L19. Förstoringen är dukens egen sak, och minns aldrig (prototypat 2026-09-16, #146)
+
+Duken passade in kortet i scenens höjd, och det var det enda som bestämde skalan.
+Uppmätt i Chromium: en millimeter är 7,07 px vid 1024, 8,71 vid 1280 och 1440, och 10,95 vid 1920.
+Vid 1440 blir den minsta nudgen, 0,5 mm, alltså 4,4 px, och de fyra handtagen som ändrar en raritetsbricka ritad 207 × 43 px är 19 px var — tillsammans en påtaglig del av det element de ska greppa.
+Ordet förstoring fanns inte i gränssnittet: inget reglage, ingen procentsats, ingen `Ctrl`-rulle och inget **Passa in**, och enda sättet att se ett detaljmått större var att göra fönstret högre.
+Samtidigt stod 323 px av scenens bredd oanvänd som rutmönster, eftersom inpassningen bara kunde följa höjden.
+
+Beslutet (produktägaren 2026-09-16, efter prototyp `06-forstoring`):
+
+- **Kontrollen står i duken, i nedre hörnet**, bredvid scenen och aldrig över den: reglage, `+`/`−`, **Passa in** och **100 %**, med procentsatsen först och tyst.
+  Krönet valdes bort, eftersom en kontroll där hamnar längst från handen — och krönet är redan en rad som varje panel betalar för i korthöjd (#129).
+  Bandet står utanför den låda som rullar, så det är i samma hörn vid varje panoreringsläge; ett band inuti scenen är borta precis när kortet är stort nog att behöva det.
+  Det står i den bredd som inpassningen ändå lämnar över, som en egen spalt i duken — vilket är precis vad beslutet sade: i den bredd som ändå står oanvänd som rutmönster.
+  Ett flytande band gjorde inte det.
+  Inpassningen centrerar kortet, så bara halva den oanvända bredden ligger till höger — 12 px vid 1024, 120 vid 1280 och 164 vid 1440 — och ett band på 365 px täckte kortets nedre högra hörn vid vart och ett av de fyra skrivborden, inte bara vid de höga fönstren.
+  Som egen spalt täcker det ingenting vid någon förstoring och i något panoreringsläge: kortet ritas inuti scenen och klipps av den, så ett band som inte rör scenen kan inte röra kortet.
+  Där inpassningen inte lämnar någon bredd alls — 1024 med egenskaperna uppfällda, där kortet redan är så brett som scenen tillåter — lägger sig bandet i en rad under scenen i stället.
+  Vilken av de två som gäller är en fråga om lådor, så den ställs och besvaras i stilmallen, på dukens egen proportion.
+- **`Ctrl` med rullhjulet över duken förstorar**, en tiondel per hack, och tangenten tas från sidan.
+  Lyssnaren hängs på elementet och inte på Reacts `onWheel`: React lyssnar efter ett hjul passivt vid roten, och en passiv lyssnare kan inte hindra webbläsaren från att förstora hela sidan i stället.
+- **Passa in är kvar som exakt det duken gör i dag**, men som ett val och inte som det enda läget.
+  Så länge det är valt följer skalan fönstret som förut; så snart en formgivare har sagt en förstoring har fönstret ingenting mer att säga om den.
+- **100 % är kortets eget mått** — en millimeter ritad som en millimeter, 3,78 px.
+  Prototypen räknade procenten från inpassningen, vilket gjorde **100 %** och **Passa in** till samma knapp två gånger och samtidigt gjorde talet beroende av fönstret: 150 % vid 1024 var inte 150 % vid 1440.
+  Procenten räknas därför från kortets mått, som är det enda talet som betyder samma sak i varje fönster, och de två knapparna är två olika saker: den ena visar hela kortet, den andra visar det i den storlek det trycks i.
+  Golvet och taket är `fitScale`:s egna, 50 % och 600 %, så inpassningen är ett val inom samma skala och aldrig ett undantag från den.
+- **När kortet är större än scenen panoreras det**, och scenen lämnar aldrig rullningen vidare till sidan (`overscroll-behavior: contain`).
+  Scenen är därmed ett tabbstopp: en låda som rullar och som bara en mus kan flytta är ett kort ett tangentbord inte kan läsa (L12), på samma sätt som elementen fick sitt stopp i L18.
+  Tabbordningen blir lagerlistan, scenen, kortets element, bandet, egenskaperna — bandet efter kortet, eftersom det handlar om kortet.
+- **Förstoringen minns inte.**
+  Varje öppning av duken börjar på **Passa in**.
+- **Rutnätet följer skalan och glesnar automatiskt.**
+  Rutan är alltid 1 mm i kortets mått, så en ruta betyder samma sak vid varje förstoring, men ritas glesare när en millimeter faller under ungefär 4 px: stegen är 1, 5 och 10 mm, och det tätaste vars linjer fortfarande står minst 4 px isär vinner.
+  Vid Passa in på 1024 är en millimeter 7,07 px, så duken blir aldrig ett grått rutmönster där; under 106 % ritas 5 mm i stället.
+  Med dagens golv på 50 % nås aldrig 10 mm-steget — 5 mm är 9,4 px där — men steget står kvar i stegen eftersom regeln och inte golvet är det som ska vara sann; centimeterlinjen ritas dessutom vid varje förstoring, så 10 mm försvinner aldrig från duken.
+
+**Vad som ändras i tidigare beslut.**
+L4 säger att en vy av projektet minns i formgivarens egen webbläsare, per projekt: så gör kolumnbredderna, och så gör den hopfällda egenskapskolumnen (#129).
+Förstoringen är en sådan vy och minns ändå inte.
+Det är ett uttryckligt avsteg och inte ett förbiseende: en bredd som minns visar fortfarande hela leken, medan en förstoring som minns visar ett urklipp — och ingen ska mötas av ett urklipp hon inte minns att hon valde.
+L4:s mönster står kvar oförändrat för allt annat det gäller; det som skrivs ned här är att duken är undantaget och varför.
+L18:s flyttläge rörs inte: en nudge är 0,5 mm i kortets mått vid varje förstoring, så det som ändras av ett reglage är hur många pixlar en halv millimeter är och aldrig vad som skrivs in i dokumentet.
+Draglagret mäter fortfarande millimetrar ur kortets egen ruta och aldrig ur skalan, så ett drag är sant vid varje förstoring (#18).
+
+Motivering:
+Ett kort ritas i millimeter och trycks i millimeter, men bedöms på en skärm vars enda mått är hur högt fönstret råkar vara.
+Så länge fönstret var det enda som bestämde skalan var varje detaljmått en fråga om möbleringen av skrivbordet: ett lågt fönster gjorde en halv millimeter osynlig, och det enda botemedlet låg utanför verktyget.
+Bandet kostar ingenting där beslutet sade att det inte skulle kosta något.
+Uppmätt i Chromium vid 1280, 1440 och 1920 är kortet efter ändringen ritat exakt lika stort som utan band — 471 × 658, 543 × 758 och 672 × 938 px — eftersom höjden fortfarande är det kortet tar slut på och spalten bara tar av den bredd som stod som rutmönster.
+Vid 1024 finns ingen oanvänd bredd att stå i: kortet är redan så brett som scenen tillåter, och raden under scenen kostar där omkring 5 % av kortets mått.
+Det är hela priset, och det tas ut på det enda skrivbord där rutmönstret aldrig stod oanvänt.
+Alternativet, krönet, kostar en rad av kortets höjd på varje bredd och står ändå längst bort.
+`packages/web/test/canvas-band.test.tsx` mäter det: att bandets låda inte skär kortets vid 1024, 1280, 1440 och 1920, varken vid inpassningen eller med kortet förstorat förbi varje kant, och att kortet vid de tre breda skrivborden fortfarande passas in på höjden.
+
+Byggt 2026-09-17.
+
 ### L14. Ett spel utan den guidade starten (2026-09-13)
 
 Den guidade starten (E3, L6) är en dörr, inte en grind.

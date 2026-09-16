@@ -232,6 +232,19 @@ export const enEditor = {
   'canvas.layer.removed': '{name} is gone from the {face}.',
   'canvas.props.locked': 'Locked — the measurements can be read but not changed. Unlock the layer in the layer list.',
   'canvas.grid': 'Grid 1 mm',
+  // The zoom as its own thing, in the canvas' own corner (#146). The card used to be fitted into
+  // the stage's height and nothing else decided the scale, so the word zoom was nowhere in the
+  // interface: no slider, no percentage, no Ctrl and the wheel.
+  'canvas.stage': 'The canvas',
+  'canvas.zoom': 'Zoom',
+  'canvas.zoom.level': 'Zoom in per cent',
+  'canvas.zoom.percent': '{n} %',
+  'canvas.zoom.in': 'Zoom in',
+  'canvas.zoom.out': 'Zoom out',
+  'canvas.zoom.fit': 'Fit',
+  // The card at its own measure, as it prints. 100 % means one millimetre drawn as one
+  // millimetre, and that means the same thing in every window — which fitting never does.
+  'canvas.zoom.actual': '100 %',
   'canvas.hint.base':
     'Drag a layer to change the order, or hold Alt and press arrow up or down. F2 renames the layer. The element itself is moved from the canvas: Enter goes into move mode, the arrows nudge.',
   'canvas.hint.group': 'The layer order is the base’s, and changes with the base tab selected.',

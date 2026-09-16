@@ -217,10 +217,16 @@ describe.each(DESKS)('the crown over the card on a %ix%i desk', (width, height) 
 // on an element's properties just now. The numbers are the columns' own — 68 for the tools, 220 for
 // the layers, 280 for the properties — so what is asserted is the arithmetic and not a width
 // anybody's font decides.
+//
+// Measured on the canvas room rather than on the stage inside it: since #146 the zoom's band has a
+// place of its own beside the stage, so the stage is the room less the band wherever the band
+// stands there (L19). The room is what the fold hands over, and handing it over is what this is
+// about — the card itself loses nothing to the band, because where the band takes a column the
+// card is fitted by the stage's height and not by its width.
 describe.each(DESKS)('the card on a %ix%i desk', (width, height) => {
   const stage = (page: Page) =>
     page.evaluate(() => {
-      const el = document.querySelector('.byd-canvas-stage')
+      const el = document.querySelector('.byd-canvas-room')
       return el === null ? null : Math.round(el.getBoundingClientRect().width)
     })
 
@@ -235,7 +241,7 @@ describe.each(DESKS)('the card on a %ix%i desk', (width, height) => {
       stage,
     )
     // A card that was never drawn would otherwise gain nothing and report it as agreement.
-    expect(open, 'the Mall tab drew no card').not.toBeNull()
+    expect(open, 'the Mall tab drew no canvas').not.toBeNull()
     expect(open!).toBeGreaterThan(0)
     expect({ folded }).toEqual({ folded: open! + 280 })
   }, 120_000)

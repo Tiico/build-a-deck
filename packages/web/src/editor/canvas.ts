@@ -218,9 +218,58 @@ function align(value: number, size: number, targets: readonly number[]): { at: n
   return best ? { at: best.at, guide: best.guide } : { at: round(value), guide: null }
 }
 
-// The zoom the stage draws the card at, and the air it keeps around it.
+// The zoom the stage draws the card at, and the air it keeps around it — the air is read by the
+// suite that measures where the band stands, which asks whether the card is still fitted by the
+// stage's height and so needs the same number the fitting uses.
 export const STAGE_SCALE = 2.6
-const STAGE_AIR = 24
+export const STAGE_AIR = 24
+
+// How far the card can be drawn from its own measure, in either direction (#146). Fitting it into
+// the stage is one choice inside this range and never a case of its own, so the floor and the
+// ceiling `fitScale` already clamped itself to are the ones the slider offers.
+export const ZOOM_MIN = 0.5
+export const ZOOM_MAX = 6
+
+// What `+` and `−` are worth, and what one notch of `Ctrl` with the wheel is worth. Both are told
+// in the same unit the zoom itself is told in, so a quarter is a quarter of the card's own
+// measure wherever the slider happens to stand.
+export const ZOOM_STEP = 0.25
+export const ZOOM_NOTCH = 0.1
+
+// The zoom, held to the range and to a whole per cent. A per cent is what the control says out
+// loud, so a zoom that cannot be said is a zoom the reader and the card disagree about.
+export function zoomTo(scale: number): number {
+  return Math.round(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, scale)) * 100) / 100
+}
+
+// The zoom as the number beside the slider: 100 % is the card at its own measure, which is the
+// one reading that means the same thing in every window (#146).
+export function zoomPercent(scale: number): number {
+  return Math.round(scale * 100)
+}
+
+// One millimetre as the browser reckons it: 96 px to the inch, which is what `mm` in a stylesheet
+// means on any screen. The card is drawn through a zoom, so a millimetre on it is this times the
+// zoom — and that is the only place pixels and millimetres meet outside a measured rectangle.
+export const PX_PER_MM = 96 / 25.4
+
+// How near two grid lines may come before the rule stops being a rule. Below about four pixels
+// the millimetres stop reading as lines and start reading as a grey chequerboard over the work,
+// which is worse than no grid at all.
+export const GRID_FLOOR_PX = 4
+
+// The millimetres the grid may be drawn in, in the order it gives them up (#146, L19). Always the
+// card's own millimetre, so a square means the same thing at every zoom; what changes is how many
+// of them are drawn.
+const GRID_SPARSEST_MM = 10
+export const GRID_STEPS_MM = [1, 5, GRID_SPARSEST_MM] as const
+
+// Which of them the card has room for at this zoom: the densest whose lines are still at least
+// `GRID_FLOOR_PX` apart, and the sparsest of all when even that is too much to ask.
+export function gridStep(scale: number): number {
+  const px = PX_PER_MM * scale
+  return GRID_STEPS_MM.find((mm) => mm * px >= GRID_FLOOR_PX) ?? GRID_SPARSEST_MM
+}
 
 // How much bigger or smaller the card has to be drawn to fit the room the stage has. The card is
 // measured as it is drawn, so the answer is a factor on the zoom it already has and nothing here
@@ -229,5 +278,5 @@ const STAGE_AIR = 24
 export function fitScale(scale: number, drawn: { w: number; h: number }, room: { w: number; h: number }): number {
   if (drawn.w <= 0 || drawn.h <= 0 || room.w <= 0 || room.h <= 0) return scale
   const fits = Math.min((room.w - STAGE_AIR) / drawn.w, (room.h - STAGE_AIR) / drawn.h)
-  return Math.min(6, Math.max(0.5, scale * fits))
+  return Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, scale * fits))
 }

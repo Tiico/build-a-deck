@@ -1152,6 +1152,8 @@ describe('every suite that measures a surface', () => {
   it('finds every suite that lays a surface into a document, by name', () => {
     expect(mounting.map((s) => s.name).sort()).toEqual([
       'account-viewport.test.tsx',
+      'canvas-band.test.tsx',
+      'canvas-pan.test.tsx',
       'counter-ink.test.tsx',
       'counter-touch.test.tsx',
       'counter-zone.test.tsx',
