@@ -1092,35 +1092,24 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                     </div>
                   </td>
                 ) : (
-                <td key={f} data-col={f} className={brace?.cardRef === cardRef && brace.field === f ? 'byd-data-picking' : undefined}>
+                <td
+                  key={f}
+                  data-col={f}
+                  // The lane the icon control stands in (#140). It is declared on every cell of a
+                  // column the icon path reaches, and not only on the one being worked in: the
+                  // control is drawn in one cell at a time, and a lane that came and went with it
+                  // would move every field in the column the moment the caret arrived.
+                  {...(onSymbol && f !== ANTAL ? { 'data-rail': 'true' } : {})}
+                  className={brace?.cardRef === cardRef && brace.field === f ? 'byd-data-picking' : undefined}
+                >
                   {moved(changeOf(cardRef), f) && <s className="byd-data-was">{String(wasCell(cardRef, f) ?? '')}</s>}
-                  {/* The brace, made visible in the cell the designer is standing in (#33). It
-                      writes the brace and opens the same picker typing one does — one way in, seen
-                      rather than known. Only in the cell being worked in: one handle per cell is a
-                      wall of braces on screen, and a hundred stops in the tab order. */}
-                  {onSymbol && f !== 'antal' && here?.cardRef === cardRef && here.field === f && (
-                    <button
-                      type="button"
-                      className="byd-data-icon"
-                      aria-label={t('table.icon.insert')}
-                      title={t('table.icon.hint')}
-                      onMouseDown={(event) => event.preventDefault()}
-                      onClick={(event) => {
-                        const input = event.currentTarget.parentElement?.querySelector('input')
-                        if (!input) return
-                        const at = input.selectionStart ?? input.value.length
-                        const next = `${input.value.slice(0, at)}{${input.value.slice(at)}`
-                        typing.current[`${cardRef}:${f}`] = next
-                        onCell(cardRef, f, next, cellGesture())
-                        input.value = next
-                        input.focus()
-                        input.setSelectionRange(at + 1, at + 1)
-                        openBrace(cardRef, f, input)
-                      }}
-                    >
-                      {'{ }'}
-                    </button>
-                  )}
+                  {/* The field and the lane its control stands in, as one grid (#140). It is a box
+                      inside the cell and not the cell itself: `display: grid` on a `<td>` stops it
+                      being a table cell at all, and the table then wraps every run of them in one
+                      anonymous cell where they stack — two railed columns measured a 90 px row
+                      where the editor allows 44. The picker below hangs off the cell, which is
+                      what `position: relative` is on, so it stays outside this box. */}
+                  <div className="byd-data-lane">
                   <input
                     type={f === 'antal' ? 'number' : 'text'}
                     min={f === 'antal' ? 0 : undefined}
@@ -1157,6 +1146,38 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                     {...(brace?.cardRef === cardRef && brace.field === f && active ? { 'aria-controls': CELL_SYMBOLS, 'aria-activedescendant': symbolOptionId(CELL_SYMBOLS, active) } : {})}
                     {...(brace?.cardRef === cardRef && brace.field === f && activeRole ? { 'aria-controls': CELL_ROLES, 'aria-activedescendant': roleOptionId(CELL_ROLES, activeRole.role) } : {})}
                   />
+                  {/* The brace, made visible in the cell the designer is standing in (#33). It
+                      writes the brace and opens the same picker typing one does — one way in, seen
+                      rather than known. Only in the cell being worked in: one handle per cell is a
+                      wall of braces on screen, and a hundred stops in the tab order.
+                      It stands after the field and not before it, because that is where it stands
+                      on the screen: the cell is a grid and the two are laid out in the order they
+                      are written (#140). It is also the order they are read in — the field, and
+                      then the control that belongs to it. */}
+                  {onSymbol && f !== 'antal' && here?.cardRef === cardRef && here.field === f && (
+                    <button
+                      type="button"
+                      className="byd-data-icon"
+                      aria-label={t('table.icon.insert')}
+                      title={t('table.icon.hint')}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={(event) => {
+                        const input = event.currentTarget.closest('td')?.querySelector('input')
+                        if (!input) return
+                        const at = input.selectionStart ?? input.value.length
+                        const next = `${input.value.slice(0, at)}{${input.value.slice(at)}`
+                        typing.current[`${cardRef}:${f}`] = next
+                        onCell(cardRef, f, next, cellGesture())
+                        input.value = next
+                        input.focus()
+                        input.setSelectionRange(at + 1, at + 1)
+                        openBrace(cardRef, f, input)
+                      }}
+                    >
+                      {'{ }'}
+                    </button>
+                  )}
+                  </div>
                   {brace?.cardRef === cardRef && brace.field === f && roleMatches.length > 0 && (
                     // The deck's meanings, where the bar was just typed.
                     <RoleList id={CELL_ROLES} className="byd-data-symbols" roles={roleMatches} active={choice} label={t('table.roles')} onPick={takeRole} />
