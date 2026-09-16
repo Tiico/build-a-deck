@@ -1094,11 +1094,6 @@
   cursor: pointer;
 }
 .byd-data-count { margin: 0; color: var(--byd-editor-count-ink); font-variant-numeric: tabular-nums; }
-/* Which columns have gone out past the edge of the box, said in the line that already says what
-   the view holds — and it is a button, because knowing they are there is no use without a way
-   back to them (#46). */
-.byd-data-outside { margin-left: 8px; padding: 4px 12px; border: 1px solid #3b414e; border-radius: 999px; background: var(--byd-editor-filter-bg); color: var(--byd-editor-filter-ink); font: inherit; cursor: pointer; }
-.byd-data-outside:hover, .byd-data-outside:focus-visible { border-color: #4a5163; }
 .byd-data-pinned { color: var(--byd-editor-filter-quiet); }
 .byd-data-clear { border: 1px solid #3b414e; border-radius: 8px; padding: 4px 12px; background: transparent; color: var(--byd-editor-filter-quiet); font: inherit; cursor: pointer; }
 .byd-data-clear:hover { color: var(--byd-editor-filter-ink); }
@@ -1177,6 +1172,29 @@
    one tick box (#45) and is drawn nowhere but there, so "marked" here and "marked" in the recipe
    are the same blue and the same square. */
 .byd-data-check { width: var(--byd-tap); text-align: center; padding: 0 !important; }
+/* The tick and the card's own key stand still in the inline direction (#145), exactly as the head
+   stands still in the block direction. A designer writing in a `body` cell on row fifty-four had
+   nothing on the screen saying which card it was: `id` was 770 px out of sight with `body` set to
+   1400, and the deck has three cards called `Duel`, so the title was no answer either.
+   Since #141 a table wider than its box is the normal case, which is what makes this the moment.
+   It costs nothing when the table fits — a sticky cell that never has to hold its place never
+   leaves it — so the 244 px are only spent in the state the question is asked in.
+   `inherit` rather than a colour of its own: the row carries the tint that says it is marked or
+   being looked at (#17), and a fixed cell that painted its own ground would drop out of it. The
+   row is given an opaque ground of its own so there is something to inherit. */
+.byd-data tbody tr { background: #1b1d23; }
+.byd-data tbody .byd-data-check { position: sticky; left: 0; z-index: 2; background: inherit; }
+.byd-data tbody .byd-data-id { position: sticky; left: var(--byd-tap); z-index: 2; background: inherit; }
+/* The head's own two, so the corner where the row that stands still upward crosses the columns
+   that stand still sideways belongs to both. Above the body's, or a value would be drawn over the
+   heading at the moment both are held. */
+.byd-data thead .byd-data-check { position: sticky; left: 0; z-index: 3; }
+.byd-data thead th[data-col='id'] { position: sticky; left: var(--byd-tap); z-index: 3; }
+/* The edge that says there is more to the left. It is a promise that something is there, so it is
+   drawn only once something is: `data-under` is set on the box by the same frame that asks
+   whether a value has run under the pin. */
+.byd-data-scroll[data-under] .byd-data .byd-data-id,
+.byd-data-scroll[data-under] .byd-data thead th[data-col='id'] { box-shadow: 8px 0 12px -8px rgb(0 0 0 / 80%); }
 /* The tick keeps the size a tick has; what a thumb hits is the label around it. */
 .byd-data-tick { display: grid; place-items: center; min-width: var(--byd-tap); min-height: var(--byd-tap); cursor: pointer; }
 /* The column that removes a card is pinned to the right edge of the scrolling box: it is the

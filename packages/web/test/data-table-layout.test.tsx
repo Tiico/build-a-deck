@@ -14,7 +14,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { chromium, type Browser } from 'playwright'
 import { applyEdit } from '@byd/server/doc'
-import { DataTable, columnsOutside, markCut } from '../src/editor/DataTable.js'
+import { DataTable, markCut } from '../src/editor/DataTable.js'
 import { deckValues, fitColumns, markValues } from '../src/editor/columns.js'
 import type { ProjectDoc } from '../src/editor/types.js'
 import { translate, type T } from '../src/i18n/index.js'
@@ -392,58 +392,11 @@ async function pinned({ html, deck }: Table, extra = ''): Promise<Record<Place, 
   }
 }
 
-// Which columns are standing outside the box altogether, at each place along the scroll. A
-// separate question from the pin's: the pin's is about a value crossing under a control, and this
-// one is about a column a reader cannot see at all — the thing that happens after a width is
-// pulled, and the thing the table said nothing about.
-async function outsideAt({ html, deck }: Table): Promise<Record<'rest' | 'end', { left: string[]; right: string[]; wider: boolean }>> {
-  const page = await browser.newPage({ viewport: { width: VIEW.w, height: VIEW.h } })
-  try {
-    await page.setContent(shellOf(html, ''), { waitUntil: 'load' })
-    await page.evaluate(({ deck, fit }) => new Function('box', 'deck', `(${fit})(box, deck)`)(document.querySelector('.byd-data-scroll'), deck), { deck, fit: FIT })
-    return (await page.evaluate(({ decide }) => {
-      const scroll = document.querySelector('.byd-data-scroll') as HTMLElement
-      const far = scroll.scrollWidth - scroll.clientWidth
-      const ask = () => ({
-        ...(new Function('box', `return (${decide})(box)`)(scroll) as { left: string[]; right: string[] }),
-        wider: scroll.scrollWidth > scroll.clientWidth,
-      })
-      scroll.scrollLeft = 0
-      const rest = ask()
-      scroll.scrollLeft = far
-      return { rest, end: ask() }
-    }, { decide: String(columnsOutside) })) as Record<'rest' | 'end', { left: string[]; right: string[]; wider: boolean }>
-  } finally {
-    await page.close()
-  }
-}
-
-describe('the columns standing outside the box (#46)', () => {
-  it('names the ones that cannot be read, on the side they went out', async () => {
-    const wide = await outsideAt(await markupOf(wideDoc()))
-
-    // The deck really is wider than the window, which is the case this is about.
-    expect(wide.rest.wider).toBe(true)
-    // Where the box opens nothing has gone out to the left, and what is out to the right is named
-    // — every column of the deck the reader cannot see, in the order the head stands in.
-    expect(wide.rest.left).toEqual([])
-    expect(wide.rest.right.length).toBeGreaterThan(0)
-    expect(wide.rest.right).toContain('antal')
-    // And at the far end of the scroll it is the other way round: what was out to the right has
-    // come home, and the head's first columns have gone out to the left.
-    expect(wide.end.right).toEqual([])
-    expect(wide.end.left).toContain('title')
-    // Nothing is named twice, and nothing is named on both sides.
-    expect(new Set([...wide.end.left, ...wide.end.right]).size).toBe(wide.end.left.length + wide.end.right.length)
-  }, 60_000)
-
-  it('names none at all when the whole table fits in its box', async () => {
-    const fits = await outsideAt(await markupOf(projectDoc()))
-    expect(fits.rest.wider).toBe(false)
-    expect(fits.rest).toMatchObject({ left: [], right: [] })
-    expect(fits.end).toMatchObject({ left: [], right: [] })
-  }, 60_000)
-})
+// What used to stand here: the chip that named the columns standing outside the box, and the
+// measurement behind it. Both are gone with #145 — the tick and `id` stand still in the inline
+// direction now, and the edge under `id` says there is more to the left without costing the
+// reader the place she was standing in. Two cues for one fact is one too many, and the chip was
+// the one that answered by scrolling somewhere else.
 
 describe('a column running in under the pinned × (#53)', () => {
   it('is something the table knows about, all the way along the scroll except at the very end of it', async () => {
