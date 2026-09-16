@@ -1540,6 +1540,14 @@ Följdkrav (#87): det som Dra 1 och Dela på hälften lägger bredvid högen lan
 Punkten i intentet är den nya högens mitt, men en hög med ett kort är ingen hög (K1) utan ett löst kort med sitt hörn i punkten; ett ensamt kort placeras därför efter sitt hörn och en hög efter sin mitt, i `besidePile` i `drop.ts`.
 Grinden är `table-layout.test.tsx`: wizardens bord för åtta vid TV:ns egen ruta, i båda lägena och med högen vriden, där kortet varken täcker namnet, brickan eller pillret.
 
+Reviderat 2026-09-16: vänster är vad en hög som inte säger något menar, inte vad varje hög måste mena.
+Skälet till vänster står kvar och är oförändrat — namnet under högen och brickan i övre högra hörnet — men det är ett skäl att välja åt designern och inte ett skäl att välja i stället för henne (B5).
+En lek som ligger vid filtens vänsterkant lägger sina kort utanför bordet, och det är inget verktyget kan gissa sig ur: var högen står är designerns beslut, och vilken sida som då är fri är det också.
+Sidan bor därför på zonen och inte i steget som ber om korten: ringens Dra 1 och Dela på hälften läser den, och designerns egna åtgärder läser samma sida, för det är samma kort som läggs bredvid samma hög.
+Den är fyra: `left`, `right`, `above` och `below`, i högens egen vridning som vänster alltid räknats i, och en vriden hög vid en sidoplats får dem med sig.
+Ovanför och under mäts i kortets höjd och inte dess bredd, för en hög som läggs ovanför en annan måste gå fri från långsidan.
+Se K21 för ratten i editorn och för meningen som läser den.
+
 Reviderat 2026-09-12: ringen håller verb och inget annat.
 Den bar också en **Stäng**, som beslutet aldrig räknade upp och som tog en plats i cirkeln där varje annan plats gör något.
 Det som stänger ringen är allt som inte är ett verb: ryggen täcker skärmen, så ett släpp eller ett klick var som helst utanför cirkeln är vägen ut.
@@ -2147,12 +2155,19 @@ Panelen erbjuds bara på högar: en yta och en hand har ingen ring att hänga en
 Det som inte går att räkna ut sägs i stället för att gissas: en åtgärd som frågar efter ett tal frågar läsaren, och en vars mål inte finns på det här bordet erbjuds avstängd.
 Den avstängda raden säger **varför**, i ord: en avstängd skiva i ringen säger ingenting och behöver inte göra det — "Blanda" på en hög med ett kort förklarar sig själv — men "Ge alla en starthand" grå vid ett bord ingen satt sig vid ser trasig ut tills skälet sägs högt.
 
+Reviderat 2026-09-16: en hög säger själv vilken sida av den som är "bredvid den".
+Ratten sitter på zonen i fliken Bord, bredvid Placering, och inte i steget — två ställen att säga samma sak på hade blivit två meningar som kan säga emot varandra, och ringens egna verb hade ändå bara läst det ena.
+Fyra sidor, i högens egen vridning; skälet och måtten står i K14 (#87), som det här beslutet reviderar.
+Meningen skriver ut sidan: "lägg dem uppvända **till höger om högen**" och aldrig "bredvid högen", för det designern läser ska vara det som kommer att hända — det är hela skälet att meningen valdes framför blanketten.
+`ZoneView` bär den vidare till bordet, vilket är en utvidgning av vokabuläret och därmed ett eget beslut: sidan är ingen hemlighet (B6), den står i regelboken som zonens namn och dess åtgärder, och utan den läser filten vänster medan editorn säger höger.
+En hög som inte säger något bär ingenting i tråden och betyder vänster, så varje sparat bord ligger kvar där det låg.
+
 Följdkrav som är införda:
-`patchZone` bär frågan och åtgärdslistan som helheter, så ett grepp är ett steg tillbaka (L14) och inte en ny mekanism.
+`patchZone` bär frågan, åtgärdslistan och sidan som helheter, så ett grepp är ett steg tillbaka (L14) och inte en ny mekanism.
 Ett framletat kortknippe placeras efter en högs regel och inte ett ensamt korts (#87), eftersom hur många kort som svarar på en fråga inne i en dold hög är det enda den här sidan inte kan veta.
 Arkets CSS-budget är höjd till 139 kB med skälet skrivet i `felt-font.test.ts`.
 `version.change` bär kolumnindexet bredvid komponenterna (C7): en fråga som ställs efter ett versionsbyte måste ställas till den lek som spelas, och inte till den som spelades — utan det svarar den fel utan att säga något.
-Grindarna: `packages/engine/test/reach-by-query.test.ts` och `dealt-face.test.ts` (motorn och projektionen), `packages/server/test/setup-fill.test.ts` (startinnehållet och kolumnerna som följer med), `packages/web/test/zone-actions.test.ts` (kompilatorn och tangentbordets paritet), `pile-actions-at-the-table.test.tsx` (arket) och `setup-actions.test.tsx` (meningarna).
+Grindarna: `packages/engine/test/reach-by-query.test.ts` och `dealt-face.test.ts` (motorn och projektionen), `shortcuts.test.ts` (sidan i projektionen), `packages/server/test/setup-fill.test.ts` (startinnehållet, kolumnerna och sidan som följer med), `zone-fill-and-actions.test.ts` (greppet), `packages/web/test/zone-actions.test.ts` (kompilatorn och tangentbordets paritet), `drop.test.ts` (var sidan landar), `table-renderer.test.tsx` (ringens verb), `pile-actions-at-the-table.test.tsx` (arket) och `setup-actions.test.tsx` (meningarna).
 
 ### K22. En zon går att klippa, kopiera och klistra i fliken Bord (byggt 2026-09-15)
 

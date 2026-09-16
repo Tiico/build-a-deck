@@ -38,6 +38,18 @@ describe('en zons fråga om vilka kort som börjar där', () => {
   })
 })
 
+// Vilken sida av en hög som är "bredvid den" (K21) är designerns val i editorn, och bordet som
+// spelas måste få det med sig: annars läser filten vänster medan meningen i editorn säger höger.
+describe('vilken sida av högen som är bredvid den', () => {
+  it('följer med till bordet som spelas, och en hög utan val bär inget', () => {
+    const setup = setupFromProject(
+      doc([{ id: 'draw', kind: 'pile', name: 'Draghög', visibility: 'none', geometry: rect, beside: 'right' }, base[1]!]),
+    )
+    expect(setup.zones.find((z) => z.id === 'draw')!.beside).toBe('right')
+    expect(setup.zones.find((z) => z.id === 'table')!).not.toHaveProperty('beside')
+  })
+})
+
 // Frågan ställs vid bordet också, och då måste motorn veta vad korten heter i sina egna
 // kolumner. Den vetskapen byggs här, en gång per kortrad, av samma funktion som lägger ut leken.
 describe('vad bordet får veta om kortens kolumner', () => {

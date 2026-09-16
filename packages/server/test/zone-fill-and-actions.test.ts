@@ -29,6 +29,17 @@ describe('att redigera vad en zon frågar efter och vad den kan', () => {
     expect(zone(cleared, 'draw')).not.toHaveProperty('fill')
   })
 
+  // Vilken sida av högen som är "bredvid den" är högens sak och inte stegets (K21): ringens Dra 1
+  // och designerns egna åtgärder läser samma sida, så den redigeras som varje annan sak zonen bär.
+  it('sätter vilken sida av högen som är bredvid den, och tar bort valet igen', () => {
+    const doc = projectDoc()
+    const right = applyEdit(doc, { v: 'patchZone', id: 'draw', patch: { beside: 'right' } })
+    expect(zone(right, 'draw').beside).toBe('right')
+
+    const cleared = applyEdit(right, { v: 'patchZone', id: 'draw', patch: { beside: undefined } })
+    expect(zone(cleared, 'draw')).not.toHaveProperty('beside')
+  })
+
   it('sätter hela listan av åtgärder på en gång, eftersom listan är det som ändras', () => {
     const doc = projectDoc()
     const actions = [{ id: 'a1', label: 'Vänd upp ett per spelare', steps: [{ v: 'split' as const, count: { of: 'seats' as const }, to: { at: 'beside' as const }, face: 'front' }] }]

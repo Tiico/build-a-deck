@@ -15,4 +15,17 @@ describe('zone shortcuts in the projection', () => {
       expect(zoneView(v, 'table')).not.toHaveProperty('shortcut')
     }
   })
+
+  // Vilken sida av en hög som är "bredvid den" är högens egen sak (K21, reviderar #87). Sidan är
+  // ingen hemlighet — den står i regelboken som varje annan sak zonen bär — så den reser till
+  // varje vy som den står, och en hög som inte säger något säger ingenting i tråden heller.
+  it('a pile that names the side beside it shows it in every view; one that does not has none', () => {
+    const setup = twoSeatSetup()
+    setup.zones = setup.zones.map((z) => (z.id === 'discard' ? { ...z, beside: 'right' as const } : z))
+    const h = new Harness(1, setup)
+    for (const seat of ['A', null] as const) {
+      expect(zoneView(h.view(seat), 'discard').beside).toBe('right')
+      expect(zoneView(h.view(seat), 'draw')).not.toHaveProperty('beside')
+    }
+  })
 })

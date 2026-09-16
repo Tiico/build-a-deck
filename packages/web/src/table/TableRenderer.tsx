@@ -891,7 +891,7 @@ function ringItems(view: Snapshot, ring: Ring, open: (r: Ring) => void, act: (in
   const top = view.components.find((c) => c.id === topIdOf(z))
   // What is split off lands beside the pile, clear of its label (#87); where that is depends on
   // whether one card or a pile is what lands.
-  const split = (cards: number): Intent => ({ v: 'split', pile: z.id, at: cards, ...besidePile(z.geometry, cards) })
+  const split = (cards: number): Intent => ({ v: 'split', pile: z.id, at: cards, ...besidePile(z.geometry, cards, z.beside) })
   // The top is flipped by naming the pile (K15): a hidden pile gives no id, and an unseen top
   // is by definition not face-up.
   const flipTop = (): Intent[] => [{ v: 'flip', component: { top: z.id }, face: top?.face === 'front' ? 'back' : 'front' }]
