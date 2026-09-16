@@ -41,11 +41,19 @@ export type Geometry = z.infer<typeof Geometry>
 export const ZoneShortcut = z.object({ label: z.string().min(1).max(40), at: z.enum(['top', 'bottom']) })
 export type ZoneShortcut = z.infer<typeof ZoneShortcut>
 
+// Which side of a pile "beside it" is (K21, revising #87): where Dra 1, Dela på hälften and an
+// action that lays cards beside the pile put them, in the pile's own rotation and turned with it.
+// A pile that says nothing means its left — the side free of both its name and its count — which
+// is what every pile meant before the designer could say otherwise.
+export const ZoneBeside = z.enum(['left', 'right', 'above', 'below'])
+export type ZoneBeside = z.infer<typeof ZoneBeside>
+
 const zoneBase = {
   id: ZoneId,
   kind: ZoneKind,
   name: z.string(),
   shortcut: ZoneShortcut.optional(),
+  beside: ZoneBeside.optional(),
   // What this zone can be asked for (K14, B5): the designer's own named actions. No secret —
   // they are in the rulebook — so every view gets them as they stand.
   actions: z.array(ZoneAction).optional(),

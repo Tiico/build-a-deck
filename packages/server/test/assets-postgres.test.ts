@@ -1,7 +1,10 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { MemoryObjectStore } from '@byd/render'
 import { PostgresLogStore } from '../src/index.js'
 import { assetHash } from '../src/assets.js'
+import { PG_TEST_BUDGET } from '../../../test-support/pg-budget.js'
+
+vi.setConfig({ testTimeout: PG_TEST_BUDGET })
 
 // Runs only against a real Postgres: DATABASE_URL=postgres://... pnpm test
 const url = process.env['DATABASE_URL']

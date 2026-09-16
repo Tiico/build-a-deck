@@ -97,6 +97,12 @@ export class ProjectClient {
   // a drag, a resize, a cell typed into — and the token is made where it begins, so a second
   // grab of the same element is a second token and therefore a second step back (#35).
   private gesture: string | null = null
+  // What was waiting to come forward when the open gesture's first patch emptied it (#142). That
+  // emptying is right for a drag that is made — a new branch is a new branch — and wrong for one
+  // taken back, which is nothing that happened and may therefore not have taken the way forward
+  // with it. Only the gesture still open can be called off, so only its own is worth keeping, and
+  // one field is the whole of it.
+  private futureBeforeGesture: { doc: ProjectDoc; what: Key }[] = []
   private outbox: string[] = []
   // A save asked for over the socket, waiting for the actor to say what became of it.
   private saving: ((result: SaveResult) => void) | null = null
@@ -318,6 +324,7 @@ export class ProjectClient {
     if (gesture === undefined || gesture !== this.gesture) {
       this.past.push({ doc: this.doc, what: whatOf(intent) })
       if (this.past.length > UNDO_STEPS) this.past.shift()
+      this.futureBeforeGesture = this.future
     }
     this.gesture = gesture ?? null
     this.future = []
@@ -353,6 +360,27 @@ export class ProjectClient {
     this.future.push({ doc: this.doc, what: step.what })
     this.send({ v: 'restore', doc: step.doc })
     return step.what
+  }
+
+  // A gesture called off before it ever ended (#142): a drag the hand took back with Escape, or
+  // one the browser took away from the page. The document goes back to the one the gesture began
+  // from and the step it opened goes with it — and that second half is the whole difference
+  // between taking a move back and never having made it. A step back is a row in the history
+  // (B4); a drag that was called off is nothing that happened.
+  //
+  // Only the gesture still being made can be called off. Anything else is a doing that is already
+  // over, and the way back from one of those is the way back from any other.
+  callOff(gesture: string): void {
+    if (this.gesture !== gesture) return
+    const step = this.past.pop()
+    if (!step) return
+    this.gesture = null
+    // And what the gesture's first patch emptied on the way in is put back with it, for the same
+    // reason the step is: the designer took a change back, laid a hand on something, thought
+    // better of it, and must find the way forward exactly where she left it.
+    this.future = this.futureBeforeGesture
+    this.futureBeforeGesture = []
+    this.send({ v: 'restore', doc: step.doc })
   }
 
   redo(): Key | null {

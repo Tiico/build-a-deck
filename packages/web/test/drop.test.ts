@@ -154,6 +154,19 @@ describe('what is split off a pile lands beside it, clear of its label (#87)', (
     expect(besidePile(pile, 2)).toEqual({ x: pile.x - across, y: pile.y })
   })
 
+  it('lands on the side the pile says, when the pile says another one (K21)', () => {
+    // Höger är vänsterns spegel, och ovanför och under mäts i kortets höjd: en hög som ska ligga
+    // ovanför måste gå fri från kortets långsida, inte dess kortsida.
+    const down = CARD_MM.h + BESIDE_MM
+    expect(besidePile(pile, 2, 'right')).toEqual({ x: pile.x + across, y: pile.y })
+    expect(besidePile(pile, 2, 'above')).toEqual({ x: pile.x, y: pile.y - down })
+    expect(besidePile(pile, 2, 'below')).toEqual({ x: pile.x, y: pile.y + down })
+    // Och de vrids med högen, precis som vänster gör.
+    expect(besidePile({ ...pile, rot: 90 }, 2, 'right')).toEqual({ x: pile.x, y: pile.y + across })
+    // Ett ensamt kort placeras fortfarande efter sitt hörn, oavsett sida (#87).
+    expect(besidePile(pile, 1, 'right')).toEqual({ x: Math.round(pile.x + across - CARD_MM.w / 2), y: Math.round(pile.y - CARD_MM.h / 2) })
+  })
+
   it('turns with the pile: a pile turned a quarter has its left above it', () => {
     expect(besidePile({ ...pile, rot: 90 }, 2)).toEqual({ x: pile.x, y: pile.y - across })
     expect(besidePile({ ...pile, rot: 180 }, 2)).toEqual({ x: pile.x + across, y: pile.y })

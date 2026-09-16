@@ -1,6 +1,9 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { MemoryLogStore, PostgresLogStore, type GuestRecord, type LogStore } from '../src/index.js'
 import { twoSeatSetup } from './fixture.js'
+import { PG_TEST_BUDGET } from '../../../test-support/pg-budget.js'
+
+vi.setConfig({ testTimeout: PG_TEST_BUDGET })
 
 const guest = (
   tokenHash: string,

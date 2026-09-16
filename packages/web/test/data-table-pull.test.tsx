@@ -22,6 +22,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import { applyEdit } from '@byd/server/doc'
 import { DataTable } from '../src/editor/DataTable.js'
+import { StatusLive } from '../src/status/StatusLive.js'
 import { heldWidths } from '../src/editor/widths.js'
 import type { ProjectDoc } from '../src/editor/types.js'
 import { projectDoc } from './project-doc.js'
@@ -54,6 +55,8 @@ const grip = (field: string) => head(field).querySelector('.byd-data-pull') as H
 // What the table says this column's width is, on the column itself — which is where the
 // measurement reads it, so this is the same fact and not a second copy of it.
 const set = (field: string) => (document.querySelector(`col[data-col="${field}"]`) as HTMLElement | null)?.getAttribute('data-width') ?? null
+// What the table said out loud, in the region it says a width in.
+const said = () => document.querySelector('[data-status-live="polite"]')?.textContent ?? ''
 
 // A drag of the heading's edge, as a pointer really reports one.
 function pull(field: string, by: number): void {
@@ -275,6 +278,77 @@ describe('a column pulled to a width of its own (#46)', () => {
     await user.click(fetch)
     expect(asked).toHaveBeenCalled()
     expect((asked.mock.calls[0]?.[0] as { left: number }).left).toBeGreaterThan(0)
+  })
+
+  // A drag with a way out of it (#142). Escape is what a hand that has changed its mind reaches
+  // for in every application there is, and the table answered it with nothing: the column stood
+  // at the width it had been dragged to, and that width was written and remembered. Measured in
+  // Chromium at 1440 x 900, a column of 44 px pulled 200 px wider was 244 px at the press of
+  // Escape and 244 px after the release.
+  //
+  // Ctrl+Z afterwards is a different thing and always was: an undone width is a row in the
+  // history, and a drag the hand took back is nothing that ever happened.
+  it('puts the column back where the pull began when the hand takes it back with Escape', () => {
+    render(
+      <StatusLive>
+        <Editing project="p1" />
+      </StatusLive>,
+    )
+    const at = grip('body')!
+    pull('body', 120)
+    expect(set('body')).toBe('120')
+    expect(said()).toBe('body är 120 px bred')
+
+    // The hand is still down: a frame of the pull, and no release.
+    fireEvent.pointerDown(at, { pointerId: 1, button: 0, clientX: 0 })
+    fireEvent.pointerMove(at, { pointerId: 1, clientX: 200 })
+    expect(set('body')).toBe('200')
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(set('body')).toBe('120')
+    // And the release that follows it is a release of nothing: the hand let go of a pull that
+    // was already over.
+    fireEvent.pointerUp(at, { pointerId: 1, clientX: 200 })
+    expect(set('body')).toBe('120')
+    expect(heldWidths('p1')).toEqual({ body: 120 })
+    // Said where a width is said, because it is the same fact about the same column.
+    expect(said()).toBe('Draget avbröts')
+  })
+
+  it('gives a column that had no width of its own back to the measurement when the drag is taken back', () => {
+    render(<Editing project="p1" />)
+    const at = grip('title')!
+    fireEvent.pointerDown(at, { pointerId: 1, button: 0, clientX: 0 })
+    fireEvent.pointerMove(at, { pointerId: 1, clientX: 200 })
+    expect(set('title')).toBe('200')
+
+    // Back where it began is back to no width at all — the column follows its deck again, which
+    // is what it was doing when the hand came down on its edge.
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(set('title')).toBeNull()
+    fireEvent.pointerUp(at, { pointerId: 1, clientX: 200 })
+    expect(set('title')).toBeNull()
+    expect(heldWidths('p1')).toEqual({})
+  })
+
+  // A gesture taken away from the page altogether: a pen lifted, a system gesture, a touch drag
+  // the browser decided was a scroll. The listeners hung on `window` were never taken down by it,
+  // so the pull went on running with nothing driving it — and the heading it belonged to stopped
+  // being `draggable` until a `pointerup` that never comes.
+  it('ends the pull when the pointer is taken away from it, without waiting for a release', () => {
+    render(<Editing project="p1" />)
+    const at = grip('body')!
+    expect(head('body').getAttribute('draggable')).toBe('true')
+
+    fireEvent.pointerDown(at, { pointerId: 1, button: 0, clientX: 0 })
+    fireEvent.pointerMove(at, { pointerId: 1, clientX: 200 })
+    // A column being pulled may not also be picked up and carried off by the same grip.
+    expect(head('body').getAttribute('draggable')).toBeNull()
+
+    fireEvent.pointerCancel(at, { pointerId: 1, clientX: 200 })
+    expect(head('body').getAttribute('draggable')).toBe('true')
+    expect(set('body')).toBeNull()
+    expect(heldWidths('p1')).toEqual({})
   })
 
   it('does not remember anything for a table that was not opened from a project', () => {

@@ -3,6 +3,7 @@ import type { ProjectDoc, ProjectRow } from './types.js'
 import { deckKeepsFields, fieldsOf, fieldLabel, takenNames } from './fields.js'
 import { ANTAL, drawnBy } from '@byd/server/doc'
 import { ColumnDoor } from './ColumnDoor.js'
+import { DragDoor } from './DragDoor.js'
 import { ASSET_DRAG_TYPE, assetRef, assetUrl, assetsInUse, iconFieldsOf, imageFieldsOf, isAssetRef, ASSET_PREFIX } from './assets.js'
 import { searchSymbols, type GameSymbol } from './symbols.js'
 import { RoleList, SymbolList, roleOptionId, symbolListKey, symbolOptionId } from './SymbolList.js'
@@ -325,6 +326,11 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // column being pulled may not also be picked up and carried off by the same grip.
   const [widths, setWidths] = useState<Record<string, number>>(() => heldWidths(project))
   const [pulling, setPulling] = useState<string | null>(null)
+  // The pull the hand is making right now: which edge it came down on, where, the width the
+  // column had then, and whether it has gone anywhere yet. A ref beside that state for the same
+  // reason `carried` is one — it is read inside an event and never drawn, while `pulling` is
+  // drawn on every frame and never read back.
+  const gripped = useRef<{ field: string; from: number; was: number; pulled: boolean } | null>(null)
   // Which columns are standing outside the box, and the answer they were last drawn from (#46).
   // The set is held as state because it is words on the screen; the key beside it is what keeps a
   // scroll from setting state on every frame it does not change anything.
@@ -488,6 +494,26 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     const said = next[field]
     say?.('polite', said === undefined ? t('table.column.width.said.auto', { field }) : t('table.column.width.said', { field, px: said }))
   }
+  // What the table is drawn at while a hand is on a column's edge, and what it is drawn back at
+  // when that hand lets go of the drag instead of the width. Declared on the column and then
+  // measured — the same two steps in the same order through the same door — so that the picture
+  // under the hand cannot be a picture of anything else.
+  //
+  // Written straight onto the column instead, as it was, nothing else knew: the table's own width
+  // still said what the last measurement said, and under a fixed layout a table wider than the sum
+  // of its columns hands the difference back out over all of them. Measured in Chromium, a column
+  // pulled 300 px narrower was drawn 56 px wider than the width it had just been given — so the
+  // edge lagged the hand going in, and jumped to catch up when the hand let go.
+  const drawWidth = (field: string, px: number | null) => {
+    const box = scrollRef.current
+    const col = Array.from(box?.querySelectorAll('colgroup > col') ?? []).find((c) => c.getAttribute('data-col') === field)
+    if (!box || !(col instanceof HTMLElement)) return
+    if (px === null) col.removeAttribute('data-width')
+    else col.setAttribute('data-width', String(px))
+    fitColumns(box, deck)
+    markValues(box)
+    markCut(box)
+  }
   // Fetching a column that has gone out of the box back into it (#46). A step of most of the box
   // rather than a jump to the end, so the sentence beside it counts down as the hand presses and
   // the reader can stop at what she was looking for.
@@ -517,47 +543,51 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             event.preventDefault()
             event.stopPropagation()
             const th = (event.target as HTMLElement).closest('th')
-            const col = Array.from(scrollRef.current?.querySelectorAll('colgroup > col') ?? []).find((c) => c.getAttribute('data-col') === field)
             if (!th) return
-            const box = scrollRef.current
-            const from = event.clientX
-            const was = Math.round(th.getBoundingClientRect().width)
+            gripped.current = { field, from: event.clientX, was: Math.round(th.getBoundingClientRect().width), pulled: false }
             setPulling(field)
-            // Declared on the column while the hand is moving, and then measured — the same two
-            // steps the release takes, in the same order, through the same door. What that buys
-            // is that the picture under the hand cannot be a picture of anything else.
-            //
-            // Written straight onto the column instead, as it was, nothing else knew: the table's
-            // own width still said what the last measurement said, and under a fixed layout a
-            // table wider than the sum of its columns hands the difference back out over all of
-            // them. Measured in Chromium, a column pulled 300 px narrower was drawn 56 px wider
-            // than the width it had just been given — so the edge lagged the hand going in, and
-            // jumped to catch up when the hand let go.
-            const asks = (e: PointerEvent): number => Math.max(tap(), Math.round(was + (e.clientX - from)))
-            let pulled = false
-            const moved = (e: PointerEvent) => {
-              // Until the hand has really moved, the column is left exactly as the measurement
-              // last had it — so a press that turns out to be a click has nothing to give back.
-              if (!pulled && Math.abs(e.clientX - from) < PULL_SLOP) return
-              pulled = true
-              if (!(col instanceof HTMLElement) || !box) return
-              col.setAttribute('data-width', String(asks(e)))
-              fitColumns(box, deck)
-              markValues(box)
-              markCut(box)
-            }
-            const let_go = (e: PointerEvent) => {
-              removeEventListener('pointermove', moved)
-              removeEventListener('pointerup', let_go)
-              setPulling(null)
-              // A press that never went anywhere is not a width. It used to be one — the release
-              // set the column to the width it already had — and a column that has stopped
-              // following its deck looks exactly like one that still does, so the table went
-              // quietly deaf on whichever heading a hand had rested on.
-              if (pulled) setWidth(field, was + (e.clientX - from))
-            }
-            addEventListener('pointermove', moved)
-            addEventListener('pointerup', let_go)
+            // The edge holds the pointer it took hold of, exactly as the canvas's own drag layer
+            // does (#18), and for the second of the two reasons that one gives: a fast hand keeps
+            // pulling the column it grabbed, and — this is the half that was missing — a gesture
+            // the browser takes away from the page comes back here as `pointercancel`. Hung on
+            // `window` instead, as this was, nothing came back at all: a pen lifted or a system
+            // gesture left the listeners standing, `pulling` standing, and the heading unable to
+            // be either dragged or sorted until a release that never came (#142).
+            event.currentTarget.setPointerCapture?.(event.pointerId)
+          },
+          onPull: (event) => {
+            const held = gripped.current
+            if (held?.field !== field) return
+            // Until the hand has really moved, the column is left exactly as the measurement last
+            // had it — so a press that turns out to be a click has nothing to give back.
+            if (!held.pulled && Math.abs(event.clientX - held.from) < PULL_SLOP) return
+            held.pulled = true
+            drawWidth(field, Math.max(tap(), Math.round(held.was + (event.clientX - held.from))))
+          },
+          onLetGo: (event) => {
+            const held = gripped.current
+            if (held?.field !== field) return
+            gripped.current = null
+            setPulling(null)
+            // A press that never went anywhere is not a width. It used to be one — the release
+            // set the column to the width it already had — and a column that has stopped
+            // following its deck looks exactly like one that still does, so the table went
+            // quietly deaf on whichever heading a hand had rested on.
+            if (held.pulled) setWidth(field, held.was + (event.clientX - held.from))
+          },
+          onCallOff: () => {
+            const held = gripped.current
+            if (held?.field !== field) return
+            gripped.current = null
+            setPulling(null)
+            if (!held.pulled) return
+            // Back to the width the column had when the hand came down on its edge: a number when
+            // the designer had set one, and no number at all when it was still following its deck.
+            // Nothing is written and nothing is remembered — a drag taken back is not a width
+            // anybody chose — so the picture has to be put back by hand, the measurement having
+            // nothing new to answer to.
+            drawWidth(field, widths[field] ?? null)
+            say?.('polite', t('editor.drag.cancelled'))
           },
           // Asked twice, the edge gives the column back to the measurement.
           onAuto: () => setWidth(field, null),
@@ -684,6 +714,10 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   const csvHref = `data:text/csv;charset=utf-8,${encodeURIComponent('\uFEFF' + exportCardsCsv(doc))}`
   return (
     <div className="byd-table-wrap">
+      {/* The way out of the pull, for the hand that changed its mind before it let go (#142).
+          The same door the canvas hangs over its own drag, and it stands only while there is a
+          pull to leave. */}
+      {pulling !== null && <DragDoor onCancel={() => pullOf(pulling)?.onCallOff()} />}
       <div className="byd-data-tools">
         <label>{t('table.import')}<input type="file" accept=".csv,text/csv,text/tab-separated-values" aria-label={t('table.import')} aria-describedby={noteId} onChange={(event) => importFile(event.target.files?.[0])} /></label>
         {/* What an import costs is import's own warning (#36). It stands where it is read — after
@@ -1228,6 +1262,12 @@ type Carry = {
 // heading is either the designer's to move and size or the tool's own, and never half of each.
 type Pull = {
   onGrab(event: ReactPointerEvent<HTMLElement>): void
+  onPull(event: ReactPointerEvent<HTMLElement>): void
+  onLetGo(event: ReactPointerEvent<HTMLElement>): void
+  // The drag taken back rather than let go of (#142): Escape, or a gesture the browser took away
+  // from the page altogether. One answer for both, because they are the same thing happening —
+  // the column goes back where the pull began and no width is written.
+  onCallOff(): void
   onAuto(): void
   onStep(dir: -1 | 1): void
 }
@@ -1275,6 +1315,9 @@ function SortableHeader({ field, label, sort, onSort, carry, pull }: { field: st
           className="byd-data-pull"
           aria-hidden="true"
           onPointerDown={pull.onGrab}
+          onPointerMove={pull.onPull}
+          onPointerUp={pull.onLetGo}
+          onPointerCancel={pull.onCallOff}
           onDoubleClick={pull.onAuto}
           // The edge stands inside a heading the browser will carry off if a hand presses and
           // moves: starting a drag is the default action of a press, and a press on the edge is a

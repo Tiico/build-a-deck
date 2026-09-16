@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { createServer, type Server } from 'node:net'
 import { describe, expect, it, vi } from 'vitest'
-import { startServer } from './fixture.js'
+import { portBand, startServer } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -53,5 +53,57 @@ describe('the port a test server listens on', () => {
     const squatter = await hold(port)
     await expect(run.restart()).rejects.toThrow(new RegExp(`127\\.0\\.0\\.1:${port}`))
     await new Promise<void>((resolve) => squatter.close(() => resolve()))
+  })
+})
+
+// The ports `fetch` refuses to speak to at all, as WHATWG Fetch lists them. Reference data and
+// not a measurement — but only the candidates: which of them a run's own `fetch` actually turns
+// away is asked below, of `fetch` itself.
+// https://fetch.spec.whatwg.org/#bad-port
+const SPEC_BAD_PORTS = [
+  1, 7, 9, 11, 13, 15, 17, 19, 20, 21, 22, 23, 25, 37, 42, 43, 53, 69, 77, 79, 87, 95, 101, 102, 103, 104, 109, 110, 111, 113, 115, 117, 119, 123, 135, 137, 139, 143, 161, 179, 389, 427, 465, 512, 513, 514, 515, 526, 530, 531, 532, 540, 548, 554, 556, 563, 587, 601, 636, 989, 990, 993, 995, 1719, 1720, 1723, 2049, 3659, 4045, 4190, 5060, 5061, 6000, 6566, 6665, 6666, 6667, 6668, 6669, 6679, 6697, 10_080,
+]
+
+// Whether this `fetch` turns the port away before it ever opens a socket. Nothing on this machine
+// is expected to listen on any of these, so a port it is willing to speak to answers with a
+// refused connection, and one it is not answers `bad port` — the two are told apart by the cause,
+// and never by a port number.
+//
+// The signal is not decoration. The list holds 22 and 25 and 143, and the only reason asking about
+// them is safe is that `fetch` refuses them before it opens anything. The day a runtime stops
+// refusing one, this would be a real request to whatever answers there — a local sshd, a mail
+// daemon — and it would hang rather than fail. A second is far longer than a refusal on loopback
+// ever takes and far shorter than the suite's patience, so that day this says so instead.
+async function turnedAway(port: number): Promise<boolean> {
+  try {
+    await fetch(`http://127.0.0.1:${port}/`, { signal: AbortSignal.timeout(1000) })
+    return false
+  } catch (err) {
+    return (err as { cause?: { message?: string } }).cause?.message === 'bad port'
+  }
+}
+
+// A port the fixture hands out has to be one the tests can then reach, and `listen` is not the
+// judge of that: binding 10080 succeeds, and every `fetch` to the address that comes out of it
+// fails — not as a refused connection but as `TypeError: fetch failed, Caused by: bad port`, from
+// inside whatever test was using the fixture. The band ran 10000–30000 and 10080 sat in it, in
+// the slice `RUN_SLOT` 0 and `WORKER_SLOT` 1 draw from, so one worker in nine runs would take it
+// as its seventeenth fixture and fell two files with an error about neither of them (#136, #111).
+describe('the band a test server takes its port from', () => {
+  it('holds no port that fetch refuses to speak to', async () => {
+    const { floor, ceiling } = portBand()
+    const refused = []
+    for (const port of SPEC_BAD_PORTS) if (await turnedAway(port)) refused.push(port)
+    // The reading is not vacuous: this `fetch` does enforce the list, so the emptiness below is
+    // the band avoiding those ports and not the check having quietly stopped working.
+    expect(refused.length).toBeGreaterThan(0)
+    expect(refused.filter((port) => port >= floor && port < ceiling)).toEqual([])
+  })
+
+  // Moving the floor is the cheap way out of the rule above, and moving it too far is the next
+  // bug: the band is cut into a slice per run so that two suites on one box never want the same
+  // number, and a band with fewer slices in it is a band where they collide again (#109).
+  it('is still wide enough for the nine runs it was cut for', () => {
+    expect(portBand().slices).toBeGreaterThanOrEqual(9)
   })
 })

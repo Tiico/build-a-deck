@@ -416,13 +416,23 @@
 .byd-setup-canvas > .byd-setup-felt { flex: 1 1 auto; min-height: 220px; }
 .byd-setup-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: #9aa3b8; font-size: 12px; }
 /* What the surface says back: the hint, and after a removal the zone's name with the way back.
-   The step back is the editor's own (B4), said here because here is where the zone went. */
+   The step back is the editor's own (B4), said here because here is where the zone went.
+
+   The sentence wraps, and that is the whole of what holds the tab inside the window (#127). A line
+   that does not wrap declares its own length as its smallest size, and this row is a grid child:
+   the track it stands in could not go under that length, however narrow the column it was given
+   was. Everything sharing the track went with it — the felt, and the phone's sheet under it — so
+   at 1024 all three stood 201 px past the window, `main` grew a sideways scrollbar, and scrolling
+   to the sentence took the zone list off the other edge. The row was ellipsising nothing while it
+   did this: what cut the sentence was the window, not its own box. Wrapping costs a second line in
+   the narrow window and nothing in the wide one, and `min-height` is what keeps the row from
+   jumping as it fills.
+
+   The `line-height` is this branch's: with Bord laid out as three columns (#126) the sentence
+   has a narrower column than it had, so it wraps to two or three lines rather than one, and
+   12 px text set solid is hard to read across that many. */
 .byd-setup-said { display: flex; gap: var(--byd-s3); align-items: baseline; flex-wrap: wrap; min-height: 30px; color: #9aa3b8; font-size: 12px; line-height: 1.45; }
-/* The hint wraps rather than ending in an ellipsis. It used to be one nowrap line because the felt
-   beside it was free to grow past its column and took the width with it (#127); with the felt held
-   to its own column there is room to read the sentence, and a sentence about how to drag a zone is
-   not worth truncating. */
-.byd-setup-said > span:last-child { flex: 1 1 24ch; min-width: 0; }
+.byd-setup-said > span:last-child { flex: 1; min-width: 0; }
 .byd-setup-undo { display: flex; gap: 8px; align-items: center; color: #ffd98a; }
 .byd-setup-undo button { border: 1px solid #5c4a1f; border-radius: 8px; padding: 4px 10px; background: #241f13; color: #ffd98a; font-weight: 700; cursor: pointer; }
 /* The list of zones: every one the table has, in two groups, and the row is the way into it —
@@ -446,12 +456,12 @@
 /* A zone the table cannot be without says so where its × would have been, and why when it opens. */
 .byd-setup-fast { flex: none; color: #7c8496; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid #2f333d; border-radius: 999px; padding: 3px 8px; }
 .byd-setup-why { margin: 0; color: #9aa3b8; font-size: 11px; line-height: 1.45; }
-/* The felt takes the room it gets: the frame must not size itself after the table it holds.
-   `min-width: 0` is what says so in the other direction as well (#127). A grid item keeps
-   `min-width: auto`, so the felt's own intrinsic width won against its column: 933 px inside a
-   900 px one at 1280, which pushed its right edge to 1293 in a 1280 px window, cut the sentence
-   above it in half and gave the tab a sideways scrollbar — 269 px of one at 1024, where scrolling
-   across took the zone list off the left of the screen instead. */
+/* The felt takes the room it gets: the frame must not size itself after the table it holds, in
+   either direction. What actually made the tab wider than the window was the sentence above it and
+   not this box — see `.byd-setup-said` for why — and the felt was measured at 933 px in a 900 px
+   column because it was filling a track that sentence had already stretched. The `min-width: 0`
+   here is belt and braces on the same rule the sentence's fix states: nothing in this column
+   declares its own content as the column's smallest width. */
 .byd-setup-felt { position: relative; min-width: 0; min-height: 0; background: #0d0f14; border-radius: 16px; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); user-select: none; touch-action: none; }
 .byd-setup-felt .byd-table-frame { width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; }
 /* On the played felt a zone's name is furniture and stays quiet. Here it is the work: this is the
@@ -756,6 +766,37 @@
 .byd-layer-grip { color: #454c5c; font-size: 12px; text-align: center; cursor: grab; }
 .byd-layer-rename { width: 100%; min-height: var(--byd-tap); box-sizing: border-box; background: #0f1115; border: 1px solid var(--byd-editor-primary-mark); border-radius: 6px; color: #fff; font: inherit; font-size: 13px; padding: 0 8px; }
 /* Why nothing moved (L15), read beside the card that did not move. */
+/* The question a layer is given before it goes (#143, L9), under the card it draws on. Red and
+   not amber: leaving work unsaved is one thing and a deletion another, and this is the second —
+   so it is the palette the table's own delete question is asked in, held to the same bar. It is
+   the third row of a column laid out as `auto 1fr`, and therefore takes only the height it needs
+   while the card goes on filling what is left. */
+.byd-canvas-question {
+  --byd-editor-ask-bg: #3d2632;
+  --byd-editor-ask-ink: #ffe4ea;
+  --byd-editor-ask-danger-bg: #7a3243;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border-top: 1px solid var(--byd-editor-ask-danger-bg);
+  background: var(--byd-editor-ask-bg);
+  color: var(--byd-editor-ask-ink);
+  font-size: 12px;
+}
+.byd-canvas-question p { margin: 0; font-weight: 700; }
+.byd-canvas-question button {
+  padding: 6px 12px;
+  border: 1px solid var(--byd-editor-ask-danger-bg);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--byd-editor-ask-ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.byd-canvas-question button[data-kind='danger'] { background: var(--byd-editor-ask-danger-bg); }
 .byd-canvas-locked {
   margin: 10px 0 0;
   padding: 8px 12px;
