@@ -355,6 +355,22 @@ export class ProjectClient {
     return step.what
   }
 
+  // A gesture called off before it ever ended (#142): a drag the hand took back with Escape, or
+  // one the browser took away from the page. The document goes back to the one the gesture began
+  // from and the step it opened goes with it — and that second half is the whole difference
+  // between taking a move back and never having made it. A step back is a row in the history
+  // (B4); a drag that was called off is nothing that happened.
+  //
+  // Only the gesture still being made can be called off. Anything else is a doing that is already
+  // over, and the way back from one of those is the way back from any other.
+  callOff(gesture: string): void {
+    if (this.gesture !== gesture) return
+    const step = this.past.pop()
+    if (!step) return
+    this.gesture = null
+    this.send({ v: 'restore', doc: step.doc })
+  }
+
   redo(): Key | null {
     const step = this.future.pop()
     if (!step) return null
