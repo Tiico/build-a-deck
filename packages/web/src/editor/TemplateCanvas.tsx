@@ -191,14 +191,8 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             an override of the base's (#14), and laying a whole face down there would quietly
             make every layer of it the group's own. */}
         {face === 'back' && !group && <BackGallery onReplaceFace={onReplaceFace} />}
-        {/* What the column is about stays where it is put: the heading and how many cards the
-            panel reaches used to scroll away with the layers, so a designer deep in a long list
-            had no way of telling which face or which group she was editing (#129). */}
-        <header>
-          <h2 id="layers-heading">{t('canvas.layers', { face: faceName(face, t).toLowerCase() })}</h2>
-          <p className="byd-canvas-affects">{affectsLabel(doc, column, group, t)}</p>
-        </header>
-        <div className="byd-canvas-layers-scroll">
+        <h2 id="layers-heading">{t('canvas.layers', { face: faceName(face, t).toLowerCase() })}</h2>
+        <p className="byd-canvas-affects">{affectsLabel(doc, column, group, t)}</p>
         <LayerList
           layers={[...panel].reverse().map((l) => l.element)}
           selected={selectedElement}
@@ -216,22 +210,14 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
           removed={new Set(panel.filter((l) => l.source === 'removed').map((l) => l.element.id))}
           labelledBy="layers-heading"
         />
-        {/* The rules the groups are made of read as a continuation of the list and scroll with
-            it: there is a line per group, and a foot that held them would leave the layers two
-            rows tall. */}
+        <label className="byd-canvas-grid-toggle">
+          <input type="checkbox" checked={grid} onChange={(event) => setGrid(event.target.checked)} />
+          {t('canvas.grid')}
+        </label>
+        <p className="byd-canvas-hint">
+          {t(group ? 'canvas.hint.group' : 'canvas.hint.base')}
+        </p>
         {column && <GroupRules doc={doc} column={column} groups={groups} />}
-        </div>
-        {/* And what is done *to* the list stays put: the millimetre grid over the card, and how a
-            layer is moved. */}
-        <footer>
-          <label className="byd-canvas-grid-toggle">
-            <input type="checkbox" checked={grid} onChange={(event) => setGrid(event.target.checked)} />
-            {t('canvas.grid')}
-          </label>
-          <p className="byd-canvas-hint">
-            {t(group ? 'canvas.hint.group' : 'canvas.hint.base')}
-          </p>
-        </footer>
       </aside>
       )}
       {shows('canvas') && (

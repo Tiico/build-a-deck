@@ -7,6 +7,21 @@ Skriv det fallerande testet först, gör det grönt med minsta rimliga ändring,
 Det gäller ny funktionalitet, buggfixar och refaktoreringar — inga undantag för "små" ändringar.
 
 Innan något anses klart: `pnpm typecheck`, `pnpm test` och `pnpm lint` ska vara gröna.
+CI kör Node 26; `pnpm test` på äldre Node ger fjorton röda i `@byd/web` som inte är repots (#138).
+
+## Mandat
+
+Agenten driver arbetet självständigt hela vägen: granska, skriva issues, implementera, lösa
+konflikter, och **mergea sina egna PR:er** när kvalitetsgrinden och CI är gröna. Vänta inte på
+beställaren för att slå ihop något.
+
+Beställaren tar de viktiga designbesluten och hjälper till när agenten är osäker. Fråga alltså när
+— och bara när — svaret faktiskt ändrar vad som byggs: ett visuellt koncept, en avvägning mellan
+två rimliga produktvägar, ett beslut som hör hemma i `DESIGN-BESLUT.md`. Allt annat är agentens att
+avgöra och genomföra.
+
+Två saker står kvar oavsett mandatet: ett fynd som kräver ett designbeslut prototypas och godkänns
+före implementation, och ett överordnat issue ändras eller stängs inte automatiskt.
 
 Allt visuellt — vyer, layouter, interaktionsmönster, bordets och telefonens utseende — prototypas först med `/prototype`-skillen.
 Presentera prototyperna och få dem godkända innan den riktiga implementationen påbörjas.

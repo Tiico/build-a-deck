@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { DeckWall } from './DeckWall.js'
 import { EditorTabs, MODES, panelId, tabId, type Mode } from './EditorTabs.js'
 import { EditorStages, isCanvasStage, modeOf, STAGES, type Stage } from './EditorStages.js'
@@ -22,7 +22,6 @@ import { StatusNotice } from '../status/StatusNotice.js'
 import { useSay } from '../status/StatusLive.js'
 import { noticeFor } from '../status/notice.js'
 import { chordOf, isTyping } from './keys.js'
-import { useDismiss } from './dismiss.js'
 import { assetsInUse } from './assets.js'
 import { previewMotifs } from './motifs.js'
 import type { Motif } from '@byd/template'
@@ -92,14 +91,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // The tab says which game is open, and what is wrong with it while something is (#12).
   usePageTitle({ state: projectId ? (fault === 'unauthorized' ? null : fault ?? (client ? null : 'loading')) : 'missing', game: client?.doc.name ?? null })
   // The history (B4) opens from the revision, which is where the version is already named.
-  // The two panels that hang from the header, and the buttons they hang from: Escape and a press
-  // outside close them, and Escape gives the focus back to the button it came from (#133).
   const [historyOpen, setHistoryOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
-  const revRef = useRef<HTMLButtonElement>(null)
-  const hereRef = useRef<HTMLButtonElement>(null)
-  useDismiss(historyOpen, revRef, '.byd-history', useCallback(() => setHistoryOpen(false), []))
-  useDismiss(shareOpen, hereRef, '.byd-share', useCallback(() => setShareOpen(false), []))
   // An older version the table is held against (B4), fetched once when the comparison starts.
   const [compare, setCompare] = useState<{ rev: number; label?: string | undefined; doc: ProjectDoc } | null>(null)
   // A running table (L5) with what admits people to it (DRIFT §9): the code and the host key.
@@ -377,17 +370,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     ),
     symbols: () => <SymbolPanel doc={doc} client={client} assetBase={http} />,
     rules: () => <RulesPanel doc={doc} client={client} />,
-    // Bord is the home for both the game's board vocabulary and its running tables (#19, C4) —
-    // side by side on one screen, and not the setup editor with the list stacked under it. Stacked,
-    // each of the two asked for the whole work area, so the tab was two screens tall and the
-    // window itself scrolled: the header left the top of the screen and a blank page showed under
-    // the app (#126). The column here is the third column of `.byd-bord`.
-    tables: () => (
-      <div className="byd-bord">
-        <SetupEditor doc={doc} client={client} assetBase={http} motifs={deckMotifs} />
-        <TablesTab client={client} server={params.get('server')} />
-      </div>
-    ),
+    // Bord is the home for both the game's board vocabulary and its running tables (#19, C4).
+    // One panel and not two stacked (#126): the list of running tables stands in the setup's third
+    // column, beside the felt, so the whole tab is one screen and the header stays where it was.
+    tables: () => <SetupEditor doc={doc} client={client} assetBase={http} motifs={deckMotifs} beside={<TablesTab client={client} server={params.get('server')} />} />,
   }
 
   const wsUrl = (params.get('server') ?? location.origin).replace(/^http/, 'ws')
@@ -430,7 +416,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         </a>
         <strong>{doc.name}</strong>
         {/* The revision is also the way into the history (B4): the version is already named here. */}
-        <button ref={revRef} type="button" className="byd-editor-rev" aria-expanded={historyOpen} onClick={() => setHistoryOpen((on) => !on)}>
+        <button type="button" className="byd-editor-rev" aria-expanded={historyOpen} onClick={() => setHistoryOpen((on) => !on)}>
           {t('editor.rev', { n: client.rev })}
         </button>
         {/* Whether the work is safe, in words and in colour (#8). It is a live region, so the
@@ -444,7 +430,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         {room === 'desk' && <EditorTabs mode={mode} onSelect={(m) => setStage(m === 'template' ? 'canvas' : m)} />}
         {/* The people in the header are the door to who has the game at all (D3): who is here
             now and who may be here is one question. */}
-        <button ref={hereRef} type="button" className="byd-editor-here" data-here aria-label={t('share.title')} aria-expanded={shareOpen} onClick={() => setShareOpen((on) => !on)}>
+        <button type="button" className="byd-editor-here" data-here aria-label={t('share.title')} aria-expanded={shareOpen} onClick={() => setShareOpen((on) => !on)}>
           {client.here.map((p) => (
             <i key={p.id} title={p.name} style={{ ['--who' as string]: colourOf(p.name) }}>
               {p.name.slice(0, 1).toUpperCase()}
