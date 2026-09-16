@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.24.0",
+  "engines": { "node": ">=26" },
   "scripts": {
     "prepare": "git config core.hooksPath .githooks || true",
     "test": "pnpm -r --workspace-concurrency=1 test",

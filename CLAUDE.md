@@ -7,7 +7,8 @@ Skriv det fallerande testet först, gör det grönt med minsta rimliga ändring,
 Det gäller ny funktionalitet, buggfixar och refaktoreringar — inga undantag för "små" ändringar.
 
 Innan något anses klart: `pnpm typecheck`, `pnpm test` och `pnpm lint` ska vara gröna.
-CI kör Node 26; `pnpm test` på äldre Node ger fjorton röda i `@byd/web` som inte är repots (#138).
+Node-versionen står i `.nvmrc` och i `engines`; på en äldre Node ger `pnpm test` fjorton röda i
+`@byd/web` som inte är repots (#138), och `pnpm install` säger till innan dess.
 
 ## Mandat
 
