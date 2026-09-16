@@ -50,7 +50,7 @@ const playerUrl=`${web}/play?session=${session.id}&seat=A&name=Ada&token=${guest
 // Local, disposable navigation manifest: useful when comparing from the browser tool.
 writeFileSync('/private/tmp/byd-ux-prototype-links.json',JSON.stringify({editor:editorUrl,player:playerUrl,email:'prototype@example.com'},null,2))
 const vite=spawn('pnpm',['--filter','@byd/web','dev'],{stdio:'inherit',env:{...process.env,PORT:'5317'}})
-console.log(`\nPROTOTYPER · inga ändringar sparas\nEditor: ${editorUrl}\nLogga in som prototype@example.com när editorn ber om det.\nTelefon: ${playerUrl}\nByt A/B/C med pilknapparna längst ner. Ctrl+C stänger testmiljön.\n`)
+console.log(`\nPROTOTYPER · inga ändringar sparas\nEditor: ${editorUrl}\nLogga in som prototype@example.com när editorn ber om det.\nTelefon: ${playerUrl}\nBörja i editorn: Kort → Förbered → Prova som Ada → Feedback → Lärdomar. Hela rundan går i samma flik. Byt A/B/C med pilknapparna längst ner. Ctrl+C stänger testmiljön.\n`)
 const stop=async()=>{vite.kill('SIGTERM');player.close();table.close();server.close();await renderer.close();process.exit(0)}
 process.on('SIGINT',()=>void stop())
 process.on('SIGTERM',()=>void stop())

@@ -34,3 +34,27 @@
 .ux-work-toast { margin:20px 30px!important; padding:12px 18px; background:#29372d; border-left:3px solid var(--ux-accent); }
 @media(max-width:1100px) { .ux-work-shell { grid-template-columns:170px 1fr; } .ux-context { grid-column:1/-1; border-top:1px solid var(--ux-line); } .ux-workbench { grid-template-columns:190px 1fr; } .ux-workbench-test { grid-column:1/-1; border-top:1px solid var(--ux-line); } .ux-test-hero { flex-wrap:wrap; } }
 @media(max-width:780px) { .ux-work-head { padding:20px; flex-wrap:wrap; } .ux-work-shell,.ux-workbench,.ux-test-columns,.ux-work-cards { display:block; } .ux-work-sidebar { border:0; } .ux-work-nav { display:flex; flex-wrap:wrap; } .ux-work-sidebar .ux-panel { display:none; } .ux-workbench-cards .ux-card-list { max-height:170px; } .ux-work-shell main { padding:20px; } .ux-test-hero { padding:24px; } .ux-test-hero h2 { font-size:25px; } .ux-test-columns > aside { margin-top:30px; } }
+
+/* Iteration 2: make phase changes and the round trip visible in every layout. */
+.ux-work [hidden] { display:none!important; }
+.ux-work-progress { padding:18px 24px; border-bottom:1px solid var(--ux-line); }
+.ux-work-progress .ux-work-nav { display:flex; flex-wrap:wrap; }
+.ux-work-nav small { margin-right:7px; }
+.ux-work .ux-stack > details > summary { padding:14px 0; cursor:pointer; }
+.ux-session-seats { display:flex; flex-wrap:wrap; gap:10px; }
+.ux-session-seats > span { display:grid; gap:5px; padding:14px; border:1px solid var(--ux-line); border-radius:10px; flex:1; }
+.ux-followup { margin:20px 30px; padding:18px 22px; border-left:3px solid var(--ux-accent); background:#29372d; }
+.ux-run-history { margin:24px 30px; padding:16px 0; border-top:1px solid var(--ux-line); }
+.ux-run-history summary { cursor:pointer; min-height:44px; }
+.ux-run-history article { padding:18px 0; }
+.ux-player-rehearsal { max-width:440px; margin:24px auto; border:1px solid var(--ux-line); border-radius:18px; overflow:hidden; }
+.ux-player-rehearsal .ux-proto { min-height:0; padding-bottom:24px; }
+.ux-player-rehearsal .ux-phone-shell { padding:0 16px; }
+.ux-player-rehearsal .ux-phone-cards > button,.ux-player-rehearsal .ux-phone-cards > div { flex-basis:154px; }
+.ux-compiled-face { width:100%; aspect-ratio:63/88; overflow:hidden; }
+.ux-work-b .ux-workbench-editor .ux-primary { font-weight:500; background:var(--ux-panel); color:var(--ux-ink); border-color:var(--ux-line); }
+@media(max-width:780px) { .ux-work-b .ux-workbench-test { border:1px solid var(--ux-line); margin:12px; } .ux-player-rehearsal { margin:12px 0; border-radius:0; border-left:0; border-right:0; } }
+.ux-work:has(.ux-player-rehearsal:not([hidden])) .ux-work-head { padding:12px 24px; }
+.ux-work:has(.ux-player-rehearsal:not([hidden])) .ux-work-head h1 { font-size:20px; margin-top:3px; }
+.ux-player-rehearsal .ux-phone-summary { margin:14px 0; }
+.ux-player-rehearsal .ux-phone-head { padding:12px 0; }
