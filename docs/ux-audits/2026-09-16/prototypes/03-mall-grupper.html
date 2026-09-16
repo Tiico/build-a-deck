@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 3 — Mallens grupper och kolumner</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* Four columns, but only two of them are fixed. The canvas takes what is left and the
+     properties column is a drawer that yields its 280 px when nothing is selected.
+     Today: 68 / 220 / 1fr / 280 at every width, so at 1024 the canvas gets 456 px. */
+  .canvas { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 68px 220px minmax(0, 1fr) var(--props, 280px); }
+  .rail { border-right: 1px solid var(--line); padding: var(--s3) var(--s2); display: grid; gap: 6px; align-content: start; }
+  .rail button { min-height: 52px; border: 1px solid var(--line); border-radius: 10px; background: var(--sunk); color: var(--ink); font: 10px system-ui; display: grid; place-items: center; gap: 2px; cursor: pointer; }
+  .rail button[aria-pressed='true'] { border-color: var(--primary-mark); }
+  .rail button b { font-size: 15px; font-weight: 400; }
+
+  /* The layer column gets a crown of its own so the count and the hint never scroll away. */
+  .layers { min-height: 0; display: flex; flex-direction: column; border-right: 1px solid var(--line); }
+  .layers > header { flex: none; padding: var(--s3); border-bottom: 1px solid var(--line-soft); }
+  .layers > .scroll { padding: var(--s2) var(--s3); }
+  .layers > footer { flex: none; padding: var(--s2) var(--s3); border-top: 1px solid var(--line-soft); color: var(--quiet); font-size: 11px; line-height: 1.45; }
+  .layer { display: flex; align-items: center; gap: var(--s2); min-height: var(--tap); padding: 0 var(--s2); border-radius: 8px; color: var(--ink); }
+  .layer:hover { background: var(--card); }
+  .layer[aria-selected='true'] { background: #243049; }
+  .layer i { color: var(--quiet); font-style: normal; width: 12px; }
+  .layer span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .stage-wrap { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+  .stage-top { display: flex; align-items: center; gap: var(--s3); }
+  .stage-top select { min-height: 34px; border-radius: 8px; border: 1px solid var(--line); background: #14161c; color: #fff; font: inherit; padding: 0 var(--s2); }
+  .faces button { min-height: var(--tap); border: 0; border-radius: 8px; padding: 0 14px; background: transparent; color: var(--quiet-2); font: inherit; font-weight: 700; cursor: pointer; }
+  .faces button[aria-pressed='true'] { color: #fff; box-shadow: inset 0 -3px 0 0 var(--primary-mark); }
+
+  /* The group strip wraps instead of hiding 61 % of itself in a silent side scroller. */
+  .groups { flex: none; display: flex; flex-wrap: wrap; gap: 4px; padding: var(--s2) var(--gutter); border-bottom: 1px solid var(--line); }
+  .groups button { min-height: 36px; border: 1px solid transparent; border-radius: 9px; padding: 0 12px; background: transparent; color: var(--quiet-2); font: inherit; font-weight: 600; cursor: pointer; white-space: nowrap; }
+  .groups button[aria-pressed='true'] { color: #fff; background: var(--sunk); box-shadow: inset 0 -3px 0 0 var(--primary-mark); }
+  .groups button small { color: var(--quiet); font-weight: 400; margin-left: 6px; }
+
+  .stage { flex: 1 1 auto; min-height: 0; display: grid; place-items: center; padding: var(--s4);
+    background: repeating-conic-gradient(#20232b 0 25%, #1b1d23 0 50%) 0 0 / 24px 24px; }
+  .card-face { height: 100%; aspect-ratio: 63 / 88; max-width: 100%; background: #f6efe0; border: 2px solid #2a2a22; border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; color: #2a2118; }
+  .card-face .band { padding: 14px 16px; background: #6b4a2a; color: #fff; }
+  .card-face .band b { display: block; font: 700 clamp(15px, 2.4cqh, 26px) Georgia, serif; }
+  .card-face .band small { font-weight: 700; font-size: 14px; }
+  .card-face p { margin: 0; padding: 16px; font-size: 15px; line-height: 1.35; outline: 2px solid #3c8ce7; outline-offset: -2px; }
+  .card-face .pill { margin: auto 16px 16px; align-self: flex-start; padding: 8px 20px; border-radius: 18px; background: #7aa7e8; color: #10131a; font: 700 15px system-ui; }
+
+  .props { min-height: 0; min-width: 0; display: flex; flex-direction: column; border-left: 1px solid var(--line); overflow: hidden; }
+  .props > header { flex: none; display: flex; align-items: center; gap: var(--s2); padding: var(--s3); }
+  .props > header button { margin-left: auto; min-width: 32px; min-height: 32px; border: 1px solid var(--line); border-radius: 8px; background: var(--sunk); color: var(--quiet-2); cursor: pointer; }
+  .props > .scroll { padding: 0 var(--s3) var(--s3); }
+  .field { display: grid; gap: 4px; margin-bottom: var(--s3); min-width: 0; }
+  .field label { color: var(--quiet); font-size: 11px; }
+  .field input, .field select { min-width: 0; width: 100%; min-height: 34px; border: 1px solid var(--line); border-radius: 8px; background: #14161c; color: #fff; font: inherit; padding: 0 var(--s2); }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s2); }
+  .swatch { height: 34px; border-radius: 8px; border: 1px solid var(--line); background: #6b4a2a; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <a class="home" href="#">Mina spel</a><strong>Sal's Saloon</strong>
+    <button class="rev">rev 1</button><span class="saved">Sparat</span>
+    <nav class="tabs">
+      <button>Kortvägg</button><button aria-selected="true">Mall</button><button>Data</button>
+      <button>Symboler</button><button>Regler</button><button>Bord</button>
+    </nav>
+    <span class="spacer"></span><span class="who">P</span>
+    <button class="btn">Spara</button><button class="btn primary">Uppdatera bordet</button>
+  </header>
+
+  <main>
+    <div class="canvas" id="canvas">
+      <div class="rail">
+        <button><b>T</b>Text</button><button><b>▣</b>Bild</button>
+        <button><b>●</b>Ikon</button><button aria-pressed="true"><b>◉◉</b>Ikonrad</button><button><b>□</b>Form</button>
+      </div>
+
+      <div class="layers">
+        <header><h2 class="h">Lager · framsidan</h2><p class="measure" style="margin:4px 0 0">Alla 77 kort</p></header>
+        <div class="scroll">
+          <div class="layer"><i>🔒</i><span>raritet</span></div>
+          <div class="layer"><i>🔒</i><span>if-karaktar</span></div>
+          <div class="layer"><i>🔒</i><span>if-silver</span></div>
+          <div class="layer"><i>🔒</i><span>if-koppar</span></div>
+          <div class="layer"><i>🔒</i><span>if-special</span></div>
+          <div class="layer"><i>🔒</i><span>if-guld</span></div>
+          <div class="layer"><i>🔒</i><span>if-diamant</span></div>
+          <div class="layer" aria-selected="true"><i>T</i><span>body</span></div>
+          <div class="layer"><i>T</i><span>typ</span></div>
+          <div class="layer"><i>T</i><span>title</span></div>
+          <div class="layer"><i>□</i><span>frame</span></div>
+          <div class="layer"><i>□</i><span>band</span></div>
+          <div class="layer"><i>□</i><span>paper</span></div>
+        </div>
+        <footer>Dra ett lager för att ändra ordning. F2 döper om.</footer>
+      </div>
+
+      <div class="stage-wrap">
+        <div class="chrome-row stage-top">
+          <span class="lead">Grupperat på kolumnen</span>
+          <select><option>typ</option><option>raritet</option></select>
+          <span class="spacer"></span>
+          <span class="faces"><button aria-pressed="true">Fram</button><button>Bak</button></span>
+        </div>
+        <div class="groups">
+          <button aria-pressed="true">Bas (alla)<small>77</small></button>
+          <button>typ = Playcard<small>23</small></button>
+          <button>typ = Location<small>4</small></button>
+          <button>typ = Effect<small>10</small></button>
+          <button>typ = Event<small>8</small></button>
+          <button>typ = Trap+<small>6</small></button>
+          <button>typ = Trap-<small>5</small></button>
+          <button>typ = Shopcard<small>12</small></button>
+          <button>typ = Karaktär<small>9</small></button>
+        </div>
+        <div class="stage">
+          <div class="card-face">
+            <div class="band"><b>Juice em' up!</b><small>Playcard</small></div>
+            <p>Välj två andra spelare. De blandar en shot till varann</p>
+            <span class="pill">Diamant</span>
+          </div>
+        </div>
+      </div>
+
+      <aside class="props">
+        <header><h2 class="h">Egenskaper · body</h2><button id="fold" title="Fäll ihop">›</button></header>
+        <div class="scroll">
+          <div class="pair">
+            <div class="field"><label>x (mm)</label><input value="6"></div>
+            <div class="field"><label>y (mm)</label><input value="34"></div>
+            <div class="field"><label>bredd</label><input value="51"></div>
+            <div class="field"><label>höjd</label><input value="40"></div>
+          </div>
+          <div class="field"><label>Typsnitt</label><select><option>Georgia</option></select></div>
+          <div class="pair">
+            <div class="field"><label>Storlek (pt)</label><input value="8.5"></div>
+            <div class="field"><label>Vikt</label><select><option>400</option></select></div>
+          </div>
+          <div class="field"><label>Färg</label><div class="swatch"></div></div>
+          <div class="field"><label>Passning</label><select><option>krymp tills det får plats</option></select></div>
+          <h2 class="h" style="margin:var(--s4) 0 var(--s2)">Typsnitt i spelet</h2>
+          <p style="margin:0 0 var(--s2);color:var(--quiet-2);line-height:1.5">Inget eget typsnitt än.</p>
+          <button class="btn" style="width:100%">Ladda upp ett typsnitt</button>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<p class="note"><b>Förslag · Mallen</b>
+Gruppremsan radbryter och visar antalet kort per grupp i stället för att gömma 61 % av sig själv i
+en tyst sidoskroll. Lagerlistan får en egen krona och fot, så antal och hjälptext aldrig skrollar
+bort. Egenskapskolumnen går att fälla ihop (›) och lämnar då sina 280 px till duken.</p>
+
+<script>
+const fold = document.getElementById('fold')
+let open = true
+fold.onclick = () => {
+  open = !open
+  document.documentElement.style.setProperty('--props', open ? '280px' : '0px')
+  document.querySelector('.props').style.display = open ? 'flex' : 'none'
+  fold.textContent = open ? '›' : '‹'
+}
+</script>
+</body>
+</html>

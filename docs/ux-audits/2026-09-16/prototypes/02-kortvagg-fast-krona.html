@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 2 — Kortväggens verktyg står still</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* The wall is a work area with a fixed crown and one scroll region.
+     Today .byd-editor > main is the scroller, so the vision filters and the
+     physical check scroll away with the cards. */
+  .wall { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 320px; }
+  .wall-main { min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+  .vision { display: flex; gap: 2px; align-items: center; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+  .vision button { flex: 0 0 auto; white-space: nowrap; min-height: var(--tap); border: 0; border-radius: 8px; padding: 0 10px; background: transparent; color: var(--quiet-2); font: inherit; font-weight: 600; cursor: pointer; }
+  .vision button[aria-pressed='true'] { color: #fff; box-shadow: inset 0 -3px 0 0 var(--primary-mark); }
+  .tick { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); color: var(--quiet-2); white-space: nowrap; }
+  .tick i { flex: 0 0 auto; width: 18px; height: 18px; border: 1px solid #3b414e; border-radius: 4px; background: #14161c; }
+
+  /* The density control the wall does not have today: at 1920 the cards stay 156 px
+     and a 77-card deck is four screens whatever the monitor. */
+  .zoom { display: flex; align-items: center; gap: 6px; }
+  .zoom button { min-width: var(--tap); min-height: var(--tap); border: 1px solid var(--line); border-radius: 8px; background: var(--sunk); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+
+  .grid { display: grid; gap: var(--s3); padding: var(--s4); grid-template-columns: repeat(auto-fill, minmax(var(--cw, 150px), 1fr)); align-content: start; }
+  .c { position: relative; border-radius: 6px; background: #f6efe0; border: 1px solid #2a2a22; aspect-ratio: 63 / 88; overflow: hidden; color: #2a2118; }
+  .c .band { padding: 5px 7px; background: #6b4a2a; color: #fff; }
+  .c .band b { display: block; font: 700 11px Georgia, serif; }
+  .c .band small { font-size: 9px; opacity: .85; }
+  .c p { margin: 0; padding: 6px 7px; font-size: 9px; line-height: 1.3; }
+  .c .pill { position: absolute; left: 7px; bottom: 7px; padding: 2px 8px; border-radius: 9px; font: 700 8px system-ui; }
+  .c .x { position: absolute; right: 4px; bottom: 4px; color: var(--quiet); font: 700 9px system-ui; }
+
+  /* The physical check is a dock beside the wall, not a note that scrolls off. */
+  .dock { min-height: 0; display: flex; flex-direction: column; border-left: 1px solid var(--line); background: var(--panel); }
+  .dock > header { flex: none; padding: var(--s4) var(--s4) var(--s2); }
+  .dock > .scroll { padding: 0 var(--s4) var(--s4); }
+  .finding { border-left: 3px solid var(--warn); border-radius: 0 10px 10px 0; background: var(--card); padding: var(--s3); margin-bottom: var(--s2); }
+  .finding b { display: block; color: #fff; }
+  .finding small { color: var(--quiet-2); }
+  .count { color: var(--quiet); }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <a class="home" href="#">Mina spel</a><strong>Sal's Saloon</strong>
+    <button class="rev">rev 1</button><span class="saved">Sparat</span>
+    <nav class="tabs">
+      <button aria-selected="true">Kortvägg</button><button>Mall</button><button>Data</button>
+      <button>Symboler</button><button>Regler</button><button>Bord</button>
+    </nav>
+    <span class="spacer"></span><span class="who">P</span>
+    <button class="btn">Spara</button><button class="btn primary">Uppdatera bordet</button>
+  </header>
+
+  <main>
+    <div class="wall">
+      <div class="wall-main">
+        <!-- Kronan: står still medan väggen skrollar -->
+        <div class="chrome-row">
+          <div class="vision">
+            <button aria-pressed="true">Som du ser det</button>
+            <button>Deuteranopi</button><button>Protanopi</button><button>Tritanopi</button><button>Gråskala</button>
+          </div>
+          <span class="tick"><i></i> skär- och skyddsmarginal</span>
+          <span class="tick"><i></i> på armlängds avstånd</span>
+          <span class="spacer"></span>
+          <span class="count" style="white-space:nowrap">77 kort</span>
+          <span class="zoom"><button id="out">−</button><span class="measure" id="size">150 px</span><button id="in">+</button></span>
+        </div>
+        <!-- Arbetet: den enda skrollytan -->
+        <div class="scroll"><div class="grid" id="grid"></div></div>
+      </div>
+
+      <aside class="dock">
+        <header><h2 class="h">Fysisk kontroll</h2></header>
+        <div class="scroll">
+          <p style="margin:0 0 var(--s3);color:var(--quiet-2);line-height:1.5">Bara varningar. Ingenting stoppar en beställning.</p>
+          <div class="finding"><b>typsnitt som inte reser</b><small>77 kort · VARNING</small></div>
+          <p style="margin:0;color:var(--quiet-2);line-height:1.5">Ett fel är oftast mallens och inte kortets: det syns på varje kort som ärver elementet.</p>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<p class="note"><b>Förslag · Kortväggen</b>
+Synfilter, bockar, antal och täthet står kvar i en krona som inte flyttar sig; väggen är den enda
+skrollytan. Fysisk kontroll blir en docka bredvid, inte en ruta som skrollar bort. Täthetsreglaget
+låter en bred skärm faktiskt visa fler kort.</p>
+
+<script>
+const words = [
+  ['Juice em\' up!','Playcard','Välj två andra spelare. De blandar en shot till varann','Diamant','#7aa7e8','#6b4a2a'],
+  ['Sal\'s Saloon','Location','Saloonen öppnar! Lägg upp ett shopkort per spelare som går in.','Guld','#e8c14a','#3c5b3a'],
+  ['DustyDice Casino','Location','Välkommen till kasinot! Alla annonserar sin insats.','Guld','#e8c14a','#3c5b3a'],
+  ['Free for all','Effect','Era stöldgods är i fara! Så länge effekten ligger får ni sno varandras stöldgodskort.','Special','#d1495b','#7a3b2e'],
+  ['Duel','Playcard','Utmana en spelare på duell. Förloraren dricker 3','Koppar','#c98a4b','#6b4a2a'],
+  ['Standoff','Event','Dela upp er i två lag efter hur ni sitter. Öppna en ny enhet och duellera lag mot lag.','Diamant','#7aa7e8','#2f4a63'],
+  ['Zorro\'s here!','Event','Zorro är här för att stoppa er. Slå en tärning var.','Guld','#e8c14a','#2f4a63'],
+  ['The Heist','Event','Ni ska försöka råna ett bankvalv. Råna valvet: 3 guld + allt i The Bank.','Silver','#c9ced8','#2f4a63'],
+  ['Stolen Goods','Playcard','1 värdesak! Värde 1. Säljs för 1 guld. Böter 1 klunk.','Koppar','#c98a4b','#6b4a2a'],
+  ['The Alley','Location','I gränden kan man stöta på mycket skumma typer, slå en tärning.','Silver','#c9ced8','#3c5b3a'],
+  ['Sheriff\'s Check','Playcard','Har du stöldgods: annonsera två siffror och slå.','Koppar','#c98a4b','#6b4a2a'],
+  ['Deflect','Trap+','Klunkarna riktade mot dig går istället till dina grannar.','Guld','#e8c14a','#3f5540'],
+]
+const grid = document.getElementById('grid')
+for (let i = 0; i < 48; i++) {
+  const [t, typ, body, rar, col, band] = words[i % words.length]
+  const el = document.createElement('div')
+  el.className = 'c'
+  el.innerHTML = `<div class="band" style="background:${band}"><b>${t}</b><small>${typ}</small></div>
+    <p>${body}</p><span class="pill" style="background:${col};color:#10131a">${rar}</span>
+    ${i % 3 ? `<span class="x">×${(i % 4) + 1}</span>` : ''}`
+  grid.append(el)
+}
+let w = 150
+const size = document.getElementById('size')
+const set = (n) => { w = Math.max(96, Math.min(280, n)); document.documentElement.style.setProperty('--cw', w + 'px'); size.textContent = w + ' px' }
+document.getElementById('in').onclick = () => set(w + 26)
+document.getElementById('out').onclick = () => set(w - 26)
+set(150)
+</script>
+</body>
+</html>
