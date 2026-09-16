@@ -1,23 +1,25 @@
 // @vitest-environment jsdom
 // The crown over the card, and the two columns beside it (#129).
 //
-// The Mall tab used to keep its groups in a silent side scroll: 1076 px of tabs in a 420 px row at
-// 1024, so 656 px of them — 61 % — were out of sight with no arrow, no fade and no keyboard way to
-// the rest, and the last one that did show was cut through the middle of its own word. Wrapping the
-// row answered that and sent the bill to the crown: eleven groups became three rows, 162 px of
-// height the card never gets back, and a deck with twenty groups would take a fourth. The owner's
-// answer is the crown menu: one button carrying the open group's name *and* its count, and the whole
-// list behind it — the only shape in the prototype that hides nothing and costs no height.
+// The Mall tab kept its groups in a silent side scroll. Measured here on a deck with eleven groups:
+// 823 px of the row were out of sight at 1024 with no arrow, no fade and no keyboard way to the
+// rest, eight of the twelve entries lay past the crown's own right edge, and the last one that did
+// show was cut through the middle of its own word. The crown was two rows — 121 px — at every width
+// for it. Letting the row wrap answers the first half and sends the bill to the second: every group
+// shows, and the crown becomes 265 px at 1024 on this deck and more on a bigger one. The owner's
+// answer is the menu: one button carrying the open group's name *and* its count, with the whole list
+// behind it — the only shape in the prototype that hides nothing and costs no height.
 //
 // Beside the card, two more things the audit measured. The layer column scrolled its own heading,
-// its count and the line about dragging out of sight along with the list; and the properties column
-// held its 280 px at 1024 whether or not anything was selected, leaving the card 456 px of the desk.
-// It is folded by hand now — by hand and not by itself, because a column that opens and shuts as
-// the selection changes moves the card under the pointer while it is being worked on.
+// its count and the line about dragging out of sight along with the list — 690 px of scrolling at
+// 1024 — and the properties column held its 280 px whether or not anything was selected, leaving
+// the card 456 px of a 1024 px desk. It is folded by hand now — by hand and not by itself, because
+// a column that opens and shuts as the selection changes moves the card under the pointer while it
+// is being worked on.
 //
 // All of it is layout, so none of it can be asked of jsdom: the markup is taken from a real mount
 // and measured in Chromium against the stylesheet the editor actually ships, the way
-// `editor-one-screen.test.tsx` and `editor-spacing.test.tsx` ask their own questions.
+// `editor-window.test.tsx` and `editor-spacing.test.tsx` ask their own questions.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
@@ -41,9 +43,9 @@ const document_ = (html: string) =>
     .replace('<div id="root"></div>', `<div id="root">${html}</div>`)
 
 // A deck grouped as many ways as the one the audit measured: eleven values in one column, over
-// sixty cards, already grouped when the tab opens. Eleven is the number that made the old row
-// 1076 px wide, and it is the number that tells a crown whose height depends on the deck from one
-// whose height does not — five would have fitted on one line and proved nothing.
+// sixty cards, already grouped when the tab opens. Eleven is what made the audit's own row 1076 px
+// wide, and it is the number that tells a crown whose height depends on the deck from one whose
+// height does not — five would have fitted on one line and proved nothing.
 const TYPES = ['Playcard', 'Location', 'Effect', 'Event', 'Trap', 'Character', 'Artifact', 'Blessing', 'Curse', 'Terrain', 'Weather'] as const
 function groupedDeck(): ProjectDoc {
   const { zones, seats, floor } = recipeSetup(4, [])
@@ -160,8 +162,13 @@ describe.each(DESKS)('the crown over the card on a %ix%i desk', (width, height) 
         const crown = document.querySelector('.byd-canvas-strip')!
         const box = crown.getBoundingClientRect()
         return {
-          // The silent side scroll this issue is about, asked of the crown itself.
-          hidden: { across: crown.scrollWidth - crown.clientWidth, down: crown.scrollHeight - crown.clientHeight },
+          // The silent side scroll this issue is about, asked of the crown and of everything in it:
+          // it was one element in, on the row of tabs, which is exactly why nothing said it was
+          // there. Nothing in a crown standing at rest may have anything out of sight.
+          hidden: [crown, ...crown.querySelectorAll('*')]
+            .map((el) => ({ what: el.className || el.tagName, across: el.scrollWidth - el.clientWidth, down: el.scrollHeight - el.clientHeight }))
+            .filter(({ across, down }) => across > 0 || down > 0)
+            .map(({ what, across, down }) => `${what}: ${across} across, ${down} down`),
           controls: [...crown.querySelectorAll('button, select')].length,
           // A control whose box leaves the crown's is a control cut through — `typ = E` was the
           // last thing the old strip showed at 1024, and half a word is what a reader gets.
@@ -175,7 +182,8 @@ describe.each(DESKS)('the crown over the card on a %ix%i desk', (width, height) 
     )
     // Counted as well as measured: a crown with nothing in it hides nothing and cuts nothing.
     expect(seen.controls).toBeGreaterThanOrEqual(4)
-    expect(seen).toMatchObject({ hidden: { across: 0, down: 0 }, cut: [] })
+    expect(seen.hidden).toEqual([])
+    expect(seen.cut).toEqual([])
   }, 120_000)
 
   it('has every group of the deck behind its one button, counted, and none of them cut off', async () => {
@@ -234,7 +242,7 @@ describe.each(DESKS)('the card on a %ix%i desk', (width, height) => {
 })
 
 // The layer column's own crown and foot (#129). The heading, the count of cards the panel is about
-// and the line about dragging used to scroll away with the list: at 1024 the list ran 441 px past
+// and the line about dragging used to scroll away with the list: at 1024 the list ran 690 px past
 // the bottom of the window, and everything written round it went with it. They are a frame now, and
 // only the list inside it moves.
 describe.each(DESKS)('the layer column on a %ix%i desk', (width, height) => {

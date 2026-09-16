@@ -2297,7 +2297,8 @@ Prototypen `packages/web/src/prototype/groups` togs bort när även baksidesflö
 
 Reviderat 2026-09-16 (#129, prototypat i tre varianter och avgjort av beställaren): **grupperna är en meny i krönet, inte en rad flikar.**
 Raden av flikar var 1 076 px i en 420 px remsa vid 1024: 656 px — 61 % av grupperna — låg i en tyst sidoskroll utan pil, toning eller tangentbordsväg, och den sista fliken som syntes var kapad mitt i sitt eget ord.
-Att låta raden radbryta (variant A) visade alla grupper och tog 265 px av krönet på en lek med elva av dem, och priset växte med leken — en formgivare straffades för att ha många grupper.
+Mätt på nytt sedan remsan togs tillbaka i #158, på en lek med elva grupper: 823 px dolda vid 1024, åtta av tolv flikar bortom krönets egen högerkant, och krönet självt två rader och 121 px vid varje bredd.
+Att låta raden radbryta (variant A) visade alla grupper och tog 265 px av krönet på samma lek, och priset växte med leken — en formgivare straffades för att ha många grupper.
 Kronmenyn kostar 61 px vid varje bredd och på varje lek, och knappen bär gruppens namn **och** dess antal kort, vilket flikraden aldrig gjorde: `typ = Playcard · 6 kort`.
 Gruppen är samma regel som förut och `override`, `remove` och "Återgå till basen" är orörda; det som ändrades är vägen mellan grupperna, och varje grupp nås med tangentbordet i menyn (piltangenter, Enter, Escape).
 Krönet ligger sedan dess över alla fyra kolumnerna och inte bara över kortet, eftersom det är enda platsen dess fyra kontroller får plats på en rad vid 1024.
@@ -2305,7 +2306,7 @@ Krönet ligger sedan dess över alla fyra kolumnerna och inte bara över kortet,
 Reviderat 2026-09-16 (#129): **egenskapskolumnen fälls ihop för hand, och lagerkolumnen är en ram.**
 Kolumnen höll sina 280 px vare sig något var markerat eller inte, så duken fick 456 px av ett 1024 px skrivbord; fälld ger den 736.
 För hand och inte av sig själv: den prövade automatiska fällningen byter dukens bredd varje gång formgivaren klickar bredvid ett element, så kortet flyttar sig under pekaren som arbetar på det. Läget minns i webbläsaren (L4) och skrivs aldrig i dokumentet.
-Lagerkolumnen är krona, lista och fot: rubriken, antalet kort panelen gäller och raden om att dra skrollade förut bort med listan, 751 px vid 1024 — det som behövs mest i slutet av en lång lista var precis det som hade försvunnit dit.
+Lagerkolumnen är krona, lista och fot: rubriken, antalet kort panelen gäller och raden om att dra skrollade förut bort med listan, 690 px vid 1024 — det som behövs mest i slutet av en lång lista var precis det som hade försvunnit dit.
 
 ### L4. Datatabellen: kolumntyper från registryt, systemkolumn `antal`
 

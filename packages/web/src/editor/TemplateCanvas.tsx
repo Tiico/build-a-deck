@@ -221,7 +221,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
       <aside className="byd-canvas-layers">
         {/* The column is a frame and not a scroller (#129): a crown that says which face is being
             listed and how many cards the panel is about, the list itself, and a foot with the line
-            about dragging. All three used to scroll together — at 1024 the list ran 751 px past the
+            about dragging. All three used to scroll together — at 1024 the list ran 690 px past the
             bottom of the column and took its own heading with it, so the panel a designer was
             reading the end of had nothing left on it saying what she was reading. */}
         <div className="byd-canvas-crown">
@@ -557,12 +557,14 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
 // grouping column carries. An entry is a rule, never a bag of cards — which is why it says
 // `typ = fälla` and not "fällorna" — and it carries the count of cards that rule is about.
 //
-// A menu in the crown rather than a row of tabs (variant C, as decided). The row was 1076 px of
-// tabs in a 420 px strip at 1024: 61 % of the groups were behind a side scroll nothing pointed at.
-// Wrapping the row showed all of them and charged the card three rows of height for eleven buttons
-// that are pressed once an hour, and the charge grew with the deck — a designer with twenty groups
-// paid the most. The button is one row whatever the deck is, and it is the only shape that says
-// which group is open *and* how many cards that is without opening anything.
+// A menu in the crown rather than a row of tabs (variant C, as decided). The row was a silent side
+// scroller: on a deck with eleven groups, 823 px of it were out of sight at 1024 with no arrow, no
+// fade and no keyboard way to the rest, and eight of the twelve entries lay past the crown's own
+// right edge — the last one visible cut through the middle of its own word. Wrapping the row
+// (variant A) showed all of them and charged the card 265 px of height for eleven buttons that are
+// pressed once an hour, and the charge grew with the deck — a designer with twenty groups paid the
+// most. The button is one row whatever the deck is, and it is the only shape that says which group
+// is open *and* how many cards that is without opening anything.
 const GROUP_PANEL = 'byd-canvas-group-panel'
 const GROUP_BUTTON = 'byd-canvas-group-button'
 const GROUP_MENU = 'byd-canvas-group-menu'
