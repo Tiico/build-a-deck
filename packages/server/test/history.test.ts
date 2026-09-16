@@ -1,8 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MemoryProjectStore } from '../src/index.js'
 import { template } from './deck.js'
 import { start, twoSeatSetup, type Running } from './fixture.js'
 import type { ProjectDoc } from '../src/projects.js'
+import { PG_TEST_BUDGET } from '../../../test-support/pg-budget.js'
+
+vi.setConfig({ testTimeout: PG_TEST_BUDGET })
 
 const doc = (name = 'Skogens herrar', cost = 5): ProjectDoc => {
   const { zones, seats, floor } = twoSeatSetup()

@@ -1,8 +1,11 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { PostgresRenderStore } from '../src/store-postgres.js'
 import type { RenderRequest } from '../src/store.js'
 import { MemoryObjectStore } from '../src/objects.js'
 import postgres from 'postgres'
+import { PG_TEST_BUDGET } from '../../../test-support/pg-budget.js'
+
+vi.setConfig({ testTimeout: PG_TEST_BUDGET })
 
 // Runs only against a real Postgres: DATABASE_URL=postgres://... pnpm test
 // In a schema of its own, so a stack running against the same database never takes its jobs.

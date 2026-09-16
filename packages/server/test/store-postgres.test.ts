@@ -1,9 +1,12 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { PostgresLogStore, SeqConflictError } from '../src/index.js'
 import { template } from './deck.js'
 import { twoSeatSetup } from './fixture.js'
 import { SCHEMA_VERSION, type Applied } from '@byd/protocol'
 import postgres from 'postgres'
+import { PG_TEST_BUDGET } from '../../../test-support/pg-budget.js'
+
+vi.setConfig({ testTimeout: PG_TEST_BUDGET })
 
 // Runs only against a real Postgres: DATABASE_URL=postgres://... pnpm test
 // In a schema of its own, so a stack running against the same database is never touched.
