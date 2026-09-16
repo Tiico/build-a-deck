@@ -194,10 +194,10 @@ Alla sju är publicerade som issues; ingen ändring är gjord i koden inom ramen
 
 | Fynd | Issue | Märkning |
 | --- | --- | --- |
-| 1 · `{ }`-knappen över cellen | #134 | HITL |
-| 2 · Kolumndraget ändrar grannarna | #135 | HITL |
-| 3 · Ingen väg ut ur ett drag | #136 | AFK |
-| 4 · `Backspace` tar lagret | #137 | AFK |
-| 5 · Tangentbordet når inte duken | #138 | HITL |
-| 6 · Ingenting fäst i sidled | #139 | HITL |
-| 7 · Ingen förstoring | #140 | HITL |
+| 1 · `{ }`-knappen över cellen | [#140](https://github.com/Tiico/build-a-deck/issues/140) | HITL |
+| 2 · Kolumndraget ändrar grannarna | [#141](https://github.com/Tiico/build-a-deck/issues/141) | HITL |
+| 3 · Ingen väg ut ur ett drag | [#142](https://github.com/Tiico/build-a-deck/issues/142) | AFK |
+| 4 · `Backspace` tar lagret | [#143](https://github.com/Tiico/build-a-deck/issues/143) | AFK |
+| 5 · Tangentbordet når inte duken | [#144](https://github.com/Tiico/build-a-deck/issues/144) | HITL |
+| 6 · Ingenting fäst i sidled | [#145](https://github.com/Tiico/build-a-deck/issues/145) | HITL |
+| 7 · Ingen förstoring | [#146](https://github.com/Tiico/build-a-deck/issues/146) | HITL |
