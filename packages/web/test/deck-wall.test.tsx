@@ -48,6 +48,11 @@ describe('images on the wall (E1)', () => {
   })
 })
 
+// Since #128 the wall wears a crown: the report and the eyes are behind named boxes that open over
+// the deck, rather than a 320 px dock and a row of segments standing there all the time. A box is
+// found by the name it starts with, because what follows it is the state it is saying.
+const openBox = (name: RegExp) => fireEvent.click(screen.getByRole('button', { name }))
+
 describe('the physical checks on the wall (E5)', () => {
   const tiny = { kind: 'text', id: 'flavour', x: 6, y: 70, w: 51, h: 10, bind: { field: 'flavour' }, font: { family: 'system-ui', sizePt: 5 }, color: '#111111' } as const
   const paper = { kind: 'shape', id: 'paper', x: -3, y: -3, w: 69, h: 94, shape: 'rect', fill: '#ffffff' } as const
@@ -65,6 +70,7 @@ describe('the physical checks on the wall (E5)', () => {
 
   it('gathers the deck\'s faults by kind, says what stops an order, and marks the cards a fault touches', () => {
     wall()
+    openBox(/^Fysisk kontroll/)
     const report = screen.getByRole('list', { name: 'Fysisk kontroll' })
     const rows = within(report).getAllByRole('listitem')
     expect(rows).toHaveLength(1)
@@ -85,6 +91,7 @@ describe('the physical checks on the wall (E5)', () => {
     const clean = faulty()
     clean.template.faces['front']!.base = [paper, body]
     wall(clean)
+    openBox(/^Fysisk kontroll/)
     expect(screen.getByText(/klarar kontrollen/)).toBeTruthy()
     expect(screen.queryByRole('list', { name: 'Fysisk kontroll' })).toBeNull()
   })
@@ -96,21 +103,30 @@ describe('the physical checks on the wall (E5)', () => {
     // One unknown icon on this card, and nothing added for the three cards' shared fault.
     expect(document.querySelector('[data-card-ref="dragon"] [data-warnings]')!.textContent).toBe('1')
     expect(document.querySelector('[data-card-ref="knight"] [data-warnings]')).toBeNull()
+    openBox(/^Fysisk kontroll/)
     expect(within(screen.getByRole('list', { name: 'Fysisk kontroll' })).getAllByRole('listitem')).toHaveLength(1)
   })
 
   it('shows the deck through another eye, with the trim drawn and at arm\'s length (E5)', () => {
     const el = wall()
     expect(el.getAttribute('data-eye')).toBe('normal')
+    // The box says which eye is chosen before it is opened, which is the whole price of putting
+    // the eyes behind a door: a simulation left on unannounced is worse than none (E5).
+    expect(screen.getByRole('button', { name: /^Ögon/ }).textContent).toContain('Som du ser det')
+    openBox(/^Ögon/)
     fireEvent.click(screen.getByRole('button', { name: 'Deuteranopi' }))
     expect(el.getAttribute('data-eye')).toBe('deuteranopia')
+    expect(screen.getByRole('button', { name: /^Ögon/ }).textContent).toContain('Deuteranopi')
     // The simulation is the same transform the check uses, as a filter over the real cards.
     expect(document.querySelector('#byd-eye-deuteranopia feColorMatrix')).toBeTruthy()
 
     expect(el.getAttribute('data-trim')).toBeNull()
+    expect(screen.getByRole('button', { name: /^Guider/ }).textContent).toContain('(0)')
+    openBox(/^Guider/)
     fireEvent.click(screen.getByLabelText(/snitt och skyddsmarginal/))
     expect(el.getAttribute('data-trim')).toBe('true')
     fireEvent.click(screen.getByLabelText(/armlängds avstånd/))
     expect(el.getAttribute('data-arm')).toBe('true')
+    expect(screen.getByRole('button', { name: /^Guider/ }).textContent).toContain('(2)')
   })
 })

@@ -78,6 +78,8 @@ describe('EditorPage', () => {
     fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
 
     const file = new File(['id,title,body,antal\nphoenix,Fenix,Återföds,3'], 'kort.csv', { type: 'text/csv' })
+    // The CSV pair is behind the box at the end of the table's crown (#130).
+    fireEvent.click(screen.getByRole('button', { name: 'Importera' }))
     fireEvent.change(screen.getByLabelText('Importera CSV…'), { target: { files: [file] } })
     expect(await screen.findByLabelText('phoenix title')).toBeTruthy()
     expect(document.querySelectorAll('[data-card-ref]')).toHaveLength(1)

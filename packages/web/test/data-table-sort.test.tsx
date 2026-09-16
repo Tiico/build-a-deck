@@ -154,6 +154,7 @@ describe('DataTable sorting (a view, #15)', () => {
     expect(onRemoveRow).toHaveBeenCalledWith('knight')
 
     expect(doc.rows.map((row) => row.id)).toEqual(['dragon', 'knight', 'wizard'])
+    fireEvent.click(screen.getByRole('button', { name: 'Importera' }))
     const csv = screen.getByRole('link', { name: 'Ladda ner CSV' }) as HTMLAnchorElement
     expect(decodeURIComponent(csv.href).indexOf('dragon')).toBeLessThan(decodeURIComponent(csv.href).indexOf('knight'))
   })
@@ -175,16 +176,16 @@ async function tabTo(user: User, target: HTMLElement) {
 }
 
 describe('DataTable sorting from the keyboard (#15)', () => {
-  it('puts the sort headers in the tab order, in column order, after the data tools', async () => {
+  it('puts the sort headers in the tab order, in column order, after the crown', async () => {
     const user = userEvent.setup()
     renderTable(costedDoc())
 
-    await user.tab()
-    expect(document.activeElement).toBe(screen.getByLabelText('Importera CSV…'))
-    await user.tab()
-    expect(document.activeElement).toBe(screen.getByRole('link', { name: 'Ladda ner CSV' }))
+    // The crown is the search, then whatever filters the deck has, then the box the CSV pair is
+    // behind (#130); the head of the table comes after all of it.
     await user.tab()
     expect(document.activeElement).toBe(screen.getByLabelText('Sök i alla fält'))
+    await user.tab()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Importera' }))
     // The header's own checkbox (#17) sits in the first column, before the columns that sort.
     await user.tab()
     expect(document.activeElement).toBe(screen.getByLabelText('Markera alla synliga'))

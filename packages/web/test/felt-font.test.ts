@@ -143,7 +143,13 @@ describe('the felt’s face is in the document before the first painting (K20, #
     // crown, a list and a foot. 1 523 bytes of it, on a sheet that had 47 left — the 139 kB line
     // was one small panel away from failing on the trunk alone, which is why this raise is a
     // little wider than the growth that forced it.
-    expect(statSync(join(OUT, blockingSheets(index)[0]!.replace(/^\//, ''))).size).toBeLessThan(inlined + 142_000)
+    // Raised again to 144 kB the same day for the crown a tab panel wears (#128, #130): a row,
+    // the boxes in it, the drawer a box opens, the filter rail with its fade and its arrow, and
+    // the foot under the work. One mechanism, but three surfaces were rebuilt round it — and the
+    // wall's dock and the table's four stacked bands went the other way, so it is 1 760 bytes net
+    // and 194 over what the raise above had left. The two crowns were written in parallel and
+    // landed within the hour: the shared row is `.byd-crown`, the card's own `.byd-canvas-crown`.
+    expect(statSync(join(OUT, blockingSheets(index)[0]!.replace(/^\//, ''))).size).toBeLessThan(inlined + 144_000)
   }, 60_000)
 
   // And the same thing said by a browser rather than by a reader of files: the built app served

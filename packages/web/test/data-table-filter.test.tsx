@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
 import { useState } from 'react'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import type { ProjectDoc } from '@byd/server'
 import { DataTable, type DataTableProps } from '../src/editor/DataTable.js'
@@ -209,7 +209,9 @@ describe('DataTable filtering as a view only (#16)', () => {
     expect(shownIds()).toHaveLength(4)
 
     expect(doc.rows.map((row) => row.id)).toHaveLength(8)
+    fireEvent.click(screen.getByRole('button', { name: 'Importera' }))
     const csv = decodeURIComponent((screen.getByRole('link', { name: 'Ladda ner CSV' }) as HTMLAnchorElement).href)
+    fireEvent.click(screen.getByRole('button', { name: 'Importera' }))
     for (const id of ['drake', 'grop', 'alv', 'nat', 'troll', 'stock', 'orm', 'grav']) expect(csv).toContain(id)
 
     await user.click(screen.getByRole('button', { name: 'varelse' }))
@@ -239,20 +241,29 @@ describe('DataTable with nothing left to show (#16)', () => {
 // Reaching the filter by keyboard alone: the search field is a real field and every chip a real
 // button, so the tab order and Space/Enter are the browser's own.
 describe('DataTable filtering from the keyboard (#16)', () => {
-  it('puts the search field and the chips in the tab order, after the data tools', async () => {
+  // The filter is the first thing in the tab order now (#130): it is a state the reader is
+  // standing in, and the CSV pair — done once, and not a state — is behind the box at the end of
+  // the crown, which is also where the keyboard reaches it.
+  it('puts the search field and the chips first in the tab order, and the CSV box after them', async () => {
     const user = userEvent.setup()
     renderTable(bigDoc())
 
-    await user.tab()
-    expect(document.activeElement).toBe(screen.getByLabelText('Importera CSV…'))
-    await user.tab()
-    expect(document.activeElement).toBe(screen.getByRole('link', { name: 'Ladda ner CSV' }))
     await user.tab()
     expect(document.activeElement).toBe(screen.getByLabelText('Sök i alla fält'))
     for (const name of ['fälla', 'plats', 'varelse']) {
       await user.tab()
       expect(document.activeElement).toBe(screen.getByRole('button', { name }))
     }
+    await user.tab()
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Importera' }))
+    // And what the box holds is not in the tab order at all until it is opened, which is the
+    // whole of what a box costs and what it buys.
+    expect(screen.queryByLabelText('Importera CSV…')).toBeNull()
+    await user.keyboard('{Enter}')
+    await user.tab()
+    expect(document.activeElement).toBe(screen.getByLabelText('Importera CSV…'))
+    await user.tab()
+    expect(document.activeElement).toBe(screen.getByRole('link', { name: 'Ladda ner CSV' }))
     await user.tab()
     expect(document.activeElement).toBe(screen.getByLabelText('Markera alla synliga'))
     await user.tab()

@@ -3,6 +3,7 @@ import type { ProjectDoc, ProjectRow } from './types.js'
 import { deckKeepsFields, fieldsOf, fieldLabel, takenNames } from './fields.js'
 import { ANTAL, drawnBy } from '@byd/server/doc'
 import { ColumnDoor } from './ColumnDoor.js'
+import { Crown, CrownBox, CrownDrawer, CrownFoot, CrownRail } from './Crown.js'
 import { DragDoor } from './DragDoor.js'
 import { ASSET_DRAG_TYPE, assetRef, assetUrl, assetsInUse, iconFieldsOf, imageFieldsOf, isAssetRef, ASSET_PREFIX } from './assets.js'
 import { searchSymbols, type GameSymbol } from './symbols.js'
@@ -315,6 +316,10 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // Whether the head's last cell is showing the form that makes a column, and which column has
   // been asked about taking away (#32).
   const [adding, setAdding] = useState(false)
+  // The import and the export are the one thing on this surface that is done once and is not a
+  // state, so they are what falls into a box (#130). The filters stay in the row.
+  const [importing, setImporting] = useState(false)
+  const importBox = useRef<HTMLButtonElement>(null)
   const [dropping, setDropping] = useState<string | null>(null)
   // Which column is being carried along the head, and which heading it would land in front of
   // (#46). The carried one is a ref and the heading under the pointer is state, for the reason
@@ -718,17 +723,64 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           The same door the canvas hangs over its own drag, and it stands only while there is a
           pull to leave. */}
       {pulling !== null && <DragDoor onCancel={() => pullOf(pulling)?.onCallOff()} />}
-      <div className="byd-data-tools">
-        <label>{t('table.import')}<input type="file" accept=".csv,text/csv,text/tab-separated-values" aria-label={t('table.import')} aria-describedby={noteId} onChange={(event) => importFile(event.target.files?.[0])} /></label>
-        {/* What an import costs is import's own warning (#36). It stands where it is read — after
-            the control it warns about, before the one it says nothing about — and it is bound to
-            that control besides, so a reader who never sees the two standing next to each other
-            hears the warning as part of the thing that carries it. What the import refused is
-            import's word too and keeps its own live region. */}
-        <span id={noteId}>{t('table.import.note')}</span>
-        {importError && <span role="alert">{importError}</span>}
-        <a href={csvHref} download={filename}>{t('table.export')}</a>
-      </div>
+      {/* The crown (#128, #130, variant B). Four bands used to stack over this table and cost it
+          189 px at 1440 and 218 px at 1280 before the first card row: the import pair with its
+          warning, the search with thirteen filter chips, the count, and the sort. They are one
+          row now, with the count and the sort read under the table instead.
+          The filters keep their place in the row and get a side scroll of their own: putting
+          thirteen chips behind `Filter (13) ▾` would hide the one thing here that is a state
+          rather than an action. What falls into a box is the import and the export. */}
+      <Crown>
+        <input
+          type="search"
+          className="byd-data-search"
+          aria-label={t('table.search')}
+          placeholder={t('table.search.placeholder')}
+          value={filter.query}
+          onChange={(event) => changeFilter({ ...filter, query: event.target.value })}
+        />
+        {discrete.length > 0 && (
+          <CrownRail label={t('table.filters')}>
+            {discrete.map(({ field, values }) => (
+              <div key={field} className="byd-data-chips" role="group" aria-label={t('table.filterOn', { field })}>
+                {values.map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className="byd-data-chip byd-choice"
+                    aria-pressed={(filter.values[field] ?? []).includes(value)}
+                    onClick={() => changeFilter(toggleValue(filter, field, value))}
+                  >
+                    {value}
+                  </button>
+                ))}
+              </div>
+            ))}
+          </CrownRail>
+        )}
+        {isFiltering(filter) && (
+          <button type="button" className="byd-data-clear" onClick={() => changeFilter(noFilter)}>
+            {t('table.filter.clear')}
+          </button>
+        )}
+        <CrownBox name={t('table.import.box')} open={importing} onToggle={() => setImporting(!importing)} boxRef={importBox} end />
+      </Crown>
+      {importing && (
+        <CrownDrawer label={t('table.import.box')} opener={importBox} onClose={() => setImporting(false)}>
+          <div className="byd-data-tools">
+            <label>{t('table.import')}<input type="file" accept=".csv,text/csv,text/tab-separated-values" aria-label={t('table.import')} aria-describedby={noteId} onChange={(event) => importFile(event.target.files?.[0])} /></label>
+            {/* What an import costs is import's own warning (#36). It stands where it is read —
+                after the control it warns about, before the one it says nothing about — and it is
+                bound to that control besides, so a reader who never sees the two standing next to
+                each other hears the warning as part of the thing that carries it. It came with
+                the pair into the box rather than staying over the table as a band of its own,
+                which is what #130 measured 189 px of. */}
+            <span id={noteId}>{t('table.import.note')}</span>
+            {importError && <span role="alert">{importError}</span>}
+            <a href={csvHref} download={filename}>{t('table.export')}</a>
+          </div>
+        </CrownDrawer>
+      )}
       {imageFields.length > 0 && assetBase && (
         // The deck's images (E1), once each: drag one onto a card's cell to use it again.
         <div className="byd-data-images">
@@ -759,66 +811,6 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
           )}
         </p>
       )}
-      <div className="byd-data-filter">
-        <input
-          type="search"
-          className="byd-data-search"
-          aria-label={t('table.search')}
-          placeholder={t('table.search.placeholder')}
-          value={filter.query}
-          onChange={(event) => changeFilter({ ...filter, query: event.target.value })}
-        />
-        {discrete.map(({ field, values }) => (
-          <div key={field} className="byd-data-chips" role="group" aria-label={t('table.filterOn', { field })}>
-            {values.map((value) => (
-              <button
-                key={value}
-                type="button"
-                className="byd-data-chip byd-choice"
-                aria-pressed={(filter.values[field] ?? []).includes(value)}
-                onClick={() => changeFilter(toggleValue(filter, field, value))}
-              >
-                {value}
-              </button>
-            ))}
-          </div>
-        ))}
-        <p className="byd-data-count" aria-live="polite">
-          <span>{countLabel(shown.length, doc.rows.length, t)}</span>
-          {chosen.length > 0 && (
-            <>
-              <span aria-hidden="true"> · </span>
-              <span className="byd-data-chosen">{selectionLabel(chosen.length, t)}</span>
-            </>
-          )}
-          {(['left', 'right'] as const).map((side) =>
-            outside[side].length === 0 ? null : (
-              <span key={side}>
-                <button type="button" className="byd-data-outside" onClick={() => bring(side === 'left' ? -1 : 1)}>
-                  {side === 'left' && <span aria-hidden="true">← </span>}
-                  {t(outside[side].length === 1 ? `table.columns.${side}.one` : `table.columns.${side}.other`, {
-                    n: outside[side].length,
-                    fields: outside[side].map((field) => (field === GROUP_COL ? t('table.group') : fieldLabel(field, t))).join(', '),
-                  })}
-                  {side === 'right' && <span aria-hidden="true"> →</span>}
-                </button>
-              </span>
-            ),
-          )}
-          {pinned !== null && (
-            <>
-              <span aria-hidden="true"> · </span>
-              <span className="byd-data-pinned">{t('table.pinned')}</span>
-            </>
-          )}
-        </p>
-        {isFiltering(filter) && (
-          <button type="button" className="byd-data-clear" onClick={() => changeFilter(noFilter)}>
-            {t('table.filter.clear')}
-          </button>
-        )}
-      </div>
-      <p className="byd-data-sort" role="status">{sortLabel(sort, t)}</p>
       {chosen.length > 0 &&
         (confirming ? (
           <Question
@@ -1215,6 +1207,39 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
         }}>
         {t('table.addCard')}
       </button>
+      {/* What the table adds up to, under it rather than over it (#130). */}
+      <CrownFoot>
+        <p className="byd-data-count" aria-live="polite">
+          <span>{countLabel(shown.length, doc.rows.length, t)}</span>
+          {chosen.length > 0 && (
+            <>
+              <span aria-hidden="true"> · </span>
+              <span className="byd-data-chosen">{selectionLabel(chosen.length, t)}</span>
+            </>
+          )}
+          {(['left', 'right'] as const).map((side) =>
+            outside[side].length === 0 ? null : (
+              <span key={side}>
+                <button type="button" className="byd-data-outside" onClick={() => bring(side === 'left' ? -1 : 1)}>
+                  {side === 'left' && <span aria-hidden="true">← </span>}
+                  {t(outside[side].length === 1 ? `table.columns.${side}.one` : `table.columns.${side}.other`, {
+                    n: outside[side].length,
+                    fields: outside[side].map((field) => (field === GROUP_COL ? t('table.group') : fieldLabel(field, t))).join(', '),
+                  })}
+                  {side === 'right' && <span aria-hidden="true"> →</span>}
+                </button>
+              </span>
+            ),
+          )}
+          {pinned !== null && (
+            <>
+              <span aria-hidden="true"> · </span>
+              <span className="byd-data-pinned">{t('table.pinned')}</span>
+            </>
+          )}
+        </p>
+        <p className="byd-data-sort" role="status">{sortLabel(sort, t)}</p>
+      </CrownFoot>
     </div>
   )
 }

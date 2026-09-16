@@ -39,7 +39,16 @@ const SHELL = `
   </div>
   <main>
     <div role="tabpanel" tabindex="0" data-stop="the wall panel">
-      <div class="byd-wall"><div class="byd-wall-card" aria-selected="true"></div></div>
+      <div class="byd-wall-view">
+        <div class="byd-crown">
+          <button class="byd-crown-box" aria-expanded="false" data-stop="the eyes box">Ögon: Som du ser det ▾</button>
+          <button class="byd-crown-box" aria-expanded="false" data-stop="the guides box">Guider (0) ▾</button>
+          <div class="byd-crown-step" role="group"><button data-stop="packing the wall closer">−</button><button data-stop="larger cards">+</button></div>
+          <button class="byd-crown-box byd-crown-end" aria-expanded="false" data-stop="the checks box">Fysisk kontroll (1) ▾</button>
+        </div>
+        <div class="byd-wall-work"><div class="byd-wall"><div class="byd-wall-card" aria-selected="true"></div></div></div>
+        <div class="byd-crown-foot"><span>3 kort · 150 px breda</span></div>
+      </div>
     </div>
     <div role="tabpanel" tabindex="0" data-stop="the template panel">
       <div class="byd-canvas">
@@ -64,12 +73,18 @@ const SHELL = `
     </div>
     <div role="tabpanel" tabindex="0" data-stop="the table panel">
       <div class="byd-table-wrap">
-        <div class="byd-data-tools"><label>Importera CSV…<input type="file" data-stop="the CSV import" aria-describedby="import-note" /></label><span id="import-note">Import ersätter korten i tabellen. Spara när resultatet ser rätt ut.</span><a href="#" data-stop="the CSV export">Ladda ner CSV</a></div>
-        <div class="byd-data-filter">
+        <div class="byd-crown">
           <input type="search" class="byd-data-search" data-stop="the search field" />
-          <div class="byd-data-chips" role="group"><button class="byd-data-chip" aria-pressed="false" data-stop="a type chip">fälla</button></div>
-          <p class="byd-data-count">1 av 3 kort</p>
+          <div class="byd-crown-rail">
+            <div class="byd-crown-rail-scroll" role="group">
+              <div class="byd-data-chips" role="group"><button class="byd-data-chip byd-choice" aria-pressed="false" data-stop="a type chip">fälla</button></div>
+            </div>
+          </div>
           <button class="byd-data-clear" data-stop="the clear-filter button">Rensa filter</button>
+          <button class="byd-crown-box byd-crown-end" aria-expanded="true" data-stop="the import box">Importera ▾</button>
+        </div>
+        <div class="byd-crown-drawer" data-crown-drawer role="group">
+          <div class="byd-data-tools"><label>Importera CSV…<input type="file" data-stop="the CSV import" aria-describedby="import-note" /></label><span id="import-note">Import ersätter korten i tabellen. Spara när resultatet ser rätt ut.</span><a href="#" data-stop="the CSV export">Ladda ner CSV</a></div>
         </div>
         <div class="byd-data-bulk" role="toolbar">
           <label>Sätt<select data-stop="the bulk column"><option>typ</option></select></label>
@@ -89,6 +104,10 @@ const SHELL = `
           <tbody><tr aria-selected="true"><td class="byd-data-check"><input type="checkbox" data-stop="a row's checkbox" /></td><td><input data-stop="a cell" /></td><td><button data-stop="a row's delete">Ta bort</button></td></tr></tbody>
         </table>
         <button class="byd-data-add" data-stop="the add-row button">Lägg till kort</button>
+        <div class="byd-crown-foot">
+          <p class="byd-data-count">1 av 3 kort</p>
+          <p class="byd-data-sort">Osorterat: kortens ordning i spelet</p>
+        </div>
       </div>
     </div>
     <div role="tabpanel" tabindex="0" data-stop="the tables panel">
@@ -184,6 +203,11 @@ describe('the editor under a keyboard', () => {
       'leaving the work behind',
       'the way back into the editor',
       'the wall panel',
+      'the eyes box',
+      'the guides box',
+      'packing the wall closer',
+      'larger cards',
+      'the checks box',
       'the template panel',
       'a tool',
       'the selected layer',
@@ -191,11 +215,12 @@ describe('the editor under a keyboard', () => {
       'a property field',
       'a property choice',
       'the table panel',
-      'the CSV import',
-      'the CSV export',
       'the search field',
       'a type chip',
       'the clear-filter button',
+      'the import box',
+      'the CSV import',
+      'the CSV export',
       'the bulk column',
       'the bulk value',
       'the bulk set',
