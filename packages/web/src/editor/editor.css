@@ -539,7 +539,12 @@
 .byd-wall-check-detail p { margin: 0; color: #cfd5e3; font-size: 12px; line-height: 1.5; }
 .byd-wall-check-detail span { color: var(--byd-editor-quiet); font: 11px ui-monospace, monospace; }
 
-.byd-wall { grid-column: 1; grid-row: 2; min-height: 0; overflow: auto; scrollbar-width: thin; padding: var(--byd-gutter); display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--byd-wall-card, 150px), 1fr)); gap: var(--byd-s3); align-content: start; }
+.byd-wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--byd-wall-card, 150px), 1fr)); gap: var(--byd-s3); align-content: start; }
+/* Where it stands in the wall tab: the second row of the view, and the one thing there that
+   scrolls. The placement is written against the view and not against the wall itself, because the
+   symbol panel draws the same deck in a column of its own — where `grid-row: 2` put it in the same
+   row as the game's colours, one on top of the other. */
+.byd-wall-view > .byd-wall { grid-column: 1; grid-row: 2; min-height: 0; overflow: auto; scrollbar-width: thin; padding: var(--byd-gutter); }
 .byd-wall-card { position: relative; border-radius: 8px; cursor: pointer; }
 .byd-wall-card[aria-selected='true'] { outline: 3px solid var(--byd-editor-primary-mark); outline-offset: 3px; }
 .byd-wall-copies, .byd-wall-warnings { position: absolute; border-radius: 999px; font-size: 11px; font-weight: 700; padding: 1px 6px; }
@@ -1383,7 +1388,12 @@
 /* A symbol reaches the card as an image, so it cannot take the colour of the text around it:
    it is drawn dark, and needs a light chip to be seen against the editor's dark surfaces. */
 .byd-symbols img { width: 22px; height: 22px; padding: 3px; border-radius: 6px; background: #e8e2d4; }
-.byd-symbols-main { display: grid; gap: 16px; }
+/* The deck beside the library, scrolling as one column. `align-content: start` is what keeps the
+   rows their own height: as a grid with a fixed height and no word on the matter, the three rows
+   shared the 811 px between them and the wall was squeezed from its natural height to 610, which
+   cut the last row of cards through the middle. */
+.byd-symbols-main { display: grid; gap: var(--byd-s4); align-content: start; }
+
 .byd-symbols-empty { color: #9aa3b8; }
 .byd-symbols-set ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 10px; }
 .byd-symbols-set li { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 10px; background: var(--byd-editor-panel-bg); border: 1px solid #2f333d; }
