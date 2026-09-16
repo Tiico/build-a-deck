@@ -138,7 +138,12 @@ describe('the felt’s face is in the document before the first painting (K20, #
     // text, its popover, and the chip rows a question is written with. Two real surfaces, one on
     // the felt and one in the editor, and the headroom left over is deliberate: the sheet is the
     // first thing on the felt that is a list rather than a disc, and it will grow.
-    expect(statSync(join(OUT, blockingSheets(index)[0]!.replace(/^\//, ''))).size).toBeLessThan(inlined + 139_000)
+    // Raised to 142 kB on 2026-09-16 for the crown over the card (#129): the group menu and the
+    // button that opens it, the fold that puts the properties away, and the layer column as a
+    // crown, a list and a foot. 1 523 bytes of it, on a sheet that had 47 left — the 139 kB line
+    // was one small panel away from failing on the trunk alone, which is why this raise is a
+    // little wider than the growth that forced it.
+    expect(statSync(join(OUT, blockingSheets(index)[0]!.replace(/^\//, ''))).size).toBeLessThan(inlined + 142_000)
   }, 60_000)
 
   // And the same thing said by a browser rather than by a reader of files: the built app served

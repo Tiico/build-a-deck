@@ -268,7 +268,7 @@ describe('the layers of the template by keyboard (UX-04)', () => {
     await user.keyboard('{ArrowRight}{Enter}')
     expect(layerNames()).toEqual(['body', 'title', 'frame'])
     const cells = layerRows().map((r) => r.querySelector('.byd-layer-pick') as HTMLElement)
-    for (let i = 0; i < 6 && !cells.includes(document.activeElement as HTMLElement); i++) await user.tab()
+    for (let i = 0; i < 10 && !cells.includes(document.activeElement as HTMLElement); i++) await user.tab()
     expect(document.activeElement).toBe(layerPick('body'))
     expect(screen.getByRole('heading', { name: /egenskaper · body/i })).toBeTruthy()
 
@@ -276,17 +276,12 @@ describe('the layers of the template by keyboard (UX-04)', () => {
     expect(document.activeElement).toBe(layerPick('frame'))
     expect(layerRow('frame').getAttribute('aria-selected')).toBe('true')
     expect(screen.getByRole('heading', { name: /egenskaper · frame/i })).toBeTruthy()
-    // Past the grid, which is a layer of its own (#18), and past the strip over the card — the
-    // grouping column and the face switch, one tab stop each (#13) — the property panel is the
-    // next stop, and it
-    // edits the layer just picked: the field is controlled by the document, so a new value there
-    // is a patch that landed on frame.
+    // Past the grid, which is a layer of its own (#18), and past the rule to see by under it, the
+    // property panel is the next stop — the crown over the desk is behind us, since #129 put it
+    // over all four columns and not over the card alone — and it edits the layer just picked: the
+    // field is controlled by the document, so a new value there is a patch that landed on frame.
     await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('checkbox', { name: /rutnät/i }))
-    await user.tab()
-    expect(document.activeElement).toBe(screen.getByLabelText(/grupperas av kolumnen/i))
-    await user.tab()
-    expect(document.activeElement).toBe(screen.getByRole('radio', { name: 'Framsida' }))
     await user.tab()
     await user.keyboard('9')
     expect((screen.getByLabelText(/^x/i) as HTMLInputElement).value).toBe('9')
