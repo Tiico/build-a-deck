@@ -675,7 +675,7 @@
      implicit row would give that single panel the crown's `auto` height and fold the tab shut. */
   grid-template-rows: auto minmax(0, 1fr);
 }
-.byd-canvas > .byd-canvas-tools, .byd-canvas > .byd-canvas-layers, .byd-canvas > .byd-canvas-main, .byd-canvas > .byd-canvas-props { grid-row: 2; }
+.byd-canvas > * { grid-row: 2; }
 /* The properties folded away (#129): the column is not drawn, so its 280 px are the card's. At
    1024 that is the difference between 456 px of desk and 736. */
 .byd-canvas[data-folded='props'] { grid-template-columns: 68px 220px minmax(0, 1fr); }
@@ -691,9 +691,9 @@
 /* The crown over the desk (#13, #129): one row, at every width and on every deck. Which column
    makes the groups, which group is open, whether the properties are folded away, and which face is
    being edited — four controls, and the last of them keeps its own right edge. It is a row and not
-   a grid of rows because height here is height the card does not get: the groups as a wrapping
-   strip charged it 265 px at 1024 on a deck with eleven of them, and would have charged more for
-   the twelfth. */
+   a grid of rows because height here is height the card does not get: the strip was two rows and
+   121 px before, and letting the groups wrap instead — the answer this one was chosen over — cost
+   265 px at 1024 on a deck with eleven of them, and would have cost more for the twelfth. */
 .byd-canvas-strip {
   grid-column: 1 / -1;
   grid-row: 1;
@@ -711,23 +711,6 @@
    61 % of itself — and the list behind it carries every group at once, so nothing is out of sight
    and nothing is cut through its own word. */
 .byd-canvas-group { position: relative; display: flex; min-width: 0; }
-.byd-canvas-group-open, .byd-canvas-fold {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-height: var(--byd-tap);
-  border: 1px solid #2f333d;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--byd-editor-strip-ink);
-  font: inherit;
-  font-size: 12px;
-  padding: 0 var(--byd-s3);
-  white-space: nowrap;
-  cursor: pointer;
-}
-.byd-canvas-group-open { font-weight: 700; color: #e6ecfa; }
-.byd-canvas-group-open:hover, .byd-canvas-fold:hover { border-color: var(--byd-editor-primary-mark); }
 /* The fold sits where the column it folds is: at the right of the crown, over the properties. */
 .byd-canvas-fold { margin-left: auto; }
 .byd-canvas-groups {
@@ -754,14 +737,18 @@
   border: 1px solid #3b4358;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
 }
-.byd-canvas-groups button { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; min-height: var(--byd-tap); white-space: nowrap; }
 /* How many cards the rule is about, said on the rule itself and quieter than it. */
 .byd-canvas-groups small { color: var(--byd-editor-hint-ink); font-size: 11px; }
 .byd-canvas-faces { display: flex; gap: 4px; flex: 0 0 auto; }
-.byd-canvas-groups button, .byd-canvas-faces button {
-  /* A target in the crown is a target like any other (UX-KONTROLLER: träffytor). The face switch
-     was 26 px high because a 12 px word is 26 px high, which is what a control is when nobody has
-     said what it should be — and it is the row's own height that is at stake here, so it is said. */
+/* Every control the crown holds is the same control: the same edge, the same words, and the same
+   hit area. A target here is a target like any other (UX-KONTROLLER: träffytor) — the face switch
+   was 26 px high because a 12 px word is 26 px high, which is what a control is when nobody has
+   said what it should be, and here it is the row's own height that is at stake. */
+.byd-canvas-groups button, .byd-canvas-faces button, .byd-canvas-group-open, .byd-canvas-fold {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
   min-height: var(--byd-tap);
   border: 1px solid #2f333d;
   border-radius: 999px;
@@ -770,8 +757,14 @@
   font: inherit;
   font-size: 12px;
   padding: 4px 12px;
+  white-space: nowrap;
   cursor: pointer;
 }
+/* The two the crown itself holds are that same control with square shoulders: a pill is one of a
+   set and these two are not — one opens a list and the other folds a column away. */
+.byd-canvas-group-open, .byd-canvas-fold { border-radius: 8px; padding: 0 var(--byd-s3); }
+.byd-canvas-group-open { font-weight: 700; color: #e6ecfa; }
+.byd-canvas-group-open:hover, .byd-canvas-fold:hover { border-color: var(--byd-editor-primary-mark); }
 /* Variant B's rule list, kept as the summary: every group as the rule it is, read not pressed. */
 .byd-canvas-rules { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .byd-canvas-rules li { font-size: 11px; line-height: 1.4; color: var(--byd-editor-hint-ink); }
