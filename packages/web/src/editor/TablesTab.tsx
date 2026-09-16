@@ -47,13 +47,20 @@ export function TablesTab({ client, server }: TablesTabProps) {
   // A list that never arrived is not a list that is still coming: when the server could not
   // answer, the tab says what happened instead of waiting for ever on something that will not
   // come.
+  // Whatever it has to say, it says inside its own column: on the Bord tab this is a grid cell
+  // with a border of its own (#126), and a bare paragraph dropped into it is a paragraph with no
+  // panel around it.
   if (!tables)
-    return notice ? (
-      <p className="byd-tables-empty" role="alert">
-        {notice}
-      </p>
-    ) : (
-      <p className="byd-tables-empty">{t('tables.loading')}</p>
+    return (
+      <div className="byd-tables">
+        {notice ? (
+          <p className="byd-tables-empty" role="alert">
+            {notice}
+          </p>
+        ) : (
+          <p className="byd-tables-empty">{t('tables.loading')}</p>
+        )}
+      </div>
     )
   return (
     <div className="byd-tables">

@@ -2,6 +2,8 @@
 // Dedicated loopback ports, synthetic data, no database, no email, no production writes.
 import { spawn } from 'node:child_process'
 import { writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { TypeRegistry, STANDARD_TYPES } from '@byd/engine'
 import { TableHost, createServer, MemoryLogStore, MemoryProjectStore, MemorySurveyStore, MemoryAuthStore, MemoryMailer, MemoryAssetStore } from '../../src/index.js'
 import { MemoryRenderStore, Renderer, runWorker } from '@byd/render'
@@ -47,8 +49,11 @@ await send(table,null,[{v:'seat.claim',seat:'B',name:'Bo'},{v:'seat.claim',seat:
 await send(table,null,[{v:'shuffle',pile:'draw'},{v:'deal',from:'draw',to:['hand:A','hand:B','hand:C'],each:5}])
 const editorUrl=`${web}/editor?project=ux-prototype&server=${encodeURIComponent(http)}&variant=A`
 const playerUrl=`${web}/play?session=${session.id}&seat=A&name=Ada&token=${guest.token}&code=${session.code}&server=${encodeURIComponent(http.replace('http','ws'))}&variant=A`
-// Local, disposable navigation manifest: useful when comparing from the browser tool.
-writeFileSync('/private/tmp/byd-ux-prototype-links.json',JSON.stringify({editor:editorUrl,player:playerUrl,email:'prototype@example.com'},null,2))
+// Local, disposable navigation manifest: useful when comparing from the browser tool. The path is
+// the machine's own temp directory and not `/private/tmp`, which is a macOS spelling: on Linux —
+// where CI and the cloud sessions run — the write threw ENOENT and took the whole command down
+// with it, after the service and the renderer were already up.
+writeFileSync(join(tmpdir(),'byd-ux-prototype-links.json'),JSON.stringify({editor:editorUrl,player:playerUrl,email:'prototype@example.com'},null,2))
 const vite=spawn('pnpm',['--filter','@byd/web','dev'],{stdio:'inherit',env:{...process.env,PORT:'5317'}})
 console.log(`\nPROTOTYPER · inga ändringar sparas\nEditor: ${editorUrl}\nLogga in som prototype@example.com när editorn ber om det.\nTelefon: ${playerUrl}\nBörja i editorn: Kort → Förbered → Prova som Ada → Feedback → Lärdomar. Hela rundan går i samma flik. Byt A/B/C med pilknapparna längst ner. Ctrl+C stänger testmiljön.\n`)
 const stop=async()=>{vite.kill('SIGTERM');player.close();table.close();server.close();await renderer.close();process.exit(0)}

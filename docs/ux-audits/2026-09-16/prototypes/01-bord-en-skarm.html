@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 1 — Bord på en skärm</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* Three columns that share the height that is left over, and never ask for more.
+     Today the tab is SetupEditor above TablesTab, each height:100% of the work area,
+     so the mode is two viewports tall and the window itself scrolls. */
+  .bord {
+    flex: 1 1 auto; min-height: 0;
+    display: grid;
+    grid-template-columns: 300px minmax(0, 1fr) 320px;
+    gap: var(--s4);
+    padding: var(--s4);
+  }
+  .col { min-height: 0; min-width: 0; display: flex; flex-direction: column; gap: var(--s2); }
+
+  /* The left rail: a heading that stays, a list that scrolls inside the rail. */
+  .rail { min-height: 0; display: flex; flex-direction: column; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); }
+  .rail > header { flex: none; padding: var(--s3) var(--s4) var(--s2); }
+  .rail > .scroll { padding: 0 var(--s4) var(--s3); }
+  .seats { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 var(--s3); }
+  .seats button { width: 40px; min-height: 40px; border-radius: 8px; border: 1px solid var(--line); background: var(--sunk); color: var(--ink); font: inherit; font-weight: 700; cursor: pointer; }
+  .seats button[aria-pressed='true'] { border-color: var(--primary-mark); color: #fff; box-shadow: inset 0 -3px 0 0 var(--primary-mark); }
+  .zone { display: flex; align-items: center; gap: var(--s2); min-height: var(--tap); padding: 0 var(--s2); border-radius: 8px; }
+  .zone:hover { background: var(--card); }
+  .zone i { width: 14px; height: 14px; border: 1px dashed var(--warn); border-radius: 3px; }
+  .zone span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
+  .zone small { color: var(--quiet); font-size: 10px; letter-spacing: 1px; }
+  .zone button { min-width: var(--tap); min-height: var(--tap); border: 0; background: transparent; color: var(--quiet-2); cursor: pointer; font-size: 14px; }
+
+  /* The felt: it is given the room that is left and is never wider than its column.
+     min-width:0 on the grid item is exactly what the live .byd-setup-felt is missing. */
+  .felt {
+    flex: 1 1 auto; min-height: 0; min-width: 0;
+    position: relative; border-radius: 16px; background: #0d0f14; border: 1px solid var(--line);
+    display: grid; place-items: center; overflow: hidden;
+  }
+  .felt svg { width: 100%; height: 100%; display: block; padding: var(--s3); }
+
+  /* The right column: what the player sees, and the tables that are running —
+     side by side with the felt instead of a second screenful under it. */
+  .stack { min-height: 0; display: flex; flex-direction: column; gap: var(--s2); }
+  .box { border-radius: 14px; background: var(--panel); border: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+  .box > header { flex: none; padding: var(--s3) var(--s4) var(--s2); }
+  .box > .scroll { padding: 0 var(--s4) var(--s3); }
+  .target { display: grid; gap: 1px; padding: var(--s2) var(--s3); border-radius: 10px; background: #242938; margin-bottom: 6px; }
+  .target b { color: #fff; }
+  .target small { color: var(--quiet-2); }
+  .run { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: var(--s3); padding: var(--s3); border-radius: 12px; background: var(--card); border: 1px solid var(--line-soft); margin-bottom: var(--s2); }
+  .run-mini { width: 84px; height: 52px; border-radius: 8px; background: #0d0f14; border: 1px solid var(--line-soft); }
+  .run p { margin: 0 0 6px; color: var(--quiet-2); font-size: 12px; }
+  .run p b { color: #fff; font-family: ui-monospace, monospace; }
+  /* Every way into a table is a real target: 44 px, like the rest of the editor.
+     Today .byd-tables-ways sets min-height: 32px. */
+  .ways { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ways a, .ways button { min-height: var(--tap); display: inline-flex; align-items: center; padding: 0 12px; border-radius: 8px; border: 1px solid transparent; background: #24405f; color: #dbe9ff; font: inherit; font-weight: 700; text-decoration: none; cursor: pointer; }
+  .ways button.q { background: transparent; border-color: #3a4050; color: var(--quiet-2); font-weight: 400; }
+  .said { flex: none; color: var(--quiet-2); padding: 0 0 var(--s2); }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <a class="home" href="#">Mina spel</a>
+    <strong>Sal's Saloon</strong>
+    <button class="rev">rev 1</button>
+    <span class="saved">Sparat</span>
+    <nav class="tabs">
+      <button>Kortvägg</button><button>Mall</button><button>Data</button>
+      <button>Symboler</button><button>Regler</button><button aria-selected="true">Bord</button>
+    </nav>
+    <span class="spacer"></span>
+    <span class="who">P</span>
+    <button class="btn">Spara</button>
+    <button class="btn primary">Uppdatera bordet</button>
+  </header>
+
+  <main>
+    <div class="bord">
+      <!-- vänster: platser, räknare, zoner -->
+      <div class="col">
+        <div class="rail">
+          <header><h2 class="h">Bordet</h2></header>
+          <div class="scroll">
+            <p class="h" style="margin:0 0 6px">Platser</p>
+            <div class="seats">
+              <button>1</button><button>2</button><button>3</button>
+              <button aria-pressed="true">4</button><button>5</button><button>6</button>
+              <button>7</button><button>8</button>
+            </div>
+            <p class="h" style="margin:0 0 6px">På bordet</p>
+            <div class="zone"><i></i><span>Spelyta</span><small>FAST</small></div>
+            <div class="zone"><i style="border-style:solid"></i><span>Kortlek</span><small>LEKEN</small></div>
+            <div class="zone"><i style="border-style:solid"></i><span>Kasthög</span><button>×</button></div>
+            <div class="zone"><i></i><span>Sal's Saloon</span><button>×</button></div>
+            <p class="h" style="margin:var(--s3) 0 6px">Vid platserna</p>
+            <div class="zone"><i></i><span>Framför A</span><button>×</button></div>
+            <div class="zone"><i></i><span>Framför B</span><button>×</button></div>
+            <div class="zone"><i></i><span>Framför C</span><button>×</button></div>
+            <div class="zone"><i></i><span>Framför D</span><button>×</button></div>
+            <div class="zone"><i></i><span>Räknare A</span><button>×</button></div>
+            <div class="zone"><i></i><span>Räknare B</span><button>×</button></div>
+            <div class="zone"><i></i><span>Räknare C</span><button>×</button></div>
+            <div class="zone"><i></i><span>Räknare D</span><button>×</button></div>
+            <p class="h" style="margin:var(--s3) 0 6px">Räknare</p>
+            <div class="zone"><span>Guld · från 0</span><button>×</button></div>
+            <button class="btn" style="width:100%;margin-top:var(--s2)">+ Räknare</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- mitten: filten, som får plats i sin ruta -->
+      <div class="col">
+        <p class="said">Listan är bordets alla zoner. Dra en zon på filten för att flytta den; hörnet ändrar storlek.</p>
+        <div class="felt">
+          <svg viewBox="0 0 800 500" role="img" aria-label="Bordets zoner">
+            <rect x="60" y="20" width="680" height="460" rx="10" fill="#141821"/>
+            <g fill="none" stroke="#c9a227" stroke-dasharray="5 4">
+              <rect x="250" y="35" width="300" height="34" rx="4"/>
+              <rect x="250" y="80" width="200" height="56" rx="4"/>
+              <rect x="470" y="80" width="80" height="56" rx="4"/>
+              <rect x="250" y="150" width="300" height="60" rx="4"/>
+              <rect x="95" y="120" width="34" height="230" rx="4"/>
+              <rect x="145" y="120" width="60" height="230" rx="4"/>
+              <rect x="600" y="120" width="60" height="230" rx="4"/>
+              <rect x="675" y="120" width="34" height="230" rx="4"/>
+              <rect x="250" y="360" width="200" height="56" rx="4"/>
+              <rect x="470" y="360" width="80" height="56" rx="4"/>
+              <rect x="250" y="430" width="300" height="34" rx="4"/>
+            </g>
+            <g font="700 11px system-ui" fill="#c9a227" letter-spacing="1">
+              <text x="256" y="147">FRAMFÖR B</text><text x="256" y="357">FRAMFÖR A</text>
+              <text x="470" y="357">RÄKNARE A</text><text x="470" y="77">RÄKNARE B</text>
+              <text x="300" y="77">SAL'S SALOON</text>
+            </g>
+            <rect x="360" y="230" width="42" height="60" rx="5" fill="#16110b" stroke="#c9a227"/>
+            <circle cx="381" cy="260" r="15" fill="#f2efe6"/><text x="381" y="265" font="700 12px system-ui" fill="#10131a" text-anchor="middle">146</text>
+            <text x="381" y="308" font="700 10px system-ui" fill="#9aa3b8" text-anchor="middle" letter-spacing="1">KORTLEK</text>
+            <circle cx="470" cy="260" r="15" fill="#f2efe6" stroke="#c9a227"/><text x="470" y="265" font="700 12px system-ui" fill="#10131a" text-anchor="middle">0</text>
+            <text x="470" y="308" font="700 10px system-ui" fill="#9aa3b8" text-anchor="middle" letter-spacing="1">KASTHÖG</text>
+            <circle cx="400" cy="47" r="11" fill="#3c8ce7"/><text x="400" y="51" font="700 10px system-ui" fill="#06121f" text-anchor="middle">B</text>
+            <circle cx="400" cy="447" r="11" fill="#d1495b"/><text x="400" y="451" font="700 10px system-ui" fill="#fff" text-anchor="middle">A</text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- höger: spelarens vy och de bord som går -->
+      <div class="col stack">
+        <div class="box" style="flex:0 1 auto">
+          <header><h2 class="h">Så ser spelaren det</h2></header>
+          <div class="scroll">
+            <p style="margin:0 0 var(--s2);color:var(--quiet-2)">Spela <b style="color:#fff">ett kort</b> till</p>
+            <div class="target"><b>Kasta</b><small>överst på Kasthög</small></div>
+            <div class="target"><b>Lägg underst</b><small>underst i Kortlek</small></div>
+            <div class="target"><b>Till saloonen</b><small>lägg var som helst</small></div>
+            <div class="target"><b>Framför mig</b><small>lägg var som helst</small></div>
+          </div>
+        </div>
+        <div class="box" style="flex:1 1 auto">
+          <header><h2 class="h">Bord som går</h2></header>
+          <div class="scroll">
+            <div class="run">
+              <div class="run-mini"></div>
+              <div>
+                <p><b>26U2BK</b> · rev 1 · 3 spelare</p>
+                <div class="ways"><a href="#">TV</a><a href="#">Observatör</a><button class="q">QR</button></div>
+              </div>
+            </div>
+            <div class="run">
+              <div class="run-mini"></div>
+              <div>
+                <p><b>YWUYJC</b> · rev 1 · avslutat</p>
+                <div class="ways"><a href="#">Logg</a><button class="q">Enkätsvar</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<p class="note"><b>Förslag · Bord på en skärm</b>
+Tre kolumner delar på den höjd som blir över. Fönstret skrollar aldrig; varje kolumn har sin egen
+skrollyta och filten är <code>min-width: 0</code> så den aldrig spränger sin ruta i sidled.
+Listan med bord flyttar från en andra skärmhöjd till höger kolumn.</p>
+</body>
+</html>

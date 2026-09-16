@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 6 — En spacing-skala för editorn</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  body { overflow: auto; }
+  .page { max-width: 1100px; margin: 0 auto; padding: var(--s5); }
+  h1 { font-size: 20px; color: #fff; margin: 0 0 var(--s2); }
+  .lead { color: var(--quiet-2); line-height: 1.6; max-width: 70ch; margin: 0 0 var(--s5); }
+  h2 { font-size: 13px; color: #fff; margin: var(--s5) 0 var(--s3); }
+  table { width: 100%; border-collapse: collapse; margin-bottom: var(--s5); }
+  th, td { text-align: left; padding: var(--s2) var(--s3); border-bottom: 1px solid var(--line-soft); color: var(--ink); font-size: 12px; }
+  th { color: var(--quiet); font: 700 11px system-ui; letter-spacing: 1px; text-transform: uppercase; }
+  code { font-family: ui-monospace, monospace; color: #8fb7e8; }
+  .bad { color: var(--warn); font-variant-numeric: tabular-nums; }
+  .good { color: var(--good); font-variant-numeric: tabular-nums; }
+
+  .ladder { display: grid; gap: var(--s2); margin-bottom: var(--s5); }
+  .rung { display: grid; grid-template-columns: 110px 70px 1fr; align-items: center; gap: var(--s3); }
+  .rung b { color: #fff; font-family: ui-monospace, monospace; }
+  .rung .bar { height: 22px; border-radius: 4px; background: linear-gradient(90deg, var(--primary-mark), #2a4a72); }
+
+  .demo { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s4); }
+  .frame { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--chrome); }
+  .frame > figcaption { padding: var(--s2) var(--s3); background: var(--sunk); color: var(--quiet-2); font: 700 11px system-ui; letter-spacing: 1px; text-transform: uppercase; }
+  .frame .inner { height: 230px; position: relative; }
+  .edge { position: absolute; inset: 0; }
+  .edge .panel { position: absolute; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+  .edge .tagged { position: absolute; color: var(--warn); font: 700 10px ui-monospace, monospace; }
+  .edge .tagged.ok { color: var(--good); }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>En spacing-skala för editorn</h1>
+  <p class="lead">Samma sak — ytterkanten på en flikpanel — är i dag 12, 16, 20 och 24 px beroende på
+     vilken flik man står i. Skillnaden är stor nog att synas när man byter flik, och det finns
+     ingen token att peka på när något nytt ska byggas. Förslaget är en ladder på fyra steg och en
+     <code>--byd-gutter</code> som varje flikpanel använder.</p>
+
+  <h2>Uppmätt i dag (Chromium, 1440 × 900)</h2>
+  <table>
+    <thead><tr><th>Flik</th><th>Väljare</th><th>Ytterkant i dag</th><th>Förslag</th></tr></thead>
+    <tbody>
+      <tr><td>Kortvägg</td><td><code>.byd-wall</code></td><td class="bad">16 px</td><td class="good">var(--byd-gutter) = 16 px</td></tr>
+      <tr><td>Kortvägg, verktyg</td><td><code>.byd-wall-tools</code></td><td class="bad">0 4px 10px</td><td class="good">8px 16px</td></tr>
+      <tr><td>Mall</td><td><code>.byd-canvas-layers/-props</code></td><td class="bad">12 px</td><td class="good">12 px (inre panel)</td></tr>
+      <tr><td>Data</td><td><code>.byd-data-tools</code></td><td class="bad">x = 16 px</td><td class="good">8px 16px</td></tr>
+      <tr><td>Symboler</td><td><code>.byd-symbols</code></td><td class="bad">20 px</td><td class="good">16 px</td></tr>
+      <tr><td>Bord, uppställning</td><td><code>.byd-setup</code></td><td class="bad">20 px</td><td class="good">16 px</td></tr>
+      <tr><td>Bord, listan</td><td><code>.byd-tables</code></td><td class="bad">24 px</td><td class="good">16 px</td></tr>
+      <tr><td>Regler</td><td>panelens rot</td><td class="bad">24 px</td><td class="good">16 px</td></tr>
+      <tr><td>Sidhuvud</td><td><code>.byd-editor &gt; header</code></td><td class="bad">0 16px</td><td class="good">0 16px</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Skalan</h2>
+  <div class="ladder">
+    <div class="rung"><b>--byd-s1</b><span class="measure">4 px</span><span class="bar" style="width:4px"></span></div>
+    <div class="rung"><b>--byd-s2</b><span class="measure">8 px</span><span class="bar" style="width:8px"></span></div>
+    <div class="rung"><b>--byd-s3</b><span class="measure">12 px</span><span class="bar" style="width:12px"></span></div>
+    <div class="rung"><b>--byd-s4</b><span class="measure">16 px</span><span class="bar" style="width:16px"></span></div>
+    <div class="rung"><b>--byd-s5</b><span class="measure">24 px</span><span class="bar" style="width:24px"></span></div>
+    <div class="rung"><b>--byd-gutter</b><span class="measure">16 px</span><span class="bar" style="width:16px"></span></div>
+  </div>
+
+  <h2>Vad skillnaden gör när man byter flik</h2>
+  <div class="demo">
+    <figure class="frame" style="margin:0">
+      <figcaption>Nu — kanten hoppar 12 → 24 px</figcaption>
+      <div class="inner"><div class="edge">
+        <div class="panel" style="left:24px;top:24px;right:24px;height:70px"></div>
+        <div class="tagged" style="left:24px;top:100px">Bord/Regler · 24 px</div>
+        <div class="panel" style="left:16px;top:124px;right:16px;height:46px"></div>
+        <div class="tagged" style="left:16px;top:176px">Kortvägg · 16 px</div>
+        <div class="panel" style="left:12px;top:196px;right:12px;height:24px"></div>
+        <div class="tagged" style="left:12px;top:222px;bottom:2px">Mall · 12 px</div>
+      </div></div>
+    </figure>
+    <figure class="frame" style="margin:0">
+      <figcaption>Förslag — samma kant i alla flikar</figcaption>
+      <div class="inner"><div class="edge">
+        <div class="panel" style="left:16px;top:16px;right:16px;height:70px"></div>
+        <div class="tagged ok" style="left:16px;top:92px">Bord/Regler · 16 px</div>
+        <div class="panel" style="left:16px;top:116px;right:16px;height:46px"></div>
+        <div class="tagged ok" style="left:16px;top:168px">Kortvägg · 16 px</div>
+        <div class="panel" style="left:16px;top:188px;right:16px;height:24px"></div>
+        <div class="tagged ok" style="left:16px;top:214px">Mall · 16 px</div>
+      </div></div>
+    </figure>
+  </div>
+</div>
+</body>
+</html>

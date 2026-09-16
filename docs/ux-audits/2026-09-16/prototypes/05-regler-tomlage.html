@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 5 — Regelfliken: tomläge och skriven regelbok</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  .rules { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+  /* Tomläget: en komponerad ruta mitt i ytan, inte ett stycke i vänstra hörnet av
+     1440 × 900 tomt mörker. */
+  .empty { flex: 1 1 auto; min-height: 0; display: grid; place-items: center; padding: var(--s5); }
+  .empty-card { max-width: 560px; text-align: center; display: grid; gap: var(--s3); justify-items: center; }
+  .empty-card h1 { margin: 0; font-size: 22px; color: #fff; font-weight: 700; }
+  .empty-card p { margin: 0; color: var(--quiet-2); line-height: 1.6; }
+  .mark { width: 72px; height: 88px; border-radius: 8px; border: 2px dashed #3b4358; display: grid; align-content: center; gap: 5px; padding: 0 14px; }
+  .mark span { height: 4px; border-radius: 2px; background: #3b4358; }
+  .mark span:nth-child(2) { width: 70% } .mark span:nth-child(4) { width: 55% }
+  .starters { display: flex; gap: var(--s2); flex-wrap: wrap; justify-content: center; margin-top: var(--s2); }
+  .starters button { min-height: var(--tap); border: 1px solid var(--line); border-radius: 10px; padding: 0 16px; background: var(--sunk); color: var(--ink); font: inherit; cursor: pointer; }
+  .starters button.primary { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 700; }
+
+  /* Den skrivna regelboken: två spalter med en egen skrollyta, inte fullbredd text. */
+  .written { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 240px minmax(0, 1fr); }
+  .toc { min-height: 0; display: flex; flex-direction: column; border-right: 1px solid var(--line); }
+  .toc > header { flex: none; padding: var(--s4) var(--s4) var(--s2); }
+  .toc > .scroll { padding: 0 var(--s3) var(--s4); }
+  .toc a { display: flex; align-items: center; min-height: var(--tap); padding: 0 var(--s3); border-radius: 8px; color: var(--quiet-2); text-decoration: none; }
+  .toc a[aria-current='true'] { background: var(--card); color: #fff; }
+  .doc { min-height: 0; display: flex; flex-direction: column; }
+  .doc > .scroll { padding: var(--s5) var(--s5) var(--s5); }
+  .sheet { max-width: 68ch; margin: 0 auto; }
+  .sheet h2 { margin: 0 0 var(--s3); color: #fff; font-size: 18px; }
+  .sheet h3 { margin: var(--s5) 0 var(--s2); color: #fff; font-size: 14px; }
+  .sheet p { margin: 0 0 var(--s3); color: #cfd5e3; line-height: 1.7; }
+  .sheet em { color: var(--good); font-style: normal; border-bottom: 1px dotted var(--good); }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <a class="home" href="#">Mina spel</a><strong>Sal's Saloon</strong>
+    <button class="rev">rev 1</button><span class="saved">Sparat</span>
+    <nav class="tabs">
+      <button>Kortvägg</button><button>Mall</button><button>Data</button>
+      <button>Symboler</button><button aria-selected="true">Regler</button><button>Bord</button>
+    </nav>
+    <span class="spacer"></span><span class="who">P</span>
+    <button class="btn">Spara</button><button class="btn primary">Uppdatera bordet</button>
+  </header>
+
+  <main>
+    <div class="rules">
+      <div class="chrome-row">
+        <h2 class="h">Regelboken</h2>
+        <span class="lead" id="lead">Inga regler än</span>
+        <span class="spacer"></span>
+        <span class="switch"><button id="b-empty" aria-pressed="true">Tomläge</button><button id="b-written">Skriven</button></span>
+      </div>
+
+      <div class="empty" id="empty">
+        <div class="empty-card">
+          <div class="mark"><span></span><span></span><span></span><span></span></div>
+          <h1>Reglerna hör till spelet</h1>
+          <p>De versioneras med korten, och en regel som nämner en zon eller ett kort följer med när
+             namnet ändras. Spelare når dem från telefonen, TV:n och observatören.</p>
+          <div class="starters">
+            <button class="primary">Börja skriva reglerna</button>
+            <button>Börja från en mall</button>
+            <button>Importera från fil</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="written" id="written" hidden>
+        <nav class="toc">
+          <header><h2 class="h">Innehåll</h2></header>
+          <div class="scroll">
+            <a href="#" aria-current="true">Så spelas det</a>
+            <a href="#">Att göra på din tur</a>
+            <a href="#">Zoner</a>
+            <a href="#">Korttyper</a>
+            <a href="#">Att vinna</a>
+          </div>
+        </nav>
+        <div class="doc">
+          <div class="scroll">
+            <div class="sheet">
+              <h2>Så spelas det</h2>
+              <p>Sal's Saloon spelas runt en skärm. Varje spelare har en hand i telefonen och en
+                 egen yta framför sig på bordet. Leken ligger i <em>Kortlek</em> och det som spelats
+                 hamnar i <em>Kasthög</em>.</p>
+              <h3>Att göra på din tur</h3>
+              <p>Dra ett kort ur <em>Kortlek</em> och spela ett kort ur handen. Ett kort som spelas
+                 publikt vänds när det når bordet.</p>
+              <h3>Zoner</h3>
+              <p>Zonen <em>Sal's Saloon</em> är delad: alla ser vad som ligger där. <em>Framför mig</em>
+                 är din egen och bara du ser den tills du vänder ett kort.</p>
+              <h3>Att vinna</h3>
+              <p>Räknaren <em>Guld</em> avgör. Den som har mest guld när <em>Final Shootout</em>
+                 har spelats vinner omgången.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<p class="note"><b>Förslag · Regelfliken</b>
+Tomläget blir en komponerad ruta mitt i ytan med tre vägar in, i stället för ett stycke i det
+vänstra hörnet av en tom skärm. Den skrivna boken får innehållsförteckning och en läsbredd på
+68 tecken; det som nämner en zon eller ett kort markeras.</p>
+
+<script>
+const empty = document.getElementById('empty'), written = document.getElementById('written')
+const be = document.getElementById('b-empty'), bw = document.getElementById('b-written'), lead = document.getElementById('lead')
+const show = (isEmpty) => {
+  empty.hidden = !isEmpty; written.hidden = isEmpty
+  be.setAttribute('aria-pressed', String(isEmpty)); bw.setAttribute('aria-pressed', String(!isEmpty))
+  lead.textContent = isEmpty ? 'Inga regler än' : '5 avsnitt · versionerade med rev 1'
+}
+be.onclick = () => show(true); bw.onclick = () => show(false)
+</script>
+</body>
+</html>

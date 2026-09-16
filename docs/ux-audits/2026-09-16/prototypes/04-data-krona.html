@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 4 — Datafliken: en krona, och kolumner som fördelas</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* The Data tab already gets the scrolling right — one .byd-data-scroll, fixed chrome.
+     What it does wrong is spend 189–218 px on four stacked bands before the first row,
+     and let `body` keep ~640 px while `typ` and `title` truncate to "Play…" and "Sal's Sa…". */
+  .data { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+  .crown { flex: none; display: flex; align-items: center; gap: var(--s3); padding: var(--s2) var(--gutter); border-bottom: 1px solid var(--line); }
+  .search { min-height: 36px; min-width: 240px; border: 1px solid var(--line); border-radius: 8px; background: #14161c; color: #fff; font: inherit; padding: 0 var(--s3); }
+  .chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: thin; min-width: 0; }
+  .chips button { flex: 0 0 auto; min-height: 36px; border: 1px solid var(--line); border-radius: 18px; padding: 0 14px; background: var(--sunk); color: var(--quiet-2); font: inherit; cursor: pointer; white-space: nowrap; }
+  .chips button[aria-pressed='true'] { border-color: var(--primary-mark); color: #fff; }
+  .crown .btn { min-height: 36px; }
+
+  .tablewrap { flex: 1 1 auto; min-height: 0; overflow: auto; scrollbar-width: thin; padding: 0 var(--gutter); }
+  table { width: 100%; border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+  thead th { position: sticky; top: 0; z-index: 2; background: #1e222b; text-align: left; padding: var(--s3) var(--s2); color: var(--quiet); font: 700 11px system-ui; letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  tbody td { padding: var(--s2); border-bottom: 1px solid #22262f; color: var(--ink); vertical-align: top; }
+  tbody tr:hover td { background: #1c202a; }
+  .id { color: #8fb7e8; font-family: ui-monospace, monospace; font-size: 12px; }
+  .body-cell { color: #c6cddb; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .tick { width: 18px; height: 18px; border: 1px solid #3b414e; border-radius: 4px; background: #14161c; display: inline-block; }
+  .grp { color: var(--quiet-2); white-space: nowrap; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  /* The last row is not cut in half by the edge of the scroller. */
+  .tailpad { height: var(--s5); }
+  .foot { flex: none; display: flex; align-items: center; gap: var(--s3); padding: var(--s2) var(--gutter); border-top: 1px solid var(--line); color: var(--quiet); }
+
+  /* Columns: name and type get room to be read; body takes what is left and clamps. */
+  col.c-tick { width: 40px } col.c-id { width: 180px } col.c-typ { width: 120px }
+  col.c-title { width: 200px } col.c-body { width: auto } col.c-rar { width: 110px }
+  col.c-copies { width: 80px } col.c-grp { width: 160px } col.c-x { width: 44px }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <a class="home" href="#">Mina spel</a><strong>Sal's Saloon</strong>
+    <button class="rev">rev 1</button><span class="saved">Sparat</span>
+    <nav class="tabs">
+      <button>Kortvägg</button><button>Mall</button><button aria-selected="true">Data</button>
+      <button>Symboler</button><button>Regler</button><button>Bord</button>
+    </nav>
+    <span class="spacer"></span><span class="who">P</span>
+    <button class="btn">Spara</button><button class="btn primary">Uppdatera bordet</button>
+  </header>
+
+  <main>
+    <div class="data">
+      <!-- En krona i stället för fyra band: 44 px i stället för 189–218 px. -->
+      <div class="crown">
+        <input class="search" placeholder="Sök i varje fält…">
+        <div class="chips">
+          <button aria-pressed="true">Alla</button><button>Character</button><button>Effect</button>
+          <button>Event</button><button>Location</button><button>Playcard</button>
+          <button>Shopcard</button><button>Trap-</button><button>Trap+</button>
+          <button>Diamant</button><button>Guld</button><button>Koppar</button><button>Silver</button>
+        </div>
+        <span class="spacer"></span>
+        <button class="btn quiet">Importera CSV…</button>
+        <button class="btn quiet">Hämta CSV</button>
+        <button class="btn">+ Nytt kort</button>
+      </div>
+
+      <div class="tablewrap">
+        <table>
+          <colgroup>
+            <col class="c-tick"><col class="c-id"><col class="c-typ"><col class="c-title">
+            <col class="c-body"><col class="c-rar"><col class="c-copies"><col class="c-grp"><col class="c-x">
+          </colgroup>
+          <thead><tr>
+            <th><span class="tick"></span></th><th>id ⇅</th><th>typ ⇅</th><th>title ⇅</th>
+            <th>body</th><th>raritet ⇅</th><th class="num">antal ⇅</th><th>grupp</th><th>+</th>
+          </tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+        <div class="tailpad"></div>
+      </div>
+
+      <div class="foot"><span>77 av 77 kort</span><span>·</span><span>Osorterat: kortens ordning i spelet</span></div>
+    </div>
+  </main>
+</div>
+
+<p class="note"><b>Förslag · Datafliken</b>
+Fyra band blir en krona: sökfältet, filtren och de tre knapparna på en rad. <code>table-layout: fixed</code>
+med en kolumnplan ger <code>typ</code> och <code>title</code> läsbar bredd och låter <code>body</code> ta
+resten och klippas på två rader. Antalet flyttar till foten, och en svans under sista raden gör att
+den inte kapas av skrollytans kant.</p>
+
+<script>
+const rows = [
+  ['juice-em-up','Playcard','Juice em\' up!','Välj två andra spelare. De blandar en shot till varann','Diamant',1],
+  ['sals-saloon','Location','Sal\'s Saloon','Saloonen öppnar! Lägg upp ett shopkort per spelare som går in. I turordning från dig: slå tärningen – slaget plus ditt guld är din budget.','Guld',2],
+  ['dustydice-casino','Location','DustyDice Casino','Välkommen till kasinot! Alla annonserar sin insats (1–10 klunkar) och slår sedan en tärning samtidigt.','Guld',2],
+  ['free-for-all','Effect','Free for all','Era stöldgods är i fara! Så länge effekten ligger får ni sno varandras stöldgodskort.','Special',1],
+  ['duel-koppar','Playcard','Duel','Utmana en spelare på duell. Förloraren dricker 3','Koppar',4],
+  ['duel-silver','Playcard','Duel','Utmana en spelare på duell. Förloraren dricker 5','Silver',4],
+  ['duel-guld','Playcard','Duel','Utmana en spelare på duell. Förloraren dricker 7','Guld',2],
+  ['duel-diamant','Playcard','Duel','Utmana en spelare på duell. Vinnaren blandar en shot till förloraren','Diamant',1],
+  ['saddle-pals','Playcard','Saddle Pals','Välj en annan spelare. Ni är allierade resten av spelet.','Diamant',1],
+  ['standoff','Event','Standoff','Dela upp er i två lag efter hur ni sitter. Öppna en ny enhet och duellera lag mot lag.','Diamant',1],
+  ['zorros-here','Event','Zorro\'s here!','Zorro är här för att stoppa er. Slå en tärning var. Slår MINST HÄLFTEN 4 eller mer kommer ni undan.','Guld',2],
+  ['the-heist','Event','The Heist','Ni ska försöka råna ett bankvalv. Råna valvet: 3 guld + allt i The Bank.','Silver',3],
+  ['stolen-goods-1','Playcard','Stolen Goods','1 värdesak! Värde 1. Säljs för 1 guld. Böter 1 klunk.','Koppar',4],
+  ['the-alley','Location','The Alley','I gränden kan man stöta på mycket skumma typer, slå en tärning.','Silver',4],
+  ['sheriffs-check','Playcard','Sheriff\'s Check','Har du stöldgods: annonsera två siffror och slå.','Koppar',4],
+  ['deflect','Trap+','Deflect','Klunkarna riktade mot dig går istället till dina grannar, båda dricker full mängd','Guld',2],
+  ['reflection','Trap+','Reflection','Tillbakakaka gubbjävel, ge tillbaka klunkarna till den som delade ut dem','Silver',4],
+  ['final-shootout','Playcard','Final Shootout','Sista kortet i leken, gå varvet runt och spela en stor duell mot varann.','Special',1],
+]
+document.getElementById('rows').innerHTML = rows.map(([id, typ, title, body, rar, n]) => `
+  <tr><td><span class="tick"></span></td><td class="id">${id}</td><td>${typ}</td>
+  <td>${title}</td><td><div class="body-cell">${body}</div></td><td>${rar}</td>
+  <td class="num">${n}</td><td class="grp">typ = ${typ}</td><td style="color:#868ea3">×</td></tr>`).join('')
+</script>
+</body>
+</html>

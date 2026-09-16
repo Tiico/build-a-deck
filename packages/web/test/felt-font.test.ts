@@ -138,7 +138,12 @@ describe('the felt’s face is in the document before the first painting (K20, #
     // text, its popover, and the chip rows a question is written with. Two real surfaces, one on
     // the felt and one in the editor, and the headroom left over is deliberate: the sheet is the
     // first thing on the felt that is a list rather than a disc, and it will grow.
-    expect(statSync(join(OUT, blockingSheets(index)[0]!.replace(/^\//, ''))).size).toBeLessThan(inlined + 139_000)
+    // Raised to 142 kB on 2026-09-16 for the UX audit's answer to the editor scrolling (#126,
+    // #128, #130, #131): every tab's panel became a frame with a crown, one scroll region and a
+    // foot rather than one long page, which is a row of real rules each — Bord's three columns,
+    // the wall's size control, the card table's foot, the layer column's header and footer, and
+    // the rulebook's empty state. 1.7 kB of it, and the rest is headroom of the same kind.
+    expect(statSync(join(OUT, blockingSheets(index)[0]!.replace(/^\//, ''))).size).toBeLessThan(inlined + 142_000)
   }, 60_000)
 
   // And the same thing said by a browser rather than by a reader of files: the built app served

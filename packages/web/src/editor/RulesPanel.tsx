@@ -17,10 +17,19 @@ export function RulesPanel({ doc, client }: RulesPanelProps) {
   const [editing, setEditing] = useState<string | null>(null)
   const names = namesOfProject(doc)
   const rules = doc.rules
+  // Nothing written yet, composed against the surface it stands on (#131). It used to be an
+  // all-caps eyebrow, two lines and a button in the top-left corner of an otherwise empty
+  // 1440 by 900 — about six per cent of the panel, and emptier the bigger the screen got.
   if (!rules) {
     return (
       <div className="byd-rules-empty">
-        <h2>{t('rules.title')}</h2>
+        <span className="byd-rules-mark" aria-hidden="true">
+          <i />
+          <i />
+          <i />
+          <i />
+        </span>
+        <h2>{t('rules.empty.title')}</h2>
         <p>{t('rules.empty')}</p>
         <button type="button" className="byd-secondary" onClick={() => client.setRules(startingRules(doc.name, t))}>
           {t('rules.start')}
