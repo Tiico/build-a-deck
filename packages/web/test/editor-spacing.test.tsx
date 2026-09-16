@@ -129,9 +129,9 @@ describe(`the edge the editor frames a tab panel with, at ${WIDTH}px`, () => {
       table: { roots: 1, wrong: [] },
       symbols: { roots: 1, wrong: [] },
       rules: { roots: 1, wrong: [] },
-      // The setup above and the list of running tables below it, until #126 puts them beside
-      // each other. Both are roots of the panel and both frame their work.
-      tables: { roots: 2, wrong: [] },
+      // One root since #126: the setup is the tab, and the list of running tables stands in its
+      // third column rather than as a second panel under it.
+      tables: { roots: 1, wrong: [] },
     })
   }, 90_000)
 

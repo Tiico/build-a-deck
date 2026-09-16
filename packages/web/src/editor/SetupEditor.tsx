@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as RKeyboardEvent, type PointerEvent as RPointerEvent, type ReactNode } from 'react'
 import type { ProjectDoc } from '@byd/server'
 import type { Motif } from '@byd/template'
 import { targetsOf } from '../player/PlaySheet.js'
@@ -32,6 +32,10 @@ export type SetupEditorProps = {
   // a back made of a picture is a picture here too and not an empty box.
   assetBase?: string | undefined
   motifs?: Record<string, Motif> | undefined
+  // What stands in the third column, beside the felt rather than a screenful under it (#126): the
+  // list of tables the game is being played at. The setup owns the tab's layout — it is the one
+  // that knows there are three columns — so the list is handed to it rather than dropped after it.
+  beside?: ReactNode
 }
 
 const PILE_MM = { w: 63, h: 88 }
@@ -58,7 +62,7 @@ function inAField(e: KeyboardEvent): boolean {
 const NUDGE_MM = 10
 const MIN_MM = 40
 
-export function SetupEditor({ doc, client, assetBase, motifs }: SetupEditorProps) {
+export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEditorProps) {
   const t = useT()
   const setup = doc.setup
   const [selected, setSelected] = useState<string | null>(null)
@@ -192,7 +196,13 @@ export function SetupEditor({ doc, client, assetBase, motifs }: SetupEditorProps
         {selectedZone?.kind === 'pile' && (
           <ZoneActions doc={doc} zone={selectedZone} onPatch={(patch, gesture) => client.patchZone(selectedZone.id, patch, gesture)} />
         )}
+      </div>
+      {/* The third column: what a player is given, and the tables the game is running at. Both
+          were under the felt before, a screenful down, where the designer had to leave the setup
+          to reach them (#126). */}
+      <div className="byd-setup-beside">
         {view && <SheetPreview view={view} seat={setup.seats[0] ?? null} />}
+        {beside}
       </div>
     </div>
   )

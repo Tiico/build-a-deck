@@ -370,8 +370,22 @@
 /* The setup editor (B5, K2): the seats knob and the list of zones on the left, the felt as the
    workspace, the phone's sheet under it. The column scrolls on its own, since a table of eight
    seats carries some thirty zones and the felt must not be pushed off the screen by the list. */
-.byd-setup { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 24px; padding: var(--byd-gutter); align-items: start; }
-.byd-setup-side { display: grid; gap: 16px; align-content: start; max-height: calc(100vh - 116px); overflow: auto; padding-right: 4px; }
+/* Bord on one screen (#126). The setup and the list of running tables used to be two panels
+   stacked, each asking for a whole work area, so the tab was two screenfuls: the list began a
+   pixel under the window's bottom edge, and reaching it took the header, the revision, the tabs
+   and `Uppdatera bordet` off the screen with it.
+
+   Three columns share the height that is left over instead — the zones on the left, the felt in
+   the middle, and what a player is given plus the tables that are running on the right — and each
+   column scrolls its own work. The height comes from the layout: the tab is as tall as the work
+   area, which is as tall as what the chrome above it left. It used to be worked out from
+   `calc(100vh - 116px)`, a guess about how tall that chrome is, and the chrome takes 57. */
+.byd-setup { height: 100%; box-sizing: border-box; display: grid; grid-template-columns: 300px minmax(0, 1fr) 320px; gap: var(--byd-s4); padding: var(--byd-gutter); }
+/* A grid child's automatic minimum is its own content, which is how a column comes to be wider
+   than the track it stands in and takes the tab sideways with it. Every column here may be
+   narrower and shorter than what it holds; what does not fit is what its own scrolling is for. */
+.byd-setup > * { min-width: 0; min-height: 0; }
+.byd-setup-side { display: grid; gap: 16px; align-content: start; overflow: auto; padding-right: 4px; }
 .byd-setup h2 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-setup-recipe { display: grid; gap: 18px; }
 .byd-setup-recipe label { display: flex; gap: 8px; align-items: center; margin: 4px 0; color: #e6ecfa; }
@@ -388,11 +402,14 @@
 .byd-setup-counter input:not([type='number']) { width: 110px; }
 .byd-setup input[type='number'] { width: 64px; }
 .byd-setup-hint { margin: 0; color: var(--byd-editor-quiet); font-size: 12px; line-height: 1.5; }
-.byd-setup-canvas { position: relative; display: grid; gap: 10px; min-width: 0; }
+/* The middle column: the line that says what a drag does, and under it the felt, which takes
+   whatever height is left. A pile's own actions stand under the felt when one is picked, and when
+   the three of them together want more room than the column has, the column is what scrolls. */
+.byd-setup-canvas { position: relative; display: flex; flex-direction: column; gap: 8px; overflow: auto; }
 .byd-setup-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: #9aa3b8; font-size: 12px; }
 /* What the surface says back: the hint, and after a removal the zone's name with the way back.
    The step back is the editor's own (B4), said here because here is where the zone went. */
-.byd-setup-said { display: flex; gap: 12px; align-items: center; min-height: 30px; color: #9aa3b8; font-size: 12px; }
+.byd-setup-said { flex: none; display: flex; gap: 12px; align-items: center; min-height: 30px; color: #9aa3b8; font-size: 12px; }
 .byd-setup-said > span:last-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .byd-setup-undo { display: flex; gap: 8px; align-items: center; color: #ffd98a; }
 .byd-setup-undo button { border: 1px solid #5c4a1f; border-radius: 8px; padding: 4px 8px; background: #241f13; color: #ffd98a; font-weight: 700; cursor: pointer; }
@@ -418,7 +435,7 @@
 .byd-setup-fast { flex: none; color: #7c8496; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; border: 1px solid #2f333d; border-radius: 999px; padding: 4px 8px; }
 .byd-setup-why { margin: 0; color: #9aa3b8; font-size: 11px; line-height: 1.45; }
 /* The felt takes the room it gets: the frame must not size itself after the table it holds. */
-.byd-setup-felt { position: relative; height: min(64vh, 620px); background: #0d0f14; border-radius: 16px; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); user-select: none; touch-action: none; }
+.byd-setup-felt { position: relative; flex: 1 1 auto; min-height: 240px; background: #0d0f14; border-radius: 16px; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); user-select: none; touch-action: none; }
 .byd-setup-felt .byd-table-frame { width: 100%; height: 100%; min-width: 0; min-height: 0; overflow: hidden; }
 /* On the played felt a zone's name is furniture and stays quiet. Here it is the work: this is the
    surface a designer checks the names on (B5), and since the handles no longer carry one (K19) it
@@ -445,6 +462,25 @@
 .byd-setup-props input, .byd-setup-props select { width: 100%; box-sizing: border-box; }
 .byd-setup-props button { justify-self: start; }
 .byd-setup-where { font: 12px ui-monospace, monospace; color: var(--byd-editor-quiet); }
+/* Between the two desk widths the rails give way before the felt does: the felt is what the
+   designer drags zones on, and it is the one column whose work cannot be scrolled to. */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .byd-setup { grid-template-columns: 260px minmax(0, 1fr) 280px; }
+}
+/* Below the desk the editor shows one stage at a time (L10) and there is no room for three
+   columns beside each other. They become one column, in reading order, and the tab is what
+   scrolls — one scrolling box again, and the header above it still does not move. */
+@media (max-width: 1023px) {
+  .byd-setup { grid-template-columns: minmax(0, 1fr); overflow: auto; }
+  .byd-setup-side, .byd-setup-canvas, .byd-setup-beside { overflow: visible; }
+  .byd-setup-felt { flex: none; height: min(64vh, 620px); }
+  .byd-setup-beside { grid-template-rows: auto auto; }
+}
+/* The third column: the phone's sheet over the tables that are running. The sheet asks for the
+   room it needs and the list takes the rest, so a game with many tables scrolls the list and not
+   the column. */
+.byd-setup-beside { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 16px; min-height: 0; }
+.byd-setup-beside > * { min-height: 0; }
 .byd-zones-preview { align-self: start; padding: 12px 16px; border-radius: 16px; background: #14161c; border: 1px solid #2f333d; }
 .byd-zones-preview .byd-sheet-targets { display: flex; flex-wrap: wrap; gap: 8px; }
 .byd-zones-preview .byd-sheet-targets > div { display: grid; padding: 8px 12px; border-radius: 10px; background: #242938; }
@@ -1192,7 +1228,7 @@
   --byd-tables-ask-bg: #3d2632;
   --byd-tables-ask-ink: #ffe4ea;
 }
-.byd-tables { height: 100%; box-sizing: border-box; overflow: auto; padding: var(--byd-gutter); display: grid; gap: 16px; align-content: start; max-width: 900px; }
+.byd-tables { overflow: auto; display: grid; gap: 16px; align-content: start; }
 .byd-tables-lead, .byd-tables-empty { margin: 0; color: var(--byd-tables-quiet); max-width: 62ch; }
 .byd-tables > ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
 .byd-table-row { display: grid; grid-template-columns: 160px 1fr; gap: 16px; padding: 12px; border-radius: 14px; background: var(--byd-tables-bg); border: 1px solid #2c3242; }
