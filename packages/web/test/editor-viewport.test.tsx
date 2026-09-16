@@ -27,11 +27,22 @@ const document_ = (html: string) =>
     .replace('</head>', `<style>${css}</style></head>`)
     .replace('<div id="root"></div>', `<div id="root">${html}</div>`)
 
+// Every surface below begins by asking the fixture whether the server is answering, and only then
+// stands the editor up (#149). The word it goes on to wait for — `Skogens herrar`, the name the
+// fixture's own project carries — is content: it appears once an answer has come, so waiting for it
+// was timing the server instead of asking it, and under a full run the timing lost. It lost badly,
+// too, because there is nothing behind the word to wait longer for: the editor opens a project with
+// a single `fetch` and keeps no second attempt, so a surface that lost that one request stood on
+// the disconnected screen for the rest of the test. `run.answering()` is the attempt that is kept —
+// the fixture asked again until it comes back, with its own patience, written down where it lives.
+// The word stays where it is, now saying only what it can say: the editor has drawn the project.
+
 // Every surface the editor can be showing at a width: one per tab in whichever strip the room
 // mounts — the modes in the header on a desk, the stages in the bar on a smaller screen.
 async function surfaces(width: number): Promise<Record<string, string>> {
   atWidth(width)
   history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+  await run.answering()
   const { unmount } = render(<EditorPage />)
   try {
     await screen.findByText('Skogens herrar')
@@ -56,6 +67,7 @@ async function surfaces(width: number): Promise<Record<string, string>> {
 async function newField(width: number): Promise<Record<string, string>> {
   atWidth(width)
   history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+  await run.answering()
   const { unmount } = render(<EditorPage />)
   try {
     await screen.findByText('Skogens herrar')
@@ -75,6 +87,7 @@ async function newField(width: number): Promise<Record<string, string>> {
 async function shapePanel(width: number): Promise<Record<string, string>> {
   atWidth(width)
   history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+  await run.answering()
   const { unmount } = render(<EditorPage />)
   try {
     await screen.findByText('Skogens herrar')
@@ -106,8 +119,13 @@ async function shapePanel(width: number): Promise<Record<string, string>> {
 async function tablesTab(width: number): Promise<Record<string, string>> {
   const started = await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST' })
   if (!started.ok) throw new Error(`could not start a table: ${started.status}`)
+  const table = ((await started.json()) as { id: string }).id
   atWidth(width)
   history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+  // The table's own door and not the server's, because that is what this surface waits on below:
+  // a free seat is known to the table's snapshot alone, and `/sessions/<id>` is answered once the
+  // actor behind it is standing. It answers for the server around it in the same breath.
+  await run.answering(`/sessions/${encodeURIComponent(table)}`)
   const { unmount } = render(<EditorPage />)
   try {
     await screen.findByText('Skogens herrar')
@@ -390,6 +408,7 @@ describe.each(WIDTHS)('the Bord tab with a table, at %ipx', (width) => {
 async function bord(width: number): Promise<Record<string, string>> {
   atWidth(width)
   history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+  await run.answering()
   const { unmount } = render(<EditorPage />)
   try {
     await screen.findByText('Skogens herrar')

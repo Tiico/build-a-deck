@@ -170,6 +170,41 @@ async function bind(server: Server, port: number): Promise<void> {
   }
 }
 
+// How long a fixture is given to answer its own address before whatever is being built against it
+// gives up on it (#149).
+//
+// The number this replaces is the four seconds a `waitFor` has in `setup.ts`, and four seconds is
+// what proved too short under a full run. It could not have been mended by giving the screen more
+// of them: the editor opens a project with a single `fetch` and keeps no second attempt, so a
+// surface that lost that one request stood on the disconnected screen for the rest of the test
+// however long anything waited for a word to appear on it. The patience is therefore spent here,
+// on asking the server again, which is the one thing the surface itself cannot do.
+//
+// Eight seconds, then. Twice the four that were not enough, and twelve short of the twenty a
+// suite in this class is given (`budget.ts`), so a server that never comes fells the run as a red
+// test naming the address it waited on — promptly, and long before the budget around it is spent.
+export const ANSWERS_WITHIN = 8_000
+
+// The fixture's own word for "I am answering": a real request over the address it hands out,
+// asked again until it comes back. `/health` is the server saying that its store answers and not
+// merely that the process is up (DRIFT §2). A door named by the caller is asked for instead, which
+// is how a table says its own actor is standing and not only that the server around it is.
+async function untilAnswering(http: string, door: string): Promise<void> {
+  const until = Date.now() + ANSWERS_WITHIN
+  let why = 'it was never asked'
+  for (let wait = 5; ; wait = Math.min(wait * 2, 100)) {
+    try {
+      const res = await fetch(`${http}${door}`)
+      if (res.ok) return
+      why = `${res.status} ${(await res.text()).trim().slice(0, 120)}`
+    } catch (err) {
+      why = (err as Error).message
+    }
+    if (Date.now() >= until) throw new Error(`test fixture at ${http} never answered ${door} within ${ANSWERS_WITHIN} ms: ${why}`)
+    await new Promise((resolve) => setTimeout(resolve, wait))
+  }
+}
+
 export type Running = {
   url: string
   http: string
@@ -192,6 +227,20 @@ export type Running = {
   projectId: string
   /** A second project for the one test that needs two at once. Its own name, on the same ground. */
   otherProjectId: string
+  /**
+   * Waits until this fixture is answering, by asking it (#149).
+   *
+   * A surface built against a fixture used to learn that the server was up by finding a word the
+   * fixture's project happens to carry — `Skogens herrar` — on the screen. That is content, and
+   * content is not a statement about the server: it appears once an answer has come, so a surface
+   * waiting for it is timing the server rather than measuring it, and under a full run the timing
+   * lost. This is the fixture saying the thing that was actually being asked.
+   *
+   * With no door named it is `/health`, the server's own word for a store that answers. Name one
+   * — `/sessions/<id>` — to wait on something standing behind the server rather than on the
+   * server itself.
+   */
+  answering(door?: string): Promise<void>
   stop(): Promise<void>
   restart(): Promise<void>
   completeRenders(limit?: number): Promise<number>
@@ -228,6 +277,7 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean }
     mail,
     projectId: `p1-f${nth}`,
     otherProjectId: `p2-f${nth}`,
+    answering: (door = '/health') => untilAnswering(`http://127.0.0.1:${port}`, door),
     stop,
     // Marks every queued texture as rendered, with a stand-in for the PNG: what the render
     // container would do, without Chromium. A limit renders only that many, which is a worker
