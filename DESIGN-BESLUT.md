@@ -339,6 +339,29 @@ Den egna handen visas som baksidor och antal på filten som för alla andra; fl�
 Telefonens kontroller (ångra, flagga, avsluta), tillbakaspolning och enkät delas med telefonen genom samma komponenter.
 Anslutningssidan erbjuder "Spela på den här skärmen" bredvid "Sätt dig"; med en telefon i handen och en TV i rummet väljer man det förra bara på distans.
 
+Reviderat 2026-09-16 (#99, produktägarens beslut): **telefonen är spelarens kontroll, aldrig bordet.**
+
+Ett helt fyraplatsbord ritar kortets kortsida i som mest 23 px vid 390 × 844, mot K9:s golv på 45, och ingen vridning och ingen omfördelning av kromet ändrar det (#77, K17).
+Svaret är inte att rita bordet mindre utan att låta bli att rita det: telefonen är en skärm en spelare håller i handen, inte en spelplan.
+Fallet beslutet är format efter är ett bord runt en TV — spelet står på TV:n, och varje spelare ser sin egen hand, sina räknare och sina privata zoner i sin telefon och känner igen bordet genom att titta upp.
+
+Vilken skärm en spelare håller är spelarens eget val och ingen regel: telefonen om man vill ha handen i handen, en dator om man sitter vid en.
+Det som aldrig varierar är att telefonen inte bär bordet.
+En spelare på distans vid en dator får både bordet och handen i samma fönster, vilket är vad `/online` är byggt för; en spelare på distans med bara en telefon får handen och zonöversikten och ser bordet som antal och namn i stället för som filt.
+De 23 px:en är därmed ett tal ingen behöver leva med, eftersom ingen skärm längre ombeds rita ett helt bord i 390 px.
+Den tredje vägen — att kräva ett liggande fönster — valdes bort: 844 × 390 ger fortfarande fyra händer på en liten yta, så den hade stängt frågan utan att svara på den.
+
+Motivering:
+De två vägar som stod i avsnitt I löste båda fel problem.
+En kamera som TV:ns (C5) gör telefonen till ett utsnitt av ett bord den ändå inte kan bära, och en filt som är en ren översikt (K8) behåller en yta vars enda uppgift är att vara för liten att spela på.
+Rollerna behöver inte ändras för att svara: `player` och `table` står kvar som de är (C2, C3), och beslutet säger bara vilken skärm som bär vilken roll.
+
+Följdkrav:
+`/online` på en telefonbredd visar spelarvyn och inte filten, och säger var bordet i sin helhet finns — på TV:n, eller på en skärm som rymmer det.
+Ingen yta hindrar någon från att spela på en telefon; den erbjuder bara inte bordet på en skärm som inte kan bära det.
+Handen på en telefon är K10:s remsa oavsett vilken route den nåddes från.
+Grinden som #77 och K17 avstod från kan därmed skrivas, men om en annan sak: vid 390 px ska ingen filt ritas, i stället för att ett kort på filten ska vara 45 px.
+
 ### C3. Identitetens tre begrepp (fråga 12)
 
 Användare äger spel och lägger beställningar.
@@ -1359,6 +1382,11 @@ Valet blev hela bordet och 82 px, tillsammans med panelen som fyller sig själv 
 
 ### K10. Telefonvyns utseende: remsan (prototypat 2026-09-06)
 
+Reviderat 2026-09-16 (#99): **remsan är telefonens hand överallt, också i `/online`.**
+Avsnitt I:s fråga om `/online` på en telefon ska vara samma hand som `/play` är därmed stängd, och svaret är ja.
+Fjädern (K17) är den breda skärmens hand, alltså den skärm distansspel faktiskt körs på, och de två delar inte längre en skärmstorlek att slåss om.
+Skälet är C2:s beslut samma dag: är telefonen spelarens kontroll och inte ett bord, så är den samma kontroll oavsett vilken adress den nåddes från.
+
 Tre prototyper: remsan, ett kort i taget i fullskärm, och minibord med brickor plus handen i rutnät.
 Valet blev remsan, som K4 beslutat: stora kort i horisontell remsa nederst där tummen är; tryck inspekterar i fullstorlek; dra upp öppnar ett ark med zongenvägarna ur setup (C4), golvet sist som "Bordet"; håll väljer flera, och flera valda spelas som ett atomiskt kuvert (K3).
 Mitten är den kollapsade bordsöversikten — zoner med antal och senaste-flödet — som C4:s "fäll ut bordet" i minsta format.
@@ -1704,8 +1732,10 @@ Reviderat 2026-09-14 (#77): **antagandet att ett helt bord ryms i 390 px är bru
 K17 lade bandet på en telefon och räknade fram att 358 px rymmer åtta träffytor, men mätte aldrig vad som blir kvar åt filten ovanför det.
 Prototypen till #77 gjorde det: det bästa någon variant når på en telefon är **23 px** över kortets kortsida, vridet eller ej, mot K9:s 45.
 Ett helt fyraplatsbord får alltså inte plats på en telefon vid en spelbar kortstorlek, och ingen vridning och ingen omfördelning av kromet ändrar det.
-Vad man gör åt det — en kamera som TV:ns (C5), eller att uttryckligen säga att ett kort på telefon läses genom INSPEKTION (K8) och inte på filten — är ett eget beslut och står som öppen fråga i avsnitt I.
+Vad man gör åt det stod som öppen fråga i avsnitt I till 2026-09-16, då produktägaren svarade i C2: **ingen av de två vägarna — telefonen ritar inte bordet alls.**
+Den är spelarens kontroll, vid en TV eller på distans, och bordet i sin helhet hör hemma på en skärm som rymmer det.
 Därför finns ingen grind i sviten som påstår 45 px vid 390: ett tal som inte går att hålla är inte en grind utan en lögn som går sönder nästa gång någon mäter.
+Grinden som ska finnas i stället är att en telefonbredd inte ritar någon filt.
 
 Reviderat 2026-09-14 (#77, andra halvan): **i ett liggande fönster är bandet en kolumn vid fönsterkanten, och handen i den är en lodrät lista.**
 
@@ -2264,6 +2294,18 @@ Lagerordningen är basens och delas av alla grupper — den ändras därför bar
 Lagerpanelen säger per lager om det är basens eller gruppens och hur många kort gruppen gäller; variant B:s regellista står kvar som sammanfattning i samma panel.
 Variant C valdes bort som redigeringsväg — tjugo fällor skulle kräva tjugo val — men tabellen visar vilken grupp en rad faller i, läsbart och inte redigerbart.
 Prototypen `packages/web/src/prototype/groups` togs bort när även baksidesflödet i #14 hade svarat.
+
+Reviderat 2026-09-16 (#129, prototypat i tre varianter och avgjort av beställaren): **grupperna är en meny i krönet, inte en rad flikar.**
+Raden av flikar var 1 076 px i en 420 px remsa vid 1024: 656 px — 61 % av grupperna — låg i en tyst sidoskroll utan pil, toning eller tangentbordsväg, och den sista fliken som syntes var kapad mitt i sitt eget ord.
+Att låta raden radbryta (variant A) visade alla grupper och tog 265 px av krönet på en lek med elva av dem, och priset växte med leken — en formgivare straffades för att ha många grupper.
+Kronmenyn kostar 61 px vid varje bredd och på varje lek, och knappen bär gruppens namn **och** dess antal kort, vilket flikraden aldrig gjorde: `typ = Playcard · 6 kort`.
+Gruppen är samma regel som förut och `override`, `remove` och "Återgå till basen" är orörda; det som ändrades är vägen mellan grupperna, och varje grupp nås med tangentbordet i menyn (piltangenter, Enter, Escape).
+Krönet ligger sedan dess över alla fyra kolumnerna och inte bara över kortet, eftersom det är enda platsen dess fyra kontroller får plats på en rad vid 1024.
+
+Reviderat 2026-09-16 (#129): **egenskapskolumnen fälls ihop för hand, och lagerkolumnen är en ram.**
+Kolumnen höll sina 280 px vare sig något var markerat eller inte, så duken fick 456 px av ett 1024 px skrivbord; fälld ger den 736.
+För hand och inte av sig själv: den prövade automatiska fällningen byter dukens bredd varje gång formgivaren klickar bredvid ett element, så kortet flyttar sig under pekaren som arbetar på det. Läget minns i webbläsaren (L4) och skrivs aldrig i dokumentet.
+Lagerkolumnen är krona, lista och fot: rubriken, antalet kort panelen gäller och raden om att dra skrollade förut bort med listan, 751 px vid 1024 — det som behövs mest i slutet av en lång lista var precis det som hade försvunnit dit.
 
 ### L4. Datatabellen: kolumntyper från registryt, systemkolumn `antal`
 
@@ -2879,18 +2921,17 @@ Om 30° är rätt tak: det är en gissning som ser rätt ut, inte ett mätt tal.
 30 är valt för att handen ska läsas som en hand snarare än som en båge; 24 packar hårdare och låter fler kort rymmas innan bandet börjar rulla, 40 ser mer ut som ett riktigt kortfack.
 Det är avsiktligt en enda konstant, `FAN_ARC_MAX` i `packages/web/src/online/fan.ts`, och både ritningen och rummet ritningen behöver räknas ur den, så att ändra talet ändrar båda i samma andetag och kan göras utan att någonting annat rörs.
 
-Om `/online` på en telefon ska vara samma hand som `/play`: valet av A framför B säger nej, tills vidare.
-`/play` är K10:s remsa och `/online` är K17:s fjäder, alltså får en spelare som spelar på telefon via `/online` och en som spelar via `/play` två olika händer på samma sorts skärm.
-Skälet är att `/online` är distansvyn med både bord och hand i samma fönster och därför i praktiken lever på en bred skärm, medan `/play` är telefonens egen vy och bara har handen att visa.
-Det är försvarbart men det är inte skrivet någonstans som ett beslut: K9 bör säga varför distansvyn har en egen hand, eller så bör de två slås ihop.
-Anser produktägaren att de ska vara oskiljbara är remsan svaret på båda, och då är K10 det som ska skrivas om och inte K9.
+Om `/online` på en telefon ska vara samma hand som `/play`: **löst 2026-09-16 (#99), de är samma hand.**
+Remsan är telefonens hand oavsett vilken adress den nåddes från, och fjädern är den breda skärmens; K10 är omskrivet och K9 står kvar.
+Det följer av C2:s beslut samma dag — är telefonen spelarens kontroll och inte ett bord, kan den inte ha två händer beroende på vilken route som öppnade den.
 
-Filtens storlek på små och låga fönster, kvar efter #77 (2026-09-14).
-Två frågor som mätningen öppnade. Den andra är stängd av #77:s andra halva; den första står kvar och är ett produktbeslut och inte ett kodval.
+Filtens storlek på små och låga fönster, kvar efter #77 (2026-09-14): **båda lösta.**
+Den andra stängdes av #77:s andra halva, den första 2026-09-16 (#99).
 
-Hur ett kort ska läsas på en telefon: ett helt fyraplatsbord ritar kortets kortsida i som mest 23 px vid 390 × 844, mot K9:s 45, och det är sant för varje plats och varje vridning.
-Alternativen är en kamera som TV:ns (C5), som slutar rita hela bordet, eller att skriva in i K9 att filten på telefon är en översikt och att det enskilda kortet läses genom INSPEKTION (K8).
-Tills det är avgjort finns ingen grind som påstår 45 px vid 390, se K17.
+Hur ett kort ska läsas på en telefon: **löst 2026-09-16, telefonen ritar inte bordet.**
+Varken kameran (C5) eller filten som ren översikt (K8) valdes — telefonen är spelarens kontroll, och bordet som filt hör hemma på TV:n eller på en skärm som rymmer det.
+Att spela på telefon är ett val och inte ett krav, och att spela på en dator likaså.
+Beslutet med sin motivering och sina följdkrav står under C2; grinden vid 390 px är att ingen filt ritas, inte att ett kort på den är 45 px.
 
 Om K9:s 45 px eller K17:s band ska ge vika vid 1280 × 800: **löst 2026-09-14, bandet gav vika.**
 Den första av de tre vägar som stod här — att bandet blir en kolumn vid fönstrets sida i ett liggande fönster — är den som togs, tillsammans med att den egna handens fläkt på filten viks ihop till sin bricka när handen redan är ritad bredvid filten.

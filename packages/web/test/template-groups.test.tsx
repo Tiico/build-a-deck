@@ -53,6 +53,18 @@ const nudge = async (user: UserEvent, keys: string) => {
   await user.keyboard(keys)
 }
 const stored = async () => (await run.projects.load(run.projectId))!.template.faces
+// The groups stand behind one button in the crown since #129: it carries the open group and how
+// many cards that is, and the list of every group is what it opens. Opening it is what a designer
+// does before she chooses, so every test that chooses a group does it the same way here.
+const groupButton = () => screen.getByRole('button', { name: /kortgrupper/i })
+const openGroups = async (user: UserEvent) => {
+  await user.click(groupButton())
+  return within(screen.getByRole('menu', { name: /kortgrupper/i })).getAllByRole('menuitemradio')
+}
+const chooseGroup = async (user: UserEvent, at: number) => {
+  const items = await openGroups(user)
+  await user.click(items[at]!)
+}
 
 describe('the two faces of the template (#13, L7)', () => {
   it('starts on the front and switches to the back, which is edited the same way', async () => {
@@ -83,17 +95,19 @@ describe('the two faces of the template (#13, L7)', () => {
   })
 })
 
-// Variant A, as chosen: a column makes the groups, the canvas gets a tab per group, and what is
-// changed with a group tab open becomes that group's override (#13).
+// Variant A, as chosen: a column makes the groups, and what is changed with a group open becomes
+// that group's override (#13). Which group is open is the crown's menu since #129 — the row of tabs
+// hid 61 % of itself — but a group is the same rule it always was.
 describe('grouping the deck by a column (#13)', () => {
-  const groupTabs = () => within(screen.getByRole('tablist', { name: /kortgrupper/i })).getAllByRole('tab')
-
   it('has no groups until a column is chosen, and then one per value in it', async () => {
     const user = await openTemplate()
-    expect(screen.queryByRole('tablist', { name: /kortgrupper/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /kortgrupper/i })).toBeNull()
 
     await user.selectOptions(screen.getByLabelText(/grupperas av kolumnen/i), 'typ')
-    expect(groupTabs().map((t) => t.textContent)).toEqual(['Bas (alla)', 'typ = varelse', 'typ = fälla'])
+    // The button carries the open group and its count on its own, and the list behind it carries
+    // every group with the same two things (#129).
+    expect(groupButton().textContent).toBe('Bas (alla) · 3 kort▾')
+    expect((await openGroups(user)).map((t) => t.textContent)).toEqual(['Bas (alla)3 kort', 'typ = varelse1 kort', 'typ = fälla2 kort'])
 
     // The rule is the group: it lives on the template, not on a list of cards.
     await user.click(screen.getByRole('button', { name: /spara/i }))
@@ -105,7 +119,7 @@ describe('grouping the deck by a column (#13)', () => {
   it('shows a card of the group and turns an edit into the group’s override, leaving the base alone', async () => {
     const user = await openTemplate()
     await user.selectOptions(screen.getByLabelText(/grupperas av kolumnen/i), 'typ')
-    await user.click(groupTabs()[2]!)
+    await chooseGroup(user, 2)
     expect(screen.getByText('Fallgrop')).toBeTruthy()
 
     await user.click(pick(1))
@@ -120,7 +134,7 @@ describe('grouping the deck by a column (#13)', () => {
   it('gives the group a back of its own, which is what a card in it lies face down as (L7)', async () => {
     const user = await openTemplate()
     await user.selectOptions(screen.getByLabelText(/grupperas av kolumnen/i), 'typ')
-    await user.click(groupTabs()[2]!)
+    await chooseGroup(user, 2)
     await user.click(screen.getByRole('radio', { name: 'Baksida' }))
     await user.click(pick(0))
     await nudge(user, '{Shift>}{ArrowRight}{/Shift}')
@@ -135,7 +149,7 @@ describe('grouping the deck by a column (#13)', () => {
     await user.selectOptions(screen.getByLabelText(/grupperas av kolumnen/i), 'typ')
     expect(screen.getByText('Alla 3 kort')).toBeTruthy()
 
-    await user.click(groupTabs()[2]!)
+    await chooseGroup(user, 2)
     expect(screen.getByText('2 kort med typ = fälla')).toBeTruthy()
     expect(layers().map((l) => (l.querySelector('.byd-layer-pick') as HTMLElement).textContent)).toEqual(['body· bas', 'title· bas', 'frame· bas'])
 
@@ -147,7 +161,7 @@ describe('grouping the deck by a column (#13)', () => {
   it('lets a layer fall back to the base, and only offers that where there is an override', async () => {
     const user = await openTemplate()
     await user.selectOptions(screen.getByLabelText(/grupperas av kolumnen/i), 'typ')
-    await user.click(groupTabs()[2]!)
+    await chooseGroup(user, 2)
     await user.click(pick(1))
     expect(screen.queryByRole('button', { name: /återgå till basen/i })).toBeNull()
 
@@ -161,7 +175,7 @@ describe('grouping the deck by a column (#13)', () => {
   it('summarises the groups as the rules they are, with what each changes against the base', async () => {
     const user = await openTemplate()
     await user.selectOptions(screen.getByLabelText(/grupperas av kolumnen/i), 'typ')
-    await user.click(groupTabs()[2]!)
+    await chooseGroup(user, 2)
     await user.click(pick(1))
     await nudge(user, '{ArrowRight}')
 
@@ -172,13 +186,26 @@ describe('grouping the deck by a column (#13)', () => {
     ])
   })
 
-  it('moves between the groups with the arrow keys, as one tab stop', async () => {
+  // Every group is reachable from the keyboard, which is half of what #129 asks: the menu opens on
+  // the group that is already open, the arrows walk the list from there, Enter chooses, and Escape
+  // leaves — with the focus back on the button it was opened from, not dropped on the document.
+  it('opens on the group that is open, walks the list with the arrow keys and chooses with Enter', async () => {
     const user = await openTemplate()
     await user.selectOptions(screen.getByLabelText(/grupperas av kolumnen/i), 'typ')
-    groupTabs()[0]!.focus()
-    await user.keyboard('{ArrowRight}{ArrowRight}{Enter}')
-    expect(groupTabs()[2]!.getAttribute('aria-selected')).toBe('true')
+    const items = await openGroups(user)
+    expect(document.activeElement).toBe(items[0])
+
+    await user.keyboard('{ArrowDown}{ArrowDown}{Enter}')
+    expect(screen.queryByRole('menu', { name: /kortgrupper/i })).toBeNull()
+    expect(document.activeElement).toBe(groupButton())
+    expect(groupButton().textContent).toBe('typ = fälla · 2 kort▾')
     expect(screen.getByText('2 kort med typ = fälla')).toBeTruthy()
+
+    const again = await openGroups(user)
+    expect(again.map((t) => t.getAttribute('aria-checked'))).toEqual(['false', 'false', 'true'])
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('menu', { name: /kortgrupper/i })).toBeNull()
+    expect(document.activeElement).toBe(groupButton())
   })
 })
 
@@ -210,12 +237,10 @@ describe('the group a row falls into, in the table (#13)', () => {
 // A group may take a base element away on its own cards (L3). The layer must not vanish with it,
 // or the removal would be a one-way door: it stays in the panel, marked, and can be given back.
 describe('a layer a group takes away (#13)', () => {
-  const groupTabs = () => within(screen.getByRole('tablist', { name: /kortgrupper/i })).getAllByRole('tab')
-
   it('keeps the layer in the panel, marked as taken away, and gives it back to the group', async () => {
     const user = await openTemplate()
     await user.selectOptions(screen.getByLabelText(/grupperas av kolumnen/i), 'typ')
-    await user.click(groupTabs()[2]!)
+    await chooseGroup(user, 2)
     await user.click(pick(0))
     await user.keyboard('{Delete}')
     // The question the key opens says how far this removal reaches, which with a group open is
@@ -244,22 +269,20 @@ describe('a layer a group takes away (#13)', () => {
 // reach in the properties is the bug; the throw was only how it finally announced itself, since
 // a drag with no group open patches the base, where a group's own element is not (#41).
 describe('the base tab draws the base and nothing else (#13, #41)', () => {
-  const groupTabs = () => within(screen.getByRole('tablist', { name: /kortgrupper/i })).getAllByRole('tab')
-
   it('does not offer a group’s own element to the pointer with the base tab open, and drags the base under it', async () => {
     const user = await openTemplate()
     await user.selectOptions(screen.getByLabelText(/grupperas av kolumnen/i), 'typ')
 
     // The first card of the deck is a `varelse`, so what that group draws is what the base tab
     // would be showing: give the group an element of its own.
-    await user.click(groupTabs()[1]!)
+    await chooseGroup(user, 1)
     await user.click(screen.getByRole('button', { name: 'Form' }))
     const mine = layers()[0]!.getAttribute('data-layer')!
     laidOut()
     expect(target(mine)).toBeTruthy()
 
     // Back to the base, where that element is none of the designer's business.
-    await user.click(groupTabs()[0]!)
+    await chooseGroup(user, 0)
     expect(layers().map((l) => l.getAttribute('data-layer'))).toEqual(['body', 'title', 'frame'])
     expect(target(mine)).toBeNull()
 
@@ -280,10 +303,10 @@ describe('the base tab draws the base and nothing else (#13, #41)', () => {
   it('does not name a new base element after an element some group already has', async () => {
     const user = await openTemplate()
     await user.selectOptions(screen.getByLabelText(/grupperas av kolumnen/i), 'typ')
-    await user.click(groupTabs()[1]!)
+    await chooseGroup(user, 1)
     await user.click(screen.getByRole('button', { name: 'Form' }))
 
-    await user.click(groupTabs()[0]!)
+    await chooseGroup(user, 0)
     await user.click(screen.getByRole('button', { name: 'Form' }))
     await user.click(screen.getByRole('button', { name: /spara/i }))
     await screen.findByText('rev 2')

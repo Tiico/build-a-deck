@@ -49,10 +49,10 @@ describe('the layer list by keyboard (UX-04)', () => {
     expect(layerRows().map((l) => l.getAttribute('aria-selected'))).toEqual(['false', 'true', 'false'])
     expect(layerRows().map((l) => (l.querySelector('.byd-layer-pick') as HTMLElement).getAttribute('tabindex'))).toEqual(['-1', '0', '-1'])
 
-    // The tool rail is the canvas's first stop (#18); the grid is the next, on the selected
-    // layer, and the arrows move the selection with the focus.
-    await user.tab()
-    await user.tab()
+    // The crown is the canvas's first stops since #129 — which column makes the groups, the fold
+    // over the properties and the face switch, one stop each — then the tool rail (#18), and then
+    // the grid, on the selected layer, where the arrows move the selection with the focus.
+    for (let i = 0; i < 5; i++) await user.tab()
     expect(document.activeElement).toBe(layerPick('title'))
     await user.keyboard('{ArrowDown}')
     expect(document.activeElement).toBe(layerPick('frame'))
@@ -73,10 +73,9 @@ describe('the layer list while the template changes under the keyboard (UX-04)',
     const { rerender } = render(canvas(projectDoc()))
     const named = () => layerNames()
 
-    // Past the tool rail (#18): the list's one tab stop is the selected layer, and the list is
-    // read top-most first.
-    await user.tab()
-    await user.tab()
+    // Past the crown (#129) and the tool rail (#18): the list's one tab stop is the selected layer,
+    // and the list is read top-most first.
+    for (let i = 0; i < 5; i++) await user.tab()
     const title = layerPick('title')
     expect(document.activeElement).toBe(title)
     expect(named()).toEqual(['body', 'title', 'frame'])
@@ -107,5 +106,41 @@ describe('the layer list while the template changes under the keyboard (UX-04)',
     expect(named()).toEqual(['accent', 'frame', 'body'])
     expect(document.activeElement).toBe(layerPick('body'))
     expect(onSelectElement).toHaveBeenLastCalledWith('body')
+  })
+})
+
+// The properties folded away, and remembered that way (#129). At 1024 the column held its 280 px
+// whether or not anything was selected, and the card was left 456 px of a 1024 px desk. It folds
+// when the designer asks and not otherwise — the prototype's other answer, a column that folds
+// itself whenever nothing is selected, changes the card's width every time she clicks beside an
+// element, and the card moves under the pointer that is working on it.
+describe('folding the properties away (#129)', () => {
+  const canvas = () => (
+    <TemplateCanvas doc={projectDoc()} face="front" row="dragon" selectedElement="title" onSelectElement={vi.fn()} onPatch={vi.fn()} onCallOff={vi.fn()} onRemove={vi.fn()} onAdd={vi.fn()} onPlaceIcon={vi.fn()} onReorder={vi.fn()} onLock={vi.fn()} onRename={vi.fn()} onSelectFace={vi.fn()} onReplaceFace={vi.fn()} group={null} onSelectGroup={vi.fn()} onGroupColumn={vi.fn()} onAddField={vi.fn()} onReset={vi.fn()} onFontFile={async () => 'Typsnitt'} onFontLicence={vi.fn()} onRemoveFont={vi.fn()} />
+  )
+  const properties = () => screen.queryByRole('heading', { name: /egenskaper/i })
+
+  it('takes the column away when asked, gives it back when asked, and is the same the next time the editor is opened', async () => {
+    localStorage.clear()
+    const user = userEvent.setup()
+    const first = render(canvas())
+    expect(properties()).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: /fäll ihop egenskaperna/i }))
+    expect(properties()).toBeNull()
+    // With a layer selected and the column folded: folding is hers to undo, and a column that comes
+    // and goes with the selection is the answer this one was chosen over.
+    expect(screen.getByRole('button', { name: /visa egenskaperna/i }).getAttribute('aria-expanded')).toBe('false')
+
+    // The next visit to the editor, which is a new mount reading what she left behind.
+    first.unmount()
+    const second = render(canvas())
+    expect(properties()).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: /visa egenskaperna/i }))
+    expect(properties()).toBeTruthy()
+    second.unmount()
+    render(canvas())
+    expect(properties()).toBeTruthy()
   })
 })

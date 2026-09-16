@@ -42,8 +42,12 @@ export function useRoving({ ids, selected, orientation, followFocus = false, onA
   // focus handler, so arriving by Tab, by arrow or by click all say the same thing.
   // Answers whether the item was actually there to be focused: a list that is waiting for the
   // server to send a card's new home has to know when the node it is aiming at has arrived.
+  // An id off the end of the list is nothing to move to; an id that is the empty string is not. The
+  // canvas names the base every card inherits with it — the base is one of the choices and is not
+  // one of the groups — and a falsy test would refuse to put the keys on the one entry that is open
+  // by default (#129).
   const moveTo = (id: string | undefined): boolean => {
-    if (!id) return false
+    if (id === undefined) return false
     const el = elements.current.get(id)
     setFocused(id)
     el?.focus()

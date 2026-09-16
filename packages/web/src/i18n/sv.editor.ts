@@ -279,6 +279,9 @@ export const svEditor = {
   'canvas.groupBy': 'Grupperas av kolumnen',
   'canvas.groupBy.none': '— ingen —',
   'canvas.groups': 'Kortgrupper',
+  // Kronans egen knapp (#129): vad den är till för, sedan gruppen som står på den och hur många
+  // kort det är. Det den säger högt, så att den som landar på den hör frågan och inte bara svaret.
+  'canvas.group.menu': 'Kortgrupper: {group}',
   'canvas.group.base': 'Bas (alla)',
   'canvas.rules': 'Grupper',
   'canvas.group.inherits': 'ärver basen helt',
@@ -301,6 +304,10 @@ export const svEditor = {
   'canvas.tool.icons': 'Ikonrad',
   'canvas.tool.shape': 'Form',
   'canvas.props': 'Egenskaper',
+  // Att fälla ihop egenskaperna, och att be om dem igen (#129). Knappen säger vilket av de två
+  // trycket gör den till, för det är det formgivaren står och bestämmer när hon läser den.
+  'canvas.props.fold': 'Fäll ihop egenskaperna',
+  'canvas.props.show': 'Visa egenskaperna',
   'canvas.props.of': 'Egenskaper · {id}',
   'canvas.props.x': 'X (mm)',
   'canvas.props.y': 'Y (mm)',
