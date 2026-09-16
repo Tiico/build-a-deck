@@ -1160,6 +1160,7 @@ describe('every suite that measures a surface', () => {
       'data-table-widths.test.tsx',
       'editor-chrome-order.test.ts',
       'editor-css.test.ts',
+      'editor-spacing.test.tsx',
       'editor-viewport.test.tsx',
       'felt-hands.test.tsx',
       'felt-names.test.tsx',
