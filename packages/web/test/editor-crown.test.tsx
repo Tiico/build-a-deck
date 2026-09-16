@@ -149,6 +149,27 @@ describe.each(DESKS)('the crown on a %ix%i desk', (width, height) => {
     expect(measured).toEqual(nothing(measured, 'one row'))
   }, 120_000)
 
+  // The half of B that is not a box: the filters do not leave the row. Putting thirteen chips
+  // behind `Filter (13) ▾` would hide the one thing on that surface that is a state rather than an
+  // action, so they keep their place and get a side scroll of their own inside the row.
+  it('keeps every filter in the row, scrolling sideways there rather than in a box', async () => {
+    const measured = await measure(width, height, (page) =>
+      page.evaluate(() => {
+        const rail = document.querySelector<HTMLElement>('.byd-crown-rail-scroll')
+        if (!rail) return 'no rail'
+        const chips = rail.querySelectorAll('.byd-data-chip').length
+        // Reachable, whether or not they all fit: what is past the edge is scrolled to and not
+        // lost, and the rail is the only thing in the crown that scrolls at all.
+        const over = rail.scrollWidth - rail.clientWidth
+        return `${chips} chips, ${over > 0 ? `${over}px of them past the edge` : 'all of them in view'}`
+      }),
+    )
+    // The deck's eight types and five rarities. Only the card table has filters at all.
+    expect(measured['Kortvägg']).toBe('no rail')
+    expect(measured['Symboler']).toBe('no rail')
+    expect(measured['Tabell']).toMatch(/^13 chips, /)
+  }, 120_000)
+
   it('leaves the work exactly one scroll region, with none inside another', async () => {
     const measured = await measure(width, height, (page) =>
       page.evaluate(() => {
