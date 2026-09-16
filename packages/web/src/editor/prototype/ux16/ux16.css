@@ -1,0 +1,843 @@
+/* PROTOTYP — engångskod för #128, #129, #130, #131 och #132. Sparar ingenting, testas inte,
+   och laddas bara i DEV. Färgerna är editorns egna hexvärden ur `editor.css`, inte nya beslut. */
+
+.ux16 {
+  --ux16-chrome: #23262e;
+  --ux16-panel: #171a23;
+  --ux16-tool: #1b1d23;
+  --ux16-line: #2f333d;
+  --ux16-edge: #3b414e;
+  --ux16-ink: #dddddd;
+  --ux16-ink-strong: #ffffff;
+  --ux16-quiet: #868ea3;
+  --ux16-hint: #9aa3b8;
+  --ux16-primary: #1f6fd0;
+  --ux16-mark: #3c8ce7;
+  --ux16-amber: #f0b64a;
+  --ux16-green: #7dd3a0;
+  --ux16-tap: 44px;
+
+  /* #132: stegen. Ytterkanten är beslutad till 16 px (beställarens svar i issuen); det som
+     varieras här är den inre rytmen — se `data-skala` nedan. */
+  --byd-s1: 4px;
+  --byd-s2: 8px;
+  --byd-s3: 12px;
+  --byd-s4: 16px;
+  --byd-s5: 24px;
+  --byd-gutter: var(--byd-s4);
+  --byd-inner: var(--byd-s3);
+  --byd-rows: var(--byd-s2);
+
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--ux16-chrome);
+  color: var(--ux16-ink);
+  font: 13px system-ui, sans-serif;
+}
+.ux16 *,
+.ux16bar * {
+  box-sizing: border-box;
+}
+.ux16 button,
+.ux16 input,
+.ux16 select {
+  font: inherit;
+}
+.ux16 :focus-visible,
+.ux16bar :focus-visible {
+  outline: 3px solid var(--ux16-mark);
+  outline-offset: 2px;
+}
+.ux16 h2,
+.ux16 h3,
+.ux16 p {
+  margin: 0;
+}
+
+/* Skalorna som varieras. B är en strikt 4×-ladder utan 12; C har bara två tal. */
+.ux16[data-skala='B'] {
+  --byd-s3: 16px;
+  --byd-s5: 32px;
+  --byd-inner: var(--byd-s4);
+  --byd-rows: var(--byd-s2);
+}
+.ux16[data-skala='C'] {
+  --byd-inner: var(--byd-gutter);
+  --byd-rows: var(--byd-s2);
+  --byd-s5: 16px;
+}
+
+/* Editorns chrome, återskapat så att avståndet till arbetet mäts från rätt kant. */
+.ux16-chrome {
+  flex: none;
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 var(--byd-gutter);
+  border-bottom: 1px solid var(--ux16-line);
+  background: var(--ux16-chrome);
+}
+.ux16-chrome strong {
+  color: var(--ux16-ink-strong);
+  font-size: 15px;
+}
+.ux16-chrome nav {
+  display: flex;
+  gap: 2px;
+  margin-left: 12px;
+}
+.ux16-chrome nav span {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--ux16-tap);
+  padding: 0 10px;
+  color: var(--ux16-hint);
+  border-bottom: 2px solid transparent;
+}
+.ux16-chrome nav span[data-open='true'] {
+  color: var(--ux16-ink-strong);
+  border-bottom-color: var(--ux16-mark);
+  font-weight: 700;
+}
+.ux16-chrome .ux16-right {
+  margin-left: auto;
+  color: var(--ux16-hint);
+}
+
+/* Flikpanelen: den enda ytan som får ge vika i höjd. */
+.ux16-panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Kronan — en rad som inte skrollar. `data-krona` säger vilken mekanism som visas. */
+.ux16-crown {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--byd-rows);
+  flex-wrap: wrap;
+  padding: var(--byd-rows) var(--byd-gutter);
+  border-bottom: 1px solid var(--ux16-line);
+  background: var(--ux16-chrome);
+}
+.ux16-crown[data-one='true'] {
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+.ux16-crown h2 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--ux16-quiet);
+  white-space: nowrap;
+}
+.ux16-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--byd-s3);
+  padding: var(--byd-s1) var(--byd-gutter);
+  border-top: 1px solid var(--ux16-line);
+  color: var(--ux16-quiet);
+  background: var(--ux16-chrome);
+  min-height: 28px;
+}
+.ux16-work {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Knappar, chips och bockar — editorns egna mått. */
+.ux16 .ux16-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--ux16-tap);
+  border: 1px solid var(--ux16-edge);
+  border-radius: 8px;
+  padding: 0 11px;
+  background: var(--ux16-tool);
+  color: var(--ux16-ink-strong);
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ux16 .ux16-btn[data-primary='true'] {
+  background: var(--ux16-primary);
+  border-color: var(--ux16-primary);
+}
+.ux16 .ux16-btn[aria-pressed='true'] {
+  border-color: var(--ux16-mark);
+  box-shadow: inset 0 0 0 1px var(--ux16-mark);
+}
+.ux16 .ux16-btn[data-quiet='true'] {
+  background: transparent;
+  color: var(--ux16-hint);
+  font-weight: 600;
+}
+.ux16-seg {
+  display: flex;
+  gap: var(--byd-s1);
+}
+.ux16-tick {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--ux16-tap);
+  padding: 0 6px;
+  color: #cfd5e3;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.ux16-tick input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--ux16-mark);
+}
+.ux16-search {
+  min-height: var(--ux16-tap);
+  border: 1px solid var(--ux16-line);
+  border-radius: 8px;
+  background: #14161c;
+  color: var(--ux16-ink-strong);
+  padding: 0 10px;
+  width: 190px;
+}
+.ux16-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--ux16-tap);
+  border: 1px solid var(--ux16-line);
+  border-radius: 999px;
+  padding: 0 11px;
+  background: var(--ux16-tool);
+  color: #cfd5e3;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.ux16-chip[aria-pressed='true'] {
+  border-color: var(--ux16-mark);
+  color: var(--ux16-ink-strong);
+}
+.ux16-chip b {
+  color: var(--ux16-quiet);
+  font-weight: 600;
+}
+
+/* En yta som skrollar i sidled och säger det: toning i kanten och pilar. */
+.ux16-rail {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: var(--byd-s1);
+}
+.ux16-rail-scroll {
+  display: flex;
+  gap: var(--byd-s1);
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 2px;
+}
+.ux16-rail-scroll::-webkit-scrollbar {
+  display: none;
+}
+.ux16-rail::after {
+  content: '';
+  position: absolute;
+  right: 44px;
+  top: 0;
+  bottom: 0;
+  width: 36px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--ux16-chrome));
+}
+
+/* Verktygsskena till vänster (variant C) — samma 68 px duken redan har. */
+.ux16-railleft {
+  flex: none;
+  width: 68px;
+  border-right: 1px solid var(--ux16-line);
+  background: var(--ux16-tool);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--byd-s1);
+  padding: var(--byd-rows) var(--byd-s1);
+  overflow: hidden;
+}
+.ux16-railleft button {
+  width: 56px;
+  min-height: var(--ux16-tap);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ux16-hint);
+  font-size: 10px;
+  line-height: 1.15;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  padding: 4px 2px;
+}
+.ux16-railleft button[aria-pressed='true'] {
+  border-color: var(--ux16-mark);
+  color: var(--ux16-ink-strong);
+  background: #22293a;
+}
+.ux16-railleft hr {
+  width: 40px;
+  border: 0;
+  border-top: 1px solid var(--ux16-line);
+  margin: var(--byd-s1) 0;
+}
+.ux16-split {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+.ux16-col {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Dockan till höger: Fysisk kontroll och annat som rapporterar. */
+.ux16-dock {
+  flex: none;
+  width: 300px;
+  border-left: 1px solid var(--ux16-line);
+  background: var(--ux16-panel);
+  padding: var(--byd-inner);
+  overflow: auto;
+}
+.ux16-dock[data-collapsed='true'] {
+  width: var(--ux16-tap);
+  padding: var(--byd-s1) 0;
+  overflow: hidden;
+}
+.ux16-dock h2 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--ux16-quiet);
+  margin-bottom: var(--byd-rows);
+}
+.ux16-dock ul {
+  list-style: none;
+  margin: 0 0 var(--byd-rows);
+  padding: 0;
+  display: grid;
+  gap: var(--byd-rows);
+}
+.ux16-dock li {
+  border-radius: 10px;
+  border-left: 3px solid var(--ux16-amber);
+  background: #1b1f2a;
+  padding: var(--byd-rows) 11px;
+  line-height: 1.45;
+}
+.ux16-dock li[data-severity='error'] {
+  border-left-color: #e05c5c;
+}
+.ux16-dock li b {
+  color: var(--ux16-ink-strong);
+}
+.ux16-dock li span {
+  color: var(--ux16-hint);
+}
+
+/* Väggen. Tätheten är en token, inte ett fast tal — det är hela poängen med reglaget. */
+.ux16-wall {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--ux16-card, 150px), 1fr));
+  gap: var(--byd-s3);
+  padding: var(--byd-gutter);
+  align-content: start;
+}
+.ux16-card {
+  aspect-ratio: 63 / 88;
+  border-radius: 8px;
+  background: linear-gradient(160deg, #37405a, #232a3c);
+  border: 1px solid #454f6b;
+  padding: 7px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden;
+  position: relative;
+}
+.ux16-card b {
+  color: #f2f5ff;
+  font-size: 11px;
+  line-height: 1.2;
+}
+.ux16-card small {
+  color: #9fb0d0;
+  font-size: 9px;
+}
+.ux16-card i {
+  margin-top: auto;
+  height: 34%;
+  border-radius: 4px;
+  background: #1b2133;
+}
+.ux16-wall[data-eye='gray'] {
+  filter: grayscale(1);
+}
+.ux16-wall[data-eye='deuteranopia'] {
+  filter: saturate(0.35) hue-rotate(-18deg);
+}
+
+/* Symbolbiblioteket. */
+.ux16-symbols {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: var(--byd-gutter);
+  padding: var(--byd-gutter);
+  align-items: start;
+  min-height: 0;
+}
+.ux16-symbols-lib {
+  border-radius: 16px;
+  background: var(--ux16-panel);
+  border: 1px solid var(--ux16-line);
+  padding: var(--byd-inner);
+}
+.ux16-symbols-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: var(--byd-rows);
+}
+.ux16-symbols-tile {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  padding: var(--byd-rows) var(--byd-s1);
+  font-size: 10px;
+  color: var(--ux16-hint);
+  border-radius: 8px;
+  background: var(--ux16-tool);
+}
+.ux16-symbols-tile em {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: #e8e2d4;
+}
+
+/* Tabellen. En kolumnplan i stället för innehållets tillfälliga bredd. */
+.ux16-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--ux16-tool);
+  table-layout: fixed;
+}
+.ux16-table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  text-align: left;
+  padding: var(--byd-rows) var(--byd-s3);
+  color: var(--ux16-quiet);
+  font-weight: 600;
+  border-bottom: 1px solid var(--ux16-line);
+  background: var(--ux16-tool);
+  white-space: nowrap;
+}
+.ux16-table td {
+  padding: 7px var(--byd-s3);
+  border-bottom: 1px solid #20232b;
+  vertical-align: top;
+  overflow: hidden;
+}
+.ux16-table td.ux16-clamp {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-height: 1.35;
+}
+.ux16-table .ux16-nowrap {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ux16-tail {
+  height: 56px;
+}
+
+/* Mallfliken. */
+.ux16-canvas {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 68px 220px minmax(0, 1fr) 280px;
+}
+.ux16-canvas[data-props='false'] {
+  grid-template-columns: 68px 220px minmax(0, 1fr);
+}
+.ux16-canvas > section {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--ux16-line);
+}
+.ux16-canvas > section:last-child {
+  border-right: 0;
+}
+.ux16-subcrown {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--byd-rows);
+  padding: var(--byd-rows) var(--byd-inner);
+  border-bottom: 1px solid var(--ux16-line);
+}
+.ux16-subcrown h2 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--ux16-hint);
+}
+.ux16-subcrown span {
+  margin-left: auto;
+  color: var(--ux16-quiet);
+}
+.ux16-subfoot {
+  flex: none;
+  padding: var(--byd-rows) var(--byd-inner);
+  border-top: 1px solid var(--ux16-line);
+  color: var(--ux16-quiet);
+  line-height: 1.4;
+}
+.ux16-layers {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--byd-s1) var(--byd-inner);
+  display: grid;
+  gap: 2px;
+  align-content: start;
+}
+.ux16-layer {
+  display: grid;
+  grid-template-columns: 24px 1fr 20px;
+  align-items: center;
+  gap: var(--byd-rows);
+  min-height: 36px;
+  padding: 0 var(--byd-s1);
+  border-radius: 6px;
+  color: #cfd5e3;
+}
+.ux16-layer[aria-selected='true'] {
+  background: #2f3a55;
+  color: #fff;
+}
+.ux16-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  background: #1a1d25;
+  padding: var(--byd-inner);
+  overflow: hidden;
+}
+.ux16-cardbig {
+  aspect-ratio: 63 / 88;
+  height: 100%;
+  max-height: 100%;
+  border-radius: 10px;
+  background: linear-gradient(160deg, #3d4767, #232a3c);
+  border: 1px solid #4b5677;
+  display: grid;
+  place-items: center;
+  color: #cfd8ef;
+}
+.ux16-groupbar {
+  flex: none;
+  display: flex;
+  gap: var(--byd-s1);
+  padding: var(--byd-s1) var(--byd-gutter);
+  border-bottom: 1px solid var(--ux16-line);
+  background: var(--ux16-chrome);
+}
+.ux16-groupbar[data-wrap='true'] {
+  flex-wrap: wrap;
+}
+.ux16-groupbar[data-wrap='false'] {
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+.ux16-groupbar .ux16-chip {
+  flex: 0 0 auto;
+  border-radius: 8px;
+}
+
+/* Regelfliken. */
+.ux16-rules {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+}
+.ux16-empty-centre {
+  place-self: center;
+  width: min(560px, 100%);
+  margin: var(--byd-s5);
+  padding: var(--byd-s5);
+  border-radius: 18px;
+  background: var(--ux16-panel);
+  border: 1px solid var(--ux16-line);
+  display: grid;
+  gap: var(--byd-s3);
+  text-align: left;
+}
+.ux16-empty-centre h2 {
+  font-size: 22px;
+  color: var(--ux16-ink-strong);
+  letter-spacing: -0.02em;
+}
+.ux16-empty-centre p {
+  color: #c3cbdd;
+  line-height: 1.6;
+  max-width: 62ch;
+}
+.ux16-empty-centre ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--byd-rows);
+  color: var(--ux16-hint);
+  line-height: 1.5;
+}
+.ux16-empty-centre li::before {
+  content: '— ';
+  color: var(--ux16-quiet);
+}
+.ux16-ways {
+  display: flex;
+  gap: var(--byd-rows);
+  flex-wrap: wrap;
+}
+.ux16-book {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: var(--byd-s5);
+  padding: var(--byd-s5) var(--byd-gutter);
+  justify-content: center;
+  align-content: start;
+}
+.ux16-book[data-toc='false'] {
+  grid-template-columns: minmax(0, 1fr);
+}
+.ux16-toc {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  display: grid;
+  gap: var(--byd-s1);
+  color: var(--ux16-hint);
+  line-height: 1.6;
+}
+.ux16-toc b {
+  color: var(--ux16-quiet);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+.ux16-page {
+  width: min(68ch, 100%);
+  display: grid;
+  gap: var(--byd-s3);
+}
+.ux16-page h3 {
+  color: var(--ux16-ink-strong);
+  font-size: 17px;
+}
+.ux16-page p {
+  color: #c9d1e2;
+  line-height: 1.7;
+}
+.ux16-page mark {
+  background: #23334a;
+  color: #cfe0ff;
+  border-radius: 4px;
+  padding: 0 3px;
+}
+.ux16-caret {
+  border-left: 2px solid var(--ux16-mark);
+  padding-left: 10px;
+  color: var(--ux16-quiet);
+}
+
+/* Skalvyn: skalan som en ladder, och de fyra fynden mätta mot den. */
+.ux16-scale {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--byd-gutter);
+  display: grid;
+  gap: var(--byd-gutter);
+  align-content: start;
+}
+.ux16-scale h2 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: var(--ux16-quiet);
+}
+.ux16-ladder {
+  display: grid;
+  gap: var(--byd-s1);
+}
+.ux16-ladder div {
+  display: flex;
+  align-items: center;
+  gap: var(--byd-s3);
+}
+.ux16-ladder i {
+  display: block;
+  height: 18px;
+  background: var(--ux16-mark);
+  border-radius: 3px;
+}
+.ux16-ladder code {
+  width: 13ch;
+  color: #cfe0ff;
+}
+.ux16-ladder span {
+  color: var(--ux16-hint);
+}
+.ux16-boxes {
+  display: flex;
+  gap: var(--byd-gutter);
+  flex-wrap: wrap;
+}
+.ux16-box {
+  border: 1px solid var(--ux16-line);
+  border-radius: 14px;
+  background: var(--ux16-panel);
+  padding: var(--byd-gutter);
+  min-width: 210px;
+  flex: 1 1 210px;
+}
+.ux16-box > div {
+  border: 1px dashed var(--ux16-edge);
+  border-radius: 10px;
+  padding: var(--byd-inner);
+  color: var(--ux16-hint);
+  line-height: 1.5;
+}
+.ux16-box > div > div {
+  border: 1px dashed #4d5670;
+  border-radius: 8px;
+  padding: var(--byd-rows);
+  margin-top: var(--byd-rows);
+}
+.ux16-note {
+  color: var(--ux16-hint);
+  line-height: 1.6;
+  max-width: 78ch;
+}
+.ux16-note b {
+  color: var(--ux16-ink-strong);
+}
+
+/* Mätaren: vad varianten kostar i tal, synlig i varje skärmbild. */
+.ux16-meter {
+  display: flex;
+  gap: var(--byd-s3);
+  flex-wrap: wrap;
+  padding: var(--byd-s1) var(--byd-gutter);
+  background: #12151c;
+  border-bottom: 1px solid var(--ux16-line);
+  color: var(--ux16-quiet);
+  font: 11px ui-monospace, monospace;
+  flex: none;
+}
+.ux16-meter b {
+  color: var(--ux16-green);
+  font-weight: 600;
+}
+.ux16-meter b[data-bad='true'] {
+  color: #e8836a;
+}
+
+/* Växlaren. Flyttas undan i skärmbilder med ?shot=1. */
+.ux16bar {
+  position: fixed;
+  z-index: 50;
+  left: 12px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  max-width: calc(100vw - 24px);
+  padding: 6px;
+  border-radius: 14px;
+  background: #eef2f5;
+  color: #16202b;
+  border: 1px solid #5b6470;
+  box-shadow: 0 10px 35px #0008;
+  font: 12px/1.35 system-ui, sans-serif;
+}
+.ux16bar strong {
+  padding: 0 6px;
+}
+.ux16bar small {
+  display: block;
+  font-size: 9px;
+  color: #556170;
+  letter-spacing: 0.08em;
+}
+.ux16bar button,
+.ux16bar a {
+  min-height: 34px;
+  min-width: 34px;
+  border: 1px solid #b9c4cf;
+  border-radius: 8px;
+  background: #dce2e8;
+  color: #182430;
+  padding: 4px 9px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-grid;
+  place-items: center;
+}
+.ux16bar button[aria-pressed='true'] {
+  background: #16202b;
+  color: #fff;
+  border-color: #16202b;
+}
+.ux16bar[data-shot='true'] {
+  padding: 3px 7px;
+  background: #16202b;
+  color: #eef2f5;
+  border-color: #3b414e;
+}
+.ux16bar[data-shot='true'] button,
+.ux16bar[data-shot='true'] a,
+.ux16bar[data-shot='true'] small {
+  display: none;
+}

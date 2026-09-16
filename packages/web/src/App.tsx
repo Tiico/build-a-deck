@@ -14,6 +14,12 @@ import { NotFoundPage } from './status/NotFoundPage.js'
 import { DocumentTitle } from './status/DocumentTitle.js'
 import { StatusLive } from './status/StatusLive.js'
 import { Language, detectLang } from './i18n/index.js'
+import { lazy, Suspense } from 'react'
+
+// PROTOTYP — engångsytan för #128–#132. Samma mönster som playtest-prototypen i `EditorPage`:
+// `import.meta.env.DEV` är `false` i bygget, så grenen och dess dynamiska import faller bort och
+// varken koden eller dess CSS når den byggda appen. Tas bort med prototypen.
+const Ux16 = import.meta.env.DEV ? lazy(() => import('./editor/prototype/ux16/Ux16Page.js')) : null
 
 // Routing is a path check for now; a router arrives with the first real page.
 // The whole app is under one language (A4): the reader's own choice, then the address, then what
@@ -48,6 +54,12 @@ function route() {
   if (location.pathname === '/login') return <LoginPage />
   if (location.pathname === '/claim') return <ClaimPage />
   if (location.pathname.startsWith('/invites/')) return <InvitePage />
+  if (Ux16 && location.pathname === '/ux16')
+    return (
+      <Suspense fallback={<p>Laddar prototyp…</p>}>
+        <Ux16 />
+      </Suspense>
+    )
   if (location.pathname === '/') return <HomePage />
   // Anything else is a page that does not exist, and says so.
   return <NotFoundPage />
