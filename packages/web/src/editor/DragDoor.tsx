@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useDoor } from '../doors.js'
 
 // The way out of a drag that is already under way (#142).
 //
@@ -8,25 +8,15 @@ import { useEffect, useRef } from 'react'
 // afterwards — and that is a different thing and always was. An undone drag is a row in the
 // history; a drag the hand took back is nothing that ever happened.
 //
-// It listens on the document rather than on what is being dragged, for the reason `PanelDoor`
-// does: the press arrives wherever the focus happens to be standing, which during a drag is
-// nowhere near the edge or the box the pointer took hold of. And it is refused once it has really
-// taken a drag back, so nothing further up answers the same press — a panel standing over the work
-// is not what a hand in the middle of a drag was asking to close.
+// It is `held`, which is the whole of what it has to say about itself: the hand is still down, and
+// a press that arrives while it is down is about what is under it and not about a panel standing
+// over the work. Where the press is heard, and what happens when a panel is standing too, belongs
+// to `doors.ts` — which is the only place that order is written, so this door does not have to
+// know that panel doors exist (#152).
 //
 // The surface that owns the drag renders this while the drag runs and not otherwise, so there is
 // no drag-shaped state to ask about here: a door that is not there cannot be walked through.
 export function DragDoor({ onCancel }: { onCancel(): void }) {
-  const latest = useRef(onCancel)
-  latest.current = onCancel
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape' || event.defaultPrevented) return
-      event.preventDefault()
-      latest.current()
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [])
+  useDoor('held', onCancel)
   return null
 }
