@@ -290,12 +290,13 @@ describe('a cell keeps inside its own column (#46)', () => {
   it("is a real condition: put the twelve-character floor back and the number column runs over its neighbour", async () => {
     const over = await measure(deckDoc(), { extra: ".byd-data td input:not([type='checkbox']) { min-width: 12ch; }" })
 
-    // Named rather than counted, and by how much: the floor is 80, and both number columns are
-    // under it — `antal` since the padlock beside its word moved to the head's own door and gave
-    // the column its nineteen pixels back (#46 on #32).
-    expect([...new Set(over.spill.map((c) => c.col))]).toEqual(['cost', 'antal'])
+    // Named rather than counted, and by how much: the floor is 80, and four columns are under it.
+    // It used to be two. Since #141 a word column is as wide as its widest word and no wider —
+    // it carries no share of the room left over — so the restored floor overruns `art` and
+    // `title` as readily as it overruns the two numbers. Same fault, two more columns.
+    expect([...new Set(over.spill.map((c) => c.col))]).toEqual(['art', 'title', 'cost', 'antal'])
     expect(over.spill.every((c) => c.px === 80 - over.width[c.col]!)).toBe(true)
-    expect(over.spill.length).toBe(CARDS.length * 2)
+    expect(over.spill.length).toBe(CARDS.length * 4)
   }, 60_000)
 })
 
@@ -424,23 +425,28 @@ describe('the table is measured against the room it really has (#46)', () => {
     expect(held.page).toBe(0)
   }, 60_000)
 
-  it('spends exactly the room it is given, and no more, when the deck does fit', async () => {
+  // Rewritten for #141. It used to say the table spends exactly the room it is given: the slack
+  // was handed out to the sentences so the row ended where the box did, and a narrower window
+  // took its difference back out of them. That is the sharing-out the drag issue is about, and it
+  // is gone — a column is what it asks for, and the room left over is left over.
+  it('asks for what the deck needs and no more, whatever room it is given', async () => {
     const [wide, narrow] = await Promise.all([measure(deckDoc()), measure(deckDoc(), { width: 1024 })])
 
-    // Every column added up is the table, and the table is the box: the slack has been handed out
-    // rather than left standing at the end of the row, and nothing has been handed out twice.
+    // Every column added up is still the table: the widths and the row end in the same place, and
+    // nothing has been handed out twice.
     for (const at of [wide, narrow]) {
       expect(Object.values(at.width).reduce((a, b) => a + b, 0)).toBe(at.table)
-      expect(at.table).toBe(at.scroll)
       expect(at.page).toBe(0)
     }
 
-    // And what a narrower window takes, it takes from the sentences and from nothing else: the
-    // number columns are the same width at 1024 as at 1280 and `body` is not.
-    expect(narrow.width.cost).toBe(wide.width.cost)
-    expect(narrow.width.antal).toBe(wide.width.antal)
-    expect(narrow.width.body!).toBeLessThan(wide.width.body!)
-    expect(narrow.width.cost!).toBeLessThanOrEqual(96)
+    // And the window's width is not one of the things a column is measured against. This deck
+    // fits either way, so every column is the same at 1024 as at 1280 — including the sentences,
+    // which is the whole change: they used to be the ones that gave.
+    expect(narrow.width).toEqual(wide.width)
+    // The room left over is left over rather than shared out, which is what the approved
+    // prototype draws: `table style="width: <the sum>"`, narrower than its box.
+    expect(wide.table).toBeLessThan(wide.scroll)
+    expect(wide.width.cost!).toBeLessThanOrEqual(96)
   }, 60_000)
 })
 
@@ -492,7 +498,11 @@ function pulledMarkup(doc: ProjectDoc, field: string, by: number): string {
 }
 
 describe('a column the designer pulled to a width of her own (#46)', () => {
-  it('is drawn at exactly that width, and the rest share what is left as if it were not there', async () => {
+  // Rewritten for #141. The second half of this used to read "and the rest share what is left as
+  // if it were not there": a pulled column left the pool, and the sentences still in it grew to
+  // fill what it gave up. That sharing is what made a drag mean four things, and it is gone — the
+  // rest do not share, they stand still.
+  it('is drawn at exactly that width, and the rest stand exactly where they stood', async () => {
     const [measured, pulled] = await Promise.all([measure(deckDoc()), measure(deckDoc(), { html: pulledMarkup(deckDoc(), 'body', 320) })])
 
     // The deck really does ask for something else, so this is not a guard over a width that was
@@ -501,17 +511,13 @@ describe('a column the designer pulled to a width of her own (#46)', () => {
     // And what she asked for is what she got, to the pixel.
     expect(pulled.width.body).toBe(320)
 
-    // The columns that share the rest have shared the rest: `art` and `title` are the two other
-    // sentences, and both are wider than they were, because 320 is less than `body` was taking.
-    expect(pulled.width.art!).toBeGreaterThan(measured.width.art!)
-    expect(pulled.width.title!).toBeGreaterThan(measured.width.title!)
-    // A number is a number wide whatever else happens, pulled column or no pulled column.
-    expect(pulled.width.cost).toBe(measured.width.cost)
-    expect(pulled.width.antal).toBe(measured.width.antal)
+    // Every other column, named rather than counted, is where the measurement had left it —
+    // sentences and numbers alike.
+    const others = Object.keys(measured.width).filter((name) => name !== 'body')
+    expect(others.map((name) => `${name}: ${pulled.width[name]}`)).toEqual(others.map((name) => `${name}: ${measured.width[name]}`))
 
     // The row still ends where the last field ends, and the page still does not run sideways.
     expect(Object.values(pulled.width).reduce((a, b) => a + b, 0)).toBe(pulled.table)
-    expect(pulled.table).toBe(pulled.scroll)
     expect(pulled.page).toBe(0)
   }, 60_000)
 
@@ -528,19 +534,22 @@ describe('a column the designer pulled to a width of her own (#46)', () => {
     expect(wide.cut).toEqual([])
   }, 60_000)
 
-  it('keeps its width when there is less room, where a measured column would give some back', async () => {
+  // Rewritten for #141. It used to say a narrower window takes its difference out of the
+  // sentences and not out of the column that was told what it is. Nothing gives now, so the
+  // sentence to keep is the one that was already the point: what the window is worth does not
+  // enter into any column's width, set or measured.
+  it('keeps its width when there is less room, and so does every column beside it', async () => {
     const [wide, narrow] = await Promise.all([
       measure(deckDoc(), { html: pulledMarkup(deckDoc(), 'body', 320) }),
       measure(deckDoc(), { width: 1024, html: pulledMarkup(deckDoc(), 'body', 320) }),
     ])
 
-    // A narrower window takes its 256 px out of the sentences that are still measuring themselves
-    // — and not out of the one that was told what it is. That is the whole difference between a
-    // width the deck asked for and a width the designer set.
     expect(narrow.width.body).toBe(320)
-    expect(narrow.width.art!).toBeLessThan(wide.width.art!)
-    expect(narrow.width.title!).toBeLessThan(wide.width.title!)
-    expect(narrow.table).toBe(narrow.scroll)
+    expect(narrow.width).toEqual(wide.width)
+    // The table is the same table at both widths; what differs is only how much of the box is
+    // left over beside it. The page never moves either way (L12).
+    expect(narrow.table).toBe(wide.table)
+    expect(narrow.page).toBe(0)
   }, 60_000)
 })
 
@@ -688,11 +697,15 @@ describe('a width does not move while its own cell is being typed in (#46)', () 
   it('is a real condition: measure on the keystroke instead and every boundary moves, one character at a time', async () => {
     const [before, after] = await Promise.all([measure(typedDoc(0)), measure(typedDoc(21))])
 
-    // Named rather than merely different: the sentence being written takes the room, and it takes
-    // it from the other two text columns — which is what pushes the boundary the caret stands at.
+    // Named rather than merely different: the sentence being written asks for more room as it is
+    // written, so its own right-hand edge — and the whole row after it — moves under the caret.
+    // Since #141 it no longer takes that room off `art` and `title`; they stand still and the
+    // table gets wider instead. Either way the boundary the caret stands at is the one that
+    // moves, which is the thing the guarantee above exists to stop.
     expect(after.width.body!).toBeGreaterThan(before.width.body!)
-    expect(after.width.art!).toBeLessThan(before.width.art!)
-    expect(after.width.title!).toBeLessThan(before.width.title!)
+    expect(after.table).toBeGreaterThan(before.table)
+    expect(after.width.art).toBe(before.width.art)
+    expect(after.width.title).toBe(before.width.title)
   }, 60_000)
 })
 
@@ -790,10 +803,16 @@ type Cue = {
 // (join-layout) and the way the pin's own fade is read (#53): painted twice and compared. A cue
 // that is really drawn shows up as a difference between two pictures; one the stylesheet only
 // asks for does not.
-async function cue(doc: ProjectDoc, extra = ''): Promise<Cue> {
+// Since #141 a measured column is never cut: it asks for its widest value and is given exactly
+// that. A value is cut where the designer has set the column narrower than what stands in it, and
+// that is now the only way to reach the cue at all — so the long card's column is pulled to 320
+// before the picture is taken.
+const cutMarkup = () => pulledMarkup(cutDoc(), 'body', 320)
+
+async function cue(doc: ProjectDoc, extra = '', html = ''): Promise<Cue> {
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
   try {
-    await page.setContent(shellOf(markupOf(doc), extra), { waitUntil: 'load' })
+    await page.setContent(shellOf(html || markupOf(doc), extra), { waitUntil: 'load' })
     const facts = await page.evaluate(
       ({ deck, decide, mark }) => {
         const box = document.querySelector('.byd-data-scroll') as HTMLElement
@@ -852,7 +871,7 @@ const FORCED = {
 
 describe('a value that does not fit says so (#46)', () => {
   it('is marked on the cells that really are cut, and on no others', async () => {
-    const [long, fits] = await Promise.all([cue(cutDoc()), cue(deckDoc())])
+    const [long, fits] = await Promise.all([cue(cutDoc(), '', cutMarkup()), cue(deckDoc())])
 
     // The one card whose rules text no desk width could hold is marked, in the column that holds
     // it. Two other columns are squeezed onto their floors to pay for it, and the cards whose
@@ -866,7 +885,7 @@ describe('a value that does not fit says so (#46)', () => {
   }, 60_000)
 
   it('is painted at the edge of the cell, and is still painted while that cell holds the caret', async () => {
-    const [shown, bare] = await Promise.all([cue(cutDoc()), cue(cutDoc(), FORCED.off)])
+    const [shown, bare] = await Promise.all([cue(cutDoc(), '', cutMarkup()), cue(cutDoc(), FORCED.off, cutMarkup())])
 
     // At rest: the ground at the cell's edge is painted differently from the same ground with the
     // cue taken back.
@@ -878,7 +897,7 @@ describe('a value that does not fit says so (#46)', () => {
   }, 60_000)
 
   it('never touches what is being written: a character typed at the end of a cut cell is painted whole', async () => {
-    const [shown, bare] = await Promise.all([cue(cutDoc()), cue(cutDoc(), FORCED.off)])
+    const [shown, bare] = await Promise.all([cue(cutDoc(), '', cutMarkup()), cue(cutDoc(), FORCED.off, cutMarkup())])
 
     // The value, with the caret at its end and a character just added, is painted exactly as it is
     // with the cue taken away altogether. The cue stands beside the writing; it is not over it.
@@ -891,7 +910,7 @@ describe('a value that does not fit says so (#46)', () => {
     // ten pixels from the edge, at something like four tenths of an alpha: what the designer is
     // typing fades away as she types it. The assertion above would pass for a cue that did nothing
     // at all, so this is what says it does not.
-    const [erasing, bare] = await Promise.all([cue(cutDoc(), FORCED.erasing), cue(cutDoc(), FORCED.off)])
+    const [erasing, bare] = await Promise.all([cue(cutDoc(), FORCED.erasing, cutMarkup()), cue(cutDoc(), FORCED.off, cutMarkup())])
 
     expect(erasing.written.equals(bare.written)).toBe(false)
   }, 60_000)
@@ -900,8 +919,8 @@ describe('a value that does not fit says so (#46)', () => {
     // The cheapest possible answer, measured rather than argued about: the cue taken back and
     // `text-overflow: ellipsis` put on the cell's own input in its place. It works — and only
     // while nobody is reading it.
-    const cheap = await cue(cutDoc(), `${FORCED.off} .byd-data input { text-overflow: ellipsis; }`)
-    const bare = await cue(cutDoc(), FORCED.off)
+    const cheap = await cue(cutDoc(), `${FORCED.off} .byd-data input { text-overflow: ellipsis; }`, cutMarkup())
+    const bare = await cue(cutDoc(), FORCED.off, cutMarkup())
 
     // Unfocused it does say something: the ellipsis is painted where the value stops.
     expect(cheap.atRest.equals(bare.atRest)).toBe(false)
