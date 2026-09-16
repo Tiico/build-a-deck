@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="sv">
+<meta charset="utf-8">
+<title>Korttabellen i sidled</title>
+<link rel="stylesheet" href="_stil.css">
+<style>
+  .box { border: 1px solid var(--line); border-radius: 10px; background: var(--cell); overflow: auto; max-width: 1180px; max-height: 420px; }
+  table { border-collapse: separate; border-spacing: 0; table-layout: fixed; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; background: var(--cell); }
+  th { position: sticky; top: 0; z-index: 3; background: var(--byd-editor-chrome-bg); color: var(--byd-editor-quiet); font-weight: 600; font-size: 12px; }
+  td.id { color: #9fb4d8; font-family: ui-monospace, monospace; font-size: 11.5px; }
+  /* Förslaget: bocken och id står stilla i sidled. */
+  .fast td.tick, .fast th.tick { position: sticky; left: 0; z-index: 2; }
+  .fast td.id, .fast th.id { position: sticky; left: 44px; z-index: 2; }
+  .fast th.tick, .fast th.id { z-index: 4; }
+  .fast td.id, .fast th.id { box-shadow: 8px 0 8px -8px rgba(0,0,0,.65); }
+  .fast .skuggad td.id, .fast .skuggad th.id { }
+  .tick { width: 44px; }
+  .bock { width: 18px; height: 18px; border: 1px solid #4a5163; border-radius: 4px; display: block; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; border: 1px solid var(--line); border-radius: 999px; background: var(--cell); color: var(--ink); padding: 0 14px; font: inherit; cursor: pointer; }
+  .fot { margin: 28px 0 0; padding: 12px 14px; border-top: 1px solid var(--line); color: var(--byd-editor-quiet); font-size: 12px; max-width: 820px; }
+  .fot code { color: #9fb4d8; font-family: ui-monospace, monospace; }
+</style>
+<header class="krona">
+  <h1>Korttabellen i sidled</h1>
+  <div class="val" role="group" aria-label="Läge">
+    <button type="button" data-lage="nu" aria-pressed="true">Nu · allt följer med</button>
+    <button type="button" data-lage="fast" aria-pressed="false">Förslag · id står stilla</button>
+  </div>
+  <button type="button" class="chip" id="hit">← Skrolla till slutet</button>
+</header>
+<main>
+  <p class="sag" id="text"></p>
+  <div class="box" id="box"><table id="tab"></table></div>
+  <ul class="tal">
+    <li>Tabellens bredd <b id="tb">—</b></li>
+    <li>Skrollat <b id="sk">0 px</b></li>
+    <li>Kortet du skriver i <b id="vem">—</b></li>
+  </ul>
+  <footer class="fot">Uppmätt i Chromium 2026-09-16 vid 1440 × 900 med <code>body</code> satt till 1400 px: tabellen blir 2178 px i en ruta på 1408, och vid full skroll ligger <code>id</code> 770 px utanför bild. Rubrikraden är sticky uppåt; ingenting är sticky i sidled.</footer>
+</main>
+<script>
+const KOL = [
+  { k: 'tick', n: '', b: 44 },
+  { k: 'id', n: 'id', b: 200 },
+  { k: 'typ', n: 'typ', b: 110 },
+  { k: 'title', n: 'title', b: 190 },
+  { k: 'body', n: 'body', b: 1400 },
+  { k: 'raritet', n: 'raritet', b: 110 },
+  { k: 'antal', n: 'antal', b: 80 },
+  { k: 'grupp', n: 'grupp', b: 150 },
+]
+const ID = ['juice-em-up','sals-saloon','dustydice-casino','free-for-all','duel-koppar','duel-silver','saddle-pals','standoff','zorros-here','the-heist','stolen-goods-1','stolen-goods-2']
+const TYP = ['Playcard','Location','Location','Effect','Playcard','Playcard','Playcard','Event','Event','Event','Playcard','Playcard']
+const TITLE = ["Juice em' up!","Sal's Saloon",'DustyDice Casino','Free for all','Duel','Duel','Saddle Pals','Standoff',"Zorro's here!",'The Heist','Stolen Goods','Stolen Goods']
+const BODY = 'Välj två andra spelare. De blandar en shot till varann, och den som får minst kvar i glaset tar upp ett stöldgodskort ur högen och lägger det framför sig.'
+let lage = 'nu'
+
+function rita() {
+  const t = document.getElementById('tab')
+  t.className = lage
+  const total = KOL.reduce((s, k) => s + k.b, 0)
+  t.style.width = total + 'px'
+  t.innerHTML = `<colgroup>${KOL.map((k) => `<col style="width:${k.b}px">`).join('')}</colgroup>
+  <thead><tr>${KOL.map((k) => `<th class="${k.k}">${k.n}</th>`).join('')}</tr></thead>
+  <tbody>${ID.map((id, i) => `<tr>${KOL.map((k) => {
+    if (k.k === 'tick') return '<td class="tick"><span class="bock"></span></td>'
+    const v = k.k === 'id' ? id : k.k === 'typ' ? TYP[i] : k.k === 'title' ? TITLE[i] : k.k === 'body' ? BODY : k.k === 'raritet' ? 'Guld' : k.k === 'antal' ? '2' : 'typ = ' + TYP[i]
+    return `<td class="${k.k}"${k.k === 'body' ? ` tabindex="0" data-id="${id}"` : ''}>${v}</td>`
+  }).join('')}</tr>`).join('')}</tbody>`
+  document.getElementById('tb').textContent = total + ' px'
+  document.getElementById('text').innerHTML = lage === 'nu'
+    ? 'Skrolla tabellen åt höger och ställ markören i en <b>body</b>-cell. Ingenting säger längre vilket kort du skriver i: <b>id</b> ligger 770 px utanför bild och rubrikerna är de enda som står kvar — och de står bara kvar uppåt.'
+    : 'Bocken och <b>id</b> står stilla i sidled, som rubrikraden står stilla uppåt. Kortets namn följer med raden hela vägen ut i <b>body</b>, och kanten under id säger att det finns mer till vänster.'
+}
+document.getElementById('box').addEventListener('scroll', (e) => { document.getElementById('sk').textContent = Math.round(e.target.scrollLeft) + ' px' })
+document.addEventListener('focusin', (e) => { const td = e.target.closest('td[data-id]'); if (td) document.getElementById('vem').textContent = lage === 'fast' ? td.dataset.id : '? — id syns inte' })
+document.getElementById('hit').addEventListener('click', () => { document.getElementById('box').scrollLeft = 99999 })
+for (const b of document.querySelectorAll('.val button')) b.addEventListener('click', () => {
+  lage = b.dataset.lage
+  for (const o of document.querySelectorAll('.val button')) o.setAttribute('aria-pressed', String(o === b))
+  rita()
+})
+rita()
+</script>
+</html>
