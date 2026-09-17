@@ -1980,10 +1980,9 @@
    have to cross a window to answer it. */
 .byd-rules-report { flex: none; display: flex; align-items: center; gap: var(--byd-s2); flex-wrap: wrap; padding: var(--byd-s3); border: 1px solid #3b414e; border-radius: 10px; background: #1b1d23; }
 .byd-rules-report ul { flex: 1 1 100%; margin: 0; padding-left: var(--byd-s4); color: #9aa3b8; font-size: 12px; line-height: 1.8; }
-/* What changed shape on the way in is marked, and what the book cannot hold yet is marked
-   otherwise: a picture is not a loss but a thing that has not arrived (#173). */
+/* What changed shape on the way in is marked; since a picture comes in as a block of its own
+   (#173) nothing in the report is merely waiting, so there is no second mark beside it. */
 .byd-rules-report li[data-kind='changed'] { color: #f0b64a; }
-.byd-rules-report li[data-kind='later'] { color: #9cc6ff; }
 .byd-rules-warn { color: #f0b64a !important; }
 .byd-rules-booklet:disabled { color: #5b6478; cursor: default; }
 /* The book the designer writes is a page of prose in a serif, and its rhythm — the air over a
@@ -2006,6 +2005,14 @@
 .byd-rules-setup span { padding: 8px 12px; border-radius: 6px; background: #f7f3ea; border: 1px solid #cbbfa8; font: 12px system-ui; }
 .byd-rules-setup figcaption { margin-top: 4px; text-align: center; font: italic 12px Georgia, serif; color: #6b6255; }
 .byd-rules-setup { margin: 12px 0; }
+/* A picture in the book (#173). A5 is the narrowest of the three surfaces the book is read on, so
+   A5 sets the frame — the text column of an A5 page and half its height — and it is said in the
+   book's own type so the editor holds to the same frame with pixels of its own. The word under a
+   decorative picture is text in the page and never a colour: what it says is that the picture is
+   hidden from a screen reader, and that has to be readable (L12). */
+.byd-rules-figure { margin: 12px 0; text-align: center; }
+.byd-rules-image { display: block; margin: 0 auto; max-width: min(100%, 31.9em); max-height: 24.6em; width: auto; height: auto; border-radius: 6px; }
+.byd-rules-figure figcaption[data-quiet] { margin-top: 4px; font: 12px system-ui; color: #6b6255; }
 /* The question a section carries until the first character is written in it (#131). */
 .byd-rulebook [data-ask] { color: #6b6255; font-style: italic; }
 /* A file lying in the book as a proposal (#131, prototype 8 variant B). The marks are drawn on

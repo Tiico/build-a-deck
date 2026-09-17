@@ -12,6 +12,8 @@ const doc: RuleDoc = {
     { kind: 'list', id: 'l1', ordered: true, items: ['Dra ur [[zon:draw]].', 'Lägg i [[zon:discard]].'] },
     { kind: 'text', id: 't2', text: '[[zon:discard]] ligger öppen. Ingen får ta ur den.' },
     { kind: 'setup', id: 's1', caption: 'Bordet' },
+    { kind: 'image', id: 'i1', asset: `asset:${'a'.repeat(64)}`, alt: 'Bordet från ovan' },
+    { kind: 'text', id: 't3', text: 'Sist av allt räknas poletterna.' },
   ],
 }
 const out = renderRules(doc, names)
@@ -36,6 +38,16 @@ describe('looking a rule up mid-game (B7)', () => {
     expect(findRules(out, '')).toEqual([])
     expect(findRules(out, '   ')).toEqual([])
     expect(findRules(out, 'tärning')).toEqual([])
+  })
+
+  // A picture says its alt text and a decorative one says nothing (#173), so both of them move
+  // the reading of the book's plain text by exactly what they said — and what stands after a
+  // picture is still found under its own heading and with its own words.
+  it('keeps its place in the book when a picture stands in it', () => {
+    const hits = findRules(out, 'poletterna')
+    expect(hits).toHaveLength(1)
+    expect(hits[0]?.block).toBe('t3')
+    expect(hits[0]?.text).toBe('Sist av allt räknas poletterna.')
   })
 
   it('gives each hit somewhere to jump to in the book', () => {

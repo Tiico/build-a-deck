@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { renderRules, type RuleDoc } from '@byd/template'
+import { RULE_IMAGE_FRAME, renderRules, type RuleDoc } from '@byd/template'
 import { A5, bookletOf } from '../src/booklet.js'
 import { start, twoSeatSetup, type Running } from './fixture.js'
 import { template } from './deck.js'
@@ -68,6 +68,38 @@ describe('the rulebook as a booklet for print (B7)', () => {
   })
 })
 
+// The picture in the printed booklet (#173, decided 2026-09-17). A5 is the narrowest of the three
+// surfaces the book is read on, so A5 is what sets the size of every picture in it.
+describe('a picture in the booklet (#173)', () => {
+  const bordet = `asset:${'a'.repeat(64)}`
+  const png = 'data:image/png;base64,AAAA'
+  const withPicture = (alt: string): RuleDoc => ({ title: 'Skogens herrar', blocks: [{ kind: 'image', id: 'i1', asset: bordet, alt }] })
+
+  it('prints the picture inside the A5 frame, saying what it was written to say', () => {
+    const out = bookletOf({ rules: renderRules(withPicture('Bordet från ovan'), names), icons, pageMm: A5, images: { [bordet]: png } })
+    expect(out.html).toContain(`<img src="${png}" alt="Bordet från ovan">`)
+    expect(out.css).toContain(`max-width:${RULE_IMAGE_FRAME.wMm}mm`)
+    expect(out.css).toContain(`max-height:${RULE_IMAGE_FRAME.hMm}mm`)
+  })
+
+  it('prints a picture with no alt text as decorative, which is what `alt=""` means', () => {
+    const out = bookletOf({ rules: renderRules(withPicture(''), names), icons, pageMm: A5, images: { [bordet]: png } })
+    expect(out.html).toContain(`<img src="${png}" alt="">`)
+  })
+
+  it('leaves out a picture whose bytes are gone, rather than printing an empty frame', () => {
+    const out = bookletOf({ rules: renderRules(withPicture('Bordet från ovan'), names), icons, pageMm: A5, images: {} })
+    expect(out.html).not.toContain('<img')
+    expect(out.html).toContain('data-booklet')
+  })
+
+  it('never lets the reference reach the renderer as an address', () => {
+    const out = bookletOf({ rules: renderRules(withPicture('"><script>x</script>'), names), icons, pageMm: A5, images: { [bordet]: png } })
+    expect(out.html).not.toContain('<script>')
+    expect(out.html).toContain('&quot;&gt;&lt;script&gt;')
+  })
+})
+
 describe('the booklet in the language the game is made in (A4)', () => {
   it('prints the one heading the tool contributes in the language the order was placed in', () => {
     const credits = [{ name: 'sköld', licence: 'CC0-1.0', by: 'build-your-deck' }]
@@ -122,6 +154,23 @@ describe('ordering the booklet (B7)', () => {
     // the rest of the suite beside it, which is why this failed in other people's branches and
     // nowhere else (#92, and `render-budget.test.ts` next door now says so at once).
   }, 60_000)
+
+  // The picture takes the same road as a card's own image (E1, #173): it is one of the project's
+  // assets, and the booklet is handed the bytes the way it is handed the icons — so the worker
+  // still needs nothing but the page it is given.
+  it('hands the printer the bytes of a picture the book holds, and never an address', async () => {
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
+    const put = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/png', cookie }, body: png })
+    const { hash: asset } = (await put.json()) as { hash: string }
+    const rules: RuleDoc = { title: 'Skogens herrar', blocks: [{ kind: 'image', id: 'i1', asset: `asset:${asset}`, alt: 'Bordet från ovan' }] }
+    await send('POST', '/projects', { id: 'p3', ...project(rules) })
+    expect((await send('POST', '/projects/p3/rulebook')).status).toBe(202)
+
+    const job = await run.renders.claim(Date.now())
+    expect(job?.compiled.html).toContain('data:image/png;base64,')
+    expect(job?.compiled.html).toContain('alt="Bordet från ovan"')
+    expect(job?.compiled.html).not.toContain(`asset:${asset}`)
+  })
 
   it('refuses when the game has no rulebook, rather than printing an empty one', async () => {
     await send('POST', '/projects', { id: 'p2', ...project() })

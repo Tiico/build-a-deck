@@ -2,12 +2,15 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { namesOfProject } from '@byd/server/doc'
 import type { ProjectDoc, RuleBlock, RuleDoc } from '@byd/server'
 import {
+  imagesIn,
   importRules,
   planImport,
   renderRules,
   type Names,
   type RenderedBlock,
   type RenderedNode,
+  type RuleImage,
+  type RuleImages,
   type RuleImport,
   type RuleImportKind,
   type RulePlan,
@@ -19,15 +22,16 @@ import type { ProjectClient } from './ProjectClient.js'
 import { useT, type T } from '../i18n/index.js'
 import type { Key } from '../i18n/sv.js'
 import { useGesture } from './gesture.js'
+import { ASSET_PREFIX, RULE_IMAGE_MAX_BYTES, assetUrl, imageTypeOf } from './assets.js'
 import { when } from './HistoryPanel.js'
 
 // The rulebook (B7), from the prototype: the page itself is the editor. A block opens where it
 // stands and closes when it is left, so what is being written is always what the reader will
 // meet — which is the whole point of rules that must work without the designer in the room.
 // References are ids: what a rule calls a thing follows what the thing is called.
-export type RulesPanelProps = { doc: ProjectDoc; client: ProjectClient }
+export type RulesPanelProps = { doc: ProjectDoc; client: ProjectClient; assetBase?: string | undefined }
 
-export function RulesPanel({ doc, client }: RulesPanelProps) {
+export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
   const t = useT()
   const [editing, setEditing] = useState<string | null>(null)
   // A file that has been read but not yet taken in (#131). It stands here and not in the document
@@ -94,14 +98,23 @@ export function RulesPanel({ doc, client }: RulesPanelProps) {
   const open = (id: string) => rules && setEditing(id)
   // A file the designer picked, read and laid out as the book it would become — and never taken
   // in on the way past. What it loses is read first (#131).
-  const pick = (file: File | undefined) => void lay(file)
-  const lay = async (file: File | undefined) => {
-    if (!file) return
-    const read = importRules(await file.text(), doc.name)
+  const pick = (files: readonly File[]) => void lay(files)
+  const lay = async (files: readonly File[]) => {
+    // The book is one file and the pictures stand beside it (#173). Which is which is read from
+    // the bytes and the name, never from the order they happen to arrive in.
+    const md = files.find((f) => /\.(md|markdown|txt)$/i.test(f.name)) ?? files.find((f) => !f.type.startsWith('image/'))
+    if (!md) return
+    const text = await md.text()
+    const read = importRules(text, doc.name, await pictures(text, files.filter((f) => f !== md), client, t))
     // A file with nothing in it to make a book of says so, rather than looking as though the
-    // press did nothing at all.
-    setFailed(read.doc.blocks.length === 0 ? t('rules.import.nothing', { file: file.name }) : null)
-    setProposal(read.doc.blocks.length === 0 ? null : { ...read, file: file.name })
+    // press did nothing at all — and it says why, when there is a why. A file whose content was
+    // its pictures, and whose own title became nothing because the book is called what the game
+    // is called (#191), leaves no block behind; told only that there is nothing in it, the
+    // designer would never learn that the pictures were what she failed to hand over. Nothing
+    // disappears silently (#131), and that holds where there is no report to hold it.
+    const nothing = [t('rules.import.nothing', { file: md.name }), ...read.problems.map((problem) => t(`rules.import.picture.${problem.why}` as Key, { file: problem.file }))]
+    setFailed(read.doc.blocks.length === 0 ? nothing.join(' ') : null)
+    setProposal(read.doc.blocks.length === 0 ? null : { ...read, file: md.name })
   }
   return (
     <div className="byd-rules">
@@ -203,7 +216,14 @@ export function RulesPanel({ doc, client }: RulesPanelProps) {
                   <span className="byd-rules-mark">{t(planned.block.kind === 'setup' ? 'rules.mark.setup' : (`rules.mark.${planned.mark}` as Key))}</span>
                 )}
                 {editing === b.id && source && writing ? (
-                  <Editing block={source} names={names} onPatch={(next, gesture) => patch(b.id, next, gesture)} onClose={() => setEditing(null)} onRemove={() => remove(b.id)} />
+                  <Editing
+                    block={source}
+                    names={names}
+                    assetBase={assetBase}
+                    onPatch={(next, gesture) => patch(b.id, next, gesture)}
+                    onClose={() => setEditing(null)}
+                    onRemove={() => remove(b.id)}
+                  />
                 ) : writing ? (
                   <div
                     role="button"
@@ -217,12 +237,12 @@ export function RulesPanel({ doc, client }: RulesPanelProps) {
                       open(b.id)
                     }}
                   >
-                    <Block block={b} source={source} names={names} />
+                    <Block block={b} source={source} names={names} assetBase={assetBase} />
                   </div>
                 ) : planned?.runs ? (
                   <Rewritten runs={planned.runs} names={names} />
                 ) : (
-                  <Block block={b} source={source} names={names} />
+                  <Block block={b} source={source} names={names} assetBase={assetBase} />
                 )}
                 {writing && (
                   <button type="button" className="byd-rules-add" aria-label={t('rules.addAfter', { id: b.id })} onClick={() => addAfter(b.id)}>
@@ -238,7 +258,8 @@ export function RulesPanel({ doc, client }: RulesPanelProps) {
   )
 }
 
-// The file the import asks for. The label is what is drawn, and what is hit: a native file control
+// The files the import asks for: the book, and since #173 the pictures it names, picked in one go.
+// The label is what is drawn, and what is hit: a native file control
 // beside two pills is two languages in one row. The input keeps its own focus and its own keyboard
 // and is taken off the screen for the eye only — `.byd-offscreen`, not a transparent sheet laid
 // over the label. Off the screen it is still focusable, still announced, and still opens the picker
@@ -250,26 +271,75 @@ export function RulesPanel({ doc, client }: RulesPanelProps) {
 // cannot be opened on a name — the web has no such thing short of a file handle, and a handle was
 // decided against because it belongs to one browser and one person while the book travels with the
 // project — so what is built instead is a control that says which file it means.
-function PickFile({ label, spoken, onPick }: { label: string; spoken?: string | undefined; onPick(file: File | undefined): void }) {
+function PickFile({ label, spoken, onPick }: { label: string; spoken?: string | undefined; onPick(files: readonly File[]): void }) {
   return (
     <label className="byd-secondary">
       {label}
       <input
         className="byd-offscreen"
         type="file"
-        accept=".md,.markdown,text/markdown,text/plain"
+        // The book and its pictures are picked together (#173): a picture in the book is a file of
+        // the designer's, and the web gives no way to read a file a Markdown file merely names.
+        // A picture that was not handed over is a line in the report saying exactly that, which is
+        // also where the designer learns that she may hand them over at all.
+        multiple
+        accept=".md,.markdown,text/markdown,text/plain,image/png,image/jpeg,image/webp,image/gif"
         aria-label={spoken ?? label}
         onChange={(e) => {
-          const file = e.target.files?.[0]
+          const files = [...(e.target.files ?? [])]
           // The same file picked twice running is no change at all to an input that still holds it,
           // and the second press would do nothing. It holds nothing afterwards — which is exactly
           // what a designer who imports the same file over and over needs it to do.
           e.target.value = ''
-          onPick(file)
+          onPick(files)
         }}
       />
     </label>
   )
+}
+
+// The pictures a file points at, made into what the import can hold (#173). Reading a file,
+// checking it and putting it in the project's assets needs the network and the browser, so it is
+// done here and the map from file to block stays framework-free.
+//
+// An uploaded file is untrusted input. What it is called and the type the browser guessed from
+// that name are claims, so the bytes decide: a file whose bytes are not one of the four raster
+// formats is refused, and the type it is stored and served as is the one that was read out of it —
+// so nothing can talk its way into being served as something else. The weight is checked before
+// the upload rather than after, so the report can name the picture that was too big.
+async function pictures(markdown: string, beside: readonly File[], client: ProjectClient, t: T): Promise<RuleImages> {
+  const named = new Map(beside.map((file) => [file.name.toLowerCase(), file]))
+  const images: RuleImages = {}
+  for (const address of imagesIn(markdown)) {
+    images[address] = await taken(named.get(fileOf(address)), client, t)
+  }
+  return images
+}
+
+async function taken(file: File | undefined, client: ProjectClient, t: T): Promise<RuleImage> {
+  if (!file) return { why: 'missing' }
+  if (file.size > RULE_IMAGE_MAX_BYTES) return { why: 'too-big' }
+  try {
+    const bytes = new Uint8Array(await file.arrayBuffer())
+    const type = imageTypeOf(bytes)
+    if (!type) return { why: 'wrong-format' }
+    return { asset: `${ASSET_PREFIX}${await client.uploadAsset(new Blob([bytes], { type }), t)}` }
+  } catch {
+    return { why: 'broken' }
+  }
+}
+
+// Which of the picked files an address means: the file it names, whatever folder the Markdown put
+// it in. A browser hands over names and not paths, so the folder is the one thing about the
+// address that cannot be honoured.
+const fileOf = (address: string): string => {
+  const path = address.split(/[?#]/)[0] ?? ''
+  const name = path.split('/').pop() ?? ''
+  try {
+    return decodeURIComponent(name).toLowerCase()
+  } catch {
+    return name.toLowerCase()
+  }
 }
 
 // Why an import did not go in, in words the designer can do something with (#131).
@@ -331,6 +401,14 @@ function Report({ of, plan, onCancel, onMake }: { of: RuleImport & { file: strin
             {t(`rules.import.${note.of}.${note.n === 1 ? 'one' : 'other'}` as Key, { n: note.n })}
           </li>
         ))}
+        {/* A picture that could not be taken in (#173). Nothing disappears silently (#131): the
+            line stays here with the reason, named after the file it was, and the book is made
+            without it. */}
+        {of.problems.map((problem) => (
+          <li key={problem.file} data-kind="going">
+            {t(`rules.import.picture.${problem.why}` as Key, { file: problem.file })}
+          </li>
+        ))}
       </ul>
       <button type="button" className="byd-editor-primary byd-primary" onClick={onMake}>
         {t('rules.import.make')}
@@ -355,15 +433,17 @@ function balance(plan: RulePlan): { of: 'loses' | 'rewrites' | 'fresh'; kind: st
   ].filter((line) => line.n > 0)
 }
 
-// How heavily a line of the report reads. `kept` came in whole, `changed` came in as something
-// else — the file's own title among them, which became nothing because the book is called what the
-// game is called (#191) — and `later` is the one line that is neither: a picture is not dropped,
-// it is not here yet (#173).
-const WEIGHT: Record<RuleImportKind, 'kept' | 'changed' | 'later'> = {
+// How heavily a line of the report reads. `kept` came in whole and `changed` came in as something
+// else: the file's own title among them, which became nothing because the book is called what the
+// game is called (#191), and a picture with no alt text, which is in the book and says nothing —
+// a change of shape and not a clean arrival (#173). There is no third weight any more: since a
+// picture comes in as a block of its own, nothing in the report is merely waiting.
+const WEIGHT: Record<RuleImportKind, 'kept' | 'changed'> = {
   heading: 'kept',
   text: 'kept',
   list: 'kept',
   ref: 'kept',
+  image: 'kept',
   title: 'changed',
   folded: 'changed',
   quote: 'changed',
@@ -371,7 +451,7 @@ const WEIGHT: Record<RuleImportKind, 'kept' | 'changed' | 'later'> = {
   code: 'changed',
   link: 'changed',
   break: 'changed',
-  image: 'later',
+  decorative: 'changed',
 }
 
 // Where a section stands, so the column beside the book can point at it.
@@ -462,7 +542,21 @@ function Booklet({ client }: { client: ProjectClient }) {
 }
 
 // One block open for writing, with the things the game has to hand.
-function Editing({ block, names, onPatch, onClose, onRemove }: { block: RuleBlock; names: Names; onPatch(next: Partial<RuleBlock>, gesture?: string): void; onClose(): void; onRemove(): void }) {
+function Editing({
+  block,
+  names,
+  assetBase,
+  onPatch,
+  onClose,
+  onRemove,
+}: {
+  block: RuleBlock
+  names: Names
+  assetBase?: string | undefined
+  onPatch(next: Partial<RuleBlock>, gesture?: string): void
+  onClose(): void
+  onRemove(): void
+}) {
   const t = useT()
   // Prose is written a letter at a time and the whole book is rewritten for each of them, so a
   // sentence is one step back and the paragraph before it is another (L14). A reference put in
@@ -514,6 +608,26 @@ function Editing({ block, names, onPatch, onClose, onRemove }: { block: RuleBloc
           </button>
         </>
       )}
+      {/* What the picture says about itself (#173). A picture that came in without alt text is
+          decorative and hidden from a screen reader, and this is where that is put right: the
+          decision of 2026-09-17 accepted the cost on the condition that it is never hidden, and a
+          count in an import report with nowhere to act on it would be exactly that. */}
+      {block.kind === 'image' && (
+        <>
+          {/* The picture stays where it is while its words are written: nobody can say what a
+              picture shows while looking at a field where the picture was. */}
+          <img className="byd-rules-image" src={assetBase ? assetUrl(assetBase, block.asset.slice(ASSET_PREFIX.length)) : block.asset} alt={block.alt} />
+          <input
+            autoFocus
+            aria-label={t('rules.block.alt', { id: block.id })}
+            placeholder={t('rules.alt.placeholder')}
+            value={block.alt}
+            {...typing.visit}
+            onChange={(e) => onPatch({ alt: e.target.value }, typing.token())}
+            onBlur={onClose}
+          />
+        </>
+      )}
       {block.kind === 'setup' && <input autoFocus aria-label={t('rules.block.caption', { id: block.id })} placeholder={t('rules.caption.placeholder')} value={block.caption ?? ''} {...typing.visit} onChange={(e) => onPatch({ caption: e.target.value }, typing.token())} onBlur={onClose} />}
       <div className="byd-rules-picker">
         <span>{t('rules.insert')}</span>
@@ -530,7 +644,8 @@ function Editing({ block, names, onPatch, onClose, onRemove }: { block: RuleBloc
   )
 }
 
-function Block({ block, source, names }: { block: RenderedBlock; source?: RuleBlock | undefined; names: Names }) {
+function Block({ block, source, names, assetBase }: { block: RenderedBlock; source?: RuleBlock | undefined; names: Names; assetBase?: string | undefined }) {
+  const t = useT()
   switch (block.kind) {
     case 'heading':
       // The heading is where the column beside the book points, so it carries the anchor itself
@@ -572,6 +687,19 @@ function Block({ block, source, names }: { block: RenderedBlock; source?: RuleBl
             ))}
           </div>
           {block.caption && <figcaption>{block.caption}</figcaption>}
+        </figure>
+      )
+    // A picture the designer brought with her (#173). A5 sets how big it may be drawn and the
+    // stylesheet holds that frame, so the book in the editor is the book the reader meets.
+    //
+    // `alt` empty is a decorative picture — no role at all for a screen reader — and the editor is
+    // where that can be put right, so the block says so in the page rather than only in the import
+    // report it came from (decided 2026-09-17, and the one place B7 weighs against L12).
+    case 'image':
+      return (
+        <figure className="byd-rules-figure">
+          <img className="byd-rules-image" src={assetBase ? assetUrl(assetBase, block.asset.slice(ASSET_PREFIX.length)) : block.asset} alt={block.alt} />
+          {block.alt === '' && <figcaption data-quiet>{t('rules.alt.missing')}</figcaption>}
         </figure>
       )
   }

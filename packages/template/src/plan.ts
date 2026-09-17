@@ -138,6 +138,10 @@ const shapeOf = (block: RuleBlock): string => {
       return `list:${block.ordered === true}:${JSON.stringify(block.items)}`
     case 'setup':
       return `setup:${block.caption ?? ''}`
+    // A picture is the bytes it points at and the words it says about itself (#173): the same
+    // file with another alt text is another picture, because the alt text is what a reader gets.
+    case 'image':
+      return `image:${block.asset}:${block.alt}`
   }
 }
 
@@ -258,4 +262,21 @@ function columnOf(blocks: readonly RulePlanBlock[]): RulePlanSection[] {
 // What a block weighs, in the words a reader would have read. It is the whole of the answer to
 // "how much am I losing", and a count of blocks is not that answer: one paragraph can be a page.
 const words = (block: RuleBlock): number =>
-  (block.kind === 'list' ? block.items.join(' ') : block.kind === 'setup' ? (block.caption ?? '') : block.text).split(/\s+/).filter((word) => word.length > 0).length
+  wordsOf(block)
+    .split(/\s+/)
+    .filter((word) => word.length > 0).length
+
+// A picture weighs what it says: its alt text, which is what the reader would have been told.
+// A decorative one weighs nothing, and that is the cost the decision of 2026-09-17 wrote down.
+const wordsOf = (block: RuleBlock): string => {
+  switch (block.kind) {
+    case 'list':
+      return block.items.join(' ')
+    case 'setup':
+      return block.caption ?? ''
+    case 'image':
+      return block.alt
+    default:
+      return block.text
+  }
+}

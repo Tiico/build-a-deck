@@ -593,6 +593,41 @@ describe('the rulebook in the project (B7)', () => {
   })
 })
 
+// A picture in the book has to come out the other end as the picture that went in (#173): the
+// project document is the only thing that carries it, the schema is the only thing that validates
+// it, and what a table reads is what the version it was locked to holds.
+describe('a picture survives the road from the document to the table (#173)', () => {
+  const picture = { kind: 'image' as const, id: 'i1', asset: `asset:${'a'.repeat(64)}`, alt: 'Bordet från ovan' }
+  const quiet = { kind: 'image' as const, id: 'i2', asset: `asset:${'b'.repeat(64)}`, alt: '' }
+  const withPictures: RuleDoc = { title: 'Skogens herrar', blocks: [{ kind: 'heading', id: 'h1', level: 1, text: 'Uppställning' }, picture, quiet] }
+
+  it('comes back out of the document exactly as it went in, version for version', async () => {
+    expect((await json('POST', '/projects', { id: 'p-picture', ...project(), rules: withPictures })).status).toBe(201)
+    expect((await run.projects.load('p-picture'))?.rules).toEqual(withPictures)
+    // Versioned with the cards (B4): a later version cannot rewrite the picture an older one held.
+    expect((await json('PUT', '/projects/p-picture', { rev: 1, ...project(), rules: { ...withPictures, blocks: [withPictures.blocks[0]!] } })).status).toBe(200)
+    expect((await run.projects.at('p-picture', 1))?.rules?.blocks).toEqual(withPictures.blocks)
+    expect((await run.projects.at('p-picture', 2))?.rules?.blocks).toHaveLength(1)
+  })
+
+  it('reaches the table as the same picture, saying the same thing about itself', async () => {
+    await json('POST', '/projects', { id: 'p-picture-table', ...project(), rules: withPictures })
+    const started = await json('POST', '/projects/p-picture-table/sessions', {})
+    const { id } = (await started.json()) as { id: string }
+    const body = (await (await fetch(`${run.http}/sessions/${id}/rules`)).json()) as { blocks: unknown[]; text: string }
+    expect(body.blocks[1]).toEqual(picture)
+    expect(body.blocks[2]).toEqual(quiet)
+    // What the picture says about itself is part of the book's text; a decorative one says nothing.
+    expect(body.text).toBe('Uppställning\nBordet från ovan')
+  })
+
+  it('refuses a picture that points out of the project, wherever it is written', async () => {
+    const outside = (asset: string) => json('POST', '/projects', { id: `p-out-${asset.length}`, ...project(), rules: { title: 'X', blocks: [{ kind: 'image', id: 'i1', asset, alt: '' }] } })
+    expect((await outside('https://example.com/bordet.png')).status).toBe(400)
+    expect((await outside('data:image/png;base64,AAAA')).status).toBe(400)
+  })
+})
+
 describe('the rules a table plays by (B7)', () => {
   const rulesDoc: RuleDoc = {
     title: 'Skogens herrar',

@@ -36,6 +36,10 @@
 .byd-rules-page p { margin: 0 0 8px; }
 .byd-rules-page ol, .byd-rules-page ul { margin: 0 0 10px; padding-left: 20px; }
 .byd-rules-caption { font-style: italic; color: #6b6255; }
+/* A picture in the book (#173). A5 is the narrowest of the three surfaces the book is read on, so
+   A5 sets the frame: the text column of an A5 page and half its height, said in the book's own
+   type so a screen holds to the same frame with pixels of its own. */
+.byd-rules-image { display: block; margin: 12px auto; max-width: min(100%, 31.9em); max-height: 24.6em; width: auto; height: auto; }
 .byd-rules-ref { font-style: normal; color: #7a4d1d; border-bottom: 1px dotted #b08a5a; }
 .byd-rules-ref[data-missing] { color: #a12b2b; background: #f4d9d9; border-bottom: 0; padding: 0 3px; border-radius: 3px; }
 .byd-rules-pip { display: inline-grid; place-items: center; width: 1.2em; height: 1.2em; border-radius: 50%; background: #23201a; color: #f7f3ea; font: 700 0.75em system-ui; vertical-align: -0.15em; }

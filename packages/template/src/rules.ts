@@ -9,6 +9,25 @@ import { parseInline, type InlineNode } from './inline.js'
 // It is declared here and nowhere else (#183): the schema is what validates on the way in, and the
 // type the renderer and the editor read is inferred from it, so a field cannot be added to one
 // side and forgotten on the other.
+// What a picture in the book may point at: one of the project's own assets, named by the hash of
+// its bytes. The same shape the rows and the icon set use (E1), written here because the schema is
+// what validates on the way in and the type is inferred from it.
+export const RuleImageAsset = z.string().regex(/^asset:[0-9a-f]{64}$/, 'a picture in the book lives in the project’s own assets')
+
+// How big a picture in the book may be drawn (#173, decided 2026-09-17). The book is read at a
+// table, on a phone and in a printed A5 booklet, and A5 is the narrowest of the three — so A5 sets
+// the size and the other two draw the same picture inside the same frame. The frame is the text
+// column of an A5 page (148mm less the booklet's two 15mm margins) and half the height of that
+// column (210mm less its two 14mm margins), so a picture never takes a page on its own and always
+// stands with some of the text it belongs to.
+//
+// The same frame is given in `em` of the book's own type, because a screen has no millimetres it
+// can be held to: what carries across is the picture's size relative to the words beside it.
+const BOOKLET_PT = 10.5
+const MM_PER_EM = (BOOKLET_PT * 25.4) / 72
+const round = (n: number): number => Math.round(n * 10) / 10
+export const RULE_IMAGE_FRAME = { wMm: 118, hMm: 91, wEm: round(118 / MM_PER_EM), hEm: round(91 / MM_PER_EM) }
+
 export const RuleBlock = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('heading'), id: z.string().min(1), level: z.union([z.literal(1), z.literal(2)]), text: z.string() }),
   // `ask` is the question a template section carries until it is answered (#131). It is the
@@ -19,6 +38,16 @@ export const RuleBlock = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('list'), id: z.string().min(1), items: z.array(z.string()), ordered: z.boolean().optional() }),
   // The setup picture is the zones themselves (B5's follow-on), not a drawing kept beside them.
   z.object({ kind: z.literal('setup'), id: z.string().min(1), caption: z.string().optional() }),
+  // A picture the designer drew somewhere else (#173, decided 2026-09-17). It lives in the
+  // project's own assets, content-addressed as `asset:<hash>` — the road a card's own image
+  // already takes (E1) — and never as an address pointing out of the project: the book is
+  // versioned with the cards (B4, B7), so the picture has to travel in the same history.
+  // The reference is 64 hex characters and nothing else, so the block cannot hold a `javascript:`,
+  // a `data:` or a host at all; there is no address here for an untrusted file to smuggle one in.
+  // `alt` empty is the decision of 2026-09-17: a picture whose Markdown carried no alt text comes
+  // in anyway and is marked decorative, hidden from a screen reader. It is the one point where
+  // B7 weighs against L12, and the import report is what keeps it from being silent.
+  z.object({ kind: z.literal('image'), id: z.string().min(1), asset: RuleImageAsset, alt: z.string() }),
 ])
 // Which file the book was imported from, and when (#131). It is text in the document and never a
 // file handle: a handle belongs to one browser and one person, and the book has to travel with the
@@ -47,6 +76,9 @@ export type RenderedBlock =
   | { kind: 'text'; id: string; paragraphs: RenderedParagraph[] }
   | { kind: 'list'; id: string; ordered: boolean; items: RenderedNode[][] }
   | { kind: 'setup'; id: string; caption?: string | undefined }
+  // The picture reaches every surface as the reference it is; whoever draws it knows where the
+  // project's assets are served from and resolves it there, exactly as a card's image is resolved.
+  | { kind: 'image'; id: string; asset: string; alt: string }
 // `text` is the whole rulebook as plain text: what a search reads, and what a test can hold on to.
 export type RenderedRules = { title: string; blocks: RenderedBlock[]; warnings: RuleWarning[]; text: string }
 
@@ -70,6 +102,11 @@ export function renderRules(doc: RuleDoc, names: Names): RenderedRules {
       }
       case 'setup':
         if (block.caption) lines.push(block.caption)
+        return block
+      // What a picture says is its alt text, and a decorative one says nothing — which is the
+      // whole of what "decorative" means (#173): it is not in the book's text either.
+      case 'image':
+        if (block.alt) lines.push(block.alt)
         return block
     }
   })

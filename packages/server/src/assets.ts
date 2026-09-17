@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
-import type { Motif } from '@byd/template'
+import type { Motif, RuleDoc } from '@byd/template'
 import { MemoryObjectStore, type ObjectStore } from '@byd/render'
 import type { Sql } from 'postgres'
 import type { ProjectRow } from './projects.js'
@@ -127,6 +127,21 @@ export class PostgresAssetStore implements AssetStore {
 export async function resolveIcons(icons: Record<string, string>, assets: AssetStore): Promise<Record<string, string>> {
   const out: Record<string, string> = {}
   for (const [name, url] of Object.entries(icons)) out[name] = isAssetRef(url) ? await dataUrlOf(url.slice(ASSET_PREFIX.length), assets) : url
+  return out
+}
+
+// The pictures a rulebook holds, as the booklet needs them (#173, B7): every `asset:<hash>` a
+// picture block points at, resolved to the bytes behind it, keyed by the reference the block
+// carries. It is the icon set's treatment for the same reason — the render worker is handed a page
+// and nothing else — and a picture whose bytes are gone is left out of the map, so the booklet is
+// printed without it rather than with an empty frame.
+export async function resolveRuleImages(rules: RuleDoc, assets: AssetStore): Promise<Record<string, string>> {
+  const out: Record<string, string> = {}
+  for (const block of rules.blocks) {
+    if (block.kind !== 'image' || out[block.asset] !== undefined) continue
+    const url = await dataUrlOf(block.asset.slice(ASSET_PREFIX.length), assets)
+    if (url) out[block.asset] = url
+  }
   return out
 }
 

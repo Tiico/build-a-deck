@@ -342,7 +342,7 @@ Ett citat blir text med markören struken, en tabell blir text med en rad per ra
 Regeln bakom kartan är att ingenting försvinner tyst: det som inte kan bli ett block blir vanlig text, och det som ändrar form eller inte kommer med räknas upp i en rapport före importen.
 Rapporten är inte en dialog utan ett band, med boken filen skulle bli under sig i bokens egen läsbredd och `Avbryt` bredvid `Gör boken` (prototyp 8, variant B).
 Adressen stryks därför att boken läses vid bordet, på telefonen och i det tryckta häftet, där ingen adress går att följa.
-Bilder stryks inte utan står som "ännu inte": ett femte blockslag är en ändring i protokollet och ett eget beslut (#173).
+Bilder ströks inte utan stod som "ännu inte", eftersom ett femte blockslag är en ändring i protokollet och ett eget beslut; det beslutet är fattat samma dag och står nedan (#173).
 Importen skriver aldrig över utan lägger en namngiven version, `Importerad: <filnamn>`, som B4 redan lägger en per sparning.
 Skälet är att ångerstacken är femtio steg och bor i en flik, och en hel regelbok är för mycket att hänga på ett Ctrl+Z.
 Boken minns vilken fil den kom ur och när, som text i dokumentet och aldrig som ett filgrepp: ett grepp hör till en webbläsare och en person, medan namnet följer med projektet överallt.
@@ -375,6 +375,37 @@ Tomma rader ovanför är ingenting en läsare ser, och en editor som lämnar en 
 En fil som skriver sin titel med `#` och sina avsnitt med `##` får därför en bok utan avsnitt på första nivån, och då står ingen innehållsförteckning bredvid den; det syns i förslaget innan boken görs, vilket är hela skälet till att rapporten står före importen.
 En fil utan inledande rubrik ändras inte alls.
 "Ingenting försvinner tyst" gäller: raden försvinner, men inte tyst, och rapporten räknar den bland det som ändrade form på vägen in.
+
+Bildslaget i boken, byggt 2026-09-17 (#173):
+`RuleBlock` har ett femte slag, `image`, och det är en protokolländring: schemat i `packages/template/src/rules.ts` är enda källan till både typ och validering, precis som de fyra andra slagen sedan #183.
+Ett block är `{ kind: 'image', id, asset, alt }` och ingenting mer.
+
+**Bilden bor i projektets egna tillgångar.**
+`asset` är `asset:<sha256>`, samma väg som kortens egna bilder går (E1), och schemat tillåter ingenting annat: 64 hexadecimala tecken och inget annat går igenom.
+Det är därför inte bara *olämpligt* utan *omöjligt* för en regelbok att peka ut ur projektet — ingen adress, ingen `javascript:`, ingen `data:`, ingen värd.
+Skälet är B4 och B7: boken versioneras i samma historik som korten, så bilden måste följa med samma historik, och en adress utanför projektet gör en bok som slutar fungera när någon annan städar sin disk.
+
+**En bild utan alt-text tas in som dekorativ.**
+En bild vars Markdown bär en alt-text behåller den; en utan får `alt=""` och är därmed dold för skärmläsare.
+Kostnaden är tagen med öppna ögon och skrivs ned här för att den inte ska upptäckas senare: i en regelbok är en bild nästan aldrig dekorativ — en uppställning, en ikonförklaring eller ett exempel på ett drag bär regler — och det här är den punkt där beslutet väger emot L12.
+Alternativet som valdes bort var att ta in bilden som en obesvarad fråga i boken, i samma form som `ask` på en mallsektion (#131), med raden kvar i importrapporten tills någon skrivit en alt-text.
+Om valet skaver i bruk är det den vägen tillbaka.
+Villkoret för kostnaden är att den aldrig är tyst: importrapporten räknar hur många bilder som kom in utan alt-text, boken skriver `Utan alt-text: dold för skärmläsare` under bilden där den står, och blocket öppnas till ett alt-textfält med bilden kvar synlig ovanför — man kan inte beskriva en bild man inte ser.
+
+**En bild som inte går att ta in försvinner inte tyst** (#131).
+Raden står kvar i rapporten med skälet — filen kom inte med, är för stor, är inte en bild boken kan ta in, gick inte att läsa — och boken görs utan den bilden.
+Importen väljer regelfilen och dess bilder tillsammans, eftersom webben inte kan läsa en fil som en Markdown-fil bara nämner; raden «kom inte med: välj regelfilen och dess bilder tillsammans» är också där designern får veta att hon får lämna över dem.
+En vald fil är otrodd indata och dess namn är ett påstående: bilden typas på sina byte (PNG, JPEG, WebP, GIF), och en fil vars byte inte är någon av de fyra tas inte in.
+Boken tar alltså inte SVG, till skillnad från ikonuppsättningen (E4) — en ikon hämtar verktyget själv ur ett bibliotek, en teckning kommer från någons egen disk.
+
+**A5 sätter storleken.**
+Boken läses vid bordet, på telefonen och i det tryckta häftet, och A5 är den smalaste av de tre — så ramen är A5-sidans textspalt (148 mm minus två 15 mm-marginaler) och halva dess höjd (210 mm minus två 14 mm), så att en bild aldrig tar en hel sida ensam.
+Samma ram uttrycks i bokens eget typsnitt, 31,9 × 24,6 em, vilket är vad en skärm kan hållas till: bordet och telefonen ritar samma bild i samma ram med sina egna pixlar.
+Häftet får bytena inlagda som data-URL, som ikonerna, eftersom renderaren ska ha en sida och ingenting mer; bordet och editorn slår upp `asset:<hash>` mot `/assets/<hash>` precis som ett korts bild slås upp.
+
+**Titeln och bilderna är oberoende av varandra.**
+En fil som både öppnar med sin egen titel (#191) och bär bilder går båda vägarna, och rapporten bär båda raderna i en enda ordning: det som blev block först, bilden bland dem, och därefter det som ändrade form på vägen in med filens egen titel i spetsen.
+Bilden på filens första rad är innehåll och inte en titel, så en `#` under den är ett avsnitt som vilket annat — filens första rad är den första rad som säger något, och en bild säger något.
 
 Motivering:
 Trycket kräver en regelbok för att ordern ska kunna läggas.

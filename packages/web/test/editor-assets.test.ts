@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { assetUrl, assetsInUse, imageFieldsOf, isAssetRef, resolveAssetRow } from '../src/editor/assets.js'
+import { assetUrl, assetsInUse, imageFieldsOf, imageTypeOf, isAssetRef, resolveAssetRow } from '../src/editor/assets.js'
 import { projectDoc } from './project-doc.js'
 
 const HASH = 'a'.repeat(64)
@@ -25,5 +25,33 @@ describe('assets in the editor (E1): rows point at images by hash', () => {
       { hash: HASH, cards: ['dragon', 'knight'] },
       { hash: 'b'.repeat(64), cards: ['wizard'] },
     ])
+  })
+})
+
+// A file a designer picks is untrusted input, and a picture is a new kind of it (#173). What the
+// file calls itself — its name, and the type the browser guessed from that name — is not evidence.
+// The bytes are, so the type a picture is stored and served as is read out of the bytes.
+describe('what a picked file actually is (#173)', () => {
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
+  const bytes = (...head: number[]) => new Uint8Array([...head, ...new Array(32).fill(0)])
+
+  it('reads the type out of the bytes, for the four raster formats a book may hold', () => {
+    expect(imageTypeOf(new Uint8Array(png))).toBe('image/png')
+    expect(imageTypeOf(bytes(0xff, 0xd8, 0xff, 0xe0))).toBe('image/jpeg')
+    expect(imageTypeOf(new Uint8Array([...Buffer.from('GIF89a'), ...new Array(32).fill(0)]))).toBe('image/gif')
+    const webp = new Uint8Array([...Buffer.from('RIFF'), 0, 0, 0, 0, ...Buffer.from('WEBP'), ...new Array(16).fill(0)])
+    expect(imageTypeOf(webp)).toBe('image/webp')
+  })
+
+  it('refuses everything else, however the file was named', () => {
+    // A page that claims to be a picture stays a page: it is never stored, never served with a
+    // type it talked its way into, and never drawn.
+    expect(imageTypeOf(new Uint8Array(Buffer.from('<svg onload="alert(1)"/>')))).toBeNull()
+    expect(imageTypeOf(new Uint8Array(Buffer.from('<!doctype html><script>x</script>')))).toBeNull()
+    expect(imageTypeOf(new Uint8Array(Buffer.from('%PDF-1.7')))).toBeNull()
+    expect(imageTypeOf(new Uint8Array([0x50, 0x4b, 0x03, 0x04]))).toBeNull()
+    expect(imageTypeOf(new Uint8Array([]))).toBeNull()
+    // RIFF is not WebP on its own; a wave file wearing a .png is still not a picture.
+    expect(imageTypeOf(new Uint8Array([...Buffer.from('RIFF'), 0, 0, 0, 0, ...Buffer.from('WAVE')]))).toBeNull()
   })
 })

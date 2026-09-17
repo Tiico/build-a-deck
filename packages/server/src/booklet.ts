@@ -1,4 +1,4 @@
-import type { RenderedBlock, RenderedNode, RenderedRules } from '@byd/template'
+import { RULE_IMAGE_FRAME, type RenderedBlock, type RenderedNode, type RenderedRules } from '@byd/template'
 import type { ProjectCredit } from './projects.js'
 
 // The rulebook as a booklet for print (B7): the same rendering the editor and the table read,
@@ -11,6 +11,11 @@ export type BookletInput = {
   rules: RenderedRules
   // The project's icon set, already resolved to something a browser can draw.
   icons: Record<string, string>
+  // The pictures the book holds (#173), keyed by the reference the blocks carry and resolved to
+  // something a browser can draw — the same treatment the icons get, and for the same reason: the
+  // worker is handed a page and nothing else. A reference with nothing behind it is a picture
+  // whose bytes are gone, and the page is printed without it rather than with an empty frame.
+  images?: Record<string, string>
   pageMm: { w: number; h: number }
   // The zones the game has, for the setup picture (B5); their names, in the setup's order.
   zones?: string[]
@@ -48,6 +53,16 @@ function blockHtml(block: RenderedBlock, input: BookletInput): string {
       const zones = (input.zones ?? []).map((z) => `<span data-zone>${escape(z)}</span>`).join('')
       const caption = block.caption ? `<figcaption>${escape(block.caption)}</figcaption>` : ''
       return `<figure class="byd-setup"><div class="byd-table">${zones}</div>${caption}</figure>`
+    }
+    // A picture the designer brought with her (#173). What it says about itself is its alt text;
+    // a picture that was written without one came in as decorative and says nothing, which is
+    // exactly what `alt=""` means to a screen reader and to this page (decided 2026-09-17).
+    // The block holds a reference to one of the project's own assets and never an address, so
+    // nothing a file carried can reach the renderer as one.
+    case 'image': {
+      const src = (input.images ?? {})[block.asset]
+      if (!src) return ''
+      return `<figure class="byd-rules-figure"><img src="${escape(src)}" alt="${escape(block.alt)}"></figure>`
     }
   }
 }
@@ -99,6 +114,11 @@ function css(w: number, h: number): string {
     '.byd-pip{display:inline-grid;place-items:center;width:1.25em;height:1.25em;border-radius:50%;background:#1c1c1c;color:#fff;font:700 0.72em system-ui;vertical-align:-0.15em}',
     '.byd-icon{height:1em;width:auto;vertical-align:-0.15em}',
     '.byd-missing{color:#a12b2b}',
+    // A5 is the narrowest of the three surfaces the book is read on, so A5 sets the size of a
+    // picture (#173): the text column of the page, and half its height, so a picture never takes a
+    // page on its own. The picture keeps its own proportions inside that frame.
+    '.byd-rules-figure{margin:4mm 0;text-align:center;break-inside:avoid}',
+    `.byd-rules-figure img{max-width:${RULE_IMAGE_FRAME.wMm}mm;max-height:${RULE_IMAGE_FRAME.hMm}mm;width:auto;height:auto}`,
     '.byd-setup{margin:4mm 0;break-inside:avoid}',
     '.byd-setup .byd-table{display:flex;flex-wrap:wrap;gap:2mm;justify-content:center;padding:5mm;border:0.3mm dashed #8a8172;border-radius:2mm}',
     '.byd-setup span{padding:2mm 3mm;border:0.2mm solid #b3a894;border-radius:1mm;font:8pt system-ui}',
