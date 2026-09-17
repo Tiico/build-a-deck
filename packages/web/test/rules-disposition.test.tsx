@@ -58,12 +58,13 @@ describe('the empty rules tab is the book’s disposition (#131)', () => {
   })
 })
 
-describe('the two ways in (#131)', () => {
+describe('the three ways in (#131)', () => {
   it('offers only the ways that work, so nothing on the surface is a promise nobody kept', async () => {
     await openRules()
     expect(screen.getByRole('button', { name: 'Börja skriva reglerna' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Börja från en mall' })).toBeTruthy()
-    expect(screen.queryByRole('button', { name: /Importera/ })).toBeNull()
+    // The third arrived with the import itself (rules-import.test.tsx), and not before it.
+    expect(screen.getByLabelText('Importera från fil')).toBeTruthy()
   })
 
   it('writes, from “Börja skriva reglerna”, a book of one section carrying a question', async () => {

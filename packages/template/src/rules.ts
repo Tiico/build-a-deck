@@ -20,7 +20,11 @@ export const RuleBlock = z.discriminatedUnion('kind', [
   // The setup picture is the zones themselves (B5's follow-on), not a drawing kept beside them.
   z.object({ kind: z.literal('setup'), id: z.string().min(1), caption: z.string().optional() }),
 ])
-export const RuleDoc = z.object({ title: z.string(), blocks: z.array(RuleBlock) })
+// Which file the book was imported from, and when (#131). It is text in the document and never a
+// file handle: a handle belongs to one browser and one person, and the book has to travel with the
+// project. This is what "import the same file again" reads.
+export const RuleSource = z.object({ file: z.string().min(1), at: z.string().min(1) })
+export const RuleDoc = z.object({ title: z.string(), blocks: z.array(RuleBlock), source: RuleSource.optional() })
 export type RuleDoc = z.infer<typeof RuleDoc>
 export type RuleBlock = RuleDoc['blocks'][number]
 

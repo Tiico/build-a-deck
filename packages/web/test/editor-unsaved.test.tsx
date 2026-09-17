@@ -5,8 +5,8 @@ import { userEvent } from '@testing-library/user-event'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
-import { useEditSocketImplementation, type EditSocketCtor, type WebSocketLike } from '../src/editor/ProjectClient.js'
-import { EditSocket } from './setup.js'
+import { useEditSocketImplementation, type EditSocketCtor } from '../src/editor/ProjectClient.js'
+import { EditSocket, RefusesToSave } from './setup.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -19,26 +19,6 @@ afterEach(async () => {
   useEditSocketImplementation(EditSocket as unknown as EditSocketCtor)
   await run.stop()
 })
-
-// An actor that will not make a version of what it is holding, because someone else already made
-// one from the same rev. Everything else about the socket is what a socket does.
-const RefusesToSave = class implements WebSocketLike {
-  readyState = 1
-  onopen: (() => void) | null = null
-  onmessage: ((event: { data: unknown }) => void) | null = null
-  onclose: (() => void) | null = null
-  onerror: (() => void) | null = null
-  constructor() {
-    queueMicrotask(() => this.onopen?.())
-  }
-  send(data: string): void {
-    if ((JSON.parse(data) as { t: string }).t !== 'save') return
-    queueMicrotask(() => this.onmessage?.({ data: JSON.stringify({ v: 'refused', why: 'conflict' }) }))
-  }
-  close(): void {
-    this.readyState = 3
-  }
-} as unknown as EditSocketCtor
 
 async function openEditor() {
   await run.projects.create(run.projectId, projectDoc())

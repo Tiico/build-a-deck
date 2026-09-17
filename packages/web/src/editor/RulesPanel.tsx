@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { namesOfProject } from '@byd/server/doc'
 import type { ProjectDoc, RuleBlock, RuleDoc } from '@byd/server'
-import { renderRules, type Names, type RenderedBlock, type RenderedNode } from '@byd/template'
+import { importRules, renderRules, type Names, type RenderedBlock, type RenderedNode, type RuleImport, type RuleImportKind } from '@byd/template'
 import type { ProjectClient } from './ProjectClient.js'
 import { useT, type T } from '../i18n/index.js'
+import type { Key } from '../i18n/sv.js'
 import { useGesture } from './gesture.js'
+import { when } from './HistoryPanel.js'
 
 // The rulebook (B7), from the prototype: the page itself is the editor. A block opens where it
 // stands and closes when it is left, so what is being written is always what the reader will
@@ -15,13 +17,17 @@ export type RulesPanelProps = { doc: ProjectDoc; client: ProjectClient }
 export function RulesPanel({ doc, client }: RulesPanelProps) {
   const t = useT()
   const [editing, setEditing] = useState<string | null>(null)
+  // A file that has been read but not yet taken in (#131). It stands here and not in the document
+  // precisely because it has not been decided: the report is the last thing read before the book.
+  const [proposal, setProposal] = useState<(RuleImport & { file: string }) | null>(null)
+  const [failed, setFailed] = useState<string | null>(null)
   const names = namesOfProject(doc)
   const rules = doc.rules
   // An empty tab is not an empty screen: it is the book's own disposition, the template drawn on
   // the very page it would become (#131, variant C). The column that finds the way through a
   // written book is the column that was standing there before a word was written, which is why
   // the two states read as one surface rather than two.
-  const shown = rules ?? templateRules(doc.name, t)
+  const shown = rules ?? proposal?.doc ?? templateRules(doc.name, t)
   const out = renderRules(shown, names)
   const patch = (id: string, next: Partial<RuleBlock>, gesture?: string) =>
     rules && client.setRules({ ...rules, blocks: rules.blocks.map((b) => (b.id === id ? ({ ...b, ...next } as RuleBlock) : b)) }, gesture)
@@ -62,6 +68,16 @@ export function RulesPanel({ doc, client }: RulesPanelProps) {
     setEditing(head)
   }
   const open = (id: string) => rules && setEditing(id)
+  // A file the designer picked, read and laid out as the book it would become — and never taken
+  // in on the way past. What it loses is read first (#131).
+  const pick = async (file: File | undefined) => {
+    if (!file) return
+    const read = importRules(await file.text(), doc.name)
+    // A file with nothing in it to make a book of says so, rather than looking as though the
+    // press did nothing at all.
+    setFailed(read.doc.blocks.length === 0 ? t('rules.import.nothing', { file: file.name }) : null)
+    setProposal(read.doc.blocks.length === 0 ? null : { ...read, file: file.name })
+  }
   return (
     <div className="byd-rules">
       <div className="byd-rules-bar">
@@ -69,26 +85,63 @@ export function RulesPanel({ doc, client }: RulesPanelProps) {
         {rules && <Booklet client={client} />}
         {/* What the rules are for, as a line above the disposition and never as a box (#131). */}
         <span>{t(rules ? 'rules.hint' : 'rules.empty')}</span>
+        {/* Which file the book came out of, and when (#131): text in the document, so it travels
+            with the project rather than with the browser the file was picked in. */}
+        {rules?.source && <span>{t('rules.source', { file: rules.source.file, when: when(rules.source.at, Date.now(), t) })}</span>}
+        {failed && (
+          <span role="alert" className="byd-rules-warn">
+            {failed}
+          </span>
+        )}
         {out.warnings.length > 0 && rules && (
           <span className="byd-rules-warn" role="status">
             {t(out.warnings.length === 1 ? 'rules.warnings.one' : 'rules.warnings.other', { n: out.warnings.length })}
           </span>
         )}
-        {!rules && (
+        {!rules && !proposal && (
           <div className="byd-rules-ways">
-            {/* Two ways in, and only two: the import is the next slice, and a control that does
-                nothing yet is a promise nobody kept. */}
+            {/* Three ways in, and each of them does what it says: a control that does nothing yet
+                would be a promise nobody kept. */}
             <button type="button" className="byd-secondary" onClick={() => client.setRules(startingRules(doc.name, t))}>
               {t('rules.start')}
             </button>
             <button type="button" className="byd-secondary" onClick={() => client.setRules(templateRules(doc.name, t))}>
               {t('rules.template')}
             </button>
+            <label className="byd-secondary">
+              {t('rules.import')}
+              <input
+                type="file"
+                accept=".md,.markdown,text/markdown,text/plain"
+                aria-label={t('rules.import')}
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  // The same file picked twice running is no change at all to an input that still
+                  // holds it, and the second press would do nothing. It holds nothing afterwards.
+                  e.target.value = ''
+                  void pick(file)
+                }}
+              />
+            </label>
           </div>
         )}
       </div>
+      {proposal && (
+        <Report
+          of={proposal}
+          onCancel={() => setProposal(null)}
+          onMake={() => {
+            setProposal(null)
+            setFailed(null)
+            // An import lays a named version rather than writing over anything (#131, B4).
+            void client.importRules(proposal.doc, proposal.file, t).catch((err: unknown) => setFailed(whyNotSaved(err, t)))
+          }}
+        />
+      )}
       <div className="byd-rules-spread">
-        <Toc blocks={out.blocks} label={t('rules.toc')} {...(rules ? { onAdd: addSection } : { proposed: true })} />
+        {/* `proposed` is the mark that says a section has nothing written in it yet. A section
+            read out of a file has, so only the template's own disposition carries it. */}
+        <Toc blocks={out.blocks} label={t('rules.toc')} {...(rules ? { onAdd: addSection } : proposal ? {} : { proposed: true })} />
         <article className="byd-rulebook" {...(rules ? { 'data-rulebook': true } : { 'data-proposal': true })}>
           <h1>{out.title}</h1>
           {out.blocks.map((b) => {
@@ -127,6 +180,81 @@ export function RulesPanel({ doc, client }: RulesPanelProps) {
       </div>
     </div>
   )
+}
+
+// Why an import did not go in, in words the designer can do something with (#131).
+//
+// The collision is the one that will really happen: two tabs on one project, or someone else
+// saving from the revision this tab is holding, and then the save behind the import is refused.
+// `conflict` is the protocol's word for that and nobody can act on it, so what goes on the screen
+// is the state she is actually in — the book is in front of her and it is not on the server —
+// together with the one way out of it, which is the editor's own answer to every collision:
+// reload, and do it again. Nothing is lost by that; the file is still on her disk.
+const whyNotSaved = (err: unknown, t: T): string => {
+  const why = err instanceof Error ? err.message : String(err)
+  return why === 'conflict' ? t('rules.import.conflict') : t('rules.import.failed', { why })
+}
+
+// What the import does with the file, read before the book is made and never after it (#131).
+// The rule behind the map is that nothing disappears silently, and this is where it is said: what
+// became a block, what changed shape on the way, and what the book cannot hold yet.
+//
+// It is not a dialog. The book it would make stands under it at its own reading width, so the
+// report is read against the thing it describes rather than over it (prototype 8, variant B).
+function Report({ of, onCancel, onMake }: { of: RuleImport & { file: string }; onCancel(): void; onMake(): void }) {
+  const t = useT()
+  const heading = useId()
+  const here = useRef<HTMLElement>(null)
+  // Something that must be read carefully has to be reachable and readable without a mouse (L12):
+  // it takes the focus when it appears, so the next Tab is into the report and not past it.
+  useEffect(() => here.current?.focus(), [])
+  return (
+    <section
+      className="byd-rules-report"
+      ref={here}
+      tabIndex={-1}
+      role="region"
+      aria-labelledby={heading}
+      onKeyDown={(e) => {
+        if (e.key !== 'Escape') return
+        e.preventDefault()
+        onCancel()
+      }}
+    >
+      <b id={heading}>{t('rules.import.report')}</b>
+      <span>{t('rules.import.from', { file: of.file })}</span>
+      <ul>
+        {of.notes.map((note) => (
+          <li key={note.of} data-kind={WEIGHT[note.of]}>
+            {t(`rules.import.${note.of}.${note.n === 1 ? 'one' : 'other'}` as Key, { n: note.n })}
+          </li>
+        ))}
+      </ul>
+      <button type="button" className="byd-editor-primary byd-primary" onClick={onMake}>
+        {t('rules.import.make')}
+      </button>
+      <button type="button" className="byd-secondary" onClick={onCancel}>
+        {t('rules.import.cancel')}
+      </button>
+    </section>
+  )
+}
+
+// How heavily a line of the report reads. `kept` came in whole, `changed` came in as something
+// else, and `later` is the one line that is neither: a picture is not dropped, it is not here yet
+// (#173).
+const WEIGHT: Record<RuleImportKind, 'kept' | 'changed' | 'later'> = {
+  heading: 'kept',
+  text: 'kept',
+  list: 'kept',
+  ref: 'kept',
+  folded: 'changed',
+  quote: 'changed',
+  table: 'changed',
+  code: 'changed',
+  link: 'changed',
+  break: 'changed',
+  image: 'later',
 }
 
 // Where a section stands, so the column beside the book can point at it.

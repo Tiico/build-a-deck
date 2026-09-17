@@ -309,7 +309,25 @@ Varje avsnitt bär en fråga i stället för en tom rad, och frågan är fältet
 Uppställningsavsnittet kommer med uppställningen i sig, eftersom den är spelets egna zoner (B5) och därför rätt från början och aldrig något att rita.
 Mallen är ett förslag och inte en form: ett avsnitt går att ta bort utan att först skrivas i — rubriken och allt under den till nästa rubrik i ett enda steg — och spaltens fot lägger till ett eget.
 Båda vägarna in, `Börja skriva reglerna` och `Börja från en mall`, är en enda ändring var och därmed ett steg tillbaka (B4, L14).
-Den tredje vägen in, `Importera från fil`, är beslutad men inte byggd och ritas därför inte: en knapp som inte gör något är ett löfte ingen håller.
+Den tredje vägen in är `Importera från fil`.
+
+Importen från fil, byggd 2026-09-17 (#131):
+Den tredje vägen in läser en Markdown-fil och lägger fram boken den skulle bli.
+Kartan från fil till block är ett produktbeslut och står därför skriven som en karta i koden, inte som ett biblioteks uppfattning om vad Markdown betyder.
+`#` blir rubrik nivå 1 och `##` nivå 2; `###` och djupare viks upp till nivå 2, eftersom boken har två nivåer.
+Ett stycke blir text med **fet** och *kursiv* kvar, `-` och `*` blir lista, `1.` blir numrerad lista.
+Ett citat blir text med markören struken, en tabell blir text med en rad per rad, ett kodblock blir text ordagrant, en länk blir sina egna ord utan adressen, och en avdelare stryks.
+`[[zon:x]]` och `[[kort:y]]` blir referenser, precis som i en bok man skrivit själv.
+Regeln bakom kartan är att ingenting försvinner tyst: det som inte kan bli ett block blir vanlig text, och det som ändrar form eller inte kommer med räknas upp i en rapport före importen.
+Rapporten är inte en dialog utan ett band, med boken filen skulle bli under sig i bokens egen läsbredd och `Avbryt` bredvid `Gör boken` (prototyp 8, variant B).
+Adressen stryks därför att boken läses vid bordet, på telefonen och i det tryckta häftet, där ingen adress går att följa.
+Bilder stryks inte utan står som "ännu inte": ett femte blockslag är en ändring i protokollet och ett eget beslut (#173).
+Importen skriver aldrig över utan lägger en namngiven version, `Importerad: <filnamn>`, som B4 redan lägger en per sparning.
+Skälet är att ångerstacken är femtio steg och bor i en flik, och en hel regelbok är för mycket att hänga på ett Ctrl+Z.
+Boken minns vilken fil den kom ur och när, som text i dokumentet och aldrig som ett filgrepp: ett grepp hör till en webbläsare och en person, medan namnet följer med projektet överallt.
+En fil är otrodd indata, och ingenting den innehåller når sidan som markup: importen producerar strängar i block, och varje sträng escapas hela vägen till läsaren.
+Importen erbjuds bara i tomläget.
+Att importera över en skriven bok är beslutat men inte byggt: det kräver en skillnadsvy på styckenivå och undantaget att uppställningsblocket aldrig kan importeras bort, och en knapp som inte gör hela det arbetet är ett löfte ingen håller.
 
 Motivering:
 Trycket kräver en regelbok för att ordern ska kunna läggas.
