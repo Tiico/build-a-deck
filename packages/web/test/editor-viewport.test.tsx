@@ -152,10 +152,16 @@ async function tablesTab(width: number): Promise<Record<string, string>> {
   try {
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
+    // A table nobody has played lies behind a fold (#176), and a fold is where this sweep would
+    // otherwise stop: it would find two controls, measure them and call the tab clean.
+    fireEvent.click(await screen.findByRole('button', { name: /Startade, aldrig spelade/ }))
     // Waited for by the one way that is not there until the table itself has answered: sitting
     // down needs a free seat, and a free seat is something only the table's own snapshot knows.
     // Waiting for it is what puts every way into the markup rather than most of them.
     await screen.findByRole('link', { name: /Spela härifrån/ })
+    // The other five are in the row's menu, and a menu that is shut is five targets nobody has
+    // ever measured — which is exactly how `.byd-tables-ways` shipped at 32 px (#133).
+    fireEvent.click(screen.getByRole('button', { name: /Fler vägar in till bordet/ }))
     return { Bord: document.querySelector('.byd-editor')!.outerHTML }
   } finally {
     unmount()
@@ -470,8 +476,9 @@ describe.each(WIDTHS)('the Bord tab with a table, at %ipx', (width) => {
         }),
       tablesTab,
     )
-    // The four ways in, the QR, the ending, and the button that starts another table.
-    expect(measured).toEqual({ Bord: { controls: 7, small: [] } })
+    // The fold, the way standing ready, the button that opens the menu, the five ways in it, and
+    // the button that starts another table.
+    expect(measured).toEqual({ Bord: { controls: 9, small: [] } })
   }, 90_000)
 
   it('never makes the page scroll sideways', async () => {

@@ -720,7 +720,6 @@ export const svEditor = {
 
   // Borden: sessionerna som spelas ur spelet, och vägarna in i dem.
   'tables.loading': 'Laddar bord…',
-  'tables.title': 'Spelets bord',
   'tables.lead': 'Varje bord hör till det här spelet. Ett bord överlever att alla kopplar ner; det avslutas uttryckligen eller efter ett dygn.',
   'tables.none': 'Inget bord ännu. "Uppdatera bordet" startar ett från den sparade versionen.',
   'tables.menu.none': 'Inget bord ännu. "Uppdatera bordet" startar ett.',
@@ -749,6 +748,16 @@ export const svEditor = {
   'tables.end.of': 'Avsluta bordet {table}',
   'tables.end.question': 'Avsluta bordet {table}? Loggen låses, spelet kan inte fortsätta, och enkäten går ut till telefonerna.',
   'tables.end.yes': 'Ja, avsluta',
+  // De tre grupperna i bordsspalten (#176, C9). De två hopfällda säger hur många som ligger
+  // bakom dem; en flik som inte säger det är en flik ingen fäller ut.
+  'tables.group.played': 'Bord som spelas',
+  'tables.group.untouched': 'Startade, aldrig spelade · {n}',
+  'tables.group.ended': 'Avslutade bord · {n}',
+  // Radens meny och ordet som säger vad raden är (#176).
+  'tables.more.of': 'Fler vägar in till bordet {table}',
+  'tables.ways.of': 'Vägar in till bordet {table}',
+  'tables.state.played': 'i spel',
+  'tables.state.untouched': 'aldrig spelat',
 
   // Historiken: varje sparning som en version, och vad den ändrade.
   'history.title': 'Historik',

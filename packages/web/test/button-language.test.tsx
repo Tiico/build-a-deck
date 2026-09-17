@@ -1167,6 +1167,7 @@ describe('every suite that measures a surface', () => {
       'editor-crown.test.tsx',
       'editor-css.test.ts',
       'editor-spacing.test.tsx',
+      'editor-tables-density.test.tsx',
       'editor-tables-layout.test.tsx',
       'editor-viewport.test.tsx',
       'editor-window.test.tsx',

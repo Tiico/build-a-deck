@@ -1,8 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from 'react'
 import { QrCode } from '../table/QrCode.js'
 import { TableRenderer } from '../table/TableRenderer.js'
 import { useTableClient } from '../table/useTableClient.js'
 import { joinUrl, observeUrl, onlineUrl, tableModeUrl, tableName, tvUrl } from './tableLinks.js'
+import { groupOf, tableGroups, type TableGroup, type TableGroupId } from './tableRows.js'
+import { useRoving } from './roving.js'
 import type { ProjectClient, TableSummary } from './ProjectClient.js'
 import { Question } from './Question.js'
 import { useT, type Key, type T } from '../i18n/index.js'
@@ -20,6 +22,9 @@ export function TablesTab({ client, server }: TablesTabProps) {
   // Asked again after starting a table: the server owns the list, so the way to show a new table
   // is to ask what tables there are.
   const [asked, setAsked] = useState(0)
+  // Which table's QR is up, for the whole column: the code is meant to be held up to a camera,
+  // and two of them at once is two tables a phone could land at by mistake.
+  const [qrFor, setQrFor] = useState<string | null>(null)
   useEffect(() => {
     let live = true
     client.tables().then(
@@ -61,17 +66,54 @@ export function TablesTab({ client, server }: TablesTabProps) {
       {tables.length === 0 ? (
         <p className="byd-tables-empty">{t('tables.none')}</p>
       ) : (
-        <ul aria-label={t('tables.title')}>
-          {tables.map((table) => (
-            <TableRow key={table.id} table={table} server={server} rev={client.rev} />
-          ))}
-        </ul>
+        tableGroups(tables, t).map((group) => <TableGroupView key={group.id} group={group} server={server} rev={client.rev} qrFor={qrFor} onQr={setQrFor} />)
       )}
       {notice && <p role="alert">{notice}</p>}
       <button type="button" className="byd-tables-new" disabled={starting} onClick={() => void startTable()}>
         {starting ? t('tables.starting') : t('tables.new', { n: client.rev })}
       </button>
     </div>
+  )
+}
+
+// One of the three groups the column is made of (#176). The tables being played stand open under
+// a heading, because they are what the designer opened the tab to find; the two that are about
+// something rather than about now — started and never touched, and over (C9, G3) — lie behind a
+// row that says what they are and how many they are.
+//
+// A folded group draws nothing at all, which is the whole point: a row that is not drawn opens no
+// WebSocket and renders no thumbnail, so what the list costs follows what is on the screen rather
+// than what the game has ever started.
+function TableGroupView({ group, server, rev, qrFor, onQr }: { group: TableGroup; server: string | null; rev: number; qrFor: string | null; onQr(id: string | null): void }) {
+  const [open, setOpen] = useState(group.id === 'played')
+  const headingId = `byd-tables-group-${group.id}`
+  const listId = `byd-tables-list-${group.id}`
+  const rows = (
+    <ul id={listId} className="byd-tables-list" aria-labelledby={headingId}>
+      {group.tables.map((table) => (
+        <TableRow key={table.id} table={table} server={server} rev={rev} qrOpen={qrFor === table.id} onQr={(open) => onQr(open ? table.id : null)} />
+      ))}
+    </ul>
+  )
+  if (group.id === 'played')
+    return (
+      <section className="byd-tables-group" data-group={group.id}>
+        <h3 id={headingId} className="byd-tables-heading">
+          {group.heading}
+        </h3>
+        {rows}
+      </section>
+    )
+  return (
+    <section className="byd-tables-group" data-group={group.id}>
+      <button id={headingId} type="button" className="byd-tables-fold" aria-expanded={open} aria-controls={listId} onClick={() => setOpen((was) => !was)}>
+        <span className="byd-tables-caret" aria-hidden="true">
+          ▸
+        </span>
+        {group.heading}
+      </button>
+      {open && rows}
+    </section>
   )
 }
 
@@ -82,6 +124,8 @@ export function TableMenu({ client, server, onShowTables }: { client: ProjectCli
   const t = useT()
   const [open, setOpen] = useState(false)
   const [tables, setTables] = useState<TableSummary[] | null>(null)
+  // One row, so one QR at most; the shortcut holds its own because it is its own surface.
+  const [qrOpen, setQrOpen] = useState(false)
   const caret = useRef<HTMLButtonElement>(null)
   useEffect(() => {
     if (!open) return
@@ -116,7 +160,7 @@ export function TableMenu({ client, server, onShowTables }: { client: ProjectCli
             <p>{t('tables.loading')}</p>
           ) : newest ? (
             <ul>
-              <TableRow table={newest} server={server} rev={client.rev} />
+              <TableRow table={newest} server={server} rev={client.rev} qrOpen={qrOpen} onQr={setQrOpen} />
             </ul>
           ) : (
             <p>{t('tables.menu.none')}</p>
@@ -139,41 +183,80 @@ export function TableMenu({ client, server, onShowTables }: { client: ProjectCli
 // The thumbnail is the whole table drawn at full size and then shrunk by CSS, not a small
 // drawing: the renderer places cards by millimetre but writes its labels in pixels, so scaling
 // the finished picture is what makes a table at 160 px wide look like the table and not like a
-// heap of text. Four times the box it sits in, shrunk to a quarter by .byd-tables-mini-inner.
+// heap of text. Eight times the box it sits in, shrunk to an eighth by .byd-tables-mini-inner.
 const THUMBNAIL = { w: 640, h: 384 }
 
-// One table, live: the same connection the TV makes (seatless, sees only what is public), so
-// what the row says about the table is what the table itself says.
-function TableRow({ table, server, rev }: { table: TableSummary; server: string | null; rev: number }) {
+// One table, one row (#176). A card with six ways stacked under it was 470 px of column, so
+// four tables nobody had touched pushed the one being played off the screen. The row is the
+// picture, the facts, and **one** way standing ready; the rest are one press away in its menu.
+//
+// Live, as before: the same connection the TV makes (seatless, sees only what is public), so what
+// the row says about the table is what the table itself says. A row that is not drawn — a folded
+// group — makes no connection at all, which is what keeps the cost with what is on the screen.
+function TableRow({ table, server, rev, qrOpen, onQr }: { table: TableSummary; server: string | null; rev: number; qrOpen: boolean; onQr(open: boolean): void }) {
   const t = useT()
   const url = server ? server.replace(/^http/, 'ws') : `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
   const { client, view, observers, room } = useTableClient({ url, sessionId: table.id, seat: null, owner: true })
   // Ending a table is the one thing here that cannot be looked at afterwards (C9), so it is
-  // asked about first, and the question gives the focus back to the button that opened it.
+  // asked about first, and the question gives the focus back to what is still on the screen when
+  // it closes — the menu is gone by then, so that is the button the menu hangs from.
   const [asking, setAsking] = useState(false)
-  // The QR belongs beside the table it lets a phone into, and only when it is wanted: a wall of
-  // codes in a list is unreadable, and the code is meant to be held up to a camera.
-  const [showQr, setShowQr] = useState(false)
-  const askRef = useRef<HTMLButtonElement>(null)
+  const moreRef = useRef<HTMLButtonElement>(null)
   const [refocus, setRefocus] = useState(false)
   useEffect(() => {
     if (!refocus) return
-    askRef.current?.focus()
+    moreRef.current?.focus()
     setRefocus(false)
   }, [refocus])
   const name = tableName(table.id)
-  // Sitting down from the editor takes the next free seat, as the phone's seat picker does
-  // (K12). With every seat taken there is nothing to sit on, and the row says so instead.
+  // Sitting down from the editor takes the next free seat, as the phone's seat picker does (K12).
   const free = view?.seats.find((s) => s.name === null)?.id ?? null
   // A table the log has been locked on (C9) is over: it is still here to be read, never played.
-  const ended = view?.ended === true
+  // The list already knows it before anything connects — which is how an ended table can be filed
+  // under its own fold without a socket — and the table itself says so the moment it is ended.
+  const ended = table.ended || view?.ended === true
+  // Which of the three this row is, said as a word and not only as a place in the column: a
+  // reader who lands on the row itself never saw the heading it came under.
+  const state: TableGroupId = ended ? 'ended' : groupOf(table)
   // A table keeps the version it was refreshed to (C7): the project can move on without it, and
   // then the cards on the table are not the cards in the editor. The row has to say so — but not
   // about a table that has ended, which can never be updated again and is not behind anything.
   const stale = !ended && table.version !== `rev-${rev}`
+  // Every seat taken is not a reason to hide the way in; it is a reason to say why it is shut.
+  const full = !ended && view !== null && free === null
+
+  // The one way that stands ready — outlined, not filled. It is the row's first action and not
+  // the view's: "Uppdatera bordet" in the header is the view's, and L13 allows exactly one filled
+  // thing in a view. Four live tables would otherwise be four more.
+  //
+  // Playing from here, because the designer is usually alone when she playtests and the TV is
+  // then an extra step (beslut 2026-09-17) — except on a table that is over, which cannot be
+  // played at all and whose one way in is the screen that shows how it ended. While the table has
+  // not answered yet there is no seat to take; the word stays where it is rather than swapping
+  // under the pointer, and the row's own lines say why it cannot be had.
+  const ready = ended ? (
+    <Way href={tvUrl(table.id, server, undefined, true)} label="tables.way.tv" table={name} ready />
+  ) : free ? (
+    <Way href={onlineUrl(table.id, server, free, true, t)} label="tables.way.play" table={name} ready />
+  ) : (
+    <button type="button" className="byd-tables-ready" disabled>
+      {t('tables.way.play')} <span className="byd-offscreen">{name}</span>
+    </button>
+  )
+
+  // The other five, in the menu (beslut 2026-09-17): the TV view among them. An ended table has
+  // no seat to take and nothing left to end, so its menu is the three that are still about
+  // something.
+  const ways: WayItem[] = [
+    ...(ended ? [] : [{ id: 'tv', href: tvUrl(table.id, server, undefined, true), label: 'tables.way.tv' as Key }]),
+    { id: 'table', href: tableModeUrl(table.id, server, true), label: 'tables.way.tableMode' as Key },
+    { id: 'watch', href: observeUrl(table.id, server, true, t), label: 'tables.way.watch' as Key },
+    { id: 'qr', label: 'tables.qr' as Key, expanded: qrOpen, press: () => onQr(!qrOpen) },
+    ...(ended ? [] : [{ id: 'end', label: 'tables.end' as Key, apart: true, press: () => setAsking(true) }]),
+  ]
 
   return (
-    <li className="byd-table-row" data-table={table.id} data-stale={stale} data-ended={ended}>
+    <li className="byd-table-row" data-table={table.id} data-state={state} data-stale={stale} data-ended={ended}>
       {/* The table itself, small: the very snapshot the TV is drawing from, through the one
           renderer for tables (K9). A picture of a live game says "this is being played" faster
           than any word, and the words beside it carry the same facts for a screen reader. */}
@@ -185,53 +268,163 @@ function TableRow({ table, server, rev }: { table: TableSummary; server: string 
       <div className="byd-tables-info">
         <p className="byd-tables-head">
           <strong>{table.version}</strong>
+          <span className="byd-tables-state" data-state={state}>
+            {t(STATE_WORD[state])}
+          </span>
           {stale && <em className="byd-tables-stale">{t('tables.stale', { rev })}</em>}
-          <span>{ended ? t('tables.ended') : seated(view?.seats ?? null, observers, t)}</span>
-          <span>{lastMove(table.lastAt, t)}</span>
         </p>
-        <div className="byd-tables-ways">
-          <Way href={tvUrl(table.id, server, undefined, true)} label="tables.way.tv" table={name} primary />
-          <Way href={tableModeUrl(table.id, server, true)} label="tables.way.tableMode" table={name} />
-          {ended ? null : free ? <Way href={onlineUrl(table.id, server, free, true, t)} label="tables.way.play" table={name} /> : <span className="byd-tables-note">{t('tables.full')}</span>}
-          <Way href={observeUrl(table.id, server, true, t)} label="tables.way.watch" table={name} />
-          <button type="button" aria-expanded={showQr} onClick={() => setShowQr((on) => !on)}>
-            {t('tables.qr')} <span className="byd-offscreen">{name}</span>
-          </button>
-          {!ended && (
-            <button type="button" data-kind="quiet" ref={askRef} onClick={() => setAsking(true)}>
-              {t('tables.end')} <span className="byd-offscreen">{name}</span>
-            </button>
-          )}
-        </div>
-        {showQr && room && (
-          <div className="byd-tables-qr">
-            <QrCode text={joinUrl(room.code, server)} />
-            <Way href={joinUrl(room.code, server)} label="tables.way.join" table={name} />
-          </div>
-        )}
-        {asking && (
-          <Question
-            className="byd-tables-question"
-            label={t('tables.end.of', { table: name })}
-            confirm={t('tables.end.yes')}
-            cancel={t('editor.cancel')}
-            onConfirm={() => {
-              // The same connection the row is already listening on, as the table itself: this is
-              // the path every other end goes through (C9), not a second one.
-              void client?.send({ v: 'session.end' })
-              setAsking(false)
-              setRefocus(true)
-            }}
-            onCancel={() => {
-              setAsking(false)
-              setRefocus(true)
-            }}
-          >
-            {t('tables.end.question', { table: name })}
-          </Question>
-        )}
+        {!ended && <p className="byd-tables-line">{seated(view?.seats ?? null, observers, t)}</p>}
+        <p className="byd-tables-line">
+          {lastMove(table.lastAt, t)}
+          {full && ` · ${t('tables.full')}`}
+        </p>
       </div>
+      <div className="byd-tables-go">
+        {ready}
+        <RowWays table={name} ways={ways} button={moreRef} />
+      </div>
+      {/* The QR belongs beside the table it lets a phone into, and only when it is wanted: a wall
+          of codes in a list is unreadable, and the code is meant to be held up to a camera. */}
+      {qrOpen && room && (
+        <div className="byd-tables-qr">
+          <QrCode text={joinUrl(room.code, server)} />
+          <Way href={joinUrl(room.code, server)} label="tables.way.join" table={name} />
+        </div>
+      )}
+      {asking && (
+        <Question
+          className="byd-tables-question"
+          label={t('tables.end.of', { table: name })}
+          confirm={t('tables.end.yes')}
+          cancel={t('editor.cancel')}
+          onConfirm={() => {
+            // The same connection the row is already listening on, as the table itself: this is
+            // the path every other end goes through (C9), not a second one.
+            void client?.send({ v: 'session.end' })
+            setAsking(false)
+            setRefocus(true)
+          }}
+          onCancel={() => {
+            setAsking(false)
+            setRefocus(true)
+          }}
+        >
+          {t('tables.end.question', { table: name })}
+        </Question>
+      )}
     </li>
+  )
+}
+
+// What the row says it is, in a word. The group heading says the same thing over the whole
+// group, and the word says it again on the row, because a state carried by nothing but a place
+// in the column — or by a coloured edge — is a state a reader can miss (L12).
+const STATE_WORD: Record<TableGroupId, Key> = { played: 'tables.state.played', untouched: 'tables.state.untouched', ended: 'tables.ended' }
+
+// One entry in the row's menu: a way into the table, or something the row does to itself.
+type WayItem = { id: string; label: Key; href?: string; press?(): void; expanded?: boolean; apart?: boolean }
+
+// The five other ways, behind one press (#176). A real menu (APG): the button says what it opens
+// and whether it is open, the arrows move inside it, Enter and Space take the item under them —
+// Space with the default taken away, or the page scrolls out from under the menu — and Escape
+// closes it and gives the focus back to the button it came from.
+//
+// It is drawn only while it is open, and the button that opens it is drawn always: a control that
+// appears when a pointer rests on a row is not there at all for a thumb or a keyboard (#184).
+function RowWays({ table, ways, button }: { table: string; ways: WayItem[]; button: RefObject<HTMLButtonElement | null> }) {
+  const t = useT()
+  const [open, setOpen] = useState(false)
+  const menuId = useId()
+  const { itemProps, focus } = useRoving({ ids: ways.map((w) => w.id), selected: null, orientation: 'vertical' })
+  // The keys land inside the menu the moment it opens, so the first arrow moves within it rather
+  // than from wherever the pointer last was. On opening only: the menu must not take the focus
+  // back from what the reader does inside it.
+  useEffect(() => {
+    if (open) focus(ways[0]?.id)
+  }, [open])
+  const close = () => {
+    setOpen(false)
+    button.current?.focus()
+  }
+  return (
+    <>
+      <button
+        ref={button}
+        type="button"
+        className="byd-tables-more"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        {...(open ? { 'aria-controls': menuId } : {})}
+        aria-label={t('tables.more.of', { table })}
+        onClick={() => setOpen((was) => !was)}
+      >
+        <span aria-hidden="true">▾</span>
+      </button>
+      {open && (
+        <div
+          id={menuId}
+          className="byd-tables-menu"
+          role="menu"
+          aria-label={t('tables.ways.of', { table })}
+          // The focus leaving the menu takes the menu with it: a list of ways hanging over a row
+          // nobody is on is a list about nothing. The button it hangs from is the one place that
+          // does not count — pressing it while the menu is open moves the focus there *and*
+          // toggles, and a menu that closed on the move would open again on the toggle and never
+          // shut at all.
+          onBlur={(event) => {
+            if (event.relatedTarget !== button.current && !event.currentTarget.contains(event.relatedTarget)) setOpen(false)
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== 'Escape' || event.defaultPrevented) return
+            event.preventDefault()
+            close()
+          }}
+        >
+          {ways.map((way) => {
+            const roving = itemProps(way.id)
+            const take = (el: HTMLElement | null) => {
+              close()
+              if (way.href) el?.click()
+              else way.press?.()
+            }
+            const props = {
+              ...roving,
+              role: 'menuitem',
+              className: way.apart ? 'byd-tables-way byd-tables-way-apart' : 'byd-tables-way',
+              onKeyDown: (event: ReactKeyboardEvent<HTMLElement>) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  // Space is the browser's scroll key until something says otherwise, and a menu
+                  // that scrolls the column away under itself is worse than one that does nothing.
+                  event.preventDefault()
+                  take(event.currentTarget)
+                  return
+                }
+                roving.onKeyDown(event)
+              },
+            }
+            const item = way.href ? (
+              <a key={way.id} {...props} href={way.href} target="_blank" rel="noreferrer" aria-label={t('tables.way.aria', { label: t(way.label), table })} onClick={() => setOpen(false)}>
+                {t(way.label)}
+              </a>
+            ) : (
+              <button key={way.id} {...props} type="button" {...(way.expanded === undefined ? {} : { 'aria-expanded': way.expanded })} onClick={() => take(null)}>
+                {t(way.label)} <span className="byd-offscreen">{table}</span>
+              </button>
+            )
+            // Ending a table is not a way into it (C9): it is set apart by a line of its own, and
+            // it is the last thing in the menu rather than one more entry in the same run.
+            return way.apart ? (
+              <Fragment key={way.id}>
+                <hr className="byd-tables-cut" />
+                {item}
+              </Fragment>
+            ) : (
+              item
+            )
+          })}
+        </div>
+      )}
+    </>
   )
 }
 
@@ -239,10 +432,10 @@ function TableRow({ table, server, rev }: { table: TableSummary; server: string 
 // The label on the screen is short; the name a screen reader hears says which table it leads to
 // and that a new tab opens, because these four words repeat once per table and the visible row
 // is what tells them apart for the eye.
-function Way({ href, label, table, primary = false }: { href: string; label: Key; table: string; primary?: boolean }) {
+function Way({ href, label, table, ready = false }: { href: string; label: Key; table: string; ready?: boolean }) {
   const t = useT()
   return (
-    <a href={href} target="_blank" rel="noreferrer" aria-label={t('tables.way.aria', { label: t(label), table })} className={primary ? 'byd-editor-primary byd-primary' : undefined}>
+    <a href={href} target="_blank" rel="noreferrer" aria-label={t('tables.way.aria', { label: t(label), table })} className={ready ? 'byd-secondary' : undefined}>
       {t(label)}
     </a>
   )
