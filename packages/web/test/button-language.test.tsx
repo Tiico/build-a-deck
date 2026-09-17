@@ -1183,6 +1183,7 @@ describe('every suite that measures a surface', () => {
       'online-viewport.test.tsx',
       'player-viewport.test.tsx',
       'reduced-motion.test.ts',
+      'rules-column.test.tsx',
       'rules-layout.test.tsx',
       'status-css.test.ts',
       'table-grab.test.ts',
