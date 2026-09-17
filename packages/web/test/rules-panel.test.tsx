@@ -249,3 +249,38 @@ describe('the rulebook as a booklet (B7)', () => {
     expect(screen.queryByRole('button', { name: 'Häfte för tryck' })).toBeNull()
   })
 })
+
+describe('a heading kept open while its level is chosen (#217)', () => {
+  it('stays open when the focus goes from the field to the level beside it', async () => {
+    await openRules()
+    fireEvent.click(within(book()).getByRole('heading', { name: 'Så spelar ni' }))
+    const field = await within(book()).findByLabelText('Rubrik h1')
+    const level = within(book()).getByLabelText('Nivå på h1')
+    // Leaving the field for the chooser beside it is staying, not going — the same rule the
+    // picture's two fields already follow.
+    fireEvent.blur(field, { relatedTarget: level })
+    await waitFor(() => expect(within(book()).queryByLabelText('Nivå på h1')).toBeTruthy())
+    expect(within(book()).getByLabelText('Rubrik h1')).toBeTruthy()
+  })
+
+  it('takes the level the chooser is set to, and draws the heading at it', async () => {
+    await openRules()
+    fireEvent.click(within(book()).getByRole('heading', { name: 'Så spelar ni' }))
+    const field = await within(book()).findByLabelText('Rubrik h1')
+    const level = within(book()).getByLabelText('Nivå på h1')
+    fireEvent.blur(field, { relatedTarget: level })
+    fireEvent.change(level, { target: { value: '2' } })
+    // An open block shows its fields and not the heading, so the level is read off the book once
+    // the block is closed again — which is where the reader meets it.
+    fireEvent.blur(level, { relatedTarget: document.body })
+    await waitFor(() => expect(within(book()).getByRole('heading', { level: 3, name: 'Så spelar ni' })).toBeTruthy())
+  })
+
+  it('closes when the focus leaves the heading row altogether', async () => {
+    await openRules()
+    fireEvent.click(within(book()).getByRole('heading', { name: 'Så spelar ni' }))
+    const field = await within(book()).findByLabelText('Rubrik h1')
+    fireEvent.blur(field, { relatedTarget: document.body })
+    await waitFor(() => expect(within(book()).queryByLabelText('Rubrik h1')).toBeNull())
+  })
+})
