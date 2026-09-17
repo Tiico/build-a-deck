@@ -55,6 +55,15 @@ export const enEditor = {
 
   'wall.cards.one': '{n} card',
   'wall.cards.other': '{n} cards',
+  'wall.group.without': 'Without {column}',
+  'wall.deck': 'The deck',
+  'wall.groups': 'Groups in the deck',
+  'wall.groups.folded': 'Groups in the deck, folded',
+  'wall.fold.in': 'Fold the jump column',
+  'wall.fold.out': 'Unfold the jump column',
+  'wall.groupedBy': 'Grouped by',
+  'wall.grouping.off': 'No grouping',
+  'wall.tile': '{group}, {n} cards',
   /* The crown (#128, #130): a box says its state, never only its name. */
   'crown.box.state': '{name}: {state}',
   'crown.box.count': '{name} ({n})',
@@ -72,6 +81,7 @@ export const enEditor = {
   'wall.density.more': 'More cards per row',
   'wall.density.less': 'Fewer and larger cards',
   'wall.foot.cards': '{n} cards · {px} px wide',
+  'wall.foot.found': '{shown} of {total} cards · {px} px wide',
   'wall.foot.checked': 'No remarks',
   'wall.foot.remarks.one': 'One remark',
   'wall.foot.remarks.other': '{n} remarks',

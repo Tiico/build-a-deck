@@ -3088,6 +3088,65 @@ Det som måste vara kvar i det blockerande arket är allt en spelare eller ett b
 `packages/web/src/App.tsx` håller den dynamiska importen och Suspense-gränsen.
 `packages/web/test/felt-font.test.ts` är grinden: den bygger appen, läser det blockerande arket, öppnar `/editor` i Chromium och kontrollerar att editorns ark hämtas och verkligen gäller.
 
+### L21. Kortväggen står i band, och leken har en innehållsförteckning (prototypat och byggt 2026-09-17, #179)
+
+Beslutet, i en mening:
+
+> Kortväggen grupperas efter den kolumn mallen redan grupperar efter, varje grupp får en rubrik som står kvar medan gruppen rullar förbi, och till vänster står lekens innehållsförteckning — som går att fälla ihop till en 66 px remsa, och som kommer ihåg sig.
+
+**Problemet var inte att väggen var lång, utan att den var stum.**
+Mätt på `Stora leken` (308 kort) vid 1 440 × 900 var väggen 8 637 px i en 734 px ruta — 11,8 skärmar av samma sak — utan sökning, utan gruppering och utan något som sa var i leken man stod.
+Datafliken hade både en sökning över alla fält och filterbrickor per kolumn; hemvyn hade ingetdera.
+Mallfliken visste dessutom redan att leken hade en gruppering, och väggen använde inte svaret.
+
+**Väggen blir längre, och det är avsikten.**
+Grupprubrikerna kostar höjd: 10 559 → 13 050 px vid 1 280 och 9 256 → 11 492 px vid 1 440, alltså 1,24× i båda fallen.
+L8 säger att hela leken ska synas, och förslaget ger den en ordning och en väg tillbaka — inte ett filter som döljer kort.
+Ingen grupp är hopfälld som förval, och en sökning smalnar av väggen utan att ta bort något ur leken.
+
+**Hoppspalten kostade en kortspalt, och går därför att fälla ihop.**
+Det stod inte i issuet och kom ur mätningen: spaltens 172 px räckte för att tappa en kortspalt hela vägen upp till 1 920.
+Det hopfällda läget är en 66 px remsa och inte en kant — samma grupper i samma ordning, i kortens egna huvudfärger från väggen bredvid, med namnet borta och antalet kvar, och brickans höjd proportionell mot gruppens storlek så att remsan läses som ett tvärsnitt av leken.
+Mätt i det byggda bygget ger det tillbaka kortspalten vid båda skrivbordsbredderna: 6 → 7 spalter vid 1 280 och 7 → 8 vid 1 440, till en längd på 11 752 respektive 10 198 px.
+Kontrollen heter `Fäll ihop hoppspalten` / `Fäll ut hoppspalten`, bor i krönet, är en riktig `aria-expanded`-knapp på 44 px och har ingen hover-only-väg in.
+Förvalet är öppet: innehållsförteckningen ska vara det man möter, inte något man letar upp.
+
+**«Var är jag» hänger aldrig på färgen ensam.**
+Två grupper kan dela huvudfärg på väggen — `Trap+` och `Trap-` gör det — så den hopfällda remsan märker gruppen på tre kanaler: samma blå märke som den öppna spalten sätter framför gruppen, en ljusare bricka, och antalet som står fram på den.
+Brickorna är riktiga knappar med `aria-current` och uppläsbara namn (`Playcard, 132 kort`), aldrig färgrutor, och de håller 44 px i **båda** leder.
+Den klistrade grupprubriken står kvar av samma skäl: rubriken säger namnet, remsan säger var i leken namnet ligger.
+
+**Antalet på brickan är verktygets text på lekens färg, och följer därför L11.**
+Huvudfärgen är formgivarens och kan vara vilken som helst, så bläcket räknas ut per färg i stället för att skrivas en gång i en stilmall: vitt eller det mörka bläcket, det som läses, och underlaget viker undan tills talet når 4,5:1.
+Brickan dämpas därför inte med ett filter — ett filter tar med sig talet ned i underlaget det står på — utan har två uträknade underlag, ett tänt för gruppen man står i och ett tystare för de andra, båda mätta mot samma bläck.
+
+**Tre val, tre minnen, inga kopplingar.**
+Tätheten (#128), om väggen grupperas alls, och om hoppspalten är hopfälld är tre skilda ihågkomna val i webbläsaren.
+Att byta täthet får inte tyst gruppera om väggen: en dold koppling är svår att upptäcka och svår att ångra.
+*Vilken* kolumn väggen grupperas efter är däremot lekens och inte webbläsarens — `typ` i det här spelet är ingenting i nästa — så väggen öppnar på mallens egen kolumn, och en kolumn vald över den står så länge väggen är öppen.
+
+**Gruppen utan värde heter `Utan <kolumn>`.**
+Alltså `Utan typ` när leken grupperas efter `typ`: den säger vilket svar som saknas och inte bara *att* ett svar saknas.
+Det är ett verktygsord och följer läsarens språk (A4) — `Utan typ` / `Without type`.
+Bandet är nycklat på att inte ha något värde alls och aldrig på orden det kallas, så en lek som råkar ha en grupp som heter `Utan typ` får två band och inte ett.
+
+**En grupp utan kort får inget band, och ingen rad i innehållsförteckningen.**
+`groupsOf` behåller med flit en grupp mallen har formgett efter att dess sista kort försvunnit, och gör rätt i det — ett utseende utan något att visa sig på måste ändå gå att hitta och ändra.
+Men det görs på mallfliken, där ett utseende formges.
+Väggen är leken, och det L8 begär av den är att hela leken syns: ett tomt band visar inget kort, lägger inget till det, och tar en skärmhöjd av lekens egen höjd för att säga det.
+Innehållsförteckningen är dessutom väggens innehåll — en rad som hoppar till ingenting är samma tomma löfte som en pil som pekar mot en tom lista — och remsan skulle behöva ge en nollgrupp en 44 px bricka i en remsa vars hela läsning är att höjd betyder storlek.
+Det är också den enda regeln som överlever en sökning: under ett ord som inget `Location` svarar på är `Location`-bandet borta, och det vore egendomligt om samma band stod tomt kvar när leken själv tömt det.
+
+**Lekens slut är en plats skrollningen inte kan beskriva.**
+Det finns ingenting under det sista bandet att rulla upp förbi det, så väggen tar slut med de sista banden kvar mitt på skärmen — på en riktig lek låg de två sista 604 respektive 129 px bortom allt väggen kunde skrolla, och deras toppar nådde aldrig vikningen.
+Läst på topparna ensamma skulle märket stanna mitt i leken, så ett hopp ner i svansen hade lämnat det på ett band läsaren redan passerat.
+När väggen står vid sitt slut syns de strandsatta banden samtidigt och ingen skrollposition kan skilja dem åt, så läsarens eget svar får gälla: ett hopp ner i svansen står kvar på det band hon hoppade till, och den som bara skrollat till botten får det sista bandet, för det är lekens slut hon tittar på.
+En vägg som inte skrollar alls rapporterar inget utrymme, och det är inte samma sak som en vägg vid sitt slut — det är en läsare vid dess början.
+
+**Var det bor.**
+`packages/web/src/editor/bands.ts` gör banden, läser gruppens färg ur mallen genom `paintOf` (L16) och räknar ut brickans bläck; `grouping.ts` håller de två nya minnena vid sidan av `density.ts`; `DeckWall.tsx` ritar krönet, spalten, remsan och banden; sökningen är dataflikens egen (`filtering.ts`), oförändrad.
+`deck-wall-groups.test.tsx`, `editor-bands.test.ts` och `editor-css.test.ts` är grinden.
+
 ---
 
 ## I. Öppna frågor

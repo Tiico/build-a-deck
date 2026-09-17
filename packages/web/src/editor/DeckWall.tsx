@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useId, useMemo, useRef, useState } from 'react'
 import type { ProjectDoc } from '@byd/server'
 import type { Frame, Motif, Nudge, Warning } from '@byd/template'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
@@ -8,6 +8,12 @@ import { DENSITY, DENSITY_DEFAULT, heldDensity, rememberDensity } from './densit
 import { previewIcons } from './assets.js'
 import { previewFonts } from './fonts.js'
 import { deckIssues, groupIssues, issueDetail, issueWords } from './checks.js'
+import { groupColumn } from './groups.js'
+import { bandAtTop, bandPaints, bandsOf, tileColours } from './bands.js'
+import { filterRows, isFiltering, noFilter, type FilterState } from './filtering.js'
+import { fieldsOf } from './fields.js'
+import { heldGrouped, heldJumpOpen, rememberGrouped, rememberJumpOpen } from './grouping.js'
+import { useRoving } from './roving.js'
 import { framingOf, measuredSpots, objections } from './framing.js'
 import { frameWindow } from '@byd/template'
 import { assetUrl, isAssetRef } from './assets.js'
@@ -53,7 +59,7 @@ const ARM_PX = 90
 const CARD_PX = (CARD_STANDARD_63x88.physical.widthMm / 25.4) * 96
 
 // What the crown's boxes are, so that only one of them is ever open.
-type Box = 'eyes' | 'guides' | 'checks'
+type Box = 'eyes' | 'guides' | 'grouping' | 'checks'
 
 // The deck as a wall (C as the home view): every row as a card, copies and faults on each, the
 // whole deck visible at once — a balance change on forty cards is seen as one thing. Beside it
@@ -77,10 +83,27 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
   const [step, setStep] = useState(heldDensity)
   const [box, setBox] = useState<Box | null>(null)
   const [openGroup, setOpenGroup] = useState<string | null>(null)
+  // Which band stands at the top of the view, and the boxes the answer is measured from.
+  const [atTop, setAtTop] = useState<string | null>(null)
+  // The same question the data tab asks of the same fields (#130): one search, reused, so a term
+  // that finds a card there finds it here. It is a view of the deck and never touches `doc.rows`.
+  const [filter, setFilter] = useState<FilterState>(noFilter)
+  // Whether the wall stands in bands is this browser's, and which column it stands in is this
+  // deck's: the template has already said what its groups are, and a column chosen over that
+  // answer belongs to the deck it was chosen in (see `grouping.ts`).
+  const [grouped, setGrouped] = useState(heldGrouped)
+  const [byColumn, setByColumn] = useState<string | null>(null)
+  // The table of contents costs a card column at every width the editor is measured at, so it can
+  // be folded to a strip — and the choice is this browser's, opening open.
+  const [jumpOpen, setJumpOpen] = useState(heldJumpOpen)
+  const jumpId = useId()
+  const deckRef = useRef<HTMLDivElement>(null)
+  const sections = useRef(new Map<string, HTMLElement>())
   // A drawer hands the focus back to the box it came from when it closes (#133), so each box has
   // to be findable from the drawer it opened.
   const eyesBox = useRef<HTMLButtonElement>(null)
   const guidesBox = useRef<HTMLButtonElement>(null)
+  const groupingBox = useRef<HTMLButtonElement>(null)
   const checksBox = useRef<HTMLButtonElement>(null)
   const onWarnings = useCallback((cardRef: string, w: Warning[]) => {
     setWarnings((m) => (m[cardRef] === w.length ? m : { ...m, [cardRef]: w.length }))
@@ -101,7 +124,86 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
     })
   const px = arm ? ARM_PX : (DENSITY[step] ?? DENSITY[DENSITY_DEFAULT] ?? 150)
   const eyeNow = EYES.find((e) => e.key === eye) ?? { key: 'normal', name: 'wall.eye.normal' as const }
+  // The wall groups by the column the template already groups by (L3): the deck has said once
+  // what its groups are, and the home view reads that answer rather than asking a second time.
+  const columns = ['id', ...fieldsOf(doc)]
+  const column = grouped ? (byColumn ?? groupColumn(doc)) : null
+  const shown = isFiltering(filter) ? filterRows(doc.rows, columns, filter) : doc.rows
+  const bands = bandsOf(doc, shown, column, t('wall.group.without', { column: column ?? '' }))
+  // Read off the whole deck and not off what a search left standing: the strip is the deck's own
+  // colours, and a band does not change colour because a term narrowed it.
+  const paints = useMemo(() => (faceTemplate ? bandPaints(faceTemplate, doc, column) : new Map<string, string>()), [faceTemplate, doc, column])
+  // Where in the deck the eye has got to: the band standing at the top of the view. It is the one
+  // thing eleven screens of cards never said, and both shapes of the jump column say it.
+  const here = atTop === null || !bands.some((b) => (b.value ?? '') === atTop) ? (bands[0] ? (bands[0].value ?? '') : null) : atTop
+  // The jump column is one tab stop with the arrows moving inside it (APG), open and folded alike:
+  // it is a list of the same eight things in the same order either way, so it is one list.
+  const roving = useRoving({ ids: bands.map((band) => band.value ?? ''), selected: here, orientation: 'vertical' })
+  // A jump moves the focus to the band's first card and not merely the scroll position: a reader
+  // on a keyboard who was only scrolled to would find the next Tab starting over from the deck.
+  const jumpTo = (key: string) => {
+    const section = sections.current.get(key)
+    const deck = deckRef.current
+    if (!section || !deck) return
+    const top = section.offsetTop - deck.offsetTop
+    if (typeof deck.scrollTo === 'function') deck.scrollTo({ top, behavior: 'smooth' })
+    else deck.scrollTop = top
+    setAtTop(key)
+    ;(section.querySelector('[data-card-ref]') as HTMLElement | null)?.focus({ preventScroll: true })
+  }
+  // Which band the view is standing in is read off the same measurement the jump writes, so the
+  // mark and the jump can never disagree about where the top of the view is.
+  const onDeckScroll = () => {
+    const deck = deckRef.current
+    if (!deck) return
+    // The room left is part of the question: the last bands' tops lie beyond everything the wall
+    // can scroll, so without it the mark could never reach them (#179).
+    setAtTop(bandAtTop([...sections.current].map(([key, el]) => ({ key, top: el.offsetTop - deck.offsetTop })), deck.scrollTop, deck.scrollHeight - deck.clientHeight, atTop))
+  }
   if (!faceTemplate) return <p>{t('template.faceMissing', { face })}</p>
+  // One card, drawn the same whether it stands in a band or on an ungrouped wall.
+  const card = ({ id: cardRef, fields: row }: ProjectDoc['rows'][number]) => {
+    const copies = Number(row['antal'] ?? 1)
+    // The badge stays this card's own trouble — an unknown icon, text that will not fit. A
+    // physical fault is nearly always the template's, and saying it on every card would be forty
+    // red badges for one mistake; the report in the crown says it once.
+    const count = warnings[cardRef] ?? 0
+    return (
+      <div
+        key={cardRef}
+        role="listitem"
+        className="byd-wall-card"
+        data-card-ref={cardRef}
+        // A jump from the table of contents moves the focus to the band's first card and not only
+        // the scroll position, so every card has to be something focus can be put on.
+        tabIndex={-1}
+        aria-selected={selectedRow === cardRef ? 'true' : 'false'}
+        {...(marked.has(cardRef) ? { 'data-marked': 'true' } : {})}
+        onClick={() => onSelectRow(cardRef)}
+      >
+        <CardPreview
+          id={`wall-${cardRef}`}
+          face={faceTemplate}
+          row={row}
+          icons={icons}
+          fonts={fonts}
+          scale={px / CARD_PX}
+          assetBase={assetBase}
+          motifs={motifs}
+          palette={doc.palette}
+          framing={doc.framing ? framingOf(doc, cardRef) : undefined}
+          onSelectElement={onSelectElement}
+          onWarnings={(w) => onWarnings(cardRef, w)}
+        />
+        {copies > 1 && <span className="byd-wall-copies" data-copies>×{copies}</span>}
+        {count > 0 && (
+          <span className="byd-wall-warnings" data-warnings>
+            {count}
+          </span>
+        )}
+      </div>
+    )
+  }
   return (
     <div className="byd-wall-view">
       <EyeFilters />
@@ -109,6 +211,14 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
           eye the deck is read with is the reason that rule exists — a simulation left on without
           saying so is worse than no simulation at all (E5). */}
       <Crown>
+        <input
+          type="search"
+          className="byd-crown-search"
+          aria-label={t('table.search')}
+          placeholder={t('table.search.placeholder')}
+          value={filter.query}
+          onChange={(event) => setFilter({ ...filter, query: event.target.value })}
+        />
         <CrownBox name={t('wall.eyes')} state={t(eyeNow.name)} open={box === 'eyes'} onToggle={() => toggle('eyes')} boxRef={eyesBox} />
         <CrownBox
           name={t('wall.guides')}
@@ -128,6 +238,32 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
             <span aria-hidden="true">+</span>
           </button>
         </div>
+        <CrownBox
+          name={t('wall.groupedBy')}
+          state={column ?? t('wall.grouping.off')}
+          open={box === 'grouping'}
+          onToggle={() => toggle('grouping')}
+          boxRef={groupingBox}
+        />
+        {/* The way in and out of the strip is a word in the crown and not a corner that appears
+            under a pointer: a reader who has never folded anything has no way of guessing that the
+            column to the left is foldable, and a hover-only door is the very thing #184 is taking
+            out of the editor elsewhere. */}
+        {bands.length > 0 && (
+          <button
+            type="button"
+            className="byd-crown-fold"
+            aria-expanded={jumpOpen}
+            aria-controls={jumpId}
+            onClick={() => {
+              setJumpOpen(!jumpOpen)
+              rememberJumpOpen(!jumpOpen)
+            }}
+          >
+            <span aria-hidden="true">{jumpOpen ? '\u27E8' : '\u27E9'}</span>
+            {jumpOpen ? t('wall.fold.in') : t('wall.fold.out')}
+          </button>
+        )}
         <CrownBox name={t('wall.checks.title')} count={groups.length} open={box === 'checks'} onToggle={() => toggle('checks')} boxRef={checksBox} end />
       </Crown>
       {box === 'eyes' && (
@@ -149,68 +285,146 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
           </label>
         </CrownDrawer>
       )}
+      {box === 'grouping' && (
+        <CrownDrawer label={t('wall.groupedBy')} opener={groupingBox} onClose={close}>
+          <button
+            type="button"
+            className="byd-choice"
+            aria-pressed={column === null}
+            onClick={() => {
+              setGrouped(false)
+              rememberGrouped(false)
+            }}
+          >
+            {t('wall.grouping.off')}
+          </button>
+          {fieldsOf(doc).map((field) => (
+            <button
+              key={field}
+              type="button"
+              className="byd-choice"
+              aria-pressed={column === field}
+              onClick={() => {
+                setGrouped(true)
+                rememberGrouped(true)
+                setByColumn(field)
+              }}
+            >
+              {field}
+            </button>
+          ))}
+        </CrownDrawer>
+      )}
       {box === 'checks' && (
         <CrownDrawer label={t('wall.checks.title')} opener={checksBox} onClose={close}>
           <Checks groups={groups} errors={errors.length} words={words} openGroup={openGroup} onOpenGroup={setOpenGroup} t={t} />
         </CrownDrawer>
       )}
       {/* The wall is the only thing on this surface that scrolls. */}
-      <div className="byd-wall-work">
+      <div className="byd-wall-work" data-fold={bands.length === 0 ? 'none' : jumpOpen ? 'open' : 'folded'}>
+        {/* Folded, the column is a 66 px strip and not an edge: the same groups in the same order,
+            the name dropped and the count kept. A tile is a button with a readable name of its
+            own, never a bare swatch — and "where am I" survives on three channels, because two
+            groups may well share a head colour on the wall beside it. */}
+        {bands.length > 0 && !jumpOpen && (
+          <nav className="byd-wall-rail" id={jumpId} aria-label={t('wall.groups.folded')}>
+            {bands.map((band) => {
+              const key = band.value ?? ''
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  data-tile={key}
+                  {...roving.itemProps(key)}
+                  aria-current={here === key}
+                  aria-label={t('wall.tile', { group: band.name, n: band.cards.length })}
+                  title={t('wall.tile', { group: band.name, n: band.cards.length })}
+                  // The tile's height is the group's share of the deck, so the strip reads as a
+                  // cross-section rather than a menu. `--tap` floors it in CSS: the tail is
+                  // pressed flat so it stays hittable, and the top of the strip stays true.
+                  style={{ flexGrow: band.cards.length, ...tileStyle(paints.get(key)) }}
+                  onClick={() => jumpTo(key)}
+                >
+                  {band.cards.length}
+                </button>
+              )
+            })}
+          </nav>
+        )}
+        {bands.length > 0 && jumpOpen && (
+          <nav className="byd-wall-jump" id={jumpId} aria-label={t('wall.groups')}>
+            <h2>{t('wall.deck')}</h2>
+            <div className="byd-wall-jump-scroll">
+              {bands.map((band) => {
+                const key = band.value ?? ''
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    data-jump={key}
+                    {...roving.itemProps(key)}
+                    aria-current={here === key}
+                    aria-label={t('wall.tile', { group: band.name, n: band.cards.length })}
+                    onClick={() => jumpTo(key)}
+                  >
+                    <span>{band.name}</span>
+                    <small>{band.cards.length}</small>
+                  </button>
+                )
+              })}
+            </div>
+          </nav>
+        )}
         <div
-          className="byd-wall"
-          role="list"
+          className="byd-wall-deck"
+          ref={deckRef}
+          onScroll={onDeckScroll}
           data-wall
           data-eye={eye}
           style={{ ['--byd-wall-card' as string]: `${px}px` }}
           {...(trim ? { 'data-trim': 'true' } : {})}
           {...(arm ? { 'data-arm': 'true' } : {})}
         >
-          {doc.rows.map(({ id: cardRef, fields: row }) => {
-            const copies = Number(row['antal'] ?? 1)
-            // The badge stays this card's own trouble — an unknown icon, text that will not fit.
-            // A physical fault is nearly always the template's, and saying it on every card would
-            // be forty red badges for one mistake; the report in the crown says it once.
-            const count = warnings[cardRef] ?? 0
-            return (
-              <div
-                key={cardRef}
-                role="listitem"
-                className="byd-wall-card"
-                data-card-ref={cardRef}
-                aria-selected={selectedRow === cardRef ? 'true' : 'false'}
-                {...(marked.has(cardRef) ? { 'data-marked': 'true' } : {})}
-                onClick={() => onSelectRow(cardRef)}
+          {bands.length === 0 ? (
+            <div className="byd-wall" role="list">
+              {shown.map((row) => card(row))}
+            </div>
+          ) : (
+            bands.map((band) => (
+              <section
+                key={band.value ?? ''}
+                className="byd-wall-band"
+                data-band={band.value ?? ''}
+                ref={(el) => {
+                  const key = band.value ?? ''
+                  if (el) sections.current.set(key, el)
+                  else sections.current.delete(key)
+                }}
               >
-                <CardPreview
-                  id={`wall-${cardRef}`}
-                  face={faceTemplate}
-                  row={row}
-                  icons={icons}
-                  fonts={fonts}
-                  scale={px / CARD_PX}
-                  assetBase={assetBase}
-                  motifs={motifs}
-                  palette={doc.palette}
-                  framing={doc.framing ? framingOf(doc, cardRef) : undefined}
-                  onSelectElement={onSelectElement}
-                  onWarnings={(w) => onWarnings(cardRef, w)}
-                />
-                {copies > 1 && <span className="byd-wall-copies" data-copies>×{copies}</span>}
-                {count > 0 && (
-                  <span className="byd-wall-warnings" data-warnings>
-                    {count}
-                  </span>
-                )}
-              </div>
-            )
-          })}
+                {/* The band's head stays in view while its cards roll past, so the deck never
+                    loses its where. */}
+                <div className="byd-wall-band-head" data-band-head>
+                  <h3>{band.name}</h3>
+                  <small>{t(band.cards.length === 1 ? 'wall.cards.one' : 'wall.cards.other', { n: band.cards.length })}</small>
+                  <span className="byd-wall-band-rule" aria-hidden="true" />
+                </div>
+                <div className="byd-wall" role="list" aria-label={band.name}>
+                  {band.cards.map((row) => card(row))}
+                </div>
+              </section>
+            ))
+          )}
+          {onMeasure && onFraming && <Measure doc={doc} assetBase={assetBase} motifs={motifs} onMeasure={onMeasure} onFraming={onFraming} />}
         </div>
-        {onMeasure && onFraming && <Measure doc={doc} assetBase={assetBase} motifs={motifs} onMeasure={onMeasure} onFraming={onFraming} />}
       </div>
       {/* What the wall adds up to, under it rather than over it (#130): the size it is drawn at,
           which nothing else on the surface says now that density is two bare presses. */}
       <CrownFoot>
-        <span>{t('wall.foot.cards', { n: doc.rows.length, px })}</span>
+        <span>
+          {isFiltering(filter)
+            ? t('wall.foot.found', { shown: shown.length, total: doc.rows.length, px })
+            : t('wall.foot.cards', { n: doc.rows.length, px })}
+        </span>
         <span>
           {groups.length === 0
             ? t('wall.foot.checked')
@@ -272,6 +486,14 @@ function Checks({
       )}
     </div>
   )
+}
+
+// A tile's two grounds and its ink, as the three custom properties the strip is drawn from. A band
+// the deck gives no colour at all keeps the strip's own neutral, which the stylesheet declares.
+function tileStyle(paint: string | undefined): Record<string, string> {
+  if (paint === undefined) return {}
+  const { ground, quiet, ink } = tileColours(paint)
+  return { '--byd-band-paint': ground, '--byd-band-quiet': quiet, '--byd-band-ink': ink }
 }
 
 // The dichromatic simulations as filters, defined once for the page.
