@@ -29,6 +29,40 @@ describe('DeckWall (C as the home view)', () => {
     fireEvent.click(cards[2]!.querySelector('[data-element="title"]')!)
     expect(onSelectElement).toHaveBeenCalledWith('title')
   })
+
+  it('opens the card that was clicked, not the one that happened to be selected (#234)', () => {
+    const doc = projectDoc()
+    const onSelectRow = vi.fn()
+    const onSelectElement = vi.fn()
+    // `knight` is the selected card and wears the ring; `wizard` is the one the hand goes to.
+    render(<DeckWall doc={doc} face="front" selectedRow="knight" onSelectRow={onSelectRow} onSelectElement={onSelectElement} />)
+    const wizard = document.querySelector('[data-card-ref="wizard"]')!
+
+    // Almost the whole of a card is its elements — the front's frame shape alone covers 61 × 86 of
+    // its 63 × 88 — so a click on a card is nearly always a click on an element of it. The preview
+    // stops that click from travelling, which is right: the element is the more particular answer.
+    // But the wall still has to say which card the element belongs to, or the view that opens is
+    // about whichever card was selected before.
+    fireEvent.click(wizard.querySelector('[data-element="title"]')!)
+    expect(onSelectElement).toHaveBeenCalledWith('title')
+    expect(onSelectRow).toHaveBeenCalledWith('wizard')
+  })
+
+  it('says the card is chosen before it says which element, so the element is read on the right card', () => {
+    const doc = projectDoc()
+    const said: string[] = []
+    render(
+      <DeckWall
+        doc={doc}
+        face="front"
+        selectedRow="knight"
+        onSelectRow={(id) => said.push(`row:${id}`)}
+        onSelectElement={(id) => said.push(`element:${id}`)}
+      />,
+    )
+    fireEvent.click(document.querySelector('[data-card-ref="wizard"]')!.querySelector('[data-element="title"]')!)
+    expect(said).toEqual(['row:wizard', 'element:title'])
+  })
 })
 
 describe('images on the wall (E1)', () => {
