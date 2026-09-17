@@ -715,7 +715,13 @@ export const svEditor = {
   'tables.new': 'Nytt bord från rev {n}',
   'tables.more': 'Fler vägar till bordet',
   'tables.group': 'Bordet',
+  'tables.more.of': 'Fler vägar in till bordet {table}',
+  'tables.ways': 'Vägar in till bordet {table}',
   'tables.all': 'Alla bord',
+  // Bordslistan är en rad per bord (#176). De bord som aldrig fått ett drag och de som avslutats
+  // ligger bakom var sin hopfällbar rad: två olika fakta, det ena väntar och det andra är färdigt.
+  'tables.cold': 'Startade, aldrig spelade',
+  'tables.closed': 'Avslutade',
   'tables.stale': 'ligger efter rev-{rev}',
   'tables.ended': 'avslutat',
   'tables.connecting': 'ansluter…',

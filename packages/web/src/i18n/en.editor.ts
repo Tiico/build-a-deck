@@ -666,7 +666,14 @@ export const enEditor = {
   'tables.new': 'New table from rev {n}',
   'tables.more': 'More ways to the table',
   'tables.group': 'The table',
+  'tables.more.of': 'More ways into table {table}',
+  'tables.ways': 'Ways into table {table}',
   'tables.all': 'All tables',
+  // The list of tables is one row per table (#176). The ones that never had a move and the ones
+  // that have ended sit behind a collapsible row each: two different facts, one waiting and one
+  // finished.
+  'tables.cold': 'Started, never played',
+  'tables.closed': 'Ended',
   'tables.stale': 'behind rev-{rev}',
   'tables.ended': 'ended',
   'tables.connecting': 'connecting…',

@@ -1597,23 +1597,35 @@
 }
 .byd-tables { overflow: auto; display: grid; gap: 16px; align-content: start; }
 .byd-tables-lead, .byd-tables-empty { margin: 0; color: var(--byd-tables-quiet); max-width: 62ch; }
-.byd-tables > ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
-.byd-table-row { display: grid; grid-template-columns: 160px 1fr; gap: 16px; padding: 12px; border-radius: 14px; background: var(--byd-tables-bg); border: 1px solid #2c3242; }
+.byd-tables > ul, .byd-tables-fold > ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+/* Ett bord är en rad och inte ett kort (#176): bilden, fakta bredvid den, och under dem den enda
+   väg in som står framme. Fem bord var 2 350 px och 85 kontroller när var och en var en stapel. */
+.byd-table-row { display: grid; grid-template-columns: 80px minmax(0, 1fr); gap: 4px 12px; padding: 8px; border-radius: 12px; background: var(--byd-tables-bg); border: 1px solid #2c3242; }
 .byd-table-row[data-stale='true'] { border-color: #4a4230; }
+/* Det som spelas är det man letar efter, så raden bär det i kanten och inte bara i orden. */
+.byd-table-row[data-played='true'] { box-shadow: inset 3px 0 0 0 #3f8f5e; }
 /* A table whose log is locked (C9) is still worth reading, but it is not a game going on: it
    is drawn dimmer, so a glance down the list finds the live ones first. */
 .byd-table-row[data-ended='true'] .byd-tables-mini { filter: grayscale(0.8) brightness(0.65); }
-.byd-tables-mini { width: 160px; height: 96px; border-radius: 10px; overflow: hidden; background: #14161c; }
+.byd-tables-mini { width: 80px; height: 48px; border-radius: 8px; overflow: hidden; background: #14161c; }
 /* The table is drawn at full size and shrunk as a picture, so the labels shrink with it. */
-.byd-tables-mini-inner { width: 640px; height: 384px; transform: scale(0.25); transform-origin: top left; }
-.byd-tables-info { display: grid; gap: 8px; align-content: start; min-width: 0; }
+.byd-tables-mini-inner { width: 640px; height: 384px; transform: scale(0.125); transform-origin: top left; }
+.byd-tables-info { display: grid; gap: 2px; align-content: start; min-width: 0; }
 .byd-tables-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; color: var(--byd-tables-quiet); }
 .byd-tables-head strong { color: var(--byd-tables-ink); font-family: ui-monospace, monospace; }
+.byd-tables-who { display: grid; gap: 2px; margin: 0; min-width: 0; color: var(--byd-tables-quiet); }
+.byd-tables-who span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .byd-tables-stale { color: var(--byd-tables-stale-ink); font-style: normal; font-weight: 600; }
-.byd-tables-ways { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.byd-tables-go { position: relative; grid-column: 1 / -1; display: flex; gap: 6px; align-items: center; }
+.byd-tables-go > a { flex: 1; justify-content: center; }
+.byd-tables-more { flex: none; min-width: var(--byd-tap); justify-content: center; }
+/* De fem andra vägarna in, öppnade från raden och lagda över listan: en meny som gjorde spalten
+   längre vore samma stapel med ett steg framför sig. */
+.byd-tables-menu { position: absolute; z-index: 3; top: calc(100% + 4px); right: 0; display: grid; gap: 4px; padding: 4px; border: 1px solid #3b414e; border-radius: 10px; background: var(--byd-tables-bg); box-shadow: 0 10px 30px #0008; }
+.byd-tables-menu [role='separator'] { height: 1px; background: #3b414e; }
 /* No size of its own: the editor already says what a target is worth, and 32 px here was the one
    place in it that said otherwise (`--byd-tap`, #133). */
-.byd-tables-ways a, .byd-tables-ways button {
+.byd-tables-go a, .byd-tables-go button {
   display: inline-flex;
   align-items: center;
   padding: 4px 12px;
@@ -1624,14 +1636,22 @@
   font: inherit;
   font-weight: 700;
   text-decoration: none;
+  white-space: nowrap;
   cursor: pointer;
 }
-.byd-tables-ways button[data-kind='quiet'] { background: transparent; border-color: #3a4050; color: var(--byd-tables-quiet); font-weight: 400; }
+.byd-tables-go button[data-kind='quiet'] { background: transparent; border-color: #3a4050; color: var(--byd-tables-quiet); font-weight: 400; }
 .byd-tables-note { color: var(--byd-tables-quiet); }
-.byd-tables-qr { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+/* En hopfällbar grupp: bord som väntar eller är färdiga, bakom en rad som säger hur många. */
+.byd-tables-fold > button { width: 100%; display: flex; align-items: center; gap: 8px; padding: 4px 8px; border: 0; border-radius: 8px; background: transparent; color: var(--byd-tables-quiet); font: inherit; text-align: left; cursor: pointer; }
+.byd-tables-fold > button em { font-style: normal; font-variant-numeric: tabular-nums; }
+.byd-tables-fold > ul { padding-top: 4px; }
+.byd-tables-caret { width: 0; height: 0; border: 5px solid transparent; border-left-color: currentcolor; transition: transform 0.12s; }
+.byd-tables-fold[data-open='true'] .byd-tables-caret { transform: rotate(90deg); }
+.byd-tables-qr { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .byd-tables-qr .byd-qr { background: #fff; border-radius: 8px; }
 .byd-tables-qr a { color: var(--byd-tables-ink); }
 .byd-tables-question {
+  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   gap: 8px;

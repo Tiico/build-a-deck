@@ -152,10 +152,14 @@ async function tablesTab(width: number): Promise<Record<string, string>> {
   try {
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
+    // Ett bord utan drag ligger bakom sin hopfällbara rad, och fem av de sex vägarna in ligger i
+    // radens meny (#176) — båda fälls ut, för annars är det inte raden som mäts utan dess lock.
+    fireEvent.click(await screen.findByRole('button', { name: /^Startade, aldrig spelade/ }))
     // Waited for by the one way that is not there until the table itself has answered: sitting
     // down needs a free seat, and a free seat is something only the table's own snapshot knows.
     // Waiting for it is what puts every way into the markup rather than most of them.
     await screen.findByRole('link', { name: /Spela härifrån/ })
+    fireEvent.click(screen.getByRole('button', { name: `Fler vägar in till bordet ${table.slice(0, 8)}` }))
     return { Bord: document.querySelector('.byd-editor')!.outerHTML }
   } finally {
     unmount()
@@ -470,8 +474,9 @@ describe.each(WIDTHS)('the Bord tab with a table, at %ipx', (width) => {
         }),
       tablesTab,
     )
-    // The four ways in, the QR, the ending, and the button that starts another table.
-    expect(measured).toEqual({ Bord: { controls: 7, small: [] } })
+    // Den hopfällbara raden, vägen som står framme, menyns knapp, de fem som ligger i menyn, och
+    // knappen som startar ännu ett bord (#176).
+    expect(measured).toEqual({ Bord: { controls: 9, small: [] } })
   }, 90_000)
 
   it('never makes the page scroll sideways', async () => {

@@ -30,7 +30,33 @@ async function startTable(project = run.projectId): Promise<string> {
 // Fliken "Bord" bär två listor sedan zonlistan kom (B5 reviderat): bordets zoner och spelets
 // bord. Frågorna här gäller den andra, så de ställs inuti den, och den har ett namn att fråga
 // efter — vilket en skärmläsare behöver av samma skäl.
-const tables = async () => within(await screen.findByRole('list', { name: 'Spelets bord' }))
+//
+// Vilka bord som står i spalten just nu, uppifrån och ner.
+const shownTables = async () => [...(await screen.findByRole('list', { name: 'Spelets bord' })).querySelectorAll('li[data-table]')].map((li) => li.getAttribute('data-table'))
+
+// Ett bords rad. Sedan #176 är listan tre delar: borden som spelas står framme, och de som aldrig
+// fått ett drag respektive de vars logg är låst ligger bakom var sin hopfällbara rad. Det som
+// frågas om här är bordet, inte var det hamnade, så den grupp det ligger i fälls ut först.
+async function rowOf(id: string): Promise<HTMLElement> {
+  const user = userEvent.setup()
+  await screen.findByRole('list', { name: 'Spelets bord' })
+  for (const group of [/^Startade, aldrig spelade/, /^Avslutade/]) {
+    const fold = screen.queryByRole('button', { name: group })
+    if (fold !== null && fold.getAttribute('aria-expanded') === 'false') await user.click(fold)
+  }
+  return await waitFor(() => {
+    const row = document.querySelector(`li[data-table="${id}"]`)
+    if (row === null) throw new Error(`ingen rad för bordet ${id}`)
+    return row as HTMLElement
+  })
+}
+
+// Radens meny, öppnad: de fem vägar in som inte står framme (#176).
+async function openWays(row: HTMLElement, id: string): Promise<HTMLElement> {
+  const more = within(row).getByRole('button', { name: `Fler vägar in till bordet ${id.slice(0, 8)}` })
+  await userEvent.setup().click(more)
+  return more
+}
 
 async function openTables(): Promise<void> {
   const user = userEvent.setup()
@@ -59,7 +85,7 @@ describe('the Bord tab (#19)', () => {
     const id = await startTable()
     await openTables()
 
-    const table = await (await tables()).findByRole('listitem')
+    const table = await rowOf(id)
     expect(table.getAttribute('data-table')).toBe(id)
     expect(table.textContent).toContain('rev-1')
     expect(table.textContent).toContain('inga drag än')
@@ -79,22 +105,25 @@ describe('the ways into a table (#19)', () => {
     await run.projects.create(run.projectId, projectDoc())
     const id = await startTable()
     await openTables()
-    const row = await (await tables()).findByRole('listitem')
+    const row = await rowOf(id)
     const ws = run.http.replace(/^http/, 'ws')
     const name = id.slice(0, 8)
 
     // The seat to sit on comes from the table itself, so the ways are complete once it answers.
+    // Sedan #176 står `Spela härifrån` framme i raden och de andra ligger i dess meny, så de är
+    // alla i markupen först när menyn är öppen.
     await within(row).findByRole('link', { name: /Spela härifrån/ })
+    await openWays(row, id)
     const ways = within(row).getAllByRole('link')
     expect(ways.map((a) => a.getAttribute('href'))).toEqual([
+      `/online?session=${id}&seat=A&name=Designern&owner=1&server=${encodeURIComponent(ws)}`,
       `/table?session=${id}&mode=tv&owner=1&server=${encodeURIComponent(ws)}`,
       `/table?session=${id}&mode=table&owner=1&server=${encodeURIComponent(ws)}`,
-      `/online?session=${id}&seat=A&name=Designern&owner=1&server=${encodeURIComponent(ws)}`,
       `/observe?session=${id}&name=Designern&owner=1&server=${encodeURIComponent(ws)}`,
     ])
     // A link that leaves the editor behind says so, and says which table it is about: four
     // identical rows of links are otherwise four times the same word to a screen reader.
-    for (const [i, label] of ['Öppna TV-vyn', 'Bordsläge', 'Spela härifrån', 'Titta på'].entries()) {
+    for (const [i, label] of ['Spela härifrån', 'Öppna TV-vyn', 'Bordsläge', 'Titta på'].entries()) {
       const way = ways[i]!
       expect(way.getAttribute('target')).toBe('_blank')
       expect(way.getAttribute('rel')).toBe('noreferrer')
@@ -118,7 +147,7 @@ describe('what the Bord tab says about a running table (#19, C7)', () => {
     await run.projects.replace(run.projectId, 1, { ...worked, rows: [...worked.rows, { id: 'älva', fields: { title: 'Älva', body: 'Flyger tyst.', antal: 1 } }] })
 
     await openTables()
-    const row = await (await tables()).findByRole('listitem')
+    const row = await rowOf(id)
     // Who sits comes in the snapshot and who watches in the roster — two frames, so two renders
     // are possible; both are waited for rather than read off whichever arrived first.
     expect(await within(row).findByText(/Ada spelar/)).toBeTruthy()
@@ -141,7 +170,7 @@ describe('what the Bord tab says about a running table (#19, C7)', () => {
     table.close()
 
     await openTables()
-    const row = await (await tables()).findByRole('listitem')
+    const row = await rowOf(id)
     expect(await within(row).findByText(/avslutat/)).toBeTruthy()
     expect(row.textContent).not.toContain('ligger efter')
     expect(row.getAttribute('data-stale')).toBe('false')
@@ -149,9 +178,9 @@ describe('what the Bord tab says about a running table (#19, C7)', () => {
 
   it('says that nobody is seated yet, and marks nothing stale while the table runs the rev the project is on', async () => {
     await run.projects.create(run.projectId, projectDoc())
-    await startTable()
+    const id = await startTable()
     await openTables()
-    const row = await (await tables()).findByRole('listitem')
+    const row = await rowOf(id)
     expect(await within(row).findByText(/ingen sitter än/)).toBeTruthy()
     expect(row.textContent).not.toContain('ligger efter')
     expect(row.getAttribute('data-stale')).toBe('false')
@@ -163,7 +192,7 @@ describe('the thumbnail of a table (#19, K9)', () => {
     await run.projects.create(run.projectId, projectDoc())
     const id = await startTable()
     await openTables()
-    const row = await (await tables()).findByRole('listitem')
+    const row = await rowOf(id)
 
     // Four cards in the deck: the dragon twice, the knight, the wizard.
     const draw = () => row.querySelector('[data-zone="draw"]')?.getAttribute('data-count')
@@ -184,8 +213,11 @@ describe('ending a table from the editor (#19, C9)', () => {
     await run.projects.create(run.projectId, projectDoc())
     const id = await startTable()
     await openTables()
-    const row = await (await tables()).findByRole('listitem')
+    const row = await rowOf(id)
     const name = id.slice(0, 8)
+    // Sedan #176 ligger avslutet i radens meny, skilt från vägarna in, och det är menyns knapp som
+    // är den «knapp som öppnade frågan» fokus ska tillbaka till.
+    const more = await openWays(row, id)
     const ask = within(row).getByRole('button', { name: `Avsluta bordet ${name}` })
 
     // The question takes the focus, says which table it is about, and Escape leaves the table
@@ -196,10 +228,11 @@ describe('ending a table from the editor (#19, C9)', () => {
     expect(document.activeElement).toBe(within(question).getByRole('button', { name: 'Avbryt' }))
     await user.keyboard('{Escape}')
     expect(within(row).queryByRole('alertdialog')).toBeNull()
-    expect(document.activeElement).toBe(ask)
+    await waitFor(() => expect(document.activeElement).toBe(more))
     expect(await run.store.read(id)).toEqual([])
 
-    await user.click(ask)
+    await openWays(row, id)
+    await user.click(within(row).getByRole('button', { name: `Avsluta bordet ${name}` }))
     await user.click(within(row).getByRole('button', { name: 'Ja, avsluta' }))
     await waitFor(async () => expect((await run.store.read(id)).map((l) => l.intent.v)).toEqual(['session.end']))
 
@@ -209,6 +242,7 @@ describe('ending a table from the editor (#19, C9)', () => {
     // A table that is over is quieter than a live one on the screen too, not only in words.
     expect(row.getAttribute('data-ended')).toBe('true')
     expect(within(row).queryByRole('link', { name: /Spela härifrån/ })).toBeNull()
+    await openWays(row, id)
     expect(within(row).queryByRole('button', { name: /Avsluta bordet/ })).toBeNull()
   })
 })
@@ -219,20 +253,23 @@ describe('the QR for the phones (#19, K12)', () => {
     await run.projects.create(run.projectId, projectDoc())
     const id = await startTable()
     await openTables()
-    const row = await (await tables()).findByRole('listitem')
+    const row = await rowOf(id)
     const ws = run.http.replace(/^http/, 'ws')
     const join = `${location.origin}/join?code=${roomOf(id).code}&server=${encodeURIComponent(ws)}`
+    // Koden begärs ur radens meny sedan #176, och menyn stänger sig när svaret är på plats i raden.
+    const qr = () => within(row).getByRole('button', { name: `QR för telefoner ${id.slice(0, 8)}` })
 
-    const show = within(row).getByRole('button', { name: `QR för telefoner ${id.slice(0, 8)}` })
-    expect(show.getAttribute('aria-expanded')).toBe('false')
-    await user.click(show)
-    expect(show.getAttribute('aria-expanded')).toBe('true')
+    await openWays(row, id)
+    expect(qr().getAttribute('aria-expanded')).toBe('false')
+    await user.click(qr())
 
     // The alt text is the address itself, so a phone without a camera can be typed at it.
     expect((await within(row).findByRole('img')).getAttribute('alt')).toBe(join)
     expect(within(row).getByRole('link', { name: /Anslutningssidan/ }).getAttribute('href')).toBe(join)
 
-    await user.click(show)
+    await openWays(row, id)
+    expect(qr().getAttribute('aria-expanded')).toBe('true')
+    await user.click(qr())
     expect(within(row).queryByRole('img')).toBeNull()
   })
 })
@@ -245,9 +282,13 @@ describe('starting a table from the Bord tab (#19, L5)', () => {
     await screen.findByText(/Inget bord ännu/)
 
     await user.click(screen.getByRole('button', { name: 'Nytt bord från rev 1' }))
-    const row = await (await tables()).findByRole('listitem')
+    // Ett nystartat bord har inga drag och hör hemma bland de aldrig spelade (#176). Att fälla ihop
+    // det man just bad om vore att svara på knappen med ingenting alls, så gruppen står öppen.
+    const list = await screen.findByRole('list', { name: 'Spelets bord' })
+    expect(within(list).getByRole('button', { name: /^Startade, aldrig spelade/ }).getAttribute('aria-expanded')).toBe('true')
     const started = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'GET' })).json()) as { id: string }[]
-    expect(started.map((t) => t.id)).toEqual([row.getAttribute('data-table')])
+    expect(started.map((t) => t.id)).toEqual(await shownTables())
+    const row = await rowOf(started[0]!.id)
     expect(row.textContent).toContain('rev-1')
   })
 })
@@ -274,7 +315,7 @@ describe('the shortcut to the table from every other tab (#19, variant B)', () =
     const shortcut = await screen.findByRole('group', { name: 'Bordet' })
     const row = await within(shortcut).findByRole('listitem')
     expect(row.getAttribute('data-table')).toBe(newest)
-    expect(within(row).getByRole('link', { name: `Öppna TV-vyn för bordet ${newest.slice(0, 8)} (öppnas i ny flik)` })).toBeTruthy()
+    expect(await within(row).findByRole('link', { name: `Spela härifrån för bordet ${newest.slice(0, 8)} (öppnas i ny flik)` })).toBeTruthy()
 
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('group', { name: 'Bordet' })).toBeNull()
@@ -284,11 +325,11 @@ describe('the shortcut to the table from every other tab (#19, variant B)', () =
     await user.click(await screen.findByRole('button', { name: 'Alla bord' }))
     expect(document.querySelector('[data-mode]')!.getAttribute('data-mode')).toBe('tables')
     expect(screen.getByRole('tab', { name: 'Bord' }).getAttribute('aria-selected')).toBe('true')
-    // Two tables in the tab, newest first; the shortcut closed behind itself.
+    // Two tables in the tab, newest first; the shortcut closed behind itself. Båda är startade och
+    // aldrig spelade, så de ligger bakom sin hopfällbara rad (#176).
     expect(screen.queryByRole('group', { name: 'Bordet' })).toBeNull()
-    const rows = (await tables()).getAllByRole('listitem')
-    expect(rows).toHaveLength(2)
-    expect(rows[0]!.getAttribute('data-table')).toBe(newest)
+    await user.click(await screen.findByRole('button', { name: 'Startade, aldrig spelade 2' }))
+    expect(await shownTables()).toEqual([newest, expect.any(String)])
   })
 })
 
