@@ -356,13 +356,15 @@ function balance(plan: RulePlan): { of: 'loses' | 'rewrites' | 'fresh'; kind: st
 }
 
 // How heavily a line of the report reads. `kept` came in whole, `changed` came in as something
-// else, and `later` is the one line that is neither: a picture is not dropped, it is not here yet
-// (#173).
+// else — the file's own title among them, which became nothing because the book is called what the
+// game is called (#191) — and `later` is the one line that is neither: a picture is not dropped,
+// it is not here yet (#173).
 const WEIGHT: Record<RuleImportKind, 'kept' | 'changed' | 'later'> = {
   heading: 'kept',
   text: 'kept',
   list: 'kept',
   ref: 'kept',
+  title: 'changed',
   folded: 'changed',
   quote: 'changed',
   table: 'changed',

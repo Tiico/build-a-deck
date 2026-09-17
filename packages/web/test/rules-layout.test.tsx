@@ -47,7 +47,7 @@ const STATES: readonly State[] = ['empty', 'written', 'proposal']
 
 // A file that rewrites one of the template's sections and has nothing to say about the other four,
 // so the proposal carries every mark there is: rewritten, new, going, and the setup left alone.
-const OVER = ['# Uppställning', '', 'Var och en får fem guld.', '', '# Två spelare', '', 'Fyra kort läggs åt sidan utan att någon ser dem.'].join('\n')
+const OVER = ['# Skogens herrar', '', '# Uppställning', '', 'Var och en får fem guld.', '', '# Två spelare', '', 'Fyra kort läggs åt sidan utan att någon ser dem.'].join('\n')
 
 // A project of its own per reading. Two of the three states write a book to the server, so a
 // second reading against the same project would open on a book somebody else's iteration made.

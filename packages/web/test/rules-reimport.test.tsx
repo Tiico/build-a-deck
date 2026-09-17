@@ -24,8 +24,12 @@ afterEach(async () => {
   await run.stop()
 })
 
-// The book she wrote by hand: three sections, one of which is nowhere in any file.
+// The book she wrote by hand: three sections, one of which is nowhere in any file. Both files here
+// open with the game's own title, which is what a file written outside the app looks like — and
+// which becomes nothing on the way in, because the book is called what the project is called (#191).
 const WRITTEN = [
+  '# Skogens herrar',
+  '',
   '# Översikt',
   '',
   'Ett spel om att bluffa. Två till fem spelare.',
@@ -41,7 +45,7 @@ const WRITTEN = [
 
 // The file she keeps beside the game: it rewrites one section, leaves one alone, brings one that
 // is new — and has never heard of the one she wrote by hand.
-const FILE = ['# Översikt', '', 'Ett spel om att bluffa. Två till sex spelare.', '', '# En tur', '', 'Dra ett kort.', '', '# Två spelare', '', 'Fyra kort läggs åt sidan.'].join('\n')
+const FILE = ['# Skogens herrar', '', '# Översikt', '', 'Ett spel om att bluffa. Två till sex spelare.', '', '# En tur', '', 'Dra ett kort.', '', '# Två spelare', '', 'Fyra kort läggs åt sidan.'].join('\n')
 
 async function openRules(): Promise<void> {
   await run.projects.create(run.projectId, projectDoc())
@@ -100,6 +104,7 @@ describe('what the report says about the book she already has (#131)', () => {
       '1 nytt avsnitt',
       '3 rubriker blir avsnitt',
       '3 stycken blir text',
+      '1 rubrik på filens första rad blir ingenting: boken heter vad spelet heter',
     ])
   })
 
@@ -109,7 +114,11 @@ describe('what the report says about the book she already has (#131)', () => {
     // being used. A re-import that changed nothing is a book with no marks on it at all — which is
     // what the fifth time the same file is handed over looks like.
     const report = await reportOverTheBook(WRITTEN, 'skrivet.md')
-    expect(within(report).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['3 rubriker blir avsnitt', '3 stycken blir text'])
+    expect(within(report).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+      '3 rubriker blir avsnitt',
+      '3 stycken blir text',
+      '1 rubrik på filens första rad blir ingenting: boken heter vad spelet heter',
+    ])
     expect([...proposedBook().querySelectorAll('[data-block]')].every((el) => el.getAttribute('data-mark') === 'kept')).toBe(true)
     expect(proposedBook().querySelector('.byd-rules-mark')).toBeNull()
     expect(document.querySelector('.byd-rules-toc a[data-mark]:not([data-mark="kept"])')).toBeNull()
@@ -194,7 +203,7 @@ describe('the marks are never carried by colour or decoration alone (L12)', () =
     // The template's five sections against a file that mentions one of them: four are going, three
     // of them one after another. A reader who hears "försvinner" once and then reads three struck
     // headings has been told once about three losses, which is being told worse.
-    pickFile(['# Uppställning', '', 'Var och en får fem guld.'].join('\n'), 'regler-v4.md', 'Importera över boken')
+    pickFile(['# Skogens herrar', '', '# Uppställning', '', 'Var och en får fem guld.'].join('\n'), 'regler-v4.md', 'Importera över boken')
     await screen.findByRole('region', { name: 'Vad importen gör med boken du har' })
     expect([...proposedBook().querySelectorAll('.byd-rules-mark')].map((el) => el.textContent)).toEqual([
       'Försvinner',
@@ -245,7 +254,7 @@ describe('the two answers, over a book that is already written (#131)', () => {
 // text: it is the game's own zones, drawn out of the state, and no Markdown file has it in it. A
 // file that never mentions it has nothing to say about it. The prose around it follows the file.
 describe('the setup block can never be imported away (#131, B5)', () => {
-  const onlySetupSection = ['# Uppställning', '', 'Var och en får fem guld.'].join('\n')
+  const onlySetupSection = ['# Skogens herrar', '', '# Uppställning', '', 'Var och en får fem guld.'].join('\n')
 
   async function aTemplateBook(): Promise<void> {
     await openRules()

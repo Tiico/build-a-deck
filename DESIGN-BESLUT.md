@@ -364,6 +364,18 @@ Det är inte text utan spelets egna zoner, ritade ur tillståndet (B5), och inge
 Blocket hålls utanför jämförelsen från början, så det finns ingen kodväg alls längs vilken det kunde märkas som försvinnande; det står kvar överst i sitt avsnitt, under den rubrik filen bestämmer, och prosan runt det följer filen som all annan text.
 Förhandsvisningen märker det `Orörd · spelets egna zoner`, eftersom att det överlever är det enda i importen en läsare inte kan gissa sig till.
 
+Filens egen titel, byggd 2026-09-17 (#191):
+En rubrik nivå 1 på filens första rad blir ingenting, och rapporten säger att den togs bort och varför.
+Boken behåller projektets namn som sin titel, därför att namnet är något formgivaren sätter på ett ställe och inte något en fil kan skriva över bakom ryggen på henne.
+En import som byter namn på spelet gör mer än den blev ombedd att göra, och vid en upprepad import ur samma fil skulle namnet flyttas varje gång utan att någon bett om det.
+Priset är sagt och accepterat: filens egen titel blir inte vad boken heter, och rapporten är det som gör det synligt i stället för tyst.
+Bara den allra första raden räknas, och bara nivå 1: en `#` längre ner i filen är ett avsnitt som vilket annat och rörs inte.
+Tomma rader ovanför är ingenting en läsare ser, och en editor som lämnar en har inte skrivit en annan fil, så den första rad som säger något är den första raden.
+Övriga rubriker viks inte ner en nivå: det var den avvisade vägen, den rör alla `#` och inte bara den första, och filens disposition ska stå som den står.
+En fil som skriver sin titel med `#` och sina avsnitt med `##` får därför en bok utan avsnitt på första nivån, och då står ingen innehållsförteckning bredvid den; det syns i förslaget innan boken görs, vilket är hela skälet till att rapporten står före importen.
+En fil utan inledande rubrik ändras inte alls.
+"Ingenting försvinner tyst" gäller: raden försvinner, men inte tyst, och rapporten räknar den bland det som ändrade form på vägen in.
+
 Motivering:
 Trycket kräver en regelbok för att ordern ska kunna läggas.
 Blindtest kräver att testare kan läsa reglerna utan designern.
