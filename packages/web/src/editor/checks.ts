@@ -1,5 +1,5 @@
 import { CARD_STANDARD_63x88 } from '@byd/engine'
-import { validateCard, type Issue, type IssueCode, type IssueValues, type Severity } from '@byd/template'
+import { remedyFor, validateCard, type Issue, type IssueCode, type IssueValues, type Remedy, type Severity } from '@byd/template'
 import type { ProjectDoc } from './types.js'
 import type { Key, T } from '../i18n/index.js'
 
@@ -8,6 +8,34 @@ import type { Key, T } from '../i18n/index.js'
 // gathered by kind, with the cards each one touches.
 export type Found = Issue & { cardRef: string; face: string }
 export type Group = { code: IssueCode; severity: Severity; values: IssueValues; cards: string[]; faces: string[]; elements: string[]; count: number }
+
+// One edit that mends a whole group (#233).
+//
+// A fault is nearly always the template's — the same element on every row, which is the very
+// reason the wall gathers them by kind rather than badging forty cards — so its remedy is the
+// template's too. What comes back is therefore one patch per element and face, not one per card:
+// forty cards failing on `body` are one edit, and applying it forty times would be thirty-nine
+// versions of the deck saying nothing.
+export type Fix = { face: string; element: string; patch: Remedy['patch'] }
+
+export function fixesFor(doc: ProjectDoc, group: Pick<Group, 'code'>, found: readonly Found[]): Fix[] {
+  const fixes = new Map<string, Fix>()
+  for (const f of found) {
+    if (f.code !== group.code) continue
+    const template = doc.template.faces[f.face]
+    const row = doc.rows.find((r) => r.id === f.cardRef)
+    if (!template || !row) continue
+    const remedy = remedyFor(f, { type: CARD_STANDARD_63x88, face: template, row: row.fields, ...(doc.fonts ? { fonts: doc.fonts } : {}) })
+    if (!remedy) continue
+    // The first answer for an element wins. Two cards can ask for different numbers — a box nudged
+    // in from the right edge on one row and from the left on another — and the template has one
+    // element to hold whichever it is told last. Taking the first keeps the edit the same every
+    // time the button is pressed, which is what makes it something a designer can undo and repeat.
+    const key = `${f.face}/${remedy.element}`
+    if (!fixes.has(key)) fixes.set(key, { face: f.face, element: remedy.element, patch: remedy.patch })
+  }
+  return [...fixes.values()]
+}
 
 export function deckIssues(doc: ProjectDoc): Found[] {
   const found: Found[] = []

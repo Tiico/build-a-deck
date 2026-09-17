@@ -128,6 +128,9 @@ export const svEditor = {
   'wall.checks.errors.other': '{n} slags fel stoppar en order.',
   'wall.checks.warningsOnly': 'Bara varningar. Inget stoppar en order.',
   'wall.checks.note': 'En anmärkning är oftast mallens, inte kortets: den syns på varje kort som ärver elementet.',
+  'wall.checks.fix': 'Rätta i mallen',
+  'wall.checks.fix.said': '{what} rättad i mallen.',
+  'wall.checks.fix.none': 'Den här behöver ett formval och kan inte rättas åt dig.',
   'wall.severity.error': 'fel',
   'wall.severity.warning': 'varning',
 

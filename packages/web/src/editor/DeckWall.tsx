@@ -7,7 +7,8 @@ import { Crown, CrownBox, CrownDrawer, CrownFoot } from './Crown.js'
 import { DENSITY, DENSITY_DEFAULT, heldDensity, rememberDensity } from './density.js'
 import { previewIcons } from './assets.js'
 import { previewFonts } from './fonts.js'
-import { deckIssues, groupIssues, issueDetail, issueWords } from './checks.js'
+import { deckIssues, fixesFor, groupIssues, issueDetail, issueWords, type Fix } from './checks.js'
+import { useSay } from '../status/StatusLive.js'
 import { groupColumn } from './groups.js'
 import { bandAtTop, bandPaints, bandsOf, tileColours } from './bands.js'
 import { filterRows, isFiltering, noFilter, type FilterState } from './filtering.js'
@@ -33,6 +34,9 @@ export type DeckWallProps = {
   // whole deck can be seen at once, which is the only place uniformity can be judged.
   onMeasure?(face: string, id: string, frame: Frame): void
   onFraming?(cardRef: string, field: string, framing: Nudge | null): void
+  // One edit that mends a whole check (#233). The wall works out what to change; applying it is
+  // the project's, like every other change the wall judges.
+  onFixChecks?(fixes: readonly Fix[]): void
 }
 
 // The eyes a card is read with (E5). The simulations are the transforms the check uses, applied
@@ -64,8 +68,11 @@ type Box = 'eyes' | 'guides' | 'grouping' | 'checks'
 // The deck as a wall (C as the home view): every row as a card, copies and faults on each, the
 // whole deck visible at once — a balance change on forty cards is seen as one thing. Beside it
 // the physical checks (E5), gathered by kind, and the eyes to read the deck with.
-export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onMeasure, onFraming }: DeckWallProps) {
+export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onMeasure, onFraming, onFixChecks }: DeckWallProps) {
   const t = useT()
+  // What was mended is said out loud: an edit that changes the template under a deck of forty
+  // cards and says nothing is the silence #32 forbids.
+  const say = useSay()
   const faceTemplate = doc.template.faces[face]
   // The fonts the version is pinned to (B3), worked out once per document: a fresh object every
   // render is a fresh compile of every card on the wall, and a card recompiled under the pointer
@@ -327,7 +334,19 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
       )}
       {box === 'checks' && (
         <CrownDrawer label={t('wall.checks.title')} opener={checksBox} onClose={close}>
-          <Checks groups={groups} errors={errors.length} words={words} openGroup={openGroup} onOpenGroup={setOpenGroup} t={t} />
+          <Checks
+            groups={groups}
+            errors={errors.length}
+            words={words}
+            openGroup={openGroup}
+            onOpenGroup={setOpenGroup}
+            fixes={(code) => (onFixChecks ? fixesFor(doc, { code: code as (typeof groups)[number]['code'] }, found) : [])}
+            onFix={(code, what) => {
+              onFixChecks?.(fixesFor(doc, { code: code as (typeof groups)[number]['code'] }, found))
+              say?.('polite', t('wall.checks.fix.said', { what }))
+            }}
+            t={t}
+          />
         </CrownDrawer>
       )}
       {/* The wall is the only thing on this surface that scrolls. */}
@@ -454,6 +473,8 @@ function Checks({
   words,
   openGroup,
   onOpenGroup,
+  fixes,
+  onFix,
   t,
 }: {
   groups: ReturnType<typeof groupIssues>
@@ -461,6 +482,8 @@ function Checks({
   words: Record<string, string>
   openGroup: string | null
   onOpenGroup(code: string | null): void
+  fixes(code: string): Fix[]
+  onFix(code: string, what: string): void
   t: ReturnType<typeof useT>
 }) {
   return (
@@ -486,6 +509,20 @@ function Checks({
                     <span>
                       {g.elements.join(', ')} · {g.faces.join(', ')}
                     </span>
+                    {/* The remedy, where the check has one (#233). It is one edit on the template
+                        and not one per card — the fault is the template's, which is the whole
+                        reason this list is gathered by kind — so a group of forty cards mends in a
+                        single step that can be taken back in a single step.
+                        Where there is no remedy the reason stands in its place rather than a hole:
+                        contrast and colour-alone need a choice of the designer's, and a font needs
+                        a file (B3), none of which a patch can invent. */}
+                    {fixes(g.code).length > 0 ? (
+                      <button type="button" className="byd-secondary" onClick={() => onFix(g.code, words[g.code] ?? g.code)}>
+                        {t('wall.checks.fix')}
+                      </button>
+                    ) : (
+                      <small>{t('wall.checks.fix.none')}</small>
+                    )}
                   </div>
                 )}
               </li>

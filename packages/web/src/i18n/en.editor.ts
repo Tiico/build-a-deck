@@ -114,6 +114,9 @@ export const enEditor = {
   'wall.checks.errors.other': '{n} kinds of error stop an order.',
   'wall.checks.warningsOnly': 'Warnings only. Nothing stops an order.',
   'wall.checks.note': 'A fault is usually the template’s, not the card’s: it shows on every card that inherits the element.',
+  'wall.checks.fix': 'Mend it in the template',
+  'wall.checks.fix.said': '{what} mended in the template.',
+  'wall.checks.fix.none': 'This one needs a choice of yours; it cannot be mended for you.',
   'wall.severity.error': 'error',
   'wall.severity.warning': 'warning',
 
