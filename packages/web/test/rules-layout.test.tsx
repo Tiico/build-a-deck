@@ -37,19 +37,39 @@ const SCREENS = [
   { width: 1024, height: 768 },
 ] as const
 
-// The rules tab as markup, in either of its two states: the disposition an empty tab proposes, and
-// the book that stands there once a way in has been taken.
-async function rules(width: number, written: boolean): Promise<string> {
+// The rules tab as markup, in each of its three states: the disposition an empty tab proposes, the
+// book that stands there once a way in has been taken, and a file lying in that book as a proposal
+// (#131). The third is the one the decision between prototype 8's A and B turned on: A had two
+// scrolling areas at 1024 and 1280, so the thing that has to be read carefully fell below a fold.
+type Scrolling = { areas: number; nested: string[] }
+type State = 'empty' | 'written' | 'proposal'
+const STATES: readonly State[] = ['empty', 'written', 'proposal']
+
+// A file that rewrites one of the template's sections and has nothing to say about the other four,
+// so the proposal carries every mark there is: rewritten, new, going, and the setup left alone.
+const OVER = ['# Uppställning', '', 'Var och en får fem guld.', '', '# Två spelare', '', 'Fyra kort läggs åt sidan utan att någon ser dem.'].join('\n')
+
+// A project of its own per reading. Two of the three states write a book to the server, so a
+// second reading against the same project would open on a book somebody else's iteration made.
+let nth = 0
+
+async function rules(width: number, state: State): Promise<string> {
   atWidth(width)
-  history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+  const project = `${run.projectId}-${++nth}`
+  await run.projects.create(project, projectDoc())
+  history.replaceState(null, '', `/editor?project=${project}&server=${encodeURIComponent(run.http)}`)
   await run.answering()
   const { unmount } = render(<EditorPage />)
   try {
     await screen.findByText('Skogens herrar')
     fireEvent.click(document.getElementById(tabId('rules'))!)
-    if (written) {
+    if (state !== 'empty') {
       fireEvent.click(screen.getByRole('button', { name: 'Börja från en mall' }))
       await waitFor(() => expect(document.querySelector('[data-rulebook]')).not.toBeNull())
+    }
+    if (state === 'proposal') {
+      fireEvent.change(screen.getByLabelText('Importera över boken'), { target: { files: [new File([OVER], 'regler-v4.md', { type: 'text/markdown' })] } })
+      await screen.findByRole('region', { name: 'Vad importen gör med boken du har' })
     }
     return document.querySelector('.byd-editor')!.outerHTML
   } finally {
@@ -57,8 +77,8 @@ async function rules(width: number, written: boolean): Promise<string> {
   }
 }
 
-async function measure<T>(screen_: (typeof SCREENS)[number], written: boolean, read_: (page: Page) => Promise<T>): Promise<T> {
-  const html = await rules(screen_.width, written)
+async function measure<T>(screen_: (typeof SCREENS)[number], state: State, read_: (page: Page) => Promise<T>): Promise<T> {
+  const html = await rules(screen_.width, state)
   const page = await browser.newPage({ viewport: { width: screen_.width, height: screen_.height } })
   try {
     await page.setContent(document_(html), { waitUntil: 'load' })
@@ -97,7 +117,6 @@ afterAll(async () => {
 }, 60_000)
 beforeEach(async () => {
   run = await startServer()
-  await run.projects.create(run.projectId, projectDoc())
 })
 afterEach(async () => {
   await run.stop()
@@ -105,39 +124,45 @@ afterEach(async () => {
 
 describe.each(SCREENS)('the rules tab at $width × $height', (screen_) => {
   it.each([
-    ['the disposition an empty tab proposes', false],
-    ['the book a way in wrote', true],
-  ] as const)('gives %s a measure of 68 characters of the book’s own face', async (_what, written) => {
-    const measured = await measure(screen_, written, measureAndProbe)
+    ['the disposition an empty tab proposes', 'empty'],
+    ['the book a way in wrote', 'written'],
+    ['the file lying in that book as a proposal', 'proposal'],
+  ] as const)('gives %s a measure of 68 characters of the book’s own face', async (_what, state) => {
+    const measured = await measure(screen_, state, measureAndProbe)
     expect(Math.abs(measured.measure - measured.sixtyEight), `measured ${measured.measure}px against 68 characters at ${measured.sixtyEight}px`).toBeLessThanOrEqual(2)
   }, 90_000)
 
-  it('holds the whole tab inside the window, in both states, and never scrolls it sideways', async () => {
-    for (const written of [false, true]) {
-      const measured = await measure(screen_, written, (page) =>
+  it('holds the whole tab inside the window, in all three states, and never scrolls it sideways', async () => {
+    for (const state of STATES) {
+      const measured = await measure(screen_, state, (page) =>
         page.evaluate(() => {
           const doc = document.documentElement
           const main = document.querySelector('main')!
           return { page: `${doc.scrollHeight - doc.clientHeight}/${doc.scrollWidth - doc.clientWidth}`, work: `${main.scrollHeight - main.clientHeight}/${main.scrollWidth - main.clientWidth}` }
         }),
       )
-      expect(measured, written ? 'written' : 'empty').toEqual({ page: '0/0', work: '0/0' })
+      expect(measured, state).toEqual({ page: '0/0', work: '0/0' })
     }
   }, 120_000)
 
   it('scrolls in one place, never in a box inside another box', async () => {
-    for (const written of [false, true]) {
-      const measured = await measure(screen_, written, (page) =>
+    const read: Record<string, Scrolling> = {}
+    for (const state of STATES)
+      read[state] = await measure(screen_, state, (page) =>
         page.evaluate(() => {
           const panel = document.querySelector<HTMLElement>('.byd-rules')!
           const scrolls = (el: HTMLElement) => /auto|scroll/.test(`${getComputedStyle(el).overflow}${getComputedStyle(el).overflowY}`) && el.scrollHeight - el.clientHeight > 1
           const scrolling = [panel, ...panel.querySelectorAll<HTMLElement>('*')].filter(scrolls)
-          return { how_many_at_most_one: Math.min(scrolling.length, 2), nested: scrolling.filter((el) => scrolling.some((other) => other !== el && other.contains(el))).map((el) => el.className) }
+          return { areas: scrolling.length, nested: scrolling.filter((el) => scrolling.some((other) => other !== el && other.contains(el))).map((el) => el.className) }
         }),
       )
-      expect(measured, written ? 'written' : 'empty').toEqual({ how_many_at_most_one: measured.how_many_at_most_one, nested: [] })
-      expect(measured.how_many_at_most_one).toBeLessThan(2)
-    }
+    // One scrolling area at most, and never one inside another. It is the measurement prototype 8
+    // was decided on: A had the page's and the dialog's at 1024 and 1280, so the part that has to
+    // be read carefully lay below a fold. How much there is to scroll depends on how tall the
+    // window is, so what is claimed is the count and never that there is something to scroll.
+    const said = JSON.stringify(read)
+    expect(Object.fromEntries(STATES.map((state) => [state, (read[state] as Scrolling).nested])), said).toEqual({ empty: [], written: [], proposal: [] })
+    for (const state of STATES) expect((read[state] as Scrolling).areas, `${state} of ${said}`).toBeLessThan(2)
   }, 120_000)
 })
 
@@ -151,8 +176,52 @@ describe('the empty tab and the written book are one surface', () => {
         const toc = document.querySelector<HTMLElement>('.byd-rules-toc')!.getBoundingClientRect()
         return { left: Math.round(toc.left), width: Math.round(toc.width) }
       })
-    const empty = await measure(SCREENS[0], false, box)
-    const written = await measure(SCREENS[0], true, box)
+    const empty = await measure(SCREENS[0], 'empty', box)
+    const written = await measure(SCREENS[0], 'written', box)
     expect(written).toEqual(empty)
+  }, 120_000)
+})
+
+// The file the import asks for, in both the states that offer it (#131). It used to be a
+// transparent `<input type="file">` stretched over the visible label with `inset: 0` — the
+// familiar styled-picker trick, and a control the eye cannot find sitting exactly where the click
+// lands. #184's guard read it for what it is, an unpainted control; #140 had already paid for the
+// same shape once, when a transparent button over half a cell swallowed the click the caret was
+// meant to get and typed a `{` into a card. The input is off the screen now instead, which makes
+// three things true that do not follow from one another, so all three are asked:
+//
+// the label is what a pointer meets, the label is bound to the input — that is what makes the
+// drawn thing the control rather than a picture of one — and the input can still take focus,
+// which is the whole difference between taking it off the screen and taking it out of the page.
+// A `display: none` would satisfy #184's guard by disappearing from it, and would leave the
+// import reachable by mouse only; `focused` is the line that would go red instead. The ring is
+// asked for in the same breath, because focus that lands somewhere nobody can see is the same
+// control being unreachable a second way round — and the ring has to be the label's, the input
+// being nowhere the eye can follow it to.
+describe('the file the import asks for', () => {
+  const picker = (page: Page) =>
+    page.evaluate(() => {
+      const input = document.querySelector<HTMLInputElement>('.byd-rules-ways input[type="file"]')
+      if (!input) return { control: 'no file input at all' }
+      const label = input.labels?.[0] ?? null
+      const box = label?.getBoundingClientRect()
+      const met = box ? document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2) : null
+      input.focus()
+      const ring = label === null ? null : getComputedStyle(label)
+      return {
+        control: label === null ? 'an input bound to no label' : 'a label bound to the input',
+        meets: met === input ? 'the file input' : met === label ? 'the label' : `a ${met?.tagName.toLowerCase() ?? 'nothing'}`,
+        focused: document.activeElement === input,
+        ring: ring !== null && ring.outlineStyle !== 'none' && parseFloat(ring.outlineWidth) > 0 ? 'drawn on the label' : 'nowhere',
+      }
+    })
+  const want = { control: 'a label bound to the input', meets: 'the label', focused: true, ring: 'drawn on the label' }
+
+  it('draws the label as the control, in the empty tab', async () => {
+    expect(await measure(SCREENS[1], 'empty', picker)).toEqual(want)
+  }, 120_000)
+
+  it('draws the label as the control, in the written book', async () => {
+    expect(await measure(SCREENS[1], 'written', picker)).toEqual(want)
   }, 120_000)
 })

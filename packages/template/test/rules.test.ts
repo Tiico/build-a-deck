@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parseInline } from '../src/inline.js'
-import { RuleDoc, renderRules } from '../src/rules.js'
+import { RuleDoc, renderLine, renderRules } from '../src/rules.js'
 
 const names = { zones: { discard: 'Kasthög', draw: 'Draghög' }, cards: { drake: 'Drake' } }
 
@@ -74,5 +74,20 @@ describe('the rulebook has one declaration (#183): the schema that validates is 
     const out = renderRules(parsed, names)
     expect(out.text).toBe('Dra ett kort ur Draghög.')
     expect(JSON.stringify(out)).not.toContain('Hur många kort dras?')
+  })
+})
+
+// A rewritten paragraph is drawn sentence by sentence (#131), so one sentence at a time has to go
+// through the same inline reading as the whole book: emphasis stays emphasis and a reference still
+// stands for the name the thing has right now.
+describe('one line of the book on its own (#131)', () => {
+  it('reads emphasis and references out of a single sentence', () => {
+    expect(renderLine('Dra ett **kort** ur [[zon:draw]].', { zones: { draw: 'Draghög' }, cards: {} })).toEqual([
+      { type: 'text', text: 'Dra ett ' },
+      { type: 'bold', children: [{ type: 'text', text: 'kort' }] },
+      { type: 'text', text: ' ur ' },
+      { type: 'ref', of: 'zone', id: 'draw', name: 'Draghög' },
+      { type: 'text', text: '.' },
+    ])
   })
 })
