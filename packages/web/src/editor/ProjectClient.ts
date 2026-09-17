@@ -538,6 +538,22 @@ export class ProjectClient {
     this.edit({ v: 'setRules', rules }, gesture)
   }
 
+  // An import is never an overwrite (#131, B4). It lays a version named for the file, the way
+  // every save already lays one, so the book that stood there is a row in the history rather than
+  // something hanging on a stack that lives in one tab and is fifty steps deep (L14).
+  //
+  // The book remembers the file as text — which file, and when — and not as a handle: a handle
+  // belongs to one browser and one person, and the book has to travel with the project.
+  //
+  // The name of the version is the designer's own word from here on, so it is written in the
+  // language she was working in and then stays put.
+  async importRules(rules: RuleDoc, file: string, t: T = swedish): Promise<void> {
+    this.edit({ v: 'setRules', rules: { ...rules, source: { file, at: new Date().toISOString() } } })
+    const saved = await this.save()
+    if (!saved.ok) throw new Error(saved.reason)
+    await this.nameVersion(saved.rev, t('rules.import.version', { file }))
+  }
+
   // The project's history (B4): every save is a version, kept whole and never rewritten. The
   // list is the server's answer, not something the editor keeps of its own.
   async versions(): Promise<VersionSummary[]> {

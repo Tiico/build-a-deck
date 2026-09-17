@@ -54,7 +54,7 @@ export type ProjectCredit = z.infer<typeof ProjectCredit>
 // the schema validating a document here and the type the editor writes against are the same thing,
 // so a field cannot be added to one side and forgotten on the other. It is passed on from here
 // because the project document is where everything else looks for it.
-export { RuleBlock, RuleDoc } from '@byd/template'
+export { RuleBlock, RuleDoc, RuleSource } from '@byd/template'
 
 // A font the version is pinned to (B3). `stack` is what the CSS says; `asset` is the file the
 // project carries, so a locked version renders the same tomorrow as it did when it was tested.

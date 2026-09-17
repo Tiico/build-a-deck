@@ -522,6 +522,8 @@
 .byd-crown { flex: none; display: flex; align-items: center; gap: var(--byd-s2); flex-wrap: nowrap; min-width: 0; padding: 0 0 var(--byd-s2); border-bottom: 1px solid #2f333d; }
 .byd-crown-box,
 .byd-rules-ways button,
+.byd-rules-ways label,
+.byd-rules-report button,
 .byd-rules-own,
 .byd-rules-booklet {
   flex: 0 0 auto;
@@ -1695,8 +1697,27 @@
 .byd-rules-toc span { color: var(--byd-editor-quiet); }
 .byd-rules-own { margin-top: var(--byd-s2); }
 .byd-rules-bar { flex: none; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
-.byd-rules-bar h2, .byd-rules-toc b { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
-.byd-rules-bar span { color: #9aa3b8; font-size: 12px; }
+.byd-rules-bar h2, .byd-rules-toc b, .byd-rules-report b { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
+.byd-rules-bar span, .byd-rules-report > span { color: #9aa3b8; font-size: 12px; }
+/* The file the third way in asks for. The input keeps its own focus and its own keyboard; the
+   label is what is drawn, because a native file control beside two pills is two languages in one
+   row. The ring is the label's for the same reason. */
+.byd-rules-ways label { position: relative; overflow: hidden; }
+.byd-rules-ways input[type='file'] { position: absolute; inset: 0; opacity: 0; }
+.byd-rules-ways label:focus-within { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+/* What the import does with the file, read before the book is made (#131). A band over the tab
+   and never a dialog: the book the file would become stands under it in the book's own reading
+   width, so what has to be read carefully is read beside the thing it describes rather than over
+   it — which is also why it never takes a scrolling area of its own (prototype 8, variant B).
+   The two answers are the pills the row above already declares, and they stand under the list
+   rather than out at the far edge: what was just read is on the left, and the hand should not
+   have to cross a window to answer it. */
+.byd-rules-report { flex: none; display: flex; align-items: center; gap: var(--byd-s2); flex-wrap: wrap; padding: var(--byd-s3); border: 1px solid #3b414e; border-radius: 10px; background: #1b1d23; }
+.byd-rules-report ul { flex: 1 1 100%; margin: 0; padding-left: var(--byd-s4); color: #9aa3b8; font-size: 12px; line-height: 1.8; }
+/* What changed shape on the way in is marked, and what the book cannot hold yet is marked
+   otherwise: a picture is not a loss but a thing that has not arrived (#173). */
+.byd-rules-report li[data-kind='changed'] { color: #f0b64a; }
+.byd-rules-report li[data-kind='later'] { color: #9cc6ff; }
 .byd-rules-warn { color: #f0b64a !important; }
 .byd-rules-booklet:disabled { color: #5b6478; cursor: default; }
 /* The book the designer writes is a page of prose in a serif, and its rhythm — the air over a

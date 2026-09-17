@@ -18,7 +18,7 @@ configure({ asyncUtilTimeout: 4000 })
 // EventTarget and throws. The `ws` client speaks the same API and has no such split.
 import { WebSocket as WsClient } from 'ws'
 import { useWebSocketImplementation, type WebSocketCtor } from '../src/client.js'
-import { useEditSocketImplementation, type EditSocketCtor } from '../src/editor/ProjectClient.js'
+import { useEditSocketImplementation, type EditSocketCtor, type WebSocketLike } from '../src/editor/ProjectClient.js'
 if (typeof document !== 'undefined') useWebSocketImplementation(WsClient as unknown as WebSocketCtor)
 
 // A cookie jar for fetch under jsdom: the session cookie (G1) must survive from the login link to
@@ -38,6 +38,32 @@ export class EditSocket extends WsClient {
   }
 }
 useEditSocketImplementation(EditSocket as unknown as EditSocketCtor)
+
+// An actor that will not make a version of what it is holding, because someone else already made
+// one from the same rev. Everything else about the socket is what a socket does.
+//
+// It stands here, beside the real one, because the refusal is the actor's own answer and not
+// something that can be raced into being from outside: with a live actor (D3) an editor is told
+// about someone else's version as it happens, so the window in which a save of its own can
+// collide is a moment too short to arrange. What is under test wherever this is used is what the
+// editor does when a save it asked for did not happen — which is a fact, not a timing.
+export const RefusesToSave = class implements WebSocketLike {
+  readyState = 1
+  onopen: (() => void) | null = null
+  onmessage: ((event: { data: unknown }) => void) | null = null
+  onclose: (() => void) | null = null
+  onerror: (() => void) | null = null
+  constructor() {
+    queueMicrotask(() => this.onopen?.())
+  }
+  send(data: string): void {
+    if ((JSON.parse(data) as { t: string }).t !== 'save') return
+    queueMicrotask(() => this.onmessage?.({ data: JSON.stringify({ v: 'refused', why: 'conflict' }) }))
+  }
+  close(): void {
+    this.readyState = 3
+  }
+} as unknown as EditSocketCtor
 
 if (typeof document !== 'undefined') {
   const realFetch = globalThis.fetch
