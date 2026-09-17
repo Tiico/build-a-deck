@@ -228,3 +228,44 @@ describe('the file the import asks for', () => {
     expect(await measure(SCREENS[1], 'written', picker)).toEqual(want)
   }, 120_000)
 })
+
+// The ＋ between the blocks, which must be one target per gap and not two lying over each other
+// (#216, on #184).
+//
+// #184 took the ＋ out of hover and made it something that is always there, which is right: a way
+// in that only exists under a pointer does not exist for a keyboard or a finger. What it did not
+// carry was the height. `.byd-rules-add` declares 24 × 24, but `.byd-editor button` sets
+// `min-height: var(--byd-tap)` at (0,1,1) against the rule's own (0,1,0) and wins — so the target
+// is really 44 tall, hung at the top of each block, and any block shorter than that has its ＋
+// standing over its neighbour's. A heading is shorter than that. So is a one-line paragraph.
+//
+// Measured rather than reasoned about: two 44 px squares are either overlapping on a real screen
+// or they are not, and the stylesheet is not where that is decided.
+describe('the ways in between the blocks (#216)', () => {
+  const plusses = (page: Page) =>
+    page.evaluate(() => {
+      const boxes = [...document.querySelectorAll<HTMLElement>('.byd-rules-add')].map((el) => {
+        const r = el.getBoundingClientRect()
+        return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, label: el.getAttribute('aria-label') ?? '' }
+      })
+      const over: string[] = []
+      for (let i = 0; i < boxes.length; i++) {
+        for (let j = i + 1; j < boxes.length; j++) {
+          const a = boxes[i]!
+          const b = boxes[j]!
+          if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) over.push(`${a.label} lies over ${b.label}`)
+        }
+      }
+      // The smallest target among them, so a ＋ cannot be kept apart from its neighbour by being
+      // made too small to press.
+      const least = boxes.length === 0 ? 0 : Math.min(...boxes.map((b) => Math.min(b.bottom - b.top, b.right - b.left)))
+      return { count: boxes.length, over, least }
+    })
+
+  it('gives every gap a ＋ of its own that no other ＋ lies over', async () => {
+    const { count, over, least } = await measure(SCREENS[1], 'written', plusses)
+    expect(count).toBeGreaterThan(1)
+    expect(over).toEqual([])
+    expect(least).toBeGreaterThanOrEqual(44)
+  }, 120_000)
+})
