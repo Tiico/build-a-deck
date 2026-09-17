@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 9 — Regelbokens bildslag (#173)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* Prototyp 9 svarar på en enda fråga: hur ett femte blockslag — bilden — sitter i regelboken
+     på de tre ytor den ska läsas på, plus den fjärde som sätter gränsen för de andra tre.
+
+     Beslutet som redan är fattat (#173, beställaren 2026-09-17) är inte uppe till omprövning här:
+     bilder kommer in, en bild utan alt-text tas in som dekorativ, bilden bor innehållsadresserad i
+     projektets tillgångar, en bild som inte går att ta in rapporteras i stället för att försvinna,
+     och A5 i häftet sätter storleken. Det här är hur det ser ut. */
+
+  /* --- Måtten. Hela prototypen räknar i millimeter och skalar ner till varje yta. --------
+     A5 är 148 × 210 mm och häftets `@page` har 14 mm upp och ner, 15 mm åt sidorna
+     (packages/server/src/booklet.ts). Satsytan är alltså 118 × 182 mm, och 118 mm är
+     regelbokens spaltbredd överallt — bordet och telefonen får samma bild inom den ramen.
+
+     Taket på 120 mm är prototypens eget förslag och det enda mått som inte redan står i koden:
+     två tredjedelar av satsytans höjd. Skälet är att en bild plus bildtext alltid ska rymmas på
+     en sida tillsammans med minst några rader text. En bild som får ta hela satsytan blir en egen
+     sida, och en egen sida mitt i en regelbok är en sida läsaren bläddrar förbi utan att veta att
+     den hör ihop med stycket före. `break-inside: avoid` räcker inte — det flyttar bara problemet
+     till nästa sida. */
+  :root { --spalt: 118; --tak: 120; }
+
+  main.regelvy { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+
+  /* Ytväljaren är fyra riktiga knappar med 44 px träffyta. proto.css `.switch` är 34 px, vilket
+     duger för en Nu/Förslag-vippa men inte för en kontroll som är prototypens huvudnavigering. */
+  .ytor { display: flex; gap: 4px; background: var(--sunk); border-radius: 8px; padding: 3px; }
+  .ytor button { min-height: var(--tap); border: 0; border-radius: 6px; padding: 0 12px; background: transparent; color: var(--quiet-2); font: inherit; font-weight: 700; cursor: pointer; }
+  .ytor button[aria-pressed='true'] { background: var(--primary); color: #fff; }
+  .ytor button:focus-visible, .toggle:focus-visible, .hitta:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  .toggle { min-height: var(--tap); border: 1px solid var(--line); border-radius: 8px; padding: 0 12px; background: var(--sunk); color: var(--quiet-2); font: inherit; font-weight: 700; cursor: pointer; }
+  .toggle[aria-pressed='true'] { background: #2a2417; border-color: #4a4230; color: #ffd98a; }
+  .toggle:disabled { opacity: .45; cursor: default; }
+
+  .scen { flex: 1 1 auto; min-height: 0; display: flex; justify-content: center; }
+
+  /* --- Bokens sättning, densamma på alla fyra ytorna --------------------------------------
+     Kopierad ur .byd-rulebook och .byd-rules-page så att förslaget läses i bokens eget typsnitt
+     och inte i ett nytt. */
+  .bok { background: #f7f3ea; color: #23201a; font: 14px/1.7 Georgia, serif; }
+  .bok h1 { margin: 0 0 18px; font-size: 26px; }
+  .bok h2 { margin: 22px 0 8px; font-size: 19px; }
+  .bok p { margin: 0 0 10px; }
+  .bok ol { margin: 0 0 12px; padding-left: 22px; }
+  .bok li { margin-bottom: 4px; }
+  .bok .ref { font-style: normal; color: #7a4d1d; border-bottom: 1px dotted #b08a5a; }
+
+  /* --- Bilden ---------------------------------------------------------------------------
+     Figuren är alltid centrerad och aldrig utfälld ur spalten. Bredden och höjden kommer ur
+     samma uträkning på alla ytor: millimeter gånger ytans egna px/mm. Att bilden är exakt lika
+     stor andel av spalten i editorn, vid bordet, på telefonen och i häftet är hela poängen —
+     formgivaren ska kunna se på skärmen vad trycket ger. */
+  figure.bild { margin: 14px 0; display: flex; flex-direction: column; align-items: center; }
+  figure.bild .ram { width: calc(var(--w) * var(--pxmm) * 1px); max-width: 100%; }
+  figure.bild svg { display: block; width: 100%; height: auto; border-radius: 3px; }
+  figure.bild figcaption { margin-top: 6px; max-width: calc(var(--w) * var(--pxmm) * 1px); text-align: center; font: italic 12px/1.5 Georgia, serif; color: #6b6255; }
+
+  /* --- Det formgivaren ser och läsaren aldrig ser ----------------------------------------
+     Samma regel som `ask` på ett mallavsnitt (#131): raden under bilden är editorns affordans
+     och aldrig läsarens text. Den når varken bordets lucka, telefonen eller häftet. */
+  .mark { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; max-width: 100%; font: 11px/1.5 system-ui, sans-serif; color: #6b6255; }
+  .mark b { font: 700 10px system-ui; text-transform: uppercase; letter-spacing: 1px; }
+  .mark .matt { font-variant-numeric: tabular-nums; }
+  .mark button { min-height: var(--tap); border: 1px solid #cbbfa8; border-radius: 8px; padding: 0 12px; background: #ece5d8; color: #4a4438; font: 700 11px system-ui; cursor: pointer; }
+  .mark button:focus-visible { outline: 2px solid #7a4d1d; outline-offset: 2px; }
+  /* Dekorativ: ordet står som text, aldrig som enbart en färg eller en ikon (L12). */
+  figure.bild[data-dekorativ] { box-shadow: inset 0 0 0 0 transparent; }
+  figure.bild[data-dekorativ] .mark b { color: #8a5a12; }
+  figure.bild[data-dekorativ] .ram { outline: 2px dashed #c79a3a; outline-offset: 3px; }
+  figure.bild[data-bunden='höjd'] .mark b { color: #2f5f8a; }
+  figure.bild[data-blink] .ram { outline: 3px solid #7a4d1d; outline-offset: 3px; }
+  .altfalt { display: flex; gap: 6px; align-items: center; margin-top: 6px; width: 100%; }
+  .altfalt input { flex: 1; min-width: 0; min-height: var(--tap); padding: 0 10px; border: 1px solid #cbbfa8; border-radius: 8px; background: #fff; color: #23201a; font: 12px system-ui; }
+  .altfalt button { min-height: var(--tap); border: 1px solid #7a4d1d; border-radius: 8px; padding: 0 14px; background: #7a4d1d; color: #fff; font: 700 11px system-ui; cursor: pointer; }
+
+  /* En bild som inte kom in står som ett struket block i förslaget, med samma märkesspråk som
+     importens övriga försvinnanden redan har (.byd-rulebook [data-mark='going']): röd kantlinje,
+     märkets ord som text, och skälet utskrivet. När boken är gjord finns blocket inte alls —
+     det är skillnaden mellan rapporten och boken, och den syns genom att slå av rapporten. */
+  .utebliven { margin: 14px 0; padding: 10px 12px; border-left: 3px solid #9a3b3b; background: #f1e5e1; }
+  .utebliven b { display: block; font: 700 10px system-ui; text-transform: uppercase; letter-spacing: 1px; color: #9a3b3b; }
+  .utebliven span { font: 12px/1.6 system-ui, sans-serif; color: #6f5f5f; }
+  .utebliven code { font: 12px ui-monospace, monospace; }
+
+  /* --- Editorytan ----------------------------------------------------------------------- */
+  .editor { width: 100%; display: flex; flex-direction: column; min-height: 0; }
+  .editor .spread { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; align-items: flex-start; justify-content: center; gap: var(--s5); padding: var(--s4) var(--gutter) 64px; }
+  .editor .toc { position: sticky; top: 0; flex: 0 0 218px; }
+  .editor .toc b { display: block; padding: 0 var(--s3) 4px; font: 11px system-ui; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .editor .toc a { display: flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 var(--s3); color: #9aa3b8; font: 12px system-ui; text-decoration: none; border-radius: 8px; }
+  .editor .toc a:hover { background: var(--card); }
+  /* Affordansen som gör de tysta bilderna hittbara. Den står i spalten och inte i ett varsel som
+     rullar förbi, därför att den ska finnas kvar dagen efter importen. */
+  .hitta { display: flex; align-items: center; gap: 8px; width: 100%; min-height: var(--tap); margin-top: var(--s2); padding: 0 var(--s3); border: 1px solid #4a4230; border-radius: 8px; background: #2a2417; color: #ffd98a; font: 700 12px system-ui; text-align: left; cursor: pointer; }
+  .hitta span { flex: 1; font-weight: 400; }
+  .editor .bok { width: calc(68ch + 80px); max-width: 100%; box-sizing: border-box; padding: 32px 40px; border-radius: 14px; }
+
+  /* Importrapportens band. Formen är redan vald (#131, variant B): ett band, inte en dialog,
+     med boken filen skulle bli under sig. Här är det bandet med bildernas rader i. */
+  .rapport { flex: none; display: flex; align-items: flex-start; gap: var(--s3); flex-wrap: wrap; margin: var(--s3) var(--gutter) 0; padding: var(--s3); border: 1px solid #3b414e; border-radius: 10px; background: #1b1d23; }
+  .rapport b { font: 11px system-ui; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .rapport ul { flex: 1 1 100%; margin: 0; padding-left: var(--s4); color: #9aa3b8; font: 12px/1.9 system-ui; }
+  .rapport li[data-kind='ok'] { color: #8fd0a8; }
+  .rapport li[data-kind='changed'] { color: #f0b64a; }
+  .rapport li[data-kind='going'] { color: #ff9a9a; }
+  .rapport .svar { display: flex; gap: var(--s2); margin-left: auto; }
+
+  /* --- Bordets lucka --------------------------------------------------------------------- */
+  .bordet { position: relative; flex: 1 1 auto; width: 100%; background: radial-gradient(120% 90% at 50% 40%, #2f6136, #1d3d22); overflow: hidden; }
+  .bordet .filt { position: absolute; inset: 40px 420px 40px 40px; border-radius: 18px; border: 2px dashed rgba(255,255,255,.14); display: grid; place-items: center; color: rgba(255,255,255,.4); font: 700 13px system-ui; }
+  .lucka { position: absolute; right: 0; top: 0; bottom: 0; width: 380px; display: grid; grid-template-rows: auto 1fr; background: #f7f3ea; box-shadow: -14px 0 34px rgba(0,0,0,.45); }
+  .lucka .fraga { display: flex; gap: 8px; padding: 12px; background: #ece5d8; border-bottom: 1px solid #d8cdb8; }
+  .lucka .fraga input { flex: 1; min-width: 0; min-height: var(--tap); padding: 0 11px; border: 1px solid #cbbfa8; border-radius: 10px; background: #fff; color: #23201a; font: 14px system-ui; }
+  .lucka .fraga button { min-width: var(--tap); min-height: var(--tap); border: 0; background: transparent; color: #6b6255; font-size: 20px; cursor: pointer; }
+  .lucka .bok { overflow: auto; padding: 18px 20px; }
+
+  /* --- Telefonen ------------------------------------------------------------------------- */
+  .telefonram { align-self: center; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: var(--s4) 0; }
+  .telefon { width: 390px; height: 720px; display: grid; grid-template-rows: auto auto 1fr; border: 8px solid #0d0f14; border-radius: 30px; background: #f7f3ea; overflow: hidden; }
+  .telefon .topp { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #ece5d8; border-bottom: 1px solid #d8cdb8; color: #4a4438; font: 700 13px system-ui; }
+  .telefon .topp button { margin-left: auto; min-width: var(--tap); min-height: var(--tap); border: 1px solid #cbbfa8; border-radius: 8px; background: #f7f3ea; color: #4a4438; font: 700 13px system-ui; cursor: pointer; }
+  .telefon .fraga { display: flex; gap: 8px; padding: 10px 12px; background: #ece5d8; border-bottom: 1px solid #d8cdb8; }
+  .telefon .fraga input { flex: 1; min-width: 0; min-height: var(--tap); padding: 0 11px; border: 1px solid #cbbfa8; border-radius: 10px; background: #fff; font: 14px system-ui; }
+  .telefon .bok { overflow: auto; padding: 16px; }
+  .telefonram > small { color: var(--quiet); font-variant-numeric: tabular-nums; }
+
+  /* --- Häftet i A5 -----------------------------------------------------------------------
+     Sidorna är ritade i riktiga millimeter, så 148 × 210 mm på skärmen är 148 × 210 mm.
+     Satsytan är streckad därför att gränsen är hela frågan i det här issuet: en bild som spränger
+     den ska synas spränga den, inte tystas av en `overflow: hidden`. */
+  .haftet { flex: 1 1 auto; min-width: 0; overflow: auto; padding: var(--s4) var(--gutter) 64px; }
+  .sidor { display: flex; gap: var(--s5); align-items: flex-start; }
+  .a5 { position: relative; flex: none; width: 148mm; height: 210mm; background: #fff; color: #1c1c1c; box-shadow: 0 10px 30px rgba(0,0,0,.5); }
+  .a5 .sats { position: absolute; left: 15mm; right: 15mm; top: 14mm; bottom: 14mm; outline: 1px dashed #c9c2b4; }
+  .a5 .sats > .flyt { font: 10.5pt/1.55 Georgia, serif; }
+  .a5 h1 { margin: 0 0 10mm; font-size: 22pt; }
+  .a5 h2 { margin: 0 0 3mm; font-size: 15pt; }
+  .a5 p { margin: 0 0 2.5mm; }
+  .a5 ol { margin: 0 0 3mm; padding-left: 6mm; }
+  .a5 figure.bild { margin: 4mm 0; }
+  .a5 figure.bild figcaption { font-size: 8.5pt; }
+  .a5 .sidnr { position: absolute; left: 0; right: 0; bottom: 5mm; text-align: center; font: 8pt system-ui; color: #8a8172; }
+  /* Prototypens egen linjal, inte trycket: måttet står i sidmarginalen i grått. */
+  .a5 .linjal { position: absolute; left: 2mm; width: 11mm; text-align: center; font: 8px system-ui; color: #9a9384; }
+
+  .foot { flex: none; border-top: 1px solid var(--line); padding: var(--s2) var(--gutter); margin: 0; color: var(--quiet); font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <a class="home" href="#">Mina spel</a>
+    <strong>Stora leken</strong>
+    <button class="rev">rev 12</button>
+    <span class="saved">Sparat</span>
+    <nav class="tabs">
+      <button>Kortvägg</button><button>Mall</button><button>Tabell</button>
+      <button>Symboler</button><button aria-selected="true">Regler</button><button>Bord</button>
+    </nav>
+    <span class="spacer"></span>
+    <div class="ytor" role="group" aria-label="Visa regelboken på">
+      <button data-yta="editor" aria-pressed="true">Editorn</button>
+      <button data-yta="bordet" aria-pressed="false">Bordets lucka</button>
+      <button data-yta="telefon" aria-pressed="false">Telefonen</button>
+      <button data-yta="haftet" aria-pressed="false">Häftet (A5)</button>
+    </div>
+    <span class="who">P</span>
+    <button class="btn primary">Uppdatera bordet</button>
+  </header>
+
+  <main class="regelvy">
+    <div class="chrome-row">
+      <span class="lead">Regler</span>
+      <button class="btn quiet">Importera samma fil igen — regler.md</button>
+      <button class="btn quiet">Häfte</button>
+      <button class="toggle" id="b-rapport" aria-pressed="true">Visa importrapporten</button>
+      <span class="spacer"></span>
+      <span class="measure" id="skala"></span>
+    </div>
+    <div class="scen" id="scen"></div>
+    <p class="foot" id="foot"></p>
+  </main>
+</div>
+
+<p class="note" id="note"></p>
+
+<script>
+  /* =====================================================================================
+     1. Uträkningen. Ett enda ställe, och varje yta läser samma svar.
+
+     Tre regler, i den ordning de tillämpas:
+
+       a) Bilden är aldrig bredare än spalten.  118 mm.
+       b) Bilden är aldrig högre än taket.      120 mm — då smalnar den av i stället, aldrig
+                                                beskuren, eftersom en beskuren uppställningsbild
+                                                är en uppställningsbild som ljuger.
+       c) Bilden förstoras aldrig över sina egna pixlar vid 300 DPI. En 700 px bred skiss som
+          dras ut till 118 mm trycks i 150 DPI och blir gröt i handen; på skärmen skulle den
+          se fin ut ända fram till leveransen. Hellre en liten skarp bild än en stor suddig.
+
+     Att (c) finns är också svaret på "vad händer med en liten bild": ingenting. Den står i sin
+     egen storlek, centrerad, och editorn skriver ut vilken storlek det blev.
+  ===================================================================================== */
+  const SPALT = 118, TAK = 120, MM_PER_PX = 25.4 / 300
+  function passa(px, py) {
+    const egen = px * MM_PER_PX
+    let w = Math.min(SPALT, egen), bunden = egen < SPALT ? 'egen' : 'bredd'
+    let h = (w * py) / px
+    if (h > TAK) { h = TAK; w = (h * px) / py; bunden = 'höjd' }
+    return { w, h, bunden }
+  }
+  const mm = (n) => `${n.toFixed(0)} mm`
+
+  /* =====================================================================================
+     2. Bilderna. Fyra som kom in och två som inte gjorde det.
+
+     `alt` är null för den dekorativa: den bar ingen alt-text i sin Markdown och togs in med
+     `alt=""` enligt beslutet. `bildtext` är något annat än `alt` — se punkt 3.
+  ===================================================================================== */
+  const BILDER = {
+    bordet: {
+      px: [2400, 1350],
+      alt: 'Dragbunten till vänster, spelytan i mitten, kasthögen till höger och handen närmast dig.',
+      bildtext: 'Bordet vid start, sett från nord.',
+      svg: (a) => `
+        <svg viewBox="0 0 2400 1350" ${a}>
+          <rect width="2400" height="1350" rx="36" fill="#2f6136"/>
+          <rect x="140" y="420" width="420" height="560" rx="26" fill="#f3ecdc" stroke="#12160f" stroke-width="10"/>
+          <rect x="1840" y="420" width="420" height="560" rx="26" fill="#e7dfd0" stroke="#12160f" stroke-width="10" stroke-dasharray="26 18"/>
+          <rect x="700" y="300" width="1000" height="500" rx="26" fill="#3c7a44" stroke="#f3ecdc" stroke-width="8" stroke-dasharray="22 16"/>
+          <g fill="#f3ecdc" font-family="system-ui" font-size="62" font-weight="700" text-anchor="middle">
+            <text x="350" y="1080" fill="#0d1a10">Dragbunt</text>
+            <text x="2050" y="1080" fill="#0d1a10">Kasthög</text>
+            <text x="1200" y="570">Spelyta</text>
+            <text x="1200" y="1240">Din hand</text>
+          </g>
+          <g fill="#f3ecdc" stroke="#12160f" stroke-width="8">
+            <rect x="880" y="990" width="180" height="250" rx="16"/><rect x="1110" y="990" width="180" height="250" rx="16"/><rect x="1340" y="990" width="180" height="250" rx="16"/>
+          </g>
+        </svg>`,
+    },
+    turen: {
+      px: [1500, 2250],
+      alt: 'Turens fem steg uppifrån och ner: dra ett kort, spela högst två, lös upp effekter, kasta ner till sju, fyll på dragbunten.',
+      bildtext: null,
+      svg: (a) => {
+        const steg = ['Dra ett kort', 'Spela högst två', 'Lös upp effekter', 'Kasta ner till sju', 'Fyll på bunten']
+        const rutor = steg.map((s, i) => `
+          <rect x="130" y="${140 + i * 400}" width="1240" height="250" rx="24" fill="#f3ecdc" stroke="#23201a" stroke-width="9"/>
+          <text x="750" y="${290 + i * 400}" fill="#23201a" font-family="system-ui" font-size="78" font-weight="700" text-anchor="middle">${i + 1}. ${s}</text>
+          ${i < 4 ? `<path d="M750 ${400 + i * 400} v110" stroke="#23201a" stroke-width="11" marker-end="url(#pil)"/>` : ''}`).join('')
+        return `<svg viewBox="0 0 1500 2250" ${a}>
+          <defs><marker id="pil" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="#23201a"/></marker></defs>
+          <rect width="1500" height="2250" fill="#ece5d8"/>${rutor}</svg>`
+      },
+    },
+    ikoner: {
+      px: [1600, 640],
+      // Ingen alt-text i filen. Beslutet: tas in ändå, märkt dekorativ.
+      alt: null,
+      bildtext: null,
+      svg: (a) => {
+        const rader = [['1', 'kostar en handling'], ['2', 'kostar två handlingar'], ['↺', 'vänds vid turens slut'], ['✦', 'räknas som guld']]
+        const rows = rader.map(([tecken, ord], i) => `
+          <circle cx="170" cy="${120 + i * 145}" r="52" fill="#23201a"/>
+          <text x="170" y="${142 + i * 145}" fill="#f7f3ea" font-family="system-ui" font-size="56" font-weight="700" text-anchor="middle">${tecken}</text>
+          <text x="270" y="${142 + i * 145}" fill="#23201a" font-family="system-ui" font-size="52">${ord}</text>`).join('')
+        return `<svg viewBox="0 0 1600 640" ${a}><rect width="1600" height="640" fill="#ece5d8"/>${rows}</svg>`
+      },
+    },
+    liten: {
+      px: [700, 500],
+      alt: 'Ett kort med siffran i övre vänstra hörnet inringad.',
+      bildtext: null,
+      svg: (a) => `<svg viewBox="0 0 700 500" ${a}>
+        <rect width="700" height="500" fill="#ece5d8"/>
+        <rect x="230" y="60" width="240" height="380" rx="20" fill="#f3ecdc" stroke="#23201a" stroke-width="8"/>
+        <circle cx="285" cy="115" r="42" fill="none" stroke="#9a3b3b" stroke-width="9"/>
+        <text x="285" y="134" fill="#23201a" font-family="system-ui" font-size="46" font-weight="700" text-anchor="middle">7</text>
+        <g fill="#cfc3ab"><rect x="258" y="200" width="184" height="14" rx="7"/><rect x="258" y="232" width="184" height="14" rx="7"/><rect x="258" y="264" width="110" height="14" rx="7"/></g>
+      </svg>`,
+    },
+  }
+
+  /* Två filer som inte gick att ta in, med var sitt skäl. Ingen av dem blir ett block i boken —
+     boken görs utan dem, precis som beslutet säger. Det de får är en rad i rapporten och en
+     struken plats i förslaget, så att den som läser förslaget ser var i boken de skulle ha stått. */
+  const UTEBLIVNA = {
+    tiff: { fil: 'uppstallning.tiff', skal: 'formatet går inte att trycka — bilder tas in som PNG, JPEG eller SVG' },
+    stor: { fil: 'bordet-4k.png', skal: '24 MB, och gränsen är 10 MB per bild' },
+  }
+
+  /* =====================================================================================
+     3. Bildtext och alt-text är två olika saker, och prototypen väljer att hålla isär dem.
+
+     Markdown ger bara det ena: `![så här](fil)` bär en alt-text och ingenting annat. Frestelsen
+     är att låta den bli bildtext också — en rad text under bilden kostar ingenting att skriva ut,
+     och då ser boken "färdig" ut direkt efter importen.
+
+     Valet här är motsatt: **alt-texten blir bildens alt-text och ingenting mer. Bildtexten är ett
+     eget, valfritt fält som formgivaren skriver i editorn och som är tomt efter en import.**
+
+     Fyra skäl:
+
+     a) De skrivs för olika läsare och blir dåliga av att byta plats. En alt-text ersätter bilden
+        för den som inte ser den och är därför uttömmande — "Dragbunten till vänster, spelytan i
+        mitten, kasthögen till höger och handen närmast dig." En bildtext läses *bredvid* bilden av
+        någon som redan ser den, och ska säga det bilden inte säger — "Bordet vid start, sett från
+        nord." Sätter man alt-texten som bildtext får varje bild en rad som stavar ut det läsaren
+        just tittat på, och det är brus på en A5-sida där varje rad kostar.
+     b) Bildtexten trycks. Den tar plats i satsytan och skjuter texten nedåt, och den sortens
+        beslut ska formgivaren ta med öppna ögon och inte ärva av en filsökväg.
+     c) Om alt-texten vore bildtext skulle en dekorativ bild (`alt=""`) och en bild vars formgivare
+        medvetet valt att inte skriva en bildtext se exakt likadana ut. Då går skillnaden som
+        rapporten måste kunna räkna inte längre att se, och punkt 4 nedan kollapsar.
+     d) `setup`-blocket har redan ett `caption` som är precis detta: en valfri rad under en bild,
+        skriven av formgivaren. Bildblocket ärver det fältet i stället för att uppfinna ett annat.
+
+     Priset, uttryckligt: en importerad bok har inga bildtexter alls förrän någon skriver dem.
+     Det är rätt pris, eftersom en bok utan bildtexter är läsbar medan en bok där varje bild har
+     en felskriven bildtext ser färdig ut och inte är det.
+  ===================================================================================== */
+
+  /* =====================================================================================
+     4. Boken. Samma innehåll på alla fyra ytorna; det som skiljer är vad som ritas runt det.
+  ===================================================================================== */
+  const BOK = [
+    { t: 'h1', text: 'Stora leken' },
+    { t: 'h2', id: 'uppstallning', text: 'Uppställning' },
+    { t: 'p', text: 'Lägg ut de fyra zonerna som bilden visar. Varje spelare drar fem kort ur <span class="ref">dragbunten</span> och håller dem dolda för de andra.' },
+    { t: 'bild', id: 'bordet' },
+    { t: 'ute', id: 'tiff' },
+    { t: 'h2', id: 'tur', text: 'En tur' },
+    { t: 'p', text: 'En tur går i fem steg. Ett steg som inte går att göra hoppas över, och turen fortsätter.' },
+    { t: 'bild', id: 'turen' },
+    { t: 'h2', id: 'handlingar', text: 'Handlingar' },
+    { t: 'p', text: 'Symbolerna i kortens text betyder det här, och betyder samma sak var de än står:' },
+    { t: 'bild', id: 'ikoner' },
+    { t: 'h2', id: 'slut', text: 'Spelet tar slut' },
+    { t: 'p', text: 'Spelet tar slut när <span class="ref">dragbunten</span> är tom två gånger. Räkna ihop siffran i varje korts övre vänstra hörn.' },
+    { t: 'bild', id: 'liten' },
+    { t: 'ute', id: 'stor' },
+  ]
+
+  // Vad skärmläsaren möter. En dekorativ bild är `aria-hidden` och bär inget namn; det är
+  // beslutet, och kostnaden står skriven i issuet.
+  const svgAttr = (b) => (b.alt === null ? 'aria-hidden="true" focusable="false"' : `role="img" aria-label="${b.alt.replace(/"/g, '&quot;')}"`)
+
+  let altSkrivna = {}   // alt-texter formgivaren skrivit i den här sessionen
+  let oppetFalt = null  // vilken bild som har sitt alt-fält öppet
+  let blink = null
+
+  function bildHtml(id, yta) {
+    const b = BILDER[id]
+    const alt = altSkrivna[id] ?? b.alt
+    const p = passa(b.px[0], b.px[1])
+    const dekorativ = alt === null
+    const attr = [
+      `style="--w:${p.w.toFixed(2)}"`,
+      `data-bunden="${p.bunden}"`,
+      dekorativ ? 'data-dekorativ' : '',
+      blink === id ? 'data-blink' : '',
+      `id="bild-${id}"`,
+    ].join(' ')
+    const svg = b.svg(svgAttr({ alt }))
+    const bildtext = b.bildtext && !dekorativ ? `<figcaption>${b.bildtext}</figcaption>` : ''
+    // Läsarens ytor får bilden och bildtexten och ingenting annat.
+    if (yta !== 'editor') return `<figure class="bild" ${attr}><div class="ram">${svg}</div>${bildtext}</figure>`
+    // Editorn får dessutom raden som säger vad bilden är och vad den blir i häftet.
+    const matt = `<span class="matt">Häftet: ${mm(p.w)} × ${mm(p.h)}</span>`
+    const bundet = { bredd: 'Fyller spalten', höjd: 'För hög för sidan — smalnar av', egen: 'Egen storlek — förstoras inte' }[p.bunden]
+    const rad = dekorativ
+      ? `<b>Dekorativ · dold för skärmläsare</b><span>Bilden bar ingen alt-text i filen.</span><button type="button" data-alt="${id}">Skriv alt-text</button>`
+      : `<b>Alt-text</b><span>${alt}</span><button type="button" data-alt="${id}">Ändra</button>`
+    const falt = oppetFalt === id
+      ? `<div class="altfalt"><input id="in-${id}" type="text" aria-label="Alt-text för bilden" value="${(alt ?? '').replace(/"/g, '&quot;')}" placeholder="Vad bilden visar, för den som inte ser den"><button type="button" data-klar="${id}">Klart</button></div>`
+      : ''
+    return `<figure class="bild" ${attr}><div class="ram">${svg}</div>${bildtext}
+      <div class="mark">${rad}</div>
+      <div class="mark"><b>${bundet}</b>${matt}<span>${b.px[0]} × ${b.px[1]} px</span></div>${falt}</figure>`
+  }
+
+  function bokHtml(yta, rapport) {
+    return BOK.map((n) => {
+      if (n.t === 'h1') return yta === 'haftet' ? '' : `<h1>${n.text}</h1>`
+      if (n.t === 'h2') return `<h2 id="rub-${n.id}">${n.text}</h2>`
+      if (n.t === 'p') return `<p>${n.text}</p>`
+      if (n.t === 'bild') return bildHtml(n.id, yta)
+      // En utebliven bild syns bara i förslaget, alltså i editorn med rapporten uppe. Läsaren
+      // möter aldrig ett felmeddelande i en regelbok: boken är gjord utan bilden.
+      if (n.t === 'ute') {
+        if (yta !== 'editor' || !rapport) return ''
+        const u = UTEBLIVNA[n.id]
+        return `<div class="utebliven" id="ute-${n.id}"><b>Kom inte med</b><span><code>${u.fil}</code> — ${u.skal}. Boken görs utan den.</span></div>`
+      }
+      return ''
+    }).join('')
+  }
+
+  /* =====================================================================================
+     5. Ytorna.
+  ===================================================================================== */
+  const utanAlt = () => Object.keys(BILDER).filter((id) => (altSkrivna[id] ?? BILDER[id].alt) === null)
+
+  function editorHtml(rapport) {
+    const tomma = utanAlt()
+    const rader = [
+      ['ok', '4 bilder kom med och ligger i projektets tillgångar, innehållsadresserade som kortens egna.'],
+      tomma.length
+        ? ['changed', `${tomma.length} bild utan alt-text togs in som dekorativ och är dold för skärmläsare. Den står märkt i boken och räknas i spalten till vänster.`]
+        : ['ok', 'Varje bild bär en alt-text.'],
+      ['changed', '1 bild var för hög för sidan och sätts 80 × 120 mm i häftet i stället för 118 × 177.'],
+      ['going', `<code>${UTEBLIVNA.tiff.fil}</code> kom inte med — ${UTEBLIVNA.tiff.skal}.`],
+      ['going', `<code>${UTEBLIVNA.stor.fil}</code> kom inte med — ${UTEBLIVNA.stor.skal}.`],
+    ]
+    const band = rapport ? `
+      <div class="rapport">
+        <b>regler.md · 6 bilder lästa</b>
+        <span class="svar"><button class="btn quiet">Avbryt</button><button class="btn primary">Gör boken</button></span>
+        <ul>${rader.map(([k, s]) => `<li data-kind="${k}">${s}</li>`).join('')}</ul>
+      </div>` : ''
+    const toc = BOK.filter((n) => n.t === 'h2').map((n) => `<a href="#rub-${n.id}">${n.text}</a>`).join('')
+    // Affordansen för punkt 4 i uppdraget: de tysta bilderna är räknade och nåbara från spalten,
+    // inte bara nämnda i ett band som försvinner när boken är gjord.
+    const hitta = tomma.length
+      ? `<button class="hitta" id="b-hitta"><b>${tomma.length}</b><span>bild utan alt-text</span><span aria-hidden="true">→</span></button>`
+      : `<button class="hitta" id="b-hitta" disabled style="background:#1b2a1f;border-color:#2f6b46;color:#8fd0a8"><b>0</b><span>bilder utan alt-text</span></button>`
+    return `${band}
+      <div class="editor">
+        <div class="spread">
+          <nav class="toc" aria-label="Bokens disposition"><b>Boken</b>${toc}${hitta}</nav>
+          <article class="bok">${bokHtml('editor', rapport)}</article>
+        </div>
+      </div>`
+  }
+
+  const bordetHtml = () => `
+    <div class="bordet">
+      <div class="filt">Filten</div>
+      <aside class="lucka" role="dialog" aria-label="Regler">
+        <div class="fraga"><input type="search" aria-label="Fråga reglerna" placeholder="Fråga reglerna…"><button type="button" aria-label="Stäng">×</button></div>
+        <div class="bok">${bokHtml('bordet', false)}</div>
+      </aside>
+    </div>`
+
+  const telefonHtml = () => `
+    <div class="telefonram">
+      <div class="telefon">
+        <div class="topp">Stora leken<button type="button">Stäng</button></div>
+        <div class="fraga"><input type="search" aria-label="Fråga reglerna" placeholder="Fråga reglerna…"></div>
+        <div class="bok">${bokHtml('telefon', false)}</div>
+      </div>
+      <small>390 px · spalten 358 px</small>
+    </div>`
+
+  // Häftet bryts av Chromium i verkligheten; här är tre sidor lagda för hand för att visa vad
+  // brytningen möter. Sida 2 är hela skälet till taket: bilden är 120 mm och det är fortfarande
+  // 62 mm satsyta kvar till text, så figuren blir aldrig en ensam sida.
+  function haftetHtml() {
+    const sida = (nr, inner) => `<div class="a5"><div class="sats"><div class="flyt">${inner}</div></div><div class="sidnr">${nr}</div></div>`
+    const b = (id) => bildHtml(id, 'haftet')
+    return `<div class="haftet"><div class="sidor">
+      ${sida(1, `<h1>Stora leken</h1><h2>Uppställning</h2>
+        <p>Lägg ut de fyra zonerna som bilden visar. Varje spelare drar fem kort ur dragbunten och håller dem dolda för de andra.</p>
+        ${b('bordet')}
+        <p>Den som senast vann något börjar. Om ingen minns börjar den som sitter i norr, och turen går medsols runt bordet tills någon avslutar den.</p>`)}
+      ${sida(2, `<h2>En tur</h2><p>En tur går i fem steg. Ett steg som inte går att göra hoppas över, och turen fortsätter.</p>
+        ${b('turen')}
+        <p>Ett kort som spelats ligger kvar tills dess effekt är löst.</p>`)}
+      ${sida(3, `<h2>Handlingar</h2><p>Symbolerna i kortens text betyder det här, och betyder samma sak var de än står:</p>
+        ${b('ikoner')}
+        <h2>Spelet tar slut</h2><p>Spelet tar slut när dragbunten är tom två gånger. Räkna ihop siffran i varje korts övre vänstra hörn.</p>
+        ${b('liten')}`)}
+    </div></div>`
+  }
+
+  /* =====================================================================================
+     6. Ritning, mätning och noter.
+  ===================================================================================== */
+  const scen = document.getElementById('scen'), foot = document.getElementById('foot')
+  const note = document.getElementById('note'), skala = document.getElementById('skala')
+  const bRapport = document.getElementById('b-rapport')
+  let yta = 'editor', rapport = true
+
+  const NOTER = {
+    editor: ['Editorn · skrivbordsförst (L12)',
+      'Raden under varje bild är formgivarens och når aldrig läsaren, precis som en mallsektions <code>ask</code> (#131): den säger vad bilden bär, hur stor den blir i häftet, och varför den blev den storleken. Bilden utan alt-text står märkt <b>Dekorativ · dold för skärmläsare</b> med ordet som text och inte som färg, och spaltens knapp räknar dem och hoppar dit — det är «ingenting försvinner tyst» tillämpat på en tyst bild.'],
+    bordet: ['Bordets lucka · 380 px',
+      'Samma bild, samma andel av spalten. Luckan är 380 px och spalten 340, alltså 2,88 px per millimeter: den höga bilden är 80 × 120 mm och tar 231 × 346 px, aldrig mer än en dryg tredjedel av luckans höjd. Inga märken, ingen rapport — läsaren möter boken som den blev.'],
+    telefon: ['Telefonen · 390 px',
+      'Spalten är 358 px, alltså 3,03 px per mm. Taket på 120 mm blir 364 px av 720, så det finns alltid text ovanför och under bilden och läsaren tappar aldrig var i boken hon är. Den breda bilden blir 358 × 201 px och den lilla 180 × 128 — den växer inte för att skärmen är smal, för då hade den vuxit förbi sina egna pixlar.'],
+    haftet: ['Häftet · A5 i riktiga millimeter',
+      'Sidan är 148 × 210 mm och den streckade rutan är satsytan, 118 × 182. Spalten är 118 mm och taket 120: sidan 2 visar varför — den höga bilden ville bli 118 × 177 mm och hade då tagit hela satsytan och blivit en ensam bildsida. Den smalnar av till 80 × 120 i stället, aldrig beskuren, och 62 mm text ryms under den.'],
+  }
+
+  function rita() {
+    scen.innerHTML = yta === 'editor' ? editorHtml(rapport) : yta === 'bordet' ? bordetHtml() : yta === 'telefon' ? telefonHtml() : haftetHtml()
+    bRapport.disabled = yta !== 'editor'
+    bRapport.setAttribute('aria-pressed', String(rapport && yta === 'editor'))
+    for (const b of document.querySelectorAll('.ytor button')) b.setAttribute('aria-pressed', String(b.dataset.yta === yta))
+    // Varje yta får sin egen px-per-millimeter, räknad ur den spalt boken faktiskt fick.
+    let pxmm = 3.779528, spaltPx = 118 * pxmm
+    if (yta !== 'haftet') {
+      const bok = scen.querySelector('.bok')
+      const inner = bok.clientWidth - parseFloat(getComputedStyle(bok).paddingLeft) - parseFloat(getComputedStyle(bok).paddingRight)
+      spaltPx = inner
+      pxmm = inner / SPALT
+    }
+    scen.querySelectorAll('.bok, .haftet').forEach((el) => el.style.setProperty('--pxmm', pxmm.toFixed(4)))
+    skala.textContent = `spalt ${Math.round(spaltPx)} px = ${SPALT} mm · ${pxmm.toFixed(2)} px/mm`
+    const rader = Object.entries(BILDER).map(([id, b]) => { const p = passa(b.px[0], b.px[1]); return `${id} ${mm(p.w)}×${mm(p.h)} (${p.bunden})` })
+    foot.textContent = `Spalt ${SPALT} mm · tak ${TAK} mm · ${rader.join(' · ')} · ${utanAlt().length} utan alt-text · 2 kom inte med`
+    note.innerHTML = `<b>${NOTER[yta][0]}</b>${NOTER[yta][1]}`
+    koppla()
+  }
+
+  function koppla() {
+    for (const b of scen.querySelectorAll('[data-alt]')) b.addEventListener('click', () => { oppetFalt = b.dataset.alt; rita(); document.getElementById(`in-${oppetFalt}`)?.focus() })
+    for (const b of scen.querySelectorAll('[data-klar]')) b.addEventListener('click', () => {
+      const id = b.dataset.klar, v = document.getElementById(`in-${id}`).value.trim()
+      // Ett tomt fält betyder fortfarande dekorativ: att stänga fältet utan att skriva något är
+      // inte ett sätt att smyga bort märket.
+      altSkrivna[id] = v === '' ? null : v
+      oppetFalt = null
+      rita()
+    })
+    const hitta = document.getElementById('b-hitta')
+    if (hitta && !hitta.disabled) hitta.addEventListener('click', () => {
+      const id = utanAlt()[0]
+      blink = id
+      rita()
+      document.getElementById(`bild-${id}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      setTimeout(() => { blink = null; rita() }, 2200)
+    })
+  }
+
+  for (const b of document.querySelectorAll('.ytor button')) b.addEventListener('click', () => { yta = b.dataset.yta; oppetFalt = null; rita() })
+  bRapport.addEventListener('click', () => { rapport = !rapport; rita() })
+  rita()
+</script>
+</body>
+</html>
