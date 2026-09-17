@@ -218,14 +218,14 @@ function mat() {
     '<b>' + BOK.length + ' avsnitt · ' + under + ' underrubriker</b> · ' +
     rader + ' rader · spalten <b>' + spalt + ' px</b> i en ' + yta + ' px yta · ' +
     (over > 0
-      ? '<span class="bad">' + over + ' px utanför' + (rules.dataset.column === 'egen' ? ' (nås i spalten)' : ' (onåbara)') + '</span>'
+      ? '<span class="bad">' + over + ' px utanför' + (rules.dataset.column === 'egen' ? ' (nås i spalten)' : ' (syns först när boken är skrollad i botten)') + '</span>'
       : '<span class="ok">ryms</span>') +
     ' · ' + ytor.length + ' ' + (ytor.length === 1 ? 'skrollyta' : 'skrollytor') +
     (nastlad ? ' <span class="bad">(nästlade)</span>' : '')
 }
 
 const NOTER = {
-  a: '<b>A · Som i dag</b>Spalten listar bara nivå 1. En underrubrik hittas genom att läsa sitt avsnitt. Kortast, och den enda vars form aldrig ändrar sig — men vid 22 avsnitt räcker inte höjden ändå, och den säger ingenting om att boken har 32 rubriker till.',
+  a: '<b>A · Som i dag</b>Spalten listar bara nivå 1. En underrubrik hittas genom att läsa sitt avsnitt. Kortast, och den enda vars form aldrig ändrar sig — men vid 22 avsnitt räcker höjden ändå inte: spalten är fäst upptill i uppslagets enda skrollyta, så dess sista rader syns först när boken är skrollad hela vägen ned. Den säger heller ingenting om att boken har 32 rubriker till.',
   b: '<b>B · Indraget, alltid</b>Spalten speglar boken: varje nivå 2 står under sin nivå 1. Trognast, och längst. Nivån hörs för att varje undergrupp är en egen lista som säger vilket avsnitt den hör till — indraget är bara det ögat ser.',
   c: '<b>C · Indraget, där du läser</b>Bara det avsnitt du står i fäller ut sina underrubriker; resten står hopvikta. Kort spalt — men den ändrar form medan du skrollar, utan att du rört den. Det är precis det #177 sa är svårt att lita på: en rad flyttar sig under fingret och tangentbordsordningen är en annan när du kommer tillbaka.',
 }
