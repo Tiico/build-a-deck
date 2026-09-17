@@ -1,3 +1,4 @@
+import { ASSET_MAX_BYTES, sniffAsset } from '@byd/protocol'
 import type { ProjectDoc, Row } from './types.js'
 
 // The project's images in the editor (E1, DRIFT §4): a row points at an image by the hash of
@@ -85,25 +86,19 @@ export function assetsInUse(doc: ProjectDoc): { hash: string; cards: string[] }[
 // raster pictures only; a card's icon set may hold an SVG (E4), but that is a file the tool itself
 // fetched from a library, and a drawing a designer brings from her own disk is not.
 //
-// The weight is the server's own limit (`ASSET_MAX_BYTES`), asked here so the import report can
+// The reading itself is `sniffAsset`, which is also the server's gate (#204): the check here
+// exists to tell the designer at once that her file is not a picture, and a check in the browser
+// is never what protects the service. Two readings of the same bytes that could disagree is one
+// reading too many, so there is one — and the kinds are what keep a typeface out of a picture
+// field, since a font's formats are its own and are not pictures.
+//
+// The weight is the server's own limit, for the same reason: asked here so the import report can
 // say which picture was too big instead of one upload failing where nobody is reading.
-export const RULE_IMAGE_MAX_BYTES = 8 * 1024 * 1024
-
-const ascii = (s: string): number[] => [...s].map((c) => c.charCodeAt(0))
-const starts = (bytes: Uint8Array, at: number, head: readonly number[]): boolean => head.every((b, i) => bytes[at + i] === b)
-const MAGIC: readonly { type: string; head: readonly number[] }[] = [
-  { type: 'image/png', head: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] },
-  { type: 'image/jpeg', head: [0xff, 0xd8, 0xff] },
-  { type: 'image/gif', head: ascii('GIF87a') },
-  { type: 'image/gif', head: ascii('GIF89a') },
-]
+export const RULE_IMAGE_MAX_BYTES = ASSET_MAX_BYTES
 
 export function imageTypeOf(bytes: Uint8Array): string | null {
-  for (const { type, head } of MAGIC) if (starts(bytes, 0, head)) return type
-  // A WebP is a RIFF container, and RIFF alone is a sound file just as readily, so both marks
-  // have to be there.
-  if (starts(bytes, 0, ascii('RIFF')) && starts(bytes, 8, ascii('WEBP'))) return 'image/webp'
-  return null
+  const format = sniffAsset(bytes)
+  return format?.kind === 'image' ? format.type : null
 }
 
 // A data URL, as the wizard holds a chosen image, back to bytes and a type for upload. The

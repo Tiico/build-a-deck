@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { assetUrl, assetsInUse, imageFieldsOf, imageTypeOf, isAssetRef, resolveAssetRow } from '../src/editor/assets.js'
+import { ASSET_FORMATS, ASSET_MAX_BYTES, sniffAsset } from '@byd/protocol'
+import { RULE_IMAGE_MAX_BYTES, assetUrl, assetsInUse, imageFieldsOf, imageTypeOf, isAssetRef, resolveAssetRow } from '../src/editor/assets.js'
 import { projectDoc } from './project-doc.js'
 
 const HASH = 'a'.repeat(64)
@@ -53,5 +54,18 @@ describe('what a picked file actually is (#173)', () => {
     expect(imageTypeOf(new Uint8Array([]))).toBeNull()
     // RIFF is not WebP on its own; a wave file wearing a .png is still not a picture.
     expect(imageTypeOf(new Uint8Array([...Buffer.from('RIFF'), 0, 0, 0, 0, ...Buffer.from('WAVE')]))).toBeNull()
+  })
+
+  it('reads off the very list the server gates on, so the editor and the gate cannot say different things (#204)', () => {
+    // The four are not written here a second time: this is the shared list, and the editor's
+    // answer is that reading with everything that is not a picture kept out of it.
+    expect(ASSET_FORMATS.filter((f) => f.kind === 'image').map((f) => f.type)).toEqual(['image/png', 'image/jpeg', 'image/gif', 'image/webp'])
+    // A typeface is read too, and is not a picture: the kinds are what keep a font out of a
+    // picture field and a picture out of a font field.
+    const woff2 = new Uint8Array([...Buffer.from('wOF2'), 0, 1, 0, 0])
+    expect(sniffAsset(woff2)?.type).toBe('font/woff2')
+    expect(imageTypeOf(woff2)).toBeNull()
+    // And the weight the import reports on is the gate's own limit, not a number kept in step.
+    expect(RULE_IMAGE_MAX_BYTES).toBe(ASSET_MAX_BYTES)
   })
 })
