@@ -12,6 +12,7 @@ import { chromium, type Browser, type Page } from 'playwright'
 import { contrastRatio, flatten } from '../src/player/contrast.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { atWidth } from './viewport.js'
+import { filePickerFaults } from './file-pickers.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
@@ -72,13 +73,19 @@ afterAll(async () => {
 
 const WIDTHS = [768, 1024, 1280] as const
 const TARGETS = 'button, a[href], input, select, textarea, [role="tab"]'
+// And what counts as being on the screen at all, everywhere below. `checkVisibility` says nothing
+// about opacity unless it is asked, and every sweep in this file used to leave it unasked: a
+// control at `opacity: 0` was read as an ordinary drawn one and measured for its target, which is
+// how the card step's file picker — a transparent sheet over the label it hid behind — passed here
+// without a word (#193). Nothing is made to pass by disappearing from it either: a control taken
+// off the screen for the eye alone is still visible to this and still has to be a target.
 
 describe.each(WIDTHS)('the wizard at %ipx', (width) => {
   it('gives every control a 44 by 44 pixel hit area', async () => {
     const measured = await measure(width, (page) =>
       page.$$eval(TARGETS, (els) =>
         els
-          .filter((el) => el.checkVisibility())
+          .filter((el) => el.checkVisibility({ opacityProperty: true }))
           .map((el) => {
             const target = el.closest('label') ?? el
             const box = target.getBoundingClientRect()
@@ -89,6 +96,35 @@ describe.each(WIDTHS)('the wizard at %ipx', (width) => {
       ),
     )
     expect(measured).toEqual(nothing(measured, [] as string[]))
+  }, 90_000)
+
+  // And that every one of them can be seen without a pointer (#193, and #184 in the editor before
+  // it). `checkVisibility` says nothing about opacity unless it is asked, and the sweep above
+  // leaves it unasked — which is how a file picker stretched transparently across the label it
+  // hides behind passed here without a word. A control nobody can see is not a control that is
+  // merely quiet: it is laid out, it is hit, and it takes the click meant for whatever it covers.
+  it('paints every control without waiting for a pointer to rest on it', async () => {
+    const measured = await measure(width, (page) =>
+      page.$$eval(TARGETS, (els) =>
+        els
+          .filter((el) => el.checkVisibility() && !el.checkVisibility({ opacityProperty: true, visibilityProperty: true }))
+          // Named through the label when the control has nothing to say for itself: a file input
+          // carries no text, and a report reading `: 0` says only that something is invisible.
+          .map((el) => `${(el.getAttribute('aria-label') || el.textContent || el.closest('label')?.textContent || el.tagName).trim().slice(0, 24)}: ${getComputedStyle(el).opacity}`),
+      ),
+    )
+    expect(measured).toEqual(nothing(measured, [] as string[]))
+  }, 90_000)
+
+  // And what a file picker in particular has to be (#193): named, reached through its label, lit
+  // when the keyboard finds it, and as big as a thumb. Summed over the steps, because the card
+  // step is a screen of its own below the desk and a column beside the preview above one.
+  it('names every file picker, hands it the pointer through its label, and rings it when it takes focus', async () => {
+    const measured = await measure(width, (page) => page.$$eval("input[type='file']", filePickerFaults))
+    expect({
+      pickers: Object.values(measured).reduce((n, m) => n + m.pickers, 0),
+      faults: Object.values(measured).flatMap((m) => m.faults),
+    }).toEqual({ pickers: 1, faults: [] })
   }, 90_000)
 
   it('never makes the page scroll sideways', async () => {
@@ -104,7 +140,7 @@ describe.each(WIDTHS)('the wizard at %ipx', (width) => {
       page.$$eval('.byd-wizard *:not(.byd-preview *)', (els) =>
         els
           .filter((el) => [...el.childNodes].some((node) => node.nodeType === 3 && (node.textContent ?? '').trim() !== ''))
-          .filter((el) => el.checkVisibility())
+          .filter((el) => el.checkVisibility({ opacityProperty: true }))
           .map((el) => {
             const style = getComputedStyle(el)
             const behind: string[] = []
@@ -135,7 +171,7 @@ describe.each(WIDTHS)('the wizard at %ipx', (width) => {
     // A `hidden` panel is only hidden while nothing in the stylesheet gives it a `display` of its
     // own; a step that is closed but drawn leaves a gap above the one that is open, and a tab
     // stop in the middle of nowhere.
-    const measured = await measure(width, (page) => page.$$eval('[role="tabpanel"]', (els) => els.filter((el) => el.checkVisibility()).length))
+    const measured = await measure(width, (page) => page.$$eval('[role="tabpanel"]', (els) => els.filter((el) => el.checkVisibility({ opacityProperty: true })).length))
     const steps = Object.keys(measured).length
     expect(measured).toEqual(nothing(measured, steps > 1 ? 1 : 0))
   }, 90_000)

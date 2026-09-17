@@ -16,6 +16,7 @@ import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import { atWidth } from './viewport.js'
 import { layerPick } from './layers.js'
+import { filePickerFaults } from './file-pickers.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
@@ -75,6 +76,35 @@ async function newField(width: number): Promise<Record<string, string>> {
     fireEvent.click(screen.getByRole('button', { name: 'Kolumner' }))
     await screen.findByRole('form', { name: 'Nytt fält' })
     return { 'Nytt fält': document.querySelector('.byd-editor')!.outerHTML }
+  } finally {
+    unmount()
+  }
+}
+
+// The card table with a picture in it, and the import held open (#193). Three of the editor's file
+// pickers stand on this tab and not one of them is on a surface the sweep above can reach: the
+// import is behind a box in the crown (#130), and the two image pickers exist only in a deck that
+// has an image column at all — which the fixture, three rows of text, does not. That is how two
+// transparent controls could sit in the densest tab the editor has with every describe green.
+async function cardFiles(width: number): Promise<Record<string, string>> {
+  const doc = projectDoc()
+  doc.template.faces['front']!.base.push({ kind: 'image', id: 'art', x: 4, y: 4, w: 55, h: 36, bind: { field: 'art' } })
+  await run.projects.create(run.otherProjectId, doc)
+  atWidth(width)
+  history.replaceState(null, '', `/editor?project=${run.otherProjectId}&server=${encodeURIComponent(run.http)}`)
+  await run.answering()
+  const { unmount } = render(<EditorPage />)
+  try {
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('tab', { name: 'Tabell' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Importera' }))
+    await screen.findByLabelText('Importera CSV…')
+    // A marked card opens the action row, and the row draws a picker of its own the moment the
+    // column it is set to is the image one (#17 on E1) — before that it offers a text field.
+    fireEvent.click(screen.getByLabelText('markera dragon'))
+    fireEvent.change(await screen.findByLabelText('Kolumn'), { target: { value: 'art' } })
+    await screen.findByLabelText('Välj bild för de markerade korten')
+    return { 'Tabell · filer': document.querySelector('.byd-editor')!.outerHTML }
   } finally {
     unmount()
   }
@@ -214,13 +244,22 @@ const WIDTHS = [768, 1024, 1280] as const
 // Everything a pointer or a thumb is meant to hit. A control inside a label is hit through the
 // label — that is the target the eye sees and the one the browser forwards the click from.
 const TARGETS = 'button, a[href], input, select, textarea, [role="option"], [role="tab"]'
+// And what counts as being on the screen at all, everywhere below. `checkVisibility` says nothing
+// about opacity unless it is asked, and every sweep in this file used to leave it unasked: a
+// control at `opacity: 0` was therefore read as an ordinary drawn control, measured for its target
+// and counted among the panel's own — which is how four transparent file pickers lived in the tool
+// without a word being said (#193). Asked, it answers about the thing the eye can actually find.
+// It is a widening and not a way out: nothing is made to pass this by disappearing from it, which
+// is why every count below is asserted as a number. A control taken off the screen for the eye
+// alone — `.byd-offscreen`, an input a label stands in front of — is still visible to this, and
+// still has to be a target; what it is not is a sheet lying over other content.
 
 describe.each(WIDTHS)('the editor at %ipx', (width) => {
   it('gives every control a 44 by 44 pixel hit area', async () => {
     const measured = await measure(width, (page) =>
       page.$$eval(TARGETS, (els) =>
         els
-          .filter((el) => el.checkVisibility())
+          .filter((el) => el.checkVisibility({ opacityProperty: true }))
           .map((el) => {
             const target = el.closest('label') ?? el
             const box = target.getBoundingClientRect()
@@ -247,7 +286,7 @@ describe.each(WIDTHS)('the editor at %ipx', (width) => {
         const want = `${probe.offsetWidth}×${probe.offsetHeight} ${getComputedStyle(probe).color} on dark`
         probe.remove()
         return els
-          .filter((el) => el.checkVisibility())
+          .filter((el) => el.checkVisibility({ opacityProperty: true }))
           .map((el) => {
             const box = el.getBoundingClientRect()
             return {
@@ -275,7 +314,7 @@ describe.each(WIDTHS)('the editor at %ipx', (width) => {
         const tap = probe.offsetHeight
         probe.remove()
         return els
-          .filter((el) => el.checkVisibility())
+          .filter((el) => el.checkVisibility({ opacityProperty: true }))
           .map((el) => ({ what: el.getAttribute('data-card-ref') ?? '?', h: Math.round(el.getBoundingClientRect().height) }))
           .filter(({ h }) => h > tap + 1)
           .map(({ what, h }) => `${what}: ${h}`)
@@ -284,10 +323,43 @@ describe.each(WIDTHS)('the editor at %ipx', (width) => {
     expect(measured).toEqual(nothing(measured, [] as string[]))
   }, 90_000)
 
+  // The same question the written rulebook is asked (#184), asked of the whole room (#193). A
+  // control nobody can see is not a control that happens to be quiet: it is laid out, it is hit,
+  // and it takes the click that belonged to whatever it covers — which is the bug #140 was opened
+  // for and the bug the rulebook's own picker turned out to be. `checkVisibility` says nothing
+  // about opacity unless it is asked, and every sweep above leaves it unasked; that default is
+  // exactly how four transparent file pickers lived in the editor without a word being said.
+  it('paints every control without waiting for a pointer to rest on it', async () => {
+    const measured = await measure(width, (page) =>
+      page.$$eval(TARGETS, (els) =>
+        els
+          .filter((el) => el.checkVisibility() && !el.checkVisibility({ opacityProperty: true, visibilityProperty: true }))
+          // Named through the label when the control itself has nothing to say: a file input
+          // carries neither text nor, usually, an `aria-label`, and a report reading `: 0` says
+          // only that something in the room is invisible, not which thing.
+          .map((el) => `${(el.getAttribute('aria-label') || el.textContent || el.closest('label')?.textContent || el.tagName).trim().slice(0, 24)}: ${getComputedStyle(el).opacity}`),
+      ),
+    )
+    expect(measured).toEqual(nothing(measured, [] as string[]))
+  }, 90_000)
+
+  // And what a file picker in particular has to be (#193): named, reached through its label, lit
+  // when the keyboard finds it, and as big as a thumb. Summed over the tabs rather than read tab
+  // by tab, because which tab a picker stands on moves with the width — the typeface shelf is a
+  // panel on a desk and a stage of its own below one.
+  it('names every file picker, hands it the pointer through its label, and rings it when it takes focus', async () => {
+    const measured = await measure(width, (page) => page.$$eval("input[type='file']", filePickerFaults))
+    // The typeface shelf's, and the one the empty rulebook offers as its third way in (#131).
+    expect({
+      pickers: Object.values(measured).reduce((n, m) => n + m.pickers, 0),
+      faults: Object.values(measured).flatMap((m) => m.faults),
+    }).toEqual({ pickers: 2, faults: [] })
+  }, 90_000)
+
   it('has exactly one panel on the screen at a time', async () => {
     // A `hidden` panel is only hidden while nothing in the stylesheet gives it a `display` of its
     // own; a mode that is closed but drawn is a second copy of the editor under the first.
-    const measured = await measure(width, (page) => page.$$eval('.byd-editor > main > [role="tabpanel"]', (els) => els.filter((el) => el.checkVisibility()).length))
+    const measured = await measure(width, (page) => page.$$eval('.byd-editor > main > [role="tabpanel"]', (els) => els.filter((el) => el.checkVisibility({ opacityProperty: true })).length))
     expect(measured).toEqual(nothing(measured, 1))
   }, 90_000)
 
@@ -311,7 +383,7 @@ describe.each([1024, 1280] as const)('the shape panel at %ipx', (width) => {
       (page) =>
         page.$$eval(TARGETS, (els) =>
           els
-            .filter((el) => el.checkVisibility())
+            .filter((el) => el.checkVisibility({ opacityProperty: true }))
             .map((el) => {
               const target = el.closest('label') ?? el
               const box = target.getBoundingClientRect()
@@ -341,7 +413,7 @@ describe.each(WIDTHS)('the written rulebook, at %ipx', (width) => {
       width,
       (page) =>
         page.$$eval(`.byd-rulebook :is(${TARGETS}), .byd-rules :is(${TARGETS})`, (els) => {
-          const seen = els.filter((el) => el.checkVisibility())
+          const seen = els.filter((el) => el.checkVisibility({ opacityProperty: true }))
           return {
             // Counted as well as measured: a book that arrived empty would otherwise report a
             // clean surface, which is the shape of guard this repo keeps finding it needs.
@@ -382,9 +454,48 @@ describe.each(WIDTHS)('the written rulebook, at %ipx', (width) => {
     expect(measured).toEqual(nothing(measured, [] as string[]))
   }, 90_000)
 
+  // The picker the third way in asks for, held to what every file picker in the tool is held to
+  // (#193). It is the one that was built right first (#131), and the corner it stands in and the
+  // ring it lights are the editor's rule now rather than the book's own two lines — so this is
+  // also the thing that says the move cost the book nothing.
+  it('names the file picker, hands it the pointer through its label, and rings it when it takes focus', async () => {
+    const measured = await measure(width, (page) => page.$$eval("input[type='file']", filePickerFaults), writtenRules)
+    expect(measured).toEqual({ 'Regler · skriven': { pickers: 1, faults: [] } })
+  }, 90_000)
+
   it('never makes the page scroll sideways', async () => {
     const measured = await measure(width, (page) => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), writtenRules)
     expect(measured).toEqual(nothing(measured, 0))
+  }, 90_000)
+})
+
+// The card table's three file pickers (#193), held to the two rules every control in the editor is
+// held to: a target a thumb can hit, and paint that does not wait for a pointer. They are counted
+// as well as measured, because a drawer that never opened or a deck that lost its image column
+// would report a clean tab — which is the shape of guard this repo keeps finding it needs.
+describe.each(WIDTHS)('the card table with a picture in it, at %ipx', (width) => {
+  it('paints every file picker in it without waiting for a pointer to rest on it', async () => {
+    const measured = await measure(
+      width,
+      (page) =>
+        page.$$eval(".byd-table-wrap input[type='file']", (els) => {
+          const seen = els.filter((el) => el.checkVisibility({ opacityProperty: true }))
+          return {
+            pickers: seen.length,
+            unpainted: seen
+              .filter((el) => !el.checkVisibility({ opacityProperty: true, visibilityProperty: true }))
+              .map((el) => `${(el.getAttribute('aria-label') || el.closest('label')?.textContent || el.tagName).trim().slice(0, 24)}: ${getComputedStyle(el).opacity}`),
+          }
+        }),
+      cardFiles,
+    )
+    // The import, the action row's, and one in each of the three cards' image cells.
+    expect(measured).toEqual({ 'Tabell · filer': { pickers: 5, unpainted: [] } })
+  }, 90_000)
+
+  it('names every file picker in it, hands each the pointer through its label, and rings them on focus', async () => {
+    const measured = await measure(width, (page) => page.$$eval(".byd-table-wrap input[type='file']", filePickerFaults), cardFiles)
+    expect(measured).toEqual({ 'Tabell · filer': { pickers: 5, faults: [] } })
   }, 90_000)
 })
 
@@ -403,7 +514,7 @@ describe.each(WIDTHS)('the form that makes a column, at %ipx', (width) => {
           probe.style.cssText = 'position: absolute; top: 0; left: 0; display: block; width: var(--byd-tick); height: var(--byd-tick); color: var(--byd-editor-primary-mark)'
           const want = `${probe.offsetWidth}×${probe.offsetHeight} ${getComputedStyle(probe).color} on dark`
           probe.remove()
-          const seen = els.filter((el) => el.checkVisibility())
+          const seen = els.filter((el) => el.checkVisibility({ opacityProperty: true }))
           return {
             // The kinds are counted as well as measured: a selector that matched nothing would
             // otherwise report a clean form, which is the shape of guard this repo keeps finding.
@@ -430,7 +541,7 @@ describe.each(WIDTHS)('the form that makes a column, at %ipx', (width) => {
       width,
       (page) =>
         page.$$eval(`.byd-newfield :is(${TARGETS})`, (els) => {
-          const seen = els.filter((el) => el.checkVisibility())
+          const seen = els.filter((el) => el.checkVisibility({ opacityProperty: true }))
           return {
             controls: seen.length,
             small: seen
@@ -460,7 +571,7 @@ describe.each(WIDTHS)('the Bord tab with a table, at %ipx', (width) => {
       width,
       (page) =>
         page.$$eval(`.byd-tables :is(${TARGETS})`, (els) => {
-          const seen = els.filter((el) => el.checkVisibility())
+          const seen = els.filter((el) => el.checkVisibility({ opacityProperty: true }))
           return {
             // Counted as well as measured: a row that never rendered would otherwise report a
             // clean tab, which is the shape of guard this repo keeps finding.

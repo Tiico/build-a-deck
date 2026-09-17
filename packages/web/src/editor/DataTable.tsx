@@ -760,7 +760,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
       {importing && (
         <CrownDrawer label={t('table.import.box')} opener={importBox} onClose={() => setImporting(false)}>
           <div className="byd-data-tools">
-            <label>{t('table.import')}<input type="file" accept=".csv,text/csv,text/tab-separated-values" aria-label={t('table.import')} aria-describedby={noteId} onChange={(event) => importFile(event.target.files?.[0])} /></label>
+            <label>{t('table.import')}<input className="byd-offscreen" type="file" accept=".csv,text/csv,text/tab-separated-values" aria-label={t('table.import')} aria-describedby={noteId} onChange={(event) => importFile(event.target.files?.[0])} /></label>
             {/* What an import costs is import's own warning (#36). It stands where it is read —
                 after the control it warns about, before the one it says nothing about — and it is
                 bound to that control besides, so a reader who never sees the two standing next to
@@ -861,7 +861,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                 {bulkImage ? <img src={assetUrl(assetBase, bulkImage)} alt={t('table.bulk.image')} /> : <span>{t('table.image.drop')}</span>}
                 <label className="byd-data-file">
                   {bulkImage ? t('table.image.replace') : t('table.image.choose')}
-                  <input type="file" accept="image/*" aria-label={t('table.bulk.image.choose')} onChange={(event) => void bulkUpload(event.target.files?.[0])} />
+                  <input className="byd-offscreen" type="file" accept="image/*" aria-label={t('table.bulk.image.choose')} onChange={(event) => void bulkUpload(event.target.files?.[0])} />
                 </label>
               </div>
             ) : (
@@ -1074,7 +1074,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       {isAssetRef(row[f]) ? <img src={assetUrl(assetBase, String(row[f]).slice(ASSET_PREFIX.length))} alt={`${cardRef} ${f}`} /> : <span>{t('table.image.drop')}</span>}
                       <label className="byd-data-file">
                         {isAssetRef(row[f]) ? t('table.image.replace') : t('table.image.choose')}
-                        <input type="file" accept="image/*" aria-label={t('table.image.chooseFor', { cardRef })} onChange={(e) => void upload(cardRef, f, e.target.files?.[0])} />
+                        <input className="byd-offscreen" type="file" accept="image/*" aria-label={t('table.image.chooseFor', { cardRef })} onChange={(e) => void upload(cardRef, f, e.target.files?.[0])} />
                       </label>
                       {isAssetRef(row[f]) && (
                         <button type="button" aria-label={t('table.image.removeFor', { cardRef })} onClick={() => onCell(cardRef, f, '')}>
