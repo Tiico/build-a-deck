@@ -7,7 +7,8 @@ import { groupOf, tableGroups, type TableGroup, type TableGroupId } from './tabl
 import { useRoving } from './roving.js'
 import type { ProjectClient, TableSummary } from './ProjectClient.js'
 import { Question } from './Question.js'
-import { useT, type Key, type T } from '../i18n/index.js'
+import { useLang, useT, type Key, type T } from '../i18n/index.js'
+import { lastMoveWords } from './when.js'
 
 // The Bord tab (#19): every table this game has, and the ways into it. A table is a session
 // started from the project (C9: it survives everyone disconnecting), so the list is the server's
@@ -195,6 +196,8 @@ const THUMBNAIL = { w: 640, h: 384 }
 // group — makes no connection at all, which is what keeps the cost with what is on the screen.
 function TableRow({ table, server, rev, qrOpen, onQr }: { table: TableSummary; server: string | null; rev: number; qrOpen: boolean; onQr(open: boolean): void }) {
   const t = useT()
+  // The day and the clock a last move is said in are the reader's, not `sv-SE`'s (#228).
+  const { lang } = useLang()
   const url = server ? server.replace(/^http/, 'ws') : `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`
   const { client, view, observers, room } = useTableClient({ url, sessionId: table.id, seat: null, owner: true })
   // Ending a table is the one thing here that cannot be looked at afterwards (C9), so it is
@@ -275,7 +278,7 @@ function TableRow({ table, server, rev, qrOpen, onQr }: { table: TableSummary; s
         </p>
         {!ended && <p className="byd-tables-line">{seated(view?.seats ?? null, observers, t)}</p>}
         <p className="byd-tables-line">
-          {lastMove(table.lastAt, t)}
+          {lastMoveWords(table.lastAt, Date.now(), lang, t)}
           {full && ` · ${t('tables.full')}`}
         </p>
       </div>
@@ -452,9 +455,3 @@ function seated(seats: readonly { id: string; name: string | null }[] | null, ob
   return watching.length === 0 ? who : t('tables.watching', { who, names: watching.join(', ') })
 }
 
-// When the table last moved, in the words a designer uses about it. A table nobody has played
-// has no moment at all, and saying "inga drag än" is truer than showing when it was started.
-function lastMove(at: string | null, t: T): string {
-  if (at === null) return t('tables.noMoves')
-  return t('tables.lastMove', { at: new Date(at).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' }) })
-}

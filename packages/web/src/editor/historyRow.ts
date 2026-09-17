@@ -2,6 +2,7 @@ import { DOC_PARTS, type DocPart, type VersionChange } from '@byd/server/doc'
 import type { VersionSummary } from '@byd/server'
 import type { Key } from '../i18n/sv.js'
 import type { Lang, T } from '../i18n/index.js'
+import { clockWord as clock, dayKey, dayWord as dayName } from './when.js'
 
 // What a row in the project's history says (#177, B4).
 //
@@ -110,21 +111,6 @@ export function byDay(versions: readonly VersionSummary[], { now, lang, t }: Rea
   return days
 }
 
-// A day on the reader's own calendar, not a count of hours back: something saved at half past
-// eleven last night was saved yesterday, whatever o'clock it happens to be now. Told apart by the
-// local date the two fall on, which is the only reading that survives a midnight.
-const dayKey = (at: Date): string => `${at.getFullYear()}-${at.getMonth()}-${at.getDate()}`
-
-function dayName(iso: string, now: number, lang: Lang, t: T): string {
-  const at = new Date(iso)
-  const today = new Date(now)
-  if (dayKey(at) === dayKey(today)) return t('history.day.today')
-  const yesterday = new Date(now)
-  yesterday.setDate(yesterday.getDate() - 1)
-  if (dayKey(at) === dayKey(yesterday)) return t('history.day.yesterday')
-  // A date from another year says which one; within this year the year would be noise.
-  const year = at.getFullYear() === today.getFullYear() ? {} : { year: 'numeric' as const }
-  return at.toLocaleDateString(lang, { day: 'numeric', month: 'long', ...year })
-}
-
-const clock = (iso: string, lang: Lang): string => new Date(iso).toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit' })
+// The day and the clock come from `when.ts`, which the Bord tab reads too (#228): what day
+// something happened is one reading, and two surfaces saying it differently is how the list ended
+// up with a bare Swedish clock while the history had it right.
