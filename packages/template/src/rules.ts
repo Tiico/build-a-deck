@@ -1,18 +1,28 @@
+import { z } from 'zod'
 import { parseInline, type InlineNode } from './inline.js'
 
 // The rulebook (B7): a document that lives in the project, is versioned in the same history as
-// the cards (B4), and knows the game it belongs to. A rule can name a zone or a card, and what
-// it says follows what the thing is called — renaming the discard pile rewrites every rule that
-// mentions it, because the rules never held the name in the first place.
-export type RuleBlock =
-  | { kind: 'heading'; id: string; level: 1 | 2; text: string }
-  // `ask` is the question a template section carries until it is answered (#131). The renderer
-  // never draws it: the book the reader meets is what was written, never what was asked.
-  | { kind: 'text'; id: string; text: string; ask?: string | undefined }
-  | { kind: 'list'; id: string; items: string[]; ordered?: boolean | undefined }
+// the cards (B4) and locked into a session at start like everything else, and that knows the game
+// it belongs to. A rule can name a zone or a card by id and never by name, so what it says follows
+// what the thing is called — renaming the discard pile rewrites every rule that mentions it,
+// because the rules never held the name in the first place.
+// It is declared here and nowhere else (#183): the schema is what validates on the way in, and the
+// type the renderer and the editor read is inferred from it, so a field cannot be added to one
+// side and forgotten on the other.
+export const RuleBlock = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('heading'), id: z.string().min(1), level: z.union([z.literal(1), z.literal(2)]), text: z.string() }),
+  // `ask` is the question a template section carries until it is answered (#131). It is the
+  // editor's affordance and never the reader's text: nothing renders it, so it reaches neither the
+  // table's drawer nor the printed booklet, and it is gone the moment a character is written. The
+  // book the reader meets is what was written, never what was asked.
+  z.object({ kind: z.literal('text'), id: z.string().min(1), text: z.string(), ask: z.string().optional() }),
+  z.object({ kind: z.literal('list'), id: z.string().min(1), items: z.array(z.string()), ordered: z.boolean().optional() }),
   // The setup picture is the zones themselves (B5's follow-on), not a drawing kept beside them.
-  | { kind: 'setup'; id: string; caption?: string | undefined }
-export type RuleDoc = { title: string; blocks: RuleBlock[] }
+  z.object({ kind: z.literal('setup'), id: z.string().min(1), caption: z.string().optional() }),
+])
+export const RuleDoc = z.object({ title: z.string(), blocks: z.array(RuleBlock) })
+export type RuleDoc = z.infer<typeof RuleDoc>
+export type RuleBlock = RuleDoc['blocks'][number]
 
 // What the names of things are right now. The rulebook asks for them at render time; it never
 // stores them.

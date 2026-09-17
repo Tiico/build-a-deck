@@ -1,7 +1,7 @@
+import { lazy, Suspense } from 'react'
 import { TablePage } from './table/TablePage.js'
 import { PlayerPage } from './player/PlayerPage.js'
 import { JoinPage } from './join/JoinPage.js'
-import { EditorPage } from './editor/EditorPage.js'
 import { ObserverPage } from './observer/ObserverPage.js'
 import { OnlinePage } from './online/OnlinePage.js'
 import { NewProjectPage } from './wizard/NewProjectPage.js'
@@ -13,7 +13,33 @@ import { TextureFailures } from './table/TextureFailures.js'
 import { NotFoundPage } from './status/NotFoundPage.js'
 import { DocumentTitle } from './status/DocumentTitle.js'
 import { StatusLive } from './status/StatusLive.js'
-import { Language, detectLang } from './i18n/index.js'
+import { Language, detectLang, useT } from './i18n/index.js'
+import { StatusNotice } from './status/StatusNotice.js'
+import { noticeFor } from './status/notice.js'
+import { statusLinks } from './status/links.js'
+
+// The editor is the one route fetched rather than shipped. Its stylesheet is the biggest the app
+// has, and while it travelled in the entry's sheet the browser blocked the felt's first painting
+// on it — so the gate that guards the felt's face (#95) was really a ceiling on how much interface
+// might exist, and it had been raised seven times in four days (#186). A dynamic import gives the
+// editor a chunk and a sheet of its own, linked when the route opens. Nothing is lost by waiting:
+// a designer reaching /editor has already loaded the app, and the seconds that follow are spent
+// fetching her project anyway.
+const EditorPage = lazy(() => import('./editor/EditorPage.js').then((m) => ({ default: m.EditorPage })))
+
+// What stands there while the chunk is on its way. Not a blank, and not a spinner of its own
+// invention: it is the very page the editor itself shows next while it reaches for the project
+// (UX-07), drawn from the sheet that does block the first painting. So the wait reads as one
+// state that lasts a moment longer rather than as two different screens in a row.
+function EditorRoute() {
+  const t = useT()
+  const links = statusLinks({ server: new URLSearchParams(location.search).get('server') })
+  return (
+    <Suspense fallback={<StatusNotice notice={noticeFor('loading', 'editor', t)} surface="page" links={links} />}>
+      <EditorPage />
+    </Suspense>
+  )
+}
 
 // Routing is a path check for now; a router arrives with the first real page.
 // The whole app is under one language (A4): the reader's own choice, then the address, then what
@@ -43,7 +69,7 @@ function route() {
   if (location.pathname === '/join') return <JoinPage />
   if (location.pathname === '/observe') return <ObserverPage />
   if (location.pathname === '/online') return <OnlinePage />
-  if (location.pathname === '/editor') return <EditorPage />
+  if (location.pathname === '/editor') return <EditorRoute />
   if (location.pathname === '/new') return <NewProjectPage />
   if (location.pathname === '/login') return <LoginPage />
   if (location.pathname === '/claim') return <ClaimPage />

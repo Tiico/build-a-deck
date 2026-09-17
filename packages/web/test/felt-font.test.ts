@@ -36,10 +36,14 @@ beforeAll(async () => {
   index = readFileSync(join(OUT, 'index.html'), 'utf8')
   browser = await chromium.launch()
   // The built app, served the way it is served: over http, one file per request, so that what
-  // the browser asks for is a fact on a wire and not a guess about a bundler.
+  // the browser asks for is a fact on a wire and not a guess about a bundler. A path with no
+  // extension falls back to `index.html`, which is the rule the real server keeps
+  // (`packages/server/src/server.ts`) — without it `/editor` is a 404 here and the route the
+  // designer actually opens could not be watched at all.
   server = createServer((req, res) => {
     const path = normalize(new URL(req.url ?? '/', 'http://x').pathname).replace(/^(\.\.[/\\])+/, '')
-    const file = join(OUT, path === '/' ? 'index.html' : path)
+    const wanted = join(OUT, path === '/' ? 'index.html' : path)
+    const file = extname(wanted) === '' ? join(OUT, 'index.html') : wanted
     try {
       const body = readFileSync(file)
       res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream' }).end(body)
@@ -124,32 +128,25 @@ describe('the felt’s face is in the document before the first painting (K20, #
       .reduce((sum, m) => sum + m[1]!.length, 0)
     expect({ kB: Math.round(inlined / 1000) }).toEqual({ kB: 114 })
     // And nothing else in the build grew a face of its own: the felt's is the only one. The slack
-    // is everything in the sheet that is not the two subsets — every stylesheet the app ships,
-    // minified — and it is far below what a second face would cost, which is what this catches.
-    // Raised from 120 kB to 125 kB on 2026-09-14: the editor's layer grid and the fill rule (L15,
-    // L16) are two new panels of real CSS. Raised again to 130 kB the same day for the shape
-    // gallery, the pattern tiles, the shadow's chips and the ready-made backs (L17) — four more
-    // grids of buttons in the property panel, and one beside the layers. Raised to 136 kB on
-    // 2026-09-15 for the deck's measure (E1) and the game's colours (E4): a panel beside the wall
-    // with a rule, a list of the files that cannot answer it and a drawer that opens one of them,
-    // and a row per meaning in the symbol panel with the inks to paint it in.
-    // Raised to 139 kB on 2026-09-15 for what a pile can be asked for (B5, K14): the sheet the
-    // felt hangs under the ring, and the sentence panel in the Bord tab — a slot inside running
-    // text, its popover, and the chip rows a question is written with. Two real surfaces, one on
-    // the felt and one in the editor, and the headroom left over is deliberate: the sheet is the
-    // first thing on the felt that is a list rather than a disc, and it will grow.
-    // Raised to 142 kB on 2026-09-16 for the crown over the card (#129): the group menu and the
-    // button that opens it, the fold that puts the properties away, and the layer column as a
-    // crown, a list and a foot. 1 523 bytes of it, on a sheet that had 47 left — the 139 kB line
-    // was one small panel away from failing on the trunk alone, which is why this raise is a
-    // little wider than the growth that forced it.
-    // Raised again to 144 kB the same day for the crown a tab panel wears (#128, #130): a row,
-    // the boxes in it, the drawer a box opens, the filter rail with its fade and its arrow, and
-    // the foot under the work. One mechanism, but three surfaces were rebuilt round it — and the
-    // wall's dock and the table's four stacked bands went the other way, so it is 1 760 bytes net
-    // and 194 over what the raise above had left. The two crowns were written in parallel and
-    // landed within the hour: the shared row is `.byd-crown`, the card's own `.byd-canvas-crown`.
-    expect(statSync(join(OUT, blockingSheets(index)[0]!.replace(/^\//, ''))).size).toBeLessThan(inlined + 144_000)
+    // is everything in the blocking sheet that is not the two subsets, minified — and what the
+    // number has to be is small enough to fell a second face and no smaller.
+    //
+    // It used to be neither. Between 2026-09-13 and 2026-09-17 this line moved seven times, 120 kB
+    // to 146 kB, and every raise was honest on its own terms: the editor's CSS rode in this same
+    // sheet, so a layer grid, a shape gallery, a crown or a sentence panel was weighed against the
+    // felt's typeface and the number had to give way. A limit that always gives way measures
+    // nothing, and twice it cost an agent a session's work on compressing CSS that was not what she
+    // had come to write. Since #186 the editor is a route of its own with a sheet of its own, and
+    // what is left here is the felt, the phone and the app's chrome — surfaces that grow by a rule
+    // at a time rather than by a panel.
+    //
+    // So the number is the measurement plus a stated margin rather than the next round figure up.
+    // The blocking sheet is 76.3 kB of CSS beside the face; 84 kB leaves 7.7 kB, about a tenth, for
+    // the felt's own surfaces to go on growing without anybody having to come back here. And it
+    // still fells what it is for: the cheaper of the two subsets shipped is 45 kB as base64, so the
+    // smallest second face anyone could add is nearly six times the whole margin.
+    const sheet = blockingSheets(index).reduce((sum, href) => sum + statSync(join(OUT, href.replace(/^\//, ''))).size, 0)
+    expect(sheet).toBeLessThan(inlined + 84_000)
   }, 60_000)
 
   // And the same thing said by a browser rather than by a reader of files: the built app served
@@ -168,6 +165,72 @@ describe('the felt’s face is in the document before the first painting (K20, #
       // sheet the face rode in on. What it never asked for is the face.
       expect(asked.filter((p) => p.endsWith('.css')).length).toBeGreaterThan(0)
       expect({ declared: declared.length, fonts: asked.filter((p) => /\.(woff2?|ttf|otf)$/.test(p)) }).toEqual({ declared: 2, fonts: [] })
+    } finally {
+      await page.close()
+    }
+  }, 60_000)
+})
+
+// The other half of the same question (#186). The gate above says what has to be in the blocking
+// sheet; what follows says what must not. The editor is opened by a designer who has already
+// loaded the app and is about to wait on her project anyway, so its stylesheet — by far the app's
+// largest — has no business delaying the felt's first painting. While it rode in the same sheet the
+// budget above was really a ceiling on how much interface might exist, which is why it moved seven
+// times in four days.
+//
+// The classes the editor declares and nobody else does, read off the sources rather than written
+// down here, so a renamed panel does not quietly turn this check into a no-op. `buttons.css` names
+// `.byd-editor` itself — the button language dresses all nine surfaces — so a marker has to be one
+// the editor alone owns. A name is only a name to its own end: the rulebook's `.byd-rules-panel`
+// blocks on the felt's account and would otherwise answer for the editor's `.byd-rules`.
+const editorsOwnClasses = (): string[] => {
+  const classesIn = (file: string): Set<string> => new Set([...readFileSync(join(WEB, file), 'utf8').matchAll(/\.(byd-[a-z0-9-]+)/g)].map((m) => m[1]!))
+  const own = classesIn('src/editor/editor.css')
+  for (const other of filesUnder(join(WEB, 'src')).filter((f) => f.endsWith('.css') && !f.endsWith(join('editor', 'editor.css'))))
+    for (const name of classesIn(relative(WEB, other))) own.delete(name)
+  return [...own]
+}
+
+describe('the editor is not weighed against the felt’s face (#186)', () => {
+  it('keeps the editor’s own CSS out of the sheet the first painting blocks on', () => {
+    const markers = editorsOwnClasses()
+    // Not vacuous: the editor does have selectors of its own to look for.
+    expect(markers.length).toBeGreaterThan(20)
+    const blocking = blockingSheets(index)
+      .map((href) => readFileSync(join(OUT, href.replace(/^\//, '')), 'utf8'))
+      .join('')
+    expect(markers.filter((name) => new RegExp(`\\.${name}(?![a-z0-9-])`).test(blocking))).toEqual([])
+  }, 60_000)
+
+  // Taking the sheet off the critical path is only half a fix; the other half is that the editor
+  // still looks like itself. Said by a browser rather than by a reader of files: open the route the
+  // way a designer does, watch the wire, and then ask the page whether the rules are in force and
+  // not merely downloaded. The probe is a bare `flex-grow`, so the reading is the same on a Linux
+  // runner as on a Mac — nothing here may depend on which face the machine has.
+  it('fetches the editor’s own sheet when /editor opens, and it is in force', async () => {
+    const page = await browser.newPage()
+    const css: string[] = []
+    page.on('request', (r) => {
+      if (new URL(r.url()).pathname.endsWith('.css')) css.push(new URL(r.url()).pathname)
+    })
+    try {
+      await page.goto(`${origin}editor`, { waitUntil: 'load' })
+      await page.waitForFunction(() => document.querySelectorAll('link[rel=stylesheet]').length > 1, undefined, { timeout: 20_000 })
+      // Two sheets on the wire: the one the first painting blocked on, and the editor's, asked for
+      // only once the route said it wanted it.
+      expect(css.length).toBe(2)
+      const second = readFileSync(join(OUT, css.find((p) => !blockingSheets(index).includes(p))!.replace(/^\//, '')), 'utf8')
+      expect(editorsOwnClasses().filter((name) => new RegExp(`\\.${name}(?![a-z0-9-])`).test(second)).length).toBeGreaterThan(20)
+      // And in force: a rule out of that sheet reaches an element the document did not have when
+      // the page loaded.
+      const flex = await page.evaluate(() => {
+        const probe = document.createElement('div')
+        document.body.append(probe)
+        const bare = getComputedStyle(probe).flexGrow
+        probe.className = 'byd-editor-spacer'
+        return { bare, dressed: getComputedStyle(probe).flexGrow }
+      })
+      expect(flex).toEqual({ bare: '0', dressed: '1' })
     } finally {
       await page.close()
     }

@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { CardQuery, ZoneAction, ZoneBeside } from '@byd/protocol'
-import { Template, type Row } from '@byd/template'
+import { RuleDoc, Template, type Row } from '@byd/template'
 import type { Deck } from './faces.js'
 import type { AppliedEdit } from './project-actor.js'
 import type { Role } from './roles.js'
@@ -50,21 +50,11 @@ export type ProjectRow = z.infer<typeof ProjectRow>
 // travels into the print hand-off, which is what the licences are for.
 export const ProjectCredit = z.object({ licence: z.string().min(1), by: z.string().min(1), source: z.string().optional() })
 export type ProjectCredit = z.infer<typeof ProjectCredit>
-// The rulebook (B7): part of the document, so it is versioned in the same history as the cards
-// (B4) and locked into a session at start like everything else. Its references are ids, never
-// names, so renaming a zone rewrites every rule that mentions it.
-const RuleBlock = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('heading'), id: z.string().min(1), level: z.union([z.literal(1), z.literal(2)]), text: z.string() }),
-  // `ask` is the question a template section carries until it is answered (#131). It is the
-  // editor's affordance and never the reader's text: nothing renders it, so it reaches neither the
-  // table's drawer nor the printed booklet, and it is gone the moment a character is written.
-  z.object({ kind: z.literal('text'), id: z.string().min(1), text: z.string(), ask: z.string().optional() }),
-  z.object({ kind: z.literal('list'), id: z.string().min(1), items: z.array(z.string()), ordered: z.boolean().optional() }),
-  z.object({ kind: z.literal('setup'), id: z.string().min(1), caption: z.string().optional() }),
-])
-export const RuleDoc = z.object({ title: z.string(), blocks: z.array(RuleBlock) })
-export type RuleDoc = z.infer<typeof RuleDoc>
-export type RuleBlock = RuleDoc['blocks'][number]
+// The rulebook (B7) is declared once, in `@byd/template` beside the renderer that reads it (#183):
+// the schema validating a document here and the type the editor writes against are the same thing,
+// so a field cannot be added to one side and forgotten on the other. It is passed on from here
+// because the project document is where everything else looks for it.
+export { RuleBlock, RuleDoc } from '@byd/template'
 
 // A font the version is pinned to (B3). `stack` is what the CSS says; `asset` is the file the
 // project carries, so a locked version renders the same tomorrow as it did when it was tested.
