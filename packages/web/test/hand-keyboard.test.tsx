@@ -44,7 +44,7 @@ describe('the hand is playable without a gesture (#1)', () => {
   it('names every card, holds one tab stop, and walks the hand with the arrows', async () => {
     const { table } = await phone()
     const user = userEvent.setup()
-    expect(screen.getByRole('button', { name: 'dragon, i min hand. Enter öppnar handlingar.' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'dragon, i min hand, markerat. Enter öppnar handlingar.' })).toBeTruthy()
     expect(handStops()).toEqual(['0', '-1', '-1'])
 
     const first = screen.getByRole('button', { name: /^dragon, i min hand/ })

@@ -6,6 +6,7 @@ import { useT, type T } from '../i18n/index.js'
 
 export type TableSummaryProps = {
   view: Snapshot
+  pilesOnly?: boolean
   activity: readonly Activity[]
   // Draw the top card of that pile into this seat's hand (#79). Absent where nobody can: the
   // overview is a picture of the table as much as it is a way to act on it.
@@ -24,14 +25,13 @@ type ZoneTile = ReturnType<typeof targetsOf>[number]
 const drawable = (view: Snapshot, tile: ZoneTile) => tile.kind === 'pile' && tile.count > 0 && view.seat !== null
 
 // The table folded up small (C4): every public zone with its count, and what just happened.
-export function TableSummary({ view, activity, onDraw, refusal, refusedZone = null }: TableSummaryProps) {
+export function TableSummary({ view, activity, onDraw, refusal, refusedZone = null, pilesOnly = false }: TableSummaryProps) {
   const t = useT()
-  const recent = [...activity].slice(-5).reverse()
   return (
     <div className="byd-summary">
       <div className="byd-summary-zones">
         {targetsOf(view, t)
-          .filter((zone) => zone.id !== view.floor)
+          .filter((zone) => zone.id !== view.floor && (!pilesOnly || zone.kind === 'pile'))
           .map((zone) =>
             onDraw && drawable(view, zone) ? (
               // The tile is the control, not a control inside it (UX-37, #82): the verb is read
@@ -56,12 +56,7 @@ export function TableSummary({ view, activity, onDraw, refusal, refusedZone = nu
           )}
       </div>
       {refusal && <Refusal handle={refusal} />}
-      <h2>{t('play.latest')}</h2>
-      <ol aria-label={t('play.latest')}>
-        {recent.map((l) => (
-          <li key={l.seq}>{describeActivity(l, view, t)}</li>
-        ))}
-      </ol>
+      {!pilesOnly && <><h2>{t('play.latest')}</h2><RecentActivity view={view} activity={activity} /></>}
     </div>
   )
 }
@@ -75,4 +70,9 @@ function Tile({ zone, t }: { zone: ZoneTile; t: T }) {
       <span>{t(zone.count === 1 ? 'play.cards.one' : 'play.cards.other', { n: zone.count })}</span>
     </>
   )
+}
+
+export function RecentActivity({ view, activity }: Pick<TableSummaryProps, 'view' | 'activity'>) {
+  const t = useT()
+  return <ol aria-label={t('play.latest')}>{[...activity].slice(-5).reverse().map(l => <li key={l.seq}>{describeActivity(l, view, t)}</li>)}</ol>
 }

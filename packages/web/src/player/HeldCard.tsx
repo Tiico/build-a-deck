@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { useT } from '../i18n/index.js'
 import type { VisibleComponentState } from '@byd/protocol'
 import { Texture } from '../table/Texture.js'
 import { hue } from '../table/hue.js'
@@ -15,13 +16,17 @@ import { hue } from '../table/hue.js'
 // the row under the card, empty for a card held up out of the hand, which is only looked at.
 // Whatever goes in there keeps its own press the same way the way back does.
 export function HeldCard({ card, faces, onClose, actions }: { card: VisibleComponentState; faces?: string | undefined; onClose(): void; actions?: ReactNode }) {
+  const t = useT()
+  const [opener] = useState(() => typeof document === 'undefined' ? null : document.activeElement)
+  useEffect(() => () => { if (opener instanceof HTMLElement && opener.isConnected) opener.focus() }, [opener])
   return (
-    <div className="byd-inspect" onPointerDown={onClose}>
+    <div className="byd-inspect" role="dialog" aria-modal="false" aria-label={card.cardRef ?? t('player.hand.read')} onPointerDown={onClose} onKeyDown={event => { if (event.key === 'Escape') { event.stopPropagation(); onClose() } }}>
       <div data-inspect={card.id} data-face="front" style={{ ['--hue' as string]: hue(card.cardRef ?? '') }}>
         <Texture faces={faces} c={card} retry />
         <span>{card.cardRef}</span>
       </div>
       {actions}
+      <button className="byd-inspect-close" type="button" autoFocus onPointerDown={event => event.stopPropagation()} onClick={onClose}>{t('kbd.panel.close')}</button>
     </div>
   )
 }

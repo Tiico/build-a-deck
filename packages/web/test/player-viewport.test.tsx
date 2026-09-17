@@ -11,6 +11,7 @@ import type { ReactNode } from 'react'
 import type { Snapshot, VisibleComponentState } from '@byd/protocol'
 import { contrastRatio, flatten } from '../src/player/contrast.js'
 import { TableClient } from '../src/client.js'
+import { HandActions } from '../src/player/HandActions.js'
 import { HandStrip } from '../src/player/HandStrip.js'
 import { HeldCard } from '../src/player/HeldCard.js'
 import { Texture } from '../src/table/Texture.js'
@@ -120,10 +121,11 @@ function surfaces(view: Snapshot) {
         <p className="byd-hint">tryck = titta · dra upp = spela · håll = välj flera</p>
       </div>
     ),
+    handActions: <div className="byd-player"><HandActions view={view} cards={view.components.filter(c => c.zone === 'hand:A').slice(0, 1)} pending={false} onRead={noop} onPlay={noop} onMore={noop} /></div>,
     // The cards in front of the seat (C4): a strip of faces, each one control (#78).
     mine: (
       <div className="byd-player">
-        <MineStrip view={inFront(view)} faces={FACES} onOpen={noop} />
+        <MineStrip view={inFront(view)} faces={FACES} onOpen={noop} onPlay={noop} />
       </div>
     ),
     // One of them held up, with its verbs — where they live since #78 — while its face is still
@@ -248,6 +250,20 @@ async function eachSurface<T>(width: number, measure: (page: Page) => Promise<T>
 }
 
 describe.each(WIDTHS)('the player view at %ipx', (width) => {
+  it('shows more than one hand card and keeps the direct private-area actions readable', async () => {
+    const page = await browser.newPage({ viewport: { width, height: 844 } })
+    try {
+      await page.setContent(document_(surfaces(view).hand))
+      const card = await page.locator('[data-hand-card]').first().boundingBox()
+      expect(card!.width).toBeLessThanOrEqual(160)
+      await page.setContent(document_(surfaces(view).mine))
+      const cast = page.getByRole('button', { name: /^Kasta/ }).first()
+      const box = await cast.boundingBox()
+      expect(box!.width).toBeGreaterThanOrEqual(130)
+      expect(box!.height).toBeGreaterThanOrEqual(44)
+    } finally { await page.close() }
+  }, 60_000)
+
   it('gives every control a 44 by 44 pixel hit area', async () => {
     // Links count as controls too: the survey's save link is the one a phone shows (UX-36, #81).
     const measured = await eachSurface(width, (page) =>

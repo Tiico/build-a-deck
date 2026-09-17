@@ -155,7 +155,7 @@ export const enPlay = {
   'rewind.approve': 'Approve',
   'rewind.decline': 'Decline',
 
-  'player.hint': 'tap = look · drag up = play · hold = select several',
+  'player.hint': 'Select → read → play · hold to select several',
   'player.hint.selected.one': '{n} selected · drag up to play',
   'player.hint.selected.other': '{n} selected · drag up to play',
   'player.counter.minus': '{name} minus',
@@ -166,6 +166,11 @@ export const enPlay = {
   'player.mine.take': 'Pick up',
   'player.mine.play': 'Play…',
   'player.mine.empty': 'Nothing in front of you. Play a card here from your hand.',
+  'player.hand.title': 'Your cards',
+  'player.hand.actions': 'Play selected cards',
+  'player.hand.read': 'Read selected card',
+  'player.hand.chosen': 'Selected: {name}',
+  'player.hand.none': 'No card selected',
   'player.hand.empty': 'Empty hand. Draw a card from the draw pile.',
 
   'play.sheet.title': 'Play to',

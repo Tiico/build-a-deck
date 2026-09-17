@@ -459,6 +459,13 @@ En 44 × 44-ruta räcker inte som svar — "Vänd ner" sätts då i 10 px över 
 Priset, uttryckligen accepterat: ett tryck till per verb. Vinsten: 3,9 kort syns vid 390 px i stället för 2,4, och remsans kort kan vara en kontroll utan att hålla en (UX-37, #82).
 Ansiktet är sedan dess en egen ruta i kortet — bilden fyller den, och väntan och förlusten ligger över ansiktet och aldrig över kontrollen.
 
+Reviderat 2026-09-17 efter produktägarens val av telefon A i PR #156: **handen först**.
+Korten visas som en kompakt horisontell remsa före den privata ytan och historiken. Tryck väljer ett kort; **Läs valt kort** visar det stort, med Stäng och Escape tillbaka till den kontroll som öppnade det. Första kortet är valt från början. Ett draget eller upptaget kort blir valt när servern har bekräftat handlingen.
+Setupens uttryckliga zongenvägar syns direkt under handen; **Spela…** behåller vägen till samtliga tillåtna destinationer. Håll och Space behåller flerval, dra upp och Enter behåller arket respektive adresspanelen. Flera valda kort spelas i ett atomiskt kuvert.
+**Framför dig** och **Senast** är hopfällbara under handen. Att spela till sin privata yta öppnar den. Varje privat kort har en egen läsknapp och separata, minst 44 px höga knappar för **Ta upp** och setupens höggenvägar, inklusive **Kasta** i standardreceptet. De ligger utanför kortbilden och är aldrig knappar inuti en knapp. Vänd och övriga destinationer finns kvar i uppslaget.
+Inget zonnamn eller id används för att gissa en drag- eller kasthög: drag erbjuds fortfarande per hög enligt #79, och direkt spel följer genvägens mål och placering överst/underst. Ett kast från den privata ytan ändrar inte handen och kan ångras genom den befintliga loggen. Vid avslag ligger kort och val kvar, med felbesked knutet till den tryckta knappen; under väntan spärras nya direkta kortåtgärder.
+Detta ersätter #78:s extra tryck för Ta upp och höggenvägarna, men behåller dess krav på separata träffytor och läsbara verb. Den valda telefonen byggs i gemensamma `PlayerSurface` med riktig projektion och klient, för både `/play` och telefonläget av `/online` (#181); prototypens lokala simulering används bara i editorns ännu öppna designjämförelse.
+
 Reviderat 2026-09-14 (#89): en plats räknare ligger bredvid varandra upp till två och staplas vid tre.
 Regeln, delningen på 125 mm, högens ring och de förkastade alternativen står under K18, eftersom det som avgör dem är platsens egna 500 mm.
 
@@ -1211,8 +1218,8 @@ Batchar med flera slumputfall bestämmer utfallen i ordning.
 
 ### K4. Handen på telefonen: horisontell remsa
 
-Korten i en scrollbar remsa i nästan full bredd.
-Tryck öppnar kortet i full upplösning.
+Korten i en scrollbar remsa. Sedan telefon A valdes 2026-09-16 är korten kompakta så att fler syns samtidigt.
+Tryck väljer ett kort; Läs valt kort öppnar full upplösning (C4, reviderat 2026-09-17).
 Dra uppåt lyfter kortet till ett ark med zongenvägarna från C4.
 Långtryck startar flerval; dra i sidled inom remsan sorterar om handen.
 Översikten är samma remsa nedzoomad.
