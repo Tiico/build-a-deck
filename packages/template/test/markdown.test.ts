@@ -36,8 +36,43 @@ describe('the import from Markdown (#131)', () => {
     expect(notes).toContainEqual({ of: 'title', n: 1 })
   })
 
+  // The heading tree the file wrote, a step up (#202). A file that spends its `#` on its own title
+  // writes its sections as `##`, and swallowing the title alone left the book with nothing on the
+  // first level at all — so the disposition beside it had nothing to list.
+  it('raises the whole heading tree a step when the title was swallowed, so a subheading is a section (#202)', () => {
+    const { doc } = importRules('# Skogens herrar\n\n## En tur\n\nDra ett kort.', 'Skogens herrar')
+    expect(doc.blocks).toEqual([
+      { kind: 'heading', id: 'b1', level: 1, text: 'En tur' },
+      { kind: 'text', id: 'b2', text: 'Dra ett kort.' },
+    ])
+  })
+
+  it('keeps a raised tree inside the book’s two levels: `###` is a subheading, and the report says so (#202)', () => {
+    const { doc, notes } = importRules('# Skogens herrar\n\n## En tur\n\n### Att passa', 'Skogens herrar')
+    expect(doc.blocks).toEqual([
+      { kind: 'heading', id: 'b1', level: 1, text: 'En tur' },
+      { kind: 'heading', id: 'b2', level: 2, text: 'Att passa' },
+    ])
+    // The folding is the same folding as ever, and it is said out loud as it was before.
+    expect(notes).toContainEqual({ of: 'folded', n: 1 })
+  })
+
+  it('leaves a `#` further down where it already is, because level one is as high as a heading goes (#202)', () => {
+    // A step up from the top is the top. A file that writes some sections with `#` and some with
+    // `##` has them all as sections of the book, which is the one place the two levels the book
+    // has cannot hold everything six could — and the fold has said so since #131.
+    const { doc } = importRules('# Skogens herrar\n\n# Översikt\n\n## En tur\n\n# Spelet tar slut', 'Skogens herrar')
+    expect(doc.blocks).toEqual([
+      { kind: 'heading', id: 'b1', level: 1, text: 'Översikt' },
+      { kind: 'heading', id: 'b2', level: 1, text: 'En tur' },
+      { kind: 'heading', id: 'b3', level: 1, text: 'Spelet tar slut' },
+    ])
+  })
+
   it('leaves a first line that is a subheading alone: only the first level is a title (#191)', () => {
     const { doc, notes } = importRules('## En tur\n\nDra ett kort.', 'Skogens herrar')
+    // No title was swallowed, so nothing is raised either (#202): a book written by hand and a
+    // file that keeps its `#` for its sections are both left exactly as they stand.
     expect(doc.blocks).toEqual([
       { kind: 'heading', id: 'b1', level: 2, text: 'En tur' },
       { kind: 'text', id: 'b2', text: 'Dra ett kort.' },
@@ -176,11 +211,13 @@ describe('the import from Markdown (#131)', () => {
       '```',
     ].join('\n')
     const { doc, notes } = importRules(file, 'Skogens herrar', { 'bordet.png': { asset } })
+    // The file spends its `#` on its own title, so its `##` are its sections and the book's too
+    // (#202): the tree stands a step up, and `###` lands where the fold would have put it anyway.
     expect(doc.blocks.map((b) => `${b.kind}${b.kind === 'heading' ? b.level : ''}`)).toEqual([
       'text',
-      'heading2',
+      'heading1',
       'image',
-      'heading2',
+      'heading1',
       'list',
       'text',
       'heading2',
@@ -281,11 +318,13 @@ describe('a file that opens with its own title and brings pictures (#173, #191)'
   it('reads a picture on the first line as content, so the heading under it is a section and no title', () => {
     // "The first line" is the first line that says something, and a picture says something. A
     // file that leads with its table shot has written content above its heading (#191).
-    const { doc, notes } = importRules('![Bordet](bordet.png)\n\n# Skogens herrar\n\nEtt spel om skogen.', 'Skogens herrar', { 'bordet.png': { asset } })
+    // And nothing was swallowed, so nothing is raised: the `##` under it is a subheading (#202).
+    const { doc, notes } = importRules('![Bordet](bordet.png)\n\n# Skogens herrar\n\n## En tur\n\nEtt spel om skogen.', 'Skogens herrar', { 'bordet.png': { asset } })
     expect(doc.blocks).toEqual([
       { kind: 'image', id: 'b1', asset, alt: 'Bordet' },
       { kind: 'heading', id: 'b2', level: 1, text: 'Skogens herrar' },
-      { kind: 'text', id: 'b3', text: 'Ett spel om skogen.' },
+      { kind: 'heading', id: 'b3', level: 2, text: 'En tur' },
+      { kind: 'text', id: 'b4', text: 'Ett spel om skogen.' },
     ])
     expect(notes).not.toContainEqual(expect.objectContaining({ of: 'title' }))
   })

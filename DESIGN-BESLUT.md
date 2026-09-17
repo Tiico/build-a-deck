@@ -372,9 +372,23 @@ Priset är sagt och accepterat: filens egen titel blir inte vad boken heter, och
 Bara den allra första raden räknas, och bara nivå 1: en `#` längre ner i filen är ett avsnitt som vilket annat och rörs inte.
 Tomma rader ovanför är ingenting en läsare ser, och en editor som lämnar en har inte skrivit en annan fil, så den första rad som säger något är den första raden.
 Övriga rubriker viks inte ner en nivå: det var den avvisade vägen, den rör alla `#` och inte bara den första, och filens disposition ska stå som den står.
-En fil som skriver sin titel med `#` och sina avsnitt med `##` får därför en bok utan avsnitt på första nivån, och då står ingen innehållsförteckning bredvid den; det syns i förslaget innan boken görs, vilket är hela skälet till att rapporten står före importen.
 En fil utan inledande rubrik ändras inte alls.
 "Ingenting försvinner tyst" gäller: raden försvinner, men inte tyst, och rapporten räknar den bland det som ändrade form på vägen in.
+
+Rubrikträdet höjs när titeln sväljs, byggt 2026-09-17 (#202):
+Sväljs den inledande `#` så flyttas hela filens rubrikträd upp ett steg: `##` blir nivå 1, och `###` och djupare blir nivå 2, som kartan redan viker ihop dem.
+Skälet är att den vanligaste filformen skriver titeln som `#` och avsnitten som `##`, och att bara svälja titeln lämnade boken utan avsnitt på första nivån alls — och därmed utan innehållsförteckning, eftersom spalten är just bokens första nivå.
+Höjd får boken samma disposition som filen hade, och spalten bredvid har material igen.
+En `#` längre ner i filen står kvar på nivå 1: ett steg upp från toppen är toppen. En fil som skriver några avsnitt med `#` och några med `##` får dem alla som avsnitt, vilket är den enda punkt där bokens två nivåer inte rymmer vad sex kunde — och det är samma vikning som gällt sedan #131.
+Höjningen rör bara filer där titeln faktiskt sväljdes. En fil som börjar med prosa, med en bild (#173) eller med `##` är orörd, och en bok som skrivits för hand rör den inte alls.
+Rapporten säger ingenting nytt om höjningen, eftersom dispositionen blir den filen hade och inte en annan; att titeln blev ingenting säger den redan (#191).
+`###` och djupare räknas som hopvikta på de `#` filen skrev och inte på den nivå blocket hamnar på, så rapporten säger det som förut.
+
+Två vägar valdes bort.
+**Spalten listar djupaste nivån som finns** lagar symptomet på rätt ställe men gör spalten till något som ritas ur olika nivåer i olika böcker: två böcker med samma avsnitt kunde få sin innehållsförteckning byggd av nivå 1 i den ena och nivå 2 i den andra, och då betyder en nivå inte längre någonting bestämt.
+**Spalten listar båda nivåerna, indraget** är trogen boken och är vad en riktig innehållsförteckning gör, och invändningen från #131:s första skiva — att indraget kostade byte som inte fanns — gäller inte längre sedan editorns CSS fick eget ark (#186).
+Men den svarar på en annan fråga än den här: den handlar om hur en bok med två rubriknivåer ska läsas, inte om att en import lämnar boken utan nivå 1 alls.
+Den står kvar som en möjlig förbättring och behöver ett eget issue om den ska göras.
 
 Bildslaget i boken, byggt 2026-09-17 (#173):
 `RuleBlock` har ett femte slag, `image`, och det är en protokolländring: schemat i `packages/template/src/rules.ts` är enda källan till både typ och validering, precis som de fyra andra slagen sedan #183.

@@ -154,6 +154,13 @@ export function importRules(markdown: string, title: string, images: RuleImages 
   // reader can see, and an editor that leaves one there has not written a different file, so the
   // first line that says anything is the first line.
   const opening = lines.findIndex((l) => l.trim().length > 0)
+  // Whether the file's title was swallowed, and the whole of what is under it therefore stands a
+  // step up (#202). A file that spends its `#` on its own title writes its sections as `##`, so
+  // taking the title out and leaving the rest alone gave a book with nothing on the first level at
+  // all — and the disposition beside it, which is what a first-level heading is, had nothing to
+  // list. Raised, the book has the disposition the file had, which is why the report says nothing
+  // new about it: it is not a different disposition, it is the file's own.
+  let raised = false
   while (i < lines.length) {
     const line = peek(i)
     if (line.trim().length === 0 || BREAK.test(line)) {
@@ -173,14 +180,17 @@ export function importRules(markdown: string, title: string, images: RuleImages 
       // called, which is why the report says the line was taken out and why.
       if (i === opening && hashes === 1) {
         count('title')
+        raised = true
         i++
         continue
       }
       // The book has two levels, and a file may have six. Folding is said out loud in the report
-      // rather than done quietly, which is the whole of the rule behind the map.
+      // rather than done quietly, which is the whole of the rule behind the map. It is counted off
+      // the hashes the file wrote and not off the level the block lands on, so a raised tree says
+      // in the report exactly what it said before (#202).
       if (hashes > 2) count('folded')
       count('heading')
-      blocks.push({ kind: 'heading', id: id(), level: hashes === 1 ? 1 : 2, text: (heading[2] ?? '').trim() })
+      blocks.push({ kind: 'heading', id: id(), level: levelOf(hashes, raised), text: (heading[2] ?? '').trim() })
       i++
       continue
     }
@@ -247,6 +257,14 @@ const addressOf = (raw: string): string =>
     .replace(/\s+(?:"[^"]*"|'[^']*'|\([^()]*\))$/, '')
     .replace(/^<(.*)>$/, '$1')
     .trim()
+
+// Which of the book's two levels a heading of `hashes` hashes stands on. The book has two and a
+// file may have six, so everything below the second is folded up to it (#131).
+//
+// When the file's own title was swallowed (#191) the tree stands a step up (#202): the file spent
+// its `#` on the title, so its `##` are its sections and they are the book's. A `#` further down
+// is already as high as a heading goes and stays where it is.
+const levelOf = (hashes: number, raised: boolean): 1 | 2 => (hashes <= (raised ? 2 : 1) ? 1 : 2)
 
 const numbered = (marker: string | undefined): boolean => /\d/.test(marker ?? '')
 const cellsOf = (row: string): string[] =>
