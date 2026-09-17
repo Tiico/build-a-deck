@@ -158,8 +158,9 @@ const GLIDE_MS = 700
 type Live = Drag & { started: boolean }
 // A card that has been put down but that the table has not moved yet (K1). The drop and the patch
 // are different moments; this is what is drawn in between, so a move never looks like a flinch.
-// `top` is a card drawn off a pile: it is held by where it was let go of and by how tall the pile
-// was, because a hidden pile hands out no component id to hold it by (K15).
+// `top` is a card drawn off a pile: it is held by its own corner and by how tall the pile was,
+// because a hidden pile hands out no component id to hold it by (K15). The corner and not the
+// pointer, because where in the card the hand took hold of it is the card's to keep (#223).
 type Settled = { ids: string[]; origin: Drag['origin']; pile: { id: string; x: number; y: number } | null; top: { pile: string; at: Point; count: number } | null; dx: number; dy: number }
 // The ring opens on what the ring has verbs for: a card, a pile by its top or its label, and a
 // chip — whose verbs are a counter's own and not a card's (C4, #67).
@@ -431,7 +432,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       ids: d.ids,
       origin: d.origin,
       pile: wholePile ? { id: wholePile.id, x: wholePile.geometry.x, y: wholePile.geometry.y } : null,
-      top: source ? { pile: source.id, at: d.at, count: countOf(source) } : null,
+      top: source ? { pile: source.id, at: topCornerOf(source.id, d) ?? d.at, count: countOf(source) } : null,
       dx: d.at.x - d.grab.x,
       dy: d.at.y - d.grab.y,
     })
@@ -555,9 +556,18 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const liftedKind = onPile?.kind ?? null
   // The card that is off the top of a pile: in the hand while it is dragged, and still out of the
   // stack after it has been put down, until the table says where it went (#29).
+  // Where the corner of a card taken off a pile stands: where that card's corner was — the top of
+  // a pile is drawn centred on the pile's geometry — moved by how far the hand has travelled. The
+  // ghost used to be drawn centred on the pointer while the drop cornered the card there, so the
+  // two disagreed by half a card and the card jumped at the moment it was let go (#223).
+  const topCornerOf = (pile: string, d: { grab: Point; at: Point }): Point | null => {
+    const g = zoneById.get(pile)?.geometry
+    return g ? { x: g.x - CARD_MM.w / 2 + d.at.x - d.grab.x, y: g.y - CARD_MM.h / 2 + d.at.y - d.grab.y } : null
+  }
+  const liveTop = drag?.started && drag.target.kind === 'pileTop' ? topCornerOf(drag.target.pile, drag) : null
   const offTop =
-    drag?.started && drag.target.kind === 'pileTop'
-      ? { pile: drag.target.pile, at: drag.at }
+    drag?.started && drag.target.kind === 'pileTop' && liveTop
+      ? { pile: drag.target.pile, at: liveTop }
       : settling?.top
         ? { pile: settling.top.pile, at: settling.top.at }
         : null
@@ -756,7 +766,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
             </div>
           ))}
           {offTop && (
-            <Ghost card={topOf(zoneById.get(offTop.pile) ?? floor)} faces={faces} back={backAt('ghost')} left={left(offTop.at.x) - px(CARD_MM.w / 2)} top={top(offTop.at.y) - px(CARD_MM.h / 2)} px={px} />
+            <Ghost card={topOf(zoneById.get(offTop.pile) ?? floor)} faces={faces} back={backAt('ghost')} left={left(offTop.at.x)} top={top(offTop.at.y)} px={px} />
           )}
           {overlay?.({ px, left, top, scale })}
         </div>

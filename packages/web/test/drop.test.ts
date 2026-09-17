@@ -353,10 +353,10 @@ describe.each<TableMode>(['table', 'tv'])('the frame is not a place for a card, 
     expect(looseAt(middle)).toEqual([{ v: 'move', component: loose, to: v.floor, x: centred.x, y: centred.y }])
   })
 
-  // The same for everything else a drop can lay loose on the floor: the top of a pile, which is
-  // held by where it was let go of and splits off to a card cornered there (K1, K15); a whole
-  // pile, which travels by its centre; and a chip, which is not a card (C4) but no more lies on
-  // the wood than one does.
+  // The same for everything else a drop can lay loose on the floor: the top of a pile, which
+  // splits off to a card keeping the point it was picked up by (K1, K15, #223); a whole pile,
+  // which travels by its centre; and a chip, which is not a card (C4) but no more lies on the
+  // wood than one does.
   const draw = geometryOf(v, 'draw')
   const chip = v.components.find((c) => c.counter !== undefined && c.zone === v.floor)!.id
   const topAt = (at: Point) => dropIntents(v, { target: { kind: 'pileTop', pile: 'draw' }, ids: [], grab: { x: draw.x, y: draw.y }, at, origin: {} }, mode)
@@ -369,8 +369,12 @@ describe.each<TableMode>(['table', 'tv'])('the frame is not a place for a card, 
   const farBottomRight = { x: felt.x + felt.w + FAR_MM, y: felt.y + felt.h + FAR_MM }
 
   it('the top of a pile let go over the frame splits off to a card lying whole on the felt', () => {
-    expect(topAt(outLeft)).toEqual([{ v: 'split', pile: 'draw', at: 1, x: felt.x, y: middle.y }])
-    expect(topAt(farBottomRight)).toEqual([{ v: 'split', pile: 'draw', at: 1, x: felt.x + felt.w - CARD_MM.w, y: felt.y + felt.h - CARD_MM.h }])
+    // `topAt` takes the pile by its centre, so the card's own centre follows the pointer and the
+    // answers are the loose card's, said on the table rather than in the floor (#223). Cornered at
+    // the pointer, as this was, the top of a pile came to rest half a card off from a loose one
+    // let go of at the very same point.
+    expect(topAt(outLeft)).toEqual([{ v: 'split', pile: 'draw', at: 1, x: felt.x + edge.left, y: felt.y + centred.y }])
+    expect(topAt(farBottomRight)).toEqual([{ v: 'split', pile: 'draw', at: 1, x: felt.x + edge.right, y: felt.y + edge.bottom }])
   })
 
   it('a whole pile let go over the frame comes to rest whole on the felt', () => {
@@ -393,5 +397,65 @@ describe('a card played out of the band over the frame lies whole on the felt (K
   it('let go over the left frame, and far past the bottom-right corner', () => {
     expect(playedAt(v, 'A', { x: felt.x - 20, y: felt.y + felt.h / 2 })).toEqual({ zone: v.floor, x: 0, y: felt.h / 2 - CARD_MM.h / 2 })
     expect(playedAt(v, 'A', { x: felt.x + felt.w + 500, y: felt.y + felt.h + 500 })).toEqual({ zone: v.floor, x: felt.w - CARD_MM.w, y: felt.h - CARD_MM.h })
+  })
+})
+
+// Where in the card the hand took hold of it (#223).
+//
+// A loose card has always kept its grip: `dropIntents` places it at `dest + origin - grab`, so the
+// point of the card under the pointer when it was picked up is the point under the pointer when it
+// is let go. The top of a pile did not — it was cornered at the pointer, which is why the card
+// appeared to jump to the hand's top-left the moment it came off the pile. And taking the top card
+// off a pile is the commonest drag there is on a felt, so it read as though every card did it.
+describe('a card keeps the point it was picked up by (#223, K14)', () => {
+  // The top card of a pile is drawn centred on the pile's geometry — the same reading `besidePile`
+  // makes when it says a pile travels by its centre and a lone card settles by its corner.
+  const topCorner = (view: Snapshot, pile: string): Point => {
+    const g = view.zones.find((z) => z.id === pile)!.geometry
+    return { x: g.x - CARD_MM.w / 2, y: g.y - CARD_MM.h / 2 }
+  }
+
+  it('drops the top of a pile so the grip is where it was, not with the corner under the pointer', () => {
+    const { view } = buildScene()
+    const v = view(null)
+    const corner = topCorner(v, 'discard')
+    // Taken well inside the card — a third across and a third down — and carried to bare felt.
+    const grab = { x: corner.x + CARD_MM.w / 3, y: corner.y + CARD_MM.h / 3 }
+    const at = { x: -100, y: -150 }
+    const [intent] = dropIntents(v, { target: { kind: 'pileTop', pile: 'discard' }, ids: [], grab, at, origin: {} }, 'table')
+    expect(intent).toMatchObject({ v: 'split', pile: 'discard', at: 1 })
+    const landed = intent as Extract<Intent, { v: 'split' }>
+    expect({ x: landed.x, y: landed.y }).toEqual({ x: corner.x + (at.x - grab.x), y: corner.y + (at.y - grab.y) })
+    // Said the other way round, which is the sentence the beställare wrote: the pointer stands the
+    // same distance into the card after the drop as it did before it.
+    expect(at.x - landed.x!).toBeCloseTo(CARD_MM.w / 3, 9)
+    expect(at.y - landed.y!).toBeCloseTo(CARD_MM.h / 3, 9)
+  })
+
+  it('still corners the card at the pointer when the pointer is all the grip there was', () => {
+    const { view } = buildScene()
+    const v = view(null)
+    const grab = topCorner(v, 'discard')
+    const at = { x: -100, y: -150 }
+    const [intent] = dropIntents(v, { target: { kind: 'pileTop', pile: 'discard' }, ids: [], grab, at, origin: {} }, 'table')
+    expect(intent).toMatchObject({ v: 'split', pile: 'discard', at: 1, x: at.x, y: at.y })
+  })
+
+  it('answers a pile’s top exactly as it answers a loose card given the same grip', () => {
+    const { view, faceUp } = buildScene()
+    const v = view(null)
+    // The same gesture on the two kinds of thing: taken a third in, carried to the same felt.
+    const grip = { x: CARD_MM.w / 3, y: CARD_MM.h / 3 }
+    const at = { x: -100, y: -150 }
+    const pileCorner = topCorner(v, 'discard')
+    const [split] = dropIntents(v, { target: { kind: 'pileTop', pile: 'discard' }, ids: [], grab: { x: pileCorner.x + grip.x, y: pileCorner.y + grip.y }, at, origin: {} }, 'table')
+    const loose = abs(v, faceUp)
+    const [move] = dropIntents(v, { target: { kind: 'card', id: faceUp }, ids: [faceUp], grab: { x: loose.x + grip.x, y: loose.y + grip.y }, at, origin: { [faceUp]: loose } }, 'table')
+    const s = split as Extract<Intent, { v: 'split' }>
+    const m = move as Extract<Intent, { v: 'move' }>
+    // `move` names a place in its zone and `split` one on the table, so the floor's own corner is
+    // what makes the two readings comparable at all.
+    const floor = v.zones.find((z) => z.id === v.floor)!.geometry
+    expect({ x: s.x, y: s.y }).toEqual({ x: floor.x + m.x!, y: floor.y + m.y! })
   })
 })
