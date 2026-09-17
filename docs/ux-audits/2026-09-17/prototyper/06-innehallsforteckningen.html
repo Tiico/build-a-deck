@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 6 — Innehållsförteckningen och nivå 2</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* Regelfliken som den står i dag (#131, #186), kopierad ur
+     packages/web/src/editor/editor.css så att varianterna bedöms i bokens egen sättning:
+       .byd-rules-spread   flex: 1 1 auto; min-height: 0; overflow: auto;   ← flikens enda skrollyta
+       .byd-rules-toc      position: sticky; top: 0; flex: 0 0 200px;
+       .byd-rulebook       width: calc(68ch + 80px); Georgia 14/1.7 på papper
+     Boken är realistisk och inte fixturens: 22 avsnitt, 32 underrubriker. */
+  .rules { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: var(--gutter); gap: var(--s3); }
+  .spread { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; align-items: flex-start; justify-content: center; gap: var(--s5); }
+  /* Uppslaget centreras som par, precis som i editorn: spalten och boken hör ihop. */
+  .bookwrap { flex: 0 1 auto; min-width: 0; display: flex; justify-content: center; }
+
+  /* Spalten. 200 px, fäst upptill, precis som i dag. */
+  .toc { position: sticky; top: 0; flex: 0 0 200px; }
+  .toc > b { display: block; padding: 0 var(--s3); margin-bottom: var(--s1); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .toc ul { list-style: none; margin: 0; padding: 0; }
+  .toc a { display: flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 4px var(--s3); color: var(--quiet-2); font-size: 12px; text-decoration: none; border-radius: 8px; }
+  .toc a:hover { background: var(--card); color: #fff; }
+  .toc a:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: -2px; }
+  .toc a[aria-current='true'] { background: var(--card); color: #fff; }
+  /* Nivå 2 dras in — men indraget är inte det som bär nivån. Se `sr` nedan. */
+  .toc a[data-level='2'] { padding-left: calc(var(--s3) + var(--s4)); color: #7f879b; }
+  .toc li > ul > li > a::before { content: ''; flex: none; width: 6px; height: 1px; background: #4a5164; margin-left: -12px; }
+
+  /* Det som bara hörs: nivån sägs i ord för den som inte kan se ett indrag (L12). */
+  .sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+  /* Boken: papper, 68 tecken, Georgia — bokens egen sättning, som i editorn. */
+  .book { min-width: 0; width: calc(68ch + 80px); max-width: 100%; box-sizing: border-box; background: #f7f3ea; color: #23201a; border-radius: 14px; padding: 32px 40px; font: 14px/1.7 Georgia, serif; }
+  .book h1 { margin: 0 0 18px; font-size: 26px; }
+  .book h2 { margin: 22px 0 8px; font-size: 19px; scroll-margin-top: 8px; }
+  .book h3 { margin: 18px 0 6px; font-size: 15px; color: #4a4438; scroll-margin-top: 8px; }
+  .book p { margin: 0 0 10px; }
+
+  /* Spalten med egen skrollyta: två ytor sida vid sida, ingen inuti den andra. */
+  .rules[data-column='egen'] .spread { overflow: hidden; display: grid; grid-template-columns: 200px auto; justify-content: center; gap: var(--s5); align-items: stretch; }
+  .rules[data-column='egen'] .toc { position: static; height: 100%; min-height: 0; overflow: auto; scrollbar-width: thin; }
+  .rules[data-column='egen'] .bookwrap { height: 100%; min-height: 0; overflow: auto; scrollbar-width: thin; align-items: flex-start; }
+
+  .bar { flex: none; display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; }
+  .bar .h { flex: none; }
+  .toggle { display: flex; align-items: center; gap: 6px; color: var(--quiet-2); font-size: 12px; min-height: 34px; }
+  .switch button { padding: 0 10px; }
+  /* Måttet står på egen rad så att uppslagets höjd är densamma i alla varianter. */
+  .measure { flex: 1 1 100%; font-size: 12px; }
+  .measure b { color: #fff; font-weight: 700; }
+  .measure .bad { color: var(--warn); }
+  .measure .ok { color: var(--good); }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <a class="home" href="#">Mina spel</a><strong>Sal's Saloon</strong>
+    <button class="rev">rev 42</button><span class="saved">Sparat</span>
+    <nav class="tabs">
+      <button>Kortvägg</button><button>Mall</button><button>Tabell</button>
+      <button>Symboler</button><button aria-selected="true">Regler</button><button>Bord</button>
+    </nav>
+    <span class="spacer"></span><span class="who">P</span>
+    <button class="btn">Spara</button><button class="btn primary">Uppdatera bordet</button>
+  </header>
+
+  <main>
+    <div class="rules" id="rules" data-column="fast">
+      <div class="bar">
+        <h2 class="h">Regelboken</h2>
+        <span class="switch" role="group" aria-label="Variant">
+          <button id="v-a" aria-pressed="true">A · Som i dag</button>
+          <button id="v-b" aria-pressed="false">B · Indraget, alltid</button>
+          <button id="v-c" aria-pressed="false">C · Indraget, där du läser</button>
+        </span>
+        <label class="toggle"><input type="checkbox" id="egen"> Egen skrollyta för spalten</label>
+        <span class="measure" id="measure"></span>
+      </div>
+
+      <div class="spread" id="spread">
+        <nav class="toc" id="toc" aria-label="Innehåll"><b aria-hidden="true">Innehåll</b></nav>
+        <div class="bookwrap" id="bookwrap"><article class="book" id="book"></article></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<p class="note" id="note"></p>
+
+<script>
+// En regelbok av realistisk längd och form: 22 avsnitt, 32 underrubriker, åtta avsnitt utan
+// någon alls. Rubriklängderna är svenska och några av dem måste brytas i en 200 px spalt.
+const BOK = [
+  ['Översikt', []],
+  ['Uppställning', ['Bordets zoner', 'Vad varje spelare får i början', 'Leken blandas och delas']],
+  ['En tur', ['Turordningen vid bordet', 'Att dra ett kort']],
+  ['Handlingar', ['Spela ett kort publikt', 'Spela ett kort dolt framför dig', 'Byta kort med grannen', 'Att passa']],
+  ['Spelet tar slut', ['Att räkna guldet', 'Oavgjort']],
+  ['Korttyperna', ['Karaktärer', 'Föremål', 'Händelser']],
+  ['Dueller', ['Att utmana någon', 'Att svara på en utmaning']],
+  ['Guld och skulder', ['Att betala', 'Att låna av banken']],
+  ['Zonerna i detalj', []],
+  ['Sheriffen och hans stjärna', ['Vem bär stjärnan', 'Att avsätta sheriffen']],
+  ['Saloongen', []],
+  ['Vad som händer när leken tar slut', []],
+  ['Hemliga uppdrag', ['Att avslöja sitt uppdrag']],
+  ['Spela med två spelare', []],
+  ['Spela med sex eller fler spelare', ['Två lag mot varandra']],
+  ['Varianten Nattens tåg', ['Tågets zoner', 'Rånet']],
+  ['Tidsgränser', []],
+  ['Vanliga frågor', ['Kan jag spela två kort på samma tur?', 'Vad händer om leken tar slut mitt i en duell?', 'Får jag visa mina kort för någon annan?']],
+  ['Ordlista', []],
+  ['Symbolerna på korten', ['Stjärnan', 'Hästskon', 'Kulan']],
+  ['För den som lär ut spelet', ['Den första omgången', 'Vanliga missförstånd']],
+  ['Tack och rättigheter', []],
+]
+
+const STYCKEN = [
+  'Sal’s Saloon spelas runt en skärm. Varje spelare har en hand i telefonen och en egen yta framför sig på bordet, och det som spelas publikt vänds först när det når bordet.',
+  'Leken ligger i Kortlek och det som spelats hamnar i Kasthög. När Kortlek är tom blandas Kasthög och blir den nya leken, utan att någon tur avbryts.',
+  'Räknaren Guld står framför varje spelare och är alltid öppen. Ingen behöver komma ihåg vad någon annan har; det står på bordet hela tiden.',
+  'Den som är osäker frågar den som lärde ut spelet. Står svaret inte i det här avsnittet står det i Vanliga frågor, och det som inte står någonstans avgörs av bordet tillsammans.',
+  'Ett kort som ligger dolt framför dig räknas som ditt, men ingen annan vet vilket det är förrän du vänder det. Du får vända det när som helst på din egen tur.',
+  'Reglerna versioneras med korten. Den som öppnar en äldre version av spelet läser de regler som gällde då, och inte de som gäller nu.',
+]
+
+const rules = document.getElementById('rules')
+const toc = document.getElementById('toc')
+const book = document.getElementById('book')
+const spread = document.getElementById('spread')
+const bookwrap = document.getElementById('bookwrap')
+const measure = document.getElementById('measure')
+const note = document.getElementById('note')
+const egen = document.getElementById('egen')
+const knappar = { a: document.getElementById('v-a'), b: document.getElementById('v-b'), c: document.getElementById('v-c') }
+
+let variant = 'a'
+let harLast = 0   // det avsnitt C fäller ut
+
+const id1 = (i) => 'avsnitt-' + i
+const id2 = (i, j) => 'under-' + i + '-' + j
+
+function ritaBoken() {
+  let h = '<h1>Sal’s Saloon</h1>'
+  BOK.forEach(([titel, under], i) => {
+    h += '<h2 id="' + id1(i) + '">' + titel + '</h2>'
+    h += '<p>' + STYCKEN[i % STYCKEN.length] + '</p>'
+    h += '<p>' + STYCKEN[(i + 3) % STYCKEN.length] + '</p>'
+    under.forEach((u, j) => {
+      h += '<h3 id="' + id2(i, j) + '">' + u + '</h3>'
+      h += '<p>' + STYCKEN[(i + j + 1) % STYCKEN.length] + '</p>'
+    })
+  })
+  book.innerHTML = h
+}
+
+// Spalten. Nivån bärs aldrig av indraget allena: nivå 2 står i en egen lista inuti sitt avsnitts
+// rad, och listan säger med ord vilket avsnitt den hör till. En skärmläsare hör «Underrubriker i
+// Uppställning, lista, 3 objekt» där ett öga ser sexton pixlars indrag.
+function ritaSpalten() {
+  let h = '<b aria-hidden="true">Innehåll</b><ul>'
+  BOK.forEach(([titel, under], i) => {
+    const utfalld = variant === 'b' || (variant === 'c' && i === harLast)
+    const nu = variant === 'c' && i === harLast
+    h += '<li><a href="#' + id1(i) + '" data-level="1" data-i="' + i + '"' + (nu ? ' aria-current="true"' : '') + '>' + titel + '</a>'
+    if (utfalld && under.length) {
+      h += '<ul aria-label="Underrubriker i ' + titel + '">'
+      under.forEach((u, j) => {
+        h += '<li><a href="#' + id2(i, j) + '" data-level="2"><span class="sr">Underrubrik: </span>' + u + '</a></li>'
+      })
+      h += '</ul>'
+    }
+    h += '</li>'
+  })
+  toc.innerHTML = h + '</ul>'
+}
+
+// C öppnar sig där man läser: det avsnitt vars rubrik senast passerade krönet.
+function vilketAvsnitt() {
+  const yta = rules.dataset.column === 'egen' ? bookwrap : spread
+  const topp = yta.getBoundingClientRect().top + 8
+  let i = 0
+  BOK.forEach((_, k) => {
+    const el = document.getElementById(id1(k))
+    if (el && el.getBoundingClientRect().top <= topp + 24) i = k
+  })
+  return i
+}
+
+function vidSkroll() {
+  if (variant !== 'c') return
+  const i = vilketAvsnitt()
+  if (i === harLast) return
+  harLast = i
+  ritaSpalten()
+  mat()
+}
+
+function skrollytor() {
+  return [['spalten', toc], ['uppslaget', spread], ['boken', bookwrap]].filter(([, el]) => {
+    const o = getComputedStyle(el).overflowY
+    return (o === 'auto' || o === 'scroll') && el.scrollHeight > el.clientHeight + 1
+  }).map(([namn]) => namn)
+}
+
+function mat() {
+  const under = BOK.reduce((n, [, u]) => n + u.length, 0)
+  const rader = toc.querySelectorAll('a').length
+  const spalt = Math.round(toc.querySelector('ul').getBoundingClientRect().height) + 20
+  const yta = Math.round(spread.clientHeight)
+  const over = spalt - yta
+  const ytor = skrollytor()
+  const nastlad = ytor.includes('spalten') && ytor.includes('uppslaget')
+  measure.innerHTML =
+    '<b>' + BOK.length + ' avsnitt · ' + under + ' underrubriker</b> · ' +
+    rader + ' rader · spalten <b>' + spalt + ' px</b> i en ' + yta + ' px yta · ' +
+    (over > 0
+      ? '<span class="bad">' + over + ' px utanför' + (rules.dataset.column === 'egen' ? ' (nås i spalten)' : ' (syns först när boken är skrollad i botten)') + '</span>'
+      : '<span class="ok">ryms</span>') +
+    ' · ' + ytor.length + ' ' + (ytor.length === 1 ? 'skrollyta' : 'skrollytor') +
+    (nastlad ? ' <span class="bad">(nästlade)</span>' : '')
+}
+
+const NOTER = {
+  a: '<b>A · Som i dag</b>Spalten listar bara nivå 1. En underrubrik hittas genom att läsa sitt avsnitt. Kortast, och den enda vars form aldrig ändrar sig — men vid 22 avsnitt räcker höjden ändå inte: spalten är fäst upptill i uppslagets enda skrollyta, så dess sista rader syns först när boken är skrollad hela vägen ned. Den säger heller ingenting om att boken har 32 rubriker till.',
+  b: '<b>B · Indraget, alltid</b>Spalten speglar boken: varje nivå 2 står under sin nivå 1. Trognast, och längst. Nivån hörs för att varje undergrupp är en egen lista som säger vilket avsnitt den hör till — indraget är bara det ögat ser.',
+  c: '<b>C · Indraget, där du läser</b>Bara det avsnitt du står i fäller ut sina underrubriker; resten står hopvikta. Kort spalt — men den ändrar form medan du skrollar, utan att du rört den. Det är precis det #177 sa är svårt att lita på: en rad flyttar sig under fingret och tangentbordsordningen är en annan när du kommer tillbaka.',
+}
+
+function visa(v) {
+  variant = v
+  Object.entries(knappar).forEach(([k, b]) => b.setAttribute('aria-pressed', String(k === v)))
+  if (v === 'c') harLast = vilketAvsnitt()
+  ritaSpalten()
+  note.innerHTML = NOTER[v]
+  mat()
+}
+
+Object.entries(knappar).forEach(([k, b]) => b.addEventListener('click', () => visa(k)))
+egen.addEventListener('change', () => { rules.dataset.column = egen.checked ? 'egen' : 'fast'; requestAnimationFrame(mat) })
+spread.addEventListener('scroll', vidSkroll)
+bookwrap.addEventListener('scroll', vidSkroll)
+// Tangentbordet måste kunna nå en underrubrik i C också: den som tabbar till ett avsnitt fäller ut
+// det. Samma form som skrollningen ger, och samma pris — listan ändrar sig av sig själv.
+toc.addEventListener('focusin', (e) => {
+  if (variant !== 'c') return
+  const i = e.target.dataset && e.target.dataset.i
+  if (i === undefined || Number(i) === harLast) return
+  harLast = Number(i)
+  ritaSpalten()
+  const rad = toc.querySelector('a[data-i="' + i + '"]')
+  if (rad) rad.focus()
+  mat()
+})
+window.addEventListener('resize', mat)
+
+ritaBoken()
+visa('a')
+</script>
+</body>
+</html>
