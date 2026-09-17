@@ -8,3 +8,6 @@ export * from './edits.js'
 export * from './setup.js'
 // The roles a project is shared in (D3): the editor speaks them too, and they are pure data.
 export * from './roles.js'
+// What an upload may be and what it may weigh (E1): the editor says it before it uploads, so the
+// numbers are read from here rather than written down a second time in the browser (#173).
+export * from './uploads.js'

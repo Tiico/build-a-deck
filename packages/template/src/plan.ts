@@ -138,6 +138,12 @@ const shapeOf = (block: RuleBlock): string => {
       return `list:${block.ordered === true}:${JSON.stringify(block.items)}`
     case 'setup':
       return `setup:${block.caption ?? ''}`
+    // A picture is the same picture when it is the same bytes (#173). Its alt text and its caption
+    // are the designer's and not the file's, so two books that point at one asset carry the same
+    // figure however differently they describe it — and a file re-imported does not put the same
+    // picture in twice.
+    case 'image':
+      return `image:${block.src}`
   }
 }
 
@@ -257,5 +263,18 @@ function columnOf(blocks: readonly RulePlanBlock[]): RulePlanSection[] {
 
 // What a block weighs, in the words a reader would have read. It is the whole of the answer to
 // "how much am I losing", and a count of blocks is not that answer: one paragraph can be a page.
-const words = (block: RuleBlock): number =>
-  (block.kind === 'list' ? block.items.join(' ') : block.kind === 'setup' ? (block.caption ?? '') : block.text).split(/\s+/).filter((word) => word.length > 0).length
+const words = (block: RuleBlock): number => textOf(block).split(/\s+/).filter((word) => word.length > 0).length
+// The words of a block, whichever kind it is. A picture weighs what is written under it and never
+// its alt text: the alt text stands for the picture rather than being read beside it, so counting
+// it would make a figure heavier the better it was described.
+const textOf = (block: RuleBlock): string => {
+  switch (block.kind) {
+    case 'list':
+      return block.items.join(' ')
+    case 'setup':
+    case 'image':
+      return block.caption ?? ''
+    default:
+      return block.text
+  }
+}

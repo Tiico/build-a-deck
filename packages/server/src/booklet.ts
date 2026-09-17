@@ -1,4 +1,4 @@
-import type { RenderedBlock, RenderedNode, RenderedRules } from '@byd/template'
+import { BOOKLET_MARGIN_MM, BOOKLET_PAGE_MM, type RenderedBlock, type RenderedNode, type RenderedRules } from '@byd/template'
 import type { ProjectCredit } from './projects.js'
 
 // The rulebook as a booklet for print (B7): the same rendering the editor and the table read,
@@ -11,6 +11,10 @@ export type BookletInput = {
   rules: RenderedRules
   // The project's icon set, already resolved to something a browser can draw.
   icons: Record<string, string>
+  // The rulebook's own pictures (#173), keyed by the `asset:<hash>` the book carries and resolved
+  // to bytes the press can draw. A picture whose asset is gone is left out of the book entirely: a
+  // reader never meets an error message in a rulebook.
+  images?: Record<string, string>
   pageMm: { w: number; h: number }
   // The zones the game has, for the setup picture (B5); their names, in the setup's order.
   zones?: string[]
@@ -22,8 +26,11 @@ export type BookletInput = {
 }
 export type Booklet = { html: string; css: string }
 
-// A5 is what a rulebook is folded to; the box it ships in decides nothing else here.
-export const A5 = { w: 148, h: 210 }
+// A5 is what a rulebook is folded to; the box it ships in decides nothing else here. The page and
+// its margins are declared beside the measurement that reads them (`@byd/template`), because the
+// column a figure is fitted to is this page less these margins (#173) — writing either of them out
+// again here would be two numbers to hold in step by hand.
+export const A5 = BOOKLET_PAGE_MM
 
 export function bookletOf(input: BookletInput): Booklet {
   const { w, h } = input.pageMm
@@ -49,8 +56,22 @@ function blockHtml(block: RenderedBlock, input: BookletInput): string {
       const caption = block.caption ? `<figcaption>${escape(block.caption)}</figcaption>` : ''
       return `<figure class="byd-setup"><div class="byd-table">${zones}</div>${caption}</figure>`
     }
+    // A picture (#173), set in the millimetres `renderRules` already worked out — the press does
+    // no arithmetic of its own, which is what keeps the screen and the page the same size.
+    case 'image': {
+      const src = input.images?.[block.src]
+      if (!src) return ''
+      const caption = block.caption ? `<figcaption>${escape(block.caption)}</figcaption>` : ''
+      // An empty alt is the decorative mark, and it is written out rather than left off: an `img`
+      // with no `alt` at all is announced by its file name, which here is a hash.
+      return `<figure class="byd-figure" style="width:${mm(block.mm.w)}mm"><img src="${escape(src)}" alt="${escape(block.alt)}" style="width:${mm(block.mm.w)}mm;height:${mm(block.mm.h)}mm">${caption}</figure>`
+    }
   }
 }
+
+// Millimetres as CSS wants them: two decimals is a hundredth of a millimetre, which is finer than
+// any press resolves, and a whole number stays whole so the page reads like the measurement does.
+const mm = (n: number): string => String(Number(n.toFixed(2)))
 
 function span(nodes: readonly RenderedNode[], icons: Record<string, string>): string {
   return nodes
@@ -87,7 +108,7 @@ function creditsHtml(credits: (ProjectCredit & { name: string })[], lang: 'sv' |
 // the fold and the knife do not eat a line.
 function css(w: number, h: number): string {
   return [
-    `@page{size:${w}mm ${h}mm;margin:14mm 15mm}`,
+    `@page{size:${w}mm ${h}mm;margin:${BOOKLET_MARGIN_MM.block}mm ${BOOKLET_MARGIN_MM.inline}mm}`,
     'body{margin:0}',
     '[data-booklet]{font:10.5pt/1.55 Georgia,serif;color:#1c1c1c}',
     'h1{font-size:22pt;margin:0 0 10mm}',
@@ -102,7 +123,15 @@ function css(w: number, h: number): string {
     '.byd-setup{margin:4mm 0;break-inside:avoid}',
     '.byd-setup .byd-table{display:flex;flex-wrap:wrap;gap:2mm;justify-content:center;padding:5mm;border:0.3mm dashed #8a8172;border-radius:2mm}',
     '.byd-setup span{padding:2mm 3mm;border:0.2mm solid #b3a894;border-radius:1mm;font:8pt system-ui}',
-    '.byd-setup figcaption{margin-top:2mm;text-align:center;font:italic 8.5pt Georgia,serif;color:#6b6255}',
+    // A caption is a caption, whichever figure it stands under.
+    '.byd-setup figcaption,.byd-figure figcaption{margin-top:2mm;text-align:center;font:italic 8.5pt Georgia,serif;color:#6b6255}',
+    // The figure is centred in the column and never pulled out of it, and it stays with its
+    // caption: a caption on the next page belongs to nothing. Its own width is written on it, in
+    // the millimetres `renderRules` measured.
+    '.byd-figure{margin:4mm auto;max-width:100%;break-inside:avoid}',
+    // The box is the measurement's, and `contain` is what makes the picture keep its own aspect
+    // inside it — so a figure that narrowed to fit the page is never one that was cropped to fit.
+    '.byd-figure img{display:block;object-fit:contain}',
     '.byd-credits{margin-top:10mm;break-before:page}',
     '.byd-credits li{font:8.5pt system-ui;color:#4a4438}',
   ].join('\n')

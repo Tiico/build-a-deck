@@ -19,6 +19,28 @@ export const RuleBlock = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('list'), id: z.string().min(1), items: z.array(z.string()), ordered: z.boolean().optional() }),
   // The setup picture is the zones themselves (B5's follow-on), not a drawing kept beside them.
   z.object({ kind: z.literal('setup'), id: z.string().min(1), caption: z.string().optional() }),
+  // A picture (#173). `src` is one of the project's own assets and can be nothing else: the book
+  // is versioned with the cards (B4, B7), so an address pointing out of the game would be a
+  // rulebook whose figures go missing on their own schedule. It is the same `asset:<hash>` a card
+  // image is, which is what makes one upload serve both.
+  //
+  // `alt` and `caption` are two fields because they are written for two readers. Alt replaces the
+  // picture for whoever cannot see it and is therefore exhaustive; a caption is read *beside* the
+  // picture by someone who already sees it and says what the picture does not. An empty `alt` is
+  // HTML's own word for decorative, and it is what an image whose Markdown carried no alt text is
+  // taken in as — see B7 for the accessibility cost that choice accepts.
+  //
+  // `px` is the file's own size, and it is on the block rather than fetched because the one
+  // measurement below must be arrived at without I/O: the editor, the table, the phone and the
+  // press all have to reach the same millimetres from the same document.
+  z.object({
+    kind: z.literal('image'),
+    id: z.string().min(1),
+    src: z.string().regex(/^asset:[0-9a-f]{64}$/),
+    alt: z.string(),
+    caption: z.string().optional(),
+    px: z.object({ w: z.number().int().positive(), h: z.number().int().positive() }),
+  }),
 ])
 // Which file the book was imported from, and when (#131). It is text in the document and never a
 // file handle: a handle belongs to one browser and one person, and the book has to travel with the
@@ -27,6 +49,50 @@ export const RuleSource = z.object({ file: z.string().min(1), at: z.string().min
 export const RuleDoc = z.object({ title: z.string(), blocks: z.array(RuleBlock), source: RuleSource.optional() })
 export type RuleDoc = z.infer<typeof RuleDoc>
 export type RuleBlock = RuleDoc['blocks'][number]
+
+// The booklet's page, and the one measurement every surface scales (B7, #173).
+//
+// A rulebook is folded to A5, and the booklet's own `@page` keeps 14 mm above and below and 15 mm
+// at the sides — `packages/server/src/booklet.ts` writes that rule out of these very numbers
+// rather than repeating them, and the geometry stands here because the measurement that reads it
+// is here. The type area is therefore 118 × 182 mm, and 118 mm is the book's column wherever it is
+// read: the editor, the table's drawer and the phone scale the same millimetres, so what the
+// designer sees on a screen is the share of the column the press will give her.
+export const BOOKLET_PAGE_MM = { w: 148, h: 210 }
+export const BOOKLET_MARGIN_MM = { block: 14, inline: 15 }
+export const RULE_COLUMN_MM = BOOKLET_PAGE_MM.w - 2 * BOOKLET_MARGIN_MM.inline
+// Two thirds of the type area's height, and the only measure here that was not already in the
+// code. A figure allowed the whole type area becomes a page of its own, and a lone picture in the
+// middle of a rulebook is a page the reader turns past without knowing it belongs to the paragraph
+// before it; `break-inside: avoid` does not help, it moves the same problem one page on. At 120 mm
+// a figure and its caption always share a page with text.
+export const RULE_IMAGE_CEILING_MM = 120
+// A picture is never enlarged past its own pixels at the resolution the press asks for. A 700 px
+// sketch pulled out to the full column is printed at 150 DPI and is porridge in the hand, while on
+// a screen it would look well right up to delivery. Rather a small sharp figure than a large soft.
+export const RULE_IMAGE_DPI = 300
+const MM_PER_INCH = 25.4
+
+// Which of the three bounds the figure came to rest against, so a surface can say why it is the
+// size it is without working the arithmetic out a second time.
+export type RuleImageFit = 'column' | 'height' | 'own'
+
+// The figure's box, in millimetres, in the order the bounds apply: never wider than the column,
+// never taller than the ceiling, and never larger than its own pixels at 300 DPI. An image too
+// tall for the page narrows to fit and is never cropped — a cropped setup picture is a setup
+// picture that lies.
+export function imageBoxMm(px: { w: number; h: number }): { w: number; h: number; fit: RuleImageFit } {
+  const own = (px.w * MM_PER_INCH) / RULE_IMAGE_DPI
+  let fit: RuleImageFit = own < RULE_COLUMN_MM ? 'own' : 'column'
+  let w = Math.min(RULE_COLUMN_MM, own)
+  let h = (w * px.h) / px.w
+  if (h > RULE_IMAGE_CEILING_MM) {
+    h = RULE_IMAGE_CEILING_MM
+    w = (h * px.w) / px.h
+    fit = 'height'
+  }
+  return { w, h, fit }
+}
 
 // What the names of things are right now. The rulebook asks for them at render time; it never
 // stores them.
@@ -47,6 +113,9 @@ export type RenderedBlock =
   | { kind: 'text'; id: string; paragraphs: RenderedParagraph[] }
   | { kind: 'list'; id: string; ordered: boolean; items: RenderedNode[][] }
   | { kind: 'setup'; id: string; caption?: string | undefined }
+  // A picture arrives measured (#173): the millimetres are worked out once, here, and every
+  // surface does nothing but scale them by its own pixels per millimetre.
+  | { kind: 'image'; id: string; src: string; alt: string; caption?: string | undefined; px: { w: number; h: number }; mm: { w: number; h: number }; fit: RuleImageFit }
 // `text` is the whole rulebook as plain text: what a search reads, and what a test can hold on to.
 export type RenderedRules = { title: string; blocks: RenderedBlock[]; warnings: RuleWarning[]; text: string }
 
@@ -71,6 +140,14 @@ export function renderRules(doc: RuleDoc, names: Names): RenderedRules {
       case 'setup':
         if (block.caption) lines.push(block.caption)
         return block
+      // The caption is part of the book a search reads, because it is text the reader meets. The
+      // alt text is not: it stands for the picture for whoever cannot see it, and a hit on a word
+      // nobody can find on the page would be a hit on nothing (B7).
+      case 'image': {
+        if (block.caption) lines.push(block.caption)
+        const { w, h, fit } = imageBoxMm(block.px)
+        return { kind: 'image', id: block.id, src: block.src, alt: block.alt, ...(block.caption ? { caption: block.caption } : {}), px: block.px, mm: { w, h }, fit }
+      }
     }
   })
   return { title: doc.title, blocks, warnings, text: lines.join('\n') }

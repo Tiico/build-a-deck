@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { RenderedBlock, RenderedNode, RenderedRules } from '@byd/template'
 import { findRules } from './search.js'
+import { RuleFigure } from './figure.js'
+import { ASSET_PREFIX, assetUrl, isAssetRef } from '../editor/assets.js'
 import { useT } from '../i18n/index.js'
 import './rules.css'
 
@@ -63,7 +65,7 @@ export function RuleDrawer({ http, sessionId, placement }: RuleDrawerProps) {
               <article className="byd-rules-page">
                 <h2>{rules.title}</h2>
                 {rules.blocks.map((b) => (
-                  <RuleBlockView key={b.id} block={b} />
+                  <RuleBlockView key={b.id} block={b} assets={http} />
                 ))}
               </article>
             )}
@@ -76,7 +78,9 @@ export function RuleDrawer({ http, sessionId, placement }: RuleDrawerProps) {
 
 // One block as the reader meets it. References are already names by the time they arrive here:
 // the server resolved them against the version this table plays (B7).
-export function RuleBlockView({ block }: { block: RenderedBlock }) {
+// `assets` is where the game keeps its pictures, which is the same address a card's face is
+// fetched from — the table has it as the very server it asked for the rules.
+export function RuleBlockView({ block, assets }: { block: RenderedBlock; assets: string }) {
   switch (block.kind) {
     case 'heading':
       return block.level === 1 ? <h3>{block.text}</h3> : <h4>{block.text}</h4>
@@ -100,6 +104,14 @@ export function RuleBlockView({ block }: { block: RenderedBlock }) {
     }
     case 'setup':
       return block.caption ? <p className="byd-rules-caption">{block.caption}</p> : null
+    // A picture (#173). The book points at one of the game's own assets, which is the same
+    // address a card's image has, so the table fetches it exactly where it fetches a card face.
+    case 'image':
+      return (
+        <div data-block={block.id}>
+          <RuleFigure block={block} src={isAssetRef(block.src) ? assetUrl(assets, block.src.slice(ASSET_PREFIX.length)) : block.src} />
+        </div>
+      )
   }
 }
 

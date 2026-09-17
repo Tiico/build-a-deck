@@ -94,7 +94,7 @@ describe('the report, which is the last thing read before the book (#131)', () =
     expect(within(screen.getByRole('navigation', { name: 'Innehåll' })).getAllByRole('link').map((a) => a.textContent)).toEqual(['En tur'])
   })
 
-  it('counts what became a block, what changed shape on the way, and what cannot come in yet', async () => {
+  it('counts what became a block, what changed shape on the way, and what did not come in', async () => {
     await openRules()
     const report = await pick()
     expect(within(report).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
@@ -105,21 +105,25 @@ describe('the report, which is the last thing read before the book (#131)', () =
       '1 rubrik på filens första rad blir ingenting: boken heter vad spelet heter',
       '1 tabell blir text, en rad per rad',
       '1 länk blir sin egen text; adressen stryks',
-      '1 bild kommer inte med ännu: boken har ännu inget blockslag för en bild (#173)',
+      // The book has a picture now (#173), and this file names one whose bytes were not handed
+      // over with it: the line says so by name, and says what the book will be.
+      'bordet.png kom inte med — filen fanns inte bland dem du valde. Boken görs utan den.',
     ])
   })
 
-  it('says of a picture that it is not here yet, and never that it was dropped (#173)', async () => {
+  // The picture the book now has (#173). A browser cannot follow `bordet.png` on its own, so a
+  // designer who hands over only the Markdown has handed over a book with a picture missing from
+  // it — and that is said out loud, by name, rather than being a figure that quietly never appears.
+  it('says by name that a picture did not come in, and that the book is made without it', async () => {
     await openRules()
     const report = await pick()
-    const image = within(report).getByText(/bild/)
-    // The product owner rejected dropping images: one is coming, as its own change to the
-    // protocol. Until then the report says so in those words and the line is neither a loss nor
-    // a promise that it worked.
-    expect(image.textContent).toContain('ännu')
-    expect(image.textContent).toContain('#173')
-    expect(image.textContent).not.toContain('stryks')
-    expect(image.getAttribute('data-kind')).toBe('later')
+    const image = within(report).getByText(/bordet\.png/)
+    expect(image.getAttribute('data-kind')).toBe('going')
+    expect(image.textContent).toContain('Boken görs utan den.')
+    // And the proposal stands a struck block where the picture would have been, so the reader of
+    // the report can see where in the book the hole is.
+    const gone = document.querySelector('[data-proposal] .byd-rules-left') as HTMLElement
+    expect(within(gone).getByText('Kom inte med')).toBeTruthy()
   })
 })
 

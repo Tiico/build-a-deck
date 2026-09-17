@@ -44,3 +44,25 @@ describe('looking a rule up mid-game (B7)', () => {
     expect(hits[0]?.block).toBe('t1')
   })
 })
+
+// A picture's caption is text the reader meets, so the search has to walk past it in step with the
+// rendered book (#173). It is not a hit of its own — a caption alone is not a rule — but a book
+// that has one must not knock every passage after it onto the wrong line.
+describe('a book with a picture in it (B7, #173)', () => {
+  const src = `asset:${'a'.repeat(64)}`
+  const withImage = renderRules(
+    {
+      title: 'Skogens herrar',
+      blocks: [
+        { kind: 'heading', id: 'h1', level: 1, text: 'Uppställning' },
+        { kind: 'image', id: 'i1', src, alt: 'Bordet vid start.', caption: 'Bordet vid start, sett från nord.', px: { w: 2400, h: 1350 } },
+        { kind: 'text', id: 't1', text: 'Spelet slutar när [[zon:draw]] är tom.' },
+      ],
+    },
+    names,
+  )
+
+  it('answers with the passage that mentions the word, and not with the line above it', () => {
+    expect(findRules(withImage, 'draghög')).toEqual([{ id: 't1:0', block: 't1', heading: 'Uppställning', text: 'Spelet slutar när Draghög är tom.' }])
+  })
+})

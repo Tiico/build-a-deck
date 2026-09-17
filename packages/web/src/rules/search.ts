@@ -30,7 +30,10 @@ export function findRules(rules: RenderedRules, query: string): Hit[] {
         if (steps.some((s) => s.toLowerCase().includes(q))) hits.push({ id: block.id, block: block.id, heading, text: steps.join('\n') })
         break
       }
+      // A caption is a line of the rendered book, so the walk steps over it in step with
+      // `renderRules` — but it is not a passage: a caption on its own is not a rule (#173).
       case 'setup':
+      case 'image':
         if (block.caption) line++
         break
     }

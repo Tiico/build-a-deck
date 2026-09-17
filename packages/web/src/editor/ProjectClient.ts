@@ -3,7 +3,7 @@ import type { DocDiff, VersionChange } from '@byd/server/doc'
 import type { Element } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
 import { applyEdit, recipeOf, type Clearable, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
-import { ASSET_PREFIX, assetUrl } from './assets.js'
+import { ASSET_PREFIX, assetUrl, isAssetRef } from './assets.js'
 import { measureAsset } from './motifs.js'
 import type { Motif } from '@byd/template'
 import { iconElement } from './canvas.js'
@@ -855,6 +855,12 @@ export class ProjectClient {
 
   bookletUrl(hash: string): string {
     return `${this.http}/faces/${hash}`
+  }
+
+  // Where a picture in the rulebook is fetched from (#173): the game's own assets, by the hash of
+  // the bytes, which is exactly where a card's image is fetched from.
+  imageUrl(ref: string): string {
+    return isAssetRef(ref) ? assetUrl(this.http, ref.slice(ASSET_PREFIX.length)) : ref
   }
 
   async textures(sessionId: string): Promise<Textures> {

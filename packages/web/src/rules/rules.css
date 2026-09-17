@@ -56,3 +56,11 @@
 .byd-rules-drawer[data-placement='phone'] { display: contents; }
 .byd-rules-drawer[data-placement='phone'] .byd-rules-open { border-radius: 8px; padding: 6px 10px; font-size: 12px; }
 .byd-rules-drawer[data-placement='phone'] .byd-rules-panel { position: fixed; inset: 0; width: auto; z-index: 40; }
+
+/* A picture in the book (B7, #173). The figure is the same share of the column here as it is on
+   the printed page: `renderRules` measured it in millimetres against the booklet's 118 mm, and
+   both that measurement and the column itself arrive as custom properties — so this rule is the
+   scaling and never a second copy of the number. */
+.byd-rules-figure { margin: 14px auto; max-width: 100%; width: calc(var(--byd-rule-image-w) / var(--byd-rule-column) * 100%); }
+.byd-rules-figure img { display: block; width: 100%; height: auto; aspect-ratio: var(--byd-rule-image-w) / var(--byd-rule-image-h); object-fit: contain; border-radius: 3px; }
+.byd-rules-figure figcaption { margin-top: 6px; text-align: center; font: italic 12px/1.5 Georgia, serif; color: #6b6255; }

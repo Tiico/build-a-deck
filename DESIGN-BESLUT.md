@@ -376,6 +376,59 @@ En fil som skriver sin titel med `#` och sina avsnitt med `##` får därför en 
 En fil utan inledande rubrik ändras inte alls.
 "Ingenting försvinner tyst" gäller: raden försvinner, men inte tyst, och rapporten räknar den bland det som ändrade form på vägen in.
 
+Bilden, byggd 2026-09-17 (#173):
+`RuleBlock` har ett femte slag, och det är en bild.
+Slaget ligger i den enda deklarationen i `packages/template/src/rules.ts` och typen härleds ur schemat som förut (#183); `packages/server` skickar vidare, och ett test fäller om formen skulle delas i två igen.
+
+Bilden bor innehållsadresserad i spelets egna tillgångar, `asset:<hash>`, precis som kortens bilder.
+Schemat tillåter ingenting annat: en adress som pekar ut ur spelet vore en figur som försvinner enligt någon annans tidtabell, och regelboken versioneras med korten (B4).
+Det är också vad som gör en uppladdning nog: samma byte som ligger på ett kort ligger i boken.
+
+Måttet är **en** uträkning i millimeter som varje yta skalar.
+Spalten är 118 mm — A5:s 148 minus häftets egna 15 mm marginaler — och sidmåtten står nu i `packages/template` bredvid uträkningen som läser dem, medan `packages/server/src/booklet.ts` skriver sin `@page` ur samma tal.
+Att flytta dem dit är hela skälet till att 118 inte går att skriva en andra gång: satsytan och figuren räknas ur samma källa, och stilmallarna får spalten som en egenskap i stället för som ett tal.
+Tre bindningar i den ordning de tillämpas: aldrig bredare än spalten, aldrig högre än taket, och aldrig större än sina egna pixlar vid 300 DPI.
+En 700 px-skiss utdragen till hela spalten trycks i 150 DPI och blir gröt i handen, medan den på skärmen ser fin ut ända fram till leveransen.
+
+Taket är 120 mm, och det är det enda måttet som inte redan fanns i koden.
+Två tredjedelar av satsytans höjd: en bild som får ta hela satsytan blir en egen sida, och en ensam bildsida mitt i en regelbok är en sida läsaren bläddrar förbi utan att veta att den hör ihop med stycket före.
+`break-inside: avoid` räcker inte — det flyttar bara samma problem till nästa sida.
+En bild som är för hög smalnar av för att rymmas och beskärs aldrig: en beskuren uppställningsbild är en uppställningsbild som ljuger.
+
+Alt-text och bildtext är två fält därför att de skrivs för två läsare.
+Alt-texten ersätter bilden för den som inte ser den och är därför uttömmande; bildtexten läses bredvid bilden av någon som redan ser den och säger det bilden inte säger.
+Bildtexten är ett eget valfritt fält som formgivaren skriver, och den är tom efter en import — Markdowns alt-text blir alt-text och ingenting annat.
+Priset är utskrivet och accepterat: en importerad bok har inga bildtexter alls förrän någon skriver dem.
+Det är rätt pris, eftersom en bok utan bildtexter är läsbar medan en bok där varje bild har en felskriven bildtext ser färdig ut och inte är det.
+
+**En bild utan alt-text tas in som dekorativ, och det är beslutets dyra del.**
+Bilden importeras och märks `alt=""`, alltså dold för skärmläsare.
+Kostnaden skrivs här så att den inte upptäcks senare: i en regelbok är en bild nästan aldrig dekorativ.
+En uppställning, en ikonförklaring eller ett exempel på ett drag bär regler, och märkt som dekorativ försvinner den för den som läser med skärmläsare.
+L12 säger att tillgängligheten inte är mildrad i editorn, och det här är den punkt där beslutet väger emot den regeln.
+Alternativet som valdes bort var att låta bilden stå som en obesvarad fråga i boken, i samma form som `ask` på en mallsektion (#131), med raden i importrapporten tills någon skrivit en alt-text.
+Om det här visar sig skava i bruk är det den vägen att gå tillbaka till.
+
+Det som gör kostnaden möjlig att bära är att den tysta bilden går att hitta dagen efter.
+I editorn bär den streckad ram plus raden «Dekorativ · dold för skärmläsare» som *text* — aldrig färg eller ram ensam (L12) — och en 44 px-knapp `Skriv alt-text` som öppnar fältet på plats.
+Innehållsförteckningens fot bär dessutom en räknande knapp, `1 · bild utan alt-text →`, som hoppar dit och märker bilden.
+Den står kvar när importbandet för länge sedan är borta, vilket är skillnaden mellan «ingenting försvinner tyst» vid importen och samma sak en vecka senare.
+Ett tomt fält betyder fortfarande dekorativ: att stänga fältet utan att skriva något är inte ett sätt att smyga bort märket.
+
+Importen tar med bilderna, och den tar emot fler än en fil.
+En webbsida kan inte följa `bilder/bordet.png` på egen hand — en sökväg är ingenting en sida får öppna — så formgivaren väljer Markdown-filen och bilderna tillsammans, och adresserna matchas mot dem på filnamn.
+Vad som accepteras och vad en bild får väga läses ur samma modul som uppladdningsvägen upprätthåller (`packages/server/src/uploads.ts`): PNG, JPEG, WebP, GIF och SVG, och 8 MB per bild.
+Skälet att flytta dem dit är att skälet formgivaren får är skälet: två uppsättningar tal hade glidit isär, och då hade rapporten beskrivit en grind som inte finns.
+Väljer någon bara bilderna och inte filen som nämner dem säger väljaren det, i stället för att svara på en tryckning med ingenting alls.
+
+En bild som inte går att ta in försvinner inte tyst (#131).
+Rapporten säger vilken fil det var och varför, med gränsen utsatt, och i *förslaget* står ett `Kom inte med`-block på den plats bilden skulle haft, i importens befintliga märkesspråk: märkets ord som text över den röda listen.
+Själva skälet stryks inte över, till skillnad från text som är på väg ur boken — skälet är det formgivaren ska läsa, och en överstruken mening läses sämre.
+I *boken* finns det inte alls: en läsare möter aldrig ett felmeddelande i en regelbok.
+Samma regel gäller häftet — en bild vars byte inte längre finns utelämnas, och figuren blir ingen trasig ram på sidan.
+
+Prototyp: `docs/ux-audits/2026-09-17/prototyper/09-regelbokens-bildslag.html`, godkänd av beställaren 2026-09-17.
+
 Motivering:
 Trycket kräver en regelbok för att ordern ska kunna läggas.
 Blindtest kräver att testare kan läsa reglerna utan designern.

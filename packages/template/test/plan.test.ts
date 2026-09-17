@@ -212,4 +212,4 @@ describe('the setup block can never be imported away (#131, B5)', () => {
 })
 
 const textOf = (block: RuleDoc['blocks'][number]): string =>
-  block.kind === 'list' ? block.items.join(' ') : block.kind === 'setup' ? (block.caption ?? '') : block.text
+  block.kind === 'list' ? block.items.join(' ') : block.kind === 'setup' || block.kind === 'image' ? (block.caption ?? '') : block.text

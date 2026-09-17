@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
-import type { Motif } from '@byd/template'
+import type { Motif, RenderedRules } from '@byd/template'
 import { MemoryObjectStore, type ObjectStore } from '@byd/render'
 import type { Sql } from 'postgres'
 import type { ProjectRow } from './projects.js'
@@ -127,6 +127,19 @@ export class PostgresAssetStore implements AssetStore {
 export async function resolveIcons(icons: Record<string, string>, assets: AssetStore): Promise<Record<string, string>> {
   const out: Record<string, string> = {}
   for (const [name, url] of Object.entries(icons)) out[name] = isAssetRef(url) ? await dataUrlOf(url.slice(ASSET_PREFIX.length), assets) : url
+  return out
+}
+
+// The rulebook's own pictures as the press needs them (B7, #173): every `asset:<hash>` the
+// rendered book carries, keyed by the reference the book holds and resolved to the bytes. A
+// picture whose asset is gone resolves to nothing and the booklet leaves the figure out, because a
+// reader never meets an error message in a rulebook — that reading belongs to the editor.
+export async function resolveRuleImages(rules: RenderedRules, assets: AssetStore): Promise<Record<string, string>> {
+  const out: Record<string, string> = {}
+  for (const block of rules.blocks) {
+    if (block.kind !== 'image' || out[block.src] !== undefined || !isAssetRef(block.src)) continue
+    out[block.src] = await dataUrlOf(block.src.slice(ASSET_PREFIX.length), assets)
+  }
   return out
 }
 

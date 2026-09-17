@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { importRules } from '../src/markdown.js'
+import { importRules, withRuleImages } from '../src/markdown.js'
+import type { RuleDoc } from '../src/rules.js'
 
 // The import (#131): a Markdown file a designer wrote somewhere else, read into the four kinds of
 // block the book has. The map is the product owner's, and the rule behind it is that nothing
@@ -120,10 +121,26 @@ describe('the import from Markdown (#131)', () => {
     expect(doc.blocks).toEqual([{ kind: 'text', id: 'b1', text: 'En länk till ingenting.' }])
   })
 
-  it('leaves an image out without calling it dropped: the book cannot hold one yet (#173)', () => {
-    const { doc, notes } = importRules('![Bordet från ovan](bordet.png)\n\nEfter.', 'Skogens herrar')
-    expect(doc.blocks).toEqual([{ kind: 'text', id: 'b1', text: 'Efter.' }])
-    expect(notes).toContainEqual({ of: 'image', n: 1 })
+  // A picture comes in (#173). The file names it by an address, and an address is the one thing the
+  // book may never hold — it is versioned with the cards (B4, B7) — so what the import produces is
+  // not a block but something to fetch: where the picture stood, what it was called, and what the
+  // file wrote under it. The bytes are taken in beside the book, and the block is made from those.
+  it('reads a picture as something to take in, and remembers where in the book it stood', () => {
+    const { doc, images } = importRules('Före.\n\n![Bordet från ovan](bordet.png)\n\nEfter.', 'Skogens herrar')
+    // The prose is untouched, and the picture is not a line of text in the middle of it.
+    expect(doc.blocks).toEqual([
+      { kind: 'text', id: 'b1', text: 'Före.' },
+      { kind: 'text', id: 'b2', text: 'Efter.' },
+    ])
+    expect(images).toEqual([{ id: 'i1', after: 'b1', alt: 'Bordet från ovan', address: 'bordet.png' }])
+  })
+
+  // Markdown's alt text is the picture's alt text and never its caption: the two are written for
+  // two readers, and a picture whose file said nothing is decorative — `alt=""` — which is also the
+  // only way the count of silent pictures stays a count of anything (B7).
+  it('keeps an empty alt text empty rather than inventing a caption out of it', () => {
+    const { images } = importRules('![](ikoner.png)', 'Skogens herrar')
+    expect(images).toEqual([{ id: 'i1', after: null, alt: null, address: 'ikoner.png' }])
   })
 
   it('counts the references it recognises, which are what a book written by hand already writes', () => {
@@ -190,7 +207,45 @@ describe('the import from Markdown (#131)', () => {
       { of: 'folded', n: 1 },
       { of: 'code', n: 1 },
       { of: 'link', n: 1 },
-      { of: 'image', n: 1 },
     ])
+  })
+})
+
+// The other half of the picture's way in (#173): the bytes have been taken into the game's own
+// assets, and the blocks go back exactly where the file had them. It is a pure splice so that the
+// same book comes out whichever surface asked for it, and so that a picture that could not be
+// taken in is simply one the splice was never given.
+describe('putting the pictures back where the file had them (#173)', () => {
+  const src = (n: string) => `asset:${n.repeat(64)}`
+  const doc: RuleDoc = {
+    title: 'Skogens herrar',
+    blocks: [
+      { kind: 'heading', id: 'b1', level: 1, text: 'Uppställning' },
+      { kind: 'text', id: 'b2', text: 'Före.' },
+    ],
+  }
+
+  it('puts each picture under the block it stood under, and one that opens the book first', () => {
+    const picks = [
+      { id: 'i1', after: null, alt: null, address: 'omslag.png' },
+      { id: 'i2', after: 'b2', alt: 'Bordet.', address: 'bordet.png' },
+    ]
+    const made = withRuleImages(doc, picks, [
+      { id: 'i1', src: src('a'), alt: '', px: { w: 700, h: 500 } },
+      { id: 'i2', src: src('b'), alt: 'Bordet.', px: { w: 2400, h: 1350 } },
+    ])
+    expect(made.blocks.map((b) => b.id)).toEqual(['i1', 'b1', 'b2', 'i2'])
+    // A file that wrote no alt text gives a decorative picture, which is an empty alt and nothing
+    // else — there is no second flag to fall out of step with it.
+    expect(made.blocks[0]).toEqual({ kind: 'image', id: 'i1', src: src('a'), alt: '', px: { w: 700, h: 500 } })
+  })
+
+  it('leaves out a picture that was never taken in, without disturbing the ones that were', () => {
+    const picks = [
+      { id: 'i1', after: 'b2', alt: 'Bordet.', address: 'bordet.png' },
+      { id: 'i2', after: 'b2', alt: null, address: 'bordet-4k.png' },
+    ]
+    const made = withRuleImages(doc, picks, [{ id: 'i1', src: src('b'), alt: 'Bordet.', px: { w: 2400, h: 1350 } }])
+    expect(made.blocks.map((b) => b.id)).toEqual(['b1', 'b2', 'i1'])
   })
 })

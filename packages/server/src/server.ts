@@ -23,7 +23,8 @@ import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountO
 import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
 import { canDelete, canEdit, canRead, canShare, canStartTables, INVITE_TTL_MS, roleWord, ROLES, type Role } from './roles.js'
 import { facesOf, printExportOf } from './faces.js'
-import { MotifBody, resolveAssets, resolveFonts, resolveIcons, type AssetStore } from './assets.js'
+import { MotifBody, resolveAssets, resolveFonts, resolveIcons, resolveRuleImages, type AssetStore } from './assets.js'
+import { ASSET_FONT_TYPES, ASSET_IMAGE_TYPES, ASSET_MAX_BYTES } from './uploads.js'
 import { TEXTURE_DPI } from './actor.js'
 
 // `staticDir`: the built web app, served from the same origin as the API (README, DRIFT §1).
@@ -695,11 +696,10 @@ function creditsOf(rec: ProjectRecord): (ProjectCredit & { name: string })[] {
 // What a project may carry: the pictures a card is drawn from (E1) and the type it is set in
 // (B3). The font formats are the ones Chromium loads from a `@font-face`, so a file that is
 // taken here is a file the renderer can honour.
-const ASSET_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/svg+xml', 'font/woff2', 'font/woff', 'font/ttf', 'font/otf'])
+const ASSET_TYPES = new Set([...ASSET_IMAGE_TYPES, ...ASSET_FONT_TYPES])
 // How many pictures one question may ask about. A deck of a few hundred cards asks in one go;
 // past that the question is somebody else's.
 const MOTIFS_AT_ONCE = 500
-const ASSET_MAX_BYTES = 8 * 1024 * 1024
 const ASSET_LINK_TTL_S = 3600
 
 // Images (E1, DRIFT §4): POST /assets takes one from a logged-in creator and answers with its
@@ -1046,9 +1046,14 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     }
     const names = namesOfProject(rec)
     const icons = opts.assets ? await resolveIcons(rec.icons, opts.assets) : rec.icons
+    const rules = renderRules(rec.rules, names)
+    // The book's own pictures travel into the page as bytes (#173): the press has no session and
+    // no cookie, so a reference it would have to fetch is a figure that never prints.
+    const images = opts.assets ? await resolveRuleImages(rules, opts.assets) : {}
     const compiled = bookletOf({
-      rules: renderRules(rec.rules, names),
+      rules,
       icons,
+      images,
       pageMm: A5,
       zones: rec.setup.zones.map((z) => z.name),
       credits: creditsOf(rec),

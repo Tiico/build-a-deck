@@ -5,6 +5,7 @@ import {
   importRules,
   planImport,
   renderRules,
+  withRuleImages,
   type Names,
   type RenderedBlock,
   type RenderedNode,
@@ -15,9 +16,12 @@ import {
   type RuleRun,
   renderLine,
 } from '@byd/template'
+import { ASSET_IMAGE_TYPES, ASSET_MAX_BYTES } from '@byd/server/doc'
 import type { ProjectClient } from './ProjectClient.js'
+import { takeRuleImages, type RuleImageLeft } from './ruleImages.js'
 import { useT, type T } from '../i18n/index.js'
 import type { Key } from '../i18n/sv.js'
+import { RuleFigure } from '../rules/figure.js'
 import { useGesture } from './gesture.js'
 import { when } from './HistoryPanel.js'
 
@@ -32,8 +36,12 @@ export function RulesPanel({ doc, client }: RulesPanelProps) {
   const [editing, setEditing] = useState<string | null>(null)
   // A file that has been read but not yet taken in (#131). It stands here and not in the document
   // precisely because it has not been decided: the report is the last thing read before the book.
-  const [proposal, setProposal] = useState<(RuleImport & { file: string }) | null>(null)
+  const [proposal, setProposal] = useState<(RuleImport & { file: string; left: RuleImageLeft[] }) | null>(null)
   const [failed, setFailed] = useState<string | null>(null)
+  // Which picture the column beside the book just went to (#173). It is a mark on the figure and
+  // not a scroll position: a designer who asked "where are the silent pictures" has to be able to
+  // see which one she was taken to, and the mark carries a word of its own rather than a colour.
+  const [found, setFound] = useState<string | null>(null)
   const names = namesOfProject(doc)
   const rules = doc.rules
   // An empty tab is not an empty screen: it is the book's own disposition, the template drawn on
@@ -94,14 +102,36 @@ export function RulesPanel({ doc, client }: RulesPanelProps) {
   const open = (id: string) => rules && setEditing(id)
   // A file the designer picked, read and laid out as the book it would become — and never taken
   // in on the way past. What it loses is read first (#131).
-  const pick = (file: File | undefined) => void lay(file)
-  const lay = async (file: File | undefined) => {
-    if (!file) return
-    const read = importRules(await file.text(), doc.name)
+  const pick = (files: readonly File[]) => void lay(files)
+  // The file, and the pictures it names, handed over together (#131, #173). A browser cannot follow
+  // the path in `![så här](bilder/bordet.png)` — a path is not a thing a page may open — so what
+  // the designer picks is the Markdown and the pictures beside it, and the addresses are matched
+  // against them by name. Anything else would be a figure fetched from outside the game, and the
+  // book is versioned with the cards precisely so that it has nothing outside it (B4, B7).
+  const lay = async (files: readonly File[]) => {
+    if (files.length === 0) return
+    const written = files.find((file) => !file.type.startsWith('image/'))
+    // Pictures without the file that names them are a mis-pick, and a control that answers a press
+    // with nothing at all is the one thing "nothing disappears quietly" does not allow (#131).
+    if (!written) {
+      setFailed(t('rules.import.noFile'))
+      setProposal(null)
+      return
+    }
+    const read = importRules(await written.text(), doc.name)
     // A file with nothing in it to make a book of says so, rather than looking as though the
     // press did nothing at all.
-    setFailed(read.doc.blocks.length === 0 ? t('rules.import.nothing', { file: file.name }) : null)
-    setProposal(read.doc.blocks.length === 0 ? null : { ...read, file: file.name })
+    if (read.doc.blocks.length === 0 && read.images.length === 0) {
+      setFailed(t('rules.import.nothing', { file: written.name }))
+      setProposal(null)
+      return
+    }
+    // The pictures are taken in before the report is shown, because the report says what came in
+    // and what did not, and neither is known until the bytes have been read. The upload is content
+    // addressed, so a proposal that is then cancelled has cost the game nothing it did not have.
+    const { taken, left } = await takeRuleImages(read.images, files.filter((file) => file.type.startsWith('image/')), (blob) => client.uploadAsset(blob, t))
+    setFailed(null)
+    setProposal({ ...read, doc: withRuleImages(read.doc, read.images, taken), file: written.name, left })
   }
   return (
     <div className="byd-rules">
@@ -174,11 +204,15 @@ export function RulesPanel({ doc, client }: RulesPanelProps) {
         <Toc
           blocks={out.blocks}
           label={t('rules.toc')}
+          {...(writing ? { silent: silentImages(out.blocks), onFind: setFound } : {})}
           {...(plan ? { marks: plan.sections } : {})}
           {...(writing ? { onAdd: addSection } : proposal || rules ? {} : { proposed: true })}
         />
         <article className="byd-rulebook" {...(writing ? { 'data-rulebook': true } : { 'data-proposal': true })}>
           <h1>{out.title}</h1>
+          {leftUnder(proposal?.left, null).map((gone) => (
+            <LeftOut key={gone.id} of={gone} />
+          ))}
           {out.blocks.map((b, i) => {
             const source = shown.blocks.find((x) => x.id === b.id)
             const planned = marks.get(b.id)
@@ -202,7 +236,20 @@ export function RulesPanel({ doc, client }: RulesPanelProps) {
                 {planned && saysMark && (
                   <span className="byd-rules-mark">{t(planned.block.kind === 'setup' ? 'rules.mark.setup' : (`rules.mark.${planned.mark}` as Key))}</span>
                 )}
-                {editing === b.id && source && writing ? (
+                {b.kind === 'image' ? (
+                  // A picture is not opened by clicking the block (#173): it has two fields of its
+                  // own, written for two different readers, and each of them is a control in the
+                  // page. Wrapping them in a `role="button"` the way a paragraph is wrapped would
+                  // put a button inside a button, which is a control nobody can reach twice (L12).
+                  <ImageBlock
+                    block={b}
+                    {...(source?.kind === 'image' ? { source } : {})}
+                    src={client.imageUrl(b.src)}
+                    writing={writing}
+                    found={found === b.id}
+                    onPatch={(next) => patch(b.id, next)}
+                  />
+                ) : editing === b.id && source && writing ? (
                   <Editing block={source} names={names} onPatch={(next, gesture) => patch(b.id, next, gesture)} onClose={() => setEditing(null)} onRemove={() => remove(b.id)} />
                 ) : writing ? (
                   <div
@@ -229,6 +276,13 @@ export function RulesPanel({ doc, client }: RulesPanelProps) {
                     ＋
                   </button>
                 )}
+                {/* A picture that did not come in stands where it would have been, marked in the
+                    import's own vocabulary. It is here and nowhere else: the book that is made has
+                    no trace of it, because a reader never meets an error message in a rulebook
+                    (#173). */}
+                {leftUnder(proposal?.left, b.id).map((gone) => (
+                  <LeftOut key={gone.id} of={gone} />
+                ))}
               </div>
             )
           })}
@@ -250,22 +304,25 @@ export function RulesPanel({ doc, client }: RulesPanelProps) {
 // cannot be opened on a name — the web has no such thing short of a file handle, and a handle was
 // decided against because it belongs to one browser and one person while the book travels with the
 // project — so what is built instead is a control that says which file it means.
-function PickFile({ label, spoken, onPick }: { label: string; spoken?: string | undefined; onPick(file: File | undefined): void }) {
+// It takes more than one file, because a book with pictures in it is more than one file (#173):
+// the Markdown and the pictures it names, picked together, since the page cannot go and get them.
+function PickFile({ label, spoken, onPick }: { label: string; spoken?: string | undefined; onPick(files: readonly File[]): void }) {
   return (
     <label className="byd-secondary">
       {label}
       <input
         className="byd-offscreen"
         type="file"
-        accept=".md,.markdown,text/markdown,text/plain"
+        multiple
+        accept={`.md,.markdown,text/markdown,text/plain,${ASSET_IMAGE_TYPES.join(',')}`}
         aria-label={spoken ?? label}
         onChange={(e) => {
-          const file = e.target.files?.[0]
+          const files = [...(e.target.files ?? [])]
           // The same file picked twice running is no change at all to an input that still holds it,
           // and the second press would do nothing. It holds nothing afterwards — which is exactly
           // what a designer who imports the same file over and over needs it to do.
           e.target.value = ''
-          onPick(file)
+          onPick(files)
         }}
       />
     </label>
@@ -296,7 +353,7 @@ const whyNotSaved = (err: unknown, t: T): string => {
 // loses. Counting what the file loses is not enough there — a designer who wrote three sections by
 // hand and hands over a file with two has to see, before she presses anything, that one of them is
 // going away (#131, third slice).
-function Report({ of, plan, onCancel, onMake }: { of: RuleImport & { file: string }; plan: RulePlan | null; onCancel(): void; onMake(): void }) {
+function Report({ of, plan, onCancel, onMake }: { of: RuleImport & { file: string; left: RuleImageLeft[] }; plan: RulePlan | null; onCancel(): void; onMake(): void }) {
   const t = useT()
   const heading = useId()
   const here = useRef<HTMLElement>(null)
@@ -331,6 +388,15 @@ function Report({ of, plan, onCancel, onMake }: { of: RuleImport & { file: strin
             {t(`rules.import.${note.of}.${note.n === 1 ? 'one' : 'other'}` as Key, { n: note.n })}
           </li>
         ))}
+        {/* What became of the pictures (#173). It is three readings and not one: what came in, how
+            many of them nobody wrote an alt text for, and what did not come in at all — each of
+            them with its own weight, because a picture taken in silently and a picture that never
+            arrived are not the same news. */}
+        {pictureLines(of).map((line) => (
+          <li key={line.key} data-kind={line.kind}>
+            {t(line.of, line.params)}
+          </li>
+        ))}
       </ul>
       <button type="button" className="byd-editor-primary byd-primary" onClick={onMake}>
         {t('rules.import.make')}
@@ -355,11 +421,47 @@ function balance(plan: RulePlan): { of: 'loses' | 'rewrites' | 'fresh'; kind: st
   ].filter((line) => line.n > 0)
 }
 
-// How heavily a line of the report reads. `kept` came in whole, `changed` came in as something
+// The pictures that did not come in, standing where they would have stood. `null` is one that
+// would have opened the book.
+const leftUnder = (left: readonly RuleImageLeft[] | undefined, after: string | null): RuleImageLeft[] => (left ?? []).filter((gone) => gone.after === after)
+
+// A picture that did not come in, in the import's existing vocabulary of marks (#131): the word as
+// text, the file it was, and the reason with the limit written out. It is drawn only in the
+// proposal — see where it is rendered.
+function LeftOut({ of }: { of: RuleImageLeft }) {
+  const t = useT()
+  return (
+    <div className="byd-rules-left" data-left={of.id}>
+      <b>{t('rules.import.left.mark')}</b>
+      <span>{t(`rules.import.left.${of.why}` as Key, whyParams(of))}</span>
+    </div>
+  )
+}
+
+// Megabytes, to one decimal, which is how a designer reads the weight of a file. The limit is the
+// one the upload route keeps and is never written down a second time here (#173).
+const whyParams = (of: RuleImageLeft): Record<string, string | number> => ({
+  file: of.file,
+  mb: Math.round(((of.bytes ?? 0) / 1024 / 1024) * 10) / 10,
+  limit: Math.round(ASSET_MAX_BYTES / 1024 / 1024),
+})
+
+// What became of the file's pictures, as the report reads it (#173).
+function pictureLines(of: RuleImport & { left: readonly RuleImageLeft[] }): { key: string; kind: string; of: Key; params: Record<string, string | number> }[] {
+  const came = of.images.length - of.left.length
+  const silent = of.images.filter((image) => image.alt === null && !of.left.some((gone) => gone.id === image.id)).length
+  return [
+    ...(came > 0 ? [{ key: 'images', kind: 'ok', of: (came === 1 ? 'rules.import.images.one' : 'rules.import.images.other') as Key, params: { n: came } }] : []),
+    ...(silent > 0 ? [{ key: 'silent', kind: 'changed', of: (silent === 1 ? 'rules.import.silent.one' : 'rules.import.silent.other') as Key, params: { n: silent } }] : []),
+    ...of.left.map((gone) => ({ key: gone.id, kind: 'going', of: `rules.import.left.${gone.why}` as Key, params: whyParams(gone) })),
+  ]
+}
+
+// How heavily a line of the report reads. `kept` came in whole and `changed` came in as something
 // else — the file's own title among them, which became nothing because the book is called what the
-// game is called (#191) — and `later` is the one line that is neither: a picture is not dropped,
-// it is not here yet (#173).
-const WEIGHT: Record<RuleImportKind, 'kept' | 'changed' | 'later'> = {
+// game is called (#191). A picture is no longer one of these: what became of it is not a property
+// of the file but of what the bytes turned out to be, and `pictureLines` says it (#173).
+const WEIGHT: Record<RuleImportKind, 'kept' | 'changed'> = {
   heading: 'kept',
   text: 'kept',
   list: 'kept',
@@ -371,7 +473,6 @@ const WEIGHT: Record<RuleImportKind, 'kept' | 'changed' | 'later'> = {
   code: 'changed',
   link: 'changed',
   break: 'changed',
-  image: 'later',
 }
 
 // Where a section stands, so the column beside the book can point at it.
@@ -385,12 +486,16 @@ function Toc({
   onAdd,
   proposed,
   marks,
+  silent,
+  onFind,
 }: {
   blocks: readonly RenderedBlock[]
   label: string
   onAdd?: (() => void) | undefined
   proposed?: boolean | undefined
   marks?: readonly RulePlanSection[] | undefined
+  silent?: readonly string[] | undefined
+  onFind?: ((id: string) => void) | undefined
 }) {
   const t = useT()
   // The sections of the book, which is what a heading of the first level is. A subheading stands
@@ -398,6 +503,7 @@ function Toc({
   const headings = blocks.filter((b): b is Extract<RenderedBlock, { kind: 'heading' }> => b.kind === 'heading' && b.level === 1)
   const marked = new Map((marks ?? []).map((section) => [section.id, section.mark]))
   if (headings.length === 0) return null
+  const [first] = silent ?? []
   return (
     <nav className="byd-rules-toc" aria-label={label}>
       <b aria-hidden="true">{label}</b>
@@ -416,6 +522,17 @@ function Toc({
           </a>
         )
       })}
+      {/* The pictures nobody has written an alt text for, counted and gone to (#173). It stands in
+          the column and not in a notice that scrolls past, because the import band is gone by the
+          next morning and the silent pictures are not: this is "nothing disappears quietly" said a
+          week later rather than at the moment of the import. A count of nothing is no line at all.
+          The arrow is drawn and not spoken — what the control is called is the count. */}
+      {first !== undefined && onFind && silent && (
+        <button type="button" className="byd-rules-silent" onClick={() => onFind(first)}>
+          {t(silent.length === 1 ? 'rules.toc.silent.one' : 'rules.toc.silent.other', { n: silent.length })}
+          <span aria-hidden="true">→</span>
+        </button>
+      )}
       {onAdd && (
         <button type="button" className="byd-rules-own" onClick={onAdd}>
           {t('rules.addSection')}
@@ -530,6 +647,98 @@ function Editing({ block, names, onPatch, onClose, onRemove }: { block: RuleBloc
   )
 }
 
+// The pictures the book carries no alt text for, in the order they stand (#173). A decorative
+// picture is one whose alt text is empty, which is HTML's own word for it and therefore the only
+// mark there is — see B7 for the cost that default accepts.
+const silentImages = (blocks: readonly RenderedBlock[]): string[] => blocks.filter((b) => b.kind === 'image' && b.alt === '').map((b) => b.id)
+
+// A picture in the book as the designer meets it (#173).
+//
+// Everything under the figure is the editor's and reaches no reader — the same rule a template
+// section's `ask` already keeps (#131): the table's drawer, the phone and the printed booklet all
+// read `renderRules`, and none of this is in it.
+//
+// The two fields are kept apart because they are written for two readers. An alt text replaces the
+// picture for whoever cannot see it and is exhaustive; a caption is read beside the picture by
+// somebody who already sees it. Each opens where the picture stands and takes the focus, and a
+// field closed with nothing in it leaves the picture as it was — an empty alt text is still the
+// decorative mark, and closing a field is not a way of sneaking that mark off.
+function ImageBlock({
+  block,
+  source,
+  src,
+  writing,
+  found,
+  onPatch,
+}: {
+  block: Extract<RenderedBlock, { kind: 'image' }>
+  source?: Extract<RuleBlock, { kind: 'image' }> | undefined
+  src: string
+  writing: boolean
+  found: boolean
+  onPatch(next: Partial<Extract<RuleBlock, { kind: 'image' }>>): void
+}) {
+  const t = useT()
+  const [open, setOpen] = useState<'alt' | 'caption' | null>(null)
+  const [draft, setDraft] = useState('')
+  const decorative = block.alt === ''
+  const start = (which: 'alt' | 'caption') => {
+    setDraft(which === 'alt' ? block.alt : (source?.caption ?? ''))
+    setOpen(which)
+  }
+  const done = () => {
+    onPatch(open === 'alt' ? { alt: draft.trim() } : { caption: draft.trim() })
+    setOpen(null)
+  }
+  if (!writing) return <RuleFigure block={block} src={src} />
+  // The mark stands only while the reason for going there stands. The column points at pictures
+  // with no alt text; the moment one is written the picture is no longer among them, and a frame
+  // still saying "the picture you looked for" would be pointing at nothing.
+  const here = found && decorative
+  return (
+    <div className="byd-rules-figure-block">
+      <RuleFigure block={block} src={src} found={here} />
+      {/* The picture the column beside the book went to says so in a word of its own, in the
+          editor's own face and never in the book's: a ring drawn round a figure is a decoration,
+          and a decoration is not an answer (L12). It is not a `figcaption`, because a caption is
+          the designer's line and this is the tool's. */}
+      {here && <p className="byd-rules-found">{t('rules.image.found')}</p>}
+      <p className="byd-rules-figure-mark" data-decorative={decorative ? 'true' : undefined}>
+        <b>{t(decorative ? 'rules.image.decorative' : 'rules.image.alt')}</b>
+        <span>{decorative ? t('rules.image.noAlt') : block.alt}</span>
+        <button type="button" onClick={() => start('alt')}>
+          {t(decorative ? 'rules.image.writeAlt' : 'rules.image.changeAlt')}
+        </button>
+      </p>
+      <p className="byd-rules-figure-mark">
+        {/* What the figure becomes on the printed page, which is the one thing about a picture a
+            screen cannot show: the same millimetres every other surface scales. */}
+        <b>{t(`rules.image.fit.${block.fit}` as Key)}</b>
+        <span>{t('rules.image.size', { w: Math.round(block.mm.w), h: Math.round(block.mm.h) })}</span>
+        <span>{t('rules.image.px', { w: block.px.w, h: block.px.h })}</span>
+        <button type="button" onClick={() => start('caption')}>
+          {t('rules.image.caption')}
+        </button>
+      </p>
+      {open && (
+        <div className="byd-rules-figure-field">
+          <input
+            autoFocus
+            type="text"
+            aria-label={open === 'alt' ? t('rules.image.altField') : t('rules.block.caption', { id: block.id })}
+            placeholder={open === 'alt' ? t('rules.image.altAsk') : t('rules.caption.placeholder')}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+          />
+          <button type="button" onClick={done}>
+            {t('rules.image.done')}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function Block({ block, source, names }: { block: RenderedBlock; source?: RuleBlock | undefined; names: Names }) {
   switch (block.kind) {
     case 'heading':
@@ -560,6 +769,10 @@ function Block({ block, source, names }: { block: RenderedBlock; source?: RuleBl
       ))
       return block.ordered ? <ol>{items}</ol> : <ul>{items}</ul>
     }
+    // A picture in a proposal is read and not written in, so it is the figure and nothing else;
+    // the editor's own rows stand in `ImageBlock`, which is where a written book draws it.
+    case 'image':
+      return null
     case 'setup':
       // The setup picture is the game's own zones (B5's follow-on), never a drawing beside them.
       return (
