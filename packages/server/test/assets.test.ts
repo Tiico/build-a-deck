@@ -5,6 +5,16 @@ import { start, twoSeatSetup, type Running } from './fixture.js'
 import { template } from './deck.js'
 
 const PNG = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3])
+// The marks the other three raster formats carry, as a file off a disk carries them (#204).
+const JPEG = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0])
+const GIF = new Uint8Array([...new TextEncoder().encode('GIF89a'), 0, 0])
+const WEBP = new Uint8Array([...new TextEncoder().encode('RIFF'), 0, 0, 0, 0, ...new TextEncoder().encode('WEBP')])
+// And the marks of the four font formats.
+const mark = (s: string, ...rest: number[]) => new Uint8Array([...new TextEncoder().encode(s), ...rest])
+const WOFF2 = mark('wOF2', 0, 1, 0, 0)
+const WOFF = mark('wOFF', 0, 1, 0, 0)
+const TTF = new Uint8Array([0x00, 0x01, 0x00, 0x00, 0, 0, 0, 0])
+const OTF = mark('OTTO', 0, 0, 0, 0)
 
 describe('the asset store (E1, DRIFT §4): the project\'s images, once each, by content', () => {
   it('stores bytes under their hash with their type, gives the same hash for the same bytes, and links only when the object store can', async () => {
@@ -63,18 +73,68 @@ describe('assets over HTTP', () => {
     expect((await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'text/html', cookie }, body: '<b>' })).status).toBe(415)
   })
 
-  it('takes a font file as an asset too, so a version can pin the type it was drawn in (B3)', async () => {
-    const woff2 = new Uint8Array([119, 79, 70, 50, 0, 1, 0, 0])
-    const res = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'font/woff2', cookie }, body: woff2 })
+  it('reads what a file is out of its bytes, so a page that calls itself a picture never gets in (#204)', async () => {
+    const html = new TextEncoder().encode('<!doctype html><script>alert(1)</script>')
+    const res = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/png', cookie }, body: html })
+    expect(res.status).toBe(415)
+  })
+
+  it('takes the four raster formats and serves each as what its bytes say, whatever the upload declared (#204)', async () => {
+    for (const [type, bytes] of [['image/png', PNG], ['image/jpeg', JPEG], ['image/gif', GIF], ['image/webp', WEBP]] as const) {
+      // Every one of them declares itself a PNG: the header is a claim and the bytes are the answer.
+      const res = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/png', cookie }, body: bytes })
+      expect(res.status, type).toBe(201)
+      const { hash } = (await res.json()) as { hash: string }
+      expect((await fetch(`${run.http}/assets/${hash}`)).headers.get('content-type'), type).toBe(type)
+    }
+  })
+
+  it('refuses a document, a drawing or an archive that declares itself a picture, and says which format was missing (#204)', async () => {
+    const svg = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>')
+    const pdf = new TextEncoder().encode('%PDF-1.7\n')
+    const zip = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0])
+    for (const body of [svg, pdf, zip]) {
+      const res = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/png', cookie }, body })
+      expect(res.status).toBe(415)
+      // The refusal names what a picture has to be, and says nothing at all about what was sent.
+      expect((await res.json()) as { error: string }).toEqual({ error: 'the bytes are not PNG, JPEG, GIF or WebP' })
+    }
+  })
+
+  it('takes a font file as an asset too, so a version can pin the type it was drawn in (B3), and reads which font it is out of the bytes (#204)', async () => {
+    // The formats Chromium can draw from a @font-face, each served as what its own bytes say.
+    for (const [type, bytes] of [['font/woff2', WOFF2], ['font/woff', WOFF], ['font/ttf', TTF], ['font/otf', OTF]] as const) {
+      const res = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'font/woff2', cookie }, body: bytes })
+      expect(res.status, type).toBe(201)
+      const { hash } = (await res.json()) as { hash: string }
+      expect((await fetch(`${run.http}/assets/${hash}`)).headers.get('content-type'), type).toBe(type)
+    }
+    // A page wearing a font's name is refused, and the refusal names the font formats — not the
+    // picture formats, because a typeface is not a picture and neither list is the other's.
+    const html = new TextEncoder().encode('<!doctype html><script>alert(1)</script>')
+    const refused = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'font/woff2', cookie }, body: html })
+    expect(refused.status).toBe(415)
+    expect((await refused.json()) as { error: string }).toEqual({ error: 'the bytes are not WOFF2, WOFF, TTF or OTF' })
+    // A format Chromium cannot draw from is not a font here, whatever a real font file is called.
+    expect((await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'application/x-font-eot', cookie }, body: WOFF2 })).status).toBe(415)
+    // And a picture is not a typeface: a real PNG offered as a font is refused just as firmly.
+    expect((await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'font/woff2', cookie }, body: PNG })).status).toBe(415)
+    expect((await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/png', cookie }, body: WOFF2 })).status).toBe(415)
+  })
+
+  it('reads a drawing out of its bytes as well, and a page that merely contains one is not one (#204)', async () => {
+    const svg = '<?xml version="1.0"?><!-- ritad för hand --><svg xmlns="http://www.w3.org/2000/svg"/>'
+    const res = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/svg+xml', cookie }, body: svg })
     expect(res.status).toBe(201)
     const { hash } = (await res.json()) as { hash: string }
-    const got = await fetch(`${run.http}/assets/${hash}`)
-    expect(got.headers.get('content-type')).toBe('font/woff2')
-    // The formats Chromium can draw from a @font-face, and nothing else.
-    for (const type of ['font/woff', 'font/ttf', 'font/otf']) {
-      expect((await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': type, cookie }, body: woff2 })).status).toBe(201)
-    }
-    expect((await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'application/x-font-eot', cookie }, body: woff2 })).status).toBe(415)
+    expect((await fetch(`${run.http}/assets/${hash}`)).headers.get('content-type')).toBe('image/svg+xml')
+
+    // A page with a drawing inside it is a page, and it is refused whichever of the two it says
+    // it is — the first thing the file opens with is what it is.
+    const page = '<!doctype html><html><body><svg xmlns="http://www.w3.org/2000/svg"/><script>alert(1)</script></body></html>'
+    const refused = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/svg+xml', cookie }, body: page })
+    expect(refused.status).toBe(415)
+    expect((await refused.json()) as { error: string }).toEqual({ error: 'the bytes are not SVG' })
   })
 
   it('compiles a card whose row points at an asset with the image inlined, so the render worker needs nothing but the page', async () => {

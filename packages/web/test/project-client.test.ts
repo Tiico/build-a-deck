@@ -431,14 +431,18 @@ describe('images (E1)', () => {
   it('uploads an image once and gets its hash back, the same hash for the same bytes', async () => {
     const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)
-    const file = new File([new Uint8Array([137, 80, 78, 71])], 'drake.png', { type: 'image/png' })
+    // A whole PNG signature, because the server reads the file rather than its name (#204).
+    const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3])
+    const file = new File([png], 'drake.png', { type: 'image/png' })
     const hash = await client.uploadAsset(file)
     expect(hash).toMatch(/^[0-9a-f]{64}$/)
     expect(await client.uploadAsset(file)).toBe(hash)
     const served = await fetch(`${run.http}/assets/${hash}`)
     expect(served.status).toBe(200)
-    expect(new Uint8Array(await served.arrayBuffer())).toEqual(new Uint8Array([137, 80, 78, 71]))
+    expect(new Uint8Array(await served.arrayBuffer())).toEqual(png)
     await expect(client.uploadAsset(new File(['x'], 'x.txt', { type: 'text/plain' }))).rejects.toThrow(/bara bilder/)
+    // And a file that is named like a picture but is not one is refused just as plainly.
+    await expect(client.uploadAsset(new File(['<b>hej</b>'], 'drake.png', { type: 'image/png' }))).rejects.toThrow(/bara bilder/)
   })
 })
 

@@ -5,7 +5,7 @@ import { stat } from 'node:fs/promises'
 import { extname, join, normalize, resolve, sep } from 'node:path'
 import { WebSocketServer, type WebSocket } from 'ws'
 import { z } from 'zod'
-import { ClientMessage, type ServerMessage } from '@byd/protocol'
+import { ASSET_MAX_BYTES, assetFormatsNamed, assetKindDeclared, ClientMessage, sniffAsset, type ServerMessage } from '@byd/protocol'
 import { CARD_STANDARD_63x88, validateSetup, type SetupDef, type TypeRegistry } from '@byd/engine'
 import { renderRules, Template, validateCard, type Issue } from '@byd/template'
 import { A5, bookletOf } from './booklet.js'
@@ -692,14 +692,11 @@ function creditsOf(rec: ProjectRecord): (ProjectCredit & { name: string })[] {
   return [...icons, ...fonts]
 }
 
-// What a project may carry: the pictures a card is drawn from (E1) and the type it is set in
-// (B3). The font formats are the ones Chromium loads from a `@font-face`, so a file that is
-// taken here is a file the renderer can honour.
-const ASSET_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/svg+xml', 'font/woff2', 'font/woff', 'font/ttf', 'font/otf'])
+// What a project may carry — the pictures a card is drawn from (E1) and the type it is set in
+// (B3) — is `ASSET_FORMATS` in `@byd/protocol`, written once for the editor and this gate both.
 // How many pictures one question may ask about. A deck of a few hundred cards asks in one go;
 // past that the question is somebody else's.
 const MOTIFS_AT_ONCE = 500
-const ASSET_MAX_BYTES = 8 * 1024 * 1024
 const ASSET_LINK_TTL_S = 3600
 
 // Images (E1, DRIFT §4): POST /assets takes one from a logged-in creator and answers with its
@@ -711,8 +708,10 @@ async function routeAssets(opts: ServerOptions, assets: AssetStore, req: Incomin
       json(res, 401, { error: 'log in first' })
       return true
     }
-    const contentType = (req.headers['content-type'] ?? '').split(';')[0]?.trim() ?? ''
-    if (!ASSET_TYPES.has(contentType)) {
+    // The declared type says which kind of file is being handed over — a picture, a drawing, a
+    // typeface — and nothing more than that (#204).
+    const kind = assetKindDeclared((req.headers['content-type'] ?? '').split(';')[0]?.trim() ?? '')
+    if (!kind) {
       json(res, 415, { error: 'not an image or a font' })
       return true
     }
@@ -721,7 +720,16 @@ async function routeAssets(opts: ServerOptions, assets: AssetStore, req: Incomin
       json(res, 413, { error: 'too big' })
       return true
     }
-    const hash = await assets.put(bytes, contentType)
+    // What the file actually is (#204): the bytes decide, and what is stored is what was read, so
+    // `/assets/<hash>` vouches for what is there rather than for what the upload said. A file of
+    // the wrong kind is refused as firmly as a file of no kind at all — a typeface offered as a
+    // picture is not a picture — and the refusal names the formats that kind is missing.
+    const format = sniffAsset(bytes)
+    if (format?.kind !== kind) {
+      json(res, 415, { error: `the bytes are not ${assetFormatsNamed(kind)}` })
+      return true
+    }
+    const hash = await assets.put(bytes, format.type)
     json(res, 201, { hash })
     return true
   }

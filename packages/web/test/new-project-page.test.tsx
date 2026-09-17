@@ -8,6 +8,10 @@ import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
+// A picture the designer picks, as a picture actually is: the server reads the bytes and not the
+// name, so a file called drake.png that is not one never becomes an asset (#204).
+const PNG = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3])
+
 let run: Running
 beforeEach(async () => {
   run = await startServer()
@@ -47,7 +51,7 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
     const input = screen.getByLabelText('kort 1 Illustration') as HTMLInputElement
     expect(input.type).toBe('file')
 
-    const file = new File(['bilddata'], 'drake.png', { type: 'image/png' })
+    const file = new File([PNG], 'drake.png', { type: 'image/png' })
     fireEvent.change(input, { target: { files: [file] } })
     expect(await screen.findByRole('img', { name: 'Förhandsvisning av Illustration' })).toBeTruthy()
   })
@@ -61,7 +65,7 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
     fireEvent.change(screen.getByLabelText('Spelets namn'), { target: { value: 'Skogens herrar' } })
     fireEvent.click(screen.getByRole('button', { name: /^3$/ }))
     fireEvent.change(screen.getByLabelText('kort 1 Titel'), { target: { value: 'Drake' } })
-    const file = new File(['bilddata'], 'drake.png', { type: 'image/png' })
+    const file = new File([PNG], 'drake.png', { type: 'image/png' })
     fireEvent.change(screen.getByLabelText('kort 1 Illustration'), { target: { files: [file] } })
     await screen.findByRole('img', { name: 'Förhandsvisning av Illustration' })
     fireEvent.click(screen.getByRole('button', { name: '+ Nytt kort' }))
@@ -81,7 +85,7 @@ describe('NewProjectPage (L6, approved prototype A)', () => {
     expect(art).toMatch(/^asset:[0-9a-f]{64}$/)
     const served = await fetch(`${run.http}/assets/${art.slice('asset:'.length)}`)
     expect(served.headers.get('content-type')).toBe('image/png')
-    expect(await served.text()).toBe('bilddata')
+    expect(new Uint8Array(await served.arrayBuffer())).toEqual(PNG)
     expect(stored?.setup.seats).toEqual(['A', 'B', 'C'])
     expect(stored?.template.faces['front']?.base.map((e) => e.id)).toContain('art')
   })

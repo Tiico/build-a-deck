@@ -72,7 +72,14 @@ if (typeof document !== 'undefined') {
     const stored = jar.get(url.origin)
     const headers = new Headers(init?.headers)
     if (stored && stored.size > 0 && !headers.has('cookie')) headers.set('cookie', [...stored].map(([k, v]) => `${k}=${v}`).join('; '))
-    const res = await realFetch(input, { ...init, headers })
+    // A file's bytes, as a browser would send them. jsdom's `Blob` has no `stream()`, so the
+    // runtime's own fetch does not recognise it as a body at all and sends the string
+    // "[object Blob]" in its place — which meant every upload from a jsdom test carried thirteen
+    // bytes of nothing while the test watched a 201 come back. It went unseen for as long as the
+    // server believed the `content-type` header; the gate that reads the bytes found it at once
+    // (#204). The bytes are read out here, where the rest of the browser is stood in for.
+    const body = init?.body instanceof Blob ? new Uint8Array(await init.body.arrayBuffer()) : null
+    const res = await realFetch(input, { ...init, headers, ...(body ? { body } : {}) })
     for (const line of res.headers.getSetCookie()) {
       const [pair, ...attrs] = line.split(';')
       const [k, v] = (pair ?? '').split('=')
