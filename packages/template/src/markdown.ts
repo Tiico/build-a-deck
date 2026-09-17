@@ -14,7 +14,9 @@ export type RuleImportKind =
   | 'text'
   | 'list'
   | 'ref'
-  // What changed shape on the way in.
+  // What changed shape on the way in, `title` being the file's own title, which the book already
+  // has one of (#191).
+  | 'title'
   | 'folded'
   | 'quote'
   | 'table'
@@ -27,8 +29,9 @@ export type RuleImportNote = { of: RuleImportKind; n: number }
 export type RuleImport = { doc: RuleDoc; notes: RuleImportNote[] }
 
 // The order the report reads in, which is the argument it makes: what became a block, what
-// changed shape on the way, and what the book cannot hold yet.
-const ORDER: readonly RuleImportKind[] = ['heading', 'text', 'list', 'ref', 'folded', 'quote', 'table', 'code', 'link', 'break', 'image']
+// changed shape on the way, and what the book cannot hold yet. The file's own title heads the
+// middle group, because it is the first line of the file and the first thing the import did.
+const ORDER: readonly RuleImportKind[] = ['heading', 'text', 'list', 'ref', 'title', 'folded', 'quote', 'table', 'code', 'link', 'break', 'image']
 
 const HEADING = /^[ \t]*(#{1,6})[ \t]+(.*)$/
 // A list item: a bullet, or a number the file counted with. Which of the two it is decides the
@@ -88,6 +91,10 @@ export function importRules(markdown: string, title: string): RuleImport {
 
   let i = 0
   const peek = (at: number): string => lines[at] ?? ''
+  // Which line the file actually opens with (#191). A blank line above the title is nothing a
+  // reader can see, and an editor that leaves one there has not written a different file, so the
+  // first line that says anything is the first line.
+  const opening = lines.findIndex((l) => l.trim().length > 0)
   while (i < lines.length) {
     const line = peek(i)
     if (line.trim().length === 0 || BREAK.test(line)) {
@@ -98,6 +105,18 @@ export function importRules(markdown: string, title: string): RuleImport {
     const heading = HEADING.exec(line)
     if (heading) {
       const hashes = (heading[1] ?? '#').length
+      // The file's own title (#191). A file written outside the app usually opens with the name of
+      // the game, and read as a section it would give the book two titles, one above the other. The
+      // line becomes nothing, and the book keeps the project's name: the name is something the
+      // designer sets in one place, not something a file can overwrite behind her back, and an
+      // import that renamed the game would do more than it was asked to — every time the same file
+      // was handed over again. What it costs is that the file's own title is not what the book is
+      // called, which is why the report says the line was taken out and why.
+      if (i === opening && hashes === 1) {
+        count('title')
+        i++
+        continue
+      }
       // The book has two levels, and a file may have six. Folding is said out loud in the report
       // rather than done quietly, which is the whole of the rule behind the map.
       if (hashes > 2) count('folded')

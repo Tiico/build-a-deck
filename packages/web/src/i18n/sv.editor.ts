@@ -536,6 +536,8 @@ export const svEditor = {
   'rules.import.list.other': '{n} listor blir listor',
   'rules.import.ref.one': '{n} referens känns igen, som i en bok du skrivit själv',
   'rules.import.ref.other': '{n} referenser känns igen, som i en bok du skrivit själv',
+  'rules.import.title.one': '{n} rubrik på filens första rad blir ingenting: boken heter vad spelet heter',
+  'rules.import.title.other': '{n} rubriker på filens första rad blir ingenting: boken heter vad spelet heter',
   'rules.import.folded.one': '{n} rubriknivå djupare än två viks upp till underrubrik',
   'rules.import.folded.other': '{n} rubriknivåer djupare än två viks upp till underrubriker',
   'rules.import.quote.one': '{n} citat blir text; markören stryks',

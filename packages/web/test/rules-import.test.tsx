@@ -33,17 +33,19 @@ async function openRules(): Promise<void> {
   fireEvent.click(screen.getByRole('tab', { name: 'Regler' }))
 }
 
-// A file of the kind a designer keeps beside her game: five constructions the book has a block
-// for, and three it has to do something about.
+// A file of the kind a designer keeps beside her game: it opens with its own title, then five
+// constructions the book has a block for and three it has to do something about.
 const FILE = [
   '# Skogens herrar',
   '',
   'Ett spel om **skogen**.',
   '',
-  '## En tur',
+  '# En tur',
   '',
   '1. Dra ett kort ur [[zon:draw]].',
   '2. Spela ett kort.',
+  '',
+  '## Att passa',
   '',
   'Se [reglerna på webben](https://example.com/regler) för varianter.',
   '',
@@ -77,10 +79,11 @@ describe('the report, which is the last thing read before the book (#131)', () =
     // Nothing has been written: the tab still has no book, only the one being proposed.
     expect(document.querySelector('[data-rulebook]')).toBeNull()
     // The book the file would make stands under the report at its own reading width, so the two
-    // are read against each other. `#` is a section and `##` a subheading, as the map says.
+    // are read against each other. `#` is a section and `##` a subheading, as the map says — and
+    // the file's own title on the first line is no section at all (#191).
     const proposed = document.querySelector('[data-proposal]') as HTMLElement
-    expect(within(proposed).getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['Skogens herrar'])
-    expect(within(proposed).getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['En tur'])
+    expect(within(proposed).getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['En tur'])
+    expect(within(proposed).getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Att passa'])
   })
 
   it('shows the proposed book in the column too, and never marks its sections empty', async () => {
@@ -88,7 +91,7 @@ describe('the report, which is the last thing read before the book (#131)', () =
     await pick()
     // The disposition says “· tomt” beside a section nobody has written in. A section read out of
     // a file has been written in, and the column must not say otherwise.
-    expect(within(screen.getByRole('navigation', { name: 'Innehåll' })).getAllByRole('link').map((a) => a.textContent)).toEqual(['Skogens herrar'])
+    expect(within(screen.getByRole('navigation', { name: 'Innehåll' })).getAllByRole('link').map((a) => a.textContent)).toEqual(['En tur'])
   })
 
   it('counts what became a block, what changed shape on the way, and what cannot come in yet', async () => {
@@ -99,6 +102,7 @@ describe('the report, which is the last thing read before the book (#131)', () =
       '3 stycken blir text',
       '1 lista blir en lista',
       '1 referens känns igen, som i en bok du skrivit själv',
+      '1 rubrik på filens första rad blir ingenting: boken heter vad spelet heter',
       '1 tabell blir text, en rad per rad',
       '1 länk blir sin egen text; adressen stryks',
       '1 bild kommer inte med ännu: boken har ännu inget blockslag för en bild (#173)',
@@ -140,7 +144,7 @@ describe('the two answers the report stands beside (#131)', () => {
     const report = await pick()
     fireEvent.click(within(report).getByRole('button', { name: 'Gör boken' }))
     const written = await waitFor(() => document.querySelector('[data-rulebook]') as HTMLElement)
-    expect(within(written).getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['Skogens herrar'])
+    expect(within(written).getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['En tur'])
     expect(written.textContent).toContain('Ett spel om skogen.')
     // The emphasis the file wrote is emphasis in the book, not four asterisks in the prose.
     expect(written.querySelector('strong')?.textContent).toBe('skogen')
@@ -218,7 +222,7 @@ describe('where the import is offered (#131)', () => {
 describe('a file is untrusted input (#131)', () => {
   it('cannot put markup into the book, because nothing it contains is ever markup', async () => {
     await openRules()
-    const nasty = ['# <img src=x onerror="document.title = \'taken\'">', '', '<script>document.title = \'taken\'</script>', '', 'En [länk](javascript:alert(1)) till ingenting.'].join('\n')
+    const nasty = ['# Skogens herrar', '', '# <img src=x onerror="document.title = \'taken\'">', '', '<script>document.title = \'taken\'</script>', '', 'En [länk](javascript:alert(1)) till ingenting.'].join('\n')
     const report = await pick(nasty, 'otrygg.md')
     fireEvent.click(within(report).getByRole('button', { name: 'Gör boken' }))
     const written = await waitFor(() => {

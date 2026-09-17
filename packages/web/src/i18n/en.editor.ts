@@ -488,6 +488,8 @@ export const enEditor = {
   'rules.import.list.other': '{n} lists become lists',
   'rules.import.ref.one': '{n} reference is recognised, as in a book you wrote yourself',
   'rules.import.ref.other': '{n} references are recognised, as in a book you wrote yourself',
+  'rules.import.title.one': '{n} heading on the file’s first line becomes nothing: the book is called what the game is called',
+  'rules.import.title.other': '{n} headings on the file’s first line become nothing: the book is called what the game is called',
   'rules.import.folded.one': '{n} heading deeper than two is folded up to a subheading',
   'rules.import.folded.other': '{n} headings deeper than two are folded up to subheadings',
   'rules.import.quote.one': '{n} quote becomes text; the marker is dropped',

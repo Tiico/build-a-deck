@@ -7,14 +7,56 @@ import { importRules } from '../src/markdown.js'
 // dropped is counted so the report can say so before the book is made.
 describe('the import from Markdown (#131)', () => {
   it('makes a first-level heading a section of the book', () => {
-    expect(importRules('# Så spelar ni', 'Skogens herrar').doc).toEqual({
+    // The heading stands below the file's own title, which is where a section of the book begins:
+    // the first line is the file's title and becomes nothing (#191).
+    expect(importRules('# Skogens herrar\n\n# Så spelar ni', 'Skogens herrar').doc).toEqual({
       title: 'Skogens herrar',
       blocks: [{ kind: 'heading', id: 'b1', level: 1, text: 'Så spelar ni' }],
     })
   })
 
+  // The file's own title (#191). A book has one title and it is the project's name; a file that
+  // opens with its own would give the book two, one above the other.
+  it('lets a title on the very first line become nothing, and says in the report that it did', () => {
+    const { doc, notes } = importRules('# Skogens herrar\n\nEtt spel om skogen.', 'Vargens år')
+    expect(doc).toEqual({
+      title: 'Vargens år',
+      blocks: [{ kind: 'text', id: 'b1', text: 'Ett spel om skogen.' }],
+    })
+    expect(notes).toContainEqual({ of: 'title', n: 1 })
+  })
+
+  it('reads the title as the first line even when the file opens with a blank line or two', () => {
+    // A blank line above the title is nothing a reader can see, and an editor that leaves one is
+    // not making a different file. The rule follows the first line that says something (#191).
+    const { doc, notes } = importRules('\n\n# Skogens herrar\n\nEtt spel om skogen.', 'Vargens år')
+    expect(doc.blocks).toEqual([{ kind: 'text', id: 'b1', text: 'Ett spel om skogen.' }])
+    expect(notes).toContainEqual({ of: 'title', n: 1 })
+  })
+
+  it('leaves a first line that is a subheading alone: only the first level is a title (#191)', () => {
+    const { doc, notes } = importRules('## En tur\n\nDra ett kort.', 'Skogens herrar')
+    expect(doc.blocks).toEqual([
+      { kind: 'heading', id: 'b1', level: 2, text: 'En tur' },
+      { kind: 'text', id: 'b2', text: 'Dra ett kort.' },
+    ])
+    expect(notes).not.toContainEqual(expect.objectContaining({ of: 'title' }))
+  })
+
+  it('leaves a file that opens with prose exactly as it is, and says nothing about a title (#191)', () => {
+    const { doc, notes } = importRules('Ett spel om skogen.\n\n# En tur', 'Skogens herrar')
+    expect(doc.blocks).toEqual([
+      { kind: 'text', id: 'b1', text: 'Ett spel om skogen.' },
+      { kind: 'heading', id: 'b2', level: 1, text: 'En tur' },
+    ])
+    expect(notes).toEqual([
+      { of: 'heading', n: 1 },
+      { of: 'text', n: 1 },
+    ])
+  })
+
   it('makes a paragraph a text block, keeping the emphasis the file wrote', () => {
-    expect(importRules('# Så spelar ni\n\nDra ett **kort** ur *draghögen*.', 'Skogens herrar').doc.blocks).toEqual([
+    expect(importRules('# Skogens herrar\n\n# Så spelar ni\n\nDra ett **kort** ur *draghögen*.', 'Skogens herrar').doc.blocks).toEqual([
       { kind: 'heading', id: 'b1', level: 1, text: 'Så spelar ni' },
       { kind: 'text', id: 'b2', text: 'Dra ett **kort** ur *draghögen*.' },
     ])
@@ -129,7 +171,6 @@ describe('the import from Markdown (#131)', () => {
     ].join('\n')
     const { doc, notes } = importRules(file, 'Skogens herrar')
     expect(doc.blocks.map((b) => `${b.kind}${b.kind === 'heading' ? b.level : ''}`)).toEqual([
-      'heading1',
       'text',
       'heading2',
       'heading2',
@@ -142,9 +183,10 @@ describe('the import from Markdown (#131)', () => {
     // The report is one list in one order, and the order is the argument it makes: what became a
     // block, what changed shape on the way, and what the book cannot hold yet.
     expect(notes).toEqual([
-      { of: 'heading', n: 4 },
+      { of: 'heading', n: 3 },
       { of: 'text', n: 4 },
       { of: 'list', n: 1 },
+      { of: 'title', n: 1 },
       { of: 'folded', n: 1 },
       { of: 'code', n: 1 },
       { of: 'link', n: 1 },
