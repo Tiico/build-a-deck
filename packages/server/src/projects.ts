@@ -55,7 +55,10 @@ export type ProjectCredit = z.infer<typeof ProjectCredit>
 // names, so renaming a zone rewrites every rule that mentions it.
 const RuleBlock = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('heading'), id: z.string().min(1), level: z.union([z.literal(1), z.literal(2)]), text: z.string() }),
-  z.object({ kind: z.literal('text'), id: z.string().min(1), text: z.string() }),
+  // `ask` is the question a template section carries until it is answered (#131). It is the
+  // editor's affordance and never the reader's text: nothing renders it, so it reaches neither the
+  // table's drawer nor the printed booklet, and it is gone the moment a character is written.
+  z.object({ kind: z.literal('text'), id: z.string().min(1), text: z.string(), ask: z.string().optional() }),
   z.object({ kind: z.literal('list'), id: z.string().min(1), items: z.array(z.string()), ordered: z.boolean().optional() }),
   z.object({ kind: z.literal('setup'), id: z.string().min(1), caption: z.string().optional() }),
 ])

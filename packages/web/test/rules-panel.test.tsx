@@ -94,9 +94,10 @@ describe('the rulebook in the editor (B7)', () => {
     expect(screen.getByText(/1 referens pekar på något spelet inte har/)).toBeTruthy()
   })
 
-  it('offers to start a rulebook when the game has none', async () => {
+  // What an empty tab offers, and what each way in leaves behind, is `rules-disposition`'s (#131).
+  // What this holds on to is that a book begun there is a book the project keeps.
+  it('writes a rulebook into the document when the game has none', async () => {
     await openRules(false)
-    expect(screen.getByText(/Inga regler ännu/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Börja skriva reglerna' }))
     expect(await within(book()).findByRole('heading', { name: 'Skogens herrar' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))

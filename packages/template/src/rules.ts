@@ -6,7 +6,9 @@ import { parseInline, type InlineNode } from './inline.js'
 // mentions it, because the rules never held the name in the first place.
 export type RuleBlock =
   | { kind: 'heading'; id: string; level: 1 | 2; text: string }
-  | { kind: 'text'; id: string; text: string }
+  // `ask` is the question a template section carries until it is answered (#131). The renderer
+  // never draws it: the book the reader meets is what was written, never what was asked.
+  | { kind: 'text'; id: string; text: string; ask?: string | undefined }
   | { kind: 'list'; id: string; items: string[]; ordered?: boolean | undefined }
   // The setup picture is the zones themselves (B5's follow-on), not a drawing kept beside them.
   | { kind: 'setup'; id: string; caption?: string | undefined }

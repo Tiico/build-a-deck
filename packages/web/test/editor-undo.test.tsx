@@ -488,16 +488,18 @@ describe('a rule written as one step back', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Regler' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Börja skriva reglerna' }))
 
-    fireEvent.click(await within(book()).findByText('Skriv här hur spelet går till.'))
+    // A section begun this way carries a question until it is answered (#131), so the question is
+    // both where the writing starts and what standing one step back has to bring back.
+    const asked = 'Vad handlar spelet om, i två meningar? Hur många spelar, och hur länge?'
+    fireEvent.click(await within(book()).findByText(asked))
     const field = await within(book()).findByLabelText('Text b2')
-    await userEvent.clear(field)
     await userEvent.type(field, 'Vinner gör den som först är av med sina kort.')
     fireEvent.blur(field)
     await waitFor(() => expect(within(book()).getByText(/Vinner gör den/)).toBeTruthy())
 
     fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
-    await waitFor(() => expect(within(book()).getByText('Skriv här hur spelet går till.')).toBeTruthy())
+    await waitFor(() => expect(within(book()).getByText(asked)).toBeTruthy())
     // The rulebook itself is still there: what lies behind the sentence is the book being begun.
-    expect(within(book()).getByRole('heading', { name: 'Så spelar ni' })).toBeTruthy()
+    expect(within(book()).getByRole('heading', { name: 'Översikt' })).toBeTruthy()
   })
 })

@@ -520,7 +520,10 @@
 
    A drawer is a sibling of the row, not a child of it. Inside, it would make the row two rows. */
 .byd-crown { flex: none; display: flex; align-items: center; gap: var(--byd-s2); flex-wrap: nowrap; min-width: 0; padding: 0 0 var(--byd-s2); border-bottom: 1px solid #2f333d; }
-.byd-crown-box {
+.byd-crown-box,
+.byd-rules-ways button,
+.byd-rules-own,
+.byd-rules-booklet {
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
@@ -535,6 +538,7 @@
   font-weight: 700;
   font-size: 12px;
   white-space: nowrap;
+  text-decoration: none;
   cursor: pointer;
 }
 .byd-crown-box[aria-expanded='true'] { border-color: var(--byd-editor-primary-mark); color: #fff; }
@@ -550,14 +554,14 @@
 /* Two presses and no door: the one control here that is used over and over while looking at
    something else. It wears the same skin as a box so the row reads as one row of controls. */
 .byd-crown-step { flex: 0 0 auto; display: flex; align-items: center; gap: 4px; }
-.byd-crown-step button { min-width: var(--byd-tap); min-height: var(--byd-tap); border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; font-size: 15px; cursor: pointer; }
+.byd-crown-step button, .byd-crown-more { min-width: var(--byd-tap); min-height: var(--byd-tap); border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; font-size: 15px; cursor: pointer; }
 /* The filters, which keep their place in the row. The fade says there is more without taking a
    target's worth of room to say it; the arrow is drawn only when the rail has somewhere to go. */
 .byd-crown-rail { position: relative; display: flex; align-items: center; gap: var(--byd-s1); flex: 1 1 auto; min-width: 0; }
 .byd-crown-rail-scroll { display: flex; align-items: center; gap: var(--byd-s1); flex: 1 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; padding: 4px; }
 .byd-crown-rail-scroll::-webkit-scrollbar { display: none; }
 .byd-crown-rail[data-more]::after { content: ''; position: absolute; right: 44px; top: 0; bottom: 0; width: 36px; pointer-events: none; background: linear-gradient(90deg, transparent, var(--byd-editor-chrome-bg)); }
-.byd-crown-more { flex: 0 0 auto; min-width: var(--byd-tap); min-height: var(--byd-tap); border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; font-size: 15px; cursor: pointer; }
+.byd-crown-more { flex: 0 0 auto; }
 /* What the work adds up to, under it rather than over it. */
 .byd-crown-foot { flex: none; display: flex; align-items: center; gap: var(--byd-s3); padding: var(--byd-s2) 0 0; border-top: 1px solid #2f333d; color: var(--byd-editor-quiet); font-size: 12px; }
 .byd-crown-foot span { white-space: nowrap; }
@@ -1676,18 +1680,32 @@
 .byd-symbols [role='alert'] { color: #f0b64a; }
 
 /* The rulebook (B7): the page itself is the editor, so it is paper, not a dark surface. */
-.byd-rules { display: grid; gap: 16px; padding: var(--byd-gutter); align-content: start; }
-.byd-rules-bar { display: flex; gap: 14px; align-items: baseline; flex-wrap: wrap; }
-.byd-rules-bar h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
+.byd-rules { display: flex; flex-direction: column; gap: var(--byd-s3); height: 100%; box-sizing: border-box; padding: var(--byd-gutter); }
+/* Two ways in, at the end of the bar the written book keeps for its booklet and its hint. */
+.byd-rules-ways { display: flex; gap: var(--byd-s2); margin-left: auto; }
+/* The book and the column it is found in, as one pair that moves together (#131): the column
+   that carries the disposition of an empty tab is the column that carries a written book, so
+   the two states are one surface. The pair is the tab's single scrolling area. */
+.byd-rules-spread { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; align-items: flex-start; justify-content: center; gap: var(--byd-s5); }
+.byd-rules-toc { position: sticky; top: 0; flex: 0 0 200px; }
+.byd-rules-toc b { display: block; padding: 0 var(--byd-s3); }
+/* `a[href]` and not `a`: the editor makes every link an inline-flex target (0,2,1), and a
+   section in the column would otherwise sit beside the next one instead of under it. */
+.byd-rules-toc a[href] { display: flex; align-items: center; gap: 6px; min-height: var(--byd-tap); padding: 0 var(--byd-s3); color: #9aa3b8; font-size: 12px; text-decoration: none; }
+.byd-rules-toc span { color: var(--byd-editor-quiet); }
+.byd-rules-own { margin-top: var(--byd-s2); }
+.byd-rules-bar { flex: none; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.byd-rules-bar h2, .byd-rules-toc b { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-rules-bar span { color: #9aa3b8; font-size: 12px; }
 .byd-rules-warn { color: #f0b64a !important; }
-.byd-rules-booklet { border: 1px solid #2f333d; border-radius: 8px; padding: 4px 12px; background: #1b1d23; color: #fff; font: 700 12px system-ui; text-decoration: none; cursor: pointer; }
 .byd-rules-booklet:disabled { color: #5b6478; cursor: default; }
 /* The book the designer writes is a page of prose in a serif, and its rhythm — the air over a
    heading, the space after a paragraph, the page's own margins — is the book's, not the editor's.
    The ladder sets the tool's chrome; it has no business setting somebody's rulebook. Every line
    below that keeps a number of its own says so where it stands. */
-.byd-rulebook { justify-self: center; width: min(760px, 100%); box-sizing: border-box; background: #f7f3ea; color: #23201a; border-radius: 14px; padding: 32px 40px; /* undantag: bokens egen sättning */ font: 14px/1.7 Georgia, serif; }
+/* The reading width is 68 characters of the book's own face, and it never grows with the
+   window; the padding is added on so the measure is the text and not the paper. */
+.byd-rulebook { min-width: 0; width: calc(68ch + 80px); max-width: 100%; box-sizing: border-box; background: #f7f3ea; color: #23201a; border-radius: 14px; padding: 32px 40px; /* undantag: bokens egen sättning */ font: 14px/1.7 Georgia, serif; }
 .byd-rulebook h1 { margin: 0 0 18px; /* undantag: bokens egen sättning */ font-size: 26px; }
 .byd-rulebook h2 { margin: 22px 0 8px; /* undantag: bokens egen sättning */ font-size: 19px; }
 .byd-rulebook h3 { margin: 18px 0 6px; /* undantag: bokens egen sättning */ font-size: 15px; color: #4a4438; }
@@ -1701,6 +1719,8 @@
 .byd-rules-setup span { padding: 8px 12px; border-radius: 6px; background: #f7f3ea; border: 1px solid #cbbfa8; font: 12px system-ui; }
 .byd-rules-setup figcaption { margin-top: 4px; text-align: center; font: italic 12px Georgia, serif; color: #6b6255; }
 .byd-rules-setup { margin: 12px 0; }
+/* The question a section carries until the first character is written in it (#131). */
+.byd-rulebook [data-ask] { color: #6b6255; font-style: italic; }
 .byd-rules-block { position: relative; }
 .byd-rules-block > [role='button'] { border-radius: 6px; padding: 0 4px; margin: 0 -4px; cursor: text; }
 .byd-rules-block > [role='button']:hover { background: #ece5d8; }
@@ -1715,10 +1735,6 @@
 .byd-rules-remove { margin-left: auto; color: #ff9a9a !important; }
 .byd-rules-add { position: absolute; right: -34px; top: 2px; width: 24px; height: 24px; padding: 0; border: 1px solid #cbbfa8; border-radius: 7px; background: #ece5d8; color: #6b6255; cursor: pointer; opacity: 0; }
 .byd-rules-block:hover .byd-rules-add, .byd-rules-add:focus-visible { opacity: 1; }
-.byd-rules-empty { display: grid; gap: 12px; justify-items: start; max-width: 520px; padding: var(--byd-gutter); }
-.byd-rules-empty h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
-.byd-rules-empty p { margin: 0; color: #9aa3b8; line-height: 1.6; }
-.byd-rules-empty button { border-radius: 8px; padding: 8px 12px; cursor: pointer; }
 
 /* The way to an icon (#33): the brace made visible in the cell being worked in. Which cell that is
    is React's to know, not the stylesheet's — a handle hidden by CSS is still a stop in the tab
