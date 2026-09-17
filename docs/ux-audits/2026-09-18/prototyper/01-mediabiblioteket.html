@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 1 — Mediabiblioteket och beskärningen</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  main { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+  .work { flex: 1 1 auto; min-height: 0; display: grid; gap: var(--s3); padding: var(--s4); }
+
+  /* A: biblioteket som en egen flik. B: biblioteket som en låda där bilden behövs. */
+  .work[data-shape='a'] { grid-template-columns: minmax(0,1fr) 320px; }
+  .work[data-shape='b'] { grid-template-columns: minmax(0,1fr); }
+  .work[data-shape='nu'] { grid-template-columns: minmax(0,1fr); }
+
+  .panel { min-height: 0; min-width: 0; display: flex; flex-direction: column; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); }
+  .panel > header { flex: none; display: flex; align-items: baseline; gap: var(--s2); padding: var(--s3) var(--s4) var(--s2); }
+  .panel > header h2 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .panel > header small { color: var(--quiet); font-variant-numeric: tabular-nums; }
+  .panel > header .rule { flex: 1; }
+  .panel > .scroll { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0 var(--s4) var(--s4); }
+
+  /* Biblioteket: varje bild en gång, med hur många kort som använder den. */
+  .media { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: var(--s3); }
+  .bild { display: flex; flex-direction: column; gap: 6px; padding: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink); font: inherit; text-align: left; cursor: pointer; overflow: hidden; }
+  .bild:hover { border-color: var(--primary-mark); }
+  .bild[aria-pressed='true'] { border-color: var(--primary-mark); box-shadow: inset 0 0 0 1px var(--primary-mark); }
+  .bild .yta { aspect-ratio: 4 / 3; position: relative; background: #2a2f3d; }
+  .bild .yta i { position: absolute; inset: 0; background-size: cover; background-position: center; }
+  /* Beskärningsramen, som den ser ut på brickan: det som verkligen hamnar på kortet. */
+  .bild .yta u { position: absolute; border: 2px solid #fff; box-shadow: 0 0 0 9999px rgba(8,10,14,.55); border-radius: 2px; }
+  .bild b { padding: 0 8px; font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bild small { padding: 0 8px 8px; color: var(--quiet); font-variant-numeric: tabular-nums; }
+  .bild small[data-oanvand='true'] { color: var(--warn); }
+
+  /* Beskärningen: en ruta man drar i, och kortets egen form som facit. */
+  .crop { display: grid; gap: var(--s3); }
+  .crop .duk { position: relative; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; background: #2a2f3d; }
+  .crop .duk i { position: absolute; inset: 0; background-size: cover; background-position: center; }
+  .crop .duk u { position: absolute; border: 2px solid #fff; box-shadow: 0 0 0 9999px rgba(8,10,14,.6); cursor: move; }
+  .crop .duk u::after { content: ''; position: absolute; right: -6px; bottom: -6px; width: 12px; height: 12px; border-radius: 3px; background: #fff; cursor: nwse-resize; }
+  .crop .form { display: flex; gap: var(--s2); flex-wrap: wrap; }
+  .crop .form button { min-height: var(--tap); }
+  .facit { display: flex; gap: var(--s3); align-items: flex-start; }
+  .facit .kort { flex: none; width: 92px; aspect-ratio: 63/88; border-radius: 8px; background: #f3ecdc; border: 1px solid #0d0f14; padding: 7px; display: flex; flex-direction: column; gap: 5px; }
+  .facit .kort .bildruta { height: 46px; border-radius: 4px; background-size: cover; background-position: center; }
+  .facit .kort .ln { height: 5px; border-radius: 3px; background: #cfc3ab; }
+  .facit .kort .ln.short { width: 58%; }
+  .facit p { margin: 0; color: var(--quiet); font-size: 12px; line-height: 1.5; }
+
+  /* Vägen till många rader: urvalet är massredigerarens, inte en ny mekanism. */
+  .anvand { display: grid; gap: var(--s2); padding: var(--s3); border-radius: 10px; background: var(--sunk); border: 1px solid var(--line); }
+  .anvand p { margin: 0; color: var(--quiet-2); font-size: 12px; line-height: 1.5; }
+  .anvand .rad { display: flex; gap: var(--s2); align-items: center; flex-wrap: wrap; }
+    .anvand select { min-height: var(--tap); flex: 1 1 200px; min-width: 0; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--ink); font: inherit; }
+  .anvand button { min-height: var(--tap); }
+  .anvand p[role='status']:empty { display: none; }
+  .anvand p[role='status'] { color: var(--good); }
+
+  /* Nuläget, som jämförelse: ett drag per rad. */
+  .nu table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .nu th, .nu td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line-soft); }
+  .nu th { color: var(--quiet); font-weight: 600; text-transform: uppercase; letter-spacing: 1px; font-size: 10px; }
+  .nu .slot { display: inline-flex; align-items: center; justify-content: center; width: 54px; height: 38px; border: 1px dashed var(--line); border-radius: 6px; color: var(--quiet); font-size: 11px; }
+  .nu .slot[data-fylld='true'] { border-style: solid; background-size: cover; background-position: center; }
+  .nu .bar { margin: 0 0 var(--s3); padding: var(--s3); border-radius: 10px; background: #3a2418; border: 1px solid #6b3b22; color: #f0cdb4; font-size: 12px; line-height: 1.5; }
+
+  .maatt { display: grid; gap: var(--s2); padding: var(--s3); border-radius: 10px; background: var(--sunk); border: 1px solid var(--line); }
+  .maatt p { margin: 0; color: var(--quiet-2); font-size: 12px; line-height: 1.5; }
+  .maatt label { display: flex; align-items: center; gap: var(--s2); color: var(--ink); font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="shell">
+<header>
+  <strong>Skogens herrar</strong>
+  <nav class="tabs" role="tablist" aria-label="Form">
+    <button role="tab" aria-selected="false">Kort</button>
+    <button role="tab" aria-selected="false">Mall</button>
+    <button role="tab" aria-selected="true" id="medieflik" hidden>Media</button>
+    <button role="tab" aria-selected="false">Symboler</button>
+    <button role="tab" aria-selected="false">Regler</button>
+    <button role="tab" aria-selected="false">Bord</button>
+  </nav>
+  <span class="spacer"></span>
+  <div class="switch" role="group" aria-label="Visa">
+    <button type="button" data-shape="nu" aria-pressed="false">Nu</button>
+    <button type="button" data-shape="a" aria-pressed="true">A · egen flik</button>
+    <button type="button" data-shape="b" aria-pressed="false">B · lådan</button>
+  </div>
+  <span class="who">P</span>
+</header>
+
+<main>
+  <div class="work" data-shape="a">
+
+    <!-- Nuläget: «Images in the game» plus ett drag per rad. -->
+    <section class="panel nu" hidden>
+      <header><h2>Nu · korttabellen</h2><span class="rule"></span><small>3 bilder · 154 kort</small></header>
+      <div class="scroll">
+        <p class="bar">
+          «Images in the game» visar vilka bilder leken har, men vägen från en bild till en rad är ett drag.
+          På 154 kort är det 154 drag, och samma bild laddas upp igen så fort någon glömmer att den redan finns.
+          Beskärning finns inte alls: filen hamnar som den är i mallens ruta.
+        </p>
+        <table>
+          <thead><tr><th>Kort</th><th>Titel</th><th>Bild</th><th>Typ</th></tr></thead>
+          <tbody id="nurader"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- A och B: biblioteket. -->
+    <section class="panel bibliotek">
+      <header>
+        <h2 data-titel>Media i spelet</h2>
+        <span class="rule"></span>
+        <small id="raknare"></small>
+      </header>
+      <div class="scroll">
+        <div class="media" id="media" role="group" aria-label="Media i spelet"></div>
+      </div>
+    </section>
+
+    <!-- A: beskärningen och vägen till raderna står bredvid. B: samma sak i en låda. -->
+    <aside class="panel sida">
+      <header><h2>Vald bild</h2><span class="rule"></span></header>
+      <div class="scroll">
+        <div class="crop">
+          <div class="duk" id="duk">
+            <i id="duki"></i>
+            <u id="ram" style="left:12%;top:10%;width:56%;height:74%"></u>
+          </div>
+          <div class="form" role="group" aria-label="Beskär efter">
+            <button type="button" class="btn" data-form="kort" aria-pressed="true">Kortets ruta</button>
+            <button type="button" class="btn" data-form="fri" aria-pressed="false">Fritt</button>
+            <button type="button" class="btn" data-form="hela" aria-pressed="false">Hela bilden</button>
+          </div>
+          <div class="facit">
+            <div class="kort">
+              <div class="bildruta" id="facitbild"></div>
+              <div class="ln"></div><div class="ln short"></div>
+            </div>
+            <p id="facittext">
+              Beskärningen är bildens egen och följer med överallt den används.
+              Ett kort som vill något annat säger det på sin egen rad — det är vad «bildernas mått» ville
+              åt, och det blir här ett undantag i stället för ett reglage för hela leken.
+            </p>
+          </div>
+          <div class="maatt">
+            <p><strong>Vad som händer med «Bildernas mått»</strong></p>
+            <label><input type="checkbox" checked> Alla motiv lika stora i sin ruta</label>
+            <p>
+              Reglaget blir en kryssruta i mallens bildelement i stället för en egen ruta på kortväggen:
+              det är mallen som bestämmer hur en bild möter sin ram, och biblioteket som bestämmer
+              vad i bilden som är motivet.
+            </p>
+          </div>
+          <div class="anvand">
+            <p><strong>Lägg på kort</strong> — urvalet är massredigerarens, inte en ny mekanism.</p>
+            <div class="rad">
+              <select aria-label="Vilka kort">
+                <option>de 24 markerade korten</option>
+                <option>alla kort där Typ = Location</option>
+                <option>alla kort utan bild</option>
+              </select>
+              <button type="button" class="btn primary" id="lagg">Lägg på</button>
+            </div>
+            <p id="lagtsagt" role="status"></p>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+  </div>
+</main>
+
+<script>
+  // Fyra bilder, som en lek av verklig storlek använder dem: en på nästan varje kort, en på en
+  // handfull, en som ingen använder längre, och en som just laddats upp.
+  const BILDER = [
+    { id: 'skog', namn: 'skogsbryn.jpg', kort: 96, hue: 140, ram: { l: 10, t: 14, w: 62, h: 70 } },
+    { id: 'borg', namn: 'borgen-natt.png', kort: 41, hue: 220, ram: { l: 22, t: 8, w: 52, h: 78 } },
+    { id: 'drake', namn: 'drake-v2.png', kort: 17, hue: 20, ram: { l: 6, t: 20, w: 74, h: 58 } },
+    { id: 'gammal', namn: 'drake-v1.png', kort: 0, hue: 310, ram: { l: 0, t: 0, w: 100, h: 100 } },
+  ]
+  const bg = (b) => `linear-gradient(135deg, hsl(${b.hue} 44% 34%), hsl(${(b.hue + 40) % 360} 48% 22%))`
+
+  let vald = BILDER[0]
+  const $ = (id) => document.getElementById(id)
+
+  function ritaMedia() {
+    $('media').innerHTML = BILDER.map((b) => `
+      <button type="button" class="bild" aria-pressed="${b.id === vald.id}" data-id="${b.id}">
+        <span class="yta"><i style="background:${bg(b)}"></i><u style="left:${b.ram.l}%;top:${b.ram.t}%;width:${b.ram.w}%;height:${b.ram.h}%"></u></span>
+        <b>${b.namn}</b>
+        <small data-oanvand="${b.kort === 0}">${b.kort === 0 ? 'inget kort använder den' : b.kort + ' kort'}</small>
+      </button>`).join('')
+    $('raknare').textContent = `${BILDER.length} bilder · ${BILDER.reduce((n, b) => n + b.kort, 0)} användningar`
+    for (const el of $('media').querySelectorAll('.bild')) {
+      el.onclick = () => { vald = BILDER.find((b) => b.id === el.dataset.id); ritaMedia(); ritaVald() }
+    }
+  }
+
+  function ritaVald() {
+    $('duki').style.background = bg(vald)
+    const r = vald.ram
+    $('ram').style.cssText = `left:${r.l}%;top:${r.t}%;width:${r.w}%;height:${r.h}%`
+    // Kortets ruta visar beskärningen och inte hela bilden. Det är hela poängen med facit: att
+    // man ser vad som verkligen hamnar på kortet medan man drar i ramen, inte efteråt.
+    // Bilden blåses upp så att ramen fyller rutan, och förskjuts så att ramens hörn står i dess.
+    const skala = { x: 10000 / r.w, y: 10000 / r.h }
+    const flytt = { x: r.w >= 100 ? 50 : (r.l / (100 - r.w)) * 100, y: r.h >= 100 ? 50 : (r.t / (100 - r.h)) * 100 }
+    $('facitbild').style.cssText = `background-image:${bg(vald)};background-size:${skala.x}% ${skala.y}%;background-position:${flytt.x}% ${flytt.y}%`
+    $('lagtsagt').textContent = ''
+  }
+
+  // Ramen går att dra och att dra i hörnet. Det är hela beskärningen: ingen dialog, inget läge.
+  ;(() => {
+    const ram = $('ram'), duk = $('duk')
+    let drag = null
+    ram.addEventListener('pointerdown', (e) => {
+      const r = duk.getBoundingClientRect()
+      const box = ram.getBoundingClientRect()
+      const hornet = e.clientX > box.right - 16 && e.clientY > box.bottom - 16
+      drag = { hornet, x: e.clientX, y: e.clientY, l: vald.ram.l, t: vald.ram.t, w: vald.ram.w, h: vald.ram.h, r }
+      ram.setPointerCapture(e.pointerId)
+    })
+    ram.addEventListener('pointermove', (e) => {
+      if (!drag) return
+      const dx = ((e.clientX - drag.x) / drag.r.width) * 100
+      const dy = ((e.clientY - drag.y) / drag.r.height) * 100
+      const klam = (v, lo, hi) => Math.max(lo, Math.min(hi, v))
+      if (drag.hornet) {
+        vald.ram.w = klam(drag.w + dx, 12, 100 - vald.ram.l)
+        vald.ram.h = klam(drag.h + dy, 12, 100 - vald.ram.t)
+      } else {
+        vald.ram.l = klam(drag.l + dx, 0, 100 - vald.ram.w)
+        vald.ram.t = klam(drag.t + dy, 0, 100 - vald.ram.h)
+      }
+      ritaVald(); ritaMedia()
+    })
+    ram.addEventListener('pointerup', () => { drag = null })
+  })()
+
+  for (const b of document.querySelectorAll('.form button')) {
+    b.onclick = () => {
+      for (const o of document.querySelectorAll('.form button')) o.setAttribute('aria-pressed', String(o === b))
+      if (b.dataset.form === 'hela') { vald.ram = { l: 0, t: 0, w: 100, h: 100 } }
+      if (b.dataset.form === 'kort') { vald.ram = { l: 16, t: 8, w: 48, h: 82 } }
+      ritaVald(); ritaMedia()
+    }
+  }
+
+  $('lagg').onclick = () => {
+    const vilka = document.querySelector('.anvand select').selectedOptions[0].textContent.trim()
+    $('lagtsagt').textContent = `${vald.namn} lades på ${vilka}. Ett steg, en version, ett steg tillbaka.`
+  }
+
+  // Nuläget: ett drag per rad.
+  $('nurader').innerHTML = Array.from({ length: 8 }, (_, i) => {
+    const fylld = i < 3
+    return `<tr>
+      <td>${['dragon','knight','wizard','trap','forest','keep','river','shrine'][i]}</td>
+      <td>${['Drake','Riddare','Trollkarl','Grop','Skogsbryn','Borgen','Floden','Altaret'][i]}</td>
+      <td><span class="slot" data-fylld="${fylld}" style="${fylld ? 'background:' + bg(BILDER[i % 3]) : ''}">${fylld ? '' : 'dra hit'}</span></td>
+      <td>${['Character','Character','Character','Effect','Location','Location','Location','Location'][i]}</td>
+    </tr>`
+  }).join('')
+
+  // Växeln mellan nuläget och de två förslagen.
+  for (const b of document.querySelectorAll('.switch button')) {
+    b.onclick = () => {
+      for (const o of document.querySelectorAll('.switch button')) o.setAttribute('aria-pressed', String(o === b))
+      const shape = b.dataset.shape
+      document.querySelector('.work').dataset.shape = shape
+      document.querySelector('.nu').hidden = shape !== 'nu'
+      document.querySelector('.bibliotek').hidden = shape === 'nu'
+      document.querySelector('.sida').hidden = shape !== 'a'
+      $('medieflik').hidden = shape !== 'a'
+      document.querySelector('[data-titel]').textContent = shape === 'b' ? 'Media — lådan, öppnad där bilden behövs' : 'Media i spelet'
+    }
+  }
+
+  ritaMedia(); ritaVald()
+  // Skalet ska visa rätt form redan vid öppning och inte först efter ett klick på växeln.
+  document.querySelector('.switch button[aria-pressed="true"]').click()
+</script>
+</body>
+</html>
