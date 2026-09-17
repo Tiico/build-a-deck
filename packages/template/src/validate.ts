@@ -218,3 +218,83 @@ export function distance(a: string, b: string): number {
   const [l2, a2, b2] = lab(b)
   return Math.hypot(l1 - l2, a1 - a2, b1 - b2)
 }
+
+// ── What a check proposes be done about itself (#233) ────────────────────────────────────────
+//
+// The wall has always said what is wrong and on which cards, and never what to do about it: the
+// designer was handed a measurement and left to find the element in the template and work out the
+// number herself. A fault is nearly always the template's — the same element on every row, which
+// is why `checks.ts` gathers them by kind — so the remedy is the template's too, and it is one
+// edit for the whole deck.
+//
+// It lives beside the check that found the fault, and deliberately so. The floor a size is lifted
+// to, the width a hairline is thickened to and the margin a box is brought inside are the very
+// constants the check measures against; written anywhere else they would be a second copy of them,
+// free to drift until a remedy no longer mends what the check reports.
+//
+// A remedy is a patch and never an edit: it says what an element should become, and the surface
+// that asked applies it through whatever door it already has. That keeps this pure, which is what
+// lets every reading in `remedy.test.ts` apply one and run the check again — the whole contract
+// being that the fault is gone afterwards, and that nothing else has broken in its place.
+
+// A patch onto one element, in that element's own words.
+export type Remedy = { element: string; patch: Partial<Extract<Element, { kind: 'text' }>> & Partial<Extract<Element, { kind: 'shape' }>> }
+
+export function remedyFor(issue: Issue, input: ValidateInput): Remedy | null {
+  // The box the check measured, which is the element with whatever its groups have added to its
+  // place folded in. A patch is written in the element's *own* words, so the difference between the
+  // two is exactly the offset to take back off again before writing a place down — otherwise an
+  // element inside a group would be moved by its group's distance a second time.
+  const box = flatten(elementsFor(input.face, input.row), 0, 0, input.row).find((b) => b.id === issue.element || b.el.id === issue.element)
+  if (!box) return null
+  const el = box.el
+  // A group and an `if` are not things that are drawn; `flatten` has already walked through them,
+  // so what it hands back always carries a place of its own. Said out loud rather than asserted,
+  // because a remedy that guessed here would write a place onto something that has none.
+  if (!('x' in el)) return null
+  const off = { x: box.x - el.x, y: box.y - el.y }
+  const { widthMm, heightMm } = input.type.physical
+  const { safeMm, bleedMm, minPtByScript } = input.type.print
+  switch (issue.code) {
+    case 'text-too-small': {
+      if (el.kind !== 'text') return null
+      const value = 'literal' in el.bind ? el.bind.literal : String(input.row[el.bind.field] ?? '')
+      const floor = minPtByScript[detectScript(value)] ?? minPtByScript['Latn'] ?? 6
+      // Clear of the *warning* and not merely over the error's line. A remedy that turns red into
+      // orange has handed the designer the same decision a second time, which is not a remedy.
+      // Rounded up to a tenth, because a size a hand would type is a size a hand can read back.
+      const lifted = Math.ceil(floor * SMALL_TEXT_FACTOR * 10) / 10
+      return lifted > el.font.sizePt ? { element: el.id, patch: { font: { ...el.font, sizePt: lifted } } } : null
+    }
+    case 'hairline': {
+      if (el.kind !== 'shape') return null
+      return { element: el.id, patch: { strokeMm: HAIRLINE_WARNING_MM } }
+    }
+    case 'outside-safe-area': {
+      // Inside the safe area on every side. The box is moved before it is narrowed: a designer who
+      // drew something 20 mm wide meant it to be 20 mm wide, and only a box too big for the safe
+      // area at all gives any of that up.
+      const room = { w: widthMm - safeMm * 2, h: heightMm - safeMm * 2 }
+      const w = Math.min(box.w, room.w)
+      const h = Math.min(box.h, room.h)
+      const x = Math.min(Math.max(box.x, safeMm), widthMm - safeMm - w)
+      const y = Math.min(Math.max(box.y, safeMm), heightMm - safeMm - h)
+      return x === box.x && y === box.y && w === box.w && h === box.h ? null : { element: el.id, patch: { x: x - off.x, y: y - off.y, w, h } }
+    }
+    case 'short-of-bleed':
+      // All the way out on every side: a background that reaches the trim has to carry on past it,
+      // or the knife — which wanders — leaves a white line along the edge.
+      return { element: el.id, patch: { x: -bleedMm - off.x, y: -bleedMm - off.y, w: widthMm + bleedMm * 2, h: heightMm + bleedMm * 2 } }
+    // The three that are nobody's to answer with a number.
+    //
+    // `low-contrast` is mended by choosing a colour, and which colour is a design decision: a
+    // machine darkening an ink until it passes would be making that decision quietly, on a card
+    // whose palette somebody chose. `colour-only` needs something that is *not* colour to carry
+    // the difference — a shape, a word, a mark — which no patch can invent. And `unpinned-font`
+    // needs a font file (B3), which is not in the template at all and cannot be conjured from it.
+    case 'low-contrast':
+    case 'colour-only':
+    case 'unpinned-font':
+      return null
+  }
+}

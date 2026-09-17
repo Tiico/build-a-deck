@@ -313,6 +313,13 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         // because the wall is where the whole deck is visible at once.
         onMeasure={(f, id, frame) => client?.patchElement(f, id, { frame })}
         onFraming={(cardRef, field, framing) => client?.setFraming(cardRef, field, framing)}
+        // One check mended across the whole deck (#233). Every patch carries the same gesture, so
+        // the edits land as one version and one step back: a designer who presses this once and
+        // changes her mind presses undo once.
+        onFixChecks={(fixes) => {
+          const gesture = `fix-check-${Date.now()}`
+          for (const fix of fixes) client?.patchElement(fix.face, fix.element, fix.patch, undefined, gesture)
+        }}
       />
     ),
     template: () => (
