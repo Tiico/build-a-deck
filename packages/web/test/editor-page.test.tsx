@@ -284,11 +284,22 @@ describe('the layers of the template by keyboard (UX-04)', () => {
     // field is controlled by the document, so a new value there is a patch that landed on frame.
     await user.tab()
     expect(document.activeElement).toBe(screen.getByRole('checkbox', { name: /rutnät/i }))
+    // Then the stage itself, which is a stop because it is a box that scrolls (#146): once the
+    // card is zoomed bigger than the room it is in, panning it is a thing a keyboard has to be
+    // able to do.
+    await user.tab()
+    expect(document.activeElement).toBe(document.querySelector('.byd-canvas-stage'))
     // Then the card itself: every element on it is a stop of its own since #144, met in the order
     // the layer list reads them, and the last of the three is the layer this test has open.
     for (const id of ['body', 'title', 'frame']) {
       await user.tab()
       expect(document.activeElement).toBe(document.querySelector(`[data-drag="${id}"]`))
+    }
+    // Then the zoom's own band, in the canvas' lower corner: it is read after the card because it
+    // is about the card (#146).
+    for (const name of ['Förstora mindre', 'Förstoring i procent', 'Förstora mer', 'Passa in', '100 %']) {
+      await user.tab()
+      expect(document.activeElement).toBe(screen.getByRole(name === 'Förstoring i procent' ? 'slider' : 'button', { name }))
     }
     await user.tab()
     await user.keyboard('9')

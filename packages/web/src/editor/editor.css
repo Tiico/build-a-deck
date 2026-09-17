@@ -631,8 +631,8 @@
   background:
     repeating-linear-gradient(to right, var(--byd-editor-grid-cm) 0 0.08mm, transparent 0.08mm 10mm),
     repeating-linear-gradient(to bottom, var(--byd-editor-grid-cm) 0 0.08mm, transparent 0.08mm 10mm),
-    repeating-linear-gradient(to right, var(--byd-editor-grid-mm) 0 0.06mm, transparent 0.06mm 1mm),
-    repeating-linear-gradient(to bottom, var(--byd-editor-grid-mm) 0 0.06mm, transparent 0.06mm 1mm);
+    repeating-linear-gradient(to right, var(--byd-editor-grid-mm) 0 0.06mm, transparent 0.06mm var(--byd-grid-step, 1mm)),
+    repeating-linear-gradient(to bottom, var(--byd-editor-grid-mm) 0 0.06mm, transparent 0.06mm var(--byd-grid-step, 1mm));
 }
 .byd-drag-handle { position: absolute; width: 2.4mm; height: 2.4mm; background: var(--byd-editor-handle-bg); border: 0.4mm solid var(--byd-editor-primary-mark); box-sizing: border-box; touch-action: none; }
 .byd-drag-handle[data-handle='nw'] { left: -1.2mm; top: -1.2mm; cursor: nwse-resize; }
@@ -695,6 +695,77 @@
 /* The card and the question asked under it share a column: the stage takes what is left, and the
    question — which is not up most of the time — takes only the height its words need. */
 .byd-canvas-main { display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 0; }
+/* The stage and the zoom band beside it (#146, L19). The band is the canvas' own corner and not
+   the crown's, and it is outside the thing that scrolls: a control that pans away with the card is
+   gone exactly when the card is big enough to need it. It is outside the stage altogether, which
+   is what makes "the band never covers the card" a guarantee rather than a sum — the card is drawn
+   inside the stage and clipped by it, so a band the stage does not touch is a band no card can
+   meet, at any zoom and at any pan. The chequerboard moves up here for that: it is the room's now,
+   so the canvas is still one surface across the seam the band stands on.
+
+   The band is given a column of its own, because a column is what the fitting leaves over. A card
+   fitted by the stage's height uses none of the width beside it — 323 px of it at 1440 — so a
+   column costs the card nothing, while a row would cost every desk a strip of card height. */
+.byd-canvas-room {
+  display: grid;
+  /* Two tracks each way, and the band is the only thing placed by hand: the stage takes the first
+     free cell — (1, 1) whichever place the band is in — and the track the band is not in has
+     nothing in it and so collapses to nothing. */
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-height: 0;
+  /* Which of the two places the band takes is asked of the room's own proportion, so it has to be
+     a query container that knows its own height as well as its width. */
+  container-type: size;
+  background: repeating-conic-gradient(#20232b 0 25%, #1b1d23 0 50%) 0 0 / 24px 24px;
+}
+.byd-canvas-zoom {
+  grid-area: 1 / 2;
+  align-self: end;
+  margin: var(--byd-s2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--byd-s1);
+  padding: var(--byd-s1);
+  border: 1px solid #2f333d;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--byd-editor-tool-bg) 92%, transparent);
+  color: var(--byd-editor-tool-ink);
+  font-size: 12px;
+}
+/* The band's own controls are the crown's control with square shoulders: the same edge, the same
+   words, the same hit area (UX-KONTROLLER: träffytor). Never a fill — what is merely chosen here
+   is marked with its edge, since a fill is what a first action is drawn in (L13). */
+.byd-canvas-zoom button {
+  min-width: var(--byd-tap);
+  min-height: var(--byd-tap);
+  padding: 0 var(--byd-s2);
+  border: 1px solid #2f333d;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.byd-canvas-zoom button:hover { border-color: var(--byd-editor-primary-mark); }
+.byd-canvas-zoom button[aria-pressed='true'] { border-color: var(--byd-editor-primary-mark); color: #fff; }
+.byd-canvas-zoom input { width: 80px; height: var(--byd-tap); accent-color: var(--byd-editor-primary-mark); }
+/* The two steps are a glyph each and a glyph is read at its own size: at the band's own twelve
+   pixels a minus sign is a hairline beside a plus. */
+.byd-canvas-zoom button[data-step] { font-size: 16px; line-height: 1; }
+/* The percentage is a fact and not a control, so it is quieter than the buttons and stands apart
+   from them. It keeps its own width: a band that grows a pixel between 99 and 100 % moves every
+   control on it under the hand. */
+.byd-canvas-zoom output { min-width: 5ch; padding: 0 var(--byd-s1); color: var(--byd-editor-hint-ink); text-align: center; font-variant-numeric: tabular-nums; }
+/* And where there is no width to stand in — a stage no wider than it is tall, which is 1024 with
+   the properties open — the band lies down under the stage instead. That row is the only thing it
+   ever costs the card, and it costs it only where the fitting had nothing spare to give. */
+@container (max-aspect-ratio: 1/1) {
+  /* Lying down it is as thin as a row can be: every pixel of it is a pixel of card height, and
+     this is the one shape where the band is not free. */
+  .byd-canvas-zoom { grid-area: 2 / 1; justify-self: end; flex-direction: row; align-items: center; margin: var(--byd-s1) var(--byd-s2); padding: 0 var(--byd-s1); }
+}
 /* The crown over the desk (#13, #129): one row, at every width and on every deck. Which column
    makes the groups, which group is open, whether the properties are folded away, and which face is
    being edited — four controls, and the last of them keeps its own right edge. It is a row and not
@@ -928,7 +999,10 @@
 .byd-props-paint li > button { min-width: var(--byd-tap); min-height: var(--byd-tap); border: 0; border-radius: 6px; background: transparent; color: var(--byd-editor-quiet); font-size: 15px; cursor: pointer; }
 .byd-props-locked { grid-column: 1 / -1; margin: 0; color: var(--byd-editor-locked-ink); font-size: 11px; line-height: 1.4; }
 .byd-props input[readonly] { color: var(--byd-editor-source-ink); cursor: not-allowed; }
-.byd-canvas-stage { display: grid; place-items: center; overflow: auto; background: repeating-conic-gradient(#20232b 0 25%, #1b1d23 0 50%) 0 0 / 24px 24px; }
+/* The stage is what pans once the card is bigger than it (#146, L19). `overscroll-behavior` is
+   what keeps a wheel that has reached the card's edge from carrying on into the page behind it:
+   the work must not slide away under a hand that is still on the card. */
+.byd-canvas-stage { display: grid; place-items: center; overflow: auto; overscroll-behavior: contain; }
 .byd-canvas-props { border-left: 1px solid #2f333d; padding: var(--byd-s3); overflow: auto; }
 .byd-props { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .byd-props label { display: grid; gap: 3px; font-size: 11px; color: #9aa3b8; }

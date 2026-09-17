@@ -1,8 +1,8 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import type { Element, FaceTemplate, ProjectDoc, Row } from './types.js'
 import { CardPreview } from './CardPreview.js'
-import { arrowMove, fitScale, HANDLES, iconSized, movedTo, newElement, resizedTo, snapped, STAGE_SCALE, TOOLS, type Box, type ElementKind, type Grab, type Guides, type Handle } from './canvas.js'
+import { arrowMove, fitScale, gridStep, HANDLES, iconSized, movedTo, newElement, resizedTo, snapped, STAGE_SCALE, TOOLS, ZOOM_MAX, ZOOM_MIN, ZOOM_NOTCH, ZOOM_STEP, zoomPercent, zoomTo, type Box, type ElementKind, type Grab, type Guides, type Handle } from './canvas.js'
 import { useGesture } from './gesture.js'
 import { elementsFor, pathFor, shapeTakes, tileMarkup, type Motif, type Paint, type Pattern, type Shadow } from '@byd/template'
 import { galleryIdOf, glyphGeometry, newPattern, PATTERNS, shadowIdOf, shapeChoice, SHADOWS, SHAPE_GALLERY, type Geometry, type Shape } from './shapes.js'
@@ -158,7 +158,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // surface makes a third (StatusLive), so the canvas asks for the polite one by name.
   const say = useSay()
   const stageEl = useRef<HTMLElement | null>(null)
-  const scale = useStageFit(stageEl)
+  const zoom = useZoom(stageEl)
   // The grid is a layer to see by, not a rule (variant C, kept as an option): it is off until it
   // is asked for, and it never rounds an element to itself — the guides and the arrow keys are
   // what place things, and a 1 mm grid would take the half millimetre away.
@@ -265,11 +265,21 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
       )}
       {shows('canvas') && (
       <div className="byd-canvas-main">
+        {/* The stage and the band beside it share a box of their own, so the band stands in the
+            canvas' lower corner rather than inside the thing that scrolls: a control that pans
+            away with the card is a control that is gone exactly when the card is big enough to
+            need it. It stands beside the stage and never on it, which is what keeps it off the
+            card at every zoom (#146, L19). */}
+        <div className="byd-canvas-room">
         <main
           className="byd-canvas-stage"
           ref={stageEl}
+          // A box that scrolls once the card is bigger than it (#146), and a box that scrolls is
+          // a tab stop: panning that only a wheel can do leaves everything off screen to the
+          // mouse alone, and accessibility is not relaxed in the editor (L12).
+          tabIndex={0}
           onClick={() => onSelectElement(null)}
-          {...(column ? { id: GROUP_PANEL, 'aria-labelledby': GROUP_BUTTON } : {})}
+          {...(column ? { id: GROUP_PANEL, 'aria-labelledby': GROUP_BUTTON } : { 'aria-label': t('canvas.stage') })}
         >
           <CardPreview
             id="canvas"
@@ -277,12 +287,12 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             row={rowData}
             icons={icons}
             fonts={fonts}
-            scale={scale}
+            scale={zoom.scale}
             assetBase={assetBase}
             motifs={motifs}
             selectedElement={selectedElement}
             onSelectElement={onSelectElement}
-            overlay={<DragLayer grid={grid} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={patch} onCallOff={onCallOff} onRefused={setRefused} />}
+            overlay={<DragLayer grid={grid ? gridStep(zoom.scale) : null} boxes={shown.filter(isBox)} selected={selectedElement} onSelect={onSelectElement} onPatch={patch} onCallOff={onCallOff} onRefused={setRefused} />}
           />
           {refusedLayer && (
             <p className="byd-canvas-locked" role="alert">
@@ -290,6 +300,8 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             </p>
           )}
         </main>
+          <ZoomBand zoom={zoom} />
+        </div>
         {/* Under the card and not on it. The stage deselects on a click anywhere in itself, so a
             question standing inside it would lose the layer the moment the answer that keeps it
             was pressed — which is the one answer that must cost nothing. It is otherwise the same
@@ -420,25 +432,110 @@ function Licence({ family, licence, onFontLicence }: { family: string; licence: 
   )
 }
 
-// The zoom that shows a whole card: measured from the stage and the card as they are drawn, and
-// measured again whenever the window changes. Where nothing can be measured — a headless test,
-// a first paint — the card keeps the zoom the stage starts at.
-function useStageFit(stage: RefObject<HTMLElement | null>): number {
+// How big the card is drawn, and who decided it (#146).
+//
+// Two answers, not two numbers: either the stage is fitting the card into itself — which is
+// exactly what the canvas did before there was anything else, measured from the stage and the
+// card as they are drawn and measured again whenever the window changes — or a designer has said
+// a zoom, and then the window is none of its business. Where nothing can be measured (a headless
+// test, a first paint) the card keeps the zoom the stage starts at.
+//
+// The zoom is never remembered. Every opening of the canvas starts on the fit, which is a
+// deliberate departure from L4's pattern that a view remembers itself in the browser: nobody
+// should be met by a crop they do not remember choosing (L19).
+type Zoom = { scale: number; fitting: boolean; to(scale: number): void; by(delta: number): void; fit(): void }
+function useZoom(stage: RefObject<HTMLElement | null>): Zoom {
   const [scale, setScale] = useState(STAGE_SCALE)
-  useLayoutEffect(() => {
+  const [fitting, setFitting] = useState(true)
+  // What the card is drawn at right now, for the two readers that run outside a render: the fit,
+  // which is a factor on the zoom the card already has, and the wheel, which steps from it.
+  const drawn = useRef(scale)
+  drawn.current = scale
+  const measure = useCallback(() => {
     const el = stage.current
-    if (!el || typeof ResizeObserver === 'undefined') return
-    const fit = () => {
-      const card = el.querySelector('[data-card]')?.getBoundingClientRect()
-      const room = el.getBoundingClientRect()
-      if (card) setScale((was) => fitScale(was, { w: card.width, h: card.height }, { w: room.width, h: room.height }))
-    }
-    fit()
-    const watching = new ResizeObserver(fit)
-    watching.observe(el)
-    return () => watching.disconnect()
+    const card = el?.querySelector('[data-card]')?.getBoundingClientRect()
+    const room = el?.getBoundingClientRect()
+    return card && room ? fitScale(drawn.current, { w: card.width, h: card.height }, { w: room.width, h: room.height }) : drawn.current
   }, [stage])
-  return scale
+  useLayoutEffect(() => {
+    if (!fitting || !stage.current) return
+    const fit = () => setScale(measure())
+    fit()
+    if (typeof ResizeObserver === 'undefined') return
+    const watching = new ResizeObserver(fit)
+    watching.observe(stage.current)
+    return () => watching.disconnect()
+  }, [stage, fitting, measure])
+  const to = useCallback((next: number) => {
+    setFitting(false)
+    setScale(zoomTo(next))
+  }, [])
+  // `Ctrl` with the wheel over the canvas, which is the gesture every drawing tool answers. It is
+  // hung on the element and not on React's `onWheel`, because React listens for a wheel passively
+  // at the root and a passive listener cannot keep the browser from zooming the whole page.
+  useEffect(() => {
+    const el = stage.current
+    if (!el) return
+    const wheel = (event: WheelEvent) => {
+      if (!event.ctrlKey) return
+      event.preventDefault()
+      to(drawn.current - Math.sign(event.deltaY) * ZOOM_NOTCH)
+    }
+    el.addEventListener('wheel', wheel, { passive: false })
+    return () => el.removeEventListener('wheel', wheel)
+  }, [stage, to])
+  return { scale, fitting, to, by: (delta) => to(drawn.current + delta), fit: () => setFitting(true) }
+}
+
+// The zoom's own band, in the canvas' lower corner (#146, L19). Beside the stage and not in the
+// crown: a control in the crown is the one furthest from the work it is about, and every row the
+// crown takes is a row the card never gets back.
+//
+// Beside the stage rather than floating on it, because the decision put the control in the width
+// the fitting already leaves over — 323 px of chequerboard at 1440 — and a control that occupies
+// what nothing else wants costs the card nothing. Floating, it did not do that: the fitting
+// centres the card, so only half the spare width lies on the right, and the band covered the card
+// at every desk. Standing in a column of the canvas room it covers nothing at any zoom, and where
+// the fitting leaves no width at all — 1024 with the properties open — the stylesheet lays it
+// down in a row under the stage instead. Which of the two is a question about boxes, so it is
+// asked and answered in the stylesheet; `canvas-band.test.tsx` measures both.
+function ZoomBand({ zoom }: { zoom: Zoom }) {
+  const t = useT()
+  const per = zoomPercent(zoom.scale)
+  const said = t('canvas.zoom.percent', { n: per })
+  return (
+    <div className="byd-canvas-zoom" role="group" aria-label={t('canvas.zoom')}>
+      {/* The percentage leads, and leads quietly: it is a fact and not a control, and standing
+          last it was a third box the same size and shape as the two buttons beside it — a reader
+          had no way to tell which of `100 %` and `228 %` could be pressed. */}
+      <output aria-label={t('canvas.zoom')}>{said}</output>
+      <button type="button" data-step aria-label={t('canvas.zoom.out')} onClick={() => zoom.by(-ZOOM_STEP)}>
+        −
+      </button>
+      <input
+        type="range"
+        min={zoomPercent(ZOOM_MIN)}
+        max={zoomPercent(ZOOM_MAX)}
+        step={1}
+        value={per}
+        aria-label={t('canvas.zoom.level')}
+        // The number alone is a number; what a reader needs is the measure it is in.
+        aria-valuetext={said}
+        onChange={(event) => zoom.to(Number(event.target.value) / 100)}
+      />
+      <button type="button" data-step aria-label={t('canvas.zoom.in')} onClick={() => zoom.by(ZOOM_STEP)}>
+        +
+      </button>
+      {/* Two choices and not two doings: which of them the card stands on is said, so the fit is
+          something to see rather than something to infer from a percentage. */}
+      <button type="button" aria-pressed={zoom.fitting} onClick={zoom.fit}>
+        {t('canvas.zoom.fit')}
+      </button>
+      <button type="button" aria-pressed={!zoom.fitting && per === 100} onClick={() => zoom.to(1)}>
+        {t('canvas.zoom.actual')}
+      </button>
+    </div>
+  )
 }
 
 // An element that has a box of its own, and can therefore be dragged. A condition around other
@@ -463,7 +560,7 @@ const KIND_WORDS: Record<Element['kind'], Key> = {
 // the card's own millimetres. It draws no card content — the compiler behind it is still the one
 // renderer — and it holds the pointer with pointer capture, so a fast drag or a trackpad that
 // leaves the box keeps moving the element it grabbed.
-function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefused }: { boxes: BoxElement[]; grid: boolean; selected: string | null; onSelect(id: string): void; onPatch: TemplateCanvasProps['onPatch']; onCallOff: TemplateCanvasProps['onCallOff']; onRefused(id: string): void }) {
+function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefused }: { boxes: BoxElement[]; grid: number | null; selected: string | null; onSelect(id: string): void; onPatch: TemplateCanvasProps['onPatch']; onCallOff: TemplateCanvasProps['onCallOff']; onRefused(id: string): void }) {
   const t = useT()
   const say = useSay()
   const layer = useRef<HTMLDivElement | null>(null)
@@ -587,7 +684,10 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
           pointer's, because it is the same thing: something under the hand at this moment, and a
           press that arrives while it is down is about that and not about a panel over the work. */}
       {moving && <DragDoor onCancel={callOffMove} />}
-      {grid && <div className="byd-drag-grid" data-grid aria-hidden="true" />}
+      {/* The measure over the card, drawn in the card's own millimetre and as densely as the zoom
+          leaves room for (#146, L19): the step is the drawing, so nothing about the grid is said
+          twice. */}
+      {grid !== null && <div className="byd-drag-grid" data-grid aria-hidden="true" style={{ '--byd-grid-step': `${grid}mm` } as CSSProperties} />}
       {/* Read backwards, and stacked forwards. The keyboard meets the elements in the order the
           layer list reads them — top-most first, which is the order the designer already has in
           front of her (#144) — while the pointer must still find the top-most box on top of the
