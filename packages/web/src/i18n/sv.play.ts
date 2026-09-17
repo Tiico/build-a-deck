@@ -40,6 +40,9 @@ export const svPlay = {
 
   // TV-läget runt filten.
   'tv.join': 'anslut med telefon',
+  'qr.enlarge': 'Visa koden större',
+  'qr.title': 'Anslut med telefonen',
+  'qr.close': 'Stäng',
   'tv.inspect': 'Inspektion',
   'tv.inspect.hidden': 'dolt kort',
   'tv.inspect.empty': 'peka på ett kort',

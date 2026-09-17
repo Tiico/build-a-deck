@@ -81,7 +81,9 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
           <div className="byd-tv-join">
             <span>{t('tv.join')}</span>
             {roomCode && <strong>{roomCode}</strong>}
-            {joinUrl && <QrCode text={joinUrl} size={52} />}
+            {/* One line of the TV's own heading, and nobody presses a television: the code stays a
+                picture there (#225). The room's code stands beside it in plain figures anyway. */}
+            {joinUrl && <QrCode text={joinUrl} size={52} enlarge={false} />}
           </div>
         )}
         <section className="byd-tv-inspect" aria-labelledby="tv-inspect">

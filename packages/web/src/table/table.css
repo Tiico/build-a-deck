@@ -739,3 +739,21 @@
    behöver inte göra det — "Blanda" på en hög med ett kort förklarar sig själv. En designers egen
    mening gör det inte. */
 .byd-action-sheet button i { display: block; margin-top: 3px; font-style: normal; font-size: 11px; font-weight: 400; color: var(--byd-felt-chalk-off); }
+
+/* Koden uppslagen i stort format (#225). Vid spelstart står flera runt en skärm och ska läsa av
+   samma kod; 120 px räcker för telefonen som hålls emot rutan och för ingen annan. */
+.byd-qr-open { display: inline-flex; padding: 0; border: 0; background: none; cursor: zoom-in; border-radius: 8px; }
+.byd-qr-open:focus-visible { outline: 2px solid var(--byd-editor-primary-mark, #6aa9ff); outline-offset: 2px; }
+.byd-qr-big {
+  position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 16px;
+  background: rgba(6, 8, 12, 0.82);
+}
+.byd-qr-big-panel {
+  display: grid; justify-items: center; gap: 12px; padding: 20px; border-radius: 14px;
+  background: #12141a; border: 1px solid #2f333d; box-shadow: 0 18px 48px rgba(0, 0, 0, 0.6);
+  max-width: 100%; max-height: 100%; overflow: auto;
+}
+.byd-qr-big-panel .byd-qr { background: #fff; border-radius: 8px; }
+/* Adressen i ord bredvid bilden: alla runt ett bord har inte en kamera till hands, och den som
+   inte har det är den som mest behöver kunna läsa upp den. */
+.byd-qr-address { margin: 0; font-size: 13px; color: #cfe6ff; word-break: break-all; text-align: center; max-width: 42ch; }
