@@ -192,7 +192,17 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
           motifs={motifs}
           palette={doc.palette}
           framing={doc.framing ? framingOf(doc, cardRef) : undefined}
-          onSelectElement={onSelectElement}
+          // The card, and then the element in it (#234). Almost the whole of a card is its
+          // elements — the front's frame shape alone covers 61 × 86 of its 63 × 88 — so a click on
+          // a card is nearly always a click on an element of it, and the preview quite rightly
+          // stops that click from travelling on: the element is the more particular answer. But
+          // the tile's own `onClick` was the only thing saying which card had been chosen, so it
+          // never ran, and what opened was about whichever card had been selected before — the one
+          // wearing the ring. The wall knows which card this preview is of; it says so itself.
+          onSelectElement={(id) => {
+            onSelectRow(cardRef)
+            onSelectElement(id)
+          }}
           onWarnings={(w) => onWarnings(cardRef, w)}
         />
         {copies > 1 && <span className="byd-wall-copies" data-copies>×{copies}</span>}
