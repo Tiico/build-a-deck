@@ -56,8 +56,13 @@ const FILE = [
   '| Drake | 2 |',
 ].join('\n')
 
-async function pick(text = FILE, name = 'regler-v4.md'): Promise<HTMLElement> {
-  fireEvent.change(screen.getByLabelText('Importera från fil'), { target: { files: [new File([text], name, { type: 'text/markdown' })] } })
+// The pictures a designer hands over beside her Markdown (#173). A real PNG, because what the
+// picture is is read out of its bytes and never out of its name.
+const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
+const picture = (name: string, bytes: BlobPart = PNG) => new File([bytes], name, { type: 'image/png' })
+
+async function pick(text = FILE, name = 'regler-v4.md', beside: File[] = [picture('bordet.png')]): Promise<HTMLElement> {
+  fireEvent.change(screen.getByLabelText('Importera från fil'), { target: { files: [new File([text], name, { type: 'text/markdown' }), ...beside] } })
   return await screen.findByRole('region', { name: 'Vad importen gör med filen' })
 }
 
@@ -94,7 +99,7 @@ describe('the report, which is the last thing read before the book (#131)', () =
     expect(within(screen.getByRole('navigation', { name: 'Innehåll' })).getAllByRole('link').map((a) => a.textContent)).toEqual(['En tur'])
   })
 
-  it('counts what became a block, what changed shape on the way, and what cannot come in yet', async () => {
+  it('counts what became a block, and what changed shape on the way', async () => {
     await openRules()
     const report = await pick()
     expect(within(report).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
@@ -102,24 +107,99 @@ describe('the report, which is the last thing read before the book (#131)', () =
       '3 stycken blir text',
       '1 lista blir en lista',
       '1 referens känns igen, som i en bok du skrivit själv',
+      '1 bild blir en bild i boken',
       '1 rubrik på filens första rad blir ingenting: boken heter vad spelet heter',
       '1 tabell blir text, en rad per rad',
       '1 länk blir sin egen text; adressen stryks',
-      '1 bild kommer inte med ännu: boken har ännu inget blockslag för en bild (#173)',
     ])
   })
+})
 
-  it('says of a picture that it is not here yet, and never that it was dropped (#173)', async () => {
+// The picture in the import report (#173, decided 2026-09-17). A picture comes in; what the report
+// has to say is what came in saying nothing about itself, and what could not come in at all.
+describe('what the report says about the pictures (#173)', () => {
+  it('says how many came in without alt text, so whoever wants to write them can find them', async () => {
     await openRules()
-    const report = await pick()
-    const image = within(report).getByText(/bild/)
-    // The product owner rejected dropping images: one is coming, as its own change to the
-    // protocol. Until then the report says so in those words and the line is neither a loss nor
-    // a promise that it worked.
-    expect(image.textContent).toContain('ännu')
-    expect(image.textContent).toContain('#173')
-    expect(image.textContent).not.toContain('stryks')
-    expect(image.getAttribute('data-kind')).toBe('later')
+    const report = await pick('# Skogens herrar\n\n![](bordet.png)\n\n![Kasthögen](kast.png)', 'regler-v4.md', [picture('bordet.png'), picture('kast.png')])
+    const lines = within(report).getAllByRole('listitem').map((li) => li.textContent)
+    expect(lines).toContain('2 bilder blir bilder i boken')
+    // In a rulebook a picture is almost never decorative, so the count is what keeps the decision
+    // from being silent — it is the tool not hiding what it just did.
+    const quiet = within(report).getByText(/utan alt-text/)
+    expect(quiet.textContent).toContain('1 bild')
+    expect(quiet.textContent).toContain('dekorativ')
+    expect(quiet.getAttribute('data-kind')).toBe('changed')
+  })
+
+  it('keeps a picture it could not take in standing in the report, with the reason', async () => {
+    await openRules()
+    const file = '# Skogens herrar\n\nEtt spel om skogen.\n\n![Bordet](bordet.png)\n\n![Kasthögen](kast.png)\n\n![Handen](handen.png)'
+    const report = await pick(file, 'regler-v4.md', [
+      picture('kast.png', '<!doctype html><script>x</script>'),
+      picture('handen.png', new Uint8Array(9 * 1024 * 1024)),
+    ])
+    const lines = within(report).getAllByRole('listitem').map((li) => li.textContent)
+    // Nothing disappears silently (#131): one line per picture, each saying why, and the book is
+    // made without them.
+    expect(lines.some((l) => l?.includes('bordet.png') && l.includes('tillsammans'))).toBe(true)
+    expect(lines.some((l) => l?.includes('kast.png') && l.includes('PNG'))).toBe(true)
+    expect(lines.some((l) => l?.includes('handen.png') && l.includes('stor'))).toBe(true)
+    expect(lines.some((l) => l?.includes('bild blir en bild'))).toBe(false)
+  })
+
+  // Where the two decisions of the day meet (#173 × #191). The file a designer actually hands
+  // over opens with the name of her game and has pictures in it, so both roads are travelled at
+  // once and the report has to read as one list and not as two features shouting over each other.
+  it('says both that the title became nothing and what the pictures did, in one order', async () => {
+    await openRules()
+    const report = await pick('# Skogens herrar\n\n![](bordet.png)\n\n![Kasthögen](kast.png)', 'regler-v4.md', [picture('bordet.png'), picture('kast.png')])
+    expect(within(report).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+      '2 bilder blir bilder i boken',
+      '1 rubrik på filens första rad blir ingenting: boken heter vad spelet heter',
+      '1 bild kom in utan alt-text och är därför dekorativ: dold för skärmläsare tills du skriver en',
+    ])
+    // And the book is called what the project is called, with no section made out of the file's
+    // first line — the pictures came in under it all the same.
+    const proposed = document.querySelector('[data-proposal]') as HTMLElement
+    expect(within(proposed).queryAllByRole('heading', { level: 2 })).toEqual([])
+    expect(proposed.querySelectorAll('.byd-rules-image').length).toBe(2)
+  })
+
+  // Where the two decisions of the day meet again, at the point they can cancel each other out
+  // (#173 × #191). A file whose content is its pictures, under its own title, leaves no block at
+  // all: the title becomes nothing because the book is called what the game is called, and a
+  // picture that was not handed over is no block either. Told only that there is nothing in the
+  // file, she would never learn that the pictures were the thing she left behind.
+  it('says why there is nothing to make a book of, when the pictures were the something', async () => {
+    await openRules()
+    fireEvent.change(screen.getByLabelText('Importera från fil'), {
+      target: { files: [new File(['# Skogens herrar\n\n![Bordet](bordet.png)'], 'regler-v4.md', { type: 'text/markdown' })] },
+    })
+    const said = (await screen.findByRole('alert')).textContent ?? ''
+    expect(said).toContain('regler-v4.md')
+    expect(said).toContain('bordet.png')
+    expect(said).toContain('tillsammans')
+    expect(document.querySelector('[data-rulebook]')).toBeNull()
+  })
+
+  it('takes the picture into the project’s own assets, and the book points at it there', async () => {
+    await openRules()
+    const report = await pick('# Skogens herrar\n\n![Bordet från ovan](bilder/bordet.png)', 'regler-v4.md', [picture('bordet.png')])
+    fireEvent.click(within(report).getByRole('button', { name: 'Gör boken' }))
+    const stored = await waitFor(async () => {
+      const rules = (await run.projects.load(run.projectId))?.rules
+      expect(rules?.blocks.some((b) => b.kind === 'image')).toBe(true)
+      return rules!
+    })
+    const block = stored.blocks.find((b) => b.kind === 'image')!
+    // The book is versioned with the cards (B4), so the picture travels in the project rather
+    // than as an address pointing out of it.
+    expect(block).toMatchObject({ alt: 'Bordet från ovan' })
+    expect(block.kind === 'image' && block.asset).toMatch(/^asset:[0-9a-f]{64}$/)
+    const hash = block.kind === 'image' ? block.asset.slice('asset:'.length) : ''
+    const got = await fetch(`${run.http}/assets/${hash}`)
+    expect(got.status).toBe(200)
+    expect(got.headers.get('content-type')).toBe('image/png')
   })
 })
 

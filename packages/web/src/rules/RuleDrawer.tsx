@@ -63,7 +63,7 @@ export function RuleDrawer({ http, sessionId, placement }: RuleDrawerProps) {
               <article className="byd-rules-page">
                 <h2>{rules.title}</h2>
                 {rules.blocks.map((b) => (
-                  <RuleBlockView key={b.id} block={b} />
+                  <RuleBlockView key={b.id} block={b} assets={http} />
                 ))}
               </article>
             )}
@@ -75,8 +75,11 @@ export function RuleDrawer({ http, sessionId, placement }: RuleDrawerProps) {
 }
 
 // One block as the reader meets it. References are already names by the time they arrive here:
-// the server resolved them against the version this table plays (B7).
-export function RuleBlockView({ block }: { block: RenderedBlock }) {
+// the server resolved them against the version this table plays (B7). A picture is the one thing
+// that is not: it arrives as `asset:<hash>`, the project's own way of naming a picture, and is
+// resolved against wherever this table's assets are served from — the same resolution a card's
+// image gets in the editor (E1).
+export function RuleBlockView({ block, assets }: { block: RenderedBlock; assets?: string | undefined }) {
   switch (block.kind) {
     case 'heading':
       return block.level === 1 ? <h3>{block.text}</h3> : <h4>{block.text}</h4>
@@ -100,8 +103,20 @@ export function RuleBlockView({ block }: { block: RenderedBlock }) {
     }
     case 'setup':
       return block.caption ? <p className="byd-rules-caption">{block.caption}</p> : null
+    // A5 sets how big a picture may be drawn and the table and the phone draw it inside that same
+    // frame (#173): the stylesheet holds the frame, so all three surfaces say it once.
+    //
+    // `alt` is what the picture says about itself. Empty means decorative, and a decorative
+    // picture has no role at all for a screen reader — which is the cost the decision of
+    // 2026-09-17 accepted, and why the import counts them where they can be found again.
+    case 'image':
+      return <img className="byd-rules-image" src={assetUrl(block.asset, assets)} alt={block.alt} />
   }
 }
+
+// Where the picture's bytes are (E1): the project's assets, served by the table's own server. A
+// reference the server is not known for is left as it stands rather than guessed at.
+const assetUrl = (asset: string, base: string | undefined): string => (base ? `${base}/assets/${asset.slice('asset:'.length)}` : asset)
 
 export function RuleSpan({ nodes }: { nodes: readonly RenderedNode[] }) {
   const t = useT()

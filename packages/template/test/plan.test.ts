@@ -211,5 +211,35 @@ describe('the setup block can never be imported away (#131, B5)', () => {
   })
 })
 
+// A picture in the book (#173) is recognised again by the bytes it points at and the words it
+// says about itself — a Markdown file carries no ids, so content is all two books have in common.
+describe('a picture over a written book (#173)', () => {
+  const bordet = `asset:${'a'.repeat(64)}`
+  const kasthogen = `asset:${'b'.repeat(64)}`
+
+  it('keeps the same picture, and marks a picture the file replaced as rewritten', () => {
+    const there = book({ kind: 'heading', id: 'b1', level: 1, text: 'Uppställning' }, { kind: 'image', id: 'b2', asset: bordet, alt: 'Bordet från ovan' })
+    const same = planImport(there, book({ kind: 'heading', id: 'b1', level: 1, text: 'Uppställning' }, { kind: 'image', id: 'b2', asset: bordet, alt: 'Bordet från ovan' }))
+    expect(same.counts).toEqual({ kept: 2, changed: 0, going: 0, added: 0 })
+
+    const other = planImport(there, book({ kind: 'heading', id: 'b1', level: 1, text: 'Uppställning' }, { kind: 'image', id: 'b2', asset: kasthogen, alt: 'Bordet från ovan' }))
+    expect(other.blocks.map((b) => b.mark)).toEqual(['kept', 'changed'])
+    // The alt text is what a picture says, so a rewritten one is a rewrite too.
+    const worded = planImport(there, book({ kind: 'heading', id: 'b1', level: 1, text: 'Uppställning' }, { kind: 'image', id: 'b2', asset: bordet, alt: '' }))
+    expect(worded.blocks.map((b) => b.mark)).toEqual(['kept', 'changed'])
+  })
+
+  it('weighs a picture the book loses by the words it said, and not by nothing', () => {
+    const there = book({ kind: 'heading', id: 'b1', level: 1, text: 'Uppställning' }, { kind: 'image', id: 'b2', asset: bordet, alt: 'Bordet från ovan' })
+    const plan = planImport(there, book({ kind: 'heading', id: 'b1', level: 1, text: 'En tur' }))
+    // One word for the heading and three for what the picture said about itself.
+    expect(plan.gone).toEqual({ sections: 1, words: 4 })
+    // A decorative picture said nothing, and weighs nothing — which is the cost of the decision
+    // of 2026-09-17 written where it can be seen.
+    const quiet = planImport(book({ kind: 'heading', id: 'b1', level: 1, text: 'Uppställning' }, { kind: 'image', id: 'b2', asset: bordet, alt: '' }), book({ kind: 'heading', id: 'b1', level: 1, text: 'En tur' }))
+    expect(quiet.gone).toEqual({ sections: 1, words: 1 })
+  })
+})
+
 const textOf = (block: RuleDoc['blocks'][number]): string =>
-  block.kind === 'list' ? block.items.join(' ') : block.kind === 'setup' ? (block.caption ?? '') : block.text
+  block.kind === 'list' ? block.items.join(' ') : block.kind === 'setup' ? (block.caption ?? '') : block.kind === 'image' ? block.alt : block.text

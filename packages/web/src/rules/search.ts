@@ -33,6 +33,12 @@ export function findRules(rules: RenderedRules, query: string): Hit[] {
       case 'setup':
         if (block.caption) line++
         break
+      // A picture says its alt text and nothing else; a decorative one says nothing at all
+      // (#173). Either way the reading has to move by exactly what the picture put in the book's
+      // plain text, or every passage after it would answer under the wrong words.
+      case 'image':
+        if (block.alt) line++
+        break
     }
   }
   return hits

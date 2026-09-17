@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parseInline } from '../src/inline.js'
-import { RuleDoc, renderLine, renderRules } from '../src/rules.js'
+import { RULE_IMAGE_FRAME, RuleDoc, renderLine, renderRules } from '../src/rules.js'
 
 const names = { zones: { discard: 'Kasthög', draw: 'Draghög' }, cards: { drake: 'Drake' } }
 
@@ -89,5 +89,59 @@ describe('one line of the book on its own (#131)', () => {
       { type: 'ref', of: 'zone', id: 'draw', name: 'Draghög' },
       { type: 'text', text: '.' },
     ])
+  })
+})
+
+// The picture in the book (#173, decided 2026-09-17). It is the fifth kind of block, and it is a
+// protocol change: the schema is the single source of both the type and the validation, so a
+// picture that could not be validated cannot be typed either.
+describe('a picture in the rulebook (#173)', () => {
+  const hash = 'a'.repeat(64)
+
+  it('takes a picture that lives in the project’s own assets, with the alt text it was written with', () => {
+    const parsed = RuleDoc.parse({
+      title: 'Skogens herrar',
+      blocks: [{ kind: 'image', id: 'i1', asset: `asset:${hash}`, alt: 'Bordet från ovan' }],
+    })
+    expect(parsed.blocks[0]).toEqual({ kind: 'image', id: 'i1', asset: `asset:${hash}`, alt: 'Bordet från ovan' })
+  })
+
+  it('renders the picture for all three surfaces, and lets its alt text be read as part of the book', () => {
+    const out = renderRules(
+      {
+        title: 'Skogens herrar',
+        blocks: [
+          { kind: 'image', id: 'i1', asset: `asset:${hash}`, alt: 'Bordet från ovan' },
+          { kind: 'image', id: 'i2', asset: `asset:${'b'.repeat(64)}`, alt: '' },
+        ],
+      },
+      names,
+    )
+    expect(out.blocks).toEqual([
+      { kind: 'image', id: 'i1', asset: `asset:${hash}`, alt: 'Bordet från ovan' },
+      { kind: 'image', id: 'i2', asset: `asset:${'b'.repeat(64)}`, alt: '' },
+    ])
+    // What is said about the picture is part of the book's text; a decorative one says nothing.
+    expect(out.text).toBe('Bordet från ovan')
+  })
+
+  it('takes its size from A5, which is the narrowest of the three surfaces the book is read on', () => {
+    // The frame is the text column of an A5 page — 148mm less the booklet's two 15mm margins —
+    // and half the height of that column, so a picture never takes a page on its own.
+    expect(RULE_IMAGE_FRAME).toMatchObject({ wMm: 118, hMm: 91 })
+    // And the same frame said in the book's own type, which is what a screen can use: the table
+    // and the phone draw the same picture in the same box, whatever their pixels happen to be.
+    const mmPerEm = (10.5 * 25.4) / 72
+    expect(RULE_IMAGE_FRAME.wEm).toBeCloseTo(118 / mmPerEm, 1)
+    expect(RULE_IMAGE_FRAME.hEm).toBeCloseTo(91 / mmPerEm, 1)
+  })
+
+  it('refuses an address that points out of the project, because the book travels with the cards (B4)', () => {
+    const outside = (asset: string) => RuleDoc.safeParse({ title: 'X', blocks: [{ kind: 'image', id: 'i1', asset, alt: '' }] }).success
+    expect(outside('https://example.com/bordet.png')).toBe(false)
+    expect(outside('bordet.png')).toBe(false)
+    expect(outside('data:image/png;base64,AAAA')).toBe(false)
+    expect(outside('asset:../../etc/passwd')).toBe(false)
+    expect(outside(`asset:${hash}`)).toBe(true)
   })
 })

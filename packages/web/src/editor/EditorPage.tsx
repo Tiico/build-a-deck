@@ -377,7 +377,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       />
     ),
     symbols: () => <SymbolPanel doc={doc} client={client} assetBase={http} />,
-    rules: () => <RulesPanel doc={doc} client={client} />,
+    rules: () => <RulesPanel doc={doc} client={client} assetBase={http} />,
     // Bord is the home for both the game's board vocabulary and its running tables (#19, C4).
     // One panel and not two stacked (#126): the list of running tables stands in the setup's third
     // column, beside the felt, so the whole tab is one screen and the header stays where it was.

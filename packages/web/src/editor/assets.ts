@@ -78,6 +78,34 @@ export function assetsInUse(doc: ProjectDoc): { hash: string; cards: string[] }[
   return [...seen].map(([hash, cards]) => ({ hash, cards }))
 }
 
+// What a picture in the rulebook may weigh and what it may be (#173). A file a designer picks is
+// untrusted input: what it is called, and the type a browser guessed from that name, are claims
+// and not evidence — so the type is read out of the bytes, and a file whose bytes are not one of
+// these four is refused rather than stored and served as something it is not. The book takes
+// raster pictures only; a card's icon set may hold an SVG (E4), but that is a file the tool itself
+// fetched from a library, and a drawing a designer brings from her own disk is not.
+//
+// The weight is the server's own limit (`ASSET_MAX_BYTES`), asked here so the import report can
+// say which picture was too big instead of one upload failing where nobody is reading.
+export const RULE_IMAGE_MAX_BYTES = 8 * 1024 * 1024
+
+const ascii = (s: string): number[] => [...s].map((c) => c.charCodeAt(0))
+const starts = (bytes: Uint8Array, at: number, head: readonly number[]): boolean => head.every((b, i) => bytes[at + i] === b)
+const MAGIC: readonly { type: string; head: readonly number[] }[] = [
+  { type: 'image/png', head: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] },
+  { type: 'image/jpeg', head: [0xff, 0xd8, 0xff] },
+  { type: 'image/gif', head: ascii('GIF87a') },
+  { type: 'image/gif', head: ascii('GIF89a') },
+]
+
+export function imageTypeOf(bytes: Uint8Array): string | null {
+  for (const { type, head } of MAGIC) if (starts(bytes, 0, head)) return type
+  // A WebP is a RIFF container, and RIFF alone is a sound file just as readily, so both marks
+  // have to be there.
+  if (starts(bytes, 0, ascii('RIFF')) && starts(bytes, 8, ascii('WEBP'))) return 'image/webp'
+  return null
+}
+
 // A data URL, as the wizard holds a chosen image, back to bytes and a type for upload. The
 // bytes are copied into a buffer of their own, which is what a request body wants.
 export function bytesOfDataUrl(dataUrl: string): { type: string; bytes: Uint8Array<ArrayBuffer> } | null {

@@ -23,7 +23,7 @@ import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountO
 import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
 import { canDelete, canEdit, canRead, canShare, canStartTables, INVITE_TTL_MS, roleWord, ROLES, type Role } from './roles.js'
 import { facesOf, printExportOf } from './faces.js'
-import { MotifBody, resolveAssets, resolveFonts, resolveIcons, type AssetStore } from './assets.js'
+import { MotifBody, resolveAssets, resolveFonts, resolveIcons, resolveRuleImages, type AssetStore } from './assets.js'
 import { TEXTURE_DPI } from './actor.js'
 
 // `staticDir`: the built web app, served from the same origin as the API (README, DRIFT §1).
@@ -1049,6 +1049,9 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     const compiled = bookletOf({
       rules: renderRules(rec.rules, names),
       icons,
+      // The pictures the book holds travel with it (#173): the printer is handed the bytes, never
+      // a reference it could not follow.
+      images: opts.assets ? await resolveRuleImages(rec.rules, opts.assets) : {},
       pageMm: A5,
       zones: rec.setup.zones.map((z) => z.name),
       credits: creditsOf(rec),

@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { RULE_IMAGE_FRAME } from '@byd/template'
 import { RuleDrawer } from '../src/rules/RuleDrawer.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
@@ -37,6 +39,48 @@ const open = async (id: string) => {
   fireEvent.click(await screen.findByRole('button', { name: 'Regler' }))
   return screen.findByRole('dialog', { name: 'Regler' })
 }
+
+// The picture in the book, where the book is read (#173, decided 2026-09-17). A5 sets the frame
+// and the table and the phone draw the same picture inside it; what it says about itself is the
+// alt text the Markdown carried, and a picture that carried none is decorative — `alt=""` — and is
+// passed over by a screen reader.
+describe('a picture at the table (#173)', () => {
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
+  const withPicture = async (alt: string): Promise<string> => {
+    const put = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/png' }, body: png })
+    const { hash } = (await put.json()) as { hash: string }
+    await run.projects.create(run.projectId, {
+      ...projectDoc(),
+      rules: { title: 'Skogens herrar', blocks: [{ kind: 'image', id: 'i1', asset: `asset:${hash}`, alt }] },
+    })
+    const res = await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST' })
+    return ((await res.json()) as { id: string }).id
+  }
+
+  it('draws the picture out of the project’s own assets, saying what it was written to say', async () => {
+    const panel = await open(await withPicture('Bordet från ovan'))
+    const picture = await within(panel).findByRole('img', { name: 'Bordet från ovan' })
+    expect(picture.getAttribute('src')).toMatch(new RegExp(`^${run.http}/assets/[0-9a-f]{64}$`))
+  })
+
+  it('holds the same frame the printed booklet does, said in the book’s own type', () => {
+    // A5 sets the size and the other two surfaces draw the same picture inside it. A stylesheet
+    // cannot read the constant, so this is what keeps the three of them from drifting apart.
+    for (const sheet of ['../src/rules/rules.css', '../src/editor/editor.css']) {
+      const css = readFileSync(new URL(sheet, import.meta.url), 'utf8')
+      expect(css).toContain(`${RULE_IMAGE_FRAME.wEm}em`)
+      expect(css).toContain(`${RULE_IMAGE_FRAME.hEm}em`)
+    }
+  })
+
+  it('passes a decorative picture over for a screen reader, and still draws it', async () => {
+    const panel = await open(await withPicture(''))
+    await within(panel).findByRole('heading', { name: 'Skogens herrar' })
+    // `alt=""` is a picture with no role at all: nothing is announced, and nothing is missing.
+    expect(within(panel).queryByRole('img')).toBeNull()
+    expect(panel.querySelectorAll('img[alt=""]')).toHaveLength(1)
+  })
+})
 
 describe('the rules at the table (B7)', () => {
   it('is not offered at all when the game has no rulebook', async () => {

@@ -105,6 +105,48 @@ describe('the rulebook in the editor (B7)', () => {
   })
 })
 
+// The picture in the book as the designer meets it (#173, decided 2026-09-17). The editor draws
+// the same picture the table and the booklet draw, and it is where a decorative one can be given
+// the words it came in without.
+describe('a picture in the editor’s book (#173)', () => {
+  const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
+  const withPicture = async (alt: string): Promise<void> => {
+    const put = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/png' }, body: PNG })
+    const { hash } = (await put.json()) as { hash: string }
+    await run.projects.create(run.projectId, {
+      ...projectDoc(),
+      rules: { ...rules, blocks: [...rules.blocks, { kind: 'image', id: 'i1', asset: `asset:${hash}`, alt }] },
+    })
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('tab', { name: 'Regler' }))
+  }
+
+  it('draws it out of the project’s own assets, with what it says about itself', async () => {
+    await withPicture('Bordet från ovan')
+    const picture = await within(book()).findByRole('img', { name: 'Bordet från ovan' })
+    expect(picture.getAttribute('src')).toMatch(new RegExp(`^${run.http}/assets/[0-9a-f]{64}$`))
+  })
+
+  it('says in the page that a decorative picture is hidden, and lets the words be written there', async () => {
+    await withPicture('')
+    // The decision of 2026-09-17 took the cost of a decorative picture deliberately; what it did
+    // not take is hiding it, so the book says so where the picture stands.
+    expect(await within(book()).findByText('Utan alt-text: dold för skärmläsare')).toBeTruthy()
+    expect(within(book()).queryByRole('img')).toBeNull()
+
+    fireEvent.click(book().querySelector('[data-block="i1"] [role="button"]')!)
+    const field = await within(book()).findByLabelText('Alt-text för bilden i1')
+    fireEvent.change(field, { target: { value: 'Bordet från ovan' } })
+    await waitFor(() => expect(within(book()).getByRole('img', { name: 'Bordet från ovan' })).toBeTruthy())
+    fireEvent.blur(field)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    await waitFor(async () => expect((await run.projects.load(run.projectId))?.rules?.blocks.at(-1)).toMatchObject({ kind: 'image', alt: 'Bordet från ovan' }))
+  })
+})
+
 describe('the rulebook as a booklet (B7)', () => {
   it('is ordered from the rules and opens when it is rendered', async () => {
     await openRules()
