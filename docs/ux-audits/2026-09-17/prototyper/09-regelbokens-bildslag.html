@@ -38,7 +38,12 @@
   .toggle[aria-pressed='true'] { background: #2a2417; border-color: #4a4230; color: #ffd98a; }
   .toggle:disabled { opacity: .45; cursor: default; }
 
-  .scen { flex: 1 1 auto; min-height: 0; display: flex; justify-content: center; }
+  /* Scenen är en spalt och inte en rad: importbandet ligger *ovanför* boken, som #131 redan
+     bestämde, och varje yta sköter sin egen centrering under det. */
+  .scen { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+  /* proto.css sätter noten till 620 px, vilket är bredare än telefonen. Noten är prototypens
+     egen bildtext och får inte vara det enda på sidan som spränger 390. */
+  .note { max-width: min(620px, calc(100vw - 20px)); }
 
   /* --- Bokens sättning, densamma på alla fyra ytorna --------------------------------------
      Kopierad ur .byd-rulebook och .byd-rules-page så att förslaget läses i bokens eget typsnitt
@@ -91,14 +96,15 @@
   /* --- Editorytan ----------------------------------------------------------------------- */
   .editor { width: 100%; display: flex; flex-direction: column; min-height: 0; }
   .editor .spread { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; align-items: flex-start; justify-content: center; gap: var(--s5); padding: var(--s4) var(--gutter) 64px; }
-  .editor .toc { position: sticky; top: 0; flex: 0 0 218px; }
+  .editor .toc { position: sticky; top: 0; flex: 0 0 234px; }
   .editor .toc b { display: block; padding: 0 var(--s3) 4px; font: 11px system-ui; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
   .editor .toc a { display: flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 var(--s3); color: #9aa3b8; font: 12px system-ui; text-decoration: none; border-radius: 8px; }
   .editor .toc a:hover { background: var(--card); }
   /* Affordansen som gör de tysta bilderna hittbara. Den står i spalten och inte i ett varsel som
      rullar förbi, därför att den ska finnas kvar dagen efter importen. */
   .hitta { display: flex; align-items: center; gap: 8px; width: 100%; min-height: var(--tap); margin-top: var(--s2); padding: 0 var(--s3); border: 1px solid #4a4230; border-radius: 8px; background: #2a2417; color: #ffd98a; font: 700 12px system-ui; text-align: left; cursor: pointer; }
-  .hitta span { flex: 1; font-weight: 400; }
+  .hitta span { flex: 1; font-weight: 400; white-space: nowrap; }
+  .editor .toc { }
   .editor .bok { width: calc(68ch + 80px); max-width: 100%; box-sizing: border-box; padding: 32px 40px; border-radius: 14px; }
 
   /* Importrapportens band. Formen är redan vald (#131, variant B): ett band, inte en dialog,
@@ -113,7 +119,7 @@
 
   /* --- Bordets lucka --------------------------------------------------------------------- */
   .bordet { position: relative; flex: 1 1 auto; width: 100%; background: radial-gradient(120% 90% at 50% 40%, #2f6136, #1d3d22); overflow: hidden; }
-  .bordet .filt { position: absolute; inset: 40px 420px 40px 40px; border-radius: 18px; border: 2px dashed rgba(255,255,255,.14); display: grid; place-items: center; color: rgba(255,255,255,.4); font: 700 13px system-ui; }
+  .bordet .filt { position: absolute; inset: 40px 400px 40px 40px; border-radius: 18px; border: 2px dashed rgba(255,255,255,.14); display: grid; place-items: center; color: rgba(255,255,255,.4); font: 700 13px system-ui; }
   .lucka { position: absolute; right: 0; top: 0; bottom: 0; width: 380px; display: grid; grid-template-rows: auto 1fr; background: #f7f3ea; box-shadow: -14px 0 34px rgba(0,0,0,.45); }
   .lucka .fraga { display: flex; gap: 8px; padding: 12px; background: #ece5d8; border-bottom: 1px solid #d8cdb8; }
   .lucka .fraga input { flex: 1; min-width: 0; min-height: var(--tap); padding: 0 11px; border: 1px solid #cbbfa8; border-radius: 10px; background: #fff; color: #23201a; font: 14px system-ui; }
@@ -121,8 +127,10 @@
   .lucka .bok { overflow: auto; padding: 18px 20px; }
 
   /* --- Telefonen ------------------------------------------------------------------------- */
-  .telefonram { align-self: center; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: var(--s4) 0; }
-  .telefon { width: 390px; height: 720px; display: grid; grid-template-rows: auto auto 1fr; border: 8px solid #0d0f14; border-radius: 30px; background: #f7f3ea; overflow: hidden; }
+  .telefonram { flex: 1 1 auto; min-height: 0; align-self: center; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: var(--s3) 0 56px; }
+  /* Ramen räknas utanför skärmen (`content-box`), så spalten är densamma vid 390 som vid
+     1280: det som mäts ska vara telefonens skärm och inte prototypens plastkant. */
+  .telefon { box-sizing: content-box; width: 390px; max-width: 100%; flex: 0 1 720px; min-height: 0; display: grid; grid-template-rows: auto auto 1fr; border: 8px solid #0d0f14; border-radius: 30px; background: #f7f3ea; overflow: hidden; }
   .telefon .topp { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #ece5d8; border-bottom: 1px solid #d8cdb8; color: #4a4438; font: 700 13px system-ui; }
   .telefon .topp button { margin-left: auto; min-width: var(--tap); min-height: var(--tap); border: 1px solid #cbbfa8; border-radius: 8px; background: #f7f3ea; color: #4a4438; font: 700 13px system-ui; cursor: pointer; }
   .telefon .fraga { display: flex; gap: 8px; padding: 10px 12px; background: #ece5d8; border-bottom: 1px solid #d8cdb8; }
@@ -146,10 +154,34 @@
   .a5 figure.bild { margin: 4mm 0; }
   .a5 figure.bild figcaption { font-size: 8.5pt; }
   .a5 .sidnr { position: absolute; left: 0; right: 0; bottom: 5mm; text-align: center; font: 8pt system-ui; color: #8a8172; }
-  /* Prototypens egen linjal, inte trycket: måttet står i sidmarginalen i grått. */
-  .a5 .linjal { position: absolute; left: 2mm; width: 11mm; text-align: center; font: 8px system-ui; color: #9a9384; }
+  /* Prototypens egen linjal och inte trycket: måttet står i grått system-ui under figuren,
+     alltså i ett typsnitt som aldrig är bokens, så det inte går att läsa som en bildtext. */
+  .a5 .matt-tryck { display: block; margin-top: 1mm; text-align: center; font: 7.5pt system-ui, sans-serif; color: #a39b8c; letter-spacing: .3px; }
 
   .foot { flex: none; border-top: 1px solid var(--line); padding: var(--s2) var(--gutter); margin: 0; color: var(--quiet); font-variant-numeric: tabular-nums; }
+
+  /* proto.css ger `.home` ingen egen höjd, och en 16 px hög länk är inte en 44 px träffyta
+     (docs/UX-KONTROLLER.md). Rättat här i prototypen och inte i proto.css, som är delad. */
+  .shell > header .home { display: inline-flex; align-items: center; min-height: var(--tap); }
+
+  /* Telefonen granskas vid 390 och editorns krön hör inte hemma där: det är skrivbordets chrome
+     (L12), och om det fick stå kvar vore det enda som spränger 390 på den här sidan prototypens
+     eget ramverk. Under 460 px står därför bara ytväljaren kvar, och den viker sig i två rader
+     hellre än att skjuta sidan i sidled. */
+  @media (max-width: 460px) {
+    .shell > header .home, .shell > header strong, .shell > header .rev, .shell > header .saved,
+    .shell > header .tabs, .shell > header .who, .shell > header .btn, .chrome-row { display: none; }
+    .shell > header { flex-wrap: wrap; padding: var(--s2) var(--s3); }
+    .ytor { margin-left: 0; flex-wrap: wrap; }
+    .ytor button { padding: 0 10px; }
+    .foot { font-size: 11px; }
+    /* Vid 390 är fönstret telefonen: plastkanten skulle vara det enda som spränger bredden. */
+    .telefon { border-width: 0; border-radius: 0; }
+    .telefonram { padding: 0 0 40px; }
+    /* Noten är prototypens bildtext. Vid 390 blir den ett band längst ner i stället för en
+       620 px bred ruta mitt över telefonen. */
+    .note { left: 4px; right: 4px; bottom: 4px; transform: none; max-width: none; max-height: 34vh; overflow: auto; padding: 6px 8px; font-size: 10px; }
+  }
 </style>
 </head>
 <body>
@@ -370,8 +402,13 @@
     ].join(' ')
     const svg = b.svg(svgAttr({ alt }))
     const bildtext = b.bildtext && !dekorativ ? `<figcaption>${b.bildtext}</figcaption>` : ''
+    // Häftet får dessutom prototypens linjal: måttet i grått system-ui under figuren, så att
+    // gränsen går att läsa av på sidan i stället för att stå beskriven i en not. Den trycks inte.
+    const linjal = yta === 'haftet'
+      ? `<span class="matt-tryck">${mm(p.w)} × ${mm(p.h)}${p.bunden === 'höjd' ? ' · taket, ville bli 118 × 177' : p.bunden === 'egen' ? ' · egen storlek vid 300 DPI' : ' · hela spalten'}</span>`
+      : ''
     // Läsarens ytor får bilden och bildtexten och ingenting annat.
-    if (yta !== 'editor') return `<figure class="bild" ${attr}><div class="ram">${svg}</div>${bildtext}</figure>`
+    if (yta !== 'editor') return `<figure class="bild" ${attr}><div class="ram">${svg}</div>${bildtext}${linjal}</figure>`
     // Editorn får dessutom raden som säger vad bilden är och vad den blir i häftet.
     const matt = `<span class="matt">Häftet: ${mm(p.w)} × ${mm(p.h)}</span>`
     const bundet = { bredd: 'Fyller spalten', höjd: 'För hög för sidan — smalnar av', egen: 'Egen storlek — förstoras inte' }[p.bunden]
@@ -494,9 +531,9 @@
     bordet: ['Bordets lucka · 380 px',
       'Samma bild, samma andel av spalten. Luckan är 380 px och spalten 340, alltså 2,88 px per millimeter: den höga bilden är 80 × 120 mm och tar 231 × 346 px, aldrig mer än en dryg tredjedel av luckans höjd. Inga märken, ingen rapport — läsaren möter boken som den blev.'],
     telefon: ['Telefonen · 390 px',
-      'Spalten är 358 px, alltså 3,03 px per mm. Taket på 120 mm blir 364 px av 720, så det finns alltid text ovanför och under bilden och läsaren tappar aldrig var i boken hon är. Den breda bilden blir 358 × 201 px och den lilla 180 × 128 — den växer inte för att skärmen är smal, för då hade den vuxit förbi sina egna pixlar.'],
+      'Skärmen är 390 px och spalten 358, alltså 3,03 px per mm — samma bild, samma andel. Taket på 120 mm blir 364 px av en 720 px hög skärm, så det står alltid text både ovanför och under bilden och läsaren tappar aldrig var i boken hon är. Den lilla bilden blir 180 × 128 px: den växer inte för att skärmen är smal, för då hade den vuxit förbi sina egna pixlar.'],
     haftet: ['Häftet · A5 i riktiga millimeter',
-      'Sidan är 148 × 210 mm och den streckade rutan är satsytan, 118 × 182. Spalten är 118 mm och taket 120: sidan 2 visar varför — den höga bilden ville bli 118 × 177 mm och hade då tagit hela satsytan och blivit en ensam bildsida. Den smalnar av till 80 × 120 i stället, aldrig beskuren, och 62 mm text ryms under den.'],
+      'Sidan är 148 × 210 mm och den streckade rutan är satsytan, 118 × 182. De grå måtten under figurerna är prototypens linjal och trycks inte. Sidan 2 visar varför taket finns: den höga bilden ville bli 118 × 177 mm och hade då tagit hela satsytan och blivit en ensam bildsida. Den smalnar av till 80 × 120 i stället, aldrig beskuren, och det ryms 62 mm text under den.'],
   }
 
   function rita() {
