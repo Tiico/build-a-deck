@@ -89,7 +89,10 @@
   .loss p { margin: 0 0 6px; color: #e8d3d3; font-size: 12px; line-height: 1.6; }
   .loss p:last-child { margin-bottom: 0; }
   details.more { border-top: 1px solid var(--line-soft); padding-top: var(--s3); }
-  details.more > summary { cursor: pointer; color: var(--quiet-2); font-size: 12px; min-height: var(--tap); display: flex; align-items: center; }
+  details.more > summary { cursor: pointer; color: var(--quiet-2); font-size: 12px; min-height: var(--tap); display: flex; align-items: center; gap: 6px; }
+  details.more > summary::before { content: '\25B8'; color: var(--quiet); }
+  details.more[open] > summary::before { content: '\25BE'; }
+  details.more > summary::-webkit-details-marker { display: none; }
   details.more > summary:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; border-radius: 6px; }
   details.more ul { margin: var(--s2) 0 0; padding-left: 1.2em; color: var(--quiet-2); font-size: 12px; line-height: 1.7; }
   .btn.danger { background: #8c2f2f; border-color: #a33c3c; color: #fff; }
@@ -116,6 +119,7 @@
   del { color: #6f6060; } ins { color: var(--good); text-decoration: none; background: rgba(125, 211, 160, .12); border-radius: 3px; padding: 0 2px; }
 
   /* --- C: källan, filen är kopplad -------------------------------------- */
+  .source + .popover { margin-top: calc(var(--s4) * -1); }
   .source { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; padding: var(--s3) var(--s4); border: 1px solid var(--line); border-radius: 12px; background: var(--sunk); }
   .source .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); flex: none; }
   .source .dot.off { background: var(--quiet); }
@@ -123,7 +127,7 @@
   .source .meta { color: var(--quiet); font-size: 12px; }
   .source .spacer { flex: 1; }
   .source .btn { font-size: 12px; }
-  .popover { width: min(460px, 100%); margin-left: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: var(--s4); }
+  .popover { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 12px 12px; background: var(--panel); padding: var(--s4); margin-top: calc(var(--s4) * -1); }
   .popover h4 { margin: 0 0 var(--s2); color: #fff; font-size: 13px; }
   .popover .bal { display: flex; gap: var(--s3); flex-wrap: wrap; margin-bottom: var(--s3); font-size: 12px; }
   .popover .bal span { display: flex; gap: 5px; align-items: baseline; }
@@ -490,6 +494,7 @@
           </div>
           <div class="sheet">
             <h2>Sal's Saloon</h2>
+            <p style="color:var(--quiet);font-size:11px;margin-bottom:16px">Utdrag: de två avsnitt som bär en märkning.</p>
             <div class="blk gone" style="text-decoration:none">
               <span class="tag">Finns inte i regler-v4.md — försvinner vid nästa omläsning</span>
               <h3 style="color:#fff;text-decoration:none">Fusk och straff</h3>
@@ -618,6 +623,10 @@
                 <li><b>rev 12</b><span><em>Boken före importen</em><br>15 sep 17:12 · 6 avsnitt, 990 ord — <b>Fusk och straff</b> finns här</span></li>
               </ul>
             </div>
+          </div>
+        </div>
+
+        <div class="wrap" style="margin-top:24px">
             <div class="answers">
               <h3>D:s fyra svar</h3>
               <dl>
@@ -632,7 +641,6 @@
                   en omladdning.</dd>
               </dl>
             </div>
-          </div>
         </div>
       </div>
 
