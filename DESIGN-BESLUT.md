@@ -332,6 +332,16 @@ Mallen är ett förslag och inte en form: ett avsnitt går att ta bort utan att 
 Båda vägarna in, `Börja skriva reglerna` och `Börja från en mall`, är en enda ändring var och därmed ett steg tillbaka (B4, L14).
 Den tredje vägen in är `Importera från fil`.
 
+Spalten får egen skrollyta, byggt 2026-09-17 (#210):
+Regelfliken har två skrollytor — bokens och spaltens — sida vid sida, och ingen av dem ligger inuti den andra.
+Det ersätter #131:s "högst en skrollyta" för den här ytan, och bara för den: regeln att ingen skrollyta får ligga inuti en annan står kvar orörd, och det var den som prototyp 8 avgjordes på.
+Skälet är mätt på en bok av realistisk längd — 22 avsnitt och 32 underrubriker — i Chromium vid 1024, 1280, 1440 och 1920.
+Spalten var `position: sticky; top: 0` i flikens enda skrollyta och hängde alltså med boken: 9, 8, 6 respektive 2 av dess rader gick att läsa först när boken skrollats hela vägen ned, och med egen skrollyta är det 0 vid alla fyra bredderna.
+En innehållsförteckning vars sista rader kräver att man läst det den är en karta över är inte en karta, och felet fanns i dagens spalt med bara nivå 1 — det är inte en följd av formfrågan på #207, som står obesvarad och som den här ändringen inte rör.
+Tangentbordet räddas av samma sak: ett tabbsteg i spalten flyttade förut hela uppslaget, och i prototypens variant C tappades fokus i tre fall av tre; nu flyttar det spalten och ingenting annat.
+Spaltens egen rubrik `Innehåll` står kvar medan raderna rullar under den, precis som väggens bandrubriker (#179): en etikett som skrollar bort är en spalt som slutar säga vad den är just när någon letar i den.
+Boken skrollar som förut och läsbredden på 68 tecken av bokens eget typsnitt är orörd.
+
 Importen från fil, byggd 2026-09-17 (#131):
 Den tredje vägen in läser en Markdown-fil och lägger fram boken den skulle bli.
 Kartan från fil till block är ett produktbeslut och står därför skriven som en karta i koden, inte som ett biblioteks uppfattning om vad Markdown betyder.

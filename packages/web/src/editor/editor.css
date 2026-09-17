@@ -1949,10 +1949,22 @@
 .byd-rules-ways { display: flex; gap: var(--byd-s2); margin-left: auto; }
 /* The book and the column it is found in, as one pair that moves together (#131): the column
    that carries the disposition of an empty tab is the column that carries a written book, so
-   the two states are one surface. The pair is the tab's single scrolling area. */
-.byd-rules-spread { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; align-items: flex-start; justify-content: center; gap: var(--byd-s5); }
-.byd-rules-toc { position: sticky; top: 0; flex: 0 0 200px; }
-.byd-rules-toc b { display: block; padding: 0 var(--byd-s3); }
+   the two states are one surface.
+   The pair is two scrolling areas side by side, and neither of them is inside the other (#210).
+   It was one, with the column `position: sticky; top: 0` in it — and a column stuck to a book it
+   cannot outlast is a column that hangs: measured at 22 sections, nine of its rows at 1024 and
+   two at 1920 could be read only once the book had been scrolled to the very bottom, which is
+   the one thing an innehållsförteckning exists to spare its reader. A tab step in it moved the
+   book for the same reason, and lost the row it was on. The column scrolls itself now. */
+.byd-rules-spread { flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; align-items: stretch; justify-content: center; gap: var(--byd-s5); }
+.byd-rules-toc { flex: 0 0 200px; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+/* The area the book is read in. It is a box of its own and not the book itself, so the paper
+   still ends where the text ends instead of being stretched down the whole tab. */
+.byd-rules-reading { min-width: 0; min-height: 0; overflow: auto; scrollbar-width: thin; }
+/* The column's own heading stays over its rows now that they scroll under it (#210), the way the
+   wall's band headings and the layer column keep theirs (#179) — a label that scrolls away is a
+   column that stops saying what it is exactly when somebody is looking through it. */
+.byd-rules-toc b { display: block; padding: 0 var(--byd-s3); position: sticky; top: 0; background: var(--byd-editor-chrome-bg); }
 /* `a[href]` and not `a`: the editor makes every link an inline-flex target (0,2,1), and a
    section in the column would otherwise sit beside the next one instead of under it. */
 .byd-rules-toc a[href] { display: flex; align-items: center; gap: 6px; min-height: var(--byd-tap); padding: 0 var(--byd-s3); color: #9aa3b8; font-size: 12px; text-decoration: none; }

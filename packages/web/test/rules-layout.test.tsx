@@ -145,7 +145,7 @@ describe.each(SCREENS)('the rules tab at $width × $height', (screen_) => {
     }
   }, 120_000)
 
-  it('scrolls in one place, never in a box inside another box', async () => {
+  it('scrolls the book and the column apart, never in a box inside another box', async () => {
     const read: Record<string, Scrolling> = {}
     for (const state of STATES)
       read[state] = await measure(screen_, state, (page) =>
@@ -156,13 +156,16 @@ describe.each(SCREENS)('the rules tab at $width × $height', (screen_) => {
           return { areas: scrolling.length, nested: scrolling.filter((el) => scrolling.some((other) => other !== el && other.contains(el))).map((el) => el.className) }
         }),
       )
-    // One scrolling area at most, and never one inside another. It is the measurement prototype 8
-    // was decided on: A had the page's and the dialog's at 1024 and 1280, so the part that has to
-    // be read carefully lay below a fold. How much there is to scroll depends on how tall the
-    // window is, so what is claimed is the count and never that there is something to scroll.
+    // Never one inside another, which is the measurement prototype 8 was decided on: A had the
+    // page's and the dialog's at 1024 and 1280, so the part that has to be read carefully lay
+    // below a fold inside a fold. The tab used to be allowed one area at all; since #210 it has
+    // two, the book's and the column's, side by side. How much there is to scroll depends on how
+    // tall the window is and how long this fixture's book happens to be, so what is claimed here
+    // is the ceiling and never that there is something to scroll — `rules-column` is where a book
+    // long enough to make both of them scroll is built and counted.
     const said = JSON.stringify(read)
     expect(Object.fromEntries(STATES.map((state) => [state, (read[state] as Scrolling).nested])), said).toEqual({ empty: [], written: [], proposal: [] })
-    for (const state of STATES) expect((read[state] as Scrolling).areas, `${state} of ${said}`).toBeLessThan(2)
+    for (const state of STATES) expect((read[state] as Scrolling).areas, `${state} of ${said}`).toBeLessThan(3)
   }, 120_000)
 })
 

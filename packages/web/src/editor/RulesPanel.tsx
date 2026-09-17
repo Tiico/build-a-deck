@@ -206,80 +206,86 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
           {...(plan ? { marks: plan.sections } : {})}
           {...(writing ? { onAdd: addSection } : proposal || rules ? {} : { proposed: true })}
         />
-        <article className="byd-rulebook" {...(writing ? { 'data-rulebook': true } : { 'data-proposal': true })}>
-          <h1>{out.title}</h1>
-          {out.blocks.map((b, i) => {
-            const source = shown.blocks.find((x) => x.id === b.id)
-            const planned = marks.get(b.id)
-            // What is happening to this block, as words in the page and in the order they are read.
-            // A strike-through is a decoration and a colour is a colour; neither of them reaches a
-            // screen reader, and this is a report that has to be read carefully (L12).
-            //
-            // Once per section and not once per block. A section that is going is a heading and the
-            // paragraphs under it, and saying it four times is saying it worse; but three sections
-            // going one after another are three losses, and a reader told once about three of them
-            // has also been told worse. So the word stands wherever a section opens, and wherever a
-            // run of one mark begins, and nowhere else. The setup says so on its own account,
-            // because that it survives is the one thing about this import a reader could not
-            // otherwise guess (B5).
-            const opensASection = b.kind === 'heading' && b.level === 1
-            const saysMark =
-              planned !== undefined &&
-              (planned.block.kind === 'setup' ? true : planned.mark !== 'kept' && (opensASection || marks.get(out.blocks[i - 1]?.id ?? '')?.mark !== planned.mark))
-            return (
-              <div
-                key={b.id}
-                className="byd-rules-block"
-                data-block={b.id}
-                data-mark={planned?.mark}
-                data-open={editing === b.id ? 'true' : undefined}
-                {...(found === b.id ? { 'data-found': 'true', ref: foundHere } : {})}
-              >
-                {/* The picture the column took her to says so in a word of the tool's own, never in
-                    a ring drawn round it: a decoration is not an answer (L12). It is not a
-                    `figcaption`, because a caption is the designer's line and this is not. */}
-                {found === b.id && <span className="byd-rules-found">{t('rules.image.found')}</span>}
-                {planned && saysMark && (
-                  <span className="byd-rules-mark">{t(planned.block.kind === 'setup' ? 'rules.mark.setup' : (`rules.mark.${planned.mark}` as Key))}</span>
-                )}
-                {editing === b.id && source && writing ? (
-                  <Editing
-                    block={source}
-                    names={names}
-                    assetBase={assetBase}
-                    onPatch={(next, gesture) => patch(b.id, next, gesture)}
-                    onClose={() => setEditing(null)}
-                    onRemove={() => remove(b.id)}
-                  />
-                ) : writing ? (
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => open(b.id)}
-                    onKeyDown={(e) => {
-                      // A `role="button"` promises both keys, and Space promises not to scroll the
-                      // page out from under the paragraph it just opened (L12).
-                      if (e.key !== 'Enter' && e.key !== ' ') return
-                      e.preventDefault()
-                      open(b.id)
-                    }}
-                  >
+        {/* The book is read in an area of its own, beside the column's and never inside it (#210).
+            Before this the pair shared the tab's single scrolling area and the column hung in it,
+            so at the length a rulebook really has its last rows could be read only once the book
+            had been scrolled to the bottom — the map waiting on the territory. */}
+        <div className="byd-rules-reading">
+          <article className="byd-rulebook" {...(writing ? { 'data-rulebook': true } : { 'data-proposal': true })}>
+            <h1>{out.title}</h1>
+            {out.blocks.map((b, i) => {
+              const source = shown.blocks.find((x) => x.id === b.id)
+              const planned = marks.get(b.id)
+              // What is happening to this block, as words in the page and in the order they are read.
+              // A strike-through is a decoration and a colour is a colour; neither of them reaches a
+              // screen reader, and this is a report that has to be read carefully (L12).
+              //
+              // Once per section and not once per block. A section that is going is a heading and the
+              // paragraphs under it, and saying it four times is saying it worse; but three sections
+              // going one after another are three losses, and a reader told once about three of them
+              // has also been told worse. So the word stands wherever a section opens, and wherever a
+              // run of one mark begins, and nowhere else. The setup says so on its own account,
+              // because that it survives is the one thing about this import a reader could not
+              // otherwise guess (B5).
+              const opensASection = b.kind === 'heading' && b.level === 1
+              const saysMark =
+                planned !== undefined &&
+                (planned.block.kind === 'setup' ? true : planned.mark !== 'kept' && (opensASection || marks.get(out.blocks[i - 1]?.id ?? '')?.mark !== planned.mark))
+              return (
+                <div
+                  key={b.id}
+                  className="byd-rules-block"
+                  data-block={b.id}
+                  data-mark={planned?.mark}
+                  data-open={editing === b.id ? 'true' : undefined}
+                  {...(found === b.id ? { 'data-found': 'true', ref: foundHere } : {})}
+                >
+                  {/* The picture the column took her to says so in a word of the tool's own, never in
+                      a ring drawn round it: a decoration is not an answer (L12). It is not a
+                      `figcaption`, because a caption is the designer's line and this is not. */}
+                  {found === b.id && <span className="byd-rules-found">{t('rules.image.found')}</span>}
+                  {planned && saysMark && (
+                    <span className="byd-rules-mark">{t(planned.block.kind === 'setup' ? 'rules.mark.setup' : (`rules.mark.${planned.mark}` as Key))}</span>
+                  )}
+                  {editing === b.id && source && writing ? (
+                    <Editing
+                      block={source}
+                      names={names}
+                      assetBase={assetBase}
+                      onPatch={(next, gesture) => patch(b.id, next, gesture)}
+                      onClose={() => setEditing(null)}
+                      onRemove={() => remove(b.id)}
+                    />
+                  ) : writing ? (
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => open(b.id)}
+                      onKeyDown={(e) => {
+                        // A `role="button"` promises both keys, and Space promises not to scroll the
+                        // page out from under the paragraph it just opened (L12).
+                        if (e.key !== 'Enter' && e.key !== ' ') return
+                        e.preventDefault()
+                        open(b.id)
+                      }}
+                    >
+                      <Block block={b} source={source} names={names} assetBase={assetBase} />
+                    </div>
+                  ) : planned?.runs ? (
+                    <Rewritten runs={planned.runs} names={names} />
+                  ) : (
                     <Block block={b} source={source} names={names} assetBase={assetBase} />
-                  </div>
-                ) : planned?.runs ? (
-                  <Rewritten runs={planned.runs} names={names} />
-                ) : (
-                  <Block block={b} source={source} names={names} assetBase={assetBase} />
-                )}
-                {writing && (
-                  <button type="button" className="byd-rules-add" aria-label={t('rules.addAfter', { id: b.id })} onClick={() => addAfter(b.id)}>
-                    ＋
-                  </button>
-                )}
-              </div>
-            )
-          })}
-        </article>
+                  )}
+                  {writing && (
+                    <button type="button" className="byd-rules-add" aria-label={t('rules.addAfter', { id: b.id })} onClick={() => addAfter(b.id)}>
+                      ＋
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </article>
+        </div>
       </div>
     </div>
   )
