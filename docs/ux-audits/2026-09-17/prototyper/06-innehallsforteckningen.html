@@ -13,7 +13,8 @@
      Boken är realistisk och inte fixturens: 22 avsnitt, 32 underrubriker. */
   .rules { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: var(--gutter); gap: var(--s3); }
   .spread { flex: 1 1 auto; min-height: 0; overflow: auto; display: flex; align-items: flex-start; justify-content: center; gap: var(--s5); }
-  .bookwrap { flex: 1 1 auto; min-width: 0; display: flex; justify-content: center; }
+  /* Uppslaget centreras som par, precis som i editorn: spalten och boken hör ihop. */
+  .bookwrap { flex: 0 1 auto; min-width: 0; display: flex; justify-content: center; }
 
   /* Spalten. 200 px, fäst upptill, precis som i dag. */
   .toc { position: sticky; top: 0; flex: 0 0 200px; }
@@ -38,7 +39,7 @@
   .book p { margin: 0 0 10px; }
 
   /* Spalten med egen skrollyta: två ytor sida vid sida, ingen inuti den andra. */
-  .rules[data-column='egen'] .spread { overflow: hidden; display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: var(--s5); align-items: stretch; }
+  .rules[data-column='egen'] .spread { overflow: hidden; display: grid; grid-template-columns: 200px auto; justify-content: center; gap: var(--s5); align-items: stretch; }
   .rules[data-column='egen'] .toc { position: static; height: 100%; min-height: 0; overflow: auto; scrollbar-width: thin; }
   .rules[data-column='egen'] .bookwrap { height: 100%; min-height: 0; overflow: auto; scrollbar-width: thin; align-items: flex-start; }
 
@@ -46,7 +47,8 @@
   .bar .h { flex: none; }
   .toggle { display: flex; align-items: center; gap: 6px; color: var(--quiet-2); font-size: 12px; min-height: 34px; }
   .switch button { padding: 0 10px; }
-  .measure { font-size: 12px; }
+  /* Måttet står på egen rad så att uppslagets höjd är densamma i alla varianter. */
+  .measure { flex: 1 1 100%; font-size: 12px; }
   .measure b { color: #fff; font-weight: 700; }
   .measure .bad { color: var(--warn); }
   .measure .ok { color: var(--good); }
@@ -75,7 +77,6 @@
           <button id="v-c" aria-pressed="false">C · Indraget, där du läser</button>
         </span>
         <label class="toggle"><input type="checkbox" id="egen"> Egen skrollyta för spalten</label>
-        <span class="spacer"></span>
         <span class="measure" id="measure"></span>
       </div>
 
@@ -217,9 +218,9 @@ function mat() {
     '<b>' + BOK.length + ' avsnitt · ' + under + ' underrubriker</b> · ' +
     rader + ' rader · spalten <b>' + spalt + ' px</b> i en ' + yta + ' px yta · ' +
     (over > 0
-      ? '<span class="bad">' + over + ' px utanför' + (rules.dataset.column === 'egen' ? ' (skrollas)' : ' (onåbara)') + '</span>'
+      ? '<span class="bad">' + over + ' px utanför' + (rules.dataset.column === 'egen' ? ' (nås i spalten)' : ' (onåbara)') + '</span>'
       : '<span class="ok">ryms</span>') +
-    ' · ' + ytor.length + ' skrollyta' + (ytor.length === 1 ? '' : 'or') +
+    ' · ' + ytor.length + ' ' + (ytor.length === 1 ? 'skrollyta' : 'skrollytor') +
     (nastlad ? ' <span class="bad">(nästlade)</span>' : '')
 }
 
