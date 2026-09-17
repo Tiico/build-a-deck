@@ -123,6 +123,25 @@
   border-color: var(--byd-secondary-line);
 }
 
+/* One of a set, at rest (#232). The language said at length what a *chosen* thing looks like and
+   nothing whatever about the other four in the row, so they fell through to the browser's own
+   button — grey, square, platform-native, and nothing like anything else in the tool. Measured in
+   Chromium the editor's and the phone's came out `2px solid rgb(0,0,0)`.
+
+   A thing that is merely on offer is a quiet outlined control, which the language already has a
+   word for: it takes the surface's own secondary line and so stays that surface's colour. Never a
+   fill — that belongs to the thing to press — and never the secondary's weight either, because
+   these are a row of equals and not a row of second actions. */
+:is(.byd-account, .byd-join, .byd-table, .byd-wizard, .byd-editor, .byd-player, .byd-online, .byd-observer, .byd-survey) .byd-choice {
+  background: transparent;
+  border: 1px solid var(--byd-secondary-line);
+  border-radius: 6px;
+  color: var(--byd-secondary-ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 /* Chosen. One shape for all of it — a quiet pill with a 3 px bar under it, in whatever accent the
    surface owns — because the tool drew "this one is on" five different ways, and one of those
    borrowed another surface's colour: the table filter's chip was painted `#7dd3a0`, the account's

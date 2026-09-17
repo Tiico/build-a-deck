@@ -1045,6 +1045,56 @@ describe('what the whole tool draws as chosen', () => {
   }, 180_000)
 })
 
+// A control that is one of a set, when it is not the one that is on (#232).
+//
+// The language says at length what a chosen thing looks like — a quiet pill with a 3 px bar under
+// it, in whatever accent the surface owns — and said nothing whatever about the other four in the
+// row. So they fell through to the browser's own button: grey, platform-native, square, and
+// nothing like anything else in the tool. The beställare met them as the card wall's grouping
+// buttons, but the class is worn in nine other places, and all of them looked the same way wrong.
+//
+// An unchosen choice is a quiet outlined control, which is a thing the language already has words
+// for, so it takes the surface's own secondary line and stays that surface's colour.
+const CHOICE_ROOTS = [
+  { what: 'the wizard', root: 'byd-wizard', css: 'src/wizard/wizard.css' },
+  { what: 'the editor', root: 'byd-editor', css: 'src/editor/editor.css' },
+  { what: 'the phone', root: 'byd-player', css: 'src/player/player.css' },
+] as const
+
+describe.each(CHOICE_ROOTS)('one of a set, not chosen, on $what', ({ root, css }) => {
+  const row = {
+    'ett val bland flera': `<div class="${root}"><div role="group"><button class="byd-choice" aria-pressed="true">Vald</button><button class="byd-choice" aria-pressed="false">Inte vald</button><button>Vad som helst</button></div></div>`,
+  }
+  const drawing = (page: Page) =>
+    page.evaluate((where) => {
+      const group = document.querySelector(where)!.querySelector('[role="group"]')!
+      const probe = group.appendChild(document.createElement('span'))
+      probe.style.cssText = 'color: var(--byd-secondary-line)'
+      const line = getComputedStyle(probe).color
+      probe.remove()
+      const of = (selector: string) => {
+        const style = getComputedStyle(group.querySelector<HTMLElement>(selector)!)
+        return { border: `${style.borderTopWidth} of ${style.borderTopColor}`, radius: style.borderTopLeftRadius, fill: style.backgroundColor }
+      }
+      return { unchosen: of('[aria-pressed="false"]'), plain: of('button:not(.byd-choice)'), chosen: of('[aria-pressed="true"]'), line }
+    }, `.${root}`)
+
+  it('is a quiet outline in the surface’s own colour, and not the browser’s idea of a button', async () => {
+    const { unchosen, plain, chosen, line } = (await inChromium(read(css), 1280, row, drawing))['ett val bland flera']!
+    // The line is read off the surface's token rather than written down, so this stays true when
+    // the colour changes. What it must never be is whatever the platform hands an unclaimed
+    // button, which is what the control beside it is there to show.
+    expect(unchosen.border).toBe(`1px of ${line}`)
+    expect(unchosen.border).not.toBe(plain.border)
+    // Never a fill: a thing that is merely on offer must not read as the thing to press, and the
+    // chosen one in the same row is not a fill either.
+    expect(unchosen.fill).toMatch(/,\s*0\)$/)
+    expect(chosen.fill).toMatch(/,\s*0\)$/)
+    // And a shape, rather than the square corners a bare button comes with.
+    expect(parseFloat(unchosen.radius)).toBeGreaterThan(0)
+  }, 90_000)
+})
+
 // A role has to out-rank the surface rule it lands inside, on every surface and not just on the
 // one where the fault happened to be noticed. `.byd-join-observe` was (0,1,0) against
 // `.byd-join form button` at (0,1,2) and lost silently — background, border, ink and size, all
