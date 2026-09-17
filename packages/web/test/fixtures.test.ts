@@ -157,11 +157,11 @@ describe('the fixture saying when it answers (#149)', () => {
 
 // The pattern the decision on #149 is about, held in place.
 //
-// It is a pattern and not a line: `editor-viewport.test.tsx` builds five surfaces, each of them
+// It is a pattern and not a line: `editor-viewport.test.tsx` builds six surfaces, each of them
 // by standing the editor up against the fixture, and every one of them used to take a word drawn
 // on the screen as its proof that the server was there. One of them was mended and the other four
-// would have gone on falling, so what is asked here is of all five at once — and of the sixth,
-// the day somebody writes it.
+// would have gone on falling, so what is asked here is of all of them at once — including the one
+// #184 added, which is the sixth this note was written waiting for.
 //
 // Only that file. The same wait is on the fixture and is every file's to use, and thirty other
 // suites still learn that the server is up the old way; converting them is its own change and its
@@ -174,7 +174,10 @@ describe('the surfaces `editor-viewport.test.tsx` builds (#149)', () => {
   it('is read at all, so this guard cannot pass by matching nothing', () => {
     // Counted, because a guard that has stopped recognising the thing it guards and a file that is
     // wholly in order say the same thing from the outside.
-    expect(built.length).toBe(5)
+    //
+    // Six since #184: the written rulebook joined the sweeps, which is the sixth surface the note
+    // above was waiting for. It asks the fixture the same way the other five do.
+    expect(built.length).toBe(6)
   })
 
   it('asks the fixture whether the server answers before it waits for anything on a screen', () => {

@@ -1733,8 +1733,16 @@
 .byd-rules-picker > span { color: var(--byd-editor-quiet); font: 10px system-ui; text-transform: uppercase; letter-spacing: 1px; }
 .byd-rules-picker button { border: 1px solid #2f333d; border-radius: 7px; padding: 4px 8px; background: #1b1d23; color: #dce3f2; font: 11px system-ui; cursor: pointer; }
 .byd-rules-remove { margin-left: auto; color: #ff9a9a !important; }
-.byd-rules-add { position: absolute; right: -34px; top: 2px; width: 24px; height: 24px; padding: 0; border: 1px solid #cbbfa8; border-radius: 7px; background: #ece5d8; color: #6b6255; cursor: pointer; opacity: 0; }
-.byd-rules-block:hover .byd-rules-add, .byd-rules-add:focus-visible { opacity: 1; }
+/* The way to add a block after this one. It used to be painted only while a pointer rested over
+   its block, which is no way at all for a thumb — a screen with no hover to give had a control it
+   could only hit by luck — and for a keyboard it was `:focus-visible` painting back what the rest
+   of the rule had taken away (#184, and #144 before it on the canvas). It is simply drawn now, in
+   the book's own quiet colours, which is what it should have been.
+
+   The `width` and `height` here are the drawn box and not the target: every button in the editor
+   stands on `--byd-tap` through the floor declared once at the top of this file, which is why this
+   one measures 44 across however small a square it asks for. */
+.byd-rules-add { position: absolute; right: -34px; top: 2px; width: 24px; height: 24px; padding: 0; border: 1px solid #cbbfa8; border-radius: 7px; background: #ece5d8; color: #6b6255; cursor: pointer; }
 
 /* The way to an icon (#33): the brace made visible in the cell being worked in. Which cell that is
    is React's to know, not the stylesheet's — a handle hidden by CSS is still a stop in the tab
