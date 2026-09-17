@@ -8,6 +8,7 @@ import { buildScene } from './scene.js'
 import { activeBounds, cameraOf, frameRect, pad } from '../src/table/camera.js'
 import { DEFAULT_TIMING } from '../src/status/connection.js'
 import { RING_MARGIN } from '../src/table/ring.js'
+import { CARD_MM } from '../src/table/drop.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -359,15 +360,43 @@ describe('direct manipulation (K1, K2, C)', () => {
     expect(onAct).toHaveBeenLastCalledWith([{ v: 'movePile', pile: 'discard', to: 'table', x: 300, y: 100 }])
   })
 
-  it('dragging the top card off a pile drops it where it is released', () => {
+  it('draws the card in the hand where it will land, and not half a card off it (#223)', () => {
+    const { view } = buildScene()
+    const snapshot = view(null)
+    const onAct = vi.fn()
+    render(<TableRenderer view={snapshot} mode="tv" scale={1} onAct={onAct} />)
+    const top = document.querySelector('[data-zone="draw"] .byd-pile-top')!
+    // Taken a third into the card rather than at its middle, so a ghost centred on the pointer and
+    // a ghost holding the grip cannot come out at the same place.
+    const grab = { x: -200 - CARD_MM.w / 2 + CARD_MM.w / 3, y: 0 - CARD_MM.h / 2 + CARD_MM.h / 3 }
+    fireEvent.pointerDown(top, client(grab.x, grab.y))
+    fireEvent.pointerMove(top, client(-100, 100))
+    const ghost = document.querySelector('[data-ghost]') as HTMLElement
+    expect(ghost).toBeTruthy()
+    // What the hand is holding stands where the card is about to be put down: the drop's own
+    // answer, read off the intent the very same gesture sends.
+    fireEvent.pointerUp(top, client(-100, 100))
+    const [[[landed]]] = onAct.mock.calls as [[[Extract<Intent, { v: 'split' }>]]]
+    // The ghost is placed in the felt's own pixels and the intent names a point on the table, so
+    // the floor's corner is what makes the two comparable; at scale 1 a millimetre is a pixel.
+    const floor = snapshot.zones.find((z) => z.id === snapshot.floor)!.geometry
+    expect(parseFloat(ghost.style.left)).toBeCloseTo(landed.x! - floor.x, 6)
+    expect(parseFloat(ghost.style.top)).toBeCloseTo(landed.y! - floor.y, 6)
+  })
+
+  it('dragging the top card off a pile drops it holding the point it was taken by', () => {
     const { view } = buildScene()
     const onAct = vi.fn()
     render(<TableRenderer view={view(null)} mode="tv" scale={1} onAct={onAct} />)
     const top = document.querySelector('[data-zone="draw"] .byd-pile-top')!
+    // Taken at the draw pile's own middle, which is where its top card's middle is drawn, and
+    // carried 100 mm along and 100 mm down. So the card's middle lands there and its corner half
+    // a card short of it (#223) — cornered at the pointer, as this was, the card jumped half its
+    // own size up and to the left the instant it came off the pile.
     fireEvent.pointerDown(top, client(-200, 0))
     fireEvent.pointerMove(top, client(-100, 100))
     fireEvent.pointerUp(top, client(-100, 100))
-    expect(onAct).toHaveBeenLastCalledWith([{ v: 'split', pile: 'draw', at: 1, x: -100, y: 100 }])
+    expect(onAct).toHaveBeenLastCalledWith([{ v: 'split', pile: 'draw', at: 1, x: -100 - CARD_MM.w / 2, y: 100 - CARD_MM.h / 2 }])
   })
 
   it('without onAct the table only shows: nothing moves and no ring opens', () => {

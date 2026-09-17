@@ -125,9 +125,21 @@ export function dropIntents(view: Snapshot, d: Drag, mode: TableMode): Intent[] 
     if (hit?.kind === 'card') return [{ v: 'stack', component: { top: pile.id }, onto: hit.id }]
     const dest = at(d.at)
     if (zones.get(dest.zone)?.kind === 'hand') return [{ v: 'split', pile: pile.id, at: 1, to: dest.zone }]
-    // Held by where it was let go of, it settles into a card cornered there (K1) — on the felt (#66).
-    const s = keptOnFelt(view, dest.zone, { x: dest.x, y: dest.y, ...CARD_MM })
-    return [{ v: 'split', pile: pile.id, at: 1, x: d.at.x + s.x, y: d.at.y + s.y }]
+    // It settles into a card (K1), and it keeps the point it was picked up by — exactly as a loose
+    // card does a few lines below (#223). Cornered at the pointer instead, as this was, the card
+    // jumped to the hand's top-left the moment it came off the pile; and since taking the top card
+    // off a pile is the commonest drag on a felt, it read as though every card did it.
+    //
+    // The card it is about is the pile's top, which is drawn centred on the pile's geometry — the
+    // same reading `besidePile` makes when it says a pile travels by its centre and a lone card
+    // settles by its corner. Which zone it lands in is still the pointer's to decide (#74); only
+    // where in that zone it comes to rest is the grip's.
+    const was = { x: pile.geometry.x - CARD_MM.w / 2, y: pile.geometry.y - CARD_MM.h / 2 }
+    const corner = { x: was.x + d.at.x - d.grab.x, y: was.y + d.at.y - d.grab.y }
+    // On the felt and not past its edge (#66), asked in the zone's own coordinates — which is
+    // where the pointer's own place in it stands, shifted by the grip.
+    const s = keptOnFelt(view, dest.zone, { x: dest.x + corner.x - d.at.x, y: dest.y + corner.y - d.at.y, ...CARD_MM })
+    return [{ v: 'split', pile: pile.id, at: 1, x: corner.x + s.x, y: corner.y + s.y }]
   }
   const moving = new Set(d.ids)
   const hit = hitAt(view, d.at, moving, null)
