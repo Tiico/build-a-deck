@@ -143,6 +143,7 @@ describe('the palette the Bord tab is drawn in', () => {
     { what: 'the version a table runs', ink: '--byd-tables-ink', on: '--byd-tables-bg' },
     { what: 'who is seated and when it last moved', ink: '--byd-tables-quiet', on: '--byd-tables-bg' },
     { what: 'the mark that the project has left the table behind (C7)', ink: '--byd-tables-stale-ink', on: '--byd-tables-bg' },
+    { what: 'the word that says a table is being played (#176)', ink: '--byd-tables-live-ink', on: '--byd-tables-bg' },
     { what: 'a way into the table', ink: '--byd-tables-way-ink', on: '--byd-tables-way-bg' },
     { what: 'the question an ending asks first (C9)', ink: '--byd-tables-ask-ink', on: '--byd-tables-ask-bg' },
   ])('gives $what AA contrast', ({ ink, on }) => {

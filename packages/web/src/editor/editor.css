@@ -1588,6 +1588,8 @@
   /* A table the project has left behind (C7) is the one thing in the list that asks for a
      decision, so it is the one thing drawn in a colour that is not grey. */
   --byd-tables-stale-ink: #ffd98a;
+  /* A table somebody is playing, said in a colour as well as in a word. */
+  --byd-tables-live-ink: #8fd6a6;
   --byd-tables-way-bg: #242938;
   --byd-tables-way-ink: #e6ecfa;
   /* Ending a table cannot be looked at afterwards; the question wears the same colours as the
@@ -1595,43 +1597,139 @@
   --byd-tables-ask-bg: #3d2632;
   --byd-tables-ask-ink: #ffe4ea;
 }
-.byd-tables { overflow: auto; display: grid; gap: 16px; align-content: start; }
-.byd-tables-lead, .byd-tables-empty { margin: 0; color: var(--byd-tables-quiet); max-width: 62ch; }
-.byd-tables > ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
-.byd-table-row { display: grid; grid-template-columns: 160px 1fr; gap: 16px; padding: 12px; border-radius: 14px; background: var(--byd-tables-bg); border: 1px solid #2c3242; }
+.byd-tables { overflow: auto; display: grid; gap: var(--byd-s3); align-content: start; }
+.byd-tables-lead, .byd-tables-empty { margin: 0; color: var(--byd-tables-quiet); max-width: 62ch; font-size: 12px; line-height: 1.5; }
+
+/* Three groups, one under the other (#176): what is being played, what was started and never
+   touched, what is over. The first stands open under a heading; the other two are one row each
+   until they are asked for, and that row says in words what it holds and how many. */
+.byd-tables-group { display: grid; gap: var(--byd-s1); }
+.byd-tables-heading { margin: 0; padding: 0 var(--byd-s2); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-tables-quiet); }
+.byd-tables-fold {
+  display: flex;
+  align-items: center;
+  gap: var(--byd-s2);
+  width: 100%;
+  min-height: var(--byd-tap);
+  padding: 0 var(--byd-s2);
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--byd-tables-quiet);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.byd-tables-fold:hover { background: var(--byd-tables-bg); }
+.byd-tables-caret { transition: transform 120ms ease; }
+.byd-tables-fold[aria-expanded='true'] .byd-tables-caret { transform: rotate(90deg); }
+.byd-tables-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+
+/* One table, one row: the picture, the facts, one way standing ready and a menu for the rest.
+   The stack of six ways it replaces was 334 px per table, and five tables were 2 350 px. */
+.byd-table-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  gap: var(--byd-s2) var(--byd-s3);
+  padding: var(--byd-s2);
+  border-radius: 12px;
+  background: var(--byd-tables-bg);
+  border: 1px solid #2c3242;
+}
 .byd-table-row[data-stale='true'] { border-color: #4a4230; }
+/* The edge is a second telling of what the row already says in a word, never the only one (L12). */
+.byd-table-row[data-state='played'] { box-shadow: inset 3px 0 0 var(--byd-tables-live-ink); }
 /* A table whose log is locked (C9) is still worth reading, but it is not a game going on: it
    is drawn dimmer, so a glance down the list finds the live ones first. */
 .byd-table-row[data-ended='true'] .byd-tables-mini { filter: grayscale(0.8) brightness(0.65); }
-.byd-tables-mini { width: 160px; height: 96px; border-radius: 10px; overflow: hidden; background: #14161c; }
+.byd-tables-mini { width: 80px; height: 48px; border-radius: 8px; overflow: hidden; background: #14161c; }
 /* The table is drawn at full size and shrunk as a picture, so the labels shrink with it. */
-.byd-tables-mini-inner { width: 640px; height: 384px; transform: scale(0.25); transform-origin: top left; }
-.byd-tables-info { display: grid; gap: 8px; align-content: start; min-width: 0; }
-.byd-tables-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; color: var(--byd-tables-quiet); }
-.byd-tables-head strong { color: var(--byd-tables-ink); font-family: ui-monospace, monospace; }
+.byd-tables-mini-inner { width: 640px; height: 384px; transform: scale(0.125); transform-origin: top left; }
+.byd-tables-info { display: grid; gap: 2px; align-content: start; min-width: 0; }
+.byd-tables-head { display: flex; align-items: baseline; gap: var(--byd-s2); flex-wrap: wrap; margin: 0; color: var(--byd-tables-quiet); font-size: 12px; }
+.byd-tables-head strong { color: var(--byd-tables-ink); font-family: ui-monospace, monospace; font-size: 12px; }
+.byd-tables-state { color: var(--byd-tables-quiet); }
+.byd-table-row[data-state='played'] .byd-tables-state { color: var(--byd-tables-live-ink); font-weight: 700; }
 .byd-tables-stale { color: var(--byd-tables-stale-ink); font-style: normal; font-weight: 600; }
-.byd-tables-ways { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-/* No size of its own: the editor already says what a target is worth, and 32 px here was the one
-   place in it that said otherwise (`--byd-tap`, #133). */
-.byd-tables-ways a, .byd-tables-ways button {
+/* Who is at the table and when it last moved: one line each, and a name too long for the column
+   is cut rather than allowed to push the row into a third and a fourth line. */
+.byd-tables-line { margin: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--byd-tables-quiet); font-size: 12px; }
+
+/* The one way that stands ready, and the button that opens the other five. */
+.byd-tables-go { grid-column: 1 / -1; display: flex; gap: var(--byd-s1); align-items: center; }
+.byd-tables-go > a.byd-secondary, .byd-tables-ready {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: var(--byd-tap);
   display: inline-flex;
   align-items: center;
-  padding: 4px 12px;
-  border: 1px solid transparent;
+  justify-content: center;
+  padding: 0 var(--byd-s3);
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+}
+/* A way that is not to be had is still a word, not a ghost: the row says beside it why — nobody
+   has answered yet, or every seat is taken — and the word itself stays readable (L13). The line
+   is quieter than the one a way that *can* be taken is drawn with. */
+.byd-tables-ready { border: 1px dashed #3a4050; background: transparent; color: var(--byd-tables-quiet); cursor: default; }
+.byd-tables-more {
+  flex: none;
+  width: var(--byd-tap);
+  min-height: var(--byd-tap);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #3a4050;
   border-radius: 8px;
   background: var(--byd-tables-way-bg);
   color: var(--byd-tables-way-ink);
   font: inherit;
-  font-weight: 700;
-  text-decoration: none;
   cursor: pointer;
 }
-.byd-tables-ways button[data-kind='quiet'] { background: transparent; border-color: #3a4050; color: var(--byd-tables-quiet); font-weight: 400; }
-.byd-tables-note { color: var(--byd-tables-quiet); }
-.byd-tables-qr { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+/* The five other ways, over the row rather than under it: the column is 320 px wide and a menu
+   that widened it would move every row in the list. */
+.byd-tables-menu {
+  position: absolute;
+  z-index: 20;
+  right: var(--byd-s2);
+  top: calc(100% - var(--byd-s2));
+  min-width: 190px;
+  display: grid;
+  gap: 2px;
+  padding: var(--byd-s1);
+  border: 1px solid #3a4050;
+  border-radius: 12px;
+  background: var(--byd-tables-way-bg);
+  box-shadow: 0 10px 30px #0008;
+}
+.byd-tables-way {
+  display: flex;
+  align-items: center;
+  min-height: var(--byd-tap);
+  padding: 0 var(--byd-s3);
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--byd-tables-way-ink);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.byd-tables-way:hover { background: #313850; }
+/* Ending a table cannot be taken back (C9), so it is not one more way in: a line of its own, and
+   the words after it are quieter than the ways above. */
+.byd-tables-cut { height: 0; margin: var(--byd-s1) var(--byd-s2); border: 0; border-top: 1px solid #3a4050; }
+.byd-tables-way-apart { color: var(--byd-tables-quiet); font-weight: 400; }
+.byd-tables-qr { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .byd-tables-qr .byd-qr { background: #fff; border-radius: 8px; }
 .byd-tables-qr a { color: var(--byd-tables-ink); }
 .byd-tables-question {
+  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   gap: 8px;

@@ -119,18 +119,27 @@ const SHELL = `
     <div role="tabpanel" tabindex="0" data-stop="the tables panel">
       <div class="byd-tables">
         <p class="byd-tables-lead">Varje bord hör till det här spelet.</p>
-        <ul>
-          <li class="byd-table-row" data-stale="true">
-            <div class="byd-tables-mini"></div>
-            <div class="byd-tables-info">
-              <p class="byd-tables-head"><strong>rev-2</strong><em class="byd-tables-stale">ligger efter rev-3</em><span>Ada spelar</span><span>senaste drag 19:41</span></p>
-              <div class="byd-tables-ways">
-                <a class="byd-editor-primary" href="#" data-stop="the TV view">Öppna TV-vyn</a>
-                <a href="#" data-stop="the table mode">Bordsläge</a>
-                <a href="#" data-stop="playing from here">Spela härifrån</a>
-                <a href="#" data-stop="watching">Titta på</a>
-                <button aria-expanded="true" data-stop="the QR toggle">QR för telefoner</button>
-                <button data-kind="quiet" data-stop="ending the table">Avsluta bordet</button>
+        <section class="byd-tables-group" data-group="played">
+          <h3 class="byd-tables-heading">Bord som spelas</h3>
+          <ul class="byd-tables-list">
+            <li class="byd-table-row" data-state="played" data-stale="true">
+              <div class="byd-tables-mini"></div>
+              <div class="byd-tables-info">
+                <p class="byd-tables-head"><strong>rev-2</strong><span class="byd-tables-state" data-state="played">i spel</span><em class="byd-tables-stale">ligger efter rev-3</em></p>
+                <p class="byd-tables-line">Ada spelar</p>
+                <p class="byd-tables-line">senaste drag 19:41</p>
+              </div>
+              <div class="byd-tables-go">
+                <a class="byd-secondary" href="#" data-stop="playing from here">Spela härifrån</a>
+                <button class="byd-tables-more" aria-haspopup="menu" aria-expanded="true" data-stop="the row's menu">▾</button>
+                <div class="byd-tables-menu" role="menu">
+                  <a class="byd-tables-way" role="menuitem" href="#" data-stop="the TV view">Öppna TV-vyn</a>
+                  <a class="byd-tables-way" role="menuitem" href="#" data-stop="the table mode">Bordsläge</a>
+                  <a class="byd-tables-way" role="menuitem" href="#" data-stop="watching">Titta på</a>
+                  <button class="byd-tables-way" role="menuitem" aria-expanded="true" data-stop="the QR toggle">QR för telefoner</button>
+                  <hr class="byd-tables-cut" />
+                  <button class="byd-tables-way byd-tables-way-apart" role="menuitem" data-stop="ending the table">Avsluta bordet</button>
+                </div>
               </div>
               <div class="byd-tables-qr"><a href="#" data-stop="the join link">Anslutningssidan</a></div>
               <div class="byd-tables-question" role="alertdialog">
@@ -138,9 +147,12 @@ const SHELL = `
                 <button data-kind="danger" data-stop="the yes to ending">Ja, avsluta</button>
                 <button data-stop="the way out of ending">Avbryt</button>
               </div>
-            </div>
-          </li>
-        </ul>
+            </li>
+          </ul>
+        </section>
+        <section class="byd-tables-group" data-group="untouched">
+          <button class="byd-tables-fold" aria-expanded="false" data-stop="the fold over the untouched tables"><span class="byd-tables-caret">▸</span>Startade, aldrig spelade · 4</button>
+        </section>
         <button class="byd-tables-new" data-stop="the new-table button">Nytt bord från rev 3</button>
       </div>
     </div>
@@ -243,15 +255,17 @@ describe('the editor under a keyboard', () => {
       "a row's delete",
       'the add-row button',
       'the tables panel',
+      'playing from here',
+      "the row's menu",
       'the TV view',
       'the table mode',
-      'playing from here',
       'watching',
       'the QR toggle',
       'ending the table',
       'the join link',
       'the yes to ending',
       'the way out of ending',
+      'the fold over the untouched tables',
       'the new-table button',
     ])
     // A control says where the keyboard is with a ring outside itself.

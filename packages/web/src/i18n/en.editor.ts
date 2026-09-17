@@ -658,7 +658,6 @@ export const enEditor = {
   'setup.sheet.table': 'The table',
 
   'tables.loading': 'Loading tables…',
-  'tables.title': 'The game’s tables',
   'tables.lead': 'Every table belongs to this game. A table survives everyone disconnecting; it ends when it is ended, or after a day.',
   'tables.none': 'No table yet. "Update the table" starts one from the saved version.',
   'tables.menu.none': 'No table yet. "Update the table" starts one.',
@@ -687,6 +686,13 @@ export const enEditor = {
   'tables.end.of': 'End table {table}',
   'tables.end.question': 'End table {table}? The log is locked, the game cannot go on, and the survey goes out to the phones.',
   'tables.end.yes': 'Yes, end it',
+  'tables.group.played': 'Tables being played',
+  'tables.group.untouched': 'Started, never played · {n}',
+  'tables.group.ended': 'Ended tables · {n}',
+  'tables.more.of': 'More ways into table {table}',
+  'tables.ways.of': 'Ways into table {table}',
+  'tables.state.played': 'in play',
+  'tables.state.untouched': 'never played',
 
   'history.title': 'History',
   'history.close': 'Close the history',

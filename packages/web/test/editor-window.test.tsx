@@ -20,7 +20,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { chromium, type Browser } from 'playwright'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import type { ProjectDoc } from '@byd/server'
@@ -93,8 +93,9 @@ describe('the editor at 1024 × 768', () => {
         const name = tab.textContent?.trim() ?? String(i)
         fireEvent.click(tab)
         // The list of running tables arrives from the server; the rest of Bord is up at once, and
-        // it is the zone list beside the felt that this measures.
-        if (name === 'Bord') await screen.findByRole('list', { name: 'Spelets bord' })
+        // it is the zone list beside the felt that this measures. A table nobody has played is
+        // behind a fold (#176), so what is waited for is whichever of the two arrives.
+        if (name === 'Bord') await waitFor(() => expect(document.querySelector('.byd-table-row, .byd-tables-fold')).not.toBeNull())
         marked[name] = document.querySelector('.byd-editor')!.outerHTML
       }
     } finally {
