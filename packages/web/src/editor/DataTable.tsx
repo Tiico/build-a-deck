@@ -14,7 +14,7 @@ import type { Cell } from './ProjectClient.js'
 import { exportCardsCsv, importCardsCsv } from './csv.js'
 import { keepOrder, nextSort, sortRows, type SortState } from './sorting.js'
 import { deckValues, dragScroll, fitColumns, markValues, widthKind, GROUP_COL } from './columns.js'
-import { heldWidths, rememberWidths } from './widths.js'
+import { TAP_FLOOR, heldWidths, rememberWidths } from './widths.js'
 import { countLabel, discreteColumns, filterRows, isFiltering, noFilter, toggleValue, type FilterState } from './filtering.js'
 import { duplicateRows, keepRows, markRows, noSelection, removeRows, selectionLabel, setColumn, toggleRow, type Selection } from './selection.js'
 import { groupColumn, groupOfRow, ruleLabel } from './groups.js'
@@ -431,7 +431,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   const tap = (): number => {
     const box = scrollRef.current
     const said = box ? parseFloat(getComputedStyle(box).getPropertyValue('--byd-tap')) : NaN
-    return Number.isFinite(said) && said > 0 ? said : 44
+    return Number.isFinite(said) && said > 0 ? said : TAP_FLOOR
   }
   // Every width the table holds, drawn and remembered in one move, because they are one fact:
   // what is on the screen and what will be on it again next time cannot be allowed to drift.
