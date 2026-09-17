@@ -1,5 +1,6 @@
-import { useId, useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { FIELD_KINDS, suggestFieldKey, type FieldKind } from './fields.js'
+import { placedProps, usePlacement } from './placement.js'
 import { useT, type Key } from '../i18n/index.js'
 
 const KIND_WORD: Record<FieldKind, Key> = {
@@ -48,9 +49,15 @@ export function NewField({ taken, keeps = true, onCreate, onCancel }: NewFieldPr
     if (taken.includes(field)) return setRefused(t('table.field.taken', { field }))
     onCreate(field)
   }
+  // The form hangs under the table's head and is the way to make a column, so a form off the foot
+  // of the window is the very thing that falls away (#229).
+  const form = useRef<HTMLFormElement>(null)
+  const place = usePlacement(true, form)
   return (
     <form
+      ref={form}
       className="byd-newfield"
+      {...placedProps(place)}
       aria-label={t('table.field.new')}
       onSubmit={(event) => {
         event.preventDefault()

@@ -1,6 +1,7 @@
-import { useLayoutEffect, useRef } from 'react'
+import { useRef } from 'react'
 import { NewField } from './NewField.js'
 import { fieldLabel } from './fields.js'
+import { placedProps, usePlacement } from './placement.js'
 import { useT } from '../i18n/index.js'
 
 export type ColumnDoorProps = {
@@ -65,19 +66,13 @@ export function ColumnDoor({ columns, canRemove, onRemove, removeRef, asking, wi
   // depends on the deck above it, so no stylesheet knows the number: `100vh` minus a guess is a
   // guess. A layout effect, because a door painted at its natural height and corrected afterwards
   // is a door that jumps.
-  useLayoutEffect(() => {
-    const el = panel.current
-    if (!el) return
-    const fit = () => {
-      el.style.maxHeight = `${Math.max(DOOR_FLOOR, window.innerHeight - el.getBoundingClientRect().top - DOOR_AIR)}px`
-    }
-    fit()
-    window.addEventListener('resize', fit)
-    return () => window.removeEventListener('resize', fit)
-    // A column made or taken away moves the head, and the door hangs from it.
-  }, [columns.length])
+  // The door hangs under the head's last cell, and where that cell stands depends on the deck above
+  // it, so no stylesheet knows the number: `100vh` minus a guess is a guess. That reading — and the
+  // one this door did not make, which way to open at all — is `placement.ts` now, asked by every
+  // box in the editor that opens under something (#229).
+  const place = usePlacement(true, panel, { least: DOOR_FLOOR, gap: DOOR_AIR })
   return (
-    <div ref={panel} className="byd-columns" role="group" aria-label={t('table.columns')} onKeyDown={(event) => event.key === 'Escape' && onCancel()}>
+    <div ref={panel} className="byd-columns" {...placedProps(place)} role="group" aria-label={t('table.columns')} onKeyDown={(event) => event.key === 'Escape' && onCancel()}>
       <ul className="byd-columns-list">
         {columns.map((field) => (
           <li key={field} data-col={field}>

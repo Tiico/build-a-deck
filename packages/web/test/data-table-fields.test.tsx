@@ -262,19 +262,24 @@ describe('the door the head keeps for its columns (#46 on #32)', () => {
     // said the list went on. The door is the only thing that knows where it hangs — it is pinned
     // under the head's last cell, and where that cell is depends on the deck above it — so it is
     // the door that asks the window how much is left.
-    expect(panel.style.maxHeight).toBe('744px')
+    //
+    // The room comes over as a custom property since #229, because what a box does with it is the
+    // box's own business: the door takes all of it, while a slot keeps its own 40vh cap. The
+    // question and its three answers are the ones this test always asked.
+    const room = () => panel.style.getPropertyValue('--byd-place-room')
+    expect(room()).toBe('744px')
 
     // And it asks again when the window changes, because a door sized to a window that is gone is
     // a door hanging off the bottom of this one.
     Object.defineProperty(window, 'innerHeight', { value: 500, configurable: true })
     fireEvent(window, new Event('resize'))
-    expect(panel.style.maxHeight).toBe('476px')
+    expect(room()).toBe('476px')
 
     // Never so small that the door is not a door: the window can be shorter than the list is long,
     // and then the list scrolls inside it as it always did.
     Object.defineProperty(window, 'innerHeight', { value: 120, configurable: true })
     fireEvent(window, new Event('resize'))
-    expect(panel.style.maxHeight).toBe('240px')
+    expect(room()).toBe('240px')
   })
 
   it('asks the same question it always asked, and takes the column when it is answered', async () => {

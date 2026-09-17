@@ -1,7 +1,8 @@
-import { useId, useState, type ReactNode } from 'react'
+import { useId, useRef, useState, type ReactNode } from 'react'
 import type { ActionAmount, ActionStep, ActionTarget, CardQuery, ZoneAction, ZoneBeside } from '@byd/protocol'
 import type { ProjectDoc } from '@byd/server'
 import type { Zone } from '@byd/server/doc'
+import { placedProps, usePlacement } from './placement.js'
 import { queryColumns } from './queries.js'
 import { fieldsOf } from './fields.js'
 import { useT, type Key, type T } from '../i18n/index.js'
@@ -183,13 +184,18 @@ function Step({ step, columns, zones, beside, t, onChange }: { step: ActionStep;
 function Slot({ label, children }: { label: string; children(close: () => void): ReactNode }) {
   const [open, setOpen] = useState(false)
   const id = useId()
+  // The box opens where there is room for it (#229). Opened straight down, as it was, a slot near
+  // the foot of the page pushed the page into scrolling — which moves the very thing the designer
+  // had her eye on.
+  const pop = useRef<HTMLSpanElement>(null)
+  const place = usePlacement(open, pop)
   return (
     <span className="byd-slot-wrap">
       <button type="button" className="byd-slot" aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>
         {label}
       </button>
       {open && (
-        <span className="byd-slot-pop" id={id} onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}>
+        <span ref={pop} className="byd-slot-pop" id={id} {...placedProps(place)} onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}>
           {children(() => setOpen(false))}
         </span>
       )}
