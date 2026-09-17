@@ -16,7 +16,17 @@ export type RuleRun = { text: string; mark: 'kept' | 'going' | 'added' }
 export type RulePlanSection = { id: string; text: string; mark: RuleMark }
 // `doc` is the book as it would stand if the proposal were kept; `gone` is the weight of what it
 // would not hold any more, which is the part of the report the second slice never had to say.
-export type RulePlan = { blocks: RulePlanBlock[]; doc: RuleDoc; sections: RulePlanSection[]; counts: Record<RuleMark, number>; gone: { sections: number; words: number } }
+// `sections` is the book's first rank and `subsections` its second, each carrying the mark of its
+// own stretch of the book (#207). They are two lists and not one, because the report counts
+// sections and the column lists both, and a single list would make one of those two wrong.
+export type RulePlan = {
+  blocks: RulePlanBlock[]
+  doc: RuleDoc
+  sections: RulePlanSection[]
+  subsections: RulePlanSection[]
+  counts: Record<RuleMark, number>
+  gone: { sections: number; words: number }
+}
 
 export function planImport(there: RuleDoc, file: RuleDoc): RulePlan {
   const standing = sectionsOf(there)
@@ -67,6 +77,7 @@ export function planImport(there: RuleDoc, file: RuleDoc): RulePlan {
     blocks: numbered,
     doc: { title: there.title, blocks: numbered.filter((planned) => planned.mark !== 'going').map((planned) => planned.block) },
     sections: columnOf(numbered),
+    subsections: columnOf(numbered, 2),
     counts,
     gone: {
       sections: going.filter((planned) => planned.block.kind === 'heading' && planned.block.level === 1).length,
@@ -243,20 +254,32 @@ function longest(left: readonly string[], right: readonly string[]): { a: number
 // may be the one below the fold, and the reader has to be able to see it from where she is. A
 // section is as marked as the most marked thing in it: one rewritten paragraph makes it rewritten,
 // and only a section where nothing at all happened is left alone.
-function columnOf(blocks: readonly RulePlanBlock[]): RulePlanSection[] {
+//
+// Read at both ranks since #207, because the column lists both: a subheading standing under a
+// section that says «försvinner», saying nothing itself, would be the one row in the column that
+// does not tell a reader below the fold what is about to happen to it. A subheading's own stretch
+// of the book ends at the next heading of either rank, and the blocks between a section's heading
+// and its first subheading belong to the section alone.
+function columnOf(blocks: readonly RulePlanBlock[], level: 1 | 2 = 1): RulePlanSection[] {
   const sections: RulePlanSection[] = []
-  let within: RuleMark[] = []
+  // `null` is "no group is open", which at the second rank is the stretch before the first
+  // subheading of a section — blocks there belong to nothing this pass is counting.
+  let within: RuleMark[] | null = null
   const settle = () => {
     const last = sections[sections.length - 1]
-    if (!last || last.mark === 'going' || last.mark === 'added') return
+    if (!last || within === null || last.mark === 'going' || last.mark === 'added') return
     last.mark = within.every((mark) => mark === 'kept') ? 'kept' : 'changed'
   }
   for (const planned of blocks) {
-    if (planned.block.kind === 'heading' && planned.block.level === 1) {
+    const heading = planned.block.kind === 'heading' ? planned.block : null
+    if (heading && heading.level === level) {
       settle()
-      sections.push({ id: planned.block.id, text: planned.block.text, mark: planned.mark })
+      sections.push({ id: heading.id, text: heading.text, mark: planned.mark })
       within = [planned.mark]
-    } else within.push(planned.mark)
+    } else if (heading && heading.level < level) {
+      settle()
+      within = null
+    } else if (within !== null) within.push(planned.mark)
   }
   settle()
   return sections

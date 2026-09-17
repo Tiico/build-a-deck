@@ -338,6 +338,20 @@ Det ersätter #131:s "högst en skrollyta" för den här ytan, och bara för den
 Skälet är mätt på en bok av realistisk längd — 22 avsnitt och 32 underrubriker — i Chromium vid 1024, 1280, 1440 och 1920.
 Spalten var `position: sticky; top: 0` i flikens enda skrollyta och hängde alltså med boken: 9, 8, 6 respektive 2 av dess rader gick att läsa först när boken skrollats hela vägen ned, och med egen skrollyta är det 0 vid alla fyra bredderna.
 En innehållsförteckning vars sista rader kräver att man läst det den är en karta över är inte en karta, och felet fanns i dagens spalt med bara nivå 1 — det är inte en följd av formfrågan på #207, som står obesvarad och som den här ändringen inte rör.
+
+Spalten bär bokens båda nivåer, byggt 2026-09-17 (#207):
+Innehållsförteckningen listar varje avsnitt och, indraget under det, avsnittets egna underrubriker, i bokens ordning.
+Det ersätter #131:s nivå 1 allena, som valdes på en byte-budget som #186 gjorde slut på.
+Skälet är att spalten ska vara trogen boken: en underrubrik ska gå att hitta utan att först läsa sitt avsnitt, och det är vad en innehållsförteckning gör.
+Priset är mätt och accepterat: på en bok av realistisk längd — 22 avsnitt och 32 underrubriker — blir spalten 54 rader och 2 396 px i stället för 22 rader och 988 px, och vid 1440 syns 5 avsnitt utan att någon skrollar i stället för 16.
+Det priset går att betala först sedan spalten fick egen skrollyta (#210): utan den hade de 38 rader som inte ryms i ytan gått att läsa först när boken skrollats i botten.
+Alternativet att bara fälla ut det avsnitt man står i avvisades på två grunder: det kortar spalten med som mest fyra rader, alltså inte alls, och det är en lista som ändrar form medan man skrollar utan att någon rört den (#177).
+Nivån bärs aldrig av indraget: varje undergrupp är en egen lista som heter «Underrubriker i _avsnittet_», och varje underrad säger «Underrubrik:» före sin text.
+Indraget och strecket är vad ögat får, och ingenting annat läser dem (L12).
+En rad på nivå 2 står på `--byd-tap`, 44 px, som varje annan träffyta i produkten.
+Att sänka den till 28 px hade tagit drygt 500 px av spaltens höjd och avvisades ändå: tapphöjden är orelaxad på varje yta som finns, och en andra nivå i en spalt i en flik är inte där det första hålet i den regeln ska tas upp — editorn är skrivbordsförst (L12), men det är en regel om vad som får degraderas på liten skärm och inte en om vad en träffyta är.
+Importens märken sätts nu på båda nivåerna: en underrubrik under ett avsnitt som försvinner säger själv att den försvinner, och en underrubrik är lika märkt som det tyngst märkta i sin egen del av boken.
+En underrubrik som står före bokens första avsnitt listas inte, precis som förut; en importerad fil kan inte längre lämna boken utan nivå 1 (#202).
 Tangentbordet räddas av samma sak: ett tabbsteg i spalten flyttade förut hela uppslaget, och i prototypens variant C tappades fokus i tre fall av tre; nu flyttar det spalten och ingenting annat.
 Spaltens egen rubrik `Innehåll` står kvar medan raderna rullar under den, precis som väggens bandrubriker (#179): en etikett som skrollar bort är en spalt som slutar säga vad den är just när någon letar i den.
 Boken skrollar som förut och läsbredden på 68 tecken av bokens eget typsnitt är orörd.

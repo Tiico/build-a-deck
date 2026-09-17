@@ -103,7 +103,16 @@ describe('the report, which is the last thing read before the book (#131)', () =
     // And the column has something to list at all (#202). A file that spends its `#` on its own
     // title writes its sections as `##`; with the title swallowed and nothing raised, the book had
     // no first level and the column beside it was simply not drawn.
-    expect(within(screen.getByRole('navigation', { name: 'Innehåll' })).getAllByRole('link').map((a) => a.textContent)).toEqual(['En tur'])
+    //
+    // Both of the file's ranks stand in the column since #207, and the subheading says which rank
+    // it is in a word of its own — the indent under `En tur` is what the eye gets and nothing else
+    // reads it (L12).
+    const column = screen.getByRole('navigation', { name: 'Innehåll' })
+    expect(within(column).getAllByRole('link').map((a) => a.textContent)).toEqual(['En tur', 'Underrubrik: Att passa'])
+    // The subheading stands in a list named after the section it belongs to, and not merely after it.
+    expect(within(within(column).getByRole('list', { name: 'Underrubriker i En tur' })).getAllByRole('link').map((a) => a.textContent)).toEqual([
+      'Underrubrik: Att passa',
+    ])
   })
 
   it('counts what became a block, and what changed shape on the way', async () => {

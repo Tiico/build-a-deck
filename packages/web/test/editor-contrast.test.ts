@@ -242,3 +242,31 @@ describe('the palette the editor says its quiet things in', () => {
     }
   })
 })
+
+// The contents column beside the rulebook says the book in two ranks (#207), and the second one is
+// set quieter than the first so the eye can tell them apart at a glance. Quieter is where a rank
+// drawn in colour goes wrong: it is small text, there is a great deal of it — 54 rows on a book of
+// a real length — and it is the tool's own words about the designer's book, so it carries the same
+// 4.5:1 as every other sentence the editor says. A grey picked to look a shade under its section
+// landed on 4.21, which is why this is read and not eyeballed.
+describe('the two ranks of the contents column (#207)', () => {
+  it.each([
+    { what: 'a section', ink: '#9aa3b8' },
+    { what: 'a subheading', ink: token('--byd-editor-quiet') },
+  ])('gives $what AA contrast on the chrome the column is read on', ({ ink }) => {
+    expect(contrastRatio(ink, token('--byd-editor-chrome-bg'))).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('leaves the second rank a shade under the first, so the two are told apart by more than the words', () => {
+    const chrome = token('--byd-editor-chrome-bg')
+    expect(contrastRatio(token('--byd-editor-quiet'), chrome)).toBeLessThan(contrastRatio('#9aa3b8', chrome))
+  })
+
+  it('reads both of them off the stylesheet, so a rank that is repainted is repainted here too', () => {
+    // The first rank's grey is the column's own and is written out above; the second reaches for
+    // the quiet token. A stylesheet that stopped declaring either would pass the readings above on
+    // numbers that describe nothing.
+    expect(declarations(css)).toMatch(/\.byd-rules-toc a\[href\][^}]*color: #9aa3b8/)
+    expect(declarations(css)).toMatch(/\.byd-rules-toc a\[data-level='2'\][^}]*color: var\(--byd-editor-quiet\)/)
+  })
+})
