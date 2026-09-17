@@ -1,0 +1,804 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 8 — Regelboken: att importera över en skriven bok</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* Beslutet på #131 (2026-09-17) avvisade "import bara på tomläget". En import ska kunna
+     skriva över en skriven bok, och att skriva om samma fil gång på gång är ett arbetssätt
+     att stödja — inte en olycka att skydda sig mot. Det väcker fyra frågor som inte är
+     layoutfrågor, och den här prototypen ställer fyra olika svar bredvid varandra:
+
+       1. Vad rapporten säger när det redan finns en bok (vad den BEFINTLIGA boken tappar).
+       2. Om appen minns filen.
+       3. Vad som händer med uppställningen, som bara finns i appen (B5).
+       4. Om ett steg tillbaka räcker som skydd när det som försvinner är en hel bok.
+
+     Fyra varianter: A dörren, B förhandsvisningen, C källan, D versionen. Växla i krönet.
+     Slängkod. Importerar ingenting ur packages/ och är inte inkopplad någonstans. */
+
+  .rules { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+  .crown { flex: none; display: flex; align-items: center; gap: var(--s2); padding: var(--gutter) var(--gutter) var(--s2); border-bottom: 1px solid var(--line); }
+  .crown h1 { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); font-weight: 700; }
+  .crown .tablist { display: flex; gap: var(--s2); }
+  .crown button { min-height: var(--tap); border: 1px solid var(--line); border-radius: 8px; padding: 0 14px; background: var(--sunk); color: var(--quiet-2); font: inherit; font-weight: 700; font-size: 12px; cursor: pointer; }
+  .crown button[aria-selected='true'] { border-color: var(--primary-mark); color: #fff; background: var(--primary); }
+  .crown button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+
+  .body { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--s5) var(--gutter); position: relative; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+
+  .lede { margin: 0 auto var(--s5); max-width: 1180px; display: flex; gap: var(--s4); align-items: baseline; }
+  .lede b { color: #fff; font-size: 15px; white-space: nowrap; }
+  .lede span { color: var(--quiet-2); line-height: 1.6; }
+
+  /* Boken i editorns egna mått: innehållsförteckning plus en läsbredd på 68 tecken. */
+  .book { display: grid; grid-template-columns: 220px minmax(0, 1fr); border: 1px solid var(--line); border-radius: 12px; background: var(--panel); overflow: hidden; }
+  .toc { border-right: 1px solid var(--line); padding: var(--s4) var(--s3); }
+  .toc h3 { margin: 0 0 var(--s2); padding: 0 var(--s3); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .toc a { display: flex; align-items: center; gap: var(--s2); min-height: 36px; padding: 0 var(--s3); border-radius: 8px; color: var(--quiet-2); text-decoration: none; font-size: 12px; }
+  .toc a[aria-current='true'] { background: var(--card); color: #fff; }
+  .toc a i { font-style: normal; font-size: 10px; font-weight: 700; width: 1em; text-align: center; }
+  .toc a .gone { color: var(--gone); } .toc a .new { color: var(--good); } .toc a .edit { color: var(--warn); } .toc a .keep { color: var(--primary-mark); }
+  .sheet { padding: var(--s5); max-width: 68ch; }
+  .sheet h2 { margin: 0 0 var(--s4); color: #fff; font-size: 20px; }
+  .sheet h3 { margin: var(--s5) 0 var(--s2); color: #fff; font-size: 15px; }
+  .sheet h3:first-of-type { margin-top: 0; }
+  .sheet p { margin: 0 0 var(--s3); color: #cfd5e3; line-height: 1.7; }
+  .sheet ol, .sheet ul { margin: 0 0 var(--s3); padding-left: 1.4em; color: #cfd5e3; line-height: 1.7; }
+  .setup { margin: 0 0 var(--s3); border: 1px dashed #3b4358; border-radius: 10px; padding: var(--s3); display: flex; gap: var(--s2); flex-wrap: wrap; }
+  .setup i { display: block; border: 1px solid #3b4358; border-radius: 6px; padding: 6px 10px; color: var(--quiet-2); font-style: normal; font-size: 11px; }
+
+  .why { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: var(--s4); }
+  .why h3 { margin: 0 0 var(--s2); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .why p { margin: 0 0 var(--s3); color: var(--quiet-2); line-height: 1.6; }
+  .why p:last-child { margin-bottom: 0; }
+  .why b { color: #fff; }
+
+  /* De fyra svaren, lika ställda i varje variant, så de går att lägga bredvid varandra. */
+  .answers { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: var(--s4); }
+  .answers h3 { margin: 0 0 var(--s3); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .answers dl { margin: 0; display: grid; grid-template-columns: 148px minmax(0, 1fr); gap: 10px var(--s3); }
+  .answers dt { color: #fff; font-size: 12px; font-weight: 700; }
+  .answers dd { margin: 0; color: var(--quiet-2); font-size: 12px; line-height: 1.6; }
+
+  .cols { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: var(--s5); align-items: start; max-width: 1180px; margin: 0 auto; }
+  .stack { display: grid; gap: var(--s4); }
+
+  :root { --gone: #e58686; }
+
+  /* --- A: dörren, rapporten som en balansräkning ------------------------ */
+  .scrim { position: absolute; inset: 0; background: rgba(8, 10, 14, .66); display: grid; place-items: center; padding: var(--s5); }
+  .dlg { width: min(720px, 100%); max-height: calc(100vh - 168px); display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); box-shadow: 0 24px 60px rgba(0, 0, 0, .55); }
+  .dlg > header { flex: none; padding: var(--s4); border-bottom: 1px solid var(--line); }
+  .dlg h2 { margin: 0 0 6px; color: #fff; font-size: 16px; }
+  .dlg header p { margin: 0; color: var(--quiet-2); font-size: 12px; line-height: 1.6; }
+  .dlg .scroll-in { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--s4); }
+  .dlg > footer { flex: none; display: flex; gap: var(--s2); align-items: center; padding: var(--s4); border-top: 1px solid var(--line); }
+  .dlg > footer .spacer { flex: 1; }
+  .ledger { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s4); margin-bottom: var(--s4); }
+  .ledger h4 { margin: 0 0 var(--s2); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--quiet); }
+  .ledger ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  .ledger li { display: flex; gap: var(--s2); align-items: baseline; padding: 6px 8px; border-radius: 8px; background: var(--sunk); font-size: 12px; color: #cfd5e3; }
+  .ledger li span { flex: 1; }
+  .ledger li em { font-style: normal; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; }
+  .t-gone { color: var(--gone); } .t-new { color: var(--good); } .t-edit { color: var(--warn); } .t-same { color: var(--quiet); } .t-keep { color: var(--primary-mark); }
+  .loss { border: 1px solid #5a3232; border-radius: 10px; background: #251a1a; padding: var(--s3); margin-bottom: var(--s4); }
+  .loss h4 { margin: 0 0 6px; color: var(--gone); font-size: 12px; }
+  .loss p { margin: 0 0 6px; color: #e8d3d3; font-size: 12px; line-height: 1.6; }
+  .loss p:last-child { margin-bottom: 0; }
+  details.more { border-top: 1px solid var(--line-soft); padding-top: var(--s3); }
+  details.more > summary { cursor: pointer; color: var(--quiet-2); font-size: 12px; min-height: 28px; display: flex; align-items: center; }
+  details.more > summary:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; border-radius: 6px; }
+  details.more ul { margin: var(--s2) 0 0; padding-left: 1.2em; color: var(--quiet-2); font-size: 12px; line-height: 1.7; }
+  .btn.danger { background: #8c2f2f; border-color: #a33c3c; color: #fff; }
+  .after { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: var(--s4); max-width: 620px; margin: 0 auto; }
+  .after h3 { margin: 0 0 var(--s2); color: #fff; font-size: 14px; }
+  .after p { margin: 0 0 var(--s3); color: var(--quiet-2); font-size: 12px; line-height: 1.6; }
+
+  /* --- B: förhandsvisningen, skillnaden står i boken --------------------- */
+  .band { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; padding: var(--s3) var(--s4); border-bottom: 1px solid var(--line); background: #1d2436; }
+  .band b { color: #fff; font-size: 13px; }
+  .band .count { color: var(--quiet-2); font-size: 12px; }
+  .band .spacer { flex: 1; }
+  .blk { position: relative; padding-left: var(--s4); margin-bottom: var(--s4); }
+  .blk::before { content: ''; position: absolute; left: 0; top: 2px; bottom: 2px; width: 3px; border-radius: 2px; background: var(--line); }
+  .blk > .tag { display: inline-block; margin-bottom: 6px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+  .blk.gone::before { background: var(--gone); } .blk.gone .tag { color: var(--gone); }
+  .blk.gone h3, .blk.gone p, .blk.gone li { color: #6f6060; text-decoration: line-through; }
+  .blk.new::before { background: var(--good); } .blk.new .tag { color: var(--good); }
+  .blk.edit::before { background: var(--warn); } .blk.edit .tag { color: var(--warn); }
+  .blk.same::before { background: var(--line); } .blk.same .tag { color: var(--quiet); }
+  .blk.keep::before { background: var(--primary-mark); } .blk.keep .tag { color: var(--primary-mark); }
+  .blk h3 { margin: 0 0 var(--s2) !important; }
+  .blk p:last-child, .blk ul:last-child { margin-bottom: 0; }
+  del { color: #6f6060; } ins { color: var(--good); text-decoration: none; background: rgba(125, 211, 160, .12); border-radius: 3px; padding: 0 2px; }
+
+  /* --- C: källan, filen är kopplad -------------------------------------- */
+  .source { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; padding: var(--s3) var(--s4); border: 1px solid var(--line); border-radius: 12px; background: var(--sunk); }
+  .source .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); flex: none; }
+  .source .dot.off { background: var(--quiet); }
+  .source b { color: #fff; font-size: 13px; }
+  .source .meta { color: var(--quiet); font-size: 12px; }
+  .source .spacer { flex: 1; }
+  .source .btn { min-height: 36px; font-size: 12px; }
+  .pop { position: relative; }
+  .popover { position: absolute; right: 0; top: calc(100% + 8px); z-index: 3; width: min(420px, calc(100vw - 64px)); border: 1px solid var(--line); border-radius: 12px; background: var(--panel); box-shadow: 0 18px 44px rgba(0, 0, 0, .5); padding: var(--s4); }
+  .popover h4 { margin: 0 0 var(--s2); color: #fff; font-size: 13px; }
+  .popover .bal { display: flex; gap: var(--s3); flex-wrap: wrap; margin-bottom: var(--s3); font-size: 12px; }
+  .popover .bal span { display: flex; gap: 5px; align-items: baseline; }
+  .popover .bal b { font-variant-numeric: tabular-nums; }
+  .popover .row { display: flex; gap: var(--s2); margin-top: var(--s3); }
+  .twoup { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--s4); }
+  .twoup > div > h4 { margin: 0 0 var(--s2); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--quiet); }
+
+  /* --- D: versionen ------------------------------------------------------ */
+  .vlist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .vlist li { display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: var(--s3); padding: 10px; border-radius: 10px; background: var(--sunk); font-size: 12px; color: var(--quiet-2); line-height: 1.6; }
+  .vlist li[data-now='true'] { background: var(--card); color: #cfd5e3; box-shadow: inset 3px 0 0 0 var(--primary-mark); }
+  .vlist b { color: #fff; font-variant-numeric: tabular-nums; }
+  .vlist em { font-style: normal; color: #fff; }
+  .ribbon { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; padding: var(--s3) var(--s4); border: 1px solid #2f4a3a; border-radius: 12px; background: #17241d; margin-bottom: var(--s4); }
+  .ribbon b { color: #fff; font-size: 13px; }
+  .ribbon span { color: #a9c6b6; font-size: 12px; line-height: 1.6; }
+  .ribbon .spacer { flex: 1; }
+
+  /* --- Jämförelsen ------------------------------------------------------- */
+  .cmp { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .cmp th, .cmp td { text-align: left; padding: 10px; border-bottom: 1px solid var(--line-soft); vertical-align: top; line-height: 1.6; }
+  .cmp thead th { color: var(--quiet); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+  .cmp tbody th { color: #fff; font-weight: 700; white-space: nowrap; }
+  .cmp td { color: var(--quiet-2); }
+  .cmp td b { color: #fff; }
+  .mtable { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .mtable th, .mtable td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--line-soft); }
+  .mtable thead th { color: var(--quiet); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+  .mtable td { color: var(--quiet-2); font-variant-numeric: tabular-nums; }
+  .mtable td:first-child { color: #fff; font-variant-numeric: normal; }
+
+  @media (max-width: 1120px) {
+    .cols { grid-template-columns: minmax(0, 1fr); }
+    .ledger { grid-template-columns: minmax(0, 1fr); }
+    .twoup { grid-template-columns: minmax(0, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <a class="home" href="#">Mina spel</a><strong>Sal's Saloon</strong>
+    <button class="rev">rev 12</button><span class="saved">Sparat</span>
+    <nav class="tabs">
+      <button>Kortvägg</button><button>Mall</button><button>Data</button>
+      <button>Symboler</button><button aria-selected="true">Regler</button><button>Bord</button>
+    </nav>
+    <span class="spacer"></span>
+    <button class="btn">Spara</button><button class="btn primary">Uppdatera bordet</button>
+  </header>
+
+  <div class="rules">
+    <div class="crown">
+      <h1>Prototyp 8 · att importera över en skriven bok (#131)</h1>
+      <span class="spacer"></span>
+      <div class="tablist" role="tablist" aria-label="Variant av omimporten">
+        <button role="tab" id="t-a" aria-controls="p-a" aria-selected="true" tabindex="0">A · Dörren</button>
+        <button role="tab" id="t-b" aria-controls="p-b" aria-selected="false" tabindex="-1">B · Förhandsvisningen</button>
+        <button role="tab" id="t-c" aria-controls="p-c" aria-selected="false" tabindex="-1">C · Källan</button>
+        <button role="tab" id="t-d" aria-controls="p-d" aria-selected="false" tabindex="-1">D · Versionen</button>
+        <button role="tab" id="t-j" aria-controls="p-j" aria-selected="false" tabindex="-1">Jämförelse</button>
+      </div>
+    </div>
+
+    <!-- ================= A · DÖRREN ==================================== -->
+    <div class="body" role="tabpanel" id="p-a" aria-labelledby="t-a" tabindex="0">
+      <p class="lede"><b>A · Dörren</b><span>En filväljare varje gång, och bakom den en rapport som är en
+        balansräkning: boken du har i en spalt, filen i den andra, och det som bara står i boken
+        utskrivet med sin vikt i ord. Ett tryck skriver över, och Ctrl+Z tar tillbaka.</span></p>
+
+      <div class="wrap" id="a-stage">
+        <div class="book" aria-hidden="true">
+          <div class="toc">
+            <h3>Innehåll</h3>
+            <a href="#" aria-current="true">Översikt</a>
+            <a href="#">Uppställning</a>
+            <a href="#">En tur</a>
+            <a href="#">Handlingar</a>
+            <a href="#">Fusk och straff</a>
+            <a href="#">Spelet tar slut</a>
+          </div>
+          <div class="sheet">
+            <h2>Sal's Saloon</h2>
+            <h3>Översikt</h3>
+            <p>Ett spel om att bluffa vid ett bord där alla ser lika mycket. Två till fem spelare,
+              ungefär trettio minuter. Den som har mest guld när saloonen stänger vinner.</p>
+            <h3>Uppställning</h3>
+            <div class="setup"><i>Draghög</i><i>Kasthög</i><i>Bordet</i><i>Hand · Ada</i><i>Hand · Bo</i><i>Guld</i></div>
+            <p>Blanda leken och lägg den i draghögen. Var och en får fem guld.</p>
+            <h3>Fusk och straff</h3>
+            <p>Den som blir påkommen med ett kort för mycket lägger tillbaka hela handen och tar
+              ett guld ur potten som straff. Resten av rundan spelas utan honom.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="scrim" id="a-scrim">
+        <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="a-title" aria-describedby="a-sub" id="a-dialog">
+          <header>
+            <h2 id="a-title">Skriv över regelboken med regler-v4.md</h2>
+            <p id="a-sub">Boken i rev 12 har sex avsnitt. Filen har fem. Det här är vad som händer
+              med båda — läs det innan du trycker.</p>
+          </header>
+          <div class="scroll-in" id="a-scroll">
+            <div class="ledger">
+              <div>
+                <h4>Boken du har (rev 12)</h4>
+                <ul>
+                  <li><span>Översikt</span><em class="t-edit">skrivs om</em></li>
+                  <li><span>Uppställning</span><em class="t-keep">står kvar</em></li>
+                  <li><span>En tur</span><em class="t-edit">skrivs om</em></li>
+                  <li><span>Handlingar</span><em class="t-same">oförändrad</em></li>
+                  <li><span>Fusk och straff</span><em class="t-gone">försvinner</em></li>
+                  <li><span>Spelet tar slut</span><em class="t-edit">skrivs om</em></li>
+                </ul>
+              </div>
+              <div>
+                <h4>regler-v4.md</h4>
+                <ul>
+                  <li><span>Översikt</span><em class="t-edit">skriver om</em></li>
+                  <li><span>En tur</span><em class="t-edit">skriver om</em></li>
+                  <li><span>Handlingar</span><em class="t-same">lika</em></li>
+                  <li><span>Spelet tar slut</span><em class="t-edit">skriver om</em></li>
+                  <li><span>Två spelare</span><em class="t-new">ny</em></li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="loss">
+              <h4>Det här står bara i boken och finns inte i filen</h4>
+              <p><b>Fusk och straff</b> — 150 ord, skrivet här den 12 september. Avsnittet
+                försvinner ur boken när importen körs.</p>
+              <p>Sammanlagt <b>150 av bokens 990 ord</b> har ingen motsvarighet i filen.</p>
+            </div>
+
+            <div class="loss" style="border-color:#2f4a5a;background:#18222b">
+              <h4 style="color:var(--primary-mark)">Uppställningen står kvar</h4>
+              <p style="color:#c3d4e3">Uppställningsbilden är spelets egna zoner (B5) och inte text i
+                någon fil. En import kan varken göra den eller ta bort den. Texten runt den följer
+                filen som all annan text.</p>
+            </div>
+
+            <details class="more">
+              <summary>Vad filen tappar på vägen in (7 saker)</summary>
+              <ul>
+                <li>1 tabell blir text, en rad per rad</li>
+                <li>1 kodblock blir text, ordagrant</li>
+                <li>3 länkar blir sin egen text; adresserna stryks</li>
+                <li>1 bild kan ännu inte komma in (eget beslut, #173)</li>
+                <li>1 rubriknivå djupare än två viks upp till underrubrik</li>
+              </ul>
+            </details>
+          </div>
+          <footer>
+            <span style="color:var(--quiet);font-size:12px">Ctrl+Z tar tillbaka hela boken.</span>
+            <span class="spacer"></span>
+            <button class="btn quiet" id="a-cancel">Avbryt</button>
+            <button class="btn danger" id="a-go">Skriv över — 1 avsnitt försvinner</button>
+          </footer>
+        </div>
+      </div>
+
+      <div class="wrap" id="a-after" hidden>
+        <div class="after">
+          <h3>Boken kommer ur regler-v4.md</h3>
+          <p>Fem avsnitt, plus uppställningen. <b>Fusk och straff</b> är borta.</p>
+          <p style="color:var(--warn)">Ett steg tillbaka (Ctrl+Z) tar tillbaka rev 12 i sin helhet —
+            så länge det är nästa sak designern gör.</p>
+          <button class="btn" id="a-again">Visa dialogen igen</button>
+        </div>
+      </div>
+
+      <div class="cols" style="margin-top:24px">
+        <div class="answers">
+          <h3>A:s fyra svar</h3>
+          <dl>
+            <dt>Rapporten</dt><dd>Två spalter i en modal dörr. Bokens rader bär vad som händer med
+              dem; det som bara står i boken får en egen röd ruta med sin vikt i ord och sitt datum.
+              Filens egna förluster är hopfällda under den, för de är inte längre huvudsaken.</dd>
+            <dt>Minnet</dt><dd><b>Ingen.</b> Filväljare varje gång. Att importera om samma fil är
+              fyra steg: knapp, väljare, rapport, tryck.</dd>
+            <dt>Uppställningen</dt><dd>En egen rad i balansräkningen, <b>står kvar</b>, med skälet
+              utskrivet i en egen ruta.</dd>
+            <dt>Skyddet</dt><dd>Ctrl+Z, ett steg. Dialogen är skyddet: knappen säger vad den gör och
+              hur många avsnitt som försvinner.</dd>
+          </dl>
+        </div>
+        <div class="stack">
+          <div class="why">
+            <h3>Köper</h3>
+            <p>Den enda varianten där <b>hela sanningen står på ett ställe före trycket</b>, och den
+              billigaste att bygga: en dialog, en lista, inga nya begrepp. Knappen bär siffran, så
+              det går inte att trycka utan att ha sett den.</p>
+          </div>
+          <div class="why">
+            <h3>Kostar</h3>
+            <p>Den straffar arbetssättet beslutet sa att vi ska stödja. Femte gången samma fil
+              importeras är balansräkningen en vägg man lärt sig trycka förbi — och en varning man
+              trycker förbi är ingen varning.</p>
+            <p><b>Två skrollytor vid 1024.</b> Sidans och dialogens: balansräkningen får inte plats
+              i 768 px höjd, så det som ska läsas noga ligger under en vikning.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= B · FÖRHANDSVISNINGEN ========================= -->
+    <div class="body" role="tabpanel" id="p-b" aria-labelledby="t-b" tabindex="0" hidden>
+      <p class="lede"><b>B · Förhandsvisningen</b><span>Ingen dialog. Filen läses in i boken som ett
+        förslag och visas i bokens egen läsbredd: det som försvinner står överstruket där det står,
+        det nya står där det ska stå. Man läser förlusten som text, inte som en siffra.</span></p>
+
+      <div class="wrap">
+        <div class="book">
+          <div class="toc">
+            <h3>Innehåll</h3>
+            <a href="#" aria-current="true"><i class="edit">±</i>Översikt</a>
+            <a href="#"><i class="keep">•</i>Uppställning</a>
+            <a href="#"><i class="edit">±</i>En tur</a>
+            <a href="#"><i>&nbsp;</i>Handlingar</a>
+            <a href="#"><i class="gone">−</i>Fusk och straff</a>
+            <a href="#"><i class="edit">±</i>Spelet tar slut</a>
+            <a href="#"><i class="new">+</i>Två spelare</a>
+          </div>
+          <div style="min-width:0">
+            <div class="band" role="region" aria-label="Förhandsvisning av import">
+              <b>Förhandsvisning · regler-v4.md</b>
+              <span class="count">3 avsnitt skrivs om · 1 nytt · <span style="color:var(--gone)">1 försvinner (150 ord)</span> · uppställningen orörd</span>
+              <span class="spacer"></span>
+              <button class="btn quiet" style="min-height:36px" id="b-cancel">Avbryt</button>
+              <button class="btn primary" style="min-height:36px" id="b-keep">Behåll boken som den blir</button>
+            </div>
+            <div class="sheet">
+              <h2>Sal's Saloon</h2>
+
+              <div class="blk edit">
+                <span class="tag">Skrivs om</span>
+                <h3>Översikt</h3>
+                <p>Ett spel om att bluffa vid ett bord där alla ser lika mycket.
+                  <del>Två till fem spelare, ungefär trettio minuter.</del>
+                  <ins>Två till sex spelare, tjugo till fyrtio minuter.</ins>
+                  Den som har mest guld när saloonen stänger vinner.</p>
+              </div>
+
+              <div class="blk keep">
+                <span class="tag">Orörd · spelets egna zoner</span>
+                <h3>Uppställning</h3>
+                <div class="setup"><i>Draghög</i><i>Kasthög</i><i>Bordet</i><i>Hand · Ada</i><i>Hand · Bo</i><i>Guld</i></div>
+                <p>Blanda leken och lägg den i draghögen. Var och en får fem guld.</p>
+              </div>
+
+              <div class="blk gone">
+                <span class="tag">Försvinner · 150 ord</span>
+                <h3>Fusk och straff</h3>
+                <p>Den som blir påkommen med ett kort för mycket lägger tillbaka hela handen och tar
+                  ett guld ur potten som straff. Resten av rundan spelas utan honom.</p>
+              </div>
+
+              <div class="blk new">
+                <span class="tag">Ny</span>
+                <h3>Två spelare</h3>
+                <p>Med två spelare läggs fyra kort åt sidan utan att någon ser dem, och den som
+                  passar två gånger i rad förlorar ett guld.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wrap" id="b-after" hidden style="margin-top:24px">
+        <div class="after">
+          <h3>Boken kommer ur regler-v4.md</h3>
+          <p>Sex avsnitt, plus uppställningen. <b>Fusk och straff</b> är borta — och du läste det
+            innan du tryckte.</p>
+          <button class="btn" id="b-again">Visa förhandsvisningen igen</button>
+        </div>
+      </div>
+
+      <div class="cols" style="margin-top:24px">
+        <div class="answers">
+          <h3>B:s fyra svar</h3>
+          <dl>
+            <dt>Rapporten</dt><dd>Det finns ingen rapport. Boken <b>är</b> rapporten: förlusten står
+              som den text som försvinner, på den plats där den står i dag, i läsbredd. Bandet
+              räknar, innehållsförteckningen märker, och siffran är bara en sammanfattning av det
+              man redan kan se.</dd>
+            <dt>Minnet</dt><dd><b>Ingen.</b> Filväljare varje gång, som A. Men förhandsvisningen
+              ersätter dialogen, så omimporten är tre steg i stället för fyra.</dd>
+            <dt>Uppställningen</dt><dd>Ritad i förhandsvisningen med sin egen märkning,
+              <b>orörd</b>, mitt i det som ändras.</dd>
+            <dt>Skyddet</dt><dd>Förhandsvisningen själv. Ingenting skrivs förrän man tryckt, och det
+              som skrivs är det man just läste. Ctrl+Z står kvar bakom.</dd>
+          </dl>
+        </div>
+        <div class="stack">
+          <div class="why">
+            <h3>Köper</h3>
+            <p><b>Den enda varianten där "väldigt tydligt" betyder tydligt och inte högljutt.</b> En
+              siffra säger att 150 ord försvinner; den överstrukna texten säger vilka, och att det
+              var stycket om fusk som aldrig kom med i filen.</p>
+            <p>Den håller också vid upprepning: den femte omimporten visar bara sina fyra ändrade
+              block, och den som inte ändrat något ser en bok utan märken alls.</p>
+          </div>
+          <div class="why">
+            <h3>Kostar</h3>
+            <p>Boken får ett <b>läge</b> — en yta som ser ut som boken men inte är den. Det måste gå
+              att lämna, det måste synas att man är i det, och ett läge i en editor som annars
+              sparar allt direkt är en ny sorts sak att förklara.</p>
+            <p>Och det kräver en riktig skillnadsvy på stycken, inte bara på avsnitt. Diffen på
+              korttabellen finns (B4); den på text finns inte.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= C · KÄLLAN ==================================== -->
+    <div class="body" role="tabpanel" id="p-c" aria-labelledby="t-c" tabindex="0" hidden>
+      <p class="lede"><b>C · Källan</b><span>Filen kopplas en gång och blir bokens källa. Krönet
+        får en rad som säger vilken fil boken kom ur och när den lästes, och <b>Läs om</b> är ett
+        tryck. Varningen står inte i en dialog utan hela tiden i boken: det som inte finns i filen
+        är märkt redan innan någon importerar.</span></p>
+
+      <div class="wrap stack">
+        <div class="source">
+          <span class="dot" aria-hidden="true"></span>
+          <b>regler-v4.md</b>
+          <span class="meta">läst 14:02 · 4 avsnitt · kopplad i den här webbläsaren</span>
+          <span class="spacer"></span>
+          <span class="pop">
+            <button class="btn primary" id="c-reread" aria-expanded="false" aria-controls="c-pop" style="min-height:36px">Läs om</button>
+            <div class="popover" id="c-pop" role="dialog" aria-labelledby="c-pop-h" hidden>
+              <h4 id="c-pop-h">Läs om regler-v4.md</h4>
+              <div class="bal">
+                <span><b class="t-edit">3</b> skrivs om</span>
+                <span><b class="t-new">1</b> ny</span>
+                <span><b class="t-gone">1</b> försvinner</span>
+                <span><b class="t-keep">1</b> orörd</span>
+              </div>
+              <details class="more" style="border:0;padding:0">
+                <summary>Vad försvinner?</summary>
+                <ul>
+                  <li><b style="color:#fff">Fusk och straff</b> — 150 ord, skrivet här den 12 september</li>
+                  <li>Uppställningen står kvar: den kommer ur spelets zoner och finns inte i filen</li>
+                </ul>
+              </details>
+              <div class="row">
+                <button class="btn primary" style="min-height:36px">Läs om</button>
+                <button class="btn quiet" style="min-height:36px" id="c-pop-close">Avbryt</button>
+              </div>
+            </div>
+          </span>
+          <button class="btn" style="min-height:36px">Koppla loss</button>
+        </div>
+
+        <div class="book">
+          <div class="toc">
+            <h3>Innehåll</h3>
+            <a href="#" aria-current="true">Översikt</a>
+            <a href="#"><i class="keep">•</i>Uppställning</a>
+            <a href="#">En tur</a>
+            <a href="#">Handlingar</a>
+            <a href="#" title="Finns inte i regler-v4.md"><i class="gone">!</i>Fusk och straff</a>
+            <a href="#">Spelet tar slut</a>
+          </div>
+          <div class="sheet">
+            <h2>Sal's Saloon</h2>
+            <div class="blk gone" style="text-decoration:none">
+              <span class="tag">Finns inte i regler-v4.md — försvinner vid nästa omläsning</span>
+              <h3 style="color:#fff;text-decoration:none">Fusk och straff</h3>
+              <p style="color:#cfd5e3;text-decoration:none">Den som blir påkommen med ett kort för
+                mycket lägger tillbaka hela handen och tar ett guld ur potten som straff.</p>
+            </div>
+            <div class="blk keep">
+              <span class="tag">Kommer ur spelets zoner — ingen fil rör den</span>
+              <h3>Uppställning</h3>
+              <div class="setup"><i>Draghög</i><i>Kasthög</i><i>Bordet</i><i>Hand · Ada</i><i>Hand · Bo</i><i>Guld</i></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="why">
+          <h3>Vad det kostar att minnas en fil — samma flik, två webbläsare</h3>
+          <div class="twoup" style="margin-top:12px">
+            <div>
+              <h4>Pias webbläsare, där filen valdes</h4>
+              <div class="source">
+                <span class="dot" aria-hidden="true"></span>
+                <b>regler-v4.md</b><span class="meta">läst 14:02</span>
+                <span class="spacer"></span>
+                <button class="btn" style="min-height:36px">Läs om</button>
+              </div>
+            </div>
+            <div>
+              <h4>Ivars webbläsare, samma projekt (D3)</h4>
+              <div class="source">
+                <span class="dot off" aria-hidden="true"></span>
+                <b style="color:var(--quiet-2)">regler-v4.md</b><span class="meta">läst av Pia 14:02 — filen finns inte här</span>
+                <span class="spacer"></span>
+                <button class="btn" style="min-height:36px">Välj fil…</button>
+              </div>
+            </div>
+          </div>
+          <p style="margin-top:12px">Ett filgrepp lever i en webbläsare och kan inte versioneras, delas
+            eller flyttas. Namnet kan stå i dokumentet; <b>greppet</b> kan bara ligga där L4 lägger
+            en vy: i formgivarens egen webbläsare, per projekt. Ivar ser vilken fil boken kom ur och
+            när — och måste ändå välja den själv.</p>
+        </div>
+      </div>
+
+      <div class="cols" style="margin-top:24px">
+        <div class="answers">
+          <h3>C:s fyra svar</h3>
+          <dl>
+            <dt>Rapporten</dt><dd>En balans på en rad i en popover under knappen, med
+              <b>Vad försvinner?</b> att fälla ut. Den långa läsningen har flyttat ut i boken och
+              står där hela tiden i stället för i ett ögonblick.</dd>
+            <dt>Minnet</dt><dd><b>Ja, hela filen.</b> Namn och tid i dokumentet, filgreppet i
+              webbläsaren (L4). Omimport är ett tryck plus en bekräftelse. Priset står ovan.</dd>
+            <dt>Uppställningen</dt><dd>Märkt i boken permanent: <b>ingen fil rör den</b>. Frågan
+              ställs aldrig vid importen, för svaret står redan på sidan.</dd>
+            <dt>Skyddet</dt><dd>Att man vet i förväg. Den som ser <b>försvinner vid nästa
+              omläsning</b> stå bredvid sitt eget stycke flyttar det till filen, eller kopplar
+              loss. Ctrl+Z står kvar bakom.</dd>
+          </dl>
+        </div>
+        <div class="stack">
+          <div class="why">
+            <h3>Köper</h3>
+            <p><b>Den enda som faktiskt gör arbetssättet till ett arbetssätt.</b> Skriv i din editor,
+              växla till fliken, tryck en gång. Och varningen kommer i tid: innan man skrev
+              avsnittet i appen, inte efter.</p>
+          </div>
+          <div class="why">
+            <h3>Kostar</h3>
+            <p>En koppling <b>gör appen till läsare av filen</b>. Ett stycke skrivet i boken är
+              därefter alltid på lånad tid, och det är ett annat verktyg än det B7 beskriver — där
+              sidan själv är redigeraren.</p>
+            <p>Filgreppet är dessutom webbläsarens och inte projektets: Chromium har det, Safari
+              och Firefox har det inte, och det går att återkalla. En andra formgivare har det
+              aldrig.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= D · VERSIONEN ================================= -->
+    <div class="body" role="tabpanel" id="p-d" aria-labelledby="t-d" tabindex="0" hidden>
+      <p class="lede"><b>D · Versionen</b><span>En import skriver inte över någonting — den lägger en
+        ny version, namngiven efter filen, precis som varje annan redigering gör (B4). Rapporten
+        före importen behöver därför bara säga vad <i>filen</i> tappar, och det som "försvinner"
+        försvinner till en rad i historiken som står kvar för alltid.</span></p>
+
+      <div class="wrap">
+        <div class="ribbon">
+          <b>Den här boken kom ur regler-v4.md, 17 sep 14:02.</b>
+          <span>Boken du skrev för hand står kvar som <b>rev 12</b> och går att öppna, jämföra och ta tillbaka.</span>
+          <span class="spacer"></span>
+          <button class="btn" style="min-height:36px" id="d-open">Öppna rev 12</button>
+        </div>
+
+        <div class="cols">
+          <div class="book">
+            <div class="toc">
+              <h3>Innehåll</h3>
+              <a href="#" aria-current="true">Översikt</a>
+              <a href="#">Uppställning</a>
+              <a href="#">En tur</a>
+              <a href="#">Handlingar</a>
+              <a href="#">Spelet tar slut</a>
+              <a href="#">Två spelare</a>
+            </div>
+            <div class="sheet">
+              <h2>Sal's Saloon</h2>
+              <h3>Översikt</h3>
+              <p>Ett spel om att bluffa vid ett bord där alla ser lika mycket. Två till sex spelare,
+                tjugo till fyrtio minuter.</p>
+              <h3>Uppställning</h3>
+              <div class="setup"><i>Draghög</i><i>Kasthög</i><i>Bordet</i><i>Hand · Ada</i><i>Hand · Bo</i><i>Guld</i></div>
+              <p>Blanda leken och lägg den i draghögen. Var och en får fem guld.</p>
+              <h3>Två spelare</h3>
+              <p>Med två spelare läggs fyra kort åt sidan utan att någon ser dem.</p>
+            </div>
+          </div>
+
+          <div class="stack">
+            <div class="why">
+              <h3>Historiken, som den ser ut efteråt</h3>
+              <ul class="vlist">
+                <li data-now="true"><b>rev 14</b><span><em>Importerad: regler-v4.md</em><br>17 sep 14:02 · 5 avsnitt ur filen, uppställningen orörd<br><a href="#" style="color:var(--primary-mark)">Importera samma fil igen</a></span></li>
+                <li><b>rev 13</b><span>Handlingar: tre stycken skrivna<br>16 sep 09:40</span></li>
+                <li><b>rev 12</b><span><em>Boken före importen</em><br>15 sep 17:12 · 6 avsnitt, 990 ord — <b>Fusk och straff</b> finns här</span></li>
+              </ul>
+            </div>
+            <div class="answers">
+              <h3>D:s fyra svar</h3>
+              <dl>
+                <dt>Rapporten</dt><dd>Bara filens egen, som på tomläget. Balansräkningen behövs inte:
+                  ingenting i boken tas bort, den byts ut, och det den byttes ut från har en adress.</dd>
+                <dt>Minnet</dt><dd><b>Namnet, inte filen.</b> Historiken bär vad boken kom ur, och
+                  <b>Importera samma fil igen</b> öppnar väljaren siktad på den. Ingen webbläsare
+                  behöver komma ihåg något.</dd>
+                <dt>Uppställningen</dt><dd>Nämnd i versionsraden: <b>uppställningen orörd</b>.</dd>
+                <dt>Skyddet</dt><dd><b>Historiken, inte ett steg tillbaka.</b> Rev 12 står kvar när
+                  Ctrl+Z för länge sedan tagit slut — nästa vecka, efter femtio redigeringar, efter
+                  en omladdning.</dd>
+              </dl>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="cols" style="margin-top:24px">
+        <div class="why">
+          <h3>Köper</h3>
+          <p><b>Det enda svaret på fråga fyra som håller.</b> Ångra-stacken är femtio steg och lever i
+            en flik (L14). Det som försvinner här är en hel bok, och den som märker det i morgon har
+            ingen stack kvar. Historiken har den, och den finns redan.</p>
+          <p>Den gör också omimporten billig utan att minnas någon fil: fjärde gången är
+            versionslistan fyra rader som säger exakt vilken fil som gav vilken bok.</p>
+        </div>
+        <div class="why">
+          <h3>Kostar</h3>
+          <p>Den svarar inte på det beställaren faktiskt bad om. <b>"Väldigt tydligt att man blir av
+            med saker"</b> blir i D "egentligen blir du inte av med något" — sant, men inte det man
+            ville höra, och den som inte hittar historiken upplever förlusten precis lika mycket.</p>
+          <p>Och ett steg tillbaka blir tvetydigt: Ctrl+Z efter en import tar tillbaka rev 12, men
+            det ser ut som att man ångrar en version man just namngav.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= JÄMFÖRELSE ==================================== -->
+    <div class="body" role="tabpanel" id="p-j" aria-labelledby="t-j" tabindex="0" hidden>
+      <p class="lede"><b>Jämförelse</b><span>De fyra frågorna beslutet ställde, och vad varje variant
+        svarar. Ingen rad är en layoutfråga; varje rad är ett produktbeslut.</span></p>
+
+      <div class="wrap stack">
+        <div class="why">
+          <h3>Fyra frågor, fyra varianter</h3>
+          <table class="cmp">
+            <thead>
+              <tr><th scope="col">Fråga</th><th scope="col">A · Dörren</th><th scope="col">B · Förhandsvisningen</th><th scope="col">C · Källan</th><th scope="col">D · Versionen</th></tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Vad rapporten säger</th>
+                <td>Balansräkning i en modal: bok mot fil, förlusten i ord och datum.</td>
+                <td><b>Boken är rapporten.</b> Förlusten står som överstruken text där den står.</td>
+                <td>En rad i en popover, plus en permanent märkning i boken.</td>
+                <td>Bara vad filen tappar. Boken tappar inget — den byts.</td>
+              </tr>
+              <tr>
+                <th scope="row">Om appen minns filen</th>
+                <td>Nej. Väljare varje gång.</td>
+                <td>Nej. Väljare varje gång.</td>
+                <td><b>Ja, greppet.</b> Ett tryck — men bara i den webbläsaren.</td>
+                <td><b>Namnet.</b> Väljaren öppnas siktad ur historiken.</td>
+              </tr>
+              <tr>
+                <th scope="row">Uppställningen (B5)</th>
+                <td>Egen rad: står kvar.</td>
+                <td>Ritad, märkt orörd.</td>
+                <td>Märkt permanent i boken.</td>
+                <td>Nämnd i versionsraden.</td>
+              </tr>
+              <tr>
+                <th scope="row">Räcker ett steg tillbaka?</th>
+                <td>Ctrl+Z. Ett fönster, en flik, femtio steg.</td>
+                <td>Ctrl+Z — men förhandsvisningen gör att det sällan behövs.</td>
+                <td>Ctrl+Z, plus att varningen kom före skrivandet.</td>
+                <td><b>Nej — och det behövs inte.</b> Historiken är starkare och finns.</td>
+              </tr>
+              <tr>
+                <th scope="row">Steg för en omimport</th>
+                <td>4 (knapp, väljare, rapport, tryck)</td>
+                <td>3 (knapp, väljare, tryck)</td>
+                <td><b>2</b> (Läs om, tryck)</td>
+                <td>3 (rad i historiken, väljare, tryck)</td>
+              </tr>
+              <tr>
+                <th scope="row">Nytt att bygga</th>
+                <td>En dialog och en jämförelse på avsnittsnivå.</td>
+                <td>En skillnadsvy på stycken, och ett läge i boken.</td>
+                <td>Filgrepp i webbläsaren, en källrad, en permanent märkning.</td>
+                <td>En versionssort, och en rad i historiken som bär ett filnamn.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="why">
+          <h3>Mätt i Chromium — samma tre skrivbord som resten av serien</h3>
+          <table class="mtable" id="m-table">
+            <thead><tr><th scope="col">Mått</th><th scope="col">1024×768</th><th scope="col">1280×800</th><th scope="col">1440×900</th></tr></thead>
+            <tbody>
+              <tr><td>Sidoskroll på fönstret</td><td>0 px</td><td>0 px</td><td>0 px</td></tr>
+              <tr><td>Läsbredd, boken</td><td colspan="3">68 tecken vid varje bredd — spalten är <code>max-width: 68ch</code> och når den vid alla tre</td></tr>
+              <tr><td>Skrollytor, A</td><td>2 (sidan + dialogen)</td><td>1</td><td>1</td></tr>
+              <tr><td>Skrollytor, B · C · D</td><td>1</td><td>1</td><td>1</td></tr>
+            </tbody>
+          </table>
+          <p style="margin-top:12px">Siffrorna skrivs av mätskriptet och inte för hand; pixelmått på
+            text står avsiktligt inte här, eftersom CI ritar ett annat typsnitt än en Mac.</p>
+        </div>
+
+        <div class="why">
+          <h3>Vad jag skulle argumentera för</h3>
+          <p><b>B som rapport, D som skydd, och C:s namn utan C:s filgrepp.</b></p>
+          <p><b>B</b> är det enda svaret på "väldigt tydligt" som betyder tydligt. En siffra i en
+            dialog säger att 150 ord försvinner; den överstrukna texten säger vilka 150 ord, och det
+            är skillnaden mellan att ha blivit varnad och att ha förstått. Förhandsvisningen skalar
+            dessutom med arbetssättet: en omimport utan ändringar är en bok utan märken.</p>
+          <p><b>D</b> svarar på fråga fyra, som B inte gör. Ett steg tillbaka räcker inte när det som
+            försvinner är en hel bok — stacken är femtio steg och lever i en flik. Att importen blir
+            en namngiven version kostar nästan ingenting, eftersom B4 redan lägger en version per
+            sparning; det som tillkommer är <i>namnet</i> och filnamnet på raden.</p>
+          <p><b>C</b> vinner ergonomin och förlorar på vad den gör med verktyget: en kopplad fil gör
+            appen till läsare, och ett stycke skrivet i boken till något på lånad tid. Det som ska
+            lånas ur C är att appen minns <b>vilken fil boken kom ur och när</b> — men som namn i
+            dokumentet, inte som ett grepp i en webbläsare. Då är omimporten tre steg för alla,
+            inklusive den andra formgivaren, i varje webbläsare.</p>
+          <p><b>A</b> är den enda jag skulle lägga undan helt. Den gör det viktiga till en vägg man
+            lär sig trycka förbi, och den är den enda varianten som inte får plats i höjden vid
+            1024.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* Krönet är en tablist: roller, namn, piltangenter, ett tabbstopp. */
+  const tabs = [...document.querySelectorAll('[role="tab"]')]
+  const select = (tab, focus) => {
+    for (const other of tabs) {
+      const on = other === tab
+      other.setAttribute('aria-selected', String(on))
+      other.tabIndex = on ? 0 : -1
+      document.getElementById(other.getAttribute('aria-controls')).hidden = !on
+    }
+    if (focus) tab.focus()
+  }
+  for (const [i, tab] of tabs.entries()) {
+    tab.addEventListener('click', () => select(tab, false))
+    tab.addEventListener('keydown', (event) => {
+      const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0
+      if (step) { event.preventDefault(); select(tabs[(i + step + tabs.length) % tabs.length], true) }
+      if (event.key === 'Home') { event.preventDefault(); select(tabs[0], true) }
+      if (event.key === 'End') { event.preventDefault(); select(tabs[tabs.length - 1], true) }
+    })
+  }
+
+  /* A: dörren öppnas och stängs, och Esc avbryter som en dialog ska. */
+  const aScrim = document.getElementById('a-scrim'), aStage = document.getElementById('a-stage'), aAfter = document.getElementById('a-after')
+  const aShow = (open) => { aScrim.hidden = !open; aStage.hidden = !open; aAfter.hidden = open; if (open) document.getElementById('a-cancel').focus() }
+  document.getElementById('a-cancel').onclick = () => aShow(false)
+  document.getElementById('a-go').onclick = () => aShow(false)
+  document.getElementById('a-again').onclick = () => aShow(true)
+  document.getElementById('a-dialog').addEventListener('keydown', (e) => { if (e.key === 'Escape') aShow(false) })
+
+  /* B: förhandsvisningen behålls eller avbryts. */
+  const bBook = document.querySelector('#p-b .wrap'), bAfter = document.getElementById('b-after')
+  const bShow = (open) => { bBook.hidden = !open; bAfter.hidden = open }
+  document.getElementById('b-cancel').onclick = () => bShow(false)
+  document.getElementById('b-keep').onclick = () => bShow(false)
+  document.getElementById('b-again').onclick = () => bShow(true)
+
+  /* C: popoveren är en upplysning knuten till sin knapp. */
+  const cBtn = document.getElementById('c-reread'), cPop = document.getElementById('c-pop')
+  const cShow = (open) => { cPop.hidden = !open; cBtn.setAttribute('aria-expanded', String(open)); if (open) cPop.querySelector('summary').focus(); else cBtn.focus() }
+  cBtn.onclick = () => cShow(cPop.hidden)
+  document.getElementById('c-pop-close').onclick = () => cShow(false)
+  cPop.addEventListener('keydown', (e) => { if (e.key === 'Escape') cShow(false) })
+</script>
+</body>
+</html>
