@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { imagesIn, importRules } from '../src/markdown.js'
 
 const asset = `asset:${'a'.repeat(64)}`
+// What the file's own pixels were, measured where the bytes were read (#173).
+const px = { w: 1400, h: 800 }
 
 // The import (#131): a Markdown file a designer wrote somewhere else, read into the four kinds of
 // block the book has. The map is the product owner's, and the rule behind it is that nothing
@@ -158,9 +160,9 @@ describe('the import from Markdown (#131)', () => {
   })
 
   it('takes a picture in as a block of its own, pointing into the project’s own assets (#173)', () => {
-    const { doc, notes, problems } = importRules('![Bordet från ovan](bordet.png)\n\nEfter.', 'Skogens herrar', { 'bordet.png': { asset } })
+    const { doc, notes, problems } = importRules('![Bordet från ovan](bordet.png)\n\nEfter.', 'Skogens herrar', { 'bordet.png': { asset, px } })
     expect(doc.blocks).toEqual([
-      { kind: 'image', id: 'b1', asset, alt: 'Bordet från ovan' },
+      { kind: 'image', id: 'b1', asset, alt: 'Bordet från ovan', px },
       { kind: 'text', id: 'b2', text: 'Efter.' },
     ])
     expect(notes).toContainEqual({ of: 'image', n: 1 })
@@ -210,7 +212,7 @@ describe('the import from Markdown (#131)', () => {
       'draghög tom -> blanda kasthögen',
       '```',
     ].join('\n')
-    const { doc, notes } = importRules(file, 'Skogens herrar', { 'bordet.png': { asset } })
+    const { doc, notes } = importRules(file, 'Skogens herrar', { 'bordet.png': { asset, px } })
     // The file spends its `#` on its own title, so its `##` are its sections and the book's too
     // (#202): the tree stands a step up, and `###` lands where the fold would have put it anyway.
     expect(doc.blocks.map((b) => `${b.kind}${b.kind === 'heading' ? b.level : ''}`)).toEqual([
@@ -247,11 +249,21 @@ describe('a picture the file brings with it (#173)', () => {
     expect(imagesIn('![Bordet](bilder/bordet.png)\n\n![](kast.jpg "Kasthögen")\n\n![Bordet igen](bilder/bordet.png)')).toEqual(['bilder/bordet.png', 'kast.jpg'])
   })
 
+  // The picture's own pixels travel with it, because the one measurement in millimetres is worked
+  // out from them and has to be reachable without going to the network for the file again.
+  it('carries the picture’s own pixels into the block, and writes no caption at all', () => {
+    const { doc } = importRules('![Bordet](bordet.png)', 'Skogens herrar', { 'bordet.png': { asset, px: { w: 700, h: 500 } } })
+    expect(doc.blocks[0]).toEqual({ kind: 'image', id: 'b1', asset, alt: 'Bordet', px: { w: 700, h: 500 } })
+    // Markdown's alt text is the alt text and nothing else (decided 2026-09-17): an imported book
+    // has no captions at all until somebody writes them, which is the price that was accepted.
+    expect(doc.blocks[0]).not.toHaveProperty('caption')
+  })
+
   it('takes a picture without alt text in anyway, and marks it decorative (decided 2026-09-17)', () => {
-    const { doc, notes } = importRules('![](bordet.png)', 'Skogens herrar', { 'bordet.png': { asset } })
+    const { doc, notes } = importRules('![](bordet.png)', 'Skogens herrar', { 'bordet.png': { asset, px } })
     // `alt=""` is the markup for a picture a screen reader should skip. In a rulebook that is
     // almost never true, which is why the report counts them.
-    expect(doc.blocks).toEqual([{ kind: 'image', id: 'b1', asset, alt: '' }])
+    expect(doc.blocks).toEqual([{ kind: 'image', id: 'b1', asset, alt: '', px }])
     expect(notes).toContainEqual({ of: 'image', n: 1 })
     expect(notes).toContainEqual({ of: 'decorative', n: 1 })
   })
@@ -271,16 +283,16 @@ describe('a picture the file brings with it (#173)', () => {
   })
 
   it('puts a picture written inside a paragraph after the paragraph it was written in', () => {
-    const { doc } = importRules('Så här ligger bordet: ![Bordet](bordet.png) och inget annat.', 'Skogens herrar', { 'bordet.png': { asset } })
+    const { doc } = importRules('Så här ligger bordet: ![Bordet](bordet.png) och inget annat.', 'Skogens herrar', { 'bordet.png': { asset, px } })
     expect(doc.blocks).toEqual([
       { kind: 'text', id: 'b1', text: 'Så här ligger bordet: och inget annat.' },
-      { kind: 'image', id: 'b2', asset, alt: 'Bordet' },
+      { kind: 'image', id: 'b2', asset, alt: 'Bordet', px },
     ])
   })
 
   it('reads the address the file wrote, title and angle brackets and all', () => {
-    const { doc } = importRules('![Bordet](<bordet.png> "Bordet från ovan")', 'Skogens herrar', { 'bordet.png': { asset } })
-    expect(doc.blocks).toEqual([{ kind: 'image', id: 'b1', asset, alt: 'Bordet' }])
+    const { doc } = importRules('![Bordet](<bordet.png> "Bordet från ovan")', 'Skogens herrar', { 'bordet.png': { asset, px } })
+    expect(doc.blocks).toEqual([{ kind: 'image', id: 'b1', asset, alt: 'Bordet', px }])
   })
 })
 
@@ -290,16 +302,16 @@ describe('a picture the file brings with it (#173)', () => {
 describe('a file that opens with its own title and brings pictures (#173, #191)', () => {
   it('drops the title, takes the pictures, and says both in one report in one order', () => {
     const file = ['# Skogens herrar', '', 'Ett spel om skogen.', '', '![](bordet.png)', '', '# En tur', '', '![Kasthögen](kast.png)'].join('\n')
-    const { doc, notes, problems } = importRules(file, 'Vargens år', { 'bordet.png': { asset }, 'kast.png': { asset } })
+    const { doc, notes, problems } = importRules(file, 'Vargens år', { 'bordet.png': { asset, px }, 'kast.png': { asset, px } })
     // The book is called what the project is called (#191), and the pictures stand where they
     // were written, as blocks of their own (#173).
     expect(doc).toEqual({
       title: 'Vargens år',
       blocks: [
         { kind: 'text', id: 'b1', text: 'Ett spel om skogen.' },
-        { kind: 'image', id: 'b2', asset, alt: '' },
+        { kind: 'image', id: 'b2', asset, alt: '', px },
         { kind: 'heading', id: 'b3', level: 1, text: 'En tur' },
-        { kind: 'image', id: 'b4', asset, alt: 'Kasthögen' },
+        { kind: 'image', id: 'b4', asset, alt: 'Kasthögen', px },
       ],
     })
     // One list in one order, with both of the day's decisions in it: what became a block, the
@@ -319,9 +331,9 @@ describe('a file that opens with its own title and brings pictures (#173, #191)'
     // "The first line" is the first line that says something, and a picture says something. A
     // file that leads with its table shot has written content above its heading (#191).
     // And nothing was swallowed, so nothing is raised: the `##` under it is a subheading (#202).
-    const { doc, notes } = importRules('![Bordet](bordet.png)\n\n# Skogens herrar\n\n## En tur\n\nEtt spel om skogen.', 'Skogens herrar', { 'bordet.png': { asset } })
+    const { doc, notes } = importRules('![Bordet](bordet.png)\n\n# Skogens herrar\n\n## En tur\n\nEtt spel om skogen.', 'Skogens herrar', { 'bordet.png': { asset, px } })
     expect(doc.blocks).toEqual([
-      { kind: 'image', id: 'b1', asset, alt: 'Bordet' },
+      { kind: 'image', id: 'b1', asset, alt: 'Bordet', px },
       { kind: 'heading', id: 'b2', level: 1, text: 'Skogens herrar' },
       { kind: 'heading', id: 'b3', level: 2, text: 'En tur' },
       { kind: 'text', id: 'b4', text: 'Ett spel om skogen.' },

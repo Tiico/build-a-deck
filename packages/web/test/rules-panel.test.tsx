@@ -110,12 +110,12 @@ describe('the rulebook in the editor (B7)', () => {
 // the words it came in without.
 describe('a picture in the editor’s book (#173)', () => {
   const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
-  const withPicture = async (alt: string): Promise<void> => {
+  const withPicture = async (alt: string, caption?: string): Promise<void> => {
     const put = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/png' }, body: PNG })
     const { hash } = (await put.json()) as { hash: string }
     await run.projects.create(run.projectId, {
       ...projectDoc(),
-      rules: { ...rules, blocks: [...rules.blocks, { kind: 'image', id: 'i1', asset: `asset:${hash}`, alt }] },
+      rules: { ...rules, blocks: [...rules.blocks, { kind: 'image', id: 'i1', asset: `asset:${hash}`, alt, ...(caption === undefined ? {} : { caption }), px: { w: 1400, h: 800 } }] },
     })
     history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
     render(<EditorPage />)
@@ -144,6 +144,91 @@ describe('a picture in the editor’s book (#173)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
     await waitFor(async () => expect((await run.projects.load(run.projectId))?.rules?.blocks.at(-1)).toMatchObject({ kind: 'image', alt: 'Bordet från ovan' }))
+  })
+})
+
+// The caption is the second of the picture's two fields (decided 2026-09-17): the alt text is
+// written for whoever cannot see the picture, the caption for whoever can, and an imported book has
+// no captions at all until the designer writes them here.
+describe('the picture’s caption in the editor (#173)', () => {
+  const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
+  const withPicture = async (alt: string, caption?: string): Promise<void> => {
+    const put = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/png' }, body: PNG })
+    const { hash } = (await put.json()) as { hash: string }
+    await run.projects.create(run.projectId, {
+      ...projectDoc(),
+      rules: { ...rules, blocks: [...rules.blocks, { kind: 'image', id: 'i1', asset: `asset:${hash}`, alt, ...(caption === undefined ? {} : { caption }), px: { w: 1400, h: 800 } }] },
+    })
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('tab', { name: 'Regler' }))
+  }
+
+  it('reads the caption in the book, and writes it in a field of its own beside the alt text', async () => {
+    await withPicture('Bordet från ovan', 'Bordet vid tre spelare')
+    // It is in the book, because it is the reader's own line and is printed.
+    expect(await within(book()).findByText('Bordet vid tre spelare')).toBeTruthy()
+
+    fireEvent.click(book().querySelector('[data-block="i1"] [role="button"]')!)
+    const alt = await within(book()).findByLabelText('Alt-text för bilden i1')
+    const caption = await within(book()).findByLabelText('Bildtext i1')
+    // Two fields, and neither of them holds what the other says.
+    expect((alt as HTMLInputElement).value).toBe('Bordet från ovan')
+    expect((caption as HTMLInputElement).value).toBe('Bordet vid tre spelare')
+    fireEvent.change(caption, { target: { value: 'Bordet vid fyra spelare' } })
+    // And the alt text is untouched by writing it: they are two readers, not one field twice.
+    expect(within(book()).getByRole('img', { name: 'Bordet från ovan' })).toBeTruthy()
+    // Leaving the fields closes the block, exactly as leaving a paragraph does, and what stands
+    // there afterwards is the book the reader meets.
+    fireEvent.blur(caption)
+    await waitFor(() => expect(within(book()).getByText('Bordet vid fyra spelare')).toBeTruthy())
+
+    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    await waitFor(async () =>
+      expect((await run.projects.load(run.projectId))?.rules?.blocks.at(-1)).toMatchObject({ kind: 'image', alt: 'Bordet från ovan', caption: 'Bordet vid fyra spelare' }),
+    )
+  })
+})
+
+// The counting affordance in the contents' foot (the approved prototype). The import band says how
+// many pictures came in without alt text; this says the same thing a week later, when the band is
+// long gone — which is the difference between "nothing disappears silently at the import" and
+// nothing disappearing silently at all.
+describe('the pictures without alt text, counted in the contents (#173)', () => {
+  const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
+  const withPictures = async (...alts: string[]): Promise<void> => {
+    const put = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/png' }, body: PNG })
+    const { hash } = (await put.json()) as { hash: string }
+    await run.projects.create(run.projectId, {
+      ...projectDoc(),
+      rules: { ...rules, blocks: [...rules.blocks, ...alts.map((alt, i) => ({ kind: 'image' as const, id: `i${i + 1}`, asset: `asset:${hash}`, alt, px: { w: 1400, h: 800 } }))] },
+    })
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('tab', { name: 'Regler' }))
+  }
+  const contents = () => screen.getByRole('navigation', { name: 'Innehåll' })
+
+  it('counts them in the contents long after any import report is gone, goes to one, and marks it', async () => {
+    await withPictures('Bordet från ovan', '', '')
+    // No import anywhere in sight: this is the book as it stands days later.
+    const counter = await within(contents()).findByRole('button', { name: /2 · bilder utan alt-text/ })
+    fireEvent.click(counter)
+    // It goes to the first picture that says nothing, and says which one it took her to — in a
+    // word and never in a ring drawn round it, because a decoration is not an answer (L12).
+    const found = book().querySelector('[data-block="i2"]') as HTMLElement
+    await waitFor(() => expect(found.getAttribute('data-found')).toBe('true'))
+    expect(within(found).getByText('Bilden du sökte')).toBeTruthy()
+    // And it is a picture the designer can act on where she was taken: the block is open to its
+    // fields, so the mark is not a place to look at but a place to write.
+    expect(document.activeElement).toBe(found.querySelector('[role="button"]'))
+  })
+
+  it('says nothing at all when every picture in the book says something', async () => {
+    await withPictures('Bordet från ovan')
+    expect(within(contents()).queryByRole('button', { name: /utan alt-text/ })).toBeNull()
   })
 })
 

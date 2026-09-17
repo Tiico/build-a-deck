@@ -41,7 +41,10 @@ export type RuleImportProblem = { file: string; why: RuleImageProblem }
 // What the caller found behind an address. Reading a file, checking it and putting it in the
 // project's assets is the surface's work and needs a network; the map from file to block is this
 // module's, and stays framework-free and synchronous — so the two meet here, in a map.
-export type RuleImage = { asset: string } | { why: RuleImageProblem }
+// `px` is the file's own size, measured where the bytes were read: the book's one measurement in
+// millimetres is worked out from it, and a block that did not carry it would send every surface
+// back to the network for a file it is already showing (#173).
+export type RuleImage = { asset: string; px: { w: number; h: number } } | { why: RuleImageProblem }
 export type RuleImages = Record<string, RuleImage>
 export type RuleImport = { doc: RuleDoc; notes: RuleImportNote[]; problems: RuleImportProblem[] }
 
@@ -96,7 +99,7 @@ export function importRules(markdown: string, title: string, images: RuleImages 
   // The pictures found on the lines of the block being built. A picture is a block of its own, so
   // it cannot stand inside a paragraph: it is laid down after the passage it was written in, which
   // for the ordinary case — a picture on a line of its own — is exactly where it stood.
-  let pending: { asset: string; alt: string }[] = []
+  let pending: { asset: string; alt: string; px: { w: number; h: number } }[] = []
   const tally = new Map<RuleImportKind, number>()
   const count = (of: RuleImportKind, n = 1) => {
     if (n > 0) tally.set(of, (tally.get(of) ?? 0) + n)
@@ -118,7 +121,9 @@ export function importRules(markdown: string, title: string, images: RuleImages 
     for (const picture of pending) {
       count('image')
       if (picture.alt === '') count('decorative')
-      blocks.push({ kind: 'image', id: id(), asset: picture.asset, alt: picture.alt })
+      // No caption: Markdown's alt text is the alt text and is never copied into the caption, so
+      // an imported book has no captions until the designer writes them (decided 2026-09-17).
+      blocks.push({ kind: 'image', id: id(), asset: picture.asset, alt: picture.alt, px: picture.px })
     }
     pending = []
   }
@@ -136,7 +141,7 @@ export function importRules(markdown: string, title: string, images: RuleImages 
       took = true
       const file = addressOf(address ?? '')
       const found = images[file]
-      if (found && 'asset' in found) pending.push({ asset: found.asset, alt: (alt ?? '').trim() })
+      if (found && 'asset' in found) pending.push({ asset: found.asset, alt: (alt ?? '').trim(), px: found.px })
       // One picture is one line of the report, however often the file names it.
       else if (!problems.some((problem) => problem.file === file)) problems.push({ file, why: found?.why ?? 'missing' })
     }

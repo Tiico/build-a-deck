@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { readFileSync } from 'node:fs'
-import { RULE_IMAGE_FRAME } from '@byd/template'
+import { RULE_IMAGE_FRAME, imageBoxMm, ruleEm } from '@byd/template'
 import { RuleDrawer } from '../src/rules/RuleDrawer.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
@@ -46,12 +46,12 @@ const open = async (id: string) => {
 // passed over by a screen reader.
 describe('a picture at the table (#173)', () => {
   const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
-  const withPicture = async (alt: string): Promise<string> => {
+  const withPicture = async (alt: string, px = { w: 4000, h: 2000 }, caption?: string): Promise<string> => {
     const put = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/png' }, body: png })
     const { hash } = (await put.json()) as { hash: string }
     await run.projects.create(run.projectId, {
       ...projectDoc(),
-      rules: { title: 'Skogens herrar', blocks: [{ kind: 'image', id: 'i1', asset: `asset:${hash}`, alt }] },
+      rules: { title: 'Skogens herrar', blocks: [{ kind: 'image', id: 'i1', asset: `asset:${hash}`, alt, ...(caption === undefined ? {} : { caption }), px }] },
     })
     const res = await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST' })
     return ((await res.json()) as { id: string }).id
@@ -71,6 +71,27 @@ describe('a picture at the table (#173)', () => {
       expect(css).toContain(`${RULE_IMAGE_FRAME.wEm}em`)
       expect(css).toContain(`${RULE_IMAGE_FRAME.hEm}em`)
     }
+  })
+
+  // The caption is the designer's line beside the picture and is read by everyone; the alt text
+  // stands for the picture for whoever cannot see it. They are two fields and never swap places
+  // (decided 2026-09-17), so a decorative picture can still carry a caption.
+  it('reads the caption beside the picture, without it standing in for the alt text', async () => {
+    const panel = await open(await withPicture('', { w: 4000, h: 2000 }, 'Bordet vid tre spelare'))
+    expect(await within(panel).findByText('Bordet vid tre spelare')).toBeTruthy()
+    expect(within(panel).queryByRole('img')).toBeNull()
+  })
+
+  // A picture is never enlarged past its own pixels at 300 DPI (the approved prototype): a 700 px
+  // sketch stands in its own size instead of being pulled out to the column and turning to gruel.
+  // The size is the one measurement in millimetres, said in the book's own type — a screen has no
+  // millimetres, so what carries across is the picture's size beside the words.
+  it('stands a small picture in its own size rather than pulling it out to the column', async () => {
+    const small = await open(await withPicture('Skiss', { w: 700, h: 500 }))
+    const sketch = await within(small).findByRole('img', { name: 'Skiss' })
+    expect(sketch.style.width).toBe(`${ruleEm(imageBoxMm({ w: 700, h: 500 }).w)}em`)
+    // And the column is the ceiling it never passes, whatever the file's pixels are.
+    expect(ruleEm(imageBoxMm({ w: 700, h: 500 }).w)).toBeLessThan(RULE_IMAGE_FRAME.wEm)
   })
 
   it('passes a decorative picture over for a screen reader, and still draws it', async () => {

@@ -12,7 +12,7 @@ const doc: RuleDoc = {
     { kind: 'list', id: 'l1', ordered: true, items: ['Dra ur [[zon:draw]].', 'Lägg i [[zon:discard]].'] },
     { kind: 'text', id: 't2', text: '[[zon:discard]] ligger öppen. Ingen får ta ur den.' },
     { kind: 'setup', id: 's1', caption: 'Bordet' },
-    { kind: 'image', id: 'i1', asset: `asset:${'a'.repeat(64)}`, alt: 'Bordet från ovan' },
+    { kind: 'image', id: 'i1', asset: `asset:${'a'.repeat(64)}`, alt: 'Bordet från ovan', caption: 'Bordet vid tre spelare', px: { w: 1400, h: 800 } },
     { kind: 'text', id: 't3', text: 'Sist av allt räknas poletterna.' },
   ],
 }
@@ -40,9 +40,9 @@ describe('looking a rule up mid-game (B7)', () => {
     expect(findRules(out, 'tärning')).toEqual([])
   })
 
-  // A picture says its alt text and a decorative one says nothing (#173), so both of them move
-  // the reading of the book's plain text by exactly what they said — and what stands after a
-  // picture is still found under its own heading and with its own words.
+  // A picture says its alt text and a decorative one says nothing (#173), and it says its caption
+  // beside itself as well; each of them moves the reading of the book's plain text by exactly what
+  // it put there — and what stands after a picture is still found under its own heading and words.
   it('keeps its place in the book when a picture stands in it', () => {
     const hits = findRules(out, 'poletterna')
     expect(hits).toHaveLength(1)

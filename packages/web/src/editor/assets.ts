@@ -96,6 +96,59 @@ export function assetsInUse(doc: ProjectDoc): { hash: string; cards: string[] }[
 // say which picture was too big instead of one upload failing where nobody is reading.
 export const RULE_IMAGE_MAX_BYTES = ASSET_MAX_BYTES
 
+// How big the picture is in its own pixels, read out of the same bytes the type was read out of
+// (#173). It is what the one measurement in millimetres is worked out from, and it is read from the
+// header rather than by handing the file to the browser to decode: an import is not the place for
+// an image decoder, a browser's answer arrives asynchronously and only where there is a document,
+// and the header is the file's own statement of its size.
+//
+// A picture whose header does not say is a picture nobody can measure, and it is never guessed at:
+// the import says the file could not be read rather than printing it at a size it invented.
+export function imageSizeOf(bytes: Uint8Array): { w: number; h: number } | null {
+  const be = (at: number): number => ((bytes[at] ?? 0) << 24) | ((bytes[at + 1] ?? 0) << 16) | ((bytes[at + 2] ?? 0) << 8) | (bytes[at + 3] ?? 0)
+  const le16 = (at: number): number => (bytes[at] ?? 0) | ((bytes[at + 1] ?? 0) << 8)
+  const type = imageTypeOf(bytes)
+  // PNG: the IHDR chunk stands first and carries two big-endian longs.
+  if (type === 'image/png') return bytes.length >= 24 ? sized(be(16), be(20)) : null
+  // GIF: the logical screen descriptor follows the six bytes of the signature.
+  if (type === 'image/gif') return bytes.length >= 10 ? sized(le16(6), le16(8)) : null
+  // JPEG: the size lives in a frame header, and where that stands depends on what the encoder put
+  // before it — so the segments are walked rather than counted. `SOF0`…`SOF15` are frames except
+  // for the three markers in that range that are not (`DHT`, `JPG`, `DAC`).
+  if (type === 'image/jpeg') {
+    let at = 2
+    while (at + 9 < bytes.length) {
+      if (bytes[at] !== 0xff) {
+        at++
+        continue
+      }
+      const marker = bytes[at + 1] ?? 0
+      if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
+        return sized(((bytes[at + 7] ?? 0) << 8) | (bytes[at + 8] ?? 0), ((bytes[at + 5] ?? 0) << 8) | (bytes[at + 6] ?? 0))
+      }
+      at += 2 + (((bytes[at + 2] ?? 0) << 8) | (bytes[at + 3] ?? 0))
+    }
+    return null
+  }
+  if (type === 'image/webp') {
+    const chunk = String.fromCharCode(...bytes.slice(12, 16))
+    // Three shapes, and each says it its own way: a lossy keyframe gives fourteen bits each after
+    // the three-byte start code, a lossless stream packs the same two counts one less than the
+    // size into the four bytes after its signature, and the extended form carries the canvas as
+    // two three-byte counts, also one less. All three are read, because all four types the gate
+    // accepts have to be measurable — a picture that cannot be measured does not come in.
+    if (chunk === 'VP8 ' && bytes.length >= 30 && bytes[23] === 0x9d && bytes[24] === 0x01 && bytes[25] === 0x2a) return sized(le16(26) & 0x3fff, le16(28) & 0x3fff)
+    if (chunk === 'VP8L' && bytes.length >= 25 && bytes[20] === 0x2f) {
+      const packed = (le16(21) | (le16(23) << 16)) >>> 0
+      return sized((packed & 0x3fff) + 1, ((packed >>> 14) & 0x3fff) + 1)
+    }
+    if (chunk === 'VP8X' && bytes.length >= 30) return sized(le16(24) + ((bytes[26] ?? 0) << 16) + 1, le16(27) + ((bytes[29] ?? 0) << 16) + 1)
+    return null
+  }
+  return null
+}
+const sized = (w: number, h: number): { w: number; h: number } | null => (w > 0 && h > 0 ? { w, h } : null)
+
 export function imageTypeOf(bytes: Uint8Array): string | null {
   const format = sniffAsset(bytes)
   return format?.kind === 'image' ? format.type : null

@@ -508,6 +508,11 @@ export const svEditor = {
   'rules.toc.going': '· försvinner',
   'rules.toc.changed': '· skrivs om',
   'rules.toc.added': '· nytt',
+  // Bilderna som ingen skrivit alt-text till, räknade i innehållsförteckningens fot (#173). Pilen
+  // ritas och sägs inte: det knappen heter är räkningen.
+  'rules.toc.silent.one': '{n} · bild utan alt-text',
+  'rules.toc.silent.other': '{n} · bilder utan alt-text',
+  'rules.image.found': 'Bilden du sökte',
   'rules.mark.going': 'Försvinner',
   'rules.mark.changed': 'Skrivs om',
   'rules.mark.added': 'Nytt',

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { RenderedBlock, RenderedNode, RenderedRules } from '@byd/template'
+import { ruleEm, type RenderedBlock, type RenderedNode, type RenderedRules } from '@byd/template'
 import { findRules } from './search.js'
 import { useT } from '../i18n/index.js'
 import './rules.css'
@@ -106,11 +106,24 @@ export function RuleBlockView({ block, assets }: { block: RenderedBlock; assets?
     // A5 sets how big a picture may be drawn and the table and the phone draw it inside that same
     // frame (#173): the stylesheet holds the frame, so all three surfaces say it once.
     //
+    // The width is the picture's own measurement, worked out once in `renderRules` against the
+    // printed page and said here in the book's own type — a screen has no millimetres it can be
+    // held to, and what carries across is the picture's size beside the words. A picture smaller
+    // than the column at 300 DPI therefore stands in its own size instead of being pulled out to
+    // the column and turning to gruel, on this surface exactly as on the press.
+    //
     // `alt` is what the picture says about itself. Empty means decorative, and a decorative
     // picture has no role at all for a screen reader — which is the cost the decision of
-    // 2026-09-17 accepted, and why the import counts them where they can be found again.
+    // 2026-09-17 accepted, and why the import counts them where they can be found again. The
+    // caption is the other line, read beside the picture by whoever can see it; the two are
+    // written for two readers and never stand in for one another.
     case 'image':
-      return <img className="byd-rules-image" src={assetUrl(block.asset, assets)} alt={block.alt} />
+      return (
+        <figure className="byd-rules-figure">
+          <img className="byd-rules-image" src={assetUrl(block.asset, assets)} alt={block.alt} style={{ width: `${ruleEm(block.mm.w)}em` }} />
+          {block.caption && <figcaption className="byd-rules-caption">{block.caption}</figcaption>}
+        </figure>
+      )
   }
 }
 

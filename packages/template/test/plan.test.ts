@@ -216,27 +216,41 @@ describe('the setup block can never be imported away (#131, B5)', () => {
 describe('a picture over a written book (#173)', () => {
   const bordet = `asset:${'a'.repeat(64)}`
   const kasthogen = `asset:${'b'.repeat(64)}`
+  const px = { w: 1400, h: 800 }
 
   it('keeps the same picture, and marks a picture the file replaced as rewritten', () => {
-    const there = book({ kind: 'heading', id: 'b1', level: 1, text: 'Uppställning' }, { kind: 'image', id: 'b2', asset: bordet, alt: 'Bordet från ovan' })
-    const same = planImport(there, book({ kind: 'heading', id: 'b1', level: 1, text: 'Uppställning' }, { kind: 'image', id: 'b2', asset: bordet, alt: 'Bordet från ovan' }))
+    const there = book({ kind: 'heading', id: 'b1', level: 1, text: 'Uppställning' }, { kind: 'image', id: 'b2', asset: bordet, alt: 'Bordet från ovan', px })
+    const same = planImport(there, book({ kind: 'heading', id: 'b1', level: 1, text: 'Uppställning' }, { kind: 'image', id: 'b2', asset: bordet, alt: 'Bordet från ovan', px }))
     expect(same.counts).toEqual({ kept: 2, changed: 0, going: 0, added: 0 })
 
-    const other = planImport(there, book({ kind: 'heading', id: 'b1', level: 1, text: 'Uppställning' }, { kind: 'image', id: 'b2', asset: kasthogen, alt: 'Bordet från ovan' }))
+    const other = planImport(there, book({ kind: 'heading', id: 'b1', level: 1, text: 'Uppställning' }, { kind: 'image', id: 'b2', asset: kasthogen, alt: 'Bordet från ovan', px }))
     expect(other.blocks.map((b) => b.mark)).toEqual(['kept', 'changed'])
     // The alt text is what a picture says, so a rewritten one is a rewrite too.
-    const worded = planImport(there, book({ kind: 'heading', id: 'b1', level: 1, text: 'Uppställning' }, { kind: 'image', id: 'b2', asset: bordet, alt: '' }))
+    const worded = planImport(there, book({ kind: 'heading', id: 'b1', level: 1, text: 'Uppställning' }, { kind: 'image', id: 'b2', asset: bordet, alt: '', px }))
     expect(worded.blocks.map((b) => b.mark)).toEqual(['kept', 'changed'])
   })
 
+  // The caption is a second thing the picture says, to a second reader (decided 2026-09-17), so it
+  // is part of what a picture *is* here: a re-import carries no captions at all, and a caption that
+  // would disappear has to be in the report rather than quietly gone (#131).
+  it('reads the caption as part of the picture, so a re-import that would lose it says so', () => {
+    const heading = { kind: 'heading' as const, id: 'b1', level: 1 as const, text: 'Uppställning' }
+    const there = book(heading, { kind: 'image', id: 'b2', asset: bordet, alt: 'Bordet från ovan', caption: 'Bordet vid tre spelare', px })
+    const again = planImport(there, book(heading, { kind: 'image', id: 'b2', asset: bordet, alt: 'Bordet från ovan', px }))
+    expect(again.blocks.map((b) => b.mark)).toEqual(['kept', 'changed'])
+    // And it weighs with the alt text, because both are words the reader would lose: one for the
+    // heading, three for what the picture says about itself, four for what it says beside itself.
+    expect(planImport(there, book({ ...heading, text: 'En tur' })).gone).toEqual({ sections: 1, words: 8 })
+  })
+
   it('weighs a picture the book loses by the words it said, and not by nothing', () => {
-    const there = book({ kind: 'heading', id: 'b1', level: 1, text: 'Uppställning' }, { kind: 'image', id: 'b2', asset: bordet, alt: 'Bordet från ovan' })
+    const there = book({ kind: 'heading', id: 'b1', level: 1, text: 'Uppställning' }, { kind: 'image', id: 'b2', asset: bordet, alt: 'Bordet från ovan', px })
     const plan = planImport(there, book({ kind: 'heading', id: 'b1', level: 1, text: 'En tur' }))
     // One word for the heading and three for what the picture said about itself.
     expect(plan.gone).toEqual({ sections: 1, words: 4 })
     // A decorative picture said nothing, and weighs nothing — which is the cost of the decision
     // of 2026-09-17 written where it can be seen.
-    const quiet = planImport(book({ kind: 'heading', id: 'b1', level: 1, text: 'Uppställning' }, { kind: 'image', id: 'b2', asset: bordet, alt: '' }), book({ kind: 'heading', id: 'b1', level: 1, text: 'En tur' }))
+    const quiet = planImport(book({ kind: 'heading', id: 'b1', level: 1, text: 'Uppställning' }, { kind: 'image', id: 'b2', asset: bordet, alt: '', px }), book({ kind: 'heading', id: 'b1', level: 1, text: 'En tur' }))
     expect(quiet.gone).toEqual({ sections: 1, words: 1 })
   })
 })

@@ -392,7 +392,7 @@ Den står kvar som en möjlig förbättring och behöver ett eget issue om den s
 
 Bildslaget i boken, byggt 2026-09-17 (#173):
 `RuleBlock` har ett femte slag, `image`, och det är en protokolländring: schemat i `packages/template/src/rules.ts` är enda källan till både typ och validering, precis som de fyra andra slagen sedan #183.
-Ett block är `{ kind: 'image', id, asset, alt }` och ingenting mer.
+Ett block är `{ kind: 'image', id, asset, alt, caption?, px }` och ingenting mer.
 
 **Bilden bor i projektets egna tillgångar.**
 `asset` är `asset:<sha256>`, samma väg som kortens egna bilder går (E1), och schemat tillåter ingenting annat: 64 hexadecimala tecken och inget annat går igenom.
@@ -405,6 +405,16 @@ Kostnaden är tagen med öppna ögon och skrivs ned här för att den inte ska u
 Alternativet som valdes bort var att ta in bilden som en obesvarad fråga i boken, i samma form som `ask` på en mallsektion (#131), med raden kvar i importrapporten tills någon skrivit en alt-text.
 Om valet skaver i bruk är det den vägen tillbaka.
 Villkoret för kostnaden är att den aldrig är tyst: importrapporten räknar hur många bilder som kom in utan alt-text, boken skriver `Utan alt-text: dold för skärmläsare` under bilden där den står, och blocket öppnas till ett alt-textfält med bilden kvar synlig ovanför — man kan inte beskriva en bild man inte ser.
+Räkningen står dessutom kvar i innehållsförteckningens fot, som `2 · bilder utan alt-text →`, och hoppar till bilden och märker den med ett ord.
+Skälet är att rapportbandet är borta nästa morgon och de tysta bilderna inte är det: spalten är «ingenting försvinner tyst» sagt en vecka senare i stället för bara i importens ögonblick.
+En räkning av ingenting är ingen rad alls, så dagen den sista alt-texten är skriven finns kontrollen inte där.
+
+**Alt-text och bildtext är två fält.**
+`alt` beskriver bilden för den som inte ser den; `caption` är designerns egen rad bredvid bilden, läst av den som ser den.
+De skrivs för olika läsare och blir dåliga av att byta plats, bildtexten trycks och kostar satsyta medan alt-texten varken trycks eller kostar, och `setup` har redan ett `caption` att ärva formen av.
+Avgörande är dock det tredje skälet: om alt vore bildtext gick en **dekorativ** bild inte längre att skilja från en bild som bara saknar bildtext, och då kollapsar räkningen av bilder utan alt-text — som är hela vägen tillbaka till en tillgänglig bok.
+Priset är utskrivet och accepterat: en importerad bok har inga bildtexter alls förrän någon skriver dem, eftersom Markdowns alt-text är alt-text och aldrig kopieras till bildtexten.
+Bildtexten är bokens text: den renderas, går in i sökningen, trycks i häftet och redigeras i ett eget fält bredvid alt-textfältet.
 
 **En bild som inte går att ta in försvinner inte tyst** (#131).
 Raden står kvar i rapporten med skälet — filen kom inte med, är för stor, är inte en bild boken kan ta in, gick inte att läsa — och boken görs utan den bilden.
@@ -413,8 +423,17 @@ En vald fil är otrodd indata och dess namn är ett påstående: bilden typas p�
 Boken tar alltså inte SVG, till skillnad från ikonuppsättningen (E4) — en ikon hämtar verktyget själv ur ett bibliotek, en teckning kommer från någons egen disk.
 
 **A5 sätter storleken.**
-Boken läses vid bordet, på telefonen och i det tryckta häftet, och A5 är den smalaste av de tre — så ramen är A5-sidans textspalt (148 mm minus två 15 mm-marginaler) och halva dess höjd (210 mm minus två 14 mm), så att en bild aldrig tar en hel sida ensam.
-Samma ram uttrycks i bokens eget typsnitt, 31,9 × 24,6 em, vilket är vad en skärm kan hållas till: bordet och telefonen ritar samma bild i samma ram med sina egna pixlar.
+Boken läses vid bordet, på telefonen och i det tryckta häftet, och A5 är den smalaste av de tre — så A5 sätter måttet och de andra två ritar samma bild i samma ram.
+Spalten är 118 mm, och den är **uträknad och inte skriven**: sidan (148 mm) minus häftets två 15 mm-marginaler, ur konstanter som bor i `packages/template` och som `booklet.ts` skriver sin egen `@page` ur.
+Sidan en figur mäts mot är därmed sidan den trycks på, och de två kan inte glida isär.
+Taket är **120 mm**, två tredjedelar av satsytan (210 mm minus två 14 mm).
+Skälet är att figur **plus bildtext** alltid ska dela sida med text i stället för att bli en ensam bildsida som läsaren bläddrar förbi; `break-inside: avoid` hjälper inte, den flyttar samma problem en sida fram.
+Halva spaltens höjd, omkring 90 mm, erbjöds uttryckligen och valdes bort — och den halvan av motiveringen finns bara därför att blocket har ett eget `caption`.
+En bild som är för hög smalnar av för att rymmas och beskärs aldrig: en beskuren uppställningsbild är en uppställningsbild som ljuger.
+**En bild förstoras aldrig förbi sina egna pixlar vid 300 DPI.**
+Därför bär blocket `px`, filens egen storlek, läst ur samma byte som typen lästes ur — en 700 px-skiss står i sin egen storlek (59 mm) i stället för att dras ut till spaltbredd och tryckas i 150 DPI.
+En fil vars huvud inte säger hur stor den är går inte att mäta och tas inte in; måttet gissas aldrig.
+Måttet räknas ut en enda gång, i `renderRules`, och varje yta gör ingenting annat än skalar det: samma ram uttrycks i bokens eget typsnitt, 31,9 × 32,4 em, vilket är vad en skärm kan hållas till — en skärm har inga millimeter, så det som bär över är bildens storlek i förhållande till orden bredvid den.
 Häftet får bytena inlagda som data-URL, som ikonerna, eftersom renderaren ska ha en sida och ingenting mer; bordet och editorn slår upp `asset:<hash>` mot `/assets/<hash>` precis som ett korts bild slås upp.
 
 **Titeln och bilderna är oberoende av varandra.**

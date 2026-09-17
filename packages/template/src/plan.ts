@@ -138,10 +138,13 @@ const shapeOf = (block: RuleBlock): string => {
       return `list:${block.ordered === true}:${JSON.stringify(block.items)}`
     case 'setup':
       return `setup:${block.caption ?? ''}`
-    // A picture is the bytes it points at and the words it says about itself (#173): the same
-    // file with another alt text is another picture, because the alt text is what a reader gets.
+    // A picture is the bytes it points at and the words it says, to either of its two readers
+    // (#173): the same file with another alt text is another picture, and so is the same file
+    // whose caption has gone. An import carries no captions at all, so a picture coming back from
+    // the file is a picture without its caption — which is a change the reader would meet, and
+    // therefore a change the report has to say rather than quietly do (#131).
     case 'image':
-      return `image:${block.asset}:${block.alt}`
+      return `image:${block.asset}:${block.alt}:${block.caption ?? ''}`
   }
 }
 
@@ -266,8 +269,10 @@ const words = (block: RuleBlock): number =>
     .split(/\s+/)
     .filter((word) => word.length > 0).length
 
-// A picture weighs what it says: its alt text, which is what the reader would have been told.
-// A decorative one weighs nothing, and that is the cost the decision of 2026-09-17 wrote down.
+// A picture weighs what it says: its alt text, which is what a reader who cannot see it would have
+// been told, and its caption, which is what one who can would have read beside it. A decorative
+// picture with no caption weighs nothing, and that is the cost the decision of 2026-09-17 wrote
+// down where it can be seen.
 const wordsOf = (block: RuleBlock): string => {
   switch (block.kind) {
     case 'list':
@@ -275,7 +280,7 @@ const wordsOf = (block: RuleBlock): string => {
     case 'setup':
       return block.caption ?? ''
     case 'image':
-      return block.alt
+      return `${block.alt} ${block.caption ?? ''}`
     default:
       return block.text
   }

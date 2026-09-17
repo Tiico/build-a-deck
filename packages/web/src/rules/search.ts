@@ -33,11 +33,13 @@ export function findRules(rules: RenderedRules, query: string): Hit[] {
       case 'setup':
         if (block.caption) line++
         break
-      // A picture says its alt text and nothing else; a decorative one says nothing at all
-      // (#173). Either way the reading has to move by exactly what the picture put in the book's
-      // plain text, or every passage after it would answer under the wrong words.
+      // A picture says its alt text, and a decorative one says nothing at all (#173); beside it
+      // stands the caption, which is the designer's own line and is read by everyone. Either way
+      // the reading has to move by exactly what the picture put in the book's plain text, or every
+      // passage after it would answer under the wrong words.
       case 'image':
         if (block.alt) line++
+        if (block.caption) line++
         break
     }
   }

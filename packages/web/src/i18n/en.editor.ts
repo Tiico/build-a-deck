@@ -459,6 +459,11 @@ export const enEditor = {
   'rules.toc.going': '· disappears',
   'rules.toc.changed': '· rewritten',
   'rules.toc.added': '· new',
+  // The pictures nobody has written an alt text for, counted in the contents' foot (#173). The
+  // arrow is drawn and never spoken: what the control is called is the count.
+  'rules.toc.silent.one': '{n} · picture without alt text',
+  'rules.toc.silent.other': '{n} · pictures without alt text',
+  'rules.image.found': 'The picture you looked for',
   'rules.mark.going': 'Disappears',
   'rules.mark.changed': 'Rewritten',
   'rules.mark.added': 'New',

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ASSET_FORMATS, ASSET_MAX_BYTES, sniffAsset } from '@byd/protocol'
-import { RULE_IMAGE_MAX_BYTES, assetUrl, assetsInUse, imageFieldsOf, imageTypeOf, isAssetRef, resolveAssetRow } from '../src/editor/assets.js'
+import { RULE_IMAGE_MAX_BYTES, assetUrl, assetsInUse, imageFieldsOf, imageSizeOf, imageTypeOf, isAssetRef, resolveAssetRow } from '../src/editor/assets.js'
 import { projectDoc } from './project-doc.js'
 
 const HASH = 'a'.repeat(64)
@@ -42,6 +42,39 @@ describe('what a picked file actually is (#173)', () => {
     expect(imageTypeOf(new Uint8Array([...Buffer.from('GIF89a'), ...new Array(32).fill(0)]))).toBe('image/gif')
     const webp = new Uint8Array([...Buffer.from('RIFF'), 0, 0, 0, 0, ...Buffer.from('WEBP'), ...new Array(16).fill(0)])
     expect(imageTypeOf(webp)).toBe('image/webp')
+  })
+
+  // How big a picture is printed is worked out from its own pixels (#173), and they are read out
+  // of the same bytes the type was read out of. A browser could be asked to decode the file and
+  // report them, but that is an image decoder in the middle of an import, one answer per surface
+  // and none at all where there is no document; the header says it, and the header is the file.
+  it('reads the picture’s own pixels out of the same bytes, for each of the four formats', () => {
+    // The one-pixel PNG the tests use, which is what it says it is.
+    expect(imageSizeOf(new Uint8Array(png))).toEqual({ w: 1, h: 1 })
+    // A PNG's IHDR carries them as two big-endian longs.
+    const ihdr = new Uint8Array([...png])
+    ihdr.set([0, 0, 2, 0], 16)
+    ihdr.set([0, 0, 1, 0], 20)
+    expect(imageSizeOf(ihdr)).toEqual({ w: 512, h: 256 })
+    // A GIF says them little-endian in its own head.
+    expect(imageSizeOf(new Uint8Array([...Buffer.from('GIF89a'), 0x2c, 0x01, 0x90, 0x01, ...new Array(8).fill(0)]))).toEqual({ w: 300, h: 400 })
+    // A JPEG says them in a frame header somewhere after its marker, height before width.
+    const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x04, 0x00, 0x00, 0xff, 0xc0, 0x00, 0x11, 0x08, 0x01, 0x90, 0x02, 0x00, ...new Array(16).fill(0)])
+    expect(imageSizeOf(jpeg)).toEqual({ w: 512, h: 400 })
+    // A lossy WebP says them fourteen bits at a time after the keyframe's start code.
+    const vp8 = new Uint8Array([...Buffer.from('RIFF'), 0, 0, 0, 0, ...Buffer.from('WEBPVP8 '), 0, 0, 0, 0, 0, 0, 0, 0x9d, 0x01, 0x2a, 0x2c, 0x01, 0x90, 0x01, ...new Array(8).fill(0)])
+    expect(imageSizeOf(vp8)).toEqual({ w: 300, h: 400 })
+    // A lossless one packs them fourteen bits at a time into a bit stream, one less than the size.
+    const bits = (299 | (399 << 14)) >>> 0
+    const lossless = new Uint8Array([...Buffer.from('RIFF'), 0, 0, 0, 0, ...Buffer.from('WEBPVP8L'), 0, 0, 0, 0, 0x2f, bits & 0xff, (bits >>> 8) & 0xff, (bits >>> 16) & 0xff, (bits >>> 24) & 0xff, ...new Array(8).fill(0)])
+    expect(imageSizeOf(lossless)).toEqual({ w: 300, h: 400 })
+  })
+
+  it('says nothing for a file whose head does not say how big it is', () => {
+    expect(imageSizeOf(new Uint8Array(Buffer.from('<!doctype html>')))).toBeNull()
+    expect(imageSizeOf(new Uint8Array([]))).toBeNull()
+    // A PNG cut off before its IHDR is a picture nobody can measure, and is not guessed at.
+    expect(imageSizeOf(new Uint8Array([...png].slice(0, 18)))).toBeNull()
   })
 
   it('refuses everything else, however the file was named', () => {

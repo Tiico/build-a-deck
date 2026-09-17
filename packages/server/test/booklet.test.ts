@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { RULE_IMAGE_FRAME, renderRules, type RuleDoc } from '@byd/template'
+import { BOOKLET_MARGIN_MM, BOOKLET_PAGE_MM, RULE_IMAGE_FRAME, imageBoxMm, renderRules, type RuleDoc } from '@byd/template'
 import { A5, bookletOf } from '../src/booklet.js'
 import { start, twoSeatSetup, type Running } from './fixture.js'
 import { template } from './deck.js'
@@ -73,18 +73,59 @@ describe('the rulebook as a booklet for print (B7)', () => {
 describe('a picture in the booklet (#173)', () => {
   const bordet = `asset:${'a'.repeat(64)}`
   const png = 'data:image/png;base64,AAAA'
-  const withPicture = (alt: string): RuleDoc => ({ title: 'Skogens herrar', blocks: [{ kind: 'image', id: 'i1', asset: bordet, alt }] })
+  const withPicture = (alt: string, px = { w: 4000, h: 2000 }, caption?: string): RuleDoc => ({
+    title: 'Skogens herrar',
+    blocks: [{ kind: 'image', id: 'i1', asset: bordet, alt, ...(caption === undefined ? {} : { caption }), px }],
+  })
+
+  // The page a figure is measured against is the page it is printed on: the booklet writes its own
+  // `@page` out of the same two constants the measurement reads, so neither can drift from the
+  // other by somebody editing one of them (#173).
+  it('writes the page and its margins out of the same numbers the figure is measured against', () => {
+    const out = bookletOf({ rules: renderRules(withPicture(''), names), icons, pageMm: A5, images: { [bordet]: png } })
+    expect(A5).toEqual(BOOKLET_PAGE_MM)
+    expect(out.css).toContain(`@page{size:${BOOKLET_PAGE_MM.w}mm ${BOOKLET_PAGE_MM.h}mm;margin:${BOOKLET_MARGIN_MM.block}mm ${BOOKLET_MARGIN_MM.inline}mm}`)
+  })
+
+  // The caption is the designer's own line and is part of the book: printed, and paid for in type
+  // area. The alt text is neither (decided 2026-09-17), and the two never swap places.
+  it('prints the caption beside the picture, and never the alt text', () => {
+    const out = bookletOf({ rules: renderRules(withPicture('Bordet från ovan', { w: 4000, h: 2000 }, 'Bordet vid tre spelare'), names), icons, pageMm: A5, images: { [bordet]: png } })
+    expect(out.html).toContain('<figcaption>Bordet vid tre spelare</figcaption>')
+    expect(out.html).toContain('alt="Bordet från ovan"')
+    // A picture nobody has written a caption for prints no empty line where one would have been.
+    const bare = bookletOf({ rules: renderRules(withPicture('Bordet från ovan'), names), icons, pageMm: A5, images: { [bordet]: png } })
+    expect(bare.html).not.toContain('figcaption')
+  })
+
+  // A picture is never enlarged past its own pixels at 300 DPI, and one too tall for the ceiling
+  // narrows rather than being cropped (the approved prototype).
+  it('prints each picture at its own measured size, and never larger than its own pixels', () => {
+    const small = imageBoxMm({ w: 700, h: 500 })
+    const out = bookletOf({ rules: renderRules(withPicture('', { w: 700, h: 500 }), names), icons, pageMm: A5, images: { [bordet]: png } })
+    // 59 mm and not the column's 118: a 700 px sketch pulled out to the column prints at 150 DPI.
+    expect(small.w).toBeLessThan(RULE_IMAGE_FRAME.wMm)
+    expect(out.html).toContain(`width:${Math.round(small.w * 10) / 10}mm`)
+    // A tall picture comes to rest against the ceiling, and keeps its own proportions doing it:
+    // what is asserted is the ratio, because "never cropped" is a claim and a ratio is a fact.
+    const tall = imageBoxMm({ w: 2000, h: 3000 })
+    expect(tall.h).toBe(RULE_IMAGE_FRAME.hMm)
+    expect(tall.w / tall.h).toBeCloseTo(2000 / 3000, 6)
+    const high = bookletOf({ rules: renderRules(withPicture('', { w: 2000, h: 3000 }), names), icons, pageMm: A5, images: { [bordet]: png } })
+    expect(high.html).toContain(`width:${Math.round(tall.w * 10) / 10}mm`)
+  })
 
   it('prints the picture inside the A5 frame, saying what it was written to say', () => {
     const out = bookletOf({ rules: renderRules(withPicture('Bordet från ovan'), names), icons, pageMm: A5, images: { [bordet]: png } })
-    expect(out.html).toContain(`<img src="${png}" alt="Bordet från ovan">`)
+    expect(out.html).toContain(`<img src="${png}" alt="Bordet från ovan"`)
     expect(out.css).toContain(`max-width:${RULE_IMAGE_FRAME.wMm}mm`)
     expect(out.css).toContain(`max-height:${RULE_IMAGE_FRAME.hMm}mm`)
+    expect(RULE_IMAGE_FRAME.hMm).toBe(120)
   })
 
   it('prints a picture with no alt text as decorative, which is what `alt=""` means', () => {
     const out = bookletOf({ rules: renderRules(withPicture(''), names), icons, pageMm: A5, images: { [bordet]: png } })
-    expect(out.html).toContain(`<img src="${png}" alt="">`)
+    expect(out.html).toContain(`<img src="${png}" alt=""`)
   })
 
   it('leaves out a picture whose bytes are gone, rather than printing an empty frame', () => {
@@ -162,7 +203,7 @@ describe('ordering the booklet (B7)', () => {
     const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
     const put = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/png', cookie }, body: png })
     const { hash: asset } = (await put.json()) as { hash: string }
-    const rules: RuleDoc = { title: 'Skogens herrar', blocks: [{ kind: 'image', id: 'i1', asset: `asset:${asset}`, alt: 'Bordet från ovan' }] }
+    const rules: RuleDoc = { title: 'Skogens herrar', blocks: [{ kind: 'image', id: 'i1', asset: `asset:${asset}`, alt: 'Bordet från ovan', px: { w: 1400, h: 800 } }] }
     await send('POST', '/projects', { id: 'p3', ...project(rules) })
     expect((await send('POST', '/projects/p3/rulebook')).status).toBe(202)
 
