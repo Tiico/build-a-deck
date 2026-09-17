@@ -25,7 +25,7 @@ export type HandStripProps = {
 // Every card is a real control (#1): it has the name the projection gives it, it says whether it
 // is marked, and it is one tab stop with the arrows inside — the editor's roving tabindex, not a
 // second one written here. Space marks and unmarks, Enter opens the address panel. The gestures
-// K4 settled are untouched: tap looks, a drag upwards plays, a hold marks.
+// K4 retains drag to play and hold to mark; the chosen phone A uses tap to select.
 export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces }: HandStripProps) {
   const t = useT()
   const hand = view.components.filter((c) => c.zone === `hand:${view.seat}`)
@@ -89,6 +89,7 @@ export function HandStrip({ view, selected, onTap, onHold, onLift, onOpen, faces
               }
               item.onKeyDown(e)
             }}
+            onClick={e => { if (e.detail === 0) onTap(c) }}
             onPointerDown={(e) => down(c, e.clientX, e.clientY)}
             onPointerMove={(e) => moved(e.clientX, e.clientY)}
             onPointerUp={up}

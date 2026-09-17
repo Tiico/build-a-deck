@@ -191,7 +191,7 @@ export const svPlay = {
   'rewind.decline': 'Neka',
 
   // Telefonen: handen, det som ligger framför en, och räknarna.
-  'player.hint': 'tryck = titta · dra upp = spela · håll = välj flera',
+  'player.hint': 'Välj → läs → spela · håll för att välja flera',
   'player.hint.selected.one': '{n} valda · dra upp för att spela',
   'player.hint.selected.other': '{n} valda · dra upp för att spela',
   'player.counter.minus': '{name} minus',
@@ -203,6 +203,11 @@ export const svPlay = {
   'player.mine.play': 'Spela…',
   'player.mine.empty': 'Inget framför dig. Spela ett kort hit från handen.',
   // Tom hand (UX-16): samma form som raden ovanför, så telefonens två tomlägen läses som ett par.
+  'player.hand.title': 'Dina kort',
+  'player.hand.actions': 'Spela valda kort',
+  'player.hand.read': 'Läs valt kort',
+  'player.hand.chosen': 'Valt: {name}',
+  'player.hand.none': 'Inget kort valt',
   'player.hand.empty': 'Tom hand. Dra ett kort ur draghögen.',
 
   // Arket som säger vart ett kort går (C4). Kortets eget namn står fetstilt mitt i meningen, så

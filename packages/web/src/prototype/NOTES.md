@@ -50,3 +50,7 @@ Designfrågan är nu om hela rundan känns naturlig, särskilt rollbytet och åt
 ## Efter designval
 
 Behåll beslutet i projektets designbeslut, implementera den valda interaktionen med vanliga tester och riktiga data, och ta sedan bort dessa prototypmappar, DEV-importerna i EditorPage/PlayerPage, `packages/server/scripts/prototype/run.ts` och rotens `prototype`-kommando. Absorbera inte simuleringarna i produktionsflödet.
+
+## Telefon A i produkten · 17 september
+
+Telefonvalet förs nu in i `/play` utan variantparameter: riktig projektion, serverhandlingar och Ångra, inklusive Kasta och Ta upp direkt från Framför dig. Beslut och anpassningen till godtyckliga zoner finns i DESIGN-BESLUT.md C4/K4. Den gamla telefonprototypen behålls tillfälligt som simulerad deltagarvy i editorns A/B/C-jämförelse, vars designval fortfarande är öppet. Den laddas fortsatt bara i utvecklingsläge; simuleringen har inte kopierats till produktionslogiken.

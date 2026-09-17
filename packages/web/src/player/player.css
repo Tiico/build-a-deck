@@ -42,7 +42,7 @@
 }
 
 .byd-player {
-  height: 100vh; display: grid; grid-template-rows: auto auto 1fr auto auto auto;
+  display: block; min-height: 100svh; width: 100%; max-width: 580px; margin: 0 auto; padding-bottom: env(safe-area-inset-bottom);
   background: var(--byd-bg); color: var(--byd-ink); font-family: system-ui, sans-serif;
 }
 /* The row wraps rather than shrink its controls below a thumb's width at 320px; who you are
@@ -71,8 +71,7 @@
 .byd-counter b { font-size: 18px; color: var(--byd-ink-strong); line-height: 1; }
 .byd-counter span { font-size: 11px; color: var(--byd-ink-muted); text-transform: uppercase; letter-spacing: 1px; }
 
-/* The cards in front of you (C4): a smaller strip above the hand. Each card is one control and
-   nothing else — a press holds it up, and the verbs are in the view that holds it up (#78). */
+/* The private strip (C4): the face inspects; direct actions sit below it as separate controls. */
 .byd-mine { padding: 6px 16px 0; }
 .byd-mine h2 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--byd-ink-muted); font-weight: 600; }
 .byd-mine-strip { display: flex; gap: 10px; overflow-x: auto; }
@@ -222,3 +221,33 @@
 .byd-survey-thanks strong { font-size: 24px; }
 /* On a wide screen (the observer's), the survey keeps a phone's width. */
 .byd-survey > * { width: 100%; max-width: 520px; margin: 0 auto; box-sizing: border-box; }
+
+/* Phone A, approved 2026-09-16: the hand and its visible actions lead the page. */
+.byd-phone-main { min-width: 0; padding: 18px 16px 24px; }
+.byd-phone-main h1 { margin: 0 0 12px; font-size: 22px; }
+.byd-phone-main > .byd-summary { padding: 0; overflow: visible; }
+.byd-phone-main .byd-summary-zones { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 12px; }
+.byd-summary-zones > * { min-width: 0; overflow-wrap: anywhere; }
+.byd-player .byd-strip { min-width: 0; padding: 8px 6px 16px; gap: 12px; }
+.byd-player .byd-strip-card { flex-basis: 154px; flex-shrink: 0; scroll-snap-align: start; }
+.byd-hand-actions { padding: 0 0 12px; }
+.byd-hand-actions p { margin: 0 0 10px; color: var(--byd-ink-muted); font-size: 14px; overflow-wrap: anywhere; }
+.byd-hand-actions button, .byd-mine-quick {
+  min-height: 44px; min-width: 44px; box-sizing: border-box; padding: 10px 12px;
+  border: 1px solid var(--byd-line); border-radius: 12px; background: var(--byd-control);
+  color: var(--byd-ink-strong); font: 600 14px system-ui; overflow-wrap: anywhere;
+}
+.byd-hand-actions > button { width: 100%; margin-bottom: 8px; }
+.byd-hand-targets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.byd-hand-targets button:first-child:not(:disabled) { background: var(--byd-accent); color: var(--byd-on-accent); }
+.byd-hand-actions button:disabled, .byd-mine-quick:disabled { opacity: .5; }
+.byd-player .byd-hint { margin: 0 0 12px; text-align: left; }
+.byd-personal, .byd-phone-history { border-top: 1px solid var(--byd-line); margin-top: 8px; }
+.byd-personal > summary, .byd-phone-history > summary { padding: 14px 0; min-height: 48px; box-sizing: border-box; cursor: pointer; font-size: 15px; font-weight: 600; }
+.byd-personal .byd-mine { padding: 0 0 12px; }
+.byd-mine-item { flex: 0 0 84px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.byd-mine-item:has(.byd-mine-quick) { flex-basis: 144px; }
+.byd-mine-item .byd-mine-card { width: 100%; flex: none; }
+.byd-phone-history ol { padding: 0; list-style: none; font-size: 13px; color: var(--byd-ink-muted); }
+.byd-phone-history li { padding: 8px 0; border-bottom: 1px solid var(--byd-rule-soft); }
+.byd-inspect-close { flex: 0 0 auto; min-width: 120px; min-height: 44px; padding: 10px 16px; border: 1px solid var(--byd-line); border-radius: 12px; background: var(--byd-control); color: var(--byd-ink-strong); font: 600 15px system-ui; }

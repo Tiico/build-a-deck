@@ -49,3 +49,18 @@ describe('a lost card held up on the phone (#82)', () => {
     vi.useRealTimers()
   })
 })
+
+it('offers a keyboard way back from reading and returns focus to its opener', () => {
+  const opener = document.createElement('button')
+  document.body.append(opener)
+  opener.focus()
+  const close = vi.fn()
+  const { unmount } = render(<HeldCard card={card} onClose={close} />)
+  const back = screen.getByRole('button', { name: 'Stäng' })
+  expect(document.activeElement).toBe(back)
+  fireEvent.keyDown(back, { key: 'Escape' })
+  expect(close).toHaveBeenCalledOnce()
+  unmount()
+  expect(document.activeElement).toBe(opener)
+  opener.remove()
+})

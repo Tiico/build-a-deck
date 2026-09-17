@@ -41,6 +41,24 @@ const lift = (card: Element) => {
 // `TableClient.send` has always answered `{ ok: false, reason }`; before #7 no view read it, so
 // a move the table refused simply did not happen and nobody was told why.
 describe('an action the table refuses', () => {
+  it('keeps a selected card after a refused direct play and explains it at that button', async () => {
+    const id = await createSession(run)
+    const table = TableClient.connect(await asTable(run, id))
+    await table.ready()
+    await seated(id)
+    await table.send({ v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    await waitFor(() => expect(document.querySelectorAll('[data-hand-card]')).toHaveLength(1))
+    await table.send({ v: 'session.end' })
+    const cast = screen.getByRole('button', { name: 'Kasta' })
+    fireEvent.click(cast)
+    const said = await screen.findByTestId('refusal')
+    expect(said.textContent).toMatch(/avslutat/i)
+    expect(cast.getAttribute('aria-describedby')).toBe(said.id)
+    expect(document.querySelector('[data-hand-card]')?.getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('button', { name: 'Lägg underst' }).getAttribute('aria-describedby')).toBeNull()
+    table.close()
+  })
+
   it('says so where it was asked, in Swedish, and never in the server s own words', async () => {
     const id = await createSession(run)
     const table = TableClient.connect(await asTable(run, id))

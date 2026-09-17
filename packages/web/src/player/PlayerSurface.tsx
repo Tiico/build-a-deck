@@ -1,15 +1,16 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { Activity, Snapshot, VisibleComponentState } from '@byd/protocol'
 import type { TableClient } from '../client.js'
 import { HeldCard } from './HeldCard.js'
+import { HandActions } from './HandActions.js'
 import { HandStrip } from './HandStrip.js'
-import { CountersRow, MineActions, MineStrip } from './SeatExtras.js'
+import { CountersRow, MineActions, MineStrip, inFrontOf } from './SeatExtras.js'
 import { PlaySheet } from './PlaySheet.js'
-import { TableSummary } from './TableSummary.js'
+import { TableSummary, RecentActivity } from './TableSummary.js'
 import { SessionButtons, SessionOverlays, useToast, type Sheet } from './SessionOverlays.js'
 import { RuleDrawer } from '../rules/RuleDrawer.js'
 import { playIntents } from './play.js'
-import { useRefusal } from '../status/Refusal.js'
+import { Refusal, useRefusal } from '../status/Refusal.js'
 import { useT } from '../i18n/index.js'
 
 // What a player is given on a screen that cannot carry the board: the seat's own hand as K10's
@@ -68,6 +69,13 @@ export type PlayerSurfaceProps = {
 
 export function PlayerSurface({ client, view, activity, seat, name, sessionId, faces, version, marks, openHand, onLeft }: PlayerSurfaceProps) {
   const t = useT()
+  const personal = useRef<HTMLDetailsElement>(null)
+  const [chosenId, setChosenId] = useState<string | null>(null)
+  const [quickTarget, setQuickTarget] = useState<string | null>(null)
+  const [quickSource, setQuickSource] = useState<string | null>(null)
+  const quick = useRefusal('phone')
+  const quickBusy = useRef(false)
+  const [quickPending, setQuickPending] = useState(false)
   const [inspect, setInspect] = useState<VisibleComponentState | null>(null)
   const [lifted, setLifted] = useState<VisibleComponentState | null>(null)
   const [sheet, setSheet] = useState<Sheet>(null)
@@ -81,6 +89,9 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
   const [toast, setToast] = useToast()
 
   const hand = view.components.filter((c) => c.zone === `hand:${seat}`)
+  const chosen = chosenId === '' ? undefined : hand.find(c => c.id === chosenId) ?? hand[0]
+  const marked = hand.filter(c => marks.selected.has(c.id))
+  const chosenCards = marked.length ? marked : chosen ? [chosen] : []
   // A lifted card is played alone unless it is one of the selected hand cards (K3).
   const toPlay = lifted ? (marks.selected.has(lifted.id) ? hand.filter((c) => marks.selected.has(c.id)) : [lifted]) : []
 
@@ -100,8 +111,40 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
   const draw = (zone: string) => {
     setRefusedPile(zone)
     void drawn.watch(client.send({ v: 'split', pile: zone, at: 1, to: `hand:${seat}` })).then((result) => {
-      if (result.ok) setRefusedPile(null)
+      if (result.ok) {
+        setRefusedPile(null)
+        const added = client.view?.components.find(c => c.zone === `hand:${seat}` && !hand.some(before => before.id === c.id))
+        if (added) { setChosenId(added.id); marks.clear() }
+      }
     })
+  }
+  const playDirect = async (cards: VisibleComponentState[], zone: string, at: 'top' | 'bottom') => {
+    const first = cards[0]
+    if (quickBusy.current || !first) return
+    quickBusy.current = true
+    quick.clear()
+    setQuickPending(true)
+    setQuickTarget(zone)
+    setQuickSource(first.zone === `hand:${seat}` ? 'hand' : first.id)
+    try {
+      const intents = zone === `hand:${seat}` ? cards.map(c => ({ v: 'move' as const, component: c.id, to: zone })) : playIntents(view, cards, zone, undefined, at)
+      const result = await quick.watch(client.send(...intents))
+      if (result.ok) {
+        if (cards.some(c => c.zone === `hand:${seat}`) || zone === `hand:${seat}`) {
+          marks.clear()
+          setChosenId(null)
+        }
+        if (zone === `hand:${seat}`) setChosenId(first.id)
+        if (view.zones.some(z => z.id === zone && z.kind === 'area' && z.owner === seat) && personal.current) personal.current.open = true
+      }
+    } finally {
+      quickBusy.current = false
+      setQuickPending(false)
+    }
+  }
+  const toggle = (card: VisibleComponentState) => {
+    if (marks.selected.size === 1 && marks.selected.has(card.id)) setChosenId('')
+    marks.toggle(card)
   }
 
   return (
@@ -114,20 +157,20 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
         <RuleDrawer http={faces} sessionId={sessionId} placement="phone" />
       </header>
       <CountersRow view={view} onSet={(c, value) => void client.send({ v: 'setCounter', component: c.id, value })} />
-      <TableSummary view={view} activity={activity} onDraw={draw} refusal={drawn} refusedZone={refusedPile} />
-      {/* A card in front of you opens the same inspection a hand card does (#78); the verbs that
-          used to sit under it in the strip are in there, where a word has room to be one. */}
-      <MineStrip view={view} faces={faces} onOpen={setInspect} />
-      <HandStrip view={view} selected={marks.selected} faces={faces} onTap={setInspect} onHold={marks.toggle} onLift={setLifted} onOpen={(c) => openHand(c, [...marks.selected])} />
-      {/* The hint names what a finger can do to a card, so it waits for a card to exist (UX-16).
-          An empty hand says its own thing in the strip above instead. */}
-      {hand.length > 0 && (
-        <p className="byd-hint">
-          {marks.selected.size > 0
-            ? t(marks.selected.size === 1 ? 'player.hint.selected.one' : 'player.hint.selected.other', { n: marks.selected.size })
-            : t('player.hint')}
-        </p>
-      )}
+      <main className="byd-phone-main">
+        <h1>{t('player.hand.title')}</h1>
+        <TableSummary view={view} activity={activity} onDraw={draw} refusal={drawn} refusedZone={refusedPile} pilesOnly />
+        <HandStrip view={view} selected={new Set(chosenCards.map(c => c.id))} faces={faces} onTap={card => { setChosenId(card.id); marks.clear() }} onHold={toggle} onLift={setLifted} onOpen={(c) => openHand(c, [...marks.selected])} />
+        {hand.length > 0 && <p className="byd-hint">{marks.selected.size > 0 ? t(marks.selected.size === 1 ? 'player.hint.selected.one' : 'player.hint.selected.other', { n: marks.selected.size }) : t('player.hint')}</p>}
+        <HandActions refusal={quickSource === 'hand' ? quick : undefined} refusedZone={quickTarget} view={view} cards={chosenCards} pending={quickPending} onRead={setInspect} onPlay={(zone, at) => void playDirect(chosenCards, zone, at)} onMore={setLifted} />
+        {quickSource === 'hand' && <Refusal handle={quick} />}
+        <details ref={personal} className="byd-personal" data-personal>
+          <summary>{t('player.mine.title', { n: inFrontOf(view).length })}</summary>
+          <MineStrip refusal={quick} refusedCard={quickSource} refusedZone={quickTarget} onTake={card => void playDirect([card], `hand:${seat}`, 'top')} heading={false} view={view} faces={faces} onOpen={setInspect} pending={quickPending} onPlay={(card, zone, at) => void playDirect([card], zone, at)} />
+          {quickSource !== 'hand' && <Refusal handle={quick} />}
+        </details>
+        <details className="byd-phone-history"><summary>{t('play.latest')}</summary><RecentActivity view={view} activity={activity} /></details>
+      </main>
       {/* The card held up. A card that lies in front of you carries its verbs here, and a verb
           puts the card down as it goes: what it did is read off the strip behind it. */}
       {inspect && (
