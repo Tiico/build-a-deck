@@ -1,7 +1,20 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { namesOfProject } from '@byd/server/doc'
 import type { ProjectDoc, RuleBlock, RuleDoc } from '@byd/server'
-import { importRules, renderRules, type Names, type RenderedBlock, type RenderedNode, type RuleImport, type RuleImportKind } from '@byd/template'
+import {
+  importRules,
+  planImport,
+  renderRules,
+  type Names,
+  type RenderedBlock,
+  type RenderedNode,
+  type RuleImport,
+  type RuleImportKind,
+  type RulePlan,
+  type RulePlanSection,
+  type RuleRun,
+  renderLine,
+} from '@byd/template'
 import type { ProjectClient } from './ProjectClient.js'
 import { useT, type T } from '../i18n/index.js'
 import type { Key } from '../i18n/sv.js'
@@ -27,7 +40,18 @@ export function RulesPanel({ doc, client }: RulesPanelProps) {
   // the very page it would become (#131, variant C). The column that finds the way through a
   // written book is the column that was standing there before a word was written, which is why
   // the two states read as one surface rather than two.
-  const shown = rules ?? proposal?.doc ?? templateRules(doc.name, t)
+  // What the file would do to the book that is already there (#131, third slice). It is worked out
+  // once, here, and everything below is a rendering of it: the band counts it, the book is drawn
+  // with its marks, and the column beside the book carries the same marks the book does.
+  const plan = rules && proposal ? planImport(rules, proposal.doc) : null
+  // A book is being written in only when nothing is lying in it: a proposal is a reading of what
+  // the book would become, and a page that can be typed into while it says what it is about to
+  // lose would be two things at once.
+  const writing = rules !== undefined && proposal === null
+  // Everything the reader is shown, which over a book includes what is about to leave it. The book
+  // that would be written is `plan.doc` and is a subset of this.
+  const shown = plan ? { title: plan.doc.title, blocks: plan.blocks.map((planned) => planned.block) } : (rules ?? proposal?.doc ?? templateRules(doc.name, t))
+  const marks = new Map((plan?.blocks ?? []).map((planned) => [planned.block.id, planned]))
   const out = renderRules(shown, names)
   const patch = (id: string, next: Partial<RuleBlock>, gesture?: string) =>
     rules && client.setRules({ ...rules, blocks: rules.blocks.map((b) => (b.id === id ? ({ ...b, ...next } as RuleBlock) : b)) }, gesture)
@@ -70,7 +94,8 @@ export function RulesPanel({ doc, client }: RulesPanelProps) {
   const open = (id: string) => rules && setEditing(id)
   // A file the designer picked, read and laid out as the book it would become — and never taken
   // in on the way past. What it loses is read first (#131).
-  const pick = async (file: File | undefined) => {
+  const pick = (file: File | undefined) => void lay(file)
+  const lay = async (file: File | undefined) => {
     if (!file) return
     const read = importRules(await file.text(), doc.name)
     // A file with nothing in it to make a book of says so, rather than looking as though the
@@ -93,7 +118,7 @@ export function RulesPanel({ doc, client }: RulesPanelProps) {
             {failed}
           </span>
         )}
-        {out.warnings.length > 0 && rules && (
+        {out.warnings.length > 0 && writing && (
           <span className="byd-rules-warn" role="status">
             {t(out.warnings.length === 1 ? 'rules.warnings.one' : 'rules.warnings.other', { n: out.warnings.length })}
           </span>
@@ -108,49 +133,78 @@ export function RulesPanel({ doc, client }: RulesPanelProps) {
             <button type="button" className="byd-secondary" onClick={() => client.setRules(templateRules(doc.name, t))}>
               {t('rules.template')}
             </button>
-            <label className="byd-secondary">
-              {t('rules.import')}
-              <input
-                type="file"
-                accept=".md,.markdown,text/markdown,text/plain"
-                aria-label={t('rules.import')}
-                onChange={(e) => {
-                  const file = e.target.files?.[0]
-                  // The same file picked twice running is no change at all to an input that still
-                  // holds it, and the second press would do nothing. It holds nothing afterwards.
-                  e.target.value = ''
-                  void pick(file)
-                }}
-              />
-            </label>
+            <PickFile label={t('rules.import')} onPick={pick} />
+          </div>
+        )}
+        {/* Importing over a written book (#131, third slice). The way in that the second slice
+            deliberately left out — a control that replaced a whole book without saying what it
+            took would have been a promise nobody kept — and the way of working the product owner
+            asked to support: write in your own editor, and hand the file over again and again.
+            The book remembers which file it came out of, so the control can name it. */}
+        {rules && !proposal && (
+          <div className="byd-rules-ways">
+            <PickFile
+              label={rules.source ? t('rules.import.again') : t('rules.import.over')}
+              {...(rules.source ? { spoken: t('rules.import.again.of', { file: rules.source.file }) } : {})}
+              onPick={pick}
+            />
           </div>
         )}
       </div>
       {proposal && (
         <Report
           of={proposal}
+          plan={plan}
           onCancel={() => setProposal(null)}
           onMake={() => {
+            const made = plan?.doc ?? proposal.doc
             setProposal(null)
             setFailed(null)
-            // An import lays a named version rather than writing over anything (#131, B4).
-            void client.importRules(proposal.doc, proposal.file, t).catch((err: unknown) => setFailed(whyNotSaved(err, t)))
+            // An import lays a named version rather than writing over anything (#131, B4). It is
+            // where the protection matters most: what is being replaced may be a whole book
+            // somebody wrote by hand, and fifty steps of undo live in one tab.
+            void client.importRules(made, proposal.file, t).catch((err: unknown) => setFailed(whyNotSaved(err, t)))
           }}
         />
       )}
       <div className="byd-rules-spread">
         {/* `proposed` is the mark that says a section has nothing written in it yet. A section
-            read out of a file has, so only the template's own disposition carries it. */}
-        <Toc blocks={out.blocks} label={t('rules.toc')} {...(rules ? { onAdd: addSection } : proposal ? {} : { proposed: true })} />
-        <article className="byd-rulebook" {...(rules ? { 'data-rulebook': true } : { 'data-proposal': true })}>
+            read out of a file has, so only the template's own disposition carries it. The column
+            carries the import's own marks instead when a file is lying in the book (#131). */}
+        <Toc
+          blocks={out.blocks}
+          label={t('rules.toc')}
+          {...(plan ? { marks: plan.sections } : {})}
+          {...(writing ? { onAdd: addSection } : proposal || rules ? {} : { proposed: true })}
+        />
+        <article className="byd-rulebook" {...(writing ? { 'data-rulebook': true } : { 'data-proposal': true })}>
           <h1>{out.title}</h1>
-          {out.blocks.map((b) => {
+          {out.blocks.map((b, i) => {
             const source = shown.blocks.find((x) => x.id === b.id)
+            const planned = marks.get(b.id)
+            // What is happening to this block, as words in the page and in the order they are read.
+            // A strike-through is a decoration and a colour is a colour; neither of them reaches a
+            // screen reader, and this is a report that has to be read carefully (L12).
+            //
+            // Once per section and not once per block. A section that is going is a heading and the
+            // paragraphs under it, and saying it four times is saying it worse; but three sections
+            // going one after another are three losses, and a reader told once about three of them
+            // has also been told worse. So the word stands wherever a section opens, and wherever a
+            // run of one mark begins, and nowhere else. The setup says so on its own account,
+            // because that it survives is the one thing about this import a reader could not
+            // otherwise guess (B5).
+            const opensASection = b.kind === 'heading' && b.level === 1
+            const saysMark =
+              planned !== undefined &&
+              (planned.block.kind === 'setup' ? true : planned.mark !== 'kept' && (opensASection || marks.get(out.blocks[i - 1]?.id ?? '')?.mark !== planned.mark))
             return (
-              <div key={b.id} className="byd-rules-block" data-block={b.id} data-open={editing === b.id ? 'true' : undefined}>
-                {editing === b.id && source && rules ? (
+              <div key={b.id} className="byd-rules-block" data-block={b.id} data-mark={planned?.mark} data-open={editing === b.id ? 'true' : undefined}>
+                {planned && saysMark && (
+                  <span className="byd-rules-mark">{t(planned.block.kind === 'setup' ? 'rules.mark.setup' : (`rules.mark.${planned.mark}` as Key))}</span>
+                )}
+                {editing === b.id && source && writing ? (
                   <Editing block={source} names={names} onPatch={(next, gesture) => patch(b.id, next, gesture)} onClose={() => setEditing(null)} onRemove={() => remove(b.id)} />
-                ) : rules ? (
+                ) : writing ? (
                   <div
                     role="button"
                     tabIndex={0}
@@ -165,10 +219,12 @@ export function RulesPanel({ doc, client }: RulesPanelProps) {
                   >
                     <Block block={b} source={source} names={names} />
                   </div>
+                ) : planned?.runs ? (
+                  <Rewritten runs={planned.runs} names={names} />
                 ) : (
                   <Block block={b} source={source} names={names} />
                 )}
-                {rules && (
+                {writing && (
                   <button type="button" className="byd-rules-add" aria-label={t('rules.addAfter', { id: b.id })} onClick={() => addAfter(b.id)}>
                     ＋
                   </button>
@@ -179,6 +235,40 @@ export function RulesPanel({ doc, client }: RulesPanelProps) {
         </article>
       </div>
     </div>
+  )
+}
+
+// The file the import asks for. The label is what is drawn, and what is hit: a native file control
+// beside two pills is two languages in one row. The input keeps its own focus and its own keyboard
+// and is taken off the screen for the eye only — `.byd-offscreen`, not a transparent sheet laid
+// over the label. Off the screen it is still focusable, still announced, and still opens the picker
+// on Enter or Space; stretched and transparent it was a control that could not be seen at all, and
+// this repo has already been bitten once by an invisible box catching a click meant for what was
+// under it (#140).
+//
+// `spoken` is what the control is called when the book remembers a file (#131): the picker itself
+// cannot be opened on a name — the web has no such thing short of a file handle, and a handle was
+// decided against because it belongs to one browser and one person while the book travels with the
+// project — so what is built instead is a control that says which file it means.
+function PickFile({ label, spoken, onPick }: { label: string; spoken?: string | undefined; onPick(file: File | undefined): void }) {
+  return (
+    <label className="byd-secondary">
+      {label}
+      <input
+        className="byd-offscreen"
+        type="file"
+        accept=".md,.markdown,text/markdown,text/plain"
+        aria-label={spoken ?? label}
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          // The same file picked twice running is no change at all to an input that still holds it,
+          // and the second press would do nothing. It holds nothing afterwards — which is exactly
+          // what a designer who imports the same file over and over needs it to do.
+          e.target.value = ''
+          onPick(file)
+        }}
+      />
+    </label>
   )
 }
 
@@ -201,7 +291,12 @@ const whyNotSaved = (err: unknown, t: T): string => {
 //
 // It is not a dialog. The book it would make stands under it at its own reading width, so the
 // report is read against the thing it describes rather than over it (prototype 8, variant B).
-function Report({ of, onCancel, onMake }: { of: RuleImport & { file: string }; onCancel(): void; onMake(): void }) {
+//
+// Over a book that is already written it says one thing more, and says it first: what the *book*
+// loses. Counting what the file loses is not enough there — a designer who wrote three sections by
+// hand and hands over a file with two has to see, before she presses anything, that one of them is
+// going away (#131, third slice).
+function Report({ of, plan, onCancel, onMake }: { of: RuleImport & { file: string }; plan: RulePlan | null; onCancel(): void; onMake(): void }) {
   const t = useT()
   const heading = useId()
   const here = useRef<HTMLElement>(null)
@@ -215,15 +310,22 @@ function Report({ of, onCancel, onMake }: { of: RuleImport & { file: string }; o
       tabIndex={-1}
       role="region"
       aria-labelledby={heading}
+      data-over={plan ? 'true' : undefined}
       onKeyDown={(e) => {
         if (e.key !== 'Escape') return
         e.preventDefault()
         onCancel()
       }}
     >
-      <b id={heading}>{t('rules.import.report')}</b>
+      <b id={heading}>{t(plan ? 'rules.import.report.over' : 'rules.import.report')}</b>
       <span>{t('rules.import.from', { file: of.file })}</span>
       <ul>
+        {plan &&
+          balance(plan).map((line) => (
+            <li key={line.of} data-kind={line.kind}>
+              {t(`rules.import.${line.of}.${line.n === 1 ? 'one' : 'other'}` as Key, line.params)}
+            </li>
+          ))}
         {of.notes.map((note) => (
           <li key={note.of} data-kind={WEIGHT[note.of]}>
             {t(`rules.import.${note.of}.${note.n === 1 ? 'one' : 'other'}` as Key, { n: note.n })}
@@ -238,6 +340,19 @@ function Report({ of, onCancel, onMake }: { of: RuleImport & { file: string }; o
       </button>
     </section>
   )
+}
+
+// What the book she has is about to lose, gain and have rewritten — the lines that stand first in
+// the report, because from the third slice on they are the main thing and the file's own losses
+// are not. A count of nothing is no line at all: a file handed over unchanged has a report with
+// nothing in it about the book, which is the whole reason the preview won over the balance sheet.
+function balance(plan: RulePlan): { of: 'loses' | 'rewrites' | 'fresh'; kind: string; n: number; params: Record<string, number> }[] {
+  const sections = (mark: string) => plan.sections.filter((section) => section.mark === mark).length
+  return [
+    { of: 'loses' as const, kind: 'going', n: plan.gone.sections, params: { n: plan.gone.sections, words: plan.gone.words } },
+    { of: 'rewrites' as const, kind: 'changed', n: sections('changed'), params: { n: sections('changed') } },
+    { of: 'fresh' as const, kind: 'added', n: sections('added'), params: { n: sections('added') } },
+  ].filter((line) => line.n > 0)
 }
 
 // How heavily a line of the report reads. `kept` came in whole, `changed` came in as something
@@ -262,23 +377,43 @@ const anchorOf = (id: string): string => `rule-${id}`
 
 // The column the book is found in (#131). It is the same column in both states: in the empty tab
 // it carries the disposition being proposed, in the written book the sections that were kept.
-function Toc({ blocks, label, onAdd, proposed }: { blocks: readonly RenderedBlock[]; label: string; onAdd?: (() => void) | undefined; proposed?: boolean | undefined }) {
+function Toc({
+  blocks,
+  label,
+  onAdd,
+  proposed,
+  marks,
+}: {
+  blocks: readonly RenderedBlock[]
+  label: string
+  onAdd?: (() => void) | undefined
+  proposed?: boolean | undefined
+  marks?: readonly RulePlanSection[] | undefined
+}) {
   const t = useT()
   // The sections of the book, which is what a heading of the first level is. A subheading stands
   // inside a section and is found by reading it, not by a second rank in the column beside it.
   const headings = blocks.filter((b): b is Extract<RenderedBlock, { kind: 'heading' }> => b.kind === 'heading' && b.level === 1)
+  const marked = new Map((marks ?? []).map((section) => [section.id, section.mark]))
   if (headings.length === 0) return null
   return (
     <nav className="byd-rules-toc" aria-label={label}>
       <b aria-hidden="true">{label}</b>
-      {headings.map((h) => (
-        <a key={h.id} href={`#${anchorOf(h.id)}`}>
-          {h.text}
-          {/* A disposition that has not been taken up yet says so where the reader is looking, so
-              a tab that looks like a book is never mistaken for one (#131, variant C). */}
-          {proposed && <span>{t('rules.toc.empty')}</span>}
-        </a>
-      ))}
+      {headings.map((h) => {
+        const mark = marked.get(h.id)
+        return (
+          <a key={h.id} href={`#${anchorOf(h.id)}`} data-mark={mark}>
+            {h.text}
+            {/* A disposition that has not been taken up yet says so where the reader is looking, so
+                a tab that looks like a book is never mistaken for one (#131, variant C). */}
+            {proposed && <span>{t('rules.toc.empty')}</span>}
+            {/* And an import marks the column with the same marks it puts in the book, in words
+                and never in a colour: the section that is going may be the one below the fold, and
+                a reader who moves through the column by keyboard has to meet it there (L12). */}
+            {mark && mark !== 'kept' && <span>{t(`rules.toc.${mark}` as Key)}</span>}
+          </a>
+        )
+      })}
       {onAdd && (
         <button type="button" className="byd-rules-own" onClick={onAdd}>
           {t('rules.addSection')}
@@ -438,6 +573,23 @@ function Block({ block, source, names }: { block: RenderedBlock; source?: RuleBl
         </figure>
       )
   }
+}
+
+// A paragraph the file rewrote, sentence by sentence (#131). `del` and `ins` are the elements the
+// web has for exactly this, so the marking is in the document and not only in the stylesheet — and
+// beside them stands the word in `byd-rules-mark`, because neither element is announced reliably
+// and a strike-through is a decoration (L12).
+function Rewritten({ runs, names }: { runs: readonly RuleRun[]; names: Names }) {
+  return (
+    <p>
+      {runs.map((run, i) => {
+        const words = <Span nodes={renderLine(run.text, names)} />
+        if (run.mark === 'going') return <del key={i}>{words}</del>
+        if (run.mark === 'added') return <ins key={i}>{words}</ins>
+        return <span key={i}>{words}</span>
+      })}
+    </p>
+  )
 }
 
 function Span({ nodes }: { nodes: readonly RenderedNode[] }) {

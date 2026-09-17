@@ -76,6 +76,16 @@ export function renderRules(doc: RuleDoc, names: Names): RenderedRules {
   return { title: doc.title, blocks, warnings, text: lines.join('\n') }
 }
 
+// One line of the book, read on its own (#131). A rewritten paragraph is drawn sentence by
+// sentence in the import's proposal, and a sentence has to keep everything the whole paragraph
+// would have kept: emphasis is emphasis, and a reference still stands for the name the thing has.
+export function renderLine(text: string, names: Names): RenderedNode[] {
+  return resolve(
+    parseInline(text, { refs: true }).flatMap((p) => p.children),
+    names,
+  )
+}
+
 // What a reference stands for right now. A rule that names something the game no longer has says
 // so where it stands, rather than quietly saying nothing — the same choice as an unknown icon (L2).
 export function nameOf(node: Extract<InlineNode, { type: 'ref' }>, names: Names): string | null {

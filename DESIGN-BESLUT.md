@@ -326,8 +326,22 @@ Importen skriver aldrig över utan lägger en namngiven version, `Importerad: <f
 Skälet är att ångerstacken är femtio steg och bor i en flik, och en hel regelbok är för mycket att hänga på ett Ctrl+Z.
 Boken minns vilken fil den kom ur och när, som text i dokumentet och aldrig som ett filgrepp: ett grepp hör till en webbläsare och en person, medan namnet följer med projektet överallt.
 En fil är otrodd indata, och ingenting den innehåller når sidan som markup: importen producerar strängar i block, och varje sträng escapas hela vägen till läsaren.
-Importen erbjuds bara i tomläget.
-Att importera över en skriven bok är beslutat men inte byggt: det kräver en skillnadsvy på styckenivå och undantaget att uppställningsblocket aldrig kan importeras bort, och en knapp som inte gör hela det arbetet är ett löfte ingen håller.
+
+Importen över en skriven bok, byggd 2026-09-17 (#131):
+Importen erbjuds också när boken redan är skriven, och det är den vanliga vägen och inte undantaget: beställaren avvisade "import bara i tomläget" därför att vissa användare hellre redigerar utanför appen och importerar om och om igen, och det är ett arbetssätt att stödja.
+Rapporten är därför inte en balansräkning i en dialog utan boken själv (prototyp 8, variant B): filen läggs in i boken som ett förslag vid bokens egen läsbredd, det som försvinner står överstruket där det står, ändrade meningar är märkta mening för mening, och innehållsförteckningen bär samma märken.
+Skälet är mätt: variant A hade två skrollytor vid 1024 och 1280, alltså låg det som ska läsas noga under en vikning; förhandsvisningen har högst en skrollyta vid 1024, 1280 och 1440 och ingen skrollyta inuti en annan.
+Rapporten säger vad den *befintliga* boken förlorar innan den säger vad filen förlorar: hur många avsnitt som försvinner och hur många ord de väger, hur många som skrivs om och hur många som är nya. Att bara räkna vad filen tappar räcker inte när det finns en bok.
+Ett märke bärs aldrig av färg eller överstrykning ensam (L12): varje märkt block har märkets ord som text i sidan, i den ordning den läses, och samma ord står i spalten bredvid boken.
+Ett förslag går inte att skriva i. Boken är en yta som läses tills den besvarats, och svaren är `Avbryt` — också Escape — och `Gör boken`.
+"Samma avsnitt" över en import är rubrikens ord, lästa utan hänsyn till mellanrum och versaler; inuti ett avsnitt är det den längsta gemensamma följden av block, och inuti ett stycke den längsta gemensamma följden av meningar. En Markdown-fil bär inga id:n, så innehållet är det enda två böcker som aldrig varit samma dokument har gemensamt.
+Skyddet är detsamma som i tomläget och betyder mest här: importen skriver aldrig över utan lägger en namngiven version, `Importerad: <filnamn>`. Det som ersätts kan vara en hel handskriven bok, och ångerstacken bor i en flik.
+Boken minns filnamnet i dokumentet, så kontrollen heter `Importera samma fil igen` och säger vilken fil den menar. Den öppnar en vanlig filväljare: webben kan inte öppna en väljare förifylld på ett namn utan ett filgrepp, och ett grepp hör till en webbläsare och en person medan boken följer med projektet.
+
+**Undantaget från "filen bestämmer": uppställningsblocket kan aldrig importeras bort.**
+Det är inte text utan spelets egna zoner, ritade ur tillståndet (B5), och ingen Markdown-fil har det i sig. En fil som aldrig nämner uppställningen har därför ingenting att säga om den, och alternativet — att en fil som inte kan skriva blocket ändå raderar det — vore en fil som tar bort något den aldrig kunde skapa.
+Blocket hålls utanför jämförelsen från början, så det finns ingen kodväg alls längs vilken det kunde märkas som försvinnande; det står kvar överst i sitt avsnitt, under den rubrik filen bestämmer, och prosan runt det följer filen som all annan text.
+Förhandsvisningen märker det `Orörd · spelets egna zoner`, eftersom att det överlever är det enda i importen en läsare inte kan gissa sig till.
 
 Motivering:
 Trycket kräver en regelbok för att ordern ska kunna läggas.

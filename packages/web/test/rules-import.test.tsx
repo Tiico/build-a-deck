@@ -25,6 +25,9 @@ afterEach(async () => {
 async function openRules(): Promise<void> {
   await run.projects.create(run.projectId, projectDoc())
   history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+  // The fixture says it is answering rather than the surface guessing it from a word the project
+  // happens to carry (#149).
+  await run.answering()
   render(<EditorPage />)
   await screen.findByText('Skogens herrar')
   fireEvent.click(screen.getByRole('tab', { name: 'Regler' }))
@@ -191,14 +194,17 @@ describe('the protection an import lays down (#131, B4)', () => {
   })
 })
 
-describe('where the import is offered, and where it is not (#131)', () => {
-  it('is gone once a book exists: importing over a written book is its own slice', async () => {
+describe('where the import is offered (#131)', () => {
+  it('stands over a written book too, under the name that slice built for it', async () => {
     await openRules()
     fireEvent.click(screen.getByRole('button', { name: 'Börja från en mall' }))
     await waitFor(() => expect(document.querySelector('[data-rulebook]')).not.toBeNull())
-    // Nothing on the surface lies about what it does, which is why the first slice shipped two
-    // buttons rather than three.
+    // The second slice shipped no control here on purpose: one that replaced a whole book without
+    // saying what it took would have been a promise nobody kept. The third slice keeps the promise,
+    // and `rules-reimport` is where what it now says is tested. The empty tab's own control is a
+    // third way in and not this one, so it is gone with the empty tab.
     expect(screen.queryByLabelText('Importera från fil')).toBeNull()
+    expect(screen.getByLabelText('Importera över boken')).toBeTruthy()
   })
 
   it('says so, rather than doing nothing, when the file has nothing to make a book of', async () => {
@@ -234,7 +240,11 @@ describe('the report is read without a mouse (L12)', () => {
   it('takes the focus when it appears and takes Escape as the answer Avbryt', async () => {
     await openRules()
     const report = await pick()
-    expect(document.activeElement).toBe(report)
+    // Waited for, not timed (#149): the band takes the focus in an effect, so it lands a beat
+    // after the band is in the page, and a read taken the instant the band appears is green on a
+    // quiet machine and red under a full run. This one has not fallen yet; the same line in
+    // `rules-reimport.test.tsx` fell on CI, and this is the same line.
+    await waitFor(() => expect(document.activeElement).toBe(report))
     fireEvent.keyDown(report, { key: 'Escape' })
     await gone()
     expect(document.querySelector('[data-rulebook]')).toBeNull()

@@ -1699,11 +1699,15 @@
 .byd-rules-bar { flex: none; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
 .byd-rules-bar h2, .byd-rules-toc b, .byd-rules-report b { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-rules-bar span, .byd-rules-report > span { color: #9aa3b8; font-size: 12px; }
-/* The file the third way in asks for. The input keeps its own focus and its own keyboard; the
-   label is what is drawn, because a native file control beside two pills is two languages in one
-   row. The ring is the label's for the same reason. */
-.byd-rules-ways label { position: relative; overflow: hidden; }
-.byd-rules-ways input[type='file'] { position: absolute; inset: 0; opacity: 0; }
+/* The file the third way in asks for. The label is what is drawn, because a native file control
+   beside two pills is two languages in one row — and the label is therefore also what is hit and
+   what is measured. The input is taken out of the picture with `.byd-offscreen`, the same corner
+   every other unseen thing in the editor stands in, and never stretched transparently over the
+   label: a control nobody can see must not be the box a click lands in (#140), and a guard that
+   asks whether every control in the book is painted is right to count one that is not (#184).
+   The label stays positioned so the corner is its own and focus lands where the eye already is;
+   the ring is the label's, because the focus belongs to an input the eye cannot find. */
+.byd-rules-ways label { position: relative; }
 .byd-rules-ways label:focus-within { outline: 3px solid #9cc6ff; outline-offset: 2px; }
 /* What the import does with the file, read before the book is made (#131). A band over the tab
    and never a dialog: the book the file would become stands under it in the book's own reading
@@ -1742,6 +1746,31 @@
 .byd-rules-setup { margin: 12px 0; }
 /* The question a section carries until the first character is written in it (#131). */
 .byd-rulebook [data-ask] { color: #6b6255; font-style: italic; }
+/* A file lying in the book as a proposal (#131, prototype 8 variant B). The marks are drawn on
+   the paper the book is drawn on, so what is read is the book and not a report about it — and the
+   word beside each of them is text in the page (`.byd-rules-mark`), because a strike-through is a
+   decoration and a colour is a colour, and neither of them reaches a screen reader (L12). The
+   colours here are the paper's own and not the editor's chrome, for the same reason the book's
+   setting is its own. */
+.byd-rules-mark { display: block; margin-bottom: var(--byd-s1); /* undantag: bokens egen sättning */ font: 700 10px system-ui, sans-serif; text-transform: uppercase; letter-spacing: 1px; color: #6b6255; }
+/* The rail hangs in the page's own margin: the measure is 68 characters of the book's face and a
+   mark beside a paragraph is not allowed to make it 66. */
+.byd-rulebook [data-mark] { margin-left: calc(-1 * (var(--byd-s3) + 3px)); padding-left: var(--byd-s3); border-left: 3px solid transparent; /* undantag: 3px är linjens egen bredd och inte ett avstånd — den dras av så att måttet förblir 68 tecken */ }
+.byd-rulebook [data-mark='going'] { border-left-color: #9a3b3b; }
+.byd-rulebook [data-mark='going'] .byd-rules-mark { color: #9a3b3b; }
+.byd-rulebook [data-mark='going'] h2, .byd-rulebook [data-mark='going'] h3, .byd-rulebook [data-mark='going'] p, .byd-rulebook [data-mark='going'] li { color: #6f5f5f; text-decoration: line-through; }
+.byd-rulebook [data-mark='added'] { border-left-color: #2f6b46; }
+.byd-rulebook [data-mark='added'] .byd-rules-mark { color: #2f6b46; }
+.byd-rulebook [data-mark='changed'] { border-left-color: #8a5a12; }
+.byd-rulebook [data-mark='changed'] .byd-rules-mark { color: #8a5a12; }
+.byd-rulebook del { color: #6f5f5f; }
+.byd-rulebook ins { text-decoration: none; color: #23201a; background: rgba(47, 107, 70, 0.14); border-radius: 3px; padding: 0 3px; /* undantag: bokens egen sättning — märket ligger om en mening och får inte flytta orden runt den */ }
+/* The column carries the same marks, in the same words. */
+.byd-rules-toc a[data-mark='going'] span { color: #d98d8d; }
+.byd-rules-toc a[data-mark='added'] span { color: #8fd0a8; }
+.byd-rules-toc a[data-mark='changed'] span { color: #f0b64a; }
+.byd-rules-report li[data-kind='going'] { color: #ff9a9a; }
+.byd-rules-report li[data-kind='added'] { color: #8fd0a8; }
 .byd-rules-block { position: relative; }
 .byd-rules-block > [role='button'] { border-radius: 6px; padding: 0 4px; margin: 0 -4px; cursor: text; }
 .byd-rules-block > [role='button']:hover { background: #ece5d8; }
