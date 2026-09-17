@@ -1237,6 +1237,7 @@ describe('every suite that measures a surface', () => {
       'rules-layout.test.tsx',
       'setup-layout.test.tsx',
       'status-css.test.ts',
+      'symbol-list-mark.test.ts',
       'table-grab.test.ts',
       'table-layout.test.tsx',
       'template-canvas-image.test.tsx',
