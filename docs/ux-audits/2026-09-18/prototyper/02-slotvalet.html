@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 2 — Ett val bland femtio</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  .work { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0,1fr) 380px; gap: var(--s3); padding: var(--s4); }
+  .panel { min-height: 0; min-width: 0; display: flex; flex-direction: column; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); }
+  .panel > header { flex: none; display: flex; align-items: baseline; gap: var(--s2); padding: var(--s3) var(--s4) var(--s2); }
+  .panel > header h2 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .panel > header .rule { flex: 1; }
+  .panel > .scroll { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0 var(--s4) var(--s4); }
+  /* Meningen står i en yta som *inte* skrollar: en absolut ruta inuti en skrollande låda klipps av
+     den, vilket är precis den sortens fel #229 handlar om — och det vore illa att demonstrera det
+     av misstag i prototypen som föreslår innehållet. */
+  .panel > .yta { flex: 1 1 auto; min-height: 0; padding: 0 var(--s4) var(--s4); }
+
+  /* Meningen zonen skrivs som. Slotarna är ord i den, precis som i dag. */
+  /* En rad och inte ett stycke: ett <p> stängs av parsern när rutan (en <div>) öppnas i det,
+     och rutan hamnar då utanför sin omslutande span — positionerad mot sidan i stället för mot
+     knappen den hör till. */
+  .mening { margin: 0 0 var(--s3); color: var(--ink); font-size: 15px; line-height: 2.2; }
+  .slotwrap { position: relative; display: inline-block; }
+  .slot { min-height: 34px; border: 1px solid var(--line); border-radius: 8px; padding: 2px 10px; background: var(--card); color: #cfe6ff; font: inherit; font-weight: 700; cursor: pointer; }
+  .slot[aria-expanded='true'] { border-color: var(--primary-mark); }
+
+  /* Rutan. Den öppnas dit det finns plats — redan byggt i #229 — så det som prövas här är
+     innehållet: hur femtio val i fyra block blir något man hittar i. */
+  .pop { position: absolute; z-index: 5; top: calc(100% + 6px); left: 0; width: 320px; max-height: 340px; display: flex; flex-direction: column; border-radius: 10px; background: #12141a; border: 1px solid var(--line); box-shadow: 0 14px 34px rgba(0,0,0,.6); }
+  .pop[hidden] { display: none; }
+  .pop .sok { flex: none; padding: var(--s2); border-bottom: 1px solid var(--line-soft); }
+  .pop .sok input { width: 100%; min-height: 38px; box-sizing: border-box; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--sunk); color: var(--ink); font: inherit; }
+  .pop .lista { flex: 1 1 auto; min-height: 0; overflow: auto; padding: var(--s2); }
+  .pop h4 { margin: var(--s2) 0 4px; padding: 0 6px; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--quiet); }
+  .pop h4:first-child { margin-top: 0; }
+  .pop button.val { display: flex; width: 100%; align-items: baseline; gap: var(--s2); min-height: 38px; padding: 0 8px; border: 0; border-radius: 7px; background: transparent; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+  .pop button.val:hover, .pop button.val[data-har='true'] { background: #24507f; }
+  .pop button.val small { margin-left: auto; color: var(--quiet); }
+  .pop .tomt { padding: var(--s3) 8px; color: var(--quiet); }
+  .pop .senast { border-bottom: 1px solid var(--line-soft); }
+
+  /* Nuläget: en enda lång kolumn, allt på en gång. */
+  .nu .pop { width: 300px; }
+  .nu .pop .lista { padding: var(--s2); }
+  .nu .pop button.val { min-height: 40px; border: 1px solid var(--line); border-radius: 8px; background: var(--sunk); margin-bottom: 4px; }
+
+  .om { display: grid; gap: var(--s3); }
+  .om p { margin: 0; color: var(--quiet-2); font-size: 13px; line-height: 1.6; }
+  .om strong { color: var(--ink); }
+  .om ul { margin: 0; padding-left: 18px; color: var(--quiet-2); font-size: 13px; line-height: 1.7; }
+  .tal { display: flex; gap: var(--s3); }
+  .tal div { flex: 1; padding: var(--s3); border-radius: 10px; background: var(--sunk); border: 1px solid var(--line); }
+  .tal b { display: block; color: #fff; font-size: 22px; font-variant-numeric: tabular-nums; }
+  .tal span { color: var(--quiet); font-size: 11px; }
+</style>
+</head>
+<body>
+<div class="shell">
+<header>
+  <strong>Skogens herrar</strong>
+  <nav class="tabs"><button>Kort</button><button>Mall</button><button>Symboler</button><button>Regler</button><button aria-selected="true">Bord</button></nav>
+  <span class="spacer"></span>
+  <div class="switch" role="group" aria-label="Visa">
+    <button type="button" data-shape="nu" aria-pressed="false">Nu</button>
+    <button type="button" data-shape="forslag" aria-pressed="true">Förslag</button>
+  </div>
+  <span class="who">P</span>
+</header>
+
+<main>
+  <div class="work">
+    <section class="panel" id="scen">
+      <header><h2>Draghögen · regler</h2><span class="rule"></span></header>
+      <div class="yta">
+        <div class="mening">
+          Dela ut
+          <span class="slotwrap">
+            <button type="button" class="slot" id="knapp" aria-expanded="false" aria-haspopup="listbox">ett kort</button>
+            <div class="pop" id="pop" hidden role="dialog" aria-label="Hur många">
+              <div class="sok"><input id="sok" type="search" placeholder="Sök zon eller antal…" aria-label="Sök"></div>
+              <div class="lista" id="lista"></div>
+            </div>
+          </span>
+          till <button type="button" class="slot">varje hand</button>,
+          <button type="button" class="slot">med framsidan upp</button>.
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <header><h2>Vad som prövas</h2><span class="rule"></span></header>
+      <div class="scroll">
+        <div class="om">
+          <div class="tal">
+            <div><b id="antal">—</b><span>val i rutan</span></div>
+            <div><b id="rullning">—</b><span>rullningar till den sista</span></div>
+          </div>
+          <p><strong>Nu</strong> är en enda kolumn: ett talfält, sedan mängdorden, sedan varje zon i spelet, sedan varje sida ett kort kan ligga på. I ett spel av verklig storlek är det ett femtiotal val i fyra osorterade block.</p>
+          <p><strong>Förslaget</strong> ändrar inte vad som går att välja — bara hur man hittar i det.</p>
+          <ul>
+            <li><strong>Sök.</strong> En zon nås genom att skrivas. Det är den enda vägen som inte blir värre av att spelet växer.</li>
+            <li><strong>Senast valda överst.</strong> Samma zon väljs om och om igen när en uppsättning byggs.</li>
+            <li><strong>Rubriker som verkligen skiljer.</strong> Blocken finns redan; de syns bara inte.</li>
+            <li><strong>Det troliga först.</strong> «Ett kort» och «varje hand» står före tjugo zoner ingen valt.</li>
+          </ul>
+          <p>Riktningen på rutan är inte den här frågan — den byggdes i <strong>#229</strong> och öppnas nu dit det finns plats. Det här issuet handlar om innehållet.</p>
+          <p><strong>Kvar att avgöra:</strong> om de fyra blocken i stället ska bli fyra steg. Det gör varje steg litet men lägger till ett klick för den som redan vet vad hon vill ha.</p>
+        </div>
+      </div>
+    </aside>
+  </div>
+</main>
+</div>
+
+<script>
+  const ZONER = ['Draghögen','Kasthögen','Spelytan','Marknaden','Ruinen','Skogsbrynet','Borgen','Floden','Altaret','Gruvan','Hamnen','Torget','Valvet','Krönikan','Utkanten','Lägret','Bron','Tornet','Källan','Porten']
+  const MANGD = [{ n: 'ett kort', s: 'antal' }, { n: 'två kort', s: 'antal' }, { n: 'lika många som platser', s: 'antal' }, { n: 'fråga varje gång', s: 'antal' }]
+  const SIDOR = [{ n: 'med framsidan upp', s: 'sida' }, { n: 'med baksidan upp', s: 'sida' }, { n: 'som de låg', s: 'sida' }]
+  const senast = ['Draghögen', 'Kasthögen']
+
+  const $ = (id) => document.getElementById(id)
+  let form = 'forslag'
+
+  const alla = () => [
+    ...MANGD.map((m) => ({ ...m, grupp: 'Antal' })),
+    ...ZONER.map((z) => ({ n: 'lika många som ' + z, s: 'zon', grupp: 'Lika många som en zon' })),
+    ...ZONER.map((z) => ({ n: z, s: 'plats', grupp: 'Till en plats' })),
+    ...SIDOR.map((s) => ({ ...s, grupp: 'Sida' })),
+  ]
+
+  function rita() {
+    const q = form === 'forslag' ? ($('sok').value || '').toLowerCase().trim() : ''
+    const trffar = alla().filter((v) => v.n.toLowerCase().includes(q))
+    $('antal').textContent = alla().length
+    $('rullning').textContent = form === 'nu' ? Math.ceil(alla().length / 8) : '0–1'
+    $('sok').closest('.sok').hidden = form === 'nu'
+    $('scen').classList.toggle('nu', form === 'nu')
+
+    if (form === 'nu') {
+      // Allt på en gång, i den ordning koden råkar bygga det.
+      $('lista').innerHTML = alla().map((v) => `<button type="button" class="val">${v.n}</button>`).join('')
+      return
+    }
+    if (trffar.length === 0) { $('lista').innerHTML = '<p class="tomt">Inget som heter så.</p>'; return }
+
+    const block = []
+    if (q === '' && senast.length > 0) {
+      block.push(`<div class="senast"><h4>Senast valda</h4>${senast.map((z) => `<button type="button" class="val" data-har="false">${z}<small>plats</small></button>`).join('')}</div>`)
+    }
+    for (const grupp of ['Antal', 'Till en plats', 'Lika många som en zon', 'Sida']) {
+      const i = trffar.filter((v) => v.grupp === grupp)
+      if (i.length === 0) continue
+      block.push(`<h4>${grupp}</h4>${i.map((v) => `<button type="button" class="val">${v.n}<small>${v.s}</small></button>`).join('')}`)
+    }
+    $('lista').innerHTML = block.join('')
+  }
+
+  $('knapp').onclick = () => {
+    const öppen = $('pop').hidden
+    $('pop').hidden = !öppen
+    $('knapp').setAttribute('aria-expanded', String(öppen))
+    if (öppen) { rita(); if (form === 'forslag') $('sok').focus({ preventScroll: true }) }
+  }
+  $('sok').oninput = rita
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { $('pop').hidden = true; $('knapp').setAttribute('aria-expanded', 'false') } })
+  $('lista').addEventListener('click', (e) => {
+    const b = e.target.closest('.val')
+    if (!b) return
+    $('knapp').textContent = b.childNodes[0].textContent.trim()
+    $('pop').hidden = true
+    $('knapp').setAttribute('aria-expanded', 'false')
+  })
+  for (const b of document.querySelectorAll('.switch button')) {
+    b.onclick = () => {
+      for (const o of document.querySelectorAll('.switch button')) o.setAttribute('aria-pressed', String(o === b))
+      form = b.dataset.shape
+      $('sok').value = ''
+      rita()
+      // Rutan står öppen över växeln: det är den som jämförs, och att behöva öppna den igen för
+      // varje läge gör jämförelsen till ett minnesprov.
+      $('pop').hidden = false
+      $('knapp').setAttribute('aria-expanded', 'true')
+    }
+  }
+  rita()
+  // Öppnad från början, så att det som prövas syns utan ett klick — men utan att flytta fokus,
+  // som skulle dra sidan med sig.
+  $('pop').hidden = false
+  $('knapp').setAttribute('aria-expanded', 'true')
+</script>
+</body>
+</html>
