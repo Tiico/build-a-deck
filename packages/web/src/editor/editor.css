@@ -38,6 +38,21 @@
      times, which was harmless until the mark had to be measured against it (L11) — a ground
      without a name is a ground no contrast test can ask about. */
   --byd-editor-panel-bg: #171a23;
+  /* The parts of the game that are not cards — the template, the table, the rules, the symbols —
+     as a chip on a row in the history (#177). The hue is the second reading and never the only
+     one: every chip carries its own word, and the row's name spells that word out as a sentence,
+     so a reader who cannot tell the four apart by colour loses nothing (L12).
+     The four hues are the history's own and borrowed from nowhere. None of them is the green
+     `öppen nu` is written in a few pixels away, which already means one thing in this panel and
+     must not come to mean two. Measured in `editor-contrast.test.ts`. */
+  --byd-editor-part-bg: #1f2432;
+  --byd-editor-part-template: #ffd08a;
+  --byd-editor-part-setup: #8fd0ef;
+  --byd-editor-part-rules: #d6b9f0;
+  --byd-editor-part-icons: #f5b2be;
+  /* And the count that stands in their place from four parts up, which is a sentence rather than
+     a label and is read in the register every other quiet sentence in the editor is read in. */
+  --byd-editor-part-many: #c3cbdd;
   /* Every target in the editor is at least this, at every width the audit checks
      (UX-KONTROLLER: träffytor). A tool a thumb cannot hit is a tool the editor does not have. */
   --byd-tap: 44px;
@@ -127,19 +142,67 @@
 .byd-editor-saved { color: var(--byd-editor-saved-ink); white-space: nowrap; }
 .byd-editor-saved[data-unsaved='true'] { color: var(--byd-editor-unsaved-ink); font-weight: 700; }
 /* The history (B4): a panel that hangs from the revision it opened from. */
-.byd-history { position: absolute; left: 120px; top: 46px; z-index: 20; width: 340px; max-height: 70vh; overflow: auto; padding: 16px; border-radius: 14px; background: var(--byd-editor-panel-bg); border: 1px solid #3b4358; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5); }
+/* The panel is a column with a fixed head and a scrolling body, and not one box that scrolls
+   whole (#177). A history of five saves fits and never asked the question; a history of twenty-one
+   is two and a half panels tall, and everything that tells a reader where she is — the name of the
+   panel, the way out of it — used to scroll off the top with the oldest rows. */
+.byd-history { position: absolute; left: 120px; top: 46px; z-index: 20; width: 372px; max-height: 70vh; display: flex; flex-direction: column; overflow: hidden; padding: 16px; border-radius: 14px; background: var(--byd-editor-panel-bg); border: 1px solid #3b4358; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5); }
+/* The history itself, which is the part that scrolls. `min-height: 0` is what lets it: a flex
+   item's floor is its content, so without this the body grows to its full height and the panel
+   scrolls after all — from behind a head that no longer moves. */
+.byd-history-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
 .byd-history header { display: flex; align-items: center; gap: 10px; }
 .byd-history h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-history header button { margin-left: auto; border: 0; background: transparent; color: #9aa3b8; font-size: 18px; cursor: pointer; padding: 0 4px; }
 .byd-history-lead { margin: 8px 0 12px; color: #9aa3b8; font-size: 12px; line-height: 1.5; }
+/* The day is a heading over the rows and the clock stands in the row (#177): fifteen rows that
+   all said `i dag` said the same thing fifteen times, which is a list of timestamps and not a
+   record of work. */
+.byd-history-day + .byd-history-day { margin-top: var(--byd-s3); }
+/* The day stays over the rows it belongs to for as long as any of them is on screen: a clock is
+   only a time of day, and 09:00 comes round again every twenty-four hours. Sticky rather than
+   fixed, so each day is pushed out by the next one and never by a number measured here — nothing
+   in this panel is allowed to depend on how tall a heading turns out to be in someone's font. */
+.byd-history-daymark { position: sticky; top: 0; z-index: 1; display: flex; align-items: baseline; gap: var(--byd-s2); padding: var(--byd-s2) var(--byd-s2) var(--byd-s1); background: var(--byd-editor-panel-bg); }
+.byd-history-daymark h3 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
+.byd-history-daymark span { color: var(--byd-editor-quiet); font-size: 11px; font-variant-numeric: tabular-nums; }
 .byd-history ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .byd-history li { border-radius: 10px; background: #1b1f2a; border: 1px solid #262b38; overflow: hidden; }
 .byd-history li[data-named='true'] { border-color: var(--byd-editor-primary-mark); }
 .byd-history li[data-current] { border-color: #7dd3a0; }
-.byd-history li > button { display: flex; align-items: baseline; gap: 8px; width: 100%; border: 0; background: transparent; padding: 8px 12px; color: #e6ecfa; font: inherit; text-align: left; cursor: pointer; }
-.byd-history li > button b { color: #fff; }
-.byd-history li > button span { color: var(--byd-editor-quiet); font-size: 12px; }
-.byd-history li > button small { margin-left: auto; color: #7dd3a0; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+/* The row: the clock at the edge, what the save was and what it changed in the middle, and the
+   marker for the version that is open at the end. Aligned on the first line's baseline rather
+   than centred, so a row whose summary has not come back yet sits exactly where it will sit once
+   it has. */
+.byd-history li > button { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: baseline; gap: var(--byd-s2); width: 100%; min-height: var(--byd-tap); border: 0; background: transparent; padding: var(--byd-s2) var(--byd-s3); color: #e6ecfa; font: inherit; text-align: left; cursor: pointer; }
+.byd-history li > button:hover { background: #202634; }
+.byd-history li > button time { color: var(--byd-editor-quiet); font-size: 12px; font-variant-numeric: tabular-nums; }
+.byd-history-what { display: grid; min-width: 0; }
+.byd-history-what > b { color: #fff; font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* A version somebody named is read as its name (B4); the number stays, under it and quieter. */
+.byd-history-what > b.byd-history-named { font-weight: 700; }
+/* The line under the heading, drawn from the moment the row is — empty, and holding its own
+   height — so the rows under it do not move when the summaries come back.
+   The chips stand at its end and never give way; the words ellipsise around them. Which is the
+   right way round: the chip is what the eye is scanning for when the question is "which version
+   touched the template?", and three of them beside a heading would leave the heading seventy
+   pixels in a panel this wide. */
+.byd-history-line { display: flex; align-items: baseline; gap: var(--byd-s2); min-height: 1.5em; min-width: 0; }
+.byd-history-line > [data-said] { flex: 0 1 auto; min-width: 0; color: var(--byd-editor-quiet); font-size: 12px; line-height: 1.5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.byd-history-line > [data-said] em { font-style: normal; }
+.byd-history-line > [data-said] em::after { content: ' · '; }
+.byd-history-parts { flex: none; display: flex; align-items: baseline; gap: var(--byd-s1); margin-left: auto; }
+.byd-history-parts i { border-radius: 999px; padding: var(--byd-s1) var(--byd-s2); background: var(--byd-editor-part-bg); font-size: 10px; font-style: normal; line-height: 1; white-space: nowrap; }
+.byd-history-parts i[data-part='template'] { color: var(--byd-editor-part-template); }
+.byd-history-parts i[data-part='setup'] { color: var(--byd-editor-part-setup); }
+.byd-history-parts i[data-part='rules'] { color: var(--byd-editor-part-rules); }
+.byd-history-parts i[data-part='icons'] { color: var(--byd-editor-part-icons); }
+/* From four parts the chips give way to a count, which is a sentence and carries no hue of its
+   own: four pills were a row of colour and not a piece of news. */
+.byd-history-parts i[data-part='many'] { background: transparent; padding: var(--byd-s1) 0; color: var(--byd-editor-part-many); }
+/* Which version the editor is standing on, said in a word beside the heading and not by the green
+   edge alone (L12). */
+.byd-history li > button small { grid-column: 3; color: #7dd3a0; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; }
 .byd-history-detail { padding: 0 12px 12px; display: grid; gap: 8px; }
 .byd-history-detail p { margin: 0; color: #cfd5e3; font-size: 12px; line-height: 1.5; }
 .byd-history-detail label { display: grid; gap: 4px; font-size: 11px; color: #9aa3b8; }

@@ -29,6 +29,38 @@ describe('the palette a blocked table update is drawn in', () => {
   })
 })
 
+// The chips on a row in the history (#177): which parts of the game a save touched. They are read
+// in passing while the eye is really scanning for one version among fifteen, so each one is held
+// to the same bar as every other sentence the editor says — and to a second bar besides, that no
+// two of them are the same colour, because four pills that a reader cannot tell apart are four
+// pills that say nothing the words do not already say.
+describe('the palette the parts of the game are chipped in', () => {
+  it.each([
+    { what: 'the template', ink: '--byd-editor-part-template' },
+    { what: 'the table', ink: '--byd-editor-part-setup' },
+    { what: 'the rules', ink: '--byd-editor-part-rules' },
+    { what: 'the symbols', ink: '--byd-editor-part-icons' },
+  ])('gives $what AA contrast on the chip it is written in', ({ ink }) => {
+    expect(contrastRatio(token(ink), token('--byd-editor-part-bg'))).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('gives the count that stands in for four chips AA contrast on the row it is read on', () => {
+    expect(contrastRatio(token('--byd-editor-part-many'), token('--byd-editor-panel-bg'))).toBeGreaterThanOrEqual(4.5)
+  })
+
+  it('paints no two parts the same, and none of them the green that already means "open now"', () => {
+    const hues = ['--byd-editor-part-template', '--byd-editor-part-setup', '--byd-editor-part-rules', '--byd-editor-part-icons'].map(token)
+    expect(new Set(hues).size).toBe(hues.length)
+    // `öppen nu` sits a few pixels away on the same row, so a part may not be written in it: a hue
+    // means one thing in a panel or it means nothing. This is a question about which colour, not
+    // about how light it is — two colours of the same lightness and opposite hue read as a ratio
+    // of 1, and telling amber from green is not something a contrast ratio can be asked.
+    expect(hues).not.toContain('#7dd3a0')
+    // And none of them is the only thing carrying its news: the word inside the chip says it, and
+    // `history-rows.test.ts` holds the row's spoken name to spelling every one of them out.
+  })
+})
+
 // The two strips the small screens add (L10): the sentence about what a phone does not hold, and
 // the strip of stages with the two actions pinned to it. Both are read in passing, so both are
 // held to the same bar as everything else the editor says.

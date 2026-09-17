@@ -1,5 +1,5 @@
 import type { ProjectCredit, ProjectDoc, ProjectFont, ProjectFraming, ProjectRow, RuleDoc, VersionSummary } from '@byd/server'
-import type { DocDiff } from '@byd/server/doc'
+import type { DocDiff, VersionChange } from '@byd/server/doc'
 import type { Element } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
 import { applyEdit, recipeOf, type Clearable, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
@@ -573,7 +573,20 @@ export class ProjectClient {
     return { name: rec.name, template: rec.template, rows: rec.rows, icons: rec.icons, setup: rec.setup, ...(rec.credits ? { credits: rec.credits } : {}), ...(rec.rules ? { rules: rec.rules } : {}) }
   }
 
-  // What a version changed against the one before it; null for the first version of all.
+  // What every version changed, in one answer (#177): what a row in the history says without
+  // being opened. It is asked for beside the list rather than after it, so the panel opens on the
+  // rows and fills them in when this lands — and it is one request for the whole history, not one
+  // per row, because the history is read as a whole and grows for as long as the game does.
+  async changes(): Promise<VersionChange[]> {
+    const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}/versions/changes`, withCredentials())
+    if (res.status === 401) throw new Unauthorized()
+    if (!res.ok) throw new Error(`could not read what the versions changed: ${res.status}`)
+    return (await res.json()) as VersionChange[]
+  }
+
+  // What a version changed against the one before it, spelled out card by card; null for the
+  // first version of all. This is the opened row — the whole difference — where `changes` is the
+  // one line every row carries.
   async diff(rev: number): Promise<DocDiff | null> {
     if (rev <= 1) return null
     const res = await fetch(`${this.http}/projects/${encodeURIComponent(this.id)}/versions/${rev}/diff`, withCredentials())

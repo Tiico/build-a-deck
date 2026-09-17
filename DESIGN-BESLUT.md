@@ -208,7 +208,28 @@ Varje sparning lägger till en version som behålls hel och aldrig skrivs om, i 
 Diffen är den korttabellen visar: kort tillagda, borttagna och ändrade med fältet som rörde sig och vad det rörde sig från. Lekens ordning är en egen sorts ändring, och mall, uppställning och symboler nämns som ändrade utan att stavas ut — en diff av ett elementträd är en diff för en maskin.
 Diffen ligger i `packages/server` men exporteras på egen väg (`@byd/server/diff`), så editorn kan använda den utan att dra in servern i webbläsaren.
 Ytan prototypades i tre former: en lista med versioner, skillnaden i korttabellen, och en remsa att dra leken genom. Valet blev listan plus skillnaden i tabellen.
-Historiken öppnas från revisionsnumret i editorns huvud, där versionen redan står namngiven. Panelen listar versionerna med datum, namn och — när en rad öppnas — vad den ändrade i ord. Vad en version ändrade hämtas först när raden öppnas; en lång historia ska inte vara en lång väntan på något ingen tittade på.
+Historiken öppnas från revisionsnumret i editorns huvud, där versionen redan står namngiven.
+
+Uppdaterat 2026-09-17 (#177, granskningen #180):
+Raden säger vad sparningen ändrade utan att öppnas.
+Femton rader som alla sa `Version N · i dag` var en lista med tidsstämplar och inte en redovisning av arbete: den som letade efter sparningen där duellkorten ändrades hade ingen annan väg än att öppna alla femton.
+Dagen är en rubrik över raderna och klockslaget står i raden; `i dag` som hela tidsangivelsen förekommer inte längre.
+Raden säger hur många kort som kom till, försvann och ändrades, och bär en bricka för var och en av de fyra delar av dokumentet som inte är kort — mallen, bordet, reglerna, symbolerna.
+Från fyra rörda delar står det «fyra delar ändrade» i stället: fyra brickor får plats men läses inte, de blir en färgrad och inte en upplysning (beslut av beställaren 2026-09-17).
+Färgen är alltid den andra läsningen och aldrig den enda: varje bricka bär sitt eget ord, och radens tillgängliga namn stavar ut brickan som en mening (L12).
+Sammanfattningarna härleds ur de sparade dokumenten och skrivs inte ned vid sparning, eftersom upplysningen redan finns i dem — det är också det som ger en historik skriven före det här samma rader som en skriven efter.
+De hämtas i ett enda svar, `GET /projects/:id/versions/changes`, vid sidan av listan och inte efter den: panelen öppnas på sina rader och fyller i dem när svaret kommer, i den rad som redan är uppritad så att ingenting flyttar sig.
+Hela skillnaden kort för kort hämtas fortfarande först när en rad öppnas; en lång historia ska inte vara en lång väntan på något ingen tittade på.
+Regelboken (B7) räknas nu som en egen del i diffen. Den var den enda delen av dokumentet som diffen inte kunde se, så en sparning som bara skrev om en regel lästes som en tom sparning.
+En sparning som diffen inte har något ord för säger «Annat ändrat.» och aldrig «Inget ändrat.».
+Diffen ser inte `palette`, `framing` eller `fonts`, och en version skrivs bara när dokumentet verkligen ändrades — så en tom skillnad betyder alltid något vi inte namnger, aldrig ingenting.
+Det är avsiktligt ingen femte bricka: ordförrådet står kvar vid fyra namngivna delar, högst tre brickor och «fyra delar ändrade» därifrån.
+Panelen är ett fast huvud över en rullande historik, och dagrubriken står kvar över de rader den gäller så länge någon av dem syns.
+Det mättes fram på djupet: en historik på tjugoen versioner över fem dygn är mer än två gånger panelens höjd, och då rullade både vägen ut ur panelen och dagen man läste bort över överkanten.
+Ett klockslag är bara en tid på dygnet — 09:00 kommer igen var tjugofjärde timme — så en rad utan sin dag säger inte vilken 09:00 den är.
+Kostnaden för `changes` är mätt mot en riktig Postgres och inte bedömd: tre millisekunder per version, platt, för en lek på 308 kort vars varje version är 59 kB — 14 ms vid fem versioner, 63–94 vid trettio, 313 vid hundra, och svaret självt 2,7 kB vid trettio.
+Det räcker gott på det djup ett projekt når sitt första år.
+Vägen vidare, den dag en riktig historik passerar hundra versioner, är att skriva ned sammanfattningen när versionen görs, vilket gör promenaden till en enda läsning.
 Att ta tillbaka en äldre version är en redigering som vilken annan: den blir nästa version när den sparas, och den den kom från står kvar orörd.
 "Jämför med den här i tabellen" öppnar Tabell-fliken hållen mot den versionen: det gamla värdet överstruket i cellen, tillagda och borttagna rader tonade, och de borttagna korten kvar sist så att de går att se alls.
 Revisionsknappen blev editorns första tabbstopp, före fliklistan. Det är avsiktligt: den står där versionen står, och tangentbordstesterna dokumenterar ordningen.

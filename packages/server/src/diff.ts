@@ -26,9 +26,28 @@ export type DocDiff = {
   template: boolean
   setup: boolean
   icons: boolean
+  // And the rulebook (B7), which is a part of the document like the other three: a save that
+  // only rewrote a rule is a save where something happened, and the history has to say so.
+  rules: boolean
   name?: { from: string; to: string }
 }
 
+// What this deliberately does not look at, and what follows from that (#177).
+//
+// `ProjectDoc` also carries `palette` (E4), `framing` (E1) and `fonts` (B3), and none of the three
+// is compared here: they are settings a card is drawn by rather than something a card table can
+// show a before and an after of, and a row of the diff is a row of that table.
+//
+// The consequence is not that those saves are invisible — it is that they come out of here as an
+// empty `DocDiff`, and so as a `VersionChange` with nothing in it. And an empty change is never
+// "nothing happened": a save that would leave the document byte for byte as it was is refused a
+// version at all (`replace` in `projects.ts` and `store-postgres.ts`), so a version that exists
+// changed something. Between two consecutive versions the empty case therefore means exactly one
+// thing — the difference is one of the three above — which is why the history has a word for a
+// save it cannot name (`history.diff.other`) instead of a sentence saying nothing changed.
+//
+// So: the catch-all in the history is not dead code, and it stops being reachable the day one of
+// the three is compared here. Widening this means deciding what the history should say about it.
 export function diffProjects(before: ProjectDoc, after: ProjectDoc): DocDiff {
   const olds = new Map(before.rows.map((r) => [r.id, r.fields]))
   const news = new Map(after.rows.map((r) => [r.id, r.fields]))
@@ -56,6 +75,7 @@ export function diffProjects(before: ProjectDoc, after: ProjectDoc): DocDiff {
     template: !same(before.template, after.template),
     setup: !same(before.setup, after.setup),
     icons: !same(before.icons, after.icons) || !same(before.credits ?? {}, after.credits ?? {}),
+    rules: !same(before.rules ?? null, after.rules ?? null),
   }
   if (before.name !== after.name) diff.name = { from: before.name, to: after.name }
   return diff
@@ -85,3 +105,41 @@ function byPosition(before: ProjectDoc, after: ProjectDoc): (a: RowChange, b: Ro
 }
 
 const same = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b)
+
+// The parts of the document that are not cards (#177), in the one order they are ever named.
+// The history draws a chip per part that moved, and a chip row that reshuffles itself between two
+// versions is a chip row nobody learns to read, so the order lives here and not at a call site.
+export const DOC_PARTS = ['template', 'setup', 'rules', 'icons'] as const
+export type DocPart = (typeof DOC_PARTS)[number]
+
+// What one save changed, as a row in the history says it (#177): the cards counted, and the parts
+// that are not cards named. It is deliberately small. A full `DocDiff` carries every field of
+// every card that moved, which is what the card table holds a version against — but a history of
+// fifteen versions of a 308-card deck would be megabytes of that, sent so a panel can print three
+// numbers. This is what a row shows and nothing else, so a whole history fits in one answer.
+export type VersionChange = {
+  rev: number
+  added: number
+  removed: number
+  changed: number
+  parts: DocPart[]
+  reordered: boolean
+  columns: boolean
+  renamed?: string
+  // The first version of all: nothing came before it, so nothing changed in it — the game began.
+  first?: true
+}
+
+export function changeOf(rev: number, diff: DocDiff): VersionChange {
+  const count = (kind: RowChange['kind']) => diff.rows.filter((r) => r.kind === kind).length
+  return {
+    rev,
+    added: count('added'),
+    removed: count('removed'),
+    changed: count('changed'),
+    parts: DOC_PARTS.filter((part) => diff[part]),
+    reordered: diff.reordered,
+    columns: diff.columns,
+    ...(diff.name ? { renamed: diff.name.to } : {}),
+  }
+}
