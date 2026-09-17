@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 3 — Snabbkommandon och den diskreta hjälpen</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  .work { flex: 1 1 auto; min-height: 0; position: relative; display: grid; grid-template-columns: minmax(0,1fr) 400px; gap: var(--s3); padding: var(--s4); }
+  .panel { min-height: 0; min-width: 0; display: flex; flex-direction: column; border-radius: 14px; border: 1px solid var(--line); }
+  .panel > header { flex: none; display: flex; align-items: baseline; gap: var(--s2); padding: var(--s3) var(--s4) var(--s2); }
+  .panel > header h2 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .panel > header .rule { flex: 1; }
+
+  /* Filten, precis nog för att ha något att trycka på. */
+  .filt { position: relative; background: radial-gradient(circle at 50% 42%, #24603f, #12331f 70%, #0d2418); overflow: hidden; }
+  .kort { position: absolute; width: 74px; aspect-ratio: 63/88; border-radius: 6px; background: #f3ecdc; border: 1px solid #0d0f14; box-shadow: 0 6px 16px rgba(0,0,0,.45); cursor: pointer; padding: 7px; display: flex; flex-direction: column; gap: 5px; transition: transform .16s ease; }
+  .kort .top { height: 20px; border-radius: 3px; background: #6b4a2e; }
+  .kort .ln { height: 4px; border-radius: 2px; background: #cfc3ab; }
+  .kort .ln.short { width: 56%; }
+  .kort[data-sida='bak'] { background: #2f4068; }
+  .kort[data-sida='bak'] .top, .kort[data-sida='bak'] .ln { visibility: hidden; }
+  .kort[data-vald='true'] { outline: 2px solid #e0a458; outline-offset: 2px; }
+  .hog { position: absolute; width: 74px; aspect-ratio: 63/88; border-radius: 6px; background: #2f4068; border: 1px solid #0d0f14; box-shadow: 3px 3px 0 #223052, 6px 6px 0 #1b2742, 0 8px 18px rgba(0,0,0,.5); cursor: pointer; }
+  .hog small { position: absolute; right: -6px; top: -6px; min-width: 22px; height: 22px; display: grid; place-items: center; border-radius: 11px; background: #e0a458; color: #221; font: 800 11px system-ui; }
+
+  /* Hjulet, som det står i dag: fem ekrar och ett håll. */
+  .hjul { position: absolute; z-index: 4; width: 168px; height: 168px; margin: -84px 0 0 -84px; border-radius: 50%; background: rgba(12,16,22,.86); border: 1px solid #3b4557; display: grid; place-items: center; }
+  .hjul[hidden] { display: none; }
+  .hjul b { position: absolute; min-height: 32px; padding: 0 10px; display: grid; place-items: center; border-radius: 16px; background: #1b2231; border: 1px solid #3b4557; color: #dbe6f5; font: 600 12px system-ui; }
+
+  /* Den diskreta hjälpen: en knapp i hörnet, aldrig i vägen. */
+  .hjalpknapp { position: absolute; right: var(--s4); bottom: var(--s4); z-index: 6; width: 34px; height: 34px; border-radius: 17px; border: 1px solid var(--line); background: rgba(23,26,35,.85); color: var(--quiet-2); font: 700 14px system-ui; cursor: pointer; }
+  .hjalpknapp:hover, .hjalpknapp[aria-expanded='true'] { color: #fff; border-color: var(--primary-mark); }
+
+  .hjalp { position: absolute; right: var(--s4); bottom: calc(var(--s4) + 42px); z-index: 6; width: 340px; max-height: 62%; overflow: auto; border-radius: 12px; background: #12141a; border: 1px solid var(--line); box-shadow: 0 16px 40px rgba(0,0,0,.6); padding: var(--s3) var(--s4) var(--s4); }
+  .hjalp[hidden] { display: none; }
+  .hjalp h3 { margin: 0 0 2px; color: #fff; font-size: 13px; }
+  .hjalp p.var { margin: 0 0 var(--s3); color: var(--quiet); font-size: 11px; }
+  .hjalp dl { margin: 0; display: grid; grid-template-columns: auto minmax(0,1fr); gap: 6px var(--s3); align-items: baseline; }
+  .hjalp dt { justify-self: start; }
+  .hjalp dd { margin: 0; color: var(--quiet-2); font-size: 12px; }
+  kbd { display: inline-block; min-width: 20px; padding: 2px 6px; border-radius: 5px; border: 1px solid #3b4557; border-bottom-width: 2px; background: #1b2231; color: #dbe6f5; font: 600 11px ui-monospace, monospace; text-align: center; }
+
+  .om { display: grid; gap: var(--s3); background: var(--panel); }
+  .om .scroll { padding: 0 var(--s4) var(--s4); }
+  .om p { margin: 0 0 var(--s3); color: var(--quiet-2); font-size: 13px; line-height: 1.6; }
+  .om strong { color: var(--ink); }
+  .om table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .om th, .om td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line-soft); vertical-align: baseline; }
+  .om th { color: var(--quiet); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+  .logg { margin-top: var(--s3); padding: var(--s3); border-radius: 10px; background: var(--sunk); border: 1px solid var(--line); min-height: 76px; }
+  .logg p { margin: 0 0 4px; color: var(--good); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .logg p.tom { color: var(--quiet); }
+</style>
+</head>
+<body>
+<div class="shell">
+<header>
+  <strong>Skogens herrar</strong>
+  <span class="saved">Bord · 2 spelare</span>
+  <span class="spacer"></span>
+  <span class="who">A</span>
+</header>
+
+<main>
+  <div class="work">
+    <section class="panel filt" id="filt">
+      <div class="kort" id="k1" data-sida="fram" style="left:120px;top:150px"><div class="top"></div><div class="ln"></div><div class="ln short"></div></div>
+      <div class="kort" id="k2" data-sida="bak" style="left:250px;top:230px"><div class="top"></div><div class="ln"></div><div class="ln short"></div></div>
+      <div class="hog" id="h1" style="left:400px;top:150px"><small>18</small></div>
+
+      <div class="hjul" id="hjul" hidden>
+        <b style="top:8px">Vänd</b>
+        <b style="right:6px;top:66px">Dra</b>
+        <b style="bottom:8px">Blanda</b>
+        <b style="left:6px;top:66px">Titta</b>
+      </div>
+
+      <button type="button" class="hjalpknapp" id="hjalpknapp" aria-expanded="false" aria-controls="hjalp" aria-label="Snabbkommandon på bordet">?</button>
+      <div class="hjalp" id="hjalp" hidden role="dialog" aria-label="Snabbkommandon på bordet">
+        <h3>Snabbkommandon</h3>
+        <p class="var">på bordet</p>
+        <dl id="kommandon"></dl>
+      </div>
+    </section>
+
+    <aside class="panel om">
+      <header><h2>Vad som prövas</h2><span class="rule"></span></header>
+      <div class="scroll">
+        <p>
+          Varje handling på bordet går i dag genom hjulet: ett klick eller ett håll, sedan en eke.
+          För det man gör om och om igen — vända, dra, blanda — är det ett steg för mycket.
+          <strong>Klicka på ett kort</strong> för att se hjulet, och <strong>Cmd-klicka</strong> (Ctrl på Windows och Linux) för att vända direkt.
+        </p>
+        <p><strong>Förslag på kommandon</strong>, att godkänna eller stryka:</p>
+        <table>
+          <thead><tr><th>Tangent</th><th>Gör</th><th>Varför just den</th></tr></thead>
+          <tbody id="tabell"></tbody>
+        </table>
+        <p style="margin-top:var(--s3)">
+          Varje kommando finns också som en väg utan modifierare, för den som inte kan hålla två
+          tangenter. Allt går genom samma intents som hjulet — inga nya verb.
+        </p>
+        <div class="logg" id="logg"><p class="tom">Ingenting gjort än.</p></div>
+      </div>
+    </aside>
+  </div>
+</main>
+</div>
+
+<script>
+  const KOMMANDON = [
+    { tgt: ['Cmd/Ctrl', 'klick'], gor: 'Vänd kortet', varfor: 'Det beställaren bad om — men Cmd på en Mac: där är Ctrl+klick systemets sekundärklick och sidan får `contextmenu`, aldrig `click`. Mätt i Chromium.' },
+    { tgt: ['F'], gor: 'Vänd det valda', varfor: 'Samma sak utan modifierare, för den som inte kan hålla två tangenter.' },
+    { tgt: ['D'], gor: 'Dra från högen under pekaren', varfor: 'Draw. Det andra man gör oftast, och det som annars kräver hjulet varje gång.' },
+    { tgt: ['S'], gor: 'Blanda högen under pekaren', varfor: 'Shuffle. Sällan, men alltid mitt i något annat.' },
+    { tgt: ['Esc'], gor: 'Stäng hjulet · avbryt draget', varfor: 'Finns redan (#142, #152) och står här för att hjälpen ska vara hela sanningen.' },
+    { tgt: ['?'], gor: 'Visa den här listan', varfor: 'Där hjälp har legat sedan terminalen.' },
+  ]
+  const $ = (id) => document.getElementById(id)
+
+  $('kommandon').innerHTML = KOMMANDON.map((k) => `<dt>${k.tgt.map((t) => t === 'klick' ? '+ klick' : `<kbd>${t}</kbd>`).join(' ')}</dt><dd>${k.gor}</dd>`).join('')
+  $('tabell').innerHTML = KOMMANDON.map((k) => `<tr><td>${k.tgt.map((t) => t === 'klick' ? '+ klick' : `<kbd>${t}</kbd>`).join(' ')}</td><td>${k.gor}</td><td style="color:var(--quiet)">${k.varfor}</td></tr>`).join('')
+
+  let n = 0
+  function sag(text) {
+    const l = $('logg')
+    if (l.querySelector('.tom')) l.innerHTML = ''
+    l.insertAdjacentHTML('afterbegin', `<p>${String(++n).padStart(2, '0')} · ${text}</p>`)
+  }
+
+  const vand = (el) => {
+    el.dataset.sida = el.dataset.sida === 'fram' ? 'bak' : 'fram'
+    sag(`Kortet vändes — ${el.dataset.sida === 'fram' ? 'framsidan' : 'baksidan'} upp`)
+  }
+
+  let vald = null
+  for (const el of document.querySelectorAll('.kort')) {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation()
+      for (const o of document.querySelectorAll('.kort')) o.dataset.vald = String(o === el)
+      vald = el
+      // En modifierarklickning väljer kortet också. Annars har F, som är samma handling utan
+      // modifierare, ingenting att verka på direkt efteråt — och den som just rörde ett kort är
+      // just den som menar det kortet.
+      if (e.ctrlKey || e.metaKey) { $('hjul').hidden = true; return vand(el) }
+      const f = $('filt').getBoundingClientRect()
+      const r = el.getBoundingClientRect()
+      $('hjul').style.left = `${r.left - f.left + r.width / 2}px`
+      $('hjul').style.top = `${r.top - f.top + r.height / 2}px`
+      $('hjul').hidden = false
+      sag('Hjulet öppnades — fyra ekrar att sikta på')
+    })
+  }
+  $('h1').addEventListener('click', (e) => { e.stopPropagation(); sag('Hjulet öppnades på högen') })
+  $('filt').addEventListener('click', () => { $('hjul').hidden = true })
+
+  let over = null
+  $('h1').addEventListener('pointerenter', () => { over = 'hog' })
+  $('h1').addEventListener('pointerleave', () => { over = null })
+
+  document.addEventListener('keydown', (e) => {
+    if (e.target.matches('input, textarea')) return
+    const k = e.key.toLowerCase()
+    if (e.key === '?') { e.preventDefault(); return $('hjalpknapp').click() }
+    if (e.key === 'Escape') { $('hjul').hidden = true; $('hjalp').hidden = true; $('hjalpknapp').setAttribute('aria-expanded', 'false'); return }
+    if (k === 'f' && vald) { e.preventDefault(); $('hjul').hidden = true; return vand(vald) }
+    if (k === 'd' && over === 'hog') { e.preventDefault(); const s = $('h1').querySelector('small'); s.textContent = Math.max(0, Number(s.textContent) - 1); return sag('Ett kort drogs från högen') }
+    if (k === 's' && over === 'hog') { e.preventDefault(); return sag('Högen blandades — resultatet ligger i loggen, aldrig ett frö') }
+  })
+
+  $('hjalpknapp').onclick = () => {
+    const öppen = $('hjalp').hidden
+    $('hjalp').hidden = !öppen
+    $('hjalpknapp').setAttribute('aria-expanded', String(öppen))
+  }
+</script>
+</body>
+</html>
