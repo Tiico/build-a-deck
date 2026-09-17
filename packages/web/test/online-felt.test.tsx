@@ -65,7 +65,11 @@ let sessions = 0
 
 // `/online` as it really mounts: a live seat with cards in its hand, at the window it will be
 // measured at, handed back as the markup the browser gets.
-async function markup(seat: string, size: Size, held: number, box: Size | null = null): Promise<string> {
+// `until` is what the mounting waits for. The default is a fitted felt, because that is what all
+// but one of the readings here are about; the one that is about a window with no felt in it waits
+// for what that window draws instead, or it would wait for ever on the thing it is asserting the
+// absence of.
+async function markup(seat: string, size: Size, held: number, box: Size | null = null, until: () => boolean = feltIsFitted): Promise<string> {
   atWindow(size)
   const id = await createSession(run, `felt${++sessions}`, undefined, dealing(seat, held))
   const host = TableClient.connect(await asTable(run, id))
@@ -75,7 +79,7 @@ async function markup(seat: string, size: Size, held: number, box: Size | null =
   return withFrame(box, async () => {
     const { unmount } = render(<OnlinePage />)
     try {
-      await waitFor(() => expect(feltIsFitted()).toBe(true))
+      await waitFor(() => expect(until()).toBe(true))
       return document.querySelector('#root, body')!.innerHTML
     } finally {
       unmount()
@@ -159,7 +163,10 @@ afterEach(async () => {
 
 const DESK: Size = { w: 1280, h: 800 }
 const WIDE: Size = { w: 1920, h: 1080 }
+// A phone, kept because the felt it used to draw there is what #99 is about — and an upright
+// tablet, which is the smallest portrait window that still draws one.
 const PHONE: Size = { w: 390, h: 844 }
+const UPRIGHT: Size = { w: 768, h: 1024 }
 
 // K9's own gate, asked of the seat's window: a card on the felt is a control — it is dragged,
 // pressed and read — and the smallest thing a control may be is forty-five pixels across its
@@ -188,29 +195,25 @@ describe('a card on the seat\u2019s own felt is as big as the window can make it
         }, 90_000)
 })
 
-// A portrait window is not touched by any of it (#77). The column is worth having because a
-// landscape window has width the felt cannot use and height it is bound by; a portrait window has
-// neither, so there the band stays exactly where K17 put it — and "exactly" is a claim about
-// numbers, so the numbers are what is written down. They are the ones the page drew before the
-// column existed, digit for digit.
-const PORTRAIT: Record<string, { smallest: number; felt: Size }> = {
-  'a side seat, 7': { smallest: 20, felt: { w: 283, h: 408 } },
-  'a bottom seat, 7': { smallest: 16, felt: { w: 290, h: 189 } },
-  'a side seat, 13': { smallest: 20, felt: { w: 283, h: 408 } },
-  'a bottom seat, 13': { smallest: 16, felt: { w: 290, h: 189 } },
-}
-
-describe('a phone held upright keeps the band it always had (K17, #77)', () => {
-  for (const held of HANDS)
-    for (const [where, seat] of [
-      ['a side seat', SIDE],
-      ['a bottom seat', BOTTOM],
-    ] as const)
-      it(`draws ${where}\u2019s hand as the band, and the same felt as before, with ${held} in hand at ${PHONE.w} \u00d7 ${PHONE.h}`, async () => {
-        const { smallest, felt, hand } = await cardsOn(seat, PHONE, held)
-        const at = `${where}, ${held}`
-        expect({ at, smallest, felt, hand }).toEqual({ at, ...PORTRAIT[at]!, hand: 'band' })
-      }, 90_000)
+describe('a phone is not given a board to keep a band under (C2 revised 2026-09-16, #99)', () => {
+  // What the table above is a record of, and why this is no longer the band's window: on a phone
+  // the four-seat table drew its cards at 16 and 20 px on the short side against K9's floor of 45,
+  // and #77 established that no way of laying it out reached better than 23. The cause is how many
+  // things are on the felt and not how they are drawn, so the answer was not another layout. The
+  // phone is the player's control; the board is the TV in the room, or a screen that can hold it.
+  //
+  // So the reading here is the felt's absence, in the file where its presence was measured. What
+  // the phone draws instead — the strip, the counters, the zones as names and counts — is
+  // `online-phone.test.tsx`'s business.
+  for (const [where, seat] of [
+    ['a side seat', SIDE],
+    ['a bottom seat', BOTTOM],
+  ] as const)
+    it(`draws ${where} no felt at all at ${PHONE.w} × ${PHONE.h}`, async () => {
+      const html = await markup(seat, PHONE, HANDS[0], { w: 1, h: 1 }, () => document.querySelector('.byd-strip[data-hand]') !== null)
+      const drawn = await measure(PHONE, (page) => page.evaluate(() => ({ felts: document.querySelectorAll('[data-table]').length, bands: document.querySelectorAll('[data-hand-fan]').length })), html)
+      expect({ at: where, ...drawn }).toEqual({ at: where, felts: 0, bands: 0 })
+    }, 90_000)
 })
 
 // Which way round the felt is drawn, asked of the drawing: a felt that says it is turned and is
@@ -238,13 +241,13 @@ describe('a side seat is not turned in a landscape window (C5, C8, #77)', () => 
       expect({ at: `${size.w} × ${size.h}`, along: drawn.wood.w >= drawn.wood.h }).toEqual({ at: `${size.w} × ${size.h}`, along: true })
     }, 90_000)
 
-  it('still puts a side seat’s own edge at the bottom on a phone held upright, where the window asks for the quarter turn anyway', async () => {
-    const drawn = await turnOf(SIDE, PHONE)
+  it('still puts a side seat’s own edge at the bottom in an upright window, where the window asks for the quarter turn anyway', async () => {
+    const drawn = await turnOf(SIDE, UPRIGHT)
     expect({ quarter: drawn.rotate % 180 !== 0, along: drawn.wood.w >= drawn.wood.h }).toEqual({ quarter: true, along: false })
   }, 90_000)
 
   it('leaves a bottom seat’s own edge at the bottom in either window', async () => {
-    for (const size of [DESK, PHONE]) expect({ at: size.w, rotate: (await turnOf(BOTTOM, size)).rotate }).toEqual({ at: size.w, rotate: 0 })
+    for (const size of [DESK, UPRIGHT]) expect({ at: size.w, rotate: (await turnOf(BOTTOM, size)).rotate }).toEqual({ at: size.w, rotate: 0 })
   }, 90_000)
 })
 
@@ -291,8 +294,8 @@ describe('which edge is yours is said on the screen, turned or not (C5, K9, #77)
     expect({ marked: seen.marked, edge: seen.edge, side: seen.side }).toEqual({ marked: [BOTTOM], edge: 'S', side: { right: false, below: true } })
   }, 90_000)
 
-  it('still marks it on a phone, where the felt is turned to the seat’s own edge', async () => {
-    const seen = await placeOf(SIDE, PHONE)
+  it('still marks it in an upright window, where the felt is turned to the seat’s own edge', async () => {
+    const seen = await placeOf(SIDE, UPRIGHT)
     expect({ marked: seen.marked, inside: seen.inside, below: seen.side?.below }).toEqual({ marked: [SIDE], inside: true, below: true })
   }, 90_000)
 })
@@ -335,7 +338,7 @@ const coveredAt = (seat: string, size: Size) =>
   )
 
 describe('the felt gets the room and nothing is drawn over anything else (K17, #25, #77)', () => {
-  for (const size of [DESK, WIDE, PHONE])
+  for (const size of [DESK, WIDE, UPRIGHT])
     for (const [where, seat] of [
       ['a side seat', SIDE],
       ['a bottom seat', BOTTOM],

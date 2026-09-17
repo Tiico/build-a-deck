@@ -1175,6 +1175,7 @@ describe('every suite that measures a surface', () => {
       'online-column.test.tsx',
       'online-felt.test.tsx',
       'online-layout.test.tsx',
+      'online-phone.test.tsx',
       'online-viewport.test.tsx',
       'player-viewport.test.tsx',
       'reduced-motion.test.ts',

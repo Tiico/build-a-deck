@@ -10,6 +10,7 @@ import { previewOf } from '../table/rewind.js'
 import { seatColor } from '../table/seatColor.js'
 import { playIntents } from '../player/play.js'
 import { SeatSurvey, SessionButtons, SessionOverlays, useSessionVersion, useToast, refusedText, type Sheet } from '../player/SessionOverlays.js'
+import { PlayerSurface, useHandMarks } from '../player/PlayerSurface.js'
 import { useSitDown } from '../player/useSitDown.js'
 import { claimUrl } from '../account/api.js'
 import { SeatLine } from './SeatLine.js'
@@ -41,6 +42,20 @@ import { useT } from '../i18n/index.js'
 // `onLeave` is where the way out (#31) sends the browser; a test hands it somewhere it can read.
 export type OnlinePageProps = { timing?: StatusTiming; onLeave?(url: string): void }
 
+// The shortest side a window must have before a board is drawn in it at all (C2's revision of
+// 2026-09-16, #99).
+//
+// The short side and not the width, because a phone turned over is still a phone: 844 × 390 puts
+// four hands on the same little felt as 390 × 844 does, which is exactly why "ask for a landscape
+// window" was rejected as an answer rather than chosen as one.
+//
+// Six hundred is the smallest short side the audit measures a board in — 1024 × 600, the netbook
+// `online-column.test.tsx` holds the hand's column to. It is drawn there today and this is not the
+// issue that takes it away: #99 is about the screen a hand is held in, and a phone's 390 is well
+// under the line whichever way it is turned. The closest call is that netbook, and it is left
+// where it stands rather than settled in passing.
+const BOARD_FLOOR = 600
+
 export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => location.assign(url) }: OnlinePageProps = {}) {
   const t = useT()
   const params = useMemo(() => new URLSearchParams(location.search), [])
@@ -67,10 +82,16 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
   const [spread, setSpread] = useState(false)
   const showAll = useRef<HTMLButtonElement>(null)
   const [toast, setToast] = useToast()
+  const marks = useHandMarks()
   const version = useSessionVersion(http, sessionId, view?.ended === true)
-  // The felt and the fan, both as controls, both opening the same address panel (#1, #2).
-  const kbd = useFeltKeyboard(view, view !== null && !view.rewind && !view.ended && client !== null, {
+  // Whether this window gets a board at all (#99). Off a browser there is no window to ask, and a
+  // missing answer must never take the board away — the same reading `column` below makes.
+  const board = !(room.w > 0 && room.h > 0) || Math.min(room.w, room.h) >= BOARD_FLOOR
+  // The felt and the fan, both as controls, both opening the same address panel (#1, #2). Where
+  // there is no felt the keyboard is the hand and the panel alone, exactly as on `/play`.
+  const kbd = useFeltKeyboard(view, board && view !== null && !view.rewind && !view.ended && client !== null, {
     act: (intents) => (client ? client.send(...intents) : Promise.resolve({ ok: false as const, reason: 'not connected' })),
+    onPlayed: marks.clear,
     faces: http,
   })
   useActivityLive(activity, view, seat)
@@ -108,6 +129,7 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
     <>
       {/* An ended table is one more state of D5's kind: the picture behind the survey is not to be
           acted on, so it is out of reach the same way a stale one is (UX-38, #83). */}
+      {board ? (
       <div data-page="online" data-status={status} className={`byd-fit byd-online${live.stale ? ' byd-status-stale' : ''}`} {...(live.stale || view.ended ? { inert: true } : {})} style={{ ['--seat' as string]: seatColor(Math.max(0, view.seats.findIndex((s) => s.id === seat))) }}>
       {/* The seat's own line and the session's tools leave the bottom band altogether (#25):
           at 390 the band is 358 px, which holds eight forty-four pixel targets and no more, so
@@ -168,6 +190,28 @@ export function OnlinePage({ timing = DEFAULT_TIMING, onLeave = (url) => locatio
       {kbd.panel}
       <SessionOverlays client={client} view={view} seat={seat} sheet={sheet} onSheet={setSheet} onLeft={() => onLeave(wayBack(links))} toast={toast} onToast={setToast} version={version} />
       </div>
+      ) : (
+        /* A window too small to carry a board gets the player's own surface instead (#99): the
+           hand as K10's strip, the counters, the zones in front of this seat, and the table as
+           names and counts. Nothing a seat may do is taken away — only the felt, which at this
+           size was 16 px of card and no use to anybody. */
+        <div data-page="online" data-status={status} className={`byd-player${live.stale ? ' byd-status-stale' : ''}`} {...(live.stale || view.ended ? { inert: true } : {})}>
+          <PlayerSurface
+            client={client}
+            view={view}
+            activity={activity}
+            seat={seat}
+            name={me?.name ?? seat}
+            sessionId={sessionId}
+            faces={http}
+            version={version}
+            marks={marks}
+            openHand={kbd.openHand}
+            onLeft={() => onLeave(wayBack(links))}
+          />
+          {kbd.panel}
+        </div>
+      )}
       <SeatSurvey view={view} seat={seat} name={me?.name ?? seat} http={http} sessionId={sessionId} version={version} saveUrl={token ? claimUrl(token, params.get('server')) : null} />
       <RouteStatus status={live} over="card" links={links} onRetry={conn.retry} />
     </>
