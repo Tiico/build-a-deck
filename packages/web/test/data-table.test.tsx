@@ -305,6 +305,55 @@ describe('the symbol picker at the brace (E4)', () => {
     expect(screen.queryByRole('listbox')).toBeNull()
   })
 
+  it('closes the library when the hand goes to another row (#236)', () => {
+    const { cell } = setup()
+    fireEvent.focus(cell)
+    type(cell, '{s')
+    expect(screen.getByRole('listbox', { name: 'Symboler' })).toBeTruthy()
+    // The list belongs to the cell it was opened in. Left standing over a cell nobody is in, it is
+    // a library about nothing — and it was standing, because what drew it asked only which cell it
+    // had been opened in, never whether anyone was still there.
+    const elsewhere = within(screen.getAllByRole('row')[2]!).getByLabelText('knight body')
+    fireEvent.blur(cell, { relatedTarget: elsewhere })
+    fireEvent.focus(elsewhere)
+    expect(screen.queryByRole('listbox')).toBeNull()
+  })
+
+  it('takes the brace back when the brace button is pressed a second time (#236)', () => {
+    const { cell, onCell } = setup()
+    fireEvent.focus(cell)
+    const brace = screen.getByRole('button', { name: 'Sätt in en ikon' })
+    // The cell already reads `Flygande.`, so the brace lands at the end of it.
+    fireEvent.click(brace)
+    expect(onCell).toHaveBeenLastCalledWith('dragon', 'body', 'Flygande.{', expect.anything())
+    expect(screen.getByRole('listbox', { name: 'Symboler' })).toBeTruthy()
+
+    // A second press is the same press undone: the list goes, and so does the brace it wrote. A
+    // brace standing alone with no finished symbol in it is not something anybody typed — it is a
+    // step that was begun and taken back.
+    fireEvent.click(brace)
+    expect(onCell).toHaveBeenLastCalledWith('dragon', 'body', 'Flygande.', expect.anything())
+    expect(screen.queryByRole('listbox')).toBeNull()
+  })
+
+  it('only ever takes back a brace it wrote itself, never one that was typed (#236)', () => {
+    const { cell, onCell } = setup()
+    // A brace the designer typed herself. The button has no claim on it: pressing it writes a
+    // second brace rather than eating the first, because what somebody typed is theirs.
+    fireEvent.focus(cell)
+    type(cell, 'Flygande. {')
+    expect(screen.getByRole('listbox', { name: 'Symboler' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Sätt in en ikon' }))
+    // A brace was written, not taken away: the value the cell is asked to hold is one character
+    // longer than what it held and ends in the new brace. (The cell is controlled by the document,
+    // and this test's `onCell` is a spy that does not write one, so the text it starts from is the
+    // row's own `Flygande.` rather than what was typed over it.)
+    const [, , written] = onCell.mock.calls.at(-1) as [string, string, string, unknown]
+    expect(written.endsWith('{')).toBe(true)
+    expect(written.length).toBeGreaterThan('Flygande.'.length)
+    expect(screen.getByRole('listbox', { name: 'Symboler' })).toBeTruthy()
+  })
+
   it('moves through the list with the arrow keys, takes one with Enter, and closes on Escape', async () => {
     const { cell, onCell } = setup()
     type(cell, '{s')
@@ -321,6 +370,15 @@ describe('the symbol picker at the brace (E4)', () => {
     expect(within(list).getAllByRole('option')[1]!.getAttribute('aria-selected')).toBe('true')
     fireEvent.keyDown(cell, { key: 'ArrowUp' })
     fireEvent.keyDown(cell, { key: 'ArrowUp' })
+    expect(within(list).getAllByRole('option')[0]!.getAttribute('aria-selected')).toBe('true')
+
+    // And the ends of the list, which every other list in the editor answers (#235): eight matches
+    // is five arrow presses to the one at the bottom, and a library narrowed by a letter or two is
+    // very often longest exactly when the designer knows which end she wants.
+    const last = within(list).getAllByRole('option').length - 1
+    fireEvent.keyDown(cell, { key: 'End' })
+    expect(within(list).getAllByRole('option')[last]!.getAttribute('aria-selected')).toBe('true')
+    fireEvent.keyDown(cell, { key: 'Home' })
     expect(within(list).getAllByRole('option')[0]!.getAttribute('aria-selected')).toBe('true')
 
     fireEvent.keyDown(cell, { key: 'Enter' })

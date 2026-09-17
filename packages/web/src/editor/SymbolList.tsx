@@ -20,6 +20,13 @@ export function symbolListKey(key: string, count: number, active: number): Symbo
       return { active: Math.min(count - 1, active + 1) }
     case 'ArrowUp':
       return { active: Math.max(0, active - 1) }
+    // The two ends, which every other list in the editor answers (#235). A library narrowed by a
+    // letter or two is very often longest exactly when the designer already knows which end of it
+    // she wants, and eight matches is five presses to the one at the bottom.
+    case 'Home':
+      return { active: 0 }
+    case 'End':
+      return { active: count - 1 }
     case 'Enter':
       return 'pick'
     case 'Escape':

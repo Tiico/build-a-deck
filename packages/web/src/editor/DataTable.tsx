@@ -144,7 +144,10 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // since it, and which symbol is under the arrow keys.
   // `role` is what stands after the bar, or null when no bar has been typed: the syntax itself
   // is what says whether the designer is naming a symbol or the meaning to draw it in (E4).
-  const [brace, setBrace] = useState<{ cardRef: string; field: string; at: number; query: string; role: string | null } | null>(null)
+  // `wrote` is true when the brace under the cursor is one the `{ }` button put there rather than
+  // one the designer typed. Only such a brace may be taken back by pressing that button again
+  // (#236): what somebody typed is theirs, and a control that eats it is a control nobody trusts.
+  const [brace, setBrace] = useState<{ cardRef: string; field: string; at: number; query: string; role: string | null; wrote: boolean } | null>(null)
   const [choice, setChoice] = useState(0)
   const matches = brace && brace.role === null ? searchSymbols(brace.query, null, t).slice(0, 8) : []
   // The meanings the deck has named, narrowed by what has been typed after the bar. A deck that
@@ -180,7 +183,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // still (#46). One boolean and not the cell itself: moving from one cell to the next is not a
   // moment to re-measure, it is the same edit going on.
   const editing = here !== null
-  const openBrace = (cardRef: string, field: string, el: HTMLInputElement) => {
+  const openBrace = (cardRef: string, field: string, el: HTMLInputElement, wrote = false) => {
     const upto = el.value.slice(0, el.selectionStart ?? el.value.length)
     const at = upto.lastIndexOf('{')
     const word = at >= 0 ? upto.slice(at + 1) : ''
@@ -190,7 +193,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     // meaning to draw it in. Nothing has to be learned and no key is taken from moving around the
     // table, which Tab and the arrows already own.
     const bar = word.indexOf('|')
-    setBrace(bar < 0 ? { cardRef, field, at, query: word, role: null } : { cardRef, field, at, query: word.slice(0, bar), role: word.slice(bar + 1) })
+    setBrace(bar < 0 ? { cardRef, field, at, query: word, role: null, wrote } : { cardRef, field, at, query: word.slice(0, bar), role: word.slice(bar + 1), wrote })
     setChoice(0)
   }
   const takeSymbol = (symbol: GameSymbol) => {
@@ -1133,6 +1136,12 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                     onBlur={() => {
                       setHeld(null)
                       setHere((at) => (at?.cardRef === cardRef && at.field === f ? null : at))
+                      // The library belongs to the cell it was opened in (#236). What draws it asks
+                      // only which cell that was, so a hand that went to another row left it
+                      // standing over a cell nobody was in — a library about nothing. Picking from
+                      // it is not a departure: an option refuses the focus on `mousedown`, exactly
+                      // so that the sentence being written keeps it.
+                      if (brace?.cardRef === cardRef && brace.field === f) closeBrace()
                     }}
                     aria-label={`${cardRef} ${f}`}
                     {...(brace?.cardRef === cardRef && brace.field === f && active ? { 'aria-controls': CELL_SYMBOLS, 'aria-activedescendant': symbolOptionId(CELL_SYMBOLS, active) } : {})}
@@ -1156,6 +1165,21 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                       onClick={(event) => {
                         const input = event.currentTarget.closest('td')?.querySelector('input')
                         if (!input) return
+                        // Pressed a second time it is the same press undone (#236): the library
+                        // goes, and so does the brace this button wrote. A brace still open is by
+                        // construction a brace with no finished symbol in it — `openBrace` closes
+                        // the moment a `}` is written — so there is nothing here to lose. Only the
+                        // brace itself is taken; letters typed after it are the designer's.
+                        const mine = brace?.cardRef === cardRef && brace.field === f && brace.wrote ? brace : null
+                        if (mine) {
+                          const undone = `${input.value.slice(0, mine.at)}${input.value.slice(mine.at + 1)}`
+                          typing.current[`${cardRef}:${f}`] = undone
+                          onCell(cardRef, f, undone, cellGesture())
+                          input.value = undone
+                          input.focus()
+                          input.setSelectionRange(mine.at, mine.at)
+                          return closeBrace()
+                        }
                         const at = input.selectionStart ?? input.value.length
                         const next = `${input.value.slice(0, at)}{${input.value.slice(at)}`
                         typing.current[`${cardRef}:${f}`] = next
@@ -1163,7 +1187,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                         input.value = next
                         input.focus()
                         input.setSelectionRange(at + 1, at + 1)
-                        openBrace(cardRef, f, input)
+                        openBrace(cardRef, f, input, true)
                       }}
                     >
                       {'{ }'}
