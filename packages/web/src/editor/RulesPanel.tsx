@@ -687,9 +687,18 @@ function Editing({
           onBlur={onClose}
         />
       )}
+      {/* The block closes when the focus leaves the row and not when it leaves the field: tabbing
+          from the heading to the chooser beside it is staying, not going. Hung on the field alone,
+          as it was, the chooser could never be reached — reaching for it was what closed the
+          block (#217). The picture's two fields already answer to this rule; so does this row. */}
       {block.kind === 'heading' && (
-        <div className="byd-rules-row">
-          <input autoFocus aria-label={t('rules.block.heading', { id: block.id })} value={block.text} {...typing.visit} onChange={(e) => onPatch({ text: e.target.value }, typing.token())} onBlur={onClose} />
+        <div
+          className="byd-rules-row"
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget)) onClose()
+          }}
+        >
+          <input autoFocus aria-label={t('rules.block.heading', { id: block.id })} value={block.text} {...typing.visit} onChange={(e) => onPatch({ text: e.target.value }, typing.token())} />
           <select aria-label={t('rules.block.level', { id: block.id })} value={block.level} onChange={(e) => onPatch({ level: e.target.value === '1' ? 1 : 2 })}>
             <option value="1">{t('rules.level.1')}</option>
             <option value="2">{t('rules.level.2')}</option>
