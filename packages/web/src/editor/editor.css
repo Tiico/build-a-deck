@@ -619,6 +619,16 @@
 /* A search is a tool of the row like any other, and is held to the same height as a box so the
    crown reads as one row rather than as a field with buttons round it. */
 .byd-crown-search { flex: 0 1 240px; min-width: 0; min-height: var(--byd-tap); box-sizing: border-box; padding: 0 12px; border: 1px solid #3b414e; border-radius: 8px; background: #14161c; color: #fff; font: inherit; font-size: 12px; }
+/* Below the desk the wall's crown carries more than one row can hold, and the field is the only
+   thing in it that can give: measured at 768 px it had been squeezed to 26 px, which is a slit and
+   not a target. The editor may degrade under desk width (L12) but it never loses a control and
+   never drops below a tap target, so the row keeps its height and scrolls sideways inside itself
+   instead — the same answer #130 gave the filter chips, and the page itself still does not move. */
+@media (max-width: 1023px) {
+  .byd-crown { overflow-x: auto; scrollbar-width: none; }
+  .byd-crown::-webkit-scrollbar { display: none; }
+  .byd-crown-search { min-width: 180px; }
+}
 /* What a box opened: a band under the row, on the panel's own ground so it reads as standing over
    the work rather than as a second crown. This one may wrap — it is what the row refused to. */
 .byd-crown-drawer { flex: none; display: flex; align-items: flex-start; gap: var(--byd-s2); flex-wrap: wrap; max-height: 40%; overflow: auto; padding: var(--byd-s2) 0; border-bottom: 1px solid #2f333d; background: var(--byd-editor-panel-bg); }
@@ -650,18 +660,81 @@
    end of the flow and would make the panel taller than the window (#126). They are taken out of
    the flex column for the same reason `.byd-offscreen` is pinned to the corner. */
 .byd-eye-filters { position: absolute; top: 0; left: 0; width: 0; height: 0; }
-/* The deck itself, which is the only thing on this surface that scrolls. The measure stands beside
-   it and collapses to nothing when the template has no picture to measure. */
-.byd-wall-work { flex: 1 1 auto; min-height: 0; overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 var(--byd-s5); align-items: start; }
+/* The wall's work is the deck and the way into it (#179): the deck's table of contents to the left
+   and the deck itself to the right, and the deck is the only thing on this surface that scrolls.
+   Folded, the column is a 66 px strip. The reflow moves the wall by a whole card column, so it is
+   a movement to follow rather than a jump to work out afterwards — and nothing at all for a reader
+   who has asked for no movement. */
+.byd-wall-work { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 0 var(--byd-s3); transition: grid-template-columns 200ms cubic-bezier(0.4, 0, 0.2, 1); }
+.byd-wall-work[data-fold='open'] { grid-template-columns: 172px minmax(0, 1fr); }
+.byd-wall-work[data-fold='folded'] { grid-template-columns: 66px minmax(0, 1fr); }
+@media (prefers-reduced-motion: reduce) {
+  .byd-wall-work { transition: none; }
+}
+/* The deck's own box. The measure stands beside it and collapses to nothing when the template has
+   no picture to measure. */
+.byd-wall-deck { min-width: 0; min-height: 0; overflow: auto; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 var(--byd-s5); align-items: start; align-content: start; }
 /* Another eye over the real cards (E5), and the trim the knife will follow. */
-.byd-wall[data-eye='deuteranopia'] { filter: url(#byd-eye-deuteranopia); }
-.byd-wall[data-eye='protanopia'] { filter: url(#byd-eye-protanopia); }
-.byd-wall[data-eye='tritanopia'] { filter: url(#byd-eye-tritanopia); }
-.byd-wall[data-eye='gray'] { filter: grayscale(1); }
+.byd-wall-deck[data-eye='deuteranopia'] { filter: url(#byd-eye-deuteranopia); }
+.byd-wall-deck[data-eye='protanopia'] { filter: url(#byd-eye-protanopia); }
+.byd-wall-deck[data-eye='tritanopia'] { filter: url(#byd-eye-tritanopia); }
+.byd-wall-deck[data-eye='gray'] { filter: grayscale(1); }
 /* The guides hug the card, not its cell, and are drawn in millimetres inside the card's own
    coordinate space, so they mean the same thing at every scale. */
-.byd-wall[data-trim] .byd-wall-card [data-card] { outline: 0.3mm dashed rgba(224, 92, 92, 0.9); outline-offset: -0.15mm; }
-.byd-wall[data-trim] .byd-wall-card [data-card]::after { content: ''; position: absolute; inset: 3mm; border: 0.3mm dashed rgba(125, 211, 160, 0.85); pointer-events: none; }
+.byd-wall-deck[data-trim] .byd-wall-card [data-card] { outline: 0.3mm dashed rgba(224, 92, 92, 0.9); outline-offset: -0.15mm; }
+.byd-wall-deck[data-trim] .byd-wall-card [data-card]::after { content: ''; position: absolute; inset: 3mm; border: 0.3mm dashed rgba(125, 211, 160, 0.85); pointer-events: none; }
+
+/* A band of the deck, and the head that stays in view while the band rolls past. The head is what
+   answers "where am I" in the deck's own words; the column beside it answers where that is. */
+.byd-wall-band { grid-column: 1; min-width: 0; }
+.byd-wall-band-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: baseline; gap: var(--byd-s2); padding: var(--byd-s3) var(--byd-s1) var(--byd-s2); background: linear-gradient(var(--byd-editor-chrome-bg) 72%, transparent); }
+.byd-wall-band-head h3 { margin: 0; color: #fff; font-size: 13px; }
+.byd-wall-band-head small { color: var(--byd-editor-quiet); font-variant-numeric: tabular-nums; }
+.byd-wall-band-rule { flex: 1; height: 1px; background: #2f333d; }
+
+/* The table of contents, open: every band with its count, the one at the top of the view marked.
+   A row is a tap target like everything else in the editor — the desk is not where 44 px stops
+   being a rule (L12). */
+.byd-wall-jump { grid-column: 1; min-height: 0; display: flex; flex-direction: column; border: 1px solid #2f333d; border-radius: 14px; background: var(--byd-editor-panel-bg); overflow: hidden; }
+.byd-wall-jump h2 { flex: none; margin: 0; padding: var(--byd-s3) var(--byd-s3) var(--byd-s2); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
+.byd-wall-jump-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0 var(--byd-s2) var(--byd-s3); }
+.byd-wall-jump-scroll button { display: flex; width: 100%; box-sizing: border-box; align-items: center; gap: var(--byd-s2); min-height: var(--byd-tap); padding: 0 var(--byd-s2); border: 0; border-radius: 8px; background: transparent; color: #e6ecfa; font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
+.byd-wall-jump-scroll button:hover { background: #1b1f2a; }
+.byd-wall-jump-scroll button[aria-current='true'] { background: #1b1f2a; box-shadow: inset 3px 0 0 0 var(--byd-editor-primary-mark); }
+.byd-wall-jump-scroll button span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.byd-wall-jump-scroll button small { color: var(--byd-editor-quiet); font-variant-numeric: tabular-nums; }
+
+/* The same contents, folded to a strip. 66 px is counted and not chosen: the tile's own 44 px,
+   the mark's room to the left of it, air to the right and the strip's two borders — and that is
+   what hands the card column back at 1280 and at 1440.
+   undantag: the left padding is the mark's room and the right is the tile's air, so the two edges
+   of this one box are deliberately unequal rungs (12 and 8) rather than one. */
+.byd-wall-rail { grid-column: 1; min-height: 0; box-sizing: border-box; display: flex; flex-direction: column; gap: var(--byd-s1); padding: var(--byd-s2) var(--byd-s2) var(--byd-s2) var(--byd-s3); border: 1px solid #2f333d; border-radius: 14px; background: var(--byd-editor-panel-bg); overflow: auto; scrollbar-width: none; }
+.byd-wall-rail::-webkit-scrollbar { display: none; }
+/* The height is the group's share of the deck, floored at a tap target: the tail is pressed flat
+   so it stays hittable, and the top of the strip stays true. */
+.byd-wall-rail button { position: relative; flex: 1 1 0; min-height: var(--byd-tap); min-width: var(--byd-tap); display: grid; place-items: center; border: 0; border-radius: 7px; padding: 0; background: var(--byd-band-quiet, #2c303a); color: var(--byd-band-ink, #fff); font: inherit; font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums; cursor: pointer; }
+.byd-wall-rail button:hover { background: var(--byd-band-paint, #3a3f4c); }
+/* "Where am I" on three channels and not one: the same mark the open column sets in front of the
+   band, a brighter tile, and the count standing at full weight on it. Two groups can share a head
+   colour on the wall — the colour was never allowed to carry this alone.
+   The tile is not dimmed with a filter, which would take the count down with the ground it stands
+   on: the two grounds are worked out per group against the ink that reads on them, so a count is
+   never under 4.5:1 whatever colour the deck painted its heads (L11, E5). */
+.byd-wall-rail button[aria-current='true'] { background: var(--byd-band-paint, #3a3f4c); font-size: 11px; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28); }
+/* The mark stands outside the tile rather than inset in it: an inset shadow follows a rounded
+   corner and reads as a loose outline, where outside it is the same straight stroke the open
+   column draws.
+   undantag: 8 px out is the left padding above, and the 6 px inset is the tile's own corner
+   radius — both are this one shape's geometry and not a distance between things. */
+.byd-wall-rail button[aria-current='true']::before { content: ''; position: absolute; left: -8px; top: 6px; bottom: 6px; width: 3px; border-radius: 2px; background: var(--byd-editor-primary-mark); }
+
+/* The way in and out of the strip, in the crown: a real word on a real button, because a reader
+   who has never folded anything cannot guess that the column is foldable, and an affordance that
+   only appears under a pointer is the thing #184 is taking out of the editor elsewhere. */
+.byd-crown-fold { flex: 0 0 auto; display: inline-flex; align-items: center; gap: var(--byd-s1); min-height: var(--byd-tap); padding: 0 var(--byd-s3); border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; font-size: 12px; white-space: nowrap; cursor: pointer; }
+.byd-crown-fold:hover { border-color: var(--byd-editor-primary-mark); color: #fff; }
+.byd-crown-fold span { color: var(--byd-editor-primary-mark); font-weight: 700; }
 .byd-wall-card[data-marked] { outline: 3px solid #f0b64a; outline-offset: 3px; }
 .byd-wall-checks { flex: 1 1 auto; min-width: 0; }
 .byd-wall-ok { margin: 0; color: #7dd3a0; line-height: 1.5; }

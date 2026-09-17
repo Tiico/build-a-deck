@@ -41,12 +41,24 @@ const SHELL = `
     <div role="tabpanel" tabindex="0" data-stop="the wall panel">
       <div class="byd-wall-view">
         <div class="byd-crown">
+          <input type="search" class="byd-crown-search" aria-label="Sök i alla fält" data-stop="the wall's search" />
           <button class="byd-crown-box" aria-expanded="false" data-stop="the eyes box">Ögon: Som du ser det ▾</button>
           <button class="byd-crown-box" aria-expanded="false" data-stop="the guides box">Guider (0) ▾</button>
           <div class="byd-crown-step" role="group"><button data-stop="packing the wall closer">−</button><button data-stop="larger cards">+</button></div>
+          <button class="byd-crown-box" aria-expanded="false" data-stop="the grouping box">Grupperad efter: typ ▾</button>
+          <button class="byd-crown-fold" aria-expanded="true" data-stop="folding the jump column"><span>⟨</span>Fäll ihop hoppspalten</button>
           <button class="byd-crown-box byd-crown-end" aria-expanded="false" data-stop="the checks box">Fysisk kontroll (1) ▾</button>
         </div>
-        <div class="byd-wall-work"><div class="byd-wall"><div class="byd-wall-card" aria-selected="true"></div></div></div>
+        <div class="byd-wall-work" data-fold="open">
+          <nav class="byd-wall-jump" aria-label="Grupper i leken">
+            <h2>Leken</h2>
+            <div class="byd-wall-jump-scroll">
+              <button data-jump="varelse" aria-current="true" data-stop="the band the wall is standing in"><span>varelse</span><small>132</small></button>
+              <button data-jump="fälla" aria-current="false" tabindex="-1"><span>fälla</span><small>8</small></button>
+            </div>
+          </nav>
+          <div class="byd-wall-deck"><div class="byd-wall"><div class="byd-wall-card" aria-selected="true"></div></div></div>
+        </div>
         <div class="byd-crown-foot"><span>3 kort · 150 px breda</span></div>
       </div>
     </div>
@@ -209,11 +221,15 @@ describe('the editor under a keyboard', () => {
       'leaving the work behind',
       'the way back into the editor',
       'the wall panel',
+      "the wall's search",
       'the eyes box',
       'the guides box',
       'packing the wall closer',
       'larger cards',
+      'the grouping box',
+      'folding the jump column',
       'the checks box',
+      'the band the wall is standing in',
       'the template panel',
       'a tool',
       'the selected layer',
@@ -416,6 +432,65 @@ describe('the editor header on a desk', () => {
           .map((el) => el.textContent?.trim().slice(0, 20)),
       )
       expect(wrapped).toEqual([])
+    } finally {
+      await page.close()
+    }
+  }, 60_000)
+})
+
+// The wall's table of contents folded to a strip (#179). Folded it is 66 px wide and the names are
+// gone, so what is left has to be hittable and legible on its own: `--tap` holds in *both*
+// directions, which is a rule the prototype broke at 43 px before it was fixed. The heights are
+// proportional to the groups above that floor, so the strip reads as a cross-section of the deck.
+const TILES: readonly (readonly [string, number])[] = [
+  ['Playcard', 132],
+  ['Character', 44],
+  ['Shopcard', 40],
+  ['Event', 36],
+  ['Location', 20],
+  ['Effect', 16],
+  ['Trap+', 12],
+  ['Trap-', 8],
+]
+const STRIP = `
+<div class="byd-editor" data-page="editor" style="height:700px">
+  <main>
+    <div role="tabpanel">
+      <div class="byd-wall-view">
+        <div class="byd-crown"><button class="byd-crown-fold" aria-expanded="false"><span>&#x27E9;</span>Fäll ut hoppspalten</button></div>
+        <div class="byd-wall-work" data-fold="folded">
+          <nav class="byd-wall-rail" aria-label="Grupper i leken, hopfälld">
+            ${TILES.map(
+              ([name, n], i) =>
+                `<button type="button" data-tile="${name}" aria-current="${i === 0}" aria-label="${name}, ${n} kort" style="flex-grow:${n}">${n}</button>`,
+            ).join('')}
+          </nav>
+          <div class="byd-wall-deck"><div class="byd-wall"></div></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>`
+
+describe('the folded jump column (#179)', () => {
+  it('is a 66 px strip of tiles that are a tap target both ways, sized by their groups', async () => {
+    const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
+    try {
+      await page.setContent(`<!doctype html><html><head><style>body{margin:0}${css}</style></head><body>${STRIP}</body></html>`, { waitUntil: 'load' })
+      const measured = await page.evaluate(() => ({
+        strip: Math.round(document.querySelector('.byd-wall-rail')!.getBoundingClientRect().width),
+        tiles: [...document.querySelectorAll('[data-tile]')].map((el) => {
+          const box = el.getBoundingClientRect()
+          return { name: el.getAttribute('data-tile'), w: Math.round(box.width), h: Math.round(box.height) }
+        }),
+      }))
+      expect(measured.strip).toBe(66)
+      expect(measured.tiles.filter((tile) => tile.w < 44 || tile.h < 44)).toEqual([])
+      // The strip is a cross-section and not a menu: a larger group is a taller tile, down to the
+      // floor where the tail is pressed flat.
+      const heights = measured.tiles.map((tile) => tile.h)
+      expect(heights).toEqual([...heights].sort((a, b) => b - a))
+      expect(heights[0]!).toBeGreaterThan(44)
     } finally {
       await page.close()
     }

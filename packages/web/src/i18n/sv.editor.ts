@@ -66,6 +66,18 @@ export const svEditor = {
   // Kortväggen: ögonen att läsa leken med och den fysiska kontrollen bredvid.
   'wall.cards.one': '{n} kort',
   'wall.cards.other': '{n} kort',
+  // Gruppen för kort utan värde i grupperingskolumnen (#179). Kolumnens namn är formgivarens eget
+  // ord och flätas in som det står; `Utan` är verktygets och följer läsaren (A4).
+  'wall.group.without': 'Utan {column}',
+  // Innehållsförteckningen över leken (#179): hoppspalten utfälld, remsan hopfälld.
+  'wall.deck': 'Leken',
+  'wall.groups': 'Grupper i leken',
+  'wall.groups.folded': 'Grupper i leken, hopfälld',
+  'wall.fold.in': 'Fäll ihop hoppspalten',
+  'wall.fold.out': 'Fäll ut hoppspalten',
+  'wall.groupedBy': 'Grupperad efter',
+  'wall.grouping.off': 'Ingen gruppering',
+  'wall.tile': '{group}, {n} kort',
   /* Kronan (#128, #130): en låda säger sitt tillstånd, aldrig bara sitt namn. */
   'crown.box.state': '{name}: {state}',
   'crown.box.count': '{name} ({n})',
@@ -83,6 +95,7 @@ export const svEditor = {
   'wall.density.more': 'Fler kort per rad',
   'wall.density.less': 'Färre och större kort',
   'wall.foot.cards': '{n} kort · {px} px breda',
+  'wall.foot.found': '{shown} av {total} kort · {px} px breda',
   'wall.foot.checked': 'Inga anmärkningar',
   'wall.foot.remarks.one': 'En anmärkning',
   'wall.foot.remarks.other': '{n} anmärkningar',
