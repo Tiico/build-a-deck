@@ -3,7 +3,8 @@ import WebSocket from 'ws'
 import { WireClient } from './client.js'
 import { start, twoSeatSetup, type Running } from './fixture.js'
 import { template } from './deck.js'
-import type { RuleDoc } from '../src/projects.js'
+import { RuleDoc as ServerRuleDoc, type RuleDoc } from '../src/projects.js'
+import { RuleDoc as TemplateRuleDoc } from '@byd/template'
 
 let run: Running
 beforeEach(async () => {
@@ -567,6 +568,13 @@ describe('the rulebook in the project (B7)', () => {
     // The older version keeps the rules it had.
     expect((await run.projects.at('p-rules', 1))?.rules?.blocks).toHaveLength(3)
     expect((await run.projects.at('p-rules', 2))?.rules?.blocks).toHaveLength(4)
+  })
+
+  // One declaration, not two held in step by hand (#183): what validates on the way in is the same
+  // schema the renderer's type is inferred from, so a field cannot be added to one side and
+  // forgotten on the other.
+  it('validates with the very schema the renderer reads', () => {
+    expect(ServerRuleDoc).toBe(TemplateRuleDoc)
   })
 
   it('refuses a rulebook the model does not allow', async () => {
