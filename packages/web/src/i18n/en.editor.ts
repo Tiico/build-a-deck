@@ -602,6 +602,11 @@ export const enEditor = {
   'setup.place.zone': 'in {zone}',
   'setup.seats.hint': 'A seat that arrives gets a hand and whatever the seats already have. A seat that leaves takes its zones with it.',
   'setup.counters.homeless': 'No seat has a counters zone, so no chips are laid on the table. Give the seats one with “Counters zone per seat”.',
+  // A zone family (#175): the same zone at each seat, as one row with how many seats have it.
+  'setup.family.seats.one': '1 seat',
+  'setup.family.seats.other': '{n} seats',
+  'setup.family.some': '{n} of {of} seats',
+  'setup.family.differ': '{n} differ',
   'setup.group.table': 'On the table',
   'setup.group.seats': 'At the seats',
   'setup.remove.of': 'Remove {name}',

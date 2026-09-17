@@ -16,7 +16,10 @@ afterEach(async () => {
   await run.stop()
 })
 
-const rows = () => [...document.querySelectorAll('[data-zone-row]')].map((el) => el.getAttribute('data-zone-row'))
+// Raderna i listan. En zonfamilj står som `hand:*` (#175): samma zon vid var sin plats är en
+// rad, och platserna under den när någon fällt ut den.
+const rows = () =>
+  [...document.querySelectorAll('[data-zone-row], [data-zone-family]')].map((el) => el.getAttribute('data-zone-row') ?? `${el.getAttribute('data-zone-family')}:*`)
 const row = (id: string) => document.querySelector(`[data-zone-row="${id}"]`) as HTMLElement
 const select = (id: string) => fireEvent.click(within(row(id)).getAllByRole('button')[0]!)
 const press = (key: string) => fireEvent.keyDown(window, { key, ctrlKey: true })
@@ -44,7 +47,7 @@ describe('att kopiera en zon i fliken Bord', () => {
     press('c')
     press('v')
 
-    const made = rows().find((id) => id !== null && !['draw', 'discard', 'table', 'hand:A', 'hand:B'].includes(id))!
+    const made = rows().find((id) => id !== null && !['draw', 'discard', 'table', 'hand:*'].includes(id))!
     expect(within(row(made)).getAllByText(/Kopia av Draghög/).length).toBeGreaterThan(0)
 
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
@@ -63,10 +66,10 @@ describe('att kopiera en zon i fliken Bord', () => {
 
     select('discard')
     press('x')
-    expect(rows()).toEqual(['draw', 'table', 'hand:A', 'hand:B'])
+    expect(rows()).toEqual(['draw', 'table', 'hand:*'])
 
     press('v')
-    expect(rows()).toHaveLength(5)
+    expect(rows()).toEqual(['draw', 'table', 'discard-2', 'hand:*'])
     expect(document.body.textContent).toMatch(/Kasthög/)
   })
 
@@ -76,7 +79,7 @@ describe('att kopiera en zon i fliken Bord', () => {
 
     select('table')
     press('x')
-    expect(rows()).toEqual(['draw', 'discard', 'table', 'hand:A', 'hand:B'])
+    expect(rows()).toEqual(['draw', 'discard', 'table', 'hand:*'])
     expect((document.querySelector('[data-setup-said]') as HTMLElement).textContent).toMatch(/Filten är bordet/)
   })
 
@@ -88,6 +91,6 @@ describe('att kopiera en zon i fliken Bord', () => {
     const name = screen.getByLabelText(/Namn för Draghög/)
     fireEvent.keyDown(name, { key: 'c', ctrlKey: true })
     fireEvent.keyDown(name, { key: 'v', ctrlKey: true })
-    expect(rows()).toEqual(['draw', 'discard', 'table', 'hand:A', 'hand:B'])
+    expect(rows()).toEqual(['draw', 'discard', 'table', 'hand:*'])
   })
 })

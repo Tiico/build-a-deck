@@ -513,6 +513,14 @@
 .byd-setup-name i[data-kind='area'] { width: 16px; height: 11px; border-style: dashed; box-shadow: none; }
 .byd-setup-name i[data-kind='hand'] { width: 16px; height: 7px; box-shadow: none; }
 .byd-setup-name em { flex: none; font-style: normal; color: #9aa3b8; font-size: 11px; border: 1px solid #2f333d; border-radius: 999px; padding: 0 8px; }
+/* En zonfamilj (#175): en rad för samma zon vid var sin plats, med trekanten som fäller ut dem.
+   Trekanten är ritad och inte skriven, så att radens namn är zonen och antalet och inget mer.
+   Platserna står indragna under den, som en innehållsförteckning gör med sina underrubriker. */
+.byd-setup-name i.byd-setup-caret { width: 0; height: 0; border: 5px solid transparent; border-right: 0; border-left-color: #c7cede; border-radius: 0; box-shadow: none; transition: transform 120ms; }
+.byd-setup-zones li[data-open='true'] > .byd-setup-row i.byd-setup-caret { transform: rotate(90deg); }
+/* Avvikelsen är en upplysning och inte ett fel: den syns, men den larmar inte. */
+.byd-setup-name em[data-differ] { color: #ffd98a; border-color: #4a412a; }
+.byd-setup-zones li > ul { padding-left: var(--byd-s4); }
 .byd-setup-name strong { flex: none; color: #8ad0ff; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
 .byd-setup-x { flex: none; border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; color: #c7cede; font-size: 15px; line-height: 1; padding: 4px 8px; cursor: pointer; }
 .byd-setup-x:hover { background: #2a1b1b; border-color: #6b2b2b; color: #ff9a9a; }
