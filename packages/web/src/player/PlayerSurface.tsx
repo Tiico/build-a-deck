@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useState } from 'react'
 import type { Activity, Snapshot, VisibleComponentState } from '@byd/protocol'
 import type { TableClient } from '../client.js'
 import { HeldCard } from './HeldCard.js'
@@ -64,12 +64,9 @@ export type PlayerSurfaceProps = {
   openHand(card: VisibleComponentState, marked: readonly string[]): void
   // Where the way out (#31) leads once the seat has been given up.
   onLeft(): void
-  // A line the route puts over the surface. `/online` says where the board is, since the board is
-  // not here; `/play` has never needed to, because it was never anywhere else.
-  says?: ReactNode
 }
 
-export function PlayerSurface({ client, view, activity, seat, name, sessionId, faces, version, marks, openHand, onLeft, says }: PlayerSurfaceProps) {
+export function PlayerSurface({ client, view, activity, seat, name, sessionId, faces, version, marks, openHand, onLeft }: PlayerSurfaceProps) {
   const t = useT()
   const [inspect, setInspect] = useState<VisibleComponentState | null>(null)
   const [lifted, setLifted] = useState<VisibleComponentState | null>(null)
@@ -116,7 +113,6 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
         {/* The rules this table plays by (B7), one press away beside the session's own buttons. */}
         <RuleDrawer http={faces} sessionId={sessionId} placement="phone" />
       </header>
-      {says}
       <CountersRow view={view} onSet={(c, value) => void client.send({ v: 'setCounter', component: c.id, value })} />
       <TableSummary view={view} activity={activity} onDraw={draw} refusal={drawn} refusedZone={refusedPile} />
       {/* A card in front of you opens the same inspection a hand card does (#78); the verbs that
