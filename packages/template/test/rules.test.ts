@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parseInline } from '../src/inline.js'
-import { renderRules, type RuleDoc } from '../src/rules.js'
+import { RuleDoc, renderRules } from '../src/rules.js'
 
 const names = { zones: { discard: 'Kasthög', draw: 'Draghög' }, cards: { drake: 'Drake' } }
 
@@ -62,5 +62,17 @@ describe('the rulebook (B7): a versioned document that knows the game it belongs
       { block: 't1', of: 'card', id: 'troll' },
     ])
     expect(out.text).toContain('[[zon:soptunna]]')
+  })
+})
+
+describe('the rulebook has one declaration (#183): the schema that validates is the type the renderer reads', () => {
+  it('takes a block that carries an `ask` through the schema and into the render, without the question reaching the reader', () => {
+    const parsed = RuleDoc.parse({
+      title: 'Skogens herrar',
+      blocks: [{ kind: 'text', id: 't1', text: 'Dra ett kort ur [[zon:draw]].', ask: 'Hur många kort dras?' }],
+    })
+    const out = renderRules(parsed, names)
+    expect(out.text).toBe('Dra ett kort ur Draghög.')
+    expect(JSON.stringify(out)).not.toContain('Hur många kort dras?')
   })
 })
