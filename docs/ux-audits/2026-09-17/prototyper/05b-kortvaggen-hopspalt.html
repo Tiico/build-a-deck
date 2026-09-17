@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 5b — Hoppspalten hopfälld</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* Prototyp 5b följer på 05-kortvaggen.html. Där avgjordes formen: en 172 px hoppspalt som är
+     lekens innehållsförteckning, en grupprubrik som står kvar medan gruppen rullar förbi, och en
+     sökning i krönet. Mätningen efteråt visade det som inte stod i issuet: spalten kostar en
+     kortspalt vid varje bredd — 8 → 7 vid 1 440, 7 → 6 vid 1 280, 11 → 10 vid 1 920. Beslut 1
+     (2026-09-17): spalten ligger kvar som förval men går att fälla ihop från krönet, och valet
+     kommer ihåg sig. Den här filen prototypar bara det hopfällda läget. */
+
+  main.wallview { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+  .work { flex: 1 1 auto; min-height: 0; display: grid; gap: var(--s3); padding: var(--s4); }
+  .work[data-shape='nu'] { grid-template-columns: minmax(0,1fr); }
+  .work[data-shape='oppen'] { grid-template-columns: 172px minmax(0,1fr); }
+  /* 64 px, inte 44. Räknat: vid 1 280 ryms den sjunde spalten så länge sidospalten är under 80 px,
+     vid 1 440 den åttonde så länge den är under 78 px. 64 px ger alltså tillbaka kortspalten vid
+     båda bredderna med marginal kvar för en rullningslist, och lämnar plats åt antalet — det enda
+     tal som överlever när namnet faller bort. */
+  .work[data-shape='hopfalld'] { grid-template-columns: 64px minmax(0,1fr); }
+  /* Väggen flyttar sig en hel spalt. Ett kast på 200 ms gör det till en rörelse man kan följa i
+     stället för ett hopp man måste tolka i efterhand; utan det ser det ut som att leken laddats om.
+     grid-template-columns animeras av Chromium, som är den enda renderare editorn lovar. */
+  .work { transition: grid-template-columns 200ms cubic-bezier(.4, 0, .2, 1); }
+  @media (prefers-reduced-motion: reduce) { .work { transition: none; } }
+
+  /* --- hoppspalten utfälld: oförändrad från 05 ------------------------- */
+  .jump { min-height: 0; display: flex; flex-direction: column; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); }
+  .jump > header { flex: none; padding: var(--s3) var(--s3) var(--s2); }
+  .jump > .scroll { padding: 0 var(--s2) var(--s3); }
+  .jump a { display: flex; align-items: baseline; gap: var(--s2); min-height: 38px; padding: 0 var(--s2); border-radius: 8px; color: var(--ink); text-decoration: none; }
+  .jump a:hover { background: var(--card); }
+  .jump a[data-here='true'] { background: var(--card); box-shadow: inset 3px 0 0 0 var(--primary-mark); }
+  .jump a span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .jump a small { color: var(--quiet); font-variant-numeric: tabular-nums; }
+
+  /* --- hoppspalten hopfälld: en remsa som är lekens karta --------------
+     Tre former prövades. En ensam knapp i krönet: billigast, men då försvinner både "var är jag"
+     och vägen till en grupp, och innehållsförteckningen var hela poängen — den som fäller ihop en
+     gång skulle förlora funktionen för gott. En "hoppa"-knapp som växer fram i grupprubriken:
+     rubriken är redan trång, knappen syns bara när man redan står i gruppen, och den svarar på
+     "vart", aldrig på "var". Kvar blir remsan: samma åtta grupper i samma ordning, i lekens egna
+     färger — de färgerna är redan lärda, för det är kortens egna huvudfärger på väggen bredvid —
+     med antalet kvar och namnet borta. Höjden är proportionell mot gruppens storlek, så remsan
+     läses som ett tvärsnitt av hela leken och inte bara som en meny. --tap går före proportionen:
+     min-height 44 px golvar de fyra minsta grupperna (20, 16, 12 och 8 kort), så svansen är
+     tryckt platt medan toppen är sann. Det är avsiktligt — remsan ska gå att träffa, och antalet
+     står ändå utskrivet i brickan för den som vill ha det exakta talet. */
+  .rail { min-height: 0; display: flex; flex-direction: column; gap: 3px; padding: 6px 6px 6px 13px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); overflow: auto; scrollbar-width: none; }
+  .rail button {
+    position: relative; flex: 1 1 0; min-height: var(--tap); border: 0; border-radius: 7px; padding: 0;
+    display: grid; place-items: center; gap: 0; cursor: pointer;
+    font: inherit; font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums;
+    color: rgba(255, 255, 255, .62); background: #3a3f4c;
+    filter: saturate(.8) brightness(.82);
+  }
+  .rail button:hover { color: #fff; }
+  /* "Var är jag" får tre kanaler, inte en: den blå kanten som spalten utfälld redan använder,
+     en ljusare bricka, och antalet i vitt. Färg ensam duger inte — två grupper (Trap+ och Trap-)
+     delar dessutom huvudfärg på väggen, så remsan kan aldrig vara enda namnbäraren. Det är också
+     därför grupprubriken står kvar: den säger namnet, remsan säger var i leken namnet ligger. */
+  .rail button[aria-current='true'] { color: #fff; filter: brightness(1.18) saturate(1.05); }
+  /* Märket ligger utanför brickan, inte som en inset i den: en rundad bricka böjer en inset-skugga
+     till en båge som läses som en lös kontur. Utanför blir det samma raka streck som spalten
+     utfälld sätter framför gruppens namn. */
+  .rail button[aria-current='true']::before {
+    content: ''; position: absolute; left: -7px; top: 6px; bottom: 6px; width: 3px;
+    border-radius: 2px; background: var(--primary-mark);
+  }
+  .rail button[data-typ='Playcard'] { background: #6b4a2e; }
+  .rail button[data-typ='Event'] { background: #2f4a6b; }
+  .rail button[data-typ='Location'] { background: #2f6136; }
+  .rail button[data-typ='Character'] { background: #6b2d5c; }
+  .rail button[data-typ='Effect'] { background: #8f2d20; }
+  .rail button[data-typ='Shopcard'] { background: #7a5c00; }
+  .rail button[data-typ='Trap+'], .rail button[data-typ='Trap-'] { background: #3b3a86; }
+
+  /* Fokus ritas ut. Remsan har inga namn, så tangentbordet är beroende av att ringen syns — och
+     #184 tar bort de affordanser som bara finns vid hovring, inte de som finns vid fokus. */
+  .rail button:focus-visible, .jump a:focus-visible, .btn:focus-visible, .switch button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+
+  /* --- väggen ----------------------------------------------------------- */
+  .deck { min-height: 0; min-width: 0; display: flex; flex-direction: column; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); }
+  .deck > .scroll { padding: 0 var(--s4) var(--s4); }
+  .wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--s3); }
+  .band { position: sticky; top: 0; z-index: 2; display: flex; align-items: baseline; gap: var(--s2); padding: var(--s3) 0 var(--s2); background: linear-gradient(var(--panel) 72%, transparent); }
+  .band h3 { margin: 0; color: #fff; font-size: 13px; }
+  .band small { color: var(--quiet); font-variant-numeric: tabular-nums; }
+  .band .rule { flex: 1; height: 1px; background: var(--line); }
+
+  .kort { aspect-ratio: 63 / 88; border-radius: 8px; background: #f3ecdc; border: 1px solid #0d0f14; padding: 8px; display: flex; flex-direction: column; gap: 5px; }
+  .kort .top { height: 22px; border-radius: 4px; background: #6b4a2e; }
+  .kort .ln { height: 5px; border-radius: 3px; background: #cfc3ab; }
+  .kort .ln.short { width: 58%; }
+  .kort .pill { margin-top: auto; align-self: flex-start; padding: 3px 8px; border-radius: 999px; background: #e0a458; color: #221; font-size: 10px; font-weight: 700; }
+  .kort[data-typ='Event'] .top { background: #2f4a6b; }
+  .kort[data-typ='Location'] .top { background: #2f6136; }
+  .kort[data-typ='Character'] .top { background: #6b2d5c; }
+  .kort[data-typ='Effect'] .top { background: #8f2d20; }
+  .kort[data-typ='Shopcard'] .top { background: #7a5c00; }
+  .kort[data-typ='Trap+'] .top, .kort[data-typ='Trap-'] .top { background: #3b3a86; }
+
+  .foot { flex: none; border-top: 1px solid var(--line); padding: var(--s2) var(--gutter); color: var(--quiet); font-variant-numeric: tabular-nums; display: flex; gap: var(--s3); margin: 0; }
+  .foot .kept { color: var(--quiet-2); }
+  .search { min-height: 34px; border-radius: 8px; border: 1px solid var(--line); background: var(--sunk); color: var(--ink); padding: 0 10px; width: 230px; }
+  /* Kontrollen bor i krönet, med ett riktigt ord och inte bara en vinkel: den ska gå att hitta av
+     den som aldrig fällt ihop något och inte vet vad remsan till vänster är. */
+  .fold { display: inline-flex; align-items: center; gap: 6px; }
+  .fold .chev { color: var(--primary-mark); font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <a class="home" href="#">Mina spel</a>
+    <strong>Stora leken</strong>
+    <button class="rev">rev 1</button>
+    <span class="saved">Sparat</span>
+    <nav class="tabs">
+      <button aria-selected="true">Kortvägg</button><button>Mall</button><button>Tabell</button>
+      <button>Symboler</button><button>Regler</button><button>Bord</button>
+    </nav>
+    <span class="spacer"></span>
+    <div class="switch" role="group" aria-label="Visa">
+      <button id="b-nu" aria-pressed="false">Nu</button>
+      <button id="b-oppen" aria-pressed="true">Öppen</button>
+      <button id="b-hopfalld" aria-pressed="false">Hopfälld</button>
+    </div>
+    <span class="who">P</span>
+    <button class="btn">Spara</button>
+    <button class="btn primary">Uppdatera bordet</button>
+  </header>
+
+  <main class="wallview">
+    <div class="chrome-row">
+      <button class="btn quiet">Ögon: Som du ser den ▾</button>
+      <button class="btn quiet">Hjälplinjer (0) ▾</button>
+      <button class="btn quiet">−</button><button class="btn quiet">+</button>
+      <span id="crown-extra" hidden style="display:flex;gap:var(--s3);align-items:center">
+        <input class="search" type="search" placeholder="Sök i leken…" aria-label="Sök i leken">
+        <button class="btn quiet">Grupperad efter: typ ▾</button>
+        <button class="btn quiet fold" id="fold" aria-expanded="true" aria-controls="sidan">
+          <span class="chev" aria-hidden="true">⟨</span><span id="fold-ord">Fäll ihop hoppspalten</span>
+        </button>
+      </span>
+      <span class="spacer"></span>
+      <button class="btn quiet">Fysisk kontroll (1) ▾</button>
+    </div>
+    <div class="work" id="work" data-shape="oppen">
+      <nav class="jump" id="jump" aria-label="Grupper i leken">
+        <header><h2 class="h">Leken</h2></header>
+        <div class="scroll" id="jumps"></div>
+      </nav>
+      <nav class="rail" id="rail" hidden aria-label="Grupper i leken, hopfälld"></nav>
+      <div class="deck"><div class="scroll" id="scroll"></div></div>
+    </div>
+    <p class="foot"><span id="foot"></span><span class="kept" id="kept"></span></p>
+  </main>
+</div>
+
+<p class="note" id="note"></p>
+
+<script>
+  // 308 kort i åtta typer — samma fördelning och samma färger som 05-kortvaggen.html.
+  const GROUPS = [
+    ['Playcard', 132], ['Character', 44], ['Shopcard', 40], ['Event', 36],
+    ['Location', 20], ['Effect', 16], ['Trap+', 12], ['Trap-', 8],
+  ]
+  const N = GROUPS.reduce((n, [, k]) => n + k, 0)
+  const RARITY = ['Guld', 'Silver', 'Koppar', 'Diamant', 'Special']
+  const kort = (typ, i) => `
+    <div class="kort" data-typ="${typ}">
+      <div class="top"></div><div class="ln"></div><div class="ln"></div><div class="ln short"></div>
+      <span class="pill">${RARITY[i % RARITY.length]}</span>
+    </div>`
+
+  const scroll = document.getElementById('scroll'), jumps = document.getElementById('jumps')
+  const work = document.getElementById('work'), foot = document.getElementById('foot')
+  const kept = document.getElementById('kept'), note = document.getElementById('note')
+  const extra = document.getElementById('crown-extra'), jump = document.getElementById('jump')
+  const rail = document.getElementById('rail'), fold = document.getElementById('fold')
+  const foldOrd = document.getElementById('fold-ord'), chev = fold.querySelector('.chev')
+
+  const NYCKEL = 'byd-proto-179-hoppspalt'
+  const minns = (v) => { try { localStorage.setItem(NYCKEL, v) } catch (_) {} }
+  const minnet = () => { try { return localStorage.getItem(NYCKEL) } catch (_) { return null } }
+
+  function renderNu() {
+    // En enda vägg. Ingenting säger var i leken man är, och ingenting smalnar av den.
+    let i = 0, html = '<div class="wall">'
+    for (const [typ, n] of GROUPS) for (let k = 0; k < n; k++) html += kort(typ, i++)
+    scroll.innerHTML = html + '</div>'
+  }
+
+  function hoppa(typ) {
+    const target = document.getElementById(`g-${typ}`)
+    scroll.scrollTo({ top: target.offsetTop - scroll.offsetTop, behavior: 'smooth' })
+    // Ett hopp flyttar fokus till gruppens första kort, inte bara skrollpositionen — annars står
+    // tangentbordet kvar i spalten och nästa tabb börjar om från leken.
+    const first = target.querySelector('.kort')
+    if (first) { first.tabIndex = -1; first.focus({ preventScroll: true }) }
+  }
+
+  function renderForslag() {
+    // Samma 308 kort, i den grupp mallen redan grupperar efter. Inget döljs, i båda lägena.
+    let i = 0, html = ''
+    for (const [typ, n] of GROUPS) {
+      html += `<section id="g-${typ}"><div class="band"><h3>${typ}</h3><small>${n} kort</small><span class="rule"></span></div><div class="wall">`
+      for (let k = 0; k < n; k++) html += kort(typ, i++)
+      html += '</div></section>'
+    }
+    scroll.innerHTML = html
+
+    jumps.innerHTML = GROUPS.map(([typ, n], k) => `<a href="#g-${typ}" data-here="${k === 0}"><span>${typ}</span><small>${n}</small></a>`).join('')
+    for (const a of jumps.querySelectorAll('a')) a.addEventListener('click', (e) => {
+      e.preventDefault(); hoppa(a.getAttribute('href').slice(1).replace(/^g-/, ''))
+    })
+
+    // Remsan: samma åtta grupper, samma ordning, samma hopp. Namnet ligger i aria-label och title
+    // så att skärmläsaren och pekaren får det fulla ordet — men "var är jag" hänger aldrig på dem.
+    rail.innerHTML = GROUPS.map(([typ, n], k) => {
+      const del = Math.round((n / N) * 100)
+      return `<button type="button" data-typ="${typ}" data-del="${del}" aria-current="${k === 0}"
+        aria-label="${typ}, ${n} kort" title="${typ} · ${n} kort">${n}</button>`
+    }).join('')
+    for (const b of rail.querySelectorAll('button')) {
+      // Proportionell höjd ovanpå min-height: stora grupper syns som stora, små förblir tappbara.
+      b.style.flexGrow = String(Number(b.dataset.del) + 1)
+      b.addEventListener('click', () => hoppa(b.dataset.typ))
+    }
+
+    markera()
+  }
+  // Lyssnaren bor på rutan, inte på innehållet, och sätts därför en enda gång.
+  scroll.addEventListener('scroll', () => { if (work.dataset.shape !== 'nu') markera() })
+
+  // Hoppspalten följer med: den märker gruppen som står överst i vyn. Utfälld och hopfälld märker
+  // samma grupp med samma blå kant — det hopfällda läget tappar namnet, aldrig svaret på var.
+  function markera() {
+    const y = scroll.scrollTop + 8
+    let here = GROUPS[0][0]
+    for (const [typ] of GROUPS) { const s = document.getElementById(`g-${typ}`); if (s && s.offsetTop - scroll.offsetTop <= y) here = typ }
+    for (const a of jumps.querySelectorAll('a')) a.dataset.here = String(a.getAttribute('href') === `#g-${here}`)
+    for (const b of rail.querySelectorAll('button')) b.setAttribute('aria-current', String(b.dataset.typ === here))
+  }
+
+  function mat() {
+    const first = scroll.querySelector('.kort')
+    if (!first) { foot.textContent = ''; return }
+    const bredd = Math.round(first.getBoundingClientRect().width)
+    const rad = first.parentElement.children
+    let spalter = 0
+    for (const el of rad) { if (Math.abs(el.offsetTop - first.offsetTop) > 2) break; spalter++ }
+    foot.textContent = `${N} kort · ${bredd} px breda · väggen ${scroll.scrollHeight} px i en ${scroll.clientHeight} px ruta · ${spalter} kortspalter`
+  }
+
+  const bNu = document.getElementById('b-nu'), bO = document.getElementById('b-oppen'), bH = document.getElementById('b-hopfalld')
+  const NOTER = {
+    nu: '<b>Nu · 308 kort</b>8 637 px i en 734 px ruta — 11,8 skärmar av samma sak. Ingen sökning, ingen gruppering, ingenting som säger var i leken man är. Står här som mätsticka: det är den här spaltbredden det hopfällda läget ger tillbaka.',
+    oppen: '<b>Öppen</b>Förslaget som godkändes: grupper, en rubrik som står kvar medan gruppen rullar förbi, en innehållsförteckning med antal per grupp, och sökningen från datafliken i krönet. Den kostar 172 px, och det räcker för att tappa en kortspalt hela vägen upp till 1 920.',
+    hopfalld: '<b>Hopfälld</b>Namnen faller bort, inte svaret. Remsan behåller lekens åtta grupper i ordning och i kortens egna färger, med antalet kvar och höjden proportionell mot gruppens storlek; den blå kanten märker fortfarande gruppen som står överst, och remsan hoppar fortfarande. Kortspalten kommer tillbaka. Vägen ut och in går via krönet, och valet kommer ihåg sig.',
+  }
+
+  function show(which, { anima = true } = {}) {
+    const forslag = which !== 'nu'
+    if (!anima) work.style.transition = 'none'
+    work.dataset.shape = which
+    jump.hidden = which !== 'oppen'
+    rail.hidden = which !== 'hopfalld'
+    extra.hidden = !forslag
+    forslag ? renderForslag() : renderNu()
+    fold.setAttribute('aria-expanded', String(which === 'oppen'))
+    foldOrd.textContent = which === 'oppen' ? 'Fäll ihop hoppspalten' : 'Fäll ut hoppspalten'
+    chev.textContent = which === 'oppen' ? '⟨' : '⟩'
+    bNu.setAttribute('aria-pressed', String(which === 'nu'))
+    bO.setAttribute('aria-pressed', String(which === 'oppen'))
+    bH.setAttribute('aria-pressed', String(which === 'hopfalld'))
+    if (forslag) minns(which)
+    kept.textContent = forslag ? `Ihågkommet läge: ${which === 'oppen' ? 'öppen' : 'hopfälld'}` : ''
+    note.innerHTML = NOTER[which]
+    mat()
+    // Väggen har inte lagt om sig förrän kastet är över; mät igen när det är det.
+    setTimeout(mat, 240)
+    if (!anima) requestAnimationFrame(() => { work.style.transition = '' })
+  }
+
+  bNu.addEventListener('click', () => show('nu', { anima: false }))
+  bO.addEventListener('click', () => show('oppen'))
+  bH.addEventListener('click', () => show('hopfalld'))
+  // Kontrollen i krönet är en riktig knapp: tangentbordet når den med tabb, mellanslag och retur,
+  // och ingenting i prototypen kräver att en pekare först svävar över något.
+  fold.addEventListener('click', () => show(work.dataset.shape === 'oppen' ? 'hopfalld' : 'oppen'))
+  window.addEventListener('resize', mat)
+
+  // Förvalet är öppet — spalten ska vara det man möter. Bara den som själv fällt ihop den möter
+  // remsan nästa gång.
+  show(minnet() === 'hopfalld' ? 'hopfalld' : 'oppen', { anima: false })
+</script>
+</body>
+</html>
