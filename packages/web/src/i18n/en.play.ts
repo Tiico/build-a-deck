@@ -29,6 +29,9 @@ export const enPlay = {
   'pile.dynamic': 'pile',
 
   'tv.join': 'join with your phone',
+  'qr.enlarge': 'Show the code larger',
+  'qr.title': 'Join with your phone',
+  'qr.close': 'Close',
   'tv.inspect': 'Inspection',
   'tv.inspect.hidden': 'hidden card',
   'tv.inspect.empty': 'point at a card',
