@@ -24,7 +24,10 @@ afterEach(async () => {
 // the other. Which one a test mounts in is said outright, because jsdom's own default decides it
 // otherwise and a surface chosen by accident is a surface nobody chose.
 const LANDSCAPE: Size = { w: 1280, h: 800 }
-const PORTRAIT: Size = { w: 390, h: 844 }
+// An upright tablet and not a phone: since C2's revision of 2026-09-16 (#99) a phone's `/online`
+// draws no felt and no band, so the band's own keyboard has nowhere to be measured there. The
+// hand a phone does get is the strip, and the strip's keyboard is `hand-keyboard.test.tsx`'s.
+const PORTRAIT: Size = { w: 768, h: 1024 }
 
 // Ada, playing entirely online: cards in her hand and one lying face-up on the felt.
 async function online(held = 2, room: Size = LANDSCAPE) {

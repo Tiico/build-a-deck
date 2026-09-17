@@ -126,9 +126,14 @@ const eachBrought = (held: number, size: Size): Promise<Box[]> =>
 
 const COUNTS = [3, 13, 21] as const
 
-// Three upright windows: a phone, and the two tablets that draw the card at its full reading size.
+// Two upright windows, both tablets, both drawing the card at its full reading size.
+//
+// A phone was the first of the three until C2's revision of 2026-09-16 (#99). It is gone because
+// the band is: at a phone's size `/online` draws no felt and no fan at all — it draws the player's
+// own surface, where the hand is K10's strip — so there is nothing here left to measure. What it
+// draws instead is `online-phone.test.tsx`'s business. The readings below are about the band, and
+// the band now begins at the smallest window that still carries a board.
 const SIZES: readonly Size[] = [
-  { w: 390, h: 844 },
   { w: 768, h: 1024 },
   { w: 820, h: 1180 },
 ]
