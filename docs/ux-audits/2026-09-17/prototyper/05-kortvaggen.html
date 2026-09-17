@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 5 — Kortväggen vid 308 kort</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  main.wallview { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+  .work { flex: 1 1 auto; min-height: 0; display: grid; gap: var(--s3); padding: var(--s4); }
+  .work[data-shape='nu'] { grid-template-columns: minmax(0,1fr); }
+  .work[data-shape='forslag'] { grid-template-columns: 172px minmax(0,1fr); }
+
+  /* Hoppspalten: gruppernas namn och antal, som en innehållsförteckning över leken. */
+  .jump { min-height: 0; display: flex; flex-direction: column; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); }
+  .jump > header { flex: none; padding: var(--s3) var(--s3) var(--s2); }
+  .jump > .scroll { padding: 0 var(--s2) var(--s3); }
+  .jump a { display: flex; align-items: baseline; gap: var(--s2); min-height: 38px; padding: 0 var(--s2); border-radius: 8px; color: var(--ink); text-decoration: none; }
+  .jump a:hover { background: var(--card); }
+  .jump a[data-here='true'] { background: var(--card); box-shadow: inset 3px 0 0 0 var(--primary-mark); }
+  .jump a span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .jump a small { color: var(--quiet); font-variant-numeric: tabular-nums; }
+
+  .deck { min-height: 0; min-width: 0; display: flex; flex-direction: column; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); }
+  .deck > .scroll { padding: 0 var(--s4) var(--s4); }
+  .wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--s3); }
+  /* Gruppens rubrik står kvar medan gruppen rullar förbi, så leken aldrig tappar sitt var. */
+  .band { position: sticky; top: 0; z-index: 2; display: flex; align-items: baseline; gap: var(--s2); padding: var(--s3) 0 var(--s2); background: linear-gradient(var(--panel) 72%, transparent); }
+  .band h3 { margin: 0; color: #fff; font-size: 13px; }
+  .band small { color: var(--quiet); font-variant-numeric: tabular-nums; }
+  .band .rule { flex: 1; height: 1px; background: var(--line); }
+
+  .kort { aspect-ratio: 63 / 88; border-radius: 8px; background: #f3ecdc; border: 1px solid #0d0f14; padding: 8px; display: flex; flex-direction: column; gap: 5px; }
+  .kort .top { height: 22px; border-radius: 4px; background: #6b4a2e; }
+  .kort .ln { height: 5px; border-radius: 3px; background: #cfc3ab; }
+  .kort .ln.short { width: 58%; }
+  .kort .pill { margin-top: auto; align-self: flex-start; padding: 3px 8px; border-radius: 999px; background: #e0a458; color: #221; font-size: 10px; font-weight: 700; }
+  .kort[data-typ='Event'] .top { background: #2f4a6b; }
+  .kort[data-typ='Location'] .top { background: #2f6136; }
+  .kort[data-typ='Character'] .top { background: #6b2d5c; }
+  .kort[data-typ='Effect'] .top { background: #8f2d20; }
+  .kort[data-typ='Shopcard'] .top { background: #7a5c00; }
+  .kort[data-typ='Trap+'] .top, .kort[data-typ='Trap-'] .top { background: #3b3a86; }
+
+  .foot { flex: none; border-top: 1px solid var(--line); padding: var(--s2) var(--gutter); color: var(--quiet); font-variant-numeric: tabular-nums; display: flex; gap: var(--s3); }
+  .search { min-height: 34px; border-radius: 8px; border: 1px solid var(--line); background: var(--sunk); color: var(--ink); padding: 0 10px; width: 230px; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <a class="home" href="#">Mina spel</a>
+    <strong>Stora leken</strong>
+    <button class="rev">rev 1</button>
+    <span class="saved">Sparat</span>
+    <nav class="tabs">
+      <button aria-selected="true">Kortvägg</button><button>Mall</button><button>Tabell</button>
+      <button>Symboler</button><button>Regler</button><button>Bord</button>
+    </nav>
+    <span class="spacer"></span>
+    <div class="switch" role="group" aria-label="Visa">
+      <button id="b-nu" aria-pressed="false">Nu</button>
+      <button id="b-forslag" aria-pressed="true">Förslag</button>
+    </div>
+    <span class="who">P</span>
+    <button class="btn">Spara</button>
+    <button class="btn primary">Uppdatera bordet</button>
+  </header>
+
+  <main class="wallview">
+    <div class="chrome-row">
+      <button class="btn quiet">Ögon: Som du ser den ▾</button>
+      <button class="btn quiet">Hjälplinjer (0) ▾</button>
+      <button class="btn quiet">−</button><button class="btn quiet">+</button>
+      <span id="crown-extra" hidden style="display:flex;gap:var(--s3);align-items:center">
+        <input class="search" type="search" placeholder="Sök i leken…" aria-label="Sök i leken">
+        <button class="btn quiet">Grupperad efter: typ ▾</button>
+      </span>
+      <span class="spacer"></span>
+      <button class="btn quiet">Fysisk kontroll (1) ▾</button>
+    </div>
+    <div class="work" id="work" data-shape="forslag">
+      <nav class="jump" id="jump" aria-label="Grupper i leken">
+        <header><h2 class="h">Leken</h2></header>
+        <div class="scroll" id="jumps"></div>
+      </nav>
+      <div class="deck"><div class="scroll" id="scroll"></div></div>
+    </div>
+    <p class="foot"><span id="foot"></span></p>
+  </main>
+</div>
+
+<p class="note" id="note"></p>
+
+<script>
+  // 308 kort i åtta typer — samma fördelning som provleken, fyrdubblad.
+  const GROUPS = [
+    ['Playcard', 132], ['Character', 44], ['Shopcard', 40], ['Event', 36],
+    ['Location', 20], ['Effect', 16], ['Trap+', 12], ['Trap-', 8],
+  ]
+  const N = GROUPS.reduce((n, [, k]) => n + k, 0)
+  const RARITY = ['Guld', 'Silver', 'Koppar', 'Diamant', 'Special']
+  const kort = (typ, i) => `
+    <div class="kort" data-typ="${typ}">
+      <div class="top"></div><div class="ln"></div><div class="ln"></div><div class="ln short"></div>
+      <span class="pill">${RARITY[i % RARITY.length]}</span>
+    </div>`
+
+  const scroll = document.getElementById('scroll'), jumps = document.getElementById('jumps')
+  const work = document.getElementById('work'), foot = document.getElementById('foot'), note = document.getElementById('note')
+  const extra = document.getElementById('crown-extra'), jump = document.getElementById('jump')
+
+  function renderNu() {
+    // En enda vägg. Ingenting säger var i leken man är, och ingenting smalnar av den.
+    let i = 0, html = '<div class="wall">'
+    for (const [typ, n] of GROUPS) for (let k = 0; k < n; k++) html += kort(typ, i++)
+    scroll.innerHTML = html + '</div>'
+  }
+
+  function renderForslag() {
+    // Samma 308 kort, i den grupp mallen redan grupperar efter. Inget döljs.
+    let i = 0, html = ''
+    for (const [typ, n] of GROUPS) {
+      html += `<section id="g-${typ}"><div class="band"><h3>${typ}</h3><small>${n} kort</small><span class="rule"></span></div><div class="wall">`
+      for (let k = 0; k < n; k++) html += kort(typ, i++)
+      html += '</div></section>'
+    }
+    scroll.innerHTML = html
+    jumps.innerHTML = GROUPS.map(([typ, n], k) => `<a href="#g-${typ}" data-here="${k === 0}"><span>${typ}</span><small>${n}</small></a>`).join('')
+    for (const a of jumps.querySelectorAll('a')) a.addEventListener('click', (e) => {
+      e.preventDefault()
+      const target = document.getElementById(a.getAttribute('href').slice(1))
+      scroll.scrollTo({ top: target.offsetTop - scroll.offsetTop, behavior: 'smooth' })
+    })
+    // Hoppspalten följer med: den märker gruppen som står överst i vyn.
+    scroll.addEventListener('scroll', () => {
+      const y = scroll.scrollTop + 8
+      let here = GROUPS[0][0]
+      for (const [typ] of GROUPS) { const s = document.getElementById(`g-${typ}`); if (s.offsetTop - scroll.offsetTop <= y) here = typ }
+      for (const a of jumps.querySelectorAll('a')) a.dataset.here = String(a.getAttribute('href') === `#g-${here}`)
+    })
+  }
+
+  const bNu = document.getElementById('b-nu'), bF = document.getElementById('b-forslag')
+  function show(which) {
+    work.dataset.shape = which === 'nu' ? 'nu' : 'forslag'
+    jump.hidden = which === 'nu'
+    extra.hidden = which === 'nu'
+    which === 'nu' ? renderNu() : renderForslag()
+    bNu.setAttribute('aria-pressed', String(which === 'nu'))
+    bF.setAttribute('aria-pressed', String(which !== 'nu'))
+    foot.textContent = `${N} kort · 150 px breda · väggen ${scroll.scrollHeight} px i en ${scroll.clientHeight} px ruta`
+    note.innerHTML = which === 'nu'
+      ? '<b>Nu · 308 kort</b>8 637 px i en 734 px ruta — 11,8 skärmar av samma sak. Ingen sökning, ingen gruppering, ingenting som säger var i leken man är. Datafliken har både sök och filter; hemvyn har ingetdera.'
+      : '<b>Förslag</b>Samma 308 kort, ingenting gömt: leken grupperas efter den kolumn mallen redan grupperar efter, gruppens rubrik står kvar medan gruppen rullar förbi, och spalten till vänster är lekens innehållsförteckning med antal per grupp. Sökningen i krönet är samma sökning som datafliken har.'
+  }
+  bNu.addEventListener('click', () => show('nu'))
+  bF.addEventListener('click', () => show('forslag'))
+  show('forslag')
+</script>
+</body>
+</html>
