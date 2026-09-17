@@ -9,7 +9,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { chromium, type Browser, type Page } from 'playwright'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
@@ -75,6 +75,28 @@ async function newField(width: number): Promise<Record<string, string>> {
     fireEvent.click(screen.getByRole('button', { name: 'Kolumner' }))
     await screen.findByRole('form', { name: 'Nytt fält' })
     return { 'Nytt fält': document.querySelector('.byd-editor')!.outerHTML }
+  } finally {
+    unmount()
+  }
+}
+
+// The rulebook as it is once somebody has written in it (#184). The fixture deck has no rules, so
+// the Regler tab in the sweep above is the empty state and always was — which is how a control in
+// the written book came to be 24 px across, half a target, with nothing measuring it. The book is
+// opened here the way a designer opens it, through the empty state's own button, so what is
+// measured is the surface she meets.
+async function writtenRules(width: number): Promise<Record<string, string>> {
+  atWidth(width)
+  history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+  await run.answering()
+  const { unmount } = render(<EditorPage />)
+  try {
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('tab', { name: 'Regler' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Börja skriva reglerna' }))
+    // One per block: the book the empty state makes has several, which is the point of it.
+    await waitFor(() => expect(screen.getAllByRole('button', { name: /^Lägg till efter/ }).length).toBeGreaterThan(1))
+    return { 'Regler · skriven': document.querySelector('.byd-editor')!.outerHTML }
   } finally {
     unmount()
   }
@@ -299,6 +321,63 @@ describe.each([1024, 1280] as const)('the shape panel at %ipx', (width) => {
 
   it('never makes the page scroll sideways', async () => {
     const measured = await measure(width, (page) => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), shapePanel)
+    expect(measured).toEqual(nothing(measured, 0))
+  }, 90_000)
+})
+
+// The written rulebook, held to the two rules the tabs are (#184): nothing in it is smaller than a
+// target, and nothing in it pushes the page sideways. It is a desk surface like the canvas, so it
+// is measured where the editor draws a book — below 768 the room has no canvas at all (L10), and
+// the Regler tab there is its own business.
+describe.each(WIDTHS)('the written rulebook, at %ipx', (width) => {
+  it('gives every control in it a 44 by 44 pixel hit area', async () => {
+    const measured = await measure(
+      width,
+      (page) =>
+        page.$$eval(`.byd-rulebook :is(${TARGETS}), .byd-rules :is(${TARGETS})`, (els) => {
+          const seen = els.filter((el) => el.checkVisibility())
+          return {
+            // Counted as well as measured: a book that arrived empty would otherwise report a
+            // clean surface, which is the shape of guard this repo keeps finding it needs.
+            controls: seen.length,
+            small: seen
+              .map((el) => {
+                const box = (el.closest('label') ?? el).getBoundingClientRect()
+                return { what: (el.getAttribute('aria-label') ?? el.textContent ?? el.tagName).trim().slice(0, 24), w: Math.round(box.width), h: Math.round(box.height) }
+              })
+              .filter(({ w, h }) => w < 44 || h < 44)
+              .map(({ what, w, h }) => `${what}: ${w}×${h}`),
+          }
+        }),
+      writtenRules,
+    )
+    expect(Object.values(measured).map((m) => m.small)).toEqual([[]])
+    expect(Object.values(measured).map((m) => m.controls > 4)).toEqual([true])
+  }, 90_000)
+
+  // And that a reader can see them without a pointer (#184, and #144 before it on the canvas). A
+  // control that is only painted while a pointer rests over it is not there at all for a thumb,
+  // which has no hover to give, and a keyboard only finds it because `:focus-visible` paints it
+  // back — that is the tab order rescuing the paint, not the paint being right.
+  //
+  // `checkVisibility` is asked about opacity here, which it does not look at by default. That
+  // default is why the sweep above passes over the same button without a word.
+  it('paints every control in it without waiting for a pointer to rest on it', async () => {
+    const measured = await measure(
+      width,
+      (page) =>
+        page.$$eval(`.byd-rulebook :is(${TARGETS}), .byd-rules :is(${TARGETS})`, (els) =>
+          els
+            .filter((el) => el.checkVisibility() && !el.checkVisibility({ opacityProperty: true, visibilityProperty: true }))
+            .map((el) => `${(el.getAttribute('aria-label') ?? el.textContent ?? el.tagName).trim().slice(0, 24)}: ${getComputedStyle(el).opacity}`),
+        ),
+      writtenRules,
+    )
+    expect(measured).toEqual(nothing(measured, [] as string[]))
+  }, 90_000)
+
+  it('never makes the page scroll sideways', async () => {
+    const measured = await measure(width, (page) => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), writtenRules)
     expect(measured).toEqual(nothing(measured, 0))
   }, 90_000)
 })
