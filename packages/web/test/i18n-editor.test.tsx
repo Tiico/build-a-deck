@@ -140,8 +140,13 @@ describe('the editor in the reader\'s own language (A4)', () => {
     await openEditor()
     openTab('Rules')
     expect(screen.getByRole('heading', { name: 'The rulebook' })).toBeTruthy()
-    expect(screen.getByText(/No rules yet/)).toBeTruthy()
+    expect(screen.getByText(/The rules belong to the game/)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Start writing the rules' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Start from a template' })).toBeTruthy()
+    // The disposition an empty tab proposes is written in the reader's language too (#131, A4).
+    expect(screen.getByRole('navigation', { name: 'Contents' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'The game ends' })).toBeTruthy()
+    expect(screen.getByText('What do you do first? And then?')).toBeTruthy()
   })
 
   it('says the setup editor and the list of tables in English, and keeps the zone names', async () => {

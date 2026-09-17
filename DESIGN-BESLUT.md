@@ -296,6 +296,21 @@ Uppställningsbilden är spelets egna zoner (B5), och symbolernas licenser tryck
 `POST /projects/:id/rulebook` köar en rendering av reglerna som de står och svarar med dess hash; samma regler två gånger kostar en rendering, eftersom kön nycklas på sidan. Filen hämtas där varje annan rendering hämtas.
 Fliken "Regler" har knappen; länken erbjuds först när det finns en fil bakom den.
 
+Tomläget och mallens avsnitt, byggt 2026-09-17 (#131):
+Regelflikens tomläge är bokens disposition och inte ett stycke i ett hörn av en tom skärm.
+Avsnitten ligger utlagda på den sida de skulle bli, med innehållsförteckningen i egen spalt bredvid en läsbredd på 68 tecken av bokens eget typsnitt.
+Spalten är densamma i båda lägena, och det är hela skälet till att tomt och skrivet läses som en yta i stället för två.
+Ovanför den står en rad om vad reglerna är till för — versionerade med korten, nåbara från telefonen, TV:n och observatören — och aldrig en ruta.
+Boken delas i fem avsnitt: `Översikt · Uppställning · En tur · Handlingar · Spelet tar slut`.
+De svarar på de fem frågor en spelare ställer, i den ordningen hon ställer dem: vad är det här, hur börjar vi, vad gör jag nu, vad får jag göra, när är vi klara.
+En regelbok som inte svarar på alla fem är inte spelbar utan designern i rummet, vilket är hela skälet till att boken finns.
+Avsnittet heter "En tur" därför att det svarar på vad en tur innehåller och inte i vilken ordning spelarna går, och "Spelet tar slut" därför att ett spel kan ta slut utan att någon vinner.
+Varje avsnitt bär en fråga i stället för en tom rad, och frågan är fältets platshållare och aldrig dess värde: den är borta vid första tecknet och når varken bordets lucka eller häftet.
+Uppställningsavsnittet kommer med uppställningen i sig, eftersom den är spelets egna zoner (B5) och därför rätt från början och aldrig något att rita.
+Mallen är ett förslag och inte en form: ett avsnitt går att ta bort utan att först skrivas i — rubriken och allt under den till nästa rubrik i ett enda steg — och spaltens fot lägger till ett eget.
+Båda vägarna in, `Börja skriva reglerna` och `Börja från en mall`, är en enda ändring var och därmed ett steg tillbaka (B4, L14).
+Den tredje vägen in, `Importera från fil`, är beslutad men inte byggd och ritas därför inte: en knapp som inte gör något är ett löfte ingen håller.
+
 Motivering:
 Trycket kräver en regelbok för att ordern ska kunna läggas.
 Blindtest kräver att testare kan läsa reglerna utan designern.
