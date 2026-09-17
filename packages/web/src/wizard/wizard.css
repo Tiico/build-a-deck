@@ -106,8 +106,25 @@
 .byd-wizard-image-field > div { min-height: 84px; padding: 8px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; border: 1px dashed #b9b9ae; border-radius: 10px; background: #fafaf7; }
 .byd-wizard-image-field img, .byd-wizard-image-field i { width: 76px; height: 58px; border-radius: 7px; object-fit: cover; }
 .byd-wizard-image-field i { display: grid; place-items: center; background: #e9e8e1; color: #5c6459; text-align: center; font-size: 10px; }
-.byd-wizard-file-button { position: relative; overflow: hidden; display: inline-grid; place-items: center; min-height: var(--tap); border-radius: 8px; padding: 0 14px; font-size: 12px; cursor: pointer; }
-.byd-wizard-file-button input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+/* The corner an unseen thing stands in. The editor declares the same one in its own sheet: since
+   #186 the two are different routes with different stylesheets and never meet in one document, so
+   the shape is written twice rather than dragged into the sheet the first painting blocks on. */
+.byd-offscreen { position: absolute; top: 0; left: 0; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+/* The file a card's picture arrives in (#193). The label is what is drawn, because a native file
+   control beside the wizard's own buttons is two languages in one column — so the label is also
+   what is hit, and the input goes in the corner above rather than transparently across the label
+   it hides behind. Off the screen it is still focusable, still announced and still opens the
+   picker on Enter; stretched and transparent it made the one thing on the surface the eye can
+   never find the one thing the pointer always hits, which is the bug #140 was opened for. The
+   label is positioned so the corner is its own, and it carries the ring, because the focus
+   belongs to an input the eye cannot follow. */
+.byd-wizard-file-button { position: relative; display: inline-grid; place-items: center; min-height: var(--tap); border-radius: 8px; padding: 0 14px; font-size: 12px; cursor: pointer; }
+/* The ring a field lights when the keyboard reaches it, and the accent its line takes with it —
+   the same pair the wizard's own boxes use, so focus reads as one thing on this paper. A room and
+   a role together are two classes in the button language, and `.byd-secondary` draws this label's
+   line from there; the room is named here so the pair is three and the line is this rule's to
+   move, whichever of the two sheets the page happens to have read last. */
+.byd-wizard .byd-wizard-file-button:focus-within { border-color: var(--accent); outline: 3px solid color-mix(in srgb, var(--accent), transparent 82%); }
 .byd-wizard-image-field button { margin-left: auto; border: 0; background: transparent; color: #8d3823; font-size: 12px; }
 .byd-wizard-card-tabs { padding-top: 14px; display: flex; gap: 7px; flex-wrap: wrap; border-top: 1px solid var(--line); }
 .byd-wizard-card-tabs button { display: flex; align-items: center; gap: 7px; }

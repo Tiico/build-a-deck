@@ -394,6 +394,24 @@
 .byd-editor label:has(> input[type='checkbox']),
 .byd-editor label:has(> input[type='radio']) { min-width: var(--byd-tap); }
 
+/* Every file picker in the editor, written once because the editor had four of them and all four
+   were built the same wrong way (#193). A native file control is a button and a filename drawn by
+   the platform, in the platform's own paint, which is why every one of them is dressed as a label
+   instead — but the dressing was done by stretching the real input transparently across the label
+   it was hiding behind. That is not a control that is merely quiet: it is laid out, it is hit, and
+   `inset: 0` makes its whole box the thing a click lands in, which is precisely how a transparent
+   `{ }` button came to swallow clicks meant for the cell under it (#140). It also means the one
+   thing on the surface that the eye can never find is the one thing the pointer always hits.
+   So the input goes where every other unseen thing in the editor goes — `.byd-offscreen`, still
+   focusable, still announced, still opening the picker on Enter — and the label is left as the
+   only thing that is both drawn and hit. The label is positioned so the corner the input stands
+   in is its own, and it carries the ring, because the focus belongs to an input the eye cannot
+   follow (#131 built the rulebook's picker this way first).
+   Keyed on the shape rather than on four class names, so a fifth picker is right by construction
+   and a transparent one is a thing that has to be written on purpose. */
+.byd-editor label:has(> input[type='file']) { position: relative; }
+.byd-editor label:has(> input[type='file']):focus-within { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+
 /* Stages (L10, prototype C): below the desk the modes and the template's four panels are one flat
    strip at the bottom of the screen, in thumb's reach. The strip scrolls sideways when the stages
    do not fit; the page never does, and the two actions that must not be scrolled away are pinned
@@ -1185,8 +1203,7 @@
 .byd-fonts-licence { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .byd-fonts-licence input { background: #0f1115; border: 1px solid #2a2d36; color: #fff; border-radius: 6px; padding: 4px 8px; font-size: 12px; width: 100%; box-sizing: border-box; }
 .byd-fonts li > button { justify-self: end; border: 1px solid #3b414e; border-radius: 6px; background: #1b1d23; color: #9aa3b8; font-size: 11px; padding: 4px 8px; cursor: pointer; }
-.byd-fonts-upload { position: relative; overflow: hidden; display: inline-block; border-radius: 8px; padding: 8px 12px; font-size: 12px; cursor: pointer; }
-.byd-fonts-upload input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.byd-fonts-upload { display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; padding: 8px 12px; font-size: 12px; cursor: pointer; }
 .byd-fonts [role='alert'] { margin: 8px 0 0; font-size: 11px; color: #f0b64a; }
 
 /* Table */
@@ -1199,12 +1216,11 @@
 .byd-data-scroll { flex: 1 1 auto; min-height: 0; overflow: auto; padding-bottom: 56px; /* undantag: svansen är en kortrad plus luft, inte ett avstånd på stegen (#130) */ }
 .byd-data-tools { margin: 0; display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
 .byd-data-tools label, .byd-data-tools a { border: 1px solid #3b414e; border-radius: 8px; padding: 8px 12px; background: #1b1d23; color: #dce3f2; font-weight: 700; text-decoration: none; cursor: pointer; }
-/* The import is a label with an invisible file input lying across it, and the tap rule stretches
-   that label to a thumb's height — which left its word at the top while the export link, an
-   inline flex box already, kept its own in the middle. Two frames that are meant to read as a
-   pair have to set their words on the same line, so the label centres its own too. */
-.byd-data-tools label { position: relative; overflow: hidden; display: inline-flex; align-items: center; }
-.byd-data-tools label input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+/* The import is a label with a file input in the corner behind it (#193), and the tap rule
+   stretches that label to a thumb's height — which left its word at the top while the export
+   link, an inline flex box already, kept its own in the middle. Two frames that are meant to read
+   as a pair have to set their words on the same line, so the label centres its own too. */
+.byd-data-tools label { display: inline-flex; align-items: center; }
 /* What an import costs is written into the row straight after the control it warns about, which
    is where it is read (#36) — but a whole sentence set down between the two frames is a sentence
    set down through the middle of the pair, and at a phone's width it pushes the export onto a row
@@ -1239,8 +1255,11 @@
 .byd-data-drop[data-over='true'] { border-color: #ffd98a; background: rgba(255, 217, 138, 0.1); }
 .byd-data-drop > img { width: 60px; height: 40px; object-fit: cover; border-radius: 5px; background: #14161c; }
 .byd-data-drop > span { width: 60px; height: 40px; display: grid; place-items: center; border: 1px dashed #4a5163; border-radius: 5px; color: var(--byd-editor-quiet); font-size: 10px; text-align: center; }
-.byd-data-file { position: relative; overflow: hidden; border: 1px solid #3b414e; border-radius: 6px; padding: 4px 8px; background: #1b1d23; color: #dce3f2; font-size: 12px; font-weight: 700; cursor: pointer; }
-.byd-data-file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+/* The word on it is `Välj`, which is four letters wide: as a box drawn round its own text the
+   picker came to 40 across, and a thumb has no more to aim at than the word is wide (#50, #193).
+   So it keeps the floor in both directions rather than only the one the editor's tap rule gives
+   every label, and centres its word in the box that floor makes. */
+.byd-data-file { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-width: var(--byd-tap); border: 1px solid #3b414e; border-radius: 6px; padding: 4px 8px; background: #1b1d23; color: #dce3f2; font-size: 12px; font-weight: 700; cursor: pointer; }
 .byd-data-drop > button { border: 0; background: transparent; color: #9aa3b8; font-size: 16px; cursor: pointer; }
 .byd-data-images { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; color: var(--byd-editor-quiet); }
 .byd-data-images > span { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
@@ -1947,10 +1966,11 @@
    every other unseen thing in the editor stands in, and never stretched transparently over the
    label: a control nobody can see must not be the box a click lands in (#140), and a guard that
    asks whether every control in the book is painted is right to count one that is not (#184).
-   The label stays positioned so the corner is its own and focus lands where the eye already is;
-   the ring is the label's, because the focus belongs to an input the eye cannot find. */
-.byd-rules-ways label { position: relative; }
-.byd-rules-ways label:focus-within { outline: 3px solid #9cc6ff; outline-offset: 2px; }
+   The corner it stands in and the ring the label carries used to be declared here, for this one
+   picker; they are the editor's file-picker rule now — written once beside the tap rules, because
+   the editor turned out to have four more of these and every one of them wanted the same two
+   lines (#193). What is left about this label is what is about this row, and it is declared with
+   the row's other pills at the top of the crown. */
 /* What the import does with the file, read before the book is made (#131). A band over the tab
    and never a dialog: the book the file would become stands under it in the book's own reading
    width, so what has to be read carefully is read beside the thing it describes rather than over
