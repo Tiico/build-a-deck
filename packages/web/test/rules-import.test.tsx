@@ -202,7 +202,12 @@ describe('what the report says about the pictures (#173)', () => {
     const block = stored.blocks.find((b) => b.kind === 'image')!
     // The book is versioned with the cards (B4), so the picture travels in the project rather
     // than as an address pointing out of it.
-    expect(block).toMatchObject({ alt: 'Bordet från ovan' })
+    // The picture's own pixels come with it, read out of the bytes that were uploaded: without
+    // them the press would have to guess how big to print it, and an import that guessed would be
+    // an import whose figures are a different size on every surface (#173).
+    expect(block).toMatchObject({ alt: 'Bordet från ovan', px: { w: 1, h: 1 } })
+    // And no caption: Markdown's alt text is never copied into it (decided 2026-09-17).
+    expect(block).not.toHaveProperty('caption')
     expect(block.kind === 'image' && block.asset).toMatch(/^asset:[0-9a-f]{64}$/)
     const hash = block.kind === 'image' ? block.asset.slice('asset:'.length) : ''
     const got = await fetch(`${run.http}/assets/${hash}`)

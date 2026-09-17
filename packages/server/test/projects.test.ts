@@ -597,8 +597,10 @@ describe('the rulebook in the project (B7)', () => {
 // project document is the only thing that carries it, the schema is the only thing that validates
 // it, and what a table reads is what the version it was locked to holds.
 describe('a picture survives the road from the document to the table (#173)', () => {
-  const picture = { kind: 'image' as const, id: 'i1', asset: `asset:${'a'.repeat(64)}`, alt: 'Bordet från ovan' }
-  const quiet = { kind: 'image' as const, id: 'i2', asset: `asset:${'b'.repeat(64)}`, alt: '' }
+  // A caption is the designer's own line beside the picture, and a second field from the alt text
+  // (decided 2026-09-17), so what travels has to be both of them and the picture's own pixels.
+  const picture = { kind: 'image' as const, id: 'i1', asset: `asset:${'a'.repeat(64)}`, alt: 'Bordet från ovan', caption: 'Bordet vid tre spelare', px: { w: 1400, h: 800 } }
+  const quiet = { kind: 'image' as const, id: 'i2', asset: `asset:${'b'.repeat(64)}`, alt: '', px: { w: 700, h: 400 } }
   const withPictures: RuleDoc = { title: 'Skogens herrar', blocks: [{ kind: 'heading', id: 'h1', level: 1, text: 'Uppställning' }, picture, quiet] }
 
   it('comes back out of the document exactly as it went in, version for version', async () => {
@@ -615,14 +617,17 @@ describe('a picture survives the road from the document to the table (#173)', ()
     const started = await json('POST', '/projects/p-picture-table/sessions', {})
     const { id } = (await started.json()) as { id: string }
     const body = (await (await fetch(`${run.http}/sessions/${id}/rules`)).json()) as { blocks: unknown[]; text: string }
-    expect(body.blocks[1]).toEqual(picture)
-    expect(body.blocks[2]).toEqual(quiet)
-    // What the picture says about itself is part of the book's text; a decorative one says nothing.
-    expect(body.text).toBe('Uppställning\nBordet från ovan')
+    // Measured on the way out (#173): the block the table reads is the block that went in, with
+    // the millimetres every surface scales worked out against the printed page.
+    expect(body.blocks[1]).toMatchObject(picture)
+    expect(body.blocks[2]).toMatchObject(quiet)
+    // What the picture says about itself is part of the book's text, and so is the caption it says
+    // beside itself; a decorative picture with no caption says nothing at all.
+    expect(body.text).toBe('Uppställning\nBordet från ovan\nBordet vid tre spelare')
   })
 
   it('refuses a picture that points out of the project, wherever it is written', async () => {
-    const outside = (asset: string) => json('POST', '/projects', { id: `p-out-${asset.length}`, ...project(), rules: { title: 'X', blocks: [{ kind: 'image', id: 'i1', asset, alt: '' }] } })
+    const outside = (asset: string) => json('POST', '/projects', { id: `p-out-${asset.length}`, ...project(), rules: { title: 'X', blocks: [{ kind: 'image', id: 'i1', asset, alt: '', px: { w: 700, h: 400 } }] } })
     expect((await outside('https://example.com/bordet.png')).status).toBe(400)
     expect((await outside('data:image/png;base64,AAAA')).status).toBe(400)
   })

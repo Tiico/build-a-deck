@@ -1,4 +1,4 @@
-import { RULE_IMAGE_FRAME, type RenderedBlock, type RenderedNode, type RenderedRules } from '@byd/template'
+import { BOOKLET_MARGIN_MM, BOOKLET_PAGE_MM, RULE_IMAGE_FRAME, type RenderedBlock, type RenderedNode, type RenderedRules } from '@byd/template'
 import type { ProjectCredit } from './projects.js'
 
 // The rulebook as a booklet for print (B7): the same rendering the editor and the table read,
@@ -27,8 +27,11 @@ export type BookletInput = {
 }
 export type Booklet = { html: string; css: string }
 
-// A5 is what a rulebook is folded to; the box it ships in decides nothing else here.
-export const A5 = { w: 148, h: 210 }
+// A5 is what a rulebook is folded to; the box it ships in decides nothing else here. The page and
+// its margins are the book's own, declared beside the measurement that reads them (#173), so the
+// page a figure is measured against is the page it is printed on and neither can drift from the
+// other. Nothing here writes either number a second time.
+export const A5 = BOOKLET_PAGE_MM
 
 export function bookletOf(input: BookletInput): Booklet {
   const { w, h } = input.pageMm
@@ -56,13 +59,22 @@ function blockHtml(block: RenderedBlock, input: BookletInput): string {
     }
     // A picture the designer brought with her (#173). What it says about itself is its alt text;
     // a picture that was written without one came in as decorative and says nothing, which is
-    // exactly what `alt=""` means to a screen reader and to this page (decided 2026-09-17).
+    // exactly what `alt=""` means to a screen reader and to this page (decided 2026-09-17). The
+    // caption is the other line, written for the reader who can see the picture, and it is the
+    // half of the pair that is actually printed and paid for in type area.
     // The block holds a reference to one of the project's own assets and never an address, so
     // nothing a file carried can reach the renderer as one.
+    //
+    // The width is the figure's own measurement and not the frame: `renderRules` worked out the
+    // millimetres once, against this page, and a picture smaller than the column at 300 DPI stands
+    // in its own size rather than being pulled out to the column and printed as porridge. The
+    // height is left to follow, so a picture that narrowed under the ceiling is the whole picture
+    // and never a cropped one.
     case 'image': {
       const src = (input.images ?? {})[block.asset]
       if (!src) return ''
-      return `<figure class="byd-rules-figure"><img src="${escape(src)}" alt="${escape(block.alt)}"></figure>`
+      const caption = block.caption ? `<figcaption>${escape(block.caption)}</figcaption>` : ''
+      return `<figure class="byd-rules-figure"><img src="${escape(src)}" alt="${escape(block.alt)}" style="width:${mm(block.mm.w)}mm">${caption}</figure>`
     }
   }
 }
@@ -102,7 +114,7 @@ function creditsHtml(credits: (ProjectCredit & { name: string })[], lang: 'sv' |
 // the fold and the knife do not eat a line.
 function css(w: number, h: number): string {
   return [
-    `@page{size:${w}mm ${h}mm;margin:14mm 15mm}`,
+    `@page{size:${w}mm ${h}mm;margin:${BOOKLET_MARGIN_MM.block}mm ${BOOKLET_MARGIN_MM.inline}mm}`,
     'body{margin:0}',
     '[data-booklet]{font:10.5pt/1.55 Georgia,serif;color:#1c1c1c}',
     'h1{font-size:22pt;margin:0 0 10mm}',
@@ -115,10 +127,13 @@ function css(w: number, h: number): string {
     '.byd-icon{height:1em;width:auto;vertical-align:-0.15em}',
     '.byd-missing{color:#a12b2b}',
     // A5 is the narrowest of the three surfaces the book is read on, so A5 sets the size of a
-    // picture (#173): the text column of the page, and half its height, so a picture never takes a
-    // page on its own. The picture keeps its own proportions inside that frame.
+    // picture (#173): the text column of the page, and two thirds of the type area's height, so a
+    // figure and its caption always share a page with the text they belong to. Each picture
+    // carries its own width, worked out against this page; the frame stands here as the bound
+    // none of them may pass, and the height follows the width so nothing is ever cropped.
     '.byd-rules-figure{margin:4mm 0;text-align:center;break-inside:avoid}',
-    `.byd-rules-figure img{max-width:${RULE_IMAGE_FRAME.wMm}mm;max-height:${RULE_IMAGE_FRAME.hMm}mm;width:auto;height:auto}`,
+    `.byd-rules-figure img{max-width:${RULE_IMAGE_FRAME.wMm}mm;max-height:${RULE_IMAGE_FRAME.hMm}mm;height:auto}`,
+    '.byd-rules-figure figcaption{margin-top:2mm;text-align:center;font:italic 8.5pt Georgia,serif;color:#6b6255}',
     '.byd-setup{margin:4mm 0;break-inside:avoid}',
     '.byd-setup .byd-table{display:flex;flex-wrap:wrap;gap:2mm;justify-content:center;padding:5mm;border:0.3mm dashed #8a8172;border-radius:2mm}',
     '.byd-setup span{padding:2mm 3mm;border:0.2mm solid #b3a894;border-radius:1mm;font:8pt system-ui}',
@@ -127,5 +142,8 @@ function css(w: number, h: number): string {
     '.byd-credits li{font:8.5pt system-ui;color:#4a4438}',
   ].join('\n')
 }
+
+// Millimetres as a page is written in: one decimal, which is finer than a press can hold anyway.
+const mm = (n: number): number => Math.round(n * 10) / 10
 
 const escape = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')

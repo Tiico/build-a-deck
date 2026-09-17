@@ -6,6 +6,7 @@ import {
   importRules,
   planImport,
   renderRules,
+  ruleEm,
   type Names,
   type RenderedBlock,
   type RenderedNode,
@@ -22,7 +23,7 @@ import type { ProjectClient } from './ProjectClient.js'
 import { useT, type T } from '../i18n/index.js'
 import type { Key } from '../i18n/sv.js'
 import { useGesture } from './gesture.js'
-import { ASSET_PREFIX, RULE_IMAGE_MAX_BYTES, assetUrl, imageTypeOf } from './assets.js'
+import { ASSET_PREFIX, RULE_IMAGE_MAX_BYTES, assetUrl, imageSizeOf, imageTypeOf } from './assets.js'
 import { when } from './HistoryPanel.js'
 
 // The rulebook (B7), from the prototype: the page itself is the editor. A block opens where it
@@ -38,6 +39,11 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
   // precisely because it has not been decided: the report is the last thing read before the book.
   const [proposal, setProposal] = useState<(RuleImport & { file: string }) | null>(null)
   const [failed, setFailed] = useState<string | null>(null)
+  // Which picture the column beside the book just took her to (#173). It is a mark on the block
+  // and not a scroll position: a designer who asked "where are the pictures that say nothing" has
+  // to be able to see which one she was taken to, and see it in a word rather than in a ring.
+  const [found, setFound] = useState<string | null>(null)
+  const foundHere = useRef<HTMLDivElement>(null)
   const names = namesOfProject(doc)
   const rules = doc.rules
   // An empty tab is not an empty screen: it is the book's own disposition, the template drawn on
@@ -96,6 +102,15 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
     setEditing(head)
   }
   const open = (id: string) => rules && setEditing(id)
+  // Going to a picture is going there with the keyboard as well as with the eye: the block takes
+  // the focus, so the next key press acts on the picture the count pointed at rather than on
+  // whatever the column left behind (L12). `scrollIntoView` is a browser's and not jsdom's.
+  useEffect(() => {
+    if (!found) return
+    const here = foundHere.current
+    here?.scrollIntoView?.({ block: 'center' })
+    here?.querySelector<HTMLElement>('[role="button"]')?.focus()
+  }, [found])
   // A file the designer picked, read and laid out as the book it would become — and never taken
   // in on the way past. What it loses is read first (#131).
   const pick = (files: readonly File[]) => void lay(files)
@@ -187,6 +202,7 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
         <Toc
           blocks={out.blocks}
           label={t('rules.toc')}
+          {...(writing ? { silent: silentImages(out.blocks), onFind: setFound } : {})}
           {...(plan ? { marks: plan.sections } : {})}
           {...(writing ? { onAdd: addSection } : proposal || rules ? {} : { proposed: true })}
         />
@@ -211,7 +227,18 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
               planned !== undefined &&
               (planned.block.kind === 'setup' ? true : planned.mark !== 'kept' && (opensASection || marks.get(out.blocks[i - 1]?.id ?? '')?.mark !== planned.mark))
             return (
-              <div key={b.id} className="byd-rules-block" data-block={b.id} data-mark={planned?.mark} data-open={editing === b.id ? 'true' : undefined}>
+              <div
+                key={b.id}
+                className="byd-rules-block"
+                data-block={b.id}
+                data-mark={planned?.mark}
+                data-open={editing === b.id ? 'true' : undefined}
+                {...(found === b.id ? { 'data-found': 'true', ref: foundHere } : {})}
+              >
+                {/* The picture the column took her to says so in a word of the tool's own, never in
+                    a ring drawn round it: a decoration is not an answer (L12). It is not a
+                    `figcaption`, because a caption is the designer's line and this is not. */}
+                {found === b.id && <span className="byd-rules-found">{t('rules.image.found')}</span>}
                 {planned && saysMark && (
                   <span className="byd-rules-mark">{t(planned.block.kind === 'setup' ? 'rules.mark.setup' : (`rules.mark.${planned.mark}` as Key))}</span>
                 )}
@@ -323,7 +350,14 @@ async function taken(file: File | undefined, client: ProjectClient, t: T): Promi
     const bytes = new Uint8Array(await file.arrayBuffer())
     const type = imageTypeOf(bytes)
     if (!type) return { why: 'wrong-format' }
-    return { asset: `${ASSET_PREFIX}${await client.uploadAsset(new Blob([bytes], { type }), t)}` }
+    // How big the picture is in its own pixels, read out of the same bytes (#173). It travels with
+    // the block because the one measurement in millimetres is worked out from it, on every surface
+    // and without going back to the network. A file whose header does not say how big it is cannot
+    // be measured, and a picture the press would have to guess at does not come in: the report
+    // says the file could not be read, which is what it means.
+    const px = imageSizeOf(bytes)
+    if (!px) return { why: 'broken' }
+    return { asset: `${ASSET_PREFIX}${await client.uploadAsset(new Blob([bytes], { type }), t)}`, px }
   } catch {
     return { why: 'broken' }
   }
@@ -457,6 +491,11 @@ const WEIGHT: Record<RuleImportKind, 'kept' | 'changed'> = {
 // Where a section stands, so the column beside the book can point at it.
 const anchorOf = (id: string): string => `rule-${id}`
 
+// The pictures the book says nothing about, in the order they stand (#173). A decorative picture is
+// one whose alt text is empty, which is HTML's own word for it and therefore the only mark there
+// is — see B7 for the cost that default accepts, and this for what keeps it from being silent.
+const silentImages = (blocks: readonly RenderedBlock[]): string[] => blocks.filter((b) => b.kind === 'image' && b.alt === '').map((b) => b.id)
+
 // The column the book is found in (#131). It is the same column in both states: in the empty tab
 // it carries the disposition being proposed, in the written book the sections that were kept.
 function Toc({
@@ -465,18 +504,23 @@ function Toc({
   onAdd,
   proposed,
   marks,
+  silent,
+  onFind,
 }: {
   blocks: readonly RenderedBlock[]
   label: string
   onAdd?: (() => void) | undefined
   proposed?: boolean | undefined
   marks?: readonly RulePlanSection[] | undefined
+  silent?: readonly string[] | undefined
+  onFind?: ((id: string) => void) | undefined
 }) {
   const t = useT()
   // The sections of the book, which is what a heading of the first level is. A subheading stands
   // inside a section and is found by reading it, not by a second rank in the column beside it.
   const headings = blocks.filter((b): b is Extract<RenderedBlock, { kind: 'heading' }> => b.kind === 'heading' && b.level === 1)
   const marked = new Map((marks ?? []).map((section) => [section.id, section.mark]))
+  const [first] = silent ?? []
   if (headings.length === 0) return null
   return (
     <nav className="byd-rules-toc" aria-label={label}>
@@ -496,6 +540,18 @@ function Toc({
           </a>
         )
       })}
+      {/* The pictures nobody has written an alt text for, counted and gone to (#173). It stands in
+          the column and not in a band that scrolls past: the import's report is gone by the next
+          morning and the silent pictures are not, and this is "nothing disappears silently" said a
+          week later rather than only at the moment of the import. A count of nothing is no line at
+          all, so the day the last alt text is written the control is simply not there. The arrow is
+          drawn and never spoken — what the control is called is the count. */}
+      {first !== undefined && onFind && silent && (
+        <button type="button" className="byd-rules-silent" onClick={() => onFind(first)}>
+          {t(silent.length === 1 ? 'rules.toc.silent.one' : 'rules.toc.silent.other', { n: silent.length })}
+          <span aria-hidden="true">→</span>
+        </button>
+      )}
       {onAdd && (
         <button type="button" className="byd-rules-own" onClick={onAdd}>
           {t('rules.addSection')}
@@ -617,15 +673,33 @@ function Editing({
           {/* The picture stays where it is while its words are written: nobody can say what a
               picture shows while looking at a field where the picture was. */}
           <img className="byd-rules-image" src={assetBase ? assetUrl(assetBase, block.asset.slice(ASSET_PREFIX.length)) : block.asset} alt={block.alt} />
-          <input
-            autoFocus
-            aria-label={t('rules.block.alt', { id: block.id })}
-            placeholder={t('rules.alt.placeholder')}
-            value={block.alt}
-            {...typing.visit}
-            onChange={(e) => onPatch({ alt: e.target.value }, typing.token())}
-            onBlur={onClose}
-          />
+          {/* Two fields and never one worn twice (decided 2026-09-17): the alt text stands for the
+              picture for whoever cannot see it, the caption is read beside it by whoever can. An
+              imported book has no captions at all, so this is where every one of them is written.
+              The block closes when the focus leaves both of them and not when it leaves either:
+              tabbing from the one field to the other is staying, not going. */}
+          <div
+            className="byd-rules-figure-fields"
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget)) onClose()
+            }}
+          >
+            <input
+              autoFocus
+              aria-label={t('rules.block.alt', { id: block.id })}
+              placeholder={t('rules.alt.placeholder')}
+              value={block.alt}
+              {...typing.visit}
+              onChange={(e) => onPatch({ alt: e.target.value }, typing.token())}
+            />
+            <input
+              aria-label={t('rules.block.caption', { id: block.id })}
+              placeholder={t('rules.caption.placeholder')}
+              value={block.caption ?? ''}
+              {...typing.visit}
+              onChange={(e) => onPatch({ caption: e.target.value }, typing.token())}
+            />
+          </div>
         </>
       )}
       {block.kind === 'setup' && <input autoFocus aria-label={t('rules.block.caption', { id: block.id })} placeholder={t('rules.caption.placeholder')} value={block.caption ?? ''} {...typing.visit} onChange={(e) => onPatch({ caption: e.target.value }, typing.token())} onBlur={onClose} />}
@@ -698,7 +772,16 @@ function Block({ block, source, names, assetBase }: { block: RenderedBlock; sour
     case 'image':
       return (
         <figure className="byd-rules-figure">
-          <img className="byd-rules-image" src={assetBase ? assetUrl(assetBase, block.asset.slice(ASSET_PREFIX.length)) : block.asset} alt={block.alt} />
+          <img
+            className="byd-rules-image"
+            src={assetBase ? assetUrl(assetBase, block.asset.slice(ASSET_PREFIX.length)) : block.asset}
+            alt={block.alt}
+            style={{ width: `${ruleEm(block.mm.w)}em` }}
+          />
+          {/* The caption is the book's own line and is read by everyone; the word under a picture
+              with no alt text is the tool's and reaches no reader. Both can stand, and they say
+              two different things. */}
+          {block.caption && <figcaption>{block.caption}</figcaption>}
           {block.alt === '' && <figcaption data-quiet>{t('rules.alt.missing')}</figcaption>}
         </figure>
       )

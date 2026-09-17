@@ -614,6 +614,7 @@
 .byd-rules-ways label,
 .byd-rules-report button,
 .byd-rules-own,
+.byd-rules-silent,
 .byd-rules-booklet {
   flex: 0 0 auto;
   display: inline-flex;
@@ -1957,6 +1958,9 @@
 .byd-rules-toc a[href] { display: flex; align-items: center; gap: 6px; min-height: var(--byd-tap); padding: 0 var(--byd-s3); color: #9aa3b8; font-size: 12px; text-decoration: none; }
 .byd-rules-toc span { color: var(--byd-editor-quiet); }
 .byd-rules-own { margin-top: var(--byd-s2); }
+/* The count in the contents' foot (#173): the same button language the column's own control
+   speaks, so a way into the book is never a different kind of thing from the way to add to it. */
+.byd-rules-silent { margin-top: var(--byd-s2); }
 .byd-rules-bar { flex: none; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
 .byd-rules-bar h2, .byd-rules-toc b, .byd-rules-report b { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-rules-bar span, .byd-rules-report > span { color: #9aa3b8; font-size: 12px; }
@@ -2011,8 +2015,14 @@
    decorative picture is text in the page and never a colour: what it says is that the picture is
    hidden from a screen reader, and that has to be readable (L12). */
 .byd-rules-figure { margin: 12px 0; text-align: center; }
-.byd-rules-image { display: block; margin: 0 auto; max-width: min(100%, 31.9em); max-height: 24.6em; width: auto; height: auto; border-radius: 6px; }
+.byd-rules-image { display: block; margin: 0 auto; max-width: min(100%, 31.9em); max-height: 32.4em; height: auto; border-radius: 6px; }
+.byd-rules-figure figcaption { margin-top: var(--byd-s2); font: italic 13px Georgia, serif; color: #4a4438; }
 .byd-rules-figure figcaption[data-quiet] { margin-top: 4px; font: 12px system-ui; color: #6b6255; }
+/* The picture's two fields stand side by side, because they are written one after the other and
+   the block stays open across both of them (#173). */
+.byd-rules-figure-fields { display: grid; gap: var(--byd-s2); }
+/* The picture the contents took her to, said in a word of the tool's own. */
+.byd-rules-found { display: inline-block; margin-bottom: var(--byd-s1); padding: var(--byd-s1) var(--byd-s2); border-radius: 999px; background: #efe3cb; font: 700 11px system-ui; color: #5a4a2a; }
 /* The question a section carries until the first character is written in it (#131). */
 .byd-rulebook [data-ask] { color: #6b6255; font-style: italic; }
 /* A file lying in the book as a proposal (#131, prototype 8 variant B). The marks are drawn on
