@@ -24,7 +24,10 @@ async function openBord(): Promise<void> {
 }
 const handle = (id: string) => document.querySelector(`[data-zone-handle="${id}"]`) as HTMLElement
 const row = (id: string) => document.querySelector(`[data-zone-row="${id}"]`) as HTMLElement
-const rows = () => [...document.querySelectorAll('[data-zone-row]')].map((el) => el.getAttribute('data-zone-row'))
+// Raderna i listan. En zonfamilj står som `hand:*` (#175): samma zon vid var sin plats är en
+// rad, och platserna under den när någon fällt ut den.
+const rows = () =>
+  [...document.querySelectorAll('[data-zone-row], [data-zone-family]')].map((el) => el.getAttribute('data-zone-row') ?? `${el.getAttribute('data-zone-family')}:*`)
 
 // Bordet är designerns (B5, reviderat). Listan är vägen in till varje zon — också de som ligger
 // under varandra på filten, där ett handtag bakom ett annat inte ens går att träffa.
@@ -34,11 +37,14 @@ describe('the setup editor (B5, K2): the list of zones', () => {
     await openBord()
     // I dokumentets egen ordning, för den ordningen betyder något: ett släpp landar i den minsta
     // zonen, och mellan lika stora i den som står först (K2).
-    expect(rows()).toEqual(['draw', 'discard', 'table', 'hand:A', 'hand:B'])
+    expect(rows()).toEqual(['draw', 'discard', 'table', 'hand:*'])
+    // Vid platserna är raden familjens (#175): platserna står under den när någon fällt ut den.
+    fireEvent.click(screen.getByRole('button', { name: 'Hand 2 platser' }))
+    expect(rows()).toEqual(['draw', 'discard', 'table', 'hand:*', 'hand:A', 'hand:B'])
     expect(row('hand:A').textContent).toMatch(/A/)
 
     fireEvent.click(screen.getByRole('button', { name: 'Ta bort Kasthög' }))
-    expect(rows()).toEqual(['draw', 'table', 'hand:A', 'hand:B'])
+    expect(rows()).toEqual(['draw', 'table', 'hand:*', 'hand:A', 'hand:B'])
     expect(handle('discard')).toBeNull()
     expect(document.querySelector('[data-table] [data-zone="discard"]')).toBeNull()
 
@@ -62,6 +68,7 @@ describe('the setup editor (B5, K2): what the table cannot be without', () => {
 
     fireEvent.click(within(row('draw')).getByRole('button', { name: /Draghög/ }))
     expect(screen.getByText(/Lägg leken i en annan hög först/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Hand 2 platser' }))
     expect(within(row('hand:A')).getByLabelText(/En plats är en hand/)).toBeTruthy()
 
     // En egen hög tar rollen; först då går draghögen att ta bort.
@@ -124,6 +131,9 @@ describe('the setup editor (B5, K2): the seats knob, and giving the seats a zone
     fireEvent.click(screen.getByRole('button', { name: 'Ta bort Kasthög' }))
     fireEvent.click(screen.getByRole('button', { name: '3' }))
     expect(screen.getByRole('button', { name: '3', pressed: true })).toBeTruthy()
+    // Den nya platsen syns på familjeraden innan någon fällt ut den (#175).
+    expect(screen.getByRole('button', { name: 'Hand 3 platser' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Hand 3 platser' }))
     expect(row('hand:C')).toBeTruthy()
     expect(document.querySelector('[data-table] .byd-hand[data-zone="hand:C"]')).toBeTruthy()
     // Kasthögen är borta, och den kommer inte tillbaka för att någon vrider på platsantalet.
@@ -135,11 +145,15 @@ describe('the setup editor (B5, K2): the seats knob, and giving the seats a zone
     expect(document.querySelectorAll('[data-table] [data-counter-token]')).toHaveLength(0)
 
     fireEvent.click(screen.getByRole('button', { name: '＋ Räknarzon per plats' }))
+    expect(rows()).toEqual(expect.arrayContaining(['counters:*']))
+    fireEvent.click(screen.getByRole('button', { name: 'Räknare 3 platser' }))
     expect(rows()).toEqual(expect.arrayContaining(['counters:A', 'counters:B', 'counters:C']))
     expect(screen.queryByText(/Ingen plats har någon räknarzon/)).toBeNull()
     expect(document.querySelectorAll('[data-table] [data-counter-token]')).toHaveLength(3)
 
     fireEvent.click(screen.getByRole('button', { name: '＋ Yta per plats' }))
+    expect(rows()).toEqual(expect.arrayContaining(['mine:*']))
+    fireEvent.click(screen.getByRole('button', { name: 'Framför 3 platser' }))
     expect(rows()).toEqual(expect.arrayContaining(['mine:A', 'mine:B', 'mine:C']))
     // Telefonens ark är en plats (C4): verbet står där en gång, inte en gång per plats.
     expect(screen.getAllByText('Framför mig', { selector: '[data-sheet-preview] span' })).toHaveLength(1)

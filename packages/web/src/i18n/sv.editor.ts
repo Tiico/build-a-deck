@@ -648,6 +648,12 @@ export const svEditor = {
   'setup.place.zone': 'i {zone}',
   'setup.seats.hint': 'En ny plats får en hand och det platserna redan har. En plats som lämnar bordet tar sina zoner med sig.',
   'setup.counters.homeless': 'Ingen plats har någon räknarzon, så inga brickor läggs på bordet. Ge platserna en med "Räknarzon per plats".',
+  // En zonfamilj (#175): samma zon vid var sin plats, som en rad med hur många platser som har den.
+  // Antalet är upplysningen — den dagen en plats saknar sin hand är det listan som ska visa det.
+  'setup.family.seats.one': '1 plats',
+  'setup.family.seats.other': '{n} platser',
+  'setup.family.some': '{n} av {of} platser',
+  'setup.family.differ': '{n} avviker',
   'setup.group.table': 'På bordet',
   'setup.group.seats': 'Vid platserna',
   'setup.remove.of': 'Ta bort {name}',

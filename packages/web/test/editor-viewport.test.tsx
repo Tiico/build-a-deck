@@ -521,7 +521,7 @@ describe.each([1024, 1280] as const)('the Bord tab at %ipx', (width) => {
           const boxes = [setup, ...setup.querySelectorAll('*')].filter((el) => el.parentElement === null || el.parentElement.closest('.byd-setup-felt') === null)
           return {
             // The reading is not vacuous: the tab is the table's, so the table has to be on it.
-            zones: setup.querySelectorAll('[data-zone-row]').length,
+            zones: setup.querySelectorAll('[data-zone-row], [data-zone-family]').length,
             past: boxes
               .map((el) => ({ what: `${el.tagName.toLowerCase()}.${[...el.classList].join('.') || '—'}`, over: Math.round(el.getBoundingClientRect().right - window.innerWidth) }))
               .filter(({ over }) => over > 0)
@@ -533,7 +533,7 @@ describe.each([1024, 1280] as const)('the Bord tab at %ipx', (width) => {
         }),
       bord,
     )
-    expect(measured).toEqual({ Bord: { zones: 5, past: [], sideways: [0, 0] } })
+    expect(measured).toEqual({ Bord: { zones: 4, past: [], sideways: [0, 0] } })
   }, 90_000)
 
   // And the sentence itself is there to be read. Held off the window's edge it would still be a
