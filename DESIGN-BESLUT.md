@@ -2997,6 +2997,44 @@ Ett utkast som skickas förbi den guidade starten och möter en inloggning åter
 Startsidans "＋ Nytt spel" leder som förut till `/new`; det är där valet mellan de två dörrarna står, en skärm in.
 Byggt utan prototyprunda, som ett tillägg i wizardens redan beslutade form (L6, L10); en egen granskning ingår i nästa UX-kontroll.
 
+### L20. Editorn hämtas när den öppnas, och ligger inte i filtens blockerande ark (byggt 2026-09-17, #186)
+
+Beslutet, i en mening:
+
+> Editorns rutt laddas dynamiskt och får ett eget ark som hämtas när `/editor` öppnas, medan allt filtens första målning behöver — `a11y.css`, knappspråket, filtens ansikte (K20), bordets och telefonens stilmallar — ligger kvar i entréns renderblockerande ark.
+
+**Två ytor med olika krav, och därför två ark.**
+Filten måste vara rätt vid första målningen: ett ansikte som kommer en rundtur senare lägger om varje namn, och under det fönstret står bordet i exakt det läge `felt-names.test.tsx` fäller (K20, #95).
+Editorn öppnas av en formgivare som redan har laddat appen och som i nästa andetag ändå väntar på att projektet ska hämtas.
+Det som måste vara på plats före första pixeln och det som får hämtas när det behövs är alltså inte samma sak, och att lägga dem i samma ark var att låta den strängare ytan betala för den lösare.
+
+**Vad det kostade att de låg i samma ark.**
+`felt-font.test.ts` vaktar ett enda faktum — filtens bytes ligger i det ark webbläsaren ändå blockerar på — men talet mätte hela appens CSS, och editorns stilmall är med god marginal den största appen har.
+Raden flyttades sju gånger på fyra dagar, 120 → 146 kB, och varje höjning var hederlig för sig: en lagerruta, ett formgalleri, ett krön, en meningspanel.
+En gräns som alltid ger efter mäter ingenting, och två gånger fick en agent lägga sin session på att komprimera CSS i stället för på det hon kommit för att bygga — en städning som ska göras för att koden blir bättre, inte för att en grind om ett typsnitt råkar stå i vägen.
+
+**Mekanismen är en dynamisk import och ingenting mer.**
+`App.tsx` når editorn via `lazy(() => import('./editor/EditorPage.js'))`, så Rollup lägger rutten i en egen chunk och `editor.css` i ett eget ark som länkas in när rutten monteras.
+Ingen manuell chunkindelning, ingen andra kodväg: det är samma modul som förut, hämtad vid en annan tidpunkt.
+Mätt i det byggda bygget och inte påstått — det blockerande arket går från 257,8 kB till 190,2 kB, editorn får ett ark på 67,9 kB, och entréns JavaScript går från 806 kB till 624 kB plus en editorchunk på 184 kB som bara den som öppnar editorn hämtar.
+
+**Väntan har ett utseende, och det är editorns eget.**
+Suspense-fallbacken är inte en tom skärm och inte en snurra av egen uppfinning: det är precis den sida editorn själv visar i nästa ögonblick medan den sträcker sig efter projektet (`noticeFor('loading', 'editor')`, UX-07).
+Den ritas ur det ark som *ändå* blockerar, så den står färdigklädd från första pixeln, och formgivaren ser ett läge som varar en stund längre i stället för två olika skärmar efter varandra.
+
+**Budgeten kan därför sättas till det den mäter.**
+Det blockerande arket är 76,3 kB CSS vid sidan av ansiktet; taket är satt till 84 kB, alltså 7,7 kB — en dryg tiondel — som uttalad marginal för att filtens egna ytor ska kunna växa utan att någon behöver hit igen.
+Det fäller fortfarande det den finns till för: det billigare av de två subset som skeppas är 45 kB som base64, så det minsta andra ansikte någon kan lägga till är nästan sex gånger hela marginalen.
+Grinden säger nu två saker i stället för en — att filtens ansikte ligger i det blockerande arket, och att editorns klasser inte gör det — och den andra läses av från källan, så en omdöpt panel gör den inte tyst.
+
+**Gränsen, rakt ut.**
+Det här är ett beslut om *när* ett ark hämtas, inte om vad som finns i det: ingen yta tappar sin CSS, och editorn ser likadan ut före och efter.
+Det som måste vara kvar i det blockerande arket är allt en spelare eller ett bord möter vid första målningen — `a11y.css`, `buttons.css`, `fonts/felt-font.css`, `table/*.css`, `player.css` — och en rutt som delas av får aldrig vara en av dem.
+
+**Var det bor.**
+`packages/web/src/App.tsx` håller den dynamiska importen och Suspense-gränsen.
+`packages/web/test/felt-font.test.ts` är grinden: den bygger appen, läser det blockerande arket, öppnar `/editor` i Chromium och kontrollerar att editorns ark hämtas och verkligen gäller.
+
 ---
 
 ## I. Öppna frågor
