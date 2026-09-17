@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 3 — Historiken</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* Historiken är en panel som står över arbetet, öppnad från revisionen i sidhuvudet.
+     Bakgrunden är en platshållare; prototypen handlar om vad en rad säger. */
+  main.work { flex: 1 1 auto; min-height: 0; display: grid; place-items: center; color: var(--quiet); }
+  .panel {
+    position: fixed; left: var(--s4); top: 56px; width: 372px; max-height: calc(100vh - 56px - 72px);
+    display: flex; flex-direction: column;
+    border-radius: 14px; background: var(--panel); border: 1px solid var(--line); box-shadow: 0 16px 40px #0009;
+  }
+  .panel > header { flex: none; display: flex; align-items: center; gap: var(--s2); padding: var(--s3) var(--s4) var(--s2); }
+  .panel > header .h { flex: 1; }
+  .panel > header button { min-width: var(--tap); min-height: var(--tap); border: 0; background: transparent; color: var(--quiet-2); font: inherit; font-size: 15px; cursor: pointer; }
+  .panel .lead { flex: none; margin: 0; padding: 0 var(--s4) var(--s3); color: var(--quiet-2); line-height: 1.5; }
+  .panel > .scroll { padding: 0 var(--s3) var(--s3); }
+  .panel .foot { flex: none; border-top: 1px solid var(--line); padding: var(--s2) var(--s4); color: var(--quiet); font-variant-numeric: tabular-nums; }
+
+  /* NU: raden säger versionsnumret och "idag". Ingenting annat. */
+  .v-nu { display: flex; align-items: center; gap: var(--s2); min-height: 44px; padding: 0 var(--s3); margin-bottom: 4px; border-radius: 10px; background: var(--card); border: 1px solid var(--line-soft); }
+  .v-nu b { color: #fff; }
+  .v-nu small { color: var(--quiet); }
+  .v-nu .open { margin-left: auto; color: var(--good); font-size: 10px; letter-spacing: 1.5px; }
+  .v-nu[data-here='true'] { border-color: #2f6f4a; }
+
+  /* FÖRSLAG: dagen är en rubrik, raden säger vad som ändrades, och en döpt
+     version väger tyngre än en som bara blev till av en sparning. */
+  .day { display: flex; align-items: baseline; gap: var(--s2); margin: var(--s3) var(--s2) var(--s1); }
+  .day h3 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .day span { color: var(--quiet); font-size: 11px; }
+  .v { width: 100%; display: grid; grid-template-columns: 52px minmax(0,1fr) auto; align-items: baseline; gap: var(--s2); min-height: 40px; padding: 7px var(--s3); border: 0; border-radius: 10px; background: transparent; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+  .v:hover { background: var(--card); }
+  .v time { color: var(--quiet); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .v .what { min-width: 0; }
+  .v .what b { display: block; color: var(--ink); font-weight: 400; }
+  .v .what b em { font-style: normal; color: var(--quiet); }
+  .v .what .named { color: #fff; font-weight: 700; }
+  .v .tags { display: flex; gap: 4px; }
+  .v .tag { padding: 1px 6px; border-radius: 999px; background: var(--sunk); color: var(--quiet-2); font-size: 10px; white-space: nowrap; }
+  .v .tag.mall { background: #2a2417; color: #ffd98a; }
+  .v .tag.bord { background: #17252e; color: #9fd6ef; }
+  .v .tag.regler { background: #221c2b; color: #d3b8ee; }
+  .v[data-here='true'] { background: #17202a; box-shadow: inset 3px 0 0 0 var(--good); }
+  .v[data-here='true'] .what b { color: #fff; }
+  .v .here { color: var(--good); font-size: 10px; letter-spacing: 1.5px; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <a class="home" href="#">Mina spel</a>
+    <strong>Sal's Saloon</strong>
+    <button class="rev">rev 15</button>
+    <span class="saved">Sparat</span>
+    <nav class="tabs">
+      <button aria-selected="true">Kortvägg</button><button>Mall</button><button>Tabell</button>
+      <button>Symboler</button><button>Regler</button><button>Bord</button>
+    </nav>
+    <span class="spacer"></span>
+    <div class="switch" role="group" aria-label="Visa">
+      <button id="b-nu" aria-pressed="false">Nu</button>
+      <button id="b-forslag" aria-pressed="true">Förslag</button>
+    </div>
+    <span class="who">P</span>
+    <button class="btn">Spara</button>
+    <button class="btn primary">Uppdatera bordet</button>
+  </header>
+  <main class="work">kortväggen — historiken står över den</main>
+</div>
+
+<section class="panel" aria-label="Historik">
+  <header><h2 class="h">Historik</h2><button aria-label="Stäng">×</button></header>
+  <p class="lead">Varje sparning är en version. Ingen av dem skrivs om; den du tar tillbaka blir nästa version.</p>
+  <div class="scroll" id="scroll"></div>
+  <p class="foot" id="foot"></p>
+</section>
+
+<p class="note" id="note"></p>
+
+<script>
+  // Femton versioner, som i mätningen. `vad` är det servern redan kan svara på:
+  // /projects/:id/versions/:n/diff säger vilka rader som kom till, försvann och ändrades.
+  const V = [
+    { n: 15, dag: 'Idag', tid: '08:24', kort: 1, namn: null },
+    { n: 14, dag: 'Idag', tid: '08:24', kort: 1, namn: null },
+    { n: 13, dag: 'Idag', tid: '08:23', kort: 1, namn: null },
+    { n: 12, dag: 'Idag', tid: '08:23', kort: 3, mall: true, namn: 'Balansering före playtestet' },
+    { n: 11, dag: 'Idag', tid: '08:22', kort: 1, namn: null },
+    { n: 10, dag: 'Idag', tid: '08:21', kort: 0, bord: true, namn: null },
+    { n: 9, dag: 'Idag', tid: '08:20', kort: 7, namn: null },
+    { n: 8, dag: 'Igår', tid: '19:58', kort: 0, regler: true, namn: null },
+    { n: 7, dag: 'Igår', tid: '19:41', kort: 12, ny: 4, namn: 'Karaktärerna skrivna' },
+    { n: 6, dag: 'Igår', tid: '18:02', kort: 2, namn: null },
+    { n: 5, dag: 'Igår', tid: '17:55', kort: 1, mall: true, namn: null },
+    { n: 4, dag: '12 september', tid: '21:10', kort: 0, bord: true, namn: null },
+    { n: 3, dag: '12 september', tid: '20:44', kort: 5, bort: 2, namn: null },
+    { n: 2, dag: '12 september', tid: '20:03', kort: 77, ny: 77, namn: 'Leken importerad' },
+    { n: 1, dag: '12 september', tid: '19:58', kort: 0, namn: 'Spelet skapat' },
+  ]
+  const HERE = 15
+  const scroll = document.getElementById('scroll'), foot = document.getElementById('foot'), note = document.getElementById('note')
+
+  function renderNu() {
+    scroll.innerHTML = V.map(v => `
+      <div class="v-nu" data-here="${v.n === HERE}">
+        <b>Version ${v.n}</b><small>idag</small>
+        ${v.n === HERE ? '<span class="open">ÖPPEN NU</span>' : ''}
+      </div>`).join('')
+  }
+
+  // Vad en rad säger: antal kort som rörts, och en bricka för de delar av spelet
+  // som inte är kort. Noll kort och ingen bricka är en sparning utan innehåll.
+  function words(v) {
+    const bits = []
+    if (v.ny) bits.push(`${v.ny} nya kort`)
+    if (v.bort) bits.push(`${v.bort} borttagna`)
+    const rest = v.kort - (v.ny ?? 0) - (v.bort ?? 0)
+    if (rest > 0) bits.push(`${rest} kort ändrade`)
+    if (bits.length === 0 && !v.mall && !v.bord && !v.regler) bits.push('inget ändrat i leken')
+    return bits.join(' · ')
+  }
+
+  function renderForslag() {
+    let html = '', dag = null
+    for (const v of V) {
+      if (v.dag !== dag) {
+        dag = v.dag
+        const n = V.filter(x => x.dag === dag).length
+        html += `<div class="day"><h3>${dag}</h3><span>${n} versioner</span></div>`
+      }
+      html += `
+        <button class="v" data-here="${v.n === HERE}">
+          <time>${v.tid}</time>
+          <span class="what">
+            <b>${v.namn ? `<span class="named">${v.namn}</span>` : `Version ${v.n}`}${v.namn || !words(v) ? '' : ` <em>· ${words(v)}</em>`}</b>
+            ${v.namn ? `<b><em>Version ${v.n}${words(v) ? ` · ${words(v)}` : ''}</em></b>` : ''}
+          </span>
+          <span class="tags">
+            ${v.mall ? '<span class="tag mall">mallen</span>' : ''}
+            ${v.bord ? '<span class="tag bord">bordet</span>' : ''}
+            ${v.regler ? '<span class="tag regler">reglerna</span>' : ''}
+            ${v.n === HERE ? '<span class="here">ÖPPEN</span>' : ''}
+          </span>
+        </button>`
+    }
+    scroll.innerHTML = html
+  }
+
+  function measure() {
+    foot.textContent = `${V.length} versioner · listan ${scroll.scrollHeight} px i en ${scroll.clientHeight} px panel`
+  }
+  const bNu = document.getElementById('b-nu'), bF = document.getElementById('b-forslag')
+  function show(which) {
+    which === 'nu' ? renderNu() : renderForslag()
+    bNu.setAttribute('aria-pressed', String(which === 'nu'))
+    bF.setAttribute('aria-pressed', String(which !== 'nu'))
+    note.innerHTML = which === 'nu'
+      ? '<b>Nu · femton versioner</b>Varje rad säger <em>Version N</em> och <em>idag</em>. Ingen av dem säger vad som ändrades, så den som letar efter något får öppna dem en och en. Efter en veckas arbete säger hela listan samma sak.'
+      : '<b>Förslag</b>Dagen är en rubrik, klockslaget står i kanten, och raden säger vad som hände: hur många kort som kom till, försvann eller ändrades, och en bricka när mallen, bordet eller reglerna rördes. Underlaget finns redan i <code>/projects/:id/versions/:n/diff</code>. En döpt version är radens rubrik i stället för sitt nummer.'
+    measure()
+  }
+  bNu.addEventListener('click', () => show('nu'))
+  bF.addEventListener('click', () => show('forslag'))
+  show('forslag')
+</script>
+</body>
+</html>

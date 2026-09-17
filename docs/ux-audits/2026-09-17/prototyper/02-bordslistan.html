@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 2 — Bordslistan</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* Bord-fliken. Prototypen handlar om tredje spalten — listan över bord —
+     så filten och vänsterspalten är platshållare i sina verkliga mått. */
+  main.bord { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 320px minmax(0,1fr) 336px; gap: var(--s4); padding: var(--s4); }
+  .rail, .felt { border-radius: 14px; background: var(--panel); border: 1px solid var(--line); display: grid; place-items: center; color: var(--quiet); padding: var(--s4); text-align: center; }
+  .felt { background: #0d0f14; }
+  .side { min-height: 0; display: flex; flex-direction: column; gap: var(--s2); }
+  .sees { flex: none; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); padding: var(--s3) var(--s4); color: var(--quiet-2); }
+  .sees b { color: #fff; }
+  .list { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); }
+  .list > header { flex: none; display: flex; align-items: baseline; gap: var(--s2); padding: var(--s3) var(--s4) var(--s2); }
+  .list > .scroll { padding: 0 var(--s3) var(--s3); }
+  .list .foot { flex: none; border-top: 1px solid var(--line); padding: var(--s2) var(--s4); color: var(--quiet); font-variant-numeric: tabular-nums; }
+
+  .mini { width: 84px; height: 52px; border-radius: 8px; background: #123a22; border: 1px solid #1d5c34; position: relative; overflow: hidden; }
+  .mini::after { content: ''; position: absolute; inset: 9px 12px; border: 1px dashed #2f7f4c; border-radius: 3px; }
+  .mini.cold { background: #16202a; border-color: #23303d; }
+  .mini.cold::after { border-color: #2a3947; }
+
+  /* NU: kortet är en stapel. Sex vägar in, en per rad, 334 px bara knappar. */
+  .run { border-radius: 12px; background: var(--card); border: 1px solid var(--line-soft); padding: var(--s3); margin-bottom: var(--s2); display: grid; grid-template-columns: 84px minmax(0,1fr); gap: var(--s3); }
+  .run p { margin: 0 0 4px; color: var(--quiet-2); font-size: 12px; }
+  .run p b { color: #fff; font-family: ui-monospace, monospace; }
+  .ways-stack { display: flex; flex-direction: column; gap: 6px; }
+  .ways-stack a, .ways-stack button { min-height: var(--tap); display: inline-flex; align-items: center; justify-content: center; padding: 0 12px; border-radius: 8px; border: 1px solid transparent; background: #24405f; color: #dbe9ff; font: inherit; font-weight: 700; text-decoration: none; cursor: pointer; }
+  .ways-stack a.primary { background: var(--primary); }
+  .ways-stack button.q { background: transparent; border-color: #3a4050; color: var(--quiet-2); font-weight: 400; }
+
+  /* FÖRSLAG: en rad per bord. Bilden till vänster, fakta bredvid den, och
+     under dem en väg in som står framme och en meny med de fem andra. */
+  .row { display: grid; grid-template-columns: 84px minmax(0,1fr); grid-template-rows: auto auto; gap: var(--s2) var(--s3); align-items: start; padding: var(--s3); border-radius: 12px; }
+  .row + .row { margin-top: 2px; }
+  .row:hover { background: var(--card); }
+  .row[data-live='true'] { background: #17202a; box-shadow: inset 3px 0 0 0 var(--good); }
+  .row .what { min-width: 0; }
+  .row .what b { display: block; color: #fff; font-family: ui-monospace, monospace; font-size: 12px; }
+  .row .what b i { color: var(--warn); font-style: normal; font-family: system-ui, sans-serif; }
+  .row .what span { display: block; color: var(--quiet-2); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .what em { color: var(--good); font-style: normal; font-weight: 700; }
+  .row .go { grid-column: 1 / -1; display: flex; gap: 6px; align-items: center; }
+  .row .go a { flex: 1; min-height: var(--tap); display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; background: var(--primary); color: #fff; font: inherit; font-weight: 700; text-decoration: none; }
+  .row .go button { flex: none; min-width: var(--tap); min-height: var(--tap); border-radius: 8px; border: 1px solid var(--line); background: var(--sunk); color: var(--ink); font: inherit; cursor: pointer; }
+  .menu { position: absolute; right: var(--s4); z-index: 20; display: grid; gap: 4px; padding: var(--s2); border-radius: 12px; background: var(--chrome); border: 1px solid var(--line); box-shadow: 0 10px 30px #0008; }
+  .menu a, .menu button { min-height: var(--tap); display: flex; align-items: center; padding: 0 12px; border-radius: 8px; border: 0; background: transparent; color: var(--ink); font: inherit; text-decoration: none; cursor: pointer; white-space: nowrap; }
+  .menu a:hover, .menu button:hover { background: var(--card); }
+  .menu button.q { color: var(--quiet-2); }
+  .fold { width: 100%; display: flex; align-items: center; gap: var(--s2); min-height: var(--tap); margin-top: var(--s2); padding: 0 var(--s3); border: 0; border-radius: 8px; background: transparent; color: var(--quiet-2); font: inherit; cursor: pointer; text-align: left; }
+  .fold:hover { background: var(--card); }
+  .fold .caret { transition: transform .12s; }
+  .fold[aria-expanded='true'] .caret { transform: rotate(90deg); }
+  .new { width: 100%; min-height: var(--tap); margin-top: var(--s2); border: 1px dashed var(--line); border-radius: 10px; background: transparent; color: var(--quiet-2); font: inherit; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <a class="home" href="#">Mina spel</a>
+    <strong>Sal's Saloon</strong>
+    <button class="rev">rev 15</button>
+    <span class="saved">Sparat</span>
+    <nav class="tabs">
+      <button>Kortvägg</button><button>Mall</button><button>Tabell</button>
+      <button>Symboler</button><button>Regler</button><button aria-selected="true">Bord</button>
+    </nav>
+    <span class="spacer"></span>
+    <div class="switch" role="group" aria-label="Visa">
+      <button id="b-nu" aria-pressed="false">Nu</button>
+      <button id="b-forslag" aria-pressed="true">Förslag</button>
+    </div>
+    <span class="who">P</span>
+    <button class="btn">Spara</button>
+    <button class="btn primary">Uppdatera bordet</button>
+  </header>
+
+  <main class="bord">
+    <div class="rail">zonlistan</div>
+    <div class="felt">filten</div>
+    <div class="side">
+      <div class="sees">Så ser spelaren det: <b>spela ett kort till</b> Kasthög, Kortlek, Sal's Saloon, Framför mig, Bordet.</div>
+      <div class="list">
+        <header><h2 class="h">Bord</h2><span class="measure" id="count"></span></header>
+        <div class="scroll" id="scroll"></div>
+        <p class="foot" id="foot"></p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<p class="note" id="note"></p>
+
+<script>
+  // Fem bord, som i mätningen: ett spelas, fyra startades och rördes aldrig.
+  const TABLES = [
+    { rev: 'rev-15', who: 'ingen sitter än', when: 'inga drag än', live: false },
+    { rev: 'rev-15', who: 'ingen sitter än', when: 'inga drag än', live: false },
+    { rev: 'rev-15', who: 'ingen sitter än', when: 'inga drag än', live: false },
+    { rev: 'rev-15', who: 'ingen sitter än', when: 'inga drag än', live: false },
+    { rev: 'rev-1', who: 'Ada, Bo, Cy spelar', when: 'senaste draget 08:26', live: true, stale: true },
+  ]
+  const WAYS = ['Öppna TV-vyn', 'Bordsläge', 'Spela härifrån', 'Titta på', 'QR för telefoner', 'Avsluta bordet']
+
+  const scroll = document.getElementById('scroll'), foot = document.getElementById('foot')
+  const count = document.getElementById('count'), note = document.getElementById('note')
+
+  function renderNu() {
+    scroll.innerHTML = TABLES.map(t => `
+      <div class="run">
+        <div class="mini ${t.live ? '' : 'cold'}"></div>
+        <div>
+          <p><b>${t.rev}</b></p>
+          <p>${t.who}</p>
+          <p>${t.when}</p>
+          <div class="ways-stack">
+            <a class="primary" href="#">Öppna TV-vyn</a>
+            <a href="#">Bordsläge</a><a href="#">Spela härifrån</a><a href="#">Titta på</a>
+            <button>QR för telefoner</button><button class="q">Avsluta bordet</button>
+          </div>
+        </div>
+      </div>`).join('') + '<button class="new">Nytt bord från rev 15</button>'
+  }
+
+  function renderForslag() {
+    // Det spelade bordet först, och de som aldrig rördes bakom en rad som säger hur många de är.
+    const live = TABLES.filter(t => t.live), cold = TABLES.filter(t => !t.live)
+    const row = (t, i) => `
+      <div class="row" data-live="${t.live}">
+        <div class="mini ${t.live ? '' : 'cold'}"></div>
+        <div class="what">
+          <b>${t.rev}${t.stale ? ' <i>· bakom rev 15</i>' : ''}</b>
+          <span>${t.live ? `<em>${t.who}</em>` : t.who}</span>
+          <span>${t.when}</span>
+        </div>
+        <div class="go">
+          <a href="#">Öppna TV-vyn</a>
+          <button type="button" aria-haspopup="menu" aria-expanded="false" data-menu="${i}" aria-label="Fler vägar in till bordet">▾</button>
+        </div>
+      </div>`
+    scroll.innerHTML =
+      live.map(row).join('') +
+      `<button class="fold" id="fold" aria-expanded="false"><span class="caret">▸</span> Startade, aldrig spelade · ${cold.length}</button>
+       <div id="cold" hidden>${cold.map((t, i) => row(t, i + 10)).join('')}</div>
+       <button class="new">Nytt bord från rev 15</button>`
+    document.getElementById('fold').addEventListener('click', (e) => {
+      const b = e.currentTarget, open = b.getAttribute('aria-expanded') !== 'true'
+      b.setAttribute('aria-expanded', String(open))
+      document.getElementById('cold').hidden = !open
+      measure()
+    })
+    for (const b of scroll.querySelectorAll('[data-menu]')) b.addEventListener('click', () => openMenu(b))
+  }
+
+  function openMenu(button) {
+    document.querySelector('.menu')?.remove()
+    if (button.getAttribute('aria-expanded') === 'true') { button.setAttribute('aria-expanded', 'false'); return }
+    for (const b of scroll.querySelectorAll('[data-menu]')) b.setAttribute('aria-expanded', 'false')
+    button.setAttribute('aria-expanded', 'true')
+    const menu = document.createElement('div')
+    menu.className = 'menu'
+    menu.setAttribute('role', 'menu')
+    menu.innerHTML = WAYS.slice(1).map((w, i) => `<${i === WAYS.length - 2 ? 'button class="q"' : 'a href="#"'}>${w}</${i === WAYS.length - 2 ? 'button' : 'a'}>`).join('')
+    document.body.append(menu)
+    const r = button.getBoundingClientRect()
+    menu.style.top = `${Math.min(r.bottom + 4, innerHeight - menu.offsetHeight - 8)}px`
+  }
+
+  function measure() {
+    const rows = scroll.querySelectorAll('.run, .row').length
+    const ways = scroll.querySelectorAll('.ways-stack a, .ways-stack button, .row .go a, .row .go button').length
+    const h = scroll.scrollHeight
+    foot.textContent = `${h} px i en ${scroll.clientHeight} px spalt · ${ways} kontroller synliga`
+    count.textContent = `${TABLES.length} bord`
+  }
+
+  const bNu = document.getElementById('b-nu'), bF = document.getElementById('b-forslag')
+  function show(which) {
+    document.querySelector('.menu')?.remove()
+    which === 'nu' ? renderNu() : renderForslag()
+    bNu.setAttribute('aria-pressed', String(which === 'nu'))
+    bF.setAttribute('aria-pressed', String(which !== 'nu'))
+    note.innerHTML = which === 'nu'
+      ? '<b>Nu · fem bord</b>Sex vägar in per bord, staplade: 334 px knappar på ett 470 px kort. Listan blir 2 350 px i en 554 px spalt, och de fyra bord ingen har spelat tar lika mycket plats som det som spelas. Varje rad håller dessutom en egen levande WebSocket.'
+      : '<b>Förslag</b>En rad per bord: bilden, versionen, vem som sitter och när det rördes senast. En väg in står framme — <em>TV</em> — och de fem andra ligger i radens meny. Bordet som spelas står överst och märks i kanten; de som startades och aldrig rördes ligger bakom en rad som säger hur många de är, och de behöver ingen levande koppling förrän de fälls ut.'
+    measure()
+  }
+  bNu.addEventListener('click', () => show('nu'))
+  bF.addEventListener('click', () => show('forslag'))
+  show('forslag')
+</script>
+</body>
+</html>

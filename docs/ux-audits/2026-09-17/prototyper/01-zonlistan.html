@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 1 — Zonlistan vid åtta platser</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* Bord-fliken i tre spalter, som i dag. Prototypen handlar om vänsterspalten;
+     filten är en platshållare så att listan är det enda som jämförs. */
+  main.bord { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 320px minmax(0,1fr) 300px; gap: var(--s4); padding: var(--s4); }
+  .rail { min-height: 0; display: flex; flex-direction: column; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); }
+  .rail > .scroll { padding: var(--s3) var(--s4) var(--s4); }
+  .felt { border-radius: 16px; background: #0d0f14; border: 1px solid var(--line); display: grid; place-items: center; color: var(--quiet); }
+  .side { border-radius: 14px; background: var(--panel); border: 1px solid var(--line); padding: var(--s4); color: var(--quiet-2); }
+
+  .seats { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 var(--s3); }
+  .seats button { width: 40px; min-height: 40px; border-radius: 8px; border: 1px solid var(--line); background: var(--sunk); color: var(--ink); font: inherit; font-weight: 700; cursor: pointer; }
+  .seats button[aria-pressed='true'] { border-color: var(--primary-mark); color: #fff; box-shadow: inset 0 -3px 0 0 var(--primary-mark); }
+  .h { margin: var(--s4) 0 var(--s2); }
+  .lead { color: var(--quiet-2); line-height: 1.5; margin: 0 0 var(--s3); }
+
+  /* En rad i listan: samma mått som i dag (46 px) för båda sidorna av jämförelsen. */
+  .zone { display: flex; align-items: center; gap: var(--s2); min-height: 46px; padding: 0 var(--s2); border-radius: 8px; }
+  .zone:hover { background: var(--card); }
+  .zone i { flex: none; width: 14px; height: 14px; border: 1px dashed var(--warn); border-radius: 3px; }
+  .zone i.pile { border-style: solid; border-color: var(--quiet); border-radius: 2px; }
+  .zone i.hand { border-style: solid; border-color: var(--quiet); border-radius: 9px; }
+  .zone span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
+  .zone .seat { flex: none; min-width: 20px; text-align: center; padding: 2px 5px; border-radius: 5px; background: var(--sunk); color: var(--quiet); font-size: 10px; }
+  .zone .fast { flex: none; color: var(--quiet); font-size: 10px; letter-spacing: 1.5px; }
+  .zone .x { flex: none; min-width: var(--tap); min-height: var(--tap); border: 0; background: transparent; color: var(--quiet-2); cursor: pointer; font-size: 14px; }
+
+  /* Förslaget: en rad per zonfamilj. Raden är listans rad, med antalet till höger
+     och en trekant som fäller ut platserna när någon faktiskt ska nå en av dem. */
+  .fam { border-radius: 10px; }
+  .fam > .zone { width: 100%; background: none; border: 0; font: inherit; text-align: left; cursor: pointer; }
+  .fam > .zone .n { flex: none; padding: 2px 7px; border-radius: 999px; background: var(--sunk); color: var(--quiet-2); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .fam > .zone .caret { flex: none; width: 16px; color: var(--quiet); transition: transform .12s; }
+  .fam[data-open='true'] { background: #14171f; }
+  .fam[data-open='true'] > .zone .caret { transform: rotate(90deg); }
+  .fam .kids { display: none; padding: 0 0 var(--s2) var(--s4); }
+  .fam[data-open='true'] .kids { display: block; }
+  .fam .kids .zone { min-height: 38px; }
+  .fam .kids .zone span { color: var(--quiet-2); }
+
+  .adds { display: flex; flex-wrap: wrap; gap: 6px; margin-top: var(--s4); }
+  .adds button { min-height: var(--tap); border: 1px solid var(--line); border-radius: 8px; padding: 0 12px; background: var(--sunk); color: var(--ink); font: inherit; font-weight: 700; cursor: pointer; }
+  .foot { flex: none; border-top: 1px solid var(--line); padding: var(--s2) var(--s4); color: var(--quiet); font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <a class="home" href="#">Mina spel</a>
+    <strong>Sal's Saloon</strong>
+    <button class="rev">rev 15</button>
+    <span class="saved">Sparat</span>
+    <nav class="tabs">
+      <button>Kortvägg</button><button>Mall</button><button>Tabell</button>
+      <button>Symboler</button><button>Regler</button><button aria-selected="true">Bord</button>
+    </nav>
+    <span class="spacer"></span>
+    <div class="switch" role="group" aria-label="Visa">
+      <button id="b-nu" aria-pressed="false">Nu</button>
+      <button id="b-forslag" aria-pressed="true">Förslag</button>
+    </div>
+    <span class="who">P</span>
+    <button class="btn">Spara</button>
+    <button class="btn primary">Uppdatera bordet</button>
+  </header>
+
+  <main class="bord">
+    <div class="rail">
+      <div class="scroll">
+        <h2 class="h" style="margin-top:0">Spelare</h2>
+        <div class="seats">
+          <button>1</button><button>2</button><button>3</button><button>4</button>
+          <button>5</button><button>6</button><button>7</button><button aria-pressed="true">8</button>
+        </div>
+        <p class="lead">En ny plats får en hand och det platserna redan har. En plats som lämnar bordet tar sina zoner med sig.</p>
+
+        <!-- NU: varje zon är sin egen rad, tre per plats. -->
+        <div id="nu" hidden>
+          <h2 class="h">På bordet</h2>
+          <div class="zone"><i></i><span>Spelyta</span><span class="fast">FAST</span></div>
+          <div class="zone"><i class="pile"></i><span>Kortlek</span><span class="seat">LEKEN</span><span class="fast">FAST</span></div>
+          <div class="zone"><i class="pile"></i><span>Kasthög</span><button class="x">×</button></div>
+          <div class="zone"><i></i><span>Sal's Saloon</span><button class="x">×</button></div>
+          <h2 class="h">Vid platserna</h2>
+          <div id="nu-seats"></div>
+        </div>
+
+        <!-- FÖRSLAG: en rad per zonfamilj, utfälld bara när någon ska nå en enskild plats. -->
+        <div id="forslag">
+          <h2 class="h">På bordet</h2>
+          <div class="zone"><i></i><span>Spelyta</span><span class="fast">FAST</span></div>
+          <div class="zone"><i class="pile"></i><span>Kortlek</span><span class="seat">LEKEN</span><span class="fast">FAST</span></div>
+          <div class="zone"><i class="pile"></i><span>Kasthög</span><button class="x">×</button></div>
+          <div class="zone"><i></i><span>Sal's Saloon</span><button class="x">×</button></div>
+          <h2 class="h">Vid platserna</h2>
+          <div class="fam" data-open="false" data-role="hand" data-name="Hand" data-fixed="1"></div>
+          <div class="fam" data-open="false" data-role="mine" data-name="Framför"></div>
+          <div class="fam" data-open="false" data-role="counters" data-name="Räknare"></div>
+        </div>
+
+        <div class="adds">
+          <button>+ Yta</button><button>+ Hög</button><button>+ Yta per plats</button><button>+ Räknarzon per plats</button>
+        </div>
+      </div>
+      <p class="foot" id="foot"></p>
+    </div>
+
+    <div class="felt">filten — oförändrad, varje zon ligger kvar där den ligger</div>
+    <div class="side">Så ser spelaren det …</div>
+  </main>
+</div>
+
+<p class="note" id="note"></p>
+
+<script>
+  const SEATS = ['A','B','C','D','E','F','G','H']
+  // Nu: hand, framför och räknare per plats, i den ordning setup-editorn räknar upp dem.
+  const nuSeats = document.getElementById('nu-seats')
+  nuSeats.innerHTML = SEATS.map(s => `
+    <div class="zone"><i class="hand"></i><span>Hand</span><span class="seat">${s}</span><span class="fast">FAST</span></div>
+    <div class="zone"><i></i><span>Framför ${s}</span><span class="seat">${s}</span><button class="x">×</button></div>
+    <div class="zone"><i></i><span>Räknare ${s}</span><span class="seat">${s}</span><button class="x">×</button></div>`).join('')
+
+  // Förslag: familjeraden säger vad zonen är och hur många platser som har den.
+  for (const fam of document.querySelectorAll('.fam')) {
+    const name = fam.dataset.name, fixed = fam.dataset.fixed === '1'
+    const kind = fam.dataset.role === 'hand' ? 'hand' : ''
+    fam.innerHTML = `
+      <button class="zone" aria-expanded="false">
+        <span class="caret">▸</span><i class="${kind}"></i>
+        <span>${name}</span>
+        <span class="n">en per plats · 8</span>
+        ${fixed ? '<span class="fast">FAST</span>' : ''}
+      </button>
+      <div class="kids">${SEATS.map(s => `
+        <div class="zone"><i class="${kind}"></i><span>${name} ${s}</span><span class="seat">${s}</span>${fixed ? '' : '<button class="x">×</button>'}</div>`).join('')}</div>`
+    const head = fam.querySelector('button.zone')
+    head.addEventListener('click', () => {
+      const open = fam.dataset.open !== 'true'
+      fam.dataset.open = String(open)
+      head.setAttribute('aria-expanded', String(open))
+      measure()
+    })
+  }
+
+  const nu = document.getElementById('nu'), forslag = document.getElementById('forslag')
+  const bNu = document.getElementById('b-nu'), bF = document.getElementById('b-forslag')
+  const foot = document.getElementById('foot'), note = document.getElementById('note')
+  function measure() {
+    const on = nu.hidden ? forslag : nu
+    const rows = on.querySelectorAll('.zone').length - (nu.hidden ? [...forslag.querySelectorAll('.fam[data-open="false"] .kids .zone')].length : 0)
+    const h = Math.round([...on.children].reduce((n, el) => n + el.getBoundingClientRect().height, 0))
+    foot.textContent = `${rows} rader i listan · ${h} px`
+  }
+  function show(which) {
+    nu.hidden = which !== 'nu'; forslag.hidden = which === 'nu'
+    bNu.setAttribute('aria-pressed', String(which === 'nu'))
+    bF.setAttribute('aria-pressed', String(which !== 'nu'))
+    note.innerHTML = which === 'nu'
+      ? '<b>Nu · åtta platser</b>Tjugofyra rader, tre per plats, varav åtta är <em>Hand · FAST</em> som varken går att ta bort eller flytta i listan. Listan är 1 102 px i en 811 px spalt, så seendet av bordets zoner kräver skroll.'
+      : '<b>Förslag</b>En rad per zonfamilj: <em>Hand</em>, <em>Framför</em>, <em>Räknare</em> — var och en med hur många platser som har den. Trekanten fäller ut platserna när en enskild zon ska nås. Sju rader i stället för tjugoåtta, och filten visar fortfarande varje zon för sig.'
+    measure()
+  }
+  bNu.addEventListener('click', () => show('nu'))
+  bF.addEventListener('click', () => show('forslag'))
+  show('forslag')
+</script>
+</body>
+</html>

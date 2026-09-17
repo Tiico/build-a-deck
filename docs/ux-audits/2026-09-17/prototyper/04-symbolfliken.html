@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 4 — Symbolfliken</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  main.symbols { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+  .work { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 320px minmax(0,1fr); gap: var(--s4); padding: var(--s4); }
+  .lib { min-height: 0; display: flex; flex-direction: column; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); }
+  .lib > header { flex: none; padding: var(--s4) var(--s4) var(--s2); }
+  .lib > header p { margin: var(--s2) 0 0; color: var(--quiet-2); line-height: 1.5; }
+  .lib > .scroll { padding: var(--s3) var(--s4) var(--s4); }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s2); }
+  .tile { display: grid; gap: 2px; place-items: center; min-height: 78px; padding: var(--s2); border-radius: 10px; border: 1px solid var(--line-soft); background: var(--card); color: var(--ink); font: inherit; cursor: pointer; }
+  .tile b { font-weight: 600; font-size: 12px; }
+  .tile small { color: var(--quiet); font-size: 10px; }
+  .tile .g { width: 22px; height: 22px; border-radius: 4px; background: #cfd6e6; }
+
+  .main { min-height: 0; display: flex; flex-direction: column; gap: var(--s3); }
+  .set, .colours { flex: none; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); padding: var(--s4); }
+  .set p, .colours p { margin: var(--s2) 0 0; color: var(--quiet-2); line-height: 1.5; max-width: 68ch; }
+  .set ul { list-style: none; margin: var(--s3) 0 0; padding: 0; display: grid; gap: 4px; }
+  .set li { display: flex; align-items: center; gap: var(--s3); min-height: var(--tap); padding: 0 var(--s2); border-radius: 8px; background: var(--card); }
+  .set li .g { width: 20px; height: 20px; border-radius: 4px; background: #cfd6e6; }
+  .set li code { color: #ffd98a; }
+  .set li .rest { margin-left: auto; color: var(--quiet); font-size: 12px; }
+
+  /* Leken under: samma kortvägg som kortväggsfliken ritar, i 0,55 skala. */
+  .deck { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); }
+  .deck > header { flex: none; display: flex; align-items: center; gap: var(--s3); padding: var(--s3) var(--s4) var(--s2); }
+  .deck > header .h { flex: none; }
+  .deck > header .measure { margin-left: auto; }
+  .deck > .scroll { padding: 0 var(--s4) var(--s4); }
+  .wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(116px, 1fr)); gap: var(--s2); }
+  .kort { aspect-ratio: 63 / 88; border-radius: 6px; background: #f3ecdc; border: 1px solid #0d0f14; padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+  .kort .band { height: 16px; border-radius: 3px; background: #6b4a2e; }
+  .kort .ln { height: 4px; border-radius: 2px; background: #cfc3ab; }
+  .kort .ln.short { width: 60%; }
+  .kort .sym { margin-top: auto; align-self: flex-start; padding: 2px 6px; border-radius: 999px; background: #e0a458; color: #221; font-size: 9px; font-weight: 700; }
+  .kort[data-uses='true'] { box-shadow: 0 0 0 2px var(--primary-mark); }
+
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chips button { min-height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--sunk); color: var(--ink); font: inherit; cursor: pointer; }
+  .chips button[aria-pressed='true'] { border-color: var(--primary-mark); background: #24405f; color: #fff; }
+  .empty { flex: 1 1 auto; display: grid; place-items: center; padding: var(--s5); }
+  .empty div { max-width: 46ch; text-align: center; color: var(--quiet-2); line-height: 1.6; }
+  .empty div b { display: block; color: #fff; font-size: 15px; margin-bottom: var(--s2); }
+  .empty div code { color: #ffd98a; }
+  .foot { flex: none; border-top: 1px solid var(--line); padding: var(--s2) var(--gutter); color: var(--quiet); font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header>
+    <a class="home" href="#">Mina spel</a>
+    <strong>Stora leken</strong>
+    <button class="rev">rev 1</button>
+    <span class="saved">Sparat</span>
+    <nav class="tabs">
+      <button>Kortvägg</button><button>Mall</button><button>Tabell</button>
+      <button aria-selected="true">Symboler</button><button>Regler</button><button>Bord</button>
+    </nav>
+    <span class="spacer"></span>
+    <div class="switch" role="group" aria-label="Visa">
+      <button data-show="nu" aria-pressed="false">Nu</button>
+      <button data-show="tomt" aria-pressed="true">Förslag · inga symboler</button>
+      <button data-show="med" aria-pressed="false">Förslag · fyra symboler</button>
+    </div>
+    <span class="who">P</span>
+    <button class="btn">Spara</button>
+    <button class="btn primary">Uppdatera bordet</button>
+  </header>
+
+  <main class="symbols">
+    <div class="chrome-row">
+      <input type="search" placeholder="Sök efter en symbol…" aria-label="Sök efter en symbol" style="min-height:34px;border-radius:8px;border:1px solid var(--line);background:var(--sunk);color:var(--ink);padding:0 10px;width:240px">
+      <button class="btn quiet">Kategori: Alla ▾</button>
+    </div>
+    <div class="work">
+      <aside class="lib">
+        <header><h2 class="h">Symbolbiblioteket</h2><p>Fritt licensierade symboler, platshållarramar och färgblock. Licensen följer med trycket.</p></header>
+        <div class="scroll"><div class="grid" id="lib"></div></div>
+      </aside>
+      <div class="main" id="main"></div>
+    </div>
+    <p class="foot" id="foot"></p>
+  </main>
+</div>
+
+<p class="note" id="note"></p>
+
+<script>
+  const LIB = ['svärd','sköld','hjärta','mynt','kristall','ax','pil-upp','pil-ned','dra','kasta','tärning','vänd','sol','måne','lås','gift','ram-tunn','ram-dubbel','block-varm','block-sval']
+  document.getElementById('lib').innerHTML = LIB.map(n => `<button class="tile"><span class="g"></span><b>${n}</b><small>CC0-1.0</small></button>`).join('')
+
+  // Leken: 308 kort, som i mätningen. Fyrtiotvå av dem säger {guld}.
+  const N = 308
+  const USES = new Set(Array.from({ length: 42 }, (_, i) => i * 7 % N))
+  const kort = (i, mark) => `<div class="kort" data-uses="${mark && USES.has(i)}"><div class="band"></div><div class="ln"></div><div class="ln"></div><div class="ln short"></div>${USES.has(i) ? '<span class="sym">guld</span>' : ''}</div>`
+  const wall = (ids, mark) => `<div class="wall">${ids.map(i => kort(i, mark)).join('')}</div>`
+  const all = Array.from({ length: N }, (_, i) => i)
+
+  const main = document.getElementById('main'), foot = document.getElementById('foot'), note = document.getElementById('note')
+
+  const SETTS = `
+    <section class="set">
+      <h2 class="h">I spelet</h2>
+      <ul>
+        <li><span class="g"></span><code>{guld}</code><span class="rest">CC0-1.0 · biblioteket</span><span class="rest">42 kort</span></li>
+        <li><span class="g"></span><code>{silver}</code><span class="rest">CC0-1.0 · biblioteket</span><span class="rest">38 kort</span></li>
+        <li><span class="g"></span><code>{koppar}</code><span class="rest">CC0-1.0 · biblioteket</span><span class="rest">31 kort</span></li>
+        <li><span class="g"></span><code>{diamant}</code><span class="rest">CC0-1.0 · biblioteket</span><span class="rest">18 kort</span></li>
+      </ul>
+    </section>`
+  const COLOURS = `
+    <section class="colours">
+      <h2 class="h">Spelets färger</h2>
+      <p>En betydelse, en färg. Korten skriver betydelsen och aldrig färgen, så en ändring här målar om varje kort som säger den.</p>
+    </section>`
+
+  function renderNu() {
+    // Hela leken ritas under biblioteket, oavsett om spelet har någon symbol alls.
+    main.innerHTML = `
+      <section class="set"><p style="margin:0">Inga symboler än. Ta en ur biblioteket och skriv <code>{namn}</code> i korttexten.</p></section>
+      ${COLOURS}
+      <div class="deck"><div class="scroll">${wall(all, false)}</div></div>`
+  }
+
+  function renderTomt() {
+    // Ingen symbol i spelet: leken har ingenting att visa, så den ritas inte.
+    main.innerHTML = `
+      ${COLOURS}
+      <div class="deck">
+        <header><h2 class="h">Kort som säger en symbol</h2></header>
+        <div class="empty"><div>
+          <b>Ingen symbol är tagen än</b>
+          Ta en symbol ur biblioteket och skriv <code>{namn}</code> i korttexten. Då står korten som säger den här — inte hela leken, utan de som berörs.
+        </div></div>
+      </div>`
+  }
+
+  function renderMed() {
+    // Fyra symboler i spelet: leken smalnas till de kort som säger den valda.
+    const ids = all.filter(i => USES.has(i))
+    main.innerHTML = `
+      ${SETTS}
+      ${COLOURS}
+      <div class="deck">
+        <header>
+          <h2 class="h">Kort som säger</h2>
+          <div class="chips">
+            <button aria-pressed="true">{guld} · 42</button>
+            <button>{silver} · 38</button>
+            <button>{koppar} · 31</button>
+            <button>{diamant} · 18</button>
+            <button>Hela leken · 308</button>
+          </div>
+          <span class="measure">42 av 308 kort</span>
+        </header>
+        <div class="scroll">${wall(ids, true)}</div>
+      </div>`
+  }
+
+  function show(which) {
+    which === 'nu' ? renderNu() : which === 'tomt' ? renderTomt() : renderMed()
+    for (const b of document.querySelectorAll('.switch button')) b.setAttribute('aria-pressed', String(b.dataset.show === which))
+    const scroll = main.querySelector('.deck .scroll')
+    const drawn = main.querySelectorAll('.kort').length
+    foot.textContent = `20 av 20 symboler · ${which === 'nu' || which === 'tomt' ? '0' : '4'} i spelet · ${drawn} kort ritade${scroll ? ` · lekytan ${scroll.scrollHeight} px` : ''}`
+    note.innerHTML = which === 'nu'
+      ? '<b>Nu</b>Hela leken ritas under biblioteket även när spelet inte har en enda symbol: 308 kort, 10 132 px, 8 203 noder. Fliken handlar om symboler, och det som tar plats på den är kort som inte säger någon.'
+      : which === 'tomt'
+        ? '<b>Förslag · inga symboler</b>Inga symboler i spelet betyder ingenting att visa. Rutan säger vad som händer när en symbol tas, och biblioteket och färgerna får ytan. Noll kort ritade.'
+        : '<b>Förslag · fyra symboler</b>Leken smalnas till de kort som faktiskt säger den valda symbolen, och brickorna säger hur många de är. <em>Hela leken</em> finns kvar som ett eget val, för den som vill se allt.'
+  }
+  for (const b of document.querySelectorAll('.switch button')) b.addEventListener('click', () => show(b.dataset.show))
+  show('tomt')
+</script>
+</body>
+</html>
