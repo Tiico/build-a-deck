@@ -4,6 +4,7 @@ import { TableRenderer } from '../table/TableRenderer.js'
 import { useTableClient } from '../table/useTableClient.js'
 import { joinUrl, observeUrl, onlineUrl, tableModeUrl, tableName, tvUrl } from './tableLinks.js'
 import { groupOf, tableGroups, type TableGroup, type TableGroupId } from './tableRows.js'
+import { placedProps, usePlacement } from './placement.js'
 import { useRoving } from './roving.js'
 import type { ProjectClient, TableSummary } from './ProjectClient.js'
 import { Question } from './Question.js'
@@ -338,6 +339,10 @@ function RowWays({ table, ways, button }: { table: string; ways: WayItem[]; butt
   const t = useT()
   const [open, setOpen] = useState(false)
   const menuId = useId()
+  // The ways hang under a row that may be the last one on the page, so the menu opens where there
+  // is room rather than always downward (#229).
+  const menu = useRef<HTMLDivElement>(null)
+  const place = usePlacement(open, menu)
   const { itemProps, focus } = useRoving({ ids: ways.map((w) => w.id), selected: null, orientation: 'vertical' })
   // The keys land inside the menu the moment it opens, so the first arrow moves within it rather
   // than from wherever the pointer last was. On opening only: the menu must not take the focus
@@ -365,8 +370,10 @@ function RowWays({ table, ways, button }: { table: string; ways: WayItem[]; butt
       </button>
       {open && (
         <div
+          ref={menu}
           id={menuId}
           className="byd-tables-menu"
+          {...placedProps(place)}
           role="menu"
           aria-label={t('tables.ways.of', { table })}
           // The focus leaving the menu takes the menu with it: a list of ways hanging over a row
