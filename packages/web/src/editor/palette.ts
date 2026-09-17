@@ -70,20 +70,36 @@ export function groundOf(doc: ProjectDoc, face: string): string {
 // bar, and the name is what is counted, never the meaning.
 export function iconsUsed(rows: readonly { fields: Row }[], bare: readonly string[] = []): Record<string, number> {
   const out: Record<string, number> = {}
-  const count = (name: string | undefined) => {
-    if (name) out[name] = (out[name] ?? 0) + 1
-  }
-  const braced = /\{([\p{L}\p{N}_-]+)(?:\|[\p{L}\p{N}_-]+)?\}/gu
-  const NAME = /^([\p{L}\p{N}_-]+)(?:\|[\p{L}\p{N}_-]+)?$/u
-  for (const { fields } of rows) {
-    for (const [field, value] of Object.entries(fields)) {
-      if (typeof value !== 'string') continue
-      if (bare.includes(field)) {
-        for (const word of value.split(/[\s,]+/)) count(NAME.exec(word)?.[1])
-        continue
-      }
-      for (const m of value.matchAll(braced)) count(m[1])
-    }
-  }
+  // Mentions and not cards, which is what the set beside the library has always counted: a card
+  // that says the same symbol twice is two here.
+  for (const { fields } of rows) for (const name of iconMentions(fields, bare)) out[name] = (out[name] ?? 0) + 1
   return out
 }
+
+/**
+ * Every symbol one card says, once per card (#178).
+ *
+ * The symbol tab asks which cards say a symbol; the set beside the library asks how many times it
+ * is said. Two questions, one walk — a deck that had painted every symbol it uses was once told it
+ * used none, because a second reader looked for `{namn}` exactly, and the way not to have that
+ * twice is not to have two readers.
+ */
+export const iconsIn = (fields: Row, bare: readonly string[] = []): Set<string> => new Set(iconMentions(fields, bare))
+
+/** Each symbol as it is said, in order, repeats and all. The one walk both readings are taken from. */
+function* iconMentions(fields: Row, bare: readonly string[]): Generator<string> {
+  const braced = /\{([\p{L}\p{N}_-]+)(?:\|[\p{L}\p{N}_-]+)?\}/gu
+  const NAME = /^([\p{L}\p{N}_-]+)(?:\|[\p{L}\p{N}_-]+)?$/u
+  for (const [field, value] of Object.entries(fields)) {
+    if (typeof value !== 'string') continue
+    if (bare.includes(field)) {
+      for (const word of value.split(/[\s,]+/)) {
+        const name = NAME.exec(word)?.[1]
+        if (name) yield name
+      }
+      continue
+    }
+    for (const m of value.matchAll(braced)) if (m[1]) yield m[1]
+  }
+}
+

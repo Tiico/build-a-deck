@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
+import type { ProjectDoc } from '@byd/server'
 import { startServer, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
@@ -75,13 +76,89 @@ describe('the symbol library in the editor (E4)', () => {
     const doc = projectDoc()
     doc.rows[0]!.fields['body'] = 'Flygande. {sköld}'
     await run.projects.create(run.projectId, doc)
-    await openSymbols()
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
     // Before the symbol is taken in, the card says the name is unknown rather than nothing (L2).
-    expect(document.querySelector('[data-card-ref="dragon"] .byd-icon-missing')).toBeTruthy()
+    // Read on the card wall and no longer on the symbol tab: since #178 a game with no symbol at
+    // all draws no deck there, so this state has no cards on that tab to read it off. The wall
+    // draws every card whatever the game has, which is what this half of the test needs.
+    fireEvent.click(screen.getByRole('tab', { name: 'Kortvägg' }))
+    await waitFor(() => expect(document.querySelector('[data-card-ref="dragon"] .byd-icon-missing')).toBeTruthy())
 
+    fireEvent.click(screen.getByRole('tab', { name: 'Symboler' }))
     fireEvent.click(tile('sköld'))
     await waitFor(() => expect(document.querySelector('[data-card-ref="dragon"] img.byd-icon')).toBeTruthy())
     const set = await screen.findByRole('list', { name: 'Symboler i spelet' })
     expect(within(set).getByText('1 kort')).toBeTruthy()
+  })
+})
+
+// The deck the symbol tab draws under the library (#178). It used to draw every card in the game,
+// always, whatever was asked — a deck of 308 was 10 132 px of compiled cards under a line that
+// said "no symbols yet", each one of them through the card renderer. The tab is about symbols and
+// where they are said, so the deck it shows is the cards that say the symbol in hand.
+//
+// The count is what makes this a reading and not an impression: a wall that is merely shorter is
+// still a wall nobody asked for.
+const withIcons = (): ProjectDoc => {
+  const doc = projectDoc()
+  return {
+    ...doc,
+    icons: { guld: 'asset:aaa', sköld: 'asset:bbb' },
+    rows: [
+      { id: 'dragon', fields: { title: 'Drake', body: 'Kostar {guld}.', antal: 1 } },
+      { id: 'knight', fields: { title: 'Riddare', body: 'Bär {sköld} och {guld}.', antal: 1 } },
+      { id: 'wizard', fields: { title: 'Trollkarl', body: 'Ingen symbol alls.', antal: 1 } },
+    ],
+  }
+}
+
+const drawn = () => document.querySelectorAll('.byd-symbols-main .byd-wall-card').length
+const chip = (name: string | RegExp) => screen.getByRole('button', { name })
+
+describe('the deck the symbol tab draws (#178)', () => {
+  it('draws no cards at all when the game has no symbol, and says what to do instead', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openSymbols()
+    // The fixture deck has rows and no icons. Every one of them used to be compiled here.
+    expect(drawn()).toBe(0)
+    expect(screen.getByText(/Inga symboler ännu/)).toBeTruthy()
+  })
+
+  it('shows the cards that say the symbol in hand, and says how many say each', async () => {
+    await run.projects.create(run.projectId, withIcons())
+    await openSymbols()
+    // A symbol is the choice the tab opens on, not the whole deck.
+    await waitFor(() => expect(chip(/^guld/)).toBeTruthy())
+    expect(chip(/^guld/).textContent).toContain('2')
+    expect(chip(/^sköld/).textContent).toContain('1')
+    expect(drawn()).toBe(2)
+    expect(document.querySelector('[data-card-ref="wizard"]')).toBeNull()
+
+    fireEvent.click(chip(/^sköld/))
+    await waitFor(() => expect(drawn()).toBe(1))
+    expect(document.querySelector('[data-card-ref="knight"]')).toBeTruthy()
+  })
+
+  it('keeps the whole deck as a choice of its own, and never as the default', async () => {
+    await run.projects.create(run.projectId, withIcons())
+    await openSymbols()
+    await waitFor(() => expect(chip('Hela leken')).toBeTruthy())
+    expect(chip('Hela leken').getAttribute('aria-pressed')).toBe('false')
+    fireEvent.click(chip('Hela leken'))
+    await waitFor(() => expect(drawn()).toBe(3))
+  })
+
+  it('says so when nothing says the symbol in hand, and offers the whole deck', async () => {
+    const doc = withIcons()
+    await run.projects.create(run.projectId, { ...doc, icons: { ...doc.icons, ensam: 'asset:ccc' } })
+    await openSymbols()
+    fireEvent.click(chip(/^ensam/))
+    await waitFor(() => expect(screen.getByText(/Inget kort säger den här än/)).toBeTruthy())
+    expect(drawn()).toBe(0)
+    // The offer is a way on and not a sentence: pressing it shows the deck.
+    fireEvent.click(chip('Hela leken'))
+    await waitFor(() => expect(drawn()).toBe(3))
   })
 })

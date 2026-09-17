@@ -1912,6 +1912,12 @@
 .byd-symbols-inks button[aria-pressed='true'] { outline: 2px solid var(--byd-editor-primary-mark); outline-offset: 1px; }
 .byd-symbols-inks span { width: 14px; height: 14px; border-radius: 3px; box-shadow: inset 0 0 0 1px #ffffff40; }
 .byd-symbols-issue { margin: 8px 0 0; padding: 4px 8px; border-radius: 8px; background: var(--byd-editor-lost-bg); color: #ffc9d6; font-size: 12px; }
+/* The cards that say the symbol in hand (#178), and the chips that choose which one. The tab used
+   to draw the whole deck under the library whatever was asked — a deck of 308 was ten thousand
+   pixels of compiled cards under a line saying the game had no symbols yet. */
+.byd-symbols-deck { display: grid; gap: var(--byd-s3); }
+.byd-symbols-chips { display: flex; flex-wrap: wrap; gap: var(--byd-s2); }
+.byd-symbols-chips small { color: var(--byd-editor-quiet); font-variant-numeric: tabular-nums; }
 .byd-symbols-add { margin-top: 8px; }
 .byd-role-list > button { display: grid; grid-template-columns: 16px 1fr; align-items: center; gap: 10px; }
 /* The deck's measure, beside the wall where the whole deck can be seen at once (E1). */

@@ -54,13 +54,16 @@ function deckDoc(): ProjectDoc {
       id: `card-${i}`,
       fields: {
         title: `Kort ${i + 1}`,
-        body: 'En mening ungefär så lång som en riktig korttext brukar bli när den fått plats.',
+        // The deck says a symbol since #178: the Symboler tab draws the cards that say the symbol
+        // in hand, so a deck that says none gives that tab no work — and a tab with no work has
+        // nothing for the readings below to find a scroll region in.
+        body: 'En mening ungefär så lång som en riktig korttext brukar bli när den fått plats. {guld}',
         typ: TYPES[i % TYPES.length]!,
         raritet: RARITIES[i % RARITIES.length]!,
         antal: (i % 4) + 1,
       },
     })),
-    icons: {},
+    icons: { guld: `asset:${'d'.repeat(64)}` },
     fonts: {
       'sans-serif': { stack: 'sans-serif', asset: `asset:${'a'.repeat(64)}` },
       'system-ui': { stack: 'system-ui', asset: `asset:${'b'.repeat(64)}` },

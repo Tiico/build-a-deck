@@ -5,7 +5,7 @@ import { Crown, CrownBox, CrownDrawer, CrownFoot } from './Crown.js'
 import { iconFieldsOf, previewIcons } from './assets.js'
 import { previewFonts } from './fonts.js'
 import { CATEGORIES, INK, LIBRARY, searchSymbols, symbolName, symbolPreview, type GameSymbol } from './symbols.js'
-import { ROLE_MIN_CONTRAST, groundOf, iconsUsed, paletteIssues, rolesUsed } from './palette.js'
+import { ROLE_MIN_CONTRAST, groundOf, iconsIn, iconsUsed, paletteIssues, rolesUsed } from './palette.js'
 import { contrastRatio } from '@byd/template'
 import type { ProjectClient } from './ProjectClient.js'
 import { useT, type Key } from '../i18n/index.js'
@@ -22,6 +22,11 @@ export function SymbolPanel({ doc, client, assetBase }: SymbolPanelProps) {
   const [category, setCategory] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
+  // Which cards the deck below shows (#178): one symbol, or the whole deck as a choice of its own.
+  // It used to show every card in the game, always — a deck of 308 under a line saying the game
+  // had no symbols yet, each one compiled by the card renderer. The tab is about symbols and where
+  // they are said, so what it draws is what says the symbol in hand.
+  const [showing, setShowing] = useState<string | null>(null)
   const categoryBox = useRef<HTMLButtonElement>(null)
   const found = searchSymbols(query, category, t)
   const front = doc.template.faces['front']
@@ -30,6 +35,15 @@ export function SymbolPanel({ doc, client, assetBase }: SymbolPanelProps) {
   // so without this, searching the library recompiles the whole deck on every keystroke.
   const icons = useMemo(() => previewIcons(doc, assetBase), [doc, assetBase])
   const fonts = useMemo(() => previewFonts(doc, assetBase), [doc, assetBase])
+  // Which symbols each card says, by the same walk the set beside the library counts with, so the
+  // tally on a chip and the cards under it can never disagree.
+  const bare = useMemo(() => iconFieldsOf(doc), [doc])
+  const said = useMemo(() => doc.rows.map((r) => ({ row: r, icons: iconsIn(r.fields, bare) })), [doc.rows, bare])
+  const names = Object.keys(doc.icons)
+  // The symbol in hand: the first in the set until one is picked, so the tab opens on a symbol and
+  // never on the whole deck. A set that loses the symbol being shown falls back the same way.
+  const chosen = showing !== null && (showing === ALL || names.includes(showing)) ? showing : (names[0] ?? null)
+  const shown = chosen === null ? [] : chosen === ALL ? said : said.filter((c) => c.icons.has(chosen))
   const take = (symbol: GameSymbol) => {
     void client.useSymbol(symbol, undefined, t).catch((err: unknown) => setNotice(err instanceof Error ? err.message : String(err)))
   }
@@ -91,14 +105,33 @@ export function SymbolPanel({ doc, client, assetBase }: SymbolPanelProps) {
         <div className="byd-symbols-main">
           <ProjectSet doc={doc} client={client} assetBase={assetBase} />
           <GameColours doc={doc} client={client} />
-          <div className="byd-wall" role="list">
-            {front &&
-              doc.rows.map((r) => (
-                <div key={r.id} role="listitem" className="byd-wall-card" data-card-ref={r.id}>
-                  <CardPreview id={`sym-${r.id}`} face={front} row={r.fields} icons={icons} fonts={fonts} assetBase={assetBase} palette={doc.palette} scale={0.55} />
-                </div>
-              ))}
-          </div>
+          {/* The chips, and under them the cards that say what is chosen. A game with no symbol at
+              all draws neither: there is nothing to ask about, and the set above already says what
+              to do instead. */}
+          {names.length > 0 && (
+            <section className="byd-symbols-deck">
+              <h2>{t('symbols.deck')}</h2>
+              <div className="byd-symbols-chips" role="group" aria-label={t('symbols.deck')}>
+                {names.map((name) => (
+                  <button key={name} type="button" className="byd-choice" aria-pressed={chosen === name} onClick={() => setShowing(name)}>
+                    {name} <small>{said.filter((c) => c.icons.has(name)).length}</small>
+                  </button>
+                ))}
+                <button type="button" className="byd-choice" aria-pressed={chosen === ALL} onClick={() => setShowing(ALL)}>
+                  {t('symbols.deck.all')}
+                </button>
+              </div>
+              {shown.length === 0 && <p className="byd-symbols-empty">{t('symbols.deck.unused')}</p>}
+              <div className="byd-wall" role="list">
+                {front &&
+                  shown.map(({ row: r }) => (
+                    <div key={r.id} role="listitem" className="byd-wall-card" data-card-ref={r.id}>
+                      <CardPreview id={`sym-${r.id}`} face={front} row={r.fields} icons={icons} fonts={fonts} assetBase={assetBase} palette={doc.palette} scale={0.55} />
+                    </div>
+                  ))}
+              </div>
+            </section>
+          )}
         </div>
       </div>
       <CrownFoot>
@@ -160,6 +193,10 @@ function ProjectSet({ doc, client, assetBase }: SymbolPanelProps) {
 
 // A symbol in the set is one of the project's assets; anything else is a URL as it stands.
 const iconSrc = (url: string, assetBase: string): string => (url.startsWith('asset:') ? `${assetBase}/assets/${url.slice('asset:'.length)}` : url)
+
+// The whole deck, as a choice beside the symbols. A name no symbol can have, because a symbol's
+// name is what goes between the braces in card text and a space cannot.
+const ALL = 'hela leken'
 
 export const SYMBOL_COUNT = LIBRARY.length
 
