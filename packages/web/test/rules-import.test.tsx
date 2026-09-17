@@ -34,18 +34,20 @@ async function openRules(): Promise<void> {
 }
 
 // A file of the kind a designer keeps beside her game: it opens with its own title, then five
-// constructions the book has a block for and three it has to do something about.
+// constructions the book has a block for and three it has to do something about. It spends its `#`
+// on the title and writes its sections with `##`, which is what a file written to be read by a
+// person looks like — and the whole of what #202 is about.
 const FILE = [
   '# Skogens herrar',
   '',
   'Ett spel om **skogen**.',
   '',
-  '# En tur',
+  '## En tur',
   '',
   '1. Dra ett kort ur [[zon:draw]].',
   '2. Spela ett kort.',
   '',
-  '## Att passa',
+  '### Att passa',
   '',
   'Se [reglerna på webben](https://example.com/regler) för varianter.',
   '',
@@ -84,8 +86,9 @@ describe('the report, which is the last thing read before the book (#131)', () =
     // Nothing has been written: the tab still has no book, only the one being proposed.
     expect(document.querySelector('[data-rulebook]')).toBeNull()
     // The book the file would make stands under the report at its own reading width, so the two
-    // are read against each other. `#` is a section and `##` a subheading, as the map says — and
-    // the file's own title on the first line is no section at all (#191).
+    // are read against each other. The file's own title on the first line is no section at all
+    // (#191), and the tree under it therefore stands a step up: `##` is a section and `###` a
+    // subheading, so the book has the disposition the file had (#202).
     const proposed = document.querySelector('[data-proposal]') as HTMLElement
     expect(within(proposed).getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['En tur'])
     expect(within(proposed).getAllByRole('heading', { level: 3 }).map((h) => h.textContent)).toEqual(['Att passa'])
@@ -96,6 +99,10 @@ describe('the report, which is the last thing read before the book (#131)', () =
     await pick()
     // The disposition says “· tomt” beside a section nobody has written in. A section read out of
     // a file has been written in, and the column must not say otherwise.
+    //
+    // And the column has something to list at all (#202). A file that spends its `#` on its own
+    // title writes its sections as `##`; with the title swallowed and nothing raised, the book had
+    // no first level and the column beside it was simply not drawn.
     expect(within(screen.getByRole('navigation', { name: 'Innehåll' })).getAllByRole('link').map((a) => a.textContent)).toEqual(['En tur'])
   })
 
@@ -109,6 +116,7 @@ describe('the report, which is the last thing read before the book (#131)', () =
       '1 referens känns igen, som i en bok du skrivit själv',
       '1 bild blir en bild i boken',
       '1 rubrik på filens första rad blir ingenting: boken heter vad spelet heter',
+      '1 rubriknivå djupare än två viks upp till underrubrik',
       '1 tabell blir text, en rad per rad',
       '1 länk blir sin egen text; adressen stryks',
     ])
