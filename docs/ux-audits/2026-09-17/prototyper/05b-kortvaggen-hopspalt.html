@@ -20,7 +20,7 @@
      vid 1 440 den åttonde så länge den är under 78 px. 64 px ger alltså tillbaka kortspalten vid
      båda bredderna med marginal kvar för en rullningslist, och lämnar plats åt antalet — det enda
      tal som överlever när namnet faller bort. */
-  .work[data-shape='hopfalld'] { grid-template-columns: 64px minmax(0,1fr); }
+  .work[data-shape='hopfalld'] { grid-template-columns: 66px minmax(0,1fr); }
   /* Väggen flyttar sig en hel spalt. Ett kast på 200 ms gör det till en rörelse man kan följa i
      stället för ett hopp man måste tolka i efterhand; utan det ser det ut som att leken laddats om.
      grid-template-columns animeras av Chromium, som är den enda renderare editorn lovar. */
@@ -48,7 +48,12 @@
      läses som ett tvärsnitt av hela leken och inte bara som en meny. --tap går före proportionen:
      min-height 44 px golvar de fyra minsta grupperna (20, 16, 12 och 8 kort), så svansen är
      tryckt platt medan toppen är sann. Det är avsiktligt — remsan ska gå att träffa, och antalet
-     står ändå utskrivet i brickan för den som vill ha det exakta talet. */
+     står ändå utskrivet i brickan för den som vill ha det exakta talet.
+     Bredden är räknad och inte vald: 66 px är brickans 44 px plus märkets 13 px till vänster,
+     6 px till höger och remsans egen ram. --tap gäller i båda leder, alltså 44 på bredden också —
+     samma regel som #184 håller på att rätta på regelbokens ＋. Två pixlar bredare än remsan
+     behövde vara för att ge tillbaka kortspalten, och kortspalten kommer ändå tillbaka vid både
+     1 280 och 1 440, vilket är hela poängen med det hopfällda läget. */
   .rail { min-height: 0; display: flex; flex-direction: column; gap: 3px; padding: 6px 6px 6px 13px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); overflow: auto; scrollbar-width: none; }
   .rail button {
     position: relative; flex: 1 1 0; min-height: var(--tap); border: 0; border-radius: 7px; padding: 0;

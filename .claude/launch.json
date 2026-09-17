@@ -91,6 +91,19 @@
         "dev"
       ],
       "port": 8085
+    },
+    {
+      "name": "prototyper",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "5310",
+        "--directory",
+        "docs/ux-audits"
+      ],
+      "port": 5310,
+      "autoPort": true
     }
   ]
 }
