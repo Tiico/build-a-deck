@@ -37,7 +37,7 @@
   .book { display: grid; grid-template-columns: 220px minmax(0, 1fr); border: 1px solid var(--line); border-radius: 12px; background: var(--panel); overflow: hidden; }
   .toc { border-right: 1px solid var(--line); padding: var(--s4) var(--s3); }
   .toc h3 { margin: 0 0 var(--s2); padding: 0 var(--s3); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
-  .toc a { display: flex; align-items: center; gap: var(--s2); min-height: 36px; padding: 0 var(--s3); border-radius: 8px; color: var(--quiet-2); text-decoration: none; font-size: 12px; }
+  .toc a { display: flex; align-items: center; gap: var(--s2); min-height: var(--tap); padding: 0 var(--s3); border-radius: 8px; color: var(--quiet-2); text-decoration: none; font-size: 12px; }
   .toc a[aria-current='true'] { background: var(--card); color: #fff; }
   .toc a i { font-style: normal; font-size: 10px; font-weight: 700; width: 1em; text-align: center; }
   .toc a .gone { color: var(--gone); } .toc a .new { color: var(--good); } .toc a .edit { color: var(--warn); } .toc a .keep { color: var(--primary-mark); }
@@ -89,7 +89,7 @@
   .loss p { margin: 0 0 6px; color: #e8d3d3; font-size: 12px; line-height: 1.6; }
   .loss p:last-child { margin-bottom: 0; }
   details.more { border-top: 1px solid var(--line-soft); padding-top: var(--s3); }
-  details.more > summary { cursor: pointer; color: var(--quiet-2); font-size: 12px; min-height: 28px; display: flex; align-items: center; }
+  details.more > summary { cursor: pointer; color: var(--quiet-2); font-size: 12px; min-height: var(--tap); display: flex; align-items: center; }
   details.more > summary:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; border-radius: 6px; }
   details.more ul { margin: var(--s2) 0 0; padding-left: 1.2em; color: var(--quiet-2); font-size: 12px; line-height: 1.7; }
   .btn.danger { background: #8c2f2f; border-color: #a33c3c; color: #fff; }
@@ -122,9 +122,8 @@
   .source b { color: #fff; font-size: 13px; }
   .source .meta { color: var(--quiet); font-size: 12px; }
   .source .spacer { flex: 1; }
-  .source .btn { min-height: 36px; font-size: 12px; }
-  .pop { position: relative; }
-  .popover { position: absolute; right: 0; top: calc(100% + 8px); z-index: 3; width: min(420px, calc(100vw - 64px)); border: 1px solid var(--line); border-radius: 12px; background: var(--panel); box-shadow: 0 18px 44px rgba(0, 0, 0, .5); padding: var(--s4); }
+  .source .btn { font-size: 12px; }
+  .popover { width: min(460px, 100%); margin-left: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: var(--s4); }
   .popover h4 { margin: 0 0 var(--s2); color: #fff; font-size: 13px; }
   .popover .bal { display: flex; gap: var(--s3); flex-wrap: wrap; margin-bottom: var(--s3); font-size: 12px; }
   .popover .bal span { display: flex; gap: 5px; align-items: baseline; }
@@ -355,8 +354,8 @@
               <b>Förhandsvisning · regler-v4.md</b>
               <span class="count">3 avsnitt skrivs om · 1 nytt · <span style="color:var(--gone)">1 försvinner (150 ord)</span> · uppställningen orörd</span>
               <span class="spacer"></span>
-              <button class="btn quiet" style="min-height:36px" id="b-cancel">Avbryt</button>
-              <button class="btn primary" style="min-height:36px" id="b-keep">Behåll boken som den blir</button>
+              <button class="btn quiet" id="b-cancel">Avbryt</button>
+              <button class="btn primary" id="b-keep">Behåll boken som den blir</button>
             </div>
             <div class="sheet">
               <h2>Sal's Saloon</h2>
@@ -454,11 +453,13 @@
           <b>regler-v4.md</b>
           <span class="meta">läst 14:02 · 4 avsnitt · kopplad i den här webbläsaren</span>
           <span class="spacer"></span>
-          <span class="pop">
-            <button class="btn primary" id="c-reread" aria-expanded="false" aria-controls="c-pop" style="min-height:36px">Läs om</button>
-            <div class="popover" id="c-pop" role="dialog" aria-labelledby="c-pop-h" hidden>
-              <h4 id="c-pop-h">Läs om regler-v4.md</h4>
-              <div class="bal">
+          <button class="btn primary" id="c-reread" aria-expanded="false" aria-controls="c-pop">Läs om</button>
+          <button class="btn">Koppla loss</button>
+        </div>
+
+        <div class="popover" id="c-pop" role="group" aria-labelledby="c-pop-h" hidden>
+          <h4 id="c-pop-h">Läs om regler-v4.md</h4>
+          <div class="bal">
                 <span><b class="t-edit">3</b> skrivs om</span>
                 <span><b class="t-new">1</b> ny</span>
                 <span><b class="t-gone">1</b> försvinner</span>
@@ -472,12 +473,9 @@
                 </ul>
               </details>
               <div class="row">
-                <button class="btn primary" style="min-height:36px">Läs om</button>
-                <button class="btn quiet" style="min-height:36px" id="c-pop-close">Avbryt</button>
+                <button class="btn primary">Läs om</button>
+                <button class="btn quiet" id="c-pop-close">Avbryt</button>
               </div>
-            </div>
-          </span>
-          <button class="btn" style="min-height:36px">Koppla loss</button>
         </div>
 
         <div class="book">
@@ -515,7 +513,7 @@
                 <span class="dot" aria-hidden="true"></span>
                 <b>regler-v4.md</b><span class="meta">läst 14:02</span>
                 <span class="spacer"></span>
-                <button class="btn" style="min-height:36px">Läs om</button>
+                <button class="btn">Läs om</button>
               </div>
             </div>
             <div>
@@ -524,7 +522,7 @@
                 <span class="dot off" aria-hidden="true"></span>
                 <b style="color:var(--quiet-2)">regler-v4.md</b><span class="meta">läst av Pia 14:02 — filen finns inte här</span>
                 <span class="spacer"></span>
-                <button class="btn" style="min-height:36px">Välj fil…</button>
+                <button class="btn">Välj fil…</button>
               </div>
             </div>
           </div>
@@ -539,9 +537,10 @@
         <div class="answers">
           <h3>C:s fyra svar</h3>
           <dl>
-            <dt>Rapporten</dt><dd>En balans på en rad i en popover under knappen, med
-              <b>Vad försvinner?</b> att fälla ut. Den långa läsningen har flyttat ut i boken och
-              står där hela tiden i stället för i ett ögonblick.</dd>
+            <dt>Rapporten</dt><dd>En balans på en rad, utfälld under källraden och i flödet — den
+              knuffar ner boken i stället för att lägga sig över det stycke den talar om. <b>Vad
+              försvinner?</b> fälls ut i sin tur. Den långa läsningen har flyttat ut i boken och står
+              där hela tiden i stället för i ett ögonblick.</dd>
             <dt>Minnet</dt><dd><b>Ja, hela filen.</b> Namn och tid i dokumentet, filgreppet i
               webbläsaren (L4). Omimport är ett tryck plus en bekräftelse. Priset står ovan.</dd>
             <dt>Uppställningen</dt><dd>Märkt i boken permanent: <b>ingen fil rör den</b>. Frågan
@@ -583,7 +582,7 @@
           <b>Den här boken kom ur regler-v4.md, 17 sep 14:02.</b>
           <span>Boken du skrev för hand står kvar som <b>rev 12</b> och går att öppna, jämföra och ta tillbaka.</span>
           <span class="spacer"></span>
-          <button class="btn" style="min-height:36px" id="d-open">Öppna rev 12</button>
+          <button class="btn" id="d-open">Öppna rev 12</button>
         </div>
 
         <div class="cols">
@@ -674,7 +673,7 @@
                 <th scope="row">Vad rapporten säger</th>
                 <td>Balansräkning i en modal: bok mot fil, förlusten i ord och datum.</td>
                 <td><b>Boken är rapporten.</b> Förlusten står som överstruken text där den står.</td>
-                <td>En rad i en popover, plus en permanent märkning i boken.</td>
+                <td>En rad utfälld under källraden, plus en permanent märkning i boken.</td>
                 <td>Bara vad filen tappar. Boken tappar inget — den byts.</td>
               </tr>
               <tr>
@@ -722,9 +721,13 @@
             <thead><tr><th scope="col">Mått</th><th scope="col">1024×768</th><th scope="col">1280×800</th><th scope="col">1440×900</th></tr></thead>
             <tbody>
               <tr><td>Sidoskroll på fönstret</td><td>0 px</td><td>0 px</td><td>0 px</td></tr>
-              <tr><td>Läsbredd, boken</td><td colspan="3">68 tecken vid varje bredd — spalten är <code>max-width: 68ch</code> och når den vid alla tre</td></tr>
-              <tr><td>Skrollytor, A</td><td>2 (sidan + dialogen)</td><td>1</td><td>1</td></tr>
-              <tr><td>Skrollytor, B · C · D</td><td>1</td><td>1</td><td>1</td></tr>
+              <tr><td>Läsbredd, boken</td><td colspan="3">spalten står på sitt tak, <code>max-width: 68ch</code>, vid alla tre bredder — den växer aldrig med fönstret</td></tr>
+              <tr><td>Skrollytor, A</td><td>2 (sidan + dialogen)</td><td>2 (sidan + dialogen)</td><td>1</td></tr>
+              <tr><td>Skrollytor, B · C · D · jämförelsen</td><td>1</td><td>1</td><td>1</td></tr>
+              <tr><td>A: dialogens låda</td><td>600 av 768 px, innehållet vikt</td><td>632 av 800, vikt</td><td>672 av 900, allt synligt</td></tr>
+              <tr><td>C: utfällningen mot boken</td><td colspan="3">skär den aldrig — den ligger i flödet och knuffar boken nedåt</td></tr>
+              <tr><td>Minsta knapp i en vy</td><td>44 px</td><td>44 px</td><td>44 px</td></tr>
+              <tr><td>Tangentbord</td><td colspan="3">krönet är ett tabbstopp med piltangenter, Home och End; dialogen fångar fokus och Esc avbryter; utfällningen lämnar tillbaka fokus till sin knapp</td></tr>
             </tbody>
           </table>
           <p style="margin-top:12px">Siffrorna skrivs av mätskriptet och inte för hand; pixelmått på
@@ -784,7 +787,17 @@
   document.getElementById('a-cancel').onclick = () => aShow(false)
   document.getElementById('a-go').onclick = () => aShow(false)
   document.getElementById('a-again').onclick = () => aShow(true)
-  document.getElementById('a-dialog').addEventListener('keydown', (e) => { if (e.key === 'Escape') aShow(false) })
+  const aDialog = document.getElementById('a-dialog')
+  aDialog.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { aShow(false); return }
+    if (e.key !== 'Tab') return
+    /* En dialog man ska läsa noga måste gå att läsa utan mus, och fokus får inte
+       vandra ut bakom scrimmen medan den står öppen. */
+    const stops = [...aDialog.querySelectorAll('button, summary, [href]')].filter((el) => el.offsetParent !== null)
+    const first = stops[0], last = stops[stops.length - 1]
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+  })
 
   /* B: förhandsvisningen behålls eller avbryts. */
   const bBook = document.querySelector('#p-b .wrap'), bAfter = document.getElementById('b-after')
