@@ -748,6 +748,7 @@ export const svEditor = {
   'history.restore': 'Ta tillbaka den här versionen',
   'history.restore.of': 'Återställ version {rev}',
   'history.diff.none': 'Inget ändrat.',
+  'history.diff.other': 'Annat ändrat.',
   'history.diff.added': '{n} nya kort',
   'history.diff.removed': '{n} borttagna',
   'history.diff.changed': '{n} ändrade',
@@ -756,7 +757,29 @@ export const svEditor = {
   'history.diff.template': 'mallen ändrad',
   'history.diff.setup': 'uppställningen ändrad',
   'history.diff.icons': 'symbolerna ändrade',
+  'history.diff.rules': 'reglerna ändrade',
   'history.diff.renamed': 'spelet döpt om till {name}',
+  'history.diff.added.one': '1 nytt kort',
+  'history.diff.removed.one': '1 borttaget',
+  'history.diff.changed.one': '1 ändrat',
+  'history.day.today': 'I dag',
+  'history.day.yesterday': 'I går',
+  'history.day.version': '1 version',
+  'history.day.versions': '{n} versioner',
+  // De delar av dokumentet som inte är kort, som en bricka bär dem — och samma sak sagd som en
+  // mening, för den som hör raden i stället för att se den. En bricka är en färg och ett ord;
+  // ordet räcker för ögat i en rad, men inte för örat, som inte har raden omkring sig.
+  'history.part.template': 'mallen',
+  'history.part.setup': 'bordet',
+  'history.part.rules': 'reglerna',
+  'history.part.icons': 'symbolerna',
+  'history.part.template.said': 'mallen ändrad',
+  'history.part.setup.said': 'bordet ändrat',
+  'history.part.rules.said': 'reglerna ändrade',
+  'history.part.icons.said': 'symbolerna ändrade',
+  // Fyra brickor får plats men läses inte. Fyra är det enda tal som kan stå här: delarna är
+  // fyra och en rad visar högst tre av dem.
+  'history.parts.four': 'fyra delar ändrade',
   'history.today': 'i dag',
   'history.yesterday': 'i går',
   'history.daysAgo': 'för {n} dagar sedan',

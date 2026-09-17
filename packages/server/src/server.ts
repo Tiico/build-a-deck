@@ -14,7 +14,7 @@ import type { Subscriber, TableHost } from './actor.js'
 import type { Deck, LogStore, SessionRecord } from './store.js'
 import { ProjectDoc, deckFromProject, type ProjectCredit, type ProjectRecord, type ProjectStore } from './projects.js'
 import { setupFromProject } from './setup.js'
-import { diffProjects } from './diff.js'
+import { changeOf, diffProjects, type DocDiff, type VersionChange } from './diff.js'
 import { ProjectHost, type EditorMessage } from './project-actor.js'
 import type { EditIntent } from './edits.js'
 import { namesOfProject } from './names.js'
@@ -862,6 +862,51 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     json(res, 200, await projects.versions(gate.rec.id))
     return true
   }
+  // What every version changed, in one answer (#177). A row in the history says what its save
+  // changed, and the history is read as a whole — fifteen rows in the granskning's measurement,
+  // and more every working day — so asking that a version at a time would be a request per row.
+  //
+  // It is derived here rather than written down at save time, because the information is already
+  // in the documents: every version is kept whole (B4), so the difference between two of them is
+  // a reading and not a record. That is also what gives a history written before this existed the
+  // same rows as one written after it.
+  //
+  // The walk goes oldest first and keeps the version it just read as the next one's `before`, so
+  // it loads each document once and never holds more than two at a time — a history of a
+  // 308-card deck must not be a history-sized allocation.
+  //
+  // What that costs is measured and not judged (#177, #175–#179). Against a real Postgres, a
+  // 308-card deck whose every version is 59 KB: 14 ms at five versions, 35 at fifteen, 63–94 at
+  // thirty, 178 at sixty, 313 at a hundred — three milliseconds a version, flat, and the answer
+  // itself 2.7 KB at thirty. It is a summary of a history and never a download of one, which is
+  // what `VersionChange` is for and what `history.test.ts` holds it to.
+  //
+  // Three milliseconds a version is comfortable at the depth a project reaches in its first year
+  // and stops being comfortable after it: a designer who saves on every working day passes a
+  // hundred versions inside five months, and the box this runs on is a shared one with far less
+  // to spare than the machine those numbers came off. The upgrade path is to write the summary
+  // down when the version is made, which turns the walk into a single read — worth doing when a
+  // real history first passes a hundred versions, and not before, because a summary written down
+  // is a summary that can disagree with the documents it was taken from.
+  const changes = /^\/projects\/([^/]+)\/versions\/changes$/.exec(url.pathname)
+  if (changes && req.method === 'GET') {
+    const gate = await owned(decodeURIComponent(changes[1] ?? ''))
+    if (!('rec' in gate)) {
+      json(res, gate.status, { error: gate.error })
+      return true
+    }
+    const listed = await projects.versions(gate.rec.id)
+    const out: VersionChange[] = []
+    let before: ProjectRecord | null = null
+    for (const { rev } of [...listed].sort((a, b) => a.rev - b.rev)) {
+      const after = await projects.at(gate.rec.id, rev)
+      if (!after) continue
+      out.push(before ? changeOf(rev, diffProjects(before, after)) : { rev, added: 0, removed: 0, changed: 0, parts: [], reordered: false, columns: false, first: true })
+      before = after
+    }
+    json(res, 200, out.reverse())
+    return true
+  }
   const oneVersion = /^\/projects\/([^/]+)\/versions\/(\d+)$/.exec(url.pathname)
   if (oneVersion && req.method === 'GET') {
     const gate = await owned(decodeURIComponent(oneVersion[1] ?? ''))
@@ -901,7 +946,19 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     const before = await projects.at(gate.rec.id, asked === null ? to - 1 : Number(asked))
     const after = await projects.at(gate.rec.id, to)
     if (!after) json(res, 404, { error: 'unknown version' })
-    else if (!before) json(res, 200, { rows: after.rows.map((r) => ({ kind: 'added', cardRef: r.id })), reordered: false, template: true, setup: true, icons: true })
+    // Nothing came before it, so everything in it came with it. Said as a `DocDiff` and not as a
+    // literal that happens to look like one: a part added to the shape has to be answered for
+    // here too, and only the type asks.
+    else if (!before)
+      json(res, 200, {
+        rows: after.rows.map((r) => ({ kind: 'added', cardRef: r.id })),
+        reordered: false,
+        columns: false,
+        template: true,
+        setup: true,
+        icons: true,
+        rules: after.rules !== undefined,
+      } satisfies DocDiff)
     else json(res, 200, diffProjects(before, after))
     return true
   }

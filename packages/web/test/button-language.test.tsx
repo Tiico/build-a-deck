@@ -1172,6 +1172,7 @@ describe('every suite that measures a surface', () => {
       'editor-window.test.tsx',
       'felt-hands.test.tsx',
       'felt-names.test.tsx',
+      'history-layout.test.tsx',
       'join-layout.test.tsx',
       'observer-viewport.test.tsx',
       'online-column.test.tsx',
