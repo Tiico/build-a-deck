@@ -1971,9 +1971,25 @@
    wall's band headings and the layer column keep theirs (#179) — a label that scrolls away is a
    column that stops saying what it is exactly when somebody is looking through it. */
 .byd-rules-toc b { display: block; padding: 0 var(--byd-s3); position: sticky; top: 0; background: var(--byd-editor-chrome-bg); }
+/* The book's two ranks, as two lists and not as one flat run of links (#207). The markers are off
+   because the rows are the list: what says a row is a subheading is the list it stands in and the
+   word it carries, never the indent — a rank drawn in sixteen pixels is a rank for one kind of
+   reader only (L12). */
+.byd-rules-toc ul { list-style: none; margin: 0; padding: 0; }
 /* `a[href]` and not `a`: the editor makes every link an inline-flex target (0,2,1), and a
    section in the column would otherwise sit beside the next one instead of under it. */
 .byd-rules-toc a[href] { display: flex; align-items: center; gap: 6px; min-height: var(--byd-tap); padding: 0 var(--byd-s3); color: #9aa3b8; font-size: 12px; text-decoration: none; }
+/* A subheading is indented and set in the editor's own quiet register — a shade under its section
+   and still AA on the chrome it is read on, which a grey picked to look right would not have been.
+   It stands on the same tap floor as every other row in the product: lowering the second rank to
+   28 px would have taken some 500 px off this column and was decided against, because `--byd-tap`
+   is unrelaxed on every surface there is and a second rank in one column of one tab is not where
+   the first hole in it goes (#207). */
+.byd-rules-toc a[data-level='2'] { padding-left: calc(var(--byd-s3) + var(--byd-s4)); color: var(--byd-editor-quiet); }
+/* The tick that ties an indented row to the rank above it, for the eye that is scanning rather than
+   reading. It is drawn and never spoken — what it shows is already in the row's own words — so it
+   is the panel's own hairline and carries no bar of its own. */
+.byd-rules-toc a[data-level='2']::before { content: ''; flex: none; width: 6px; height: 1px; margin-left: -12px; background: #3b414e; }
 .byd-rules-toc span { color: var(--byd-editor-quiet); }
 .byd-rules-own { margin-top: var(--byd-s2); }
 /* The count in the contents' foot (#173): the same button language the column's own control

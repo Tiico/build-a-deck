@@ -199,11 +199,14 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
         {/* `proposed` is the mark that says a section has nothing written in it yet. A section
             read out of a file has, so only the template's own disposition carries it. The column
             carries the import's own marks instead when a file is lying in the book (#131). */}
+        {/* `marks` is both ranks of the plan, because the column lists both ranks (#207). They are
+            two lists in the plan and one map in the column: the report counts sections and the
+            column points at headings, and neither of them wants the other's list. */}
         <Toc
           blocks={out.blocks}
           label={t('rules.toc')}
           {...(writing ? { silent: silentImages(out.blocks), onFind: setFound } : {})}
-          {...(plan ? { marks: plan.sections } : {})}
+          {...(plan ? { marks: [...plan.sections, ...plan.subsections] } : {})}
           {...(writing ? { onAdd: addSection } : proposal || rules ? {} : { proposed: true })}
         />
         {/* The book is read in an area of its own, beside the column's and never inside it (#210).
@@ -494,8 +497,12 @@ const WEIGHT: Record<RuleImportKind, 'kept' | 'changed'> = {
   decorative: 'changed',
 }
 
-// Where a section stands, so the column beside the book can point at it.
+// Where a heading stands, so the column beside the book can point at it. Both ranks carry one:
+// `Block` has written an anchor on every heading since the book was first rendered.
 const anchorOf = (id: string): string => `rule-${id}`
+
+// A heading as the renderer hands it over, which is the only shape the column ever reads.
+type Heading = Extract<RenderedBlock, { kind: 'heading' }>
 
 // The pictures the book says nothing about, in the order they stand (#173). A decorative picture is
 // one whose alt text is empty, which is HTML's own word for it and therefore the only mark there
@@ -522,30 +529,66 @@ function Toc({
   onFind?: ((id: string) => void) | undefined
 }) {
   const t = useT()
-  // The sections of the book, which is what a heading of the first level is. A subheading stands
-  // inside a section and is found by reading it, not by a second rank in the column beside it.
-  const headings = blocks.filter((b): b is Extract<RenderedBlock, { kind: 'heading' }> => b.kind === 'heading' && b.level === 1)
-  const marked = new Map((marks ?? []).map((section) => [section.id, section.mark]))
+  // The book as the column lists it: a section per heading of the first level and, under it, the
+  // subheadings standing in it (#207). The column used to carry the first rank alone, and a
+  // subheading was found by reading its section — a choice #131 made on a byte budget that #186
+  // ended. The product owner chose the book's own shape over the shorter column: the price is that
+  // this book's 22 sections become 54 rows, and the area of its own the column won in #210 is what
+  // that price is paid out of.
+  //
+  // A subheading standing before the book's first section is in no section and is not listed, which
+  // is what happened to every subheading before this. An imported file cannot leave the book that
+  // way any more (#202), and a book written by hand that does has a disposition problem the column
+  // is the wrong place to report.
+  const sections: { heading: Heading; under: Heading[] }[] = []
+  for (const b of blocks) {
+    if (b.kind !== 'heading') continue
+    if (b.level === 1) sections.push({ heading: b, under: [] })
+    else sections[sections.length - 1]?.under.push(b)
+  }
+  const marked = new Map([...(marks ?? [])].map((section) => [section.id, section.mark]))
   const [first] = silent ?? []
-  if (headings.length === 0) return null
+  if (sections.length === 0) return null
+  // One row, whichever rank it is. What differs is what the row says about itself before it says
+  // its own words: a subheading names its rank out loud, because the indent that shows it is worth
+  // nothing to a reader who is not looking at it (L12).
+  const row = (h: Heading, rank: 1 | 2) => {
+    const mark = marked.get(h.id)
+    return (
+      <a href={`#${anchorOf(h.id)}`} data-mark={mark} data-level={rank}>
+        {rank === 2 && <span className="byd-offscreen">{`${t('rules.toc.level2')} `}</span>}
+        {h.text}
+        {/* A disposition that has not been taken up yet says so where the reader is looking, so
+            a tab that looks like a book is never mistaken for one (#131, variant C). */}
+        {proposed && <span>{t('rules.toc.empty')}</span>}
+        {/* And an import marks the column with the same marks it puts in the book, in words
+            and never in a colour: the section that is going may be the one below the fold, and
+            a reader who moves through the column by keyboard has to meet it there (L12). */}
+        {mark && mark !== 'kept' && <span>{t(`rules.toc.${mark}` as Key)}</span>}
+      </a>
+    )
+  }
   return (
     <nav className="byd-rules-toc" aria-label={label}>
       <b aria-hidden="true">{label}</b>
-      {headings.map((h) => {
-        const mark = marked.get(h.id)
-        return (
-          <a key={h.id} href={`#${anchorOf(h.id)}`} data-mark={mark}>
-            {h.text}
-            {/* A disposition that has not been taken up yet says so where the reader is looking, so
-                a tab that looks like a book is never mistaken for one (#131, variant C). */}
-            {proposed && <span>{t('rules.toc.empty')}</span>}
-            {/* And an import marks the column with the same marks it puts in the book, in words
-                and never in a colour: the section that is going may be the one below the fold, and
-                a reader who moves through the column by keyboard has to meet it there (L12). */}
-            {mark && mark !== 'kept' && <span>{t(`rules.toc.${mark}` as Key)}</span>}
-          </a>
-        )
-      })}
+      <ul>
+        {sections.map((section) => (
+          <li key={section.heading.id}>
+            {row(section.heading, 1)}
+            {/* The second rank is a list of its own and it is named after the section it belongs
+                to, so what the eye reads as an indent is heard as «Underrubriker i Uppställning,
+                lista, 3 objekt». A section with nothing under it opens no list: an empty group is
+                a promise of rows that are not there. */}
+            {section.under.length > 0 && (
+              <ul aria-label={t('rules.toc.under', { section: section.heading.text })}>
+                {section.under.map((sub) => (
+                  <li key={sub.id}>{row(sub, 2)}</li>
+                ))}
+              </ul>
+            )}
+          </li>
+        ))}
+      </ul>
       {/* The pictures nobody has written an alt text for, counted and gone to (#173). It stands in
           the column and not in a band that scrolls past: the import's report is gone by the next
           morning and the silent pictures are not, and this is "nothing disappears silently" said a

@@ -8,6 +8,11 @@
 // and the rows past the fold could be read only once the book had been scrolled all the way down.
 // A map whose last rows need the territory read first is not a map (#207, where this was measured).
 //
+// Since #207 the column carries both of the book's ranks, so what is counted here is 54 rows and
+// not 22: every section, and under it its own subheadings, in the book's order. The readings about
+// height are the same readings — a column that is 2,4 times as long is exactly the case the area
+// of its own was won for.
+//
 // Every reading here is a relationship or a count: how many rows cannot be reached, how many
 // scrolling areas there are and whether one sits inside the other, and whether the book's measure
 // is still the width of 68 characters of the book's own face read off a probe in that same face.
@@ -73,6 +78,21 @@ const SECTIONS: readonly (readonly [string, readonly string[]])[] = [
   ['För den som lär ut spelet', ['Den första omgången', 'Vanliga missförstånd']],
   ['Tack och rättigheter', []],
 ]
+
+// The column as the book asks for it (#207, variant B): a row per section and, under each, a row
+// per subheading — in the book's order and never in another. It is written out from the book above
+// rather than by the code being read, so a column that lost a rank or reordered one is a failure
+// and not a rewritten expectation.
+const ROWS: readonly { text: string; level: 1 | 2 }[] = SECTIONS.flatMap(([section, under]) => [
+  { text: section, level: 1 as const },
+  ...under.map((sub) => ({ text: sub, level: 2 as const })),
+])
+
+// What the column says out loud about the second rank. The indent is what the eye gets; these are
+// what everybody else gets, and an acceptance criterion of #207 is that no row is carried by the
+// indent or by a colour alone (L12).
+const UNDER = 'Underrubrik:'
+const GROUP = (section: string) => `Underrubriker i ${section}`
 
 // Paragraphs of the length a rule paragraph has, so the book is as tall as its column is long.
 const PARAGRAPHS: readonly string[] = [
@@ -249,9 +269,10 @@ describe('the book this is measured on', () => {
 describe.each(SCREENS)('the contents column at $width × $height', (screen_) => {
   it('has every one of its rows in reach without the book being scrolled first', async () => {
     const seen = await measure(screen_, outOfReach)
-    // Not vacuous twice over: the column has a row per section of the long book, and it is longer
-    // than the box it is read in — which is the premise the whole issue rests on.
-    expect(seen.rows).toBe(22)
+    // Not vacuous twice over: the column has a row per heading of the long book — both ranks since
+    // #207 — and it is longer than the box it is read in, which is the premise the whole issue
+    // rests on.
+    expect(seen.rows).toBe(ROWS.length)
     expect(seen.tallerThanTheArea, 'the column fits the area, so this reading is about nothing').toBe(true)
     expect(seen.out, `${seen.out.length} of ${seen.rows} rows out of reach at ${screen_.width}`).toEqual([])
   }, 90_000)
@@ -268,9 +289,9 @@ describe.each(SCREENS)('the contents column at $width × $height', (screen_) => 
     const seen = await measure(screen_, theBooksOwnReading)
     expect(seen.scrolls, JSON.stringify(seen)).toBe(true)
     expect(seen.sideways, JSON.stringify(seen)).toBe(0)
-    // All 22 sections and all 32 subheadings are in the book, wherever the column stops: what
-    // scrolls is not what is listed, and this issue does not touch what the column lists (#207 is
-    // still open on that question).
+    // All 22 sections and all 32 subheadings are in the book, and since #207 the column lists every
+    // one of them: what the book holds and what the column lists are the same two ranks now, which
+    // is the whole of variant B.
     expect({ sections: seen.sections, subheadings: seen.subheadings }).toEqual({ sections: 22, subheadings: 32 })
     expect(Math.abs(seen.measure - seen.sixtyEight), `measured ${seen.measure}px against 68 characters at ${seen.sixtyEight}px`).toBeLessThanOrEqual(2)
   }, 90_000)
@@ -321,22 +342,30 @@ describe('tabbing through the contents column', () => {
         rest()
         rows[0].focus()
       })()`)
-      const steps: { nth: number; tag: string; book: number }[] = []
-      for (let i = 0; i < 22; i++) {
-        steps.push(
-          await page.evaluate<{ nth: number; tag: string; book: number }>(`(() => {
-            const rows = [...document.querySelector('.byd-rules-toc').querySelectorAll('a[href]')]
-            const at = document.activeElement
-            const book = window.__bydBook
-            return { nth: rows.indexOf(at), tag: at === null ? 'nothing' : at.tagName.toLowerCase(), book: book === null ? 0 : Math.round(book.scrollTop) }
-          })()`),
-        )
+      const steps: { nth: number; tag: string; book: number; on: string; want: string }[] = []
+      // One step per row of the book, and what each step was supposed to land on written down
+      // beside what it did: an order read off the column itself would agree with the column
+      // however wrong the column was.
+      for (const row of ROWS) {
+        const at = await page.evaluate<{ nth: number; tag: string; book: number; on: string }>(`(() => {
+          const rows = [...document.querySelector('.byd-rules-toc').querySelectorAll('a[href]')]
+          const at = document.activeElement
+          const book = window.__bydBook
+          return {
+            nth: rows.indexOf(at),
+            tag: at === null ? 'nothing' : at.tagName.toLowerCase(),
+            book: book === null ? 0 : Math.round(book.scrollTop),
+            on: at === null ? 'nothing' : at.textContent.replace(/\\s+/g, ' ').trim(),
+          }
+        })()`)
+        steps.push({ ...at, want: row.level === 1 ? row.text : `${UNDER} ${row.text}` })
         await page.keyboard.press('Tab')
       }
       return steps
     })
-    // Every one of the 22 rows took the focus, in the book's own order, and the book never moved.
-    expect(seen.map((s) => s.nth)).toEqual([...Array(22).keys()])
+    // Every one of the 54 rows took the focus, in the book's own order, and the book never moved.
+    expect(seen.map((s) => s.nth)).toEqual([...Array(ROWS.length).keys()])
+    expect(seen.filter((s) => s.on !== s.want).map((s) => [s.want, s.on])).toEqual([])
     expect(
       seen.filter((s) => s.book !== 0),
       'the book moved while the column was tabbed through',
@@ -365,6 +394,102 @@ describe('the column keeps what it is', () => {
         }
       })()`),
     )
-    expect(seen).toEqual({ tag: 'nav', named: true, rows: SECTIONS.map(([section]) => section), hidden: 0 })
+    expect(seen).toEqual({
+      tag: 'nav',
+      named: true,
+      rows: ROWS.map((row) => (row.level === 1 ? row.text : `${UNDER} ${row.text}`)),
+      hidden: 0,
+    })
+  }, 90_000)
+})
+
+// The book's second rank in the column (#207, variant B). The question the issue asked was whether
+// a subheading should be findable without first reading its section, and the answer the product
+// owner gave was the book's own shape: both ranks, indented, in the book's order.
+//
+// What is read here is never the indent. A rank carried by sixteen pixels is a rank that exists for
+// one kind of reader only (L12), so every reading below asks what the column *says*: which list a
+// row stands in, what that list is called, and what the row itself is called.
+const theSecondRank = (page: Page) =>
+  page.evaluate<{
+    groups: { named: string; rows: string[] }[]
+    spoken: string[]
+    nested: number
+    order: string[]
+  }>(`(() => {
+    const toc = document.querySelector('.byd-rules-toc')
+    const clean = (s) => s.replace(/\\s+/g, ' ').trim()
+    const groups = [...toc.querySelectorAll('ul[aria-label]')].map((list) => ({
+      named: list.getAttribute('aria-label'),
+      rows: [...list.querySelectorAll(':scope > li > a[href]')].map((a) => clean(a.textContent)),
+    }))
+    const rows = [...toc.querySelectorAll('a[href]')]
+    return {
+      groups,
+      // Every row that stands in a named group says what it is before it says what it is called.
+      spoken: rows.filter((a) => a.closest('ul[aria-label]') !== null).map((a) => clean(a.textContent)),
+      // A section with nothing under it opens no list at all: an empty group is a promise of rows
+      // that are not there.
+      nested: toc.querySelectorAll('ul[aria-label]:not(:has(li))').length,
+      order: rows.map((a) => clean(a.textContent)),
+    }
+  })()`)
+
+describe('the column carries the book’s second rank', () => {
+  it('stands each subheading in a list named after the section it belongs to', async () => {
+    const seen = await measure(SCREENS[2], theSecondRank)
+    const withUnder = SECTIONS.filter(([, under]) => under.length > 0)
+    expect(seen.groups.map((group) => group.named)).toEqual(withUnder.map(([section]) => GROUP(section)))
+    expect(seen.groups.map((group) => group.rows)).toEqual(withUnder.map(([, under]) => under.map((sub) => `${UNDER} ${sub}`)))
+    // Eight of the twenty-two sections have nothing under them, and none of them opens a list.
+    expect(seen.groups).toHaveLength(SECTIONS.length - 8)
+    expect(seen.nested).toBe(0)
+  }, 90_000)
+
+  it('says the rank in words on every row that has one, and never in the indent alone', async () => {
+    const seen = await measure(SCREENS[2], theSecondRank)
+    expect(seen.spoken).toHaveLength(32)
+    expect(seen.spoken.filter((row) => !row.startsWith(`${UNDER} `))).toEqual([])
+  }, 90_000)
+
+  it('lists both ranks in the book’s own order', async () => {
+    const seen = await measure(SCREENS[2], theSecondRank)
+    expect(seen.order).toEqual(ROWS.map((row) => (row.level === 1 ? row.text : `${UNDER} ${row.text}`)))
+  }, 90_000)
+})
+
+// The tap floor, which #207 asked about and the product owner answered: 44 px on both ranks, no
+// exception. The editor is desktop-first (L12), but `--byd-tap` is unrelaxed on every surface in
+// the product and a second rank in one column is not the place to put the first hole in it. The
+// price is the height, and the column has had an area of its own to spend it in since #210.
+//
+// It is read on every screen because a row's height is a row's height and a column that cut the
+// rank short at the narrow end would pass a reading that stopped at 1440.
+const theRowsOwnHeight = (page: Page) =>
+  page.evaluate<{ floor: number; rows: number; short: { row: string; height: number }[]; sideways: number }>(`(() => {
+    ${SURFACE}
+    // Read off the column and not off the document: the editor declares its ladder on
+    // \`.byd-editor\`, and a token read where it is not declared is an empty string, a NaN floor
+    // and a reading that passes whatever the rows do.
+    const floor = parseFloat(getComputedStyle(toc).getPropertyValue('--byd-tap'))
+    const short = []
+    for (const row of rows) {
+      const height = row.getBoundingClientRect().height
+      if (height < floor - 0.5) short.push({ row: row.textContent.replace(/\\s+/g, ' ').trim(), height: Math.round(height) })
+    }
+    return { floor, rows: rows.length, short, sideways: columnArea === null ? 0 : columnArea.scrollWidth - columnArea.clientWidth }
+  })()`)
+
+describe.each(SCREENS)('a row of the column at $width × $height', (screen_) => {
+  it('stands on the tap floor whichever rank it is, and never pushes the column sideways', async () => {
+    const seen = await measure(screen_, theRowsOwnHeight)
+    // The floor is a number the stylesheet really declares, so a row is measured against 44 px and
+    // never against a NaN that lets everything through.
+    expect(seen.floor).toBe(44)
+    expect(seen.rows).toBe(ROWS.length)
+    expect(seen.short, JSON.stringify(seen.short)).toEqual([])
+    // The longest headings in this book have to be broken in a column 200 px wide, and a column
+    // that scrolls sideways has hidden half of what it lists.
+    expect(seen.sideways).toBe(0)
   }, 90_000)
 })

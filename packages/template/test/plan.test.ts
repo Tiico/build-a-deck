@@ -174,6 +174,76 @@ describe('the contents column is marked too (#131)', () => {
       ['going', 'Fusk och straff'],
     ])
   })
+
+  // The column lists both of the book's ranks since #207, so both ranks have to be marked. A
+  // subheading standing under a section that says «försvinner» and saying nothing itself would be
+  // the one row in the column that does not tell a reader below the fold what happens to it.
+  it('gives every subheading the heaviest mark anything under it carries, and the section its own', () => {
+    const there = book(
+      { kind: 'heading', id: 'b1', level: 1, text: 'En tur' },
+      { kind: 'text', id: 'b2', text: 'En tur har tre steg.' },
+      { kind: 'heading', id: 'b3', level: 2, text: 'Att dra ett kort' },
+      { kind: 'text', id: 'b4', text: 'Dra ett kort.' },
+      { kind: 'heading', id: 'b5', level: 2, text: 'Att passa' },
+      { kind: 'text', id: 'b6', text: 'Den som passar får ett guld.' },
+      { kind: 'heading', id: 'b7', level: 1, text: 'Fusk och straff' },
+      { kind: 'heading', id: 'b8', level: 2, text: 'Att bli påkommen' },
+      { kind: 'text', id: 'b9', text: 'Den som blir påkommen.' },
+    )
+    const file = book(
+      { kind: 'heading', id: 'b1', level: 1, text: 'En tur' },
+      { kind: 'text', id: 'b2', text: 'En tur har tre steg.' },
+      { kind: 'heading', id: 'b3', level: 2, text: 'Att dra ett kort' },
+      { kind: 'text', id: 'b4', text: 'Dra två kort.' },
+      { kind: 'heading', id: 'b5', level: 2, text: 'Att passa' },
+      { kind: 'text', id: 'b6', text: 'Den som passar får ett guld.' },
+      { kind: 'heading', id: 'b7', level: 2, text: 'Att byta med grannen' },
+      { kind: 'text', id: 'b8', text: 'Byt ett kort.' },
+    )
+    const plan = planImport(there, file)
+    // `En tur` is rewritten because something in it is, and `Fusk och straff` goes whole.
+    expect(plan.sections.map((s) => [s.mark, s.text])).toEqual([
+      ['changed', 'En tur'],
+      ['going', 'Fusk och straff'],
+    ])
+    // The second rank says the same of itself, one stretch of the book at a time: the paragraph
+    // under `Att dra ett kort` was rewritten and the heading was not, `Att passa` was left alone
+    // entirely, and the subheading of a section that goes goes with it.
+    expect(plan.subsections.map((s) => [s.mark, s.text])).toEqual([
+      ['changed', 'Att dra ett kort'],
+      ['kept', 'Att passa'],
+      ['added', 'Att byta med grannen'],
+      ['going', 'Att bli påkommen'],
+    ])
+  })
+
+  // The prose between a section's heading and its first subheading belongs to the section and to no
+  // subheading: read otherwise it would mark the subheading above it, which stands in another part
+  // of the book entirely.
+  it('never lets a section’s own prose reach the subheading standing before it', () => {
+    const there = book(
+      { kind: 'heading', id: 'b1', level: 1, text: 'En tur' },
+      { kind: 'heading', id: 'b2', level: 2, text: 'Att passa' },
+      { kind: 'text', id: 'b3', text: 'Den som passar får ett guld.' },
+      { kind: 'heading', id: 'b4', level: 1, text: 'Fusk och straff' },
+      { kind: 'text', id: 'b5', text: 'Den som blir påkommen mister sitt guld.' },
+    )
+    const file = book(
+      { kind: 'heading', id: 'b1', level: 1, text: 'En tur' },
+      { kind: 'heading', id: 'b2', level: 2, text: 'Att passa' },
+      { kind: 'text', id: 'b3', text: 'Den som passar får ett guld.' },
+      { kind: 'heading', id: 'b4', level: 1, text: 'Fusk och straff' },
+      { kind: 'text', id: 'b5', text: 'Den som blir påkommen mister allt sitt guld.' },
+    )
+    const plan = planImport(there, file)
+    expect(plan.sections.map((s) => [s.mark, s.text])).toEqual([
+      ['kept', 'En tur'],
+      ['changed', 'Fusk och straff'],
+    ])
+    // The rewritten paragraph stands in `Fusk och straff`, which has no subheading at all, so the
+    // only subheading in the book is untouched.
+    expect(plan.subsections.map((s) => [s.mark, s.text])).toEqual([['kept', 'Att passa']])
+  })
 })
 
 // The one exception to "the file decides" (B5, decided 2026-09-17). The setup block is not text:

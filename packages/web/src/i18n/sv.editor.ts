@@ -507,6 +507,8 @@ export const svEditor = {
   'rules.empty': 'Reglerna hör till spelet: de versioneras med korten, och spelarna når dem från telefonen, TV:n och observatören.',
   'rules.start': 'Börja skriva reglerna',
   'rules.toc': 'Innehåll',
+  'rules.toc.under': 'Underrubriker i {section}',
+  'rules.toc.level2': 'Underrubrik:',
   'rules.toc.empty': '· tomt',
   'rules.toc.going': '· försvinner',
   'rules.toc.changed': '· skrivs om',

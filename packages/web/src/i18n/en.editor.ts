@@ -471,6 +471,8 @@ export const enEditor = {
   'rules.mark.changed': 'Rewritten',
   'rules.mark.added': 'New',
   'rules.mark.setup': 'Untouched · the game’s own zones',
+  'rules.toc.under': 'Subheadings in {section}',
+  'rules.toc.level2': 'Subheading:',
   'rules.toc.empty': '· empty',
   'rules.template': 'Start from a template',
   'rules.import': 'Import from a file',
