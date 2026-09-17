@@ -1185,6 +1185,7 @@ describe('every suite that measures a surface', () => {
       'reduced-motion.test.ts',
       'rules-column.test.tsx',
       'rules-layout.test.tsx',
+      'setup-layout.test.tsx',
       'status-css.test.ts',
       'table-grab.test.ts',
       'table-layout.test.tsx',

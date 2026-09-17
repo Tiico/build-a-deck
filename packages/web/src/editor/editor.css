@@ -2221,7 +2221,21 @@
    Rattarna sitter inne i texten, så raden måste kunna radbryta mitt i en mening utan att en
    ratt går isär: därför `line-height` på meningen och inte på knappen, och därför är slotten
    `inline-block` med sin egen luft i stället för en knapp med padding som lyfter raden. */
-.byd-zone-actions { display: grid; gap: 10px; align-content: start; background: #171a23; border-radius: 12px; padding: 12px 16px; }
+/* Högens meningar ligger över filten, inte under den (#218).
+
+   `.byd-setup-canvas` är en flexkolumn och filten `flex: 1 1 auto`, så ett panelblock i flödet
+   under den togs ur filtens höjd: mätt i Chromium tappade filten 157 px — 773 blev 616 — i samma
+   ögonblick en hög valdes, och hela bordet ritades om i en annan skala. Varje slot som öppnades
+   inuti meningarna flyttade det igen, eftersom var och en av dem ändrar hur höga de är.
+
+   Att i stället reservera rummet alltid hade kostat filten de pixlarna även när ingen hög är vald,
+   och filten är höjdbunden. Så meningarna lägger sig över filtens nederkant med egen botten under
+   sig; filten behåller hela sin rektangel och rör sig aldrig. */
+.byd-zone-actions {
+  position: absolute; z-index: 3; left: 0; right: 0; bottom: 0; max-height: 45%; overflow: auto;
+  display: grid; gap: 10px; align-content: start; background: #171a23e6; backdrop-filter: blur(6px);
+  border: 1px solid #2f333d; border-radius: 12px; padding: 12px 16px;
+}
 .byd-zone-actions h3 { margin: 4px 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-sentence { margin: 0; line-height: 2.1; color: #e6ecfa; }
 .byd-sentence b { color: #fff; }
