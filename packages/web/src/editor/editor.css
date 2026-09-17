@@ -1293,7 +1293,16 @@
    resting on was drawn in exactly the blue that means "this is the button to press". It takes the
    editor's mark instead, as a ring, which is what the rail this list hangs off already does under
    a pointer and what the editor draws round anything it is merely pointing at (L11). */
-.byd-symbol-list button:hover, .byd-symbol-list button[aria-selected='true'] { border-color: var(--byd-editor-primary-mark); }
+/* Vad pekaren är över, och vad tangenterna står på — två olika frågor, och de hade ett svar (#235).
+   Regeln gav båda samma hårstreck, och listan öppnas genom att skriva, alltså med pekaren vilande
+   mitt i den: raden under musen och raden tangenterna stod på ritades identiskt, och ett tryck på
+   nedåtpilen flyttade en kantlinje på en rad som redan hade en. Tangenterna fungerade; svaret gick
+   inte att se. Det tangenterna står på bär därför tjänstens egen markering för «den här är på» —
+   stapeln under, som knappspråket föreskriver (#44, variant B) — och pekaren behåller sitt
+   hårstreck. Aldrig en fyllning: det som är valt får inte kunna läsas som det man ska trycka på,
+   och `button-language.test.tsx` mäter den regeln över hela verktyget. */
+.byd-symbol-list button:hover { border-color: var(--byd-editor-primary-mark); }
+.byd-symbol-list button[aria-selected='true'] { border-color: var(--byd-editor-primary-mark); box-shadow: inset 0 -3px 0 var(--byd-editor-primary-mark); }
 .byd-symbol-list img { width: 20px; height: 20px; padding: 0; border-radius: 5px; background: #e8e2d4; }
 .byd-symbol-list small { margin-left: auto; color: #9aa3b8; font-size: 11px; }
 /* The header is the sort control (#15): the column's name, the state as an arrow beside it. */
