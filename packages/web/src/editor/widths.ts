@@ -10,6 +10,14 @@
 // column called `body` in another.
 const KEY = 'byd.widths'
 
+// The narrowest a column may ever be drawn, when nothing better is known.
+//
+// The page declares the real answer as `--byd-tap`, and the table reads it there; this is the same
+// fallback that reading has always used, kept here so the way in and the way out cannot drift
+// apart. A column narrower than a fingertip is not a width anybody chose — it is a column thrown
+// away by a hand that slipped, and its own edge is by then too small to catch and drag back.
+export const TAP_FLOOR = 44
+
 type Held = Record<string, Record<string, number>>
 
 function all(): Held {
@@ -27,11 +35,19 @@ function all(): Held {
 
 // What this project's columns were left at. Only the numbers: anything else in the key is
 // somebody else's, or damage, and a width that is not a number is not a width.
-export function heldWidths(project: string | undefined): Record<string, number> {
+//
+// And never under the floor (#220). Setting a width has been clamped since #46, but reading one
+// back was not, so a width written before that clamp existed — or by a hand on another version, or
+// by anything else at all that can write to this key — came back as it was and drew the column
+// invisible again on the next visit. A width under the floor is lifted to it rather than dropped:
+// the column was meant to be narrow, and the designer keeps the narrowest it may be, not the
+// measurement she had moved away from.
+export function heldWidths(project: string | undefined, least: number = TAP_FLOOR): Record<string, number> {
   if (!project) return {}
   const mine = all()[project]
   if (!mine || typeof mine !== 'object') return {}
-  return Object.fromEntries(Object.entries(mine).filter(([, px]) => typeof px === 'number' && Number.isFinite(px) && px > 0))
+  const kept = Object.entries(mine).filter(([, px]) => typeof px === 'number' && Number.isFinite(px) && px > 0)
+  return Object.fromEntries(kept.map(([field, px]) => [field, Math.max(least, px as number)]))
 }
 
 export function rememberWidths(project: string | undefined, widths: Record<string, number>): void {
