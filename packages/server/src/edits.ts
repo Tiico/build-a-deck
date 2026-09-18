@@ -1,7 +1,7 @@
 import type { AssetCrop as Crop, CardQuery, ZoneAction, ZoneBeside } from '@byd/protocol'
 import type { Element, FaceTemplate, Variant } from '@byd/template'
 import { showsWholePicture } from '@byd/protocol'
-import { AssetCrop, ProjectFraming } from './projects.js'
+import { AssetCrop, PictureName, ProjectFraming } from './projects.js'
 import type { Cell, Picture, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc } from './projects.js'
 import { applyRecipe, point, rect, seatZones, type Geometry, type Recipe, type RecipeWords, type SeatRole, type Shortcut, type Zone } from './recipe.js'
 
@@ -138,6 +138,11 @@ export type EditIntent =
   // bytes. It is said once and every card drawn from the picture obeys it — which is why the
   // intent names no card: there is no card to name. `null` is the picture going back to whole.
   | { v: 'setCrop'; hash: string; crop: Crop | null }
+  // A picture the game has taken in (#222, L22, beslut 5 och 6). It is what makes a picture exist
+  // in the library before any card is drawn from it, and it carries the name the file had on the
+  // designer's disk. A picture whose file name says nothing usable is still one the game has met,
+  // so the name is what may be missing and never the picture.
+  | { v: 'addPicture'; hash: string; name?: string }
   // The type the game is set in (B3). A family the project names carries the file it is drawn
   // from, so a version prints as it was designed rather than as the printer's machine guesses.
   | { v: 'setFont'; family: string; font: ProjectFont }
@@ -468,6 +473,15 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       // the entry is also where the next thing said about a picture will go.
       const now: Picture = crop === null ? without(was, 'crop') : { ...was, crop }
       return { ...doc, pictures: { ...(doc.pictures ?? {}), [intent.hash]: now } }
+    }
+    case 'addPicture': {
+      // Read where the value enters, for the same reason a crop is: the name comes off a
+      // designer's own disk by way of a browser, and nothing between the two reads the schema.
+      const name = intent.name === undefined ? undefined : PictureName.parse(intent.name)
+      // Whatever the game already knew about the picture stays. Being handed the same bytes again
+      // is not the game meeting them for the first time, so a crop already cut goes on holding.
+      const was = doc.pictures?.[intent.hash] ?? {}
+      return { ...doc, pictures: { ...(doc.pictures ?? {}), [intent.hash]: name === undefined ? was : { ...was, name } } }
     }
     // Naming a family again replaces it, so swapping the file for a better cut is one entry.
     case 'setFont':

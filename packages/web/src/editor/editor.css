@@ -1935,6 +1935,16 @@
    cramped columns on a phone. */
 .byd-media { height: 100%; box-sizing: border-box; padding: var(--byd-gutter); overflow: auto; display: grid; gap: var(--byd-s5); align-content: start; }
 .byd-media h2 { margin: 0 0 var(--byd-s3); font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
+/* Vägen in står vid rubriken för det den lägger till (#222, beslut 5), inte under rutnätet den
+   fyller: en knapp under tre hundra bilder är en knapp ingen hittar. Etiketten bär knappens roll
+   — språket (L13) säger hur den ser ut, och regeln om träffytor ovan ger den sin höjd — så det
+   som står här är bara lådans form. */
+.byd-media-head { display: flex; align-items: center; justify-content: space-between; gap: var(--byd-s3); margin: 0 0 var(--byd-s2); }
+.byd-media-head h2 { margin: 0; }
+.byd-media-add { display: inline-flex; align-items: center; border-radius: 8px; padding: 0 12px; cursor: pointer; }
+/* En rad hålls ledig åt beskedet, så att rutnätet inte hoppar när en bild kommer fram —
+   samma avvägning som «Lägg på kort» gör med sin egen rad. */
+.byd-media-said { margin: 0 0 var(--byd-s3); min-height: 1.4em; font-size: 12px; color: var(--byd-editor-quiet); }
 .byd-media-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--byd-s3); }
 .byd-media-grid li { display: grid; justify-items: center; gap: var(--byd-s1); font-size: 11px; color: var(--byd-editor-quiet); }
 .byd-media-grid li[data-unused] small { color: #f0b64a; }

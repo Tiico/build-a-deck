@@ -60,7 +60,7 @@ export { RuleBlock, RuleDoc, RuleSource } from '@byd/template'
 // where the editor that writes a crop, the compiler that draws through it and the document that
 // stores it can all reach the same schema. Passed on from here for the same reason the rulebook
 // is: the project document is where everything else looks for it.
-export { AssetCrop, Picture } from '@byd/protocol'
+export { AssetCrop, Picture, PictureName } from '@byd/protocol'
 
 // A font the version is pinned to (B3). `stack` is what the CSS says; `asset` is the file the
 // project carries, so a locked version renders the same tomorrow as it did when it was tested.

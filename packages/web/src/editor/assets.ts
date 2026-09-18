@@ -95,6 +95,11 @@ export function mediaInGame(doc: ProjectDoc): { hash: string; cards: string[] }[
     for (const v of Object.values(face.variants)) walk(v.override ?? [])
   }
   for (const block of doc.rules?.blocks ?? []) if (block.kind === 'image') met(block.asset)
+  // And every picture the game says it has met, whether or not anything draws from it (#222,
+  // beslut 5). A picture uploaded in the library points at nothing yet — no cell, no literal, no
+  // block — so a library that only listed what it could see in use would lose a picture the
+  // moment it arrived, which is the one place it must not.
+  for (const hash of Object.keys(doc.pictures ?? {})) if (!seen.has(hash)) seen.set(hash, [])
   return [...seen].map(([hash, cards]) => ({ hash, cards }))
 }
 

@@ -1,5 +1,5 @@
-import { useId, useMemo, useState } from 'react'
-import { WHOLE_PICTURE, showsWholePicture, type AssetCrop } from '@byd/protocol'
+import { useEffect, useId, useMemo, useRef, useState, type Ref } from 'react'
+import { WHOLE_PICTURE, pictureNameOf, showsWholePicture, type AssetCrop } from '@byd/protocol'
 import { croppedMotif, type Motif } from '@byd/template'
 import type { ProjectDoc, ProjectRow } from './types.js'
 import { assetRef, assetUrl, imageFieldsOf, mediaInGame, previewIcons } from './assets.js'
@@ -16,15 +16,23 @@ import { useT } from '../i18n/index.js'
 // pictures that are in use and nothing else; a library that only listed those would have nothing
 // to tidy.
 //
-// A picture here has no name of its own: the bytes are content-addressed and nothing stores what
-// the file was called. What can be said about one truthfully is which cards are drawn from it, so
-// that is what names it — the same sentence the card table's own strip uses — and a picture no
-// card uses says exactly that instead.
+// A picture is called what its file was called (beslut 6), because that is the one thing about a
+// content-addressed picture that only the moment of upload knows. The pictures a game already held
+// have no name, and they go on being named by the cards drawn from them — the same sentence the
+// card table's own strip uses — while a picture no card uses says exactly that instead.
 //
-// Nothing is uploaded from here. A picture already in the game is a hash, and putting it on
-// ninety more cards writes that hash into ninety cells: the same bytes, stored once, however many
-// cards are drawn from them (E1). That is the whole answer to "samma fil laddas upp igen så fort
-// någon glömmer att den redan finns".
+// A picture is brought into the game from here (beslut 5), and the one that has just arrived is
+// the one in the crop window — which is what makes «beskärning både vid uppladdning och i
+// biblioteket» true in one place rather than two. This reverses what steg 1 decided out loud
+// («ingenting laddas upp härifrån»), deliberately and on the requester's own say-so: since the
+// crop follows the picture (beslut 2), cropping at upload and cropping in the library are the
+// same act on the same thing, and a second surface for it could only disagree with this one.
+//
+// None of which loosens what steg 1 was defending. A picture already in the game is a hash, and
+// putting it on ninety more cards writes that hash into ninety cells: the same bytes, stored once,
+// however many cards are drawn from them (E1). That is the whole answer to "samma fil laddas upp
+// igen så fort någon glömmer att den redan finns" — the same file handed over twice is one
+// picture, because a picture is its bytes.
 //
 // The crop is cut here (beslut 2): a picture is cropped once and every card drawn from it shows
 // that window, which is what makes a library worth having rather than a hundred and fifty-four
@@ -43,9 +51,12 @@ export type MediaPanelProps = {
   // The window this picture is looked at through, for every card drawn from it. `null` is the
   // picture going back to whole.
   onCrop?: ((hash: string, crop: AssetCrop | null) => void) | undefined
+  // A picture brought in from the designer's own disk (beslut 5). It answers with the hash the
+  // bytes were filed under, which is the picture the window then opens on.
+  onAdd?: ((file: File) => Promise<string>) | undefined
 }
 
-export function MediaPanel({ doc, assetBase, motifs, onReplaceRows, onCrop }: MediaPanelProps) {
+export function MediaPanel({ doc, assetBase, motifs, onReplaceRows, onCrop, onAdd }: MediaPanelProps) {
   const t = useT()
   const said = useId()
   const media = mediaInGame(doc)
@@ -74,15 +85,72 @@ export function MediaPanel({ doc, assetBase, motifs, onReplaceRows, onCrop }: Me
   const [drafted, setDrafted] = useState<{ hash: string; crop: AssetCrop } | null>(null)
   const stored = chosen === null ? undefined : doc.pictures?.[chosen]?.crop
   const window_ = drafted?.hash === chosen ? drafted.crop : (stored ?? WHOLE_PICTURE)
+  // What a picture is called (beslut 6): the file it came from, where that was kept, and
+  // otherwise what has always been the only truthful thing to say about a content-addressed
+  // picture — which cards are drawn from it, or that none is. A deck made before names therefore
+  // reads exactly as it did.
+  const nameOf = (hash: string, cards: readonly string[]): string =>
+    doc.pictures?.[hash]?.name ?? (cards.length === 0 ? t('media.picture.unused') : t('table.image.alt', { cards: cards.join(', ') }))
   const cut = (crop: AssetCrop, settled: boolean) => {
     if (chosen === null) return
     setDrafted({ hash: chosen, crop })
     if (settled) onCrop?.(chosen, crop)
   }
+  // A picture on its way in, and what the library says about how it went. The word is said in a
+  // live region because an upload takes as long as a network takes: a designer who cannot see the
+  // grid has nothing else to tell her that the picture arrived — or that it did not.
+  const [note, setNote] = useState<string | null>(null)
+  // The window the arriving picture opens in. A hand is put on it rather than merely a highlight,
+  // because "opens in the crop window" has to be true for a keyboard too; the picture chosen is
+  // not yet drawn when the upload answers, so the focus is taken on the render after it.
+  const handle = useRef<HTMLDivElement | null>(null)
+  const opening = useRef(false)
+  useEffect(() => {
+    if (!opening.current) return
+    opening.current = false
+    handle.current?.focus()
+  })
+  const take = async (file: File | undefined, input: HTMLInputElement): Promise<void> => {
+    // Cleared at once, so that choosing the same file again is a choice and not a silence: an
+    // input that still holds it fires nothing the second time.
+    input.value = ''
+    if (!file || !onAdd) return
+    setNote(null)
+    try {
+      const hash = await onAdd(file)
+      const name = pictureNameOf(file.name)
+      setPicked(hash)
+      setDone(null)
+      setDrafted(null)
+      opening.current = true
+      setNote(name === undefined ? t('media.add.done.unnamed') : t('media.add.done', { name }))
+    } catch (err) {
+      // A picture that did not arrive is said in the same place the arrival is, and it is said
+      // rather than thrown: an upload can fail on a dropped line or a file the gate refuses, and
+      // an unhandled rejection is not a way to tell a designer that her picture is too big.
+      setNote(err instanceof Error ? err.message : String(err))
+    }
+  }
   return (
     <div className="byd-media" data-media-panel>
       <section>
-        <h2>{t('media.title')}</h2>
+        <div className="byd-media-head">
+          <h2>{t('media.title')}</h2>
+          {/* The way in (beslut 5). A label around an off-screen input, which is how every other
+              file is chosen in this tool: a tab stop with a name, so the picture can be brought in
+              without a pointer. */}
+          {onAdd && (
+            <label className="byd-secondary byd-media-add">
+              {t('media.add')}
+              <input className="byd-offscreen" type="file" accept="image/*" aria-label={t('media.add')} onChange={(event) => void take(event.target.files?.[0], event.target)} />
+            </label>
+          )}
+        </div>
+        {onAdd && (
+          <p className="byd-media-said" role="status">
+            {note ?? ''}
+          </p>
+        )}
         <ul className="byd-media-grid" aria-label={t('media.title')}>
           {media.map(({ hash, cards }) => {
             const spare = cards.length === 0
@@ -106,7 +174,7 @@ export function MediaPanel({ doc, assetBase, motifs, onReplaceRows, onCrop }: Me
                       opens is three hundred requests in one breath. The ones below the fold
                       wait until they are to be seen. */}
                   <span className="byd-media-tile-shot">
-                    <img loading="lazy" src={assetUrl(assetBase, hash)} alt={spare ? t('media.picture.unused') : t('table.image.alt', { cards: cards.join(', ') })} />
+                    <img loading="lazy" src={assetUrl(assetBase, hash)} alt={nameOf(hash, cards)} />
                     {/* A cropped picture says so where it is looked over, rather than only where
                         it is opened: what has been done to a picture is half of what a library
                         is for. An uncropped one wears nothing, so the mark means something. */}
@@ -136,6 +204,7 @@ export function MediaPanel({ doc, assetBase, motifs, onReplaceRows, onCrop }: Me
             field={field}
             crop={window_}
             stored={stored}
+            handle={handle}
             onCut={cut}
             onWhole={() => {
               setDrafted(null)
@@ -186,6 +255,7 @@ function Cropping({
   field,
   crop,
   stored,
+  handle,
   onCut,
   onWhole,
 }: {
@@ -196,6 +266,7 @@ function Cropping({
   field: string | null
   crop: AssetCrop
   stored: AssetCrop | undefined
+  handle: Ref<HTMLDivElement>
   onCut(crop: AssetCrop, settled: boolean): void
   onWhole(): void
 }) {
@@ -218,7 +289,7 @@ function Cropping({
           designer is about to act on it. Without it the window looks like something done to this
           one card, which is the very thing the library exists to stop being true. */}
       <p className="byd-media-crop-lead">{t('media.crop.lead')}</p>
-      <Crop url={url} ratio={file && file.h > 0 ? file.w / file.h : 3 / 2} crop={crop} onChange={onCut} />
+      <Crop url={url} ratio={file && file.h > 0 ? file.w / file.h : 3 / 2} crop={crop} onChange={onCut} handle={handle} />
       <button type="button" className="byd-secondary" disabled={stored === undefined} onClick={onWhole}>
         {t('media.crop.whole')}
       </button>
