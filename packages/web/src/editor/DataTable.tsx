@@ -17,6 +17,7 @@ import { deckValues, dragScroll, fitColumns, markValues, widthKind, GROUP_COL } 
 import { TAP_FLOOR, heldWidths, rememberWidths } from './widths.js'
 import { countLabel, discreteColumns, filterRows, isFiltering, noFilter, toggleValue, type FilterState } from './filtering.js'
 import { duplicateRows, keepRows, markRows, noSelection, removeRows, selectionLabel, setColumn, toggleRow, type Selection } from './selection.js'
+import { useMarked } from './marked.js'
 import { groupColumn, groupOfRow, ruleLabel } from './groups.js'
 import { Question } from './Question.js'
 import { useT, type T } from '../i18n/index.js'
@@ -258,7 +259,9 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   }
   const [sort, setSort] = useState<SortState | null>(null)
   const [filter, setFilter] = useState<FilterState>(noFilter)
-  const [selected, setSelected] = useState<Selection>(noSelection)
+  // The marking is the deck's and not this panel's (#222): it is made here and acted on here and
+  // in the media library, so it is held above both. A table mounted on its own keeps its own.
+  const [selected, setSelected] = useMarked()
   // Deleting cards is the one action that cannot be looked at afterwards, so it is asked about
   // first — and the question says how many cards it is about.
   const [confirming, setConfirming] = useState(false)

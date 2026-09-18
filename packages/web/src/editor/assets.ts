@@ -64,19 +64,45 @@ export function imageFieldsOf(doc: ProjectDoc): string[] {
   return out
 }
 
-// Every image the deck uses, once, with the cards it sits on, in the order first seen.
-export function assetsInUse(doc: ProjectDoc): { hash: string; cards: string[] }[] {
+// Every picture the game holds, once, with the cards it sits on, in the order first seen (#222,
+// L22). The deck's rows first, then the pictures the template draws by itself, then the
+// rulebook's — because the media library is a library and not a list of what happens to be in
+// use: a picture no card uses is what there is to tidy, and it is marked and never purged, since
+// the bytes are content-addressed and an older version of the deck may still point at them.
+//
+// The symbol set is deliberately not here. A symbol is a drawing the tool fetched from a library,
+// named in the game's own words and counted in its own tab (E4); this is the deck's art.
+export function mediaInGame(doc: ProjectDoc): { hash: string; cards: string[] }[] {
   const seen = new Map<string, string[]>()
-  for (const row of doc.rows) {
-    for (const v of Object.values(row.fields)) {
-      if (!isAssetRef(v)) continue
-      const hash = v.slice(ASSET_PREFIX.length)
-      const cards = seen.get(hash) ?? []
-      if (!cards.includes(row.id)) cards.push(row.id)
-      seen.set(hash, cards)
+  // A picture is met either on a card or on its own. Meeting it at all puts it in the library;
+  // only a card adds to what uses it.
+  const met = (value: unknown, cardRef?: string) => {
+    if (!isAssetRef(value)) return
+    const hash = value.slice(ASSET_PREFIX.length)
+    const cards = seen.get(hash) ?? []
+    if (cardRef !== undefined && !cards.includes(cardRef)) cards.push(cardRef)
+    seen.set(hash, cards)
+  }
+  for (const row of doc.rows) for (const v of Object.values(row.fields)) met(v, row.id)
+  const walk = (els: ProjectDoc['template']['faces'][string]['base']) => {
+    for (const el of els) {
+      if (el.kind === 'image' && 'literal' in el.bind) met(el.bind.literal)
+      if (el.kind === 'if' || el.kind === 'group') walk(el.children)
     }
   }
+  for (const face of Object.values(doc.template.faces)) {
+    walk(face.base)
+    for (const v of Object.values(face.variants)) walk(v.override ?? [])
+  }
+  for (const block of doc.rules?.blocks ?? []) if (block.kind === 'image') met(block.asset)
   return [...seen].map(([hash, cards]) => ({ hash, cards }))
+}
+
+// Every image the deck uses, once, with the cards it sits on, in the order first seen. The
+// library above, less what nothing is drawn from: the card table's own strip is about the deck's
+// pictures and has no place to say "nobody uses this".
+export function assetsInUse(doc: ProjectDoc): { hash: string; cards: string[] }[] {
+  return mediaInGame(doc).filter((picture) => picture.cards.length > 0)
 }
 
 // What a picture in the rulebook may weigh and what it may be (#173). A file a designer picks is

@@ -7,7 +7,7 @@ import type { Room } from '../room.js'
 // Below the desk the editor is a flat list of named stages, one at a time (L10, prototype C).
 // The four panels of the template mode become four stages beside the three modes, so there is one
 // tablist and never a tablist inside a tablist.
-export type Stage = 'wall' | 'tools' | 'layers' | 'canvas' | 'props' | 'table' | 'symbols' | 'rules' | 'tables'
+export type Stage = 'wall' | 'tools' | 'layers' | 'canvas' | 'props' | 'table' | 'symbols' | 'media' | 'rules' | 'tables'
 
 // The stages of the template mode — the ones that are not offered at all on a phone.
 export type CanvasStage = 'tools' | 'layers' | 'canvas' | 'props'
@@ -17,13 +17,14 @@ export const isCanvasStage = (stage: Stage): stage is CanvasStage => (CANVAS_STA
 // A stage is named by a key and not by a word, the same way the modes above the desk are: what
 // the strip reads is looked up where the reader is (A4).
 export const STAGES: Record<Exclude<Room, 'desk'>, readonly (readonly [Stage, Key])[]> = {
-  // A phone gets the deck, the data, the library, the rulebook and the tables. Only laying a
-  // card out needs a wider screen, and the editor says that where the stages are rather than
+  // A phone gets the deck, the data, the two libraries, the rulebook and the tables. Only laying
+  // a card out needs a wider screen, and the editor says that where the stages are rather than
   // leaving a gap in the list.
   phone: [
     ['wall', 'editor.tab.wall'],
     ['table', 'editor.tab.table'],
     ['symbols', 'editor.tab.symbols'],
+    ['media', 'editor.tab.media'],
     ['rules', 'editor.tab.rules'],
     ['tables', 'editor.tab.tables'],
   ],
@@ -35,6 +36,7 @@ export const STAGES: Record<Exclude<Room, 'desk'>, readonly (readonly [Stage, Ke
     ['props', 'editor.stage.props'],
     ['table', 'editor.tab.table'],
     ['symbols', 'editor.tab.symbols'],
+    ['media', 'editor.tab.media'],
     ['rules', 'editor.tab.rules'],
     ['tables', 'editor.tab.tables'],
   ],

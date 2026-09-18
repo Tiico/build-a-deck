@@ -1929,6 +1929,30 @@
 .byd-symbols-chips small { color: var(--byd-editor-quiet); font-variant-numeric: tabular-nums; }
 .byd-symbols-add { margin-top: 8px; }
 .byd-role-list > button { display: grid; grid-template-columns: 16px 1fr; align-items: center; gap: 10px; }
+/* Media i spelet (#222, L22). The library and the way from a picture to the marked cards. The
+   pictures are what the eye sweeps, so they take the room; the way to the cards stands beside them
+   on a desk and under them on anything narrower, because a 280 px column beside a grid is two
+   cramped columns on a phone. */
+.byd-media { height: 100%; box-sizing: border-box; padding: var(--byd-gutter); overflow: auto; display: grid; gap: var(--byd-s5); align-content: start; }
+.byd-media h2 { margin: 0 0 var(--byd-s3); font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
+.byd-media-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--byd-s3); }
+.byd-media-grid li { display: grid; justify-items: center; gap: var(--byd-s1); font-size: 11px; color: var(--byd-editor-quiet); }
+.byd-media-grid li[data-unused] small { color: #f0b64a; }
+.byd-media-tile { width: 100%; padding: var(--byd-s1); }
+.byd-media-tile img { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 6px; background: #14161c; }
+.byd-media-use { display: grid; justify-items: start; gap: var(--byd-s3); }
+.byd-media-use label { display: grid; gap: var(--byd-s1); font-size: 12px; color: var(--byd-editor-quiet); }
+.byd-media-use select { min-height: var(--byd-tap); padding: 0 8px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; font: inherit; }
+.byd-media-use p { margin: 0; min-height: 1.4em; font-size: 12px; color: var(--byd-editor-quiet); }
+/* The shape the role is worn in. The role itself — a second action, outlined — is the button
+   language's (L13); what it has no opinion about is the size of the box, and a button with no box
+   of its own falls through to the platform's own pale grey one. The first action in this view is
+   "Uppdatera bordet" in the header, and there is only ever one. */
+.byd-media-use button { min-height: var(--byd-tap); border-radius: 8px; padding: 0 12px; cursor: pointer; }
+.byd-media-use button:disabled { cursor: default; opacity: 0.55; }
+@media (min-width: 1024px) {
+  .byd-media { grid-template-columns: minmax(0, 1fr) 280px; align-items: start; }
+}
 /* The deck's measure, beside the wall where the whole deck can be seen at once (E1). */
 .byd-wall-measure { grid-column: 2; align-self: start; width: 320px; padding: 12px; border-radius: 12px; background: var(--byd-editor-panel-bg); border: 1px solid #2f333d; }
 .byd-wall-measure h2 { margin: 0 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }

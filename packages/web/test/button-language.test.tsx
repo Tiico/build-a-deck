@@ -270,7 +270,7 @@ describe('the guided start', () => {
 // Every mode the editor can be showing at the desk, and the two doors inside them that have to be
 // held open to be seen at all. Named here so that a walk which finds nothing fails instead of
 // agreeing with itself.
-const EDITOR_VIEWS = ['Bord', 'Kortvägg', 'Mall', 'Mall, ikonbiblioteket öppet', 'Regler', 'Symboler', 'Tabell', 'Tabell, ett nytt fält på väg', 'Tabell, filtrerad'] as const
+const EDITOR_VIEWS = ['Bord', 'Kortvägg', 'Mall', 'Mall, ikonbiblioteket öppet', 'Media', 'Regler', 'Symboler', 'Tabell', 'Tabell, ett nytt fält på väg', 'Tabell, filtrerad'] as const
 
 // Whichever mode is open, the blue button that puts the work on the table is the only filled thing
 // in the room.

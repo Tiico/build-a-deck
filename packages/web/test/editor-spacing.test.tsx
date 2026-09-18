@@ -128,6 +128,7 @@ describe(`the edge the editor frames a tab panel with, at ${WIDTH}px`, () => {
       template: { roots: 1, wrong: [] },
       table: { roots: 1, wrong: [] },
       symbols: { roots: 1, wrong: [] },
+      media: { roots: 1, wrong: [] },
       rules: { roots: 1, wrong: [] },
       // One root since #126: the setup is the tab, and the list of running tables stands in its
       // third column rather than as a second panel under it.

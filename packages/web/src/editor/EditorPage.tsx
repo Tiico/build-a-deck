@@ -9,6 +9,8 @@ import { DataTable } from './DataTable.js'
 import { TableMenu, TablesTab } from './TablesTab.js'
 import { SetupEditor } from './SetupEditor.js'
 import { SymbolPanel } from './SymbolPanel.js'
+import { MediaPanel } from './MediaPanel.js'
+import { MarkedProvider } from './marked.js'
 import { HistoryPanel } from './HistoryPanel.js'
 import { RulesPanel } from './RulesPanel.js'
 import { SharePanel, colourOf } from './SharePanel.js'
@@ -384,6 +386,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       />
     ),
     symbols: () => <SymbolPanel doc={doc} client={client} assetBase={http} />,
+    // The pictures the deck is drawn from, in one place (#222). The table's own image strip is
+    // what is in use; this is what the game has.
+    media: () => <MediaPanel doc={doc} assetBase={http} onReplaceRows={(rows) => client.replaceRows(rows)} />,
     rules: () => <RulesPanel doc={doc} client={client} assetBase={http} />,
     // Bord is the home for both the game's board vocabulary and its running tables (#19, C4).
     // One panel and not two stacked (#126): the list of running tables stands in the setup's third
@@ -563,6 +568,9 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           }}
         />
       )}
+      {/* The marking the bulk editor works on stands above the panels (#222, L22): it is made in
+          Tabell and acted on there and in Media, and only one of the two is ever mounted. */}
+      <MarkedProvider>
       <main>
         {(stages ?? MODES).map(([key]) => (
           // One panel per tab, so every tab's `aria-controls` names a panel that exists; only the
@@ -572,6 +580,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
           </div>
         ))}
       </main>
+      </MarkedProvider>
       {stages && (
         <EditorStages stages={stages} stage={here} onSelect={setStage}>
           {saveButton}
