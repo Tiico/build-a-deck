@@ -122,12 +122,7 @@ export const svEditor = {
   'wall.foot.remarks.one': 'En anmärkning',
   'wall.foot.remarks.other': '{n} anmärkningar',
   'wall.measure': 'Bildernas mått',
-  'wall.measure.lead': 'En regel för leken: hur stor andel av ramen motivet fyller och var det står. Filerna rörs aldrig — det här är ett recept som ligger bredvid dem.',
-  'wall.measure.fill': 'Motivets höjd {percent} %',
-  'wall.measure.sits': 'Motivet sitter',
-  'wall.measure.centred': 'Centrerat',
-  'wall.measure.foot': 'På en gemensam marklinje',
-  'wall.measure.start': 'Jämna ut bilderna',
+  'wall.measure.lead': 'Måttet självt står i mallens bildelement, för {fields}. Här står lekens svar på det: filerna som inte kan svara, och kortens egna undantag. Filerna rörs aldrig.',
   'wall.measure.even': 'Alla bilder ritar motivet lika stort: {n} av {of}.',
   'wall.measure.cannot': 'Bilder som inte kan svara',
   'wall.measure.cannot.one': 'En bild kan inte svara på måttet.',
@@ -401,6 +396,7 @@ export const svEditor = {
   // Passa in det som är ritat i filen i stället för filen (E1): bildernas storlek jämnas ut när
   // källfilerna bär olika mycket tomrum runt motivet.
   'canvas.props.trim': 'Passa in motivet',
+  'canvas.props.evenMotifs': 'Alla motiv lika stora i sin ruta',
   'canvas.props.fill': 'Fyllning',
   // Fyllning ur ett fältvärde (L16): växeln, kolumnen, och färgen för det som inte har en egen.
   'canvas.props.fill.byField': 'Färg efter fält',

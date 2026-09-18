@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { CardQuery, Picture, ZoneAction, ZoneBeside } from '@byd/protocol'
-import { RuleDoc, Template, type Row } from '@byd/template'
+import { RuleDoc, Template, liftTemplate, type Row } from '@byd/template'
 import type { Deck } from './faces.js'
 import type { AppliedEdit } from './project-actor.js'
 import type { Role } from './roles.js'
@@ -116,6 +116,16 @@ export const ProjectDoc = z.object({
 export type ProjectDoc = z.infer<typeof ProjectDoc>
 // `owner` is the account that made it (G1); a project from before accounts has none and stays open.
 export type ProjectRecord = ProjectDoc & { id: string; rev: number; owner?: string }
+
+// A stored document read into today's shape (#221, L22, beslut 3). `anchor` is gone from the
+// schema, which now refuses it rather than dropping it quietly, so a project written before the
+// retirement has to come through here — and a store is exactly where a stored document becomes a
+// live one, for the editor, the table's textures and the print PDF alike.
+//
+// Lifted on the way out rather than rewritten in the database, because a project's history is
+// written once and never rewritten (B4): a migration that touched only the newest row would leave
+// every older version of the same project unopenable.
+export const liftDoc = <T>(doc: T): T => liftTemplate(doc)
 // A game as "Mina spel" lists it (G1): what it is called, where its history stands, how many
 // tables have been started from it and when one of them was last played at. `cards` is the
 // handful of its own cards the list fans out on the game's card.
@@ -180,7 +190,7 @@ export class MemoryProjectStore implements ProjectStore {
 
   async load(id: string): Promise<ProjectRecord | null> {
     const rec = this.docs.get(id)
-    return rec ? structuredClone(rec) : null
+    return rec ? liftDoc(structuredClone(rec)) : null
   }
 
   // Every project the account can see: its own, and the ones shared with it.
@@ -260,7 +270,7 @@ export class MemoryProjectStore implements ProjectStore {
     const found = this.history.get(id)?.find((v) => v.rev === rev)
     const owner = this.docs.get(id)?.owner
     if (!found) return null
-    return { ...structuredClone(found.doc), id, rev, ...(owner !== undefined ? { owner } : {}) }
+    return liftDoc({ ...structuredClone(found.doc), id, rev, ...(owner !== undefined ? { owner } : {}) })
   }
 
   async label(id: string, rev: number, label: string | null): Promise<VersionSummary | 'missing'> {

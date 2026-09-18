@@ -7,7 +7,7 @@ import { projectDoc } from './project-doc.js'
 // The deck's measure as the editor has to talk about it (E1): which pictures it governs, and
 // which files cannot answer it. The second is the point — no rule can conjure pixels that were
 // never drawn, and a surface that hides that ships a silver edge on a printed card.
-const withArt = (frame?: { fill: number; anchor: 'centre' | 'foot' }): ProjectDoc => {
+const withArt = (frame?: { fill: number }): ProjectDoc => {
   const base = projectDoc()
   return {
     ...base,
@@ -30,8 +30,8 @@ const cropped: Motif = { w: 160, h: 120, trim: { left: 0, top: 0, right: 0, bott
 
 describe('the pictures the measure governs', () => {
   it('finds each image element the deck draws, with the frame’s own shape', () => {
-    expect(measuredSpots(withArt({ fill: 0.8, anchor: 'centre' }))).toEqual([
-      { face: 'front', id: 'art', field: 'art', ratio: 40 / 30, frame: { fill: 0.8, anchor: 'centre' } },
+    expect(measuredSpots(withArt({ fill: 0.8 }))).toEqual([
+      { face: 'front', id: 'art', field: 'art', ratio: 40 / 30, frame: { fill: 0.8 } },
     ])
   })
 
@@ -41,7 +41,7 @@ describe('the pictures the measure governs', () => {
 })
 
 describe('the files that cannot answer the measure', () => {
-  const doc = withArt({ fill: 0.8, anchor: 'centre' })
+  const doc = withArt({ fill: 0.8 })
   // The wall hands the measurement over by what the cell holds; here that is the file's name.
   const motifs = (of: Record<string, Motif>) => (value: string) => of[value]
 
@@ -56,7 +56,7 @@ describe('the files that cannot answer the measure', () => {
     // the file. The card draws its motif at the whole of the frame instead, and the fix says so.
     expect(found).toEqual([{ cardRef: 'dragon', field: 'art', code: 'short', drawnAt: 1, to: { zoom: 1.25 } }])
     // Zooming in makes the window smaller, so the answer is larger than one and not smaller.
-    expect(zoomThatFits(cropped, { fill: 0.8, anchor: 'centre' }, 40 / 30)).toBe(1.25)
+    expect(zoomThatFits(cropped, { fill: 0.8 }, 40 / 30)).toBe(1.25)
   })
 
   it('says nothing about a card whose picture nobody has measured yet', () => {
@@ -69,7 +69,7 @@ describe('the files that cannot answer the measure', () => {
   })
 
   it('counts a card that has already been put right as put right', () => {
-    const fixed: ProjectDoc = { ...doc, framing: { 'dragon/art': { zoom: zoomThatFits(cropped, { fill: 0.8, anchor: 'centre' }, 40 / 30) } } }
+    const fixed: ProjectDoc = { ...doc, framing: { 'dragon/art': { zoom: zoomThatFits(cropped, { fill: 0.8 }, 40 / 30) } } }
 
     expect(objections(fixed, motifs({ 'dragon.png': cropped }))).toEqual([])
   })

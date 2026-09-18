@@ -56,14 +56,19 @@ export const ImageElement = z.object({
   // asset and left out of the fitting, and the picture is then cropped by the frame as ever.
   // A file nothing has measured is fitted as a file, so a picture is never lost to this.
   trim: z.literal(true).optional(),
-  // The deck's measure (E1): how large the drawing is drawn, and where it stands. `trim` takes
-  // the air off a file, but it cannot say how big the drawing should be — so two files that
-  // carry different amounts of air still draw their motifs at different sizes as soon as their
-  // proportions differ. The measure is what makes them agree, and it lives here rather than on
-  // the project because the frame's shape comes from this element: a template with both a large
-  // illustration and a small portrait has to be able to frame them differently.
+  // The deck's measure (E1): how large the drawing is drawn. `trim` takes the air off a file, but
+  // it cannot say how big the drawing should be — so two files that carry different amounts of
+  // air still draw their motifs at different sizes as soon as their proportions differ. The
+  // measure is what makes them agree, and it lives here rather than on the project because the
+  // frame's shape comes from this element: a template with both a large illustration and a small
+  // portrait has to be able to frame them differently.
   // Like `trim`, it needs a measurement; an unmeasured file is fitted as a file.
-  frame: z.object({ fill: z.number().gt(0).lte(1), anchor: z.enum(['centre', 'foot']) }).optional(),
+  //
+  // It once also said where in its window the drawing stood, and no longer does (#221, L22,
+  // beslut 3): that was the template answering a question about the picture, and a picture
+  // carrying its own crop has answered it. Refused rather than ignored, so a stored template can
+  // only reach this schema through `liftTemplate` and nothing drops the field quietly.
+  frame: z.strictObject({ fill: z.number().gt(0).lte(1) }).optional(),
 })
 export const IconsElement = z.object({
   kind: z.literal('icons'),

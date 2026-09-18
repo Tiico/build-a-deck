@@ -4,7 +4,7 @@ import type { Element, FaceTemplate, ProjectDoc, Row } from './types.js'
 import { CardPreview } from './CardPreview.js'
 import { arrowMove, fitScale, gridStep, HANDLES, iconSized, movedTo, newElement, resizedTo, snapped, STAGE_SCALE, TOOLS, ZOOM_MAX, ZOOM_MIN, ZOOM_NOTCH, ZOOM_STEP, zoomPercent, zoomTo, type Box, type ElementKind, type Grab, type Guides, type Handle } from './canvas.js'
 import { useGesture } from './gesture.js'
-import { elementsFor, pathFor, shapeTakes, tileMarkup, type Motif, type Paint, type Pattern, type Shadow } from '@byd/template'
+import { DEFAULT_FILL, elementsFor, pathFor, shapeTakes, tileMarkup, type Motif, type Paint, type Pattern, type Shadow } from '@byd/template'
 import { galleryIdOf, glyphGeometry, newPattern, PATTERNS, shadowIdOf, shapeChoice, SHADOWS, SHAPE_GALLERY, type Geometry, type Shape } from './shapes.js'
 import { BACKS } from './backs.js'
 import { previewIcons } from './assets.js'
@@ -1382,6 +1382,17 @@ function Properties({ el, fields, taken, fonts, icons, valuesIn, onPatch, onAddF
           <label className="byd-props-switch">
             <input type="checkbox" checked={el.trim === true} onChange={(e) => onPatch({ trim: e.target.checked ? true : undefined })} />
             {t('canvas.props.trim')}
+          </label>
+          {/* The deck's measure (E1), which is the half of «Bildernas mått» that survives (#221,
+              L22, beslut 3). Taking the air off a file still cannot say how big the drawing
+              should be drawn, so two files whose proportions differ draw their motifs at
+              different sizes; this is what makes them agree. It stands here rather than on the
+              card wall because it is a share of *this* frame, and the frame is the template's —
+              which part of a picture is the picture is the picture's own question, answered once
+              in the library. Switching it off leaves the picture fitted as it was. */}
+          <label className="byd-props-switch">
+            <input type="checkbox" checked={el.frame !== undefined} onChange={(e) => onPatch({ frame: e.target.checked ? { fill: DEFAULT_FILL } : undefined })} />
+            {t('canvas.props.evenMotifs')}
           </label>
         </>
       )}

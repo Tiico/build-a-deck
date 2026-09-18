@@ -9,17 +9,18 @@ import { projectDoc } from './project-doc.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
-// The deck's measure on the wall (E1, variant C): the measure itself, the deck as it becomes, and
-// the list of files that cannot answer. The wall is where the whole deck is visible at once, so it
-// is the only place uniformity can actually be judged — and the checks report (E5) already lives
-// here, which is the same kind of news.
+// The deck's answer to the measure, on the wall (E1, variant C): the deck as it becomes, the list
+// of files that cannot answer, and each card's own exception. The wall is where the whole deck is
+// visible at once, so it is the only place uniformity can actually be judged — and the checks
+// report (E5) already lives here, which is the same kind of news. The measure itself is set in the
+// template's image element, which owns the frame it is a share of (#221).
 // A real content hash: `isAssetRef` is what decides whether a cell holds a picture at all.
 const HASH = 'a'.repeat(64)
 const ART = `http://test.local/assets/${HASH}`
 const roomy: Motif = { w: 200, h: 100, trim: { left: 60, top: 10, right: 60, bottom: 10 } }
 const cropped: Motif = { w: 160, h: 120, trim: { left: 0, top: 0, right: 0, bottom: 0 } }
 
-const deck = (frame?: { fill: number; anchor: 'centre' | 'foot' }): ProjectDoc => {
+const deck = (frame?: { fill: number }): ProjectDoc => {
   const base = projectDoc()
   return {
     ...base,
@@ -37,46 +38,16 @@ const deck = (frame?: { fill: number; anchor: 'centre' | 'foot' }): ProjectDoc =
 }
 
 const mount = (doc: ProjectDoc, motifs: Record<string, Motif> = { [ART]: roomy }) => {
-  const onMeasure = vi.fn()
   const onFraming = vi.fn()
   render(
-    <DeckWall
-      doc={doc}
-      face="front"
-      selectedRow={null}
-      onSelectRow={() => undefined}
-      onSelectElement={() => undefined}
-      assetBase="http://test.local"
-      motifs={motifs}
-      onMeasure={onMeasure}
-      onFraming={onFraming}
-    />,
+    <DeckWall doc={doc} face="front" selectedRow={null} onSelectRow={() => undefined} onSelectElement={() => undefined} assetBase="http://test.local" motifs={motifs} onFraming={onFraming} />,
   )
-  return { onMeasure, onFraming }
+  return { onFraming }
 }
 
-describe('the deck’s measure on the wall', () => {
-  it('offers a measure for each picture area the template draws', () => {
-    const { onMeasure } = mount(deck({ fill: 0.8, anchor: 'centre' }))
-    const panel = screen.getByRole('group', { name: 'Bildernas mått' })
-
-    fireEvent.change(within(panel).getByLabelText(/Motivets höjd/), { target: { value: '0.6' } })
-    expect(onMeasure).toHaveBeenCalledWith('front', 'art', { fill: 0.6, anchor: 'centre' })
-
-    fireEvent.click(within(panel).getByRole('button', { name: 'På en gemensam marklinje' }))
-    expect(onMeasure).toHaveBeenCalledWith('front', 'art', { fill: 0.8, anchor: 'foot' })
-  })
-
-  it('says nothing about a measure the template has not asked for, but offers to give one', () => {
-    const { onMeasure } = mount(deck())
-    const panel = screen.getByRole('group', { name: 'Bildernas mått' })
-
-    fireEvent.click(within(panel).getByRole('button', { name: 'Jämna ut bilderna' }))
-    expect(onMeasure).toHaveBeenCalledWith('front', 'art', { fill: 0.8, anchor: 'centre' })
-  })
-
+describe('the deck’s answer to the measure, on the wall', () => {
   it('lists the files that cannot answer, and puts one right in a single press', () => {
-    const { onFraming } = mount(deck({ fill: 0.8, anchor: 'centre' }), { [ART]: cropped })
+    const { onFraming } = mount(deck({ fill: 0.8 }), { [ART]: cropped })
     const list = screen.getByRole('list', { name: 'Bilder som inte kan svara' })
 
     // Every card in the deck uses the one cropped file, so every card objects.
@@ -86,7 +57,7 @@ describe('the deck’s measure on the wall', () => {
   })
 
   it('says the deck is uniform when every file can answer', () => {
-    mount(deck({ fill: 0.8, anchor: 'centre' }))
+    mount(deck({ fill: 0.8 }))
 
     expect(screen.queryByRole('list', { name: 'Bilder som inte kan svara' })).toBeNull()
     expect(screen.getByText(/3 av 3/)).toBeTruthy()
@@ -97,7 +68,7 @@ describe('the deck’s measure on the wall', () => {
 // at, because the fix is nearly always to the rule and not to the single picture.
 describe('the source, opened', () => {
   it('opens under the deck and shows the file whole with the window lit on it', () => {
-    mount(deck({ fill: 0.8, anchor: 'centre' }))
+    mount(deck({ fill: 0.8 }))
 
     fireEvent.click(within(screen.getByRole('group', { name: 'Bildernas mått' })).getAllByRole('button', { name: /Öppna källan/ })[0]!)
     const drawer = screen.getByRole('group', { name: /Källan/ })
@@ -109,7 +80,7 @@ describe('the source, opened', () => {
   })
 
   it('writes this card’s own departure, and gives the way back to the measure', () => {
-    const { onFraming } = mount(deck({ fill: 0.8, anchor: 'centre' }))
+    const { onFraming } = mount(deck({ fill: 0.8 }))
     fireEvent.click(within(screen.getByRole('group', { name: 'Bildernas mått' })).getAllByRole('button', { name: /Öppna källan/ })[0]!)
     const drawer = screen.getByRole('group', { name: /Källan/ })
 

@@ -12,7 +12,7 @@ import { A5, bookletOf } from './booklet.js'
 import { contentHash, type ObjectStore, type RenderKind, type RenderStore } from '@byd/render/queue'
 import type { Subscriber, TableHost } from './actor.js'
 import type { Deck, LogStore, SessionRecord } from './store.js'
-import { ProjectDoc, deckFromProject, type ProjectCredit, type ProjectRecord, type ProjectStore } from './projects.js'
+import { ProjectDoc, deckFromProject, liftDoc, type ProjectCredit, type ProjectRecord, type ProjectStore } from './projects.js'
 import { setupFromProject } from './setup.js'
 import { changeOf, diffProjects, type DocDiff, type VersionChange } from './diff.js'
 import { ProjectHost, type EditorMessage } from './project-actor.js'
@@ -829,7 +829,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, 401, { error: 'log in first' })
       return true
     }
-    const body = z.object({ id: z.string().min(1).optional() }).and(ProjectDoc).parse(JSON.parse(await readBody(req)))
+    const body = z.object({ id: z.string().min(1).optional() }).and(ProjectDoc).parse(liftDoc(JSON.parse(await readBody(req))))
     const { id: wanted, ...doc } = body
     validateSetup(setupFromProject(doc), opts.registry)
     const rec = await projects.create(wanted ?? randomUUID(), doc, account?.id)
@@ -849,7 +849,7 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       json(res, gate.status, { error: gate.error })
       return true
     }
-    const body = z.object({ rev: z.number().int() }).and(ProjectDoc).parse(JSON.parse(await readBody(req)))
+    const body = z.object({ rev: z.number().int() }).and(ProjectDoc).parse(liftDoc(JSON.parse(await readBody(req))))
     const { rev, ...doc } = body
     validateSetup(setupFromProject(doc), opts.registry)
     const result = await projects.replace(decodeURIComponent(one[1] ?? ''), rev, doc)

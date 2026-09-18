@@ -508,7 +508,7 @@ describe('patterned fills (L17)', () => {
 // in millimetres, never the CSS that put it there.
 describe('compile — a picture framed by the deck’s measure (E1)', () => {
   const frame = { kind: 'image' as const, id: 'art', x: 5, y: 4, w: 40, h: 30, bind: { field: 'art' } }
-  const measure = { fill: 0.8, anchor: 'centre' as const }
+  const measure = { fill: 0.8 }
 
   // Where the drawing is drawn on the card, in millimetres of the card, read back off what the
   // compiler emitted. The element sits at 5,4 mm, so the numbers are relative to its own corner.
@@ -542,17 +542,6 @@ describe('compile — a picture framed by the deck’s measure (E1)', () => {
     expect(at(plain, 'a.png', face)).toEqual({ x: 8, y: 3, w: 24, h: 24 })
     expect(at(doubled, 'b.png', face)).toEqual({ x: 8, y: 3, w: 24, h: 24 })
     expect(at(airy, 'c.png', face)).toEqual({ x: 8, y: 3, w: 24, h: 24 })
-  })
-
-  it('stands the drawings on one line when the measure asks for a foot', () => {
-    const face: FaceTemplate = { base: [{ ...frame, frame: { fill: 0.8, anchor: 'foot' } }], variants: {} }
-    const low = { w: 200, h: 140, trim: { left: 60, top: 50, right: 60, bottom: 10 } }
-
-    const [a, b] = [at(plain, 'a.png', face), at(low, 'd.png', face)]
-
-    // Both drawings end at the same millimetre, which is what a deck of creatures needs.
-    expect(a.y + a.h).toEqual(b.y + b.h)
-    expect(a.y + a.h).toEqual(27)
   })
 
   it('takes one card’s own departure from the measure, and only that card’s', () => {

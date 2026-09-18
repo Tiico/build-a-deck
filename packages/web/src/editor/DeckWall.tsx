@@ -29,10 +29,9 @@ export type DeckWallProps = {
   assetBase?: string | undefined
   // What is drawn inside each picture (E1), keyed by the URL a resolved row carries.
   motifs?: Record<string, Motif> | undefined
-  // The deck's measure is the template's (E1), so setting it is a change to an image element;
-  // one card's departure from it is the deck's. The wall does neither itself — it is where the
-  // whole deck can be seen at once, which is the only place uniformity can be judged.
-  onMeasure?(face: string, id: string, frame: Frame): void
+  // One card's departure from the deck's measure (E1) is the deck's own, so the wall is where it
+  // is written: the wall is where the whole deck can be seen at once, which is the only place
+  // uniformity can be judged. The measure itself is the template's and is set there (#221).
   onFraming?(cardRef: string, field: string, framing: Nudge | null): void
   // One edit that mends a whole check (#233). The wall works out what to change; applying it is
   // the project's, like every other change the wall judges.
@@ -68,7 +67,7 @@ type Box = 'eyes' | 'guides' | 'grouping' | 'checks'
 // The deck as a wall (C as the home view): every row as a card, copies and faults on each, the
 // whole deck visible at once — a balance change on forty cards is seen as one thing. Beside it
 // the physical checks (E5), gathered by kind, and the eyes to read the deck with.
-export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onMeasure, onFraming, onFixChecks }: DeckWallProps) {
+export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement, assetBase, motifs, onFraming, onFixChecks }: DeckWallProps) {
   const t = useT()
   // What was mended is said out loud: an edit that changes the template under a deck of forty
   // cards and says nothing is the silence #32 forbids.
@@ -443,7 +442,7 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
               </section>
             ))
           )}
-          {onMeasure && onFraming && <Measure doc={doc} assetBase={assetBase} motifs={motifs} onMeasure={onMeasure} onFraming={onFraming} />}
+          {onFraming && <Measure doc={doc} assetBase={assetBase} motifs={motifs} onFraming={onFraming} />}
         </div>
       </div>
       {/* What the wall adds up to, under it rather than over it (#130): the size it is drawn at,
@@ -558,25 +557,22 @@ function EyeFilters() {
   )
 }
 
-// The deck's measure, and the files that cannot answer it (E1, prototype variant C).
+// The deck's answer to the measure (E1, prototype variant C).
 //
 // Framing is not a decision per card: nobody frames forty pictures by hand, and what a designer
 // actually does is say how the deck should look and then deal with the handful of files that
-// cannot get there. So the measure is one control pair per picture area, and the work is the list
-// under it — which is meant to empty.
-const DEFAULT_MEASURE: Frame = { fill: 0.8, anchor: 'centre' }
-
+// cannot get there. The measure itself moved into the template's image element, which owns the
+// frame it is a share of (#221, L22, beslut 3); what is left here is the work it makes — the list
+// of files that cannot answer, which is meant to empty, and each card's own exception to it.
 function Measure({
   doc,
   assetBase,
   motifs,
-  onMeasure,
   onFraming,
 }: {
   doc: ProjectDoc
   assetBase: string | undefined
   motifs: Record<string, Motif> | undefined
-  onMeasure(face: string, id: string, frame: Frame): void
   onFraming(cardRef: string, field: string, framing: Nudge | null): void
 }) {
   const t = useT()
@@ -591,81 +587,43 @@ function Measure({
   // How many cards draw their motif at the size the measure asked for. A card that had to be put
   // right is still uniform — it simply says, out loud, the size its file forced.
   const even = doc.rows.length - new Set(cannot.map((o) => o.cardRef)).size
-  if (spots.length === 0) return null
+  // A wall with no measure anywhere has nothing to say about one: the switch that gives a picture
+  // area its measure stands in the template, beside the frame the measure is a share of.
+  if (measured.length === 0) return null
   return (
     <section className="byd-wall-measure" role="group" aria-label={t('wall.measure')}>
       <h2>{t('wall.measure')}</h2>
-      <p className="byd-wall-lead">{t('wall.measure.lead')}</p>
-      {spots.map((spot) => (
-        <div key={`${spot.face}-${spot.id}`} className="byd-wall-measure-spot" data-spot={spot.id}>
-          <b>{spot.field}</b>
-          {spot.frame ? (
-            <>
-              <label>
-                {t('wall.measure.fill', { percent: Math.round(spot.frame.fill * 100) })}
-                <input
-                  type="range"
-                  min={0.3}
-                  max={1}
-                  step={0.01}
-                  value={spot.frame.fill}
-                  onChange={(e) => onMeasure(spot.face, spot.id, { fill: Number(e.target.value), anchor: spot.frame?.anchor ?? 'centre' })}
-                />
-              </label>
-              <div role="group" aria-label={t('wall.measure.sits')}>
-                {(['centre', 'foot'] as const).map((anchor) => (
-                  <button
-                    key={anchor}
-                    type="button"
-                    className="byd-choice"
-                    aria-pressed={spot.frame?.anchor === anchor}
-                    onClick={() => onMeasure(spot.face, spot.id, { fill: spot.frame?.fill ?? DEFAULT_MEASURE.fill, anchor })}
-                  >
-                    {t(anchor === 'centre' ? 'wall.measure.centred' : 'wall.measure.foot')}
-                  </button>
-                ))}
-              </div>
-            </>
-          ) : (
-            <button type="button" className="byd-wall-measure-start" onClick={() => onMeasure(spot.face, spot.id, DEFAULT_MEASURE)}>
-              {t('wall.measure.start')}
-            </button>
-          )}
-        </div>
-      ))}
-      {measured.length > 0 &&
-        (cannot.length === 0 ? (
-          <p className="byd-wall-ok">{t('wall.measure.even', { n: even, of: doc.rows.length })}</p>
-        ) : (
-          <>
-            <p className="byd-wall-lead">{t(cannot.length === 1 ? 'wall.measure.cannot.one' : 'wall.measure.cannot.other', { n: cannot.length })}</p>
-            <ul aria-label={t('wall.measure.cannot')}>
-              {cannot.map((o) => (
-                <li key={`${o.cardRef}/${o.field}`} data-card-ref={o.cardRef}>
-                  <b>{o.cardRef}</b>
-                  <span>{t('wall.measure.short')}</span>
-                  <button type="button" onClick={() => onFraming(o.cardRef, o.field, o.to)}>
-                    {t('wall.measure.fix', { percent: Math.round(o.drawnAt * 100) })}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </>
-        ))}
-      {measured.length > 0 && (
-        <div className="byd-wall-measure-open">
-          {doc.rows.map((row) => {
-            const spot = measured[0]
-            if (!spot) return null
-            const open = openSource?.cardRef === row.id && openSource.field === spot.field
-            return (
-              <button key={row.id} type="button" aria-pressed={open} onClick={() => setOpenSource(open ? null : { cardRef: row.id, field: spot.field })}>
-                {t('wall.measure.open', { cardRef: row.id })}
-              </button>
-            )
-          })}
-        </div>
+      <p className="byd-wall-lead">{t('wall.measure.lead', { fields: [...new Set(measured.map((s) => s.field))].join(', ') })}</p>
+      {cannot.length === 0 ? (
+        <p className="byd-wall-ok">{t('wall.measure.even', { n: even, of: doc.rows.length })}</p>
+      ) : (
+        <>
+          <p className="byd-wall-lead">{t(cannot.length === 1 ? 'wall.measure.cannot.one' : 'wall.measure.cannot.other', { n: cannot.length })}</p>
+          <ul aria-label={t('wall.measure.cannot')}>
+            {cannot.map((o) => (
+              <li key={`${o.cardRef}/${o.field}`} data-card-ref={o.cardRef}>
+                <b>{o.cardRef}</b>
+                <span>{t('wall.measure.short')}</span>
+                <button type="button" onClick={() => onFraming(o.cardRef, o.field, o.to)}>
+                  {t('wall.measure.fix', { percent: Math.round(o.drawnAt * 100) })}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
       )}
+      <div className="byd-wall-measure-open">
+        {doc.rows.map((row) => {
+          const spot = measured[0]
+          if (!spot) return null
+          const open = openSource?.cardRef === row.id && openSource.field === spot.field
+          return (
+            <button key={row.id} type="button" aria-pressed={open} onClick={() => setOpenSource(open ? null : { cardRef: row.id, field: spot.field })}>
+              {t('wall.measure.open', { cardRef: row.id })}
+            </button>
+          )
+        })}
+      </div>
       {openSource &&
         (() => {
           const spot = measured.find((m) => m.field === openSource.field)
