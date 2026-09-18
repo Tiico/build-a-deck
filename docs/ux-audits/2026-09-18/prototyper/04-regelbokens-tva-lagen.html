@@ -7,17 +7,8 @@
 <style>
   main { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
 
-  /* The prototype's own row. Never part of the proposal: it carries the measurements, the
-     spoken line and the pretend reload, and it is amber for the same reason `.note` is. */
-  .protorad { flex: none; display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; padding: var(--s2) var(--s4); background: #2a2417; border-bottom: 1px solid #4a4230; color: #ffd98a; font-size: 11px; line-height: 1.5; }
-  .protorad b { color: #ffe9b8; }
-  .protorad p { margin: 0; max-width: 62ch; }
-  .protorad .matt { display: flex; gap: var(--s3); margin-left: auto; font-variant-numeric: tabular-nums; }
-  .protorad .matt span u { text-decoration: none; color: #ffe9b8; font-weight: 700; }
-  .protorad button { min-height: 28px; border: 1px solid #4a4230; border-radius: 7px; padding: 0 10px; background: #1f1b12; color: #ffd98a; font: inherit; cursor: pointer; }
-  .protorad button:hover { border-color: #ffd98a; }
-  .protorad .sagt { flex: 1 1 100%; color: #c8b98d; }
-  .protorad .sagt em { font-style: normal; color: #ffe9b8; }
+  /* The prototype's own row — `.protorad` — now lives in `proto.css`, where the three
+     prototypes written after this one reach it too. */
 
   /* --- regelfliken, som den står i dag ----------------------------------- */
   .flik { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: var(--s3); padding: var(--gutter); }
@@ -129,7 +120,6 @@
      i dag, och prototypen ritar det och inte något snyggare. */
   .filt .regelknapp { position: absolute; right: 16px; top: 16px; border: 1px solid #3b4358; border-radius: 10px; padding: 8px 14px; background: rgba(11,13,18,.9); color: #e6ecfa; font: 700 13px system-ui, sans-serif; }
 
-  .offscreen { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   /* Startmätningen behöver båda böckerna ritade en gång, innan varianten gömmer den ena. */
   .flik[data-matning] .lasyta, .flik[data-matning] .bordyta { display: flex !important; }
 </style>
