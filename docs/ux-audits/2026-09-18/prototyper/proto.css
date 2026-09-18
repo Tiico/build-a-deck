@@ -84,6 +84,26 @@ body {
 }
 .note b { display: block; color: #ffe9b8; }
 
+/* --- prototypens egen rad --------------------------------------------- */
+/* Never part of a proposal: it carries the measurements, the spoken line and whatever the
+   prototype needs to pretend, and it is amber for the same reason `.note` is. It was written
+   for the fourth prototype and moved here when the fifth, sixth and seventh all wanted it. */
+.protorad { flex: none; display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; padding: var(--s2) var(--s4); background: #2a2417; border-bottom: 1px solid #4a4230; color: #ffd98a; font-size: 11px; line-height: 1.5; }
+.protorad b { color: #ffe9b8; }
+.protorad p { margin: 0; max-width: 62ch; }
+.protorad .matt { display: flex; gap: var(--s3); margin-left: auto; font-variant-numeric: tabular-nums; }
+.protorad .matt span u { text-decoration: none; color: #ffe9b8; font-weight: 700; }
+.protorad button { min-height: 28px; border: 1px solid #4a4230; border-radius: 7px; padding: 0 10px; background: #1f1b12; color: #ffd98a; font: inherit; cursor: pointer; }
+.protorad button:hover { border-color: #ffd98a; }
+.protorad button:focus-visible { outline: 2px solid #ffd98a; outline-offset: 2px; }
+/* Egen rad: `.protorad p`s 62ch skulle annars klämma in den upplästa meningen bredvid
+   mätningarna, eftersom en maxbredd också kapar det flexraden räknar med. */
+.protorad .sagt { flex: 1 1 100%; width: 100%; max-width: none; color: #c8b98d; }
+.protorad .sagt em { font-style: normal; color: #ffe9b8; }
+
+/* What only a screen reader is meant to get. */
+.offscreen { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
 /* Nu / Förslag toggle */
 .switch { display: flex; gap: 4px; background: var(--sunk); border-radius: 8px; padding: 3px; }
 .switch button { min-height: 34px; border: 0; border-radius: 6px; padding: 0 12px; background: transparent; color: var(--quiet-2); font: inherit; font-weight: 700; cursor: pointer; }

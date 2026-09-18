@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 5 — Startsidans kort</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  .work { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0,1fr) 380px; gap: var(--s3); padding: var(--s4); }
+
+  /* Startsidans egen grund. Måtten är `account.css`:s egna — 920 px, 220 px-rutor, 14 px mellan
+     dem — så förslaget läses vid sidans riktiga bredd och inte vid en ny. */
+  .konto { min-width: 0; min-height: 0; overflow: auto; scrollbar-width: thin; border-radius: 14px; background: #0f1117; padding: 28px 20px; }
+  .hem { width: min(920px, 100%); margin: 0 auto; display: grid; gap: 18px; }
+  .hem > header { display: flex; align-items: baseline; justify-content: space-between; }
+  .hem h1 { margin: 0; font-size: 28px; color: #fff; }
+  .hem .tyst { color: #9aa3b8; font-size: 14px; line-height: 1.5; margin: 0; }
+  .rutnat { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+
+  .spel { position: relative; background: #171a23; border: 1px solid #262a35; border-radius: 16px; color: #fff; }
+  .spel > a { display: grid; gap: 8px; padding: 16px; color: #fff; text-decoration: none; }
+  .spel > a:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; border-radius: 16px; }
+  .spel strong { font-size: 17px; }
+  .spel .fakta { color: #9aa3b8; font-size: 13px; }
+  .spel .mer { position: absolute; right: 4px; top: 4px; display: inline-grid; place-items: center; min-width: var(--tap); min-height: var(--tap); border: 0; border-radius: 8px; background: transparent; color: #9aa3b8; font-size: 16px; cursor: pointer; }
+  .spel .mer:hover { background: #262a35; color: #fff; }
+  /* Rutan står lika hög som de andra i raden och inte högre: dagens `min-height: 150px` var
+     solfjäderns mått, och med ett kort bredvid namnet (A) blir den raden högre av inbjudan
+     ensam. Höjden kommer från raden i stället. */
+  .spel[data-nytt] { display: grid; }
+  .spel[data-nytt] > a { border: 1px dashed #2c3242; border-radius: 16px; place-items: center; align-content: center; color: #9aa3b8; }
+
+  /* A: kortet står bredvid namnet. B: kortet står över namnet, där solfjädern står i dag. */
+  .rutnat[data-form='a'] .spel > a:not([data-nytt-lank]) { grid-template-columns: auto minmax(0,1fr); align-items: center; column-gap: 12px; }
+  .rutnat[data-form='a'] .spel .yta { grid-row: 1 / span 2; }
+  .rutnat[data-form='a'] .spel strong { align-self: end; }
+  .rutnat[data-form='a'] .spel .fakta { align-self: start; }
+
+  /* Kortet. `--kh` är höjden och allt inuti mäts i em av den, så samma ritning står lika
+     i listan som på kortväggen. I appen är det `CardPreview` som ritar, en enda gång. */
+  .kort {
+    flex: none; height: var(--kh); aspect-ratio: 63 / 88; box-sizing: border-box;
+    border-radius: .5em; border: 1px solid #0d0f14; box-shadow: 0 2px 6px rgba(0,0,0,.5);
+    background: var(--papper, #f3ecdc); color: #1b1f2a; overflow: hidden;
+    font: 700 calc(var(--kh) / 16) system-ui, sans-serif;
+    display: grid; grid-template-rows: auto 1fr auto; gap: .45em; padding: .6em;
+  }
+  .kort .titel { font-size: 1.05em; line-height: 1.1; overflow: hidden; overflow-wrap: anywhere; hyphens: auto; }
+  .kort .konst { border-radius: .3em; background: var(--konst); min-height: 0; }
+  .kort .brod { display: grid; gap: .3em; align-content: start; }
+  .kort .brod i { display: block; height: .34em; border-radius: .2em; background: #b9ad95; }
+  .kort .brod i:last-child { width: 62%; }
+  .kort .rad { display: flex; align-items: center; justify-content: space-between; font-size: .78em; font-weight: 800; color: var(--dekor); }
+  .kort .rad b { display: grid; place-items: center; width: 1.5em; height: 1.5em; border-radius: 50%; background: var(--dekor); color: var(--papper, #f3ecdc); }
+  /* En mall som lägger konsten överst och en som låter den fylla kortet: listan visar spelets
+     eget kort och därför också spelets egen mall. */
+  .kort[data-mall='helbild'] { grid-template-rows: 1fr auto; padding: 0; gap: 0; }
+  .kort[data-mall='helbild'] .konst { border-radius: 0; }
+  .kort[data-mall='helbild'] .brod { display: none; }
+  .kort[data-mall='helbild'] .fot { padding: .5em .6em; background: var(--papper); display: grid; gap: .3em; }
+
+  /* Platsen kortet har innan kortet finns. Samma yta i alla tre lägena, så rutnätet inte
+     hoppar när svaret landar. */
+  .yta { display: grid; }
+  .yta > * { grid-area: 1 / 1; }
+  .platshallare { height: var(--kh); aspect-ratio: 63 / 88; border-radius: .5em; border: 1px solid #262a35; background: linear-gradient(100deg, #1b1f2a 30%, #232836 50%, #1b1f2a 70%) 0 0 / 300% 100%; animation: drar 1.5s linear infinite; }
+  @keyframes drar { to { background-position: -150% 0; } }
+  @media (prefers-reduced-motion: reduce) { .platshallare { animation: none; } }
+  .inget { display: grid; place-items: center; height: var(--kh); aspect-ratio: 63 / 88; box-sizing: border-box; padding: 6px; border: 1px dashed #2c3242; border-radius: .5em; color: #9aa3b8; font-size: 11px; text-align: center; line-height: 1.35; }
+
+  /* Solfjädern som den står i dag (G1, 2026-09-14): fyra kort, jämnt spridda över leken. */
+  .fjader { display: flex; gap: 6px; height: 70px; align-items: flex-end; }
+  .fjader i { box-sizing: border-box; width: 40px; height: 56px; border-radius: 5px; padding: 5px 4px; background: hsl(var(--hue, 0) 40% 86%); box-shadow: 0 2px 4px rgba(0,0,0,.5); font-style: normal; font-size: 8px; font-weight: 700; line-height: 1.2; color: #1b1f2a; overflow: hidden; overflow-wrap: anywhere; hyphens: auto; }
+  .fjader[data-tom] { width: fit-content; height: 56px; padding: 0 14px; border: 1px dashed #2c3242; border-radius: 8px; display: grid; place-items: center; color: #9aa3b8; font-size: 12px; }
+
+  /* Sidopanelen: vad som prövas, som i de fyra föregående. */
+  .panel { min-height: 0; min-width: 0; display: flex; flex-direction: column; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); }
+  .panel > header { flex: none; display: flex; align-items: baseline; gap: var(--s2); padding: var(--s3) var(--s4) var(--s2); }
+  .panel > header h2 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .panel > header .rule { flex: 1; }
+  .panel > .scroll { padding: 0 var(--s4) var(--s4); }
+  .om { display: grid; gap: var(--s3); color: var(--quiet-2); font-size: 12px; line-height: 1.6; }
+  .om p, .om ul { margin: 0; }
+  .om ul { padding-left: 18px; display: grid; gap: 6px; }
+  .om strong { color: var(--ink); }
+  .om .tal { display: flex; gap: var(--s4); flex-wrap: wrap; padding: var(--s3); border-radius: 10px; background: var(--sunk); border: 1px solid var(--line); }
+  .om .tal div { display: grid; gap: 2px; }
+  .om .tal b { color: #fff; font-size: 17px; font-variant-numeric: tabular-nums; }
+  .om .tal span { color: var(--quiet); font-size: 11px; }
+  .om .prov { display: flex; align-items: center; gap: var(--s3); padding: var(--s3); border-radius: 10px; background: var(--sunk); border: 1px solid var(--line); }
+  .om .prov p { color: var(--quiet); }
+  .om .fraga { padding: var(--s3); border-radius: 10px; background: #1b2231; border: 1px solid #2f3a55; }
+  .om .fraga ol { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 6px; }
+
+  /* Startsidans andra rutnät (G1): bord man spelat vid. Det rörs inte av beslutet och står med
+     för att sidan ska vara sidan och inte bara den rad som prövas. */
+  .hem h2 { margin: 12px 0 0; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; }
+  .spelat { padding: 16px; display: grid; gap: 8px; cursor: default; }
+  .spelat .topp { display: flex; justify-content: space-between; align-items: center; }
+  .spelat .plats { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--plats); color: #fff; font-style: normal; font-weight: 800; font-size: 12px; }
+  .spelat .fakta { color: #cfd5e3; font-size: 13px; }
+  .spelat a { color: #7dd3a0; font-weight: 700; text-decoration: none; }
+</style>
+</head>
+<body>
+<div class="shell">
+<header>
+  <a class="home" href="#">build-your-deck</a>
+  <span class="spacer"></span>
+  <div class="switch" role="group" aria-label="Variant">
+    <button type="button" data-form="nu" aria-pressed="false">Nu · solfjädern</button>
+    <button type="button" data-form="a" aria-pressed="true">A · kortet bredvid</button>
+    <button type="button" data-form="b" aria-pressed="false">B · kortet över</button>
+  </div>
+  <span class="who">P</span>
+</header>
+
+<main>
+  <div class="protorad">
+    <p id="omform"></p>
+    <div class="matt">
+      <span>rutans höjd <u id="m-hojd">—</u></span>
+      <span>rutor per rad <u id="m-rad">—</u></span>
+      <span>första skärmen väntar på <u id="m-svar">—</u></span>
+      <span>kort landade <u id="m-landat">—</u></span>
+    </div>
+    <button type="button" id="ladda">Låtsas ladda om startsidan</button>
+    <p class="sagt">Sagt för skärmläsaren: <em id="spegel">—</em></p>
+  </div>
+
+  <div class="work">
+    <section class="konto">
+      <div class="hem">
+        <header>
+          <h1>Mina spel</h1>
+          <button type="button" class="btn quiet">Logga ut</button>
+        </header>
+        <div class="rutnat" id="rutnat" data-form="a"></div>
+
+        <h2>Bord du spelat vid</h2>
+        <div class="rutnat">
+          <div class="spel spelat">
+            <div class="topp"><i class="plats" style="--plats:#2f6fd0">2</i><strong>Kryptan</strong></div>
+            <span class="fakta">du spelade som Nina · pågår</span>
+            <a href="#">Tillbaka till bordet</a>
+          </div>
+          <div class="spel spelat">
+            <div class="topp"><i class="plats" style="--plats:#7d8597">👁</i><strong>Vinterspelet</strong></div>
+            <span class="fakta">du såg på · avslutat 4 sep</span>
+            <a href="#">Svara på enkäten</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <header><h2>Vad som prövas</h2><span class="rule"></span></header>
+      <div class="scroll">
+        <div class="om">
+          <div class="tal">
+            <div><b id="t-kod">—</b><span>kodvägar som ritar ett kort</span></div>
+            <div><b id="t-kort">—</b><span>kort per spel i listan</span></div>
+          </div>
+
+          <p><strong>Beslutet</strong> är ett kort ur spelet, alltid detsamma: första kortet i leken,
+          ritat av samma <code>CardPreview</code> som kortväggen. Ingen andra kodväg ritar ett kort.</p>
+
+          <p><strong>Nu</strong> är solfjädern (G1, 2026-09-14): fyra av spelets kort, jämnt spridda
+          över leken, var och en som en färgad rektangel med sin titel i. Den ritas av startsidans
+          egen <code>Fan</code> och inte av mallen — den visar lekens bredd men inte spelets utseende.</p>
+
+          <p><strong>A</strong> lägger kortet till vänster om namnet. Rutan blir låg, rutnätet tätt,
+          och kortet är litet men helt.
+          <strong>B</strong> lägger kortet där solfjädern står i dag, över namnet. Kortet blir större
+          och mallen syns; rutan blir högre och färre spel får plats innan man rullar.</p>
+
+          <div class="prov">
+            <div id="provkort" aria-hidden="true"></div>
+            <p>Samma ritning som i listan, här i kortväggens storlek. Skalan är det enda som skiljer —
+            det är vad «samma <code>CardPreview</code>» ska betyda i praktiken.</p>
+          </div>
+
+          <p><strong>Tomläget.</strong> Ett spel utan rader eller utan mall har inget kort att visa.
+          Rutan behåller kortets plats och säger vad som saknas, i stället för att lämna ett hål:
+          rutnätet står jämnt och raden ser avsiktlig ut. Det är samma svar som solfjädern redan ger
+          («inga kort än»), och «Tomt utkast» i listan visar det.</p>
+
+          <p><strong>Första skärmen väntar inte.</strong> Listan ritas på ett svar — namn, version,
+          bord — och varje kort landar för sig när spelets mall, typsnitt och bild är hämtade.
+          Platsen kortet ska ha är reserverad från början, så ingenting hoppar när svaret kommer.
+          Tryck på <em>Låtsas ladda om</em> och se ordningen: listan först, korten efter,
+          «Handelsvägar» sist eftersom dess mall bär ett eget typsnitt.</p>
+
+          <p><strong>Vad skärmläsaren får.</strong> Kortet är ett <code>role="img"</code> med
+          <em>«Första kortet: Drake»</em> som namn, inte fjorton lösryckta ord ur mallen. Länken
+          säger spelets namn, som förut.</p>
+
+          <div class="fraga">
+            <strong>Kvar att avgöra</strong>
+            <ol>
+              <li><strong>A eller B</strong> — tätt rutnät med ett litet kort, eller ett kort man
+              känner igen och färre spel per skärm.</li>
+              <li><strong>«Första kortet» är första i lekens ordning.</strong> Den ordningen ändras när
+              formgivaren sorterar om tabellen, och då byter listan kort. Ska det vara så, eller ska
+              kortet väljas en gång och stå kvar tills spelet ändrar det?</li>
+              <li><strong>G1 säger fyra kort.</strong> Solfjädern valdes 2026-09-14 för att «en lek på
+              hundra kort visar sin bredd». Ett kort visar spelets utseende men inte dess bredd.
+              Beslutet i #231 ersätter alltså en tidigare prototyps val, och G1 behöver skrivas om —
+              inte tyst avvika.</li>
+              <li><strong>Platshållaren.</strong> Ska listan visa den dragande rutan direkt, eller vänta
+              ett kort ögonblick så att ett snabbt svar aldrig blinkar förbi den?</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+</main>
+</div>
+
+<span class="offscreen" role="status" aria-live="polite" id="rop"></span>
+
+<script>
+  // Fem spel, som ett konto av verklig storlek bär dem: en stor lek, två mindre, ett utkast utan
+  // rader, och en lek vars mall bär ett eget typsnitt och därför är sist på skärmen.
+  const SPEL = [
+    { id: 'skog', namn: 'Skogens herrar', rev: 12, bord: '3 bord · spelat i går', kort: 154, forsta: 'Drake', mall: 'rutor', papper: '#f3ecdc', dekor: '#6b4a2e', konst: 140, dröj: 260 },
+    { id: 'krypt', namn: 'Kryptan', rev: 4, bord: '1 bord · aldrig spelat', kort: 38, forsta: 'Ljusbäraren', mall: 'helbild', papper: '#efe6f3', dekor: '#4b2f63', konst: 280, dröj: 420 },
+    { id: 'vinter', namn: 'Vinterspelet', rev: 21, bord: '2 bord · spelat 4 sep', kort: 77, forsta: 'Första snön', mall: 'rutor', papper: '#eaf1f6', dekor: '#22506e', konst: 205, dröj: 330 },
+    { id: 'utkast', namn: 'Tomt utkast', rev: 1, bord: 'inga bord · aldrig spelat', kort: 0, forsta: null, mall: 'rutor', papper: '#f3ecdc', dekor: '#6b4a2e', konst: 30, dröj: 180 },
+    { id: 'handel', namn: 'Handelsvägar', rev: 8, bord: '5 bord · spelat i dag', kort: 212, forsta: 'Saltvägen', mall: 'rutor', papper: '#f6f0e2', dekor: '#7a5418', konst: 35, dröj: 1500 },
+  ]
+
+  const OM = {
+    nu: 'Nu · solfjädern. Fyra av spelets kort som färgade rektanglar med sina titlar, ritade av startsidans egen kod. Lekens bredd syns; spelets utseende gör det inte.',
+    a: 'A · kortet bredvid namnet. Rutan behåller ungefär sin nuvarande höjd, rutnätet står tätt, och kortet är litet men helt — samma ritning som på kortväggen.',
+    b: 'B · kortet över namnet, där solfjädern står i dag. Kortet blir stort nog att känna igen och mallen syns, men rutan växer och färre spel ryms före första rullningen.',
+  }
+
+  const KH = { nu: 0, a: 86, b: 132 }
+  // Vad växeln säger högt. Protoradens stycke förklarar; den upplästa raden meddelar.
+  const SAGT = { nu: 'Solfjädern: fyra kort per spel.', a: 'Kortet bredvid namnet.', b: 'Kortet över namnet.' }
+
+  let form = 'a'
+  // Vilka spel som har fått sitt kort. Tomt vid omladdning: listan finns, korten gör det inte än.
+  const klara = new Set()
+  let tidur = []
+
+  const $ = (id) => document.getElementById(id)
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+  const hue = (id) => [...id].reduce((n, c) => (n * 31 + c.charCodeAt(0)) % 360, 7)
+
+  // Ett kort. Samma funktion överallt kortet ritas i den här prototypen, vilket är hela poängen:
+  // i appen är motsvarigheten `CardPreview`, och den finns i ett exemplar.
+  function kortHtml(s, kh) {
+    const stil = `--kh:${kh}px;--papper:${s.papper};--dekor:${s.dekor};--konst:linear-gradient(150deg, hsl(${s.konst} 44% 46%), hsl(${(s.konst + 38) % 360} 46% 28%))`
+    const inre = s.mall === 'helbild'
+      ? `<span class="konst"></span><span class="fot"><span class="titel">${esc(s.forsta)}</span><span class="rad">${esc(s.namn.split(' ')[0])}<b>${s.rev}</b></span></span>`
+      : `<span class="titel">${esc(s.forsta)}</span><span class="konst"></span><span class="brod"><i></i><i></i><i></i></span><span class="rad">${esc(s.namn.split(' ')[0])}<b>${s.rev}</b></span>`
+    return `<span class="kort" data-mall="${s.mall}" style="${stil}" role="img" aria-label="Första kortet: ${esc(s.forsta)}">${inre}</span>`
+  }
+
+  function ytaHtml(s) {
+    const kh = KH[form]
+    if (form === 'nu') {
+      if (s.kort === 0) return `<span class="fjader" data-tom>inga kort än</span>`
+      // Fyra kort jämnt spridda över leken, med första och sista med (G1).
+      const titlar = [s.forsta ?? 'Kort', 'Vakten', 'Gropen', 'Sista ordet']
+      return `<span class="fjader">${titlar.map((t, i) => `<i style="--hue:${(hue(s.id) + i * 67) % 360}">${esc(t)}</i>`).join('')}</span>`
+    }
+    if (s.kort === 0) return `<span class="yta"><span class="inget" style="--kh:${kh}px">inga kort än</span></span>`
+    if (!klara.has(s.id)) return `<span class="yta"><span class="platshallare" style="--kh:${kh}px"></span></span>`
+    return `<span class="yta">${kortHtml(s, kh)}</span>`
+  }
+
+  function rita() {
+    $('rutnat').dataset.form = form
+    $('rutnat').innerHTML = SPEL.map((s) => `
+      <div class="spel" data-spel="${s.id}">
+        <a href="#">
+          ${ytaHtml(s)}
+          <strong>${esc(s.namn)}</strong>
+          <span class="fakta">v${s.rev} · ${esc(s.bord)}</span>
+        </a>
+        <button type="button" class="mer" aria-label="Mer om ${esc(s.namn)}" aria-expanded="false">⋯</button>
+      </div>`).join('') + `
+      <div class="spel" data-nytt><a href="#" data-nytt-lank>＋ Nytt spel</a></div>`
+    matning()
+  }
+
+  function matning() {
+    const ruta = $('rutnat').querySelector('.spel')
+    if (ruta) {
+      const r = ruta.getBoundingClientRect()
+      $('m-hojd').textContent = `${Math.round(r.height)} px`
+      const bredd = $('rutnat').getBoundingClientRect().width
+      $('m-rad').textContent = String(Math.max(1, Math.round((bredd + 14) / (r.width + 14))))
+    }
+    // Nuläget bär korten i listans eget svar; förslaget bär dem efteråt, ett per spel, och
+    // första skärmen väntar därför på ett svar i båda fallen — men på ett kort i inget.
+    $('m-svar').textContent = '1 svar · listan'
+    const kan = SPEL.filter((s) => s.kort > 0).length
+    $('m-landat').textContent = form === 'nu' ? `${kan} / ${kan} · i listans svar` : `${[...klara].length} / ${kan}`
+    $('t-kod').textContent = form === 'nu' ? '2' : '1'
+    $('t-kort').textContent = form === 'nu' ? '4' : '1'
+    $('omform').textContent = OM[form]
+  }
+
+  function sag(text) {
+    $('rop').textContent = text
+    $('spegel').textContent = text
+  }
+
+  // Omladdningen: listan först, korten var för sig. Platsen är reserverad från början, så
+  // ingenting flyttar sig när ett kort landar.
+  function laddaOm() {
+    for (const t of tidur) clearTimeout(t)
+    tidur = []
+    klara.clear()
+    rita()
+    sag('Mina spel: fem spel. Korten hämtas.')
+    for (const s of SPEL) {
+      if (s.kort === 0) continue
+      tidur.push(setTimeout(() => { klara.add(s.id); rita() }, s.dröj))
+    }
+  }
+
+  for (const b of document.querySelectorAll('.switch button')) {
+    b.onclick = () => {
+      for (const o of document.querySelectorAll('.switch button')) o.setAttribute('aria-pressed', String(o === b))
+      form = b.dataset.form
+      rita()
+      sag(SAGT[form])
+    }
+  }
+
+  // Provkortet i sidopanelen: samma ritning i kortväggens storlek, ritat en gång.
+  $('provkort').innerHTML = kortHtml(SPEL[0], 84).replace(/ role="img"| aria-label="[^"]*"/g, '')
+
+  $('ladda').onclick = laddaOm
+  window.addEventListener('resize', matning)
+
+  laddaOm()
+</script>
+</body>
+</html>

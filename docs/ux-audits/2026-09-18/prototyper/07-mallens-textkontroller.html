@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 7 — Mallens textkontroller</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* Förklaringen står till vänster och inte under duken, tvärtemot de andra prototyperna.
+     Skälet är mätningen: ytan som prövas är editorns högerkolumn, och en list under duken tar
+     höjd från just den kolumn vars höjd är hela frågan. */
+  .work { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 360px minmax(0,1fr); }
+
+  /* Dukens fyra kolumner, med `editor.css`:s egna mått: verktygsribban, lagren, kortet och
+     egenskaperna. Kolumnen som prövas är den sista, och den är 280 px bred i dag. */
+  .duk { min-width: 0; min-height: 0; display: grid; grid-template-columns: 68px 220px minmax(0,1fr) 280px; }
+  .duk > * { min-height: 0; }
+
+  .verktyg { display: flex; flex-direction: column; gap: 4px; padding: var(--s2); border-right: 1px solid var(--line); background: var(--sunk); }
+  .verktyg button { min-height: var(--tap); border: 0; border-radius: 8px; background: transparent; color: var(--quiet-2); font: 15px system-ui; cursor: pointer; }
+  .verktyg button[aria-pressed='true'] { background: #2f3a55; color: #fff; }
+  .verktyg button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: -2px; }
+
+  .lager { border-right: 1px solid var(--line); padding: var(--s3); display: flex; flex-direction: column; gap: var(--s2); overflow: auto; scrollbar-width: thin; }
+  .lager h2, .props h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .lager ul { list-style: none; margin: 0; padding: 0; display: grid; }
+  .lager li button { display: flex; align-items: center; gap: 8px; width: 100%; min-height: var(--tap); border: 0; border-radius: 6px; padding: 0 8px; background: transparent; color: var(--ink); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+  .lager li button[aria-pressed='true'] { background: #2f3a55; }
+  .lager li button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: -2px; }
+  .lager li small { color: var(--quiet); font-size: 11px; }
+
+  /* Scenen och kortet. Kortet är en stand-in: den här prototypen handlar om kolumnen. */
+  .scen { position: relative; display: grid; place-items: center; background: var(--chrome); overflow: auto; }
+  .kort {
+    position: relative; height: 340px; aspect-ratio: 63 / 88; box-sizing: border-box;
+    border-radius: 10px; border: 1px solid #0d0f14; box-shadow: 0 10px 28px rgba(0,0,0,.5);
+    background: #f5efe2; color: #23201a; padding: 14px; display: grid; grid-template-rows: auto 128px 1fr auto; gap: 10px;
+  }
+  .kort .rubrik { font: 800 17px/1.1 system-ui, sans-serif; }
+  .kort .konst { border-radius: 6px; background: linear-gradient(150deg, #3f7a52, #1f4a31); }
+  .kort .fot { display: flex; justify-content: space-between; font: 700 11px system-ui, sans-serif; color: #6b4a2e; }
+
+  /* Det valda elementet: brödtexten. Ramen är elementets, och allt som prövas ritas i den. */
+  /* Ramen klipper inte: en `overflow: hidden` på ramen kapar både markeringen och greppen,
+     som ligger utanför den med flit. Klippningen hör till rutan inuti. */
+  .brod { position: relative; min-height: 0; display: grid; }
+  .brod .ruta { min-height: 0; overflow: hidden; display: flex; }
+  .brod p { margin: 0; width: 100%; font: 400 11px/1.35 Georgia, serif; }
+  .brod[data-vald]::after { content: ''; position: absolute; inset: -3px; border: 1px solid var(--primary-mark); border-radius: 3px; pointer-events: none; }
+  /* Texten flödar över sin ruta. Med «krymp till gräns» händer det först vid minsta läsbara
+     storlek (E6); med «fast storlek» händer det direkt, och det är då varningen hör hemma. */
+  .brod[data-spill='true']::before { content: '⚠ spiller över'; position: absolute; z-index: 3; right: -3px; top: -17px; padding: 0 4px; border-radius: 4px; background: #a12b2b; color: #fff; font: 700 9px system-ui, sans-serif; }
+  .brod[data-vald] .grepp { position: absolute; width: 7px; height: 7px; border-radius: 2px; background: #fff; border: 1px solid var(--primary-mark); }
+  .brod .grepp[data-h='nv'] { left: -6px; top: -6px; }
+  .brod .grepp[data-h='no'] { right: -6px; top: -6px; }
+  .brod .grepp[data-h='sv'] { left: -6px; bottom: -6px; }
+  .brod .grepp[data-h='so'] { right: -6px; bottom: -6px; }
+
+  /* C: placeringen bor på kortet i stället för i kolumnen — en niopunktsplatta i elementets
+     egen ram, där frågan «var i rutan» faktiskt ställs. */
+  /* Under ramen och inte i den: en platta som lägger sig över brödtexten döljer just det man
+     ändrar. Den hänger nedanför kortet, som en verktygsruta gör, och duken har plats för den. */
+  .pakortet { position: absolute; z-index: 4; left: 50%; top: calc(100% + 8px); transform: translateX(-50%); display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 4px; border-radius: 9px; background: rgba(15,17,23,.94); border: 1px solid #3b4358; box-shadow: 0 8px 22px rgba(0,0,0,.5); }
+  .pakortet button { width: 30px; height: 30px; padding: 5px; }
+
+  /* --- egenskapskolumnen ------------------------------------------------- */
+  .props { border-left: 1px solid var(--line); padding: var(--s3); overflow: auto; scrollbar-width: thin; display: grid; gap: var(--s2); align-content: start; }
+  .props h2 { grid-column: 1 / -1; }
+  .falt { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .falt label { display: grid; gap: 3px; font-size: 11px; color: #9aa3b8; }
+  .falt input, .falt select { width: 100%; box-sizing: border-box; min-height: 30px; padding: 4px 8px; border: 1px solid #2a2d36; border-radius: 6px; background: #0f1115; color: #fff; font: inherit; font-size: 13px; }
+  .falt input:focus-visible, .falt select:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 1px; }
+  .falt .bred { grid-column: 1 / -1; }
+  .falt input[readonly] { color: var(--quiet-2); cursor: not-allowed; }
+  .falt input[type='color'] { padding: 2px; height: 30px; }
+
+  .rubr { grid-column: 1 / -1; margin: var(--s2) 0 0; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--quiet); border-top: 1px solid var(--line-soft); padding-top: var(--s2); }
+  .rubr:first-of-type { margin-top: 0; }
+
+  /* Niopunktsplattan: ett svar på båda leden i ett grepp. `--byd-tap` per ruta i kolumnen,
+     30 px på kortet där plattan står i elementets egen ram. */
+  .platta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; width: fit-content; justify-self: start; }
+  .platta button { width: var(--tap); height: var(--tap); display: grid; border: 1px solid #2a2d36; border-radius: 6px; background: #0f1115; color: #545d70; cursor: pointer; padding: 9px; }
+  /* Rutan ritar sitt eget svar: tre textrader, lagda i den ruta de skulle hamna i. Utan båda
+     leden i bilden ser de nio rutorna likadana ut, och plattan säger ingenting. */
+  .platta button::before { content: ''; width: 14px; height: 10px; background: repeating-linear-gradient(to bottom, currentColor 0 2px, transparent 2px 4px); }
+  .platta button[data-x='v']::before { justify-self: start; }
+  .platta button[data-x='c']::before { justify-self: center; }
+  .platta button[data-x='h']::before { justify-self: end; }
+  .platta button[data-y='t']::before { align-self: start; }
+  .platta button[data-y='m']::before { align-self: center; }
+  .platta button[data-y='b']::before { align-self: end; }
+  .platta button[aria-checked='true'] { border-color: var(--primary-mark); background: #2f3a55; color: #fff; }
+  .platta button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+
+  /* Två remsor i stället för en platta: samma två led, uttalade var för sig. */
+  .remsa { display: flex; gap: 3px; }
+  .remsa button { flex: 1; min-height: var(--tap); border: 1px solid #2a2d36; border-radius: 6px; background: #0f1115; color: var(--quiet-2); font: inherit; font-size: 12px; cursor: pointer; }
+  .remsa button[aria-checked='true'] { border-color: var(--primary-mark); background: #2f3a55; color: #fff; }
+  .remsa button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+
+  /* Den fällbara delen: samma form som skuggans i `editor.css` (`.byd-props-disclose`). */
+  .fall { grid-column: 1 / -1; display: grid; gap: var(--s2); }
+  .fall > button { display: flex; align-items: center; gap: 6px; min-height: var(--tap); border: 0; border-radius: 6px; padding: 0 6px; background: transparent; color: var(--quiet-2); font: inherit; font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; cursor: pointer; }
+  .fall > button::before { content: '▸'; transition: transform .12s ease; }
+  .fall > button[aria-expanded='true']::before { transform: rotate(90deg); }
+  .fall > button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: -2px; }
+  @media (prefers-reduced-motion: reduce) { .fall > button::before { transition: none; } }
+
+  .notis { grid-column: 1 / -1; margin: 0; padding: 8px 10px; border-radius: 8px; background: #2a2417; border: 1px solid #4a4230; color: #ffd98a; font-size: 11px; line-height: 1.5; }
+  .notis b { color: #ffe9b8; }
+
+  .om { min-height: 0; overflow: auto; scrollbar-width: thin; display: grid; gap: var(--s3); align-content: start; padding: var(--s3) var(--s4) var(--s4); border-right: 1px solid var(--line); background: var(--panel); color: var(--quiet-2); font-size: 12px; line-height: 1.6; }
+  .om > h2 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .om p { margin: 0; }
+  .om strong { color: var(--ink); }
+  .om code { color: #dce3f2; font-size: 11px; }
+  .om .fraga { padding: var(--s3); border-radius: 10px; background: #1b2231; border: 1px solid #2f3a55; }
+  .om .fraga ol { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 6px; }
+</style>
+</head>
+<body>
+<div class="shell">
+<header>
+  <strong>Skogens herrar</strong>
+  <nav class="tabs" role="tablist" aria-label="Form">
+    <button role="tab" aria-selected="false">Kort</button>
+    <button role="tab" aria-selected="true">Mall</button>
+    <button role="tab" aria-selected="false">Tabell</button>
+    <button role="tab" aria-selected="false">Symboler</button>
+    <button role="tab" aria-selected="false">Media</button>
+    <button role="tab" aria-selected="false">Regler</button>
+    <button role="tab" aria-selected="false">Bord</button>
+  </nav>
+  <span class="spacer"></span>
+  <div class="switch" role="group" aria-label="Variant">
+    <button type="button" data-form="nu" aria-pressed="false">Nu + 3</button>
+    <button type="button" data-form="a" aria-pressed="true">A · grupperad</button>
+    <button type="button" data-form="b" aria-pressed="false">B · platta och lucka</button>
+    <button type="button" data-form="c" aria-pressed="false">C · placeringen på kortet</button>
+  </div>
+  <span class="who">S</span>
+</header>
+
+<main>
+  <div class="protorad">
+    <p id="omform"></p>
+    <div class="matt">
+      <span>kontroller i kolumnen <u id="m-antal">—</u></span>
+      <span>kolumnens innehåll <u id="m-hojd">—</u></span>
+      <span>synlig höjd <u id="m-synlig">—</u></span>
+      <span>måste rullas <u id="m-rull">—</u></span>
+    </div>
+    <p class="sagt">Sagt för skärmläsaren: <em id="spegel">—</em></p>
+  </div>
+
+  <div class="work">
+    <aside class="om">
+      <h2>Vad som prövas</h2>
+    <div>
+      <p><strong>Beslutet</strong> ger egenskapskolumnen fyra kontroller: placering i båda led,
+      radavstånd, teckenavstånd och automatisk förminskning per element. Beställarens invändning är
+      hela anledningen till att den här prototypen finns — kolumnen är redan tät, och fyra till utan
+      en plan blir en lista ingen läser. Det som prövas här är alltså <strong>kolumnens
+      disposition</strong>, inte att kontrollerna fungerar.</p>
+    </div>
+    <div>
+      <p class="notis"><b>Ett fynd att ta ställning till.</b> Punkt 4 finns redan. Textelementet har
+      <code>fit: 'fixed' | 'shrink'</code> i schemat <em>och</em> en kontroll i editorn —
+      «Anpassning», med <code>canvas.props.fit</code> och <code>canvas.fit.shrink</code> i båda
+      språkkatalogerna sedan 8 september. Kolumnen växer alltså med <strong>tre</strong> kontroller,
+      inte fyra. Samma sak i mindre skala för punkt 1 och 2: <code>font.align</code> och
+      <code>font.lineHeight</code> står redan i <code>packages/template</code>s schema och ritas
+      redan av kompilatorn — det som saknas är kontrollerna. Nytt fält behövs bara för lodrät
+      placering och för teckenavstånd.</p>
+    </div>
+    <div class="fraga">
+      <strong>Kvar att avgöra</strong>
+      <ol>
+        <li><strong>A, B eller C.</strong></li>
+        <li><strong>Platta eller två remsor?</strong> Niopunktsplattan svarar på båda leden i ett
+        grepp och är ett tabbstopp med piltangenter. Två remsor säger leden var för sig, som
+        beslutet formulerar dem, och blir sex tabbstopp. Växeln nere till höger i kolumnen byter
+        mellan dem i A och B.</li>
+        <li><strong>Får radavstånd och teckenavstånd ligga bakom en lucka (B)?</strong> En dold
+        kontroll är en kontroll ingen hittar — men en synlig kontroll i en lista ingen läser är
+        inte bättre.</li>
+        <li><strong>Om C: hör placeringen hemma på kortet?</strong> Frågan «var i rutan» är
+        rumslig och ställs bäst där rutan är. Men då finns kontrollen bara för den som ser kortet,
+        och elementet på kortet är redan ett tabbstopp med ett flyttläge (L18) som plattan måste
+        samsas med.</li>
+      </ol>
+    </div>
+    </aside>
+
+    <div class="duk">
+      <div class="verktyg" role="group" aria-label="Verktyg">
+      <button type="button" aria-pressed="true" aria-label="Markera">↖</button>
+      <button type="button" aria-pressed="false" aria-label="Text">T</button>
+      <button type="button" aria-pressed="false" aria-label="Bild">▣</button>
+      <button type="button" aria-pressed="false" aria-label="Form">◇</button>
+      <button type="button" aria-pressed="false" aria-label="Symboler">✦</button>
+    </div>
+
+      <div class="lager">
+        <h2>Lager</h2>
+        <ul id="lagerlista"></ul>
+      </div>
+
+      <div class="scen">
+        <div class="kort">
+        <div class="rubrik">Skogsdraken</div>
+        <div class="konst"></div>
+        <div class="brod" id="brod" data-vald>
+          <div class="ruta" id="ruta"><p id="brodtext">Flyg: draken får flyttas till vilken zon som helst i skogen, också över en vakt. När den landar vänds det översta kortet i den zonen upp, och ägaren av zonen drar ett kort ur draghögen. Draken kan inte landa i samma zon två gånger i rad, och en zon med tre eller fler kort stänger för den helt.</p></div>
+          <span class="grepp" data-h="nv"></span><span class="grepp" data-h="no"></span>
+          <span class="grepp" data-h="sv"></span><span class="grepp" data-h="so"></span>
+          <!-- Egen etikett, och inte kolumnens: två grupper som heter samma sak går inte att
+               skilja åt när handen ska lämnas tillbaka efter en omritning. -->
+          <div class="platta pakortet" id="pakortet" role="radiogroup" aria-label="Placering i rutan, på kortet" hidden></div>
+        </div>
+        <div class="fot"><span>Varelse</span><span>3</span></div>
+      </div>
+      </div>
+
+      <aside class="props" id="props"></aside>
+    </div>
+  </div>
+</main>
+</div>
+
+<span class="offscreen" role="status" aria-live="polite" id="rop"></span>
+
+<script>
+  const $ = (id) => document.getElementById(id)
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+
+  const OM = {
+    nu: 'Nu + 3 · dagens kolumn med de nya kontrollerna påhängda längst ned, utan plan. Fjorton fält i två spalter utan en enda rubrik: det är den lista beställaren varnade för, ritad så den går att se.',
+    a: 'A · grupperad. Samma kontroller, men i fem namngivna avsnitt — Ruta, Text, Placering, Avstånd, Anpassning. Ingenting är gömt; rubrikerna är det som gör listan läsbar.',
+    b: 'B · platta och lucka. Placeringen är en niopunktsplatta bland textfälten, och avstånden ligger bakom «Finjustering», som skuggan redan gör i dag. Kolumnen ryms utan att rullas.',
+    c: 'C · placeringen på kortet. Frågan «var i rutan» ställs i elementets egen ram på duken, inte i kolumnen. Kolumnen får bara de två avstånden — och växer alltså med två fält i stället för fyra.',
+  }
+
+  const LAGER = [
+    { id: 'titel', namn: 'Titel', visar: 'titel', slag: 'T' },
+    { id: 'konst', namn: 'Konst', visar: 'bild', slag: '▣' },
+    { id: 'brod', namn: 'Brödtext', visar: 'regel', slag: 'T' },
+    { id: 'typ', namn: 'Typrad', visar: 'typ', slag: 'T' },
+    { id: 'kostnad', namn: 'Kostnad', visar: 'kostnad', slag: 'T' },
+  ]
+
+  // Elementets tillstånd. Bara det som prövas är rörligt; resten står där för täthetens skull.
+  const el = { x: 4, y: 47, w: 55, h: 32, falt: 'regel', typsnitt: 'Georgia', storlek: 8, vikt: 400, farg: '#23201a', fit: 'shrink', vagrat: 'v', lodratt: 't', radavstand: 1.35, teckenavstand: 0 }
+
+  let form = 'a'
+  let lucka = false
+  let plattform = 'platta' // 'platta' | 'remsor'
+
+  const XNAMN = { v: 'vänster', c: 'centrerat', h: 'höger' }
+  const YNAMN = { t: 'topp', m: 'mitten', b: 'botten' }
+
+  // Kortet ritas 340 px högt för 88 mm, så en punkt är så här många pixlar här. Utan den
+  // omräkningen läses «8 pt» som 8 px, och storleken i kolumnen ljuger om kortet.
+  const PXPT = (340 / 88) * (25.4 / 72)
+
+  // --- kortet --------------------------------------------------------------
+  function ritaKort() {
+    const p = $('brodtext')
+    const b = $('ruta')
+    b.style.alignItems = el.lodratt === 't' ? 'flex-start' : el.lodratt === 'm' ? 'center' : 'flex-end'
+    p.style.textAlign = el.vagrat === 'v' ? 'left' : el.vagrat === 'c' ? 'center' : 'right'
+    p.style.lineHeight = String(el.radavstand)
+    p.style.letterSpacing = `${el.teckenavstand}em`
+    // Krympningen, som kompilatorn gör den (E6): storleken trappas ned tills texten ryms, men
+    // aldrig under minsta läsbara. Med «fast storlek» flödar den över i stället, och det är då
+    // varningen hör hemma — vilket är precis vad kontrollen redan avgör i dag.
+    let pt = el.storlek
+    p.style.fontSize = `${pt * PXPT}px`
+    if (el.fit === 'shrink') {
+      while (pt > 5 && p.scrollHeight > b.clientHeight) { pt -= 0.25; p.style.fontSize = `${pt * PXPT}px` }
+    }
+    $('brod').dataset.spill = String(p.scrollHeight > b.clientHeight + 1)
+    $('pakortet').hidden = form !== 'c'
+  }
+
+  // --- kontrollerna --------------------------------------------------------
+  const falt = (etikett, varde, bred) => `<label${bred ? ' class="bred"' : ''}>${etikett}<input value="${esc(varde)}" readonly></label>`
+  const val = (etikett, varden, nu, namn, bred) =>
+    `<label${bred ? ' class="bred"' : ''}>${etikett}<select data-satt="${namn}">${varden.map(([v, t]) => `<option value="${v}"${v === String(nu) ? ' selected' : ''}>${esc(t)}</option>`).join('')}</select></label>`
+
+  function plattrutor() {
+    const rutor = []
+    for (const y of ['t', 'm', 'b'])
+      for (const x of ['v', 'c', 'h']) {
+        const pa = el.vagrat === x && el.lodratt === y
+        rutor.push(`<button type="button" role="radio" aria-checked="${pa}" tabindex="${pa ? 0 : -1}" data-x="${x}" data-y="${y}" aria-label="${XNAMN[x]}, ${YNAMN[y]}"></button>`)
+      }
+    return rutor.join('')
+  }
+
+  const plattaHtml = () => `<div class="platta" role="radiogroup" aria-label="Placering i rutan">${plattrutor()}</div>`
+
+  function remsorHtml() {
+    const rad = (led, namn, nu) =>
+      `<div class="remsa" role="radiogroup" aria-label="${led === 'x' ? 'Placering i sidled' : 'Placering i höjdled'}">${Object.entries(namn)
+        .map(([v, t]) => `<button type="button" role="radio" aria-checked="${v === nu}" tabindex="${v === nu ? 0 : -1}" data-${led}="${v}">${t}</button>`)
+        .join('')}</div>`
+    return `<div class="bred" style="display:grid;gap:4px">${rad('x', XNAMN, el.vagrat)}${rad('y', YNAMN, el.lodratt)}</div>`
+  }
+
+  const placeringHtml = () => (plattform === 'platta' ? plattaHtml() : remsorHtml())
+
+  const RUTA = () => `<div class="falt">${falt('X (mm)', el.x)}${falt('Y (mm)', el.y)}${falt('Bredd (mm)', el.w)}${falt('Höjd (mm)', el.h)}</div>`
+  const TEXT = () => `<div class="falt">
+      ${falt('Fält', el.falt, true)}
+      ${falt('Typsnitt', el.typsnitt, true)}
+      ${falt('Storlek (pt)', el.storlek)}
+      ${falt('Vikt', el.vikt)}
+      <label>Färg<input type="color" value="${el.farg}"></label>
+    </div>`
+  const ANPASSNING = () => `<div class="falt">${val('Anpassning', [['shrink', 'krymp till gräns'], ['fixed', 'fast storlek']], el.fit, 'fit', true)}</div>`
+  const AVSTAND = () => `<div class="falt">
+      ${val('Radavstånd', [['1', '1,0 tätt'], ['1.2', '1,2'], ['1.35', '1,35 normalt'], ['1.6', '1,6 luftigt']], el.radavstand, 'radavstand')}
+      ${val('Teckenavstånd', [['-0.02', 'knip'], ['0', 'normalt'], ['0.04', 'spärrat'], ['0.1', 'versaler']], el.teckenavstand, 'teckenavstand')}
+    </div>`
+
+  function propsHtml() {
+    const rubrik = (t) => `<h3 class="rubr">${t}</h3>`
+    if (form === 'nu') {
+      // Dagens kolumn, med de nya fälten påhängda sist. Ingen rubrik, ingen gruppering: fjorton
+      // fält efter varandra, vilket är själva invändningen ritad.
+      return `<h2>Egenskaper · brödtext</h2>
+        <div class="falt">
+          ${falt('X (mm)', el.x)}${falt('Y (mm)', el.y)}${falt('Bredd (mm)', el.w)}${falt('Höjd (mm)', el.h)}
+          ${falt('Fält', el.falt, true)}${falt('Typsnitt', el.typsnitt, true)}
+          ${falt('Storlek (pt)', el.storlek)}${falt('Vikt', el.vikt)}
+          <label>Färg<input type="color" value="${el.farg}"></label>
+          ${val('Anpassning', [['shrink', 'krymp till gräns'], ['fixed', 'fast storlek']], el.fit, 'fit')}
+          ${val('Placering i sidled', [['v', 'vänster'], ['c', 'centrerat'], ['h', 'höger']], el.vagrat, 'vagrat')}
+          ${val('Placering i höjdled', [['t', 'topp'], ['m', 'mitten'], ['b', 'botten']], el.lodratt, 'lodratt')}
+          ${val('Radavstånd', [['1', '1,0'], ['1.2', '1,2'], ['1.35', '1,35'], ['1.6', '1,6']], el.radavstand, 'radavstand')}
+          ${val('Teckenavstånd', [['-0.02', 'knip'], ['0', 'normalt'], ['0.04', 'spärrat'], ['0.1', 'versaler']], el.teckenavstand, 'teckenavstand')}
+        </div>`
+    }
+    if (form === 'a') {
+      return `<h2>Egenskaper · brödtext</h2>
+        ${rubrik('Ruta')}${RUTA()}
+        ${rubrik('Text')}${TEXT()}
+        ${rubrik('Placering')}${placeringHtml()}
+        ${rubrik('Avstånd')}${AVSTAND()}
+        ${rubrik('Anpassning')}${ANPASSNING()}
+        ${vaxelHtml()}`
+    }
+    if (form === 'b') {
+      return `<h2>Egenskaper · brödtext</h2>
+        ${RUTA()}
+        ${TEXT()}
+        ${placeringHtml()}
+        ${ANPASSNING()}
+        <div class="fall">
+          <button type="button" id="luckknapp" aria-expanded="${lucka}">Finjustering</button>
+          ${lucka ? AVSTAND() : ''}
+        </div>
+        ${vaxelHtml()}`
+    }
+    return `<h2>Egenskaper · brödtext</h2>
+      ${RUTA()}
+      ${TEXT()}
+      ${ANPASSNING()}
+      ${AVSTAND()}
+      <p class="notis">Placeringen står på kortet, i brödtextens egen ram. Kolumnen växer med två
+      fält i stället för fyra.</p>`
+  }
+
+  const vaxelHtml = () => `<div class="fall"><button type="button" id="vaxla" aria-expanded="false">${plattform === 'platta' ? 'Visa som två remsor' : 'Visa som niopunktsplatta'}</button></div>`
+
+  function rita() {
+    $('props').innerHTML = propsHtml()
+    $('pakortet').innerHTML = form === 'c' ? plattrutor() : ''
+    $('lagerlista').innerHTML = LAGER.map((l) => `
+      <li><button type="button" aria-pressed="${l.id === 'brod'}"><span aria-hidden="true">${l.slag}</span>${esc(l.namn)} <small>${esc(l.visar)}</small></button></li>`).join('')
+    ritaKort()
+    matning()
+  }
+
+  function matning() {
+    const p = $('props')
+    // Vad kolumnen innehåller: varje fält, varje val och varje placeringsgrupp räknad som en
+    // kontroll — en niopunktsplatta är ett grepp och inte nio.
+    const enkla = p.querySelectorAll('.falt label').length
+    const grupper = p.querySelectorAll('[role="radiogroup"]').length
+    $('m-antal').textContent = `${enkla + grupper}${form === 'c' ? ' (+ 1 på kortet)' : ''}`
+    $('m-hojd').textContent = `${Math.round(p.scrollHeight)} px`
+    $('m-synlig').textContent = `${Math.round(p.clientHeight)} px`
+    const rullas = p.scrollHeight > p.clientHeight + 1
+    $('m-rull').textContent = rullas ? `ja · ${Math.round(p.scrollHeight - p.clientHeight)} px utanför` : 'nej'
+    $('omform').textContent = OM[form]
+  }
+
+  function sag(text) { $('rop').textContent = text; $('spegel').textContent = text }
+
+  function satt(vagrat, lodratt) {
+    // Ritningen bygger om kolumnen, så handen måste lämnas tillbaka där den var — annars tar
+    // det första piltangenttrycket efter ett klick inte vägen någonstans.
+    const grupp = document.activeElement?.closest?.('[role="radiogroup"]')?.getAttribute('aria-label') ?? null
+    el.vagrat = vagrat
+    el.lodratt = lodratt
+    rita()
+    if (grupp) {
+      const igen = [...document.querySelectorAll('[role="radiogroup"]')].find((g) => g.getAttribute('aria-label') === grupp)
+      igen?.querySelector('[role="radio"][aria-checked="true"]')?.focus()
+    }
+    sag(`Placering: ${XNAMN[vagrat]}, ${YNAMN[lodratt]}.`)
+  }
+
+  // --- händelser -----------------------------------------------------------
+  document.addEventListener('click', (e) => {
+    const v = e.target.closest('.switch button')
+    if (v) {
+      for (const o of document.querySelectorAll('.switch button')) o.setAttribute('aria-pressed', String(o === v))
+      form = v.dataset.form
+      rita()
+      sag(OM[form])
+      return
+    }
+    if (e.target.closest('#luckknapp')) { lucka = !lucka; rita(); $('luckknapp')?.focus(); sag(lucka ? 'Finjustering öppen.' : 'Finjustering stängd.'); return }
+    if (e.target.closest('#vaxla')) { plattform = plattform === 'platta' ? 'remsor' : 'platta'; rita(); $('vaxla')?.focus(); return }
+    const ruta = e.target.closest('[role="radio"]')
+    if (!ruta) return
+    // En knapp som klickas får inte fokus av sig själv på macOS, och då tar piltangenten efteråt
+    // inte vägen någonstans. En radioknapp ska ha handen efter ett klick; den får den här.
+    ruta.focus()
+    if (ruta.dataset.x && ruta.dataset.y) satt(ruta.dataset.x, ruta.dataset.y)
+    else if (ruta.dataset.x) satt(ruta.dataset.x, el.lodratt)
+    else if (ruta.dataset.y) satt(el.vagrat, ruta.dataset.y)
+  })
+
+  document.addEventListener('change', (e) => {
+    const s = e.target.closest('[data-satt]')
+    if (!s) return
+    const namn = s.dataset.satt
+    el[namn] = namn === 'radavstand' || namn === 'teckenavstand' ? Number(s.value) : s.value
+    rita()
+  })
+
+  // Plattan och remsorna är radiogrupper: ett tabbstopp, och piltangenterna inuti. Det är vad
+  // som gör niopunktsplattan till ett grepp i stället för nio, och det är halva skillnaden
+  // mellan de två formerna.
+  document.addEventListener('keydown', (e) => {
+    const ruta = e.target.closest('[role="radio"]')
+    if (!ruta) return
+    const grupp = ruta.closest('[role="radiogroup"]')
+    const alla = [...grupp.querySelectorAll('[role="radio"]')]
+    const kolumner = grupp.classList.contains('platta') ? 3 : alla.length
+    const i = alla.indexOf(ruta)
+    const steg = { ArrowRight: 1, ArrowLeft: -1, ArrowDown: kolumner, ArrowUp: -kolumner }[e.key]
+    if (steg === undefined) return
+    const nasta = alla[i + steg]
+    if (!nasta) return
+    e.preventDefault()
+    if (nasta.dataset.x && nasta.dataset.y) satt(nasta.dataset.x, nasta.dataset.y)
+    else if (nasta.dataset.x) satt(nasta.dataset.x, el.lodratt)
+    else satt(el.vagrat, nasta.dataset.y)
+  })
+
+  window.addEventListener('resize', () => { ritaKort(); matning() })
+
+  rita()
+  requestAnimationFrame(matning)
+</script>
+</body>
+</html>
