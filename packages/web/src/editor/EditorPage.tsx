@@ -402,7 +402,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     symbols: () => <SymbolPanel doc={doc} client={client} assetBase={http} />,
     // The pictures the deck is drawn from, in one place (#222). The table's own image strip is
     // what is in use; this is what the game has.
-    media: () => <MediaPanel doc={doc} assetBase={http} motifs={deckMotifs} onReplaceRows={(rows) => client.replaceRows(rows)} onCrop={(hash, crop) => client.setCrop(hash, crop)} />,
+    media: () => <MediaPanel doc={doc} assetBase={http} motifs={deckMotifs} onReplaceRows={(rows) => client.replaceRows(rows)} onCrop={(hash, crop) => client.setCrop(hash, crop)} onAdd={(file) => client.addPicture(file, t)} />,
     rules: () => <RulesPanel doc={doc} client={client} assetBase={http} />,
     // Bord is the home for both the game's board vocabulary and its running tables (#19, C4).
     // One panel and not two stacked (#126): the list of running tables stands in the setup's third

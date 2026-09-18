@@ -349,11 +349,12 @@ describe.each(WIDTHS)('the editor at %ipx', (width) => {
   // panel on a desk and a stage of its own below one.
   it('names every file picker, hands it the pointer through its label, and rings it when it takes focus', async () => {
     const measured = await measure(width, (page) => page.$$eval("input[type='file']", filePickerFaults))
-    // The typeface shelf's, and the one the empty rulebook offers as its third way in (#131).
+    // The typeface shelf's, the one the empty rulebook offers as its third way in (#131), and the
+    // media library's way of bringing a picture into the game (#222, beslut 5).
     expect({
       pickers: Object.values(measured).reduce((n, m) => n + m.pickers, 0),
       faults: Object.values(measured).flatMap((m) => m.faults),
-    }).toEqual({ pickers: 2, faults: [] })
+    }).toEqual({ pickers: 3, faults: [] })
   }, 90_000)
 
   it('has exactly one panel on the screen at a time', async () => {

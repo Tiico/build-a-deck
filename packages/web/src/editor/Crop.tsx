@@ -1,4 +1,4 @@
-import { useId, useRef, type PointerEvent as ReactPointerEvent, type KeyboardEvent as ReactKeyboardEvent } from 'react'
+import { useId, useRef, type PointerEvent as ReactPointerEvent, type KeyboardEvent as ReactKeyboardEvent, type Ref } from 'react'
 import type { AssetCrop } from '@byd/protocol'
 import { useT } from '../i18n/index.js'
 
@@ -31,9 +31,13 @@ export type CropProps = {
   // `settled` is the difference between a window on its way somewhere and a window that has
   // arrived: a drag is hundreds of positions and one edit, and a key press is one of each.
   onChange(crop: AssetCrop, settled: boolean): void
+  // The window itself, for the surface that has to be able to put a hand on it — a picture that
+  // has just been uploaded is opened here, and opening it has to be true for a keyboard as well
+  // as for an eye (#222, beslut 5).
+  handle?: Ref<HTMLDivElement> | undefined
 }
 
-export function Crop({ url, ratio, crop, onChange }: CropProps) {
+export function Crop({ url, ratio, crop, onChange, handle }: CropProps) {
   const t = useT()
   const said = useId()
   const held = useRef<{ corner: boolean; x: number; y: number; from: AssetCrop; box: DOMRect } | null>(null)
@@ -79,6 +83,7 @@ export function Crop({ url, ratio, crop, onChange }: CropProps) {
         <img src={url} alt="" />
         <div
           className="byd-crop-window"
+          ref={handle}
           // A control of its own, named by where it stands, exactly as an element on the card is
           // (#144): a tab stop, a name that changes as it moves, and the arrows that move it.
           role="button"

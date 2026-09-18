@@ -1,4 +1,4 @@
-import type { AssetCrop } from '@byd/protocol'
+import { pictureNameOf, type AssetCrop } from '@byd/protocol'
 import type { ProjectCredit, ProjectDoc, ProjectFont, ProjectFraming, ProjectRow, RuleDoc, VersionSummary } from '@byd/server'
 import type { DocDiff, VersionChange } from '@byd/server/doc'
 import type { Element } from '@byd/template'
@@ -719,6 +719,28 @@ export class ProjectClient {
 
   removeFont(family: string): void {
     this.edit({ v: 'removeFont', family })
+  }
+
+  // A picture brought into the game from the library (#222, L22, beslut 5 och 6). Two things are
+  // true afterwards — the service holds the bytes, and the game holds a picture — and the designer
+  // did one thing to ask for both, so the second half is one edit: one version and one step back
+  // (B4), exactly as `placeIcon` is.
+  //
+  // The game has to hold the picture in its own right, because nothing is drawn from it yet: a
+  // library that only listed what was in use would lose an uploaded picture the moment it arrived,
+  // and it is the pictures nothing uses yet that the library exists for (beslut 4).
+  //
+  // The name comes along because this is the only moment it can. The bytes are content-addressed
+  // and answer to a hash; what the file was called lives on the designer's disk and nowhere else,
+  // so a name not taken here is a name gone for good. It is untrusted input and is made into a
+  // name by `pictureNameOf`, which is where the schema that bounds it lives.
+  async addPicture(file: File, t: T = swedish): Promise<string> {
+    const hash = await this.uploadAsset(file, t)
+    // Read after the upload and never before it, for the reason `placeIcon` reads its face after:
+    // the network takes as long as it takes and the document moves while the bytes are in flight.
+    const name = pictureNameOf(file.name)
+    this.edit({ v: 'addPicture', hash, ...(name === undefined ? {} : { name }) })
+    return hash
   }
 
   // An image for the project (E1): uploaded once, named by its bytes; the cell then points at it.

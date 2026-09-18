@@ -37,7 +37,42 @@ export const AssetCrop = z
   .refine((crop) => crop.x + crop.w <= 1 + ROUNDING && crop.y + crop.h <= 1 + ROUNDING, 'a crop has to lie inside the picture')
 export type AssetCrop = z.infer<typeof AssetCrop>
 
-export const Picture = z.object({ crop: AssetCrop.optional() })
+// What the file was called on the designer's disk (#222, L22, beslut 6). It is the second thing
+// that is true of the picture itself, so it is the field the record above was built to take: a
+// document written before there were names is missing a key and reads back as the document it
+// always was, and the pictures already in a game go on being named by the cards drawn from them.
+//
+// A file name is untrusted input — it is whatever a disk happened to hold — and it is stored, so
+// it is bounded and read here rather than trusted by every surface that later prints it. What is
+// refused is what a name cannot be: a way to somewhere, since nothing downstream may join this to
+// a path; anything but one line of readable text, since a newline breaks every label it is read
+// out in and a bidi override turns `gpj.exe` into what it is not; and more than a person reads.
+const PICTURE_NAME_MAX = 120
+export const PictureName = z
+  .string()
+  .trim()
+  .min(1, 'a picture’s name has to say something')
+  .max(PICTURE_NAME_MAX, 'a picture’s name is a name and not a paragraph')
+  .regex(/^[^/\\]+$/u, 'a picture’s name is a name and never a path')
+  .regex(/^[^\p{Cc}\p{Cf}]+$/u, 'a picture’s name is one line of readable text')
+export type PictureName = z.infer<typeof PictureName>
+
+// The name a file brings from a designer's disk, made into a name a picture may carry. A browser
+// hands over `File.name` alone for a file that was picked, but a folder dropped on the page hands
+// over the path the file stood at — so what is kept is the last segment and nothing before it.
+//
+// It is made into something the schema accepts rather than offered up and refused: the designer
+// chose a picture and not a name, and a file called `   ` is no reason to refuse her the picture.
+// A file whose name says nothing usable therefore arrives without one, and the game has still met
+// the picture. It lives here, beside the schema it has to satisfy, so the one place that decides
+// what a name may be is also the one place that makes one.
+export function pictureNameOf(fileName: string): string | undefined {
+  const last = fileName.split(/[/\\]/).pop() ?? ''
+  const name = last.replace(/[\p{Cc}\p{Cf}]/gu, ' ').trim().slice(0, PICTURE_NAME_MAX).trim()
+  return name.length > 0 ? name : undefined
+}
+
+export const Picture = z.object({ crop: AssetCrop.optional(), name: PictureName.optional() })
 export type Picture = z.infer<typeof Picture>
 
 // The whole picture, which is what a file that has never been cropped is drawn as.
