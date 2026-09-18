@@ -1,9 +1,10 @@
 import type { Intent, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
 import { translate, type Key, type T } from '../i18n/index.js'
 import { isCounter } from '../components.js'
-import { CARD_MM, besidePile } from './drop.js'
+import { CARD_MM, besidePile, type DragTarget } from './drop.js'
 import { handName } from './handName.js'
 import { compileAction } from './actions.js'
+import type { Shortcut } from './ShortcutHelp.js'
 
 // Everything the keyboard says is the tool's own, so it is looked up where the reader is (A4).
 // A call from outside React — a test, a label built before a provider is mounted — gets Swedish,
@@ -41,6 +42,11 @@ export const countOf = (z: ZoneView): number => (z.mode === 'count' ? z.count : 
 const topIdOf = (z: ZoneView): string | undefined => (z.mode === 'order' ? z.order[0] : z.top)
 export const topOf = (view: Snapshot, z: ZoneView): VisibleComponentState | undefined =>
   view.components.find((c) => c.id === topIdOf(z))
+
+// Drawing the top card off a pile onto the felt: the ring's «Dra 1». It lands beside the pile,
+// clear of its label and on the side the pile itself says (K21, #87). Written once, because the
+// ring, the panel and the `D` key all mean the same thing by it and must not drift apart (K16).
+export const drawOne = (z: ZoneView): Intent => ({ v: 'split', pile: z.id, at: 1, ...besidePile(z.geometry, 1, z.beside) })
 
 // A card's place on the felt, in table millimetres, for the reading order alone.
 function absolute(view: Snapshot, c: VisibleComponentState): { x: number; y: number } {
@@ -166,6 +172,12 @@ export function verbsFor(view: Snapshot, thing: Thing, t: T = swedish): Act[] {
   }
   return [
     { key: 'shuffle', label: t('ring.shuffle'), intents: n > 1 ? [{ v: 'shuffle', pile: z.id }] : null },
+    // The ring's «Dra 1», in the panel and in the ring's own order (#224). It is here because of
+    // the caveat the shortcuts were decided under: `D` draws from the pile under the pointer, and
+    // a command that needs a pointer cannot be the only way to draw a card. Without this row a
+    // seat with no mouse — and the table's own screen, which has no hand to draw into — had the
+    // ring's four verbs and the keyboard's three.
+    { key: 'draw', label: t('ring.draw'), intents: n > 0 ? [drawOne(z)] : null },
     ...(view.seat === null ? [] : [{ key: 'toHand', label: t('kbd.verb.toHand'), intents: n > 0 ? [{ v: 'split' as const, pile: z.id, at: 1, to: `hand:${view.seat}` }] : null }]),
     { key: 'half', label: t('ring.half'), hint: t('kbd.hint.half'), intents: n > 1 ? [{ v: 'split', pile: z.id, at: Math.ceil(n / 2), ...besidePile(z.geometry, Math.ceil(n / 2), z.beside) }] : null },
     // And what the game itself hangs on this pile (K14, extended), after the tool's own verbs and
@@ -306,4 +318,73 @@ export function landedKeyFor(view: Snapshot, place: Place, thing: Thing): string
 // `Thing`; the sentence is the same shape all the same, and marking says so out loud (K3).
 export function handLabel(c: VisibleComponentState, marked: boolean, t: T = swedish): string {
   return t('kbd.enter', { label: t(marked ? 'kbd.hand.mine.marked' : 'kbd.hand.mine', { name: cardName(c, t) }) })
+}
+
+// ================================================================================================
+// The felt's shortcuts (#224). Everything below is the same handful of verbs the ring already
+// sends, reached in one gesture instead of two. Nothing here invents a verb, and nothing here is
+// the only way to anything: the ring and the panel keep every one of these actions, which is what
+// makes a shortcut a shortcut and not a path (the caveat in #224).
+
+// Which modifier means «do it to the thing I am pointing at». It cannot be the same key on every
+// machine: Ctrl + click on a Mac is the system's own secondary click, and the page is handed
+// `contextmenu` and never `click` — measured in Chromium, see the prototype note for 2026-09-18.
+// So the Mac reads Cmd and every other machine reads Ctrl.
+export const isMac = (platform: string): boolean => /mac|iphone|ipad|ipod/i.test(platform)
+export const thisPlatform = (): string => (typeof navigator === 'undefined' ? '' : navigator.platform)
+
+// A modifier press is that one key and nothing beside it: a gesture that fires under any
+// combination fires by accident, and the other combinations belong to the browser.
+export type Modifiers = { metaKey: boolean; ctrlKey: boolean; altKey: boolean; shiftKey: boolean }
+export function modifierHeld(e: Modifiers, platform: string = thisPlatform()): boolean {
+  if (e.altKey || e.shiftKey) return false
+  return isMac(platform) ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey
+}
+
+// Turning over what the pointer stands on: a card by its own id, the top of a pile by naming the
+// pile (K15) — which is the only handle a hidden pile gives out. A chip has no back to turn and
+// an empty pile has nothing lying on it, so both answer with nothing.
+export function flipUnder(view: Snapshot, target: DragTarget): Intent[] | null {
+  if (target.kind === 'card') {
+    const c = view.components.find((x) => x.id === target.id)
+    return c ? [{ v: 'flip', component: c.id, face: c.face === 'front' ? 'back' : 'front' }] : null
+  }
+  if (target.kind !== 'pile' && target.kind !== 'pileTop') return null
+  const z = view.zones.find((x) => x.id === target.pile)
+  if (!z || countOf(z) === 0) return null
+  return [{ v: 'flip', component: { top: z.id }, face: topOf(view, z)?.face === 'front' ? 'back' : 'front' }]
+}
+
+// What a bare key asks of the thing the pointer is standing on. `D` draws the top card off the
+// pile and `S` shuffles it — the ring's own «Dra 1» and «Blanda», compiled exactly as the ring
+// compiles them, down to which side of the pile the card is laid on (K21). The commands follow
+// the pointer and not a selection: pointing and pressing is the fastest a mouse can be, and it is
+// why a pointer is what they need. A key over nothing, or over something that is not a pile,
+// asks for nothing at all.
+export function shortcutIntents(view: Snapshot, key: string, at: DragTarget | null): Intent[] | null {
+  const letter = key.toLowerCase()
+  if (at === null || (letter !== 'd' && letter !== 's')) return null
+  if (at.kind !== 'pile' && at.kind !== 'pileTop') return null
+  const z = view.zones.find((x) => x.id === at.pile)
+  if (!z) return null
+  const n = countOf(z)
+  if (letter === 's') return n > 1 ? [{ v: 'shuffle', pile: z.id }] : null
+  return n > 0 ? [drawOne(z)] : null
+}
+
+// What the felt's own help says (#224). The list is the surface's and not the button's: `Esc`
+// stands in it although it was already there (#142, #152), because a list of commands that leaves
+// out the one a reader already knows is not the whole truth about the surface, and the whole
+// truth is the only thing worth opening.
+export function feltShortcuts(t: T = swedish, platform: string = thisPlatform()): Shortcut[] {
+  return [
+    // Turning a card over has two grips and is one action: the modifier click, and the double
+    // click for a hand that cannot hold two keys down. They share a row, because they say the
+    // same thing, and two rows carrying one sentence is that sentence read twice.
+    { press: [t('felt.press.modClick', { mod: isMac(platform) ? 'Cmd' : 'Ctrl' }), t('felt.press.doubleClick')], what: t('felt.key.flip') },
+    { press: ['D'], what: t('felt.key.draw') },
+    { press: ['S'], what: t('felt.key.shuffle') },
+    { press: ['Esc'], what: t('felt.key.escape') },
+    { press: ['?'], what: t('felt.key.help') },
+  ]
 }

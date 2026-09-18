@@ -9,7 +9,8 @@ import { activeBounds, cameraOf, fitFloor, frameRect, pad, reachOf, same, tween,
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
 import { CARD_MM, TOKEN_MM, absoluteOf, besidePile, dropIntents, type Drag, type DragTarget } from './drop.js'
 import { isCounter } from '../components.js'
-import { counterActs, ownerOf, type Act } from './keyboard.js'
+import { counterActs, drawOne, feltShortcuts, flipUnder, modifierHeld, ownerOf, type Act } from './keyboard.js'
+import { ShortcutHelp } from './ShortcutHelp.js'
 import { CounterEntry } from './CounterEntry.js'
 import { DEFAULT_TIMING } from '../status/connection.js'
 import { RadialMenu, type RadialItem } from './RadialMenu.js'
@@ -51,6 +52,9 @@ export type FeltKeyboard = {
   open?: string | null | undefined
   itemProps(key: string): FeltItemProps
   onActivate(key: string): void
+  // What the pointer is standing on right now, for the commands that act on it (#224). Null when
+  // it leaves. A surface that only shows a table never points at anything and passes none.
+  onPoint?: ((target: DragTarget | null) => void) | undefined
 }
 // The felt's own mapping from millimetres to pixels, for whatever is laid over it.
 export type FeltFit = { px(mm: number): number; left(mmX: number): number; top(mmY: number): number; scale: number }
@@ -105,6 +109,10 @@ export type TableRendererProps = {
 }
 
 const HOLD_MS = 350
+// How long after a click the press that follows it is still the other half of a double one. The
+// browser has already decided it is a double press before it fires `dblclick`; this only rules
+// out a stale memory of something clicked a while ago.
+const DOUBLE_MS = 700
 const POINT_MS = 450
 const DRAG_MM = 4
 const TABLE_GREY = '#8a93a8'
@@ -249,6 +257,9 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     const room = typeof window === 'undefined' ? null : { w: window.innerWidth, h: window.innerHeight }
     setRing({ target, ...(room ? ringCentre({ x, y }, room) : { x, y }) })
   }
+  // What the last press that was a click and not a drag was on, and when. It is what a double
+  // press is about (#224); a press on bare felt or a drag clears it.
+  const clicked = useRef<{ target: DragTarget; at: number } | null>(null)
   const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const clearHold = () => {
     if (holdTimer.current) clearTimeout(holdTimer.current)
@@ -358,6 +369,14 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const down = (e: RPointerEvent, target: DragTarget) => {
     if (!onAct) return
     e.stopPropagation()
+    // «Vänd det jag pekar på» (#224). The modifier press is the whole gesture: it never becomes a
+    // drag and it never opens the ring, so the card is turned and nothing else happens on the way.
+    if (modifierHeld(e)) {
+      e.preventDefault()
+      const turn = flipUnder(view, target)
+      if (turn) onAct(turn)
+      return
+    }
     const map = mapper()
     if (!map) return
     toTable.current = map
@@ -412,9 +431,13 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     live.current = null
     setDrag(null)
     if (d?.started && d.target.kind === 'card') onPresence?.({ kind: 'drop' })
+    clicked.current = null
     if (!d || !onAct) return
     if (!d.started) {
-      if (asked) openRing(d.target, asked.x, asked.y)
+      if (asked) {
+        clicked.current = { target: d.target, at: Date.now() }
+        openRing(d.target, asked.x, asked.y)
+      }
       return
     }
     const intents = dropIntents(view, d, mode)
@@ -443,6 +466,13 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // Pointing at a card is not touching it: it only says what the screen should show large.
   const inspects = (c: VisibleComponentState | undefined) =>
     onInspect && c ? { onPointerEnter: () => onInspect(c), onPointerLeave: () => onInspect(null) } : undefined
+  // And what the pointer is standing on, for the commands that act on it (#224). The keyboard
+  // track is told; it is the one place on the felt that reads a key, and this is the address it
+  // reads it about.
+  const points = (target: DragTarget): Pointing | undefined => {
+    const say = keyboard?.onPoint
+    return say ? { onPointerEnter: () => say(target), onPointerLeave: () => say(null) } : undefined
+  }
 
   // What the keyboard adds to a node this renderer already draws: the role and the name a
   // reader hears, the one tab stop the roving list is holding, and Enter or Space to open the
@@ -482,6 +512,22 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     if (!following || !map) return
     zoomTo(manual ? null : zoomAround(fitFloor(reach, size), map(e.clientX, e.clientY), 1 / 2.6, size, reach, CAMERA_MIN_MM))
   }
+  // A double press turns over what was pressed (#224): the way in for a hand that cannot hold a
+  // modifier down. It is read on the frame and not on the card, because by the time the second
+  // press lands the ring the first one opened is covering the card — so the browser dispatches
+  // its `dblclick` on the frame the two presses have in common, and the card is not in it. What
+  // was pressed is therefore remembered, and the frame asks what it was.
+  const doubled = (e: RMouseEvent) => {
+    const was = clicked.current
+    clicked.current = null
+    const turn = was && onAct && Date.now() - was.at < DOUBLE_MS ? flipUnder(view, was.target) : null
+    if (turn) {
+      setRing(null)
+      onAct?.(turn)
+      return
+    }
+    doubleTap(e)
+  }
 
   // The felt itself: where this pointer is, and a hold that points (K6).
   const pointTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -503,6 +549,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     if (!map || !onPresence) return
     const at = map(e.clientX, e.clientY)
     clearPoint()
+    clicked.current = null
     pointTimer.current = setTimeout(() => {
       pointTimer.current = null
       onPresence({ kind: 'point', ...at })
@@ -633,6 +680,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 labelHandlers={onAct ? handlers({ kind: 'pile', pile: z.id }) : undefined}
                 topKeys={keys(`top:${z.id}`)}
                 labelKeys={keys(`pile:${z.id}`)}
+                points={points({ kind: 'pile', pile: z.id })}
               />
             )
           })}
@@ -782,7 +830,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
       ref={frame}
       style={measured ? undefined : { visibility: 'hidden' }}
       onWheel={following ? wheel : undefined}
-      onDoubleClick={following ? doubleTap : undefined}
+      onDoubleClick={onAct || following ? doubled : undefined}
     >
       {placed ? (
         <div className="byd-camera-world" style={{ left: placed.left, top: placed.top, width: px(floorRect.w), height: px(floorRect.h) }}>
@@ -813,6 +861,10 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
           onClose={shut(ring)}
         />
       )}
+      {/* Den diskreta hjälpen (#224), i filtens nedre högra hörn. Den står på en filt som går att
+          spela på och ingen annanstans: en yta som bara visar ett bord har inga kommandon att
+          lova. Listan är filtens egen; samma knapp på en annan yta skulle hålla den ytans. */}
+      {onAct && <ShortcutHelp where={t('help.where.felt')} shortcuts={feltShortcuts(t)} />}
       {entry && onAct && <CounterEntry view={view} c={entry} onSet={(value) => onAct([{ v: 'setCounter', component: entry.id, value }])} onClose={() => setEntry(null)} />}
       {held && (
         <div className="byd-inspect" onClick={() => setHeld(null)}>
@@ -907,7 +959,8 @@ function ringItems(view: Snapshot, ring: Ring, open: (r: Ring) => void, act: (in
   const flipTop = (): Intent[] => [{ v: 'flip', component: { top: z.id }, face: top?.face === 'front' ? 'back' : 'front' }]
   return [
     { label: t('ring.shuffle'), run: count > 1 ? () => act([{ v: 'shuffle', pile: z.id }]) : null },
-    { label: t('ring.draw'), run: count > 0 ? () => act([split(1)]) : null },
+    // One card off the top is `drawOne`, which the panel and the `D` key send too (K16, #224).
+    { label: t('ring.draw'), run: count > 0 ? () => act([drawOne(z)]) : null },
     { label: t('ring.half'), run: count > 1 ? () => act([split(Math.ceil(count / 2))]) : null },
     { label: t('ring.flipTop'), run: count > 0 ? () => act(flipTop()) : null },
     look(top),
@@ -1017,7 +1070,7 @@ function topIdOf(z: ZoneView, skip = 0): string | undefined {
 
 // A pile is a point; the stack is centred on it. A hidden pile has a count and nothing else,
 // unless its top lies face-up.
-function Pile({ zone, count, topCard, faces, back, left, top, px, lifted, topHandlers, topInspects, labelHandlers, topKeys, labelKeys }: { zone: ZoneView; count: number; topCard: VisibleComponentState | undefined; faces: string | undefined; back?: ReactNode | undefined; left: number; top: number; px: (mm: number) => number; lifted: boolean; topHandlers?: Handlers | undefined; topInspects?: Pointing | undefined; labelHandlers?: Handlers | undefined; topKeys?: FeltNodeProps | undefined; labelKeys?: FeltNodeProps | undefined }) {
+function Pile({ zone, count, topCard, faces, back, left, top, px, lifted, topHandlers, topInspects, labelHandlers, topKeys, labelKeys, points }: { zone: ZoneView; count: number; topCard: VisibleComponentState | undefined; faces: string | undefined; back?: ReactNode | undefined; left: number; top: number; px: (mm: number) => number; lifted: boolean; topHandlers?: Handlers | undefined; topInspects?: Pointing | undefined; labelHandlers?: Handlers | undefined; topKeys?: FeltNodeProps | undefined; labelKeys?: FeltNodeProps | undefined; points?: Pointing | undefined }) {
   const t = useT()
   // The deck lying face down wears the deck's own back. An empty pile wears nothing but the
   // dashed outline `table.css` draws on it, which is how a pile says it is empty.
@@ -1032,6 +1085,7 @@ function Pile({ zone, count, topCard, faces, back, left, top, px, lifted, topHan
       data-dynamic={zone.dynamic ? 'true' : 'false'}
       data-dragging={lifted ? 'true' : undefined}
       style={{ position: 'absolute', left: left - px(CARD_MM.w / 2), top: top - px(CARD_MM.h / 2), width: px(CARD_MM.w), height: px(CARD_MM.h), transform: `rotate(${zone.geometry.rot}deg)` }}
+      {...points}
     >
       <div
         className="byd-pile-top"

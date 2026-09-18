@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import type { Intent, Snapshot, VisibleComponentState } from '@byd/protocol'
 import type { SendResult } from '../client.js'
 import { useRoving } from '../editor/roving.js'
@@ -8,7 +8,8 @@ import { useT } from '../i18n/index.js'
 import { ActionPanel } from './ActionPanel.js'
 import { CardLook } from './CardLook.js'
 import { CounterEntry } from './CounterEntry.js'
-import { feltLabels, intentsForPlace, landedKeyFor, thingsOn, type Thing } from './keyboard.js'
+import { feltLabels, intentsForPlace, landedKeyFor, shortcutIntents, thingsOn, type Thing } from './keyboard.js'
+import type { DragTarget } from './drop.js'
 import type { FeltKeyboard } from './TableRenderer.js'
 
 // The keyboard on the felt and in the hand (#1, #2, variant C "adressen"). It owns four things:
@@ -70,6 +71,42 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
     roving.focus(things[0]?.key)
   })
 
+  // One envelope to the table. What went through is said by the activity feed the pointer already
+  // fills; only the answer that did not happen is said here, and a refusal is an answer to
+  // something someone asked for that did not happen, so it cuts in (D5). Every way in on this
+  // track goes through here — a row in the panel, a value typed on a chip, a shortcut — so the
+  // same thing asked two ways cannot be answered two ways.
+  const run = (intents: Intent[]) => {
+    void options.act(intents).then((result) => {
+      if (!result.ok) say?.('assertive', refusalText(result.reason, t))
+    })
+  }
+
+  // The felt's shortcuts (#224). They live in this track because the felt has exactly one, and a
+  // second one would be a second set of answers to «what does this key do here». What they act on
+  // is what the pointer is standing on, which the renderer reports and this holds.
+  const pointing = useRef<DragTarget | null>(null)
+  const latest = useRef({ view, run, open })
+  latest.current = { view, run, open }
+  useEffect(() => {
+    if (!on) return
+    const onKey = (event: KeyboardEvent) => {
+      const now = latest.current
+      // A key pressed into a field is that field's, a key with a modifier on it is the browser's
+      // or the platform's, and a key pressed while the panel stands open is the panel's.
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || now.open !== null) return
+      const el = event.target
+      if (el instanceof HTMLElement && (el.isContentEditable || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT')) return
+      if (now.view === null) return
+      const intents = shortcutIntents(now.view, event.key, pointing.current)
+      if (!intents) return
+      event.preventDefault()
+      now.run(intents)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [on])
+
   const remember = () => {
     returnTo.current = (document.activeElement as HTMLElement | null) ?? null
   }
@@ -96,6 +133,9 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
           labels: feltLabels(view, t),
           open: open?.thing.key ?? null,
           itemProps: roving.itemProps,
+          onPoint: (target) => {
+            pointing.current = target
+          },
           onActivate: (key) => {
             const thing = things.find((t) => t.key === key)
             if (!thing) return
@@ -121,11 +161,7 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
           setOpen(null)
         }}
         onRun={(intents, landedOn) => {
-          // A refusal is an answer to something someone asked for that did not happen, so it
-          // cuts in (D5). Nothing else on this path is worth interrupting a reader for.
-          void options.act(intents).then((result) => {
-            if (!result.ok) say?.('assertive', refusalText(result.reason, t))
-          })
+          run(intents)
           options.onPlayed?.()
           close(landedOn)
         }}
@@ -141,11 +177,7 @@ export function useFeltKeyboard(view: Snapshot | null, felt: boolean, options: F
         <CounterEntry
           view={view}
           c={setting}
-          onSet={(value) => {
-            void options.act([{ v: 'setCounter', component: setting.id, value }]).then((result) => {
-              if (!result.ok) say?.('assertive', refusalText(result.reason, t))
-            })
-          }}
+          onSet={(value) => run([{ v: 'setCounter', component: setting.id, value }])}
           onClose={() => {
             setSetting(null)
             giveBack(`counter:${setting.id}`)

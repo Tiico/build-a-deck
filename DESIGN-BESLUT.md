@@ -3327,6 +3327,16 @@ Samma komponent kan stå på fler ytor och visar då deras egna kommandon, men s
 
 Prototyp och mätning: `docs/ux-audits/2026-09-18-snabbkommandon.md`.
 
+**Vad som byggdes, och var det avviker från meningen ovan (2026-09-18, #224).**
+Vägen utan modifierare är **dubbelklick** och inte `F`.
+`F` skulle vända «det valda», och filten har ingen markering: det finns inget valt kort på ett bord, bara det pekaren står på och det tangentbordets enda tabstopp står på.
+Att låta `F` betyda ettdera är ett designbeslut om vad «valt» ska vara på filten, och det är inte fattat — det hör hemma i ett eget issue med en prototyp, inte i en implementation.
+Dubbelklick behöver ingen markering alls, gör samma sak som modifierarklickningen och är den väg utan modifierare beslutet efterfrågade.
+Hjälpen listar därför dubbelklick och inte `F`: en lista över kommandon som räknar upp ett som inte finns är värre än ingen lista.
+
+Acceptanskriteriet är uppfyllt genom att panelen som tangentbordet öppnar fick ringens **Dra 1**.
+Den saknades: ringen hade fyra verb på en hög och tangentbordet tre, så den som spelade utan mus kunde inte dra ett kort alls vid bordets egen skärm.
+
 ## I. Öppna frågor
 
 Ekonomi och juridik:

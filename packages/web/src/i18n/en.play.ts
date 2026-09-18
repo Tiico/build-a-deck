@@ -70,6 +70,18 @@ export const enPlay = {
   'ring.counter.named': '{name} {n}',
   'ring.counter.pile': 'counters',
 
+  // The discreet help and the felt's own shortcuts (#224).
+  'help.title': 'Shortcuts',
+  'help.open': 'Shortcuts {where}',
+  'help.where.felt': 'on the table',
+  'felt.press.modClick': '{mod} + click',
+  'felt.press.doubleClick': 'Double click',
+  'felt.key.flip': 'Turn the card, or the top of the pile, over',
+  'felt.key.draw': 'Draw the top card off the pile under the pointer',
+  'felt.key.shuffle': 'Shuffle the pile under the pointer',
+  'felt.key.escape': 'Close the wheel · cancel the drag',
+  'felt.key.help': 'Show this list',
+
   'kbd.hidden': 'Hidden card',
   'kbd.card': '{name}, card in {zone}',
   'kbd.card.rotated': '{name}, card in {zone}, turned',

@@ -87,6 +87,22 @@ export const svPlay = {
   'ring.counter.named': '{name} {n}',
   'ring.counter.pile': 'räknare',
 
+  // Den diskreta hjälpen och filtens snabbkommandon (#224). Knappen är ytans, inte verktygets
+  // enda: `{where}` är ytan sagd med dess egna ord, och en annan yta som håller samma knapp
+  // säger sina egna kommandon i den.
+  'help.title': 'Snabbkommandon',
+  'help.open': 'Snabbkommandon {where}',
+  'help.where.felt': 'på bordet',
+  // Tangenten som betyder «gör det med det jag pekar på» heter olika på olika maskiner: Ctrl +
+  // klick är systemets sekundärklick på en Mac, och sidan får då aldrig något `click`.
+  'felt.press.modClick': '{mod} + klick',
+  'felt.press.doubleClick': 'Dubbelklick',
+  'felt.key.flip': 'Vänd kortet, eller högens översta',
+  'felt.key.draw': 'Dra översta kortet från högen under pekaren',
+  'felt.key.shuffle': 'Blanda högen under pekaren',
+  'felt.key.escape': 'Stäng hjulet · avbryt draget',
+  'felt.key.help': 'Visa den här listan',
+
   // Tangentbordet på filten (#1, #2, variant C "adressen"). Zonnamn och kortnamn kommer från
   // spelet och står i meningarna som designern skrev dem; allt runt dem är verktygets.
   //
