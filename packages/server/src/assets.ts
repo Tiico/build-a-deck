@@ -1,8 +1,9 @@
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
-import type { Motif, RuleDoc } from '@byd/template'
+import { croppedMotif, type Motif, type RuleDoc } from '@byd/template'
 import { MemoryObjectStore, type ObjectStore } from '@byd/render'
 import type { Sql } from 'postgres'
+import type { Picture } from '@byd/protocol'
 import type { ProjectRow } from './projects.js'
 
 // The project's images (E1, DRIFT §4): uploaded once, named by the hash of their bytes, and
@@ -175,7 +176,16 @@ export async function resolveFonts(fonts: Record<string, { stack: string; asset?
 // The motifs come back beside the rows rather than on their own, keyed by the URL the rows now
 // carry (E1). One walk and one keying: nothing downstream can disagree about which measurement
 // belongs to which picture.
-export async function resolveAssets(rows: readonly ProjectRow[], assets: AssetStore): Promise<{ rows: ProjectRow[]; motifs: Record<string, Motif> }> {
+export async function resolveAssets(
+  rows: readonly ProjectRow[],
+  assets: AssetStore,
+  // What the game says about its own pictures (#222, L22): the window each one is looked at
+  // through, under the hash of its bytes. It arrives here rather than beside the measurement,
+  // because the measurement is of the bytes and is the same in everyone's deck while the crop is
+  // this document's — and it is applied here, where the deck's pictures are gathered anyway, so
+  // that one crop reaches every card drawn from the picture without anything visiting a card.
+  pictures: Record<string, Picture> = {},
+): Promise<{ rows: ProjectRow[]; motifs: Record<string, Motif> }> {
   const urls = new Map<string, string>()
   const out: ProjectRow[] = []
   for (const row of rows) {
@@ -194,7 +204,11 @@ export async function resolveAssets(rows: readonly ProjectRow[], assets: AssetSt
   const motifs: Record<string, Motif> = {}
   for (const [hash, motif] of Object.entries(await assets.motifs([...urls.keys()]))) {
     const url = urls.get(hash)
-    if (url) motifs[url] = motif
+    // The crop is the designer's own answer to what the measurement was guessing at, so where
+    // there is one it is what the compiler is handed. A picture nothing has measured has no size
+    // to turn shares into pixels against, and is drawn as a file, exactly as it was before.
+    const crop = pictures[hash]?.crop
+    if (url) motifs[url] = crop ? croppedMotif(motif, crop) : motif
   }
   return { rows: out, motifs }
 }

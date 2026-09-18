@@ -1,3 +1,4 @@
+import type { AssetCrop } from '@byd/protocol'
 import type { ProjectCredit, ProjectDoc, ProjectFont, ProjectFraming, ProjectRow, RuleDoc, VersionSummary } from '@byd/server'
 import type { DocDiff, VersionChange } from '@byd/server/doc'
 import type { Element } from '@byd/template'
@@ -685,6 +686,14 @@ export class ProjectClient {
   // the deck gave it, which is the only way back that does not require remembering a number.
   setFraming(cardRef: string, field: string, framing: ProjectFraming | null): void {
     this.edit({ v: 'setFraming', cardRef, field, framing })
+  }
+
+  // The window a picture is looked at through (#222, L22, beslut 2). It names no card because it
+  // is about no card: it is cut once and every card drawn from the picture obeys it, which is one
+  // edit, one version and one step back however many cards that turns out to be. `null` is the
+  // picture going back to whole.
+  setCrop(hash: string, crop: AssetCrop | null): void {
+    this.edit({ v: 'setCrop', hash, crop })
   }
 
   // A typeface the game is set in (B3): the file becomes one of the project's assets, and the

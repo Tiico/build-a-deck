@@ -50,8 +50,9 @@ export function whatOf(intent: EditIntent): Key {
     case 'renameRole':
     case 'removeRole':
       return 'undo.what.symbols'
-    // How one card's picture is framed (E1).
+    // How one card's picture is framed (E1), and what the whole deck sees of a picture (#222).
     case 'setFraming':
+    case 'setCrop':
       return 'undo.what.picture'
     case 'setRules':
       return 'undo.what.rules'

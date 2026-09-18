@@ -169,7 +169,11 @@ function render(el: Element, dx: number, dy: number, input: CompileInput, html: 
       const src = resolve(el.bind, input.row)
       // The measure supersedes the plain trim: it already leaves the air out, and it answers the
       // two questions trim cannot. Either way an unmeasured file is fitted as a file.
-      const motif = el.frame || el.trim ? input.motifs?.[src] : undefined
+      // A crop is the designer's own answer to the question `trim` asks, so it is drawn whether
+      // or not this element went looking for a motif: she cropped the picture, and this is the
+      // picture (#222).
+      const found = input.motifs?.[src]
+      const motif = el.frame || el.trim || found?.cropped ? found : undefined
       const laid = motif && (el.frame ? throughWindow(el, el.frame, motif, nudgeFor(el, input)) : aroundMotif(el, motif))
       css.push(`[data-element="${attr(el.id)}"]{left:${el.x + dx}mm;top:${el.y + dy}mm;width:${el.w}mm;height:${el.h}mm;}`)
       css.push(`[data-element="${attr(el.id)}"] .byd-art{${laid ?? `width:100%;height:100%;object-fit:${el.fit ?? 'cover'};`}}`)

@@ -34,20 +34,22 @@ export type DocDiff = {
 
 // What this deliberately does not look at, and what follows from that (#177).
 //
-// `ProjectDoc` also carries `palette` (E4), `framing` (E1) and `fonts` (B3), and none of the three
-// is compared here: they are settings a card is drawn by rather than something a card table can
-// show a before and an after of, and a row of the diff is a row of that table.
+// `ProjectDoc` also carries `palette` (E4), `framing` (E1), `fonts` (B3) and each picture's own
+// window (#222), and none of the four is compared here: they are settings a card is drawn by
+// rather than something a card table can show a before and an after of, and a row of the diff is
+// a row of that table. A crop is the sharpest case of the four — it can change every card in the
+// deck at once and still name no card — which is precisely why it cannot be a row.
 //
 // The consequence is not that those saves are invisible — it is that they come out of here as an
 // empty `DocDiff`, and so as a `VersionChange` with nothing in it. And an empty change is never
 // "nothing happened": a save that would leave the document byte for byte as it was is refused a
 // version at all (`replace` in `projects.ts` and `store-postgres.ts`), so a version that exists
 // changed something. Between two consecutive versions the empty case therefore means exactly one
-// thing — the difference is one of the three above — which is why the history has a word for a
+// thing — the difference is one of the four above — which is why the history has a word for a
 // save it cannot name (`history.diff.other`) instead of a sentence saying nothing changed.
 //
 // So: the catch-all in the history is not dead code, and it stops being reachable the day one of
-// the three is compared here. Widening this means deciding what the history should say about it.
+// the four is compared here. Widening this means deciding what the history should say about it.
 export function diffProjects(before: ProjectDoc, after: ProjectDoc): DocDiff {
   const olds = new Map(before.rows.map((r) => [r.id, r.fields]))
   const news = new Map(after.rows.map((r) => [r.id, r.fields]))

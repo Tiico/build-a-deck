@@ -13,6 +13,12 @@ export const enEditor = {
   'media.put.done': 'The picture is now on {n} cards.',
   'media.put.unmarked': 'Mark the cards in Data first.',
   'media.put.noColumn': 'The template draws no picture yet.',
+  'media.crop': 'Crop',
+  'media.crop.lead': 'The crop belongs to the picture, and holds for every card that uses it.',
+  'media.crop.window': 'Crop: showing {x}–{x2}% across and {y}–{y2}% down',
+  'media.crop.keys': 'The arrows move the window. Shift and an arrow resize it.',
+  'media.crop.whole': 'The whole picture',
+  'media.crop.card': 'What the cards will show',
   'editor.tab.rules': 'Rules',
   'editor.tab.tables': 'Tables',
 

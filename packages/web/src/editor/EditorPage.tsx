@@ -201,7 +201,10 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   }, [pictures, client])
   // Keyed by the URL the resolved rows carry, once per set of measurements: a fresh object every
   // render is a fresh compile of the whole wall, exactly as it is for the icons and the fonts.
-  const deckMotifs = useMemo(() => previewMotifs(motifs, http), [motifs, http])
+  // The deck's pictures as every surface draws them (E1, #222): what was measured off the file,
+  // with the window the designer cut already on it.
+  const cropped = client?.doc.pictures
+  const deckMotifs = useMemo(() => previewMotifs(motifs, http, cropped), [motifs, http, cropped])
 
   if (!projectId) return <StatusNotice notice={noticeFor('missing', 'editor', t)} surface="page" links={links} />
   if (fault === 'unauthorized') {
@@ -388,7 +391,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     symbols: () => <SymbolPanel doc={doc} client={client} assetBase={http} />,
     // The pictures the deck is drawn from, in one place (#222). The table's own image strip is
     // what is in use; this is what the game has.
-    media: () => <MediaPanel doc={doc} assetBase={http} onReplaceRows={(rows) => client.replaceRows(rows)} />,
+    media: () => <MediaPanel doc={doc} assetBase={http} motifs={deckMotifs} onReplaceRows={(rows) => client.replaceRows(rows)} onCrop={(hash, crop) => client.setCrop(hash, crop)} />,
     rules: () => <RulesPanel doc={doc} client={client} assetBase={http} />,
     // Bord is the home for both the game's board vocabulary and its running tables (#19, C4).
     // One panel and not two stacked (#126): the list of running tables stands in the setup's third
