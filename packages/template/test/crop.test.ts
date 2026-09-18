@@ -43,7 +43,7 @@ describe('a picture cropped once, drawn on every card that uses it (#222)', () =
   it('still meets the deck’s measure, taken on the window rather than on the file', () => {
     const square = { w: 400, h: 400, trim: { left: 0, top: 0, right: 0, bottom: 0 } }
     const crop = { x: 0.25, y: 0.25, w: 0.5, h: 0.5 }
-    const face: FaceTemplate = { base: [{ ...art, frame: { fill: 0.8, anchor: 'centre' as const } }], variants: {} }
+    const face: FaceTemplate = { base: [{ ...art, frame: { fill: 0.8 } }], variants: {} }
     const css = compile({ type: CARD_STANDARD_63x88, face, row: { art: 'a.png' }, icons, motifs: { 'a.png': croppedMotif(square, crop) } }).css
 
     // Eight tenths of a 30 mm frame is 24 mm, and the measure centres it: 8 mm in from either
@@ -59,5 +59,39 @@ describe('a picture cropped once, drawn on every card that uses it (#222)', () =
     const css = compile({ type: CARD_STANDARD_63x88, face, row: { art: 'a.png' }, icons, motifs: { 'a.png': measured } }).css
 
     expect(css).toContain('[data-element="art"] .byd-art{width:100%;height:100%;object-fit:contain;}')
+  })
+})
+
+// Beslut 2's second half: a crop is the picture's and every card drawn from it obeys it — and a
+// card that wants another window says so on its own row. The card's own departure is what the
+// deck has always called `framing`, so what is asked here is that it reaches a cropped picture at
+// all: before this it was read only where the template carried a measure, which left a designer
+// who cropped a picture with no way to except a single card from her own crop.
+describe('one card’s own exception to the picture’s crop (#222, beslut 2)', () => {
+  const crop = { x: 0.25, y: 0, w: 0.5, h: 1 }
+  const drawn = (framing?: Record<string, { zoom?: number; dx?: number; dy?: number }>) =>
+    fileBox(
+      compile({
+        type: CARD_STANDARD_63x88,
+        face: { base: [art], variants: {} },
+        row: { art: 'a.png' },
+        icons,
+        motifs: { 'a.png': croppedMotif(file, crop) },
+        ...(framing ? { framing } : {}),
+      }).css,
+    )
+
+  it('draws the card closer in than the picture’s own window when the row says so', () => {
+    // Twice as close: the same window, about the same centre, drawn at twice the size.
+    expect(drawn({ art: { zoom: 2 } })).toEqual({ left: -60, top: -25, w: 160, h: 80 })
+  })
+
+  it('moves the window by a share of the frame, the same share the measure moves it by', () => {
+    expect(drawn({ art: { dx: 0.25 } })).toEqual({ left: -30, top: -5, w: 80, h: 40 })
+  })
+
+  it('leaves every card that says nothing on the picture’s own window', () => {
+    expect(drawn()).toEqual({ left: -20, top: -5, w: 80, h: 40 })
+    expect(drawn({ art: {} })).toEqual(drawn())
   })
 })

@@ -92,15 +92,23 @@ const mm = (v: number): string => `${Math.round(v * 1e4) / 1e4}mm`
 // frame with what is drawn — and the file is then laid out around it at the same scale and
 // cropped by the frame, which is what already crops every other picture. A motif with no extent
 // is no motif, and such a file is left to its frame.
-function aroundMotif(el: { w: number; h: number; fit?: 'cover' | 'contain' | 'fill' | undefined }, motif: Motif): string | null {
+function aroundMotif(el: { w: number; h: number; fit?: 'cover' | 'contain' | 'fill' | undefined }, motif: Motif, nudge: Nudge = {}): string | null {
   const drawn = { w: motif.w - motif.trim.left - motif.trim.right, h: motif.h - motif.trim.top - motif.trim.bottom }
   if (drawn.w <= 0 || drawn.h <= 0) return null
+  // This card's own exception (#222, beslut 2). A crop is the picture's and reaches every card
+  // drawn from it; the row is where a single card says it wants another window. The departure
+  // means here exactly what it means through the measure — a larger zoom is a smaller window and
+  // so a larger drawing, and an offset is a share of the frame — so the same three numbers move
+  // the same picture the same way whether or not the template carries a measure.
+  const zoom = nudge.zoom ?? 1
   const by = { w: el.w / drawn.w, h: el.h / drawn.h }
   const even = (el.fit ?? 'cover') === 'contain' ? Math.min(by.w, by.h) : Math.max(by.w, by.h)
-  const [sx, sy] = (el.fit ?? 'cover') === 'fill' ? [by.w, by.h] : [even, even]
+  const stretched = (el.fit ?? 'cover') === 'fill'
+  const sx = (stretched ? by.w : even) * zoom
+  const sy = (stretched ? by.h : even) * zoom
   // The motif centred in the frame: its own centre, in the file's pixels, laid on the frame's.
-  const left = el.w / 2 - (motif.trim.left + drawn.w / 2) * sx
-  const top = el.h / 2 - (motif.trim.top + drawn.h / 2) * sy
+  const left = el.w / 2 - (motif.trim.left + drawn.w / 2) * sx - (nudge.dx ?? 0) * el.w
+  const top = el.h / 2 - (motif.trim.top + drawn.h / 2) * sy - (nudge.dy ?? 0) * el.h
   return `left:${mm(left)};top:${mm(top)};width:${mm(motif.w * sx)};height:${mm(motif.h * sy)};`
 }
 
@@ -174,7 +182,8 @@ function render(el: Element, dx: number, dy: number, input: CompileInput, html: 
       // picture (#222).
       const found = input.motifs?.[src]
       const motif = el.frame || el.trim || found?.cropped ? found : undefined
-      const laid = motif && (el.frame ? throughWindow(el, el.frame, motif, nudgeFor(el, input)) : aroundMotif(el, motif))
+      const nudge = nudgeFor(el, input)
+      const laid = motif && (el.frame ? throughWindow(el, el.frame, motif, nudge) : aroundMotif(el, motif, nudge))
       css.push(`[data-element="${attr(el.id)}"]{left:${el.x + dx}mm;top:${el.y + dy}mm;width:${el.w}mm;height:${el.h}mm;}`)
       css.push(`[data-element="${attr(el.id)}"] .byd-art{${laid ?? `width:100%;height:100%;object-fit:${el.fit ?? 'cover'};`}}`)
       html.push(src ? `<div data-element="${attr(el.id)}"><img class="byd-art" src="${attr(src)}" alt=""></div>` : `<div data-element="${attr(el.id)}"></div>`)
