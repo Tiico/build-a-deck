@@ -9,7 +9,7 @@ const file = (w: number, h: number, box: { x: number; y: number; w: number; h: n
   trim: { left: box.x, top: box.y, right: w - box.x - box.w, bottom: h - box.y - box.h },
 })
 
-const CENTRED: Frame = { fill: 0.8, anchor: 'centre' }
+const CENTRED: Frame = { fill: 0.8 }
 
 describe('the window a deck’s measure cuts out of a file (E1)', () => {
   it('gives the drawing the share of the frame the measure asks for', () => {
@@ -39,19 +39,20 @@ describe('the window a deck’s measure cuts out of a file (E1)', () => {
     expect(win.w / win.h).toBeCloseTo(2)
   })
 
-  it('stands the drawings on one line when the measure says foot', () => {
-    // Two files whose drawings sit at different heights put the same air under both.
-    const tall = file(1000, 1000, { x: 400, y: 100, w: 200, h: 400 })
+  it('puts the drawing in the middle of its window, whatever the file is shaped like (#221)', () => {
+    // Two files whose drawings sit at different heights are each centred in their own window,
+    // which is the whole of the placement since the ground line was retired.
+    const high = file(1000, 1000, { x: 400, y: 100, w: 200, h: 400 })
     const low = file(1000, 1000, { x: 400, y: 500, w: 200, h: 400 })
-    const foot: Frame = { fill: 0.8, anchor: 'foot' }
 
-    const under = (m: Motif) => {
-      const win = frameWindow(m, foot, 1)
-      return win.y + win.h - (m.trim.top + (m.h - m.trim.top - m.trim.bottom))
+    const around = (m: Motif) => {
+      const win = frameWindow(m, CENTRED, 1)
+      const art = { y: m.trim.top, h: m.h - m.trim.top - m.trim.bottom }
+      return { above: art.y - win.y, below: win.y + win.h - (art.y + art.h) }
     }
 
-    expect(under(tall)).toBeCloseTo(under(low))
-    expect(under(tall)).toBeCloseTo(50)
+    expect(around(high).above).toBeCloseTo(around(high).below)
+    expect(around(low)).toEqual(around(high))
   })
 
   it('says when the file does not hold what the measure asks for', () => {
@@ -60,7 +61,7 @@ describe('the window a deck’s measure cuts out of a file (E1)', () => {
     const cropped = file(1000, 1000, { x: 0, y: 0, w: 1000, h: 1000 })
 
     expect(frameWindow(cropped, CENTRED, 1).short).toBe(true)
-    expect(frameWindow(cropped, { fill: 1, anchor: 'centre' }, 1).short).toBe(false)
+    expect(frameWindow(cropped, { fill: 1 }, 1).short).toBe(false)
   })
 
   it('slides a window that has fallen off the edge back inside the file', () => {

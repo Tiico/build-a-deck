@@ -5,7 +5,7 @@ import type { ObjectStore } from '@byd/render'
 import type { Applied } from '@byd/protocol'
 import { liftLine, type SetupDef } from '@byd/engine'
 import { SeqConflictError, type Deck, type GuestRecord, type LogStore, type SessionRecord, type SessionSummary, type PlayedRecord } from './store.js'
-import { stamp, type ProjectDoc, type ProjectRecord, type ProjectRow, type ProjectStore, type ProjectSummary, type VersionSummary } from './projects.js'
+import { liftDoc, stamp, type ProjectDoc, type ProjectRecord, type ProjectRow, type ProjectStore, type ProjectSummary, type VersionSummary } from './projects.js'
 import { peekCards } from './names.js'
 import { PostgresAssetStore } from './assets.js'
 import type { AppliedEdit } from './project-actor.js'
@@ -294,7 +294,7 @@ export class PostgresProjectStore implements ProjectStore {
 
   async load(id: string): Promise<ProjectRecord | null> {
     const [row] = await this.sql<{ rev: number; doc: ProjectDoc; owner: string | null }[]>`select rev, doc, owner from projects where id = ${id}`
-    return row ? { ...row.doc, id, rev: row.rev, ...(row.owner ? { owner: row.owner } : {}) } : null
+    return row ? liftDoc({ ...row.doc, id, rev: row.rev, ...(row.owner ? { owner: row.owner } : {}) }) : null
   }
 
   // Every project the account can see (D3): its own, and the ones shared with it.
@@ -409,7 +409,7 @@ export class PostgresProjectStore implements ProjectStore {
     const [row] = await this.sql<{ doc: ProjectDoc }[]>`select doc from project_versions where project_id = ${id} and rev = ${rev}`
     if (!row) return null
     const [own] = await this.sql<{ owner: string | null }[]>`select owner from projects where id = ${id}`
-    return { ...row.doc, id, rev, ...(own?.owner ? { owner: own.owner } : {}) }
+    return liftDoc({ ...row.doc, id, rev, ...(own?.owner ? { owner: own.owner } : {}) })
   }
 
   // The history goes with the game: `project_versions` cascades on the project row.

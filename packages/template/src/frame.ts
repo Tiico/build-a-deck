@@ -14,12 +14,17 @@ import type { Motif } from './motif.js'
 
 export type Frame = {
   // The share of the frame the drawing itself fills. This is the number that makes six files
-  // carrying six different amounts of air draw their motifs the same size.
+  // carrying six different amounts of air draw their motifs the same size. It is the whole of
+  // the measure since `anchor` was retired (#221, L22, beslut 3): where in its window a drawing
+  // stands is a question about the picture, and a picture carrying its own crop has answered it.
   fill: number
-  // Where the drawing sits in the window: in the middle of it, or standing on a line the whole
-  // deck shares. A deck of creatures looks like a deck when their feet agree.
-  anchor: 'centre' | 'foot'
 }
+
+// What the measure says when it is simply switched on (#221, L22, beslut 3): the drawing fills
+// four fifths of its frame, which leaves a little air around it on the tightest card in the deck.
+// It lives here, beside the window the number is read in, because the switch in the template and
+// any document written before there was a switch have to mean the same thing by "on".
+export const DEFAULT_FILL = 0.8
 
 // One card's departure from the measure, as shares of the window — so the same nudge means the
 // same thing however far in the picture is zoomed. Zero, and a zoom of one, is "the measure".
@@ -50,9 +55,10 @@ export function frameWindow(motif: Motif, frame: Frame, ratio: number, nudge: Nu
   const room = Math.min(1, motif.w / (asked * ratio), motif.h / asked)
   const h = asked * room
   const w = h * ratio
-  const air = h * (1 - frame.fill * zoom * room)
   const centre = art.x + art.w / 2
-  const top = frame.anchor === 'centre' ? art.y + art.h / 2 - h / 2 : art.y + art.h + air / 2 - h
+  // The drawing in the middle of its window, on both axes. Whatever the window has over is split
+  // evenly, which is the one placement that needs nothing said about it.
+  const top = art.y + art.h / 2 - h / 2
   // Sliding a window back inside the file is not the same failure as shrinking it: the measure
   // is still met, the picture just sits against its own edge.
   const x = Math.min(Math.max(centre - w / 2 + (nudge.dx ?? 0) * w, 0), motif.w - w)

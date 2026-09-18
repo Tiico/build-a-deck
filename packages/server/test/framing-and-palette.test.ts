@@ -12,7 +12,7 @@ const template: Template = {
   faces: {
     front: {
       base: [
-        { kind: 'image', id: 'art', x: 5, y: 4, w: 40, h: 30, bind: { field: 'art' }, frame: { fill: 0.8, anchor: 'centre' } },
+        { kind: 'image', id: 'art', x: 5, y: 4, w: 40, h: 30, bind: { field: 'art' }, frame: { fill: 0.8 } },
         { kind: 'text', id: 'body', x: 5, y: 40, w: 53, h: 30, bind: { field: 'body' }, font: { family: 'sans-serif', sizePt: 9 }, color: '#111' },
       ],
       variants: {},
