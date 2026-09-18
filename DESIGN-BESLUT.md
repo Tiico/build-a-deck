@@ -3280,6 +3280,31 @@ Hur stort motivet sitter i sin ram är mallens sak, för mallen äger ramen — 
 
 Följdkraven: `anchor` ur `frame` är en schemaändring med migrering av befintlig data, inte en tyst avvikelse; kortens `framing` blir kortens undantag; oanvänd media märks men rensas inte, eftersom bilder är innehållsadresserade och en äldre version av leken kan peka på en bild ingen använder i dag.
 
+**Bilder laddas upp i biblioteket (2026-09-18, #222, efter steg 2).**
+Media får en egen väg att lägga till en bild, och den nyss uppladdade öppnas direkt i beskärningsrutan.
+Det river steg 1:s regel att ingenting laddas upp härifrån, medvetet: issuets krav på beskärning både vid uppladdning och i biblioteket blir sant på *ett* ställe i stället för två.
+Ett ställe att ladda upp på är samma ordning som ett ställe att städa på, och det är hela skälet till att biblioteket finns.
+Alternativet — uppladdningen kvar i massredigeraren och beskärningen i biblioteket — delar en handling i två ytor och lämnar designern att leta rätt på bilden hon nyss lade in.
+
+**Filnamnet lagras vid uppladdning och blir bildens namn.**
+En bild är sina byte och har aldrig haft ett namn; hashen är entydig och oläslig, och allt leken hittills sagt om en bild har den sagt om en *användning* av den.
+Namnet är det första en designer känner igen en bild på, så det sparas när filen kommer in — i samma post `pictures[hash]` som bär beskärningen, vilket är precis vad den posten byggdes för att kunna ta emot.
+Bilder som redan finns har inget namn och faller tillbaka på korten som använder dem: en post utan `name` läses tillbaka som det dokument den alltid var, så ingen migrering behövs för den här halvan.
+
+**«Hela bilden» räcker; prototypens «Kortets ruta» och «Fritt» byggs inte.**
+En lek kan ha flera bildkolumner med olika ramar, så «kortets ruta» har inget entydigt svar — den skulle först behöva fråga *vilken* ruta, och det är en fråga beskärningen inte kan ställa, eftersom beskärningen hör till bilden och inte till användningen.
+Kortet som står bredvid beskärningsrutan visar dessutom redan vad ramen gör med vilket utsnitt som helst, så en låsning skulle byta ut en bild av resultatet mot ett löfte om det.
+
+**Vad avvecklingen av `anchor` faktiskt kostar (2026-09-18, #221).**
+Ett mått utan ankare centrerar, och centrerat är vad varje mått i verktyget börjar som.
+Marklinjen skilde sig från centreringen bara när fönstret hölls av sin bredd: en teckning bredare än sin ram lämnar lodrät luft över, och marklinjen la all den luften ovanför teckningen i stället för att dela den.
+Varje annat kort — varje centrerat mått, och varje marklinje vars teckning inte var bredare än sin ram — ritas på exakt samma millimeter efter migreringen, och det är bevisat på ett dokument i den form det ligger lagrat i.
+Det kort som verkligen vill ha den gamla placeringen säger det på sin egen rad, vilket är vad undantaget i beslut 2 finns för.
+
+Migreringen sker på väg *ut* ur lagret och inte som en engångsskrivning i databasen.
+En leks historik skrivs en gång och skrivs aldrig om (B4), så varje äldre version måste gå att öppna; en migrering som bara rörde den nyaste raden hade lämnat resten av historiken oläslig.
+Schemat vägrar den gamla formen i stället för att tyst släppa fältet, så det finns exakt en väg in för ett dokument som ännu bär ett ankare.
+
 Prototyp och mätning: `docs/ux-audits/2026-09-18.md`.
 
 ### L23. Ett tecken öppnar en lista, överallt i verktyget (2026-09-18, #215, #230)
