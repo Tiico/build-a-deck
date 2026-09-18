@@ -84,7 +84,7 @@ describe('the editor\'s newer surfaces in the reader\'s own language (A4)', () =
     await openEditor(400)
     expect(screen.getByText(/The template is not drawn on a phone/)).toBeTruthy()
     const strip = screen.getByRole('tablist', { name: 'Editor stages' })
-    expect([...strip.querySelectorAll('[role="tab"]')].map((b) => b.textContent)).toEqual(['Card wall', 'Data', 'Symbols', 'Rules', 'Tables'])
+    expect([...strip.querySelectorAll('[role="tab"]')].map((b) => b.textContent)).toEqual(['Card wall', 'Data', 'Symbols', 'Media', 'Rules', 'Tables'])
   })
 
   // D3, and the boundary in A4: a name belongs to whoever it names. An editor without an account
