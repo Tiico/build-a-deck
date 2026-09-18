@@ -15,8 +15,11 @@
 
   /* Läsytan och boken. Måtten är `.byd-rulebook`s egna — 68 tecken av bokens typsnitt plus
      sidans marginaler — så förslaget läses vid bokens riktiga bredd och inte vid en ny. */
-  .lasyta { position: relative; min-width: 0; min-height: 0; overflow: auto; scrollbar-width: thin; padding: var(--s4) 0 120px; display: flex; justify-content: center; }
+  /* `align-items: flex-start` och inte förvalet: en sträckt bok får läsytans höjd, och texten
+     under den höjden ritas då utanför sidans egen botten. */
+  .lasyta { position: relative; min-width: 0; min-height: 0; overflow: auto; scrollbar-width: thin; padding: var(--s4) 0 120px; display: flex; align-items: flex-start; justify-content: center; }
   .bok { position: relative; min-width: 0; width: calc(68ch + 80px); max-width: 100%; box-sizing: border-box; padding: 32px 40px; border-radius: 14px; background: #f7f3ea; color: #23201a; font: 14px/1.7 Georgia, serif; }
+  .bok { --skarv: 15px; }
   .bok h1 { margin: 0 0 18px; font-size: 26px; }
   .bok h2 { margin: 0 0 8px; font-size: 19px; }
   .bok h3 { margin: 0 0 6px; font-size: 15px; color: #4a4438; }
@@ -38,27 +41,29 @@
   .blk[data-vid] .text { background: #f0e9db; }
 
   /* --- ＋:et ------------------------------------------------------------ */
-  /* Den ritade rutan är 24 × 24 som i dag; träffytan är `--byd-tap` och läggs till runt den med
-     en pseudoelement, så det som syns är litet och det som träffas är 44. Det är samma
-     skillnad `.byd-rules-add` redan lever med, och den mäts i protoraden. */
+  /* Ett enda ＋, men det bor i det block det gäller och inte fritt i boken. Det är vad som gör
+     det till nästa tabbstopp efter blocket: en knapp som ligger sist i dokumentet nås först när
+     man tabbat förbi alla tio, vilket är en väg som formellt finns och praktiskt inte gör det.
+     Den ritade rutan är 24 × 24 som i dag; träffytan är `--byd-tap` och läggs runt den med ett
+     pseudoelement, så det som syns är litet och det som träffas är 44. */
   .plus {
     position: absolute; z-index: 3; width: 24px; height: 24px; padding: 0;
     border: 1px solid #cbbfa8; border-radius: 7px; background: #ece5d8; color: #6b6255;
     font: 15px/1 system-ui, sans-serif; cursor: pointer;
-    transition: top .12s ease, left .12s ease, opacity .12s ease;
+    transition: transform .14s ease;
   }
   .plus::before { content: ''; position: absolute; left: 50%; top: 50%; width: var(--tap); height: var(--tap); transform: translate(-50%, -50%); }
   .plus:hover { border-color: #b08a5a; color: #23201a; }
   .plus:focus-visible { outline: 2px solid #b08a5a; outline-offset: 2px; }
   @media (prefers-reduced-motion: reduce) { .plus { transition: none; } }
 
-  /* A: i marginalen vid blocket, där dagens ＋ står — `right: -34px` av bokens textkolumn. */
-  .bok[data-form='a'] .plus { left: calc(100% - 34px); }
-  /* B: på skarven under blocket, mitt i bokens bredd, med en linje som säger vilken skarv. */
-  .bok[data-form='b'] .plus { left: 50%; margin-left: -12px; }
-  .bok[data-form='b'] .skarv { position: absolute; z-index: 2; left: 40px; right: 40px; height: 1px; background: #d8cdb8; transition: top .12s ease; }
-  .bok:not([data-form='b']) .skarv { display: none; }
-  @media (prefers-reduced-motion: reduce) { .skarv { transition: none; } }
+  /* A: i marginalen vid blocket, där dagens ＋ står — `right: -34px`, `top: 2px`. */
+  .bok[data-form='a'] .plus { right: -34px; top: 2px; }
+  /* B: på skarven under blocket, mitt i bokens bredd, med linjen ritad. Skarven är blockets
+     egen och inte bokens, så den följer med utan en andra beräkning. */
+  .bok[data-form='b'] .plus { left: 50%; margin-left: -12px; top: calc(100% + var(--skarv) - 12px); }
+  .bok[data-form='b'] .blk { margin-bottom: calc(var(--skarv) * 2); }
+  .bok[data-form='b'] .blk[data-vid]::after { content: ''; position: absolute; z-index: 2; left: -6px; right: -6px; top: calc(100% + var(--skarv)); height: 1px; background: #d8cdb8; }
 
   /* Nu: ett ＋ per skarv, ritat på varje block. Det är vad #246 lämnade efter sig. */
   .nuplus { position: absolute; right: -34px; top: 2px; width: 24px; height: 24px; padding: 0; border: 1px solid #cbbfa8; border-radius: 7px; background: #ece5d8; color: #6b6255; font: 15px/1 system-ui, sans-serif; cursor: pointer; }
@@ -114,6 +119,7 @@
       <span>＋ på skärmen <u id="m-antal">—</u></span>
       <span>minsta målyta <u id="m-tap">—</u></span>
       <span>överlappande par <u id="m-overlapp">—</u></span>
+      <span>målytan in i klickytan <u id="m-intext">—</u></span>
     </div>
     <p class="sagt">Sagt för skärmläsaren: <em id="spegel">—</em></p>
   </div>
@@ -168,6 +174,14 @@
             <b id="styrning">—</b>
           </div>
 
+          <p><strong>Var de två varianterna kostar något.</strong> B kräver luft i hela boken: en
+          skarv som ska bära 44 px utan att röra texten måste vara 44 px bred. Prototypen ger den
+          30, och målytan når då 7 px ned i stycket ovanför, i målytans hela bredd — 44 × 7 px, och
+          boken blir 926 px hög i stället för 766. A lägger sig i marginalen i stället och tar bara
+          de 6 px där blockets klickyta sticker ut förbi textkolumnen, fast i hela blockets höjd —
+          6 × 36 px. Dagens ＋ gör exakt samma sak, så A är inte sämre än det som står där nu.
+          Siffrorna står i protoraden och räknas om medan man pekar.</p>
+
           <p><strong>Nu</strong> är jämförelsen: ett ＋ per block, alla ritade hela tiden. Det är vad
           #246 lämnade efter sig — ingen bugg längre, bara tio knappar där en räcker.</p>
 
@@ -216,6 +230,9 @@
     b: 'B · på skarven. Ett enda ＋ mitt i bokens bredd, på linjen mellan två block, så det syns exakt var det nya blocket hamnar. Skarven ritas med.',
   }
 
+  // Vad växeln säger högt. Protoradens stycke förklarar; den upplästa raden meddelar.
+  const SAGT = { nu: 'Ett ＋ per skarv.', a: 'Ett ＋, i marginalen.', b: 'Ett ＋, på skarven.' }
+
   let form = 'a'
   let vid = BOK[0].id // det block ＋:et står vid
   let styrning = 'ingen' // 'pekaren' | 'tangentbordet'
@@ -243,16 +260,13 @@
           <div class="text" role="button" tabindex="0" aria-label="Öppna ${esc(blockNamn(b))}">${innehall(b)}</div>
           ${enda ? '' : `<button type="button" class="nuplus" aria-label="Lägg till block efter ${esc(blockNamn(b))}">＋</button>`}
         </div>`).join('') +
-      (enda
-        ? `<span class="skarv" id="skarv" aria-hidden="true"></span>
-           <button type="button" class="plus" id="plus" aria-label="Lägg till block efter ${esc(blockNamn(BOK.find((b) => b.id === vid)))}">＋</button>`
-        : '')
+      (enda ? `<button type="button" class="plus" id="plus" aria-label="Lägg till block">＋</button>` : '')
     stall()
     matning()
   }
 
-  // Var ＋:et står. Beräknat ur blockets egen rektangel i bokens koordinater, så det följer
-  // blocket och inte en gissning om radhöjder.
+  // Var ＋:et står. Det flyttas in i blocket det gäller, så tabbordningen blir blockets text,
+  // sedan dess ＋, sedan nästa block — och inte tio block följda av en ensam knapp.
   function stall() {
     const plus = $('plus')
     if (!plus) {
@@ -264,16 +278,23 @@
     const bok = $('bok')
     const el = bok.querySelector(`[data-blk="${vid}"]`)
     if (!el) return
-    const bb = bok.getBoundingClientRect()
-    const rb = el.getBoundingClientRect()
-    if (form === 'b') {
-      // Mitt på skarven under blocket: linjen och knappen delar samma y.
-      const y = rb.bottom - bb.top + 7
-      plus.style.top = `${Math.round(y - 12)}px`
-      $('skarv').style.top = `${Math.round(y)}px`
-    } else {
-      // I marginalen, i höjd med blockets övre kant, som `.byd-rules-add` står i dag.
-      plus.style.top = `${Math.round(rb.top - bb.top + 2)}px`
+    if (plus.parentElement !== el) {
+      // Rörelsen mäts före och ritas efter (FLIP): utan den hoppar knappen, och «följer det
+      // block man är på» är just en rörelse och inte två platser.
+      const fore = plus.getBoundingClientRect()
+      el.appendChild(plus)
+      const efter = plus.getBoundingClientRect()
+      plus.style.transition = 'none'
+      plus.style.transform = `translate(${fore.left - efter.left}px, ${fore.top - efter.top}px)`
+      // Mätningen tas om när rörelsen landat: en `transform` räknas in i rektangeln, så en
+      // knapp mitt i sin förflyttning mäts där den kom ifrån. Med `prefers-reduced-motion` sker
+      // ingen övergång alls, och då är den första mätningen redan den rätta.
+      requestAnimationFrame(() => {
+        plus.style.transition = ''
+        plus.style.transform = ''
+        plus.addEventListener('transitionend', matning, { once: true })
+        matning()
+      })
     }
     plus.setAttribute('aria-label', `Lägg till block efter ${blockNamn(BOK.find((b) => b.id === vid))}`)
     for (const b of bok.querySelectorAll('.blk')) b.toggleAttribute('data-vid', b.dataset.blk === vid)
@@ -316,6 +337,19 @@
       for (let j = i + 1; j < rutor.length; j++)
         if (rutor[i].left < rutor[j].right && rutor[j].left < rutor[i].right && rutor[i].top < rutor[j].bottom && rutor[j].top < rutor[i].bottom) par++
     $('m-overlapp').textContent = rutor.length < 2 ? `${par} (inga par att jämföra)` : String(par)
+    // Det andra överlappet, som ett enda ＋ inte gör till noll: hur mycket av ett blocks egen
+    // klickyta som målytan lägger sig över. Det är påståendet #246:s test kan skydda när det
+    // inte längre finns par att jämföra, och det är där A och B skiljer sig åt på riktigt.
+    let bast = { b: 0, h: 0, yta: 0 }
+    for (const t of $('bok').querySelectorAll('.blk .text')) {
+      const r = t.getBoundingClientRect()
+      for (const q of rutor) {
+        const b = Math.min(r.right, q.right) - Math.max(r.left, q.left)
+        const h = Math.min(r.bottom, q.bottom) - Math.max(r.top, q.top)
+        if (b > 0 && h > 0 && b * h > bast.yta) bast = { b, h, yta: b * h }
+      }
+    }
+    $('m-intext').textContent = bast.yta === 0 ? 'ingen' : `${Math.round(bast.b)} × ${Math.round(bast.h)} px`
     $('t-nu').textContent = String(BOK.length)
     $('omform').textContent = OM[form]
   }
@@ -341,7 +375,11 @@
     if (!p) return
     const id = p.classList.contains('nuplus') ? p.closest('.blk').dataset.blk : vid
     lagt = blockNamn(BOK.find((b) => b.id === id))
+    const hade = document.activeElement === p
     rita()
+    // Handen lämnas där den var. I appen öppnas det nya blocket för skrivning i stället, vilket
+    // är ett steg till — men aldrig ett steg ut i ingenting.
+    if (hade) (p.classList.contains('nuplus') ? $('bok').querySelector(`[data-blk="${id}"] .nuplus`) : $('plus'))?.focus()
     sag(`Ett tomt block lades efter ${lagt}.`)
   })
 
@@ -351,7 +389,7 @@
       form = b.dataset.form
       lagt = null
       rita()
-      sag(OM[form])
+      sag(SAGT[form])
     }
   }
 

@@ -23,7 +23,11 @@
   .spel .fakta { color: #9aa3b8; font-size: 13px; }
   .spel .mer { position: absolute; right: 4px; top: 4px; display: inline-grid; place-items: center; min-width: var(--tap); min-height: var(--tap); border: 0; border-radius: 8px; background: transparent; color: #9aa3b8; font-size: 16px; cursor: pointer; }
   .spel .mer:hover { background: #262a35; color: #fff; }
-  .spel[data-nytt] > a { border: 1px dashed #2c3242; border-radius: 16px; place-items: center; align-content: center; color: #9aa3b8; min-height: 150px; }
+  /* Rutan står lika hög som de andra i raden och inte högre: dagens `min-height: 150px` var
+     solfjäderns mått, och med ett kort bredvid namnet (A) blir den raden högre av inbjudan
+     ensam. Höjden kommer från raden i stället. */
+  .spel[data-nytt] { display: grid; }
+  .spel[data-nytt] > a { border: 1px dashed #2c3242; border-radius: 16px; place-items: center; align-content: center; color: #9aa3b8; }
 
   /* A: kortet står bredvid namnet. B: kortet står över namnet, där solfjädern står i dag. */
   .rutnat[data-form='a'] .spel > a:not([data-nytt-lank]) { grid-template-columns: auto minmax(0,1fr); align-items: center; column-gap: 12px; }
@@ -86,6 +90,15 @@
   .om .prov p { color: var(--quiet); }
   .om .fraga { padding: var(--s3); border-radius: 10px; background: #1b2231; border: 1px solid #2f3a55; }
   .om .fraga ol { margin: 6px 0 0; padding-left: 18px; display: grid; gap: 6px; }
+
+  /* Startsidans andra rutnät (G1): bord man spelat vid. Det rörs inte av beslutet och står med
+     för att sidan ska vara sidan och inte bara den rad som prövas. */
+  .hem h2 { margin: 12px 0 0; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; }
+  .spelat { padding: 16px; display: grid; gap: 8px; cursor: default; }
+  .spelat .topp { display: flex; justify-content: space-between; align-items: center; }
+  .spelat .plats { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--plats); color: #fff; font-style: normal; font-weight: 800; font-size: 12px; }
+  .spelat .fakta { color: #cfd5e3; font-size: 13px; }
+  .spelat a { color: #7dd3a0; font-weight: 700; text-decoration: none; }
 </style>
 </head>
 <body>
@@ -122,6 +135,20 @@
           <button type="button" class="btn quiet">Logga ut</button>
         </header>
         <div class="rutnat" id="rutnat" data-form="a"></div>
+
+        <h2>Bord du spelat vid</h2>
+        <div class="rutnat">
+          <div class="spel spelat">
+            <div class="topp"><i class="plats" style="--plats:#2f6fd0">2</i><strong>Kryptan</strong></div>
+            <span class="fakta">du spelade som Nina · pågår</span>
+            <a href="#">Tillbaka till bordet</a>
+          </div>
+          <div class="spel spelat">
+            <div class="topp"><i class="plats" style="--plats:#7d8597">👁</i><strong>Vinterspelet</strong></div>
+            <span class="fakta">du såg på · avslutat 4 sep</span>
+            <a href="#">Svara på enkäten</a>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -210,6 +237,8 @@
   }
 
   const KH = { nu: 0, a: 86, b: 132 }
+  // Vad växeln säger högt. Protoradens stycke förklarar; den upplästa raden meddelar.
+  const SAGT = { nu: 'Solfjädern: fyra kort per spel.', a: 'Kortet bredvid namnet.', b: 'Kortet över namnet.' }
 
   let form = 'a'
   // Vilka spel som har fått sitt kort. Tomt vid omladdning: listan finns, korten gör det inte än.
@@ -236,7 +265,7 @@
       if (s.kort === 0) return `<span class="fjader" data-tom>inga kort än</span>`
       // Fyra kort jämnt spridda över leken, med första och sista med (G1).
       const titlar = [s.forsta ?? 'Kort', 'Vakten', 'Gropen', 'Sista ordet']
-      return `<span class="fjader">${titlar.map((t, i) => `<i style="--hue:${hue(s.id + i)}">${esc(t)}</i>`).join('')}</span>`
+      return `<span class="fjader">${titlar.map((t, i) => `<i style="--hue:${(hue(s.id) + i * 67) % 360}">${esc(t)}</i>`).join('')}</span>`
     }
     if (s.kort === 0) return `<span class="yta"><span class="inget" style="--kh:${kh}px">inga kort än</span></span>`
     if (!klara.has(s.id)) return `<span class="yta"><span class="platshallare" style="--kh:${kh}px"></span></span>`
@@ -300,7 +329,7 @@
       for (const o of document.querySelectorAll('.switch button')) o.setAttribute('aria-pressed', String(o === b))
       form = b.dataset.form
       rita()
-      sag(OM[form])
+      sag(SAGT[form])
     }
   }
 

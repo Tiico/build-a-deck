@@ -5,9 +5,14 @@
 <title>Prototyp 7 — Mallens textkontroller</title>
 <link rel="stylesheet" href="proto.css">
 <style>
+  /* Förklaringen står till vänster och inte under duken, tvärtemot de andra prototyperna.
+     Skälet är mätningen: ytan som prövas är editorns högerkolumn, och en list under duken tar
+     höjd från just den kolumn vars höjd är hela frågan. */
+  .work { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 360px minmax(0,1fr); }
+
   /* Dukens fyra kolumner, med `editor.css`:s egna mått: verktygsribban, lagren, kortet och
      egenskaperna. Kolumnen som prövas är den sista, och den är 280 px bred i dag. */
-  .duk { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 68px 220px minmax(0,1fr) 280px; }
+  .duk { min-width: 0; min-height: 0; display: grid; grid-template-columns: 68px 220px minmax(0,1fr) 280px; }
   .duk > * { min-height: 0; }
 
   .verktyg { display: flex; flex-direction: column; gap: 4px; padding: var(--s2); border-right: 1px solid var(--line); background: var(--sunk); }
@@ -35,7 +40,10 @@
   .kort .fot { display: flex; justify-content: space-between; font: 700 11px system-ui, sans-serif; color: #6b4a2e; }
 
   /* Det valda elementet: brödtexten. Ramen är elementets, och allt som prövas ritas i den. */
-  .brod { position: relative; min-height: 0; display: flex; overflow: hidden; }
+  /* Ramen klipper inte: en `overflow: hidden` på ramen kapar både markeringen och greppen,
+     som ligger utanför den med flit. Klippningen hör till rutan inuti. */
+  .brod { position: relative; min-height: 0; display: grid; }
+  .brod .ruta { min-height: 0; overflow: hidden; display: flex; }
   .brod p { margin: 0; width: 100%; font: 400 11px/1.35 Georgia, serif; }
   .brod[data-vald]::after { content: ''; position: absolute; inset: -3px; border: 1px solid var(--primary-mark); border-radius: 3px; pointer-events: none; }
   /* Texten flödar över sin ruta. Med «krymp till gräns» händer det först vid minsta läsbara
@@ -49,8 +57,10 @@
 
   /* C: placeringen bor på kortet i stället för i kolumnen — en niopunktsplatta i elementets
      egen ram, där frågan «var i rutan» faktiskt ställs. */
-  .pakortet { position: absolute; z-index: 4; left: 50%; bottom: -54px; transform: translateX(-50%); display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 4px; border-radius: 9px; background: rgba(15,17,23,.94); border: 1px solid #3b4358; box-shadow: 0 8px 22px rgba(0,0,0,.5); }
-  .pakortet button { width: 30px; height: 30px; }
+  /* Under ramen och inte i den: en platta som lägger sig över brödtexten döljer just det man
+     ändrar. Den hänger nedanför kortet, som en verktygsruta gör, och duken har plats för den. */
+  .pakortet { position: absolute; z-index: 4; left: 50%; top: calc(100% + 8px); transform: translateX(-50%); display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 4px; border-radius: 9px; background: rgba(15,17,23,.94); border: 1px solid #3b4358; box-shadow: 0 8px 22px rgba(0,0,0,.5); }
+  .pakortet button { width: 30px; height: 30px; padding: 5px; }
 
   /* --- egenskapskolumnen ------------------------------------------------- */
   .props { border-left: 1px solid var(--line); padding: var(--s3); overflow: auto; scrollbar-width: thin; display: grid; gap: var(--s2); align-content: start; }
@@ -60,6 +70,7 @@
   .falt input, .falt select { width: 100%; box-sizing: border-box; min-height: 30px; padding: 4px 8px; border: 1px solid #2a2d36; border-radius: 6px; background: #0f1115; color: #fff; font: inherit; font-size: 13px; }
   .falt input:focus-visible, .falt select:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 1px; }
   .falt .bred { grid-column: 1 / -1; }
+  .falt input[readonly] { color: var(--quiet-2); cursor: not-allowed; }
   .falt input[type='color'] { padding: 2px; height: 30px; }
 
   .rubr { grid-column: 1 / -1; margin: var(--s2) 0 0; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--quiet); border-top: 1px solid var(--line-soft); padding-top: var(--s2); }
@@ -67,14 +78,19 @@
 
   /* Niopunktsplattan: ett svar på båda leden i ett grepp. `--byd-tap` per ruta i kolumnen,
      30 px på kortet där plattan står i elementets egen ram. */
-  .platta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; width: fit-content; }
-  .platta button { width: var(--tap); height: var(--tap); display: grid; place-items: center; border: 1px solid #2a2d36; border-radius: 6px; background: #0f1115; color: #545d70; cursor: pointer; padding: 0; }
-  .platta button::before { content: ''; width: 11px; height: 2px; border-radius: 1px; background: currentColor; box-shadow: 0 4px 0 currentColor, 0 -4px 0 currentColor; }
+  .platta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; width: fit-content; justify-self: start; }
+  .platta button { width: var(--tap); height: var(--tap); display: grid; border: 1px solid #2a2d36; border-radius: 6px; background: #0f1115; color: #545d70; cursor: pointer; padding: 9px; }
+  /* Rutan ritar sitt eget svar: tre textrader, lagda i den ruta de skulle hamna i. Utan båda
+     leden i bilden ser de nio rutorna likadana ut, och plattan säger ingenting. */
+  .platta button::before { content: ''; width: 14px; height: 10px; background: repeating-linear-gradient(to bottom, currentColor 0 2px, transparent 2px 4px); }
+  .platta button[data-x='v']::before { justify-self: start; }
+  .platta button[data-x='c']::before { justify-self: center; }
+  .platta button[data-x='h']::before { justify-self: end; }
+  .platta button[data-y='t']::before { align-self: start; }
+  .platta button[data-y='m']::before { align-self: center; }
+  .platta button[data-y='b']::before { align-self: end; }
   .platta button[aria-checked='true'] { border-color: var(--primary-mark); background: #2f3a55; color: #fff; }
   .platta button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
-  .platta button[data-x='v']::before { justify-self: start; }
-  .platta button[data-x='h']::before { justify-self: end; }
-  .platta[role='radiogroup'] { justify-self: start; }
 
   /* Två remsor i stället för en platta: samma två led, uttalade var för sig. */
   .remsa { display: flex; gap: 3px; }
@@ -93,9 +109,8 @@
   .notis { grid-column: 1 / -1; margin: 0; padding: 8px 10px; border-radius: 8px; background: #2a2417; border: 1px solid #4a4230; color: #ffd98a; font-size: 11px; line-height: 1.5; }
   .notis b { color: #ffe9b8; }
 
-  /* Den låga panelen under duken: vad som prövas. Den ligger här och inte i en spalt, för
-     kolumnen som prövas måste stå i sin riktiga bredd bredvid ett riktigt kort. */
-  .om { flex: none; max-height: 30vh; overflow: auto; scrollbar-width: thin; display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--s3) var(--s4); padding: var(--s3) var(--gutter); border-top: 1px solid var(--line); background: var(--panel); color: var(--quiet-2); font-size: 12px; line-height: 1.6; }
+  .om { min-height: 0; overflow: auto; scrollbar-width: thin; display: grid; gap: var(--s3); align-content: start; padding: var(--s3) var(--s4) var(--s4); border-right: 1px solid var(--line); background: var(--panel); color: var(--quiet-2); font-size: 12px; line-height: 1.6; }
+  .om > h2 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
   .om p { margin: 0; }
   .om strong { color: var(--ink); }
   .om code { color: #dce3f2; font-size: 11px; }
@@ -138,38 +153,9 @@
     <p class="sagt">Sagt för skärmläsaren: <em id="spegel">—</em></p>
   </div>
 
-  <div class="duk">
-    <div class="verktyg" role="group" aria-label="Verktyg">
-      <button type="button" aria-pressed="true" aria-label="Markera">↖</button>
-      <button type="button" aria-pressed="false" aria-label="Text">T</button>
-      <button type="button" aria-pressed="false" aria-label="Bild">▣</button>
-      <button type="button" aria-pressed="false" aria-label="Form">◇</button>
-      <button type="button" aria-pressed="false" aria-label="Symboler">✦</button>
-    </div>
-
-    <div class="lager">
-      <h2>Lager</h2>
-      <ul id="lagerlista"></ul>
-    </div>
-
-    <div class="scen">
-      <div class="kort">
-        <div class="rubrik">Skogsdraken</div>
-        <div class="konst"></div>
-        <div class="brod" id="brod" data-vald>
-          <p id="brodtext">Flyg: draken får flyttas till vilken zon som helst i skogen. När den landar vänds det översta kortet i den zonen upp, och ägaren drar ett kort.</p>
-          <span class="grepp" data-h="nv"></span><span class="grepp" data-h="no"></span>
-          <span class="grepp" data-h="sv"></span><span class="grepp" data-h="so"></span>
-          <div class="platta pakortet" id="pakortet" role="radiogroup" aria-label="Placering i rutan" hidden></div>
-        </div>
-        <div class="fot"><span>Varelse</span><span>3</span></div>
-      </div>
-    </div>
-
-    <aside class="props" id="props"></aside>
-  </div>
-
-  <div class="om">
+  <div class="work">
+    <aside class="om">
+      <h2>Vad som prövas</h2>
     <div>
       <p><strong>Beslutet</strong> ger egenskapskolumnen fyra kontroller: placering i båda led,
       radavstånd, teckenavstånd och automatisk förminskning per element. Beställarens invändning är
@@ -203,6 +189,40 @@
         och elementet på kortet är redan ett tabbstopp med ett flyttläge (L18) som plattan måste
         samsas med.</li>
       </ol>
+    </div>
+    </aside>
+
+    <div class="duk">
+      <div class="verktyg" role="group" aria-label="Verktyg">
+      <button type="button" aria-pressed="true" aria-label="Markera">↖</button>
+      <button type="button" aria-pressed="false" aria-label="Text">T</button>
+      <button type="button" aria-pressed="false" aria-label="Bild">▣</button>
+      <button type="button" aria-pressed="false" aria-label="Form">◇</button>
+      <button type="button" aria-pressed="false" aria-label="Symboler">✦</button>
+    </div>
+
+      <div class="lager">
+        <h2>Lager</h2>
+        <ul id="lagerlista"></ul>
+      </div>
+
+      <div class="scen">
+        <div class="kort">
+        <div class="rubrik">Skogsdraken</div>
+        <div class="konst"></div>
+        <div class="brod" id="brod" data-vald>
+          <div class="ruta" id="ruta"><p id="brodtext">Flyg: draken får flyttas till vilken zon som helst i skogen, också över en vakt. När den landar vänds det översta kortet i den zonen upp, och ägaren av zonen drar ett kort ur draghögen. Draken kan inte landa i samma zon två gånger i rad, och en zon med tre eller fler kort stänger för den helt.</p></div>
+          <span class="grepp" data-h="nv"></span><span class="grepp" data-h="no"></span>
+          <span class="grepp" data-h="sv"></span><span class="grepp" data-h="so"></span>
+          <!-- Egen etikett, och inte kolumnens: två grupper som heter samma sak går inte att
+               skilja åt när handen ska lämnas tillbaka efter en omritning. -->
+          <div class="platta pakortet" id="pakortet" role="radiogroup" aria-label="Placering i rutan, på kortet" hidden></div>
+        </div>
+        <div class="fot"><span>Varelse</span><span>3</span></div>
+      </div>
+      </div>
+
+      <aside class="props" id="props"></aside>
     </div>
   </div>
 </main>
@@ -246,7 +266,7 @@
   // --- kortet --------------------------------------------------------------
   function ritaKort() {
     const p = $('brodtext')
-    const b = $('brod')
+    const b = $('ruta')
     b.style.alignItems = el.lodratt === 't' ? 'flex-start' : el.lodratt === 'm' ? 'center' : 'flex-end'
     p.style.textAlign = el.vagrat === 'v' ? 'left' : el.vagrat === 'c' ? 'center' : 'right'
     p.style.lineHeight = String(el.radavstand)
@@ -259,7 +279,7 @@
     if (el.fit === 'shrink') {
       while (pt > 5 && p.scrollHeight > b.clientHeight) { pt -= 0.25; p.style.fontSize = `${pt * PXPT}px` }
     }
-    b.dataset.spill = String(p.scrollHeight > b.clientHeight + 1)
+    $('brod').dataset.spill = String(p.scrollHeight > b.clientHeight + 1)
     $('pakortet').hidden = form !== 'c'
   }
 
@@ -368,7 +388,7 @@
     // Vad kolumnen innehåller: varje fält, varje val och varje placeringsgrupp räknad som en
     // kontroll — en niopunktsplatta är ett grepp och inte nio.
     const enkla = p.querySelectorAll('.falt label').length
-    const grupper = p.querySelectorAll('[role="radiogroup"]').length + (form === 'c' ? 1 : 0)
+    const grupper = p.querySelectorAll('[role="radiogroup"]').length
     $('m-antal').textContent = `${enkla + grupper}${form === 'c' ? ' (+ 1 på kortet)' : ''}`
     $('m-hojd').textContent = `${Math.round(p.scrollHeight)} px`
     $('m-synlig').textContent = `${Math.round(p.clientHeight)} px`
@@ -380,9 +400,16 @@
   function sag(text) { $('rop').textContent = text; $('spegel').textContent = text }
 
   function satt(vagrat, lodratt) {
+    // Ritningen bygger om kolumnen, så handen måste lämnas tillbaka där den var — annars tar
+    // det första piltangenttrycket efter ett klick inte vägen någonstans.
+    const grupp = document.activeElement?.closest?.('[role="radiogroup"]')?.getAttribute('aria-label') ?? null
     el.vagrat = vagrat
     el.lodratt = lodratt
     rita()
+    if (grupp) {
+      const igen = [...document.querySelectorAll('[role="radiogroup"]')].find((g) => g.getAttribute('aria-label') === grupp)
+      igen?.querySelector('[role="radio"][aria-checked="true"]')?.focus()
+    }
     sag(`Placering: ${XNAMN[vagrat]}, ${YNAMN[lodratt]}.`)
   }
 
@@ -400,6 +427,9 @@
     if (e.target.closest('#vaxla')) { plattform = plattform === 'platta' ? 'remsor' : 'platta'; rita(); $('vaxla')?.focus(); return }
     const ruta = e.target.closest('[role="radio"]')
     if (!ruta) return
+    // En knapp som klickas får inte fokus av sig själv på macOS, och då tar piltangenten efteråt
+    // inte vägen någonstans. En radioknapp ska ha handen efter ett klick; den får den här.
+    ruta.focus()
     if (ruta.dataset.x && ruta.dataset.y) satt(ruta.dataset.x, ruta.dataset.y)
     else if (ruta.dataset.x) satt(ruta.dataset.x, el.lodratt)
     else if (ruta.dataset.y) satt(el.vagrat, ruta.dataset.y)
@@ -420,7 +450,6 @@
     const ruta = e.target.closest('[role="radio"]')
     if (!ruta) return
     const grupp = ruta.closest('[role="radiogroup"]')
-    const etikett = grupp.getAttribute('aria-label')
     const alla = [...grupp.querySelectorAll('[role="radio"]')]
     const kolumner = grupp.classList.contains('platta') ? 3 : alla.length
     const i = alla.indexOf(ruta)
@@ -432,10 +461,6 @@
     if (nasta.dataset.x && nasta.dataset.y) satt(nasta.dataset.x, nasta.dataset.y)
     else if (nasta.dataset.x) satt(nasta.dataset.x, el.lodratt)
     else satt(el.vagrat, nasta.dataset.y)
-    // Ritningen bygger om gruppen, så fokus flyttas tillbaka till den vy den kom ifrån — och
-    // till den ruta som nu är vald. Utan etiketten hamnar det i sidledsremsan hur man än gick.
-    const igen = [...document.querySelectorAll('[role="radiogroup"]')].find((g) => g.getAttribute('aria-label') === etikett)
-    igen?.querySelector('[role="radio"][aria-checked="true"]')?.focus()
   })
 
   window.addEventListener('resize', () => { ritaKort(); matning() })

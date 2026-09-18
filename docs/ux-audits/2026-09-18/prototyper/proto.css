@@ -96,7 +96,9 @@ body {
 .protorad button { min-height: 28px; border: 1px solid #4a4230; border-radius: 7px; padding: 0 10px; background: #1f1b12; color: #ffd98a; font: inherit; cursor: pointer; }
 .protorad button:hover { border-color: #ffd98a; }
 .protorad button:focus-visible { outline: 2px solid #ffd98a; outline-offset: 2px; }
-.protorad .sagt { flex: 1 1 100%; color: #c8b98d; }
+/* Egen rad: `.protorad p`s 62ch skulle annars klämma in den upplästa meningen bredvid
+   mätningarna, eftersom en maxbredd också kapar det flexraden räknar med. */
+.protorad .sagt { flex: 1 1 100%; width: 100%; max-width: none; color: #c8b98d; }
 .protorad .sagt em { font-style: normal; color: #ffe9b8; }
 
 /* What only a screen reader is meant to get. */
