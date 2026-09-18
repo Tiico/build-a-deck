@@ -3256,6 +3256,77 @@ En vägg som inte skrollar alls rapporterar inget utrymme, och det är inte samm
 
 ---
 
+### L22. Media är en egen flik, och beskärningen är bildens (2026-09-18, #221, #222)
+
+Beslutet, i en mening:
+
+> All media i spelet bor på en egen flik; varje bild bär sin egen beskärning som gäller överallt den används, med kortets egen rad som undantag; och av «bildernas mått» blir `fill` kvar i mallen medan `anchor` avvecklas.
+
+**Problemet var inte att bilderna saknades, utan att vägen till dem var ett drag per rad.**
+«Images in the game» visade vilka bilder leken hade, men för att lägga en på ett kort drog man den dit.
+På 154 kort är det 154 drag, och samma fil laddades upp igen så fort någon glömde att den redan fanns.
+Massredigeringen fanns redan och var vägen in; det som saknades var biblioteket och kopplingen.
+
+**Beskärningen följer bilden, inte användningen.**
+Det är vad som gör att den kan göras *en* gång för 96 kort, och det är hela poängen med att ha ett bibliotek alls.
+Motsatsen — beskärning per användning — ger varje kort frihet och gör varje ändring till 154 ändringar, vilket är precis det arbete beslutet finns för att ta bort.
+Ett kort som verkligen behöver ett annat utsnitt säger det på sin egen rad, som ett undantag.
+Utan den ventilen hade svaret varit att ladda upp samma fil två gånger, och då är biblioteket ingen ordning.
+
+**`fill` stannar hos mallen, `anchor` avvecklas.**
+De två svarade på samma fråga från olika håll, vilket är den troliga förklaringen till att «bildernas mått» kändes verkningslöst: det ställde mallens fråga på bildens ställe.
+Hur stort motivet sitter i sin ram är mallens sak, för mallen äger ramen — det blir kryssrutan «alla motiv lika stora i sin ruta» i bildelementet.
+*Vilken del* av bilden som visas är bildens sak, och när bilden väl bär en beskärning har ankaret (mitten eller foten) ingen fråga kvar att svara på.
+
+Följdkraven: `anchor` ur `frame` är en schemaändring med migrering av befintlig data, inte en tyst avvikelse; kortens `framing` blir kortens undantag; oanvänd media märks men rensas inte, eftersom bilder är innehållsadresserade och en äldre version av leken kan peka på en bild ingen använder i dag.
+
+Prototyp och mätning: `docs/ux-audits/2026-09-18.md`.
+
+### L23. Ett tecken öppnar en lista, överallt i verktyget (2026-09-18, #215, #230)
+
+Beslutet, i en mening:
+
+> Där något ska hämtas in i en text skriver man ett tecken och får en lista som smalnar — `{` för en symbol, `[[` för en referens i regelboken — och där ett val ändå måste stå i en ruta är rutan sökbar med det senast valda överst.
+
+**Det är ett mönster som redan fanns, och som bara användes på ett ställe.**
+Korttabellens måsvinge gjorde det rätt: skriv tecknet, få en lista, pilar och Enter, fokus kvar i meningen som skrivs.
+Regelboken gjorde i stället en knapp per referens i spelet och lade raden framme under varje öppet block — tiotals knappar, hela tiden, identiska för varje block.
+Bordseditorns slotar gjorde en tredje sak: en enda kolumn med ett femtiotal val i fyra osorterade block.
+
+**Priset är att en väg in som bara är ett tecken inte syns.**
+Det är beslutets svaga punkt och den ska inte glömmas bort: den som aldrig sett `[[` får aldrig veta att referenser finns, och skriver då namn för hand — vilket är precis det referenser finns för att slippa.
+Svaret får inte vara att ta tillbaka raden, men det måste vara *något*; blockets egen platshållartext är det billigaste.
+
+**Där en ruta ändå behövs är den sökbar.**
+Slotarna behåller sina fyra block i en ruta i stället för att bli fyra steg: den som vet vad hon vill ha ska nå det i ett steg, och det är de flesta gångerna.
+Sök, senast valda överst, rubriker som verkligen skiljer, och det troliga först.
+Sökfältet tar fokus när rutan öppnas — tangentbordet blir snabbast möjligt, till priset av en blinkande markör för den som siktade med musen.
+Rutans riktning är en annan fråga och är redan löst (#229): en ruta öppnas dit det finns plats.
+
+Prototyp och mätning: `docs/ux-audits/2026-09-18-slotvalet.md`.
+
+### L24. Bordet har genvägar, och de är genvägar och inte vägar (2026-09-18, #224)
+
+Beslutet, i en mening:
+
+> Cmd/Ctrl + klick vänder det man pekar på, `F` vänder det valda, `D` och `S` drar och blandar högen under pekaren, och en alltid synlig `?` i hörnet visar den ytans egna kommandon.
+
+**Ctrl + klick var det som efterfrågades, och det går inte att bygga bokstavligt.**
+På macOS är Ctrl+klick systemets sekundärklick: sidan får `contextmenu` och aldrig något `click`.
+Mätt i Chromium, se prototypnoten.
+Alltså Cmd på macOS och Ctrl på Windows och Linux — vilket är vad varje annan modifierargenväg gör ändå.
+
+**Att `D` och `S` verkar på högen under pekaren gör dem omöjliga utan pekare.**
+Det är accepterat, men det gör dem till genvägar och inte till vägar: hjulet måste förbli fullt nåbart med tangentbordet, annars tappar den som spelar utan mus två handlingar som alla andra har.
+Det är ett acceptanskriterium och inte en eftertanke.
+
+**Hjälpknappen är alltid synlig.**
+Den som inte vet att kommandon finns ska kunna hitta dem, vilket är hela poängen med en hjälp.
+En väg in som bara finns under en pekare finns inte för ett tangentbord eller ett finger — det var precis felet #184 rättade, och det ska inte återinföras av en knapp som gömmer sig.
+Samma komponent kan stå på fler ytor och visar då deras egna kommandon, men sätts inte ut på en yta som ännu inte har några: då lovar den något som inte finns.
+
+Prototyp och mätning: `docs/ux-audits/2026-09-18-snabbkommandon.md`.
+
 ## I. Öppna frågor
 
 Ekonomi och juridik:
