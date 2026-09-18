@@ -1,7 +1,8 @@
-import type { CardQuery, ZoneAction, ZoneBeside } from '@byd/protocol'
+import type { AssetCrop as Crop, CardQuery, ZoneAction, ZoneBeside } from '@byd/protocol'
 import type { Element, FaceTemplate, Variant } from '@byd/template'
-import { ProjectFraming } from './projects.js'
-import type { Cell, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc } from './projects.js'
+import { showsWholePicture } from '@byd/protocol'
+import { AssetCrop, ProjectFraming } from './projects.js'
+import type { Cell, Picture, ProjectCredit, ProjectDoc, ProjectFont, ProjectRow, RuleDoc } from './projects.js'
 import { applyRecipe, point, rect, seatZones, type Geometry, type Recipe, type RecipeWords, type SeatRole, type Shortcut, type Zone } from './recipe.js'
 
 // An edit is a thing that happened to a project (D3). A project is structurally the same as a
@@ -133,6 +134,10 @@ export type EditIntent =
   // What one card asks of its template's measure (E1), under the card and the column the picture
   // sits in. `null` is the card going back to the measure the deck gave it.
   | { v: 'setFraming'; cardRef: string; field: string; framing: ProjectFraming | null }
+  // The window a picture is looked at through (#222, L22, beslut 2), under the hash of its own
+  // bytes. It is said once and every card drawn from the picture obeys it — which is why the
+  // intent names no card: there is no card to name. `null` is the picture going back to whole.
+  | { v: 'setCrop'; hash: string; crop: Crop | null }
   // The type the game is set in (B3). A family the project names carries the file it is drawn
   // from, so a version prints as it was designed rather than as the printer's machine guesses.
   | { v: 'setFont'; family: string; font: ProjectFont }
@@ -448,6 +453,21 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       // intent arrives from a browser and nothing between the two reads the schema. A departure
       // that cannot be one would otherwise crop that card on every render from now on (E1).
       return { ...doc, framing: { ...(doc.framing ?? {}), [key]: ProjectFraming.parse(intent.framing) } }
+    }
+    case 'setCrop': {
+      // Checked here, where the value enters, for the same reason a departure is (E1): an intent
+      // arrives from a browser and nothing between the two reads the schema. A window that cannot
+      // be cut would otherwise crop every card drawn from this picture from now on.
+      const asked = intent.crop === null ? null : AssetCrop.parse(intent.crop)
+      // A window that shows all of the picture is the picture going back to whole, however the
+      // designer said so — dragged out to the edges or asked for by name.
+      const crop = asked !== null && showsWholePicture(asked) ? null : asked
+      const was = doc.pictures?.[intent.hash] ?? {}
+      // The picture keeps its entry when the crop goes. The record is what the game knows about
+      // the picture, and a picture it has met is one it has met whether or not it has cropped it;
+      // the entry is also where the next thing said about a picture will go.
+      const now: Picture = crop === null ? without(was, 'crop') : { ...was, crop }
+      return { ...doc, pictures: { ...(doc.pictures ?? {}), [intent.hash]: now } }
     }
     // Naming a family again replaces it, so swapping the file for a better cut is one entry.
     case 'setFont':

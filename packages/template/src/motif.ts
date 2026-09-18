@@ -9,7 +9,22 @@
 // made once per asset hash and never again — the same bytes always give the same answer.
 
 export type Trim = { left: number; top: number; right: number; bottom: number }
-export type Motif = { w: number; h: number; trim: Trim }
+export type Motif = {
+  w: number
+  h: number
+  trim: Trim
+  // Who said where the motif is. Measured air is a guess about a file — a good one, and one the
+  // element has to ask for with `trim` or a measure before it is acted on, because a file whose
+  // border was read wrong would otherwise lose its own edges on every card. A crop is not a
+  // guess: it is the designer saying which part of the picture is the picture (#222, L22), and
+  // it is obeyed wherever the picture is drawn, whatever the element asked for.
+  //
+  // It lives on the motif rather than beside it because it answers a question about this very
+  // measurement — the compiler is handed one motif per picture and has to know which kind it is
+  // — and it is never stored: what is kept per asset is the measurement of the bytes, which is
+  // the same for every deck, while a crop belongs to one game's document.
+  cropped?: true
+}
 // One picture's pixels as every source of them has them: four bytes per pixel, row by row.
 export type Pixels = { width: number; height: number; data: Uint8ClampedArray | Uint8Array }
 
@@ -65,4 +80,29 @@ export function motifOf(pixels: Pixels): Motif {
   while (columnIsGround(w - 1 - right)) right++
 
   return { w, h, trim: { left, top, right, bottom } }
+}
+
+// The motif a designer drew, out of the crop she drew it with (#222, L22, beslut 2).
+//
+// A crop is stored in shares of the picture, because it belongs to the picture and not to any
+// one encoding of it; a motif is in the file's own pixels, because that is what everything
+// downstream measures in. So the file's size is what turns the one into the other, and a picture
+// nothing has measured therefore has nothing to crop against — it is drawn as a file, exactly as
+// it was before anyone cropped it, rather than at a size invented here.
+//
+// Whatever air was measured inside the crop is not subtracted again: the designer has answered
+// the question the measurement was guessing at, and taking her window and then trimming it would
+// show her something other than what she framed.
+export function croppedMotif(file: Pick<Motif, 'w' | 'h'>, crop: { x: number; y: number; w: number; h: number }): Motif {
+  return {
+    w: file.w,
+    h: file.h,
+    trim: {
+      left: crop.x * file.w,
+      top: crop.y * file.h,
+      right: (1 - crop.x - crop.w) * file.w,
+      bottom: (1 - crop.y - crop.h) * file.h,
+    },
+    cropped: true,
+  }
 }

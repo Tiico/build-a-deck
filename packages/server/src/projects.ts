@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { CardQuery, ZoneAction, ZoneBeside } from '@byd/protocol'
+import { CardQuery, Picture, ZoneAction, ZoneBeside } from '@byd/protocol'
 import { RuleDoc, Template, type Row } from '@byd/template'
 import type { Deck } from './faces.js'
 import type { AppliedEdit } from './project-actor.js'
@@ -56,6 +56,12 @@ export type ProjectCredit = z.infer<typeof ProjectCredit>
 // because the project document is where everything else looks for it.
 export { RuleBlock, RuleDoc, RuleSource } from '@byd/template'
 
+// What the game knows about one of its pictures (#222, L22), declared once in `@byd/protocol`
+// where the editor that writes a crop, the compiler that draws through it and the document that
+// stores it can all reach the same schema. Passed on from here for the same reason the rulebook
+// is: the project document is where everything else looks for it.
+export { AssetCrop, Picture } from '@byd/protocol'
+
 // A font the version is pinned to (B3). `stack` is what the CSS says; `asset` is the file the
 // project carries, so a locked version renders the same tomorrow as it did when it was tested.
 // A font without a file is whatever the machine has, which is a warning at print time (E5).
@@ -95,6 +101,14 @@ export const ProjectDoc = z.object({
   // picture belongs to a cell, so the departure does too. It is the deck's and not the file's,
   // because a file is content-addressed and the same bytes may be someone else's art.
   framing: z.record(z.string().regex(/^[^/]+\/[^/]+$/, 'a framing key names a card and a column'), ProjectFraming).optional(),
+  // What the game knows about each of its pictures (#222, L22), under the hash of the picture's
+  // own bytes. The crop lives here and not beside the cell, because it is the picture's and not
+  // the card's: cropped once, it is obeyed by every card drawn from that file — which is the
+  // whole reason for having a library rather than a hundred and fifty-four drags.
+  //
+  // A picture that has nothing to say is simply absent, so every document written before there
+  // was a crop reads back as the document it always was.
+  pictures: z.record(z.string().regex(/^[0-9a-f]{64}$/, 'a picture is named by the hash of its bytes'), Picture).optional(),
   rules: RuleDoc.optional(),
   fonts: z.record(z.string(), ProjectFont).optional(),
   setup: ProjectSetup,

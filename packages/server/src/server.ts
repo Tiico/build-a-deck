@@ -664,7 +664,7 @@ async function openTableDoor(opts: ServerOptions, req: IncomingMessage, ws: WebS
 // so the compiled page is complete and the render worker needs nothing but the page.
 async function deckOf(opts: ServerOptions, rec: ProjectRecord): Promise<Deck> {
   if (!opts.assets) return deckFromProject(rec)
-  const { rows, motifs } = await resolveAssets(rec.rows, opts.assets)
+  const { rows, motifs } = await resolveAssets(rec.rows, opts.assets, rec.pictures ?? {})
   const doc = deckFromProject({ ...rec, rows, icons: await resolveIcons(rec.icons, opts.assets) })
   return { ...doc, motifs, fonts: await resolveFonts(rec.fonts ?? {}, opts.assets) }
 }

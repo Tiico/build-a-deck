@@ -14,6 +14,14 @@ export const svEditor = {
   'media.put.done': 'Bilden ligger nu på {n} kort.',
   'media.put.unmarked': 'Markera korten i Tabell först.',
   'media.put.noColumn': 'Mallen ritar ingen bild ännu.',
+  // Beskärningen (#222, L22, beslut 2). Fönstrets namn säger var det står, så samma tangenttryck
+  // som flyttar det är det som läser upp var det hamnade.
+  'media.crop': 'Beskärning',
+  'media.crop.lead': 'Beskärningen är bildens egen och gäller varje kort som använder den.',
+  'media.crop.window': 'Beskärning: visar {x}–{x2} % i sidled och {y}–{y2} % i höjdled',
+  'media.crop.keys': 'Pilarna flyttar fönstret. Skift och en pil ändrar dess storlek.',
+  'media.crop.whole': 'Hela bilden',
+  'media.crop.card': 'Så hamnar bilden på korten',
   'editor.tab.rules': 'Regler',
   'editor.tab.tables': 'Bord',
 

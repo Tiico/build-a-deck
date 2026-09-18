@@ -4,6 +4,7 @@
 // then say is `motifOf`'s business and is tested on its own; what is asked here is the wiring —
 // the file's own size, the draw, the read back, and what happens when a browser refuses it.
 import { describe, expect, it } from 'vitest'
+import { croppedMotif } from '@byd/template'
 import { measureMotif, previewMotifs } from '../src/editor/motifs.js'
 
 // A canvas as the measuring uses one, with pixels a test decides. jsdom has no rendering at all,
@@ -71,5 +72,16 @@ describe('the measurements a preview needs (E1)', () => {
     expect(previewMotifs({ [hash]: motif }, 'http://x')).toEqual({ [`http://x/assets/${hash}`]: motif })
     // Without a place to serve pictures from there are no pictures, so there is nothing to say.
     expect(previewMotifs({ [hash]: motif }, undefined)).toEqual({})
+  })
+
+  // The crop the designer cut is what the preview draws through (#222, L22): the card she is
+  // looking at has to be the card the table and the print will get, so the window is put on the
+  // measurement here, once, rather than at each of the surfaces that show a card.
+  it('draws a cropped picture through its window, so the preview is the card the printer gets', () => {
+    const crop = { x: 0.2, y: 0, w: 0.5, h: 1 }
+
+    expect(previewMotifs({ [hash]: motif }, 'http://x', { [hash]: { crop } })).toEqual({
+      [`http://x/assets/${hash}`]: croppedMotif(motif, crop),
+    })
   })
 })

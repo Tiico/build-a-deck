@@ -25,7 +25,7 @@ import { StatusNotice } from '../status/StatusNotice.js'
 import { useSay } from '../status/StatusLive.js'
 import { noticeFor } from '../status/notice.js'
 import { chordOf, isTyping } from './keys.js'
-import { assetsInUse } from './assets.js'
+import { mediaInGame } from './assets.js'
 import { previewMotifs } from './motifs.js'
 import type { Motif } from '@byd/template'
 import { statusLinks } from '../status/links.js'
@@ -185,23 +185,37 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // card was before there was anything to measure, and nothing keeps asking about it.
   const [motifs, setMotifs] = useState<Record<string, Motif>>({})
   const measured = useRef(new Set<string>())
-  const pictures = client ? assetsInUse(client.doc).map((a) => a.hash).join(',') : ''
+  // Every picture the game holds and not only those in use (#222): the library is there for the
+  // ones no card is drawn from yet, and an unmeasured picture is cropped against a box of the
+  // commonest shape instead of its own — with the card beside the window drawn uncropped while
+  // the window is dragged.
+  const pictures = client ? mediaInGame(client.doc).map((a) => a.hash).join(',') : ''
   useEffect(() => {
     if (!client) return
     const missing = pictures.split(',').filter((hash) => hash.length > 0 && !measured.current.has(hash))
     if (missing.length === 0) return
     for (const hash of missing) measured.current.add(hash)
     let live = true
-    void client.motifs(missing).then((found) => {
-      if (live) setMotifs((had) => ({ ...had, ...found }))
-    })
+    void client.motifs(missing)
+      .then((found) => {
+        if (live) setMotifs((had) => ({ ...had, ...found }))
+      })
+      // A measurement that will not come is the condition every picture was in before there was
+      // anything to measure: the card is drawn by its file. Asking is therefore allowed to fail —
+      // a dropped network, or a server that has gone away while the answer was on its way — and
+      // it must fail quietly, because an unhandled rejection is not a way to say "drawn as a
+      // file". The hash stays in `measured`, so a failure is not asked again on every render.
+      .catch(() => undefined)
     return () => {
       live = false
     }
   }, [pictures, client])
   // Keyed by the URL the resolved rows carry, once per set of measurements: a fresh object every
   // render is a fresh compile of the whole wall, exactly as it is for the icons and the fonts.
-  const deckMotifs = useMemo(() => previewMotifs(motifs, http), [motifs, http])
+  // The deck's pictures as every surface draws them (E1, #222): what was measured off the file,
+  // with the window the designer cut already on it.
+  const cropped = client?.doc.pictures
+  const deckMotifs = useMemo(() => previewMotifs(motifs, http, cropped), [motifs, http, cropped])
 
   if (!projectId) return <StatusNotice notice={noticeFor('missing', 'editor', t)} surface="page" links={links} />
   if (fault === 'unauthorized') {
@@ -388,7 +402,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     symbols: () => <SymbolPanel doc={doc} client={client} assetBase={http} />,
     // The pictures the deck is drawn from, in one place (#222). The table's own image strip is
     // what is in use; this is what the game has.
-    media: () => <MediaPanel doc={doc} assetBase={http} onReplaceRows={(rows) => client.replaceRows(rows)} />,
+    media: () => <MediaPanel doc={doc} assetBase={http} motifs={deckMotifs} onReplaceRows={(rows) => client.replaceRows(rows)} onCrop={(hash, crop) => client.setCrop(hash, crop)} />,
     rules: () => <RulesPanel doc={doc} client={client} assetBase={http} />,
     // Bord is the home for both the game's board vocabulary and its running tables (#19, C4).
     // One panel and not two stacked (#126): the list of running tables stands in the setup's third

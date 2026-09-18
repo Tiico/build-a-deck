@@ -1,4 +1,5 @@
-import { motifOf, type Motif } from '@byd/template'
+import type { Picture } from '@byd/protocol'
+import { croppedMotif, motifOf, type Motif } from '@byd/template'
 import { assetUrl } from './assets.js'
 
 // What is drawn inside a deck's pictures, as the editor handles it (E1).
@@ -46,9 +47,16 @@ export async function measureAsset(url: string): Promise<Motif | null> {
 
 // The measurements as a preview needs them: keyed by the URL the resolved rows carry, exactly as
 // `previewIcons` re-keys the icon set. The compiler is handed URLs and knows nothing of hashes.
-export function previewMotifs(byHash: Record<string, Motif>, assetBase: string | undefined): Record<string, Motif> {
+// A crop is put on here, in the one place the editor turns measurements into what a preview is
+// handed (#222, L22). Every surface that draws a card — the wall, the canvas, the felt — takes its
+// motifs from this, so a picture cannot be cropped on one of them and whole on another, and what
+// the designer looks at is what the table and the printer get.
+export function previewMotifs(byHash: Record<string, Motif>, assetBase: string | undefined, pictures: Record<string, Picture> = {}): Record<string, Motif> {
   if (!assetBase) return {}
   const out: Record<string, Motif> = {}
-  for (const [hash, motif] of Object.entries(byHash)) out[assetUrl(assetBase, hash)] = motif
+  for (const [hash, motif] of Object.entries(byHash)) {
+    const crop = pictures[hash]?.crop
+    out[assetUrl(assetBase, hash)] = crop ? croppedMotif(motif, crop) : motif
+  }
   return out
 }
