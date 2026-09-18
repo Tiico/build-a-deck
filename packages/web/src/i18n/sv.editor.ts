@@ -649,6 +649,15 @@ export const svEditor = {
   'setup.query.and': ' och ',
   'setup.query.any': 'vilket kort som helst',
   'setup.query.noColumns': 'Leken har inga kolumner att fråga om ännu.',
+  // Rutan ett ord i meningen öppnar (#230). I ett spel med tjugo zoner står det fyrtiosju val i
+  // den, så den söks igenom i stället för att rullas igenom.
+  'setup.slot.search': 'Sök bland valen',
+  'setup.slot.recent': 'Senast valda',
+  'setup.slot.nothing': 'Inget som heter så.',
+  'setup.slot.group.amount': 'Antal',
+  'setup.slot.group.amountZone': 'Lika många som en zon',
+  'setup.slot.group.place': 'Högen och händerna',
+  'setup.slot.group.zone': 'Zoner i spelet',
   'setup.actions.heading': 'När någon klickar på högen kan de välja',
   'setup.actions.new': '＋ Åtgärd',
   'setup.actions.newName': 'Ny åtgärd',

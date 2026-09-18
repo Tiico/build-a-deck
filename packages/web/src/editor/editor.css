@@ -2289,7 +2289,7 @@
   position: absolute; z-index: 5; top: calc(100% + 6px); inset-inline-start: 0; min-width: 210px; max-width: 320px; overflow: auto;
   /* Sin egen tak, och aldrig mer än rummet på den sida den öppnades åt (#229). */
   max-height: min(40vh, var(--byd-place-room, 40vh));
-  display: grid; gap: 4px; padding: 8px; border-radius: 10px; background: #12141a; border: 1px solid #2f333d;
+  display: flex; flex-direction: column; gap: 4px; padding: 8px; border-radius: 10px; background: #12141a; border: 1px solid #2f333d;
   box-shadow: 0 14px 34px rgba(0, 0, 0, 0.6); line-height: 1.5;
 }
 .byd-slot-pop[data-place-y='up'] { top: auto; bottom: calc(100% + 6px); }
@@ -2307,9 +2307,26 @@
    den, så en dörr som är kortare än rummet är bara en dörr med mindre lista i (#46 på #32). */
 .byd-columns, .byd-newfield, .byd-tables-menu { max-height: var(--byd-place-room, none); overflow: auto; }
 
-.byd-slot-pop > button, .byd-slot-chips button { text-align: left; border: 1px solid #2f333d; border-radius: 8px; padding: 8px; background: #1b1d23; color: #e6ecfa; font: inherit; cursor: pointer; }
-.byd-slot-pop > button:hover, .byd-slot-chips button:hover { background: #24507f; }
-.byd-slot-pop label { display: grid; gap: 4px; font-size: 12px; color: #9aa3b8; }
+/* Ett val bland femtio (#230). Sökfältet står stilla överst och listan under det skrollar, för ett
+   fält som rullar bort med listan är inget fält att söka i. Raderna är rader och inte knapprutor:
+   fyrtiosju inramade rutor är en vägg, samma fyrtiosju rader är en lista. */
+.byd-slot-find {
+  flex: none; width: 100%; box-sizing: border-box; padding: 0 8px;
+  border: 1px solid #2f333d; border-radius: 8px; background: #0d0f14; color: #e6ecfa; font: inherit;
+}
+.byd-slot-list { flex: 1 1 auto; min-height: 0; overflow: auto; display: grid; gap: 4px; align-content: start; }
+.byd-slot-block { display: grid; align-content: start; }
+/* Senast valda står överst och skiljs från blocken under med en linje, inte bara med en rubrik. */
+.byd-slot-block[data-recent] { border-bottom: 1px solid #23262e; padding-bottom: 4px; }
+.byd-slot-block > i, .byd-slot-nothing { font-style: normal; font-size: 11px; letter-spacing: 1px; color: #9aa3b8; padding: 8px 8px 4px; }
+.byd-slot-block > i { text-transform: uppercase; }
+.byd-slot-block:first-child > i { padding-top: 0; }
+.byd-slot-pop button { display: block; width: 100%; text-align: left; border: 0; border-radius: 8px; padding: 4px 8px; background: transparent; color: #e6ecfa; font: inherit; cursor: pointer; }
+.byd-slot-pop button:hover, .byd-slot-chips button:hover { background: #24507f; }
+.byd-slot-pop label { display: grid; gap: 4px; padding: 0 8px 8px; font-size: 12px; color: #9aa3b8; }
+/* Frågan som marker (L4) är ett annat slags val än en lista: värdena är växlar och bär därför kvar
+   sin ruta. Reglerna står efter listans, för de är lika specifika och det senare vinner. */
+.byd-slot-chips button { display: inline; width: auto; text-align: left; border: 1px solid #2f333d; border-radius: 8px; padding: 8px; background: #1b1d23; }
 .byd-slot-chips { display: grid; gap: 8px; }
 .byd-slot-chips > span { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .byd-slot-chips i { flex-basis: 100%; font-style: normal; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #9aa3b8; }

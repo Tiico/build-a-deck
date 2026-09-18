@@ -600,6 +600,15 @@ export const enEditor = {
   'setup.query.and': ' and ',
   'setup.query.any': 'any card at all',
   'setup.query.noColumns': 'The deck has no columns to ask about yet.',
+  // The box a word in the sentence opens (#230). In a game of twenty zones it holds forty-seven
+  // choices, so it is searched rather than scrolled.
+  'setup.slot.search': 'Search the choices',
+  'setup.slot.recent': 'Last chosen',
+  'setup.slot.nothing': 'Nothing is called that.',
+  'setup.slot.group.amount': 'Amounts',
+  'setup.slot.group.amountZone': 'As many as a zone holds',
+  'setup.slot.group.place': 'The pile and the hands',
+  'setup.slot.group.zone': 'Zones in the game',
   'setup.actions.heading': 'When somebody clicks the pile they can choose',
   'setup.actions.new': '＋ Action',
   'setup.actions.newName': 'New action',
