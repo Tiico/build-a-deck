@@ -5,7 +5,7 @@ import { Crown, CrownBox, CrownDrawer, CrownFoot } from './Crown.js'
 import { iconFieldsOf, previewIcons } from './assets.js'
 import { previewFonts } from './fonts.js'
 import { CATEGORIES, INK, LIBRARY, searchSymbols, symbolName, symbolPreview, type GameSymbol } from './symbols.js'
-import { ROLE_MIN_CONTRAST, groundOf, iconsIn, iconsUsed, paletteIssues, rolesUsed } from './palette.js'
+import { ROLE_MIN_CONTRAST, groundOf, iconsIn, iconsPainted, iconsUsed, paletteIssues, rolesUsed, type Painted } from './palette.js'
 import { contrastRatio } from '@byd/template'
 import type { ProjectClient } from './ProjectClient.js'
 import { useT, type Key } from '../i18n/index.js'
@@ -39,6 +39,8 @@ export function SymbolPanel({ doc, client, assetBase }: SymbolPanelProps) {
   // tally on a chip and the cards under it can never disagree.
   const bare = useMemo(() => iconFieldsOf(doc), [doc])
   const said = useMemo(() => doc.rows.map((r) => ({ row: r, icons: iconsIn(r.fields, bare) })), [doc.rows, bare])
+  // And which symbols no row says because the template paints them (#213).
+  const painted = useMemo(() => iconsPainted(doc), [doc])
   const names = Object.keys(doc.icons)
   // The symbol in hand: the first in the set until one is picked, so the tab opens on a symbol and
   // never on the whole deck. A set that loses the symbol being shown falls back the same way.
@@ -112,16 +114,19 @@ export function SymbolPanel({ doc, client, assetBase }: SymbolPanelProps) {
             <section className="byd-symbols-deck">
               <h2>{t('symbols.deck')}</h2>
               <div className="byd-symbols-chips" role="group" aria-label={t('symbols.deck')}>
-                {names.map((name) => (
-                  <button key={name} type="button" className="byd-choice" aria-pressed={chosen === name} onClick={() => setShowing(name)}>
-                    {name} <small>{said.filter((c) => c.icons.has(name)).length}</small>
-                  </button>
-                ))}
+                {names.map((name) => {
+                  const n = said.filter((c) => c.icons.has(name)).length
+                  return (
+                    <button key={name} type="button" className="byd-choice" aria-pressed={chosen === name} onClick={() => setShowing(name)}>
+                      {name} <small>{n === 0 && painted[name] ? t(paintedChip(painted[name])) : n}</small>
+                    </button>
+                  )
+                })}
                 <button type="button" className="byd-choice" aria-pressed={chosen === ALL} onClick={() => setShowing(ALL)}>
                   {t('symbols.deck.all')}
                 </button>
               </div>
-              {shown.length === 0 && <p className="byd-symbols-empty">{t('symbols.deck.unused')}</p>}
+              {shown.length === 0 && <p className="byd-symbols-empty">{t(chosen !== null && chosen !== ALL && painted[chosen] ? paintedWhy(painted[chosen]) : 'symbols.deck.unused')}</p>}
               <div className="byd-wall" role="list">
                 {front &&
                   shown.map(({ row: r }) => (
@@ -150,6 +155,7 @@ function ProjectSet({ doc, client, assetBase }: SymbolPanelProps) {
   // old check looked for `{namn}` exactly and told a deck that had painted every one of its
   // symbols that it used none of them.
   const used = iconsUsed(doc.rows, iconFieldsOf(doc))
+  const painted = iconsPainted(doc)
   if (names.length === 0) return <p className="byd-symbols-empty">{t('symbols.set.none')}</p>
   return (
     <section className="byd-symbols-set">
@@ -178,7 +184,7 @@ function ProjectSet({ doc, client, assetBase }: SymbolPanelProps) {
                 }}
               />
               <small>{credit ? `${credit.licence} · ${credit.by}` : t('symbols.own')}</small>
-              <small>{t(n === 1 ? 'wall.cards.one' : 'wall.cards.other', { n })}</small>
+              <small>{n === 0 && painted[name] ? t(paintedSaid(painted[name])) : t(n === 1 ? 'wall.cards.one' : 'wall.cards.other', { n })}</small>
               <button type="button" aria-label={t('symbols.remove', { name })} onClick={() => client.removeIcon(name)}>
                 ×
               </button>
@@ -190,6 +196,25 @@ function ProjectSet({ doc, client, assetBase }: SymbolPanelProps) {
     </section>
   )
 }
+
+// Why a symbol the template paints counts 0 cards (#213). The number measures cards that *say* the
+// symbol, and a symbol the template paints is said by none of them — so the zero is right and the
+// surface says what it means instead of looking like a fault. The set beside the library and the
+// chip on the tab read it off the same walk, because the same symbol must not be described two
+// ways depending on which of them is being looked at.
+//
+// It never promises more than the template does: an element under a condition, or in a variant,
+// is drawn on some of the deck and the message says so.
+const paintedSaid = (how: Painted | undefined): Key => (how === 'some' ? 'symbols.painted.some' : 'symbols.painted')
+
+// The same fact in the room a chip has. A chip is a name and a number in a row of chips, and the
+// sentence above — seven words for a symbol a variant paints — drew one four times the width of
+// its neighbours: the row stopped being a row of counts and became a paragraph with numbers in it.
+// So the chip carries the short form, and the long one stays where there is a line to hold it: in
+// the set above, and under the chips for whichever symbol is in hand. What may not differ is
+// *whether* it says the template paints the symbol, and that is the one walk above.
+const paintedChip = (how: Painted | undefined): Key => (how === 'some' ? 'symbols.painted.chip.some' : 'symbols.painted.chip')
+const paintedWhy = (how: Painted | undefined): Key => (how === 'some' ? 'symbols.deck.painted.some' : 'symbols.deck.painted')
 
 // A symbol in the set is one of the project's assets; anything else is a URL as it stands.
 const iconSrc = (url: string, assetBase: string): string => (url.startsWith('asset:') ? `${assetBase}/assets/${url.slice('asset:'.length)}` : url)

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { groundOf, iconsUsed, paletteIssues, rolesUsed, ROLE_MIN_CONTRAST } from '../src/editor/palette.js'
+import { groundOf, iconsPainted, iconsUsed, paletteIssues, rolesUsed, ROLE_MIN_CONTRAST } from '../src/editor/palette.js'
 
 // The palette is where a deck's colours can be judged all at once (E4, E5). A colour per use is
 // forty chances to write an unreadable card and forty chances to say the same thing twice; a
@@ -96,5 +96,42 @@ describe('the symbols the deck writes', () => {
     expect(iconsUsed([{ fields: { body: '{svärd} {svärdsman|fara}' } }])).toEqual({ svärd: 1, svärdsman: 1 })
     // And a sentence is never read as a row of names, however much it looks like one.
     expect(iconsUsed([{ fields: { body: 'Skada 2 mot allt i zonen.' } }])).toEqual({})
+  })
+})
+
+// A symbol reaches a card the other way too: the template paints it, an `icons` element bound to
+// a literal, and it then stands on every card that element is drawn on without a single row
+// naming it (#213, E4). The count beside the library measures cards that *say* a symbol and stays
+// 0 for such a one — so the surfaces have to be able to say why, and this is what tells them.
+describe('the symbols the template paints (#213)', () => {
+  const mark = (literal: string, id = 'mark') => ({ kind: 'icons', id, x: 50, y: 76, w: 8, h: 8, bind: { literal }, iconMm: 8, gapMm: 0 })
+  const faces = (base: unknown[], variants: Record<string, unknown> = {}) => ({ template: { faces: { front: { base, variants } } } }) as never
+
+  it('finds a symbol the template paints on every card it draws', () => {
+    expect(iconsPainted(faces([mark('svärd')]))).toEqual({ svärd: 'all' })
+  })
+
+  it('says only some cards when a variant is what paints it', () => {
+    // A variant is worn by the rows that name it, so what it paints is on those rows and no
+    // others. The cards are not counted — the message must simply not promise the whole deck.
+    expect(iconsPainted(faces([], { hjälte: { override: [mark('krona', 'crown')] } }))).toEqual({ krona: 'some' })
+  })
+
+  it('reads a condition as some cards and a group as wherever the group is', () => {
+    const when = (children: unknown[]) => ({ kind: 'if', id: 'costly', when: { field: 'kostnad', nonEmpty: true }, children })
+    const group = (children: unknown[]) => ({ kind: 'group', id: 'band', x: 4, y: 4, children })
+    expect(iconsPainted(faces([when([mark('mynt', 'cost')])]))).toEqual({ mynt: 'some' })
+    // A group moves what it holds; it does not decide whether it is drawn at all.
+    expect(iconsPainted(faces([group([mark('svärd')])]))).toEqual({ svärd: 'all' })
+    expect(iconsPainted(faces([when([group([mark('mynt', 'cost')])])]))).toEqual({ mynt: 'some' })
+  })
+
+  it('holds every card only while nothing takes the element off one', () => {
+    // Painted outright and again by a variant is still on every card: the base is what draws it.
+    expect(iconsPainted(faces([mark('svärd')], { hjälte: { override: [mark('svärd', 'crown')] } }))).toEqual({ svärd: 'all' })
+    // A variant that takes the element away takes the symbol off the cards wearing that variant.
+    expect(iconsPainted(faces([mark('svärd')], { naken: { remove: ['mark'] } }))).toEqual({ svärd: 'some' })
+    // And one that replaces it by id draws its own symbol there instead, on those cards only.
+    expect(iconsPainted(faces([mark('svärd')], { hjälte: { override: [mark('krona', 'mark')] } }))).toEqual({ svärd: 'some', krona: 'some' })
   })
 })

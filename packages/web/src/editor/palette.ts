@@ -89,17 +89,69 @@ export const iconsIn = (fields: Row, bare: readonly string[] = []): Set<string> 
 /** Each symbol as it is said, in order, repeats and all. The one walk both readings are taken from. */
 function* iconMentions(fields: Row, bare: readonly string[]): Generator<string> {
   const braced = /\{([\p{L}\p{N}_-]+)(?:\|[\p{L}\p{N}_-]+)?\}/gu
-  const NAME = /^([\p{L}\p{N}_-]+)(?:\|[\p{L}\p{N}_-]+)?$/u
   for (const [field, value] of Object.entries(fields)) {
     if (typeof value !== 'string') continue
     if (bare.includes(field)) {
-      for (const word of value.split(/[\s,]+/)) {
-        const name = NAME.exec(word)?.[1]
-        if (name) yield name
-      }
+      yield* namesIn(value)
       continue
     }
     for (const m of value.matchAll(braced)) if (m[1]) yield m[1]
   }
 }
 
+/**
+ * A row of names, read as the renderer reads one: split on spaces and commas, and the name is what
+ * stands before the bar (E4). It is the same reading whether the names come out of a cell or out
+ * of an `icons` element's literal, because it is the same cell the compiler splits either way.
+ */
+function* namesIn(value: string): Generator<string> {
+  const NAME = /^([\p{L}\p{N}_-]+)(?:\|[\p{L}\p{N}_-]+)?$/u
+  for (const word of value.split(/[\s,]+/)) {
+    const name = NAME.exec(word)?.[1]
+    if (name) yield name
+  }
+}
+
+/**
+ * How a symbol the template paints reaches the cards (#213, E4).
+ *
+ * A symbol gets onto a card two ways. The card says it — `{namn}` in a sentence, a bare name in an
+ * icon row — which is what `iconsUsed` and `iconsIn` count. Or the template paints it: an `icons`
+ * element bound to a literal, which puts the symbol on every card that element is drawn on without
+ * a single row naming it. Those cards are not cards that *say* the symbol, so the count stays 0 —
+ * but a 0 with no explanation reads as a fault, and this is what lets the surfaces say why.
+ *
+ * `all` and `some` are the honest difference between them. An element in a face's base is drawn on
+ * every card the deck has; one in a variant's override, or under an `if`, is drawn on some of them,
+ * and so is a base element that a variant removes or overrides. The cards are not counted either
+ * way — the point is only that the message must not promise every card when the template promises
+ * a few.
+ */
+export type Painted = 'all' | 'some'
+
+export function iconsPainted(doc: Pick<ProjectDoc, 'template'>): Record<string, Painted> {
+  const out: Record<string, Painted> = {}
+  // One element that draws the symbol on every card is enough, whatever the rest of the template
+  // does with it elsewhere.
+  const paint = (name: string, how: Painted) => {
+    if (out[name] !== 'all') out[name] = how
+  }
+  const walk = (els: ProjectDoc['template']['faces'][string]['base'], how: Painted, touched: ReadonlySet<string>) => {
+    for (const el of els) {
+      if (el.kind === 'icons' && 'literal' in el.bind) for (const name of namesIn(el.bind.literal)) paint(name, touched.has(el.id) ? 'some' : how)
+      // A condition is the template's own way of saying "not on every card"; a group is a
+      // position and decides nothing about whether what it holds is drawn.
+      if (el.kind === 'if') walk(el.children, 'some', touched)
+      if (el.kind === 'group') walk(el.children, how, touched)
+    }
+  }
+  for (const face of Object.values(doc.template.faces)) {
+    const variants = Object.values(face.variants)
+    // What a variant takes away or replaces by id, it takes away from the cards wearing it — so a
+    // base element any variant touches is no longer drawn on every card in the deck.
+    const touched = new Set([...variants.flatMap((v) => v.remove ?? []), ...variants.flatMap((v) => (v.override ?? []).map((el) => el.id))])
+    walk(face.base, 'all', touched)
+    for (const v of variants) walk(v.override ?? [], 'some', touched)
+  }
+  return out
+}

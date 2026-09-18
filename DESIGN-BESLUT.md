@@ -1052,6 +1052,19 @@ En färgbar symbol är därför en form i en färg med hålen skurna av `fill-ru
 Därmed räcker en uppladdning per symbol oavsett hur många färger leken skriver, vilket är vad som gör en färg per bruk möjlig utan ett asset per färg.
 Prototypen gav också att en mörk symbol behöver en ljus bricka under sig i editorns mörka krom: med bläck vald försvann varje symbol i listan mot panelen.
 
+Talet räknar kort som nämner symbolen, och mallens symboler nämns av inget kort (beslutat 2026-09-18, #213):
+En symbol når kortet på två vägar: kortet säger den — `{namn}` i en mening eller ett bart namn i en ikonrad — eller mallen målar den, ett `icons`-element bundet till en literal, och då står symbolen på varje kort elementet ritas på utan att en enda rad nämner den.
+Uppsättningen bredvid biblioteket och brickan på symbolfliken mäter kort som nämner symbolen, så för en symbol bara mallen målar är talet noll, och nollan står kvar.
+Att i stället räkna om mallens symboler till hela leken vore att låta samma tal betyda två olika saker beroende på hur symbolen nådde kortet, och det är dyrare än en nolla som ser konstig ut.
+Det ärliga är att behålla måttet och sluta låta det se ut som ett fel, så båda ställena säger varför: där nollan stod står «målas av mallen», och symbolfliken säger att mallen målar den på varje kort den ritar i stället för att bara sakna kort.
+Det är samma vandring på båda ställena, eftersom halva poängen med #213 var att uppsättningen och fliken inte får säga olika saker om samma symbol.
+Orden är däremot olika långa, för ytorna är det: uppsättningen har en rad per symbol och bär hela meningen, medan brickan står i en rad av brickor som annars är ett namn och ett tal och därför bär den korta formen — «målas», «målas ibland».
+Mätt i editorn på 1440 px blev den långa formen en bricka på 221 px bland grannar på 55–82 px, fyra gånger bredare, och raden slutade läsas som en rad av tal; den korta formen ger 133 px.
+Hela beskedet är en bricka bort: meningen under brickorna säger om mallen målar symbolen på varje kort eller på vissa, för den symbol som är i handen.
+Talet står kvar så fort ett kort faktiskt säger symbolen, även när mallen också målar den: då är nollan ingen nolla, och en räkning säger mer än en mening om mallen.
+Vandringen skiljer på varje kort och vissa kort, för beskedet får aldrig lova mer än mallen gör: ett element i ansiktets bas ritas på hela leken, medan ett element i en variants override, ett element under ett villkor, och ett baselement som någon variant tar bort eller ersätter, alla ritas på en del av den.
+Korten räknas inte i något av fallen — skillnaden finns bara för att en lek där en av tre varianter målar symbolen inte ska få höra att den står på varenda kort.
+
 ### E5. Fysisk validering med varningar (fråga 30)
 
 Kontinuerliga kontroller mot fysiskt mått: minsta textstorlek i punkter, kontrastförhållande, färgblindhetssimulering, skärmargin mot utfall, minsta linjetjocklek.

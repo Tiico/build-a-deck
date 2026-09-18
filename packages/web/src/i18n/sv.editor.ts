@@ -519,6 +519,16 @@ export const svEditor = {
   'symbols.deck': 'Kort som säger symbolen',
   'symbols.deck.all': 'Hela leken',
   'symbols.deck.unused': 'Inget kort säger den här än. Skriv {namn} i korttexten, eller se hela leken.',
+  // En symbol mallen målar når kortet utan att någon rad nämner den (#213). Talet räknar kort som
+  // säger symbolen och står kvar på noll; det här är vad som sägs i stället, på båda ställena.
+  'symbols.painted': 'målas av mallen',
+  'symbols.painted.some': 'målas av mallen på vissa kort',
+  // Samma sak, men på brickan, där grannarna är ett namn och ett tal. Håll den vid två ord: hela
+  // beskedet står i uppsättningen ovanför och i meningen under brickorna.
+  'symbols.painted.chip': 'målas',
+  'symbols.painted.chip.some': 'målas ibland',
+  'symbols.deck.painted': 'Inget kort säger den här. Mallen målar den på varje kort den ritar, så den syns utan att någon rad nämner den.',
+  'symbols.deck.painted.some': 'Inget kort säger den här. Mallen målar den på vissa kort — en variant eller ett villkor avgör vilka — så den syns utan att någon rad nämner den.',
   'symbols.rename': 'Namn för {name}',
   'symbols.own': 'egen',
   'symbols.remove': 'Ta bort {name}',
