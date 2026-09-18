@@ -3309,15 +3309,15 @@ Prototyp och mätning: `docs/ux-audits/2026-09-18-slotvalet.md`.
 
 Beslutet, i en mening:
 
-> Cmd/Ctrl + klick vänder det man pekar på, `F` vänder det valda, `D` och `S` drar och blandar högen under pekaren, och en alltid synlig `?` i hörnet visar den ytans egna kommandon.
+> Cmd/Ctrl + klick och `F` vänder det pekaren står på, `D` och `S` drar och blandar högen under pekaren, och en alltid synlig `?` i hörnet visar den ytans egna kommandon.
 
 **Ctrl + klick var det som efterfrågades, och det går inte att bygga bokstavligt.**
 På macOS är Ctrl+klick systemets sekundärklick: sidan får `contextmenu` och aldrig något `click`.
 Mätt i Chromium, se prototypnoten.
 Alltså Cmd på macOS och Ctrl på Windows och Linux — vilket är vad varje annan modifierargenväg gör ändå.
 
-**Att `D` och `S` verkar på högen under pekaren gör dem omöjliga utan pekare.**
-Det är accepterat, men det gör dem till genvägar och inte till vägar: hjulet måste förbli fullt nåbart med tangentbordet, annars tappar den som spelar utan mus två handlingar som alla andra har.
+**Att `F`, `D` och `S` verkar på det pekaren står på gör dem omöjliga utan pekare.**
+Det är accepterat, men det gör dem till genvägar och inte till vägar: hjulet måste förbli fullt nåbart med tangentbordet, annars tappar den som spelar utan mus handlingar som alla andra har.
 Det är ett acceptanskriterium och inte en eftertanke.
 
 **Hjälpknappen är alltid synlig.**
@@ -3327,14 +3327,17 @@ Samma komponent kan stå på fler ytor och visar då deras egna kommandon, men s
 
 Prototyp och mätning: `docs/ux-audits/2026-09-18-snabbkommandon.md`.
 
-**Vad som byggdes, och var det avviker från meningen ovan (2026-09-18, #224).**
-Vägen utan modifierare är **dubbelklick** och inte `F`.
-`F` skulle vända «det valda», och filten har ingen markering: det finns inget valt kort på ett bord, bara det pekaren står på och det tangentbordets enda tabstopp står på.
-Att låta `F` betyda ettdera är ett designbeslut om vad «valt» ska vara på filten, och det är inte fattat — det hör hemma i ett eget issue med en prototyp, inte i en implementation.
-Dubbelklick behöver ingen markering alls, gör samma sak som modifierarklickningen och är den väg utan modifierare beslutet efterfrågade.
-Hjälpen listar därför dubbelklick och inte `F`: en lista över kommandon som räknar upp ett som inte finns är värre än ingen lista.
+**`F` vänder det pekaren står på, inte «det valda» (2026-09-18, #258).**
+Filten har ingen markering: det finns inget valt kort på ett bord, bara det pekaren står på.
+Att låta `F` peka ut något annat vore att uppfinna ett begrepp bordet inte har, och `D` och `S` följer redan pekaren.
+`F` vänder därför kortet under pekaren, eller högens översta när pekaren står på en hög — precis vad modifierarklickningen gör, genom samma intents.
+En dold hög namnger sitt översta kort genom högen och inte genom ett id (K15).
 
-Acceptanskriteriet är uppfyllt genom att panelen som tangentbordet öppnar fick ringens **Dra 1**.
+**Vägen utan modifierare är också dubbelklick.**
+Den behöver varken markering eller tangentbord och är därför kvar vid sidan av `F`.
+De tre greppen — modifierarklick, dubbelklick och `F` — är en handling och delar en rad i hjälpen, eftersom tre rader som bär en mening är den meningen läst tre gånger.
+
+Acceptanskriteriet om hjulet är uppfyllt genom att panelen som tangentbordet öppnar fick ringens **Dra 1**.
 Den saknades: ringen hade fyra verb på en hög och tangentbordet tre, så den som spelade utan mus kunde inte dra ett kort alls vid bordets egen skärm.
 
 ## I. Öppna frågor

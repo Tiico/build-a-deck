@@ -473,6 +473,21 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
     const say = keyboard?.onPoint
     return say ? { onPointerEnter: () => say(target), onPointerLeave: () => say(null) } : undefined
   }
+  // A card answers the pointer twice over: what to show large, and what `F` turns over (#258).
+  // Two pairs of handlers on one node would be the second silently dropped, so they are one pair.
+  const bothPointing = (a: Pointing | undefined, b: Pointing | undefined): Pointing | undefined =>
+    a && b
+      ? {
+          onPointerEnter: () => {
+            a.onPointerEnter()
+            b.onPointerEnter()
+          },
+          onPointerLeave: () => {
+            a.onPointerLeave()
+            b.onPointerLeave()
+          },
+        }
+      : a ?? b
 
   // What the keyboard adds to a node this renderer already draws: the role and the name a
   // reader hears, the one tab stop the roving list is holding, and Enter or Space to open the
@@ -768,7 +783,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 faces={faces}
                 back={backAt(`card-${c.id}`)}
                 handlers={onAct ? handlers({ kind: 'card', id: c.id }) : undefined}
-                inspects={inspects(c)}
+                points={bothPointing(inspects(c), points({ kind: 'card', id: c.id }))}
                 keys={keys(`card:${c.id}`)}
               />
             )
@@ -1009,7 +1024,7 @@ type FeltNodeProps = {
 }
 type Pointing = { onPointerEnter(): void; onPointerLeave(): void }
 
-function Card({ c, left, top, px, dragging, carried, by, faces, back, handlers, inspects, keys }: { c: VisibleComponentState; left: number; top: number; px: (mm: number) => number; dragging: boolean; carried?: boolean; by?: { seat: string | null; colour: string } | undefined; faces?: string | undefined; back?: ReactNode | undefined; handlers?: Handlers | undefined; inspects?: Pointing | undefined; keys?: FeltNodeProps | undefined }) {
+function Card({ c, left, top, px, dragging, carried, by, faces, back, handlers, points, keys }: { c: VisibleComponentState; left: number; top: number; px: (mm: number) => number; dragging: boolean; carried?: boolean; by?: { seat: string | null; colour: string } | undefined; faces?: string | undefined; back?: ReactNode | undefined; handlers?: Handlers | undefined; points?: Pointing | undefined; keys?: FeltNodeProps | undefined }) {
   const face = c.cardRef === null ? 'back' : 'front'
   // The deck's own back, when this card lies face down and a back was handed in. It is both what
   // is drawn and what tells the stylesheet to draw no stand-in under it.
@@ -1023,7 +1038,7 @@ function Card({ c, left, top, px, dragging, carried, by, faces, back, handlers, 
       data-dragging={dragging ? 'true' : undefined}
       data-carried={carried ? 'true' : undefined}
       data-by={by ? by.seat ?? 'table' : undefined}
-      {...inspects}
+      {...points}
       {...handlers}
       {...keys}
       style={{

@@ -125,6 +125,64 @@ describe('D and S act on the pile under the pointer (#224)', () => {
   })
 })
 
+describe('F flips what the pointer is standing on (#258)', () => {
+  it('flips the card the pointer stands on, exactly as the modifier click does', () => {
+    const { view, faceUp } = buildScene()
+    const sent: Intent[][] = []
+    render(<Felt view={view(null)} act={(i) => sent.push(i)} />)
+
+    fireEvent.pointerEnter(document.querySelector(`[data-component="${faceUp}"]`)!)
+    fireEvent.keyDown(window, { key: 'f' })
+
+    expect(sent).toEqual([[{ v: 'flip', component: faceUp, face: 'back' }]])
+  })
+
+  it('flips the pile’s top when the pointer stands on a pile, named through the pile (K15)', () => {
+    const { view } = buildScene()
+    const sent: Intent[][] = []
+    render(<Felt view={view(null)} act={(i) => sent.push(i)} />)
+
+    fireEvent.pointerEnter(document.querySelector('[data-zone="draw"]')!)
+    fireEvent.keyDown(window, { key: 'f' })
+
+    expect(sent).toEqual([[{ v: 'flip', component: { top: 'draw' }, face: 'front' }]])
+  })
+
+  it('flips nothing on bare felt — it follows the pointer, not the card that was touched last', () => {
+    const { view, faceUp } = buildScene()
+    const sent: Intent[][] = []
+    render(<Felt view={view(null)} act={(i) => sent.push(i)} />)
+
+    const card = document.querySelector(`[data-component="${faceUp}"]`)!
+    fireEvent.pointerEnter(card)
+    fireEvent.pointerLeave(card)
+    fireEvent.keyDown(window, { key: 'f' })
+
+    expect(sent).toEqual([])
+  })
+
+  it('belongs to a text field while one is being typed in, pointer or no pointer', () => {
+    const { view, faceUp } = buildScene()
+    const sent: Intent[][] = []
+    render(
+      <>
+        <Felt view={view(null)} act={(i) => sent.push(i)} />
+        <input aria-label="Namn" />
+      </>,
+    )
+
+    // The hand rests on a card while the other one types: the key is the field's all the same.
+    fireEvent.pointerEnter(document.querySelector(`[data-component="${faceUp}"]`)!)
+    const field = screen.getByRole('textbox', { name: 'Namn' })
+    field.focus()
+
+    // `fireEvent` answers false when the handler called `preventDefault`, which is what would
+    // swallow the letter before the field ever saw it.
+    expect(fireEvent.keyDown(field, { key: 'f' })).toBe(true)
+    expect(sent).toEqual([])
+  })
+})
+
 describe('a double click flips too (#224)', () => {
   // The way without a modifier, for whoever cannot hold two keys down. The second press never
   // reaches the card — the ring the first one opened lies over it — so the gesture is read on the
@@ -202,7 +260,12 @@ describe('the discreet help (#224)', () => {
 
     fireEvent.click(opener)
     const help = screen.getByRole('dialog', { name: 'Snabbkommandon på bordet' })
-    expect([...help.querySelectorAll('kbd')].map((k) => k.textContent)).toEqual(['Cmd + klick', 'Dubbelklick', 'D', 'S', 'Esc', '?'])
+    // `F` stands with the two grips that mean the same thing (#258): one action, three ways to
+    // ask for it, and one sentence — not the same sentence read three times.
+    expect([...help.querySelectorAll('kbd')].map((k) => k.textContent)).toEqual(['Cmd + klick', 'Dubbelklick', 'F', 'D', 'S', 'Esc', '?'])
+    // And says what all three of them act on. A key has no target of its own the way a click has,
+    // so the row that carries one has to name the pointer, as «Dra» and «Blanda» already do.
+    expect(help.textContent).toContain('Vänd kortet, eller högens översta, under pekaren')
     expect(help.textContent).toContain('Blanda högen under pekaren')
     expect(opener.getAttribute('aria-expanded')).toBe('true')
   })

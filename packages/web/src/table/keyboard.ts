@@ -355,15 +355,20 @@ export function flipUnder(view: Snapshot, target: DragTarget): Intent[] | null {
   return [{ v: 'flip', component: { top: z.id }, face: topOf(view, z)?.face === 'front' ? 'back' : 'front' }]
 }
 
-// What a bare key asks of the thing the pointer is standing on. `D` draws the top card off the
-// pile and `S` shuffles it — the ring's own «Dra 1» and «Blanda», compiled exactly as the ring
-// compiles them, down to which side of the pile the card is laid on (K21). The commands follow
-// the pointer and not a selection: pointing and pressing is the fastest a mouse can be, and it is
-// why a pointer is what they need. A key over nothing, or over something that is not a pile,
-// asks for nothing at all.
+// What a bare key asks of the thing the pointer is standing on. `F` turns it over, `D` draws the
+// top card off the pile and `S` shuffles it — the modifier click's own flip and the ring's «Dra 1»
+// and «Blanda», compiled exactly as they compile them, down to which side of the pile the card is
+// laid on (K21). The commands follow the pointer and not a selection: pointing and pressing is the
+// fastest a mouse can be, and it is why a pointer is what they need. A key over nothing asks for
+// nothing at all, and neither does one over something the command has nothing to say to — `D` and
+// `S` over anything that is not a pile, `F` over a chip that has no back to turn.
 export function shortcutIntents(view: Snapshot, key: string, at: DragTarget | null): Intent[] | null {
   const letter = key.toLowerCase()
-  if (at === null || (letter !== 'd' && letter !== 's')) return null
+  if (at === null) return null
+  // One flip, reached three ways: the modifier click, the double click and this key all ask
+  // `flipUnder` and therefore cannot mean different things about the same card (K16).
+  if (letter === 'f') return flipUnder(view, at)
+  if (letter !== 'd' && letter !== 's') return null
   if (at.kind !== 'pile' && at.kind !== 'pileTop') return null
   const z = view.zones.find((x) => x.id === at.pile)
   if (!z) return null
@@ -378,10 +383,11 @@ export function shortcutIntents(view: Snapshot, key: string, at: DragTarget | nu
 // truth is the only thing worth opening.
 export function feltShortcuts(t: T = swedish, platform: string = thisPlatform()): Shortcut[] {
   return [
-    // Turning a card over has two grips and is one action: the modifier click, and the double
-    // click for a hand that cannot hold two keys down. They share a row, because they say the
-    // same thing, and two rows carrying one sentence is that sentence read twice.
-    { press: [t('felt.press.modClick', { mod: isMac(platform) ? 'Cmd' : 'Ctrl' }), t('felt.press.doubleClick')], what: t('felt.key.flip') },
+    // Turning a card over has three grips and is one action: the modifier click, the double click
+    // for a hand that cannot hold two keys down, and the bare `F` (#258). They share a row,
+    // because they say the same thing, and three rows carrying one sentence is that sentence read
+    // three times.
+    { press: [t('felt.press.modClick', { mod: isMac(platform) ? 'Cmd' : 'Ctrl' }), t('felt.press.doubleClick'), 'F'], what: t('felt.key.flip') },
     { press: ['D'], what: t('felt.key.draw') },
     { press: ['S'], what: t('felt.key.shuffle') },
     { press: ['Esc'], what: t('felt.key.escape') },

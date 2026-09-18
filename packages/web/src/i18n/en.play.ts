@@ -76,7 +76,7 @@ export const enPlay = {
   'help.where.felt': 'on the table',
   'felt.press.modClick': '{mod} + click',
   'felt.press.doubleClick': 'Double click',
-  'felt.key.flip': 'Turn the card, or the top of the pile, over',
+  'felt.key.flip': 'Turn over the card, or the top of the pile, under the pointer',
   'felt.key.draw': 'Draw the top card off the pile under the pointer',
   'felt.key.shuffle': 'Shuffle the pile under the pointer',
   'felt.key.escape': 'Close the wheel · cancel the drag',

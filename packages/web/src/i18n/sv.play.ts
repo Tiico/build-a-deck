@@ -97,7 +97,7 @@ export const svPlay = {
   // klick är systemets sekundärklick på en Mac, och sidan får då aldrig något `click`.
   'felt.press.modClick': '{mod} + klick',
   'felt.press.doubleClick': 'Dubbelklick',
-  'felt.key.flip': 'Vänd kortet, eller högens översta',
+  'felt.key.flip': 'Vänd kortet, eller högens översta, under pekaren',
   'felt.key.draw': 'Dra översta kortet från högen under pekaren',
   'felt.key.shuffle': 'Blanda högen under pekaren',
   'felt.key.escape': 'Stäng hjulet · avbryt draget',
