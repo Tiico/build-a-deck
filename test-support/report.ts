@@ -30,3 +30,16 @@ export const reporting = () =>
   ({
     reporters: ['default', ['json', { outputFile: REPORT_FILE }]],
   }) satisfies { reporters: unknown[] }
+
+/** Where a Playwright package leaves its account. The same idea, in the other runner's spelling. */
+export const PLAYWRIGHT_REPORT_FILE = '.playwright-report.json'
+
+/**
+ * The reporters a Playwright package asks for, for the same reason `reporting()` exists: the
+ * console is the one thing that gets piped away, and a gate read through `tail` has said its
+ * failure into a closed pipe (#111). Spread into a `defineConfig`'s `reporter`.
+ *
+ * `list` stays first and unchanged — a run that says nothing while it works is worse to sit
+ * through than one whose tail gets cut.
+ */
+export const playwrightReporting = () => [['list'], ['json', { outputFile: PLAYWRIGHT_REPORT_FILE }]] as const
