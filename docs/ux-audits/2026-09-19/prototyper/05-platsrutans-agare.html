@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 5 — Platsrutans ägare</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* Three panels: the place box in its sentence, the amount box in its sentence, and the
+     measurements beside them. Both boxes are real popovers under real slot buttons — the row is
+     what is being judged, and a row judged outside its box is judged in the wrong width. */
+  .work { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr) 430px; gap: var(--s3); padding: var(--s4); }
+  .panel { min-height: 0; min-width: 0; display: flex; flex-direction: column; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); }
+  .panel > header { flex: none; display: flex; align-items: baseline; gap: var(--s2); padding: var(--s3) var(--s4) var(--s2); }
+  .panel > header h2 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .panel > header .rule { flex: 1; }
+  /* A scene panel ends just under its open box. A panel drawn to the foot of the window with
+     nothing in the lower half reads as a surface that failed to fill, which is not what is
+     being judged here. */
+  .panel.scen { align-self: start; height: calc(40vh + 118px); }
+  .panel > .scroll { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0 var(--s4) var(--s4); }
+  /* The sentence sits in a surface that does not scroll: an absolutely placed box inside a
+     scrolling one is clipped by it, which is the very fault #229 was about. */
+  .panel > .yta { flex: 1 1 auto; min-height: 0; padding: 0 var(--s4) var(--s4); }
+
+  /* The sentence the zone is written as (K21). The slots are words in it, as they are today. */
+  /* A row and not a paragraph: a <p> is closed by the parser when a <div> opens inside it, and
+     the box then lands outside its wrapping span. */
+  .mening { margin: 0 0 var(--s3); color: var(--ink); font-size: 15px; line-height: 2.4; }
+  .slotwrap { position: relative; display: inline-block; }
+  .slot { border: 0; border-bottom: 1px dashed #8ad0ff; border-radius: 4px; background: #1d3a5c; color: #cfe6ff; font: inherit; font-weight: 600; cursor: pointer; padding: 2px 8px; }
+  .slot[aria-expanded='true'] { background: #24507f; }
+
+  /* The box, at the width and the ceiling editor.css actually gives it: max-width 320, a padding
+     of 8, rows that are rows and not boxed buttons. Everything measured here is measured in that
+     width, because a row that fits at 420 px tells us nothing. */
+  /* The ceiling is editor.css's own: `max-height: min(40vh, --byd-place-room)`. Keeping it means
+     the count of rows visible at once is the real one — eight of forty-seven at 1440 x 900. */
+  .pop { position: absolute; z-index: 5; top: calc(100% + 6px); inset-inline-start: 0; width: 320px; max-height: 40vh; display: flex; flex-direction: column; gap: 4px; padding: 8px; border-radius: 10px; background: #12141a; border: 1px solid var(--line); box-shadow: 0 14px 34px rgba(0,0,0,.6); line-height: 1.5; }
+  .pop[hidden] { display: none; }
+  .pop .find { flex: none; width: 100%; box-sizing: border-box; min-height: 30px; padding: 0 8px; border: 1px solid var(--line); border-radius: 8px; background: #0d0f14; color: var(--ink); font: inherit; }
+  .pop .lista { flex: 1 1 auto; min-height: 0; overflow: auto; display: grid; gap: 4px; align-content: start; }
+  .pop .block { display: grid; align-content: start; }
+  .pop .block > i { font-style: normal; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: var(--quiet); padding: 8px 8px 4px; }
+  .pop .block:first-child > i { padding-top: 0; }
+  .pop .rad { display: block; width: 100%; text-align: left; border: 0; border-radius: 8px; padding: 4px 8px; background: transparent; color: var(--ink); font: inherit; cursor: pointer; }
+  .pop .rad:hover { background: #24507f; }
+  .pop .rad:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: -2px; }
+  .pop .rad[data-brytr='true'] { box-shadow: inset 2px 0 0 0 var(--warn); }
+  .pop .tomt { font-style: normal; color: var(--quiet); padding: 8px; }
+
+  /* ── The three takes on the suffix ──────────────────────────────────────────────────────── */
+  /* 1. Bricka: the Bord tab's own form, copied character for character from
+     `.byd-setup-name em` in editor.css. Nothing new to learn three clicks away. */
+  [data-form='bricka'] .rad em, [data-form='bricka'] table.matt em { font-style: normal; color: var(--quiet-2); font-size: 11px; border: 1px solid var(--line); border-radius: 999px; padding: 0 8px; margin-inline-start: 2px; white-space: nowrap; }
+  /* 2. Spalt: the owner at the row's far edge, so the eight letters stand in a column the eye
+     reads as a list. It costs the row its `display: block` — a flex row is a real change to
+     `.byd-slot-pop button`, which every other box in the editor shares. */
+  [data-form='spalt'] .rad { display: flex; align-items: baseline; gap: var(--s2); }
+  [data-form='spalt'] .rad em { margin-inline-start: auto; font-style: normal; color: var(--quiet); font-size: 12px; font-variant-numeric: tabular-nums; }
+  [data-form='spalt'] table.matt em { font-style: normal; color: var(--quiet); }
+  /* 3. Tyst: the letter alone, dimmed, no chrome at all. The cheapest mark on the page. */
+  [data-form='tyst'] .rad em, [data-form='tyst'] table.matt em { font-style: normal; color: var(--quiet); }
+
+  /* The measurements beside them. */
+  .om { display: grid; gap: var(--s3); }
+  .om p { margin: 0; color: var(--quiet-2); font-size: 13px; line-height: 1.6; }
+  .om strong { color: var(--ink); }
+  .om ul { margin: 0; padding-left: 18px; color: var(--quiet-2); font-size: 13px; line-height: 1.7; }
+  .om h3 { margin: var(--s2) 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  table.matt { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.matt th, table.matt td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line-soft); vertical-align: baseline; }
+  table.matt th { color: var(--quiet); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+  table.matt td.n { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
+  pre { margin: 0; padding: var(--s3); border-radius: 10px; background: var(--sunk); border: 1px solid var(--line); white-space: pre-wrap; overflow-wrap: anywhere; color: #cfe6ff; font: 11px/1.6 ui-monospace, monospace; }
+  pre b { color: var(--good); font-weight: 600; }
+  pre i { color: var(--quiet); font-style: normal; }
+  .horan { display: grid; gap: 4px; padding: var(--s3); border-radius: 10px; background: var(--sunk); border: 1px solid var(--line); }
+  .horan code { color: var(--good); font: 12px/1.6 ui-monospace, monospace; }
+  .horan code.kort { color: var(--quiet-2); }
+  .horan .dom { font-size: 11px; }
+  .dom b { font-weight: 700; }
+  .dom.ok b { color: var(--good); }
+  .dom.fel b { color: var(--warn); }
+  .val { display: flex; flex-wrap: wrap; gap: 4px; }
+  .val button { min-height: 30px; border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; background: var(--sunk); color: var(--quiet-2); font: inherit; font-size: 12px; cursor: pointer; }
+  .val button[aria-pressed='true'] { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="shell">
+<header>
+  <strong>Skogens herrar</strong>
+  <nav class="tabs"><button type="button">Kort</button><button type="button">Mall</button><button type="button">Symboler</button><button type="button">Regler</button><button type="button" aria-selected="true">Bord</button></nav>
+  <span class="saved">8 platser · 44 zoner</span>
+  <span class="spacer"></span>
+  <div class="switch" role="group" aria-label="Form på efterledet">
+    <button type="button" data-form="nu" aria-pressed="false">Nu</button>
+    <button type="button" data-form="bricka" aria-pressed="true">Bricka</button>
+    <button type="button" data-form="spalt" aria-pressed="false">Spalt</button>
+    <button type="button" data-form="tyst" aria-pressed="false">Tyst</button>
+  </div>
+  <span class="who">P</span>
+</header>
+
+<main>
+  <!-- The prototype's own row, which proto.css carries since the fourth prototype: it holds the
+       measurements and the spoken line, and is never part of a proposal. -->
+  <div class="protorad">
+    <p id="omform"></p>
+    <div class="matt">
+      <span>rader i platsrutan <u id="m-rader">—</u></span>
+      <span>oskiljbara rader <u id="m-lika">—</u></span>
+      <span>radbrytningar i antalsrutan <u id="m-bryter">—</u></span>
+      <span>efterledets kontrast <u id="m-kontrast">—</u></span>
+    </div>
+    <p class="sagt">Sagt för skärmläsaren: <em id="spegel">—</em></p>
+  </div>
+
+  <div class="work">
+    <section class="panel scen">
+      <header><h2>Platsrutan</h2><span class="rule"></span></header>
+      <div class="yta">
+        <div class="mening">
+          Dela ut <button type="button" class="slot">ett kort</button> till
+          <span class="slotwrap">
+            <button type="button" class="slot" id="plats-knapp" aria-expanded="true" aria-haspopup="dialog">Hand</button>
+            <div class="pop" id="plats-pop" role="dialog" aria-label="Vart">
+              <input class="find" id="plats-sok" type="text" placeholder="Sök bland valen" aria-label="Sök bland valen">
+              <div class="lista" id="plats-lista"></div>
+            </div>
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel scen">
+      <header><h2>Antalsrutan</h2><span class="rule"></span></header>
+      <div class="yta">
+        <div class="mening">
+          Ta
+          <span class="slotwrap">
+            <button type="button" class="slot" id="antal-knapp" aria-expanded="true" aria-haspopup="dialog">så många som ligger i Hand</button>
+            <div class="pop" id="antal-pop" role="dialog" aria-label="Hur många">
+              <input class="find" id="antal-sok" type="text" placeholder="Sök bland valen" aria-label="Sök bland valen">
+              <div class="lista" id="antal-lista"></div>
+            </div>
+          </span>
+          från högen.
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <header><h2>Vad som prövas</h2><span class="rule"></span></header>
+      <div class="scroll">
+        <div class="om">
+          <p><strong>Beställarens val är A</strong> (18 september): ägaren står som ett litet dämpat efterled i raden, i samma form som zonlistan i Bord-fliken redan använder. Det här prövar hur det ser ut, inte om det ska göras. <strong>A rör inte meningen</strong> — knappen ovanför rutan läser fortfarande «Hand».</p>
+
+          <h3>Rutan just nu</h3>
+          <p id="m-lika-ord"></p>
+          <p style="font-size:11px;color:var(--quiet)">Gul kant i antalsrutan = raden bryter rad vid rutans riktiga 320 px.</p>
+
+          <h3>Namnet bär redan platsen</h3>
+          <p>Regeln är <code>templateOf</code>:s egen, ordagrant ur <code>SetupEditor.tsx</code>. Ett efterled sätts bara på en zon vars namn <em>inte</em> redan bär platsens bokstav som ett eget ord.</p>
+          <pre>zone.name.replace(
+  new RegExp(<i>`(^|\\W)${zone.owner}(?=\\W|$)`</i>, 'g'), HOLE)</pre>
+          <table class="matt">
+            <thead><tr><th>Zon</th><th>Ägare</th><th>Raden blir</th></tr></thead>
+            <tbody id="m-regel"></tbody>
+          </table>
+
+          <h3>Sökningen från #230</h3>
+          <p>Filtret är <code>c.words.includes(term)</code>. Frågan är om efterledet plötsligt gör «a» till en träff på allt.</p>
+          <table class="matt">
+            <thead><tr><th>Skrivet</th><th class="n">Nu</th><th class="n">Med efterled</th></tr></thead>
+            <tbody id="m-sok"></tbody>
+          </table>
+
+          <h3>Så låter raden</h3>
+          <div class="val" role="group" aria-label="Hur raden läses upp">
+            <button type="button" data-said="rad" aria-pressed="true">Bara raden</button>
+            <button type="button" data-said="etikett" aria-pressed="false">Platsens ord före bokstaven</button>
+            <button type="button" data-said="efter" aria-pressed="false">Platsens ord efter raden</button>
+          </div>
+          <div class="horan">
+            <span class="dom" id="said-dom"></span>
+            <code id="said-1"></code>
+            <code id="said-2"></code>
+            <code class="kort" id="said-3"></code>
+            <span class="dom" id="said-fokus"></span>
+          </div>
+
+          <h3>Katalogen gör sammansättningen</h3>
+          <p><code>ZoneActions</code> sätter aldrig ihop designerns ord med verktygets själv (A4). Katalogen äger ordningen och mellanrummet; rutan skickar bara noder (K21).</p>
+          <pre id="katalog"></pre>
+
+          <h3>Kvar att avgöra</h3>
+          <ul>
+            <li><strong>Bricka, spalt eller tyst?</strong> Växeln uppe till höger.</li>
+            <li><strong>Hur raden ska låta.</strong> De tre formerna ovan kan inte alla vara rätt: den mellersta bryter mot WCAG 2.5.3.</li>
+            <li><strong>Ska ägaren gå att söka på?</strong> Prototypen låter «hand a» hitta en enda rad. Det förutsätter att efterledet står i <code>words</code>.</li>
+          </ul>
+        </div>
+      </div>
+    </aside>
+  </div>
+</main>
+</div>
+
+<script>
+// ── The setup under test ───────────────────────────────────────────────────────────────────────
+// Eight seats, because the issue says the scale is the seat count and two seats hides the problem
+// the way a small sample always does. Real names of varying length, owned and unowned mixed, and
+// enough rows that the box scrolls — which it does at 47.
+const SEATS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+const per = (seats, make) => seats.map(make)
+const ZONES = [
+  { id: 'draw', name: 'Draghögen' },
+  { id: 'discard', name: 'Kasthögen' },
+  { id: 'play', name: 'Spelytan' },
+  { id: 'market', name: 'Marknaden' },
+  { id: 'ruin', name: 'Ruinen' },
+  { id: 'chronicle', name: 'Krönikan' },
+  { id: 'aside', name: 'Kort som lagts åt sidan' },
+  ...per(SEATS, (s) => ({ id: `hand:${s}`, name: 'Hand', owner: s })),
+  ...per(SEATS, (s) => ({ id: `front:${s}`, name: `Framför ${s}`, owner: s })),
+  ...per(SEATS, (s) => ({ id: `counter:${s}`, name: `Räknare ${s}`, owner: s })),
+  ...per(SEATS, (s) => ({ id: `own:${s}`, name: 'Min hög', owner: s })),
+  ...per(['A', 'B', 'C'], (s) => ({ id: `gone:${s}`, name: 'Bortlagda kort', owner: s })),
+  // A zone whose name starts with the seat's letter without carrying it: `A` in `Askhögen` is not
+  // a word, so the rule must still add the suffix here. This is the case that separates a real
+  // word boundary from a `startsWith`.
+  ...per(['A', 'B'], (s) => ({ id: `ash:${s}`, name: 'Askhögen', owner: s })),
+]
+
+// ── The catalogue ──────────────────────────────────────────────────────────────────────────────
+// The only place the designer's word and the tool's are put together. The whole point of writing
+// it here and not in the component: another language may put the owner first, or use another
+// separator, and neither is the component's business (A4).
+const KATALOG = {
+  'setup.slot.zone.owned': '{zone} {owner}',
+  'setup.slot.zone.owned.said': '{zone}, plats {owner}',
+  'setup.slot.zone.owned.tail': '{zone} {owner}, plats',
+  'setup.amount.zone': 'så många som ligger i {zone}',
+}
+// `parts` in ZoneActions.tsx, in the one line it is here: a template with named holes, filled with
+// things rather than with text fragments (K21). Here a "node" is a bit of HTML.
+const fyll = (mall, hal) => mall.split(/(\{[a-z]+\})/i).map((bit) => (/^\{[a-z]+\}$/i.test(bit) ? (hal[bit.slice(1, -1)] ?? bit) : bit)).join('')
+const text = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c])
+
+// ── The rule that must not fire twice ──────────────────────────────────────────────────────────
+// Lifted from `templateOf` in SetupEditor.tsx. A zone whose name already carries the seat as a
+// word of its own gets no suffix: `Framför A`, never `Framför A A`.
+const HOLE = '\u0001'
+const templateOf = (zone) => zone.name.replace(new RegExp(`(^|\\W)${zone.owner}(?=\\W|$)`, 'g'), `$1${HOLE}`)
+const barPlatsen = (zone) => zone.owner !== undefined && templateOf(zone) !== zone.name
+const agarenAv = (zone) => (zone.owner !== undefined && !barPlatsen(zone) ? zone.owner : undefined)
+
+// ── A row ──────────────────────────────────────────────────────────────────────────────────────
+// Three strings and one piece of HTML per zone: what the search reads (`words`), what the ear
+// hears (`said`), and what the eye reads (`html`). In the real box these are `words`, `said` and
+// a `label` node; nothing is ever concatenated with a `+`.
+let form = 'bricka'
+let saidForm = 'rad'
+
+function zonRad(zone) {
+  const agare = form === 'nu' ? undefined : agarenAv(zone)
+  // `agd` says the zone belongs to a seat whatever the form does with it, so the box can be put
+  // where the rows under test start even in the «Nu» state, where nothing marks them.
+  const agd = agarenAv(zone) !== undefined
+  if (agare === undefined) return { agd, words: zone.name, said: zone.name, tail: zone.name, html: text(zone.name) }
+  return {
+    agd,
+    words: fyll(KATALOG['setup.slot.zone.owned'], { zone: zone.name, owner: agare }),
+    said: fyll(KATALOG['setup.slot.zone.owned.said'], { zone: zone.name, owner: agare }),
+    tail: fyll(KATALOG['setup.slot.zone.owned.tail'], { zone: zone.name, owner: agare }),
+    html: fyll(KATALOG['setup.slot.zone.owned'], { zone: text(zone.name), owner: `<em>${text(agare)}</em>` }),
+  }
+}
+
+// The amount row nests: the composed zone goes into the amount sentence as one hole, so the owner
+// needs one catalogue key and not one per box.
+function antalRad(zone) {
+  const z = zonRad(zone)
+  return {
+    agd: z.agd,
+    words: fyll(KATALOG['setup.amount.zone'], { zone: z.words }),
+    said: fyll(KATALOG['setup.amount.zone'], { zone: z.said }),
+    tail: fyll(KATALOG['setup.amount.zone'], { zone: z.tail }),
+    html: fyll(KATALOG['setup.amount.zone'], { zone: z.html }),
+  }
+}
+
+const PLATSORD = ['till vänster om högen', 'i varje hand', 'i min hand']
+const ANTALSORD = ['ett tal', 'ett per spelare', 'så många jag säger']
+const enkel = (s) => ({ agd: false, words: s, said: s, tail: s, html: text(s) })
+
+const platsVal = () => [
+  ...PLATSORD.map((s) => ({ ...enkel(s), grupp: 'Högen och händerna' })),
+  ...ZONES.map((z) => ({ ...zonRad(z), grupp: 'Zoner i spelet' })),
+]
+const antalVal = () => [
+  ...ANTALSORD.map((s) => ({ ...enkel(s), grupp: 'Antal' })),
+  ...ZONES.map((z) => ({ ...antalRad(z), grupp: 'Lika många som en zon' })),
+]
+
+// ── The box ────────────────────────────────────────────────────────────────────────────────────
+const $ = (id) => document.getElementById(id)
+
+// What a screen reader is handed. The three forms cannot all be right, which is the point of
+// letting them be switched: the middle one says most and keeps least of WCAG 2.5.3.
+function etikett(rad) {
+  if (rad.said === rad.words) return null
+  if (saidForm === 'etikett') return rad.said
+  if (saidForm === 'efter') return rad.tail
+  return null
+}
+
+function rita(listaId, val, sokId) {
+  const term = ($(sokId).value || '').toLocaleLowerCase('sv').trim()
+  const traffar = val.filter((c) => c.words.toLocaleLowerCase('sv').includes(term))
+  if (traffar.length === 0) {
+    $(listaId).innerHTML = '<i class="tomt">Inget som heter så.</i>'
+    return traffar
+  }
+  const block = []
+  for (const grupp of [...new Set(traffar.map((c) => c.grupp))]) {
+    const i = traffar.filter((c) => c.grupp === grupp)
+    block.push(`<span class="block"><i>${text(grupp)}</i>${i
+      .map((c) => {
+        const label = etikett(c)
+        return `<button type="button" class="rad"${c.agd ? ' data-agd="true"' : ''}${label ? ` aria-label="${text(label)}"` : ''}>${c.html}</button>`
+      })
+      .join('')}</span>`)
+  }
+  $(listaId).innerHTML = block.join('')
+  // The rows under test are the owned ones, and they lie below the words the sentence already
+  // knows. With no search typed the box is put where they start, so the file opens on what is
+  // being judged rather than on six unowned zones.
+  if (term === '') {
+    const lista = $(listaId)
+    const forst = lista.querySelector('.rad[data-agd]')
+    if (forst) requestAnimationFrame(() => { lista.scrollTop += forst.getBoundingClientRect().top - lista.getBoundingClientRect().top })
+  }
+  return traffar
+}
+
+// ── The measurements ───────────────────────────────────────────────────────────────────────────
+function matt(platsTraffar) {
+  $('m-rader').textContent = platsTraffar.length
+  // Rows nobody can tell apart: two rows with the very same words.
+  const raknade = new Map()
+  for (const c of platsTraffar) raknade.set(c.words, (raknade.get(c.words) ?? 0) + 1)
+  const lika = [...raknade.entries()].filter(([, n]) => n > 1)
+  const antalLika = lika.reduce((sum, [, n]) => sum + n, 0)
+  $('m-lika').textContent = antalLika
+  $('m-lika-ord').textContent =
+    antalLika === 0
+      ? 'Ingen rad i rutan är en kopia av en annan.'
+      : `Oskiljbara: ${lika.map(([w, n]) => `${n} × «${w}»`).join(', ')}.`
+
+  // How many rows in the amount box break onto a second line at the box's real width of 320 px.
+  // Measured off the document and not guessed, because it depends on the font the machine has.
+  requestAnimationFrame(() => {
+    const rader = [...$('antal-lista').querySelectorAll('.rad')]
+    const en = Math.min(...rader.map((r) => r.offsetHeight))
+    let bryter = 0
+    for (const r of rader) {
+      const flera = r.offsetHeight > en + 2
+      r.dataset.brytr = flera ? 'true' : 'false'
+      if (flera) bryter += 1
+    }
+    $('m-bryter').textContent = bryter
+  })
+
+  // The rule table: the six shapes a name comes in, and what each one does with the suffix.
+  const prov = ['hand:A', 'front:A', 'counter:C', 'own:A', 'ash:A', 'draw']
+  $('m-regel').innerHTML = prov
+    .map((id) => {
+      const z = ZONES.find((x) => x.id === id)
+      const r = zonRad(z)
+      const bar = barPlatsen(z)
+      return `<tr><td>${text(z.name)}</td><td>${text(z.owner ?? '—')}</td><td>${r.html}${bar ? ' <small style="color:var(--quiet)">(bär den redan)</small>' : ''}</td></tr>`
+    })
+    .join('')
+
+  // The search, counted twice: as the box is today, and with the suffix in `words`.
+  const nuVal = () => [...PLATSORD.map(enkel), ...ZONES.map((z) => ({ words: z.name }))]
+  const medVal = () => [
+    ...PLATSORD.map(enkel),
+    ...ZONES.map((z) => {
+      const a = agarenAv(z)
+      return { words: a === undefined ? z.name : fyll(KATALOG['setup.slot.zone.owned'], { zone: z.name, owner: a }) }
+    }),
+  ]
+  const räkna = (val, q) => val.filter((c) => c.words.toLocaleLowerCase('sv').includes(q)).length
+  $('m-sok').innerHTML = ['a', 'hand', 'hand a', 'min hög', 'min hög h']
+    .map((q) => `<tr><td>«${text(q)}»</td><td class="n">${räkna(nuVal(), q)}</td><td class="n">${räkna(medVal(), q)}</td></tr>`)
+    .join('')
+}
+
+// What the eight Hand rows sound like, in the chosen form — and whether that form keeps the
+// visible words inside the accessible name, which is what WCAG 2.5.3 asks for.
+// The suffix's contrast against the box, read off what is actually painted rather than off the
+// token list — L12 is not relaxed in the editor, and a dimmed mark is the first thing to fail it.
+function kontrast() {
+  const lin = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)
+  const L = (rgb) => { const [r, g, b] = rgb.match(/\d+/g).map((n) => lin(n / 255)); return 0.2126 * r + 0.7152 * g + 0.0722 * b }
+  const em = document.querySelector('#plats-lista .rad em')
+  if (!em) return '—'
+  const x = L(getComputedStyle(em).color)
+  const y = L(getComputedStyle($('plats-pop')).backgroundColor)
+  return `${((Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)).toFixed(2)}:1`
+}
+
+const OMFORM = {
+  nu: 'Nu: rutan listar varje zon vid sitt bara namn, så åtta platser ger åtta likadana rader.',
+  bricka: 'Bricka: ägaren som en liten ram efter namnet — zonlistans egen form ur Bord-fliken.',
+  spalt: 'Spalt: ägaren ute vid radens högerkant, så bokstäverna blir en kolumn. Kolumnen har hål där namnet redan bär platsen.',
+  tyst: 'Tyst: bara bokstaven, dämpad. Billigast — och omöjlig att skilja från ett namn designern skrivit själv.',
+}
+
+function horan() {
+  const a = zonRad(ZONES.find((z) => z.id === 'hand:A'))
+  const b = zonRad(ZONES.find((z) => z.id === 'hand:B'))
+  const syns = a.words
+  const namn = saidForm === 'rad' ? a.words : saidForm === 'etikett' ? a.said : a.tail
+  const namnB = saidForm === 'rad' ? b.words : saidForm === 'etikett' ? b.said : b.tail
+  $('said-1').textContent = `«${namn}»`
+  $('said-2').textContent = `«${namnB}»`
+  $('said-3').textContent = form === 'nu' ? 'I dag: båda läses «Hand».' : ''
+  $('omform').textContent = OMFORM[form]
+  $('spegel').textContent = form === 'nu' ? '«Hand» · «Hand» — samma sak två gånger' : `«${namn}» · «${namnB}»`
+  $('m-kontrast').textContent = kontrast()
+  const haller = form === 'nu' || namn.includes(syns)
+  const d = $('said-dom')
+  d.className = `dom ${haller ? 'ok' : 'fel'}`
+  d.innerHTML = haller
+    ? `<b>2.5.3 håller.</b> Det som syns, «${text(syns)}», står i det uppläsningen får.`
+    : `<b>2.5.3 brister.</b> Det som syns, «${text(syns)}», står inte i «${text(namn)}» — en röststyrd användare säger raden och får ingen träff.`
+}
+
+$('katalog').innerHTML = [
+  '<i>// sv.editor.ts — verktygets ord, designerns namn, och ordningen mellan dem.</i>',
+  `<b>'setup.slot.zone.owned'</b>: '${text(KATALOG['setup.slot.zone.owned'])}',`,
+  `<b>'setup.slot.zone.owned.said'</b>: '${text(KATALOG['setup.slot.zone.owned.said'])}',`,
+  `<b>'setup.slot.zone.owned.tail'</b>: '${text(KATALOG['setup.slot.zone.owned.tail'])}',`,
+  '',
+  '<i>// ZoneActions.tsx — noder i hålen, aldrig ett `+`.</i>',
+  'const owner = ownerOf(z)  <i>// undefined när namnet bär platsen</i>',
+  'words: t(<b>\'setup.slot.zone.owned\'</b>, { zone: z.name, owner }),',
+  'said:  t(<b>\'setup.slot.zone.owned.said\'</b>, { zone: z.name, owner }),',
+  'label: parts(t(<b>\'setup.slot.zone.owned\'</b>), {',
+  '  zone: z.name, owner: <i>&lt;em&gt;</i>{owner}<i>&lt;/em&gt;</i> }),',
+  '',
+  '<i>// Antalsrutan nästlar samma hål — en nyckel räcker för båda rutorna.</i>',
+  'label: parts(t(<b>\'setup.amount.zone\'</b>), { zone: <i>zonen ovan</i> }),',
+].join('\n')
+
+// ── Driving it ─────────────────────────────────────────────────────────────────────────────────
+function allt() {
+  document.body.dataset.form = form
+  const p = rita('plats-lista', platsVal(), 'plats-sok')
+  rita('antal-lista', antalVal(), 'antal-sok')
+  matt(p)
+  horan()
+}
+
+for (const b of document.querySelectorAll('.switch button')) {
+  b.onclick = () => {
+    for (const o of document.querySelectorAll('.switch button')) o.setAttribute('aria-pressed', String(o === b))
+    form = b.dataset.form
+    allt()
+  }
+}
+for (const b of document.querySelectorAll('.val button')) {
+  b.onclick = () => {
+    for (const o of document.querySelectorAll('.val button')) o.setAttribute('aria-pressed', String(o === b))
+    saidForm = b.dataset.said
+    allt()
+  }
+}
+$('plats-sok').oninput = allt
+$('antal-sok').oninput = allt
+// The row under the pointer or the focus, read back as a screen reader would take it: the label
+// when there is one, the text otherwise.
+document.addEventListener('focusin', (e) => {
+  const r = e.target.closest?.('.rad')
+  if (r) $('said-fokus').textContent = `Under fokus: «${r.getAttribute('aria-label') ?? r.textContent.trim()}»`
+})
+document.addEventListener('mouseover', (e) => {
+  const r = e.target.closest?.('.rad')
+  if (r) $('said-fokus').textContent = `Under pekaren: «${r.getAttribute('aria-label') ?? r.textContent.trim()}»`
+})
+// Both boxes stand open from the start, because they are what is compared and opening them again
+// for every switch would make the comparison a memory test.
+allt()
+</script>
+</body>
+</html>
