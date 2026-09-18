@@ -25,8 +25,11 @@ const packages = readdirSync(join(ROOT, 'packages'), { withFileTypes: true })
   .map((e) => e.name)
   .filter((name) => existsSync(join(ROOT, 'packages', name, 'test')))
 
+// Ett paket kör antingen vitest eller Playwright, och båda har en config att koppla protokollet
+// i. Vilken det är spelar ingen roll för det grinden vaktar: att en fallen körning lämnar sitt
+// eget protokoll på disk, eftersom konsolen är det enda som pipas bort.
 const configOf = (name: string): string | undefined =>
-  ['vite.config.ts', 'vitest.config.ts'].map((f) => join(ROOT, 'packages', name, f)).find(existsSync)
+  ['vite.config.ts', 'vitest.config.ts', 'playwright.config.ts'].map((f) => join(ROOT, 'packages', name, f)).find(existsSync)
 
 describe('varje paket som har tester', () => {
   it('hittas över huvud taget, så grinden inte kan gå igenom genom att matcha ingenting', () => {

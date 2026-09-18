@@ -90,6 +90,7 @@ Drift:
 - ✅ Compose-stack med minnestak och loggrotation: Postgres, app som serverar webben från samma origin, render-worker, och en väg in som är lådans egen — dess omvända proxy genom ett överlägg, eller tunneln i stacken (DRIFT §1, §2, §6, §8).
 - ✅ Pull-baserad deploy på lådan via systemd-timer, som drar CI:s bilder eller bygger själv (DRIFT §7).
 - ✅ CI med lint, typecheck, tester mot Postgres och Chromium, bilder till GHCR, replay-korpusen som grind (DRIFT §7, D4).
+- ✅ E2E-svit i Playwright ovanpå återspelningen: flera samtidiga klienter, anslutning, telefon och QR, mot den byggda webben serverad av servern på ett ursprung (D4, `packages/e2e`).
 - ✅ Nattlig `pg_dump` till R2 med återställningsprov (DRIFT §5, första steget).
 
 ---

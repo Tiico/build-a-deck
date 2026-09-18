@@ -8,3 +8,10 @@ packages/web/dist-*/
 
 # Varje körning lämnar sitt eget protokoll bredvid paketet (#111); det är en artefakt och inte källkod.
 packages/*/.vitest-report.json
+
+# Detsamma för E2E-sviten, som lämnar sitt protokoll bredvid paketet av samma skäl (#111).
+packages/*/.playwright-report.json
+# Den byggda appen sviten serverar, och det en fallen körning lämnar efter sig: spår, film och bild.
+packages/e2e/.stack/
+packages/e2e/test-results/
+packages/e2e/playwright-report/

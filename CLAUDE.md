@@ -7,6 +7,8 @@ Skriv det fallerande testet först, gör det grönt med minsta rimliga ändring,
 Det gäller ny funktionalitet, buggfixar och refaktoreringar — inga undantag för "små" ändringar.
 
 Innan något anses klart: `pnpm typecheck`, `pnpm test` och `pnpm lint` ska vara gröna.
+`pnpm test` kör numera också E2E-sviten i `packages/e2e`, som bygger webben och startar en riktig
+stack; den vill ha Docker eller ett `DATABASE_URL`, och säger till när den fick ingetdera.
 Node-versionen står i `.nvmrc` och i `engines`; på en äldre Node ger `pnpm test` fjorton röda i
 `@byd/web` som inte är repots (#138), och `pnpm install` säger till innan dess.
 

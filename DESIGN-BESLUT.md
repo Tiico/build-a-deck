@@ -867,6 +867,27 @@ Följdkrav:
 Händelseschemat är ett kontrakt som måste versioneras och migreras vid varje ändring.
 Migreringsstrategin är beslutad i DRIFT §7 och byggd 2026-09-07: version per rad, upcasters vid inläsning.
 
+Byggt 2026-09-18:
+E2E-lagret ovanpå återspelningen är `packages/e2e`, en egen Playwright-svit med `@playwright/test`.
+Den kör mot produkten som lådan kör den (DRIFT §2): webben byggd och serverad av servern ur `STATIC_DIR`, allt på ett ursprung, inga `server=`-parametrar någonstans.
+Det är inte en petighet — samma ursprung är vad socketarnas adresser, kakan på `/auth` och historikfallbacken för `/editor` alla vilar på, och var och en av dem är en sak bara den uppställningen kan ha fel om.
+Loggen ligger i Postgres: `DATABASE_URL` när den finns, annars en slängbar container som körningen städar bort efter sig.
+Utan Docker faller sviten tillbaka på minnesloggen och säger det högt i stället för att tyst bevisa mindre.
+
+Vad som hör hemma där: det bara en riktig stack kan ha fel om.
+Rumskoden som föds i servern, ritas på TV:n, läses av en människa och växlas in mot en pollett på en telefon.
+Flera klienter som är oense. En lina som dör och kommer tillbaka. Den byggda buntens egna vägar.
+Vad som inte hör hemma där: allt som ett billigare test redan avgör.
+Motorns regler är `packages/engine`s, trådens former är `packages/server`s, och en mätning av en yta är webbsvitens.
+
+Dold information mäts på trafiken, aldrig på skärmen, precis som regeln säger.
+Playwrights `framereceived` ger ramarna som de gick över tråden, och sviten söker i dem efter kortets identitet — `cardRef`, det projektionen byter mot `null` för den som inte får veta.
+Sökningen är avsiktligt dum om *var* den letar och exakt om *vad* som räknas: identiteten matchas som hela JSON-strängen den alltid färdas som, eftersom `kort-1` annars hittas i varje ram som nämner `kort-12`.
+Varje läckagetest bevisar först att det söker efter något som går att hitta — att var och en ser sina egna kort — innan det får påstå att ingen annan fick dem.
+
+Linan går av på riktigt: `context.setOffline` stoppar nya anrop och låter en redan öppen WebSocket leva, så klienten märker ingenting.
+Sviten proxar socketen med `routeWebSocket` i stället och stänger den under sidan som ett tappat nät gör, med 1006 och utan avslutningshandslag.
+
 ### D5. Fel-, tom- och anslutningslägen: nio lägen med en modell och en form per route (prototypat 2026-09-07)
 
 Ett saknat projekt, en tappad WebSocket och ett avvisat drag är inte tre saker.

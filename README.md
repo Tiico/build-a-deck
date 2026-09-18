@@ -14,6 +14,7 @@ Arbetssättet för agenter står i [CLAUDE.md](CLAUDE.md).
 | `packages/render` | Chromium-renderare (PNG/PDF) och jobbkö |
 | `packages/server` | aktör per bord, händelselogg i Postgres, WebSockets, projekt, texturer |
 | `packages/web` | bordet, telefonen, lobbyn, editorn och wizarden |
+| `packages/e2e` | E2E-sviten: produkten som en människa får den, i Playwright |
 
 ## Kör lokalt
 
@@ -111,6 +112,24 @@ Vägen in är lådans egen (DRIFT §2): en låda som redan har en omvänd proxy 
 Med R2-nycklar arkiverar Postgres varje WAL-segment till R2 inom en minut och `backup` tar en basbackup per natt (DRIFT §5); utan nycklar arkiveras inget och loggen säger det.
 `ops/restore-test.sh` återställer senaste basbackupen och allt WAL efter den i en tillfällig Postgres, räknar sessioner och rader, och spelar upp den senaste sessionens logg genom motorn: en backup som aldrig lästs tillbaka är en förhoppning.
 Samma sak går att prova lokalt mot en MinIO med `R2_ENDPOINT=http://host.docker.internal:9000`.
+
+## E2E-sviten
+
+[`packages/e2e`](packages/e2e) är lagret D4 lovade ovanpå den deterministiska återspelningen: flera samtidiga klienter, anslutning, telefon och QR.
+Den kör med `@playwright/test` mot produkten som lådan kör den — webben byggd och serverad av servern ur `STATIC_DIR`, allt på ett ursprung, inga `server=`-parametrar.
+
+```bash
+pnpm --filter @byd/e2e test                       # bygger webben, startar stacken, kör sviten
+pnpm --filter @byd/e2e exec playwright test join  # en enda fil
+```
+
+Sviten sätter upp allt själv: den bygger webbappen, startar servern och river ner alltihop efteråt.
+Loggen hamnar i `DATABASE_URL` när den är satt, annars i en slängbar Postgres-container som körningen städar bort.
+Utan Docker och utan `DATABASE_URL` faller den tillbaka på minnesloggen och säger det — i CI, där `DATABASE_URL` alltid finns, fälls körningen i stället för att tyst bevisa mindre.
+
+Den tar samma maskinlås som övriga sviter (`test-support/one-suite-at-a-time.ts`), så den slåss inte med en webbsvit i en annan worktree.
+Som varje annat paket lämnar den sitt eget protokoll bredvid sig, `.playwright-report.json`, eftersom en grind som läses genom `tail` har sagt sitt fel i ett stängt rör (#111).
+Ett fallet test lämnar dessutom spår, film och bild i `packages/e2e/test-results/`; `pnpm --filter @byd/e2e exec playwright show-trace <fil>` öppnar spåret.
 
 ## CI och replay-korpusen
 

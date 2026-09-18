@@ -30,6 +30,11 @@ export function HandActions({ view, cards, pending, onRead, onPlay, onMore, refu
           <button
             type="button"
             key={target.id}
+            // The zone this button plays into, said in markup as every other surface says it
+            // (`data-zone` on the felt, `data-zone-actions` in the editor). Without it the only
+            // way to name a target is the label, and a label is a translation: a test that
+            // reaches for "Kasta" is a test that fails the day the reader speaks English (A4).
+            data-zone={target.id}
             {...(refusedZone === target.id ? refusal?.control : {})}
             disabled={!first || pending}
             onClick={() => onPlay(target.id, target.at)}

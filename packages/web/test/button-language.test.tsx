@@ -1199,9 +1199,11 @@ describe('every suite that measures a surface', () => {
   // Named rather than counted. A guard whose subject is found by a regular expression can lose
   // its subject to a rename and go on passing over an empty list, which is what the count below
   // it was there to prevent and did not: it said "more than five" while four were missing.
+  // Listan krymper när en svit flyttar till `packages/e2e` (se dess MIGRATION.md). Där behövs
+  // ingen post: en yta som ställs i den byggda appen har knappspråket över sig därför att appen
+  // har det, och inte därför att sviten kom ihåg att klistra in arket.
   it('finds every suite that lays a surface into a document, by name', () => {
     expect(mounting.map((s) => s.name).sort()).toEqual([
-      'account-viewport.test.tsx',
       'canvas-band.test.tsx',
       'canvas-pan.test.tsx',
       'counter-ink.test.tsx',
@@ -1232,11 +1234,9 @@ describe('every suite that measures a surface', () => {
       'online-phone.test.tsx',
       'online-viewport.test.tsx',
       'player-viewport.test.tsx',
-      'reduced-motion.test.ts',
       'rules-column.test.tsx',
       'rules-layout.test.tsx',
       'setup-layout.test.tsx',
-      'status-css.test.ts',
       'symbol-list-mark.test.ts',
       'table-grab.test.ts',
       'table-layout.test.tsx',
