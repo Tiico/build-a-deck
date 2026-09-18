@@ -70,7 +70,11 @@ export function MediaPanel({ doc, assetBase, onReplaceRows }: MediaPanelProps) {
                     setDone(null)
                   }}
                 >
-                  <img src={assetUrl(assetBase, hash)} alt={spare ? t('media.picture.unused') : t('table.image.alt', { cards: cards.join(', ') })} />
+                  {/* The library is the editor's densest surface: a game of real size brings
+                      three hundred pictures to it, and fetching them all the moment the tab
+                      opens is three hundred requests in one breath. The ones below the fold
+                      wait until they are to be seen. */}
+                  <img loading="lazy" src={assetUrl(assetBase, hash)} alt={spare ? t('media.picture.unused') : t('table.image.alt', { cards: cards.join(', ') })} />
                 </button>
                 {/* Marked, never purged (L22, beslut 4): an older version of the deck may still
                     be drawn from these bytes, so the library says nobody uses it and leaves it

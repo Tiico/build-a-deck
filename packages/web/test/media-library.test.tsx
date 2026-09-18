@@ -57,3 +57,22 @@ describe('the media library marks what no card uses (#222, beslut 4)', () => {
     expect(within(unused).getByRole('img').getAttribute('src')).toBe(`http://api.local/assets/${KARTA}`)
   })
 })
+
+// Ett spel av verklig storlek (308 kort, inte fixturens tre) är just det biblioteket är till för,
+// och det är den yta i editorn som håller flest bilder av alla. Hämtas de allihop på en gång blir
+// öppnandet av fliken hundratals förfrågningar i samma andetag — bilderna nedanför vikningen får
+// vänta tills de ska synas.
+describe('the media library at a real game’s size (#222)', () => {
+  it('leaves the pictures below the fold to the browser instead of fetching them all at once', () => {
+    const doc = deckWithArt()
+    doc.rows = Array.from({ length: 308 }, (_, i) => ({
+      ...doc.rows[0]!,
+      id: `r${i}`,
+      fields: { ...doc.rows[0]!.fields, art: `asset:${i.toString(16).padStart(64, '0')}` },
+    }))
+    render(<MediaPanel doc={doc} assetBase="http://api.local" onReplaceRows={() => undefined} />)
+
+    expect(tiles()).toHaveLength(308)
+    expect(tiles().map((li) => within(li).getByRole('img').getAttribute('loading'))).toEqual(Array(308).fill('lazy'))
+  })
+})
