@@ -1,0 +1,672 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 4 — Regelbokens två lägen</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  main { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+
+  /* The prototype's own row. Never part of the proposal: it carries the measurements, the
+     spoken line and the pretend reload, and it is amber for the same reason `.note` is. */
+  .protorad { flex: none; display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; padding: var(--s2) var(--s4); background: #2a2417; border-bottom: 1px solid #4a4230; color: #ffd98a; font-size: 11px; line-height: 1.5; }
+  .protorad b { color: #ffe9b8; }
+  .protorad p { margin: 0; max-width: 62ch; }
+  .protorad .matt { display: flex; gap: var(--s3); margin-left: auto; font-variant-numeric: tabular-nums; }
+  .protorad .matt span u { text-decoration: none; color: #ffe9b8; font-weight: 700; }
+  .protorad button { min-height: 28px; border: 1px solid #4a4230; border-radius: 7px; padding: 0 10px; background: #1f1b12; color: #ffd98a; font: inherit; cursor: pointer; }
+  .protorad button:hover { border-color: #ffd98a; }
+  .protorad .sagt { flex: 1 1 100%; color: #c8b98d; }
+  .protorad .sagt em { font-style: normal; color: #ffe9b8; }
+
+  /* --- regelfliken, som den står i dag ----------------------------------- */
+  .flik { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: var(--s3); padding: var(--gutter); }
+  .bar { flex: none; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+  .bar h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .bar .hint { max-width: 44ch; color: #9aa3b8; font-size: 12px; }
+  .ways { display: flex; align-items: center; gap: var(--s2); margin-left: auto; }
+  .pill { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 12px; border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; font-weight: 700; font-size: 12px; white-space: nowrap; cursor: pointer; }
+  .pill:hover { border-color: var(--primary-mark); color: #fff; }
+
+  /* The book and the column it is found in: two scrolling areas side by side, neither inside
+     the other (#210). Copied from `.byd-rules-spread` so the proposal is read at the real
+     measure and not at a new one. */
+  .spread { flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; align-items: stretch; justify-content: center; gap: var(--s5); }
+  .toc { flex: 0 0 200px; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+  .toc > b { display: block; position: sticky; top: 0; padding: 0 var(--s3); background: var(--chrome); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .toc ul { list-style: none; margin: 0; padding: 0; }
+  .toc a { display: flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 var(--s3); color: #9aa3b8; font-size: 12px; text-decoration: none; }
+  .toc a:hover { color: #fff; }
+  .toc a[data-level='2'] { padding-left: calc(var(--s3) + var(--s4)); color: var(--quiet); }
+  .toc a[data-level='2']::before { content: ''; flex: none; width: 6px; height: 1px; margin-left: -12px; background: #3b414e; }
+
+  /* --- det redigerbara läget -------------------------------------------- */
+  .lasyta { min-width: 0; min-height: 0; overflow: auto; scrollbar-width: thin; }
+  /* Måtten är `.byd-rulebook`s egna: 68 tecken av bokens typsnitt plus sidans marginaler. */
+  .bok { min-width: 0; width: calc(68ch + 80px); max-width: 100%; box-sizing: border-box; padding: 32px 40px; border-radius: 14px; background: #f7f3ea; color: #23201a; font: 14px/1.7 Georgia, serif; }
+  .bok h1 { margin: 0 0 18px; font-size: 26px; }
+  .bok h2 { margin: 22px 0 8px; font-size: 19px; }
+  .bok h3 { margin: 18px 0 6px; font-size: 15px; color: #4a4438; }
+  .bok p { margin: 0 0 10px; }
+  .bok ol, .bok ul { margin: 0 0 12px; padding-left: 22px; }
+  .bok li { margin-bottom: 4px; }
+  /* Sidan själv är redigeraren (B7): ett block öppnas där det står. */
+  .bok [data-block] { border-radius: 6px; padding: 2px 6px; margin: 0 -6px; }
+  .bok [data-slag='text']:hover { background: #ece5d8; cursor: text; }
+  .bok [data-open] { background: #ece5d8; outline: 2px solid #b08a5a; }
+  .bok textarea { width: 100%; box-sizing: border-box; min-height: 7em; border: 1px solid #cbbfa8; border-radius: 8px; padding: 8px 10px; background: #fff; color: #23201a; font: 14px/1.7 Georgia, serif; resize: vertical; }
+  .bok .skriv { display: block; margin-top: 4px; font: 11px system-ui; color: #6b6255; }
+
+  /* --- det presenterade läget: bordets lucka ---------------------------- */
+  /* Varje mått under är `rules.css`:s eget, så det som visas är bordets bok och inte en ny. */
+  .bordyta { position: relative; min-width: 0; min-height: 0; display: flex; justify-content: flex-end; border-radius: 14px; overflow: hidden; }
+  /* `position: relative` så att luckan målas över filten och inte under den — vid bordet ligger
+     luckan sist bland syskonen och täcker sin egen knapp. */
+  .lucka { position: relative; z-index: 1; flex: none; width: min(380px, 92vw); min-height: 0; display: grid; grid-template-rows: auto 1fr; background: #f7f3ea; color: #23201a; box-shadow: -14px 0 34px rgba(0,0,0,.45); }
+  .fraga { display: flex; gap: 8px; padding: 12px; background: #ece5d8; border-bottom: 1px solid #d8cdb8; }
+  .fraga input { flex: 1; min-width: 0; padding: 9px 11px; border: 1px solid #cbbfa8; border-radius: 10px; background: #fff; color: #23201a; font: 14px system-ui, sans-serif; }
+  .fraga button { border: 0; background: transparent; color: #6b6255; font-size: 20px; padding: 0 6px; cursor: pointer; }
+  .luckkropp { min-height: 0; overflow: auto; padding: 18px 20px; }
+  .bordsbok { font: 14px/1.7 Georgia, serif; }
+  .bordsbok h2 { margin: 0 0 12px; font-size: 20px; }
+  .bordsbok h3 { margin: 16px 0 6px; font-size: 16px; }
+  .bordsbok h4 { margin: 14px 0 4px; font-size: 13px; color: #4a4438; }
+  .bordsbok p { margin: 0 0 8px; }
+  .bordsbok ol, .bordsbok ul { margin: 0 0 10px; padding-left: 20px; }
+  .traffar { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .traffar li { padding: 12px 14px; border-radius: 10px; background: #ece5d8; }
+  .traffar h3 { margin: 0 0 4px; font: 700 10px system-ui, sans-serif; text-transform: uppercase; letter-spacing: 1px; color: #6b6255; }
+  .traffar p { margin: 0; font: 14px/1.6 Georgia, serif; }
+  .ingen { color: #6b6255; font: 13px system-ui, sans-serif; }
+
+  /* Det boken består av, i båda lägena. */
+  .ref { font-style: normal; color: #7a4d1d; border-bottom: 1px dotted #b08a5a; }
+  .ref[data-missing] { color: #a12b2b; background: #f4d9d9; border-bottom: 0; padding: 0 3px; border-radius: 3px; }
+  .pip { display: inline-grid; place-items: center; width: 1.2em; height: 1.2em; border-radius: 50%; background: #23201a; color: #f7f3ea; font: 700 .75em system-ui; vertical-align: -.15em; }
+  .bildruta { margin: 12px 0; text-align: center; }
+  .bildruta img { display: block; margin: 0 auto; max-width: min(100%, 31.9em); height: auto; border-radius: 6px; }
+  .bildtext { margin-top: 6px; font: italic 13px Georgia, serif; color: #6b6255; text-align: center; }
+  /* Uppställningen är spelets egna zoner (B5) och ritas bara i editorn — bordet får dess
+     bildtext och ingenting annat. Det är kodens egen skillnad och inte prototypens. */
+  .zoner { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; padding: 16px; border-radius: 10px; background: #e7dfd0; border: 1px dashed #b8ab93; }
+  .zoner span { padding: 8px 12px; border-radius: 6px; background: #f7f3ea; border: 1px solid #cbbfa8; font: 12px system-ui; }
+
+  /* --- växeln, i tre former --------------------------------------------- */
+  .vaxel { display: flex; gap: 4px; padding: 3px; border-radius: 8px; background: var(--sunk); }
+  .vaxel button { min-height: 34px; border: 0; border-radius: 6px; padding: 0 12px; background: transparent; color: var(--quiet-2); font: inherit; font-weight: 700; font-size: 12px; cursor: pointer; }
+  .vaxel button[aria-pressed='true'] { background: var(--primary); color: #fff; }
+  .vaxel button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  /* C: kortväggens språk — en ruta som säger sitt namn och sitt nuvarande läge, med valen i ett
+     band under raden. `.byd-crown-box` och `.byd-crown-drawer`, ord för ord. */
+  .crownbox { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 12px; border: 1px solid #3b414e; border-radius: 8px; background: #1b1d23; color: #dce3f2; font: inherit; font-weight: 700; font-size: 12px; white-space: nowrap; cursor: pointer; }
+  .crownbox[aria-expanded='true'] { border-color: var(--primary-mark); color: #fff; }
+  .crownband { flex: none; display: flex; align-items: center; gap: var(--s2); padding: var(--s2) 0; border-bottom: 1px solid #2f333d; }
+  .crownband .val { min-height: var(--tap); border: 1px solid #3b414e; border-radius: 8px; padding: 0 12px; background: #1b1d23; color: #dce3f2; font: inherit; font-weight: 700; font-size: 12px; cursor: pointer; }
+  .crownband .val[aria-pressed='true'] { border-color: var(--primary-mark); background: var(--primary); color: #fff; }
+
+  /* --- vad varje variant gör av uppslaget -------------------------------- */
+  /* A: ett läge i taget. Boken byts mot bordets lucka, spalten står kvar. */
+  .flik[data-variant='a'][data-lage='redigerbar'] .bordyta { display: none; }
+  .flik[data-variant='a'][data-lage='bordet'] .lasyta { display: none; }
+  /* B: ett tredje läge där båda står bredvid varandra och rullar tillsammans. */
+  .flik[data-variant='b'][data-lage='redigerbar'] .bordyta { display: none; }
+  .flik[data-variant='b'][data-lage='bordet'] .lasyta { display: none; }
+  .flik[data-variant='b'][data-lage='bada'] .bok { width: calc(52ch + 80px); }
+  /* C: bordet självt — filten bakom luckan, och spalten borta, eftersom bordet inte har någon. */
+  .flik[data-variant='c'][data-lage='redigerbar'] .bordyta { display: none; }
+  .flik[data-variant='c'][data-lage='bordet'] .lasyta { display: none; }
+  .flik[data-variant='c'][data-lage='bordet'] .toc { display: none; }
+  .flik[data-variant='c'][data-lage='bordet'] .bordyta { flex: 1 1 auto; background: radial-gradient(circle at 44% 44%, #24603f, #12331f 70%, #0d2418); }
+  .flik[data-variant='c'][data-lage='bordet'] .filt { display: block; }
+  .filt { display: none; position: absolute; inset: 0; }
+  .filt .kort { position: absolute; width: 74px; aspect-ratio: 63/88; padding: 7px; display: flex; flex-direction: column; gap: 5px; border-radius: 6px; border: 1px solid #0d0f14; background: #f3ecdc; box-shadow: 0 6px 16px rgba(0,0,0,.45); }
+  .filt .kort .top { height: 20px; border-radius: 3px; background: #6b4a2e; }
+  .filt .kort .ln { height: 4px; border-radius: 2px; background: #cfc3ab; }
+  .filt .kort .ln.short { width: 56%; }
+  .filt .hog { position: absolute; width: 74px; aspect-ratio: 63/88; border-radius: 6px; background: #2f4068; border: 1px solid #0d0f14; box-shadow: 3px 3px 0 #223052, 6px 6px 0 #1b2742; }
+  /* Knappen som öppnar luckan vid bordet, där den verkligen står: `right: 16px; top: 16px` av
+     filten. Med luckan öppen ligger den alltså under luckan och syns inte — det är vad bordet gör
+     i dag, och prototypen ritar det och inte något snyggare. */
+  .filt .regelknapp { position: absolute; right: 16px; top: 16px; border: 1px solid #3b4358; border-radius: 10px; padding: 8px 14px; background: rgba(11,13,18,.9); color: #e6ecfa; font: 700 13px system-ui, sans-serif; }
+
+  .offscreen { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  /* Startmätningen behöver båda böckerna ritade en gång, innan varianten gömmer den ena. */
+  .flik[data-matning] .lasyta, .flik[data-matning] .bordyta { display: flex !important; }
+</style>
+</head>
+<body>
+<div class="shell">
+<header>
+  <strong>Skogens herrar</strong>
+  <nav class="tabs" role="tablist" aria-label="Form">
+    <button role="tab" aria-selected="false">Kort</button>
+    <button role="tab" aria-selected="false">Mall</button>
+    <button role="tab" aria-selected="false">Tabell</button>
+    <button role="tab" aria-selected="false">Symboler</button>
+    <button role="tab" aria-selected="false">Media</button>
+    <button role="tab" aria-selected="true">Regler</button>
+    <button role="tab" aria-selected="false">Bord</button>
+  </nav>
+  <span class="spacer"></span>
+  <div class="switch" role="group" aria-label="Variant">
+    <button type="button" data-variant="a" aria-pressed="true">A · uppslaget byter</button>
+    <button type="button" data-variant="b" aria-pressed="false">B · bredvid varandra</button>
+    <button type="button" data-variant="c" aria-pressed="false">C · bordet självt</button>
+  </div>
+  <span class="who">S</span>
+</header>
+
+<main>
+  <div class="protorad">
+    <p id="omvariant"></p>
+    <div class="matt">
+      <span>radbredd <u id="m-bredd">—</u></span>
+      <span>bokens höjd <u id="m-hojd">—</u></span>
+      <span>avsnitt <u id="m-avsnitt">—</u></span>
+    </div>
+    <button type="button" id="ladda">Låtsas ladda om projektet</button>
+    <p class="sagt">Sagt för skärmläsaren: <em id="spegel">—</em></p>
+  </div>
+
+  <section class="flik" id="flik" data-variant="a" data-lage="redigerbar">
+    <div class="bar">
+      <h2>Regelboken</h2>
+      <span id="huvudplats"></span>
+      <span class="hint">Reglerna hör till spelet: de versioneras med korten, och spelarna når dem från telefonen, TV:n och observatören.</span>
+      <div class="ways">
+        <span id="svansplats"></span>
+        <button type="button" class="pill">Gör häfte</button>
+        <button type="button" class="pill">Importera över boken</button>
+      </div>
+    </div>
+    <div id="bandplats"></div>
+
+    <div class="spread">
+      <nav class="toc" aria-label="Innehåll"><b>Innehåll</b><div id="innehall"></div></nav>
+
+      <div class="lasyta" id="lasyta" tabindex="0">
+        <article class="bok" id="bok"></article>
+      </div>
+
+      <div class="bordyta">
+        <div class="filt" aria-hidden="true">
+          <div class="kort" style="left:9%;top:26%"><div class="top"></div><div class="ln"></div><div class="ln short"></div></div>
+          <div class="kort" style="left:24%;top:44%"><div class="top"></div><div class="ln"></div><div class="ln short"></div></div>
+          <div class="hog" style="left:40%;top:24%"></div>
+          <div class="regelknapp">Regler</div>
+        </div>
+        <aside class="lucka" aria-label="Regler">
+          <div class="fraga">
+            <input type="search" id="fraga" aria-label="Vad undrar du?" placeholder="Vad undrar du?">
+            <button type="button" aria-label="Stäng reglerna" id="stang">×</button>
+          </div>
+          <div class="luckkropp" id="luckkropp" tabindex="0">
+            <article class="bordsbok" id="bordsbok"></article>
+          </div>
+        </aside>
+      </div>
+    </div>
+
+    <p class="offscreen" role="status" aria-live="polite" id="rop"></p>
+  </section>
+</main>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id)
+
+// ---------------------------------------------------------------------------
+// The book. Long enough that scrolling is real: ten sections, sixteen
+// subheadings. Tagged references carry `data-ref`, which is what #226 will
+// hang its live counts on.
+// ---------------------------------------------------------------------------
+const P = (id, ...stycken) => ({ id, slag: 'text', stycken })
+const H = (id, niva, text) => ({ id, slag: 'rubrik', niva, text })
+const L = (id, ordnad, ...rader) => ({ id, slag: 'lista', ordnad, rader })
+
+const BOK = [
+  H('s1', 1, 'Översikt'),
+  P('a1',
+    'Skogens herrar är ett spel för två till fyra spelare om att ta skogen i besittning innan vintern kommer. Varje spelare börjar med en hand på fem kort ur {{zon:draghogen|Draghögen}} och en bricka i {{zon:skogsbrynet|Skogsbrynet}}.',
+    'Spelet går över tolv rundor, eller tills någon har fyra märken i {{zon:borgen|Borgen}}. **Den som har flest märken när vintern kommer vinner**, och vid lika många vinner den som har minst kort kvar på handen.'),
+  L('a2', false,
+    'En lek på 96 kort, blandad och lagd som {{zon:draghogen|Draghögen}}.',
+    'Fyra brickor per spelare, i spelarens egen färg.',
+    'Två tärningar, som bara används vid {{zon:floden|Floden}}.'),
+
+  H('s2', 1, 'Uppställning'),
+  { id: 'a3', slag: 'uppstallning', bildtext: 'Spelets zoner som de står vid spelets början.' },
+  P('a4',
+    'Lägg {{zon:draghogen|Draghögen}} i mitten och vänd de tre översta korten till {{zon:marknaden|Marknaden}}. {{zon:kasthogen|Kasthögen}} är tom vid spelets början och ligger till höger om draghögen.',
+    'Varje spelare tar en bricka och ställer den i {{zon:skogsbrynet|Skogsbrynet}}. Den som senast var i en riktig skog börjar.'),
+  L('a5', true,
+    'Blanda leken och lägg den som {{zon:draghogen|Draghögen}}.',
+    'Vänd tre kort till {{zon:marknaden|Marknaden}}.',
+    'Dela ut fem kort till varje spelare.',
+    'Lägg {{kort:vinterkortet|Vinterkortet}} underst i draghögen.'),
+
+  H('s3', 1, 'En tur'),
+  P('a6', 'En tur har fyra steg, och de tas alltid i den här ordningen. Ett steg får hoppas över, men inte tas om.'),
+  L('a7', true,
+    'Dra ett kort ur {{zon:draghogen|Draghögen}}.',
+    'Utför högst två handlingar ur avsnittet **Handlingar**.',
+    'Flytta din bricka ett steg, eller stå kvar.',
+    'Fyll på {{zon:marknaden|Marknaden}} till tre kort.'),
+  H('s3a', 2, 'Turordningen'),
+  P('a8', 'Turen går medsols. Den som spelar {{kort:gokvisslan|Gökvisslan}} byter turordningen till motsols tills kortet lämnar spelet, vilket är den enda gången ordningen ändras.'),
+  H('s3b', 2, 'Att hoppa över sin tur'),
+  P('a9', 'Den som inte kan eller vill göra någonting säger det, drar ett kort och lägger ett kort i {{zon:kasthogen|Kasthögen}}. Turen är då över. Att hoppa över sin tur två gånger i rad kostar ett märke i {{zon:borgen|Borgen}}, om man har något.'),
+
+  H('s4', 1, 'Handlingar'),
+  P('a10', 'Handlingarna nedan är de enda som finns. Ett kort kan ge en handling till, och då står den på kortet.'),
+  H('s4a', 2, 'Dra ur draghögen'),
+  P('a11', 'Ta det översta kortet ur {{zon:draghogen|Draghögen}} och lägg det på handen. En hand får hålla högst nio kort; över nio kastas ned till nio vid turens slut, och den som kastar väljer själv vilka.'),
+  P('a12', 'Är {{zon:draghogen|Draghögen}} tom blandas {{zon:kasthogen|Kasthögen}} och blir den nya draghögen. Blandningen görs öppet, och {{kort:vinterkortet|Vinterkortet}} läggs alltid underst igen.'),
+  H('s4b', 2, 'Spela ett kort'),
+  P('a13', 'Lägg ett kort ur handen framför dig och gör det kortet säger. Ett kort med märket {{pip:▲}} spelas med framsidan upp; ett med {{pip:●}} läggs med baksidan upp och vänds först när någon ber om det.'),
+  L('a14', false,
+    'Ett kort som spelats ligger kvar tills rundan är slut.',
+    'Ett kort som motsäger en regel i den här boken följer kortet, aldrig boken.',
+    'Två kort som motsäger varandra tar båda ut varandra och går till {{zon:kasthogen|Kasthögen}}.'),
+  H('s4c', 2, 'Byta i Marknaden'),
+  P('a15', 'Lägg ett kort från handen i {{zon:marknaden|Marknaden}} och ta ett av de kort som redan ligger där. Bytet är ett mot ett och kostar en handling. {{zon:marknaden|Marknaden}} fylls på till tre kort vid turens slut, aldrig mitt i en tur.'),
+  H('s4d', 2, 'Vila vid Altaret'),
+  P('a16', 'Ställ din bricka i {{zon:altaret|Altaret}} och dra två kort i stället för ett vid nästa turs början. En bricka i {{zon:altaret|Altaret}} kan inte anfallas, och kan inte heller anfalla. Det går att vila två turer i rad, men inte tre.'),
+
+  H('s5', 1, 'Skogens väsen'),
+  P('a17', 'Väsen är kort som ligger kvar i {{zon:skogsbrynet|Skogsbrynet}} och gör någonting varje runda, tills någon fäller dem. Ett väsen tillhör ingen.'),
+  { id: 'a18', slag: 'bild', bildtext: 'Ett väsen står i Skogsbrynet tills någon fäller det.' },
+  H('s5a', 2, 'Vargflocken'),
+  P('a19', '{{kort:vargflocken|Vargflocken}} tar ett kort ur varje spelares hand vid varje rundas början och lägger dem i {{zon:kasthogen|Kasthögen}}. Den fälls av två kort med märket {{pip:▲}} spelade i samma tur.'),
+  H('s5b', 2, 'Björnen'),
+  P('a20', '{{kort:bjornen|Björnen}} står i vägen: ingen bricka kan lämna {{zon:skogsbrynet|Skogsbrynet}} medan björnen står där. Den fälls av tre kort i samma färg, eller av {{kort:honungen|Honungen}} ensam.'),
+  H('s5c', 2, 'Dimman'),
+  P('a21', 'Medan {{saknad:dimmarken|dimmärket}} ligger i spel är alla kort i {{zon:marknaden|Marknaden}} vända med baksidan upp. Ingen får titta på dem, och ett byte görs alltså blint.'),
+
+  H('s6', 1, 'Striden vid Floden'),
+  P('a22', 'Två brickor i {{zon:floden|Floden}} strider vid rundans slut. Striden är den enda plats i spelet där tärningarna används.'),
+  L('a23', true,
+    'Båda spelarna slår en tärning var.',
+    'Var och en lägger till antalet kort med märket {{pip:▲}} de har spelat i rundan.',
+    'Den högsta summan vinner och tar ett märke ur den andres {{zon:borgen|Borgen}}.',
+    'Förloraren flyttar sin bricka tillbaka till {{zon:skogsbrynet|Skogsbrynet}}.'),
+  H('s6a', 2, 'Om summorna är lika'),
+  P('a24', 'Vid lika summor händer ingenting: båda brickorna står kvar i {{zon:floden|Floden}} och striden tas om vid nästa rundas slut. Sker det tre rundor i rad går båda brickorna till {{zon:skogsbrynet|Skogsbrynet}} och ingen tar något märke.'),
+  H('s6b', 2, 'Att undvika strid'),
+  P('a25', 'Den som flyttar sin bricka ur {{zon:floden|Floden}} före rundans slut strider inte, men kastar ett kort ur handen till {{zon:kasthogen|Kasthogen}}. Det är priset för att vända om.'),
+
+  H('s7', 1, 'Marknaden'),
+  P('a26', '{{zon:marknaden|Marknaden}} håller alltid tre kort med framsidan upp, utom när {{saknad:dimmarken|dimmärket}} ligger i spel. Korten där tillhör ingen förrän någon byter till sig dem.'),
+  L('a27', false,
+    'Ett byte kostar en handling och är alltid ett kort mot ett kort.',
+    'Ett kort som legat i {{zon:marknaden|Marknaden}} tre rundor går till {{zon:kasthogen|Kasthögen}}.',
+    'Den som byter sist i en runda får titta på det översta kortet i {{zon:draghogen|Draghögen}}.'),
+
+  H('s8', 1, 'Vintern kommer'),
+  P('a28', 'Vintern börjar när {{kort:vinterkortet|Vinterkortet}} dras. Det kan ske tidigast i runda åtta, eftersom kortet ligger underst i {{zon:draghogen|Draghögen}}.'),
+  H('s8a', 2, 'Vinterkortet'),
+  P('a29', 'Den som drar {{kort:vinterkortet|Vinterkortet}} lägger det öppet framför sig och avslutar sin tur. Från och med nästa runda drar ingen kort, och {{zon:marknaden|Marknaden}} fylls inte på. Spelet slutar efter ytterligare två rundor.'),
+  H('s8b', 2, 'Vad vintern ändrar'),
+  L('a30', false,
+    'Inga kort dras, av någon, av något skäl.',
+    'Väsen i {{zon:skogsbrynet|Skogsbrynet}} gör fortfarande vad de gör.',
+    'Strider vid {{zon:floden|Floden}} sker som vanligt, och räknas dubbelt.'),
+
+  H('s9', 1, 'Spelet tar slut'),
+  P('a31', 'Spelet tar slut när vintern är över, eller i det ögonblick någon har fyra märken i {{zon:borgen|Borgen}}. Ett spel kan alltså ta slut utan att någon vinner, om alla har lika många märken och lika många kort.'),
+  L('a32', true,
+    'Räkna märkena i varje spelares {{zon:borgen|Borgen}}.',
+    'Vid lika många märken vinner den med minst kort på handen.',
+    'Vid lika många kort delas segern.'),
+  P('a33', 'En delad seger är en riktig seger och räknas som en sådan i en turnering.'),
+
+  H('s10', 1, 'Ordlista'),
+  L('a34', false,
+    '**Bricka** — spelarens egen pjäs. Den står alltid i någon zon.',
+    '**Märke** — det som räknas vid spelets slut. Märken ligger i {{zon:borgen|Borgen}}.',
+    '**Väsen** — ett kort som ligger kvar och gör någonting varje runda.',
+    '**Runda** — ett varv där varje spelare tagit en tur.'),
+]
+
+// A picture that travels with the file rather than with a server: the prototype opens from disk.
+const BILD = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="420" height="180">' +
+  '<rect width="420" height="180" fill="#e7dfd0"/>' +
+  '<circle cx="120" cy="92" r="46" fill="#cbbfa8"/>' +
+  '<path d="M96 116 L120 44 L144 116 Z" fill="#6b4a2e"/>' +
+  '<rect x="206" y="48" width="70" height="92" rx="8" fill="#f7f3ea" stroke="#b8ab93"/>' +
+  '<rect x="296" y="48" width="70" height="92" rx="8" fill="#f7f3ea" stroke="#b8ab93"/>' +
+  '<text x="210" y="164" font-family="Georgia" font-size="15" fill="#6b6255">Väsendet och de två korten som fäller det</text>' +
+  '</svg>')
+
+const ZONER = ['Draghögen', 'Kasthögen', 'Skogsbrynet', 'Borgen', 'Floden', 'Marknaden', 'Ruinen', 'Altaret']
+
+// ---------------------------------------------------------------------------
+// One renderer for the book's inner text, used by both modes. That is the
+// decision's "no second code path" made real here: what differs between the
+// surfaces is the frame around the words, never the words.
+// ---------------------------------------------------------------------------
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+
+function rad(text) {
+  return esc(text)
+    .replace(/\{\{(zon|kort|saknad):([a-z0-9-]+)\|([^}]+)\}\}/g, (_, slag, id, namn) =>
+      slag === 'saknad'
+        ? `<i class="ref" data-ref="${slag}:${id}" data-missing="true">${namn}</i>`
+        : `<i class="ref" data-ref="${slag}:${id}">${namn}</i>`)
+    .replace(/\{\{pip:([^}]+)\}\}/g, (_, n) => `<b class="pip">${n}</b>`)
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+}
+
+const rent = (text) => rad(text).replace(/<[^>]+>/g, '')
+
+// `yta` is 'bok' (the editor's page) or 'bord' (the table's drawer). The two differ in exactly
+// what the real code differs in: the heading rank, and whether the setup picture is drawn.
+function blockHtml(b, yta) {
+  const rubrik = (niva) => (yta === 'bok' ? (niva === 1 ? 'h2' : 'h3') : niva === 1 ? 'h3' : 'h4')
+  switch (b.slag) {
+    case 'rubrik': {
+      const tag = rubrik(b.niva)
+      return `<${tag}>${esc(b.text)}</${tag}>`
+    }
+    case 'text':
+      return b.stycken.map((s) => `<p>${rad(s)}</p>`).join('')
+    case 'lista': {
+      const tag = b.ordnad ? 'ol' : 'ul'
+      return `<${tag}>${b.rader.map((r) => `<li>${rad(r)}</li>`).join('')}</${tag}>`
+    }
+    case 'bild':
+      return `<figure class="bildruta"><img src="${BILD}" alt="Ett väsen i Skogsbrynet, med de två korten som fäller det."><figcaption class="bildtext">${esc(b.bildtext)}</figcaption></figure>`
+    case 'uppstallning':
+      // The table draws the caption and nothing else: `RuleBlockView` has no picture for a setup
+      // block. The editor draws the game's own zones (B5).
+      return yta === 'bok'
+        ? `<figure class="bildruta"><div class="zoner">${ZONER.map((z) => `<span>${esc(z)}</span>`).join('')}</div><figcaption class="bildtext">${esc(b.bildtext)}</figcaption></figure>`
+        : `<p class="bildtext" style="text-align:left">${esc(b.bildtext)}</p>`
+  }
+  return ''
+}
+
+function bokHtml(yta) {
+  return BOK.map((b) => `<div data-block="${b.id}" data-slag="${b.slag}">${blockHtml(b, yta)}</div>`).join('')
+}
+
+// ---------------------------------------------------------------------------
+// The state. The mode lives here and nowhere else — not in the document, which
+// is what L4 asks of a view.
+// ---------------------------------------------------------------------------
+let variant = 'a'
+let lage = 'redigerbar'
+let oppet = null // the block being written in
+let ankareSenast = null
+
+const OM = {
+  a: 'A · uppslaget byter. Växeln står först i flikens huvud, före raden som säger vad reglerna är till för, och den har två lägen. Bordets lucka tar bokens plats i läsytan, i sin egen bredd, och spalten står kvar i båda lägena.',
+  b: 'B · bredvid varandra. Samma växel men tre lägen, placerad längst ut i huvudet bland flikens andra knappar. I «Båda» står boken och bordets lucka sida vid sida och rullar tillsammans, så en ändring syns där den hamnar.',
+  c: 'C · bordet självt. Växeln är kortväggens egen ruta — ett namn och ett läge, med valen i ett band under raden. Presentationsläget ritar bordet: filten, luckan vid kanten och knappen där den verkligen står. Spalten finns inte, för bordet har ingen.',
+}
+
+const NAMN = { redigerbar: 'Redigerbar', bada: 'Båda', bordet: 'Som på bordet' }
+
+// The active scrolling area: the one that carries the reader's place.
+const rullyta = () => (lage === 'bordet' ? $('luckkropp') : $('lasyta'))
+
+// Where the reader is, said in the book's own terms. A pixel cannot carry across the switch: the
+// two modes draw the same book at different widths, so the same section stands at a different
+// number of pixels in each. What carries is the block at the top of the view and how far into it
+// the reader has come.
+function ankare(yta) {
+  const topp = yta.getBoundingClientRect().top
+  for (const el of yta.querySelectorAll('[data-block]')) {
+    const r = el.getBoundingClientRect()
+    if (r.bottom > topp + 1) return { id: el.dataset.block, del: r.height > 0 ? Math.max(0, Math.min(1, (topp - r.top) / r.height)) : 0 }
+  }
+  return null
+}
+
+function tillAnkare(yta, a) {
+  if (!a) return
+  const el = yta.querySelector(`[data-block="${a.id}"]`)
+  if (!el) return
+  const r = el.getBoundingClientRect()
+  yta.scrollTop += r.top - yta.getBoundingClientRect().top + a.del * r.height
+}
+
+function avsnittVid(id) {
+  let namn = BOK[0].text
+  for (const b of BOK) {
+    if (b.slag === 'rubrik' && b.niva === 1) namn = b.text
+    if (b.id === id) break
+  }
+  return namn
+}
+
+function sag(text) {
+  $('rop').textContent = text
+  $('spegel').textContent = text
+}
+
+// ---------------------------------------------------------------------------
+// Drawing
+// ---------------------------------------------------------------------------
+function ritaBocker() {
+  $('bok').innerHTML = `<h1>Skogens herrar</h1>${bokHtml('bok')}`
+  ritaLucka()
+}
+
+function ritaLucka() {
+  const q = $('fraga').value.trim().toLowerCase()
+  if (!q) {
+    $('bordsbok').innerHTML = `<h2>Skogens herrar</h2>${bokHtml('bord')}`
+    return
+  }
+  // The table's own answer to a question: the paragraphs that name the word, under the heading
+  // they stand beneath. The search reads the rendered text, never the ids behind it (B7).
+  const traffar = []
+  let rubrik = BOK[0].text
+  for (const b of BOK) {
+    if (b.slag === 'rubrik') { rubrik = b.text; continue }
+    const text = b.slag === 'text' ? b.stycken.map(rent).join(' ') : b.slag === 'lista' ? b.rader.map(rent).join(' ') : ''
+    if (text.toLowerCase().includes(q)) traffar.push({ rubrik, text })
+  }
+  $('bordsbok').innerHTML = traffar.length === 0
+    ? '<p class="ingen">Ingen regel nämner det. Fråga den som gjorde spelet.</p>'
+    : `<ol class="traffar">${traffar.map((h) => `<li><h3>${esc(h.rubrik)}</h3><p>${esc(h.text)}</p></li>`).join('')}</ol>`
+}
+
+function ritaInnehall() {
+  const rader = BOK.filter((b) => b.slag === 'rubrik')
+  $('innehall').innerHTML = `<ul>${rader.map((b) => `<li><a href="#" data-till="${b.id}" data-level="${b.niva}">${b.niva === 2 ? '<span class="offscreen">Underrubrik: </span>' : ''}${esc(b.text)}</a></li>`).join('')}</ul>`
+}
+
+// The toggle, in the form the variant proposes. One state, three appearances.
+function ritaVaxel() {
+  $('huvudplats').innerHTML = ''
+  $('svansplats').innerHTML = ''
+  $('bandplats').innerHTML = ''
+  const knapp = (l) => `<button type="button" data-lage="${l}" aria-pressed="${lage === l}">${NAMN[l]}</button>`
+  if (variant === 'a') {
+    $('huvudplats').innerHTML = `<span class="vaxel" role="group" aria-label="Läge">${knapp('redigerbar')}${knapp('bordet')}</span>`
+  } else if (variant === 'b') {
+    $('svansplats').innerHTML = `<span class="vaxel" role="group" aria-label="Läge">${knapp('redigerbar')}${knapp('bada')}${knapp('bordet')}</span>`
+  } else {
+    const oppen = $('flik').dataset.band === 'true'
+    $('svansplats').innerHTML = `<button type="button" class="crownbox" id="crownbox" aria-expanded="${oppen}">Läge: ${NAMN[lage]} <span aria-hidden="true">▾</span></button>`
+    if (oppen) {
+      $('bandplats').innerHTML = `<div class="crownband" role="group" aria-label="Läge">${['redigerbar', 'bordet'].map((l) => `<button type="button" class="val" data-lage="${l}" aria-pressed="${lage === l}">${NAMN[l]}</button>`).join('')}</div>`
+    }
+  }
+}
+
+function matning() {
+  // A hidden book measures zero, and a zero is not a measurement. Both books are drawn for the
+  // length of this function and the reading is taken with the layout the current variant would
+  // give each of them; nothing is painted in between, so nothing flashes.
+  const flik = $('flik')
+  const hade = flik.dataset.matning
+  flik.dataset.matning = 'true'
+  const p = $('bok').querySelector('p')
+  const q = $('bordsbok').querySelector('p')
+  if (p && q) {
+    $('m-bredd').textContent = `${Math.round(p.getBoundingClientRect().width)} → ${Math.round(q.getBoundingClientRect().width)} px`
+    $('m-hojd').textContent = `${Math.round($('bok').scrollHeight)} → ${Math.round($('bordsbok').scrollHeight)} px`
+  }
+  if (hade === undefined) delete flik.dataset.matning
+  $('m-avsnitt').textContent = `${BOK.filter((b) => b.slag === 'rubrik' && b.niva === 1).length} · ${BOK.filter((b) => b.slag === 'rubrik' && b.niva === 2).length} underrubriker`
+}
+
+function tillampa() {
+  $('flik').dataset.variant = variant
+  $('flik').dataset.lage = lage
+  $('omvariant').textContent = OM[variant]
+  ritaVaxel()
+}
+
+// ---------------------------------------------------------------------------
+// Switching modes. The reader's place is taken before the swap and put back
+// after it — which is the one behaviour this prototype exists to let somebody
+// feel rather than agree to.
+// ---------------------------------------------------------------------------
+function byt(till) {
+  if (till === lage) return
+  const fran = rullyta()
+  const a = ankare(fran) ?? ankareSenast
+  ankareSenast = a
+  stangSkrivning()
+  lage = till
+  tillampa()
+  const ny = rullyta()
+  // The new area has just been given a size by the layout; read it back before scrolling into it.
+  requestAnimationFrame(() => {
+    // Measured first: the reading draws both books for an instant, and a scroll set before that
+    // could be clamped by the width the other book borrows while it is being measured.
+    matning()
+    tillAnkare(ny, a)
+    if (lage === 'bada') tillAnkare($('luckkropp'), a)
+  })
+  const var_ = a ? ` Samma avsnitt: ${avsnittVid(a.id)}.` : ''
+  sag(`${NAMN[till]}.${var_}`)
+}
+
+// --- writing in the book (editable mode only) ------------------------------
+function stangSkrivning() {
+  if (!oppet) return
+  const ruta = $('bok').querySelector(`[data-block="${oppet}"]`)
+  const falt = ruta?.querySelector('textarea')
+  if (falt) {
+    const b = BOK.find((x) => x.id === oppet)
+    b.stycken = falt.value.split(/\n{2,}/).map((s) => s.trim()).filter(Boolean)
+  }
+  oppet = null
+  const a = ankare($('lasyta'))
+  ritaBocker()
+  matning()
+  tillAnkare($('lasyta'), a)
+}
+
+function skriv(id) {
+  if (lage === 'bordet' || oppet === id) return
+  stangSkrivning()
+  oppet = id
+  const b = BOK.find((x) => x.id === id)
+  const ruta = $('bok').querySelector(`[data-block="${id}"]`)
+  ruta.dataset.open = 'true'
+  ruta.innerHTML = `<textarea aria-label="Stycket ${id}">${esc(b.stycken.join('\n\n'))}</textarea><small class="skriv">Escape stänger. Ändringen syns i bordets bok också — det är samma bok.</small>`
+  ruta.querySelector('textarea').focus()
+}
+
+// ---------------------------------------------------------------------------
+// Wiring
+// ---------------------------------------------------------------------------
+for (const b of document.querySelectorAll('.switch button')) {
+  b.onclick = () => {
+    for (const o of document.querySelectorAll('.switch button')) o.setAttribute('aria-pressed', String(o === b))
+    variant = b.dataset.variant
+    // A mode the new variant does not have falls back to the editable one.
+    if (lage === 'bada' && variant !== 'b') lage = 'redigerbar'
+    $('flik').dataset.band = 'false'
+    tillampa()
+    requestAnimationFrame(matning)
+  }
+}
+
+document.addEventListener('click', (e) => {
+  // `button[data-lage]` and not `[data-lage]`: the tab itself carries the mode as an attribute, so
+  // the looser selector matched every press anywhere in the book and swallowed it.
+  const val = e.target.closest('button[data-lage]')
+  if (val) {
+    byt(val.dataset.lage)
+    if (variant === 'c') { $('flik').dataset.band = 'false'; ritaVaxel(); $('crownbox')?.focus() }
+    return
+  }
+  if (e.target.closest('#crownbox')) {
+    $('flik').dataset.band = $('flik').dataset.band === 'true' ? 'false' : 'true'
+    ritaVaxel()
+    $('crownbox').focus()
+    return
+  }
+  const till = e.target.closest('[data-till]')
+  if (till) {
+    e.preventDefault()
+    const yta = rullyta()
+    tillAnkare(yta, { id: till.dataset.till, del: 0 })
+    if (lage === 'bada') tillAnkare($('luckkropp'), { id: till.dataset.till, del: 0 })
+    return
+  }
+  const block = e.target.closest('#bok [data-block]')
+  if (block && block.dataset.slag === 'text') skriv(block.dataset.block)
+  else if (!e.target.closest('textarea')) stangSkrivning()
+})
+
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return
+  if (oppet) { stangSkrivning(); $('lasyta').focus(); return }
+  if ($('flik').dataset.band === 'true') { $('flik').dataset.band = 'false'; ritaVaxel(); $('crownbox')?.focus() }
+})
+
+$('fraga').oninput = () => { ritaLucka(); matning() }
+$('stang').onclick = () => { $('fraga').value = ''; ritaLucka() }
+
+// Both areas scroll together in «Båda», so the same section is level in the two of them. The flag
+// keeps the answer from scrolling the asker back.
+let speglar = false
+for (const [en, andra] of [['lasyta', 'luckkropp'], ['luckkropp', 'lasyta']]) {
+  $(en).addEventListener('scroll', () => {
+    if (lage !== 'bada' || speglar) return
+    speglar = true
+    tillAnkare($(andra), ankare($(en)))
+    requestAnimationFrame(() => { speglar = false })
+  })
+}
+
+// The mode is a view and not a fact about the game (L4): a reloaded project brings the book back
+// and knows nothing at all about which way it was being read.
+$('ladda').onclick = () => {
+  lage = 'redigerbar'
+  ankareSenast = null
+  oppet = null
+  $('fraga').value = ''
+  $('flik').dataset.band = 'false'
+  tillampa()
+  ritaBocker()
+  $('lasyta').scrollTop = 0
+  $('luckkropp').scrollTop = 0
+  matning()
+  sag('Projektet laddades om. Läget följde inte med: det står i webbläsaren och aldrig i dokumentet (L4).')
+}
+
+window.addEventListener('resize', matning)
+
+// Start: draw both books once so the measurements are real, then let the variant hide one.
+ritaBocker()
+ritaInnehall()
+$('flik').dataset.matning = 'true'
+tillampa()
+requestAnimationFrame(() => {
+  matning()
+  delete $('flik').dataset.matning
+  sag('Redigerbar.')
+})
+</script>
+</body>
+</html>
