@@ -293,6 +293,10 @@ function Choices({ choices, close, t }: { choices: readonly Choice[]; close(): v
   const walk = (from: EventTarget, by: number) => {
     const options = [...(list.current?.querySelectorAll('button') ?? [])]
     const at = from === field.current ? -1 : options.indexOf(from as HTMLButtonElement)
+    // Something in the box that is neither the field nor a choice is the number, which is typed
+    // and not picked. There the arrows are the field's own — they step the value — so the box
+    // keeps its hands off them.
+    if (at < 0 && from !== field.current) return false
     const next = at + by
     if (next >= options.length) return false
     ;(next < 0 ? field.current : options[next])?.focus()

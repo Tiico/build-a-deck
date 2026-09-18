@@ -157,4 +157,21 @@ describe('rutan som öppnas ur en slot (#230)', () => {
     expect(words(box)).toEqual(['som de ligger', 'uppvända', 'nedvända'])
     expect(within(box).queryByLabelText('Sök bland valen')).toBeNull()
   })
+
+  // Pilarna går ned i listan, men talet är inte ett val i listan — det skrivs. I ett nummerfält
+  // stegar pilarna värdet, och den som står i fältet och trycker uppåt menar «en till», inte
+  // «nästa knapp». Rutans egen pilnavigering får inte äta det.
+  it('låter pilarna stega talet när de trycks i nummerfältet', () => {
+    openSlot('1')
+    const number = screen.getByLabelText('ett tal')
+    number.focus()
+
+    const stepped = fireEvent.keyDown(number, { key: 'ArrowUp' })
+    expect(document.activeElement).toBe(number)
+    // `fireEvent` svarar false när något kallat preventDefault: då hade webbläsaren inte stegat.
+    expect(stepped).toBe(true)
+
+    expect(fireEvent.keyDown(number, { key: 'ArrowDown' })).toBe(true)
+    expect(document.activeElement).toBe(number)
+  })
 })
