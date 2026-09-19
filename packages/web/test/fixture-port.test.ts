@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { createServer, type Server } from 'node:net'
 import { describe, expect, it, vi } from 'vitest'
-import { portBand, startServer } from './fixture.js'
+import { deafServer, portBand, startServer } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -44,6 +44,18 @@ describe('the port a test server listens on', () => {
     expect(run.http).toBe(address)
     expect((await fetch(`${address}/health`)).status).toBe(200)
     await run.stop()
+  })
+
+  // The rule is about `restart()` from one side and about its neighbours from the other, and the
+  // deaf server is a neighbour: it asked for any port at all, twelve times across the suite, and
+  // every one of those was a chance to be handed the number a `restart()` elsewhere in the run had
+  // just let go of in order to bind it again (#275). It says nothing about itself when that
+  // happens — the EADDRINUSE lands in whatever test was restarting, about a port nothing in that
+  // test named, which is the shape #58 had from the beginning.
+  it('is below that floor for the deaf server too, since it is the neighbour the rule is about', async () => {
+    const deaf = await deafServer()
+    expect(Number(new URL(deaf.url).port)).toBeLessThan(ephemeralFloor())
+    await deaf.stop()
   })
 
   it('is named in a plain error when something else holds it, rather than felling a test', async () => {

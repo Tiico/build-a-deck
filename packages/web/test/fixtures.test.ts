@@ -1,7 +1,8 @@
 import { readFileSync, readdirSync } from 'node:fs'
+import { connect, type Socket } from 'node:net'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
-import { ANSWERS_WITHIN, startServer, twoSeatSetup } from './fixture.js'
+import { ANSWERS_WITHIN, deafServer, startServer, twoSeatSetup } from './fixture.js'
 import { projectDoc } from './project-doc.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
@@ -197,4 +198,47 @@ describe('the surfaces `editor-viewport.test.tsx` builds (#149)', () => {
     expect(at).toBeGreaterThan(0)
     expect(lines.slice(0, at).filter((line) => /await run\.answering\(`\/sessions\//.test(line)).length).toBe(1)
   })
+})
+
+// The deaf server, and the one thing it is able to say about itself (#265, #275).
+//
+// It is a fixture like the others and lived in two test files as two copies, which had already
+// drifted apart once. What it is for is a service that takes the call and then says nothing; what
+// `stayedDeaf` is for is the difference between that and a service that hung up, because a test
+// written about a line that hangs would otherwise quietly be running about a line that broke.
+//
+// So the predicate is asked both ways here. Any test that reads it while nothing has gone wrong is
+// reading an empty list and would say `true` about a predicate that had stopped working at all.
+const dial = (url: string): Promise<Socket> =>
+  new Promise((resolve, reject) => {
+    const line = connect(Number(new URL(url).port), '127.0.0.1')
+    line.once('error', reject)
+    line.once('connect', () => resolve(line))
+  })
+
+const until = async (predicate: () => boolean, ms = 4_000): Promise<boolean> => {
+  const deadline = Date.now() + ms
+  while (!predicate() && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 10))
+  return predicate()
+}
+
+describe('the deaf server the status tests dial (#275)', () => {
+  it('says so when a call ended before the test put the phone down', async () => {
+    const deaf = await deafServer()
+    const line = await dial(deaf.url)
+    expect(deaf.stayedDeaf()).toBe(true)
+    // A call the fixture took and then lost is the leak the predicate exists to catch. It does not
+    // matter which end let go: what it reports is that a call ended while the test still believed
+    // it was hanging, and that is the reading a test about a hanging line has to be able to trust.
+    line.destroy()
+    expect(await until(() => !deaf.stayedDeaf())).toBe(true)
+    await deaf.stop()
+  })
+
+  // The teardown is not a hang-up either — `stop()` destroys the calls it is holding and that is
+  // the test putting the phone down, not the fixture letting go. It is left unasked here on
+  // purpose: the only way to know the server has taken a call is to end it and watch the predicate
+  // turn, so a test that wanted to read `true` about a call the server was holding would have to
+  // destroy the very call it was reading about. Every caller reads the predicate before it stops
+  // the server, which is the order this is written for.
 })
