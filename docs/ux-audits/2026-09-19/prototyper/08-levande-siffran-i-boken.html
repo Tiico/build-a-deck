@@ -10,7 +10,12 @@
      Georgia 14/1.7, `padding: 32px 40px`) och luckan ur `rules.css` (`.byd-rules-panel`:
      `min(380px, 92vw)`, `.byd-rules-body` `padding: 18px 20px`). En bok ritad i en annan
      bredd mäter ingenting — och hela frågan här är just vad en siffra kostar i bredd. */
-  .work { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, calc(68ch + 80px)) 380px minmax(320px, 1fr); gap: var(--s5); padding: var(--s4); }
+  /* Spalten är `max-content` och aldrig `calc(68ch + 80px)`: ett `ch` i en rutnätsspår
+     räknas mot **rutnätets** typsnitt, alltså skalets system-ui 13, och inte mot bokens
+     Georgia 14. Skrivet som ett spår blev boken 637 px i stället för editorns 664 — 27 px
+     smalare text, vilket hade förskjutit varje radbrytning som mäts här. Boken bär sitt eget
+     `calc(68ch + 80px)`, där `ch` är Georgias, och spåret rättar sig efter den. */
+  .work { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: max-content 380px minmax(300px, 1fr); gap: var(--s4); padding: var(--s4); }
   .spalt { min-height: 0; min-width: 0; display: flex; flex-direction: column; }
   .spalt > b { flex: none; display: block; padding: 0 0 var(--s2); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
 
@@ -105,6 +110,8 @@
   .matlab { position: absolute; left: -20000px; top: 0; visibility: hidden; }
   .matlab .bok { width: calc(68ch + 80px); }
   .matlab .luckkropp { width: 380px; }
+  /* Listens mått i labbet måste vara luckans och inte bokens, annars mäter den fel ram. */
+  .matlab #lab-rail { margin: 0; border-radius: 0; border-width: 0 0 1px; }
 
   .protorad label { display: inline-flex; align-items: center; gap: 6px; }
   .protorad select { min-height: 28px; border: 1px solid #4a4230; border-radius: 7px; background: #1f1b12; color: #ffd98a; font: inherit; padding: 0 6px; }
@@ -168,13 +175,13 @@
       <p id="ledtext"></p>
 
       <h3>Vad varje form kostar i höjd</h3>
-      <table class="matt" id="t-hojd"><thead><tr><th>Form</th><th>Bok</th><th>Δ</th><th>Lucka</th><th>Δ</th></tr></thead><tbody></tbody></table>
+      <table class="matt" id="t-hojd"><thead><tr><th>Form</th><th>Bok</th><th>Δ</th><th>Lucka</th><th>Δ</th><th>List</th></tr></thead><tbody></tbody></table>
 
       <h3>Den långa meningen</h3>
       <table class="matt" id="t-mening"><thead><tr><th>Form</th><th>Rader i boken</th><th>Rader i luckan</th></tr></thead><tbody></tbody></table>
 
-      <h3>Bredaste odelbara taggen mot luckans 340 px</h3>
-      <table class="matt" id="t-bredd"><thead><tr><th>Form</th><th>Taggen</th><th>Bredd</th></tr></thead><tbody></tbody></table>
+      <h3>Längsta taggen i luckans 340 px spalt</h3>
+      <table class="matt" id="t-bredd"><thead><tr><th>Form</th><th>Taggen</th><th>Odelbar</th><th>Hel rad</th></tr></thead><tbody></tbody></table>
 
       <h3>Vad projektionen lämnar ut — råa fält</h3>
       <div class="falt">
@@ -193,7 +200,7 @@
 </div>
 
 <div class="bubbla" id="bubbla" hidden></div>
-<div class="matlab" aria-hidden="true"><article class="bok" id="lab-bok"></article><div class="luckkropp"><div class="sida" id="lab-lucka"></div></div></div>
+<div class="matlab" aria-hidden="true"><article class="bok" id="lab-bok"></article><div class="luckkropp"><div class="sida" id="lab-lucka"></div><div class="sida" id="lab-probe"></div></div><div class="rail" id="lab-rail" style="width:380px"></div></div>
 
 <script>
 'use strict';
@@ -414,22 +421,42 @@ function mat(form, vy) {
   $('lab-bok').innerHTML = ritaBok(form, vy, 'bok');
   $('lab-lucka').innerHTML = ritaBok(form, vy, 'lucka');
   const radhojd = (el, box) => { const p = box.querySelector('[data-lang]'); return p ? Math.round(p.getBoundingClientRect().height / parseFloat(getComputedStyle(p).lineHeight)) : 0; };
+  // Två bredder per tagg, mätta i luckans egen sättning och inte räknade fram:
+  //   `min-content` är taggens bredaste **odelbara** löpa — det som avgör om något alls
+  //     kan sticka ut ur en 340 px spalt.
+  //   `max-content` är hela taggen på en rad — hur stor del av en rad en enda tagg äter.
+  // Efterledet är `nowrap`, så ett radbrott aldrig kan hamna mellan namnet och dess siffra.
+  const probe = $('lab-probe');
   const bredast = () => {
-    let b = 0, vad = '—';
+    let odel = 0, hel = 0, vad = '—';
     for (const r of $('lab-lucka').querySelectorAll('.ref')) {
-      // Taggens egen odelbara bredd: en tagg som får brytas mellan namn och siffra mäts
-      // som sin bredaste odelbara del, och en som inte får brytas som sin helhet.
-      const rects = [...r.getClientRects()];
-      const w = form === 'efterled' ? Math.max(...rects.map((x) => x.width)) : r.getBoundingClientRect().width;
-      if (w > b) { b = w; vad = r.textContent; }
+      probe.innerHTML = r.outerHTML;
+      probe.style.display = 'inline-block';
+      probe.style.width = 'min-content';
+      const a = probe.getBoundingClientRect().width;
+      probe.style.width = 'max-content';
+      const b2 = probe.getBoundingClientRect().width;
+      if (b2 > hel) { hel = b2; odel = a; vad = probe.textContent; }
     }
-    return { b: Math.round(b), vad };
+    probe.innerHTML = ''; probe.style.width = '';
+    return { odel: Math.round(odel), hel: Math.round(hel), vad };
+  };
+  // D:s register är inte i texten och mäts därför för sig: den höjd listen tar ur luckan.
+  const railh = () => {
+    if (form !== 'marginal') return 0;
+    const reg = registret(vy);
+    if (reg === null) return 0;
+    $('lab-rail').innerHTML = `<b>Vid bordet just nu</b><ul>${reg.slice(0, 5).map((r) => `<li><u>${esc(r.namn)}</u>${r.om ? ` <em>${esc(r.om)}</em>` : ''}${r.tal ? `<s>${esc(r.tal)}</s>` : ''}</li>`).join('')}</ul>`;
+    const h = Math.round($('lab-rail').getBoundingClientRect().height);
+    $('lab-rail').innerHTML = '';
+    return h;
   };
   const m = {
     bok: Math.round($('lab-bok').getBoundingClientRect().height),
     lucka: Math.round($('lab-lucka').getBoundingClientRect().height),
     raderBok: radhojd(null, $('lab-bok')),
     raderLucka: radhojd(null, $('lab-lucka')),
+    rail: railh(),
     ...bredast(),
   };
   lab.removeAttribute('data-form');
@@ -457,6 +484,9 @@ function allt() {
   last = { ur: 0, utanfor: 0 };
 
   $('bok').innerHTML = ritaBok(form, vy, 'bok');
+  // Räkningen gäller **en** uppritning av boken; mätlabbet ritar den fyra gånger till och
+  // får inte smitta siffran.
+  const last1 = { ...last };
   $('lucka').innerHTML = ritaBok(form, vy, 'lucka');
 
   // Registret hör bara till D.
@@ -483,12 +513,12 @@ function allt() {
   $('t-hojd').tBodies[0].innerHTML = FORMER.map((f) => {
     const m = alla[f];
     const d = (a, b) => (a === b ? '—' : `${a > b ? '+' : ''}${a - b} px`);
-    return `<tr data-nu="${f === form}"><td>${NAMN[f]}</td><td class="n">${m.bok}</td><td class="n">${d(m.bok, bas.bok)}</td><td class="n">${m.lucka}</td><td class="n">${d(m.lucka, bas.lucka)}</td></tr>`;
+    return `<tr data-nu="${f === form}"><td>${NAMN[f]}</td><td class="n">${m.bok}</td><td class="n">${d(m.bok, bas.bok)}</td><td class="n">${m.lucka}</td><td class="n">${d(m.lucka, bas.lucka)}</td><td class="n">${m.rail ? `+${m.rail}` : '—'}</td></tr>`;
   }).join('');
   $('t-mening').tBodies[0].innerHTML = FORMER.map((f) => `<tr data-nu="${f === form}"><td>${NAMN[f]}</td><td class="n">${alla[f].raderBok}</td><td class="n">${alla[f].raderLucka}</td></tr>`).join('');
   $('t-bredd').tBodies[0].innerHTML = FORMER.map((f) => {
     const m = alla[f];
-    return `<tr data-nu="${f === form}"><td>${NAMN[f]}</td><td style="color:var(--quiet-2)">${esc(m.vad.length > 34 ? m.vad.slice(0, 33) + '…' : m.vad)}</td><td class="n ${m.b <= 340 ? 'ok' : 'fel'}">${m.b} px</td></tr>`;
+    return `<tr data-nu="${f === form}"><td>${NAMN[f]}</td><td style="color:var(--quiet-2)">${esc(m.vad.length > 30 ? m.vad.slice(0, 29) + '…' : m.vad)}</td><td class="n ${m.odel <= 340 ? 'ok' : 'fel'}">${m.odel}</td><td class="n ${m.hel <= 340 ? 'ok' : 'fel'}">${m.hel}</td></tr>`;
   }).join('');
 
   // Det som ska gå att verifiera på trafiken och inte på skärmen.
@@ -500,7 +530,7 @@ function allt() {
   dom.className = 'dom ok';
   dom.innerHTML = vy === null
     ? 'Ingen ram, ingen siffra: taggen faller tillbaka på namnet i varje form.'
-    : `${hemliga.length} av ${Object.keys(vy.zoner).length} zoner är räkningar. Taggarna läste <b>${last.ur}</b> fält, alla ur listan ovan, och <b>${last.utanfor}</b> utanför den. Ingen ordning och inget kort-id för en dold hög finns i ramen — så taggen kan inte säga något om dem ens om den ville.`;
+    : `${hemliga.length} av ${Object.keys(vy.zoner).length} zoner är räkningar. Taggarna i en uppritning av boken läste <b>${last1.ur}</b> fält, alla ur listan ovan, och <b>${last1.utanfor}</b> utanför den. Ingen ordning och inget kort-id för en dold hög finns i ramen — så taggen kan inte säga något om dem ens om den ville.`;
 
   $('t-kontrast').tBodies[0].innerHTML = [
     ['Namnets bläck #7a4d1d', 'papperet #f7f3ea', '#7a4d1d', '#f7f3ea'],
