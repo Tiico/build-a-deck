@@ -1203,12 +1203,19 @@ Kortets ansikte öppnar editorn. Menyn bredvid startar ett bord och lämnar rums
 Ett fel i en åtgärd tar aldrig spelen från skärmen; bara en sida som inte gick att läsa alls ersätter dem.
 CORS-svaret tillät inte DELETE, så borttagningen stoppades i webbläsaren utan att servern märkte något. Ett test på preflight-svaret täcker nu varje metod API:et faktiskt betjänar.
 
-Solfjädern på spelkortet 2026-09-14 (prototypat, variant D av sex):
+Solfjädern på spelkortet 2026-09-14 (prototypat, variant D av sex) — **ersatt 2026-09-19, se nedan**:
 De fyra korten på spelets kort är spelets egna kort, inte fyra rektanglar färgade ur spelets id.
 Urvalet är jämnt spritt över leken med första och sista kortet med, så en lek på hundra kort visar sin bredd och inte bara det som skrevs först; urvalet följer lekens ordning, så samma spel ser likadant ut varje gång det listas.
 Varje kort bär sin titel och kortets egen färg — samma `hue(cardRef)` som vid bordet — så ett kort man känner igen i spel känns igen i listan. En titel som inte får plats bryts över flera rader, avstavad där sidans språk tillåter det, i stället för att försvinna under nästa kort; ett kort utan titel svarar på sitt id som överallt annars.
 En lek utan kort säger "inga kort än" i solfjäderns ställe och behåller platsen, så rutnätet står jämnt.
 `GET /projects` bär urvalet: `peekCards` väljer i `packages/server/src/names.ts`, och båda lagren — minnets och Postgres — ger samma svar. Postgres hämtar bara id och titel ur dokumentet, aldrig hundra hela rader för att rita fyra kort.
+
+**Ett kort i stället för fyra (2026-09-19, #231).**
+Solfjäderns fyra kort blir ett: det första kortet i leken, alltid detsamma, ritat av samma `CardPreview` som kortväggen använder — ingen andra kodväg som ritar ett kort.
+Det här ersätter urvalsregeln ovan och är beställarens beslut efter att motsättningen lyfts: solfjädern hann aldrig byggas, och det som står på startsidan i dag är just de fyra rektanglar färgade ur spelets id som stycket ovan avvisar.
+Vad beslutet kostar, sagt rakt ut: en lek på hundra kort visar inte längre sin bredd på startsidan, vilket var hela skälet till att urvalet var jämnt spritt. Vad det köper är en första skärm som inte väntar på att fyra kort ska ritas, och ett kort som faktiskt är ett kort i stället för fyra som aldrig blev det.
+Det som står kvar ur stycket ovan: kortet är spelets eget kort och inte en färgad rektangel; en lek utan kort säger "inga kort än" och behåller platsen, så rutnätet står jämnt; och `peekCards` är fortfarande vägen, men måste bära det ett kort behöver för att ritas — id och titel räcker inte för `CardPreview`.
+Följdkrav: första skärmen får inte vänta på alla mallar, typsnitt och bilder. Listan ritas på ett svar och kortet landar för sig, med platsen reserverad så ingenting hoppar.
 
 ### G2. Kommunikation: ingen inbyggd röst (fråga 19)
 
