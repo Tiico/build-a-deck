@@ -39,7 +39,7 @@ describe('the rulebook (B7): a versioned document that knows the game it belongs
   it('renders the blocks with every reference standing for what the thing is called now', () => {
     const out = renderRules(doc, names)
     expect(out.warnings).toEqual([])
-    expect(out.blocks[0]).toEqual({ kind: 'heading', id: 'h1', level: 1, text: 'Så spelar ni' })
+    expect(out.blocks[0]).toEqual({ kind: 'heading', id: 'h1', level: 1, children: [{ type: 'text', text: 'Så spelar ni' }] })
     const paragraphs = out.blocks[1]
     expect(paragraphs?.kind === 'text' && paragraphs.paragraphs).toHaveLength(2)
     expect(out.text).toContain('Dra ett kort ur Draghög.')
@@ -62,6 +62,62 @@ describe('the rulebook (B7): a versioned document that knows the game it belongs
       { block: 't1', of: 'card', id: 'troll' },
     ])
     expect(out.text).toContain('[[zon:soptunna]]')
+  })
+})
+
+// A reference in a heading (#272, decided 2026-09-19). The heading was the one place in the book
+// where `[[zon:…]]` stood as seven raw characters: `renderRules` never read it inline, so the
+// reference reached the screen, the booklet and the spoken line as the letters it was written
+// with. A heading that says «Draghögen» has to follow the pile when it is renamed, which is the
+// whole of what a reference is for — and this is also what heals a book that already carries one.
+describe('a reference in a heading (#272)', () => {
+  const headed = (text: string): RuleDoc => ({ title: 'Skogens herrar', blocks: [{ kind: 'heading', id: 'h1', level: 1, text }] })
+
+  it('reads the name the thing has now, in the book and in the text the booklet is set from', () => {
+    const out = renderRules(headed('Ur [[zon:draw]]'), names)
+    expect(out.blocks[0]).toEqual({
+      kind: 'heading',
+      id: 'h1',
+      level: 1,
+      children: [
+        { type: 'text', text: 'Ur ' },
+        { type: 'ref', of: 'zone', id: 'draw', name: 'Draghög' },
+      ],
+    })
+    expect(out.text).toBe('Ur Draghög')
+  })
+
+  it('warns about a reference the game no longer has, the same warning a paragraph gives', () => {
+    const out = renderRules(headed('Ur [[zon:soptunna]]'), names)
+    expect(out.warnings).toEqual([{ block: 'h1', of: 'zone', id: 'soptunna' }])
+    expect(out.text).toBe('Ur [[zon:soptunna]]')
+  })
+
+  it('follows the pile when it is renamed, which is the whole reason the heading holds an id', () => {
+    const doc = headed('Ur [[zon:draw]]')
+    expect(renderRules(doc, names).text).toBe('Ur Draghög')
+    expect(renderRules(doc, { zones: { ...names.zones, draw: 'Dragbunten' }, cards: names.cards }).text).toBe('Ur Dragbunten')
+  })
+
+  // Where the decision stops (#272, decided 2026-09-19). The setup's caption and the picture's are
+  // drawn raw too, and nobody has decided them: they are a question of their own, and widening to
+  // them here would be deciding it in passing. This is the line said out loud, so it takes a test
+  // to cross rather than a slip.
+  it('leaves the setup’s and the picture’s captions unread, because that is a separate question', () => {
+    const out = renderRules(
+      {
+        title: 'Skogens herrar',
+        blocks: [
+          { kind: 'setup', id: 's1', caption: 'Bordet med [[zon:draw]]' },
+          { kind: 'image', id: 'i1', asset: `asset:${'a'.repeat(64)}`, alt: 'Bordet', caption: 'Bordet med [[zon:draw]]', px: { w: 700, h: 400 } },
+        ],
+      },
+      names,
+    )
+    expect(out.warnings).toEqual([])
+    expect(out.text).toBe('Bordet med [[zon:draw]]\nBordet\nBordet med [[zon:draw]]')
+    expect(out.blocks[0]).toMatchObject({ kind: 'setup', caption: 'Bordet med [[zon:draw]]' })
+    expect(out.blocks[1]).toMatchObject({ kind: 'image', caption: 'Bordet med [[zon:draw]]' })
   })
 })
 

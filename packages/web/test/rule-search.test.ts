@@ -50,6 +50,23 @@ describe('looking a rule up mid-game (B7)', () => {
     expect(hits[0]?.text).toBe('Sist av allt räknas poletterna.')
   })
 
+  // A heading is read inline like a paragraph is (#272), so the words a hit is filed under are the
+  // names the reader sees — and a passage standing under it is still found under its own heading
+  // rather than under the one before it.
+  it('files a hit under the heading as the reader reads it, references and all', () => {
+    const headed = renderRules(
+      {
+        title: 'Skogens herrar',
+        blocks: [
+          { kind: 'heading', id: 'h1', level: 1, text: 'Om [[zon:draw]]' },
+          { kind: 'text', id: 't1', text: 'Sist av allt räknas poletterna.' },
+        ],
+      },
+      names,
+    )
+    expect(findRules(headed, 'poletterna').map((h) => h.heading)).toEqual(['Om Draghög'])
+  })
+
   it('gives each hit somewhere to jump to in the book', () => {
     const hits = findRules(out, 'poäng')
     expect(hits).toHaveLength(1)

@@ -41,6 +41,17 @@ describe('the rulebook as a booklet for print (B7)', () => {
     expect(out.html).toContain('Lägg i Kasthög.')
   })
 
+  // A heading is read inline like a paragraph (#272), so what is printed above a section is the
+  // name the thing has and never the letters the reference was written with. The heading is
+  // escaped through the same span the paragraph is, so nothing it holds reaches the renderer as
+  // markup either.
+  it('prints a heading’s reference as the name it stands for', () => {
+    const headed = renderRules({ ...doc, blocks: [{ kind: 'heading', id: 'h1', level: 1, text: 'Ur [[zon:draw]] och **<b>**' }] }, names)
+    const out = bookletOf({ rules: headed, icons, pageMm: A5 })
+    expect(out.html).toContain('<h2>Ur Draghög och <strong>&lt;b&gt;</strong></h2>')
+    expect(out.html).not.toContain('[[zon:draw]]')
+  })
+
   it('draws the setup from the zones the game actually has (B5)', () => {
     const out = bookletOf({ rules: renderRules(doc, names), icons, pageMm: { w: 148, h: 210 }, zones: ['Draghög', 'Kasthög', 'Hand'] })
     expect(out.html).toContain('Så ställs bordet upp')

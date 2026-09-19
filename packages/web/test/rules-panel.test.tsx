@@ -88,6 +88,35 @@ describe('the rulebook in the editor (B7)', () => {
     expect(screen.getByText(/1 referens pekar på något spelet inte har/)).toBeTruthy()
   })
 
+  // A reference in a heading (#272). The heading was the one line of the book the renderer never
+  // read inline, so a section named after a pile stood in raw characters — in the book, in the
+  // column beside it, and in the count of references that point at nothing. All three read the
+  // heading the same way as the paragraph under it now.
+  it('reads a reference in a heading, in the book and in the column, and counts a lost one', async () => {
+    await run.projects.create(run.otherProjectId, {
+      ...projectDoc(),
+      rules: {
+        title: 'X',
+        blocks: [
+          { kind: 'heading', id: 'h1', level: 1, text: 'Om [[zon:draw]]' },
+          { kind: 'heading', id: 'h2', level: 2, text: 'Och om [[zon:soptunna]]' },
+        ],
+      },
+    })
+    history.replaceState(null, '', `/editor?project=${run.otherProjectId}&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('tab', { name: 'Regler' }))
+    await waitFor(() => expect(book().querySelector('[data-block="h1"]')).toBeTruthy())
+    expect(book().querySelector('[data-block="h1"] h2')!.textContent).toBe('Om Draghög')
+    // The column points at the same words the reader meets, and never at the id behind them.
+    const toc = document.querySelector('.byd-rules-toc') as HTMLElement
+    expect([...toc.querySelectorAll('a')].map((a) => a.textContent)).toEqual(['Om Draghög', 'Underrubrik: Och om zon:soptunna'])
+    // A reference the game lost says so where it stands, and is counted with the rest of them.
+    expect(book().querySelector('[data-block="h2"] [data-ref][data-missing]')!.textContent).toContain('soptunna')
+    expect(screen.getByText(/1 referens pekar på något spelet inte har/)).toBeTruthy()
+  })
+
   // What an empty tab offers, and what each way in leaves behind, is `rules-disposition`'s (#131).
   // What this holds on to is that a book begun there is a book the project keeps.
   it('writes a rulebook into the document when the game has none', async () => {

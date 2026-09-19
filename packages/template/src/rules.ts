@@ -142,7 +142,10 @@ export type RenderedNode =
   | { type: 'ref'; of: 'zone' | 'card'; id: string; name: string | null }
 export type RenderedParagraph = { children: RenderedNode[] }
 export type RenderedBlock =
-  | { kind: 'heading'; id: string; level: 1 | 2; text: string }
+  // A heading is one line and carries its children rather than its letters (#272): a reference
+  // written in it stands for the name the thing has right now, exactly as it does in a paragraph,
+  // so a section called after the draw pile follows the pile when it is renamed.
+  | { kind: 'heading'; id: string; level: 1 | 2; children: RenderedNode[] }
   | { kind: 'text'; id: string; paragraphs: RenderedParagraph[] }
   | { kind: 'list'; id: string; ordered: boolean; items: RenderedNode[][] }
   | { kind: 'setup'; id: string; caption?: string | undefined }
@@ -159,9 +162,14 @@ export function renderRules(doc: RuleDoc, names: Names): RenderedRules {
   const lines: string[] = []
   const blocks: RenderedBlock[] = doc.blocks.map((block): RenderedBlock => {
     switch (block.kind) {
-      case 'heading':
-        lines.push(block.text)
-        return block
+      // A heading is read inline like a paragraph is (#272), and it is one line however it was
+      // written: `parseInline` would give a blank line in it two paragraphs, and a heading has no
+      // second line to put the other one on.
+      case 'heading': {
+        const children = parseInline(block.text, { refs: true }).flatMap((p) => p.children)
+        lines.push(flatten(children, names, block.id, warnings))
+        return { kind: 'heading', id: block.id, level: block.level, children: resolve(children, names) }
+      }
       case 'text': {
         const parsed = parseInline(block.text, { refs: true })
         for (const p of parsed) lines.push(flatten(p.children, names, block.id, warnings))
@@ -198,6 +206,28 @@ export function renderLine(text: string, names: Names): RenderedNode[] {
     parseInline(text, { refs: true }).flatMap((p) => p.children),
     names,
   )
+}
+
+// A rendered line as plain letters, for the one place markup cannot go: an `aria-label` is a
+// string and never a tree (#272, where a heading stopped being letters and became children). It
+// says exactly what the book's own `text` says about the same line — a reference stands for the
+// name it has, and one the game lost says what was written rather than quietly saying nothing.
+export function plainOf(nodes: readonly RenderedNode[]): string {
+  return nodes
+    .map((n) => {
+      switch (n.type) {
+        case 'text':
+          return n.text
+        case 'icon':
+          return `{${n.name}}`
+        case 'bold':
+        case 'italic':
+          return plainOf(n.children)
+        case 'ref':
+          return n.name ?? refText(n)
+      }
+    })
+    .join('')
 }
 
 // What a reference stands for right now. A rule that names something the game no longer has says
