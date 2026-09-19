@@ -43,17 +43,25 @@ export type Admission = {
  */
 export async function makeTable(request: APIRequestContext, game: Game = {}): Promise<Table> {
   const doc = gameDoc(game)
-  const res = await request.post('/sessions', {
-    data: { version: 'e2e', setup: setupFromProject(doc), deck: deckFromProject(doc) },
-  })
+  return tableOf(request, setupFromProject(doc), deckFromProject(doc))
+}
+
+/**
+ * A table from a setup written out by hand, for the few facts that are about the *shape* of a
+ * table rather than about a game: a floor too big for any window to show at life size, a seat on
+ * an edge nothing else puts one on. `gameDoc` is the recipe and this is the exception to it.
+ */
+export async function tableOf(request: APIRequestContext, setup: unknown, deck?: unknown): Promise<Table> {
+  const res = await request.post('/sessions', { data: { version: 'e2e', setup, ...(deck ? { deck } : {}) } })
   if (res.status() !== 201) throw new Error(`the table was not created: ${res.status()} ${await res.text()}`)
   const { id, code, hostKey } = (await res.json()) as { id: string; code: string; hostKey: string }
+  const seats = (setup as { seats?: string[] }).seats ?? []
   const host = encodeURIComponent(hostKey)
   return {
     session: id,
     code,
     hostKey,
-    seats: doc.setup.seats,
+    seats,
     tableUrl: `/table?session=${encodeURIComponent(id)}&host=${host}&mode=table`,
     tvUrl: `/table?session=${encodeURIComponent(id)}&host=${host}&mode=tv`,
   }

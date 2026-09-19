@@ -100,6 +100,15 @@ som nämner `kort-12`, så en rak delsträngssökning hittar läckor som inte fi
 **Vänta på villkoret, inte på millisekunder.** Det mesta här är ett varv till servern och tillbaka:
 `waitForURL`, `expect.poll` och `wire.until` finns för det.
 
+## Bygget finns redan
+
+`felt-font` och `felt-refit` byggde appen själva för att läsa de byggda filerna respektive öppna
+riktiga rutter — sexhundra sekunders budget bara för bygget, och en statisk server var.
+Stacken bygger appen en gång för hela körningen och serverar den från den riktiga servern, så båda
+blev nästan bara borttagning: `process.env['BYD_E2E_WEB_DIST']` är var bygget ligger, och
+`baseURL` är var det svarar.
+`felt-font` gick från 600 sekunders budget till 3,9 sekunder.
+
 ## Ett värde som ändrar sig är ett fynd
 
 `online-layout` mätte «filtvyn på en telefon» vid 375 × 812.
@@ -114,11 +123,10 @@ fortfarande ritar det, innan selektorn lagas.
 
 ## Det som står kvar
 
-Fyrtiotvå filer, i den ordning de lämpligen tas:
-resten av de rena (`felt-refit`, `editor-css`, `felt-font`, `playtest-textures`), sedan hybriderna
-från de minsta mot de största.
+Fyrtio filer: `editor-css` av de rena, `playtest-textures` som specialfall, och trettioåtta
+hybrider från de minsta mot de största.
 
-`playtest-textures` är det ena fallet som inte går rakt av: den handlar om riktiga texturer, och
+`playtest-textures` är fallet som inte går rakt av: den handlar om riktiga texturer, och
 stacken här har ingen renderare (`DESIGN-BESLUT.md` E2, DRIFT §6).
 Antingen får stacken en renderworker, eller så får testet en ritad textur att mäta på — och vilket
 det blir är ett beslut och inte en detalj.
