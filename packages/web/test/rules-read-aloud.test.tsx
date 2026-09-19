@@ -18,6 +18,10 @@ vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 // element ran the words together in the computed name — `Om Draghög` came back as `OmDraghög` —
 // because the name of an element is trimmed before it is joined to what stands beside it, and the
 // space lived inside the element rather than between them.
+//
+// Every surface is asked the same questions in the same loop, because the drawer at the table and
+// the book in the editor are two components with two copies of the same inline reading. Two
+// suites would let them stop agreeing quietly; one loop cannot.
 
 let run: Running
 beforeEach(async () => {
@@ -46,34 +50,29 @@ function readAloud(el: Element): void {
   doc.body.append(probe)
 }
 
-const bookAtTheTable = async (blocks: RuleDoc['blocks']): Promise<HTMLElement> => {
-  await run.projects.create(run.projectId, { ...projectDoc(), rules: { title: 'Skogens herrar', blocks } })
-  const res = await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST' })
-  const { id } = (await res.json()) as { id: string }
-  render(<RuleDrawer http={run.http} sessionId={id} placement="table" />)
-  fireEvent.click(await screen.findByRole('button', { name: 'Regler' }))
-  const panel = await screen.findByRole('dialog', { name: 'Regler' })
-  await within(panel).findByRole('heading', { name: 'Skogens herrar' })
-  return panel
-}
-
 // The line is asked for by the block it belongs to and never by its words: the words are the very
-// thing under test, and a query that reads them would be reading the shape it is meant to ignore.
-const lineOf = (panel: HTMLElement, id: string, tag = 'p'): Element => panel.querySelector(`[data-block="${id}"] ${tag}`)!
+// thing under test, and a query that read them would be reading the shape it is meant to ignore.
+const lineOf = (where: HTMLElement, id: string): Element => where.querySelector(`[data-block="${id}"] p`)!
 
-describe('the book read out at the table (#286)', () => {
-  it('keeps the space between a paragraph’s own words and the name it points at', async () => {
-    const panel = await bookAtTheTable([{ kind: 'text', id: 't1', text: 'Spelet slutar när [[zon:draw]] är tom.' }])
-    readAloud(lineOf(panel, 't1'))
-    expect(screen.getByRole('note', { name: 'Spelet slutar när Draghög är tom.' })).toBeTruthy()
-  })
-})
+const asBook = (blocks: RuleDoc['blocks']) => ({ ...projectDoc(), rules: { title: 'Skogens herrar', blocks } })
 
-// The same book in the editor. It is drawn by a second component with a second copy of the same
-// inline reading, so the two are asked the same question here rather than in two suites that can
-// quietly stop agreeing (#286: all three surfaces at once, so they cannot drift apart).
-const bookInTheEditor = async (blocks: RuleDoc['blocks']): Promise<HTMLElement> => {
-  await run.projects.create(run.projectId, { ...projectDoc(), rules: { title: 'Skogens herrar', blocks } })
+// The drawer, wherever it hangs. The table and the phone are one component under two placements,
+// and the loop asks both so that a placement can never quietly grow a reading of its own.
+const inTheDrawer =
+  (placement: 'table' | 'phone') =>
+  async (blocks: RuleDoc['blocks']): Promise<HTMLElement> => {
+    await run.projects.create(run.projectId, asBook(blocks))
+    const res = await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST' })
+    const { id } = (await res.json()) as { id: string }
+    render(<RuleDrawer http={run.http} sessionId={id} placement={placement} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Regler' }))
+    const panel = await screen.findByRole('dialog', { name: 'Regler' })
+    await within(panel).findByRole('heading', { name: 'Skogens herrar' })
+    return panel
+  }
+
+const inTheEditor = async (blocks: RuleDoc['blocks']): Promise<HTMLElement> => {
+  await run.projects.create(run.projectId, asBook(blocks))
   history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
   render(<EditorPage />)
   await screen.findByText('Skogens herrar')
@@ -83,10 +82,32 @@ const bookInTheEditor = async (blocks: RuleDoc['blocks']): Promise<HTMLElement> 
   return book
 }
 
-describe('the book read out in the editor (#286)', () => {
+const surfaces = [
+  ['at the table', inTheDrawer('table')],
+  ['on the phone', inTheDrawer('phone')],
+  ['in the editor', inTheEditor],
+] as const
+
+describe.each(surfaces)('the book read out %s (#286)', (_where, open) => {
   it('keeps the space between a paragraph’s own words and the name it points at', async () => {
-    const book = await bookInTheEditor([{ kind: 'text', id: 't1', text: 'Spelet slutar när [[zon:draw]] är tom.' }])
-    readAloud(lineOf(book, 't1'))
+    const where = await open([{ kind: 'text', id: 't1', text: 'Spelet slutar när [[zon:draw]] är tom.' }])
+    readAloud(lineOf(where, 't1'))
     expect(screen.getByRole('note', { name: 'Spelet slutar när Draghög är tom.' })).toBeTruthy()
+  })
+
+  // The other three things a line can hold. Emphasis and a symbol are elements the book needs —
+  // they say something the letters do not — so the reading has to come out whole around them, and
+  // not only around the plain words between two of them.
+  it('reads emphasis and a symbol as words in the sentence and not as words run together', async () => {
+    const where = await open([{ kind: 'text', id: 't1', text: 'Dra **två** kort ur [[zon:draw]] och lägg *ett* i {hjärta}.' }])
+    readAloud(lineOf(where, 't1'))
+    expect(screen.getByRole('note', { name: 'Dra två kort ur Draghög och lägg ett i hjärta.' })).toBeTruthy()
+  })
+
+  // The heading from #272, which is where the wrapper was found. It is the one line of the book
+  // that has always been read by name, so it holds on its own — with no hook at all.
+  it('still reads a heading by the name it has, which is what found this in the first place', async () => {
+    const where = await open([{ kind: 'heading', id: 'h1', level: 1, text: 'Om [[zon:draw]]' }])
+    expect(within(where).getByRole('heading', { name: 'Om Draghög' })).toBeTruthy()
   })
 })
