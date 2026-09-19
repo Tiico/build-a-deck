@@ -172,8 +172,13 @@ export function RuleSpan({ nodes }: { nodes: readonly RenderedNode[] }) {
     <>
       {nodes.map((n, i) => {
         switch (n.type) {
+          // Plain text stands as plain text, with no element around it (#286). The element was
+          // there for nothing but a React key, and a string in a list needs none — only elements
+          // do. What it cost was the reading: the name of an element is trimmed before it is
+          // joined to what stands beside it, so `Om ` + `Draghög` was read as `OmDraghög`, with
+          // the space shut inside a wrapper nobody asked for.
           case 'text':
-            return <span key={i}>{n.text}</span>
+            return n.text
           case 'bold':
             return (
               <strong key={i}>
