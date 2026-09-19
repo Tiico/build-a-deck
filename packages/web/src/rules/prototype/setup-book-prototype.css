@@ -1,0 +1,33 @@
+/* THROWAWAY #270. Zone styling matches today's editor; layout alternatives remain local. */
+.setup-proto-host { min-height: 100dvh; background: #173c35; color: #f4ead7; }
+body:has(.setup-proto-host) { margin: 0; }
+.setup-proto-felt { padding: 60px 32px; font-family: Georgia, serif; }
+.setup-proto-felt h1 { font-size: 24px; }
+.setup-proto-piles { display: flex; gap: 24px; margin-top: 80px; }
+.setup-proto-piles span { padding: 50px 16px; border: 1px solid #769284; border-radius: 8px; }
+.setup-proto-picture { margin: 12px 0; }
+.setup-proto-host[data-surface] .byd-rules-panel { bottom: 146px; }
+.setup-proto-host .byd-rules-body { min-height: 0; }
+.setup-proto-controls { position: fixed; z-index: 60; bottom: 70px; inset-inline: 0; padding: 4px 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: center; background: #12271f; color: white; font: 12px system-ui; }
+.setup-proto-controls label { display: flex; align-items: center; min-height: 32px; }
+.setup-proto-controls nav { display: flex; gap: 12px; }
+.setup-proto-controls a { color: #fff; padding: 8px 0; }
+.setup-proto-controls [aria-current] { font-weight: bold; text-underline-offset: 5px; }
+.setup-proto-controls output { flex-basis: 100%; text-align: center; }
+.setup-proto-picture button, .setup-proto-picture summary { min-height: 44px; box-sizing: border-box; padding: 10px; color: #23201a; background: #ece5d8; border: 1px solid #84765e; border-radius: 6px; font: 14px system-ui; cursor: pointer; }
+.setup-proto-picture summary { display: list-item; }
+@media (min-width: 700px) { .setup-proto-host[data-surface] .byd-rules-panel { bottom: 120px; } }
+.setup-proto-choice { position: fixed; z-index: 60; bottom: 8px; left: 50%; transform: translateX(-50%); width: max-content; max-width: calc(100vw - 24px); box-sizing: border-box; padding: 10px 18px; background: #e8edf0; color: #172b32; border-radius: 12px; font: 12px system-ui; text-align: center; box-shadow: 0 3px 16px #0005; }
+.setup-proto-choice small, .setup-proto-choice strong { display: block; }
+.setup-proto-choice small { font-size: 9px; margin-bottom: 4px; }
+.setup-proto-arrangement { border-left: 2px solid #b8ab93; margin: 14px 0 4px 6px; padding-left: 14px; }
+.setup-proto-arrangement section + section { border-top: 1px solid #d8cdb8; margin-top: 20px; padding-top: 16px; }
+.setup-proto-arrangement h4 { margin: 0 0 10px; font: 700 14px/1.4 system-ui; color: #23201a; }
+.setup-proto-arrangement .setup-proto-zone-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.setup-proto-zone-list li { padding-left: 14px; position: relative; font: 14px/1.5 Georgia, serif; overflow-wrap: anywhere; }
+.setup-proto-zone-list li::before { content: '·'; position: absolute; left: 2px; font-weight: bold; }
+.setup-proto-arrangement .setup-proto-hint { font: 12px/1.5 system-ui; color: #625a4d; margin-bottom: 12px; }
+.setup-proto-seat-label { display: flex; align-items: center; justify-content: space-between; gap: 12px; font: 13px system-ui; }
+.setup-proto-seat-label select { min-height: 44px; max-width: 65%; padding: 8px 12px; font: 14px system-ui; border: 1px solid #84765e; border-radius: 6px; background: #fffaf1; color: #23201a; }
+.setup-proto-seat { margin-top: 12px; }
+.setup-proto-seat h5 { margin: 0 0 10px; font: 700 13px system-ui; }
