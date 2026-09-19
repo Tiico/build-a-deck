@@ -512,10 +512,17 @@ function allt() {
   const bas = alla.ingen;
   $('t-hojd').tBodies[0].innerHTML = FORMER.map((f) => {
     const m = alla[f];
-    const d = (a, b) => (a === b ? '—' : `${a > b ? '+' : ''}${a - b} px`);
+    const d = (a, b) => (a === b ? '—' : `${a > b ? '+' : ''}${a - b}`);
     return `<tr data-nu="${f === form}"><td>${NAMN[f]}</td><td class="n">${m.bok}</td><td class="n">${d(m.bok, bas.bok)}</td><td class="n">${m.lucka}</td><td class="n">${d(m.lucka, bas.lucka)}</td><td class="n">${m.rail ? `+${m.rail}` : '—'}</td></tr>`;
   }).join('');
   $('t-mening').tBodies[0].innerHTML = FORMER.map((f) => `<tr data-nu="${f === form}"><td>${NAMN[f]}</td><td class="n">${alla[f].raderBok}</td><td class="n">${alla[f].raderLucka}</td></tr>`).join('');
+
+  // Raden överst bär samma fyra tal för den form som är vald.
+  const nu = alla[form];
+  $('m-bokhojd').textContent = `${nu.bok} px${nu.bok === bas.bok ? '' : ` (${nu.bok > bas.bok ? '+' : ''}${Math.round(((nu.bok - bas.bok) / bas.bok) * 1000) / 10} %)`}`;
+  $('m-luckhojd').textContent = `${nu.lucka + nu.rail} px${nu.lucka + nu.rail === bas.lucka ? '' : ` (${nu.lucka + nu.rail > bas.lucka ? '+' : ''}${Math.round(((nu.lucka + nu.rail - bas.lucka) / bas.lucka) * 1000) / 10} %)`}`;
+  $('m-rader').textContent = `${nu.raderBok} rader i boken · ${nu.raderLucka} i luckan`;
+  $('m-bredast').textContent = `${nu.hel} px av 340`;
   $('t-bredd').tBodies[0].innerHTML = FORMER.map((f) => {
     const m = alla[f];
     return `<tr data-nu="${f === form}"><td>${NAMN[f]}</td><td style="color:var(--quiet-2)">${esc(m.vad.length > 30 ? m.vad.slice(0, 29) + '…' : m.vad)}</td><td class="n ${m.odel <= 340 ? 'ok' : 'fel'}">${m.odel}</td><td class="n ${m.hel <= 340 ? 'ok' : 'fel'}">${m.hel}</td></tr>`;
