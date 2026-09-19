@@ -1,0 +1,744 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 6 — Regelbokens infogning</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* Regelfliken som den är: innehållsförteckningen, boken, och — bara här — en spalt med
+     mätningarna. Boken är ritad i sina riktiga mått ur editor.css (`calc(68ch + 80px)`,
+     Georgia 14/1.7), eftersom det är bokens bredd som avgör om platshållaren bryter rad och
+     hur hög infogningsraden blir. En bok ritad i en annan bredd mäter ingenting. */
+  .work { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 200px minmax(0,1fr) 420px; gap: var(--s5); padding: var(--s4); }
+  .spalt { min-height: 0; min-width: 0; display: flex; flex-direction: column; }
+  .spalt > b { flex: none; display: block; padding: 0 var(--s3) var(--s2); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .spalt .rullar { flex: 1 1 auto; min-height: 0; overflow: auto; scrollbar-width: thin; }
+  .toc ul { list-style: none; margin: 0; padding: 0; }
+  .toc a { display: flex; align-items: center; gap: 6px; min-height: var(--tap); padding: 0 var(--s3); color: #9aa3b8; font-size: 12px; text-decoration: none; }
+  .toc a[data-nu] { color: #fff; }
+
+  /* ── Boken ───────────────────────────────────────────────────────────────────────────── */
+  .lasyta { min-width: 0; min-height: 0; overflow: auto; scrollbar-width: thin; display: flex; justify-content: center; }
+  .bok { align-self: start; min-width: 0; width: calc(68ch + 80px); max-width: 100%; box-sizing: border-box; background: #f7f3ea; color: #23201a; border-radius: 14px; padding: 32px 40px; font: 14px/1.7 Georgia, serif; }
+  .bok h1 { margin: 0 0 18px; font-size: 26px; }
+  .bok h2 { margin: 22px 0 8px; font-size: 19px; }
+  .bok p { margin: 0 0 10px; }
+  .bok [data-ask] { color: #6b6255; font-style: italic; }
+  .bok .ref { font-style: normal; color: #7a4d1d; border-bottom: 1px dotted #b08a5a; }
+  .blk { position: relative; }
+  .blk > .las { cursor: text; }
+  .blk > .las:hover { background: rgba(0,0,0,.03); border-radius: 6px; }
+  .uppst { margin: 12px 0; }
+  .uppst > div { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; padding: 16px; border-radius: 10px; background: #e7dfd0; border: 1px dashed #b8ab93; }
+  .uppst span { padding: 8px 12px; border-radius: 6px; background: #f7f3ea; border: 1px solid #cbbfa8; font: 12px system-ui; }
+  .uppst figcaption { margin-top: 4px; text-align: center; font: italic 12px Georgia, serif; color: #6b6255; }
+
+  /* Det öppna blocket, med editor.css:s egna mått (.byd-rules-edit). Fältets bredd är därmed
+     precis bokens textbredd, vilket är det enda som gör radbrytningsmätningen sann. */
+  .red { display: grid; gap: 6px; padding: 12px; margin: 8px -12px; border-radius: 10px; background: #23262e; }
+  .red textarea { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; font: 13px/1.6 system-ui, sans-serif; resize: vertical; }
+  .red textarea::placeholder { color: #868ea3; opacity: 1; }
+  .faltwrap { position: relative; }
+
+  /* Infogningsraden som den ser ut i dag (.byd-rules-picker). Den ritas bara i läget Nu. */
+  .plockrad { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .plockrad > span { color: var(--quiet); font: 10px system-ui; text-transform: uppercase; letter-spacing: 1px; }
+  .plockrad button { border: 1px solid #2f333d; border-radius: 7px; padding: 4px 8px; background: #1b1d23; color: #dce3f2; font: 11px system-ui; cursor: pointer; }
+  .plockrad .bort { margin-left: auto; color: #ff9a9a; }
+
+  /* ── Listan som smalnar ──────────────────────────────────────────────────────────────────
+     Samma slags komponent som korttabellens SymbolList: absolut placerad under fältet, egna
+     rader utan tabbstopp, `aria-selected` på den tangenterna står på, och fokus kvar i fältet.
+     Bredden är inte symbollistans 230 px — se mätningen: designerns egna namn är längre än
+     bibliotekets. */
+  .lista { position: absolute; z-index: 5; left: 4px; top: 100%; width: 320px; max-height: 230px; overflow: auto; display: grid; gap: 2px; padding: 4px; border-radius: 10px; background: #171a23; border: 1px solid #3b4358; box-shadow: 0 12px 30px rgba(0,0,0,.5); }
+  .lista[hidden] { display: none; }
+  .lista button { display: flex; align-items: baseline; gap: 8px; border: 1px solid transparent; border-radius: 7px; padding: 4px 8px; background: transparent; color: #e6ecfa; font: 13px system-ui; text-align: left; cursor: pointer; }
+  .lista button > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lista button > small { margin-left: auto; flex: none; color: var(--quiet); font-size: 11px; }
+  .lista button[aria-selected='true'] { box-shadow: inset 0 -2px 0 0 var(--primary-mark); background: #1d2130; }
+  .lista button:hover { border-color: #3b4358; }
+  .lista .tomt { padding: 6px 8px; color: var(--quiet); font: 12px system-ui; }
+  /* Efterledet, i #255:s form («Bricka»): ramen säger att bokstaven inte är en del av namnet. */
+  .lista em { font-style: normal; color: var(--quiet-2); font-size: 11px; border: 1px solid var(--line); border-radius: 999px; padding: 0 8px; margin-inline-start: 2px; white-space: nowrap; }
+  .protorad label { display: inline-flex; align-items: center; gap: 6px; }
+  .protorad select { min-height: 28px; border: 1px solid #4a4230; border-radius: 7px; background: #1f1b12; color: #ffd98a; font: inherit; padding: 0 6px; }
+
+  /* ── Mätspalten ──────────────────────────────────────────────────────────────────────── */
+  .om { display: grid; gap: var(--s3); align-content: start; }
+  .om p { margin: 0; color: var(--quiet-2); font-size: 13px; line-height: 1.6; }
+  .om strong { color: var(--ink); }
+  .om h3 { margin: var(--s2) 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  table.matt { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.matt th, table.matt td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line-soft); vertical-align: baseline; }
+  table.matt th { color: var(--quiet); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+  table.matt td.n { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
+  table.matt tr[data-nu='true'] td { color: #fff; background: #1d2130; }
+  .om code { color: var(--good); font: 12px ui-monospace, monospace; }
+  .falt { display: grid; gap: 4px; padding: var(--s3); border-radius: 10px; background: var(--sunk); border: 1px solid var(--line); }
+  .falt code { display: block; color: #cfe6ff; font: 11px/1.6 ui-monospace, monospace; overflow-wrap: anywhere; }
+  .falt .dom { color: var(--quiet); font-size: 11px; }
+</style>
+</head>
+<body>
+<div class="shell">
+<header>
+  <strong>Skogens herrar</strong>
+  <nav class="tabs"><button type="button">Kort</button><button type="button">Mall</button><button type="button">Symboler</button><button type="button" aria-selected="true">Regler</button><button type="button">Bord</button></nav>
+  <span class="saved" id="skala">—</span>
+  <span class="spacer"></span>
+  <div class="switch" role="group" aria-label="Form på beskedet">
+    <button type="button" data-lage="nu" aria-pressed="false">Nu</button>
+    <button type="button" data-lage="radad" aria-pressed="true">Radad</button>
+    <button type="button" data-lage="fokus" aria-pressed="false">Vid fokus</button>
+    <button type="button" data-lage="tyst" aria-pressed="false">Tyst i mallen</button>
+    <button type="button" data-lage="engang" aria-pressed="false">En gång</button>
+  </div>
+  <span class="who">P</span>
+</header>
+
+<main>
+  <div class="protorad">
+    <p id="omlage"></p>
+    <label>Öppet block
+      <select id="vilket">
+        <option value="b5">Uppställning — mallens fråga</option>
+        <option value="b13">Varianter — designerns eget block</option>
+      </select>
+    </label>
+    <label><input type="checkbox" id="agare"> ägaren i listan (#255)</label>
+    <button type="button" id="glom" hidden>Glöm att jag lärt mig</button>
+    <div class="matt">
+      <span>knappar under fältet <u id="m-knappar">—</u></span>
+      <span>radens höjd <u id="m-hojd">—</u></span>
+      <span>platshållarens rader <u id="m-rader">—</u></span>
+      <span>listans rader <u id="m-listrader">—</u></span>
+    </div>
+    <p class="sagt">Skriv <code>[[</code> i det öppna fältet. Fältet säger: <em id="spegel">—</em></p>
+  </div>
+
+  <div class="work">
+    <aside class="spalt toc">
+      <b>Innehåll</b>
+      <div class="rullar"><ul id="toc"></ul></div>
+    </aside>
+
+    <div class="lasyta" id="lasyta">
+      <article class="bok" id="bok"></article>
+    </div>
+
+    <section class="spalt">
+      <b>Mätt i Chromium</b>
+      <div class="rullar om">
+        <p id="skalatext"></p>
+        <h3>Vad varje läge kostar</h3>
+        <table class="matt" id="tabell">
+          <thead><tr><th>Läge</th><th>Knappar</th><th>Höjd</th><th>Rader</th><th>Ser beskedet</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <h3>Listan</h3>
+        <table class="matt" id="listtabell">
+          <thead><tr><th>Skrivet</th><th>Träffar</th><th>Visade</th><th>Zoner</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <h3>Fältets råa text</h3>
+        <div class="falt">
+          <code id="ratext">(tomt)</code>
+          <span class="dom" id="radom">Boken visar namnet; fältet bär id:t.</span>
+        </div>
+        <h3>Bredder</h3>
+        <table class="matt" id="breddtabell">
+          <thead><tr><th>Sak</th><th>Mätt</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</main>
+</div>
+
+<div class="note">
+  <b>Prototyp — inget här importeras av appen.</b>
+  Skriv <code>[[</code> i det öppna fältet: pilar, Enter, Escape.
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Spelet. Skalan är hela poängen: en liten uppsättning döljer problemet, som varje tidigare
+// prototyp i det här repot har fått lära sig. `referables()` i RulesPanel.tsx räknar upp varje
+// zon och varje kortrad i leken, så referensmängden är zoner + kort och ingenting annat.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+const PLATSER = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+
+// 44 zoner vid åtta platser — samma uppsättning som prototyp 5 mätte platsrutan på, så de två
+// prototyperna talar om samma spel. 21 av dem bär ett namn någon annan zon också bär.
+const ZONER = []
+let zid = 0
+const zon = (namn, agare) => ZONER.push({ id: `z${++zid}`, namn, agare })
+for (const p of PLATSER) zon('Hand', p)
+for (const p of PLATSER) zon(`Framför ${p}`, p)
+for (const p of PLATSER) zon(`Räknare ${p}`, p)
+for (const p of PLATSER) zon('Min hög', p)
+for (const p of ['A', 'B', 'C']) zon('Bortlagda kort', p)
+for (const p of ['A', 'B']) zon('Askhögen', p)
+for (const namn of ['Skogsstigen', 'Marknaden', 'Spelytan', 'Kort som lagts åt sidan', 'Dragbunten', 'Kasthögen', 'Månens vägg']) zon(namn)
+
+// 132 kort i fem uppsättningar. Namnen är satta av två fasta listor så att de är lika långa och
+// lika krångliga som en designers egna — «Vandrande skald från Järnskogen», inte «Kort 12».
+const LED = ['Vandrande', 'Sörjande', 'Järnklädd', 'Tigande', 'Hungrig', 'Blodig', 'Gyllene', 'Vaksam', 'Fallen', 'Bruten', 'Listig', 'Höstlig']
+const HUVUD = ['skald', 'skogsvakt', 'björnhamn', 'gränsryttare', 'hövding', 'lyktbärare', 'stigfinnare', 'vargbroder', 'brunnsvakt', 'edsvuren', 'gästgivare']
+const VARIFRAN = ['från Järnskogen', 'från Höstmarknaden', 'ur Skymningens hov', 'vid Månens vägg', 'i Vinterns gäster']
+const UPPSATTNING = ['Grundleken', 'Vinterns gäster', 'Järnskogen', 'Höstmarknaden', 'Skymningens hov']
+const KORT = []
+let kid = 0
+for (let i = 0; i < 132; i++) {
+  const led = LED[i % LED.length]
+  const huvud = HUVUD[Math.floor(i / LED.length) % HUVUD.length]
+  const bas = `${led} ${huvud}`
+  // Vart femte kort bär ett efterled, som ett riktigt namn gör: det är de långa namnen som
+  // spränger en lista, inte medellängden.
+  const namn = i % 5 === 3 ? `${bas} ${VARIFRAN[i % VARIFRAN.length]}` : bas
+  KORT.push({ id: `r${++kid}`, namn: namn.charAt(0).toUpperCase() + namn.slice(1), sats: UPPSATTNING[i % UPPSATTNING.length] })
+}
+// Två nytryck: samma kort i två uppsättningar, vilket varje lek som växer får. De är två rader i
+// listan med exakt samma ord.
+KORT[97].namn = KORT[4].namn
+KORT[121].namn = KORT[31].namn
+
+// Precis den ordning `referables()` ger: zonerna först, sedan korten.
+// Efterledet står bara där platsens bokstav inte redan är ett ord i namnet — `templateOf`:s
+// regel ur #255, ordagrant: `Framför A` får inget efterled, `Askhögen` vid plats A får det.
+const agareAv = (z) => (z.agare && !new RegExp(`\\b${z.agare}\\b`).test(z.namn) ? z.agare : undefined)
+const REFS = [
+  ...ZONER.map((z) => ({ av: 'zon', id: z.id, namn: z.namn, agare: agareAv(z) })),
+  ...KORT.map((k) => ({ av: 'kort', id: k.id, namn: k.namn })),
+]
+const refText = (r) => `[[${r.av === 'zon' ? 'zon' : 'kort'}:${r.id}]]`
+const namnAv = (av, id) => REFS.find((r) => r.av === av && r.id === id)?.namn ?? `${av}:${id}`
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Katalogens texter. De står här i sin svenska form, som i sv.editor.ts — beskedet hör hemma i
+// katalogen och skrivs i läsarens språk, aldrig inskrivet i koden.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+const T = {
+  'rules.ask.overview': 'Vad handlar spelet om, i två meningar? Hur många spelar, och hur länge?',
+  'rules.ask.setup': 'Vad ligger var när ni börjar, och vad får var och en på hand?',
+  'rules.ask.turn': 'Vad gör man först? Och sedan?',
+  'rules.ask.actions': 'Vad får man göra på sin tur, och vad kostar det?',
+  'rules.ask.end': 'När tar spelet slut, och vem har vunnit?',
+  // Ny nyckel, och den här prototypens egentliga fråga.
+  'rules.ask.refs': '[[ hämtar en zon, ett kort eller en symbol.',
+  'rules.insert': 'Sätt in:',
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Boken. Fem avsnitt ur mallen plus ett avsnitt designern lagt till själv — det sista är det enda
+// blocket utan egen fråga, och det är där läget «Tyst i mallen» får visa vad det kan.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+const BOK = [
+  { sort: 'rubrik', id: 'b1', text: 'Översikt' },
+  { sort: 'text', id: 'b2', text: `Skogens herrar spelas av två till åtta. Var och en håller sin ${refText(REFS[0])} dold och lägger ut sina eder framför sig.`, ask: T['rules.ask.overview'] },
+  { sort: 'rubrik', id: 'b3', text: 'Uppställning' },
+  { sort: 'uppst', id: 'b4', text: 'Så ställs bordet upp' },
+  { sort: 'text', id: 'b5', text: '', ask: T['rules.ask.setup'] },
+  { sort: 'rubrik', id: 'b6', text: 'En tur' },
+  { sort: 'text', id: 'b7', text: '', ask: T['rules.ask.turn'] },
+  { sort: 'rubrik', id: 'b8', text: 'Handlingar' },
+  { sort: 'text', id: 'b9', text: '', ask: T['rules.ask.actions'] },
+  { sort: 'rubrik', id: 'b10', text: 'Spelet tar slut' },
+  { sort: 'text', id: 'b11', text: '', ask: T['rules.ask.end'] },
+  { sort: 'rubrik', id: 'b12', text: 'Varianter' },
+  { sort: 'text', id: 'b13', text: '' },
+]
+let OPPET = 'b5'
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Lägena. Varje läge är ett svar på beställarens enda öppna fråga: hur mallens egen fråga och
+// verktygets besked samsas i samma platshållare.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+const LAGEN = {
+  nu: {
+    namn: 'Nu',
+    om: 'I dag: platshållaren är blockets egen fråga, och vägen till en referens är en knapp per referens i spelet, under fältet.',
+    rad: true,
+    // Platshållaren i dag: bara blockets fråga, och ingenting alls i ett block utan fråga.
+    hallare: (block) => block.ask ?? '',
+    ser: 'raden',
+  },
+  radad: {
+    namn: 'Radad',
+    om: 'Blockets fråga på första raden, verktygets besked på andra. Båda står i den tomma ytan hela tiden.',
+    rad: false,
+    hallare: (block) => (block.ask ? `${block.ask}\n${T['rules.ask.refs']}` : T['rules.ask.refs']),
+    ser: 'alltid',
+  },
+  fokus: {
+    namn: 'Vid fokus',
+    om: 'Blockets fråga står ensam i boken. Beskedet läggs till först när fältet har fokus — alltså precis när det går att göra något åt.',
+    rad: false,
+    hallare: (block, state) => (state.fokus ? (block.ask ? `${block.ask}\n${T['rules.ask.refs']}` : T['rules.ask.refs']) : (block.ask ?? '')),
+    ser: 'vid fokus',
+  },
+  tyst: {
+    namn: 'Tyst i mallen',
+    om: 'Mallens fråga får stå orörd. Beskedet syns bara i block som inte har någon egen fråga — designerns egna avsnitt.',
+    rad: false,
+    hallare: (block) => block.ask ?? T['rules.ask.refs'],
+    ser: 'egna block',
+  },
+  engang: {
+    namn: 'En gång',
+    om: 'Beskedet står under frågan tills designern satt in sin första referens. Sedan kommer det aldrig tillbaka.',
+    rad: false,
+    hallare: (block, state) => (state.lart ? (block.ask ?? '') : block.ask ? `${block.ask}\n${T['rules.ask.refs']}` : T['rules.ask.refs']),
+    ser: 'tills första',
+  },
+}
+
+const state = { lage: 'radad', fokus: false, lart: false, agare: false, text: '', query: null, at: -1, val: 0 }
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Listan som smalnar. Samma svar på samma tangenter som `symbolListKey` i SymbolList.tsx ger:
+// pilarna går, Home och End tar ändarna, Enter tar, Escape stänger.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+const TAK = 8
+const smalnar = (q) => {
+  const ord = q.trim().toLowerCase()
+  return REFS.filter((r) => r.namn.toLowerCase().includes(ord))
+}
+function listKey(key, antal, aktiv) {
+  if (antal === 0) return null
+  switch (key) {
+    case 'ArrowDown': return { aktiv: Math.min(antal - 1, aktiv + 1) }
+    case 'ArrowUp': return { aktiv: Math.max(0, aktiv - 1) }
+    case 'Home': return { aktiv: 0 }
+    case 'End': return { aktiv: antal - 1 }
+    case 'Enter': return 'ta'
+    case 'Escape': return 'stäng'
+    default: return null
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Ritningen.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+const bok = document.getElementById('bok')
+const toc = document.getElementById('toc')
+
+function radText(text) {
+  // `[[zon:z1]]` blir namnet i boken, precis som `renderLine` gör.
+  const ut = document.createDocumentFragment()
+  let i = 0
+  const re = /\[\[(zon|kort):([^\]]+)\]\]/g
+  let m
+  while ((m = re.exec(text))) {
+    ut.append(text.slice(i, m.index))
+    const i2 = document.createElement('i')
+    i2.className = 'ref'
+    i2.textContent = namnAv(m[1], m[2])
+    ut.append(i2)
+    i = m.index + m[0].length
+  }
+  ut.append(text.slice(i))
+  return ut
+}
+
+function rita() {
+  const lage = LAGEN[state.lage]
+  bok.textContent = ''
+  const h1 = document.createElement('h1')
+  h1.textContent = 'Skogens herrar'
+  bok.append(h1)
+
+  for (const block of BOK) {
+    const div = document.createElement('div')
+    div.className = 'blk'
+    div.dataset.block = block.id
+
+    if (block.sort === 'rubrik') {
+      const h2 = document.createElement('h2')
+      h2.id = `rule-${block.id}`
+      h2.textContent = block.text
+      div.append(h2)
+    } else if (block.sort === 'uppst') {
+      const fig = document.createElement('figure')
+      fig.className = 'uppst'
+      const rutor = document.createElement('div')
+      for (const z of ZONER) {
+        const s = document.createElement('span')
+        s.textContent = z.namn
+        rutor.append(s)
+      }
+      const cap = document.createElement('figcaption')
+      cap.textContent = block.text
+      fig.append(rutor, cap)
+      div.append(fig)
+    } else if (block.id === OPPET) {
+      div.append(oppetBlock(block, lage))
+    } else {
+      const las = document.createElement('div')
+      las.className = 'las'
+      if (block.text === '') {
+        const p = document.createElement('p')
+        p.setAttribute('data-ask', '')
+        // Den stängda sidan visar aldrig verktygets besked i något läge: beskedet hör till
+        // fältet som skrivs i, inte till boken som läses. Det är sidans egen fråga som står.
+        p.textContent = block.ask ?? ''
+        las.append(p)
+      } else {
+        const p = document.createElement('p')
+        p.append(radText(block.text))
+        las.append(p)
+      }
+      div.append(las)
+    }
+    bok.append(div)
+  }
+
+  toc.textContent = ''
+  for (const block of BOK.filter((b) => b.sort === 'rubrik')) {
+    const li = document.createElement('li')
+    const a = document.createElement('a')
+    a.href = `#rule-${block.id}`
+    a.textContent = block.text
+    if (block.id === 'b3') a.setAttribute('data-nu', 'true')
+    li.append(a)
+    toc.append(li)
+  }
+
+  document.getElementById('omlage').innerHTML = `<b>${lage.namn}.</b> ${lage.om}`
+  document.getElementById('glom').hidden = state.lage !== 'engang'
+  for (const knapp of document.querySelectorAll('.switch button')) knapp.setAttribute('aria-pressed', String(knapp.dataset.lage === state.lage))
+  matningar()
+}
+
+function oppetBlock(block, lage) {
+  const red = document.createElement('div')
+  red.className = 'red'
+
+  const wrap = document.createElement('div')
+  wrap.className = 'faltwrap'
+  const falt = document.createElement('textarea')
+  falt.rows = 4
+  falt.id = 'falt'
+  falt.setAttribute('aria-label', `Avsnittets text, block ${block.id}`)
+  const hallare = lage.hallare(block, state)
+  if (hallare) falt.placeholder = hallare
+  falt.value = state.text
+  wrap.append(falt)
+
+  const lista = document.createElement('div')
+  lista.className = 'lista'
+  lista.id = 'reflista'
+  lista.setAttribute('role', 'listbox')
+  lista.setAttribute('aria-label', 'Referenser')
+  lista.hidden = true
+  wrap.append(lista)
+  red.append(wrap)
+
+  // Infogningsraden — bara i läget Nu, och då i sin fulla längd. Det är den som mäts.
+  if (lage.rad) {
+    const rad = document.createElement('div')
+    rad.className = 'plockrad'
+    const etikett = document.createElement('span')
+    etikett.textContent = T['rules.insert']
+    rad.append(etikett)
+    for (const r of REFS) {
+      const k = document.createElement('button')
+      k.type = 'button'
+      k.setAttribute('aria-label', `Sätt in ${r.namn}`)
+      k.textContent = r.namn
+      k.addEventListener('mousedown', (e) => e.preventDefault())
+      k.addEventListener('click', () => {
+        const f = document.getElementById('falt')
+        f.value = `${f.value} ${refText(r)}`.trim()
+        state.text = f.value
+        f.focus()
+        speglaText()
+      })
+      rad.append(k)
+    }
+    const bort = document.createElement('button')
+    bort.type = 'button'
+    bort.className = 'bort'
+    bort.textContent = 'Ta bort avsnittet'
+    rad.append(bort)
+    red.append(rad)
+  }
+
+  queueMicrotask(() => koppla(falt, lista))
+  return red
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Beteendet i fältet.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+function koppla(falt, lista) {
+  const oppna = () => {
+    const upptill = falt.value.slice(0, falt.selectionStart ?? falt.value.length)
+    const at = upptill.lastIndexOf('[[')
+    const ord = at >= 0 ? upptill.slice(at + 2) : ''
+    // En stängd referens är skriven, och en radbrytning bryter uppslaget: varken det ena eller
+    // det andra är en fråga till listan.
+    if (at < 0 || ord.includes(']') || ord.includes('\n')) return stang()
+    state.at = at
+    state.query = ord
+    state.val = 0
+    ritaLista(lista)
+  }
+  const stang = () => {
+    state.query = null
+    state.at = -1
+    state.val = 0
+    ritaLista(lista)
+  }
+  const ta = (r) => {
+    const from = state.at
+    const till = state.at + 2 + state.query.length
+    const skrivet = refText(r)
+    stang()
+    // Fokus lämnar aldrig fältet, och infogningen är ett eget steg bakåt: markeringen läggs över
+    // `[[` och det som skrivits efter, och `insertText` skriver genom webbläsarens egen
+    // ångra-hög. I appen är det `useGesture`-polletten som håller samma löfte (L14).
+    falt.focus()
+    falt.setSelectionRange(from, till)
+    if (!document.execCommand('insertText', false, skrivet)) {
+      falt.setRangeText(skrivet, from, till, 'end')
+    }
+    state.text = falt.value
+    if (state.lage === 'engang' && !state.lart) {
+      state.lart = true
+      // Bara platshållaren ändras — boken ritas inte om, för då skulle fältet tappa fokus.
+      byt()
+    }
+    speglaText()
+  }
+
+  falt.addEventListener('input', () => { state.text = falt.value; oppna(); speglaText() })
+  falt.addEventListener('click', oppna)
+  falt.addEventListener('keydown', (e) => {
+    if (state.query === null) return
+    const traffar = smalnar(state.query).slice(0, TAK)
+    const svar = listKey(e.key, traffar.length, state.val)
+    if (!svar) return
+    e.preventDefault()
+    if (svar === 'stäng') return stang()
+    if (svar === 'ta') return ta(traffar[state.val])
+    state.val = svar.aktiv
+    ritaLista(lista)
+  })
+  falt.addEventListener('focus', () => { state.fokus = true; byt() })
+  falt.addEventListener('blur', () => { state.fokus = false; stang(); byt() })
+  lista.addEventListener('mousedown', (e) => e.preventDefault())
+  lista.addEventListener('click', (e) => {
+    const knapp = e.target.closest('button')
+    if (!knapp) return
+    const r = REFS.find((x) => `${x.av}:${x.id}` === knapp.dataset.ref)
+    if (r) ta(r)
+  })
+}
+
+// Bara platshållaren byts när fokus kommer och går — inte hela boken, för då skulle fältet
+// tappa fokus, vilket är precis det beslutet förbjuder.
+function byt() {
+  const falt = document.getElementById('falt')
+  if (!falt) return
+  const block = BOK.find((b) => b.id === OPPET)
+  const hallare = LAGEN[state.lage].hallare(block, state)
+  if (hallare) falt.placeholder = hallare
+  else falt.removeAttribute('placeholder')
+  matningar()
+}
+
+function ritaLista(lista) {
+  lista.textContent = ''
+  const falt = document.getElementById('falt')
+  if (state.query === null) {
+    lista.hidden = true
+    if (falt) { falt.removeAttribute('aria-controls'); falt.removeAttribute('aria-activedescendant'); falt.removeAttribute('role') }
+    speglaSagt()
+    return
+  }
+  const alla = smalnar(state.query)
+  const traffar = alla.slice(0, TAK)
+  lista.hidden = false
+  if (traffar.length === 0) {
+    const tomt = document.createElement('div')
+    tomt.className = 'tomt'
+    tomt.textContent = 'Inget med det namnet'
+    lista.append(tomt)
+  }
+  traffar.forEach((r, i) => {
+    const k = document.createElement('button')
+    k.type = 'button'
+    k.setAttribute('role', 'option')
+    k.tabIndex = -1
+    k.id = `reflista-${r.av}-${r.id}`
+    k.dataset.ref = `${r.av}:${r.id}`
+    k.setAttribute('aria-selected', String(i === state.val))
+    const namn = document.createElement('span')
+    namn.textContent = r.namn
+    if (state.agare && r.agare) {
+      const em = document.createElement('em')
+      em.textContent = r.agare
+      namn.append(' ', em)
+    }
+    const sort = document.createElement('small')
+    sort.textContent = r.av
+    k.append(namn, sort)
+    lista.append(k)
+  })
+  if (falt && traffar[state.val]) {
+    falt.setAttribute('role', 'combobox')
+    falt.setAttribute('aria-controls', 'reflista')
+    falt.setAttribute('aria-activedescendant', `reflista-${traffar[state.val].av}-${traffar[state.val].id}`)
+  }
+  speglaSagt()
+  listmatning(alla)
+}
+
+function speglaSagt() {
+  const falt = document.getElementById('falt')
+  const el = document.getElementById('spegel')
+  if (!falt || state.query === null) { el.textContent = 'ingenting — listan är stängd'; return }
+  const traffar = smalnar(state.query).slice(0, TAK)
+  const vald = traffar[state.val]
+  el.textContent = vald ? `${vald.namn}${state.agare && vald.agare ? ` ${vald.agare}` : ''}, ${vald.av}, ${state.val + 1} av ${traffar.length}` : 'inget med det namnet'
+}
+
+function speglaText() {
+  const falt = document.getElementById('falt')
+  document.getElementById('ratext').textContent = falt && falt.value ? falt.value : '(tomt)'
+  matningar()
+}
+
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+// Mätningarna. Allt nedan läses ur sidan som den är ritad, aldrig uppskattat.
+// ─────────────────────────────────────────────────────────────────────────────────────────────
+function raderI(el, text) {
+  // Hur många rader en platshållartext tar i fältets egen bredd och egen sättning: en spegel med
+  // exakt fältets innermått, så det som mäts är det som ritas.
+  if (!text) return 0
+  const stil = getComputedStyle(el)
+  const spegel = document.createElement('div')
+  spegel.style.cssText = `position:absolute;visibility:hidden;white-space:pre-wrap;overflow-wrap:break-word;width:${el.clientWidth - parseFloat(stil.paddingLeft) - parseFloat(stil.paddingRight)}px;font:${stil.font};line-height:${stil.lineHeight}`
+  spegel.textContent = text
+  document.body.append(spegel)
+  const rader = Math.round(spegel.getBoundingClientRect().height / parseFloat(stil.lineHeight))
+  spegel.remove()
+  return rader
+}
+
+function bredd(text, font) {
+  const c = bredd.c ?? (bredd.c = document.createElement('canvas').getContext('2d'))
+  c.font = font
+  return c.measureText(text).width
+}
+
+function matningar() {
+  const falt = document.getElementById('falt')
+  const rad = document.querySelector('.plockrad')
+  const knappar = rad ? rad.querySelectorAll('button').length : 0
+  const hojd = rad ? Math.round(rad.getBoundingClientRect().height) : 0
+  document.getElementById('m-knappar').textContent = String(knappar)
+  document.getElementById('m-hojd').textContent = hojd ? `${hojd} px` : '0 px'
+  const block = BOK.find((b) => b.id === OPPET)
+  const hallare = LAGEN[state.lage].hallare(block, state)
+  document.getElementById('m-rader').textContent = falt ? String(raderI(falt, hallare)) : '—'
+  const lista = document.getElementById('reflista')
+  document.getElementById('m-listrader').textContent = lista && !lista.hidden ? String(lista.querySelectorAll('button').length) : '0'
+  document.getElementById('skala').textContent = `${ZONER.length} zoner · ${KORT.length} kort · ${REFS.length} referenser`
+}
+
+function listmatning(alla) {
+  const tb = document.querySelector('#listtabell tbody')
+  if (!tb) return
+  const rad = document.createElement('tr')
+  const q = state.query === '' ? '(inget)' : state.query
+  const zoner = alla.filter((r) => r.av === 'zon').length
+  rad.innerHTML = `<td><code>[[${q}</code></td><td class="n">${alla.length}</td><td class="n">${Math.min(TAK, alla.length)}</td><td class="n">${zoner}</td>`
+  tb.prepend(rad)
+  while (tb.children.length > 8) tb.lastElementChild.remove()
+}
+
+// Tabellen över lägena fylls genom att varje läge faktiskt ritas en gång och mäts, inte genom
+// att gissas.
+function lagetabell() {
+  const tb = document.querySelector('#tabell tbody')
+  tb.textContent = ''
+  const nuvarande = state.lage
+  const block = BOK.find((b) => b.id === OPPET)
+  for (const [nyckel, lage] of Object.entries(LAGEN)) {
+    state.lage = nyckel
+    rita()
+    const falt = document.getElementById('falt')
+    const rad = document.querySelector('.plockrad')
+    const knappar = rad ? rad.querySelectorAll('button').length : 0
+    const hojd = rad ? Math.round(rad.getBoundingClientRect().height) : 0
+    const rader = raderI(falt, lage.hallare(block, { ...state, fokus: true }))
+    const tr = document.createElement('tr')
+    tr.dataset.nu = String(nyckel === nuvarande)
+    tr.innerHTML = `<td>${lage.namn}</td><td class="n">${knappar}</td><td class="n">${hojd}</td><td class="n">${rader}</td><td>${lage.ser}</td>`
+    tb.append(tr)
+  }
+  state.lage = nuvarande
+  rita()
+}
+
+function breddtabell() {
+  const tb = document.querySelector('#breddtabell tbody')
+  const falt = document.getElementById('falt')
+  const stil = getComputedStyle(falt)
+  const font = stil.font || `${stil.fontSize} ${stil.fontFamily}`
+  const langst = REFS.reduce((a, b) => (b.namn.length > a.namn.length ? b : a))
+  const rader = [
+    ['fältets bredd', `${Math.round(falt.getBoundingClientRect().width)} px`],
+    ['fältets typsnitt', stil.fontFamily.split(',')[0]],
+    ['bokens textbredd', `${Math.round(document.querySelector('.bok').clientWidth - 80)} px`],
+    ['beskedets bredd på en rad', `${Math.round(bredd(T['rules.ask.refs'], font))} px`],
+    ['mallens längsta fråga', `${Math.round(bredd(T['rules.ask.setup'], font))} px`],
+    ['längsta referensnamnet', `${langst.namn} — ${Math.round(bredd(langst.namn, '13px system-ui'))} px`],
+    ['symbollistans bredd', '230 px (SymbolList)'],
+    ['namn som inte ryms i 230 px', String(REFS.filter((r) => bredd(r.namn, '13px system-ui') > 230 - 16 - 30).length)],
+    ['zonnamn som någon annan zon delar', String(ZONER.filter((z, i, a) => a.some((y, j) => j !== i && y.namn === z.namn)).length)],
+    ['kortnamn som något annat kort delar', String(KORT.filter((k, i, a) => a.some((y, j) => j !== i && y.namn === k.namn)).length)],
+  ]
+  tb.textContent = ''
+  for (const [a, b] of rader) {
+    const tr = document.createElement('tr')
+    tr.innerHTML = `<td>${a}</td><td class="n">${b}</td>`
+    tb.append(tr)
+  }
+  document.getElementById('skalatext').innerHTML =
+    `Spelet är <strong>${ZONER.length} zoner vid åtta platser</strong> och <strong>${KORT.length} kort</strong> i fem uppsättningar — ` +
+    `<strong>${REFS.length} referenser</strong>, åtta gånger issuets acceptanskrav om tjugo. ` +
+    `<strong>${ZONER.filter((z, i, a) => a.some((y, j) => j !== i && y.namn === z.namn)).length}</strong> av zonerna bär ett namn en annan zon också bär.`
+}
+
+for (const knapp of document.querySelectorAll('.switch button')) {
+  knapp.addEventListener('click', () => { state.lage = knapp.dataset.lage; rita(); breddtabell(); lagetabellRad() })
+}
+document.getElementById('glom').addEventListener('click', () => { state.lart = false; rita() })
+document.getElementById('vilket').addEventListener('change', (e) => {
+  OPPET = e.target.value
+  state.text = ''
+  rita()
+  breddtabell()
+  lagetabellRad()
+  document.querySelector(`[data-block="${OPPET}"]`)?.scrollIntoView({ block: 'center' })
+})
+document.getElementById('agare').addEventListener('change', (e) => { state.agare = e.target.checked; const l = document.getElementById('reflista'); if (l) ritaLista(l) })
+
+function lagetabellRad() {
+  for (const tr of document.querySelectorAll('#tabell tbody tr')) tr.dataset.nu = String(tr.firstElementChild.textContent === LAGEN[state.lage].namn)
+}
+
+rita()
+lagetabell()
+breddtabell()
+lagetabellRad()
+// Det öppna blocket är det som ska bedömas, så sidan står där det står.
+document.querySelector(`[data-block="${OPPET}"]`)?.scrollIntoView({ block: 'center' })
+</script>
+</body>
+</html>
