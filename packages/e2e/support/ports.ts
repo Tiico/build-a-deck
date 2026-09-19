@@ -2,10 +2,10 @@ import { createServer } from 'node:net'
 
 // Where this suite's stack is allowed to listen.
 //
-// The band and the reasoning behind it are `packages/web/test/fixture.ts`'s, and they are
-// repeated here rather than shared because the two suites bind for different reasons — that one
-// stands up a server per test, this one stands up one per run — and a number that has to mean
-// both would be a number neither owns.
+// The reasoning behind the band is `packages/web/test/fixture.ts`'s, and it is repeated here
+// rather than shared because the suites bind for different reasons — that one stands up a server
+// per test, this one stands up one per run — and a number that has to mean both would be a number
+// neither owns.
 //
 // What carries over is why the band exists at all. `listen(0)` is handed a port out of the
 // operating system's ephemeral range, which is the range every other process on the machine draws
@@ -15,8 +15,22 @@ import { createServer } from 'node:net'
 // on one. The floor is above 10080 because that is the highest port WHATWG Fetch refuses to speak
 // to at all (#136): a server given one starts perfectly well and then every request to it fails,
 // about a port nothing in the test named.
-const FLOOR = 11_000
-const CEILING = 30_000
+//
+// What did not carry over, and should have, is that the number has to be nobody else's. This band
+// was the web suite's whole band, repeated: a stack walking for a free number would walk straight
+// through the ports that suite's fixtures take by number, and the lock in
+// `test-support/one-suite-at-a-time.ts` is deliberately a gate and never a wall, so both can be up
+// at once. Every test package now has its own block instead (#289):
+//
+//   10_100 – 10_200  packages/e2e            ← this one
+//   10_200 – 10_600  packages/render/test
+//   10_600 – 11_000  packages/server/test
+//   11_000 – 30_000  packages/web/test
+//
+// A hundred is a wide block for what is asked of it — a run takes two ports, a server and, without
+// a `DATABASE_URL`, a database — and `test/stack.spec.ts` is what holds the stack to it.
+const FLOOR = 10_100
+const CEILING = 10_200
 
 // A run on this machine is not the only run on this machine. Worktrees are how this repo is
 // worked — several sessions, each with its own checkout, each able to start its own stack — so
