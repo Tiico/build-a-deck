@@ -722,12 +722,12 @@ export const svEditor = {
   'setup.verb.shuffle': 'Blanda',
   'setup.verb.flipTop': 'Vänd översta',
   'setup.verb.movePile': 'Flytta hela högen',
-  'setup.step.split': 'Ta {n} från högen och lägg dem {face} {place}',
-  'setup.step.deal': 'Dela ut {n} till {place}, {face}',
-  'setup.step.take': 'Leta fram varje kort där {which} och lägg dem {face} {place}',
+  'setup.step.split': 'Ta {n} från högen och lägg dem {face} {at}',
+  'setup.step.deal': 'Dela ut {n} {to}, {face}',
+  'setup.step.take': 'Leta fram varje kort där {which} och lägg dem {face} {at}',
   'setup.step.shuffle': 'Blanda högen',
   'setup.step.flipTop': 'Vänd översta kortet {face}',
-  'setup.step.movePile': 'Flytta hela högen till {place}',
+  'setup.step.movePile': 'Flytta hela högen {to}',
   'setup.amount.number': 'ett tal',
   'setup.amount.seats': 'ett per spelare',
   'setup.amount.ask': 'så många jag säger',
@@ -736,13 +736,33 @@ export const svEditor = {
   'setup.face.front': 'uppvända',
   'setup.face.back': 'nedvända',
   'setup.face.toggle': 'åt andra hållet',
-  'setup.place.beside.left': 'till vänster om högen',
-  'setup.place.beside.right': 'till höger om högen',
-  'setup.place.beside.above': 'ovanför högen',
-  'setup.place.beside.below': 'under högen',
-  'setup.place.hands': 'i varje hand',
-  'setup.place.mine': 'i min hand',
-  'setup.place.zone': 'i {zone}',
+  // Platsen i två former, och prepositionen i platsen och aldrig i steget (#285).
+  //
+  // «Flytta hela högen till» plus «i Draghög» gav «Flytta hela högen till i Draghög»: var nyckel
+  // för sig riktig, tillsammans obrukbar. Prepositionen kan bara ägas av en av dem, och det är
+  // platsen som äger den — för det är platsen som vet om «hand» blir «i min hand» eller «till min
+  // hand», medan steget bara vet om korten ligger någonstans eller är på väg dit.
+  //
+  // `at` är var de ligger och `to` är vart de går. Vilken form en mening vill ha står i meningen
+  // själv, som hålets namn, så att språket bestämmer både ordningen och formen (A4, K21) — och så
+  // att ingen rad någonsin sätts ihop av två textbitar.
+  //
+  // Att «bredvid» är samma sträng i båda formerna är svenskans svar och inte en regel: riktningen
+  // ligger redan i «till vänster om högen», och ett språk som skiljer dem åt skriver skillnaden här.
+  'setup.place.at.beside.left': 'till vänster om högen',
+  'setup.place.at.beside.right': 'till höger om högen',
+  'setup.place.at.beside.above': 'ovanför högen',
+  'setup.place.at.beside.below': 'under högen',
+  'setup.place.at.hands': 'i varje hand',
+  'setup.place.at.mine': 'i min hand',
+  'setup.place.at.zone': 'i {zone}',
+  'setup.place.to.beside.left': 'till vänster om högen',
+  'setup.place.to.beside.right': 'till höger om högen',
+  'setup.place.to.beside.above': 'ovanför högen',
+  'setup.place.to.beside.below': 'under högen',
+  'setup.place.to.hands': 'till varje hand',
+  'setup.place.to.mine': 'till min hand',
+  'setup.place.to.zone': 'till {zone}',
   'setup.seats.hint': 'En ny plats får en hand och det platserna redan har. En plats som lämnar bordet tar sina zoner med sig.',
   'setup.counters.homeless': 'Ingen plats har någon räknarzon, så inga brickor läggs på bordet. Ge platserna en med "Räknarzon per plats".',
   // En zonfamilj (#175): samma zon vid var sin plats, som en rad med hur många platser som har den.

@@ -2395,6 +2395,14 @@ K14 säger redan att en ring utan verb inte öppnas; ett tomt ark är samma fel 
 **I editorn: meningar.**
 Samma tre-mot-tre. **A, raden växer** kvävdes i 320 px — en enda kolumns chippar radbröts på tre rader. **B, panelen som blankett** rullade i sidled vid tre åtgärder och gjorde varje steg till fyra rullgardiner som bröt rad. **C, meningar** vann: rattarna sitter inne i texten, och "Leta fram varje kort där rarity är Diamant och lägg dem uppvända bredvid högen" är specifikationen ordagrant — det finns ingenting annat att stämma av den mot.
 Meningen är en katalogsträng med namngivna hål och sätts ihop av noder och inte av textbitar, så ett annat språk får lägga hålen i en annan ordning (A4).
+
+Reviderat 2026-09-19: prepositionen ägs av platsformen och aldrig av steget (#285).
+Två nycklar bar var sin, och de möttes: `'Flytta hela högen till {place}'` plus `'i {zone}'` gav «Flytta hela högen till i Draghög», och engelskans «Move the whole pile to in Draghög».
+Varje nyckel för sig var riktig, vilket är hela poängen — det är sammansättningen som är meningen, och den fanns det inget test som läste.
+Platsen finns därför i två former: `setup.place.at.*` är var korten ligger och `setup.place.to.*` är vart de går, var och en en hel fras med sin preposition i.
+Vilken form en mening vill ha står i meningen själv, som hålets namn — `{at}` eller `{to}` — så att både ordningen och prepositionen är språkets och inte kodens (A4).
+Det valdes framför att låta steget bära prepositionen, eftersom platsformerna delas av fyra steg och ett «bredvid» redan bär sin riktning i frasen («till vänster om högen»): en bar `{zone}` hade tvingat varje steg att skriva en preposition som inte passar varje form.
+Ingenting sätts ihop av textbitar någonstans: `targetWords` väljer en nyckel och fyller ett hål, och det är allt den får göra.
 Panelen erbjuds bara på högar: en yta och en hand har ingen ring att hänga en åtgärd i.
 
 **Klienten kompilerar**, precis som den redan räknar ut en koordinat åt tangentbordet (K16): protokollet vill ha ett tal, och "ett per spelare" är inget tal förrän någon sitter ner.
@@ -2413,7 +2421,7 @@ Följdkrav som är införda:
 Ett framletat kortknippe placeras efter en högs regel och inte ett ensamt korts (#87), eftersom hur många kort som svarar på en fråga inne i en dold hög är det enda den här sidan inte kan veta.
 Arkets CSS-budget är höjd till 139 kB med skälet skrivet i `felt-font.test.ts`.
 `version.change` bär kolumnindexet bredvid komponenterna (C7): en fråga som ställs efter ett versionsbyte måste ställas till den lek som spelas, och inte till den som spelades — utan det svarar den fel utan att säga något.
-Grindarna: `packages/engine/test/reach-by-query.test.ts` och `dealt-face.test.ts` (motorn och projektionen), `shortcuts.test.ts` (sidan i projektionen), `packages/server/test/setup-fill.test.ts` (startinnehållet, kolumnerna och sidan som följer med), `zone-fill-and-actions.test.ts` (greppet), `packages/web/test/zone-actions.test.ts` (kompilatorn och tangentbordets paritet), `drop.test.ts` (var sidan landar), `table-renderer.test.tsx` (ringens verb), `pile-actions-at-the-table.test.tsx` (arket) och `setup-actions.test.tsx` (meningarna).
+Grindarna: `packages/engine/test/reach-by-query.test.ts` och `dealt-face.test.ts` (motorn och projektionen), `shortcuts.test.ts` (sidan i projektionen), `packages/server/test/setup-fill.test.ts` (startinnehållet, kolumnerna och sidan som följer med), `zone-fill-and-actions.test.ts` (greppet), `packages/web/test/zone-actions.test.ts` (kompilatorn och tangentbordets paritet), `drop.test.ts` (var sidan landar), `table-renderer.test.tsx` (ringens verb), `pile-actions-at-the-table.test.tsx` (arket), `setup-actions.test.tsx` (meningarna) och `setup-sentence-matrix.test.tsx` (varje steg gånger varje platsform, på båda språken).
 
 ### K22. En zon går att klippa, kopiera och klistra i fliken Bord (byggt 2026-09-15)
 

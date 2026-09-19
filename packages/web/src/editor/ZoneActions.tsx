@@ -32,6 +32,10 @@ const AMOUNTS: ActionAmount['of'][] = ['number', 'seats', 'zone', 'ask']
 const LANDS = ['keep', 'front', 'back'] as const
 const TURNS = ['toggle', 'front', 'back'] as const
 const VERBS: ActionStep['v'][] = ['split', 'deal', 'take', 'shuffle', 'flipTop', 'movePile']
+// Var korten ligger, och vart de går. Prepositionen sitter i platsen och aldrig i steget (#285),
+// så en mening säger vilken form den vill ha genom att namnge hålet `{at}` eller `{to}` — och
+// vilken form ett verb styr är därmed språkets sak och inte den här filens (A4).
+type PlaceForm = 'at' | 'to'
 
 const blank = (v: ActionStep['v']): ActionStep =>
   v === 'shuffle'
@@ -139,7 +143,11 @@ export function ZoneActions({ doc, zone, onPatch }: ZoneActionsProps) {
 
 function Step({ step, columns, zones, beside, t, onChange }: { step: ActionStep; columns: ReturnType<typeof queryColumns>; zones: readonly Zone[]; beside: ZoneBeside; t: T; onChange(next: ActionStep): void }) {
   const amount = (a: ActionAmount, set: (next: ActionAmount) => void) => <AmountSlot key="n" amount={a} zones={zones} t={t} onChange={set} />
-  const place = (to: ActionTarget, set: (next: ActionTarget) => void) => <TargetSlot key="p" target={to} zones={zones} beside={beside} t={t} onChange={set} />
+  // Båda formerna räcks fram och meningen tar den den namngett; den andra renderas aldrig.
+  const place = (to: ActionTarget, set: (next: ActionTarget) => void): Record<PlaceForm, ReactNode> => ({
+    at: <TargetSlot key="at" form="at" target={to} zones={zones} beside={beside} t={t} onChange={set} />,
+    to: <TargetSlot key="to" form="to" target={to} zones={zones} beside={beside} t={t} onChange={set} />,
+  })
   const side = (f: string, opts: readonly string[], set: (next: string) => void) => (
     <Slot key="f" label={t(`setup.face.${f}` as Key)}>
       {(close) =>
@@ -153,7 +161,7 @@ function Step({ step, columns, zones, beside, t, onChange }: { step: ActionStep;
   )
   if (step.v === 'shuffle') return <>{t('setup.step.shuffle')}</>
   if (step.v === 'flipTop') return <>{parts(t('setup.step.flipTop'), { face: side(step.face, TURNS, (face) => onChange({ ...step, face: face as typeof step.face })) })}</>
-  if (step.v === 'movePile') return <>{parts(t('setup.step.movePile'), { place: place(step.to, (to) => onChange({ ...step, to })) })}</>
+  if (step.v === 'movePile') return <>{parts(t('setup.step.movePile'), place(step.to, (to) => onChange({ ...step, to })))}</>
   if (step.v === 'take')
     return (
       <>
@@ -162,7 +170,7 @@ function Step({ step, columns, zones, beside, t, onChange }: { step: ActionStep;
             <QuerySlot key="w" query={step.which} columns={columns} label={step.which.length > 0 ? queryWords(step.which, t) : t('setup.query.any')} onChange={(which) => onChange({ ...step, which })} t={t} />
           ),
           face: side(step.face, LANDS, (face) => onChange({ ...step, face: face as typeof step.face })),
-          place: place(step.to, (to) => onChange({ ...step, to })),
+          ...place(step.to, (to) => onChange({ ...step, to })),
         })}
       </>
     )
@@ -171,7 +179,7 @@ function Step({ step, columns, zones, beside, t, onChange }: { step: ActionStep;
       <>
         {parts(t('setup.step.deal'), {
           n: amount(step.each, (each) => onChange({ ...step, each })),
-          place: place(step.to, (to) => onChange({ ...step, to })),
+          ...place(step.to, (to) => onChange({ ...step, to })),
           face: side(step.face, LANDS, (face) => onChange({ ...step, face: face as typeof step.face })),
         })}
       </>
@@ -181,7 +189,7 @@ function Step({ step, columns, zones, beside, t, onChange }: { step: ActionStep;
       {parts(t('setup.step.split'), {
         n: amount(step.count, (count) => onChange({ ...step, count })),
         face: side(step.face, LANDS, (face) => onChange({ ...step, face: face as typeof step.face })),
-        place: place(step.to, (to) => onChange({ ...step, to })),
+        ...place(step.to, (to) => onChange({ ...step, to })),
       })}
     </>
   )
@@ -388,17 +396,19 @@ function AmountSlot({ amount, zones, t, onChange }: { amount: ActionAmount; zone
   return <ChoiceSlot label={amountWords(amount, zones, t)} choices={choices} t={t} />
 }
 
-function TargetSlot({ target, zones, beside, t, onChange }: { target: ActionTarget; zones: readonly Zone[]; beside: ZoneBeside; t: T; onChange(next: ActionTarget): void }) {
+function TargetSlot({ target, zones, beside, form, t, onChange }: { target: ActionTarget; zones: readonly Zone[]; beside: ZoneBeside; form: PlaceForm; t: T; onChange(next: ActionTarget): void }) {
   const choices: Choice[] = [
     ...(['beside', 'hands', 'mine'] as const).map((at) => ({
       key: `place:${at}`,
-      words: targetWords({ at }, zones, t, beside),
+      // Raden bär samma form som meningen den hamnar i, så det som väljs är ordagrant det som står
+      // där efteråt.
+      words: targetWords({ at }, zones, t, beside, form),
       group: t('setup.slot.group.place'),
       pick: () => onChange({ at }),
     })),
     ...zones.map((z) => ({ key: `place:zone:${z.id}`, ...zoneWords(z, t), group: t('setup.slot.group.zone'), pick: () => onChange({ at: 'zone', zone: z.id }) })),
   ]
-  return <ChoiceSlot label={targetWords(target, zones, t, beside)} choices={choices} t={t} />
+  return <ChoiceSlot label={targetWords(target, zones, t, beside, form)} choices={choices} t={t} />
 }
 
 // Vems zonen är, i raden man väljer bland (#255). Åtta platser ger åtta zoner som heter «Hand»,
@@ -469,10 +479,13 @@ const amountWords = (a: ActionAmount, zones: readonly Zone[], t: T): string =>
 
 // "Bredvid högen" är inte en riktning förrän högen sagt vilken (K21), och meningen ska säga vad
 // som kommer att hända: den skriver ut sidan högen bär, inte ordet den bär den under.
-const targetWords = (target: ActionTarget, zones: readonly Zone[], t: T, beside: ZoneBeside): string =>
+//
+// Frasen är hel och kommer ur katalogen med sin preposition i (#285). Ingenting sätts ihop här:
+// den här funktionen väljer en nyckel och fyller ett hål, och det är allt den får göra.
+const targetWords = (target: ActionTarget, zones: readonly Zone[], t: T, beside: ZoneBeside, form: PlaceForm): string =>
   target.at === 'zone'
-    ? t('setup.place.zone', { zone: zones.find((z) => z.id === target.zone)?.name ?? target.zone })
-    : t((target.at === 'beside' ? `setup.place.beside.${beside}` : `setup.place.${target.at}`) as Key)
+    ? t(`setup.place.${form}.zone` as Key, { zone: zones.find((z) => z.id === target.zone)?.name ?? target.zone })
+    : t((target.at === 'beside' ? `setup.place.${form}.beside.${beside}` : `setup.place.${form}.${target.at}`) as Key)
 
 // A catalogue sentence with named holes, filled with things rather than with text. The holes are
 // written `{name}`; the order they come in is the language's business and not this file's (A4).
