@@ -23,6 +23,13 @@ export type Stack = {
   origin: string
   /** What the log is kept in. `memory` is a run that proves less, and says so. */
   store: 'postgres' | 'memory'
+  /**
+   * Where the built web app is on disk, for the few gates that are about the build itself rather
+   * than about the page: what is in the blocking stylesheet, what the browser would have to fetch,
+   * what the whole thing weighs (#95, #186). The suite builds it once either way, so a gate that
+   * built its own copy would be building the same files a second time to ask about them.
+   */
+  webDist: string
   stop: () => Promise<void>
 }
 
@@ -54,7 +61,7 @@ export async function start(): Promise<Stack> {
 
     const server = await listen({ STATIC_DIR: OUT, ...(db ? { DATABASE_URL: db.url } : {}) })
     closers.push(server.stop)
-    return { origin: server.origin, store: db ? 'postgres' : 'memory', stop }
+    return { origin: server.origin, store: db ? 'postgres' : 'memory', webDist: OUT, stop }
   } catch (cause) {
     await stop()
     throw cause

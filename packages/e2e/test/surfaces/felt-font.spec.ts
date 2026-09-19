@@ -1,3 +1,7 @@
+import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { join, relative } from 'node:path'
+import { expect, test } from '@playwright/test'
+
 // The felt's face has to be in the document before the first painting (#95).
 //
 // This is not a loading-time nicety. The prototype measured the felt with the face held back half
@@ -11,55 +15,19 @@
 // So the bytes travel inside the stylesheet the browser already blocks on. What is checked here is
 // the built app and not the intention: the entry's sheet is a render-blocking `<link>` in the head,
 // the face is inside it as a `data:` URL, and nothing in the build asks the network for a woff2.
-import { createServer, type Server } from 'node:http'
-import { readFileSync, readdirSync, rmSync, statSync } from 'node:fs'
-import { extname, join, normalize, relative } from 'node:path'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { build } from 'vite'
-import { chromium, type Browser } from 'playwright'
-
-const WEB = join(import.meta.dirname, '..')
-const OUT = join(WEB, 'dist-felt-font-test')
+//
+// Migrated from `packages/web/test/felt-font.test.ts`, which built the app and served it over http
+// to ask these questions — six hundred seconds of budget for the build alone. The suite builds the
+// app once for every test in it and serves it from the real server, so this reads the build that
+// is already there and opens the origin that is already up.
+const WEB = join(import.meta.dirname, '..', '..', '..', 'web')
+const OUT = process.env['BYD_E2E_WEB_DIST']!
 const FAMILY = 'Roboto Condensed'
 
 const filesUnder = (dir: string): string[] =>
   readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? filesUnder(join(dir, e.name)) : [join(dir, e.name)]))
 
-const TYPES: Record<string, string> = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2', '.svg': 'image/svg+xml' }
-
-let index: string
-let browser: Browser
-let server: Server
-let origin: string
-beforeAll(async () => {
-  await build({ root: WEB, logLevel: 'silent', build: { outDir: OUT, emptyOutDir: true } })
-  index = readFileSync(join(OUT, 'index.html'), 'utf8')
-  browser = await chromium.launch()
-  // The built app, served the way it is served: over http, one file per request, so that what
-  // the browser asks for is a fact on a wire and not a guess about a bundler. A path with no
-  // extension falls back to `index.html`, which is the rule the real server keeps
-  // (`packages/server/src/server.ts`) — without it `/editor` is a 404 here and the route the
-  // designer actually opens could not be watched at all.
-  server = createServer((req, res) => {
-    const path = normalize(new URL(req.url ?? '/', 'http://x').pathname).replace(/^(\.\.[/\\])+/, '')
-    const wanted = join(OUT, path === '/' ? 'index.html' : path)
-    const file = extname(wanted) === '' ? join(OUT, 'index.html') : wanted
-    try {
-      const body = readFileSync(file)
-      res.writeHead(200, { 'content-type': TYPES[extname(file)] ?? 'application/octet-stream' }).end(body)
-    } catch {
-      res.writeHead(404).end()
-    }
-  })
-  await new Promise<void>((ok) => server.listen(0, '127.0.0.1', ok))
-  const at = server.address()
-  origin = `http://127.0.0.1:${typeof at === 'object' && at ? at.port : 0}/`
-}, 600_000)
-afterAll(async () => {
-  await browser.close()
-  await new Promise<void>((ok) => server.close(() => ok()))
-  rmSync(OUT, { recursive: true, force: true })
-}, 60_000)
+const index = readFileSync(join(OUT, 'index.html'), 'utf8')
 
 // Every `<link rel="stylesheet">` the head carries with nothing that would take it off the
 // critical path: a `media` that does not apply, or a `rel` that only hints.
@@ -70,8 +38,8 @@ const blockingSheets = (html: string): string[] =>
     .map((tag) => /href="([^"]+)"/.exec(tag)?.[1] ?? '')
     .filter(Boolean)
 
-describe('the felt’s face is in the document before the first painting (K20, #95)', () => {
-  it('puts it inside the stylesheet the page already blocks on, and not in a round trip of its own', () => {
+test.describe('the felt’s face is in the document before the first painting (K20, #95)', () => {
+  test('puts it inside the stylesheet the page already blocks on, and not in a round trip of its own', () => {
     const sheets = blockingSheets(index)
     expect(sheets.length).toBeGreaterThan(0)
     const carrying = sheets
@@ -84,7 +52,7 @@ describe('the felt’s face is in the document before the first painting (K20, #
     // Both subsets, because a name with a letter outside the shipped ones is drawn by a system
     // face again and that name's width is back to being the machine's answer (A4).
     expect([...carrying.join('').matchAll(/src:url\(data:font\/woff2;base64,/g)].length).toBe(2)
-  }, 60_000)
+  })
 
   // What the licence actually asks for. OFL 1.1 lets the face be bundled and sold with software on
   // three conditions, and the one with teeth here is that *each copy* of the font software carries
@@ -92,7 +60,7 @@ describe('the felt’s face is in the document before the first painting (K20, #
   // — and a licence in a file beside the source would not have travelled with it (E4's own rule,
   // that licence metadata has to reach what ships, applied to the app itself rather than to a
   // card).
-  it('carries the copyright notice and the whole licence in the same file as the bytes', () => {
+  test('carries the copyright notice and the whole licence in the same file as the bytes', () => {
     const css = blockingSheets(index)
       .map((href) => readFileSync(join(OUT, href.replace(/^\//, '')), 'utf8'))
       .filter((text) => text.includes('src:url(data:font/woff2;base64,'))
@@ -107,18 +75,18 @@ describe('the felt’s face is in the document before the first painting (K20, #
     const notice = css.slice(css.indexOf('Copyright 2011 Google Inc.'), css.indexOf('This Font Software is licensed'))
     expect(notice.length).toBeGreaterThan(20)
     expect(notice).not.toMatch(/reserved font name/i)
-  }, 60_000)
+  })
 
-  it('ships no font file for the browser to fetch, and none of the felt’s own text asks for one', () => {
+  test('ships no font file for the browser to fetch, and none of the felt’s own text asks for one', () => {
     const loose = filesUnder(OUT).filter((f) => f.endsWith('.woff2') || f.endsWith('.woff') || f.endsWith('.ttf'))
     expect(loose.map((f) => relative(OUT, f))).toEqual([])
     const asking = filesUnder(OUT)
       .filter((f) => /\.(css|js|html)$/.test(f))
       .filter((f) => /url\([^)]*\.woff2?\)/.test(readFileSync(f, 'utf8').replace(/url\(data:[^)]*\)/g, '')))
     expect(asking.map((f) => relative(OUT, f))).toEqual([])
-  }, 60_000)
+  })
 
-  it('costs the sheet what the two subsets weigh and no more', () => {
+  test('costs the sheet what the two subsets weigh and no more', () => {
     // What shipping the face costs, as one number, so a later swap for a heavier family has to
     // change this line and say why. Roboto Condensed is one variable file per subset covering all
     // four weights the felt draws — 85 kB of woff2, a third more as base64, which is the price of
@@ -147,16 +115,15 @@ describe('the felt’s face is in the document before the first painting (K20, #
     // smallest second face anyone could add is nearly six times the whole margin.
     const sheet = blockingSheets(index).reduce((sum, href) => sum + statSync(join(OUT, href.replace(/^\//, ''))).size, 0)
     expect(sheet).toBeLessThan(inlined + 84_000)
-  }, 60_000)
+  })
 
   // And the same thing said by a browser rather than by a reader of files: the built app served
   // the way it is served, with every request it makes written down.
-  it('asks the network for the page and its sheet, and never for a face', async () => {
-    const page = await browser.newPage()
+  test('asks the network for the page and its sheet, and never for a face', async ({ page }) => {
     const asked: string[] = []
     page.on('request', (r) => asked.push(new URL(r.url()).pathname))
-    try {
-      await page.goto(origin, { waitUntil: 'load' })
+    {
+      await page.goto('/', { waitUntil: 'load' })
       await page.evaluate(() => document.fonts.ready.then(() => undefined))
       // The face is in the document — declared, and with its bytes to hand — without the page
       // having gone anywhere for it.
@@ -165,10 +132,8 @@ describe('the felt’s face is in the document before the first painting (K20, #
       // sheet the face rode in on. What it never asked for is the face.
       expect(asked.filter((p) => p.endsWith('.css')).length).toBeGreaterThan(0)
       expect({ declared: declared.length, fonts: asked.filter((p) => /\.(woff2?|ttf|otf)$/.test(p)) }).toEqual({ declared: 2, fonts: [] })
-    } finally {
-      await page.close()
     }
-  }, 60_000)
+  })
 })
 
 // The other half of the same question (#186). The gate above says what has to be in the blocking
@@ -191,8 +156,8 @@ const editorsOwnClasses = (): string[] => {
   return [...own]
 }
 
-describe('the editor is not weighed against the felt’s face (#186)', () => {
-  it('keeps the editor’s own CSS out of the sheet the first painting blocks on', () => {
+test.describe('the editor is not weighed against the felt’s face (#186)', () => {
+  test('keeps the editor’s own CSS out of the sheet the first painting blocks on', () => {
     const markers = editorsOwnClasses()
     // Not vacuous: the editor does have selectors of its own to look for.
     expect(markers.length).toBeGreaterThan(20)
@@ -200,21 +165,20 @@ describe('the editor is not weighed against the felt’s face (#186)', () => {
       .map((href) => readFileSync(join(OUT, href.replace(/^\//, '')), 'utf8'))
       .join('')
     expect(markers.filter((name) => new RegExp(`\\.${name}(?![a-z0-9-])`).test(blocking))).toEqual([])
-  }, 60_000)
+  })
 
   // Taking the sheet off the critical path is only half a fix; the other half is that the editor
   // still looks like itself. Said by a browser rather than by a reader of files: open the route the
   // way a designer does, watch the wire, and then ask the page whether the rules are in force and
   // not merely downloaded. The probe is a bare `flex-grow`, so the reading is the same on a Linux
   // runner as on a Mac — nothing here may depend on which face the machine has.
-  it('fetches the editor’s own sheet when /editor opens, and it is in force', async () => {
-    const page = await browser.newPage()
+  test('fetches the editor’s own sheet when /editor opens, and it is in force', async ({ page }) => {
     const css: string[] = []
     page.on('request', (r) => {
       if (new URL(r.url()).pathname.endsWith('.css')) css.push(new URL(r.url()).pathname)
     })
-    try {
-      await page.goto(`${origin}editor`, { waitUntil: 'load' })
+    {
+      await page.goto('/editor', { waitUntil: 'load' })
       await page.waitForFunction(() => document.querySelectorAll('link[rel=stylesheet]').length > 1, undefined, { timeout: 20_000 })
       // Two sheets on the wire: the one the first painting blocked on, and the editor's, asked for
       // only once the route said it wanted it.
@@ -231,8 +195,6 @@ describe('the editor is not weighed against the felt’s face (#186)', () => {
         return { bare, dressed: getComputedStyle(probe).flexGrow }
       })
       expect(flex).toEqual({ bare: '0', dressed: '1' })
-    } finally {
-      await page.close()
     }
-  }, 60_000)
+  })
 })

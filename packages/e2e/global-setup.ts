@@ -19,6 +19,7 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
     const stack = await start()
     process.env['BYD_E2E_ORIGIN'] = stack.origin
     process.env['BYD_E2E_STORE'] = stack.store
+    process.env['BYD_E2E_WEB_DIST'] = stack.webDist
     return async () => {
       await stack.stop()
       await release()
