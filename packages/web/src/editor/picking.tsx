@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
+import { placedProps, usePlacement } from './placement.js'
 
 // One character opens a list, everywhere in the tool (L23). The card table's `{` did it first and
 // did it right — write the character, get a list that narrows, arrows and Enter, and the focus
@@ -94,13 +95,32 @@ export type PickListProps<O> = {
 }
 
 export function PickList<O>({ id, options, keyOf, active, label, className, empty, attrs, onPick, children }: PickListProps<O>) {
+  const box = useRef<HTMLDivElement>(null)
+  // A box opens where there is room for it (#229), and a narrowing list is a box like any other:
+  // eight rows are 240 px, and a cell at the foot of a long table or a block at the foot of a long
+  // book has nothing like that under it. Each sheet says what its two directions mean; the reading
+  // is `placement`'s and is taken here so that no list of this kind can be the one that forgot.
+  const place = usePlacement(true, box)
+  // The one the keys are on, brought into the box. Every target in the editor is 44 px tall, so a
+  // box of eight rows shows five of them and the arrows walk past its edge on the sixth press; a
+  // control that answers and cannot be seen to answer has not answered (#235). The option cannot
+  // bring itself — it never takes the focus, which is the whole arrangement that keeps the sentence
+  // being written in the caller's field. `nearest` and not `center`, so a box already showing the
+  // row stands still.
+  const marked = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    marked.current?.scrollIntoView?.({ block: 'nearest' })
+  }, [active])
+  // Both readings stand above the one early return: a render that draws nothing may not call fewer
+  // hooks than one that draws a list.
   if (options.length === 0 && empty === undefined) return null
   return (
-    <div id={id} className={`byd-pick-list ${className}`} role="listbox" aria-label={label}>
+    <div ref={box} id={id} className={`byd-pick-list ${className}`} role="listbox" aria-label={label} {...placedProps(place)}>
       {options.length === 0 && <p className="byd-pick-none">{empty}</p>}
       {options.map((option, i) => (
         <button
           key={keyOf(option)}
+          {...(i === active ? { ref: marked } : {})}
           id={pickOptionId(id, keyOf(option))}
           type="button"
           role="option"

@@ -181,6 +181,31 @@ describe('the way a reference is put into a rule (#215)', () => {
     await waitFor(() => expect((within(book()).getByLabelText('Text t1') as HTMLTextAreaElement).value).toBe('Dra ett kort ur [[kort:c10]]'))
   })
 
+  // Eight rows are eight targets, and every target in the editor is 44 px tall: the box is 230 px
+  // and holds five of them, measured in Chromium. The keys still walk all eight, so the one they
+  // stand on has to be brought into the box — a control that answers and cannot be seen to answer
+  // has not answered (#235). jsdom lays nothing out and has no `scrollIntoView` of its own, so
+  // what is read here is that the option the keys are on is the one asked to come into view.
+  it('brings the option the keys are on into the box, however far down the list it stands', async () => {
+    const shown: Element[] = []
+    const had = Object.getOwnPropertyDescriptor(Element.prototype, 'scrollIntoView')
+    Element.prototype.scrollIntoView = function (this: Element) {
+      shown.push(this)
+    }
+    try {
+      await openBook()
+      const field = await openBlock('t1', 'Text t1')
+      field.focus()
+      typeInto(field, 'Dra ett kort ur [[')
+      await waitFor(() => expect(optionNames()).toHaveLength(8))
+      for (let i = 0; i < 7; i++) fireEvent.keyDown(field, { key: 'ArrowDown' })
+      await waitFor(() => expect(shown.at(-1)).toBe(within(list()!).getAllByRole('option')[7]))
+    } finally {
+      if (had) Object.defineProperty(Element.prototype, 'scrollIntoView', had)
+      else delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView
+    }
+  })
+
   it('closes on Escape and leaves what was written exactly as it was written', async () => {
     await openBook()
     const field = await openBlock('t1', 'Text t1')
@@ -247,6 +272,43 @@ describe('the way a reference is put into a rule (#215)', () => {
     typeInto(head, 'Så spelar ni [[dra')
     await waitFor(() => expect((within(book()).getByLabelText('Rubrik h1') as HTMLInputElement).value).toBe('Så spelar ni [[dra'))
     expect(list()).toBeNull()
+  })
+})
+
+// A box opens where there is room for it (#229). The reading itself is `placement.test.ts` and the
+// wiring for a slot is `slot-placement.test.tsx`; this is the same wiring for the list `[[` opens,
+// which the prototype note asked for by name. A block near the foot of the page has no room under
+// it — measured in Chromium at 1440 × 900, eight rows are 240 px and the page does not scroll to
+// meet them — so the list has to go the other way. jsdom lays nothing out, so the rectangle the
+// list opens from is the one said out loud here.
+describe('the list opens where there is room (#229)', () => {
+  const openAt = async (topPx: number): Promise<HTMLElement> => {
+    window.innerHeight = 800
+    window.innerWidth = 1200
+    await openBook()
+    const field = await openBlock('t1', 'Text t1')
+    const wrap = field.closest('.byd-rules-field') as HTMLElement
+    wrap.getBoundingClientRect = () =>
+      ({ x: 540, y: topPx, top: topPx, left: 540, right: 1108, bottom: topPx + 90, width: 568, height: 90, toJSON: () => ({}) }) as DOMRect
+    field.focus()
+    typeInto(field, 'Dra ett kort ur [[dra')
+    await waitFor(() => expect(list()).toBeTruthy())
+    return list()!
+  }
+
+  it('goes upward from a block standing at the foot of the page', async () => {
+    expect((await openAt(700)).getAttribute('data-place-y')).toBe('up')
+  })
+
+  it('goes downward from one standing at the top of it', async () => {
+    expect((await openAt(60)).getAttribute('data-place-y')).toBe('down')
+  })
+
+  it('is never taller than the room it was given', async () => {
+    const box = await openAt(700)
+    const room = parseFloat(box.style.getPropertyValue('--byd-place-room'))
+    expect(room).toBeGreaterThan(0)
+    expect(room).toBeLessThanOrEqual(700)
   })
 })
 
