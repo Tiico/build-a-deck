@@ -162,7 +162,7 @@
           </div>
 
           <h3>Brickans kontrast, inne i meningen</h3>
-          <p>#255 mätte brickan mot rutans botten <code>#12141a</code> och fick 7,28:1. Den stängda knappen är <code>#1d3a5c</code>. Samma bricka står alltså på en annan botten här, och det är en mätning och inte en analogi.</p>
+          <p>#255 mätte brickan mot rutans botten <code>#12141a</code> och fick 7,28:1. Den stängda knappen är <code>#1d3a5c</code>, och under pekaren blir båda <code>#24507f</code>. Samma bricka står alltså på tre olika bottnar, och det är en mätning och inte en analogi.</p>
           <div class="val" role="group" aria-label="Brickans färg">
             <button type="button" data-ljus="false" aria-pressed="true">Rutans egen färg</button>
             <button type="button" data-ljus="true" aria-pressed="false">Meningens bläck</button>
@@ -484,10 +484,15 @@ function kontrast() {
 
 // De tre bottnar samma bricka står på, räknade ur färgvärdena i `editor.css`.
 function kontrastTabell() {
+  // Hovring är inte ett undantag: 1.4.3 gäller texten i varje läge den kan stå i, och både rutans
+  // rad och den stängda knappen byter botten till #24507f under pekaren.
   const rader = [
-    ['Rutans egen färg #9aa3b8', 'rutan #12141a', '#9aa3b8', '#12141a'],
+    ['Rutans egen färg #9aa3b8', 'rutans rad #12141a — det #255 mätte', '#9aa3b8', '#12141a'],
+    ['Rutans egen färg #9aa3b8', 'rutans rad under pekaren #24507f', '#9aa3b8', '#24507f'],
     ['Rutans egen färg #9aa3b8', 'den stängda knappen #1d3a5c', '#9aa3b8', '#1d3a5c'],
+    ['Rutans egen färg #9aa3b8', 'den stängda knappen under pekaren #24507f', '#9aa3b8', '#24507f'],
     ['Meningens bläck #cfe6ff', 'den stängda knappen #1d3a5c', '#cfe6ff', '#1d3a5c'],
+    ['Meningens bläck #cfe6ff', 'den stängda knappen under pekaren #24507f', '#cfe6ff', '#24507f'],
   ]
   $('m-kontrast-tab').innerHTML = rader
     .map(([vad, pa, fg, bg]) => {
