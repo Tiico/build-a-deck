@@ -10,7 +10,7 @@
      1440 px — 1440 minus 2 × 16 px kantrum, minus 300 px zonlistan, minus 320 px
      spalten till höger, minus två mellanrum på 16. En mening som bedöms i en annan
      bredd är bedömd i fel bredd, och radbrytning är hela frågan här. */
-  .work { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 756px minmax(0,1fr); gap: var(--s3); padding: var(--s4); }
+  .work { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 880px minmax(0,1fr); gap: var(--s3); padding: var(--s4); }
   .panel { min-height: 0; min-width: 0; display: flex; flex-direction: column; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); }
   .panel > header { flex: none; display: flex; align-items: baseline; gap: var(--s2); padding: var(--s3) var(--s4) var(--s2); }
   .panel > header h2 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
@@ -18,14 +18,20 @@
   .panel > header small { color: var(--quiet); font-size: 11px; }
   .panel > .scroll { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0 var(--s4) var(--s4); }
 
-  /* `.byd-zone-actions` ordagrant: samma botten, samma ram, samma 12/16 px kantrum, så att
-     meningens innermått blir de 722 px den har i produkten. Ingenting här importeras — det är
-     kopierat ur packages/web/src/editor/editor.css. */
-  .atgard { display: grid; gap: 10px; align-content: start; background: #171a23e6; border: 1px solid #2f333d; border-radius: 12px; padding: 12px 16px; }
+  /* `.byd-zone-actions` ordagrant: samma botten, samma ram, samma 12/16 px kantrum. Ingenting
+     här importeras — det är kopierat ur packages/web/src/editor/editor.css.
+     Exakt 756 px yttermått, för det är vad filten mäter, och `.byd-zone-actions` ligger med
+     `left: 0; right: 0` i den. Panelen runt omkring är bredare bara för att prototypens egna
+     anteckningar ska få stå i marginalen utan att stjäla en enda pixel från meningen. */
+  /* Scenpanelen slutar strax under sin sista mening. En panel dragen till fönstrets fot med
+     tom nederhalva läser som en yta som misslyckats fylla sig, och det är inte det som bedöms. */
+  .panel.scen { align-self: start; }
+  .panel.scen > .scroll { padding: 0 0 var(--s4); overflow: visible; }
+  .atgard { width: 756px; box-sizing: border-box; display: grid; gap: 10px; align-content: start; background: #171a23e6; border: 1px solid #2f333d; border-radius: 12px; padding: 12px 16px; }
   .atgard h3 { margin: 4px 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
   .atgard > input { min-width: 260px; padding: 8px; border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; color: #fff; font: inherit; }
   .atgard ol { list-style: none; margin: 0; padding: 0 0 8px 12px; border-left: 2px solid #2f333d; display: grid; gap: 2px; justify-items: start; }
-  .atgard li { display: flex; gap: 8px; align-items: baseline; max-width: 100%; }
+  .atgard li { position: relative; display: flex; gap: 8px; align-items: baseline; max-width: 100%; }
   .mening { margin: 0; line-height: 2.1; color: var(--ink); }
   .slot { border: 0; border-bottom: 1px dashed #8ad0ff; border-radius: 4px; background: #1d3a5c; color: #cfe6ff; font: inherit; font-weight: 600; cursor: pointer; padding: 0 8px; }
   .slot:hover { background: #24507f; }
@@ -35,12 +41,17 @@
      för att se den. Gult är protoradens färg och aldrig ett förslags. */
   li[data-bryter='true'] .mening { box-shadow: -8px 0 0 -6px var(--warn); }
   li[data-omojlig='true'] .mening { box-shadow: -8px 0 0 -6px #d47070; }
-  li > .fall { flex: none; align-self: center; color: var(--quiet); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; }
+  /* Ute i marginalen och ur flödet, så att den inte tar en pixel från raden den beskriver. En
+     anteckning som krymper mätobjektet är ingen anteckning utan ett mätfel. */
+  li > .fall { position: absolute; left: 100%; top: 6px; margin-left: 16px; color: var(--quiet); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; }
 
   /* ── De fyra formerna på platsen inne i meningen ─────────────────────────────────────────── */
-  /* Bricka: zonlistans egen ram ur `.byd-setup-name em`, flyttad in i den stängda knappen.
-     Färgen är en annan än radens, och det är mätt och inte valt — se kontrastmätningen. */
-  [data-form='bricka'] .slot em, [data-form='bricka'] table.matt em { font-style: normal; color: #cfe6ff; font-size: 11px; border: 1px solid #5f83ad; border-radius: 999px; padding: 0 6px; margin-inline-start: 4px; white-space: nowrap; }
+  /* Bricka: zonlistans egen ram ur `.byd-setup-name em`, ordagrant — samma färg, samma ram, samma
+     11 px — flyttad in i den stängda knappen. Att den står på en annan botten där är hela
+     kontrastfrågan, och den mäts i stället för att färgen tyst byts. */
+  [data-form='bricka'] .slot em, [data-form='bricka'] table.matt em { font-style: normal; color: #9aa3b8; font-size: 11px; border: 1px solid #2f333d; border-radius: 999px; padding: 0 8px; margin-inline-start: 4px; white-space: nowrap; }
+  /* Den ljusare brickan, som jämförelse: samma form, meningens egen bläckfärg. */
+  [data-form='bricka'][data-ljus='true'] .slot em { color: #cfe6ff; border-color: #5f83ad; }
   /* Ord, Genitiv och Framme lägger ingenting till typografin: platsen är bokstäver i meningen. */
   [data-form='ord'] .slot em, [data-form='genitiv'] .slot em, [data-form='framme'] .slot em,
   [data-form='ord'] table.matt em, [data-form='genitiv'] table.matt em, [data-form='framme'] table.matt em { font-style: normal; }
@@ -104,8 +115,8 @@
   </div>
 
   <div class="work">
-    <section class="panel">
-      <header><h2>Den färdiga meningen</h2><span class="rule"></span><small>filtens riktiga 756 px · meningen 722 px</small></header>
+    <section class="panel scen">
+      <header><h2>Den färdiga meningen</h2><span class="rule"></span><small>filtens riktiga 756 px · meningen <span id="m-inner">—</span> px</small></header>
       <div class="scroll">
         <div class="atgard">
           <h3>När någon klickar på högen kan de välja</h3>
@@ -149,6 +160,17 @@
             <code id="said-2"></code>
             <span class="dom" id="said-fokus"></span>
           </div>
+
+          <h3>Brickans kontrast, inne i meningen</h3>
+          <p>#255 mätte brickan mot rutans botten <code>#12141a</code> och fick 7,28:1. Den stängda knappen är <code>#1d3a5c</code>. Samma bricka står alltså på en annan botten här, och det är en mätning och inte en analogi.</p>
+          <div class="val" role="group" aria-label="Brickans färg">
+            <button type="button" data-ljus="false" aria-pressed="true">Rutans egen färg</button>
+            <button type="button" data-ljus="true" aria-pressed="false">Meningens bläck</button>
+          </div>
+          <table class="matt">
+            <thead><tr><th>Bricka</th><th>På</th><th class="n">Kontrast</th></tr></thead>
+            <tbody id="m-kontrast-tab"></tbody>
+          </table>
 
           <h3>Vad formen kostar i katalogen</h3>
           <table class="matt">
@@ -306,24 +328,40 @@ const STEG = [
 // rör — den sista är vad «Framme» står och faller med.
 function meningen(steg) {
   const hal = {}
+  const hort = {}
   const platser = new Set()
-  const knapp = (d) => {
+  const knapp = (namn, d) => {
     if (d.seat !== undefined) platser.add(d.seat)
-    return `<button type="button" class="slot">${d.html}</button>`
+    const etik = etiketten(d)
+    hort[namn] = etik ?? d.html.replace(/<[^>]+>/g, '')
+    return `<button type="button" class="slot"${etik ? ` aria-label="${text(etik)}"` : ''}>${d.html}</button>`
   }
   let mall = K[`setup.step.${steg.v}`]
-  if (steg.n !== undefined) hal.n = knapp(antal(steg.n))
-  if (steg.place !== undefined) hal.place = knapp(plats(steg.place))
-  if (steg.face !== undefined) hal.face = knapp(enkel(K[steg.face]))
-  if (steg.which !== undefined) hal.which = knapp(enkel(steg.which))
+  if (steg.n !== undefined) hal.n = knapp('n', antal(steg.n))
+  if (steg.place !== undefined) hal.place = knapp('place', plats(steg.place))
+  if (steg.face !== undefined) hal.face = knapp('face', enkel(K[steg.face]))
+  if (steg.which !== undefined) hal.which = knapp('which', enkel(steg.which))
   // «Framme» flyttar platsen ut framför satsen. Den kan bara göra det när satsen rör en enda
   // plats, och en sats kan röra två: «ta så många som ligger i Hand B … i Hand A».
   let omojlig = false
   if (form === 'framme' && platser.size === 1) mall = K[`setup.step.${steg.v}.seat`] ?? mall
   if (form === 'framme' && platser.size > 1) omojlig = true
-  const html = fyll(mall, { ...hal, owner: [...platser][0] ?? '' })
+  const owner = [...platser][0] ?? ''
+  const html = fyll(mall, { ...hal, owner })
   const ren = html.replace(/<[^>]+>/g, '')
-  return { html, ren, platser: [...platser], omojlig }
+  // Så här tas meningen av en uppläsning: knappens namn där den har ett, dess text annars.
+  const sagt = fyll(mall, { ...hort, owner })
+  return { html, ren, sagt, platser: [...platser], omojlig }
+}
+
+// Platsens ord är osynligt i Bricka och i Genitiv — där bär en bokstav hela skillnaden, och en
+// uppläsning hör ingen ram och ingen genitivändelse som ett *ord*. Ordet måste alltså sättas i
+// knappens namn, och var det sätts är hela WCAG 2.5.3-frågan. I Ord och i Framme står ordet redan
+// synligt, och då är en etikett inte en upplysning utan en andra kopia av raden.
+function etiketten(d) {
+  if (d.seat === undefined || saidForm === 'inget' || form === 'ord' || form === 'framme') return null
+  const synligt = d.html.replace(/<[^>]+>/g, '')
+  return saidForm === 'fore' ? synligt.replace(new RegExp(`(^|[^\\wåäöÅÄÖ])${d.seat}(?=[^\\wåäöÅÄÖ]|$)`), `$1plats ${d.seat}`) : `${synligt}, plats`
 }
 
 // ── Rutan ──────────────────────────────────────────────────────────────────────────────────────
@@ -333,18 +371,8 @@ function rita() {
   document.body.dataset.form = form
   $('steg').innerHTML = STEG.map((steg) => {
     const m = meningen(steg)
-    const etik = namnet(m)
-    return `<li${m.omojlig ? ' data-omojlig="true"' : ''}><span class="mening"${etik ? ` aria-label="${text(etik)}"` : ''}>${m.html}</span><button type="button" class="x" aria-label="Ta bort steget">×</button><span class="fall">${text(m.omojlig ? 'går inte' : steg.fall)}</span></li>`
+    return `<li${m.omojlig ? ' data-omojlig="true"' : ''}><span class="mening">${m.html}</span><button type="button" class="x" aria-label="Ta bort steget">×</button><span class="fall">${text(m.omojlig ? 'går inte' : steg.fall)}</span></li>`
   }).join('')
-}
-
-// Vad en uppläsning får. Platsens ord är inte synligt i tre av fyra former, så det måste sättas
-// någonstans — och var det sätts avgör om WCAG 2.5.3 håller.
-function namnet(m) {
-  if (saidForm === 'inget' || m.platser.length === 0 || form === 'nu') return null
-  if (form === 'ord') return null // platsens ord står redan synligt i meningen
-  const p = m.platser.join(' och ')
-  return saidForm === 'fore' ? m.ren.replace(new RegExp(`\\b${m.platser[0]}\\b`), `plats ${m.platser[0]}`) : `${m.ren}, plats ${p}`
 }
 
 // ── Mätningarna ────────────────────────────────────────────────────────────────────────────────
@@ -368,7 +396,10 @@ function matt() {
   $('m-lika-ord').innerHTML =
     p.delade === 0
       ? 'Ingen plats i spelet delar text med en annan: <strong>varje mening säger vilken av de 45 zonerna den talar om</strong>.'
-      : `Platshålet har <strong>${PLATSVAL.length} betydelser</strong> och bara <strong>${p.olika} olika texter</strong>. ${p.delade} av dem delar sin text med en annan: ${p.familjer.map(([w, n]) => `${n} × «${w}»`).join(', ')}.`
+      : `Platshålet har <strong>${PLATSVAL.length} betydelser</strong> och bara <strong>${p.olika} olika texter</strong>. ${p.delade} av dem delar sin text med en annan: ${p.familjer.map(([w, n]) => `${n} × «${w}»`).join(', ')}.` +
+        (form === 'framme'
+          ? ' <strong>Framme rör inte hålet utan satsen</strong>, och tabellen räknar hålet: en sats med ett enda zonhål blir ändå skiljbar, en sats med två platser går inte att skriva alls.'
+          : '')
 
   // En hel mening är oskiljbar så snart något av dess zonhål är det. Talet i «ett tal» räknas som
   // ett enda val — siffran står i meningen och skiljer sig själv åt.
@@ -409,6 +440,11 @@ function matt() {
     }
     $('m-bryter').textContent = `${bryter} av ${rader.length}`
     $('m-troskel').textContent = `${troskel(meningen(STEG[4]).html)} px`
+    // Den bredd meningen faktiskt har att bryta på: listans innermått minus ×-knappen och
+    // mellanrummet, precis som i `.byd-zone-action li`.
+    const ol = $('steg')
+    const pad = parseFloat(getComputedStyle(ol).paddingLeft)
+    $('m-inner').textContent = Math.round(ol.clientWidth - pad - rader[2].querySelector('.x').offsetWidth - 8)
   })
 
   $('m-kostnad').innerHTML = KOSTNAD[form].map((r) => `<tr><td>${text(r[0])}</td><td class="n">${r[1]}</td><td style="color:var(--quiet-2)">${text(r[2])}</td></tr>`).join('')
@@ -436,14 +472,29 @@ function troskel(html) {
 
 // Brickans kontrast mot den stängda knappens egen botten — inte mot rutans. Rutan är #12141a och
 // knappen #1d3a5c, och det är skälet brickan inne i meningen inte kan bära rutans färg rakt av.
+const lin = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)
+const L = (rgb) => { const [r, g, b] = rgb.match(/\d+/g).map((n) => lin(n / 255)); return 0.2126 * r + 0.7152 * g + 0.0722 * b }
+const kvot = (a, b) => (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)
+const hex = (h) => `rgb(${parseInt(h.slice(1, 3), 16)},${parseInt(h.slice(3, 5), 16)},${parseInt(h.slice(5, 7), 16)})`
 function kontrast() {
-  const lin = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)
-  const L = (rgb) => { const [r, g, b] = rgb.match(/\d+/g).map((n) => lin(n / 255)); return 0.2126 * r + 0.7152 * g + 0.0722 * b }
   const em = document.querySelector('#steg .slot em')
   if (!em) return '—'
-  const x = L(getComputedStyle(em).color)
-  const y = L(getComputedStyle(em.closest('.slot')).backgroundColor)
-  return `${((Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)).toFixed(2)}:1`
+  return `${kvot(L(getComputedStyle(em).color), L(getComputedStyle(em.closest('.slot')).backgroundColor)).toFixed(2)}:1`
+}
+
+// De tre bottnar samma bricka står på, räknade ur färgvärdena i `editor.css`.
+function kontrastTabell() {
+  const rader = [
+    ['Rutans egen färg #9aa3b8', 'rutan #12141a', '#9aa3b8', '#12141a'],
+    ['Rutans egen färg #9aa3b8', 'den stängda knappen #1d3a5c', '#9aa3b8', '#1d3a5c'],
+    ['Meningens bläck #cfe6ff', 'den stängda knappen #1d3a5c', '#cfe6ff', '#1d3a5c'],
+  ]
+  $('m-kontrast-tab').innerHTML = rader
+    .map(([vad, pa, fg, bg]) => {
+      const k = kvot(L(hex(fg)), L(hex(bg)))
+      return `<tr><td>${text(vad)}</td><td style="color:var(--quiet-2)">${text(pa)}</td><td class="n ${k >= 4.5 ? 'ok' : 'fel'}">${k.toFixed(2)}:1</td></tr>`
+    })
+    .join('')
 }
 
 const OMFORM = {
@@ -498,23 +549,29 @@ const KATALOGRAD = {
 
 // Hur meningen låter, och om det som syns står i det som sägs.
 function horan() {
-  const a = meningen(STEG[2])
-  const b = meningen({ ...STEG[2], place: 'zone:hand:B' })
-  const namnA = namnet(a) ?? a.ren
-  const namnB = namnet(b) ?? b.ren
+  // Platsknappen i det tredje steget, som är den vanliga meningen om en hand, mot samma mening
+  // om en annan hand. Det är den knappen 2.5.3 gäller: det synliga är knappens ord.
+  const a = plats('zone:hand:A')
+  const b = plats('zone:hand:B')
+  const bart = (d) => d.html.replace(/<[^>]+>/g, '')
+  const synligA = bart(a)
+  const namnA = etiketten(a) ?? synligA
+  const namnB = etiketten(b) ?? bart(b)
   $('said-1').textContent = `«${namnA}»`
   $('said-2').textContent = `«${namnB}»`
   $('omform').textContent = OMFORM[form]
-  $('spegel').textContent = namnA === namnB ? `«${namnA}» — samma sak två gånger` : `«${namnA}» · «${namnB}»`
+  $('spegel').textContent = meningen(STEG[3]).sagt
   $('m-kontrast').textContent = form === 'bricka' ? kontrast() : '—'
 
-  const haller = namnA.includes(a.ren)
+  const haller = namnA.includes(synligA)
   const skiljer = namnA !== namnB
   const d = $('said-dom')
-  d.className = `dom ${haller ? 'ok' : 'fel'}`
-  d.innerHTML = haller
-    ? `<b>2.5.3 håller.</b> Det som syns, «${text(a.ren)}», står i det uppläsningen får.${skiljer ? '' : ' <b>Men örat hör ingen skillnad.</b>'}`
-    : `<b>2.5.3 brister.</b> Det som syns, «${text(a.ren)}», står inte i «${text(namnA)}» — en röststyrd användare säger meningen hon läser och får ingen träff.`
+  d.className = `dom ${haller && skiljer ? 'ok' : 'fel'}`
+  d.innerHTML = !haller
+    ? `<b>2.5.3 brister.</b> Det som syns, «${text(synligA)}», står inte i «${text(namnA)}» — en röststyrd användare säger orden hon läser och får ingen träff.`
+    : skiljer
+      ? `<b>2.5.3 håller.</b> Det som syns, «${text(synligA)}», står först i det uppläsningen får.`
+      : `<b>Örat hör ingen skillnad.</b> Båda knapparna heter «${text(namnA)}» — samma sak två gånger (L12).`
 }
 
 // ── Att dra i den ──────────────────────────────────────────────────────────────────────────────
@@ -522,6 +579,7 @@ function allt() {
   rita()
   matt()
   horan()
+  kontrastTabell()
 }
 
 for (const b of document.querySelectorAll('.switch button')) {
@@ -531,10 +589,17 @@ for (const b of document.querySelectorAll('.switch button')) {
     allt()
   }
 }
-for (const b of document.querySelectorAll('.val button')) {
+for (const b of document.querySelectorAll('.val button[data-said]')) {
   b.onclick = () => {
-    for (const o of document.querySelectorAll('.val button')) o.setAttribute('aria-pressed', String(o === b))
+    for (const o of document.querySelectorAll('.val button[data-said]')) o.setAttribute('aria-pressed', String(o === b))
     saidForm = b.dataset.said
+    allt()
+  }
+}
+for (const b of document.querySelectorAll('.val button[data-ljus]')) {
+  b.onclick = () => {
+    for (const o of document.querySelectorAll('.val button[data-ljus]')) o.setAttribute('aria-pressed', String(o === b))
+    document.body.dataset.ljus = b.dataset.ljus
     allt()
   }
 }
