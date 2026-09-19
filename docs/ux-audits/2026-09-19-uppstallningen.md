@@ -7,7 +7,7 @@ Tre interaktiva alternativ ligger i den riktiga RuleShelf på `/play`, `/online`
 DEV-gatade och med syntetiska bok-/zondata. Start: `pnpm prototype:setup`.
 [Instruktioner och avgränsning](../../packages/web/src/rules/prototype/NOTES.md).
 
-## Mätningar i Chromium
+## Första iterationens mätningar i Chromium
 
 Bildens höjd, exklusive bildtext och vertikala marginaler:
 
@@ -52,3 +52,20 @@ produktens tester ersätter inte den.
 Webben: 2 620 tester. E2E: 107 godkända mot riktig lokal stack. 16 separata
 Postgresberoende tester hoppades över i denna körning utan DATABASE_URL;
 de körs med Postgres i PR-grinden. Inga tester lades till för engångsprototypen.
+
+
+## Iteration 2 — beställaren väljer C, men uppställningen är stökig
+
+C:s utfällbara flöde är valt. Den nya iterationen tar bort A/B och ändrar innehållet:
+
+- Gemensamma zoner får en egen rubrik och en enkel lista.
+- Spelarplatser visas en i taget, med en märkt väljare för A–H. Inga zoner tas bort.
+- Namnen bevaras exakt. Ägarskapet kommer från explicit fixturemetadata.
+- Platsvalet finns kvar när uppställningen fälls ihop och öppnas igen.
+
+Vid 320 px blir den utfällda uppställningen med 45 zoner **539 px**, tidigare **1190 px**.
+Samma innehåll är 539 px i luckan med 340 px läsbredd. Sex zoner blir 365 px på telefonen;
+den extra strukturen kostar alltså höjd i det lilla fallet. Ingen sidrullning uppmättes.
+Manuellt verifierat: välj plats H, fäll ihop/öppna med samma plats kvar, byt till två
+platser med giltigt val A, och läs långa namn på 320 px. Själva liststrukturen är ännu
+inte ett produktionsbeslut; det användaren valt är C:s utfällning.
