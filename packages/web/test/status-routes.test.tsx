@@ -2,7 +2,7 @@
 import { createServer, type Server, type Socket } from 'node:net'
 import type { AddressInfo } from 'node:net'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import { TableClient } from '../src/client.js'
 import { DocumentTitle } from '../src/status/DocumentTitle.js'
 import { StatusLive } from '../src/status/StatusLive.js'
@@ -165,10 +165,35 @@ describe.each(LIVE)('$path while the service does not answer at all', (live) => 
     await deaf.stop()
   })
 
+  // On a clock the test drives, not on the wall clock. A deaf service sends nothing, so the only
+  // thing that can ever paint `slow` is the single timer the wait arms for itself — one render,
+  // somewhere between the 80 ms a wait may go unremarked and the 1200 ms deadline. Waiting for
+  // that on the wall clock is a race with no margin to widen: a machine that stops for longer than
+  // the deadline lets both timers come due in the same turn of the loop, React folds the two
+  // updates into one commit, and the screen goes from `connecting` straight to `offline` without
+  // `slow` ever having been on it. `waitFor` is then still watching, patiently, four seconds long,
+  // and reports the state it can see — which is how this read `expected 'offline' to be 'slow'`
+  // once under the whole suite's load and never again on its own (#265). Driving the clock removes
+  // the race rather than hiding it, and lets the order itself — taking long first, failed after —
+  // be what is asserted, which is what the sentence above actually claims. The order is also what
+  // rules the other suspect out: a fixture that hung up instead of staying silent would spend the
+  // retry plan and say `offline` long before the deadline, and the first of these two reads would
+  // catch it by name.
   it('says it is taking long before it says it has failed, so waiting is never silent', async () => {
     const deaf = await deafServer()
-    await open(live, { session: 's1', url: deaf.url })
-    await waitFor(() => expect(noticeState()).toBe('slow'))
+    vi.useFakeTimers()
+    try {
+      await open(live, { session: 's1', url: deaf.url })
+      // Far enough past `slowAfterMs` to be unambiguous, far enough short of `connectTimeoutMs`
+      // that the deadline has not been reached: the two are an order of magnitude apart on purpose.
+      await act(() => vi.advanceTimersByTimeAsync(600))
+      expect(noticeState()).toBe('slow')
+      await act(() => vi.advanceTimersByTimeAsync(FAST.connectTimeoutMs))
+      expect(noticeState()).toBe('offline')
+    } finally {
+      vi.useRealTimers()
+    }
+    expect(deaf.stayedDeaf()).toBe(true)
     await deaf.stop()
   })
 })
