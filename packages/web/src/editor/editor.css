@@ -2408,6 +2408,13 @@
    där den kan stå i spalt, men den hade krävt `display: flex` på regeln ovan — och den delas av
    varje ruta i editorn, inte bara den här. Mot rutans #12141a mäter #9aa3b8 7,28:1. */
 .byd-slot-pop em { font-style: normal; color: #9aa3b8; font-size: 11px; border: 1px solid #2f333d; border-radius: 999px; padding: 0 8px; }
+/* Under pekaren är radens botten inte rutans mörka utan #24507f, och där faller #9aa3b8 till
+   3,28:1 — under 4,5 (#281). Rutan öppnas med musen, så pekaren ligger i listan medan man
+   väljer: det hovrade läget är det normala här och inte ett undantag. Brickan ljusnar därför
+   med bottnen i stället för att byta färg i vila, där 7,28:1 redan håller och formen är den
+   beställaren godkände. Den stannar dämpad — #c3cde2 ger 5,20:1 mot radens egna 7,02:1 — för
+   blir den lika ljus som raden bär bara ramen skillnaden, och ramen mäter 1,5:1. */
+.byd-slot-pop button:hover em { color: #c3cde2; }
 .byd-slot-pop label { display: grid; gap: 4px; padding: 0 8px 8px; font-size: 12px; color: #9aa3b8; }
 /* Frågan som marker (L4) är ett annat slags val än en lista: värdena är växlar och bär därför kvar
    sin ruta. Reglerna står efter listans, för de är lika specifika och det senare vinner. */
