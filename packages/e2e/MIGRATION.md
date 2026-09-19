@@ -156,8 +156,14 @@ fortfarande ritar det, innan selektorn lagas.
 
 ## Det som står kvar
 
-Trettionio filer: `playtest-textures` som specialfall, och trettioåtta hybrider från de minsta mot
-de största.
+Trettiofyra filer: `playtest-textures` och `template-canvas-motif` som specialfall, och resten
+hybrider från de minsta mot de största.
+
+`template-canvas-motif` är det andra som inte går rakt av. Den skickar in `motifs` som en prop —
+beskärningen av varje bild — och den räknas ut i webbläsaren när filen laddas upp (E1,
+`DESIGN-BESLUT.md` rad 966) och sparas per assethash. Den går alltså inte att komma åt genom att
+skriva ett dokument: den kräver uppladdningsresan genom editorns egen filväljare.
+Det är en riktig resa och värd att ha, men den är ett eget arbete och inte en flytt.
 
 `playtest-textures` är fallet som inte går rakt av: den handlar om riktiga texturer, och
 stacken här har ingen renderare (`DESIGN-BESLUT.md` E2, DRIFT §6).
