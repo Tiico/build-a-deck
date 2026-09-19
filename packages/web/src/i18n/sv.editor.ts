@@ -695,6 +695,14 @@ export const svEditor = {
   'setup.slot.group.amountZone': 'Lika många som en zon',
   'setup.slot.group.place': 'Högen och händerna',
   'setup.slot.group.zone': 'Zoner i spelet',
+  // En zon vid en plats, i rutan man väljer i (#255). Zonnamnet är designerns och översätts
+  // aldrig; platsens bokstav sätts efter det, och det är katalogen som äger ordningen och
+  // mellanrummet — ytan skickar de två orden var för sig och sätter aldrig ihop dem själv (A4).
+  'setup.slot.zone.owned': '{zone} {owner}',
+  // Och så här låter raden. Det synliga står först, för en röststyrd användare säger det hon ser
+  // («Hand A») och får ingen träff på något som börjar någon annanstans (WCAG 2.5.3). Att den
+  // ordföljden är lätt stel är priset, taget medvetet framför «Hand, plats A».
+  'setup.slot.zone.owned.tail': '{zone} {owner}, plats',
   'setup.actions.heading': 'När någon klickar på högen kan de välja',
   'setup.actions.new': '＋ Åtgärd',
   'setup.actions.newName': 'Ny åtgärd',

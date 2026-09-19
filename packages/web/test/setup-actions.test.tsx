@@ -26,6 +26,21 @@ async function openZone(id: string): Promise<void> {
 
 const panel = () => document.querySelector('[data-zone-actions]') as HTMLElement
 
+// En ny åtgärd med sitt enda steg, som är den mening rattarna sitter i.
+function newStep(): HTMLElement {
+  fireEvent.click(within(panel()).getByRole('button', { name: '＋ Åtgärd' }))
+  return panel().querySelector('ol li') as HTMLElement
+}
+
+// Öppnar en ratt i meningen och lämnar tillbaka rutan den fällde ut.
+function open(step: HTMLElement, label: string): HTMLElement {
+  fireEvent.click(within(step).getByRole('button', { name: label }))
+  return step.querySelector('.byd-slot-pop') as HTMLElement
+}
+
+// Raderna man väljer bland, som de står — sökfältet och rubrikerna räknas inte.
+const rows = (box: HTMLElement): string[] => [...box.querySelectorAll('.byd-slot-list button')].map((b) => b.textContent ?? '')
+
 // Vilken sida av högen som är "bredvid den" är högens egen sak (K21, reviderar #87): den som
 // lägger leken vid filtens vänsterkant vill inte ha sina kort utanför bordet. Valet sitter på
 // zonen och inte i steget, för ringens Dra 1 och designerns egna åtgärder lägger samma kort.
@@ -95,5 +110,21 @@ describe('en egen åtgärd på en hög, skriven som meningar', () => {
     await run.projects.create(run.projectId, projectDoc())
     await openZone('table')
     expect(document.querySelector('[data-zone-actions]')).toBeNull()
+  })
+})
+
+// Ägaren i platsrutan och antalsrutan (#255). Åtta platser ger åtta zoner som heter «Hand», och
+// raderna man väljer bland blir kopior av varandra: prototypen mätte 21 av 47 rader vid åtta
+// platser. Efterledet är zonlistans egen bricka — `Hand` med ett dämpat `A` efter sig — och
+// sammansättningen är katalogens, aldrig ytans (A4).
+describe('vems zon en rad i rutan står för', () => {
+  it('skiljer två zoner med samma namn åt i platsrutan', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    const step = newStep()
+
+    const box = open(step, 'till vänster om högen')
+    expect(rows(box)).toContain('Hand A')
+    expect(rows(box)).toContain('Hand B')
   })
 })

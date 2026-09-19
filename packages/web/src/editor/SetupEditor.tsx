@@ -13,6 +13,7 @@ import { recipeWords } from './fields.js'
 import { useGesture } from './gesture.js'
 import { CardPreview } from './CardPreview.js'
 import { ZoneActions } from './ZoneActions.js'
+import { nameOf, templateOf } from './zone-name.js'
 import { previewIcons } from './assets.js'
 import { previewFonts } from './fonts.js'
 
@@ -310,13 +311,8 @@ function familyRole(zone: Zone): string | null {
   return zone.id.slice(at + 1) === zone.owner ? zone.id.slice(0, at) : null
 }
 
-// Namnmallen: namnet med platsens egen bokstav utbytt mot hålet den fyller. Två zoner i samma roll
-// är lika när de har samma mall — `Framför A` och `Framför B` är en och samma zon vid var sin
-// plats; `Min hög` vid plats C är inte, och det är den skillnaden familjeraden säger.
-// Ett tecken inget namn kan innehålla, så att hålet aldrig krockar med något designern skrivit.
-const HOLE = '\u0001'
-const templateOf = (zone: Zone): string => zone.name.replace(new RegExp(`(^|\\W)${zone.owner}(?=\\W|$)`, 'g'), `$1${HOLE}`)
-const nameOf = (template: string): string => template.replaceAll(HOLE, '').replace(/\s+/g, ' ').trim()
+// Namnmallen och ordgränsregeln bor i `zone-name.ts`: rutorna i `ZoneActions` ställer samma
+// fråga om samma namn (#255), och två kopior av uttrycket är ett fel som väntar.
 
 // En zonfamilj: samma zon vid var sin plats. `first` är den zon som står först i dokumentet — den
 // familjen tar sin plats i listan efter, och den raden läser sitt slag och sitt «fast» ur. `differ`

@@ -5,6 +5,7 @@ import type { Zone } from '@byd/server/doc'
 import { placedProps, usePlacement } from './placement.js'
 import { queryColumns } from './queries.js'
 import { fieldsOf } from './fields.js'
+import { ownerOf } from './zone-name.js'
 import { useT, type Key, type T } from '../i18n/index.js'
 
 // Authoring what a pile starts with and what it can be asked for, as sentences (prototyped
@@ -385,9 +386,27 @@ function TargetSlot({ target, zones, beside, t, onChange }: { target: ActionTarg
       group: t('setup.slot.group.place'),
       pick: () => onChange({ at }),
     })),
-    ...zones.map((z) => ({ key: `place:zone:${z.id}`, words: z.name, group: t('setup.slot.group.zone'), pick: () => onChange({ at: 'zone', zone: z.id }) })),
+    ...zones.map((z) => ({ key: `place:zone:${z.id}`, ...zoneWords(z, t), group: t('setup.slot.group.zone'), pick: () => onChange({ at: 'zone', zone: z.id }) })),
   ]
   return <ChoiceSlot label={targetWords(target, zones, t, beside)} choices={choices} t={t} />
+}
+
+// Vems zonen är, i raden man väljer bland (#255). Åtta platser ger åtta zoner som heter «Hand»,
+// och prototypen mätte följden: 21 av 47 rader i platsrutan var kopior av en annan rad, fördelade
+// på fyra familjer och inte bara på händerna. Efterledet är zonlistans egen bricka — namnet, och
+// platsens bokstav i en ram efter det — så att ramen säger vems ordet är: `Hand A` får inte bli
+// omöjlig att skilja från `Framför A`, som designern verkligen döpt en zon till (A4).
+//
+// Sammansättningen är katalogens och aldrig ytans: här skickas de två orden var för sig, och
+// noden skickas som nod och inte som text (K21). `ownerOf` svarar inget alls när namnet redan bär
+// platsen, och då är raden namnet självt — `Framför A`, aldrig `Framför A A`.
+//
+// `words` är det söket läser, och efterledet står därför i den: «hand a» går från noll träffar
+// till en, vilket är rutans enda väg till en enskild hand (#230).
+function zoneWords(zone: Zone, t: T): { words: string } {
+  const owner = ownerOf(zone)
+  if (owner === undefined) return { words: zone.name }
+  return { words: t('setup.slot.zone.owned', { zone: zone.name, owner }) }
 }
 
 // The question as chips, which is the grip the data table already taught (L4): values in one
