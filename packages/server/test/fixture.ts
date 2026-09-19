@@ -43,8 +43,8 @@ export function twoSeatSetup(): SetupDef {
 // not inside one, which is why it went on being broken here long after the web suite had written
 // it down (#289). Every test package therefore has its own block of the band:
 //
-//   10_100 – 10_300  packages/e2e            one stack per run, walking for a free number
-//   10_300 – 10_600  packages/render/test
+//   10_100 – 10_200  packages/e2e            one stack per run, walking for a free number
+//   10_200 – 10_600  packages/render/test
 //   10_600 – 11_000  packages/server/test    ← this one
 //   11_000 – 30_000  packages/web/test
 //
