@@ -109,6 +109,39 @@ blev nästan bara borttagning: `process.env['BYD_E2E_WEB_DIST']` är var bygget 
 `baseURL` är var det svarar.
 `felt-font` gick från 600 sekunders budget till 3,9 sekunder.
 
+## Appen kör medan du mäter
+
+`standing` och `inject` lägger markupen **bredvid** `#root`, aldrig i den, och gömmer `#root`.
+Skälet är att appen är igång: React äger `#root` och ritar om närhelst den vill — en lazy chunk
+som landar, en hämtning som misslyckas, en omförsökräknare som tickar — och varje sådan omritning
+ersätter det som stod där.
+
+Att skriva i `#root` fungerar därför ända tills en mätning tar lång nog tid för att en omritning
+ska hinna emellan, och då faller det som «ytan är till hälften borta», inte som en kapplöpning.
+Precis så föll `editor-css`: dess tabbvandring tryckte Tab sextio gånger, editorrutten ritade om
+någonstans kring det sextonde, och de sista fyrtiofyra stoppen fanns helt enkelt inte i dokumentet
+längre.
+Det såg ut som en trasig selektor.
+
+## Den hittade en bugg första kvällen
+
+`editor-window` mätte att fönstret aldrig skrollar, på varje flik, vid 1024 × 768.
+Den gjorde det genom att lyfta ut `.byd-editor`s markup och mäta den i ett dokument den byggde
+själv — och var grön.
+
+Öppnad på riktigt skrollade fönstret **en pixel** på varje flik.
+`window.scrollTo(0, 500)` landade på `scrollY = 1`, så det var ingen avrundning: rubriken gick att
+putta upp.
+
+Skyldiga var appens två live-regioner, `.byd-status-live`, som är `position: absolute` utan `top`
+— och en sådan ruta behåller sin *statiska* position, alltså där flödet hade lagt den, vilket är
+allra sist i appen. Deras 1 px stod en pixel nedanför en sidhög sida.
+
+Det är exakt samma mekanism som #126, ett lager längre ut. Och det är därför den gamla formen inte
+kunde se det: den mäter `.byd-editor`, och de här bor ovanför den i `App`.
+Att lyfta ut markup kastar bort allt som inte är den markupen — vilket är precis det som gör
+dokumentets egen höjd till fel fråga att ställa om den.
+
 ## Ett värde som ändrar sig är ett fynd
 
 `online-layout` mätte «filtvyn på en telefon» vid 375 × 812.
@@ -123,8 +156,8 @@ fortfarande ritar det, innan selektorn lagas.
 
 ## Det som står kvar
 
-Fyrtio filer: `editor-css` av de rena, `playtest-textures` som specialfall, och trettioåtta
-hybrider från de minsta mot de största.
+Trettionio filer: `playtest-textures` som specialfall, och trettioåtta hybrider från de minsta mot
+de största.
 
 `playtest-textures` är fallet som inte går rakt av: den handlar om riktiga texturer, och
 stacken här har ingen renderare (`DESIGN-BESLUT.md` E2, DRIFT §6).

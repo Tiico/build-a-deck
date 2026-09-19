@@ -1,16 +1,25 @@
-import { readFileSync } from 'node:fs'
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { chromium, type Browser } from 'playwright'
-import { contrastRatio } from '../src/player/contrast.js'
+import { expect, test } from '@playwright/test'
+import type { Page } from '@playwright/test'
+import { contrastRatio } from '../../../web/src/player/contrast.js'
+import { standing } from '../../support/surface.js'
 
 // Every keyboard stop in the editor has to say where it is, in all three modes (UX-KONTROLLER:
 // "komplett … tangentbordsinteraktion samt synlig fokusmarkering"). Only an engine that knows
 // `:focus-visible` can answer that, so the shipped stylesheet is measured in one.
-// The surface, and the shared button language over it — the editor that ships is both.
-const css = [new URL('../src/editor/editor.css', import.meta.url), new URL('../src/buttons.css', import.meta.url)].map((at) => readFileSync(at, 'utf8')).join('\n')
+//
+// Migrated from `packages/web/test/editor-css.test.ts`, which pasted `editor.css` and
+// `buttons.css` into a document of its own — the editor that ships is the surface *and* the shared
+// button language over it, and the honest way to have both in the right order is to open the route
+// that links them. The editor's sheet is a chunk of its own (#186), so it is waited for by a token
+// only it declares.
+//
+// The bare document also had to say `body{margin:0}` for the measurements that are about filling
+// the window. The app's own shell says `html, body, #root { margin: 0; height: 100% }`, so
+// standing in it is that baseline rather than a reconstruction of it.
 
-// The editor's controls as they ship: the header, and one panel per mode with what can be
-// reached inside it.
+// The editor declares its own tokens on `.byd-editor`; this is the one to wait for.
+const EDITOR = { on: '.byd-editor', token: '--byd-editor-primary-mark' }
+
 const SHELL = `
 <div class="byd-editor" data-page="editor">
   <header>
@@ -175,20 +184,11 @@ const SHELL = `
 // have to be seen against. A field is a stop the reader types into; the rest are controls.
 type Stop = { what: string; style: string; width: number; color: string; on: string; inside: string | null; typed: boolean }
 
-let browser: Browser
-beforeAll(async () => {
-  browser = await chromium.launch()
-}, 60_000)
-afterAll(async () => {
-  await browser.close()
-}, 60_000)
-
 // Walks the whole tab order and reports the focus ring at every stop, with the background it has
 // to be seen against.
-async function tabThrough(): Promise<Stop[]> {
-  const page = await browser.newPage()
-  try {
-    await page.setContent(`<!doctype html><html><head><style>${css}</style></head><body>${SHELL}</body></html>`, { waitUntil: 'load' })
+async function tabThrough(page: Page): Promise<Stop[]> {
+  await standing(page, SHELL, { at: '/editor', needs: EDITOR })
+  {
     const stops: Stop[] = []
     for (let i = 0; i < 60; i++) {
       await page.keyboard.press('Tab')
@@ -214,14 +214,12 @@ async function tabThrough(): Promise<Stop[]> {
       stops.push(stop)
     }
     return stops
-  } finally {
-    await page.close()
   }
 }
 
-describe('the editor under a keyboard', () => {
-  it('draws a visible focus ring on every stop in every mode', async () => {
-    const stops = await tabThrough()
+test.describe('the editor under a keyboard', () => {
+  test('draws a visible focus ring on every stop in every mode', async ({ page }) => {
+    const stops = await tabThrough(page)
     expect(stops.map((s) => s.what)).toEqual([
       'the way out of the editor',
       'the open tab',
@@ -297,7 +295,7 @@ describe('the editor under a keyboard', () => {
     expect(unmarked.map((s) => s.what)).toEqual([])
     const ringed = fields.filter((s) => s.style !== 'none')
     expect(ringed.map((s) => s.what)).toEqual([])
-  }, 60_000)
+  })
 })
 
 // The element on the card is a keyboard stop of its own (#144), and the card under it is the
@@ -317,11 +315,10 @@ const ON_THE_CARD = `
 // Every colour a ring is drawn in, outline and box-shadow together.
 const RING = /(rgba?\([^)]*\)|#[0-9a-f]{3,8})/gi
 
-describe('an element on the card under a keyboard (#144)', () => {
-  it('rings it whatever the card is painted, and shows the move mode as something else again', async () => {
-    const page = await browser.newPage()
-    try {
-      await page.setContent(`<!doctype html><html><head><style>body{margin:0}${css}</style></head><body>${ON_THE_CARD}</body></html>`, { waitUntil: 'load' })
+test.describe('an element on the card under a keyboard (#144)', () => {
+  test('rings it whatever the card is painted, and shows the move mode as something else again', async ({ page }) => {
+    {
+      await standing(page, ON_THE_CARD, { at: '/editor', needs: EDITOR })
       await page.focus('#plain')
       const rings = await page.evaluate(() =>
         ['plain', 'moving'].map((id) => {
@@ -346,10 +343,8 @@ describe('an element on the card under a keyboard (#144)', () => {
         [true, true],
         [true, true],
       ])
-    } finally {
-      await page.close()
     }
-  }, 60_000)
+  })
 })
 
 // A marked row (#17) has to be visible as marked from across the table, not only by the tick in
@@ -365,11 +360,10 @@ const MARKED = `
   </div></div></main>
 </div>`
 
-describe('the table under a selection', () => {
-  it('draws a marked row differently from one that is not', async () => {
-    const page = await browser.newPage()
-    try {
-      await page.setContent(`<!doctype html><html><head><style>body{margin:0}${css}</style></head><body>${MARKED}</body></html>`, { waitUntil: 'load' })
+test.describe('the table under a selection', () => {
+  test('draws a marked row differently from one that is not', async ({ page }) => {
+    {
+      await standing(page, MARKED, { at: '/editor', needs: EDITOR })
       const [plain, marked, lookedAt] = await page.evaluate(() =>
         ['#plain', '#marked', '#looked-at'].map((sel) => getComputedStyle(document.querySelector(sel)!).backgroundColor),
       )
@@ -388,10 +382,8 @@ describe('the table under a selection', () => {
       })
       expect(rowNow).toBe(lookedAt)
       expect(cell).toContain('inset')
-    } finally {
-      await page.close()
     }
-  }, 60_000)
+  })
 })
 
 // The template mode is a full-height three-column canvas; if the panel stops short, the layer
@@ -405,22 +397,21 @@ const TEMPLATE = (link: boolean) => `
   </main>
 </div>`
 
-describe('the editor fills the window', () => {
-  it('gives the open mode every pixel under the header, with or without a table link', async () => {
-    const page = await browser.newPage({ viewport: { width: 1280, height: 700 } })
-    try {
+test.describe('the editor fills the window', () => {
+  // Seven hundred high, because the numbers below are that window's own.
+  test.use({ viewport: { width: 1280, height: 700 } })
+  test('gives the open mode every pixel under the header, with or without a table link', async ({ page }) => {
+    {
       const measured: Record<string, number[]> = {}
       for (const link of [false, true]) {
-        await page.setContent(`<!doctype html><html><head><style>body{margin:0}${css}</style></head><body>${TEMPLATE(link)}</body></html>`, { waitUntil: 'load' })
+        await standing(page, TEMPLATE(link), { at: '/editor', needs: EDITOR })
         measured[link ? 'with a table link' : 'on its own'] = await page.evaluate(() =>
           ['.byd-editor > main', '[role="tabpanel"]', '.byd-canvas-layers'].map((sel) => Math.round(document.querySelector(sel)!.getBoundingClientRect().bottom)),
         )
       }
       expect(measured).toEqual({ 'on its own': [700, 700, 700], 'with a table link': [700, 700, 700] })
-    } finally {
-      await page.close()
     }
-  }, 60_000)
+  })
 })
 
 // On a desk the header is one 56 px row — tall enough for a 44 px target — and it carries the
@@ -428,11 +419,12 @@ describe('the editor fills the window', () => {
 // modes and the actions are the stage strip at the bottom of the screen instead (L10), so this
 // is the desk's question: nothing in the row may wrap, because a header that wraps does not push
 // the panel down, it spills over it.
-describe('the editor header on a desk', () => {
-  it.each([1024, 1280])('keeps every control inside its row at %i px', async (width) => {
-    const page = await browser.newPage({ viewport: { width, height: 700 } })
-    try {
-      await page.setContent(`<!doctype html><html><head><style>body{margin:0}${css}</style></head><body>${SHELL}</body></html>`, { waitUntil: 'load' })
+test.describe('the editor header on a desk', () => {
+  for (const width of [1024, 1280]) {
+  test(`keeps every control inside its row at ${width} px`, async ({ page }) => {
+    {
+      await page.setViewportSize({ width, height: 700 })
+      await standing(page, SHELL, { at: '/editor', needs: EDITOR })
       const wrapped = await page.evaluate(() =>
         [...document.querySelectorAll('.byd-editor > header strong, .byd-editor > header button, .byd-editor-rev')]
           .filter((el) => {
@@ -446,10 +438,9 @@ describe('the editor header on a desk', () => {
           .map((el) => el.textContent?.trim().slice(0, 20)),
       )
       expect(wrapped).toEqual([])
-    } finally {
-      await page.close()
     }
-  }, 60_000)
+  })
+  }
 })
 
 // The wall's table of contents folded to a strip (#179). Folded it is 66 px wide and the names are
@@ -486,11 +477,11 @@ const STRIP = `
   </main>
 </div>`
 
-describe('the folded jump column (#179)', () => {
-  it('is a 66 px strip of tiles that are a tap target both ways, sized by their groups', async () => {
-    const page = await browser.newPage({ viewport: { width: 1280, height: 800 } })
-    try {
-      await page.setContent(`<!doctype html><html><head><style>body{margin:0}${css}</style></head><body>${STRIP}</body></html>`, { waitUntil: 'load' })
+test.describe('the folded jump column (#179)', () => {
+  test.use({ viewport: { width: 1280, height: 800 } })
+  test('is a 66 px strip of tiles that are a tap target both ways, sized by their groups', async ({ page }) => {
+    {
+      await standing(page, STRIP, { at: '/editor', needs: EDITOR })
       const measured = await page.evaluate(() => ({
         strip: Math.round(document.querySelector('.byd-wall-rail')!.getBoundingClientRect().width),
         tiles: [...document.querySelectorAll('[data-tile]')].map((el) => {
@@ -505,8 +496,6 @@ describe('the folded jump column (#179)', () => {
       const heights = measured.tiles.map((tile) => tile.h)
       expect(heights).toEqual([...heights].sort((a, b) => b - a))
       expect(heights[0]!).toBeGreaterThan(44)
-    } finally {
-      await page.close()
     }
-  }, 60_000)
+  })
 })
