@@ -261,17 +261,23 @@ describe('the way a reference is put into a rule (#215)', () => {
     await waitFor(() => expect(blockOf('t1').textContent).toContain('Dra ett kort ur [[drag'))
   })
 
-  // #272: a reference written into a heading is never read as one — `renderRules` does not parse
-  // headings inline, so it stands raw in the book and in the printed booklet. That is a bug of its
-  // own and a separate issue; what must not happen here is a new way to make one.
-  it('does not answer in a heading, where a reference would never become a reference', async () => {
+  // The heading was kept outside this surface while #272 stood open: `renderRules` did not read a
+  // heading inline, so a reference put into one would have stayed seven raw characters, and the
+  // one thing #215 must not do is open a new way to that. #272 is fixed — the heading is read like
+  // a paragraph — so the reason is gone and the field answers again. This test said the opposite
+  // until then, and it is changed here deliberately.
+  it('answers in a heading too, now that a heading reads its references (#272)', async () => {
     await openBook()
     fireEvent.click(blockOf('h1').querySelector('[role="button"]')!)
     const head = (await within(book()).findByLabelText('Rubrik h1')) as HTMLInputElement
     head.focus()
-    typeInto(head, 'Så spelar ni [[dra')
-    await waitFor(() => expect((within(book()).getByLabelText('Rubrik h1') as HTMLInputElement).value).toBe('Så spelar ni [[dra'))
-    expect(list()).toBeNull()
+    typeInto(head, 'Så spelar ni [[drag')
+    await waitFor(() => expect(optionNames()).toEqual(['Draghög']))
+    fireEvent.keyDown(head, { key: 'Enter' })
+    await waitFor(() => expect((within(book()).getByLabelText('Rubrik h1') as HTMLInputElement).value).toBe('Så spelar ni [[zon:draw]]'))
+    // And what the reader meets above the section is the name, never what was written.
+    fireEvent.blur(within(book()).getByLabelText('Rubrik h1'))
+    await waitFor(() => expect(blockOf('h1').textContent).toContain('Så spelar ni Draghög'))
   })
 })
 

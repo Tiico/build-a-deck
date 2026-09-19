@@ -807,7 +807,26 @@ function Editing({
             if (!e.currentTarget.contains(e.relatedTarget)) onClose()
           }}
         >
-          <input autoFocus aria-label={t('rules.block.heading', { id: block.id })} value={block.text} {...typing.visit} onChange={(e) => onPatch({ text: e.target.value }, typing.token())} />
+          {/* The heading is a field like the paragraph is (#272). It was kept outside this surface
+              while a reference in a heading would have stayed seven raw characters (#215, and the
+              bug that made it so); the heading reads its references now, so the reason is gone and
+              the way in is the same two characters here as everywhere else. The list hangs on the
+              field's own wrapper and not on the row, so it opens under the words and not under the
+              chooser standing beside them. */}
+          <div className="byd-rules-field">
+            <input
+              autoFocus
+              aria-label={t('rules.block.heading', { id: block.id })}
+              value={block.text}
+              {...typing.visit}
+              onChange={(e) => {
+                onPatch({ text: e.target.value }, typing.token())
+                openRefs('heading', e.target)
+              }}
+              {...refField('heading', (text) => onPatch({ text }))}
+            />
+            {refList('heading', (text) => onPatch({ text }))}
+          </div>
           <select aria-label={t('rules.block.level', { id: block.id })} value={block.level} onChange={(e) => onPatch({ level: e.target.value === '1' ? 1 : 2 })}>
             <option value="1">{t('rules.level.1')}</option>
             <option value="2">{t('rules.level.2')}</option>
