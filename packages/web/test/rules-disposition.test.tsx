@@ -95,7 +95,10 @@ describe('a question a section carries (#131)', () => {
     fireEvent.click(written.querySelector('[data-ask]') as HTMLElement)
     const field = (await within(written).findByLabelText(/^Text /)) as HTMLTextAreaElement
     expect(field.value).toBe('')
-    expect(field.placeholder).toBe('Vad handlar spelet om, i två meningar? Hur många spelar, och hur länge?')
+    // The section's own question first, and under it the tool's notice about the way to a
+    // reference (#215, «Radad»). The question is the block's and stands untouched; the second
+    // line is the tool's and is what an empty field is for.
+    expect(field.placeholder).toBe('Vad handlar spelet om, i två meningar? Hur många spelar, och hur länge?\n[[ hämtar en zon eller ett kort.')
     fireEvent.change(field, { target: { value: 'E' } })
     await waitFor(() => expect(within(written).getByText('E')).toBeTruthy())
     expect(written.querySelectorAll('[data-ask]')).toHaveLength(SECTIONS.length - 1)

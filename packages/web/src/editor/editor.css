@@ -1054,7 +1054,10 @@
    was opened from. When the rail lies down as a stage strip it hangs under itself instead, since
    there is no room beside it there. */
 .byd-canvas-tool-icon { position: relative; display: grid; }
-.byd-canvas-symbols { left: calc(100% + 6px); top: -6px; max-height: 260px; }
+.byd-canvas-symbols { left: calc(100% + 6px); top: -6px; max-height: min(260px, var(--byd-place-room, 260px)); }
+/* Rutan öppnas dit det finns plats (#229): listan hänger vid verktygets överkant och speglas mot
+   dess underkant, vilket är vad som gör vändningen exakt. */
+.byd-canvas-symbols[data-place-y='up'] { top: auto; bottom: -6px; }
 .byd-canvas-tools .byd-symbol-list button { font-size: 12px; }
 .byd-canvas-tools .byd-symbol-list button span { font-size: 12px; line-height: 1.3; }
 .byd-canvas[data-stage] .byd-canvas-symbols { left: 8px; top: calc(100% + 4px); }
@@ -1278,13 +1281,20 @@
 /* The symbol picker at the brace (E4): it opens under the cell being typed in. */
 .byd-data td { position: relative; }
 .byd-data-picking { z-index: 2; }
-.byd-data-symbols { left: 4px; top: 100%; max-height: 230px; }
+.byd-data-symbols { left: 4px; top: 100%; max-height: min(230px, var(--byd-place-room, 230px)); }
+.byd-data-symbols[data-place-y='up'] { top: auto; bottom: 100%; }
+.byd-data-symbols[data-place-x='end'] { left: auto; right: 4px; }
 /* One library, one look, wherever it is opened (E4): the rail's Ikon tool and the brace in a cell
    draw the same component, so what an option is and which one the keys are on is written once.
    The two classes above are what places each of them, and that is all they are for. This block
    stands after the tool rail's own button styles, which it must outrank inside the rail. */
-.byd-symbol-list { position: absolute; z-index: 5; width: 230px; overflow: auto; display: grid; gap: 2px; padding: 4px; border-radius: 10px; background: var(--byd-editor-panel-bg); border: 1px solid #3b4358; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5); }
-.byd-symbol-list button { display: flex; align-items: center; gap: 8px; border: 1px solid transparent; border-radius: 7px; padding: 4px 8px; background: transparent; color: #e6ecfa; font: inherit; text-align: left; cursor: pointer; }
+.byd-pick-list { position: absolute; z-index: 5; overflow: auto; display: grid; gap: 2px; padding: 4px; border-radius: 10px; background: var(--byd-editor-panel-bg); border: 1px solid #3b4358; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5); }
+.byd-pick-list button { display: flex; align-items: center; gap: 8px; border: 1px solid transparent; border-radius: 7px; padding: 4px 8px; background: transparent; color: #e6ecfa; font: inherit; text-align: left; cursor: pointer; }
+/* Att ingenting matchar är ett svar och ska se ut som ett. En lista som bara försvann skulle läsas
+   som en kontroll som gick sönder, och det är just vad en yta vars namn är designerns egna råkar
+   ut för — biblioteket, vars ord är verktygets, har ingenting att förklara och säger inget. */
+.byd-pick-none { margin: 0; padding: 4px 8px; color: var(--byd-editor-quiet); font: 12px system-ui; }
+.byd-symbol-list { width: 230px; }
 /* Where the next glyph will be taken from — under the pointer, or wherever the arrows have walked
    to, which are the same state reached two ways and so are one rule. It is a cursor and not a
    choice: nothing in this list is *on*, and the moment one is picked the list closes. So it is not
@@ -1301,8 +1311,8 @@
    stapeln under, som knappspråket föreskriver (#44, variant B) — och pekaren behåller sitt
    hårstreck. Aldrig en fyllning: det som är valt får inte kunna läsas som det man ska trycka på,
    och `button-language.test.tsx` mäter den regeln över hela verktyget. */
-.byd-symbol-list button:hover { border-color: var(--byd-editor-primary-mark); }
-.byd-symbol-list button[aria-selected='true'] { border-color: var(--byd-editor-primary-mark); box-shadow: inset 0 -3px 0 var(--byd-editor-primary-mark); }
+.byd-pick-list button:hover { border-color: var(--byd-editor-primary-mark); }
+.byd-pick-list button[aria-selected='true'] { border-color: var(--byd-editor-primary-mark); box-shadow: inset 0 -3px 0 var(--byd-editor-primary-mark); }
 .byd-symbol-list img { width: 20px; height: 20px; padding: 0; border-radius: 5px; background: #e8e2d4; }
 .byd-symbol-list small { margin-left: auto; color: #9aa3b8; font-size: 11px; }
 /* The header is the sort control (#15): the column's name, the state as an arrow beside it. */
@@ -2162,10 +2172,25 @@
 .byd-rules-row { display: flex; gap: 8px; }
 .byd-rules-row select { width: 150px; }
 .byd-rules-edit > button { justify-self: start; border: 1px solid #2f333d; border-radius: 8px; padding: 4px 8px; background: #1b1d23; color: #fff; font: 700 12px system-ui; cursor: pointer; }
-.byd-rules-picker { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-.byd-rules-picker > span { color: var(--byd-editor-quiet); font: 10px system-ui; text-transform: uppercase; letter-spacing: 1px; }
-.byd-rules-picker button { border: 1px solid #2f333d; border-radius: 7px; padding: 4px 8px; background: #1b1d23; color: #dce3f2; font: 11px system-ui; cursor: pointer; }
-.byd-rules-remove { margin-left: auto; color: #ff9a9a !important; }
+/* Vad som står under ett öppet block sedan raden med en knapp per referens är borta (#215).
+   Kvar är blockets egen kontroll, längst ut åt det håll läsningen slutar — där raden redan lade
+   den, så ingen hand behöver leta upp den på ett nytt ställe. */
+.byd-rules-foot { display: flex; }
+/* Fältet och listan som `[[` öppnar under det (#215). Rutan hänger på omslaget och inte på
+   blocket, för ett listblock är flera fält och listan hör under det markören står i. Bredden är
+   inte symbollistans 230 px: där är namnen bibliotekets egna och korta, här är de designerns, och
+   prototypen mätte 25 av 176 namn som inte rymdes i den smalare rutan. */
+.byd-rules-field { position: relative; }
+.byd-rules-refs { left: 4px; top: 100%; width: 320px; max-height: min(230px, var(--byd-place-room, 230px)); }
+/* Åt vilket håll listan far (#229). En bok är lång och ett block står ofta vid dess fot: åtta
+   rader är 240 px mätta i Chromium, och sidan rullar inte fram dem. Nedåt är kvar som utgångsläge
+   — det är där listan står innan måttet hunnit tas — och uppåt är samma kant speglad. */
+.byd-rules-refs[data-place-y='up'] { top: auto; bottom: 100%; }
+.byd-rules-refs[data-place-x='end'] { left: auto; right: 4px; }
+.byd-rules-refs button { align-items: baseline; font: 13px system-ui; }
+.byd-rules-refs button > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.byd-rules-refs button > small { margin-left: auto; flex: none; color: var(--byd-editor-quiet); font-size: 11px; }
+.byd-rules-remove { margin-left: auto; border: 1px solid #2f333d; border-radius: 7px; padding: 4px 8px; background: #1b1d23; color: #ff9a9a; font: 11px system-ui; cursor: pointer; }
 /* The way to add a block after this one. It used to be painted only while a pointer rested over
    its block, which is no way at all for a thumb — a screen with no hover to give had a control it
    could only hit by luck — and for a keyboard it was `:focus-visible` painting back what the rest

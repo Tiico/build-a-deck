@@ -65,14 +65,8 @@ describe('the rulebook in the editor (B7)', () => {
     expect((await run.projects.at(run.projectId, 1))?.rules?.blocks[1]).toMatchObject({ text: 'Dra ett kort ur [[zon:draw]] och lägg det i [[zon:discard]].' })
   })
 
-  it('puts a reference in from a list of what the game has, so a rule never holds a name', async () => {
-    await openRules()
-    fireEvent.click(within(book()).getByText(/Dra ett kort ur/))
-    await within(book()).findByLabelText('Text t1')
-    fireEvent.click(within(book()).getByRole('button', { name: 'Sätt in Spelyta' }))
-    await waitFor(() => expect((within(book()).getByLabelText('Text t1') as HTMLTextAreaElement).value).toContain('[[zon:table]]'))
-    expect(within(book()).getAllByText('Spelyta').length).toBeGreaterThan(0)
-  })
+  // How a reference gets into a rule at all is `rules-inserting`'s (#215): the row of one button
+  // per reference is gone, and `[[` opens a list that narrows where the caret stands.
 
   it('adds a block after the one it is asked for, and takes one away', async () => {
     await openRules()
