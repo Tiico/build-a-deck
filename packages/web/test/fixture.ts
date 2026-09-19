@@ -79,6 +79,21 @@ export function seatSetup(): SetupDef {
 // to at all. `listen` knows nothing of that list, so a fixture given 10080 starts perfectly well
 // and then every request to the address it hands out fails — as `TypeError: fetch failed, Caused
 // by: bad port`, inside whatever test was using it, about a port nothing in that test named.
+//
+// The rule is machine-wide, and so is the collision it prevents: it happens between packages and
+// not inside one. Writing it down here was therefore never enough — three fixtures outside this
+// package went on asking for any port at all, in suites that do not read this file (#289). Every
+// test package now has its own block of the band, and this is the topmost of them:
+//
+//   10_100 – 10_200  packages/e2e            one stack per run, walking for a free number
+//   10_200 – 10_600  packages/render/test
+//   10_600 – 11_000  packages/server/test
+//   11_000 – 30_000  packages/web/test       ← this one
+//
+// The blocks are what makes two packages asking for one number impossible rather than unlikely,
+// and each package's own port test is what holds its reckoning inside its own block. The rule is
+// written once per package rather than shared, so that no package's tests have to reach into
+// another's for a number.
 const PORT_FLOOR = 11_000
 const PORT_CEILING = 30_000
 // The band is cut so that no two fixtures alive at the same time ever want the same number: a
