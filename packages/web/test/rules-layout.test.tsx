@@ -22,7 +22,7 @@ import { atWidth } from './viewport.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
-const css = `${read('src/editor/editor.css')}\n${read('src/buttons.css')}\n${read('src/a11y.css')}`
+const css = `${read('src/editor/editor.css')}\n${read('src/rules/rules.css')}\n${read('src/buttons.css')}\n${read('src/a11y.css')}`
 
 const document_ = (html: string) =>
   shell
@@ -37,13 +37,19 @@ const SCREENS = [
   { width: 1024, height: 768 },
 ] as const
 
-// The rules tab as markup, in each of its three states: the disposition an empty tab proposes, the
-// book that stands there once a way in has been taken, and a file lying in that book as a proposal
+// The rules tab as markup, in each of its states: the disposition an empty tab proposes, the book
+// that stands there once a way in has been taken, and a file lying in that book as a proposal
 // (#131). The third is the one the decision between prototype 8's A and B turned on: A had two
 // scrolling areas at 1024 and 1280, so the thing that has to be read carefully fell below a fold.
+//
+// The measure of 68 characters is asked of the three the designer writes in and not of the fourth:
+// the presented book is the table's own 380 px drawer by decision (#227), and the whole point of
+// the switch is that the two books are set to different measures.
 type Scrolling = { areas: number; nested: string[] }
-type State = 'empty' | 'written' | 'proposal'
-const STATES: readonly State[] = ['empty', 'written', 'proposal']
+// And since #227 a fourth: the written book read as the players are handed it, which is the same
+// spread with the table's own drawer standing in the reading area against a felt.
+type State = 'empty' | 'written' | 'proposal' | 'table'
+const STATES: readonly State[] = ['empty', 'written', 'proposal', 'table']
 
 // A file that rewrites one of the template's sections and has nothing to say about the other four,
 // so the proposal carries every mark there is: rewritten, new, going, and the setup left alone.
@@ -67,6 +73,7 @@ async function rules(width: number, state: State): Promise<string> {
       fireEvent.click(screen.getByRole('button', { name: 'Börja från en mall' }))
       await waitFor(() => expect(document.querySelector('[data-rulebook]')).not.toBeNull())
     }
+    if (state === 'table') fireEvent.click(screen.getByRole('button', { name: 'Som på bordet' }))
     if (state === 'proposal') {
       fireEvent.change(screen.getByLabelText('Importera över boken'), { target: { files: [new File([OVER], 'regler-v4.md', { type: 'text/markdown' })] } })
       await screen.findByRole('region', { name: 'Vad importen gör med boken du har' })
@@ -132,7 +139,7 @@ describe.each(SCREENS)('the rules tab at $width × $height', (screen_) => {
     expect(Math.abs(measured.measure - measured.sixtyEight), `measured ${measured.measure}px against 68 characters at ${measured.sixtyEight}px`).toBeLessThanOrEqual(2)
   }, 90_000)
 
-  it('holds the whole tab inside the window, in all three states, and never scrolls it sideways', async () => {
+  it('holds the whole tab inside the window, in each of its states, and never scrolls it sideways', async () => {
     for (const state of STATES) {
       const measured = await measure(screen_, state, (page) =>
         page.evaluate(() => {
@@ -164,7 +171,7 @@ describe.each(SCREENS)('the rules tab at $width × $height', (screen_) => {
     // is the ceiling and never that there is something to scroll — `rules-column` is where a book
     // long enough to make both of them scroll is built and counted.
     const said = JSON.stringify(read)
-    expect(Object.fromEntries(STATES.map((state) => [state, (read[state] as Scrolling).nested])), said).toEqual({ empty: [], written: [], proposal: [] })
+    expect(Object.fromEntries(STATES.map((state) => [state, (read[state] as Scrolling).nested])), said).toEqual({ empty: [], written: [], proposal: [], table: [] })
     for (const state of STATES) expect((read[state] as Scrolling).areas, `${state} of ${said}`).toBeLessThan(3)
   }, 120_000)
 })
@@ -267,5 +274,73 @@ describe('the ways in between the blocks (#216)', () => {
     expect(count).toBeGreaterThan(1)
     expect(over).toEqual([])
     expect(least).toBeGreaterThanOrEqual(44)
+  }, 120_000)
+})
+
+// The presented mode (#227, approved 2026-09-19: A's toggle, A's column, C's felt). Three of the
+// acceptance criteria are layout and nothing else, so they are asked of a real engine here rather
+// than reasoned about in a stylesheet: the drawer is the table's own 380 px, it stands against a
+// felt instead of the editor's dark bottom, and the reading area is the same box in both modes so
+// that the spread does not jump under the reader when she presses the switch.
+//
+// No pixel of any text is asserted. 380 is a number the product owner decided and the stylesheet
+// declares; the box is compared with itself in the other mode; and the felt is compared with the
+// editor's own ground rather than with a colour written down here.
+describe('the book as at the table (#227)', () => {
+  // The spread's two boxes, read the same way in whichever mode the tab is in.
+  const spread = (page: Page) =>
+    page.evaluate(() => {
+      const box = (sel: string) => {
+        const r = document.querySelector(sel)?.getBoundingClientRect()
+        return r ? { left: Math.round(r.left), top: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) } : null
+      }
+      return { reading: box('.byd-rules-reading'), toc: box('.byd-rules-toc') }
+    })
+  const presented = (page: Page) =>
+    page.evaluate(() => {
+      const box = (el: Element | null) => {
+        const r = el?.getBoundingClientRect()
+        return r ? { left: Math.round(r.left), top: Math.round(r.top), width: Math.round(r.width), height: Math.round(r.height) } : null
+      }
+      const panel = document.querySelector<HTMLElement>('.byd-rules-panel')!
+      const felt = document.querySelector<HTMLElement>('.byd-rules-felt')!
+      const button = document.querySelector<HTMLElement>('.byd-rules-open')!
+      const b = button.getBoundingClientRect()
+      const p = panel.getBoundingClientRect()
+      return {
+        reading: box(document.querySelector('.byd-rules-reading')),
+        panel: box(panel),
+        toc: box(document.querySelector('.byd-rules-toc')),
+        ground: getComputedStyle(felt).backgroundImage + getComputedStyle(felt).backgroundColor,
+        editorGround: getComputedStyle(document.querySelector('.byd-editor')!).backgroundColor,
+        // The button that opens the drawer, and whether its own drawer is lying over it. Both
+        // readings: the rectangles, and what a finger would actually meet in the middle of it.
+        underItsOwnDrawer: b.left < p.right && p.left < b.right && b.top < p.bottom && p.top < b.bottom,
+        meets: document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2)?.className ?? 'nothing',
+      }
+    })
+
+  it('gives the drawer the table’s own 380 px, and stands it against a felt and not the editor’s bottom', async () => {
+    const seen = await measure(SCREENS[0], 'table', presented)
+    expect(seen.panel!.width).toBe(380)
+    // A felt is a ground of its own: green, and nothing like the dark the editor is drawn on.
+    expect(seen.ground).toMatch(/gradient/)
+    expect(seen.ground).not.toContain(seen.editorGround)
+  }, 120_000)
+
+  it('leaves the column standing and the reading area in the same box it had in the other mode', async () => {
+    const written = await measure(SCREENS[0], 'written', spread)
+    const table = await measure(SCREENS[0], 'table', spread)
+    expect(table.toc).toEqual(written.toc)
+    expect(table.reading).toEqual(written.reading)
+  }, 180_000)
+
+  // The finding the prototype measured and the decision turned into a requirement: `Regler` stands
+  // at `right: 16px; top: 16px` of the felt and the drawer takes the outermost 380 px, so an open
+  // drawer used to cover the very button that opened it. It is the table's own stylesheet, so
+  // fixing it here fixes it at the table and on the TV as well.
+  it('never lays the open drawer over the button that opens it', async () => {
+    const seen = await measure(SCREENS[0], 'table', presented)
+    expect({ under: seen.underItsOwnDrawer, meets: seen.meets }).toEqual({ under: false, meets: 'byd-rules-open' })
   }, 120_000)
 })

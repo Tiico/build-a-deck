@@ -2038,6 +2038,28 @@
 /* The area the book is read in. It is a box of its own and not the book itself, so the paper
    still ends where the text ends instead of being stretched down the whole tab. */
 .byd-rules-reading { min-width: 0; min-height: 0; overflow: auto; scrollbar-width: thin; }
+/* Regelbokens två lägen (#227, godkänd 2026-09-19: A:s växel, A:s spalt, C:s filt). Växeln står
+   först i huvudet och är ett val bland flera, alltså `.byd-choice` och inga egna knappfärger. */
+.byd-rules-modes { display: flex; gap: var(--byd-s1); }
+/* Presentationsläget rullar inte själv: luckans egen kropp gör det, precis som vid bordet. */
+.byd-rules-reading[data-mode='table'] { overflow: hidden; }
+/* Filten. Måttet är bokens eget, så läsytans låda är densamma i båda lägena och uppslaget inte
+   hoppar vid varje växling; `font` står här bara för att `ch` ska vara bokens `ch` och inte
+   editorns. Grönt är bordets egen grund: mot editorns mörka botten ser en lucka på 380 px ut som
+   en smal panel i ett verktyg, mot en filt ser den ut som det den är. */
+.byd-rules-felt {
+  position: relative;
+  box-sizing: border-box;
+  min-width: 0;
+  width: calc(68ch + 80px);
+  max-width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 14px;
+  font: 14px/1.7 Georgia, serif; /* undantag: bokens egen sättning — måttet är bokens */
+  background: radial-gradient(ellipse at 50% 40%, #2e6b46, #1f4a30 70%, #173a26);
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.45);
+}
 /* The column's own heading stays over its rows now that they scroll under it (#210), the way the
    wall's band headings and the layer column keep theirs (#179) — a label that scrolls away is a
    column that stops saying what it is exactly when somebody is looking through it. */

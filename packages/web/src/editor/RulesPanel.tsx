@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 import { namesOfProject } from '@byd/server/doc'
 import type { ProjectDoc, RuleBlock, RuleDoc } from '@byd/server'
 import {
@@ -26,6 +26,8 @@ import type { Key } from '../i18n/sv.js'
 import { useGesture } from './gesture.js'
 import { ASSET_PREFIX, RULE_IMAGE_MAX_BYTES, assetUrl, imageSizeOf, imageTypeOf } from './assets.js'
 import { when } from './HistoryPanel.js'
+import { RuleShelf } from '../rules/RuleDrawer.js'
+import { readTo, readingIn, sectionOf, type Reading } from '../rules/reading.js'
 import { PickList, pickKey, pickOptionId, triggerBehind, writeTrigger } from './picking.js'
 
 // The rulebook (B7), from the prototype: the page itself is the editor. A block opens where it
@@ -37,6 +39,19 @@ export type RulesPanelProps = { doc: ProjectDoc; client: ProjectClient; assetBas
 export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
   const t = useT()
   const [editing, setEditing] = useState<string | null>(null)
+  // Which of the book's two modes is being read (#227). It is a view and never a fact about the
+  // game (L4): it is held here, in this tab, for as long as the tab is open and not a moment
+  // longer — nothing is written to the document, and nothing is written to the browser either.
+  // The rules tab is a writing surface first, and previewing is something one goes to and leaves.
+  const [chosen, setChosen] = useState<Mode>('edit')
+  // What is said out loud when the mode changes, and where the reader was when it did. The place
+  // is a ref and not state: putting a reader back is a thing done to the DOM once, not a thing
+  // the page is drawn from — and it has to survive a switch made out of an open list of answers,
+  // which has no section of its own to give back (#227).
+  const [announced, setAnnounced] = useState('')
+  const place = useRef<Reading | null>(null)
+  const page = useRef<HTMLDivElement>(null)
+  const shelf = useRef<HTMLDivElement>(null)
   // A file that has been read but not yet taken in (#131). It stands here and not in the document
   // precisely because it has not been decided: the report is the last thing read before the book.
   const [proposal, setProposal] = useState<(RuleImport & { file: string }) | null>(null)
@@ -60,11 +75,41 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
   // the book would become, and a page that can be typed into while it says what it is about to
   // lose would be two things at once.
   const writing = rules !== undefined && proposal === null
+  // There is no table to show a book that has not been written, and a proposal is a reading of
+  // what the book would become rather than a book anybody is handed. Both fall back to the
+  // editable mode rather than offering a preview of something that is not there.
+  const mode: Mode = writing ? chosen : 'edit'
   // Everything the reader is shown, which over a book includes what is about to leave it. The book
   // that would be written is `plan.doc` and is a subset of this.
   const shown = plan ? { title: plan.doc.title, blocks: plan.blocks.map((planned) => planned.block) } : (rules ?? proposal?.doc ?? templateRules(doc.name, t))
   const marks = new Map((plan?.blocks ?? []).map((planned) => [planned.block.id, planned]))
   const out = renderRules(shown, names)
+  // The area the book is read in, whichever mode it is being read in. At the moment the switch is
+  // pressed this is still the one being left, which is what makes the reading a reading of it.
+  const scroller = (): HTMLElement | null => (mode === 'table' ? shelf.current : page.current)
+  const setMode = (next: Mode) => {
+    if (next === mode) return
+    // A block left open for writing is closed first: a paragraph being typed into has no place at
+    // the table, and leaving a field behind under a swapped-out page loses what is in it.
+    setEditing(null)
+    // An open list of answers has no block in it, so the reading is the last one there was: a
+    // reader who asked a question and switched lands where she was reading, never on nothing.
+    const area = scroller()
+    place.current = (area && readingIn(area)) ?? place.current
+    const at = place.current
+    setAnnounced(
+      at
+        ? t('rules.view.said.at', { mode: t(MODE_WORD[next]), section: sectionOf(out.blocks, out.title, at.block) })
+        : t('rules.view.said', { mode: t(MODE_WORD[next]) }),
+    )
+    setChosen(next)
+  }
+  // The other box has just been given its size by the layout; the reader is put back into it
+  // before anything is painted, so the swap is a page turning and never a jump to the top.
+  useLayoutEffect(() => {
+    const area = mode === 'table' ? shelf.current : page.current
+    if (area) readTo(area, place.current)
+  }, [mode])
   const patch = (id: string, next: Partial<RuleBlock>, gesture?: string) =>
     rules && client.setRules({ ...rules, blocks: rules.blocks.map((b) => (b.id === id ? ({ ...b, ...next } as RuleBlock) : b)) }, gesture)
   const addAfter = (id: string) => {
@@ -137,6 +182,7 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
     <div className="byd-rules">
       <div className="byd-rules-bar">
         <h2>{t('rules.title')}</h2>
+        {writing && <Modes mode={mode} onMode={setMode} />}
         {rules && <Booklet client={client} />}
         {/* What the rules are for, as a line above the disposition and never as a box (#131). */}
         <span>{t(rules ? 'rules.hint' : 'rules.empty')}</span>
@@ -215,83 +261,104 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
             Before this the pair shared the tab's single scrolling area and the column hung in it,
             so at the length a rulebook really has its last rows could be read only once the book
             had been scrolled to the bottom — the map waiting on the territory. */}
-        <div className="byd-rules-reading">
-          <article className="byd-rulebook" {...(writing ? { 'data-rulebook': true } : { 'data-proposal': true })}>
-            <h1>{out.title}</h1>
-            {out.blocks.map((b, i) => {
-              const source = shown.blocks.find((x) => x.id === b.id)
-              const planned = marks.get(b.id)
-              // What is happening to this block, as words in the page and in the order they are read.
-              // A strike-through is a decoration and a colour is a colour; neither of them reaches a
-              // screen reader, and this is a report that has to be read carefully (L12).
-              //
-              // Once per section and not once per block. A section that is going is a heading and the
-              // paragraphs under it, and saying it four times is saying it worse; but three sections
-              // going one after another are three losses, and a reader told once about three of them
-              // has also been told worse. So the word stands wherever a section opens, and wherever a
-              // run of one mark begins, and nowhere else. The setup says so on its own account,
-              // because that it survives is the one thing about this import a reader could not
-              // otherwise guess (B5).
-              const opensASection = b.kind === 'heading' && b.level === 1
-              const saysMark =
-                planned !== undefined &&
-                (planned.block.kind === 'setup' ? true : planned.mark !== 'kept' && (opensASection || marks.get(out.blocks[i - 1]?.id ?? '')?.mark !== planned.mark))
-              return (
-                <div
-                  key={b.id}
-                  className="byd-rules-block"
-                  data-block={b.id}
-                  data-mark={planned?.mark}
-                  data-open={editing === b.id ? 'true' : undefined}
-                  {...(found === b.id ? { 'data-found': 'true', ref: foundHere } : {})}
-                >
-                  {/* The picture the column took her to says so in a word of the tool's own, never in
-                      a ring drawn round it: a decoration is not an answer (L12). It is not a
-                      `figcaption`, because a caption is the designer's line and this is not. */}
-                  {found === b.id && <span className="byd-rules-found">{t('rules.image.found')}</span>}
-                  {planned && saysMark && (
-                    <span className="byd-rules-mark">{t(planned.block.kind === 'setup' ? 'rules.mark.setup' : (`rules.mark.${planned.mark}` as Key))}</span>
-                  )}
-                  {editing === b.id && source && writing ? (
-                    <Editing
-                      block={source}
-                      names={names}
-                      assetBase={assetBase}
-                      onPatch={(next, gesture) => patch(b.id, next, gesture)}
-                      onClose={() => setEditing(null)}
-                      onRemove={() => remove(b.id)}
-                    />
-                  ) : writing ? (
-                    <div
-                      role="button"
-                      tabIndex={0}
-                      onClick={() => open(b.id)}
-                      onKeyDown={(e) => {
-                        // A `role="button"` promises both keys, and Space promises not to scroll the
-                        // page out from under the paragraph it just opened (L12).
-                        if (e.key !== 'Enter' && e.key !== ' ') return
-                        e.preventDefault()
-                        open(b.id)
-                      }}
-                    >
+        {/* And it is the same box in both modes (#227), which is what makes the switch a spread
+            that changes rather than two surfaces. In the presented mode the box holds a felt with
+            the table's own drawer standing at its edge: a 380 px drawer against the editor's dark
+            bottom reads as a narrow panel in a tool, and against a felt it reads as what it is.
+
+            Keyed on the mode, so each mode opens a box of its own rather than inheriting the
+            height the other had been scrolled to. Where the reader was is carried as a reading
+            and put back deliberately; a scroll left lying in the box would be exactly the number
+            this slice exists to avoid, arriving through the back door. */}
+        <div className="byd-rules-reading" data-mode={mode} key={mode} ref={page}>
+          {mode === 'table' ? (
+            <div className="byd-rules-felt">
+              <RuleShelf rules={out} assets={assetBase} placement="table" startOpen body={shelf} />
+            </div>
+          ) : (
+            <article className="byd-rulebook" {...(writing ? { 'data-rulebook': true } : { 'data-proposal': true })}>
+              <h1>{out.title}</h1>
+              {out.blocks.map((b, i) => {
+                const source = shown.blocks.find((x) => x.id === b.id)
+                const planned = marks.get(b.id)
+                // What is happening to this block, as words in the page and in the order they are read.
+                // A strike-through is a decoration and a colour is a colour; neither of them reaches a
+                // screen reader, and this is a report that has to be read carefully (L12).
+                //
+                // Once per section and not once per block. A section that is going is a heading and the
+                // paragraphs under it, and saying it four times is saying it worse; but three sections
+                // going one after another are three losses, and a reader told once about three of them
+                // has also been told worse. So the word stands wherever a section opens, and wherever a
+                // run of one mark begins, and nowhere else. The setup says so on its own account,
+                // because that it survives is the one thing about this import a reader could not
+                // otherwise guess (B5).
+                const opensASection = b.kind === 'heading' && b.level === 1
+                const saysMark =
+                  planned !== undefined &&
+                  (planned.block.kind === 'setup' ? true : planned.mark !== 'kept' && (opensASection || marks.get(out.blocks[i - 1]?.id ?? '')?.mark !== planned.mark))
+                return (
+                  <div
+                    key={b.id}
+                    className="byd-rules-block"
+                    data-block={b.id}
+                    data-mark={planned?.mark}
+                    data-open={editing === b.id ? 'true' : undefined}
+                    {...(found === b.id ? { 'data-found': 'true', ref: foundHere } : {})}
+                  >
+                    {/* The picture the column took her to says so in a word of the tool's own, never in
+                        a ring drawn round it: a decoration is not an answer (L12). It is not a
+                        `figcaption`, because a caption is the designer's line and this is not. */}
+                    {found === b.id && <span className="byd-rules-found">{t('rules.image.found')}</span>}
+                    {planned && saysMark && (
+                      <span className="byd-rules-mark">{t(planned.block.kind === 'setup' ? 'rules.mark.setup' : (`rules.mark.${planned.mark}` as Key))}</span>
+                    )}
+                    {editing === b.id && source && writing ? (
+                      <Editing
+                        block={source}
+                        names={names}
+                        assetBase={assetBase}
+                        onPatch={(next, gesture) => patch(b.id, next, gesture)}
+                        onClose={() => setEditing(null)}
+                        onRemove={() => remove(b.id)}
+                      />
+                    ) : writing ? (
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => open(b.id)}
+                        onKeyDown={(e) => {
+                          // A `role="button"` promises both keys, and Space promises not to scroll the
+                          // page out from under the paragraph it just opened (L12).
+                          if (e.key !== 'Enter' && e.key !== ' ') return
+                          e.preventDefault()
+                          open(b.id)
+                        }}
+                      >
+                        <Block block={b} source={source} names={names} assetBase={assetBase} />
+                      </div>
+                    ) : planned?.runs ? (
+                      <Rewritten runs={planned.runs} names={names} />
+                    ) : (
                       <Block block={b} source={source} names={names} assetBase={assetBase} />
-                    </div>
-                  ) : planned?.runs ? (
-                    <Rewritten runs={planned.runs} names={names} />
-                  ) : (
-                    <Block block={b} source={source} names={names} assetBase={assetBase} />
-                  )}
-                  {writing && (
-                    <button type="button" className="byd-rules-add" aria-label={t('rules.addAfter', { id: b.id })} onClick={() => addAfter(b.id)}>
-                      ＋
-                    </button>
-                  )}
-                </div>
-              )
-            })}
-          </article>
+                    )}
+                    {writing && (
+                      <button type="button" className="byd-rules-add" aria-label={t('rules.addAfter', { id: b.id })} onClick={() => addAfter(b.id)}>
+                        ＋
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
+            </article>
+          )}
         </div>
       </div>
+      {/* What the switch did, for a reader who cannot see the spread change under her (#227). It
+          is polite and it is off the screen: the mode and the section are the two things that
+          moved, and neither of them is worth taking the focus for. */}
+      <p className="byd-offscreen" role="status" aria-live="polite">
+        {announced}
+      </p>
     </div>
   )
 }
@@ -497,6 +564,29 @@ const WEIGHT: Record<RuleImportKind, 'kept' | 'changed'> = {
   link: 'changed',
   break: 'changed',
   decorative: 'changed',
+}
+
+// The two modes of the same book (#227). `edit` is the page that is its own editor; `table` is
+// the drawer the players are handed, drawn by the table's own code.
+export type Mode = 'edit' | 'table'
+const MODES: readonly Mode[] = ['edit', 'table']
+const MODE_WORD: Record<Mode, Key> = { edit: 'rules.view.edit', table: 'rules.view.table' }
+
+// The switch, first in the rules tab's own header and directly after the book's name (#227,
+// variant A). Two buttons and not a menu: two modes, one press between them, and both of them
+// readable at once — and `.byd-choice` rather than a shape of its own, because one of a set is
+// what the button language already has a word for (L13).
+function Modes({ mode, onMode }: { mode: Mode; onMode(next: Mode): void }) {
+  const t = useT()
+  return (
+    <span className="byd-rules-modes" role="group" aria-label={t('rules.view')}>
+      {MODES.map((m) => (
+        <button key={m} type="button" className="byd-choice" aria-pressed={mode === m} onClick={() => onMode(m)}>
+          {t(MODE_WORD[m])}
+        </button>
+      ))}
+    </span>
+  )
 }
 
 // Where a heading stands, so the column beside the book can point at it. Both ranks carry one:

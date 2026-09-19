@@ -479,6 +479,11 @@ export const enEditor = {
   'symbols.remove': 'Remove {name}',
 
   'rules.title': 'The rulebook',
+  'rules.view': 'Mode',
+  'rules.view.edit': 'Editable',
+  'rules.view.table': 'As at the table',
+  'rules.view.said': '{mode}.',
+  'rules.view.said.at': '{mode}. Same section: {section}.',
   'rules.empty': 'The rules belong to the game: they are versioned with the cards, and the players reach them from the phone, the TV and the observer.',
   'rules.start': 'Start writing the rules',
   'rules.toc': 'Contents',

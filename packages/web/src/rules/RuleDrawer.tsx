@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type Ref } from 'react'
 import { ruleEm, type RenderedBlock, type RenderedNode, type RenderedRules } from '@byd/template'
 import { findRules } from './search.js'
 import { useT } from '../i18n/index.js'
@@ -12,10 +12,7 @@ import './rules.css'
 export type RuleDrawerProps = { http: string; sessionId: string; placement: 'table' | 'tv' | 'phone' }
 
 export function RuleDrawer({ http, sessionId, placement }: RuleDrawerProps) {
-  const t = useT()
   const [rules, setRules] = useState<RenderedRules | null | 'none'>(null)
-  const [open, setOpen] = useState(false)
-  const [query, setQuery] = useState('')
   // The rules of a running table never change under the players, so they are read once.
   useEffect(() => {
     let live = true
@@ -29,7 +26,29 @@ export function RuleDrawer({ http, sessionId, placement }: RuleDrawerProps) {
     }
   }, [http, sessionId])
   if (rules === 'none') return null
-  const hits = rules && rules !== null ? findRules(rules, query) : []
+  return <RuleShelf rules={rules} assets={http} placement={placement} />
+}
+
+// The drawer itself, given a book — everything about the rules at the table except where the book
+// came from. The editor's rules tab hands it the book it is writing, so that the mode called «as
+// at the table» is the table and not a drawing of one (#227): one code path for the book's words,
+// one for the question on top of them, and one for the drawer they are read in.
+export type RuleShelfProps = {
+  rules: RenderedRules | null
+  assets?: string | undefined
+  placement: 'table' | 'tv' | 'phone'
+  // Whether the drawer starts open. At a table it does not: a player opens it. Where the drawer
+  // is what is being looked at, it does.
+  startOpen?: boolean | undefined
+  // The scrolling area the book is read in, for whoever has to put a reader back where she was.
+  body?: Ref<HTMLDivElement> | undefined
+}
+
+export function RuleShelf({ rules, assets, placement, startOpen, body }: RuleShelfProps) {
+  const t = useT()
+  const [open, setOpen] = useState(startOpen ?? false)
+  const [query, setQuery] = useState('')
+  const hits = rules ? findRules(rules, query) : []
   return (
     <div className="byd-rules-drawer" data-placement={placement}>
       <button type="button" className="byd-rules-open" onClick={() => setOpen((o) => !o)}>
@@ -43,7 +62,7 @@ export function RuleDrawer({ http, sessionId, placement }: RuleDrawerProps) {
               ×
             </button>
           </div>
-          <div className="byd-rules-body">
+          <div className="byd-rules-body" ref={body}>
             {rules === null ? (
               <p>{t('rules.drawer.loading')}</p>
             ) : query.trim() ? (
@@ -62,8 +81,14 @@ export function RuleDrawer({ http, sessionId, placement }: RuleDrawerProps) {
             ) : (
               <article className="byd-rules-page">
                 <h2>{rules.title}</h2>
+                {/* Each block says which one it is, so that a reader's place in the book can be
+                    carried between two boxes of different widths (#227). It is the same mark the
+                    editor's own page carries, and the only thing the two books have in common
+                    once their measures differ. */}
                 {rules.blocks.map((b) => (
-                  <RuleBlockView key={b.id} block={b} assets={http} />
+                  <div key={b.id} data-block={b.id}>
+                    <RuleBlockView block={b} assets={assets} />
+                  </div>
                 ))}
               </article>
             )}

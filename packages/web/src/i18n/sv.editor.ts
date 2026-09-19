@@ -535,6 +535,12 @@ export const svEditor = {
 
   // Regelboken: sidan som är sin egen editor, och häftet för tryck.
   'rules.title': 'Regelboken',
+  // Regelbokens två lägen (#227): en växel i flikens eget huvud, direkt efter REGELBOKEN.
+  'rules.view': 'Läge',
+  'rules.view.edit': 'Redigerbar',
+  'rules.view.table': 'Som på bordet',
+  'rules.view.said': '{mode}.',
+  'rules.view.said.at': '{mode}. Samma avsnitt: {section}.',
   'rules.empty': 'Reglerna hör till spelet: de versioneras med korten, och spelarna når dem från telefonen, TV:n och observatören.',
   'rules.start': 'Börja skriva reglerna',
   'rules.toc': 'Innehåll',

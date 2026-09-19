@@ -13,6 +13,12 @@
   cursor: pointer;
 }
 .byd-rules-drawer[data-placement='table'] .byd-rules-open { position: absolute; right: 16px; top: 16px; }
+/* And out from under it once it is open (#227). The button sits in the felt's corner and the
+   drawer takes the outermost 380 px, so the open drawer used to cover the very button that opened
+   it — measured in the prototype, and true at the table, on the TV's felt and in the editor's
+   preview alike, because all three read this rule. The phone is untouched: there the drawer is
+   the whole screen by decision, and the button rides in a header behind it. */
+.byd-rules-drawer[data-placement='table']:has(.byd-rules-panel) .byd-rules-open { right: calc(min(380px, 92vw) + 16px); }
 .byd-rules-panel {
   position: absolute;
   right: 0;
