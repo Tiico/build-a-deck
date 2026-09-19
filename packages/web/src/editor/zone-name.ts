@@ -13,7 +13,7 @@ import type { Zone } from '@byd/server/doc'
 // efterled, och ingen rad blev `Framför A A`.
 
 // Ett tecken inget namn kan innehålla, så att hålet aldrig krockar med något designern skrivit.
-const HOLE = ''
+const HOLE = '\u0001'
 
 // Namnmallen: namnet med platsens egen bokstav utbytt mot hålet den fyller. Två zoner i samma roll
 // är lika när de har samma mall — `Framför A` och `Framför B` är en och samma zon vid var sin
