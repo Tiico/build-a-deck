@@ -161,24 +161,30 @@ export function renderRules(doc: RuleDoc, names: Names): RenderedRules {
   const warnings: RuleWarning[] = []
   const lines: string[] = []
   const blocks: RenderedBlock[] = doc.blocks.map((block): RenderedBlock => {
+    // What the block gave the reader, resolved once: the plain text is read off the very nodes
+    // every surface draws, so the book's own `text` and the book on the screen can never say two
+    // different things about the same line. A reference the game no longer has is noticed on the
+    // way through, which is the one thing the walk knows and the caller does not.
+    const read = (text: string): RenderedNode[][] =>
+      parseInline(text, { refs: true }).map((p) => resolve(p.children, names, (n) => warnings.push({ block: block.id, of: n.of, id: n.id })))
     switch (block.kind) {
       // A heading is read inline like a paragraph is (#272), and it is one line however it was
       // written: `parseInline` would give a blank line in it two paragraphs, and a heading has no
       // second line to put the other one on.
       case 'heading': {
-        const children = parseInline(block.text, { refs: true }).flatMap((p) => p.children)
-        lines.push(flatten(children, names, block.id, warnings))
-        return { kind: 'heading', id: block.id, level: block.level, children: resolve(children, names) }
+        const children = read(block.text).flat()
+        lines.push(plainOf(children))
+        return { kind: 'heading', id: block.id, level: block.level, children }
       }
       case 'text': {
-        const parsed = parseInline(block.text, { refs: true })
-        for (const p of parsed) lines.push(flatten(p.children, names, block.id, warnings))
-        return { kind: 'text', id: block.id, paragraphs: parsed.map((p) => ({ children: resolve(p.children, names) })) }
+        const paragraphs = read(block.text).map((children) => ({ children }))
+        for (const p of paragraphs) lines.push(plainOf(p.children))
+        return { kind: 'text', id: block.id, paragraphs }
       }
       case 'list': {
-        const parsed = block.items.map((item) => parseInline(item, { refs: true }).flatMap((p) => p.children))
-        parsed.forEach((children, i) => lines.push(`${block.ordered ? `${i + 1}. ` : '- '}${flatten(children, names, block.id, warnings)}`))
-        return { kind: 'list', id: block.id, ordered: block.ordered ?? false, items: parsed.map((children) => resolve(children, names)) }
+        const items = block.items.map((item) => read(item).flat())
+        items.forEach((children, i) => lines.push(`${block.ordered ? `${i + 1}. ` : '- '}${plainOf(children)}`))
+        return { kind: 'list', id: block.id, ordered: block.ordered ?? false, items }
       }
       case 'setup':
         if (block.caption) lines.push(block.caption)
@@ -238,41 +244,23 @@ export function nameOf(node: Extract<InlineNode, { type: 'ref' }>, names: Names)
 }
 export const refText = (node: Extract<InlineNode, { type: 'ref' }>): string => `[[${node.of === 'zone' ? 'zon' : 'kort'}:${node.id}]]`
 
-// The parse tree with every reference carrying the name it stands for right now.
-function resolve(nodes: readonly InlineNode[], names: Names): RenderedNode[] {
+// The parse tree with every reference carrying the name it stands for right now. `lost` is told
+// about each reference the game no longer has, in the order they are written: the book's warnings
+// are made here rather than in a second walk of the same tree, so a reference cannot be resolved
+// one way and counted another. A caller with nothing to report leaves it out.
+function resolve(nodes: readonly InlineNode[], names: Names, lost?: (node: Extract<InlineNode, { type: 'ref' }>) => void): RenderedNode[] {
   return nodes.map((n): RenderedNode => {
     switch (n.type) {
       case 'bold':
       case 'italic':
-        return { type: n.type, children: resolve(n.children, names) }
-      case 'ref':
-        return { type: 'ref', of: n.of, id: n.id, name: nameOf(n, names) }
+        return { type: n.type, children: resolve(n.children, names, lost) }
+      case 'ref': {
+        const name = nameOf(n, names)
+        if (name === null) lost?.(n)
+        return { type: 'ref', of: n.of, id: n.id, name }
+      }
       default:
         return n
     }
   })
-}
-
-function flatten(nodes: readonly InlineNode[], names: Names, block: string, warnings: RuleWarning[]): string {
-  return nodes
-    .map((n) => {
-      switch (n.type) {
-        case 'text':
-          return n.text
-        case 'icon':
-          return `{${n.name}}`
-        case 'bold':
-        case 'italic':
-          return flatten(n.children, names, block, warnings)
-        case 'ref': {
-          const found = nameOf(n, names)
-          if (found === null) {
-            warnings.push({ block, of: n.of, id: n.id })
-            return refText(n)
-          }
-          return found
-        }
-      }
-    })
-    .join('')
 }
