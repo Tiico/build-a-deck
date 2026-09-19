@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { EditorPage } from '../src/editor/EditorPage.js'
+import type { ProjectDoc } from '@byd/server'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
@@ -25,6 +26,53 @@ async function openZone(id: string): Promise<void> {
 }
 
 const panel = () => document.querySelector('[data-zone-actions]') as HTMLElement
+
+// En ny åtgärd med sitt enda steg, som är den mening rattarna sitter i.
+function newStep(): HTMLElement {
+  fireEvent.click(within(panel()).getByRole('button', { name: '＋ Åtgärd' }))
+  return panel().querySelector('ol li') as HTMLElement
+}
+
+// Öppnar en ratt i meningen och lämnar tillbaka rutan den fällde ut.
+function open(step: HTMLElement, label: string): HTMLElement {
+  fireEvent.click(within(step).getByRole('button', { name: label }))
+  return step.querySelector('.byd-slot-pop') as HTMLElement
+}
+
+// Raderna man väljer bland, som de står — sökfältet och rubrikerna räknas inte.
+const rows = (box: HTMLElement): string[] => [...box.querySelectorAll('.byd-slot-list button')].map((b) => b.textContent ?? '')
+
+// Raden med den texten. Den läses av texten och inte av rollens namn, för namnet är på väg att
+// säga något annat än det som syns.
+const rowNamed = (box: HTMLElement, text: string): HTMLElement =>
+  [...box.querySelectorAll('.byd-slot-list button')].find((b) => b.textContent === text) as HTMLElement
+
+// Hur många rader som är kopior av en annan rad: varje rad vars text förekommer mer än en gång,
+// och alltså inte «en per dubblett».
+const copies = (texts: string[]): number => texts.filter((text) => texts.indexOf(text) !== texts.lastIndexOf(text)).length
+
+const SEATS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+
+// Bordet prototypen mätte på (#255): åtta platser, och fyra familjer där designern gett flera
+// platser samma namn — Hand, Min hög, Bortlagda kort, Askhögen. Två platser döljer tätheten på
+// samma sätt som varje litet stickprov gör, och `Framför X` och `Räknare X` är med för att de bär
+// platsen i namnet och därför ska lämnas i fred.
+function eightSeats(): ProjectDoc {
+  const doc = projectDoc()
+  const at = (i: number, j: number) => ({ x: -500 + j * 180, y: -400 + i * 100, w: 160, h: 80, rot: 0 })
+  const owned = SEATS.flatMap((seat, i) => [
+    { id: `hand:${seat}`, kind: 'hand' as const, name: 'Hand', visibility: 'owner' as const, owner: seat, geometry: at(i, 0) },
+    { id: `mine:${seat}`, kind: 'area' as const, name: `Framför ${seat}`, visibility: 'owner' as const, owner: seat, geometry: at(i, 1) },
+    { id: `counters:${seat}`, kind: 'area' as const, name: `Räknare ${seat}`, visibility: 'all' as const, owner: seat, geometry: at(i, 2) },
+    { id: `pile:${seat}`, kind: 'pile' as const, name: 'Min hög', visibility: 'owner' as const, owner: seat, geometry: at(i, 3) },
+    ...(i < 3 ? [{ id: `out:${seat}`, kind: 'pile' as const, name: 'Bortlagda kort', visibility: 'all' as const, owner: seat, geometry: at(i, 4) }] : []),
+    ...(i < 2 ? [{ id: `ash:${seat}`, kind: 'pile' as const, name: 'Askhögen', visibility: 'all' as const, owner: seat, geometry: at(i, 5) }] : []),
+  ])
+  return { ...doc, setup: { ...doc.setup, seats: [...SEATS], zones: [...doc.setup.zones.filter((z) => z.owner === undefined), ...owned] } }
+}
+
+// Vad rutan hade visat utan efterledet: zonernas namn, som de står i dokumentet.
+const bareNames = (doc: ProjectDoc): string[] => doc.setup.zones.filter((z) => z.id !== 'draw').map((z) => z.name)
 
 // Vilken sida av högen som är "bredvid den" är högens egen sak (K21, reviderar #87): den som
 // lägger leken vid filtens vänsterkant vill inte ha sina kort utanför bordet. Valet sitter på
@@ -95,5 +143,133 @@ describe('en egen åtgärd på en hög, skriven som meningar', () => {
     await run.projects.create(run.projectId, projectDoc())
     await openZone('table')
     expect(document.querySelector('[data-zone-actions]')).toBeNull()
+  })
+})
+
+// Ägaren i platsrutan och antalsrutan (#255). Åtta platser ger åtta zoner som heter «Hand», och
+// raderna man väljer bland blir kopior av varandra: prototypen mätte 21 av 47 rader vid åtta
+// platser. Efterledet är zonlistans egen bricka — `Hand` med ett dämpat `A` efter sig — och
+// sammansättningen är katalogens, aldrig ytans (A4).
+describe('vems zon en rad i rutan står för', () => {
+  it('skiljer två zoner med samma namn åt i platsrutan', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    const step = newStep()
+
+    const box = open(step, 'till vänster om högen')
+    expect(rows(box)).toContain('Hand A')
+    expect(rows(box)).toContain('Hand B')
+  })
+
+  // Antalsrutan nästlar samma hål in i sin egen mening, så en nyckel räcker för båda rutorna.
+  it('skiljer dem åt i antalsrutan också', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    const step = newStep()
+
+    const box = open(step, '1')
+    expect(rows(box)).toContain('så många som ligger i Hand A')
+    expect(rows(box)).toContain('så många som ligger i Hand B')
+  })
+
+  // Skalan är inte platsantalet utan varje familj designern gett samma namn vid flera platser.
+  it('ger åtta platser åtskiljbara rader, inte åtta likadana', async () => {
+    const doc = eightSeats()
+    await run.projects.create(run.projectId, doc)
+    await openZone('draw')
+    const step = newStep()
+
+    const box = open(step, 'till vänster om högen')
+    // Kontrollen, och hela skälet att provet har åtta platser: utan efterledet är 21 av raderna
+    // kopior av en annan rad — 8 «Hand», 8 «Min hög», 3 «Bortlagda kort», 2 «Askhögen».
+    expect(copies(bareNames(doc))).toBe(21)
+    expect(copies(rows(box))).toBe(0)
+    // Och rutan visar dem allihop: zonerna plus högens och händernas tre egna rader.
+    expect(rows(box)).toHaveLength(bareNames(doc).length + 3)
+  })
+
+  // Ordgränsregeln, som är skillnaden mot en `startsWith` någon annars hade skrivit.
+  it('lämnar ett namn som redan bär platsen i fred, men inte ett ord som råkar innehålla bokstaven', async () => {
+    await run.projects.create(run.projectId, eightSeats())
+    await openZone('draw')
+    const step = newStep()
+
+    const shown = rows(open(step, 'till vänster om högen'))
+    // `Framför A` bär sitt `A` som ett eget ord och får inget till.
+    expect(shown).toContain('Framför A')
+    expect(shown).not.toContain('Framför A A')
+    // Det `A` som står inuti `Askhögen` är inget ord, så den zonen får efterledet.
+    expect(shown).toContain('Askhögen A')
+    expect(shown).toContain('Askhögen B')
+  })
+
+  // Efterledet står i `words` och inte bara i märkningen, för det är det söket läser (#230). Det
+  // är vinsten: rutan får en väg till en enskild hand som inte fanns innan.
+  it('låter sökningen nå en enskild hand, som «hand a» inte gjorde', async () => {
+    await run.projects.create(run.projectId, eightSeats())
+    await openZone('draw')
+    const step = newStep()
+
+    const box = open(step, 'till vänster om högen')
+    const find = within(box).getByLabelText('Sök bland valen')
+    // Kontrollen: «hand» hittar lika mycket som förut — de åtta händerna och meningens två
+    // egna rader om händer.
+    fireEvent.change(find, { target: { value: 'hand' } })
+    expect(rows(box)).toHaveLength(10)
+    // Och «hand a», som gav noll träffar, ger nu exakt en.
+    fireEvent.change(find, { target: { value: 'hand a' } })
+    expect(rows(box)).toEqual(['Hand A'])
+  })
+
+  // Formen är zonlistans egen bricka och inte bara en bokstav till i texten: ramen säger att
+  // bokstaven är verktygets ord, så att `Hand A` inte blir omöjlig att skilja från `Framför A`,
+  // som designern verkligen döpt en zon till (A4).
+  it('skriver platsen som en bricka efter namnet, inte som en del av namnet', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    const step = newStep()
+
+    const box = open(step, 'till vänster om högen')
+    expect(rowNamed(box, 'Hand A').querySelector('em')?.textContent).toBe('A')
+    // Och zonen som ingen äger bär ingen bricka alls.
+    expect(rowNamed(box, 'Kasthög').querySelector('em')).toBeNull()
+
+    // Antalsrutan bär brickan inne i sin egen mening, på samma zon.
+    const amounts = open(step, '1')
+    expect(rowNamed(amounts, 'så många som ligger i Hand A').querySelector('em')?.textContent).toBe('A')
+  })
+
+  // Örat hör samma skillnad som ögat ser (L12), och det som syns står först i det som sägs: en
+  // röststyrd användare som säger «Hand A» — det hon läser — får träff (WCAG 2.5.3). Priset är en
+  // lätt stel ordföljd, taget medvetet framför «Hand, plats A» som läser bättre men brister.
+  it('läses upp som «Hand A, plats», med det synliga först', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    const step = newStep()
+
+    const box = open(step, 'till vänster om högen')
+    expect(within(box).getByRole('button', { name: 'Hand A, plats' })).toBe(rowNamed(box, 'Hand A'))
+    expect(within(box).getByRole('button', { name: 'Hand B, plats' })).toBe(rowNamed(box, 'Hand B'))
+    // Zonen som ingen äger har inget att lägga till: den heter det den heter.
+    expect(within(box).getByRole('button', { name: 'Kasthög' })).toBe(rowNamed(box, 'Kasthög'))
+
+    const amounts = open(step, '1')
+    expect(within(amounts).getByRole('button', { name: 'så många som ligger i Hand A, plats' })).toBe(rowNamed(amounts, 'så många som ligger i Hand A'))
+  })
+
+  // Efterledet är rutans och inte meningens. Att en färdig regel inte säger vilken av åtta händer
+  // den talar om är ett verkligt och öppet fynd — det ligger i #269 och byggs inte här. Det står
+  // pinnat, så att ingen senare «rättar» in efterledet i meningen utan att ha läst det issuet.
+  it('lämnar den färdiga meningen orörd: den läser «i Hand», utan efterled', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    const step = newStep()
+
+    fireEvent.click(rowNamed(open(step, 'till vänster om högen'), 'Hand A'))
+    fireEvent.click(rowNamed(open(step, '1'), 'så många som ligger i Hand A'))
+
+    expect(step.textContent).toContain('Ta så många som ligger i Hand från högen och lägg dem som de ligger i Hand')
+    expect(step.textContent).not.toContain('Hand A')
+    expect(step.querySelector('em')).toBeNull()
   })
 })

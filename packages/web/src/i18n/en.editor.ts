@@ -632,6 +632,11 @@ export const enEditor = {
   'setup.slot.group.amountZone': 'As many as a zone holds',
   'setup.slot.group.place': 'The pile and the hands',
   'setup.slot.group.zone': 'Zones in the game',
+  // A zone at a seat, in the box one chooses from (#255). The zone's name is the designer's and
+  // is never translated; the seat's letter is the tool's word and follows the reader, which is
+  // why the two arrive here separately and the catalogue is what puts them together (A4).
+  'setup.slot.zone.owned': '{zone} {owner}',
+  'setup.slot.zone.owned.tail': '{zone} {owner}, seat',
   'setup.actions.heading': 'When somebody clicks the pile they can choose',
   'setup.actions.new': '＋ Action',
   'setup.actions.newName': 'New action',

@@ -5,6 +5,7 @@ import type { Zone } from '@byd/server/doc'
 import { placedProps, usePlacement } from './placement.js'
 import { queryColumns } from './queries.js'
 import { fieldsOf } from './fields.js'
+import { ownerOf } from './zone-name.js'
 import { useT, type Key, type T } from '../i18n/index.js'
 
 // Authoring what a pile starts with and what it can be asked for, as sentences (prototyped
@@ -227,7 +228,7 @@ const Chosen = createContext<{ keys: readonly string[]; remember(key: string): v
 // A choice in a box: the words it is read and searched by, the block it belongs to, and what
 // picking it does. A choice that is not a plain button — the number, which is typed rather than
 // picked — brings its own node and is searched by the same words all the same.
-type Choice = { key: string; words: string; group: string; node?: ReactNode; pick?(): void }
+type Choice = { key: string; words: string; said?: string; label?: ReactNode; group: string; node?: ReactNode; pick?(): void }
 
 // A box of choices, searched rather than scrolled (#230). In a game of twenty zones it holds
 // forty-seven of them in four blocks nobody can see, and the last is six scrolls away. The
@@ -277,13 +278,16 @@ function Choices({ choices, close, t }: { choices: readonly Choice[]; close(): v
       <button
         key={c.key}
         type="button"
+        // Bara där raden har mer att säga än den visar. En etikett som upprepar radens egen text
+        // är inte en upplysning utan en andra kopia av den.
+        aria-label={c.said}
         onClick={() => {
           memory.remember(c.was ?? c.key)
           c.pick?.()
           close()
         }}
       >
-        {c.words}
+        {c.label ?? c.words}
       </button>
     )
   // The field is where the box opens, so it cannot be a dead end: the arrows walk out of it and
@@ -367,12 +371,19 @@ function AmountSlot({ amount, zones, t, onChange }: { amount: ActionAmount; zone
       group: t('setup.slot.group.amount'),
       pick: () => onChange(of === 'seats' ? { of: 'seats' } : { of: 'ask' }),
     })),
-    ...zones.map((z) => ({
-      key: `amount:zone:${z.id}`,
-      words: t('setup.amount.zone', { zone: z.name }),
-      group: t('setup.slot.group.amountZone'),
-      pick: () => onChange({ of: 'zone', zone: z.id }),
-    })),
+    // Den sammansatta zonen går in som ett hål i antalets egen mening, så samma nyckel bär båda
+    // rutorna och ingen text sätts ihop här.
+    ...zones.map((z) => {
+      const zw = zoneWords(z, t)
+      return {
+        key: `amount:zone:${z.id}`,
+        words: t('setup.amount.zone', { zone: zw.words }),
+        said: zw.said === undefined ? undefined : t('setup.amount.zone', { zone: zw.said }),
+        label: zw.label === undefined ? undefined : parts(t('setup.amount.zone'), { zone: zw.label }),
+        group: t('setup.slot.group.amountZone'),
+        pick: () => onChange({ of: 'zone', zone: z.id }),
+      }
+    }),
   ]
   return <ChoiceSlot label={amountWords(amount, zones, t)} choices={choices} t={t} />
 }
@@ -385,9 +396,38 @@ function TargetSlot({ target, zones, beside, t, onChange }: { target: ActionTarg
       group: t('setup.slot.group.place'),
       pick: () => onChange({ at }),
     })),
-    ...zones.map((z) => ({ key: `place:zone:${z.id}`, words: z.name, group: t('setup.slot.group.zone'), pick: () => onChange({ at: 'zone', zone: z.id }) })),
+    ...zones.map((z) => ({ key: `place:zone:${z.id}`, ...zoneWords(z, t), group: t('setup.slot.group.zone'), pick: () => onChange({ at: 'zone', zone: z.id }) })),
   ]
   return <ChoiceSlot label={targetWords(target, zones, t, beside)} choices={choices} t={t} />
+}
+
+// Vems zonen är, i raden man väljer bland (#255). Åtta platser ger åtta zoner som heter «Hand»,
+// och prototypen mätte följden: 21 av 47 rader i platsrutan var kopior av en annan rad, fördelade
+// på fyra familjer och inte bara på händerna. Efterledet är zonlistans egen bricka — namnet, och
+// platsens bokstav i en ram efter det — så att ramen säger vems ordet är: `Hand A` får inte bli
+// omöjlig att skilja från `Framför A`, som designern verkligen döpt en zon till (A4).
+//
+// Sammansättningen är katalogens och aldrig ytans: här skickas de två orden var för sig, och
+// noden skickas som nod och inte som text (K21). `ownerOf` svarar inget alls när namnet redan bär
+// platsen, och då är raden namnet självt — `Framför A`, aldrig `Framför A A`.
+//
+// `words` är det söket läser, och efterledet står därför i den: «hand a» går från noll träffar
+// till en, vilket är rutans enda väg till en enskild hand (#230). `label` är det ögat ser, och
+// det är samma sammansättning en gång till — med bokstaven som nod i stället för som text, för
+// annars vore brickan märkning ytan hittat på och inte något katalogen sagt.
+//
+// `said` är det örat hör, och det är en tredje nyckel och inte de två andra: brickan säger med
+// sin ram vad bokstaven är, och en uppläsning hör ingen ram. Ordet står sist och inte före
+// bokstaven, för det som syns måste stå i det som sägs — annars får en röststyrd användare som
+// säger raden hon läser ingen träff (WCAG 2.5.3).
+function zoneWords(zone: Zone, t: T): { words: string; said?: string; label?: ReactNode } {
+  const owner = ownerOf(zone)
+  if (owner === undefined) return { words: zone.name }
+  return {
+    words: t('setup.slot.zone.owned', { zone: zone.name, owner }),
+    said: t('setup.slot.zone.owned.tail', { zone: zone.name, owner }),
+    label: parts(t('setup.slot.zone.owned'), { zone: zone.name, owner: <em>{owner}</em> }),
+  }
 }
 
 // The question as chips, which is the grip the data table already taught (L4): values in one

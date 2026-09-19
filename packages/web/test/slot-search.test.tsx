@@ -65,11 +65,16 @@ describe('rutan som öppnas ur en slot (#230)', () => {
 
   // Sökningen går tvärs igenom blocken: «hand» är både en plats meningen känner till och zoner
   // spelet har, och båda sorterna ska stå kvar när ordet skrivs.
+  //
+  // De två sista raderna hette båda «Hand» till och med #255 — samma text två gånger, vilket var
+  // just det fyndet. Nu bär de platsen efter namnet, och «hand a» når den ena av dem.
   it('filtrerar valen i hela rutan, oavsett block, när något skrivs', () => {
     const pop = openSlot('till vänster om högen')
     expect(words(pop).length).toBeGreaterThan(15)
     search('hand')
-    expect(words(pop)).toEqual(['i varje hand', 'i min hand', 'Hand', 'Hand'])
+    expect(words(pop)).toEqual(['i varje hand', 'i min hand', 'Hand A', 'Hand B'])
+    search('hand a')
+    expect(words(pop)).toEqual(['Hand A'])
   })
 
   // Blocken finns redan i rutan; de syns bara inte. En rubrik är därför inte dekoration utan det
