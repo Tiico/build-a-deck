@@ -238,4 +238,22 @@ describe('vems zon en rad i rutan står för', () => {
     const amounts = open(step, '1')
     expect(rowNamed(amounts, 'så många som ligger i Hand A').querySelector('em')?.textContent).toBe('A')
   })
+
+  // Örat hör samma skillnad som ögat ser (L12), och det som syns står först i det som sägs: en
+  // röststyrd användare som säger «Hand A» — det hon läser — får träff (WCAG 2.5.3). Priset är en
+  // lätt stel ordföljd, taget medvetet framför «Hand, plats A» som läser bättre men brister.
+  it('läses upp som «Hand A, plats», med det synliga först', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    const step = newStep()
+
+    const box = open(step, 'till vänster om högen')
+    expect(within(box).getByRole('button', { name: 'Hand A, plats' })).toBe(rowNamed(box, 'Hand A'))
+    expect(within(box).getByRole('button', { name: 'Hand B, plats' })).toBe(rowNamed(box, 'Hand B'))
+    // Zonen som ingen äger har inget att lägga till: den heter det den heter.
+    expect(within(box).getByRole('button', { name: 'Kasthög' })).toBe(rowNamed(box, 'Kasthög'))
+
+    const amounts = open(step, '1')
+    expect(within(amounts).getByRole('button', { name: 'så många som ligger i Hand A, plats' })).toBe(rowNamed(amounts, 'så många som ligger i Hand A'))
+  })
 })
