@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
+import { EditorPage } from '../src/editor/EditorPage.js'
 import { RuleDrawer } from '../src/rules/RuleDrawer.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
@@ -64,6 +65,28 @@ describe('the book read out at the table (#286)', () => {
   it('keeps the space between a paragraph’s own words and the name it points at', async () => {
     const panel = await bookAtTheTable([{ kind: 'text', id: 't1', text: 'Spelet slutar när [[zon:draw]] är tom.' }])
     readAloud(lineOf(panel, 't1'))
+    expect(screen.getByRole('note', { name: 'Spelet slutar när Draghög är tom.' })).toBeTruthy()
+  })
+})
+
+// The same book in the editor. It is drawn by a second component with a second copy of the same
+// inline reading, so the two are asked the same question here rather than in two suites that can
+// quietly stop agreeing (#286: all three surfaces at once, so they cannot drift apart).
+const bookInTheEditor = async (blocks: RuleDoc['blocks']): Promise<HTMLElement> => {
+  await run.projects.create(run.projectId, { ...projectDoc(), rules: { title: 'Skogens herrar', blocks } })
+  history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+  render(<EditorPage />)
+  await screen.findByText('Skogens herrar')
+  fireEvent.click(screen.getByRole('tab', { name: 'Regler' }))
+  const book = document.querySelector('[data-rulebook]') as HTMLElement
+  await within(book).findByRole('heading', { name: 'Skogens herrar' })
+  return book
+}
+
+describe('the book read out in the editor (#286)', () => {
+  it('keeps the space between a paragraph’s own words and the name it points at', async () => {
+    const book = await bookInTheEditor([{ kind: 'text', id: 't1', text: 'Spelet slutar när [[zon:draw]] är tom.' }])
+    readAloud(lineOf(book, 't1'))
     expect(screen.getByRole('note', { name: 'Spelet slutar när Draghög är tom.' })).toBeTruthy()
   })
 })

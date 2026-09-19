@@ -1105,8 +1105,12 @@ function Span({ nodes }: { nodes: readonly RenderedNode[] }) {
     <>
       {nodes.map((n, i) => {
         switch (n.type) {
+          // Plain text carries no element of its own (#286), exactly as at the table. The wrapper
+          // existed for a React key, which a string in a list has never needed, and it shut the
+          // space in beside the word: `Om ` + `Draghög` was read out as `OmDraghög`, because an
+          // element's name is trimmed before it is joined to what stands beside it.
           case 'text':
-            return <span key={i}>{n.text}</span>
+            return n.text
           case 'bold':
             return (
               <strong key={i}>
