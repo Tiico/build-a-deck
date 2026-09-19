@@ -1,10 +1,9 @@
 import { mkdtemp, mkdir, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import type { AddressInfo } from 'node:net'
 import { afterEach, describe, expect, it } from 'vitest'
 import { TableHost, createServer, MemoryLogStore } from '../src/index.js'
-import { registry } from './fixture.js'
+import { listenInBand, registry } from './fixture.js'
 
 // In production the web app and the API share one origin (README): the server serves the built
 // web from STATIC_DIR, with the app's routes falling back to index.html.
@@ -17,8 +16,9 @@ afterEach(async () => {
 async function serve(staticDir?: string, store = new MemoryLogStore(), appOrigin?: string) {
   const host = new TableHost(registry, store)
   const server = createServer({ host, store, registry, ...(staticDir ? { staticDir } : {}), ...(appOrigin ? { appOrigin } : {}) })
-  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
-  const { port } = server.address() as AddressInfo
+  // Out of this package's block of the band, like every other server in this suite: a port asked
+  // for as "any port at all" is one a neighbouring run can be handed at the same moment (#58, #289).
+  const port = await listenInBand(server)
   stop = () => new Promise((resolve) => server.close(() => resolve()))
   return `http://127.0.0.1:${port}`
 }
