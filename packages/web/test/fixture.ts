@@ -1,4 +1,5 @@
 import type { Server } from 'node:http'
+import { createServer as createSocketServer, type Server as SocketServer, type Socket } from 'node:net'
 import { CARD_STANDARD_63x88, TOKEN_COUNTER, TypeRegistry, type SetupDef, STANDARD_TYPES } from '@byd/engine'
 import { TableHost, createServer, MemoryLogStore, MemoryProjectStore, MemorySurveyStore, MemoryAuthStore, MemoryMailer, MemoryAssetStore } from '@byd/server'
 import { openingSetup, type Recipe } from '@byd/server/doc'
@@ -119,7 +120,10 @@ let nth = 0
 // `listen` says it failed by emitting `error`, not by throwing. Without this the EADDRINUSE
 // below would reach the worker as an uncaught exception and fell whatever test was running,
 // which is how #58 was first seen.
-function listenOn(server: Server, port: number): Promise<void> {
+// An `http.Server` is a `net.Server` with a protocol on top, and the port is the socket's
+// business: writing this against the plain socket server is what lets a fixture that speaks no
+// HTTP at all — the deaf one below — take its port out of the same band as the rest (#275).
+function listenOn(server: SocketServer, port: number): Promise<void> {
   return new Promise((resolve, reject) => {
     const failed = (err: Error) => {
       server.removeListener('listening', listening)
@@ -137,7 +141,7 @@ function listenOn(server: Server, port: number): Promise<void> {
 
 // The port for a new fixture: this worker's own slice, stepping over anything another program on
 // the machine happens to be holding.
-async function claim(server: Server): Promise<number> {
+async function claim(server: SocketServer): Promise<number> {
   const tried: number[] = []
   for (let i = 0; i < PORTS_PER_WORKER; i++) {
     const port = SLICE + (nth % PORTS_PER_WORKER)
@@ -156,7 +160,7 @@ async function claim(server: Server): Promise<number> {
 // Taking a port back can fail for a moment even when nothing is wrong — `close()` has returned
 // but the kernel may still be letting the socket go — and it can be held outright by another
 // program on the machine. Keep asking for a short while, then say which port it was.
-async function bind(server: Server, port: number): Promise<void> {
+async function bind(server: SocketServer, port: number): Promise<void> {
   const until = Date.now() + 1_000
   for (let wait = 5; ; wait = Math.min(wait * 2, 100)) {
     try {
@@ -309,6 +313,71 @@ export async function startServer(opts: { auth?: boolean; authBypass?: boolean }
       server = make()
       await bind(server, port)
     },
+  }
+}
+
+/** A service that takes the call and then says nothing. */
+export type Deaf = {
+  url: string
+  /**
+   * Whether every call this server took was still standing when the test put the phone down.
+   *
+   * It is deaf only for as long as it keeps taking the call and staying quiet. One that hung up
+   * instead would tell the client the line *failed* rather than leaving it hanging, and a test
+   * written about a line that hangs would then quietly be running about a line that broke — which
+   * is the first thing that was suspected when `status-routes` read `offline` where it waited for
+   * `slow` (#265). It was not the fixture that time, and this is what lets a test say so rather
+   * than assume it.
+   *
+   * A client left hanging never hangs up either — not even after it has given up, because giving
+   * up closes the WebSocket and leaves the socket under it to the teardown — so the only thing
+   * that can end a call early is this end letting go of it, and that is exactly the leak.
+   *
+   * It deliberately does not count the calls: a route may place more than one — `/table` asks over
+   * HTTP about the same room it is dialling — and how many is the page's business, not the
+   * fixture's.
+   */
+  stayedDeaf(): boolean
+  stop(): Promise<void>
+}
+
+// A socket that accepts the connection and then says nothing: a service that has stopped
+// answering, which before #7 left `Ansluter…` standing for ever.
+//
+// One fixture and not two. It lived as a copy in `status-routes.test.tsx` and another in
+// `client-recovery.test.ts`, and the copies had already drifted apart — the first gained the
+// `error` listener and `stayedDeaf` in #265 and the second gained neither (#275). Here they cannot
+// drift again, and it takes its port out of the band above instead of asking for any port at all,
+// which is what both copies did and what the rule at the top of this file forbids: it is exactly
+// the neighbour that rule protects `restart()` from.
+export async function deafServer(): Promise<Deaf> {
+  const open: Socket[] = []
+  const trouble: string[] = []
+  let stopping = false
+  const server = createSocketServer((s) => {
+    open.push(s)
+    // Without a listener a socket error is an uncaught exception that takes the whole worker with
+    // it — the same class of failure the note at `listenOn` is about. Here it is evidence instead.
+    s.on('error', (e) => trouble.push(e.message))
+    s.on('close', () => {
+      if (!stopping) trouble.push('hung up')
+    })
+  })
+  const port = await claim(server)
+  // After the port is claimed and not before: `claim` steps over any number another program on
+  // this machine happens to be holding, and each of those steps is an EADDRINUSE it handles
+  // itself. Listening for the server's errors any earlier would record a fixture that merely had
+  // to walk a little further as a fixture that had gone wrong.
+  server.on('error', (e) => trouble.push(e.message))
+  return {
+    url: `ws://127.0.0.1:${port}`,
+    stayedDeaf: () => trouble.length === 0,
+    stop: () =>
+      new Promise<void>((resolve) => {
+        stopping = true
+        for (const s of open) s.destroy()
+        server.close(() => resolve())
+      }),
   }
 }
 

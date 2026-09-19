@@ -1,8 +1,9 @@
 import { execFileSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
 import { createServer, type Server } from 'node:net'
 import { describe, expect, it, vi } from 'vitest'
-import { portBand, startServer } from './fixture.js'
+import { deafServer, portBand, startServer } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -46,6 +47,18 @@ describe('the port a test server listens on', () => {
     await run.stop()
   })
 
+  // The rule is about `restart()` from one side and about its neighbours from the other, and the
+  // deaf server is a neighbour: it asked for any port at all, twelve times across the suite, and
+  // every one of those was a chance to be handed the number a `restart()` elsewhere in the run had
+  // just let go of in order to bind it again (#275). It says nothing about itself when that
+  // happens — the EADDRINUSE lands in whatever test was restarting, about a port nothing in that
+  // test named, which is the shape #58 had from the beginning.
+  it('is below that floor for the deaf server too, since it is the neighbour the rule is about', async () => {
+    const deaf = await deafServer()
+    expect(Number(new URL(deaf.url).port)).toBeLessThan(ephemeralFloor())
+    await deaf.stop()
+  })
+
   it('is named in a plain error when something else holds it, rather than felling a test', async () => {
     const run = await startServer()
     const port = Number(new URL(run.http).port)
@@ -53,6 +66,23 @@ describe('the port a test server listens on', () => {
     const squatter = await hold(port)
     await expect(run.restart()).rejects.toThrow(new RegExp(`127\\.0\\.0\\.1:${port}`))
     await new Promise<void>((resolve) => squatter.close(() => resolve()))
+  })
+
+  // The rule is one a new file can break quietly, and that is how it was broken: the deaf server
+  // was written twice, in two files, neither of which was about ports, and neither said anything
+  // when it asked for one out of the ephemeral range. What it costs lands somewhere else entirely
+  // — an EADDRINUSE in a test that was restarting — so nothing in the suite ever pointed back
+  // here. Asking of every file at once is what keeps the third copy from being written (#275).
+  it('is asked for by number in every file here, and never as "any port at all"', () => {
+    const dir = import.meta.dirname
+    const offenders = readdirSync(dir)
+      .filter((name) => /\.tsx?$/.test(name))
+      .flatMap((name) =>
+        readFileSync(join(dir, name), 'utf8')
+          .split('\n')
+          .flatMap((line, i) => (/\.listen\(\s*0\b/.test(line) ? [`${name}:${i + 1}`] : [])),
+      )
+    expect(offenders).toEqual([])
   })
 })
 
