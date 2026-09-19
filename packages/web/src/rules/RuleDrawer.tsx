@@ -81,8 +81,18 @@ export function RuleDrawer({ http, sessionId, placement }: RuleDrawerProps) {
 // image gets in the editor (E1).
 export function RuleBlockView({ block, assets }: { block: RenderedBlock; assets?: string | undefined }) {
   switch (block.kind) {
+    // A heading holds the same nodes a paragraph does (#272), so a reference in it is drawn as
+    // the reference it is — the name the game has right now, and a missing one saying so.
     case 'heading':
-      return block.level === 1 ? <h3>{block.text}</h3> : <h4>{block.text}</h4>
+      return block.level === 1 ? (
+        <h3>
+          <RuleSpan nodes={block.children} />
+        </h3>
+      ) : (
+        <h4>
+          <RuleSpan nodes={block.children} />
+        </h4>
+      )
     case 'text':
       return (
         <>

@@ -5,6 +5,7 @@ import {
   imagesIn,
   importRules,
   planImport,
+  plainOf,
   renderRules,
   ruleEm,
   type Names,
@@ -558,7 +559,10 @@ function Toc({
     return (
       <a href={`#${anchorOf(h.id)}`} data-mark={mark} data-level={rank}>
         {rank === 2 && <span className="byd-offscreen">{`${t('rules.toc.level2')} `}</span>}
-        {h.text}
+        {/* The row says what the heading says, references and all (#272): the column points at the
+            book, so a section named after a pile has to be called in the column what it is called
+            in the book — and follow the pile when it is renamed. */}
+        <Span nodes={h.children} />
         {/* A disposition that has not been taken up yet says so where the reader is looking, so
             a tab that looks like a book is never mistaken for one (#131, variant C). */}
         {proposed && <span>{t('rules.toc.empty')}</span>}
@@ -579,9 +583,12 @@ function Toc({
             {/* The second rank is a list of its own and it is named after the section it belongs
                 to, so what the eye reads as an indent is heard as «Underrubriker i Uppställning,
                 lista, 3 objekt». A section with nothing under it opens no list: an empty group is
-                a promise of rows that are not there. */}
+                a promise of rows that are not there.
+                The group is named after the section, and a name is a string: a heading carries
+                children since #272, so what goes into the label is the book's own plain reading of
+                them — the same letters the book's `text` holds for that line. */}
             {section.under.length > 0 && (
-              <ul aria-label={t('rules.toc.under', { section: section.heading.text })}>
+              <ul aria-label={t('rules.toc.under', { section: plainOf(section.heading.children) })}>
                 {section.under.map((sub) => (
                   <li key={sub.id}>{row(sub, 2)}</li>
                 ))}
@@ -800,7 +807,26 @@ function Editing({
             if (!e.currentTarget.contains(e.relatedTarget)) onClose()
           }}
         >
-          <input autoFocus aria-label={t('rules.block.heading', { id: block.id })} value={block.text} {...typing.visit} onChange={(e) => onPatch({ text: e.target.value }, typing.token())} />
+          {/* The heading is a field like the paragraph is (#272). It was kept outside this surface
+              while a reference in a heading would have stayed seven raw characters (#215, and the
+              bug that made it so); the heading reads its references now, so the reason is gone and
+              the way in is the same two characters here as everywhere else. The list hangs on the
+              field's own wrapper and not on the row, so it opens under the words and not under the
+              chooser standing beside them. */}
+          <div className="byd-rules-field">
+            <input
+              autoFocus
+              aria-label={t('rules.block.heading', { id: block.id })}
+              value={block.text}
+              {...typing.visit}
+              onChange={(e) => {
+                onPatch({ text: e.target.value }, typing.token())
+                openRefs('heading', e.target)
+              }}
+              {...refField('heading', (text) => onPatch({ text }))}
+            />
+            {refList('heading', (text) => onPatch({ text }))}
+          </div>
           <select aria-label={t('rules.block.level', { id: block.id })} value={block.level} onChange={(e) => onPatch({ level: e.target.value === '1' ? 1 : 2 })}>
             <option value="1">{t('rules.level.1')}</option>
             <option value="2">{t('rules.level.2')}</option>
@@ -893,8 +919,17 @@ function Block({ block, source, names, assetBase }: { block: RenderedBlock; sour
   switch (block.kind) {
     case 'heading':
       // The heading is where the column beside the book points, so it carries the anchor itself
-      // rather than the chrome around it.
-      return block.level === 1 ? <h2 id={anchorOf(block.id)}>{block.text}</h2> : <h3 id={anchorOf(block.id)}>{block.text}</h3>
+      // rather than the chrome around it. Its words are the same nodes a paragraph's are (#272):
+      // what the designer wrote as a reference is drawn as one here too.
+      return block.level === 1 ? (
+        <h2 id={anchorOf(block.id)}>
+          <Span nodes={block.children} />
+        </h2>
+      ) : (
+        <h3 id={anchorOf(block.id)}>
+          <Span nodes={block.children} />
+        </h3>
+      )
     case 'text': {
       // A section the template laid out asks its question until it is answered (#131). The
       // question is the editor's and not the reader's: it is drawn only while nothing has been

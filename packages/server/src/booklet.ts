@@ -43,8 +43,13 @@ export function bookletOf(input: BookletInput): Booklet {
 
 function blockHtml(block: RenderedBlock, input: BookletInput): string {
   switch (block.kind) {
-    case 'heading':
-      return block.level === 1 ? `<h2>${escape(block.text)}</h2>` : `<h3>${escape(block.text)}</h3>`
+    // A heading is read inline like a paragraph is (#272), so it goes through the same span: a
+    // reference in it is printed as the name the thing has, and every string in it is escaped
+    // there rather than here.
+    case 'heading': {
+      const words = span(block.children, input.icons)
+      return block.level === 1 ? `<h2>${words}</h2>` : `<h3>${words}</h3>`
+    }
     case 'text':
       return block.paragraphs.map((p) => `<p>${span(p.children, input.icons)}</p>`).join('')
     case 'list': {

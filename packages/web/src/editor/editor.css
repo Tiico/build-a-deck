@@ -2170,6 +2170,9 @@
 .byd-rules-edit { display: grid; gap: 6px; padding: 12px; margin: 8px -12px; border-radius: 10px; background: #23262e; }
 .byd-rules-edit input, .byd-rules-edit textarea, .byd-rules-edit select { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; font: 13px/1.6 system-ui, sans-serif; }
 .byd-rules-row { display: flex; gap: 8px; }
+/* Rubrikfältet bär sitt eget omslag sedan `[[` svarar i det också (#272). Omslaget är det raden
+   sträcker ut, inte fältet: annars krymper rubriken till sitt innehåll och nivåväljaren tar resten. */
+.byd-rules-row .byd-rules-field { flex: 1; min-width: 0; }
 .byd-rules-row select { width: 150px; }
 .byd-rules-edit > button { justify-self: start; border: 1px solid #2f333d; border-radius: 8px; padding: 4px 8px; background: #1b1d23; color: #fff; font: 700 12px system-ui; cursor: pointer; }
 /* Vad som står under ett öppet block sedan raden med en knapp per referens är borta (#215).

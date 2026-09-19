@@ -15,9 +15,12 @@ export function findRules(rules: RenderedRules, query: string): Hit[] {
   let line = 0
   for (const block of rules.blocks) {
     switch (block.kind) {
+      // A heading is read inline like a paragraph is (#272), so what a hit is filed under is the
+      // line the book's own plain text holds — the names the reader sees, never the ids behind
+      // them. It is the same line the reading has to move past anyway, so the heading is read out
+      // of it rather than assembled a second time from the nodes.
       case 'heading':
-        heading = block.text
-        line++
+        heading = lines[line++] ?? ''
         break
       case 'text':
         for (let i = 0; i < block.paragraphs.length; i++) {

@@ -119,6 +119,30 @@ describe('the rules at the table (B7)', () => {
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Regler' })).toBeNull())
   })
 
+  // A heading is read inline like a paragraph is (#272). At the table that means the section's own
+  // words are the names the game has right now — the heading is a reference where it was written
+  // as one, not seven raw characters standing above a paragraph that got its name right.
+  it('reads a reference in a heading as the name the thing has, like the paragraph under it', async () => {
+    await run.projects.create(run.projectId, {
+      ...projectDoc(),
+      rules: {
+        title: 'Skogens herrar',
+        blocks: [
+          { kind: 'heading', id: 'h1', level: 1, text: 'Om [[zon:draw]]' },
+          { kind: 'text', id: 't1', text: 'Spelet slutar när [[zon:draw]] är tom.' },
+        ],
+      },
+    })
+    const res = await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'POST' })
+    const panel = await open(((await res.json()) as { id: string }).id)
+    await within(panel).findByRole('heading', { name: 'Skogens herrar' })
+    const section = within(panel).getAllByRole('heading', { level: 3 })[0]!
+    expect(section.textContent).toBe('Om Draghög')
+    // And it is a reference where it stands, not a name that happened to be typed: the heading
+    // carries the same mark the paragraph under it does, so a lost zone says so in both places.
+    expect([...panel.querySelectorAll('[data-ref]')].map((r) => r.textContent)).toEqual(['Draghög', 'Draghög'])
+  })
+
   it('answers a question with the passages that mention it, and gives the book back when the question is cleared', async () => {
     const panel = await open(await table())
     await within(panel).findByRole('heading', { name: 'Skogens herrar' })
