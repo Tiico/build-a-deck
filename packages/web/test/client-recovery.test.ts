@@ -1,9 +1,7 @@
 // @vitest-environment jsdom
-import { createServer, type Server, type Socket } from 'node:net'
-import type { AddressInfo } from 'node:net'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TableClient } from '../src/client.js'
-import { asSeat, asTable, createSession, startServer, type Running } from './fixture.js'
+import { asSeat, asTable, createSession, deafServer, startServer, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -15,24 +13,6 @@ beforeEach(async () => {
 afterEach(async () => {
   await run.stop()
 })
-
-// A socket that accepts the connection and then says nothing at all: what a service behind a
-// load balancer that has stopped answering looks like from a phone. Before #7 this left
-// `Ansluter…` standing for ever, because nothing anywhere had a deadline.
-async function deafServer(): Promise<{ url: string; stop(): Promise<void> }> {
-  const open: Socket[] = []
-  const server: Server = createServer((s) => open.push(s))
-  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
-  const { port } = server.address() as AddressInfo
-  return {
-    url: `ws://127.0.0.1:${port}`,
-    stop: () =>
-      new Promise<void>((resolve) => {
-        for (const s of open) s.destroy()
-        server.close(() => resolve())
-      }),
-  }
-}
 
 const settles = async (predicate: () => boolean, ms = 4000) => {
   const until = Date.now() + ms
@@ -54,6 +34,11 @@ describe('an initial connection that never answers', () => {
     const c = TableClient.connect({ url: deaf.url, sessionId: 's1', seat: null, connectTimeoutMs: 150, retryPlanMs: [20] })
     expect(await settles(() => c.trouble !== null)).toBe(true)
     expect(c.trouble).toBe('timeout')
+    // The sentence above is about a line that hangs, and a fixture that hung up instead would put
+    // a different test under the same name: the client would then be giving up because the socket
+    // closed and not because its deadline came. This is the fixture saying which of the two it was
+    // (#265), and it is the reading the copy that used to live in this file could not make.
+    expect(deaf.stayedDeaf()).toBe(true)
     c.close()
     await deaf.stop()
   })
@@ -64,6 +49,7 @@ describe('an initial connection that never answers', () => {
     const seen: (string | null)[] = []
     c.subscribe(() => seen.push(c.trouble))
     expect(await settles(() => seen.includes('timeout'))).toBe(true)
+    expect(deaf.stayedDeaf()).toBe(true)
     c.close()
     await deaf.stop()
   })
