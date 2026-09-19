@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { EditorPage } from '../src/editor/EditorPage.js'
+import type { ProjectDoc } from '@byd/server'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
@@ -40,6 +41,33 @@ function open(step: HTMLElement, label: string): HTMLElement {
 
 // Raderna man väljer bland, som de står — sökfältet och rubrikerna räknas inte.
 const rows = (box: HTMLElement): string[] => [...box.querySelectorAll('.byd-slot-list button')].map((b) => b.textContent ?? '')
+
+// Hur många rader som är kopior av en annan rad: varje rad vars text förekommer mer än en gång,
+// och alltså inte «en per dubblett».
+const copies = (texts: string[]): number => texts.filter((text) => texts.indexOf(text) !== texts.lastIndexOf(text)).length
+
+const SEATS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+
+// Bordet prototypen mätte på (#255): åtta platser, och fyra familjer där designern gett flera
+// platser samma namn — Hand, Min hög, Bortlagda kort, Askhögen. Två platser döljer tätheten på
+// samma sätt som varje litet stickprov gör, och `Framför X` och `Räknare X` är med för att de bär
+// platsen i namnet och därför ska lämnas i fred.
+function eightSeats(): ProjectDoc {
+  const doc = projectDoc()
+  const at = (i: number, j: number) => ({ x: -500 + j * 180, y: -400 + i * 100, w: 160, h: 80, rot: 0 })
+  const owned = SEATS.flatMap((seat, i) => [
+    { id: `hand:${seat}`, kind: 'hand' as const, name: 'Hand', visibility: 'owner' as const, owner: seat, geometry: at(i, 0) },
+    { id: `mine:${seat}`, kind: 'area' as const, name: `Framför ${seat}`, visibility: 'owner' as const, owner: seat, geometry: at(i, 1) },
+    { id: `counters:${seat}`, kind: 'area' as const, name: `Räknare ${seat}`, visibility: 'all' as const, owner: seat, geometry: at(i, 2) },
+    { id: `pile:${seat}`, kind: 'pile' as const, name: 'Min hög', visibility: 'owner' as const, owner: seat, geometry: at(i, 3) },
+    ...(i < 3 ? [{ id: `out:${seat}`, kind: 'pile' as const, name: 'Bortlagda kort', visibility: 'all' as const, owner: seat, geometry: at(i, 4) }] : []),
+    ...(i < 2 ? [{ id: `ash:${seat}`, kind: 'pile' as const, name: 'Askhögen', visibility: 'all' as const, owner: seat, geometry: at(i, 5) }] : []),
+  ])
+  return { ...doc, setup: { ...doc.setup, seats: [...SEATS], zones: [...doc.setup.zones.filter((z) => z.owner === undefined), ...owned] } }
+}
+
+// Vad rutan hade visat utan efterledet: zonernas namn, som de står i dokumentet.
+const bareNames = (doc: ProjectDoc): string[] => doc.setup.zones.filter((z) => z.id !== 'draw').map((z) => z.name)
 
 // Vilken sida av högen som är "bredvid den" är högens egen sak (K21, reviderar #87): den som
 // lägger leken vid filtens vänsterkant vill inte ha sina kort utanför bordet. Valet sitter på
@@ -126,5 +154,65 @@ describe('vems zon en rad i rutan står för', () => {
     const box = open(step, 'till vänster om högen')
     expect(rows(box)).toContain('Hand A')
     expect(rows(box)).toContain('Hand B')
+  })
+
+  // Antalsrutan nästlar samma hål in i sin egen mening, så en nyckel räcker för båda rutorna.
+  it('skiljer dem åt i antalsrutan också', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    const step = newStep()
+
+    const box = open(step, '1')
+    expect(rows(box)).toContain('så många som ligger i Hand A')
+    expect(rows(box)).toContain('så många som ligger i Hand B')
+  })
+
+  // Skalan är inte platsantalet utan varje familj designern gett samma namn vid flera platser.
+  it('ger åtta platser åtskiljbara rader, inte åtta likadana', async () => {
+    const doc = eightSeats()
+    await run.projects.create(run.projectId, doc)
+    await openZone('draw')
+    const step = newStep()
+
+    const box = open(step, 'till vänster om högen')
+    // Kontrollen, och hela skälet att provet har åtta platser: utan efterledet är 21 av raderna
+    // kopior av en annan rad — 8 «Hand», 8 «Min hög», 3 «Bortlagda kort», 2 «Askhögen».
+    expect(copies(bareNames(doc))).toBe(21)
+    expect(copies(rows(box))).toBe(0)
+    // Och rutan visar dem allihop: zonerna plus högens och händernas tre egna rader.
+    expect(rows(box)).toHaveLength(bareNames(doc).length + 3)
+  })
+
+  // Ordgränsregeln, som är skillnaden mot en `startsWith` någon annars hade skrivit.
+  it('lämnar ett namn som redan bär platsen i fred, men inte ett ord som råkar innehålla bokstaven', async () => {
+    await run.projects.create(run.projectId, eightSeats())
+    await openZone('draw')
+    const step = newStep()
+
+    const shown = rows(open(step, 'till vänster om högen'))
+    // `Framför A` bär sitt `A` som ett eget ord och får inget till.
+    expect(shown).toContain('Framför A')
+    expect(shown).not.toContain('Framför A A')
+    // Det `A` som står inuti `Askhögen` är inget ord, så den zonen får efterledet.
+    expect(shown).toContain('Askhögen A')
+    expect(shown).toContain('Askhögen B')
+  })
+
+  // Efterledet står i `words` och inte bara i märkningen, för det är det söket läser (#230). Det
+  // är vinsten: rutan får en väg till en enskild hand som inte fanns innan.
+  it('låter sökningen nå en enskild hand, som «hand a» inte gjorde', async () => {
+    await run.projects.create(run.projectId, eightSeats())
+    await openZone('draw')
+    const step = newStep()
+
+    const box = open(step, 'till vänster om högen')
+    const find = within(box).getByLabelText('Sök bland valen')
+    // Kontrollen: «hand» hittar lika mycket som förut — de åtta händerna och meningens två
+    // egna rader om händer.
+    fireEvent.change(find, { target: { value: 'hand' } })
+    expect(rows(box)).toHaveLength(10)
+    // Och «hand a», som gav noll träffar, ger nu exakt en.
+    fireEvent.change(find, { target: { value: 'hand a' } })
+    expect(rows(box)).toEqual(['Hand A'])
   })
 })

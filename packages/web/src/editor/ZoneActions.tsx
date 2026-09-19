@@ -368,9 +368,11 @@ function AmountSlot({ amount, zones, t, onChange }: { amount: ActionAmount; zone
       group: t('setup.slot.group.amount'),
       pick: () => onChange(of === 'seats' ? { of: 'seats' } : { of: 'ask' }),
     })),
+    // Den sammansatta zonen går in som ett hål i antalets egen mening, så samma nyckel bär båda
+    // rutorna och ingen text sätts ihop här.
     ...zones.map((z) => ({
       key: `amount:zone:${z.id}`,
-      words: t('setup.amount.zone', { zone: z.name }),
+      words: t('setup.amount.zone', { zone: zoneWords(z, t).words }),
       group: t('setup.slot.group.amountZone'),
       pick: () => onChange({ of: 'zone', zone: z.id }),
     })),
