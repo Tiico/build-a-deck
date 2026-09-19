@@ -256,4 +256,20 @@ describe('vems zon en rad i rutan står för', () => {
     const amounts = open(step, '1')
     expect(within(amounts).getByRole('button', { name: 'så många som ligger i Hand A, plats' })).toBe(rowNamed(amounts, 'så många som ligger i Hand A'))
   })
+
+  // Efterledet är rutans och inte meningens. Att en färdig regel inte säger vilken av åtta händer
+  // den talar om är ett verkligt och öppet fynd — det ligger i #269 och byggs inte här. Det står
+  // pinnat, så att ingen senare «rättar» in efterledet i meningen utan att ha läst det issuet.
+  it('lämnar den färdiga meningen orörd: den läser «i Hand», utan efterled', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    const step = newStep()
+
+    fireEvent.click(rowNamed(open(step, 'till vänster om högen'), 'Hand A'))
+    fireEvent.click(rowNamed(open(step, '1'), 'så många som ligger i Hand A'))
+
+    expect(step.textContent).toContain('Ta så många som ligger i Hand från högen och lägg dem som de ligger i Hand')
+    expect(step.textContent).not.toContain('Hand A')
+    expect(step.querySelector('em')).toBeNull()
+  })
 })
