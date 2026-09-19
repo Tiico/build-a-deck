@@ -2215,11 +2215,21 @@
 /* Fältet och listan som `[[` öppnar under det (#215). Rutan hänger på omslaget och inte på
    blocket, för ett listblock är flera fält och listan hör under det markören står i. Bredden är
    inte symbollistans 230 px: där är namnen bibliotekets egna och korta, här är de designerns, och
-   prototypen mätte 25 av 176 namn som inte rymdes i den smalare rutan. */
+   prototypen mätte 25 av 176 namn som inte rymdes i den smalare rutan.
+   Taket är räknat och inte valt (#288). `[[` skär sitt urval vid åtta träffar, och hela poängen med
+   en lista som smalnar är att urvalet syns; på 230 px syntes fem av åtta, och de tre andra fanns
+   bara om pilarna råkade nå dem. Åtta rader är 8 × var(--byd-tap) plus sju mellanrum à 2 px, alltså
+   366. Rutans egen luft och kantlinje står utanför talet, för `max-height` mäter innehållet och
+   inte den ritade rutan — den blir 376. Åt vilket håll rutan far ändras inte av talet:
+   `usePlacement` frågar efter `scrollHeight`, alltså efter alla åtta raderna, och har gjort det
+   sedan #229 — det som ändras är hur många av dem som ritas. Och där rummet är mindre än taket
+   styr det fortfarande, genom `--byd-place-room` i min() här. Grannen `.byd-data-symbols` behåller
+   sitt eget tak: den ritar inte åtta rader och är inte mätt här.
+   Mätt i `packages/e2e/test/surfaces/rules-refs-height.spec.ts`. */
 .byd-rules-field { position: relative; }
-.byd-rules-refs { left: 4px; top: 100%; width: 320px; max-height: min(230px, var(--byd-place-room, 230px)); }
+.byd-rules-refs { left: 4px; top: 100%; width: 320px; max-height: min(366px, var(--byd-place-room, 366px)); }
 /* Åt vilket håll listan far (#229). En bok är lång och ett block står ofta vid dess fot: åtta
-   rader är 240 px mätta i Chromium, och sidan rullar inte fram dem. Nedåt är kvar som utgångsläge
+   rader är 376 px mätta i Chromium, och sidan rullar inte fram dem. Nedåt är kvar som utgångsläge
    — det är där listan står innan måttet hunnit tas — och uppåt är samma kant speglad. */
 .byd-rules-refs[data-place-y='up'] { top: auto; bottom: 100%; }
 .byd-rules-refs[data-place-x='end'] { left: auto; right: 4px; }

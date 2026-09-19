@@ -97,16 +97,20 @@ export type PickListProps<O> = {
 export function PickList<O>({ id, options, keyOf, active, label, className, empty, attrs, onPick, children }: PickListProps<O>) {
   const box = useRef<HTMLDivElement>(null)
   // A box opens where there is room for it (#229), and a narrowing list is a box like any other:
-  // eight rows are 240 px, and a cell at the foot of a long table or a block at the foot of a long
-  // book has nothing like that under it. Each sheet says what its two directions mean; the reading
-  // is `placement`'s and is taken here so that no list of this kind can be the one that forgot.
+  // eight rows are 376 px in the rulebook since #288, and a cell at the foot of a long table or a
+  // block at the foot of a long book has nothing like that under it. Each sheet says what its two
+  // directions mean; the reading is `placement`'s and is taken here so that no list of this kind
+  // can be the one that forgot. The wish is `scrollHeight` and so is everything the list holds,
+  // whatever its own sheet caps the drawing at — which is why raising a cap moves no box.
   const place = usePlacement(true, box)
   // The one the keys are on, brought into the box. Every target in the editor is 44 px tall, so a
-  // box of eight rows shows five of them and the arrows walk past its edge on the sixth press; a
-  // control that answers and cannot be seen to answer has not answered (#235). The option cannot
-  // bring itself — it never takes the focus, which is the whole arrangement that keeps the sentence
-  // being written in the caller's field. `nearest` and not `center`, so a box already showing the
-  // row stands still.
+  // list is very often taller than the box it opens in and the arrows walk past its edge; a control
+  // that answers and cannot be seen to answer has not answered (#235). The rulebook's `[[` no longer
+  // needs this — its eight are eight since #288 — but the library's list is as long as the search
+  // leaves it, so this is what a list of this kind does and not what one of them needed. The option
+  // cannot bring itself — it never takes the focus, which is the whole arrangement that keeps the
+  // sentence being written in the caller's field. `nearest` and not `center`, so a box already
+  // showing the row stands still.
   const marked = useRef<HTMLButtonElement>(null)
   useEffect(() => {
     marked.current?.scrollIntoView?.({ block: 'nearest' })
