@@ -2,7 +2,7 @@
 import { createServer, type Server, type Socket } from 'node:net'
 import type { AddressInfo } from 'node:net'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import { TableClient } from '../src/client.js'
 import { DocumentTitle } from '../src/status/DocumentTitle.js'
 import { StatusLive } from '../src/status/StatusLive.js'
@@ -37,15 +37,43 @@ const SLOWER: StatusTiming = { ...FAST, retryPlanMs: [600, 600, 600] }
 
 // A socket that accepts the connection and then says nothing: a service that has stopped
 // answering, which before #7 left `Ansluter…` standing for ever.
-async function deafServer(): Promise<{ url: string; stop(): Promise<void> }> {
+//
+// It is that service only for as long as it keeps taking the call and staying quiet. One that
+// hung up instead would tell the client the line *failed* rather than leaving it hanging, and a
+// test written about a line that hangs would then quietly be running about a line that broke —
+// which is the first thing that was suspected when this file read `offline` where it waited for
+// `slow` (#265). It was not the fixture that time, and `stayedDeaf` is what lets a test say that
+// rather than assume it.
+//
+// What it measures is that every call it took was still standing when the test put the phone
+// down: a client left hanging never hangs up either — not even after it has given up, because
+// giving up closes the WebSocket and leaves the socket under it to the teardown — so the only
+// thing that can end a call early is this end letting go of it, and that is exactly the leak.
+// It deliberately does not count the calls: a route may place more than one — `/table` asks over
+// HTTP about the same room it is dialling — and how many is the page's business, not the
+// fixture's.
+async function deafServer(): Promise<{ url: string; stop(): Promise<void>; stayedDeaf(): boolean }> {
   const open: Socket[] = []
-  const server: Server = createServer((s) => open.push(s))
+  const trouble: string[] = []
+  let stopping = false
+  const server: Server = createServer((s) => {
+    open.push(s)
+    // Without a listener a socket error is an uncaught exception that takes the whole worker with
+    // it; here it is evidence instead.
+    s.on('error', (e) => trouble.push(e.message))
+    s.on('close', () => {
+      if (!stopping) trouble.push('hung up')
+    })
+  })
+  server.on('error', (e) => trouble.push(e.message))
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
   const { port } = server.address() as AddressInfo
   return {
     url: `ws://127.0.0.1:${port}`,
+    stayedDeaf: () => trouble.length === 0,
     stop: () =>
       new Promise<void>((resolve) => {
+        stopping = true
         for (const s of open) s.destroy()
         server.close(() => resolve())
       }),
@@ -133,13 +161,39 @@ describe.each(LIVE)('$path while the service does not answer at all', (live) => 
     expect(within(panel).getByRole('button', { name: /försök/i })).toBeTruthy()
     expect(within(panel).getAllByRole('link').length).toBeGreaterThan(0)
     await waitFor(() => expect(document.title).toBe('Ingen kontakt · build-your-deck'))
+    expect(deaf.stayedDeaf()).toBe(true)
     await deaf.stop()
   })
 
+  // On a clock the test drives, not on the wall clock. A deaf service sends nothing, so the only
+  // thing that can ever paint `slow` is the single timer the wait arms for itself — one render,
+  // somewhere between the 80 ms a wait may go unremarked and the 1200 ms deadline. Waiting for
+  // that on the wall clock is a race with no margin to widen: a machine that stops for longer than
+  // the deadline lets both timers come due in the same turn of the loop, React folds the two
+  // updates into one commit, and the screen goes from `connecting` straight to `offline` without
+  // `slow` ever having been on it. `waitFor` is then still watching, patiently, four seconds long,
+  // and reports the state it can see — which is how this read `expected 'offline' to be 'slow'`
+  // once under the whole suite's load and never again on its own (#265). Driving the clock removes
+  // the race rather than hiding it, and lets the order itself — taking long first, failed after —
+  // be what is asserted, which is what the sentence above actually claims. The order is also what
+  // rules the other suspect out: a fixture that hung up instead of staying silent would spend the
+  // retry plan and say `offline` long before the deadline, and the first of these two reads would
+  // catch it by name.
   it('says it is taking long before it says it has failed, so waiting is never silent', async () => {
     const deaf = await deafServer()
-    await open(live, { session: 's1', url: deaf.url })
-    await waitFor(() => expect(noticeState()).toBe('slow'))
+    vi.useFakeTimers()
+    try {
+      await open(live, { session: 's1', url: deaf.url })
+      // Far enough past `slowAfterMs` to be unambiguous, far enough short of `connectTimeoutMs`
+      // that the deadline has not been reached: the two are an order of magnitude apart on purpose.
+      await act(() => vi.advanceTimersByTimeAsync(600))
+      expect(noticeState()).toBe('slow')
+      await act(() => vi.advanceTimersByTimeAsync(FAST.connectTimeoutMs))
+      expect(noticeState()).toBe('offline')
+    } finally {
+      vi.useRealTimers()
+    }
+    expect(deaf.stayedDeaf()).toBe(true)
     await deaf.stop()
   })
 })
