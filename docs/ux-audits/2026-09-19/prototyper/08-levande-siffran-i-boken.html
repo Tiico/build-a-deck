@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 8 — Den levande siffran i boken</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* Regelboken i sina två riktiga ytor bredvid varandra, plus en spalt med mätningarna.
+     Den redigerbara boken är ritad ur `editor.css` (`.byd-rulebook`: `calc(68ch + 80px)`,
+     Georgia 14/1.7, `padding: 32px 40px`) och luckan ur `rules.css` (`.byd-rules-panel`:
+     `min(380px, 92vw)`, `.byd-rules-body` `padding: 18px 20px`). En bok ritad i en annan
+     bredd mäter ingenting — och hela frågan här är just vad en siffra kostar i bredd. */
+  .work { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, calc(68ch + 80px)) 380px minmax(320px, 1fr); gap: var(--s5); padding: var(--s4); }
+  .spalt { min-height: 0; min-width: 0; display: flex; flex-direction: column; }
+  .spalt > b { flex: none; display: block; padding: 0 0 var(--s2); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+
+  /* ── Den redigerbara boken ───────────────────────────────────────────────────────────── */
+  .lasyta { min-width: 0; min-height: 0; overflow: auto; scrollbar-width: thin; }
+  .bok { min-width: 0; width: calc(68ch + 80px); max-width: 100%; box-sizing: border-box; background: #f7f3ea; color: #23201a; border-radius: 14px; padding: 32px 40px; font: 14px/1.7 Georgia, serif; }
+  .bok h1 { margin: 0 0 18px; font-size: 26px; }
+  .bok h2 { margin: 22px 0 8px; font-size: 19px; }
+  .bok h3 { margin: 18px 0 6px; font-size: 15px; color: #4a4438; }
+  .bok p { margin: 0 0 10px; }
+  .bok ol, .bok ul { margin: 0 0 10px; padding-left: 22px; }
+
+  /* ── Bordets lucka, mot bordets egen filt (#227:s godkända sammansättning) ───────────── */
+  .filt { flex: 1 1 auto; min-height: 0; position: relative; border-radius: 14px; overflow: hidden; background: radial-gradient(120% 90% at 30% 20%, #275b3d, #163524 70%); }
+  .lucka { position: absolute; inset: 0; width: 380px; display: grid; grid-template-rows: auto auto 1fr; background: #f7f3ea; color: #23201a; box-shadow: -14px 0 34px rgba(0,0,0,.45); }
+  .fraga { display: flex; gap: 8px; padding: 12px; background: #ece5d8; border-bottom: 1px solid #d8cdb8; }
+  .fraga input { flex: 1; min-width: 0; padding: 9px 11px; border: 1px solid #cbbfa8; border-radius: 10px; background: #fff; color: #23201a; font: 14px system-ui, sans-serif; }
+  .fraga span { color: #6b6255; font-size: 20px; padding: 0 6px; }
+  .luckkropp { overflow: auto; padding: 18px 20px; scrollbar-width: thin; }
+  .luckkropp .sida { font: 14px/1.7 Georgia, serif; }
+  .luckkropp h1 { margin: 0 0 12px; font-size: 20px; }
+  .luckkropp h2 { margin: 16px 0 6px; font-size: 16px; }
+  .luckkropp h3 { margin: 14px 0 4px; font-size: 13px; color: #4a4438; }
+  .luckkropp p { margin: 0 0 8px; }
+  .luckkropp ol, .luckkropp ul { margin: 0 0 10px; padding-left: 20px; }
+
+  /* ── Referensen, som den är i dag (rules.css) ───────────────────────────────────────── */
+  .ref { font-style: normal; color: #7a4d1d; border-bottom: 1px dotted #b08a5a; }
+  .ref[data-borta] { color: #a12b2b; background: #f4d9d9; border-bottom: 0; padding: 0 3px; border-radius: 3px; }
+  /* Taggen håller ihop med sitt eget tillägg: namnet får brytas, men aldrig mellan namnet
+     och siffran som hör till det. Det är den regel som gör mätningen «bredaste odelbara
+     tagg» meningsfull. */
+  .ref > .num, .ref > .bricka { white-space: nowrap; }
+
+  /* A · efterledet ---------------------------------------------------------------------- */
+  [data-form='efterled'] .ref > .num { color: #6b6255; }
+  [data-form='efterled'] .ref[data-dold] > .num { font-style: italic; }
+
+  /* B · brickan -------------------------------------------------------------------------- */
+  [data-form='bricka'] .ref > .bricka {
+    display: inline-block; margin-inline-start: .25em; padding: 0 .42em; border-radius: 999px;
+    background: #e0d6c0; color: #3f3a2e; font: 700 .72em/1.65 system-ui, sans-serif;
+    font-variant-numeric: tabular-nums; vertical-align: .08em;
+  }
+  /* En hög vars ordning läsaren inte får se bär samma siffra — den är offentlig — men
+     brickan är ihålig i stället för fylld. Det är skillnaden mellan «så många ligger här»
+     och «så många ligger här, och jag vet vilka». */
+  [data-form='bricka'] .ref[data-dold] > .bricka { background: transparent; box-shadow: inset 0 0 0 1px #b08a5a; color: #7a4d1d; }
+
+  /* C · vid fokus ------------------------------------------------------------------------ */
+  [data-form='fokus'] .ref[data-lev] { border-bottom-style: solid; border-bottom-color: #7a4d1d; cursor: help; }
+  [data-form='fokus'] .ref[data-lev]:focus-visible { outline: 2px solid #7a4d1d; outline-offset: 2px; }
+  .bubbla { position: fixed; z-index: 80; max-width: 260px; padding: 7px 10px; border-radius: 9px; background: #23201a; color: #f7f3ea; font: 12px/1.45 system-ui, sans-serif; box-shadow: 0 10px 26px rgba(0,0,0,.45); pointer-events: none; }
+  .bubbla[hidden] { display: none; }
+  .bubbla b { font-variant-numeric: tabular-nums; }
+
+  /* D · marginalen ------------------------------------------------------------------------ */
+  [data-form='marginal'] .ref[data-lev] { border-bottom-style: dashed; }
+  .rail { flex: none; margin-top: var(--s2); border-radius: 12px; background: #ece5d8; border: 1px solid #d8cdb8; color: #23201a; padding: 8px 10px; font: 12px/1.5 system-ui, sans-serif; }
+  .rail b { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: #6b6255; margin-bottom: 4px; }
+  .rail ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  .rail li { display: flex; gap: 8px; align-items: baseline; }
+  .rail li u { text-decoration: none; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rail li s { text-decoration: none; margin-left: auto; font-variant-numeric: tabular-nums; font-weight: 700; }
+  .rail li em { font-style: normal; color: #6b6255; font-size: 11px; }
+  .rail .tomt { color: #6b6255; }
+  /* I luckan finns ingen marginal att lägga registret i, så det blir en list överst som
+     kostar höjd. Det är variantens pris och mäts som sådant. */
+  .lucka .rail { margin: 0; border-radius: 0; border-width: 0 0 1px; }
+
+  /* ── Mätspalten ─────────────────────────────────────────────────────────────────────── */
+  .om { overflow: auto; scrollbar-width: thin; display: grid; gap: var(--s3); align-content: start; }
+  .om p { margin: 0; color: var(--quiet-2); font-size: 13px; line-height: 1.6; }
+  .om strong { color: var(--ink); }
+  .om h3 { margin: var(--s2) 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  table.matt { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.matt th, table.matt td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line-soft); vertical-align: baseline; }
+  table.matt th { color: var(--quiet); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+  table.matt td.n { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
+  table.matt tr[data-nu='true'] td { color: #fff; background: #1d2130; }
+  table.matt td.ok { color: var(--good); }
+  table.matt td.fel { color: #ff9a9a; }
+  .falt { display: grid; gap: 4px; padding: var(--s3); border-radius: 10px; background: var(--sunk); border: 1px solid var(--line); }
+  .falt code { display: block; color: #cfe6ff; font: 11px/1.55 ui-monospace, monospace; overflow-wrap: anywhere; white-space: pre-wrap; }
+  .falt .dom { font: 12px/1.5 system-ui; }
+  .falt .dom.ok { color: var(--good); }
+  .falt .dom.fel { color: #ff9a9a; }
+  .om code { color: var(--good); font: 12px ui-monospace, monospace; }
+
+  /* Mätlabbet: samma renderare, samma bredder, utanför skärmen. Varje variant mäts i en
+     låda med exakt den redigerbara bokens och exakt luckans mått, annars mäter den ingenting. */
+  .matlab { position: absolute; left: -20000px; top: 0; visibility: hidden; }
+  .matlab .bok { width: calc(68ch + 80px); }
+  .matlab .luckkropp { width: 380px; }
+
+  .protorad label { display: inline-flex; align-items: center; gap: 6px; }
+  .protorad select { min-height: 28px; border: 1px solid #4a4230; border-radius: 7px; background: #1f1b12; color: #ffd98a; font: inherit; padding: 0 6px; }
+</style>
+</head>
+<body data-form="efterled">
+<div class="shell">
+<header>
+  <strong>Skogens herrar</strong>
+  <nav class="tabs"><button type="button">Kort</button><button type="button">Mall</button><button type="button">Symboler</button><button type="button" aria-selected="true">Regler</button><button type="button">Bord</button></nav>
+  <span class="spacer"></span>
+  <div class="switch" role="group" aria-label="Den levande siffrans form">
+    <button type="button" data-form="ingen" aria-pressed="false">Nu</button>
+    <button type="button" data-form="efterled" aria-pressed="true">A · Efterled</button>
+    <button type="button" data-form="bricka" aria-pressed="false">B · Bricka</button>
+    <button type="button" data-form="fokus" aria-pressed="false">C · Vid fokus</button>
+    <button type="button" data-form="marginal" aria-pressed="false">D · Marginal</button>
+  </div>
+  <span class="who">P</span>
+</header>
+
+<main>
+  <div class="protorad">
+    <p id="omform"></p>
+    <label>Läsaren
+      <select id="vem">
+        <option value="A">plats A (du sitter med)</option>
+        <option value="B">plats B (Anna)</option>
+        <option value="bord">bordet självt / TV:n</option>
+        <option value="inget">inget bord igång</option>
+      </select>
+    </label>
+    <div class="matt">
+      <span>bokens höjd <u id="m-bokhojd">—</u></span>
+      <span>luckans höjd <u id="m-luckhojd">—</u></span>
+      <span>långa meningen <u id="m-rader">—</u></span>
+      <span>bredaste taggen <u id="m-bredast">—</u></span>
+    </div>
+    <p class="sagt">Skärmläsaren om <em>Draghögen</em> i den första meningen: <em id="spegel">—</em></p>
+  </div>
+
+  <div class="work">
+    <div class="spalt">
+      <b>Redigerbar — <span id="b-bredd">—</span></b>
+      <div class="lasyta"><article class="bok" id="bok"></article></div>
+      <div class="rail" id="rail-bok" hidden></div>
+    </div>
+
+    <div class="spalt">
+      <b>Som på bordet — 380 px</b>
+      <div class="filt">
+        <aside class="lucka">
+          <div class="fraga"><input type="search" placeholder="Fråga boken" aria-label="Fråga boken"><span aria-hidden="true">×</span></div>
+          <div class="rail" id="rail-lucka" hidden></div>
+          <div class="luckkropp"><div class="sida" id="lucka"></div></div>
+        </aside>
+      </div>
+    </div>
+
+    <div class="spalt om" id="om">
+      <p id="ledtext"></p>
+
+      <h3>Vad varje form kostar i höjd</h3>
+      <table class="matt" id="t-hojd"><thead><tr><th>Form</th><th>Bok</th><th>Δ</th><th>Lucka</th><th>Δ</th></tr></thead><tbody></tbody></table>
+
+      <h3>Den långa meningen</h3>
+      <table class="matt" id="t-mening"><thead><tr><th>Form</th><th>Rader i boken</th><th>Rader i luckan</th></tr></thead><tbody></tbody></table>
+
+      <h3>Bredaste odelbara taggen mot luckans 340 px</h3>
+      <table class="matt" id="t-bredd"><thead><tr><th>Form</th><th>Taggen</th><th>Bredd</th></tr></thead><tbody></tbody></table>
+
+      <h3>Vad projektionen lämnar ut — råa fält</h3>
+      <div class="falt">
+        <code id="frames">—</code>
+        <p class="dom" id="framesdom">—</p>
+      </div>
+
+      <h3>Kontrast mot bokens papper</h3>
+      <table class="matt" id="t-kontrast"><thead><tr><th>Bläck</th><th>På</th><th>Kvot</th></tr></thead><tbody></tbody></table>
+
+      <h3>Vad örat får</h3>
+      <table class="matt" id="t-ljud"><thead><tr><th>Fall</th><th>Uppläst</th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+</main>
+</div>
+
+<div class="bubbla" id="bubbla" hidden></div>
+<div class="matlab" aria-hidden="true"><article class="bok" id="lab-bok"></article><div class="luckkropp"><div class="sida" id="lab-lucka"></div></div></div>
+
+<script>
+'use strict';
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// ── Spelet bakom boken ─────────────────────────────────────────────────────────────────────
+// Zonerna som bordets tillstånd har dem: namn, slag, synlighet, ägare, och vad som ligger i
+// dem. `null` betyder en zon spelet inte längre har — referensen finns kvar i texten.
+const ZON = {
+  'zon:drag':      { namn: 'Draghögen', slag: 'pile', syn: 'none', ordning: ['kort:asken', 'kort:granen', 'kort:myren'], antal: 18 },
+  'zon:slang':     { namn: 'Slänghögen', slag: 'pile', syn: 'all', antal: 7, topp: 'kort:bjornen', toppUpp: true },
+  'zon:hand-a':    { namn: 'Din hand', slag: 'hand', syn: 'owner', agare: 'A', antal: 5 },
+  'zon:hand-b':    { namn: 'Annas hand', slag: 'hand', syn: 'owner', agare: 'B', antal: 4 },
+  'zon:reserv':    { namn: 'Vinterförrådets andra hög', slag: 'pile', syn: 'none', antal: 128, haller: ['kort:vargen'] },
+  'zon:skogsrand': { namn: 'Skogsranden', slag: 'area', syn: 'all', antal: 3 },
+  'zon:offer':     { namn: 'Offerplatsen', slag: 'area', syn: 'all', antal: 0 },
+  'zon:trollmossen': null,
+};
+const KORT = {
+  'kort:vargen': { namn: 'Vargen', zon: 'zon:reserv' },
+  'kort:bjornen': { namn: 'Björnen', zon: 'zon:slang', topp: true },
+  'kort:vinterns-forsta': { namn: 'Vinterns första natt', zon: 'zon:reserv' },
+  'kort:trollet': null,
+};
+
+// Projektionen, ord för ord som `packages/engine/src/project.ts` gör den. Ingenting i den här
+// prototypen får läsa `ZON` direkt när en tagg ritas; allt går genom det här.
+//   `canSeeZoneOrder`: all → alla, owner → bara ägaren, none → ingen.
+// En zon vars ordning platsen inte får se rapporteras som en räkning — men räkningen lämnas
+// alltid ut, för varje zon, till varje plats. Det är inte prototypens val utan kodens.
+function projicera(plats) {
+  if (plats === 'inget') return null;
+  const seat = plats === 'bord' ? null : plats;
+  const zoner = {}; const komponenter = {};
+  for (const [id, z] of Object.entries(ZON)) {
+    if (z === null) continue;
+    const far = z.syn === 'all' || (z.syn === 'owner' && seat !== null && z.agare === seat);
+    if (far) {
+      zoner[id] = { mode: 'order', id, namn: z.namn, antal: z.antal };
+    } else {
+      // `faceUpOnTop` (K15): det uppvända kortet överst i en hög ses av alla, oavsett högens
+      // synlighet, och zonvyn namnger det i `top`.
+      const visarTopp = z.topp !== undefined && z.toppUpp === true;
+      zoner[id] = { mode: 'count', id, namn: z.namn, antal: z.antal, ...(visarTopp ? { top: z.topp } : {}) };
+    }
+    // Komponenterna: i order-läge alla som ligger där, i count-läge bara en uppvänd topp.
+    if (far) { for (const k of Object.keys(KORT)) if (KORT[k] && KORT[k].zon === id) komponenter[k] = { zon: id, topp: KORT[k].topp === true }; }
+    else if (z.topp !== undefined && z.toppUpp === true) komponenter[z.topp] = { zon: id, topp: true };
+  }
+  return { zoner, komponenter };
+}
+
+// ── Boken ──────────────────────────────────────────────────────────────────────────────────
+const BOK = { titel: 'Skogens herrar', block: [
+  { k: 'h', n: 1, id: 'b1', t: 'Spelets mål' },
+  { k: 'p', id: 'b2', t: 'Den som vid vinterns slut har flest märken i [[zon:skogsrand]] vinner. Märken tas ur [[zon:drag]] och läggs öppet, ett i taget, och det som spelats ut hamnar i [[zon:slang]].' },
+  { k: 'h', n: 1, id: 'b3', t: 'Så ställer du upp' },
+  { k: 'ol', id: 'b4', rader: [
+    'Blanda leken och lägg den nedåtvänd som [[zon:drag]].',
+    'Dela fem kort till [[zon:hand-a]] och fem till varje annan hand.',
+    'Lägg [[kort:vinterns-forsta]] överst i [[zon:reserv]] och rör den inte förrän åttonde rundan.',
+    'Lämna [[zon:slang]] och [[zon:offer]] tomma.',
+  ] },
+  // En referens i en rubrik (#272): rubriken bär barn precis som ett stycke, så siffran
+  // hamnar i den om den hamnar någonstans.
+  { k: 'h', n: 1, id: 'b5', t: 'Om [[zon:drag]]' },
+  { k: 'p', id: 'b6', t: '[[zon:drag]] ligger nedåtvänd hela spelet. Ingen får se ordningen, och ingen får räkna om den i smyg — men **alla** ser hur tjock den är, precis som vid ett riktigt bord.' },
+  // Den långa meningen: fem taggar i en enda sats, och det är den som mäts.
+  { k: 'p', id: 'b7', lang: true, t: 'När den sista spelaren har dragit sitt kort ur [[zon:drag]] och lagt det han inte behöver i [[zon:slang]], vänder den som sitter till vänster om startspelaren upp översta kortet i [[zon:reserv]], visar det för alla och låter det ligga kvar där tills någon betalar för det med två märken ur [[zon:skogsrand]] eller med hela [[zon:hand-a]].' },
+  { k: 'h', n: 2, id: 'b8', t: 'Vad en tom hög betyder' },
+  { k: 'p', id: 'b9', t: 'Är [[zon:drag]] tom när någon ska dra, blandas [[zon:slang]] och blir den nya [[zon:drag]]. Är båda tomma är vintern slut. [[zon:offer]] räknas aldrig med, hur många märken som än ligger där.' },
+  { k: 'h', n: 1, id: 'b10', t: 'Händerna' },
+  { k: 'p', id: 'b11', t: 'Du ser [[zon:hand-a]] och ingen annans. Hur många kort [[zon:hand-b]] håller är däremot inte hemligt: det syns tvärs över bordet, och boken säger det lika öppet som filten gör.' },
+  { k: 'h', n: 1, id: 'b12', t: 'Den dolda reserven' },
+  { k: 'p', id: 'b13', t: '[[zon:reserv]] är nedåtvänd och rörs aldrig av någon. [[kort:vargen]] ligger någonstans i den, och den som påstår sig veta var ljuger.' },
+  { k: 'p', id: 'b14', t: 'Ligger [[kort:bjornen]] öppet överst i [[zon:slang]] får vem som helst ta det i stället för att dra ur [[zon:drag]].' },
+  { k: 'h', n: 1, id: 'b15', t: 'Vintern kommer' },
+  { k: 'p', id: 'b16', t: 'Åttonde rundan vänds [[zon:reserv]] upp och blandas in i [[zon:drag]]. Från och med då är [[zon:offer]] öppen, och *var och en* får lägga ett märke där en gång per runda.' },
+  { k: 'h', n: 2, id: 'b17', t: 'Att offra i [[zon:offer]]' },
+  { k: 'p', id: 'b18', t: 'Ett märke som lagts i [[zon:offer]] tas aldrig tillbaka. Det räknas vid vinterns slut till den som lade det, men bara om [[zon:skogsrand]] är tom.' },
+  { k: 'h', n: 1, id: 'b19', t: 'Trollmossen' },
+  { k: 'p', id: 'b20', t: 'Den som hamnar i [[zon:trollmossen]] står över en runda och lämnar [[kort:trollet]] till nästa spelare.' },
+  { k: 'h', n: 1, id: 'b21', t: 'Poängräkningen' },
+  { k: 'ul', id: 'b22', rader: [
+    'Ett märke i [[zon:skogsrand]] är ett poäng.',
+    'Ett kort kvar i [[zon:hand-a]] är minus ett poäng.',
+    'Hela [[zon:slang]] räknas inte alls.',
+    '[[kort:bjornen]] är värt tre poäng var det än ligger.',
+  ] },
+  { k: 'h', n: 1, id: 'b23', t: 'Två spelare' },
+  { k: 'p', id: 'b24', t: 'Med två spelare läggs bara hälften av korten i [[zon:drag]], och [[zon:reserv]] används inte. [[zon:hand-b]] delas som vanligt.' },
+] };
+
+// En liten inline-parser: `[[zon:x]]`, `[[kort:x]]`, `**fet**`, `*kursiv*` (L2).
+function parsa(text) {
+  const ut = []; let i = 0;
+  const re = /\[\[(zon|kort):([^\]]+)\]\]|\*\*([^*]+)\*\*|\*([^*]+)\*/g; let m;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > i) ut.push({ typ: 'text', text: text.slice(i, m.index) });
+    if (m[1]) ut.push({ typ: 'ref', av: m[1] === 'zon' ? 'zone' : 'card', id: `${m[1]}:${m[2]}` });
+    else if (m[3]) ut.push({ typ: 'fet', barn: [{ typ: 'text', text: m[3] }] });
+    else ut.push({ typ: 'kursiv', barn: [{ typ: 'text', text: m[4] }] });
+    i = re.lastIndex;
+  }
+  if (i < text.length) ut.push({ typ: 'text', text: text.slice(i) });
+  return ut;
+}
+// Namnet en referens står för just nu (`nameOf`). Null = spelet har den inte längre.
+const namnet = (nod) => (nod.av === 'zone' ? (ZON[nod.id] ? ZON[nod.id].namn : null) : (KORT[nod.id] ? KORT[nod.id].namn : null));
+
+// ── Det levande lagret ─────────────────────────────────────────────────────────────────────
+// Vad taggen har rätt att säga, avgjort **bara** av projektionen. Räknar samtidigt varje
+// fält den rör, så påståendet «ingenting utanför projektionen» går att mäta och inte bara tro.
+let last = { ur: 0, utanfor: 0 };
+function levande(nod, vy) {
+  if (vy === null) return { slag: 'inget', varfor: 'inget bord' };
+  if (namnet(nod) === null) return { slag: 'inget', varfor: 'spelet har den inte' };
+  if (nod.av === 'zone') {
+    const v = vy.zoner[nod.id];
+    if (!v) return { slag: 'inget', varfor: 'ingen sådan zon vid bordet' };
+    last.ur += 2; // v.antal och v.mode
+    return { slag: 'tal', n: v.antal, ordning: v.mode === 'order' };
+  }
+  const k = vy.komponenter[nod.id];
+  if (!k) return { slag: 'inget', varfor: 'inte i projektionen' };
+  last.ur += 1;
+  return { slag: 'plats', zon: vy.zoner[k.zon].namn, topp: k.topp };
+}
+
+// Vad som sägs ut, i alla fyra formerna: en sträng och aldrig ett träd.
+function sagt(namn, lev, form) {
+  if (lev.slag === 'inget') return namn;
+  if (lev.slag === 'plats') return form === 'bricka' || form === 'ingen' || form === 'marginal' ? namn : `${namn}, ${lev.topp ? 'överst i' : 'i'} ${lev.zon}`;
+  const tal = `${lev.n} kort`;
+  const svans = lev.ordning ? tal : `${tal}, ordningen dold`;
+  if (form === 'ingen') return namn;
+  if (form === 'marginal') return namn;
+  return `${namn}, ${svans}`;
+}
+
+// ── Renderaren ─────────────────────────────────────────────────────────────────────────────
+// En enda. Boken, luckan och mätlabbet ritas av den här funktionen och skiljer sig bara i
+// den låda de står i — precis som `RuleSpan` betjänar editorn, bordet och pressen.
+function ritaNoder(noder, form, vy) {
+  return noder.map((n) => {
+    if (n.typ === 'text') return esc(n.text);
+    if (n.typ === 'fet') return `<strong>${ritaNoder(n.barn, form, vy)}</strong>`;
+    if (n.typ === 'kursiv') return `<em>${ritaNoder(n.barn, form, vy)}</em>`;
+    const namn = namnet(n);
+    if (namn === null) {
+      // Oförändrat från i dag: en referens spelet inte längre har säger vad som skrevs (L2).
+      return `<i class="ref" data-borta="true">${esc(n.av === 'zone' ? 'zon' : 'kort')}:${esc(n.id.split(':')[1])}</i>`;
+    }
+    const lev = levande(n, vy);
+    const etikett = sagt(namn, lev, form);
+    const attr = `data-ref="${esc(n.id)}"${lev.slag !== 'inget' ? ' data-lev="true"' : ''}${lev.slag === 'tal' && !lev.ordning ? ' data-dold="true"' : ''}`;
+    if (form === 'ingen' || form === 'marginal' || lev.slag === 'inget') {
+      return `<i class="ref" ${attr}>${esc(namn)}</i>`;
+    }
+    if (form === 'efterled') {
+      const svans = lev.slag === 'plats' ? `: ${lev.topp ? 'överst i' : 'i'} ${lev.zon}` : `: ${lev.n} kort${lev.ordning ? '' : ' (dold ordning)'}`;
+      return `<i class="ref" ${attr}>${esc(namn)}<span class="num">${esc(svans)}</span></i>`;
+    }
+    if (form === 'bricka') {
+      // Brickan rymmer ett tal och ingenting annat, så ett **kortreferens** får inget
+      // levande lager alls i B. Det är variantens söm och inte en glömska.
+      if (lev.slag !== 'tal') return `<i class="ref" ${attr.replace(' data-lev="true"', '')}>${esc(namn)}</i>`;
+      return `<i class="ref" ${attr} aria-label="${esc(etikett)}"><span aria-hidden="true">${esc(namn)}</span><b class="bricka" aria-hidden="true">${lev.n}</b></i>`;
+    }
+    // C · vid fokus: taggen bär beskedet, men bara den som frågar får det.
+    return `<i class="ref" ${attr} tabindex="0" data-bubbla="${esc(etikett.slice(namn.length + 2))}" aria-label="${esc(etikett)}">${esc(namn)}</i>`;
+  }).join('');
+}
+
+function ritaBlock(b, form, vy, niva) {
+  const inre = (t) => ritaNoder(parsa(t), form, vy);
+  if (b.k === 'h') { const h = niva === 'lucka' ? (b.n === 1 ? 'h2' : 'h3') : (b.n === 1 ? 'h2' : 'h3'); return `<${h}>${inre(b.t)}</${h}>`; }
+  if (b.k === 'p') return `<p${b.lang ? ' data-lang="true"' : ''}>${inre(b.t)}</p>`;
+  const tagg = b.k === 'ol' ? 'ol' : 'ul';
+  return `<${tagg}>${b.rader.map((r) => `<li>${inre(r)}</li>`).join('')}</${tagg}>`;
+}
+
+function ritaBok(form, vy, niva) {
+  const h1 = niva === 'lucka' ? 'h1' : 'h1';
+  return `<${h1}>${esc(BOK.titel)}</${h1}>` + BOK.block.map((b) => `<div data-block="${b.id}">${ritaBlock(b, form, vy, niva)}</div>`).join('');
+}
+
+// ── Registret (D) ──────────────────────────────────────────────────────────────────────────
+// Varje levande detalj boken nämner, en gång var, i den ordning de står i texten.
+function registret(vy) {
+  if (vy === null) return null;
+  const sedda = new Set(); const rader = [];
+  for (const b of BOK.block) {
+    for (const t of (b.rader ?? [b.t])) {
+      for (const n of parsa(t)) {
+        if (n.typ !== 'ref' || sedda.has(n.id)) continue;
+        sedda.add(n.id);
+        const namn = namnet(n); if (namn === null) continue;
+        const lev = levande(n, vy);
+        if (lev.slag === 'tal') rader.push({ namn, tal: String(lev.n), om: lev.ordning ? '' : 'ordningen dold' });
+        else if (lev.slag === 'plats') rader.push({ namn, tal: '', om: `${lev.topp ? 'överst i' : 'i'} ${lev.zon}` });
+      }
+    }
+  }
+  return rader;
+}
+
+// ── Mätningarna ────────────────────────────────────────────────────────────────────────────
+const FORMER = ['ingen', 'efterled', 'bricka', 'fokus', 'marginal'];
+const NAMN = { ingen: 'Nu', efterled: 'A · Efterled', bricka: 'B · Bricka', fokus: 'C · Vid fokus', marginal: 'D · Marginal' };
+
+// Höjden och radantalet mäts i en låda med exakt rätt bredd. `data-form` sätts på labbets
+// egen förälder, för det är den som CSS:en hänger på.
+function mat(form, vy) {
+  const lab = document.querySelector('.matlab');
+  lab.dataset.form = form;
+  $('lab-bok').innerHTML = ritaBok(form, vy, 'bok');
+  $('lab-lucka').innerHTML = ritaBok(form, vy, 'lucka');
+  const radhojd = (el, box) => { const p = box.querySelector('[data-lang]'); return p ? Math.round(p.getBoundingClientRect().height / parseFloat(getComputedStyle(p).lineHeight)) : 0; };
+  const bredast = () => {
+    let b = 0, vad = '—';
+    for (const r of $('lab-lucka').querySelectorAll('.ref')) {
+      // Taggens egen odelbara bredd: en tagg som får brytas mellan namn och siffra mäts
+      // som sin bredaste odelbara del, och en som inte får brytas som sin helhet.
+      const rects = [...r.getClientRects()];
+      const w = form === 'efterled' ? Math.max(...rects.map((x) => x.width)) : r.getBoundingClientRect().width;
+      if (w > b) { b = w; vad = r.textContent; }
+    }
+    return { b: Math.round(b), vad };
+  };
+  const m = {
+    bok: Math.round($('lab-bok').getBoundingClientRect().height),
+    lucka: Math.round($('lab-lucka').getBoundingClientRect().height),
+    raderBok: radhojd(null, $('lab-bok')),
+    raderLucka: radhojd(null, $('lab-lucka')),
+    ...bredast(),
+  };
+  lab.removeAttribute('data-form');
+  return m;
+}
+
+const lin = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+const L = (hex) => { const r = parseInt(hex.slice(1, 3), 16) / 255, g = parseInt(hex.slice(3, 5), 16) / 255, b = parseInt(hex.slice(5, 7), 16) / 255; return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b); };
+const kvot = (a, b) => { const x = L(a), y = L(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+
+const OM = {
+  ingen: 'Nu: taggen är namnet och inget annat. Ingen siffra, ingen kostnad, och ingenting som blir bättre mitt i ett speltest.',
+  efterled: 'A · Efterled: siffran är en del av meningen — «Draghögen: 18 kort». Läses av sig själv, väger mest, och är den enda form där en dold ordning kan sägas med ord där den står.',
+  bricka: 'B · Bricka: siffran är en bricka efter namnet och aldrig en del av satsen. Ihålig bricka = räkningen är allt boken vet. Brickan rymmer ett tal och därför inget om ett kort.',
+  fokus: 'C · Vid fokus: boken ser ut som i dag; siffran är ett svar man ber om. Kostar noll i bredd och ger ingenting åt den som bara läser.',
+  marginal: 'D · Marginal: orden rörs inte alls. Alla levande tal står i ett eget register — en list i boken, en rad överst i luckan — och betalar i höjd i stället för i bredd.',
+};
+
+let form = 'efterled';
+let vem = 'A';
+
+function allt() {
+  const vy = projicera(vem);
+  document.body.dataset.form = form;
+  last = { ur: 0, utanfor: 0 };
+
+  $('bok').innerHTML = ritaBok(form, vy, 'bok');
+  $('lucka').innerHTML = ritaBok(form, vy, 'lucka');
+
+  // Registret hör bara till D.
+  const reg = form === 'marginal' ? registret(vy) : null;
+  for (const [id, plats] of [['rail-bok', 'bok'], ['rail-lucka', 'lucka']]) {
+    const el = $(id);
+    el.hidden = reg === null;
+    if (reg === null) continue;
+    el.innerHTML = `<b>Vid bordet just nu</b>` + (reg.length === 0
+      ? `<p class="tomt">Inget bord är igång, så boken har ingenting levande att säga.</p>`
+      : `<ul>${reg.slice(0, plats === 'lucka' ? 5 : 99).map((r) => `<li><u>${esc(r.namn)}</u>${r.om ? ` <em>${esc(r.om)}</em>` : ''}${r.tal ? `<s>${esc(r.tal)}</s>` : ''}</li>`).join('')}</ul>`);
+  }
+
+  $('omform').textContent = OM[form];
+  $('b-bredd').textContent = `${Math.round($('bok').getBoundingClientRect().width)} px · ${Math.round($('bok').clientWidth - 80)} px text`;
+  $('spegel').textContent = (() => {
+    const n = { typ: 'ref', av: 'zone', id: 'zon:drag' };
+    return `«${sagt('Draghögen', levande(n, vy), form)}»`;
+  })();
+
+  // Höjdtabellen, alla fem formerna i samma andetag.
+  const alla = Object.fromEntries(FORMER.map((f) => [f, mat(f, vy)]));
+  const bas = alla.ingen;
+  $('t-hojd').tBodies[0].innerHTML = FORMER.map((f) => {
+    const m = alla[f];
+    const d = (a, b) => (a === b ? '—' : `${a > b ? '+' : ''}${a - b} px`);
+    return `<tr data-nu="${f === form}"><td>${NAMN[f]}</td><td class="n">${m.bok}</td><td class="n">${d(m.bok, bas.bok)}</td><td class="n">${m.lucka}</td><td class="n">${d(m.lucka, bas.lucka)}</td></tr>`;
+  }).join('');
+  $('t-mening').tBodies[0].innerHTML = FORMER.map((f) => `<tr data-nu="${f === form}"><td>${NAMN[f]}</td><td class="n">${alla[f].raderBok}</td><td class="n">${alla[f].raderLucka}</td></tr>`).join('');
+  $('t-bredd').tBodies[0].innerHTML = FORMER.map((f) => {
+    const m = alla[f];
+    return `<tr data-nu="${f === form}"><td>${NAMN[f]}</td><td style="color:var(--quiet-2)">${esc(m.vad.length > 34 ? m.vad.slice(0, 33) + '…' : m.vad)}</td><td class="n ${m.b <= 340 ? 'ok' : 'fel'}">${m.b} px</td></tr>`;
+  }).join('');
+
+  // Det som ska gå att verifiera på trafiken och inte på skärmen.
+  $('frames').textContent = vy === null
+    ? '— inget bord, alltså ingen projektion alls'
+    : JSON.stringify(Object.values(vy.zoner).map((z) => (z.mode === 'order' ? { id: z.id, mode: z.mode, antal: z.antal } : { id: z.id, mode: z.mode, antal: z.antal, ...(z.top ? { top: z.top } : {}) })), null, 1);
+  const hemliga = vy === null ? [] : Object.values(vy.zoner).filter((z) => z.mode === 'count');
+  const dom = $('framesdom');
+  dom.className = 'dom ok';
+  dom.innerHTML = vy === null
+    ? 'Ingen ram, ingen siffra: taggen faller tillbaka på namnet i varje form.'
+    : `${hemliga.length} av ${Object.keys(vy.zoner).length} zoner är räkningar. Taggarna läste <b>${last.ur}</b> fält, alla ur listan ovan, och <b>${last.utanfor}</b> utanför den. Ingen ordning och inget kort-id för en dold hög finns i ramen — så taggen kan inte säga något om dem ens om den ville.`;
+
+  $('t-kontrast').tBodies[0].innerHTML = [
+    ['Namnets bläck #7a4d1d', 'papperet #f7f3ea', '#7a4d1d', '#f7f3ea'],
+    ['A: siffrans bläck #6b6255', 'papperet #f7f3ea', '#6b6255', '#f7f3ea'],
+    ['B: brickans bläck #3f3a2e', 'brickan #e0d6c0', '#3f3a2e', '#e0d6c0'],
+    ['B: ihålig brickas #7a4d1d', 'papperet #f7f3ea', '#7a4d1d', '#f7f3ea'],
+    ['D: registrets bläck #23201a', 'listen #ece5d8', '#23201a', '#ece5d8'],
+    ['D: registrets tillägg #6b6255', 'listen #ece5d8', '#6b6255', '#ece5d8'],
+  ].map(([vad, pa, fg, bg]) => { const k = kvot(fg, bg); return `<tr><td>${vad}</td><td style="color:var(--quiet-2)">${pa}</td><td class="n ${k >= 4.5 ? 'ok' : 'fel'}">${k.toFixed(2)}:1</td></tr>`; }).join('');
+
+  const fall = [
+    ['synlig hög', { typ: 'ref', av: 'zone', id: 'zon:slang' }],
+    ['dold hög', { typ: 'ref', av: 'zone', id: 'zon:drag' }],
+    ['annans hand', { typ: 'ref', av: 'zone', id: 'zon:hand-b' }],
+    ['tom zon', { typ: 'ref', av: 'zone', id: 'zon:offer' }],
+    ['kort i dold hög', { typ: 'ref', av: 'card', id: 'kort:vargen' }],
+    ['kort öppet överst', { typ: 'ref', av: 'card', id: 'kort:bjornen' }],
+    ['zon spelet tappat', { typ: 'ref', av: 'zone', id: 'zon:trollmossen' }],
+  ];
+  $('t-ljud').tBodies[0].innerHTML = fall.map(([vad, n]) => {
+    const namn = namnet(n);
+    const s = namn === null ? `zon:${n.id.split(':')[1]}` : sagt(namn, levande(n, vy), form);
+    return `<tr><td>${vad}</td><td style="color:var(--ink)">«${esc(s)}»</td></tr>`;
+  }).join('');
+
+  $('ledtext').innerHTML = `Boken är en och samma renderare i båda lådorna; det som skiljer dem är bredden och ingenting annat. Byt <strong>läsare</strong> i amber-raden för att se vad en annan plats — eller inget bord alls — gör med precis samma text.`;
+}
+
+// C:s bubbla.
+const bubbla = $('bubbla');
+function visa(e) {
+  const r = form === 'fokus' ? e.target.closest?.('.ref[data-bubbla]') : null;
+  if (!r) { bubbla.hidden = true; return; }
+  bubbla.innerHTML = `<b>${esc(r.dataset.bubbla)}</b>`;
+  const box = r.getBoundingClientRect();
+  bubbla.hidden = false;
+  bubbla.style.left = `${Math.min(box.left, window.innerWidth - bubbla.offsetWidth - 8)}px`;
+  bubbla.style.top = `${box.bottom + 6}px`;
+}
+document.addEventListener('mouseover', visa);
+document.addEventListener('focusin', visa);
+document.addEventListener('mouseout', (e) => { if (!e.relatedTarget?.closest?.('.ref')) bubbla.hidden = true; });
+document.addEventListener('focusout', () => { bubbla.hidden = true; });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') bubbla.hidden = true; });
+
+for (const b of document.querySelectorAll('.switch button')) {
+  b.onclick = () => {
+    for (const o of document.querySelectorAll('.switch button')) o.setAttribute('aria-pressed', String(o === b));
+    form = b.dataset.form; allt();
+  };
+}
+$('vem').onchange = (e) => { vem = e.target.value; allt(); };
+allt();
+</script>
+</body>
+</html>
