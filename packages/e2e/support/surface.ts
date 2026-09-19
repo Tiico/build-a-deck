@@ -52,11 +52,28 @@ export async function standing(page: Page, html: string, { at = '/', needs }: { 
  * be thirty-two builds of the same page to ask thirty-two questions of the same stylesheet.
  */
 export async function inject(page: Page, html: string): Promise<void> {
-  // The app's own root is emptied rather than written beside: a thing measured next to a mounted
-  // React tree would inherit whatever that tree is in the middle of.
   await page.evaluate((markup) => {
-    const root = document.querySelector('#root')
+    const root = document.querySelector<HTMLElement>('#root')
     if (!root) throw new Error('the app has no #root, so there is nothing to stand this in')
-    root.innerHTML = markup
+    // Beside the app's root and never inside it, because the app is *running*: React owns `#root`
+    // and re-renders into it whenever it likes — a lazy chunk arriving, a fetch failing, a retry
+    // counting down — and each of those replaces whatever was put there. Writing the markup into
+    // `#root` therefore works right up until a measurement takes long enough for a render to land
+    // in the middle of it, and then it fails as a surface that is half missing rather than as a
+    // race. That is exactly how `editor-css` failed: its tab walk pressed Tab sixty times, the
+    // editor route re-rendered somewhere around the sixteenth, and the last forty-four stops were
+    // simply not in the document any more.
+    //
+    // A container of its own is out of React's reach entirely. The stylesheet does not care where
+    // the markup is — the editor's rules are classes, not descendants of the root — so what is
+    // measured is unchanged, and the app goes on rendering harmlessly out of sight.
+    root.style.display = 'none'
+    const id = 'byd-surface'
+    const standing = document.querySelector<HTMLElement>(`#${id}`) ?? document.body.appendChild(document.createElement('div'))
+    standing.id = id
+    // The box `#root` would have had, so a measurement about filling the window still measures a
+    // full window (`index.html`: `html, body, #root { margin: 0; height: 100% }`).
+    standing.style.cssText = 'margin: 0; height: 100%'
+    standing.innerHTML = markup
   }, html)
 }

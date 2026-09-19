@@ -44,9 +44,19 @@
 }
 
 /* The live regions themselves are never seen; they exist so that what is on the screen is also
-   said. Not `display: none`, which is not read either. */
+   said. Not `display: none`, which is not read either.
+
+   Pinned to the corner, for the reason #126 is about. An absolutely positioned box with no `top`
+   or `left` keeps its *static* position — wherever the flow would have put it — and these two sit
+   at the very end of the app, under every route. So their 1 px stood one pixel past the bottom of
+   a full-height page and the window could be scrolled by exactly that much: the header moved, on
+   every tab of the editor, at 1024 × 768. Same mechanism as the `.byd-offscreen` boxes that issue
+   fixed, one layer further out, which is why the editor's own gate could not see it — it measures
+   `.byd-editor`, and these live above it in `App`. */
 .byd-status-live {
   position: absolute;
+  top: 0;
+  left: 0;
   width: 1px;
   height: 1px;
   margin: 0;

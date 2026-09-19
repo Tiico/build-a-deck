@@ -113,6 +113,16 @@ export async function logIn(request: APIRequestContext, email = `e2e-${crypto.ra
   return email
 }
 
+/**
+ * A table started from a project, the way the editor's own button starts one. Some surfaces are
+ * only worth measuring in the state a running table puts them in — the Bord tab's third column is
+ * a list of tables, and an empty list is not what makes it tall.
+ */
+export async function startTable(request: APIRequestContext, projectId: string): Promise<void> {
+  const res = await request.post(`/projects/${encodeURIComponent(projectId)}/sessions`)
+  if (!res.ok()) throw new Error(`could not start a table on ${projectId}: ${res.status()} ${await res.text()}`)
+}
+
 /** A project of one's own, owned by whoever this context is logged in as. */
 export async function makeProject(request: APIRequestContext, game: Game = {}): Promise<{ id: string; editorUrl: string }> {
   const res = await request.post('/projects', { data: gameDoc(game) })
