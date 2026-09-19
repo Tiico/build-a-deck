@@ -1,5 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
-  "compilerOptions": { "noEmit": true, "types": ["node"], "lib": ["ES2023", "DOM", "DOM.Iterable"] },
+  "compilerOptions": { "noEmit": true, "types": ["node"],
+    // No JSX is written here. The flag is for the web sources this suite imports constants and
+    // pure functions out of: one of them reaches a `.tsx` two hops down, and the compiler has to
+    // be able to parse that file even though nothing here renders anything.
+    "jsx": "react-jsx", "lib": ["ES2023", "DOM", "DOM.Iterable"] },
   "include": ["test", "support", "playwright.config.ts"]
 }

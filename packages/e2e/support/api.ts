@@ -125,7 +125,16 @@ export async function startTable(request: APIRequestContext, projectId: string):
 
 /** A project of one's own, owned by whoever this context is logged in as. */
 export async function makeProject(request: APIRequestContext, game: Game = {}): Promise<{ id: string; editorUrl: string }> {
-  const res = await request.post('/projects', { data: gameDoc(game) })
+  return makeProjectOf(request, gameDoc(game))
+}
+
+/**
+ * A project from a document written out by hand, for a surface that only exists when the game
+ * itself has a particular shape — a picture element bound to a column, a rulebook with a figure
+ * in it. `gameDoc` is the recipe and this is the exception to it, as `tableOf` is to `makeTable`.
+ */
+export async function makeProjectOf(request: APIRequestContext, doc: unknown): Promise<{ id: string; editorUrl: string }> {
+  const res = await request.post('/projects', { data: doc })
   if (res.status() !== 201) throw new Error(`the project was not created: ${res.status()} ${await res.text()}`)
   const { id } = (await res.json()) as { id: string }
   return { id, editorUrl: `/editor?project=${encodeURIComponent(id)}` }
