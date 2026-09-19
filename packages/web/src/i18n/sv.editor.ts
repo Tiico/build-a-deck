@@ -614,6 +614,11 @@ export const svEditor = {
   'rules.ask.turn': 'Vad gör man först? Och sedan?',
   'rules.ask.actions': 'Vad får man göra på sin tur, och vad kostar det?',
   'rules.ask.end': 'När tar spelet slut, och vem har vunnit?',
+  // Verktygets eget besked i platshållaren, under blockets egen fråga (#215, formen «Radad»).
+  // Vägen in är två tecken och syns därför inte av sig själv; det tomma fältet är den enda ytan
+  // som redan är ledig att säga det på. Texten lovar bara det `[[` faktiskt gör: en symbol skrivs
+  // med måsvinge och hör inte hit (L23).
+  'rules.ask.refs': '[[ hämtar en zon eller ett kort.',
   'rules.hint': 'Klicka i sidan för att skriva. En regel som nämner en zon eller ett kort följer med när det byter namn.',
   'rules.warnings.one': '{n} referens pekar på något spelet inte har',
   'rules.warnings.other': '{n} referenser pekar på något spelet inte har',
@@ -640,8 +645,12 @@ export const svEditor = {
   'rules.level.1': 'Rubrik',
   'rules.level.2': 'Underrubrik',
   'rules.addItem': '＋ Punkt',
-  'rules.insert': 'Sätt in:',
-  'rules.insert.of': 'Sätt in {name}',
+  // Listan `[[` öppnar, och vad som står i den (#215, L23). Sorten står efter namnet, eftersom
+  // två saker i ett spel mycket väl kan heta samma sak och sorten är det som skiljer dem åt.
+  'rules.refs': 'Referenser',
+  'rules.refs.none': 'Inget med det namnet',
+  'rules.ref.zone': 'zon',
+  'rules.ref.card': 'kort',
   'rules.removeBlock': 'Ta bort blocket',
   'rules.removeSection': 'Ta bort avsnittet',
   'rules.starting.how': 'Så spelar ni',

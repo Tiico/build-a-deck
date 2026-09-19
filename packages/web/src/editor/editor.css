@@ -2167,10 +2167,20 @@
 .byd-rules-row { display: flex; gap: 8px; }
 .byd-rules-row select { width: 150px; }
 .byd-rules-edit > button { justify-self: start; border: 1px solid #2f333d; border-radius: 8px; padding: 4px 8px; background: #1b1d23; color: #fff; font: 700 12px system-ui; cursor: pointer; }
-.byd-rules-picker { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-.byd-rules-picker > span { color: var(--byd-editor-quiet); font: 10px system-ui; text-transform: uppercase; letter-spacing: 1px; }
-.byd-rules-picker button { border: 1px solid #2f333d; border-radius: 7px; padding: 4px 8px; background: #1b1d23; color: #dce3f2; font: 11px system-ui; cursor: pointer; }
-.byd-rules-remove { margin-left: auto; color: #ff9a9a !important; }
+/* Vad som står under ett öppet block sedan raden med en knapp per referens är borta (#215).
+   Kvar är blockets egen kontroll, längst ut åt det håll läsningen slutar — där raden redan lade
+   den, så ingen hand behöver leta upp den på ett nytt ställe. */
+.byd-rules-foot { display: flex; }
+/* Fältet och listan som `[[` öppnar under det (#215). Rutan hänger på omslaget och inte på
+   blocket, för ett listblock är flera fält och listan hör under det markören står i. Bredden är
+   inte symbollistans 230 px: där är namnen bibliotekets egna och korta, här är de designerns, och
+   prototypen mätte 25 av 176 namn som inte rymdes i den smalare rutan. */
+.byd-rules-field { position: relative; }
+.byd-rules-refs { left: 4px; top: 100%; width: 320px; max-height: 230px; }
+.byd-rules-refs button { align-items: baseline; font: 13px system-ui; }
+.byd-rules-refs button > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.byd-rules-refs button > small { margin-left: auto; flex: none; color: var(--byd-editor-quiet); font-size: 11px; }
+.byd-rules-remove { margin-left: auto; border: 1px solid #2f333d; border-radius: 7px; padding: 4px 8px; background: #1b1d23; color: #ff9a9a; font: 11px system-ui; cursor: pointer; }
 /* The way to add a block after this one. It used to be painted only while a pointer rested over
    its block, which is no way at all for a thumb — a screen with no hover to give had a control it
    could only hit by luck — and for a keyboard it was `:focus-visible` painting back what the rest

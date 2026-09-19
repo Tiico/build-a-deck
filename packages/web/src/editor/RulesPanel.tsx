@@ -25,6 +25,7 @@ import type { Key } from '../i18n/sv.js'
 import { useGesture } from './gesture.js'
 import { ASSET_PREFIX, RULE_IMAGE_MAX_BYTES, assetUrl, imageSizeOf, imageTypeOf } from './assets.js'
 import { when } from './HistoryPanel.js'
+import { PickList, pickKey, pickOptionId, triggerBehind, writeTrigger } from './picking.js'
 
 // The rulebook (B7), from the prototype: the page itself is the editor. A block opens where it
 // stands and closes when it is left, so what is being written is always what the reader will
@@ -664,28 +665,129 @@ function Editing({
 }) {
   const t = useT()
   // Prose is written a letter at a time and the whole book is rewritten for each of them, so a
-  // sentence is one step back and the paragraph before it is another (L14). A reference put in
-  // from the row of buttons is one press and stays a step of its own.
+  // sentence is one step back and the paragraph before it is another (L14).
   const typing = useGesture('rule-field')
-  const insert = (ref: string) => {
-    if (block.kind === 'text' || block.kind === 'heading') onPatch({ text: `${block.text} ${ref}` })
-    else if (block.kind === 'list') onPatch({ items: [...block.items.slice(0, -1), `${block.items[block.items.length - 1] ?? ''} ${ref}`] })
+  // Where `[[` stands behind the caret, in which of the block's fields, and what has been typed
+  // since it (#215, L23). One field of one block is ever being written in, so this is one lookup
+  // and not one per field — and which field it is has to be part of it, because a list block is
+  // several fields and the list belongs under the one the caret is in.
+  const [picking, setPicking] = useState<{ field: string; at: number; query: string } | null>(null)
+  const [choice, setChoice] = useState(0)
+  // The list's own id, so the field can point at the option the keys are on and two open blocks
+  // could never name the same element.
+  const listId = useId()
+  // The fields themselves, because what is written back is written where the caret is and the
+  // caret belongs to the element. A map and not one ref, since a list block is several fields.
+  const fields = useRef(new Map<string, HTMLTextAreaElement | HTMLInputElement>())
+  const matches = picking ? narrowRefs(referables(names), picking.query) : []
+  const active = matches[choice]
+  const closeRefs = () => {
+    setPicking(null)
+    setChoice(0)
   }
+  // Read after every keystroke and every move of the caret, since both change what stands behind
+  // it. Nothing is set when nothing moved: a caret walked along a sentence would otherwise rewrite
+  // this on every press, and the whole book is drawn from it.
+  const openRefs = (field: string, el: HTMLTextAreaElement | HTMLInputElement) => {
+    const found = triggerBehind(el.value, el.selectionStart ?? el.value.length, REF_MARK, REF_STOPS)
+    if (!found) return void (picking && closeRefs())
+    if (picking?.field === field && picking.at === found.at && picking.query === found.query) return
+    setPicking({ field, ...found })
+    setChoice(0)
+  }
+  // The reference written where the designer is writing — over the `[[` and the letters she typed
+  // after it, and nowhere else. The row this replaces could only put one at the end of the field,
+  // so a reference could not be put into a sentence at all.
+  //
+  // It is its own step back, as it was: the keystrokes that opened the list are one doing and the
+  // reference is another, so no gesture is carried in (L14).
+  const takeRef = (r: Referable, write: (text: string) => void) => {
+    const open = picking
+    const el = open && fields.current.get(open.field)
+    if (!open || !el) return
+    const { text, caret } = writeTrigger(el.value, open, REF_MARK, refFor(r.of, r.id))
+    closeRefs()
+    // The field never loses the focus and the caret lands after what was written: the sentence is
+    // still being written, and the next word goes on from there. The element is set first so the
+    // caret is already right when React commits the value it is about to be given.
+    el.value = text
+    el.focus()
+    el.setSelectionRange(caret, caret)
+    write(text)
+  }
+  // Everything a field that answers the lookup wears, and none of it is about what the field
+  // holds. `write` is the one thing the field knows and this does not: where in the block its own
+  // text lives.
+  const refField = (field: string, write: (text: string) => void) => ({
+    ref: (el: HTMLTextAreaElement | HTMLInputElement | null) => {
+      if (el) fields.current.set(field, el)
+      else fields.current.delete(field)
+    },
+    onSelect: (e: { currentTarget: HTMLTextAreaElement | HTMLInputElement }) => openRefs(field, e.currentTarget),
+    onKeyDown: (e: { key: string; preventDefault(): void }) => {
+      if (picking?.field !== field) return
+      const act = pickKey(e.key, matches.length, choice)
+      if (!act) return
+      // The keys the open list answers are the list's while it is open, and the field's the rest
+      // of the time: Enter in a paragraph is a new line and Escape belongs to nothing else here.
+      e.preventDefault()
+      if (act === 'close') return closeRefs()
+      if (act === 'pick') return void (active && takeRef(active, write))
+      setChoice(act.active)
+    },
+    ...(picking?.field === field && active ? { 'aria-controls': listId, 'aria-activedescendant': pickOptionId(listId, refKey(active)) } : {}),
+  })
+  const refList = (field: string, write: (text: string) => void) =>
+    picking?.field === field && (
+      <PickList
+        id={listId}
+        className="byd-rules-refs"
+        label={t('rules.refs')}
+        options={matches}
+        keyOf={refKey}
+        active={choice}
+        empty={t('rules.refs.none')}
+        onPick={(r) => takeRef(r, write)}
+      >
+        {(r) => (
+          <>
+            <span>{r.name}</span>
+            <small>{t(r.of === 'zone' ? 'rules.ref.zone' : 'rules.ref.card')}</small>
+          </>
+        )}
+      </PickList>
+    )
   return (
     <div className="byd-rules-edit">
       {/* A section's question is the field's placeholder and never its value (#131), so it is
-          gone at the first character rather than being text to select and type over. */}
+          gone at the first character rather than being text to select and type over. Under it
+          stands the tool's own notice, on a line of its own and always (#215, the approved form
+          «Radad»): the way to a reference is two characters and two characters cannot be seen, so
+          the way in has to be said somewhere, and the empty field is the only surface already
+          free to say it. The block's question comes first and untouched — it is the block's, and
+          the notice is the tool's. A block the designer added herself has no question and carries
+          the notice alone.
+          Both lines are the same grey, and that is the price: `::placeholder` colours the whole of
+          it, so a quieter weight for the tool's line would mean a layer of our own drawn over the
+          field and kept in step with its value — which is exactly the kind of thing that drifts. */}
       {block.kind === 'text' && (
-        <textarea
-          autoFocus
-          rows={4}
-          aria-label={t('rules.block.text', { id: block.id })}
-          {...(block.ask ? { placeholder: block.ask } : {})}
-          value={block.text}
-          {...typing.visit}
-          onChange={(e) => onPatch({ text: e.target.value }, typing.token())}
-          onBlur={onClose}
-        />
+        <div className="byd-rules-field">
+          <textarea
+            autoFocus
+            rows={4}
+            aria-label={t('rules.block.text', { id: block.id })}
+            placeholder={block.ask ? `${block.ask}\n${t('rules.ask.refs')}` : t('rules.ask.refs')}
+            value={block.text}
+            {...typing.visit}
+            onChange={(e) => {
+              onPatch({ text: e.target.value }, typing.token())
+              openRefs('text', e.target)
+            }}
+            onBlur={onClose}
+            {...refField('text', (text) => onPatch({ text }))}
+          />
+          {refList('text', (text) => onPatch({ text }))}
+        </div>
       )}
       {/* The block closes when the focus leaves the row and not when it leaves the field: tabbing
           from the heading to the chooser beside it is staying, not going. Hung on the field alone,
@@ -707,16 +809,28 @@ function Editing({
       )}
       {block.kind === 'list' && (
         <>
-          {block.items.map((item, i) => (
-            <input
-              key={i}
-              {...(i === 0 ? { autoFocus: true } : {})}
-              aria-label={t('rules.block.item', { n: i + 1, id: block.id })}
-              value={item}
-              {...typing.visit}
-              onChange={(e) => onPatch({ items: block.items.map((x, j) => (j === i ? e.target.value : x)) }, typing.token())}
-            />
-          ))}
+          {block.items.map((item, i) => {
+            // A point of a list is a field like the paragraph is, so the lookup answers in it —
+            // and the list belongs under the point the caret is in, never under the block.
+            const items = (text: string) => ({ items: block.items.map((x, j) => (j === i ? text : x)) })
+            const write = (text: string) => onPatch(items(text))
+            return (
+              <div className="byd-rules-field" key={i}>
+                <input
+                  {...(i === 0 ? { autoFocus: true } : {})}
+                  aria-label={t('rules.block.item', { n: i + 1, id: block.id })}
+                  value={item}
+                  {...typing.visit}
+                  onChange={(e) => {
+                    onPatch(items(e.target.value), typing.token())
+                    openRefs(`item:${i}`, e.target)
+                  }}
+                  {...refField(`item:${i}`, write)}
+                />
+                {refList(`item:${i}`, write)}
+              </div>
+            )
+          })}
           <button type="button" onClick={() => onPatch({ items: [...block.items, ''] })}>
             {t('rules.addItem')}
           </button>
@@ -761,13 +875,11 @@ function Editing({
         </>
       )}
       {block.kind === 'setup' && <input autoFocus aria-label={t('rules.block.caption', { id: block.id })} placeholder={t('rules.caption.placeholder')} value={block.caption ?? ''} {...typing.visit} onChange={(e) => onPatch({ caption: e.target.value }, typing.token())} onBlur={onClose} />}
-      <div className="byd-rules-picker">
-        <span>{t('rules.insert')}</span>
-        {referables(names).map((r) => (
-          <button key={`${r.of}:${r.id}`} type="button" aria-label={t('rules.insert.of', { name: r.name })} onMouseDown={(e) => e.preventDefault()} onClick={() => insert(refFor(r.of, r.id))}>
-            {r.name}
-          </button>
-        ))}
+      {/* What is left under an open block once the row of references is gone (#215): the one
+          control that acts on the block itself. It stands in a row of its own rather than loose
+          among the fields, because a block's fields are what is written in it and this is what
+          becomes of the block. */}
+      <div className="byd-rules-foot">
         <button type="button" className="byd-rules-remove" onClick={onRemove}>
           {t(block.kind === 'heading' ? 'rules.removeSection' : 'rules.removeBlock')}
         </button>
@@ -901,13 +1013,32 @@ function Span({ nodes }: { nodes: readonly RenderedNode[] }) {
 }
 
 // What a rule can name: everything the game has, by what it is called.
-export function referables(names: Names): { of: 'zone' | 'card'; id: string; name: string }[] {
+export type Referable = { of: 'zone' | 'card'; id: string; name: string }
+export function referables(names: Names): Referable[] {
   return [
     ...Object.entries(names.zones).map(([id, name]) => ({ of: 'zone' as const, id, name })),
     ...Object.entries(names.cards).map(([id, name]) => ({ of: 'card' as const, id, name })),
   ]
 }
 export const refFor = (of: 'zone' | 'card', id: string): string => `[[${of === 'zone' ? 'zon' : 'kort'}:${id}]]`
+const refKey = (r: Referable): string => `${r.of}-${r.id}`
+
+// What opens the lookup in a rule, and what says it is over rather than unfinished (#215). The
+// mark is the reference's own opening, so nothing new has to be learned and nothing is taken from
+// the text: `[[` that leads nowhere stays exactly the two characters somebody typed. A closed
+// reference is written text, and a line break is the next sentence.
+const REF_MARK = '[['
+const REF_STOPS = [']', '\n'] as const
+
+// The game's own names, narrowed by what has been written after the mark, and cut where the list
+// stops being a list. Eight, as the symbol library is cut: the prototype measured a hundred and
+// ten of a hundred and seventy-six references reached on two characters and every one of them
+// reachable, so the cut costs nothing a letter more does not pay for.
+const REF_ROWS = 8
+export function narrowRefs(refs: readonly Referable[], query: string): Referable[] {
+  const word = query.trim().toLowerCase()
+  return refs.filter((r) => r.name.toLowerCase().includes(word)).slice(0, REF_ROWS)
+}
 
 // An id the book has not used. A section is two blocks, so what is being handed out in the same
 // breath is named too — nothing is in the document yet to say it is spoken for.
