@@ -59,6 +59,10 @@
   .lista button[aria-selected='true'] { box-shadow: inset 0 -2px 0 0 var(--primary-mark); background: #1d2130; }
   .lista button:hover { border-color: #3b4358; }
   .lista .tomt { padding: 6px 8px; color: var(--quiet); font: 12px system-ui; }
+  /* Efterledet, i #255:s form («Bricka»): ramen säger att bokstaven inte är en del av namnet. */
+  .lista em { font-style: normal; color: var(--quiet-2); font-size: 11px; border: 1px solid var(--line); border-radius: 999px; padding: 0 8px; margin-inline-start: 2px; white-space: nowrap; }
+  .protorad label { display: inline-flex; align-items: center; gap: 6px; }
+  .protorad select { min-height: 28px; border: 1px solid #4a4230; border-radius: 7px; background: #1f1b12; color: #ffd98a; font: inherit; padding: 0 6px; }
 
   /* ── Mätspalten ──────────────────────────────────────────────────────────────────────── */
   .om { display: grid; gap: var(--s3); align-content: start; }
@@ -96,6 +100,13 @@
 <main>
   <div class="protorad">
     <p id="omlage"></p>
+    <label>Öppet block
+      <select id="vilket">
+        <option value="b5">Uppställning — mallens fråga</option>
+        <option value="b13">Varianter — designerns eget block</option>
+      </select>
+    </label>
+    <label><input type="checkbox" id="agare"> ägaren i listan (#255)</label>
     <button type="button" id="glom" hidden>Glöm att jag lärt mig</button>
     <div class="matt">
       <span>knappar under fältet <u id="m-knappar">—</u></span>
@@ -148,8 +159,7 @@
 
 <div class="note">
   <b>Prototyp — inget här importeras av appen.</b>
-  Tokens och mått är kopierade ur <code>packages/web/src/editor/editor.css</code>. Listan, fältet och
-  infogningsraden är riktiga: skriv <code>[[</code>, gå med pilarna, ta med Enter, stäng med Escape.
+  Skriv <code>[[</code> i det öppna fältet: pilar, Enter, Escape.
 </div>
 
 <script>
@@ -164,13 +174,13 @@ const PLATSER = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
 // prototyperna talar om samma spel. 21 av dem bär ett namn någon annan zon också bär.
 const ZONER = []
 let zid = 0
-const zon = (namn) => ZONER.push({ id: `z${++zid}`, namn })
-for (const p of PLATSER) zon('Hand')
-for (const p of PLATSER) zon(`Framför ${p}`)
-for (const p of PLATSER) zon(`Räknare ${p}`)
-for (const p of PLATSER) zon('Min hög')
-for (const p of ['A', 'B', 'C']) zon('Bortlagda kort')
-for (const p of ['A', 'B']) zon('Askhögen')
+const zon = (namn, agare) => ZONER.push({ id: `z${++zid}`, namn, agare })
+for (const p of PLATSER) zon('Hand', p)
+for (const p of PLATSER) zon(`Framför ${p}`, p)
+for (const p of PLATSER) zon(`Räknare ${p}`, p)
+for (const p of PLATSER) zon('Min hög', p)
+for (const p of ['A', 'B', 'C']) zon('Bortlagda kort', p)
+for (const p of ['A', 'B']) zon('Askhögen', p)
 for (const namn of ['Skogsstigen', 'Marknaden', 'Spelytan', 'Kort som lagts åt sidan', 'Dragbunten', 'Kasthögen', 'Månens vägg']) zon(namn)
 
 // 132 kort i fem uppsättningar. Namnen är satta av två fasta listor så att de är lika långa och
@@ -196,8 +206,11 @@ KORT[97].namn = KORT[4].namn
 KORT[121].namn = KORT[31].namn
 
 // Precis den ordning `referables()` ger: zonerna först, sedan korten.
+// Efterledet står bara där platsens bokstav inte redan är ett ord i namnet — `templateOf`:s
+// regel ur #255, ordagrant: `Framför A` får inget efterled, `Askhögen` vid plats A får det.
+const agareAv = (z) => (z.agare && !new RegExp(`\\b${z.agare}\\b`).test(z.namn) ? z.agare : undefined)
 const REFS = [
-  ...ZONER.map((z) => ({ av: 'zon', id: z.id, namn: z.namn })),
+  ...ZONER.map((z) => ({ av: 'zon', id: z.id, namn: z.namn, agare: agareAv(z) })),
   ...KORT.map((k) => ({ av: 'kort', id: k.id, namn: k.namn })),
 ]
 const refText = (r) => `[[${r.av === 'zon' ? 'zon' : 'kort'}:${r.id}]]`
@@ -237,7 +250,7 @@ const BOK = [
   { sort: 'rubrik', id: 'b12', text: 'Varianter' },
   { sort: 'text', id: 'b13', text: '' },
 ]
-const OPPET = 'b5'
+let OPPET = 'b5'
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // Lägena. Varje läge är ett svar på beställarens enda öppna fråga: hur mallens egen fråga och
@@ -282,7 +295,7 @@ const LAGEN = {
   },
 }
 
-const state = { lage: 'radad', fokus: false, lart: false, text: '', query: null, at: -1, val: 0 }
+const state = { lage: 'radad', fokus: false, lart: false, agare: false, text: '', query: null, at: -1, val: 0 }
 
 // ─────────────────────────────────────────────────────────────────────────────────────────────
 // Listan som smalnar. Samma svar på samma tangenter som `symbolListKey` i SymbolList.tsx ger:
@@ -480,21 +493,25 @@ function koppla(falt, lista) {
     ritaLista(lista)
   }
   const ta = (r) => {
-    const fore = falt.value.slice(0, state.at)
-    const efter = falt.value.slice(state.at + 2 + state.query.length)
+    const from = state.at
+    const till = state.at + 2 + state.query.length
     const skrivet = refText(r)
     stang()
-    // `execCommand` skriver genom webbläsarens egen ångra-hög, så infogningen blir ett steg
-    // bakåt på egen hand. I appen är det `useGesture`-polletten som gör samma sak.
+    // Fokus lämnar aldrig fältet, och infogningen är ett eget steg bakåt: markeringen läggs över
+    // `[[` och det som skrivits efter, och `insertText` skriver genom webbläsarens egen
+    // ångra-hög. I appen är det `useGesture`-polletten som håller samma löfte (L14).
     falt.focus()
-    falt.setSelectionRange(state.at >= 0 ? state.at : fore.length, fore.length + 2 + (state.query?.length ?? 0))
-    falt.setRangeText(skrivet, fore.length, fore.length + 2 + 0, 'end')
-    falt.value = `${fore}${skrivet}${efter}`
-    falt.setSelectionRange(fore.length + skrivet.length, fore.length + skrivet.length)
+    falt.setSelectionRange(from, till)
+    if (!document.execCommand('insertText', false, skrivet)) {
+      falt.setRangeText(skrivet, from, till, 'end')
+    }
     state.text = falt.value
-    if (state.lage === 'engang') state.lart = true
+    if (state.lage === 'engang' && !state.lart) {
+      state.lart = true
+      // Bara platshållaren ändras — boken ritas inte om, för då skulle fältet tappa fokus.
+      byt()
+    }
     speglaText()
-    if (state.lage === 'engang') { rita(); document.getElementById('falt').focus() }
   }
 
   falt.addEventListener('input', () => { state.text = falt.value; oppna(); speglaText() })
@@ -561,6 +578,11 @@ function ritaLista(lista) {
     k.setAttribute('aria-selected', String(i === state.val))
     const namn = document.createElement('span')
     namn.textContent = r.namn
+    if (state.agare && r.agare) {
+      const em = document.createElement('em')
+      em.textContent = r.agare
+      namn.append(' ', em)
+    }
     const sort = document.createElement('small')
     sort.textContent = r.av
     k.append(namn, sort)
@@ -581,7 +603,7 @@ function speglaSagt() {
   if (!falt || state.query === null) { el.textContent = 'ingenting — listan är stängd'; return }
   const traffar = smalnar(state.query).slice(0, TAK)
   const vald = traffar[state.val]
-  el.textContent = vald ? `${vald.namn}, ${vald.av}, ${state.val + 1} av ${traffar.length}` : 'inget med det namnet'
+  el.textContent = vald ? `${vald.namn}${state.agare && vald.agare ? ` ${vald.agare}` : ''}, ${vald.av}, ${state.val + 1} av ${traffar.length}` : 'inget med det namnet'
 }
 
 function speglaText() {
@@ -697,6 +719,15 @@ for (const knapp of document.querySelectorAll('.switch button')) {
   knapp.addEventListener('click', () => { state.lage = knapp.dataset.lage; rita(); breddtabell(); lagetabellRad() })
 }
 document.getElementById('glom').addEventListener('click', () => { state.lart = false; rita() })
+document.getElementById('vilket').addEventListener('change', (e) => {
+  OPPET = e.target.value
+  state.text = ''
+  rita()
+  breddtabell()
+  lagetabellRad()
+  document.querySelector(`[data-block="${OPPET}"]`)?.scrollIntoView({ block: 'center' })
+})
+document.getElementById('agare').addEventListener('change', (e) => { state.agare = e.target.checked; const l = document.getElementById('reflista'); if (l) ritaLista(l) })
 
 function lagetabellRad() {
   for (const tr of document.querySelectorAll('#tabell tbody tr')) tr.dataset.nu = String(tr.firstElementChild.textContent === LAGEN[state.lage].namn)
