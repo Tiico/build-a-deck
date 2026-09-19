@@ -37,15 +37,43 @@ const SLOWER: StatusTiming = { ...FAST, retryPlanMs: [600, 600, 600] }
 
 // A socket that accepts the connection and then says nothing: a service that has stopped
 // answering, which before #7 left `Ansluter…` standing for ever.
-async function deafServer(): Promise<{ url: string; stop(): Promise<void> }> {
+//
+// It is that service only for as long as it keeps taking the call and staying quiet. One that
+// hung up instead would tell the client the line *failed* rather than leaving it hanging, and a
+// test written about a line that hangs would then quietly be running about a line that broke —
+// which is the first thing that was suspected when this file read `offline` where it waited for
+// `slow` (#265). It was not the fixture that time, and `stayedDeaf` is what lets a test say that
+// rather than assume it.
+//
+// What it measures is that every call it took was still standing when the test put the phone
+// down: a client left hanging never hangs up either — not even after it has given up, because
+// giving up closes the WebSocket and leaves the socket under it to the teardown — so the only
+// thing that can end a call early is this end letting go of it, and that is exactly the leak.
+// It deliberately does not count the calls: a route may place more than one — `/table` asks over
+// HTTP about the same room it is dialling — and how many is the page's business, not the
+// fixture's.
+async function deafServer(): Promise<{ url: string; stop(): Promise<void>; stayedDeaf(): boolean }> {
   const open: Socket[] = []
-  const server: Server = createServer((s) => open.push(s))
+  const trouble: string[] = []
+  let stopping = false
+  const server: Server = createServer((s) => {
+    open.push(s)
+    // Without a listener a socket error is an uncaught exception that takes the whole worker with
+    // it; here it is evidence instead.
+    s.on('error', (e) => trouble.push(e.message))
+    s.on('close', () => {
+      if (!stopping) trouble.push('hung up')
+    })
+  })
+  server.on('error', (e) => trouble.push(e.message))
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve))
   const { port } = server.address() as AddressInfo
   return {
     url: `ws://127.0.0.1:${port}`,
+    stayedDeaf: () => trouble.length === 0,
     stop: () =>
       new Promise<void>((resolve) => {
+        stopping = true
         for (const s of open) s.destroy()
         server.close(() => resolve())
       }),
@@ -133,6 +161,7 @@ describe.each(LIVE)('$path while the service does not answer at all', (live) => 
     expect(within(panel).getByRole('button', { name: /försök/i })).toBeTruthy()
     expect(within(panel).getAllByRole('link').length).toBeGreaterThan(0)
     await waitFor(() => expect(document.title).toBe('Ingen kontakt · build-your-deck'))
+    expect(deaf.stayedDeaf()).toBe(true)
     await deaf.stop()
   })
 
