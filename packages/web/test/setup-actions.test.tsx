@@ -42,6 +42,11 @@ function open(step: HTMLElement, label: string): HTMLElement {
 // Raderna man väljer bland, som de står — sökfältet och rubrikerna räknas inte.
 const rows = (box: HTMLElement): string[] => [...box.querySelectorAll('.byd-slot-list button')].map((b) => b.textContent ?? '')
 
+// Raden med den texten. Den läses av texten och inte av rollens namn, för namnet är på väg att
+// säga något annat än det som syns.
+const rowNamed = (box: HTMLElement, text: string): HTMLElement =>
+  [...box.querySelectorAll('.byd-slot-list button')].find((b) => b.textContent === text) as HTMLElement
+
 // Hur många rader som är kopior av en annan rad: varje rad vars text förekommer mer än en gång,
 // och alltså inte «en per dubblett».
 const copies = (texts: string[]): number => texts.filter((text) => texts.indexOf(text) !== texts.lastIndexOf(text)).length
@@ -214,5 +219,23 @@ describe('vems zon en rad i rutan står för', () => {
     // Och «hand a», som gav noll träffar, ger nu exakt en.
     fireEvent.change(find, { target: { value: 'hand a' } })
     expect(rows(box)).toEqual(['Hand A'])
+  })
+
+  // Formen är zonlistans egen bricka och inte bara en bokstav till i texten: ramen säger att
+  // bokstaven är verktygets ord, så att `Hand A` inte blir omöjlig att skilja från `Framför A`,
+  // som designern verkligen döpt en zon till (A4).
+  it('skriver platsen som en bricka efter namnet, inte som en del av namnet', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    const step = newStep()
+
+    const box = open(step, 'till vänster om högen')
+    expect(rowNamed(box, 'Hand A').querySelector('em')?.textContent).toBe('A')
+    // Och zonen som ingen äger bär ingen bricka alls.
+    expect(rowNamed(box, 'Kasthög').querySelector('em')).toBeNull()
+
+    // Antalsrutan bär brickan inne i sin egen mening, på samma zon.
+    const amounts = open(step, '1')
+    expect(rowNamed(amounts, 'så många som ligger i Hand A').querySelector('em')?.textContent).toBe('A')
   })
 })

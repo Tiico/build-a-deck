@@ -228,7 +228,7 @@ const Chosen = createContext<{ keys: readonly string[]; remember(key: string): v
 // A choice in a box: the words it is read and searched by, the block it belongs to, and what
 // picking it does. A choice that is not a plain button — the number, which is typed rather than
 // picked — brings its own node and is searched by the same words all the same.
-type Choice = { key: string; words: string; group: string; node?: ReactNode; pick?(): void }
+type Choice = { key: string; words: string; label?: ReactNode; group: string; node?: ReactNode; pick?(): void }
 
 // A box of choices, searched rather than scrolled (#230). In a game of twenty zones it holds
 // forty-seven of them in four blocks nobody can see, and the last is six scrolls away. The
@@ -284,7 +284,7 @@ function Choices({ choices, close, t }: { choices: readonly Choice[]; close(): v
           close()
         }}
       >
-        {c.words}
+        {c.label ?? c.words}
       </button>
     )
   // The field is where the box opens, so it cannot be a dead end: the arrows walk out of it and
@@ -370,12 +370,16 @@ function AmountSlot({ amount, zones, t, onChange }: { amount: ActionAmount; zone
     })),
     // Den sammansatta zonen går in som ett hål i antalets egen mening, så samma nyckel bär båda
     // rutorna och ingen text sätts ihop här.
-    ...zones.map((z) => ({
-      key: `amount:zone:${z.id}`,
-      words: t('setup.amount.zone', { zone: zoneWords(z, t).words }),
-      group: t('setup.slot.group.amountZone'),
-      pick: () => onChange({ of: 'zone', zone: z.id }),
-    })),
+    ...zones.map((z) => {
+      const zw = zoneWords(z, t)
+      return {
+        key: `amount:zone:${z.id}`,
+        words: t('setup.amount.zone', { zone: zw.words }),
+        label: zw.label === undefined ? undefined : parts(t('setup.amount.zone'), { zone: zw.label }),
+        group: t('setup.slot.group.amountZone'),
+        pick: () => onChange({ of: 'zone', zone: z.id }),
+      }
+    }),
   ]
   return <ChoiceSlot label={amountWords(amount, zones, t)} choices={choices} t={t} />
 }
@@ -404,11 +408,16 @@ function TargetSlot({ target, zones, beside, t, onChange }: { target: ActionTarg
 // platsen, och då är raden namnet självt — `Framför A`, aldrig `Framför A A`.
 //
 // `words` är det söket läser, och efterledet står därför i den: «hand a» går från noll träffar
-// till en, vilket är rutans enda väg till en enskild hand (#230).
-function zoneWords(zone: Zone, t: T): { words: string } {
+// till en, vilket är rutans enda väg till en enskild hand (#230). `label` är det ögat ser, och
+// det är samma sammansättning en gång till — med bokstaven som nod i stället för som text, för
+// annars vore brickan märkning ytan hittat på och inte något katalogen sagt.
+function zoneWords(zone: Zone, t: T): { words: string; label?: ReactNode } {
   const owner = ownerOf(zone)
   if (owner === undefined) return { words: zone.name }
-  return { words: t('setup.slot.zone.owned', { zone: zone.name, owner }) }
+  return {
+    words: t('setup.slot.zone.owned', { zone: zone.name, owner }),
+    label: parts(t('setup.slot.zone.owned'), { zone: zone.name, owner: <em>{owner}</em> }),
+  }
 }
 
 // The question as chips, which is the grip the data table already taught (L4): values in one
