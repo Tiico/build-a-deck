@@ -1283,8 +1283,13 @@
    draw the same component, so what an option is and which one the keys are on is written once.
    The two classes above are what places each of them, and that is all they are for. This block
    stands after the tool rail's own button styles, which it must outrank inside the rail. */
-.byd-symbol-list { position: absolute; z-index: 5; width: 230px; overflow: auto; display: grid; gap: 2px; padding: 4px; border-radius: 10px; background: var(--byd-editor-panel-bg); border: 1px solid #3b4358; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5); }
-.byd-symbol-list button { display: flex; align-items: center; gap: 8px; border: 1px solid transparent; border-radius: 7px; padding: 4px 8px; background: transparent; color: #e6ecfa; font: inherit; text-align: left; cursor: pointer; }
+.byd-pick-list { position: absolute; z-index: 5; overflow: auto; display: grid; gap: 2px; padding: 4px; border-radius: 10px; background: var(--byd-editor-panel-bg); border: 1px solid #3b4358; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5); }
+.byd-pick-list button { display: flex; align-items: center; gap: 8px; border: 1px solid transparent; border-radius: 7px; padding: 4px 8px; background: transparent; color: #e6ecfa; font: inherit; text-align: left; cursor: pointer; }
+/* Att ingenting matchar är ett svar och ska se ut som ett. En lista som bara försvann skulle läsas
+   som en kontroll som gick sönder, och det är just vad en yta vars namn är designerns egna råkar
+   ut för — biblioteket, vars ord är verktygets, har ingenting att förklara och säger inget. */
+.byd-pick-none { margin: 0; padding: 4px 8px; color: var(--byd-editor-quiet); font: 12px system-ui; }
+.byd-symbol-list { width: 230px; }
 /* Where the next glyph will be taken from — under the pointer, or wherever the arrows have walked
    to, which are the same state reached two ways and so are one rule. It is a cursor and not a
    choice: nothing in this list is *on*, and the moment one is picked the list closes. So it is not
@@ -1301,8 +1306,8 @@
    stapeln under, som knappspråket föreskriver (#44, variant B) — och pekaren behåller sitt
    hårstreck. Aldrig en fyllning: det som är valt får inte kunna läsas som det man ska trycka på,
    och `button-language.test.tsx` mäter den regeln över hela verktyget. */
-.byd-symbol-list button:hover { border-color: var(--byd-editor-primary-mark); }
-.byd-symbol-list button[aria-selected='true'] { border-color: var(--byd-editor-primary-mark); box-shadow: inset 0 -3px 0 var(--byd-editor-primary-mark); }
+.byd-pick-list button:hover { border-color: var(--byd-editor-primary-mark); }
+.byd-pick-list button[aria-selected='true'] { border-color: var(--byd-editor-primary-mark); box-shadow: inset 0 -3px 0 var(--byd-editor-primary-mark); }
 .byd-symbol-list img { width: 20px; height: 20px; padding: 0; border-radius: 5px; background: #e8e2d4; }
 .byd-symbol-list small { margin-left: auto; color: #9aa3b8; font-size: 11px; }
 /* The header is the sort control (#15): the column's name, the state as an arrow beside it. */

@@ -8,6 +8,7 @@ import { DragDoor } from './DragDoor.js'
 import { ASSET_DRAG_TYPE, assetRef, assetUrl, assetsInUse, iconFieldsOf, imageFieldsOf, isAssetRef, ASSET_PREFIX } from './assets.js'
 import { searchSymbols, type GameSymbol } from './symbols.js'
 import { RoleList, SymbolList, roleOptionId, symbolListKey, symbolOptionId } from './SymbolList.js'
+import { triggerBehind } from './picking.js'
 import { diffProjects, type RowChange } from '@byd/server/doc'
 import { Summary } from './HistoryPanel.js'
 import type { Cell } from './ProjectClient.js'
@@ -88,6 +89,11 @@ export function fileSafe(name: string) {
 // Only one cell is ever being typed into, so the library at the brace is one list with one name.
 const CELL_SYMBOLS = 'byd-cell-symbols'
 const CELL_ROLES = 'byd-cell-roles'
+
+// What opens the library in a cell, and what says the writing is over rather than unfinished:
+// a brace that has been closed is text the designer wrote and not a question she is asking (L2).
+const BRACE = '{'
+const BRACE_STOPS = ['}'] as const
 
 // What a keystroke pulls a column by (#46). A drag is as fine as the hand that makes it; the keys
 // are steps, and the step is a character or two of the font a cell is drawn in — small enough to
@@ -185,16 +191,21 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // moment to re-measure, it is the same edit going on.
   const editing = here !== null
   const openBrace = (cardRef: string, field: string, el: HTMLInputElement, wrote = false) => {
-    const upto = el.value.slice(0, el.selectionStart ?? el.value.length)
-    const at = upto.lastIndexOf('{')
-    const word = at >= 0 ? upto.slice(at + 1) : ''
-    // A closed brace is written, and a bare number in braces is a pip (L2): neither is a lookup.
-    if (at < 0 || word.includes('}') || /^\d+$/.test(word)) return closeBrace()
+    // Where the brace stands behind the caret and what has been written since it is the same
+    // question the rulebook's `[[` asks, so it is asked in one place (L23, #215). A closed brace
+    // is written text and stops the lookup; a bare number in braces is a pip (L2) and is this
+    // surface's own exception, since only a cell has pips in it.
+    const found = triggerBehind(el.value, el.selectionStart ?? el.value.length, BRACE, BRACE_STOPS)
+    if (!found || /^\d+$/.test(found.query)) return closeBrace()
     // The bar is the whole of the switch: before it the designer is naming a symbol, after it the
     // meaning to draw it in. Nothing has to be learned and no key is taken from moving around the
     // table, which Tab and the arrows already own.
-    const bar = word.indexOf('|')
-    setBrace(bar < 0 ? { cardRef, field, at, query: word, role: null, wrote } : { cardRef, field, at, query: word.slice(0, bar), role: word.slice(bar + 1), wrote })
+    const bar = found.query.indexOf('|')
+    setBrace(
+      bar < 0
+        ? { cardRef, field, at: found.at, query: found.query, role: null, wrote }
+        : { cardRef, field, at: found.at, query: found.query.slice(0, bar), role: found.query.slice(bar + 1), wrote },
+    )
     setChoice(0)
   }
   const takeSymbol = (symbol: GameSymbol) => {

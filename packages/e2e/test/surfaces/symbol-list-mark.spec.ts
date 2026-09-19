@@ -7,6 +7,11 @@
 //   .byd-symbol-list button:hover,
 //   .byd-symbol-list button[aria-selected='true'] { border-color: var(--byd-editor-primary-mark); }
 //
+// The rule is `.byd-pick-list`'s since #215, where what a narrowing list *is* was lifted out of the
+// symbol library and shared with the rulebook's `[[`. The markup below wears both classes for the
+// same reason the shipped list does: the shared one is what a list of this kind is, and the second
+// is what this particular one holds.
+//
 // One rule for both, and nothing but a 1 px border. With the pointer resting anywhere in the list —
 // which is exactly where it is, since the list was opened by typing under it — the hovered row and
 // the row the keys are on are drawn identically, and moving the keys changes a hairline on a row
@@ -25,7 +30,7 @@ import { standing } from '../../support/surface.js'
 
 const MARKUP = `
 <div class="byd-editor">
-  <div class="byd-symbol-list byd-data-symbols" role="listbox" aria-label="Symboler">
+  <div class="byd-pick-list byd-symbol-list byd-data-symbols" role="listbox" aria-label="Symboler">
     <button type="button" role="option" id="keys" aria-selected="true"><span>sköld</span></button>
     <button type="button" role="option" id="mouse" aria-selected="false"><span>svärd</span></button>
     <button type="button" role="option" id="rest" aria-selected="false"><span>hjärta</span></button>
