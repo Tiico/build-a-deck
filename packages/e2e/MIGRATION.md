@@ -13,6 +13,10 @@ De är inte E2E-tester, och det är hela poängen med att läsa dem innan man fl
 i en riktig motor.
 De mäter alltså *källorna*, inte det som byggs.
 
+**Några av dem är hybrider ändå.** `renderToStaticMarkup` är också att rendera React i Node, och
+den importen är lätt att missa när man letar efter `@testing-library/react`.
+Sök på båda.
+
 **Trettionio är hybrider.** De renderar React i jsdom — med en riktig server i samma process och
 riktiga socketar — lyfter ut `outerHTML`, och lämnar den markupen till Chromium med apptens CSS
 runt sig.
@@ -30,11 +34,19 @@ För ett tillstånd som är verkligt men omständligt att ta sig till — en rin
 pekar, glöden på ett kort någon nyss flyttade, en textur som inte landat.
 
 ```ts
-import { standing } from '../../support/surface.js'
+import { inject, standing } from '../../support/surface.js'
 
-await standing(page, MARKUP)        // '/' och entréns ark
-await standing(page, MARKUP, '/editor')  // editorns eget ark, som är en egen chunk (#186)
+await standing(page, MARKUP)                                     // '/' och entréns ark
+await standing(page, MARKUP, { at: '/editor', needs: EDITOR })   // editorns egen chunk (#186)
+await inject(page, ANNAN_MARKUP)                                 // samma sida, nästa uppställning
 ```
+
+`needs` är hur ett chunkat ark väntas in: `{ on: '.byd-editor', token: '--byd-editor-primary-mark' }`
+är arket självt som svarar, i stället för en gissning om hur lång tid det tar.
+Utan den mäts markupen mot entréns ark i glappet, och det ser inte ut som ett fel — det ser ut som
+en regel som saknas.
+`inject` är för en fil som ställer samma yta i många uppställningar: rutten en gång, markupen
+trettiotvå gånger.
 
 `standing` navigerar till den riktiga rutten först och skriver markupen i appens egen `#root`.
 Skillnaden mot den gamla formen är vilket ark som svarar: det byggda, inte det i `src/`.
@@ -88,12 +100,28 @@ som nämner `kort-12`, så en rak delsträngssökning hittar läckor som inte fi
 **Vänta på villkoret, inte på millisekunder.** Det mesta här är ett varv till servern och tillbaka:
 `waitForURL`, `expect.poll` och `wire.until` finns för det.
 
+## Ett värde som ändrar sig är ett fynd
+
+`online-layout` mätte «filtvyn på en telefon» vid 375 × 812.
+Sedan #99 (C2:s revidering 2026-09-16) får ett fönster med kortsidan under 600 inget bord alls —
+`/online` lämnar över spelarens egen yta i stället — så vid 375 finns ingen `.byd-online-me` att
+mäta, och har inte funnits på två dagar.
+Att montera komponenterna direkt kunde inte se det: testet ritade en rad rutten aldrig hade ritat.
+
+Det är hela skillnaden mellan de två formerna, och den kommer att dyka upp fler gånger.
+När ett flyttat test inte hittar det den gamla filen mätte: kontrollera först att produkten
+fortfarande ritar det, innan selektorn lagas.
+
 ## Det som står kvar
 
-Fyrtiosex filer, i den ordning de lämpligen tas:
-resten av de rena (`table-grab`, `symbol-list-mark`, `editor-chrome-order`, `felt-refit`,
-`editor-css`, `felt-font`, `online-layout`, `playtest-textures`), sedan hybriderna från de minsta
-mot de största.
+Fyrtiotvå filer, i den ordning de lämpligen tas:
+resten av de rena (`felt-refit`, `editor-css`, `felt-font`, `playtest-textures`), sedan hybriderna
+från de minsta mot de största.
+
+`playtest-textures` är det ena fallet som inte går rakt av: den handlar om riktiga texturer, och
+stacken här har ingen renderare (`DESIGN-BESLUT.md` E2, DRIFT §6).
+Antingen får stacken en renderworker, eller så får testet en ritad textur att mäta på — och vilket
+det blir är ett beslut och inte en detalj.
 `felt-font` är ett specialfall: den bygger appen själv för att läsa de byggda filerna, och stacken
 här bygger den redan — den flytten ska läsa `.stack/web` i stället för att bygga en gång till.
 
