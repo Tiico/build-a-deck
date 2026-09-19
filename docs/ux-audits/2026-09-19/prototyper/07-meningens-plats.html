@@ -1,2 +1,550 @@
 <!doctype html>
-<html lang="sv"><head><meta charset="utf-8"><title>Prototyp 7 — Meningens plats</title><link rel="stylesheet" href="proto.css"></head><body><!-- skelett, byggs --></body></html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 7 — Meningens plats</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* Två paneler: den färdiga meningen i sin riktiga bredd, och mätningarna bredvid.
+     Vänsterspalten är 756 px därför att det är vad `.byd-setup`s rutnät ger filten vid
+     1440 px — 1440 minus 2 × 16 px kantrum, minus 300 px zonlistan, minus 320 px
+     spalten till höger, minus två mellanrum på 16. En mening som bedöms i en annan
+     bredd är bedömd i fel bredd, och radbrytning är hela frågan här. */
+  .work { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 756px minmax(0,1fr); gap: var(--s3); padding: var(--s4); }
+  .panel { min-height: 0; min-width: 0; display: flex; flex-direction: column; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); }
+  .panel > header { flex: none; display: flex; align-items: baseline; gap: var(--s2); padding: var(--s3) var(--s4) var(--s2); }
+  .panel > header h2 { margin: 0; font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .panel > header .rule { flex: 1; }
+  .panel > header small { color: var(--quiet); font-size: 11px; }
+  .panel > .scroll { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0 var(--s4) var(--s4); }
+
+  /* `.byd-zone-actions` ordagrant: samma botten, samma ram, samma 12/16 px kantrum, så att
+     meningens innermått blir de 722 px den har i produkten. Ingenting här importeras — det är
+     kopierat ur packages/web/src/editor/editor.css. */
+  .atgard { display: grid; gap: 10px; align-content: start; background: #171a23e6; border: 1px solid #2f333d; border-radius: 12px; padding: 12px 16px; }
+  .atgard h3 { margin: 4px 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .atgard > input { min-width: 260px; padding: 8px; border: 1px solid #2f333d; border-radius: 8px; background: #1b1d23; color: #fff; font: inherit; }
+  .atgard ol { list-style: none; margin: 0; padding: 0 0 8px 12px; border-left: 2px solid #2f333d; display: grid; gap: 2px; justify-items: start; }
+  .atgard li { display: flex; gap: 8px; align-items: baseline; max-width: 100%; }
+  .mening { margin: 0; line-height: 2.1; color: var(--ink); }
+  .slot { border: 0; border-bottom: 1px dashed #8ad0ff; border-radius: 4px; background: #1d3a5c; color: #cfe6ff; font: inherit; font-weight: 600; cursor: pointer; padding: 0 8px; }
+  .slot:hover { background: #24507f; }
+  .x { border: 0; background: transparent; color: var(--quiet); font-size: 15px; line-height: 1; cursor: pointer; padding: 4px; }
+
+  /* Radbrytning märks ut där den sker, för annars måste läsaren jämföra två skärmbilder
+     för att se den. Gult är protoradens färg och aldrig ett förslags. */
+  li[data-bryter='true'] .mening { box-shadow: -8px 0 0 -6px var(--warn); }
+  li[data-omojlig='true'] .mening { box-shadow: -8px 0 0 -6px #d47070; }
+  li > .fall { flex: none; align-self: center; color: var(--quiet); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; }
+
+  /* ── De fyra formerna på platsen inne i meningen ─────────────────────────────────────────── */
+  /* Bricka: zonlistans egen ram ur `.byd-setup-name em`, flyttad in i den stängda knappen.
+     Färgen är en annan än radens, och det är mätt och inte valt — se kontrastmätningen. */
+  [data-form='bricka'] .slot em, [data-form='bricka'] table.matt em { font-style: normal; color: #cfe6ff; font-size: 11px; border: 1px solid #5f83ad; border-radius: 999px; padding: 0 6px; margin-inline-start: 4px; white-space: nowrap; }
+  /* Ord, Genitiv och Framme lägger ingenting till typografin: platsen är bokstäver i meningen. */
+  [data-form='ord'] .slot em, [data-form='genitiv'] .slot em, [data-form='framme'] .slot em,
+  [data-form='ord'] table.matt em, [data-form='genitiv'] table.matt em, [data-form='framme'] table.matt em { font-style: normal; }
+
+  /* Mätningarna. */
+  .om { display: grid; gap: var(--s3); }
+  .om p { margin: 0; color: var(--quiet-2); font-size: 13px; line-height: 1.6; }
+  .om strong { color: var(--ink); }
+  .om ul { margin: 0; padding-left: 18px; color: var(--quiet-2); font-size: 13px; line-height: 1.7; }
+  .om h3 { margin: var(--s2) 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  table.matt { width: 100%; border-collapse: collapse; font-size: 12px; }
+  table.matt th, table.matt td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line-soft); vertical-align: baseline; }
+  table.matt th { color: var(--quiet); font-size: 10px; text-transform: uppercase; letter-spacing: 1px; }
+  table.matt td.n, table.matt th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  table.matt td.n { color: var(--ink); }
+  table.matt td.ok { color: var(--good); }
+  table.matt td.fel { color: var(--warn); }
+  pre { margin: 0; padding: var(--s3); border-radius: 10px; background: var(--sunk); border: 1px solid var(--line); white-space: pre-wrap; overflow-wrap: anywhere; color: #cfe6ff; font: 11px/1.6 ui-monospace, monospace; }
+  pre b { color: var(--good); font-weight: 600; }
+  pre i { color: var(--quiet); font-style: normal; }
+  .horan { display: grid; gap: 4px; padding: var(--s3); border-radius: 10px; background: var(--sunk); border: 1px solid var(--line); }
+  .horan code { color: var(--good); font: 12px/1.6 ui-monospace, monospace; }
+  .horan .dom { font-size: 11px; }
+  .dom b { font-weight: 700; }
+  .dom.ok b { color: var(--good); }
+  .dom.fel b { color: var(--warn); }
+  .val { display: flex; flex-wrap: wrap; gap: 4px; }
+  .val button { min-height: 30px; border: 1px solid var(--line); border-radius: 8px; padding: 0 10px; background: var(--sunk); color: var(--quiet-2); font: inherit; font-size: 12px; cursor: pointer; }
+  .val button[aria-pressed='true'] { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 700; }
+  /* Linjalen som meningarna mäts emot: en osynlig låda i samma typsnitt och samma radhöjd. */
+  #linjal { position: absolute; visibility: hidden; left: -9999px; top: 0; line-height: 2.1; }
+</style>
+</head>
+<body>
+<div class="shell">
+<header>
+  <strong>Skogens herrar</strong>
+  <nav class="tabs"><button type="button">Kort</button><button type="button">Mall</button><button type="button">Symboler</button><button type="button">Regler</button><button type="button" aria-selected="true">Bord</button></nav>
+  <span class="saved">8 platser · 45 zoner</span>
+  <span class="spacer"></span>
+  <div class="switch" role="group" aria-label="Form på platsen i meningen">
+    <button type="button" data-form="nu" aria-pressed="true">Nu</button>
+    <button type="button" data-form="bricka" aria-pressed="false">Bricka</button>
+    <button type="button" data-form="ord" aria-pressed="false">Ord</button>
+    <button type="button" data-form="genitiv" aria-pressed="false">Genitiv</button>
+    <button type="button" data-form="framme" aria-pressed="false">Framme</button>
+  </div>
+  <span class="who">P</span>
+</header>
+
+<main>
+  <div class="protorad">
+    <p id="omform"></p>
+    <div class="matt">
+      <span>meningar som inte går att skilja åt <u id="m-lika">—</u></span>
+      <span>radbrytningar av sju <u id="m-bryter">—</u></span>
+      <span>bryter under <u id="m-troskel">—</u></span>
+      <span>brickans kontrast <u id="m-kontrast">—</u></span>
+    </div>
+    <p class="sagt">Sagt för skärmläsaren: <em id="spegel">—</em></p>
+  </div>
+
+  <div class="work">
+    <section class="panel">
+      <header><h2>Den färdiga meningen</h2><span class="rule"></span><small>filtens riktiga 756 px · meningen 722 px</small></header>
+      <div class="scroll">
+        <div class="atgard">
+          <h3>När någon klickar på högen kan de välja</h3>
+          <input value="Dela ut starthand" aria-label="Namn för åtgärden">
+          <ol id="steg"></ol>
+        </div>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <header><h2>Vad som prövas</h2><span class="rule"></span></header>
+      <div class="scroll">
+        <div class="om">
+          <p><strong>#255 gav rutan ett efterled, inte meningen.</strong> Raden man väljer bland säger sedan i dag vilken av åtta händer den är. Den stängda knappen inne i meningen gör det inte. Frågan här är först <em>om</em> meningen ska bära platsen, och sedan i vilken form.</p>
+
+          <h3>Hur många meningar som inte går att skilja åt</h3>
+          <p id="m-lika-ord"></p>
+          <table class="matt">
+            <thead><tr><th>Meningen</th><th class="n">Betydelser</th><th class="n">Olika text</th><th class="n">Oskiljbara</th></tr></thead>
+            <tbody id="m-verb"></tbody>
+          </table>
+          <p style="font-size:11px;color:var(--quiet)">En betydelse är ett val som går att spara; två betydelser är oskiljbara när de skrivs ut med samma text. Talet i «ett tal» räknas som ett enda val, eftersom siffran står i meningen.</p>
+
+          <h3>Namnet bär redan platsen</h3>
+          <p>Regeln är <code>ownerOf</code> i <code>packages/web/src/editor/zone-name.ts</code>, ordagrant — den som skeppades med #255. En ordgräns, inte en <code>startsWith</code>.</p>
+          <table class="matt">
+            <thead><tr><th>Zon</th><th>Plats</th><th>Meningen blir</th></tr></thead>
+            <tbody id="m-regel"></tbody>
+          </table>
+
+          <h3>Så låter meningen</h3>
+          <p>Namnet den stängda knappen får, med platsens ord satt på tre sätt. Det synliga måste stå i det upplästa, annars får en röststyrd användare som säger knappen ingen träff (WCAG 2.5.3).</p>
+          <div class="val" role="group" aria-label="Var platsens ord sätts">
+            <button type="button" data-said="inget" aria-pressed="true">Inget ord</button>
+            <button type="button" data-said="fore" aria-pressed="false">Ordet före bokstaven</button>
+            <button type="button" data-said="efter" aria-pressed="false">Ordet efter meningen</button>
+          </div>
+          <div class="horan">
+            <span class="dom" id="said-dom"></span>
+            <code id="said-1"></code>
+            <code id="said-2"></code>
+            <span class="dom" id="said-fokus"></span>
+          </div>
+
+          <h3>Vad formen kostar i katalogen</h3>
+          <table class="matt">
+            <thead><tr><th>Form</th><th class="n">Nya nycklar</th><th>Och</th></tr></thead>
+            <tbody id="m-kostnad"></tbody>
+          </table>
+          <pre id="katalog"></pre>
+
+          <h3>Kvar att avgöra</h3>
+          <ul>
+            <li><strong>Ska meningen bära platsen alls?</strong> Tabellen överst är hela frågan: så många betydelser delar text i dag.</li>
+            <li><strong>Bricka, Ord, Genitiv eller Framme?</strong> Växeln uppe till höger.</li>
+            <li><strong>Var platsens ord sätts för örat.</strong> De tre kan inte alla vara rätt.</li>
+          </ul>
+        </div>
+      </div>
+    </aside>
+  </div>
+</main>
+</div>
+<span id="linjal"></span>
+
+<script>
+// ── Uppsättningen ──────────────────────────────────────────────────────────────────────────────
+// Prototyp 5:s egna 44 zoner vid åtta platser, så att de två prototyperna talar om samma spel,
+// plus en enda till: en ägd zon med ett långt namn designern skrivit själv. Den behövs, för den
+// här prototypens värsta fall är en lång mening om en ägd zon, och #255:s uppsättning hade bara
+// det långa namnet på en zon ingen äger.
+const SEATS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+const per = (seats, make) => seats.map(make)
+const ZONES = [
+  { id: 'draw', name: 'Draghögen' },
+  { id: 'discard', name: 'Kasthögen' },
+  { id: 'play', name: 'Spelytan' },
+  { id: 'market', name: 'Marknaden' },
+  { id: 'ruin', name: 'Ruinen' },
+  { id: 'chronicle', name: 'Krönikan' },
+  { id: 'aside', name: 'Kort som lagts åt sidan' },
+  ...per(SEATS, (s) => ({ id: `hand:${s}`, name: 'Hand', owner: s })),
+  ...per(SEATS, (s) => ({ id: `front:${s}`, name: `Framför ${s}`, owner: s })),
+  ...per(SEATS, (s) => ({ id: `counter:${s}`, name: `Räknare ${s}`, owner: s })),
+  ...per(SEATS, (s) => ({ id: `own:${s}`, name: 'Min hög', owner: s })),
+  ...per(['A', 'B', 'C'], (s) => ({ id: `gone:${s}`, name: 'Bortlagda kort', owner: s })),
+  // `A` inuti `Askhögen` är inget ord, så regeln måste ändå sätta platsen här. Det är fallet som
+  // skiljer en riktig ordgräns från en `startsWith`.
+  ...per(['A', 'B'], (s) => ({ id: `ash:${s}`, name: 'Askhögen', owner: s })),
+  // Den 45:e: en ägd zon med ett långt namn. Värsta fallet i produkten är en mening om en sådan.
+  { id: 'setaside:A', name: 'Kort som lagts åt sidan i rundan', owner: 'A' },
+]
+
+// ── Katalogen ──────────────────────────────────────────────────────────────────────────────────
+// Enda stället designerns ord och verktygets sätts ihop (A4). Meningarna är ordagrant ur
+// `packages/web/src/i18n/sv.editor.ts`; de fyra formerna nedanför är det som prövas.
+const K = {
+  'setup.step.split': 'Ta {n} från högen och lägg dem {face} {place}',
+  'setup.step.deal': 'Dela ut {n} till {place}, {face}',
+  'setup.step.take': 'Leta fram varje kort där {which} och lägg dem {face} {place}',
+  'setup.step.shuffle': 'Blanda högen',
+  'setup.step.movePile': 'Flytta hela högen till {place}',
+  'setup.amount.number': 'ett tal',
+  'setup.amount.seats': 'ett per spelare',
+  'setup.amount.ask': 'så många jag säger',
+  'setup.amount.zone': 'så många som ligger i {zone}',
+  'setup.face.keep': 'som de ligger',
+  'setup.face.front': 'uppvända',
+  'setup.face.back': 'nedvända',
+  'setup.place.beside.left': 'till vänster om högen',
+  'setup.place.hands': 'i varje hand',
+  'setup.place.mine': 'i min hand',
+  'setup.place.zone': 'i {zone}',
+  'setup.query.clause': '{field} är {values}',
+  'setup.query.or': ' eller ',
+  'setup.query.and': ' och ',
+  // Rutans efterled, som redan finns sedan #255. Bricka behöver ingen ny nyckel: meningen nästlar
+  // den sammansättningen rutan redan gör, precis som antalsrutan redan nästlar den.
+  'setup.slot.zone.owned': '{zone} {owner}',
+  'setup.slot.zone.owned.tail': '{zone} {owner}, plats',
+  // Form Ord: platsen skriven som ord, synligt. Ny nyckel.
+  'setup.slot.zone.owned.long': '{zone} vid plats {owner}',
+  // Form Genitiv: platsen först i frasen i stället för sist, som bordet redan säger den (K19,
+  // #86). `{owner:s}` ber språklagret om ändelsen; `possessive` svarar `A:s` på svenska och
+  // `A's` på engelska (A4, #89).
+  'setup.slot.zone.owned.of': '{owner:s} {zone}',
+  // Form Framme: platsen framför hela satsen. En nyckel per verb, inte en per zon.
+  'setup.step.split.seat': 'Hos plats {owner}: ta {n} från högen och lägg dem {face} {place}',
+  'setup.step.deal.seat': 'Hos plats {owner}: dela ut {n} till {place}, {face}',
+  'setup.step.take.seat': 'Hos plats {owner}: leta fram varje kort där {which} och lägg dem {face} {place}',
+  'setup.step.movePile.seat': 'Hos plats {owner}: flytta hela högen till {place}',
+}
+
+// `parts` i ZoneActions.tsx, i den enda rad den är här: en mall med namngivna hål, fylld med saker
+// och inte med textbitar (K21). En «nod» är en bit HTML här.
+const fyll = (mall, hal) => mall.split(/(\{[a-z]+(?::s)?\})/i).map((bit) => (/^\{[a-z]+(?::s)?\}$/i.test(bit) ? (hal[bit.replace(/[{}]/g, '').replace(/:s$/, '')] ?? bit) : bit)).join('')
+const text = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c])
+// `possessive` i i18n/index.tsx, svenskans svar: en enda bokstav eller en förkortning tar kolon.
+const genitiv = (namn) => (/^[A-ZÅÄÖ]$/.test(namn) ? `${namn}:s` : /[sxz]$/i.test(namn) ? namn : `${namn}s`)
+
+// ── Regeln som inte får slå till två gånger ────────────────────────────────────────────────────
+// Ordagrant `templateOf`/`ownerOf` ur packages/web/src/editor/zone-name.ts. Den skeppades med #255
+// och återanvänds här; ingen andra kopia av uttrycket skrivs.
+const HOLE = ''
+const templateOf = (zone) => zone.name.replace(new RegExp(`(^|\\W)${zone.owner}(?=\\W|$)`, 'g'), `$1${HOLE}`)
+const ownerOf = (zone) => (zone.owner !== undefined && templateOf(zone) === zone.name ? zone.owner : undefined)
+
+// ── En zon, skriven som meningen skriver den ───────────────────────────────────────────────────
+let form = 'nu'
+let saidForm = 'inget'
+
+// `words` är texten meningen får, `html` är det ögat ser, `seat` är platsen formen faktiskt bär
+// (undefined när den inte bär någon alls). `bar` säger att zonen hör till en plats vad formen än
+// gör med den, så «Nu» går att jämföra rad för rad med de andra.
+function zonOrd(zone) {
+  const agare = ownerOf(zone)
+  const bar = agare !== undefined
+  if (form === 'nu' || form === 'framme' || agare === undefined) return { bar, seat: form === 'framme' ? agare : undefined, words: zone.name, html: text(zone.name) }
+  if (form === 'ord') {
+    const w = fyll(K['setup.slot.zone.owned.long'], { zone: zone.name, owner: agare })
+    return { bar, seat: agare, words: w, html: text(w) }
+  }
+  if (form === 'genitiv') {
+    const w = fyll(K['setup.slot.zone.owned.of'], { zone: zone.name, owner: genitiv(agare) })
+    return { bar, seat: agare, words: w, html: text(w) }
+  }
+  return {
+    bar,
+    seat: agare,
+    words: fyll(K['setup.slot.zone.owned'], { zone: zone.name, owner: agare }),
+    html: fyll(K['setup.slot.zone.owned'], { zone: text(zone.name), owner: `<em>${text(agare)}</em>` }),
+  }
+}
+
+const enkel = (s) => ({ bar: false, seat: undefined, words: s, html: text(s) })
+const nastla = (mall, inre) => ({ bar: inre.bar, seat: inre.seat, words: fyll(mall, { zone: inre.words }), html: fyll(mall, { zone: inre.html }) })
+
+const zonById = (id) => ZONES.find((z) => z.id === id)
+const plats = (val) => (val.startsWith('zone:') ? nastla(K['setup.place.zone'], zonOrd(zonById(val.slice(5)))) : enkel(K[val]))
+const antal = (val) => (val.startsWith('zone:') ? nastla(K['setup.amount.zone'], zonOrd(zonById(val.slice(5)))) : val.startsWith('n:') ? enkel(val.slice(2)) : enkel(K[val]))
+
+// ── Stegen som prövas ──────────────────────────────────────────────────────────────────────────
+// Sju steg, valda för att täcka varje fall frågan hänger på och inte för att fylla en panel: en
+// mening utan plats alls, en vanlig, en som rör två platser samtidigt, det längsta lagliga, ett
+// namn som redan bär platsen, och ett namn där bokstaven står inuti ordet.
+const FRAGA = fyll(K['setup.query.clause'], { field: 'sällsynthet', values: ['Guld', 'Diamant'].join(K['setup.query.or']) }) + K['setup.query.and'] + fyll(K['setup.query.clause'], { field: 'typ', values: 'Besvärjelse' })
+const STEG = [
+  { fall: 'ingen plats', v: 'shuffle' },
+  { fall: 'ingen plats', v: 'deal', n: 'setup.amount.seats', place: 'setup.place.hands', face: 'setup.face.keep' },
+  { fall: 'vanlig', v: 'split', n: 'n:1', place: 'zone:hand:A', face: 'setup.face.keep' },
+  { fall: 'två platser', v: 'split', n: 'zone:hand:B', place: 'zone:hand:A', face: 'setup.face.keep' },
+  { fall: 'längst', v: 'take', which: FRAGA, place: 'zone:setaside:A', face: 'setup.face.front' },
+  { fall: 'namnet bär den', v: 'movePile', place: 'zone:front:A' },
+  { fall: 'bokstav i ordet', v: 'deal', n: 'n:2', place: 'zone:ash:A', face: 'setup.face.keep' },
+]
+
+// En mening, i den form växeln står i. Returnerar HTML, den rena texten och de platser meningen
+// rör — den sista är vad «Framme» står och faller med.
+function meningen(steg) {
+  const hal = {}
+  const platser = new Set()
+  const knapp = (d) => {
+    if (d.seat !== undefined) platser.add(d.seat)
+    return `<button type="button" class="slot">${d.html}</button>`
+  }
+  let mall = K[`setup.step.${steg.v}`]
+  if (steg.n !== undefined) hal.n = knapp(antal(steg.n))
+  if (steg.place !== undefined) hal.place = knapp(plats(steg.place))
+  if (steg.face !== undefined) hal.face = knapp(enkel(K[steg.face]))
+  if (steg.which !== undefined) hal.which = knapp(enkel(steg.which))
+  // «Framme» flyttar platsen ut framför satsen. Den kan bara göra det när satsen rör en enda
+  // plats, och en sats kan röra två: «ta så många som ligger i Hand B … i Hand A».
+  let omojlig = false
+  if (form === 'framme' && platser.size === 1) mall = K[`setup.step.${steg.v}.seat`] ?? mall
+  if (form === 'framme' && platser.size > 1) omojlig = true
+  const html = fyll(mall, { ...hal, owner: [...platser][0] ?? '' })
+  const ren = html.replace(/<[^>]+>/g, '')
+  return { html, ren, platser: [...platser], omojlig }
+}
+
+// ── Rutan ──────────────────────────────────────────────────────────────────────────────────────
+const $ = (id) => document.getElementById(id)
+
+function rita() {
+  document.body.dataset.form = form
+  $('steg').innerHTML = STEG.map((steg) => {
+    const m = meningen(steg)
+    const etik = namnet(m)
+    return `<li${m.omojlig ? ' data-omojlig="true"' : ''}><span class="mening"${etik ? ` aria-label="${text(etik)}"` : ''}>${m.html}</span><button type="button" class="x" aria-label="Ta bort steget">×</button><span class="fall">${text(m.omojlig ? 'går inte' : steg.fall)}</span></li>`
+  }).join('')
+}
+
+// Vad en uppläsning får. Platsens ord är inte synligt i tre av fyra former, så det måste sättas
+// någonstans — och var det sätts avgör om WCAG 2.5.3 håller.
+function namnet(m) {
+  if (saidForm === 'inget' || m.platser.length === 0 || form === 'nu') return null
+  if (form === 'ord') return null // platsens ord står redan synligt i meningen
+  const p = m.platser.join(' och ')
+  return saidForm === 'fore' ? m.ren.replace(new RegExp(`\\b${m.platser[0]}\\b`), `plats ${m.platser[0]}`) : `${m.ren}, plats ${p}`
+}
+
+// ── Mätningarna ────────────────────────────────────────────────────────────────────────────────
+// Hur många av spelets betydelser som skrivs ut med en text någon annan betydelse också får.
+// Räknat per hål och per mening, för de två säger olika saker: hålet säger hur stor tvetydigheten
+// är, meningen hur ofta en designer möter den.
+const PLATSVAL = ['setup.place.beside.left', 'setup.place.hands', 'setup.place.mine', ...ZONES.map((z) => `zone:${z.id}`)]
+const ANTALSVAL = ['setup.amount.number', 'setup.amount.seats', 'setup.amount.ask', ...ZONES.map((z) => `zone:${z.id}`)]
+const FACEVAL = ['setup.face.keep', 'setup.face.front', 'setup.face.back']
+
+const unika = (texter) => {
+  const n = new Map()
+  for (const t of texter) n.set(t, (n.get(t) ?? 0) + 1)
+  return { olika: n.size, delade: [...n.values()].filter((v) => v > 1).reduce((a, b) => a + b, 0), familjer: [...n.entries()].filter(([, v]) => v > 1) }
+}
+
+function matt() {
+  const p = unika(PLATSVAL.map((v) => plats(v).words))
+  const a = unika(ANTALSVAL.map((v) => antal(v).words))
+  $('m-lika').textContent = p.delade
+  $('m-lika-ord').innerHTML =
+    p.delade === 0
+      ? 'Ingen plats i spelet delar text med en annan: <strong>varje mening säger vilken av de 45 zonerna den talar om</strong>.'
+      : `Platshålet har <strong>${PLATSVAL.length} betydelser</strong> och bara <strong>${p.olika} olika texter</strong>. ${p.delade} av dem delar sin text med en annan: ${p.familjer.map(([w, n]) => `${n} × «${w}»`).join(', ')}.`
+
+  // En hel mening är oskiljbar så snart något av dess zonhål är det. Talet i «ett tal» räknas som
+  // ett enda val — siffran står i meningen och skiljer sig själv åt.
+  const rader = [
+    { namn: 'Blanda högen', tot: 1, uni: 1 },
+    { namn: 'Vänd översta {face}', tot: 3, uni: 3 },
+    { namn: 'Flytta hela högen till {place}', tot: PLATSVAL.length, uni: p.olika },
+    { namn: 'Ta {n} … {face} {place}', tot: ANTALSVAL.length * 3 * PLATSVAL.length, uni: a.olika * 3 * p.olika },
+    { namn: 'Dela ut {n} till {place}, {face}', tot: ANTALSVAL.length * PLATSVAL.length * 3, uni: a.olika * p.olika * 3 },
+    { namn: 'Leta fram … {face} {place}', tot: PLATSVAL.length * 3, uni: p.olika * 3 },
+  ]
+  $('m-verb').innerHTML = rader
+    .map((r) => `<tr><td>${text(r.namn)}</td><td class="n">${r.tot.toLocaleString('sv')}</td><td class="n">${r.uni.toLocaleString('sv')}</td><td class="n ${r.tot === r.uni ? 'ok' : 'fel'}">${(r.tot - r.uni).toLocaleString('sv')}</td></tr>`)
+    .join('')
+
+  // Regeln, på de sex former ett namn kommer i.
+  const prov = ['hand:A', 'front:A', 'counter:C', 'own:A', 'ash:A', 'setaside:A', 'draw']
+  $('m-regel').innerHTML = prov
+    .map((id) => {
+      const z = zonById(id)
+      const d = zonOrd(z)
+      const barSjalv = z.owner !== undefined && ownerOf(z) === undefined
+      return `<tr><td>${text(z.name)}</td><td>${text(z.owner ?? '—')}</td><td>${nastla(K['setup.place.zone'], d).html}${barSjalv ? ' <small style="color:var(--quiet)">(bär den redan)</small>' : ''}</td></tr>`
+    })
+    .join('')
+
+  // Radbrytning: mätt på det som faktiskt ritats, i meningens riktiga 722 px, och därefter
+  // tröskeln — den bredd meningen börjar bryta under. Bredden beror på maskinens typsnitt, så
+  // den mäts och gissas aldrig.
+  requestAnimationFrame(() => {
+    const rader = [...$('steg').querySelectorAll('li')]
+    const en = Math.min(...rader.map((r) => r.querySelector('.mening').offsetHeight))
+    let bryter = 0
+    for (const r of rader) {
+      const flera = r.querySelector('.mening').offsetHeight > en + 2
+      r.dataset.bryter = flera ? 'true' : 'false'
+      if (flera) bryter += 1
+    }
+    $('m-bryter').textContent = `${bryter} av ${rader.length}`
+    $('m-troskel').textContent = `${troskel(meningen(STEG[4]).html)} px`
+  })
+
+  $('m-kostnad').innerHTML = KOSTNAD[form].map((r) => `<tr><td>${text(r[0])}</td><td class="n">${r[1]}</td><td style="color:var(--quiet-2)">${text(r[2])}</td></tr>`).join('')
+  $('katalog').innerHTML = KATALOGRAD[form]
+}
+
+// Den bredd en mening börjar bryta rad under. Halveringssökning mot en osynlig linjal i samma
+// typsnitt, så svaret är maskinens riktiga och inte en uppskattning ur teckenantal.
+function troskel(html) {
+  const l = $('linjal')
+  l.innerHTML = html
+  l.style.width = '2000px'
+  const en = l.offsetHeight
+  let lo = 120
+  let hi = 2000
+  while (hi - lo > 1) {
+    const mid = Math.round((lo + hi) / 2)
+    l.style.width = `${mid}px`
+    if (l.offsetHeight > en) lo = mid
+    else hi = mid
+  }
+  l.innerHTML = ''
+  return hi
+}
+
+// Brickans kontrast mot den stängda knappens egen botten — inte mot rutans. Rutan är #12141a och
+// knappen #1d3a5c, och det är skälet brickan inne i meningen inte kan bära rutans färg rakt av.
+function kontrast() {
+  const lin = (c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4)
+  const L = (rgb) => { const [r, g, b] = rgb.match(/\d+/g).map((n) => lin(n / 255)); return 0.2126 * r + 0.7152 * g + 0.0722 * b }
+  const em = document.querySelector('#steg .slot em')
+  if (!em) return '—'
+  const x = L(getComputedStyle(em).color)
+  const y = L(getComputedStyle(em.closest('.slot')).backgroundColor)
+  return `${((Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05)).toFixed(2)}:1`
+}
+
+const OMFORM = {
+  nu: 'Nu: meningen skriver zonens bara namn, så åtta händer ger åtta likadana meningar.',
+  bricka: 'Bricka: rutans eget efterled flyttat in i den stängda knappen — samma sammansättning, inne i meningen.',
+  ord: 'Ord: platsen utskriven i meningen. Längst, och den enda form där örat får veta vad bokstaven är utan att något läggs till.',
+  genitiv: 'Genitiv: platsen först i frasen i stället för sist, som bordet redan säger den (K19). Det är #255:s alternativ C.',
+  framme: 'Framme: platsen framför hela satsen. Går bara när satsen rör en enda plats — och en sats kan röra två.',
+}
+
+const KOSTNAD = {
+  nu: [['Nu', 0, 'ingenting ändras, och ingenting blir skiljbart']],
+  bricka: [['Bricka', 0, 'setup.slot.zone.owned finns redan sedan #255'], ['Men', '', 'targetWords och amountWords måste lämna en nod, inte en sträng']],
+  ord: [['Ord', 1, 'setup.slot.zone.owned.long, i två språk']],
+  genitiv: [['Genitiv', 1, 'setup.slot.zone.owned.of, i två språk, via possessive ({owner:s})']],
+  framme: [['Framme', 4, 'en nyckel per verb — split, deal, take, movePile — i två språk'], ['Och', '', 'odefinierad när satsen rör två platser']],
+}
+
+const KATALOGRAD = {
+  nu: ["<i>// sv.editor.ts — som i dag.</i>", "<b>'setup.place.zone'</b>: 'i {zone}',", "<b>'setup.amount.zone'</b>: 'så många som ligger i {zone}',"],
+  bricka: [
+    "<i>// Ingen ny nyckel: meningen nästlar den sammansättning rutan redan gör (#255).</i>",
+    "<b>'setup.slot.zone.owned'</b>: '{zone} {owner}',   <i>// finns</i>",
+    '',
+    '<i>// ZoneActions.tsx — targetWords lämnar en nod och inte en sträng.</i>',
+    'const z = zoneWords(zone, t)',
+    "label: parts(t(<b>'setup.place.zone'</b>), { zone: z.label ?? z.words }),",
+  ],
+  ord: [
+    "<i>// En ny nyckel, i två språk. Inget nytt i ZoneActions utöver anropet.</i>",
+    "<b>'setup.slot.zone.owned.long'</b>: '{zone} vid plats {owner}',",
+    "<i>// en.editor.ts</i>",
+    "<b>'setup.slot.zone.owned.long'</b>: '{zone} at seat {owner}',",
+  ],
+  genitiv: [
+    "<i>// En ny nyckel, och den enda som använder genitivregeln från #89.</i>",
+    "<b>'setup.slot.zone.owned.of'</b>: '{owner:s} {zone}',",
+    "<i>// possessive svarar A:s på svenska, A's på engelska (A4).</i>",
+    "<i>// en.editor.ts</i>",
+    "<b>'setup.slot.zone.owned.of'</b>: \"{owner:s} {zone}\",",
+  ],
+  framme: [
+    "<i>// Fyra nya nycklar, en per verb, i två språk.</i>",
+    "<b>'setup.step.split.seat'</b>: 'Hos plats {owner}: ta {n} från högen och lägg dem {face} {place}',",
+    "<b>'setup.step.deal.seat'</b>: 'Hos plats {owner}: dela ut {n} till {place}, {face}',",
+    "<b>'setup.step.take.seat'</b>: '…',",
+    "<b>'setup.step.movePile.seat'</b>: '…',",
+    '',
+    '<i>// Och ingen nyckel alls för en sats som rör två platser.</i>',
+  ],
+}
+
+// Hur meningen låter, och om det som syns står i det som sägs.
+function horan() {
+  const a = meningen(STEG[2])
+  const b = meningen({ ...STEG[2], place: 'zone:hand:B' })
+  const namnA = namnet(a) ?? a.ren
+  const namnB = namnet(b) ?? b.ren
+  $('said-1').textContent = `«${namnA}»`
+  $('said-2').textContent = `«${namnB}»`
+  $('omform').textContent = OMFORM[form]
+  $('spegel').textContent = namnA === namnB ? `«${namnA}» — samma sak två gånger` : `«${namnA}» · «${namnB}»`
+  $('m-kontrast').textContent = form === 'bricka' ? kontrast() : '—'
+
+  const haller = namnA.includes(a.ren)
+  const skiljer = namnA !== namnB
+  const d = $('said-dom')
+  d.className = `dom ${haller ? 'ok' : 'fel'}`
+  d.innerHTML = haller
+    ? `<b>2.5.3 håller.</b> Det som syns, «${text(a.ren)}», står i det uppläsningen får.${skiljer ? '' : ' <b>Men örat hör ingen skillnad.</b>'}`
+    : `<b>2.5.3 brister.</b> Det som syns, «${text(a.ren)}», står inte i «${text(namnA)}» — en röststyrd användare säger meningen hon läser och får ingen träff.`
+}
+
+// ── Att dra i den ──────────────────────────────────────────────────────────────────────────────
+function allt() {
+  rita()
+  matt()
+  horan()
+}
+
+for (const b of document.querySelectorAll('.switch button')) {
+  b.onclick = () => {
+    for (const o of document.querySelectorAll('.switch button')) o.setAttribute('aria-pressed', String(o === b))
+    form = b.dataset.form
+    allt()
+  }
+}
+for (const b of document.querySelectorAll('.val button')) {
+  b.onclick = () => {
+    for (const o of document.querySelectorAll('.val button')) o.setAttribute('aria-pressed', String(o === b))
+    saidForm = b.dataset.said
+    allt()
+  }
+}
+const spegla = (e) => {
+  const m = e.target.closest?.('.mening')
+  if (m) $('said-fokus').textContent = `Under pekaren: «${m.getAttribute('aria-label') ?? m.textContent.trim()}»`
+}
+document.addEventListener('mouseover', spegla)
+document.addEventListener('focusin', spegla)
+allt()
+</script>
+</body>
+</html>
