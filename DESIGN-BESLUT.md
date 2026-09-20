@@ -2500,6 +2500,37 @@ Urklippet är editorns eget och inte maskinens: det som kopieras är en zon med 
 
 Grinden är `packages/web/test/setup-clipboard.test.tsx`.
 
+### K23. En hög kan ha ett bottenkort som alltid ligger sist, uppvänt eller nedvänt (prototypat och byggt 2026-09-20, #331)
+
+En hög i uppställningen får peka ut ett specifikt kort ur leken som sitt bottenkort, och säga om det ligger uppvänt eller nedvänt.
+Det är en regel i spelet och bestäms i fliken Bord, aldrig som en handling under spel: ett slutkort som avslutar rundan, eller ett synligt referenskort under leken, är något designern säger en gång.
+
+Fyra beslut togs i genomgången, och de gäller:
+
+- **Blandning lämnar kortet kvar längst ned.** `shuffle` blandar alla kort i högen utom bottenkortet, som ligger sist; resultatet lagras i loggen som förut, så uppspelningen är identisk och fröet lagras aldrig.
+- **När bara bottenkortet återstår dras det som vanligt.** Ingen spärr och ingen extra bekräftelse: spelarna ansvarar för spelreglerna, och verktyget säger inte nej.
+- **Designern väljer ett specifikt kort.** Kortet pekas ut direkt ur leken, som en rad; urval via villkor (`CardQuery`) ingår inte.
+- **Rollen är högens och inte kortets.** Lämnar kortet högen är det ett vanligt kort, och rollen följer inte med till andra högar; återförs det till sin ursprungliga hög hamnar det längst ned igen och skyddas åter vid blandning.
+
+Rollen bärs av högens zon som en referens till raden, och motorn läser den där kortet läggs i en hög och där högen blandas.
+Ett kort som läggs underst i en hög med sitt bottenkort på plats hamnar ovanför bottenkortet: inget läggs under det.
+
+**Vid bordet: kortkanten.**
+Tre former prototypades. **A, kortkanten** — bottenkortets nederkant sticker fram under högen. **B, markeringen** — ett kortgalleri till höger, en kompakt markering öppnar bottenkortet. **C, kortet bredvid** — en miniatyr visar samma kort bredvid högen.
+
+**Valet blev A.**
+Kanten är vad en fysisk lek visar när det understa kortet skjuts ut ett stycke: ingen andra bild av kortet, ingen yta utanför högen, ingen förklaring.
+Kanten kan inspekteras som högens topp kan; ett nedvänt bottenkort visar sin baksida även vid inspektion.
+När bottenkortet är högens enda kort visas det en gång, som högens topp; en tom hög visar inget bottenkort.
+Kortvalet och sidvalet står i zonpanelen bredvid högens övriga val, och listan över kort är lekens rader.
+
+**Dold information.**
+Ett nedvänt bottenkort läcker ingenting på tråden: zonvyn i count-läge säger bara att högen har ett bottenkort och vilken baksida det bär, aldrig dess `cardRef` eller framsidans hash, verifierat på råa frames.
+Ett uppvänt bottenkort är publikt som ett uppvänt toppkort (K15): zonvyn namnger det i `bottom` och kortet finns i `components` som vanligt.
+`project` är fortfarande enda vägen från tillstånd till tråd.
+
+Grindarna: `packages/engine/test/bottom-card.test.ts` (blandningen, uppspelningen, återföringen, sista draget och projektionen), `packages/server/test/setup-fill.test.ts` (bottenkortet sist i högen med sin sida), `packages/server/test/wire.test.ts` (råa frames), `packages/web/test/table-renderer.test.tsx` (kanten, det ensamma kortet, den tomma högen och inspektionen) och `packages/web/test/setup-editor.test.tsx` (valet och att det bevaras).
+
 ---
 
 ## L. Editorn (grillad 2026-09-06)
