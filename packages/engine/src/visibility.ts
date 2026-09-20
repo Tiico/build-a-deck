@@ -1,7 +1,7 @@
 import type { SeatId } from '@byd/protocol'
 import type { ComponentInstance, TableState, Zone } from './state.js'
 import type { TypeRegistry } from './typedef.js'
-import { zoneOf } from './state.js'
+import { bottomOf, zoneOf } from './state.js'
 
 // A `table` connection has seat === null and sees only what is public. An observer (C8) sees
 // everything, and everyone at the table knows she is there.
@@ -29,6 +29,7 @@ export function canSeeFace(
   if (component.publicOverride) return true
   if (seat !== null && (component.shownTo.includes(seat) || component.peekedBy.includes(seat))) return true
   if (faceUpOnTop(state, registry, component)) return true
+  if (faceUpAtBottom(state, registry, component)) return true
   const zone = zoneOf(state, component.zone)
   switch (zone.visibility) {
     case 'none':
@@ -48,6 +49,15 @@ export function canSeeFace(
 export function faceUpOnTop(state: TableState, registry: TypeRegistry, component: ComponentInstance): boolean {
   const zone = zoneOf(state, component.zone)
   if (zone.kind !== 'pile' || zone.order[0] !== component.id) return false
+  return component.face === registry.get(component.type).contentFace
+}
+
+// A pile's bottom card lying face-up is seen by everyone too (K23): its lower edge sticks out
+// under the pile, and what sticks out is what a physical pile shows. Only while something lies
+// on it — alone in the pile it is the top, and the top's rule answers.
+export function faceUpAtBottom(state: TableState, registry: TypeRegistry, component: ComponentInstance): boolean {
+  const zone = zoneOf(state, component.zone)
+  if (zone.order.length < 2 || bottomOf(state, zone) !== component.id) return false
   return component.face === registry.get(component.type).contentFace
 }
 

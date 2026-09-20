@@ -4,7 +4,8 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import { createRef } from 'react'
 import type { Intent } from '@byd/protocol'
 import { TableRenderer, type TableHandle } from '../src/table/TableRenderer.js'
-import { buildScene } from './scene.js'
+import { buildScene, tableOf } from './scene.js'
+import { twoSeatSetup } from './fixture.js'
 import { activeBounds, cameraOf, frameRect, overscanPx, pad } from '../src/table/camera.js'
 import { feltScale, fitScale, TV_AIR_PX } from '../src/table/fit.js'
 import { feltWithHands, handExtent, handRotation, type TableMode } from '../src/table/hand.js'
@@ -878,5 +879,77 @@ describe('the back of a hidden pile while it is dragged off', () => {
     fireEvent.pointerMove(top, client(-100, 100))
     const ghost = document.querySelector('[data-ghost] img') as HTMLImageElement | null
     expect(ghost?.src).toBe(`http://faces.test/faces/${hash}`)
+  })
+})
+
+// Högens bottenkort (K23, #331): variant A, kortkanten. Bottenkortets nederkant sticker fram
+// under högen, ritad av samma kortväg som toppen, och går att inspektera; ett nedvänt visar sin
+// baksida. Ensamt i högen är det toppen och ritas en gång; en tom hög visar inget bottenkort.
+describe('the bottom card of a pile (K23)', () => {
+  const withBottom = (face: 'front' | 'back', visibility: 'none' | 'all' = 'none') => {
+    const setup = twoSeatSetup()
+    setup.zones = setup.zones.map((z) => (z.id === 'draw' ? { ...z, visibility, bottom: { cardRef: 'ogre', face } } : z))
+    return tableOf(setup)
+  }
+  const edge = () => document.querySelector('[data-zone="draw"] .byd-pile-bottom') as HTMLElement | null
+  const top = () => document.querySelector('[data-zone="draw"] .byd-pile-top') as HTMLElement
+
+  it('a face-up bottom card sticks out under a hidden pile by name, below the top and offset down', () => {
+    const { view } = withBottom('front')
+    render(<TableRenderer view={view(null)} mode="table" scale={1} />)
+    expect(edge()).toBeTruthy()
+    expect(edge()!.getAttribute('data-face')).toBe('front')
+    expect(edge()!.textContent).toContain('ogre')
+    // The top still says nothing: the pile is hidden and its top lies face down.
+    expect(top().getAttribute('data-face')).toBe('back')
+    expect(top().textContent).toBe('')
+    // Drawn before the top in the stack, so the top covers all but the edge that is let out.
+    expect(edge()!.compareDocumentPosition(top()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    // Let out by moving the whole card down, never by shortening it: the edge must lie below
+    // the pile's own box, or the top covers all of it.
+    expect(edge()!.style.top).toBe('')
+    expect(edge()!.style.transform).toMatch(/^translateY\((\d+(\.\d+)?)px\)$/)
+    expect(parseFloat(edge()!.style.transform.replace('translateY(', ''))).toBeGreaterThan(0)
+  })
+
+  it('a face-down bottom card shows only a back: no name, and the back the zone says it wears', () => {
+    const { view } = withBottom('back')
+    const snapshot = view(null)
+    const own = 'd'.repeat(64)
+    const withBack = { ...snapshot, zones: snapshot.zones.map((z) => (z.id === 'draw' && z.mode === 'count' ? { ...z, bottom: { back: own } } : z)) }
+    render(<TableRenderer view={withBack} mode="table" scale={1} faces="http://faces.test" />)
+    expect(edge()!.getAttribute('data-face')).toBe('back')
+    expect(document.querySelector('[data-zone="draw"]')!.textContent).not.toContain('ogre')
+    const img = edge()!.querySelector('img') as HTMLImageElement
+    expect(img.src).toBe(`http://faces.test/faces/${own}`)
+  })
+
+  it('a public pile lets its bottom card out too, and a lone card or an empty pile shows no edge', () => {
+    const { view, viewAfter } = withBottom('back', 'all')
+    const { rerender } = render(<TableRenderer view={view(null)} mode="table" scale={1} />)
+    expect(edge()).toBeTruthy()
+    expect(edge()!.getAttribute('data-face')).toBe('back')
+    rerender(<TableRenderer view={viewAfter({ v: 'draw', from: 'draw', to: 'table', count: 9 })} mode="table" scale={1} />)
+    expect(edge()).toBeNull()
+    expect(document.querySelector('[data-zone="draw"]')!.getAttribute('data-count')).toBe('1')
+    rerender(<TableRenderer view={viewAfter({ v: 'draw', from: 'draw', to: 'table', count: 1 })} mode="table" scale={1} />)
+    expect(edge()).toBeNull()
+    expect(document.querySelector('[data-zone="draw"]')!.getAttribute('data-count')).toBe('0')
+  })
+
+  it('the edge is inspected like the top: a face-up one by name, a face-down one as a back', () => {
+    const up = withBottom('front')
+    const onInspect = vi.fn()
+    const { unmount } = render(<TableRenderer view={up.view(null)} mode="tv" scale={1} onInspect={onInspect} />)
+    fireEvent.pointerEnter(edge()!)
+    expect(onInspect).toHaveBeenLastCalledWith(expect.objectContaining({ zone: 'draw', cardRef: 'ogre', face: 'front' }))
+    fireEvent.pointerLeave(edge()!)
+    expect(onInspect).toHaveBeenLastCalledWith(null)
+    unmount()
+
+    const down = withBottom('back')
+    render(<TableRenderer view={down.view(null)} mode="tv" scale={1} onInspect={onInspect} />)
+    fireEvent.pointerEnter(edge()!)
+    expect(onInspect).toHaveBeenLastCalledWith(expect.objectContaining({ zone: 'draw', cardRef: null, face: 'back' }))
   })
 })

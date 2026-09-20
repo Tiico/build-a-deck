@@ -425,3 +425,16 @@ describe('a departure that cannot be one', () => {
     expect(() => applyEdit(base(), { v: 'setFraming', cardRef: 'nobody', field: 'art', framing: { zoom: 2 } })).toThrow()
   })
 })
+
+// Högens bottenkort (K23, #331): en rad ur leken och sidan den ligger på, som en egenskap på
+// högen. Bort igen betyder ingen egenskap alls, som varje annan egenskap en patch kan ta bort.
+describe('högens bottenkort', () => {
+  it('sätts, byter sida och tas bort med patchZone', () => {
+    const set = applyEdit(base(), { v: 'patchZone', id: 'draw', patch: { bottom: { cardRef: 'knight', face: 'front' } } })
+    expect(set.setup.zones.find((z) => z.id === 'draw')?.bottom).toEqual({ cardRef: 'knight', face: 'front' })
+    const turned = applyEdit(set, { v: 'patchZone', id: 'draw', patch: { bottom: { cardRef: 'knight', face: 'back' } } })
+    expect(turned.setup.zones.find((z) => z.id === 'draw')?.bottom).toEqual({ cardRef: 'knight', face: 'back' })
+    const cleared = applyEdit(turned, { v: 'patchZone', id: 'draw', patch: { bottom: undefined } })
+    expect(cleared.setup.zones.find((z) => z.id === 'draw')).not.toHaveProperty('bottom')
+  })
+})

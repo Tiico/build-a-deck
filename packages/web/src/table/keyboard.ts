@@ -1,6 +1,6 @@
 import type { Intent, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
 import { translate, type Key, type T } from '../i18n/index.js'
-import { isCounter } from '../components.js'
+import { isCounter, standIn } from '../components.js'
 import { CARD_MM, besidePile, type DragTarget } from './drop.js'
 import { handName } from './handName.js'
 import { compileAction } from './actions.js'
@@ -123,7 +123,9 @@ export function feltLabels(view: Snapshot, t: T = swedish): Map<string, string> 
 // An action the panel offers. `intents` is null when the table cannot be asked for it right now
 // — an empty pile has nothing to shuffle — and `look` is the one entry that sends nothing and
 // only opens the card on this screen (K8).
-export type Act = { key: string; label: string; hint?: string; intents: Intent[] | null; look?: string; set?: string }
+// `look` is the card to hold up: an id the view knows, or the card itself when the view was
+// handed none — a face-down bottom card (K23) is only a back the zone described.
+export type Act = { key: string; label: string; hint?: string; intents: Intent[] | null; look?: string | VisibleComponentState; set?: string }
 
 // What a counter can be asked to do (C4, #67): one step either way, and a number said outright.
 // The same three things the phone's `CountersRow` offers and nothing more — not a step of five,
@@ -180,6 +182,9 @@ export function verbsFor(view: Snapshot, thing: Thing, t: T = swedish): Act[] {
     { key: 'draw', label: t('ring.draw'), intents: n > 0 ? [drawOne(z)] : null },
     ...(view.seat === null ? [] : [{ key: 'toHand', label: t('kbd.verb.toHand'), intents: n > 0 ? [{ v: 'split' as const, pile: z.id, at: 1, to: `hand:${view.seat}` }] : null }]),
     { key: 'half', label: t('ring.half'), hint: t('kbd.hint.half'), intents: n > 1 ? [{ v: 'split', pile: z.id, at: Math.ceil(n / 2), ...besidePile(z.geometry, Math.ceil(n / 2), z.beside) }] : null },
+    // The pile's bottom card (K23), let out under the pile on the felt and held up from here so
+    // the keyboard sees what the pointer sees (K16). Only a pile that has one offers it.
+    ...(z.bottom === undefined ? [] : [{ key: 'lookBottom', label: t('kbd.verb.lookBottom'), hint: t('kbd.hint.look'), intents: [], look: z.bottom.id ?? standIn(`bottom:${z.id}`, z.id, z.bottom.back) }]),
     // And what the game itself hangs on this pile (K14, extended), after the tool's own verbs and
     // in the designer's own words. The panel reads the same list the sheet under the ring reads
     // and compiles it the same way, so the hand and the keyboard cannot be offered different

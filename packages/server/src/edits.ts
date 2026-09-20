@@ -1,4 +1,4 @@
-import type { AssetCrop as Crop, CardQuery, ZoneAction, ZoneBeside } from '@byd/protocol'
+import type { AssetCrop as Crop, CardQuery, FaceId, ZoneAction, ZoneBeside } from '@byd/protocol'
 import type { Element, FaceTemplate, Variant } from '@byd/template'
 import { showsWholePicture } from '@byd/protocol'
 import { AssetCrop, PictureName, ProjectFraming } from './projects.js'
@@ -31,20 +31,26 @@ function renamedRole(fields: Record<string, Cell>, from: string, to: string): Re
   return out
 }
 
+// A property that can be taken away is taken away by naming it with nothing: `undefined` in the
+// editor's own hands, `null` once it has been on the wire, because `undefined` does not survive
+// JSON and a patch that says `{ beside: undefined }` arrives as a patch that says nothing (#331).
+// `applyEdit` reads the two alike; `ProjectClient.patchZone` is where the one becomes the other.
 export type ZonePatch = {
   name?: string
   geometry?: Geometry
   visibility?: Zone['visibility']
-  shortcut?: { label: string; at: 'top' | 'bottom' } | undefined
-  owner?: string | undefined
+  shortcut?: { label: string; at: 'top' | 'bottom' } | null | undefined
+  owner?: string | null | undefined
   // Which side of the pile is "beside it" (K21). Away again means the left the pile always had.
-  beside?: ZoneBeside | undefined
+  beside?: ZoneBeside | null | undefined
   // Which cards start here, and what the zone can be asked for (B5, K14). Both are lists that
   // change as a whole rather than item by item: what the designer edits is the question and the
   // action, and a patch that could only add or remove one clause would need an edit per shape.
   // An empty list means none, and is stored as no property at all.
-  fill?: CardQuery | undefined
-  actions?: ZoneAction[] | undefined
+  fill?: CardQuery | null | undefined
+  actions?: ZoneAction[] | null | undefined
+  // The pile's bottom card (K23). Away again means the pile has none, as before.
+  bottom?: { cardRef: string; face: FaceId } | null | undefined
 }
 
 // The properties a patch may take away again (L15, L17). Each one means something by its own
@@ -409,6 +415,10 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
           const actions = intent.patch.actions
           if (actions && actions.length > 0) next.actions = actions
           else delete next.actions
+        }
+        if ('bottom' in intent.patch) {
+          if (intent.patch.bottom && z.kind === 'pile') next.bottom = intent.patch.bottom
+          else delete next.bottom
         }
         return next
       })

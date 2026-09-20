@@ -74,7 +74,7 @@ export function ActionPanel({ view, thing, cards, onClose, onRun, onLook, onSet,
               ref={i === 0 ? first : undefined}
               onClick={() => {
                 if (a.look !== undefined) {
-                  const c = view.components.find((x) => x.id === a.look)
+                  const c = typeof a.look === 'string' ? view.components.find((x) => x.id === a.look) : a.look
                   if (c) onLook(c)
                   return
                 }

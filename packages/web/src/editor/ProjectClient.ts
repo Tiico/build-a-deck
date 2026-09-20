@@ -532,7 +532,10 @@ export class ProjectClient {
   // in pieces (L14): a zone dragged across the felt is a patch per frame of the pointer, and a
   // name typed into the panel beside it is one per keystroke.
   patchZone(id: string, patch: ZonePatch, gesture?: string): void {
-    this.edit({ v: 'patchZone', id, patch }, gesture)
+    // A property taken away is said as `null` from here on: `undefined` does not survive JSON,
+    // and the server would be handed a patch that says nothing where the editor said "none".
+    const said = Object.fromEntries(Object.entries(patch).map(([key, value]) => [key, value === undefined ? null : value])) as ZonePatch
+    this.edit({ v: 'patchZone', id, patch: said }, gesture)
   }
 
   // The rulebook (B7): part of the document, so it is saved and versioned with the cards.

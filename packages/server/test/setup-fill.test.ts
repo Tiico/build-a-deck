@@ -62,3 +62,18 @@ describe('vad bordet får veta om kortens kolumner', () => {
     })
   })
 })
+
+// Högens bottenkort (K23, #331): uppställningen bär valet till motorn, som lägger kortet sist i
+// högen på den sida designern valde — vart i leken raden än står.
+describe('högens bottenkort', () => {
+  it('följer med zonen, och bordet börjar med kortet sist i högen på sin sida', async () => {
+    const { initialState, STANDARD_TYPES, TypeRegistry } = await import('@byd/engine')
+    const setup = setupFromProject(doc([{ ...base[0]!, bottom: { cardRef: 'drake', face: 'front' } }, base[1]!]))
+    expect(setup.zones.find((z) => z.id === 'draw')?.bottom).toEqual({ cardRef: 'drake', face: 'front' })
+    expect(setup.zones.find((z) => z.id === 'table')).not.toHaveProperty('bottom')
+    const state = initialState('v1', setup, new TypeRegistry(STANDARD_TYPES))
+    const order = state.zones['draw']!.order.map((id) => state.components[id]!)
+    expect(order.map((c) => c.cardRef)).toEqual(['riddare', 'fälla', 'fälla', 'drake'])
+    expect(order.at(-1)?.face).toBe('front')
+  })
+})

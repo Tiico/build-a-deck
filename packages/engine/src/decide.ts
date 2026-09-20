@@ -4,7 +4,7 @@ import { handsReturnedBy } from './hands.js'
 import type { IdSource, Rng } from './rng.js'
 import { permutation } from './rng.js'
 import { reach } from './reach.js'
-import { componentOf, must, resolveRef, zoneOf, type Table, type TableState } from './state.js'
+import { componentOf, must, resolveRef, zoneOf, type Table, type TableState, bottomOf } from './state.js'
 import type { TypeRegistry } from './typedef.js'
 
 // `decide` is the only place randomness enters. It validates an envelope against the
@@ -247,8 +247,10 @@ function decideOutcome(state: TableState, registry: TypeRegistry, it: Intent, de
     }
     case 'rewind.confirm':
       return restoreOutcome(state, registry, must(state.rewind, 'validated rewind.confirm without a proposal').toSeq, deps)
-    case 'shuffle':
-      return shuffleOutcome(zoneOf(state, it.pile).order, deps)
+    case 'shuffle': {
+      const pile = zoneOf(state, it.pile)
+      return shuffleOutcome(pile.order, deps, bottomOf(state, pile))
+    }
     case 'roll': {
       const d = registry.get(componentOf(state, it.component).type)
       if (d.behaviours.rollable === false) throw new Error('validated rollable but definition disagrees')
@@ -257,7 +259,12 @@ function decideOutcome(state: TableState, registry: TypeRegistry, it: Intent, de
     case 'seat.release': {
       const returned = handsReturnedBy(state, it.seat)
       if (!returned) return undefined
-      return shuffleOutcome([...returned.pile.order, ...returned.handComponents], deps)
+      // The hand goes on top and the pile is shuffled (C9); a bottom card, in the pile or in the
+      // hand on its way home, lies last (K23).
+      const ids = [...returned.pile.order, ...returned.handComponents]
+      const home = returned.pile.bottom?.cardRef
+      const bottom = home === undefined ? undefined : [...ids].reverse().find((id) => state.components[id]?.cardRef === home)
+      return shuffleOutcome(ids, deps, bottom)
     }
     default:
       return undefined
@@ -274,7 +281,7 @@ function restoreOutcome(current: TableState, registry: TypeRegistry, toSeq: numb
     if (pile.kind !== 'pile' || pile.visibility !== 'none' || pile.order.length === 0) continue
     const now = new Set(current.zones[pile.id]?.order ?? [])
     if (pile.order.every((id) => now.has(id))) continue
-    const outcome = shuffleOutcome(pile.order, deps)
+    const outcome = shuffleOutcome(pile.order, deps, bottomOf(then, pile))
     const shuffled = apply(
       { ...then, zones: table.zones, components: table.components, seq: then.seq },
       registry,
@@ -286,9 +293,14 @@ function restoreOutcome(current: TableState, registry: TypeRegistry, toSeq: numb
   return { kind: 'restore', toSeq, table }
 }
 
-function shuffleOutcome(ids: readonly ComponentId[], deps: DecideDeps): Outcome {
+// Every card is re-keyed, the bottom card too (K23): it may not be tracked through a shuffle any
+// more than the others. Only its place is fixed — the permutation is drawn over the rest, and
+// the outcome's `order` says so in full, which is what replays it identically (D4).
+function shuffleOutcome(ids: readonly ComponentId[], deps: DecideDeps, keepLast?: ComponentId): Outcome {
   const rekey = ids.map((old) => [old, deps.ids.next()] as [ComponentId, ComponentId])
-  const fresh = rekey.map(([, nu]) => nu)
-  const order = permutation(ids.length, deps.rng).map((i) => must(fresh[i], 'permutation index out of range'))
+  const fresh = new Map(rekey)
+  const mixed = ids.filter((id) => id !== keepLast)
+  const order = permutation(mixed.length, deps.rng).map((i) => must(fresh.get(must(mixed[i], 'permutation index out of range')), 'unkeyed card'))
+  if (keepLast !== undefined && fresh.has(keepLast)) order.push(must(fresh.get(keepLast), 'unkeyed bottom card'))
   return { kind: 'shuffle', rekey, order }
 }

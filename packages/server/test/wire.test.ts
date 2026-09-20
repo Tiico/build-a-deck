@@ -549,3 +549,59 @@ describe('an intent sent the moment the socket opens', () => {
     expect(answer.t).toBe('ack')
   })
 })
+
+// Högens bottenkort på tråden (K23, #331). Ett nedvänt bottenkort är dold information som allt
+// annat i en dold hög: zonen säger att det finns och vilken baksida det bär, och inget mer — inget
+// id, inget cardRef, ingen framsidas hash. Ett uppvänt är publikt som en uppvänd topp (K15) och
+// namnges. Läst på råa frames och inte på vyn klienten bygger.
+describe('the bottom card of a pile on the wire (K23)', () => {
+  const withBottom = (face: 'front' | 'back') => {
+    const setup = twoSeatSetup()
+    return { ...setup, zones: setup.zones.map((z) => (z.id === 'draw' ? { ...z, bottom: { cardRef: 'ogre', face } } : z)) }
+  }
+  const open = async (id: string, face: 'front' | 'back') => {
+    const res = await fetch(`${run.http}/sessions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id, version: 'v1', setup: withBottom(face), deck }),
+    })
+    expect(res.status).toBe(201)
+    registerRoom(id, (await res.json()) as { code: string; hostKey: string })
+  }
+
+  it('a face-down bottom card leaks neither its cardRef nor its front: only a back hash crosses', async () => {
+    await open('bottom-down', 'back')
+    const a = await connect('bottom-down', 'A')
+    const table = await connect('bottom-down', null)
+    await table.synced(0)
+    const pile = table.view!.zones.find((z) => z.id === 'draw')!
+    expect(pile.mode).toBe('count')
+    expect(pile.bottom).toBeDefined()
+    expect(pile.bottom?.id).toBeUndefined()
+    expect(pile.bottom?.back).toMatch(/^[0-9a-f]{64}$/)
+
+    // A draws the whole pile: the bottom card ends in A's hand with its front, and that hash and
+    // that name have still never crossed to the table.
+    await a.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 10 })
+    await a.synced(1)
+    await table.synced(1)
+    const ogre = a.view!.components.find((c) => c.zone === 'hand:A' && c.cardRef === 'ogre')!
+    const front = ogre.faces!['front']!
+    const frames = table.frames.join('\n')
+    expect(frames).not.toContain(front)
+    expect(frames).not.toContain('ogre')
+    expect(componentsOnWire(table).filter((c) => c.zone === 'draw')).toHaveLength(0)
+  }, 60_000)
+
+  it('a face-up bottom card is named to everyone, like a face-up top', async () => {
+    await open('bottom-up', 'front')
+    const table = await connect('bottom-up', null)
+    await table.synced(0)
+    const pile = table.view!.zones.find((z) => z.id === 'draw')!
+    expect(pile.mode === 'count' && pile.bottom?.id).toMatch(/^c\d+$/)
+    const shown = componentsOnWire(table).filter((c) => c.zone === 'draw')
+    expect(shown).toHaveLength(1)
+    expect(shown[0]).toMatchObject({ id: pile.bottom!.id, cardRef: 'ogre', face: 'front' })
+    expect(shown[0]!.faces?.['front']).toMatch(/^[0-9a-f]{64}$/)
+  }, 60_000)
+})

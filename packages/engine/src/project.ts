@@ -1,9 +1,9 @@
 import type { Activity, Applied, RewindProposal, SeatEdge, SeatId, Snapshot, TablePreview, VisibleComponentState, ZoneView } from '@byd/protocol'
 
 import { undoTarget, type History } from './decide.js'
-import { componentOf, type ComponentInstance, type TableState, type Zone } from './state.js'
+import { bottomOf, componentOf, type ComponentInstance, type TableState, type Zone } from './state.js'
 import type { TypeRegistry } from './typedef.js'
-import { canSeeFace, canSeeZoneOrder, faceUpOnTop } from './visibility.js'
+import { canSeeFace, canSeeZoneOrder, faceUpAtBottom, faceUpOnTop } from './visibility.js'
 
 // A log line as every view may see it. The outcome never leaves the server: a shuffle's
 // re-keying says exactly where each card went, which no one at a physical table knows.
@@ -59,12 +59,20 @@ function projectTable(state: TableState, registry: TypeRegistry, seat: SeatId | 
 
   const sortedZones = Object.values(state.zones).sort((a, b) => a.id.localeCompare(b.id))
   for (const z of sortedZones) {
+    // The pile's bottom card, while it lies under something (K23): a lone card is the top.
+    const bottomId = z.order.length >= 2 ? bottomOf(state, z) : undefined
+    const bottom = bottomId === undefined ? undefined : componentOf(state, bottomId)
     if (canSeeZoneOrder(z, seat, observer)) {
-      zones.push({ mode: 'order', ...zoneBase(z), order: [...z.order] })
+      zones.push({ mode: 'order', ...zoneBase(z), order: [...z.order], ...(bottom ? { bottom: { id: bottom.id } } : {}) })
       for (const id of z.order) components.push(view(state, registry, componentOf(state, id), seat, faces, observer))
     } else {
       const top = z.order[0] === undefined ? undefined : componentOf(state, z.order[0])
       const shownTop = top !== undefined && faceUpOnTop(state, registry, top)
+      // The bottom card's edge sticks out under the pile: face-up it is public like a face-up
+      // top (K15) and named; face-down the zone says only that it is there and what back it
+      // wears, and the component itself stays out with the rest of the pile.
+      const shownBottom = bottom !== undefined && faceUpAtBottom(state, registry, bottom)
+      const bottomView = bottom === undefined ? {} : { bottom: shownBottom ? { id: bottom.id } : backOf(registry, bottom, faces) }
       // What the pile wears on the side everybody can see (#313). A deck whose cards carry their
       // own back (#14) has to show it from the first frame rather than the deck's default until
       // somebody has drawn — and saying it here is what keeps `project` the only way from state to
@@ -73,13 +81,13 @@ function projectTable(state: TableState, registry: TypeRegistry, seat: SeatId | 
       // The back is the face that is not the one the card's content is on, read the same way
       // `view` decides what it may hand out, so a type with some other pair of faces is answered
       // by its own definition rather than by the word "back".
-      zones.push({ mode: 'count', ...zoneBase(z), count: z.order.length, ...(shownTop ? { top: top.id } : {}), ...(top !== undefined ? backOf(registry, top, faces) : {}) })
+      zones.push({ mode: 'count', ...zoneBase(z), count: z.order.length, ...(shownTop ? { top: top.id } : {}), ...(top !== undefined ? backOf(registry, top, faces) : {}), ...bottomView })
       // A component the seat was explicitly granted knowledge of still appears, even though its
       // position inside the zone does not; so does the face-up top of a pile (K15), whose position
       // the zone view names.
       for (const id of z.order) {
         const c = componentOf(state, id)
-        if (grantedTo(c, seat) || (shownTop && c === top)) components.push(view(state, registry, c, seat, faces, observer))
+        if (grantedTo(c, seat) || (shownTop && c === top) || (shownBottom && c === bottom)) components.push(view(state, registry, c, seat, faces, observer))
       }
     }
   }

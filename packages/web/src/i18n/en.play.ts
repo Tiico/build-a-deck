@@ -96,6 +96,7 @@ export const enPlay = {
   'kbd.hand.mine.marked': '{name}, in my hand, marked',
   'kbd.verb.rotate': 'Turn 90°',
   'kbd.verb.lookTop': 'Look at the top one',
+  'kbd.verb.lookBottom': 'Look at the bottom one',
   'kbd.verb.toHand': 'Draw 1 to my hand',
   'kbd.hint.reveal': 'shows the card to everyone',
   'kbd.hint.look': 'only on this screen',
