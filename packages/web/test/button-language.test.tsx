@@ -1232,6 +1232,7 @@ describe('every suite that measures a surface', () => {
       'online-felt.test.tsx',
       'online-viewport.test.tsx',
       'picture-library-layout.test.tsx',
+      'pile-shuffle-measure.test.tsx',
       'player-viewport.test.tsx',
       'rules-column.test.tsx',
       'rules-first-frame.test.tsx',
