@@ -2724,6 +2724,7 @@ En grupp kan skriva över element på båda ansiktena; det som inte skrivs över
 
 Verifierat och färdigställt 2026-09-07 (#14):
 Ett dolt kort projiceras med just den baksideshash som dess rads grupp väljer, men utan `cardRef` eller framsideshash; det är testat på de råa WebSocket-frames som lämnar servern.
+Detsamma gäller toppen på en nedvänd hög, som inte är någon komponent i vyn: zonen bär toppkortets baksideshash och inget annat om det (#313), så högen visar gruppens rygg innan något kort dragits.
 Trycköverlämningen är ett kortmanifest, inte två fristående listor: varje fysisk komponent bär hash för alla sina ansikten från samma kompilering av samma rad. Därmed kan en gruppframsida inte paras med standardbaksidan, kopior behåller varsin manifestpost och identiskt renderinnehåll delar jobb genom hashen.
 Både fram- och baksida går genom `compileCard` med utfall och vidare som PDF-jobb till samma Chromium-renderare som övriga tryckunderlag.
 `POST /projects/:id/print` gör överlämningen från projektets aktuella revision för dess inloggade ägare, köar de deduplicerade jobben och svarar med manifestets hashpar utan att lämna ut kompilerad HTML eller CSS.
@@ -3091,7 +3092,8 @@ Bordet i fliken "Bord" visar lekens egen rygg (reviderat 2026-09-15).
 Filten ritade varje kort som låg med baksidan upp som en och samma blå väv ur `table.css`, vilken rygg leken än hade: den enda yta där designern ser leken som en lek visade en rygg som inte hörde till något spel, och en vald rygg nådde bordet först när spelet hade publicerats.
 Ryggen kompileras i webbläsaren av `compile` — samma renderare som duken och kortväggen, alltså ingen andra kodväg (K9) — eftersom den här ytan varken har en renderfarm bakom sig eller en sparad version att rendera.
 Renderaren tar emot ryggen som en funktion av filtens skala, på samma sätt som den redan tar emot editorns zonhandtag, och ritar den på varje kort som ligger med baksidan upp; en yta som inte lämnar någon rygg behåller vävens platshållare.
-Det är basryggen och inte något korts egen: en blandad hög vet inte vad som ligger överst, och basen är den varje kort i leken ärver.
+Det är basryggen och inte något korts egen: fliken har inga texturhashar, en blandad hög vet inte vad som ligger överst, och basen är den varje kort i leken ärver.
+På ett spelat bord är det däremot toppkortets rygg (reviderat 2026-09-20, #313): en nedvänd hög bär i projektionen hashen för sitt toppkorts baksida — aldrig framsidan eller `cardRef` — så att en hög med gruppryggar (#14) visar rätt rygg från första bildrutan och byter rygg när toppen byter.
 En rygg utan element ritas inte alls — ett tomt spel (L14) har en sådan, och ett blankt vitt kort på högen läses som ett fel och inte som "ingen rygg än".
 
 Följdkrav:
