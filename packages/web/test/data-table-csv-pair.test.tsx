@@ -13,6 +13,7 @@ import type { ProjectDoc } from '@byd/server'
 import { Language, type Lang } from '../src/i18n/index.js'
 import { DataTable } from '../src/editor/DataTable.js'
 import { projectDoc } from './project-doc.js'
+import { contrastRatio, flatten } from '../src/player/contrast.js'
 
 const nothing = () => undefined
 
@@ -84,6 +85,12 @@ afterAll(async () => {
   await browser.close()
 }, 60_000)
 
+const laidOver = (tools: string) =>
+  read('index.html')
+    .replace('<script type="module" src="/src/main.tsx"></script>', '')
+    .replace('</head>', `<style>${read('src/editor/editor.css')}\n${read('src/buttons.css')}</style></head>`)
+    .replace('<div id="root"></div>', `<div id="root"><div class="byd-editor" data-page="editor" data-mode="table"><main><div role="tabpanel"><div class="byd-table-wrap">${tools}</div></div></main></div></div>`)
+
 // Each of the two frames, and where the middle of the word inside it falls.
 async function pair(width: number): Promise<{ import: Box; export: Box }> {
   const { container, unmount } = tableIn('sv')
@@ -91,10 +98,7 @@ async function pair(width: number): Promise<{ import: Box; export: Box }> {
   unmount()
   const page = await browser.newPage({ viewport: { width, height: 400 } })
   try {
-    const shell = read('index.html')
-      .replace('<script type="module" src="/src/main.tsx"></script>', '')
-      .replace('</head>', `<style>${read('src/editor/editor.css')}\n${read('src/buttons.css')}</style></head>`)
-      .replace('<div id="root"></div>', `<div id="root"><div class="byd-editor" data-page="editor" data-mode="table"><main><div role="tabpanel"><div class="byd-table-wrap">${tools}</div></div></main></div></div>`)
+    const shell = laidOver(tools)
     await page.setContent(shell, { waitUntil: 'load' })
     return await page.evaluate(() => {
       // The word itself, not the frame around it: a text node measured on its own, so a frame
@@ -252,5 +256,80 @@ describe('the CSV pair above the table (#36)', () => {
     // Each word sits in the middle of its own frame, and so the two read as one row.
     expect(Math.abs(left.ink - (left.y + left.h / 2))).toBeLessThanOrEqual(1)
     expect(Math.abs(right.ink - (right.y + right.h / 2))).toBeLessThanOrEqual(1)
+  }, 60_000)
+})
+
+// The mark the import wears while a file is over it (#292). jsdom knows nothing about what a
+// stylesheet paints, and a drag-over is a state rather than a token, so neither the suites above
+// nor the contrast gates cover it: a rule that lost on specificity would be dead code and every
+// jsdom assertion about `data-over` would go on passing over a control that never changed.
+//
+// So the mark is put on by the component itself — the drag is fired at the real control — and
+// what is measured is what Chromium draws over the stylesheet the editor ships.
+type Mark = { outlineStyle: string; outlineWidth: number; outlineColor: string; background: string; behind: string; frame: string }
+
+async function marked(over: boolean): Promise<Mark> {
+  const { container, unmount } = tableIn('sv')
+  if (over) fireEvent.dragOver(container.querySelector('.byd-data-tools label')!, { dataTransfer: { files: [], items: [], types: ['Files'], getData: () => '' } })
+  const tools = container.querySelector('.byd-data-tools')!.outerHTML
+  unmount()
+  const page = await browser.newPage({ viewport: { width: 1280, height: 400 } })
+  try {
+    await page.setContent(laidOver(tools), { waitUntil: 'load' })
+    return await page.evaluate(() => {
+      const label = document.querySelector('.byd-data-tools label')!
+      const style = getComputedStyle(label)
+      // What the ring is drawn over: the outline sits outside the frame, so the ground it has to
+      // be told apart from is the first ancestor that paints one.
+      let behind = 'rgba(0, 0, 0, 0)'
+      for (let el = label.parentElement; el; el = el.parentElement) {
+        const paint = getComputedStyle(el).backgroundColor
+        if (paint !== 'rgba(0, 0, 0, 0)') {
+          behind = paint
+          break
+        }
+      }
+      const box = label.getBoundingClientRect()
+      return {
+        outlineStyle: style.outlineStyle,
+        outlineWidth: parseFloat(style.outlineWidth),
+        outlineColor: style.outlineColor,
+        background: style.backgroundColor,
+        behind,
+        // Rounded to whole pixels and compared against the other state only, never against a
+        // number written down here: the word inside is set in whatever face the machine has.
+        frame: [box.x, box.y, box.width, box.height].map(Math.round).join(),
+      }
+    })
+  } finally {
+    await page.close()
+  }
+}
+
+describe('the import wears the drag mark the tool marks every drop in (#292)', () => {
+  it('draws a dashed amber ring while a file is over it, and nothing at rest', async () => {
+    const [rest, over] = [await marked(false), await marked(true)]
+
+    // At rest the control is a frame like the export beside it: no ring at all. Read off the
+    // style and not the width — Chromium hands back the width it was given whether or not the
+    // ring is drawn, so `outline-width` alone says nothing.
+    expect(rest.outlineStyle).toBe('none')
+
+    // Over: the same amber the table's picture cells are marked in, drawn as a shape and not
+    // only as a hue — so the state is readable to an eye that tells no colours apart.
+    expect(over.outlineStyle).toBe('dashed')
+    expect(over.outlineWidth).toBeGreaterThanOrEqual(2)
+    expect(over.outlineColor).toBe('rgb(255, 217, 138)')
+    expect(over.background).not.toBe(rest.background)
+
+    // And the ring costs the row nothing: the pair does not shift under the hand that is about
+    // to let go.
+    expect(over.frame).toBe(rest.frame)
+
+    // A drag-over is a state, so no token gate measures this colour: it is measured here. The
+    // ring is a piece of interface carrying meaning, which WCAG 1.4.11 puts at 3:1 against what
+    // it is drawn over.
+    expect(rest.behind).not.toBe('rgba(0, 0, 0, 0)')
+    expect(contrastRatio(over.outlineColor, flatten([rest.behind]))).toBeGreaterThanOrEqual(3)
   }, 60_000)
 })

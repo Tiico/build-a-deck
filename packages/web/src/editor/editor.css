@@ -1255,6 +1255,11 @@
    link, an inline flex box already, kept its own in the middle. Two frames that are meant to read
    as a pair have to set their words on the same line, so the label centres its own too. */
 .byd-data-tools label { display: inline-flex; align-items: center; }
+/* A data file is over the control that takes one (#292). The same amber the table's picture cells
+   are marked in, and a ring rather than a fill: the mark has to be readable as a mark and not only
+   as a hue. An outline is drawn outside the frame and takes no room, so the pair does not move
+   under the hand that is about to let go. */
+.byd-data-tools label[data-over='true'] { outline: 2px dashed #ffd98a; outline-offset: 2px; background: rgba(255, 217, 138, 0.1); }
 /* What an import costs is written into the row straight after the control it warns about, which
    is where it is read (#36) — but a whole sentence set down between the two frames is a sentence
    set down through the middle of the pair, and at a phone's width it pushes the export onto a row

@@ -495,3 +495,132 @@ describe('the meaning picker after the bar (E4)', () => {
     expect(screen.queryByRole('listbox')).toBeNull()
   })
 })
+
+// A data file let go on the control that takes one (#292). The compact local pattern the owner
+// settled in #291 (variant B): the import control is itself the receiver, there is no second box
+// beside it and no drop over the whole Data tab. So a drop is a second way into the one path the
+// picker already walks — the same reading, the same replacement, the same warning that a save is
+// what makes it stick.
+//
+// Every file here carries real bytes, and what is measured is the rows that came out of them on
+// the far side. A drop that handed the table anything but the designer's file — the literal
+// "[object Blob]" a jsdom upload once quietly sent — parses to no id column at all and turns
+// these red.
+describe('dropping a CSV on the import (#292)', () => {
+  const carrying = (given: File[]) => ({
+    dataTransfer: { files: given, items: given.map((f) => ({ kind: 'file', type: f.type, getAsFile: () => f })), types: ['Files'], getData: () => '' },
+  })
+  const csv = (name = 'kort.csv', type = 'text/csv', text = 'id,title,body,antal\ndrake,Drake,Flygande,2\nriddare,Riddare,Till häst,1') =>
+    new File([text], name, { type })
+  const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
+
+  // The box in the crown is opened first: the control only exists once the designer has asked for
+  // the import (#130), and the drop is that control's and nothing wider.
+  const open = () => {
+    const onReplaceRows = vi.fn()
+    render(
+      <DataTable
+        doc={projectDoc()}
+        selectedRow={null}
+        onSelectRow={() => undefined}
+        onCell={() => undefined}
+        onAddRow={() => undefined}
+        onRemoveRow={() => undefined}
+        onReplaceRows={onReplaceRows}
+        onAddField={() => undefined}
+        onRemoveField={() => undefined}
+        onMoveField={() => undefined}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Importera' }))
+    return { onReplaceRows }
+  }
+  const control = () => screen.getByLabelText('Importera CSV…').closest('label') as HTMLLabelElement
+  const ROWS = [
+    { id: 'drake', fields: { title: 'Drake', body: 'Flygande', antal: 2 } },
+    { id: 'riddare', fields: { title: 'Riddare', body: 'Till häst', antal: 1 } },
+  ]
+
+  it('takes the dropped file down the same path the picker takes, bytes and all', async () => {
+    const { onReplaceRows } = open()
+    // Both halves are cancelled. A file let go where the page does not catch it is the browser
+    // leaving the editor to open the CSV as a page of its own.
+    expect(fireEvent.dragOver(control(), carrying([csv()]))).toBe(false)
+    expect(fireEvent.drop(control(), carrying([csv()]))).toBe(false)
+
+    // The rows the picker's own test asserts, line for line — one reading and not two.
+    await waitFor(() => expect(onReplaceRows).toHaveBeenCalledWith(ROWS))
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('marks the control while the file is over it, and lets the mark go again', async () => {
+    open()
+    const dragged = carrying([csv()])
+
+    expect(control().getAttribute('data-over')).toBeNull()
+    fireEvent.dragOver(control(), dragged)
+    expect(control().getAttribute('data-over')).toBe('true')
+    // Dragged away and nothing let go: the mark is about the drag and nothing was imported.
+    fireEvent.dragLeave(control(), dragged)
+    expect(control().getAttribute('data-over')).toBeNull()
+
+    fireEvent.dragOver(control(), dragged)
+    fireEvent.drop(control(), dragged)
+    await waitFor(() => expect(control().getAttribute('data-over')).toBeNull())
+  })
+
+  // The one thing a drop must never do: take the first of them and throw the rest away without a
+  // word. An import replaces the whole table, so the wrong first file is the wrong deck.
+  it('refuses more than one file and names them, instead of quietly taking the first', async () => {
+    const { onReplaceRows } = open()
+    fireEvent.drop(control(), carrying([csv('vinter.csv'), csv('sommar.csv')]))
+
+    const said = (await screen.findByRole('alert')).textContent ?? ''
+    expect(said).toContain('vinter.csv')
+    expect(said).toContain('sommar.csv')
+    expect(onReplaceRows).not.toHaveBeenCalled()
+  })
+
+  // `accept` never sees a dropped file, so the control has to say this itself rather than leave
+  // the designer with a control that looked as though it did nothing.
+  it('says so when what was let go is not a data file at all', async () => {
+    const { onReplaceRows } = open()
+    fireEvent.drop(control(), carrying([new File([PNG], 'bordet.png', { type: 'image/png' })]))
+
+    expect((await screen.findByRole('alert')).textContent).toContain('bordet.png')
+    expect(onReplaceRows).not.toHaveBeenCalled()
+  })
+
+  // And the other side of that: a CSV out of a spreadsheet arrives with an empty type on a great
+  // many machines, so a receiver that sorted on `File.type` would turn away the ordinary case
+  // (#294). The name is what is read.
+  it('takes a dropped CSV the browser had no type for, and a tab-separated file too', async () => {
+    const { onReplaceRows } = open()
+    fireEvent.drop(control(), carrying([csv('kort.csv', '')]))
+    await waitFor(() => expect(onReplaceRows).toHaveBeenCalledWith(ROWS))
+
+    fireEvent.drop(control(), carrying([csv('kort.tsv', '', 'id\ttitle\tbody\tantal\ndrake\tDrake\tFlygande\t2\nriddare\tRiddare\tTill häst\t1')]))
+    await waitFor(() => expect(onReplaceRows).toHaveBeenCalledTimes(2))
+    expect(onReplaceRows).toHaveBeenLastCalledWith(ROWS)
+  })
+
+  // Nothing becomes drop-only. The picker is still a file input a keyboard reaches, it is still
+  // the thing the warning is bound to, and a refused drop is something to try again from.
+  it('leaves the picker to the keyboard, and lets a refusal be tried again', async () => {
+    const { onReplaceRows } = open()
+    fireEvent.drop(control(), carrying([csv('vinter.csv'), csv('sommar.csv')]))
+    await screen.findByRole('alert')
+
+    const picker = screen.getByLabelText('Importera CSV…') as HTMLInputElement
+    expect(picker.tagName).toBe('INPUT')
+    expect(picker.type).toBe('file')
+    expect(picker.disabled).toBe(false)
+    expect(picker.getAttribute('aria-describedby')).toBeTruthy()
+
+    fireEvent.change(picker, { target: { files: [csv()] } })
+    await waitFor(() => expect(onReplaceRows).toHaveBeenCalledWith(ROWS))
+    // The refusal gave way once the retry went through: what stands is the state of the table,
+    // not a line about a gesture that is over.
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull())
+  })
+})

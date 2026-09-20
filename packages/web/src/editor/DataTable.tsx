@@ -107,6 +107,14 @@ const PULL_STEP = 16
 // pixels is a slip; a pull is what anybody would call a drag.
 const PULL_SLOP = 3
 
+// What the import takes, written once and answered the same way for both ways in (#292). The
+// picker hands `accept` to the file dialog; a drop never goes near it, so the same question has
+// to be asked again on this side — and asked of the name first. A CSV out of a spreadsheet
+// arrives with an empty type on one machine and as `application/vnd.ms-excel` on another, so a
+// receiver that sorted on `File.type` would turn away the ordinary case (#294).
+const CSV_ACCEPT = '.csv,.tsv,text/csv,text/tab-separated-values'
+const isDataFile = (file: File) => /\.(csv|tsv)$/i.test(file.name) || file.type === 'text/csv' || file.type === 'text/tab-separated-values'
+
 // The column that removes a card is pinned to the right edge of the scrolling box (#17), and what
 // scrolls under it is covered. No stylesheet can help: the content and the pin share one clipping
 // rectangle, and the only way out — a pin outside the scroller — costs the sticky heading, which
@@ -300,6 +308,9 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // The import and the export are the one thing on this surface that is done once and is not a
   // state, so they are what falls into a box (#130). The filters stay in the row.
   const [importing, setImporting] = useState(false)
+  // A file is over the import control. The same word the table's picture cells use for the same
+  // moment (#222), so the mark is one mark in one language wherever a file is let go in the tool.
+  const [csvOver, setCsvOver] = useState(false)
   const importBox = useRef<HTMLButtonElement>(null)
   const [dropping, setDropping] = useState<string | null>(null)
   // Which column is being carried along the head, and which heading it would land in front of
@@ -720,6 +731,24 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
     }
     reader.readAsText(file)
   }
+  // The second way into that one path (#292, #291 variant B). What the drop may not do is decide
+  // anything the picker does not: an import replaces the whole table, so a drop that reached for
+  // the first of several files would make the deck the designer ends up with the order the files
+  // happened to arrive in — and the rest would be gone without a word. Both refusals name the
+  // files, in the same place a CSV that would not parse says so, and leave the table untouched.
+  const dropFile = (dropped: readonly File[]) => {
+    const [file, ...rest] = dropped
+    if (!file) return
+    if (rest.length > 0) {
+      setImportError(t('table.import.one', { files: dropped.map((f) => f.name).join(', ') }))
+      return
+    }
+    if (!isDataFile(file)) {
+      setImportError(t('table.import.wrongType', { file: file.name }))
+      return
+    }
+    importFile(file)
+  }
   // What the file is called is the tool's word about the file, not the game's, so it follows the
   // reader (A4). The game's own name inside it is the game's: it is only folded into something a
   // file system will carry, never translated, and a name that leaves nothing behind falls back to
@@ -777,7 +806,27 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
       {importing && (
         <CrownDrawer label={t('table.import.box')} opener={importBox} onClose={() => setImporting(false)}>
           <div className="byd-data-tools">
-            <label>{t('table.import')}<input className="byd-offscreen" type="file" accept=".csv,text/csv,text/tab-separated-values" aria-label={t('table.import')} aria-describedby={noteId} onChange={(event) => importFile(event.target.files?.[0])} /></label>
+            {/* The control is the receiver (#292, #291 variant B): the data file is let go on the
+                thing that takes it, and there is no second box beside it and no drop over the
+                whole Data tab. Both halves of the drag are cancelled, because a file let go
+                anywhere the page does not catch it is the browser leaving the editor to open the
+                CSV as a page of its own. */}
+            <label
+              data-over={csvOver ? 'true' : undefined}
+              onDragOver={(event) => {
+                event.preventDefault()
+                setCsvOver(true)
+              }}
+              onDragLeave={() => setCsvOver(false)}
+              onDrop={(event) => {
+                event.preventDefault()
+                setCsvOver(false)
+                dropFile([...(event.dataTransfer.files ?? [])])
+              }}
+            >
+              {t('table.import')}
+              <input className="byd-offscreen" type="file" accept={CSV_ACCEPT} aria-label={t('table.import')} aria-describedby={noteId} onChange={(event) => importFile(event.target.files?.[0])} />
+            </label>
             {/* What an import costs is import's own warning (#36). It stands where it is read —
                 after the control it warns about, before the one it says nothing about — and it is
                 bound to that control besides, so a reader who never sees the two standing next to

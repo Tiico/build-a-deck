@@ -197,6 +197,10 @@ export const svEditor = {
   'table.import.needsId': 'CSV-filen behöver en id-kolumn',
   'table.import.noId': 'Alla kort behöver ett id',
   'table.import.duplicateId': 'Kort-id {id} förekommer flera gånger',
+  // Vad ett släpp får höra när det inte går vidare (#292). Filerna nämns vid namn: en import
+  // byter ut hela tabellen, så den som släppte har rätt att se vad verktyget höll i handen.
+  'table.import.one': 'En fil i taget: importen byter ut hela tabellen. Det som släpptes var {files}.',
+  'table.import.wrongType': '{file} är ingen datafil. Importen tar CSV eller tabbavgränsad text.',
   'table.images': 'Bilder i spelet',
   'table.images.none': 'inga ännu — välj en bild i tabellen',
   'table.image.alt': 'Bild på {cards}',
