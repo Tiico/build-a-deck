@@ -20,7 +20,25 @@
   font: 700 13px system-ui, sans-serif;
   cursor: pointer;
 }
-.byd-rules-drawer[data-placement='table'] .byd-rules-open { position: absolute; right: 16px; top: 16px; }
+/* Filtens hörn, och tummen som når det (L12, `docs/UX-KONTROLLER.md`: 44 × 44 där någon pekar).
+   Bordets skärm är en pekskärm, och filten har inget huvud som lägger ut knappen åt den — editorn
+   håller varje knapp till måttet med en genomgripande regel (`--byd-tap`) och filten har ingen
+   sådan, vilket är hur just den här knappen blev 34 px hög (#348). Talet har ett namn på filtens
+   sida också — `TOUCH_PX` i `src/table/fit.ts`, som brickorna redan mäts mot — och det är det
+   namnet provet jämför arket med, så att de två inte kan glida isär utan att någon säger till.
+
+   Golvet växer nedåt ur hörnet knappen redan hänger i: `right` och `top` rörs inte. Var knappen
+   sitter är rummets sak och inte knappens, och en knapp som flyttar sitt eget hörn är precis hur
+   den en gång kom att ligga över QR-koden (#30).
+
+   De andra två ytorna avgörs var för sig och får därför ingen regel här. Telefonen behöver ingen:
+   raden knappen rider i håller varje kontroll i sig till samma 44 px (`player.css`), så den mindre
+   formen längre ned är mindre i hörn, luft och text och ändå en tumme stor. TV:n får ingen därför
+   att den inte pekas på — den läses från andra sidan rummet och styrs från telefonerna i
+   händerna — och knappen står där i en rad vars höjd andra ting delar, så ett golv hade kostat
+   kolumnen bredvid filten tio pixlar utan ett finger som vann på dem. Alla tre måtten mäts i
+   `rules-first-frame.test.tsx`, var och en i det rum den faktiskt rider i. */
+.byd-rules-drawer[data-placement='table'] .byd-rules-open { position: absolute; right: 16px; top: 16px; min-height: 44px; min-width: 44px; }
 /* And out from under it once it is open (#227). The button sits in the felt's corner and the
    drawer takes the outermost 380 px, so the open drawer used to cover the very button that opened
    it — measured in the prototype, and true at the table, on the TV's felt and in the editor's

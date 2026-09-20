@@ -16,7 +16,9 @@ import { RadialMenu } from '../src/table/RadialMenu.js'
 import { RING_AIR, RING_REACH, ringCentre } from '../src/table/ring.js'
 import { feltLabels, intentsForPlace, landedKeyFor, type Thing } from '../src/table/keyboard.js'
 import { edgeRotation, feltWithHands, handExtent } from '../src/table/hand.js'
-import { feltScale } from '../src/table/fit.js'
+import { feltScale, TOUCH_PX } from '../src/table/fit.js'
+import { Language } from '../src/i18n/index.js'
+import { RuleShelf } from '../src/rules/RuleDrawer.js'
 import { tableOf } from './scene.js'
 import { recipeSetup } from './fixture.js'
 
@@ -426,6 +428,50 @@ describe('the rules button and the way in share the TV head (#30)', () => {
     )
     expect(html).not.toContain('byd-tv-join')
     expect(html).toMatch(/byd-tv-head[\s\S]*byd-rules-open[\s\S]*<\/div>/)
+  }, 60_000)
+})
+
+// The felt's own screen has no header, so `Regler` still hangs in the corner #30 left it in —
+// and #30 is the story of a control that quietly came to lie over something else. A thumb's floor
+// (#348) makes the button ten pixels taller, and it grows downward out of that very corner, so
+// the two things that have to hold are measured here rather than reasoned about.
+//
+// The first is that the corner has not moved: sixteen from the top and sixteen from the right,
+// which is the felt's rule and not the button's. The second is that the taller button still hangs
+// in the air the fit leaves around the felt, clear of the wood altogether — which is a stronger
+// thing to say than «covers no card», and the only one worth pinning, since nothing the felt
+// draws can be outside the felt. It is also close: at 1280 × 720 the button ends ten pixels above
+// the wood, so a button grown much further would be over the table and this would say so.
+//
+// Measured at the three widths #30 was checked in, because a felt fitted to its window leaves a
+// different amount of air in each.
+describe('the taller rules button hangs clear of the felt (#30, #348)', () => {
+  const SCREENS: readonly Size[] = [
+    { w: 1024, h: 768 },
+    { w: 1280, h: 720 },
+    { w: 1920, h: 1080 },
+  ]
+  // The table's own screen as the page builds it: the quiet plate, the felt fitted to the window,
+  // and the drawer over it — the drawer being the real component, since where its button lands is
+  // the whole question.
+  const room = (size: Size) =>
+    `<div class="byd-fit byd-table"><h1 class="byd-table-plate">Spelet · v3 · KX7P</h1>${markupOf(<TableRenderer view={scene()} mode="table" scale={feltScale(feltedOf(scene(), 0), size)} />)}${markupOf(
+      <Language lang="sv">
+        <RuleShelf rules={null} placement="table" />
+      </Language>,
+    )}</div>`
+
+  it.each(SCREENS)('keeps the corner and stays off the felt at $w px', async (size) => {
+    const button = (await measureHtml(room(size), size, { rules: '.byd-rules-open' }, `the felt at ${size.w}`))('rules')
+    expect({ top: button.y, right: size.w - (button.x + button.w) }).toEqual({ top: 16, right: 16 })
+    // A thumb fits, which is the growth this guard is about. No width is asserted: the word
+    // `Regler` is as wide as the machine's own face and never the product's.
+    expect(button.h).toBeGreaterThanOrEqual(TOUCH_PX)
+    // And everything else the screen draws is somewhere else — the wood with all of the felt on
+    // it, and the plate in the opposite corner.
+    const rest = await measureAll(room(size), size, '.byd-table-wood, .byd-table-plate')
+    expect(rest.map((r) => r.what)).toEqual(['byd-table-plate', 'byd-table-wood'])
+    expect(rest.filter((r) => overlaps(button, r.box)).map((r) => r.what)).toEqual([])
   }, 60_000)
 })
 
