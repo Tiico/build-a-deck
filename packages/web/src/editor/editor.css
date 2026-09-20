@@ -2414,6 +2414,19 @@
   background: #1d3a5c; color: #cfe6ff; font: inherit; font-weight: 600; cursor: pointer; padding: 0 8px;
 }
 .byd-slot:hover { background: #24507f; }
+/* Vems zonen är, inne i den färdiga meningen (#269). Ordagrant samma bricka som rutans rad bär
+   (`.byd-slot-pop em`) och som zonlistan bär före den: ramen säger att bokstaven är verktygets ord
+   och inte något designern döpt zonen till, vilket är hela skälet formen blev Bricka och inte ett
+   tyst «Hand A» (A4). Utan ramen är Bricka den form prototypen avrådde från.
+   Färgparet är den hovrade radens och inte den vilande, och det är inte en kopia som glidit: den
+   här brickan står inte på rutans mörka #12141a utan på knappens blå #1d3a5c, som blir #24507f
+   under pekaren. Rutans egna #9aa3b8 mäter 4,58:1 vilande och 3,28:1 hovrad — under 4,5 — medan
+   #c3cde2 håller 7,26:1 och 5,20:1. Ramen tar då #9aa3b8, som ger 4,58:1 och 3,28:1 och alltså
+   klarar 3:1 för en kant som bär betydelse (1.4.11) utan att bli starkare än ordet den ramar in:
+   en ram som är starkare än sin text är en knappruta, och meningen är text.
+   Brickan är fortfarande dämpad mot meningens eget bläck #cfe6ff (9,06:1 och 6,49:1), för det är
+   dämpningen och ramen tillsammans som säger vems ordet är. */
+.byd-slot em { font-style: normal; color: #c3cde2; font-size: 11px; border: 1px solid #9aa3b8; border-radius: 999px; padding: 0 8px; }
 /* Rutan öppnas dit det finns plats (#229). Riktningen är inte arkets att veta: den beror på hur
    långt ned knappen råkar stå, på fönstrets storlek och på vad som skrollats. `placement.ts`
    läser rummet och sätter data-attributen; här står bara vad de två riktningarna betyder.

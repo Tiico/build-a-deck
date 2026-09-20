@@ -26,9 +26,13 @@ const css = readFileSync(join(import.meta.dirname, '..', 'src/editor/editor.css'
 //
 // `inherited` är vad kaskaden ger när regeln inte säger något: en hovrad rad som inte skriver om
 // ramen bär formens egen. Utan det svaret hade provet kraschat på den saknade deklarationen och
-// sagt «regeln finns inte» där frågan är «syns ramen», vilket är två olika besked.
+// sagt «regeln finns inte» där frågan är «syns ramen», vilket är två olika besked. En regel som
+// inte finns alls är samma sak sagd en gång till — meningens bricka ändrar sig inte under pekaren
+// och skriver därför ingen regel för det (#269) — så `inherited` svarar för båda. Det urholkar
+// ingenting: varje botten frågas också utan `inherited`, och den frågan fäller en omdöpt form.
 function declared(selector: string, property: string, inherited?: string): string {
   const rule = css.match(new RegExp(`${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{([^}]*)\\}`))
+  if (!rule && inherited !== undefined) return inherited
   if (!rule) throw new Error(`editor.css har ingen regel för ${selector}`)
   const found = rule[1]!.match(new RegExp(`(?:^|;)\\s*${property}:\\s*([^;]+)`))
   if (!found && inherited !== undefined) return inherited
@@ -49,13 +53,24 @@ const RESTING = declared('.byd-slot-pop', 'background')
 const HOVER = declared('.byd-slot-pop button:hover, .byd-slot-chips button:hover', 'background')
 const ROW = declared('.byd-slot-pop button', 'color')
 
-// Brickan i vila, och brickan när raden bär pekaren. Två färger, eftersom bottnen är två.
-const BADGE: Record<string, { ink: string; ground: string }> = {
-  'i vila': { ink: declared('.byd-slot-pop em', 'color'), ground: RESTING },
-  'under pekaren': { ink: declared('.byd-slot-pop button:hover em', 'color'), ground: HOVER },
+// Och samma bricka en tredje gång, inne i den färdiga meningen (#269). Den stängda ratten är ingen
+// rad i en mörk ruta utan en blå knapp, i två lägen, och en ordagrann kopia bär inte med sig den
+// botten den mättes mot: rutans egen `#9aa3b8` ligger på 4,58:1 mot den vilande knappen och faller
+// till 3,28:1 under pekaren. Meningen tar därför samma par som den hovrade raden redan bär.
+const SENTENCE = declared('.byd-slot', 'background')
+const SENTENCE_HOVER = declared('.byd-slot:hover', 'background')
+const SENTENCE_INK = declared('.byd-slot', 'color')
+
+// Brickan i vila, och brickan när raden bär pekaren. Två färger, eftersom bottnen är två — och nu
+// fyra, eftersom ytorna är två. `row` är texten brickan ska vara dämpad mot, och den är ytans egen.
+const BADGE: Record<string, { ink: string; ground: string; row: string }> = {
+  'i vila': { ink: declared('.byd-slot-pop em', 'color'), ground: RESTING, row: ROW },
+  'under pekaren': { ink: declared('.byd-slot-pop button:hover em', 'color'), ground: HOVER, row: ROW },
+  'i meningen': { ink: declared('.byd-slot em', 'color'), ground: SENTENCE, row: SENTENCE_INK },
+  'i meningen under pekaren': { ink: declared('.byd-slot:hover em', 'color', declared('.byd-slot em', 'color')), ground: SENTENCE_HOVER, row: SENTENCE_INK },
 }
 
-describe('efterledet i platsrutan (#255, #281)', () => {
+describe('efterledet i platsrutan (#255, #281) och i meningen (#269)', () => {
   it.each(Object.entries(BADGE))('är läsbart %s', (_var, { ink, ground }) => {
     expect(contrastRatio(ink, ground)).toBeGreaterThanOrEqual(4.5)
   })
@@ -63,14 +78,15 @@ describe('efterledet i platsrutan (#255, #281)', () => {
   // Och det får inte lösas genom att brickan blir radens egen text. Då bär bara ramen skillnaden
   // mellan verktygets ord och designerns, och en ram ensam är ett tunnare besked än en ram och en
   // dämpning tillsammans.
-  it.each(Object.entries(BADGE))('är fortfarande dämpat mot radens egen text %s', (_var, { ink, ground }) => {
-    expect(contrastRatio(ink, ground)).toBeLessThan(contrastRatio(ROW, ground))
+  it.each(Object.entries(BADGE))('är fortfarande dämpat mot radens egen text %s', (_var, { ink, ground, row }) => {
+    expect(contrastRatio(ink, ground)).toBeLessThan(contrastRatio(row, ground))
   })
 })
 
 // Zonlistans rad är genomskinlig och står därför på editorns eget krom — utom under pekaren, och
 // utom i en utfälld zonfamilj, som har en botten av sitt eget (#175). Platsrutan har sin egen mörka
-// botten och en blå rad under pekaren. Bottnarna är alltså fyra, och ramen ritas på allihop.
+// botten och en blå rad under pekaren. Meningens egen ratt har två till (#269). Bottnarna är
+// alltså sex, och ramen ritas på allihop.
 const CHROME = declared('.byd-editor', '--byd-editor-chrome-bg')
 const OPEN_FAMILY = declared(".byd-setup-zones li[data-open='true']", 'background')
 const ZONE_HOVER = declared('.byd-setup-name:hover', 'background')
@@ -81,6 +97,7 @@ const ZONE_HOVER = declared('.byd-setup-name:hover', 'background')
 const ZONE_LINE = hexIn(declared('.byd-setup-name em', 'border'))
 const ZONE_WORD = declared('.byd-setup-name em', 'color')
 const POP_LINE = hexIn(declared('.byd-slot-pop em', 'border'))
+const SENTENCE_LINE = hexIn(declared('.byd-slot em', 'border'))
 const FRAME: Record<string, { line: string; ground: string; word: string }> = {
   'i zonlistan': { line: ZONE_LINE, ground: CHROME, word: ZONE_WORD },
   'i zonlistan under pekaren': { line: ZONE_LINE, ground: ZONE_HOVER, word: ZONE_WORD },
@@ -89,6 +106,8 @@ const FRAME: Record<string, { line: string; ground: string; word: string }> = {
   'runt en avvikelse under pekaren': { line: declared('.byd-setup-name em[data-differ]', 'border-color', ZONE_LINE), ground: ZONE_HOVER, word: declared('.byd-setup-name em[data-differ]', 'color') },
   'i platsrutan': { line: POP_LINE, ground: RESTING, word: declared('.byd-slot-pop em', 'color') },
   'i platsrutan under pekaren': { line: declared('.byd-slot-pop button:hover em', 'border-color', POP_LINE), ground: HOVER, word: declared('.byd-slot-pop button:hover em', 'color') },
+  'i meningen': { line: SENTENCE_LINE, ground: SENTENCE, word: declared('.byd-slot em', 'color') },
+  'i meningen under pekaren': { line: declared('.byd-slot:hover em', 'border-color', SENTENCE_LINE), ground: SENTENCE_HOVER, word: declared('.byd-slot:hover em', 'color', declared('.byd-slot em', 'color')) },
 }
 
 describe('ramen runt efterledet (#287)', () => {
