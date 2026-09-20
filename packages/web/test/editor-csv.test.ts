@@ -13,4 +13,19 @@ describe('editor card CSV', () => {
 
     expect(importCardsCsv(csv)).toEqual(doc.rows)
   })
+
+  // The body's marking is Markdown living in an ordinary text cell (#308), so it has to survive
+  // a round trip through a spreadsheet character for character: a star that came back as two, or
+  // a blank line that came back as one, is a card that renders differently after an export it was
+  // never meant to change.
+  it('brings the body’s marking back exactly as it was written', () => {
+    const doc = projectDoc()
+    const written = 'Gör **{eld} skada**.\n\nVälj sedan en:\n- *dra* ett kort\n- lägg **två** i högen\n\nInte <b>fet</b>.'
+    doc.rows[0]!.fields['body'] = written
+
+    const back = importCardsCsv(exportCardsCsv(doc))
+
+    expect(back[0]!.fields['body']).toBe(written)
+    expect(back).toEqual(doc.rows)
+  })
 })
