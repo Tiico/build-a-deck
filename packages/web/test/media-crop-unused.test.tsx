@@ -46,7 +46,8 @@ describe('a picture no card uses is still measured (#222, beslut 4)', () => {
     render(<EditorPage />)
     await screen.findByText('Skogens herrar')
     await user.click(screen.getByRole('tab', { name: 'Media' }))
-    await user.click(await screen.findByRole('button', { name: /inget kort använder/ }))
+    // The tile by its exact name: since #318 its «Ta bort» stands beside it and says the name too.
+    await user.click(await screen.findByRole('button', { name: 'Bild som inget kort använder' }))
 
     // Måttet hämtas när fliken öppnas, så formen är den rutan landar på och inte den den råkar ha
     // i samma ögonblick som den ritas.

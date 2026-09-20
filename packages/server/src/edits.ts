@@ -143,6 +143,11 @@ export type EditIntent =
   // designer's disk. A picture whose file name says nothing usable is still one the game has met,
   // so the name is what may be missing and never the picture.
   | { v: 'addPicture'; hash: string; name?: string }
+  // A picture taken out of the game (#318, L22 beslut 4). The bytes are content-addressed and
+  // shared, so what goes is the project's own reference: the record under the hash, and every
+  // cell the template draws as a picture that still points at it. One intent for both, so that
+  // the cards emptied and the picture gone are one step back and never two.
+  | { v: 'removePicture'; hash: string }
   // The type the game is set in (B3). A family the project names carries the file it is drawn
   // from, so a version prints as it was designed rather than as the printer's machine guesses.
   | { v: 'setFont'; family: string; font: ProjectFont }
@@ -483,6 +488,21 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
       const was = doc.pictures?.[intent.hash] ?? {}
       return { ...doc, pictures: { ...(doc.pictures ?? {}), [intent.hash]: name === undefined ? was : { ...was, name } } }
     }
+    case 'removePicture': {
+      // Only the columns the template draws as pictures are emptied: a text cell that happens to
+      // hold the same string is text, and the reference in it was never a picture on a card.
+      // A picture the template draws by itself (#320) would have to be let go of here too.
+      const drawn = imageFieldsOf(doc)
+      const ref = `asset:${intent.hash}`
+      const rows = doc.rows.map((row) => {
+        const hit = drawn.filter((field) => row.fields[field] === ref)
+        if (hit.length === 0) return row
+        const fields = { ...row.fields }
+        for (const field of hit) fields[field] = ''
+        return { ...row, fields }
+      })
+      return { ...doc, rows, pictures: without(doc.pictures ?? {}, intent.hash) }
+    }
     // Naming a family again replaces it, so swapping the file for a better cut is one entry.
     case 'setFont':
       return { ...doc, fonts: { ...(doc.fonts ?? {}), [intent.family]: intent.font } }
@@ -576,6 +596,23 @@ export function columnsOf(doc: ProjectDoc): string[] {
   const placed = new Set(order)
   for (const field of out) if (!placed.has(field)) order.push(field)
   return order
+}
+
+// The columns the template draws as pictures, across every face and every variant's override:
+// the cells a picture can stand in, and therefore the cells that empty when it goes.
+function imageFieldsOf(doc: ProjectDoc): string[] {
+  const out: string[] = []
+  const walk = (els: readonly Element[]) => {
+    for (const el of els) {
+      if (el.kind === 'image' && 'field' in el.bind && !out.includes(el.bind.field)) out.push(el.bind.field)
+      if (el.kind === 'if' || el.kind === 'group') walk(el.children)
+    }
+  }
+  for (const face of Object.values(doc.template.faces)) {
+    walk(face.base)
+    for (const v of Object.values(face.variants)) walk(v.override ?? [])
+  }
+  return out
 }
 
 // How many elements of the template would go with a column, counted across every face and every

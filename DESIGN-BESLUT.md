@@ -3397,6 +3397,11 @@ Schemat vägrar den gamla formen i stället för att tyst släppa fältet, så d
 
 Prototyp och mätning: `docs/ux-audits/2026-09-18.md`.
 
+Reviderat 2026-09-20 (#318): **en bild kan tas bort ur spelet från biblioteket, och det som tas bort är projektets referens, aldrig bytesen.**
+Varje bild i Media har «Ta bort»; en bild inget kort använder går direkt, och en bild kort använder frågar först och namnger korten som förlorar den — de första fem med namn och resten räknade.
+Vid ja töms kortens bildfält och bilden lämnar projektet i *samma* redigering, så ett steg tillbaka sätter tillbaka både bilden och korten; två steg hade lämnat leken halvvägs med tomma kort och en bild ingen använder.
+Bytesen ligger kvar på servern, eftersom de är innehållsadresserade och en äldre version av leken kan peka på dem — att «märka men inte rensa» ovan gäller alltså fortfarande blobben, medan referensen nu kan tas bort.
+
 ### L23. Ett tecken öppnar en lista, överallt i verktyget (2026-09-18, #215, #230)
 
 Beslutet, i en mening:

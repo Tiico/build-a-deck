@@ -51,10 +51,12 @@ export function whatOf(intent: EditIntent): Key {
     case 'removeRole':
       return 'undo.what.symbols'
     // How one card's picture is framed (E1), and what the whole deck sees of a picture (#222) —
-    // including the picture arriving in the game at all, which is a change to what it holds.
+    // including the picture arriving in the game at all, which is a change to what it holds —
+    // and leaving it again, with the cards it was on emptied in the same step (#318).
     case 'setFraming':
     case 'setCrop':
     case 'addPicture':
+    case 'removePicture':
       return 'undo.what.picture'
     case 'setRules':
       return 'undo.what.rules'

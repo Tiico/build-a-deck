@@ -7,6 +7,7 @@ import { setColumn } from './selection.js'
 import { useMarked } from './marked.js'
 import { fieldLabel } from './fields.js'
 import { Crop } from './Crop.js'
+import { Question } from './Question.js'
 import { previewFonts } from './fonts.js'
 import { CardPreview } from './CardPreview.js'
 import { useT } from '../i18n/index.js'
@@ -54,12 +55,35 @@ export type MediaPanelProps = {
   // A picture brought in from the designer's own disk (beslut 5). It answers with the hash the
   // bytes were filed under, which is the picture the window then opens on.
   onAdd?: ((file: File) => Promise<string>) | undefined
+  // A picture taken out of the game (#318): the project's reference to it, and every picture
+  // cell that held it, in one step.
+  onRemove?: ((hash: string) => void) | undefined
 }
 
-export function MediaPanel({ doc, assetBase, motifs, onReplaceRows, onCrop, onAdd }: MediaPanelProps) {
+// How many cards the question names before it counts the rest: enough to recognise what is
+// about to lose its picture, and few enough that the sentence is still one sentence.
+export const NAMED_CARDS = 5
+
+export function MediaPanel({ doc, assetBase, motifs, onReplaceRows, onCrop, onAdd, onRemove }: MediaPanelProps) {
   const t = useT()
   const said = useId()
   const media = mediaInGame(doc)
+  // The picture about to leave the game (#318), while the question about it stands. A picture no
+  // card uses goes without a question; one that cards use is asked about, with the cards named,
+  // and the focus goes back to the control that asked when the question closes either way.
+  const [leaving, setLeaving] = useState<string | null>(null)
+  const removeRefs = useRef(new Map<string, HTMLButtonElement>())
+  const [refocus, setRefocus] = useState<string | null>(null)
+  useEffect(() => {
+    if (refocus === null) return
+    removeRefs.current.get(refocus)?.focus()
+    setRefocus(null)
+  }, [refocus])
+  const remove = (hash: string, cards: readonly string[]) => {
+    if (cards.length === 0) onRemove?.(hash)
+    else setLeaving(hash)
+  }
+  const asked = leaving === null ? undefined : media.find((m) => m.hash === leaving)
   const [marked] = useMarked()
   // The picture in hand. A library opens on a picture rather than on nothing, so the first one is
   // chosen until the designer says otherwise, and a picture that leaves the game takes the choice
@@ -151,6 +175,31 @@ export function MediaPanel({ doc, assetBase, motifs, onReplaceRows, onCrop, onAd
             {note ?? ''}
           </p>
         )}
+        {asked && onRemove && (
+          <Question
+            className="byd-media-question"
+            label={t('media.remove.of', { name: nameOf(asked.hash, asked.cards) })}
+            confirm={t('media.remove.yes')}
+            cancel={t('editor.cancel')}
+            onConfirm={() => {
+              onRemove(asked.hash)
+              setLeaving(null)
+              // The control that asked goes with the picture, so the hand is put on the nearest
+              // one still standing rather than dropped on the page.
+              setRefocus(media.find((m) => m.hash !== asked.hash)?.hash ?? null)
+            }}
+            onCancel={() => {
+              setLeaving(null)
+              setRefocus(asked.hash)
+            }}
+          >
+            {t(asked.cards.length === 1 ? 'media.remove.question.one' : 'media.remove.question', {
+              name: nameOf(asked.hash, asked.cards),
+              n: asked.cards.length,
+              cards: namedCards(asked.cards, t),
+            })}
+          </Question>
+        )}
         <ul className="byd-media-grid" aria-label={t('media.title')}>
           {media.map(({ hash, cards }) => {
             const spare = cards.length === 0
@@ -187,6 +236,20 @@ export function MediaPanel({ doc, assetBase, motifs, onReplaceRows, onCrop, onAd
                     be drawn from these bytes, so the library says nobody uses it and leaves it
                     where it is. */}
                 <small id={`${said}-${hash}`}>{spare ? t('media.unused') : t(cards.length === 1 ? 'wall.cards.one' : 'wall.cards.other', { n: cards.length })}</small>
+                {onRemove && (
+                  <button
+                    type="button"
+                    className="byd-media-remove"
+                    ref={(el) => {
+                      if (el) removeRefs.current.set(hash, el)
+                      else removeRefs.current.delete(hash)
+                    }}
+                    aria-label={t('media.remove.of', { name: nameOf(hash, cards) })}
+                    onClick={() => remove(hash, cards)}
+                  >
+                    {t('media.remove')}
+                  </button>
+                )}
               </li>
             )
           })}
@@ -239,6 +302,14 @@ export function MediaPanel({ doc, assetBase, motifs, onReplaceRows, onCrop, onAd
       </div>
     </div>
   )
+}
+
+// The cards a question names: the first few by name, and the rest counted. A game of real size
+// puts a picture on ninety cards, and ninety names are not a sentence anyone reads before
+// answering.
+function namedCards(cards: readonly string[], t: ReturnType<typeof useT>): string {
+  const named = cards.slice(0, NAMED_CARDS).join(', ')
+  return cards.length > NAMED_CARDS ? t('media.remove.more', { cards: named, n: cards.length - NAMED_CARDS }) : named
 }
 
 // The picture in hand, and what the deck sees of it. The window on the left is the whole file
