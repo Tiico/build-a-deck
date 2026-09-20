@@ -829,7 +829,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
             </div>
           ))}
           {offTop && (
-            <Ghost card={topOf(zoneById.get(offTop.pile) ?? floor)} faces={faces} back={backAt('ghost')} left={left(offTop.at.x)} top={top(offTop.at.y)} px={px} />
+            <Ghost card={topOf(zoneById.get(offTop.pile) ?? floor)} zoneBack={backOf(zoneById.get(offTop.pile))} faces={faces} back={backAt('ghost')} left={left(offTop.at.x)} top={top(offTop.at.y)} px={px} />
           )}
           {overlay?.({ px, left, top, scale })}
         </div>
@@ -1059,9 +1059,11 @@ function Card({ c, left, top, px, dragging, carried, by, faces, back, handlers, 
   )
 }
 
-// The top card of a pile while it is being dragged off.
-function Ghost({ card, faces, back, left, top, px }: { card: VisibleComponentState | undefined; faces: string | undefined; back?: ReactNode | undefined; left: number; top: number; px: (mm: number) => number }) {
-  const own = card?.cardRef ? null : back
+// The top card of a pile while it is being dragged off. A hidden pile's top is no component, so
+// the ghost wears the back the zone named for the pile (#313): the card that came off is the one
+// that showed, and it must not change back as it lifts.
+function Ghost({ card, zoneBack, faces, back, left, top, px }: { card: VisibleComponentState | undefined; zoneBack?: string | undefined; faces: string | undefined; back?: ReactNode | undefined; left: number; top: number; px: (mm: number) => number }) {
+  const own = card?.cardRef ? null : zoneBack ? <BackTexture faces={faces} hash={zoneBack} /> : back
   return (
     <div className="byd-card" data-ghost data-dragging="true" data-face={card?.cardRef ? 'front' : 'back'} data-back={own ? 'own' : undefined} style={{ position: 'absolute', left, top, width: px(CARD_MM.w), height: px(CARD_MM.h), pointerEvents: 'none', ...(card?.cardRef ? { ['--hue' as string]: hue(card.cardRef) } : {}) }}>
       {own}
@@ -1069,6 +1071,12 @@ function Ghost({ card, faces, back, left, top, px }: { card: VisibleComponentSta
       <span>{card?.cardRef ?? ''}</span>
     </div>
   )
+}
+
+// The back a hidden pile says its face-down top wears (#313), or nothing where the zone is public
+// or the session serves no textures.
+function backOf(z: ZoneView | undefined): string | undefined {
+  return z?.mode === 'count' ? z.back : undefined
 }
 
 // How many cards a pile holds, however much of it this view is allowed to name (K15).
@@ -1096,7 +1104,7 @@ function Pile({ zone, count, topCard, faces, back, left, top, px, lifted, topHan
   // The deck's own back is what is left when the session has no textures to serve. An empty pile
   // wears nothing but the dashed outline `table.css` draws on it, which is how a pile says it is
   // empty.
-  const ownBack = zone.mode === 'count' ? zone.back : undefined
+  const ownBack = backOf(zone)
   const own = count > 0 && !topCard?.cardRef ? (ownBack ? <BackTexture faces={faces} hash={ownBack} /> : back) : null
   const layers = Math.min(Math.max(count, 0), 12)
   const thickness = Array.from({ length: layers }, (_, i) => `0 ${-i * 1.2}px 0 #1f2b4a`).join(', ')

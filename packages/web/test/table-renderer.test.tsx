@@ -829,3 +829,20 @@ describe('the gap between the drop and the patch (K1)', () => {
     expect(pile().style.left).toBe(carried)
   })
 })
+
+// The ghost dragged off a hidden pile is that same top card on its way somewhere (#313): it wears
+// the back the zone named for the pile, not the deck's default, or the card would change back as
+// it lifted.
+describe('the back of a hidden pile while it is dragged off', () => {
+  it('wears the back the zone names on the ghost as well', () => {
+    const hash = 'c'.repeat(64)
+    const snapshot = buildScene().view(null)
+    const view = { ...snapshot, zones: snapshot.zones.map((z) => (z.id === 'draw' && z.mode === 'count' ? { ...z, back: hash } : z)) }
+    render(<TableRenderer view={view} mode="tv" scale={1} faces="http://faces.test" onAct={() => undefined} />)
+    const top = document.querySelector('[data-zone="draw"] .byd-pile-top')!
+    fireEvent.pointerDown(top, client(-200, 0))
+    fireEvent.pointerMove(top, client(-100, 100))
+    const ghost = document.querySelector('[data-ghost] img') as HTMLImageElement | null
+    expect(ghost?.src).toBe(`http://faces.test/faces/${hash}`)
+  })
+})
