@@ -23,7 +23,7 @@ import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountO
 import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
 import { canDelete, canEdit, canRead, canShare, canStartTables, INVITE_TTL_MS, roleWord, ROLES, type Role } from './roles.js'
 import { facesOf, printExportOf } from './faces.js'
-import { MotifBody, resolveAssets, resolveFonts, resolveIcons, resolveRuleImages, type AssetStore } from './assets.js'
+import { MotifBody, resolveAssets, resolveFonts, resolveIcons, resolveRuleImages, resolveTemplate, type AssetStore } from './assets.js'
 import { TEXTURE_DPI } from './actor.js'
 
 // `staticDir`: the built web app, served from the same origin as the API (README, DRIFT §1).
@@ -665,8 +665,10 @@ async function openTableDoor(opts: ServerOptions, req: IncomingMessage, ws: WebS
 async function deckOf(opts: ServerOptions, rec: ProjectRecord): Promise<Deck> {
   if (!opts.assets) return deckFromProject(rec)
   const { rows, motifs } = await resolveAssets(rec.rows, opts.assets, rec.pictures ?? {})
-  const doc = deckFromProject({ ...rec, rows, icons: await resolveIcons(rec.icons, opts.assets) })
-  return { ...doc, motifs, fonts: await resolveFonts(rec.fonts ?? {}, opts.assets) }
+  // The template's own pictures too (#320), keyed beside the rows' under the URL each now carries.
+  const own = await resolveTemplate(rec.template, opts.assets, rec.pictures ?? {})
+  const doc = deckFromProject({ ...rec, rows, template: own.template, icons: await resolveIcons(rec.icons, opts.assets) })
+  return { ...doc, motifs: { ...motifs, ...own.motifs }, fonts: await resolveFonts(rec.fonts ?? {}, opts.assets) }
 }
 
 // Every card of the project through the physical checks (E5), once per face, named by the card

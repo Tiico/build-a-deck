@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { MemoryObjectStore } from '@byd/render'
-import { MemoryAssetStore, assetHash, resolveAssets, resolveFonts, resolveIcons } from '../src/assets.js'
+import { MemoryAssetStore, assetHash, resolveAssets, resolveFonts, resolveIcons, resolveTemplate } from '../src/assets.js'
+import { croppedMotif } from '@byd/template'
 import { start, twoSeatSetup, type Running } from './fixture.js'
 import { template } from './deck.js'
 
@@ -38,6 +39,35 @@ describe('the asset store (E1, DRIFT §4): the project\'s images, once each, by 
     expect(rows[0]?.fields).toEqual({ title: 'Drake', art: `data:image/png;base64,${Buffer.from(PNG).toString('base64')}`, cost: 5 })
     // An asset that is gone leaves the field empty rather than a broken reference on the card.
     expect(rows[1]?.fields['art']).toBe('')
+  })
+})
+
+// A picture the template carries by itself (#320) is inlined the way a row's is: the compiled
+// page has to carry it, and the render worker is handed a page and nothing else. Its crop comes
+// along under the URL the element now carries, exactly as a cell's does.
+describe('a template’s own picture is resolved for the compiler (#320)', () => {
+  it('swaps the literal reference for a data URL, keys its motif by that URL, and leaves a column binding alone', async () => {
+    const store = new MemoryAssetStore()
+    const hash = await store.put(PNG, 'image/png')
+    const file = { w: 200, h: 100, trim: { left: 0, top: 0, right: 0, bottom: 0 } }
+    await store.setMotif(hash, file)
+    const faces = {
+      front: { base: [{ kind: 'image' as const, id: 'art', x: 4, y: 4, w: 55, h: 36, bind: { field: 'art' } }], variants: {} },
+      back: { base: [{ kind: 'image' as const, id: 'logo', x: 20, y: 30, w: 23, h: 23, bind: { literal: `asset:${hash}` } }], variants: {} },
+    }
+    const crop = { x: 0, y: 0, w: 0.5, h: 1 }
+    const { template: resolved, motifs } = await resolveTemplate({ faces }, store, { [hash]: { crop } })
+    const url = `data:image/png;base64,${Buffer.from(PNG).toString('base64')}`
+    expect(resolved.faces['back']?.base[0]).toMatchObject({ id: 'logo', bind: { literal: url } })
+    expect(resolved.faces['front']).toBe(faces.front)
+    expect(motifs[url]).toEqual(croppedMotif(file, crop))
+  })
+
+  it('leaves an empty frame where the picture is gone, rather than a broken reference on every card', async () => {
+    const store = new MemoryAssetStore()
+    const faces = { back: { base: [{ kind: 'image' as const, id: 'logo', x: 0, y: 0, w: 10, h: 10, bind: { literal: 'asset:' + '0'.repeat(64) } }], variants: {} } }
+    const { template: resolved } = await resolveTemplate({ faces }, store)
+    expect(resolved.faces['back']?.base[0]).toMatchObject({ bind: { literal: '' } })
   })
 })
 
@@ -155,6 +185,26 @@ describe('assets over HTTP', () => {
     const { id } = (await started.json()) as { id: string }
     const session = await run.store.loadSession(id)
     expect(session?.deck?.rows['dragon']?.['art']).toBe(`data:image/png;base64,${Buffer.from(PNG).toString('base64')}`)
+  })
+
+  it('compiles a card whose template carries a picture of its own with that picture inlined too (#320)', async () => {
+    const up = await fetch(`${run.http}/assets`, { method: 'POST', headers: { 'content-type': 'image/png', cookie }, body: PNG })
+    const { hash } = (await up.json()) as { hash: string }
+    const { zones, seats, floor } = twoSeatSetup()
+    const doc = {
+      name: 'Skogens herrar',
+      template: { faces: { ...template.faces, back: { base: [{ kind: 'image', id: 'logo', x: 20, y: 30, w: 23, h: 23, bind: { literal: `asset:${hash}` } }], variants: {} } } },
+      rows: [{ id: 'dragon', fields: { title: 'Drake', antal: 1 } }],
+      icons: {},
+      setup: { zones, seats, floor, deckZone: 'draw' },
+    }
+    const created = await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json', cookie }, body: JSON.stringify({ id: 'p2', ...doc }) })
+    expect(created.status).toBe(201)
+    const started = await fetch(`${run.http}/projects/p2/sessions`, { method: 'POST', headers: { cookie } })
+    expect(started.status).toBe(201)
+    const { id } = (await started.json()) as { id: string }
+    const session = await run.store.loadSession(id)
+    expect(session?.deck?.template.faces['back']?.base[0]).toMatchObject({ id: 'logo', bind: { literal: `data:image/png;base64,${Buffer.from(PNG).toString('base64')}` } })
   })
 })
 
