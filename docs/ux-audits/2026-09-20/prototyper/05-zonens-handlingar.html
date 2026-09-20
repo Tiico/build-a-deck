@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 5 — Zonens handlingspanel i Tables (#330)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* Bord-fliken i sina riktiga mått ur editor.css: `300px minmax(0,1fr) 320px` med `--byd-s4`
+     emellan. Panelen måste bedömas i den filt den faktiskt trängs i. */
+  .setup { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 300px minmax(0,1fr) 320px; grid-template-rows: minmax(0,1fr); gap: var(--s4); padding: var(--gutter); transition: grid-template-columns 160ms ease; }
+  .setup > * { min-width: 0; min-height: 0; }
+  .sida { display: grid; gap: 16px; align-content: start; overflow: auto; }
+  .mitt { display: flex; flex-direction: column; gap: var(--s3); min-height: 0; }
+  .bredvid { display: grid; gap: 12px; align-content: start; overflow: auto; }
+  .setup h2 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+
+  /* Filten. Höjdbunden: den tar det som blir över, aldrig mer. */
+  .filt { position: relative; flex: 1 1 auto; min-height: 240px; background: #0d0f14; border-radius: 16px; overflow: hidden; }
+  .bord { position: absolute; inset: 14px; border-radius: 12px; background: radial-gradient(circle at 50% 40%, #1d4032, #14261f 70%); }
+  .zon { position: absolute; box-sizing: border-box; border: 2px dashed rgba(255,217,138,.55); border-radius: 8px; display: grid; place-items: center; color: #ffd98a; font-size: 10px; font-weight: 700; letter-spacing: .6px; }
+  .zon[data-hog] { border-style: solid; }
+  .zon[aria-pressed='true'] { border-color: #ffd98a; border-style: solid; box-shadow: 0 0 0 3px rgba(255,217,138,.25); }
+
+  /* Zonlistan till vänster. */
+  .zoner { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  .zoner button { width: 100%; text-align: left; display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: #c7cede; font: inherit; font-size: 12px; cursor: pointer; }
+  .zoner button:hover { background: #1b2030; }
+  .zoner button[aria-pressed='true'] { background: #24507f; color: #fff; }
+  .zoner em { font-style: normal; margin-left: auto; color: var(--quiet); font-size: 10px; border: 1px solid var(--line); border-radius: 999px; padding: 0 7px; }
+
+  .kort-yta { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: 10px 12px; }
+  .kort-yta h3 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .fold { width: 100%; display: flex; align-items: center; gap: 7px; min-height: 34px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); color: #c7cede; font: inherit; font-size: 12px; padding: 0 10px; cursor: pointer; }
+  .bordlista { display: grid; gap: 4px; }
+  .bordlista div { display: flex; justify-content: space-between; gap: 8px; padding: 6px 8px; border-radius: 7px; background: #1b1f2a; color: #c7cede; font-size: 11.5px; }
+
+  /* ── Handlingspanelen ─────────────────────────────────────────────────────────────────────── */
+  .panel { display: flex; flex-direction: column; background: #171a23e6; border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; min-height: 0; }
+  .panel > header { flex: none; display: flex; align-items: center; gap: 8px; }
+  .panel > header b { color: #fff; font-size: 13px; }
+  .panel > header small { color: var(--quiet); font-size: 11px; }
+  .panel > header button { margin-left: auto; border: 0; background: transparent; color: #9aa3b8; font-size: 18px; line-height: 1; cursor: pointer; padding: 0 4px; }
+  .panel > header button:hover { color: #e6ecfa; }
+  .panelkropp { flex: 1; min-height: 0; overflow: auto; display: grid; gap: 10px; align-content: start; scrollbar-width: thin; }
+  .panel h3 { margin: 4px 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .mening { margin: 0; line-height: 2.1; color: #e6ecfa; font-size: 13px; }
+  .mening b { color: #fff; }
+  .slot { border: 0; border-bottom: 1px dashed #8ad0ff; border-radius: 4px; background: #1d3a5c; color: #cfe6ff; font: inherit; font-weight: 600; cursor: pointer; padding: 2px 8px; }
+  .handling { display: grid; gap: 6px; justify-items: start; border-left: 2px solid var(--line); padding: 0 0 8px 12px; }
+  .handling > input { min-width: 260px; max-width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: #1b1d23; color: #fff; font: inherit; }
+  .handling ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; justify-items: start; width: 100%; }
+  .handling li { display: flex; gap: 8px; align-items: baseline; }
+  .handling li > button { border: 0; background: transparent; color: #9aa3b8; font-size: 15px; line-height: 1; cursor: pointer; padding: 4px; }
+  .nyhandling { justify-self: start; border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; background: #1b1d23; color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+
+  /* Nu: ett ark över filtens nederkant, 45 % som tak. */
+  .shell[data-form='nu'] .panel { position: absolute; z-index: 3; left: 0; right: 0; bottom: 0; max-height: 45%; backdrop-filter: blur(6px); }
+  /* B · Arket: samma ark, men det får hela filtens höjd när det är öppet. */
+  .shell[data-form='arket'] .panel { position: absolute; z-index: 3; left: 0; right: 0; bottom: 0; top: 0; max-height: none; backdrop-filter: blur(6px); }
+  /* A · Spalten: en egen kolumn som bara finns medan en zon är vald. Filten krymper, men
+     ingenting ligger över den. */
+  .shell[data-form='spalten'] .setup { grid-template-columns: 300px minmax(0,1fr) 300px 320px; }
+  .shell[data-form='spalten'] .panel { grid-column: 3; grid-row: 1; background: var(--panel); }
+  /* C · Bytet: panelen tar tredje kolumnens plats; spelararket och bordlistan viker undan
+     medan en zon är vald. Filten är orörd och ingenting krymper. */
+  .shell[data-form='bytet'] .panel { grid-column: 3; grid-row: 1; background: var(--panel); }
+  .shell[data-form='bytet'] .bredvid { display: none; }
+  .shell:not([data-form='nu']):not([data-form='arket']) .filt .panel { display: none; }
+  .shell[data-vald='nej'] .panel { display: none !important; }
+  .shell[data-vald='nej'][data-form='spalten'] .setup { grid-template-columns: 300px minmax(0,1fr) 320px; }
+  .shell[data-vald='nej'][data-form='bytet'] .bredvid { display: grid; }
+</style>
+</head>
+<body>
+<div class="shell" data-form="nu" data-vald="ja">
+<header>
+  <strong>Skogens herrar</strong>
+  <nav class="tabs"><button type="button">Kort</button><button type="button">Mall</button><button type="button">Data</button><button type="button">Symboler</button><button type="button">Regler</button><button type="button" aria-selected="true">Bord</button></nav>
+  <span class="spacer"></span>
+  <div class="switch" role="group" aria-label="Panelens plats">
+    <button type="button" data-form="nu" aria-pressed="true">Nu</button>
+    <button type="button" data-form="spalten" aria-pressed="false">A · Spalten</button>
+    <button type="button" data-form="arket" aria-pressed="false">B · Arket</button>
+    <button type="button" data-form="bytet" aria-pressed="false">C · Bytet</button>
+  </div>
+  <span class="who">P</span>
+</header>
+
+<div class="protorad">
+  <b>#330</b>
+  <p>Draghögen har fem åtgärder med flera steg — värsta fallet, som issuet kräver. Klicka en zon i listan eller på filten.</p>
+  <div class="matt">
+    <span>panelens innehåll <u id="m-h">–</u></span>
+    <span>syns <u id="m-syns">–</u></span>
+    <span>filten <u id="m-filt">–</u></span>
+  </div>
+  <p class="sagt" id="sagt">Skärmläsaren hör: <em>—</em></p>
+</div>
+
+<main>
+<div class="setup">
+  <div class="sida">
+    <div><h2>Zoner</h2><ul class="zoner" id="zonlista"></ul></div>
+  </div>
+
+  <div class="mitt">
+    <div class="filt">
+      <div class="bord" id="bord"></div>
+      <!-- Panelen bor i filten i Nu och B, och i sin egen kolumn i A och C. Den flyttas av
+           skriptet så att det är samma panel och inte två. -->
+    </div>
+  </div>
+
+  <div class="bredvid">
+    <button type="button" class="fold"><span aria-hidden="true">▸</span> Visa vad en spelare får</button>
+    <div class="kort-yta"><h3>Bord som körs</h3><div class="bordlista">
+      <div><span>Torsdagsgruppen</span><span>4 spelare</span></div>
+      <div><span>Provspel rev 11</span><span>2 spelare</span></div>
+    </div></div>
+  </div>
+
+  <!-- Panelen, en enda gång. -->
+  <section class="panel" id="panel" aria-label="Draghögens handlingar">
+    <header><b id="p-namn">Draghögen</b><small id="p-antal">5 åtgärder</small><button type="button" aria-label="Stäng panel" id="stang">✕</button></header>
+    <div class="panelkropp" id="p-kropp"></div>
+  </section>
+</div>
+</main>
+</div>
+
+<div class="note">
+  <b>Prototyp 5 — #330</b>
+  <i>Nu</i> är dagens ark: <code>max-height: 45%</code> över filtens nederkant. A ger panelen en egen kolumn och krymper filten; B låter arket växa till filtens hela höjd och täcka den; C låter panelen ta tredje kolumnens plats, så att spelararket och bordlistan viker undan medan en zon är vald. Siffrorna uppe till höger säger hur mycket av panelen som faktiskt syns.
+</div>
+
+<script>
+// ── Uppsättningen ──────────────────────────────────────────────────────────────────────────────
+const ZONER = [
+  { id: 'draw', namn: 'Draghögen', hog: true, x: 42, y: 30, w: 16, h: 22, n: 5 },
+  { id: 'discard', namn: 'Kasthögen', hog: true, x: 64, y: 30, w: 16, h: 22, n: 1 },
+  { id: 'play', namn: 'Spelytan', x: 24, y: 58, w: 52, h: 20, n: 2 },
+  { id: 'market', namn: 'Marknaden', x: 24, y: 8, w: 52, h: 16, n: 1 },
+  { id: 'hand:A', namn: 'Hand · A', x: 6, y: 30, w: 14, h: 22, n: 0 },
+  { id: 'hand:B', namn: 'Hand · B', x: 82, y: 30, w: 14, h: 22, n: 0 },
+]
+
+// Draghögens fem åtgärder, skrivna i `setup.step.*`:s riktiga meningar. Det är värsta fallet
+// issuet ber om: fyra eller fler åtgärder med flera steg var.
+const HANDLINGAR = [
+  { namn: 'Dela ut starthanden', steg: ['Blanda högen', 'Dela ut <b>7</b> till <span class="slot">varje spelare</span>, <span class="slot">dolda</span>', 'Ta <b>1</b> från högen och lägg det <span class="slot">uppvänt</span> <span class="slot">på Spelytan</span>'] },
+  { namn: 'Lägg upp marknaden', steg: ['Ta <b>5</b> från högen och lägg dem <span class="slot">uppvända</span> <span class="slot">i Marknaden</span>', 'Blanda högen'] },
+  { namn: 'Plocka fram målen', steg: ['Leta fram varje kort där <span class="slot">Typ</span> <span class="slot">är</span> <span class="slot">Mål</span> och lägg dem <span class="slot">dolda</span> <span class="slot">åt sidan</span>', 'Blanda högen', 'Ta <b>3</b> från högen och lägg dem <span class="slot">dolda</span> <span class="slot">i Ruinen</span>'] },
+  { namn: 'Töm högen', steg: ['Flytta hela högen till <span class="slot">Kasthögen</span>'] },
+  { namn: 'Blanda om', steg: ['Flytta hela högen till <span class="slot">Draghögen</span>', 'Blanda högen'] },
+]
+
+const shell = document.querySelector('.shell')
+const panel = document.getElementById('panel')
+let vald = 'draw'
+
+// ── Ritningen ──────────────────────────────────────────────────────────────────────────────────
+document.getElementById('zonlista').innerHTML = ZONER.map((z) =>
+  '<li><button type="button" data-zon="' + z.id + '" aria-pressed="' + (z.id === vald) + '">' + z.namn
+  + (z.n > 0 ? '<em>' + z.n + ' åtg.</em>' : '') + '</button></li>').join('')
+document.getElementById('bord').innerHTML = ZONER.map((z) =>
+  '<button type="button" class="zon" data-zon="' + z.id + '"' + (z.hog ? ' data-hog' : '') + ' aria-pressed="' + (z.id === vald) + '"'
+  + ' aria-label="' + z.namn + '" style="left:' + z.x + '%;top:' + z.y + '%;width:' + z.w + '%;height:' + z.h + '%">' + z.namn + '</button>').join('')
+
+function kropp() {
+  const z = ZONER.find((x) => x.id === vald)
+  const n = z.n
+  document.getElementById('p-namn').textContent = z.namn
+  document.getElementById('p-antal').textContent = n === 0 ? 'inga åtgärder' : n + (n === 1 ? ' åtgärd' : ' åtgärder')
+  const h = HANDLINGAR.slice(0, n)
+  document.getElementById('p-kropp').innerHTML =
+    '<h3>Vid uppställning</h3>'
+    + (h.length === 0 ? '<p class="mening" style="color:#868ea3;font-size:12px">Ingenting händer med den här zonen när bordet ställs upp.</p>' : '')
+    + h.map((a) => '<div class="handling"><input value="' + a.namn + '" aria-label="Åtgärdens namn">'
+        + '<ol>' + a.steg.map((s) => '<li><p class="mening">' + s + '</p><button type="button" aria-label="Ta bort steget">✕</button></li>').join('')
+        + '<li><button type="button" style="color:#c7cede;font-weight:700">＋ Steg</button></li></ol></div>').join('')
+    + '<button type="button" class="nyhandling">＋ Åtgärd</button>'
+  mat()
+}
+
+// Panelen bor på två ställen och är ändå en: i filten när den är ett ark, i rutnätet när den är
+// en kolumn. Två kopior vore två av varje kontroll för en skärmläsare.
+function plats() {
+  const iFilten = shell.dataset.form === 'nu' || shell.dataset.form === 'arket'
+  const mal = iFilten ? document.querySelector('.filt') : document.querySelector('.setup')
+  if (panel.parentElement !== mal) mal.appendChild(panel)
+}
+
+function mat() {
+  const k = document.getElementById('p-kropp')
+  const innehall = [...k.children].reduce((sum, el) => sum + el.offsetHeight + 10, 0)
+  const syns = k.clientHeight
+  document.getElementById('m-h').textContent = innehall + ' px'
+  document.getElementById('m-syns').textContent = innehall <= syns + 2 ? 'allt' : Math.round((syns / innehall) * 100) + ' % (' + (innehall - syns) + ' px döljs)'
+  const f = document.querySelector('.filt')
+  document.getElementById('m-filt').textContent = Math.round(f.offsetWidth) + ' × ' + Math.round(f.offsetHeight) + ' px'
+}
+
+function rita() {
+  plats()
+  document.querySelectorAll('[data-zon]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.zon === vald)))
+  kropp()
+}
+
+document.addEventListener('click', (e) => {
+  const v = e.target.closest('button[data-form]')
+  if (v) {
+    shell.dataset.form = v.dataset.form
+    document.querySelectorAll('button[data-form]').forEach((b) => b.setAttribute('aria-pressed', String(b === v)))
+    requestAnimationFrame(() => { rita(); setTimeout(mat, 200) })
+    return
+  }
+  const z = e.target.closest('[data-zon]')
+  if (z) {
+    vald = z.dataset.zon
+    shell.dataset.vald = 'ja'
+    rita()
+    document.getElementById('sagt').innerHTML = 'Skärmläsaren hör: <em>' + ZONER.find((x) => x.id === vald).namn + ', vald — ' + document.getElementById('p-antal').textContent + '</em>'
+    return
+  }
+  if (e.target.id === 'stang') {
+    shell.dataset.vald = 'nej'
+    // Fokus tillbaka till zonen panelen handlade om (#133), inte till `<body>`.
+    document.querySelector('.zoner [data-zon="' + vald + '"]').focus()
+    document.getElementById('sagt').innerHTML = 'Skärmläsaren hör: <em>panelen stängd, fokus på ' + ZONER.find((x) => x.id === vald).namn + '</em>'
+    // Kolumnerna har en övergång på 160 ms; mätt före den är siffran den gamla.
+    setTimeout(mat, 220)
+  }
+})
+window.addEventListener('resize', mat)
+rita()
+setTimeout(mat, 100)
+</script>
+</body>
+</html>

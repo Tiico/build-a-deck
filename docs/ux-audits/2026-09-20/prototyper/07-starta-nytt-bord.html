@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 7 — Starta nytt bord (#299)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* Bord-fliken tredje kolumn, i sin riktiga bredd om 320 px. En knapp bedömd i en bredare
+     spalt är inte bedömd. */
+  .rum { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 320px minmax(0,1fr); gap: var(--s5); padding: var(--gutter); }
+  .spalt { min-height: 0; display: flex; flex-direction: column; gap: var(--s3); overflow: auto; scrollbar-width: thin; }
+  .forklaring { min-width: 0; color: var(--quiet-2); font-size: 12.5px; line-height: 1.6; max-width: 62ch; }
+  .forklaring h2 { color: #fff; font-size: 14px; margin: 0 0 6px; }
+  .forklaring p { margin: 0 0 12px; }
+  .forklaring code { color: #ffd98a; }
+
+  .lead { margin: 0; color: var(--quiet-2); font-size: 12px; line-height: 1.5; }
+  .grupp h3 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .bordlista { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .bordrad { display: grid; grid-template-columns: 34px minmax(0,1fr) auto; gap: 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: #1b1f2a; }
+  .bordrad .bricka { width: 34px; height: 24px; border-radius: 4px; background: linear-gradient(160deg,#1d4032,#14261f); border: 1px solid #2a4034; }
+  .bordrad b { color: #e6ecfa; font-size: 12.5px; font-weight: 600; }
+  .bordrad small { display: block; color: var(--quiet); font-size: 10.5px; }
+  .bordrad em { font-style: normal; color: var(--quiet); font-size: 10.5px; font-variant-numeric: tabular-nums; }
+  .fold { width: 100%; display: flex; align-items: center; gap: 7px; min-height: 32px; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: var(--quiet-2); font: inherit; font-size: 11.5px; padding: 0 10px; cursor: pointer; }
+
+  /* ── Knappen ──────────────────────────────────────────────────────────────────────────────── */
+  /* Nu: streckad, dämpad, transparent — produktens egen `.byd-tables-new`, ordagrant. */
+  .nu-knapp { justify-self: start; border: 1px dashed #3a4050; border-radius: 12px; padding: 8px 16px; background: transparent; color: #868ea3; font: inherit; cursor: pointer; }
+  .nu-knapp:disabled { cursor: default; }
+
+  /* A och B: samma knapp, olika plats. En andrahandsknapp och inte sidans huvudhandling — den
+     ljusa fyllningen hör till «Uppdatera bordet» (L13). */
+  .starta { display: inline-flex; align-items: center; gap: 9px; justify-self: start; border: 1px solid #3f5f86; border-radius: 10px; padding: 9px 14px 9px 12px; background: #1d2b3e; color: #e6ecfa; font: inherit; font-weight: 700; font-size: 12.5px; cursor: pointer; }
+  .starta:hover:not(:disabled) { background: #24507f; border-color: var(--primary-mark); }
+  .starta:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  .starta:disabled { cursor: default; color: #9aa3b8; }
+  .starta .ikon { flex: none; width: 18px; height: 18px; display: grid; place-items: center; color: #8ad0ff; }
+  .starta .ikon svg { display: block; }
+  .starta .rev { font-weight: 400; color: var(--quiet); font-size: 11px; font-variant-numeric: tabular-nums; }
+  /* Vänteläget snurrar i stället för att bara byta ord: en knapp som går tyst läses som en knapp
+     som inte gjorde något (#215). */
+  .starta[data-vantar='ja'] .ikon { color: #9aa3b8; animation: snurr 900ms linear infinite; }
+  @keyframes snurr { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .starta[data-vantar='ja'] .ikon { animation: none; } }
+
+  /* C: knappen är raden där bordet kommer att dyka upp. */
+  .startrad { width: 100%; display: grid; grid-template-columns: 34px minmax(0,1fr) auto; gap: 10px; align-items: center; padding: 8px 10px; border: 1px dashed #3f5f86; border-radius: 10px; background: #161d28; color: #e6ecfa; font: inherit; text-align: left; cursor: pointer; }
+  .startrad:hover:not(:disabled) { background: #1d2b3e; border-style: solid; border-color: var(--primary-mark); }
+  .startrad:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  .startrad .bricka { width: 34px; height: 24px; border-radius: 4px; border: 1px dashed #3f5f86; display: grid; place-items: center; color: #8ad0ff; }
+  .startrad b { font-size: 12.5px; font-weight: 700; }
+  .startrad small { display: block; color: var(--quiet); font-size: 10.5px; }
+  .startrad[data-vantar='ja'] .bricka { animation: snurr 900ms linear infinite; }
+
+  .fel { margin: 0; display: grid; gap: 6px; padding: 9px 11px; border-radius: 10px; background: #2a1b1b; border-left: 3px solid #e05c5c; color: #ffc9c9; font-size: 11.5px; line-height: 1.5; }
+  .fel button { justify-self: start; border: 1px solid #6b2b2b; border-radius: 8px; padding: 5px 10px; background: transparent; color: #ffc9c9; font: inherit; font-size: 11.5px; cursor: pointer; }
+  .fel[hidden] { display: none; }
+
+  .shell:not([data-form='nu']) .nu-knapp { display: none; }
+  .shell[data-form='nu'] .starta, .shell[data-form='nu'] .startrad { display: none; }
+  .shell:not([data-form='overst']) .plats-overst { display: none; }
+  .shell:not([data-form='sist']) .plats-sist { display: none; }
+  .shell:not([data-form='raden']) .plats-raden { display: none; }
+  .shell[data-form='nu'] .plats-sist { display: block; }
+</style>
+</head>
+<body>
+<div class="shell" data-form="nu">
+<header>
+  <strong>Skogens herrar</strong>
+  <nav class="tabs"><button type="button">Kort</button><button type="button">Mall</button><button type="button">Data</button><button type="button">Symboler</button><button type="button">Regler</button><button type="button" aria-selected="true">Bord</button></nav>
+  <span class="spacer"></span>
+  <div class="switch" role="group" aria-label="Knappens form">
+    <button type="button" data-form="nu" aria-pressed="true">Nu</button>
+    <button type="button" data-form="sist" aria-pressed="false">A · Sist</button>
+    <button type="button" data-form="overst" aria-pressed="false">B · Överst</button>
+    <button type="button" data-form="raden" aria-pressed="false">C · Raden</button>
+  </div>
+  <span class="who">P</span>
+</header>
+
+<div class="protorad">
+  <b>#299</b>
+  <p id="hjalp">Tryck på knappen: den startar ett bord, visar vänteläge och lägger bordet i listan — utan att navigera bort.</p>
+  <button type="button" id="gorfel">Nästa försök misslyckas</button>
+  <div class="matt"><span>bord <u id="m-n">3</u></span><span>rev <u>12</u></span></div>
+  <p class="sagt" id="sagt">Skärmläsaren hör: <em>—</em></p>
+</div>
+
+<main>
+<div class="rum">
+  <div class="spalt">
+    <p class="lead">Bord som körs på det här spelet. Ett bord låser sin revision när det startar.</p>
+
+    <!-- B: handlingen står först, som det fliken finns till för. -->
+    <div class="plats-overst">
+      <button type="button" class="starta" id="k-overst">
+        <span class="ikon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M3 1.5 12 7l-9 5.5z"/></svg></span>
+        Starta nytt bord <span class="rev">rev 12</span>
+      </button>
+    </div>
+
+    <p class="fel" id="fel" hidden role="alert">
+      <span id="feltext"></span>
+      <button type="button" id="omforsok">Försök igen</button>
+    </p>
+
+    <div class="grupp">
+      <h3>Spelas nu</h3>
+      <div class="plats-raden" style="margin-bottom:6px">
+        <button type="button" class="startrad" id="k-raden">
+          <span class="bricka" aria-hidden="true"><svg width="12" height="12" viewBox="0 0 14 14" fill="currentColor"><path d="M3 1.5 12 7l-9 5.5z"/></svg></span>
+          <span><b>Starta nytt bord</b><small>från rev 12 · låses när bordet startar</small></span>
+          <em></em>
+        </button>
+      </div>
+      <ul class="bordlista" id="lista"></ul>
+    </div>
+
+    <button type="button" class="fold"><span aria-hidden="true">▸</span> Startade och aldrig rörda · 2</button>
+    <button type="button" class="fold"><span aria-hidden="true">▸</span> Över · 5</button>
+
+    <!-- Nu och A: sist i spalten, efter allt annat. -->
+    <div class="plats-sist">
+      <button type="button" class="nu-knapp" id="k-nu">Nytt bord från rev 12</button>
+      <button type="button" class="starta" id="k-sist">
+        <span class="ikon" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><path d="M3 1.5 12 7l-9 5.5z"/></svg></span>
+        Starta nytt bord <span class="rev">rev 12</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="forklaring" id="forklaring"></div>
+</div>
+</main>
+</div>
+
+<div class="note">
+  <b>Prototyp 7 — #299</b>
+  Knappen är densamma i A och B; det som skiljer är var den står. Tryck <i>Nästa försök misslyckas</i> för att se felet och vägen tillbaka. Ett andra tryck medan det första pågår ska inte starta två bord — prova.
+</div>
+
+<script>
+// ── Borden ─────────────────────────────────────────────────────────────────────────────────────
+const BORD = [
+  { namn: 'Torsdagsgruppen', rev: 11, n: 4, nar: 'i går' },
+  { namn: 'Provspel med Ada', rev: 12, n: 2, nar: 'för 20 min' },
+  { namn: 'Solokoll', rev: 12, n: 1, nar: 'nyss' },
+]
+let fellage = false, vantar = false, startade = 0
+
+const shell = document.querySelector('.shell')
+const FORKLARING = {
+  nu: '<h2>Nu</h2><p><code>.byd-tables-new</code> ordagrant: streckad ram, dämpad text, genomskinlig botten — produktens form för en platshållare — och den står sist i spalten, efter de hopfällda grupperna.</p><p>Etikettens högsta ord är <i>rev 12</i>. Det som står i vägen är alltså inte att knappen saknar en ikon, utan att den läser som en upplysning om en revision snarare än som något man gör.</p>',
+  sist: '<h2>A · Sist</h2><p>Samma plats som i dag, men handlingen står först i etiketten och revisionen är kvar som dämpad andrahandsinformation. Play-ikonen säger vad som händer.</p><p>En andrahandsknapp och inte sidans huvudhandling: den ljusa fyllningen hör till «Uppdatera bordet» (L13), och en <i>Starta nytt bord</i> som bär den slåss med den om blicken.</p><p>Priset: den står fortfarande efter två hopfällda grupper, alltså sist på en yta där det översta är en lista över det som redan finns.</p>',
+  overst: '<h2>B · Överst</h2><p>Samma knapp, flyttad över listan. Det är det fliken finns till för — allt under den är bord som redan finns.</p><p>Priset: den som kom hit för att öppna ett bord som körs möter en knapp som startar ett nytt, och den knappen står där varje gång.</p>',
+  raden: '<h2>C · Raden</h2><p>Knappen är raden där bordet kommer att dyka upp, med streckad ram som säger «ännu inte ett bord». Vänteläget snurrar i brickan, och när bordet finns byter raden plats med sig själv och blir ett riktigt bord i listan ovanför.</p><p>Raden står överst i listan, eftersom ett nytt bord läggs överst — en rad som lovar «här kommer bordet» måste peka på den plats bordet faktiskt hamnar på.</p><p>Priset: en rad i en lista läses som något som finns. Den streckade ramen bär hela skillnaden.</p>',
+}
+
+function rita() {
+  document.getElementById('lista').innerHTML = BORD.map((b) =>
+    '<li class="bordrad"><span class="bricka"></span><span><b>' + b.namn + '</b><small>rev ' + b.rev + ' · ' + b.n + (b.n === 1 ? ' spelare' : ' spelare') + '</small></span><em>' + b.nar + '</em></li>').join('')
+  document.getElementById('m-n').textContent = String(BORD.length)
+  document.getElementById('forklaring').innerHTML = FORKLARING[shell.dataset.form]
+}
+
+function sag(t) { document.getElementById('sagt').innerHTML = 'Skärmläsaren hör: <em>' + t + '</em>' }
+
+// ── Starten ────────────────────────────────────────────────────────────────────────────────────
+const knappar = () => [...document.querySelectorAll('#k-nu, #k-sist, #k-overst, #k-raden')]
+function satt(vantarNu) {
+  vantar = vantarNu
+  knappar().forEach((k) => {
+    k.disabled = vantarNu
+    k.dataset.vantar = vantarNu ? 'ja' : 'nej'
+    if (k.id === 'k-nu') { k.textContent = vantarNu ? 'Startar …' : 'Nytt bord från rev 12'; return }
+    const ord = k.querySelector('b') || k.childNodes[2]
+    if (k.id === 'k-raden') k.querySelector('b').textContent = vantarNu ? 'Startar bordet …' : 'Starta nytt bord'
+    else k.childNodes[2].textContent = vantarNu ? ' Startar bordet … ' : ' Starta nytt bord '
+  })
+}
+
+function start() {
+  // Ett andra tryck medan det första pågår startar inte ett andra bord. `disabled` räcker inte
+  // som enda skydd: en tangenttryckning kan hinna före omritningen.
+  if (vantar) { sag('startar redan — ingenting hände'); return }
+  document.getElementById('fel').hidden = true
+  satt(true)
+  sag('Starta nytt bord, startar bordet')
+  setTimeout(() => {
+    satt(false)
+    if (fellage) {
+      fellage = false
+      document.getElementById('gorfel').textContent = 'Nästa försök misslyckas'
+      document.getElementById('feltext').textContent = 'Bordet kunde inte startas: servern svarade inte. Spelet och dess bord är orörda.'
+      document.getElementById('fel').hidden = false
+      // Felet tar fokus, annars säger en skärmläsare ingenting om att försöket gick om intet.
+      document.getElementById('omforsok').focus()
+      sag('Fel: bordet kunde inte startas: servern svarade inte. Spelet och dess bord är orörda.')
+      return
+    }
+    startade++
+    BORD.unshift({ namn: 'Nytt bord ' + startade, rev: 12, n: 0, nar: 'nyss' })
+    rita()
+    // Ingen navigering: designern står kvar i Tables och ser bordet i listan.
+    sag('Bordet startat på rev 12 och tillagt i listan. Du står kvar i Bord.')
+  }, 900)
+}
+
+document.addEventListener('click', (e) => {
+  const v = e.target.closest('button[data-form]')
+  if (v) {
+    shell.dataset.form = v.dataset.form
+    document.querySelectorAll('button[data-form]').forEach((b) => b.setAttribute('aria-pressed', String(b === v)))
+    rita()
+    return
+  }
+  if (e.target.id === 'gorfel') { fellage = !fellage; e.target.textContent = fellage ? 'Nästa försök misslyckas ✓' : 'Nästa försök misslyckas'; return }
+  if (e.target.id === 'omforsok') { document.getElementById('fel').hidden = true; start(); return }
+  if (e.target.closest('#k-nu, #k-sist, #k-overst, #k-raden')) start()
+})
+
+rita()
+</script>
+</body>
+</html>

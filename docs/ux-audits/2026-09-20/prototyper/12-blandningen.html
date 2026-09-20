@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 12 — Blandningen syns på högen (#326)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  body { background: #000; }
+  .shell { background: #000; }
+  .tv { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0,1fr) 300px; }
+  .filt { position: relative; overflow: hidden; background: radial-gradient(circle at 50% 44%, #1d4032, #0f1d17 76%); display: grid; place-items: center; }
+  .bord { position: relative; width: 78%; height: 74%; border-radius: 12px; background: #15291f; outline: 2px solid #2a4034; }
+
+  /* Högen: ett kort med en bunt under sig. Animeringen rör aldrig något annat än den här. */
+  .hog { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); }
+  .hog .bunt { position: relative; width: clamp(126px, 9vw, 360px); aspect-ratio: 63/88; }
+  .kort { position: absolute; inset: 0; border-radius: 6px; background: linear-gradient(140deg,#5b3a6b,#2d1c38); border: 1px solid #1d1226; box-shadow: 0 3px 9px rgba(0,0,0,.5); }
+  /* Baksidans mönster, så att en vändning skulle synas om den hände. Den ska inte hända. */
+  .kort::after { content: ''; position: absolute; inset: 9%; border-radius: 3px; border: 1px solid #7e5f92; background: repeating-linear-gradient(45deg, #43284f 0 6px, #3a2245 6px 12px); }
+  .hog .namn { position: absolute; left: 50%; transform: translateX(-50%); top: calc(100% + 9px); color: #ffd98a; font: 700 13px/1 system-ui; letter-spacing: .8px; white-space: nowrap; }
+  .hog .antal { position: absolute; top: -9px; right: -9px; display: grid; place-items: center; min-width: 26px; height: 26px; border-radius: 999px; background: #1b1d23; color: #fff; border: 1px solid #444; font: 700 12px system-ui; }
+
+  /* ── A · Riffeln ──────────────────────────────────────────────────────────────────────────── */
+  /* Högen delas i två halvor som faller ihop. Bara två kort rör sig, och båda är baksidor som
+     redan låg där — ingenting nytt ritas, alltså kan ingenting läcka. */
+  @keyframes riffel-v { 0% { transform: none } 22% { transform: translate(-24%,-5%) rotate(-7deg) } 58% { transform: translate(-10%,-2%) rotate(-3deg) } 100% { transform: none } }
+  @keyframes riffel-h { 0% { transform: none } 22% { transform: translate(24%,-5%) rotate(7deg) } 58% { transform: translate(10%,-2%) rotate(3deg) } 100% { transform: none } }
+  [data-spelar='riffel'] .halva-v { animation: riffel-v 520ms cubic-bezier(.3,.7,.3,1) }
+  [data-spelar='riffel'] .halva-h { animation: riffel-h 520ms cubic-bezier(.3,.7,.3,1) }
+
+  /* ── B · Skaket ───────────────────────────────────────────────────────────────────────────── */
+  /* Hela högen vrids fram och tillbaka och sätter sig. Ett enda element rör sig. */
+  @keyframes skak { 0% { transform: none } 18% { transform: rotate(-5deg) translateY(-2.5%) } 40% { transform: rotate(4deg) translateY(-1.2%) } 62% { transform: rotate(-2.5deg) } 82% { transform: rotate(1deg) } 100% { transform: none } }
+  [data-spelar='skak'] .bunt { animation: skak 460ms cubic-bezier(.34,1.3,.64,1) }
+
+  /* ── C · Fläkten ──────────────────────────────────────────────────────────────────────────── */
+  /* Fyra kort fläktas ut och samlas ihop. Mest rörelse och flest element. */
+  @keyframes flakt { 0% { transform: none } 34% { transform: translateX(var(--ut)) rotate(var(--vrid)) } 100% { transform: none } }
+  [data-spelar='flakt'] .flik { animation: flakt 560ms cubic-bezier(.32,.72,.3,1) }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-spelar] .halva-v, [data-spelar] .halva-h, [data-spelar] .bunt, [data-spelar] .flik { animation: none !important; }
+    /* Kvar blir en kort puls: något hände, utan rörelse. */
+    @keyframes puls { 0%,100% { box-shadow: 0 3px 9px rgba(0,0,0,.5) } 50% { box-shadow: 0 0 0 5px rgba(255,217,138,.55), 0 3px 9px rgba(0,0,0,.5) } }
+    [data-spelar] .kort { animation: puls 420ms ease; }
+  }
+  .shell[data-stilla='ja'] .halva-v, .shell[data-stilla='ja'] .halva-h, .shell[data-stilla='ja'] .bunt, .shell[data-stilla='ja'] .flik { animation: none !important; }
+  @keyframes puls2 { 0%,100% { box-shadow: 0 3px 9px rgba(0,0,0,.5) } 50% { box-shadow: 0 0 0 5px rgba(255,217,138,.55), 0 3px 9px rgba(0,0,0,.5) } }
+  .shell[data-stilla='ja'] [data-spelar] .kort { animation: puls2 420ms ease; }
+
+  /* Aktivitetsraden, som redan säger det i ord. */
+  .sido { background: #0a120e; border-left: 1px solid #1c2a23; padding: var(--s4); display: flex; flex-direction: column; gap: var(--s3); min-height: 0; }
+  .sido h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .logg { list-style: none; margin: 0; padding: 0; display: grid; gap: 5px; overflow: auto; }
+  .logg li { padding: 7px 9px; border-radius: 8px; background: #12211a; color: #c7cede; font-size: 12px; line-height: 1.4; }
+  .logg li:first-child { background: #1b3327; color: #fff; }
+  .logg em { font-style: normal; color: var(--quiet); font-size: 10.5px; display: block; }
+  .styr { display: grid; gap: 7px; }
+  .styr button { min-height: 38px; border: 1px solid #3a4a42; border-radius: 10px; background: #15291f; color: #e6ecfa; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+  .styr button:hover { border-color: #ffd98a; color: #ffd98a; }
+  .styr label { display: flex; align-items: center; gap: 8px; color: var(--quiet-2); font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="shell" data-form="riffel" data-stilla="nej">
+<header>
+  <strong>Skogens herrar · TV</strong>
+  <span class="spacer"></span>
+  <div class="switch" role="group" aria-label="Rörelsen">
+    <button type="button" data-form="riffel" aria-pressed="true">A · Riffeln</button>
+    <button type="button" data-form="skak" aria-pressed="false">B · Skaket</button>
+    <button type="button" data-form="flakt" aria-pressed="false">C · Fläkten</button>
+  </div>
+  <span class="who">TV</span>
+</header>
+
+<div class="protorad">
+  <b>#326</b>
+  <p>Tryck <b>Blanda</b>. Animeringen spelas en gång per händelse, inte av en tillståndsskillnad. Ingen fram- eller baksida ritas som inte redan låg där.</p>
+  <div class="matt"><span>längd <u id="m-tid">–</u></span><span>bildrutor <u id="m-fps">–</u></span><span>element som rör sig <u id="m-el">–</u></span></div>
+  <p class="sagt" id="sagt">Skärmläsaren hör: <em>—</em></p>
+</div>
+
+<main>
+<div class="tv">
+  <div class="filt">
+    <div class="bord">
+      <div class="hog" id="hog">
+        <div class="bunt" id="bunt"></div>
+        <span class="antal">18</span>
+        <span class="namn">Draghögen</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="sido">
+    <div class="styr">
+      <button type="button" id="blanda">Blanda Draghögen</button>
+      <button type="button" id="mat">Mät bildrutorna</button>
+      <label><input type="checkbox" id="stilla"> Låtsas <code>prefers-reduced-motion</code></label>
+    </div>
+    <h2>Aktivitet</h2>
+    <ul class="logg" id="logg"></ul>
+  </div>
+</div>
+</main>
+</div>
+
+<div class="note">
+  <b>Prototyp 12 — #326</b>
+  Tre rörelser, alla under 600 ms. Kryssa <i>prefers-reduced-motion</i> för att se vad den som bett om lugn får: en kort puls i stället för rörelse. Aktivitetsraden säger det redan i ord — animeringen är den fysiska motsvarigheten.
+</div>
+
+<script>
+// ── Högen ──────────────────────────────────────────────────────────────────────────────────────
+// Varje variant ritar bara de baksidor som redan ligger i högen. Ingen ny fram- eller baksida
+// monteras under animeringen, alltså kan ingenting läcka på råa frames.
+const UPPSATTNING = {
+  riffel: '<div class="kort"></div><div class="kort halva-v" style="clip-path:inset(0 50% 0 0)"></div><div class="kort halva-h" style="clip-path:inset(0 0 0 50%)"></div>',
+  skak: '<div class="kort"></div><div class="kort" style="transform:translate(1px,1px)"></div><div class="kort" style="transform:translate(2px,2px)"></div>',
+  flakt: '<div class="kort"></div>'
+    + [[-27, -7], [-9.5, -2.5], [9.5, 2.5], [27, 7]].map(([u, v]) => '<div class="kort flik" style="--ut:' + u + '%;--vrid:' + v + 'deg"></div>').join(''),
+}
+const LANGD = { riffel: 520, skak: 460, flakt: 560 }
+const ELEMENT = { riffel: 2, skak: 1, flakt: 4 }
+
+const shell = document.querySelector('.shell')
+const bunt = document.getElementById('bunt')
+const sag = (t) => { document.getElementById('sagt').innerHTML = 'Skärmläsaren hör: <em>' + t + '</em>' }
+let n = 0
+
+function rita() {
+  const f = shell.dataset.form
+  bunt.innerHTML = UPPSATTNING[f]
+  document.getElementById('m-tid').textContent = LANGD[f] + ' ms'
+  document.getElementById('m-el').textContent = String(ELEMENT[f])
+}
+
+// En blandning är en *händelse* i loggen, inte en tillståndsskillnad. Animeringen spelas av
+// händelsen, en gång, på varje skärm som ser högen — inklusive den som utförde den.
+function blanda() {
+  n++
+  const nu = new Date()
+  document.getElementById('logg').insertAdjacentHTML('afterbegin',
+    '<li>Ada blandade <b>Draghögen</b><em>' + nu.toLocaleTimeString('sv-SE') + ' · 18 kort</em></li>')
+  // Omstart: ta bort attributet, tvinga en layout, sätt tillbaka. Annars spelas den inte om.
+  delete bunt.dataset.spelar
+  void bunt.offsetWidth
+  bunt.dataset.spelar = shell.dataset.form
+  sag('Draghögen blandades')
+  setTimeout(() => { delete bunt.dataset.spelar }, LANGD[shell.dataset.form] + 60)
+}
+
+// Bildrutor under en animering: räknade, inte påstådda.
+function mat() {
+  return new Promise((klar) => {
+    let rutor = 0, start = 0
+    const langd = LANGD[shell.dataset.form]
+    blanda()
+    const steg = (t) => {
+      if (!start) start = t
+      rutor++
+      if (t - start < langd) requestAnimationFrame(steg)
+      else { const fps = Math.round((rutor * 1000) / (t - start)); document.getElementById('m-fps').textContent = fps + ' fps'; klar(fps) }
+    }
+    requestAnimationFrame(steg)
+  })
+}
+window.mat = mat
+
+document.addEventListener('click', (e) => {
+  const v = e.target.closest('button[data-form]')
+  if (v) { shell.dataset.form = v.dataset.form; document.querySelectorAll('button[data-form]').forEach((b) => b.setAttribute('aria-pressed', String(b === v))); rita(); return }
+  if (e.target.id === 'blanda') blanda()
+  if (e.target.id === 'mat') void mat()
+})
+document.getElementById('stilla').addEventListener('change', (e) => { shell.dataset.stilla = e.target.checked ? 'ja' : 'nej' })
+
+rita()
+</script>
+</body>
+</html>

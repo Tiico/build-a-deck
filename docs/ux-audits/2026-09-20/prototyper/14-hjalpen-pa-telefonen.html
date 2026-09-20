@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 14 — Hjälpen på telefonen (#305)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  body { overflow: auto; }
+  .rum { flex: 1 1 auto; min-height: 0; display: flex; gap: var(--s5); padding: var(--gutter); overflow: auto; align-items: flex-start; }
+  .lod { flex: none; display: grid; gap: 8px; justify-items: center; }
+  .lod > b { color: var(--quiet); font-size: 11px; text-transform: uppercase; letter-spacing: 1.6px; }
+  /* Telefonen i sina riktiga mått. En hjälplåda bedömd i en bredare vy är inte bedömd. */
+  .telefon { position: relative; width: 390px; height: 844px; border-radius: 30px; overflow: hidden; background: #0d1114; border: 1px solid #2a3038; display: flex; flex-direction: column; }
+  /* Tummens räckvidd, ritad: den nedre tredjedelen är det en hand når utan att flytta greppet. */
+  .tumme { position: absolute; left: 0; right: 0; bottom: 0; height: 33%; pointer-events: none; border-top: 1px dashed rgba(255,217,138,.3); background: linear-gradient(to top, rgba(255,217,138,.055), transparent); }
+  .tumme b { position: absolute; left: 10px; top: 6px; color: rgba(255,217,138,.55); font-size: 9.5px; letter-spacing: 1px; text-transform: uppercase; }
+  .shell:not([data-tumme='ja']) .tumme { display: none; }
+
+  .krom { flex: none; display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid #1c242b; color: #c7cede; font-size: 12px; }
+  .krom .kod { margin-left: auto; color: var(--quiet); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .filt { flex: 1 1 auto; min-height: 0; position: relative; background: radial-gradient(circle at 50% 38%, #1d4032, #0f1d17 76%); display: grid; place-items: center; }
+  .bord { position: relative; width: 86%; height: 72%; border-radius: 10px; background: #15291f; outline: 1px solid #2a4034; }
+  .hogp { position: absolute; left: 50%; top: 42%; transform: translate(-50%,-50%); width: 62px; aspect-ratio: 63/88; border-radius: 4px; background: linear-gradient(140deg,#5b3a6b,#2d1c38); border: 1px solid #1d1226; }
+  .hogp + span { position: absolute; left: 50%; top: calc(42% + 46px); transform: translateX(-50%); color: #ffd98a; font: 700 9px/1 system-ui; white-space: nowrap; }
+  /* Handen: där tummen är, och där ett ark skulle hamna. */
+  .hand { flex: none; padding: 10px 12px 16px; border-top: 1px solid #1c242b; background: #0a0f12; }
+  .hand > b { display: block; color: var(--quiet); font-size: 10px; text-transform: uppercase; letter-spacing: 1.4px; margin-bottom: 7px; }
+  .hand .kort { display: flex; gap: 6px; }
+  .hand .k { flex: 1; aspect-ratio: 63/88; border-radius: 5px; background: #f4efe4; color: #241a0c; font: 700 8px/1.15 Georgia, serif; padding: 5px; display: flex; }
+  .hand .knappar { display: flex; gap: 6px; margin-top: 9px; }
+  .hand .knappar button { flex: 1; min-height: 44px; border: 1px solid #2a3038; border-radius: 10px; background: #161d22; color: #e6ecfa; font: inherit; font-size: 12px; cursor: pointer; }
+
+  .fraga { flex: none; width: 24px; height: 24px; display: inline-grid; place-items: center; border: 1px solid #3a4050; border-radius: 999px; background: transparent; color: #9aa3b8; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; padding: 0; }
+  .fraga[aria-expanded='true'] { border-color: var(--primary-mark); background: #24507f; color: #fff; }
+
+  /* ── A · Lådan: skrivbordets låda, oförändrad. ────────────────────────────────────────────── */
+  .hjalp { position: absolute; z-index: 20; padding: 12px 14px; border-radius: 12px; background: #12141a; border: 1px solid #3a4050; box-shadow: 0 16px 44px rgba(0,0,0,.7); color: #c7cede; font-size: 12.5px; line-height: 1.55; }
+  .hjalp[hidden] { display: none; }
+  .hjalp p { margin: 0 0 7px; } .hjalp p:last-child { margin: 0; }
+  .hjalp .stang { position: absolute; top: 5px; right: 7px; border: 0; background: transparent; color: #868ea3; font-size: 16px; cursor: pointer; padding: 4px 6px; }
+  .shell[data-form='lada'] .hjalp { width: 250px; top: 52px; right: 12px; }
+
+  /* ── B · Arket: glider upp från nederkanten, där tummen är. ───────────────────────────────── */
+  .shell[data-form='ark'] .hjalp { left: 0; right: 0; bottom: 0; border-radius: 16px 16px 0 0; padding: 16px 16px 22px; }
+  .shell[data-form='ark'] .hjalp::before { content: ''; position: absolute; left: 50%; top: 7px; transform: translateX(-50%); width: 38px; height: 4px; border-radius: 999px; background: #3a4050; }
+  .shell[data-form='ark'] .hjalp .stang { top: 12px; }
+
+  /* ── C · Helskärm: hela vyn, en stor stängknapp i tumzonen. ───────────────────────────────── */
+  .shell[data-form='helskarm'] .hjalp { inset: 0; border-radius: 0; padding: 56px 20px 20px; display: flex; flex-direction: column; }
+  .shell[data-form='helskarm'] .hjalp .stang { top: 14px; right: 14px; font-size: 20px; }
+  .shell[data-form='helskarm'] .hjalp .klar { margin-top: auto; min-height: 48px; border: 1px solid #3a4050; border-radius: 12px; background: #1b2437; color: #e6ecfa; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .hjalp .klar { display: none; }
+  .shell[data-form='helskarm'] .hjalp .klar { display: block; }
+
+  .matt2 { display: grid; gap: 3px; color: var(--quiet-2); font-size: 11px; line-height: 1.5; max-width: 390px; }
+  .matt2 u { text-decoration: none; color: #ffd98a; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="shell" data-form="lada" data-tumme="ja">
+<header>
+  <strong>Skogens herrar · telefon</strong>
+  <span class="spacer"></span>
+  <div class="switch" role="group" aria-label="Hjälpens form på telefonen">
+    <button type="button" data-form="lada" aria-pressed="true">A · Lådan</button>
+    <button type="button" data-form="ark" aria-pressed="false">B · Arket</button>
+    <button type="button" data-form="helskarm" aria-pressed="false">C · Helskärm</button>
+  </div>
+  <button type="button" class="knapp" id="tummen" style="min-height:30px;border:1px solid var(--line);border-radius:8px;background:#1b1d23;color:#c7cede;font:inherit;font-size:11.5px;padding:0 10px;cursor:pointer">Dölj tumzonen</button>
+  <span class="who">P</span>
+</header>
+
+<div class="protorad">
+  <b>#305</b>
+  <p>390 × 844. Tryck på frågetecknet i kromet. Den streckade zonen är den nedre tredjedelen — det en hand når utan att flytta greppet.</p>
+  <div class="matt"><span>hjälpen täcker <u id="m-tack">–</u></span><span>av handen <u id="m-hand">–</u></span></div>
+  <p class="sagt" id="sagt">Skärmläsaren hör: <em>—</em></p>
+</div>
+
+<main>
+<div class="rum">
+  <div class="lod">
+    <b>Spelarvyn</b>
+    <div class="telefon" id="telefon">
+      <div class="krom">
+        Draghögen · 18
+        <button type="button" class="fraga" id="fraga" aria-expanded="false" aria-label="Mer om draghögen">?</button>
+        <span class="kod">RUM 4KTQ</span>
+      </div>
+      <div class="filt">
+        <div class="bord"></div>
+        <div class="hogp"></div><span>Draghögen</span>
+      </div>
+      <div class="hand" id="hand">
+        <b>Din hand · 5 kort</b>
+        <div class="kort"><span class="k">Gläntans väktare</span><span class="k">Bergets fogde</span><span class="k">Flodens härold</span><span class="k">Myrens siare</span><span class="k">Askans bård</span></div>
+        <div class="knappar"><button type="button">Spela</button><button type="button">Dra</button><button type="button">Visa</button></div>
+      </div>
+      <div class="tumme"><b>tummens räckvidd</b></div>
+
+      <div class="hjalp" id="hjalp" hidden role="dialog" aria-label="Mer om draghögen">
+        <button type="button" class="stang" aria-label="Stäng hjälpen">✕</button>
+        <p>Draghögen är dold. Du ser bara hur många kort som ligger i den.</p>
+        <p>Den som drar får det översta kortet. Blandas den, sägs det i aktiviteten.</p>
+        <button type="button" class="klar">Klart</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="matt2" id="forklaring"></div>
+</div>
+</main>
+</div>
+
+<div class="note">
+  <b>Prototyp 14 — #305</b>
+  Spänningen är att tummen når nederkanten — men det är också där handen ligger. Ett ark som glider upp där tummen är täcker det man skulle spela. Siffrorna säger hur mycket.
+</div>
+
+<script>
+const shell = document.querySelector('.shell')
+const hjalp = document.getElementById('hjalp')
+const fraga = document.getElementById('fraga')
+const sag = (t) => { document.getElementById('sagt').innerHTML = 'Skärmläsaren hör: <em>' + t + '</em>' }
+
+const FORKLARING = {
+  lada: '<p><u>A · Lådan.</u> Skrivbordets låda, oförändrad: 250 px bred under frågetecknet. Den ligger i vyns övre del, långt från tummen — man måste sträcka sig för att stänga den.</p><p>Men den täcker ingenting man spelar med.</p>',
+  ark: '<p><u>B · Arket.</u> Glider upp från nederkanten, där tummen är. Stängs med en svepning eller med krysset, båda inom räckhåll.</p><p>Priset är hela frågan: nederkanten är handen. Ett ark där täcker korten och knapparna man skulle använda.</p>',
+  helskarm: '<p><u>C · Helskärm.</u> Hela vyn, med «Klart» nere i tumzonen. Mest text på en gång, och omöjlig att missa.</p><p>Priset: bordet försvinner helt. På en telefon som redan bara visar en del av spelet är det ett steg bort från det.</p>',
+}
+
+function mat() {
+  const tel = document.getElementById('telefon').getBoundingClientRect()
+  const hand = document.getElementById('hand').getBoundingClientRect()
+  if (hjalp.hidden) { document.getElementById('m-tack').textContent = '–'; document.getElementById('m-hand').textContent = '–'; return }
+  const h = hjalp.getBoundingClientRect()
+  const andel = Math.round((h.width * h.height) / (tel.width * tel.height) * 100)
+  // Hur mycket av handen — korten och knapparna — som ligger under hjälpen.
+  const over = Math.max(0, Math.min(h.bottom, hand.bottom) - Math.max(h.top, hand.top))
+  const del = Math.round((over / hand.height) * 100)
+  document.getElementById('m-tack').textContent = andel + ' % av vyn'
+  document.getElementById('m-hand').textContent = del + ' %'
+}
+
+function visa(pa) {
+  hjalp.hidden = !pa
+  fraga.setAttribute('aria-expanded', String(pa))
+  if (pa) { hjalp.querySelector('.stang').focus(); sag('hjälpen öppnad') } else { fraga.focus(); sag('hjälpen stängd') }
+  requestAnimationFrame(mat)
+}
+
+document.addEventListener('click', (e) => {
+  const v = e.target.closest('button[data-form]')
+  if (v) {
+    shell.dataset.form = v.dataset.form
+    document.querySelectorAll('button[data-form]').forEach((b) => b.setAttribute('aria-pressed', String(b === v)))
+    document.getElementById('forklaring').innerHTML = FORKLARING[v.dataset.form]
+    requestAnimationFrame(mat)
+    return
+  }
+  if (e.target.id === 'tummen') { const pa = shell.dataset.tumme !== 'ja'; shell.dataset.tumme = pa ? 'ja' : 'nej'; e.target.textContent = pa ? 'Dölj tumzonen' : 'Visa tumzonen'; return }
+  if (e.target === fraga) { visa(hjalp.hidden); return }
+  if (e.target.closest('.stang') || e.target.closest('.klar')) { visa(false); return }
+})
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !hjalp.hidden) visa(false) })
+document.getElementById('forklaring').innerHTML = FORKLARING.lada
+window.addEventListener('resize', mat)
+</script></body></html>

@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 8 — Hjälpmönstret (#303)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  .rum { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: var(--s5); padding: var(--gutter); overflow: auto; align-content: start; }
+  .ruta { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .ruta > h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); display: flex; align-items: baseline; gap: 8px; }
+  .ruta > h2 u { text-decoration: none; margin-left: auto; color: #ffd98a; font-variant-numeric: tabular-nums; font-size: 11px; letter-spacing: 0; }
+  .yta { position: relative; border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: 10px; }
+
+  /* Lagerkolumnen i sina riktiga 220 px, med editorns egna grader. */
+  .lager { width: 220px; }
+  .lager ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  .lager li { display: grid; grid-template-columns: 44px minmax(0,1fr) 14px; align-items: center; min-height: 30px; border-radius: 6px; color: #c7cede; font-size: 12px; padding: 0 4px; }
+  .lager li[aria-selected='true'] { background: #24507f; color: #fff; }
+  .lager li i { font-style: normal; color: var(--quiet); font-size: 10px; text-align: center; }
+  /* `.byd-canvas-hint`, ordagrant. */
+  .canvas-hint { color: #7c8496; font-size: 11px; line-height: 1.4; margin: 8px 0 0; border-top: 1px solid #2f333d; padding-top: 8px; }
+  /* `.byd-tables-lead`. */
+  .tables-lead { margin: 0 0 10px; color: #868ea3; max-width: 62ch; font-size: 12px; line-height: 1.5; }
+  /* `.byd-setup-hint`. */
+  .setup-hint { margin: 0; color: #868ea3; font-size: 12px; line-height: 1.5; }
+
+  .bordlista { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .bordlista li { display: grid; grid-template-columns: 34px minmax(0,1fr) auto; gap: 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: #1b1f2a; }
+  .bordlista .bricka { width: 34px; height: 24px; border-radius: 4px; background: linear-gradient(160deg,#1d4032,#14261f); border: 1px solid #2a4034; }
+  .bordlista b { color: #e6ecfa; font-size: 12.5px; }
+  .bordlista small { display: block; color: var(--quiet); font-size: 10.5px; }
+
+  .zonrad { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .zonrad .knapp { min-height: 30px; border: 1px solid var(--line); border-radius: 8px; background: #1b1d23; color: #c7cede; font: inherit; font-size: 11.5px; padding: 0 10px; cursor: pointer; }
+
+  /* ── Hjälpen ──────────────────────────────────────────────────────────────────────────────── */
+  .fraga { flex: none; width: 20px; height: 20px; display: inline-grid; place-items: center; border: 1px solid #3a4050; border-radius: 999px; background: transparent; color: #9aa3b8; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; padding: 0; line-height: 1; }
+  .fraga:hover { border-color: var(--primary-mark); color: #cfe0ff; }
+  .fraga:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  .fraga[aria-expanded='true'] { border-color: var(--primary-mark); background: #24507f; color: #fff; }
+
+  /* A · Rutan: en låda under frågetecknet. Den vänder sig vid skärmkanten. */
+  .hjalpruta { position: absolute; z-index: 20; width: 260px; max-width: calc(100vw - 24px); padding: 10px 12px; border-radius: 10px; background: #12141a; border: 1px solid #3a4050; box-shadow: 0 16px 40px rgba(0,0,0,.6); color: #c7cede; font-size: 11.5px; line-height: 1.55; }
+  .hjalpruta[hidden] { display: none; }
+  .hjalpruta p { margin: 0 0 6px; }
+  .hjalpruta p:last-child { margin: 0; }
+  .hjalpruta kbd { border: 1px solid #3a4050; border-radius: 4px; padding: 0 4px; background: #1b1d23; color: #e6ecfa; font: inherit; font-size: 10.5px; }
+  .hjalpruta .stang { position: absolute; top: 4px; right: 6px; border: 0; background: transparent; color: #868ea3; font-size: 14px; cursor: pointer; padding: 2px 4px; }
+
+  /* B · Utfällningen: hjälpen ligger i flödet och trycker ner det som står under. */
+  .hjalpfall { margin: 6px 0 0; padding: 8px 10px; border-left: 2px solid #3f5f86; border-radius: 0 8px 8px 0; background: #161d28; color: #c7cede; font-size: 11.5px; line-height: 1.55; }
+  .hjalpfall[hidden] { display: none; }
+  .hjalpfall p { margin: 0 0 6px; }
+  .hjalpfall p:last-child { margin: 0; }
+  .hjalpfall kbd { border: 1px solid #3a4050; border-radius: 4px; padding: 0 4px; background: #1b1d23; color: #e6ecfa; font-size: 10.5px; }
+
+  /* C · Hjälpläget: ett frågetecken i flikens krom tänder alla på en gång. */
+  .lagevaxel { display: inline-flex; align-items: center; gap: 7px; min-height: 30px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--quiet-2); font: inherit; font-size: 11.5px; padding: 0 12px 0 9px; cursor: pointer; }
+  .lagevaxel[aria-pressed='true'] { border-color: var(--primary-mark); background: #24507f; color: #fff; }
+
+  .shell:not([data-form='ruta']) .hjalpruta { display: none !important; }
+  .shell:not([data-form='fall']):not([data-form='lage']) .hjalpfall { display: none !important; }
+  .shell[data-form='fore'] .fraga, .shell[data-form='fore'] .lagevaxel { display: none; }
+  .shell:not([data-form='fore']) .lang { display: none; }
+  .shell[data-form='fore'] .kort { display: none; }
+  .shell:not([data-form='lage']) .lagevaxel { display: none; }
+
+  .kvar { margin: 8px 0 0; padding: 7px 9px; border-radius: 8px; background: #2a1b1b; border-left: 3px solid #e05c5c; color: #ffc9c9; font-size: 11px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="shell" data-form="fore" data-lage="av">
+<header>
+  <strong>Skogens herrar</strong>
+  <span class="spacer"></span>
+  <div class="switch" role="group" aria-label="Hjälpens form">
+    <button type="button" data-form="fore" aria-pressed="true">Före</button>
+    <button type="button" data-form="ruta" aria-pressed="false">A · Rutan</button>
+    <button type="button" data-form="fall" aria-pressed="false">B · Utfällningen</button>
+    <button type="button" data-form="lage" aria-pressed="false">C · Hjälpläget</button>
+  </div>
+  <span class="who">P</span>
+</header>
+
+<div class="protorad">
+  <b>#303</b>
+  <p id="hjalptext">Före: produktens egna strängar, ordagrant, i sina riktiga kolumnbredder och grader. Byt form för att se förkortningen och hjälpen.</p>
+  <button type="button" class="lagevaxel" id="lagevaxel" aria-pressed="false"><span aria-hidden="true">?</span> Visa hjälpen</button>
+  <div class="matt"><span>text på ytan <u id="m-px">–</u></span><span>av kolumnen <u id="m-pct">–</u></span></div>
+  <p class="sagt" id="sagt">Skärmläsaren hör: <em>—</em></p>
+</div>
+
+<main>
+<div class="rum">
+
+  <!-- ── Lagerkolumnen: den tätaste ytan ──────────────────────────────────────────────────── -->
+  <div class="ruta">
+    <h2>Lager · 220 px <u id="u-lager"></u></h2>
+    <div class="yta lager" id="yta-lager">
+      <ul>
+        <li aria-selected="true"><i>◇</i>Banderoll<i></i></li>
+        <li><i>T</i>Namn<i></i></li>
+        <li><i>T</i>Regeltext<i></i></li>
+        <li><i>▣</i>Illustration<i></i></li>
+        <li><i>◇</i>Bottenplatta<i></i></li>
+      </ul>
+      <p class="canvas-hint lang" data-mat>Dra ett lager för att ändra ordningen, eller håll Alt och tryck pil upp eller ner. F2 byter namn på lagret. Elementet flyttas från duken: Enter går in i flyttläge, piltangenterna flyttar, Escape avslutar.</p>
+      <p class="canvas-hint kort" data-mat>Dra för att ändra ordningen. <button type="button" class="fraga" data-hjalp="lager" aria-expanded="false" aria-label="Mer om lagerlistan och tangentbordet">?</button></p>
+      <div class="hjalpruta" id="ruta-lager" hidden role="dialog" aria-label="Mer om lagerlistan">
+        <button type="button" class="stang" aria-label="Stäng hjälpen">✕</button>
+        <p>Håll <kbd>Alt</kbd> och tryck <kbd>↑</kbd> eller <kbd>↓</kbd> för att flytta lagret utan att dra.</p>
+        <p><kbd>F2</kbd> byter namn på lagret.</p>
+        <p>Från duken: <kbd>Enter</kbd> går in i flyttläge, piltangenterna flyttar, <kbd>Esc</kbd> avslutar.</p>
+      </div>
+      <div class="hjalpfall" id="fall-lager" hidden>
+        <p>Håll <kbd>Alt</kbd> och tryck <kbd>↑</kbd> eller <kbd>↓</kbd> för att flytta lagret utan att dra.</p>
+        <p><kbd>F2</kbd> byter namn på lagret.</p>
+        <p>Från duken: <kbd>Enter</kbd> går in i flyttläge, piltangenterna flyttar, <kbd>Esc</kbd> avslutar.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Bord-kolumnen ─────────────────────────────────────────────────────────────────────── -->
+  <div class="ruta">
+    <h2>Bord · 320 px <u id="u-tables"></u></h2>
+    <div class="yta" id="yta-tables" style="width:320px">
+      <p class="tables-lead lang" data-mat>Varje bord hör till det här spelet. Ett bord överlever att alla kopplar ner; det avslutas uttryckligen eller efter ett dygn.</p>
+      <p class="tables-lead kort" data-mat>Bord på det här spelet. <button type="button" class="fraga" data-hjalp="tables" aria-expanded="false" aria-label="Mer om hur länge ett bord lever">?</button></p>
+      <div class="hjalpruta" id="ruta-tables" hidden role="dialog" aria-label="Mer om bord">
+        <button type="button" class="stang" aria-label="Stäng hjälpen">✕</button>
+        <p>Ett bord överlever att alla kopplar ner.</p>
+        <p>Det avslutas uttryckligen, eller av sig självt efter ett dygn.</p>
+      </div>
+      <div class="hjalpfall" id="fall-tables" hidden>
+        <p>Ett bord överlever att alla kopplar ner.</p>
+        <p>Det avslutas uttryckligen, eller av sig självt efter ett dygn.</p>
+      </div>
+      <ul class="bordlista">
+        <li><span class="bricka"></span><span><b>Torsdagsgruppen</b><small>rev 11 · 4 spelare</small></span><em></em></li>
+        <li><span class="bricka"></span><span><b>Provspel med Ada</b><small>rev 12 · 2 spelare</small></span><em></em></li>
+      </ul>
+      <!-- Det som aldrig får flyttas bakom ett frågetecken. -->
+      <p class="kvar" role="alert">Bordet kunde inte startas: servern svarade inte. Spelet och dess bord är orörda.</p>
+    </div>
+  </div>
+
+  <!-- ── Bord-fliken: den glesa ytan ───────────────────────────────────────────────────────── -->
+  <div class="ruta">
+    <h2>Uppställningen · bred rad <u id="u-setup"></u></h2>
+    <div class="yta" id="yta-setup">
+      <div class="zonrad">
+        <button type="button" class="knapp">＋ Zon</button>
+        <button type="button" class="knapp">＋ Hög</button>
+        <button type="button" class="knapp">Räknarzon per plats</button>
+      </div>
+      <p class="setup-hint lang" data-mat style="margin-top:8px">Listan är varje zon bordet har. Dra en zon på filten för att flytta den, hörnet för att ändra storlek; piltangenterna knuffar den valda och Delete tar bort den.</p>
+      <p class="setup-hint kort" data-mat style="margin-top:8px">Dra en zon på filten för att flytta den. <button type="button" class="fraga" data-hjalp="setup" aria-expanded="false" aria-label="Mer om att ändra zoner på filten">?</button></p>
+      <div class="hjalpruta" id="ruta-setup" hidden role="dialog" aria-label="Mer om zoner">
+        <button type="button" class="stang" aria-label="Stäng hjälpen">✕</button>
+        <p>Dra hörnet för att ändra storlek.</p>
+        <p>Piltangenterna knuffar den valda zonen; <kbd>Delete</kbd> tar bort den.</p>
+        <p>Listan till vänster är varje zon bordet har.</p>
+      </div>
+      <div class="hjalpfall" id="fall-setup" hidden>
+        <p>Dra hörnet för att ändra storlek.</p>
+        <p>Piltangenterna knuffar den valda zonen; <kbd>Delete</kbd> tar bort den.</p>
+        <p>Listan till vänster är varje zon bordet har.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+</main>
+</div>
+
+<div class="note">
+  <b>Prototyp 8 — #303</b>
+  Tre ytor med produktens egna strängar, ordagrant. Siffran vid varje rubrik är hur många bildpunkter texten tar. Felmeddelandet i mitten flyttas aldrig bakom ett frågetecken — det är ett av kriterierna.
+</div>
+
+<script>
+const shell = document.querySelector('.shell')
+const sag = (t) => { document.getElementById('sagt').innerHTML = 'Skärmläsaren hör: <em>' + t + '</em>' }
+
+const HJALP = {
+  fore: 'Före: produktens egna strängar, ordagrant, i sina riktiga kolumnbredder och grader. Siffran vid varje rubrik är hur många bildpunkter texten tar.',
+  ruta: 'A · Rutan: frågetecknet öppnar en låda som lägger sig över ytan. Den stängs med Esc, med krysset eller genom att klicka utanför, och fokus går tillbaka till frågetecknet.',
+  fall: 'B · Utfällningen: hjälpen ligger i flödet och trycker ner det som står under. Ingenting täcks — men ytan växer medan hjälpen är öppen.',
+  lage: 'C · Hjälpläget: ett frågetecken i flikens krom tänder alla hjälptexter på en gång. Ett beslut i stället för ett per yta.',
+}
+
+// ── Mätningen ──────────────────────────────────────────────────────────────────────────────────
+// Bildpunkter och inte tecken: det är höjden som tävlar med arbetskontrollerna.
+function mat() {
+  let tot = 0
+  for (const [id, rubrik] of [['yta-lager', 'u-lager'], ['yta-tables', 'u-tables'], ['yta-setup', 'u-setup']]) {
+    const yta = document.getElementById(id)
+    const texter = [...yta.querySelectorAll('[data-mat]')].filter((el) => el.offsetParent !== null)
+    // Den öppna hjälpen i B tar också plats på ytan, alltså räknas den med.
+    const fall = [...yta.querySelectorAll('.hjalpfall')].filter((el) => !el.hidden && el.offsetParent !== null)
+    const px = [...texter, ...fall].reduce((s, el) => s + el.offsetHeight, 0)
+    document.getElementById(rubrik).textContent = px + ' px'
+    tot += px
+  }
+  document.getElementById('m-px').textContent = tot + ' px'
+  const lager = document.getElementById('yta-lager')
+  const synlig = [...lager.querySelectorAll('[data-mat]')].find((el) => el.offsetParent !== null)
+  const fall = [...lager.querySelectorAll('.hjalpfall')].filter((el) => !el.hidden && el.offsetParent !== null)
+  const textpx = (synlig ? synlig.offsetHeight : 0) + fall.reduce((s, el) => s + el.offsetHeight, 0)
+  document.getElementById('m-pct').textContent = Math.round((textpx / lager.offsetHeight) * 100) + ' % av Lager'
+}
+
+// ── Hjälpen ────────────────────────────────────────────────────────────────────────────────────
+let oppen = null
+function stang(fokus = true) {
+  if (!oppen) return
+  const { knapp, box } = oppen
+  box.hidden = true
+  knapp.setAttribute('aria-expanded', 'false')
+  // Fokus tillbaka dit den kom ifrån — annars faller den till <body> och panelen måste nås om.
+  if (fokus) knapp.focus()
+  oppen = null
+  mat()
+}
+
+function oppna(knapp) {
+  const namn = knapp.dataset.hjalp
+  const box = document.getElementById((shell.dataset.form === 'ruta' ? 'ruta-' : 'fall-') + namn)
+  if (oppen && oppen.box === box) { stang(); return }
+  stang(false)
+  box.hidden = false
+  knapp.setAttribute('aria-expanded', 'true')
+  oppen = { knapp, box }
+  if (shell.dataset.form === 'ruta') {
+    // Lådan får aldrig täcka kontrollen den handlar om: den läggs under frågetecknet, och vänder
+    // sig uppåt eller inåt när skärmkanten är i vägen.
+    const yta = knapp.closest('.yta')
+    const k = knapp.getBoundingClientRect(), y = yta.getBoundingClientRect()
+    box.style.left = Math.max(6, Math.min(k.left - y.left - 8, y.width - 266)) + 'px'
+    box.style.top = (k.bottom - y.top + 6) + 'px'
+    box.style.bottom = 'auto'
+    const b = box.getBoundingClientRect()
+    if (b.bottom > window.innerHeight - 8) { box.style.top = 'auto'; box.style.bottom = (y.bottom - k.top + 6) + 'px' }
+    box.querySelector('.stang').focus()
+  }
+  sag('hjälpen öppnad')
+  mat()
+}
+
+document.addEventListener('click', (e) => {
+  const v = e.target.closest('button[data-form]')
+  if (v) {
+    stang(false)
+    shell.dataset.form = v.dataset.form
+    document.querySelectorAll('button[data-form]').forEach((b) => b.setAttribute('aria-pressed', String(b === v)))
+    document.getElementById('hjalptext').textContent = HJALP[v.dataset.form]
+    if (v.dataset.form !== 'lage') { shell.dataset.lage = 'av'; document.getElementById('lagevaxel').setAttribute('aria-pressed', 'false'); document.querySelectorAll('.hjalpfall').forEach((f) => (f.hidden = true)) }
+    requestAnimationFrame(mat)
+    return
+  }
+  if (e.target.closest('#lagevaxel')) {
+    const pa = shell.dataset.lage !== 'pa'
+    shell.dataset.lage = pa ? 'pa' : 'av'
+    document.getElementById('lagevaxel').setAttribute('aria-pressed', String(pa))
+    document.querySelectorAll('.hjalpfall').forEach((f) => (f.hidden = !pa))
+    document.querySelectorAll('.fraga').forEach((f) => f.setAttribute('aria-expanded', String(pa)))
+    sag(pa ? 'hjälpen visas på hela fliken' : 'hjälpen dold')
+    mat()
+    return
+  }
+  const f = e.target.closest('.fraga')
+  if (f) { if (shell.dataset.form !== 'lage') oppna(f); return }
+  if (e.target.closest('.hjalpruta .stang')) { stang(); sag('hjälpen stängd'); return }
+  // Ett klick utanför stänger, som varje annan låda över arbetet.
+  if (oppen && shell.dataset.form === 'ruta' && !e.target.closest('.hjalpruta')) stang(false)
+})
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && oppen) { stang(); sag('hjälpen stängd') } })
+
+window.addEventListener('resize', mat)
+mat()
+</script>
+</body>
+</html>

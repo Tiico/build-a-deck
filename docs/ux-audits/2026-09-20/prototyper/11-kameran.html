@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 11 — Live-bordets kamera (#325)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  body { background: #000; }
+  .shell { background: #000; }
+  /* TV:n: filten tar allt som blir över. Höjdbunden — en rad kostar kortstorlek, en sidokolumn
+     är gratis (samma sak som gäller docken). */
+  .tv { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0,1fr); grid-template-rows: minmax(0,1fr); }
+  .shell[data-form='spalt'] .tv { grid-template-columns: minmax(0,1fr) 84px; }
+  .shell[data-form='rad'] .tv { grid-template-rows: minmax(0,1fr) 56px; }
+
+  .filt { position: relative; overflow: hidden; background: radial-gradient(circle at 50% 44%, #1d4032, #0f1d17 76%); cursor: grab; }
+  .filt[data-panorerar='ja'] { cursor: grabbing; }
+  .vy { position: absolute; inset: 0; transform-origin: 0 0; }
+  .bord { position: absolute; border-radius: 10px; background: #15291f; outline: 2px solid #2a4034; }
+  .kort { position: absolute; border-radius: 3px; background: #f4efe4; box-shadow: 0 2px 6px rgba(0,0,0,.5); display: grid; place-items: center; color: #241a0c; font: 700 9px/1 Georgia, serif; text-align: center; padding: 3px; box-sizing: border-box; }
+  .kort[data-dold] { background: linear-gradient(140deg,#5b3a6b,#2d1c38); color: #d9c7e6; }
+  .hog { position: absolute; border-radius: 3px; background: #f4efe4; box-shadow: 0 1px 0 0 #cdc4b2, 0 2px 0 0 #e8e1d4, 0 3px 0 0 #cdc4b2, 0 5px 10px rgba(0,0,0,.55); display: grid; place-items: center; color: #241a0c; font: 700 9px/1.2 Georgia, serif; }
+  .namn { position: absolute; color: #ffd98a; font: 700 10px/1 system-ui; letter-spacing: .6px; white-space: nowrap; }
+
+  /* Kantindikatorn: innehåll finns utanför den manuella vyn. */
+  .kant { position: absolute; pointer-events: none; opacity: 0; transition: opacity 160ms ease; }
+  .kant[data-pa='ja'] { opacity: 1; }
+  .kant[data-sida='v'] { left: 0; top: 0; bottom: 0; width: 64px; background: linear-gradient(to right, rgba(255,217,138,.20), transparent); }
+  .kant[data-sida='h'] { right: 0; top: 0; bottom: 0; width: 64px; background: linear-gradient(to left, rgba(255,217,138,.20), transparent); }
+  .kant[data-sida='o'] { left: 0; right: 0; top: 0; height: 64px; background: linear-gradient(to bottom, rgba(255,217,138,.20), transparent); }
+  .kant[data-sida='n'] { left: 0; right: 0; bottom: 0; height: 64px; background: linear-gradient(to top, rgba(255,217,138,.20), transparent); }
+  .kant b { position: absolute; display: grid; place-items: center; width: 26px; height: 26px; border-radius: 999px; background: #ffd98a; color: #1c1c1c; font-size: 15px; }
+  .kant[data-sida='v'] b { left: 12px; top: 50%; transform: translateY(-50%); }
+  .kant[data-sida='h'] b { right: 12px; top: 50%; transform: translateY(-50%); }
+  .kant[data-sida='o'] b { top: 12px; left: 50%; transform: translateX(-50%); }
+  .kant[data-sida='n'] b { bottom: 12px; left: 50%; transform: translateX(-50%); }
+  @media (prefers-reduced-motion: reduce) { .kant { transition: none; } }
+
+  /* ── Kamerakontrollerna ───────────────────────────────────────────────────────────────────── */
+  /* Docken (C5): varje plats, alltid, längs filtens nederkant. Den finns i produkten och måste
+     finnas här, eftersom den äger just det utrymme två av förslagen vill ha. */
+  .dock { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; display: flex; justify-content: center; gap: 10px; padding: 10px 14px; background: linear-gradient(to top, #060b08ee, transparent); pointer-events: none; }
+  .dock div { display: flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px; background: #0d1a14cc; border: 1px solid #2a4034; color: #e6ecfa; font-size: 12px; }
+  .dock i { font-style: normal; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 999px; background: #e0a458; color: #10131a; font: 800 10px system-ui; }
+  .dock em { font-style: normal; color: #9aa3b8; font-size: 11px; }
+
+  /* Bildtexten bor annars längst ner i mitten, alltså ovanpå docken och brickan. */
+  .note { bottom: auto; top: 148px; left: 24px; transform: none; max-width: 420px; }
+
+  .kamera { display: flex; align-items: center; gap: 8px; }
+  .kamera button { min-width: 40px; min-height: 40px; border: 1px solid #3a4a42; border-radius: 10px; background: #15291fdd; color: #e6ecfa; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; display: grid; place-items: center; padding: 0 10px; }
+  .kamera button:hover { border-color: #ffd98a; color: #ffd98a; }
+  .kamera button:focus-visible { outline: 2px solid #ffd98a; outline-offset: 2px; }
+  .kamera .hela { font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .kamera .niva { color: #9aa3b8; font-size: 11px; font-variant-numeric: tabular-nums; min-width: 42px; text-align: center; }
+
+  /* A · Hörnet: en liten klunga över filten, bara medan kameran är manuell. */
+  .hornet { position: absolute; right: 18px; bottom: 74px; z-index: 5; backdrop-filter: blur(4px); border-radius: 12px; padding: 5px; background: #0d1a14bb; border: 1px solid #2a4034; }
+  /* Fälld: klungan krymper till en bricka som fortfarande bär vägen tillbaka. Den kan aldrig
+     försvinna helt — en egen vy utan väg hem är ett bord som låst sig. */
+  .hornet[data-falld='ja'] .kamera > :not(.fall):not(.hela) { display: none; }
+  .hornet[data-falld='ja'] { padding: 4px; }
+  .hornet[data-falld='ja'] .fall { font-size: 11.5px; font-weight: 600; padding: 0 12px; }
+  .kamera .fall { min-width: 34px; font-size: 13px; color: #9aa3b8; }
+  .kamera .fall:hover { color: #ffd98a; }
+  /* B · Spalten: en egen kolumn vid filtens kant. Kostar bredd, aldrig höjd. */
+  .spalten { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; background: #0a120e; border-left: 1px solid #1c2a23; }
+  .spalten .kamera { flex-direction: column; }
+  .spalten .hela { writing-mode: horizontal-tb; font-size: 10px; padding: 6px 4px; line-height: 1.2; white-space: normal; }
+  /* C · Raden: en rad under filten. Kostar höjd, alltså kortstorlek. */
+  .raden { display: flex; align-items: center; justify-content: center; gap: 10px; background: #0a120e; border-top: 1px solid #1c2a23; }
+  /* D · Bricka: ingen bestående kontroll — en enda bricka som dyker upp när vyn är egen. */
+  .brickan { position: absolute; left: 50%; bottom: 74px; transform: translateX(-50%); z-index: 5; display: inline-flex; align-items: center; gap: 10px; padding: 7px 8px 7px 14px; border-radius: 999px; background: #0d1a14e6; border: 1px solid #2a4034; color: #ffd98a; font-size: 12px; font-weight: 600; }
+  .brickan button { min-height: 32px; border: 1px solid #3a4a42; border-radius: 999px; background: #15291f; color: #e6ecfa; font: inherit; font-size: 11.5px; padding: 0 12px; cursor: pointer; }
+  .brickan button:hover { border-color: #ffd98a; color: #ffd98a; }
+
+  .hornet, .spalten, .raden, .brickan { display: none; }
+  .shell[data-form='hornet'] .hornet { display: block; }
+  .shell[data-form='spalt'] .spalten { display: flex; }
+  .shell[data-form='rad'] .raden { display: flex; }
+  .shell[data-form='bricka'] .brickan { display: inline-flex; }
+  /* A och D visas bara när vyn är egen — det är hela deras idé. */
+  .shell[data-auto='ja'][data-form='hornet'] .hornet, .shell[data-auto='ja'][data-form='bricka'] .brickan { display: none; }
+</style>
+</head>
+<body>
+<div class="shell" data-form="hornet" data-auto="ja">
+<header>
+  <strong>Skogens herrar · TV</strong>
+  <span class="saved" id="lage">Automatisk inramning</span>
+  <span class="spacer"></span>
+  <div class="switch" role="group" aria-label="Kamerakontrollernas plats">
+    <button type="button" data-form="hornet" aria-pressed="true">A · Hörnet</button>
+    <button type="button" data-form="spalt" aria-pressed="false">B · Spalten</button>
+    <button type="button" data-form="rad" aria-pressed="false">C · Raden</button>
+    <button type="button" data-form="bricka" aria-pressed="false">D · Brickan</button>
+  </div>
+  <span class="who">TV</span>
+</header>
+
+<div class="protorad">
+  <b>#325</b>
+  <p>Rulla för att zooma kring pekaren — vyn <b>stannar</b>. Panorera med mittenknappen eller Space + drag. Beteendet är redan beslutat; det som prövas är var kontrollerna och kantindikatorn sitter.</p>
+  <div class="matt"><span>filten <u id="m-filt">–</u></span><span>kortets bredd <u id="m-kort">–</u></span><span>utanför vyn <u id="m-ute">0</u></span></div>
+  <p class="sagt" id="sagt">Skärmläsaren hör: <em>—</em></p>
+</div>
+
+<main>
+<div class="tv">
+  <div class="filt" id="filt" tabindex="0" role="application" aria-label="Bordet">
+    <div class="vy" id="vy"></div>
+    <div class="kant" data-sida="v" data-pa="nej"><b aria-hidden="true">‹</b></div>
+    <div class="kant" data-sida="h" data-pa="nej"><b aria-hidden="true">›</b></div>
+    <div class="kant" data-sida="o" data-pa="nej"><b aria-hidden="true">‹</b></div>
+    <div class="kant" data-sida="n" data-pa="nej"><b aria-hidden="true">›</b></div>
+
+    <div class="dock" aria-hidden="true">
+      <div><i>A</i>Ada<em>7 kort</em></div>
+      <div><i>B</i>Bo<em>5 kort</em></div>
+      <div><i>C</i>Cim<em>6 kort</em></div>
+      <div><i>D</i>Dag<em>4 kort</em></div>
+    </div>
+
+    <div class="hornet">
+      <div class="kamera">
+        <button type="button" data-zoom="-1" aria-label="Zooma ut">−</button>
+        <span class="niva" id="niva-a">100 %</span>
+        <button type="button" data-zoom="1" aria-label="Zooma in">+</button>
+        <button type="button" class="hela" data-hela>Visa hela bordet</button>
+        <button type="button" class="fall" id="fall" aria-expanded="true" aria-label="Fäll undan kamerakontrollerna">›</button>
+      </div>
+    </div>
+
+    <div class="brickan" role="status">
+      Egen vy
+      <button type="button" data-hela>Visa hela bordet</button>
+    </div>
+  </div>
+
+  <div class="spalten">
+    <div class="kamera">
+      <button type="button" data-zoom="1" aria-label="Zooma in">+</button>
+      <span class="niva" id="niva-b">100 %</span>
+      <button type="button" data-zoom="-1" aria-label="Zooma ut">−</button>
+      <button type="button" class="hela" data-hela>Visa hela bordet</button>
+    </div>
+  </div>
+
+  <div class="raden">
+    <div class="kamera">
+      <button type="button" data-zoom="-1" aria-label="Zooma ut">−</button>
+      <span class="niva" id="niva-c">100 %</span>
+      <button type="button" data-zoom="1" aria-label="Zooma in">+</button>
+      <button type="button" class="hela" data-hela>Visa hela bordet</button>
+    </div>
+  </div>
+</div>
+</main>
+</div>
+
+<div class="note">
+  <b>Prototyp 11 — #325</b>
+  Zooma in tills ett kort hamnar utanför bilden, så tänds kantindikatorn på den sida innehållet ligger. <i>Visa hela bordet</i> återgår till automatisk inramning. Siffrorna uppe till höger säger vad varje placering kostar filten.
+</div>
+
+<script>
+// ── Bordet ─────────────────────────────────────────────────────────────────────────────────────
+const BORD = { w: 1100, h: 700 }
+const KORT = { w: 63, h: 88 }
+const SAKER = [
+  { t: 'hog', x: 470, y: 300, n: 'Draghögen', txt: '18' },
+  { t: 'hog', x: 620, y: 300, n: 'Kasthögen', txt: '7' },
+  { t: 'kort', x: 250, y: 160, txt: 'Gläntans väktare' },
+  { t: 'kort', x: 340, y: 150, txt: 'Bergets fogde' },
+  { t: 'kort', x: 800, y: 480, txt: 'Flodens härold' },
+  { t: 'kort', x: 900, y: 170, txt: 'Askans bård', dold: true },
+  { t: 'kort', x: 160, y: 520, txt: 'Myrens siare', dold: true },
+  { t: 'kort', x: 1010, y: 560, txt: 'Vinterns smed' },
+]
+
+// Kameran i bordets millimeter: vad som syns.
+let auto = true
+let cam = null
+const shell = document.querySelector('.shell')
+const filt = document.getElementById('filt')
+const vy = document.getElementById('vy')
+const sag = (t) => { document.getElementById('sagt').innerHTML = 'Skärmläsaren hör: <em>' + t + '</em>' }
+
+// Räckvidden: bordet plus det som ligger utanför dess kant (C5, #20).
+function reach() {
+  let r = { x0: 0, y0: 0, x1: BORD.w, y1: BORD.h }
+  for (const s of SAKER) { r.x0 = Math.min(r.x0, s.x); r.y0 = Math.min(r.y0, s.y); r.x1 = Math.max(r.x1, s.x + KORT.w); r.y1 = Math.max(r.y1, s.y + KORT.h) }
+  return r
+}
+function autoRam() {
+  const r = reach(), box = filt.getBoundingClientRect()
+  const w = r.x1 - r.x0, h = r.y1 - r.y0
+  // Overscan 3 % av kortaste sidan (#322).
+  const over = 0.03 * Math.min(box.width, box.height)
+  const s = Math.min((box.width - over * 2) / w, (box.height - over * 2) / h)
+  return { x: r.x0 - (box.width / s - w) / 2, y: r.y0 - (box.height / s - h) / 2, s }
+}
+
+function rita() {
+  const box = filt.getBoundingClientRect()
+  if (auto || !cam) cam = autoRam()
+  vy.style.transform = 'translate(' + (-cam.x * cam.s) + 'px,' + (-cam.y * cam.s) + 'px) scale(' + cam.s + ')'
+  vy.innerHTML = '<div class="bord" style="left:0;top:0;width:' + BORD.w + 'px;height:' + BORD.h + 'px"></div>'
+    + SAKER.map((s) => s.t === 'hog'
+      ? '<div class="hog" style="left:' + s.x + 'px;top:' + s.y + 'px;width:' + KORT.w + 'px;height:' + KORT.h + 'px">' + s.txt + '</div><div class="namn" style="left:' + s.x + 'px;top:' + (s.y + KORT.h + 4) + 'px">' + s.n + '</div>'
+      : '<div class="kort"' + (s.dold ? ' data-dold' : '') + ' style="left:' + s.x + 'px;top:' + s.y + 'px;width:' + KORT.w + 'px;height:' + KORT.h + 'px">' + (s.dold ? '' : s.txt) + '</div>').join('')
+
+  // Kantindikatorn: på vilka sidor finns innehåll utanför bilden?
+  const v0 = cam.x, v1 = cam.x + box.width / cam.s, h0 = cam.y, h1 = cam.y + box.height / cam.s
+  const ute = { v: 0, h: 0, o: 0, n: 0 }
+  for (const s of SAKER) {
+    if (s.x < v0) ute.v++
+    if (s.x + KORT.w > v1) ute.h++
+    if (s.y < h0) ute.o++
+    if (s.y + KORT.h > h1) ute.n++
+  }
+  for (const sida of ['v', 'h', 'o', 'n']) document.querySelector('.kant[data-sida="' + sida + '"]').dataset.pa = !auto && ute[sida] > 0 ? 'ja' : 'nej'
+  const totalt = new Set()
+  SAKER.forEach((s, i) => { if (s.x < v0 || s.x + KORT.w > v1 || s.y < h0 || s.y + KORT.h > h1) totalt.add(i) })
+  document.getElementById('m-ute').textContent = auto ? '0' : String(totalt.size)
+
+  const niva = Math.round((cam.s / autoRam().s) * 100)
+  document.querySelectorAll('.niva').forEach((n) => (n.textContent = niva + ' %'))
+  shell.dataset.auto = auto ? 'ja' : 'nej'
+  document.getElementById('lage').textContent = auto ? 'Automatisk inramning' : 'Egen vy · ' + niva + ' %'
+  document.getElementById('m-filt').textContent = Math.round(box.width) + ' × ' + Math.round(box.height) + ' px'
+  document.getElementById('m-kort').textContent = Math.round(KORT.w * cam.s) + ' px'
+}
+
+// ── Zoom ───────────────────────────────────────────────────────────────────────────────────────
+const MIN = 0.35, MAX = 4
+function zooma(faktor, px, py) {
+  const box = filt.getBoundingClientRect()
+  const base = autoRam().s
+  const x = cam.x + (px - box.left) / cam.s, y = cam.y + (py - box.top) / cam.s
+  const s = Math.max(base * MIN, Math.min(base * MAX, cam.s * faktor))
+  cam = { x: x - (px - box.left) / s, y: y - (py - box.top) / s, s }
+  auto = false
+  rita()
+}
+filt.addEventListener('wheel', (e) => { e.preventDefault(); zooma(Math.exp(-e.deltaY * 0.0016), e.clientX, e.clientY) }, { passive: false })
+
+// ── Panorering ─────────────────────────────────────────────────────────────────────────────────
+// Mittenknapp + drag, och Space + drag för den som saknar hjul. Space får bara panorera när
+// inget kort har fokus (K17) — här har filten själv fokus, så villkoret är uppfyllt.
+let pan = null, space = false
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && !e.repeat) { space = true; e.preventDefault() }
+  if (e.key === '+' || e.key === '=') { const b = filt.getBoundingClientRect(); zooma(1.2, b.left + b.width / 2, b.top + b.height / 2) }
+  if (e.key === '-') { const b = filt.getBoundingClientRect(); zooma(1 / 1.2, b.left + b.width / 2, b.top + b.height / 2) }
+  if (e.key === 'Escape') hela()
+  const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key]
+  if (d && (e.shiftKey || !auto)) { e.preventDefault(); cam = { ...cam, x: cam.x + d[0] * 40 / cam.s * 1, y: cam.y + d[1] * 40 / cam.s * 1 }; auto = false; rita() }
+})
+document.addEventListener('keyup', (e) => { if (e.code === 'Space') space = false })
+filt.addEventListener('pointerdown', (e) => {
+  if (e.button !== 1 && !space) return
+  e.preventDefault()
+  pan = { x: e.clientX, y: e.clientY, cam: { ...cam } }
+  filt.dataset.panorerar = 'ja'
+  filt.setPointerCapture(e.pointerId)
+})
+filt.addEventListener('pointermove', (e) => {
+  if (!pan) return
+  cam = { ...pan.cam, x: pan.cam.x - (e.clientX - pan.x) / cam.s, y: pan.cam.y - (e.clientY - pan.y) / cam.s }
+  auto = false
+  rita()
+})
+filt.addEventListener('pointerup', () => { pan = null; delete filt.dataset.panorerar })
+
+function hela() { auto = true; rita(); sag('hela bordet visas, automatisk inramning') }
+
+document.addEventListener('click', (e) => {
+  const v = e.target.closest('button[data-form]')
+  if (v) { shell.dataset.form = v.dataset.form; document.querySelectorAll('button[data-form]').forEach((b) => b.setAttribute('aria-pressed', String(b === v))); requestAnimationFrame(rita); return }
+  const z = e.target.closest('[data-zoom]')
+  if (z) { const b = filt.getBoundingClientRect(); zooma(z.dataset.zoom === '1' ? 1.25 : 1 / 1.25, b.left + b.width / 2, b.top + b.height / 2); return }
+  if (e.target.closest('[data-hela]')) { hela(); return }
+  if (e.target.closest('#fall')) {
+    const h = document.querySelector('.hornet')
+    const falld = h.dataset.falld !== 'ja'
+    h.dataset.falld = falld ? 'ja' : 'nej'
+    const k = document.getElementById('fall')
+    k.setAttribute('aria-expanded', String(!falld))
+    // Fälld bär brickan själv vägen hem, så knappen byter både namn och sak.
+    k.textContent = falld ? '‹' : '›'
+    k.setAttribute('aria-label', falld ? 'Ta fram kamerakontrollerna' : 'Fäll undan kamerakontrollerna')
+    sag(falld ? 'kamerakontrollerna undanfällda; Visa hela bordet står kvar' : 'kamerakontrollerna framme')
+  }
+})
+window.addEventListener('resize', rita)
+filt.focus()
+rita()
+</script>
+</body>
+</html>

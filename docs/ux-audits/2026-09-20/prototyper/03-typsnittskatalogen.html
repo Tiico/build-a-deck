@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 3 — Typsnittskatalogen (#329)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  .canvas { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 68px 220px minmax(0,1fr) 280px; position: relative; }
+  .rail { border-right: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; gap: 4px; padding: var(--s2) 0; }
+  .rail button { width: 44px; height: 44px; border: 0; border-radius: 8px; background: transparent; color: var(--quiet-2); font-size: 17px; cursor: pointer; }
+  .rail button[aria-pressed='true'] { background: var(--primary); color: #fff; }
+  .layers { border-right: 1px solid var(--line); padding: var(--s3); min-width: 0; overflow: auto; }
+  .duk { display: grid; place-items: center; background: #0d0f14; min-width: 0; min-height: 0; position: relative; }
+  /* Arket i C är 62 % av duken. Kortet måste flytta upp, annars visar provraden ett kort
+     man inte ser — och då är hela dess skäl borta. */
+  .shell[data-oppen='ja'][data-form='prov'] .duk { align-items: start; padding-top: 10px; }
+
+  /* Kortet, satt i det typsnitt som är valt — hela poängen är att se sitt eget kort. */
+  .kort { position: relative; width: 252px; height: 352px; border-radius: 11px; background: #f4efe4; box-shadow: 0 18px 44px rgba(0,0,0,.55); padding: 18px 16px; box-sizing: border-box; color: #241a0c; }
+  .kort .titel { font-size: 21px; font-weight: 700; line-height: 1.15; margin: 0 0 6px; }
+  .kort .typ { font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #7a6647; margin: 0 0 12px; }
+  .kort .bild { height: 122px; border-radius: 5px; background: linear-gradient(160deg,#c9a227,#6b4f18); margin-bottom: 12px; }
+  .kort .regel { font-size: 12px; line-height: 1.45; margin: 0; }
+  .kort .fot { position: absolute; left: 16px; right: 16px; bottom: 14px; display: flex; justify-content: space-between; font-size: 10px; color: #7a6647; }
+
+  /* ── Typsnittspanelen som den är i dag ────────────────────────────────────────────────────── */
+  .props { min-width: 0; display: flex; flex-direction: column; background: var(--panel); border-left: 1px solid var(--line); }
+  .props > .topp { flex: none; display: flex; align-items: baseline; padding: var(--s3) var(--s3) var(--s2); border-bottom: 1px solid var(--line-soft); }
+  .props > .topp b { color: #fff; font-size: 13px; }
+  .props .scroll { padding: var(--s3); }
+  .fontlista { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 8px; }
+  .fontlista li { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 3px 8px; align-items: baseline; padding-bottom: 8px; border-bottom: 1px solid var(--line-soft); }
+  .fontlista .namn { color: #fff; font-size: 15px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fontlista small { grid-column: 1 / -1; color: var(--quiet); font-size: 10.5px; }
+  /* Skillnaden mellan en uppladdad fil och en katalogpost: märket, och att licensen redan står
+     ifylld i stället för att vara två tomma fält designern förväntas kunna svara på. */
+  .fontlista .mark { font-size: 9.5px; letter-spacing: .6px; text-transform: uppercase; border: 1px solid var(--line); border-radius: 999px; padding: 1px 7px; color: var(--quiet-2); white-space: nowrap; }
+  .fontlista .mark[data-kalla='katalog'] { border-color: #3d5a3d; color: #9ed39e; }
+  .fontlista .lic { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+  .fontlista .lic input { border: 1px solid #2a2d36; border-radius: 6px; background: #0f1115; color: #fff; font: inherit; font-size: 11px; padding: 3px 6px; min-width: 0; }
+  .fontlista .lic .fylld { color: var(--quiet-2); border-style: dashed; }
+  .knapp { width: 100%; min-height: 34px; border: 1px solid var(--line); border-radius: 8px; background: #0f1115; color: #e6ecfa; font: inherit; font-size: 12px; cursor: pointer; }
+  .knapp:hover { border-color: var(--primary-mark); }
+  .knapp.primar { background: var(--primary); border-color: var(--primary); font-weight: 700; }
+
+  /* ── Väljaren, gemensamma delar ───────────────────────────────────────────────────────────── */
+  .valj { display: none; flex-direction: column; min-height: 0; background: #12141a; border: 1px solid var(--line); box-shadow: 0 24px 60px rgba(0,0,0,.66); }
+  .shell[data-oppen='ja'] .valj[data-v] { display: none; }
+  .shell[data-oppen='ja'][data-form='ruta'] .valj[data-v='a'],
+  .shell[data-oppen='ja'][data-form='kolumn'] .valj[data-v='b'],
+  .shell[data-oppen='ja'][data-form='prov'] .valj[data-v='c'] { display: flex; }
+  .valj header { flex: none; display: grid; gap: 7px; padding: 10px; border-bottom: 1px solid var(--line-soft); }
+  .valj .sokrad { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 7px; align-items: center; }
+  .valj input.sok { width: 100%; min-width: 0; box-sizing: border-box; min-height: 32px; border: 1px solid #2a2d36; border-radius: 8px; background: #0f1115; color: #fff; font: inherit; padding: 0 10px; }
+  .valj .stang { min-height: 32px; min-width: 32px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: var(--quiet-2); font: inherit; cursor: pointer; }
+  .kat { display: flex; flex-wrap: wrap; gap: 4px; }
+  .kat button { min-height: 26px; border: 1px solid var(--line); border-radius: 999px; padding: 0 10px; background: #0f1115; color: var(--quiet-2); font: inherit; font-size: 11px; cursor: pointer; }
+  .kat button[aria-pressed='true'] { border-color: var(--primary-mark); background: #24507f; color: #fff; }
+  .valj .traff { flex: 1 1 auto; min-height: 0; overflow: auto; scrollbar-width: thin; }
+  .valj footer { flex: none; padding: 8px 10px; border-top: 1px solid var(--line-soft); color: var(--quiet); font-size: 11px; display: flex; gap: 10px; align-items: center; }
+  .valj footer .rakn { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+  /* Ett träffobjekt. Namnet sätts i sitt eget typsnitt — det är det enda ärliga sättet att
+     förhandsvisa ett typsnitt i en lista. */
+  .rad { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 4px 10px; align-items: center; width: 100%; text-align: left; border: 0; border-bottom: 1px solid var(--line-soft); background: transparent; color: #fff; font: inherit; padding: 9px 10px; cursor: pointer; }
+  .rad:hover, .rad:focus-visible { background: #1b2030; outline: none; }
+  .rad:focus-visible { box-shadow: inset 2px 0 0 0 var(--primary-mark); }
+  .rad .prov { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 19px; line-height: 1.3; }
+  .rad .meta { grid-column: 1; color: var(--quiet); font-size: 10.5px; }
+  .rad .lagg { grid-column: 2; grid-row: 1 / 3; align-self: center; min-height: 28px; border: 1px solid var(--line); border-radius: 7px; padding: 0 10px; background: #0f1115; color: #e6ecfa; font: inherit; font-size: 11.5px; cursor: pointer; white-space: nowrap; }
+  .rad:hover .lagg, .rad:focus-visible .lagg { border-color: var(--primary-mark); }
+  .rad[data-inne='ja'] .lagg { color: #9ed39e; border-color: #3d5a3d; }
+
+  /* ── A · Rutan: en ruta över panelen ──────────────────────────────────────────────────────── */
+  .valj[data-v='a'] { position: absolute; top: 56px; right: 10px; width: 300px; max-height: calc(100% - 76px); border-radius: 12px; z-index: 9; }
+
+  /* ── B · Kolumnen: väljaren tar hela egenskapskolumnen ────────────────────────────────────── */
+  .valj[data-v='b'] { position: absolute; top: 0; right: 0; bottom: 0; width: 280px; border-radius: 0; border-top: 0; border-bottom: 0; border-right: 0; z-index: 9; }
+
+  /* ── C · Provraden: ett ark under kortet, med kortets egna ord i varje typsnitt ───────────── */
+  .valj[data-v='c'] { position: absolute; left: 68px; right: 280px; bottom: 0; max-height: 62%; border-radius: 14px 14px 0 0; border-bottom: 0; z-index: 9; }
+  .valj[data-v='c'] .traff { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; padding: 10px; align-content: start; }
+  .valj[data-v='c'] .rad { grid-template-columns: minmax(0,1fr); border: 1px solid var(--line); border-radius: 10px; padding: 10px 11px; background: #171a23; align-items: start; gap: 3px; }
+  .valj[data-v='c'] .rad .prov { white-space: normal; font-size: 17px; font-weight: 700; line-height: 1.2; }
+  /* Det andra provet: kortets regeltext i samma familj, i kortets egen grad. Det är där ett
+     typsnitt faller — en rubrik ser bra ut i nästan allt. */
+  .valj[data-v='c'] .rad .brod { font-size: 11.5px; line-height: 1.45; color: #c3cbdd; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .valj[data-v='c'] .rad .lagg { grid-column: 1; grid-row: auto; justify-self: start; margin-top: 4px; }
+
+  .shell[data-oppen='ja'][data-form='prov'] ~ .note { display: none; }
+  .tomt { padding: 18px 12px; color: var(--quiet); font-size: 12px; text-align: center; }
+  .laddar { padding: 18px 12px; color: var(--quiet); font-size: 12px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="shell" data-form="ruta" data-oppen="nej">
+<header>
+  <strong>Skogens herrar</strong>
+  <nav class="tabs"><button type="button">Kort</button><button type="button" aria-selected="true">Mall</button><button type="button">Data</button><button type="button">Symboler</button><button type="button">Regler</button><button type="button">Bord</button></nav>
+  <span class="spacer"></span>
+  <div class="switch" role="group" aria-label="Väljarens form">
+    <button type="button" data-form="ruta" aria-pressed="true">A · Rutan</button>
+    <button type="button" data-form="kolumn" aria-pressed="false">B · Kolumnen</button>
+    <button type="button" data-form="prov" aria-pressed="false">C · Provraden</button>
+  </div>
+  <span class="who">P</span>
+</header>
+
+<div class="protorad">
+  <b>#329</b>
+  <p id="hjalp">Tryck «Sök i Google Fonts …» i panelen. Katalogen hämtas först då — ingen förhämtning, som integritetskriteriet kräver.</p>
+  <div class="matt"><span>i projektet <u id="m-n">2</u></span><span>katalogen <u id="m-k">ohämtad</u></span></div>
+  <p class="sagt" id="sagt">Skärmläsaren hör: <em>—</em></p>
+</div>
+
+<main>
+<div class="canvas">
+  <div class="rail">
+    <button type="button" aria-label="Markera" aria-pressed="true">⌖</button>
+    <button type="button" aria-label="Text">T</button>
+    <button type="button" aria-label="Bild">▣</button>
+    <button type="button" aria-label="Form">◇</button>
+  </div>
+  <div class="layers">
+    <p class="h">Lager</p>
+    <ul style="list-style:none;margin:8px 0 0;padding:0;display:grid;gap:2px;color:var(--quiet-2);font-size:12px">
+      <li aria-selected="true" style="background:#24507f;color:#fff;padding:0 8px;min-height:30px;display:flex;align-items:center;border-radius:6px">T Namn</li>
+      <li style="padding:0 8px;min-height:30px;display:flex;align-items:center">T Regeltext</li>
+      <li style="padding:0 8px;min-height:30px;display:flex;align-items:center">▣ Illustration</li>
+    </ul>
+  </div>
+
+  <div class="duk">
+    <div class="kort" id="kort">
+      <p class="typ">Varelse · Skogen</p>
+      <p class="titel" id="k-titel">Gläntans väktare</p>
+      <div class="bild"></div>
+      <p class="regel" id="k-regel">När Gläntans väktare kommer i spel: se på de tre översta korten i draghögen och lägg ett av dem i din hand.</p>
+      <div class="fot"><span>3 / 77</span><span>Skogens herrar</span></div>
+    </div>
+  </div>
+
+  <aside class="props" aria-label="Typsnitt">
+    <div class="topp"><b>Typsnitt</b></div>
+    <div class="scroll">
+      <ul class="fontlista" id="minafonter"></ul>
+      <button type="button" class="knapp primar" id="oppna">Sök i Google Fonts …</button>
+      <button type="button" class="knapp" style="margin-top:6px">Ladda upp en fil …</button>
+    </div>
+  </aside>
+
+  <!-- Tre väljare, samma innehåll. Listan fylls av samma kod; det är rummet som prövas. -->
+  <div class="valj" data-v="a" role="dialog" aria-label="Sök i Google Fonts">
+    <header>
+      <div class="sokrad"><input class="sok" type="search" placeholder="Sök bland 1 847 familjer" aria-label="Sök i Google Fonts"><button type="button" class="stang" aria-label="Stäng">✕</button></div>
+      <div class="kat" role="group" aria-label="Kategori"></div>
+    </header>
+    <div class="traff" role="listbox" aria-label="Träffar"></div>
+    <footer><span>Filen kopieras in i projektet.</span><span class="rakn"></span></footer>
+  </div>
+  <div class="valj" data-v="b" role="dialog" aria-label="Sök i Google Fonts">
+    <header>
+      <div class="sokrad"><input class="sok" type="search" placeholder="Sök bland 1 847 familjer" aria-label="Sök i Google Fonts"><button type="button" class="stang" aria-label="Stäng">✕</button></div>
+      <div class="kat" role="group" aria-label="Kategori"></div>
+    </header>
+    <div class="traff" role="listbox" aria-label="Träffar"></div>
+    <footer><span>Filen kopieras in i projektet.</span><span class="rakn"></span></footer>
+  </div>
+  <div class="valj" data-v="c" role="dialog" aria-label="Sök i Google Fonts">
+    <header>
+      <div class="sokrad"><input class="sok" type="search" placeholder="Sök bland 1 847 familjer" aria-label="Sök i Google Fonts"><button type="button" class="stang" aria-label="Stäng">✕</button></div>
+      <div class="kat" role="group" aria-label="Kategori"></div>
+    </header>
+    <div class="traff" role="listbox" aria-label="Träffar"></div>
+    <footer><span>Proven är kortets egna ord. Filen kopieras in i projektet.</span><span class="rakn"></span></footer>
+  </div>
+</div>
+</main>
+</div>
+
+<div class="note">
+  <b>Prototyp 3 av 4 för Template-duken — #329</b>
+  Katalogen är tjugofyra riktiga familjer, hämtade från Google först när väljaren öppnas. A och B visar familjens namn satt i sig självt; C visar kortets egen rubrik <i>och</i> dess regeltext i kortets egen grad. Lägg till en familj och se den dyka upp i panelen med sin licens redan ifylld.
+</div>
+
+<script>
+// ── Katalogen ──────────────────────────────────────────────────────────────────────────────────
+// Tjugofyra riktiga familjer med sina riktiga licenser. Hela katalogen är 1 800+; det som prövas
+// är rummet och raden, och det syns lika väl i tjugofyra.
+const KATALOG = [
+  { n: 'Inter', k: 'sans', l: 'OFL 1.1', by: 'Rasmus Andersson', v: true },
+  { n: 'Roboto', k: 'sans', l: 'Apache 2.0', by: 'Christian Robertson', v: true },
+  { n: 'Open Sans', k: 'sans', l: 'OFL 1.1', by: 'Steve Matteson', v: true },
+  { n: 'Work Sans', k: 'sans', l: 'OFL 1.1', by: 'Wei Huang', v: true },
+  { n: 'Oswald', k: 'sans', l: 'OFL 1.1', by: 'Vernon Adams', v: true },
+  { n: 'Bebas Neue', k: 'display', l: 'OFL 1.1', by: 'Ryoichi Tsunekawa' },
+  { n: 'Merriweather', k: 'serif', l: 'OFL 1.1', by: 'Sorkin Type', v: true },
+  { n: 'Playfair Display', k: 'serif', l: 'OFL 1.1', by: 'Claus Eggers Sørensen', v: true },
+  { n: 'Lora', k: 'serif', l: 'OFL 1.1', by: 'Cyreal', v: true },
+  { n: 'EB Garamond', k: 'serif', l: 'OFL 1.1', by: 'Georg Duffner', v: true },
+  { n: 'Cormorant Garamond', k: 'serif', l: 'OFL 1.1', by: 'Catharsis Fonts' },
+  { n: 'Libre Baskerville', k: 'serif', l: 'OFL 1.1', by: 'Impallari Type' },
+  { n: 'Cinzel', k: 'display', l: 'OFL 1.1', by: 'Natanael Gama', v: true },
+  { n: 'Uncial Antiqua', k: 'display', l: 'OFL 1.1', by: 'Astigmatic' },
+  { n: 'MedievalSharp', k: 'display', l: 'OFL 1.1', by: 'Wojciech Kalinowski' },
+  { n: 'Pirata One', k: 'display', l: 'OFL 1.1', by: 'Rodrigo Fuenzalida' },
+  { n: 'Almendra', k: 'display', l: 'OFL 1.1', by: 'Ana Sanfelippo' },
+  { n: 'IM Fell English', k: 'serif', l: 'OFL 1.1', by: 'Igino Marini' },
+  { n: 'Caveat', k: 'handskrift', l: 'OFL 1.1', by: 'Impallari Type', v: true },
+  { n: 'Dancing Script', k: 'handskrift', l: 'OFL 1.1', by: 'Impallari Type', v: true },
+  { n: 'Kalam', k: 'handskrift', l: 'OFL 1.1', by: 'Indian Type Foundry' },
+  { n: 'JetBrains Mono', k: 'mono', l: 'OFL 1.1', by: 'JetBrains', v: true },
+  { n: 'IBM Plex Mono', k: 'mono', l: 'OFL 1.1', by: 'IBM' },
+  { n: 'Space Mono', k: 'mono', l: 'OFL 1.1', by: 'Colophon Foundry' },
+]
+const KATEGORIER = [['alla', 'Alla'], ['serif', 'Serif'], ['sans', 'Sans'], ['display', 'Display'], ['handskrift', 'Handskrift'], ['mono', 'Mono']]
+
+// De två som «följer med» i dag, som #329 utgår från.
+const mina = [
+  { n: 'Georgia', kalla: 'medföljande', l: '', by: '' },
+  { n: 'Helvetica Neue', kalla: 'medföljande', l: '', by: '' },
+]
+let satt = 'Georgia'
+let kategori = 'alla', fraga = '', hamtad = false
+
+const shell = document.querySelector('.shell')
+const sag = (t) => { document.getElementById('sagt').innerHTML = 'Skärmläsaren hör: <em>' + t + '</em>' }
+
+// ── Hämtningen ─────────────────────────────────────────────────────────────────────────────────
+// Sker först när designern öppnar väljaren, aldrig vid sidladdning: «katalogen nås inte utan
+// handling från designern» är ett acceptanskriterium och inte en detalj.
+function hamtaKatalogen() {
+  if (hamtad) return
+  hamtad = true
+  const fam = KATALOG.map((f) => 'family=' + encodeURIComponent(f.n) + ':wght@400;700').join('&')
+  const l = document.createElement('link')
+  l.rel = 'stylesheet'
+  l.href = 'https://fonts.googleapis.com/css2?' + fam + '&display=swap'
+  l.onload = () => { document.getElementById('m-k').textContent = 'hämtad'; rita() }
+  l.onerror = () => { document.getElementById('m-k').textContent = 'nåddes inte'; rita() }
+  document.head.appendChild(l)
+  document.getElementById('m-k').textContent = 'hämtas …'
+}
+
+// ── Listan ─────────────────────────────────────────────────────────────────────────────────────
+const inne = (namn) => mina.some((m) => m.n === namn)
+function traffar() {
+  const q = fraga.trim().toLowerCase()
+  return KATALOG.filter((f) => (kategori === 'alla' || f.k === kategori) && (q === '' || f.n.toLowerCase().includes(q)))
+}
+
+function ritaTraffar() {
+  const t = traffar()
+  document.querySelectorAll('.valj').forEach((v) => {
+    const box = v.querySelector('.traff')
+    const prov = v.dataset.v === 'c'
+    if (!hamtad) { box.innerHTML = '<p class="laddar">Katalogen hämtas när du öppnar väljaren.</p>'; return }
+    box.innerHTML = t.length === 0
+      ? '<p class="tomt">Ingen familj heter så. Pröva ett kortare ord.</p>'
+      : t.map((f) => {
+          const stil = 'font-family:\'' + f.n + '\',serif'
+          const namn = f.n + (inne(f.n) ? '' : '')
+          const extra = prov
+            ? '<span class="prov" style="' + stil + '">Gläntans väktare</span>'
+              + '<span class="brod" style="' + stil + '">När Gläntans väktare kommer i spel: se på de tre översta korten i draghögen.</span>'
+              + '<span class="meta">' + f.n + ' · ' + f.l + (f.v ? ' · variabel' : '') + '</span>'
+            : '<span class="prov" style="' + stil + '">' + namn + '</span>'
+              + '<span class="meta">' + KATEGORIER.find(([id]) => id === f.k)[1] + ' · ' + f.l + (f.v ? ' · variabel' : '') + '</span>'
+          return '<button type="button" class="rad" role="option" aria-selected="false" data-lagg="' + f.n + '" data-inne="' + (inne(f.n) ? 'ja' : 'nej') + '">'
+            + extra + '<span class="lagg">' + (inne(f.n) ? '✓ I projektet' : 'Lägg till') + '</span></button>'
+        }).join('')
+    v.querySelector('.rakn').textContent = hamtad ? t.length + ' av ' + KATALOG.length : ''
+  })
+}
+
+function ritaMina() {
+  document.getElementById('minafonter').innerHTML = mina.map((m) => {
+    const stil = m.kalla === 'katalog' ? 'font-family:\'' + m.n + '\',serif' : ''
+    const mark = m.kalla === 'katalog' ? '<span class="mark" data-kalla="katalog">Katalog</span>' : '<span class="mark">' + (m.kalla === 'fil' ? 'Fil' : 'Följer med') + '</span>'
+    // Licensen är två tomma fält för en uppladdad fil — designern förväntas kunna svara. En
+    // katalogpost bär den med sig, och fälten står ifyllda och streckade.
+    const lic = m.kalla === 'katalog'
+      ? '<span class="lic"><input class="fylld" value="' + m.l + '" readonly aria-label="Licens för ' + m.n + '"><input class="fylld" value="' + m.by + '" readonly aria-label="Upphovsman till ' + m.n + '"></span>'
+      : '<span class="lic"><input placeholder="Licens" aria-label="Licens för ' + m.n + '"><input placeholder="Av" aria-label="Upphovsman till ' + m.n + '"></span>'
+    return '<li><span class="namn" style="' + stil + '">' + m.n + '</span>' + mark
+      + '<small>' + (m.kalla === 'medföljande' ? 'Ligger kvar hos mottagaren' : 'Reser med projektet') + '</small>' + lic + '</li>'
+  }).join('')
+  document.getElementById('m-n').textContent = String(mina.length)
+}
+
+function rita() { ritaMina(); ritaTraffar(); document.getElementById('kort').style.fontFamily = "'" + satt + "', serif" }
+
+// ── Handlingar ─────────────────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.kat').forEach((k) => {
+  k.innerHTML = KATEGORIER.map(([id, n]) => '<button type="button" data-kat="' + id + '" aria-pressed="' + (id === 'alla') + '">' + n + '</button>').join('')
+})
+
+document.addEventListener('click', (e) => {
+  const v = e.target.closest('button[data-form]')
+  if (v) { shell.dataset.form = v.dataset.form; document.querySelectorAll('button[data-form]').forEach((b) => b.setAttribute('aria-pressed', String(b === v))); return }
+  if (e.target.id === 'oppna') {
+    shell.dataset.oppen = 'ja'
+    hamtaKatalogen(); ritaTraffar()
+    document.querySelector('.shell[data-oppen="ja"] .valj:not([style*="none"]) .sok')
+    const v2 = [...document.querySelectorAll('.valj')].find((x) => x.offsetParent !== null)
+    v2?.querySelector('.sok').focus()
+    sag('Sök i Google Fonts, dialog öppnad')
+    return
+  }
+  if (e.target.closest('.stang')) { shell.dataset.oppen = 'nej'; document.getElementById('oppna').focus(); sag('dialogen stängd'); return }
+  const kat = e.target.closest('[data-kat]')
+  if (kat) {
+    kategori = kat.dataset.kat
+    document.querySelectorAll('[data-kat]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.kat === kategori)))
+    ritaTraffar()
+    return
+  }
+  const lagg = e.target.closest('[data-lagg]')
+  if (lagg) {
+    const f = KATALOG.find((x) => x.n === lagg.dataset.lagg)
+    if (inne(f.n)) { satt = f.n; rita(); sag(f.n + ' satt på kortet'); return }
+    mina.push({ n: f.n, kalla: 'katalog', l: f.l, by: f.by })
+    satt = f.n
+    rita()
+    sag(f.n + ' tillagd i projektet, licens ' + f.l + ', och satt på kortet')
+  }
+})
+document.addEventListener('input', (e) => { if (e.target.classList.contains('sok')) { fraga = e.target.value; document.querySelectorAll('.sok').forEach((s) => { if (s !== e.target) s.value = fraga }); ritaTraffar() } })
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && shell.dataset.oppen === 'ja') { shell.dataset.oppen = 'nej'; document.getElementById('oppna').focus() } })
+
+rita()
+</script>
+</body>
+</html>
