@@ -3986,6 +3986,13 @@ Det kräver att tillgångens namn bärs hela vägen från `storeAsset` ut till y
 
 Den öppna gestens fall är oförändrat: hinner `callOff` medan gesten är öppen är det fortfarande ingenting som hände, ingen rad i historiken och ingen version (B4).
 
+**Byggd 2026-09-21 (#344).**
+Rättelsen är `removeIcon`, `removeElement`, `removeFont` eller `removePicture`, skickad genom `applyEdit` utan att pusha ett steg.
+Inversen räknas fram där editen gjordes och läser ingenting ur dokumentet, så D3 håller.
+Priset för att ombaseringen valdes bort är mätbart: ögonblicksbilden som togs när nästa gest öppnades bär fortfarande tillgången, så ett Ctrl+Z efter en rättelse landar i den och nästa press lämnar den. Ett test pinnar det.
+Bygget visade också att inversen behövs ändå för det levande dokumentet, så att lägga den på varje senare ögonblicksbild är två rader och inte en maskin — ombaseringens pris är lägre än kodläsningen antog. Den är inte byggd; beslutet står.
+Beskedet bär varför efter kolonet: «Typsnittet Cinzel kunde inte laddas upp och har tagits bort igen: filen är för stor (max 8 MB)», eftersom ett namn utan skäl inte säger om det är lönt att försöka igen.
+
 ### L38. En kurva dras fram ur kanten, och mittpricken skiljer klick från drag (prototypat 2026-09-20, #327)
 
 En egen form är en punktlista (L26), och en punkt utan handtag är ett hörn.

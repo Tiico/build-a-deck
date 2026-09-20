@@ -95,14 +95,17 @@ describe('vilken sida av högen som är bredvid den', () => {
     fireEvent.change(side, { target: { value: 'right' } })
     expect(panel().textContent).toMatch(/till höger om högen/)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    // Väntat fram och inte läst rakt av: knappen finns först när dokumentet är osparat, och det
+    // blir det en tur genom klienten efter ändringen. Under full svit tappade den kapplöpningen
+    // och provet sa «hittar ingen knapp Spara» — en tidsfråga och inte ett fel i det som mäts.
+    fireEvent.click(await screen.findByRole('button', { name: 'Spara' }))
     await waitFor(async () => expect((await run.projects.load(run.projectId))?.rev).toBe(2))
     expect((await run.projects.load(run.projectId))?.setup.zones.find((z) => z.id === 'draw')?.beside).toBe('right')
 
     // Och tillbaka till vänster är «ingen egenskap alls» — också hos servern, som får valet över
     // tråden där `undefined` inte överlever (#331).
     fireEvent.change(screen.getByLabelText('Bredvid högen för Draghög'), { target: { value: 'left' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Spara' }))
     await waitFor(async () => expect((await run.projects.load(run.projectId))?.rev).toBe(3))
     expect((await run.projects.load(run.projectId))?.setup.zones.find((z) => z.id === 'draw')).not.toHaveProperty('beside')
   })

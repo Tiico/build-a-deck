@@ -164,17 +164,14 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove }: 
     // ingen annan, och ordningen är den formgivaren lämnade dem i — aldrig den ordning nätverket
     // råkade bli klart i.
     //
-    // Att vänta ut varje fil är inte en försiktighetsåtgärd utan det enda som gör en batch
-    // sammanhängande, sedan #339 vände på ordningen inne i `addPicture`: bilden läggs in i
-    // dokumentet med en gest av sitt eget innan bytena reser, och en uppladdning som misslyckas
-    // tar in den igen med `callOff`. `callOff` tar bara tillbaka den gest som fortfarande är
-    // öppen — vilket är rätt när formgivaren har gått vidare och gjort något annat — så två
-    // uppladdningar som överlappar upphäver varandras ångerväg: den som blir klar sist har redan
-    // öppnat sin gest när den första vill ta tillbaka sin, och bilden som aldrig kom fram blir
-    // kvar i biblioteket som en referens till ingenting. Av samma skäl ser en fil som redan finns
-    // i dokumentet en bild vars byte ännu inte har rest, och rapporteras som tillagd fast tjänsten
-    // sade nej. Så länge uppladdningarna följer på varandra är varje gest den öppna när den
-    // avgörs, och dokumentet bär bara bilder som verkligen har kommit fram.
+    // Ordningsföljden var en gång också det som höll dokumentet rent: sedan #339 läggs bilden in
+    // med en gest av sitt eget innan bytena reser, och `callOff` tar bara tillbaka den gest som
+    // fortfarande är öppen, så två uppladdningar som överlappade upphävde varandras ångerväg och
+    // bilden som aldrig kom fram blev kvar. Det felet är lagat i klienten (#344, L37): en
+    // uppladdning som faller bort tas ur dokumentet vems gest som än är öppen. Sekventialiteten
+    // står kvar av sina egna skäl — ordningen i listan, och en fil som redan finns i dokumentet
+    // som annars kunde se en bild vars byte ännu inte rest och rapporteras som tillagd fast
+    // tjänsten sade nej.
     const landed: Result[] = []
     for (const file of files) {
       // Vad filen heter, med bibliotekets egen regel om vad ett filnamn är (beslut 6) — och
@@ -257,7 +254,9 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove }: 
                       {t('media.add.result.ok', { name: one.name })}
                     </button>
                   ) : (
-                    t('media.add.result.failed', { name: one.name, why: one.why })
+                    // Beskedet är hela raden. Sedan #344 namnger det självt bilden som togs bort
+                    // igen (L37), så ett filnamn före det hade sagt samma namn två gånger.
+                    one.why
                   )}
                 </li>
               ))}
