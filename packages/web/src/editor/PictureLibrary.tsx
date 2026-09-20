@@ -23,6 +23,8 @@ export type LibraryPicture = {
   // falls back to the cards drawn from it, and one nothing uses says so.
   name: string | undefined
   cards: readonly string[]
+  // Whether the template draws it by itself (#320), which is a use even where no card names it.
+  template?: boolean | undefined
 }
 
 export type PictureLibraryDialogProps = {
@@ -37,9 +39,13 @@ export type PictureLibraryDialogProps = {
   assetBase: string
   onApply(hash: string): void
   onClose(): void
+  // The way in from here (#320): a file the designer brings, answered with the hash it was filed
+  // under, by the same path Media takes — so the picture lands in the library and the window then
+  // holds it. Only an opener that can take one offers it; Data's windows stay what they were.
+  onUpload?: ((file: File) => Promise<string>) | undefined
 }
 
-export function PictureLibraryDialog({ target, count, replacing, pictures, assetBase, onApply, onClose }: PictureLibraryDialogProps) {
+export function PictureLibraryDialog({ target, count, replacing, pictures, assetBase, onApply, onClose, onUpload }: PictureLibraryDialogProps) {
   const t = useT()
   const id = useId()
   const box = useRef<HTMLDivElement>(null)
@@ -52,20 +58,43 @@ export function PictureLibraryDialog({ target, count, replacing, pictures, asset
   const [picked, setPicked] = useState<string | null>(null)
   const nameOf = (p: LibraryPicture): string => p.name ?? (p.cards.length === 0 ? t('media.picture.unused') : t('table.image.alt', { cards: p.cards.join(', ') }))
   const needle = query.trim().toLowerCase()
-  const shown = pictures.filter((p) => (!unusedOnly || p.cards.length === 0) && (needle === '' || nameOf(p).toLowerCase().includes(needle)))
+  const shown = pictures.filter((p) => (!unusedOnly || (p.cards.length === 0 && !p.template)) && (needle === '' || nameOf(p).toLowerCase().includes(needle)))
   const chosen = picked === null ? undefined : pictures.find((p) => p.hash === picked)
+  // What the upload said when it did not land. Said where the picture in hand is said, in the
+  // same live region: a designer who cannot see the grid has nothing else to tell her.
+  const [refused, setRefused] = useState<string | null>(null)
+  const take = async (input: HTMLInputElement) => {
+    const file = input.files?.[0]
+    // Cleared at once, so choosing the same file again is a choice and not a silence.
+    input.value = ''
+    if (!file || !onUpload) return
+    setRefused(null)
+    try {
+      setPicked(await onUpload(file))
+    } catch (err) {
+      setRefused(err instanceof Error ? err.message : String(err))
+    }
+  }
   return (
     <div className="byd-library-veil">
       <div ref={box} className="byd-library" role="dialog" aria-modal="true" aria-labelledby={`${id}-title`}>
         <header className="byd-library-head">
           <h2 id={`${id}-title`}>{t('table.images')}</h2>
+          {/* A label around an off-screen input, as every other file in the tool is chosen: a tab
+              stop with a name, so the picture can be brought in without a pointer. */}
+          {onUpload && (
+            <label className="byd-secondary byd-library-upload">
+              {t('library.upload')}
+              <input className="byd-offscreen" type="file" accept="image/*" aria-label={t('library.upload')} onChange={(event) => void take(event.target)} />
+            </label>
+          )}
           <button type="button" className="byd-library-close" aria-label={t('library.close')} onClick={onClose}>
             ×
           </button>
         </header>
         <p className="byd-library-target">{target}</p>
         {pictures.length === 0 ? (
-          <p className="byd-library-empty">{t('library.none')}</p>
+          <p className="byd-library-empty">{t(onUpload ? 'library.none.upload' : 'library.none')}</p>
         ) : (
           <>
             <div className="byd-library-find">
@@ -87,11 +116,11 @@ export function PictureLibraryDialog({ target, count, replacing, pictures, asset
               ) : (
                 <ul className="byd-library-grid">
                   {shown.map((p) => (
-                    <li key={p.hash} {...(p.cards.length === 0 ? { 'data-unused': 'true' } : {})}>
+                    <li key={p.hash} {...(p.cards.length === 0 && !p.template ? { 'data-unused': 'true' } : {})}>
                       <button type="button" className="byd-library-tile byd-choice" data-asset={p.hash} aria-pressed={picked === p.hash} aria-label={nameOf(p)} onClick={() => setPicked(p.hash)}>
                         <img loading="lazy" src={assetUrl(assetBase, p.hash)} alt="" />
                         <span>{nameOf(p)}</span>
-                        <small>{p.cards.length === 0 ? t('media.unused') : t(p.cards.length === 1 ? 'wall.cards.one' : 'wall.cards.other', { n: p.cards.length })}</small>
+                        <small>{p.cards.length === 0 ? t(p.template ? 'media.byTemplate' : 'media.unused') : t(p.cards.length === 1 ? 'wall.cards.one' : 'wall.cards.other', { n: p.cards.length })}</small>
                       </button>
                     </li>
                   ))}
@@ -102,7 +131,9 @@ export function PictureLibraryDialog({ target, count, replacing, pictures, asset
         )}
         <footer className="byd-library-foot">
           <div className="byd-library-said" role="status">
-            {chosen ? (
+            {refused !== null ? (
+              <em>{refused}</em>
+            ) : chosen ? (
               <>
                 <img src={assetUrl(assetBase, chosen.hash)} alt="" />
                 <span>{t('library.chosen', { name: nameOf(chosen) })}</span>

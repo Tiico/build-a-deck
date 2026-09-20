@@ -267,7 +267,7 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   // Every picture the game holds, the unused ones included (L22): the strip above the table
   // lists what is in use, which is exactly the list a designer looking for the picture she just
   // uploaded cannot find it in.
-  const pictures: LibraryPicture[] = mediaInGame(doc).map(({ hash, cards }) => ({ hash, name: doc.pictures?.[hash]?.name, cards }))
+  const pictures: LibraryPicture[] = mediaInGame(doc).map(({ hash, cards, template }) => ({ hash, name: doc.pictures?.[hash]?.name, cards, template }))
   // What the status calls the picture: its file name where one was kept, and otherwise nothing —
   // the same sentence the upload's own status uses, since a picture from before names is not
   // called «Bild på dragon» once it is on knight and wizard too.

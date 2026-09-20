@@ -7,7 +7,7 @@ import { useGesture } from './gesture.js'
 import { DEFAULT_FILL, elementsFor, pathFor, shapeTakes, tileMarkup, type Motif, type Paint, type Pattern, type Shadow } from '@byd/template'
 import { galleryIdOf, glyphGeometry, newPattern, PATTERNS, shadowIdOf, shapeChoice, SHADOWS, SHAPE_GALLERY, type Geometry, type Shape } from './shapes.js'
 import { BACKS } from './backs.js'
-import { previewIcons } from './assets.js'
+import { assetRef, assetUrl, imageFieldsOf, isAssetRef, mediaInGame, previewIcons, ASSET_PREFIX } from './assets.js'
 import { fieldsOf, takenNames } from './fields.js'
 import { NewField } from './NewField.js'
 import { isTyping } from './keys.js'
@@ -24,6 +24,7 @@ import type { ProjectCredit } from '@byd/server'
 import { useT, type Key, type T } from '../i18n/index.js'
 import { useSay } from '../status/StatusLive.js'
 import { DragDoor } from './DragDoor.js'
+import { PictureLibraryDialog, type LibraryPicture } from './PictureLibrary.js'
 
 export type TemplateCanvasProps = {
   // Which of the four panels to draw, or nothing at all for the desk's four columns (L10). Below
@@ -87,12 +88,17 @@ export type TemplateCanvasProps = {
   onFontFile(file: File): Promise<string>
   onFontLicence(family: string, licence: ProjectCredit | null): void
   onRemoveFont(family: string): void
+  // A picture brought in from the designer's own disk for the template's own picture (#320), by
+  // the very path Media takes: it lands in the library, and the element is then bound to it.
+  // Uploading is the client's work, so the canvas asks and is told the hash the bytes were
+  // filed under.
+  onAddPicture?: ((file: File) => Promise<string>) | undefined
 }
 
 // Template mode (A): layers on the left, the card large in the middle with the selected element
 // outlined, and its properties on the right. Every change goes through `onPatch` and lands on
 // every card of the deck — there are no per-card exceptions (L3).
-export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, onReplaceFace, row, selectedElement, onSelectElement, onPatch, onCallOff, onRemove, onAdd, onPlaceIcon, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onFontFile, onFontLicence, onRemoveFont }: TemplateCanvasProps) {
+export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onSelectFace, onReplaceFace, row, selectedElement, onSelectElement, onPatch, onCallOff, onRemove, onAdd, onPlaceIcon, onReorder, onLock, onRename, group, onSelectGroup, onGroupColumn, onAddField, onReset, onFontFile, onFontLicence, onRemoveFont, onAddPicture }: TemplateCanvasProps) {
   const t = useT()
   const faceTemplate = doc.template.faces[face]
   const column = groupColumn(doc)
@@ -108,6 +114,9 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
   // for every re-render of the canvas, which is every pointer move of a drag (E1, B3).
   const icons = useMemo(() => previewIcons(doc, assetBase), [doc, assetBase])
   const fonts = useMemo(() => previewFonts(doc, assetBase), [doc, assetBase])
+  // The game's pictures as the library window lists them (#320), for the image element that is
+  // bound to one of them rather than to a column.
+  const pictures = useMemo<LibraryPicture[]>(() => mediaInGame(doc).map(({ hash, cards, template }) => ({ hash, name: doc.pictures?.[hash]?.name, cards, template })), [doc])
   // What the open tab actually draws: the base with the group's overrides in place and its
   // removals taken out. The compiler decides that (L3), so the canvas asks the compiler rather
   // than working it out a second time.
@@ -249,6 +258,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             }}
             onRename={onRename}
             markOf={(id) => markOf(panel, column, group, id, t)}
+            pictureName={(hash) => doc.pictures?.[hash]?.name ?? t('canvas.props.picture.unnamed')}
             removed={new Set(panel.filter((l) => l.source === 'removed').map((l) => l.element.id))}
             labelledBy="layers-heading"
           />
@@ -336,7 +346,12 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
         {el && (
           <Properties
             el={el}
+            face={face}
             fields={fields}
+            imageFields={imageFieldsOf(doc)}
+            pictures={pictures}
+            assetBase={assetBase}
+            onAddPicture={onAddPicture}
             taken={takenNames(doc)}
             fonts={Object.keys(doc.fonts ?? {})}
             icons={Object.keys(doc.icons)}
@@ -1239,8 +1254,60 @@ const LOCKED_NOTE = 'byd-props-locked-note'
 // `fields` are the columns the picker offers; `taken` is every name a new one would collide with,
 // which is those plus the card's own id (#32). `icons` is the game's own set (E4), which is what
 // an icon placed on the card is chosen from and changed to.
-function Properties({ el, fields, taken, fonts, icons, valuesIn, onPatch, onAddField }: { el: Element; fields: string[]; taken: string[]; fonts: string[]; icons: string[]; valuesIn(field: string): string[]; onPatch(patch: Partial<Element>, gesture?: string): void; onAddField(field: string, bindTo: string): void }) {
+function Properties({
+  el,
+  face,
+  fields,
+  imageFields,
+  pictures,
+  assetBase,
+  onAddPicture,
+  taken,
+  fonts,
+  icons,
+  valuesIn,
+  onPatch,
+  onAddField,
+}: {
+  el: Element
+  face: string
+  fields: string[]
+  imageFields: string[]
+  pictures: readonly LibraryPicture[]
+  assetBase: string | undefined
+  onAddPicture: ((file: File) => Promise<string>) | undefined
+  taken: string[]
+  fonts: string[]
+  icons: string[]
+  valuesIn(field: string): string[]
+  onPatch(patch: Partial<Element>, gesture?: string): void
+  onAddField(field: string, bindTo: string): void
+}) {
   const t = useT()
+  // A picture of the template's own (#320): whether the window over the game's pictures is open
+  // for this element, and the column each element was drawn from before it was given a fixed
+  // picture — so «Från kolumn» is the way back to where it was, and only otherwise a guess at the
+  // first column the template draws as a picture. Held here and not in the element: the model
+  // carries what the card is, not what it used to be.
+  const [choosing, setChoosing] = useState(false)
+  const wasFrom = useRef(new Map<string, string>())
+  const fixedRef = useRef<HTMLInputElement>(null)
+  const [backToSwitch, setBackToSwitch] = useState(false)
+  useEffect(() => {
+    if (!backToSwitch) return
+    fixedRef.current?.focus()
+    setBackToSwitch(false)
+  }, [backToSwitch])
+  const isFixed = el.kind === 'image' && 'literal' in el.bind
+  const closeLibrary = () => {
+    setChoosing(false)
+    setBackToSwitch(true)
+  }
+  const toColumn = () => {
+    const field = wasFrom.current.get(el.id) ?? imageFields[0] ?? fields[0]
+    if (field === undefined) setMaking(true)
+    else onPatch({ bind: { field } })
+  }
   // The controls here that write many times over for one thing the designer did: a measurement is
   // a patch per digit typed, a colour is one per step of the picker's dragging (L14). What is
   // chosen from a list or ticked writes once and stays a step of its own.
@@ -1316,7 +1383,53 @@ function Properties({ el, fields, taken, fonts, icons, valuesIn, onPatch, onAddF
           </select>
         </label>
       )}
-      {'bind' in el && (
+      {/* Where a picture comes from (#320): the row's column, or one picture the template carries
+          itself — a background, a frame, a logo that is the same on every card. The switch only
+          opens the question; the window over the game's pictures is what answers it, and closing
+          the window unanswered leaves the element on its column. Going back is going back to the
+          column it was drawn from. */}
+      {el.kind === 'image' && (
+        <div className="byd-props-source" role="radiogroup" aria-label={t('canvas.props.source')}>
+          <label>
+            <input type="radio" name={`${el.id}-source`} checked={!isFixed} onChange={toColumn} />
+            {t('canvas.props.source.field')}
+          </label>
+          <label>
+            <input ref={fixedRef} type="radio" name={`${el.id}-source`} checked={isFixed} onChange={() => setChoosing(true)} />
+            {t('canvas.props.source.fixed')}
+          </label>
+        </div>
+      )}
+      {el.kind === 'image' && isFixed && (
+        <FixedPicture el={el} pictures={pictures} assetBase={assetBase} onChoose={() => setChoosing(true)} />
+      )}
+      {el.kind === 'image' && isFixed && making && (
+        <NewField
+          taken={taken}
+          onCreate={(field) => {
+            onAddField(field, el.id)
+            closeForm()
+          }}
+          onCancel={closeForm}
+        />
+      )}
+      {choosing && assetBase && (
+        <PictureLibraryDialog
+          target={t('library.target.element', { id: el.id, face: faceName(face, t).toLowerCase() })}
+          count={1}
+          replacing={el.kind === 'image' && 'literal' in el.bind && isAssetRef(el.bind.literal) ? 1 : 0}
+          pictures={pictures}
+          assetBase={assetBase}
+          onUpload={onAddPicture}
+          onApply={(hash) => {
+            if ('bind' in el && 'field' in el.bind) wasFrom.current.set(el.id, el.bind.field)
+            onPatch({ bind: { literal: assetRef(hash) } })
+            closeLibrary()
+          }}
+          onClose={closeLibrary}
+        />
+      )}
+      {'bind' in el && !isFixed && (
         // Every element that shows data says which column it shows — a picture and a row of
         // icons as much as a text box, or one added from the tool rail could never be bound.
         <label className="byd-props-field">
@@ -1433,6 +1546,26 @@ function Properties({ el, fields, taken, fonts, icons, valuesIn, onPatch, onAddF
         </>
       )}
       {el.kind === 'shape' && <ShapeProps el={el} fields={fields} valuesIn={valuesIn} onPatch={onPatch} />}
+    </div>
+  )
+}
+
+// The picture an image element carries by itself (#320), as the panel shows it: the picture and
+// its name, and the way to another one. An element let go of its picture — the picture was taken
+// out of Media — stands with an empty frame, and says so rather than showing nothing.
+function FixedPicture({ el, pictures, assetBase, onChoose }: { el: Element & { kind: 'image' }; pictures: readonly LibraryPicture[]; assetBase: string | undefined; onChoose(): void }) {
+  const t = useT()
+  const ref = 'literal' in el.bind ? el.bind.literal : ''
+  const hash = isAssetRef(ref) ? ref.slice(ASSET_PREFIX.length) : null
+  const picture = hash === null ? undefined : pictures.find((p) => p.hash === hash)
+  const name = hash === null ? t('canvas.props.picture.none') : (picture?.name ?? t('canvas.props.picture.unnamed'))
+  return (
+    <div className="byd-props-picture">
+      {hash !== null && assetBase && <img src={assetUrl(assetBase, hash)} alt="" />}
+      <span>{name}</span>
+      <button type="button" className="byd-secondary" onClick={onChoose}>
+        {t('canvas.props.picture.choose')}
+      </button>
     </div>
   )
 }

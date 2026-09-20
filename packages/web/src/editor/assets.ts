@@ -1,5 +1,5 @@
 import { ASSET_MAX_BYTES, sniffAsset } from '@byd/protocol'
-import type { ProjectDoc, Row } from './types.js'
+import type { FaceTemplate, ProjectDoc, Row } from './types.js'
 
 // The project's images in the editor (E1, DRIFT §4): a row points at an image by the hash of
 // its bytes, `asset:<hash>`, and the server serves it at /assets/<hash>. The card compiler
@@ -32,6 +32,30 @@ export function resolveAssetRow(row: Row, base: string): Row {
   const out: Row = {}
   for (const [k, v] of Object.entries(row)) out[k] = isAssetRef(v) ? assetUrl(base, v.slice(ASSET_PREFIX.length)) : v
   return out
+}
+
+// The face as the compiler needs it (#320): a picture the template carries by itself is an
+// `asset:<hash>` written into the image element, and the compiler is handed URLs and knows
+// nothing of hashes — exactly as it knows nothing of the hashes in a row. So the literal is
+// resolved here, the same way and to the same URL a cell is, and the one compiler draws it. A
+// face with no such element comes back as the very object it was, so nothing recompiles for it.
+type Elements = FaceTemplate['base']
+export function resolveAssetFace(face: FaceTemplate, base: string): FaceTemplate {
+  let changed = false
+  const walk = (els: Elements): Elements =>
+    els.map((el): Elements[number] => {
+      if (el.kind === 'image' && 'literal' in el.bind && isAssetRef(el.bind.literal)) {
+        changed = true
+        return { ...el, bind: { literal: assetUrl(base, el.bind.literal.slice(ASSET_PREFIX.length)) } }
+      }
+      return el.kind === 'if' || el.kind === 'group' ? { ...el, children: walk(el.children) } : el
+    })
+  const resolved: FaceTemplate = {
+    ...face,
+    base: walk(face.base),
+    variants: Object.fromEntries(Object.entries(face.variants).map(([name, v]) => [name, v.override ? { ...v, override: walk(v.override) } : v])),
+  }
+  return changed ? resolved : face
 }
 
 // The project's icon set as a preview can load it (E1). A symbol taken into a game becomes one of
@@ -88,21 +112,28 @@ export function imageFieldsOf(doc: ProjectDoc): string[] {
 //
 // The symbol set is deliberately not here. A symbol is a drawing the tool fetched from a library,
 // named in the game's own words and counted in its own tab (E4); this is the deck's art.
-export function mediaInGame(doc: ProjectDoc): { hash: string; cards: string[] }[] {
-  const seen = new Map<string, string[]>()
-  // A picture is met either on a card or on its own. Meeting it at all puts it in the library;
-  // only a card adds to what uses it.
-  const met = (value: unknown, cardRef?: string) => {
+//
+// The template is a user too (#320): a picture an image element carries by itself sits on every
+// card the face is drawn on, so the library says so — «används av mallen» — and never marks it as
+// something nothing uses. It is said as its own flag and not as a card, because it is not one:
+// the count of cards stays the count of cards.
+export type MediaUse = { hash: string; cards: string[]; template: boolean }
+export function mediaInGame(doc: ProjectDoc): MediaUse[] {
+  const seen = new Map<string, { cards: string[]; template: boolean }>()
+  // A picture is met either on a card, on the template, or on its own. Meeting it at all puts it
+  // in the library; only a card or the template adds to what uses it.
+  const met = (value: unknown, by?: { card: string } | { template: true }) => {
     if (!isAssetRef(value)) return
     const hash = value.slice(ASSET_PREFIX.length)
-    const cards = seen.get(hash) ?? []
-    if (cardRef !== undefined && !cards.includes(cardRef)) cards.push(cardRef)
-    seen.set(hash, cards)
+    const use = seen.get(hash) ?? { cards: [], template: false }
+    if (by && 'card' in by && !use.cards.includes(by.card)) use.cards.push(by.card)
+    if (by && 'template' in by) use.template = true
+    seen.set(hash, use)
   }
-  for (const row of doc.rows) for (const v of Object.values(row.fields)) met(v, row.id)
+  for (const row of doc.rows) for (const v of Object.values(row.fields)) met(v, { card: row.id })
   const walk = (els: ProjectDoc['template']['faces'][string]['base']) => {
     for (const el of els) {
-      if (el.kind === 'image' && 'literal' in el.bind) met(el.bind.literal)
+      if (el.kind === 'image' && 'literal' in el.bind) met(el.bind.literal, { template: true })
       if (el.kind === 'if' || el.kind === 'group') walk(el.children)
     }
   }
@@ -115,15 +146,17 @@ export function mediaInGame(doc: ProjectDoc): { hash: string; cards: string[] }[
   // beslut 5). A picture uploaded in the library points at nothing yet — no cell, no literal, no
   // block — so a library that only listed what it could see in use would lose a picture the
   // moment it arrived, which is the one place it must not.
-  for (const hash of Object.keys(doc.pictures ?? {})) if (!seen.has(hash)) seen.set(hash, [])
-  return [...seen].map(([hash, cards]) => ({ hash, cards }))
+  for (const hash of Object.keys(doc.pictures ?? {})) if (!seen.has(hash)) seen.set(hash, { cards: [], template: false })
+  return [...seen].map(([hash, use]) => ({ hash, ...use }))
 }
 
 // Every image the deck uses, once, with the cards it sits on, in the order first seen. The
 // library above, less what nothing is drawn from: the card table's own strip is about the deck's
 // pictures and has no place to say "nobody uses this".
 export function assetsInUse(doc: ProjectDoc): { hash: string; cards: string[] }[] {
-  return mediaInGame(doc).filter((picture) => picture.cards.length > 0)
+  return mediaInGame(doc)
+    .filter((picture) => picture.cards.length > 0)
+    .map(({ hash, cards }) => ({ hash, cards }))
 }
 
 // What a picture in the rulebook may weigh and what it may be (#173). A file a designer picks is

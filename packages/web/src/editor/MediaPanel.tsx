@@ -78,8 +78,10 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove }: 
     removeRefs.current.get(refocus)?.focus()
     setRefocus(null)
   }, [refocus])
-  const remove = (hash: string, cards: readonly string[]) => {
-    if (cards.length === 0) onRemove?.(hash)
+  // The template is a user too (#320): a picture it carries by itself is asked about as one on
+  // cards is, and the question names the template among what loses it.
+  const remove = (hash: string, cards: readonly string[], template: boolean) => {
+    if (cards.length === 0 && !template) onRemove?.(hash)
     else setLeaving(hash)
   }
   const asked = leaving === null ? undefined : media.find((m) => m.hash === leaving)
@@ -279,7 +281,7 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove }: 
               setRefocus(asked.hash)
             }}
           >
-            {t(asked.cards.length === 1 ? 'media.remove.question.one' : 'media.remove.question', {
+            {t(removeQuestion(asked), {
               name: nameOf(asked.hash, asked.cards),
               n: asked.cards.length,
               cards: namedCards(asked.cards, t),
@@ -306,8 +308,8 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove }: 
             </li>
           )}
           {media.length === 0 && !over && <li className="byd-media-empty">{t('media.empty')}</li>}
-          {media.map(({ hash, cards }) => {
-            const spare = cards.length === 0
+          {media.map(({ hash, cards, template }) => {
+            const spare = cards.length === 0 && !template
             // What is stored, not what is being dragged: the tile says how the picture stands in
             // the game, and the window on its way somewhere is shown where it is being cut.
             const cropped = doc.pictures?.[hash]?.crop
@@ -337,7 +339,9 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove }: 
                 {/* Marked, never purged (L22, beslut 4): an older version of the deck may still
                     be drawn from these bytes, so the library says nobody uses it and leaves it
                     where it is. */}
-                <small id={`${said}-${hash}`}>{spare ? t('media.unused') : t(cards.length === 1 ? 'wall.cards.one' : 'wall.cards.other', { n: cards.length })}</small>
+                <small id={`${said}-${hash}`}>{spare ? t('media.unused') : cards.length === 0 ? t('media.byTemplate') : t(cards.length === 1 ? 'wall.cards.one' : 'wall.cards.other', { n: cards.length })}</small>
+                {/* And the template, where it is a user beside the cards (#320). */}
+                {template && cards.length > 0 && <small className="byd-media-template">{t('media.byTemplate')}</small>}
                 {/* Nyss tillagd, i ord och inte bara i färg: uppladdning, klart och fel ska gå
                     att skilja åt utan att se skillnad på två toner (L13). */}
                 {fresh.includes(hash) && <small className="byd-media-new">{t('media.new')}</small>}
@@ -350,7 +354,7 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove }: 
                       else removeRefs.current.delete(hash)
                     }}
                     aria-label={t('media.remove.of', { name: nameOf(hash, cards) })}
-                    onClick={() => remove(hash, cards)}
+                    onClick={() => remove(hash, cards, template)}
                   >
                     {t('media.remove')}
                   </button>
@@ -383,6 +387,13 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove }: 
       </div>
     </div>
   )
+}
+
+// Which question is asked when a picture goes (#318, #320): the cards that lose it, the template
+// that loses it, or both — each said as a sentence rather than as a count of things.
+function removeQuestion(asked: { cards: readonly string[]; template: boolean }): 'media.remove.question' | 'media.remove.question.one' | 'media.remove.question.template' | 'media.remove.question.template.one' | 'media.remove.question.template.cards' {
+  if (asked.template) return asked.cards.length === 0 ? 'media.remove.question.template' : asked.cards.length === 1 ? 'media.remove.question.template.one' : 'media.remove.question.template.cards'
+  return asked.cards.length === 1 ? 'media.remove.question.one' : 'media.remove.question'
 }
 
 // The cards a question names: the first few by name, and the rest counted. A game of real size

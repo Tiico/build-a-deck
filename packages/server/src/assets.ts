@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
-import { croppedMotif, type Motif, type RuleDoc } from '@byd/template'
+import { croppedMotif, type Element, type Motif, type RuleDoc, type Template } from '@byd/template'
 import { MemoryObjectStore, type ObjectStore } from '@byd/render'
 import type { Sql } from 'postgres'
 import type { Picture } from '@byd/protocol'
@@ -144,6 +144,43 @@ export async function resolveRuleImages(rules: RuleDoc, assets: AssetStore): Pro
     if (url) out[block.asset] = url
   }
   return out
+}
+
+// The template as the compiler needs it (#320): a picture an image element carries by itself is
+// `asset:<hash>` written into the element, and it is swapped for its bytes exactly as a row's is,
+// with its crop keyed by the URL the element now carries. A face with no such element is handed
+// back as the very object it was. A picture that is gone leaves the frame empty, as a cell would.
+export async function resolveTemplate(template: Template, assets: AssetStore, pictures: Record<string, Picture> = {}): Promise<{ template: Template; motifs: Record<string, Motif> }> {
+  const urls = new Map<string, string>()
+  let changed = false
+  const walk = async (els: readonly Element[]): Promise<Element[]> => {
+    const out: Element[] = []
+    for (const el of els) {
+      if (el.kind === 'image' && 'literal' in el.bind && isAssetRef(el.bind.literal)) {
+        const hash = el.bind.literal.slice(ASSET_PREFIX.length)
+        if (!urls.has(hash)) urls.set(hash, await dataUrlOf(hash, assets))
+        changed = true
+        out.push({ ...el, bind: { literal: urls.get(hash) ?? '' } })
+      } else if (el.kind === 'if' || el.kind === 'group') out.push({ ...el, children: await walk(el.children) })
+      else out.push(el)
+    }
+    return out
+  }
+  const faces: Template['faces'] = {}
+  for (const [id, face] of Object.entries(template.faces)) {
+    changed = false
+    const base = await walk(face.base)
+    const variants: typeof face.variants = {}
+    for (const [name, v] of Object.entries(face.variants)) variants[name] = v.override ? { ...v, override: await walk(v.override) } : v
+    faces[id] = changed ? { ...face, base, variants } : face
+  }
+  const motifs: Record<string, Motif> = {}
+  for (const [hash, motif] of Object.entries(await assets.motifs([...urls.keys()]))) {
+    const url = urls.get(hash)
+    const crop = pictures[hash]?.crop
+    if (url) motifs[url] = crop ? croppedMotif(motif, crop) : motif
+  }
+  return { template: { ...template, faces }, motifs }
 }
 
 // The bytes of an asset as a data URL; empty when the asset is gone, so a card loses a picture

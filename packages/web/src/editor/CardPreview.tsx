@@ -1,7 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, type ReactNode } from 'react'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import { compile, fitInDocument, type FaceTemplate, type Motif, type Nudge, type Row, type Warning } from '@byd/template'
-import { resolveAssetRow } from './assets.js'
+import { resolveAssetFace, resolveAssetRow } from './assets.js'
 
 export type CardPreviewProps = {
   face: FaceTemplate
@@ -34,11 +34,14 @@ export type CardPreviewProps = {
 // One card through the real compiler and the real DOM fitting — the same code the renderer runs,
 // so what the editor shows is what the table and the print get (E2).
 export function CardPreview({ face, row, icons, fonts, id, scale = 1, selectedElement, onSelectElement, onWarnings, overlay, assetBase, motifs, palette, framing }: CardPreviewProps) {
+  // The face's own pictures resolved once per face (#320), for the same reason the icons are
+  // resolved once per document: a fresh face every render is a fresh compile every render.
+  const drawnFace = useMemo(() => (assetBase ? resolveAssetFace(face, assetBase) : face), [face, assetBase])
   const out = useMemo(
     () =>
       compile({
         type: CARD_STANDARD_63x88,
-        face,
+        face: drawnFace,
         row: assetBase ? resolveAssetRow(row, assetBase) : row,
         icons,
         scope: `#${id}`,
@@ -47,7 +50,7 @@ export function CardPreview({ face, row, icons, fonts, id, scale = 1, selectedEl
         ...(palette ? { palette } : {}),
         ...(framing ? { framing } : {}),
       }),
-    [face, row, icons, fonts, id, assetBase, motifs, palette, framing],
+    [drawnFace, row, icons, fonts, id, assetBase, motifs, palette, framing],
   )
   const ref = useRef<HTMLDivElement | null>(null)
   // Held by identity, not just by value: React writes `innerHTML` again whenever this object is a

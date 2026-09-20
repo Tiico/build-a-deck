@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, type DragEvent, type KeyboardEvent } from 'react'
+import { ASSET_PREFIX, isAssetRef } from './assets.js'
 import type { Element } from './types.js'
 import { useT } from '../i18n/index.js'
 
@@ -24,6 +25,8 @@ export type LayerListProps = {
   // The layers the open group takes away from its own cards: still listed, so the removal can be
   // seen and undone, but struck through — they are not on the card in front of the designer.
   removed?: ReadonlySet<string>
+  // What a picture the template carries by itself is called (#320), by the hash of its bytes.
+  pictureName?(hash: string): string
 }
 
 // What the designer calls a layer: the name she gave it, or else its id — which is the word the
@@ -35,8 +38,15 @@ export function layerName(el: Element): string {
 // What the layer shows, said after its name and only when that is not the name over again. An
 // element the rail added is called `bild-1` until it is renamed, and then the column it draws is
 // the one thing that says which picture it is.
-export function layerShows(el: Element): string | null {
+//
+// A picture the element carries by itself (#320) is a reference and not a word, so what is said
+// is the picture's name, asked of the caller who knows the library; an empty frame says nothing.
+export function layerShows(el: Element, pictureName?: (hash: string) => string): string | null {
   if (!('bind' in el)) return null
+  if ('literal' in el.bind && el.kind === 'image') {
+    if (!isAssetRef(el.bind.literal)) return el.bind.literal === '' ? null : el.bind.literal
+    return pictureName ? pictureName(el.bind.literal.slice(ASSET_PREFIX.length)) : null
+  }
   const shows = 'literal' in el.bind ? el.bind.literal : el.bind.field
   return shows === layerName(el) ? null : shows
 }
@@ -53,7 +63,7 @@ type Col = (typeof COLS)[number]
 // card, so there is nothing to defer to a second keystroke. The order is changed by dragging a
 // layer onto another (#18, from variant C) and, because a list that can only be dragged is a list
 // a keyboard has lost, by Alt and an arrow.
-export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRename, labelledBy, markOf, removed }: LayerListProps) {
+export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRename, labelledBy, markOf, removed, pictureName }: LayerListProps) {
   const t = useT()
   const ids = layers.map((l) => l.id)
   const dragged = useRef<string | null>(null)
@@ -99,7 +109,7 @@ export function LayerList({ layers, selected, onSelect, onReorder, onLock, onRen
     <div role="grid" aria-labelledby={labelledBy} className="byd-layers">
       {layers.map((el, at) => {
         const name = layerName(el)
-        const shows = layerShows(el)
+        const shows = layerShows(el, pictureName)
         const mark = markOf?.(el.id) ?? null
         const locked = el.locked === true
         return (

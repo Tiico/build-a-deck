@@ -3,7 +3,7 @@
 // finding one and tidying one are the same errand. The card table's own strip says which pictures
 // are in use; a library that only listed those would have nothing to tidy.
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import type { ProjectDoc } from '@byd/server'
 import { MediaPanel } from '../src/editor/MediaPanel.js'
 import { projectDoc } from './project-doc.js'
@@ -90,5 +90,55 @@ describe('the media library no longer puts a picture on the marked cards (#296)'
     // The control: the library and the crop are still there.
     expect(tiles()).toHaveLength(2)
     expect(screen.getByRole('heading', { name: 'Beskärning' })).toBeTruthy()
+  })
+})
+
+// The template is a user too (#320): a picture an image element carries by itself sits on every
+// card the face is drawn on, so the library says so — and never marks it as something nothing
+// uses, which is what would offer it for tidying.
+describe('the media library counts the template as a user (#320)', () => {
+  const LOGO = '4'.repeat(64)
+  function deckWithLogo(): ProjectDoc {
+    const doc = deckWithArt()
+    doc.template.faces['back']!.base.push({ kind: 'image', id: 'logo', x: 20, y: 30, w: 23, h: 23, bind: { literal: `asset:${LOGO}` } })
+    doc.pictures = { [LOGO]: { name: 'logga.png' } }
+    return doc
+  }
+
+  it('says the template uses the picture, beside the cards or instead of «inget kort använder den»', () => {
+    const doc = deckWithLogo()
+    doc.rows[2]!.fields['art'] = `asset:${LOGO}`
+    render(<MediaPanel doc={doc} assetBase="http://api.local" />)
+
+    const logo = tiles().find((li) => li.getAttribute('data-asset') === LOGO)!
+    expect(logo.getAttribute('data-unused')).toBeNull()
+    expect(within(logo).getByText('1 kort')).toBeTruthy()
+    expect(within(logo).getByText('används av mallen')).toBeTruthy()
+    expect(within(logo).queryByText('inget kort använder den')).toBeNull()
+  })
+
+  it('asks before taking out a picture only the template uses, and names the template', () => {
+    const onRemove = vi.fn()
+    render(<MediaPanel doc={deckWithLogo()} assetBase="http://api.local" onRemove={onRemove} />)
+
+    const logo = tiles().find((li) => li.getAttribute('data-asset') === LOGO)!
+    expect(within(logo).getByText('används av mallen')).toBeTruthy()
+    fireEvent.click(within(logo).getByRole('button', { name: 'Ta bort logga.png' }))
+
+    expect(onRemove).not.toHaveBeenCalled()
+    const asked = screen.getByRole('alertdialog')
+    expect(asked.textContent).toContain('Mallen förlorar sin fasta bild')
+    fireEvent.click(within(asked).getByRole('button', { name: 'Ja, ta bort' }))
+    expect(onRemove).toHaveBeenCalledWith(LOGO)
+  })
+
+  it('names the template and the cards together when both lose the picture', () => {
+    const doc = deckWithLogo()
+    doc.rows[0]!.fields['art'] = `asset:${LOGO}`
+    render(<MediaPanel doc={doc} assetBase="http://api.local" onRemove={vi.fn()} />)
+
+    fireEvent.click(within(tiles().find((li) => li.getAttribute('data-asset') === LOGO)!).getByRole('button', { name: 'Ta bort logga.png' }))
+
+    expect(screen.getByRole('alertdialog').textContent).toContain('Mallen och kortet dragon förlorar sin bild.')
   })
 })

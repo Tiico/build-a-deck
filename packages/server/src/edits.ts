@@ -501,7 +501,6 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
     case 'removePicture': {
       // Only the columns the template draws as pictures are emptied: a text cell that happens to
       // hold the same string is text, and the reference in it was never a picture on a card.
-      // A picture the template draws by itself (#320) would have to be let go of here too.
       const drawn = imageFieldsOf(doc)
       const ref = `asset:${intent.hash}`
       const rows = doc.rows.map((row) => {
@@ -511,7 +510,11 @@ export function applyEdit(doc: ProjectDoc, intent: EditIntent): ProjectDoc {
         for (const field of hit) fields[field] = ''
         return { ...row, fields }
       })
-      return { ...doc, rows, pictures: without(doc.pictures ?? {}, intent.hash) }
+      // And a picture the template draws by itself (#320) is let go of the way a cell lets go:
+      // the element stays, bound to nothing, so the card shows an empty frame where the picture
+      // was. Not the layer removed — that is the designer's to decide — and not a column drawn in
+      // its place, which would put every row's art where a logo stood without anyone asking.
+      return { ...doc, rows, template: withoutPicture(doc.template, ref), pictures: without(doc.pictures ?? {}, intent.hash) }
     }
     // Naming a family again replaces it, so swapping the file for a better cut is one entry.
     case 'setFont':
@@ -623,6 +626,30 @@ function imageFieldsOf(doc: ProjectDoc): string[] {
     for (const v of Object.values(face.variants)) walk(v.override ?? [])
   }
   return out
+}
+
+// The template with every image element that carried this picture left with an empty frame
+// (#320). A face that never carried it is the same object it was, so nothing downstream sees a
+// change where there was none.
+function withoutPicture(template: ProjectDoc['template'], ref: string): ProjectDoc['template'] {
+  let changed = false
+  const walk = (els: readonly Element[]): Element[] =>
+    els.map((el) => {
+      if (el.kind === 'image' && 'literal' in el.bind && el.bind.literal === ref) {
+        changed = true
+        return { ...el, bind: { literal: '' } }
+      }
+      return el.kind === 'if' || el.kind === 'group' ? { ...el, children: walk(el.children) } : el
+    })
+  const faces: ProjectDoc['template']['faces'] = {}
+  for (const [id, face] of Object.entries(template.faces)) {
+    changed = false
+    const base = walk(face.base)
+    const variants: FaceTemplate['variants'] = {}
+    for (const [name, v] of Object.entries(face.variants)) variants[name] = v.override ? { ...v, override: walk(v.override) } : v
+    faces[id] = changed ? { ...face, base, variants } : face
+  }
+  return { ...template, faces }
 }
 
 // How many elements of the template would go with a column, counted across every face and every

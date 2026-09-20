@@ -26,6 +26,11 @@ export const svEditor = {
   'media.remove.of': 'Ta bort {name}',
   'media.remove.question': 'Ta bort {name}? {n} kort förlorar sin bild: {cards}.',
   'media.remove.question.one': 'Ta bort {name}? Kortet {cards} förlorar sin bild.',
+  // Mallen som användare (#320): en bild bunden direkt i ett bildelement.
+  'media.remove.question.template': 'Ta bort {name}? Mallen förlorar sin fasta bild.',
+  'media.remove.question.template.one': 'Ta bort {name}? Mallen och kortet {cards} förlorar sin bild.',
+  'media.remove.question.template.cards': 'Ta bort {name}? Mallen och {n} kort förlorar sin bild: {cards}.',
+  'media.byTemplate': 'används av mallen',
   'media.remove.more': '{cards} och {n} till',
   'media.remove.yes': 'Ja, ta bort',
   // Beskärningen (#222, L22, beslut 2). Fönstrets namn säger var det står, så samma tangenttryck
@@ -257,6 +262,9 @@ export const svEditor = {
   'library.filter.all': 'Alla',
   'library.filter.unused': 'Oanvända',
   'library.none': 'Spelet har inga bilder ännu. Ladda upp en bild direkt i tabellen.',
+  // Öppnad från mallen (#320) kan bilden laddas upp här, och den hamnar i Media som alla andra.
+  'library.none.upload': 'Spelet har inga bilder ännu. Ladda upp en här.',
+  'library.upload': 'Ladda upp',
   'library.noHits': 'Ingen bild matchar. Ändra sökningen eller filtret.',
   'library.chosen': 'Vald bild: {name}',
   'library.chosen.none': 'Ingen bild vald.',
@@ -267,6 +275,7 @@ export const svEditor = {
   'library.close': 'Stäng',
   'library.target.card': 'Kortet {cardRef}, bildfältet {field}',
   'library.target.cards': '{n} markerade kort, bildfältet {field}',
+  'library.target.element': 'Bildelementet {id} ({face})',
   'table.library.done.one': 'Bilden {name} ligger nu på {cardRef}.',
   'table.library.done.other': 'Bilden {name} ligger nu på {n} kort.',
   'table.library.done.one.unnamed': 'Bilden ligger nu på {cardRef}.',
@@ -429,6 +438,14 @@ export const svEditor = {
   'canvas.props.fit': 'Anpassning',
   'canvas.fit.shrink': 'krymp till gräns',
   'canvas.fit.fixed': 'fast storlek',
+  // Var bilden kommer ifrån (#320): radens kolumn, eller en bild mallen bär själv — en bakgrund,
+  // en ram, en logga som är samma på alla kort. Bilden väljs från Media, aldrig någon annanstans.
+  'canvas.props.source': 'Bildkälla',
+  'canvas.props.source.field': 'Från kolumn',
+  'canvas.props.source.fixed': 'Fast bild',
+  'canvas.props.picture.choose': 'Välj bild…',
+  'canvas.props.picture.none': 'Ingen bild vald',
+  'canvas.props.picture.unnamed': 'Bild utan namn',
   'canvas.props.keepRatio': 'Behåll proportioner',
   // Passa in det som är ritat i filen i stället för filen (E1): bildernas storlek jämnas ut när
   // källfilerna bär olika mycket tomrum runt motivet.

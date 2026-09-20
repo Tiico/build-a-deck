@@ -133,3 +133,47 @@ describe('the library dialog writes nothing until it is told to (#296)', () => {
     expect(document.activeElement).toBe(within(dialog()).getByRole('button', { name: 'Stäng' }))
   })
 })
+
+// The way in from the window itself (#320, the requester's decision): a picture that is not in
+// the library yet can be uploaded from here, and the upload lands in Media like every other —
+// which is what keeps Media the one place pictures live. Only an opener that can upload offers
+// it, so Data's windows are exactly what they were.
+describe('uploading from the library window (#320)', () => {
+  it('offers no upload unless the opener can take one', () => {
+    open()
+    expect(within(dialog()).queryByLabelText('Ladda upp')).toBeNull()
+  })
+
+  it('takes a file, hands it to the opener, and holds the picture that arrived as the one in hand', async () => {
+    const user = userEvent.setup()
+    const NY = '4'.repeat(64)
+    const onUpload = vi.fn(async () => NY)
+    const onApply = vi.fn()
+    const view = render(<PictureLibraryDialog target="Bildelementet logo på baksidan" count={1} replacing={0} pictures={pictures()} assetBase="http://api.local" onApply={onApply} onClose={vi.fn()} onUpload={onUpload} />)
+
+    const file = new File([new Uint8Array([137, 80, 78, 71])], 'ny.png', { type: 'image/png' })
+    await user.upload(within(dialog()).getByLabelText('Ladda upp'), file)
+
+    expect(onUpload).toHaveBeenCalledWith(file)
+    // The opener answers by putting the picture in the library, and the window then holds it.
+    view.rerender(<PictureLibraryDialog target="Bildelementet logo på baksidan" count={1} replacing={0} pictures={[...pictures(), { hash: NY, name: 'ny', cards: [] }]} assetBase="http://api.local" onApply={onApply} onClose={vi.fn()} onUpload={onUpload} />)
+    expect(within(dialog()).getByRole('status').textContent).toContain('Vald bild: ny')
+    expect(tile('ny').getAttribute('aria-pressed')).toBe('true')
+    await user.click(apply())
+    expect(onApply).toHaveBeenCalledWith(NY)
+  })
+
+  it('offers the upload in an empty library too, and says so in the empty message', () => {
+    open({ pictures: [], onUpload: vi.fn(async () => '4'.repeat(64)) })
+    expect(within(dialog()).getByLabelText('Ladda upp')).toBeTruthy()
+    expect(within(dialog()).getByText('Spelet har inga bilder ännu. Ladda upp en här.')).toBeTruthy()
+  })
+
+  it('says why when the upload is refused, and holds nothing', async () => {
+    const user = userEvent.setup()
+    open({ onUpload: vi.fn(async () => { throw new Error('Filen är för stor.') }) })
+    await user.upload(within(dialog()).getByLabelText('Ladda upp'), new File(['x'], 'stor.png', { type: 'image/png' }))
+    expect(within(dialog()).getByRole('status').textContent).toContain('Filen är för stor.')
+    expect(apply().disabled).toBe(true)
+  })
+})
