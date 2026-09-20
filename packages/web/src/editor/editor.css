@@ -1748,10 +1748,12 @@
 
 /* Three groups, one under the other (#176): what is being played, what was started and never
    touched, what is over. The first stands open under a heading; the other two are one row each
-   until they are asked for, and that row says in words what it holds and how many. */
+   until they are asked for, and that row says in words what it holds and how many. The phone's
+   sheet above the list is the same kind of row (#301): its own class, so that the list's tests and
+   the list's own counting never take it for a group of tables, and the same rule. */
 .byd-tables-group { display: grid; gap: var(--byd-s1); }
 .byd-tables-heading { margin: 0; padding: 0 var(--byd-s2); font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-tables-quiet); }
-.byd-tables-fold {
+.byd-tables-fold, .byd-setup-fold {
   display: flex;
   align-items: center;
   gap: var(--byd-s2);
@@ -1766,9 +1768,9 @@
   text-align: left;
   cursor: pointer;
 }
-.byd-tables-fold:hover { background: var(--byd-tables-bg); }
-.byd-tables-caret { transition: transform 120ms ease; }
-.byd-tables-fold[aria-expanded='true'] .byd-tables-caret { transform: rotate(90deg); }
+.byd-tables-fold:hover, .byd-setup-fold:hover { background: var(--byd-tables-bg); }
+.byd-tables-caret, .byd-setup-caret { transition: transform 120ms ease; }
+.byd-tables-fold[aria-expanded='true'] .byd-tables-caret, .byd-setup-fold[aria-expanded='true'] .byd-setup-caret { transform: rotate(90deg); }
 .byd-tables-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 
 /* One table, one row: the picture, the facts, one way standing ready and a menu for the rest.

@@ -81,6 +81,10 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
   // The editor's own clipboard, and what the key handler needs to read without being rebuilt on
   // every keystroke the panel beside it takes.
   const clipboard = useRef<Zone | null>(null)
+  // Whether the phone's sheet stands open beside the setup (#301). It is the editor's own
+  // remembering and nobody else's: not the document's, not the table's, not the browser's — so
+  // the tab opens with the sheet folded every time, and the room is the setup's until asked for.
+  const [sheetShown, setSheetShown] = useState(false)
   const view = previewOf(doc)
   const selectedZone = setup.zones.find((z) => z.id === selected)
   // Att välja en zon markerar dess rad, och den raden måste finnas: hör zonen till en familj fälls
@@ -237,7 +241,21 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
           were under the felt before, a screenful down, where the designer had to leave the setup
           to reach them (#126). */}
       <div className="byd-setup-beside">
-        {view && <SheetPreview view={view} seat={setup.seats[0] ?? null} />}
+        {/* The sheet is a fold, like the groups in the list of tables under it: one row that says
+            what it holds until it is asked for, and then the sheet itself (#301). The sheet is read
+            out of the document on every render, so what opens is always the setup as it stands
+            now — including every change made while it was folded. */}
+        {view && (
+          <section className="byd-setup-sheet">
+            <button type="button" className="byd-setup-fold" aria-expanded={sheetShown} aria-controls={SHEET_PREVIEW_ID} onClick={() => setSheetShown((was) => !was)}>
+              <span className="byd-setup-caret" aria-hidden="true">
+                ▸
+              </span>
+              {t(sheetShown ? 'setup.sheet.hide' : 'setup.sheet.show')}
+            </button>
+            {sheetShown && <SheetPreview view={view} seat={setup.seats[0] ?? null} />}
+          </section>
+        )}
         {beside}
       </div>
     </div>
@@ -789,11 +807,12 @@ function ZoneProps({ zone, setup, why, onPatch, onDeck }: { zone: Zone; setup: S
 // is not a place this player can play to, and a zone that only holds counters is no place for a
 // card at all (B6, C4). Asked for the table as a whole it listed every seat's "Framför mig" and
 // every counters zone, which is a sheet no phone ever draws.
+const SHEET_PREVIEW_ID = 'byd-sheet-preview'
 function SheetPreview({ view, seat }: { view: NonNullable<ReturnType<typeof previewOf>>; seat: string | null }) {
   const t = useT()
   const preview = targetsOf({ ...view, seat }, t)
   return (
-    <div className="byd-zones-preview" data-sheet-preview>
+    <div id={SHEET_PREVIEW_ID} className="byd-zones-preview" data-sheet-preview>
       <h2>{t('setup.sheet.title')}</h2>
       <p>{t('setup.sheet.play')} <strong>{t('setup.sheet.oneCard')}</strong> {t('setup.sheet.to')}</p>
       <div className="byd-sheet-targets">

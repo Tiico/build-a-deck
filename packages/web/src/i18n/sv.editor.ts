@@ -830,6 +830,8 @@ export const svEditor = {
   'setup.visible.all': 'alla',
   'setup.visible.owner': 'ägaren',
   'setup.visible.none': 'ingen',
+  'setup.sheet.show': 'Visa spelarvyn',
+  'setup.sheet.hide': 'Dölj spelarvyn',
   'setup.sheet.title': 'Så ser spelaren det',
   'setup.sheet.play': 'Spela',
   'setup.sheet.oneCard': 'ett kort',

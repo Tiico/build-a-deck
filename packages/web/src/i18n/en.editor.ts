@@ -749,6 +749,8 @@ export const enEditor = {
   'setup.visible.all': 'everyone',
   'setup.visible.owner': 'the owner',
   'setup.visible.none': 'nobody',
+  'setup.sheet.show': 'Show the player view',
+  'setup.sheet.hide': 'Hide the player view',
   'setup.sheet.title': 'What the player sees',
   'setup.sheet.play': 'Play',
   'setup.sheet.oneCard': 'one card',
