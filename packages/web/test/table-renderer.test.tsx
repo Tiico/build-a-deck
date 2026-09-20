@@ -905,7 +905,11 @@ describe('the bottom card of a pile (K23)', () => {
     expect(top().textContent).toBe('')
     // Drawn before the top in the stack, so the top covers all but the edge that is let out.
     expect(edge()!.compareDocumentPosition(top()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(parseFloat(edge()!.style.top)).toBeGreaterThan(0)
+    // Let out by moving the whole card down, never by shortening it: the edge must lie below
+    // the pile's own box, or the top covers all of it.
+    expect(edge()!.style.top).toBe('')
+    expect(edge()!.style.transform).toMatch(/^translateY\((\d+(\.\d+)?)px\)$/)
+    expect(parseFloat(edge()!.style.transform.replace('translateY(', ''))).toBeGreaterThan(0)
   })
 
   it('a face-down bottom card shows only a back: no name, and the back the zone says it wears', () => {

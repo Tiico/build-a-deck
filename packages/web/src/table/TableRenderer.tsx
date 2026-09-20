@@ -1164,7 +1164,7 @@ function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, li
           data-face={bottomCard?.cardRef ? 'front' : 'back'}
           data-back={bottomOwn ? 'own' : undefined}
           {...bottomInspects}
-          style={{ top: px(BOTTOM_EDGE_MM), ...(bottomCard?.cardRef ? { ['--hue' as string]: hue(bottomCard.cardRef) } : {}) }}
+          style={{ transform: `translateY(${px(BOTTOM_EDGE_MM)}px)`, ...(bottomCard?.cardRef ? { ['--hue' as string]: hue(bottomCard.cardRef) } : {}) }}
         >
           {bottomOwn}
           <Texture faces={faces} c={bottomCard} />
