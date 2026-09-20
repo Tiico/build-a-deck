@@ -435,7 +435,7 @@ async function taken(file: File | undefined, client: ProjectClient, t: T): Promi
     // says the file could not be read, which is what it means.
     const px = imageSizeOf(bytes)
     if (!px) return { why: 'broken' }
-    return { asset: `${ASSET_PREFIX}${await client.uploadAsset(new Blob([bytes], { type }), t)}`, px }
+    return { asset: `${ASSET_PREFIX}${await client.uploadAsset(new Blob([bytes], { type }), 'image', t)}`, px }
   } catch {
     return { why: 'broken' }
   }

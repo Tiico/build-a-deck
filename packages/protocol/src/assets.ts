@@ -84,11 +84,28 @@ export function assetKindDeclared(declared: string): AssetKind | null {
   return ASSET_FORMATS.find((format) => format.type === declared)?.kind ?? null
 }
 
+// What a client says when it hands over a file of this kind. The kind is the one thing the upload
+// has to state, and the one thing a browser cannot be asked for: `File.type` is empty for a
+// typeface as often as not, and where it is not it is a name of the platform's choosing rather
+// than one of ours (#312). So the surface that opened the file declares it — the typeface button
+// knows it took a typeface — and the bytes still decide what it actually is (#204). Any of the
+// kind's types would do; the first is taken so the header reads as the format a person would
+// think of first.
+export function assetTypeDeclaring(kind: AssetKind): string {
+  const first = ASSET_FORMATS.find((format) => format.kind === kind)
+  if (!first) throw new Error(`no asset format of kind ${kind}`)
+  return first.type
+}
+
 // What a refusal has to be able to say: the formats of the kind that was asked for, named the way
 // a person names them. It is read off the list itself, so a format added above is a format the
 // refusal offers without anyone remembering to say so.
-export function assetFormatsNamed(kind: AssetKind): string {
+// `or` is the word that joins the last two, and it is the caller's because it is the only part of
+// this that is language and not a format name (A4): PNG is PNG to every reader, «eller» is not.
+// The default is English because the service's own errors are, and a surface that shows this to a
+// designer hands in the word from its catalogue instead (#312).
+export function assetFormatsNamed(kind: AssetKind, or = ' or '): string {
   const names = ASSET_FORMATS.filter((format) => format.kind === kind).map((format) => format.name)
   const last = names.at(-1) ?? ''
-  return names.length > 1 ? `${names.slice(0, -1).join(', ')} or ${last}` : last
+  return names.length > 1 ? `${names.slice(0, -1).join(', ')}${or}${last}` : last
 }

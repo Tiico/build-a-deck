@@ -921,7 +921,10 @@ export const svEditor = {
 
   // Vad projektet självt kan svara när något går fel, i ord en formgivare kan handla på.
   'project.notMine': 'det här spelet tillhör någon annan',
-  'upload.wrongType': 'bara bilder och typsnittsfiler kan laddas upp',
+  // Uppladdningen deklarerar sin egen sort (#312), så ett nej kan bara handla om bytena — och det
+  // namnger de format sorten får vara i i stället för att skylla på filen för att vara fel sort.
+  'upload.or': ' eller ',
+  'upload.notThisKind': 'filen är inte {formats}',
   'upload.tooBig': 'filen är för stor (max 8 MB)',
   'upload.failed': 'kunde inte ladda upp filen: {status}',
 

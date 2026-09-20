@@ -1,4 +1,4 @@
-import { pictureNameOf, type AssetCrop } from '@byd/protocol'
+import { assetFormatsNamed, assetTypeDeclaring, pictureNameOf, type AssetCrop, type AssetKind } from '@byd/protocol'
 import type { ProjectCredit, ProjectDoc, ProjectFont, ProjectFraming, ProjectRow, RuleDoc, VersionSummary } from '@byd/server'
 import type { DocDiff, VersionChange } from '@byd/server/doc'
 import type { Element } from '@byd/template'
@@ -616,7 +616,7 @@ export class ProjectClient {
   // travel to the printer. The same symbol twice is the same entry, not a second name.
   async useSymbol(symbol: GameSymbol, as?: string, t: T = swedish): Promise<string> {
     const file = svgBytes(symbol)
-    const ref = `${ASSET_PREFIX}${await this.uploadAsset(new Blob([file.bytes], { type: file.type }), t)}`
+    const ref = `${ASSET_PREFIX}${await this.uploadAsset(new Blob([file.bytes], { type: file.type }), 'vector', t)}`
     const already = Object.entries(this.doc.icons).find(([, url]) => url === ref)
     if (already) return already[0]
     // What the symbol is called in the language the designer is working in: the icon name is
@@ -635,7 +635,7 @@ export class ProjectClient {
   async placeIcon(symbol: GameSymbol, face: string, group: string | null, t: T = swedish): Promise<string> {
     if (!this.doc.template.faces[face]) throw new Error(`template has no face ${face}`)
     const file = svgBytes(symbol)
-    const ref = `${ASSET_PREFIX}${await this.uploadAsset(new Blob([file.bytes], { type: file.type }), t)}`
+    const ref = `${ASSET_PREFIX}${await this.uploadAsset(new Blob([file.bytes], { type: file.type }), 'vector', t)}`
     // Everything the edit is worked out from is read after the upload, never before it. The
     // upload takes as long as the network takes, and the document moves while it is in flight —
     // a second press, or somebody else in the game (D3). A face read before the wait would give
@@ -702,7 +702,7 @@ export class ProjectClient {
   //
   // A licence is not in the file: only the designer knows it, and it is stated beside the family.
   async useFont(file: File, t: T = swedish): Promise<string> {
-    const ref = `${ASSET_PREFIX}${await this.uploadAsset(file, t)}`
+    const ref = `${ASSET_PREFIX}${await this.uploadAsset(file, 'font', t)}`
     const already = Object.entries(this.doc.fonts ?? {}).find(([, f]) => f.asset === ref)
     if (already) return already[0]
     const family = freeFamily(familyFromFile(file.name), this.doc.fonts ?? {})
@@ -735,7 +735,7 @@ export class ProjectClient {
   // so a name not taken here is a name gone for good. It is untrusted input and is made into a
   // name by `pictureNameOf`, which is where the schema that bounds it lives.
   async addPicture(file: File, t: T = swedish): Promise<string> {
-    const hash = await this.uploadAsset(file, t)
+    const hash = await this.uploadAsset(file, 'image', t)
     // Read after the upload and never before it, for the reason `placeIcon` reads its face after:
     // the network takes as long as it takes and the document moves while the bytes are in flight.
     const name = pictureNameOf(file.name)
@@ -743,11 +743,22 @@ export class ProjectClient {
     return hash
   }
 
-  // An image for the project (E1): uploaded once, named by its bytes; the cell then points at it.
-  async uploadAsset(file: Blob, t: T = swedish): Promise<string> {
-    const res = await fetch(`${this.http}/assets`, withCredentials({ method: 'POST', headers: { 'content-type': file.type || 'application/octet-stream' }, body: file }))
+  // A file for the project (E1): uploaded once, named by its bytes; whatever points at it then
+  // points by hash.
+  //
+  // `kind` is the caller's word and not the file's. A browser's `File.type` is empty for a
+  // typeface as often as not, so declaring it was declaring nothing and every typeface was refused
+  // before its bytes were ever read (#312). The surface that opened the file is the one that knows
+  // — the typeface button took a typeface, the picture button a picture — and the bytes still
+  // decide what it actually is (#204).
+  //
+  // Which is also what the refusal can say now. A 415 used to mean either "you said nothing" or
+  // "the bytes are not that", and the message blamed the file for both. Saying the kind ourselves
+  // leaves only the second, so the refusal names the formats that kind may be in.
+  async uploadAsset(file: Blob, kind: AssetKind, t: T = swedish): Promise<string> {
+    const res = await fetch(`${this.http}/assets`, withCredentials({ method: 'POST', headers: { 'content-type': assetTypeDeclaring(kind) }, body: file }))
     if (res.status === 401) throw new Unauthorized()
-    if (res.status === 415) throw new Error(t('upload.wrongType'))
+    if (res.status === 415) throw new Error(t('upload.notThisKind', { formats: assetFormatsNamed(kind, t('upload.or')) }))
     if (res.status === 413) throw new Error(t('upload.tooBig'))
     if (!res.ok) throw new Error(t('upload.failed', { status: res.status }))
     return ((await res.json()) as { hash: string }).hash
