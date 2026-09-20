@@ -2113,6 +2113,19 @@
 .byd-media-crop button { min-height: var(--byd-tap); border-radius: 8px; padding: 0 12px; cursor: pointer; }
 .byd-media-crop button:disabled { cursor: default; opacity: 0.55; }
 .byd-media-crop-card { margin: 0; display: grid; justify-items: start; gap: var(--byd-s1); width: 100%; }
+/* What is not a use, said in words where the card would have stood (#295): an unused picture, or
+   a card whose template draws it on no side. */
+.byd-media-crop-note { margin: 0; font-size: 12px; color: var(--byd-editor-quiet); }
+/* The one card the picture is on, named and not chosen. */
+.byd-media-crop-on { margin: 0; font-size: 12px; color: #e6ecfa; }
+/* The cards the picture is on, searched rather than scrolled (#295): the same search box the
+   library window uses, over a short list of quiet choices that the language marks. */
+.byd-media-cards { display: grid; gap: var(--byd-s2); width: 100%; }
+.byd-media-cards input { min-height: var(--byd-tap); box-sizing: border-box; padding: 0 12px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; font: inherit; }
+.byd-media-cards ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--byd-s2); max-height: 152px; overflow-y: auto; }
+.byd-media-cards li button { display: flex; align-items: baseline; gap: 6px; padding: 0 12px; }
+.byd-media-cards li button small { font-size: 11px; color: var(--byd-editor-quiet); }
+.byd-media-cards-none { margin: 0; font-size: 12px; color: var(--byd-editor-quiet); }
 .byd-media-crop-card figcaption { font-size: 11px; color: var(--byd-editor-quiet); }
 .byd-crop { display: grid; gap: var(--byd-s1); width: 100%; }
 .byd-crop-sheet { position: relative; border-radius: 10px; overflow: hidden; background: #14161c; }

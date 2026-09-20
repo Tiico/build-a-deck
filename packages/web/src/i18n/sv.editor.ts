@@ -41,6 +41,13 @@ export const svEditor = {
   'media.crop.keys': 'Pilarna flyttar fönstret. Skift och en pil ändrar dess storlek.',
   'media.crop.whole': 'Hela bilden',
   'media.crop.card': 'Så hamnar bilden på korten',
+  'media.face.front': 'Fram',
+  'media.face.back': 'Bak',
+  'media.crop.cards': 'Kort som använder bilden',
+  'media.crop.cards.search': 'Sök kort',
+  'media.crop.cards.none': 'Inget kort matchar sökningen.',
+  'media.crop.unused': 'Används inte på något kort',
+  'media.crop.notDrawn': 'Kortets mall visar inte bilden.',
   'editor.tab.rules': 'Regler',
   'editor.tab.tables': 'Bord',
 

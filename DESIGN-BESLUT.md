@@ -3532,6 +3532,18 @@ Massändringen är ett enda ångrasteg genom samma radlista som varje annan mass
 Media behåller bibliotek, uppladdning, beskärning och förhandsvisning; uppladdningen direkt i Data står kvar under sitt eget namn «Ladda upp», och dragsläppets förbättringar hör till #291.
 Dialogen är en komponent för sig med ett litet gränssnitt — mål, bilder, `onApply(hash)`, `onClose()` — så att mallens fasta bild (#320) kan öppna samma fönster.
 
+Reviderat 2026-09-20 (#295, beställaren valde A): **förhandsvisningen i Media visar den kortsida som faktiskt ritar bilden, på ett kort valt bland dem som använder den.**
+
+Variant A, vald efter en klickbar A/B/C-prototyp: kortväljaren står överst, därunder två tydligt märkta sidval, Fram och Bak, och under dem ett enda stort kort; sidminiatyrer och två kortsidor samtidigt byggs inte.
+Aktuellt kort och aktuell sida går att förstå utan enbart färg — sidvalet är samma radiogrupp som mallens krön använder, med markering i form och ord, och kan väljas med tangentbordet.
+Kortväljaren listar bara de kort som använder den valda bilden, i lekens ordning, med det första förvalt; den söks på kortets namn och visar kortets id där namnet är tomt eller delat, för nittio kort är en lista att söka i och inte att bläddra i.
+En ensam användning får ingen väljare utan bara kortets namn; ett val i Media ändrar bara vad som förhandsvisas, aldrig bildtilldelning, markeringar i Data eller projektdokumentet.
+Förvald sida är den sida som ritar bilden på just det kortet — mallens bas med den variant raden ber om, genom samma `elementsFor` som kompilatorn — och framsidan när båda sidor ritar den; mallobjektens ordning avgör ingenting.
+Byte av bild eller kort räknar om förvalet, medan ett manuellt sidbyte består så länge samma bild beskärs på samma kort, och beskärningens ändringar syns live på den visade sidan.
+En oanvänd bild visar bilden och beskärningsverktyget med beskedet «Används inte på något kort», utan kortpreview och utan exempelmall; den kan beskäras innan den tilldelas, och ingenting skrivs till något kort för att kunna visa den.
+En bild som kortets data pekar på men som ingen sida ritar är ingen användning och får ingen påhittad sådan: kortet står kvar att välja, och i stället för ett kort står beskedet att kortets mall inte visar bilden — skilt från beskedet om en bild inget kort använder.
+Förhandsvisningen är samma verkliga kort genom den gemensamma renderaren, med rätt variant, palett, typsnitt, bildkolumn och beskärningsundantag; prototypens statiska beskärningsyta var bara kontext, och beskärningens egna ändringar hör till #297.
+
 ### L23. Ett tecken öppnar en lista, överallt i verktyget (2026-09-18, #215, #230)
 
 Beslutet, i en mening:

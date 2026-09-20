@@ -33,6 +33,13 @@ export const enEditor = {
   'media.crop.keys': 'The arrows move the window. Shift and an arrow resize it.',
   'media.crop.whole': 'The whole picture',
   'media.crop.card': 'What the cards will show',
+  'media.face.front': 'Front',
+  'media.face.back': 'Back',
+  'media.crop.cards': 'Cards that use the picture',
+  'media.crop.cards.search': 'Search cards',
+  'media.crop.cards.none': 'No card matches the search.',
+  'media.crop.unused': 'Not used on any card',
+  'media.crop.notDrawn': 'The card’s template does not draw the picture.',
   'editor.tab.rules': 'Rules',
   'editor.tab.tables': 'Tables',
 
