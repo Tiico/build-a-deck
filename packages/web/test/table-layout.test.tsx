@@ -23,7 +23,7 @@ import { recipeSetup } from './fixture.js'
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 // The felt is a room of the button language (L13, #90), so the shared sheet goes over the felt's
 // own the way it does on the page itself.
-const SHEETS = ['src/table/table.css', 'src/table/texture.css', 'src/table/keyboard.css', 'src/rules/rules.css', 'src/buttons.css']
+const SHEETS = ['src/table/table.css', 'src/table/texture.css', 'src/table/keyboard.css', 'src/rules/rules-open.css', 'src/rules/rules.css', 'src/buttons.css']
 
 const CARD = { id: 'card.standard.63x88', version: 1 }
 const card = (id: string, zone: string, x: number, y: number, cardRef: string | null): VisibleComponentState => ({ id, type: CARD, zone, face: cardRef === null ? 'back' : 'front', x, y, rot: 0, cardRef })

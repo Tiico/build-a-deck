@@ -38,7 +38,8 @@ const shell = read('index.html')
 // A card face that is not there yet is drawn by the texture's own sheet, and that is the sheet
 // that lays something over a card: without it the state that covered the verbs in #78 is not on
 // the page at all, and the measurement is of a screen the player never sees.
-const css = `${read('src/player/player.css')}\n${read('src/buttons.css')}\n${read('src/table/keyboard.css')}\n${read('src/rules/rules.css')}\n${read('src/table/texture.css')}`
+const css = `${read('src/player/player.css')}\n${read('src/buttons.css')}\n${read('src/table/keyboard.css')}\n${read('src/rules/rules-open.css')}
+${read('src/rules/rules.css')}\n${read('src/table/texture.css')}`
 
 // A surface is a React tree, or the markup of one where a state the server render cannot reach
 // has been put in its place.

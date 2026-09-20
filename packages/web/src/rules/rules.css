@@ -1,24 +1,17 @@
-/* The rules at the table and on the phone (B7): a drawer with the book, and the question on top. */
-.byd-rules-drawer[data-placement='table'] { position: absolute; right: 0; top: 0; bottom: 0; z-index: 30; pointer-events: none; }
-.byd-rules-drawer[data-placement='table'] > * { pointer-events: auto; }
-/* The button says what it is; where it sits is the placement's business. A button that carried its
-   own corner is how it came to lie over the QR code on a TV (#30). */
-.byd-rules-open {
-  border: 1px solid #3b4358;
-  border-radius: 10px;
-  padding: 8px 14px;
-  background: rgba(11, 13, 18, 0.9);
-  color: #e6ecfa;
-  font: 700 13px system-ui, sans-serif;
-  cursor: pointer;
+/* Luckans insida (B7, #346). Allt som står här ritas först när någon har tryckt på `Regler`, och
+   arket hämtas då — det ligger inte i den blockerande stilmallen. Ramen och knappen som öppnar
+   luckan står i `rules-open.css`, som gör det, eftersom de hör till första bildrutan. */
+
+/* Skrollisten i luckan (#321). Bindningen står här, hos färgerna den pekar på: boken är papper i
+   ett mörkt rum och ärver ingenting av det den ligger över, och sedan #346 reser arket först när
+   luckan öppnas — så bindningen måste resa med det. Bandet över boken som spår, bokens tysta
+   register som tumme, dess bläck under pekaren. */
+.byd-rules-panel {
+  --byd-scroll-track: var(--byd-rules-band);
+  --byd-scroll-thumb: var(--byd-rules-quiet);
+  --byd-scroll-thumb-hover: var(--byd-rules-ink);
 }
-.byd-rules-drawer[data-placement='table'] .byd-rules-open { position: absolute; right: 16px; top: 16px; }
-/* And out from under it once it is open (#227). The button sits in the felt's corner and the
-   drawer takes the outermost 380 px, so the open drawer used to cover the very button that opened
-   it — measured in the prototype, and true at the table, on the TV's felt and in the editor's
-   preview alike, because all three read this rule. The phone is untouched: there the drawer is
-   the whole screen by decision, and the button rides in a header behind it. */
-.byd-rules-drawer[data-placement='table']:has(.byd-rules-panel) .byd-rules-open { right: calc(min(380px, 92vw) + 16px); }
+
 .byd-rules-panel {
   /* Luckan är papper i ett rum som är mörkt — den hänger på filten, på TV:n och i editorns
      förhandsvisning — och ärver därför ingenting av det den ligger över. De fyra färgerna den
@@ -121,14 +114,14 @@
 .byd-rules-hits p { margin: 0; font: 14px/1.6 Georgia, serif; white-space: pre-line; }
 .byd-rules-none { color: #6b6255; font: 13px system-ui, sans-serif; }
 
-/* In a TV's header the button is laid out by the header, so the drawer is nothing but its two
+/* Var luckan hänger på de två ytor som inte är filten. Ramens `display: contents` och telefonens
+   mindre knapp står i `rules-open.css` sedan #346: de ritas på första bildrutan, det här gör de
+   inte.
+
+   In a TV's header the button is laid out by the header, so the drawer is nothing but its two
    children; the book itself is fixed to the screen's own right edge rather than to a strip on the
    page, which is what let it cover the way in (#30). */
-.byd-rules-drawer[data-placement='tv'] { display: contents; }
 .byd-rules-drawer[data-placement='tv'] .byd-rules-panel { position: fixed; z-index: 40; }
 
 /* On the phone the drawer is the screen: there is nothing behind it worth keeping in view. */
-/* On the phone the button rides in the header beside the session's own; the panel is the screen. */
-.byd-rules-drawer[data-placement='phone'] { display: contents; }
-.byd-rules-drawer[data-placement='phone'] .byd-rules-open { border-radius: 8px; padding: 6px 10px; font-size: 12px; }
 .byd-rules-drawer[data-placement='phone'] .byd-rules-panel { position: fixed; inset: 0; width: auto; z-index: 40; }

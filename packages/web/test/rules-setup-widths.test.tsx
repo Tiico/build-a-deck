@@ -22,7 +22,8 @@ import { contrastRatio } from '../src/player/contrast.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
-const css = `${read('src/rules/rules.css')}\n${read('src/a11y.css')}`
+const css = `${read('src/rules/rules-open.css')}
+${read('src/rules/rules.css')}\n${read('src/a11y.css')}`
 
 // En bok med ett enda uppställningsblock i: det är bilden som mäts, och allt annat i boken vore
 // bara höjd att skrolla förbi.
@@ -57,13 +58,18 @@ const ZONES_IN_DENSE = 5 + 8 * 5
 
 type Placement = 'table' | 'tv' | 'phone'
 // Bilden som den står utfälld, ritad av produktens egen komponent och inte av en avskrift här.
-function markupOf(rules: RenderedRules, placement: Placement): string {
+//
+// Luckan väntas in innan markupen plockas (#346): sedan dess ark lyftes av den kritiska vägen
+// hämtas luckan med sin stilmall, och den finns inte i samma bildruta som knappen. Utan väntan
+// vore `container.innerHTML` bara knappen, och Chromium hade fått mäta en tom ruta.
+async function markupOf(rules: RenderedRules, placement: Placement): Promise<string> {
   const { container, unmount } = render(
     <Language lang="sv">
       <RuleShelf rules={rules} placement={placement} startOpen />
     </Language>,
   )
   try {
+    await within(container).findByRole('dialog', { name: 'Regler' })
     fireEvent.click(within(container).getByRole('button', { name: 'Visa uppställningen' }))
     return container.innerHTML
   } finally {
@@ -82,7 +88,7 @@ afterAll(async () => {
 // Luckan hänger på filten vid bordet och är fäst vid skärmen på TV:n och telefonen, så bordets
 // variant behöver ett rum att hänga i. Rummet är fönstret, vilket är vad filten är.
 async function onSurface<T>(rules: RenderedRules, placement: Placement, size: { w: number; h: number }, look: (page: Page) => Promise<T>): Promise<T> {
-  const html = markupOf(rules, placement)
+  const html = await markupOf(rules, placement)
   const page = await browser.newPage({ viewport: { width: size.w, height: size.h } })
   try {
     const document_ = shell

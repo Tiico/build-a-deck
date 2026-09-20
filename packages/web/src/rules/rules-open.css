@@ -1,0 +1,46 @@
+/* Vägen in i boken, och bara den (#346). Knappen hör till bordet och inte till boken: den ritas
+   på första bildrutan, innan någon har bett om något, så dess regler ligger i det ark den första
+   målningen ändå väntar på. Luckans insida ligger i `rules.css`, som hämtas först när någon
+   trycker — den var närmare fyra kilobyte av ett ark som blockerade för en lucka ingen hade
+   öppnat, och det är den kostnaden den här delningen tar bort (#186:s väg).
+
+   Skarven går alltså vid vad första bildrutan faktiskt visar. Det som står här är ramen luckan
+   hänger i och knappen som öppnar den; allt som finns inuti luckan står i det andra arket, och
+   `felt-font.spec.ts` mäter de två var för sig så att ingen av dem glider in i den andras. */
+.byd-rules-drawer[data-placement='table'] { position: absolute; right: 0; top: 0; bottom: 0; z-index: 30; pointer-events: none; }
+.byd-rules-drawer[data-placement='table'] > * { pointer-events: auto; }
+/* The button says what it is; where it sits is the placement's business. A button that carried its
+   own corner is how it came to lie over the QR code on a TV (#30). */
+.byd-rules-open {
+  border: 1px solid #3b4358;
+  border-radius: 10px;
+  padding: 8px 14px;
+  background: rgba(11, 13, 18, 0.9);
+  color: #e6ecfa;
+  font: 700 13px system-ui, sans-serif;
+  cursor: pointer;
+}
+.byd-rules-drawer[data-placement='table'] .byd-rules-open { position: absolute; right: 16px; top: 16px; }
+/* And out from under it once it is open (#227). The button sits in the felt's corner and the
+   drawer takes the outermost 380 px, so the open drawer used to cover the very button that opened
+   it — measured in the prototype, and true at the table, on the TV's felt and in the editor's
+   preview alike, because all three read this rule. The phone is untouched: there the drawer is
+   the whole screen by decision, and the button rides in a header behind it.
+
+   Regeln står här och inte hos luckan, fast den nämner luckan: det är knappens plats som ändras,
+   och knappens plats får inte vänta på ett ark som kommer när luckan öppnas. */
+.byd-rules-drawer[data-placement='table']:has(.byd-rules-panel) .byd-rules-open { right: calc(min(380px, 92vw) + 16px); }
+
+/* De två ytor där knappen rider i en rad i stället för att hänga i ett hörn: TV:ns huvud (#30)
+   och telefonens egen rad. Där lägger raden ut knappen, så ramen försvinner ur layouten — och
+   det måste den ha gjort på första bildrutan, annars står knappen en stund i en ruta av sin egen
+   och raden ritas om när luckans ark kommer.
+
+   Telefonens knapp är dessutom en mindre knapp. Den formen är knappens och inte luckans, så den
+   hör hit av samma skäl som resten av `.byd-rules-open`: det är den knapp telefonen visar innan
+   någon har bett om boken. Låg i `rules.css` fram till #346, vilket hade gjort telefonens knapp
+   till den enda som ritades om efter första bildrutan — just den yta där formen skiljer sig
+   mest. Luckans egna mått på de två ytorna står kvar hos luckan. */
+.byd-rules-drawer[data-placement='tv'] { display: contents; }
+.byd-rules-drawer[data-placement='phone'] { display: contents; }
+.byd-rules-drawer[data-placement='phone'] .byd-rules-open { border-radius: 8px; padding: 6px 10px; font-size: 12px; }

@@ -31,7 +31,7 @@ const ROOMS: Record<string, { selector: string; sheets: string[] }> = {
   // Regelboken är ett rum som öppnas inuti ett annat — luckan hänger på filten, på TV:n och i
   // editorns förhandsvisning — och den är papper där alla tre är mörka. Ett rum ärver inte sitt
   // omland, så boken binder sina egna token; det är också hela skälet att den räknas som ett rum.
-  regelboken: { selector: '.byd-rules-panel', sheets: [read('rules/rules.css')] },
+  regelboken: { selector: '.byd-rules-panel', sheets: [read('rules/rules-open.css') + read('rules/rules.css')] },
   // Rummet under alla andra. Kontosidorna, platsväljaren och statussidorna binder ingenting av
   // sitt eget, och det är dem `:root` svarar för — liksom varje yta som råkar hamna utanför alla
   // rum. En grund som bara gäller «resten» är fortfarande en grund och mäts som en.

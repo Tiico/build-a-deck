@@ -124,12 +124,19 @@ test.describe('the felt’s face is in the document before the first painting (K
     // What the raise does not touch is the thing the gate is for. A second face is 45 kB at its
     // cheapest, twelve times this whole margin, and it is felled exactly as before.
     //
-    // The way out, when one is wanted, is #186's: the rulebook's drawer is three and a half
-    // kilobytes of this sheet and nobody sees it until a button is pressed. Taking it off the
-    // critical path is a change of its own — the button that opens it has to stay — and it would
-    // buy back more than every raise this line has ever taken.
+    // The way out was taken, in #346: the rulebook's drawer went off the critical path the way
+    // #186 moved the editor's sheet, and the line comes down instead of up for the first time.
+    // The drawer's inside is 4.0 kB and it now travels when somebody presses the button; the
+    // button itself stayed, with its own rules — all of them, the phone's smaller form included —
+    // because it is drawn on the first frame.
+    //
+    // 88 kB → 83.5 kB. The sheet measures 81.1 kB beside the face, so the saving is banked rather
+    // than spent on headroom: the line comes down 4.5 kB against 4.0 kB lifted, and what is left
+    // over — 2.4 kB — is a little less than the 2.9 kB the line carried before and not more. A cut
+    // that handed the saving straight back as slack would have measured nothing, which is the
+    // mistake the seven raises above were made of.
     const sheet = blockingSheets(index).reduce((sum, href) => sum + statSync(join(OUT, href.replace(/^\//, ''))).size, 0)
-    expect(sheet).toBeLessThan(inlined + 88_000)
+    expect(sheet).toBeLessThan(inlined + 83_500)
   })
 
   // And the same thing said by a browser rather than by a reader of files: the built app served
@@ -211,5 +218,45 @@ test.describe('the editor is not weighed against the felt’s face (#186)', () =
       })
       expect(flex).toEqual({ bare: '0', dressed: '1' })
     }
+  })
+})
+
+// The drawer's own sheet, off the critical path (#346, #186's way). The book is behind a button
+// nobody has pressed on the first frame, and it was three and a half kilobytes of the sheet the
+// first painting waits for — which is what the line above spent seven raises arguing about.
+//
+// The split is along what the first frame actually shows. The button belongs to the table and
+// keeps its rules in the sheet that blocks; everything inside the drawer belongs to the book and
+// travels when the book is asked for. So the two are measured apart, and neither is allowed to
+// drift into the other's sheet.
+test.describe('the rulebook’s drawer waits for its own sheet (#346)', () => {
+  test('keeps the button that opens it in the blocking sheet, and the drawer’s inside out of it', () => {
+    const blocking = blockingSheets(index).map((href) => readFileSync(join(OUT, href.replace(/^\//, '')), 'utf8'))
+    // The button is drawn on the first frame, so its rules are in the sheet the first frame has.
+    expect(blocking.filter((css) => css.includes('.byd-rules-open')).length).toBeGreaterThan(0)
+    // And the inside of the drawer is not: the page it is read on, the question above it, the
+    // living number. The panel itself is named as a *condition* in the button's own rule — the
+    // button steps aside when the drawer is out — so what is asked of it is that nothing in the
+    // blocking sheet dresses it, which is the `{` after the name rather than the name.
+    for (const inside of ['.byd-rules-page', '.byd-rules-tally', '.byd-rules-ask']) {
+      expect(blocking.filter((css) => css.includes(inside))).toEqual([])
+    }
+    expect(blocking.filter((css) => /\.byd-rules-panel\s*\{/.test(css))).toEqual([])
+  })
+
+  test('ships the drawer’s inside in a sheet of its own, and no part of the button with it', () => {
+    const blocking = blockingSheets(index)
+    const others = filesUnder(OUT)
+      .filter((path) => path.endsWith('.css'))
+      .filter((path) => !blocking.some((href) => path.endsWith(href.replace(/^\//, ''))))
+      .map((path) => readFileSync(path, 'utf8'))
+    // Somewhere that is not the blocking sheet, the book is fully dressed.
+    expect(others.filter((css) => css.includes('.byd-rules-page') && css.includes('.byd-rules-panel')).length).toBeGreaterThan(0)
+    // And not one rule about the button travels with it. The split has a seam and the seam can be
+    // put in the wrong place: the phone's own smaller button was left inside the drawer's sheet
+    // when the two were first pulled apart, which would have redrawn the one surface where the
+    // button's shape differs most — and only once somebody pressed it. Naming the class rather
+    // than a selector is what makes that impossible to do again by halves.
+    expect(others.filter((css) => css.includes('.byd-rules-open'))).toEqual([])
   })
 })

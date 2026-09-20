@@ -66,6 +66,10 @@ describe('a picture at the table (#173)', () => {
   it('holds the same frame the printed booklet does, said in the book’s own type', () => {
     // A5 sets the size and the other two surfaces draw the same picture inside it. A stylesheet
     // cannot read the constant, so this is what keeps the three of them from drifting apart.
+    //
+    // Det är luckans egna ark som räknas, inte `rules-open.css` (#346): en bild står inne i
+    // luckan, och delningen lade knappens och ramens regler — och bara dem — i det ark första
+    // bildrutan väntar på. Ramen hör dit bilden ritas.
     for (const sheet of ['../src/rules/rules.css', '../src/editor/editor.css']) {
       const css = readFileSync(new URL(sheet, import.meta.url), 'utf8')
       expect(css).toContain(`${RULE_IMAGE_FRAME.wEm}em`)

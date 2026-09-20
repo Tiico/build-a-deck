@@ -22,7 +22,8 @@ import { atWidth } from './viewport.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
-const css = `${read('src/editor/editor.css')}\n${read('src/rules/rules.css')}\n${read('src/buttons.css')}\n${read('src/a11y.css')}`
+const css = `${read('src/editor/editor.css')}\n${read('src/rules/rules-open.css')}
+${read('src/rules/rules.css')}\n${read('src/buttons.css')}\n${read('src/a11y.css')}`
 
 const document_ = (html: string) =>
   shell
@@ -73,7 +74,14 @@ async function rules(width: number, state: State): Promise<string> {
       fireEvent.click(screen.getByRole('button', { name: 'Börja från en mall' }))
       await waitFor(() => expect(document.querySelector('[data-rulebook]')).not.toBeNull())
     }
-    if (state === 'table') fireEvent.click(screen.getByRole('button', { name: 'Som på bordet' }))
+    if (state === 'table') {
+      fireEvent.click(screen.getByRole('button', { name: 'Som på bordet' }))
+      // Luckan hämtas med sin egen stilmall sedan #346, så den finns inte i samma bildruta som
+      // trycket. Markupen plockas först när den är framme — utan väntan vore det läget bara en
+      // tom läsyta, och Chromium hade mätt en bild produkten aldrig visar. Väntan står här och
+      // inte i påståendena: det som mäts efteråt är exakt detsamma som förut.
+      await waitFor(() => expect(document.querySelector('.byd-rules-panel')).not.toBeNull())
+    }
     if (state === 'proposal') {
       fireEvent.change(screen.getByLabelText('Importera över boken'), { target: { files: [new File([OVER], 'regler-v4.md', { type: 'text/markdown' })] } })
       await screen.findByRole('region', { name: 'Vad importen gör med boken du har' })

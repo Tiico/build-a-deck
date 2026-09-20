@@ -22,7 +22,8 @@ import { atWidth } from './viewport.js'
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
 const editorCss = read('src/editor/editor.css')
-const css = `${editorCss}\n${read('src/buttons.css')}\n${read('src/a11y.css')}\n${read('src/rules/rules.css')}`
+const css = `${editorCss}\n${read('src/buttons.css')}\n${read('src/a11y.css')}\n${read('src/rules/rules-open.css')}
+${read('src/rules/rules.css')}`
 
 const document_ = (html: string) =>
   shell

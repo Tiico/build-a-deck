@@ -110,10 +110,7 @@
   --byd-scroll-thumb-hover: var(--muted);
 }
 
-/* Regelbokens lucka är papper i ett mörkt rum och ärver därför ingenting av det den ligger över.
-   Bandet över boken som spår, bokens tysta register som tumme, dess bläck under pekaren. */
-.byd-rules-panel {
-  --byd-scroll-track: var(--byd-rules-band);
-  --byd-scroll-thumb: var(--byd-rules-quiet);
-  --byd-scroll-thumb-hover: var(--byd-rules-ink);
-}
+/* Regelbokens lucka binder sina skrolltoken i `rules/rules.css` och inte här (#321, flyttad i
+   #346). Bindningen pekar på bokens fyra färger, och de reser med luckans eget ark sedan det
+   lyftes av den kritiska vägen — en bindning utan sina färger är ingen bindning, så de två hör
+   ihop i samma fil. `scrollbar-contrast.test.ts` läser rummets ark och hittar dem där. */

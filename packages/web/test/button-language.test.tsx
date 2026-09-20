@@ -358,7 +358,8 @@ async function playerViews(): Promise<Record<string, string>> {
 
 describe('the phone', () => {
   it('wears the primary fill on nothing but the action that moves the seat on', async () => {
-    const css = `${read('src/player/player.css')}\n${read('src/table/keyboard.css')}\n${read('src/rules/rules.css')}`
+    const css = `${read('src/player/player.css')}\n${read('src/table/keyboard.css')}\n${read('src/rules/rules-open.css')}
+${read('src/rules/rules.css')}`
     const measured = await inChromium(css, 390, await playerViews(), wearingThePrimary('.byd-player, .byd-survey'))
     // Leaving your seat and ending everyone's table are deliberately not a first action (#31).
     expect(measured).toEqual({ enkäten: ['Nästa'], 'vägen ut': [] })
@@ -422,7 +423,7 @@ describe('the seat that plays on the table screen', () => {
 // value, would have fallen back to the browser's own grey: not a quiet button but no declaration
 // at all. The ring's own buttons speak their own dialect in `table.css` and are measured here
 // too, as the control: a room with a ring open and nothing else wears the primary on nothing.
-const TABLE_CSS = ['src/table/table.css', 'src/table/texture.css', 'src/table/keyboard.css', 'src/rules/rules.css', 'src/status/status.css', 'src/a11y.css'].map(read).join('\n')
+const TABLE_CSS = ['src/table/table.css', 'src/table/texture.css', 'src/table/keyboard.css', 'src/rules/rules-open.css', 'src/rules/rules.css', 'src/status/status.css', 'src/a11y.css'].map(read).join('\n')
 
 async function tableViews(): Promise<Record<string, string>> {
   atWidth(1280)
@@ -1009,7 +1010,8 @@ describe('what the whole tool draws as chosen', () => {
       'sätt dig vid bordet': [read('src/join/join.css'), 390, '.byd-join', await joinViews()],
       'guidad start': [read('src/wizard/wizard.css'), 1280, '.byd-wizard', await wizardViews(1280)],
       'editorn': [read('src/editor/editor.css'), 1280, '.byd-editor', await editorViews(1280)],
-      'telefonen': [`${read('src/player/player.css')}\n${read('src/table/keyboard.css')}\n${read('src/rules/rules.css')}`, 390, '.byd-player', await playerViews()],
+      'telefonen': [`${read('src/player/player.css')}\n${read('src/table/keyboard.css')}\n${read('src/rules/rules-open.css')}
+${read('src/rules/rules.css')}`, 390, '.byd-player', await playerViews()],
       'storbilden': [ONLINE_CSS, 390, '.byd-online', await onlineView()],
       'den som tittar på': [OBSERVER_CSS, 390, '.byd-observer', await observerView()],
     } as const
@@ -1231,6 +1233,7 @@ describe('every suite that measures a surface', () => {
       'online-viewport.test.tsx',
       'player-viewport.test.tsx',
       'rules-column.test.tsx',
+      'rules-first-frame.test.tsx',
       'rules-layout.test.tsx',
       'setup-sheet-fold.test.tsx',
       'table-layout.test.tsx',

@@ -1,12 +1,18 @@
-import { createContext, useContext, useEffect, useState, type Ref } from 'react'
+import { Suspense, createContext, lazy, useContext, useEffect, useState, type Ref } from 'react'
 import { ruleEm, type RenderedBlock, type RenderedNode, type RenderedRules } from '@byd/template'
 import { zoneTally, type ZoneTally } from '@byd/engine'
 import type { ZoneView } from '@byd/protocol'
-import { findRules } from './search.js'
 import { SetupOverview } from './SetupOverview.js'
 import { useT } from '../i18n/index.js'
 import type { Key } from '../i18n/sv.js'
-import './rules.css'
+import './rules-open.css'
+
+// Luckans insida kommer när den efterfrågas (#346, #186:s väg). Boken är tre och ett halvt
+// kilobyte stilmall bakom en knapp ingen har tryckt på när sidan målas första gången, så den
+// reser i en chunk av sitt eget. Bygget lägger chunkens ark bredvid dess kod och `import()`
+// blir klar först när båda är framme — därför kan luckan inte visas oklädd, vilket var hela
+// risken med att flytta den.
+const RulePanel = lazy(() => import('./RulePanel.js').then((m) => ({ default: m.RulePanel })))
 
 // The table the book is being read at, or nothing (#226). It is a *reader's own* view of the
 // table — the projection, never the state — so what the book is able to say is whatever that
@@ -75,7 +81,6 @@ export function RuleShelf({ rules, assets, placement, startOpen, body, live }: R
   const t = useT()
   const [open, setOpen] = useState(startOpen ?? false)
   const [query, setQuery] = useState('')
-  const hits = rules ? findRules(rules, query) : []
   return (
     <LiveTableContext.Provider value={live ?? null}>
       <div className="byd-rules-drawer" data-placement={placement}>
@@ -83,45 +88,12 @@ export function RuleShelf({ rules, assets, placement, startOpen, body, live }: R
           {open ? t('rules.drawer.close') : t('rules.drawer.open')}
         </button>
         {open && (
-          <aside className="byd-rules-panel" role="dialog" aria-label={t('rules.drawer.open')}>
-            <div className="byd-rules-ask">
-              <input type="search" aria-label={t('rules.drawer.ask')} placeholder={t('rules.drawer.ask')} value={query} onChange={(e) => setQuery(e.target.value)} />
-              <button type="button" aria-label={t('rules.drawer.close')} onClick={() => setOpen(false)}>
-                ×
-              </button>
-            </div>
-            <div className="byd-rules-body" ref={body}>
-              {rules === null ? (
-                <p>{t('rules.drawer.loading')}</p>
-              ) : query.trim() ? (
-                hits.length === 0 ? (
-                  <p className="byd-rules-none">{t('rules.drawer.none')}</p>
-                ) : (
-                  <ol className="byd-rules-hits">
-                    {hits.map((h) => (
-                      <li key={h.id}>
-                        <h3>{h.heading}</h3>
-                        <p>{h.text}</p>
-                      </li>
-                    ))}
-                  </ol>
-                )
-              ) : (
-                <article className="byd-rules-page">
-                  <h2>{rules.title}</h2>
-                  {/* Each block says which one it is, so that a reader's place in the book can be
-                      carried between two boxes of different widths (#227). It is the same mark the
-                      editor's own page carries, and the only thing the two books have in common
-                      once their measures differ. */}
-                  {rules.blocks.map((b) => (
-                    <div key={b.id} data-block={b.id}>
-                      <RuleBlockView block={b} assets={assets} />
-                    </div>
-                  ))}
-                </article>
-              )}
-            </div>
-          </aside>
+          // Ingenting under tiden, med flit: knappen står kvar och säger «Stäng», och luckan
+          // kommer när den är klädd. En reserv som ritade en tom ruta hade varit just den
+          // oklädda blink flytten inte får kosta.
+          <Suspense fallback={null}>
+            <RulePanel rules={rules} assets={assets} query={query} onQuery={setQuery} onClose={() => setOpen(false)} body={body} />
+          </Suspense>
         )}
       </div>
     </LiveTableContext.Provider>
