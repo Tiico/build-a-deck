@@ -41,7 +41,7 @@ describe('the motifs of a deck (E1)', () => {
   it('measures a picture nobody has measured, tells the server, and asks rather than measures the next time', async () => {
     await run.projects.create(run.projectId, projectDoc())
     const client = await ProjectClient.open({ http: run.http, id: run.projectId })
-    const hash = await client.uploadAsset(new Blob([PNG], { type: 'image/png' }))
+    const hash = await client.uploadAsset(new Blob([PNG], { type: 'image/png' }), 'image')
     const first = measures(MOTIF)
 
     expect(await client.motifs([hash], first.measure)).toEqual({ [hash]: MOTIF })
@@ -58,7 +58,7 @@ describe('the motifs of a deck (E1)', () => {
   it('leaves out a picture it cannot measure, so such a card is drawn by its file rather than not at all', async () => {
     await run.projects.create(run.projectId, projectDoc())
     const client = await ProjectClient.open({ http: run.http, id: run.projectId })
-    const hash = await client.uploadAsset(new Blob([PNG], { type: 'image/png' }))
+    const hash = await client.uploadAsset(new Blob([PNG], { type: 'image/png' }), 'image')
 
     expect(await client.motifs([hash], measures(null).measure)).toEqual({})
     expect(await (await fetch(`${run.http}/assets/motifs?of=${hash}`)).json()).toEqual({})

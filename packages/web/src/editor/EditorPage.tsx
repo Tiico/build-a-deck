@@ -383,7 +383,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         doc={doc}
         project={projectId ?? undefined}
         assetBase={http}
-        onUpload={(file) => client.uploadAsset(file, t)}
+        onUpload={(file) => client.uploadAsset(file, 'image', t)}
         onSymbol={(symbol) => client.useSymbol(symbol, undefined, t)}
         compareWith={compare ?? undefined}
         onStopCompare={() => setCompare(null)}

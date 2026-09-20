@@ -829,7 +829,10 @@ export const enEditor = {
   'history.daysAgo': '{n} days ago',
 
   'project.notMine': 'this game belongs to someone else',
-  'upload.wrongType': 'only images and font files can be uploaded',
+  // The upload declares its own kind (#312), so a refusal can only be about the bytes — and it
+  // names the formats that kind may be in rather than blaming the file for being the wrong sort.
+  'upload.or': ' or ',
+  'upload.notThisKind': 'the file is not {formats}',
   'upload.tooBig': 'the file is too large (8 MB at most)',
   'upload.failed': 'could not upload the file: {status}',
 

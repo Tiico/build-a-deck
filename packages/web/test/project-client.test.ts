@@ -434,15 +434,20 @@ describe('images (E1)', () => {
     // A whole PNG signature, because the server reads the file rather than its name (#204).
     const png = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3])
     const file = new File([png], 'drake.png', { type: 'image/png' })
-    const hash = await client.uploadAsset(file)
+    const hash = await client.uploadAsset(file, 'image')
     expect(hash).toMatch(/^[0-9a-f]{64}$/)
-    expect(await client.uploadAsset(file)).toBe(hash)
+    expect(await client.uploadAsset(file, 'image')).toBe(hash)
     const served = await fetch(`${run.http}/assets/${hash}`)
     expect(served.status).toBe(200)
     expect(new Uint8Array(await served.arrayBuffer())).toEqual(png)
-    await expect(client.uploadAsset(new File(['x'], 'x.txt', { type: 'text/plain' }))).rejects.toThrow(/bara bilder/)
+    // The refusal used to read «bara bilder och typsnittsfiler kan laddas upp», which was the one
+    // message for two different noes: the upload declared nothing the tool knew, or the bytes were
+    // not the kind it declared. The kind is the caller's own word now (#312), so only the second
+    // can happen and the message can say which formats were expected instead of blaming the file
+    // for being the wrong sort.
+    await expect(client.uploadAsset(new File(['x'], 'x.txt', { type: 'text/plain' }), 'image')).rejects.toThrow(/PNG/)
     // And a file that is named like a picture but is not one is refused just as plainly.
-    await expect(client.uploadAsset(new File(['<b>hej</b>'], 'drake.png', { type: 'image/png' }))).rejects.toThrow(/bara bilder/)
+    await expect(client.uploadAsset(new File(['<b>hej</b>'], 'drake.png', { type: 'image/png' }), 'image')).rejects.toThrow(/PNG/)
   })
 })
 
@@ -562,6 +567,38 @@ describe('the type the game is set in (B3)', () => {
 
     client.removeFont(family)
     expect(client.doc.fonts?.[family]).toBeUndefined()
+  })
+
+  // What a browser actually hands over. `File.type` for a typeface is very often the empty string
+  // and, where it is not, it is a name of the platform's choosing rather than one of ours — so the
+  // declaration the upload carried was never the file's own word about itself. The test above
+  // states `font/woff2` by hand and therefore never asked the question (#312).
+  //
+  // The bytes are real for the same reason they are elsewhere here: a Blob that stringified to
+  // `[object Blob]` once passed every upload test in this suite, so a test that does not send a
+  // file the server can sniff is a test that proves nothing.
+  it.each([
+    ['a WOFF2 the browser had no name for', new Uint8Array([119, 79, 70, 50, 0, 1, 0, 0]), 'Rubrikserif.woff2'],
+    ['a TTF, whose name differs from ours where the browser has one at all', new Uint8Array([0x00, 0x01, 0x00, 0x00, 0, 0, 0, 0]), 'Rubrikgrotesk.ttf'],
+  ])('takes %s', async (_what, bytes, name) => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    // Exactly what Chrome, Safari and Firefox hand over for these on macOS: no type at all.
+    const file = new File([bytes], name, { type: '' })
+    expect(file.type).toBe('')
+    const family = await client.useFont(file)
+    expect(client.doc.fonts?.[family]?.asset).toMatch(/^asset:[0-9a-f]{64}$/)
+  })
+
+  // And the refusal that is left says what was wrong with the file rather than blaming its kind:
+  // the declaration is the client's own now, so a 415 can only mean the bytes are not that kind.
+  it('says which formats a typeface may be in when the bytes are not one', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    const notAFont = new File([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])], 'Rubrik.ttf', { type: '' })
+    // Formatnamnen är verktygets ord och är desamma för varje läsare; «eller» är det inte, och
+    // kommer därför ur katalogen (A4). En engelsk läsare får samma rad med «or».
+    await expect(client.useFont(notAFont)).rejects.toThrow(/WOFF2, WOFF, TTF eller OTF/)
   })
 })
 
