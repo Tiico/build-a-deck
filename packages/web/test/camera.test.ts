@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { activeBounds, cameraOf, fitFloor, frameRect, reachOf, zoomAround } from '../src/table/camera.js'
+import { activeBounds, cameraOf, fitFloor, frameRect, overscanPx, reachOf, zoomAround } from '../src/table/camera.js'
 import { buildScene } from './scene.js'
 
 // The camera (C5): a rectangle of the table, in millimetres, at the viewport's aspect.
@@ -66,5 +66,40 @@ describe('framing', () => {
     expect(cameraOf(z, wide, floor)).toEqual({ scale: 1000 / 600, left: -(z.x - floor.x) * (1000 / 600), top: -(z.y - floor.y) * (1000 / 600) })
     // Zooming out past the floor lands on the whole floor.
     expect(zoomAround(z, { x: 100, y: 50 }, 4, wide, floor, 200)).toEqual(whole)
+  })
+})
+
+// The TV's overscan (#322): a TV may hide the outer edge of the picture it is sent, so the
+// automatic framing keeps 3 % of the viewport's shortest side clear on every side.
+describe('the overscan margin (#322)', () => {
+  // 1000 × 500 px, so the margin is 15 px and the picture inside it 970 × 470.
+  const vp = { w: 1000, h: 500 }
+  const margin = overscanPx(vp)
+
+  it('is 3 % of the viewport\'s shortest side', () => {
+    expect(margin).toBe(15)
+    expect(overscanPx({ w: 1920, h: 1080 })).toBeCloseTo(32.4)
+    expect(overscanPx({ w: 1080, h: 1920 })).toBeCloseTo(32.4)
+  })
+
+  it('fits the floor inside the margin: the framed rectangle is the floor plus the margin on all four sides', () => {
+    // A floor as tall as the picture inside the margin, 470 mm, lands at one pixel per
+    // millimetre: the camera is then the whole viewport, 15 mm outside the floor top and bottom.
+    expect(fitFloor({ x: 0, y: 0, w: 400, h: 470 }, vp, margin)).toEqual({ x: -300, y: -15, w: 1000, h: 500 })
+    // A floor as wide as the picture inside the margin, 970 mm: 15 mm outside it left and right.
+    expect(fitFloor({ x: 0, y: 0, w: 970, h: 200 }, vp, margin)).toEqual({ x: -15, y: -150, w: 1000, h: 500 })
+    // Without the margin, the floor meets the viewport's edge as before.
+    expect(fitFloor({ x: 0, y: 0, w: 400, h: 470 }, vp)).toEqual({ x: -270, y: 0, w: 940, h: 470 })
+  })
+
+  it('bounds the automatic framing: what the camera is pointed at stays inside the margin', () => {
+    // A target with the inner picture's own shape, ten times smaller: framed at ten pixels per
+    // millimetre it fills the 970 × 470 inside the margin, and the camera is 1.5 mm outside it.
+    expect(frameRect({ x: 0, y: 0, w: 97, h: 47 }, vp, floor, 0, margin)).toEqual({ x: -1.5, y: -1.5, w: 100, h: 50 })
+    // The whole floor, framed automatically, is the floor plus the margin.
+    expect(frameRect(floor, vp, floor, 0, margin)).toEqual(fitFloor(floor, vp, margin))
+    // Zoomed all the way out by hand, the camera reaches the floor's edge: the margin bounds the
+    // automatic framing, not what a person zooms to.
+    expect(zoomAround(fitFloor(floor, vp, margin), { x: 0, y: 0 }, 8, vp, floor, 0)).toEqual(fitFloor(floor, vp))
   })
 })

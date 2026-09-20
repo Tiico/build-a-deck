@@ -10,6 +10,15 @@ export type Size = { w: number; h: number }
 // The label under a pile hangs this far below the card.
 const LABEL_MM = 24
 
+// The TV's overscan (#322). A TV may hide the outer edge of the picture it is sent, so on the TV
+// the automatic framing keeps this share of the viewport's shortest side clear on all four sides:
+// the action-safe level. It is a safety margin and not a drawn frame. It bounds where the camera
+// frames to by itself (`frameRect`, `fitFloor`); a person zooming may go into it (`zoomAround`).
+export const TV_OVERSCAN = 0.03
+// The margin in the viewport's own pixels. The camera is in millimetres, and the viewport is the
+// only place where the two meet, so `withAspect` is where the margin is turned into millimetres.
+export const overscanPx = (vp: Size): number => TV_OVERSCAN * Math.min(vp.w, vp.h)
+
 // What is in play: the loose cards, the setup's piles and areas (the board itself, empty or
 // not), and piles made during play while they last. Hands are not content — they sit at the rim
 // and always exist, so framing them means framing the rim.
@@ -50,9 +59,10 @@ export const centre = (r: Rect): Point => ({ x: r.x + r.w / 2, y: r.y + r.h / 2 
 export const same = (a: Rect | null, b: Rect | null): boolean => a === b || (!!a && !!b && a.x === b.x && a.y === b.y && a.w === b.w && a.h === b.h)
 
 // A rectangle grown to the viewport's aspect about its own centre: the whole floor, or the floor
-// together with whatever lies beyond its rim.
-export function fitFloor(floor: Rect, vp: Size): Rect {
-  return withAspect(floor, vp)
+// together with whatever lies beyond its rim. With a `margin`, grown further so that the
+// rectangle leaves that many pixels clear on every side of the viewport.
+export function fitFloor(floor: Rect, vp: Size, margin = 0): Rect {
+  return withAspect(floor, vp, margin)
 }
 
 // How far the camera may reach: the table, and anything in play that lies beyond its rim — where
@@ -68,9 +78,10 @@ export function reachOf(floor: Rect, content: Rect | null): Rect {
 // fitted, so the camera never shows the void beyond what there is to see.
 // A `reach` that contains the target yields a frame that contains it too: what the camera is
 // pointed at is never cut in half by the frame's edge. `reachOf` is how callers get one.
-export function frameRect(target: Rect, vp: Size, reach: Rect, minW: number): Rect {
-  const whole = fitFloor(reach, vp)
-  let r = withAspect(target, vp)
+// `margin` is how many pixels of the viewport are kept clear around the target on every side.
+export function frameRect(target: Rect, vp: Size, reach: Rect, minW: number, margin = 0): Rect {
+  const whole = fitFloor(reach, vp, margin)
+  let r = withAspect(target, vp, margin)
   if (r.w < minW) r = withAspect({ x: centre(r).x - minW / 2, y: centre(r).y, w: minW, h: 0 }, vp)
   if (r.w >= whole.w) return whole
   const x = Math.min(Math.max(r.x, whole.x), whole.x + whole.w - r.w)
@@ -96,12 +107,17 @@ export function tween(a: Rect, b: Rect, t: number): Rect {
   return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, w: a.w + (b.w - a.w) * t, h: a.h + (b.h - a.h) * t }
 }
 
-function withAspect(r: Rect, vp: Size): Rect {
-  const aspect = vp.w / vp.h
+// `r` grown about its centre to the viewport's aspect. With a `margin`, it is first grown to the
+// aspect of the picture inside the margin, and then by the margin's share on each axis, so that
+// once the camera is scaled to the viewport `r` ends `margin` pixels inside it on every side.
+function withAspect(r: Rect, vp: Size, margin = 0): Rect {
+  const inner = { w: vp.w - 2 * margin, h: vp.h - 2 * margin }
   const c = centre(r)
   let w = r.w
   let h = r.h
-  if (w / h > aspect) h = w / aspect
-  else w = h * aspect
+  if (w / h > inner.w / inner.h) h = (w * inner.h) / inner.w
+  else w = (h * inner.w) / inner.h
+  w = (w * vp.w) / inner.w
+  h = (h * vp.h) / inner.h
   return { x: c.x - w / 2, y: c.y - h / 2, w, h }
 }

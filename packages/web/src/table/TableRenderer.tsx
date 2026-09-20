@@ -5,7 +5,7 @@ import type { Peer, Pulse, Recent } from './presence.js'
 import { hue } from './hue.js'
 import { seatColor } from './seatColor.js'
 import { feltScale, fitScale, leaningSquare, woodLayout, TOUCH_PX, TV_AIR_PX } from './fit.js'
-import { activeBounds, cameraOf, fitFloor, frameRect, pad, reachOf, same, tween, zoomAround, type Rect, type Size } from './camera.js'
+import { activeBounds, cameraOf, fitFloor, frameRect, overscanPx, pad, reachOf, same, tween, zoomAround, type Rect, type Size } from './camera.js'
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
 import { CARD_MM, TOKEN_MM, absoluteOf, besidePile, dropIntents, type Drag, type DragTarget } from './drop.js'
 import { isCounter } from '../components.js'
@@ -242,7 +242,10 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   // How far the camera may reach: the table, plus anything in play that lies past its rim (#20).
   // The padding around what is in play is room to breathe, not content, so it may be cropped.
   const reach = reachOf(floorRect, inPlay)
-  const auto = inPlay && size ? frameRect(pad(inPlay, CAMERA_PAD_MM), size, reach, CAMERA_MIN_MM) : null
+  // The camera follows only on the TV (`following`), and a TV may hide the picture's outer edge,
+  // so what it frames by itself stands the overscan margin inside the frame (#322). The observer
+  // shares the mode but not the camera, and is fitted below with the air of its own.
+  const auto = inPlay && size ? frameRect(pad(inPlay, CAMERA_PAD_MM), size, reach, CAMERA_MIN_MM, overscanPx(size)) : null
   const heldCamera = useRef<Rect | null>(null)
   if (!drag) heldCamera.current = manual ?? auto
   const cam = useGlide(following ? heldCamera.current : null, glideMs)
@@ -516,7 +519,8 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   }
 
   // A zoom for a moment (C5): scroll or pinch around the pointer, double tap to go close and
-  // again to come back. The camera returns by itself.
+  // again to come back. The camera returns by itself. A zoom by hand may go into the overscan
+  // margin (#322): it bounds what the camera frames by itself, not what a person asks to see.
   const wheel = (e: RWheelEvent) => {
     const map = mapper()
     if (!following || !cam || !map) return
@@ -525,7 +529,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
   const doubleTap = (e: RMouseEvent) => {
     const map = mapper()
     if (!following || !map) return
-    zoomTo(manual ? null : zoomAround(fitFloor(reach, size), map(e.clientX, e.clientY), 1 / 2.6, size, reach, CAMERA_MIN_MM))
+    zoomTo(manual ? null : zoomAround(fitFloor(reach, size, overscanPx(size)), map(e.clientX, e.clientY), 1 / 2.6, size, reach, CAMERA_MIN_MM))
   }
   // A double press turns over what was pressed (#224): the way in for a hand that cannot hold a
   // modifier down. It is read on the frame and not on the card, because by the time the second

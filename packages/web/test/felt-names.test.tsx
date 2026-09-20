@@ -465,11 +465,16 @@ describe('the Bord tab gives the felt the room its names need (#43)', () => {
 // and moved both into the column beside the felt, and the felt is bound by its height, so every
 // pixel those two rows held came back as card. Nothing about a name moved with them, which is
 // what the second half of the reading — the smallest name, still 12 px — goes on saying.
+//
+// Lowered 2026-09-20 from 33, 49 and 99 (#322): the TV keeps an overscan margin of 3 % of the
+// frame's shortest side clear on every side, since a TV may hide the picture's outer edge, and the
+// felt being height-bound that margin is paid in card. Six per cent of it, measured here, and the
+// smallest name is still 12 px. At 1920 × 1080 the card stands one pixel above K9's floor of 45.
 describe('a name that moved changed no readability number (K9, K18)', () => {
   it.each([
-    [1280, 800, 33],
-    [1920, 1080, 49],
-    [3840, 2160, 99],
+    [1280, 800, 31],
+    [1920, 1080, 46],
+    [3840, 2160, 93],
   ])('draws the card %i × %i px wide at eight seats', async (w, h, cardPx) => {
     const size = { w, h }
     const reading = await readNames(await tvFelt(sceneOf(feltOf(MAX_PLAYERS)), size), size)
