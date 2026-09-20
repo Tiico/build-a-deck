@@ -38,6 +38,18 @@
      times, which was harmless until the mark had to be measured against it (L11) — a ground
      without a name is a ground no contrast test can ask about. */
   --byd-editor-panel-bg: #171a23;
+  /* What a card is lifted off the editor's ground with (#332, L28). Three, because a card
+     standing on a table shows three different things and they are not the same colour: the dark
+     hairline where the card's own edge is, the light that catches the top of its paper, and the
+     shadow it throws. Declared here with every other colour the room owns rather than written
+     into the wall's rules, so the deck, the symbol panel and anything else that draws a card
+     later all darken together and no contrast test has to ask a stylesheet what black it meant
+     (L13). The shadow is one token and not two: the tight contact shadow a resting card lays
+     down and the wide one under the card the pointer is on are the same shadow seen from two
+     distances. */
+  --byd-editor-card-edge: rgba(0, 0, 0, 0.55);
+  --byd-editor-card-sheen: rgba(255, 255, 255, 0.07);
+  --byd-editor-card-shadow: rgba(0, 0, 0, 0.5);
   /* The parts of the game that are not cards — the template, the table, the rules, the symbols —
      as a chip on a row in the history (#177). The hue is the second reading and never the only
      one: every chip carries its own word, and the row's name spells that word out as a sentence,
@@ -807,7 +819,47 @@
 /* The width a card is drawn at is the density the crown steps through; the wall fills the row with
    as many of them as fit. The padding is only what the selection outline needs to show. */
 .byd-wall { grid-column: 1; padding: var(--byd-s1); display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--byd-wall-card, 150px), 1fr)); gap: var(--byd-s3); align-content: start; }
-.byd-wall-card { position: relative; border-radius: 8px; cursor: pointer; }
+/* The tile is the card and nothing more (#332). A grid column stretches to fill the row, and the
+   card inside it does not — it is 63 mm at whatever the density draws a millimetre as — so the
+   tile used to stand 11.5 px wider than the card it held, and every edge, badge and ring hung off
+   the wrong box. `max-content` is the card's own width whatever the density is, and it is the
+   card's width in the symbol panel too, where the same tile holds a card at another scale.
+   The corner is the card's own, converted from the type's millimetres by `corner.ts`. */
+.byd-wall-card { position: relative; width: max-content; border-radius: var(--byd-wall-radius, 0); cursor: pointer; transition: transform 130ms ease; }
+/* The card's paper: cut at the card's own corner, with the hairline edge round it and the light
+   along the inside of its top. Nothing here is blurred, and that is the decision rather than a
+   saving (L28). A `box-shadow` blurred 14 px per card is 308 blurs to compose on every frame of
+   a real deck, and the variant that drew one fell to 55 fps where this one held 61. */
+.byd-wall-face { border-radius: inherit; overflow: hidden; box-shadow: 0 0 0 1px var(--byd-editor-card-edge), inset 0 1px 0 0 var(--byd-editor-card-sheen); }
+/* The one shadow a resting card is allowed: where the card meets the table. It is a few pixels
+   of ellipse under the bottom edge rather than a shadow of the whole card, so what the compositor
+   blurs is the same handful of pixels whether the deck is forty cards or four hundred. */
+.byd-wall-card::after {
+  content: '';
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  bottom: -3px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--byd-editor-card-shadow);
+  filter: blur(3px);
+}
+/* And the wide shadow, on the one card the pointer or the focus is on. One card at a time is one
+   blur at a time, which is what the whole shape above is for. */
+.byd-wall-card:hover, .byd-wall-card:focus-visible { transform: translateY(-3px); }
+.byd-wall-card:hover > .byd-wall-face, .byd-wall-card:focus-visible > .byd-wall-face {
+  box-shadow: 0 0 0 1px var(--byd-editor-card-edge), inset 0 1px 0 0 var(--byd-editor-card-sheen), 0 10px 22px var(--byd-editor-card-shadow);
+}
+/* A reader who has asked for less movement gets the shadow and not the lift. `a11y.css` already
+   cuts every transition to nothing, which leaves a card that jumps three pixels instead of
+   gliding them; the jump is the movement, so it goes too. */
+@media (prefers-reduced-motion: reduce) {
+  .byd-wall-card { transition: none; }
+  .byd-wall-card:hover, .byd-wall-card:focus-visible { transform: none; }
+}
+/* The ring out of #234, untouched by all of the above: it stands outside the lift and is never
+   what the lift replaces. */
 .byd-wall-card[aria-selected='true'] { outline: 3px solid var(--byd-editor-primary-mark); outline-offset: 3px; }
 .byd-wall-copies, .byd-wall-warnings { position: absolute; border-radius: 999px; font-size: 11px; font-weight: 700; padding: 0 4px; }
 .byd-wall-copies { bottom: -6px; right: -6px; background: #1b1d23; color: #fff; border: 1px solid #444; }

@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import type { ProjectDoc } from './types.js'
 import { CardPreview } from './CardPreview.js'
+import { CARD_PX, cornerPx } from './corner.js'
 import { Crown, CrownBox, CrownDrawer, CrownFoot } from './Crown.js'
 import { iconFieldsOf, previewIcons } from './assets.js'
 import { previewFonts } from './fonts.js'
@@ -15,6 +16,14 @@ import { useT, type Key } from '../i18n/index.js'
 // which is what `{namn}` in card text looks up (L2). The set stands beside the library with what
 // to write, what each symbol is licensed under, and which cards use it.
 export type SymbolPanelProps = { doc: ProjectDoc; client: ProjectClient; assetBase: string }
+
+// How large a card is drawn beside a symbol: small enough that a handful fit under the library,
+// large enough that the symbol in the text can be seen. Stated as the zoom and once more as the
+// pixels it comes to, because the tile and its corner both have to be told the same width (#332)
+// — the grid used to say 150 px while the card was drawn 131, and the two disagreeing is what
+// put a badge eleven pixels off the card's edge.
+const SHOWN = 0.55
+const SHOWN_PX = CARD_PX * SHOWN
 
 export function SymbolPanel({ doc, client, assetBase }: SymbolPanelProps) {
   const t = useT()
@@ -127,11 +136,16 @@ export function SymbolPanel({ doc, client, assetBase }: SymbolPanelProps) {
                 </button>
               </div>
               {shown.length === 0 && <p className="byd-symbols-empty">{t(chosen !== null && chosen !== ALL && painted[chosen] ? paintedWhy(painted[chosen]) : 'symbols.deck.unused')}</p>}
-              <div className="byd-wall" role="list">
+              {/* The same wall and the same tile the deck is drawn with, so the card is cut at
+                  the same corner here as it is there (#332): the width it is actually drawn at
+                  is what both the grid and the corner are told. */}
+              <div className="byd-wall" role="list" style={{ ['--byd-wall-card' as string]: `${SHOWN_PX}px`, ['--byd-wall-radius' as string]: `${cornerPx(SHOWN_PX)}px` }}>
                 {front &&
                   shown.map(({ row: r }) => (
                     <div key={r.id} role="listitem" className="byd-wall-card" data-card-ref={r.id}>
-                      <CardPreview id={`sym-${r.id}`} face={front} row={r.fields} icons={icons} fonts={fonts} assetBase={assetBase} palette={doc.palette} scale={0.55} />
+                      <div className="byd-wall-face">
+                        <CardPreview id={`sym-${r.id}`} face={front} row={r.fields} icons={icons} fonts={fonts} assetBase={assetBase} palette={doc.palette} scale={SHOWN} />
+                      </div>
                     </div>
                   ))}
               </div>

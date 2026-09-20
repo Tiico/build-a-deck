@@ -1,8 +1,8 @@
 import { useCallback, useId, useMemo, useRef, useState } from 'react'
 import type { ProjectDoc } from '@byd/server'
 import type { Frame, Motif, Nudge, Warning } from '@byd/template'
-import { CARD_STANDARD_63x88 } from '@byd/engine'
 import { CardPreview } from './CardPreview.js'
+import { CARD_PX, cornerPx } from './corner.js'
 import { Crown, CrownBox, CrownDrawer, CrownFoot } from './Crown.js'
 import { DENSITY, DENSITY_DEFAULT, heldDensity, rememberDensity } from './density.js'
 import { previewIcons } from './assets.js'
@@ -56,10 +56,6 @@ const MATRICES: Record<string, string> = {
 // guide and not a density: it says what the deck looks like across a table, so it names one width
 // rather than stepping through the ladder.
 const ARM_PX = 90
-// The card at full size, in CSS pixels, so a width in pixels can be asked of the preview as the
-// zoom it actually takes. Read off the type rather than written down: 63 mm is the card's fact and
-// not this file's.
-const CARD_PX = (CARD_STANDARD_63x88.physical.widthMm / 25.4) * 96
 
 // What the crown's boxes are, so that only one of them is ever open.
 type Box = 'eyes' | 'guides' | 'grouping' | 'checks'
@@ -187,30 +183,35 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
         {...(marked.has(cardRef) ? { 'data-marked': 'true' } : {})}
         onClick={() => onSelectRow(cardRef)}
       >
-        <CardPreview
-          id={`wall-${cardRef}`}
-          face={faceTemplate}
-          row={row}
-          icons={icons}
-          fonts={fonts}
-          scale={px / CARD_PX}
-          assetBase={assetBase}
-          motifs={motifs}
-          palette={doc.palette}
-          framing={doc.framing ? framingOf(doc, cardRef) : undefined}
-          // The card, and then the element in it (#234). Almost the whole of a card is its
-          // elements — the front's frame shape alone covers 61 × 86 of its 63 × 88 — so a click on
-          // a card is nearly always a click on an element of it, and the preview quite rightly
-          // stops that click from travelling on: the element is the more particular answer. But
-          // the tile's own `onClick` was the only thing saying which card had been chosen, so it
-          // never ran, and what opened was about whichever card had been selected before — the one
-          // wearing the ring. The wall knows which card this preview is of; it says so itself.
-          onSelectElement={(id) => {
-            onSelectRow(cardRef)
-            onSelectElement(id)
-          }}
-          onWarnings={(w) => onWarnings(cardRef, w)}
-        />
+        {/* The card's paper (#332, L28): the box the corner cuts, the hairline edge is drawn
+            round and the light along the top sits inside. It is its own element because the
+            badges hang outside the card and must not be cut off with it. */}
+        <div className="byd-wall-face">
+          <CardPreview
+            id={`wall-${cardRef}`}
+            face={faceTemplate}
+            row={row}
+            icons={icons}
+            fonts={fonts}
+            scale={px / CARD_PX}
+            assetBase={assetBase}
+            motifs={motifs}
+            palette={doc.palette}
+            framing={doc.framing ? framingOf(doc, cardRef) : undefined}
+            // The card, and then the element in it (#234). Almost the whole of a card is its
+            // elements — the front's frame shape alone covers 61 × 86 of its 63 × 88 — so a click on
+            // a card is nearly always a click on an element of it, and the preview quite rightly
+            // stops that click from travelling on: the element is the more particular answer. But
+            // the tile's own `onClick` was the only thing saying which card had been chosen, so it
+            // never ran, and what opened was about whichever card had been selected before — the one
+            // wearing the ring. The wall knows which card this preview is of; it says so itself.
+            onSelectElement={(id) => {
+              onSelectRow(cardRef)
+              onSelectElement(id)
+            }}
+            onWarnings={(w) => onWarnings(cardRef, w)}
+          />
+        </div>
         {copies > 1 && <span className="byd-wall-copies" data-copies>×{copies}</span>}
         {count > 0 && (
           <span className="byd-wall-warnings" data-warnings>
@@ -409,7 +410,11 @@ export function DeckWall({ doc, face, selectedRow, onSelectRow, onSelectElement,
           onScroll={onDeckScroll}
           data-wall
           data-eye={eye}
-          style={{ ['--byd-wall-card' as string]: `${px}px` }}
+          // How wide a card is drawn, and — read off the same width — how far in the card is cut
+          // at its corners (#332, L28). The corner is a physical length like the width is, so it
+          // belongs beside it: a card drawn smaller is a card with a smaller corner, not the same
+          // corner on a smaller card.
+          style={{ ['--byd-wall-card' as string]: `${px}px`, ['--byd-wall-radius' as string]: `${cornerPx(px)}px` }}
           {...(trim ? { 'data-trim': 'true' } : {})}
           {...(arm ? { 'data-arm': 'true' } : {})}
         >

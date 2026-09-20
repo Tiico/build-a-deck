@@ -3590,6 +3590,36 @@ De tre greppen — modifierarklick, dubbelklick och `F` — är en handling och 
 Acceptanskriteriet om hjulet är uppfyllt genom att panelen som tangentbordet öppnar fick ringens **Dra 1**.
 Den saknades: ringen hade fyra verb på en hög och tangentbordet tre, så den som spelade utan mus kunde inte dra ett kort alls vid bordets egen skärm.
 
+### L28. Kortet på väggen är ett kort: en kant, en kontaktskugga, och den stora skuggan bara under pekaren (prototypat och beslutat 2026-09-20, #332)
+
+Beslutet, i en mening:
+
+> I viloläge får kortet en hårfin mörk kant, en svag ljus insida längs överkanten och en enda tät kontaktskugga; den stora suddade skuggan och lyftet ritas bara på det kort pekaren eller fokus står på — och hörnradien är kortets egen, räknad ur mallens millimeter.
+
+**Det avgörande var mätningen.**
+Tre riktningar prototypades på 308 kort i 15 versioner, inte på sample-deckens 77, och rullningen mättes tre gånger per variant.
+A · Fysiska — kortets radie och en mjuk skugga i två lager på varje kort — föll till 55 fps med lägsta körningen på 51.
+En `box-shadow` med 14 px suddning per kort är 308 suddningar att komponera per bildruta, och det syns.
+B · Lugnare klarade 60, men köpte dem genom att visa färre kort åt gången, vilket är just det kortväggen finns för att slippa.
+C · Kanten höll 61 och skalar till en dubbelt så stor lek utan att bli dyrare, eftersom det enda som suddas är den lilla ellipsen under kortet och den enda stora skuggan är den som ritas på ett kort i taget.
+
+**Hörnradien är kortets egen och ingen siffra.**
+Dagens `border-radius: 8px` var inte en radie: ett kort är 63 mm brett och ritades 150 px, alltså 2,38 px/mm, och 8 px råkade därmed ligga nära de 3 mm standardkortet skärs vid.
+En mall med 0 mm fick rundade hörn på väggen och skarpa i trycket, och en med 6 mm ritades 8 px där 14,3 px är sanningen.
+Väggen räknar därför om millimetrarna till bildpunkter som trycket gör, ur komponenttypens `physical.cornerRadiusMm` — samma objekt `CardPreview` kompilerar varje kort mot.
+Talet följer tätheten: samma 3 mm är 4,3 px vid 90 px kortbredd och 10,5 px vid 220.
+
+**Brickan är kortet.**
+Rutnätets kolumn sträcker sig för att fylla raden och kortet gör inte det, så brickan stod 11,5 px bredare än kortet den höll — och kant, märken och ring hängde på fel låda.
+Brickan är numera kortets egen bredd, vilket också rättar märket som satt elva bildpunkter utanför kortets kant.
+
+**Fokusringen ur #234 står kvar oförändrad.**
+Den ligger utanför lyftet och ersätts aldrig av det, och den mäts mot två grannar och inte en: rummets botten utanför, och kortets egen hårfina kant innanför.
+Lyftet respekterar `prefers-reduced-motion` genom att utebli helt — skuggan finns kvar, rörelsen gör det inte.
+
+**Kvarstår:** acceptanskriteriets mätning på en Mac från 2020.
+Siffrorna ovan och de som togs om vid implementationen är jämförbara med varandra men kommer från headless Chromium på en annan maskin.
+
 ## I. Öppna frågor
 
 Ekonomi och juridik:
