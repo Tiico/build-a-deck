@@ -695,6 +695,11 @@ export class ProjectClient {
   setCrop(hash: string, crop: AssetCrop | null): void {
     this.edit({ v: 'setCrop', hash, crop })
   }
+  // A picture out of the game (#318): the record and every picture cell that held it, in one
+  // intent — so the way back from it is one step and not a picture followed by its cards.
+  removePicture(hash: string): void {
+    this.edit({ v: 'removePicture', hash })
+  }
 
   // A typeface the game is set in (B3): the file becomes one of the project's assets, and the
   // family is named after the file, which is what a designer calls it anyway. The version then

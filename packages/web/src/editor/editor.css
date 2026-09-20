@@ -1986,6 +1986,14 @@
 .byd-media-tile { width: 100%; padding: var(--byd-s1); }
 .byd-media-tile-shot { position: relative; display: block; overflow: hidden; border-radius: 6px; }
 .byd-media-tile img { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 6px; background: #14161c; }
+/* Ta bort (#318): en liten kontroll under brickan, bredvid vad brickan redan säger om bilden. */
+.byd-media-remove { min-height: 28px; padding: 0 8px; border: 1px solid #3b414e; border-radius: 8px; background: transparent; color: var(--byd-editor-quiet); font: inherit; font-size: 11px; cursor: pointer; }
+.byd-media-remove:hover, .byd-media-remove:focus-visible { color: var(--byd-editor-home-ink); border-color: #7a3243; }
+/* Frågan står över rutnätet, där handlingen bads om, i samma form som bordsflikens fråga. */
+.byd-media-question { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 var(--byd-s3); padding: 8px 12px; border: 1px solid #7a3243; border-radius: 8px; background: #3d2632; color: #ffe4ea; }
+.byd-media-question p { margin: 0; font-weight: 700; }
+.byd-media-question button { min-height: 32px; padding: 4px 12px; border: 1px solid #3b414e; border-radius: 8px; background: transparent; color: #ffe4ea; font: inherit; font-weight: 700; cursor: pointer; }
+.byd-media-question button[data-kind='danger'] { background: #7a3243; border-color: #7a3243; }
 .byd-media-tile u { position: absolute; box-sizing: border-box; border: 1.5px solid rgba(255, 255, 255, 0.85); border-radius: 3px; box-shadow: 0 0 0 999px rgba(8, 10, 14, 0.45); }
 .byd-media-use { display: grid; justify-items: start; gap: var(--byd-s3); }
 .byd-media-use label { display: grid; gap: var(--byd-s1); font-size: 12px; color: var(--byd-editor-quiet); }
