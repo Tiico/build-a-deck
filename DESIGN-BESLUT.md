@@ -4016,6 +4016,40 @@ Handtagen är tabbstopp med egna namn, och piltangenterna flyttar dem med L26:s 
 En form utan handtag ritas **identiskt** med L26:s polygon, eftersom kontrollpunkterna då ligger på punkterna själva och kurvan är den raka linjen.
 Det är vad som gör tillägget bakåtkompatibelt i modellen: handtagen är valfria, och en form som saknar dem är oförändrad.
 
+### L39. Body-cellen formateras i sitt huvud, och den stängda cellen har ett tak (prototypat 2026-09-20, #324)
+
+Delmängden är #308:s och oförändrad: `**`, `*`, tom rad, `- ` och `{symbol}`.
+Redigeraren är ett lager över den — den skriver och läser **samma sträng**, så CSV-rundturen och samtidig redigering (D3) ser ingen skillnad.
+Cellens lagrade sträng är exakt delmängden: inga dolda tecken, inga HTML-fragment, och vägen ut ur redigerarens element är en enda funktion.
+
+**Verktygen står alltid i den öppna cellens huvud.**
+Ingen rörelse och alltid samma plats, och formateringen syns finnas innan man börjar skriva — en rad som tonar fram vid fokus säger ingenting till den som ännu inte klickat.
+Priset är krom i en cell någon kanske bara öppnade för att läsa.
+Raden är `role="toolbar"` med roving tabindex: en tabbstopp in, piltangenter mellan knapparna, och knapparnas `aria-pressed` följer markeringen.
+`Cmd/Ctrl+B`, `Cmd/Ctrl+I`, `Enter` för nytt stycke och `- ` för lista fungerar oavsett, och `{` öppnar symbollistan som i dag (E4, L34).
+
+**Den stängda cellen visar formen, med ett tak på två rader.**
+Tabellen är tät (#46), och de tre formerna mättes på samma tre kort:
+
+| | radhöjder |
+|---|---|
+| allt på en rad, med `¶` och `·` | 28 · 28 · 28 px |
+| **formen med tak** | **49 · 34 · 49 px** |
+| formen fri | 108 · 30 · 73 px |
+
+Den fria formen är sannast och kostar för mycket: en lek där hälften av korten bär listor blir omöjlig att överblicka när första raden är 108 px mot den andras 30.
+En enda rad håller tabellen perfekt jämn men kodar formen i två tecken designern måste lära sig.
+Taket ger formen som den är för de två första raderna och fasar ut resten — 21 px per rad dyrare än den enda raden, och det är vad det kostar att slippa lära sig ett tecken.
+
+**Taket måste sitta på ett element inuti cellen.**
+`max-height` på ett `<td>` hedras inte — en tabellcell växer med sitt innehåll oavsett — och den första mätningen gav 101 px där 34 var begärt.
+Det är inte en detalj i den här lösningen utan dess bärande del.
+
+**Guidens body-fält får inte redigeraren.**
+Guiden ska kännas enkel (L36), och en verktygsrad i ett av dess steg är krom på en yta vars hela beslut nyss var att bära mindre.
+Den som vill formatera gör det i editorn, dit guiden redan pekar.
+Delmängden gäller ändå det som skrivs där, eftersom strängen är strängen: skriver någon `- ` i guiden blir det en lista när kortet ritas. Det är rätt — fältet saknar redigeraren, inte formatet.
+
 ## I. Öppna frågor
 
 Ekonomi och juridik:
