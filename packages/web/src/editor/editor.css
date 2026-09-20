@@ -2567,7 +2567,10 @@
    the target and the way out stay reachable whatever size the library has grown to. It fits the
    viewport at 1280 and at 1024 and gives up its margins at 768 (L12). The veil takes the pointer
    off the table: what is behind the window is not what is being asked about. */
-.byd-library-veil { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: var(--byd-s5); background: rgba(8, 10, 14, 0.6); }
+/* A flex veil and not a grid one: the window's `max-height: 100%` has to resolve against a box of
+   definite height, and a grid's auto row is not one — measured in Chromium, the window then grew
+   to 3152 px with a hundred and twenty pictures and put the actions four screens down. */
+.byd-library-veil { position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center; padding: var(--byd-s5); background: rgba(8, 10, 14, 0.6); }
 .byd-library { display: flex; flex-direction: column; box-sizing: border-box; width: min(960px, 100%); max-height: 100%; padding: var(--byd-s4) var(--byd-s5); border-radius: 14px; background: var(--byd-editor-panel-bg); border: 1px solid #3b4358; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5); color: #e6ecfa; }
 .byd-library-head { display: flex; align-items: center; gap: var(--byd-s3); }
 .byd-library-head h2 { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
