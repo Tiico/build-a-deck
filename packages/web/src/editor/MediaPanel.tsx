@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState, type Ref } from 'react'
 import { WHOLE_PICTURE, pictureNameOf, showsWholePicture, type AssetCrop } from '@byd/protocol'
 import { croppedMotif, type Motif } from '@byd/template'
-import type { ProjectDoc, ProjectRow } from './types.js'
+import type { ProjectDoc } from './types.js'
 import { assetRef, assetUrl, imageFieldsOf, mediaInGame, previewIcons } from './assets.js'
 import { DropSays, dropSurface } from './dropping.js'
 import { Crop } from './Crop.js'
