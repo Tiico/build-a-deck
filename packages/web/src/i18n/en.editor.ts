@@ -839,6 +839,9 @@ export const enEditor = {
   'upload.notThisKind': 'the file is not {formats}',
   'upload.tooBig': 'the file is too large (8 MB at most)',
   'upload.failed': 'could not upload the file: {status}',
+  // An upload that arrived under a different name than its bytes have (#310): the symbol was
+  // already in the document and now points nowhere, so the placement is taken back and this said.
+  'upload.wrongName': 'the file arrived under a name that is not its own',
 
   'share.title': 'Who has the game',
   'share.close': 'Close',

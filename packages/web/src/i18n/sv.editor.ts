@@ -931,6 +931,9 @@ export const svEditor = {
   'upload.notThisKind': 'filen är inte {formats}',
   'upload.tooBig': 'filen är för stor (max 8 MB)',
   'upload.failed': 'kunde inte ladda upp filen: {status}',
+  // En uppladdning som kom fram under ett annat namn än bytena har (#310): symbolen stod redan i
+  // dokumentet, och pekar nu ingenstans, så insättningen tas tillbaka och det här sägs.
+  'upload.wrongName': 'filen kom fram under ett annat namn än sitt eget',
 
   // Vilka som har spelet: de som är inne nu, och de som får vara med.
   'share.title': 'Vilka som har spelet',

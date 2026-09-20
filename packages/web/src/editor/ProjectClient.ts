@@ -4,7 +4,7 @@ import type { DocDiff, VersionChange } from '@byd/server/doc'
 import type { Element } from '@byd/template'
 import { Unauthorized, withCredentials } from '../account/api.js'
 import { applyEdit, recipeOf, type Clearable, type EditIntent, type Recipe, type RecipeWords, type SeatRole, type Zone, type ZonePatch } from '@byd/server/doc'
-import { ASSET_PREFIX, assetUrl } from './assets.js'
+import { ASSET_PREFIX, assetRef, assetRefOf, assetUrl } from './assets.js'
 import { measureAsset } from './motifs.js'
 import type { Motif } from '@byd/template'
 import { iconElement } from './canvas.js'
@@ -98,6 +98,9 @@ export class ProjectClient {
   // a drag, a resize, a cell typed into — and the token is made where it begins, so a second
   // grab of the same element is a second token and therefore a second step back (#35).
   private gesture: string | null = null
+  // Counts the gestures this client has opened by itself, so a placement that must be taken
+  // back names its own and nothing else (#310).
+  private gestures = 0
   // What was waiting to come forward when the open gesture's first patch emptied it (#142). That
   // emptying is right for a drag that is made — a new branch is a new branch — and wrong for one
   // taken back, which is nothing that happened and may therefore not have taken the way forward
@@ -616,13 +619,18 @@ export class ProjectClient {
   // travel to the printer. The same symbol twice is the same entry, not a second name.
   async useSymbol(symbol: GameSymbol, as?: string, t: T = swedish): Promise<string> {
     const file = svgBytes(symbol)
-    const ref = `${ASSET_PREFIX}${await this.uploadAsset(new Blob([file.bytes], { type: file.type }), 'vector', t)}`
+    // The reference first, off the bytes themselves (#310). It is the name the service will give
+    // them, so the question the next line asks — does the game already have this symbol? — is
+    // answered without asking anybody: a symbol already in the set costs nothing on the wire.
+    const ref = await assetRefOf(file.bytes)
     const already = Object.entries(this.doc.icons).find(([, url]) => url === ref)
     if (already) return already[0]
     // What the symbol is called in the language the designer is working in: the icon name is
     // theirs from here on, and card text writes it between braces (L2, A4).
     const name = freeIconName(as ?? symbolName(symbol, t), this.doc.icons)
-    this.edit({ v: 'setIcon', name, url: ref, credit: { licence: symbol.licence, by: symbol.by, source: symbol.id } })
+    const taking = this.newGesture('symbol')
+    this.edit({ v: 'setIcon', name, url: ref, credit: { licence: symbol.licence, by: symbol.by, source: symbol.id } }, taking)
+    await this.storeAsset(file, ref, taking, t)
     return name
   }
 
@@ -635,27 +643,78 @@ export class ProjectClient {
   async placeIcon(symbol: GameSymbol, face: string, group: string | null, t: T = swedish): Promise<string> {
     if (!this.doc.template.faces[face]) throw new Error(`template has no face ${face}`)
     const file = svgBytes(symbol)
-    const ref = `${ASSET_PREFIX}${await this.uploadAsset(new Blob([file.bytes], { type: file.type }), 'vector', t)}`
-    // Everything the edit is worked out from is read after the upload, never before it. The
-    // upload takes as long as the network takes, and the document moves while it is in flight —
-    // a second press, or somebody else in the game (D3). A face read before the wait would give
-    // this element the id the placement that landed first has already taken, and the template
-    // refuses it: `edit` applies before it records, so the whole placement would be lost.
+    // The bytes' own name, before anything is read and before anything is sent (#310).
+    const ref = await assetRefOf(file.bytes)
+    // Everything the edit is worked out from is read after every wait, never before one. That
+    // rule was written for the upload, which took as long as the network took while the document
+    // moved underneath it — a second press, or somebody else in the game (D3). A face read
+    // before the wait would give this element the id the placement that landed first has already
+    // taken, and the template refuses it: `edit` applies before it records, so the whole
+    // placement would be lost. The wait is now a hash rather than a round trip, and the rule is
+    // unchanged and still what keeps two overlapping placements apart — it is simply that
+    // nothing at all is awaited between here and the edit below.
     const faceTemplate = this.doc.template.faces[face]
     if (!faceTemplate) throw new Error(`template has no face ${face}`)
     // The same symbol twice is the same entry (E4), and then there is nothing to take in: the
-    // edit places the element alone and the icon set is left exactly as it was.
+    // edit places the element alone and the icon set is left exactly as it was. Which is also
+    // why such a placement never touches the network at all — the bytes are already up there.
     const already = Object.entries(this.doc.icons).find(([, url]) => url === ref)?.[0]
     const name = already ?? freeIconName(symbolName(symbol, t), this.doc.icons)
     const element = iconElement(name, { taken: idsOnFace(faceTemplate), card: CARD_STANDARD_63x88.physical })
-    this.edit({
-      v: 'addElement',
-      face,
-      element,
-      group,
-      ...(already ? {} : { icon: { name, url: ref, credit: { licence: symbol.licence, by: symbol.by, source: symbol.id } } }),
-    })
+    const placing = this.newGesture('symbol')
+    this.edit(
+      {
+        v: 'addElement',
+        face,
+        element,
+        group,
+        ...(already ? {} : { icon: { name, url: ref, credit: { licence: symbol.licence, by: symbol.by, source: symbol.id } } }),
+      },
+      placing,
+    )
+    // The element is on the card by now; the bytes follow it. Nothing waits for them but the
+    // answer to whether they arrived.
+    if (!already) await this.storeAsset(file, ref, placing, t)
     return element.id
+  }
+
+  // The bytes behind a symbol that has just been put into the document, sent after the fact
+  // (#310). The document already says the symbol is there, because the reference is the hash of
+  // these very bytes and needed no round trip to learn.
+  //
+  // What that buys has to be paid for here: if the bytes never arrive, the document is holding a
+  // reference to nothing. So a failed upload takes the whole placement back the way a gesture
+  // called off is taken back — nothing that happened, no row in the history, no version — and
+  // the error goes on to the caller, which is what the surface turns into a notice. A symbol
+  // that appears and then vanishes without a word would be worse than one that is merely slow.
+  //
+  // `callOff` only takes back a gesture that is still the open one, which is exactly the right
+  // guard: a designer who has gone on to do something else keeps what she did, and is told.
+  //
+  // A hash that comes back different from the one worked out here is the same fault as no
+  // upload at all — the document would be pointing somewhere the bytes are not — so it is
+  // handled as one rather than papered over.
+  private async storeAsset(file: ReturnType<typeof svgBytes>, ref: string, gesture: string, t: T): Promise<void> {
+    const landed = await this.uploadAsset(new Blob([file.bytes], { type: file.type }), 'vector', t).catch((err: unknown) => {
+      this.callOff(gesture)
+      throw err
+    })
+    if (assetRef(landed) === ref) {
+      // Arrived, so there is nothing left to take back: the placement stops being callable off
+      // rather than staying open for the rest of the session. Only if it is still the open one —
+      // a designer who laid a hand on something while the bytes flew is in the middle of that,
+      // and closing her gesture would split it into two steps back.
+      if (this.gesture === gesture) this.gesture = null
+      return
+    }
+    this.callOff(gesture)
+    throw new Error(t('upload.wrongName'))
+  }
+
+  // A token no other doing can carry, so a placement that has to be taken back takes back its
+  // own and nothing else.
+  private newGesture(kind: string): string {
+    return `${kind}-${(this.gestures += 1)}`
   }
 
   // The name is what card text writes between braces, so renaming one moves its credit too.

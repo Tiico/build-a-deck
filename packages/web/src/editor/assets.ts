@@ -12,6 +12,22 @@ export const isAssetRef = (value: unknown): value is string => typeof value === 
 export const assetRef = (hash: string): string => `${ASSET_PREFIX}${hash}`
 export const assetUrl = (base: string, hash: string): string => `${base}/assets/${hash}`
 
+// The reference bytes will have once the service holds them, worked out here (#310).
+//
+// An asset is named by the hash of its bytes and by nothing else — that is what makes the same
+// picture on ten cards one upload — so the name is knowable before the bytes have travelled.
+// Which is the whole of what took the wait out of a click in the symbol library: the question
+// "does the game already have this?" is about a name, and the name no longer has to be fetched.
+//
+// It is the same hash the service computes (`assetHash` in packages/server), and it has to stay
+// the same one: a reference worked out here that the upload does not confirm is an icon pointing
+// at nothing. Neither side is free to change it alone, and the check that they agree is an
+// upload followed by a read of what came back — which is what the symbol tests do.
+export async function assetRefOf(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', bytes)
+  return assetRef([...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join(''))
+}
+
 export function resolveAssetRow(row: Row, base: string): Row {
   const out: Row = {}
   for (const [k, v] of Object.entries(row)) out[k] = isAssetRef(v) ? assetUrl(base, v.slice(ASSET_PREFIX.length)) : v

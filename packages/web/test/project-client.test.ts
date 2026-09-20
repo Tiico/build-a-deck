@@ -632,3 +632,130 @@ describe('the history (B4)', () => {
     expect((await client.at(2))?.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drakhona')
   })
 })
+
+// A click in the symbol library used to wait for the network before anything happened (#310).
+// An asset is named by the hash of its bytes and by nothing else, so that name is knowable here,
+// before the bytes have travelled — and once it is known, the whole click stops needing the
+// network to decide anything. Measured on a project of 308 cards and 15 versions, a click cost
+// one round trip every time: 4.9 ms on the loopback, 124.5 ms with 120 ms of latency, whether
+// the game already had the symbol or not.
+describe('a click in the symbol library does not wait for the network (#310, E4)', () => {
+  // Every call `fetch` makes while the body runs, and the bodies the calls were given.
+  const watching = async <T,>(body: () => Promise<T>): Promise<{ out: T; calls: string[] }> => {
+    const real = globalThis.fetch
+    const calls: string[] = []
+    globalThis.fetch = ((input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      calls.push(`${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`)
+      return real(input, init)
+    }) as typeof fetch
+    try {
+      return { out: await body(), calls }
+    } finally {
+      globalThis.fetch = real
+    }
+  }
+
+  it('costs nothing at all on the wire once the game already has the symbol', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    const svard = LIBRARY.find((s) => s.id === 'svard')!
+
+    const first = await watching(() => client.useSymbol(svard))
+    expect(first.out).toBe('svärd')
+    expect(first.calls).toEqual(['POST /assets'])
+
+    // The bytes are already there and so is the entry, so the second press asks nobody anything.
+    const again = await watching(() => client.useSymbol(svard))
+    expect(again.out).toBe('svärd')
+    expect(again.calls).toEqual([])
+
+    // And placing it on a card is a template edit and nothing more: the symbol is in the set.
+    const placed = await watching(() => client.placeIcon(svard, 'front', null))
+    expect(placed.calls).toEqual([])
+    expect(client.doc.template.faces['front']?.base.at(-1)).toMatchObject({ id: placed.out, bind: { literal: 'svärd' } })
+  })
+
+  it('places a symbol the game has never seen without waiting for its bytes to land', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    const skold = LIBRARY.find((s) => s.id === 'skold')!
+
+    // An upload that has not answered yet, and never will until it is let go.
+    const real = globalThis.fetch
+    let land: () => void = () => undefined
+    const landed = new Promise<void>((resolve) => {
+      land = resolve
+    })
+    globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      if (new URL(String(input)).pathname === '/assets') await landed
+      return real(input, init)
+    }) as typeof fetch
+    try {
+      const placing = client.placeIcon(skold, 'front', null)
+      // The symbol is in the game and on the card while the bytes are still in the air.
+      await vi.waitFor(() => expect(client.doc.icons['sköld']).toMatch(/^asset:[0-9a-f]{64}$/))
+      expect(client.doc.template.faces['front']?.base.some((e) => e.kind === 'icons')).toBe(true)
+      land()
+      const id = await placing
+      // And the ref the document took is the one the service ends up holding: the name of an
+      // asset is the hash of its bytes, so what was worked out here is what came back.
+      const served = await fetch(`${run.http}/assets/${client.doc.icons['sköld']!.slice('asset:'.length)}`)
+      expect(await served.text()).toBe(skold.svg)
+      expect(client.doc.template.faces['front']?.base.some((e) => e.id === id)).toBe(true)
+    } finally {
+      globalThis.fetch = real
+    }
+  })
+
+  // A symbol that appears and then vanishes without a word is worse than one that is slow. The
+  // placement is taken back exactly as a gesture called off is — nothing that happened, no row in
+  // the history — and the caller is told, which is what the surface turns into a notice.
+  it('leaves the document exactly as it was when the bytes never arrive, and says so', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    const skold = LIBRARY.find((s) => s.id === 'skold')!
+    const before = client.doc
+
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      if (new URL(String(input)).pathname === '/assets') return new Response('nope', { status: 500 })
+      return real(input, init)
+    }) as typeof fetch
+    try {
+      await expect(client.placeIcon(skold, 'front', null)).rejects.toThrow()
+    } finally {
+      globalThis.fetch = real
+    }
+    expect(client.doc.icons['sköld']).toBeUndefined()
+    expect(client.doc.template.faces['front']?.base.some((e) => e.kind === 'icons')).toBe(false)
+    expect(client.doc.template.faces['front']?.base.map((e) => e.id)).toEqual(before.template.faces['front']?.base.map((e) => e.id))
+    // Nothing that happened: the way back is not a row in the history either.
+    expect(client.canUndo).toBe(false)
+  })
+
+  // The whole of this rests on the service naming an asset by the hash of its bytes and by
+  // nothing else. A service that answered with some other name would leave the symbol in the
+  // document pointing where its bytes are not, which is the same fault as bytes that never
+  // arrived and is taken back the same way.
+  it('takes the placement back when the bytes arrive under a name that is not their own', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    const skold = LIBRARY.find((s) => s.id === 'skold')!
+
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      if (new URL(String(input)).pathname === '/assets') {
+        await real(input, init)
+        return Response.json({ hash: 'c'.repeat(64) })
+      }
+      return real(input, init)
+    }) as typeof fetch
+    try {
+      await expect(client.useSymbol(skold)).rejects.toThrow(/annat namn/)
+    } finally {
+      globalThis.fetch = real
+    }
+    expect(client.doc.icons['sköld']).toBeUndefined()
+    expect(client.canUndo).toBe(false)
+  })
+})
