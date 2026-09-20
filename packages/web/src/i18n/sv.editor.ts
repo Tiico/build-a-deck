@@ -26,6 +26,11 @@ export const svEditor = {
   'media.remove.of': 'Ta bort {name}',
   'media.remove.question': 'Ta bort {name}? {n} kort förlorar sin bild: {cards}.',
   'media.remove.question.one': 'Ta bort {name}? Kortet {cards} förlorar sin bild.',
+  // Mallen som användare (#320): en bild bunden direkt i ett bildelement.
+  'media.remove.question.template': 'Ta bort {name}? Mallen förlorar sin fasta bild.',
+  'media.remove.question.template.one': 'Ta bort {name}? Mallen och kortet {cards} förlorar sin bild.',
+  'media.remove.question.template.cards': 'Ta bort {name}? Mallen och {n} kort förlorar sin bild: {cards}.',
+  'media.byTemplate': 'används av mallen',
   'media.remove.more': '{cards} och {n} till',
   'media.remove.yes': 'Ja, ta bort',
   // Beskärningen (#222, L22, beslut 2). Fönstrets namn säger var det står, så samma tangenttryck

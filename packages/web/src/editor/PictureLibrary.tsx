@@ -58,7 +58,7 @@ export function PictureLibraryDialog({ target, count, replacing, pictures, asset
   const [picked, setPicked] = useState<string | null>(null)
   const nameOf = (p: LibraryPicture): string => p.name ?? (p.cards.length === 0 ? t('media.picture.unused') : t('table.image.alt', { cards: p.cards.join(', ') }))
   const needle = query.trim().toLowerCase()
-  const shown = pictures.filter((p) => (!unusedOnly || p.cards.length === 0) && (needle === '' || nameOf(p).toLowerCase().includes(needle)))
+  const shown = pictures.filter((p) => (!unusedOnly || (p.cards.length === 0 && !p.template)) && (needle === '' || nameOf(p).toLowerCase().includes(needle)))
   const chosen = picked === null ? undefined : pictures.find((p) => p.hash === picked)
   // What the upload said when it did not land. Said where the picture in hand is said, in the
   // same live region: a designer who cannot see the grid has nothing else to tell her.
@@ -116,11 +116,11 @@ export function PictureLibraryDialog({ target, count, replacing, pictures, asset
               ) : (
                 <ul className="byd-library-grid">
                   {shown.map((p) => (
-                    <li key={p.hash} {...(p.cards.length === 0 ? { 'data-unused': 'true' } : {})}>
+                    <li key={p.hash} {...(p.cards.length === 0 && !p.template ? { 'data-unused': 'true' } : {})}>
                       <button type="button" className="byd-library-tile byd-choice" data-asset={p.hash} aria-pressed={picked === p.hash} aria-label={nameOf(p)} onClick={() => setPicked(p.hash)}>
                         <img loading="lazy" src={assetUrl(assetBase, p.hash)} alt="" />
                         <span>{nameOf(p)}</span>
-                        <small>{p.cards.length === 0 ? t('media.unused') : t(p.cards.length === 1 ? 'wall.cards.one' : 'wall.cards.other', { n: p.cards.length })}</small>
+                        <small>{p.cards.length === 0 ? t(p.template ? 'media.byTemplate' : 'media.unused') : t(p.cards.length === 1 ? 'wall.cards.one' : 'wall.cards.other', { n: p.cards.length })}</small>
                       </button>
                     </li>
                   ))}
