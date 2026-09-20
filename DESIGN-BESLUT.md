@@ -1071,6 +1071,8 @@ Fönstret kläms mot filen innan det ritas, och det är inte en detalj.
 Utan klämningen får en fil som saknar luft ett fönster större än sig själv och räknas ändå som ritad i rätt storlek, medan kortet visar något helt annat; med den syns avvikelsen på kortet och räkningen säger sanningen.
 En fil som inte kan svara på regeln hur den än ställs är ett av de tre fynden prototypen gav, och listan över invändningar finns för att den ska kunna sägas rakt ut i stället för att tigas ihjäl.
 
+Reviderat 2026-09-20 (#320): ett bildelement kan bära en fast bild ur biblioteket i stället för en kolumn — en bakgrund, en ram, en logga som är samma på alla kort — vald genom samma fönster som Data öppnar, med uppladdning som hamnar i Media; Media räknar då mallen som användare av bilden, och tas bilden bort står elementet kvar med en tom ruta, som en tömd cell.
+
 ### E2. En enda renderare: HTML/CSS via headless Chromium (fråga 9)
 
 Mallen är HTML och CSS.

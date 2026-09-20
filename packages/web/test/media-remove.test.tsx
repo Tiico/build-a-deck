@@ -11,6 +11,7 @@ import type { ProjectDoc } from '@byd/server'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
+import { layerPick } from './layers.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -122,5 +123,39 @@ describe('a picture is taken out of the game (#318)', () => {
     await waitFor(() => expect(tile(SKOG)).not.toBeNull())
     expect(within(tile(SKOG)!).getByRole('button', { name: 'Ta bort skogsbryn.jpg' })).toBeTruthy()
     expect(within(tile(SKOG)!).getByText('7 kort')).toBeTruthy()
+  })
+})
+
+// The template as a user (#320): a picture an image element carries by itself goes the way a
+// cell's does — the element stays with an empty frame — and one step back puts the picture on
+// the template again, together with the record and the cards, since it is one intent.
+describe('a picture the template carries is taken out and put back (#320)', () => {
+  const LOGO = '4'.repeat(64)
+  it('asks, empties the element’s frame on yes, and one step back binds the template to the picture again', async () => {
+    const doc = deckWithArt()
+    doc.template.faces['back']!.base.push({ kind: 'image', id: 'logo', x: 20, y: 30, w: 23, h: 23, bind: { literal: `asset:${LOGO}` } })
+    doc.pictures = { ...doc.pictures, [LOGO]: { name: 'logga.png' } }
+    expect(await run.projects.replace(run.projectId, 1, doc)).not.toBe('conflict')
+    const user = await openMedia()
+    expect(within(tile(LOGO)!).getByText('används av mallen')).toBeTruthy()
+
+    await user.click(within(tile(LOGO)!).getByRole('button', { name: 'Ta bort logga.png' }))
+    const asked = await screen.findByRole('alertdialog', { name: /logga\.png/ })
+    expect(asked.textContent).toContain('Mallen förlorar sin fasta bild')
+    await user.click(within(asked).getByRole('button', { name: 'Ja, ta bort' }))
+    await waitFor(() => expect(tile(LOGO)).toBeNull())
+
+    // The element is still there, bound to nothing: the panel says so.
+    await user.click(screen.getByRole('tab', { name: 'Mall' }))
+    fireEvent.click(await screen.findByRole('radio', { name: 'Baksida' }))
+    fireEvent.click(layerPick('logo'))
+    expect((screen.getByRole('radio', { name: 'Fast bild' }) as HTMLInputElement).checked).toBe(true)
+    expect(screen.getByText('Ingen bild vald')).toBeTruthy()
+    expect(document.querySelector('#canvas [data-element="logo"] img.byd-art')).toBeNull()
+
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
+    expect(await screen.findByText(/Tog tillbaka/)).toBeTruthy()
+    expect(await screen.findByText('logga.png')).toBeTruthy()
+    expect(document.querySelector('#canvas [data-element="logo"] img.byd-art')?.getAttribute('src')).toBe(`${run.http}/assets/${LOGO}`)
   })
 })
