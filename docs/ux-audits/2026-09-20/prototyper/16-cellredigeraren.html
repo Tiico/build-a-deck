@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 16 — Cellredigeraren i Data (#324)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  .rum { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0,1fr) 320px; gap: var(--s5); padding: var(--gutter); overflow: auto; align-content: start; }
+  .rum > * { min-width: 0; }
+  h2 { margin: 0 0 var(--s3); font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+
+  /* Datatabellen, tät som #46 kräver. */
+  .tabell { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+  th { text-align: left; padding: 7px 10px; background: #1b1f2a; color: var(--quiet); font-size: 10.5px; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 700; border-bottom: 1px solid var(--line); }
+  td { padding: 6px 10px; border-bottom: 1px solid var(--line-soft); color: #e6ecfa; vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  tr[aria-selected='true'] td { background: #1b2437; }
+
+  /* ── Den stängda cellen ───────────────────────────────────────────────────────────────────── */
+  /* A · En rad: allt pressas till en rad med markörer för stycke och punkt. Tabellen behåller
+     sin täthet — varje rad är exakt lika hög. */
+  .shell[data-stangd='rad'] td.body .inre { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .shell[data-stangd='rad'] td.body .styckemark { color: #5d6577; padding: 0 4px; }
+  .shell[data-stangd='rad'] td.body .punktmark { color: #5d6577; padding: 0 3px 0 5px; }
+  .shell[data-stangd='rad'] td.body .inre { display: block; }
+  .shell[data-stangd='rad'] td.body p, .shell[data-stangd='rad'] td.body ul, .shell[data-stangd='rad'] td.body li { display: inline; margin: 0; padding: 0; list-style: none; }
+  /* B · Formen syns: stycken och listor ritas som de är, och raden blir så hög den blir. */
+  .shell[data-stangd='form'] td.body .inre, .shell[data-stangd='tak'] td.body .inre { display: block; }
+  .shell[data-stangd='form'] td.body p { margin: 0 0 4px; line-height: 1.45; }
+  .shell[data-stangd='form'] td.body p:last-child { margin: 0; }
+  .shell[data-stangd='form'] td.body ul { margin: 0 0 4px; padding-left: 15px; }
+  .shell[data-stangd='form'] td.body li { margin: 0; line-height: 1.45; }
+  .shell[data-stangd='form'] .styckemark, .shell[data-stangd='form'] .punktmark { display: none; }
+  /* C · Två rader: formen syns men raden får ett tak, resten fasas ut. */
+  .shell[data-stangd='tak'] td.body > .inre { position: relative; max-height: 36px; overflow: hidden; }
+  .shell[data-stangd='tak'] td.body > .inre::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 14px; background: linear-gradient(transparent, #171a23); }
+  .shell[data-stangd='tak'] tr[aria-selected='true'] td.body > .inre::after { background: linear-gradient(transparent, #1b2437); }
+  .shell[data-stangd='tak'] td.body p { margin: 0 0 4px; line-height: 1.45; }
+  .shell[data-stangd='tak'] td.body ul { margin: 0; padding-left: 15px; }
+  .shell[data-stangd='tak'] .styckemark, .shell[data-stangd='tak'] .punktmark { display: none; }
+
+  .sym { display: inline-grid; place-items: center; width: 14px; height: 14px; vertical-align: -3px; }
+
+  /* ── Den öppna cellen ─────────────────────────────────────────────────────────────────────── */
+  .cell { margin-top: var(--s4); border: 1px solid var(--primary-mark); border-radius: 10px; background: #0f1115; }
+  .cellhuvud { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-bottom: 1px solid #1f2430; }
+  .cellhuvud b { color: #fff; font-size: 10.5px; text-transform: uppercase; letter-spacing: 1.4px; }
+  .cellhuvud .rakn { margin-left: auto; color: var(--quiet); font-size: 10.5px; }
+  .verktyg { display: flex; gap: 3px; }
+  .verktyg button { min-width: 28px; height: 26px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: #c7cede; font: inherit; font-size: 12px; cursor: pointer; padding: 0 6px; }
+  .verktyg button:hover { background: #1b2437; border-color: var(--line); }
+  .verktyg button[aria-pressed='true'] { background: #24507f; border-color: var(--primary-mark); color: #fff; }
+  .verktyg button:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 1px; }
+  .verktyg .f { font-weight: 800; } .verktyg .k { font-style: italic; }
+  .fraga { width: 20px; height: 20px; display: inline-grid; place-items: center; border: 1px solid #3a4050; border-radius: 999px; background: transparent; color: #9aa3b8; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; padding: 0; }
+  .fraga[aria-expanded='true'] { border-color: var(--primary-mark); background: #24507f; color: #fff; }
+
+  .skriv { padding: 10px 12px; min-height: 92px; color: #e6ecfa; font-size: 12.5px; line-height: 1.55; outline: none; }
+  .skriv p { margin: 0 0 8px; } .skriv p:last-child { margin: 0; }
+  .skriv ul { margin: 0 0 8px; padding-left: 17px; } .skriv li { margin: 0; }
+  .skriv b { color: #fff; }
+  .strang { margin: 0; padding: 7px 12px 9px; border-top: 1px solid #1f2430; color: #5d6577; font-size: 10.5px; font-family: ui-monospace, Menlo, monospace; line-height: 1.5; word-break: break-word; }
+  .strang u { text-decoration: none; color: #8ad0ff; }
+
+  /* Verktygsraden bara vid fokus (A) eller alltid i huvudet (C); B har ingen alls. */
+  .shell[data-form='fokus'] .verktyg { opacity: 0; pointer-events: none; transition: opacity 120ms; }
+  .shell[data-form='fokus'] .cell[data-fokus='ja'] .verktyg { opacity: 1; pointer-events: auto; }
+  .shell[data-form='tangent'] .verktyg { display: none; }
+
+  .sido { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: 12px; display: grid; gap: 9px; align-content: start; }
+  .sido h3 { margin: 0; font-size: 10.5px; text-transform: uppercase; letter-spacing: 1.6px; color: var(--quiet); }
+  .sido p { margin: 0; color: var(--quiet-2); font-size: 11.5px; line-height: 1.55; }
+  .sido kbd { border: 1px solid #3a4050; border-radius: 4px; padding: 0 4px; background: #1b1d23; color: #e6ecfa; font-size: 10.5px; }
+  .sido .knapp { min-height: 30px; border: 1px solid var(--line); border-radius: 8px; background: #0f1115; color: #e6ecfa; font: inherit; font-size: 11.5px; cursor: pointer; }
+  .prov { border: 1px solid var(--line-soft); border-radius: 8px; padding: 8px 10px; background: #12141a; }
+  .prov b { color: #9ed39e; font-size: 10.5px; }
+  .prov code { display: block; margin-top: 4px; color: #c7cede; font-family: ui-monospace, Menlo, monospace; font-size: 10.5px; word-break: break-word; }
+</style>
+</head>
+<body>
+<div class="shell" data-form="fokus" data-stangd="rad">
+<header>
+  <strong>Skogens herrar</strong>
+  <nav class="tabs"><button type="button">Kort</button><button type="button">Mall</button><button type="button" aria-selected="true">Data</button><button type="button">Symboler</button><button type="button">Regler</button><button type="button">Bord</button></nav>
+  <span class="spacer"></span>
+  <div class="switch" role="group" aria-label="Var verktygen står">
+    <button type="button" data-form="fokus" aria-pressed="true">A · Raden vid fokus</button>
+    <button type="button" data-form="alltid" aria-pressed="false">B · Raden i huvudet</button>
+    <button type="button" data-form="tangent" aria-pressed="false">C · Bara tangenter</button>
+  </div>
+  <span class="who">P</span>
+</header>
+
+<div class="protorad">
+  <b>#324</b>
+  <p id="hjalptext">A · Raden vid fokus: verktygen tonar fram när cellen har fokus och försvinner när den lämnas. Cellen står tom på krom när man bara läser.</p>
+  <div class="switch" role="group" aria-label="Den stängda cellen">
+    <button type="button" data-stangd="rad" aria-pressed="true">Stängd: en rad</button>
+    <button type="button" data-stangd="form" aria-pressed="false">Stängd: formen syns</button>
+    <button type="button" data-stangd="tak" aria-pressed="false">Stängd: tak på två rader</button>
+  </div>
+  <div class="matt"><span>radhöjder <u id="m-rad">–</u></span></div>
+  <p class="sagt" id="sagt">Skärmläsaren hör: <em>—</em></p>
+</div>
+
+<main>
+<div class="rum">
+  <div>
+    <h2>Data</h2>
+    <div class="tabell">
+      <table>
+        <thead><tr><th style="width:30%">Namn</th><th>Regeltext</th></tr></thead>
+        <tbody id="rader"></tbody>
+      </table>
+    </div>
+
+    <div class="cell" id="cell" data-fokus="nej">
+      <div class="cellhuvud">
+        <b>Regeltext · Gläntans väktare</b>
+        <div class="verktyg" role="toolbar" aria-label="Formatera" id="verktyg">
+          <button type="button" class="f" data-cmd="fet" aria-pressed="false" aria-label="Fet" tabindex="0">F</button>
+          <button type="button" class="k" data-cmd="kursiv" aria-pressed="false" aria-label="Kursiv" tabindex="-1">K</button>
+          <button type="button" data-cmd="lista" aria-pressed="false" aria-label="Punktlista" tabindex="-1">•—</button>
+          <button type="button" data-cmd="symbol" aria-label="Infoga symbol" tabindex="-1">✦</button>
+        </div>
+        <button type="button" class="fraga" id="fraga" aria-expanded="false" aria-label="Mer om formatering">?</button>
+        <span class="rakn" id="rakn"></span>
+      </div>
+      <div class="skriv" id="skriv" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Regeltext"></div>
+      <p class="strang">lagrad sträng · <u id="strang"></u></p>
+    </div>
+  </div>
+
+  <div class="sido">
+    <h3>Tangenterna</h3>
+    <p><kbd>Cmd/Ctrl</kbd>+<kbd>B</kbd> fet · <kbd>Cmd/Ctrl</kbd>+<kbd>I</kbd> kursiv</p>
+    <p><kbd>Enter</kbd> nytt stycke · <kbd>- </kbd> i början av en rad börjar en lista</p>
+    <p><kbd>{</kbd> öppnar symbollistan, som i dag (E4)</p>
+    <h3>Rundturen</h3>
+    <p>Strängen skrivs ut, läses in igen och jämförs — så att CSV-exporten och importen bevarar exakt det som står i cellen.</p>
+    <button type="button" class="knapp" id="rundtur">Kör rundturen</button>
+    <div class="prov" id="provet" hidden><b id="provtext"></b><code id="provkod"></code></div>
+  </div>
+</div>
+</main>
+</div>
+
+<div class="note">
+  <b>Prototyp 16 — #324</b>
+  Cellens lagrade sträng står alltid under redigeraren, så det syns att den är exakt #308:s delmängd — <code>**</code>, <code>*</code>, tom rad, <code>- </code>, <code>{symbol}</code> — och aldrig HTML. Byt också hur den <i>stängda</i> cellen visar en lista: tabellen är tät (#46).
+</div>
+
+<script>
+// ── Delmängden ur #308 ─────────────────────────────────────────────────────────────────────────
+// Samma regler som `parseBody`: tom rad delar stycken, rader som börjar med «- » blir en lista,
+// `**` är fet, `*` kursiv, `{namn}` en symbol. Ingenting annat, och aldrig HTML.
+const BULLET = /^[ \t]*-[ \t]+(.*)$/
+const SYMBOLER = { skold: '#4c8fd8', blad: '#5da45d', droppe: '#5da45d' }
+const GLYF = '<path d="M2 3h12v6q0 5-6 7-6-2-6-7z"/>'
+
+const flyktig = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+function span(text) {
+  let ut = flyktig(text)
+  ut = ut.replace(/\{([\p{L}\p{N}_-]+)(?:\|([\p{L}\p{N}_-]+))?\}/gu, (h, namn) =>
+    '<span class="sym" data-sym="' + namn + '" aria-hidden="true"><svg width="100%" height="100%" viewBox="0 0 16 16" fill="' + (SYMBOLER[namn] || '#241a0c') + '">' + GLYF + '</svg></span>')
+  ut = ut.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/\*([^*]+)\*/g, '<i>$1</i>')
+  return ut
+}
+function tillHtml(s) {
+  const ut = []
+  let rader = [], punkter = null
+  const stangStycke = () => { const t = rader.join('\n').replace(/\s*\n\s*/g, ' ').trim(); rader = []; if (t) ut.push('<p>' + span(t) + '</p>') }
+  const stangLista = () => { if (punkter && punkter.length) ut.push('<ul>' + punkter.map((p) => '<li>' + span(p) + '</li>').join('') + '</ul>'); punkter = null }
+  for (const rad of s.split('\n')) {
+    const b = BULLET.exec(rad)
+    if (b) { stangStycke(); (punkter ??= []).push(b[1]); continue }
+    if (rad.trim() === '') { stangStycke(); stangLista(); continue }
+    stangLista(); rader.push(rad)
+  }
+  stangStycke(); stangLista()
+  return ut.join('')
+}
+
+// Tillbaka till strängen: redigeraren håller semantiska element, och det här är den enda vägen
+// ut ur dem. Ingenting annat får skriva cellens värde.
+function tillStrang(el) {
+  const bitar = []
+  const inline = (n) => {
+    if (n.nodeType === 3) return n.textContent
+    if (n.dataset && n.dataset.sym) return '{' + n.dataset.sym + '}'
+    const inre = [...n.childNodes].map(inline).join('')
+    if (n.tagName === 'B' || n.tagName === 'STRONG') return '**' + inre + '**'
+    if (n.tagName === 'I' || n.tagName === 'EM') return '*' + inre + '*'
+    return inre
+  }
+  for (const barn of el.children) {
+    if (barn.tagName === 'UL') bitar.push([...barn.children].map((li) => '- ' + inline(li)).join('\n'))
+    else bitar.push(inline(barn))
+  }
+  return bitar.join('\n\n')
+}
+
+// ── Tabellen ───────────────────────────────────────────────────────────────────────────────────
+let strang = 'När **Gläntans väktare** kommer i spel:\n\n- Se på de tre översta korten i draghögen\n- Lägg ett av dem i din hand\n- Lägg resten {blad} i kasthögen\n\nDen får *skydd* medan den står framför dig.'
+const ANDRA = [
+  ['Bergets fogde', 'Betala {droppe} för att dra ett kort.'],
+  ['Flodens härold', 'Vänd **ett kort** mot en varelse.\n\n- Den kan inte försvara sig\n- Effekten varar en runda'],
+]
+const shell = document.querySelector('.shell')
+const sag = (t) => { document.getElementById('sagt').innerHTML = 'Skärmläsaren hör: <em>' + t + '</em>' }
+
+// Den stängda cellens «en rad»-form: stycken och punkter blir markörer så att raden är en rad.
+function enRad(s) {
+  const bitar = s.split(/\n{2,}/).map((block) => {
+    const rader = block.split('\n')
+    if (rader.every((r) => BULLET.test(r))) return rader.map((r) => '<span class="punktmark">•</span>' + span(BULLET.exec(r)[1])).join('')
+    return span(block.replace(/\n/g, ' '))
+  })
+  return bitar.join('<span class="styckemark">¶</span>')
+}
+
+function rita() {
+  const rader = [['Gläntans väktare', strang], ...ANDRA]
+  document.getElementById('rader').innerHTML = rader.map(([n, t], i) =>
+    '<tr' + (i === 0 ? ' aria-selected="true"' : '') + '><td>' + n + '</td><td class="body">'
+    + '<span class="inre">' + (shell.dataset.stangd === 'rad' ? enRad(t) : tillHtml(t)) + '</span>' + '</td></tr>').join('')
+  document.getElementById('strang').textContent = strang.replace(/\n/g, '⏎')
+  document.getElementById('rakn').textContent = strang.length + ' tecken'
+  requestAnimationFrame(() => {
+    const h = [...document.querySelectorAll('#rader tr')].map((tr) => Math.round(tr.getBoundingClientRect().height))
+    document.getElementById('m-rad').textContent = h.join(' · ') + ' px'
+  })
+}
+
+const skriv = document.getElementById('skriv')
+skriv.innerHTML = tillHtml(strang)
+rita()
+
+// ── Redigeringen ───────────────────────────────────────────────────────────────────────────────
+function las() { strang = tillStrang(skriv); rita() }
+skriv.addEventListener('input', () => {
+  // «- » i början av en rad börjar en lista, precis som i strängen.
+  const s = window.getSelection()
+  if (s.rangeCount && s.anchorNode?.nodeType === 3 && /^-\s$/.test(s.anchorNode.textContent)) {
+    document.execCommand('insertUnorderedList')
+    s.anchorNode.textContent = ''
+  }
+  las()
+})
+skriv.addEventListener('focus', () => { document.getElementById('cell').dataset.fokus = 'ja' })
+skriv.addEventListener('blur', () => { setTimeout(() => { if (!document.getElementById('cell').contains(document.activeElement)) document.getElementById('cell').dataset.fokus = 'nej' }, 0) })
+
+function kommando(k) {
+  skriv.focus()
+  if (k === 'fet') document.execCommand('bold')
+  else if (k === 'kursiv') document.execCommand('italic')
+  else if (k === 'lista') document.execCommand('insertUnorderedList')
+  else if (k === 'symbol') document.execCommand('insertHTML', false, '<span class="sym" data-sym="skold" aria-hidden="true"><svg width="100%" height="100%" viewBox="0 0 16 16" fill="#4c8fd8">' + GLYF + '</svg></span>')
+  las()
+  lagen()
+  sag(k === 'fet' ? 'fet' : k === 'kursiv' ? 'kursiv' : k === 'lista' ? 'punktlista' : 'symbol infogad')
+}
+function lagen() {
+  for (const b of document.querySelectorAll('[data-cmd]')) {
+    const k = b.dataset.cmd
+    if (k === 'symbol') continue
+    const pa = k === 'lista' ? document.queryCommandState('insertUnorderedList') : document.queryCommandState(k === 'fet' ? 'bold' : 'italic')
+    b.setAttribute('aria-pressed', String(pa))
+  }
+}
+document.addEventListener('selectionchange', lagen)
+
+document.addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && (e.key === 'b' || e.key === 'i')) { e.preventDefault(); kommando(e.key === 'b' ? 'fet' : 'kursiv'); return }
+  // Verktygsraden är en toolbar med roving tabindex: en tabbstopp in, pilar mellan knapparna.
+  const b = e.target.closest?.('#verktyg button')
+  if (b && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+    e.preventDefault()
+    const alla = [...document.querySelectorAll('#verktyg button')]
+    const n = (alla.indexOf(b) + (e.key === 'ArrowRight' ? 1 : alla.length - 1)) % alla.length
+    alla.forEach((x, i) => x.setAttribute('tabindex', i === n ? '0' : '-1'))
+    alla[n].focus()
+  }
+})
+
+const HJALP = {
+  fokus: 'A · Raden vid fokus: verktygen tonar fram när cellen har fokus och försvinner när den lämnas. Cellen står tom på krom när man bara läser.',
+  alltid: 'B · Raden i huvudet: verktygen står alltid i den öppna cellens huvud. Ingen rörelse, alltid på samma plats.',
+  tangent: 'C · Bara tangenter: ingen verktygsrad alls. Cmd/Ctrl+B, Cmd/Ctrl+I och «- » gör arbetet, och frågetecknet bär resten enligt L32.',
+}
+document.addEventListener('click', (e) => {
+  const v = e.target.closest('button[data-form]')
+  if (v) { shell.dataset.form = v.dataset.form; document.querySelectorAll('button[data-form]').forEach((b) => b.setAttribute('aria-pressed', String(b === v))); document.getElementById('hjalptext').textContent = HJALP[v.dataset.form]; return }
+  const st = e.target.closest('button[data-stangd]')
+  if (st) { shell.dataset.stangd = st.dataset.stangd; document.querySelectorAll('button[data-stangd]').forEach((b) => b.setAttribute('aria-pressed', String(b === st))); rita(); return }
+  const k = e.target.closest('[data-cmd]')
+  if (k) { kommando(k.dataset.cmd); return }
+  if (e.target.id === 'rundtur') {
+    // CSV-rundturen: skriv ut, läs in, jämför. Det enda som räknas är att strängen är sig lik.
+    const ut = '"' + strang.replace(/"/g, '""') + '"'
+    const in_ = ut.slice(1, -1).replace(/""/g, '"')
+    const p = document.getElementById('provet')
+    p.hidden = false
+    document.getElementById('provtext').textContent = in_ === strang ? '✓ Bevarad — ' + strang.length + ' tecken ut och in' : '✗ Ändrad'
+    document.getElementById('provkod').textContent = ut.slice(0, 120) + (ut.length > 120 ? '…' : '')
+    sag(in_ === strang ? 'rundturen bevarade strängen' : 'rundturen ändrade strängen')
+  }
+})
+</script>
+</body>
+</html>
