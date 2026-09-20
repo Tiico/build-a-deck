@@ -2573,3 +2573,38 @@
 /* Vad en tangent sa, när den inte tog bort något: en kopia tagen, eller ett nej med sitt skäl.
    Det står där borttagningens eget ord står, för det är samma sorts besked. */
 .byd-setup-said-word { color: #cfe6ff; }
+/* The library dialog (#296, variant B). A large, centred window over the table, with the target
+   over the grid and the actions under it; the grid is the one thing that scrolls, so the search,
+   the target and the way out stay reachable whatever size the library has grown to. It fits the
+   viewport at 1280 and at 1024 and gives up its margins at 768 (L12). The veil takes the pointer
+   off the table: what is behind the window is not what is being asked about. */
+.byd-library-veil { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: var(--byd-s5); background: rgba(8, 10, 14, 0.6); }
+.byd-library { display: flex; flex-direction: column; box-sizing: border-box; width: min(960px, 100%); max-height: 100%; padding: var(--byd-s4) var(--byd-s5); border-radius: 14px; background: var(--byd-editor-panel-bg); border: 1px solid #3b4358; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5); color: #e6ecfa; }
+.byd-library-head { display: flex; align-items: center; gap: var(--byd-s3); }
+.byd-library-head h2 { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
+.byd-library-close { margin-left: auto; width: var(--byd-tap); height: var(--byd-tap); border: 0; border-radius: 8px; background: transparent; color: #9aa3b8; font-size: 20px; cursor: pointer; }
+.byd-library-close:hover, .byd-library-close:focus-visible { color: #fff; }
+.byd-library-target { margin: var(--byd-s1) 0 var(--byd-s3); font-weight: 700; }
+.byd-library-find { display: flex; align-items: center; flex-wrap: wrap; gap: var(--byd-s3); margin: 0 0 var(--byd-s3); }
+.byd-library-find input { flex: 1 1 200px; min-height: var(--byd-tap); box-sizing: border-box; padding: 0 12px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; font: inherit; }
+.byd-library-filter { display: flex; gap: var(--byd-s2); }
+.byd-library-filter button { min-height: var(--byd-tap); padding: 0 12px; border-radius: 8px; font: inherit; cursor: pointer; }
+.byd-library-scroll { flex: 1 1 auto; min-height: 120px; overflow-y: auto; overflow-x: hidden; }
+.byd-library-grid { list-style: none; margin: 0; padding: var(--byd-s1); display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--byd-s3); }
+.byd-library-grid li[data-unused] small { color: #f0b64a; }
+.byd-library-tile { display: grid; gap: var(--byd-s1); width: 100%; padding: var(--byd-s1); border-radius: 8px; font: inherit; text-align: left; cursor: pointer; }
+.byd-library-tile img { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 6px; background: #14161c; }
+.byd-library-tile span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: #e6ecfa; }
+.byd-library-tile small { font-size: 11px; color: var(--byd-editor-quiet); }
+.byd-library-empty { margin: var(--byd-s5) 0; color: var(--byd-editor-quiet); }
+.byd-library-foot { display: flex; align-items: center; flex-wrap: wrap; gap: var(--byd-s3); margin: var(--byd-s3) 0 0; padding-top: var(--byd-s3); border-top: 1px solid #2f333d; }
+.byd-library-said { display: flex; align-items: center; gap: var(--byd-s2); flex: 1 1 240px; min-height: var(--byd-tap); font-size: 12px; color: var(--byd-editor-quiet); }
+.byd-library-said img { width: 60px; height: 40px; object-fit: cover; border-radius: 5px; background: #14161c; }
+.byd-library-said span { color: #e6ecfa; }
+.byd-library-said em { font-style: normal; color: #f0b64a; }
+.byd-library-foot > button { min-height: var(--byd-tap); padding: 0 16px; border-radius: 8px; font: inherit; cursor: pointer; }
+.byd-library-foot > button:disabled { cursor: default; opacity: 0.55; }
+@media (max-width: 1023px) {
+  .byd-library-veil { padding: var(--byd-s3); }
+  .byd-library { padding: var(--byd-s3); }
+}
