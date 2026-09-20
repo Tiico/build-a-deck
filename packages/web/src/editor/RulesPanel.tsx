@@ -164,8 +164,26 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
   const lay = async (files: readonly File[]) => {
     // The book is one file and the pictures stand beside it (#173). Which is which is read from
     // the bytes and the name, never from the order they happen to arrive in.
-    const md = files.find((f) => /\.(md|markdown|txt)$/i.test(f.name)) ?? files.find((f) => !f.type.startsWith('image/'))
-    if (!md) return
+    const named = files.filter((f) => /\.(md|markdown|txt)$/i.test(f.name))
+    const documents = named.length > 0 ? named : files.filter((f) => !f.type.startsWith('image/'))
+    // Which of two documents is the book is not the tool's to guess (#293). Reaching for the
+    // first would make the answer the order the files happened to arrive in — an order a drop
+    // does not even promise — and the other document would be gone without a word.
+    if (documents.length > 1) {
+      setProposal(null)
+      setFailed(t('rules.import.manyBooks', { files: documents.map((f) => f.name).join(', ') }))
+      return
+    }
+    const md = documents[0]
+    // Pictures on their own are not a book. A drop makes this reachable in a way the picker
+    // never did — she can let go of the folder's images and leave the Markdown behind — and a
+    // control that quietly did nothing with them is a control read as broken (#293). Nothing
+    // disappears silently (#131), so the files that arrived are named back.
+    if (!md) {
+      setProposal(null)
+      setFailed(files.length === 0 ? null : t('rules.import.noBook', { files: files.map((f) => f.name).join(', ') }))
+      return
+    }
     const text = await md.text()
     const read = importRules(text, doc.name, await pictures(text, files.filter((f) => f !== md), client, t))
     // A file with nothing in it to make a book of says so, rather than looking as though the
@@ -376,9 +394,30 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
 // cannot be opened on a name — the web has no such thing short of a file handle, and a handle was
 // decided against because it belongs to one browser and one person while the book travels with the
 // project — so what is built instead is a control that says which file it means.
+//
+// The control is the receiver as well as the picker (#293, #291 variant B): the book and its
+// pictures are let go on the thing that takes them, and there is no second box beside it and no
+// drop over the whole rulebook. `onPick` already takes a handful of files, so a drop is a second
+// way into the one path and never a path of its own — the same reading, report and confirmation.
 function PickFile({ label, spoken, onPick }: { label: string; spoken?: string | undefined; onPick(files: readonly File[]): void }) {
+  const [over, setOver] = useState(false)
   return (
-    <label className="byd-secondary">
+    <label
+      className="byd-secondary"
+      data-over={over ? 'true' : undefined}
+      onDragOver={(e) => {
+        // Both halves are cancelled. A file let go where the page does not catch it is the
+        // browser leaving the editor to open the Markdown as a page of its own.
+        e.preventDefault()
+        setOver(true)
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={(e) => {
+        e.preventDefault()
+        setOver(false)
+        onPick([...(e.dataTransfer.files ?? [])])
+      }}
+    >
       {label}
       <input
         className="byd-offscreen"

@@ -395,3 +395,101 @@ describe('when the save behind the import collides with someone else (#131)', ()
     expect(screen.getByText('Osparat')).toBeTruthy()
   })
 })
+
+// The book and its pictures let go on the control that takes them (#293). The compact local
+// pattern the owner settled in #291: the import control is itself the receiver, there is no
+// second box beside it and no drop over the whole rulebook. So a drop is a second way into the
+// one path the picker already walks — the same reading, the same report, the same confirmation.
+//
+// Every file here carries real bytes, and the picture is a real PNG, because what a picture is
+// is read out of its bytes: a drop that handed the panel anything but the designer's files would
+// take the pictures out of the report and out of the project's assets, and these would go red.
+describe('dropping the book and its pictures on the import (#293)', () => {
+  const carrying = (given: File[]) => ({ dataTransfer: { files: given, items: given.map((f) => ({ kind: 'file', type: f.type, getAsFile: () => f })), types: ['Files'], getData: () => '' } })
+  const control = (name = 'Importera från fil') => screen.getByLabelText(name).closest('label') as HTMLLabelElement
+  const book = (text = FILE, name = 'regler-v4.md') => new File([text], name, { type: 'text/markdown' })
+
+  it('reads the dropped book and its picture into the report the picker would have made', async () => {
+    await openRules()
+    // Both halves cancelled: a file let go where the page does not catch it is the browser
+    // leaving the editor to open the Markdown as a page of its own.
+    expect(fireEvent.dragOver(control(), carrying([book()]))).toBe(false)
+    expect(fireEvent.drop(control(), carrying([book(), picture('bordet.png')]))).toBe(false)
+
+    const report = await screen.findByRole('region', { name: 'Vad importen gör med filen' })
+    // The same list the picker's own test asserts, line for line — one reading and not two.
+    expect(within(report).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+      '2 rubriker blir avsnitt',
+      '3 stycken blir text',
+      '1 lista blir en lista',
+      '1 referens känns igen, som i en bok du skrivit själv',
+      '1 bild blir en bild i boken',
+      '1 rubrik på filens första rad blir ingenting: boken heter vad spelet heter',
+      '1 rubriknivå djupare än två viks upp till underrubrik',
+      '1 tabell blir text, en rad per rad',
+      '1 länk blir sin egen text; adressen stryks',
+    ])
+    // The picture came with the drop: the line above says so, and the report would say
+    // «kom inte med» instead if the bytes had never reached the panel.
+    expect(within(report).queryByText(/bordet\.png/)).toBeNull()
+  })
+
+  it('marks the control while the files are over it, and lets the mark go again', async () => {
+    await openRules()
+    const dragged = carrying([book(), picture('bordet.png')])
+
+    expect(control().getAttribute('data-over')).toBeNull()
+    fireEvent.dragOver(control(), dragged)
+    expect(control().getAttribute('data-over')).toBe('true')
+    // Dragged away and nothing let go: the mark is about the drag, and no report was made.
+    fireEvent.dragLeave(control(), dragged)
+    expect(control().getAttribute('data-over')).toBeNull()
+    expect(screen.queryByRole('region', { name: 'Vad importen gör med filen' })).toBeNull()
+
+    fireEvent.dragOver(control(), dragged)
+    fireEvent.drop(control(), dragged)
+    expect(control().getAttribute('data-over')).toBeNull()
+  })
+
+  // Nothing disappears silently (#131). Pictures on their own are not a book, and a control that
+  // simply did nothing with them would be a control a designer reads as broken.
+  it('says the book itself is missing when only pictures are let go', async () => {
+    await openRules()
+    fireEvent.drop(control(), carrying([picture('bordet.png'), picture('kast.png')]))
+
+    const said = (await screen.findByRole('alert')).textContent ?? ''
+    expect(said).toMatch(/markdown/i)
+    expect(said).toContain('bordet.png')
+    expect(said).toContain('kast.png')
+    expect(screen.queryByRole('region', { name: 'Vad importen gör med filen' })).toBeNull()
+  })
+
+  // Which of two documents is the book is not the tool's guess to make (#293). Reaching for the
+  // first would make the answer the order the files happened to arrive in, and the other would
+  // be gone without a word.
+  it('refuses to choose between two documents, and names both', async () => {
+    await openRules()
+    fireEvent.drop(control(), carrying([book(FILE, 'regler-v4.md'), book(FILE, 'regler-v5.md'), picture('bordet.png')]))
+
+    const said = (await screen.findByRole('alert')).textContent ?? ''
+    expect(said).toContain('regler-v4.md')
+    expect(said).toContain('regler-v5.md')
+    expect(screen.queryByRole('region', { name: 'Vad importen gör med filen' })).toBeNull()
+    expect(document.querySelector('[data-rulebook]')).toBeNull()
+  })
+
+  // The other side of the same coin, and what makes the test above more than a count: a picture
+  // the book names and the drop did not carry is a line in the report saying exactly that. So a
+  // drop that lost the bytes on the way would not go quiet — it would say «kom inte med», which
+  // is the line the test above asserts is absent.
+  it('reports the picture the book names and the drop did not carry', async () => {
+    await openRules()
+    fireEvent.drop(control(), carrying([book('# Skogens herrar\n\nEtt spel om skogen.\n\n![Bordet](bordet.png)\n\n![Kasthögen](kast.png)'), picture('bordet.png')]))
+
+    const report = await screen.findByRole('region', { name: 'Vad importen gör med filen' })
+    const lines = within(report).getAllByRole('listitem').map((li) => li.textContent)
+    expect(lines).toContain('1 bild blir en bild i boken')
+    expect(lines.some((l) => l?.includes('kast.png') && l.includes('tillsammans'))).toBe(true)
+    expect(lines.some((l) => l?.includes('bordet.png'))).toBe(false)
+  })
+})

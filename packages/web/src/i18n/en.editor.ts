@@ -564,6 +564,8 @@ export const enEditor = {
   'rules.import.conflict': 'The book is made but not saved: someone else has saved since you loaded this. Reload the page and import the file again.',
   'rules.import.failed': 'The import could not be saved: {why}',
   'rules.source': 'The book came out of {file}, {when}.',
+  'rules.import.manyBooks': 'More than one rulebook came along: {files}. The import takes one document at a time — hand over the one you mean, with its pictures.',
+  'rules.import.noBook': 'No rulebook came along: the import wants a Markdown file together with the pictures. What was dropped was {files}.',
   'rules.import.nothing': 'There is nothing in {file} to make a book of.',
   'rules.section.overview': 'Overview',
   'rules.section.setup': 'Setting up',

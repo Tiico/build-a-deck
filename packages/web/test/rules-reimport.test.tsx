@@ -313,3 +313,32 @@ describe('a proposal is read, not written in (#131, L12)', () => {
     expect(within(written).getAllByRole('button').length).toBeGreaterThan(0)
   })
 })
+
+// The same drop over a book that is already written (#293). The protection the third slice laid
+// down is the whole of what this has to keep: a book nobody asked to lose must not go because a
+// file landed on a control. So a drop stops at the report exactly as a pick does, and the version
+// named for the file is laid when — and only when — the answer is «Gör boken».
+describe('dropping a file over a written book (#293)', () => {
+  const carrying = (given: File[]) => ({ dataTransfer: { files: given, items: given.map((f) => ({ kind: 'file', type: f.type, getAsFile: () => f })), types: ['Files'], getData: () => '' } })
+
+  it('stops at the report, keeps the book until it is answered, and lays the named version then', async () => {
+    const before = await aWrittenBook()
+    expect(before.textContent).toContain('Fusk och straff')
+    const control = screen.getByLabelText('Importera samma fil igen: skrivet.md').closest('label') as HTMLLabelElement
+
+    fireEvent.drop(control, carrying([new File([FILE], 'regler-v4.md', { type: 'text/markdown' })]))
+
+    // The report over the book, and not the report over an empty tab: the drop knows there is a
+    // book under it, because it walked the same path the picker walks.
+    const report = await screen.findByRole('region', { name: 'Vad importen gör med boken du har' })
+    expect(within(report).getAllByRole('listitem')[0]?.textContent).toBe('1 avsnitt försvinner ur boken, 17 ord')
+    // Nothing has been written yet: the section the file never heard of is still on the server.
+    expect((await run.projects.load(run.projectId))?.rules?.blocks.some((b) => 'text' in b && b.text === 'Fusk och straff')).toBe(true)
+
+    fireEvent.click(within(report).getByRole('button', { name: 'Gör boken' }))
+    await waitFor(async () => {
+      const named = (await run.projects.versions(run.projectId)).flatMap((v) => (v.label ? [v.label] : []))
+      expect(named).toEqual(['Importerad: regler-v4.md', 'Importerad: skrivet.md'])
+    })
+  })
+})

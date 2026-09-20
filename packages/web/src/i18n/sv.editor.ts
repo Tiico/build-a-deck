@@ -621,6 +621,8 @@ export const svEditor = {
   'rules.import.conflict': 'Boken är gjord men inte sparad: någon annan har sparat sedan du laddade. Ladda om sidan och importera filen igen.',
   'rules.import.failed': 'Importen kunde inte sparas: {why}',
   'rules.source': 'Boken kom ur {file}, {when}.',
+  'rules.import.manyBooks': 'Fler än en regelbok kom med: {files}. Importen tar ett dokument i taget — lämna över det du vill ha, med dess bilder.',
+  'rules.import.noBook': 'Ingen regelbok kom med: importen vill ha en Markdown-fil tillsammans med bilderna. Det som släpptes var {files}.',
   'rules.import.nothing': 'Det finns ingenting i {file} att göra en bok av.',
   'rules.section.overview': 'Översikt',
   'rules.section.setup': 'Uppställning',
