@@ -34,7 +34,7 @@ const pop = () => document.querySelector('.byd-slot-pop') as HTMLElement
 function openSlot(name: string | RegExp): HTMLElement {
   const doc = bigDoc()
   const zone = doc.setup.zones.find((z) => z.id === 'draw')!
-  render(<ZoneActions doc={doc} zone={{ ...zone, actions }} onPatch={() => undefined} />)
+  render(<ZoneActions doc={doc} zone={{ ...zone, actions }} onPatch={() => undefined} onClose={() => undefined} />)
   fireEvent.click(screen.getByRole('button', { name }))
   return pop()
 }
@@ -43,7 +43,7 @@ function openSlot(name: string | RegExp): HTMLElement {
 function Panel() {
   const doc = bigDoc()
   const [zone, setZone] = useState<Zone>({ ...doc.setup.zones.find((z) => z.id === 'draw')!, actions })
-  return <ZoneActions doc={doc} zone={zone} onPatch={(patch) => setZone((was) => ({ ...was, ...patch }))} />
+  return <ZoneActions doc={doc} zone={zone} onPatch={(patch) => setZone((was) => ({ ...was, ...patch }))} onClose={() => undefined} />
 }
 
 // Ett val taget som designern tar det: öppna ordet i meningen, välj i rutan.

@@ -2372,11 +2372,21 @@
    Att i stället reservera rummet alltid hade kostat filten de pixlarna även när ingen hög är vald,
    och filten är höjdbunden. Så meningarna lägger sig över filtens nederkant med egen botten under
    sig; filten behåller hela sin rektangel och rör sig aldrig. */
+/* Krysset står still och meningarna rullar under det (#300). Panelen är en flexkolumn av samma
+   skäl som historikpanelen är det (#177): det som rullar är innehållet och aldrig vägen ut, för
+   en panel som är dubbelt sin egen höjd skulle annars ha sitt kryss en skärmhöjd ovanför det som
+   läses just nu. Höjdtaket och överlägget är oförändrade — `overflow` flyttar bara inåt. */
 .byd-zone-actions {
-  position: absolute; z-index: 3; left: 0; right: 0; bottom: 0; max-height: 45%; overflow: auto;
-  display: grid; gap: 10px; align-content: start; background: #171a23e6; backdrop-filter: blur(6px);
+  position: absolute; z-index: 3; left: 0; right: 0; bottom: 0; max-height: 45%; overflow: hidden;
+  display: flex; flex-direction: column; background: #171a23e6; backdrop-filter: blur(6px);
   border: 1px solid #2f333d; border-radius: 12px; padding: 12px 16px;
 }
+.byd-zone-actions > header { display: flex; align-items: center; }
+/* Samma kryss som historikens och delningens: samma glyf, samma storlek, samma dämpade färg, och
+   namnet ur katalogen. Fokusringen är editorns egen (`.byd-editor :focus-visible`). */
+.byd-zone-actions > header button { margin-left: auto; border: 0; background: transparent; color: #9aa3b8; font-size: 18px; line-height: 1; cursor: pointer; padding: 0 4px; }
+.byd-zone-actions > header button:hover { color: #e6ecfa; }
+.byd-zone-actions-body { flex: 1; min-height: 0; overflow: auto; display: grid; gap: 10px; align-content: start; }
 .byd-zone-actions h3 { margin: 4px 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
 .byd-sentence { margin: 0; line-height: 2.1; color: #e6ecfa; }
 .byd-sentence b { color: #fff; }

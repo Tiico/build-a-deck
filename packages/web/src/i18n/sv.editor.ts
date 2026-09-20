@@ -709,6 +709,9 @@ export const svEditor = {
   // («Hand A») och får ingen träff på något som börjar någon annanstans (WCAG 2.5.3). Att den
   // ordföljden är lätt stel är priset, taget medvetet framför «Hand, plats A».
   'setup.slot.zone.owned.tail': '{zone} {owner}, plats',
+  // Vägen ut ur panelen och inte ur zonen (#300): krysset lägger undan meningarna så att
+  // filten under dem syns, och högen står kvar med allt som redan skrivits i den.
+  'setup.actions.close': 'Stäng panel',
   'setup.actions.heading': 'När någon klickar på högen kan de välja',
   'setup.actions.new': '＋ Åtgärd',
   'setup.actions.newName': 'Ny åtgärd',

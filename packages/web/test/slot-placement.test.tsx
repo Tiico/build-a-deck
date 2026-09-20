@@ -18,7 +18,7 @@ const doc = projectDoc()
 const zone = doc.setup.zones.find((z) => z.actions !== undefined && z.actions.length > 0) ?? doc.setup.zones[0]!
 
 const openSlotWithKnobAt = (topPx: number): HTMLElement => {
-  render(<ZoneActions doc={doc} zone={{ ...zone, actions: [{ id: 'a1', label: 'Dra', steps: [{ v: 'split', count: { of: 'number', n: 1 }, to: { at: 'beside' }, face: 'keep' }] }] }} onPatch={() => undefined} />)
+  render(<ZoneActions doc={doc} zone={{ ...zone, actions: [{ id: 'a1', label: 'Dra', steps: [{ v: 'split', count: { of: 'number', n: 1 }, to: { at: 'beside' }, face: 'keep' }] }] }} onPatch={() => undefined} onClose={() => undefined} />)
   const knob = document.querySelector('.byd-slot') as HTMLButtonElement
   const wrap = knob.closest('.byd-slot-wrap') as HTMLElement
   expect(wrap).toBeTruthy()

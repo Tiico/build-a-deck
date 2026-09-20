@@ -642,6 +642,7 @@ export const enEditor = {
   // why the two arrive here separately and the catalogue is what puts them together (A4).
   'setup.slot.zone.owned': '{zone} {owner}',
   'setup.slot.zone.owned.tail': '{zone} {owner}, seat',
+  'setup.actions.close': 'Close the panel',
   'setup.actions.heading': 'When somebody clicks the pile they can choose',
   'setup.actions.new': '＋ Action',
   'setup.actions.newName': 'New action',

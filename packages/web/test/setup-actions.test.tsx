@@ -273,3 +273,63 @@ describe('vems zon en rad i rutan står för', () => {
     expect(step.querySelector('em')).toBeNull()
   })
 })
+
+// Krysset som lägger undan panelen (#300). Meningarna ligger över filtens nederkant och tar upp
+// till 45 % av den (#218), så den som vill se bordet under dem måste ha en väg ut — och vägen ut
+// är panelens och inte zonens: den som stänger blanketten har inte bett om att bli av med högen.
+describe('krysset som stänger högens panel (#300)', () => {
+  it('stänger panelen och heter det den gör: Stäng panel', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Stäng panel' }))
+    expect(document.querySelector('[data-zone-actions]')).toBeNull()
+  })
+
+  // Tangentbordet får inte landa på ingenting, och inte heller på handtaget på filten: handtaget
+  // väljer zonen redan när det får fokus, så vägen ut hade lett rakt in igen. Raden i listan är
+  // zonens kontroll som står kvar, och den är dessutom det som öppnar panelen på nytt.
+  it('lämnar fokus på zonens rad i listan, och panelen stängd', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Stäng panel' }))
+
+    const row = document.querySelector('[data-zone-row="draw"] .byd-setup-name')
+    expect(document.activeElement).toBe(row)
+    expect(document.querySelector('[data-zone-actions]')).toBeNull()
+  })
+
+  // Det som krysset uttryckligen inte är: receptets gamla kryss, som stängde av zonen och la
+  // tillbaka den nästa gång någon rörde den (B5). Det här lägger undan en blankett.
+  it('lämnar högen och det som redan skrivits i fred: samma rad igen visar samma värden', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+
+    fireEvent.click(within(panel()).getByRole('button', { name: '＋ Åtgärd' }))
+    fireEvent.change(within(panel()).getByLabelText(/Namn för/), { target: { value: 'Lägg upp marknaden' } })
+
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Stäng panel' }))
+    expect(document.querySelector('[data-zone-actions]')).toBeNull()
+    // Högen står kvar, både på filten och i listan.
+    expect(document.querySelector('[data-zone-handle="draw"]')).not.toBeNull()
+
+    fireEvent.click(document.querySelector('[data-zone-row="draw"] .byd-setup-name') as HTMLElement)
+    expect((within(panel()).getByLabelText(/Namn för/) as HTMLInputElement).value).toBe('Lägg upp marknaden')
+  })
+
+  // Och varför inget annat bord och ingen annan session märker stängningen: den är ingen ändring.
+  // Ingenting av den når dokumentet, så det finns ingenting att skicka vidare — leken står kvar
+  // som sparad, och revisionen på servern rör sig inte.
+  it('skriver ingenting: leken är fortfarande sparad och servern har samma revision', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    expect(screen.getByText('Sparat')).toBeDefined()
+
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Stäng panel' }))
+
+    expect(screen.getByText('Sparat')).toBeDefined()
+    expect(screen.queryByText('Osparat')).toBeNull()
+    expect((await run.projects.load(run.projectId))?.rev).toBe(1)
+  })
+})

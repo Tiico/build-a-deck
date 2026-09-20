@@ -52,7 +52,7 @@ function sentence(lang: Lang, verb: Verb, place: Place): string {
   const zone: Zone = { ...draw, beside: place.beside, actions: [action] }
   const view = render(
     <Language lang={lang}>
-      <ZoneActions doc={doc} zone={zone} onPatch={() => undefined} />
+      <ZoneActions doc={doc} zone={zone} onPatch={() => undefined} onClose={() => undefined} />
     </Language>,
   )
   const text = (view.container.querySelector('ol li .byd-sentence') as HTMLElement).textContent ?? ''

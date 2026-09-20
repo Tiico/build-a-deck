@@ -26,6 +26,9 @@ export type ZoneActionsProps = {
   doc: ProjectDoc
   zone: Zone
   onPatch(patch: { fill?: CardQuery | undefined; actions?: ZoneAction[] }, gesture?: string): void
+  // Att lägga undan panelen (#300). Den som stänger den har inte bett om att bli av med högen, så
+  // ytan säger bara att den är färdigläst; vad det gör med markeringen är den väljandes sak.
+  onClose(): void
 }
 
 const AMOUNTS: ActionAmount['of'][] = ['number', 'seats', 'zone', 'ask']
@@ -50,7 +53,7 @@ const blank = (v: ActionStep['v']): ActionStep =>
             ? { v, which: [], to: { at: 'beside' }, face: 'keep' }
             : { v, count: { of: 'number', n: 1 }, to: { at: 'beside' }, face: 'keep' }
 
-export function ZoneActions({ doc, zone, onPatch }: ZoneActionsProps) {
+export function ZoneActions({ doc, zone, onPatch, onClose }: ZoneActionsProps) {
   const t = useT()
   const actions = zone.actions ?? []
   const setAction = (id: string, next: ZoneAction, gesture?: string) => onPatch({ actions: actions.map((a) => (a.id === id ? next : a)) }, gesture)
@@ -68,72 +71,83 @@ export function ZoneActions({ doc, zone, onPatch }: ZoneActionsProps) {
   return (
     <Chosen.Provider value={remembered}>
       <div className="byd-zone-actions" data-zone-actions={zone.id}>
-        <p className="byd-sentence">
-          {parts(t('setup.fill.sentence'), {
-            zone: <b key="z">{zone.name}</b>,
-            what: (
-              <QuerySlot
-                key="w"
-                query={zone.fill ?? []}
-                columns={columns}
-                label={zone.fill && zone.fill.length > 0 ? t('setup.fill.some', { what: queryWords(zone.fill, t) }) : t('setup.fill.none')}
-                onChange={(fill) => onPatch({ fill: fill.length > 0 ? fill : undefined }, `fill:${zone.id}`)}
-                t={t}
-              />
-            ),
-          })}
-        </p>
+        {/* Vägen ut ur panelen, som varje annan panel i editorn bär den: ett kryss i huvudet,
+            med namnet i katalogen (#300). Huvudet rullar inte med meningarna under sig — samma
+            skäl som historikens huvud har (#177): en panel som är dubbelt sin egen höjd får inte
+            gömma vägen ut en skärmhöjd ovanför det som läses. */}
+        <header>
+          <button type="button" aria-label={t('setup.actions.close')} onClick={onClose}>
+            ×
+          </button>
+        </header>
+        <div className="byd-zone-actions-body">
+          <p className="byd-sentence">
+            {parts(t('setup.fill.sentence'), {
+              zone: <b key="z">{zone.name}</b>,
+              what: (
+                <QuerySlot
+                  key="w"
+                  query={zone.fill ?? []}
+                  columns={columns}
+                  label={zone.fill && zone.fill.length > 0 ? t('setup.fill.some', { what: queryWords(zone.fill, t) }) : t('setup.fill.none')}
+                  onChange={(fill) => onPatch({ fill: fill.length > 0 ? fill : undefined }, `fill:${zone.id}`)}
+                  t={t}
+                />
+              ),
+            })}
+          </p>
 
-        <h3>{t('setup.actions.heading')}</h3>
-        {actions.map((a) => (
-          <div key={a.id} className="byd-zone-action">
-            <input
-              value={a.label}
-              aria-label={t('setup.actions.name', { name: a.label })}
-              onChange={(e) => setAction(a.id, { ...a, label: e.target.value }, `action:${zone.id}:${a.id}`)}
-            />
-            <ol>
-              {a.steps.map((step, i) => (
-                <li key={i}>
-                  <span className="byd-sentence">
-                    <Step step={step} columns={columns} zones={others} beside={zone.beside ?? 'left'} t={t} onChange={(next) => setAction(a.id, { ...a, steps: a.steps.map((s, j) => (j === i ? next : s)) })} />
-                  </span>
-                  <button
-                    type="button"
-                    className="byd-zone-action-x"
-                    aria-label={t('setup.actions.removeStep', { n: i + 1 })}
-                    onClick={() => {
-                      const steps = a.steps.filter((_, j) => j !== i)
-                      // An action with no steps is not an action: the last step going takes it with
-                      // it, which is also the only way to be rid of one.
-                      if (steps.length > 0) setAction(a.id, { ...a, steps })
-                      else onPatch({ actions: actions.filter((x) => x.id !== a.id) })
-                    }}
-                  >
-                    ×
-                  </button>
-                </li>
-              ))}
-            </ol>
-            <label className="byd-zone-step-add">
-              <span>{t('setup.actions.andThen', { name: a.label })}</span>
-              <select
-                value=""
-                onChange={(e) => e.target.value !== '' && setAction(a.id, { ...a, steps: [...a.steps, blank(e.target.value as ActionStep['v'])] })}
-              >
-                <option value="">{t('setup.actions.andThen.pick')}</option>
-                {VERBS.map((v) => (
-                  <option key={v} value={v}>
-                    {t(`setup.verb.${v}` as Key)}
-                  </option>
+          <h3>{t('setup.actions.heading')}</h3>
+          {actions.map((a) => (
+            <div key={a.id} className="byd-zone-action">
+              <input
+                value={a.label}
+                aria-label={t('setup.actions.name', { name: a.label })}
+                onChange={(e) => setAction(a.id, { ...a, label: e.target.value }, `action:${zone.id}:${a.id}`)}
+              />
+              <ol>
+                {a.steps.map((step, i) => (
+                  <li key={i}>
+                    <span className="byd-sentence">
+                      <Step step={step} columns={columns} zones={others} beside={zone.beside ?? 'left'} t={t} onChange={(next) => setAction(a.id, { ...a, steps: a.steps.map((s, j) => (j === i ? next : s)) })} />
+                    </span>
+                    <button
+                      type="button"
+                      className="byd-zone-action-x"
+                      aria-label={t('setup.actions.removeStep', { n: i + 1 })}
+                      onClick={() => {
+                        const steps = a.steps.filter((_, j) => j !== i)
+                        // An action with no steps is not an action: the last step going takes it with
+                        // it, which is also the only way to be rid of one.
+                        if (steps.length > 0) setAction(a.id, { ...a, steps })
+                        else onPatch({ actions: actions.filter((x) => x.id !== a.id) })
+                      }}
+                    >
+                      ×
+                    </button>
+                  </li>
                 ))}
-              </select>
-            </label>
-          </div>
-        ))}
-        <button type="button" className="byd-zone-action-new" onClick={() => onPatch({ actions: [...actions, { id: `a${Date.now().toString(36)}`, label: t('setup.actions.newName'), steps: [blank('split')] }] })}>
-          {t('setup.actions.new')}
-        </button>
+              </ol>
+              <label className="byd-zone-step-add">
+                <span>{t('setup.actions.andThen', { name: a.label })}</span>
+                <select
+                  value=""
+                  onChange={(e) => e.target.value !== '' && setAction(a.id, { ...a, steps: [...a.steps, blank(e.target.value as ActionStep['v'])] })}
+                >
+                  <option value="">{t('setup.actions.andThen.pick')}</option>
+                  {VERBS.map((v) => (
+                    <option key={v} value={v}>
+                      {t(`setup.verb.${v}` as Key)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          ))}
+          <button type="button" className="byd-zone-action-new" onClick={() => onPatch({ actions: [...actions, { id: `a${Date.now().toString(36)}`, label: t('setup.actions.newName'), steps: [blank('split')] }] })}>
+            {t('setup.actions.new')}
+          </button>
+        </div>
       </div>
     </Chosen.Provider>
   )

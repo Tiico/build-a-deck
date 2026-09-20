@@ -91,6 +91,19 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
     const role = zone === undefined ? null : familyRole(zone)
     if (role !== null) setOpened((now) => (now.includes(role) ? now : [...now, role]))
   }
+  // Att lägga undan högens nederpanel (#300). Att stänga den är att avmarkera zonen — samma sak
+  // som ett andra klick på raden gör, och skälet till att samma rad öppnar panelen igen med det
+  // som står i dokumentet just då. Zonen och allt som redan skrivits i den rörs inte; ingenting
+  // av det här når dokumentet, och därmed inte heller något bord eller någon session.
+  //
+  // Fokus går till raden i listan och aldrig till handtaget på filten: handtaget väljer zonen
+  // redan när det får fokus, så vägen ut hade lett rakt in igen. Raden finns kvar att peka ut —
+  // den ritas vare sig zonen är markerad eller inte, och `select` har redan fällt ut familjen den
+  // ligger i — så den läses ur DOM:en på samma sätt som regelpanelen läser sin (#152).
+  const close = (zone: Zone) => {
+    select(null)
+    document.querySelector<HTMLElement>(`[data-zone-row="${zone.id}"] .byd-setup-name`)?.focus()
+  }
   const remove = (zone: Zone) => {
     client.removeZone(zone.id)
     setUndoable(zone.name)
@@ -217,7 +230,7 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
             sentences. Only a pile: an area and a hand have no ring to hang an action in, and a
             hand's contents are the seat's and not the designer's (C3). */}
         {selectedZone?.kind === 'pile' && (
-          <ZoneActions doc={doc} zone={selectedZone} onPatch={(patch, gesture) => client.patchZone(selectedZone.id, patch, gesture)} />
+          <ZoneActions doc={doc} zone={selectedZone} onPatch={(patch, gesture) => client.patchZone(selectedZone.id, patch, gesture)} onClose={() => close(selectedZone)} />
         )}
       </div>
       {/* The third column: what a player is given, and the tables the game is running at. Both
