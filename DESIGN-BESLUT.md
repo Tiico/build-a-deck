@@ -650,6 +650,14 @@ Räckvidden är bordet plus det som är i spel, omarginalerat: marginalen runt s
 En zoomning är en vy och inte innehåll, och vidgar därför aldrig räckvidden: att zooma ut stannar vid bordet som förut.
 Följden är den invariant som mäts i renderaren: inget kort som kameran är riktad mot skärs av av ramen.
 
+Reviderat 2026-09-20 (#322): TV-läget ramar in med en overscan-marginal om 3 % av viewportens kortaste sida på alla fyra sidor.
+En TV kan dölja bildens ytterkant, så marginalen är en säkerhetsmarginal på action-safe-nivå och ingen ritad ram.
+Den begränsar bara den automatiska inramningen och `fitFloor`; en manuell zoom får gå in i den.
+Observatören delar läget men inte kameran, och varken hennes vy eller telefonens påverkas.
+Talet bor på ett ställe, `TV_OVERSCAN` i `camera.ts`, och räknas om från pixlar till millimeter där viewporten är känd, aldrig i renderaren.
+Priset i kortstorlek, mätt i Chromium på åttaplatsbordet inne i TV:ns eget krom (`felt-names.test.tsx`): kortets kortsida går från 49 till 46 px vid 1920 × 1080 och från 99 till 93 px vid 3840 × 2160, sex procent, och från 33 till 31 vid 1280 × 800.
+Vid 1920 × 1080 står åttaplatsbordets kort därmed en pixel över K9:s golv på 45 px; testets pinnar är sänkta till de nya talen, och det minsta namnet är fortfarande 12 px.
+
 Reviderat 2026-09-14 (#66): ramen tar inte emot.
 Träramen runt filten ritas i skärmpixlar utanför de millimeter ett släpp mäts i — 30 px vid varje fönsterstorlek — och är ingen yta ett kort kan ligga *på*.
 Ett släpp vars avgörande punkt, pekarens (K2, #74), ligger utanför filtens golv lägger kortet vid närmaste kant på filten: kortets vilorektangel skjuts den kortaste sträcka som får den att ligga hel innanför golvet, på alla fyra sidor och i alla fyra hörn, hur långt förbi träet släppet än sker.

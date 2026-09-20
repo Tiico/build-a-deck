@@ -5,7 +5,9 @@ import { createRef } from 'react'
 import type { Intent } from '@byd/protocol'
 import { TableRenderer, type TableHandle } from '../src/table/TableRenderer.js'
 import { buildScene } from './scene.js'
-import { activeBounds, cameraOf, frameRect, pad } from '../src/table/camera.js'
+import { activeBounds, cameraOf, frameRect, overscanPx, pad } from '../src/table/camera.js'
+import { feltScale, fitScale, TV_AIR_PX } from '../src/table/fit.js'
+import { feltWithHands, handExtent, handRotation, type TableMode } from '../src/table/hand.js'
 import { DEFAULT_TIMING } from '../src/status/connection.js'
 import { RING_MARGIN } from '../src/table/ring.js'
 import { CARD_MM } from '../src/table/drop.js'
@@ -84,7 +86,7 @@ describe('the camera (C5)', () => {
     render(<TableRenderer view={snapshot} mode="tv" camera size={size} glideMs={0} />)
 
     const floor = snapshot.zones.find((z) => z.id === snapshot.floor)!.geometry
-    const cam = frameRect(pad(activeBounds(snapshot)!, 60), size, floor, 520)
+    const cam = frameRect(pad(activeBounds(snapshot)!, 60), size, floor, 520, overscanPx(size))
     const { scale, left, top } = cameraOf(cam, size, floor)
     expect(scale).toBeGreaterThan(1)
     const frame = document.querySelector('.byd-table-frame')!
@@ -118,6 +120,38 @@ describe('the camera (C5)', () => {
     fireEvent.doubleClick(frame, { clientX: 500, clientY: 250 })
     expect(table.style.width).toBe(following)
     vi.useRealTimers()
+  })
+
+  it('on the TV leaves the overscan margin around what it frames; the observer and the phone are fitted as before (#322)', () => {
+    const { view } = buildScene()
+    const snapshot = view(null)
+    // A square frame, so the margin is 30 px and what is in play — wider than it is tall — is
+    // bound by the frame's width: framed automatically, it stands exactly 30 px inside each side.
+    const size = { w: 1000, h: 1000 }
+    const floorZone = snapshot.zones.find((z) => z.id === snapshot.floor)!
+    const floor = floorZone.geometry
+    const { unmount } = render(<TableRenderer view={snapshot} mode="tv" camera size={size} glideMs={0} />)
+    const world = document.querySelector('.byd-camera-world') as HTMLElement
+    const table = document.querySelector('[data-table]') as HTMLElement
+    const scale = parseFloat(table.style.width) / floor.w
+    const framed = pad(activeBounds(snapshot)!, 60)
+    const left = parseFloat(world.style.left) + (framed.x - floor.x) * scale
+    expect(left).toBeCloseTo(30)
+    expect(left + framed.w * scale).toBeCloseTo(1000 - 30)
+    unmount()
+
+    // The observer is the same `mode` without the camera (C8): the felt with its hands on is
+    // fitted to the frame with the TV's own air and nothing more. The phone's table mode (K9)
+    // lies on wood that is fitted by its own rule. Neither knows the overscan margin.
+    const drawn = (mode: TableMode) =>
+      feltWithHands(floor, snapshot.zones.filter((z) => z.kind === 'hand').map((z) => handExtent(z, floorZone, handRotation(z, floorZone, mode))))
+    const observer = render(<TableRenderer view={snapshot} mode="tv" size={size} />)
+    expect(document.querySelector('.byd-camera-world')).toBeNull()
+    expect((document.querySelector('[data-table]') as HTMLElement).style.width).toBe(`${floor.w * fitScale(drawn('tv'), size, TV_AIR_PX)}px`)
+    observer.unmount()
+    render(<TableRenderer view={snapshot} mode="table" size={size} />)
+    expect(document.querySelector('.byd-camera-world')).toBeNull()
+    expect((document.querySelector('[data-table]') as HTMLElement).style.width).toBe(`${floor.w * feltScale(drawn('table'), size)}px`)
   })
 })
 
