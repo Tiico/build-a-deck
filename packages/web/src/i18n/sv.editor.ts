@@ -487,6 +487,8 @@ export const svEditor = {
   'fonts.travels': 'följer med till trycket',
   'fonts.staysBehind': 'följer inte med till trycket',
   'fonts.upload': 'Ladda upp typsnitt',
+  'fonts.upload.busy': 'Laddar upp typsnittet…',
+  'fonts.upload.one': 'Ett typsnitt i taget: släpp en fil.',
   'fonts.licence': 'Licens',
   'fonts.licence.of': 'Licens för {family}',
   'fonts.by': 'Upphovsperson',

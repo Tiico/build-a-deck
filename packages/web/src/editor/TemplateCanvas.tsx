@@ -366,6 +366,9 @@ function FontShelf({ doc, onFontFile, onFontLicence, onRemoveFont }: Pick<Templa
   const t = useT()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // A file is over the control. The same word the table's picture cells use for the same moment
+  // (#222), so the mark is one mark in one language wherever a file is let go in the tool.
+  const [over, setOver] = useState(false)
   const families = Object.entries(doc.fonts ?? {})
   const used = familiesInUse(doc)
   const take = (file: File | undefined) => {
@@ -399,10 +402,43 @@ function FontShelf({ doc, onFontFile, onFontLicence, onRemoveFont }: Pick<Templa
           ))}
         </ul>
       )}
-      <label className="byd-fonts-upload byd-secondary">
+      {/* The control is the receiver (#294, #291 variant B): a typeface is dropped on the button
+          that takes one, not on a second box beside it and not on the whole canvas. Both halves
+          of the drag are cancelled, because a file let go anywhere the page does not catch it is
+          a browser leaving the editor to open the typeface as a page of its own. */}
+      <label
+        className="byd-fonts-upload byd-secondary"
+        data-over={over ? 'true' : undefined}
+        onDragOver={(e) => {
+          e.preventDefault()
+          setOver(true)
+        }}
+        onDragLeave={() => setOver(false)}
+        onDrop={(e) => {
+          e.preventDefault()
+          setOver(false)
+          // Closed while a file is already travelling, exactly as the picker is: two typefaces
+          // out of one gesture is two families, and the second to land would say the first was
+          // done.
+          if (busy) return
+          const dropped = [...(e.dataTransfer.files ?? [])]
+          // Two files is a question this control cannot answer. Taking the first of them would
+          // have thrown the rest away without a word, which is the one thing a drop must never
+          // do: the family is named after the file, so the wrong first file is a wrong family.
+          if (dropped.length > 1) {
+            setError(t('fonts.upload.one'))
+            return
+          }
+          take(dropped[0])
+        }}
+      >
         {t('fonts.upload')}
         <input className="byd-offscreen" type="file" accept=".woff2,.woff,.ttf,.otf,font/woff2,font/woff,font/ttf,font/otf" disabled={busy} onChange={(e) => take(e.target.files?.[0])} />
       </label>
+      {/* While the bytes travel, said where the control is. `disabled` on an input that stands
+          off the screen is a state only the keyboard can find, and a control that goes quiet is
+          read as a control that did nothing. */}
+      {busy && <p role="status">{t('fonts.upload.busy')}</p>}
       {error && <p role="alert">{error}</p>}
     </section>
   )

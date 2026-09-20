@@ -1228,7 +1228,13 @@
 .byd-fonts-licence input { background: #0f1115; border: 1px solid #2a2d36; color: #fff; border-radius: 6px; padding: 4px 8px; font-size: 12px; width: 100%; box-sizing: border-box; }
 .byd-fonts li > button { justify-self: end; border: 1px solid #3b414e; border-radius: 6px; background: #1b1d23; color: #9aa3b8; font-size: 11px; padding: 4px 8px; cursor: pointer; }
 .byd-fonts-upload { display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; padding: 8px 12px; font-size: 12px; cursor: pointer; }
-.byd-fonts [role='alert'] { margin: 8px 0 0; font-size: 11px; color: #f0b64a; }
+/* A typeface is over the control (#294). The same amber the table's picture cells are marked in,
+   and a ring rather than a fill: the mark has to be readable as a mark and not only as a hue. */
+.byd-fonts-upload[data-over='true'] { outline: 2px dashed #ffd98a; outline-offset: 2px; background: rgba(255, 217, 138, 0.1); }
+.byd-fonts :is([role='alert'], [role='status']) { margin: 8px 0 0; font-size: 11px; color: #f0b64a; }
+/* On its way is not gone wrong: the amber above is the editor's word for "look at this", and a
+   file that is simply travelling is read in the quiet register every other passing word is. */
+.byd-fonts [role='status'] { color: var(--byd-editor-quiet); }
 
 /* Table */
 /* The tab is a column: the tools, the filter and what is marked stay put, and only the rows

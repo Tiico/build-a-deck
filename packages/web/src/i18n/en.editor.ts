@@ -437,6 +437,8 @@ export const enEditor = {
   'fonts.travels': 'travels to the printer',
   'fonts.staysBehind': 'does not travel to the printer',
   'fonts.upload': 'Upload a typeface',
+  'fonts.upload.busy': 'Uploading the typeface…',
+  'fonts.upload.one': 'One typeface at a time: drop a single file.',
   'fonts.licence': 'Licence',
   'fonts.licence.of': 'Licence for {family}',
   'fonts.by': 'Creator',
