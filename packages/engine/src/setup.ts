@@ -34,6 +34,12 @@ export function validateSetup(setup: SetupDef, registry: TypeRegistry): void {
     const def = registry.get(c.type)
     if (!def.faces.includes(c.face)) throw new Error(`component ${c.cardRef} has face ${c.face} not in type ${def.id}`)
   }
+  for (const z of setup.zones) {
+    if (!z.bottom) continue
+    if (z.kind !== 'pile') throw new Error(`zone ${z.id} is not a pile and cannot have a bottom card`)
+    const card = setup.components.find((c) => c.cardRef === z.bottom?.cardRef)
+    if (card && !registry.get(card.type).faces.includes(z.bottom.face)) throw new Error(`bottom card ${z.bottom.cardRef} of ${z.id} has no face ${z.bottom.face}`)
+  }
 }
 
 // Builds zones and components from a setup. Used both for the initial state and for `setup.reset`.
@@ -63,6 +69,18 @@ export function materialise(
     if (spec.counter !== undefined) inst.counter = spec.counter
     components[id] = inst
     zones[spec.zone]?.order.push(id)
+  }
+  // A pile's bottom card lies last whatever order the deck listed it in, on the face the pile
+  // chose for it (K23). One copy of the row: the last one listed, so a row with several copies
+  // keeps the rest where the deck put them.
+  for (const zone of Object.values(zones)) {
+    if (!zone.bottom || zone.kind !== 'pile') continue
+    const at = zone.order.map((id) => components[id]?.cardRef).lastIndexOf(zone.bottom.cardRef)
+    if (at < 0) continue
+    const [id] = zone.order.splice(at, 1) as [string]
+    zone.order.push(id)
+    const card = components[id]
+    if (card) card.face = zone.bottom.face
   }
   return { zones, components, nextId: n }
 }

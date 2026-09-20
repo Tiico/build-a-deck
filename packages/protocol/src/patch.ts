@@ -61,6 +61,12 @@ const zoneBase = {
   geometry: Geometry,
   // Created during play by stacking (K1); dissolves when one component remains.
   dynamic: z.boolean(),
+  // The pile's bottom card (K23), present when the pile has one and it lies under at least one
+  // other card: a lone card is the top and is drawn once. `id` names it when the view may know
+  // it — a public pile, or a face-up bottom card, which is public like a face-up top (K15). A
+  // face-down bottom card of a hidden pile carries only the back it wears, like `back` does, and
+  // never its id, its cardRef or its front.
+  bottom: z.object({ id: ComponentId.optional(), back: z.string().optional() }).optional(),
 }
 
 // A zone whose order the seat may not see is reported as a count only — except that the card

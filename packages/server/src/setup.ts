@@ -43,6 +43,9 @@ export function setupFromProject(doc: Pick<ProjectDoc, 'rows' | 'setup'>): Setup
     ...(z.shortcut !== undefined ? { shortcut: z.shortcut } : {}),
     ...(z.beside !== undefined ? { beside: z.beside } : {}),
     ...(z.actions !== undefined && z.actions.length > 0 ? { actions: z.actions } : {}),
+    // The pile's bottom card (K23): where in the pile it lies, and on which side, is the
+    // engine's to settle when the table is built, so it is passed on and not placed here.
+    ...(z.bottom !== undefined && z.kind === 'pile' ? { bottom: { ...z.bottom } } : {}),
   }))
   // What each row says in its own columns, so a question can be asked of the deck at the table
   // and not only when it is laid out (B5). Written as the designer reads a cell — the same

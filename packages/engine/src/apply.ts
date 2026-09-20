@@ -13,8 +13,7 @@ import {
   zoneOf,
   type ComponentInstance,
   type TableState,
-  type Zone,
-} from './state.js'
+  type Zone, bottomOf } from './state.js'
 import type { TypeRegistry } from './typedef.js'
 import { clearOverrides } from './visibility.js'
 
@@ -196,7 +195,13 @@ function detach(state: TableState, id: ComponentId): void {
 function attach(state: TableState, id: ComponentId, zoneId: ZoneId, index: number, keepOverrides = false): void {
   const c = componentOf(state, id)
   const to = zoneOf(state, zoneId)
-  const idx = Math.max(0, Math.min(index, to.order.length))
+  let idx = Math.max(0, Math.min(index, to.order.length))
+  // The pile's bottom card lies last (K23): coming home it goes under everything, wherever it
+  // was asked to go, and nothing else is laid under it while it lies there.
+  if (to.bottom !== undefined && to.kind === 'pile') {
+    if (c.cardRef === to.bottom.cardRef && c.zone !== zoneId) idx = to.order.length
+    else if (c.cardRef !== to.bottom.cardRef && idx === to.order.length && to.order.length > 0 && bottomOf(state, to) === to.order[to.order.length - 1]) idx = to.order.length - 1
+  }
   to.order.splice(idx, 0, id)
   if (c.zone !== zoneId) {
     if (!keepOverrides) clearOverrides(c)

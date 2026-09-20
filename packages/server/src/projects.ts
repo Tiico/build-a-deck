@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { CardQuery, Picture, ZoneAction, ZoneBeside } from '@byd/protocol'
+import { CardQuery, FaceId, Picture, ZoneAction, ZoneBeside } from '@byd/protocol'
 import { RuleDoc, Template, liftTemplate, type Row } from '@byd/template'
 import type { Deck } from './faces.js'
 import type { AppliedEdit } from './project-actor.js'
@@ -29,6 +29,9 @@ const ZoneDef = z.object({
   fill: CardQuery.optional(),
   // What a player may ask this zone for when they click it (K14). The tool ships none.
   actions: z.array(ZoneAction).optional(),
+  // The one row of the deck that lies last in this pile, and on which side (K23): a shuffle
+  // leaves it there, and back in this pile it lies last again. Piles only.
+  bottom: z.object({ cardRef: z.string().min(1), face: FaceId }).optional(),
 })
 export const ProjectSetup = z.object({
   zones: z.array(ZoneDef),

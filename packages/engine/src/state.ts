@@ -37,6 +37,10 @@ export type ZoneDef = {
   // What a player may ask this zone for when they click it (K14, B5). The designer's own, so
   // they travel to every view as they stand.
   actions?: ZoneAction[]
+  // The one card of the deck that lies last in this pile (K23): a shuffle leaves it there, and a
+  // card of that row that comes back to this pile lies last again. The role is the pile's and
+  // not the card's, which is why it is kept here and not on the component.
+  bottom?: { cardRef: string; face: FaceId }
 }
 
 // `order[0]` is the top of a pile, the leftmost card of a hand, the topmost object of an area.
@@ -112,6 +116,19 @@ export function zoneOf(state: TableState, id: ZoneId): Zone {
 
 export function componentOf(state: TableState, id: ComponentId): ComponentInstance {
   return must(state.components[id], `unknown component ${id}`)
+}
+
+// The bottom card of a pile as it lies now (K23): the last card of the pile's own bottom row,
+// if the pile names one and has one. Read where a card is laid into a pile, where a pile is
+// shuffled and where it is projected, so all three agree on which card it is.
+export function bottomOf(state: TableState, zone: Zone): ComponentId | undefined {
+  const bottom = zone.bottom
+  if (!bottom || zone.kind !== 'pile') return undefined
+  for (let i = zone.order.length - 1; i >= 0; i--) {
+    const id = zone.order[i]
+    if (id !== undefined && state.components[id]?.cardRef === bottom.cardRef) return id
+  }
+  return undefined
 }
 
 // The component a verb names: an id, or the top of a pile (K15) resolved against this state.
