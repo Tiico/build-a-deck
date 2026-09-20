@@ -1,13 +1,17 @@
 import { useEffect, useId, useMemo, useRef, useState, type Ref } from 'react'
 import { WHOLE_PICTURE, pictureNameOf, showsWholePicture, type AssetCrop } from '@byd/protocol'
 import { croppedMotif, type Motif } from '@byd/template'
+import { titleOfRow } from '@byd/server/doc'
 import type { ProjectDoc } from './types.js'
-import { assetRef, assetUrl, imageFieldsOf, mediaInGame, previewIcons } from './assets.js'
+import { assetUrl, mediaInGame, previewIcons } from './assets.js'
 import { DropSays, dropSurface } from './dropping.js'
 import { Crop } from './Crop.js'
 import { Question } from './Question.js'
 import { previewFonts } from './fonts.js'
 import { CardPreview } from './CardPreview.js'
+import { FaceSwitch } from './TemplateCanvas.js'
+import { facesDrawing, faceOrder } from './media-faces.js'
+import type { Key } from '../i18n/index.js'
 import { useT } from '../i18n/index.js'
 
 // The media library (#222, L22, prototype A · egen flik). Every picture the game holds, in one
@@ -119,9 +123,6 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove }: 
     setBatch(null)
     setFresh([])
   }
-  // The column the card beside the crop is drawn from. Only the template knows which columns are
-  // drawn as pictures (E1); the first of them is the card the window is judged on.
-  const field = imageFieldsOf(doc)[0] ?? null
   // The window being cut, which is not the same thing as the window that is stored: a drag is
   // hundreds of positions and one edit, and the card beside has to follow every one of them.
   // Held by the picture it belongs to, so choosing another picture shows that one's own window.
@@ -373,7 +374,8 @@ export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove }: 
             assetBase={assetBase}
             motifs={motifs}
             hash={chosen}
-            field={field}
+            cards={media.find((m) => m.hash === chosen)?.cards ?? []}
+            template={media.find((m) => m.hash === chosen)?.template ?? false}
             crop={window_}
             stored={stored}
             handle={handle}
@@ -404,6 +406,10 @@ function namedCards(cards: readonly string[], t: ReturnType<typeof useT>): strin
   return cards.length > NAMED_CARDS ? t('media.remove.more', { cards: named, n: cards.length - NAMED_CARDS }) : named
 }
 
+// The sides in the words that fit beside one large card (#295): the same control the template's
+// crown uses, said short.
+const FACE_SHORT: Record<string, Key> = { front: 'media.face.front', back: 'media.face.back' }
+
 // The picture in hand, and what the deck sees of it. The window on the left is the whole file
 // with the crop lit over it; the card below is that crop arriving where it is going.
 //
@@ -415,7 +421,8 @@ function Cropping({
   assetBase,
   motifs,
   hash,
-  field,
+  cards,
+  template,
   crop,
   stored,
   handle,
@@ -426,7 +433,10 @@ function Cropping({
   assetBase: string
   motifs: Record<string, Motif> | undefined
   hash: string
-  field: string | null
+  // The cards drawn from the picture, in deck order — the library's own count of them — and
+  // whether the template carries the picture by itself (#320).
+  cards: readonly string[]
+  template: boolean
   crop: AssetCrop
   stored: AssetCrop | undefined
   handle: Ref<HTMLDivElement>
@@ -440,11 +450,39 @@ function Cropping({
   // A picture nothing has measured has no size here either, and the window is then laid over a
   // box of the commonest shape rather than over a claim about the file.
   const file = motifs?.[url]
-  const face = Object.values(doc.template.faces)[0]
-  // The card the picture is already on, so the window is judged against this game's own text and
-  // not against an empty template. A picture no card is drawn from yet is shown on a bare card.
-  const on = field === null ? undefined : doc.rows.find((row) => row.fields[field] === assetRef(hash))
-  const row = field === null ? undefined : (on?.fields ?? { [field]: assetRef(hash) })
+  // The card the picture is judged on (#295): one of the cards drawn from it, the first in deck
+  // order until the designer picks another. Her pick is held by the picture it was made for, so
+  // opening another picture starts from that picture's own first card — and a pick that no
+  // longer uses the picture falls back the same way. Picking changes what is looked at and
+  // nothing else: no cell, no marking in Data, no document.
+  //
+  // A picture the template carries by itself is on every card, so the deck's first card stands
+  // for it. A picture nothing uses gets no card and no example template (beslut 2026-09-20): a
+  // card invented to show it would be a claim about where it goes, and it goes nowhere yet.
+  const [picked, setPicked] = useState<{ hash: string; card: string } | null>(null)
+  const using = doc.rows.filter((row) => cards.includes(row.id))
+  const on = (picked?.hash === hash ? using.find((row) => row.id === picked.card) : undefined) ?? using[0] ?? (template ? doc.rows[0] : undefined)
+  const row = on?.fields
+  // Found by name (#295): the deck's own title, and the row's id where the title is empty or
+  // shared, so two «Skog» can be told apart. Ninety cards are a list to search, not to scroll.
+  const [query, setQuery] = useState('')
+  const needle = query.trim().toLowerCase()
+  const titled = using.map((r) => ({ row: r, title: titleOfRow(r) }))
+  const ambiguous = (r: ProjectDoc['rows'][number], title: string): boolean => title === r.id || titled.some((o) => o.row.id !== r.id && o.title === title)
+  const found = needle === '' ? titled : titled.filter(({ row: r, title }) => title.toLowerCase().includes(needle) || r.id.toLowerCase().includes(needle))
+  // Which side the card is shown from (#295, variant A). The side that draws the picture on this
+  // very card — the front when both do — unless the designer has turned it over herself; her
+  // turn holds while she keeps cropping this picture on this card, and another picture or card
+  // starts over from where that one is drawn.
+  const faces = faceOrder(doc)
+  const drawnOn = on ? facesDrawing(doc, on, hash) : []
+  // A card whose data points at the picture but whose template draws it on no side is not a use
+  // of it, and is said to be that rather than drawn as one: the card would show no picture, and
+  // a preview of that is a preview of nothing.
+  const undrawn = on !== undefined && drawnOn.length === 0
+  const [turned, setTurned] = useState<{ hash: string; card: string | undefined; face: string } | null>(null)
+  const shown = turned && turned.hash === hash && turned.card === on?.id ? turned.face : (drawnOn[0] ?? faces[0] ?? null)
+  const face = shown === null || undrawn ? undefined : doc.template.faces[shown]
   return (
     <section className="byd-media-crop" aria-label={t('media.crop')}>
       <h2>{t('media.crop')}</h2>
@@ -456,6 +494,31 @@ function Cropping({
       <button type="button" className="byd-secondary" disabled={stored === undefined} onClick={onWhole}>
         {t('media.crop.whole')}
       </button>
+      {on === undefined && <p className="byd-media-crop-note">{t('media.crop.unused')}</p>}
+      {/* Which card, before which side (variant A): only where there is a choice to make; a lone
+          card is named and not chosen. */}
+      {titled.length === 1 && <p className="byd-media-crop-on">{titled[0]?.title}</p>}
+      {using.length > 1 && (
+        <div className="byd-media-cards" role="group" aria-label={t('media.crop.cards')}>
+          <input type="search" aria-label={t('media.crop.cards.search')} placeholder={t('media.crop.cards.search')} value={query} onChange={(event) => setQuery(event.target.value)} />
+          {found.length === 0 ? (
+            <p className="byd-media-cards-none">{t('media.crop.cards.none')}</p>
+          ) : (
+            <ul>
+              {found.map(({ row: r, title }) => (
+                <li key={r.id}>
+                  <button type="button" className="byd-choice" aria-pressed={r.id === on?.id} onClick={() => setPicked({ hash, card: r.id })}>
+                    {title}
+                    {ambiguous(r, title) && title !== r.id && <small>{r.id}</small>}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+      {undrawn && <p className="byd-media-crop-note">{t('media.crop.notDrawn')}</p>}
+      {face && row && shown !== null && faces.length > 1 && <FaceSwitch faces={faces} face={shown} names={FACE_SHORT} onSelect={(f) => setTurned({ hash, card: on?.id, face: f })} />}
       {face && row && (
         <figure className="byd-media-crop-card">
           <CardPreview
@@ -469,7 +532,9 @@ function Cropping({
             // gets the measurement untouched, air and all, exactly as it will when it is printed.
             motifs={file && !showsWholePicture(crop) ? { ...motifs, [url]: croppedMotif(file, crop) } : motifs}
             palette={doc.palette}
-            scale={0.7}
+            // One large card (variant A): the side column is 320 px and the card at its own size is
+            // 238, so the judgement is made on a card and not on a thumbnail of one.
+            scale={1}
           />
           <figcaption>{t('media.crop.card')}</figcaption>
         </figure>

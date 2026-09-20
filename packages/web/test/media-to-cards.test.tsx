@@ -107,9 +107,10 @@ describe('a picture the game already has is never uploaded again (#222, E1)', ()
       // The watch is not vacuous: the editor did go to the network, and never with a picture.
       expect(asked.length).toBeGreaterThan(0)
       expect(stored).toEqual([])
-      // One picture, three cards — not one picture per card.
+      // One picture, three cards — not one picture per card. Counted in the library's own grid:
+      // the crop beside it lists the three cards too (#295).
       await user.click(screen.getByRole('tab', { name: 'Media' }))
-      expect(await screen.findAllByRole('listitem')).toHaveLength(1)
+      expect(within(await screen.findByRole('list', { name: 'Media i spelet' })).getAllByRole('listitem')).toHaveLength(1)
       expect(screen.getByRole('button', { name: 'Bild på dragon, knight, wizard' })).toBeTruthy()
     } finally {
       globalThis.fetch = real

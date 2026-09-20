@@ -25,7 +25,8 @@ function deckWithArt(): ProjectDoc {
   return doc
 }
 
-const tiles = () => screen.getAllByRole('listitem')
+// The library's own tiles: since #295 the crop beside it lists the cards a picture is on, too.
+const tiles = () => within(screen.getByRole('list', { name: 'Media i spelet' })).getAllByRole('listitem')
 
 describe('the media library lists the game’s pictures (#222)', () => {
   it('holds each picture once however many cards use it, and says how many', () => {

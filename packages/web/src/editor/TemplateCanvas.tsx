@@ -1011,16 +1011,22 @@ export function faceName(face: string, t: T): string {
   return key ? t(key) : face
 }
 
-function FaceSwitch({ faces, face, onSelect }: { faces: string[]; face: string; onSelect(face: string): void }) {
+// The same switch stands beside the crop in Media (#295, variant A), where the sides are said in
+// their short names — «Fram» and «Bak» — because there they stand directly over one large card
+// and the word beside the card is the whole label. One control for "which side", not two.
+export function FaceSwitch({ faces, face, names = FACE_NAMES, onSelect }: { faces: string[]; face: string; names?: Record<string, Key>; onSelect(face: string): void }) {
   const t = useT()
   const { itemProps } = useRoving({ ids: faces, selected: face, orientation: 'horizontal', followFocus: true, onActivate: onSelect })
   return (
     <div className="byd-canvas-faces" role="radiogroup" aria-label={t('canvas.faceSwitch')}>
-      {faces.map((f) => (
-        <button key={f} type="button" className="byd-choice" role="radio" aria-checked={f === face ? 'true' : 'false'} onClick={() => onSelect(f)} {...itemProps(f)}>
-          {faceName(f, t)}
-        </button>
-      ))}
+      {faces.map((f) => {
+        const key = names[f]
+        return (
+          <button key={f} type="button" className="byd-choice" role="radio" aria-checked={f === face ? 'true' : 'false'} onClick={() => onSelect(f)} {...itemProps(f)}>
+            {key ? t(key) : f}
+          </button>
+        )
+      })}
     </div>
   )
 }
