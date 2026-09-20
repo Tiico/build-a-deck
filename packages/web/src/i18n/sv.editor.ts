@@ -9,11 +9,19 @@ export const svEditor = {
   'media.title': 'Media i spelet',
   'media.unused': 'inget kort använder den',
   'media.picture.unused': 'Bild som inget kort använder',
+  'media.empty': 'Inga bilder ännu. Släpp bildfiler här, eller välj Ladda upp media.',
   // Vägen in (#222, beslut 5 och 6). Bilden får heta det filen hette, och att den kom fram sägs
   // — en uppladdning tar den tid nätet tar, och den som inte ser rutnätet har inget annat besked.
   'media.add': 'Ladda upp media',
   'media.add.done': 'Bilden {name} är tillagd.',
   'media.add.done.unnamed': 'Bilden är tillagd.',
+  // Flera filer i ett släpp eller ett filval (#291). Sammanfattningen sägs i samma levande fält
+  // som en enda bilds besked, och raden per fil står i översikten under den.
+  'media.add.batch': '{ok} av {n} bilder är tillagda.',
+  'media.add.results': 'Resultat per fil',
+  'media.add.result.ok': '{name} är tillagd',
+  'media.add.result.failed': '{name}: {why}',
+  'media.new': 'nyss tillagd',
   'media.remove': 'Ta bort',
   'media.remove.of': 'Ta bort {name}',
   'media.remove.question': 'Ta bort {name}? {n} kort förlorar sin bild: {cards}.',
@@ -947,6 +955,15 @@ export const svEditor = {
   'upload.notThisKind': 'filen är inte {formats}',
   'upload.tooBig': 'filen är för stor (max 8 MB)',
   'upload.failed': 'kunde inte ladda upp filen: {status}',
+  // Ett enskilt bildfält tar en bild i taget (#291). Flera filer på ett sådant fält är en fråga
+  // utan svar, och tyst första fil är det enda svaret som är fel — det är det enda som ser ut som
+  // ett svar. Så fältet står kvar som det var, och det sägs.
+  'upload.one.only': 'Ett bildfält tar en bild i taget. {n} filer släpptes, och fältet står kvar som det var.',
+  // Markeringen kompletteras med text om vad ytan tar emot (#291). En ram som lyser säger att
+  // något kan släppas; den säger inte vad, och skillnaden mellan en yta som tar en bild och en
+  // som tar flera är hela skillnaden mellan de här ytorna.
+  'upload.drop.one': 'Tar emot en bild',
+  'upload.drop.many': 'Tar emot flera bilder',
   // En uppladdning som kom fram under ett annat namn än bytena har (#310): symbolen stod redan i
   // dokumentet, och pekar nu ingenstans, så insättningen tas tillbaka och det här sägs.
   'upload.wrongName': 'filen kom fram under ett annat namn än sitt eget',

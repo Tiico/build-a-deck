@@ -2,6 +2,7 @@ import { createRoot } from 'react-dom/client'
 import { App } from './App.js'
 import './a11y.css'
 import './buttons.css'
+import './dropping.css'
 // The felt's own face, on the entry and not on the felt's sheet: the bytes have to be in the
 // document before the first painting, or the felt lays itself out in the fallback's measurements
 // and then does it again (K19, #95). Loading it here puts it in the stylesheet the built

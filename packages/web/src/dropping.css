@@ -1,0 +1,40 @@
+/* Dragmarkeringen, för varje yta som tar emot en uppladdning (#291, L22).
+
+   Beslutstexten säger «den blå dragmarkeringen», men det som är i drift sedan E1:s bildceller är
+   bärnsten, och Datas levererade rutor målas inte om i förbifarten. Så färgen blir en token med
+   bärnstenen som förval: samma ton på varje yta, gammal som ny, och en framtida övergång till
+   blått är den här raden och inte sju ytor.
+
+   Regeln står här och inte i `editor.css`, av det enda skäl en regel byter hus för: den gäller i
+   två rum. Editorn är en egen rutt med en egen stilmall sedan #186, guiden ligger i den mall den
+   första målningen blockerar på, och en markering som ska vara *en* markering kan inte skrivas
+   två gånger — då är den två, och den andra hinner glida. `drop-mark.test.ts` är grinden.
+
+   Färgen är allas; formen är kontrollens egen. Bildytorna bär `byd-drop` och får en kant härifrån;
+   regelbokens import (#293) och typsnittsknappen (#294) ritar var sin kontur i sin egen regel i
+   `editor.css` och hämtar bara tonen här. Det som ingen av dem får är en färg av sitt eget, och
+   tokenen deklareras bara i den här filen. */
+:root {
+  --byd-drop-mark: #ffd98a;
+  --byd-drop-wash: rgba(255, 217, 138, 0.1);
+}
+/* Ett rum binder tokenen till den accent det redan äger, precis som rollerna i `buttons.css`
+   binds (#44, variant B: «en form, lokal färg»). Bärnstenen är editorns mörka panel mätt mot
+   sig själv; på guidens papper vore den 1,2:1 och alltså ingen markering alls, och en markering
+   är en grafik som ska bära 3:1 mot sin egen grund (L11). Formen skrivs ändå en gång, nedan. */
+.byd-wizard {
+  --byd-drop-mark: var(--accent);
+  --byd-drop-wash: color-mix(in srgb, var(--accent), transparent 92%);
+}
+.byd-drop[data-over='true'] {
+  border-color: var(--byd-drop-mark);
+  background: var(--byd-drop-wash);
+}
+/* Vad ytan tar emot, i ord bredvid ramen som lyser. Den syns bara medan draget står över ytan och
+   är därför aldrig med i vilans layout; uppladdning, klart och fel är urskiljbara utan färg, och
+   det här är den delen av det som hör draget till. */
+.byd-drop-says {
+  color: var(--byd-drop-mark);
+  font-size: 11px;
+  font-weight: 700;
+}
