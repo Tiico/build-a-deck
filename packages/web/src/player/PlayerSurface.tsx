@@ -153,8 +153,10 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
         <strong>{name}</strong>
         <span>{t(hand.length === 1 ? 'play.cards.one' : 'play.cards.other', { n: hand.length })}</span>
         <SessionButtons client={client} view={view} sheet={sheet} onSheet={setSheet} />
-        {/* The rules this table plays by (B7), one press away beside the session's own buttons. */}
-        <RuleDrawer http={faces} sessionId={sessionId} placement="phone" />
+        {/* The rules this table plays by (B7), one press away beside the session's own buttons.
+            The living number (#226) reads this seat's own view: her own hand is a reading, the
+            deck and the others' hands are counts. */}
+        <RuleDrawer http={faces} sessionId={sessionId} placement="phone" live={view} />
       </header>
       <CountersRow view={view} onSet={(c, value) => void client.send({ v: 'setCounter', component: c.id, value })} />
       <main className="byd-phone-main">

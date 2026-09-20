@@ -52,6 +52,18 @@ describe('the rulebook as a booklet for print (B7)', () => {
     expect(out.html).not.toContain('[[zon:draw]]')
   })
 
+  // Den levande siffran hör bordet till (#226, beslutad 2026-09-20). Pressen är per definition
+  // utan bord: häftet trycks en gång och läses långt senare, och ett tal ur ett spel som pågick
+  // när knappen trycktes hade varit en lögn i handen. Så taggen faller tillbaka på vad den står
+  // för — namnet — precis som i boken när inget bord är igång. Det håller av sig självt, därför
+  // att häftet inte har någon projektion att fråga; det här är vad som säger till om någon ger
+  // det en.
+  it('prints a tagged zone as the name and never as a number', () => {
+    const out = bookletOf({ rules: renderRules(doc, names), icons, pageMm: A5 })
+    expect(out.html).toContain('Dra ur Draghög och spela')
+    expect(out.html).not.toContain('byd-rules-tally')
+  })
+
   it('draws the setup from the zones the game actually has (B5)', () => {
     const out = bookletOf({ rules: renderRules(doc, names), icons, pageMm: { w: 148, h: 210 }, zones: ['Draghög', 'Kasthög', 'Hand'] })
     expect(out.html).toContain('Så ställs bordet upp')

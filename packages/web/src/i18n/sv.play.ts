@@ -339,4 +339,12 @@ export const svPlay = {
   // En referens till något spelet inte längre har säger vad som stod skrivet.
   'rules.drawer.ref.zone': 'zon',
   'rules.drawer.ref.card': 'kort',
+  // Den levande siffran (#226). Brickan visar talet; örat får formen A:s hela mening, som är vad
+  // beslutet gav B i utbyte mot att inte skriva ut den. «Ordningen dold» är skillnaden mellan
+  // «18 kort, och jag vet vilka» och «18 kort, och det är allt som går att veta» — antalet i sig
+  // är inget hemligt, varken här eller på filten bredvid.
+  'rules.tally.read.one': '{name}, {n} kort',
+  'rules.tally.read.other': '{name}, {n} kort',
+  'rules.tally.counted.one': '{name}, {n} kort, ordningen dold',
+  'rules.tally.counted.other': '{name}, {n} kort, ordningen dold',
 } as const

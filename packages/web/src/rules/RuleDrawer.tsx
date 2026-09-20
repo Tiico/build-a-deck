@@ -1,17 +1,40 @@
-import { useEffect, useState, type Ref } from 'react'
+import { createContext, useContext, useEffect, useState, type Ref } from 'react'
 import { ruleEm, type RenderedBlock, type RenderedNode, type RenderedRules } from '@byd/template'
+import { zoneTally, type ZoneTally } from '@byd/engine'
+import type { ZoneView } from '@byd/protocol'
 import { findRules } from './search.js'
 import { useT } from '../i18n/index.js'
+import type { Key } from '../i18n/sv.js'
 import './rules.css'
+
+// The table the book is being read at, or nothing (#226). It is a *reader's own* view of the
+// table — the projection, never the state — so what the book is able to say is whatever that
+// reader was already told. A book read with no table under it gets nothing here, which is the
+// same thing the editor's own page is: the tag falls back on the name it stands for.
+//
+// It travels as a context rather than down every block and every span, because the one place
+// that reads it is the innermost one, and a prop through six components is six chances for a
+// surface to pass a table the reader is not sitting at.
+export type LiveTable = { zones: readonly ZoneView[] }
+const LiveTableContext = createContext<LiveTable | null>(null)
 
 // The rules at the table (B7): the rulebook a session hands out, rendered against the version it
 // was locked to at start. From the prototype: a drawer from the edge holding the whole book for
 // whoever has never played, with the question on top for whoever is mid-turn and wants one rule.
 // A game with no rulebook offers nothing at all.
 // Where the press lives: over the felt, in a header (a TV's, #30), or in the phone's own row.
-export type RuleDrawerProps = { http: string; sessionId: string; placement: 'table' | 'tv' | 'phone' }
+export type RuleDrawerProps = {
+  http: string
+  sessionId: string
+  placement: 'table' | 'tv' | 'phone'
+  // This reader's own view of the table, for the living number (#226). It is passed in rather
+  // than fetched: the surfaces that show the drawer already hold the snapshot and already follow
+  // the patch stream, so the number is live for nothing and there is no second subscription that
+  // could disagree with the felt beside it.
+  live?: LiveTable | null | undefined
+}
 
-export function RuleDrawer({ http, sessionId, placement }: RuleDrawerProps) {
+export function RuleDrawer({ http, sessionId, placement, live: table }: RuleDrawerProps) {
   const [rules, setRules] = useState<RenderedRules | null | 'none'>(null)
   // The rules of a running table never change under the players, so they are read once.
   useEffect(() => {
@@ -26,7 +49,7 @@ export function RuleDrawer({ http, sessionId, placement }: RuleDrawerProps) {
     }
   }, [http, sessionId])
   if (rules === 'none') return null
-  return <RuleShelf rules={rules} assets={http} placement={placement} />
+  return <RuleShelf rules={rules} assets={http} placement={placement} live={table} />
 }
 
 // The drawer itself, given a book — everything about the rules at the table except where the book
@@ -42,60 +65,65 @@ export type RuleShelfProps = {
   startOpen?: boolean | undefined
   // The scrolling area the book is read in, for whoever has to put a reader back where she was.
   body?: Ref<HTMLDivElement> | undefined
+  // The table this reader is at, for the living number (#226). Nothing is the ordinary case: the
+  // editor writes the book without a table, and the book is read that way far more often than not.
+  live?: LiveTable | null | undefined
 }
 
-export function RuleShelf({ rules, assets, placement, startOpen, body }: RuleShelfProps) {
+export function RuleShelf({ rules, assets, placement, startOpen, body, live }: RuleShelfProps) {
   const t = useT()
   const [open, setOpen] = useState(startOpen ?? false)
   const [query, setQuery] = useState('')
   const hits = rules ? findRules(rules, query) : []
   return (
-    <div className="byd-rules-drawer" data-placement={placement}>
-      <button type="button" className="byd-rules-open" onClick={() => setOpen((o) => !o)}>
-        {open ? t('rules.drawer.close') : t('rules.drawer.open')}
-      </button>
-      {open && (
-        <aside className="byd-rules-panel" role="dialog" aria-label={t('rules.drawer.open')}>
-          <div className="byd-rules-ask">
-            <input type="search" aria-label={t('rules.drawer.ask')} placeholder={t('rules.drawer.ask')} value={query} onChange={(e) => setQuery(e.target.value)} />
-            <button type="button" aria-label={t('rules.drawer.close')} onClick={() => setOpen(false)}>
-              ×
-            </button>
-          </div>
-          <div className="byd-rules-body" ref={body}>
-            {rules === null ? (
-              <p>{t('rules.drawer.loading')}</p>
-            ) : query.trim() ? (
-              hits.length === 0 ? (
-                <p className="byd-rules-none">{t('rules.drawer.none')}</p>
+    <LiveTableContext.Provider value={live ?? null}>
+      <div className="byd-rules-drawer" data-placement={placement}>
+        <button type="button" className="byd-rules-open" onClick={() => setOpen((o) => !o)}>
+          {open ? t('rules.drawer.close') : t('rules.drawer.open')}
+        </button>
+        {open && (
+          <aside className="byd-rules-panel" role="dialog" aria-label={t('rules.drawer.open')}>
+            <div className="byd-rules-ask">
+              <input type="search" aria-label={t('rules.drawer.ask')} placeholder={t('rules.drawer.ask')} value={query} onChange={(e) => setQuery(e.target.value)} />
+              <button type="button" aria-label={t('rules.drawer.close')} onClick={() => setOpen(false)}>
+                ×
+              </button>
+            </div>
+            <div className="byd-rules-body" ref={body}>
+              {rules === null ? (
+                <p>{t('rules.drawer.loading')}</p>
+              ) : query.trim() ? (
+                hits.length === 0 ? (
+                  <p className="byd-rules-none">{t('rules.drawer.none')}</p>
+                ) : (
+                  <ol className="byd-rules-hits">
+                    {hits.map((h) => (
+                      <li key={h.id}>
+                        <h3>{h.heading}</h3>
+                        <p>{h.text}</p>
+                      </li>
+                    ))}
+                  </ol>
+                )
               ) : (
-                <ol className="byd-rules-hits">
-                  {hits.map((h) => (
-                    <li key={h.id}>
-                      <h3>{h.heading}</h3>
-                      <p>{h.text}</p>
-                    </li>
+                <article className="byd-rules-page">
+                  <h2>{rules.title}</h2>
+                  {/* Each block says which one it is, so that a reader's place in the book can be
+                      carried between two boxes of different widths (#227). It is the same mark the
+                      editor's own page carries, and the only thing the two books have in common
+                      once their measures differ. */}
+                  {rules.blocks.map((b) => (
+                    <div key={b.id} data-block={b.id}>
+                      <RuleBlockView block={b} assets={assets} />
+                    </div>
                   ))}
-                </ol>
-              )
-            ) : (
-              <article className="byd-rules-page">
-                <h2>{rules.title}</h2>
-                {/* Each block says which one it is, so that a reader's place in the book can be
-                    carried between two boxes of different widths (#227). It is the same mark the
-                    editor's own page carries, and the only thing the two books have in common
-                    once their measures differ. */}
-                {rules.blocks.map((b) => (
-                  <div key={b.id} data-block={b.id}>
-                    <RuleBlockView block={b} assets={assets} />
-                  </div>
-                ))}
-              </article>
-            )}
-          </div>
-        </aside>
-      )}
-    </div>
+                </article>
+              )}
+            </div>
+          </aside>
+        )}
+      </div>
+    </LiveTableContext.Provider>
   )
 }
 
@@ -168,6 +196,7 @@ const assetUrl = (asset: string, base: string | undefined): string => (base ? `$
 
 export function RuleSpan({ nodes }: { nodes: readonly RenderedNode[] }) {
   const t = useT()
+  const live = useContext(LiveTableContext)
   return (
     <>
       {nodes.map((n, i) => {
@@ -199,14 +228,56 @@ export function RuleSpan({ nodes }: { nodes: readonly RenderedNode[] }) {
             )
           // A reference arrives carrying the name it stands for; one the game no longer has
           // says what was written instead of quietly saying nothing.
-          case 'ref':
+          case 'ref': {
+            const stands = n.name ?? `${t(n.of === 'zone' ? 'rules.drawer.ref.zone' : 'rules.drawer.ref.card')}:${n.id}`
+            // The living number the reader's own projection allows beside this tag (#226).
+            const tally = n.of === 'zone' ? zoneTally(live, n.id) : null
             return (
-              <i key={i} className="byd-rules-ref" data-ref={n.id} {...(n.name ? {} : { 'data-missing': 'true' })}>
-                {n.name ?? `${t(n.of === 'zone' ? 'rules.drawer.ref.zone' : 'rules.drawer.ref.card')}:${n.id}`}
+              <i
+                key={i}
+                className="byd-rules-ref"
+                data-ref={n.id}
+                {...(n.name ? {} : { 'data-missing': 'true' })}
+                // With a badge the tag is read as one thing and in form A's words, which is what
+                // the decision gave B in exchange for not showing them: «Draghögen, 18 kort,
+                // ordningen dold». `img` is the one role that puts a name in place of the
+                // contents, and without a badge there is no role and no name — a tag then reads
+                // as the letters it always did.
+                {...(tally ? { role: 'img', 'aria-label': t(tallyKey(tally), { name: stands, n: tally.count }) } : {})}
+              >
+                {stands}
+                {tally && (
+                  <b className="byd-rules-tally" data-tally={tally.known ? 'read' : 'counted'}>
+                    {tally.count}
+                  </b>
+                )}
               </i>
             )
+          }
         }
       })}
     </>
   )
 }
+
+// The living number beside a tag (#226, decided 2026-09-20): form B, the badge.
+//
+// Filled means the book can read what lies there; hollow means the count is the whole of what
+// there is to know. The difference is a shape rather than a sentence, which is what let it cost
+// 1,5 % of the book's height where the suffix «Draghögen: 18 kort» cost 14,6 % of the drawer's.
+// The sentence is not lost: it is the tag's accessible name, and the ear hears exactly the words
+// form A would have shown.
+//
+// Three things the badge does not do, each of them a decision and not an omission:
+//
+//  * A card reference never gets one. `zoneTally` answers for zones and cannot be asked about a
+//    card, because the only living thing a book could say about one is where it lies — which for
+//    a card in a hidden pile is exactly what K15 forbids. A layer that cannot say it needs no
+//    guarding.
+//  * A tag in a hidden pile and a tag in a book with no table under it are drawn identically,
+//    and that identity is load-bearing. Were hidden given a mark of its own, the *absence* of a
+//    number would become a message and a reader could tell from the marks which cards lie hidden.
+//  * The number is not in the book's own `text`, so it is not searchable. `plainOf` is what the
+//    question box reads, and a living number in it would make the index move under the hand.
+const tallyKey = (tally: ZoneTally): Key =>
+  tally.known ? (tally.count === 1 ? 'rules.tally.read.one' : 'rules.tally.read.other') : tally.count === 1 ? 'rules.tally.counted.one' : 'rules.tally.counted.other'

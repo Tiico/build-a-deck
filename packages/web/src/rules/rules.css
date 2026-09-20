@@ -51,6 +51,27 @@
 .byd-rules-figure figcaption { margin-top: 6px; text-align: center; }
 .byd-rules-ref { font-style: normal; color: #7a4d1d; border-bottom: 1px dotted #b08a5a; }
 .byd-rules-ref[data-missing] { color: #a12b2b; background: #f4d9d9; border-bottom: 0; padding: 0 3px; border-radius: 3px; }
+/* Den levande siffran (#226, beslutad 2026-09-20): form B, brickan.
+   Den står utanför satsen och inte inne i den, vilket är vad som gjorde den till 1,5 % av bokens
+   höjd där efterledet «Draghögen: 18 kort» kostade 14,6 % av luckans. Fylld bricka = boken ser vad
+   som ligger där; ihålig = räkningen är allt boken vet. Skillnaden är en *form* och inte bara en
+   färg, så den håller även för den som inte skiljer färgerna åt; meningen står i taggens
+   tillgängliga namn. Båda formerna bär bokens egen referensfärg mot dess papper — 6,5:1 åt båda
+   hållen, vilket räcker för både text och ring. */
+.byd-rules-tally {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.6em;
+  height: 1.6em;
+  margin-left: 0.3em;
+  padding: 0 0.4em;
+  border: 1px solid #7a4d1d;
+  border-radius: 0.8em;
+  font: 700 0.75em/1 system-ui, sans-serif;
+  vertical-align: 0.05em;
+}
+.byd-rules-tally[data-tally='read'] { background: #7a4d1d; color: #f7f3ea; }
+.byd-rules-tally[data-tally='counted'] { background: transparent; color: #7a4d1d; }
 .byd-rules-pip { display: inline-grid; place-items: center; width: 1.2em; height: 1.2em; border-radius: 50%; background: #23201a; color: #f7f3ea; font: 700 0.75em system-ui; vertical-align: -0.15em; }
 .byd-rules-hits { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .byd-rules-hits li { padding: 12px 14px; border-radius: 10px; background: #ece5d8; }

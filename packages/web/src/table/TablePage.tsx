@@ -119,7 +119,10 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   )
   // The rules this table plays by (B7), one press away on either screen; where the press lives is
   // the screen's business.
-  const rules = (placement: 'table' | 'tv') => (sessionId ? <RuleDrawer http={url.replace(/^ws/, 'http')} sessionId={sessionId} placement={placement} /> : null)
+  // The living number in the book (#226) reads this screen's own view of the table, so the badge
+  // beside a tagged zone can say only what this screen was already told — and says it again on
+  // every patch, without the drawer fetching anything a second time.
+  const rules = (placement: 'table' | 'tv') => (sessionId ? <RuleDrawer http={url.replace(/^ws/, 'http')} sessionId={sessionId} placement={placement} live={view} /> : null)
   const table = proposal?.preview ? (
     <div className="byd-rewind-preview" data-rewind-preview={proposal.id}>
       {rendered}

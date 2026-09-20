@@ -122,13 +122,18 @@ describe('hidden information on the wire', () => {
     // assertion below, which is how it flaked (#51). Waiting for it is also what states the
     // rule out loud — the id may be seen going in, and is gone once the pile is shuffled.
     await b.synced(2)
-    expect(b.frames.join('\n')).toContain(known)
+    // Matched as the whole JSON string the id always travels as, quotes and all, and not as a
+    // bare substring. `c0` is two characters, and two characters turn up by chance inside the
+    // other text a frame carries — an envelope's random nonce is six base-36 characters, so
+    // roughly one run in two hundred and sixty used to fail here with a real leak's exact shape
+    // and no leak behind it. The e2e suite learnt this the same way and says so in `mentions`.
+    expect(b.frames.join('\n')).toContain(JSON.stringify(known))
     const beforeShuffle = b.frames.length
     await table.send(null, { v: 'shuffle', pile: 'draw' })
     await b.synced(3)
     expect(b.view!.zones.find((z) => z.id === 'draw')).toMatchObject({ mode: 'count', count: 10 })
     // Seeing the card go onto the pile is fine (B could watch that); after the shuffle its id is gone.
-    expect(b.frames.slice(beforeShuffle).join('\n')).not.toContain(known)
+    expect(b.frames.slice(beforeShuffle).join('\n')).not.toContain(JSON.stringify(known))
   })
 })
 
