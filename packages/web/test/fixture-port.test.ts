@@ -1,8 +1,8 @@
 import { execFileSync } from 'node:child_process'
-import { readFileSync, readdirSync } from 'node:fs'
-import { join } from 'node:path'
+import { readFileSync } from 'node:fs'
 import { createServer, type Server } from 'node:net'
 import { describe, expect, it, vi } from 'vitest'
+import { askedForAnyPort } from '../../../test-support/listen-zero.js'
 import { deafServer, portBand, startServer } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
@@ -73,16 +73,13 @@ describe('the port a test server listens on', () => {
   // when it asked for one out of the ephemeral range. What it costs lands somewhere else entirely
   // — an EADDRINUSE in a test that was restarting — so nothing in the suite ever pointed back
   // here. Asking of every file at once is what keeps the third copy from being written (#275).
+  //
+  // The asking itself now lives in `test-support/`, because it turned out the rule was being
+  // broken in three more files — in the server and render packages, which do not read this one and
+  // therefore had nothing asking them anything (#289). The collision the rule is about is between
+  // packages, so the guard has to be every package's and not this file's.
   it('is asked for by number in every file here, and never as "any port at all"', () => {
-    const dir = import.meta.dirname
-    const offenders = readdirSync(dir)
-      .filter((name) => /\.tsx?$/.test(name))
-      .flatMap((name) =>
-        readFileSync(join(dir, name), 'utf8')
-          .split('\n')
-          .flatMap((line, i) => (/\.listen\(\s*0\b/.test(line) ? [`${name}:${i + 1}`] : [])),
-      )
-    expect(offenders).toEqual([])
+    expect(askedForAnyPort(import.meta.dirname)).toEqual([])
   })
 })
 

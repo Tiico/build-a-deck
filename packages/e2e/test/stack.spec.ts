@@ -1,4 +1,6 @@
+import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
+import { askedForAnyPort } from '../../../test-support/listen-zero.js'
 
 // What the rest of the suite stands on, checked before it is trusted.
 //
@@ -31,6 +33,29 @@ test.describe('the stack the suite runs against', () => {
   test('answers an address that is not a route with the page that says so', async ({ page }) => {
     await page.goto('/ingenting')
     await expect(page.locator('#root')).not.toBeEmpty()
+  })
+
+  // The stack listens on a real port on a real machine, and it is not the only suite on that
+  // machine: the lock in `test-support/one-suite-at-a-time.ts` is deliberately a gate and never a
+  // wall, so a run that waited out its patience goes anyway and two suites bind at once. This
+  // package's block is 10_100–10_200, and the reason it is a block of its own is #289: the band
+  // used to be the web suite's whole band, repeated here, so a stack walking for a free number
+  // could take one a fixture over there was between servers on.
+  test("listens inside the block this package was given, and nobody else's", async ({ baseURL }) => {
+    const port = Number(new URL(baseURL!).port)
+    expect(port).toBeGreaterThanOrEqual(10_100)
+    expect(port).toBeLessThan(10_200)
+  })
+
+  // And the block only holds if every port in this package comes out of it. `support/ports.ts`
+  // walks the block probing, which is a claim and not a reservation, so a caller that shortcut it
+  // with `listen(0)` would be asking the kernel for a number out of the very range the block
+  // exists to stay clear of — and nothing here would say so. The same asking is made of every
+  // other test package (#275, #289); this is this package's half of it.
+  test('asks for every port by number, here as everywhere else', () => {
+    const here = import.meta.dirname
+    expect(askedForAnyPort(here)).toEqual([])
+    expect(askedForAnyPort(join(here, '..', 'support'))).toEqual([])
   })
 
   test('keeps the log in Postgres wherever a run is expected to prove durability', async ({ baseURL }) => {

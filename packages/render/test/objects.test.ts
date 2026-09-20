@@ -1,7 +1,7 @@
 import { createServer, type Server } from 'node:http'
-import type { AddressInfo } from 'node:net'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { MemoryObjectStore, S3ObjectStore, assetsFromEnv, signV4, type ObjectStore } from '../src/objects.js'
+import { listenInBand } from './fixture.js'
 
 // Assets in R2 (DRIFT §4): an S3-compatible object store spoken to without an SDK. The
 // signing is checked against the worked examples in AWS's own documentation of Signature
@@ -77,8 +77,10 @@ describe('S3ObjectStore', () => {
   const fake = fakeS3()
   let store: S3ObjectStore
   beforeAll(async () => {
-    await new Promise<void>((resolve) => fake.server.listen(0, '127.0.0.1', resolve))
-    const { port } = fake.server.address() as AddressInfo
+    // Out of this package's block of the band: a port asked for as "any port at all" comes from
+    // the range every other worker on the machine draws from, and the cost lands in some other
+    // suite's test (#58, #289).
+    const port = await listenInBand(fake.server)
     store = new S3ObjectStore({ endpoint: `http://127.0.0.1:${port}`, bucket: 'byd-assets', region: 'auto', accessKeyId: 'k', secretAccessKey: 's' })
   })
   afterAll(() => new Promise<void>((resolve) => fake.server.close(() => resolve())))
