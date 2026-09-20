@@ -47,6 +47,11 @@ const rows = (box: HTMLElement): string[] => [...box.querySelectorAll('.byd-slot
 const rowNamed = (box: HTMLElement, text: string): HTMLElement =>
   [...box.querySelectorAll('.byd-slot-list button')].find((b) => b.textContent === text) as HTMLElement
 
+// Ratten i den färdiga meningen som visar den texten — den stängda knappen och inte en rad i en
+// ruta. Den läses av det som syns, för det som sägs är på väg att säga något mer.
+const slotShowing = (step: HTMLElement, text: string): HTMLElement =>
+  [...step.querySelectorAll('.byd-slot')].find((b) => b.textContent === text) as HTMLElement
+
 // Hur många rader som är kopior av en annan rad: varje rad vars text förekommer mer än en gång,
 // och alltså inte «en per dubblett».
 const copies = (texts: string[]): number => texts.filter((text) => texts.indexOf(text) !== texts.lastIndexOf(text)).length
@@ -256,11 +261,45 @@ describe('vems zon en rad i rutan står för', () => {
     const amounts = open(step, '1')
     expect(within(amounts).getByRole('button', { name: 'så många som ligger i Hand A, plats' })).toBe(rowNamed(amounts, 'så många som ligger i Hand A'))
   })
+})
 
-  // Efterledet är rutans och inte meningens. Att en färdig regel inte säger vilken av åtta händer
-  // den talar om är ett verkligt och öppet fynd — det ligger i #269 och byggs inte här. Det står
-  // pinnat, så att ingen senare «rättar» in efterledet i meningen utan att ha läst det issuet.
-  it('lämnar den färdiga meningen orörd: den läser «i Hand», utan efterled', async () => {
+// Och samma sak i den färdiga, stängda meningen (#269). #255 gav raden man väljer bland sitt
+// efterled och lämnade meningen orörd; då läste den färdiga regeln «i Hand» vilken av åtta
+// händer designern än valt. Prototypen mätte följden: 58 % av de meningar som går att skriva i
+// ett spel med åtta platser går inte att läsa tillbaka till det som valdes, och K21 säger att
+// meningen *är* specifikationen — det finns inget annat att kontrollera den mot.
+//
+// Formen är rutans egen bricka, buren av samma katalognyckel: beställarens beslut 2026-09-19.
+describe('vems zon den färdiga meningen talar om', () => {
+  it('bär platsen i platshålet: meningen läser «i Hand A» och inte «i Hand»', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    const step = newStep()
+
+    fireEvent.click(rowNamed(open(step, 'till vänster om högen'), 'Hand A'))
+
+    expect(step.textContent).toContain('Ta 1 från högen och lägg dem som de ligger i Hand A')
+    expect(slotShowing(step, 'i Hand A').querySelector('em')?.textContent).toBe('A')
+  })
+
+  // Antalshålet är samma hål en gång till: det nästlar samma zon in i sin egen mening, och det
+  // var lika tvetydigt — «så många som ligger i Hand» sa inte vilken av åtta heller.
+  it('bär platsen i antalshålet också: «så många som ligger i Hand A»', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    const step = newStep()
+
+    fireEvent.click(rowNamed(open(step, '1'), 'så många som ligger i Hand A'))
+
+    expect(step.textContent).toContain('Ta så många som ligger i Hand A från högen')
+    expect(slotShowing(step, 'så många som ligger i Hand A').querySelector('em')?.textContent).toBe('A')
+  })
+
+  // Samma fälla som i rutan, och samma svar (#255): brickan säger med sin ram vad bokstaven är,
+  // och en uppläsning hör ingen ram. Ordet «plats» måste alltså in i knappens namn — och sist,
+  // för det synliga måste stå i det upplästa: en röststyrd användare som säger «i Hand A», det
+  // hon läser, får annars ingen träff (WCAG 2.5.3).
+  it('läses upp som «i Hand A, plats», med det synliga först', async () => {
     await run.projects.create(run.projectId, projectDoc())
     await openZone('draw')
     const step = newStep()
@@ -268,9 +307,40 @@ describe('vems zon en rad i rutan står för', () => {
     fireEvent.click(rowNamed(open(step, 'till vänster om högen'), 'Hand A'))
     fireEvent.click(rowNamed(open(step, '1'), 'så många som ligger i Hand A'))
 
-    expect(step.textContent).toContain('Ta så många som ligger i Hand från högen och lägg dem som de ligger i Hand')
-    expect(step.textContent).not.toContain('Hand A')
-    expect(step.querySelector('em')).toBeNull()
+    expect(within(step).getByRole('button', { name: 'i Hand A, plats' })).toBe(slotShowing(step, 'i Hand A'))
+    expect(within(step).getByRole('button', { name: 'så många som ligger i Hand A, plats' })).toBe(slotShowing(step, 'så många som ligger i Hand A'))
+  })
+
+  // Regeln är alltid, **utom** när `ownerOf` säger att namnet redan bär platsen. Den sitter före
+  // formen och inte i den: det är samma ordgränsregel rutan lyder, och den — och inte en
+  // `startsWith` — är skälet att `Framför A` står i fred medan `Askhögen A` får sin bricka.
+  it('lämnar en zon vars namn redan bär platsen utan bricka: «i Framför A», aldrig «i Framför A A»', async () => {
+    await run.projects.create(run.projectId, eightSeats())
+    await openZone('draw')
+    const step = newStep()
+
+    fireEvent.click(rowNamed(open(step, 'till vänster om högen'), 'Framför A'))
+
+    expect(step.textContent).toContain('lägg dem som de ligger i Framför A')
+    expect(step.textContent).not.toContain('Framför A A')
+    expect(slotShowing(step, 'i Framför A').querySelector('em')).toBeNull()
+    // Och det `A` som står inuti `Askhögen` är inget ord, så den zonen bär sin bricka i meningen.
+    fireEvent.click(rowNamed(open(step, 'i Framför A'), 'Askhögen A'))
+    expect(slotShowing(step, 'i Askhögen A').querySelector('em')?.textContent).toBe('A')
+  })
+
+  // Och en zon som ingen äger är oförändrad: den heter det den heter, den bär ingen bricka, och
+  // den har inget att lägga till i det upplästa namnet heller.
+  it('lämnar en zon utan ägare i fred: «i Kasthög», utan bricka och utan efterled', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    const step = newStep()
+
+    fireEvent.click(rowNamed(open(step, 'till vänster om högen'), 'Kasthög'))
+
+    expect(step.textContent).toContain('lägg dem som de ligger i Kasthög')
+    expect(slotShowing(step, 'i Kasthög').querySelector('em')).toBeNull()
+    expect(within(step).getByRole('button', { name: 'i Kasthög' })).toBe(slotShowing(step, 'i Kasthög'))
   })
 })
 

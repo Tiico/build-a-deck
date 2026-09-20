@@ -214,7 +214,11 @@ function Step({ step, columns, zones, beside, t, onChange }: { step: ActionStep;
 // A knob inside the text: the words it stands for, and the list of what it could be instead.
 // It is `Question.tsx`'s manner applied to a word (L9): it answers where it is read, Escape puts
 // it away, and it traps nothing — tabbing past leaves it standing.
-function Slot({ label, children }: { label: string; children(close: () => void): ReactNode }) {
+//
+// `said` är namnet örat får, och det sätts bara där knappen har mer att säga än den visar (#269):
+// en bricka säger med sin ram vad bokstaven är, och en uppläsning hör ingen ram. En etikett som
+// upprepar knappens egen text vore ingen upplysning utan en andra kopia av den.
+function Slot({ label, said, children }: { label: ReactNode; said?: string | undefined; children(close: () => void): ReactNode }) {
   const [open, setOpen] = useState(false)
   const id = useId()
   // The box opens where there is room for it (#229). Opened straight down, as it was, a slot near
@@ -224,7 +228,7 @@ function Slot({ label, children }: { label: string; children(close: () => void):
   const place = usePlacement(open, pop)
   return (
     <span className="byd-slot-wrap">
-      <button type="button" className="byd-slot" aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>
+      <button type="button" className="byd-slot" aria-label={said} aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>
         {label}
       </button>
       {open && (
@@ -247,18 +251,28 @@ const REMEMBERED = 12
 // What has been chosen in this panel's boxes, most recent first, by the choice's own key.
 const Chosen = createContext<{ keys: readonly string[]; remember(key: string): void }>({ keys: [], remember: () => undefined })
 
+// Ett ord i en av ytorna, i tre skepnader: det söket läser, det ögat ser, och det örat hör. Bara
+// den första är alltid ett svar — ett ord utan bricka ser ut som det låter och låter som det står,
+// och då är `label` och `said` bara två kopior av `words`. Samma tre bär en rad i rutan (#255) och
+// den stängda ratten i meningen (#269), för det är samma upplysning på två ställen.
+type Words = { words: string; said?: string | undefined; label?: ReactNode | undefined }
+
 // A choice in a box: the words it is read and searched by, the block it belongs to, and what
 // picking it does. A choice that is not a plain button — the number, which is typed rather than
 // picked — brings its own node and is searched by the same words all the same.
-type Choice = { key: string; words: string; said?: string; label?: ReactNode; group: string; node?: ReactNode; pick?(): void }
+type Choice = Words & { key: string; group: string; node?: ReactNode; pick?(): void }
 
 // A box of choices, searched rather than scrolled (#230). In a game of twenty zones it holds
 // forty-seven of them in four blocks nobody can see, and the last is six scrolls away. The
 // requester's decision of 2026-09-18 is one box and not four steps: everything stays in it, but it
 // is searchable, the last chosen stand at the top, and the headings really do separate the blocks.
 // She who knows what she wants reaches it in one step; she who does not still sees everything.
-function ChoiceSlot({ label, choices, t }: { label: string; choices: readonly Choice[]; t: T }) {
-  return <Slot label={label}>{(close) => <Choices choices={choices} close={close} t={t} />}</Slot>
+function ChoiceSlot({ shown, choices, t }: { shown: Words; choices: readonly Choice[]; t: T }) {
+  return (
+    <Slot label={shown.label ?? shown.words} said={shown.said}>
+      {(close) => <Choices choices={choices} close={close} t={t} />}
+    </Slot>
+  )
 }
 
 function Choices({ choices, close, t }: { choices: readonly Choice[]; close(): void; t: T }) {
@@ -395,19 +409,14 @@ function AmountSlot({ amount, zones, t, onChange }: { amount: ActionAmount; zone
     })),
     // Den sammansatta zonen går in som ett hål i antalets egen mening, så samma nyckel bär båda
     // rutorna och ingen text sätts ihop här.
-    ...zones.map((z) => {
-      const zw = zoneWords(z, t)
-      return {
-        key: `amount:zone:${z.id}`,
-        words: t('setup.amount.zone', { zone: zw.words }),
-        said: zw.said === undefined ? undefined : t('setup.amount.zone', { zone: zw.said }),
-        label: zw.label === undefined ? undefined : parts(t('setup.amount.zone'), { zone: zw.label }),
-        group: t('setup.slot.group.amountZone'),
-        pick: () => onChange({ of: 'zone', zone: z.id }),
-      }
-    }),
+    ...zones.map((z) => ({
+      key: `amount:zone:${z.id}`,
+      ...nested('setup.amount.zone', zoneWords(z, t), t),
+      group: t('setup.slot.group.amountZone'),
+      pick: () => onChange({ of: 'zone', zone: z.id }),
+    })),
   ]
-  return <ChoiceSlot label={amountWords(amount, zones, t)} choices={choices} t={t} />
+  return <ChoiceSlot shown={amountWords(amount, zones, t)} choices={choices} t={t} />
 }
 
 function TargetSlot({ target, zones, beside, form, t, onChange }: { target: ActionTarget; zones: readonly Zone[]; beside: ZoneBeside; form: PlaceForm; t: T; onChange(next: ActionTarget): void }) {
@@ -416,13 +425,13 @@ function TargetSlot({ target, zones, beside, form, t, onChange }: { target: Acti
       key: `place:${at}`,
       // Raden bär samma form som meningen den hamnar i, så det som väljs är ordagrant det som står
       // där efteråt.
-      words: targetWords({ at }, zones, t, beside, form),
+      words: targetWords({ at }, zones, t, beside, form).words,
       group: t('setup.slot.group.place'),
       pick: () => onChange({ at }),
     })),
     ...zones.map((z) => ({ key: `place:zone:${z.id}`, ...zoneWords(z, t), group: t('setup.slot.group.zone'), pick: () => onChange({ at: 'zone', zone: z.id }) })),
   ]
-  return <ChoiceSlot label={targetWords(target, zones, t, beside, form)} choices={choices} t={t} />
+  return <ChoiceSlot shown={targetWords(target, zones, t, beside, form)} choices={choices} t={t} />
 }
 
 // Vems zonen är, i raden man väljer bland (#255). Åtta platser ger åtta zoner som heter «Hand»,
@@ -444,7 +453,7 @@ function TargetSlot({ target, zones, beside, form, t, onChange }: { target: Acti
 // sin ram vad bokstaven är, och en uppläsning hör ingen ram. Ordet står sist och inte före
 // bokstaven, för det som syns måste stå i det som sägs — annars får en röststyrd användare som
 // säger raden hon läser ingen träff (WCAG 2.5.3).
-function zoneWords(zone: Zone, t: T): { words: string; said?: string; label?: ReactNode } {
+function zoneWords(zone: Zone, t: T): Words {
   const owner = ownerOf(zone)
   if (owner === undefined) return { words: zone.name }
   return {
@@ -488,18 +497,41 @@ function QuerySlot({ query, columns, label, onChange, t }: { query: CardQuery; c
 export const queryWords = (q: CardQuery, t: T): string =>
   q.map((c) => t('setup.query.clause', { field: c.field, values: c.is.join(t('setup.query.or')) })).join(t('setup.query.and'))
 
-const amountWords = (a: ActionAmount, zones: readonly Zone[], t: T): string =>
-  a.of === 'number' ? String(a.n) : a.of === 'seats' ? t('setup.amount.seats') : a.of === 'ask' ? t('setup.amount.ask') : t('setup.amount.zone', { zone: zones.find((z) => z.id === a.zone)?.name ?? a.zone })
+// Den zon antalet räknas ur nästlas in med sin bricka, av samma skäl och samma nyckel som
+// platsen (#269): «så många som ligger i Hand» sa inte vilken av åtta händer den räknade.
+const amountWords = (a: ActionAmount, zones: readonly Zone[], t: T): Words => {
+  if (a.of === 'number') return { words: String(a.n) }
+  if (a.of === 'seats') return { words: t('setup.amount.seats') }
+  if (a.of === 'ask') return { words: t('setup.amount.ask') }
+  const zone = zones.find((z) => z.id === a.zone)
+  return zone === undefined ? { words: t('setup.amount.zone', { zone: a.zone }) } : nested('setup.amount.zone', zoneWords(zone, t), t)
+}
 
 // "Bredvid högen" är inte en riktning förrän högen sagt vilken (K21), och meningen ska säga vad
 // som kommer att hända: den skriver ut sidan högen bär, inte ordet den bär den under.
 //
 // Frasen är hel och kommer ur katalogen med sin preposition i (#285). Ingenting sätts ihop här:
 // den här funktionen väljer en nyckel och fyller ett hål, och det är allt den får göra.
-const targetWords = (target: ActionTarget, zones: readonly Zone[], t: T, beside: ZoneBeside, form: PlaceForm): string =>
-  target.at === 'zone'
-    ? t(`setup.place.${form}.zone` as Key, { zone: zones.find((z) => z.id === target.zone)?.name ?? target.zone })
-    : t((target.at === 'beside' ? `setup.place.${form}.beside.${beside}` : `setup.place.${form}.${target.at}`) as Key)
+//
+// Och platsen står i den färdiga meningen och inte bara i raden man väljer bland (#269). Rutan är
+// stängd varje gång regeln läses efteråt, så en mening som bara säger «i Hand» går inte att läsa
+// tillbaka till den av åtta händer designern valde — och K21 säger att meningen *är*
+// specifikationen. Zonen nästlas därför in i platsens hål med sin bricka, av samma nyckel som
+// bär rutans rad: ingen ny nyckel, och ingen sammansättning som ytan hittat på.
+const targetWords = (target: ActionTarget, zones: readonly Zone[], t: T, beside: ZoneBeside, form: PlaceForm): Words => {
+  if (target.at !== 'zone') return { words: t((target.at === 'beside' ? `setup.place.${form}.beside.${beside}` : `setup.place.${form}.${target.at}`) as Key) }
+  const key = `setup.place.${form}.zone` as Key
+  const zone = zones.find((z) => z.id === target.zone)
+  return zone === undefined ? { words: t(key, { zone: target.zone }) } : nested(key, zoneWords(zone, t), t)
+}
+
+// En zon nästlad i en mening som har ett hål för den. Sammansättningen är katalogens hela vägen
+// ned: hålet fylls med zonens tre skepnader, var och en i sin egen, och ingen text sätts ihop här.
+const nested = (key: Key, zone: Words, t: T): Words => ({
+  words: t(key, { zone: zone.words }),
+  said: zone.said === undefined ? undefined : t(key, { zone: zone.said }),
+  label: zone.label === undefined ? undefined : parts(t(key), { zone: zone.label }),
+})
 
 // A catalogue sentence with named holes, filled with things rather than with text. The holes are
 // written `{name}`; the order they come in is the language's business and not this file's (A4).

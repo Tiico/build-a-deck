@@ -150,6 +150,20 @@ Anropsstället kan inte avgöra det: det har ett namn och inget språk.
 Så ett meddelande *ber* om formen med `{name:s}` och språket svarar — svenskan med sina tre fall, engelskan med sina egna (`Ada’s`, `A’s`, `Lars’`).
 Regeln står i `possessive` i `packages/web/src/i18n/index.tsx`, ett svar per språk, och katalogerna skriver aldrig en ändelse själva.
 
+Verktygets ord får inte kräva en form av designerns, 2026-09-20 (#269):
+
+Gränsen har en andra sida, och den syntes först när meningen i en högs panel skulle börja säga vilken av åtta platser den talar om.
+Formen som låg närmast till hands var ett framförställt genitiv — `i A:s Hand` — och den är smalast av de prövade, billigast i kod och den som har mest stöd i registret (K19, och `possessive` ovan skrevs för precis det här fallet).
+Den läser också riktigt i sin bästa rad.
+Den faller på nästa: `i A:s Askhögen`, `i A:s Kort som lagts åt sidan i rundan`.
+Svensk genitiv framför ett bestämt substantiv är fel, och det rätta vore «A:s askhög» — ett ord designern inte har skrivit och som verktyget alltså skulle behöva hitta på åt henne.
+`Hand` är det enda vanliga zonnamnet som råkar vara obestämt, så formen ser riktig ut precis så länge man bara tittar på det.
+
+A4 är därför inte bara «blanda inte verktygets ord med designerns» utan också «låt inte verktygets ord kräva en grammatisk form av designerns».
+Ett efterställt tillägg rör inte namnet; ett framförställt böjer meningen runt det.
+Regeln gäller varje yta som sätter verktygets ord intill ett namn ur dokumentet — zonnamn, fältnamn, symbolnamn, kortnamn — och den är skälet att platsen skrivs efter zonens namn och i en ram, aldrig framför det och aldrig som en ändelse på det.
+En ram är dessutom det enda sättet att säga *vems* ordet är utan att böja något: `Hand A` får inte bli typografiskt omöjlig att skilja från `Framför A`, som designern verkligen kan ha döpt en zon till.
+
 ---
 
 ## B. Domänmodellen
