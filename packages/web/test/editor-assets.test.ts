@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ASSET_FORMATS, ASSET_MAX_BYTES, sniffAsset } from '@byd/protocol'
-import { RULE_IMAGE_MAX_BYTES, assetUrl, assetsInUse, imageFieldsOf, imageSizeOf, imageTypeOf, isAssetRef, resolveAssetRow } from '../src/editor/assets.js'
+import { RULE_IMAGE_MAX_BYTES, assetUrl, assetsInUse, imageFieldsOf, imageSizeOf, imageTypeOf, isAssetRef, mediaInGame, resolveAssetRow } from '../src/editor/assets.js'
 import { projectDoc } from './project-doc.js'
 
 const HASH = 'a'.repeat(64)
@@ -100,5 +100,26 @@ describe('what a picked file actually is (#173)', () => {
     expect(imageTypeOf(woff2)).toBeNull()
     // And the weight the import reports on is the gate's own limit, not a number kept in step.
     expect(RULE_IMAGE_MAX_BYTES).toBe(ASSET_MAX_BYTES)
+  })
+})
+
+// A picture the template draws by itself (#320): the library counts the template as a user, so a
+// background or a logo bound straight into the template is never marked as something nothing
+// uses — and never offered for tidying as if it were.
+describe('the library counts the template as a user of a picture (#320)', () => {
+  it('says which pictures the template carries, beside the cards that carry them', () => {
+    const doc = projectDoc()
+    const LOGO = 'c'.repeat(64)
+    doc.template.faces['front']!.base.push({ kind: 'image', id: 'art', x: 4, y: 4, w: 55, h: 36, bind: { field: 'art' } })
+    doc.template.faces['back']!.base.push({ kind: 'image', id: 'logo', x: 20, y: 30, w: 23, h: 23, bind: { literal: `asset:${LOGO}` } })
+    doc.rows[0]!.fields['art'] = `asset:${HASH}`
+    doc.rows[1]!.fields['art'] = `asset:${LOGO}`
+    expect(mediaInGame(doc)).toEqual([
+      { hash: HASH, cards: ['dragon'], template: false },
+      { hash: LOGO, cards: ['knight'], template: true },
+    ])
+    // An empty literal is a frame with nothing in it, not a picture.
+    doc.template.faces['back']!.base.push({ kind: 'image', id: 'blank', x: 0, y: 0, w: 10, h: 10, bind: { literal: '' } })
+    expect(mediaInGame(doc)).toHaveLength(2)
   })
 })
