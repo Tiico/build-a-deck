@@ -2973,6 +2973,17 @@ Därför mäts filten i **bordsläge**, och det är det kravet som är den egent
 **N**, nuläget, är själva felet.
 
 `button-language.test.tsx` mäter allt ovanstående i Chromium på varje yta monterad vid sin egen rutt, och `button-language-contrast.test.ts` mäter varje färg språket föreslår mot den yta den landar på.
+
+Tillagt 2026-09-20 (#315): **ett tillstånd är en färg lagd på ett underlag regeln inte kan se, och mäts därför på sidan.**
+De två grindarna ovan mäts på *token*: de frågar vilken färg ett namn har, aldrig vilken färg en kontroll faktiskt kommer ut i när den är avstängd eller upptagen, på den grund den då står på.
+Det gick precis så fel som det låter: `#5b6478` valdes för en headerknapp som ritas på headerns egen krom, och lagd på den fyllda första handlingen mätte samma grå 1,20:1 — etiketten «Uppdaterar bordet…» hade alltså blivit oläslig av fixen för att den skulle gå att läsa.
+Regeln är nu avgränsad från den fyllda handlingen, och `button-state-contrast.test.tsx` går igenom varje knapp editorn ritar, i varje läge plattformen har ett ord för — vilande, avstängd, `aria-busy`, båda, och alla fyra igen under pekaren — och mäter etikettens beräknade färg mot hela den stapel av bottnar webbläsaren målar under just de orden, knappens egen fyllning inräknad.
+Ingen siffra skrivs i provet: varje färg läses av sidan, så en omstämd palett stämmer om provet med sig.
+
+**Editorns avstängda etiketter bär 4,5:1, inte de 3:1 en otillgänglig kontroll fick på filten.**
+Undantaget i WCAG 1.4.3 gäller fortfarande, och filtens skiva behåller sina 3:1 av skälen som står ovan — den läses på tre meters håll och den läses som en lista.
+Editorn är ett skrivbord och dess avstängda ord är inte dekoration: «Sparar…» och den arbetande bokknappen säger vad som händer just nu, och de mätte 2,55:1 respektive 2,84:1 i den grå som valdes med ögat.
+Det avstängda bläcket är därför editorns eget tysta register `--byd-editor-quiet`, som redan höjdes från 4,09:1 av precis samma skäl — och hålls det till 4,5:1 på de två grunder dessa regler landar på finns det ändå inget utrymme under det registret.
 Filten mäts inte som de andra fem, eftersom den inte har någon grund att läsa ur en deklaration: det gröna är en `radial-gradient`, träramen en `linear-gradient`, omlandet en tredje, ett kortansikte en `hsl()` ur kortets egen färgton och ringens skivor ligger ovanpå vilken som helst av dem.
 Grunden samplas därför ur de målade bildpunkterna (`packages/web/test/painted.ts`) och en grund redovisas som tre toner — den mörkaste tjugondelen, mitten och den ljusaste — så att en färg måste hålla sin gräns mot hela ytan och inte mot en lyckad bildpunkt.
 

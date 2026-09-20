@@ -266,8 +266,17 @@
    the grey measures 1.20:1, so an update that says «Uppdaterar bordet…» would say it in a word
    nobody can read — the very thing #315 is about. A busy first action therefore keeps its fill
    and its ink and lets the label carry the state, the way the filled «Sparar…» in the question
-   on the way out already does. */
-.byd-editor > header > button:not(.byd-primary):disabled { color: #5b6478; }
+   on the way out already does.
+
+   And the quiet is the editor's own quiet register and not a grey of its own. The `#5b6478` this
+   used to be was chosen by eye and measured 2.55:1 on the header's chrome and 2.84:1 on the
+   strip's ground, so «Sparar…» — which is a word about what is happening right now and not
+   decoration — was already below the bar every other sentence in the tool is held to. The
+   standard would let a refused control off (1.4.3 exempts an inactive component); the house does
+   not, for the same reason `--byd-editor-quiet` was raised off 4.09:1. Held to 4.5:1 on the two
+   grounds these rules land on there is no room under that register anyway, so the register is
+   what refused is written in. Measured in `button-state-contrast.test.tsx`. */
+.byd-editor > header > button:not(.byd-primary):disabled { color: var(--byd-editor-quiet); }
 .byd-editor > header > button:disabled { cursor: default; }
 .byd-editor-table-link {
   flex: none;
@@ -459,8 +468,8 @@
   cursor: pointer;
 }
 /* The same pair below the desk, where the two buttons are pinned to the end of the stage strip
-   (#315). */
-.byd-editor-stagebar-actions button:not(.byd-primary):disabled { color: #5b6478; }
+   (#315), in the same quiet register for the same reason. */
+.byd-editor-stagebar-actions button:not(.byd-primary):disabled { color: var(--byd-editor-quiet); }
 .byd-editor-stagebar-actions button:disabled { cursor: default; }
 
 /* The setup editor (B5, K2): the seats knob and the list of zones on the left, the felt as the
@@ -2164,7 +2173,10 @@
    (#173) nothing in the report is merely waiting, so there is no second mark beside it. */
 .byd-rules-report li[data-kind='changed'] { color: #f0b64a; }
 .byd-rules-warn { color: #f0b64a !important; }
-.byd-rules-booklet:disabled { color: #5b6478; cursor: default; }
+/* The third place the same grey stood, and the one where it mattered most: this button is refused
+   precisely while the booklet is being made, so the word it is refused in is a word about work in
+   progress. Same register, same bar. */
+.byd-rules-booklet:disabled { color: var(--byd-editor-quiet); cursor: default; }
 /* The book the designer writes is a page of prose in a serif, and its rhythm — the air over a
    heading, the space after a paragraph, the page's own margins — is the book's, not the editor's.
    The ladder sets the tool's chrome; it has no business setting somebody's rulebook. Every line
