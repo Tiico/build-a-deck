@@ -29,7 +29,7 @@ const tiles = () => screen.getAllByRole('listitem')
 
 describe('the media library lists the game’s pictures (#222)', () => {
   it('holds each picture once however many cards use it, and says how many', () => {
-    render(<MediaPanel doc={deckWithArt()} assetBase="http://api.local" onReplaceRows={() => undefined} />)
+    render(<MediaPanel doc={deckWithArt()} assetBase="http://api.local" />)
 
     expect(tiles().map((li) => li.getAttribute('data-asset'))).toEqual([SKOG, BORG])
     expect(tiles().map((li) => within(li).getByRole('img').getAttribute('src'))).toEqual([
@@ -47,7 +47,7 @@ describe('the media library marks what no card uses (#222, beslut 4)', () => {
   it('keeps a picture no card is drawn from, and says so beside it', () => {
     const doc = deckWithArt()
     doc.rules = { title: 'Regler', blocks: [{ kind: 'image', id: 'karta', asset: `asset:${KARTA}`, alt: 'Kartan', px: { w: 800, h: 600 } }] }
-    render(<MediaPanel doc={doc} assetBase="http://api.local" onReplaceRows={() => undefined} />)
+    render(<MediaPanel doc={doc} assetBase="http://api.local" />)
 
     expect(tiles().map((li) => li.getAttribute('data-asset'))).toEqual([SKOG, BORG, KARTA])
     const unused = tiles().at(-1)!
@@ -70,9 +70,25 @@ describe('the media library at a real game’s size (#222)', () => {
       id: `r${i}`,
       fields: { ...doc.rows[0]!.fields, art: `asset:${i.toString(16).padStart(64, '0')}` },
     }))
-    render(<MediaPanel doc={doc} assetBase="http://api.local" onReplaceRows={() => undefined} />)
+    render(<MediaPanel doc={doc} assetBase="http://api.local" />)
 
     expect(tiles()).toHaveLength(308)
     expect(tiles().map((li) => within(li).getByRole('img').getAttribute('loading'))).toEqual(Array(308).fill('lazy'))
+  })
+})
+
+// The way from a picture to the cards left Media (#296, L22 reviderat 2026-09-20): it stands in
+// Data now, as a window over the table, where the cards are and where they are marked. What is
+// left here is the library, the upload, the crop and the preview — and no control that only works
+// once the designer has walked to another tab and back.
+describe('the media library no longer puts a picture on the marked cards (#296)', () => {
+  it('offers neither the put button nor the column it wrote into', () => {
+    render(<MediaPanel doc={deckWithArt()} assetBase="http://api.local" onCrop={() => undefined} />)
+    expect(screen.queryByRole('button', { name: /Lägg bilden på/ })).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Lägg på kort' })).toBeNull()
+    expect(screen.queryByLabelText('Kolumn')).toBeNull()
+    // The control: the library and the crop are still there.
+    expect(tiles()).toHaveLength(2)
+    expect(screen.getByRole('heading', { name: 'Beskärning' })).toBeTruthy()
   })
 })

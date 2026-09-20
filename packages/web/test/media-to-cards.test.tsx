@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
-// The whole of what #222 is for: a picture onto a selection of cards in one step (L22).
+// The whole of what #222 was for: a picture onto a selection of cards in one step (L22).
 //
 // «Att behöva dra bilden om och om igen på 150+ kort är inte en bra lösning.» The way in was
 // already there — the card table's own marking (#17) — and what was missing was the library and
-// the connection. So the marking is the deck's and not one panel's: it is made in Tabell, it
-// survives the walk over to Media, and the library writes every marked card at once.
+// the connection. Since #296 the connection stands in Data itself: the marked cards open the
+// library as a window over the table, so the picture reaches them without a walk to Media and
+// back. The marking is still the deck's, and the library still writes every marked card at once.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import type { ProjectDoc } from '@byd/server'
 import { EditorPage } from '../src/editor/EditorPage.js'
@@ -42,23 +43,38 @@ async function openEditor(): Promise<void> {
   await screen.findByText('Skogens herrar')
 }
 
-describe('a picture on a selection of cards in one step (#222, L22)', () => {
-  it('carries the card table’s own marking to the library and writes every marked card at once', async () => {
+const dialog = () => screen.getByRole('dialog', { name: 'Bilder i spelet' })
+
+// The marked cards, the column, and the library opened on them from the action row.
+async function putOnMarked(user: ReturnType<typeof userEvent.setup>): Promise<void> {
+  await user.click(screen.getByRole('tab', { name: 'Tabell' }))
+  await user.click(await screen.findByRole('checkbox', { name: 'markera knight' }))
+  await user.click(screen.getByRole('checkbox', { name: 'markera wizard' }))
+  const bulk = screen.getByRole('toolbar', { name: 'Markerade kort' })
+  fireEvent.change(within(bulk).getByLabelText('Kolumn'), { target: { value: 'art' } })
+  await user.click(within(bulk).getByRole('button', { name: 'Välj bild för de markerade korten' }))
+  await user.click(within(dialog()).getByRole('button', { name: 'Bild på dragon' }))
+  await user.click(within(dialog()).getByRole('button', { name: 'Använd på 2 kort' }))
+}
+
+describe('a picture on a selection of cards in one step (#222, L22, #296)', () => {
+  it('writes every marked card at once from the library in Data, and one step back takes all of them back', async () => {
     const user = userEvent.setup()
     await openEditor()
-    await user.click(screen.getByRole('tab', { name: 'Tabell' }))
-    await user.click(await screen.findByRole('checkbox', { name: 'markera knight' }))
-    await user.click(screen.getByRole('checkbox', { name: 'markera wizard' }))
-
-    await user.click(screen.getByRole('tab', { name: 'Media' }))
-    await user.click(await screen.findByRole('button', { name: 'Bild på dragon' }))
-    await user.click(screen.getByRole('button', { name: 'Lägg bilden på 2 kort' }))
+    await putOnMarked(user)
 
     // One step, and the picture is on both of them — with the card that already had it untouched.
-    await user.click(screen.getByRole('tab', { name: 'Tabell' }))
     const url = `${run.http}/assets/${SKOG}`
     expect((await screen.findByAltText('knight art')).getAttribute('src')).toBe(url)
     expect(screen.getByAltText('wizard art').getAttribute('src')).toBe(url)
+    expect(screen.getByAltText('dragon art').getAttribute('src')).toBe(url)
+    expect(screen.getByText('Bilden ligger nu på 2 kort.')).toBeTruthy()
+
+    // And one step back is both cards back (L4, B4): the mass change was one change.
+    ;(document.activeElement as HTMLElement | null)?.blur()
+    fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
+    await waitFor(() => expect(screen.queryByAltText('knight art')).toBeNull())
+    expect(screen.queryByAltText('wizard art')).toBeNull()
     expect(screen.getByAltText('dragon art').getAttribute('src')).toBe(url)
   })
 })
@@ -85,18 +101,15 @@ describe('a picture the game already has is never uploaded again (#222, E1)', ()
     }) as typeof globalThis.fetch
     try {
       await openEditor()
-      await user.click(screen.getByRole('tab', { name: 'Tabell' }))
-      await user.click(await screen.findByRole('checkbox', { name: 'markera knight' }))
-      await user.click(screen.getByRole('checkbox', { name: 'markera wizard' }))
-      await user.click(screen.getByRole('tab', { name: 'Media' }))
-      await user.click(await screen.findByRole('button', { name: 'Bild på dragon' }))
-      await user.click(screen.getByRole('button', { name: 'Lägg bilden på 2 kort' }))
+      await putOnMarked(user)
+      await screen.findByAltText('knight art')
 
       // The watch is not vacuous: the editor did go to the network, and never with a picture.
       expect(asked.length).toBeGreaterThan(0)
       expect(stored).toEqual([])
       // One picture, three cards — not one picture per card.
-      expect(screen.getAllByRole('listitem')).toHaveLength(1)
+      await user.click(screen.getByRole('tab', { name: 'Media' }))
+      expect(await screen.findAllByRole('listitem')).toHaveLength(1)
       expect(screen.getByRole('button', { name: 'Bild på dragon, knight, wizard' })).toBeTruthy()
     } finally {
       globalThis.fetch = real

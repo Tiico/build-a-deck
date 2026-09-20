@@ -5,8 +5,9 @@ import { ANTAL, drawnBy } from '@byd/server/doc'
 import { ColumnDoor } from './ColumnDoor.js'
 import { Crown, CrownBox, CrownDrawer, CrownFoot, CrownRail } from './Crown.js'
 import { DragDoor } from './DragDoor.js'
-import { ASSET_DRAG_TYPE, assetRef, assetUrl, assetsInUse, iconFieldsOf, imageFieldsOf, isAssetRef, ASSET_PREFIX } from './assets.js'
+import { ASSET_DRAG_TYPE, assetRef, assetUrl, assetsInUse, iconFieldsOf, imageFieldsOf, isAssetRef, mediaInGame, ASSET_PREFIX } from './assets.js'
 import { DropSays, dropSurface, oneFile } from './dropping.js'
+import { PictureLibraryDialog, type LibraryPicture } from './PictureLibrary.js'
 import { searchSymbols, type GameSymbol } from './symbols.js'
 import { RoleList, SymbolList, roleOptionId, symbolListKey, symbolOptionId } from './SymbolList.js'
 import { triggerBehind } from './picking.js'
@@ -257,6 +258,20 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   const wasCell = (cardRef: string, field: string) => compareWith?.doc.rows.find((r) => r.id === cardRef)?.fields[field]
   const imageFields = assetBase && onUpload ? imageFieldsOf(doc) : []
   const images = assetsInUse(doc)
+  // The library window (#296, variant B): opened from a picture cell or from the marked cards,
+  // and it is one window for both. What it is about is the one thing the table has to hold —
+  // the picture it writes is the window's own answer — and what it did is said in the strip
+  // above the table, where the pictures are, so a designer who stays in Data is told.
+  const [library, setLibrary] = useState<{ kind: 'cell'; cardRef: string; field: string } | { kind: 'marked'; field: string } | null>(null)
+  const [said, setSaid] = useState<string | null>(null)
+  // Every picture the game holds, the unused ones included (L22): the strip above the table
+  // lists what is in use, which is exactly the list a designer looking for the picture she just
+  // uploaded cannot find it in.
+  const pictures: LibraryPicture[] = mediaInGame(doc).map(({ hash, cards }) => ({ hash, name: doc.pictures?.[hash]?.name, cards }))
+  // What the status calls the picture: its file name where one was kept, and otherwise nothing —
+  // the same sentence the upload's own status uses, since a picture from before names is not
+  // called «Bild på dragon» once it is on knight and wizard too.
+  const pictureName = (hash: string): string | undefined => doc.pictures?.[hash]?.name
   // Cellens egen ruta tar en bild (#291): flera filer är en fråga utan svar, och den ställs
   // tillbaka i stället för att besvaras med den första.
   const upload = async (cardRef: string, field: string, files: readonly File[]) => {
@@ -869,6 +884,9 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
             </ul>
           )}
           {uploadError && <span role="alert">{uploadError}</span>}
+          {/* What the library did, said where the pictures are. The region stands from the start
+              and empty, so it is one something was listening to when the sentence arrives. */}
+          <span className="byd-data-said" role="status">{said ?? ''}</span>
         </div>
       )}
       {compareWith && diff && (
@@ -932,9 +950,13 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
               >
                 {bulkImage ? <img src={assetUrl(assetBase, bulkImage)} alt={t('table.bulk.image')} /> : <span>{t('table.image.drop')}</span>}
                 {bulkOver && <DropSays />}
+                {/* The library (#296): a picture the game already has, onto every marked card. */}
+                <button type="button" className="byd-data-file" aria-label={t('table.bulk.image.choose')} onClick={() => setLibrary({ kind: 'marked', field })}>
+                  {t('table.image.choose')}
+                </button>
                 <label className="byd-data-file">
-                  {bulkImage ? t('table.image.replace') : t('table.image.choose')}
-                  <input className="byd-offscreen" type="file" accept="image/*" aria-label={t('table.bulk.image.choose')} onChange={(event) => void bulkUpload([...(event.target.files ?? [])])} />
+                  {t('table.image.upload')}
+                  <input className="byd-offscreen" type="file" accept="image/*" aria-label={t('table.bulk.image.upload')} onChange={(event) => void bulkUpload([...(event.target.files ?? [])])} />
                 </label>
               </div>
             ) : (
@@ -1143,9 +1165,15 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                     >
                       {isAssetRef(row[f]) ? <img src={assetUrl(assetBase, String(row[f]).slice(ASSET_PREFIX.length))} alt={`${cardRef} ${f}`} /> : <span>{t('table.image.drop')}</span>}
                       {over === `${cardRef}:${f}` && <DropSays />}
-                      <label className="byd-data-file">
+                      {/* The library (#296): a picture the game already has, into this cell.
+                          The upload beside it stays as it was — a file off the disk is the
+                          other way a picture reaches a card (#291 owns the drop). */}
+                      <button type="button" className="byd-data-file" aria-label={t('table.image.chooseFor', { cardRef })} onClick={() => setLibrary({ kind: 'cell', cardRef, field: f })}>
                         {isAssetRef(row[f]) ? t('table.image.replace') : t('table.image.choose')}
-                        <input className="byd-offscreen" type="file" accept="image/*" aria-label={t('table.image.chooseFor', { cardRef })} onChange={(e) => void upload(cardRef, f, [...(e.target.files ?? [])])} />
+                      </button>
+                      <label className="byd-data-file">
+                        {t('table.image.upload')}
+                        <input className="byd-offscreen" type="file" accept="image/*" aria-label={t('table.image.uploadFor', { cardRef })} onChange={(e) => void upload(cardRef, f, [...(e.target.files ?? [])])} />
                       </label>
                       {isAssetRef(row[f]) && (
                         <button type="button" aria-label={t('table.image.removeFor', { cardRef })} onClick={() => onCell(cardRef, f, '')}>
@@ -1331,6 +1359,31 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
         </p>
         <p className="byd-data-sort" role="status">{sortLabel(sort, t)}</p>
       </CrownFoot>
+      {library !== null && assetBase && (
+        <PictureLibraryDialog
+          target={library.kind === 'cell' ? t('library.target.card', { cardRef: library.cardRef, field: library.field }) : t('library.target.cards', { n: chosen.length, field: library.field })}
+          count={library.kind === 'cell' ? 1 : chosen.length}
+          replacing={library.kind === 'cell' ? (isAssetRef(doc.rows.find((r) => r.id === library.cardRef)?.fields[library.field]) ? 1 : 0) : chosen.filter((r) => isAssetRef(r.fields[library.field])).length}
+          pictures={pictures}
+          assetBase={assetBase}
+          onApply={(hash) => {
+            // One change either way (L4, B4): a cell is one edit, and the marked cards are one
+            // list of rows — the same door every other bulk change goes through, so a step back
+            // takes all of them back at once.
+            if (library.kind === 'cell') {
+              onCell(library.cardRef, library.field, assetRef(hash))
+              const name = pictureName(hash)
+              setSaid(name === undefined ? t('table.library.done.one.unnamed', { cardRef: library.cardRef }) : t('table.library.done.one', { name, cardRef: library.cardRef }))
+            } else {
+              onReplaceRows(setColumn(doc.rows, chosenIds, library.field, assetRef(hash)))
+              const name = pictureName(hash)
+              setSaid(name === undefined ? t('table.library.done.other.unnamed', { n: chosen.length }) : t('table.library.done.other', { name, n: chosen.length }))
+            }
+            setLibrary(null)
+          }}
+          onClose={() => setLibrary(null)}
+        />
+      )}
     </div>
   )
 }

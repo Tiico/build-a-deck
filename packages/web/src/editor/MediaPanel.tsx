@@ -1,12 +1,9 @@
 import { useEffect, useId, useMemo, useRef, useState, type Ref } from 'react'
 import { WHOLE_PICTURE, pictureNameOf, showsWholePicture, type AssetCrop } from '@byd/protocol'
 import { croppedMotif, type Motif } from '@byd/template'
-import type { ProjectDoc, ProjectRow } from './types.js'
+import type { ProjectDoc } from './types.js'
 import { assetRef, assetUrl, imageFieldsOf, mediaInGame, previewIcons } from './assets.js'
 import { DropSays, dropSurface } from './dropping.js'
-import { setColumn } from './selection.js'
-import { useMarked } from './marked.js'
-import { fieldLabel } from './fields.js'
 import { Crop } from './Crop.js'
 import { Question } from './Question.js'
 import { previewFonts } from './fonts.js'
@@ -47,9 +44,6 @@ export type MediaPanelProps = {
   // carries. The card beside the crop needs them for the same reason every other preview does,
   // and the file's own size is what turns a window in shares into one in pixels.
   motifs?: Record<string, Motif> | undefined
-  // The whole list of rows at once, exactly as the card table's own bulk changes travel (#17):
-  // one picture onto a marked selection is one version and one step back.
-  onReplaceRows(rows: ProjectRow[]): void
   // The window this picture is looked at through, for every card drawn from it. `null` is the
   // picture going back to whole.
   onCrop?: ((hash: string, crop: AssetCrop | null) => void) | undefined
@@ -69,7 +63,7 @@ export const NAMED_CARDS = 5
 type Named = { name: string; named: boolean }
 type Result = (Named & { hash: string }) | (Named & { why: string })
 
-export function MediaPanel({ doc, assetBase, motifs, onReplaceRows, onCrop, onAdd, onRemove }: MediaPanelProps) {
+export function MediaPanel({ doc, assetBase, motifs, onCrop, onAdd, onRemove }: MediaPanelProps) {
   const t = useT()
   const said = useId()
   const media = mediaInGame(doc)
@@ -89,7 +83,6 @@ export function MediaPanel({ doc, assetBase, motifs, onReplaceRows, onCrop, onAd
     else setLeaving(hash)
   }
   const asked = leaving === null ? undefined : media.find((m) => m.hash === leaving)
-  const [marked] = useMarked()
   // The picture in hand. A library opens on a picture rather than on nothing, so the first one is
   // chosen until the designer says otherwise, and a picture that leaves the game takes the choice
   // with it.
@@ -123,21 +116,10 @@ export function MediaPanel({ doc, assetBase, motifs, onReplaceRows, onCrop, onAd
     setOverview(false)
     setBatch(null)
     setFresh([])
-    setDone(null)
   }
-  // Which column the picture is written into. Only the template knows which columns are drawn as
-  // pictures (E1), and a deck with one such column is not asked the question at all.
-  const columns = imageFieldsOf(doc)
-  const [column, setColumnPicked] = useState<string | null>(null)
-  const field = column !== null && columns.includes(column) ? column : (columns[0] ?? null)
-  // What a press would actually reach: the marked cards the deck still holds.
-  const reaches = doc.rows.filter((row) => marked.has(row.id))
-  const [done, setDone] = useState<number | null>(null)
-  const put = () => {
-    if (chosen === null || field === null || reaches.length === 0) return
-    onReplaceRows(setColumn(doc.rows, marked, field, assetRef(chosen)))
-    setDone(reaches.length)
-  }
+  // The column the card beside the crop is drawn from. Only the template knows which columns are
+  // drawn as pictures (E1); the first of them is the card the window is judged on.
+  const field = imageFieldsOf(doc)[0] ?? null
   // The window being cut, which is not the same thing as the window that is stored: a drag is
   // hundreds of positions and one edit, and the card beside has to follow every one of them.
   // Held by the picture it belongs to, so choosing another picture shows that one's own window.
@@ -214,8 +196,7 @@ export function MediaPanel({ doc, assetBase, motifs, onReplaceRows, onCrop, onAd
       if ('hash' in only) {
         setPicked(only.hash)
         setOverview(false)
-        setDone(null)
-        setDrafted(null)
+            setDrafted(null)
         opening.current = true
         setNote(only.named ? t('media.add.done', { name: only.name }) : t('media.add.done.unnamed'))
       } else setNote(only.why)
@@ -230,7 +211,6 @@ export function MediaPanel({ doc, assetBase, motifs, onReplaceRows, onCrop, onAd
     if (arrived.length === 0) return
     setFresh(arrived.map((one) => one.hash))
     setOverview(true)
-    setDone(null)
     setDrafted(null)
   }
   return (
@@ -400,30 +380,6 @@ export function MediaPanel({ doc, assetBase, motifs, onReplaceRows, onCrop, onAd
             }}
           />
         )}
-        {/* The way from a picture to the cards. The selection is the bulk editor's own and not a
-          second mechanism (L22), so this says how many cards are marked and never offers a way to
-          mark them: that is the card table's, where the cards are. */}
-        <aside className="byd-media-use">
-          <h2>{t('media.use')}</h2>
-          {columns.length > 1 && (
-            <label>
-              {t('table.column')}
-              <select aria-label={t('table.column')} value={field ?? ''} onChange={(event) => setColumnPicked(event.target.value)}>
-                {columns.map((f) => (
-                  <option key={f} value={f}>
-                    {fieldLabel(f, t)}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          <button type="button" className="byd-secondary" disabled={chosen === null || field === null || reaches.length === 0} onClick={put}>
-            {t('media.put', { n: reaches.length })}
-          </button>
-          <p role="status">
-            {field === null ? t('media.put.noColumn') : reaches.length === 0 ? t('media.put.unmarked') : done !== null ? t('media.put.done', { n: done }) : ''}
-          </p>
-        </aside>
       </div>
     </div>
   )

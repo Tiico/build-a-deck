@@ -33,7 +33,7 @@ describe('a picture is called what its file was called (#222, beslut 6)', () => 
   it('names the picture by its file, wherever it is looked over and wherever it is chosen', () => {
     const doc = deckWithArt()
     doc.pictures = { [SKOG]: { name: 'skogsbryn.jpg' } }
-    render(<MediaPanel doc={doc} assetBase={BASE} onReplaceRows={() => undefined} />)
+    render(<MediaPanel doc={doc} assetBase={BASE} />)
 
     expect(within(tiles()[0]!).getByRole('img').getAttribute('alt')).toBe('skogsbryn.jpg')
     expect(screen.getByRole('button', { name: 'skogsbryn.jpg' })).toBeTruthy()
@@ -45,7 +45,7 @@ describe('a picture is called what its file was called (#222, beslut 6)', () => 
   it('falls back to the cards drawn from a picture that has no name, and to the unused wording', () => {
     const doc = deckWithArt()
     doc.rules = { title: 'Regler', blocks: [{ kind: 'image', id: 'karta', asset: `asset:${BORG}`, alt: 'Kartan', px: { w: 800, h: 600 } }] }
-    render(<MediaPanel doc={doc} assetBase={BASE} onReplaceRows={() => undefined} />)
+    render(<MediaPanel doc={doc} assetBase={BASE} />)
 
     expect(within(tiles()[0]!).getByRole('img').getAttribute('alt')).toBe('Bild på dragon, knight')
     expect(within(tiles()[1]!).getByRole('img').getAttribute('alt')).toBe('Bild som inget kort använder')
@@ -61,7 +61,7 @@ describe('the library holds a picture no card is drawn from yet (#222, beslut 5)
   it('lists a picture the game has met, under its own name, and marks it as used by nothing', () => {
     const doc = deckWithArt()
     doc.pictures = { [BORG]: { name: 'borgen.png' } }
-    render(<MediaPanel doc={doc} assetBase={BASE} onReplaceRows={() => undefined} />)
+    render(<MediaPanel doc={doc} assetBase={BASE} />)
 
     expect(tiles().map((li) => li.getAttribute('data-asset'))).toEqual([SKOG, BORG])
     const met = tiles()[1]!
@@ -75,7 +75,7 @@ describe('the library holds a picture no card is drawn from yet (#222, beslut 5)
   it('lists a picture the game knows without a name, rather than losing it', () => {
     const doc = deckWithArt()
     doc.pictures = { [BORG]: {} }
-    render(<MediaPanel doc={doc} assetBase={BASE} onReplaceRows={() => undefined} />)
+    render(<MediaPanel doc={doc} assetBase={BASE} />)
 
     expect(tiles().map((li) => li.getAttribute('data-asset'))).toEqual([SKOG, BORG])
     expect(within(tiles()[1]!).getByRole('img').getAttribute('alt')).toBe('Bild som inget kort använder')

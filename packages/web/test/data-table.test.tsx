@@ -148,7 +148,7 @@ describe('image cells (E1)', () => {
     expect(within(rows[1]!).queryByRole('img')).toBeNull()
 
     const file = new File(['png'], 'riddare.png', { type: 'image/png' })
-    fireEvent.change(within(rows[1]!).getByLabelText('Välj bild för knight'), { target: { files: [file] } })
+    fireEvent.change(within(rows[1]!).getByLabelText('Ladda upp bild för knight'), { target: { files: [file] } })
     await waitFor(() => expect(onCell).toHaveBeenCalledWith('knight', 'art', `asset:${'d'.repeat(64)}`))
     expect(onUpload).toHaveBeenCalledWith(file)
 
@@ -227,7 +227,7 @@ describe('an image on every marked card (#17, E1)', () => {
     fireEvent.change(within(bulk()).getByLabelText('Kolumn'), { target: { value: 'art' } })
 
     const file = new File(['png'], 'skog.png', { type: 'image/png' })
-    fireEvent.change(within(bulk()).getByLabelText('Välj bild för de markerade korten'), { target: { files: [file] } })
+    fireEvent.change(within(bulk()).getByLabelText('Ladda upp bild för de markerade korten'), { target: { files: [file] } })
     // The file becomes one asset, and the row is holding it before anything is written: the
     // thumbnail is what says which image the button is about.
     await waitFor(() => expect((within(bulk()).getByRole('img', { name: 'Bild för de markerade korten' }) as HTMLImageElement).src).toBe(`http://api.local/assets/${OTHER}`))
