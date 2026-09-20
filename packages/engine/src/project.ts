@@ -65,7 +65,15 @@ function projectTable(state: TableState, registry: TypeRegistry, seat: SeatId | 
     } else {
       const top = z.order[0] === undefined ? undefined : componentOf(state, z.order[0])
       const shownTop = top !== undefined && faceUpOnTop(state, registry, top)
-      zones.push({ mode: 'count', ...zoneBase(z), count: z.order.length, ...(shownTop ? { top: top.id } : {}) })
+      // What the pile wears on the side everybody can see (#313). A deck whose cards carry their
+      // own back (#14) has to show it from the first frame rather than the deck's default until
+      // somebody has drawn — and saying it here is what keeps `project` the only way from state to
+      // thread, instead of the client guessing from a deck-wide prop.
+      //
+      // The back is the face that is not the one the card's content is on, read the same way
+      // `view` decides what it may hand out, so a type with some other pair of faces is answered
+      // by its own definition rather than by the word "back".
+      zones.push({ mode: 'count', ...zoneBase(z), count: z.order.length, ...(shownTop ? { top: top.id } : {}), ...(top !== undefined ? backOf(registry, top, faces) : {}) })
       // A component the seat was explicitly granted knowledge of still appears, even though its
       // position inside the zone does not; so does the face-up top of a pile (K15), whose position
       // the zone view names.
@@ -90,6 +98,15 @@ function zoneBase(z: Zone) {
     ...(z.beside !== undefined ? { beside: z.beside } : {}),
     ...(z.actions !== undefined && z.actions.length > 0 ? { actions: z.actions } : {}),
   }
+}
+
+// The hidden side of a component, for a zone that may say what it wears without saying what it is.
+function backOf(registry: TypeRegistry, c: ComponentInstance, faces?: FaceHashes): { back?: string } {
+  const hashes = faces?.[c.cardRef]
+  if (!hashes) return {}
+  const content = registry.get(c.type).contentFace
+  const back = Object.entries(hashes).find(([face]) => face !== content)?.[1]
+  return back === undefined ? {} : { back }
 }
 
 function grantedTo(c: ComponentInstance, seat: SeatId | null): boolean {

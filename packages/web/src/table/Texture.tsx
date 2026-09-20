@@ -33,10 +33,22 @@ export function Texture({ faces, c, retry = false }: TextureProps) {
   if (!src || !c) return null
   // Keyed on the face: a card whose texture changes gets a fresh <img> rather than a new `src`
   // on the old one, so the browser has no decoded bitmap left to show for a frame.
-  return <TextureFace key={src} src={src} c={c} retry={retry} />
+  return <TextureFace key={src} src={src} name={c.cardRef ?? null} retry={retry} />
 }
 
-function TextureFace({ src, c, retry }: { src: string; c: VisibleComponentState; retry: boolean }) {
+// The back a face-down pile wears (#313). It has no component to be read off — a hidden pile hands
+// out no id (K15) — so it is drawn from the hash the zone carries, through the same face as every
+// other texture: the same waiting, the same ladder of retries, the same one announcement for the
+// whole screen. A second <img> written beside this one would be a second answer to «what does a
+// texture do while it is not there yet», and there is only ever one.
+export function BackTexture({ faces, hash }: { faces: string | undefined; hash: string | undefined }) {
+  if (!faces || !hash) return null
+  const src = `${faces}/faces/${hash}`
+  // Nameless on purpose: what the pile wears says nothing about which card is under it.
+  return <TextureFace key={src} src={src} name={null} retry={false} />
+}
+
+function TextureFace({ src, name: named, retry }: { src: string; name: string | null; retry: boolean }) {
   const t = useT()
   // `attempt` only busts the cache and never goes backwards; `rung` is where on the ladder of
   // growing pauses we are, and a player asking again starts it over.
@@ -69,7 +81,7 @@ function TextureFace({ src, c, retry }: { src: string; c: VisibleComponentState;
     setAttempt((a) => a + 1)
   }
   // A name only when this seat already knows it; a hidden card says nothing but that it is waiting.
-  const name = c.cardRef ?? null
+  const name = named
   return (
     <>
       <img
