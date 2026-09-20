@@ -1233,7 +1233,7 @@
 .byd-props-picture { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #e6ecfa; }
 .byd-props-picture img { width: 40px; height: 28px; object-fit: cover; border-radius: 4px; background: #14161c; }
 .byd-props-picture span { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.byd-props-picture button { min-height: var(--byd-tap); padding: 0 10px; border-radius: 6px; font: inherit; cursor: pointer; }
+.byd-props-picture button { min-height: var(--byd-tap); padding: 0 12px; border-radius: 6px; font: inherit; cursor: pointer; }
 .byd-props-field:has(.byd-newfield) { grid-column: 1 / -1; }
 .byd-props-field .byd-newfield { position: static; width: auto; margin-top: 4px; }
 /* The kinds used to be given their width back here, and again in the form's own rules, because

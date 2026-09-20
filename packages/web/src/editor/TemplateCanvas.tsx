@@ -1417,12 +1417,12 @@ function Properties({
         <PictureLibraryDialog
           target={t('library.target.element', { id: el.id, face: faceName(face, t).toLowerCase() })}
           count={1}
-          replacing={isFixed && 'literal' in el.bind && isAssetRef(el.bind.literal) ? 1 : 0}
+          replacing={el.kind === 'image' && 'literal' in el.bind && isAssetRef(el.bind.literal) ? 1 : 0}
           pictures={pictures}
           assetBase={assetBase}
           onUpload={onAddPicture}
           onApply={(hash) => {
-            if ('field' in el.bind) wasFrom.current.set(el.id, el.bind.field)
+            if ('bind' in el && 'field' in el.bind) wasFrom.current.set(el.id, el.bind.field)
             onPatch({ bind: { literal: assetRef(hash) } })
             closeLibrary()
           }}

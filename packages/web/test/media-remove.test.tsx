@@ -155,7 +155,7 @@ describe('a picture the template carries is taken out and put back (#320)', () =
 
     fireEvent.keyDown(document, { key: 'z', ctrlKey: true })
     expect(await screen.findByText(/Tog tillbaka/)).toBeTruthy()
-    expect(await screen.findByText('logga.png')).toBeTruthy()
+    await waitFor(() => expect(within(document.querySelector('.byd-props-picture') as HTMLElement).getByText('logga.png')).toBeTruthy())
     expect(document.querySelector('#canvas [data-element="logo"] img.byd-art')?.getAttribute('src')).toBe(`${run.http}/assets/${LOGO}`)
   })
 })
