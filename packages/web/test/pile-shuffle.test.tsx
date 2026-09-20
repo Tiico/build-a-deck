@@ -4,13 +4,18 @@
 // sees the pile, and the fan is what that line looks like on the felt.
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, fireEvent, render, renderHook } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react'
 import { projectActivity } from '@byd/engine'
 import type { Activity } from '@byd/protocol'
 import { TableRenderer } from '../src/table/TableRenderer.js'
 import { SHUFFLE_MS, SHUFFLE_PULSE_MS, STILL, useShuffles } from '../src/table/shuffle.js'
+import { TableClient } from '../src/client.js'
+import { TablePage } from '../src/table/TablePage.js'
+import { OnlinePage } from '../src/online/OnlinePage.js'
+import { ObserverPage } from '../src/observer/ObserverPage.js'
 import { buildScene } from './scene.js'
+import { admit, asTable, createSession, roomOf, startServer, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -249,5 +254,75 @@ describe('how the fan is written (L35)', () => {
     expect(pulseRule).toMatch(/animation-duration:\s*420ms\s*!important/)
     const pulse = keyframes('byd-pile-pulse')
     for (const prop of new Set(declarations(pulse))) expect(['box-shadow', 'opacity'], `${prop} in @keyframes byd-pile-pulse`).toContain(prop)
+  })
+})
+
+// The screens that see the pile, each on a real table: the line arrives over the wire, and the
+// fan is what it looks like. The wire itself is unchanged by this — `wire.test.ts` in the server
+// already proves on raw frames what a shuffle sends and what it never does — so what is asked
+// here is only that the screen plays the line it was already being sent.
+describe('the screens that see the pile play the shuffle (L35)', () => {
+  let run: Running
+  beforeEach(async () => {
+    run = await startServer()
+  })
+  afterEach(async () => {
+    await run.stop()
+  })
+
+  it('the TV fans the pile the host shuffled, once, and only then', async () => {
+    const id = await createSession(run)
+    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    render(<TablePage />)
+    await screen.findByText(roomOf(id).code)
+    expect(document.querySelector('[data-shuffling]')).toBeNull()
+
+    const host = TableClient.connect(await asTable(run, id))
+    await host.ready()
+    await host.send({ v: 'shuffle', pile: 'draw' })
+    await waitFor(() => expect(document.querySelector('[data-zone="draw"]')!.getAttribute('data-shuffling')).toBe('fan'))
+    expect(document.querySelectorAll('[data-zone="draw"] .byd-pile-fan-card')).toHaveLength(4)
+    expect(document.querySelector('[data-zone="discard"]')!.hasAttribute('data-shuffling')).toBe(false)
+    await waitFor(() => expect(document.querySelector('[data-shuffling]')).toBeNull(), { timeout: SHUFFLE_MS + 500 })
+    host.close()
+  })
+
+  it('a TV that joins after the shuffle is told about it in words and fans nothing', async () => {
+    const id = await createSession(run)
+    const host = TableClient.connect(await asTable(run, id))
+    await host.ready()
+    await host.send({ v: 'shuffle', pile: 'draw' })
+    host.close()
+
+    history.replaceState(null, '', `/table?session=${id}&host=${roomOf(id).hostKey}&mode=tv&server=${encodeURIComponent(run.url)}`)
+    render(<TablePage />)
+    await screen.findByText(/blandade Draghög/)
+    expect(document.querySelector('[data-shuffling]')).toBeNull()
+    expect(document.querySelectorAll('.byd-pile-fan-card')).toHaveLength(0)
+  })
+
+  it("the observer's screen fans it too", async () => {
+    const id = await createSession(run)
+    history.replaceState(null, '', `/observe?session=${id}&name=Eva&token=${await admit(run, id, null, 'Eva')}&server=${encodeURIComponent(run.url)}`)
+    render(<ObserverPage />)
+    await waitFor(() => expect(document.querySelector('[data-zone="draw"]')).not.toBeNull())
+    const host = TableClient.connect(await asTable(run, id))
+    await host.ready()
+    await host.send({ v: 'shuffle', pile: 'draw' })
+    await waitFor(() => expect(document.querySelector('[data-zone="draw"]')!.getAttribute('data-shuffling')).toBe('fan'))
+    host.close()
+  })
+
+  it("the phone's felt fans it, including for the player who asked for it", async () => {
+    const id = await createSession(run)
+    const token = await admit(run, id, 'A', 'Ada')
+    history.replaceState(null, '', `/online?session=${id}&seat=A&name=Ada&token=${token}&server=${encodeURIComponent(run.url)}`)
+    render(<OnlinePage />)
+    await waitFor(() => expect(document.querySelector('[data-zone="draw"]')).not.toBeNull())
+    const host = TableClient.connect(await asTable(run, id))
+    await host.ready()
+    await host.send({ v: 'shuffle', pile: 'draw' })
+    await waitFor(() => expect(document.querySelector('[data-zone="draw"]')!.getAttribute('data-shuffling')).toBe('fan'))
+    host.close()
   })
 })

@@ -20,6 +20,7 @@ const MOVERS = {
   'a card in the online fan tilting': { html: '<div class="byd-fan-card"></div>', sel: '.byd-fan-card', pseudo: null, prop: 'transitionDuration' },
   'a card waiting for its texture': { html: '<span class="byd-texture-state" data-texture="pending"></span>', sel: '.byd-texture-state[data-texture="pending"]', pseudo: null, prop: 'animationDuration' },
   'the ring while a connection is being waited for': { html: '<span class="byd-status-spin"></span>', sel: '.byd-status-spin', pseudo: null, prop: 'animationDuration' },
+  'the fan on a shuffled pile': { html: '<div class="byd-pile" data-shuffling="fan"><div class="byd-pile-fan"><i class="byd-pile-fan-card"></i></div></div>', sel: '.byd-pile-fan-card', pseudo: null, prop: 'animationDuration' },
 } as const
 
 const ALL = Object.values(MOVERS).map((m) => m.html).join('')

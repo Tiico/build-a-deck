@@ -6,6 +6,7 @@ import { TvChrome } from './TvChrome.js'
 import { useTableClient } from './useTableClient.js'
 import { previewOf, standingRewind, whereTo, whoDecides } from './rewind.js'
 import { usePresence, useRecent } from './usePresence.js'
+import { useShuffles } from './shuffle.js'
 import { RuleDrawer } from '../rules/RuleDrawer.js'
 import { useFeltKeyboard } from './useFeltKeyboard.js'
 import { useActivityLive } from './useActivityLive.js'
@@ -60,6 +61,9 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
   const [inspecting, setInspecting] = useState<VisibleComponentState | null>(null)
   const presence = usePresence(client, view)
   const recent = useRecent(activity)
+  // Which piles are being shuffled right now (L35): played by the line, on this screen as on
+  // every other that sees the pile, and never for the lines the snapshot brought.
+  const shuffles = useShuffles(activity, view !== null)
   // The felt as controls (#2): the table screen plays as the table itself, so what it can reach
   // is what a table may see.
   const playable = view !== null && !view.rewind && !view.ended && client !== null
@@ -97,6 +101,7 @@ export function TablePage({ timing = DEFAULT_TIMING }: TablePageProps = {}) {
       peers={Object.values(presence.peers)}
       pulses={presence.pulses}
       recent={recent}
+      shuffles={shuffles}
       onPresence={client ? (p) => client.sendPresence(p) : undefined}
       camera={mode === 'tv'}
       onInspect={mode === 'tv' ? setInspecting : undefined}
