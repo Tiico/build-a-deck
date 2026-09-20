@@ -490,6 +490,26 @@ describe('textures (TUNN-SKIVA §5)', () => {
     const plain = document.querySelector('[data-zone="discard"] img')
     expect(plain).toBeNull()
   })
+
+  // A face-down pile wears its top card's own back from the first frame (#313, #14). The component
+  // is not in the projection at all — a hidden pile hands out no id (K15) — so the back arrives on
+  // the zone, and the pile has to prefer it over the deck's compiled default.
+  it('shows a face-down pile the back its own top card wears, not the deck’s default', () => {
+    const { view } = buildScene()
+    const snapshot = view(null)
+    const own = 'c'.repeat(64)
+    const hidden = {
+      ...snapshot,
+      zones: snapshot.zones.map((z) => (z.id === 'draw' ? { id: z.id, kind: z.kind, name: z.name, geometry: z.geometry, dynamic: z.dynamic, mode: 'count' as const, count: 5, back: own } : z)),
+      components: snapshot.components.filter((c) => c.zone !== 'draw'),
+    }
+    render(<TableRenderer view={hidden} mode="table" faces="http://faces.test" back={() => <span data-deck-back="" />} />)
+    const img = document.querySelector('[data-zone="draw"] img') as HTMLImageElement
+    expect(img).toBeTruthy()
+    expect(img.src).toBe(`http://faces.test/faces/${own}`)
+    // And the deck's own default is not drawn beside it.
+    expect(document.querySelector('[data-zone="draw"] [data-deck-back]')).toBeNull()
+  })
 })
 
 describe('textures that are not ready yet', () => {

@@ -68,7 +68,11 @@ const zoneBase = {
 // names its `top` when the top is face-up. That component is then in `components` as usual.
 export const ZoneView = z.discriminatedUnion('mode', [
   z.object({ mode: z.literal('order'), ...zoneBase, order: z.array(ComponentId) }),
-  z.object({ mode: z.literal('count'), ...zoneBase, count: z.number().int().nonnegative(), top: ComponentId.optional() }),
+  // `back` is the texture the pile's top card wears on its hidden side (#313). It is the one thing
+  // about a face-down pile that is public in the room — a stack of cards shows its back to
+  // everybody — and it says nothing about which card that is. The component itself stays out: a
+  // hidden pile hands out no id, no position and no rotation (K15), so the back travels here.
+  z.object({ mode: z.literal('count'), ...zoneBase, count: z.number().int().nonnegative(), top: ComponentId.optional(), back: z.string().optional() }),
 ])
 export type ZoneView = z.infer<typeof ZoneView>
 

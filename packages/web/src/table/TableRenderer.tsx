@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type KeyboardEvent as RKeyboardEvent, type MouseEvent as RMouseEvent, type ReactNode, type PointerEvent as RPointerEvent, type WheelEvent as RWheelEvent } from 'react'
-import { Texture } from './Texture.js'
+import { BackTexture, Texture } from './Texture.js'
 import type { Intent, Presence, Snapshot, VisibleComponentState, ZoneView } from '@byd/protocol'
 import type { Peer, Pulse, Recent } from './presence.js'
 import { hue } from './hue.js'
@@ -1087,9 +1087,17 @@ function topIdOf(z: ZoneView, skip = 0): string | undefined {
 // unless its top lies face-up.
 function Pile({ zone, count, topCard, faces, back, left, top, px, lifted, topHandlers, topInspects, labelHandlers, topKeys, labelKeys, points }: { zone: ZoneView; count: number; topCard: VisibleComponentState | undefined; faces: string | undefined; back?: ReactNode | undefined; left: number; top: number; px: (mm: number) => number; lifted: boolean; topHandlers?: Handlers | undefined; topInspects?: Pointing | undefined; labelHandlers?: Handlers | undefined; topKeys?: FeltNodeProps | undefined; labelKeys?: FeltNodeProps | undefined; points?: Pointing | undefined }) {
   const t = useT()
-  // The deck lying face down wears the deck's own back. An empty pile wears nothing but the
-  // dashed outline `table.css` draws on it, which is how a pile says it is empty.
-  const own = count > 0 && !topCard?.cardRef ? back : null
+  // What a face-down pile wears. Its top card's own back first, which is the one thing about a
+  // hidden pile that is public in the room (#313): a deck whose cards carry their own back (#14)
+  // showed the deck's default until somebody had drawn, because the client was guessing from a
+  // deck-wide prop instead of reading what the projection said. The projection says it now — on
+  // the zone, since the component is not handed out at all (K15).
+  //
+  // The deck's own back is what is left when the session has no textures to serve. An empty pile
+  // wears nothing but the dashed outline `table.css` draws on it, which is how a pile says it is
+  // empty.
+  const ownBack = zone.mode === 'count' ? zone.back : undefined
+  const own = count > 0 && !topCard?.cardRef ? (ownBack ? <BackTexture faces={faces} hash={ownBack} /> : back) : null
   const layers = Math.min(Math.max(count, 0), 12)
   const thickness = Array.from({ length: layers }, (_, i) => `0 ${-i * 1.2}px 0 #1f2b4a`).join(', ')
   return (

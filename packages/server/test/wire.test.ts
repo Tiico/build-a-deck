@@ -306,6 +306,38 @@ describe('textures (TUNN-SKIVA §5)', () => {
     expect(png.headers.get('content-type')).toBe('image/png')
     expect(new Uint8Array(await png.arrayBuffer()).subarray(1, 4)).toEqual(new Uint8Array([0x50, 0x4e, 0x47]))
   }, 60_000)
+
+  // A face-down pile wears a back, and wearing it must not be a way of naming what is under it
+  // (#313, B6). Read off the frames themselves and not off the shape the client happens to build:
+  // the back hash is there, and the top card's front hash, its id and any cardRef are not.
+  it('gives a face-down pile a back on the wire and still nothing that says which card it is', async () => {
+    const res = await fetch(`${run.http}/sessions`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: 'tex-back', version: 'v1', setup: twoSeatSetup(), deck }),
+    })
+    expect(res.status).toBe(201)
+    registerRoom('tex-back', (await res.json()) as { code: string; hostKey: string })
+    const a = await connect('tex-back', 'A')
+    const table = await connect('tex-back', null)
+
+    // Draw one so A holds a card whose front hash is known — that hash is what must not appear in
+    // the table's frames, even though the pile it came from now shows a back.
+    await a.send('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    await a.synced(1)
+    await table.synced(1)
+
+    const pile = table.view!.zones.find((z) => z.id === 'draw')!
+    expect(pile.mode).toBe('count')
+    expect(pile.mode === 'count' && pile.back).toMatch(/^[0-9a-f]{64}$/)
+
+    const drawn = a.view!.components.find((c) => c.zone === 'hand:A')!
+    const front = drawn.faces!['front']!
+    const frames = table.frames.join('\n')
+    expect(frames).not.toContain(front)
+    expect(frames).not.toMatch(/dragon|knight|wizard/)
+    expect(componentsOnWire(table).filter((c) => c.zone === 'draw')).toHaveLength(0)
+  }, 60_000)
 })
 
 // The one repair a player has at the table is the card's own "Försök igen" (#10). A plain
