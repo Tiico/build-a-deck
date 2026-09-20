@@ -1,6 +1,6 @@
 import type { ComponentTypeDef } from '@byd/engine'
-import { parseInline, type InlineNode } from './inline.js'
-import { detectScript, estimateHeight, fitText, type Measure } from './fit.js'
+import { parseBody, type InlineNode } from './inline.js'
+import { BLOCK_GAP_EM, INDENT_EM, ITEM_GAP_EM, detectScript, estimateHeight, fitText, type Measure } from './fit.js'
 import { paintOf, shadowCss, type Bind, type Condition, type Element, type FaceTemplate, type Pattern, type Row, type Template } from './model.js'
 import type { Motif } from './motif.js'
 import { frameWindow, type Frame, type Nudge } from './frame.js'
@@ -53,7 +53,24 @@ export function compile(input: CompileInput): Compiled {
 
   css.push(`[data-card]{position:relative;width:${physical.widthMm + 2 * bleed}mm;height:${physical.heightMm + 2 * bleed}mm;overflow:hidden;}`)
   css.push(`[data-element]{position:absolute;box-sizing:border-box;margin:0;overflow:hidden;}`)
-  css.push(`[data-element] p{margin:0;}[data-element] p+p{margin-top:0.5em;}`)
+  // How the body's blocks sit (L2, #308). Everything they are laid out with is written in `em`,
+  // so it follows the element's own font and size — which is not settled here: `fitInDocument`
+  // steps the size down in the browser until the words fit, and a gap in millimetres would stay
+  // behind at the size it was compiled at. An `em` is measured against a `font-size` in points,
+  // which is a physical length all the way to the press. A browser's own list indent is 40
+  // *pixels*, which is neither, so it is overwritten rather than inherited.
+  //
+  // The three numbers come from `fit.ts`, which is what measures the text: an estimate laying the
+  // body out differently from the page is worse than no estimate at all.
+  //
+  // One rule per push, and the selectors written out rather than grouped: a scope prefixes the
+  // rule it is pushed with, so a comma between two selectors would leave the second one loose on
+  // a page that holds many cards. The gap between blocks is stated on each pair for the same
+  // reason `:where` cannot be used for it — it would carry less weight than `margin:0` above.
+  css.push(`[data-element] p{margin:0;}`)
+  css.push(`[data-element] ul{margin:0;padding-left:${INDENT_EM}em;list-style:disc;}`)
+  for (const pair of ['p+p', 'p+ul', 'ul+p', 'ul+ul']) css.push(`[data-element] ${pair}{margin-top:${BLOCK_GAP_EM}em;}`)
+  css.push(`[data-element] li+li{margin-top:${ITEM_GAP_EM}em;}`)
   // Every shape is an SVG filling its element, so one code path draws a rectangle, a hexagon
   // and a line, and the stroke of each means the same thing (L17).
   css.push(`[data-element]>svg{display:block;width:100%;height:100%;}`)
@@ -311,9 +328,13 @@ function resolve(bind: { field: string } | { literal: string }, row: Row): strin
 // in. The two travel together because every symbol asks both questions at once.
 type Symbols = { icons: Record<string, string>; palette?: Record<string, string> | undefined }
 
+// The body's blocks as markup (#308). A paragraph is a paragraph and a run of `- ` lines is a
+// list; the marker is the browser's own, so it is drawn in the element's font at the element's
+// size and needs nothing written into the text.
 function renderParagraphs(text: string, element: string, icons: Symbols, warnings: Warning[]): string {
-  return parseInline(text)
-    .map((p) => `<p>${p.children.map((n) => renderNode(n, element, icons, warnings)).join('')}</p>`)
+  const span = (nodes: readonly InlineNode[]): string => nodes.map((n) => renderNode(n, element, icons, warnings)).join('')
+  return parseBody(text)
+    .map((block) => (block.type === 'paragraph' ? `<p>${span(block.children)}</p>` : `<ul>${block.items.map((item) => `<li>${span(item)}</li>`).join('')}</ul>`))
     .join('')
 }
 

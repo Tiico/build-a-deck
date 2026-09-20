@@ -624,3 +624,65 @@ describe('compile — a symbol in the colour of its role (E4)', () => {
     expect(out.html).toContain('<img class="byd-icon" src="mynt.svg" alt="mynt">')
   })
 })
+
+// A body carrying the subset (L2, #308): bold, italic, paragraphs, a bullet list and symbols.
+// One code path draws it — the editor preview, the felt's texture and the print PDF all come
+// through `compile` (B3, E2) — so what is asserted here is what every surface shows.
+describe('a formatted body (L2, #308)', () => {
+  const body = (text: string) => compile({ type: CARD_STANDARD_63x88, face, row: { title: 'Drake', body: text }, icons })
+
+  it('draws a bullet list as a list, one item per line', () => {
+    expect(body('Välj en:\n- **Dra** ett kort\n- Gör {eld} skada').html).toContain(
+      '<p>Välj en:</p><ul><li><strong>Dra</strong> ett kort</li>' +
+        '<li>Gör <img class="byd-icon" src="data:image/svg+xml;utf8,&lt;svg/&gt;" alt="eld"> skada</li></ul>',
+    )
+  })
+
+  // The spacing has to follow the element's own font and size, because the size is not settled at
+  // compile time: `fitInDocument` steps it down in the browser until the words fit. A gap or an
+  // indent written in millimetres would keep the size it was compiled at and drift away from the
+  // text; written in `em` it is measured against a `font-size` in points, which is a physical
+  // length all the way to the press. A browser's own `ul` is indented by 40 *pixels*, which is
+  // neither, so the rule is overwritten rather than inherited.
+  it('spaces and indents the list against the element’s font, never in pixels', () => {
+    const out = body('Välj en:\n- ett\n- två')
+
+    expect(out.css).toContain('[data-element] ul{margin:0;padding-left:1.15em;list-style:disc;}')
+    expect(out.css).toContain('[data-element] li+li{margin-top:0.2em;}')
+    expect(out.css).toContain('[data-element] p+ul{margin-top:0.5em;}')
+    expect(out.css).toContain('[data-element] ul+p{margin-top:0.5em;}')
+    // Nothing the body's own blocks are laid out with is a pixel.
+    expect(out.css.split('\n').filter((rule) => /\b(?:p|ul|li)\b/.test(rule) && /\dpx/.test(rule))).toEqual([])
+  })
+
+  it('draws a symbol inside bold and inside italic, as it draws one beside them (E4)', () => {
+    const out = body('**Gör {eld} skada** och *ta {eld}*.')
+
+    expect(out.html).toContain('<strong>Gör <img class="byd-icon" src="data:image/svg+xml;utf8,&lt;svg/&gt;" alt="eld"> skada</strong>')
+    expect(out.html).toContain('<em>ta <img class="byd-icon" src="data:image/svg+xml;utf8,&lt;svg/&gt;" alt="eld"></em>')
+    expect(out.warnings).toEqual([])
+  })
+
+  it('draws a cell with no marking as the one paragraph it has always been', () => {
+    const out = body('Dra ett kort och lägg det överst i högen.')
+
+    expect(out.html).toContain('<div data-element="body" data-fit="fixed" data-size-pt="9" data-min-pt="6"><p>Dra ett kort och lägg det överst i högen.</p></div>')
+    expect(out.html).not.toContain('<ul>')
+  })
+
+  it('draws a tag the designer typed as the tag she typed, inside a list item as anywhere else', () => {
+    const out = body('- <b>inte fet</b> men **fet**')
+
+    expect(out.html).toContain('<ul><li>&lt;b&gt;inte fet&lt;/b&gt; men <strong>fet</strong></li></ul>')
+    expect(out.html).not.toContain('<b>')
+  })
+
+  // A page holds many cards, each fitted to its own size, and a rule that lost its scope would
+  // lay out every card on it. Every rule the body's blocks need is pushed on its own for that
+  // reason; this is what says so.
+  it('scopes every rule the body’s blocks need, so one card cannot lay out another', () => {
+    const out = compile({ type: CARD_STANDARD_63x88, face, row: { title: 'Drake', body: '- ett' }, icons, scope: '#kort-7' })
+
+    expect(out.css.split('\n').filter((rule) => /\[data-element\] (?:p|ul|li)/.test(rule) && !rule.startsWith('#kort-7 '))).toEqual([])
+  })
+})

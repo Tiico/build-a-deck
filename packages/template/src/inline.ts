@@ -16,6 +16,11 @@ export type InlineNode =
   | { type: 'ref'; of: 'zone' | 'card'; id: string }
 
 export type Paragraph = { type: 'paragraph'; children: InlineNode[] }
+// A bullet list, the one construction a card body has that a rulebook paragraph does not (#308).
+// It holds its items and nothing else: no nesting, no numbering, no marker of its own — what the
+// bullet looks like is the renderer's, in the element's own font and size.
+export type BulletList = { type: 'list'; items: InlineNode[][] }
+export type BodyBlock = Paragraph | BulletList
 export type InlineOptions = { refs?: boolean }
 
 export function parseInline(text: string, options: InlineOptions = {}): Paragraph[] {
@@ -24,6 +29,52 @@ export function parseInline(text: string, options: InlineOptions = {}): Paragrap
     .map((p) => p.replace(/\s*\n\s*/g, ' ').trim())
     .filter((p) => p.length > 0)
     .map((p) => ({ type: 'paragraph', children: parseSpan(p, options) }))
+}
+
+// A line that opens a bullet item: a hyphen and a space, and nothing else. `*` is not offered as
+// a bullet because a line may legitimately open with emphasis, and a subset that cannot be read
+// twice the same way is no subset.
+const BULLET = /^[ \t]*-[ \t]+(.*)$/
+
+// The card body read as blocks (#308): paragraphs separated by a blank line, and runs of `- `
+// lines as lists. The rulebook keeps `parseInline`, because a list is already one of its own kinds
+// of block and a text block of its must not quietly turn into one.
+//
+// Like everything else here this produces a tree and never markup: a `<b>` a designer typed is
+// text in a text node, and the renderer escapes it.
+export function parseBody(text: string, options: InlineOptions = {}): BodyBlock[] {
+  const blocks: BodyBlock[] = []
+  let lines: string[] = []
+  let items: InlineNode[][] | null = null
+  // A single newline inside a paragraph is a wrap and not a break — the same reading `parseInline`
+  // has always given it.
+  const closeParagraph = () => {
+    const written = lines.join('\n').replace(/\s*\n\s*/g, ' ').trim()
+    lines = []
+    if (written.length > 0) blocks.push({ type: 'paragraph', children: parseSpan(written, options) })
+  }
+  // An item with nothing written on it is no item, and a list with no items is no list — the same
+  // answer an empty paragraph gets.
+  const closeList = () => {
+    if (items && items.length > 0) blocks.push({ type: 'list', items })
+    items = null
+  }
+  for (const line of text.replace(/\r\n?/g, '\n').split('\n')) {
+    const bullet = BULLET.exec(line)
+    if (bullet) {
+      closeParagraph()
+      items ??= []
+      const written = (bullet[1] ?? '').trim()
+      if (written.length > 0) items.push(parseSpan(written, options))
+      continue
+    }
+    closeList()
+    if (line.trim().length === 0) closeParagraph()
+    else lines.push(line)
+  }
+  closeParagraph()
+  closeList()
+  return blocks
 }
 
 // Recursive descent over one paragraph. Emphasis markers must close; an unclosed marker is text.

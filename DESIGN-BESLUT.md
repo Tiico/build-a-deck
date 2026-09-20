@@ -2494,9 +2494,9 @@ En bild som ryms hel inuti sin ram slutar före rutans kanter, och då står hel
 En bild som möter ramen kant i kant gör rutan sann, och sann på varje kort i leken — inte bara på det som förhandsvisas, vilket en ruta som låstes till den förhandsvisade bildens proportioner hade blivit.
 Priset är att en bild med annat format beskärs, vilket är det ordinarie valet i ett ombrytningsverktyg och som växlas av med reglaget.
 
-### L2. Inline-syntax i korttext: fyra konstruktioner
+### L2. Inline-syntax i korttext: fem konstruktioner
 
-`**fet**`, `*kursiv*`, `{ikon}`, blankrad för stycke.
+`**fet**`, `*kursiv*`, `{ikon}`, blankrad för stycke, och rad som börjar med `- ` för punktlista.
 Ingen HTML, inga länkar, inga rubriker.
 `{namn}` slås upp i projektets ikonuppsättning, som fylls från CC0-biblioteket eller egna uppladdningar.
 Okänt ikonnamn renderas som synlig varning, aldrig som tomhet.
@@ -2506,6 +2506,16 @@ Följdkrav:
 Parsern är liten och kan aldrig producera farlig HTML.
 Valideringen ser text och ikoner som separata saker.
 Tabeller och färgad text i en cell finns inte — det löses med mallens element.
+
+Punktlistan, byggt 2026-09-20 (#308):
+En body som är en enda textklump är oläsbar på ett kort, och listan är det designern räckte efter först.
+Den är den femte konstruktionen och avsiktligt den sista: en löpande rad som börjar med `- ` blir en punkt, en tom rad avslutar listan, och det finns varken numrering eller nivåer.
+`{ikon}`, `**fet**` och `*kursiv*` fungerar inuti en punkt precis som i ett stycke — det är samma spanläsare.
+`-` och inte `*` är punktmarkören, eftersom en rad mycket väl kan börja med kursiv text.
+Radavstånd, avstånd mellan punkter och listans indrag skrivs i `em` och aldrig i pixlar: storleken är inte bestämd när kortet kompileras utan krymps i webbläsaren tills texten får plats (E6), och ett indrag i millimeter skulle stanna kvar på den storlek det kompilerades i.
+Kompilatorn och höjdskattningen tar de tre talen ur samma ställe, så det som mäts är det sidan gör.
+Regelboken behåller sin egen läsare: en punktlista är redan ett eget blockslag där (B7), och ett textblock i boken får inte tyst bli en lista.
+En cell utan markering läses exakt som förut — samma spanläsare, samma stycken — så inga befintliga lekar ritas om.
 
 ### L3. Varianter valda av en kolumn plus villkorade element, inga fria undantag
 
