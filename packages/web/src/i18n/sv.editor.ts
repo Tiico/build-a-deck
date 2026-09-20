@@ -11,7 +11,7 @@ export const svEditor = {
   'media.picture.unused': 'Bild som inget kort använder',
   // Vägen in (#222, beslut 5 och 6). Bilden får heta det filen hette, och att den kom fram sägs
   // — en uppladdning tar den tid nätet tar, och den som inte ser rutnätet har inget annat besked.
-  'media.add': 'Lägg till en bild',
+  'media.add': 'Ladda upp media',
   'media.add.done': 'Bilden {name} är tillagd.',
   'media.add.done.unnamed': 'Bilden är tillagd.',
   'media.use': 'Lägg på kort',

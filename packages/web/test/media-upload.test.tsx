@@ -19,6 +19,7 @@ import { createHash } from 'node:crypto'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
 import type { ProjectDoc } from '@byd/server'
+import { Language } from '../src/i18n/index.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { projectDoc } from './project-doc.js'
 import { startServer, type Running } from './fixture.js'
@@ -52,16 +53,24 @@ afterEach(async () => {
   await run.stop()
 })
 
-async function openMedia(user: ReturnType<typeof userEvent.setup>): Promise<void> {
+async function openMedia(user: ReturnType<typeof userEvent.setup>, lang: 'sv' | 'en' = 'sv'): Promise<void> {
   history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
-  render(<EditorPage />)
+  render(
+    <Language lang={lang}>
+      <EditorPage />
+    </Language>,
+  )
   await screen.findByText('Skogens herrar')
   await user.click(screen.getByRole('tab', { name: 'Media' }))
-  await screen.findByRole('img', { name: 'Bild på dragon' })
+  await screen.findByRole('img', { name: lang === 'sv' ? 'Bild på dragon' : 'Image on dragon' })
 }
 
-const choose = (bytes: Uint8Array<ArrayBuffer>, name: string): void => {
-  fireEvent.change(screen.getByLabelText('Lägg till en bild'), { target: { files: [new File([bytes], name, { type: 'image/png' })] } })
+// The way in is reached by the errand it is for (#319), and by nothing else: the control is
+// looked up by its name and the picture is handed to whatever that name found. A name that had
+// moved to another control, or a control that had quietly kept two, would fail here rather than
+// pass on a catalogue that happened to hold the right words.
+const choose = (bytes: Uint8Array<ArrayBuffer>, name: string, way = 'Ladda upp media'): void => {
+  fireEvent.change(screen.getByLabelText(way), { target: { files: [new File([bytes], name, { type: 'image/png' })] } })
 }
 
 describe('a picture is uploaded in the library (#222, beslut 5)', () => {
@@ -83,6 +92,22 @@ describe('a picture is uploaded in the library (#222, beslut 5)', () => {
     // The picture is in the game and in nobody's card yet, which is exactly what beslut 4 lets
     // stand: marked as used by nothing, never quietly gone.
     expect(tile.closest('li')?.getAttribute('data-unused')).toBe('true')
+  })
+
+  // The word on the way in is the tool's own word about the tool, so it follows the reader (A4,
+  // #319) — and it says the errand, «ladda upp media», rather than naming one kind of file the
+  // library happens to take today. Asked as the errand and not as a catalogue entry: the picture
+  // is brought in through the control that carries the name, in the language it is read in, and
+  // the word the button used to wear must reach nothing at all.
+  it('is reached by the name of the errand, in the language the library is read in', async () => {
+    const user = userEvent.setup()
+    await openMedia(user, 'en')
+
+    choose(SKOGSBRYN, 'skogsbryn.png', 'Upload media')
+
+    const tile = await screen.findByRole('img', { name: 'skogsbryn.png' })
+    expect(tile.closest('li')?.getAttribute('data-asset')).toBe(sha256(SKOGSBRYN))
+    expect(screen.queryByLabelText('Add a picture')).toBeNull()
   })
 
   // What an upload leaves behind has to be readable without seeing the screen: the arrival is

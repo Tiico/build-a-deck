@@ -8,7 +8,7 @@ export const enEditor = {
   'media.title': 'Media in the game',
   'media.unused': 'no card uses it',
   'media.picture.unused': 'Picture no card uses',
-  'media.add': 'Add a picture',
+  'media.add': 'Upload media',
   'media.add.done': 'The picture {name} has been added.',
   'media.add.done.unnamed': 'The picture has been added.',
   'media.use': 'Put on cards',
