@@ -6,6 +6,7 @@ import { placedProps, usePlacement } from './placement.js'
 import { queryColumns } from './queries.js'
 import { fieldsOf } from './fields.js'
 import { ownerOf } from './zone-name.js'
+import { useDoor } from '../doors.js'
 import { useT, type Key, type T } from '../i18n/index.js'
 
 // Authoring what a pile starts with and what it can be asked for, as sentences (prototyped
@@ -67,6 +68,15 @@ export function ZoneActions({ doc, zone, onPatch, onClose }: ZoneActionsProps) {
     () => ({ keys: chosen, remember: (key: string) => setChosen((was) => [key, ...was.filter((k) => k !== key)].slice(0, REMEMBERED)) }),
     [chosen],
   )
+  // Escape är samma väg ut som krysset i huvudet, för det är kontraktet varje yta som står över
+  // arbetet bär (L9, C4). Dörren gör därför inte sin egen sak utan kryssets: `onClose` är redan
+  // både avmarkeringen och fokus tillbaka på zonens rad, och en andra väg ut som gjorde något
+  // annat vore två stängningar att hålla reda på i samma huvud.
+  //
+  // `standing`, och det är allt den säger om sig själv. Ordningen mot en ruta som står öppen i en
+  // mening — eller mot en hand mitt i ett drag på filten — är `doors.ts`:s och inte den här
+  // filens (#152): panelen öppnades före rutan, och den sist öppnade är den som får trycket.
+  useDoor('standing', onClose)
 
   return (
     <Chosen.Provider value={remembered}>
@@ -213,7 +223,8 @@ function Step({ step, columns, zones, beside, t, onChange }: { step: ActionStep;
 
 // A knob inside the text: the words it stands for, and the list of what it could be instead.
 // It is `Question.tsx`'s manner applied to a word (L9): it answers where it is read, Escape puts
-// it away, and it traps nothing — tabbing past leaves it standing.
+// it away and hands the focus back, and it traps nothing — tabbing past leaves it standing. The
+// way out is a door and lives in `SlotPop` below, because a door only exists while the box does.
 //
 // `said` är namnet örat får, och det sätts bara där knappen har mer att säga än den visar (#269):
 // en bricka säger med sin ram vad bokstaven är, och en uppläsning hör ingen ram. En etikett som
@@ -221,21 +232,50 @@ function Step({ step, columns, zones, beside, t, onChange }: { step: ActionStep;
 function Slot({ label, said, children }: { label: ReactNode; said?: string | undefined; children(close: () => void): ReactNode }) {
   const [open, setOpen] = useState(false)
   const id = useId()
+  const knob = useRef<HTMLButtonElement>(null)
+  return (
+    <span className="byd-slot-wrap">
+      <button ref={knob} type="button" className="byd-slot" aria-label={said} aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>
+        {label}
+      </button>
+      {open && (
+        <SlotPop
+          id={id}
+          onEscape={() => {
+            setOpen(false)
+            knob.current?.focus()
+          }}
+        >
+          {children(() => setOpen(false))}
+        </SlotPop>
+      )}
+    </span>
+  )
+}
+
+// Rutan ratten fällde ut, och vägen ut ur den.
+//
+// Den är en egen komponent för att den är sin egen dörr, och en dörr finns bara medan det den är
+// väg ut ur står öppet (#152). Rutan hade i stället en egen `onKeyDown` på sig själv, och den var
+// ingen dörr: den hörde bara det som trycktes inuti rutan, och den sa ingenting om sin ordning mot
+// panelen under sig. Panelens dörr hade därmed hört samma tryck som rutans handpåläggning, och
+// ett enda Escape hade stängt båda — just den ordningsbugg `doors.ts` skrevs för att avskaffa.
+// Nu säger båda bara vad de är, och `doors.ts` säger vilken av dem trycket tillhör: den sist
+// öppnade, vilket är rutan så länge den står öppen.
+//
+// Fokus går tillbaka till ratten, som varje annan yta som står över arbetet lämnar tillbaka det
+// (L9) — men bara på Escape. Ett val taget med pekaren lämnar fokus där pekaren satte det, samma
+// skillnad som `CrownDrawer` gör (#133).
+function SlotPop({ id, onEscape, children }: { id: string; onEscape(): void; children: ReactNode }) {
   // The box opens where there is room for it (#229). Opened straight down, as it was, a slot near
   // the foot of the page pushed the page into scrolling — which moves the very thing the designer
   // had her eye on.
   const pop = useRef<HTMLSpanElement>(null)
-  const place = usePlacement(open, pop)
+  const place = usePlacement(true, pop)
+  useDoor('standing', onEscape)
   return (
-    <span className="byd-slot-wrap">
-      <button type="button" className="byd-slot" aria-label={said} aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>
-        {label}
-      </button>
-      {open && (
-        <span ref={pop} className="byd-slot-pop" id={id} {...placedProps(place)} onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}>
-          {children(() => setOpen(false))}
-        </span>
-      )}
+    <span ref={pop} className="byd-slot-pop" id={id} {...placedProps(place)}>
+      {children}
     </span>
   )
 }

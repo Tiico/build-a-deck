@@ -388,6 +388,39 @@ describe('krysset som stänger högens panel (#300)', () => {
     expect((within(panel()).getByLabelText(/Namn för/) as HTMLInputElement).value).toBe('Lägg upp marknaden')
   })
 
+  // Escape är samma väg ut som krysset, för det är kontraktet varje yta som står över arbetet
+  // bär (L9, C4): det som öppnats stängs med Escape och lämnar tillbaka fokus. Panelen ligger över
+  // filtens nederkant och är därmed precis en sådan yta.
+  it('stängs med Escape, och lämnar fokus på zonens rad precis som krysset', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    expect(document.querySelector('[data-zone-actions]')).toBeNull()
+    expect(document.activeElement).toBe(document.querySelector('[data-zone-row="draw"] .byd-setup-name'))
+  })
+
+  // Ett Escape stänger en sak i taget, och ordningen är dörrmekanismens och inte
+  // registreringsordningens (#152). Rutan i meningen är själv en dörr, så den sist öppnade får
+  // trycket: först rutan, sedan panelen under den. Vore rutan bara en handpåläggning på sig själv
+  // hade panelens dörr hört samma tryck, och ett enda Escape hade stängt båda.
+  it('stänger den öppna rutan på första Escape och panelen först på nästa', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    const step = newStep()
+    expect(open(step, 'till vänster om högen')).not.toBeNull()
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+    // Panelen står kvar under rutan, och rutan är den som stängdes.
+    expect(document.querySelector('[data-zone-actions]')).not.toBeNull()
+    expect(panel().querySelector('.byd-slot-pop')).toBeNull()
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(document.querySelector('[data-zone-actions]')).toBeNull()
+    expect(document.activeElement).toBe(document.querySelector('[data-zone-row="draw"] .byd-setup-name'))
+  })
+
   // Och varför inget annat bord och ingen annan session märker stängningen: den är ingen ändring.
   // Ingenting av den når dokumentet, så det finns ingenting att skicka vidare — leken står kvar
   // som sparad, och revisionen på servern rör sig inte.
