@@ -257,6 +257,9 @@ export const svEditor = {
   'library.filter.all': 'Alla',
   'library.filter.unused': 'Oanvända',
   'library.none': 'Spelet har inga bilder ännu. Ladda upp en bild direkt i tabellen.',
+  // Öppnad från mallen (#320) kan bilden laddas upp här, och den hamnar i Media som alla andra.
+  'library.none.upload': 'Spelet har inga bilder ännu. Ladda upp en här.',
+  'library.upload': 'Ladda upp',
   'library.noHits': 'Ingen bild matchar. Ändra sökningen eller filtret.',
   'library.chosen': 'Vald bild: {name}',
   'library.chosen.none': 'Ingen bild vald.',

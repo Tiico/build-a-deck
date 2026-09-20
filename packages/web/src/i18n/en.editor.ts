@@ -228,6 +228,8 @@ export const enEditor = {
   'library.filter.all': 'All',
   'library.filter.unused': 'Unused',
   'library.none': 'The game has no pictures yet. Upload one straight into the table.',
+  'library.none.upload': 'The game has no pictures yet. Upload one here.',
+  'library.upload': 'Upload',
   'library.noHits': 'No picture matches. Change the search or the filter.',
   'library.chosen': 'Chosen picture: {name}',
   'library.chosen.none': 'No picture chosen.',
