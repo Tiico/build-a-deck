@@ -3961,6 +3961,31 @@ Ett privat fönster, en rensad webbläsare eller en blockerad lagring ska ge den
 Frågetecknet står kvar bredvid i båda fallen, så vägen till resten finns oavsett.
 
 
+### L37. En uppladdning som misslyckas för sent rättas i dokumentet, inte i historiken (2026-09-20, #344)
+
+`callOff` tar bara tillbaka den gest som fortfarande är öppen, och den vakten är riktig för sitt uttalade fall: en designer som gått vidare ska behålla det hon gjort sedan dess.
+Men sedan #310 och #339 läggs symbolen, typsnittet och bilden in i dokumentet **innan** bytena reser, och tas tillbaka med `callOff` om uppladdningen misslyckas.
+Två sådana uppladdningar som överlappar upphäver därför varandras ångerväg: den som börjar sist har redan öppnat sin gest när den första vill ta tillbaka sin, och den förstas `callOff` blir en tom operation.
+Följden är att dokumentet pekar på byte som aldrig kom fram medan ytan säger att det gick fel — **dokumentet och beskedet säger olika saker**.
+
+Att låta bli den optimistiska redigeringen vore enklast och är avgjort åt andra hållet i #339, där hela poängen var att en bild ska synas direkt: mätt 124,5 ms → 0,2 ms.
+
+**Rättelsen sker i dokumentet och läggs aldrig på ångerstacken.**
+Det som aldrig kom fram tas bort med en vanlig redigering genom `applyEdit`, men utan att pusha ett steg.
+Skälet är att en rättelse inte är något designern gjorde, och att den post den annars skulle lägga där är farlig: att ångra den återställer ett dokument som pekar på byte som inte finns — precis det tillstånd rättelsen fanns till för att lämna.
+En historik man kan ångra sig in i ett trasigt läge genom är sämre än en historik som saknar en rad.
+
+Alternativet — att basera om ångerstacken — valdes bort, och kodläsningen gjorde priset tydligare än issuet antog.
+`past` håller **hela dokument och inte operationer**, så att ta bort ett steg räcker inte: varje ögonblicksbild ovanför bär fortfarande den tillgång som aldrig kom fram.
+Ombasering kräver att en invers räknas fram och appliceras på varje senare bild, för tre tillgångsslag, tyst, på historik designern redan kan ha rört.
+
+**Beskedet namnger vad som försvann.**
+«Typsnittet Cinzel kunde inte laddas upp och har tagits bort igen» och inte «uppladdningen misslyckades».
+Eftersom rättelsen är tyst i historiken måste den vara desto tydligare där handlingen gjordes: dokumentet ändrades bakom designern, och ett besked som inte säger vilket av det hon gjort som togs tillbaka lämnar henne med en lek hon inte känner igen.
+Det kräver att tillgångens namn bärs hela vägen från `storeAsset` ut till ytan.
+
+Den öppna gestens fall är oförändrat: hinner `callOff` medan gesten är öppen är det fortfarande ingenting som hände, ingen rad i historiken och ingen version (B4).
+
 ## I. Öppna frågor
 
 Ekonomi och juridik:
