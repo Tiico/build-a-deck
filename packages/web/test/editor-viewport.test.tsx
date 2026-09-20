@@ -103,7 +103,7 @@ async function cardFiles(width: number): Promise<Record<string, string>> {
     // column it is set to is the image one (#17 on E1) — before that it offers a text field.
     fireEvent.click(screen.getByLabelText('markera dragon'))
     fireEvent.change(await screen.findByLabelText('Kolumn'), { target: { value: 'art' } })
-    await screen.findByLabelText('Välj bild för de markerade korten')
+    await screen.findByLabelText('Ladda upp bild för de markerade korten')
     return { 'Tabell · filer': document.querySelector('.byd-editor')!.outerHTML }
   } finally {
     unmount()

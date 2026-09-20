@@ -274,6 +274,8 @@ export const svEditor = {
   'library.target.cards': '{n} markerade kort, bildfältet {field}',
   'table.library.done.one': 'Bilden {name} ligger nu på {cardRef}.',
   'table.library.done.other': 'Bilden {name} ligger nu på {n} kort.',
+  'table.library.done.one.unnamed': 'Bilden ligger nu på {cardRef}.',
+  'table.library.done.other.unnamed': 'Bilden ligger nu på {n} kort.',
   'table.image.upload': 'Ladda upp',
   'table.image.uploadFor': 'Ladda upp bild för {cardRef}',
   'table.bulk.image.upload': 'Ladda upp bild för de markerade korten',

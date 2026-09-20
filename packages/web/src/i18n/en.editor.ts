@@ -245,6 +245,8 @@ export const enEditor = {
   'library.target.cards': '{n} marked cards, picture field {field}',
   'table.library.done.one': 'The picture {name} is now on {cardRef}.',
   'table.library.done.other': 'The picture {name} is now on {n} cards.',
+  'table.library.done.one.unnamed': 'The picture is now on {cardRef}.',
+  'table.library.done.other.unnamed': 'The picture is now on {n} cards.',
   'table.image.upload': 'Upload',
   'table.image.uploadFor': 'Upload a picture for {cardRef}',
   'table.bulk.image.upload': 'Upload a picture for the marked cards',
