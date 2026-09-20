@@ -78,9 +78,31 @@ export function ZoneActions({ doc, zone, onPatch, onClose }: ZoneActionsProps) {
   // filens (#152): panelen öppnades före rutan, och den sist öppnade är den som får trycket.
   useDoor('standing', onClose)
 
+  // Vägen in med tangentbordet (#330, jfr #133). Panelen står i tredje kolumnen och alltså efter
+  // filten i tabbordningen: den som valt en zon från listan har hela mittkolumnen emellan sig och
+  // det hon just bad om. Fokus flyttar därför in när panelen öppnas, och krysset lämnar tillbaka
+  // det till zonens rad — samma väg tillbaka som #300 byggde, och den rörs inte här.
+  //
+  // Fokus landar på panelen själv och inte på krysset i huvudet: det första en tangentbordsanvändare
+  // möter ska vara vad panelen är och inte vägen ut ur den. Panelen är därför en grupp med ett
+  // namn ur katalogen, för en fokuserad låda utan namn är en läsare som inte får veta var hon är.
+  //
+  // `preventScroll`, eftersom panelens kropp rullar: att flytta fokus hit får inte också flytta
+  // det lästa. Och en gång per öppning och inte per zon — att byta hög medan panelen står är att
+  // peka med musen i listan, och att rycka fokus ur listan då vore att ta tillbaka en hand.
+  const box = useRef<HTMLDivElement>(null)
+  useEffect(() => box.current?.focus({ preventScroll: true }), [])
+
   return (
     <Chosen.Provider value={remembered}>
-      <div className="byd-zone-actions" data-zone-actions={zone.id}>
+      <div
+        ref={box}
+        className="byd-zone-actions"
+        data-zone-actions={zone.id}
+        tabIndex={-1}
+        role="group"
+        aria-label={t('setup.actions.panel', { name: zone.name })}
+      >
         {/* Vägen ut ur panelen, som varje annan panel i editorn bär den: ett kryss i huvudet,
             med namnet i katalogen (#300). Huvudet rullar inte med meningarna under sig — samma
             skäl som historikens huvud har (#177): en panel som är dubbelt sin egen höjd får inte

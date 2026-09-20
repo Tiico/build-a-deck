@@ -271,11 +271,16 @@ describe('the setup editor (B5, C4, #301): the player view is shown when asked f
 
   // Arket läses ur dokumentet när det fälls ut, inte när fliken öppnades: en zon som döptes om
   // medan arket låg hopfällt står med sitt nya namn när det visas.
+  //
+  // Zonen avmarkeras innan arket fälls ut, och det är inte städning utan L29: en vald hög har
+  // tredje kolumnen, och spelararket kommer tillbaka först när den lämnar den (#330). Att döpa om
+  // en zon och att läsa spelarvyn är två saker designern gör efter varandra.
   it('shows the setup as it stands now, with what changed while the sheet was folded', async () => {
     await run.projects.create(run.projectId, projectDoc())
     await openBord()
     fireEvent.click(row('discard').querySelector('.byd-setup-name') as HTMLElement)
     fireEvent.change(screen.getByLabelText('Namn för Kasthög'), { target: { value: 'Slasken' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Stäng panel' }))
     fireEvent.click(screen.getByRole('button', { name: 'Visa spelarvyn' }))
     const sheet = preview() as HTMLElement
     expect(within(sheet).getByText('överst i Slasken')).toBeTruthy()

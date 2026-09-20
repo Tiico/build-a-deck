@@ -3759,6 +3759,14 @@ Ingen variant visar allt vid 1280, och det är ärligt sagt en egenskap hos meni
 Rullning inuti panelen försvinner inte. Frågan var bara om panelen ligger *över* bordet medan man rullar, och svaret är nej.
 
 Krysset ur #300 lämnar fokus till zonen panelen handlade om, inte till `<body>` (jfr #133).
+Byggt lägger implementationen till vägen *in*: fokus flyttar till panelen när den öppnas, på panelen själv och inte på krysset, och panelen bär därför ett namn som säger vilken zon den handlar om.
+Den står efter filten i tabbordningen, så utan det hade den som valt en zon från listan haft hela mittkolumnen emellan sig och det hon just bad om.
+
+**Byggt 2026-09-20 (#330). Två tal flyttade sig, och riktningen står kvar.**
+Kolumnen döljs med `hidden` och monteras inte av: listan över bord är serverns svar, och en avmarkering får inte betyda att den hämtas om.
+Filten mättes till 596 × 673 vid 1280 med och utan vald zon, och till 1236 × 953 vid 1920 — bredden är prototypens 596, höjden skiljer sig eftersom kromet ovanför den gör det.
+Andelen som syns gör det inte: prototypens panel byggde 795 px innehåll, den byggda skriver mer per steg och byggde 1570 px på samma värsta fall, så samma mätning gav 41 % vid 1280 och 59 % vid 1920 där prototypen sade 63 % och 93 %.
+Arket mättes om i samma körning och på samma maskin och visade 26 % och 36 %, så bytet är fortfarande den större ytan — men talen är typsnittsberoende och ska läsas som en jämförelse och inte som mått.
 
 ### L30. Konturen bredvid högen syns när väljaren hålls — och alltid när korten hamnar utanför bordet (prototypat 2026-09-20, #316)
 

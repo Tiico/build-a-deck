@@ -231,17 +231,17 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
         ) : (
           <p role="alert" className="byd-setup-invalid">{t('setup.invalid')}</p>
         )}
-        {/* What the selected pile starts with and what it can be asked for (B5, K14), written as
-            sentences. Only a pile: an area and a hand have no ring to hang an action in, and a
-            hand's contents are the seat's and not the designer's (C3). */}
-        {selectedZone?.kind === 'pile' && (
-          <ZoneActions doc={doc} zone={selectedZone} onPatch={(patch, gesture) => client.patchZone(selectedZone.id, patch, gesture)} onClose={() => close(selectedZone)} />
-        )}
       </div>
       {/* The third column: what a player is given, and the tables the game is running at. Both
           were under the felt before, a screenful down, where the designer had to leave the setup
-          to reach them (#126). */}
-      <div className="byd-setup-beside">
+          to reach them (#126).
+
+          Och den viker undan medan en zon är vald, så att zonens handlingar får kolumnen (#330,
+          L29). Den monteras inte av: listan över bord är serverns svar, och en avmarkering får
+          inte betyda att den hämtas om. `hidden` tar bort den ur bilden, ur tabbordningen och ur
+          skärmläsarens träd på en gång — och ur rutnätet, så att panelen hamnar i spåret den
+          lämnade. */}
+      <div className="byd-setup-beside" hidden={selectedZone?.kind === 'pile'}>
         {/* The sheet is a fold, like the groups in the list of tables under it: one row that says
             what it holds until it is asked for, and then the sheet itself (#301). The sheet is read
             out of the document on every render, so what opens is always the setup as it stands
@@ -259,6 +259,16 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
         )}
         {beside}
       </div>
+      {/* What the selected pile starts with and what it can be asked for (B5, K14), written as
+          sentences, in the third column's place (#330, L29). Only a pile: an area and a hand have
+          no ring to hang an action in, and a hand's contents are the seat's and not the
+          designer's (C3).
+
+          Den står efter kolumnen den ersätter och inte före: tabbordningen och läsordningen är
+          DOM:ens, och panelen läses där spelararket hade stått. */}
+      {selectedZone?.kind === 'pile' && (
+        <ZoneActions doc={doc} zone={selectedZone} onPatch={(patch, gesture) => client.patchZone(selectedZone.id, patch, gesture)} onClose={() => close(selectedZone)} />
+      )}
     </div>
   )
 }

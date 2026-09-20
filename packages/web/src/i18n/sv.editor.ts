@@ -777,6 +777,10 @@ export const svEditor = {
   // («Hand A») och får ingen träff på något som börjar någon annanstans (WCAG 2.5.3). Att den
   // ordföljden är lätt stel är priset, taget medvetet framför «Hand, plats A».
   'setup.slot.zone.owned.tail': '{zone} {owner}, plats',
+  // Vad panelen är, sagt för den som möter den med tangentbordet i stället för med blicken
+  // (#330). Fokus flyttar in när den öppnas, och en yta som tar emot fokus måste kunna säga
+  // vems den är — kolumnen bytte innehåll, och zonens namn är hela skillnaden.
+  'setup.actions.panel': 'Vad {name} börjar med och vad den kan',
   // Vägen ut ur panelen och inte ur zonen (#300): krysset lägger undan meningarna så att
   // filten under dem syns, och högen står kvar med allt som redan skrivits i den.
   'setup.actions.close': 'Stäng panel',

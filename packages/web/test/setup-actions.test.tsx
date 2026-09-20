@@ -351,9 +351,40 @@ describe('vems zon den färdiga meningen talar om', () => {
   })
 })
 
-// Krysset som lägger undan panelen (#300). Meningarna ligger över filtens nederkant och tar upp
-// till 45 % av den (#218), så den som vill se bordet under dem måste ha en väg ut — och vägen ut
-// är panelens och inte zonens: den som stänger blanketten har inte bett om att bli av med högen.
+// Vägen in i panelen med tangentbordet (#330, jfr #133).
+//
+// Panelen står numera i tredje kolumnen (L29), alltså efter filten i tabbordningen: den som valt
+// en zon med tangentbordet står kvar på raden i listan och har hela mittkolumnen emellan sig och
+// det hon just bad om. Fokus flyttar därför in när panelen öppnas, och krysset lämnar tillbaka
+// det till raden — samma väg tillbaka som #300 redan byggde.
+//
+// Fokus landar på panelen själv och inte på krysset i huvudet: det första en tangentbordsanvändare
+// möter ska vara vad panelen är, inte vägen ut ur den, och ett Enter som landat på krysset hade
+// stängt det som just öppnades.
+describe('tangentbordets väg in i högens panel (#330)', () => {
+  it('flyttar fokus till panelen när den öppnas, och panelen säger vems handlingar den bär', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+
+    expect(document.activeElement).toBe(panel())
+    expect(panel().getAttribute('aria-label')).toBe('Vad Draghög börjar med och vad den kan')
+  })
+
+  it('lämnar tillbaka fokus till zonens rad när panelen stängs', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openZone('draw')
+    expect(document.activeElement).toBe(panel())
+
+    fireEvent.click(within(panel()).getByRole('button', { name: 'Stäng panel' }))
+
+    expect(document.activeElement).toBe(document.querySelector('[data-zone-row="draw"] .byd-setup-name'))
+  })
+})
+
+// Krysset som lägger undan panelen (#300). Meningarna låg över filtens nederkant och tog upp till
+// 45 % av den (#218), så den som ville se bordet under dem måste ha en väg ut — och vägen ut är
+// panelens och inte zonens: den som stänger blanketten har inte bett om att bli av med högen.
+// Sedan #330 ligger panelen inte längre över filten, men vägen ut är densamma.
 describe('krysset som stänger högens panel (#300)', () => {
   it('stänger panelen och heter det den gör: Stäng panel', async () => {
     await run.projects.create(run.projectId, projectDoc())
