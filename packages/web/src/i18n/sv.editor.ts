@@ -60,6 +60,7 @@ export const svEditor = {
   'editor.cancel': 'Avbryt',
   'editor.newTable': 'Nytt bord',
   'editor.updateTable': 'Uppdatera bordet',
+  'editor.updatingTable': 'Uppdaterar bordet…',
   'editor.table.started': 'Nytt bord startat på {version} —',
   'editor.table.refreshed': 'Bordet uppdaterat på {version} —',
   'editor.table.lost': '{n} kort kunde inte renderas. Bordet står kvar på sin gamla version.',

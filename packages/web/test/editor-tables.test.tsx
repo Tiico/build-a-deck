@@ -331,6 +331,64 @@ describe('the shortcut to the table from every other tab (#19, variant B)', () =
   })
 })
 
+// «Invisible answers read as dead controls»: an update can take seconds, and a button that says
+// nothing while it works is a button a designer presses again. So the press is acknowledged
+// before the table is — the same shape "Spara" has worn since #8, a name that says what is
+// happening and a control that takes no second press — and the acknowledgement is not a look but
+// a state, so a screen reader hears it too.
+describe('«Uppdatera bordet» answers the press before the table does (#315)', () => {
+  // The fixture runs no render worker, so what is queued stays queued: that is the slow update
+  // the issue is about, held still for as long as the test needs it.
+  const timing = { ...DEFAULT_EDITOR_TIMING, renderStalledAfterMs: 300 }
+
+  it('goes busy on the press, takes no second press while it works, and comes back to its own name', async () => {
+    const user = userEvent.setup()
+    await run.projects.create(run.projectId, projectDoc())
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage timing={timing} />)
+    await screen.findByText('Skogens herrar')
+
+    // A table to update. The first press starts one; the update is the press after it.
+    await user.click(screen.getByRole('button', { name: 'Uppdatera bordet' }))
+    await screen.findByText(/renderar kort 0\/4/)
+    await screen.findByRole('button', { name: 'Uppdatera bordet' })
+
+    // What actually switches the table under the players. Counted on the wire, because "one
+    // call" is a fact about what left the browser and not about what the surface drew.
+    const refreshes: string[] = []
+    const real = globalThis.fetch
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
+      if (url.endsWith('/refresh')) refreshes.push(url)
+      return real(input, init)
+    })
+    try {
+      await user.click(screen.getByRole('button', { name: 'Uppdatera bordet' }))
+
+      // Said at once, and said in the accessibility tree rather than only in a colour.
+      const busy = await screen.findByRole('button', { name: 'Uppdaterar bordet…' })
+      expect(busy.getAttribute('aria-busy')).toBe('true')
+      expect((busy as HTMLButtonElement).disabled).toBe(true)
+
+      // The designer who presses again because nothing seemed to happen sends nothing.
+      await user.click(busy)
+      await user.click(busy)
+
+      // The cards land, the table switches, and it switched once.
+      expect(await run.completeRenders()).toBe(4)
+      expect(await screen.findByText(/Bordet uppdaterat/)).toBeTruthy()
+      expect(refreshes).toHaveLength(1)
+
+      // And the button is itself again, ready for the next change.
+      const ready = await screen.findByRole('button', { name: 'Uppdatera bordet' })
+      expect(ready.getAttribute('aria-busy')).toBe('false')
+      expect((ready as HTMLButtonElement).disabled).toBe(false)
+    } finally {
+      spy.mockRestore()
+    }
+  })
+})
+
 describe('a rendering that stands still says so (#88, UX-43, L5)', () => {
   // The fixture runs no render worker, which is exactly the situation the issue describes: the
   // queue never moves. Seconds of patience become a few hundred milliseconds here.

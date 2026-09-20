@@ -261,7 +261,14 @@
    for the same reason the amber one does. */
 .byd-editor-confirm { min-width: 0; color: var(--byd-editor-confirm-ink); }
 .byd-editor > header > button { min-height: var(--byd-tap); min-width: var(--byd-tap); border: 1px solid #2f333d; border-radius: 8px; padding: 0 12px; background: #1b1d23; color: #fff; font-weight: 700; cursor: pointer; }
-.byd-editor > header > button:disabled { color: #5b6478; cursor: default; }
+/* A control that cannot be pressed goes quiet — but the quiet is for a button drawn on the
+   header's own ground, and a first action is not drawn on it: it is filled. Laid over that fill
+   the grey measures 1.20:1, so an update that says «Uppdaterar bordet…» would say it in a word
+   nobody can read — the very thing #315 is about. A busy first action therefore keeps its fill
+   and its ink and lets the label carry the state, the way the filled «Sparar…» in the question
+   on the way out already does. */
+.byd-editor > header > button:not(.byd-primary):disabled { color: #5b6478; }
+.byd-editor > header > button:disabled { cursor: default; }
 .byd-editor-table-link {
   flex: none;
   --byd-editor-table-bg: #1f2a1f;
@@ -451,7 +458,10 @@
   font-weight: 700;
   cursor: pointer;
 }
-.byd-editor-stagebar-actions button:disabled { color: #5b6478; cursor: default; }
+/* The same pair below the desk, where the two buttons are pinned to the end of the stage strip
+   (#315). */
+.byd-editor-stagebar-actions button:not(.byd-primary):disabled { color: #5b6478; }
+.byd-editor-stagebar-actions button:disabled { cursor: default; }
 
 /* The setup editor (B5, K2): the seats knob and the list of zones on the left, the felt as the
    workspace, the phone's sheet under it. The column scrolls on its own, since a table of eight

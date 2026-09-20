@@ -48,6 +48,7 @@ export const enEditor = {
   'editor.cancel': 'Cancel',
   'editor.newTable': 'New table',
   'editor.updateTable': 'Update the table',
+  'editor.updatingTable': 'Updating the table…',
   'editor.table.started': 'New table started on {version} —',
   'editor.table.refreshed': 'Table updated to {version} —',
   'editor.table.lost': '{n} cards could not be rendered. The table stays on its old version.',

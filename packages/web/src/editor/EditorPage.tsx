@@ -111,6 +111,12 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // growing pause while anything is still rendering.
   const [textures, setTextures] = useState<Textures | null>(null)
   const [preparing, setPreparing] = useState<Textures | null>(null)
+  // Whether an update is under way (#315). The render farm queues, so the first thing the button
+  // does can be seconds away from the first thing the table does — and a control that says
+  // nothing in between is read as a control that is broken, which is how the same press comes to
+  // be made twice. So the press is answered before the table is: the button says what it is
+  // doing and takes nothing more, the way "Spara" has since #8.
+  const [updating, setUpdating] = useState(false)
   // How many cards of the pending revision are lost for good. While this is set the table keeps
   // the version it has: a card without a face on the table is worse than a table left alone.
   const [lost, setLost] = useState<number | null>(null)
@@ -274,8 +280,12 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
   // after the new textures are rendered, so the switch is atomic for the players: prepare,
   // poll with a growing pause, then refresh.
   const updateTable = async (retryLost = false) => {
-    if (!table) return startTable()
+    // The disabled button is what a pointer and a keyboard meet; this is what everything else
+    // meets, so a second update can never start on top of the one that is running.
+    if (updating) return
+    setUpdating(true)
     try {
+      if (!table) return await startTable()
       setLost(null)
       let delay = 100
       // Only the first call carries the retry: it is what puts the dead renders back in the
@@ -295,6 +305,7 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
       setNotice(err instanceof Error ? err.message : String(err))
     } finally {
       setPreparing(null)
+      setUpdating(false)
     }
   }
   // "Försök igen" on a rendering that stands still (#88): one more `prepare` with the retry, which
@@ -428,8 +439,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
     </button>
   )
   const updateButton = (
-    <button type="button" className="byd-editor-primary byd-primary" onClick={() => void updateTable()}>
-      {t('editor.updateTable')}
+    <button type="button" className="byd-editor-primary byd-primary" disabled={updating} aria-busy={updating} onClick={() => void updateTable()}>
+      {t(updating ? 'editor.updatingTable' : 'editor.updateTable')}
     </button>
   )
 
