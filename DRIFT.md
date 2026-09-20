@@ -190,6 +190,11 @@ E-post: Resend, Postmark eller motsvarande — en bostads-IP är i praktiken sva
 POD-partnerns API.
 Assets och backup: R2.
 
+Google Fonts-katalogen (#329, L27): **enbart designerns webbläsare når den**, och bara när hon
+öppnar väljaren. Servern och renderaren rör aldrig Google — typsnittsfilen laddas upp som projektets
+egen asset via `POST /assets`, och renderingen läser den därifrån som vilken uppladdad fil som helst.
+Lådan får alltså inget nytt utgående beroende, och ett projekt renderar med utgången blockerad.
+
 ---
 
 ## Compose-stacken i ett stycke

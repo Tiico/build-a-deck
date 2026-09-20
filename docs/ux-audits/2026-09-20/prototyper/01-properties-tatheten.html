@@ -1,0 +1,560 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 1 — Properties-panelens täthet (#328)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* Mallsidans fyra kolumner i sina riktiga mått ur editor.css: `68px 220px minmax(0,1fr) 280px`.
+     Panelen måste mätas i 280 px, för en rad som ryms vid 340 säger ingenting om produkten. */
+  .canvas { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 68px 220px minmax(0,1fr) 280px; gap: 0; }
+  .rail, .layers, .duk { min-width: 0; min-height: 0; }
+  .rail { border-right: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; gap: 4px; padding: var(--s2) 0; }
+  .rail button { width: 44px; height: 44px; border: 0; border-radius: 8px; background: transparent; color: var(--quiet-2); font-size: 17px; cursor: pointer; }
+  .rail button[aria-pressed='true'] { background: var(--primary); color: #fff; }
+  .layers { border-right: 1px solid var(--line); padding: var(--s3); color: var(--quiet); }
+  .layers ul { list-style: none; margin: var(--s2) 0 0; padding: 0; display: grid; gap: 2px; }
+  .layers li { display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 0 8px; border-radius: 6px; color: var(--quiet-2); font-size: 12px; }
+  .layers li[aria-selected='true'] { background: #24507f; color: #fff; }
+  .duk { display: grid; place-items: center; background: #0d0f14; }
+
+  /* Kortet är 63 × 88 mm; duken ritar det i 3,4 px/mm så hela kortet syns, som i editorn. */
+  .kort { position: relative; width: 214px; height: 299px; border-radius: 10px; background: #f4efe4; box-shadow: 0 18px 40px rgba(0,0,0,.55); }
+  .form { position: absolute; }
+  .form svg { display: block; overflow: visible; }
+  .valt { position: absolute; outline: 1px solid var(--primary-mark); outline-offset: 2px; pointer-events: none; }
+  .valt i { position: absolute; width: 7px; height: 7px; background: #fff; border: 1px solid var(--primary-mark); border-radius: 2px; }
+  .valt i:nth-child(1) { left: -4px; top: -4px; } .valt i:nth-child(2) { right: -4px; top: -4px; }
+  .valt i:nth-child(3) { left: -4px; bottom: -4px; } .valt i:nth-child(4) { right: -4px; bottom: -4px; }
+
+  /* ── Panelen ──────────────────────────────────────────────────────────────────────────────── */
+  .props { min-width: 0; min-height: 0; display: none; flex-direction: column; background: var(--panel); border-left: 1px solid var(--line); }
+  .shell[data-form='nu'] .props[data-v='nu'],
+  .shell[data-form='rutnat'] .props[data-v='a'],
+  .shell[data-form='sektioner'] .props[data-v='b'],
+  .shell[data-form='greppen'] .props[data-v='c'] { display: flex; }
+  .props > .topp { flex: none; display: flex; align-items: baseline; gap: 6px; padding: var(--s3) var(--s3) var(--s2); border-bottom: 1px solid var(--line-soft); }
+  .props > .topp b { color: #fff; font-size: 13px; }
+  .props > .topp span { color: var(--quiet); font-size: 11px; margin-left: auto; font-variant-numeric: tabular-nums; }
+  .props .scroll { padding: var(--s3); }
+
+  /* ── Panelen som den är i dag ─────────────────────────────────────────────────────────────── */
+  /* Ordagrant `.byd-props` ur editor.css: två kolumner, ordetikett ovanför fältet, 8 px luft. */
+  .nu-props { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .nu-props label { display: grid; gap: 3px; font-size: 11px; color: #9aa3b8; }
+  .nu-props input, .nu-props select { background: #0f1115; border: 1px solid #2a2d36; color: #fff; border-radius: 6px; padding: 4px 8px; font-size: 13px; width: 100%; box-sizing: border-box; font-family: inherit; }
+  .nu-props input[type='color'] { padding: 2px; height: 26px; }
+  .nu-props input[type='range'] { padding: 0; }
+  .nu-props .wide { grid-column: 1 / -1; }
+  .nu-props h3 { grid-column: 1 / -1; margin: 6px 0 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .nu-props .galleri { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 4px; }
+  .nu-props .galleri button { min-height: 34px; border: 1px solid var(--line); border-radius: 6px; background: #0f1115; color: var(--quiet-2); cursor: pointer; }
+  .nu-props .galleri button[aria-pressed='true'] { border-color: var(--primary-mark); background: #24507f; color: #fff; }
+  .nu-props .chips { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; }
+  .nu-props .chips button { min-height: 28px; border: 1px solid var(--line); border-radius: 999px; padding: 0 10px; background: #0f1115; color: var(--quiet-2); font: inherit; font-size: 12px; cursor: pointer; }
+  .nu-props .chips button[aria-pressed='true'] { border-color: var(--primary-mark); background: #24507f; color: #fff; }
+  .nu-props label.switch2 { grid-column: 1 / -1; display: flex; align-items: center; gap: 7px; }
+  .nu-props .switch2 input { width: auto; }
+
+  /* ── Det förslagen är byggda av ───────────────────────────────────────────────────────────── */
+  /* Ett fält: ikonen är namnet *och* greppet. Ikonen har sitt eget `aria-label`, fältet sitt —
+     ordet är inte borta, det är bara inte ritat (L12 gäller synen, inte skärmläsaren). */
+  .f { display: flex; align-items: center; border: 1px solid #2a2d36; border-radius: 6px; background: #0f1115; height: var(--radh, 24px); min-width: 0; }
+  .f:focus-within { border-color: var(--primary-mark); }
+  .f > .ic { flex: none; width: 21px; height: 100%; display: grid; place-items: center; color: var(--quiet); font-size: 10.5px; font-weight: 700; letter-spacing: 0; cursor: ew-resize; user-select: none; touch-action: none; border-radius: 5px 0 0 5px; }
+  .f > .ic:hover { background: #20242e; color: #cfe0ff; }
+  /* ∠ och ◜ är tecken och inte versaler: vid 10,5 px läser de som smuts. */
+  .f > .ic[data-glyph] { font-size: 13px; font-weight: 400; }
+  .f > .ic:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: -2px; }
+  .f > input { flex: 1 1 auto; min-width: 0; width: 100%; border: 0; background: transparent; color: #fff; font: inherit; font-size: 12px; font-variant-numeric: tabular-nums; padding: 0 5px 0 2px; }
+  .f > input:focus { outline: none; }
+  .f > input.mixed { color: var(--quiet); }
+  .f > u { flex: none; text-decoration: none; color: #5d6577; font-size: 10px; padding-right: 5px; }
+  .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .g2.tight { gap: 3px; }
+
+  /* En färgrad: ruta, hex, procent — på en rad, som #328 ber om. */
+  .colrow { display: grid; grid-template-columns: 22px minmax(0,1fr) var(--sista, 48px); gap: 4px; align-items: center; height: var(--radh, 24px); }
+  /* «0.6 mm» är fyra tecken plus enheten och klipptes i 46 px. Enheten avgör bredden. */
+  .colrow.mm { --sista: 60px; }
+  .colrow .sw { width: 22px; height: 100%; border-radius: 5px; border: 1px solid #3a3f4c; padding: 0; cursor: pointer; }
+  .colrow .hex { border: 1px solid #2a2d36; border-radius: 6px; background: #0f1115; color: #fff; font: inherit; font-size: 12px; height: 100%; padding: 0 6px; min-width: 0; text-transform: uppercase; }
+  .colrow .pct { display: flex; align-items: center; border: 1px solid #2a2d36; border-radius: 6px; background: #0f1115; height: 100%; }
+  .colrow .pct input { width: 100%; min-width: 0; border: 0; background: transparent; color: #fff; font: inherit; font-size: 12px; font-variant-numeric: tabular-nums; padding: 0 0 0 5px; text-align: right; }
+  .colrow .pct input:focus { outline: none; }
+  .colrow .pct u { text-decoration: none; color: #5d6577; font-size: 10px; padding: 0 5px 0 1px; }
+
+  /* Sektionshuvudet. I A är det en hårfin linje som inte går att fälla; i B och C en knapp. */
+  .sec + .sec { margin-top: var(--secgap, 10px); }
+  .sech { width: 100%; display: flex; align-items: center; gap: 6px; min-height: 26px; border: 0; background: transparent; padding: 0; color: var(--quiet); font: inherit; font-size: 10.5px; text-transform: uppercase; letter-spacing: 1.6px; cursor: pointer; }
+  .sech .chev { flex: none; width: 10px; color: #5d6577; font-size: 9px; }
+  .sech .rule { flex: 1 1 auto; height: 1px; background: var(--line-soft); }
+  .sech .plus { flex: none; width: 20px; height: 20px; border: 0; border-radius: 5px; background: transparent; color: var(--quiet-2); font-size: 14px; line-height: 1; cursor: pointer; }
+  .sech .plus:hover { background: #20242e; color: #fff; }
+  .sech .sum { flex: none; display: flex; align-items: center; gap: 4px; text-transform: none; letter-spacing: 0; font-size: 11px; color: var(--quiet-2); }
+  .sech .sum i { width: 11px; height: 11px; border-radius: 3px; border: 1px solid #3a3f4c; }
+  .secbody { display: grid; gap: 4px; padding-top: 5px; }
+  .sec[data-open='false'] .secbody { display: none; }
+  .sec[data-open='false'] .sech .chev { transform: none; }
+  .row { display: grid; gap: 4px; }
+  .mini { display: grid; grid-template-columns: repeat(auto-fill, minmax(30px, 1fr)); gap: 3px; }
+  .mini button { height: 26px; border: 1px solid var(--line); border-radius: 5px; background: #0f1115; color: var(--quiet-2); cursor: pointer; padding: 0; display: grid; place-items: center; }
+  .mini button[aria-pressed='true'] { border-color: var(--primary-mark); background: #24507f; color: #fff; }
+  .mini svg { display: block; }
+  .chips2 { display: flex; flex-wrap: wrap; gap: 3px; }
+  .chips2 button { min-height: 24px; border: 1px solid var(--line); border-radius: 999px; padding: 0 9px; background: #0f1115; color: var(--quiet-2); font: inherit; font-size: 11px; cursor: pointer; }
+  .chips2 button[aria-pressed='true'] { border-color: var(--primary-mark); background: #24507f; color: #fff; }
+  .knapprad { display: flex; align-items: center; gap: 6px; min-height: 24px; color: var(--quiet-2); font-size: 11.5px; }
+  .knapprad input { margin: 0; }
+
+  /* Blandade värden vid flerval — den enda skillnaden mellan A, B och C som inte är täthet. */
+  .blandat { display: none; }
+  .shell[data-val='flera'] .blandat { display: inline; }
+  .shell[data-val='flera'] .enbart { display: none; }
+  /* proto.css gör `.note b` till ett block, alltså kan betoning i brödtexten inte vara ett b. */
+  .note i { font-style: normal; font-weight: 700; color: #ffe9b8; }
+  .bchip { display: inline-flex; align-items: center; height: 15px; padding: 0 5px; border-radius: 4px; background: #3a3320; color: #ffd98a; font-size: 9.5px; letter-spacing: .4px; }
+
+  /* ── A · Rutnätet ─────────────────────────────────────────────────────────────────────────── */
+  /* Tätast möjliga: 24 px rader, 3 px luft, inga chevroner — sektionerna är hårlinjer och
+     allting står alltid framme. Ingenting kan gömmas, alltså kan ingenting gömmas av misstag. */
+  .props[data-v='a'] { --radh: 24px; --secgap: 9px; }
+  .props[data-v='a'] .sech { cursor: default; }
+  .props[data-v='a'] .sech .chev { display: none; }
+
+  /* ── B · Sektionerna ──────────────────────────────────────────────────────────────────────── */
+  /* Samma täthet, men fyra fällbara sektioner. Layout och Fyllning står öppna; Linje och
+     Effekter är stängda och bär sitt värde i huvudet, så en stängd sektion ändå säger vad den
+     håller. */
+  .props[data-v='b'] { --radh: 25px; --secgap: 8px; }
+  .props[data-v='b'] .sec[data-open='true'] .chev::before { content: '▾'; }
+  .props[data-v='b'] .sec[data-open='false'] .chev::before { content: '▸'; }
+  .props[data-v='b'] .sech:hover { color: #cfe0ff; }
+
+  /* ── C · Greppen ──────────────────────────────────────────────────────────────────────────── */
+  /* Lite luftigare (28 px) och en egen greppkolumn med prickar framför varje siffra, så att
+     skrubben syns utan att man först måste råka hovra. Alla fyra sektioner öppna som förval. */
+  .props[data-v='c'] { --radh: 28px; --secgap: 12px; }
+  .props[data-v='c'] .f > .ic { width: 27px; gap: 3px; display: grid; grid-template-columns: 5px auto; align-items: center; justify-items: center; font-size: 10px; }
+  .props[data-v='c'] .f > .ic::before { content: ''; width: 3px; height: 11px; border-radius: 2px; background: repeating-linear-gradient(to bottom, #4a5162 0 2px, transparent 2px 4px); }
+  .props[data-v='c'] .sec[data-open='true'] .chev::before { content: '▾'; }
+  .props[data-v='c'] .sec[data-open='false'] .chev::before { content: '▸'; }
+</style>
+</head>
+<body>
+<div class="shell" data-form="nu" data-val="en">
+<header>
+  <strong>Skogens herrar</strong>
+  <nav class="tabs">
+    <button type="button">Kort</button><button type="button" aria-selected="true">Mall</button><button type="button">Data</button><button type="button">Symboler</button><button type="button">Regler</button><button type="button">Bord</button>
+  </nav>
+  <span class="saved">rev 12 · sparat</span>
+  <span class="spacer"></span>
+  <div class="switch" role="group" aria-label="Panelens form">
+    <button type="button" data-form="nu" aria-pressed="true">Nu</button>
+    <button type="button" data-form="rutnat" aria-pressed="false">A · Rutnätet</button>
+    <button type="button" data-form="sektioner" aria-pressed="false">B · Sektionerna</button>
+    <button type="button" data-form="greppen" aria-pressed="false">C · Greppen</button>
+  </div>
+  <span class="who">P</span>
+</header>
+
+<div class="protorad">
+  <b>#328</b>
+  <p>Dra i en ikon (A, B) eller i greppet (C) för att skrubba siffran. Shift = större steg, piltangenter när fältet har fokus. Panelen är 280&nbsp;px, som i produkten.</p>
+  <div class="switch" role="group" aria-label="Markering">
+    <button type="button" data-val="en" aria-pressed="true">1 vald</button>
+    <button type="button" data-val="flera" aria-pressed="false">3 valda</button>
+  </div>
+  <div class="matt">
+    <span>panelens innehåll <u id="m-hojd">–</u></span>
+    <span>rullning <u id="m-rull">–</u></span>
+  </div>
+  <p class="sagt" id="sagt">Skärmläsaren hör: <em>—</em></p>
+</div>
+
+<main>
+<div class="canvas">
+  <div class="rail">
+    <button type="button" aria-label="Markera" aria-pressed="true">⌖</button>
+    <button type="button" aria-label="Text">T</button>
+    <button type="button" aria-label="Bild">▣</button>
+    <button type="button" aria-label="Form">◇</button>
+    <button type="button" aria-label="Symboler">✦</button>
+  </div>
+
+  <div class="layers">
+    <p class="h">Lager</p>
+    <ul>
+      <li>◇ Ram</li>
+      <li aria-selected="true">◇ Banderoll</li>
+      <li>T Namn</li>
+      <li>T Regeltext</li>
+      <li>▣ Illustration</li>
+      <li>◇ Bottenplatta</li>
+    </ul>
+  </div>
+
+  <div class="duk">
+    <div class="kort">
+      <div class="form" id="form"></div>
+      <div class="valt" id="valt"><i></i><i></i><i></i><i></i></div>
+    </div>
+  </div>
+
+  <!-- ══ Nu ══════════════════════════════════════════════════════════════════════════════════ -->
+  <aside class="props" data-v="nu" aria-label="Egenskaper">
+    <div class="topp"><b><span class="enbart">Banderoll</span><span class="blandat">3 valda</span></b><span class="enbart">form</span><span class="blandat">3 former</span></div>
+    <div class="scroll">
+      <div class="nu-props">
+        <label>X<input type="number" step="0.5" data-key="x" data-plain></label>
+        <label>Y<input type="number" step="0.5" data-key="y" data-plain></label>
+        <label>Bredd<input type="number" step="0.5" data-key="w" data-plain></label>
+        <label>Höjd<input type="number" step="0.5" data-key="h" data-plain></label>
+        <h3>Form</h3>
+        <div class="galleri" role="group" aria-label="Form"></div>
+        <label>Hörnradie<input type="number" step="0.5" data-key="r" data-plain></label>
+        <label class="wide">Vridning<input type="range" min="0" max="360" data-key="rot" data-plain></label>
+        <label>Linjefärg<input type="color" data-key="strokeHex" data-plain></label>
+        <label>Linjebredd<input type="number" step="0.1" data-key="strokeMm" data-plain></label>
+        <label class="wide">Genomskinlighet<input type="range" min="0" max="100" data-key="op" data-plain></label>
+        <label>Fyllning<input type="color" data-key="fillHex" data-plain></label>
+        <label class="switch2"><input type="checkbox"> Mönster</label>
+        <h3>Skugga</h3>
+        <div class="chips"><button type="button">Ingen</button><button type="button" aria-pressed="true">Mjuk</button><button type="button">Tydlig</button><button type="button">Djup</button></div>
+        <button type="button" class="wide" style="border:0;background:transparent;color:#9aa3b8;text-align:left;font:inherit;font-size:12px;cursor:pointer;padding:2px 0">▸ Anpassa</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ══ A · Rutnätet ════════════════════════════════════════════════════════════════════════ -->
+  <aside class="props" data-v="a" aria-label="Egenskaper">
+    <div class="topp"><b><span class="enbart">Banderoll</span><span class="blandat">3 valda</span></b><span class="enbart">form</span><span class="blandat">3 former</span></div>
+    <div class="scroll">
+      <div class="sec" data-open="true">
+        <div class="sech"><span class="rule"></span>Layout<span class="rule"></span></div>
+        <div class="secbody">
+          <div class="g2 tight">
+            <div class="f"><span class="ic" role="button" tabindex="0" data-scrub="x" aria-label="X, dra för att ändra">X</span><input data-key="x" aria-label="X i millimeter"><u>mm</u></div>
+            <div class="f"><span class="ic" role="button" tabindex="0" data-scrub="y" aria-label="Y, dra för att ändra">Y</span><input data-key="y" aria-label="Y i millimeter"><u>mm</u></div>
+            <div class="f"><span class="ic" role="button" tabindex="0" data-scrub="w" aria-label="Bredd, dra för att ändra">B</span><input data-key="w" aria-label="Bredd i millimeter"><u>mm</u></div>
+            <div class="f"><span class="ic" role="button" tabindex="0" data-scrub="h" aria-label="Höjd, dra för att ändra">H</span><input data-key="h" aria-label="Höjd i millimeter"><u>mm</u></div>
+            <div class="f"><span class="ic" role="button" tabindex="0" data-scrub="rot" data-glyph aria-label="Vridning, dra för att ändra">∠</span><input data-key="rot" aria-label="Vridning i grader"><u>°</u></div>
+            <div class="f"><span class="ic" role="button" tabindex="0" data-scrub="r" data-glyph aria-label="Hörnradie, dra för att ändra">◜</span><input data-key="r" aria-label="Hörnradie i millimeter"><u>mm</u></div>
+          </div>
+        </div>
+      </div>
+      <div class="sec" data-open="true">
+        <div class="sech"><span class="rule"></span>Form<span class="rule"></span></div>
+        <div class="secbody"><div class="mini" role="group" aria-label="Form"></div></div>
+      </div>
+      <div class="sec" data-open="true">
+        <div class="sech"><span class="rule"></span>Fyllning<span class="rule"></span><button type="button" class="plus" aria-label="Lägg till fyllning">+</button></div>
+        <div class="secbody">
+          <div class="colrow"><input type="color" class="sw" data-key="fillHex" aria-label="Fyllningens färg"><input class="hex" data-key="fillHex" data-hex aria-label="Fyllningens färg som hex"><span class="pct"><input data-key="fillOp" aria-label="Fyllningens genomskinlighet i procent"><u>%</u></span></div>
+          <div class="knapprad"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox"> Mönster över fyllningen</label></div>
+        </div>
+      </div>
+      <div class="sec" data-open="true">
+        <div class="sech"><span class="rule"></span>Linje<span class="rule"></span><button type="button" class="plus" aria-label="Lägg till linje">+</button></div>
+        <div class="secbody">
+          <div class="colrow mm"><input type="color" class="sw" data-key="strokeHex" aria-label="Linjens färg"><input class="hex" data-key="strokeHex" data-hex aria-label="Linjens färg som hex"><span class="pct"><input data-key="strokeMm" aria-label="Linjens bredd i millimeter"><u>mm</u></span></div>
+        </div>
+      </div>
+      <div class="sec" data-open="true">
+        <div class="sech"><span class="rule"></span>Effekter<span class="rule"></span><button type="button" class="plus" aria-label="Lägg till effekt">+</button></div>
+        <div class="secbody">
+          <div class="chips2" role="group" aria-label="Skugga"><button type="button">Ingen</button><button type="button" aria-pressed="true">Mjuk</button><button type="button">Tydlig</button><button type="button">Djup</button></div>
+          <div class="colrow" ><span class="sw" style="background:#0f1115;display:grid;place-items:center;color:#868ea3;font-size:11px">◐</span><span style="color:#868ea3;font-size:11.5px;align-self:center">Genomskinlighet</span><span class="pct"><input data-key="op" aria-label="Formens genomskinlighet i procent"><u>%</u></span></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ══ B · Sektionerna ═════════════════════════════════════════════════════════════════════ -->
+  <aside class="props" data-v="b" aria-label="Egenskaper">
+    <div class="topp"><b><span class="enbart">Banderoll</span><span class="blandat">3 valda</span></b><span class="enbart">form</span><span class="blandat">3 former</span></div>
+    <div class="scroll">
+      <div class="sec" data-open="true">
+        <button type="button" class="sech" aria-expanded="true"><span class="chev" aria-hidden="true"></span>Layout<span class="rule"></span></button>
+        <div class="secbody">
+          <div class="g2">
+            <div class="f"><span class="ic" role="button" tabindex="0" data-scrub="x" aria-label="X, dra för att ändra">X</span><input data-key="x" aria-label="X i millimeter"><u>mm</u></div>
+            <div class="f"><span class="ic" role="button" tabindex="0" data-scrub="y" aria-label="Y, dra för att ändra">Y</span><input data-key="y" aria-label="Y i millimeter"><u>mm</u></div>
+            <div class="f"><span class="ic" role="button" tabindex="0" data-scrub="w" aria-label="Bredd, dra för att ändra">B</span><input data-key="w" aria-label="Bredd i millimeter"><u>mm</u></div>
+            <div class="f"><span class="ic" role="button" tabindex="0" data-scrub="h" aria-label="Höjd, dra för att ändra">H</span><input data-key="h" aria-label="Höjd i millimeter"><u>mm</u></div>
+            <div class="f"><span class="ic" role="button" tabindex="0" data-scrub="rot" data-glyph aria-label="Vridning, dra för att ändra">∠</span><input data-key="rot" aria-label="Vridning i grader"><u>°</u></div>
+            <div class="f"><span class="ic" role="button" tabindex="0" data-scrub="r" data-glyph aria-label="Hörnradie, dra för att ändra">◜</span><input data-key="r" aria-label="Hörnradie i millimeter"><u>mm</u></div>
+          </div>
+        </div>
+      </div>
+      <div class="sec" data-open="false">
+        <button type="button" class="sech" aria-expanded="false"><span class="chev" aria-hidden="true"></span>Form<span class="rule"></span><span class="sum" id="b-formsum">Banderoll</span></button>
+        <div class="secbody"><div class="mini" role="group" aria-label="Form"></div></div>
+      </div>
+      <div class="sec" data-open="true">
+        <button type="button" class="sech" aria-expanded="true"><span class="chev" aria-hidden="true"></span>Fyllning<span class="rule"></span><span class="sum"><i data-swatch="fillHex"></i></span></button>
+        <div class="secbody">
+          <div class="colrow"><input type="color" class="sw" data-key="fillHex" aria-label="Fyllningens färg"><input class="hex" data-key="fillHex" data-hex aria-label="Fyllningens färg som hex"><span class="pct"><input data-key="fillOp" aria-label="Fyllningens genomskinlighet i procent"><u>%</u></span></div>
+          <div class="knapprad"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox"> Mönster över fyllningen</label></div>
+        </div>
+      </div>
+      <div class="sec" data-open="false">
+        <button type="button" class="sech" aria-expanded="false"><span class="chev" aria-hidden="true"></span>Linje<span class="rule"></span><span class="sum"><i data-swatch="strokeHex"></i><b id="b-linjesum" style="font-weight:400"></b></span></button>
+        <div class="secbody">
+          <div class="colrow mm"><input type="color" class="sw" data-key="strokeHex" aria-label="Linjens färg"><input class="hex" data-key="strokeHex" data-hex aria-label="Linjens färg som hex"><span class="pct"><input data-key="strokeMm" aria-label="Linjens bredd i millimeter"><u>mm</u></span></div>
+        </div>
+      </div>
+      <div class="sec" data-open="false">
+        <button type="button" class="sech" aria-expanded="false"><span class="chev" aria-hidden="true"></span>Effekter<span class="rule"></span><span class="sum">Mjuk skugga</span></button>
+        <div class="secbody">
+          <div class="chips2" role="group" aria-label="Skugga"><button type="button">Ingen</button><button type="button" aria-pressed="true">Mjuk</button><button type="button">Tydlig</button><button type="button">Djup</button></div>
+          <div class="colrow" ><span class="sw" style="background:#0f1115;display:grid;place-items:center;color:#868ea3;font-size:11px">◐</span><span style="color:#868ea3;font-size:11.5px;align-self:center">Genomskinlighet</span><span class="pct"><input data-key="op" aria-label="Formens genomskinlighet i procent"><u>%</u></span></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ══ C · Greppen ═════════════════════════════════════════════════════════════════════════ -->
+  <aside class="props" data-v="c" aria-label="Egenskaper">
+    <div class="topp"><b><span class="enbart">Banderoll</span><span class="blandat">3 valda</span></b><span class="enbart">form</span><span class="blandat">3 former</span></div>
+    <div class="scroll">
+      <div class="sec" data-open="true">
+        <button type="button" class="sech" aria-expanded="true"><span class="chev" aria-hidden="true"></span>Layout<span class="rule"></span></button>
+        <div class="secbody">
+          <div class="g2">
+            <div class="f"><span class="ic" role="button" tabindex="0" data-scrub="x" aria-label="X, dra för att ändra">X</span><input data-key="x" aria-label="X i millimeter"><u>mm</u></div>
+            <div class="f"><span class="ic" role="button" tabindex="0" data-scrub="y" aria-label="Y, dra för att ändra">Y</span><input data-key="y" aria-label="Y i millimeter"><u>mm</u></div>
+            <div class="f"><span class="ic" role="button" tabindex="0" data-scrub="w" aria-label="Bredd, dra för att ändra">B</span><input data-key="w" aria-label="Bredd i millimeter"><u>mm</u></div>
+            <div class="f"><span class="ic" role="button" tabindex="0" data-scrub="h" aria-label="Höjd, dra för att ändra">H</span><input data-key="h" aria-label="Höjd i millimeter"><u>mm</u></div>
+            <div class="f"><span class="ic" role="button" tabindex="0" data-scrub="rot" data-glyph aria-label="Vridning, dra för att ändra">∠</span><input data-key="rot" aria-label="Vridning i grader"><u>°</u></div>
+            <div class="f"><span class="ic" role="button" tabindex="0" data-scrub="r" data-glyph aria-label="Hörnradie, dra för att ändra">◜</span><input data-key="r" aria-label="Hörnradie i millimeter"><u>mm</u></div>
+          </div>
+        </div>
+      </div>
+      <div class="sec" data-open="true">
+        <button type="button" class="sech" aria-expanded="true"><span class="chev" aria-hidden="true"></span>Form<span class="rule"></span><span class="sum" id="c-formsum">Banderoll</span></button>
+        <div class="secbody"><div class="mini" role="group" aria-label="Form"></div></div>
+      </div>
+      <div class="sec" data-open="true">
+        <button type="button" class="sech" aria-expanded="true"><span class="chev" aria-hidden="true"></span>Fyllning<span class="rule"></span><span class="sum"><i data-swatch="fillHex"></i></span></button>
+        <div class="secbody">
+          <div class="colrow"><input type="color" class="sw" data-key="fillHex" aria-label="Fyllningens färg"><input class="hex" data-key="fillHex" data-hex aria-label="Fyllningens färg som hex"><span class="pct"><input data-key="fillOp" aria-label="Fyllningens genomskinlighet i procent"><u>%</u></span></div>
+          <div class="knapprad"><label style="display:flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox"> Mönster över fyllningen</label></div>
+        </div>
+      </div>
+      <div class="sec" data-open="true">
+        <button type="button" class="sech" aria-expanded="true"><span class="chev" aria-hidden="true"></span>Linje<span class="rule"></span><span class="sum"><i data-swatch="strokeHex"></i></span></button>
+        <div class="secbody">
+          <div class="colrow mm"><input type="color" class="sw" data-key="strokeHex" aria-label="Linjens färg"><input class="hex" data-key="strokeHex" data-hex aria-label="Linjens färg som hex"><span class="pct"><input data-key="strokeMm" aria-label="Linjens bredd i millimeter"><u>mm</u></span></div>
+        </div>
+      </div>
+      <div class="sec" data-open="true">
+        <button type="button" class="sech" aria-expanded="true"><span class="chev" aria-hidden="true"></span>Effekter<span class="rule"></span><span class="sum">Mjuk</span></button>
+        <div class="secbody">
+          <div class="chips2" role="group" aria-label="Skugga"><button type="button">Ingen</button><button type="button" aria-pressed="true">Mjuk</button><button type="button">Tydlig</button><button type="button">Djup</button></div>
+          <div class="colrow" ><span class="sw" style="background:#0f1115;display:grid;place-items:center;color:#868ea3;font-size:11px">◐</span><span style="color:#868ea3;font-size:11.5px;align-self:center">Genomskinlighet</span><span class="pct"><input data-key="op" aria-label="Formens genomskinlighet i procent"><u>%</u></span></div>
+        </div>
+      </div>
+    </div>
+  </aside>
+</div>
+</main>
+</div>
+
+<div class="note">
+  <b>Prototyp 1 av 4 för Template-duken — #328</b>
+  Panelen i sina riktiga 280&nbsp;px. <i>Nu</i> är dagens <code>.byd-props</code>, ordagrant. A, B och C skiljer sig i täthet, i vilka sektioner som står öppna, i hur skrubben visas — och i hur ett flerval med blandade värden skrivs. Byt till <i>3 valda</i> för att se den skillnaden.
+</div>
+
+<script>
+// ── Tillståndet ────────────────────────────────────────────────────────────────────────────────
+// Ett enda element, med de fält `ShapeProps` faktiskt skriver. Vid flerval är `blandat` de
+// nycklar där de tre valda formerna inte är överens — det är hela frågan variantarna svarar olika på.
+const S = { x: 8.5, y: 46, w: 46, h: 13.5, rot: 0, r: 2, op: 100, fillHex: '#C9A227', fillOp: 100, strokeHex: '#3E2B12', strokeMm: 0.6 }
+const BLANDAT = new Set(['x', 'w', 'rot'])
+// Vad de tre valda formerna står i, för C:s intervall och för skrubbens förskjutning.
+const FLERA = { x: [8.5, 21, 34], w: [46, 18, 18], rot: [0, 0, 180] }
+const STEG = { x: .5, y: .5, w: .5, h: .5, rot: 1, r: .5, strokeMm: .1, op: 1, fillOp: 1 }
+const ENHET = { rot: 0, op: 0, fillOp: 0, strokeMm: 1 }
+
+const shell = document.querySelector('.shell')
+const flera = () => shell.dataset.val === 'flera'
+const mixed = (k) => flera() && BLANDAT.has(k)
+const dec = (k) => (ENHET[k] !== undefined ? ENHET[k] : 1)
+
+// Så här skrivs ett blandat värde — det enda som skiljer A, B och C i sak.
+function visa(k) {
+  if (!mixed(k)) return S[k].toFixed(dec(k))
+  const v = shell.dataset.form
+  if (v === 'rutnat') return '—'                                   // A: Figmas eget streck
+  if (v === 'sektioner') return 'Blandat'                          // B: ordet, i klartext
+  if (v === 'greppen') {                                           // C: spannet de står i
+    const a = FLERA[k]; return Math.min(...a).toFixed(dec(k)) + '–' + Math.max(...a).toFixed(dec(k))
+  }
+  return '—'
+}
+
+// ── Formgalleriet ur shapes.ts ─────────────────────────────────────────────────────────────────
+const GALLERI = [
+  ['rect', 'Rektangel'], ['rounded', 'Rundad'], ['capsule', 'Kapsel'], ['circle', 'Cirkel'], ['line', 'Linje'],
+  ['triangle', 'Triangel'], ['diamond', 'Romb'], ['square', 'Kvadrat'], ['pentagon', 'Femhörning'], ['hexagon', 'Sexhörning'],
+  ['hexagonFlat', 'Sexhörning, platt'], ['octagon', 'Åttahörning'], ['star', 'Stjärna'], ['star6', 'Stjärna, sex'],
+  ['shield', 'Sköld'], ['banner', 'Banderoll'], ['arrow', 'Pil'],
+]
+let form = 'banner'
+function glyf(id, s) {
+  const c = s / 2, R = s * .40
+  const poly = (n, turn, inner) => {
+    const p = []
+    for (let i = 0; i < n * (inner ? 2 : 1); i++) {
+      const rad = inner && i % 2 ? R * inner : R
+      const a = (i * Math.PI * 2) / (n * (inner ? 2 : 1)) - Math.PI / 2 + (turn * Math.PI) / 180
+      p.push((c + rad * Math.cos(a)).toFixed(1) + ',' + (c + rad * Math.sin(a)).toFixed(1))
+    }
+    return '<polygon points="' + p.join(' ') + '"/>'
+  }
+  const m = {
+    rect: '<rect x="' + (c - R) + '" y="' + (c - R * .72) + '" width="' + R * 2 + '" height="' + R * 1.44 + '"/>',
+    rounded: '<rect x="' + (c - R) + '" y="' + (c - R * .72) + '" width="' + R * 2 + '" height="' + R * 1.44 + '" rx="3"/>',
+    capsule: '<rect x="' + (c - R) + '" y="' + (c - R * .55) + '" width="' + R * 2 + '" height="' + R * 1.1 + '" rx="' + R * .55 + '"/>',
+    circle: '<circle cx="' + c + '" cy="' + c + '" r="' + R + '"/>',
+    line: '<line x1="' + (c - R) + '" y1="' + c + '" x2="' + (c + R) + '" y2="' + c + '" stroke="currentColor" stroke-width="2"/>',
+    triangle: poly(3, 0), diamond: poly(4, 0), square: poly(4, 45), pentagon: poly(5, 0),
+    hexagon: poly(6, 0), hexagonFlat: poly(6, 30), octagon: poly(8, 22.5),
+    star: poly(5, 0, .45), star6: poly(6, 0, .55),
+    shield: '<path d="M' + (c - R) + ' ' + (c - R * .8) + 'h' + R * 2 + 'v' + R * .7 + 'q0 ' + R * .9 + ' -' + R + ' ' + R * .9 + 'q-' + R + ' 0 -' + R + ' -' + R * .9 + 'z"/>',
+    banner: '<path d="M' + (c - R) + ' ' + (c - R * .6) + 'h' + R * 2 + 'v' + R * 1.2 + 'l-' + R * .45 + ' -' + R * .42 + 'l-' + R * .55 + ' ' + R * .42 + 'l-' + R * .55 + ' -' + R * .42 + 'l-' + R * .45 + ' ' + R * .42 + 'z"/>',
+    arrow: '<path d="M' + (c - R) + ' ' + (c - R * .38) + 'h' + R * 1.1 + 'v-' + R * .38 + 'l' + R * .9 + ' ' + R * .76 + 'l-' + R * .9 + ' ' + R * .76 + 'v-' + R * .38 + 'h-' + R * 1.1 + 'z"/>',
+  }
+  return '<svg width="' + s + '" height="' + s + '" viewBox="0 0 ' + s + ' ' + s + '" fill="currentColor" aria-hidden="true">' + (m[id] || m.rect) + '</svg>'
+}
+function byggGalleri() {
+  document.querySelectorAll('.nu-props .galleri, .mini').forEach((box) => {
+    const s = box.classList.contains('mini') ? 16 : 20
+    box.innerHTML = GALLERI.map(([id, namn]) => '<button type="button" data-shape="' + id + '" aria-label="' + namn + '" title="' + namn + '">' + glyf(id, s) + '</button>').join('')
+  })
+}
+
+// ── Kortet ─────────────────────────────────────────────────────────────────────────────────────
+const PXMM = 214 / 63
+function ritaKort() {
+  const el = document.getElementById('form'), sel = document.getElementById('valt')
+  const w = S.w * PXMM, h = S.h * PXMM, x = S.x * PXMM, y = S.y * PXMM
+  el.style.cssText = 'left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px;opacity:' + S.op / 100 + ';transform:rotate(' + S.rot + 'deg)'
+  el.innerHTML = '<svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '"><path d="M0 0h' + w + 'v' + h + 'l-' + w * .22 + ' -' + h * .34 + 'l-' + w * .28 + ' ' + h * .34 + 'l-' + w * .28 + ' -' + h * .34 + 'l-' + w * .22 + ' ' + h * .34 + 'z" fill="' + S.fillHex + '" fill-opacity="' + S.fillOp / 100 + '" stroke="' + S.strokeHex + '" stroke-width="' + S.strokeMm * PXMM + '"/></svg>'
+  sel.style.cssText = 'left:' + x + 'px;top:' + y + 'px;width:' + w + 'px;height:' + h + 'px'
+}
+
+// ── Ritar om panelen ───────────────────────────────────────────────────────────────────────────
+function rita() {
+  document.querySelectorAll('[data-key]').forEach((el) => {
+    const k = el.dataset.key
+    if (el.type === 'color') { el.value = S[k]; return }
+    if (el.dataset.hex !== undefined) { el.value = mixed(k) ? visa(k) : S[k]; return }
+    if (el.dataset.plain !== undefined) { el.value = S[k]; return }   // Nu-panelen visar inget blandat alls
+    el.value = visa(k)
+    el.classList.toggle('mixed', mixed(k))
+  })
+  document.querySelectorAll('[data-swatch]').forEach((i) => { i.style.background = S[i.dataset.swatch] })
+  document.querySelectorAll('[data-shape]').forEach((b) => b.setAttribute('aria-pressed', String(!flera() && b.dataset.shape === form)))
+  const namn = (GALLERI.find(([id]) => id === form) || [, '—'])[1]
+  const fs = document.getElementById('b-formsum'), cs = document.getElementById('c-formsum')
+  if (fs) fs.textContent = flera() ? 'Blandat' : namn
+  if (cs) cs.textContent = flera() ? '3 former' : namn
+  const bl = document.getElementById('b-linjesum')
+  if (bl) bl.textContent = ' ' + S.strokeMm.toFixed(1) + ' mm'
+  ritaKort()
+  mat()
+}
+
+function mat() {
+  const syns = [...document.querySelectorAll('.props')].find((p) => p.offsetParent !== null)
+  if (!syns) return
+  const s = syns.querySelector('.scroll')
+  const sista = s.lastElementChild
+  if (!sista) return
+  // Rullboxen är alltid exakt så hög som kolumnen, så dess `scrollHeight` skiljer inte varianterna
+  // åt. Det som gör det är hur högt innehållet självt bygger — underkanten på det sista blocket.
+  const h = Math.round(sista.getBoundingClientRect().bottom - s.getBoundingClientRect().top + s.scrollTop + 12)
+  document.getElementById('m-hojd').textContent = h + ' px'
+  document.getElementById('m-rull').textContent = h > s.clientHeight + 1 ? (h - s.clientHeight) + ' px döljs' : 'allt syns (' + (s.clientHeight - h) + ' px över)'
+}
+
+// ── Skrubben ───────────────────────────────────────────────────────────────────────────────────
+// 2 px drag = ett steg; Shift = tio steg. Hela draget är en historikpost, så prototypen räknar
+// gesterna och säger hur många det blev — det är acceptanskriteriet «en historikpost per gest».
+let gest = 0, drag = null
+document.addEventListener('pointerdown', (e) => {
+  const h = e.target.closest('[data-scrub]')
+  if (!h) return
+  e.preventDefault()
+  drag = { k: h.dataset.scrub, acc: 0 }
+  h.setPointerCapture(e.pointerId)
+  document.body.style.cursor = 'ew-resize'
+})
+document.addEventListener('pointermove', (e) => {
+  if (!drag) return
+  drag.acc += e.movementX
+  const steg = STEG[drag.k] * (e.shiftKey ? 10 : 1)
+  while (Math.abs(drag.acc) >= 2) { const t = Math.sign(drag.acc); S[drag.k] = Math.max(0, +(S[drag.k] + t * steg).toFixed(2)); drag.acc -= t * 2 }
+  if (mixed(drag.k)) FLERA[drag.k] = FLERA[drag.k].map((v) => v)   // ett blandat drag förskjuter alla och förblir blandat
+  rita()
+})
+document.addEventListener('pointerup', () => { if (drag) { gest++; drag = null; document.body.style.cursor = ''; sag('gest ' + gest + ' — ett ångrasteg') } })
+
+// Tangentbordsmotsvarigheten: piltangenter i fältet, samma steg, Shift = tio.
+document.addEventListener('keydown', (e) => {
+  const inp = e.target.closest('input[data-key]')
+  if (!inp || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return
+  const k = inp.dataset.key
+  if (STEG[k] === undefined) return
+  e.preventDefault()
+  S[k] = Math.max(0, +(S[k] + (e.key === 'ArrowUp' ? 1 : -1) * STEG[k] * (e.shiftKey ? 10 : 1)).toFixed(2))
+  BLANDAT.delete(k)
+  rita()
+  sag(inp.getAttribute('aria-label') + ' ' + S[k])
+})
+// Skrubb från tangentbordet på greppet självt, för den som aldrig når fältet.
+document.addEventListener('keydown', (e) => {
+  const h = e.target.closest('[data-scrub]')
+  if (!h || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return
+  const k = h.dataset.scrub
+  e.preventDefault()
+  S[k] = Math.max(0, +(S[k] + (e.key === 'ArrowRight' ? 1 : -1) * STEG[k] * (e.shiftKey ? 10 : 1)).toFixed(2))
+  BLANDAT.delete(k)
+  rita()
+  sag(h.getAttribute('aria-label') + ' ' + S[k])
+})
+
+function sag(text) { document.getElementById('sagt').innerHTML = 'Skärmläsaren hör: <em>' + text + '</em>' }
+
+// ── Vanliga fält ───────────────────────────────────────────────────────────────────────────────
+document.addEventListener('input', (e) => {
+  const el = e.target.closest('[data-key]')
+  if (!el) return
+  const k = el.dataset.key
+  if (el.type === 'color' || el.dataset.hex !== undefined) { if (/^#?[0-9a-fA-F]{6}$/.test(el.value)) { S[k] = el.value.startsWith('#') ? el.value : '#' + el.value; rita() } ; return }
+  const n = Number(el.value)
+  if (!Number.isNaN(n)) { S[k] = n; BLANDAT.delete(k); rita() }
+})
+
+document.addEventListener('click', (e) => {
+  const v = e.target.closest('button[data-form]')
+  if (v) { shell.dataset.form = v.dataset.form; document.querySelectorAll('button[data-form]').forEach((b) => b.setAttribute('aria-pressed', String(b === v))); rita(); return }
+  const m = e.target.closest('button[data-val]')
+  if (m) { shell.dataset.val = m.dataset.val; document.querySelectorAll('button[data-val]').forEach((b) => b.setAttribute('aria-pressed', String(b === m))); if (m.dataset.val === 'flera') { ['x','w','rot'].forEach((k) => BLANDAT.add(k)) } rita(); return }
+  const s = e.target.closest('[data-shape]')
+  if (s) { form = s.dataset.shape; rita(); return }
+  const h = e.target.closest('.sech[aria-expanded]')
+  if (h) { const sec = h.closest('.sec'), öppen = sec.dataset.open !== 'true'; sec.dataset.open = String(öppen); h.setAttribute('aria-expanded', String(öppen)); mat(); return }
+  const c = e.target.closest('.chips2 button, .nu-props .chips button')
+  if (c) { [...c.parentElement.children].forEach((b) => b.setAttribute('aria-pressed', String(b === c))); return }
+})
+
+byggGalleri()
+rita()
+window.addEventListener('resize', mat)
+</script>
+</body>
+</html>

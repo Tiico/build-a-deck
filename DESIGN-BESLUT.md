@@ -663,7 +663,8 @@ Vad som faktiskt ligger i bandet, och de två lägen handen har, står i K17.
 
 Sessionen väljer vid start mellan TV-läge, där allt orienteras mot betraktaren och platser radas längs nedre kanten, och bordsläge, där platser ligger runt om och orientering följer platsen.
 Kameran ramar automatiskt in allt aktivt innehåll.
-Vem som helst kan tillfälligt zooma, men vyn återgår av sig själv.
+~~Vem som helst kan tillfälligt zooma, men vyn återgår av sig själv.~~ — **upphävt 2026-09-20 (#325), se nedan.**
+Vem som helst kan zooma och panorera, och den vyn står kvar tills den återställs.
 
 Följdkrav:
 Läget hör hemma i lobbyn, inte i användarinställningar, eftersom det varierar per tillfälle.
@@ -689,6 +690,36 @@ En zoomning är en vy och inte innehåll, och vidgar därför aldrig räckvidden
 Följden är den invariant som mäts i renderaren: inget kort som kameran är riktad mot skärs av av ramen.
 
 Reviderat 2026-09-20 (#322): TV-läget ramar in med en overscan-marginal om 3 % av viewportens kortaste sida på alla fyra sidor.
+
+Reviderat 2026-09-20 (#325), prototypat: **den manuella vyn står kvar.**
+«Vyn återgår av sig själv» efter sex sekunder var C5:s ursprungliga ordalydelse och är nu upphävd.
+En som zoomar in på en hög gör det för att se något, och en kamera som tar tillbaka bilden medan hon tittar är en kamera som arbetar emot henne.
+Hjulet zoomar kring pekaren och läget består; mittenknapp och Space + drag panorerar, som i Figma och Miro.
+Space panorerar bara när inget kort har fokus (K17).
+Kameran kan fortfarande inte lämna `reach`.
+
+Vyn återgår **aldrig av sig själv**, inte heller när något flyttas utanför bilden.
+Då tänds i stället en kantmarkering på den sida innehållet ligger, och den finns bara medan vyn är manuell.
+«Visa hela bordet» — och `Escape` — återställer den automatiska inramningen.
+
+**Kontrollerna bor i filtens nedre högra hörn och finns bara medan kameran är manuell.**
+Filten är höjdbunden, och det gör placeringen till en mätbar fråga: en rad under filten tar 56 px höjd och kostar varje kort 5 px i bredd — 6,3 % — medan en sidokolumn tar bredd och kostar kortet ingenting.
+Hörnet kostar noll yta under det mesta av ett spel, eftersom vyn då är automatisk och klungan inte finns.
+Priset är erkänt: klungan ligger över bordet när den syns, och den som aldrig zoomat ser den aldrig.
+
+**Klungan går att fälla undan, men aldrig att stänga.**
+Den ligger över bordet, och ett bord man tittar på är inte en yta där något får stå i vägen.
+Fälld krymper den från 318 till 170 px och blir «Visa hela bordet ‹»: **vägen hem och vägen tillbaka till knapparna, båda kvar.**
+Det är kravet som gör det ofarligt — en klunga som kunde stängas helt skulle kunna lämna någon i en egen vy utan synlig väg ur den, och bordet vore låst i en bild ingen bad om.
+Tangentbordets `Escape` finns kvar oavsett, men en väg som bara finns på tangentbordet är ingen väg på en TV.
+Fällt läge lagras per skärm, som vyn själv.
+
+**Den nedre kantmarkeringen börjar ovanför docken.**
+Docken visar varje plats längs filtens nederkant, och en pil ritad över en plats är en markering som pekar på fel sak.
+Den nedre markeringen blir därmed kortare än de tre andra, vilket är rätt pris för att inte skriva över något som redan står där.
+
+Läget lagras per skärm (localStorage) och aldrig i loggen: en vy är ingen händelse (L4).
+Tangentbordet når allt: `+` och `−` zoomar, piltangenterna panorerar, `Escape` återställer. De står i `ShortcutHelp`.
 En TV kan dölja bildens ytterkant, så marginalen är en säkerhetsmarginal på action-safe-nivå och ingen ritad ram.
 Den begränsar bara den automatiska inramningen och `fitFloor`; en manuell zoom får gå in i den.
 Observatören delar läget men inte kameran, och varken hennes vy eller telefonens påverkas.
@@ -3590,6 +3621,82 @@ De tre greppen — modifierarklick, dubbelklick och `F` — är en handling och 
 Acceptanskriteriet om hjulet är uppfyllt genom att panelen som tangentbordet öppnar fick ringens **Dra 1**.
 Den saknades: ringen hade fyra verb på en hög och tangentbordet tre, så den som spelade utan mus kunde inte dra ett kort alls vid bordets egen skärm.
 
+### L25. Egenskapspanelen är ikonmärkt, skrubbad och alltid öppen (prototypat 2026-09-20, #328)
+
+Panelen på mallsidan var en staplad lista av ordetiketter ovanför fält: 658 px innehåll i en kolumn som ger 722.
+Den rymdes nätt och jämnt, och bara för en form utan mönster och utan anpassad skugga.
+Tre former prövades mot varandra i panelens riktiga 280 px — tätast möjligt utan fällning (A), fyra fällbara sektioner med värdet i det stängda huvudet (B), och en luftigare med synliga grepp (C).
+
+Valet blev **C**.
+Skrubben — att dra i en siffra i stället för att markera och skriva — är panelens största vinst i tid, och den är värdelös om ingen hittar den.
+I A och B är dragytan osynlig tills pekaren råkar stå på rätt ikon.
+C ger varje siffra en egen greppkolumn med prickar, så affordansen syns utan att någon först måste gissa rätt, och det kostar 38 px mot A.
+Alla fyra sektionerna står öppna: panelen får inget läge att minnas mellan två markeringar, och en designer som byter element ser samma panel varje gång.
+
+Ikonen är fältets namn *och* dess grepp.
+Den har sitt eget `aria-label` («X, dra för att ändra») vid sidan av fältets, så ordet är inte borta — det är bara inte ritat.
+Editorn är desktop-först (L12), men tillgängligheten är det inte: piltangenter i fältet ger samma steg som draget, greppet svarar självt på vänster och höger för den som aldrig når fältet, och Shift är tio steg överallt.
+Ett drag är en historikpost, inte en per bildpunkt (L14).
+
+**Ett blandat värde skrivs som ett streck.**
+Tre skrivsätt prövades: strecket, ordet «Blandat» och spannet värdena står i.
+Spannet säger mest, men nio tecken går inte in i ett fält byggt för fyra, och ordet fyller hela fältets 125 px så att inget utrymme blir kvar för talet som ska ersätta det.
+Strecket är otvetydigt, tar ingen plats, och är dessutom det Figma självt gör — vilket är hela skälet issuet skrevs.
+Att skriva i fältet sätter alla valda; att dra förskjuter dem och låter dem förbli olika.
+
+**Formgalleriets brickor är 30 px, inte 44.**
+Sjutton brickor om 44 px tog 290 av panelens 658 px — fyrtiofyra procent av panelen var galleriet.
+Vid 30 px står fem på en rad i stället för tre och galleriet tar ~170 px.
+Det bryter mot tumregeln om tappytan, och får göra det just här: det är en desktop-först yta som pekas på med mus (L12), och brickorna ligger i ett rutnät där grannen är samma sorts sak — en miss är ett annat formval och inte en förlorad handling.
+Undantaget gäller galleriets brickor och ingenting annat i panelen.
+
+### L26. En egen form är en punktlista, och punkten läggs till där kanten redan bär en (prototypat 2026-09-20, #309)
+
+Formgalleriet är parametriskt: en form är ett hörnantal och en vridning (L14, L17).
+En helt egen ram eller banderoll kräver en annan representation — en punktlista i kortets millimeter, relativ till elementets box — och en envägsdörr in i den: att välja «anpassa punkterna» på en galleriform skriver ut den som de punkter den redan består av, utan att ändra utseende, och galleriet står kvar som startpunkt.
+
+Tre sätt att lägga till en punkt prövades på duken: klick på kanten med ett spöke som följer pekaren (A), ett punktläge som byter lådhandtagen mot punkter (B), och en ihålig prick mitt på varje kant att dra ut (C).
+
+Valet blev **C**.
+Att lägga till en punkt är inte en handling man letar efter — den kommer mitt i att forma något — och C är det enda sättet där ytan man ska ta i redan står ritad.
+A:s kant är en osynlig yta som bara röjer sig om pekaren råkar passera den, och B kräver att designern trycker på en knapp till efter den hon nyss tryckte på.
+Priset är erkänt: sju punkter plus sju mittprickar är fjorton märken på en banderoll om 45 × 20 mm, och det växer med varje punkt.
+Mittprickarna är därför halvt så starka som punkterna — ihåliga och nedtonade — så att de läser som «finns, men är inte en punkt».
+
+**Ytan flyttar, punkten formar.**
+En egen form dras som vilket annat element som helst genom att dra i dess fyllning; att dra i en punkt formar om den.
+Det kräver två saker av träffordningen, och de är inte förhandlingsbara: punkten ligger alltid över kanten och över fyllningen, och kanten har en träffyta bredare än den ser ut att ha.
+Under prototypandet var kantens yta ±7 px — ±1,5 mm på kortet, smalare än punkten den tävlar med — och ett klick mitt på kanten missade den.
+±2,4 mm är golvet.
+
+Minst tre punkter kvar: en form med två punkter är en linje och inte en form.
+Piltangenter flyttar vald punkt en halv millimeter, Shift fem; Tabb går mellan punkterna; Delete tar bort den valda och flyttar fokus till grannen.
+En gest är en historikpost, som allt annat på duken (L14).
+
+### L27. Katalogen är hel och sökbar, och provet är kortets egna ord (prototypat 2026-09-20, #329)
+
+Två typsnitt följde med projektet. Hela Google Fonts är fritt (OFL, Apache, UFL) och ska gå att söka i från Template-sidan.
+En vald familj **kopieras in som projektets egen asset**: renderaren på servern sätter kortet i exakt den filen (B3), och projektet beror inte på Google vid rendering eller tryck.
+Det är inte ett nytt utgående beroende för lådan — bara designerns webbläsare når katalogen, och filen reser sedan med projektet som varje annan uppladdad. Noterat i DRIFT.md.
+
+Tre rum prövades: en ruta över panelen (A), väljaren som tar hela egenskapskolumnen (B), och ett ark under kortet (C).
+
+Valet blev **C**, och det avgjordes av vad ett prov visar.
+A och B sätter familjens namn i sig självt, i nitton punkter. En rubrik i nitton punkter ser bra ut i nästan allt.
+Det svåra provet är tolvpunktsbrödtext på ett 63 mm-kort, och C sätter kortets egen rubrik *och* dess regeltext i kortets egen grad — designern läser sitt eget kort i varje familj innan hon väljer.
+Priset är erkänt och går inte att trolla bort: arket är 62 % av duken, kortet flyttas upp när det öppnas, och kortets nedre tredjedel är ändå dold medan man väljer.
+
+**Hela variabelfilen hämtas när familjen har en.**
+Alternativet — bara de vikter mallen råkar använda — sparar bytes och köper dem med ett beroende projektet inte får ha: att välja en ny vikt ett år senare skulle kräva att projektet når Google igen, och ett arkiverat projekt kan inte det.
+En variabelfil är ofta två till tre gånger en statisk vikt. Det är rätt pris för att projektet är helt när det lämnar editorn.
+
+**En katalogpost skiljer sig från en uppladdad fil på två sätt i listan**, och det andra är det som betyder något: märket «Katalog», och att licensfälten står ifyllda och streckade.
+En uppladdad fil bär ingen licens, och `Licence` skriver ingenting förrän både licens och upphovsman är angivna — två tomma rutor designern förväntas kunna svara på.
+Katalogposten vet svaret och fyller i det, för tryckets skull.
+
+Katalogen nås aldrig utan handling från designern: ingen förhämtning vid sidladdning.
+Att katalogen inte svarar sägs i panelen, inte tyst.
+
 ### L28. Kortet på väggen är ett kort: en kant, en kontaktskugga, och den stora skuggan bara under pekaren (prototypat och beslutat 2026-09-20, #332)
 
 Beslutet, i en mening:
@@ -3619,6 +3726,220 @@ Lyftet respekterar `prefers-reduced-motion` genom att utebli helt — skuggan fi
 
 **Kvarstår:** acceptanskriteriets mätning på en Mac från 2020.
 Siffrorna ovan och de som togs om vid implementationen är jämförbara med varandra men kommer från headless Chromium på en annan maskin.
+
+### L29. Zonens handlingar byter plats med spelararket, och tar aldrig filten (prototypat 2026-09-20, #330)
+
+`.byd-zone-actions` låg som ett halvgenomskinligt ark över filtens nederkant med `max-height: 45%`.
+Taket var satt med avsikt — filten är höjdbunden och ska inte krympa när ingen hög är vald — men en zon med flera åtgärder skriver mer än så.
+Draghögen med fem åtgärder och elva steg bygger 795 px innehåll, och vid 1280 × 800 syns **30 % av det**: 554 px ligger bakom en rullning, i en panel som täcker det bord designern håller på att ställa upp.
+
+Tre rum prövades: en egen kolumn mellan filten och tredje kolumnen (A), arket som får växa till filtens hela höjd (B), och panelen på tredje kolumnens plats (C).
+
+Valet blev **C**.
+Filten är orörd — 596 × 634 vid 1280, exakt måtten den har när ingen zon är vald — och ingenting ligger över bordet.
+Det som betalar är tredje kolumnen: spelararket och listan över bord som körs viker undan medan en zon är vald, och sedan #301 är arket hopfällt som förval, så det som viker undan är en fold och en lista och inte något designern läste.
+
+A ger samma siffror men tar betalt ur filtens bredd, och **det är i bredden kostnaden ligger** eftersom filten är höjdbunden: vid 1280 går den från 596 till 280 px, smalare än zonlistan till vänster, och bordet blir obrukbart att lägga ut på.
+B har de bästa siffrorna av alla — 74 % vid 1280, allt vid 1920, därför att det är den bredaste ytan och meningarna wrappar minst — och ett absolut pris: medan panelen är öppen syns inget bord alls.
+Att kontrollera var en hög står och vad som händer med den är två saker en designer gör växelvis, inte en efter den andra.
+
+Ingen variant visar allt vid 1280, och det är ärligt sagt en egenskap hos meningarna: «Leta fram varje kort där Typ är Mål och lägg dem dolda åt sidan» är sex platsrutor på tre rader i en kolumn om 320 px.
+Rullning inuti panelen försvinner inte. Frågan var bara om panelen ligger *över* bordet medan man rullar, och svaret är nej.
+
+Krysset ur #300 lämnar fokus till zonen panelen handlade om, inte till `<body>` (jfr #133).
+
+### L30. Konturen bredvid högen syns när väljaren hålls — och alltid när korten hamnar utanför bordet (prototypat 2026-09-20, #316)
+
+Väljaren «Kort landar» är byggd sedan tidigare och skriver `beside` per hög (K21).
+Det som saknades var att filten sade var korten faktiskt hamnar.
+
+**Konturen syns medan väljaren hovras eller har fokus.**
+Filten bär redan ett streckat handtag per zon, och en kontur som alltid står där är en till sak att läsa förbi varje gång en hög väljs.
+Att den lever medan väljaren hålls binder den till frågan den svarar på — hover och fokus båda, så att tangentbordet får samma sak som musen.
+
+**Men utanför bordet är ett fel och inte en upplysning.**
+Där bryter konturen regeln: den står kvar så länge zonen är vald, i bärnsten, med orden i sig, och panelen säger vad man gör åt det.
+Utan det undantaget kan en hög tyst lägga sina kort utanför filten för den som aldrig rör väljaren — och det är precis det fall K21 reviderades för 2026-09-16.
+Krönikan på 838, 500 vid ett bord om 900 × 600 lägger korten utanför på två av fyra sidor.
+
+Filten måste lämna ett korts bredd i mörker runt bordet.
+Under prototypandet fyllde bordet nästan hela filten, och konturen klipptes bort av filtens kant — just i det fall den finns till för.
+
+**Konturen ritas för det åtgärden faktiskt lägger.**
+`besidePile` anger en hög i sin mitt och ett ensamt kort i sitt hörn, vilket skiljer 31 mm i sidled och 44 mm neråt — ett halvt kort.
+Åtgärden vet sitt antal, eftersom «Ta 1» och «Ta 3» är olika meningar, så det är ingen gissning.
+En zon vars åtgärder lägger olika många ritar högens placering, som är den vanligare.
+
+Konturen respekterar `prefers-reduced-motion`: ingen toning, bara på eller av.
+
+### L31. Starta nytt bord står först, och revisionen står inte i knappen (prototypat 2026-09-20, #299)
+
+`.byd-tables-new` var en streckad, dämpad, genomskinlig knapp — produktens form för en platshållare — sist i kolumnen efter två hopfällda grupper.
+Men huvudfelet var inte den saknade ikonen.
+Etiketten var «Nytt bord från rev 12», och det högsta ordet i den var revisionsnumret: knappen läste som en upplysning om en revision och inte som något man gör.
+
+Knappen är en **andrahandsknapp** och kan inte bli något annat: den ljusa fyllningen hör till «Uppdatera bordet» (L13), och en *Starta nytt bord* som bär den slåss med den om blicken.
+
+**Den står först i kolumnen, över listan.**
+Det är det fliken finns till för; allt under den är bord som redan finns.
+Priset är erkänt: den som kom hit för att öppna ett pågående bord möter varje gång en knapp som startar ett nytt.
+
+**Revisionen står inte i knappen.**
+Knappen säger bara «Starta nytt bord», med en play-ikon.
+Kriteriet att versionen inte får döljas löses intill knappen och inte i den — kolumnens inledande mening bär revisionen, och bordet bär sin egen så snart det finns.
+En etikett som ska säga både vad som händer och vilken version det händer på slutar med att säga versionen högst, vilket är just det som var fel.
+
+Vänteläget snurrar ikonen i stället för att bara byta ord: en knapp som går tyst läses som en knapp som inte gjorde något (jfr #215), och `prefers-reduced-motion` stänger av rörelsen.
+Ett andra tryck under väntan startar inget andra bord, och `disabled` ensamt är inte skyddet — en tangenttryckning kan hinna före omritningen, så handlaren vaktar också.
+Felet säger att spelet och dess bord är orörda och tar fokus till «Försök igen».
+Starten navigerar aldrig: designern står kvar i Bord och ser bordet dyka upp i listan.
+
+### L32. Fördjupning bor i en låda bakom ett frågetecken, och hover öppnar den inte (prototypat 2026-09-20, #303)
+
+Editorn skulle ha mindre förklarande löptext och mer arbetskontroller.
+Inventeringen av `sv.editor.ts` säger något annat än frågan antog: **678 av 897 nycklar är under 25 tecken**, och all förklarande löptext — hint, lead, empty, none och liknande, minst 50 tecken, med fel, väntestatus och följdupplysningar frånräknade — är 29 strängar på 2 804 tecken i hela editorn.
+Ungefär ett stycke per flik. Att ta bort löptext frigör alltså inte mycket i sig.
+
+Vinsten sitter i fördelningen och mäts i bildpunkter, inte i tecken.
+`canvas.hint.base` är 179 tecken i lagerkolumnen, som är 220 px bred: sex rader, 101 bildpunkter, **35 % av lagerlistans höjd** — två lagerrader som inte får plats.
+Tre ytor mätta med produktens egna strängar gick från 209 px till 69 px.
+
+Tre mönster prövades: en låda under frågetecknet (A), en utfällning i flödet (B), och ett hjälpläge som tänder alla texter på en gång (C).
+
+Valet blev **A**.
+Det är det enda där vinsten består: ytan är 69 px oavsett om hjälpen är öppen.
+B:s utfällning trycker ner det som står under, så med hjälpen öppen är ytan tillbaka på 206 px — det som sparades finns bara så länge hjälpen är stängd.
+C är 363 px med allt tänt, mer än de 209 px det var före: ett läge för att lära sig verktyget, inte för att arbeta i.
+
+Lådan läggs aldrig över kontrollen den handlar om, vänder sig uppåt eller inåt när skärmkanten är i vägen, och stängs med `Esc`, med sitt kryss eller med ett klick utanför.
+Fokus går in i lådan när den öppnas och **tillbaka till frågetecknet** när den stängs; annars faller den till `<body>` och ytan måste nås om från toppen (#8, #133).
+
+**Hover öppnar den inte.**
+Vägen in är klick och fokus, ingenting annat.
+En klickväg behövs ändå, eftersom ingen information får kräva hover på telefonen, och då blir hover en andra väg till samma sak som måste stängas på ett tredje sätt — och en låda som öppnas av hover försvinner när pekaren rör sig för att nå den.
+Ett sätt in, ett sätt ut.
+
+Fel, väntestatus och det som säger vad en åtgärd får för följd flyttas aldrig hit.
+Inventeringen räknade bort 19 sådana strängar (1 515 tecken) innan något annat gjordes.
+
+Mönstret är editorns och gäller hela produkten: #304, #305, #297, #298 och #302 använder det och hittar inte på ett eget.
+
+**Prövat vid 390 px (2026-09-20, #305): lådan är densamma på telefonen.**
+Tre former mättes i spelarvyn — samma låda, ett ark från nederkanten, och helskärm:
+
+| | täcker av vyn | täcker av handen | stängknappen |
+|---|---|---|---|
+| lådan | 9 % | **0 %** | 9 % ner i vyn |
+| arket | 16 % | **68 %** | 87 % ner |
+| helskärm | 99 % | **100 %** | 95 % ner |
+
+Tummen når nederkanten, men på en telefon **är nederkanten handen**.
+Ett ark som glider upp där tummen är täcker fyra av fem kort och alla tre knapparna, och då är «hjälpytor blockerar inte nödvändiga spelhandlingar» inte uppfyllt.
+Helskärmen tar bort bordet, vilket på en yta som redan bara visar en del av spelet är ett steg bort från det.
+
+Lådan vinner på att den täcker **noll procent av det man spelar med**, och det kravet väger tyngre än bekvämligheten i att stänga.
+Priset är erkänt och verkligt: krysset sitter nio procent ner i vyn, ett grepp man måste flytta handen för att nå.
+`Escape` finns för den som har tangentbord, och ett klick utanför lådan stänger den — det senare är vad som gör priset uthärdligt, eftersom «utanför» på en telefon är nästan hela skärmen och därmed nåbart med tummen.
+
+Mönstret har alltså ingen egen telefonform. Det är samma låda, på en smalare skärm.
+
+### L33. Beskärningen öppnas som ett ark med fyra grepp, och statusen står på båda ställena (prototypat 2026-09-20, #297)
+
+`Crop.tsx` ritade **ett** hörngrepp — `.byd-crop-corner` är `right: -6px; bottom: -6px` — och `.byd-crop-sheet` hade `overflow: hidden` utan luft runt bilden.
+Felet var värre än att greppet var svårt att nå: med utsnittet på hela bilden låg greppets närmaste kant **−4 px** från arkets, alltså utanför det, och halva greppet klipptes bort.
+Det gick inte illa att nå — det fanns inte på skärmen.
+
+Arbetsytan **öppnas som ett ark över biblioteket**, med «Klart» tillbaka.
+Beskärningen är en sak man gör med full uppmärksamhet på en bild i taget, och arket ger utsnittet den största ytan utan att tränga undan biblioteket permanent.
+Priset är erkänt: biblioteket är borta medan man arbetar, och arket är ett lager till som måste stängas rätt.
+
+Hela originalbilden ligger med marginal, fyra hörngrepp ändrar storlek med det motsatta hörnet stilla, och utsnittet lämnar aldrig bildens gränser.
+Ingen zoom och ingen panorering av arbetsytan (avgränsningen 2026-09-20).
+Arket har ett tak: utan det växer bilden med kolumnen, och vid 1440 tryckte den ner statusen, «Hela bilden» och tangentraden under vikningen.
+**En beskärningsyta som kräver rullning för att nå «Hela bilden» är ingen arbetsyta.**
+
+**Statusen står på båda ställena, och arket är skälet till att den måste göra det.**
+När arket ligger över biblioteket ser designern inget bibliotek alls medan hon beskär: statusen under utsnittet är det enda som finns under arbetet, och märket på bibliotekets bricka det enda som finns efteråt.
+De svarar på var sin halva av kriteriet — «tydlig efter ändringen» och «även när bilden väljs igen».
+
+Statusen har **tre** lägen och inte två, eftersom den inte får påstå att servern sparat när så inte skett:
+`▢ Hela bilden` utan färg, `⟳ Ändrad — sparas …` i bärnsten, och `✓ Beskuren · visar 44 %` i grönt.
+Det mellersta är hela poängen.
+
+Ändringen tillämpas när greppet släpps; ingen bekräftelseknapp införs.
+Ett ångrasteg per grepp.
+Piltangenterna flyttar utsnittet och Shift ger större steg; ett fokuserat hörn ändrar storlek med samma tangenter.
+«Hela bilden» tar bort beskärningen och märket i biblioteket. Originalfilen ändras aldrig (L22).
+
+### L34. Betydelsen väljs som en färgad kopia av symbolen, och varje prov står mot kortets papper (prototypat 2026-09-20, #302)
+
+En symbol skrivs `{namn}` och en färgad `{namn|roll}` (E4, `inline.ts`), där rollen är den namngivna betydelsen som bär färgen.
+Den som inte kände till lodstrecket och betydelsens id kunde inte infoga en färgad symbol alls: väljaren skrev bara `{namn}`, och resten fick skrivas för hand.
+
+Betydelsen väljs nu i samma ruta som symbolen, och **betydelserna ritas som färgade kopior av just den symbol designern valt** — inte som namn bredvid abstrakta färgprickar.
+Symbolrutnätet färgas om när betydelsen väljs, så vad man får syns innan man infogar.
+Rutan visar hela tiden strängen den kommer att skriva, och den strängen är produktens egen: `{droppe|skord}` och inget eget format.
+
+«Utan betydelse» står först bland betydelserna och kostar inget extra steg.
+Fri färg per förekomst införs inte; färgen hör till betydelsen, och en ändring där målar om varje kort som säger den.
+
+**Har spelet inga betydelser finns betydelsesteget inte.**
+Rutan säger varför på en rad och infogar i bläck. Kriteriet att inget flikbyte tvingas fram för en ofärgad symbol är uppfyllt genom att steget inte finns, inte genom att det går att hoppa över.
+
+**Varje symbolprov står mot kortets papper, aldrig mot editorns botten.**
+Symbolen ritas i kortets bläck, och mot den mörka panelen försvann «utan betydelse» helt — provet var osynligt.
+Det gäller i väljaren och i betydelsepaletten, av samma skäl som bordets lucka ritas mot en filt (#227).
+En symbolförhandsvisning mot editorns botten är ingen förhandsvisning.
+
+Sambandet mellan namn och färg sägs i Symboler genom att visas: samma symbol en gång per betydelse, med raden som skriver den bredvid.
+Befintlig tangentbordsinmatning och syntax fortsätter fungera oförändrat — väljaren är en väg till samma sträng, inte en ersättning för den.
+
+### L35. En blandning fläktas på högen, spelad av händelsen och inte av tillståndet (prototypat 2026-09-20, #326)
+
+`shuffle` är ett intent, och resultatet ligger i loggen, så webben vet exakt när en hög blandades.
+Animeringen spelas därför **av händelsen** och inte av en tillståndsskillnad: en gång per `shuffle`, på varje skärm som ser högen, inklusive den som utförde den.
+En blandning ändrar ingenting man kan se efteråt, så utan animeringen är den enda spår en rad i aktiviteten.
+
+Tre rörelser prövades i 4K: riffeln som delar högen i två halvor (A), skaket som vrider hela högen (B), och fläkten där fyra kort fläktas ut och samlas ihop (C).
+Alla tre ligger under 600 ms och alla tre höll 62 bildrutor i sekunden över tre körningar i 3840 × 2160, så prestandakriteriet skilde dem inte.
+
+Valet blev **C**, på 560 ms.
+Det är den mest synliga på avstånd, och avstånd är vad en TV i ett rum handlar om: den som sitter fem meter bort ska se att högen blandades utan att titta efter.
+Riffeln är den sannare rörelsen — den är vad en människa gör med en kortlek — men den är också den minsta, och en rörelse ingen hinner se är ingen rörelse.
+
+**Ingen ny fram- eller baksida ritas under animeringen.**
+Varje rörelse rör bara de baksidor som redan låg i högen; ingenting monteras medan den spelas.
+Det är vad som gör att ett test på råa frames inte kan se något det inte såg innan — kravet är en egenskap hos hur rörelsen byggs, inte något som kontrolleras efteråt.
+
+**Animeringen skrivs i kortets egna mått och aldrig i bildpunkter.**
+Under prototypandet ritades högen i fasta 126 px, och på en 4K-skärm var rörelsen knappt synlig — det var storleken som var fel, inte rörelsen.
+En hög på TV:n är så stor som kameran gör den, så en rörelse i bildpunkter är en rörelse som betyder olika saker på olika skärmar.
+
+`prefers-reduced-motion` stänger av rörelsen helt, inte dämpar den.
+Kvar blir en kort bärnstensfärgad puls på högen i 420 ms: något hände, utan att något rörde sig.
+
+### L36. Start-, konto- och guideflödena kortas bakom L32:s frågetecken, och säljtexten står bara första gången (prototypat 2026-09-20, #304)
+
+Inventeringen av `sv.account.ts`: 128 nycklar, 92 av dem under 25 tecken.
+Sjutton strängar är 50 tecken eller mer, och sju av dem står kvar — fel, följder och status, däribland att inloggningslänken gäller femton minuter och en gång, vilket behövs för att handla.
+**Tio är genuint förklarande, tillsammans 879 tecken**, och de samlar sig på två ytor: inloggningen bär 252 tecken i fyra strängar och guiden 418 i fem.
+Startsidans tomma läge är en enda sträng på 149 tecken, katalogens längsta.
+
+Kortat bakom L32:s frågetecken går de tre ytorna från 280 px text till 88.
+
+**Guidens tre förklaringar samlas bakom ett frågetecken per steg**, vid stegets rubrik, och inte ett per förklaring.
+Guiden ska kännas enkel, och tre frågetecken på ett steg är tre saker att förhålla sig till där det skulle stå en.
+Priset är erkänt: lådan bär tre stycken, och den som bara undrade över fälten får läsa om CSV också.
+
+**Säljtexten på inloggningen står bara första gången.**
+`login.lead` — «Skapa ditt kortspel, speltesta det på skärmen, beställ hem det» — är den enda av de tio som inte förklarar hur verktyget fungerar utan säger vad produkten är.
+Inloggningssidan är det första någon ser, och ett e-postfält utan sammanhang säger ingenting om vad hon loggar in på; samtidigt läser den som redan har konto samma mening varje gång.
+
+Det kräver ett tillstånd på en sida som i dag inte har något, och tillståndet är en vy och inte ett faktum om någon (L4): det ligger i webbläsaren, per skärm, aldrig i ett konto — sidan får inte veta vem som tittar innan hon loggat in.
+**Går lagringen inte att läsa visas säljtexten.**
+Ett privat fönster, en rensad webbläsare eller en blockerad lagring ska ge den som kanske aldrig varit här sammanhanget, inte ta bort det: felet åt det hållet kostar en mening, felet åt andra hållet kostar en förklaring till den som behövde den.
+Frågetecknet står kvar bredvid i båda fallen, så vägen till resten finns oavsett.
+
 
 ## I. Öppna frågor
 

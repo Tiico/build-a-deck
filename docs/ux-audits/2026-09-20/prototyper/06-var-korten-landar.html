@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 6 — Var korten landar bredvid högen (#316)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  .setup { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 320px minmax(0,1fr); grid-template-rows: minmax(0,1fr); gap: var(--s4); padding: var(--gutter); }
+  .setup > * { min-width: 0; min-height: 0; }
+  .sida { display: grid; gap: 14px; align-content: start; overflow: auto; }
+  .sida h2 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .zoner { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+  .zoner button { width: 100%; text-align: left; display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: #c7cede; font: inherit; font-size: 12px; cursor: pointer; }
+  .zoner button:hover { background: #1b2030; }
+  .zoner button[aria-pressed='true'] { background: #24507f; color: #fff; }
+  .zoner em { font-style: normal; margin-left: auto; color: var(--quiet); font-size: 10px; }
+
+  .kort-yta { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: 12px; display: grid; gap: 8px; }
+  .kort-yta h3 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+  .kort-yta label { display: grid; gap: 4px; color: #c7cede; font-size: 12px; }
+  .kort-yta select { min-height: 32px; border: 1px solid #2a2d36; border-radius: 8px; background: #0f1115; color: #fff; font: inherit; padding: 0 8px; }
+  /* Den här väljaren är byggd och i drift (`SetupEditor.tsx`); prototypen finns för antydan
+     bredvid den, inte för väljaren. */
+  .kort-yta select:focus-visible { outline: 2px solid var(--primary-mark); outline-offset: 2px; }
+  .mening { margin: 0; color: #9aa3b8; font-size: 11.5px; line-height: 1.5; }
+  .mening b { color: #e6ecfa; }
+
+  /* Filten i bordets egna millimeter. */
+  .filt { position: relative; background: #0d0f14; border-radius: 16px; overflow: hidden; display: grid; place-items: center; }
+  .bord { position: relative; background: radial-gradient(circle at 50% 40%, #1d4032, #14261f 72%); border-radius: 14px; outline: 1px solid #2a4034; }
+  .hog { position: absolute; box-sizing: border-box; border: 2px solid rgba(255,217,138,.55); border-radius: 5px; background: #f4efe433; display: grid; place-items: center; cursor: pointer; }
+  .hog[aria-pressed='true'] { border-color: #ffd98a; box-shadow: 0 0 0 3px rgba(255,217,138,.25); }
+  .hog span { color: #ffd98a; font-size: 9px; font-weight: 700; letter-spacing: .5px; white-space: nowrap; position: absolute; bottom: -14px; }
+  .hog i { position: absolute; top: -7px; right: -7px; font-style: normal; background: #1b1d23; color: #fff; border: 1px solid #444; border-radius: 999px; font-size: 9px; font-weight: 700; padding: 0 4px; }
+
+  /* Antydan: kortkonturen där kortet faktiskt hamnar. */
+  .antydan { position: absolute; box-sizing: border-box; border: 1.5px dashed rgba(207,230,255,.75); border-radius: 4px; background: rgba(140,190,255,.10); pointer-events: none; opacity: 0; transition: opacity 140ms ease; }
+  .antydan[data-syns='ja'] { opacity: 1; }
+  /* Utanför bordet är hela poängen med att sidan blev valbar (K21, 2026-09-16). */
+  .antydan[data-utanfor='ja'] { border-color: #f0b64a; background: rgba(240,182,74,.14); }
+  .antydan u { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); text-decoration: none; color: #cfe6ff; font-size: 9px; font-weight: 700; letter-spacing: .4px; white-space: nowrap; }
+  .antydan[data-utanfor='ja'] u { color: #ffd98a; }
+  @media (prefers-reduced-motion: reduce) { .antydan { transition: none; } }
+
+  .varning { margin: 0; color: #ffd98a; font-size: 11.5px; line-height: 1.5; }
+  .varning[hidden] { display: none; }
+</style>
+</head>
+<body>
+<div class="shell" data-form="alltid" data-vad="hog">
+<header>
+  <strong>Skogens herrar</strong>
+  <nav class="tabs"><button type="button">Kort</button><button type="button">Mall</button><button type="button">Data</button><button type="button">Symboler</button><button type="button">Regler</button><button type="button" aria-selected="true">Bord</button></nav>
+  <span class="spacer"></span>
+  <div class="switch" role="group" aria-label="När antydan syns">
+    <button type="button" data-form="ingen" aria-pressed="false">Nu</button>
+    <button type="button" data-form="alltid" aria-pressed="true">A · Alltid</button>
+    <button type="button" data-form="fokus" aria-pressed="false">B · Vid fokus</button>
+    <button type="button" data-form="byte" aria-pressed="false">C · Vid byte</button>
+  </div>
+  <span class="who">P</span>
+</header>
+
+<div class="protorad">
+  <b>#316</b>
+  <p id="hjalp">Väljaren finns redan i produkten. Det som prövas är konturen bredvid högen — när den syns och vad den ritas för.</p>
+  <div class="switch" role="group" aria-label="Vad som landar">
+    <button type="button" data-vad="hog" aria-pressed="true">En hög landar</button>
+    <button type="button" data-vad="kort" aria-pressed="false">Ett kort landar</button>
+  </div>
+  <div class="matt"><span>landar på <u id="m-at">–</u></span></div>
+  <p class="sagt" id="sagt">Skärmläsaren hör: <em>—</em></p>
+</div>
+
+<main>
+<div class="setup">
+  <div class="sida">
+    <div><h2>Zoner</h2><ul class="zoner" id="zonlista"></ul></div>
+    <div class="kort-yta">
+      <h3 id="h-hog">Draghögen</h3>
+      <label for="beside">Kort landar
+        <select id="beside">
+          <option value="left">till vänster</option>
+          <option value="right">till höger</option>
+          <option value="above">ovanför</option>
+          <option value="below">nedanför</option>
+        </select>
+      </label>
+      <p class="mening" id="handling">Ta <b>3</b> från högen och lägg dem uppvända <b id="ord">till vänster om Draghögen</b>.</p>
+      <p class="varning" id="varning" hidden></p>
+    </div>
+  </div>
+  <div class="filt" id="filt"><div class="bord" id="bord"></div></div>
+</div>
+</main>
+</div>
+
+<div class="note">
+  <b>Prototyp 6 — #316</b>
+  Väljaren <i>Kort landar</i> är byggd och i drift; det här handlar bara om konturen. Byt sida och se var korten hamnar — <i>Krönikan</i> står vid bordets kant, där två av de fyra sidorna lägger korten utanför filten. Växla också mellan <i>en hög landar</i> och <i>ett kort landar</i>: de placeras olika i <code>besidePile</code>, och konturen flyttar sig därefter.
+</div>
+
+<script>
+// ── Bordet ─────────────────────────────────────────────────────────────────────────────────────
+// Millimeter, som allt annat i `drop.ts`. Bordet är 900 × 600 mm.
+const BORD = { w: 900, h: 600 }
+const KORT = { w: 63, h: 88 }
+const BESIDE_MM = 12
+// Ordagrant ur `drop.ts`: vänster är 180°, höger 0°, ovan -90°, nedan 90° — räknat i högens egen
+// vridning, så en vriden hög vrider också sin sida.
+const SIDES = { left: 180, right: 0, above: -90, below: 90 }
+
+const HOGAR = [
+  { id: 'draw', namn: 'Draghögen', x: 450, y: 300, rot: 0 },
+  { id: 'discard', namn: 'Kasthögen', x: 620, y: 300, rot: 0 },
+  // En vriden hög: sidan ska vridas med den, eftersom namnet gör det.
+  { id: 'market', namn: 'Marknaden', x: 250, y: 170, rot: 30 },
+  // Och en vid kanten — hela skälet sidan blev valbar (K21, 2026-09-16).
+  { id: 'chronicle', namn: 'Krönikan', x: 838, y: 500, rot: 0 },
+]
+let vald = 'draw'
+const sidor = { draw: 'left', discard: 'left', market: 'left', chronicle: 'left' }
+const ORD = { left: 'till vänster om', right: 'till höger om', above: 'ovanför', below: 'nedanför' }
+
+const shell = document.querySelector('.shell')
+const filt = document.getElementById('filt')
+const bord = document.getElementById('bord')
+
+// Ordagrant `besidePile`: mitten för en hög, hörnet för ett ensamt kort.
+function besidePile(hog, kortAntal, side) {
+  const rad = ((hog.rot + SIDES[side]) * Math.PI) / 180
+  const d = (side === 'left' || side === 'right' ? KORT.w : KORT.h) + BESIDE_MM
+  const centre = { x: hog.x + d * Math.cos(rad), y: hog.y + d * Math.sin(rad) }
+  const at = kortAntal === 1 ? { x: centre.x - KORT.w / 2, y: centre.y - KORT.h / 2 } : centre
+  return { x: Math.round(at.x), y: Math.round(at.y) }
+}
+
+// ── Ritningen ──────────────────────────────────────────────────────────────────────────────────
+let skala = 1
+function matBordet() {
+  const r = filt.getBoundingClientRect()
+  // Ett kort ryms utanför bordet på varje sida (63 mm ≈ 56 px), annars klipper filten
+  // bort den kontur som säger «utanför bordet».
+  skala = Math.min((r.width - 150) / BORD.w, (r.height - 150) / BORD.h)
+  bord.style.width = BORD.w * skala + 'px'
+  bord.style.height = BORD.h * skala + 'px'
+}
+
+function rita() {
+  matBordet()
+  const enHog = shell.dataset.vad === 'hog'
+  const antal = enHog ? 3 : 1
+  bord.innerHTML = HOGAR.map((h) => {
+    const w = KORT.w * skala, ht = KORT.h * skala
+    return '<button type="button" class="hog" data-hog="' + h.id + '" aria-pressed="' + (h.id === vald) + '" aria-label="' + h.namn + '"'
+      + ' style="left:' + (h.x * skala - w / 2) + 'px;top:' + (h.y * skala - ht / 2) + 'px;width:' + w + 'px;height:' + ht + 'px;transform:rotate(' + h.rot + 'deg)">'
+      + '<i>18</i><span>' + h.namn + '</span></button>'
+  }).join('')
+
+  const h = HOGAR.find((x) => x.id === vald)
+  const side = sidor[vald]
+  const p = besidePile(h, antal, side)
+  // En hög anges i sin mitt, ett ensamt kort i sitt hörn — konturen måste rita samma sak.
+  const vansterUpp = antal === 1 ? p : { x: p.x - KORT.w / 2, y: p.y - KORT.h / 2 }
+  const utanfor = vansterUpp.x < 0 || vansterUpp.y < 0 || vansterUpp.x + KORT.w > BORD.w || vansterUpp.y + KORT.h > BORD.h
+
+  const syns = shell.dataset.form === 'alltid' ? 'ja'
+    : shell.dataset.form === 'ingen' ? 'nej'
+    : shell.dataset.visa === 'ja' ? 'ja' : 'nej'
+
+  bord.insertAdjacentHTML('beforeend',
+    '<div class="antydan" id="antydan" data-syns="' + syns + '" data-utanfor="' + (utanfor ? 'ja' : 'nej') + '"'
+    + ' style="left:' + (vansterUpp.x * skala) + 'px;top:' + (vansterUpp.y * skala) + 'px;width:' + (KORT.w * skala) + 'px;height:' + (KORT.h * skala) + 'px;transform:rotate(' + h.rot + 'deg)">'
+    + (utanfor ? '<u>utanför bordet</u>' : '') + '</div>')
+
+  document.getElementById('h-hog').textContent = h.namn
+  document.getElementById('ord').textContent = ORD[side] + ' ' + h.namn
+  document.getElementById('beside').value = side
+  document.getElementById('m-at').textContent = p.x + ', ' + p.y + ' mm' + (antal === 1 ? ' (hörnet)' : ' (mitten)')
+  const v = document.getElementById('varning')
+  v.hidden = !utanfor
+  if (utanfor) v.textContent = 'Korten hamnar utanför bordet på den här sidan. Välj en annan sida, eller flytta ' + h.namn + '.'
+  document.querySelectorAll('.zoner [data-hog]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.hog === vald)))
+}
+
+document.getElementById('zonlista').innerHTML = HOGAR.map((h) =>
+  '<li><button type="button" data-hog="' + h.id + '" aria-pressed="' + (h.id === vald) + '">' + h.namn + '<em>hög</em></button></li>').join('')
+
+// ── Handlingar ─────────────────────────────────────────────────────────────────────────────────
+document.addEventListener('click', (e) => {
+  const v = e.target.closest('button[data-form]')
+  if (v) {
+    shell.dataset.form = v.dataset.form
+    document.querySelectorAll('button[data-form]').forEach((b) => b.setAttribute('aria-pressed', String(b === v)))
+    shell.dataset.visa = 'nej'
+    document.getElementById('hjalp').textContent = {
+      ingen: 'Nu: väljaren finns, men ingenting på filten säger var korten hamnar. Man får byta sida och gissa.',
+      alltid: 'A · Alltid: konturen står så snart en hög är vald. Alltid sann, alltid en sak till på filten.',
+      fokus: 'B · Vid fokus: konturen finns bara medan väljaren är hovrad eller fokuserad. Prova att hovra «Kort landar».',
+      byte: 'C · Vid byte: konturen visas när sidan ändras och tonar bort efter 1,6 sekunder. En bekräftelse, inte möbler.',
+    }[v.dataset.form]
+    rita()
+    return
+  }
+  const vad = e.target.closest('button[data-vad]')
+  if (vad) {
+    shell.dataset.vad = vad.dataset.vad
+    document.querySelectorAll('button[data-vad]').forEach((b) => b.setAttribute('aria-pressed', String(b === vad)))
+    rita()
+    return
+  }
+  const h = e.target.closest('[data-hog]')
+  if (h) { vald = h.dataset.hog; rita(); return }
+})
+
+// B: konturen lever medan väljaren hålls. Hover *och* fokus, så tangentbordet får samma sak.
+const väljaren = document.getElementById('beside')
+const visa = (pa) => { shell.dataset.visa = pa ? 'ja' : 'nej'; const a = document.getElementById('antydan'); if (a && shell.dataset.form !== 'alltid' && shell.dataset.form !== 'ingen') a.dataset.syns = pa ? 'ja' : 'nej' }
+väljaren.closest('label').addEventListener('pointerenter', () => shell.dataset.form === 'fokus' && visa(true))
+väljaren.closest('label').addEventListener('pointerleave', () => shell.dataset.form === 'fokus' && visa(false))
+väljaren.addEventListener('focus', () => shell.dataset.form === 'fokus' && visa(true))
+väljaren.addEventListener('blur', () => shell.dataset.form === 'fokus' && visa(false))
+
+let slocknar = 0
+väljaren.addEventListener('change', (e) => {
+  sidor[vald] = e.target.value
+  const h = HOGAR.find((x) => x.id === vald)
+  document.getElementById('sagt').innerHTML = 'Skärmläsaren hör: <em>Kort landar ' + ORD[e.target.value] + ' ' + h.namn + '</em>'
+  if (shell.dataset.form === 'byte') {
+    shell.dataset.visa = 'ja'
+    clearTimeout(slocknar)
+    // 1,6 s: lång nog att hinna se, kort nog att inte bli möbler.
+    slocknar = setTimeout(() => { shell.dataset.visa = 'nej'; const a = document.getElementById('antydan'); if (a) a.dataset.syns = 'nej' }, 1600)
+  }
+  rita()
+})
+
+window.addEventListener('resize', rita)
+rita()
+</script>
+</body>
+</html>

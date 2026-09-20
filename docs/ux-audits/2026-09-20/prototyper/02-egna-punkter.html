@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 2 — Egna punkter på duken (#309)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  /* Duken och egenskapspanelen i mallsidans riktiga mått. Panelen är ritad i den form #328 just
+     fick — C · Greppen — så punktläget bedöms i det rum det faktiskt ska bo i. */
+  .canvas { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 68px 220px minmax(0,1fr) 280px; }
+  .rail { border-right: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; gap: 4px; padding: var(--s2) 0; }
+  .rail button { width: 44px; height: 44px; border: 0; border-radius: 8px; background: transparent; color: var(--quiet-2); font-size: 17px; cursor: pointer; }
+  .rail button[aria-pressed='true'] { background: var(--primary); color: #fff; }
+  .layers { border-right: 1px solid var(--line); padding: var(--s3); min-width: 0; }
+  .layers ul { list-style: none; margin: var(--s2) 0 0; padding: 0; display: grid; gap: 2px; }
+  .layers li { display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 0 8px; border-radius: 6px; color: var(--quiet-2); font-size: 12px; }
+  .layers li[aria-selected='true'] { background: #24507f; color: #fff; }
+  .duk { display: grid; place-items: center; background: #0d0f14; min-width: 0; min-height: 0; }
+
+  /* Kortet i 63 × 88 mm, ritat i 4,6 px/mm — punktarbete i 3,4 px/mm är att döma en gest på
+     halva dess storlek. */
+  .kort { position: relative; width: 290px; height: 405px; border-radius: 12px; background: #f4efe4; box-shadow: 0 18px 44px rgba(0,0,0,.55); }
+  .kort svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .kort svg.lager { pointer-events: none; }
+
+  /* Handtagen. Punkten är en fyrkant som elementets egna hörnhandtag, så duken har ett formspråk
+     och inte två. */
+  .pt { fill: #fff; stroke: var(--primary-mark); stroke-width: 1.4; cursor: grab; }
+  .pt:hover { fill: #cfe6ff; }
+  .pt[data-vald='true'] { fill: var(--primary-mark); stroke: #fff; }
+  .pt:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  /* Mittpunkten i C: ihålig och halvt så stark, så att den läser som «finns men är inte en punkt». */
+  .mid { fill: #0d0f14; fill-opacity: .35; stroke: var(--primary-mark); stroke-width: 1.2; stroke-opacity: .65; cursor: copy; }
+  .mid:hover { fill-opacity: .9; stroke-opacity: 1; }
+  /* Spöket i A: följer pekaren längs kanten och finns bara medan pekaren är där. */
+  .spoke { fill: #fff; fill-opacity: .55; stroke: var(--primary-mark); stroke-width: 1.2; pointer-events: none; }
+  .spoke[hidden] { display: none; }
+  /* ±7 px är 1,5 mm på kortet, smalare än punkten den tävlar med. 22 ger ±2,4 mm. */
+  .kant { stroke: transparent; stroke-width: 22; fill: none; cursor: copy; }
+  .box { fill: none; stroke: var(--primary-mark); stroke-width: 1; stroke-dasharray: 3 3; }
+  .boxpt { fill: #fff; stroke: var(--primary-mark); stroke-width: 1.2; cursor: nwse-resize; }
+
+  /* Vad varje variant visar. Duken monterar alltid allt; det här är vad som får synas. */
+  .shell:not([data-form='alltid']) .spoke, .shell:not([data-form='alltid']) .kant { display: none; }
+  .shell:not([data-form='mitt']) .mid { display: none; }
+  /* B ritar inga punkter förrän punktläget är på, och då försvinner boxen i stället. */
+  .shell[data-form='lage'][data-punkt='av'] .pt { display: none; }
+  .shell[data-form='lage'][data-punkt='av'] .kant { display: none; }
+  .shell[data-form='nu'] .pt, .shell[data-form='nu'] .mid, .shell[data-form='nu'] .kant { display: none; }
+  .shell[data-form='alltid'] .box, .shell[data-form='mitt'] .box,
+  .shell[data-form='lage'][data-punkt='pa'] .box { display: none; }
+  .shell[data-form='alltid'] .boxpt, .shell[data-form='mitt'] .boxpt,
+  .shell[data-form='lage'][data-punkt='pa'] .boxpt { display: none; }
+
+  /* ── Panelen, i L25:s form ────────────────────────────────────────────────────────────────── */
+  .props { min-width: 0; display: flex; flex-direction: column; background: var(--panel); border-left: 1px solid var(--line); --radh: 28px; }
+  .props > .topp { flex: none; display: flex; align-items: baseline; gap: 6px; padding: var(--s3) var(--s3) var(--s2); border-bottom: 1px solid var(--line-soft); }
+  .props > .topp b { color: #fff; font-size: 13px; }
+  .props > .topp span { color: var(--quiet); font-size: 11px; margin-left: auto; }
+  .props .scroll { padding: var(--s3); }
+  .sec + .sec { margin-top: 12px; }
+  .sech { width: 100%; display: flex; align-items: center; gap: 6px; min-height: 26px; border: 0; background: transparent; padding: 0; color: var(--quiet); font: inherit; font-size: 10.5px; text-transform: uppercase; letter-spacing: 1.6px; cursor: pointer; }
+  .sech .chev { flex: none; width: 10px; color: #5d6577; font-size: 9px; }
+  .sech .chev::before { content: '▾'; }
+  .sech .rule { flex: 1 1 auto; height: 1px; background: var(--line-soft); }
+  .sech .sum { flex: none; text-transform: none; letter-spacing: 0; font-size: 11px; color: var(--quiet-2); }
+  .secbody { display: grid; gap: 4px; padding-top: 5px; }
+  .f { display: flex; align-items: center; border: 1px solid #2a2d36; border-radius: 6px; background: #0f1115; height: var(--radh); min-width: 0; }
+  .f > .ic { flex: none; width: 27px; height: 100%; display: grid; grid-template-columns: 5px auto; align-items: center; justify-items: center; color: var(--quiet); font-size: 10px; font-weight: 700; cursor: ew-resize; user-select: none; touch-action: none; }
+  .f > .ic::before { content: ''; width: 3px; height: 11px; border-radius: 2px; background: repeating-linear-gradient(to bottom, #4a5162 0 2px, transparent 2px 4px); }
+  .f > input { flex: 1 1 auto; min-width: 0; width: 100%; border: 0; background: transparent; color: #fff; font: inherit; font-size: 12px; font-variant-numeric: tabular-nums; padding: 0 5px 0 2px; }
+  .f > input:focus { outline: none; }
+  .f > u { flex: none; text-decoration: none; color: #5d6577; font-size: 10px; padding-right: 5px; }
+  .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .mini { display: grid; grid-template-columns: repeat(auto-fill, minmax(30px, 1fr)); gap: 3px; }
+  .mini button { height: 26px; border: 1px solid var(--line); border-radius: 5px; background: #0f1115; color: var(--quiet-2); cursor: pointer; display: grid; place-items: center; padding: 0; }
+  .mini button[aria-pressed='true'] { border-color: var(--primary-mark); background: #24507f; color: #fff; }
+  .knapp { width: 100%; min-height: 30px; border: 1px solid var(--line); border-radius: 7px; background: #0f1115; color: #e6ecfa; font: inherit; font-size: 12px; cursor: pointer; }
+  .knapp:hover { border-color: var(--primary-mark); }
+  .knapp.pa { background: var(--primary); border-color: var(--primary); font-weight: 700; }
+  .knapp.tyst { color: var(--quiet-2); }
+  .punktlage { display: grid; gap: 5px; }
+  .punktlage p { margin: 0; color: var(--quiet); font-size: 11px; line-height: 1.5; }
+  .shell:not([data-egen='ja']) .egen { display: none; }
+  .shell[data-egen='ja'] .galleriform { display: none; }
+  .shell:not([data-form='lage']) .barelage { display: none; }
+</style>
+</head>
+<body>
+<div class="shell" data-form="nu" data-egen="nej" data-punkt="av">
+<header>
+  <strong>Skogens herrar</strong>
+  <nav class="tabs"><button type="button">Kort</button><button type="button" aria-selected="true">Mall</button><button type="button">Data</button><button type="button">Symboler</button><button type="button">Regler</button><button type="button">Bord</button></nav>
+  <span class="spacer"></span>
+  <div class="switch" role="group" aria-label="Punkternas form">
+    <button type="button" data-form="nu" aria-pressed="true">Nu</button>
+    <button type="button" data-form="alltid" aria-pressed="false">A · Alltid</button>
+    <button type="button" data-form="lage" aria-pressed="false">B · Punktläge</button>
+    <button type="button" data-form="mitt" aria-pressed="false">C · Mittpunkter</button>
+  </div>
+  <span class="who">P</span>
+</header>
+
+<div class="protorad">
+  <b>#309</b>
+  <p id="hjalp">Välj en variant. Dagens galleriform har bara fyra lådhandtag — punkterna finns inte.</p>
+  <div class="matt">
+    <span>punkter <u id="m-n">–</u></span>
+    <span>historikposter <u id="m-g">0</u></span>
+  </div>
+  <p class="sagt" id="sagt">Skärmläsaren hör: <em>—</em></p>
+</div>
+
+<main>
+<div class="canvas">
+  <div class="rail">
+    <button type="button" aria-label="Markera" aria-pressed="true">⌖</button>
+    <button type="button" aria-label="Text">T</button>
+    <button type="button" aria-label="Bild">▣</button>
+    <button type="button" aria-label="Form">◇</button>
+  </div>
+  <div class="layers">
+    <p class="h">Lager</p>
+    <ul><li>◇ Ram</li><li aria-selected="true">◇ Banderoll</li><li>T Namn</li><li>▣ Illustration</li></ul>
+  </div>
+  <div class="duk">
+    <div class="kort">
+      <svg class="lager" id="fyll" aria-hidden="true"></svg>
+      <svg id="grepp" role="group" aria-label="Formens punkter"></svg>
+    </div>
+  </div>
+
+  <aside class="props" aria-label="Egenskaper">
+    <div class="topp"><b>Banderoll</b><span>form</span></div>
+    <div class="scroll">
+      <div class="sec">
+        <button type="button" class="sech" aria-expanded="true"><span class="chev" aria-hidden="true"></span>Layout<span class="rule"></span></button>
+        <div class="secbody"><div class="g2">
+          <div class="f"><span class="ic">X</span><input value="9.0" aria-label="X i millimeter"><u>mm</u></div>
+          <div class="f"><span class="ic">Y</span><input value="40.0" aria-label="Y i millimeter"><u>mm</u></div>
+          <div class="f"><span class="ic">B</span><input value="45.0" aria-label="Bredd i millimeter"><u>mm</u></div>
+          <div class="f"><span class="ic">H</span><input value="20.0" aria-label="Höjd i millimeter"><u>mm</u></div>
+        </div></div>
+      </div>
+      <div class="sec">
+        <button type="button" class="sech" aria-expanded="true"><span class="chev" aria-hidden="true"></span>Form<span class="rule"></span><span class="sum" id="formsum">Banderoll</span></button>
+        <div class="secbody">
+          <div class="mini galleriform" role="group" aria-label="Form"></div>
+          <!-- Envägsdörren ur #309: en galleriform blir punkter, och galleriet står kvar som
+               startpunkt. Den står under galleriet därför att den handlar om formen man just valt. -->
+          <button type="button" class="knapp galleriform" id="tillpunkter" style="margin-top:4px">Anpassa punkterna …</button>
+          <div class="egen punktlage">
+            <p><b id="antal">7 punkter</b> — egen form, utgången från <i>Banderoll</i>.</p>
+            <button type="button" class="knapp barelage" id="lagevaxel">Punktläge</button>
+            <p id="brukstext">Dra i en punkt för att flytta den. Delete tar bort den valda.</p>
+            <button type="button" class="knapp tyst" id="tillbaka">Tillbaka till galleriform …</button>
+          </div>
+        </div>
+      </div>
+      <div class="sec">
+        <button type="button" class="sech" aria-expanded="true"><span class="chev" aria-hidden="true"></span>Fyllning<span class="rule"></span></button>
+        <div class="secbody"><div style="display:grid;grid-template-columns:22px minmax(0,1fr) 48px;gap:4px;align-items:center;height:28px">
+          <input type="color" value="#C9A227" style="width:22px;height:100%;border-radius:5px;border:1px solid #3a3f4c;padding:0" aria-label="Fyllningens färg" id="fillfarg">
+          <span style="border:1px solid #2a2d36;border-radius:6px;background:#0f1115;color:#fff;font-size:12px;height:100%;display:flex;align-items:center;padding:0 6px">#C9A227</span>
+          <span style="border:1px solid #2a2d36;border-radius:6px;background:#0f1115;color:#fff;font-size:12px;height:100%;display:flex;align-items:center;justify-content:flex-end;padding:0 5px">100<u style="text-decoration:none;color:#5d6577;font-size:10px;padding-left:2px">%</u></span>
+        </div></div>
+      </div>
+    </div>
+  </aside>
+</div>
+</main>
+</div>
+
+<div class="note">
+  <b>Prototyp 2 av 4 för Template-duken — #309</b>
+  Tryck <i>Anpassa punkterna</i> i panelen, dra sedan i punkterna. A lägger till genom att klicka på en kant (spöket följer pekaren), B kräver att punktläget slås på först, C har en ihålig mittpunkt på varje kant att dra ut. Delete tar bort vald punkt i alla tre. Piltangenter flyttar; Tabb går mellan punkterna.
+</div>
+
+<script>
+// ── Formen ─────────────────────────────────────────────────────────────────────────────────────
+// Punkterna ligger i kortets millimeter, relativt elementets box — precis som #309 beskriver
+// modellen. Duken räknar om till bildpunkter först när den ritar.
+const PXMM = 290 / 63
+const BOX = { x: 9, y: 40, w: 45, h: 20 }
+// Banderollen ur `shapes.ts`, utskriven som de sju punkter den består av. Att en galleriform
+// konverteras utan att ändra utseende är hela första steget i #309.
+const START = [[0,0],[45,0],[45,20],[34.9,13],[22.5,20],[10.1,13],[0,20]]
+let pts = START.map(([x, y]) => [x, y])
+let egen = false, vald = -1, gester = 0
+
+const shell = document.querySelector('.shell')
+const svgG = document.getElementById('grepp')
+const svgF = document.getElementById('fyll')
+const mmTillPx = ([x, y]) => [(BOX.x + x) * PXMM, (BOX.y + y) * PXMM]
+
+function rita() {
+  const d = 'M' + pts.map((p) => mmTillPx(p).map((n) => n.toFixed(1)).join(' ')).join(' L') + ' Z'
+  svgF.innerHTML = '<path d="' + d + '" fill="' + document.getElementById('fillfarg').value + '" stroke="#3E2B12" stroke-width="' + 0.6 * PXMM + '"/>'
+
+  let g = ''
+  const [bx, by] = mmTillPx([0, 0]), [bx2, by2] = mmTillPx([BOX.w, BOX.h])
+  if (!egen) {
+    g += '<rect class="box" x="' + bx + '" y="' + by + '" width="' + (bx2 - bx) + '" height="' + (by2 - by) + '"/>'
+    for (const [cx, cy] of [[bx, by], [bx2, by], [bx, by2], [bx2, by2]]) g += '<rect class="boxpt" x="' + (cx - 4) + '" y="' + (cy - 4) + '" width="8" height="8" rx="1.5"/>'
+  } else {
+    // Kanterna först, så att punkterna ligger över dem och en punkt aldrig blir en kantklick.
+    pts.forEach((p, i) => {
+      const a = mmTillPx(p), b = mmTillPx(pts[(i + 1) % pts.length])
+      g += '<line class="kant" data-kant="' + i + '" x1="' + a[0] + '" y1="' + a[1] + '" x2="' + b[0] + '" y2="' + b[1] + '"/>'
+    })
+    pts.forEach((p, i) => {
+      const a = mmTillPx(p), b = mmTillPx(pts[(i + 1) % pts.length])
+      g += '<circle class="mid" data-mid="' + i + '" cx="' + (a[0] + b[0]) / 2 + '" cy="' + (a[1] + b[1]) / 2 + '" r="3.6"/>'
+    })
+    pts.forEach((p, i) => {
+      const [x, y] = mmTillPx(p)
+      g += '<rect class="pt" data-pt="' + i + '" data-vald="' + (i === vald) + '" tabindex="0" role="button" aria-label="Punkt ' + (i + 1) + ' av ' + pts.length + ', ' + p[0].toFixed(1) + ' ' + p[1].toFixed(1) + ' millimeter" x="' + (x - 4.5) + '" y="' + (y - 4.5) + '" width="9" height="9" rx="1.5"/>'
+    })
+    g += '<circle class="spoke" id="spoke" r="4" cx="0" cy="0" hidden/>'
+  }
+  svgG.innerHTML = g
+  document.getElementById('m-n').textContent = egen ? String(pts.length) : '–'
+  document.getElementById('antal').textContent = pts.length + ' punkter'
+  shell.dataset.egen = egen ? 'ja' : 'nej'
+}
+
+function sag(t) { document.getElementById('sagt').innerHTML = 'Skärmläsaren hör: <em>' + t + '</em>' }
+function gest(t) { gester++; document.getElementById('m-g').textContent = String(gester); if (t) sag(t) }
+
+// ── Att dra en punkt ───────────────────────────────────────────────────────────────────────────
+let drag = null
+svgG.addEventListener('pointerdown', (e) => {
+  const h = e.target.closest('[data-pt]')
+  if (h) {
+    vald = +h.dataset.pt
+    drag = { i: vald, el: h }
+    h.setPointerCapture(e.pointerId)
+    rita()
+    return
+  }
+  // C: mittpunkten blir en riktig punkt i samma gest som den dras ut.
+  const m = e.target.closest('[data-mid]')
+  if (m && shell.dataset.form === 'mitt') {
+    const i = +m.dataset.mid
+    const a = pts[i], b = pts[(i + 1) % pts.length]
+    pts.splice(i + 1, 0, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2])
+    vald = i + 1
+    rita()
+    const ny = svgG.querySelector('[data-pt="' + vald + '"]')
+    drag = { i: vald, el: ny, nyskapad: true }
+    ny.setPointerCapture(e.pointerId)
+    sag('punkt tillagd, ' + pts.length + ' punkter')
+  }
+})
+svgG.addEventListener('pointermove', (e) => {
+  if (drag) {
+    const r = document.querySelector('.kort').getBoundingClientRect()
+    let x = (e.clientX - r.left) / PXMM - BOX.x, y = (e.clientY - r.top) / PXMM - BOX.y
+    // Shift fäster i halva millimetern, som dukens övriga handtag.
+    if (e.shiftKey) { x = Math.round(x * 2) / 2; y = Math.round(y * 2) / 2 }
+    pts[drag.i] = [+x.toFixed(2), +y.toFixed(2)]
+    rita()
+    return
+  }
+  // A: spöket följer pekaren längs närmaste kant, så det syns *var* punkten hamnar.
+  if (shell.dataset.form !== 'alltid' || !egen) return
+  const k = e.target.closest('[data-kant]')
+  const sp = document.getElementById('spoke')
+  if (!sp) return
+  if (!k) { sp.setAttribute('hidden', '') ; return }
+  const i = +k.dataset.kant
+  const a = mmTillPx(pts[i]), b = mmTillPx(pts[(i + 1) % pts.length])
+  const r = document.querySelector('.kort').getBoundingClientRect()
+  const px = e.clientX - r.left, py = e.clientY - r.top
+  const vx = b[0] - a[0], vy = b[1] - a[1]
+  const t = Math.max(0, Math.min(1, ((px - a[0]) * vx + (py - a[1]) * vy) / (vx * vx + vy * vy)))
+  sp.removeAttribute('hidden')
+  sp.setAttribute('cx', String(a[0] + vx * t)); sp.setAttribute('cy', String(a[1] + vy * t))
+})
+svgG.addEventListener('pointerup', () => { if (drag) { gest(drag.nyskapad ? 'punkt tillagd och flyttad' : 'punkt ' + (drag.i + 1) + ' flyttad'); drag = null } })
+
+// A: ett klick på kanten lägger punkten där spöket står.
+svgG.addEventListener('click', (e) => {
+  if (shell.dataset.form !== 'alltid' || !egen) return
+  const k = e.target.closest('[data-kant]')
+  if (!k) return
+  const i = +k.dataset.kant
+  const sp = document.getElementById('spoke')
+  const syns = !sp.hasAttribute('hidden')
+  const a = mmTillPx(pts[i]), b2 = mmTillPx(pts[(i + 1) % pts.length])
+  const x = (syns ? +sp.getAttribute('cx') : (a[0] + b2[0]) / 2) / PXMM - BOX.x
+  const y = (syns ? +sp.getAttribute('cy') : (a[1] + b2[1]) / 2) / PXMM - BOX.y
+  pts.splice(i + 1, 0, [+x.toFixed(2), +y.toFixed(2)])
+  vald = i + 1
+  rita(); gest('punkt tillagd, ' + pts.length + ' punkter')
+})
+
+// ── Tangentbordet ──────────────────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', (e) => {
+  const h = e.target.closest && e.target.closest('[data-pt]')
+  if (h) vald = +h.dataset.pt
+  if (!egen || vald < 0) return
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    e.preventDefault()
+    // Minst tre punkter kvar; en form med två punkter är en linje och inte en form.
+    if (pts.length <= 3) { sag('minst tre punkter — den här går inte att ta bort'); return }
+    pts.splice(vald, 1); vald = Math.min(vald, pts.length - 1); rita(); gest('punkt borttagen, ' + pts.length + ' punkter')
+    svgG.querySelector('[data-pt="' + vald + '"]')?.focus()
+    return
+  }
+  const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key]
+  if (!d || !h) return
+  e.preventDefault()
+  const steg = e.shiftKey ? 5 : 0.5
+  pts[vald] = [+(pts[vald][0] + d[0] * steg).toFixed(2), +(pts[vald][1] + d[1] * steg).toFixed(2)]
+  rita(); gest()
+  const el = svgG.querySelector('[data-pt="' + vald + '"]'); el?.focus(); sag(el?.getAttribute('aria-label') || '')
+})
+
+// ── Panelen ────────────────────────────────────────────────────────────────────────────────────
+const HJALP = {
+  nu: 'Dagens galleriform har bara fyra lådhandtag — punkterna finns inte. Tryck «Anpassa punkterna» för att se förslagen.',
+  alltid: 'A · Alltid: punkterna syns så snart formen är egen. Hovra en kant — spöket visar var punkten hamnar — och klicka för att lägga till.',
+  lage: 'B · Punktläge: formen har sin vanliga låda tills punktläget slås på i panelen. Då byts lådhandtagen mot punkter.',
+  mitt: 'C · Mittpunkter: varje kant bär en ihålig prick i mitten. Dra ut den och den blir en riktig punkt i samma gest.',
+}
+const BRUK = {
+  alltid: 'Dra i en punkt. Klicka på en kant för att lägga till. Delete tar bort den valda.',
+  lage: 'Punktläget måste vara på. Där: dra, klicka på kanten för att lägga till, Delete för att ta bort.',
+  mitt: 'Dra i en punkt, eller dra ut en mittprick för att lägga till. Delete tar bort den valda.',
+  nu: '',
+}
+
+document.addEventListener('click', (e) => {
+  const v = e.target.closest('button[data-form]')
+  if (v) {
+    shell.dataset.form = v.dataset.form
+    document.querySelectorAll('button[data-form]').forEach((b) => b.setAttribute('aria-pressed', String(b === v)))
+    document.getElementById('hjalp').textContent = HJALP[v.dataset.form]
+    document.getElementById('brukstext').textContent = BRUK[v.dataset.form]
+    shell.dataset.punkt = 'av'
+    document.getElementById('lagevaxel').classList.remove('pa')
+    rita()
+    return
+  }
+  if (e.target.id === 'tillpunkter') {
+    if (shell.dataset.form === 'nu') { document.getElementById('hjalp').textContent = 'Välj A, B eller C först — «Nu» är dagens panel, som inte har punkter.'; return }
+    egen = true; vald = -1; rita(); gest('formen är nu egna punkter, ' + pts.length + ' stycken')
+    document.getElementById('formsum').textContent = 'Egen'
+    return
+  }
+  if (e.target.id === 'tillbaka') {
+    egen = false; pts = START.map(([x, y]) => [x, y]); vald = -1; rita(); gest('tillbaka till galleriformen Banderoll')
+    document.getElementById('formsum').textContent = 'Banderoll'
+    return
+  }
+  if (e.target.id === 'lagevaxel') {
+    const pa = shell.dataset.punkt !== 'pa'
+    shell.dataset.punkt = pa ? 'pa' : 'av'
+    e.target.classList.toggle('pa', pa)
+    e.target.textContent = pa ? 'Punktläge · på (Esc avslutar)' : 'Punktläge'
+    sag(pa ? 'punktläge på, ' + pts.length + ' punkter' : 'punktläge av')
+    return
+  }
+})
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && shell.dataset.punkt === 'pa') { document.getElementById('lagevaxel').click() } })
+document.getElementById('fillfarg').addEventListener('input', rita)
+
+// Galleriet, i L25:s 30 px-brickor.
+const G = [['rect','Rektangel'],['rounded','Rundad'],['circle','Cirkel'],['line','Linje'],['triangle','Triangel'],['diamond','Romb'],['pentagon','Femhörning'],['hexagon','Sexhörning'],['star','Stjärna'],['shield','Sköld'],['banner','Banderoll'],['arrow','Pil']]
+document.querySelector('.mini').innerHTML = G.map(([id, n]) => '<button type="button" aria-label="' + n + '"' + (id === 'banner' ? ' aria-pressed="true"' : '') + '><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><rect x="3" y="4" width="10" height="8" rx="' + (id === 'rounded' ? 2 : 0) + '"/></svg></button>').join('')
+
+rita()
+</script>
+</body>
+</html>

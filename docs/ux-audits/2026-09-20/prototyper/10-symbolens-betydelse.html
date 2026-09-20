@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 10 — Symbolens betydelse (#302)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  .rum { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0,1fr) 340px; gap: var(--s5); padding: var(--gutter); }
+  .rum > * { min-width: 0; min-height: 0; }
+  h2 { margin: 0 0 var(--s3); font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--quiet); }
+
+  /* Datatabellen, tät som #46 kräver. */
+  .tabell { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th { text-align: left; padding: 7px 10px; background: #1b1f2a; color: var(--quiet); font-size: 10.5px; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 700; border-bottom: 1px solid var(--line); }
+  td { padding: 6px 10px; border-bottom: 1px solid var(--line-soft); color: #e6ecfa; vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  td.body { line-height: 1.5; }
+  tr[aria-selected='true'] td { background: #1b2437; }
+
+  /* Symbolen som den ritas i texten: bläck, eller betydelsens färg. */
+  .sym { display: inline-grid; place-items: center; width: 15px; height: 15px; vertical-align: -3px; margin: 0 1px; }
+  .sym svg { display: block; }
+
+  /* Den öppna cellen. */
+  .cell { margin-top: var(--s3); border: 1px solid var(--primary-mark); border-radius: 10px; background: #0f1115; padding: 9px 11px; }
+  .cell .rad { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+  .cell .rad b { color: #fff; font-size: 11px; text-transform: uppercase; letter-spacing: 1.4px; }
+  .cell .rad .rakn { margin-left: auto; color: var(--quiet); font-size: 10.5px; }
+  .skriv { min-height: 64px; color: #e6ecfa; font-size: 12.5px; line-height: 1.6; outline: none; }
+  .skriv:focus { outline: none; }
+  .ratext { margin: 7px 0 0; color: #5d6577; font-size: 10.5px; font-family: ui-monospace, Menlo, monospace; word-break: break-all; }
+  .verktyg { display: flex; gap: 6px; margin-top: 8px; position: relative; }
+  .knapp { min-height: 30px; border: 1px solid var(--line); border-radius: 8px; padding: 0 11px; background: #1b1d23; color: #e6ecfa; font: inherit; font-size: 11.5px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .knapp:hover { border-color: var(--primary-mark); }
+
+  /* ── Väljaren ─────────────────────────────────────────────────────────────────────────────── */
+  .valj { position: absolute; z-index: 20; bottom: calc(100% + 7px); left: 0; width: 320px; padding: 10px; border-radius: 12px; background: #12141a; border: 1px solid #3a4050; box-shadow: 0 18px 44px rgba(0,0,0,.66); }
+  .valj[hidden] { display: none; }
+  .valj .sok { width: 100%; box-sizing: border-box; min-height: 30px; border: 1px solid #2a2d36; border-radius: 8px; background: #0f1115; color: #fff; font: inherit; font-size: 12px; padding: 0 9px; margin-bottom: 8px; }
+  .valj h3 { margin: 0 0 6px; font-size: 10px; text-transform: uppercase; letter-spacing: 1.4px; color: var(--quiet); }
+  .rutnat { display: grid; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 5px; }
+  .rutnat button { display: grid; place-items: center; gap: 3px; min-height: 48px; border: 1px solid var(--line); border-radius: 8px; background: #0f1115; color: #c7cede; font: inherit; font-size: 9.5px; cursor: pointer; padding: 4px 2px; }
+  .rutnat button:hover, .rutnat button:focus-visible { border-color: var(--primary-mark); background: #1b2437; outline: none; }
+  .rutnat button[aria-pressed='true'] { border-color: var(--primary-mark); background: #24507f; color: #fff; }
+  .rutnat .sym { width: 20px; height: 20px; }
+  .rutnat button .papper, .betyd button .papper { display: inline-grid; place-items: center; border-radius: 4px; background: #f4efe4; padding: 2px; }
+
+  /* Betydelserna, som färgade kopior av just den symbol man valt. */
+  .betyd { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--line-soft); }
+  .betyd button { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; border: 1px solid var(--line); border-radius: 999px; padding: 0 11px 0 7px; background: #0f1115; color: #c7cede; font: inherit; font-size: 11.5px; cursor: pointer; }
+  .betyd button:hover, .betyd button:focus-visible { border-color: var(--primary-mark); outline: none; }
+  .betyd button[aria-pressed='true'] { border-color: var(--primary-mark); background: #24507f; color: #fff; }
+  .betyd .sym { width: 16px; height: 16px; }
+  .tomtext { margin: 9px 0 0; padding-top: 9px; border-top: 1px solid var(--line-soft); color: var(--quiet); font-size: 11px; line-height: 1.5; }
+  .valj .fot { display: flex; align-items: center; gap: 8px; margin-top: 9px; }
+  .valj .fot code { margin-left: auto; color: #8ad0ff; font-family: ui-monospace, Menlo, monospace; font-size: 11px; }
+
+  /* ── Symbolfliken: sambandet mellan namn och färg ─────────────────────────────────────────── */
+  .paletten { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: 12px; }
+  .paletten ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+  .paletten li { display: grid; grid-template-columns: 22px minmax(0,1fr) auto; gap: 9px; align-items: center; }
+  .paletten .prick { width: 22px; height: 22px; border-radius: 6px; border: 1px solid #3a3f4c; }
+  .paletten b { color: #e6ecfa; font-size: 12px; font-weight: 600; }
+  .paletten small { display: block; color: var(--quiet); font-size: 10.5px; }
+  /* Det korta konkreta exemplet: samma symbol, en gång per betydelse, med raden som skriver den. */
+  .exempel { margin-top: 12px; padding-top: 11px; border-top: 1px solid var(--line-soft); }
+  .exempel p { margin: 0 0 7px; color: var(--quiet-2); font-size: 11.5px; line-height: 1.5; }
+  .exempel .rad { display: flex; align-items: center; gap: 9px; padding: 5px 0; color: #e6ecfa; font-size: 12px; }
+  /* Symbolen ritas i kortets bläck, och bläck mot editorns mörka botten är ingen förhandsvisning
+     alls — «utan betydelse» försvann helt. Varje prov står mot kortets papper. */
+  .exempel .papper { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 5px; background: #f4efe4; }
+  .exempel .papper .sym { width: 15px; height: 15px; vertical-align: 0; margin: 0; }
+  .exempel code { color: #8ad0ff; font-family: ui-monospace, Menlo, monospace; font-size: 11px; margin-left: auto; }
+  .shell:not([data-exempel='ja']) .exempel { display: none; }
+</style>
+</head>
+<body>
+<div class="shell" data-form="tva" data-exempel="ja">
+<header>
+  <strong>Skogens herrar</strong>
+  <nav class="tabs"><button type="button">Kort</button><button type="button">Mall</button><button type="button" aria-selected="true">Data</button><button type="button">Symboler</button><button type="button">Regler</button><button type="button">Bord</button></nav>
+  <span class="spacer"></span>
+  <div class="switch" role="group" aria-label="Hur betydelsen väljs">
+    <button type="button" data-form="nu" aria-pressed="false">Nu</button>
+    <button type="button" data-form="tva" aria-pressed="true">A · Två steg</button>
+    <button type="button" data-form="fargade" aria-pressed="false">B · Färgade kopior</button>
+    <button type="button" data-form="efterat" aria-pressed="false">C · Efteråt</button>
+  </div>
+  <span class="who">P</span>
+</header>
+
+<div class="protorad">
+  <b>#302</b>
+  <p id="hjalptext">Tryck «＋ Symbol» i den öppna cellen. Ingen av vägarna kräver att man kan klamrar eller lodstreck.</p>
+  <button type="button" id="tompalett">Tom betydelsepalett</button>
+  <div class="matt"><span>cellens sträng <u id="m-str">—</u></span></div>
+  <p class="sagt" id="sagt">Skärmläsaren hör: <em>—</em></p>
+</div>
+
+<main>
+<div class="rum">
+  <div>
+    <h2>Data</h2>
+    <div class="tabell">
+      <table>
+        <thead><tr><th style="width:34%">Namn</th><th>Regeltext</th></tr></thead>
+        <tbody id="rader"></tbody>
+      </table>
+    </div>
+
+    <div class="cell">
+      <div class="rad"><b>Regeltext · Gläntans väktare</b><span class="rakn" id="rakn"></span></div>
+      <div class="skriv" id="skriv" contenteditable="false" role="textbox" aria-label="Regeltext"></div>
+      <p class="ratext" id="ratext"></p>
+      <div class="verktyg">
+        <button type="button" class="knapp" id="oppna">＋ Symbol</button>
+        <button type="button" class="knapp" id="rensa">Töm cellen</button>
+        <div class="valj" id="valj" hidden role="dialog" aria-label="Infoga symbol">
+          <input class="sok" type="search" placeholder="Sök symbol" aria-label="Sök symbol">
+          <h3>Symbol</h3>
+          <div class="rutnat" id="symboler" role="group" aria-label="Symbol"></div>
+          <div id="betydelseblock">
+            <h3 style="margin-top:9px">Betydelse</h3>
+            <div class="betyd" id="betydelser" role="group" aria-label="Betydelse"></div>
+          </div>
+          <p class="tomtext" id="tomtext" hidden>Spelet har inga betydelser än. Symbolen infogas i bläck, och du kan ge den en betydelse senare i Symboler.</p>
+          <div class="fot"><button type="button" class="knapp" id="infoga">Infoga</button><code id="forhand"></code></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <h2>Symboler · betydelser</h2>
+    <div class="paletten">
+      <ul id="palett"></ul>
+      <div class="exempel" id="exempel"></div>
+    </div>
+  </div>
+</div>
+</main>
+</div>
+
+<div class="note">
+  <b>Prototyp 10 — #302</b>
+  Cellens råa sträng står under texten hela tiden, så det går att se att väljaren skriver <code>{namn|roll}</code> precis som handen skulle. Tryck <i>Tom betydelsepalett</i> för att se vad som händer när spelet inte har några betydelser än.
+</div>
+
+<script>
+// ── Spelets symboler och betydelser ────────────────────────────────────────────────────────────
+const GLYF = {
+  skold: '<path d="M2 3h12v6q0 5-6 7-6-2-6-7z"/>',
+  svard: '<path d="M8 1l2 3v6l-2 2-2-2V4z"/><path d="M4 11h8v1.6H4z"/>',
+  blad: '<path d="M14 2C7 2 2 5 2 10c0 2 1 3.5 2 4 1-4 4-7 8-8-3 2-5 4-6 8 5 0 8-5 8-12z"/>',
+  droppe: '<path d="M8 1s5 5.5 5 8.6A5 5 0 1 1 3 9.6C3 6.5 8 1 8 1z"/>',
+  stjarna: '<path d="M8 1l2 4.6 5 .4-3.8 3.2 1.2 4.9L8 11.5 3.6 14.1l1.2-4.9L1 6l5-.4z"/>',
+}
+const SYMBOLER = [['skold','Sköld'],['svard','Svärd'],['blad','Blad'],['droppe','Droppe'],['stjarna','Stjärna']]
+let BETYDELSER = [
+  { id: 'forsvar', namn: 'Försvar', farg: '#4c8fd8' },
+  { id: 'anfall', namn: 'Anfall', farg: '#d05a4e' },
+  { id: 'skord', namn: 'Skörd', farg: '#5da45d' },
+]
+const BLACK = '#241a0c'
+
+const sym = (namn, farg, klass = 'sym') =>
+  '<span class="' + klass + '" aria-hidden="true"><svg width="100%" height="100%" viewBox="0 0 16 16" fill="' + farg + '">' + (GLYF[namn] || GLYF.skold) + '</svg></span>'
+
+// ── Cellen ─────────────────────────────────────────────────────────────────────────────────────
+let strang = 'Lägg {blad} på en varelse. Den får {skold|forsvar} tills den lämnar spelet.'
+const shell = document.querySelector('.shell')
+const sag = (t) => { document.getElementById('sagt').innerHTML = 'Skärmläsaren hör: <em>' + t + '</em>' }
+
+// `{namn}` och `{namn|roll}`, ordagrant som `inline.ts` läser dem.
+function rendera(s) {
+  return s.replace(/\{([\p{L}\p{N}_-]+)(?:\|([\p{L}\p{N}_-]+))?\}/gu, (hel, namn, roll) => {
+    const b = roll ? BETYDELSER.find((x) => x.id === roll) : null
+    if (roll && !b) return hel   // en roll spelet inte har är text, inte en symbol i fel färg
+    return sym(namn, b ? b.farg : BLACK)
+  })
+}
+
+function rita() {
+  document.getElementById('skriv').innerHTML = rendera(strang)
+  document.getElementById('ratext').textContent = strang
+  document.getElementById('m-str').textContent = strang.length + ' tecken'
+  document.getElementById('rakn').textContent = (strang.match(/\{/g) || []).length + ' symboler'
+  document.getElementById('rader').innerHTML = [
+    ['Gläntans väktare', strang],
+    ['Bergets vandrare', 'Betala {droppe|skord} för att dra ett kort.'],
+    ['Flodens härold', 'Vänd {svard|anfall} mot en varelse i din hand.'],
+  ].map(([n, t], i) => '<tr' + (i === 0 ? ' aria-selected="true"' : '') + '><td>' + n + '</td><td class="body">' + rendera(t) + '</td></tr>').join('')
+  ritaPalett()
+}
+
+function ritaPalett() {
+  document.getElementById('palett').innerHTML = BETYDELSER.length === 0
+    ? '<li style="color:var(--quiet);font-size:11.5px;grid-template-columns:1fr">Spelet har inga betydelser än. En symbol utan betydelse ritas i bläck.</li>'
+    : BETYDELSER.map((b) => '<li><span class="prick" style="background:' + b.farg + '"></span>'
+      + '<span><b>' + b.namn + '</b><small>' + b.farg.toUpperCase() + ' · används på ' + (b.id === 'forsvar' ? 12 : b.id === 'anfall' ? 8 : 5) + ' kort</small></span>'
+      + '<button type="button" class="knapp" style="min-height:26px;font-size:11px">Ändra färg</button></li>').join('')
+
+  // Det korta konkreta exemplet issuet ber om: samma symbol, en gång per betydelse, med raden
+  // som skriver den. Sambandet namn → färg sagt genom att visas, inte genom att förklaras.
+  document.getElementById('exempel').innerHTML = BETYDELSER.length === 0 ? '' :
+    '<p>En betydelse är ett namn och en färg. Korten skriver namnet, aldrig färgen — så en ändring här målar om varje kort som säger den.</p>'
+    + '<div class="rad"><span class="papper">' + sym('skold', BLACK) + '</span> utan betydelse <code>{skold}</code></div>'
+    + BETYDELSER.map((b) => '<div class="rad"><span class="papper">' + sym('skold', b.farg) + '</span> ' + b.namn + ' <code>{skold|' + b.id + '}</code></div>').join('')
+}
+
+// ── Väljaren ───────────────────────────────────────────────────────────────────────────────────
+let valdSymbol = 'skold', valdBetydelse = null
+
+function ritaValjaren() {
+  const form = shell.dataset.form
+  document.getElementById('symboler').innerHTML = SYMBOLER.map(([id, namn]) =>
+    '<button type="button" data-sym="' + id + '" aria-pressed="' + (id === valdSymbol) + '" aria-label="' + namn + '">'
+    + '<span class="papper">' + sym(id, form === 'fargade' && valdBetydelse ? (BETYDELSER.find((b) => b.id === valdBetydelse)?.farg ?? BLACK) : BLACK) + '</span>' + namn + '</button>').join('')
+
+  // B: betydelserna ritas som färgade kopior av just den symbol man valt — inte som abstrakta
+  // färgprickar. Man ser vad man kommer att få.
+  const visaSom = shell.dataset.form === 'fargade'
+  document.getElementById('betydelser').innerHTML =
+    '<button type="button" data-bet="" aria-pressed="' + (valdBetydelse === null) + '"><span class="papper">' + sym(valdSymbol, BLACK) + '</span> Utan betydelse</button>'
+    + BETYDELSER.map((b) => '<button type="button" data-bet="' + b.id + '" aria-pressed="' + (valdBetydelse === b.id) + '"><span class="papper">'
+      + sym(visaSom ? valdSymbol : 'skold', b.farg) + '</span> ' + b.namn + '</button>').join('')
+
+  const tomt = BETYDELSER.length === 0
+  document.getElementById('betydelseblock').hidden = tomt || shell.dataset.form === 'efterat' || shell.dataset.form === 'nu'
+  document.getElementById('tomtext').hidden = !tomt
+  document.getElementById('forhand').textContent = '{' + valdSymbol + (valdBetydelse ? '|' + valdBetydelse : '') + '}'
+}
+
+const HJALP = {
+  nu: 'Nu: väljaren infogar {namn}. Vill man ha en färg måste man känna till lodstrecket och betydelsens id, och skriva det för hand.',
+  tva: 'A · Två steg: symbolen först, betydelsen under den i samma ruta. «Utan betydelse» står först och kräver inget extra steg.',
+  fargade: 'B · Färgade kopior: betydelserna ritas som färgade kopior av just den symbol du valt, så du ser vad du får innan du infogar.',
+  efterat: 'C · Efteråt: symbolen infogas i bläck, och du klickar på den i cellen för att ge den en betydelse. Prova att klicka en symbol i texten.',
+}
+
+document.addEventListener('click', (e) => {
+  const v = e.target.closest('button[data-form]')
+  if (v) {
+    shell.dataset.form = v.dataset.form
+    document.querySelectorAll('button[data-form]').forEach((b) => b.setAttribute('aria-pressed', String(b === v)))
+    document.getElementById('hjalptext').textContent = HJALP[v.dataset.form]
+    valdBetydelse = null
+    ritaValjaren()
+    return
+  }
+  if (e.target.id === 'tompalett') {
+    BETYDELSER = BETYDELSER.length ? [] : [
+      { id: 'forsvar', namn: 'Försvar', farg: '#4c8fd8' },
+      { id: 'anfall', namn: 'Anfall', farg: '#d05a4e' },
+      { id: 'skord', namn: 'Skörd', farg: '#5da45d' },
+    ]
+    e.target.textContent = BETYDELSER.length ? 'Tom betydelsepalett' : 'Betydelser tillbaka'
+    valdBetydelse = null
+    rita(); ritaValjaren()
+    return
+  }
+  if (e.target.id === 'oppna') {
+    const v2 = document.getElementById('valj')
+    v2.hidden = !v2.hidden
+    if (!v2.hidden) { ritaValjaren(); v2.querySelector('.sok').focus(); sag('Infoga symbol, ruta öppnad') }
+    return
+  }
+  if (e.target.id === 'rensa') { strang = ''; rita(); return }
+  const s = e.target.closest('[data-sym]')
+  if (s) {
+    valdSymbol = s.dataset.sym
+    // Nu och C infogar direkt, utan betydelsesteg.
+    if (shell.dataset.form === 'nu' || shell.dataset.form === 'efterat') { infoga(); return }
+    ritaValjaren()
+    return
+  }
+  const b = e.target.closest('[data-bet]')
+  if (b) { valdBetydelse = b.dataset.bet || null; ritaValjaren(); return }
+  if (e.target.id === 'infoga') { infoga(); return }
+  // C: klicka en infogad symbol i cellen för att ge den en betydelse.
+  if (shell.dataset.form === 'efterat' && e.target.closest('#skriv .sym')) {
+    const alla = [...document.querySelectorAll('#skriv .sym')]
+    const i = alla.indexOf(e.target.closest('.sym'))
+    const nasta = BETYDELSER[(BETYDELSER.findIndex((x) => x.id === rollAt(i)) + 1) % (BETYDELSER.length + 1)]
+    sattRoll(i, nasta ? nasta.id : null)
+    rita()
+    sag(nasta ? 'betydelsen ' + nasta.namn + ' satt' : 'betydelsen borttagen')
+  }
+})
+
+// Vilken roll den n:te symbolen i strängen bär, och hur den byts — utan att röra resten.
+const TRAFF = /\{([\p{L}\p{N}_-]+)(?:\|([\p{L}\p{N}_-]+))?\}/gu
+function rollAt(i) {
+  const m = [...strang.matchAll(TRAFF)][i]
+  return m ? (m[2] ?? null) : null
+}
+function sattRoll(i, roll) {
+  let n = 0
+  strang = strang.replace(TRAFF, (hel, namn) => (n++ === i ? '{' + namn + (roll ? '|' + roll : '') + '}' : hel))
+}
+
+function infoga() {
+  const bit = '{' + valdSymbol + (valdBetydelse ? '|' + valdBetydelse : '') + '}'
+  strang = strang.trimEnd() + (strang ? ' ' : '') + bit
+  document.getElementById('valj').hidden = true
+  valdBetydelse = null
+  rita()
+  document.getElementById('oppna').focus()
+  const b = BETYDELSER.find((x) => x.id === (bit.match(/\|(.+)\}/) || [])[1])
+  sag('symbolen ' + valdSymbol + (b ? ', betydelse ' + b.namn : ', utan betydelse') + ', infogad')
+}
+
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { document.getElementById('valj').hidden = true } })
+document.addEventListener('input', (e) => { if (e.target.classList.contains('sok')) ritaValjaren() })
+
+rita(); ritaValjaren()
+</script>
+</body>
+</html>
