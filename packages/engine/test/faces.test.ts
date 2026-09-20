@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { Harness, registry } from './fixture.js'
+import { Harness, SEATS, registry, zoneView } from './fixture.js'
 import { project, type FaceHashes } from '../src/index.js'
 
 // Texture hashes per card and face, as the server computes them from the compiled deck.
@@ -33,5 +33,46 @@ describe('face hashes in the projection (TUNN-SKIVA §5)', () => {
     const h = new Harness()
     h.do('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
     expect(project(h.state, registry, 'A').components[0]!.faces).toBeUndefined()
+  })
+})
+
+// Per-group backs (#14): the back a card wears is its row's group's, not one back for the deck.
+const grouped: FaceHashes = Object.fromEntries(
+  ['dragon', 'knight', 'wizard', 'rogue', 'priest', 'archer', 'golem', 'witch', 'bard', 'ogre'].map((ref, i) => [ref, { front: `f-${ref}`, back: i % 2 === 0 ? 'b-red' : 'b-blue' }]),
+)
+
+describe('the back of a hidden pile (#313)', () => {
+  it('carries the top card\'s back hash on the zone, and never its front hash or identity', () => {
+    const h = new Harness()
+    const draw = () => zoneView(project(h.state, registry, 'B', grouped), 'draw')
+    expect(draw()).toMatchObject({ mode: 'count', count: 10, back: 'b-red' })
+    expect(draw()).not.toHaveProperty('top')
+    expect(JSON.stringify(draw())).not.toContain('f-dragon')
+    expect(JSON.stringify(draw())).not.toContain('dragon')
+
+    // The top changes: so does the back.
+    h.do('A', { v: 'draw', from: 'draw', to: 'hand:A', count: 1 })
+    expect(draw()).toMatchObject({ count: 9, back: 'b-blue' })
+    h.do(null, { v: 'shuffle', pile: 'draw' })
+    const top = h.state.components[h.top('draw')]!.cardRef
+    expect(draw()).toMatchObject({ count: 9, back: grouped[top]!['back'] })
+    for (const seat of SEATS) expect(JSON.stringify(project(h.state, registry, seat, grouped).zones)).not.toContain('f-')
+  })
+
+  it('carries no back for an empty pile, none without textures, and none when the top is face-up and named', () => {
+    const h = new Harness()
+    expect(zoneView(project(h.state, registry, null), 'draw')).not.toHaveProperty('back')
+
+    h.do(null, { v: 'flip', component: { top: 'draw' }, face: 'front' })
+    const shown = zoneView(project(h.state, registry, null, grouped), 'draw')
+    expect(shown).toHaveProperty('top', h.top('draw'))
+    expect(shown).not.toHaveProperty('back')
+    h.do(null, { v: 'flip', component: { top: 'draw' }, face: 'back' })
+    expect(zoneView(project(h.state, registry, null, grouped), 'draw')).toMatchObject({ back: 'b-red' })
+
+    h.do(null, { v: 'draw', from: 'draw', to: 'table', count: 10 })
+    const empty = zoneView(project(h.state, registry, null, grouped), 'draw')
+    expect(empty).toMatchObject({ mode: 'count', count: 0 })
+    expect(empty).not.toHaveProperty('back')
   })
 })

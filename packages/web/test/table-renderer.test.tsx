@@ -492,6 +492,40 @@ describe('textures (TUNN-SKIVA §5)', () => {
   })
 })
 
+describe('the back of a hidden pile (#313)', () => {
+  const hash = 'c'.repeat(64)
+  const withBack = () => {
+    const snapshot = buildScene().view(null)
+    return { ...snapshot, zones: snapshot.zones.map((z) => (z.id === 'draw' && z.mode === 'count' ? { ...z, back: hash } : z)) }
+  }
+
+  it('draws the back the zone names on the pile top, from the first render, and only where a zone names one', () => {
+    render(<TableRenderer view={withBack()} mode="table" faces="http://faces.test" />)
+    const top = document.querySelector('[data-zone="draw"] .byd-pile-top img') as HTMLImageElement
+    expect(top.src).toBe(`http://faces.test/faces/${hash}`)
+    expect(document.querySelector('[data-zone="draw"] .byd-pile-top')!.getAttribute('data-face')).toBe('back')
+    // Waiting for the picture, it names nothing: the wire named no card for it.
+    expect(document.querySelector('[data-zone="draw"] .byd-texture-state b')).toBeNull()
+    expect(document.querySelector('[data-zone="draw"] .byd-pile-top > span:last-child')!.textContent).toBe('')
+    // A public pile's face-up top is its own card, not the zone's back.
+    expect(document.querySelector('[data-zone="discard"] img')).toBeNull()
+  })
+
+  it('wears the same back while it is dragged off the pile', () => {
+    render(<TableRenderer view={withBack()} mode="tv" scale={1} faces="http://faces.test" onAct={() => undefined} />)
+    const top = document.querySelector('[data-zone="draw"] .byd-pile-top')!
+    fireEvent.pointerDown(top, client(-200, 0))
+    fireEvent.pointerMove(top, client(-100, 100))
+    const ghost = document.querySelector('[data-ghost] img') as HTMLImageElement
+    expect(ghost.src).toBe(`http://faces.test/faces/${hash}`)
+  })
+
+  it('shows the plain back where the session has no textures to fetch', () => {
+    render(<TableRenderer view={withBack()} mode="table" />)
+    expect(document.querySelector('[data-zone="draw"] img')).toBeNull()
+  })
+})
+
 describe('textures that are not ready yet', () => {
   it('retries an image that failed to load, with a cache-busting query, a bounded number of times', () => {
     vi.useFakeTimers()

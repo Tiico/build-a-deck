@@ -65,7 +65,10 @@ function projectTable(state: TableState, registry: TypeRegistry, seat: SeatId | 
     } else {
       const top = z.order[0] === undefined ? undefined : componentOf(state, z.order[0])
       const shownTop = top !== undefined && faceUpOnTop(state, registry, top)
-      zones.push({ mode: 'count', ...zoneBase(z), count: z.order.length, ...(shownTop ? { top: top.id } : {}) })
+      // A face-down top shows its back to everyone (#313): the hash of the face it lies on, which
+      // is never the content face here, since that is exactly what `shownTop` says.
+      const back = top !== undefined && !shownTop ? hashesOf(registry, top, faces, false)?.[top.face] : undefined
+      zones.push({ mode: 'count', ...zoneBase(z), count: z.order.length, ...(shownTop ? { top: top.id } : {}), ...(back !== undefined ? { back } : {}) })
       // A component the seat was explicitly granted knowledge of still appears, even though its
       // position inside the zone does not; so does the face-up top of a pile (K15), whose position
       // the zone view names.
@@ -110,15 +113,22 @@ function view(state: TableState, registry: TypeRegistry, c: ComponentInstance, s
     cardRef: visible ? c.cardRef : null,
   }
   if (c.counter !== undefined) v.counter = c.counter
-  const hashes = faces?.[c.cardRef]
-  if (hashes) {
-    const def = registry.get(c.type)
-    const out: Record<string, string> = {}
-    for (const [face, hash] of Object.entries(hashes)) {
-      if (face === def.contentFace && !visible) continue
-      out[face] = hash
-    }
-    v.faces = out
-  }
+  const hashes = hashesOf(registry, c, faces, visible)
+  if (hashes) v.faces = hashes
   return v
+}
+
+// The texture hashes a view may fetch for a component: every face's, or all but the content
+// face's when the seat may not see it. The hash is the capability (TUNN-SKIVA §5), so this is the
+// one place that decides which hashes leave the server, for a component and for a pile's top.
+function hashesOf(registry: TypeRegistry, c: ComponentInstance, faces: FaceHashes | undefined, visible: boolean): Record<string, string> | undefined {
+  const hashes = faces?.[c.cardRef]
+  if (!hashes) return undefined
+  const def = registry.get(c.type)
+  const out: Record<string, string> = {}
+  for (const [face, hash] of Object.entries(hashes)) {
+    if (face === def.contentFace && !visible) continue
+    out[face] = hash
+  }
+  return out
 }

@@ -829,7 +829,7 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
             </div>
           ))}
           {offTop && (
-            <Ghost card={topOf(zoneById.get(offTop.pile) ?? floor)} faces={faces} back={backAt('ghost')} left={left(offTop.at.x)} top={top(offTop.at.y)} px={px} />
+            <Ghost card={topOf(zoneById.get(offTop.pile) ?? floor)} zoneBack={backOf(zoneById.get(offTop.pile))} faces={faces} back={backAt('ghost')} left={left(offTop.at.x)} top={top(offTop.at.y)} px={px} />
           )}
           {overlay?.({ px, left, top, scale })}
         </div>
@@ -1059,13 +1059,14 @@ function Card({ c, left, top, px, dragging, carried, by, faces, back, handlers, 
   )
 }
 
-// The top card of a pile while it is being dragged off.
-function Ghost({ card, faces, back, left, top, px }: { card: VisibleComponentState | undefined; faces: string | undefined; back?: ReactNode | undefined; left: number; top: number; px: (mm: number) => number }) {
+// The top card of a pile while it is being dragged off. A hidden pile's top is no component, so
+// it wears the back the pile named for it (#313) — the card that came off is the one that showed.
+function Ghost({ card, zoneBack, faces, back, left, top, px }: { card: VisibleComponentState | undefined; zoneBack?: string | undefined; faces: string | undefined; back?: ReactNode | undefined; left: number; top: number; px: (mm: number) => number }) {
   const own = card?.cardRef ? null : back
   return (
     <div className="byd-card" data-ghost data-dragging="true" data-face={card?.cardRef ? 'front' : 'back'} data-back={own ? 'own' : undefined} style={{ position: 'absolute', left, top, width: px(CARD_MM.w), height: px(CARD_MM.h), pointerEvents: 'none', ...(card?.cardRef ? { ['--hue' as string]: hue(card.cardRef) } : {}) }}>
       {own}
-      <Texture faces={faces} c={card} />
+      <Texture faces={faces} c={card} back={zoneBack} />
       <span>{card?.cardRef ?? ''}</span>
     </div>
   )
@@ -1083,8 +1084,16 @@ function topIdOf(z: ZoneView, skip = 0): string | undefined {
   return skip === 0 ? z.top : undefined
 }
 
-// A pile is a point; the stack is centred on it. A hidden pile has a count and nothing else,
-// unless its top lies face-up.
+// The back a hidden pile shows on its face-down top (#313): a texture hash the zone names, since
+// the top itself is no component this view is given. A public pile's top is a card of its own.
+function backOf(z: ZoneView | undefined): string | undefined {
+  return z?.mode === 'count' ? z.back : undefined
+}
+
+// A pile is a point; the stack is centred on it. A hidden pile has a count and the back of its
+// top, and nothing else — unless its top lies face-up.
+// While the top is being dragged off, the pile beneath still wears that same back: the wire has
+// not said what lies under it yet, and the patch that answers the drop will.
 function Pile({ zone, count, topCard, faces, back, left, top, px, lifted, topHandlers, topInspects, labelHandlers, topKeys, labelKeys, points }: { zone: ZoneView; count: number; topCard: VisibleComponentState | undefined; faces: string | undefined; back?: ReactNode | undefined; left: number; top: number; px: (mm: number) => number; lifted: boolean; topHandlers?: Handlers | undefined; topInspects?: Pointing | undefined; labelHandlers?: Handlers | undefined; topKeys?: FeltNodeProps | undefined; labelKeys?: FeltNodeProps | undefined; points?: Pointing | undefined }) {
   const t = useT()
   // The deck lying face down wears the deck's own back. An empty pile wears nothing but the
@@ -1112,7 +1121,7 @@ function Pile({ zone, count, topCard, faces, back, left, top, px, lifted, topHan
         style={{ boxShadow: thickness, transform: `translateY(${-(layers - 1) * 1.2}px)`, ...(topCard?.cardRef ? { ['--hue' as string]: hue(topCard.cardRef) } : {}) }}
       >
         {own}
-        <Texture faces={faces} c={topCard} />
+        <Texture faces={faces} c={topCard} back={count > 0 ? backOf(zone) : undefined} />
         <span>{count > 0 ? topCard?.cardRef ?? '' : ''}</span>
       </div>
       <span className="byd-pile-count" data-handle={labelHandlers ? 'true' : undefined} {...labelHandlers} {...labelKeys}>

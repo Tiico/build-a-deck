@@ -471,6 +471,44 @@ describe('a group rules what a card looks like on the table (#13)', () => {
     await table.close()
   })
 
+  it('sends a hidden pile its top card\'s back hash from the first frame, and never the row or the front (#313)', async () => {
+    const { id } = (await (await json('POST', '/projects', groupedProject())).json()) as { id: string }
+    const { id: sessionId, hostKey } = (await (await json('POST', `/projects/${id}/sessions`, {})).json()) as { id: string; hostKey: string }
+    const table = await WireClient.connect(run.base, sessionId, null, undefined, { host: hostKey })
+    await table.synced(0)
+
+    // The very first frame — before anyone has drawn — already says which back the deck shows.
+    const draw = () => table.view!.zones.find((z) => z.id === 'draw')!
+    const first = draw()
+    expect(first).toMatchObject({ mode: 'count', count: 2 })
+    expect(first).toHaveProperty('back', expect.stringMatching(/^[0-9a-f]{64}$/))
+    const before = table.frames.join('\n')
+    expect(before).not.toContain('dragon')
+    expect(before).not.toContain('trap')
+    expect(before).not.toContain('"front"')
+    expect(before).not.toContain('"cardRef"')
+
+    // Revealed only after the raw frames were checked: the back sent for the hidden top is the
+    // back of the row that turns out to lie there, and the next row's back takes its place.
+    const sentBack = (first as { back?: string }).back
+    await table.send(null, { v: 'flip', component: { top: 'draw' }, face: 'front' })
+    await table.synced(1)
+    const dragon = table.view!.components.find((c) => c.zone === 'draw')!
+    expect(dragon.cardRef).toBe('dragon')
+    expect(dragon.faces!['back']).toBe(sentBack)
+    expect(draw()).not.toHaveProperty('back')
+
+    await table.send(null, { v: 'draw', from: 'draw', to: 'table', count: 1 })
+    await table.synced(2)
+    const trapBack = (draw() as { back?: string }).back
+    expect(trapBack).toMatch(/^[0-9a-f]{64}$/)
+    expect(trapBack).not.toBe(sentBack)
+    await table.send(null, { v: 'flip', component: { top: 'draw' }, face: 'front' })
+    await table.synced(3)
+    expect(table.view!.components.find((c) => c.zone === 'draw')!).toMatchObject({ cardRef: 'trap', faces: { back: trapBack } })
+    await table.close()
+  })
+
   it('exports paired print faces from the current project and queues each PDF only once', async () => {
     const { id } = (await (await json('POST', '/projects', groupedProject())).json()) as { id: string }
 

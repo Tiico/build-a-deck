@@ -26,17 +26,21 @@ type Phase = 'pending' | 'ready' | 'failed'
 // The face is quiet everywhere else, because most cards are controls — the hand card, a felt card
 // the keyboard names — and a control cannot hold another (UX-37, #82); a thumbnail could not
 // press one either. A small lost card is read by holding it up, and the held-up card retries.
-export type TextureProps = { faces: string | undefined; c: VisibleComponentState | undefined; retry?: boolean | undefined }
+//
+// `back` is the one texture that comes without a component: the back a hidden pile's zone names
+// for its face-down top (#313). The wire gave that top no component at all, so there is nothing
+// to name while it waits, and nothing this can name.
+export type TextureProps = { faces: string | undefined; c: VisibleComponentState | undefined; back?: string | undefined; retry?: boolean | undefined }
 
-export function Texture({ faces, c, retry = false }: TextureProps) {
-  const src = c && textureUrl(faces, c)
-  if (!src || !c) return null
+export function Texture({ faces, c, back, retry = false }: TextureProps) {
+  const src = textureUrl(faces, c, back)
+  if (!src) return null
   // Keyed on the face: a card whose texture changes gets a fresh <img> rather than a new `src`
   // on the old one, so the browser has no decoded bitmap left to show for a frame.
-  return <TextureFace key={src} src={src} c={c} retry={retry} />
+  return <TextureFace key={src} src={src} name={c?.cardRef ?? null} retry={retry} />
 }
 
-function TextureFace({ src, c, retry }: { src: string; c: VisibleComponentState; retry: boolean }) {
+function TextureFace({ src, name, retry }: { src: string; name: string | null; retry: boolean }) {
   const t = useT()
   // `attempt` only busts the cache and never goes backwards; `rung` is where on the ladder of
   // growing pauses we are, and a player asking again starts it over.
@@ -69,7 +73,6 @@ function TextureFace({ src, c, retry }: { src: string; c: VisibleComponentState;
     setAttempt((a) => a + 1)
   }
   // A name only when this seat already knows it; a hidden card says nothing but that it is waiting.
-  const name = c.cardRef ?? null
   return (
     <>
       <img
@@ -105,10 +108,11 @@ function TextureFace({ src, c, retry }: { src: string; c: VisibleComponentState;
   )
 }
 
-// The texture to show: the front when its hash is known (the seat may see it), else the back.
+// The texture to show: the front when its hash is known (the seat may see it), else the back —
+// the component's own when there is one, otherwise the back its zone names for it.
 // `faces` is the HTTP origin that serves /faces/:hash; without it there is no texture.
-function textureUrl(faces: string | undefined, c: VisibleComponentState): string | undefined {
-  if (!faces || !c.faces) return undefined
-  const hash = c.cardRef !== null ? c.faces['front'] : c.faces['back']
+function textureUrl(faces: string | undefined, c: VisibleComponentState | undefined, back: string | undefined): string | undefined {
+  if (!faces) return undefined
+  const hash = c ? (c.cardRef !== null ? c.faces?.['front'] : c.faces?.['back']) : back
   return hash ? `${faces}/faces/${hash}` : undefined
 }
