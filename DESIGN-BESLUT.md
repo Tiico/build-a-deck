@@ -267,6 +267,7 @@ Bordet är den riktiga renderaren matad ur setupen, med tjugo platshållarkort i
 Egna zoner läggs till som yta eller hög, får namn, genväg, ägare och synlighet, och kan tas bort; receptets zoner får namn och genväg men ägare och synlighet är receptets.
 Setupen valideras av motorn i webbläsaren: går bordet inte att bygga säger editorn det i stället för att rita.
 Telefonens ark står bredvid som förhandsvisning av spelarens verb.
+Reviderat 2026-09-20 (#301): arket står hopfällt när fliken öppnas och fälls ut med en rad i samma kolumn som säger om det står utfällt; valet är editorns eget och minns inte mellan besök, och ett hopfällt ark lämnar sin plats till listan över bord under det.
 
 Reviderat 2026-09-15: **bordet är designerns, och receptet är bara wizardens första drag.**
 

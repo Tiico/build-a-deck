@@ -161,6 +161,8 @@ describe('the editor in the reader\'s own language (A4)', () => {
     // What the table cannot be without says so in the reader's language too.
     expect(screen.getByRole('button', { name: 'Remove Kasthög' })).toBeTruthy()
     expect(screen.getByLabelText('The felt is the table itself and cannot be removed.')).toBeTruthy()
+    // The sheet is folded until asked for (#301); the fold says so in English too.
+    fireEvent.click(screen.getByRole('button', { name: 'Show the player view' }))
     expect(screen.getByRole('heading', { name: 'What the player sees' })).toBeTruthy()
     // The list itself is a round trip to the server; what the tab says while it waits is the
     // tool's own word, and it is there the moment the tab opens.

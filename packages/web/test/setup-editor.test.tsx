@@ -156,6 +156,8 @@ describe('the setup editor (B5, K2): the seats knob, and giving the seats a zone
     fireEvent.click(screen.getByRole('button', { name: 'Framför 3 platser' }))
     expect(rows()).toEqual(expect.arrayContaining(['mine:A', 'mine:B', 'mine:C']))
     // Telefonens ark är en plats (C4): verbet står där en gång, inte en gång per plats.
+    // Arket står hopfällt tills det efterfrågas (#301).
+    fireEvent.click(screen.getByRole('button', { name: 'Visa spelarvyn' }))
     expect(screen.getAllByText('Framför mig', { selector: '[data-sheet-preview] span' })).toHaveLength(1)
 
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
@@ -179,6 +181,8 @@ describe('the setup editor (B5, C4): the phone’s sheet as a preview', () => {
     fireEvent.click(screen.getByRole('button', { name: '＋ Räknare' }))
     fireEvent.click(screen.getByRole('button', { name: '＋ Räknarzon per plats' }))
     fireEvent.click(screen.getByRole('button', { name: '＋ Yta per plats' }))
+    // Arket står hopfällt tills det efterfrågas (#301).
+    fireEvent.click(screen.getByRole('button', { name: 'Visa spelarvyn' }))
 
     const sheet = document.querySelector('[data-sheet-preview]') as HTMLElement
     expect(within(sheet).getAllByText('Framför mig')).toHaveLength(1)
@@ -227,5 +231,67 @@ describe('the setup editor (B5, L17): the deck\'s own back', () => {
     await openBord()
     expect(backOn('draw')).toBeNull()
     expect(document.querySelector('[data-zone="draw"] .byd-pile-top')?.getAttribute('data-face')).toBe('back')
+  })
+})
+
+// Arket — vad spelaren ser — stod alltid bredvid uppställningen och tog sin plats vare sig
+// designern tittade på det eller inte (#301). Nu är det ett veck i samma kolumn: dolt när fliken
+// öppnas, en knapp bort när det behövs, och knappen säger själv om det står utfällt.
+describe('the setup editor (B5, C4, #301): the player view is shown when asked for', () => {
+  const preview = () => document.querySelector('[data-sheet-preview]')
+
+  it('opens with the sheet hidden and one button that shows it', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openBord()
+    expect(preview()).toBeNull()
+    const fold = screen.getByRole('button', { name: 'Visa spelarvyn' })
+    expect(fold.getAttribute('aria-expanded')).toBe('false')
+    expect(screen.queryByRole('button', { name: 'Dölj spelarvyn' })).toBeNull()
+  })
+
+  // Ett veck och inte en dialog: fokus stannar på raden som fällde ut, åt båda hållen.
+  it('shows and hides the sheet from the same button, which says which way it stands and keeps the focus', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openBord()
+    const fold = screen.getByRole('button', { name: 'Visa spelarvyn' })
+    fold.focus()
+    fireEvent.click(fold)
+    expect(preview()).not.toBeNull()
+    expect(fold.getAttribute('aria-expanded')).toBe('true')
+    expect(fold.getAttribute('aria-controls')).toBe(preview()!.id)
+    expect(fold.textContent).toContain('Dölj spelarvyn')
+    expect(document.activeElement).toBe(fold)
+
+    fireEvent.click(fold)
+    expect(preview()).toBeNull()
+    expect(fold.getAttribute('aria-expanded')).toBe('false')
+    expect(fold.textContent).toContain('Visa spelarvyn')
+    expect(document.activeElement).toBe(fold)
+  })
+
+  // Arket läses ur dokumentet när det fälls ut, inte när fliken öppnades: en zon som döptes om
+  // medan arket låg hopfällt står med sitt nya namn när det visas.
+  it('shows the setup as it stands now, with what changed while the sheet was folded', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openBord()
+    fireEvent.click(row('discard').querySelector('.byd-setup-name') as HTMLElement)
+    fireEvent.change(screen.getByLabelText('Namn för Kasthög'), { target: { value: 'Slasken' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Visa spelarvyn' }))
+    const sheet = preview() as HTMLElement
+    expect(within(sheet).getByText('överst i Slasken')).toBeTruthy()
+    expect(within(sheet).queryByText(/Kasthög/)).toBeNull()
+  })
+
+  // Ingen inställning minns valet: fliken öppnas hopfälld varje gång, också efter ett besök på en
+  // annan flik.
+  it('is folded again when the tab is left and returned to', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openBord()
+    fireEvent.click(screen.getByRole('button', { name: 'Visa spelarvyn' }))
+    expect(preview()).not.toBeNull()
+    fireEvent.click(screen.getByRole('tab', { name: 'Mall' }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
+    expect(preview()).toBeNull()
+    expect(screen.getByRole('button', { name: 'Visa spelarvyn' }).getAttribute('aria-expanded')).toBe('false')
   })
 })
