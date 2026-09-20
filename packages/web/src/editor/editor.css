@@ -664,10 +664,11 @@
   cursor: pointer;
 }
 .byd-crown-box[aria-expanded='true'] { border-color: var(--byd-editor-primary-mark); color: #fff; }
-/* The book and its pictures are over the control that takes them (#293). The same amber the
-   table's picture cells are marked in, and a ring rather than a fill: the mark has to be
-   readable as a mark and not only as a hue. */
-.byd-rules-ways label[data-over='true'] { outline: 2px dashed #ffd98a; outline-offset: 2px; background: rgba(255, 217, 138, 0.1); }
+/* The book and its pictures are over the control that takes them (#293). Färgen är
+   dragmarkeringens token (#291, L22) — samma ton på varje mottagande yta, och nu på ett ställe
+   — medan formen är kontrollens egen: a ring rather than a fill, så att märket går att läsa som
+   ett märke och inte bara som en nyans. */
+.byd-rules-ways label[data-over='true'] { outline: 2px dashed var(--byd-drop-mark); outline-offset: 2px; background: var(--byd-drop-wash); }
 .byd-crown-end { margin-left: auto; }
 /* A search is a tool of the row like any other, and is held to the same height as a box so the
    crown reads as one row rather than as a field with buttons round it. */
@@ -1241,9 +1242,10 @@
 .byd-fonts-licence input { background: #0f1115; border: 1px solid #2a2d36; color: #fff; border-radius: 6px; padding: 4px 8px; font-size: 12px; width: 100%; box-sizing: border-box; }
 .byd-fonts li > button { justify-self: end; border: 1px solid #3b414e; border-radius: 6px; background: #1b1d23; color: #9aa3b8; font-size: 11px; padding: 4px 8px; cursor: pointer; }
 .byd-fonts-upload { display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; padding: 8px 12px; font-size: 12px; cursor: pointer; }
-/* A typeface is over the control (#294). The same amber the table's picture cells are marked in,
-   and a ring rather than a fill: the mark has to be readable as a mark and not only as a hue. */
-.byd-fonts-upload[data-over='true'] { outline: 2px dashed #ffd98a; outline-offset: 2px; background: rgba(255, 217, 138, 0.1); }
+/* A typeface is over the control (#294). Färgen är dragmarkeringens token (#291, L22), och
+   formen är kontrollens egen: a ring rather than a fill, så att märket går att läsa som ett
+   märke och inte bara som en nyans. */
+.byd-fonts-upload[data-over='true'] { outline: 2px dashed var(--byd-drop-mark); outline-offset: 2px; background: var(--byd-drop-wash); }
 .byd-fonts :is([role='alert'], [role='status']) { margin: 8px 0 0; font-size: 11px; color: #f0b64a; }
 /* On its way is not gone wrong: the amber above is the editor's word for "look at this", and a
    file that is simply travelling is read in the quiet register every other passing word is. */
@@ -1264,11 +1266,12 @@
    link, an inline flex box already, kept its own in the middle. Two frames that are meant to read
    as a pair have to set their words on the same line, so the label centres its own too. */
 .byd-data-tools label { display: inline-flex; align-items: center; }
-/* A data file is over the control that takes one (#292). The same amber the table's picture cells
-   are marked in, and a ring rather than a fill: the mark has to be readable as a mark and not only
-   as a hue. An outline is drawn outside the frame and takes no room, so the pair does not move
-   under the hand that is about to let go. */
-.byd-data-tools label[data-over='true'] { outline: 2px dashed #ffd98a; outline-offset: 2px; background: rgba(255, 217, 138, 0.1); }
+/* A data file is over the control that takes one (#292). Färgen är dragmarkeringens token
+   (#291, L22) — samma ton på varje mottagande yta, och deklarerad på ett enda ställe — medan
+   formen är kontrollens egen: a ring rather than a fill, så att märket går att läsa som ett
+   märke och inte bara som en nyans. An outline is drawn outside the frame and takes no room, so
+   the pair does not move under the hand that is about to let go. */
+.byd-data-tools label[data-over='true'] { outline: 2px dashed var(--byd-drop-mark); outline-offset: 2px; background: var(--byd-drop-wash); }
 /* What an import costs is written into the row straight after the control it warns about, which
    is where it is read (#36) — but a whole sentence set down between the two frames is a sentence
    set down through the middle of the pair, and at a phone's width it pushes the export onto a row
@@ -1300,7 +1303,8 @@
 /* Image cells (E1): a thumbnail with a place to drop, a button to choose, a × to clear. */
 .byd-data-image { padding: 4px !important; }
 .byd-data-drop { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 4px; border: 1px dashed transparent; border-radius: 8px; }
-.byd-data-drop[data-over='true'] { border-color: #ffd98a; background: rgba(255, 217, 138, 0.1); }
+/* Markeringen när ett drag står över rutan är dragmarkeringens token och ritas i
+   `dropping.css`, tillsammans med bibliotekets och guidens (#291). */
 .byd-data-drop > img { width: 60px; height: 40px; object-fit: cover; border-radius: 5px; background: #14161c; }
 .byd-data-drop > span { width: 60px; height: 40px; display: grid; place-items: center; border: 1px dashed #4a5163; border-radius: 5px; color: var(--byd-editor-quiet); font-size: 10px; text-align: center; }
 /* The word on it is `Välj`, which is four letters wide: as a box drawn round its own text the
@@ -2005,7 +2009,26 @@
 /* En rad hålls ledig åt beskedet, så att rutnätet inte hoppar när en bild kommer fram —
    samma avvägning som «Lägg på kort» gör med sin egen rad. */
 .byd-media-said { margin: 0 0 var(--byd-s3); min-height: 1.4em; font-size: 12px; color: var(--byd-editor-quiet); }
-.byd-media-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--byd-s3); }
+/* Hela bibliotekets bildyta tar emot bildfiler (#291, variant B). Den bär alltså en kant året om
+   — genomskinlig i vila, dragmarkeringens ton medan en fil hålls över den — eftersom en kant som
+   kommer till i samma ögonblick som draget skulle flytta varenda bricka en pixel. Rutnätet håller
+   en golvhöjd, så att ett tomt bibliotek också är en yta att sikta på. */
+.byd-media-grid { list-style: none; margin: 0; padding: var(--byd-s1); min-height: 96px; box-sizing: border-box; border: 1px dashed transparent; border-radius: 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--byd-s3); }
+/* Ett tomt bibliotek säger vad ytan är till för, i stället för att vara en tom ruta (#291). */
+.byd-media-empty { grid-column: 1 / -1; display: grid; place-items: center; text-align: center; font-size: 12px; }
+/* Nyss tillagd (#291). Tillfällig återkoppling om den senaste batchen, aldrig en egenskap hos
+   bilden — och skriven i ord, så att den går att läsa utan att se skillnad på två toner. */
+.byd-media-grid li { position: relative; }
+.byd-media-grid li[data-new] small.byd-media-new { position: absolute; top: 4px; left: 4px; padding: 0 4px; border-radius: 999px; background: var(--byd-editor-chrome-bg); color: var(--byd-editor-home-ink); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; font-size: 10px; line-height: 16px; }
+/* Resultatet per fil efter en batch. Varje lyckad rad är en väg till sin bild: i ett bibliotek
+   med trehundra bilder är «den är tillagd» inget svar på var den hamnade. */
+.byd-media-batch { margin: 0 0 var(--byd-s3); }
+.byd-media-batch ul { list-style: none; margin: 0; padding: 0; display: grid; font-size: 12px; color: var(--byd-editor-quiet); }
+/* Varje rad är lika hög, vare sig den bär en knapp eller en mening, och lika hög som en tumme
+   behöver: en lyckad rad är en väg till sin bild och alltså en kontroll som ska gå att träffa. */
+.byd-media-batch li { display: flex; align-items: center; min-height: var(--byd-tap); }
+.byd-media-batch li[data-result='failed'] { color: #f0b64a; }
+.byd-media-batch button { align-self: stretch; border: 0; padding: 0; background: transparent; color: var(--byd-editor-home-ink); font: inherit; text-align: left; text-decoration: underline; cursor: pointer; }
 .byd-media-grid li { display: grid; justify-items: center; gap: var(--byd-s1); font-size: 11px; color: var(--byd-editor-quiet); }
 .byd-media-grid li[data-unused] small { color: #f0b64a; }
 .byd-media-tile { width: 100%; padding: var(--byd-s1); }

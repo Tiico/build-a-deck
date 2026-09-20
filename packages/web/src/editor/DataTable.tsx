@@ -6,6 +6,7 @@ import { ColumnDoor } from './ColumnDoor.js'
 import { Crown, CrownBox, CrownDrawer, CrownFoot, CrownRail } from './Crown.js'
 import { DragDoor } from './DragDoor.js'
 import { ASSET_DRAG_TYPE, assetRef, assetUrl, assetsInUse, iconFieldsOf, imageFieldsOf, isAssetRef, ASSET_PREFIX } from './assets.js'
+import { DropSays, dropSurface, oneFile } from './dropping.js'
 import { searchSymbols, type GameSymbol } from './symbols.js'
 import { RoleList, SymbolList, roleOptionId, symbolListKey, symbolOptionId } from './SymbolList.js'
 import { triggerBehind } from './picking.js'
@@ -256,10 +257,17 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   const wasCell = (cardRef: string, field: string) => compareWith?.doc.rows.find((r) => r.id === cardRef)?.fields[field]
   const imageFields = assetBase && onUpload ? imageFieldsOf(doc) : []
   const images = assetsInUse(doc)
-  const upload = async (cardRef: string, field: string, file: File | undefined) => {
-    if (!file || !onUpload) return
+  // Cellens egen ruta tar en bild (#291): flera filer är en fråga utan svar, och den ställs
+  // tillbaka i stället för att besvaras med den första.
+  const upload = async (cardRef: string, field: string, files: readonly File[]) => {
+    const one = oneFile(files, t)
+    if (one === null || !onUpload) return
+    if ('said' in one) {
+      setUploadError(one.said)
+      return
+    }
     try {
-      onCell(cardRef, field, assetRef(await onUpload(file)))
+      onCell(cardRef, field, assetRef(await onUpload(one.file)))
       setUploadError(null)
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : String(err))
@@ -267,10 +275,15 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
   }
   // The same upload, for the action row rather than for a cell: the file becomes one asset and the
   // row holds it until the button is pressed. One file, one upload, however many cards it lands on.
-  const bulkUpload = async (file: File | undefined) => {
-    if (!file || !onUpload) return
+  const bulkUpload = async (files: readonly File[]) => {
+    const one = oneFile(files, t)
+    if (one === null || !onUpload) return
+    if ('said' in one) {
+      setUploadError(one.said)
+      return
+    }
     try {
-      setBulkImage(await onUpload(file))
+      setBulkImage(await onUpload(one.file))
       setUploadError(null)
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : String(err))
@@ -907,27 +920,21 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                 of the column: a place to drop one of the deck's images, and nothing to type. */}
             {bulkIsImage && assetBase ? (
               <div
-                className="byd-data-drop"
                 role="group"
                 aria-label={t('table.bulk.image')}
-                data-over={bulkOver ? 'true' : undefined}
-                onDragOver={(event) => {
-                  event.preventDefault()
-                  setBulkOver(true)
-                }}
-                onDragLeave={() => setBulkOver(false)}
-                onDrop={(event) => {
-                  event.preventDefault()
-                  setBulkOver(false)
-                  const hash = event.dataTransfer.getData(ASSET_DRAG_TYPE)
-                  if (hash) setBulkImage(hash)
-                  else void bulkUpload(event.dataTransfer.files?.[0])
-                }}
+                {...dropSurface({
+                  className: 'byd-data-drop',
+                  over: bulkOver,
+                  onOver: setBulkOver,
+                  onFiles: (files) => void bulkUpload(files),
+                  onLibrary: setBulkImage,
+                })}
               >
                 {bulkImage ? <img src={assetUrl(assetBase, bulkImage)} alt={t('table.bulk.image')} /> : <span>{t('table.image.drop')}</span>}
+                {bulkOver && <DropSays />}
                 <label className="byd-data-file">
                   {bulkImage ? t('table.image.replace') : t('table.image.choose')}
-                  <input className="byd-offscreen" type="file" accept="image/*" aria-label={t('table.bulk.image.choose')} onChange={(event) => void bulkUpload(event.target.files?.[0])} />
+                  <input className="byd-offscreen" type="file" accept="image/*" aria-label={t('table.bulk.image.choose')} onChange={(event) => void bulkUpload([...(event.target.files ?? [])])} />
                 </label>
               </div>
             ) : (
@@ -1119,28 +1126,26 @@ export function DataTable({ doc, project, selectedRow, onSelectRow, onCell, onAd
                 imageFields.includes(f) && assetBase ? (
                   <td key={f} className="byd-data-image" data-col={f}>
                     <div
-                      className="byd-data-drop"
                       role="group"
                       aria-label={t('table.imageFor', { cardRef })}
                       data-image-cell={cardRef}
-                      data-over={over === `${cardRef}:${f}` ? 'true' : undefined}
-                      onDragOver={(e) => {
-                        e.preventDefault()
-                        setOver(`${cardRef}:${f}`)
-                      }}
-                      onDragLeave={() => setOver(null)}
-                      onDrop={(e) => {
-                        e.preventDefault()
-                        setOver(null)
-                        const hash = e.dataTransfer.getData(ASSET_DRAG_TYPE)
-                        if (hash) onCell(cardRef, f, assetRef(hash))
-                        else void upload(cardRef, f, e.dataTransfer.files?.[0])
-                      }}
+                      {...dropSurface({
+                        className: 'byd-data-drop',
+                        // Cellen äger sitt eget svar på om draget står över den, så ett släpp
+                        // aldrig kan råka ändra ett annat mål (#291).
+                        over: over === `${cardRef}:${f}`,
+                        onOver: (on) => setOver(on ? `${cardRef}:${f}` : null),
+                        onFiles: (files) => void upload(cardRef, f, files),
+                        // En biblioteksbild återanvänds utan ny uppladdning (E1): den bär redan
+                        // sin hash, och att lägga upp den igen vore att göra en bild av två.
+                        onLibrary: (hash) => onCell(cardRef, f, assetRef(hash)),
+                      })}
                     >
                       {isAssetRef(row[f]) ? <img src={assetUrl(assetBase, String(row[f]).slice(ASSET_PREFIX.length))} alt={`${cardRef} ${f}`} /> : <span>{t('table.image.drop')}</span>}
+                      {over === `${cardRef}:${f}` && <DropSays />}
                       <label className="byd-data-file">
                         {isAssetRef(row[f]) ? t('table.image.replace') : t('table.image.choose')}
-                        <input className="byd-offscreen" type="file" accept="image/*" aria-label={t('table.image.chooseFor', { cardRef })} onChange={(e) => void upload(cardRef, f, e.target.files?.[0])} />
+                        <input className="byd-offscreen" type="file" accept="image/*" aria-label={t('table.image.chooseFor', { cardRef })} onChange={(e) => void upload(cardRef, f, [...(e.target.files ?? [])])} />
                       </label>
                       {isAssetRef(row[f]) && (
                         <button type="button" aria-label={t('table.image.removeFor', { cardRef })} onClick={() => onCell(cardRef, f, '')}>

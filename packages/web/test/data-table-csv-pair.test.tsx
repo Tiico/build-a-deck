@@ -85,10 +85,14 @@ afterAll(async () => {
   await browser.close()
 }, 60_000)
 
+// Tre ark och inte två: dragmarkeringens ton bor i `dropping.css` sedan #291, och `main.tsx`
+// laddar den bredvid de andra två. Utan den här raden löser `var(--byd-drop-mark)` inte ut,
+// `outline` blir ogiltig och ringen mäts som `none` — ett rött prov om en färg som i själva
+// verket är på plats i produkten.
 const laidOver = (tools: string) =>
   read('index.html')
     .replace('<script type="module" src="/src/main.tsx"></script>', '')
-    .replace('</head>', `<style>${read('src/editor/editor.css')}\n${read('src/buttons.css')}</style></head>`)
+    .replace('</head>', `<style>${read('src/editor/editor.css')}\n${read('src/buttons.css')}\n${read('src/dropping.css')}</style></head>`)
     .replace('<div id="root"></div>', `<div id="root"><div class="byd-editor" data-page="editor" data-mode="table"><main><div role="tabpanel"><div class="byd-table-wrap">${tools}</div></div></main></div></div>`)
 
 // Each of the two frames, and where the middle of the word inside it falls.

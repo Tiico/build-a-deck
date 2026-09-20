@@ -4,6 +4,7 @@ import { useRoving } from '../editor/roving.js'
 import { useRoom } from '../room.js'
 import { loginUrl, withCredentials } from '../account/api.js'
 import { assetRef, bytesOfDataUrl } from '../editor/assets.js'
+import { DropSays, dropSurface, oneFile } from '../editor/dropping.js'
 import { suggestFieldKey } from '../editor/fields.js'
 import { buildBlankProject, buildProject, type WizardState } from './build.js'
 import { defaultFields, DEFAULT_FRAME, FRAMES, type Field } from './frames.js'
@@ -92,6 +93,12 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
   // Which door the game is being made through, so the wait and the error stand at that door.
   const [via, setVia] = useState<Via>('guided')
   const [error, setError] = useState<string | null>(null)
+  // Vad ett släpp på ett bildfält blev, när det inte blev en bild: beskedet står vid det fält som
+  // tog emot det och ingen annanstans, eftersom det är det fältet som står kvar som det var.
+  const [refused, setRefused] = useState<{ field: string; said: string } | null>(null)
+  // Vilket fält draget står över just nu. Ett fält i taget, så att markeringen aldrig påstår att
+  // två mottagare väntar på samma släpp.
+  const [over, setOver] = useState<string | null>(null)
   const resumed = useRef(false)
   const frame = FRAMES.find((candidate) => candidate.id === s.frame) ?? DEFAULT_FRAME
   const named = s.name.trim().length > 0
@@ -148,11 +155,19 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
     ...current,
     rows: current.rows.map((candidate, rowIndex) => rowIndex === index ? { ...candidate, [key]: value } : candidate),
   }))
-  const chooseImage = (index: number, key: string, file: File | undefined) => {
-    if (!file) return
+  // Ett bildfält i guiden är en mottagare (#291, variant B): samma väg in för ett släpp som för
+  // filväljaren, och samma regel — fältet tar en bild, och flera filer är en fråga utan svar.
+  const chooseImage = (index: number, key: string, files: readonly File[]) => {
+    const one = oneFile(files, t)
+    if (one === null) return
+    if ('said' in one) {
+      setRefused({ field: key, said: one.said })
+      return
+    }
+    setRefused(null)
     const reader = new FileReader()
     reader.onload = () => updateRow(index, key, String(reader.result ?? ''))
-    reader.readAsDataURL(file)
+    reader.readAsDataURL(one.file)
   }
   const addField = (kind: Field['kind']) => {
     // Decided, not left alone by accident (#27, A4): the key is an identifier in the document
@@ -240,7 +255,17 @@ export function NewProjectPage({ onNavigate = (url) => location.assign(url) }: N
       <p>{t('wizard.cards.body')}</p>
       <div className="byd-wizard-card-workspace">
         <div className="byd-wizard-preview"><CardPreview id="wizard-live" face={front} row={row} icons={{}} /><span>{t('wizard.preview')}</span></div>
-        <div className="byd-wizard-card-form">{s.fields.map((field) => field.kind === 'image' ? <div key={field.key} className="byd-wizard-image-field is-wide"><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span><div>{row[field.key] ? <img src={row[field.key]} alt={t('wizard.image.preview', { label: field.label })} /> : <i>{t('wizard.image.none')}</i>}<label className="byd-wizard-file-button byd-secondary">{t(row[field.key] ? 'wizard.image.change' : 'wizard.image.choose')}<input className="byd-offscreen" type="file" accept="image/*" aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} onChange={(event) => chooseImage(selectedRow, field.key, event.target.files?.[0])} /></label>{row[field.key] && <button type="button" onClick={() => updateRow(selectedRow, field.key, '')}>{t('wizard.image.remove')}</button>}</div></div> : <label key={field.key} className={field.key === 'body' ? 'is-wide' : ''}><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span>{field.key === 'body' ? <textarea rows={4} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} /> : <input type={field.kind === 'number' ? 'number' : 'text'} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} />}</label>)}</div>
+        <div className="byd-wizard-card-form">{s.fields.map((field) => field.kind === 'image' ? <div key={field.key} className="byd-wizard-image-field is-wide"><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span><div
+          role="group"
+          aria-label={t('wizard.image.field', { label: field.label })}
+          {...dropSurface({
+            // Det aktuella bildfältet är mottagaren, och varje fält äger sitt eget svar: ett
+            // släpp får inte oavsiktligt ändra ett annat mål (#291).
+            over: over === field.key,
+            onOver: (on) => setOver(on ? field.key : null),
+            onFiles: (files) => chooseImage(selectedRow, field.key, files),
+          })}
+        >{row[field.key] ? <img src={row[field.key]} alt={t('wizard.image.preview', { label: field.label })} /> : <i>{t('wizard.image.none')}</i>}{over === field.key && <DropSays />}<label className="byd-wizard-file-button byd-secondary">{t(row[field.key] ? 'wizard.image.change' : 'wizard.image.choose')}<input className="byd-offscreen" type="file" accept="image/*" aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} onChange={(event) => chooseImage(selectedRow, field.key, [...(event.target.files ?? [])])} /></label>{row[field.key] && <button type="button" onClick={() => updateRow(selectedRow, field.key, '')}>{t('wizard.image.remove')}</button>}</div>{refused?.field === field.key && <span role="alert">{refused.said}</span>}</div> : <label key={field.key} className={field.key === 'body' ? 'is-wide' : ''}><span>{field.label}{!mappedByStarterFrame(field.key) && <em>{t('wizard.field.place')}</em>}</span>{field.key === 'body' ? <textarea rows={4} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} /> : <input type={field.kind === 'number' ? 'number' : 'text'} aria-label={t('wizard.card.field', { n: selectedRow + 1, label: field.label })} value={row[field.key] ?? ''} onChange={(event) => updateRow(selectedRow, field.key, event.target.value)} />}</label>)}</div>
       </div>
       <div className="byd-wizard-card-tabs">{s.rows.map((candidate, index) => <button type="button" key={index} className="byd-choice" aria-pressed={selectedRow === index} onClick={() => setSelectedRow(index)}><b>{index + 1}</b>{candidate['title'] || t('wizard.card.untitled')}</button>)}<button type="button" className="is-add" onClick={addRow}>{t('wizard.card.add')}</button><button type="button" disabled={s.rows.length === 1} onClick={() => removeRow(selectedRow)}>{t('wizard.card.remove')}</button></div>
       <footer><p>{t('wizard.footer')}</p><button type="button" className="byd-wizard-primary byd-primary" disabled={!ready || busy} onClick={() => void toEditor()}>{t(busy && via === 'guided' ? 'wizard.creating' : 'wizard.create')}</button>{error && via === 'guided' && <span role="alert">{error}</span>}</footer>

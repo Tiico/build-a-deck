@@ -3482,6 +3482,45 @@ Varje bild i Media har «Ta bort»; en bild inget kort använder går direkt, oc
 Vid ja töms kortens bildfält och bilden lämnar projektet i *samma* redigering, så ett steg tillbaka sätter tillbaka både bilden och korten; två steg hade lämnat leken halvvägs med tomma kort och en bild ingen använder.
 Bytesen ligger kvar på servern, eftersom de är innehållsadresserade och en äldre version av leken kan peka på dem — att «märka men inte rensa» ovan gäller alltså fortfarande blobben, medan referensen nu kan tas bort.
 
+Reviderat 2026-09-20 (#291): **ytan där en bild väljs är ytan som tar emot den, och en batch slutar i biblioteket och inte i en bild.**
+
+Variant B, vald efter en A/B/C-prototyp: hela bibliotekets bildyta tar emot bildfiler, med den kompakta filvalsknappen kvar i krönet och en markering medan filer hålls över den.
+Ingen permanent extra släppruta och ingen uppladdningsspalt.
+Skälet är att en egen ruta vore en andra plats att sikta på för en handling som redan har en — och att ett tomt bibliotek då hade två tomma rutor i stället för en yta.
+Så rutnätet håller sin golvhöjd och sin kant även när det står tomt, och säger där vad ytan är till för.
+I Data och guiden är det aktuella bildfältet mottagaren, i massredigeringen det valda bildfältet för de markerade korten; varje fält äger sitt eget svar på om draget står över det, så ett släpp aldrig kan ändra ett annat mål.
+Filväljaren, formatreglerna och återkopplingen är dragflödets egna: det är samma väg in, öppnad två gånger.
+Ett filsläpp och ett släpp av en biblioteksbild skiljs på dragtypnamnet och inte på gissning, eftersom en bild spelet redan har återanvänds utan ny uppladdning (E1).
+
+Media tar flera bilder i ett släpp; ett enskilt bildfält tar en.
+Flera filer på ett enskilt fält är en fråga utan svar — vilken av dem skulle fältet få? — och tyst första fil är det enda felaktiga svaret, eftersom det är det enda som ser ut som ett svar.
+Fältet står alltså kvar som det var och säger hur många filer som släpptes.
+
+Efter en batch visas biblioteksöversikten, med de lyckade bilderna märkta som nyss tillagda och resultatet per fil synligt, och ingen bild öppnad för beskärning.
+Det avgörs av att formgivaren lämnade flera filer och inte av hur många uppladdningar som råkade lyckas: fem filer där fyra faller bort slutar ändå i översikten, för hon lämnade fem.
+En enda vald eller släppt fil behåller sitt beteende och öppnas, för det är den bilden hon just bad om.
+Om ingen enda fil kom fram behålls föregående vy, med filfelen bredvid sig; en översikt över ingenting är ingen översikt.
+Varje lyckad rad i resultatet är en väg till sin bild, eftersom «den är tillagd» inte är något svar på var den hamnade i ett bibliotek med trehundra bilder.
+Märkningen «nyss tillagd» är tillfällig återkoppling om den senaste batchen och ingenting dokumentet bär: den är varken kortmarkering eller tilldelning, och «nyss» är ingen egenskap hos en bild.
+
+Batchens filer laddas upp en i taget, och nästa börjar först när den föregående har fått sitt svar.
+Det är inte försiktighet utan det enda som gör batchen sammanhängande, sedan #339 vände på ordningen inne i `addPicture`: bilden läggs in i dokumentet med en gest av sitt eget innan bytena reser, och en uppladdning som misslyckas tar in den igen med `callOff`.
+`callOff` tar bara tillbaka den gest som fortfarande är öppen — vilket är rätt när formgivaren har gått vidare och gjort något annat, för då är hennes eget arbete inte något ett svar från nätverket får riva upp.
+Två uppladdningar som överlappar upphäver därför varandras ångerväg: den som startade sist har redan öppnat sin gest när den första vill ta tillbaka sin, och bilden som aldrig kom fram blir kvar i biblioteket som en referens till ingenting.
+Av samma skäl ser en fil som frågar om spelet redan har bilden en bild vars byte ännu inte har rest, och rapporteras som tillagd fast tjänsten sade nej.
+Följer uppladdningarna på varandra är varje gest den öppna när den avgörs, dokumentet bär bara bilder som verkligen har kommit fram, och ordningen i biblioteket är den formgivaren lämnade filerna i — mätt, och inte antaget: med samtidiga uppladdningar lade sig den andra filen före den första i dokumentet.
+Priset är att fem bilder tar fem tur och retur i stället för ett, vilket är rätt pris för att ingen bild ska stå kvar som ett löfte tjänsten inte höll.
+
+Dragmarkeringen är en token med bärnstenen som förval, och formen skrivs en gång i `packages/web/src/dropping.css`.
+Beslutstexten säger «den blå dragmarkeringen», men det som är i drift sedan E1:s bildceller är bärnsten, och Datas levererade rutor målas inte om i förbifarten; en övergång till blått är därför en rad och inte sju ytor.
+Ett rum binder tokenen till den accent det redan äger, precis som rollerna i knappspråket binds (#44), eftersom bärnsten på guidens papper vore 1,2:1 och alltså ingen markering alls — en markering är en grafik och bär 3:1 mot sin egen grund (L11).
+Markeringen kompletteras med text om vad ytan tar emot och försvinner när draget lämnar ytan eller när släppet är gjort.
+`droppedOn` är privat för modulen, så ingen bildyta kan ta emot en fil utan att gå genom `dropSurface` och därmed bära märket.
+Regelbokens import (#293) och typsnittsknappen (#294) tar något annat än bilder och har sin egen väg in, men hämtar sin markering ur samma token; formen är kontrollens egen — en kant här, en kontur där.
+`packages/web/test/drop-mark.test.ts` är grinden, och den räknar upp varje mottagande yta i stället för att räkna dem.
+
+CSV, regler och typsnitt tillämpar samma kompakta mönster lokalt vid sina egna kontroller (#292, #293, #294) och aldrig som en global import över hela fliken.
+
 ### L23. Ett tecken öppnar en lista, överallt i verktyget (2026-09-18, #215, #230)
 
 Beslutet, i en mening:

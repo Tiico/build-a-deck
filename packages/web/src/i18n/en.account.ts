@@ -113,6 +113,7 @@ export const enAccount = {
   'wizard.cards.count.one': '{n} card',
   'wizard.cards.count.other': '{n} cards',
   'wizard.preview': 'Live preview',
+  'wizard.image.field': 'Image for {label}',
   'wizard.image.preview': 'Preview of {label}',
   'wizard.image.none': 'No image chosen',
   'wizard.image.change': 'Change image',

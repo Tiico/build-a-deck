@@ -3,6 +3,7 @@ import { WHOLE_PICTURE, pictureNameOf, showsWholePicture, type AssetCrop } from 
 import { croppedMotif, type Motif } from '@byd/template'
 import type { ProjectDoc, ProjectRow } from './types.js'
 import { assetRef, assetUrl, imageFieldsOf, mediaInGame, previewIcons } from './assets.js'
+import { DropSays, dropSurface } from './dropping.js'
 import { setColumn } from './selection.js'
 import { useMarked } from './marked.js'
 import { fieldLabel } from './fields.js'
@@ -64,6 +65,10 @@ export type MediaPanelProps = {
 // about to lose its picture, and few enough that the sentence is still one sentence.
 export const NAMED_CARDS = 5
 
+// Vad en fil i en batch blev: en bild i spelet, eller ett skäl till att den inte blev det (#291).
+type Named = { name: string; named: boolean }
+type Result = (Named & { hash: string }) | (Named & { why: string })
+
 export function MediaPanel({ doc, assetBase, motifs, onReplaceRows, onCrop, onAdd, onRemove }: MediaPanelProps) {
   const t = useT()
   const said = useId()
@@ -89,7 +94,37 @@ export function MediaPanel({ doc, assetBase, motifs, onReplaceRows, onCrop, onAd
   // chosen until the designer says otherwise, and a picture that leaves the game takes the choice
   // with it.
   const [picked, setPicked] = useState<string | null>(null)
-  const chosen = picked !== null && media.some((m) => m.hash === picked) ? picked : (media[0]?.hash ?? null)
+  // Utom efter en batch (#291, flerfilsbeslutet). Då är biblioteksöversikten det som visas och
+  // ingen bild är öppnad: fem filer har ingen bild som är *den* bilden, och att välja åt
+  // formgivaren efter nätverkets färdigordning vore det mest godtyckliga valet av alla. Så länge
+  // översikten står är ingenting i handen, och det första hon rör vid avslutar den.
+  const [overview, setOverview] = useState(false)
+  const chosen = overview ? null : picked !== null && media.some((m) => m.hash === picked) ? picked : (media[0]?.hash ?? null)
+  // Vad den senaste batchen blev, fil för fil, och vilka bilder som är nyss tillagda. Båda är
+  // tillfällig återkoppling om en handling och inget dokumentet bär: en märkning som överlevde
+  // omladdningen vore en påstådd egenskap hos bilden, och «nyss» är ingen egenskap hos en bild.
+  const [batch, setBatch] = useState<Result[] | null>(null)
+  const [fresh, setFresh] = useState<readonly string[]>([])
+  // Om ett drag står över bibliotekets bildyta just nu.
+  const [over, setOver] = useState(false)
+  // Handen läggs på översikten, av samma skäl som den läggs på beskärningsrutan efter en enda
+  // bild: det som visas måste kunna nås av den som inte ser skärmen.
+  const overviewRef = useRef<HTMLElement | null>(null)
+  const landing = useRef(false)
+  useEffect(() => {
+    if (!landing.current) return
+    landing.current = false
+    overviewRef.current?.focus()
+  })
+  // Att öppna en bild avslutar översikten och dess återkoppling: formgivaren har gått vidare, och
+  // en märkning som står kvar efter det säger något om biblioteket i stället för om handlingen.
+  const open = (hash: string) => {
+    setPicked(hash)
+    setOverview(false)
+    setBatch(null)
+    setFresh([])
+    setDone(null)
+  }
   // Which column the picture is written into. Only the template knows which columns are drawn as
   // pictures (E1), and a deck with one such column is not asked the question at all.
   const columns = imageFieldsOf(doc)
@@ -134,26 +169,69 @@ export function MediaPanel({ doc, assetBase, motifs, onReplaceRows, onCrop, onAd
     opening.current = false
     handle.current?.focus()
   })
-  const take = async (file: File | undefined, input: HTMLInputElement): Promise<void> => {
+  const take = async (files: readonly File[], input?: HTMLInputElement): Promise<void> => {
     // Cleared at once, so that choosing the same file again is a choice and not a silence: an
     // input that still holds it fires nothing the second time.
-    input.value = ''
-    if (!file || !onAdd) return
+    if (input) input.value = ''
+    if (files.length === 0 || !onAdd) return
     setNote(null)
-    try {
-      const hash = await onAdd(file)
+    // En fil i taget, färdig innan nästa börjar (#291, #339). En fil som faller bort hindrar
+    // ingen annan, och ordningen är den formgivaren lämnade dem i — aldrig den ordning nätverket
+    // råkade bli klart i.
+    //
+    // Att vänta ut varje fil är inte en försiktighetsåtgärd utan det enda som gör en batch
+    // sammanhängande, sedan #339 vände på ordningen inne i `addPicture`: bilden läggs in i
+    // dokumentet med en gest av sitt eget innan bytena reser, och en uppladdning som misslyckas
+    // tar in den igen med `callOff`. `callOff` tar bara tillbaka den gest som fortfarande är
+    // öppen — vilket är rätt när formgivaren har gått vidare och gjort något annat — så två
+    // uppladdningar som överlappar upphäver varandras ångerväg: den som blir klar sist har redan
+    // öppnat sin gest när den första vill ta tillbaka sin, och bilden som aldrig kom fram blir
+    // kvar i biblioteket som en referens till ingenting. Av samma skäl ser en fil som redan finns
+    // i dokumentet en bild vars byte ännu inte har rest, och rapporteras som tillagd fast tjänsten
+    // sade nej. Så länge uppladdningarna följer på varandra är varje gest den öppna när den
+    // avgörs, och dokumentet bär bara bilder som verkligen har kommit fram.
+    const landed: Result[] = []
+    for (const file of files) {
+      // Vad filen heter, med bibliotekets egen regel om vad ett filnamn är (beslut 6) — och
+      // filens råa namn kvar, för en fil vars namn inte blev något är ändå en rad i listan.
       const name = pictureNameOf(file.name)
-      setPicked(hash)
-      setDone(null)
-      setDrafted(null)
-      opening.current = true
-      setNote(name === undefined ? t('media.add.done.unnamed') : t('media.add.done', { name }))
-    } catch (err) {
-      // A picture that did not arrive is said in the same place the arrival is, and it is said
-      // rather than thrown: an upload can fail on a dropped line or a file the gate refuses, and
-      // an unhandled rejection is not a way to tell a designer that her picture is too big.
-      setNote(err instanceof Error ? err.message : String(err))
+      const said = { name: name ?? file.name, named: name !== undefined }
+      try {
+        landed.push({ ...said, hash: await onAdd(file) })
+      } catch (err) {
+        // A picture that did not arrive is said in the same place the arrival is, and it is
+        // said rather than thrown: an upload can fail on a dropped line or a file the gate
+        // refuses, and an unhandled rejection is not a way to tell a designer that her picture
+        // is too big.
+        landed.push({ ...said, why: err instanceof Error ? err.message : String(err) })
+      }
     }
+    // En enda fil behåller sitt beteende: den öppnas i beskärningsrutan, för det är den bilden
+    // formgivaren just bad om. Det avgörs av hur många filer hon lämnade och inte av hur många
+    // uppladdningar som råkade lyckas.
+    const only = files.length === 1 ? landed[0] : undefined
+    if (only) {
+      if ('hash' in only) {
+        setPicked(only.hash)
+        setOverview(false)
+        setDone(null)
+        setDrafted(null)
+        opening.current = true
+        setNote(only.named ? t('media.add.done', { name: only.name }) : t('media.add.done.unnamed'))
+      } else setNote(only.why)
+      return
+    }
+    const arrived = landed.filter((one) => 'hash' in one)
+    setBatch(landed)
+    setNote(t('media.add.batch', { ok: arrived.length, n: landed.length }))
+    landing.current = true
+    // Ingen enda kom fram: då finns ingen översikt att visa, och den vy formgivaren stod i står
+    // kvar med filfelen bredvid sig.
+    if (arrived.length === 0) return
+    setFresh(arrived.map((one) => one.hash))
+    setOverview(true)
+    setDone(null)
+    setDrafted(null)
   }
   return (
     <div className="byd-media" data-media-panel>
@@ -166,7 +244,7 @@ export function MediaPanel({ doc, assetBase, motifs, onReplaceRows, onCrop, onAd
           {onAdd && (
             <label className="byd-secondary byd-media-add">
               {t('media.add')}
-              <input className="byd-offscreen" type="file" accept="image/*" aria-label={t('media.add')} onChange={(event) => void take(event.target.files?.[0], event.target)} />
+              <input className="byd-offscreen" type="file" accept="image/*" multiple aria-label={t('media.add')} onChange={(event) => void take([...(event.target.files ?? [])], event.target)} />
             </label>
           )}
         </div>
@@ -174,6 +252,34 @@ export function MediaPanel({ doc, assetBase, motifs, onReplaceRows, onCrop, onAd
           <p className="byd-media-said" role="status">
             {note ?? ''}
           </p>
+        )}
+        {/* Resultatet per fil (#291). En lyckad rad är en väg till sin bild och inte bara ett
+            kvitto: i ett bibliotek med trehundra bilder är «den är tillagd» inget svar på var
+            den hamnade. Ingen av dem öppnas av sig själv; det är formgivaren som väljer. */}
+        {batch && (
+          <section
+            className="byd-media-batch"
+            role="group"
+            aria-label={t('media.add.results')}
+            tabIndex={-1}
+            ref={(el) => {
+              overviewRef.current = el
+            }}
+          >
+            <ul>
+              {batch.map((one, at) => (
+                <li key={`${one.name}-${at}`} data-result={'hash' in one ? 'ok' : 'failed'}>
+                  {'hash' in one ? (
+                    <button type="button" onClick={() => open(one.hash)}>
+                      {t('media.add.result.ok', { name: one.name })}
+                    </button>
+                  ) : (
+                    t('media.add.result.failed', { name: one.name, why: one.why })
+                  )}
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
         {asked && onRemove && (
           <Question
@@ -200,23 +306,39 @@ export function MediaPanel({ doc, assetBase, motifs, onReplaceRows, onCrop, onAd
             })}
           </Question>
         )}
-        <ul className="byd-media-grid" aria-label={t('media.title')}>
+        {/* Hela bibliotekets bildyta tar emot bildfiler (#291, variant B). Ingen egen släppruta
+            vid sidan av rutnätet: den skulle vara en andra plats att sikta på för en handling som
+            redan har en, och ett tomt bibliotek skulle då ha två tomma rutor. Rutnätet håller sin
+            golvhöjd och sin kant även när det är tomt, så det finns alltid en yta att träffa —
+            och filvalsknappen står kvar i krönet, för tangentbordets skull. */}
+        <ul
+          aria-label={t('media.title')}
+          {...dropSurface({
+            className: 'byd-media-grid',
+            over,
+            onOver: setOver,
+            onFiles: (files) => void take(files),
+          })}
+        >
+          {over && (
+            <li className="byd-media-empty">
+              <DropSays many />
+            </li>
+          )}
+          {media.length === 0 && !over && <li className="byd-media-empty">{t('media.empty')}</li>}
           {media.map(({ hash, cards }) => {
             const spare = cards.length === 0
             // What is stored, not what is being dragged: the tile says how the picture stands in
             // the game, and the window on its way somewhere is shown where it is being cut.
             const cropped = doc.pictures?.[hash]?.crop
             return (
-              <li key={hash} data-asset={hash} {...(spare ? { 'data-unused': 'true' } : {})}>
+              <li key={hash} data-asset={hash} {...(spare ? { 'data-unused': 'true' } : {})} {...(fresh.includes(hash) ? { 'data-new': 'true' } : {})}>
                 <button
                   type="button"
                   className="byd-media-tile byd-choice"
                   aria-pressed={chosen === hash}
                   aria-describedby={`${said}-${hash}`}
-                  onClick={() => {
-                    setPicked(hash)
-                    setDone(null)
-                  }}
+                  onClick={() => open(hash)}
                 >
                   {/* The library is the editor's densest surface: a game of real size brings
                       three hundred pictures to it, and fetching them all the moment the tab
@@ -236,6 +358,9 @@ export function MediaPanel({ doc, assetBase, motifs, onReplaceRows, onCrop, onAd
                     be drawn from these bytes, so the library says nobody uses it and leaves it
                     where it is. */}
                 <small id={`${said}-${hash}`}>{spare ? t('media.unused') : t(cards.length === 1 ? 'wall.cards.one' : 'wall.cards.other', { n: cards.length })}</small>
+                {/* Nyss tillagd, i ord och inte bara i färg: uppladdning, klart och fel ska gå
+                    att skilja åt utan att se skillnad på två toner (L13). */}
+                {fresh.includes(hash) && <small className="byd-media-new">{t('media.new')}</small>}
                 {onRemove && (
                   <button
                     type="button"

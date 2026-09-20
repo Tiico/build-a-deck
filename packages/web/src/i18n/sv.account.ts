@@ -128,6 +128,7 @@ export const svAccount = {
   'wizard.cards.count.one': '{n} kort',
   'wizard.cards.count.other': '{n} kort',
   'wizard.preview': 'Levande förhandsvisning',
+  'wizard.image.field': 'Bild för {label}',
   'wizard.image.preview': 'Förhandsvisning av {label}',
   'wizard.image.none': 'Ingen bild vald',
   'wizard.image.change': 'Byt bild',
