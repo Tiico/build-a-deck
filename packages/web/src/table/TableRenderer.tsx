@@ -1090,6 +1090,18 @@ function Pile({ zone, count, topCard, faces, back, left, top, px, lifted, topHan
   // The deck lying face down wears the deck's own back. An empty pile wears nothing but the
   // dashed outline `table.css` draws on it, which is how a pile says it is empty.
   const own = count > 0 && !topCard?.cardRef ? back : null
+  // How thick the pile looks (#314). The cards underneath are drawn as a staircase of shadows
+  // behind the top one, trailing away from the reader — the deck's own edge, which is the only
+  // way a pile says on a flat felt that it is deep.
+  //
+  // The staircase is drawn *behind* the top card and never under it: the top card keeps the
+  // pile's own rectangle, the one its point names. That is not tidiness. Three things are laid
+  // out against that rectangle and nothing tells them the pile has been nudged off it — where a
+  // split lands beside the pile (`besidePile`), which pile a drop falls on (`hitAt`), and where
+  // the ghost of the top card is drawn while it is dragged off. Lifting the drawn card by the
+  // thickness, as this did, put all three a little further out the deeper the pile got: at ten
+  // cards a card laid beside the deck sat 10.7 px low, at sixty 13.1 px, and the same pile that
+  // looked in line at the start of a game looked as though the card had slipped by the end.
   const layers = Math.min(Math.max(count, 0), 12)
   const thickness = Array.from({ length: layers }, (_, i) => `0 ${-i * 1.2}px 0 #1f2b4a`).join(', ')
   return (
@@ -1109,7 +1121,7 @@ function Pile({ zone, count, topCard, faces, back, left, top, px, lifted, topHan
         {...topInspects}
         {...topHandlers}
         {...topKeys}
-        style={{ boxShadow: thickness, transform: `translateY(${-(layers - 1) * 1.2}px)`, ...(topCard?.cardRef ? { ['--hue' as string]: hue(topCard.cardRef) } : {}) }}
+        style={{ boxShadow: thickness, ...(topCard?.cardRef ? { ['--hue' as string]: hue(topCard.cardRef) } : {}) }}
       >
         {own}
         <Texture faces={faces} c={topCard} />
