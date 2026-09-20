@@ -15,7 +15,6 @@ export const enEditor = {
   'media.add.batch': '{ok} of {n} pictures have been added.',
   'media.add.results': 'Result for each file',
   'media.add.result.ok': '{name} has been added',
-  'media.add.result.failed': '{name}: {why}',
   'media.new': 'just added',
   'media.remove': 'Remove',
   'media.remove.of': 'Remove {name}',
@@ -907,7 +906,14 @@ export const enEditor = {
   'upload.or': ' or ',
   'upload.notThisKind': 'the file is not {formats}',
   'upload.tooBig': 'the file is too large (8 MB at most)',
-  'upload.failed': 'could not upload the file: {status}',
+  'upload.failed': 'the service answered {status}',
+  // An upload that fell away (#344, L37). The correction is silent in the history, so the
+  // notice has to be all the clearer where the doing was done: it names which of what she did
+  // went away again, and why it did, after the colon.
+  'upload.undone': '{what} could not be uploaded and has been removed again: {why}',
+  'upload.undone.symbol': 'The symbol {name}',
+  'upload.undone.font': 'The typeface {name}',
+  'upload.undone.picture': 'The picture {name}',
   'upload.one.only': 'An image field takes one image at a time. {n} files were dropped, and the field is as it was.',
   'upload.drop.one': 'Takes one image',
   'upload.drop.many': 'Takes several images',

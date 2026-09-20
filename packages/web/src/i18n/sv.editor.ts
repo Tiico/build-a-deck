@@ -20,7 +20,6 @@ export const svEditor = {
   'media.add.batch': '{ok} av {n} bilder är tillagda.',
   'media.add.results': 'Resultat per fil',
   'media.add.result.ok': '{name} är tillagd',
-  'media.add.result.failed': '{name}: {why}',
   'media.new': 'nyss tillagd',
   'media.remove': 'Ta bort',
   'media.remove.of': 'Ta bort {name}',
@@ -1012,7 +1011,17 @@ export const svEditor = {
   'upload.or': ' eller ',
   'upload.notThisKind': 'filen är inte {formats}',
   'upload.tooBig': 'filen är för stor (max 8 MB)',
-  'upload.failed': 'kunde inte ladda upp filen: {status}',
+  'upload.failed': 'tjänsten svarade {status}',
+  // En uppladdning som föll bort (#344, L37). Rättelsen är tyst i historiken — den lägger inget
+  // steg, för ett steg som gick att ångra hade lagt tillbaka byte som inte finns — så beskedet
+  // måste vara desto tydligare där handlingen gjordes: dokumentet ändrades bakom formgivaren,
+  // och ett besked som inte säger vilket av det hon gjort som togs tillbaka lämnar henne med en
+  // lek hon inte känner igen. Varför det gick fel står kvar efter kolonet: det är det hon
+  // behöver för att veta om det är lönt att försöka igen.
+  'upload.undone': '{what} kunde inte laddas upp och har tagits bort igen: {why}',
+  'upload.undone.symbol': 'Symbolen {name}',
+  'upload.undone.font': 'Typsnittet {name}',
+  'upload.undone.picture': 'Bilden {name}',
   // Ett enskilt bildfält tar en bild i taget (#291). Flera filer på ett sådant fält är en fråga
   // utan svar, och tyst första fil är det enda svaret som är fel — det är det enda som ser ut som
   // ett svar. Så fältet står kvar som det var, och det sägs.

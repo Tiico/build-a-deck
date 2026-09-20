@@ -890,11 +890,11 @@ describe('a typeface and a picture do not wait for the network either (#339)', (
 
   // A typeface that appears and then vanishes without a word is worse than one that is slow. The
   // entry is taken back exactly as a placement is (#310): nothing that happened, no row in the
-  // history — and the caller is told, in the words `storeAsset` already has for it.
+  // history — and the caller is told, in words that name what went and why (L37).
   it.each([
-    ['a picture', (client: ProjectClient) => client.addPicture(new File([PNG], 'drake.png', { type: 'image/png' }))],
-    ['a typeface', (client: ProjectClient) => client.useFont(new File([WOFF2], 'Rubrikserif.woff2', { type: '' }))],
-  ])('leaves the document exactly as it was when the bytes of %s never arrive, and says so', async (_what, take) => {
+    ['a picture', (client: ProjectClient) => client.addPicture(new File([PNG], 'drake.png', { type: 'image/png' })), /^Bilden drake\.png kunde inte laddas upp och har tagits bort igen: tjänsten svarade 500$/],
+    ['a typeface', (client: ProjectClient) => client.useFont(new File([WOFF2], 'Rubrikserif.woff2', { type: '' })), /^Typsnittet Rubrikserif kunde inte laddas upp och har tagits bort igen: tjänsten svarade 500$/],
+  ])('leaves the document exactly as it was when the bytes of %s never arrive, and says so', async (_what, take, said) => {
     const created = await run.projects.create(run.projectId, projectDoc())
     const client = await openClient(created.id)
     // A step already taken, so that the way back has something on it to be left alone.
@@ -908,7 +908,7 @@ describe('a typeface and a picture do not wait for the network either (#339)', (
       return real(input, init)
     }) as typeof fetch
     try {
-      await expect(take(client)).rejects.toThrow(/kunde inte ladda upp filen: 500/)
+      await expect(take(client)).rejects.toThrow(said)
     } finally {
       globalThis.fetch = real
     }
@@ -943,5 +943,190 @@ describe('a typeface and a picture do not wait for the network either (#339)', (
     }
     expect(client.doc).toEqual(before)
     expect(client.canUndo).toBe(false)
+  })
+})
+
+// Two gesture-bearing uploads that overlap used to cancel each other's way back (#344). Only the
+// gesture that is still open can be called off, and the one that started last has already opened
+// its own by the time the first one wants to take itself back — so the first one's `callOff` was
+// an empty operation. The document was left holding a reference to bytes that never arrived
+// while the surface said it had gone wrong: the document and the notice said different things.
+//
+// L37: what never arrived is taken out of the document with a plain edit through `applyEdit`,
+// and that edit never pushes a step. A correction is not something the designer did, and the
+// step it would push is one an undo would walk straight back into — the document with the asset
+// still in it, which is the very state the correction existed to leave.
+describe('an upload that falls away after the designer has gone on (#344, L37)', () => {
+  const PNG = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3])
+  const WOFF2 = new Uint8Array([119, 79, 70, 50, 0, 1, 0, 0])
+  const skold = LIBRARY.find((s) => s.id === 'skold')!
+  const typeface = (): File => new File([WOFF2], 'Rubrikserif.woff2', { type: '' })
+  const picture = (): File => new File([PNG], 'drake.png', { type: 'image/png' })
+
+  // A slow line: every upload is held until the test answers it, in the order they were sent.
+  // `null` lets the real service answer; a `Response` is the answer itself.
+  type Held = (answer: Response | null) => void
+  const slowLine = (): { held: Held[]; hangUp: () => void } => {
+    const real = globalThis.fetch
+    const held: Held[] = []
+    globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      if (new URL(String(input)).pathname !== '/assets' || (init?.method ?? 'GET') !== 'POST') return real(input, init)
+      const answer = await new Promise<Response | null>((resolve) => held.push(resolve))
+      return answer ?? real(input, init)
+    }) as typeof fetch
+    return {
+      held,
+      hangUp: () => {
+        globalThis.fetch = real
+      },
+    }
+  }
+
+  // The four ways an asset goes into the document before its bytes have travelled, each with
+  // what the document holds afterwards and what the surface is told when it never arrives. The
+  // second upload is always of another kind, so the one that survives cannot be mistaken for the
+  // one that fell away.
+  const ways = [
+    {
+      what: 'a symbol taken into the game',
+      take: (client: ProjectClient) => client.useSymbol(skold),
+      holds: (client: ProjectClient) => client.doc.icons['sköld'] !== undefined,
+      then: (client: ProjectClient) => client.addPicture(picture()),
+      said: 'Symbolen sköld kunde inte laddas upp och har tagits bort igen: tjänsten svarade 500',
+    },
+    {
+      what: 'a symbol placed on a card',
+      take: (client: ProjectClient) => client.placeIcon(skold, 'front', null),
+      holds: (client: ProjectClient) => client.doc.icons['sköld'] !== undefined || (client.doc.template.faces['front']?.base ?? []).some((e) => e.kind === 'icons'),
+      then: (client: ProjectClient) => client.addPicture(picture()),
+      said: 'Symbolen sköld kunde inte laddas upp och har tagits bort igen: tjänsten svarade 500',
+    },
+    {
+      what: 'a typeface',
+      take: (client: ProjectClient) => client.useFont(typeface()),
+      holds: (client: ProjectClient) => client.doc.fonts?.['Rubrikserif'] !== undefined,
+      then: (client: ProjectClient) => client.addPicture(picture()),
+      said: 'Typsnittet Rubrikserif kunde inte laddas upp och har tagits bort igen: tjänsten svarade 500',
+    },
+    {
+      what: 'a picture',
+      take: (client: ProjectClient) => client.addPicture(picture()),
+      holds: (client: ProjectClient) => Object.keys(client.doc.pictures ?? {}).length > 0,
+      then: (client: ProjectClient) => client.useFont(typeface()),
+      said: 'Bilden drake.png kunde inte laddas upp och har tagits bort igen: tjänsten svarade 500',
+    },
+  ] as const
+
+  it.each(ways.map((way) => [way.what, way] as const))('takes %s back out of the document although a later upload has opened the gesture', async (_what, way) => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    const before = client.doc
+
+    const line = slowLine()
+    try {
+      const falling = way.take(client)
+      await vi.waitFor(() => expect(line.held.length).toBe(1))
+      await vi.waitFor(() => expect(way.holds(client)).toBe(true))
+
+      // The designer goes on while those bytes are still in the air, and what she does next
+      // opens a gesture of its own — which is the whole of the fault.
+      const landing = way.then(client)
+      await vi.waitFor(() => expect(line.held.length).toBe(2))
+
+      line.held[0]!(new Response('nope', { status: 500 }))
+      await expect(falling).rejects.toThrow()
+
+      // The document says what the notice says: what never arrived is not in it any more.
+      expect(way.holds(client)).toBe(false)
+      expect(client.doc.template.faces['front']?.base.map((e) => e.id)).toEqual(before.template.faces['front']?.base.map((e) => e.id))
+
+      // And the upload that did arrive is untouched by the other one's failure.
+      line.held[1]!(null)
+      await landing
+    } finally {
+      line.hangUp()
+    }
+  })
+
+  // Eftersom rättelsen är tyst i historiken måste den vara desto tydligare där handlingen
+  // gjordes: dokumentet ändrades bakom formgivaren, och ett besked som inte säger vilket av det
+  // hon gjort som togs tillbaka lämnar henne med en lek hon inte känner igen (L37). Namnet bärs
+  // hela vägen från `storeAsset` ut till ytan, som visar `message` och ingenting annat.
+  it.each(ways.map((way) => [way.what, way] as const))('names %s that was taken out again, rather than saying an upload failed', async (_what, way) => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      if (new URL(String(input)).pathname === '/assets') return new Response('nope', { status: 500 })
+      return real(input, init)
+    }) as typeof fetch
+    try {
+      await expect(way.take(client)).rejects.toThrow(way.said)
+    } finally {
+      globalThis.fetch = real
+    }
+  })
+
+  // A correction is not a doing, so it lays no step: the way back holds exactly what the designer
+  // did and nothing else. Were it on the stack, one press of Ctrl+Z after it would put the asset
+  // that never arrived straight back into the document (L37).
+  it('lays no step of its own, so nothing on the way back puts the symbol in again', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    client.setCell('dragon', 'title', 'Drakhona')
+    const before = client.doc
+
+    const line = slowLine()
+    try {
+      const placing = client.placeIcon(skold, 'front', null)
+      await vi.waitFor(() => expect(line.held.length).toBe(1))
+      const using = client.useFont(typeface())
+      await vi.waitFor(() => expect(line.held.length).toBe(2))
+      line.held[0]!(new Response('nope', { status: 500 }))
+      await expect(placing).rejects.toThrow()
+      line.held[1]!(null)
+      await using
+    } finally {
+      line.hangUp()
+    }
+
+    // Three steps, and they are the three the designer took: the typeface, the placement, the
+    // cell. The taking-back of the placement is not among them.
+    const steps: (string | null)[] = []
+    while (client.canUndo) steps.push(client.undo())
+    expect(steps).toEqual(['undo.what.font', 'undo.what.template', 'undo.what.deck'])
+    expect(client.doc).toEqual(projectDoc())
+    expect(before.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drakhona')
+  })
+
+  // What L37 chose away, stated as it stands rather than left to be discovered. `past` holds whole
+  // documents and not operations, so the snapshot taken when the next gesture opened still carries
+  // the asset that never arrived: one press of Ctrl+Z after a correction lands on it. Taking that
+  // away is the rebasing — an inverse applied to every snapshot above — and it was weighed and
+  // declined. The step below it is clean, so the way out is one more press.
+  it('can still be undone back into the snapshot that was taken while the symbol was in the document', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+
+    const line = slowLine()
+    try {
+      const placing = client.placeIcon(skold, 'front', null)
+      await vi.waitFor(() => expect(line.held.length).toBe(1))
+      const using = client.useFont(typeface())
+      await vi.waitFor(() => expect(line.held.length).toBe(2))
+      line.held[0]!(new Response('nope', { status: 500 }))
+      await expect(placing).rejects.toThrow()
+      line.held[1]!(null)
+      await using
+    } finally {
+      line.hangUp()
+    }
+
+    expect(client.doc.icons['sköld']).toBeUndefined()
+    expect(client.undo()).toBe('undo.what.font')
+    expect(client.doc.icons['sköld']).toMatch(/^asset:[0-9a-f]{64}$/)
+    expect(client.undo()).toBe('undo.what.template')
+    expect(client.doc.icons['sköld']).toBeUndefined()
   })
 })

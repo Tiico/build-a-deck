@@ -149,8 +149,11 @@ describe('vad biblioteket visar efter en batch (#291, flerfilsbeslutet)', () => 
     // Och raden per fil säger vilken som var vilken, i den ordning de lämnades.
     const lines = [...results.querySelectorAll('li')]
     expect(lines.map((li) => li.getAttribute('data-result'))).toEqual(['ok', 'failed', 'ok'])
-    expect(lines[1]!.textContent).toContain('anteckningar.png')
     expect(lines[0]!.textContent).toBe('skogsbryn.png är tillagd')
+    // Beskedet namnger vad som försvann ur dokumentet och varför (#344, L37) — och gör det en
+    // gång: raden är beskedet, inte filnamnet följt av ett besked som säger filnamnet igen.
+    expect(lines[1]!.textContent).toMatch(/^Bilden anteckningar\.png kunde inte laddas upp och har tagits bort igen: /)
+    expect(lines[1]!.textContent!.match(/anteckningar\.png/g)).toHaveLength(1)
   })
 
   it('behåller föregående vy när ingen enda fil kom fram, och visar filfelen', async () => {

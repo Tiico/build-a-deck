@@ -53,6 +53,11 @@ export class ProjectUnavailable extends Error {
     this.name = 'ProjectUnavailable'
   }
 }
+// What a failed upload has to take back, and what the thing it takes back is called (#344, L37).
+// `intents` is the inverse of the edit that put the asset into the document; `said` and `name`
+// are how the notice says which of the things the designer did went away again.
+type Undoing = { said: Key; name: string; intents: readonly EditIntent[] }
+
 export type SaveResult = { ok: true; rev: number } | { ok: false; reason: 'conflict' | 'missing' | string }
 export type Cell = string | number | boolean | null
 export type Textures = { total: number; done: number; failed: string[] }
@@ -633,7 +638,7 @@ export class ProjectClient {
     const name = freeIconName(as ?? symbolName(symbol, t), this.doc.icons)
     const taking = this.newGesture('symbol')
     this.edit({ v: 'setIcon', name, url: ref, credit: { licence: symbol.licence, by: symbol.by, source: symbol.id } }, taking)
-    await this.storeAsset(blobOf(file), 'vector', ref, taking, t)
+    await this.storeAsset(blobOf(file), 'vector', ref, taking, { said: 'upload.undone.symbol', name, intents: [{ v: 'removeIcon', name }] }, t)
     return name
   }
 
@@ -677,7 +682,25 @@ export class ProjectClient {
     )
     // The element is on the card by now; the bytes follow it. Nothing waits for them but the
     // answer to whether they arrived.
-    if (!already) await this.storeAsset(blobOf(file), 'vector', ref, placing, t)
+    // Two things went in as one edit, so two come back out: the element, and the symbol the game
+    // did not have before. The order is the element first — a set without the symbol its card
+    // still shows is a card drawn with a hole in it, however few milliseconds it lasts.
+    if (!already)
+      await this.storeAsset(
+        blobOf(file),
+        'vector',
+        ref,
+        placing,
+        {
+          said: 'upload.undone.symbol',
+          name,
+          intents: [
+            { v: 'removeElement', face, id: element.id, group },
+            { v: 'removeIcon', name },
+          ],
+        },
+        t,
+      )
     return element.id
   }
 
@@ -687,21 +710,23 @@ export class ProjectClient {
   // caller's word for what the bytes are, as it is for `uploadAsset` (#312).
   //
   // What that buys has to be paid for here: if the bytes never arrive, the document is holding a
-  // reference to nothing. So a failed upload takes the whole placement back the way a gesture
-  // called off is taken back — nothing that happened, no row in the history, no version — and
-  // the error goes on to the caller, which is what the surface turns into a notice. A symbol
-  // that appears and then vanishes without a word would be worse than one that is merely slow.
+  // reference to nothing. So a failed upload takes the placement back — see `takeBack` for the
+  // two ways it does that — and the error goes on to the caller, which is what the surface turns
+  // into a notice. A symbol that appears and then vanishes without a word would be worse than
+  // one that is merely slow.
   //
-  // `callOff` only takes back a gesture that is still the open one, which is exactly the right
-  // guard: a designer who has gone on to do something else keeps what she did, and is told.
+  // `undoing` is what puts the document back if they never do, and what the thing that goes is
+  // called. The intents are the inverse of the edit that was just made, worked out where that
+  // edit was made and out of nothing but what it was made of — a family, a hash, a face and an
+  // id. They read nothing from the document, which is why they may be worked out before the wait
+  // without breaking D3.
   //
   // A hash that comes back different from the one worked out here is the same fault as no
   // upload at all — the document would be pointing somewhere the bytes are not — so it is
   // handled as one rather than papered over.
-  private async storeAsset(file: Blob, kind: AssetKind, ref: string, gesture: string, t: T): Promise<void> {
+  private async storeAsset(file: Blob, kind: AssetKind, ref: string, gesture: string, undoing: Undoing, t: T): Promise<void> {
     const landed = await this.uploadAsset(file, kind, t).catch((err: unknown) => {
-      this.callOff(gesture)
-      throw err
+      throw this.takeBack(gesture, undoing, err, t)
     })
     if (assetRef(landed) === ref) {
       // Arrived, so there is nothing left to take back: the placement stops being callable off
@@ -711,8 +736,34 @@ export class ProjectClient {
       if (this.gesture === gesture) this.gesture = null
       return
     }
-    this.callOff(gesture)
-    throw new Error(t('upload.wrongName'))
+    throw this.takeBack(gesture, undoing, new Error(t('upload.wrongName')), t)
+  }
+
+  // What never arrived, taken back out of the document (#344, L37).
+  //
+  // While the gesture is still the open one it is called off, and that is unchanged: a placement
+  // taken back before the designer went on is nothing that happened — no row in the history and
+  // no version (B4).
+  //
+  // Once she has gone on, the gesture is not hers to call off any more. `callOff` says so by
+  // doing nothing, which is right for a drag and was silently wrong here: two gesture-bearing
+  // uploads that overlap each opened a gesture, so the first one to fail found the second one's
+  // on top and took nothing back at all. The document was left pointing at bytes that never came
+  // while the surface said it had gone wrong.
+  //
+  // Then the way back is a plain edit through `applyEdit` like any other — and it never pushes a
+  // step. A correction is not something the designer did, and the step it would push is one an
+  // undo would walk straight back into: the document as it was with the asset still in it, which
+  // is precisely the state the correction existed to leave (L37).
+  //
+  // What comes back is the notice, in the reader's own language and naming what went: the
+  // document changed behind the designer, and a notice that does not say which of the things she
+  // did was taken back leaves her with a game she does not recognise. Why it went stands after
+  // the colon, because that is what tells her whether trying again is worth anything.
+  private takeBack(gesture: string, undoing: Undoing, why: unknown, t: T): Error {
+    if (this.gesture === gesture) this.callOff(gesture)
+    else for (const intent of undoing.intents) this.send(intent)
+    return new Error(t('upload.undone', { what: t(undoing.said, { name: undoing.name }), why: why instanceof Error ? why.message : String(why) }))
   }
 
   // A token no other doing can carry, so a placement that has to be taken back takes back its
@@ -779,7 +830,7 @@ export class ProjectClient {
     const family = freeFamily(familyFromFile(file.name), this.doc.fonts ?? {})
     const taking = this.newGesture('font')
     this.edit({ v: 'setFont', family, font: { stack: `"${family}", sans-serif`, asset: ref } }, taking)
-    await this.storeAsset(file, 'font', ref, taking, t)
+    await this.storeAsset(file, 'font', ref, taking, { said: 'upload.undone.font', name: family, intents: [{ v: 'removeFont', family }] }, t)
     return family
   }
 
@@ -821,7 +872,7 @@ export class ProjectClient {
     this.edit({ v: 'addPicture', hash, ...(name === undefined ? {} : { name }) }, adding)
     // A picture the game already has is bytes the service already holds: the edit above is all
     // there was to do, and the wire is never touched.
-    if (!already) await this.storeAsset(file, 'image', ref, adding, t)
+    if (!already) await this.storeAsset(file, 'image', ref, adding, { said: 'upload.undone.picture', name: name ?? file.name, intents: [{ v: 'removePicture', hash }] }, t)
     return hash
   }
 
