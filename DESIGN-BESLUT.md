@@ -3961,6 +3961,61 @@ Ett privat fönster, en rensad webbläsare eller en blockerad lagring ska ge den
 Frågetecknet står kvar bredvid i båda fallen, så vägen till resten finns oavsett.
 
 
+### L37. En uppladdning som misslyckas för sent rättas i dokumentet, inte i historiken (2026-09-20, #344)
+
+`callOff` tar bara tillbaka den gest som fortfarande är öppen, och den vakten är riktig för sitt uttalade fall: en designer som gått vidare ska behålla det hon gjort sedan dess.
+Men sedan #310 och #339 läggs symbolen, typsnittet och bilden in i dokumentet **innan** bytena reser, och tas tillbaka med `callOff` om uppladdningen misslyckas.
+Två sådana uppladdningar som överlappar upphäver därför varandras ångerväg: den som börjar sist har redan öppnat sin gest när den första vill ta tillbaka sin, och den förstas `callOff` blir en tom operation.
+Följden är att dokumentet pekar på byte som aldrig kom fram medan ytan säger att det gick fel — **dokumentet och beskedet säger olika saker**.
+
+Att låta bli den optimistiska redigeringen vore enklast och är avgjort åt andra hållet i #339, där hela poängen var att en bild ska synas direkt: mätt 124,5 ms → 0,2 ms.
+
+**Rättelsen sker i dokumentet och läggs aldrig på ångerstacken.**
+Det som aldrig kom fram tas bort med en vanlig redigering genom `applyEdit`, men utan att pusha ett steg.
+Skälet är att en rättelse inte är något designern gjorde, och att den post den annars skulle lägga där är farlig: att ångra den återställer ett dokument som pekar på byte som inte finns — precis det tillstånd rättelsen fanns till för att lämna.
+En historik man kan ångra sig in i ett trasigt läge genom är sämre än en historik som saknar en rad.
+
+Alternativet — att basera om ångerstacken — valdes bort, och kodläsningen gjorde priset tydligare än issuet antog.
+`past` håller **hela dokument och inte operationer**, så att ta bort ett steg räcker inte: varje ögonblicksbild ovanför bär fortfarande den tillgång som aldrig kom fram.
+Ombasering kräver att en invers räknas fram och appliceras på varje senare bild, för tre tillgångsslag, tyst, på historik designern redan kan ha rört.
+
+**Beskedet namnger vad som försvann.**
+«Typsnittet Cinzel kunde inte laddas upp och har tagits bort igen» och inte «uppladdningen misslyckades».
+Eftersom rättelsen är tyst i historiken måste den vara desto tydligare där handlingen gjordes: dokumentet ändrades bakom designern, och ett besked som inte säger vilket av det hon gjort som togs tillbaka lämnar henne med en lek hon inte känner igen.
+Det kräver att tillgångens namn bärs hela vägen från `storeAsset` ut till ytan.
+
+Den öppna gestens fall är oförändrat: hinner `callOff` medan gesten är öppen är det fortfarande ingenting som hände, ingen rad i historiken och ingen version (B4).
+
+### L38. En kurva dras fram ur kanten, och mittpricken skiljer klick från drag (prototypat 2026-09-20, #327)
+
+En egen form är en punktlista (L26), och en punkt utan handtag är ett hörn.
+Kurvade sidor kräver in- och ut-handtag per punkt, och frågan var hur en rak sida blir en kurvad.
+
+Tre vägar prövades: Alt-drag ur ett hörn som i Figma (A), handtagen framme så snart en punkt är markerad (B), och drag i kanten själv (C).
+
+Valet blev **C**.
+Det man tar i är det som ändras, vilket är samma skäl som avgjorde L26 — och en kurva är en egenskap hos *sidan* mellan två punkter, inte hos någon av punkterna.
+A föll på att den inte går att upptäcka: en gömd modifierare är inget man letar efter mitt i att forma något, vilket är ordagrant invändningen som avgjorde L26.
+
+**Mittpricken står kvar, och gesten avgörs av avståndet.**
+C tar kanten som greppyta, och L26:s mittprick ligger mitt på den — under prototypandet lade ett drag mitt på kanten till en punkt i stället för att böja, eftersom pricken var i vägen.
+Lösningen är inte att flytta pricken utan att låta de två gesterna vara två: **ett klick på mittpricken lägger till en punkt, ett drag från den böjer kanten.**
+
+Tröskeln är fyra bildpunkter, och ingenting bestäms förrän den är passerad — draget hålls tillbaka tills dess, och släpps pekaren innan var det ett klick.
+Mätt: ett rent klick lägger till, en skakig hand som rör sig tre bildpunkter lägger också till, och trettio bildpunkter böjer.
+Den siffran är ett golv och inte en smaksak: en hand som vilar på en styrplatta rör sig alltid någon bildpunkt.
+
+**Handtaget är en cirkel, punkten en fyrkant och mittpricken ihålig.**
+Duken bär nu tre sorters märken på samma form, och formen måste bära skillnaden — färgen gör samma sak, med handtaget i filtens bärnsten och punkten i dukens blå.
+Handtagen finns bara för en punkt i taget, så kostnaden är två märken och inte två per punkt.
+
+Spegling är förval: det motsatta handtaget följer med lika långt åt andra hållet, så kurvan går jämnt genom punkten. `Alt` medan man drar bryter speglingen för just det handtaget.
+Handtagen är tabbstopp med egna namn, och piltangenterna flyttar dem med L26:s steg — en halv millimeter, fem med Shift.
+«Räta ut punkten» tar bort dess handtag; «Räta ut alla» gör formen till en polygon igen.
+
+En form utan handtag ritas **identiskt** med L26:s polygon, eftersom kontrollpunkterna då ligger på punkterna själva och kurvan är den raka linjen.
+Det är vad som gör tillägget bakåtkompatibelt i modellen: handtagen är valfria, och en form som saknar dem är oförändrad.
+
 ## I. Öppna frågor
 
 Ekonomi och juridik:

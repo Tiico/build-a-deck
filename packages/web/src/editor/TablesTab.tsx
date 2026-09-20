@@ -38,15 +38,30 @@ export function TablesTab({ client, server }: TablesTabProps) {
     }
   }, [client, asked])
 
+  // A start that failed, said beside the button with a way to try again (L31). Its own state,
+  // apart from `notice`: the list not arriving and the table not starting are two different
+  // things, and only one of them has a retry.
+  const [failed, setFailed] = useState<string | null>(null)
+  const retry = useRef<HTMLButtonElement>(null)
+  useEffect(() => {
+    if (failed !== null) retry.current?.focus()
+  }, [failed])
+  // `disabled` alone is not the guard against a second table: a keypress can land before the
+  // re-render that disables the button, so the handler itself refuses while one start is in
+  // flight (L31).
+  const inFlight = useRef(false)
   const startTable = async () => {
+    if (inFlight.current) return
+    inFlight.current = true
     setStarting(true)
     try {
       await client.startTable()
-      setNotice(null)
+      setFailed(null)
       setAsked((n) => n + 1)
     } catch (err) {
-      setNotice(err instanceof Error ? err.message : String(err))
+      setFailed(err instanceof Error ? err.message : String(err))
     } finally {
+      inFlight.current = false
       setStarting(false)
     }
   }
@@ -64,16 +79,33 @@ export function TablesTab({ client, server }: TablesTabProps) {
     )
   return (
     <div className="byd-tables">
-      <p className="byd-tables-lead">{t('tables.lead')}</p>
+      <p className="byd-tables-lead">{t('tables.lead', { n: client.rev })}</p>
+      {/* First in the column, over the list: it is what the tab is for, and everything under it is
+          a table that already exists (L31). A second action, never the filled one — the fill
+          belongs to «Uppdatera bordet» (L13). The icon turns while the start is under way: a
+          button that only goes quiet reads as a button that did nothing (jfr #215). */}
+      <button type="button" className="byd-tables-new byd-secondary" disabled={starting} aria-busy={starting} onClick={() => void startTable()}>
+        <span className="byd-tables-new-icon">
+          <svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true" focusable="false">
+            <path d="M3 1.5 12 7l-9 5.5z" fill="currentColor" />
+          </svg>
+        </span>
+        {starting ? t('tables.starting') : t('tables.new')}
+      </button>
+      {failed !== null && (
+        <p className="byd-tables-failed" role="alert">
+          {t('tables.failed', { reason: failed })}{' '}
+          <button ref={retry} type="button" className="byd-secondary" onClick={() => void startTable()}>
+            {t('tables.retry')}
+          </button>
+        </p>
+      )}
       {tables.length === 0 ? (
         <p className="byd-tables-empty">{t('tables.none')}</p>
       ) : (
         tableGroups(tables, t).map((group) => <TableGroupView key={group.id} group={group} server={server} rev={client.rev} qrFor={qrFor} onQr={setQrFor} />)
       )}
       {notice && <p role="alert">{notice}</p>}
-      <button type="button" className="byd-tables-new" disabled={starting} onClick={() => void startTable()}>
-        {starting ? t('tables.starting') : t('tables.new', { n: client.rev })}
-      </button>
     </div>
   )
 }

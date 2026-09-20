@@ -140,6 +140,7 @@ const SHELL = `
     <div role="tabpanel" tabindex="0" data-stop="the tables panel">
       <div class="byd-tables">
         <p class="byd-tables-lead">Varje bord hör till det här spelet.</p>
+        <button class="byd-tables-new byd-secondary" data-stop="the new-table button"><span class="byd-tables-new-icon"><svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true" focusable="false"><path d="M3 1.5 12 7l-9 5.5z" fill="currentColor" /></svg></span>Starta nytt bord</button>
         <section class="byd-tables-group" data-group="played">
           <h3 class="byd-tables-heading">Bord som spelas</h3>
           <ul class="byd-tables-list">
@@ -174,7 +175,6 @@ const SHELL = `
         <section class="byd-tables-group" data-group="untouched">
           <button class="byd-tables-fold" aria-expanded="false" data-stop="the fold over the untouched tables"><span class="byd-tables-caret">▸</span>Startade, aldrig spelade · 4</button>
         </section>
-        <button class="byd-tables-new" data-stop="the new-table button">Nytt bord från rev 3</button>
       </div>
     </div>
   </main>
@@ -269,6 +269,7 @@ test.describe('the editor under a keyboard', () => {
       "a row's delete",
       'the add-row button',
       'the tables panel',
+      'the new-table button',
       'playing from here',
       "the row's menu",
       'the TV view',
@@ -280,7 +281,6 @@ test.describe('the editor under a keyboard', () => {
       'the yes to ending',
       'the way out of ending',
       'the fold over the untouched tables',
-      'the new-table button',
     ])
     // A control says where the keyboard is with a ring outside itself.
     const controls = stops.filter((s) => !s.typed)

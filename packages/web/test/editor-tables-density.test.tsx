@@ -196,8 +196,11 @@ describe.each(SCREENS)('twelve tables in the column at $width × $height', (scre
     expect(measured.tallestRow, `the tallest row is ${measured.tallestRow} px`).toBeLessThan(160)
     // Four live games do not fit a 483 px column and are not meant to — they are four games. What
     // the column must not do any more is spend its height on ways in: everything above the rows
-    // is a lead, a heading, two folds and the button that starts another table.
-    expect(measured.list - measured.tallestRow * 4, `the column spends ${measured.list - measured.tallestRow * 4} px on everything that is not a row`).toBeLessThan(260)
+    // is a lead, a heading, two folds and the button that starts another table. The bound was
+    // 260 until #299 (L31): the button grew to the 44 px a thumb needs and the lead took on the
+    // revision the button no longer says, one more line of it — 28 px that are the design and
+    // not a card creeping back.
+    expect(measured.list - measured.tallestRow * 4, `the column spends ${measured.list - measured.tallestRow * 4} px on everything that is not a row`).toBeLessThan(290)
     expect(measured.sideways).toBe(0)
     // One way standing ready and one menu button per row, the two folds, and the new-table button.
     expect(measured.controls).toBe(11)

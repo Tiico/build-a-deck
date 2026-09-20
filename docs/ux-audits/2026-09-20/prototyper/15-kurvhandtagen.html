@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<title>Prototyp 15 — Kurvhandtagen (#327)</title>
+<link rel="stylesheet" href="proto.css">
+<style>
+  .canvas { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 68px 220px minmax(0,1fr) 280px; }
+  .rail { border-right: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; gap: 4px; padding: var(--s2) 0; }
+  .rail button { width: 44px; height: 44px; border: 0; border-radius: 8px; background: transparent; color: var(--quiet-2); font-size: 17px; cursor: pointer; }
+  .rail button[aria-pressed='true'] { background: var(--primary); color: #fff; }
+  .layers { border-right: 1px solid var(--line); padding: var(--s3); min-width: 0; }
+  .layers ul { list-style: none; margin: var(--s2) 0 0; padding: 0; display: grid; gap: 2px; }
+  .layers li { display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 0 8px; border-radius: 6px; color: var(--quiet-2); font-size: 12px; }
+  .layers li[aria-selected='true'] { background: #24507f; color: #fff; }
+  .duk { display: grid; place-items: center; background: #0d0f14; min-width: 0; min-height: 0; }
+  .kort { position: relative; width: 290px; height: 405px; border-radius: 12px; background: #f4efe4; box-shadow: 0 18px 44px rgba(0,0,0,.55); }
+  .kort svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .kort svg.lager { pointer-events: none; }
+
+  /* Punkten, som i L26: en fyrkant, dukens eget formspråk. */
+  .pt { fill: #fff; stroke: var(--primary-mark); stroke-width: 1.4; cursor: grab; }
+  .pt:hover { fill: #cfe6ff; }
+  .pt[data-vald='true'] { fill: var(--primary-mark); stroke: #fff; }
+  .pt:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  /* Mittpunkten ur L26: ihålig, nedtonad. */
+  .mid { fill: #0d0f14; fill-opacity: .35; stroke: var(--primary-mark); stroke-width: 1.2; stroke-opacity: .65; cursor: copy; }
+  .mid:hover { fill-opacity: .9; stroke-opacity: 1; }
+  /* Handtaget: en cirkel, för att det inte är en punkt. Formen bär skillnaden. */
+  .hdl { fill: #ffd98a; stroke: #8a6a2f; stroke-width: 1.2; cursor: grab; }
+  .hdl:hover { fill: #fff0c8; }
+  .hdl:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .hline { stroke: #ffd98a; stroke-width: 1; stroke-opacity: .7; stroke-dasharray: 3 2; pointer-events: none; }
+  .kant { stroke: transparent; stroke-width: 22; fill: none; }
+  .shell[data-form='boj'] .kant { cursor: ns-resize; }
+
+  /* Handtagen finns bara när varianten säger det. */
+  .shell[data-form='alt'] .hdl:not([data-finns='ja']), .shell[data-form='alt'] .hline:not([data-finns='ja']) { display: none; }
+  .shell[data-form='boj'] .hdl:not([data-finns='ja']), .shell[data-form='boj'] .hline:not([data-finns='ja']) { display: none; }
+  .shell[data-form='markering'] .hdl:not([data-nara='ja']), .shell[data-form='markering'] .hline:not([data-nara='ja']) { display: none; }
+
+  .props { min-width: 0; display: flex; flex-direction: column; background: var(--panel); border-left: 1px solid var(--line); }
+  .props > .topp { flex: none; display: flex; align-items: baseline; gap: 6px; padding: var(--s3) var(--s3) var(--s2); border-bottom: 1px solid var(--line-soft); }
+  .props > .topp b { color: #fff; font-size: 13px; }
+  .props > .topp span { color: var(--quiet); font-size: 11px; margin-left: auto; }
+  .props .scroll { padding: var(--s3); display: grid; gap: 7px; align-content: start; }
+  .props h3 { margin: 4px 0 0; font-size: 10.5px; text-transform: uppercase; letter-spacing: 1.6px; color: var(--quiet); }
+  .knapp { width: 100%; min-height: 32px; border: 1px solid var(--line); border-radius: 8px; background: #0f1115; color: #e6ecfa; font: inherit; font-size: 12px; cursor: pointer; }
+  .knapp:hover:not(:disabled) { border-color: var(--primary-mark); }
+  .knapp:disabled { opacity: .5; cursor: default; }
+  .props p { margin: 0; color: var(--quiet); font-size: 11px; line-height: 1.5; }
+  .spegel { display: flex; align-items: center; gap: 8px; color: #c7cede; font-size: 11.5px; }
+</style>
+</head>
+<body>
+<div class="shell" data-form="alt" data-spegel="ja">
+<header>
+  <strong>Skogens herrar</strong>
+  <nav class="tabs"><button type="button">Kort</button><button type="button" aria-selected="true">Mall</button><button type="button">Data</button><button type="button">Symboler</button><button type="button">Regler</button><button type="button">Bord</button></nav>
+  <span class="spacer"></span>
+  <div class="switch" role="group" aria-label="Hur en kurva dras fram">
+    <button type="button" data-form="alt" aria-pressed="true">A · Alt-drag</button>
+    <button type="button" data-form="markering" aria-pressed="false">B · Vid markering</button>
+    <button type="button" data-form="boj" aria-pressed="false">C · Böj kanten</button>
+  </div>
+  <span class="who">P</span>
+</header>
+
+<div class="protorad">
+  <b>#327</b>
+  <p id="hjalptext">A · Alt-drag: håll Alt och dra ut ur ett hörn för att ge det handtag, som i Figma. Utan Alt flyttar draget punkten.</p>
+  <div class="matt"><span>punkter <u id="m-n">7</u></span><span>med handtag <u id="m-h">0</u></span><span>gester <u id="m-g">0</u></span></div>
+  <p class="sagt" id="sagt">Skärmläsaren hör: <em>—</em></p>
+</div>
+
+<main>
+<div class="canvas">
+  <div class="rail">
+    <button type="button" aria-label="Markera" aria-pressed="true">⌖</button>
+    <button type="button" aria-label="Text">T</button>
+    <button type="button" aria-label="Bild">▣</button>
+    <button type="button" aria-label="Form">◇</button>
+  </div>
+  <div class="layers">
+    <p class="h">Lager</p>
+    <ul><li>◇ Ram</li><li aria-selected="true">◇ Banderoll</li><li>T Namn</li><li>▣ Illustration</li></ul>
+  </div>
+  <div class="duk">
+    <div class="kort">
+      <svg class="lager" id="fyll" aria-hidden="true"></svg>
+      <svg id="grepp" role="group" aria-label="Formens punkter och handtag"></svg>
+    </div>
+  </div>
+
+  <aside class="props" aria-label="Egenskaper">
+    <div class="topp"><b>Banderoll</b><span>egen form</span></div>
+    <div class="scroll">
+      <h3>Punkten</h3>
+      <p id="punkttext">Ingen punkt vald.</p>
+      <button type="button" class="knapp" id="rata" disabled>Räta ut punkten</button>
+      <label class="spegel"><input type="checkbox" id="spegel" checked> Spegla handtagen</label>
+      <p>Alt medan du drar bryter speglingen för det handtaget.</p>
+      <h3>Formen</h3>
+      <button type="button" class="knapp" id="ratallt">Räta ut alla</button>
+      <button type="button" class="knapp" id="tillbaka">Tillbaka till galleriform …</button>
+    </div>
+  </aside>
+</div>
+</main>
+</div>
+
+<div class="note">
+  <b>Prototyp 15 — #327</b>
+  Punkterna och mittprickarna är L26:s, oförändrade. Det som prövas är hur en rak sida blir en kurvad: <i>A</i> kräver Alt, <i>B</i> visar handtagen så snart en punkt är vald, <i>C</i> låter dig dra i kanten själv — där lägger ett <i>klick</i> på mittpricken till en punkt, och ett <i>drag</i> från den böjer kanten. Handtaget är en cirkel och punkten en fyrkant — formen bär skillnaden.
+</div>
+
+<script>
+// ── Formen ─────────────────────────────────────────────────────────────────────────────────────
+// Punkterna i kortets millimeter, med valfria in-/ut-handtag som förskjutningar från punkten.
+// En punkt utan handtag är ett hörn, precis som i L26.
+const PXMM = 290 / 63
+const BOX = { x: 9, y: 40, w: 45, h: 20 }
+const START = [[0,0],[45,0],[45,20],[34.9,13],[22.5,20],[10.1,13],[0,20]]
+let pts = START.map(([x, y]) => ({ x, y, ut: null, in: null }))
+let vald = -1, gester = 0
+// Hur långt pekaren får röra sig och ändå räknas som ett klick. Under detta är det ett tillägg,
+// över är det en böjning.
+const TROSKEL = 4
+
+const shell = document.querySelector('.shell')
+const svgG = document.getElementById('grepp')
+const svgF = document.getElementById('fyll')
+const px = (p) => [(BOX.x + p.x) * PXMM, (BOX.y + p.y) * PXMM]
+const sag = (t) => { document.getElementById('sagt').innerHTML = 'Skärmläsaren hör: <em>' + t + '</em>' }
+
+// Banan: en kubisk kurva per sida, där kontrollpunkterna är punkternas handtag. Saknas ett
+// handtag ligger kontrollpunkten på punkten själv, vilket ger exakt en rak linje — så en form
+// utan handtag ritas identiskt med L26:s polygon.
+function bana() {
+  const d = []
+  pts.forEach((p, i) => {
+    const q = pts[(i + 1) % pts.length]
+    const [ax, ay] = px(p), [bx, by] = px(q)
+    if (i === 0) d.push('M' + ax.toFixed(1) + ' ' + ay.toFixed(1))
+    const c1 = p.ut ? px({ x: p.x + p.ut.x, y: p.y + p.ut.y }) : [ax, ay]
+    const c2 = q.in ? px({ x: q.x + q.in.x, y: q.y + q.in.y }) : [bx, by]
+    d.push('C' + c1[0].toFixed(1) + ' ' + c1[1].toFixed(1) + ' ' + c2[0].toFixed(1) + ' ' + c2[1].toFixed(1) + ' ' + bx.toFixed(1) + ' ' + by.toFixed(1))
+  })
+  return d.join(' ') + ' Z'
+}
+
+function rita() {
+  svgF.innerHTML = '<path d="' + bana() + '" fill="#C9A227" stroke="#3E2B12" stroke-width="' + 0.6 * PXMM + '"/>'
+  let g = ''
+  // Kanterna först, så att punkterna ligger över dem (L26).
+  pts.forEach((p, i) => {
+    const q = pts[(i + 1) % pts.length]
+    const [ax, ay] = px(p), [bx, by] = px(q)
+    const c1 = p.ut ? px({ x: p.x + p.ut.x, y: p.y + p.ut.y }) : [ax, ay]
+    const c2 = q.in ? px({ x: q.x + q.in.x, y: q.y + q.in.y }) : [bx, by]
+    g += '<path class="kant" data-kant="' + i + '" d="M' + ax + ' ' + ay + 'C' + c1[0] + ' ' + c1[1] + ' ' + c2[0] + ' ' + c2[1] + ' ' + bx + ' ' + by + '"/>'
+  })
+  // Mittprickarna ur L26 — oförändrade, och bara på raka sidor: en kurvad sida delas inte på
+  // mitten utan formas med sina handtag.
+  pts.forEach((p, i) => {
+    const q = pts[(i + 1) % pts.length]
+    if (p.ut || q.in) return
+    const [ax, ay] = px(p), [bx, by] = px(q)
+    g += '<circle class="mid" data-mid="' + i + '" cx="' + (ax + bx) / 2 + '" cy="' + (ay + by) / 2 + '" r="3.6"/>'
+  })
+  // Handtagen, med sin streckade arm till punkten.
+  pts.forEach((p, i) => {
+    const [ax, ay] = px(p)
+    const nara = i === vald ? 'ja' : 'nej'
+    for (const sida of ['in', 'ut']) {
+      const h = p[sida]
+      const [hx, hy] = h ? px({ x: p.x + h.x, y: p.y + h.y }) : [ax + (sida === 'ut' ? 26 : -26), ay]
+      g += '<line class="hline" data-finns="' + (h ? 'ja' : 'nej') + '" data-nara="' + nara + '" x1="' + ax + '" y1="' + ay + '" x2="' + hx + '" y2="' + hy + '"/>'
+      g += '<circle class="hdl" data-hdl="' + i + ':' + sida + '" data-finns="' + (h ? 'ja' : 'nej') + '" data-nara="' + nara + '" tabindex="0" role="button" aria-label="' + (sida === 'ut' ? 'Ut' : 'In') + 'handtag för punkt ' + (i + 1) + '" cx="' + hx + '" cy="' + hy + '" r="4.2"/>'
+    }
+  })
+  pts.forEach((p, i) => {
+    const [x, y] = px(p)
+    g += '<rect class="pt" data-pt="' + i + '" data-vald="' + (i === vald) + '" tabindex="0" role="button" aria-label="Punkt ' + (i + 1) + ' av ' + pts.length + (p.ut || p.in ? ', kurvad' : ', hörn') + '" x="' + (x - 4.5) + '" y="' + (y - 4.5) + '" width="9" height="9" rx="1.5"/>'
+  })
+  svgG.innerHTML = g
+  document.getElementById('m-n').textContent = String(pts.length)
+  document.getElementById('m-h').textContent = String(pts.filter((p) => p.ut || p.in).length)
+  const p = pts[vald]
+  document.getElementById('punkttext').textContent = vald < 0 ? 'Ingen punkt vald.' : 'Punkt ' + (vald + 1) + ' — ' + (p.ut || p.in ? 'kurvad' : 'hörn') + '.'
+  document.getElementById('rata').disabled = vald < 0 || !(p && (p.ut || p.in))
+}
+
+// ── Dragen ─────────────────────────────────────────────────────────────────────────────────────
+let drag = null
+const mm = (e) => {
+  const r = document.querySelector('.kort').getBoundingClientRect()
+  return { x: (e.clientX - r.left) / PXMM - BOX.x, y: (e.clientY - r.top) / PXMM - BOX.y }
+}
+const spegla = (e) => document.getElementById('spegel').checked && !e.altKey
+
+svgG.addEventListener('pointerdown', (e) => {
+  const h = e.target.closest('[data-hdl]')
+  if (h) {
+    const [i, sida] = h.dataset.hdl.split(':')
+    vald = +i
+    // Ett handtag som ännu inte finns får sitt värde av draget som drar ut det.
+    if (!pts[+i][sida]) pts[+i][sida] = { x: 0, y: 0 }
+    drag = { sorts: 'hdl', i: +i, sida }
+    h.setPointerCapture(e.pointerId); rita(); return
+  }
+  const pt = e.target.closest('[data-pt]')
+  if (pt) {
+    vald = +pt.dataset.pt
+    // A: Alt på en punkt drar ut handtagen ur hörnet, som i Figma.
+    if (shell.dataset.form === 'alt' && e.altKey) {
+      pts[vald].ut = { x: 0, y: 0 }; pts[vald].in = { x: 0, y: 0 }
+      drag = { sorts: 'hdl', i: vald, sida: 'ut' }
+    } else drag = { sorts: 'pt', i: vald }
+    pt.setPointerCapture(e.pointerId); rita(); return
+  }
+  const mid = e.target.closest('[data-mid]')
+  if (mid && shell.dataset.form === 'boj') {
+    // Klick lägger till, drag böjer. Gesten avgörs av hur långt pekaren rör sig innan den
+    // släpps, så ingenting bestäms förrän det är avgjort: draget hålls tillbaka tills det
+    // passerat tröskeln, och släpps det innan dess var det ett klick.
+    const i = +mid.dataset.mid
+    drag = { sorts: 'oavgjord', i, fran: mm(e), start: { x: e.clientX, y: e.clientY }, el: mid }
+    mid.setPointerCapture(e.pointerId)
+    return
+  }
+  if (mid) {
+    const i = +mid.dataset.mid, a = pts[i], b = pts[(i + 1) % pts.length]
+    pts.splice(i + 1, 0, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, ut: null, in: null })
+    vald = i + 1
+    rita()
+    const ny = svgG.querySelector('[data-pt="' + vald + '"]')
+    drag = { sorts: 'pt', i: vald, ny: true }
+    ny.setPointerCapture(e.pointerId)
+    sag('punkt tillagd')
+    return
+  }
+  // C: dra i kanten själv för att böja den. Det man tar i är det som ändras.
+  const kant = e.target.closest('[data-kant]')
+  if (kant && shell.dataset.form === 'boj') {
+    const i = +kant.dataset.kant
+    if (!pts[i].ut) pts[i].ut = { x: 0, y: 0 }
+    const j = (i + 1) % pts.length
+    if (!pts[j].in) pts[j].in = { x: 0, y: 0 }
+    vald = i
+    drag = { sorts: 'boj', i, j, fran: mm(e) }
+    kant.setPointerCapture(e.pointerId); rita()
+    sag('kanten böjs')
+  }
+})
+
+svgG.addEventListener('pointermove', (e) => {
+  if (!drag) return
+  const p = mm(e)
+  if (drag.sorts === 'oavgjord') {
+    const d = Math.hypot(e.clientX - drag.start.x, e.clientY - drag.start.y)
+    if (d < TROSKEL) return
+    // Tröskeln passerad: det var ett drag, alltså en böjning.
+    const i = drag.i, j = (i + 1) % pts.length
+    if (!pts[i].ut) pts[i].ut = { x: 0, y: 0 }
+    if (!pts[j].in) pts[j].in = { x: 0, y: 0 }
+    vald = i
+    drag = { sorts: 'boj', i, j, fran: drag.fran }
+    sag('kanten böjs')
+  }
+  if (drag.sorts === 'pt') { pts[drag.i].x = +p.x.toFixed(2); pts[drag.i].y = +p.y.toFixed(2) }
+  else if (drag.sorts === 'hdl') {
+    const pt = pts[drag.i]
+    const v = { x: +(p.x - pt.x).toFixed(2), y: +(p.y - pt.y).toFixed(2) }
+    pt[drag.sida] = v
+    // Spegling som förval: det motsatta handtaget följer med, lika långt åt andra hållet.
+    if (spegla(e)) pt[drag.sida === 'ut' ? 'in' : 'ut'] = { x: -v.x, y: -v.y }
+  } else if (drag.sorts === 'boj') {
+    // Böjningen flyttar båda sidornas handtag lika mycket, vinkelrätt mot kanten.
+    const d = { x: p.x - drag.fran.x, y: p.y - drag.fran.y }
+    pts[drag.i].ut = { x: +d.x.toFixed(2), y: +d.y.toFixed(2) }
+    pts[drag.j].in = { x: +d.x.toFixed(2), y: +d.y.toFixed(2) }
+  }
+  rita()
+})
+svgG.addEventListener('pointerup', () => {
+  if (!drag) return
+  if (drag.sorts === 'oavgjord') {
+    // Släppt innan tröskeln: ett klick, alltså en ny punkt — precis L26.
+    const i = drag.i, a = pts[i], b = pts[(i + 1) % pts.length]
+    pts.splice(i + 1, 0, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, ut: null, in: null })
+    vald = i + 1
+    gester++; document.getElementById('m-g').textContent = String(gester)
+    rita(); sag('punkt tillagd, ' + pts.length + ' punkter')
+    drag = null
+    return
+  }
+  gester++; document.getElementById('m-g').textContent = String(gester)
+  sag(drag.sorts === 'boj' ? 'kanten böjd' : drag.sorts === 'hdl' ? 'handtaget flyttat' : 'punkten flyttad')
+  drag = null
+})
+
+// ── Tangentbordet ──────────────────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', (e) => {
+  const h = e.target.closest && e.target.closest('[data-hdl]')
+  const pt = e.target.closest && e.target.closest('[data-pt]')
+  const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key]
+  if (!d || (!h && !pt)) return
+  e.preventDefault()
+  const steg = e.shiftKey ? 5 : 0.5
+  if (h) {
+    const [i, sida] = h.dataset.hdl.split(':')
+    const p = pts[+i]
+    if (!p[sida]) p[sida] = { x: sida === 'ut' ? 6 : -6, y: 0 }
+    p[sida] = { x: +(p[sida].x + d[0] * steg).toFixed(2), y: +(p[sida].y + d[1] * steg).toFixed(2) }
+    if (document.getElementById('spegel').checked && !e.altKey) p[sida === 'ut' ? 'in' : 'ut'] = { x: -p[sida].x, y: -p[sida].y }
+    vald = +i
+  } else {
+    const i = +pt.dataset.pt
+    pts[i].x = +(pts[i].x + d[0] * steg).toFixed(2); pts[i].y = +(pts[i].y + d[1] * steg).toFixed(2)
+    vald = i
+  }
+  gester++; document.getElementById('m-g').textContent = String(gester)
+  rita()
+  const kvar = h ? svgG.querySelector('[data-hdl="' + h.dataset.hdl + '"]') : svgG.querySelector('[data-pt="' + vald + '"]')
+  kvar?.focus()
+  sag(kvar?.getAttribute('aria-label') || '')
+})
+
+const HJALP = {
+  alt: 'A · Alt-drag: håll Alt och dra ut ur ett hörn för att ge det handtag, som i Figma. Utan Alt flyttar draget punkten.',
+  markering: 'B · Vid markering: markera en punkt, så står dess två handtag där redan — hopfällda på punkten. Dra ut ett för att kurva. Ingen modifierare.',
+  boj: 'C · Böj kanten: dra i sidan mellan två punkter. Det man tar i är det som ändras, och handtagen dyker upp när kurvan finns.',
+}
+document.addEventListener('click', (e) => {
+  const v = e.target.closest('button[data-form]')
+  if (v) { shell.dataset.form = v.dataset.form; document.querySelectorAll('button[data-form]').forEach((b) => b.setAttribute('aria-pressed', String(b === v))); document.getElementById('hjalptext').textContent = HJALP[v.dataset.form]; rita(); return }
+  if (e.target.id === 'rata') { if (vald >= 0) { pts[vald].ut = null; pts[vald].in = null; gester++; document.getElementById('m-g').textContent = String(gester); rita(); sag('punkten rätad ut') } return }
+  if (e.target.id === 'ratallt') { pts.forEach((p) => { p.ut = null; p.in = null }); gester++; document.getElementById('m-g').textContent = String(gester); rita(); sag('alla punkter rätade ut'); return }
+  if (e.target.id === 'tillbaka') { pts = START.map(([x, y]) => ({ x, y, ut: null, in: null })); vald = -1; gester = 0; document.getElementById('m-g').textContent = '0'; rita(); sag('tillbaka till galleriformen'); return }
+})
+rita()
+</script>
+</body>
+</html>

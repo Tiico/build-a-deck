@@ -909,11 +909,15 @@ export const svEditor = {
 
   // Borden: sessionerna som spelas ur spelet, och vägarna in i dem.
   'tables.loading': 'Laddar bord…',
-  'tables.lead': 'Varje bord hör till det här spelet. Ett bord överlever att alla kopplar ner; det avslutas uttryckligen eller efter ett dygn.',
+  // Versionen ett nytt bord låser står här och inte i knappen (L31): en etikett som ska säga
+  // både vad som händer och på vilken version slutar med att säga versionen högst.
+  'tables.lead': 'Varje bord hör till det här spelet; ett nytt startar från den sparade versionen, rev {n}. Ett bord överlever att alla kopplar ner; det avslutas uttryckligen eller efter ett dygn.',
   'tables.none': 'Inget bord ännu. "Uppdatera bordet" startar ett från den sparade versionen.',
   'tables.menu.none': 'Inget bord ännu. "Uppdatera bordet" startar ett.',
-  'tables.starting': 'Startar…',
-  'tables.new': 'Nytt bord från rev {n}',
+  'tables.starting': 'Startar bordet…',
+  'tables.new': 'Starta nytt bord',
+  'tables.failed': 'Bordet kunde inte startas: {reason}. Spelet och dess bord är orörda.',
+  'tables.retry': 'Försök igen',
   'tables.more': 'Fler vägar till bordet',
   'tables.group': 'Bordet',
   'tables.all': 'Alla bord',
