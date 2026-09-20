@@ -111,7 +111,7 @@
 
 <div class="note">
   <b>Prototyp 15 — #327</b>
-  Punkterna och mittprickarna är L26:s, oförändrade. Det som prövas är hur en rak sida blir en kurvad: <i>A</i> kräver Alt, <i>B</i> visar handtagen så snart en punkt är vald, <i>C</i> låter dig dra i kanten själv. Handtaget är en cirkel och punkten en fyrkant — formen bär skillnaden.
+  Punkterna och mittprickarna är L26:s, oförändrade. Det som prövas är hur en rak sida blir en kurvad: <i>A</i> kräver Alt, <i>B</i> visar handtagen så snart en punkt är vald, <i>C</i> låter dig dra i kanten själv — där lägger ett <i>klick</i> på mittpricken till en punkt, och ett <i>drag</i> från den böjer kanten. Handtaget är en cirkel och punkten en fyrkant — formen bär skillnaden.
 </div>
 
 <script>
@@ -123,6 +123,9 @@ const BOX = { x: 9, y: 40, w: 45, h: 20 }
 const START = [[0,0],[45,0],[45,20],[34.9,13],[22.5,20],[10.1,13],[0,20]]
 let pts = START.map(([x, y]) => ({ x, y, ut: null, in: null }))
 let vald = -1, gester = 0
+// Hur långt pekaren får röra sig och ändå räknas som ett klick. Under detta är det ett tillägg,
+// över är det en böjning.
+const TROSKEL = 4
 
 const shell = document.querySelector('.shell')
 const svgG = document.getElementById('grepp')
@@ -217,6 +220,15 @@ svgG.addEventListener('pointerdown', (e) => {
     pt.setPointerCapture(e.pointerId); rita(); return
   }
   const mid = e.target.closest('[data-mid]')
+  if (mid && shell.dataset.form === 'boj') {
+    // Klick lägger till, drag böjer. Gesten avgörs av hur långt pekaren rör sig innan den
+    // släpps, så ingenting bestäms förrän det är avgjort: draget hålls tillbaka tills det
+    // passerat tröskeln, och släpps det innan dess var det ett klick.
+    const i = +mid.dataset.mid
+    drag = { sorts: 'oavgjord', i, fran: mm(e), start: { x: e.clientX, y: e.clientY }, el: mid }
+    mid.setPointerCapture(e.pointerId)
+    return
+  }
   if (mid) {
     const i = +mid.dataset.mid, a = pts[i], b = pts[(i + 1) % pts.length]
     pts.splice(i + 1, 0, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, ut: null, in: null })
@@ -245,6 +257,17 @@ svgG.addEventListener('pointerdown', (e) => {
 svgG.addEventListener('pointermove', (e) => {
   if (!drag) return
   const p = mm(e)
+  if (drag.sorts === 'oavgjord') {
+    const d = Math.hypot(e.clientX - drag.start.x, e.clientY - drag.start.y)
+    if (d < TROSKEL) return
+    // Tröskeln passerad: det var ett drag, alltså en böjning.
+    const i = drag.i, j = (i + 1) % pts.length
+    if (!pts[i].ut) pts[i].ut = { x: 0, y: 0 }
+    if (!pts[j].in) pts[j].in = { x: 0, y: 0 }
+    vald = i
+    drag = { sorts: 'boj', i, j, fran: drag.fran }
+    sag('kanten böjs')
+  }
   if (drag.sorts === 'pt') { pts[drag.i].x = +p.x.toFixed(2); pts[drag.i].y = +p.y.toFixed(2) }
   else if (drag.sorts === 'hdl') {
     const pt = pts[drag.i]
@@ -262,6 +285,16 @@ svgG.addEventListener('pointermove', (e) => {
 })
 svgG.addEventListener('pointerup', () => {
   if (!drag) return
+  if (drag.sorts === 'oavgjord') {
+    // Släppt innan tröskeln: ett klick, alltså en ny punkt — precis L26.
+    const i = drag.i, a = pts[i], b = pts[(i + 1) % pts.length]
+    pts.splice(i + 1, 0, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, ut: null, in: null })
+    vald = i + 1
+    gester++; document.getElementById('m-g').textContent = String(gester)
+    rita(); sag('punkt tillagd, ' + pts.length + ' punkter')
+    drag = null
+    return
+  }
   gester++; document.getElementById('m-g').textContent = String(gester)
   sag(drag.sorts === 'boj' ? 'kanten böjd' : drag.sorts === 'hdl' ? 'handtaget flyttat' : 'punkten flyttad')
   drag = null

@@ -3986,6 +3986,36 @@ Det kräver att tillgångens namn bärs hela vägen från `storeAsset` ut till y
 
 Den öppna gestens fall är oförändrat: hinner `callOff` medan gesten är öppen är det fortfarande ingenting som hände, ingen rad i historiken och ingen version (B4).
 
+### L38. En kurva dras fram ur kanten, och mittpricken skiljer klick från drag (prototypat 2026-09-20, #327)
+
+En egen form är en punktlista (L26), och en punkt utan handtag är ett hörn.
+Kurvade sidor kräver in- och ut-handtag per punkt, och frågan var hur en rak sida blir en kurvad.
+
+Tre vägar prövades: Alt-drag ur ett hörn som i Figma (A), handtagen framme så snart en punkt är markerad (B), och drag i kanten själv (C).
+
+Valet blev **C**.
+Det man tar i är det som ändras, vilket är samma skäl som avgjorde L26 — och en kurva är en egenskap hos *sidan* mellan två punkter, inte hos någon av punkterna.
+A föll på att den inte går att upptäcka: en gömd modifierare är inget man letar efter mitt i att forma något, vilket är ordagrant invändningen som avgjorde L26.
+
+**Mittpricken står kvar, och gesten avgörs av avståndet.**
+C tar kanten som greppyta, och L26:s mittprick ligger mitt på den — under prototypandet lade ett drag mitt på kanten till en punkt i stället för att böja, eftersom pricken var i vägen.
+Lösningen är inte att flytta pricken utan att låta de två gesterna vara två: **ett klick på mittpricken lägger till en punkt, ett drag från den böjer kanten.**
+
+Tröskeln är fyra bildpunkter, och ingenting bestäms förrän den är passerad — draget hålls tillbaka tills dess, och släpps pekaren innan var det ett klick.
+Mätt: ett rent klick lägger till, en skakig hand som rör sig tre bildpunkter lägger också till, och trettio bildpunkter böjer.
+Den siffran är ett golv och inte en smaksak: en hand som vilar på en styrplatta rör sig alltid någon bildpunkt.
+
+**Handtaget är en cirkel, punkten en fyrkant och mittpricken ihålig.**
+Duken bär nu tre sorters märken på samma form, och formen måste bära skillnaden — färgen gör samma sak, med handtaget i filtens bärnsten och punkten i dukens blå.
+Handtagen finns bara för en punkt i taget, så kostnaden är två märken och inte två per punkt.
+
+Spegling är förval: det motsatta handtaget följer med lika långt åt andra hållet, så kurvan går jämnt genom punkten. `Alt` medan man drar bryter speglingen för just det handtaget.
+Handtagen är tabbstopp med egna namn, och piltangenterna flyttar dem med L26:s steg — en halv millimeter, fem med Shift.
+«Räta ut punkten» tar bort dess handtag; «Räta ut alla» gör formen till en polygon igen.
+
+En form utan handtag ritas **identiskt** med L26:s polygon, eftersom kontrollpunkterna då ligger på punkterna själva och kurvan är den raka linjen.
+Det är vad som gör tillägget bakåtkompatibelt i modellen: handtagen är valfria, och en form som saknar dem är oförändrad.
+
 ## I. Öppna frågor
 
 Ekonomi och juridik:
