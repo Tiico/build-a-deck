@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { userEvent } from '@testing-library/user-event'
 import { DEFAULT_EDITOR_TIMING, EditorPage } from '../src/editor/EditorPage.js'
 import { TableClient } from '../src/client.js'
@@ -276,18 +278,131 @@ describe('the QR for the phones (#19, K12)', () => {
   })
 })
 
-describe('starting a table from the Bord tab (#19, L5)', () => {
-  it('starts one from the saved version and shows it in the list at once', async () => {
+describe('starting a table from the Bord tab (#19, L5, #299, L31)', () => {
+  // Knappen stod sist, streckad som en platshållare, och hette «Nytt bord från rev 1» — med
+  // revisionsnumret som sitt tyngsta ord. Nu står den först, över listan, som en andrahandsknapp
+  // med en play-ikon, och säger bara vad den gör; versionen ett nytt bord låser står i meningen
+  // intill i stället (L31).
+  it('stands first in the column as «Starta nytt bord» with a play icon, and the lead carries the revision', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openTables()
+    await screen.findByText(/Inget bord ännu/)
+
+    const button = screen.getByRole('button', { name: 'Starta nytt bord' })
+    expect(button.classList.contains('byd-secondary')).toBe(true)
+    expect(button.classList.contains('byd-primary')).toBe(false)
+    expect(button.querySelector('svg[aria-hidden="true"]')).not.toBeNull()
+    expect(button.textContent).not.toMatch(/rev/i)
+    // Först i kolumnen: den inledande meningen, sedan knappen, sedan allt som redan finns.
+    const lead = document.querySelector('.byd-tables > .byd-tables-lead')!
+    expect(lead.textContent).toContain('rev 1')
+    expect(lead.nextElementSibling).toBe(button)
+  })
+
+  it('starts one from the saved version, shows it in the list at once, and stays in Bord', async () => {
     const user = userEvent.setup()
     await run.projects.create(run.projectId, projectDoc())
     await openTables()
     await screen.findByText(/Inget bord ännu/)
 
-    await user.click(screen.getByRole('button', { name: 'Nytt bord från rev 1' }))
+    await user.click(screen.getByRole('button', { name: 'Starta nytt bord' }))
     const row = await onlyRow()
     const started = (await (await fetch(`${run.http}/projects/${run.projectId}/sessions`, { method: 'GET' })).json()) as { id: string }[]
     expect(started.map((t) => t.id)).toEqual([row.getAttribute('data-table')])
     expect(row.textContent).toContain('rev-1')
+    // Ingen navigering: designern står kvar i Bord och ser bordet dyka upp (L31).
+    expect(screen.getByRole('tab', { name: 'Bord' }).getAttribute('aria-selected')).toBe('true')
+  })
+})
+
+// Vänteläget, dubbeltrycket och felet (#299, L31), mot en klient som svarar när provet säger
+// till: servern i fixturen svarar för fort för att ett andra tryck ska hinna landa under väntan.
+describe('the wait, the second press and the failure of «Starta nytt bord» (#299, L31)', () => {
+  type Client = Parameters<typeof import('../src/editor/TablesTab.js').TablesTab>[0]['client']
+  // Ett bord med ett drag i sig, så att raden står i den öppna gruppen och inte bakom ett veck.
+  const one = { id: 'bord-1', version: 'rev-1', lastAt: new Date().toISOString(), ended: false }
+
+  it('goes busy with the icon turning, takes two rapid presses as one start, and shows the table where it stood', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    const { TablesTab } = await import('../src/editor/TablesTab.js')
+    let started = 0
+    let done = false
+    let finish = (): void => undefined
+    const client = {
+      rev: 1,
+      tables: () => Promise.resolve(done ? [one] : []),
+      startTable: () => {
+        started += 1
+        return new Promise<void>((resolve) => {
+          finish = () => {
+            done = true
+            resolve()
+          }
+        })
+      },
+    }
+    render(<TablesTab client={client as unknown as Client} server={run.http} />)
+    const button = (await screen.findByRole('button', { name: 'Starta nytt bord' })) as HTMLButtonElement
+
+    // Två tryck i samma tick, före omritningen som stänger knappen: `disabled` är inte skyddet.
+    act(() => {
+      button.click()
+      button.click()
+    })
+    expect(started).toBe(1)
+
+    // Sagt i trädet, inte bara i en färg — och ikonen är det som rör sig.
+    const busy = await screen.findByRole('button', { name: 'Startar bordet…' })
+    expect(busy.getAttribute('aria-busy')).toBe('true')
+    expect((busy as HTMLButtonElement).disabled).toBe(true)
+    expect(busy.querySelector('.byd-tables-new-icon > svg')).not.toBeNull()
+
+    act(() => finish())
+    await waitFor(() => expect(document.querySelectorAll('.byd-table-row')).toHaveLength(1))
+    const ready = screen.getByRole('button', { name: 'Starta nytt bord' })
+    expect(ready.getAttribute('aria-busy')).toBe('false')
+    expect((ready as HTMLButtonElement).disabled).toBe(false)
+    expect(started).toBe(1)
+  })
+
+  it('says the game and its tables are untouched, puts the focus on «Försök igen», and a retry that succeeds clears it', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    const { TablesTab } = await import('../src/editor/TablesTab.js')
+    let done = false
+    let attempts = 0
+    const client = {
+      rev: 1,
+      tables: () => Promise.resolve(done ? [one] : []),
+      startTable: () => {
+        attempts += 1
+        if (attempts === 1) return Promise.reject(new Error('servern svarade inte'))
+        done = true
+        return Promise.resolve()
+      },
+    }
+    render(<TablesTab client={client as unknown as Client} server={run.http} />)
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Starta nytt bord' }))
+
+    const alert = await screen.findByRole('alert')
+    expect(alert.textContent).toContain('Bordet kunde inte startas: servern svarade inte. Spelet och dess bord är orörda.')
+    const retry = within(alert).getByRole('button', { name: 'Försök igen' })
+    await waitFor(() => expect(document.activeElement).toBe(retry))
+    expect(document.querySelectorAll('.byd-table-row')).toHaveLength(0)
+
+    await user.click(retry)
+    await waitFor(() => expect(document.querySelectorAll('.byd-table-row')).toHaveLength(1))
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Starta nytt bord' })).toBeTruthy()
+  })
+
+  // Läst ur arket: `a11y.css` stillar redan varje animation under `reduce`, men ikonens egen
+  // regel ska stå i editorns ark så att den går att läsa där rörelsen deklareras.
+  it('turns the spin off for a reader who has asked for no movement', () => {
+    const css = readFileSync(join(import.meta.dirname, '..', 'src/editor/editor.css'), 'utf8')
+    expect(css).toMatch(/\.byd-tables-new\[aria-busy='true'\] > \.byd-tables-new-icon \{ animation: byd-tables-spin/)
+    const reduced = [...css.matchAll(/@media \(prefers-reduced-motion: reduce\) \{([^}]*\{[^}]*\})*?\s*\}/g)].map((m) => m[0])
+    expect(reduced.some((block) => /\.byd-tables-new\[aria-busy='true'\] > \.byd-tables-new-icon \{ animation: none; \}/.test(block))).toBe(true)
   })
 })
 

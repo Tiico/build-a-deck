@@ -1978,8 +1978,23 @@
 .byd-tables-question p { margin: 0; font-weight: 700; }
 .byd-tables-question button { min-height: 32px; padding: 4px 12px; border: 1px solid #3b414e; border-radius: 8px; background: transparent; color: var(--byd-tables-ask-ink); font: inherit; font-weight: 700; cursor: pointer; }
 .byd-tables-question button[data-kind='danger'] { background: #7a3243; border-color: #7a3243; }
-.byd-tables-new { justify-self: start; border: 1px dashed #3a4050; border-radius: 12px; padding: 8px 16px; background: transparent; color: var(--byd-tables-quiet); font: inherit; cursor: pointer; }
+/* «Starta nytt bord» (#299, L31): first in the column, a second action in the shared language
+   (`.byd-secondary` draws the line and the ink), never the dashed ghost it was — that is the
+   product's shape for a placeholder, and this is the thing the tab is for. A thumb's height. */
+.byd-tables-new { justify-self: start; display: inline-flex; align-items: center; gap: var(--byd-s1); min-height: var(--byd-tap); padding: 0 var(--byd-s3); border-radius: 8px; font: inherit; cursor: pointer; }
 .byd-tables-new:disabled { cursor: default; }
+.byd-tables-new-icon { display: inline-flex; }
+.byd-tables-new-icon > svg { display: block; }
+/* The wait is the icon turning, not only the words swapping. `a11y.css` already cuts every
+   animation to one frame under `reduce`; said here as well so that the rule is the icon's own
+   and not a side effect, and so that it can be read off this sheet. */
+.byd-tables-new[aria-busy='true'] > .byd-tables-new-icon { animation: byd-tables-spin 900ms linear infinite; }
+@keyframes byd-tables-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .byd-tables-new[aria-busy='true'] > .byd-tables-new-icon { animation: none; }
+}
+.byd-tables-failed { margin: 0; display: flex; flex-wrap: wrap; gap: var(--byd-s1) var(--byd-s2); align-items: center; max-width: 62ch; font-size: 12px; line-height: 1.5; }
+.byd-tables-failed > .byd-secondary { min-height: var(--byd-tap); padding: 0 var(--byd-s3); border-radius: 8px; font: inherit; cursor: pointer; }
 /* The shortcut in the header (variant B): "Uppdatera bordet" keeps its job, and the caret beside
    it opens the newest table wherever the designer is standing. */
 /* The caret is the other half of "Uppdatera bordet", so it sits against it: the header's own
