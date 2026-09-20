@@ -48,7 +48,7 @@
 .byd-wizard[data-room='steps'] { height: 100vh; display: flex; flex-direction: column; }
 .byd-wizard[data-room='steps'] > header { flex: 0 0 auto; }
 .byd-wizard-flow { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
-.byd-wizard-stepbar { flex: 0 0 auto; display: flex; gap: 6px; padding: 6px 12px; background: var(--byd-wizard-panel-bg); border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: thin; }
+.byd-wizard-stepbar { flex: 0 0 auto; display: flex; gap: 6px; padding: 6px 12px; background: var(--byd-wizard-panel-bg); border-bottom: 1px solid var(--line); overflow-x: auto; }
 .byd-wizard-stepbar button { flex: 0 0 auto; white-space: nowrap; border-color: transparent; background: transparent; color: #454c44; font-weight: 700; }
 .byd-wizard-body { flex: 1 1 auto; min-height: 0; overflow: auto; }
 .byd-wizard-body > [role='tabpanel'] { padding: 20px 20px 32px; display: grid; gap: 20px; align-content: start; }

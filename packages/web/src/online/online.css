@@ -60,7 +60,7 @@
 /* Safe centring: the fan sits in the middle of the band while it fits, and starts at its own
    first card when it does not — plain centring would push a hand wider than the band half out
    of its own scroller, where no amount of scrolling brings the first card back. */
-.byd-fan-scroll { display: flex; justify-content: safe center; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: thin; }
+.byd-fan-scroll { display: flex; justify-content: safe center; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; }
 /* Exactly the room `fan.ts` says the turned cards paint into, plus the rise a lifted card needs
    and the gutter the focus ring reaches into. */
 .byd-fan-room {

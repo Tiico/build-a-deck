@@ -20,6 +20,14 @@
    the whole screen by decision, and the button rides in a header behind it. */
 .byd-rules-drawer[data-placement='table']:has(.byd-rules-panel) .byd-rules-open { right: calc(min(380px, 92vw) + 16px); }
 .byd-rules-panel {
+  /* Luckan är papper i ett rum som är mörkt — den hänger på filten, på TV:n och i editorns
+     förhandsvisning — och ärver därför ingenting av det den ligger över. De fyra färgerna den
+     har fått namn, för en färg utan namn är en färg inget kontrastprov kan fråga efter (L11) och
+     skrollistens spår och tumme hämtas ur dem (#321). */
+  --byd-rules-paper: #f7f3ea;
+  --byd-rules-band: #ece5d8;
+  --byd-rules-ink: #23201a;
+  --byd-rules-quiet: #6b6255;
   position: absolute;
   right: 0;
   top: 0;
@@ -27,13 +35,13 @@
   width: min(380px, 92vw);
   display: grid;
   grid-template-rows: auto 1fr;
-  background: #f7f3ea;
-  color: #23201a;
+  background: var(--byd-rules-paper);
+  color: var(--byd-rules-ink);
   box-shadow: -14px 0 34px rgba(0, 0, 0, 0.45);
 }
-.byd-rules-ask { display: flex; gap: 8px; padding: 12px; background: #ece5d8; border-bottom: 1px solid #d8cdb8; }
-.byd-rules-ask input { flex: 1; min-width: 0; padding: 9px 11px; border: 1px solid #cbbfa8; border-radius: 10px; background: #fff; color: #23201a; font: 14px system-ui, sans-serif; }
-.byd-rules-ask button { border: 0; background: transparent; color: #6b6255; font-size: 20px; padding: 0 6px; cursor: pointer; }
+.byd-rules-ask { display: flex; gap: 8px; padding: 12px; background: var(--byd-rules-band); border-bottom: 1px solid #d8cdb8; }
+.byd-rules-ask input { flex: 1; min-width: 0; padding: 9px 11px; border: 1px solid #cbbfa8; border-radius: 10px; background: #fff; color: var(--byd-rules-ink); font: 14px system-ui, sans-serif; }
+.byd-rules-ask button { border: 0; background: transparent; color: var(--byd-rules-quiet); font-size: 20px; padding: 0 6px; cursor: pointer; }
 .byd-rules-body { overflow: auto; padding: 18px 20px; }
 .byd-rules-page { font: 14px/1.7 Georgia, serif; }
 .byd-rules-page h2 { margin: 0 0 12px; font-size: 20px; }

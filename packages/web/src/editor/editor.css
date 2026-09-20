@@ -434,7 +434,7 @@
   border-top: 1px solid #2f333d;
 }
 .byd-editor-stagebar [role='tab'] { color: var(--byd-editor-stage-ink); }
-.byd-editor-stagebar [role='tablist'] { flex: 1 1 auto; min-width: 0; margin-left: 0; padding: 0; background: transparent; border-radius: 0; gap: 4px; overflow-x: auto; scrollbar-width: thin; }
+.byd-editor-stagebar [role='tablist'] { flex: 1 1 auto; min-width: 0; margin-left: 0; padding: 0; background: transparent; border-radius: 0; gap: 4px; overflow-x: auto; }
 .byd-editor-stagebar [role='tab'] { flex: 0 0 auto; white-space: nowrap; border-radius: 9px; }
 .byd-editor-stagebar-actions {
   display: flex;
@@ -995,7 +995,6 @@
   max-width: 520px;
   max-height: 50vh;
   overflow: auto;
-  scrollbar-width: thin;
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
@@ -1089,7 +1088,7 @@
    own heading, the count of cards it is about and the line about dragging are what a designer needs
    most at the end of a long list, and that is exactly where they used to have scrolled away to. */
 .byd-canvas-layers { border-right: 1px solid #2f333d; padding: var(--byd-s3); overflow: hidden; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-height: 0; }
-.byd-canvas-scroll { min-height: 0; overflow: auto; scrollbar-width: thin; }
+.byd-canvas-scroll { min-height: 0; overflow: auto; }
 /* The crown and the foot are the frame, and each is told from the list by a line of its own — the
    same line the four columns are divided by, so the panel is divided the way the desk is. */
 .byd-canvas-crown { border-bottom: 1px solid #2f333d; padding-bottom: var(--byd-s2); }
@@ -1660,7 +1659,7 @@
 /* The list takes what the door has left after the form, and scrolls only when even that is not
    enough. It used to be 232 px however tall the window was: five rows of a deck of ten, the fifth
    cut in half against the form's own line. */
-.byd-columns-list { flex: 1 1 auto; min-height: 0; display: grid; align-content: start; gap: 2px; margin: 0 0 8px; padding: 0; overflow-y: auto; list-style: none; scrollbar-width: thin; }
+.byd-columns-list { flex: 1 1 auto; min-height: 0; display: grid; align-content: start; gap: 2px; margin: 0 0 8px; padding: 0; overflow-y: auto; list-style: none; }
 .byd-columns-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 0 8px; min-height: 36px; }
 .byd-columns-name { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 /* The × keeps the 44 px it always had (L12). Here it can have them without taking them from
@@ -2067,10 +2066,10 @@
    the one thing an innehållsförteckning exists to spare its reader. A tab step in it moved the
    book for the same reason, and lost the row it was on. The column scrolls itself now. */
 .byd-rules-spread { flex: 1 1 auto; min-height: 0; overflow: hidden; display: flex; align-items: stretch; justify-content: center; gap: var(--byd-s5); }
-.byd-rules-toc { flex: 0 0 200px; min-height: 0; overflow-y: auto; scrollbar-width: thin; }
+.byd-rules-toc { flex: 0 0 200px; min-height: 0; overflow-y: auto; }
 /* The area the book is read in. It is a box of its own and not the book itself, so the paper
    still ends where the text ends instead of being stretched down the whole tab. */
-.byd-rules-reading { min-width: 0; min-height: 0; overflow: auto; scrollbar-width: thin; }
+.byd-rules-reading { min-width: 0; min-height: 0; overflow: auto; }
 /* Regelbokens två lägen (#227, godkänd 2026-09-19: A:s växel, A:s spalt, C:s filt). Växeln står
    först i huvudet och är ett val bland flera, alltså `.byd-choice` och inga egna knappfärger. */
 .byd-rules-modes { display: flex; gap: var(--byd-s1); }

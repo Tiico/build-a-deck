@@ -17,3 +17,103 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ── Skrollisterna, i varje rum tjänsten har (#321) ──────────────────────────────────────────
+   Tjänsten ritade allt utom sina skrollister, och webbläsarens grå list mitt i editorns mörka
+   panel var det enda i bilden som inte var någons val. Ingen overlay av JavaScript: listen stilas
+   med de riktiga egenskaperna, så hjul, tangentbord och skärmläsare rör inte en muskel.
+
+   Två vägar, för de två familjerna säger samma sak på var sitt språk. `scrollbar-width` och
+   `scrollbar-color` är standarden och gäller i Firefox och i Chromium; `::-webkit-scrollbar*` är
+   vägen in i Safari och i äldre Chromium. Chromium tar standarden när den är satt och läser då
+   inte webkit-reglerna alls, vilket är avsikten och inte en krock: det enda den vägen har som
+   standarden inte har är tummens tillstånd under pekaren, och en tumme som inte kan svara på
+   pekaren är fortfarande en tumme som syns.
+
+   Fyra token, och den gemensamma definitionen bär inte en enda färg själv — de tre som är färger
+   pekar vidare in i rummets egna, för filten, editorn, telefonen och boken äger sina paletter
+   var för sig (L13). En kopierad form bär inte med sig den botten den mättes mot, så tummen mäts
+   mot sitt spår i varje rum och i båda tillstånden i `scrollbar-contrast.test.ts`. */
+:root {
+  /* Rummet under alla andra: kontosidorna, platsväljaren och statussidorna står på tjänstens egen
+     mörka botten och binder ingenting av sitt eget. */
+  --byd-scroll-size: 10px;
+  --byd-scroll-track: #14161c;
+  --byd-scroll-thumb: #6f7a90;
+  --byd-scroll-thumb-hover: #8b95ab;
+}
+
+/* `scrollbar-width` ärvs inte, och `scrollbar-color` beräknas där den står — en färg som lösts ut
+   på `:root` ärver som färg och inte som token. Båda står därför på varje element, så ett rum som
+   binder om sina token också får listen omritad. `*` är (0,0,0) och förlorar mot varje yta som
+   säger något eget, vilket är precis vad de tre som gömmer sin list gör. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--byd-scroll-thumb) var(--byd-scroll-track);
+}
+
+::-webkit-scrollbar {
+  width: var(--byd-scroll-size);
+  height: var(--byd-scroll-size);
+}
+
+::-webkit-scrollbar-track {
+  background: var(--byd-scroll-track);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--byd-scroll-thumb);
+  border-radius: var(--byd-scroll-size);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--byd-scroll-thumb-hover);
+}
+
+/* Editorn: panelernas djupa botten som spår, och den grafiska linjen rummet redan håller till 3:1
+   (L13) som tumme. Under pekaren stiger den till registret editorn skriver sina tysta ord i. */
+.byd-editor {
+  --byd-scroll-track: var(--byd-editor-panel-bg);
+  --byd-scroll-thumb: var(--byd-secondary-line);
+  --byd-scroll-thumb-hover: var(--byd-editor-quiet);
+}
+
+/* Filten: brickans platta som spår, och kritan i sina två styrkor som tumme — den nedgnuggade i
+   vila och den hela under pekaren, samma par rummet redan säger «går att få» och «går inte att
+   få» med (#90). Bärnstenen kan inte bli tumme: den betyder redan en räknare och en första
+   handling, och en tredje betydelse är en för mycket. */
+.byd-table {
+  --byd-scroll-track: var(--byd-felt-plate);
+  --byd-scroll-thumb: var(--byd-felt-chalk-off);
+  --byd-scroll-thumb-hover: var(--byd-felt-chalk);
+}
+
+/* Telefonen, och de tre andra rötter samma ark ritar: `/online`, `/observe` och enkäten, som
+   öppnar telefonens ark utanför telefonens rot (L13). Kortets och arkens egen yta som spår, och
+   rummets tysta register som tumme. */
+.byd-player,
+.byd-online,
+.byd-observer,
+.byd-survey {
+  --byd-scroll-track: var(--byd-surface);
+  --byd-scroll-thumb: var(--byd-ink-quiet);
+  --byd-scroll-thumb-hover: var(--byd-ink-muted);
+}
+
+/* Guiden står på papper, så listen går åt andra hållet: spåret är panelens papper och tummen är
+   mörk mot det. Vilande är den linjen guiden redan drar en kantad knapp med, under pekaren det
+   dämpade registret — inte guidens bläck, som är nästan svart och skulle rita en stapel tjära
+   längs papprets kant. */
+.byd-wizard {
+  --byd-scroll-track: var(--byd-wizard-panel-bg);
+  --byd-scroll-thumb: var(--byd-secondary-line);
+  --byd-scroll-thumb-hover: var(--muted);
+}
+
+/* Regelbokens lucka är papper i ett mörkt rum och ärver därför ingenting av det den ligger över.
+   Bandet över boken som spår, bokens tysta register som tumme, dess bläck under pekaren. */
+.byd-rules-panel {
+  --byd-scroll-track: var(--byd-rules-band);
+  --byd-scroll-thumb: var(--byd-rules-quiet);
+  --byd-scroll-thumb-hover: var(--byd-rules-ink);
+}
