@@ -630,7 +630,7 @@ export class ProjectClient {
     const name = freeIconName(as ?? symbolName(symbol, t), this.doc.icons)
     const taking = this.newGesture('symbol')
     this.edit({ v: 'setIcon', name, url: ref, credit: { licence: symbol.licence, by: symbol.by, source: symbol.id } }, taking)
-    await this.storeAsset(file, ref, taking, t)
+    await this.storeAsset(blobOf(file), 'vector', ref, taking, t)
     return name
   }
 
@@ -674,13 +674,14 @@ export class ProjectClient {
     )
     // The element is on the card by now; the bytes follow it. Nothing waits for them but the
     // answer to whether they arrived.
-    if (!already) await this.storeAsset(file, ref, placing, t)
+    if (!already) await this.storeAsset(blobOf(file), 'vector', ref, placing, t)
     return element.id
   }
 
-  // The bytes behind a symbol that has just been put into the document, sent after the fact
-  // (#310). The document already says the symbol is there, because the reference is the hash of
-  // these very bytes and needed no round trip to learn.
+  // The bytes behind a symbol, a typeface or a picture that has just been put into the document,
+  // sent after the fact (#310, #339). The document already says the file is there, because the
+  // reference is the hash of these very bytes and needed no round trip to learn. `kind` is the
+  // caller's word for what the bytes are, as it is for `uploadAsset` (#312).
   //
   // What that buys has to be paid for here: if the bytes never arrive, the document is holding a
   // reference to nothing. So a failed upload takes the whole placement back the way a gesture
@@ -694,8 +695,8 @@ export class ProjectClient {
   // A hash that comes back different from the one worked out here is the same fault as no
   // upload at all — the document would be pointing somewhere the bytes are not — so it is
   // handled as one rather than papered over.
-  private async storeAsset(file: ReturnType<typeof svgBytes>, ref: string, gesture: string, t: T): Promise<void> {
-    const landed = await this.uploadAsset(new Blob([file.bytes], { type: file.type }), 'vector', t).catch((err: unknown) => {
+  private async storeAsset(file: Blob, kind: AssetKind, ref: string, gesture: string, t: T): Promise<void> {
+    const landed = await this.uploadAsset(file, kind, t).catch((err: unknown) => {
       this.callOff(gesture)
       throw err
     })
@@ -766,11 +767,16 @@ export class ProjectClient {
   //
   // A licence is not in the file: only the designer knows it, and it is stated beside the family.
   async useFont(file: File, t: T = swedish): Promise<string> {
-    const ref = `${ASSET_PREFIX}${await this.uploadAsset(file, 'font', t)}`
+    // The reference first, off the bytes themselves (#339, as #310 did for the symbol): whether
+    // the game already has this typeface is a question about a name, and the name is known here.
+    const ref = await assetRefOfFile(file)
+    // Read after every wait and never before one (D3); nothing is awaited from here to the edit.
     const already = Object.entries(this.doc.fonts ?? {}).find(([, f]) => f.asset === ref)
     if (already) return already[0]
     const family = freeFamily(familyFromFile(file.name), this.doc.fonts ?? {})
-    this.edit({ v: 'setFont', family, font: { stack: `"${family}", sans-serif`, asset: ref } })
+    const taking = this.newGesture('font')
+    this.edit({ v: 'setFont', family, font: { stack: `"${family}", sans-serif`, asset: ref } }, taking)
+    await this.storeAsset(file, 'font', ref, taking, t)
     return family
   }
 
@@ -799,11 +805,20 @@ export class ProjectClient {
   // so a name not taken here is a name gone for good. It is untrusted input and is made into a
   // name by `pictureNameOf`, which is where the schema that bounds it lives.
   async addPicture(file: File, t: T = swedish): Promise<string> {
-    const hash = await this.uploadAsset(file, 'image', t)
-    // Read after the upload and never before it, for the reason `placeIcon` reads its face after:
-    // the network takes as long as it takes and the document moves while the bytes are in flight.
+    // The hash first, off the bytes themselves (#339, as #310 did for the symbol): it is the name
+    // the service will give them, so whether the game already has the picture is known here.
+    const ref = await assetRefOfFile(file)
+    const hash = ref.slice(ASSET_PREFIX.length)
+    // Read after every wait and never before one, for the reason `placeIcon` reads its face
+    // after: the document moves while anything is awaited. Nothing is awaited from here to the
+    // edit.
+    const already = this.doc.pictures?.[hash] !== undefined
     const name = pictureNameOf(file.name)
-    this.edit({ v: 'addPicture', hash, ...(name === undefined ? {} : { name }) })
+    const adding = this.newGesture('picture')
+    this.edit({ v: 'addPicture', hash, ...(name === undefined ? {} : { name }) }, adding)
+    // A picture the game already has is bytes the service already holds: the edit above is all
+    // there was to do, and the wire is never touched.
+    if (!already) await this.storeAsset(file, 'image', ref, adding, t)
     return hash
   }
 
@@ -980,6 +995,12 @@ export class ProjectClient {
 }
 
 // One element in, one out, by id: an override list is a set keyed by id, not an order.
+
+// A symbol's bytes as the body an upload wants, and the reference a file the designer picked will
+// have once the service holds it (#339): the same hash `assetRefOf` works out for a symbol, read
+// off the file's own bytes.
+const blobOf = (file: ReturnType<typeof svgBytes>): Blob => new Blob([file.bytes], { type: file.type })
+const assetRefOfFile = async (file: Blob): Promise<string> => assetRefOf(new Uint8Array(await file.arrayBuffer()))
 
 // What a font file is called, as a family name: the name without its format, and without the
 // weight suffix a foundry writes into it, since that is a file's business rather than a game's.

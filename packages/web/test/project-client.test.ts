@@ -4,6 +4,7 @@ import { projectDoc } from './project-doc.js'
 import { LIBRARY } from '../src/editor/symbols.js'
 import { startServer, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
+import { assetTypeDeclaring } from '@byd/protocol'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
 
@@ -756,6 +757,191 @@ describe('a click in the symbol library does not wait for the network (#310, E4)
       globalThis.fetch = real
     }
     expect(client.doc.icons['sköld']).toBeUndefined()
+    expect(client.canUndo).toBe(false)
+  })
+})
+
+// A typeface and a picture used to do the opposite of the symbol (#339): upload first, and read
+// the document afterwards to see whether the game already had the file. Their names are the hash
+// of their bytes too, so the same treatment applies — the entry is in the document before the
+// bytes have travelled, a file the game already has never touches the wire, and an upload that
+// fails takes the entry back the way a placement is taken back.
+describe('a typeface and a picture do not wait for the network either (#339)', () => {
+  const PNG = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3])
+  const WOFF2 = new Uint8Array([119, 79, 70, 50, 0, 1, 0, 0])
+  // Every call `fetch` makes while the body runs, with the bytes of each body: a Blob that
+  // stringified to `[object Blob]` once passed every upload test here, so the stub reads what it
+  // was given and a test can check that the bytes that left are the file's own.
+  const watching = async <T,>(body: () => Promise<T>): Promise<{ out: T; calls: { call: string; type: string | undefined; bytes: Uint8Array }[] }> => {
+    const real = globalThis.fetch
+    const calls: { call: string; type: string | undefined; bytes: Uint8Array }[] = []
+    globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      const sent = init?.body instanceof Blob ? new Uint8Array(await init.body.arrayBuffer()) : new Uint8Array()
+      calls.push({ call: `${init?.method ?? 'GET'} ${new URL(String(input)).pathname}`, type: new Headers(init?.headers).get('content-type') ?? undefined, bytes: sent })
+      return real(input, init)
+    }) as typeof fetch
+    try {
+      return { out: await body(), calls }
+    } finally {
+      globalThis.fetch = real
+    }
+  }
+
+  it('costs nothing on the wire for a picture the game already has', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    const file = new File([PNG], 'drake.png', { type: 'image/png' })
+
+    const first = await watching(() => client.addPicture(file))
+    expect(first.calls.map((c) => c.call)).toEqual(['POST /assets'])
+    expect(first.calls[0]?.bytes).toEqual(PNG)
+    expect(client.doc.pictures?.[first.out]).toEqual({ name: 'drake.png' })
+
+    const before = client.doc
+    const again = await watching(() => client.addPicture(file))
+    expect(again.out).toBe(first.out)
+    expect(again.calls).toEqual([])
+    // The name rule is the one `addPicture` already had: the same bytes under the same name
+    // leave the record as it was.
+    expect(client.doc.pictures).toEqual(before.pictures)
+  })
+
+  // An upload that has not answered yet, and never will until it is let go.
+  const holding = (): { land: () => void; landed: Promise<void> } => {
+    let land: () => void = () => undefined
+    const landed = new Promise<void>((resolve) => {
+      land = resolve
+    })
+    return { land, landed }
+  }
+
+  it('holds a picture the game has never seen before its bytes have landed, and sends them once as a picture', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    const file = new File([PNG], 'drake.png', { type: 'image/png' })
+
+    const { land, landed } = holding()
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      if (new URL(String(input)).pathname === '/assets') await landed
+      return real(input, init)
+    }) as typeof fetch
+    try {
+      const adding = watching(() => client.addPicture(file))
+      // The picture is in the game while the bytes are still in the air.
+      await vi.waitFor(() => expect(Object.values(client.doc.pictures ?? {})).toEqual([{ name: 'drake.png' }]))
+      land()
+      const { out: hash, calls } = await adding
+      expect(calls.map((c) => c.call)).toEqual(['POST /assets'])
+      expect(calls[0]?.type).toBe(assetTypeDeclaring('image'))
+      expect(calls[0]?.bytes).toEqual(PNG)
+      // And the hash the document took is the one the service ends up holding.
+      expect(client.doc.pictures?.[hash]).toEqual({ name: 'drake.png' })
+      const served = await fetch(`${run.http}/assets/${hash}`)
+      expect(new Uint8Array(await served.arrayBuffer())).toEqual(PNG)
+    } finally {
+      globalThis.fetch = real
+    }
+  })
+
+  it('costs nothing on the wire for a typeface the game already has', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    const file = new File([WOFF2], 'Rubrikserif.woff2', { type: '' })
+
+    const first = await watching(() => client.useFont(file))
+    expect(first.out).toBe('Rubrikserif')
+    expect(first.calls.map((c) => c.call)).toEqual(['POST /assets'])
+    expect(first.calls[0]?.bytes).toEqual(WOFF2)
+
+    const before = client.doc
+    const again = await watching(() => client.useFont(file))
+    expect(again.out).toBe('Rubrikserif')
+    expect(again.calls).toEqual([])
+    expect(client.doc).toBe(before)
+  })
+
+  it('holds a typeface the game has never seen before its bytes have landed, and sends them once as a typeface', async () => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    const file = new File([WOFF2], 'Rubrikserif.woff2', { type: '' })
+
+    const { land, landed } = holding()
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      if (new URL(String(input)).pathname === '/assets') await landed
+      return real(input, init)
+    }) as typeof fetch
+    try {
+      const using = watching(() => client.useFont(file))
+      await vi.waitFor(() => expect(client.doc.fonts?.['Rubrikserif']?.asset).toMatch(/^asset:[0-9a-f]{64}$/))
+      land()
+      const { out: family, calls } = await using
+      expect(family).toBe('Rubrikserif')
+      expect(calls.map((c) => c.call)).toEqual(['POST /assets'])
+      expect(calls[0]?.type).toBe(assetTypeDeclaring('font'))
+      expect(calls[0]?.bytes).toEqual(WOFF2)
+      const served = await fetch(`${run.http}/assets/${client.doc.fonts!['Rubrikserif']!.asset!.slice('asset:'.length)}`)
+      expect(new Uint8Array(await served.arrayBuffer())).toEqual(WOFF2)
+    } finally {
+      globalThis.fetch = real
+    }
+  })
+
+  // A typeface that appears and then vanishes without a word is worse than one that is slow. The
+  // entry is taken back exactly as a placement is (#310): nothing that happened, no row in the
+  // history — and the caller is told, in the words `storeAsset` already has for it.
+  it.each([
+    ['a picture', (client: ProjectClient) => client.addPicture(new File([PNG], 'drake.png', { type: 'image/png' }))],
+    ['a typeface', (client: ProjectClient) => client.useFont(new File([WOFF2], 'Rubrikserif.woff2', { type: '' }))],
+  ])('leaves the document exactly as it was when the bytes of %s never arrive, and says so', async (_what, take) => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    // A step already taken, so that the way back has something on it to be left alone.
+    client.setCell('dragon', 'title', 'Drakhona')
+    const before = client.doc
+    expect(client.canUndo).toBe(true)
+
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      if (new URL(String(input)).pathname === '/assets') return new Response('nope', { status: 500 })
+      return real(input, init)
+    }) as typeof fetch
+    try {
+      await expect(take(client)).rejects.toThrow(/kunde inte ladda upp filen: 500/)
+    } finally {
+      globalThis.fetch = real
+    }
+    expect(client.doc).toEqual(before)
+    expect(client.canUndo).toBe(true)
+    expect(client.undo()).toBe('undo.what.deck')
+    expect(client.canUndo).toBe(false)
+  })
+
+  // The service naming an asset by anything but the hash of its bytes would leave the entry
+  // pointing where the bytes are not, which is the same fault as bytes that never arrived.
+  it.each([
+    ['a picture', (client: ProjectClient) => client.addPicture(new File([PNG], 'drake.png', { type: 'image/png' }))],
+    ['a typeface', (client: ProjectClient) => client.useFont(new File([WOFF2], 'Rubrikserif.woff2', { type: '' }))],
+  ])('takes %s back when its bytes arrive under a name that is not their own', async (_what, take) => {
+    const created = await run.projects.create(run.projectId, projectDoc())
+    const client = await openClient(created.id)
+    const before = client.doc
+
+    const real = globalThis.fetch
+    globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: Parameters<typeof fetch>[1]) => {
+      if (new URL(String(input)).pathname === '/assets') {
+        await real(input, init)
+        return Response.json({ hash: 'c'.repeat(64) })
+      }
+      return real(input, init)
+    }) as typeof fetch
+    try {
+      await expect(take(client)).rejects.toThrow(/annat namn/)
+    } finally {
+      globalThis.fetch = real
+    }
+    expect(client.doc).toEqual(before)
     expect(client.canUndo).toBe(false)
   })
 })
