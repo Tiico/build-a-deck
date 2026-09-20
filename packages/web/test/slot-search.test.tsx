@@ -134,6 +134,20 @@ describe('rutan som öppnas ur en slot (#230)', () => {
     expect(screen.getByRole('button', { name: 'i Gruvan' })).toBeTruthy()
   })
 
+  // Rutan är en dörr, som varje annan yta som står över arbetet (#152, L9): trycket hörs på
+  // dokumentet och inte bara inuti rutan, för Escape anländer där fokus råkar stå — och fokus
+  // lämnas tillbaka till ratten rutan fälldes ut ur, i stället för på ingenting.
+  it('är en dörr: hör trycket på dokumentet och lämnar tillbaka fokus till ratten', () => {
+    openSlot('till vänster om högen')
+    // Ratten i meningen och inte raden i rutan, som just nu bär samma ord.
+    const knob = [...document.querySelectorAll('.byd-slot')].find((b) => b.textContent === 'till vänster om högen')
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    expect(document.querySelector('.byd-slot-pop')).toBeNull()
+    expect(document.activeElement).toBe(knob)
+  })
+
   // Escape stänger rutan, och gör det på första trycket: den tömmer inte fältet först.
   it('stänger rutan på Escape utan att först tömma fältet', () => {
     openSlot('till vänster om högen')
