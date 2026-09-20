@@ -83,6 +83,8 @@ describe('the three ways in (#131)', () => {
     // Every section asks its question rather than standing as an empty line.
     expect(written.querySelectorAll('[data-ask]')).toHaveLength(SECTIONS.length)
     // And the setup is the game's own zones (B5), so it is right from the start and never drawn.
+    // Folded, as the reader will meet it (#270).
+    fireEvent.click(within(written).getByRole('button', { name: 'Visa uppställningen' }))
     expect(written.querySelectorAll('[data-setup-zone]').length).toBeGreaterThan(1)
   })
 })

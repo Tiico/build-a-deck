@@ -17,8 +17,6 @@ export type BookletInput = {
   // whose bytes are gone, and the page is printed without it rather than with an empty frame.
   images?: Record<string, string>
   pageMm: { w: number; h: number }
-  // The zones the game has, for the setup picture (B5); their names, in the setup's order.
-  zones?: string[]
   // What the licences of the game's symbols are (E4), printed at the back.
   credits?: (ProjectCredit & { name: string })[]
   // The language the tool speaks in the one heading it contributes (A4). Everything else in a
@@ -57,8 +55,15 @@ function blockHtml(block: RenderedBlock, input: BookletInput): string {
       return block.ordered ? `<ol>${items}</ol>` : `<ul>${items}</ul>`
     }
     // The setup picture is the game's own zones, never a drawing kept beside them (B5).
+    //
+    // The zones come off the block itself (#270) and no longer beside it: the press, the editor
+    // and the table read one arrangement, worked out once from the document, so a zone cannot be
+    // grouped one way on a screen and listed another way on paper. The page keeps its own form —
+    // a booklet is a document and not a screen, and folding a printed figure open is not a thing
+    // paper does — and takes them in the arrangement's order: what stands on the table, then each
+    // seat's own.
     case 'setup': {
-      const zones = (input.zones ?? []).map((z) => `<span data-zone>${escape(z)}</span>`).join('')
+      const zones = [...block.common, ...block.seats.flatMap((seat) => seat.zones)].map((zone) => `<span data-zone>${escape(zone.name)}</span>`).join('')
       const caption = block.caption ? `<figcaption>${escape(block.caption)}</figcaption>` : ''
       return `<figure class="byd-setup"><div class="byd-table">${zones}</div>${caption}</figure>`
     }

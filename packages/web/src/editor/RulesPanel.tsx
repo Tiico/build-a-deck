@@ -1,5 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
-import { namesOfProject } from '@byd/server/doc'
+import { arrangementOf, namesOfProject } from '@byd/server/doc'
 import type { ProjectDoc, RuleBlock, RuleDoc } from '@byd/server'
 import {
   imagesIn,
@@ -27,6 +27,7 @@ import { useGesture } from './gesture.js'
 import { ASSET_PREFIX, RULE_IMAGE_MAX_BYTES, assetUrl, imageSizeOf, imageTypeOf } from './assets.js'
 import { when } from './HistoryPanel.js'
 import { RuleShelf } from '../rules/RuleDrawer.js'
+import { SetupOverview } from '../rules/SetupOverview.js'
 import { readTo, readingIn, sectionOf, type Reading } from '../rules/reading.js'
 import { PickList, pickKey, pickOptionId, triggerBehind, writeTrigger } from './picking.js'
 
@@ -83,7 +84,9 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
   // that would be written is `plan.doc` and is a subset of this.
   const shown = plan ? { title: plan.doc.title, blocks: plan.blocks.map((planned) => planned.block) } : (rules ?? proposal?.doc ?? templateRules(doc.name, t))
   const marks = new Map((plan?.blocks ?? []).map((planned) => [planned.block.id, planned]))
-  const out = renderRules(shown, names)
+  // The book is rendered against this very document, setup and all (#270): what the designer
+  // reads is what a table locked to this version would hand its players.
+  const out = renderRules(shown, names, arrangementOf(doc))
   // The area the book is read in, whichever mode it is being read in. At the moment the switch is
   // pressed this is still the one being left, which is what makes the reading a reading of it.
   const scroller = (): HTMLElement | null => (mode === 'table' ? shelf.current : page.current)
@@ -339,6 +342,12 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
                         onClose={() => setEditing(null)}
                         onRemove={() => remove(b.id)}
                       />
+                    ) : writing && b.kind === 'setup' ? (
+                      // The setup carries controls of its own since #270 — the fold and the seat
+                      // picker — so the figure cannot also be the one big control that opens the
+                      // block: a control inside a control is invalid and unreachable (UX-37, #82).
+                      // Its caption is the way in, and the only thing about a setup that is written.
+                      <SetupOverview block={b} level={3} onCaption={() => open(b.id)} />
                     ) : writing ? (
                       <div
                         role="button"
@@ -352,12 +361,12 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
                           open(b.id)
                         }}
                       >
-                        <Block block={b} source={source} names={names} assetBase={assetBase} />
+                        <Block block={b} source={source} assetBase={assetBase} />
                       </div>
                     ) : planned?.runs ? (
                       <Rewritten runs={planned.runs} names={names} />
                     ) : (
-                      <Block block={b} source={source} names={names} assetBase={assetBase} />
+                      <Block block={b} source={source} assetBase={assetBase} />
                     )}
                     {writing && (
                       <button type="button" className="byd-rules-add" aria-label={t('rules.addAfter', { id: b.id })} onClick={() => addAfter(b.id)}>
@@ -1043,7 +1052,7 @@ function Editing({
   )
 }
 
-function Block({ block, source, names, assetBase }: { block: RenderedBlock; source?: RuleBlock | undefined; names: Names; assetBase?: string | undefined }) {
+function Block({ block, source, assetBase }: { block: RenderedBlock; source?: RuleBlock | undefined; assetBase?: string | undefined }) {
   const t = useT()
   switch (block.kind) {
     case 'heading':
@@ -1083,20 +1092,11 @@ function Block({ block, source, names, assetBase }: { block: RenderedBlock; sour
       ))
       return block.ordered ? <ol>{items}</ol> : <ul>{items}</ul>
     }
+    // The setup picture is the game's own zones (B5's follow-on), never a drawing beside them.
+    // It is grouped and folded since #270, and drawn by the one component the table's drawer
+    // draws it with: a designer who reads her setup here is reading the players' own.
     case 'setup':
-      // The setup picture is the game's own zones (B5's follow-on), never a drawing beside them.
-      return (
-        <figure className="byd-rules-setup">
-          <div>
-            {Object.entries(names.zones).map(([id, name]) => (
-              <span key={id} data-setup-zone={id}>
-                {name}
-              </span>
-            ))}
-          </div>
-          {block.caption && <figcaption>{block.caption}</figcaption>}
-        </figure>
-      )
+      return <SetupOverview block={block} level={3} />
     // A picture the designer brought with her (#173). A5 sets how big it may be drawn and the
     // stylesheet holds that frame, so the book in the editor is the book the reader meets.
     //

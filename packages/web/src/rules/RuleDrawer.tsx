@@ -3,6 +3,7 @@ import { ruleEm, type RenderedBlock, type RenderedNode, type RenderedRules } fro
 import { zoneTally, type ZoneTally } from '@byd/engine'
 import type { ZoneView } from '@byd/protocol'
 import { findRules } from './search.js'
+import { SetupOverview } from './SetupOverview.js'
 import { useT } from '../i18n/index.js'
 import type { Key } from '../i18n/sv.js'
 import './rules.css'
@@ -164,8 +165,11 @@ export function RuleBlockView({ block, assets }: { block: RenderedBlock; assets?
       ))
       return block.ordered ? <ol>{items}</ol> : <ul>{items}</ul>
     }
+    // The setup is the game's own zones and never a drawing beside them (B5). Since #270 the
+    // players are shown them and not only the caption, and by the very component the editor's
+    // page draws: one path for the book's words, whichever surface the book is read on.
     case 'setup':
-      return block.caption ? <p className="byd-rules-caption">{block.caption}</p> : null
+      return <SetupOverview block={block} level={4} />
     // A5 sets how big a picture may be drawn and the table and the phone draw it inside that same
     // frame (#173): the stylesheet holds the frame, so all three surfaces say it once.
     //

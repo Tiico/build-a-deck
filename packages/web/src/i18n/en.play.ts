@@ -283,4 +283,16 @@ export const enPlay = {
   'rules.tally.read.other': '{name}, {n} cards',
   'rules.tally.counted.one': '{name}, {n} card, order hidden',
   'rules.tally.counted.other': '{name}, {n} cards, order hidden',
+
+  'rules.setup.show': 'Show the setup',
+  'rules.setup.hide': 'Hide the setup',
+  'rules.setup.common': 'Shared on the table',
+  'rules.setup.common.zones': 'Shared zones',
+  'rules.setup.seats': 'At the players’ seats',
+  'rules.setup.count.one': '{n} seat. One seat at a time.',
+  'rules.setup.count.other': '{n} seats. One seat at a time.',
+  'rules.setup.pick': 'Show seat',
+  'rules.setup.seat': 'Seat {seat}',
+  'rules.setup.seat.zones': 'Zones at seat {seat}',
+  'rules.setup.seat.empty': 'No zones of its own at this seat.',
 } as const

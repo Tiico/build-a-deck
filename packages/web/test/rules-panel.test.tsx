@@ -42,8 +42,11 @@ describe('the rulebook in the editor (B7)', () => {
     expect(within(book()).getByRole('heading', { name: 'Så spelar ni' })).toBeTruthy()
     const refs = [...book().querySelectorAll('[data-ref]')].map((r) => r.textContent)
     expect(refs).toEqual(['Draghög', 'Kasthög', 'Drake'])
-    // The setup picture is the game's own zones (B5), not a drawing kept beside them.
+    // The setup picture is the game's own zones (B5), not a drawing kept beside them. It stands
+    // folded until somebody asks for it (#270), here exactly as in the players' own book.
     expect(within(book()).getByText('Så ställs bordet upp')).toBeTruthy()
+    expect(book().querySelectorAll('[data-setup-zone]')).toHaveLength(0)
+    fireEvent.click(within(book()).getByRole('button', { name: 'Visa uppställningen' }))
     expect(book().querySelectorAll('[data-setup-zone]').length).toBeGreaterThan(1)
   })
 
@@ -305,5 +308,45 @@ describe('a heading kept open while its level is chosen (#217)', () => {
     const field = await within(book()).findByLabelText('Rubrik h1')
     fireEvent.blur(field, { relatedTarget: document.body })
     await waitFor(() => expect(within(book()).queryByLabelText('Rubrik h1')).toBeNull())
+  })
+})
+
+// Uppställningen i editorns bok (#270). Sedan bilden har egna kontroller — utfällningen och
+// platsväljaren — kan blocket inte längre vara en enda stor knapp: en kontroll inuti en kontroll
+// är ogiltig och nås inte av en skärmläsare (UX-37, #82). Vägen in i blocket är därför dess
+// bildtext, som också är det enda i en uppställning en designer skriver.
+describe('uppställningens block i editorn (#270)', () => {
+
+  it('lägger ingen kontroll inuti en annan, med bilden både hopfälld och utfälld', async () => {
+    await openRules()
+    const nested = () => book().querySelectorAll('button button, button [role="button"], [role="button"] button, [role="button"] [role="button"], [role="button"] select, button select')
+    expect(book().querySelectorAll('button, [role="button"]').length).toBeGreaterThan(0)
+    expect([...nested()].map((el) => el.outerHTML.slice(0, 60))).toEqual([])
+    fireEvent.click(within(book()).getByRole('button', { name: 'Visa uppställningen' }))
+    expect([...nested()].map((el) => el.outerHTML.slice(0, 60))).toEqual([])
+  })
+
+  it('öppnar bildtexten ur bildtexten, och fäller ut bilden utan att öppna något fält', async () => {
+    await openRules()
+    // Att fälla ut bilden är att läsa, inte att skriva.
+    fireEvent.click(within(book()).getByRole('button', { name: 'Visa uppställningen' }))
+    expect(book().querySelector('input')).toBeNull()
+    // Och bildtexten är vägen in i blocket.
+    fireEvent.click(within(book()).getByRole('button', { name: 'Så ställs bordet upp' }))
+    const field = await within(book()).findByLabelText('Bildtext s1')
+    expect((field as HTMLInputElement).value).toBe('Så ställs bordet upp')
+    fireEvent.change(field, { target: { value: 'Bordet vid två spelare' } })
+    fireEvent.blur(field)
+    await waitFor(() => expect(within(book()).getByRole('button', { name: 'Bordet vid två spelare' })).toBeTruthy())
+  })
+
+  it('erbjuder vägen in också när ingen bildtext är skriven ännu', async () => {
+    await run.projects.create(run.projectId, { ...projectDoc(), rules: { ...rules, blocks: [{ kind: 'setup', id: 's1' }] } })
+    history.replaceState(null, '', `/editor?project=${run.projectId}&server=${encodeURIComponent(run.http)}`)
+    render(<EditorPage />)
+    await screen.findByText('Skogens herrar')
+    fireEvent.click(screen.getByRole('tab', { name: 'Regler' }))
+    fireEvent.click(await within(book()).findByRole('button', { name: 'Bildtext…' }))
+    expect(await within(book()).findByLabelText('Bildtext s1')).toBeTruthy()
   })
 })

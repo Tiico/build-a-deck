@@ -17,7 +17,7 @@ import { setupFromProject } from './setup.js'
 import { changeOf, diffProjects, type DocDiff, type VersionChange } from './diff.js'
 import { ProjectHost, type EditorMessage } from './project-actor.js'
 import type { EditIntent } from './edits.js'
-import { namesOfProject } from './names.js'
+import { arrangementOf, namesOfProject } from './names.js'
 import { SurveyAnswer, type SurveyStore } from './surveys.js'
 import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountOf, hash, langOf, loginMail, safeNext, token, type Account, type AuthStore, type Mailer } from './auth.js'
 import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
@@ -1055,13 +1055,12 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
     const names = namesOfProject(rec)
     const icons = opts.assets ? await resolveIcons(rec.icons, opts.assets) : rec.icons
     const compiled = bookletOf({
-      rules: renderRules(rec.rules, names),
+      rules: renderRules(rec.rules, names, arrangementOf(rec)),
       icons,
       // The pictures the book holds travel with it (#173): the printer is handed the bytes, never
       // a reference it could not follow.
       images: opts.assets ? await resolveRuleImages(rec.rules, opts.assets) : {},
       pageMm: A5,
-      zones: rec.setup.zones.map((z) => z.name),
       credits: creditsOf(rec),
       // The one heading the tool contributes follows the language the order was placed in (A4).
       lang: langOf(url.searchParams.get('lang')),
@@ -1193,7 +1192,10 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       res.writeHead(204).end()
       return true
     }
-    json(res, 200, renderRules(rec.rules, namesOfProject(rec)))
+    // The setup the players are shown is this very version's (B5, B7, #270): the book and the
+    // table it draws come out of the one document the session was locked to, so a table cannot be
+    // handed a book whose setup is a later draft's.
+    json(res, 200, renderRules(rec.rules, namesOfProject(rec), arrangementOf(rec)))
     return true
   }
   // The survey after a session (G3): one structured answer per participant, once the log is

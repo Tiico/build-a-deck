@@ -38,7 +38,11 @@ import { atWidth } from './viewport.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
-const css = `${read('src/editor/editor.css')}\n${read('src/buttons.css')}\n${read('src/a11y.css')}`
+// The rulebook's own sheet belongs here too: the Rules tab draws the setup's controls out of it
+// (#270), and the editor page loads it because `RulesPanel` reaches the book through `RuleDrawer`.
+// Left out, those buttons stand unstyled here and are measured against a ground the product never
+// paints — which reads as a failure that no stylesheet can fix.
+const css = `${read('src/editor/editor.css')}\n${read('src/buttons.css')}\n${read('src/a11y.css')}\n${read('src/rules/rules.css')}`
 
 const document_ = (html: string) =>
   shell

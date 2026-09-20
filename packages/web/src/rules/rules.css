@@ -50,6 +50,40 @@
 .byd-rules-page p { margin: 0 0 8px; }
 .byd-rules-page ol, .byd-rules-page ul { margin: 0 0 10px; padding-left: 20px; }
 .byd-rules-caption { font-style: italic; color: #6b6255; }
+/* Uppställningen i boken (B5, B7, #270).
+   Reglerna står här och inte i editorns ark, därför att bilden är en och samma på båda ytorna:
+   editorns bok är samma papper (#f7f3ea) och samma bläck (#23201a) som luckans, så färgerna nedan
+   hämtas ur luckans egna namn (#321) med bokens värden som reserv för den som läser i editorn.
+   Ingen färg bär någon mening ensam: vad som är utfällt säger knappens ord och `aria-expanded`.
+   Kontrasterna, mätta: bläcket 13,0:1 mot bandet, linjen 4,0:1 mot pappret och 3,1:1 mot bandet
+   under pekaren — en linje är en grafik och bär 3:1 (L11).
+   Listan är bokens egen lista och ärver dess punkt och indrag; det enda den säger själv är att ett
+   långt zonnamn bryts hellre mitt i ett ord än rullar boken i sidled (45 zoner vid 320 px). */
+.byd-rules-setup { margin: 12px 0; }
+.byd-rules-setup-toggle, .byd-rules-setup-pick select {
+  /* En träffyta är 44 px på varje yta som finns, och boken läses på en telefon. */
+  min-height: 44px;
+  box-sizing: border-box;
+  padding: 9px 13px;
+  border: 1px solid #84765e;
+  border-radius: 8px;
+  background: var(--byd-rules-band, #ece5d8);
+  color: var(--byd-rules-ink, #23201a);
+  font: 600 13px system-ui, sans-serif;
+  cursor: pointer;
+}
+.byd-rules-setup-toggle:hover { background: #e0d8c7; }
+.byd-rules-setup-groups { margin: 12px 0 4px; padding-left: 14px; border-left: 2px solid #b8ab93; }
+.byd-rules-setup-groups section + section { margin-top: 16px; padding-top: 14px; border-top: 1px solid #d8cdb8; }
+.byd-rules-setup-groups :is(h3, h4, h5) { margin: 0 0 8px; font: 700 13px/1.4 system-ui, sans-serif; }
+.byd-rules-setup-hint { margin: 0 0 10px; font: 12px/1.5 system-ui, sans-serif; color: var(--byd-rules-quiet, #6b6255); }
+.byd-rules-setup-list li { overflow-wrap: anywhere; }
+.byd-rules-setup-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.byd-rules-setup-pick select { flex: 1 1 8em; min-width: 0; background: #fffaf1; }
+.byd-rules-setup-seat { margin-top: 12px; }
+/* Bildtexten är vägen in i blocket där boken skrivs (#270): den ser ut som den bildtext den är,
+   men är en riktig knapp med träffyta och tabbstopp, eftersom den är det enda sättet in. */
+.byd-rules-caption-edit { display: block; width: 100%; min-height: 44px; border: 0; background: none; text-align: left; font: inherit; font-style: italic; cursor: pointer; }
 /* A picture in the book (#173). A5 is the narrowest of the three surfaces the book is read on, so
    A5 sets the frame: the text column of an A5 page and two thirds of its type area, said in the
    book's own type so a screen holds to the same frame with pixels of its own. The picture's own

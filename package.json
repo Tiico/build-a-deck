@@ -12,8 +12,7 @@
     "dev:web": "pnpm --filter @byd/web dev",
     "dev:server": "pnpm --filter @byd/server dev",
     "dev:render": "pnpm --filter @byd/render worker",
-    "prototype": "pnpm --filter @byd/server exec tsx scripts/prototype/run.ts",
-    "prototype:setup": "pnpm --filter @byd/web dev --host 127.0.0.1 --port 5417"
+    "prototype": "pnpm --filter @byd/server exec tsx scripts/prototype/run.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.0",

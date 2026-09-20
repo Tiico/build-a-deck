@@ -109,12 +109,27 @@ test.describe('the felt’s face is in the document before the first painting (K
     // at a time rather than by a panel.
     //
     // So the number is the measurement plus a stated margin rather than the next round figure up.
-    // The blocking sheet is 76.3 kB of CSS beside the face; 84 kB leaves 7.7 kB, about a tenth, for
+    // The blocking sheet was 76.3 kB of CSS beside the face; 84 kB left 7.7 kB, about a tenth, for
     // the felt's own surfaces to go on growing without anybody having to come back here. And it
     // still fells what it is for: the cheaper of the two subsets shipped is 45 kB as base64, so the
     // smallest second face anyone could add is nearly six times the whole margin.
+    //
+    // Raised once, 2026-09-20 (#270): that margin was spent. It was spent a rule at a time by the
+    // surfaces it was left for — which is the growth it was there to allow — and the sheet stood at
+    // 83.3 kB, seven hundred bytes under, when the setup in the players' rulebook asked for 1.1 kB
+    // of its own. 88 kB is the measurement plus a margin of the same order as what is left of the
+    // old one, and deliberately not a round number with room for a panel in it: the next surface
+    // that outgrows this comes back here and writes its own line, as this one did.
+    //
+    // What the raise does not touch is the thing the gate is for. A second face is 45 kB at its
+    // cheapest, twelve times this whole margin, and it is felled exactly as before.
+    //
+    // The way out, when one is wanted, is #186's: the rulebook's drawer is three and a half
+    // kilobytes of this sheet and nobody sees it until a button is pressed. Taking it off the
+    // critical path is a change of its own — the button that opens it has to stay — and it would
+    // buy back more than every raise this line has ever taken.
     const sheet = blockingSheets(index).reduce((sum, href) => sum + statSync(join(OUT, href.replace(/^\//, ''))).size, 0)
-    expect(sheet).toBeLessThan(inlined + 84_000)
+    expect(sheet).toBeLessThan(inlined + 88_000)
   })
 
   // And the same thing said by a browser rather than by a reader of files: the built app served

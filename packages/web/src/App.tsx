@@ -41,8 +41,6 @@ function EditorRoute() {
   )
 }
 
-const SetupBookPrototype = import.meta.env.DEV ? lazy(() => import('./rules/prototype/SetupBookPrototype.js')) : null
-
 // Routing is a path check for now; a router arrives with the first real page.
 // The whole app is under one language (A4): the reader's own choice, then the address, then what
 // their browser asks for. A surface mounted on its own — a preview, a test — speaks Swedish,
@@ -66,9 +64,6 @@ export function App() {
 // Every screen that shows cards is under one live region for lost textures (#10); App is the
 // only place that is mounted exactly once whichever route is showing.
 function route() {
-  if (SetupBookPrototype && ['/play', '/online', '/table'].includes(location.pathname) && new URLSearchParams(location.search).has('setupPrototype')) {
-    return <Suspense fallback={null}><SetupBookPrototype /></Suspense>
-  }
   if (location.pathname === '/table') return <TablePage />
   if (location.pathname === '/play') return <PlayerPage />
   if (location.pathname === '/join') return <JoinPage />

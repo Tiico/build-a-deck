@@ -104,14 +104,17 @@ describe('the switch in the rules tab’s own header (#227)', () => {
     expect(modes.map((b) => b.getAttribute('aria-pressed'))).toEqual(['true', 'false'])
   })
 
-  // The claim the whole slice rests on: the presented book is the table's book. What proves it is
-  // the one place the two renderers differ — the setup block. The editor draws it as the game's
-  // own zones (B5); the table's `RuleBlockView` has no picture for a `setup` and draws its caption
-  // and nothing else (#270). A presentation mode that drew the zones would be a second code path
-  // for the book's words, and would say so here.
+  // The claim the whole slice rests on: the presented book is the table's book. It used to be
+  // proved by the one place the two renderers differed — the editor drew the setup as the game's
+  // own zones (B5) and the table drew its caption and nothing else. That difference is gone:
+  // since #270 both draw the zones, out of one component, which is what the difference was a
+  // symptom of. So the box is what changes here, and the book in it is measured as the same book.
   it('swaps the reading area for the table’s own drawer, drawn by the table’s own code', async () => {
     await openRules()
-    expect(document.querySelectorAll('[data-setup-zone]').length).toBeGreaterThan(1)
+    const zonesOf = (el: HTMLElement) => [...el.querySelectorAll('[data-setup-zone]')].map((z) => z.textContent)
+    fireEvent.click(within(document.querySelector('[data-rulebook]') as HTMLElement).getByRole('button', { name: 'Visa uppställningen' }))
+    const inTheEditor = zonesOf(document.querySelector('[data-rulebook]') as HTMLElement)
+    expect(inTheEditor.length).toBeGreaterThan(1)
 
     press('Som på bordet')
     expect(document.querySelector('[data-rulebook]')).toBeNull()
@@ -121,9 +124,12 @@ describe('the switch in the rules tab’s own header (#227)', () => {
     expect([...book.querySelectorAll('[data-ref]')].map((r) => r.textContent)).toEqual(['Draghög', 'Kasthög', 'Drake', 'Kasthög'])
     // The table's own headings: a section is an `h3` there and an `h2` in the editor's book.
     expect(within(book).getByRole('heading', { name: 'Skogens väsen' }).tagName).toBe('H3')
-    // And the setup is its caption alone, because that is all the table draws of it (#270).
+    // And the setup: the same caption, folded the same way, and the very same zones once it is
+    // opened (#270). A second code path for the book's words would say so right here.
     expect(within(book).getByText('Så ställs bordet upp')).toBeTruthy()
     expect(book.querySelectorAll('[data-setup-zone]')).toHaveLength(0)
+    fireEvent.click(within(book).getByRole('button', { name: 'Visa uppställningen' }))
+    expect(zonesOf(book)).toEqual(inTheEditor)
 
     press('Redigerbar')
     expect(document.querySelector('[data-rulebook]')).not.toBeNull()

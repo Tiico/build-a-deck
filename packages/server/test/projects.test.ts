@@ -684,3 +684,69 @@ describe('the rules a table plays by (B7)', () => {
     expect((await fetch(`${run.http}/sessions/nope/rules`)).status).toBe(404)
   })
 })
+
+// The setup in the players' book (#270, HITL 2026-09-20). The table used to be handed the setup
+// block's caption and nothing else, so the book the players read could say that there was a setup
+// without saying what it was. The zones travel with the block now, and three things have to hold
+// about them: they are the *locked* version's, they are grouped by the zone's own ownership, and
+// they are the only thing about the table that travels.
+describe('the setup the players are handed (B5, B7, #270)', () => {
+  const setupRules: RuleDoc = {
+    title: 'Skogens herrar',
+    blocks: [{ kind: 'heading', id: 'h1', level: 1, text: 'Uppställning' }, { kind: 'setup', id: 's1', caption: 'Så ställs bordet upp' }],
+  }
+  type Zones = { id: string; name: string }[]
+  type Setup = { kind: string; caption?: string; common: Zones; seats: { id: string; zones: Zones }[] }
+  const setupOf = async (id: string): Promise<Setup> => {
+    const body = (await (await fetch(`${run.http}/sessions/${id}/rules`)).json()) as { blocks: Setup[] }
+    return body.blocks[1]!
+  }
+  const tableFor = async (id: string, doc: Record<string, unknown>): Promise<string> => {
+    await json('POST', '/projects', { id, ...doc })
+    const started = await json('POST', `/projects/${id}/sessions`, {})
+    return ((await started.json()) as { id: string }).id
+  }
+
+  it('groups what stands on the table apart from what belongs to each seat, by the zone’s own owner', async () => {
+    const setup = await setupOf(await tableFor('p-setup-book', { ...project(), rules: setupRules }))
+    expect(setup.common).toEqual([
+      { id: 'draw', name: 'Draghög' },
+      { id: 'discard', name: 'Kasthög' },
+      { id: 'table', name: 'Spelyta' },
+    ])
+    // Every seat the table has, in the setup's own order, each with the zones it owns. The two
+    // hands are both called `Hand`: which seat they stand at is the metadata's answer and could
+    // never have been read out of the name.
+    expect(setup.seats).toEqual([
+      { id: 'A', zones: [{ id: 'hand:A', name: 'Hand' }] },
+      { id: 'B', zones: [{ id: 'hand:B', name: 'Hand' }] },
+    ])
+  })
+
+  it('draws the version the table was locked to, never the draft the editor has moved on to', async () => {
+    const id = await tableFor('p-setup-locked', { ...project(), rules: setupRules })
+    const { zones, seats, floor } = twoSeatSetup()
+    const later = {
+      ...project(),
+      rules: setupRules,
+      setup: { zones: [...zones.map((z) => (z.id === 'discard' ? { ...z, name: 'Påsen' } : z)), { id: 'marknad', kind: 'area', name: 'Marknaden', visibility: 'all', geometry: { x: 0, y: 0, w: 100, h: 100, rot: 0 } }], seats, floor, deckZone: 'draw' },
+    }
+    expect((await json('PUT', '/projects/p-setup-locked', { rev: 1, ...later })).status).toBe(200)
+    const setup = await setupOf(id)
+    expect(setup.common.map((z) => z.name)).toEqual(['Draghög', 'Kasthög', 'Spelyta'])
+  })
+
+  // What may not travel, read off the bytes rather than off a screen. A rulebook is handed to
+  // everybody at the table and to whoever is only watching, so anything in this response is public
+  // to all of them: the zones' names are the book's own words (B5), and the cards that lie in them
+  // and where they lie are not (B6, K15).
+  it('carries the zones and nothing else about the table', async () => {
+    const id = await tableFor('p-setup-quiet', { ...project(), rules: setupRules })
+    const raw = await (await fetch(`${run.http}/sessions/${id}/rules`)).text()
+    // The cards the deck holds are named nowhere in this book, so nothing of them may be here.
+    for (const secret of ['Drake', 'Riddare', 'Trollkarl', 'dragon', 'knight', 'wizard']) expect(raw, `${secret} reached the players' rulebook`).not.toContain(secret)
+    // Nor anything else a zone knows about itself: where it lies, who may see into it, what it
+    // fills with. A zone in the book is a name and the id the book's own references use.
+    for (const field of ['geometry', 'visibility', 'returnTo', 'shortcut', 'fill', 'components']) expect(raw, `${field} reached the players' rulebook`).not.toContain(field)
+  })
+})

@@ -1,5 +1,9 @@
 # #270 — uppställningen i spelarnas regelbok
 
+> Historik. Engångsprototypen och `pnpm prototype:setup` togs bort när produktvägen ersatte dem
+> (#270, 2026-09-20); länkarna nedan pekar på filer som bara finns i historiken. Vad som byggdes
+> och varför står i B7 i [DESIGN-BESLUT.md](../../DESIGN-BESLUT.md).
+
 Beställaren har valt att samma uppställning ska finnas i editorns och spelarnas bok.
 Den återstående designfrågan är hur den ryms, särskilt på telefonen.
 

@@ -64,11 +64,24 @@ describe('the rulebook as a booklet for print (B7)', () => {
     expect(out.html).not.toContain('byd-rules-tally')
   })
 
+  // The zones come off the block, out of the one arrangement the document is read into (#270),
+  // so the press cannot be handed a different table from the one the editor and the players see.
   it('draws the setup from the zones the game actually has (B5)', () => {
-    const out = bookletOf({ rules: renderRules(doc, names), icons, pageMm: { w: 148, h: 210 }, zones: ['Draghög', 'Kasthög', 'Hand'] })
+    const arrangement = { common: [{ id: 'draw', name: 'Draghög' }, { id: 'discard', name: 'Kasthög' }], seats: [{ id: 'A', zones: [{ id: 'hand:A', name: 'Hand' }] }] }
+    const out = bookletOf({ rules: renderRules(doc, names, arrangement), icons, pageMm: { w: 148, h: 210 } })
     expect(out.html).toContain('Så ställs bordet upp')
     expect(out.html).toContain('data-zone')
     expect(out.html).toContain('Kasthög')
+    // What stands on the table, then each seat's own — the arrangement's own order.
+    expect([...out.html.matchAll(/<span data-zone>([^<]*)<\/span>/g)].map((m) => m[1])).toEqual(['Draghög', 'Kasthög', 'Hand'])
+  })
+
+  // A setup a print order was placed for before the zones travelled with the block prints an
+  // empty frame rather than somebody else's table: the figure says what the document says.
+  it('prints the setup empty when the book was rendered with no game behind it', () => {
+    const out = bookletOf({ rules: renderRules(doc, names), icons, pageMm: { w: 148, h: 210 } })
+    expect(out.html).toContain('Så ställs bordet upp')
+    expect(out.html).not.toContain('data-zone')
   })
 
   it('escapes what a designer wrote, so a rulebook can never carry markup into the renderer', () => {
@@ -263,8 +276,9 @@ describe('the booklet through the real renderer (B7)', () => {
           ],
         },
         names,
+        { common: [{ id: 'draw', name: 'Draghög' }, { id: 'discard', name: 'Kasthög' }], seats: [] },
       )
-      const out = await renderer.renderBooklet(bookletOf({ rules, icons: {}, pageMm: A5, zones: ['Draghög', 'Kasthög'] }))
+      const out = await renderer.renderBooklet(bookletOf({ rules, icons: {}, pageMm: A5 }))
       const text = Buffer.from(out).toString('latin1')
       expect(text.startsWith('%PDF-')).toBe(true)
       // Long rules run onto more pages: a booklet is a document, not one card-sized page.

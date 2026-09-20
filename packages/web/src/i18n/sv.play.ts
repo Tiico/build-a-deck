@@ -347,4 +347,18 @@ export const svPlay = {
   'rules.tally.read.other': '{name}, {n} kort',
   'rules.tally.counted.one': '{name}, {n} kort, ordningen dold',
   'rules.tally.counted.other': '{name}, {n} kort, ordningen dold',
+
+  // Uppställningen i boken (B5, B7, #270). Orden är verktygets; zonernas namn är designerns och
+  // står aldrig här. Samma ord i editorn och vid bordet, eftersom det är samma bild.
+  'rules.setup.show': 'Visa uppställningen',
+  'rules.setup.hide': 'Dölj uppställningen',
+  'rules.setup.common': 'Gemensamt på bordet',
+  'rules.setup.common.zones': 'Gemensamma zoner',
+  'rules.setup.seats': 'Vid spelarnas platser',
+  'rules.setup.count.one': '{n} plats. Visa en plats i taget.',
+  'rules.setup.count.other': '{n} platser. Visa en plats i taget.',
+  'rules.setup.pick': 'Visa plats',
+  'rules.setup.seat': 'Plats {seat}',
+  'rules.setup.seat.zones': 'Zoner vid plats {seat}',
+  'rules.setup.seat.empty': 'Inga egna zoner vid den här platsen.',
 } as const

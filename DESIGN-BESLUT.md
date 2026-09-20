@@ -479,6 +479,43 @@ Häftet får bytena inlagda som data-URL, som ikonerna, eftersom renderaren ska 
 En fil som både öppnar med sin egen titel (#191) och bär bilder går båda vägarna, och rapporten bär båda raderna i en enda ordning: det som blev block först, bilden bland dem, och därefter det som ändrade form på vägen in med filens egen titel i spetsen.
 Bilden på filens första rad är innehåll och inte en titel, så en `#` under den är ett avsnitt som vilket annat — filens första rad är den första rad som säger något, och en bild säger något.
 
+Uppställningen i spelarnas bok, byggd 2026-09-20 (#270):
+Uppställningsblocket bar bara sin bildtext till bordet, så boken spelarna läser kunde säga *att* det fanns en uppställning utan att säga *vad* den var; zonerna ritades bara i editorn.
+Nu följer zonerna med blocket, och samma komponent ritar dem i editorns bok, i luckan vid bordet, på TV:n och på telefonen.
+
+**Formen är en utfällbar, grupperad zonöversikt.**
+Gemensamma zoner först, sedan en vald spelarplats i taget, med en märkt väljare som omfattar samtliga platser — listor och rubriker, inga rutor och ingen teckning.
+Det är en zonöversikt och aldrig en geografisk bordskarta: var en zon ligger är bordets fråga, och en karta i boken vore en andra sanning om filten som genast glider ifrån den (B5, K2).
+Att visa alla platsers zoner samtidigt valdes bort och är vad grupperingen köper: mätt i prototypen vid 320 px gick 45 zoner med långa namn från 1 190 px till 539 px genom att en plats visas i taget, och namnen behöver aldrig kortas av eller rullas i sidled.
+Priset är sagt: en liten uppställning på sex zoner blir högre än den gamla platta bilden — grupperingen väljer begriplighet framför minsta höjd, eftersom en bok som ryms men inte går att följa inte har sparat något.
+Bilden står hopfälld när boken öppnas, på alla ytor, därför att boken är till för den som läser den och inte för listan: den som vill se bordet ber om det med ett tryck, och den som söker en regel möter texten.
+Vald plats består när bilden fälls ihop och öppnas igen. Den är läsarens blick och inte bokens innehåll, så den skrivs varken i dokumentet eller i webbläsaren och följer inte med till nästa besök.
+Både utfällningen och platsvalet är plattformens egna kontroller — en knapp med `aria-expanded` och en märkt väljare — så tangentbordet och pekdonet når dem på samma villkor (L12).
+
+**Tillhörighet är zonens egen uppgift och läses aldrig ur namnet.**
+En zon utan ägare står på bordet för alla; en zon med ägare hör till den platsen.
+Varje hand heter «Hand» vid varje plats (K9, K19), så den som härledde ägarskap ur stavningen skulle lägga alla händer på samma plats — och en designer som döper sin zon «Framför A» och ger den till B har sagt vad hon menar.
+Grupperingen görs en gång, i `arrangementOf` bredvid `namesOfProject`, eftersom båda svaren kommer ur samma dokument och måste komma ur samma version av det.
+
+**En enda renderare för bokens ord.**
+`SetupOverview` är den enda modul som ritar ett uppställningsblock, och både editorns bok och bordets lucka hämtar sin ur den; ytan bestämmer bara vilken rubriknivå den står på, precis som den redan gör för bokens egna rubriker.
+Skälet är kortmallarnas (E2): två vägar som ritar samma ord glider isär, och då säger boken olika saker beroende på var den läses.
+Hur långt isär de redan hade glidit syns på #227: att «som på bordet» *saknade* uppställningen var beviset för att läget verkligen var bordets bok, och ett bevis av det slaget är en skillnad man byggt in och sedan lärt sig leva med.
+Det tryckta häftet är fortsatt en egen renderingssort, som det varit sedan 2026-09-08: en sida är inte en skärm, och det som delas är blocket och dess zoner, inte markupen.
+
+**Följden i editorn: bildtexten är vägen in i blocket.**
+Editorns bok öppnas genom att man klickar på blocket, och ett block som nu bär egna kontroller kan
+inte samtidigt vara en enda stor kontroll: en kontroll inuti en kontroll är ogiltig och nås inte av
+en skärmläsare (UX-37, #82).
+Uppställningens bildtext är därför blockets väg in — vilket också är det enda i en uppställning en
+designer skriver — och en oskriven bildtext säger `Bildtext…` och är en väg in ändå.
+Att fälla ut bilden i editorn öppnar alltså inget fält: det är att läsa och inte att skriva.
+
+**Zonerna kommer ur sessionens låsta version och bär inget mer om bordet.**
+`GET /sessions/:id/rules` renderar mot den revision sessionen låstes till vid start, och uppställningen följer med den: ett pågående bord får aldrig en senare utkasts zoner.
+Det som färdas är zonens id och namn, ingenting annat. Var den ligger, vem som ser in i den och vad den fylls med är bordets sak (B6, K15), och regelboken delas ut till varje plats och till den som bara tittar — allt i den är alltså publikt för alla.
+Zonlistan står utanför bokens egen `text` och därmed utanför sökningen: `plainOf` är vad frågerutan läser, och en lista av zonnamn i den hade svarat på varje fråga som råkade nämna en hög.
+
 Motivering:
 Trycket kräver en regelbok för att ordern ska kunna läggas.
 Blindtest kräver att testare kan läsa reglerna utan designern.

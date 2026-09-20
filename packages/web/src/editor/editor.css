@@ -2193,10 +2193,9 @@
 .byd-rules-ref { font-style: normal; color: #7a4d1d; border-bottom: 1px dotted #b08a5a; }
 .byd-rules-ref[data-missing] { color: #a12b2b; background: #f4d9d9; border-bottom: 0; padding: 0 4px; border-radius: 3px; }
 .byd-rules-pip { display: inline-grid; place-items: center; width: 1.2em; height: 1.2em; border-radius: 50%; background: #23201a; color: #f7f3ea; font: 700 0.75em system-ui; vertical-align: -0.15em; }
-.byd-rules-setup > div { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; padding: 16px; border-radius: 10px; background: #e7dfd0; border: 1px dashed #b8ab93; }
-.byd-rules-setup span { padding: 8px 12px; border-radius: 6px; background: #f7f3ea; border: 1px solid #cbbfa8; font: 12px system-ui; }
-.byd-rules-setup figcaption { margin-top: 4px; text-align: center; font: italic 12px Georgia, serif; color: #6b6255; }
-.byd-rules-setup { margin: 12px 0; }
+/* Uppställningen ritas av `rules/rules.css`, som editorn redan läser: den är samma bild i boken
+   här och i luckan vid bordet, av samma komponent (#270). Bildtexten är bokens egen rad och står
+   i `.byd-rules-caption` som varje annan bildtext. */
 /* A picture in the book (#173). A5 is the narrowest of the three surfaces the book is read on, so
    A5 sets the frame — the text column of an A5 page and half its height — and it is said in the
    book's own type so the editor holds to the same frame with pixels of its own. The word under a

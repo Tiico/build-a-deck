@@ -278,3 +278,38 @@ describe('a picture in the rulebook (#173)', () => {
     expect(outside(`asset:${hash}`)).toBe(true)
   })
 })
+
+// The setup in the players' book (#270, HITL 2026-09-20). The block used to carry nothing but its
+// caption, so the table's book could say only that there *was* a setup; the zones themselves lived
+// in the editor and nowhere else. They travel on the block now — grouped once, here, so that every
+// surface that draws them draws the same grouping and none of them has to work it out again.
+describe('the setup block carries the game’s own zones (B5, #270)', () => {
+  const doc: RuleDoc = { title: 'Skogens herrar', blocks: [{ kind: 'setup', id: 's1', caption: 'Så ställs bordet upp' }] }
+  // Ownership is the zone's own metadata and never its spelling: `Hand B` below is owned by seat
+  // A, and that is what decides where it stands.
+  const arrangement = {
+    common: [
+      { id: 'table', name: 'Spelyta' },
+      { id: 'draw', name: 'Draghög' },
+    ],
+    seats: [
+      { id: 'A', zones: [{ id: 'hand:A', name: 'Hand B' }] },
+      { id: 'B', zones: [{ id: 'hand:B', name: 'Hand' }] },
+    ],
+  }
+
+  it('hands every surface the common zones and one group per seat, out of the arrangement it was given', () => {
+    const out = renderRules(doc, names, arrangement)
+    expect(out.blocks[0]).toEqual({ kind: 'setup', id: 's1', caption: 'Så ställs bordet upp', common: arrangement.common, seats: arrangement.seats })
+  })
+
+  it('draws a book with no game behind it as a setup with no zones, rather than as a block of another shape', () => {
+    const out = renderRules(doc, names)
+    expect(out.blocks[0]).toEqual({ kind: 'setup', id: 's1', caption: 'Så ställs bordet upp', common: [], seats: [] })
+  })
+
+  it('keeps the zones out of the book’s own text, because a zone list is not a sentence to search', () => {
+    const out = renderRules(doc, names, arrangement)
+    expect(out.text).toBe('Så ställs bordet upp')
+  })
+})

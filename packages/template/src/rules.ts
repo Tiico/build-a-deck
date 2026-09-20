@@ -130,6 +130,22 @@ export type RuleBlock = RuleDoc['blocks'][number]
 // What the names of things are right now. The rulebook asks for them at render time; it never
 // stores them.
 export type Names = { zones: Record<string, string>; cards: Record<string, string> }
+
+// How the table is laid out, as the setup block draws it (B5's follow-on, #270). It is the game's
+// own zones grouped once — what stands on the table for everybody, and then what belongs to each
+// seat — and it is grouped here rather than on any surface, so that the editor, the players' book
+// and whatever reads them next all draw the same grouping instead of each working it out again.
+//
+// Who a zone belongs to is the zone's own metadata and never its spelling: a zone called `Hand B`
+// stands at the seat its `owner` says, because a name is the designer's to write and a table is
+// not to be read out of one (B5).
+export type SetupZone = { id: string; name: string }
+export type SetupSeat = { id: string; zones: SetupZone[] }
+export type SetupArrangement = { common: SetupZone[]; seats: SetupSeat[] }
+// A book rendered with no game behind it — a fragment, a test, a line on its own — has no table to
+// show. The block keeps its shape all the same, so that a surface has one thing to draw and never
+// two: an arrangement with nothing in it, rather than a block missing half its fields.
+export const NO_ARRANGEMENT: SetupArrangement = { common: [], seats: [] }
 export type RuleWarning = { block: string; of: 'zone' | 'card'; id: string }
 
 // What a rendered rule is made of. A reference arrives carrying the name it stands for, so
@@ -148,7 +164,10 @@ export type RenderedBlock =
   | { kind: 'heading'; id: string; level: 1 | 2; children: RenderedNode[] }
   | { kind: 'text'; id: string; paragraphs: RenderedParagraph[] }
   | { kind: 'list'; id: string; ordered: boolean; items: RenderedNode[][] }
-  | { kind: 'setup'; id: string; caption?: string | undefined }
+  // The setup is the game's own zones and never a drawing kept beside them (B5). Since #270 the
+  // block carries them: the caption alone told the players there was a setup without telling them
+  // what it was, and the zones lived in the editor and nowhere else.
+  | { kind: 'setup'; id: string; caption?: string | undefined; common: SetupZone[]; seats: SetupSeat[] }
   // The picture reaches every surface as the reference it is; whoever draws it knows where the
   // project's assets are served from and resolves it there, exactly as a card's image is resolved.
   // A picture arrives measured (#173): the millimetres are worked out once, here, and a surface
@@ -157,7 +176,7 @@ export type RenderedBlock =
 // `text` is the whole rulebook as plain text: what a search reads, and what a test can hold on to.
 export type RenderedRules = { title: string; blocks: RenderedBlock[]; warnings: RuleWarning[]; text: string }
 
-export function renderRules(doc: RuleDoc, names: Names): RenderedRules {
+export function renderRules(doc: RuleDoc, names: Names, arrangement: SetupArrangement = NO_ARRANGEMENT): RenderedRules {
   const warnings: RuleWarning[] = []
   const lines: string[] = []
   const blocks: RenderedBlock[] = doc.blocks.map((block): RenderedBlock => {
@@ -186,9 +205,12 @@ export function renderRules(doc: RuleDoc, names: Names): RenderedRules {
         items.forEach((children, i) => lines.push(`${block.ordered ? `${i + 1}. ` : '- '}${plainOf(children)}`))
         return { kind: 'list', id: block.id, ordered: block.ordered ?? false, items }
       }
+      // The zones travel with the block but stay out of the book's own `text` (#270): what the
+      // question box reads is the book's sentences, and a list of zone names in it would answer
+      // every question that happened to mention a pile.
       case 'setup':
         if (block.caption) lines.push(block.caption)
-        return block
+        return { ...block, common: arrangement.common, seats: arrangement.seats }
       // What a picture says is its alt text, and a decorative one says nothing — which is the
       // whole of what "decorative" means (#173): it is not in the book's text either. The caption
       // is the reader's own line, printed and read beside the picture, so it is in the book's text
