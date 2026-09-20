@@ -1455,6 +1455,17 @@ function ShapeProps({ el, fields, valuesIn, onPatch }: { el: Shape; fields: stri
         {t('canvas.props.strokeMm')}
         <input type="number" min={0} step={0.1} value={el.strokeMm ?? 0} {...pushing.visit} onChange={(e) => onPatch({ strokeMm: Number(e.target.value) }, pushing.token())} />
       </label>
+      {/* How see-through the whole shape is (#317): one number for the layer, so the fill, the
+          pattern over it and the line fade together. In per cent, because that is the unit the
+          value is thought in — the document keeps the share of one. A range answers an arrow key
+          and a dragged thumb with one control, and the gesture makes the whole drag one undo.
+          It stands above the fill and not under the shadow: it is about the shape itself, and
+          the controls below it are each about one layer of it. Offered on a line as well, which
+          has no inside to fill but is ink all the same. */}
+      <label className="byd-props-wide">
+        {t('canvas.props.opacity')}
+        <input type="range" min={0} max={100} value={Math.round((el.opacity ?? 1) * 100)} {...pushing.visit} onChange={(e) => onPatch({ opacity: Number(e.target.value) / 100 }, pushing.token())} />
+      </label>
       {solid && <Fill fill={el.fill} fields={fields} valuesIn={valuesIn} onPatch={onPatch} />}
       {solid && <PatternProps pattern={el.pattern} fill={el.fill} onPatch={onPatch} />}
       <ShadowProps shadow={el.shadow} onPatch={onPatch} />

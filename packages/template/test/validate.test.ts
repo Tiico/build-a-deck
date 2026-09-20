@@ -122,3 +122,35 @@ describe('text over a pattern is read against both of its colours (E5, L17)', ()
     expect(codes(check([pattern({ color: '#2b2b2b' }), text()]))).toEqual(['low-contrast:error'])
   })
 })
+
+// Transparency on a shape (#317) is ordinary rasterisation to the press: the ink is thinner, and
+// nothing about that is a fault of its own. What the checks do have to notice is a shape that
+// lays down no ink at all, because such a shape is not what the reader's eye meets.
+describe('a see-through shape (E5, #317)', () => {
+  it('is no fault of its own: a half-transparent plate is checked exactly as a solid one', () => {
+    const plate = (over: Record<string, unknown>) => bg({ id: 'panel', x: 4, y: 26, w: 55, h: 50, fill: '#1c1c1c', ...over })
+    expect(check([bg(), plate({}), text({ color: '#f5f5f5' })])).toEqual([])
+    expect(check([bg(), plate({ opacity: 0.5 }), text({ color: '#f5f5f5' })])).toEqual([])
+  })
+
+  // A plate turned all the way down is paper. Reading the words against the colour it would have
+  // had is the check believing a stylesheet over the card, and it believes it in the dangerous
+  // direction: white on white passes.
+  it('is not what lies behind the words once it lays down no ink at all', () => {
+    const invisible = bg({ id: 'panel', x: 4, y: 26, w: 55, h: 50, fill: '#1c1c1c', opacity: 0 })
+    expect(codes(check([bg({ fill: '#ffffff' }), invisible, text({ color: '#f5f5f5' })]))).toEqual(['low-contrast:error'])
+  })
+
+  // And it carries no colour into the colour-blindness pairing either, for the same reason: two
+  // marks are only told apart by a reader who can see both of them.
+  it('carries no colour into the pairs a colour-blind reader has to tell apart', () => {
+    const pair = (over: Record<string, unknown>) => [
+      bg({ fill: '#ffffff' }),
+      bg({ id: 'a', x: 6, y: 6, w: 10, h: 10, fill: '#7d8f1f' }),
+      bg({ id: 'b', x: 20, y: 6, w: 10, h: 10, fill: '#c0392b', ...over }),
+      text(),
+    ]
+    expect(codes(check(pair({}))).filter((c) => c.startsWith('colour-only'))).toEqual(['colour-only:warning'])
+    expect(codes(check(pair({ opacity: 0 }))).filter((c) => c.startsWith('colour-only'))).toEqual([])
+  })
+})

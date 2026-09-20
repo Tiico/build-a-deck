@@ -3099,6 +3099,13 @@ Reglaget är fyra förval — ingen, mjuk, hård, upphöjd — med ett `Anpassa`
 Genomskinligheten är ett eget tal och inte en del av färgen, eftersom väljaren som plockar en färg inte kan säga hur genomsiktlig den är, och en skugga som inte är genomsiktlig är en utstansning.
 Skuggan sitter på formen. Modellen är skriven så att den kan flyttas upp till alla element den dag det behövs, men skugga på text är en tryckrisk (E5) som behöver egen validering och inget i editorn skapar en sådan i dag.
 
+Formen bär en egen genomskinlighet (#317, 2026-09-20).
+Det är en lageropacitet — ett tal för hela formen, så att fyllningen, mönstret över den och linjen tonar ihop — och inte ett tal per lager: det designern är ute efter är en ruta lagd över en bild, och en ruta vars kant är fastare än dess mitt är ännu en sak att hålla i takt utan vinst.
+Talet sitter på elementet av samma skäl som skuggan gör det, alltså på den form som faktiskt ritades, och det saknas i stället för att vara `1` när ingen har sagt något: en mall skriven innan fältet fanns kompilerar till exakt samma byte som förut.
+Panelen skriver det i procent eftersom det är enheten talet tänks i; dokumentet behåller andelen av ett.
+Den fysiska kontrollen (E5) varnar inte för genomskinlighet — för pressen är det vanlig rastrering, alltså tunnare bläck, vilket inte är något pressen har ett namn för.
+Den enda kontrollen som alls tittar på talet gör det vid noll: en platta som är helt nedvriden lägger inget bläck, och då är den varken det som ligger bakom orden eller ett av två märken en färgblind läsare ska skilja åt.
+
 Den fysiska kontrollen läser båda färgerna på en mönstrad platta.
 Text som syns mellan ränderna och försvinner på dem är ett kort som faller i handen medan kontrollen kallade det helt, så kontrasten mäts mot den sämsta av fyllningen och mönstrets bläck.
 

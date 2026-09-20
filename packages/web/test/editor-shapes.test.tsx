@@ -125,6 +125,57 @@ describe('the numbers a shape reads (L17)', () => {
   })
 })
 
+// One transparency for the whole shape (#317), so a pane can be laid over a picture without the
+// designer going round by rgba in the colour field. It stands with the other numbers a shape
+// reads, in per cent, because that is the unit the value is thought in and 0.35 is not.
+describe('how see-through a shape is (L17, #317)', () => {
+  const opacity = () => screen.getByLabelText(/opacitet/i) as HTMLInputElement
+
+  it('stands at whole on a shape that says nothing about it, and writes a share of one', () => {
+    const { onPatch } = open({ shape: 'rect' })
+    expect(opacity().value).toBe('100')
+    fireEvent.change(opacity(), { target: { value: '50' } })
+    expect(patched(onPatch)).toEqual({ opacity: 0.5 })
+  })
+
+  it('shows the share the shape already carries, in per cent', () => {
+    open({ shape: 'rect', opacity: 0.35 })
+    expect(opacity().value).toBe('35')
+  })
+
+  // Keyboard and drag both, which is what a range is: the same control answers an arrow key and
+  // a dragged thumb, and neither is a second code path.
+  it('is a range from none to whole that the keyboard can reach', () => {
+    open({ shape: 'rect' })
+    expect(opacity().type).toBe('range')
+    expect(opacity().min).toBe('0')
+    expect(opacity().max).toBe('100')
+  })
+
+  // A drag is one undo and not forty (L14). The gesture opens when the control is entered and
+  // every step of that drag is pushed under the same token, so the history holds one entry.
+  it('is one entry in the history per gesture, however many steps the drag has', () => {
+    const { onPatch } = open({ shape: 'rect' })
+    fireEvent.focus(opacity())
+    fireEvent.change(opacity(), { target: { value: '80' } })
+    fireEvent.change(opacity(), { target: { value: '60' } })
+    const [first, second] = onPatch.mock.calls.slice(-2).map((call) => call[2] as string)
+    expect(first).toBeTruthy()
+    expect(second).toBe(first)
+    // And a second visit is a second entry, or the whole drag would fold into the one before it.
+    fireEvent.focus(opacity())
+    fireEvent.change(opacity(), { target: { value: '40' } })
+    expect(onPatch.mock.calls.at(-1)?.[2]).not.toBe(first)
+  })
+
+  // A line has no inside and is offered no fill, but it is ink all the same: a faint rule is
+  // exactly what a designer reaches for, so the transparency is not taken away with the fill.
+  it('is offered on a line too, which has ink even though it has no inside', () => {
+    open({ shape: 'line' })
+    expect(opacity()).toBeTruthy()
+  })
+})
+
 describe('a pattern over the fill (L17)', () => {
   it('is a switch, and starts from a tile the designer can see at once', () => {
     const { onPatch } = open({ shape: 'rect', fill: '#2f4068' })

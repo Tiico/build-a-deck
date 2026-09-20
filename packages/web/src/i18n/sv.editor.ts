@@ -431,6 +431,9 @@ export const svEditor = {
   'canvas.props.radius': 'Hörnradie (mm)',
   'canvas.props.stroke': 'Linjefärg',
   'canvas.props.strokeMm': 'Linjebredd (mm)',
+  // En genomskinlighet för hela formen (#317). Egen benämning skild från skuggans, som bara
+  // handlar om skuggan; den här handlar om allt formen lägger ner.
+  'canvas.props.opacity': 'Opacitet (%)',
   // Mönstret (L17) ligger över fyllningen och ersätter den inte, och etiketten säger det.
   'canvas.props.pattern': 'Mönster över fyllningen',
   'canvas.pattern.stripes': 'Ränder',

@@ -145,6 +145,14 @@ export const ShapeElement = z.object({
   rotationDeg: z.number().optional(),
   pattern: Pattern.optional(),
   shadow: Shadow.optional(),
+  // How see-through the whole shape is (#317): one number for the layer, so the fill, the
+  // pattern riding over it and the line fade together. Not one transparency per layer, because
+  // what the designer is after is a pane laid over a picture, and a pane whose edge is more solid
+  // than its middle is a second thing to keep in step for no gain.
+  // It is optional and means `1` when absent: a template written before the field existed has no
+  // opinion about transparency, and the compiler writes nothing at all for such a shape — so
+  // every card that renders today renders byte for byte the same tomorrow.
+  opacity: z.number().min(0).max(1).optional(),
 })
 
 // The one way from a shadow to the colour it is drawn in, for the same reason `paintOf` is the

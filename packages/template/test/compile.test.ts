@@ -454,6 +454,32 @@ describe('shapes are drawn as paths (L17)', () => {
     const out = draw(shape({ shape: 'circle', fill: '#ffffff', shadow: { dxMm: 0.5, dyMm: 0.5, blurMm: 0, color: '#334455' } }))
     expect(out.css).toContain('filter:drop-shadow(0.5mm 0.5mm 0mm #334455)')
   })
+
+  // One transparency for the whole shape (#317): it is a layer opacity, so the fill, the pattern
+  // and the line fade together rather than one of them at a time. It sits on the element and not
+  // on the path for the same reason the shadow does — whatever the shape turned out to be is what
+  // goes see-through, and the three layers inside keep their own relationship to each other.
+  it('makes the whole shape see-through with one number', () => {
+    const out = draw(shape({ shape: 'rect', fill: '#ffffff', stroke: '#000000', strokeMm: 0.5, opacity: 0.5 }))
+    expect(out.css).toContain('[data-element="frame"]{left:1mm;top:1mm;width:61mm;height:86mm;opacity:0.5;}')
+  })
+
+  // A template written before the field existed has no opinion about transparency, and a document
+  // with no opinion must draw exactly as it drew yesterday: nothing is written, so nothing changes
+  // — not even `opacity:1`, which would be a new declaration in every card ever compiled.
+  it('says nothing about transparency when the shape does not', () => {
+    const out = draw(shape({ shape: 'rect', fill: '#ffffff' }))
+    expect(out.css).not.toContain('opacity')
+  })
+
+  it('is a number between none and whole in the schema, and nothing else', () => {
+    const solid = { kind: 'shape', id: 'frame', x: 1, y: 1, w: 61, h: 86, shape: 'rect', fill: '#ffffff' }
+    expect(Element.parse({ ...solid, opacity: 0.5 })).toMatchObject({ opacity: 0.5 })
+    expect(Element.parse({ ...solid, opacity: 0 })).toMatchObject({ opacity: 0 })
+    expect(Element.parse(solid)).not.toHaveProperty('opacity')
+    expect(() => Element.parse({ ...solid, opacity: 1.5 })).toThrow()
+    expect(() => Element.parse({ ...solid, opacity: '50%' })).toThrow()
+  })
 })
 
 // A pattern is ink repeated over the fill (L17), which is what makes a card back a card back.

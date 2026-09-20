@@ -99,7 +99,7 @@ export function validateCard({ type, face, row, fonts }: ValidateInput): Issue[]
 function colourOnly(boxes: Box[], row: Row): Issue[] {
   const carried = boxes.flatMap((b) => {
     if (b.el.kind === 'shape') {
-      const fill = paintOf(b.el.fill, row)
+      const fill = inkOf(b.el, row)
       return fill ? [{ id: b.id, colour: fill }] : []
     }
     return b.el.kind === 'text' ? [{ id: b.id, colour: b.el.color }] : []
@@ -138,6 +138,16 @@ function shows(when: { field: string; nonEmpty?: true; equals?: string }, row: R
   return when.equals === undefined ? text !== '' : text === when.equals
 }
 
+// The colour a shape actually lays on the paper. Transparency (#317) is ordinary rasterisation
+// to the press — thinner ink, which is nothing the press has a name for — so a shape is read at
+// its own colour whatever it is turned down to. All the way down is the one exception, because
+// then it lays no ink at all: an invisible plate is not what lies behind the words, and it is not
+// one of the two marks a colour-blind reader has to tell apart. Believing the stylesheet instead
+// would fail in the dangerous direction, passing white words on white paper.
+function inkOf(el: Extract<Element, { kind: 'shape' }>, row: Row): string | undefined {
+  return el.opacity === 0 ? undefined : paintOf(el.fill, row)
+}
+
 // What lies behind a text box: the last filled shape drawn under its middle, where the words
 // are. A box is usually wider than the plate it sits on — a cost in a circle, say — so asking
 // for the whole box to be covered would read the paper behind the plate instead of the plate.
@@ -152,7 +162,7 @@ function behindOf(box: Box, boxes: Box[], row: Row): string[] {
   for (const other of boxes) {
     if (other === box) break
     if (other.el.kind !== 'shape') continue
-    const fill = paintOf(other.el.fill, row)
+    const fill = inkOf(other.el, row)
     if (!fill) continue
     if (other.x <= cx && other.y <= cy && other.x + other.w >= cx && other.y + other.h >= cy) {
       found = other.el.pattern ? [fill, other.el.pattern.color] : [fill]

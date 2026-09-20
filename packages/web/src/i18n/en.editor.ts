@@ -382,6 +382,9 @@ export const enEditor = {
   'canvas.props.radius': 'Corner radius (mm)',
   'canvas.props.stroke': 'Line colour',
   'canvas.props.strokeMm': 'Line width (mm)',
+  // One transparency for the whole shape (#317). Named apart from the shadow's own, which is
+  // about the shadow alone; this one is about everything the shape lays down.
+  'canvas.props.opacity': 'Opacity (%)',
   // The pattern (L17) lies over the fill rather than replacing it, and the label says so.
   'canvas.props.pattern': 'Pattern over the fill',
   'canvas.pattern.stripes': 'Stripes',

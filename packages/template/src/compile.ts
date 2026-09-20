@@ -215,6 +215,11 @@ function render(el: Element, dx: number, dy: number, input: CompileInput, html: 
     }
     case 'shape': {
       const parts = [`left:${el.x + dx}mm`, `top:${el.y + dy}mm`, `width:${el.w}mm`, `height:${el.h}mm`]
+      // Transparency is a layer opacity on the element and not a colour on the path (#317), so
+      // the fill, the pattern and the line go see-through together and keep their relationship
+      // to one another. A shape that says nothing about it has nothing written for it: an old
+      // template must compile to exactly the bytes it compiled to before the field existed.
+      if (el.opacity !== undefined) parts.push(`opacity:${el.opacity}`)
       // The shadow is a filter on the element rather than on the path, so it follows whatever
       // the path turned out to be — a hexagon casts a hexagon's shadow and a star a star's.
       if (el.shadow) parts.push(`filter:${shadowCss(el.shadow)}`)
