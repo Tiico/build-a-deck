@@ -9,6 +9,7 @@ import { userEvent } from '@testing-library/user-event'
 import type { ProjectDoc } from '@byd/server'
 import { TemplateCanvas, type TemplateCanvasProps } from '../src/editor/TemplateCanvas.js'
 import { projectDoc } from './project-doc.js'
+import { layerShown } from './layers.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -61,6 +62,16 @@ function canvas(over: Partial<TemplateCanvasProps> = {}) {
 
 const drawn = (id: string) => document.querySelector(`#canvas [data-element="${id}"] img.byd-art`)
 
+describe('the layer list names the picture the element carries (#320)', () => {
+  it('says the picture’s name after the layer’s, never the raw reference, and nothing for an empty frame', () => {
+    const doc = deck()
+    doc.template.faces['back']!.base.push({ kind: 'image', id: 'blank', x: 0, y: 0, w: 10, h: 10, bind: { literal: '' } })
+    canvas({ doc })
+    expect(layerShown('logo')).toBe('logga')
+    expect(layerShown('blank')).toBeNull()
+  })
+})
+
 describe('the card draws the template’s own picture (#320)', () => {
   it('shows the fixed picture from the place the deck’s pictures are served, through the one compiler', () => {
     canvas()
@@ -80,8 +91,10 @@ describe('an image element is either from a column or a fixed picture (#320)', (
     expect(byColumn().checked).toBe(false)
     // A fixed picture has no field, so the field picker is not offered — the switch is the way.
     expect(screen.queryByLabelText('Fält')).toBeNull()
-    expect(screen.getByText('logga')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Välj bild…' })).toBeTruthy()
+    const shown = document.querySelector('.byd-props-picture') as HTMLElement
+    expect(within(shown).getByText('logga')).toBeTruthy()
+    expect(shown.querySelector('img')?.getAttribute('src')).toBe(`${BASE}/assets/${LOGO}`)
+    expect(within(shown).getByRole('button', { name: 'Välj bild…' })).toBeTruthy()
   })
 
   it('opens the game’s pictures on «Fast bild», says which element it is for, and binds the chosen picture in one patch', async () => {

@@ -258,6 +258,7 @@ export function TemplateCanvas({ stage = null, doc, assetBase, motifs, face, onS
             }}
             onRename={onRename}
             markOf={(id) => markOf(panel, column, group, id, t)}
+            pictureName={(hash) => doc.pictures?.[hash]?.name ?? t('canvas.props.picture.unnamed')}
             removed={new Set(panel.filter((l) => l.source === 'removed').map((l) => l.element.id))}
             labelledBy="layers-heading"
           />
