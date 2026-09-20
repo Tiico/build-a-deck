@@ -65,4 +65,22 @@ describe('a picture is taken out of the game (#318)', () => {
     expect(doc.rows.map((r) => r.fields['art'])).toEqual(['', `asset:${BORG}`, ''])
     expect(doc.pictures ?? {}).toEqual({})
   })
+
+  // A picture the template carries by itself (#320) goes the way a cell's does: the element
+  // stays, bound to nothing, so the frame is empty rather than the layer gone or a column drawn
+  // where none was chosen. One intent still, so the cards, the template and the record are one
+  // step back.
+  it('lets go of a picture the template carries, leaving the element with an empty frame', () => {
+    const before = base()
+    before.template.faces['front']!.base.push({ kind: 'image', id: 'logo', x: 20, y: 60, w: 23, h: 23, bind: { literal: `asset:${SKOG}` } })
+    before.template.faces['front']!.variants['elite'] = { override: [{ kind: 'image', id: 'logo', x: 0, y: 60, w: 23, h: 23, bind: { literal: `asset:${SKOG}` } }] }
+    const doc = applyEdit(before, { v: 'removePicture', hash: SKOG })
+
+    expect(doc.template.faces['front']?.base[2]).toEqual({ kind: 'image', id: 'logo', x: 20, y: 60, w: 23, h: 23, bind: { literal: '' } })
+    expect(doc.template.faces['front']?.variants['elite']?.override?.[0]).toMatchObject({ bind: { literal: '' } })
+    expect(doc.rows.map((r) => r.fields['art'])).toEqual(['', `asset:${BORG}`, ''])
+    // A face that never carried the picture is the same object it was.
+    const untouched = base()
+    expect(applyEdit(untouched, { v: 'removePicture', hash: KARTA }).template.faces['front']).toBe(untouched.template.faces['front'])
+  })
 })
