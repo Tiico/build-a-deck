@@ -270,6 +270,7 @@ export const svEditor = {
   'library.close': 'Stäng',
   'library.target.card': 'Kortet {cardRef}, bildfältet {field}',
   'library.target.cards': '{n} markerade kort, bildfältet {field}',
+  'library.target.element': 'Bildelementet {id} ({face})',
   'table.library.done.one': 'Bilden {name} ligger nu på {cardRef}.',
   'table.library.done.other': 'Bilden {name} ligger nu på {n} kort.',
   'table.library.done.one.unnamed': 'Bilden ligger nu på {cardRef}.',
@@ -432,6 +433,14 @@ export const svEditor = {
   'canvas.props.fit': 'Anpassning',
   'canvas.fit.shrink': 'krymp till gräns',
   'canvas.fit.fixed': 'fast storlek',
+  // Var bilden kommer ifrån (#320): radens kolumn, eller en bild mallen bär själv — en bakgrund,
+  // en ram, en logga som är samma på alla kort. Bilden väljs från Media, aldrig någon annanstans.
+  'canvas.props.source': 'Bildkälla',
+  'canvas.props.source.field': 'Från kolumn',
+  'canvas.props.source.fixed': 'Fast bild',
+  'canvas.props.picture.choose': 'Välj bild…',
+  'canvas.props.picture.none': 'Ingen bild vald',
+  'canvas.props.picture.unnamed': 'Bild utan namn',
   'canvas.props.keepRatio': 'Behåll proportioner',
   // Passa in det som är ritat i filen i stället för filen (E1): bildernas storlek jämnas ut när
   // källfilerna bär olika mycket tomrum runt motivet.

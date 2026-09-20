@@ -67,3 +67,65 @@ describe('the card draws the template’s own picture (#320)', () => {
     expect(drawn('logo')?.getAttribute('src')).toBe(`${BASE}/assets/${LOGO}`)
   })
 })
+
+const source = () => screen.getByRole('radiogroup', { name: 'Bildkälla' })
+const byColumn = () => within(source()).getByRole('radio', { name: 'Från kolumn' }) as HTMLInputElement
+const fixed = () => within(source()).getByRole('radio', { name: 'Fast bild' }) as HTMLInputElement
+const dialog = () => screen.getByRole('dialog', { name: 'Bilder i spelet' })
+
+describe('an image element is either from a column or a fixed picture (#320)', () => {
+  it('says which it is in the panel, and shows the fixed picture by name with a way to change it', () => {
+    canvas()
+    expect(fixed().checked).toBe(true)
+    expect(byColumn().checked).toBe(false)
+    // A fixed picture has no field, so the field picker is not offered — the switch is the way.
+    expect(screen.queryByLabelText('Fält')).toBeNull()
+    expect(screen.getByText('logga')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Välj bild…' })).toBeTruthy()
+  })
+
+  it('opens the game’s pictures on «Fast bild», says which element it is for, and binds the chosen picture in one patch', async () => {
+    const user = userEvent.setup()
+    const { onPatch } = canvas({ face: 'front', selectedElement: 'art' })
+    expect(byColumn().checked).toBe(true)
+    expect((screen.getByLabelText('Fält') as HTMLSelectElement).value).toBe('art')
+
+    await user.click(fixed())
+
+    expect(within(dialog()).getByText('Bildelementet art (framsida)')).toBeTruthy()
+    // Nothing has been written: the switch only opens the question.
+    expect(onPatch).not.toHaveBeenCalled()
+    await user.click(within(dialog()).getByRole('button', { name: 'logga' }))
+    await user.click(within(dialog()).getByRole('button', { name: 'Använd bilden' }))
+
+    expect(vi.mocked(onPatch).mock.calls.map((call) => call.slice(0, 2))).toEqual([['art', { bind: { literal: `asset:${LOGO}` } }]])
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('leaves the element on its column when the window is closed without a choice', async () => {
+    const user = userEvent.setup()
+    const { onPatch } = canvas({ face: 'front', selectedElement: 'art' })
+    await user.click(fixed())
+    await user.click(within(dialog()).getByRole('button', { name: 'Avbryt' }))
+
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(onPatch).not.toHaveBeenCalled()
+    expect(byColumn().checked).toBe(true)
+    expect(document.activeElement).toBe(fixed())
+  })
+
+  it('goes back to a column on «Från kolumn», to the first column the template draws as a picture', async () => {
+    const user = userEvent.setup()
+    const { onPatch } = canvas()
+    await user.click(byColumn())
+    expect(vi.mocked(onPatch).mock.calls.map((call) => call.slice(0, 2))).toEqual([['logo', { bind: { field: 'art' } }]])
+  })
+
+  it('offers the upload in the window when the editor can take one, by the same path Media takes', async () => {
+    const user = userEvent.setup()
+    const onAddPicture = vi.fn(async () => LOGO)
+    canvas({ face: 'front', selectedElement: 'art', onAddPicture })
+    await user.click(fixed())
+    expect(within(dialog()).getByLabelText('Ladda upp')).toBeTruthy()
+  })
+})

@@ -1224,6 +1224,16 @@
    width, which `.byd-props input` would otherwise stretch to the column. */
 .byd-props label.byd-props-switch { grid-column: 1 / -1; display: flex; align-items: center; gap: 7px; cursor: pointer; }
 .byd-props .byd-props-switch input { width: auto; flex: none; margin: 0; }
+/* Where a picture comes from (#320): two radio buttons on one line, and under them the picture
+   the template carries, by name, with the way to another one. Both take the panel's width for
+   the reason the switches above do — a sentence and a picture are wider than half of it. */
+.byd-props-source { grid-column: 1 / -1; display: flex; gap: var(--byd-s3); }
+.byd-props-source label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.byd-props-source input { width: auto; margin: 0; }
+.byd-props-picture { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #e6ecfa; }
+.byd-props-picture img { width: 40px; height: 28px; object-fit: cover; border-radius: 4px; background: #14161c; }
+.byd-props-picture span { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.byd-props-picture button { min-height: var(--byd-tap); padding: 0 10px; border-radius: 6px; font: inherit; cursor: pointer; }
 .byd-props-field:has(.byd-newfield) { grid-column: 1 / -1; }
 .byd-props-field .byd-newfield { position: static; width: auto; margin-top: 4px; }
 /* The kinds used to be given their width back here, and again in the form's own rules, because
@@ -2574,6 +2584,8 @@
 .byd-library { display: flex; flex-direction: column; box-sizing: border-box; width: min(960px, 100%); max-height: 100%; padding: var(--byd-s4) var(--byd-s5); border-radius: 14px; background: var(--byd-editor-panel-bg); border: 1px solid #3b4358; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5); color: #e6ecfa; }
 .byd-library-head { display: flex; align-items: center; gap: var(--byd-s3); }
 .byd-library-head h2 { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: var(--byd-editor-quiet); }
+.byd-library-upload { display: inline-flex; align-items: center; margin-left: auto; min-height: var(--byd-tap); padding: 0 12px; border-radius: 8px; cursor: pointer; }
+.byd-library-upload + .byd-library-close { margin-left: 0; }
 .byd-library-close { margin-left: auto; width: var(--byd-tap); height: var(--byd-tap); border: 0; border-radius: 8px; background: transparent; color: #9aa3b8; font-size: 20px; cursor: pointer; }
 .byd-library-close:hover, .byd-library-close:focus-visible { color: #fff; }
 .byd-library-target { margin: var(--byd-s1) 0 var(--byd-s3); font-weight: 700; }

@@ -380,6 +380,8 @@ export function EditorPage({ onNavigate = (url) => location.assign(url), timing 
         onFontFile={(file) => client.useFont(file, t)}
         onFontLicence={(family, licence) => client.setFontLicence(family, licence)}
         onRemoveFont={(family) => client.removeFont(family)}
+        // The template's own picture is uploaded by the path Media takes (#320), so it lands there.
+        onAddPicture={(file) => client.addPicture(file, t)}
         group={group}
         onSelectGroup={setGroup}
         onGroupColumn={(column) => {

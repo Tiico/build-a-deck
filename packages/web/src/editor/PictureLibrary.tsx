@@ -23,6 +23,8 @@ export type LibraryPicture = {
   // falls back to the cards drawn from it, and one nothing uses says so.
   name: string | undefined
   cards: readonly string[]
+  // Whether the template draws it by itself (#320), which is a use even where no card names it.
+  template?: boolean | undefined
 }
 
 export type PictureLibraryDialogProps = {
