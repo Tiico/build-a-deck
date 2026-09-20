@@ -1276,7 +1276,11 @@
    every label, and centres its word in the box that floor makes. */
 .byd-data-file { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; min-width: var(--byd-tap); border: 1px solid #3b414e; border-radius: 6px; padding: 4px 8px; background: #1b1d23; color: #dce3f2; font-size: 12px; font-weight: 700; cursor: pointer; }
 .byd-data-drop > button { border: 0; background: transparent; color: #9aa3b8; font-size: 16px; cursor: pointer; }
-.byd-data-images { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; color: var(--byd-editor-quiet); }
+/* The deck's pictures, once each (E1). The strip is a section of the panel and not a tail of the
+   crown, so it stands clear of the crown's line on the same rung the crown lays over it — and on
+   the same rung the two blocks that share this stack, the comparison line and the bulk row, are
+   already on (#311). */
+.byd-data-images { display: flex; align-items: center; gap: 10px; margin: var(--byd-s2) 0; color: var(--byd-editor-quiet); }
 .byd-data-images > span { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
 .byd-data-images ul { display: flex; gap: 10px; margin: 0; padding: 0; list-style: none; }
 .byd-data-images li { display: grid; justify-items: center; gap: 2px; font-size: 10px; }

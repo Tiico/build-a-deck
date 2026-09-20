@@ -1209,6 +1209,7 @@ describe('every suite that measures a surface', () => {
       'counter-ink.test.tsx',
       'counter-touch.test.tsx',
       'counter-zone.test.tsx',
+      'data-images-air.test.tsx',
       'data-table-cell-rail.test.tsx',
       'data-table-csv-pair.test.tsx',
       'data-table-drag.test.tsx',
