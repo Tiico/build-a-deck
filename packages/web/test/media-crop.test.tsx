@@ -34,7 +34,7 @@ const window_ = () => screen.getByRole('button', { name: /Beskärning/ })
 describe('a picture is cropped in the library (#222)', () => {
   it('cuts the window with the keyboard alone, and says where the window now stands', () => {
     const onCrop = vi.fn()
-    render(<MediaPanel doc={deckWithArt()} assetBase={BASE} motifs={motifs} onReplaceRows={() => undefined} onCrop={onCrop} />)
+    render(<MediaPanel doc={deckWithArt()} assetBase={BASE} motifs={motifs} onCrop={onCrop} />)
 
     // A picture nobody has cropped is the whole picture, so the first thing there is room for is
     // to make the window narrower; then it can be moved into the picture.
@@ -50,7 +50,7 @@ describe('a picture is cropped in the library (#222)', () => {
   it('names the picture and never a card, so every card drawn from it is reached at once', () => {
     const onCrop = vi.fn()
     const doc = deckWithArt()
-    render(<MediaPanel doc={doc} assetBase={BASE} motifs={motifs} onReplaceRows={() => undefined} onCrop={onCrop} />)
+    render(<MediaPanel doc={doc} assetBase={BASE} motifs={motifs} onCrop={onCrop} />)
 
     fireEvent.keyDown(window_(), { key: 'ArrowDown', shiftKey: true })
 
@@ -62,7 +62,7 @@ describe('a picture is cropped in the library (#222)', () => {
     const onCrop = vi.fn()
     const doc = deckWithArt()
     doc.pictures = { [SKOG]: { crop: { x: 0.1, y: 0.1, w: 0.5, h: 0.5 } } }
-    render(<MediaPanel doc={doc} assetBase={BASE} motifs={motifs} onReplaceRows={() => undefined} onCrop={onCrop} />)
+    render(<MediaPanel doc={doc} assetBase={BASE} motifs={motifs} onCrop={onCrop} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Hela bilden' }))
 
@@ -78,7 +78,7 @@ describe('the library says which pictures are cropped (#222)', () => {
     const doc = deckWithArt()
     doc.rows[2]!.fields['art'] = 'asset:' + '2'.repeat(64)
     doc.pictures = { [SKOG]: { crop: { x: 0.25, y: 0.1, w: 0.5, h: 0.8 } } }
-    render(<MediaPanel doc={doc} assetBase={BASE} motifs={motifs} onReplaceRows={() => undefined} onCrop={() => undefined} />)
+    render(<MediaPanel doc={doc} assetBase={BASE} motifs={motifs} onCrop={() => undefined} />)
 
     const [cropped, plain] = screen.getAllByRole('listitem')
     const lit = cropped!.querySelector('[data-window]')
@@ -99,7 +99,7 @@ describe('the card beside the crop is the card the printer gets (#222, E2)', () 
   }
 
   it('draws the picture through the window being cut, and redraws it as the window moves', () => {
-    render(<MediaPanel doc={deckWithArt()} assetBase={BASE} motifs={motifs} onReplaceRows={() => undefined} onCrop={() => undefined} />)
+    render(<MediaPanel doc={deckWithArt()} assetBase={BASE} motifs={motifs} onCrop={() => undefined} />)
 
     // A picture nobody has cropped is the whole picture, and the whole picture meets its frame
     // the way every uncropped picture always has.
@@ -116,7 +116,7 @@ describe('the card beside the crop is the card the printer gets (#222, E2)', () 
   })
 
   it('shows the very picture being cropped, from the place the deck’s pictures are served', () => {
-    render(<MediaPanel doc={deckWithArt()} assetBase={BASE} motifs={motifs} onReplaceRows={() => undefined} onCrop={() => undefined} />)
+    render(<MediaPanel doc={deckWithArt()} assetBase={BASE} motifs={motifs} onCrop={() => undefined} />)
 
     const art = document.querySelector('.byd-media-crop .byd-preview img.byd-art')
     expect(art?.getAttribute('src')).toBe(`${BASE}/assets/${SKOG}`)

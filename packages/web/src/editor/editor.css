@@ -2006,8 +2006,7 @@
 .byd-media-head { display: flex; align-items: center; justify-content: space-between; gap: var(--byd-s3); margin: 0 0 var(--byd-s2); }
 .byd-media-head h2 { margin: 0; }
 .byd-media-add { display: inline-flex; align-items: center; border-radius: 8px; padding: 0 12px; cursor: pointer; }
-/* En rad hålls ledig åt beskedet, så att rutnätet inte hoppar när en bild kommer fram —
-   samma avvägning som «Lägg på kort» gör med sin egen rad. */
+/* En rad hålls ledig åt beskedet, så att rutnätet inte hoppar när en bild kommer fram. */
 .byd-media-said { margin: 0 0 var(--byd-s3); min-height: 1.4em; font-size: 12px; color: var(--byd-editor-quiet); }
 /* Hela bibliotekets bildyta tar emot bildfiler (#291, variant B). Den bär alltså en kant året om
    — genomskinlig i vila, dragmarkeringens ton medan en fil hålls över den — eftersom en kant som
@@ -2043,16 +2042,6 @@
 .byd-media-question button { min-height: 32px; padding: 4px 12px; border: 1px solid #3b414e; border-radius: 8px; background: transparent; color: #ffe4ea; font: inherit; font-weight: 700; cursor: pointer; }
 .byd-media-question button[data-kind='danger'] { background: #7a3243; border-color: #7a3243; }
 .byd-media-tile u { position: absolute; box-sizing: border-box; border: 1.5px solid rgba(255, 255, 255, 0.85); border-radius: 3px; box-shadow: 0 0 0 999px rgba(8, 10, 14, 0.45); }
-.byd-media-use { display: grid; justify-items: start; gap: var(--byd-s3); }
-.byd-media-use label { display: grid; gap: var(--byd-s1); font-size: 12px; color: var(--byd-editor-quiet); }
-.byd-media-use select { min-height: var(--byd-tap); padding: 0 8px; border: 1px solid #2f333d; border-radius: 8px; background: #14161c; color: #fff; font: inherit; }
-.byd-media-use p { margin: 0; min-height: 1.4em; font-size: 12px; color: var(--byd-editor-quiet); }
-/* The shape the role is worn in. The role itself — a second action, outlined — is the button
-   language's (L13); what it has no opinion about is the size of the box, and a button with no box
-   of its own falls through to the platform's own pale grey one. The first action in this view is
-   "Uppdatera bordet" in the header, and there is only ever one. */
-.byd-media-use button { min-height: var(--byd-tap); border-radius: 8px; padding: 0 12px; cursor: pointer; }
-.byd-media-use button:disabled { cursor: default; opacity: 0.55; }
 /* The picture in hand (#222, L22): the window being cut, and under it the card that window lands
    on — which is a real compile and not a second drawing of a card. */
 .byd-media-side { display: grid; gap: var(--byd-s5); align-content: start; }

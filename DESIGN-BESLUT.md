@@ -3521,6 +3521,15 @@ Regelbokens import (#293) och typsnittsknappen (#294) tar något annat än bilde
 
 CSV, regler och typsnitt tillämpar samma kompakta mönster lokalt vid sina egna kontroller (#292, #293, #294) och aldrig som en global import över hela fliken.
 
+Reviderat 2026-09-20 (#296, beställaren valde B — stor biblioteksdialog): **tilldelningen bor i Data, i en dialog över tabellen, och Media saknar kontrollen som krävde en markering på en annan flik.**
+«Lägg bilden på N kort» stod i Media och fungerade bara sedan designern markerat korten i Data, gått över till Media och gått tillbaka för att se resultatet — en tilldelning delad över två flikar, med målet på den ena och bilden på den andra.
+Nu öppnar en bildcells «Välj» och massredigeringens «Välj bild för de markerade korten» samma stora, centrerade dialog: rubrik, mål (kortet och bildfältet, eller antalet markerade kort och kolumnen), sökning på bildnamn, filtret Alla/Oanvända och hela spelets bildrutnät — även bilder som inget kort använder ännu, som remsan över tabellen aldrig kunde erbjuda.
+Att markera en bild tilldelar ingenting; nederkanten visar vald bild och hur många befintliga bilder som byts ut, och bara «Använd bilden» respektive «Använd på N kort» skriver — samma assetreferens bilden redan har, aldrig en ny uppladdning (E1).
+Avbryt, krysset och Escape stänger utan ändring med fokus tillbaka på öppnaren; fokus hålls i dialogen medan den står, vilket är verktygets första fokusfälla.
+Massändringen är ett enda ångrasteg genom samma radlista som varje annan massändring, designern stannar i Data och remsan säger vad som hände.
+Media behåller bibliotek, uppladdning, beskärning och förhandsvisning; uppladdningen direkt i Data står kvar under sitt eget namn «Ladda upp», och dragsläppets förbättringar hör till #291.
+Dialogen är en komponent för sig med ett litet gränssnitt — mål, bilder, `onApply(hash)`, `onClose()` — så att mallens fasta bild (#320) kan öppna samma fönster.
+
 ### L23. Ett tecken öppnar en lista, överallt i verktyget (2026-09-18, #215, #230)
 
 Beslutet, i en mening:

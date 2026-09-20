@@ -28,11 +28,6 @@ export const svEditor = {
   'media.remove.question.one': 'Ta bort {name}? Kortet {cards} förlorar sin bild.',
   'media.remove.more': '{cards} och {n} till',
   'media.remove.yes': 'Ja, ta bort',
-  'media.use': 'Lägg på kort',
-  'media.put': 'Lägg bilden på {n} kort',
-  'media.put.done': 'Bilden ligger nu på {n} kort.',
-  'media.put.unmarked': 'Markera korten i Tabell först.',
-  'media.put.noColumn': 'Mallen ritar ingen bild ännu.',
   // Beskärningen (#222, L22, beslut 2). Fönstrets namn säger var det står, så samma tangenttryck
   // som flyttar det är det som läser upp var det hamnade.
   'media.crop': 'Beskärning',
