@@ -95,3 +95,21 @@ describe('one card’s own exception to the picture’s crop (#222, beslut 2)', 
     expect(drawn({ art: {} })).toEqual(drawn())
   })
 })
+
+// A picture the template carries by itself (#320): an image element bound to a picture rather
+// than to a column. It is the same compiler and the same window, so the crop, the measure and
+// the frame reach it exactly as they reach a picture a row points at — which is what makes the
+// row-bound tests above the specification for a fixed picture too.
+describe('a fixed picture on the template is cropped and framed like a column’s (#320)', () => {
+  it('draws the literal picture through its own crop, meeting the deck’s measure', () => {
+    const square = { w: 400, h: 400, trim: { left: 0, top: 0, right: 0, bottom: 0 } }
+    const crop = { x: 0.25, y: 0.25, w: 0.5, h: 0.5 }
+    const fixed: FaceTemplate = { base: [{ ...art, bind: { literal: 'logo.png' }, frame: { fill: 0.8 } }], variants: {} }
+    const byColumn: FaceTemplate = { base: [{ ...art, frame: { fill: 0.8 } }], variants: {} }
+    const out = compile({ type: CARD_STANDARD_63x88, face: fixed, row: {}, icons, motifs: { 'logo.png': croppedMotif(square, crop) } })
+
+    expect(out.html).toContain('<img class="byd-art" src="logo.png" alt="">')
+    expect(windowBox(out.css, crop)).toEqual({ x: 8, y: 3, w: 24, h: 24 })
+    expect(out.css).toBe(compile({ type: CARD_STANDARD_63x88, face: byColumn, row: { art: 'logo.png' }, icons, motifs: { 'logo.png': croppedMotif(square, crop) } }).css)
+  })
+})
