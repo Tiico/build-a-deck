@@ -129,6 +129,7 @@ export const svPlay = {
   'kbd.hand.mine.marked': '{name}, i min hand, markerat',
   'kbd.verb.rotate': 'Vrid 90°',
   'kbd.verb.lookTop': 'Titta på översta',
+  'kbd.verb.lookBottom': 'Titta på understa',
   'kbd.verb.toHand': 'Dra 1 till min hand',
   'kbd.hint.reveal': 'visar kortet för alla',
   'kbd.hint.look': 'bara på den här skärmen',

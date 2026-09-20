@@ -336,3 +336,31 @@ describe('the panel a counter opens (C4, #73, #67)', () => {
     await waitFor(() => expect(document.activeElement).toBe(moved))
   }, 20_000)
 })
+
+// Högens bottenkort från tangentbordet (K23, K16): det pekaren kan hålla upp från kanten under
+// högen står i högens egen panel, och ett nedvänt bottenkort hålls upp som en baksida.
+describe('the bottom card of a pile from the keyboard (K23)', () => {
+  it('the pile panel offers «Titta på understa» only on a pile that has one, and holds up a back for a face-down one', async () => {
+    const setup = twoSeatSetup()
+    setup.zones = setup.zones.map((z) => (z.id === 'draw' ? { ...z, bottom: { cardRef: 'ogre', face: 'back' as const } } : z))
+    const { other } = await tableWithTwoCards(setup)
+    const user = userEvent.setup()
+
+    const draw = document.querySelector('[data-kbd="pile:draw"]') as HTMLElement
+    draw.focus()
+    await user.keyboard('{Enter}')
+    const panel = await screen.findByRole('dialog', { name: /Draghög/ })
+    await user.click(within(panel).getByRole('button', { name: /^Titta på understa/ }))
+    const look = await screen.findByRole('dialog', { name: 'Dolt kort' })
+    expect(look.querySelector('[data-face]')?.getAttribute('data-face')).toBe('back')
+    expect(look.textContent).not.toContain('ogre')
+    await user.keyboard('{Escape}')
+
+    const discard = document.querySelector('[data-kbd="pile:discard"]') as HTMLElement
+    discard.focus()
+    await user.keyboard('{Enter}')
+    const plain = await screen.findByRole('dialog', { name: /Kasthög/ })
+    expect(within(plain).queryByRole('button', { name: /^Titta på understa/ })).toBeNull()
+    other.close()
+  })
+})

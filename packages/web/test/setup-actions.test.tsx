@@ -98,6 +98,13 @@ describe('vilken sida av högen som är bredvid den', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
     await waitFor(async () => expect((await run.projects.load(run.projectId))?.rev).toBe(2))
     expect((await run.projects.load(run.projectId))?.setup.zones.find((z) => z.id === 'draw')?.beside).toBe('right')
+
+    // Och tillbaka till vänster är «ingen egenskap alls» — också hos servern, som får valet över
+    // tråden där `undefined` inte överlever (#331).
+    fireEvent.change(screen.getByLabelText('Bredvid högen för Draghög'), { target: { value: 'left' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    await waitFor(async () => expect((await run.projects.load(run.projectId))?.rev).toBe(3))
+    expect((await run.projects.load(run.projectId))?.setup.zones.find((z) => z.id === 'draw')).not.toHaveProperty('beside')
   })
 })
 

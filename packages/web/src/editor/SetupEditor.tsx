@@ -5,7 +5,7 @@ import type { ZoneBeside } from '@byd/protocol'
 import { targetsOf } from '../player/PlaySheet.js'
 import { TableRenderer, type FeltFit, type TableHandle } from '../table/TableRenderer.js'
 import { previewOf } from '../setup/preview.js'
-import { MAX_PLAYERS, type Counter, type Geometry, type Setup, type Zone } from '@byd/server/doc'
+import { MAX_PLAYERS, titleOfRow, type Counter, type Geometry, type Setup, type Zone } from '@byd/server/doc'
 import type { ProjectClient } from './ProjectClient.js'
 import type { ZonePatch } from '@byd/server/doc'
 import { useT, type Key, type T } from '../i18n/index.js'
@@ -174,6 +174,7 @@ export function SetupEditor({ doc, client, assetBase, motifs, beside }: SetupEdi
         <SeatsPanel client={client} setup={setup} />
         <ZoneList
           setup={setup}
+          rows={doc.rows}
           selected={selected}
           opened={opened}
           onSelect={select}
@@ -397,6 +398,7 @@ function settle(family: Family): Family {
 // och trekanten fäller ut platserna när en enskild zon ska nås.
 function ZoneList({
   setup,
+  rows: deck,
   selected,
   opened,
   onSelect,
@@ -406,6 +408,7 @@ function ZoneList({
   onDeck,
 }: {
   setup: Setup
+  rows: ProjectDoc['rows']
   selected: string | null
   opened: string[]
   onSelect(id: string | null): void
@@ -419,7 +422,7 @@ function ZoneList({
     [t('setup.group.table'), setup.zones.filter((z) => z.owner === undefined).map((zone) => ({ kind: 'zone', zone }))],
     [t('setup.group.seats'), rowsOf(setup.zones.filter((z) => z.owner !== undefined))],
   ]
-  const row = (zone: Zone) => <ZoneRow key={zone.id} zone={zone} setup={setup} selected={selected} onSelect={onSelect} onRemove={onRemove} onPatch={onPatch} onDeck={onDeck} />
+  const row = (zone: Zone) => <ZoneRow key={zone.id} zone={zone} setup={setup} rows={deck} selected={selected} onSelect={onSelect} onRemove={onRemove} onPatch={onPatch} onDeck={onDeck} />
   return (
     <div className="byd-setup-zones" data-zone-list>
       {groups.map(([title, rows]) =>
@@ -482,6 +485,7 @@ function FamilyRow({ family, setup, open, onOpen, children }: { family: Family; 
 function ZoneRow({
   zone,
   setup,
+  rows,
   selected,
   onSelect,
   onRemove,
@@ -490,6 +494,7 @@ function ZoneRow({
 }: {
   zone: Zone
   setup: Setup
+  rows: ProjectDoc['rows']
   selected: string | null
   onSelect(id: string | null): void
   onRemove(zone: Zone): void
@@ -519,7 +524,7 @@ function ZoneRow({
           </span>
         )}
       </div>
-      {open && <ZoneProps zone={zone} setup={setup} why={why} onPatch={(patch, gesture) => onPatch(zone.id, patch, gesture)} onDeck={() => onDeck(zone.id)} />}
+      {open && <ZoneProps zone={zone} setup={setup} rows={rows} why={why} onPatch={(patch, gesture) => onPatch(zone.id, patch, gesture)} onDeck={() => onDeck(zone.id)} />}
     </li>
   )
 }
@@ -705,7 +710,7 @@ const snap = (mm: number) => Math.round(mm / SNAP_MM) * SNAP_MM
 // What a zone is, opened inside its row. Everything about it is the designer's — its name, its
 // verb on the phone, whose it is and who sees into it — because the table is theirs; a hand is the
 // exception, and the seat that owns it is the reason.
-function ZoneProps({ zone, setup, why, onPatch, onDeck }: { zone: Zone; setup: Setup; why: string | null; onPatch(patch: ZonePatch, gesture?: string): void; onDeck(): void }) {
+function ZoneProps({ zone, setup, rows, why, onPatch, onDeck }: { zone: Zone; setup: Setup; rows: ProjectDoc['rows']; why: string | null; onPatch(patch: ZonePatch, gesture?: string): void; onDeck(): void }) {
   const t = useT()
   // The two fields that are written into a letter at a time. What is chosen rather than typed —
   // where a pile is entered, whose the zone is, who may see it — is written once and is its own
@@ -758,6 +763,30 @@ function ZoneProps({ zone, setup, why, onPatch, onDeck }: { zone: Zone; setup: S
               ))}
             </select>
           </label>
+          {/* The pile's bottom card (K23, variant A): one specific row of the deck, named here by
+              the title the designer gave it, and the side it lies on. It lies last from the start,
+              a shuffle leaves it there, and back in this pile it lies last again. A pile without one
+              has no side to choose, so the second list only stands once a card is named. */}
+          <label>
+            {t('setup.bottom')}
+            <select aria-label={t('setup.bottom.of', { name: zone.name })} value={zone.bottom?.cardRef ?? ''} onChange={(e) => onPatch({ bottom: e.target.value ? { cardRef: e.target.value, face: zone.bottom?.face ?? 'back' } : undefined })}>
+              <option value="">{t('setup.bottom.none')}</option>
+              {rows.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {titleOfRow(r)}
+                </option>
+              ))}
+            </select>
+          </label>
+          {zone.bottom !== undefined && (
+            <label>
+              {t('setup.bottom.face')}
+              <select aria-label={t('setup.bottom.face.of', { name: zone.name })} value={zone.bottom.face} onChange={(e) => onPatch({ bottom: { cardRef: zone.bottom?.cardRef ?? '', face: e.target.value === 'front' ? 'front' : 'back' } })}>
+                <option value="front">{t('setup.bottom.front')}</option>
+                <option value="back">{t('setup.bottom.back')}</option>
+              </select>
+            </label>
+          )}
           {/* The deck is a role a pile carries (B5, K10): a designer may call any pile the deck,
               and the cards are dealt from wherever the role is. Moving it is also the only way to
               be rid of the pile it lies in. */}

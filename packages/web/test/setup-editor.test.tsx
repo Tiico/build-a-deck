@@ -295,3 +295,44 @@ describe('the setup editor (B5, C4, #301): the player view is shown when asked f
     expect(screen.getByRole('button', { name: 'Visa spelarvyn' }).getAttribute('aria-expanded')).toBe('false')
   })
 })
+
+// Högens bottenkort (K23, #331): ett specifikt kort ur leken och sidan det ligger på, valt i
+// zonpanelen och sparat med högen. Prototypgodkänd variant A: kortval och sida i panelen.
+describe('högens bottenkort', () => {
+  it('väljs bland lekens kort med sin sida, och står kvar när projektet öppnas igen', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openBord()
+    fireEvent.click(within(row('draw')).getByRole('button', { name: /Draghög/ }))
+
+    const card = screen.getByLabelText('Bottenkort för Draghög') as HTMLSelectElement
+    expect(card.value).toBe('')
+    expect([...card.options].map((o) => o.textContent)).toEqual(['inget', 'Drake', 'Riddare', 'Trollkarl'])
+    // No card, no side to choose.
+    expect(screen.queryByLabelText('Bottenkortets sida för Draghög')).toBeNull()
+
+    fireEvent.change(card, { target: { value: 'knight' } })
+    const side = screen.getByLabelText('Bottenkortets sida för Draghög') as HTMLSelectElement
+    expect(side.value).toBe('back')
+    fireEvent.change(side, { target: { value: 'front' } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    await waitFor(async () => expect((await run.projects.load(run.projectId))?.rev).toBe(2))
+    expect((await run.projects.load(run.projectId))?.setup.zones.find((z) => z.id === 'draw')?.bottom).toEqual({ cardRef: 'knight', face: 'front' })
+
+    // The felt in the editor shows it the way the table will: the edge under the pile.
+    expect(document.querySelector('[data-table] [data-zone="draw"] .byd-pile-bottom')).toBeTruthy()
+
+    fireEvent.change(screen.getByLabelText('Bottenkort för Draghög'), { target: { value: '' } })
+    expect(screen.queryByLabelText('Bottenkortets sida för Draghög')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    await waitFor(async () => expect((await run.projects.load(run.projectId))?.rev).toBe(3))
+    expect((await run.projects.load(run.projectId))?.setup.zones.find((z) => z.id === 'draw')).not.toHaveProperty('bottom')
+  })
+
+  it('an area has no bottom card to choose', async () => {
+    await run.projects.create(run.projectId, projectDoc())
+    await openBord()
+    fireEvent.click(within(row('table')).getByRole('button', { name: /Spelyta/ }))
+    expect(screen.queryByLabelText('Bottenkort för Spelyta')).toBeNull()
+  })
+})

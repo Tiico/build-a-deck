@@ -8,7 +8,7 @@ import { feltScale, fitScale, leaningSquare, woodLayout, TOUCH_PX, TV_AIR_PX } f
 import { activeBounds, cameraOf, fitFloor, frameRect, overscanPx, pad, reachOf, same, tween, zoomAround, type Rect, type Size } from './camera.js'
 import { flatToTable, tiltedToTable, unrotate, type Point, type Rotation } from './geometry.js'
 import { CARD_MM, TOKEN_MM, absoluteOf, besidePile, dropIntents, type Drag, type DragTarget } from './drop.js'
-import { isCounter } from '../components.js'
+import { isCounter, standIn } from '../components.js'
 import { counterActs, drawOne, feltShortcuts, flipUnder, modifierHeld, ownerOf, type Act } from './keyboard.js'
 import { ShortcutHelp } from './ShortcutHelp.js'
 import { CounterEntry } from './CounterEntry.js'
@@ -695,6 +695,8 @@ export const TableRenderer = forwardRef<TableHandle, TableRendererProps>(functio
                 px={px}
                 lifted={whole}
                 topInspects={inspects(lifting ? topOf(z, 1) : topOf(z))}
+                bottomCard={bottomOf(z, byId)}
+                bottomInspects={inspects(bottomOf(z, byId) ?? bottomStandIn(z))}
                 topHandlers={onAct && count > 0 ? handlers({ kind: 'pileTop', pile: z.id }) : undefined}
                 labelHandlers={onAct ? handlers({ kind: 'pile', pile: z.id }) : undefined}
                 topKeys={keys(`top:${z.id}`)}
@@ -1083,6 +1085,21 @@ function backOf(z: ZoneView | undefined): string | undefined {
   return z?.mode === 'count' ? z.back : undefined
 }
 
+// The pile's bottom card as far as this view knows (K23): the component when the zone names
+// it — a public pile, or a face-up bottom card, public like a face-up top (K15) — and nothing
+// when the zone only says that there is one and what back it wears.
+function bottomOf(z: ZoneView, byId: Map<string, VisibleComponentState>): VisibleComponentState | undefined {
+  return z.bottom?.id === undefined ? undefined : byId.get(z.bottom.id)
+}
+
+// What holding up a face-down bottom card shows (K23): a back, and nothing else. The wire hands
+// out no component for it, so the screen makes one that says exactly what the zone said — no
+// id of a card, no name, the back it wears — and shows it the way it shows every other card.
+function bottomStandIn(z: ZoneView): VisibleComponentState | undefined {
+  if (z.bottom === undefined || z.bottom.id !== undefined) return undefined
+  return standIn(`bottom:${z.id}`, z.id, z.bottom.back)
+}
+
 // How many cards a pile holds, however much of it this view is allowed to name (K15).
 function countOf(z: ZoneView): number {
   return z.mode === 'count' ? z.count : z.order.length
@@ -1097,7 +1114,7 @@ function topIdOf(z: ZoneView, skip = 0): string | undefined {
 
 // A pile is a point; the stack is centred on it. A hidden pile has a count and nothing else,
 // unless its top lies face-up.
-function Pile({ zone, count, topCard, faces, back, left, top, px, lifted, topHandlers, topInspects, labelHandlers, topKeys, labelKeys, points }: { zone: ZoneView; count: number; topCard: VisibleComponentState | undefined; faces: string | undefined; back?: ReactNode | undefined; left: number; top: number; px: (mm: number) => number; lifted: boolean; topHandlers?: Handlers | undefined; topInspects?: Pointing | undefined; labelHandlers?: Handlers | undefined; topKeys?: FeltNodeProps | undefined; labelKeys?: FeltNodeProps | undefined; points?: Pointing | undefined }) {
+function Pile({ zone, count, topCard, bottomCard, faces, back, left, top, px, lifted, topHandlers, topInspects, bottomInspects, labelHandlers, topKeys, labelKeys, points }: { zone: ZoneView; count: number; topCard: VisibleComponentState | undefined; bottomCard?: VisibleComponentState | undefined; faces: string | undefined; back?: ReactNode | undefined; left: number; top: number; px: (mm: number) => number; lifted: boolean; topHandlers?: Handlers | undefined; topInspects?: Pointing | undefined; bottomInspects?: Pointing | undefined; labelHandlers?: Handlers | undefined; topKeys?: FeltNodeProps | undefined; labelKeys?: FeltNodeProps | undefined; points?: Pointing | undefined }) {
   const t = useT()
   // What a face-down pile wears. Its top card's own back first, which is the one thing about a
   // hidden pile that is public in the room (#313): a deck whose cards carry their own back (#14)
@@ -1124,6 +1141,13 @@ function Pile({ zone, count, topCard, faces, back, left, top, px, lifted, topHan
   // looked in line at the start of a game looked as though the card had slipped by the end.
   const layers = Math.min(Math.max(count, 0), 12)
   const thickness = Array.from({ length: layers }, (_, i) => `0 ${-i * 1.2}px 0 #1f2b4a`).join(', ')
+  // The pile's bottom card (K23, variant A): let out under the pile by its lower edge, drawn
+  // before the top so the top covers all but that edge. It is the same card node as the top —
+  // the same texture path, the same back, the same hue — because a second way to draw a card is
+  // a second renderer. A lone card is the top and is not drawn twice: the projection names no
+  // bottom then, and it names none for an empty pile.
+  const bottom = zone.bottom
+  const bottomOwn = bottom !== undefined && !bottomCard?.cardRef ? (bottom.back ? <BackTexture faces={faces} hash={bottom.back} /> : back) : null
   return (
     <div
       className="byd-pile"
@@ -1134,6 +1158,19 @@ function Pile({ zone, count, topCard, faces, back, left, top, px, lifted, topHan
       style={{ position: 'absolute', left: left - px(CARD_MM.w / 2), top: top - px(CARD_MM.h / 2), width: px(CARD_MM.w), height: px(CARD_MM.h), transform: `rotate(${zone.geometry.rot}deg)` }}
       {...points}
     >
+      {bottom !== undefined && (
+        <div
+          className="byd-pile-bottom"
+          data-face={bottomCard?.cardRef ? 'front' : 'back'}
+          data-back={bottomOwn ? 'own' : undefined}
+          {...bottomInspects}
+          style={{ top: px(BOTTOM_EDGE_MM), ...(bottomCard?.cardRef ? { ['--hue' as string]: hue(bottomCard.cardRef) } : {}) }}
+        >
+          {bottomOwn}
+          <Texture faces={faces} c={bottomCard} />
+          <span>{bottomCard?.cardRef ?? ''}</span>
+        </div>
+      )}
       <div
         className="byd-pile-top"
         data-face={topCard?.cardRef ? 'front' : 'back'}
@@ -1154,6 +1191,10 @@ function Pile({ zone, count, topCard, faces, back, left, top, px, lifted, topHan
     </div>
   )
 }
+
+// How far the bottom card is let out under the pile (K23): enough to read as a card's edge and
+// to take a pointer, and short of the count pill that hangs 22 px under the pile.
+const BOTTOM_EDGE_MM = 10
 
 const EDGES: Record<number, 'N' | 'E' | 'S' | 'W'> = { 0: 'S', 180: 'N', [-90]: 'E', 90: 'W' }
 
