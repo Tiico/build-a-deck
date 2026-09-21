@@ -124,6 +124,11 @@ export class ProjectClient {
   private outbox: string[] = []
   // A save asked for over the socket, waiting for the actor to say what became of it.
   private saving: ((result: SaveResult) => void) | null = null
+  // The document as it was when that save was asked for. The actor makes its version out of the
+  // edits it has when the save reaches it, so an edit written while the save travels is not in
+  // the version that comes back (#380): what became saved is this document and not the one on
+  // the screen a moment later.
+  private asked: string | null = null
   // Who else has this project open (D3). Empty until the socket says otherwise.
   public here: Presence[] = []
   // This editor's own connection, so a view can leave itself out of the list.
@@ -265,7 +270,7 @@ export class ProjectClient {
         return
       case 'saved':
         this.rev = message.rev
-        this.saved = stamp(this.doc)
+        this.saved = this.asked ?? stamp(this.doc)
         this.finishSave({ ok: true, rev: message.rev })
         this.notify()
         return
@@ -290,6 +295,9 @@ export class ProjectClient {
   private finishSave(result: SaveResult): void {
     const waiting = this.saving
     this.saving = null
+    // Whatever became of it, that save is over: a refused one leaves no document behind to call
+    // saved, and the next one reads its own.
+    this.asked = null
     waiting?.(result)
   }
 
@@ -1003,10 +1011,14 @@ export class ProjectClient {
   // Saving makes a version (B4). With a socket the actor makes it, so everyone with the project
   // open is told which version it became; without one the document is written the old way.
   async save(): Promise<SaveResult> {
+    // Read before the save leaves, for both ways of saving: it is the document the version will
+    // be made of, whatever is edited while the answer is on its way (#380).
+    const asked = stamp(this.doc)
     if (this.socket) {
       const answered = new Promise<SaveResult>((resolve) => {
         this.saving = resolve
       })
+      this.asked = asked
       this.post(JSON.stringify({ t: 'save' }))
       const timeout = new Promise<SaveResult>((resolve) => setTimeout(() => resolve({ ok: false, reason: 'save failed' }), 2000))
       return Promise.race([answered, timeout])
@@ -1021,7 +1033,7 @@ export class ProjectClient {
     if (!res.ok) return { ok: false, reason: `save failed: ${res.status}` }
     const { rev } = (await res.json()) as { rev: number }
     this.rev = rev
-    this.saved = stamp(this.doc)
+    this.saved = asked
     this.notify()
     return { ok: true, rev }
   }

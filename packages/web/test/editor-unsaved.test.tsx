@@ -86,6 +86,39 @@ describe('the editor says whether the work is saved (#8)', () => {
   })
 })
 
+// An edit made while a save is travelling belongs to the next save and not to that one (#380).
+// The actor saves the document it holds when the save reaches it; an edit written a moment later
+// is not in that version, so counting it as saved is telling the designer her work is safe when
+// it is only in this tab. It was found as a flake: the editor stood at "Sparat" with a change
+// still in front of the designer, and "Spara" could not be pressed again.
+describe('an edit made while the save is travelling (#380)', () => {
+  it('stays unsaved, and is what the next save writes', async () => {
+    await openEditor()
+    fireEvent.click(screen.getByRole('tab', { name: /tabell/i }))
+    fireEvent.change(screen.getByLabelText('dragon title'), { target: { value: 'Drakhona' } })
+
+    // The save is posted while the click is dispatched, so an edit written in the same breath is
+    // certain to be later than it — and certain to be earlier than the answer, which is a round
+    // trip away. That is the whole race, arranged rather than waited for.
+    fireEvent.click(screen.getByRole('button', { name: /spara/i }))
+    fireEvent.change(screen.getByLabelText('dragon title'), { target: { value: 'Drakfrun' } })
+
+    await screen.findByText('rev 2')
+    expect((await run.projects.load(run.projectId))?.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drakhona')
+
+    // The version that was made is not the document on the screen, so the work is unsaved and
+    // «Spara» can be pressed again.
+    expect(screen.getByText('Osparat')).toBeDefined()
+    expect(closingTheTab()).toBe(true)
+    const again = screen.getByRole('button', { name: /spara/i }) as HTMLButtonElement
+    expect(again.disabled).toBe(false)
+
+    fireEvent.click(again)
+    await screen.findByText('rev 3')
+    expect((await run.projects.load(run.projectId))?.rows.find((r) => r.id === 'dragon')?.fields['title']).toBe('Drakfrun')
+  })
+})
+
 // The one way out of the editor that the page itself can ask about (#8). The question is the
 // repo's confirmation strip: it takes the focus, answers Escape, and gives the focus back.
 describe('leaving the editor with unsaved work (#8)', () => {
