@@ -124,8 +124,9 @@ async function writtenRules(width: number): Promise<Record<string, string>> {
     await screen.findByText('Skogens herrar')
     fireEvent.click(screen.getByRole('tab', { name: 'Regler' }))
     fireEvent.click(screen.getByRole('button', { name: 'Börja skriva reglerna' }))
-    // One per block: the book the empty state makes has several, which is the point of it.
-    await waitFor(() => expect(screen.getAllByRole('button', { name: /^Lägg till efter/ }).length).toBeGreaterThan(1))
+    // The book the empty state makes, with the one ＋ it draws standing in the gap before its
+    // first block — where it rests until a pointer or a focus takes it somewhere (#216).
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'Lägg till först' })).toHaveLength(1))
     return { 'Regler · skriven': document.querySelector('.byd-editor')!.outerHTML }
   } finally {
     unmount()

@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, type FocusEvent, type PointerEvent } from 'react'
 import { arrangementOf, namesOfProject } from '@byd/server/doc'
 import type { ProjectDoc, RuleBlock, RuleDoc } from '@byd/server'
 import {
@@ -41,6 +41,19 @@ export type RulesPanelProps = { doc: ProjectDoc; client: ProjectClient; assetBas
 export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
   const t = useT()
   const [editing, setEditing] = useState<string | null>(null)
+  // Vilket block ＋:et står vid (#216). Ett enda ＋ följer det block som har pekaren eller fokus,
+  // i stället för ett per skarv; `null` är dess viloläge, skarven före block ett. Viloläget är
+  // inte en tomhet utan en plats: den första skarven har inget block före sig att hänga på, och
+  // det är där ＋:et står innan något pekats på — och därmed det första tabbstoppet i boken.
+  const [atBlock, setAtBlock] = useState<string | null>(null)
+  // Medan ＋:et självt har fokus flyttar det sig inte: en knapp som lämnar handen i samma ögonblick
+  // man tabbat fram till den är ingen väg in alls.
+  const held = useRef(false)
+  // Om pekaren är i boken. Det är pekaren som styr ＋:et så länge den är där, också när fokus
+  // lämnar boken för något annat — och det är vad som gör att ett tryck på ＋:et aldrig kan rycka
+  // undan knappen mitt i sig självt: musknappen på väg ned tar fokus från blocket, och pekaren är
+  // per definition i boken just då.
+  const inside = useRef(false)
   // Which of the book's two modes is being read (#227). It is a view and never a fact about the
   // game (L4): it is held here, in this tab, for as long as the tab is open and not a moment
   // longer — nothing is written to the document, and nothing is written to the browser either.
@@ -116,13 +129,20 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
   }, [mode])
   const patch = (id: string, next: Partial<RuleBlock>, gesture?: string) =>
     rules && client.setRules({ ...rules, blocks: rules.blocks.map((b) => (b.id === id ? ({ ...b, ...next } as RuleBlock) : b)) }, gesture)
-  const addAfter = (id: string) => {
+  // Ett tomt block i en skarv, öppnat där det landar. Skarven räknas i block och inte i knappar:
+  // en bok med n block har n + 1 skarvar, och den före block ett är en av dem (#216).
+  const addAt = (index: number) => {
     if (!rules) return
-    const at = rules.blocks.findIndex((b) => b.id === id)
+    // Knappen som trycktes finns inte kvar efter det här: den ritas om vid det nya blocket, och en
+    // knapp som försvinner lämnar inget `blur` efter sig. Handen släpps alltså här, annars stod
+    // ＋:et stilla för alltid i tron att den ligger kvar i det.
+    held.current = false
     const fresh: RuleBlock = { kind: 'text', id: freeId(rules), text: t('rules.newText') }
-    client.setRules({ ...rules, blocks: [...rules.blocks.slice(0, at + 1), fresh, ...rules.blocks.slice(at + 1)] })
+    client.setRules({ ...rules, blocks: [...rules.blocks.slice(0, index), fresh, ...rules.blocks.slice(index)] })
     setEditing(fresh.id)
+    setAtBlock(fresh.id)
   }
+  const addAfter = (id: string) => rules && addAt(rules.blocks.findIndex((b) => b.id === id) + 1)
   // Taking a heading away takes its section away: the heading and everything standing under it
   // until the next one. The template is a proposal and not a form (#131), and a section nobody
   // needs has to go in one act — a heading removed on its own would leave its own question behind.
@@ -199,6 +219,38 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
     const nothing = [t('rules.import.nothing', { file: md.name }), ...read.problems.map((problem) => t(`rules.import.picture.${problem.why}` as Key, { file: problem.file }))]
     setFailed(read.doc.blocks.length === 0 ? nothing.join(' ') : null)
     setProposal(read.doc.blocks.length === 0 ? null : { ...read, file: md.name })
+  }
+  // Vilket block ＋:et hör till just nu, och därmed vilken skarv det lägger i (#216). Det block som
+  // skrivs i vinner över det som pekas på: där är handen redan, och ett ＋ som lämnar det öppna
+  // blocket för att pekaren strök förbi ett annat lägger nästa block någon annanstans än där
+  // arbetet pågår. Och ett block som tagits bort tar inte ＋:et med sig: då är viloläget kvar.
+  const meant = editing ?? atBlock
+  const where = out.blocks.some((b) => b.id === meant) ? meant : null
+  const plus = (id: string | null) => (
+    <button
+      type="button"
+      className="byd-rules-add"
+      aria-label={id === null ? t('rules.addFirst') : t('rules.addAfter', { id })}
+      onFocus={() => {
+        held.current = true
+      }}
+      onBlur={() => {
+        held.current = false
+      }}
+      onClick={() => (id === null ? addAt(0) : addAfter(id))}
+    >
+      ＋
+    </button>
+  )
+  // Vad som styr ＋:et: pekaren och fokus, aldrig bara det ena (#184, och #216 som inte får ta
+  // tillbaka det). Båda läses på boken och inte på varje block, för ＋:et är ett och blockens
+  // handtag är många. Pekaren utanför något block — bokens titel, dess marginal — är inte ingen
+  // plats alls: det är den första skarven, och ＋:et går hem dit.
+  const steer = (target: EventTarget | null) => {
+    if (held.current) return
+    const el = target instanceof Element ? target : null
+    if (el?.closest('.byd-rules-add')) return
+    setAtBlock(el?.closest<HTMLElement>('[data-block]')?.dataset.block ?? null)
   }
   return (
     <div className="byd-rules">
@@ -308,8 +360,39 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
               <RuleShelf rules={out} assets={assetBase} placement="table" startOpen body={shelf} />
             </div>
           ) : (
-            <article className="byd-rulebook" {...(writing ? { 'data-rulebook': true } : { 'data-proposal': true })}>
+            <article
+              className="byd-rulebook"
+              {...(writing ? { 'data-rulebook': true } : { 'data-proposal': true })}
+              {...(writing
+                ? {
+                    onPointerOver: (e: PointerEvent) => {
+                      inside.current = true
+                      steer(e.target)
+                    },
+                    onPointerLeave: () => {
+                      inside.current = false
+                      if (!held.current) setAtBlock(null)
+                    },
+                    onFocus: (e: FocusEvent) => steer(e.target),
+                    // Fokus som lämnar boken för något annat lämnar ＋:et i viloläget, så nästa
+                    // Tabb in i boken möter den första skarven igen. Var fokus tog vägen är känt
+                    // först efteråt — `focusout` kommer före `focusin`, och en Tabb till ＋:et
+                    // självt ser likadan ut som en Tabb ut ur boken tills den landat — så frågan
+                    // ställs en tick senare, och bara när pekaren inte är i boken och styr ändå.
+                    onBlur: (e: FocusEvent) => {
+                      const book = e.currentTarget
+                      setTimeout(() => {
+                        if (!inside.current && !book.contains(document.activeElement)) setAtBlock(null)
+                      }, 0)
+                    },
+                  }
+                : {})}
+            >
               <h1>{out.title}</h1>
+              {/* ＋:ets viloläge: skarven före block ett (#216). Den skarven har inget block före
+                  sig att hänga vid, och utan en plats av sitt eget vore den enda skarven i boken
+                  som varken en hand eller ett tangentbord kunde nå. */}
+              {writing && where === null && <div className="byd-rules-first">{plus(null)}</div>}
               {out.blocks.map((b, i) => {
                 const source = shown.blocks.find((x) => x.id === b.id)
                 const planned = marks.get(b.id)
@@ -335,6 +418,7 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
                     data-block={b.id}
                     data-mark={planned?.mark}
                     data-open={editing === b.id ? 'true' : undefined}
+                    data-at={where === b.id ? 'true' : undefined}
                     {...(found === b.id ? { 'data-found': 'true', ref: foundHere } : {})}
                   >
                     {/* The picture the column took her to says so in a word of the tool's own, never in
@@ -379,11 +463,7 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
                     ) : (
                       <Block block={b} source={source} assetBase={assetBase} />
                     )}
-                    {writing && (
-                      <button type="button" className="byd-rules-add" aria-label={t('rules.addAfter', { id: b.id })} onClick={() => addAfter(b.id)}>
-                        ＋
-                      </button>
-                    )}
+                    {writing && where === b.id && plus(b.id)}
                   </div>
                 )
               })}

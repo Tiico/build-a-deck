@@ -2637,8 +2637,24 @@
 
    The `width` and `height` here are the drawn box and not the target: every button in the editor
    stands on `--byd-tap` through the floor declared once at the top of this file, which is why this
-   one measures 44 across however small a square it asks for. */
+   one measures 44 across however small a square it asks for.
+
+   Sedan #216 är det ett enda ＋ och inte ett per skarv: det står kvar i marginalen där det alltid
+   stått, men bara vid det block som har pekaren eller fokus. Var det står är Reacts att veta och
+   inte stilmallens — ett ＋ som gömdes med CSS vore tio tabbstopp ändå, vilket är exakt vad #184
+   rättade. Blockets `min-height` ovan står kvar med ＋:et: boken är satt efter den sedan #246, och
+   ingen har bett om en bok som byter höjd. */
 .byd-rules-add { position: absolute; right: -34px; top: 2px; width: 24px; height: 24px; padding: 0; border: 1px solid #cbbfa8; border-radius: 7px; background: #ece5d8; color: #6b6255; cursor: pointer; }
+/* ＋:ets viloläge: skarven före block ett (#216). En bok med n block har n + 1 skarvar, och den
+   första hör inte till något block — alltså har den en plats av sitt eget, hög noll, så boken inte
+   blir en rad längre av att stå tom. ＋:et hänger över den på samma avstånd från marginalen som
+   överallt annars, och en bit högre upp än ett blocks eget, så skarven före block ett och skarven
+   efter det aldrig ritas på samma punkt. */
+.byd-rules-first { position: relative; height: 0; }
+.byd-rules-first .byd-rules-add { top: -30px; }
+/* Blocket ＋:et hör till just nu. Tyst nog att inte tävla med fokusramen, tydligt nog att svara på
+   frågan «efter vad hamnar det nya blocket?» — som med ett ＋ per skarv aldrig behövde ställas. */
+.byd-rules-block[data-at] > [role='button']:not(:hover) { background: #f0e9db; }
 
 /* The way to an icon (#33): the brace made visible in the cell being worked in. Which cell that is
    is React's to know, not the stylesheet's — a handle hidden by CSS is still a stop in the tab

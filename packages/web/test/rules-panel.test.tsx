@@ -74,7 +74,10 @@ describe('the rulebook in the editor (B7)', () => {
   it('adds a block after the one it is asked for, and takes one away', async () => {
     await openRules()
     const before = book().querySelectorAll('[data-block]').length
-    fireEvent.click(within(book()).getByRole('button', { name: 'Lägg till efter h1' }))
+    // The one ＋ the book draws stands at the block the hand is on (#216), so the hand goes there
+    // first; where it stands and what it does with a keyboard is `rules-one-plus`'s.
+    fireEvent.pointerOver(book().querySelector('[data-block="h1"]')!)
+    fireEvent.click(await within(book()).findByRole('button', { name: 'Lägg till efter h1' }))
     await waitFor(() => expect(book().querySelectorAll('[data-block]')).toHaveLength(before + 1))
     fireEvent.click(within(book()).getByRole('button', { name: 'Ta bort blocket' }))
     await waitFor(() => expect(book().querySelectorAll('[data-block]')).toHaveLength(before))
