@@ -142,7 +142,9 @@
   .byd-wizard-card-workspace { grid-template-columns: minmax(266px, .9fr) minmax(200px, 1.1fr); gap: 20px; }
   .byd-wizard-card-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .byd-wizard-card-form .is-wide { grid-column: 1 / -1; }
-  .byd-wizard-block > footer { grid-template-columns: 1fr auto; align-items: center; }
+  /* What came after the button is said behind the step's question mark (L36); the button stands
+     at the end on its own. */
+  .byd-wizard-block > footer { justify-content: end; grid-auto-flow: column; align-items: center; }
   .byd-wizard-field { grid-template-columns: 54px minmax(90px, 1fr) minmax(98px, auto) var(--tap); }
   .byd-wizard-field small { grid-column: 3; grid-row: 1; text-align: right; }
   .byd-wizard-field > button { grid-column: 4; }
