@@ -913,6 +913,39 @@
 .byd-drag-handle[data-handle='ne'] { right: -1.2mm; top: -1.2mm; cursor: nesw-resize; }
 .byd-drag-handle[data-handle='sw'] { left: -1.2mm; bottom: -1.2mm; cursor: nesw-resize; }
 .byd-drag-handle[data-handle='se'] { right: -1.2mm; bottom: -1.2mm; cursor: nwse-resize; }
+/* The marks on a shape of the designer's own (L26). The point is round where the corner handle
+   is square — one says «this corner of the box», the other «this corner of the outline» — and it
+   lies above the box and its handles both, because the point is always above the edge and above
+   the fill in the hit order. The mid-dot is the same mark at half the strength: hollow, thinner
+   and faded, so it reads as «here, but not a point». Each mark is centred on its millimetre
+   rather than hung from its top-left corner, so the dot really is where the point is. */
+.byd-point {
+  position: absolute;
+  width: 2.6mm;
+  height: 2.6mm;
+  margin: -1.3mm 0 0 -1.3mm;
+  padding: 0;
+  border: 0.4mm solid var(--byd-editor-primary-mark);
+  border-radius: 50%;
+  background: var(--byd-editor-handle-bg);
+  box-sizing: border-box;
+  touch-action: none;
+  cursor: grab;
+  z-index: 10000;
+}
+/* The tap size above is for targets in the tool's own chrome, and it must not reach a mark on
+   the card. The stage draws a millimetre at 2,6 CSS pixels and then scales it, so 44 CSS pixels
+   here is 11 mm of card — wider than a banner is tall, and four such marks would cover the
+   shape they are meant to let the designer see. The corner handles have been 2,4 mm since #18
+   for exactly that reason; a point is the same mark, given a name and a tab stop because the
+   outline has to be walkable without a pointer (L26). The canvas is a desktop-first surface
+   pointed at with a mouse (L12), the zoom makes the mark as large as the designer wants it, and
+   what a miss lands on is another point of the same outline — the same argument L25 made for
+   the gallery's 30 px tiles. */
+.byd-editor .byd-point { min-width: 0; min-height: 0; }
+.byd-point[data-weak] { border-width: 0.25mm; background: transparent; opacity: 0.5; z-index: 9999; }
+.byd-point:focus-visible { outline: 0.5mm solid var(--byd-editor-primary-mark); outline-offset: 0.4mm; }
+
 /* The line an element has lined up with, while it is being dragged. Magenta because nothing a
    card is made of is magenta: a guide can never be mistaken for the card itself. */
 .byd-drag-guide { position: absolute; background: #ff2ec4; }

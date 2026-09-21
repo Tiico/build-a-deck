@@ -46,7 +46,6 @@ describe('the one-way door into a shape of the designer own (L26)', () => {
 // DOM: where the hollow mid-dots sit, what the edge answers to, and what a gesture leaves behind.
 describe('the points and the mid-dots between them (L26)', () => {
   const square = [{ x: 0, y: 0 }, { x: 40, y: 0 }, { x: 40, y: 20 }, { x: 0, y: 20 }]
-  const box = { w: 40, h: 20 }
 
   // One per edge and the last one closes the outline: a mid-dot that stopped before the edge
   // from the last point back to the first would leave one edge of every shape without a way in.

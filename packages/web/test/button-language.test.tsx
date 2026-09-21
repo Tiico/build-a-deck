@@ -1244,6 +1244,7 @@ describe('every suite that measures a surface', () => {
       'table-layout.test.tsx',
       'template-canvas-layout.test.tsx',
       'template-canvas-motif.test.tsx',
+      'template-canvas-points.test.tsx',
       'template-crown.test.tsx',
       'texture-layout.test.tsx',
       'wall-card-look.test.tsx',

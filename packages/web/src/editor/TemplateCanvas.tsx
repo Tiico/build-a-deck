@@ -2,10 +2,11 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import type { Element, FaceTemplate, ProjectDoc, Row } from './types.js'
 import { CardPreview } from './CardPreview.js'
-import { arrowMove, fitScale, gridStep, HANDLES, iconSized, movedTo, newElement, resizedTo, snapped, STAGE_SCALE, TOOLS, ZOOM_MAX, ZOOM_MIN, ZOOM_NOTCH, ZOOM_STEP, zoomPercent, zoomTo, type Box, type ElementKind, type Grab, type Guides, type Handle } from './canvas.js'
+import { arrowMove, fitScale, gridStep, HANDLES, round, iconSized, movedTo, newElement, resizedTo, snapped, STAGE_SCALE, TOOLS, ZOOM_MAX, ZOOM_MIN, ZOOM_NOTCH, ZOOM_STEP, zoomPercent, zoomTo, type Box, type ElementKind, type Grab, type Guides, type Handle } from './canvas.js'
 import { useGesture } from './gesture.js'
+import { afterPruning, edgeAt, grownPoint, midpoints, movedPoint, prunedPoint, type Point } from './points.js'
 import { DEFAULT_FILL, elementsFor, pathFor, shapeTakes, tileMarkup, type Motif, type Paint, type Pattern, type Shadow } from '@byd/template'
-import { galleryIdOf, glyphGeometry, newPattern, PATTERNS, shadowIdOf, shapeChoice, SHADOWS, SHAPE_GALLERY, type Geometry, type Shape } from './shapes.js'
+import { galleryIdOf, glyphGeometry, newPattern, ownPoints, PATTERNS, shadowIdOf, shapeChoice, SHADOWS, SHAPE_GALLERY, type Geometry, type Shape } from './shapes.js'
 import { BACKS } from './backs.js'
 import { assetRef, assetUrl, imageFieldsOf, isAssetRef, mediaInGame, previewIcons, ASSET_PREFIX } from './assets.js'
 import { fieldsOf, takenNames } from './fields.js'
@@ -632,6 +633,74 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
   // Escape gives back through (#142) — the keyboard's holding is a grab like the pointer's.
   const [moving, setMoving] = useState<{ id: string; gesture: string; from: { x: number; y: number } } | null>(null)
 
+  // A shape of the designer's own (L26): which element wears points, and which point the
+  // keyboard is to be put on after one has been taken away.
+  const own = boxes.find((b) => b.id === selected && b.kind === 'shape' && b.points !== undefined && !b.locked) as (BoxElement & Shape) | undefined
+  const ownPointsOf = (box: BoxElement): Point[] => ('points' in box && box.points ? box.points : [])
+  const shaping = useRef<{ id: string; box: BoxElement; from: Point[]; at: Point; mmPerPx: number; gesture: string; point: number | null; edge: number | null; base: Point } | null>(null)
+  const shapes = useGesture('point')
+  const [landing, setLanding] = useState<number | null>(null)
+  useEffect(() => {
+    if (landing === null) return
+    setLanding(null)
+    const mark = layer.current?.querySelector(`[data-point="${landing}"]`)
+    if (mark instanceof HTMLElement) mark.focus()
+  }, [landing])
+
+  // Where the pointer is, in the element box's own millimetres, which is the list's own frame.
+  const mmIn = (event: ReactPointerEvent<HTMLElement> | { clientX: number; clientY: number }, box: BoxElement, rect: DOMRect): Point => {
+    const mmPerPx = CARD_STANDARD_63x88.physical.widthMm / rect.width
+    return { x: (event.clientX - rect.left) * mmPerPx - box.x, y: (event.clientY - rect.top) * mmPerPx - box.y }
+  }
+
+  // A grab that is about the outline and not about the element: a point taken hold of, a mid-dot
+  // pulled out, or the edge itself pressed. `base` is what the pointer is carrying, so the thing
+  // under the hand follows it rather than jumping to it.
+  const takeHold = (event: ReactPointerEvent<HTMLElement>, box: BoxElement, what: { point: number | null; edge: number | null; base: Point }) => {
+    const rect = layer.current?.getBoundingClientRect()
+    if (!rect?.width) return
+    event.stopPropagation()
+    onSelect(box.id)
+    shaping.current = { id: box.id, box, from: ownPointsOf(box), at: { x: event.clientX, y: event.clientY }, mmPerPx: CARD_STANDARD_63x88.physical.widthMm / rect.width, gesture: shapes.begin(), ...what }
+    setHolding(true)
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+  }
+
+  const shapeMove = (event: ReactPointerEvent<HTMLElement>) => {
+    const held = shaping.current
+    if (!held) return
+    const to = { x: round(held.base.x + (event.clientX - held.at.x) * held.mmPerPx), y: round(held.base.y + (event.clientY - held.at.y) * held.mmPerPx) }
+    // A click is a grab that went nowhere: it selects, and leaves the outline alone. On a mid-dot
+    // that matters most of all — a press and a release used to add a point on top of the edge it
+    // already lay on.
+    if (to.x === held.base.x && to.y === held.base.y) return
+    const box = { w: held.box.w, h: held.box.h }
+    const points = held.point === null ? grownPoint(held.from, held.edge ?? 0, to, box) : movedPoint(held.from, held.point, to, box)
+    onPatch(held.id, { points } as Partial<Element>, held.gesture)
+  }
+
+  // The keyboard on one point (L26): half a millimetre to the arrow and five with shift, the two
+  // steps every other nudge on the canvas has, and Delete to give the point up. Each press is a
+  // doing of its own and a step of its own back.
+  const pointKeys = (event: ReactKeyboardEvent<HTMLElement>, box: BoxElement, index: number) => {
+    const points = ownPointsOf(box)
+    const at = points[index]
+    if (!at) return
+    if (event.key === 'Delete' || event.key === 'Backspace') {
+      event.preventDefault()
+      const left = prunedPoint(points, index)
+      // Two points are a line and not a shape (L26). The floor is said out loud rather than
+      // swallowed: a key that silently does nothing reads as a control that is broken.
+      if (!left) return say?.('assertive', t('canvas.point.least'))
+      onPatch(box.id, { points: left } as Partial<Element>, shapes.begin())
+      return setLanding(afterPruning(points, index))
+    }
+    const nudged = arrowMove(at, event.key, event.shiftKey)
+    if (!nudged) return
+    event.preventDefault()
+    onPatch(box.id, { points: movedPoint(points, index, { ...at, ...nudged }, box) } as Partial<Element>, shapes.begin())
+  }
+
   const down = (event: ReactPointerEvent<HTMLElement>, box: BoxElement, handle: Handle | null) => {
     if (event.button !== 0) return
     event.stopPropagation()
@@ -641,11 +710,22 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
     if (box.locked) return onRefused(box.id)
     const rect = layer.current?.getBoundingClientRect()
     if (!rect?.width) return
+    // «Ytan flyttar, punkten formar» (L26). The fill drags the element like any other, but the
+    // edge of a shape of the designer's own is a hit area wider than it looks — 2,4 mm, because
+    // ±1,5 mm was measured in the prototype and a click aimed at the middle of the edge missed
+    // it — and a press there grows a point where the pointer is.
+    if (handle === null && own?.id === box.id) {
+      const at = mmIn(event, box, rect)
+      const edge = edgeAt(ownPointsOf(box), at)
+      if (edge) return takeHold(event, box, { point: null, edge: edge.edge, base: at })
+    }
     grab.current = { id: box.id, box, handle, gesture: grabs.begin(), moved: false, at: { x: event.clientX, y: event.clientY }, mmPerPx: CARD_STANDARD_63x88.physical.widthMm / rect.width }
     setHolding(true)
     event.currentTarget.setPointerCapture?.(event.pointerId)
   }
   const move = (event: ReactPointerEvent<HTMLElement>) => {
+    // The outline comes first: a grab that is about a point is never also about the element.
+    if (shaping.current) return shapeMove(event)
     const held = grab.current
     if (!held) return
     const to = { x: event.clientX, y: event.clientY }
@@ -663,6 +743,7 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
   }
   const up = () => {
     grab.current = null
+    shaping.current = null
     setHolding(false)
     setGuides({ x: null, y: null })
   }
@@ -672,7 +753,12 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
   // above already leaves the template alone for.
   const callOff = () => {
     const held = grab.current
+    const shaped = shaping.current
     up()
+    if (shaped) {
+      onCallOff(shaped.gesture)
+      return say?.('polite', t('editor.drag.cancelled'))
+    }
     if (!held?.moved) return
     onCallOff(held.gesture)
     say?.('polite', t('editor.drag.cancelled'))
@@ -794,6 +880,52 @@ function DragLayer({ boxes, grid, selected, onSelect, onPatch, onCallOff, onRefu
             ))}
         </div>
       ))}
+      {/* The marks on a shape of the designer's own (L26), drawn after every box and above them
+          all: the point lies above the edge and above the fill in the hit order, which is what
+          keeps a press near a point from being an accidental new one. They are siblings of the
+          boxes rather than children of one, because a box already wears the button role and a
+          control inside a control is a control a screen reader never reaches (UX-37).
+
+          The mid-dots come first and the points after, so where the two meet the point is on
+          top — in the tree and in the tab order both, since the outline is walked point by
+          point and the dot between two points comes after the first of them. */}
+      {own &&
+        midpoints(own.points ?? []).map((mid, edge) => (
+          <button
+            key={`mid-${edge}`}
+            type="button"
+            className="byd-point byd-point-mid"
+            data-mid={edge}
+            // Half the strength of a point (L26): hollow and toned down, so fourteen marks on a
+            // banner of 45 × 20 mm read as seven points and seven places a point could go.
+            data-weak=""
+            aria-label={t('canvas.point.mid', { n: edge + 1 })}
+            style={{ left: `${own.x + mid.x}mm`, top: `${own.y + mid.y}mm` }}
+            onPointerDown={(event) => event.button === 0 && takeHold(event, own, { point: null, edge, base: mid })}
+            onPointerMove={shapeMove}
+            onPointerUp={up}
+            onPointerCancel={callOff}
+            // The way in for the hand that has no pointer. A way in that only exists under a
+            // pointer is no way in at all (L24), and adding a point is the whole of this door.
+            onClick={() => onPatch(own.id, { points: grownPoint(own.points ?? [], edge, mid, own) } as Partial<Element>, shapes.begin())}
+          />
+        ))}
+      {own &&
+        (own.points ?? []).map((point, index) => (
+          <button
+            key={`point-${index}`}
+            type="button"
+            className="byd-point"
+            data-point={index}
+            aria-label={t('canvas.point', { n: index + 1, of: (own.points ?? []).length })}
+            style={{ left: `${own.x + point.x}mm`, top: `${own.y + point.y}mm` }}
+            onPointerDown={(event) => event.button === 0 && takeHold(event, own, { point: index, edge: null, base: point })}
+            onPointerMove={shapeMove}
+            onPointerUp={up}
+            onPointerCancel={callOff}
+            onKeyDown={(event) => pointKeys(event, own, index)}
+          />
+        ))}
       {guides.x !== null && <div className="byd-drag-guide" data-guide="x" aria-hidden="true" style={{ left: `${guides.x}mm` }} />}
       {guides.y !== null && <div className="byd-drag-guide" data-guide="y" aria-hidden="true" style={{ top: `${guides.y}mm` }} />}
     </div>
@@ -1584,8 +1716,14 @@ function ShapeProps({ el, fields, valuesIn, onPatch }: { el: Shape; fields: stri
   // The numbers, the two sliders and the line's colour: every one of them writes all the way
   // through being pushed or typed into (L14). The gallery above them chooses once.
   const pushing = useGesture('shape')
-  const takes = shapeTakes(el.shape)
+  // A shape of the designer's own (L26) reads none of the parametric numbers: the point list is
+  // the outline, and a corner count that draws nothing any more is a control that looks broken.
+  const own = el.points !== undefined
+  const takes = own ? { corners: false, innerRatio: false, rotation: false, radius: false } : shapeTakes(el.shape)
   const chosen = galleryIdOf(el)
+  // The door into a shape of her own, offered only on an outline that consists of points and
+  // only while she has not walked through it — the way back is the gallery above.
+  const door = own ? null : ownPoints(el)
   // A line has no inside (L17), so it is offered no fill and no pattern — only the line itself.
   const solid = el.shape !== 'line'
   return (
@@ -1598,6 +1736,11 @@ function ShapeProps({ el, fields, valuesIn, onPatch }: { el: Shape; fields: stri
           </button>
         ))}
       </div>
+      {door && (
+        <button type="button" className="byd-props-disclose" onClick={() => onPatch(door)}>
+          {t('canvas.props.own')}
+        </button>
+      )}
       {takes.corners && (
         <label>
           {t('canvas.props.corners')}
