@@ -55,12 +55,12 @@
   .byd-wizard > header > div > span { color: var(--accent); font-size: 11px; font-weight: 800; letter-spacing: .11em; text-transform: uppercase; }
   .byd-wizard > header > span { color: var(--muted); font-weight: 650; }
 
-  .byd-primary { border: 1px solid var(--byd-primary-bg); background: var(--byd-primary-bg); color: var(--byd-primary-ink); font-weight: 750; }
-  .byd-secondary { background: transparent; border: 1px solid var(--byd-secondary-line); color: var(--byd-secondary-ink); font-weight: 600; }
-  .byd-primary:hover { border-color: var(--byd-primary-bg); }
-  .byd-secondary:hover { border-color: var(--byd-secondary-line); }
-  .byd-choice { background: transparent; border: 1px solid var(--byd-secondary-line); border-radius: 6px; color: var(--byd-secondary-ink); font: inherit; font-weight: 600; cursor: pointer; }
-  .byd-choice[aria-pressed='true'] { background: transparent; border-color: transparent; border-radius: 6px 6px 0 0; box-shadow: inset 0 -3px 0 var(--byd-chosen-bar); color: var(--byd-chosen-ink); font-weight: 700; }
+  .byd-wizard .byd-primary { border: 1px solid var(--byd-primary-bg); background: var(--byd-primary-bg); color: var(--byd-primary-ink); font-weight: 750; }
+  .byd-wizard .byd-secondary { background: transparent; border: 1px solid var(--byd-secondary-line); color: var(--byd-secondary-ink); font-weight: 600; }
+  .byd-wizard .byd-primary:hover { border-color: var(--byd-primary-bg); }
+  .byd-wizard .byd-secondary:hover { border-color: var(--byd-secondary-line); }
+  .byd-wizard .byd-choice { background: transparent; border: 1px solid var(--byd-secondary-line); border-radius: 6px; color: var(--byd-secondary-ink); font: inherit; font-weight: 600; cursor: pointer; }
+  .byd-wizard .byd-choice[aria-pressed='true'] { background: transparent; border-color: transparent; border-radius: 6px 6px 0 0; box-shadow: inset 0 -3px 0 var(--byd-chosen-bar); color: var(--byd-chosen-ink); font-weight: 700; }
 
   .byd-wizard-grid { display: grid; grid-template-columns: minmax(300px, .8fr) minmax(562px, 1.2fr); height: calc(100vh - 78px); }
   .byd-wizard-grid > aside { padding: 26px 30px 100px 36px; border-right: 1px solid var(--line); display: grid; align-content: start; gap: 24px; background: var(--byd-wizard-panel-bg); overflow: auto; }
@@ -121,38 +121,46 @@
   [data-variant] #namn { }
 
   /* A — villkoret står vid fältet, från första målningen. */
-  .villkor-falt { margin: 0; display: none; align-items: baseline; gap: 6px; font-size: 12px; color: #454c44; font-weight: 400; }
-  .villkor-falt b { font-weight: 700; }
-  .villkor-falt em { font-style: normal; color: var(--muted); }
-  [data-variant='a'] .villkor-falt { display: flex; }
+  .byd-wizard .villkor-falt { margin: 0; display: none; align-items: baseline; gap: 6px; font-size: 12px; color: #454c44; font-weight: 400; }
+  .byd-wizard .villkor-falt b { font-weight: 700; }
+  .byd-wizard .villkor-falt em { font-style: normal; color: var(--muted); }
+  .byd-wizard[data-variant='a'] .villkor-falt { display: flex; }
   /* Villkoret slutar gälla när namnet finns, men raden får inte försvinna och rycka undan
      fältet under pekaren — den byter ord och ton i stället. */
   [data-variant='a'][data-namn='ja'] .villkor-falt b { display: none; }
   [data-variant='a'][data-namn='ja'] .villkor-falt::before { content: '✓'; color: #3f6b46; font-weight: 700; }
 
   /* B — utgångarna står öppna och svarar när de trycks. */
-  .villkor-svar { display: none; margin: 0; color: #8d3823; font-size: 12px; font-weight: 700; }
-  [data-variant='b'][data-svar='ja'] .villkor-svar { display: block; }
-  [data-variant='b'][data-svar='ja'] #namn { border-color: #8d3823; outline: 3px solid #f3d9d1; }
+  .byd-wizard .villkor-svar { display: none; margin: 0; color: #8d3823; font-size: 12px; font-weight: 700; }
+  .byd-wizard[data-variant='b'][data-svar='ja'] .villkor-svar { display: block; }
+  .byd-wizard[data-variant='b'][data-svar='ja'] #namn { border: 2px solid #8d3823; }
 
   /* C — villkoret står i huvudets tillståndsrad, där sidan redan säger var man är. */
-  .villkor-huvud { display: none; margin: 0; padding: 7px 12px; border-radius: 999px; background: #fdeee6; border: 1px solid #e8c4b2; color: #8d3823; font-size: 12px; font-weight: 700; }
-  [data-variant='c'][data-namn='nej'] .villkor-huvud { display: block; }
+  .byd-wizard .villkor-huvud { display: none; margin: 0; padding: 7px 12px; border-radius: 999px; background: #fdeee6; border: 1px solid #e8c4b2; color: #8d3823; font-size: 12px; font-weight: 700; }
+  .byd-wizard[data-variant='c'][data-namn='nej'] .villkor-huvud { display: block; }
   /* Fältets obligatoriska märke och dess förklaring. */
   .kravmarke { display: none; color: #8d3823; }
   [data-variant='c'] .kravmarke { display: inline; }
 
-  /* Den låsta knappens utseende. Nu: `opacity: .4` på alla tre, inklusive «Ta bort valt kort».
-     A och C behåller låsningen men skiljer den som väntar på ett namn från den som är låst av
-     sitt eget skäl: den som väntar bär rummets linje i full styrka och tappar bara sin fyllning,
-     så den läses som «inte ännu» och inte som «borta». B tar bort låsningen från de två
-     utgångarna helt, och då är den grå knappen på skärmen exakt en — den som verkligen är låst. */
-  [data-variant='a'] .vantar:disabled,
-  [data-variant='c'] .vantar:disabled {
-    opacity: 1; background: transparent; border: 1px dashed var(--byd-secondary-line);
-    color: #56604f; font-weight: 700;
+  /* ── Det låsta utseendet, gemensamt för alla tre förslagen ────────────────────────────────
+     Det här är INTE en av de tre valen: det är en rättelse som gäller oavsett vilket av dem som
+     väljs, och den är därför likadan i A, B och C. En låst knapp ska se låst ut och ändå gå att
+     läsa. `opacity: .4` gör båda sakerna dåligt: mätt på papperet blir kanten 1,61:1 och bläcket
+     2,38:1 — knappen försvinner snarare än låses.
+
+     Fyllningen är affordansen, så det är den som tas bort: den låsta knappen ritas som rummets
+     kantade form, med guidens egen sekundärlinje (3,78:1 mot papperet, alltså över de 3:1 en
+     grafisk linje hålls till) och dess tysta register som bläck (5,52:1). Ingen ny form —
+     guiden har redan en kantad knapp — och ingen streckad linje, för streckat betyder redan
+     «lägg till» i den här vyn («+ Textfält», «+ Nytt kort»).
+
+     Samma regel gäller «Ta bort valt kort», som är låst av sitt eget skäl. Den som väntar på ett
+     namn och den som verkligen är låst SKA se likadana ut; det som skiljer dem åt är att sidan
+     nu säger varför de två utgångarna är låsta. Det är hela issuet. */
+  .byd-wizard:not([data-variant='nu']) button:disabled {
+    opacity: 1; background: transparent; border: 1px solid var(--byd-secondary-line);
+    color: var(--muted); font-weight: 600;
   }
-  [data-variant='b'] .vantar { }
 
   /* Prototypens egen rad ligger fast längst ned och överlappar ytan, så sidan alltid ritas i
      hela den viewport den mäts i. `?rad=dold` tar bort den inför skärmbilderna. */
@@ -181,7 +189,7 @@
           <button class="byd-help-ring" type="button" aria-label="Hjälp om spelet">?</button>
         </div>
 
-        <label class="byd-wizard-label" for="namn">Spelets namn<span class="kravmarke" aria-hidden="true"> *</span>
+        <label class="byd-wizard-label" for="namn"><span>Spelets namn<span class="kravmarke" aria-hidden="true"> *</span></span>
           <input id="namn" aria-describedby="villkor-falt" autocomplete="off">
         </label>
         <p class="villkor-falt" id="villkor-falt"><b>Namnet behövs för att gå vidare.</b><em>Till exempel «Skogens herrar».</em></p>
@@ -272,6 +280,7 @@
   </div>
   <button id="rensa">Töm namnet</button>
   <p id="berattelse"></p>
+  <p class="sagt" id="matning"></p>
 </div>
 
 <script>
@@ -307,6 +316,37 @@ const VARIANTER = {
   },
 }
 
+// ── Mätningen ──────────────────────────────────────────────────────────────────────────────
+// «Ser en låst knapp låst ut?» avgörs av vad som målas, inte av ett attribut. `opacity` ingår
+// inte i getComputedStyle-färgen och vägs därför in för hand; Chromium svarar color(srgb …) på
+// allt framräknat, så båda formerna läses (#372).
+function tal(text) {
+  const m = text.match(/color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)/)
+  if (m) return [+m[1] * 255, +m[2] * 255, +m[3] * 255, 1]
+  const r = text.match(/-?[\d.]+/g)
+  return r ? [+r[0], +r[1], +r[2], r[3] === undefined ? 1 : +r[3]] : [0, 0, 0, 1]
+}
+const kanal = (v) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4 }
+const ljus = ([r, g, b]) => 0.2126 * kanal(r) + 0.7152 * kanal(g) + 0.0722 * kanal(b)
+const kontrast = (a, b) => { const [x, y] = [ljus(a) + 0.05, ljus(b) + 0.05]; return Math.max(x, y) / Math.min(x, y) }
+const blanda = (fram, bak, a) => [0, 1, 2].map((i) => fram[i] * a + bak[i] * (1 - a))
+function genomskinlighet(el) { let a = 1, n = el; while (n && n !== document.body) { a *= +getComputedStyle(n).opacity; n = n.parentElement } return a }
+function mat() {
+  const rader = [...document.querySelectorAll('#tom, #skapa, #taBort')].map((knapp) => {
+    // Den grund knappen faktiskt målas mot: närmaste förfader som har en egen botten.
+    let bak = knapp.parentElement, sida = [245, 243, 235, 1]
+    while (bak) { const f = tal(getComputedStyle(bak).backgroundColor); if (f[3] > 0) { sida = f; break } bak = bak.parentElement }
+    const grund = tal(getComputedStyle(knapp).backgroundColor)
+    const a = genomskinlighet(knapp)
+    const malad = blanda(grund[3] === 0 ? sida : blanda(grund, sida, grund[3]), sida, a)
+    const linje = blanda(tal(getComputedStyle(knapp).borderTopColor), sida, a)
+    const black = blanda(tal(getComputedStyle(knapp).color), malad, a)
+    const kant = Math.max(kontrast(malad, sida), kontrast(linje, sida))
+    return `${knapp.textContent.slice(0, 11)}… kant/papper ${kant.toFixed(2)}:1 · bläck ${kontrast(black, malad).toFixed(2)}:1${knapp.disabled ? '' : ' (öppen)'}`
+  })
+  document.getElementById('matning').innerHTML = 'Målat, inte deklarerat: ' + rader.map((r) => `<em>${r}</em>`).join(' · ')
+}
+
 function rita() {
   const v = rot.dataset.variant
   const k = VARIANTER[v]
@@ -328,6 +368,7 @@ function rita() {
   const synliga = [...document.querySelectorAll('.villkor-falt, .villkor-huvud, .villkor-svar')]
     .filter((el) => el.offsetParent !== null).length
   document.getElementById('berattelse').textContent += `  ·  villkoret står skrivet ${synliga} gång${synliga === 1 ? '' : 'er'} på skärmen.`
+  mat()
 }
 
 for (const knapp of document.querySelectorAll('.switch button')) {

@@ -74,8 +74,8 @@
   .byd-join form { display: grid; gap: 10px; }
   .byd-join input { padding: 16px; border-radius: 12px; border: 1px solid #2c3242; background: #1b1e27; color: #fff; font-size: 18px; font-family: inherit; }
   .byd-join form button { padding: 18px; border-radius: 12px; border: 1px solid transparent; font-size: 18px; font-weight: 800; font-family: inherit; cursor: pointer; }
-  .byd-primary { border: 1px solid var(--byd-primary-bg); background: var(--byd-primary-bg); color: var(--byd-primary-ink); font-weight: 750; }
-  .byd-secondary { background: transparent; border: 1px solid var(--byd-secondary-line); color: var(--byd-secondary-ink); font-weight: 600; }
+  .byd-join .byd-primary { border: 1px solid var(--byd-primary-bg); background: var(--byd-primary-bg); color: var(--byd-primary-ink); font-weight: 750; }
+  .byd-join .byd-secondary { background: transparent; border: 1px solid var(--byd-secondary-line); color: var(--byd-secondary-ink); font-weight: 600; }
   .byd-join .byd-primary:disabled { background: #242938; border-color: #242938; color: #5b6478; }
   .byd-join .byd-join-online, .byd-join .byd-join-observe { font-size: 14px; }
   .byd-join-online:disabled, .byd-join-observe:disabled { opacity: 0.35; }
@@ -105,32 +105,36 @@
   .kravmarke { display: none; color: #ffb3ad; }
   [data-variant='c'] .kravmarke { display: inline; }
 
-  /* Den låsta knappens utseende. Nu: «Sätt dig» byter till en fyllning, #242938, som mätt mot
-     sidans egen botten #14161c står på 1,25:1 — pillret försvinner alltså nästan helt i sidan
-     samtidigt som de två under det bara tonas till 35 %. Tre låsta kontroller som är låsta olika
-     mycket. A och C ger alla tre ETT och samma låsta utseende: formen kvar, fyllningen borta,
-     linjen streckad i rummets egen sekundärlinje. B tar bort låsningen helt — då finns ingen
-     låst kontroll kvar på skärmen och frågan ställs aldrig. */
-  [data-variant='a'] .byd-join form button:disabled,
-  [data-variant='c'] .byd-join form button:disabled,
-  [data-variant='a'] form button:disabled,
-  [data-variant='c'] form button:disabled {
-    opacity: 1; background: transparent; border: 1px dashed #7d879c; color: #aab3c6; font-weight: 700;
-  }
+  /* ── Det låsta utseendet, gemensamt för alla tre förslagen ────────────────────────────────
+     Inte ett av de tre valen utan en rättelse som gäller oavsett vilket som väljs.
+
+     I dag är de tre låsta kontrollerna låsta olika mycket. «Sätt dig» målas om till #242938,
+     vilket mot sidans egen botten #14161c är 1,25:1: pillret försvinner i sidan i stället för att
+     låsas — det är samma fel som issuet läste som `opacity: 1`, men det syns först när man mäter
+     det målade och inte det deklarerade. De två under det tonas i stället till 35 %, vilket ger
+     linjen 1,56:1 och bläcket 2,77:1.
+
+     Ett låst utseende för hela ytan: rummets egen sekundärlinje som kant (4,22:1 mot sidan, över
+     de 3:1 en grafisk linje hålls till) och ett dämpat bläck som når 4,73:1 över sin egen grund.
+     «Sätt dig» tappar sin gröna fyllning — fyllningen är affordansen, och en nedtonad grön vore
+     fortfarande det gröna pillret man trycker på (join.css säger redan det) — men den fyllning
+     den byter till bär nu en linje, så den är fortfarande ett piller. */
+  .byd-join:not([data-variant='nu']) form button:disabled { opacity: 1; color: #8a93a8; }
+  .byd-join:not([data-variant='nu']) .byd-primary:disabled { background: #242938; border-color: #6f7a90; color: #8a93a8; }
 
   .protorad { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; border-top: 1px solid #4a4230; border-bottom: 0; }
   body[data-rad='dold'] .protorad { display: none; }
   .protorad .matt { margin-left: 0; }
 </style>
 </head>
-<body data-variant="a">
+<body>
 
-<div class="byd-join" data-page="join" data-namn="nej" data-svar="nej">
+<div class="byd-join" data-page="join" data-variant="a" data-namn="nej" data-svar="nej">
   <header>
     <span>Du är på väg in i</span>
     <strong>Rum QHFM</strong>
     <span>Plats C vald</span>
-    <p class="villkor-huvud" role="status">Skriv ditt namn för att komma vidare.</p>
+    <p class="villkor-huvud" id="villkor-c" role="status">Skriv ditt namn för att komma vidare.</p>
   </header>
 
   <div class="byd-join-table">
@@ -178,7 +182,7 @@ const VARIANTER = {
     ord: 'A — en rad under fältet från första målningen, och alla tre vägarna in pekar på den med aria-describedby. Etiketten «Ditt namn» står synlig över fältet i stället för inuti det.' },
   b: { platshallare: '', last: false, beskriv: null,
     ord: 'B — de tre vägarna in står öppna. Tryck en av dem med tomt namn: beskedet kommer vid fältet och fokus flyttas dit. Ingen låst kontroll finns kvar på skärmen.' },
-  c: { platshallare: '', last: true, beskriv: null,
+  c: { platshallare: '', last: true, beskriv: 'villkor-c',
     ord: 'C — villkoret står i huvudet, på den rad som redan säger «Plats C vald», och fältet bär ett obligatoriskt märke.' },
 }
 
@@ -214,7 +218,7 @@ function mat() {
 }
 
 function rita() {
-  const v = document.body.dataset.variant
+  const v = rot.dataset.variant
   const k = VARIANTER[v]
   const harNamn = namn.value.trim().length > 0
   rot.dataset.namn = harNamn ? 'ja' : 'nej'
@@ -236,7 +240,7 @@ function rita() {
 
 for (const knapp of document.querySelectorAll('.switch button')) {
   knapp.addEventListener('click', () => {
-    document.body.dataset.variant = knapp.dataset.v
+    rot.dataset.variant = knapp.dataset.v
     for (const annan of document.querySelectorAll('.switch button')) annan.setAttribute('aria-pressed', String(annan === knapp))
     rita()
   })
@@ -245,7 +249,7 @@ document.getElementById('rensa').addEventListener('click', () => { namn.value = 
 namn.addEventListener('input', rita)
 for (const knapp of vantar) {
   knapp.addEventListener('click', () => {
-    if (document.body.dataset.variant !== 'b' || namn.value.trim()) return
+    if (rot.dataset.variant !== 'b' || namn.value.trim()) return
     rita()
     rot.dataset.svar = 'ja'
     namn.setAttribute('aria-invalid', 'true')
@@ -254,10 +258,10 @@ for (const knapp of vantar) {
 }
 
 const url = new URLSearchParams(location.search)
-if (url.get('v')) document.body.dataset.variant = url.get('v')
+if (url.get('v')) rot.dataset.variant = url.get('v')
 if (url.get('namn')) namn.value = url.get('namn')
 if (url.get('rad') === 'dold') document.body.dataset.rad = 'dold'
-for (const annan of document.querySelectorAll('.switch button')) annan.setAttribute('aria-pressed', String(annan.dataset.v === document.body.dataset.variant))
+for (const annan of document.querySelectorAll('.switch button')) annan.setAttribute('aria-pressed', String(annan.dataset.v === rot.dataset.variant))
 rita()
 </script>
 </body>
