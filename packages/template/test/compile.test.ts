@@ -445,6 +445,23 @@ describe('shapes are drawn as paths (L17)', () => {
     expect(out.html).toContain('stroke="#333333"')
   })
 
+  // A shape of the designer's own (L26, #309) is drawn by this same path and no other: the point
+  // list replaces the outline the gallery entry would have drawn, and the fill, the line and the
+  // shadow go on meaning what they meant.
+  it('draws a shape of the designer own points, in the element box own millimetres', () => {
+    const out = draw(shape({ shape: 'banner', fill: '#abcdef', points: [{ x: 0, y: 0 }, { x: 61, y: 0 }, { x: 30.5, y: 86 }] }))
+    expect(pathsIn(out.html)).toHaveLength(1)
+    expect(dOf(out.html)).toBe('M 0 0 L 61 0 L 30.5 86 Z')
+  })
+
+  // The stroke straddles the path it lies on, so the box is inset by half the line — and the
+  // designer's own outline has to come in with it, or the line would hang outside the box the
+  // handles and the guides stand on.
+  it('brings the own points in with the stroke inset', () => {
+    const out = draw(shape({ shape: 'banner', fill: '#abcdef', stroke: '#000000', strokeMm: 1, points: [{ x: 0, y: 0 }, { x: 61, y: 0 }, { x: 30.5, y: 86 }] }))
+    expect(dOf(out.html)).toBe('M 0.5 0.5 L 60.5 0.5 L 30.5 85.5 Z')
+  })
+
   it('lifts a shape off the paper with a shadow, colour and all', () => {
     const out = draw(shape({ shape: 'rect', fill: '#ffffff', shadow: { dxMm: 0, dyMm: 0.6, blurMm: 1.2, color: '#000000', opacity: 0.35 } }))
     expect(out.css).toContain('filter:drop-shadow(0mm 0.6mm 1.2mm rgb(0 0 0 / 0.35))')

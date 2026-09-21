@@ -143,6 +143,14 @@ export const ShapeElement = z.object({
   corners: z.number().int().min(3).max(48).optional(),
   innerRatio: z.number().min(0.05).max(0.95).optional(),
   rotationDeg: z.number().optional(),
+  // A shape of the designer's own (L26): the corners written out, in the element box's own
+  // millimetres with its top-left corner as the origin. It is the one property that overrules
+  // `shape` — a point list is an outline no corner count can describe, and the gallery entry the
+  // list was written out of stays where it is so the designer can go back to it.
+  //
+  // Optional, because every template written before the field existed has none and must draw
+  // byte for byte the same. Three is the floor: two points are a line and not a shape.
+  points: z.array(z.object({ x: Mm, y: Mm })).min(3).optional(),
   pattern: Pattern.optional(),
   shadow: Shadow.optional(),
   // How see-through the whole shape is (#317): one number for the layer, so the fill, the

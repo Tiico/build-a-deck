@@ -272,6 +272,11 @@ function shapeSvg(el: Extract<Element, { kind: 'shape' }>, input: CompileInput):
     innerRatio: el.innerRatio,
     rotationDeg: el.rotationDeg,
     radiusMm: el.radiusMm,
+    // A shape of the designer's own (L26): the point list is written in the element box's own
+    // millimetres, so the box it was written in travels with it and the inset above moves the
+    // outline exactly as it moves every other one.
+    points: el.points,
+    pointsBox: { w: el.w, h: el.h },
   })
   // A line has no inside, so it is never offered a fill: painting one would put colour where
   // the designer drew nothing and cannot click.

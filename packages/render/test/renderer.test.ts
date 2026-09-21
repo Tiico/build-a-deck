@@ -100,3 +100,28 @@ describe('a see-through shape (L17, #317)', () => {
     expect(middle(await shot(card(0)))).toMatchObject({ r: 255, g: 255, b: 255 })
   }, 30_000)
 })
+
+// A shape of the designer's own (L26, #309) through the one renderer there is (B3): a point list
+// in the element box's own millimetres, pressed to pixels by Chromium like every other outline.
+// The proof is the ink on the card and not the path in the markup — a second code path that drew
+// shapes would show up here as a triangle that is not there.
+describe('a shape of the designer own points', () => {
+  // 63 × 88 mm at 96 dpi is 238 × 333 px, so a millimetre is about 3.78 px.
+  const mm = (v: number) => Math.round((v * 96) / 25.4)
+  const face: FaceTemplate = {
+    base: [
+      { kind: 'shape', id: 'paper', x: 0, y: 0, w: 63, h: 88, shape: 'rect', fill: '#ffffff' },
+      // The banner it was written out of stays on the element; the points are what is drawn.
+      { kind: 'shape', id: 'own', x: 0, y: 0, w: 63, h: 88, shape: 'banner', fill: '#000000', points: [{ x: 31.5, y: 0 }, { x: 63, y: 88 }, { x: 0, y: 88 }] } as Element,
+    ],
+    variants: {},
+  }
+
+  it('presses the outline the points describe and nothing of the entry they came from', async () => {
+    const png = await renderer.renderPng(compile({ type: CARD_STANDARD_63x88, face, row: {}, icons: {} }), { dpi: 96 })
+    // Deep inside the triangle, and in the top-left corner the triangle leaves to the paper —
+    // which is exactly the corner the banner the element still names would have covered.
+    expect(pngPixel(png, mm(31.5), mm(60))).toMatchObject({ r: 0, g: 0, b: 0 })
+    expect(pngPixel(png, mm(4), mm(6))).toMatchObject({ r: 255, g: 255, b: 255 })
+  }, 60_000)
+})
