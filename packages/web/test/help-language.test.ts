@@ -47,12 +47,12 @@ describe('the help pattern in the stylesheet', () => {
 
   // The felt's own «?» in the corner (#224) was `.byd-help` too, and both sheets block the first
   // painting: the corner's rule would have pinned the account's question mark to the card's
-  // corner. Two things, two names.
-  it('shares no name with the felt’s shortcut help', () => {
+  // corner. Two things, two names — and the question is not whether today's two sets happen to
+  // miss each other, which they did while the felt kept `.byd-help-open` beside them. The felt
+  // owns no name in this family at all, so the next rule either sheet grows cannot collide.
+  it('leaves the whole `.byd-help` family to this pattern, and none of it to the felt', () => {
     const felt = readFileSync(join(import.meta.dirname, '..', 'src/table/table.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
-    const mine = new Set(rules.flatMap(([selector]) => [...selector.matchAll(/\.(byd-help[a-z-]*)/g)].map((m) => m[1]!)))
-    const theirs = [...felt.matchAll(/\.(byd-help[a-z-]*)/g)].map((m) => m[1]!)
-    expect(theirs.filter((name) => mine.has(name))).toEqual([])
+    expect([...felt.matchAll(/\.(byd-help[a-z-]*)/g)].map((m) => m[1]!)).toEqual([])
   })
 
   it('lays the box over the work, fixed to the window and never inside a column that clips', () => {
