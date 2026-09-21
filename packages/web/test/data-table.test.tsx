@@ -5,6 +5,7 @@ import { userEvent } from '@testing-library/user-event'
 import { DataTable } from '../src/editor/DataTable.js'
 import { projectDoc } from './project-doc.js'
 import { symbolName, type GameSymbol } from '../src/editor/symbols.js'
+import { groundOf } from '../src/editor/palette.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
 vi.setConfig({ testTimeout: JSDOM_TEST_BUDGET })
@@ -493,6 +494,116 @@ describe('the meaning picker after the bar (E4)', () => {
     type(cell, 'Skada {sköld|')
 
     expect(screen.queryByRole('listbox')).toBeNull()
+  })
+})
+
+// The meaning chosen in the same box as the symbol (L34, #302). A designer who did not know the
+// bar and the meaning's id could not insert a coloured symbol at all: the picker wrote `{namn}`
+// and the rest was hers to type. Now the meanings are drawn as coloured copies of the very symbol
+// she chose, every one of them on the card's paper, and the box says the string it will write.
+describe('the meaning chosen in the same box as the symbol (L34)', () => {
+  const setup = (palette: Record<string, string> = { fara: '#8f2d20', vinst: '#2f6136' }, icons: Record<string, string> = {}) => {
+    const doc = { ...projectDoc(), palette, icons }
+    const onCell = vi.fn()
+    render(<DataTable doc={doc} selectedRow={null} onSelectRow={() => undefined} onCell={onCell} onAddRow={() => undefined} onRemoveRow={() => undefined} onReplaceRows={() => undefined} onAddField={() => undefined} onRemoveField={() => undefined} onMoveField={() => undefined} onSymbol={vi.fn(async (s: GameSymbol) => symbolName(s))} />)
+    const cell = within(screen.getAllByRole('row')[1]!).getByLabelText('dragon body') as HTMLInputElement
+    return { cell, onCell, doc }
+  }
+  const type = (cell: HTMLInputElement, value: string) => {
+    fireEvent.change(cell, { target: { value, selectionStart: value.length } })
+  }
+  const sampleOf = (option: HTMLElement) => option.querySelector<HTMLElement>('.byd-symbol-sample')!
+  const inkOf = (option: HTMLElement) => sampleOf(option).querySelector<HTMLElement>('.byd-ink')?.getAttribute('style') ?? null
+
+  it('offers the meanings as coloured copies of the chosen symbol on the card’s paper, recolours the grid, and writes the string it shows', async () => {
+    const { cell, onCell, doc } = setup()
+    type(cell, 'Skada {sköl')
+    const symbols = screen.getByRole('listbox', { name: 'Symboler' })
+    fireEvent.click(within(symbols).getAllByRole('option')[0]!)
+
+    // Choosing the symbol writes nothing yet: the meaning is the next question, in the same box.
+    expect(onCell).not.toHaveBeenCalledWith('dragon', 'body', expect.stringContaining('sköld'))
+    const meanings = screen.getByRole('listbox', { name: 'Betydelser' })
+    const options = within(meanings).getAllByRole('option')
+    expect(options.map((o) => o.textContent)).toEqual(['Utan betydelse', 'fara', 'vinst'])
+    // Every sample stands on the card's paper and never on the editor's dark panel (L34): the
+    // symbol is drawn in the card's ink, which vanished against the panel in the first draft.
+    const paper = groundOf(doc, 'front')
+    for (const o of [...options, ...within(symbols).getAllByRole('option')]) expect(sampleOf(o).getAttribute('data-paper')).toBe(paper)
+    // «Utan betydelse» is the picture as the card draws it; a meaning is the same shape with the
+    // meaning's colour behind it — the card renderer's own markup, not a swatch beside a name.
+    expect(sampleOf(options[0]!).querySelector('img.byd-icon')).not.toBeNull()
+    expect(inkOf(options[1]!)).toContain('background:#8f2d20')
+    expect(inkOf(options[2]!)).toContain('background:#2f6136')
+    // What will be written is said as the product's own syntax, and the grid follows the meaning
+    // the keys are on, so what she gets is seen before it is inserted.
+    expect(screen.getByText('{sköld}')).toBeTruthy()
+    expect(inkOf(within(symbols).getAllByRole('option')[0]!)).toBeNull()
+    fireEvent.keyDown(cell, { key: 'ArrowDown' })
+    expect(screen.getByText('{sköld|fara}')).toBeTruthy()
+    expect(inkOf(within(symbols).getAllByRole('option')[0]!)).toContain('background:#8f2d20')
+
+    fireEvent.click(options[2]!)
+    await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'body', 'Skada {sköld|vinst}'))
+    expect(screen.queryByRole('listbox')).toBeNull()
+  })
+
+  it('writes the plain symbol for «Utan betydelse», which is first and costs no extra step', async () => {
+    const { cell, onCell } = setup()
+    type(cell, 'Skada {sköl')
+    fireEvent.click(within(screen.getByRole('listbox', { name: 'Symboler' })).getAllByRole('option')[0]!)
+    fireEvent.click(within(screen.getByRole('listbox', { name: 'Betydelser' })).getAllByRole('option')[0]!)
+
+    await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'body', 'Skada {sköld}'))
+  })
+
+  it('has no meaning step when the game has named no meanings: one line says why, and the symbol goes in as ink', async () => {
+    const { cell, onCell } = setup({})
+    type(cell, 'Skada {sköl')
+    const box = screen.getByRole('group', { name: 'Infoga symbol' })
+    expect(within(box).queryByRole('listbox', { name: 'Betydelser' })).toBeNull()
+    expect(box.textContent).toContain('Spelet har inga betydelser; symbolen ritas i bläck.')
+    expect(screen.getByText('{sköld}')).toBeTruthy()
+
+    fireEvent.click(within(screen.getByRole('listbox', { name: 'Symboler' })).getAllByRole('option')[0]!)
+    await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'body', 'Skada {sköld}'))
+    // Nothing was asked in between: the step does not exist, rather than being skipped.
+    expect(screen.queryByRole('listbox')).toBeNull()
+  })
+
+  it('walks from the symbol to the meaning on the keys, with the cell pointing at the option the keys are on', async () => {
+    const { cell, onCell } = setup()
+    type(cell, 'Skada {sköl')
+    const symbols = screen.getByRole('listbox', { name: 'Symboler' })
+    expect(cell.getAttribute('aria-activedescendant')).toBe(within(symbols).getAllByRole('option')[0]!.id)
+    fireEvent.keyDown(cell, { key: 'Enter' })
+    // Enter chose the symbol and moved the keys onto «Utan betydelse»; nothing is written yet.
+    expect(onCell).not.toHaveBeenCalledWith('dragon', 'body', expect.stringContaining('sköld'))
+    const meanings = screen.getByRole('listbox', { name: 'Betydelser' })
+    const options = within(meanings).getAllByRole('option')
+    expect(options[0]!.getAttribute('aria-selected')).toBe('true')
+    expect(cell.getAttribute('aria-activedescendant')).toBe(options[0]!.id)
+    fireEvent.keyDown(cell, { key: 'ArrowDown' })
+    expect(cell.getAttribute('aria-activedescendant')).toBe(options[1]!.id)
+    fireEvent.keyDown(cell, { key: 'Enter' })
+
+    await waitFor(() => expect(onCell).toHaveBeenCalledWith('dragon', 'body', 'Skada {sköld|fara}'))
+  })
+
+  it('keeps the typed road: the bar opens the meanings as before, and now as copies of the game’s own symbol', () => {
+    const { cell, onCell, doc } = setup(undefined, { sköld: 'skold.svg' })
+    // A symbol the game already has is written by name; the bar after it asks for the meaning
+    // exactly as it always did — and each meaning is now that symbol, painted, on the paper.
+    type(cell, 'Skada {sköld|')
+    const options = within(screen.getByRole('listbox', { name: 'Betydelser' })).getAllByRole('option')
+    expect(options.map((o) => o.textContent)).toEqual(['fara', 'vinst'])
+    expect(sampleOf(options[0]!).getAttribute('data-paper')).toBe(groundOf(doc, 'front'))
+    expect(inkOf(options[0]!)).toContain('background:#8f2d20')
+    expect(inkOf(options[0]!)).toContain('skold.svg')
+    // And Enter writes the same string it always wrote.
+    fireEvent.change(cell, { target: { value: 'Skada {sköld|f', selectionStart: 14 } })
+    fireEvent.keyDown(cell, { key: 'Enter' })
+    expect(onCell).toHaveBeenCalledWith('dragon', 'body', 'Skada {sköld|fara}')
   })
 })
 
