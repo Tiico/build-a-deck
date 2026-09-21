@@ -28,16 +28,29 @@ async function openBord(): Promise<void> {
   await screen.findByText('Skogens herrar')
   fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
 }
-// Sparar, och väntar tills knappen är tillbaka i vila innan den trycks.
-// Att servern har fått sin revision är inte samma sak som att ytan har skrivit klart: medan
-// begäran är i luften heter knappen «Sparar…» och är spärrad, och det är ett eget tillstånd i
-// React som `waitFor` på revisionen inte säger något om. Ett andra sparande som letar efter
-// «Spara» med `getByRole` medan det står kvar hittar därför ingen knapp alls och faller.
-// Sett under en full gate-körning och aldrig när filen körs ensam (#366): det är belastningen
-// som skiljer de två uppdateringarna åt, inte en långsam maskin. Svaret är att vänta på
-// villkoret — knappen i vila — och inte på en vidare tidsgräns.
+// Sparar, och lämnar ytan i vila.
+//
+// Knappen har tre lägen och bara två namn, vilket är vad som gör ett sparande i ett test lurigt:
+// medan begäran är i luften heter den «Sparar…» och är spärrad, i vila heter den «Spara» och är
+// *också* spärrad, och bara med något osparat är den «Spara» och tryckbar. Ett `fireEvent.click`
+// på den spärrade gör ingenting alls — tyst — så ett test som klickar för tidigt får ingen
+// knapp, eller ett klick som inte händer, och faller långt senare på en revision som aldrig kom.
+//
+// Att vänta på serverns revision räcker inte: den stiger när servern har skrivit, medan svaret
+// fortfarande är på väg tillbaka. Landar det svaret efter nästa ändring skrivs ändringen över,
+// och ytan står i vila med något som aldrig sparades. Det är exakt så «expected 2 to be 3» såg
+// ut. Väntan hör därför hemma på klienten och inte på servern (#366, #370).
+//
+// Så: kräv att knappen är tryckbar innan den trycks — ett tyst klick blir ett läsbart fel i
+// stället för en gåta — och vänta efter klicket tills den är «Spara» och spärrad igen, vilket är
+// det enda läge som betyder både «inte mitt i ett sparande» och «ingenting kvar osparat».
+const saveButton = (): HTMLButtonElement => screen.getByRole('button', { name: 'Spara' }) as HTMLButtonElement
+
 async function spara(): Promise<void> {
-  fireEvent.click(await screen.findByRole('button', { name: 'Spara' }))
+  const button = (await screen.findByRole('button', { name: 'Spara' })) as HTMLButtonElement
+  expect(button.disabled).toBe(false)
+  fireEvent.click(button)
+  await waitFor(() => expect(saveButton().disabled).toBe(true))
 }
 const handle = (id: string) => document.querySelector(`[data-zone-handle="${id}"]`) as HTMLElement
 const row = (id: string) => document.querySelector(`[data-zone-row="${id}"]`) as HTMLElement
