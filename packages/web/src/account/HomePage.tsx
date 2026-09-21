@@ -1,8 +1,12 @@
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react'
+import type { CardFace } from '@byd/server/doc'
 import { LoginCard } from './LoginCard.js'
 import { Help } from '../editor/HelpDrawer.js'
-import { hue } from '../table/hue.js'
-import { logout, myPlayed, myProjects, removeProject, startTable, whoAmI, type Played, type ProjectSummary } from './api.js'
+import { CardPreview } from '../editor/CardPreview.js'
+import { CARD_PX } from '../editor/corner.js'
+import { previewIcons } from '../editor/assets.js'
+import { previewFonts } from '../editor/fonts.js'
+import { logout, myCards, myPlayed, myProjects, removeProject, startTable, whoAmI, type Played, type ProjectSummary } from './api.js'
 import { seatColor } from '../table/seatColor.js'
 import { StatusNotice } from '../status/StatusNotice.js'
 import { noticeFor } from '../status/notice.js'
@@ -23,6 +27,10 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   const [email, setEmail] = useState<string | null | undefined>(undefined)
   const [projects, setProjects] = useState<ProjectSummary[] | null>(null)
   const [played, setPlayed] = useState<Played[] | null>(null)
+  // What it takes to draw each game's first card (G1, #231). It is asked for apart from the list
+  // and lands after it, so the first screen is drawn on the list's own answer and never waits for
+  // a single template, font or picture. Until it lands the tile holds the card's place.
+  const [cards, setCards] = useState<Record<string, CardFace | null> | null>(null)
   // Landing here from the claim page (G1): which session was just saved.
   const claimed = params.get('claimed')
   // The start page is where every other route's way home leads, so it is the last place that
@@ -42,7 +50,12 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
     void whoAmI(http)
       .then((e) => {
         setEmail(e)
-        return e ? Promise.all([myProjects(http).then(setProjects), myPlayed(http).then(setPlayed)]) : undefined
+        if (!e) return undefined
+        // The cards are asked for beside the list rather than after it: they are a second answer,
+        // not a second screen. A card that never arrives leaves its place waiting and takes
+        // nothing off the page — the games are the page, and the card is what one of them wears.
+        void myCards(http).then(setCards, () => undefined)
+        return Promise.all([myProjects(http).then(setProjects), myPlayed(http).then(setPlayed)])
       })
       .catch(() => setOffline(true))
   }, [http, attempt])
@@ -141,7 +154,10 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
             </Help>
           </div>
         )}
-        <div className="byd-home-grid" data-projects>
+        {/* How tall the card on a tile is, written down once (#231): the stylesheet reserves the
+            place from the very number the drawing is scaled by, so the box and the card in it
+            cannot drift apart. */}
+        <div className="byd-home-grid" data-projects style={{ ['--byd-home-card-h' as string]: `${HOME_CARD_H}px` }}>
           {(projects ?? []).map((p) => (
             <div key={p.id} className="byd-home-game" data-project={p.id}>
               <a
@@ -152,7 +168,7 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
                   onNavigate(`/editor?${suffix(new URLSearchParams({ project: p.id }))}`)
                 }}
               >
-                <Fan cards={p.cards ?? []} t={t} />
+                <GameCard project={p.id} peek={p.card ?? null} face={cards?.[p.id] ?? null} assetBase={http} t={t} />
                 <strong>{p.name}</strong>
                 <span className="byd-muted">{t('home.card.line', { rev: p.rev, played: playedLine(t, lang, p) })}</span>
               </a>
@@ -224,6 +240,12 @@ export function HomePage({ onNavigate = (url) => location.assign(url) }: HomePag
   )
 }
 
+// How wide the tile's card is drawn, in CSS pixels. The stylesheet reserves the place from the
+// same number, so the box and the drawing in it cannot drift apart: 132 px tall is the height the
+// prototype's variant B was chosen at, and the card's own 63 × 88 gives the width.
+export const HOME_CARD_H = 132
+export const HOME_CARD_W = (HOME_CARD_H * 63) / 88
+
 // A sentence stays one sentence in the catalogue even when part of it is the reader's own — a
 // game, a person, a room code. The catalogue holds the whole message; only the parts it names
 // are handed over as nodes, so no language has to be glued together from halves.
@@ -234,24 +256,37 @@ function marked(message: string, parts: Record<string, ReactNode>): ReactNode[] 
   })
 }
 
-// The cards on a game's card (G1): the game's own, each in the colour it has at the table and
-// under its own title, so the shelf shows what is in the box. A game with nothing in it yet says
-// so rather than fanning out rectangles that stand for nothing, and keeps the room it takes so
-// the grid stands even.
-function Fan({ cards, t }: { cards: { id: string; title: string }[]; t: T }) {
-  if (cards.length === 0)
-    return (
-      <div className="byd-home-fan" data-empty>
-        {t('home.card.nocards')}
-      </div>
-    )
+// The card on a game's tile (G1, #231, variant B): the game's own first card, over the name and
+// drawn by the one `CardPreview` that draws a card anywhere in the tool — so what the shelf shows
+// is what the deck wall shows, at another size and in nothing else different.
+//
+// Three states, all of them the same box, because the box is the card's reserved place: the card
+// itself, the place waiting for what it takes to draw it, and the deliberate empty state of a game
+// with no cards yet. Nothing moves when a card lands, because nothing was ever missing.
+//
+// To a screen reader it is one image with one name — "Första kortet: Drake" — and not the fourteen
+// loose words the template happens to print on it. `role="img"` is what makes the drawing inside
+// one thing rather than fourteen.
+function GameCard({ project, peek, face, assetBase, t }: { project: string; peek: { id: string; title: string } | null; face: CardFace | null; assetBase: string; t: T }) {
+  // Resolved once per card and held by identity: `previewIcons` and `previewFonts` build a fresh
+  // object every call, and a fresh object is a fresh compile of the card on every render (#320).
+  const icons = useMemo(() => (face ? previewIcons({ icons: face.icons }, assetBase) : {}), [face, assetBase])
+  const fonts = useMemo(() => (face ? previewFonts({ template: { faces: { front: face.face } }, ...(face.fonts ? { fonts: face.fonts } : {}) }, assetBase) : {}), [face, assetBase])
+  if (!peek) return <div className="byd-home-card" data-empty>{t('home.card.nocards')}</div>
+  if (!face) return <div className="byd-home-card" data-waiting aria-hidden="true" />
   return (
-    <div className="byd-home-fan">
-      {cards.map((c) => (
-        <i key={c.id} data-card={c.id} title={c.title} style={{ ['--hue' as string]: hue(c.id) }}>
-          {c.title}
-        </i>
-      ))}
+    <div className="byd-home-card" role="img" aria-label={t('home.card.first', { title: face.title })}>
+      <CardPreview
+        id={`home-${project}`}
+        face={face.face}
+        row={face.row}
+        icons={icons}
+        fonts={fonts}
+        assetBase={assetBase}
+        palette={face.palette}
+        framing={face.framing}
+        scale={HOME_CARD_W / CARD_PX}
+      />
     </div>
   )
 }

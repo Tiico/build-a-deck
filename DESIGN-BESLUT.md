@@ -1316,8 +1316,12 @@ En lek utan kort säger "inga kort än" i solfjäderns ställe och behåller pla
 Solfjäderns fyra kort blir ett: det första kortet i leken, alltid detsamma, ritat av samma `CardPreview` som kortväggen använder — ingen andra kodväg som ritar ett kort.
 Det här ersätter urvalsregeln ovan och är beställarens beslut efter att motsättningen lyfts: solfjädern hann aldrig byggas, och det som står på startsidan i dag är just de fyra rektanglar färgade ur spelets id som stycket ovan avvisar.
 Vad beslutet kostar, sagt rakt ut: en lek på hundra kort visar inte längre sin bredd på startsidan, vilket var hela skälet till att urvalet var jämnt spritt. Vad det köper är en första skärm som inte väntar på att fyra kort ska ritas, och ett kort som faktiskt är ett kort i stället för fyra som aldrig blev det.
-Det som står kvar ur stycket ovan: kortet är spelets eget kort och inte en färgad rektangel; en lek utan kort säger "inga kort än" och behåller platsen, så rutnätet står jämnt; och `peekCards` är fortfarande vägen, men måste bära det ett kort behöver för att ritas — id och titel räcker inte för `CardPreview`.
+Det som står kvar ur stycket ovan: kortet är spelets eget kort och inte en färgad rektangel; en lek utan kort säger "inga kort än" och behåller platsen, så rutnätet står jämnt; och urvalet görs fortfarande i `packages/server/src/names.ts`, men måste bära det ett kort behöver för att ritas — id och titel räcker inte för `CardPreview`.
 Följdkrav: första skärmen får inte vänta på alla mallar, typsnitt och bilder. Listan ritas på ett svar och kortet landar för sig, med platsen reserverad så ingenting hoppar.
+
+Byggt 2026-09-21 (#231), variant B ur prototypen: kortet står över namnet där solfjädern stod, 132 px högt i en bricka på ~217 px, ritat av `CardPreview` och av ingenting annat.
+Urvalet och ritningen skildes åt i två svar, eftersom följdkravet ovan inte går att hålla i ett. `GET /projects` bär `card` — `peekCard`, lekens första rad som id och titel — vilket är allt listan behöver för att veta att det finns ett kort och för att rita tomläget direkt. `GET /me/cards` bär `peekFace`: ytan, radens fält, ikonerna, typsnitten, paletten och kortets egen avvikelse från måttet, för alla spel i ett enda svar. Ett spel i listan kostar därmed ingen rundtur, och första skärmen väntar inte på en enda mall.
+Ett spel utan rader — eller med en mall utan ytor — har inget kort, och brickan säger «inga kort än» i kortets egen ruta, lika hög och lika bred som kortet. Medan svaret är i luften står samma ruta och drar. Kortet är ett `role="img"` med «Första kortet: <titel>», inte mallens fjorton lösa ord.
 
 ### G2. Kommunikation: ingen inbyggd röst (fråga 19)
 

@@ -55,27 +55,47 @@ describe('"Mina spel" over HTTP (G1)', () => {
     expect(after.find((p) => p.id === 'p2')).toMatchObject({ tables: 0, lastPlayed: null })
   })
 
-  it("fans out a selection of the game's own cards, spread over the deck (G1)", async () => {
+  it("names the game's first card, the deck seen in the table's own order (G1)", async () => {
     const many = { ...doc('Stora leken'), rows: Array.from({ length: 9 }, (_, i) => ({ id: `r${i}`, fields: { title: `Kort ${i}`, antal: 1 } })) }
     await send('POST', '/projects', { id: 'p1', ...doc() })
     await send('POST', '/projects', { id: 'p3', ...many })
-    const list = (await (await send('GET', '/projects')).json()) as { id: string; cards: { id: string; title: string }[] }[]
-    // A deck of nine shows its first and its last with two between them, so a big game shows its
-    // breadth rather than the four cards that happen to have been written first.
-    expect(list.find((p) => p.id === 'p3')!.cards).toEqual([
-      { id: 'r0', title: 'Kort 0' },
-      { id: 'r3', title: 'Kort 3' },
-      { id: 'r5', title: 'Kort 5' },
-      { id: 'r8', title: 'Kort 8' },
-    ])
-    // A deck smaller than the fan shows the cards it has, and nothing invented.
-    expect(list.find((p) => p.id === 'p1')!.cards).toEqual([{ id: 'dragon', title: 'Drake' }])
+    const list = (await (await send('GET', '/projects')).json()) as { id: string; card: { id: string; title: string } | null }[]
+    // One card, and it is the deck's first row — the same card at every visit for as long as the
+    // designer leaves the table in the order they put it in.
+    expect(list.find((p) => p.id === 'p3')!.card).toEqual({ id: 'r0', title: 'Kort 0' })
+    expect(list.find((p) => p.id === 'p1')!.card).toEqual({ id: 'dragon', title: 'Drake' })
     // A card nobody has titled yet is still a card, and answers to its id.
     await send('POST', '/projects', { id: 'p4', ...doc('Namnlösa'), rows: [{ id: 'namnlöst', fields: {} }] })
+    // A game with no rows has no card to show, and says so rather than inventing one.
     await send('POST', '/projects', { id: 'p0', ...doc('Tomt'), rows: [] })
-    const again = (await (await send('GET', '/projects')).json()) as { id: string; cards: { id: string; title: string }[] }[]
-    expect(again.find((p) => p.id === 'p4')!.cards).toEqual([{ id: 'namnlöst', title: 'namnlöst' }])
-    expect(again.find((p) => p.id === 'p0')!.cards).toEqual([])
+    const again = (await (await send('GET', '/projects')).json()) as { id: string; card: { id: string; title: string } | null }[]
+    expect(again.find((p) => p.id === 'p4')!.card).toEqual({ id: 'namnlöst', title: 'namnlöst' })
+    expect(again.find((p) => p.id === 'p0')!.card).toBeNull()
+  })
+
+  it('hands over what it takes to draw those cards in an answer of its own, one for the whole list (G1, #231)', async () => {
+    await send('POST', '/projects', { id: 'p1', ...doc() })
+    await send('POST', '/projects', { id: 'p0', ...doc('Tomt'), rows: [] })
+    // The list is the first screen and stays light: it says which card each game has, never what
+    // it takes to draw one. No template travels in it, however many games the account owns.
+    const list = await (await send('GET', '/projects')).text()
+    expect(list).not.toContain('faces')
+
+    // What it takes to draw the cards comes apart, and in one answer for the whole list rather
+    // than a round trip per game.
+    const res = await send('GET', '/me/cards')
+    expect(res.status).toBe(200)
+    const cards = (await res.json()) as Record<string, { id: string; title: string; face: unknown; row: Record<string, unknown>; icons: Record<string, string> } | null>
+    expect(cards['p1']).toMatchObject({ id: 'dragon', title: 'Drake', row: { title: 'Drake', antal: 1 }, icons: {} })
+    // The face is the front of the game's own template, whole, so `CardPreview` draws the card
+    // the deck wall draws and not an approximation of it.
+    expect(cards['p1']!.face).toEqual(template.faces['front'])
+    // A game with no rows has no card to draw, which is the list's intentional empty state.
+    expect(cards['p0']).toBeNull()
+  })
+
+  it('tells whoever is not logged in to log in first, as the list does', async () => {
+    expect((await fetch(`${run.http}/me/cards`)).status).toBe(401)
   })
 
   it('takes a game away when its owner asks, and refuses everyone else', async () => {

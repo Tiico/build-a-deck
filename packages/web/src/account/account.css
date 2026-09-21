@@ -30,17 +30,28 @@
 /* The sentence a brand new account reads before it presses anything (UX-16). */
 .byd-home-empty { margin: 0; max-width: 72ch; color: #9aa3b8; font-size: 14px; line-height: 1.6; text-wrap: pretty; }
 .byd-home-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+/* Every row of games is one height, and that height is a game's own (#231). It is what gives the
+   "Nytt spel" tile its floor: on a shared row the row stretches it against its neighbours, and on
+   a row of its own — which is what an account whose games fill the columns exactly has — the row
+   is still the games' row height and not the invitation's one line of text. The tile therefore
+   carries no measurement of its own, and the card's height is written down in one place only. */
+.byd-home-grid[data-projects] { grid-auto-rows: 1fr; }
 .byd-home-game { background: var(--byd-account-card-bg); border: 1px solid #262a35; border-radius: 16px; padding: 16px; display: grid; gap: 8px; text-align: left; color: #fff; text-decoration: none; cursor: pointer; }
 .byd-home-game strong { font-size: 17px; }
-/* The game's own cards (G1, prototype D): four of them side by side rather than a fan that hides
-   three titles under the fourth. Each is a card's colour from the table and its own title, and a
-   title too long for the card wraps — hyphenated where the page's language allows it — instead
-   of disappearing under the next card. */
-.byd-home-fan { display: flex; gap: 6px; height: 70px; align-items: flex-end; }
-.byd-home-fan i { box-sizing: border-box; width: 40px; height: 56px; border-radius: 5px; padding: 5px 4px; background: hsl(var(--hue, 0) 40% 86%); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5); font-style: normal; font-size: 8px; font-weight: 700; line-height: 1.2; color: #1b1f2a; overflow: hidden; overflow-wrap: anywhere; hyphens: auto; }
-/* A game with no cards yet: the place stays, and says what is missing. */
-.byd-home-fan[data-empty] { width: fit-content; height: 56px; padding: 0 14px; border: 1px dashed #2c3242; border-radius: 8px; display: grid; place-items: center; color: #9aa3b8; font-size: 12px; }
-.byd-home-game[data-new] { border-style: dashed; place-items: center; color: #9aa3b8; min-height: 150px; }
+/* The card on a game's tile (G1, #231, variant B): the game's own first card, over the name and
+   the height the prototype was chosen at. All three states are this one box, so the place is
+   reserved from the first paint and nothing moves when a card lands in it. */
+.byd-home-card { height: var(--byd-home-card-h); aspect-ratio: 63 / 88; border-radius: 4px; overflow: hidden; }
+/* The place drawing itself while the second answer is in the air. `a11y.css` cuts every animation
+   to 0.01 ms under `prefers-reduced-motion`, and this one carries no meaning and has no `forwards`
+   to land on, so it simply stands still on its first frame — no rule of its own needed. */
+.byd-home-card[data-waiting] { border: 1px solid #262a35; border-radius: 6px; background: linear-gradient(100deg, #1b1f2a 30%, #232836 50%, #1b1f2a 70%) 0 0 / 300% 100%; animation: byd-home-drawing 1.5s linear infinite; }
+.byd-home-card[data-empty] { display: grid; place-items: center; box-sizing: border-box; padding: 6px; border: 1px dashed #2c3242; border-radius: 6px; color: #9aa3b8; font-size: 11px; text-align: center; line-height: 1.35; }
+@keyframes byd-home-drawing { to { background-position: -150% 0; } }
+/* An account with no games at all has no row of games to give the invitation its height, so the
+   floor there is the card's own — the same one number, and not a measurement invented for this
+   one case. With games on the page the row is taller and wins, as it should. */
+.byd-home-game[data-new] { border-style: dashed; place-items: center; color: #9aa3b8; min-height: var(--byd-home-card-h); }
 
 /* The tables the account sat at (G1, prototype A): a second grid, and the word after a claim. */
 .byd-home-h2 { margin: 12px 0 0; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; color: #7d8597; }

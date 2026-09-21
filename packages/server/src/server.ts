@@ -17,7 +17,7 @@ import { setupFromProject } from './setup.js'
 import { changeOf, diffProjects, type DocDiff, type VersionChange } from './diff.js'
 import { ProjectHost, type EditorMessage } from './project-actor.js'
 import type { EditIntent } from './edits.js'
-import { arrangementOf, namesOfProject } from './names.js'
+import { arrangementOf, namesOfProject, peekFace, type CardFace } from './names.js'
 import { SurveyAnswer, type SurveyStore } from './surveys.js'
 import { COOKIE, LoginBody, LoginLimiter, SESSION_TTL_MS, TOKEN_TTL_MS, accountOf, hash, langOf, loginMail, safeNext, token, type Account, type AuthStore, type Mailer } from './auth.js'
 import { CODE_TTL_MS, GUEST_PENDING_TTL_MS, codeExpiry, newCode, newSecret, normaliseCode } from './rooms.js'
@@ -824,6 +824,27 @@ async function routeProjects(opts: ServerOptions, projects: ProjectStore, req: I
       }),
     )
     json(res, 200, played)
+    return true
+  }
+  // What it takes to draw each game's first card (G1, #231), for the whole list in one answer.
+  //
+  // It is a route of its own rather than part of `/projects` on purpose. The list is the first
+  // screen: it must draw on one answer, without waiting for every game's template, fonts and
+  // pictures. And it is one answer for all the games rather than one per game, because a game in
+  // the list must not cost a round trip. Each card then lands for itself as the browser draws it,
+  // in a place the list reserved from the start, so nothing jumps.
+  if (req.method === 'GET' && url.pathname === '/me/cards') {
+    if (!account) {
+      json(res, 401, { error: 'log in first' })
+      return true
+    }
+    const mine = await projects.list(account.id)
+    const faces: Record<string, CardFace | null> = {}
+    for (const p of mine) {
+      const rec = await projects.load(p.id)
+      faces[p.id] = rec ? peekFace(rec) : null
+    }
+    json(res, 200, faces)
     return true
   }
   if (req.method === 'POST' && url.pathname === '/projects') {

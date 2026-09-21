@@ -5,7 +5,6 @@ import { HomePage } from '../src/account/HomePage.js'
 import { EditorPage } from '../src/editor/EditorPage.js'
 import { NewProjectPage } from '../src/wizard/NewProjectPage.js'
 import { projectDoc } from './project-doc.js'
-import { hue } from '../src/table/hue.js'
 import { admit, createSession, startServer, type Running } from './fixture.js'
 import { JSDOM_TEST_BUDGET } from './budget.js'
 
@@ -192,27 +191,64 @@ describe('a game on the home page (G1)', () => {
   }
   const card = () => document.querySelector(`[data-project="${run.projectId}"]`) as HTMLElement
 
-  it("fans out the game's own cards, each with its title and the colour it has at the table", async () => {
+  it("draws the game's first card on its tile, through the one CardPreview that draws a card (G1, #231)", async () => {
     await home()
-    const fan = card().querySelector('.byd-home-fan')!
-    const cards = [...fan.querySelectorAll('i')]
-    // The fixture's deck is three cards, so the fan is those three and nothing invented.
-    expect(cards.map((c) => c.textContent)).toEqual(['Drake', 'Riddare', 'Trollkarl'])
-    expect(cards.map((c) => c.getAttribute('data-card'))).toEqual(['dragon', 'knight', 'wizard'])
-    // The colour is the card's own, the one it has on the table, not the game's.
-    expect(cards.map((c) => c.getAttribute('style'))).toEqual(['dragon', 'knight', 'wizard'].map((id) => `--hue: ${hue(id)};`))
+    // One card, named as one thing rather than as the fourteen loose words the template puts on
+    // it: the deck's first row, which is the same card at every visit.
+    const drawn = await waitFor(() => within(card()).getByRole('img', { name: 'Första kortet: Drake' }))
+    // It is the compiled card and not a coloured rectangle standing for one: the preview's own
+    // element, with the card's text in it.
+    expect(drawn.querySelector('.byd-preview')).toBeTruthy()
+    expect(drawn.textContent).toContain('Drake')
+    // The deck's other rows stay in the deck. The list shows one card.
+    expect(card().textContent).not.toContain('Riddare')
+    expect(within(card()).queryAllByRole('img')).toHaveLength(1)
   })
 
-  it('says a game has no cards yet instead of fanning out rectangles that stand for nothing', async () => {
+  it('says a game has no cards yet, and keeps the card\'s place so the grid stands even', async () => {
     await fetch(`${run.http}/auth/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'ada@example.com' }) })
     await followMailedLink()
     await fetch(`${run.http}/projects`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: run.otherProjectId, ...projectDoc(), name: 'Tomt spel', rows: [] }) })
     history.replaceState(null, '', `/?server=${encodeURIComponent(run.http)}`)
     render(<HomePage />)
     await screen.findByText('Tomt spel')
-    const fan = document.querySelector(`[data-project="${run.otherProjectId}"] .byd-home-fan`)!
-    expect(fan.querySelectorAll('i')).toHaveLength(0)
-    expect(fan.textContent).toBe('inga kort än')
+    const place = document.querySelector(`[data-project="${run.otherProjectId}"] .byd-home-card`)!
+    // The empty state is the card's own place, said deliberately — not a hole where a card failed.
+    expect(place.hasAttribute('data-empty')).toBe(true)
+    expect(place.textContent).toBe('inga kort än')
+    expect(place.querySelector('.byd-preview')).toBeNull()
+  })
+
+  it('draws the list on the list\'s own answer, and lands the card afterwards in a place already reserved (#231)', async () => {
+    const real = globalThis.fetch
+    let land = (): void => undefined
+    const held = new Promise<void>((resolve) => {
+      land = resolve
+    })
+    // What it takes to draw the cards travels apart from the list, so the list has to be on
+    // screen before that answer arrives — however slow a game's template, fonts and pictures are.
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input instanceof Request ? input.url : input).includes('/me/cards')) await held
+      return real(input, init)
+    })
+    try {
+      await home()
+      const place = card().querySelector('.byd-home-card')!
+      // The place the card will have is already there, and says it is waiting rather than empty.
+      expect(place.hasAttribute('data-waiting')).toBe(true)
+      expect(place.hasAttribute('data-empty')).toBe(false)
+      expect(within(card()).queryByRole('img')).toBeNull()
+
+      land()
+      await waitFor(() => expect(within(card()).queryByRole('img', { name: 'Första kortet: Drake' })).toBeTruthy())
+      // The card lands inside the place that was reserved for it, so nothing moves under it.
+      expect(card().querySelector('.byd-home-card')).toBe(place)
+      expect(place.hasAttribute('data-waiting')).toBe(false)
+      // One answer for the whole list: a game in it does not cost a round trip of its own.
+      expect(spy.mock.calls.filter(([u]) => String(u).includes('/me/cards'))).toHaveLength(1)
+    } finally {
+      spy.mockRestore()
+    }
   })
 
   it('says it has never been played, and afterwards when it last was', async () => {
