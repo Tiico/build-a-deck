@@ -96,7 +96,7 @@ describe('the shape gallery (L17)', () => {
 describe('the numbers a shape reads (L17)', () => {
   it('offers a rectangle its radius and nothing about corners', () => {
     open({ shape: 'rect', radiusMm: 3 })
-    expect((screen.getByLabelText(/hörnradie/i) as HTMLInputElement).value).toBe('3')
+    expect((screen.getByRole('spinbutton', { name: /hörnradie/i }) as HTMLInputElement).value).toBe('3')
     expect(screen.queryByLabelText(/^hörn$/i)).toBeNull()
     expect(screen.queryByLabelText(/vridning/i)).toBeNull()
   })
@@ -112,7 +112,7 @@ describe('the numbers a shape reads (L17)', () => {
 
   it('offers a star how deep its valleys cut', () => {
     const { onPatch } = open({ shape: 'star', corners: 5, innerRatio: 0.45 })
-    const depth = screen.getByLabelText(/uddjup/i) as HTMLInputElement
+    const depth = screen.getByRole('spinbutton', { name: /uddjup/i }) as HTMLInputElement
     fireEvent.change(depth, { target: { value: '30' } })
     expect(patched(onPatch)).toEqual({ innerRatio: 0.3 })
   })
@@ -129,7 +129,7 @@ describe('the numbers a shape reads (L17)', () => {
 // designer going round by rgba in the colour field. It stands with the other numbers a shape
 // reads, in per cent, because that is the unit the value is thought in and 0.35 is not.
 describe('how see-through a shape is (L17, #317)', () => {
-  const opacity = () => screen.getByLabelText(/opacitet/i) as HTMLInputElement
+  const opacity = () => screen.getByRole('spinbutton', { name: /opacitet/i }) as HTMLInputElement
 
   it('stands at whole on a shape that says nothing about it, and writes a share of one', () => {
     const { onPatch } = open({ shape: 'rect' })
@@ -143,13 +143,15 @@ describe('how see-through a shape is (L17, #317)', () => {
     expect(opacity().value).toBe('35')
   })
 
-  // Keyboard and drag both, which is what a range is: the same control answers an arrow key and
-  // a dragged thumb, and neither is a second code path.
-  it('is a range from none to whole that the keyboard can reach', () => {
+  // Keyboard and drag both, which is what the panel's one number control is since L25: the same
+  // field answers an arrow key, and the grip beside it answers a pulled pointer. It was a slider,
+  // which took a row of its own in a 280 px column and could not be typed into at all.
+  it('runs from none to whole, and the keyboard reaches it as the pointer does', () => {
     open({ shape: 'rect' })
-    expect(opacity().type).toBe('range')
+    expect(opacity().type).toBe('number')
     expect(opacity().min).toBe('0')
     expect(opacity().max).toBe('100')
+    expect(screen.getByRole('button', { name: 'Opacitet (%), dra för att ändra' })).toBeTruthy()
   })
 
   // A drag is one undo and not forty (L14). The gesture opens when the control is entered and
@@ -189,9 +191,9 @@ describe('a pattern over the fill (L17)', () => {
     const { onPatch } = open({ shape: 'rect', fill: '#2f4068', pattern: { kind: 'diamonds', color: '#3a4d7a', scaleMm: 7 } })
     fireEvent.click(screen.getByRole('button', { name: 'Ränder' }))
     expect(patched(onPatch).pattern).toMatchObject({ kind: 'stripes', color: '#3a4d7a', scaleMm: 7 })
-    fireEvent.change(screen.getByLabelText(/mönstrets storlek/i), { target: { value: '4' } })
+    fireEvent.change(screen.getByRole('spinbutton', { name: /mönstrets storlek/i }), { target: { value: '4' } })
     expect(patched(onPatch).pattern).toMatchObject({ kind: 'diamonds', scaleMm: 4 })
-    fireEvent.change(screen.getByLabelText(/mönstrets vinkel/i), { target: { value: '45' } })
+    fireEvent.change(screen.getByRole('spinbutton', { name: /mönstrets vinkel/i }), { target: { value: '45' } })
     expect(patched(onPatch).pattern).toMatchObject({ angleDeg: 45 })
   })
 
@@ -214,17 +216,17 @@ describe('a shadow under a shape (L17)', () => {
     expect(shadow?.blurMm).toBeGreaterThan(0)
   })
 
-  it('has no sliders until there is a shadow to move, and then five', () => {
+  it('has no numbers to move until there is a shadow to move them on', () => {
     open({ shape: 'rect' })
     expect(screen.queryByRole('button', { name: /anpassa/i })).toBeNull()
   })
 
-  it('opens the five sliders behind Anpassa, and each one writes its own number', () => {
+  it('opens the five numbers behind Anpassa, and each one writes its own', () => {
     const { onPatch } = open({ shape: 'rect', shadow: { dxMm: 0, dyMm: 0.6, blurMm: 1.2, color: '#000000', opacity: 0.35 } })
     fireEvent.click(screen.getByRole('button', { name: /anpassa/i }))
-    fireEvent.change(screen.getByLabelText(/mjukhet/i), { target: { value: '3' } })
+    fireEvent.change(screen.getByRole('spinbutton', { name: /mjukhet/i }), { target: { value: '3' } })
     expect(patched(onPatch).shadow).toMatchObject({ blurMm: 3, dyMm: 0.6 })
-    fireEvent.change(screen.getByLabelText(/genomskinlighet/i), { target: { value: '80' } })
+    fireEvent.change(screen.getByRole('spinbutton', { name: /genomskinlighet/i }), { target: { value: '80' } })
     expect(patched(onPatch).shadow).toMatchObject({ opacity: 0.8 })
   })
 

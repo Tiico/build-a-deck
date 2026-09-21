@@ -1,9 +1,10 @@
-import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type RefObject } from 'react'
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type ReactNode, type RefObject } from 'react'
 import { CARD_STANDARD_63x88 } from '@byd/engine'
 import type { Element, FaceTemplate, ProjectDoc, Row } from './types.js'
 import { CardPreview } from './CardPreview.js'
 import { arrowMove, fitScale, gridStep, HANDLES, round, iconSized, movedTo, newElement, resizedTo, snapped, STAGE_SCALE, TOOLS, ZOOM_MAX, ZOOM_MIN, ZOOM_NOTCH, ZOOM_STEP, zoomPercent, zoomTo, type Box, type ElementKind, type Grab, type Guides, type Handle } from './canvas.js'
-import { useGesture } from './gesture.js'
+import { useGesture, type Gesture } from './gesture.js'
+import { scrubbed, SCRUB_PX } from './scrub.js'
 import { afterPruning, bendStarted, bentEdge, bentPoints, edgeAt, grownPoint, handleAt, midpoints, movedHandle, movedPoint, prunedPoint, straightAll, straightPoint, type Arm, type Point } from './points.js'
 import { DEFAULT_FILL, elementsFor, pathFor, shapeTakes, tileMarkup, type Motif, type Paint, type Pattern, type Shadow } from '@byd/template'
 import { galleryIdOf, glyphGeometry, newPattern, ownPoints, PATTERNS, shadowIdOf, shapeChoice, SHADOWS, SHAPE_GALLERY, type Geometry, type Shape } from './shapes.js'
@@ -1498,6 +1499,130 @@ const NEW_FIELD = ' new'
 // hears why it will not take what is typed into it.
 const LOCKED_NOTE = 'byd-props-locked-note'
 
+// The panel stands in named sections and every one of them is open (L25). The head is a heading
+// and not a button on purpose: a section that can be shut is a state the panel would have to
+// remember between two selections — and a designer who changes what she has selected is owed the
+// same panel every time, not the one she left folded behind the last element.
+function Section({ name, children }: { name: string; children: ReactNode }) {
+  return (
+    <section className="byd-props-sec" aria-label={name}>
+      <h3 className="byd-props-sec-head">{name}</h3>
+      <div className="byd-props-rows">{children}</div>
+    </section>
+  )
+}
+
+// A number in the panel, marked with an icon and dragged rather than typed (L25). The icon is the
+// field's name and its grip at once: it carries its own name out loud — «Bredd (mm), dra för att
+// ändra» — beside the field's, so the word is not gone from the panel, it is only not drawn.
+//
+// The grip is where the drag lives, and the drag is one entry in the history however many times
+// the pointer reports it (L14): the token is made at `pointerdown` and every step of the pull
+// wears it. What the pointer has travelled but not yet spent is kept on the hold, so a step that
+// took three reports of one pixel still arrives.
+function Scrub({
+  name,
+  icon,
+  unit,
+  value,
+  step,
+  min,
+  max,
+  readOnly,
+  describedBy,
+  gesture,
+  onWrite,
+}: {
+  name: string
+  icon: string
+  unit?: string
+  value: number
+  step: number
+  min?: number
+  max?: number
+  readOnly?: boolean
+  describedBy?: string
+  // Every write of this number belongs to a doing: the pull it was made in, or the visit to the
+  // field the digits were typed during (L14).
+  gesture: Gesture
+  onWrite(value: number, gesture?: string): void
+}) {
+  const t = useT()
+  const held = useRef<{ x: number; rest: number; token: string; value: number } | null>(null)
+  const take = (event: ReactPointerEvent<HTMLElement>) => {
+    if (readOnly || event.button !== 0) return
+    event.preventDefault()
+    held.current = { x: event.clientX, rest: 0, token: gesture.begin(), value }
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+  }
+  const drag = (event: ReactPointerEvent<HTMLElement>) => {
+    const hold = held.current
+    if (!hold) return
+    const next = scrubbed(hold.value, { travel: hold.rest + (event.clientX - hold.x), step, shift: event.shiftKey, min, max })
+    hold.x = event.clientX
+    hold.rest = next.rest
+    if (next.value === hold.value) return
+    hold.value = next.value
+    onWrite(next.value, hold.token)
+  }
+  const letGo = () => {
+    held.current = null
+  }
+  // The keyboard's way to the same number, and the one thing about the panel L12 does not relax:
+  // the arrows take the drag's own step, Shift takes ten of them, and one press is a whole thing
+  // done and so a step of its own in the history (L14). The grip answers left and right for the
+  // reader who never lands in the field; the field answers up and down, which is what a number
+  // field already promises — and it is handled here rather than left to the browser because the
+  // browser knows nothing about Shift.
+  const nudge = (steps: number, shift: boolean) => {
+    if (readOnly) return
+    const next = scrubbed(value, { travel: steps * SCRUB_PX, step, shift, min, max })
+    if (next.value !== value) onWrite(next.value)
+  }
+  const keys = (event: ReactKeyboardEvent<HTMLElement>, up: string, down: string) => {
+    const steps = event.key === up ? 1 : event.key === down ? -1 : 0
+    if (steps === 0 || event.altKey || event.ctrlKey || event.metaKey) return
+    event.preventDefault()
+    nudge(steps, event.shiftKey)
+  }
+  return (
+    <div className="byd-props-f">
+      <span
+        className="byd-props-grip"
+        role="button"
+        tabIndex={readOnly ? -1 : 0}
+        aria-label={t('canvas.props.grip', { name })}
+        aria-hidden={readOnly ? 'true' : undefined}
+        onPointerDown={take}
+        onPointerMove={drag}
+        onPointerUp={letGo}
+        onPointerCancel={letGo}
+        onKeyDown={(event) => keys(event, 'ArrowRight', 'ArrowLeft')}
+      >
+        {icon}
+      </span>
+      <input
+        type="number"
+        aria-label={name}
+        step={step}
+        {...(min !== undefined ? { min } : {})}
+        {...(max !== undefined ? { max } : {})}
+        value={value}
+        readOnly={readOnly === true}
+        {...(describedBy ? { 'aria-describedby': describedBy } : {})}
+        {...gesture.visit}
+        onKeyDown={(event) => keys(event, 'ArrowUp', 'ArrowDown')}
+        onChange={(e) => onWrite(Number(e.target.value), gesture.token())}
+      />
+      {unit !== undefined && (
+        <u className="byd-props-unit" aria-hidden="true">
+          {unit}
+        </u>
+      )}
+    </div>
+  )
+}
+
 // `fields` are the columns the picker offers; `taken` is every name a new one would collide with,
 // which is those plus the card's own id (#32). `icons` is the game's own set (E4), which is what
 // an icon placed on the card is chosen from and changed to.
@@ -1550,6 +1675,10 @@ function Properties({
     setBackToSwitch(false)
   }, [backToSwitch])
   const isFixed = el.kind === 'image' && 'literal' in el.bind
+  // Whether this element has anything to say about what it shows. A shape shows nothing but
+  // itself, so it is given no section about it — a heading over an empty section is a promise
+  // the panel does not keep.
+  const content = el.kind === 'icons' || el.kind === 'image' || ('bind' in el && !isFixed)
   const closeLibrary = () => {
     setChoosing(false)
     setBackToSwitch(true)
@@ -1580,24 +1709,23 @@ function Properties({
     setMaking(false)
     setRefocus(true)
   }
-  const num = (label: Key, key: 'x' | 'y' | 'w' | 'h') =>
+  // A locked layer's box can be read but not typed into, and not pulled either (L15): the lock is
+  // about where the element sits and how big it is, and these four numbers are exactly that. What
+  // it is set in, what colour it is and which column it draws stay open — locking a layer is not
+  // freezing its design.
+  const num = (label: Key, key: 'x' | 'y' | 'w' | 'h', icon: string) =>
     key in el ? (
-      <label>
-        {t(label)}
-        {/* A locked layer's box can be read but not typed into (L15): the lock is about where the
-            element sits and how big it is, and these four numbers are exactly that. What it is
-            set in, what colour it is and which column it draws stay open — locking a layer is not
-            freezing its design. */}
-        <input
-          type="number"
-          step={0.5}
-          value={(el as Record<string, unknown>)[key] as number}
-          readOnly={el.locked === true}
-          {...(el.locked ? { 'aria-describedby': LOCKED_NOTE } : {})}
-          {...typing.visit}
-          onChange={(e) => onPatch({ [key]: Number(e.target.value) } as Partial<Element>, typing.token())}
-        />
-      </label>
+      <Scrub
+        name={t(label)}
+        icon={icon}
+        unit="mm"
+        step={0.5}
+        value={(el as Record<string, unknown>)[key] as number}
+        readOnly={el.locked === true}
+        {...(el.locked ? { describedBy: LOCKED_NOTE } : {})}
+        gesture={typing}
+        onWrite={(value, gesture) => onPatch({ [key]: value } as Partial<Element>, gesture)}
+      />
     ) : null
   return (
     <div className="byd-props">
@@ -1606,63 +1734,109 @@ function Properties({
           {t('canvas.props.locked')}
         </p>
       )}
-      {num('canvas.props.x', 'x')}
-      {num('canvas.props.y', 'y')}
-      {num('canvas.props.w', 'w')}
-      {num('canvas.props.h', 'h')}
-      {/* Which icon a single one shows (#33). It is bound to a name rather than to a column
-          because this icon is the card's and not the row's — a suit mark is the same on every
-          card — so the set is what it is chosen from, and the field picker below is the way to
-          make it the row's after all. The name it already carries is offered whatever the set
-          holds, exactly as the family picker offers the one an element is already set in: an
-          element is never moved to another icon behind the designer's back.
+      <Section name={t('canvas.props.sec.layout')}>
+        {num('canvas.props.x', 'x', 'X')}
+        {num('canvas.props.y', 'y', 'Y')}
+        {num('canvas.props.w', 'w', 'B')}
+        {num('canvas.props.h', 'h', 'H')}
+      </Section>
+      {/* What the element shows (#32, #320, #33): the column it draws, or the one picture or
+          icon it carries itself. Every element that shows data says which column it shows. */}
+      {content && (
+        <Section name={t('canvas.props.sec.content')}>
+          {/* Which icon a single one shows (#33). It is bound to a name rather than to a column
+              because this icon is the card's and not the row's — a suit mark is the same on every
+              card — so the set is what it is chosen from, and the field picker below is the way to
+              make it the row's after all. The name it already carries is offered whatever the set
+              holds, exactly as the family picker offers the one an element is already set in: an
+              element is never moved to another icon behind the designer's back.
 
-          And it stays here when the element has been bound to a column, saying that the icons
-          come from there rather than pointing at a name the element does not show. Naming one is
-          then the way back: the two pickers are two ways of saying the same thing, so each is the
-          way out of what the other did, and neither has to guess a name to go back to. */}
-      {el.kind === 'icons' && (icons.length > 0 || 'literal' in el.bind) && (
-        <label>
-          {t('canvas.props.icon')}
-          <select value={'literal' in el.bind ? el.bind.literal : ''} onChange={(e) => e.target.value !== '' && onPatch({ bind: { literal: e.target.value } })}>
-            {'field' in el.bind && <option value="">{t('canvas.props.icon.fromField')}</option>}
-            {[...new Set([...icons, ...('literal' in el.bind ? [el.bind.literal] : [])])].map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-      {/* Where a picture comes from (#320): the row's column, or one picture the template carries
-          itself — a background, a frame, a logo that is the same on every card. The switch only
-          opens the question; the window over the game's pictures is what answers it, and closing
-          the window unanswered leaves the element on its column. Going back is going back to the
-          column it was drawn from. */}
-      {el.kind === 'image' && (
-        <div className="byd-props-source" role="radiogroup" aria-label={t('canvas.props.source')}>
-          <label>
-            <input type="radio" name={`${el.id}-source`} checked={!isFixed} onChange={toColumn} />
-            {t('canvas.props.source.field')}
-          </label>
-          <label>
-            <input ref={fixedRef} type="radio" name={`${el.id}-source`} checked={isFixed} onChange={() => setChoosing(true)} />
-            {t('canvas.props.source.fixed')}
-          </label>
-        </div>
-      )}
-      {el.kind === 'image' && isFixed && (
-        <FixedPicture el={el} pictures={pictures} assetBase={assetBase} onChoose={() => setChoosing(true)} />
-      )}
-      {el.kind === 'image' && isFixed && making && (
-        <NewField
-          taken={taken}
-          onCreate={(field) => {
-            onAddField(field, el.id)
-            closeForm()
-          }}
-          onCancel={closeForm}
-        />
+              And it stays here when the element has been bound to a column, saying that the icons
+              come from there rather than pointing at a name the element does not show. Naming one is
+              then the way back: the two pickers are two ways of saying the same thing, so each is the
+              way out of what the other did, and neither has to guess a name to go back to. */}
+          {el.kind === 'icons' && (icons.length > 0 || 'literal' in el.bind) && (
+            <label>
+              {t('canvas.props.icon')}
+              <select value={'literal' in el.bind ? el.bind.literal : ''} onChange={(e) => e.target.value !== '' && onPatch({ bind: { literal: e.target.value } })}>
+                {'field' in el.bind && <option value="">{t('canvas.props.icon.fromField')}</option>}
+                {[...new Set([...icons, ...('literal' in el.bind ? [el.bind.literal] : [])])].map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {/* Where a picture comes from (#320): the row's column, or one picture the template carries
+              itself — a background, a frame, a logo that is the same on every card. The switch only
+              opens the question; the window over the game's pictures is what answers it, and closing
+              the window unanswered leaves the element on its column. Going back is going back to the
+              column it was drawn from. */}
+          {el.kind === 'image' && (
+            <div className="byd-props-source" role="radiogroup" aria-label={t('canvas.props.source')}>
+              <label>
+                <input type="radio" name={`${el.id}-source`} checked={!isFixed} onChange={toColumn} />
+                {t('canvas.props.source.field')}
+              </label>
+              <label>
+                <input ref={fixedRef} type="radio" name={`${el.id}-source`} checked={isFixed} onChange={() => setChoosing(true)} />
+                {t('canvas.props.source.fixed')}
+              </label>
+            </div>
+          )}
+          {el.kind === 'image' && isFixed && (
+            <FixedPicture el={el} pictures={pictures} assetBase={assetBase} onChoose={() => setChoosing(true)} />
+          )}
+          {el.kind === 'image' && isFixed && making && (
+            <NewField
+              taken={taken}
+              onCreate={(field) => {
+                onAddField(field, el.id)
+                closeForm()
+              }}
+              onCancel={closeForm}
+            />
+          )}
+          {'bind' in el && !isFixed && (
+            // Every element that shows data says which column it shows — a picture and a row of
+            // icons as much as a text box, or one added from the tool rail could never be bound.
+            <label className="byd-props-field">
+              {t('canvas.props.field')}
+              <select
+                ref={fieldRef}
+                value={'field' in el.bind ? el.bind.field : ''}
+                onChange={(e) => (e.target.value === NEW_FIELD ? setMaking(true) : e.target.value !== '' && onPatch({ bind: { field: e.target.value } }))}
+              >
+                {/* An element bound to a value shows no column, and the picker says so. Without this
+                    the browser draws the first column as the chosen one and the panel states a
+                    binding the element does not have. */}
+                {!('field' in el.bind) && <option value="">{t('canvas.props.field.none')}</option>}
+                {fields.map((f) => (
+                  <option key={f} value={f}>
+                    {f}
+                  </option>
+                ))}
+                {/* The second door (#32): the designer noticed the column was missing here, so this
+                    is where she is allowed to make it — and the element is bound to it at once. */}
+                <option value={NEW_FIELD}>{t('canvas.props.field.new')}</option>
+              </select>
+              {making && (
+                <NewField
+                  taken={taken}
+                  onCreate={(field) => {
+                    // One call, because it is one thing: the column and this element's binding to it
+                    // arrive together or the first Ctrl+Z leaves the column standing with the element
+                    // bound back to whatever it showed before.
+                    onAddField(field, el.id)
+                    closeForm()
+                  }}
+                  onCancel={closeForm}
+                />
+              )}
+            </label>
+          )}
+        </Section>
       )}
       {choosing && assetBase && (
         <PictureLibraryDialog
@@ -1680,46 +1854,8 @@ function Properties({
           onClose={closeLibrary}
         />
       )}
-      {'bind' in el && !isFixed && (
-        // Every element that shows data says which column it shows — a picture and a row of
-        // icons as much as a text box, or one added from the tool rail could never be bound.
-        <label className="byd-props-field">
-          {t('canvas.props.field')}
-          <select
-            ref={fieldRef}
-            value={'field' in el.bind ? el.bind.field : ''}
-            onChange={(e) => (e.target.value === NEW_FIELD ? setMaking(true) : e.target.value !== '' && onPatch({ bind: { field: e.target.value } }))}
-          >
-            {/* An element bound to a value shows no column, and the picker says so. Without this
-                the browser draws the first column as the chosen one and the panel states a
-                binding the element does not have. */}
-            {!('field' in el.bind) && <option value="">{t('canvas.props.field.none')}</option>}
-            {fields.map((f) => (
-              <option key={f} value={f}>
-                {f}
-              </option>
-            ))}
-            {/* The second door (#32): the designer noticed the column was missing here, so this
-                is where she is allowed to make it — and the element is bound to it at once. */}
-            <option value={NEW_FIELD}>{t('canvas.props.field.new')}</option>
-          </select>
-          {making && (
-            <NewField
-              taken={taken}
-              onCreate={(field) => {
-                // One call, because it is one thing: the column and this element's binding to it
-                // arrive together or the first Ctrl+Z leaves the column standing with the element
-                // bound back to whatever it showed before.
-                onAddField(field, el.id)
-                closeForm()
-              }}
-              onCancel={closeForm}
-            />
-          )}
-        </label>
-      )}
       {el.kind === 'text' && (
-        <>
+        <Section name={t('canvas.props.sec.text')}>
           <label>
             {/* The families the project names, and the one this element is already set in even
                 when the project has forgotten it — an element is never moved to another type
@@ -1733,10 +1869,7 @@ function Properties({
               ))}
             </select>
           </label>
-          <label>
-            {t('canvas.props.size')}
-            <input type="number" step={0.5} value={el.font.sizePt} {...typing.visit} onChange={(e) => onPatch({ font: { ...el.font, sizePt: Number(e.target.value) } }, typing.token())} />
-          </label>
+          <Scrub name={t('canvas.props.size')} icon="A" unit="pt" step={0.5} min={1} value={el.font.sizePt} gesture={typing} onWrite={(sizePt, gesture) => onPatch({ font: { ...el.font, sizePt } }, gesture)} />
           <label>
             {t('canvas.props.weight')}
             <select value={el.font.weight ?? 400} onChange={(e) => onPatch({ font: { ...el.font, weight: Number(e.target.value) as 400 | 600 | 700 | 800 } })}>
@@ -1758,7 +1891,7 @@ function Properties({
               <option value="fixed">{t('canvas.fit.fixed')}</option>
             </select>
           </label>
-        </>
+        </Section>
       )}
       {/* A picture fills its frame, so the frame is exactly what is seen and the handles, the
           outline and the guides all stand on the picture itself. The one thing that can put air
@@ -1767,7 +1900,7 @@ function Properties({
           A picture fitted whole inside its frame keeps its proportions too, so it reads as on;
           turning it off and on again lands on filling, which is the frame the switch is about. */}
       {el.kind === 'image' && (
-        <>
+        <Section name={t('canvas.props.sec.picture')}>
           <label className="byd-props-switch">
             <input type="checkbox" checked={(el.fit ?? 'cover') !== 'fill'} onChange={(e) => onPatch({ fit: e.target.checked ? 'cover' : 'fill' })} />
             {t('canvas.props.keepRatio')}
@@ -1794,7 +1927,7 @@ function Properties({
             <input type="checkbox" checked={el.frame !== undefined} onChange={(e) => onPatch({ frame: e.target.checked ? { fill: DEFAULT_FILL } : undefined })} />
             {t('canvas.props.evenMotifs')}
           </label>
-        </>
+        </Section>
       )}
       {el.kind === 'shape' && <ShapeProps el={el} point={point} fields={fields} valuesIn={valuesIn} onPatch={onPatch} />}
     </div>
@@ -1844,81 +1977,72 @@ function ShapeProps({ el, point, fields, valuesIn, onPatch }: { el: Shape; point
   const solid = el.shape !== 'line'
   return (
     <>
-      <h3 className="byd-props-heading">{t('canvas.props.shape')}</h3>
-      <div className="byd-props-gallery" role="group" aria-label={t('canvas.props.shape')}>
-        {SHAPE_GALLERY.map((entry) => (
-          <button key={entry.id} type="button" aria-label={t(entry.name)} title={t(entry.name)} aria-pressed={chosen === entry.id} onClick={() => onPatch(shapeChoice(entry, el))}>
-            <ShapeGlyph geometry={glyphGeometry(entry, GLYPH)} />
-          </button>
-        ))}
-      </div>
-      {door && (
-        <button type="button" className="byd-props-disclose" onClick={() => onPatch(door)}>
-          {t('canvas.props.own')}
-        </button>
-      )}
-      {/* The two ways back out of a curve (L38). «Räta ut punkten» is offered for the point the
-          designer is standing on and only while it carries a handle; «Räta ut alla» gives the
-          whole outline back as the polygon L26 wrote. Neither is offered on an outline that has
-          no curve in it at all — a command that would change nothing reads as a broken one. */}
-      {own && bentPoints(el.points ?? []) && (
-        <div className="byd-props-straighten">
-          {bent && (
-            <button type="button" className="byd-secondary" onClick={() => onPatch({ points: straightPoint(el.points ?? [], point ?? 0) })}>
-              {t('canvas.props.straight')}
+      <Section name={t('canvas.props.shape')}>
+        <div className="byd-props-gallery" role="group" aria-label={t('canvas.props.shape')}>
+          {SHAPE_GALLERY.map((entry) => (
+            <button key={entry.id} type="button" aria-label={t(entry.name)} title={t(entry.name)} aria-pressed={chosen === entry.id} onClick={() => onPatch(shapeChoice(entry, el))}>
+              <ShapeGlyph geometry={glyphGeometry(entry, GLYPH)} />
             </button>
-          )}
-          <button type="button" className="byd-secondary" onClick={() => onPatch({ points: straightAll(el.points ?? []) })}>
-            {t('canvas.props.straightAll')}
-          </button>
+          ))}
         </div>
+        {door && (
+          <button type="button" className="byd-props-disclose" onClick={() => onPatch(door)}>
+            {t('canvas.props.own')}
+          </button>
+        )}
+        {/* The two ways back out of a curve (L38). «Räta ut punkten» is offered for the point the
+            designer is standing on and only while it carries a handle; «Räta ut alla» gives the
+            whole outline back as the polygon L26 wrote. Neither is offered on an outline that has
+            no curve in it at all — a command that would change nothing reads as a broken one. */}
+        {own && bentPoints(el.points ?? []) && (
+          <div className="byd-props-straighten">
+            {bent && (
+              <button type="button" className="byd-secondary" onClick={() => onPatch({ points: straightPoint(el.points ?? [], point ?? 0) })}>
+                {t('canvas.props.straight')}
+              </button>
+            )}
+            <button type="button" className="byd-secondary" onClick={() => onPatch({ points: straightAll(el.points ?? []) })}>
+              {t('canvas.props.straightAll')}
+            </button>
+          </div>
+        )}
+        {takes.corners && (
+          <Scrub name={t('canvas.props.corners')} icon="⬡" step={1} min={3} max={24} value={el.corners ?? 6} gesture={pushing} onWrite={(corners, gesture) => onPatch({ corners }, gesture)} />
+        )}
+        {takes.radius && (
+          <Scrub name={t('canvas.props.radius')} icon="◜" unit="mm" step={0.5} min={0} value={el.radiusMm ?? 0} gesture={pushing} onWrite={(radiusMm, gesture) => onPatch({ radiusMm }, gesture)} />
+        )}
+        {takes.rotation && (
+          <Scrub name={t('canvas.props.rotation')} icon="∠" unit="°" step={1} min={0} max={360} value={el.rotationDeg ?? 0} gesture={pushing} onWrite={(rotationDeg, gesture) => onPatch({ rotationDeg }, gesture)} />
+        )}
+        {takes.innerRatio && (
+          <Scrub name={t('canvas.props.innerRatio')} icon="✧" unit="%" step={1} min={5} max={95} value={Math.round((el.innerRatio ?? 0.45) * 100)} gesture={pushing} onWrite={(share, gesture) => onPatch({ innerRatio: share / 100 }, gesture)} />
+        )}
+      </Section>
+      {/* What fills the outline, and over it the pattern that is a layer and not a fill (L17). */}
+      {solid && (
+        <Section name={t('canvas.props.sec.fill')}>
+          <Fill fill={el.fill} fields={fields} valuesIn={valuesIn} onPatch={onPatch} />
+          <PatternProps pattern={el.pattern} fill={el.fill} onPatch={onPatch} />
+        </Section>
       )}
-      {takes.corners && (
+      <Section name={t('canvas.props.sec.line')}>
         <label>
-          {t('canvas.props.corners')}
-          <input type="number" min={3} max={24} value={el.corners ?? 6} {...pushing.visit} onChange={(e) => onPatch({ corners: Number(e.target.value) }, pushing.token())} />
+          {t('canvas.props.stroke')}
+          <input type="color" value={el.stroke ?? '#111111'} {...pushing.visit} onChange={(e) => onPatch({ stroke: e.target.value, ...((el.strokeMm ?? 0) > 0 ? {} : { strokeMm: 0.5 }) }, pushing.token())} />
         </label>
-      )}
-      {takes.radius && (
-        <label>
-          {t('canvas.props.radius')}
-          <input type="number" min={0} step={0.5} value={el.radiusMm ?? 0} {...pushing.visit} onChange={(e) => onPatch({ radiusMm: Number(e.target.value) }, pushing.token())} />
-        </label>
-      )}
-      {takes.rotation && (
-        <label className="byd-props-wide">
-          {t('canvas.props.rotation')}
-          <input type="range" min={0} max={360} value={el.rotationDeg ?? 0} {...pushing.visit} onChange={(e) => onPatch({ rotationDeg: Number(e.target.value) }, pushing.token())} />
-        </label>
-      )}
-      {takes.innerRatio && (
-        <label className="byd-props-wide">
-          {t('canvas.props.innerRatio')}
-          <input type="range" min={5} max={95} value={Math.round((el.innerRatio ?? 0.45) * 100)} {...pushing.visit} onChange={(e) => onPatch({ innerRatio: Number(e.target.value) / 100 }, pushing.token())} />
-        </label>
-      )}
-      <label>
-        {t('canvas.props.stroke')}
-        <input type="color" value={el.stroke ?? '#111111'} {...pushing.visit} onChange={(e) => onPatch({ stroke: e.target.value, ...((el.strokeMm ?? 0) > 0 ? {} : { strokeMm: 0.5 }) }, pushing.token())} />
-      </label>
-      <label>
-        {t('canvas.props.strokeMm')}
-        <input type="number" min={0} step={0.1} value={el.strokeMm ?? 0} {...pushing.visit} onChange={(e) => onPatch({ strokeMm: Number(e.target.value) }, pushing.token())} />
-      </label>
-      {/* How see-through the whole shape is (#317): one number for the layer, so the fill, the
-          pattern over it and the line fade together. In per cent, because that is the unit the
-          value is thought in — the document keeps the share of one. A range answers an arrow key
-          and a dragged thumb with one control, and the gesture makes the whole drag one undo.
-          It stands above the fill and not under the shadow: it is about the shape itself, and
-          the controls below it are each about one layer of it. Offered on a line as well, which
-          has no inside to fill but is ink all the same. */}
-      <label className="byd-props-wide">
-        {t('canvas.props.opacity')}
-        <input type="range" min={0} max={100} value={Math.round((el.opacity ?? 1) * 100)} {...pushing.visit} onChange={(e) => onPatch({ opacity: Number(e.target.value) / 100 }, pushing.token())} />
-      </label>
-      {solid && <Fill fill={el.fill} fields={fields} valuesIn={valuesIn} onPatch={onPatch} />}
-      {solid && <PatternProps pattern={el.pattern} fill={el.fill} onPatch={onPatch} />}
-      <ShadowProps shadow={el.shadow} onPatch={onPatch} />
+        <Scrub name={t('canvas.props.strokeMm')} icon="▬" unit="mm" step={0.1} min={0} value={el.strokeMm ?? 0} gesture={pushing} onWrite={(strokeMm, gesture) => onPatch({ strokeMm }, gesture)} />
+      </Section>
+      {/* What the shape does as a whole rather than what one layer of it is: how see-through it
+          is (#317), and what it casts (L17). In per cent, because that is the unit the value is
+          thought in — the document keeps the share of one. It was a slider and is now the panel's
+          one number control like every other (L25): the same arrow keys, the same grip, and the
+          same one entry in the history per drag. Offered on a line as well, which has no inside
+          to fill but is ink all the same. */}
+      <Section name={t('canvas.props.sec.effects')}>
+        <Scrub name={t('canvas.props.opacity')} icon="◐" unit="%" step={1} min={0} max={100} value={Math.round((el.opacity ?? 1) * 100)} gesture={pushing} onWrite={(share, gesture) => onPatch({ opacity: share / 100 }, gesture)} />
+        <ShadowProps shadow={el.shadow} onPatch={onPatch} />
+      </Section>
     </>
   )
 }
@@ -1949,14 +2073,8 @@ function PatternProps({ pattern, fill, onPatch }: { pattern: Pattern | undefined
             {t('canvas.props.pattern.color')}
             <input type="color" value={pattern.color} {...pushing.visit} onChange={(e) => onPatch({ pattern: { ...pattern, color: e.target.value } }, pushing.token())} />
           </label>
-          <label>
-            {t('canvas.props.pattern.scale')}
-            <input type="number" min={0.5} step={0.5} value={pattern.scaleMm} {...pushing.visit} onChange={(e) => onPatch({ pattern: { ...pattern, scaleMm: Number(e.target.value) } }, pushing.token())} />
-          </label>
-          <label>
-            {t('canvas.props.pattern.angle')}
-            <input type="range" min={0} max={180} value={pattern.angleDeg ?? 0} {...pushing.visit} onChange={(e) => onPatch({ pattern: { ...pattern, angleDeg: Number(e.target.value) } }, pushing.token())} />
-          </label>
+          <Scrub name={t('canvas.props.pattern.scale')} icon="⊞" unit="mm" step={0.5} min={0.5} value={pattern.scaleMm} gesture={pushing} onWrite={(scaleMm, gesture) => onPatch({ pattern: { ...pattern, scaleMm } }, gesture)} />
+          <Scrub name={t('canvas.props.pattern.angle')} icon="∠" unit="°" step={1} min={0} max={180} value={pattern.angleDeg ?? 0} gesture={pushing} onWrite={(angleDeg, gesture) => onPatch({ pattern: { ...pattern, angleDeg } }, gesture)} />
         </div>
       )}
     </>
@@ -1974,7 +2092,6 @@ function ShadowProps({ shadow, onPatch }: { shadow: Shadow | undefined; onPatch(
   const at = (next: Partial<Shadow>, gesture?: string) => onPatch({ shadow: { ...(shadow ?? SHADOWS[1]?.shadow ?? { dxMm: 0, dyMm: 0.6, blurMm: 1.2, color: '#000000' }), ...next } }, gesture)
   return (
     <>
-      <h3 className="byd-props-heading">{t('canvas.props.shadow')}</h3>
       <div className="byd-props-chips" role="group" aria-label={t('canvas.props.shadow')}>
         {SHADOWS.map((preset) => (
           <button key={preset.id} type="button" aria-pressed={chosen === preset.id} onClick={() => onPatch({ shadow: preset.shadow })}>
@@ -1992,26 +2109,14 @@ function ShadowProps({ shadow, onPatch }: { shadow: Shadow | undefined; onPatch(
       )}
       {shadow && open && (
         <div className="byd-props-paint">
-          <label>
-            {t('canvas.shadow.dx')}
-            <input type="number" step={0.1} value={shadow.dxMm} {...pushing.visit} onChange={(e) => at({ dxMm: Number(e.target.value) }, pushing.token())} />
-          </label>
-          <label>
-            {t('canvas.shadow.dy')}
-            <input type="number" step={0.1} value={shadow.dyMm} {...pushing.visit} onChange={(e) => at({ dyMm: Number(e.target.value) }, pushing.token())} />
-          </label>
-          <label>
-            {t('canvas.shadow.blur')}
-            <input type="number" min={0} step={0.1} value={shadow.blurMm} {...pushing.visit} onChange={(e) => at({ blurMm: Number(e.target.value) }, pushing.token())} />
-          </label>
+          <Scrub name={t('canvas.shadow.dx')} icon="↔" unit="mm" step={0.1} value={shadow.dxMm} gesture={pushing} onWrite={(dxMm, gesture) => at({ dxMm }, gesture)} />
+          <Scrub name={t('canvas.shadow.dy')} icon="↕" unit="mm" step={0.1} value={shadow.dyMm} gesture={pushing} onWrite={(dyMm, gesture) => at({ dyMm }, gesture)} />
+          <Scrub name={t('canvas.shadow.blur')} icon="◌" unit="mm" step={0.1} min={0} value={shadow.blurMm} gesture={pushing} onWrite={(blurMm, gesture) => at({ blurMm }, gesture)} />
           <label>
             {t('canvas.shadow.color')}
             <input type="color" value={shadow.color} {...pushing.visit} onChange={(e) => at({ color: e.target.value }, pushing.token())} />
           </label>
-          <label>
-            {t('canvas.shadow.opacity')}
-            <input type="range" min={0} max={100} value={Math.round((shadow.opacity ?? 1) * 100)} {...pushing.visit} onChange={(e) => at({ opacity: Number(e.target.value) / 100 }, pushing.token())} />
-          </label>
+          <Scrub name={t('canvas.shadow.opacity')} icon="◐" unit="%" step={1} min={0} max={100} value={Math.round((shadow.opacity ?? 1) * 100)} gesture={pushing} onWrite={(share, gesture) => at({ opacity: share / 100 }, gesture)} />
         </div>
       )}
     </>
