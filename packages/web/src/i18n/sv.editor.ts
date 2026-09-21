@@ -602,6 +602,7 @@ export const svEditor = {
   'rules.title': 'Regelboken',
   // Regelbokens två lägen (#227): en växel i flikens eget huvud, direkt efter REGELBOKEN.
   'rules.view': 'Läge',
+  'rules.tools': 'Verktyg',
   'rules.view.edit': 'Redigerbar',
   'rules.view.table': 'Som på bordet',
   'rules.view.said': '{mode}.',

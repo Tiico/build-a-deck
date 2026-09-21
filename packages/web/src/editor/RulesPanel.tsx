@@ -204,7 +204,6 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
       <div className="byd-rules-bar">
         <h2>{t('rules.title')}</h2>
         {writing && <Modes mode={mode} onMode={setMode} />}
-        {rules && <Booklet client={client} />}
         {/* What the rules are for, as a line above the disposition and never as a box (#131). */}
         <span>{t(rules ? 'rules.hint' : 'rules.empty')}</span>
         {/* Which file the book came out of, and when (#131): text in the document, so it travels
@@ -238,13 +237,20 @@ export function RulesPanel({ doc, client, assetBase }: RulesPanelProps) {
             took would have been a promise nobody kept — and the way of working the product owner
             asked to support: write in your own editor, and hand the file over again and again.
             The book remembers which file it came out of, so the control can name it. */}
+        {/* The tools of a written book, together and apart from the switch (#298). The booklet used
+            to stand right beside the switch, where a pill after two pills reads as a third mode of
+            the book; it is a thing done with the book, like the import, and the two stand behind a
+            divider at the far end of the header. Import and booklet only, because a control that is
+            not a tool of the book — the switch, the hint — would make the group the header with a
+            name on it, not a group. */}
         {rules && !proposal && (
-          <div className="byd-rules-ways">
+          <div className="byd-rules-ways byd-rules-tools" role="group" aria-label={t('rules.tools')}>
             <PickFile
               label={rules.source ? t('rules.import.again') : t('rules.import.over')}
               {...(rules.source ? { spoken: t('rules.import.again.of', { file: rules.source.file }) } : {})}
               onPick={pick}
             />
+            <Booklet client={client} />
           </div>
         )}
       </div>
