@@ -80,8 +80,9 @@
   .dorr .dsys { flex: 1 1 auto; color: var(--quiet); font-size: 11.5px; padding: 0 8px; }
   .dorr .dx { flex: none; min-width: var(--tap); min-height: var(--tap); border: 1px solid transparent; border-radius: 8px; background: transparent; color: #6f778a; font: inherit; font-size: 13px; cursor: pointer; }
   .dorr .dx:hover { border-color: var(--line); color: #e6ecfa; }
-  .dorr .dlas { flex: none; width: 44px; text-align: center; color: #4c real; }
-  .dorr .dlas { color: #4c5364; }
+  .dorr .dlas { flex: none; width: 44px; text-align: center; color: #4c5364; }
+  .dorr li[data-redigeras] { flex-wrap: wrap; }
+  .dorr li[data-redigeras] .fel { flex: 1 1 100%; padding: 2px 2px 0; }
 
   /* ── D · Kolumnpanelen ────────────────────────────────────────────────────────────────────── */
   .panel { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: 12px; display: grid; gap: 10px; align-content: start; max-height: 420px; overflow: auto; scrollbar-width: thin; }
@@ -314,7 +315,9 @@ function borja(nyckel) {
   utkast = nyckel
   fel = null
   rita()
-  const falt = document.querySelector('[data-namnfalt]')
+  // Det syns bara ett namnfält åt gången: utfällningarna som inte är framme ritas men visas inte,
+  // så fältet som ska ha fokus är det som faktiskt har en storlek.
+  const falt = [...document.querySelectorAll('[data-namnfalt]')].find((e) => e.getBoundingClientRect().height > 0)
   if (falt) { falt.focus(); falt.select() }
 }
 
@@ -348,7 +351,11 @@ function ritaHuvud() {
       }
       th.append(knapp)
     }
-    if (variant !== 'd') th.append(utfallningen(k))
+    // Utfällningen står inte kvar under ett fält. I B *är* rubriken fältet medan namnet byts —
+    // det finns ingen rubrik att sortera på och inget namn att säga något om förrän bytet är
+    // klart — och två rutor under samma huvud lägger sig ovanpå varandra, vilket mätningen
+    // visade innan den här raden fanns.
+    if (variant !== 'd' && !(variant === 'b' && redigerar === k.key)) th.append(utfallningen(k))
     if (redigerar === k.key && variant === 'a') th.dataset.fast = ''
     huvud.append(th)
   }
@@ -412,10 +419,12 @@ function namnfalt(k) {
   falt.value = utkast
   falt.setAttribute('aria-label', `Namn på kolumnen ${k.key}`)
   if (fel) { falt.setAttribute('aria-invalid', 'true'); falt.setAttribute('aria-describedby', 'namnfel') }
-  falt.addEventListener('input', (e) => {
-    utkast = e.target.value
+  falt.addEventListener('input', () => {
+    utkast = falt.value
+    // Besked medan man skriver, inte när man trycker: «ytan ska säga det innan» är en mening om
+    // när, och ett fel som kommer först vid Enter är ett kast med bättre typsnitt.
     const nytt = provaNamn(k.key, utkast)
-    if (nytt !== fel) { fel = nytt; ritaFel(k) }
+    if (nytt !== fel) { fel = nytt; ritaFel(falt) }
   })
   falt.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); byt(k.key, utkast) }
@@ -426,15 +435,16 @@ function namnfalt(k) {
 
 // Felet ritas om för sig medan man skriver: att rita om hela huvudet vid varje tangenttryck
 // skulle ta fokus ur fältet, vilket är samma sak som att inte kunna skriva.
-function ritaFel(k) {
+function ritaFel(falt) {
   for (const gammal of document.querySelectorAll('[data-felruta]')) gammal.remove()
-  const falt = document.querySelector('[data-namnfalt]')
-  if (!falt) return
+  if (!falt || !falt.isConnected) return
   if (fel) { falt.setAttribute('aria-invalid', 'true'); falt.setAttribute('aria-describedby', 'namnfel') } else { falt.removeAttribute('aria-invalid'); falt.removeAttribute('aria-describedby') }
   if (!fel) { mat(); return }
-  const ruta = felruta(fel)
-  if (shell.dataset.variant === 'b') falt.closest('th').append(ruta)
-  else falt.closest('.falt, li, .kolumnrad').after ? falt.closest('.falt').parentElement.append(ruta) : null
+  // Beskedet hänger under fältet, i den ruta fältet står i — vilken det är beror på varianten och
+  // ingenting annat. I B finns ingen ruta att hänga i: rubriken *är* fältet, så det får ligga över
+  // tabellen under huvudet.
+  const bo = shell.dataset.variant === 'b' ? falt.closest('th') : falt.closest('.namnrad, li, .kolumnrad')
+  if (bo) bo.append(felruta(fel))
   mat()
 }
 
@@ -471,7 +481,7 @@ function utfallningen(k) {
     spara.type = 'button'
     spara.className = 'stark'
     spara.textContent = 'Byt'
-    spara.addEventListener('click', () => byt(k.key, document.querySelector('[data-namnfalt]').value))
+    spara.addEventListener('click', () => byt(k.key, input.value))
     falt.append(input, spara)
     rad.append(etikett, falt)
     if (redigerar === k.key && fel) rad.append(felruta(fel))
@@ -533,6 +543,7 @@ function dorren() {
       las.setAttribute('aria-hidden', 'true')
       li.append(namn, las)
     } else if (shell.dataset.variant === 'c' && redigerar === rad.key) {
+      li.dataset.redigeras = ''
       li.append(namnfalt(rad))
       if (fel) li.append(felruta(fel))
     } else {
