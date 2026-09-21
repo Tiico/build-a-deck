@@ -9,7 +9,10 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 // Without its comments: a comment that says «ingen :hover öppnar den» is not a rule that does.
-const css = readFileSync(join(import.meta.dirname, '..', 'src/editor/editor.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+//
+// The pattern has a sheet of its own since #305, because the phone, the observer and the table
+// screen took the same box and none of them ships the editor's sheet.
+const css = readFileSync(join(import.meta.dirname, '..', 'src/help.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
 // Every rule whose selector names the pattern, as `[selector, declarations]`.
 const rules = [...css.matchAll(/([^{}]*byd-help[^{}]*)\{([^}]*)\}/g)].map((m) => [m[1]!.trim(), m[2]!.trim()] as const)
 
@@ -35,11 +38,22 @@ describe('the help pattern in the stylesheet', () => {
     expect(rules.filter(([, body]) => /transition|animation/.test(body))).toEqual([])
   })
 
-  it('gives the question mark the hit area the editor gives every control', () => {
-    const ask = rules.find(([selector]) => selector === '.byd-editor .byd-help-ask')
+  // The pattern's own wrapper carries the weight, so the ring is the same target on a surface
+  // nobody has written into this sheet — and a fallback stands in every measurement: `--byd-tap`
+  // is declared on `.byd-editor` and on `.byd-observer` and nowhere else, and a length that
+  // resolves to nothing is a declaration the browser throws away. The ring would then be as big
+  // as the glyph on the very surfaces where a thumb is all there is (#305).
+  it('gives the question mark the same hit area wherever it stands', () => {
+    const ask = rules.find(([selector]) => selector === '.byd-help .byd-help-ask')
     expect(ask).toBeDefined()
-    expect(ask![1]).toMatch(/width: var\(--byd-tap\)/)
-    expect(ask![1]).toMatch(/height: var\(--byd-tap\)/)
+    expect(ask![1]).toMatch(/width: var\(--byd-tap, 44px\)/)
+    expect(ask![1]).toMatch(/height: var\(--byd-tap, 44px\)/)
+  })
+
+  it('never leaves the box’s own spacing to a variable the surface may not have', () => {
+    const box = rules.find(([selector]) => selector === '.byd-help-box')!
+    const padding = /padding:([^;]*);/.exec(box[1])![1]!
+    expect([...padding.matchAll(/var\(([^),]*)\)/g)]).toEqual([])
   })
 
   it('lays the box over the work, fixed to the window and never inside a column that clips', () => {

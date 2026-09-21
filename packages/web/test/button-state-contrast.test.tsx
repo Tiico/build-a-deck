@@ -42,7 +42,9 @@ const shell = read('index.html')
 // (#270), and the editor page loads it because `RulesPanel` reaches the book through `RuleDrawer`.
 // Left out, those buttons stand unstyled here and are measured against a ground the product never
 // paints — which reads as a failure that no stylesheet can fix.
-const css = `${read('src/editor/editor.css')}\n${read('src/buttons.css')}\n${read('src/a11y.css')}\n${read('src/rules/rules-open.css')}
+// The help pattern has a sheet of its own since #305, because the phone and the table screen
+// took the same box: left out, the question mark's ring stands unpainted here.
+const css = `${read('src/help.css')}\n${read('src/editor/editor.css')}\n${read('src/buttons.css')}\n${read('src/a11y.css')}\n${read('src/rules/rules-open.css')}
 ${read('src/rules/rules.css')}`
 
 const document_ = (html: string) =>

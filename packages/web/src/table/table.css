@@ -718,10 +718,12 @@
   .byd-observer[data-drawer='shut'] [data-tv] > aside { display: none; }
   .byd-observer[data-drawer='open'] [data-tv] { grid-template-rows: minmax(0, 1.3fr) minmax(0, 1.7fr); }
 }
-/* On the narrowest screens the handle is two rows: who she is, and the two things she can do.
-   A right-aligned button alone on a second row reads as something that fell off the first. */
+/* On the narrowest screens the handle is two rows: who she is, and the things she can do.
+   A right-aligned button alone on a second row reads as something that fell off the first.
+   The question mark (L32, #305) is a third column and not a third row: a row more here is a row
+   less of felt, and at 320 px that is what pushed two zone names on top of each other. */
 @media (max-width: 600px) {
-  .byd-observer-handle { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+  .byd-observer-handle { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; }
   .byd-observer-mark { grid-column: 1 / -1; }
   .byd-observer-handle .byd-observer-flag { margin-left: 0; }
 }
@@ -805,34 +807,37 @@
 /* Den diskreta hjälpen (#224): en rund `?` i filtens nedre högra hörn, i dämpad färg, och listan
    den öppnar. Den tar ingen plats från bordet och ligger aldrig över något som spelas. Färgerna
    är filtens egna (L13): den dämpade krita som en avstängd skiva i ringen redan bär, och full
-   krita så fort den pekas på eller står öppen. */
-.byd-help { position: absolute; right: 16px; bottom: 16px; z-index: 30; }
+   krita så fort den pekas på eller står öppen.
+
+   Klasserna hette `byd-help*` till #305, då produktens enda hjälpmönster (L32) kom till filten
+   och till telefonen och behövde namnet. Det här är snabbkommandona och inte hjälplådan. */
+.byd-shortcuts { position: absolute; right: 16px; bottom: 16px; z-index: 30; }
 /* Skivan är 34 px och träffytan 44 (C4, #25): den negativa marginalen låter knappen växa utåt
    runt skivan, så att `/online` — som hålls i en hand — har en fingertopp att sikta på utan att
    skivan flyttar sig från hörnet eller ritas större än beslutet säger. */
-.byd-help-open { width: 44px; height: 44px; margin: -5px; padding: 0; border: 0; background: none; display: grid; place-items: center; cursor: pointer; }
-.byd-help-open > span {
+.byd-shortcuts-open { width: 44px; height: 44px; margin: -5px; padding: 0; border: 0; background: none; display: grid; place-items: center; cursor: pointer; }
+.byd-shortcuts-open > span {
   width: 34px; height: 34px; box-sizing: border-box; border-radius: 50%; display: grid; place-items: center;
   border: 1px solid var(--byd-felt-chalk-off); background: var(--byd-felt-plate); color: var(--byd-felt-chalk-off);
   font: 700 15px/1 var(--byd-felt-font, system-ui, sans-serif);
 }
-.byd-help-open:hover > span, .byd-help-open:focus-visible > span, .byd-help-open[aria-expanded='true'] > span {
+.byd-shortcuts-open:hover > span, .byd-shortcuts-open:focus-visible > span, .byd-shortcuts-open[aria-expanded='true'] > span {
   border-color: var(--byd-felt-chalk); color: var(--byd-felt-chalk);
 }
-.byd-help-panel {
+.byd-shortcuts-panel {
   position: absolute; right: 0; bottom: 42px; width: 360px; max-width: 80vw; max-height: 60vh; overflow: auto;
   padding: 12px 16px 16px; border-radius: 12px; text-align: left;
   border: 1px solid var(--byd-felt-chalk-off); background: var(--byd-felt-plate); color: var(--byd-felt-chalk);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
 }
-.byd-help-panel h2 { margin: 0; font-size: 14px; }
-.byd-help-panel p { margin: 0 0 10px; font-size: 11px; color: var(--byd-felt-chalk-off); }
-.byd-help-panel dl { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 7px 12px; align-items: baseline; }
+.byd-shortcuts-panel h2 { margin: 0; font-size: 14px; }
+.byd-shortcuts-panel p { margin: 0 0 10px; font-size: 11px; color: var(--byd-felt-chalk-off); }
+.byd-shortcuts-panel dl { margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 7px 12px; align-items: baseline; }
 /* Ett kommando med två grepp håller ihop dem på sin egen rad i stället för att bli två rader
    som säger samma mening. */
-.byd-help-panel dt { display: flex; flex-wrap: wrap; gap: 4px; }
-.byd-help-panel dd { margin: 0; font-size: 12px; }
-.byd-help-panel kbd {
+.byd-shortcuts-panel dt { display: flex; flex-wrap: wrap; gap: 4px; }
+.byd-shortcuts-panel dd { margin: 0; font-size: 12px; }
+.byd-shortcuts-panel kbd {
   display: inline-block; min-width: 18px; padding: 2px 6px; border-radius: 5px; white-space: nowrap;
   border: 1px solid var(--byd-felt-chalk-off); border-bottom-width: 2px;
   background: var(--byd-felt-edge); color: var(--byd-felt-chalk); font: 600 11px/1.3 ui-monospace, monospace; text-align: center;

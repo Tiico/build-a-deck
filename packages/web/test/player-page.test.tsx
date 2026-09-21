@@ -84,6 +84,35 @@ describe('PlayerPage', () => {
     table.close()
   })
 
+  // The help pattern on the phone (L32, #305): the same box as on the desk, on a narrower
+  // screen. The hint line over the hand says what a finger does; what it does not have room for
+  // stands behind the question mark beside the heading.
+  //
+  // The two ways out are what the decision rests on. The cross sits nine per cent down the view,
+  // which is a grip a hand has to move for, and what makes that bearable is that a press outside
+  // the box closes it — on a phone «outside» is nearly the whole screen, so it is under the
+  // thumb. `Escape` is for whoever has a keyboard.
+  it('puts the hand’s deeper explanation behind a question mark, and hover does not open it', async () => {
+    const id = await createSession(run)
+    await open(id, 'A', 'Ada')
+    const ask = await screen.findByRole('button', { name: 'Hjälp om handen' })
+    const box = () => screen.queryByRole('dialog', { name: 'handen' })
+    expect(box()).toBeNull()
+
+    fireEvent.pointerEnter(ask)
+    fireEvent.mouseOver(ask)
+    expect(box()).toBeNull()
+
+    fireEvent.click(ask)
+    expect(box()!.textContent).toMatch(/håll ett kort för att välja flera/i)
+    // What the surface itself says stays on the surface: the box is not where the hint went.
+    expect(screen.getByText(/Dina kort/)).toBeTruthy()
+
+    fireEvent.pointerDown(document.body)
+    await waitFor(() => expect(box()).toBeNull())
+    expect(document.activeElement).toBe(ask)
+  })
+
   // Sitting down is one envelope, and an envelope can be lost: `send` answers a socket that is
   // not there without throwing, and anything in flight is failed when the line drops. Latching
   // on the attempt rather than on the answer left a phone looking at a seat it never took, with

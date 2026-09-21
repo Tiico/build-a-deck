@@ -135,8 +135,24 @@ test.describe('the felt’s face is in the document before the first painting (K
     // over — 2.4 kB — is a little less than the 2.9 kB the line carried before and not more. A cut
     // that handed the saving straight back as slack would have measured nothing, which is the
     // mistake the seven raises above were made of.
+    //
+    // Raised once more, 2026-09-21 (#305): the product's one help pattern reached the phone, the
+    // observer and the table screen, and its sheet blocks with them. It weighs 2.4 kB — 1.3 kB
+    // for the question mark's ring, which is drawn in the phone's chrome on the first frame, and
+    // 1.1 kB for the box behind it — against the 1.4 kB the line had left. Measured: 82.1 kB
+    // beside the face before, 84.5 kB after.
+    //
+    // The #346 way out was looked at and left: the box could travel when it is opened, which
+    // would bring the sheet back to 83.4 kB and under the old line. It buys 139 bytes, and it
+    // costs the pattern its one property that is behaviour and not weight — the box stands there
+    // on the press that asked for it, on every surface, the editor's included. A kilobyte is not
+    // the four the drawer's inside was, and 139 bytes is not headroom anybody could build on.
+    //
+    // 83.5 kB → 84.6 kB: the measurement and a hundred and forty bytes. That is deliberately not
+    // room for a surface. The next one that outgrows this comes back here and writes its own
+    // line, as this one did.
     const sheet = blockingSheets(index).reduce((sum, href) => sum + statSync(join(OUT, href.replace(/^\//, ''))).size, 0)
-    expect(sheet).toBeLessThan(inlined + 83_500)
+    expect(sheet).toBeLessThan(inlined + 84_600)
   })
 
   // And the same thing said by a browser rather than by a reader of files: the built app served

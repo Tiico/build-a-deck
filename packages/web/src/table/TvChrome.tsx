@@ -6,6 +6,7 @@ import { QrCode } from './QrCode.js'
 import { Texture } from './Texture.js'
 import { hue } from './hue.js'
 import { componentOf } from './presence.js'
+import { Help } from '../editor/HelpDrawer.js'
 import { useT } from '../i18n/index.js'
 
 export type TvChromeProps = {
@@ -78,12 +79,21 @@ export function TvChrome({ view, activity, roomCode, joinUrl, title, version, in
           {rules}
         </div>
         {(roomCode || joinUrl) && (
-          <div className="byd-tv-join">
+          <div className="byd-tv-join byd-help-row">
             <span>{t('tv.join')}</span>
             {roomCode && <strong>{roomCode}</strong>}
             {/* One line of the TV's own heading, and nobody presses a television: the code stays a
                 picture there (#225). The room's code stands beside it in plain figures anyway. */}
             {joinUrl && <QrCode text={joinUrl} size={52} enlarge={false} />}
+            {/* The one help pattern (L32, #305), after the code and the square rather than in
+                front of them: what the room reads from across it comes first, and what a joined
+                phone becomes is behind the question mark instead of on a second line over the
+                felt. The row is the box's anchor, so a box that turns upward clears the code
+                and not merely the ring. */}
+            <Help topic={t('tv.join.help.topic')}>
+              <p>{t('tv.join.help.how')}</p>
+              <p>{t('tv.join.help.phone')}</p>
+            </Help>
           </div>
         )}
         <section className="byd-tv-inspect" aria-labelledby="tv-inspect">

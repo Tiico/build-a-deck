@@ -42,12 +42,12 @@ export function ShortcutHelp({ where, shortcuts }: { where: string; shortcuts: r
     return () => window.removeEventListener('keydown', onKey)
   }, [])
   return (
-    <div className="byd-help">
+    <div className="byd-shortcuts">
       {open && <Panel name={name} where={where} shortcuts={shortcuts} opener={opener} onClose={() => setOpen(false)} />}
       {/* The disc is 34 px as the decision says; the button around it is 44, because `/online` is
           a surface held in a hand and C4 gives no target smaller than a fingertip. The two are not
           in conflict: one is what is drawn, the other what can be hit. */}
-      <button ref={opener} type="button" className="byd-help-open" aria-expanded={open} aria-label={name} onClick={() => setOpen((was) => !was)}>
+      <button ref={opener} type="button" className="byd-shortcuts-open" aria-expanded={open} aria-label={name} onClick={() => setOpen((was) => !was)}>
         <span>?</span>
       </button>
     </div>
@@ -81,7 +81,7 @@ function Panel({ name, where, shortcuts, opener, onClose }: { name: string; wher
     return () => document.removeEventListener('pointerdown', onDown)
   }, [])
   return (
-    <div ref={panel} className="byd-help-panel" data-help-panel role="dialog" aria-modal="false" aria-label={name} tabIndex={-1}>
+    <div ref={panel} className="byd-shortcuts-panel" data-help-panel role="dialog" aria-modal="false" aria-label={name} tabIndex={-1}>
       <h2>{t('help.title')}</h2>
       <p>{where}</p>
       <dl>

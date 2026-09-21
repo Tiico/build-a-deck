@@ -9,6 +9,7 @@ import { PlaySheet } from './PlaySheet.js'
 import { TableSummary, RecentActivity } from './TableSummary.js'
 import { SessionButtons, SessionOverlays, useToast, type Sheet } from './SessionOverlays.js'
 import { RuleDrawer } from '../rules/RuleDrawer.js'
+import { Help } from '../editor/HelpDrawer.js'
 import { playIntents } from './play.js'
 import { Refusal, useRefusal } from '../status/Refusal.js'
 import { useT } from '../i18n/index.js'
@@ -152,6 +153,17 @@ export function PlayerSurface({ client, view, activity, seat, name, sessionId, f
       <header>
         <strong>{name}</strong>
         <span>{t(hand.length === 1 ? 'play.cards.one' : 'play.cards.other', { n: hand.length })}</span>
+        {/* The one help pattern (L32), on a narrower screen (#305). It stands in the chrome and
+            not beside the heading over the hand, and that is the whole of the measurement the
+            decision was made on: from up here the box hangs over the top of the felt and covers
+            nothing a thumb plays with, while from the heading it lay over three of the four
+            cards. The line under the hand says what a finger does; what it has no room for is
+            behind the question mark. */}
+        <Help topic={t('play.help.hand.topic')}>
+          <p>{t('play.help.hand.pick')}</p>
+          <p>{t('play.help.hand.play')}</p>
+          <p>{t('play.help.hand.hidden')}</p>
+        </Help>
         <SessionButtons client={client} view={view} sheet={sheet} onSheet={setSheet} />
         {/* The rules this table plays by (B7), one press away beside the session's own buttons.
             The living number (#226) reads this seat's own view: her own hand is a reading, the

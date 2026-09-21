@@ -21,6 +21,7 @@ import { statusLinks } from '../status/links.js'
 import { noticeFor } from '../status/notice.js'
 import { usePageTitle } from '../status/DocumentTitle.js'
 import { useRefusal } from '../status/Refusal.js'
+import { Help } from '../editor/HelpDrawer.js'
 import { useT } from '../i18n/index.js'
 
 // /observe?session=…&name=Eva&server=ws://…
@@ -104,6 +105,14 @@ export function ObserverPage({ timing = DEFAULT_TIMING }: ObserverPageProps = {}
           <i aria-hidden="true" />
           {t('observer.watching', { name })}
         </span>
+        {/* The one help pattern (L32, #305): what she may do, and what the others are told, is
+            more than the handle's one line carries. What she *sees* stays on the surface in the
+            banner over the table — visibility information never moves behind a question mark. */}
+        <Help topic={t('observer.help.topic')}>
+          <p>{t('observer.help.sees')}</p>
+          <p>{t('observer.help.touch')}</p>
+          <p>{t('observer.help.survey')}</p>
+        </Help>
         <button type="button" className="byd-observer-more" aria-expanded={drawer} onClick={() => setDrawer((open) => !open)}>
           {t('observer.more')}
         </button>

@@ -22,18 +22,25 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { chromium, type Browser, type Page } from 'playwright'
 import { EditorPage } from '../src/editor/EditorPage.js'
+import { PlayerPage } from '../src/player/PlayerPage.js'
+import { ObserverPage } from '../src/observer/ObserverPage.js'
+import { TablePage } from '../src/table/TablePage.js'
+import { TableClient } from '../src/client.js'
 import { ROW, helpAnchor, helpPlacement, type HelpPlacement } from '../src/editor/HelpDrawer.js'
 import { projectDoc } from './project-doc.js'
-import { startServer, type Running } from './fixture.js'
+import { admit, asTable, createSession, roomOf, seatSetup, startServer, type Running } from './fixture.js'
 import { atWidth } from './viewport.js'
 
 const read = (rel: string) => readFileSync(join(import.meta.dirname, '..', rel), 'utf8')
 const shell = read('index.html')
-const css = ['src/editor/editor.css', 'src/buttons.css', 'src/a11y.css', 'src/rules/rules-open.css', 'src/rules/rules.css'].map(read).join('\n')
-const document_ = (html: string, extra = '') =>
+const css = ['src/help.css', 'src/editor/editor.css', 'src/buttons.css', 'src/a11y.css', 'src/rules/rules-open.css', 'src/rules/rules.css'].map(read).join('\n')
+// The phone ships its own sheets and not the editor's; the help pattern's own sheet is in both,
+// because the box is the same box on either screen (L32, #305).
+const phoneCss = ['src/help.css', 'src/table/table.css', 'src/player/player.css', 'src/buttons.css', 'src/table/keyboard.css', 'src/rules/rules-open.css', 'src/rules/rules.css', 'src/table/texture.css'].map(read).join('\n')
+const document_ = (html: string, extra = '', sheets = css) =>
   shell
     .replace('<script type="module" src="/src/main.tsx"></script>', '')
-    .replace('</head>', `<style>${css}\n${extra}</style></head>`)
+    .replace('</head>', `<style>${sheets}\n${extra}</style></head>`)
     .replace('<div id="root"></div>', `<div id="root">${html}</div>`)
 
 const HEIGHT = 800
@@ -194,5 +201,151 @@ describe('with the text doubled', () => {
     expect(inside(open.box!, 1280, HEIGHT)).toBe(true)
     expect(overlaps(open.box!, open.line)).toBe(false)
     expect(open.under).toBe('box')
+  }, 90_000)
+})
+
+// The phone (L32's addendum, #305). The decision was made on one column of the prototype's
+// table: the box covers **0 %** of the hand's reach area, where a sheet from the bottom covered
+// 68 % and a full screen 100 %. A help surface that lies over four cards out of five and all
+// three buttons does not meet «hjälpytor blockerar inte nödvändiga spelhandlingar», so what is
+// asserted here is that property and not a pixel: no card and no action button is under the box.
+//
+// The price the decision accepts is that the cross stands near the top, out of the thumb's
+// reach; what makes it bearable is that a press outside closes it, and «outside» on a phone is
+// nearly the whole screen. That half is jsdom's to check (`player-page.test.tsx`), because it is
+// behaviour and not layout.
+describe('the phone at 390 px (L32’s addendum, #305)', () => {
+  // The seat's own screen with four cards in the hand and the help open, as markup.
+  async function phone(): Promise<string> {
+    atWidth(390)
+    const id = await createSession(run, 'p1', undefined, seatSetup())
+    const table = TableClient.connect(await asTable(run, id))
+    await table.ready()
+    const token = await admit(run, id, 'A', 'Ada')
+    history.replaceState(null, '', `/play?session=${id}&seat=A&name=Ada&token=${token}&code=${roomOf(id).code}&server=${encodeURIComponent(run.url)}`)
+    const { unmount } = render(<PlayerPage />)
+    try {
+      await screen.findByText('Ada')
+      await table.send({ v: 'deal', from: 'draw', to: ['hand:A'], each: 4 })
+      await waitFor(() => expect(document.querySelectorAll('[data-hand-card]').length).toBe(4))
+      fireEvent.click(screen.getByRole('button', { name: 'Hjälp om handen' }))
+      await screen.findByRole('dialog', { name: 'handen' })
+      return document.querySelector('.byd-player')!.outerHTML
+    } finally {
+      unmount()
+      table.close()
+    }
+  }
+
+  // The observer's screen, with her help open.
+  async function distance(): Promise<string> {
+    atWidth(390)
+    const id = await createSession(run, 'o1', undefined, seatSetup())
+    history.replaceState(null, '', `/observe?session=${id}&name=Eva&token=${await admit(run, id, null, 'Eva')}&server=${encodeURIComponent(run.url)}`)
+    const { unmount } = render(<ObserverPage />)
+    try {
+      await screen.findByText(/Du är observatör/)
+      fireEvent.click(screen.getByRole('button', { name: 'Hjälp om observatörsläget' }))
+      await screen.findByRole('dialog', { name: 'observatörsläget' })
+      return document.querySelector('.byd-observer')!.outerHTML
+    } finally {
+      unmount()
+    }
+  }
+
+  // The table screen's chrome with a room code on it, and the help about joining open.
+  async function tv(): Promise<string> {
+    atWidth(1280)
+    const id = await createSession(run, 't1', undefined, seatSetup())
+    history.replaceState(null, '', `/table?session=${id}&mode=tv&code=${roomOf(id).code}&host=${roomOf(id).hostKey}&server=${encodeURIComponent(run.url)}`)
+    const { unmount } = render(<TablePage />)
+    try {
+      await waitFor(() => expect(document.querySelector('.byd-tv-join')).not.toBeNull())
+      fireEvent.click(screen.getByRole('button', { name: 'Hjälp om att ansluta' }))
+      await screen.findByRole('dialog', { name: 'att ansluta' })
+      return document.querySelector('.byd-table')!.outerHTML
+    } finally {
+      unmount()
+    }
+  }
+
+  type Phone = { ask: Rect; box: Rect; under: string | null; plays: { what: string; rect: Rect }[] }
+  // The surface laid into Chromium at a phone's size, with the box where the component's reading
+  // puts it against the question mark the engine measured. `must` is everything the surface
+  // cannot have covered: the cards and the three buttons on the seat's screen, the handle's own
+  // controls on the observer's.
+  async function laid(html: string, must: string, view = { w: 390, h: 844 }): Promise<Phone> {
+    const page = await browser.newPage({ viewport: { width: view.w, height: view.h } })
+    try {
+      await page.setContent(document_(html, '', phoneCss), { waitUntil: 'load' })
+      const raw = await page.evaluate(
+        ({ rectOf, ROW }) => {
+          const rect = new Function('el', `return (${rectOf})(el)`) as (el: Element) => Rect
+          const ask = document.querySelector('.byd-help-ask')!
+          const box = document.querySelector('.byd-help-box') as HTMLElement
+          const row = ask.closest(ROW)
+          return { ask: rect(ask), row: row ? rect(row) : null, boxWants: { w: box.offsetWidth, h: box.scrollHeight } }
+        },
+        { rectOf, ROW },
+      )
+      const placed = helpPlacement(helpAnchor(raw.ask, raw.row), raw.boxWants, view)
+      // Awaited and not returned: a `return` inside the `try` hands back the promise, and the
+      // `finally` closes the page out from under it.
+      return await page.evaluate(
+        ({ rectOf, placed, must }) => {
+          const rect = new Function('el', `return (${rectOf})(el)`) as (el: Element) => Rect
+          const box = document.querySelector('.byd-help-box') as HTMLElement
+          box.style.cssText = ''
+          for (const [k, v] of Object.entries(placed.style)) box.style.setProperty(k.startsWith('--') ? k : k.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`), String(v))
+          const b = rect(box)
+          const hit = document.elementFromPoint(b.x + b.w / 2, b.y + b.h / 2)
+          // Everything a hand plays with: the cards themselves and the three buttons under them.
+          const plays = [...document.querySelectorAll(must)].map((el) => ({
+            what: (el.getAttribute('data-hand-card') ?? el.textContent ?? '').trim().slice(0, 24),
+            rect: rect(el),
+          }))
+          return { ask: rect(document.querySelector('.byd-help-ask')!), box: b, under: hit ? (box.contains(hit) ? 'box' : hit.className || hit.tagName) : null, plays }
+        },
+        { rectOf, placed, must },
+      )
+    } finally {
+      await page.close()
+    }
+  }
+
+  it('covers nothing the hand plays with, and stands inside the screen', async () => {
+    const { box, plays, under } = await laid(await phone(), '[data-hand-card], .byd-hand-actions button')
+    expect(plays.length).toBeGreaterThan(4)
+    expect(plays.filter((p) => overlaps(box, p.rect)).map((p) => p.what)).toEqual([])
+    expect(inside(box, 390, 844)).toBe(true)
+    // And nothing is drawn over it: a box under the hand strip is no help either.
+    expect(under).toBe('box')
+  }, 90_000)
+
+  // The distance view is the same box on the same narrow screen, and what it must not cover is
+  // the handle it stands in: the two controls the observer has at all.
+  it('leaves the observer’s own controls uncovered on a screen the same size', async () => {
+    const { box, plays, under } = await laid(await distance(), '.byd-observer-handle > button')
+    expect(plays.length).toBe(2)
+    expect(plays.filter((p) => overlaps(box, p.rect)).map((p) => p.what)).toEqual([])
+    expect(inside(box, 390, 844)).toBe(true)
+    expect(under).toBe('box')
+  }, 90_000)
+
+  // The table screen, where the same pattern holds at the other end of the scale: the box is
+  // the same 260 px, the column beside the felt is narrow, and what it must not cover is the
+  // code and the square the room joins by — the very thing it is about.
+  it('stands clear of the code it is about on the table screen', async () => {
+    const { box, plays, under } = await laid(await tv(), '.byd-tv-join > span, .byd-tv-join strong, .byd-tv-join img', { w: 1280, h: 800 })
+    expect(plays.length).toBeGreaterThan(1)
+    expect(plays.filter((p) => overlaps(box, p.rect)).map((p) => p.what)).toEqual([])
+    expect(inside(box, 1280, 800)).toBe(true)
+    expect(under).toBe('box')
+  }, 90_000)
+
+  it('gives the question mark the same target a thumb gets everywhere else', async () => {
+    const { ask } = await laid(await phone(), '[data-hand-card]')
+    expect(ask.w).toBeGreaterThanOrEqual(44)
+    expect(ask.h).toBeGreaterThanOrEqual(44)
   }, 90_000)
 })
