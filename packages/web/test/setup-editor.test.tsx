@@ -28,6 +28,17 @@ async function openBord(): Promise<void> {
   await screen.findByText('Skogens herrar')
   fireEvent.click(screen.getByRole('tab', { name: 'Bord' }))
 }
+// Sparar, och väntar tills knappen är tillbaka i vila innan den trycks.
+// Att servern har fått sin revision är inte samma sak som att ytan har skrivit klart: medan
+// begäran är i luften heter knappen «Sparar…» och är spärrad, och det är ett eget tillstånd i
+// React som `waitFor` på revisionen inte säger något om. Ett andra sparande som letar efter
+// «Spara» med `getByRole` medan det står kvar hittar därför ingen knapp alls och faller.
+// Sett under en full gate-körning och aldrig när filen körs ensam (#366): det är belastningen
+// som skiljer de två uppdateringarna åt, inte en långsam maskin. Svaret är att vänta på
+// villkoret — knappen i vila — och inte på en vidare tidsgräns.
+async function spara(): Promise<void> {
+  fireEvent.click(await screen.findByRole('button', { name: 'Spara' }))
+}
 const handle = (id: string) => document.querySelector(`[data-zone-handle="${id}"]`) as HTMLElement
 const row = (id: string) => document.querySelector(`[data-zone-row="${id}"]`) as HTMLElement
 // Raderna i listan. En zonfamilj står som `hand:*` (#175): samma zon vid var sin plats är en
@@ -54,7 +65,7 @@ describe('the setup editor (B5, K2): the list of zones', () => {
     expect(handle('discard')).toBeNull()
     expect(document.querySelector('[data-table] [data-zone="discard"]')).toBeNull()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    await spara()
     await waitFor(async () => expect((await run.projects.load(run.projectId))?.rev).toBe(2))
     expect((await run.projects.load(run.projectId))?.setup.zones.some((z) => z.id === 'discard')).toBe(false)
   })
@@ -88,7 +99,7 @@ describe('the setup editor (B5, K2): what the table cannot be without', () => {
     expect(screen.queryByRole('alert')).toBeNull()
     expect(document.querySelector('[data-table] [data-zone="hog-1"]')).toBeTruthy()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    await spara()
     await waitFor(async () => expect((await run.projects.load(run.projectId))?.rev).toBe(2))
     const stored = await run.projects.load(run.projectId)
     expect(stored?.setup.deckZone).toBe('hog-1')
@@ -166,7 +177,7 @@ describe('the setup editor (B5, K2): the seats knob, and giving the seats a zone
     fireEvent.click(screen.getByRole('button', { name: 'Visa spelarvyn' }))
     expect(screen.getAllByText('Framför mig', { selector: '[data-sheet-preview] span' })).toHaveLength(1)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    await spara()
     await waitFor(async () => expect((await run.projects.load(run.projectId))?.rev).toBe(2))
     const stored = await run.projects.load(run.projectId)
     expect(stored?.setup.zones.map((z) => z.id)).toEqual(expect.arrayContaining(['counters:C', 'mine:C', 'hand:C']))
@@ -326,7 +337,7 @@ describe('högens bottenkort', () => {
     expect(side.value).toBe('back')
     fireEvent.change(side, { target: { value: 'front' } })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    await spara()
     await waitFor(async () => expect((await run.projects.load(run.projectId))?.rev).toBe(2))
     expect((await run.projects.load(run.projectId))?.setup.zones.find((z) => z.id === 'draw')?.bottom).toEqual({ cardRef: 'knight', face: 'front' })
 
@@ -335,7 +346,7 @@ describe('högens bottenkort', () => {
 
     fireEvent.change(screen.getByLabelText('Bottenkort för Draghög'), { target: { value: '' } })
     expect(screen.queryByLabelText('Bottenkortets sida för Draghög')).toBeNull()
-    fireEvent.click(screen.getByRole('button', { name: 'Spara' }))
+    await spara()
     await waitFor(async () => expect((await run.projects.load(run.projectId))?.rev).toBe(3))
     expect((await run.projects.load(run.projectId))?.setup.zones.find((z) => z.id === 'draw')).not.toHaveProperty('bottom')
   })

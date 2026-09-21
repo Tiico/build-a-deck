@@ -4125,6 +4125,52 @@ Guiden ska kännas enkel (L36), och en verktygsrad i ett av dess steg är krom p
 Den som vill formatera gör det i editorn, dit guiden redan pekar.
 Delmängden gäller ändå det som skrivs där, eftersom strängen är strängen: skriver någon `- ` i guiden blir det en lista när kortet ritas. Det är rätt — fältet saknar redigeraren, inte formatet.
 
+### L40. Förstamålningens ark styrs av en medlemskapsregel, inte av en siffra (mätt 2026-09-21, #366)
+
+Gränsen för hur mycket CSS som får ligga i det ark webbläsaren blockerar första målningen på hade flyttats åtta gånger på åtta dagar: sju gånger 120 → 146 kB mellan 09-13 och 09-17, sedan ned till 88 kB och till 83,5 kB.
+Varje enskild flytt var ärlig på sina egna villkor, och det är precis problemet.
+En linje som alltid ger vika är definierad av förra raden i filen och inte av vad en telefon får kosta, och det finns ingen punkt där någon säger nej.
+
+**Siffran tas bort som styrmedel.**
+I stället gäller en regel om medlemskap: **bara ytor som ritas på första bilden får importeras statiskt.**
+Allt annat ligger bakom en dynamisk import, som `EditorPage` redan gör sedan #186 (L20).
+Grinden läser detta ur `packages/web/src/App.tsx` — ruttabellen är sanningen om vad appen faktiskt ritar på en första bild, inte en handhållen lista med filnamn som driver isär från koden.
+
+Det avgörande är vad de åtta flyttarna var gjorda av.
+Varje höjning var en yta som inte hörde hemma på första bilden men råkade importeras som om den gjorde det: ett lagerrutnät, ett formgalleri, en regelboksida, en kameraklunga, en hjälpruta.
+En siffra kan ge efter en kilobyte i taget; en regel om medlemskap kan inte det.
+De fyra tidigare utflyttningarna (#186, #346, #325, #304) var var och en samma insikt upptäckt på nytt och skriven som en egen grind med en egen handskriven lista klassnamn — regeln generaliserar dem och hämtar listan ur koden.
+
+**Mätningen säger dessutom att siffran styrde fel sak.**
+[Rapporten](docs/ux-audits/2026-09-21/366-css-budget-matning.md), Playwright-Chromium mot byggd `dist` över HTTP med gzip, 390 × 844, Lighthouse mobilprofil, tio körningar per rad:
+
+| | |
+|---|---:|
+| Förstamålning i dag | 2 104 ms (2 040–2 156) |
+| Lutning per rå kB CSS | 0,80–0,90 ms |
+| Hela budgeten, 83,4 kB | ~72 ms, **3,4 %** |
+| Marginalen på 95 byte | 0,08 ms |
+| **Ansiktet grinden finns för att skydda** | **448 ms** |
+
+En gräns som styr en trettiondel av kostnaden och flyttas var gång den binder är en logg och inte en budget.
+
+**Larmtaket står kvar vid 120 kB, och det är ett larm på arkets CSS — inte på ansiktet.**
+Det är värt att skriva rätt, för den naturliga formuleringen är fel: taket läser `ark − inbakat`, så ett andra ansikte som bakas in växer båda leden med samma 45 kB och går rakt igenom.
+Det som fäller ett ansikte står två rader ovanför och gjorde det redan: `kB: 114` är en exakt vikt och `toBe(2)` en exakt räkning av delmängder, och båda blir röda i samma stund en tredje `@font-face` bakas in eller familjen byts mot en tyngre.
+Ett ansikte som *inte* bakas in fälls av de två testerna om att bygget inte skeppar någon typsnittsfil och att sidan aldrig ber nätverket om en.
+Kvar för taket är alltså CSS:en: 83,4 kB i dag, och 120 kB lämnar 36,6 kB för filtens egna ytor att växa en regel i taget utan att någon behöver komma tillbaka och redigera ett tal.
+Binder taket ändå är svaret inte en nionde höjning utan frågan vad i arket första bilden inte ritar.
+
+**Priset erkänns.**
+Regeln sätter inget tak på `table.css`, som redan är ~30 % av arket.
+Den ytan är på första bilden på riktigt och växer en regel i taget; blir den ett problem är det ett annat problem än det här.
+Regeln kan inte heller se att en *delyta* inuti en förstabildskomponent inte ritas förrän någon trycker — det är en bedömning och inte en läsning, och `Suspense`-ankaret i grinden är vad som hindrar att en gjord bedömning tas bort i en rad.
+
+**Tre vägar valdes bort.**
+Att behålla 83,5 kB och bara ändra vad ett överskridande *betyder* lämnar linjen definierad av förra raden.
+Att dela ut designerytorna (guide, konto, hjälpring — 14 073 B rått men bara 2 750 B gzip) kostar en riktig Suspense-yta för `/` och `/login` och ger 2,7 kB luft åt nästa yta; sju åttondelar av de −96 ms experimentet gav var dessutom JavaScript och inte CSS.
+Att budgetera brotli i stället för råa byte avvisas som *ersättning* — det säger ingenting om vems CSS det är — men frågan om det som faktiskt reser lever vidare i #372, tillsammans med att ingenting i repot konfigurerar komprimering och att arket okomprimerat kostar +2 692 ms.
+
 ## I. Öppna frågor
 
 Ekonomi och juridik:
